@@ -68,6 +68,10 @@ CANON_DIR=<canon のリポジトリ> node render/export-canon.mjs $D --render $D
 
 `tts/yomi.yaml`（`--yomi` か `MOTION_YOMI` で別の辞書に差し替えられる）を `tts/yomi.py` の規則で掛ける。`terms` は必ず仮名に置換（最長一致、より長い漢字語・英単語の一部なら置換せず警告、日本語を含まない発話には掛けない）、`watch` は文脈で読みが変わる語の報告だけ、`watch_kanji` は誤読の原因になった字を含む未登録語の警告。足すのは「誤読を実測し、仮名化で直ることを確かめた語」だけにする（正しく読める語を仮名にすると韻律が落ちる）。
 
+## 音声入りの HTML
+
+`node kit/build.mjs <deck>/deck.html --embed-audio` で音声を HTML に埋め込む。WAV は ffmpeg で AAC（64 kbps・モノラル、`.m4a`）にしてから埋め込む（結果は一時フォルダにキャッシュ）。ffmpeg がなければ WAV のまま入れて警告する。`--embed-audio` なしでは `audio/` の WAV を相対パスで参照する。
+
 ## エンジンと言語
 
 `--engine` > `voice.json` の `"engine"` > デッキの `<html lang>`（`ja` なら `irodori`、それ以外は `voxcpm2`）。どちらも同じ mlx-audio のサーバーで、モデル名だけが違う（`tts/core.py` の `ENGINES`）。日本語以外では読み辞書を使わない。

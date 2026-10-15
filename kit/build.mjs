@@ -278,6 +278,7 @@ export function build(srcPath, opts = {}) {
       audio[k] = { src: opts.embedAudio ? dataUri(compressAudio(file)) : (opts.audioBase ? opts.audioBase + v.file : path.relative(outDir, file).split(path.sep).join('/')), dur: v.dur, cues: v.cues || [] };
     }
   }
+  if (compressAudio.failed) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');
   const j = (id, o) => `<script type="application/json" id="${id}">${JSON.stringify(o).replace(/<\//g, '<\\/')}</script>`;
 
   // CSS と JS を組み込む
@@ -333,7 +334,9 @@ function compressAudio(file) {
   if (fs.existsSync(out)) return out;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-c:a', 'aac', '-b:a', '64k', '-ac', '1', out]);
-  return r.status === 0 ? out : file;
+  if (r.status === 0) return out;
+  compressAudio.failed = true;   // ffmpeg がない：WAV のまま埋め込む（大きくなる）
+  return file;
 }
 function read(dir, f) { return fs.readFileSync(path.join(dir, f), 'utf8'); }
 let _kcss = null;

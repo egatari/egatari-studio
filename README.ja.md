@@ -132,6 +132,7 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 - 声：`--voices expert=alice,novice=bob` か `<デッキ>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `alice`、掛け合いなら `alice`（Expert）と `bob`（Novice）で、`tts/voices/<名前>.wav` を探す
 - サーバーが動いていない、参照音声がないときは、`synth.py` がその URL やファイルを示して止まる
 - `export-canon.mjs` は教材のバンドル（Marp 形式の md と、段階ごとの MP4・PNG）を作る。canon は TML 研究室の講義配信システムだが、同じ形式を受け付けるほかのシステムにも使える。`CANON_DIR` があれば canon 自身の parser でも確かめ、なければその検査を飛ばす
+- **音声入りの HTML**：`node kit/build.mjs $D/deck.html --embed-audio` で口述原稿の音声を HTML の中に入れる。1 つのファイルだけで、どこでも `a`（自動再生）で音声付きで進む。音声は AAC（64 kbps・モノラル）に圧縮する（5 分で約 4.5 MB。WAV のままだと約 30 MB）。今の主要なブラウザはすべて再生できる。`--embed-audio` を付けなければ、HTML は `audio/` の WAV を参照するだけで変換しない。ffmpeg がなければ WAV のまま埋め込み、build が警告する
 - 詳しく（キャッシュ、`timeline.json` での長さの調整、読み辞書）：[docs/video.md](docs/video.md)
 
 ## 操作（発表）
