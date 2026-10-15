@@ -45,6 +45,8 @@
 | `<html lang="en">` | 英語のデッキ：本文は Source Sans 3、画面の言葉は英語、検査は英語の規則、TTS は `voxcpm2` |
 | `<html data-theme="名前">` | テーマ（`--theme` が優先） |
 | `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
+| `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/moiku/motion-academic-slides/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
+| `<html data-feedback="off">` | `?` の一覧と発表者ビューにフィードバックのリンクを出さない（`DECK.FEEDBACK_URL = null`） |
 
 本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`/`.blue`、`.emph`/`.red`、`.muted`/`.gray`、`.b` 色と太字。
 
@@ -210,9 +212,11 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、発表者ビュー、全画面、キーの一覧。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
+`?` の一覧の下に「フィードバックを送る」のリンクと版（`v0.1.0`）がある。版・ブラウザ・OS・デッキの言語・モードだけを入れたフィードバックの form を開く。デッキの中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
+
 ### 発表者ビュー
 
-今の画面（左）、次の段階（右上）、今と次の段階の口述原稿（右下。Novice の発言には印）、スライドと段階の番号、自動再生のボタン、道具のボタン（レーザー・ペン・消えるペン・消す・一覧・授業モード）、経過時間と戻すボタン（⟲）、時刻。発表者ビューで効くキー：→ ↓ Space PageDown / ← ↑ PageUp、a、x、d、v、Shift+d、Backspace、Esc、o、l。左の画面に描いた線は本体に出る。`postMessage` でやり取りするので `file://` でも動く。
+今の画面（左）、次の段階（右上）、今と次の段階の口述原稿（右下。Novice の発言には印）、スライドと段階の番号、自動再生のボタン、道具のボタン（レーザー・ペン・消えるペン・消す・一覧・授業モード）、経過時間と戻すボタン（⟲）、時刻。発表者ビューで効くキー：→ ↓ Space PageDown / ← ↑ PageUp、a、x、d、v、Shift+d、Backspace、Esc、o、l。左の画面に描いた線は本体に出る。`postMessage` でやり取りするので `file://` でも動く。キーの行の右端に「フィードバックを送る」のリンク（`?` の一覧と同じ）。
 
 ### 印刷と PDF
 
@@ -220,7 +224,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 実行時の API（スクリプトと検査用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`tools.{mode, setMode, clear, help, overview}`。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview}`。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
 
 ## 開発サーバー
 

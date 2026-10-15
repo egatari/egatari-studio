@@ -224,6 +224,13 @@ node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
 ```
 
+## フィードバックと貢献
+
+- デッキで `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。版・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
+- Claude Code では「感想を送って」と言う。スキルが作業中に困ったことを issue の下書きにまとめ、確認を取ってから作る
+- 新しい図が欲しいときは [部品の依頼](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml)。デッキの中で書いた部品は [部品の提案](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml) から
+- 質問は [Discussions](https://github.com/moiku/motion-academic-slides/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
+
 ## セキュリティ
 
 デッキはコードとして扱う：原稿のスクリプトと部品は、ブラウザと、検査器・書き出しが使う headless Chrome の中で動き、build は原稿のフォルダの中のローカルのファイルを読む。信頼できるデッキだけを組み、開発サーバーで開くこと。信頼の前提と脆弱性の報告のしかた：[SECURITY.md](SECURITY.md)。

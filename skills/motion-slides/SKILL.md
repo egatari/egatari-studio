@@ -158,3 +158,29 @@ Shift+d：ペンの色、Backspace：このスライドの書き込みを消す�
 印刷と動画（`?mode=video`）には出ない。
 マウスを動かすと下に操作の帯（ボタンとキーの添え字、2.5 秒で隠れる）が出て、`?` でキーの一覧が開く。
 発表者ビューにも道具のボタンとキーの説明がある。動画と印刷には出ない。
+`?` の一覧と発表者ビューの下に「フィードバックを送る」（版・ブラウザ・言語・モードだけを入れた issue form。`<html data-feedback="off">` で消える）。
+
+## 9. 使い終わりの感想（フィードバックを送る）
+
+ユーザーが「感想を送って」「フィードバックして」「不具合を報告して」と言ったとき、または長い作業の終わりで、ユーザーが前もって送ってよいと言っていたときに行う。勝手には送らない。
+
+1. この作業で困ったこと・不具合・わかりにくかった手順・よかった点を、箇条書きで短くまとめる（何をして、何が起きて、どうなってほしかったか）
+2. **私的な内容を入れない**：スライドの本文・口述原稿・論文の中身・音声・参照音声の名前・個人のパスやアドレス・ユーザー名。要るなら「数式の多いスライドで」のように一般化する
+3. `.github/ISSUE_TEMPLATE/feedback.yml` の欄に合わせて下書きを書き、**全文をユーザーに見せる**：
+   ```
+   ### Type
+   Bug / 不具合            ← Bug / Confusing / Idea / Praise のどれか
+   ### What you did
+   ### What happened (and what you expected)
+   ### Version
+   0.1.0                   ← <repo>/package.json の version と git rev-parse --short HEAD
+   ### Browser
+   ### OS
+   ### Context
+   lang=ja, mode=talk, via Claude Code (motion-slides)
+   ```
+4. ユーザーが「送って」と明示したときだけ作る（直してと言われたら直して見せ直す）：
+   ```bash
+   gh issue create -R moiku/motion-academic-slides --title "[feedback] 一行の要約" --label feedback --body-file <下書き>
+   ```
+5. 作った issue の URL を伝える。`gh` が使えない・ログインしていないときは、下書きと `https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml` を渡して、ユーザーに貼ってもらう

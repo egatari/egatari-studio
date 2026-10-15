@@ -1,6 +1,6 @@
 ---
 name: motion-components
-description: motion-academic-slides の動く図の部品（Web Components）を新しく書く・直す・部品庫に昇格させる。「新しい部品を作って」「この図を部品にして」「部品庫に入れて」「motion-components」で使う。部品を使ってスライドを作るだけなら motion-slides。
+description: motion-academic-slides の動く図の部品（Web Components）を新しく書く・直す・部品庫に昇格させる。「新しい部品を作って」「この図を部品にして」「部品庫に入れて」「部品庫に提案して」「motion-components」で使う。部品を使ってスライドを作るだけなら motion-slides。
 ---
 
 # motion-components：動く図の部品を書く
@@ -61,3 +61,19 @@ node <repo>/tools/test-components.mjs <名前>     # 描画・決定性・文字
 5. motion-slides スキルの §6 の表に 1 行足す
 
 失敗して直したことは、その部品の README に「注意」として書く（次に書く人が同じ失敗をしないように）。
+
+## 5. 部品庫への提案（公開リポジトリへ送る）
+
+デッキ専用の部品が §4 の条件を満たしたとき、またはユーザーに頼まれたときは、公開リポジトリ（`moiku/motion-academic-slides`）への提案を**申し出る**（勝手には送らない）。
+
+1. 「この部品を部品庫に提案しますか（issue か PR）」と聞く。断られたらそれで終わり
+2. 下書きを作って**全文をユーザーに見せる**
+   - issue：`.github/ISSUE_TEMPLATE/component-submission.yml` の欄に合わせ、本文を `### Component name` / `### What it shows` / `### Code or PR link` / `### Checklist`（`- [x]` で確かめたものだけ）の見出しで書く
+   - PR：`components/<名前>/`（index.js・README.md・demo.html）と CATALOG.md を足したブランチ。説明に同じチェックリスト
+   - デッキ固有の文言・未公開のデータ・個人のパスを入れない（demo.html の数値は作り物にする）
+3. ユーザーが「送って」と明示したときだけ送る：
+   ```bash
+   gh issue create -R moiku/motion-academic-slides --title "[component] m-名前" --label component-submission --body-file <下書き>
+   # PR なら：fork → ブランチに push → gh pr create -R moiku/motion-academic-slides --body-file <下書き>
+   ```
+4. 作った issue / PR の URL をユーザーに伝える

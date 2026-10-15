@@ -24,6 +24,8 @@ const require = createRequire(import.meta.url);
 const katex = require('katex');
 const KIT = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(KIT);
+// 版（package.json の version）。デッキに DECK.VERSION として埋め込む（フィードバックの欄に入れる）
+const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
 const EDITABLE = new Set(['h1', 'h2', 'p', 'li', 'td', 'th']);
@@ -475,6 +477,7 @@ export function build(srcPath, opts = {}) {
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scripts = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
+    j('deck-meta', { version: VERSION }),
     needKatexJs ? `<script>${read(path.dirname(require.resolve('katex')), 'katex.min.js')}\nkatex.__macros=${JSON.stringify(macros)};</script>` : '',
     `<script>\n${read(KIT, 'deck.js')}\n</script>`,
     `<script>\n${read(KIT, 'presenter.js')}\n</script>`,

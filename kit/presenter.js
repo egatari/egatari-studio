@@ -8,10 +8,10 @@ var DECK = window.DECK;
 var L = DECK.ja === false
   ? {auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
      laser: "Laser (x)", pen: "Pen (d)", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
-     legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
+     feedback: "Send feedback", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
   : {auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
      laser: "レーザー（x）", pen: "ペン（d）", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
-     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
+     feedback: "フィードバックを送る", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
@@ -25,6 +25,10 @@ DECK.presenterView = function(){
     return '<button data-k="' + t[1] + '" data-b="' + t[0] + '" tabindex="-1" title="' + L[t[0]] + '">' + (ic[t[0]] || t[0]) + "<kbd>" + t[2] + "</kbd></button>";
   }).join("") + "</span>" : "";
   var legend = L.legend.map(function(x){ return "<span><kbd>" + x[0] + "</kbd> " + x[1] + "</span>"; }).join("");
+  // 凡例の行の右端にフィードバックのリンク（版・ブラウザ・言語・モードだけ。デッキの中身は送らない）
+  var fb = DECK.feedbackUrl && DECK.feedbackUrl();
+  if (fb) legend += '<a id="pv-fb" href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' + L.feedback +
+    (DECK.VERSION ? " · v" + DECK.VERSION : "") + "</a>";
   document.body.innerHTML =
     '<div id="pv">' +
     ' <header><span id="pv-pos"></span><span id="pv-step"></span><span class="sp"></span>' +
@@ -58,6 +62,7 @@ DECK.presenterView = function(){
     "#pv .pv-tools kbd{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv-auto.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
     "#pv-keys{display:flex;flex-wrap:wrap;gap:4px 18px;padding:5px 16px 7px;background:#111;color:#999;font-size:13px}" +
+    "#pv-keys #pv-fb{margin-left:auto;color:#8ab4e8;text-decoration:none}#pv-keys #pv-fb:hover{text-decoration:underline}@media print{#pv-fb{display:none}}" +
     "#pv-keys kbd{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:4px;background:#222;color:#ddd;font:600 11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}";
   document.head.appendChild(st);
   var fc = document.getElementById("f-cur"), fn = document.getElementById("f-next");

@@ -195,6 +195,39 @@ DECK.NARRATION = json("deck-narration") || {};   // {slideKey: {stepKey: [{role,
 DECK.AUDIO = json("deck-audio") || {};           // {"slideKey:stepKey": {src, dur, cues:[秒…]}}
 DECK.MARKS = json("deck-marks") || {};           // {"slideKey:stepKey": [{type:"cue"} | {type:"mark", id, effect, hold} | {type:"clear"}]}
 DECK.TIMING = json("deck-timing") || {};         // {"slideKey:stepKey": {dur, hold, lead, pad_after}}
+DECK.VERSION = (json("deck-meta") || {}).version || "";   // package.json の version（build が埋め込む）
+
+// ---------------------------------------------------------------- フィードバックの宛先（? の一覧と発表者ビューのリンク）
+// <html data-feedback-url="…"> で宛先を変え、data-feedback="off" で消す（DECK.FEEDBACK_URL = null）
+// 付けるのは版・ブラウザ・OS・言語・モードだけ。デッキの中身は送らない
+DECK.FEEDBACK_URL = (function(){
+  var h = document.documentElement;
+  if (/^(off|false|no|0)$/i.test(h.getAttribute("data-feedback") || "")) return null;
+  return h.getAttribute("data-feedback-url") || "https://github.com/moiku/motion-academic-slides/issues/new";
+})();
+function shortUA(){
+  var u = navigator.userAgent || "", m;
+  if ((m = u.match(/Edg\/(\d+)/))) return "Edge " + m[1];
+  if ((m = u.match(/Firefox\/(\d+)/))) return "Firefox " + m[1];
+  if ((m = u.match(/(?:Chrome|CriOS)\/(\d+)/))) return (/HeadlessChrome/.test(u) ? "HeadlessChrome " : "Chrome ") + m[1];
+  if ((m = u.match(/Version\/(\d+(?:\.\d+)?).*Safari/))) return "Safari " + m[1];
+  return u.slice(0, 60);
+}
+function shortOS(){
+  var u = navigator.userAgent || "";
+  return /Windows/.test(u) ? "Windows" : /iPhone|iPad/.test(u) ? "iOS" : /Mac OS X|Macintosh/.test(u) ? "macOS" : /Android/.test(u) ? "Android" : /Linux/.test(u) ? "Linux" : "";
+}
+// 送り先の URL（GitHub の issue form なら feedback.yml を選び、欄に値を入れる）。無効なら null
+DECK.feedbackUrl = function(){
+  if (!DECK.FEEDBACK_URL) return null;
+  var u;
+  try { u = new URL(DECK.FEEDBACK_URL, location.href); } catch (e) { return null; }
+  if (/\/issues\/new\/?$/.test(u.pathname) && !u.searchParams.has("template")) u.searchParams.set("template", "feedback.yml");
+  var v = {version: DECK.VERSION, browser: shortUA(), os: shortOS(),
+    context: "lang=" + (document.documentElement.lang || "ja") + ", mode=" + DECK.mode + (Q.get("presenter") ? ", presenter" : "")};
+  for (var k in v) if (v[k] && !u.searchParams.has(k)) u.searchParams.set(k, v[k]);
+  return u.href;
+};
 
 // ---------------------------------------------------------------- 段階表示
 var slides = [], cur = 0, step = 0, fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;

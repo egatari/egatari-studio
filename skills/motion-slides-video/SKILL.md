@@ -50,3 +50,7 @@ export-canon が最後に表示するコマンドで、まず `--dry-run` を付
 | Irodori に接続できない／参照音声がない | `IRODORI_URL`・`IRODORI_REF_DIR`（`--ref-dir`）を確かめる |
 | 音声が段階に収まらず切れる | timeline.json で `dur` を固定している。`pad_after` か `hold` にする |
 | dry-run の無音が残っている | export-canon の警告。本番の TTS をやり直す |
+
+## 5. 使い終わりの感想
+
+「感想を送って」「フィードバックして」と言われたら（または、送ってよいと前もって言われていて長い作業が終わったら）、motion-slides スキルの §9 と同じ手順で feedback の issue の下書きを作り、見せて、明示の確認の後にだけ `gh issue create -R moiku/motion-academic-slides --label feedback --body-file <下書き>` で作る。TTS まわり（読み間違い・音量・接続）の困りごとは Context に `via motion-slides-video` と書く。原稿の文・音声・参照音声の名前・`IRODORI_URL` などの個人の設定は入れない。

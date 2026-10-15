@@ -1,0 +1,50 @@
+name: Component submission
+description: "Offer a component for the library / 部品を部品庫に提案する"
+title: "[component] m-"
+labels: ["component-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See [CONTRIBUTING.md](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.md) ([日本語](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.ja.md)) for the promotion rules. A pull request is best; pasting the code here is also fine.
+        昇格の条件は [CONTRIBUTING.ja.md](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.ja.md) を参照。PR が一番ですが、ここにコードを貼るのでも構いません。
+  - type: input
+    id: name
+    attributes:
+      label: Component name
+      description: "部品の名前（m- で始まる）"
+      placeholder: "m-histogram"
+    validations:
+      required: true
+  - type: textarea
+    id: shows
+    attributes:
+      label: What it shows
+      description: "何を見せる部品か、いつ使うか、段階の数、受け取る値"
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Code or PR link
+      description: "PR・ブランチへのリンク、または index.js を貼る"
+      render: js
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: "確かめたこと（docs/contract.md §3）"
+      options:
+        - label: "README.md with frontmatter (name, summary, steps, props) / frontmatter 付きの README.md"
+        - label: "demo.html (1–2 slide sample deck) / 見本のデッキ demo.html"
+        - label: "`node tools/test-components.mjs <name>` passes / 検査が通る"
+        - label: "Colors only via theme CSS variables (var(--term), var(--emph), …) / 色はテーマの変数だけ"
+        - label: "Deterministic render(k, t): no timers, Date, or unseeded random / (k, t) だけで画面が決まる"
+        - label: "No deck-specific text or numbers (all via props or JSON) / デッキ固有の文言・数値を持たない"
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "作ったときの版（任意）"

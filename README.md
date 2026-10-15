@@ -224,6 +224,13 @@ node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
 ```
 
+## Feedback & contributing
+
+- In a deck, press `?` and click **Send feedback** (also in the presenter view). It opens a [feedback form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) with only the version, browser, OS, language and mode filled in; nothing from your slides is sent. Turn it off with `<html data-feedback="off">`
+- In Claude Code, say "send feedback": the skill drafts an issue from the session and creates it only after you confirm
+- Want a new figure? [Request a component](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml), or write one in your deck and [submit it](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml)
+- Questions: [Discussions](https://github.com/moiku/motion-academic-slides/discussions). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Security
 
 A deck is code: its scripts and components run in your browser and in the headless Chrome used by the checker and renderer, and the build reads local files inside the deck folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).

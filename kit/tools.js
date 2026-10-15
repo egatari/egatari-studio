@@ -4,7 +4,7 @@
 // - Backspace：今のスライドの書き込みを消す（ペンのとき）、Shift+Backspace：全スライドの書き込みを消す
 // - 動画（?mode=video）では何も作らない。印刷では隠す。発表者ビューの「今の画面」で描いた線は本体に送る
 // - 操作の帯：マウスを動かすと下の余白（足りなければ下端）に出て、2.5 秒止まると隠れる。ボタンはキーと同じ操作をする
-// - ?：キーの一覧（開発サーバーのときは e / n / c も載せる）
+// - ?：キーの一覧（開発サーバーのときは e / n / c も載せる）。下に「フィードバックを送る」（DECK.feedbackUrl、data-feedback="off" で消える）
 (function(){
 "use strict";
 var DECK = window.DECK;
@@ -127,7 +127,9 @@ css(
   "#dt-help .dt-row{display:contents}#dt-help .dt-row>span{padding:3px 0;white-space:nowrap}#dt-help .dt-row>span:first-child{text-align:right}" +
   "#dt-help kbd{display:inline-block;min-width:20px;margin:0 1px;padding:1px 5px;border:1px solid rgba(255,255,255,.22);border-bottom-width:2px;border-radius:5px;" +
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
-  "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}"
+  "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +
+  "#dt-help .dt-fb{margin-top:8px;text-align:center;font-size:12px}#dt-help .dt-fb a{color:#9cc8ff;text-decoration:none}#dt-help .dt-fb a:hover{text-decoration:underline}" +
+  "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}"
 );
 
 // ---------------------------------------------------------------- 状態
@@ -466,8 +468,13 @@ function helpHtml(){
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
     row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "口述原稿" : "Narration"), row(K("c"), j ? "コメントの一覧" : "Comments"),
     row(K("Alt") + "+" + (j ? "クリック" : "click"), j ? "Claude への指示" : "Note to Claude")]));
+  // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
+  var fb = DECK.feedbackUrl && DECK.feedbackUrl();
+  var fbHtml = fb ? '<div class="dt-fb"><a href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' +
+    (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
+    (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div></div>";
+    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + fbHtml + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){

@@ -45,6 +45,8 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `<html lang="en">` | English deck: Source Sans 3 body font, English UI text, English checker rules, `voxcpm2` TTS |
 | `<html data-theme="name">` | theme (overridden by `--theme`) |
 | `<html data-mode="lecture">` | default mode when the URL has no `?mode=` |
+| `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/moiku/motion-academic-slides/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
+| `<html data-feedback="off">` | no feedback link in the `?` help or the presenter view (`DECK.FEEDBACK_URL = null`) |
 
 Body classes (all colors come from the theme): `.sub` subheading · `.big` main equation · `.note` note (27px) · `.thm` theorem box · `.box` tinted box · `.cols` side-by-side columns · `.arrow` centered arrow line · `.fig` / `.figcap` figure and caption · `.cite` citation (20px) · `.plot` box for `DECK.Plot` · `.readout .num` tabular number · `td.r` right-aligned cell · `.term`/`.blue`, `.emph`/`.red`, `.muted`/`.gray`, `.b` colors and bold.
 
@@ -210,9 +212,11 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 
 Buttons: previous, next, autoplay/stop, laser, pen, fading pen, clear ink (this slide, in any tool), overview, lecture, presenter view, fullscreen, help. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
+The `?` help ends with a **Send feedback** link and the version (`v0.1.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
+
 ### Presenter view
 
-Current screen (left), next step (top right), narration of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser, pen, fading pen, clear, overview, lecture), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`.
+Current screen (left), next step (top right), narration of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser, pen, fading pen, clear, overview, lecture), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
 
 ### Print and PDF
 
@@ -220,7 +224,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ### Run-time API (for scripts and tests)
 
-`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `tools.{mode, setMode, clear, help, overview}`. Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
+`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview}`. Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
 
 ## Dev server
 

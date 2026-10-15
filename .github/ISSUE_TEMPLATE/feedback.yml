@@ -1,0 +1,70 @@
+name: Feedback
+description: "Bug, something confusing, an idea, or praise / 不具合・わかりにくい点・提案・感想"
+title: "[feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Short is fine. English or Japanese both welcome.
+        お気軽にどうぞ。短くて構いません。日本語でも英語でも大丈夫です。
+
+        **Please do not paste private content** (unpublished slides, narration, voice samples, local paths).
+        **未公開のスライド本文・口述原稿・音声・個人のパスは貼らないでください。**
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: "種類"
+      options:
+        - "Bug / 不具合"
+        - "Confusing / わかりにくい"
+        - "Idea / 提案"
+        - "Praise / よかった点"
+    validations:
+      required: true
+  - type: textarea
+    id: did
+    attributes:
+      label: What you did
+      description: "何をしたか（コマンド、押したキー、Claude Code への指示など）"
+      placeholder: "e.g. node kit/build.mjs talks/intro/deck.html, then pressed p"
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened (and what you expected)
+      description: "何が起きたか、どうなってほしかったか。スクリーンショットも歓迎"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "版（デッキの ? の一覧から送ると自動で入ります。または package.json の version / git の commit）"
+      placeholder: "0.1.0"
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: "ブラウザ"
+      placeholder: "Chrome 141"
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: "OS"
+      placeholder: "macOS 26"
+  - type: input
+    id: context
+    attributes:
+      label: Context
+      description: "デッキの言語・モードなど（? の一覧から送ると自動で入ります）"
+      placeholder: "lang=ja, mode=talk"
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Deck snippet (optional)
+      description: "再現に要る最小のデッキの断片（任意）。公開してよいものだけ"
+      render: html
