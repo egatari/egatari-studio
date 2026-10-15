@@ -71,7 +71,26 @@ node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0
 
 To start your own deck, copy `examples/minimal/` to a new folder and edit `deck.html` and `narration.md`. Choose a theme with `<html data-theme="tml">` or `--theme tml`. For an English deck use `<html lang="en">`: body text is then set in Source Sans 3 and the checker uses English rules.
 
-In the dev server, `e` toggles edit mode (double-click an element to edit its source), `n` opens the narration drawer, Alt+click leaves a comment for Claude Code, and `c` lists the comments. Edits are written back to `deck.html` and `narration.md`. See [docs/dev-server.md](docs/dev-server.md).
+## Editing in the browser (dev server)
+
+You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:
+
+```bash
+node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:5173/  (Ctrl+C to stop)
+```
+
+The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by itself whenever a file of the deck changes, and stays on the same slide and step.
+
+1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
+2. **Fix the narration: `n`.** A drawer shows the narration of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
+3. **Ask Claude Code: Alt (Option) + click.** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then tell Claude Code "Apply the comments" and it edits the deck; the page updates as soon as it saves.
+4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
+
+| `e` + double-click: edit the source | `n`: edit the narration | Alt+click: comment for Claude Code |
+|---|---|---|
+| ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
+
+Details: [docs/dev-server.md](docs/dev-server.md).
 
 ## Using it with Claude Code
 

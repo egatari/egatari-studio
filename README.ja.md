@@ -71,7 +71,26 @@ node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://
 
 自分のデッキは `examples/minimal/` を別のフォルダに写し、`deck.html` と `narration.md` を直して作る。テーマは `<html data-theme="tml">` か `--theme tml` で選ぶ。英語のデッキは `<html lang="en">` にする（本文の字が Source Sans 3 になり、検査も英語の規則になる）。
 
-開発サーバーでは、`e` で編集モード（要素をダブルクリックして原稿を直す）、`n` で口述原稿の引き出し、Alt+クリックで Claude Code への指示、`c` で指示の一覧。直した内容は `deck.html` と `narration.md` に書き戻す。詳しくは [docs/dev-server.md](docs/dev-server.md)。
+## ブラウザで直す（開発サーバー）
+
+`deck.html` を手で開いて書き換える必要はほとんどない。開発サーバーを起動して、スライドの上で直す。
+
+```bash
+node server/dev.mjs path/to/deck.html            # http://127.0.0.1:5173/ を開く（Ctrl+C で止める）
+```
+
+画面はいつもの発表画面（矢印・`p`・`a` などはそのまま使える）。デッキのファイルが変わると自動で読み込み直し、スライドと段階はそのまま残る。
+
+1. **文字を直す：`e` → ダブルクリック。** 直せる要素に点線の枠が出る。ダブルクリックでその部分の原稿（HTML と `\( … \)` の式）が開くので、直して ⌘/Ctrl+Enter。`deck.html` のその要素だけが書き換わる
+2. **口述原稿を直す：`n`。** 右に今の段階の口述原稿が出る。直して保存（発言の追加・削除・話者の変更もできる）。`narration.md` のその段階だけが書き換わる
+3. **Claude Code に頼む：Alt（Option）+クリック。** 直してほしいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。指示は `comments.json` に貯まり、`c` で一覧。Claude Code に「コメントを反映して」と頼むと直し、保存した時点で画面に出る
+4. **元に戻す：** 書き換える前の `deck.html`・`narration.md` は `.cache/edits/` に残る（新しい 30 個）
+
+| `e`＋ダブルクリック：原稿を直す | `n`：口述原稿を直す | Alt+クリック：Claude Code への指示 |
+|---|---|---|
+| ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
+
+詳しくは [docs/dev-server.md](docs/dev-server.md)。
 
 ## Claude Code で使う
 
