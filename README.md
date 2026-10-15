@@ -66,7 +66,7 @@ open examples/minimal/out/deck.html                 # macOS; elsewhere, open the
 
 node kit/check.mjs examples/minimal/deck.html       # checker; the last line should read "エラー 0" (0 errors)
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF, one page per slide
-node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:5173/ (Ctrl+C to stop)
+node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
 ```
 
 To start your own deck, copy `examples/minimal/` to a new folder and edit `deck.html` and `narration.md`. Choose a theme with `<html data-theme="tml">` or `--theme tml`. For an English deck use `<html lang="en">`: body text is then set in Source Sans 3 and the checker uses English rules.
@@ -76,7 +76,7 @@ To start your own deck, copy `examples/minimal/` to a new folder and edit `deck.
 You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:
 
 ```bash
-node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:5173/  (Ctrl+C to stop)
+node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:8730/  (Ctrl+C to stop)
 ```
 
 The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by itself whenever a file of the deck changes, and stays on the same slide and step.

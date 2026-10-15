@@ -6,7 +6,7 @@ VS Code は要らない。待ち受けは 127.0.0.1 だけ。
 ## 起動
 
 ```bash
-node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:5173/
+node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
 npm run dev -- path/to/deck.html --port 5174 --theme tml
 ```
 

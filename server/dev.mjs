@@ -1,6 +1,6 @@
 // 開発サーバー：ブラウザの上で原稿・口述原稿を直し、Claude への指示（コメント）を残す
 //
-//   node server/dev.mjs <deck.html> [--port 5173] [--theme 名前]
+//   node server/dev.mjs <deck.html> [--port 8730] [--theme 名前]   （使われていれば次の番号を順に試す）
 //   npm run dev -- <deck.html>
 //
 // 127.0.0.1 だけで待ち受ける。説明は docs/dev-server.md
@@ -17,13 +17,14 @@ const BUILD = path.join(ROOT, 'kit', 'build.mjs');
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
-let srcArg = null, port = 5173, theme = null;
+// 既定は 8730（Vite の 5173 や 3000・8080 のようによく使われる番号を避ける）
+let srcArg = null, port = 8730, portGiven = false, theme = null;
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--port') port = +args[++i];
+  if (args[i] === '--port') { port = +args[++i]; portGiven = true; }
   else if (args[i] === '--theme') theme = args[++i];
   else srcArg = args[i];
 }
-if (!srcArg) { console.error('usage: node server/dev.mjs <deck.html> [--port 5173] [--theme name]'); process.exit(1); }
+if (!srcArg) { console.error('usage: node server/dev.mjs <deck.html> [--port 8730] [--theme name]'); process.exit(1); }
 const SRC = path.resolve(srcArg);
 if (!fs.existsSync(SRC)) { console.error('not found: ' + SRC); process.exit(1); }
 const DIR = path.dirname(SRC);
@@ -317,6 +318,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 await rebuild();
-server.listen(port, '127.0.0.1', () => {
+// 使われているポートなら次の番号を試す（--port で 0 を渡すと空いている番号を OS が選ぶ）
+let tries = 0;
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE' && port !== 0 && tries < 20) {
+    console.log(`  port ${port} is in use, trying ${port + 1}`);
+    tries++; port++; server.listen(port, '127.0.0.1');
+  } else { console.error(e.message); process.exit(1); }
+});
+server.on('listening', () => {
   console.log(`dev server: http://127.0.0.1:${server.address().port}/  (${SRC})`);
 });
+server.listen(port, '127.0.0.1');

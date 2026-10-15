@@ -66,7 +66,7 @@ open examples/minimal/out/deck.html                 # macOS。ほかの OS で�
 
 node kit/check.mjs examples/minimal/deck.html       # 検査。最後の行が「エラー 0」になる
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF（1 スライド 1 ページ）
-node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:5173/（Ctrl+C で止める）
+node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
 
 自分のデッキは `examples/minimal/` を別のフォルダに写し、`deck.html` と `narration.md` を直して作る。テーマは `<html data-theme="tml">` か `--theme tml` で選ぶ。英語のデッキは `<html lang="en">` にする（本文の字が Source Sans 3 になり、検査も英語の規則になる）。
@@ -76,7 +76,7 @@ node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://
 `deck.html` を手で開いて書き換える必要はほとんどない。開発サーバーを起動して、スライドの上で直す。
 
 ```bash
-node server/dev.mjs path/to/deck.html            # http://127.0.0.1:5173/ を開く（Ctrl+C で止める）
+node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開く（Ctrl+C で止める）
 ```
 
 画面はいつもの発表画面（矢印・`p`・`a` などはそのまま使える）。デッキのファイルが変わると自動で読み込み直し、スライドと段階はそのまま残る。
