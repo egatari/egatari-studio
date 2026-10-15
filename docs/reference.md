@@ -62,7 +62,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 | `steps="n"` (component) | override the component's step count |
 | `data-id="ID"` | morph pairing ([contract §8](contract.md#8-モーフdata-morph)) |
 | `id="ID"` / `data-mark="ID"` | target of `{mark:ID}` ([contract §7](contract.md#7-注目の演出mark)) |
-| `data-key`, `data-title` | added by build (slide key, plain heading). Do not write by hand |
+| `data-key`, `data-title` | added by build (slide key, plain heading). A hand-written `data-key` on a section is kept and used as the slide key (it wins over `id`) |
 
 ### Math
 
@@ -129,7 +129,7 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `theme.json` field | Meaning |
 |---|---|
 | `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in `themes/`) |
-| `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Not inherited through `extends` |
+| `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
 
 | Token | Meaning |
@@ -226,7 +226,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ## Checker
 
-`node kit/check.mjs <deck.html> [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 1 if there is any error. `--json` prints `{ok, counts, results: [{slide, title, sev, msg}]}`. It uses the theme in `<html data-theme>` (there is no `--theme`).
+`node kit/check.mjs <deck.html> [--theme name] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 1 if there is any error. `--json` prints `{ok, counts, results: [{slide, title, sev, msg}]}`. `--theme` checks with another theme (otherwise `<html data-theme>`).
 
 | Check | Severity |
 |---|---|
@@ -280,7 +280,7 @@ The summary line shows slides, math, components, font files, narration steps, au
 | `voice.json` field | Meaning |
 |---|---|
 | `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the deck). Defaults `alice`, `bob` |
-| `lang` | language (default: `lang` of `<deckdir>/deck.html`, else `ja`) |
+| `lang` | language (default: `lang` of the deck's HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
 | `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
 
 Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.json` (steps removed from the narration are dropped from the manifest; their wav files stay). Warns if dry-run audio remains. When the server is not localhost, voice paths are not checked locally. Rebuild afterwards.

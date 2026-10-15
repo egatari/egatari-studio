@@ -202,6 +202,14 @@ def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool, refs:
 def main():
     args = parse_args()
     deckdir = Path(args.deckdir).resolve()
+    deck_html = None
+    if deckdir.is_file():                     # <deck>/foo.html を渡してもよい
+        deck_html, deckdir = deckdir, deckdir.parent
+    elif (deckdir / "deck.html").exists():
+        deck_html = deckdir / "deck.html"
+    else:
+        cands = sorted(p for p in deckdir.glob("*.html"))
+        deck_html = cands[0] if len(cands) == 1 else None
     narr = deckdir / "narration.md"
     if not narr.exists():
         sys.exit(f"narration.md がありません: {narr}")
@@ -212,7 +220,7 @@ def main():
     # 言語とエンジン：--engine > voice.json の "engine" > デッキの <html lang>（en なら voxcpm2）
     global MODEL
     vjson = json.loads((deckdir / "voice.json").read_text(encoding="utf-8")) if (deckdir / "voice.json").exists() else {}
-    m_lang = re.search(r'<html[^>]*\blang="([^"]+)"', (deckdir / "deck.html").read_text(encoding="utf-8")) if (deckdir / "deck.html").exists() else None
+    m_lang = re.search(r'<html[^>]*\blang="([^"]+)"', deck_html.read_text(encoding="utf-8")) if deck_html else None
     lang = (vjson.get("lang") or (m_lang.group(1) if m_lang else "ja")).lower()
     engine = args.engine or vjson.get("engine") or ("irodori" if lang.startswith("ja") else "voxcpm2")
     MODEL = M.ENGINES[engine]

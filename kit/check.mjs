@@ -22,9 +22,10 @@ import { build, isJapanese } from './build.mjs';
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
-const src = args.find((a) => !a.startsWith('--'));
+const ti = args.indexOf('--theme'), theme = ti >= 0 ? args[ti + 1] : undefined;
+const src = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1));
 if (!src) {
-  console.error('usage: node kit/check.mjs <deck.html> [--json]');
+  console.error('usage: node kit/check.mjs <deck.html> [--theme name] [--json]');
   process.exit(1);
 }
 
@@ -82,7 +83,7 @@ function contrastOf(rgbA, rgbB) {
 
 // ---------------------------------------------------------------- 1. ビルド（メモリ上）
 let built;
-try { built = build(src, {}); }
+try { built = build(src, theme ? { theme } : {}); }
 catch (e) { console.error('ビルド失敗: ' + e.message); process.exit(1); }
 // 言語：<html lang> が ja か、lang が無ければ日本語の規則。それ以外（英語など）は英語の規則
 const lang = built.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';

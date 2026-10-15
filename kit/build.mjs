@@ -49,7 +49,7 @@ export function annotate(src, dev) {
     const loc = n.sourceCodeLocation;
     if (n.tagName === 'section' && hasClass(n, 'slide')) {
       const h = findFirst(n, (x) => x.tagName === 'h2' || x.tagName === 'h1');
-      let key = attr(n, 'id') || (h ? normalizeKey(inner(src, h)) : '') || `s${slides.length + 1}`;
+      let key = attr(n, 'data-key') || attr(n, 'id') || (h ? normalizeKey(inner(src, h)) : '') || `s${slides.length + 1}`;
       const c = (keys.get(key) || 0) + 1; keys.set(key, c);
       if (c > 1) key = `${key}#${c}`;
       slides.push({ key, title: h ? inner(src, h) : key, start: loc.startOffset });
@@ -180,10 +180,10 @@ function resolveTheme(name, deckDir) {
 function themeAssets(dir) {
   const cfgPath = path.join(dir, 'theme.json');
   const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
-  const logos = (cfg.logos || []).map((f) => dataUri(path.join(dir, f)));
-  // "extends": "default" なら、その tokens.css を先に置き、差分だけを上書きする
-  const parent = cfg.extends ? themeAssets(resolveTheme(cfg.extends, path.dirname(dir))).css + '\n' : '';
-  return { css: parent + fs.readFileSync(path.join(dir, 'tokens.css'), 'utf8'), logos, cfg };
+  // "extends" なら、親の tokens.css を先に置き、差分だけを上書きする。logos を書かなければ親のロゴを使う（"logos": [] で消せる）
+  const par = cfg.extends ? themeAssets(resolveTheme(cfg.extends, path.dirname(dir))) : null;
+  const logos = cfg.logos ? cfg.logos.map((f) => dataUri(path.join(dir, f))) : (par ? par.logos : []);
+  return { css: (par ? par.css + '\n' : '') + fs.readFileSync(path.join(dir, 'tokens.css'), 'utf8'), logos, cfg };
 }
 function dataUri(file) {
   const ext = path.extname(file).slice(1).toLowerCase();

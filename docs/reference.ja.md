@@ -62,7 +62,7 @@
 | `steps="n"`（部品） | 部品の段階の数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.md#7-注目の演出mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。手で書かない |
+| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。section に手で `data-key` を書けば、それを鍵に使う（`id` より優先） |
 
 ### 数式
 
@@ -129,7 +129,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `theme.json` の項目 | 意味 |
 |---|---|
 | `extends` | 親のテーマ：その `tokens.css` を先に置く（このテーマの隣 → `themes/` の順に探す） |
-| `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。`extends` では引き継がない |
+| `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
 
 | 変数 | 意味 |
@@ -226,7 +226,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## 検査器
 
-`node kit/check.mjs <deck.html> [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--json` は `{ok, counts, results: [{slide, title, sev, msg}]}`。テーマは `<html data-theme>` のもの（`--theme` はない）。
+`node kit/check.mjs <deck.html> [--theme 名前] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--json` は `{ok, counts, results: [{slide, title, sev, msg}]}`。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。
 
 | 検査 | 重さ |
 |---|---|
@@ -280,7 +280,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `voice.json` の項目 | 意味 |
 |---|---|
 | `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対ならデッキから）。既定 `alice`、`bob` |
-| `lang` | 言語（既定は `<deckdir>/deck.html` の `lang`、なければ `ja`） |
+| `lang` | 言語（既定はデッキの HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
 | `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
 
 `audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（原稿から消えた段階は manifest から外す。wav は残す）。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスを手元で確かめない。終わったら build し直す。
