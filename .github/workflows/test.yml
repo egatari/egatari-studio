@@ -1,0 +1,96 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Tier 1: build, check, and browser tests. No TTS, no ffmpeg.
+  # Fonts: fonts/*.ttf are not in the repo, so build embeds BIZ UDPGothic from @fontsource (no system CJK fonts needed).
+  # Browser: kit/browser.mjs tries CHROME_PATH, then Google Chrome, then Playwright's Chromium (installed below).
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright-core install --with-deps chromium
+      - name: npm test
+        # CI=true makes tools/test-all.mjs stream every test's output
+        run: npm test
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-node${{ matrix.node }}
+          path: |
+            /tmp/motion-test-*
+            components/*/out/shots/det_fail_*
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
+  tier2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright-core install --with-deps chromium
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: tts/uv.lock
+      - name: TTS --dry-run on a copy of examples/minimal
+        run: |
+          D="$RUNNER_TEMP/deck"
+          cp -R examples/minimal "$D"
+          rm -rf "$D/out"
+          uv run --project tts python tts/synth.py "$D" --dry-run
+          test -f "$D/audio/manifest.json"
+          node kit/build.mjs "$D/deck.html"
+      - name: Render two steps
+        run: |
+          D="$RUNNER_TEMP/deck"
+          set +e
+          node render/render.mjs "$D/out/deck.html" --out "$RUNNER_TEMP/video" --only "更新の式:1,更新の式:2"
+          code=$?
+          set -e
+          # exit 2 = "timeline.out.json incomplete", expected with --only
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then echo "render failed ($code)"; exit 1; fi
+          n=0
+          for f in "$RUNNER_TEMP"/video/clip_*.mp4; do
+            dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f")
+            aud=$(ffprobe -v error -select_streams a -show_entries stream=codec_name -of csv=p=0 "$f")
+            echo "$f: ${dur}s audio=${aud}"
+            awk -v d="$dur" 'BEGIN{exit !(d > 0.5)}' || { echo "clip too short: $f"; exit 1; }
+            [ -n "$aud" ] || { echo "no audio stream: $f"; exit 1; }
+            n=$((n+1))
+          done
+          [ "$n" -eq 2 ] || { echo "expected 2 clips, got $n"; exit 1; }
