@@ -194,6 +194,6 @@ node tools/test-dev-server.mjs
 
 ## License
 
-- Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi
+- Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts, KaTeX fonts and logos: see [NOTICE](NOTICE)
 - Fonts: BIZ UDPGothic and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
 - The university logos in `themes/tml`, `themes/tcue`, `themes/wsd` and `themes/ohte` belong to their institutions and are not covered by the MIT license

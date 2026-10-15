@@ -1,0 +1,10 @@
+Third-party materials
+=====================
+
+Fonts are not covered by this license. BIZ UDPGothic (fonts/, @fontsource/biz-udpgothic)
+and Source Sans 3 (@fontsource/source-sans-3) are licensed under the SIL Open Font
+License 1.1 (fonts/OFL.txt for BIZ UDPGothic; the @fontsource packages ship
+their own license files). Built decks embed subsets of these fonts and of the
+KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
+University logos under themes/*/logos/ belong to their respective institutions and are
+not licensed under MIT.

@@ -194,6 +194,6 @@ node tools/test-dev-server.mjs
 
 ## ライセンス
 
-- コード：[MIT](LICENSE)、Copyright (c) 2026 Gendo Kumoi
+- コード：[MIT](LICENSE)、Copyright (c) 2026 Gendo Kumoi。フォント・KaTeX のフォント・ロゴは [NOTICE](NOTICE) を参照
 - 字：BIZ UDPゴシックと Source Sans 3 は SIL Open Font License 1.1（BIZ UDPゴシックは [fonts/OFL.txt](fonts/OFL.txt)、`@fontsource` のパッケージにはそれぞれのライセンスのファイルがある）。組んだデッキはこれらの一部を埋め込む。KaTeX とその字は MIT
 - `themes/tml` `themes/tcue` `themes/wsd` `themes/ohte` の大学のロゴは各機関のもので、MIT ライセンスの対象外
