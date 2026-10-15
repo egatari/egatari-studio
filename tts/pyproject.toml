@@ -1,0 +1,12 @@
+[project]
+name = "motion-slides-tts"
+version = "0.1.0"
+description = "motion-academic-slides の口述原稿を Irodori-TTS で段階ごとの音声にする"
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.32,<3",
+    "pyyaml>=6.0,<7",   # yomi.py が yomi.yaml を読む
+]
+
+[tool.uv]
+package = false

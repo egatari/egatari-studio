@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="tml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayes-Optimal Calibration under the Logit-Noise Model</title>
+<!--
+  TMLR 2026 introduction video (Abe & Kumoi). Build: node kit/build.mjs examples/tmlr2026-calibration/deck.html
+  Data for the figures: uv run scripts/make_data.py (writes data/*.json)
+-->
+<style>
+.lead{font-size:30px;margin:0 0 14px}
+.half{flex:0 0 46%}
+.fig{flex:1}
+.chk li{margin:0 0 6px}
+.links{position:absolute;left:48px;right:48px;top:250px;font-size:30px;line-height:1.9;text-align:center}
+.links .muted{font-size:24px}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- 1 -->
+<section class="slide cover noconcl static" id="cover">
+  <div class="venue">Transactions on Machine Learning Research (TMLR), 2026</div>
+  <h1>A Theoretical Analysis of Bayes-Optimal Calibration<br>under the Logit-Noise Model</h1>
+  <div class="au">Noriaki Abe and Gendo Kumoi<br><span class="muted" style="font-size:26px">Nagaoka University of Technology</span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide" id="confident">
+  <h2>Confident, but wrong</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <ul>
+          <li data-step="1">Modern classifiers are <span class="emph">overconfident</span></li>
+          <li data-step="2">Standard fix: <span class="term">temperature scaling</span>
+            <div class="big">\[ \hat p \;\mapsto\; \sigma\!\left(\logit(\hat p)/T\right) \]</div></li>
+          <li data-step="3">It works. But <span class="b">why</span> is one parameter enough?</li>
+        </ul>
+      </div>
+      <m-relcurve class="fig" data-from="1" taus="[1.5]" style="height:420px">
+        <script type="application/json">{{JSON:relcurve.json}}</script>
+      </m-relcurve>
+    </div>
+  </div>
+  <div class="concl"><span>We give a generative answer</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide" id="question">
+  <h2>The question</h2>
+  <div class="body">
+    <p class="lead" data-step="1">Under what generative model does temperature scaling<br>approximate the <span class="emph">Bayes-optimal</span> correction?</p>
+    <ul>
+      <li data-step="2">Not just a good heuristic, but an approximation to the optimal fix (squared error)</li>
+      <li data-step="3">And if so, what determines \(T\)?</li>
+    </ul>
+  </div>
+  <div class="concl"><span>Answer: Gaussian logit noise, with a flat prior</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide" id="model">
+  <h2>The logit-noise model</h2>
+  <div class="body">
+    <div class="big">\[ \htmlId{ts}{\theta^* = \logit(p^*)}, \qquad \htmlId{eps}{\hat\theta = \theta^* + \varepsilon,\ \ \varepsilon \sim \mathcal N(0,\tau^2)}, \qquad \htmlId{sig}{\hat p = \sigma(\hat\theta)} \]</div>
+    <m-pipeline data-from="1" style="height:300px;margin-top:6px">
+      <script type="application/json">{{JSON:pipeline.json}}</script>
+    </m-pipeline>
+  </div>
+  <div class="concl"><span>The assumption everything builds on</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide" id="overconfidence">
+  <h2>Noise creates overconfidence</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <ul>
+          <li data-step="1">\(\tau = 0\): perfectly calibrated</li>
+          <li data-step="2">Larger \(\tau\): extreme predictions are less trustworthy</li>
+        </ul>
+        <div data-step="2" class="big">\[ C(p) = \E\left[\,p^* \mid \hat p = p\,\right] \]</div>
+      </div>
+      <m-relcurve class="fig" data-from="1" taus="[0, 1.5]" sweep style="height:420px">
+        <script type="application/json">{{JSON:relcurve.json}}</script>
+      </m-relcurve>
+    </div>
+  </div>
+  <div class="concl"><span>Logit noise naturally produces overconfidence</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide" id="inverse">
+  <h2>Calibration as an inverse problem</h2>
+  <div class="body">
+    <m-flow style="height:230px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "t", "label": "true logit", "tex": "\\textsf{true logit}\\ \\theta^*", "x": 20, "y": 20, "w": 260, "h": 70, "step": 1},
+          {"id": "o", "label": "observed logit", "tex": "\\textsf{observed}\\ \\hat\\theta", "x": 470, "y": 20, "w": 260, "h": 70, "step": 1},
+          {"id": "p", "label": "prediction", "tex": "\\textsf{prediction}\\ \\hat p", "x": 920, "y": 20, "w": 260, "h": 70, "step": 1},
+          {"id": "q", "label": "posterior", "tex": "\\textsf{posterior}\\ \\theta^*\\mid\\hat\\theta", "x": 470, "y": 140, "w": 260, "h": 70, "step": 2, "tone": "term"},
+          {"id": "c", "label": "corrected", "tex": "\\textsf{corrected}\\ \\tilde p", "x": 20, "y": 140, "w": 260, "h": 70, "step": 2, "tone": "emph"}
+        ],
+        "edges": [
+          {"from": "t", "to": "o", "step": 1, "label": "+ noise"},
+          {"from": "o", "to": "p", "step": 1, "label": "sigmoid"},
+          {"from": "p", "to": "q", "step": 2, "label": "infer"},
+          {"from": "q", "to": "c", "step": 2, "label": "average sigmoid"}
+        ]}</script>
+    </m-flow>
+    <div data-step="3" class="big" style="margin-top:10px">\[ \htmlId{C}{\morph{opt}{\tilde p^{\,\mathrm{opt}}(p) = \E\left[\,p^* \mid \hat p = p\,\right]}} \]</div>
+  </div>
+  <div class="concl"><span>Optimal correction = posterior mean</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide" id="theorem" data-morph>
+  <h2>Main theorem: a sigmoid averaged over the posterior</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <div class="big">\[ \morph{opt}{\tilde p^{\,\mathrm{opt}}(p) = \E\left[\,p^* \mid \hat p = p\,\right]} \]</div>
+        <div class="big" data-step="1">\[ = \htmlId{post}{\morph{avg}{\E_{Z\sim\mathcal N(\mu_{\mathrm{post}},\,\sigma^2_{\mathrm{post}})}\left[\sigma(Z)\right]}} \]</div>
+        <p class="note" data-step="1">Gaussian prior \(\theta^*\sim\mathcal N(m,s^2)\): posterior in closed form</p>
+      </div>
+      <m-jensen class="fig" data-from="2" style="height:380px">
+        <script type="application/json">{{JSON:jensen.json}}</script>
+      </m-jensen>
+    </div>
+  </div>
+  <div class="concl"><span>Noise + curvature = shrinkage</span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide" id="ts" data-morph>
+  <h2>It is temperature scaling</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <div class="big">\[ \morph{avg}{\E_{Z\sim\mathcal N(\mu_{\mathrm{post}},\,\sigma^2_{\mathrm{post}})}\left[\sigma(Z)\right]} \]</div>
+        <div class="big" data-step="1">\[ \approx\ \sigma\!\left(\frac{\logit(\hat p)}{T}\right) \]</div>
+        <div class="big" data-step="2">\[ \htmlId{T}{T = \sqrt{1 + \pi\tau^2/8}} \]</div>
+        <p class="note" data-step="3">MacKay error ≤ 0.015 (for T ≤ 3)</p>
+      </div>
+      <m-relcurve class="fig" data-from="3" taus="[0.3, 1.5, 3]" sweep overlay style="height:420px">
+        <script type="application/json">{{JSON:relcurve.json}}</script>
+      </m-relcurve>
+    </div>
+  </div>
+  <div class="concl"><span>Bayes-optimal (flat prior) ≈ temperature-scaling form</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide" id="platt">
+  <h2>Gaussian prior: Platt scaling</h2>
+  <div class="body">
+    <div class="big">\[ \tilde p \approx \sigma\!\left(A\,\logit(\hat p) + B\right) \]</div>
+    <div class="big" data-step="1">\[ \htmlId{A}{A < 1/T < 1} \]</div>
+    <ul>
+      <li data-step="1">The slope is always below one: it always <span class="emph">contracts</span></li>
+      <li data-step="1">Temperature scaling is the flat-prior limit (\(B = 0\))</li>
+    </ul>
+  </div>
+  <div class="concl"><span>A built-in contraction (slope &lt; 1)</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide" id="synthetic">
+  <h2>A synthetic check</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <ul>
+          <li data-step="1">Before: points follow the predicted curve</li>
+          <li data-step="2">After temperature scaling with the theoretical \(T\)</li>
+          <li data-step="3">Fitted \(T\) within <span class="emph">1.4%</span> of theory (all four \(\tau\))</li>
+        </ul>
+        <p class="note muted" data-step="1">\(\tau = 1.5\), 20,000 samples</p>
+      </div>
+      <m-points class="fig" data-from="1" style="height:380px">
+        <script type="application/json">{{JSON:points.json}}</script>
+      </m-points>
+    </div>
+  </div>
+  <div class="concl"><span>Theory and practice agree when the model holds</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" id="learner">
+  <h2>Real learners bend the assumption</h2>
+  <div class="body">
+    <div class="cols">
+      <m-qq class="fig" data-from="1" style="height:380px">
+        <script type="application/json">{{JSON:qq.json}}</script>
+      </m-qq>
+      <div class="half">
+        <p class="b" data-step="2">Four departures (residual diagnostics)</p>
+        <ol class="chk">
+          <li data-step="2" data-at="0">Mean depends on \(\theta^*\)</li>
+          <li data-step="2" data-at="0.5">Variance depends on \(\theta^*\)</li>
+          <li data-step="2" data-at="1.0">Heavy tails (excess kurtosis +2.0)</li>
+          <li data-step="2" data-at="1.5">Rank dependence</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <div class="concl"><span>The theory also tells us what to check</span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide" id="breaks">
+  <h2>When it helps, when it breaks</h2>
+  <div class="body">
+    <div class="cols">
+      <div class="half">
+        <ul>
+          <li data-step="1">Overlapping classes (var 1.0): lower calibration error</li>
+          <li data-step="2">Well-separated classes: with the noise-derived \(T\), the error is <span class="emph">about 10× worse</span> at var 0.1</li>
+        </ul>
+      </div>
+      <m-bars class="fig" data-from="1" style="height:380px">
+        <script type="application/json">{{JSON:bars.json}}</script>
+      </m-bars>
+    </div>
+  </div>
+  <div class="concl"><span>A noise-derived \(T \ge 1\) can only shrink, never stretch</span></div>
+</section>
+
+<!-- 13 -->
+<section class="slide noconcl" id="takeaways">
+  <h2>Takeaways</h2>
+  <div class="body">
+    <ol>
+      <li data-step="1">Under logit noise, the optimal correction is a <span class="term">sigmoid averaged over a Gaussian posterior</span></li>
+      <li data-step="2">Under a flat prior, its MacKay approximation has the temperature-scaling form, \(T=\sqrt{1+\pi\tau^2/8}\)</li>
+      <li data-step="3">The theory explains <span class="b">when</span> a noise-derived \(T\) works and <span class="b">when</span> it cannot</li>
+    </ol>
+    <p class="note muted" data-step="4">Binary classification; experiments assume the true logit is known. Estimating \(\tau\) from real data is future work.</p>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide noconcl static" id="links">
+  <h2>Paper and code</h2>
+  <div class="links">
+    <div>Paper: <span class="term">openreview.net/forum?id=r8F3dqoopt</span></div>
+    <div>Code: <span class="term">github.com/TMLlaboratory/tmlr2026-logit-noise-calibration</span></div>
+    <div class="muted">Noriaki Abe and Gendo Kumoi · Nagaoka University of Technology</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

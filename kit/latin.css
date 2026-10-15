@@ -1,0 +1,3 @@
+/* 英語など、日本語以外のデッキ（<html lang> が ja 以外）だけに build が加える。日本語のデッキの体裁は変えない
+   本文は Source Sans 3（OFL）、和文などラテン文字以外の字は BIZ UDPゴシックで補う */
+:root{--font-sans:"Source Sans 3","BIZ UDPGothic",sans-serif}

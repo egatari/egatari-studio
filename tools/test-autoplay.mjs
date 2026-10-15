@@ -1,0 +1,23 @@
+// 自動再生と発表者ビュー：a で始め、発表者ビューから送ると止まり、ボタンの表示が変わる
+import { launch, fileUrl } from '../kit/browser.mjs';
+const file = process.argv[2];
+const b = await launch();
+const ctx = await b.newContext({ viewport: { width: 1280, height: 720 } });
+const p = await ctx.newPage();
+await p.goto(fileUrl(file));
+await p.waitForFunction(() => window.DECK && DECK.ready);
+const pres = ctx.waitForEvent('page');
+await p.keyboard.press('p');
+const v = await pres; await v.waitForLoadState('load'); await v.waitForTimeout(1200);
+await p.bringToFront(); await p.keyboard.press('a'); await p.waitForTimeout(600);
+const on = await v.evaluate(() => document.getElementById('pv-auto').textContent);
+const autoOn = await p.evaluate(() => document.documentElement.classList.contains('autoplay'));
+await v.bringToFront(); await v.keyboard.press('ArrowRight'); await p.waitForTimeout(600);
+const autoOff = await p.evaluate(() => document.documentElement.classList.contains('autoplay'));
+const off = await v.evaluate(() => document.getElementById('pv-auto').textContent);
+await v.click('#pv-auto'); await p.waitForTimeout(500);
+const again = await p.evaluate(() => document.documentElement.classList.contains('autoplay'));
+await v.click('#pv-auto'); await p.waitForTimeout(500);
+const stopped = await p.evaluate(() => document.documentElement.classList.contains('autoplay'));
+console.log(JSON.stringify({ autoOn, buttonOn: on, afterArrow: autoOff, buttonOff: off, buttonStart: again, buttonStop: stopped }));
+await b.close();

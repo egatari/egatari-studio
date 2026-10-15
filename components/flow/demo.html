@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-flow の見本</title>
+<!-- 組み方：node kit/build.mjs components/flow/demo.html -o components/flow/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<script>
+// build は本文の最初の <script> の前に実行系を入れる。部品の中の JSON より前に置くための空の script
+</script>
+<div id="stage">
+
+<section class="slide">
+  <h2>ベイズ決定の流れ</h2>
+  <div class="body">
+    <m-flow style="height:420px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "w",  "label": "観測 *w*",            "x": 0,   "y": 40,  "w": 220, "h": 80, "step": 1},
+          {"id": "p",  "tex": "p(y\\mid w)",          "x": 330, "y": 40,  "w": 240, "h": 80, "step": 1},
+          {"id": "L",  "label": "損失 *L*(*y*, *a*)\n（与えられる）", "x": 330, "y": 260, "w": 240, "h": 100, "step": 2, "tone": "muted"},
+          {"id": "r",  "tex": "r(a\\mid w)",          "x": 680, "y": 150, "w": 220, "h": 80, "step": 3},
+          {"id": "a",  "label": "決定 *a*^*",          "x": 1000, "y": 150, "w": 184, "h": 80, "step": 4, "tone": "emph"}
+        ],
+        "edges": [
+          {"from": "w", "to": "p", "step": 1, "label": "予測"},
+          {"from": "p", "to": "r", "step": 3},
+          {"from": "L", "to": "r", "step": 3, "dash": true},
+          {"from": "r", "to": "a", "step": 4, "label": "最小化", "tone": "emph"}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 予測と損失から期待損失 <i>r</i> を作り，それを最小にする <i>a</i> を選ぶ</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,199 @@
+# motion-academic-slides
+
+English | [日本語](README.ja.md)
+
+Academic slides as a single HTML file, with step-by-step reveals and animated figures that follow the order of your explanation. One source (`deck.html` + `narration.md`) gives you a live talk, a lecture view, a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
+
+![A slide from the TMLR 2026 example](docs/images/hero.png)
+
+## Features
+
+- **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
+- **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
+- **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
+- **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
+- **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
+- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, the current step highlighted), video (`?mode=video`)
+- **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
+- **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
+- **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
+- **Dev server**: edit text and narration in the browser, leave comments for Claude Code
+- **Output**: one self-contained HTML file (fonts and math embedded, works offline). Print to PDF from the browser or with `tools/pdf.mjs`
+
+| Marks | Morph (before / during / after) |
+|---|---|
+| ![mark](docs/images/mark.png) | ![morph](docs/images/morph.png) |
+
+| Presenter view | Slide overview |
+|---|---|
+| ![presenter view](docs/images/presenter.png) | ![overview](docs/images/overview.png) |
+
+## Two ways to use it
+
+| | Tier 1: slides (core) | Tier 2: narrated video (optional) |
+|---|---|---|
+| You get | HTML deck, presenter view, lecture mode, PDF | per-step MP4 clips, a full video, a lesson bundle |
+| Needs | Node ≥ 22; Google Chrome only for checking, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
+| Optional | uv (font subsetting) | |
+
+**Slides are fully usable without TTS.** No tier-1 command imports anything from `tts/` or `render/`, and `build`, `check` and the dev server work when `audio/` and `voice.json` are absent. Without audio, autoplay (`a`) uses the default timing for each step, and the narration still shows in the presenter view as speaker notes.
+
+## Requirements
+
+**Tier 1 (slides)**
+
+- [Node.js](https://nodejs.org/) 22 or newer
+- Google Chrome for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`, channel `chrome`). Building and presenting only need a browser to open the file. Without Chrome, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
+- Optional: [uv](https://docs.astral.sh/uv/). After `sh tools/get-fonts.sh` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+
+**Tier 2 (video)**
+
+- ffmpeg and ffprobe on `PATH`
+- uv (runs the small Python project in `tts/`)
+- A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`)
+- Reference voices that you provide: `<name>.wav` in `tts/voices/` (gitignored) or in `IRODORI_REF_DIR`
+
+## Quick start (tier 1: slides)
+
+```bash
+git clone https://github.com/moiku/motion-academic-slides.git
+cd motion-academic-slides
+npm ci
+sh tools/get-fonts.sh                               # optional: smaller font embedding (needs curl; uses uv at build time)
+
+node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
+open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
+
+node kit/check.mjs examples/minimal/deck.html       # checker; the last line should read "エラー 0" (0 errors)
+node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF, one page per slide
+node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:5173/ (Ctrl+C to stop)
+```
+
+To start your own deck, copy `examples/minimal/` to a new folder and edit `deck.html` and `narration.md`. Choose a theme with `<html data-theme="tml">` or `--theme tml`. For an English deck use `<html lang="en">`: body text is then set in Source Sans 3 and the checker uses English rules.
+
+In the dev server, `e` toggles edit mode (double-click an element to edit its source), `n` opens the narration drawer, Alt+click leaves a comment for Claude Code, and `c` lists the comments. Edits are written back to `deck.html` and `narration.md`. See [docs/dev-server.md](docs/dev-server.md).
+
+## Using it with Claude Code
+
+Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
+ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
+ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```
+
+| Skill | Use it for |
+|---|---|
+| `motion-slides` | plan, write, step, narrate, check and build a deck (tier 1) |
+| `motion-slides-video` | TTS, render and export a deck as video (tier 2) |
+| `motion-components` | write a new animated figure component, or move one into the library |
+
+Example prompts:
+
+- "Use motion-slides to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
+- "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
+- "Apply the comments." (after leaving Alt+click comments in the dev server; Claude reads `comments.json`)
+- "Turn `talks/intro` into a narrated video with motion-slides-video."
+
+The skill first shows you an outline and writes HTML only after you approve it.
+
+## Making a video (tier 2)
+
+```bash
+D=examples/minimal
+uv run --project tts python tts/synth.py $D --dry-run    # silent placeholder audio, to try the pipeline offline
+uv run --project tts python tts/synth.py $D              # real TTS (needs the server and the voices)
+node kit/build.mjs $D/deck.html                          # rebuild so the audio lengths enter the timeline
+node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step, --full for one file
+node render/export-canon.mjs $D --render $D/video --out $D/bundle
+```
+
+- Voices: `--voices expert=alice,novice=bob`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `alice` (single speaker) and `alice` / `bob` (dialogue), looked up as `tts/voices/<name>.wav`
+- If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
+- `export-canon.mjs` writes a lesson bundle (Marp-style markdown plus one MP4 and one PNG per step) for canon, our lab's lecture delivery system; other systems that accept the same format can use it too. With `CANON_DIR` set, it also validates the bundle with canon's own parser. Without it, that check is skipped
+- Details (caching, timing overrides in `timeline.json`, the reading dictionary): [docs/video.md](docs/video.md)
+
+## Keys (presenting)
+
+| Key | Action |
+|---|---|
+| → / Space, ← | next / previous step |
+| Shift+→ / Shift+← | next / previous slide |
+| number + Enter | go to that page |
+| f | fullscreen |
+| p | presenter view (speaker notes, next step, timer) |
+| a | autoplay (plays the audio if the deck has it) |
+| l | lecture mode |
+| b | black screen |
+| o | slide overview (arrows + Enter) |
+| x / d / v | laser / pen / fading pen; Shift+d changes the pen color |
+| Backspace (Shift+Backspace) | clear the drawings on this slide (on all slides) |
+| Esc | leave the current tool |
+| ? | list of keys |
+
+Moving the mouse shows a control bar with the same actions. It hides after 2.5 s. Drawings are kept per slide and never appear in print or video.
+
+![control bar](docs/images/controls.png)
+
+## Themes
+
+A theme is a folder `themes/<name>/` with:
+
+- `tokens.css`: CSS variables. Usually only `--base` (the base color) is needed. The other colors (`--term`, `--emph`, `--muted`, `--title`, tints, `--series-*`) are derived from it in `themes/default/tokens.css`, and you can override any of them
+- `theme.json` (optional): `{"name": "mylab", "extends": "default", "logos": ["logos/cover.png"]}`. Logos appear on the cover slide
+
+```bash
+mkdir -p themes/mylab
+printf ':root{ --base: #006d5b; }\n' > themes/mylab/tokens.css
+printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
+node kit/build.mjs examples/minimal/deck.html --theme mylab
+```
+
+A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `default` (neutral) and the institutional themes `tml`, `tcue`, `wsd` and `ohte`, which include university logos (see License).
+
+## Examples
+
+| Example | What it shows |
+|---|---|
+| [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. Use it as the template for new decks |
+| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
+
+`examples/minimal`:
+
+![minimal example](docs/images/minimal-sheet.png)
+
+`examples/tmlr2026-calibration`:
+
+![tmlr2026-calibration example](docs/images/tmlr-sheet.png)
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** |
+| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher |
+| `components/` | animated figure components; catalog in `components/CATALOG.md` |
+| `themes/` | themes |
+| `server/` | dev server and in-browser editor |
+| `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
+| `skills/` | Claude Code skills |
+| `tools/` | tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
+
+Tests (need Chrome):
+
+```bash
+node kit/build.mjs examples/minimal/deck.html
+node tools/smoke.mjs examples/minimal/out/deck.html /tmp/smoke     # timeline + screenshots
+node tools/test-components.mjs
+node tools/test-tools.mjs examples/minimal/out/deck.html
+node tools/test-controls.mjs examples/minimal/out/deck.html
+node tools/test-dev-server.mjs
+```
+
+## License
+
+- Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi
+- Fonts: BIZ UDPGothic and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
+- The university logos in `themes/tml`, `themes/tcue`, `themes/wsd` and `themes/ohte` belong to their institutions and are not covered by the MIT license

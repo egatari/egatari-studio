@@ -1,0 +1,9 @@
+/* 高崎経済大学（TCUE）（marp-theme-academic の academic-tcue.css から移植）
+   基調色と強調色だけを指定し、淡色などは default と同じ式で導く */
+:root{
+  --base: #006a00;
+  --emph: #6a006a;               /* 元テーマの補色（--color-tcue5） */
+  --fg: #3E3A39;
+  --cover-bg: #F2F2F2;
+  --logo-h: 140px;
+}

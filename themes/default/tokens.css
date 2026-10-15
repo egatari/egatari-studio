@@ -1,0 +1,36 @@
+/* 既定のテーマ（default）
+   基調色 --base を 1 つ決めれば、ほかの色はそこから導く（academic-* テーマの「基調色＋補色＋淡色」と同じ考え方）。
+   部品とレイアウトは意味で名付けた変数（--term, --emph, --muted …）だけを参照する */
+:root{
+  --base: #1d4f91;                 /* 基調色。テーマごとにこれを替える */
+  --emph-hue: 27;                  /* 結論・問題の色相（赤）。補色にしたいテーマは calc で上書きする */
+
+  /* 導かれる色 */
+  --complement: oklch(from var(--base) l c calc(h + 180));
+  --accent2:    oklch(from var(--complement) min(l, 0.55) c h);
+  --base-tint:  color-mix(in oklch, var(--base) 22%, white);
+  --base-wash:  color-mix(in oklch, var(--base) 7%, white);
+  --comp-tint:  color-mix(in oklch, var(--complement) 22%, white);
+
+  /* 意味の色（部品はここだけを使う） */
+  --fg:      #222222;
+  --bg:      #ffffff;
+  --title:   oklch(from var(--base) min(l, 0.32) c h);
+  --term:    var(--base);                       /* 用語・問い・補足 */
+  --emph:    oklch(0.52 0.21 var(--emph-hue));  /* 結論・問題・目標 */
+  --muted:   #6e6e6e;                           /* 既知の結果・比較対象 */
+  --line:    #cccccc;
+  --rule:    var(--base);
+  --term-tint: var(--base-wash);
+  --emph-tint: color-mix(in oklch, var(--emph) 12%, white);
+
+  /* 図の系列の色（順に使う） */
+  --series-1: var(--term);
+  --series-2: var(--emph);
+  --series-3: var(--accent2);
+  --series-4: var(--muted);
+
+  /* 字 */
+  --font-sans: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --weight-body: 400;
+}

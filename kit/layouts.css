@@ -1,0 +1,60 @@
+/* スライドの体裁（layouts.css）
+   寸法は 16:9 の PowerPoint（13.333in 幅）の体裁を 1280×720px に換算したもの（1pt = 1.333px）。
+   余白 48px、タイトル 43px（32pt）、本文 32px（24pt、縮めても 27px = 20pt）、図・表 24px（18pt）以上、
+   結論の行は上端 571px・高さ 72px。色はテーマの変数だけを使う */
+.slide h2{position:absolute;left:48px;right:48px;top:40px;margin:0;font-size:43px;line-height:1.25;font-weight:700;
+  padding-bottom:10px;border-bottom:2px solid var(--rule);color:var(--title)}
+.body{position:absolute;left:48px;right:48px;top:122px;bottom:160px;font-size:32px;line-height:1.45}
+.slide.noconcl .body{bottom:64px}
+.sub{font-size:32px;font-weight:700;color:var(--emph);margin:0 0 8px}
+.body p{margin:0 0 8px}
+.body ul,.body ol{margin:0 0 8px;padding-left:1.2em}
+.body li{margin:0 0 4px}
+.body li::marker{color:var(--term)}
+.body li ul{margin-top:2px}
+.body li li{list-style:"－ "}
+.body ul ul{font-size:28px}
+.concl{position:absolute;left:48px;right:48px;top:571px;height:72px;border:2.3px solid var(--emph);border-radius:10px;
+  color:var(--emph);background:var(--concl-bg,transparent);font-weight:700;font-size:32px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.pn{position:absolute;right:48px;bottom:14px;font-size:16px;color:var(--muted)}
+
+/* 文字と部品 */
+.term,.blue{color:var(--term)} .emph,.red{color:var(--emph)} .b{font-weight:700}
+.gray,.gray .katex,.muted{color:var(--muted)}
+.note{font-size:27px;margin:2px 0 10px}
+.cite{font-size:20px;color:var(--muted)}
+.arrow{text-align:center;font-size:32px;line-height:1.1;margin:2px 0;color:var(--term)}
+.cols{display:flex;gap:32px;align-items:flex-start}
+.cols>*{flex:1;min-width:0}
+.thm{border:2px solid var(--term);border-radius:6px;padding:6px 16px;margin:4px 0 8px;background:var(--term-tint)}
+.box{border-radius:8px;padding:10px 18px;margin:4px 0 8px;background:var(--base-wash)}
+table{border-collapse:collapse;width:100%;font-size:28px;line-height:1.35}
+th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{border-bottom:2px solid var(--rule);font-weight:700;color:var(--title)}
+td.r{text-align:right;font-variant-numeric:tabular-nums}
+.fig svg{display:block;width:100%;height:auto}
+.figcap{font-size:20px;margin:2px 0 0;text-align:center;color:var(--muted)}
+.katex{font-size:1em}
+.katex-display{margin:.25em 0}
+.big .katex-display{font-size:1.12em}
+
+/* 表紙・章の扉・付録の扉 */
+.cover{text-align:center;background:var(--cover-bg,var(--bg))}
+.cover .venue{position:absolute;left:48px;right:48px;top:120px;font-size:27px;color:var(--muted)}
+.cover h1{position:absolute;left:48px;right:48px;top:200px;margin:0;font-size:48px;line-height:1.45;font-weight:700;color:var(--title)}
+.cover .au{position:absolute;left:48px;right:48px;top:450px;font-size:32px;line-height:1.6}
+.cover .logos{position:absolute;left:28px;bottom:24px;display:flex;gap:36px;align-items:flex-end}
+.cover .logos img{height:var(--logo-h,128px);width:auto;display:block}
+.cover::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:var(--base)}
+.sec{background:var(--sec-bg,var(--base))}
+.sec h1{position:absolute;left:48px;right:48px;top:300px;margin:0;text-align:center;font-size:48px;color:var(--sec-fg,#fff)}
+.sec .lead{position:absolute;left:48px;right:48px;top:390px;text-align:center;font-size:27px;color:var(--sec-fg,#fff);opacity:.85}
+
+/* JavaScript で描く図（DECK.Plot と部品） */
+.plot{position:relative}
+.plot svg{display:block;width:100%;height:100%;overflow:visible}
+svg text{font-family:var(--font-sans);font-weight:var(--weight-body,400)}
+svg text:not([fill]):not([style*="fill"]){fill:var(--fg)}
+svg .mi{font-family:KaTeX_Math,"Times New Roman",serif;font-style:italic}
+.smath{overflow:visible}
+.readout .num{font-family:KaTeX_Main,serif;font-variant-numeric:tabular-nums;display:inline-block;min-width:4.2em}

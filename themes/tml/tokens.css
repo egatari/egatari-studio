@@ -1,0 +1,9 @@
+/* 雲居研究室（TML・長岡技術科学大学）（marp-theme-academic の academic-tml.css から移植）
+   基調色と強調色だけを指定し、淡色などは default と同じ式で導く */
+:root{
+  --base: #0A2D92;
+  --emph: #E60012;
+  --fg: #3E3A39;
+  --cover-bg: #F6F9F6;
+  --logo-h: 150px;
+}

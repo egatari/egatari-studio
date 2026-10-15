@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>勾配降下法の基本</title>
+<!--
+  motion-academic-slides の最小の見本（新しいデッキの雛形にしてよい）。
+  組む：node kit/build.mjs examples/minimal/deck.html  → examples/minimal/out/deck.html
+  使っている機能：段階（data-step）、数式（KaTeX・\hlE）、注目の演出（{mark}、narration.md）、
+  モーフ（data-morph）、部品（m-sweep）、表紙と結論の行、口述原稿（narration.md、1 人）
+  操作：→ / Space で次の段階、← で前、p で発表者ビュー、a で自動再生、l で授業モード、? でキーの一覧
+-->
+<style>
+/* このデッキだけの体裁はここに書く */
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static">
+  <div class="venue">機械学習入門　第 3 回</div>
+  <h1>勾配降下法の基本</h1>
+  <div class="au">講師名<br>所属</div>
+</section>
+
+<section class="slide">
+  <h2>何を最小化するか</h2>
+  <div class="body">
+    <ul>
+      <li>学習とは，損失 \(f(\theta)\) を小さくするパラメータ \(\theta\) を探すこと</li>
+      <li>\(\theta\) の次元が大きいと，最小点を式では解けないことが多い</li>
+      <li>そこで，<span class="term">今いる点の傾き</span>だけを使って少しずつ動く</li>
+    </ul>
+  </div>
+  <div class="concl"><span>⇒ 傾きの逆向きに進めば，損失は下がる</span></div>
+</section>
+
+<section class="slide">
+  <h2>更新の式</h2>
+  <div class="body">
+    <p class="sub" data-id="sub">勾配降下法の 1 歩</p>
+    <p>今の点 \(\theta_t\) から，次の点 \(\theta_{t+1}\) を決める</p>
+    <div class="big" data-step="1">\[ \htmlId{next}{\morph{th1}{\theta_{t+1}}}\morph{eq}{=}\morph{th0}{\theta_t}\morph{minus}{-}\htmlId{eta}{\morph{eta}{\eta}}\,\htmlId{grad}{\morph{g}{\hlE{\nabla f(\theta_t)}}} \]</div>
+    <ul>
+      <li data-step="2">\(\eta>0\)：学習率（1 歩の大きさ）</li>
+      <li data-step="3" data-id="gdef">\(\nabla f(\theta_t)\)：勾配（\(f\) が最も急に増える向き）</li>
+    </ul>
+  </div>
+  <div class="concl"><span>→ 勾配の逆向きに，\(\eta\) に比例した幅だけ進む</span></div>
+</section>
+
+<!-- モーフ：前のスライドの式（\morph の部分）と data-id の要素が、ここでの位置へ滑ってくる -->
+<section class="slide" data-morph>
+  <h2>二次関数で確かめる</h2>
+  <div class="body">
+    <p class="sub" data-id="sub">勾配降下法の 1 歩</p>
+    <p>\(\displaystyle \morph{th1}{\theta_{t+1}}\morph{eq}{=}\morph{th0}{\theta_t}\morph{minus}{-}\morph{eta}{\eta}\,\morph{g}{\nabla f(\theta_t)}\)</p>
+    <ul><li data-id="gdef">\(\nabla f(\theta_t)\)：勾配（\(f\) が最も急に増える向き）</li></ul>
+    <p data-step="1">例：\(f(\theta)=\tfrac{a}{2}\theta^2\)（\(a>0\)）なら，\(\nabla f(\theta)=a\theta\)</p>
+    <div class="big" data-step="2">\[ \theta_{t+1}=\hlE{(1-\eta a)}\,\theta_t \]</div>
+  </div>
+  <div class="concl"><span>→ \(|1-\eta a|\lt 1\) なら，\(\theta_t\) は最小点 0 に近づく</span></div>
+</section>
+
+<section class="slide">
+  <h2>学習率と収束</h2>
+  <div class="body">
+    <div class="cols" style="gap:24px">
+      <div style="flex:0 0 40%">
+        <div class="big">\[ \frac{f(\theta_t)}{f(\theta_0)}=(1-\eta a)^{2t} \]</div>
+        <ul class="nostep"><li>横軸：反復の回数 \(t\)</li><li>灰色：前の \(\eta a\) の曲線</li></ul>
+      </div>
+      <m-sweep f="((1-c)**2)**u" values="[0.1,0.5,1.8,2.1]" param="ηa" xr="[0,10]" yr="[0,1.5]" xt="[0,5,10]" yt="[0,0.5,1,1.5]"
+               xl="*t*" yl="損失の比" digits="1" style="height:380px"></m-sweep>
+    </div>
+  </div>
+  <div class="concl"><span>→ \(0\lt\eta a\lt 2\) なら収束し，\(\eta a\) が 1 に近いほど速い</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>まとめ</h2>
+  <div class="body">
+    <ol style="margin:0 0 18px">
+      <li data-step="1">勾配降下法は，勾配の逆向きに少しずつ進む</li>
+      <li data-step="2">1 歩の大きさは学習率 \(\eta\) で決まる</li>
+      <li data-step="3">二次関数では，\(0\lt\eta a\lt 2\) のとき収束する</li>
+    </ol>
+    <div data-step="4"><p class="b">次回</p>
+      <ul style="margin:0"><li>確率的勾配降下法（SGD）</li></ul></div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

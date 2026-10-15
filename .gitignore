@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+**/out/
+**/.cache/
+fonts/*.ttf
+tts/.venv/
+tts/voices
+**/__pycache__/
+**/audio/
+**/video/
+**/bundle/
