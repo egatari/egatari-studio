@@ -34,6 +34,10 @@ const EDITS = path.join(DIR, '.cache', 'edits');
 const KEEP_EDITS = 30;
 
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
+// 書き込みと原稿の読み出しに要る合言葉（起動のたびに作り直す）。配る画面に埋め込み、client.js が X-Deck-Token で送る
+const TOKEN = crypto.randomBytes(24).toString('hex');
+const TOKEN_TAG = `<script>window.__DECK_DEV_TOKEN=${JSON.stringify(TOKEN)};</script>`;
+const DIR_REAL = fs.realpathSync(DIR);
 
 // ---------------------------------------------------------------- 組み立て
 let buildFn = null, buildVer = 0, needReimport = true;
@@ -43,7 +47,7 @@ async function rebuild() {
     if (needReimport) { buildFn = (await import(pathToFileURL(BUILD).href + '?v=' + (++buildVer))).build; needReimport = false; }
     const r = buildFn(SRC, { dev: true, audioBase: '/deck/audio/', ...(theme ? { theme } : {}) });
     const warn = `<script>window.__DEV_WARN=${JSON.stringify(r.stats.warn).replace(/<\//g, '<\\/')};</script>`;
-    const inject = `${warn}\n<script src="/__dev/client.js"></script>\n`;
+    const inject = `${warn}\n${TOKEN_TAG}\n<script src="/__dev/client.js"></script>\n`;
     const at = r.html.lastIndexOf('</body>');
     const html = at >= 0 ? r.html.slice(0, at) + inject + r.html.slice(at) : r.html + inject;
     const changed = !page || page.html !== html;
@@ -65,7 +69,7 @@ function errorPage(err) {
 h1{font-size:20px;margin:0 0 12px;color:#fff}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;color:#fcc}
 p{color:#dbb}</style></head><body><div class="box"><h1>原稿を組み立てられませんでした</h1>
 <p>原稿を直して保存すると、自動で読み込み直します。</p><pre>${esc}</pre></div>
-<script src="/__dev/client.js"></script></body></html>`;
+${TOKEN_TAG}<script src="/__dev/client.js"></script></body></html>`;
 }
 
 // ---------------------------------------------------------------- 再読み込みの通知（Server-Sent Events）
@@ -195,6 +199,14 @@ export function rewriteNarration(text, slideKey, stepKey, turns, slideOrder) {
   }
   return lines.join(eol);
 }
+// その段階の行（同じ段階が複数あればすべて）の短い hash。口述原稿の保存の衝突を見分けるのに使う
+export function narrationRev(text, slideKey, stepKey) {
+  const lines = String(text).split(/\r?\n/);
+  const sec = [...scanNarration(lines)].reverse().find((s) => s.key === slideKey);
+  const blocks = sec ? sec.blocks.filter((b) => b.step === stepKey).map((b) => lines.slice(b.start, b.end).join('\n')) : [];
+  return short(JSON.stringify(blocks));
+}
+function readNarr() { return fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : ''; }
 function rawTurns(slideKey, stepKey) {
   if (!fs.existsSync(NARR)) return { turns: [], exists: false };
   const segs = parseNarration(fs.readFileSync(NARR, 'utf8')).filter((s) => s.slideKey === slideKey && s.stepKey === stepKey);
@@ -229,6 +241,26 @@ function readBody(req) {
     req.on('error', reject);
   });
 }
+// /deck/ の下：ドットで始まる名前（.cache/edits の控え、.env など）は出さず、symlink で外へ出るものも断る
+function deckFile(rel) {
+  const parts = rel.split('/').filter(Boolean);
+  if (!parts.length || parts.some((x) => x.startsWith('.') || x.includes('\\') || x.includes('\0'))) return { code: 403 };
+  const file = path.resolve(DIR_REAL, ...parts);
+  if (!file.startsWith(DIR_REAL + path.sep)) return { code: 403 };
+  let real;
+  try { real = fs.realpathSync(file); } catch { return { code: 404 }; }
+  if (!real.startsWith(DIR_REAL + path.sep)) return { code: 403 };
+  if (path.relative(DIR_REAL, real).split(path.sep).some((x) => x.startsWith('.'))) return { code: 403 };
+  return { file: real };
+}
+// 守り：Host は 127.0.0.1:番号 か localhost:番号 だけ（DNS rebinding 対策）。書き込みは JSON・同じ Origin・合言葉が要る
+function allowedOrigins() { const n = server.address().port; return [`127.0.0.1:${n}`, `localhost:${n}`]; }
+function hostOk(req) { return allowedOrigins().includes(String(req.headers.host || '').toLowerCase()); }
+function originOk(req) { const o = req.headers.origin; return o === undefined || allowedOrigins().some((h) => o === 'http://' + h); }
+function tokenOk(given) {
+  const a = Buffer.from(String(given || '')), b = Buffer.from(TOKEN);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 function serveFile(res, file) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found', 'text/plain; charset=utf-8');
@@ -239,8 +271,16 @@ function serveFile(res, file) {
 async function afterWrite() { await rebuild(); clearTimeout(timer); broadcast(); }
 
 const server = http.createServer(async (req, res) => {
-  const u = new URL(req.url, 'http://127.0.0.1');
-  const p = decodeURIComponent(u.pathname);
+  if (!hostOk(req)) return send(res, 403, 'forbidden host', 'text/plain; charset=utf-8');
+  let u, p;
+  try { u = new URL(req.url, 'http://127.0.0.1'); p = decodeURIComponent(u.pathname); }
+  catch { return send(res, 400, 'bad request', 'text/plain; charset=utf-8'); }
+  const isApi = p.startsWith('/__dev/') && p !== '/__dev/client.js';
+  if (isApi || req.method !== 'GET' && req.method !== 'HEAD') {
+    if (!originOk(req)) return send(res, 403, { error: 'origin が違います' });
+    if (!tokenOk(p === '/__dev/events' ? u.searchParams.get('token') : req.headers['x-deck-token'])) return send(res, 403, { error: '合言葉（token）が違います。再読み込みしてください' });
+    if (req.method === 'POST' && !/^application\/json(\s*;|$)/i.test(String(req.headers['content-type'] || ''))) return send(res, 415, { error: 'Content-Type は application/json にしてください' });
+  }
   try {
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       if (!page) await rebuild();
@@ -256,9 +296,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (p.startsWith('/deck/')) {
-      const file = path.resolve(DIR, '.' + p.slice('/deck'.length));
-      if (file !== DIR && !file.startsWith(DIR + path.sep)) return send(res, 403, 'forbidden', 'text/plain; charset=utf-8');
-      return serveFile(res, file);
+      const r = deckFile(p.slice('/deck/'.length));
+      if (!r.file) return send(res, r.code, r.code === 403 ? 'forbidden' : 'not found', 'text/plain; charset=utf-8');
+      return serveFile(res, r.file);
     }
     if (req.method === 'GET' && p === '/__dev/source') {
       const r = parseRange(u.searchParams.get('range'));
@@ -281,16 +321,19 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/__dev/narration') {
       const [sk, st] = splitKey(u.searchParams.get('key') || '');
-      return send(res, 200, { key: `${sk}:${st}`, slideKey: sk, stepKey: st, ...rawTurns(sk, st) });
+      return send(res, 200, { key: `${sk}:${st}`, slideKey: sk, stepKey: st, rev: narrationRev(readNarr(), sk, st), ...rawTurns(sk, st) });
     }
     if (req.method === 'POST' && p === '/__dev/narration') {
       const b = await readBody(req);
       if (!b.slideKey || !/^(\d+|concl)$/.test(String(b.stepKey)) || !Array.isArray(b.turns)) return send(res, 400, { error: 'slideKey / stepKey / turns が正しくありません' });
+      if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
+      const sk = String(b.slideKey), st = String(b.stepKey);
       const text = fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : '# 口述原稿\n';
+      if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '口述原稿が変わっています。再読み込みしてください' });
       const order = (page?.slides || []).map((s) => s.key);
-      const out = rewriteNarration(text, String(b.slideKey), String(b.stepKey), b.turns, order);
-      if (out !== text) { backup(NARR); fs.writeFileSync(NARR, out); console.log(`narration ${b.slideKey}:${b.stepKey}`); await afterWrite(); }
-      return send(res, 200, { ok: true, changed: out !== text });
+      const out = rewriteNarration(text, sk, st, b.turns, order);
+      if (out !== text) { backup(NARR); fs.writeFileSync(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }
+      return send(res, 200, { ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
     }
     if (req.method === 'GET' && p === '/__dev/comments') return send(res, 200, readComments());
     if (req.method === 'POST' && p === '/__dev/comment') {

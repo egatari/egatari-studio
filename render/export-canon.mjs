@@ -16,6 +16,7 @@
 // `<!-- _paginate: hold -->` は同じスライドの次のコマ、口述原稿は「口述原稿」を含むコメントの `Expert:` / `Novice:` の行だけ
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { readNarration } from '../kit/narration.mjs';
 
@@ -36,6 +37,20 @@ function parseArgs(argv) {
     process.exit(1);
   }
   return o;
+}
+
+// render/render.mjs の鮮度の情報（timeline.out.json の stale / 各段階の input と .render-cache.json）で、
+// 今の入力と合わない・無いクリップを探す。見つかれば鍵の一覧を返す
+const sha = (...bufs) => { const h = crypto.createHash('sha256'); for (const b of bufs) { h.update(b); h.update('\x1f'); } return h.digest('hex').slice(0, 16); };
+export function staleClips(renderDir, tl) {
+  const out = new Set(tl.stale || []);
+  let cache = null;
+  try { cache = JSON.parse(fs.readFileSync(path.join(renderDir, '.render-cache.json'), 'utf8')); } catch {}
+  for (const s of tl.segments) {
+    const c = cache && cache.clips && cache.clips[s.clip.replace(/\.mp4$/, '')];
+    if (!s.input || !c || c.input !== s.input || c.key !== s.key || !fs.existsSync(path.join(renderDir, s.clip))) out.add(s.key);
+  }
+  return [...out];
 }
 
 // 原稿の 1 行にする：改行を詰め、コメントの終わり（-->）とページ区切りにならないようにする
@@ -61,8 +76,21 @@ function main() {
   const mdName = o.md || `${deck.name}_with_narration.md`;
   const warn = [], err = [];
 
+  // 書き出しが揃っていて、今の入力で作られているか（--only のあと・render のあとの build を拾う）
+  const stale = staleClips(renderDir, tl);
+  const fatal = [];
+  if (stale.length) fatal.push(`今の入力と合わない・無いクリップが ${stale.length} 本: ${stale.join(', ')}\n    → node render/render.mjs ${tl.source || '<built.html>'} --out ${o.render}（--only なし）で書き出し直すこと`);
+  if (tl.source && tl.sourceHash && fs.existsSync(tl.source) && sha(fs.readFileSync(tl.source, 'utf8')) !== tl.sourceHash)
+    fatal.push(`render のあとに ${tl.source} が変わった（build し直した）。render をやり直すこと`);
+  if (fatal.length) {
+    for (const f of fatal) console.error('  ✗ ' + f);
+    console.error('バンドルは作らない / refusing to export stale clips');
+    process.exit(1);
+  }
+
   // 書き出しが今の原稿と合っているか（narration.md を直したのに render し直していない、を拾う）
   const narr = readNarration(path.join(deck.dir, 'narration.md'));
+  for (const w of narr.warnings || []) warn.push(w);
   if (narr.length) {
     const byKey = new Map(segs.map((s) => [s.key, s]));
     for (const n of narr) {

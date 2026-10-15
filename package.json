@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "node kit/build.mjs",
-    "dev": "node server/dev.mjs"
+    "dev": "node server/dev.mjs",
+    "check": "node kit/check.mjs",
+    "test": "node tools/test-all.mjs"
   },
   "engines": {
     "node": ">=22"

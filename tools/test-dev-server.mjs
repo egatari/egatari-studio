@@ -5,6 +5,7 @@ import os from 'node:os';
 import { launch } from '../kit/browser.mjs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseNarration } from '../kit/narration.mjs';
@@ -33,17 +34,29 @@ const base = await new Promise((res, rej) => {
   srv.stdout.on('data', (d) => { log += d; const m = String(d).match(/http:\/\/127\.0\.0\.1:\d+\//); if (m) { clearTimeout(t); res(m[0]); } });
 });
 console.log('server', base);
+// 生の HTTP（Host・Origin を自由に付ける。壊れた URL もそのまま送る）
+const raw = (pathname, { method = 'GET', headers = {}, body } = {}) => new Promise((res, rej) => {
+  const u = new URL(base);
+  const r = http.request({ host: '127.0.0.1', port: u.port, method, path: pathname, headers: { host: u.host, ...headers } }, (resp) => {
+    let d = ''; resp.on('data', (c) => { d += c; }); resp.on('end', () => res({ status: resp.statusCode, body: d }));
+  });
+  r.on('error', rej); if (body) r.write(body); r.end();
+});
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 810 } });
 const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+// 口述原稿の衝突の確認で意図して起こす 409 は数えない
+page.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text())) errs.push('console: ' + m.text()); });
 const ready = () => page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 const shot = (name) => page.screenshot({ path: path.join(work, name) });
 
 try {
   await page.goto(base); await ready();
+  const TOKEN = await page.evaluate(() => window.__DECK_DEV_TOKEN);
+  ok(/^[0-9a-f]{48}$/.test(TOKEN || ''), 'token injected into the page');
+  const TH = { 'x-deck-token': TOKEN };
 
   // ---- 1. 原稿の編集：更新の式（スライド 3）の段階 2 の <li>
   await page.evaluate(() => DECK.go(2, 3, false));
@@ -70,7 +83,7 @@ try {
   ok(fs.readdirSync(path.join(deckDir, '.cache/edits')).length >= 1, 'backup written to .cache/edits');
 
   // ---- 2. 古い原稿からの編集は 409
-  const r409r = await page.request.post(base + '__dev/edit', { data: { ...before, text: 'x' } }); const r409 = [r409r.status(), (await r409r.json()).error];
+  const r409r = await page.request.post(base + '__dev/edit', { data: { ...before, text: 'x' }, headers: TH }); const r409 = [r409r.status(), (await r409r.json()).error];
   ok(r409[0] === 409 && /原稿が変わっています/.test(r409[1]), 'stale hash -> 409 ' + JSON.stringify(r409));
   ok(fs.readFileSync(DECK, 'utf8') === src1, 'file untouched after 409');
   // 画面でも分かるか：要素の hash を古くしてから開く
@@ -108,7 +121,11 @@ try {
   ok(await page.evaluate(() => DECK.NARRATION['更新の式']['2'][0].text.includes('φ とは')), 'DECK.NARRATION shows display text');
 
   // 挿入：節がまだない「学習率と収束」の段階 1 と、既存の節の途中の段階
-  const post = async (b) => (await page.request.post(base + '__dev/narration', { data: b })).json();
+  const getN = async (key) => (await page.request.get(base + '__dev/narration?key=' + encodeURIComponent(key), { headers: TH })).json();
+  const post = async (b) => {
+    const rev = (await getN(b.slideKey + ':' + b.stepKey)).rev;
+    return (await page.request.post(base + '__dev/narration', { data: { rev, ...b }, headers: TH })).json();
+  };
   await post({ slideKey: '学習率と収束', stepKey: '1', turns: [{ role: 'expert', text: '倍率を上げると速く下がります。' }] });
   await post({ slideKey: '学習率と収束', stepKey: '0', turns: [{ role: 'expert', text: '学習率を変えます。' }] });
   await post({ slideKey: '学習率と収束', stepKey: 'concl', turns: [{ role: 'expert', text: '2 未満なら収束します。' }] });
@@ -117,9 +134,29 @@ try {
   ok(narr2.replace(/## 学習率と収束\n[\s\S]*?\n\n(?=## まとめ)/, '') === narr1, 'rest of narration.md untouched');
   await post({ slideKey: '学習率と収束', stepKey: '0', turns: [] });
   ok(!fs.readFileSync(NARR, 'utf8').includes('学習率を変えます'), 'empty turns remove the block');
-  const gr = await (await page.request.get(base + '__dev/narration?key=' + encodeURIComponent('更新の式:2'))).json();
-  ok(gr.turns.length === 2 && gr.turns[0].text.includes('{φ|ファイ}'), 'GET /__dev/narration returns raw text');
+  const gr = await getN('更新の式:2');
+  ok(gr.turns.length === 2 && gr.turns[0].text.includes('{φ|ファイ}') && /^[0-9a-f]{8}$/.test(gr.rev), 'GET /__dev/narration returns raw text + rev');
+  // 古い版からの保存は 409・版なしは 400
+  const narrBefore = fs.readFileSync(NARR, 'utf8');
+  const sv = await page.request.post(base + '__dev/narration', { data: { slideKey: '更新の式', stepKey: '2', turns: [{ role: 'expert', text: 'x' }], rev: 'deadbeef' }, headers: TH });
+  const sv2 = await page.request.post(base + '__dev/narration', { data: { slideKey: '更新の式', stepKey: '2', turns: [{ role: 'expert', text: 'x' }] }, headers: TH });
+  ok(sv.status() === 409 && sv2.status() === 400 && fs.readFileSync(NARR, 'utf8') === narrBefore, `narration stale rev -> 409, no rev -> 400 (${sv.status()}, ${sv2.status()})`);
   await page.waitForTimeout(600); await ready();
+  // 画面でも分かるか：引き出しで書きかけのあいだに、外から同じ段階を直す
+  await page.evaluate(() => DECK.go(2, 2, false));
+  if (!(await page.evaluate(() => !!document.getElementById('dev-narr')))) await page.keyboard.press('n');
+  await page.waitForFunction(() => { const t = document.querySelector('#dev-narr .dev-turn textarea'); return t && t.value.includes('1 歩の'); });
+  await page.locator('#dev-narr .dev-turn textarea').first().fill('書きかけの下書き');
+  const extNarr = fs.readFileSync(NARR, 'utf8').replace('大きさ、ですか。', '大きさ、ですね。');
+  fs.writeFileSync(NARR, extNarr);
+  await page.waitForTimeout(700);   // 再読み込みは未保存の入力があるので待たされる
+  await page.locator('#dev-narr .dev-turn textarea').first().press('Meta+Enter');
+  await page.waitForSelector('#dev-narr .dev-msg.dv-err');
+  await shot('4b-narration-conflict.png');
+  ok(/口述原稿が変わっています/.test(await page.locator('#dev-narr .dev-msg').textContent()) && fs.readFileSync(NARR, 'utf8') === extNarr, 'narration conflict shown in drawer, file untouched');
+  const navC = page.waitForEvent('load');
+  await page.locator('#dev-narr .dev-msg button', { hasText: '再読み込み' }).click();
+  await navC; await ready(); await page.waitForTimeout(300);
 
   // ---- 4. Claude への指示（Alt+クリック）とコメントの一覧
   await page.evaluate(() => DECK.go(1, 4, false));
@@ -162,9 +199,46 @@ try {
   await nav5; await ready();
   ok(true, 'recovered from build error');
 
-  // ---- 6. 静的ファイル・ほかの表示
+  // ---- 6. 守り（Host・Origin・合言葉・Content-Type・壊れた URL・symlink・ドットファイル）
+  const port = new URL(base).port;
+  const J = { 'content-type': 'application/json' };
+  const sec = {
+    wrongHost: (await raw('/', { headers: { host: 'evil.example:' + port } })).status,
+    wrongHostDeck: (await raw('/deck/narration.md', { headers: { host: 'evil.example' } })).status,
+    localhost: (await raw('/', { headers: { host: 'localhost:' + port } })).status,
+    noToken: (await raw('/__dev/comment', { method: 'POST', headers: J, body: '{"comment":"x"}' })).status,
+    badToken: (await raw('/__dev/edit', { method: 'POST', headers: { ...J, 'x-deck-token': 'nope' }, body: '{}' })).status,
+    textPlain: (await raw('/__dev/comment', { method: 'POST', headers: { ...TH, 'content-type': 'text/plain' }, body: '{"comment":"x"}' })).status,
+    crossOrigin: (await raw('/__dev/comment/resolve', { method: 'POST', headers: { ...TH, ...J, origin: 'http://evil.example' }, body: '{"id":"none"}' })).status,
+    sameOrigin: (await raw('/__dev/comment/resolve', { method: 'POST', headers: { ...TH, ...J, origin: 'http://localhost:' + port }, body: '{"id":"none"}' })).status,
+    sourceNoToken: (await raw('/__dev/source?range=0-10')).status,
+    narrNoToken: (await raw('/__dev/narration?key=x:0')).status,
+    eventsNoToken: (await raw('/__dev/events')).status,
+  };
+  ok(sec.wrongHost === 403 && sec.wrongHostDeck === 403 && sec.localhost === 200, 'Host check ' + JSON.stringify(sec));
+  ok(sec.noToken === 403 && sec.badToken === 403 && sec.sourceNoToken === 403 && sec.narrNoToken === 403 && sec.eventsNoToken === 403, 'token required for /__dev/');
+  ok(sec.textPlain === 415, 'text/plain POST -> 415');
+  ok(sec.crossOrigin === 403 && sec.sameOrigin === 404, 'cross Origin -> 403, same Origin passes');
+  const bad = [(await raw('/%ZZ')).status, (await raw('/deck/%E0%A4%A')).status];
+  ok(bad[0] === 400 && bad[1] === 400 && (await raw('/')).status === 200, 'malformed URL -> 400, server alive ' + bad);
+  fs.writeFileSync(path.join(work, 'secret.txt'), 'secret');
+  fs.symlinkSync(path.join(work, 'secret.txt'), path.join(deckDir, 'leak.txt'));
+  fs.symlinkSync(work, path.join(deckDir, 'leakdir'));
+  fs.writeFileSync(path.join(deckDir, '.env'), 'X=1');
+  fs.mkdirSync(path.join(deckDir, 'audio'), { recursive: true }); fs.writeFileSync(path.join(deckDir, 'audio', 's1.wav'), 'RIFF');
+  const edit0 = fs.readdirSync(path.join(deckDir, '.cache/edits'))[0];
+  const st6 = {
+    leak: (await raw('/deck/leak.txt')).status, leakdir: (await raw('/deck/leakdir/secret.txt')).status,
+    cache: (await raw('/deck/.cache/edits/' + encodeURIComponent(edit0))).status, env: (await raw('/deck/.env')).status,
+    encDot: (await raw('/deck/%2e%2e/secret.txt')).status, audio: (await raw('/deck/audio/s1.wav')).status,
+  };
+  ok(st6.leak === 403 && st6.leakdir === 403, 'symlink escaping deck dir -> 403 ' + JSON.stringify(st6));
+  ok(st6.cache === 403 && st6.env === 403 && (st6.encDot === 403 || st6.encDot === 404), 'dotfiles / .cache -> 403, encoded .. not served');
+  ok(st6.audio === 200, '/deck/audio/ still served');
+
+  // ---- 7. 静的ファイル・ほかの表示
   const r404 = [(await page.request.get(base + 'deck/narration.md')).status(), (await page.request.get(base + 'deck/..%2F..%2Fetc%2Fpasswd')).status()];
-  ok(r404[0] === 200 && r404[1] !== 200, '/deck/ static + no traversal ' + r404);
+  ok(r404[0] === 200 && r404[1] === 403, '/deck/ static + no traversal ' + r404);
   await page.goto(base + '?mode=lecture#3'); await ready();
   ok((await page.evaluate(() => DECK.mode)) === 'lecture', '?mode=lecture works');
   const pv = await browser.newPage({ viewport: { width: 1400, height: 820 } });

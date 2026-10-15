@@ -18,7 +18,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
 - **Dev server**: edit text and narration in the browser, leave comments for Claude Code
-- **Output**: one self-contained HTML file (fonts and math embedded, works offline). Print to PDF from the browser or with `tools/pdf.mjs`
+- **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
 **Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
 
@@ -47,6 +47,11 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - [Node.js](https://nodejs.org/) 22 or newer
 - Google Chrome for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`, channel `chrome`). Building and presenting only need a browser to open the file. Without Chrome, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
 - Optional: [uv](https://docs.astral.sh/uv/). After `sh tools/get-fonts.sh` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+
+**Browsers**
+
+- Presenting the built HTML: Chrome/Edge 119+, Firefox 128+ or Safari 18+ (these support the CSS relative color syntax and `color-mix()` that themes use to derive tints from `--base`). Older browsers still show the deck, with fixed fallback colors taken from the default theme instead of colors derived from the theme's `--base`
+- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only
 
 **Tier 2 (video)**
 
@@ -184,6 +189,8 @@ A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `defaul
 | [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. Use it as the template for new decks |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
 
+The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default voice. The published video of this example was narrated with the author's own reference voice, which is not included in the repository.
+
 `examples/minimal`:
 
 ![minimal example](docs/images/minimal-sheet.png)
@@ -216,6 +223,10 @@ node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
 ```
+
+## Security
+
+A deck is code: its scripts and components run in your browser and in the headless Chrome used by the checker and renderer, and the build reads local files inside the deck folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
 
 ## License
 

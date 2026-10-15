@@ -43,7 +43,19 @@ export function renderText(raw) {
   return { display, tts: parts.join(''), ttsParts: parts, bounds };
 }
 
+// 続きの行を前の行に繋ぐ。境目の両側が CJK 以外（英字・数字・記号）なら空白 1 つを挟み、
+// どちらかが CJK（かな・漢字・全角の記号）なら詰める（日本語の原稿は従来どおり）
+const CJK = /[\u3000-\u303f\u3040-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+export function joinLines(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const x = a[a.length - 1], y = b[0];
+  if (/\s/.test(x) || /\s/.test(y) || CJK.test(x) || CJK.test(y)) return a + b;
+  return a + ' ' + b;
+}
+
 // narration.md → [{slideKey, stepKey, line, turns:[{role, raw, display, tts, ttsParts}]}]
+// 同じ段階（slideKey:stepKey）が 2 回あれば後のものを使い、返す配列の warnings に書く
 export function parseNarration(text) {
   const out = [];
   let slideKey = null, cur = null, turn = null;
@@ -72,19 +84,29 @@ export function parseNarration(text) {
       turn = { role, raw: r ? s.slice(r[0].length) : s };
       cur.turns.push(turn);
     } else {
-      turn.raw += s;
+      turn.raw = joinLines(turn.raw, s);
     }
   }
-  for (const seg of out) {
+  // 同じ段階が重なったら後のものだけ残す（字幕・音声・注目の演出がどれも同じものを使うように）
+  const warnings = [];
+  const last = new Map();
+  out.forEach((seg, j) => {
+    const key = `${seg.slideKey}:${seg.stepKey}`;
+    if (last.has(key)) warnings.push(`narration.md ${seg.line} 行目: 段階「${key}」が重複（${out[last.get(key)].line} 行目を上書き）`);
+    last.set(key, j);
+  });
+  const uniq = out.filter((seg, j) => last.get(`${seg.slideKey}:${seg.stepKey}`) === j);
+  for (const seg of uniq) {
     for (const t of seg.turns) Object.assign(t, renderText(t.raw));
     // 段階の区切りの並び（ターンをまたいで順に）。synth.py の cues と 1 対 1 に対応する
     seg.bounds = seg.turns.flatMap((t) => t.bounds);
   }
-  return out;
+  uniq.warnings = warnings;
+  return uniq;
 }
 
 export function readNarration(path) {
-  if (!fs.existsSync(path)) return [];
+  if (!fs.existsSync(path)) return Object.assign([], { warnings: [] });
   return parseNarration(fs.readFileSync(path, 'utf8'));
 }
 

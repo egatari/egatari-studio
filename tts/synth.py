@@ -114,7 +114,10 @@ def narration_json(narr: Path, voice: dict) -> list[dict]:
         capture_output=True, text=True)
     if out.returncode != 0:
         sys.exit(f"narration-json.mjs が失敗しました:\n{out.stderr}")
-    return json.loads(out.stdout)["segments"]
+    data = json.loads(out.stdout)
+    for w in data.get("warnings", []):
+        print(f"  ⚠ {w}")
+    return data["segments"]
 
 
 def est_dur(text: str) -> float:
@@ -287,6 +290,7 @@ def main():
             del manifest["segments"][k]
 
     made = cached = 0
+    failed: list[tuple[str, str]] = []
     for n, seg in enumerate(segs):
         key = seg["key"]
         if only and key not in only:
@@ -306,7 +310,10 @@ def main():
                 dur, cues = synth_segment(seg, turns, tmp_out, args.dry_run, refs)
             except Exception as e:
                 tmp_out.unlink(missing_ok=True)
-                print(f"\n    ⚠ 合成に失敗: {e}")
+                print(f"\n    ✗ 合成に失敗: {e}")
+                failed.append((key, str(e)))
+                # 前の版の音声（違う原稿・声のもの）を使い続けないよう、manifest から外す
+                manifest["segments"].pop(key, None)
                 continue
             tmp_out.replace(out)
             info = {"dur": dur, "cues": cues, "voice": voice, "tts": turns}
@@ -331,6 +338,13 @@ def main():
         print(f"  ⚠ {w}")
     for w in sorted(stats["watched"]):
         print(f"  ? 文脈依存の語: {w} — 読みが正しいか確認してください")
+    if failed:
+        print(f"✗ 失敗 {len(failed)} 段階（新規 {made} / キャッシュ {cached}）→ {man_path}", file=sys.stderr)
+        for k, e in failed:
+            print(f"    {k}: {e}", file=sys.stderr)
+        print("  失敗した段階は manifest から外した（音声なしになる）。サーバーを確かめて、"
+              f"--only {','.join(k for k, _ in failed)} でやり直すこと", file=sys.stderr)
+        sys.exit(1)
     print(f"完了: 新規 {made} / キャッシュ {cached} → {man_path}")
     print("  音声を反映するには build をやり直す（node kit/build.mjs <deck.html>）")
 

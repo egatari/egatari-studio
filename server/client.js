@@ -6,6 +6,7 @@
 var Q = new URLSearchParams(location.search);
 var POS_KEY = "dev-pos:" + location.pathname + location.search;
 var UI_KEY = "dev-ui";
+var TOKEN = window.__DECK_DEV_TOKEN || "";      // dev.mjs が画面に埋め込む合言葉。/__dev/ への問い合わせには必ず付ける
 function ss(k, v){ try { if (v === undefined) return JSON.parse(sessionStorage.getItem(k) || "null"); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
 
 // ---------------------------------------------------------------- 再読み込み（Server-Sent Events）
@@ -22,7 +23,7 @@ function maybePending(){ if (pending && canReload()) reloadNow(); }
 var embedded = !!Q.get("view");                 // 発表者ビューの中の画面：発表者ビューが読み込み直すので何もしない
 var presenter = !!Q.get("presenter");
 if (embedded) return;
-var es = new EventSource("/__dev/events");
+var es = new EventSource("/__dev/events?token=" + encodeURIComponent(TOKEN));
 es.addEventListener("reload", onReload);
 if (presenter){
   // 発表者ビュー：本体と同時に読み込み直されるので、本体に何度か挨拶して位置を受け取り直す
@@ -105,7 +106,9 @@ function h(tag, props, kids){
   return e;
 }
 function api(method, url, body){
-  return fetch(url, {method: method, headers: body ? {"content-type": "application/json"} : {}, body: body ? JSON.stringify(body) : undefined})
+  var headers = {"x-deck-token": TOKEN};
+  if (body) headers["content-type"] = "application/json";
+  return fetch(url, {method: method, headers: headers, body: body ? JSON.stringify(body) : undefined})
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ j._status = r.status; return j; }); });
 }
 var toastTimer = 0;
@@ -377,7 +380,7 @@ function narrFollow(force){
   api("GET", "/__dev/narration?key=" + encodeURIComponent(key)).then(function(j){
     if (!narr || narr.key !== key) return;
     narr.turns = (j.turns || []).map(function(t){ return {role: t.role, text: t.text}; });
-    narr.line = j.line;
+    narr.line = j.line; narr.rev = j.rev;
     renderDrawer(false);
   });
 }
@@ -395,6 +398,7 @@ function renderDrawer(loading){
   drawer.appendChild(body);
   drawer.appendChild(h("div", {cls: "dv-foot"}, [status, revert, saveBtn]));
   var stale = h("div", {cls: "dv-stale"}); body.appendChild(stale);
+  var nmsg = h("div", {cls: "dev-msg"}); body.appendChild(nmsg);
   if (loading){ body.appendChild(h("div", {cls: "dev-empty", text: "読み込み中…"})); return; }
   function markDirty(){ narr.dirty = true; status.textContent = "未保存の変更があります"; status.className = "dv-st dv-dirty"; }
   var list = h("div", {cls: "dv-turns"}); body.appendChild(list);
@@ -426,10 +430,18 @@ function renderDrawer(loading){
   var next = h("div", {cls: "dv-next"}); body.appendChild(next);
   renderNext(next);
   function doSave(){
+    if (saveBtn.disabled) return;
     saveBtn.disabled = true; saveBtn.textContent = "保存中…";
-    api("POST", "/__dev/narration", {slideKey: narr.slideKey, stepKey: narr.stepKey, turns: narr.turns}).then(function(j){
-      saveBtn.disabled = false; saveBtn.textContent = "保存";
+    api("POST", "/__dev/narration", {slideKey: narr.slideKey, stepKey: narr.stepKey, turns: narr.turns, rev: narr.rev}).then(function(j){
+      saveBtn.textContent = "保存";
+      if (j._status === 409){
+        // 原稿の編集と同じ扱い：保存を止め、再読み込みを促す（入力はそのまま残す）
+        showErr(nmsg, "口述原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）", true);
+        return;
+      }
+      saveBtn.disabled = false;
       if (j._status !== 200){ status.textContent = j.error || "保存できませんでした"; status.className = "dv-st dv-dirty"; return; }
+      if (j.rev) narr.rev = j.rev;
       narr.dirty = false; status.textContent = j.changed ? "保存しました" : "変更はありません"; status.className = "dv-st";
       if (!j.changed) narrFollow(true);
       maybePending();

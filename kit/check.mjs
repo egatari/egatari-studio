@@ -103,14 +103,14 @@ const url = 'file://' + tmpFile;
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// コンソールのエラーとページの例外は、読み込み直後だけでなく検査の全体（後の seek・再現性の確認・開き直し）を通して集め、最後にまとめて報告する
 const consoleErrors = [];
-page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
-page.on('pageerror', (e) => consoleErrors.push(e.message));
+let phase = '読み込み';
+page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(`[${phase}] ${m.text()}`); });
+page.on('pageerror', (e) => consoleErrors.push(`[${phase}] ${e.message}`));
 await page.goto(url);
 await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 await page.evaluate(() => document.fonts.ready);
-
-for (const e of consoleErrors) report(null, 'error', 'コンソールエラー: ' + e);
 
 // スライドの一覧（番号・鍵・タイトル・段階数・static か・部品の数）
 const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
@@ -124,6 +124,7 @@ const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
 const titleOf = (i) => meta[i] ? meta[i].title : String(i);
 
 // ================================================================ A. 体裁の検査
+phase = 'A 体裁';
 const aOut = await page.evaluate(([metaList, JA]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
@@ -232,6 +233,7 @@ for (const { i, issues } of aOut.soft) for (const msg of issues) report(i, 'warn
 }
 
 // ================================================================ B. 口述原稿
+phase = 'B 口述原稿';
 const narrInfo = await page.evaluate((metaList) => {
   const out = [];
   metaList.forEach((m) => {
@@ -259,6 +261,7 @@ for (const { i, stepKey, turns } of narrInfo) {
 }
 
 // ================================================================ C. パレットのコントラスト
+phase = 'C パレット';
 // oklch() や color-mix() は getComputedStyle だけでは rgb に落ちないことがあるので、
 // 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る
 const palette = await page.evaluate(() => {
@@ -298,6 +301,7 @@ for (const v of ['--fg', '--term', '--emph', '--title', '--accent2']) {
 }
 
 // ================================================================ D. 部品の再現性（呼び出し順に依存していないか）
+phase = 'D 再現性';
 const CLIP = { x: 0, y: 0, width: 1280, height: 720 };
 async function pixelDiff(a, b) {
   return page.evaluate(async ([a, b]) => {
@@ -340,6 +344,7 @@ await page.goto(url);
 await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 
 // ================================================================ F. 注目の演出
+phase = 'F 注目の演出';
 const markInfo = await page.evaluate(() => {
   const out = [];
   DECK.slides.forEach((s, i) => {
@@ -358,6 +363,7 @@ for (const { i, key, marks } of markInfo) {
 }
 
 // ================================================================ G. モーフ（data-morph）
+phase = 'G モーフ';
 const morphInfo = await page.evaluate(() => DECK.slides.map((s, i) => ({ i, m: DECK.morph(i) })).filter((x) => x.m));
 for (const { i, m } of morphInfo) {
   if (!m.src) { report(i, 'warn', `モーフの元のスライド「${m.want}」が見つからない（data-morph="鍵"、空なら前のスライド）`); continue; }
@@ -369,6 +375,7 @@ for (const { i, m } of morphInfo) {
 }
 
 // ================================================================ E. タイムライン
+phase = 'E タイムライン';
 const tl = await page.evaluate(() => DECK.timeline());
 const total = tl.length ? tl[tl.length - 1].start + tl[tl.length - 1].dur : 0;
 report(null, 'info', `タイムライン合計：${total.toFixed(2)} 秒（${tl.length} 段階）`);
@@ -376,8 +383,11 @@ const perSlide = new Map();
 for (const seg of tl) perSlide.set(seg.i, (perSlide.get(seg.i) || 0) + seg.dur);
 for (const [i, dur] of perSlide) report(i, 'info', `この枚の長さ：${dur.toFixed(2)} 秒`);
 
+// 遅れて届くエラーも拾うため、閉じる前に少し待つ
+await page.waitForTimeout(100);
 await browser.close();
 fs.rmSync(tmpDir, { recursive: true, force: true });
+for (const e of [...new Set(consoleErrors)]) report(null, 'error', 'コンソールエラー: ' + e);
 
 // ================================================================ 出力
 const counts = { error: 0, warn: 0, info: 0 };

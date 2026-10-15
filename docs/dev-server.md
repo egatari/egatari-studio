@@ -27,6 +27,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 
 矢印・Space・p・a・l などの発表の操作は、入力欄の外ではいつもどおり効く。
 保存した時点で原稿が別の所で変わっていたら（ハッシュが合わない）、保存せずに「原稿が変わっています。再読み込みしてください」と出す。
+口述原稿も同じで、引き出しを開いたあとにその段階の行が別の所で変わっていたら、保存せずに「口述原稿が変わっています」と出す（入力は残る）。
 
 ## 書き換えるファイル
 
@@ -35,6 +36,18 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
   ほかの行（コメントを含む）は元のまま。発言を全部消すとその段階の行を消す
 - `comments.json`：Claude への指示 `[{id, created, key, range, quote, comment, status}]`（key は `スライドの鍵:段階`、range は deck.html の位置）
 - `.cache/edits/`：書き換える前の deck.html・narration.md の写し（新しい 30 個）
+
+## 守り
+
+ほかのサイトを開いたブラウザから原稿を書き換えられないように、次を断る。
+
+- Host が `127.0.0.1:番号` か `localhost:番号` でない要求（DNS rebinding 対策）は 403
+- `/__dev/` の口（書き込み・原稿の読み出し・コメント・`/__dev/events`）は、起動のたびに作る合言葉が要る。
+  配る画面に `window.__DECK_DEV_TOKEN` として埋め込み、client.js が `X-Deck-Token` で送る（`/__dev/events` は `?token=`）。
+  合言葉が違えば 403（サーバーを起動し直したら画面を読み込み直す）
+- 書き込み（POST）は `Content-Type: application/json` でなければ 415、Origin が付いていて同じ番号の 127.0.0.1・localhost でなければ 403
+- `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で原稿のフォルダの外を指すものも 403
+- 壊れた URL（`/%ZZ` など）は 400
 
 ## Claude Code への頼み方
 

@@ -9,3 +9,7 @@ tts/voices
 **/audio/
 **/video/
 **/bundle/
+# dev-server notes, local settings and secrets
+comments.json
+.env*
+*.local.json

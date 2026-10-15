@@ -36,7 +36,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
 | `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px |
-| `id="…"` on a section | slide key (overrides the heading). Use when two headings are the same |
+| `id="…"` on a section | slide key (overrides the heading). Use when two headings are the same. See [Slide keys](#slide-keys) |
 | `data-morph` / `data-morph="key"` | morph in from the previous slide / from the slide with that key ([contract §8](contract.md#8-モーフdata-morph)) |
 | `data-chapter="name"` | start a chapter here with this name (like a `sec` slide) |
 | `data-steps="n"` | minimum number of steps (for legacy `data-anim`) |
@@ -62,7 +62,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 | `steps="n"` (component) | override the component's step count |
 | `data-id="ID"` | morph pairing ([contract §8](contract.md#8-モーフdata-morph)) |
 | `id="ID"` / `data-mark="ID"` | target of `{mark:ID}` ([contract §7](contract.md#7-注目の演出mark)) |
-| `data-key`, `data-title` | added by build (slide key, plain heading). A hand-written `data-key` on a section is kept and used as the slide key (it wins over `id`) |
+| `data-key`, `data-title` | added by build (slide key, plain heading). A hand-written `data-key` on a section is used as the slide key (it wins over `id`); see [Slide keys](#slide-keys) |
 
 ### Math
 
@@ -82,10 +82,27 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 
 | Syntax | Meaning |
 |---|---|
-| `/*INCLUDE:file*/` | file contents inserted verbatim (deck folder, then `kit/`) |
+| `/*INCLUDE:file*/` | file contents inserted verbatim (deck folder, then `kit/`). A path that leaves these folders (`../`, absolute, symbolic link) is refused with a warning and replaced by nothing |
 | `{{FIG:name}}` | `figs/name.svg` (or `name.svg` in the deck folder) inlined; ids prefixed with `name-`, width/height removed |
 | `{{JSON:file}}` | JSON from `data/` (or the deck folder), minified. Put it in `<script type="application/json">` inside a component to read it as `this.data` |
 | `<m-name …>` | component; `components/name/index.js` loaded automatically |
+
+`{{FIG:…}}`, `{{JSON:…}}`, `narration.md`, `timeline.json`, `macros.tex` and the files in `audio/manifest.json` are read only if they resolve (after following symbolic links) inside the deck folder; otherwise the build warns (`refused: …`) and skips them.
+
+### Assets (embedded at build time)
+
+| Reference | Becomes |
+|---|---|
+| `<img src>`, `<source src/srcset>`, `<img srcset>`, `<video src/poster>`, `<audio src>`, `<track src>`, SVG `<image href>` | `data:` URI |
+| `url(…)` and `@import` in the deck's `<style>` and `style=""` attributes | `data:` URI / the imported CSS inlined (`url()` in a linked or imported CSS file is relative to that file) |
+| `<link rel="stylesheet" href="file.css">` | `<style>` with the file's contents |
+| `<link rel="icon">` and other `<link>` files, `<script src="file.js">` | `data:` URI / inline script |
+
+Relative paths are resolved from the deck folder and must stay inside it. `data:`, `blob:`, `#fragment` and template values (`${…}`, `{{…}}`) are left as they are. Warnings: `missing: …` (file not found), `refused: …` (outside the deck folder), `external: …` (an `http(s)` reference in an asset position, including `<iframe>`/`<object>`: left as it is, so the deck is not fully offline). Ordinary links (`<a href>`) are not touched. Audio from `audio/manifest.json` is embedded only with `--embed-audio`.
+
+### Slide keys
+
+Each slide gets one key, unique in the deck: `data-key`, else `id`, else the normalized heading, else `s<n>`. Explicit keys (`data-key`/`id`) are claimed first, in document order. A repeated explicit key gets a warning (`slide key: …`) and a suffix `#2`, `#3`, … on the later slides. Keys made from a heading or a number never take an explicit key or an existing `#n` key; they also get the next free `#n`. The final key is written to the section's `data-key` (a hand-written `data-key` is rewritten when it had to change), and `narration.md` headings (`## key`) must use it.
 
 ## Narration (narration.md)
 
@@ -261,7 +278,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `--dev` | add `data-src` for the editor and skip glyph subsetting (used by the dev server) |
 | `--embed-audio` | embed audio as AAC 64 kbps mono (needs ffmpeg; otherwise WAV, with a warning). Without it, audio is referenced relative to the output |
 
-The summary line shows slides, math, components, font files, narration steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/`, compressed audio in `$TMPDIR/motion-slides-audio/`.
+The summary line shows slides, math, components, font files, narration steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/` (keyed by the glyphs, the TTF file's hash and the fonttools version; `uv` runs `fonttools==4.67.0` and `brotli==1.2.0`), compressed audio in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the deck text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the narration, string literals of the components used (without CJK in non-Japanese decks), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese decks `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
 
 ## TTS
 

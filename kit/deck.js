@@ -24,6 +24,19 @@ function ease(x){ x = clamp01(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * 
 function prog(t, start, dur){ if (t === Infinity) return 1; if (dur <= 0) return t >= start ? 1 : 0; return ease((t - start) / dur); }
 function lerp(a, b, e){ return a + (b - a) * e; }
 DECK.ease = ease; DECK.prog = prog; DECK.lerp = lerp; DECK.clamp01 = clamp01;
+// 段階の番号（data-step / steps / data-steps / data-from）：有限の整数で min 以上。そうでなければ警告して null
+function stepInt(v, what, min){
+  if (v === null || v === undefined) return null;
+  var n = typeof v === "number" ? v : String(v).trim() === "" ? NaN : +v;
+  if (!isFinite(n) || n !== Math.floor(n) || n < (min || 0)){ console.warn("deck.js: " + what + "=" + JSON.stringify(v) + " は 0 以上の整数でないので無視 / ignored (not a non-negative integer)"); return null; }
+  return n;
+}
+// 時間の上書き（dur / hold / lead / pad_after）：有限で 0 以上。そうでなければ警告して undefined
+function secOk(v, what){
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "number" || !isFinite(v) || v < 0){ console.warn("deck.js: " + what + "=" + JSON.stringify(v) + " は 0 以上の秒数でないので無視 / ignored"); return undefined; }
+  return v;
+}
 
 // ---------------------------------------------------------------- SVG の部品
 // 色は CSS 変数で書けるように、fill / stroke / color に var( があれば style に回す（属性では var() が効かない）
@@ -124,8 +137,8 @@ DECK.color = function(name){ return getComputedStyle(document.documentElement).g
 
 // ---------------------------------------------------------------- 部品の基底クラス
 class MotionElement extends HTMLElement {
-  get steps(){ var a = this.getAttribute("steps"); return a !== null ? +a : (this.constructor.steps || 1); }
-  get from(){ return +(this.getAttribute("data-from") || 1); }
+  get steps(){ var a = stepInt(this.getAttribute("steps"), this.tagName.toLowerCase() + " steps"); return a !== null ? a : (this.constructor.steps || 1); }
+  get from(){ var a = stepInt(this.getAttribute("data-from"), this.tagName.toLowerCase() + " data-from", 1); return a !== null ? a : 1; }
   // static props の宣言に従って属性を読む
   get props(){
     if (this._props) return this._props;
@@ -189,12 +202,16 @@ var slides = [], cur = 0, step = 0, fadeFrom = -1, raf = 0, t0 = 0, auto = null,
 function setupSlide(s, i, mainEnd){
   var autoList = !s.classList.contains("static") && !s.classList.contains("nostep") && !s.querySelector("[data-step]") && !s.querySelector("[data-from]");
   if (autoList) [].slice.call(s.querySelectorAll(".body > ul > li, .body > ol > li")).forEach(function(li, k){ li.setAttribute("data-step", k + 1); });
-  var items = [].slice.call(s.querySelectorAll("[data-step]"));
+  var items = [].slice.call(s.querySelectorAll("[data-step]")).filter(function(e){
+    var n = stepInt(e.getAttribute("data-step"), "data-step（" + (s.id || "s" + (i + 1)) + "）");
+    if (n === null) e.removeAttribute("data-step");   // 段階表示の外に出す（常に見える）
+    return n !== null;
+  });
   var comps = [].slice.call(s.querySelectorAll("*")).filter(function(e){ return e instanceof MotionElement; });
   var max = 0;
   items.forEach(function(e){ max = Math.max(max, +e.getAttribute("data-step")); });
   comps.forEach(function(c){ max = Math.max(max, c.from + c.steps - 1); });
-  max = Math.max(max, +(s.getAttribute("data-steps") || 0));   // キットの形式（data-anim）の互換
+  max = Math.max(max, stepInt(s.getAttribute("data-steps"), "data-steps（" + (s.id || "s" + (i + 1)) + "）") || 0);   // キットの形式（data-anim）の互換
   var c = s.querySelector(".concl");
   if (s.classList.contains("static")){ max = 0; }
   else if (c){ max += 1; c.setAttribute("data-step", max); c.setAttribute("data-concl", ""); items.push(c); }
@@ -233,14 +250,38 @@ function compPos(c, K, t, audioCues){
   return {k: k, t: t};
 }
 
-// 段階 k の動きの長さ（秒）
+// compPos の逆：部品の時刻 D になる実時間。伸縮しない（cue の数が合わない）ときは D のまま
+function compRealTime(c, k, D, audioCues){
+  var cc = c.cues(k);
+  if (!(cc && audioCues && cc.length && cc.length === audioCues.length)) return D;
+  var src = [0].concat(audioCues), dst = [0].concat(cc), n = src.length - 1;
+  for (var j = 0; j < n; j++){
+    if (D <= dst[j + 1]){
+      var span = dst[j + 1] - dst[j];
+      return span > 1e-9 ? src[j] + (D - dst[j]) * (src[j + 1] - src[j]) / span : src[j + 1];
+    }
+  }
+  return src[n] + (D - dst[n]);
+}
+
+// 段階 k の動きの長さ（秒、実時間）。部品の時刻が音声の cue で伸縮されるなら、その伸縮後の終わり
 function animDur(i, k){
   var s = slides[i], d = 0;
   if (REDUCE) return 0;
   if (k === 0 && i > 0) d = morphSrc(i) === i - 1 ? T.morph : T.slide;
   s._items.forEach(function(e){ if (+e.getAttribute("data-step") === k) d = Math.max(d, +(e.getAttribute("data-at") || 0) + T.fade); });
   s._draws.forEach(function(w){ if (w.step === k) d = Math.max(d, w.at + T.drawDelay + w.dur); });
-  s._comps.forEach(function(c){ var p = compPos(c, k, 0); if (p.t !== Infinity) d = Math.max(d, c.duration(p.k) || 0); });
+  var ac = null;
+  if (s._comps.length){
+    ac = compCues(i, k);
+    if (ac){ var lead = timing(i, k).lead || 0; ac = ac.map(function(x){ return x + lead; }); }
+  }
+  s._comps.forEach(function(c){
+    var p = compPos(c, k, 0);
+    if (p.t === Infinity) return;
+    var D = c.duration(p.k) || 0;
+    d = Math.max(d, D > 0 ? compRealTime(c, p.k, D, ac) : 0);
+  });
   return d;
 }
 
@@ -589,8 +630,14 @@ DECK.marks = function(i, k){
 };
 
 // ---------------------------------------------------------------- タイムライン（自動再生と動画の書き出しが共有する）
+var TIMING_OK = {};   // 確かめた時間の上書き（警告を 1 度だけ出す）
 function timing(i, k){
   var key = DECK.stepKey(i, k), a = DECK.AUDIO[key], o = DECK.TIMING[key] || {};
+  if (TIMING_OK[key] === undefined || TIMING_OK[key].src !== o){
+    TIMING_OK[key] = {src: o, v: {dur: secOk(o.dur, key + " dur"), hold: secOk(o.hold, key + " hold"), lead: secOk(o.lead, key + " lead"),
+                                  pad_after: secOk(o.pad_after, key + " pad_after")}};
+  }
+  o = TIMING_OK[key].v;
   return {key: key, audio: a || null, lead: o.lead !== undefined ? o.lead : (a ? T.lead : 0),
           pad: o.pad_after !== undefined ? o.pad_after : T.padAfter, hold: o.hold !== undefined ? o.hold : T.hold, dur: o.dur};
 }
@@ -688,6 +735,8 @@ function openPresenter(){
 }
 window.addEventListener("message", function(e){
   var m = e.data || {};
+  // 発表者ビュー自身（スライドを持たない）や起動前の窓に届いた命令は無視する
+  if (!slides.length) return;
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }

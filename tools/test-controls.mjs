@@ -157,7 +157,7 @@ for (const q of ['?mode=video', '?view=next', '?view=follow']) {
   await v.close();
 }
 
-const known = errs.filter((e) => /reading '_max'/.test(e));
+const known = [];   // 以前の既知の不具合（発表者ビューに届いた命令で _max を読む）は deck.js で直した
 errs.splice(0, errs.length, ...errs.filter((e) => !known.includes(e)));
 ok(errs.length === 0, 'コンソールのエラーなし' + (errs.length ? '：' + errs.join(' | ') : ''));
 await b.close();

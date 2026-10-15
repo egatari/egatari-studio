@@ -62,7 +62,7 @@
 | `steps="n"`（部品） | 部品の段階の数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.md#7-注目の演出mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。section に手で `data-key` を書けば、それを鍵に使う（`id` より優先） |
+| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。section に手で `data-key` を書けば、それを鍵に使う（`id` より優先）。[スライドの鍵](#スライドの鍵) |
 
 ### 数式
 
@@ -82,10 +82,27 @@
 
 | 書き方 | 意味 |
 |---|---|
-| `/*INCLUDE:ファイル*/` | ファイルの中身をそのまま入れる（原稿のフォルダ → `kit/` の順に探す） |
+| `/*INCLUDE:ファイル*/` | ファイルの中身をそのまま入れる（原稿のフォルダ → `kit/` の順に探す）。そのフォルダの外を指すもの（`../`、絶対パス、シンボリックリンク）は警告して読まず、空にする |
 | `{{FIG:名前}}` | `figs/名前.svg`（なければ原稿のフォルダの `名前.svg`）を埋め込む。id に `名前-` を前置し、width・height を外す |
 | `{{JSON:ファイル}}` | `data/`（なければ原稿のフォルダ）の JSON を詰めて入れる。部品の子の `<script type="application/json">` に置くと `this.data` で読める |
 | `<m-名前 …>` | 部品。`components/名前/index.js` を自動で読み込む |
+
+`{{FIG:…}}`・`{{JSON:…}}`・`narration.md`・`timeline.json`・`macros.tex`・`audio/manifest.json` の中のファイルも、（シンボリックリンクをたどった先が）原稿のフォルダの中にあるときだけ読む。外なら警告（`refused: …`）して飛ばす。
+
+### 素材（build で埋め込む）
+
+| 参照 | 埋め込み方 |
+|---|---|
+| `<img src>`、`<source src/srcset>`、`<img srcset>`、`<video src/poster>`、`<audio src>`、`<track src>`、SVG の `<image href>` | `data:` URI |
+| 原稿の `<style>` と `style=""` の中の `url(…)`・`@import` | `data:` URI／取り込む CSS の中身（リンクや @import した CSS の中の `url()` はその CSS からの相対） |
+| `<link rel="stylesheet" href="file.css">` | 中身を入れた `<style>` |
+| `<link rel="icon">` などほかの `<link>` のファイル、`<script src="file.js">` | `data:` URI／中身を入れた `<script>` |
+
+相対パスは原稿のフォルダから解決し、フォルダの外は読まない。`data:`・`blob:`・`#断片`・テンプレートの値（`${…}`、`{{…}}`）はそのまま。警告：`missing: …`（ファイルがない）、`refused: …`（原稿のフォルダの外）、`external: …`（素材の位置にある `http(s)` の参照。`<iframe>`・`<object>` を含む。そのまま残すので、オフラインでは出ない）。ふつうのリンク（`<a href>`）は触らない。`audio/manifest.json` の音声は `--embed-audio` のときだけ埋め込む。
+
+### スライドの鍵
+
+スライドごとに、デッキの中で重ならない鍵を 1 つ付ける：`data-key`、なければ `id`、なければ見出しを整えたもの、なければ `s<番号>`。明示の鍵（`data-key`／`id`）を文書の順に先に押さえる。明示の鍵が重なれば警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。見出しや番号から作る鍵は、明示の鍵とも既にある `#n` の鍵とも重ならないよう、次の空いた `#n` を付ける。決まった鍵は section の `data-key` に書く（手で書いた `data-key` も、変えたときは書き換える）。`narration.md` の見出し（`## 鍵`）はこの鍵を使う。
 
 ## 口述原稿（narration.md）
 
@@ -261,7 +278,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--dev` | 編集用の `data-src` を付け、字を絞らない（開発サーバーが使う） |
 | `--embed-audio` | 音声を AAC 64 kbps モノラルで埋め込む（ffmpeg が要る。なければ WAV のまま、警告）。なしでは出力からの相対パスで参照する |
 
-最後の行に、スライド・式・部品・字のファイル・口述原稿の段階・音声の段階・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`、圧縮した音声は `$TMPDIR/motion-slides-audio/`。
+最後の行に、スライド・式・部品・字のファイル・口述原稿の段階・音声の段階・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と口述原稿の文字列、使う部品の JS の文字列（日本語以外のデッキでは和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語のデッキではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
 ## TTS
 

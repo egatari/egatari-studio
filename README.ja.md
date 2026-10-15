@@ -18,7 +18,7 @@
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。部品はテーマの変数だけを使う
 - **検査**：`kit/check.mjs` がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と口述原稿を直し、Claude Code への指示を残せる
-- **出力**：単一の HTML（字と数式を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
+- **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
 **リファレンス**：選択肢・記法・キー・環境変数をすべて 1 ページに：[docs/reference.ja.md](docs/reference.ja.md)
 
@@ -47,6 +47,11 @@
 - [Node.js](https://nodejs.org/) 22 以上
 - Google Chrome：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` の channel `chrome`）。組むことと発表には、ファイルを開くブラウザがあればよい。Chrome がなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
 - あると良い：[uv](https://docs.astral.sh/uv/)。`sh tools/get-fonts.sh` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
+
+**ブラウザ**
+
+- 組んだ HTML の発表：Chrome/Edge 119 以上、Firefox 128 以上、Safari 18 以上（テーマが `--base` から淡色などを導くのに使う CSS の相対色の記法と `color-mix()` に対応しているもの）。それより古いブラウザでも表示はできるが、色はテーマの `--base` から導いたものではなく、既定のテーマから計算した固定の予備の色になる
+- PDF（`tools/pdf.mjs`）・動画（`render/`）・`kit/check.mjs`・テストは Google Chrome（または Playwright の Chromium）だけで作り、確かめている
 
 **段階 2（動画）**
 
@@ -184,6 +189,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | [`examples/minimal`](examples/minimal) | 日本語・6 枚（勾配降下法）。段階、KaTeX と `\hlE`、`{mark}`、`data-morph`、`m-sweep`、全段階の口述原稿。新しいデッキの雛形 |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。デッキ専用の部品（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `tml` |
 
+`examples/tmlr2026-calibration` の `voice.json` は TTS の既定の声を使う。公開しているこの見本の動画は、著者本人の参照音声で読み上げたもの（参照音声はリポジトリに含めていない）。
+
 `examples/minimal`：
 
 ![minimal の見本](docs/images/minimal-sheet.png)
@@ -216,6 +223,10 @@ node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
 ```
+
+## セキュリティ
+
+デッキはコードとして扱う：原稿のスクリプトと部品は、ブラウザと、検査器・書き出しが使う headless Chrome の中で動き、build は原稿のフォルダの中のローカルのファイルを読む。信頼できるデッキだけを組み、開発サーバーで開くこと。信頼の前提と脆弱性の報告のしかた：[SECURITY.md](SECURITY.md)。
 
 ## ライセンス
 

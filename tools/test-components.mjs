@@ -17,10 +17,17 @@ const names = args.length ? args : fs.readdirSync(path.join(ROOT, 'components'))
 
 const b = await launch();
 let fail = 0;
+const failed = [];   // [名前, 理由]
 for (const name of names) {
   const dir = path.join(ROOT, 'components', name);
   const out = path.join(dir, 'out', 'demo.html');
-  execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'demo.html'), '-o', out], { stdio: 'pipe' });
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'demo.html'), '-o', out], { stdio: 'pipe' });
+  } catch (e) {
+    fail++; failed.push([name, 'build failed: ' + String(e.stderr || e.message).trim().split('\n')[0]]);
+    console.log(`== ${name}: BUILD FAILED\n${String(e.stderr || e.message).trim()}`);
+    continue;
+  }
   const shots = shotsRoot ? path.join(shotsRoot, name) : path.join(dir, 'out', 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -32,6 +39,20 @@ for (const name of names) {
     await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
     await p.evaluate(() => document.fonts.ready);
   };
+  // 撮る前に字と描画が落ち着くのを待つ（docs/contract.md §1：seek の後に requestAnimationFrame を 2 回）
+  const settle = () => p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+  // はっきり違う画素（RGB の差の和が 48 を超える）の数
+  const pixelDiff = (a, b) => p.evaluate(async ([a, b]) => {
+    const ld = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });
+    const [ia, ib] = await Promise.all([ld(a), ld(b)]);
+    const c = document.createElement('canvas'); c.width = ia.width; c.height = ia.height;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(ia, 0, 0); const da = g.getImageData(0, 0, c.width, c.height).data;
+    g.clearRect(0, 0, c.width, c.height); g.drawImage(ib, 0, 0); const db = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < da.length; i += 4) if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 48) n++;
+    return n;
+  }, [a.toString('base64'), b.toString('base64')]);
   const seek = (i, k, t) => p.evaluate(([i, k, t]) => DECK.seek(i, k, t === null ? Infinity : t), [i, k, t]);
   await load();
   // 部品のあるスライドと、各段階の動きの長さ
@@ -77,16 +98,27 @@ for (const name of names) {
     for (let k = 1; k <= s.max; k++) {
       await load();
       await seek(s.i, k, 0.5);
+      await settle();
       const A = await p.screenshot();
       await seek(s.i, s.max, null); await seek(s.i, 0, null); await seek(s.i, k, 1.7); await seek(s.i, Math.min(s.max, k + 1), 0.3);
       await seek(s.i, k, 0.5);
-      const B = await p.screenshot();
-      const ok = A.equals(B);
+      await settle();
+      let B = await p.screenshot();
+      if (!A.equals(B)) { await settle(); B = await p.screenshot(); }   // 描画の遅れによる誤検出を避ける
+      // アンチエイリアスの揺らぎ（数画素・数階調）は許す（kit/check.mjs の D と同じ基準）
+      const nd = A.equals(B) ? 0 : await pixelDiff(A, B);
+      const ok = nd <= 40;
+      if (nd && ok) console.log(`   note s${s.i}k${k}: ${nd} pixel(s) differ beyond tolerance 0 (within 40, ok)`);
       det.push(`s${s.i}k${k}:${ok ? 'ok' : 'DIFF'}`);
-      if (!ok) { fail++; fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_A.png`), A); fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_B.png`), B); }
+      if (!ok) { fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_A.png`), A); fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_B.png`), B); }
     }
   }
-  if (errs.length) fail++;
+  const why = [];
+  if (errs.length) why.push(`${errs.length} console/page error(s)`);
+  if (issues.length) why.push(`${new Set(issues).size} layout issue(s) (text size / outside slide / overlap)`);
+  const nd = det.filter((x) => x.endsWith('DIFF')).length;
+  if (nd) why.push(`${nd} determinism failure(s)`);
+  if (why.length) { fail++; failed.push([name, why.join(', ')]); }
   console.log(`== ${name}: slides ${plan.map((s) => `${s.i}(max ${s.max}, anim ${s.anim.map((x) => x.toFixed(2)).join('/')})`).join(' ')}`);
   plan.forEach((s) => s.cues.forEach((c, j) => { if (c.some(Boolean)) console.log(`   cues s${s.i} comp${j}: ${JSON.stringify(c)}`); }));
   console.log(`   determinism: ${det.join(' ')}`);
@@ -96,4 +128,9 @@ for (const name of names) {
   await p.close();
 }
 await b.close();
+console.log('');
+if (fail) {
+  console.log(`FAIL: ${fail} of ${names.length} component(s)`);
+  for (const [n, w] of failed) console.log(`  - ${n}: ${w}`);
+} else console.log(`OK: ${names.length} component(s)`);
 process.exit(fail ? 1 : 0);
