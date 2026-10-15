@@ -1,6 +1,7 @@
 # 動画にする（TTS → 書き出し → canon）
 
 デッキ（`deck.html` + `narration.md`）から、段階ごとの動画と canon 向けの教材バンドルを作る。約束事は `docs/contract.md` §4–6。
+TTS・書き出しの選択肢と環境変数の一覧は [reference.ja.md](reference.ja.md#tts)。
 
 canon は TML 研究室の講義配信システム。出力は Marp 形式の md とコマごとの mp4/png という形式なので、同じ形式を受け付けるほかのシステムにも使える。
 

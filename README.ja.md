@@ -20,6 +20,8 @@
 - **開発サーバー**：ブラウザの上で文言と口述原稿を直し、Claude Code への指示を残せる
 - **出力**：単一の HTML（字と数式を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
+**リファレンス**：選択肢・記法・キー・環境変数をすべて 1 ページに：[docs/reference.ja.md](docs/reference.ja.md)
+
 | 注目の演出 | モーフ（前・途中・後） |
 |---|---|
 | ![注目の演出](docs/images/mark.png) | ![モーフ](docs/images/morph.png) |
@@ -149,9 +151,11 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 | b | 暗転 |
 | o | スライド一覧（矢印で選んで Enter） |
 | x / d / v | レーザー / ペン / 消えるペン。Shift+d でペンの色 |
-| Backspace（Shift+Backspace） | このスライドの書き込みを消す（全部消す） |
+| Backspace（Shift+Backspace） | ペンを使っている間：このスライドの書き込みを消す（全部消す） |
 | Esc | 道具を解除 |
 | ? | キーの一覧 |
+
+すべてのキー（Home/End、PageUp/PageDown、発表者ビューのキー）と URL の引数は [docs/reference.ja.md#発表](docs/reference.ja.md#発表)。
 
 マウスを動かすと、同じ操作のボタンを並べた帯が出る（2.5 秒止まると隠れる）。ペンの線はスライドごとに残り、印刷と動画には出ない。
 
@@ -193,6 +197,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | 場所 | 中身 |
 |---|---|
 | `docs/contract.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む** |
+| `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
 | `themes/` | テーマ |

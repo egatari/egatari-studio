@@ -230,7 +230,7 @@ export function build(srcPath, opts = {}) {
   // 式の一部に色を付けるマクロ（テーマの変数に従う）：\hlE{…} 結論・問題、\hlT{…} 用語、\hlM{…} 既知の結果
   let macros = { '\\hlE': '\\htmlClass{emph}{#1}', '\\hlT': '\\htmlClass{term}{#1}', '\\hlM': '\\htmlClass{muted}{#1}' };
   const mfile = path.join(deckDir, 'macros.tex');
-  if (fs.existsSync(mfile)) macros = readMacros(fs.readFileSync(mfile, 'utf8'));
+  if (fs.existsSync(mfile)) Object.assign(macros, readMacros(fs.readFileSync(mfile, 'utf8')));   // 既定のマクロに足す（同じ名前は macros.tex が優先）
   // モーフの対応（docs/contract.md §8）：\morph{ID}{…} の部分は、前のスライドの同じ ID の部分から滑ってくる
   macros['\\morph'] ??= '\\htmlData{id=#1}{#2}';
   for (const s of html.match(/<script type="text\/x-tex-macros">([\s\S]*?)<\/script>/g) || []) Object.assign(macros, readMacros(s));

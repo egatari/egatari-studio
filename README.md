@@ -20,6 +20,8 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Dev server**: edit text and narration in the browser, leave comments for Claude Code
 - **Output**: one self-contained HTML file (fonts and math embedded, works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
+**Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
+
 | Marks | Morph (before / during / after) |
 |---|---|
 | ![mark](docs/images/mark.png) | ![morph](docs/images/morph.png) |
@@ -149,9 +151,11 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 | b | black screen |
 | o | slide overview (arrows + Enter) |
 | x / d / v | laser / pen / fading pen; Shift+d changes the pen color |
-| Backspace (Shift+Backspace) | clear the drawings on this slide (on all slides) |
+| Backspace (Shift+Backspace) | while a pen is active: clear the drawings on this slide (on all slides) |
 | Esc | leave the current tool |
 | ? | list of keys |
+
+All keys (Home/End, PageUp/PageDown, presenter-view keys) and URL parameters: [docs/reference.md#presenting](docs/reference.md#presenting).
 
 Moving the mouse shows a control bar with the same actions. It hides after 2.5 s. Drawings are kept per slide and never appear in print or video.
 
@@ -193,6 +197,7 @@ A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `defaul
 | Path | Contents |
 |---|---|
 | `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** |
+| `docs/reference.md` | reference: deck syntax, narration, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
 | `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher |
 | `components/` | animated figure components; catalog in `components/CATALOG.md` |
 | `themes/` | themes |
