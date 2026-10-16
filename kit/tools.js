@@ -105,7 +105,7 @@ css(
   "#dt-laser.show{opacity:1;transition:opacity .08s}" +
   "#dt-ind{position:fixed;left:12px;bottom:12px;z-index:30;display:none;align-items:center;gap:7px;padding:3px 10px 3px 8px;border-radius:999px;" +
   " background:rgba(20,20,20,.62);color:#fff;font:12.5px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;pointer-events:none;opacity:.85}" +
-  "#dt-ind.on{display:flex}#dt-ind i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.75)}#dt-ind small{opacity:.6;font-size:11px}" +
+  "#dt-ind.on{display:flex}#dt-ind i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px #fff}#dt-ind small{opacity:.6;font-size:11px}" +
   "#dt-ov{position:fixed;inset:0;z-index:40;overflow:auto;background:#161618;padding:28px 32px 40px}" +
   "#dt-ov .dt-head,#dt-ov .dt-cap{font:14px/1.4 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;color:#ddd}" +
   "#dt-ov .dt-head{display:flex;gap:16px;align-items:baseline;margin:0 0 18px;color:#aaa;font-size:13px}#dt-ov .dt-head b{color:#fff;font-size:16px}" +
@@ -134,9 +134,9 @@ css(
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
   // ペンのボタンの今の色（右上の点）と、ペンの間だけ出る色のボタン（赤・青・黒）
-  "#dt-cb .dt-dot{position:absolute;right:4px;top:4px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.8)}" +
+  "#dt-cb .dt-dot{position:absolute;right:4px;top:4px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px #fff}" +
   "#dt-cb .dt-sw{display:flex;align-items:center;gap:1px;margin:0 2px}#dt-cb .dt-sw[hidden]{display:none}" +
-  "#dt-cb .dt-sw button{width:24px}#dt-cb .dt-sw i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}" +
+  "#dt-cb .dt-sw button{width:24px}#dt-cb .dt-sw i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 2px #fff}" +
   "#dt-cb .dt-sw button[aria-pressed=true]{background:rgba(255,255,255,.2)}#dt-cb .dt-sw button[aria-pressed=true] i{box-shadow:0 0 0 2px #fff,0 0 0 4px rgba(255,255,255,.35)}" +
   // キーの一覧（?）
   "#dt-help{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.32);padding:16px}" +

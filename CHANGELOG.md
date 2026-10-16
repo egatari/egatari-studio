@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
+The editor app (no install), accessibility and captions, and `npm run new`.
+
 ### Added
+
 - Editor app (no install): `npm run build:app` builds `dist/editor/` and a single-file `dist/editor.html`. Open a deck folder in Chrome/Edge (drag and drop or folder picker), edit text and narration, leave comments for Claude Code, export a single HTML, print to PDF — no Node or dev server needed
 - `kit/core/`: the build and narration parsing no longer depend on Node, so the CLI and the app share them
 
@@ -24,6 +29,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Captions while presenting by hand show one sentence group (about two lines, at most three) at a time and advance at reading speed (ja 7, en 15 characters/s), restarting at every step change, instead of stacking the whole step over the slide. Video mode (`?mode=video&captions=1`) is unchanged
 - The Japanese docs moved to `docs/contract.ja.md`, `docs/dev-server.ja.md` and `docs/video.ja.md`, following the scheme of `docs/reference.md` / `docs/reference.ja.md` (English = `.md`, Japanese = `.ja.md`). All links in the repository were updated
 - On a Mac, the help screen, the dev-server badge and the docs label the comment shortcut as ⌥ option + click instead of Alt + click
+
+### Fixed
+
+- The Black pen swatch and color dots now have a solid white ring, so they stay visible on the dark control bar and in the presenter view
 
 ## [0.1.0] - 2026-10-16
 
@@ -48,5 +57,6 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/moiku/motion-academic-slides/releases/tag/v0.1.0

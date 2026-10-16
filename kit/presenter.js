@@ -69,9 +69,9 @@ DECK.presenterView = function(){
     "#pv .pv-tools button{display:flex;align-items:center;gap:5px;padding:0 9px;user-select:none}" +
     "#pv .pv-tools button:hover{background:#3d3d3d}#pv .pv-tools button.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
     "#pv .pv-tools svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}" +
-    "#pv .pv-tools button{position:relative}#pv .pv-dot{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px #ddd}" +
+    "#pv .pv-tools button{position:relative}#pv .pv-dot{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px #fff}" +
     "#pv .pv-sw{display:flex;gap:3px}#pv .pv-sw[hidden]{display:none}#pv .pv-sw button{padding:0 7px}" +
-    "#pv .pv-sw i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1.5px #bbb}#pv .pv-sw button[aria-pressed=true]{background:#555;border-color:#ddd}" +
+    "#pv .pv-sw i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 2px #fff}#pv .pv-sw button[aria-pressed=true]{background:#555;border-color:#ddd}" +
     "#pv .pv-sw button[aria-pressed=true] i{box-shadow:0 0 0 2px #fff}" +
     "#pv .pv-tools kbd{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv-auto.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +

@@ -219,7 +219,7 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 
 Buttons: previous, next, autoplay/stop, laser, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, lecture, captions, presenter view, fullscreen, help. Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
-The `?` help ends with a **Send feedback** link and the version (`v0.1.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
+The `?` help ends with a **Send feedback** link and the version (for example `v0.2.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
 
 ### Captions
 
