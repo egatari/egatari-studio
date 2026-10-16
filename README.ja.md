@@ -46,7 +46,7 @@
 
 - [Node.js](https://nodejs.org/) 22 以上
 - Google Chrome：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` の channel `chrome`）。組むことと発表には、ファイルを開くブラウザがあればよい。Chrome がなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
-- あると良い：[uv](https://docs.astral.sh/uv/)。`sh tools/get-fonts.sh` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
+- あると良い：[uv](https://docs.astral.sh/uv/)。`node tools/get-fonts.mjs` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
 
 **ブラウザ**
 
@@ -66,7 +66,7 @@
 git clone https://github.com/moiku/motion-academic-slides.git
 cd motion-academic-slides
 npm ci
-sh tools/get-fonts.sh                               # 任意：埋め込む字を小さくする（curl が要る。build で uv を使う）
+node tools/get-fonts.mjs                            # 任意：埋め込む字を小さくする（build で uv を使う）
 
 node kit/build.mjs examples/minimal/deck.html       # → examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS。ほかの OS ではファイルをブラウザで開く
@@ -240,7 +240,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/editor/` と `dist/editor.html` を作る |
 | `tts/` `render/` | 段階 2：TTS（uv のプロジェクト）、動画の書き出し、バンドルの出力 |
 | `skills/` | Claude Code のスキル |
-| `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.sh`） |
+| `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
 | `CHANGELOG.md` | 版ごとの変更（英語） |
 
 テスト（Chrome が要る）：

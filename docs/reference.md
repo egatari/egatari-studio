@@ -362,7 +362,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new deck folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run build:app` | build the editor app: `dist/editor/` (for GitHub Pages) and the single file `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
-| `sh tools/get-fonts.sh` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |
+| `node tools/get-fonts.mjs` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
 | `node tools/catalog.mjs` | regenerate `components/CATALOG.md` |

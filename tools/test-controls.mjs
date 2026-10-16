@@ -5,7 +5,8 @@
 import { launch, fileUrl } from '../kit/browser.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
-const [file, outdir = '/tmp/test-controls'] = process.argv.slice(2);
+import os from 'node:os';
+const [file, outdir = path.join(os.tmpdir(), 'test-controls')] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-controls.mjs <built.html> [outdir]'); process.exit(2); }
 fs.mkdirSync(outdir, { recursive: true });
 const url = fileUrl(file);

@@ -46,7 +46,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 
 - [Node.js](https://nodejs.org/) 22 or newer
 - Google Chrome for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`, channel `chrome`). Building and presenting only need a browser to open the file. Without Chrome, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
-- Optional: [uv](https://docs.astral.sh/uv/). After `sh tools/get-fonts.sh` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
 
 **Browsers**
 
@@ -66,7 +66,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 git clone https://github.com/moiku/motion-academic-slides.git
 cd motion-academic-slides
 npm ci
-sh tools/get-fonts.sh                               # optional: smaller font embedding (needs curl; uses uv at build time)
+node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
 
 node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
@@ -240,7 +240,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `app/` | editor app (no install): sources; `npm run build:app` makes `dist/editor/` and `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
 | `skills/` | Claude Code skills |
-| `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
+| `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |
 
 Tests (need Chrome):

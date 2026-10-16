@@ -48,6 +48,33 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TEMP: ${{ runner.temp }}
+      TMP: ${{ runner.temp }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm test
+        run: npm test
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-artifacts-windows
+          path: |
+            ${{ runner.temp }}/motion-test-*
+            components/*/out/shots/det_fail_*
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
   tier2:
     runs-on: ubuntu-latest
