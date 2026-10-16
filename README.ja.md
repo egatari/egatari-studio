@@ -112,7 +112,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 開発サーバーと同じ編集を、デッキのフォルダを直接開くウェブページでできる。Node もターミナルも要らない。**パソコンの Google Chrome か Microsoft Edge** が要る（File System Access API を使う。Safari と Firefox にはない）。
 
-- **開く：** リポジトリで GitHub Pages を有効にすれば `https://moiku.github.io/motion-academic-slides/editor/`（[docs/editor.ja.md](docs/editor.ja.md#github-pages-で配る)）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
+- **開く：** Chrome か Edge で **<https://moiku.github.io/motion-academic-slides/editor/>** を開く（インストール不要）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
 - **デッキを開く：** デッキのフォルダ（`deck.html` の入ったもの）を画面に落とすか「フォルダを開く」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いたフォルダは最初の画面に並ぶ
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで Claude への指示（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **Claude Code と一緒に：** ほかのもの（Claude Code・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・段階のまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す

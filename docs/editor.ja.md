@@ -11,7 +11,7 @@
 
 | 形 | 開き方 | 備考 |
 |---|---|---|
-| 配信 | `https://moiku.github.io/motion-academic-slides/editor/` | GitHub Pages を有効にしてから（[GitHub Pages で配る](#github-pages-で配る)）。字はデッキが使う分だけ読む |
+| 配信 | <https://moiku.github.io/motion-academic-slides/editor/> | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む |
 | 1 ファイル | `npm run build:app` のあと `dist/editor.html` をダブルクリック | 約 10 MB（字を全部入れてある）。Chrome・Edge なら `file://` で動く。このファイルを人に渡してもよい |
 | 自分のサーバー | `npm run build:app` のあと `dist/editor/` を静的に配る | どこでもよい（https か `http://localhost`） |
 

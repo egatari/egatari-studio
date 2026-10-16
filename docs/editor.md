@@ -11,7 +11,7 @@ A web page that opens a deck folder directly and does what the [dev server](dev-
 
 | Form | How | Notes |
 |---|---|---|
-| Hosted | `https://moiku.github.io/motion-academic-slides/editor/` | Only after GitHub Pages is turned on (see [Publishing on GitHub Pages](#publishing-on-github-pages)). Loads only the font files a deck needs |
+| Hosted | <https://moiku.github.io/motion-academic-slides/editor/> | Published from `main` by `.github/workflows/pages.yml`. Loads only the font files a deck needs |
 | One file | `npm run build:app`, then double-click `dist/editor.html` | About 10 MB: all font files are inside. Works from `file://` in Chrome and Edge; you can copy the file to anyone |
 | Your own server | `npm run build:app`, then serve `dist/editor/` as static files | Any static host (https, or `http://localhost`) |
 

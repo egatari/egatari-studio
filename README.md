@@ -112,7 +112,7 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 
 The same editing as the dev server, as a web page that opens a deck folder directly. Nothing to install: no Node, no terminal. It needs **Google Chrome or Microsoft Edge on a computer** (it uses the File System Access API, which Safari and Firefox do not have).
 
-- **Open the editor:** `https://moiku.github.io/motion-academic-slides/editor/` once GitHub Pages is turned on for the repository (see [docs/editor.md](docs/editor.md#publishing-on-github-pages)), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
+- **Open the editor:** **<https://moiku.github.io/motion-academic-slides/editor/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
 - **Open a deck:** drop the deck folder (the one with `deck.html`) on the page, or press 「フォルダを開く」 / "Open folder", and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent folders are listed on the first screen.
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Work with Claude Code:** when anything else changes the files (Claude Code, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
