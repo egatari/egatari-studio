@@ -45,13 +45,24 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 **Tier 1 (slides)**
 
 - [Node.js](https://nodejs.org/) 22 or newer
-- Google Chrome for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`, channel `chrome`). Building and presenting only need a browser to open the file. Without Chrome, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
+- Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
 - Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+
+**Windows**
+
+A fresh Windows has neither Node.js nor Git. In PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
+winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
+```
+
+Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). The TTS server (mlx-audio) needs a Mac with Apple silicon; from Windows, set `IRODORI_URL` to a Mac on your network.
 
 **Browsers**
 
 - Presenting the built HTML: Chrome/Edge 119+, Firefox 128+ or Safari 18+ (these support the CSS relative color syntax and `color-mix()` that themes use to derive tints from `--base`). Older browsers still show the deck, with fixed fallback colors taken from the default theme instead of colors derived from the theme's `--base`
-- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only
+- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only; Edge uses the same engine
 
 **Tier 2 (video)**
 

@@ -379,7 +379,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 | 変数 | 使うもの | 意味 | 既定 |
 |---|---|---|---|
-| `CHROME_PATH` | 検査・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Playwright の Chromium |
+| `CHROME_PATH` | 検査・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
 | `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |

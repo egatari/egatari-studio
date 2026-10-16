@@ -45,13 +45,24 @@
 **段階 1（スライド）**
 
 - [Node.js](https://nodejs.org/) 22 以上
-- Google Chrome：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` の channel `chrome`）。組むことと発表には、ファイルを開くブラウザがあればよい。Chrome がなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
+- Google Chrome か Microsoft Edge：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` で Chrome、なければ Edge を探す）。組むことと発表には、ファイルを開くブラウザがあればよい。どちらもなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
 - あると良い：[uv](https://docs.astral.sh/uv/)。`node tools/get-fonts.mjs` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
+
+**Windows**
+
+入れたばかりの Windows には Node.js も Git もない。PowerShell で：
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git     # 入れたら端末を開き直す
+winget install astral-sh.uv Gyan.FFmpeg      # 任意：uv（字を小さくする）・ffmpeg（動画）
+```
+
+Edge は最初からあるので、Chrome がなくても検査と PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。TTS のサーバー（mlx-audio）は Apple silicon の Mac が要る。Windows からは `IRODORI_URL` を同じネットワークの Mac に向ける。
 
 **ブラウザ**
 
 - 組んだ HTML の発表：Chrome/Edge 119 以上、Firefox 128 以上、Safari 18 以上（テーマが `--base` から淡色などを導くのに使う CSS の相対色の記法と `color-mix()` に対応しているもの）。それより古いブラウザでも表示はできるが、色はテーマの `--base` から導いたものではなく、既定のテーマから計算した固定の予備の色になる
-- PDF（`tools/pdf.mjs`）・動画（`render/`）・`kit/check.mjs`・テストは Google Chrome（または Playwright の Chromium）だけで作り、確かめている
+- PDF（`tools/pdf.mjs`）・動画（`render/`）・`kit/check.mjs`・テストは Google Chrome（または Playwright の Chromium）だけで作り、確かめている（Edge も同じエンジン）
 
 **段階 2（動画）**
 

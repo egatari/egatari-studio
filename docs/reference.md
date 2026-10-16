@@ -379,7 +379,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 
 | Variable | Used by | Meaning | Default |
 |---|---|---|---|
-| `CHROME_PATH` | check, pdf, shot, render, tests | browser executable | Google Chrome, then Playwright's Chromium |
+| `CHROME_PATH` | check, pdf, shot, render, tests | browser executable | Google Chrome, then Microsoft Edge, then Playwright's Chromium |
 | `IRODORI_URL` | TTS | OpenAI-compatible speech server | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | reference voice folder (`--ref-dir` wins) | `tts/voices/` |
 | `MOTION_YOMI` | TTS | reading dictionary (`--yomi` wins) | `tts/yomi.yaml` |
