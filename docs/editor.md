@@ -77,3 +77,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 ## Tests
 
 `node tools/test-app.mjs [work folder] [--shots folder]` (part of `npm test`) builds the editor into the work folder, serves it on 127.0.0.1, creates deck folders in the browser's origin-private file system (OPFS) and opens them through `window.__APP_TEST_OPEN(handle)`. It checks the byte-identical builds, editing, the narration drawer, comments, outside changes, build errors, quick check, export, presenter view, the English UI and the single file from `file://`, and that there are no console errors.
+
+## Language
+
+The editor follows your browser language (Japanese or English). Switch with the **English / 日本語** button at the top right, or open `…/editor/?lang=en` or `?lang=ja`. The choice is remembered; switching while a deck is open reopens the same folder. The editing tools inside the slide (edit mode, narration drawer) follow the deck's own language (`<html lang>`).

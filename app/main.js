@@ -7,7 +7,7 @@ import { createEngine, bytesToBase64 } from './engine.js';
 import { createDevApi } from './devapi.js';
 import { walk, writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
-import { T, EN, applyTexts } from './i18n.js';
+import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
@@ -378,4 +378,25 @@ window.__APP_TEST = {
   rebuild: () => rebuild('test'),
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);
-showWelcome();
+
+// ---------------------------------------------------------------- 言葉の切り替え（English / 日本語）
+// ページを ?lang= 付きで読み直す。デッキを開いていたら、読み直した後に同じフォルダを開き直す
+const langBtn = $('b-lang');
+langBtn.textContent = EN ? '日本語' : 'English';
+langBtn.setAttribute('lang', EN ? 'ja' : 'en');
+langBtn.setAttribute('aria-label', EN ? '日本語に切り替える' : 'Switch to English');
+langBtn.onclick = () => {
+  const to = EN ? 'ja' : 'en';
+  try { localStorage.setItem(LANG_KEY, to); } catch { /* 使えない環境 */ }
+  try { if (S.root) sessionStorage.setItem('motion-editor-reopen', '1'); } catch { /* 使えない環境 */ }
+  const u = new URL(location.href); u.searchParams.set('lang', to); location.href = u.href;
+};
+(async () => {
+  let reopen = false;
+  try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }
+  if (reopen) {
+    const r = (await recentList())[0];
+    if (r && (await hasPermission(r.handle).catch(() => false))) { openFolder(r.handle); return; }
+  }
+  showWelcome();
+})();

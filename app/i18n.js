@@ -1,5 +1,13 @@
-// 画面の言葉（ブラウザの言語が日本語なら日本語、それ以外は英語）
-export const EN = !/^ja\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ja');
+// 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
+export const LANG_KEY = 'motion-editor-lang';
+function pickLang() {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'ja' || q === 'en') return q;
+  try { const s = localStorage.getItem(LANG_KEY); if (s === 'ja' || s === 'en') return s; } catch { /* 使えない環境 */ }
+  return /^ja\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ja') ? 'ja' : 'en';
+}
+export const EN = pickLang() === 'en';
+document.documentElement.lang = EN ? 'en' : 'ja';
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
