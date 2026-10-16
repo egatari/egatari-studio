@@ -52,9 +52,6 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      TEMP: ${{ runner.temp }}
-      TMP: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -63,6 +60,9 @@ jobs:
           cache: npm
       - run: npm ci
       - name: npm test
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
         run: npm test
       - name: Upload screenshots on failure
         if: failure()
