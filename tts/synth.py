@@ -111,7 +111,7 @@ def narration_json(narr: Path, voice: dict) -> list[dict]:
         sys.exit("node が見つかりません（tools/narration-json.mjs を動かすのに要ります）")
     out = subprocess.run(
         [node, str(REPO / "tools/narration-json.mjs"), str(narr), "--voice", json.dumps(voice, ensure_ascii=False)],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8")
     if out.returncode != 0:
         sys.exit(f"narration-json.mjs が失敗しました:\n{out.stderr}")
     data = json.loads(out.stdout)
@@ -350,4 +350,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows の端末やパイプでも日本語の表示で落ちないように
+    for _s in (sys.stdout, sys.stderr):
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     main()

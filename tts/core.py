@@ -126,7 +126,7 @@ def normalize_level(path: Path):
     probe = subprocess.run(
         ["ffmpeg", "-v", "info", "-i", str(path), "-af",
          f"loudnorm=I={TARGET_LUFS}:TP={TARGET_TP_DB}:LRA={TARGET_LRA}:print_format=json",
-         "-f", "null", "-"], capture_output=True, text=True).stderr
+         "-f", "null", "-"], capture_output=True, text=True, encoding="utf-8", errors="replace").stderr
     m = re.search(r"\{[^{}]*input_i[^{}]*\}", probe, re.DOTALL)
     if not m:
         return
@@ -203,6 +203,6 @@ def media_duration(path: Path) -> float:
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", check=True,
     )
     return float(result.stdout.strip())
