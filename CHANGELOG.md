@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Editor app (no install): `npm run build:app` builds `dist/editor/` and a single-file `dist/editor.html`. Open a deck folder in Chrome/Edge (drag and drop or folder picker), edit text and narration, leave comments for Claude Code, export a single HTML, print to PDF — no Node or dev server needed
+- `kit/core/`: the build and narration parsing no longer depend on Node, so the CLI and the app share them
 
 - `npm run new -- <folder> [--lang en|ja] [--theme name] [--title "…"]` (`tools/new.mjs`): creates a new deck from a clean template (a cover and sample slides for steps, math with an attention mark, and a component, with narration for every step). It refuses to write into a folder that is not empty and prints the next steps. `npm test` now builds and checks the Japanese and English templates
 - English versions of the contract, the dev-server guide and the video guide (`docs/contract.md`, `docs/dev-server.md`, `docs/video.md`)

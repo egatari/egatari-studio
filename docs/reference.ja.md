@@ -360,6 +360,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | コマンド | 用途 |
 |---|---|
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいな雛形から新しいデッキのフォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
+| `npm run build:app` | 編集アプリを作る：`dist/editor/`（GitHub Pages 用）と 1 ファイルの `dist/editor.html`。[editor.ja.md](editor.ja.md) |
+| `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `sh tools/get-fonts.sh` | BIZ UDPゴシックの TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
