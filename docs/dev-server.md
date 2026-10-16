@@ -5,6 +5,7 @@ English | [日本語](dev-server.ja.md)
 A small server for fixing the text and the narration in the browser, and for leaving instructions for Claude, without opening the HTML source by hand.
 The list of options, endpoints and keys is in [reference.md#dev-server](reference.md#dev-server).
 You do not need VS Code. It listens on 127.0.0.1 only.
+To do the same without Node, use the [editor app](editor.md) (Chrome / Edge).
 
 ## Starting
 

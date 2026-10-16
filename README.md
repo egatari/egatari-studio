@@ -108,6 +108,22 @@ The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by 
 
 Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.ja.md)).
 
+## Editor app (no install)
+
+The same editing as the dev server, as a web page that opens a deck folder directly. Nothing to install: no Node, no terminal. It needs **Google Chrome or Microsoft Edge on a computer** (it uses the File System Access API, which Safari and Firefox do not have).
+
+- **Open the editor:** `https://moiku.github.io/motion-academic-slides/editor/` once GitHub Pages is turned on for the repository (see [docs/editor.md](docs/editor.md#publishing-on-github-pages)), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
+- **Open a deck:** drop the deck folder (the one with `deck.html`) on the page, or press 「フォルダを開く」 / "Open folder", and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent folders are listed on the first screen.
+- **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
+- **Work with Claude Code:** when anything else changes the files (Claude Code, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
+- **Toolbar:** quick check, export as a single HTML file, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
+
+Limits: narration audio (TTS), video, `npm run check` (the full check) and `tools/pdf.mjs` stay on the command line, and audio in the folder is not played. The quick check is a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository components and themes are the ones bundled when the editor was built; components and themes inside the deck folder are read from the folder.
+
+![editor app](docs/images/editor-app.png)
+
+Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
+
 ## Using it with Claude Code
 
 Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
@@ -214,12 +230,13 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | Path | Contents |
 |---|---|
 | `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** ([日本語](docs/contract.ja.md)) |
-| `docs/dev-server.md`, `docs/video.md` | guides: the dev server, and making a video ([日本語](docs/dev-server.ja.md), [日本語](docs/video.ja.md)) |
+| `docs/dev-server.md`, `docs/editor.md`, `docs/video.md` | guides: the dev server, the editor app, and making a video ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md)) |
 | `docs/reference.md` | reference: deck syntax, narration, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
-| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher |
+| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-deck template |
 | `components/` | animated figure components; catalog in `components/CATALOG.md` |
 | `themes/` | themes |
 | `server/` | dev server and in-browser editor |
+| `app/` | editor app (no install): sources; `npm run build:app` makes `dist/editor/` and `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
 | `skills/` | Claude Code skills |
 | `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
@@ -234,6 +251,7 @@ node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
+node tools/test-app.mjs                                            # editor app (builds dist/editor in a temp folder)
 ```
 
 ## Feedback & contributing

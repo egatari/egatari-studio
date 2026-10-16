@@ -9,6 +9,7 @@
 - 色は直接書かない。テーマの変数（`--term` `--emph` `--muted` `--fg` `--accent2` `--line` `--series-*`）だけを使う
 - 機関に依存するもの（基調色・ロゴ）は `themes/<名前>/` の中だけに置く（将来、中立テーマだけの汎用版を公開できるように）
 - スライドだけの使い方（build・check・開発サーバー・PDF）は TTS なしで完結させる。`kit/` `server/` から `tts/` `render/` を読み込まない。`audio/` や `voice.json` がなくても動くこと
+- 組み立ての本体は `kit/core/`（`build-core.mjs` `narration-core.mjs`）で、Node とブラウザの編集アプリ（`app/`）が共有する。ここでは `node:` の読み込み・`fs`・`process` を使わない（読み書きは渡された env を通す）。`kit/build.mjs` を変えたら、字の絞り込みを切った出力が編集アプリと同じか `node tools/test-app.mjs` で確かめる
 - ブラウザは `kit/browser.mjs` の `launch()` で起動する（`CHROME_PATH` → Chrome → Playwright の Chromium の順）
 - TTS は `tts/` の中で完結させる（`uv run --project tts python tts/synth.py`）。外のリポジトリに依存しない。設定は環境変数（`IRODORI_URL` `IRODORI_REF_DIR` `MOTION_YOMI`）と CLI で、個人のパスやアドレスをリポジトリに書かない
 - `tts/core.py`（合成・無音除去・音量・結合）と `tts/yomi.py`（読み辞書の規則）を変えると音声が変わる。yomi.py は digest に入るので、変えると全段階が作り直しになる

@@ -13,3 +13,5 @@ tts/voices
 comments.json
 .env*
 *.local.json
+# editor app build (npm run build:app)
+dist/

@@ -1,30 +1,78 @@
-// 開発サーバーの編集用の画面（server/dev.mjs が </body> の前に入れる）
+// 編集用の画面。開発サーバー（server/dev.mjs が </body> の前に入れる）と編集アプリ（app/、デッキの iframe に入れる）が共有する
 // e：編集モード（ダブルクリックで原稿を直す）、n：口述原稿の引き出し、c：コメントの一覧、Alt+クリック：Claude への指示
 // 部品はすべて class="edit-ui" で #stage の外に置く（印刷では base.css が隠す）
+// やり取りは「運び手」（transport）を通す。window.__DECK_DEV_TRANSPORT があればそれ（編集アプリ：postMessage で親の画面へ）、
+// なければ開発サーバー（fetch・Server-Sent Events・location.reload・sessionStorage）。運び手が持つもの：
+//   api(method, url, body) → Promise<{…, _status}>   url は /__dev/source?range=… などの開発サーバーと同じ形
+//   listen(onReload)          原稿が組み直されたら onReload() を呼ぶ
+//   reload()                  画面を読み込み直す
+//   store(k, v)               位置と開いている引き出しの記録（v を省けば読む、null で消す。読み込み直しても残る）
+// 画面の言葉はデッキの言語（DECK.ja、<html lang>）に合わせる
 (function(){
 "use strict";
 var Q = new URLSearchParams(location.search);
 var POS_KEY = "dev-pos:" + location.pathname + location.search;
 var UI_KEY = "dev-ui";
 var TOKEN = window.__DECK_DEV_TOKEN || "";      // dev.mjs が画面に埋め込む合言葉。/__dev/ への問い合わせには必ず付ける
-function ss(k, v){ try { if (v === undefined) return JSON.parse(sessionStorage.getItem(k) || "null"); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+var T = window.__DECK_DEV_TRANSPORT || {
+  api: function(method, url, body){
+    var headers = {"x-deck-token": TOKEN};
+    if (body) headers["content-type"] = "application/json";
+    return fetch(url, {method: method, headers: headers, body: body ? JSON.stringify(body) : undefined})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ j._status = r.status; return j; }); });
+  },
+  listen: function(f){ var es = new EventSource("/__dev/events?token=" + encodeURIComponent(TOKEN)); es.addEventListener("reload", f); },
+  reload: function(){ location.reload(); },
+  store: function(k, v){ try { if (v === undefined) return JSON.parse(sessionStorage.getItem(k) || "null"); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+};
+function ss(k, v){ try { return T.store(k, v); } catch (e) { return null; } }
+// 画面の言葉：英語のデッキ（DECK.ja === false）なら英語
+var EN = !!(window.DECK && window.DECK.ja === false);
+var L = EN ? {
+  reloadWait: "The deck was updated. It will reload after you save or cancel", editMode: "Edit mode", warn: "Warnings ", buildWarn: "[dev] build warnings",
+  save: "Save", cancel: "Cancel", editSrc: "Edit source", closeEsc: "Close (Esc)", editHint: "⌘/Ctrl+Enter to save · Esc to cancel · write math as \\( … \\)",
+  loading: "Loading…", loadFail: "Could not load", stale: "The source has changed. Please reload (this view was built from an older source)",
+  saving: "Saving…", saved: "Saved", conflict: "The source has changed. Please reload (copy what you typed first)", saveFail: "Could not save", offline: "Cannot reach the editor",
+  reload: "Reload", cPlace: "e.g. make this line shorter / match the figure colors / add one example", cSave: "Leave", cTitle: "Note for Claude", cHint: "⌘/Ctrl+Enter to leave · written to comments.json",
+  cFail: "Could not leave the note", cDone: "Note left (comments.json)", cList: "Notes for Claude (open)", closeC: "Close (c)", resolve: "Resolve", resolveT: "Mark as done",
+  toSlide: "Click to go to the slide", noSlide: "Slide not found: ", nStale: function(k){ return "You are editing a different step than the one shown (" + k + "). It will switch after you save or cancel"; },
+  nLine: function(n){ return "narration.md line " + n; }, nNone: "No narration yet", revertT: "Revert to before editing", nTitle: "Narration", step: "Step ", closeN: "Close (n)",
+  discard: "Discard unsaved changes?", slide: function(n, t){ return "Slide " + n + ": " + t; }, dirty: "Unsaved changes", nEmpty: "No narration for this step yet. Start with “Add a turn”",
+  speaker: "Speaker", expert: "Expert (explains)", novice: "Novice (asks)", tPlace: "What to say. {cue} marks a sync point, {φ|phi} sets a reading",
+  up: "Move up", del: "Delete", delT: "Delete this turn", add: "+ Add a turn", nConflict: "The narration has changed. Please reload (copy what you typed first)",
+  noChange: "No changes", next: function(k, other){ return "Next step (" + k + (other ? ", next slide" : "") + ")"; }, noNext: "No next step", noNarr: "(no narration)",
+  dateLocale: "en-US"
+} : {
+  reloadWait: "原稿が更新されました。保存か取消のあとで読み込み直します", editMode: "編集モード", warn: "警告 ", buildWarn: "[dev] 組み立ての警告",
+  save: "保存", cancel: "取消", editSrc: "原稿を編集", closeEsc: "閉じる（Esc）", editHint: "⌘/Ctrl+Enter で保存 · Esc で取消 · 数式は \\( … \\) のまま書けます",
+  loading: "読み込み中…", loadFail: "読み込めませんでした", stale: "原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）",
+  saving: "保存中…", saved: "保存しました", conflict: "原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）", saveFail: "保存できませんでした", offline: "サーバーに繋がりません",
+  reload: "再読み込み", cPlace: "例：この行をもっと短く / 図の色を合わせて / 例を一つ足して", cSave: "残す", cTitle: "Claudeへの指示", cHint: "⌘/Ctrl+Enter で残す · comments.json に書きます",
+  cFail: "残せませんでした", cDone: "指示を残しました（comments.json）", cList: "Claudeへの指示（未対応）", closeC: "閉じる（c）", resolve: "解決", resolveT: "対応済みにする",
+  toSlide: "クリックでそのスライドへ", noSlide: "スライドが見つかりません: ", nStale: function(k){ return "表示中の段階（" + k + "）とは別の段階を編集中です。保存か取消のあとで切り替わります"; },
+  nLine: function(n){ return "narration.md " + n + " 行目"; }, nNone: "まだ口述原稿がありません", revertT: "編集前に戻す", nTitle: "口述原稿", step: "段階 ", closeN: "閉じる（n）",
+  discard: "保存していない変更を捨てますか", slide: function(n, t){ return "スライド " + n + "：" + t; }, dirty: "未保存の変更があります", nEmpty: "この段階の口述原稿はまだありません。「発言を足す」で書き始めます",
+  speaker: "話者", expert: "Expert（説明役）", novice: "Novice（聞き役）", tPlace: "話す内容。{cue} で同期点、{φ|ファイ} で読みを指定できます",
+  up: "前へ", del: "削除", delT: "この発言を消す", add: "＋ 発言を足す", nConflict: "口述原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）",
+  noChange: "変更はありません", next: function(k, other){ return "次の段階（" + k + (other ? "、次のスライド" : "") + "）"; }, noNext: "次の段階はありません", noNarr: "（口述原稿なし）",
+  dateLocale: "ja-JP"
+};
 
 // ---------------------------------------------------------------- 再読み込み（Server-Sent Events）
 var blockers = [];   // 未保存の入力があれば、再読み込みを待つ
 var pending = false;
 function canReload(){ return !blockers.some(function(f){ return f(); }); }
-function reloadNow(){ ss("dev-restore", 1); location.reload(); }
+function reloadNow(){ ss("dev-restore", 1); T.reload(); }
 function onReload(){
   if (canReload()) reloadNow();
-  else if (!pending){ pending = true; toast("原稿が更新されました。保存か取消のあとで読み込み直します", "warn"); }
+  else if (!pending){ pending = true; toast(L.reloadWait, "warn"); }
 }
 function maybePending(){ if (pending && canReload()) reloadNow(); }
 
 var embedded = !!Q.get("view");                 // 発表者ビューの中の画面：発表者ビューが読み込み直すので何もしない
 var presenter = !!Q.get("presenter");
 if (embedded) return;
-var es = new EventSource("/__dev/events?token=" + encodeURIComponent(TOKEN));
-es.addEventListener("reload", onReload);
+T.listen(onReload);
 if (presenter){
   // 発表者ビュー：本体と同時に読み込み直されるので、本体に何度か挨拶して位置を受け取り直す
   [600, 1500, 3000].forEach(function(ms){ setTimeout(function(){ try { window.opener && window.opener.postMessage({type: "deck-cmd", cmd: "hello"}, "*"); } catch (e) {} }, ms); });
@@ -105,12 +153,7 @@ function h(tag, props, kids){
   (kids || []).forEach(function(c){ if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
   return e;
 }
-function api(method, url, body){
-  var headers = {"x-deck-token": TOKEN};
-  if (body) headers["content-type"] = "application/json";
-  return fetch(url, {method: method, headers: headers, body: body ? JSON.stringify(body) : undefined})
-    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ j._status = r.status; return j; }); });
-}
+function api(method, url, body){ return T.api(method, url, body); }
 var toastTimer = 0;
 function toast(msg, kind){
   var t = document.getElementById("dev-toast");
@@ -164,12 +207,12 @@ if (DECK.ready) setTimeout(restore, 0); else document.addEventListener("deck:rea
 var editOn = false, hoverEl = null;
 // Mac の鍵盤は Alt ではなく option（⌥）と書かれている
 var ALT = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt";
-var badge = h("div", {id: "dev-badge", cls: "edit-ui"}, [h("b", {text: "編集モード"}), h("span", {text: "ダブルクリックで編集 · " + ALT + "+クリックで指示 · e で終了"})]);
+var badge = h("div", {id: "dev-badge", cls: "edit-ui"}, [h("b", {text: L.editMode}), h("span", {text: EN ? "Double-click to edit · " + ALT + "+click to leave a note · e to exit" : "ダブルクリックで編集 · " + ALT + "+クリックで指示 · e で終了"})]);
 var warns = window.__DEV_WARN || [];
 if (warns.length){
-  var wb = h("span", {cls: "dv-warn", text: "警告 " + warns.length, title: warns.join("\n"), on: {click: function(){ alert(warns.join("\n")); }}});
+  var wb = h("span", {cls: "dv-warn", text: L.warn + warns.length, title: warns.join("\n"), on: {click: function(){ alert(warns.join("\n")); }}});
   badge.appendChild(wb);
-  console.warn("[dev] 組み立ての警告\n" + warns.join("\n"));
+  console.warn(L.buildWarn + "\n" + warns.join("\n"));
 }
 document.body.appendChild(badge);
 function setEdit(on){
@@ -209,25 +252,25 @@ function openEditor(el){
   var range = el.getAttribute("data-src"), hh = el.getAttribute("data-src-h");
   var ta = h("textarea", {spellcheck: "false"});
   var msg = h("div", {cls: "dev-msg"});
-  var save = h("button", {cls: "dv-pri", text: "保存"});
-  var cancel = h("button", {text: "取消"});
+  var save = h("button", {cls: "dv-pri", text: L.save});
+  var cancel = h("button", {text: L.cancel});
   var card = h("div", {id: "dev-editor", cls: "edit-ui dev-card"}, [
-    h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: "原稿を編集"}), h("span", {cls: "dv-m", text: "<" + el.tagName.toLowerCase() + "> " + range}), h("span", {cls: "dv-sp"}),
-      h("button", {cls: "dv-ghost", text: "✕", title: "閉じる（Esc）", on: {click: closeEditor}})]),
+    h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: L.editSrc}), h("span", {cls: "dv-m", text: "<" + el.tagName.toLowerCase() + "> " + range}), h("span", {cls: "dv-sp"}),
+      h("button", {cls: "dv-ghost", text: "✕", title: L.closeEsc, on: {click: closeEditor}})]),
     ta, msg,
-    h("div", {cls: "dev-foot"}, [h("span", {cls: "dv-hint", text: "⌘/Ctrl+Enter で保存 · Esc で取消 · 数式は \\( … \\) のまま書けます"}), cancel, save])
+    h("div", {cls: "dev-foot"}, [h("span", {cls: "dv-hint", text: L.editHint}), cancel, save])
   ]);
   document.body.appendChild(card);
   el.classList.add("dev-target");
   editor = {card: card, ta: ta, target: el, orig: "", h: hh, range: range};
-  ta.value = "読み込み中…"; ta.disabled = true;
+  ta.value = L.loading; ta.disabled = true;
   place(card, el.getBoundingClientRect());
   api("GET", "/__dev/source?range=" + encodeURIComponent(range)).then(function(j){
     if (!editor || editor.card !== card) return;
     ta.disabled = false;
-    if (j._status !== 200){ ta.value = ""; showErr(msg, j.error || "読み込めませんでした"); return; }
+    if (j._status !== 200){ ta.value = ""; showErr(msg, j.error || L.loadFail); return; }
     ta.value = j.text; editor.orig = j.text;
-    if (j.h !== hh){ showErr(msg, "原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）", true); save.disabled = true; }
+    if (j.h !== hh){ showErr(msg, L.stale, true); save.disabled = true; }
     ta.rows = Math.min(16, Math.max(4, j.text.split("\n").length + 1));
     place(card, el.getBoundingClientRect());
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -235,18 +278,18 @@ function openEditor(el){
   function doSave(){
     if (save.disabled) return;
     if (ta.value === editor.orig){ closeEditor(); return; }
-    save.disabled = true; save.textContent = "保存中…";
+    save.disabled = true; save.textContent = L.saving;
     api("POST", "/__dev/edit", {range: range, h: hh, text: ta.value}).then(function(j){
       if (j._status === 200){
         editor.orig = ta.value;   // 未保存ではなくなったので、再読み込みを止めない
-        msg.className = "dev-msg dv-ok"; msg.textContent = j.error || "保存しました";
+        msg.className = "dev-msg dv-ok"; msg.textContent = j.error || L.saved;
         setTimeout(function(){ if (pending) maybePending(); }, 50);
       } else {
-        save.disabled = j._status === 409; save.textContent = "保存";
-        showErr(msg, j._status === 409 ? "原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）" : (j.error || "保存できませんでした"), j._status === 409);
+        save.disabled = j._status === 409; save.textContent = L.save;
+        showErr(msg, j._status === 409 ? L.conflict : (j.error || L.saveFail), j._status === 409);
         if (j._status !== 409) save.disabled = false;
       }
-    }, function(){ save.disabled = false; save.textContent = "保存"; showErr(msg, "サーバーに繋がりません"); });
+    }, function(){ save.disabled = false; save.textContent = L.save; showErr(msg, L.offline); });
   }
   save.onclick = doSave;
   cancel.onclick = closeEditor;
@@ -258,7 +301,7 @@ function openEditor(el){
 }
 function showErr(msg, text, reload){
   msg.className = "dev-msg dv-err"; msg.textContent = text;
-  if (reload) msg.appendChild(h("button", {text: "再読み込み", on: {click: function(){ closeEditor(); reloadNow(); }}}));
+  if (reload) msg.appendChild(h("button", {text: L.reload, on: {click: function(){ closeEditor(); reloadNow(); }}}));
 }
 
 // ---------------------------------------------------------------- Claude への指示（Alt+クリック）
@@ -275,15 +318,15 @@ function openComment(target, x, y){
   var el = target.closest("[data-src]") || target.closest("[data-step], m-sweep, svg, .concl, .body, .slide") || target;
   var quote = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
   var key = DECK.state().key;
-  var ta = h("textarea", {placeholder: "例：この行をもっと短く / 図の色を合わせて / 例を一つ足して"});
+  var ta = h("textarea", {placeholder: L.cPlace});
   var msg = h("div", {cls: "dev-msg"});
-  var save = h("button", {cls: "dv-pri", text: "残す"});
+  var save = h("button", {cls: "dv-pri", text: L.cSave});
   var card = h("div", {id: "dev-comment", cls: "edit-ui dev-card"}, [
-    h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: "Claudeへの指示"}), h("span", {cls: "dv-m", text: key}), h("span", {cls: "dv-sp"}),
-      h("button", {cls: "dv-ghost", text: "✕", title: "閉じる（Esc）", on: {click: closeComment}})]),
+    h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: L.cTitle}), h("span", {cls: "dv-m", text: key}), h("span", {cls: "dv-sp"}),
+      h("button", {cls: "dv-ghost", text: "✕", title: L.closeEsc, on: {click: closeComment}})]),
     quote ? h("div", {cls: "dv-q", text: quote}) : null,
     ta, msg,
-    h("div", {cls: "dev-foot"}, [h("span", {cls: "dv-hint", text: "⌘/Ctrl+Enter で残す · comments.json に書きます"}), h("button", {text: "取消", on: {click: closeComment}}), save])
+    h("div", {cls: "dev-foot"}, [h("span", {cls: "dv-hint", text: L.cHint}), h("button", {text: L.cancel, on: {click: closeComment}}), save])
   ]);
   document.body.appendChild(card);
   el.classList.add("dev-target");
@@ -294,8 +337,8 @@ function openComment(target, x, y){
     if (!ta.value.trim()) return;
     save.disabled = true;
     api("POST", "/__dev/comment", {key: key, range: el.getAttribute("data-src") || null, quote: quote, comment: ta.value}).then(function(j){
-      if (j._status !== 200){ save.disabled = false; showErr(msg, j.error || "残せませんでした"); return; }
-      ta.value = ""; closeComment(); toast("指示を残しました（comments.json）");
+      if (j._status !== 200){ save.disabled = false; showErr(msg, j.error || L.cFail); return; }
+      ta.value = ""; closeComment(); toast(L.cDone);
       if (commentsOpen) loadComments();
     });
   }
@@ -314,9 +357,9 @@ function toggleComments(on){
   if (cpanel){ cpanel.remove(); cpanel = null; }
   if (commentsOpen){
     cpanel = h("div", {id: "dev-comments", cls: "edit-ui dev-card"}, [
-      h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: "Claudeへの指示（未対応）"}), h("span", {cls: "dv-sp"}),
-        h("button", {cls: "dv-ghost", text: "✕", title: "閉じる（c）", on: {click: function(){ toggleComments(false); }}})]),
-      h("div", {cls: "dv-list"}, [h("div", {cls: "dev-empty", text: "読み込み中…"})])
+      h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: L.cList}), h("span", {cls: "dv-sp"}),
+        h("button", {cls: "dv-ghost", text: "✕", title: L.closeC, on: {click: function(){ toggleComments(false); }}})]),
+      h("div", {cls: "dv-list"}, [h("div", {cls: "dev-empty", text: L.loading})])
     ]);
     document.body.appendChild(cpanel);
     loadComments();
@@ -328,18 +371,18 @@ function loadComments(){
     if (!cpanel) return;
     var box = cpanel.querySelector(".dv-list"); box.innerHTML = "";
     var open = (Array.isArray(list) ? list : []).filter(function(c){ return c.status === "open"; });
-    if (!open.length){ box.appendChild(h("div", {cls: "dev-empty", text: "未対応の指示はありません。スライドの上で " + ALT + "+クリックすると残せます"})); return; }
+    if (!open.length){ box.appendChild(h("div", {cls: "dev-empty", text: EN ? "No open notes. " + ALT + "+click on a slide to leave one" : "未対応の指示はありません。スライドの上で " + ALT + "+クリックすると残せます"})); return; }
     open.forEach(function(c){
-      var item = h("div", {cls: "dev-c", title: "クリックでそのスライドへ"}, [
-        h("div", {cls: "dv-k", text: c.key + " · " + new Date(c.created).toLocaleString("ja-JP", {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}),
+      var item = h("div", {cls: "dev-c", title: L.toSlide}, [
+        h("div", {cls: "dv-k", text: c.key + " · " + new Date(c.created).toLocaleString(L.dateLocale, {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}),
         c.quote ? h("div", {cls: "dv-q", text: c.quote}) : null,
         h("div", {cls: "dv-c", text: c.comment}),
-        h("div", {cls: "dv-row"}, [h("button", {text: "解決", title: "対応済みにする", on: {click: function(e){
+        h("div", {cls: "dv-row"}, [h("button", {text: L.resolve, title: L.resolveT, on: {click: function(e){
           e.stopPropagation();
           api("POST", "/__dev/comment/resolve", {id: c.id}).then(function(){ loadComments(); });
         }}})])
       ]);
-      item.addEventListener("click", function(){ var p = posOfKey(c.key); if (p) DECK.go(p.i, p.k, false); else toast("スライドが見つかりません: " + c.key, "warn"); });
+      item.addEventListener("click", function(){ var p = posOfKey(c.key); if (p) DECK.go(p.i, p.k, false); else toast(L.noSlide + c.key, "warn"); });
       box.appendChild(item);
     });
   });
@@ -373,7 +416,7 @@ function narrFollow(force){
   if (!force && narr && narr.key === key){ renderNext(); return; }
   if (narr && narr.dirty && !force){
     var stale = drawer.querySelector(".dv-stale");
-    if (stale){ stale.style.display = "block"; stale.textContent = "表示中の段階（" + key + "）とは別の段階を編集中です。保存か取消のあとで切り替わります"; }
+    if (stale){ stale.style.display = "block"; stale.textContent = L.nStale(key); }
     return;
   }
   var sk = splitKey(key);
@@ -390,32 +433,32 @@ function renderDrawer(loading){
   drawer.innerHTML = "";
   var s = DECK.state();
   var title = (DECK.slides[s.slide - 1].querySelector("h2, h1") || {}).textContent || narr.slideKey;
-  var status = h("span", {cls: "dv-st", text: narr.line ? "narration.md " + narr.line + " 行目" : "まだ口述原稿がありません"});
-  var saveBtn = h("button", {cls: "dv-pri", text: "保存"});
-  var revert = h("button", {text: "取消", title: "編集前に戻す"});
+  var status = h("span", {cls: "dv-st", text: narr.line ? L.nLine(narr.line) : L.nNone});
+  var saveBtn = h("button", {cls: "dv-pri", text: L.save});
+  var revert = h("button", {text: L.cancel, title: L.revertT});
   var body = h("div", {cls: "dv-body"});
-  drawer.appendChild(h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: "口述原稿"}), h("span", {cls: "dv-m", text: "段階 " + narr.stepKey}), h("span", {cls: "dv-sp"}),
-    h("button", {cls: "dv-ghost", text: "✕", title: "閉じる（n）", on: {click: function(){ if (!narr.dirty || confirm("保存していない変更を捨てますか")) { narr.dirty = false; toggleNarr(false); } }}})]));
-  drawer.appendChild(h("div", {cls: "dv-sub", text: "スライド " + s.slide + "：" + title.replace(/\s+/g, " ").trim()}));
+  drawer.appendChild(h("div", {cls: "dev-head"}, [h("span", {cls: "dv-t", text: L.nTitle}), h("span", {cls: "dv-m", text: L.step + narr.stepKey}), h("span", {cls: "dv-sp"}),
+    h("button", {cls: "dv-ghost", text: "✕", title: L.closeN, on: {click: function(){ if (!narr.dirty || confirm(L.discard)) { narr.dirty = false; toggleNarr(false); } }}})]));
+  drawer.appendChild(h("div", {cls: "dv-sub", text: L.slide(s.slide, title.replace(/\s+/g, " ").trim())}));
   drawer.appendChild(body);
   drawer.appendChild(h("div", {cls: "dv-foot"}, [status, revert, saveBtn]));
   var stale = h("div", {cls: "dv-stale"}); body.appendChild(stale);
   var nmsg = h("div", {cls: "dev-msg"}); body.appendChild(nmsg);
-  if (loading){ body.appendChild(h("div", {cls: "dev-empty", text: "読み込み中…"})); return; }
-  function markDirty(){ narr.dirty = true; status.textContent = "未保存の変更があります"; status.className = "dv-st dv-dirty"; }
+  if (loading){ body.appendChild(h("div", {cls: "dev-empty", text: L.loading})); return; }
+  function markDirty(){ narr.dirty = true; status.textContent = L.dirty; status.className = "dv-st dv-dirty"; }
   var list = h("div", {cls: "dv-turns"}); body.appendChild(list);
   function drawTurns(){
     list.innerHTML = "";
-    if (!narr.turns.length) list.appendChild(h("div", {cls: "dev-empty", text: "この段階の口述原稿はまだありません。「発言を足す」で書き始めます"}));
+    if (!narr.turns.length) list.appendChild(h("div", {cls: "dev-empty", text: L.nEmpty}));
     narr.turns.forEach(function(t, j){
-      var sel = h("select", {"aria-label": "話者"}, [h("option", {value: "expert", text: "Expert（説明役）"}), h("option", {value: "novice", text: "Novice（聞き役）"})]);
+      var sel = h("select", {"aria-label": L.speaker}, [h("option", {value: "expert", text: L.expert}), h("option", {value: "novice", text: L.novice})]);
       sel.value = t.role;
-      var ta = h("textarea", {placeholder: "話す内容。{cue} で同期点、{φ|ファイ} で読みを指定できます"});
+      var ta = h("textarea", {placeholder: L.tPlace});
       ta.value = t.text;
       var card = h("div", {cls: "dev-turn " + t.role}, [
         h("div", {cls: "dv-row"}, [sel, h("span", {cls: "dv-sp"}),
-          j > 0 ? h("button", {cls: "dv-ghost", text: "↑", title: "前へ", on: {click: function(){ var x = narr.turns.splice(j, 1)[0]; narr.turns.splice(j - 1, 0, x); markDirty(); drawTurns(); }}}) : null,
-          h("button", {cls: "dv-ghost", text: "削除", title: "この発言を消す", on: {click: function(){ narr.turns.splice(j, 1); markDirty(); drawTurns(); }}})]),
+          j > 0 ? h("button", {cls: "dv-ghost", text: "↑", title: L.up, on: {click: function(){ var x = narr.turns.splice(j, 1)[0]; narr.turns.splice(j - 1, 0, x); markDirty(); drawTurns(); }}}) : null,
+          h("button", {cls: "dv-ghost", text: L.del, title: L.delT, on: {click: function(){ narr.turns.splice(j, 1); markDirty(); drawTurns(); }}})]),
         ta]);
       sel.addEventListener("change", function(){ t.role = sel.value; card.className = "dev-turn " + t.role; markDirty(); });
       ta.addEventListener("input", function(){ t.text = ta.value; markDirty(); });
@@ -425,7 +468,7 @@ function renderDrawer(loading){
   }
   drawTurns();
   var last = function(){ return narr.turns.length ? narr.turns[narr.turns.length - 1].role : "novice"; };
-  body.appendChild(h("div", {cls: "dv-tools"}, [h("button", {text: "＋ 発言を足す", on: {click: function(){
+  body.appendChild(h("div", {cls: "dv-tools"}, [h("button", {text: L.add, on: {click: function(){
     narr.turns.push({role: last() === "expert" ? "novice" : "expert", text: ""}); markDirty(); drawTurns();
     var tas = list.querySelectorAll("textarea"); if (tas.length) tas[tas.length - 1].focus();
   }}})]));
@@ -433,21 +476,21 @@ function renderDrawer(loading){
   renderNext(next);
   function doSave(){
     if (saveBtn.disabled) return;
-    saveBtn.disabled = true; saveBtn.textContent = "保存中…";
+    saveBtn.disabled = true; saveBtn.textContent = L.saving;
     api("POST", "/__dev/narration", {slideKey: narr.slideKey, stepKey: narr.stepKey, turns: narr.turns, rev: narr.rev}).then(function(j){
-      saveBtn.textContent = "保存";
+      saveBtn.textContent = L.save;
       if (j._status === 409){
         // 原稿の編集と同じ扱い：保存を止め、再読み込みを促す（入力はそのまま残す）
-        showErr(nmsg, "口述原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）", true);
+        showErr(nmsg, L.nConflict, true);
         return;
       }
       saveBtn.disabled = false;
-      if (j._status !== 200){ status.textContent = j.error || "保存できませんでした"; status.className = "dv-st dv-dirty"; return; }
+      if (j._status !== 200){ status.textContent = j.error || L.saveFail; status.className = "dv-st dv-dirty"; return; }
       if (j.rev) narr.rev = j.rev;
-      narr.dirty = false; status.textContent = j.changed ? "保存しました" : "変更はありません"; status.className = "dv-st";
+      narr.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = "dv-st";
       if (!j.changed) narrFollow(true);
       maybePending();
-    }, function(){ saveBtn.disabled = false; saveBtn.textContent = "保存"; status.textContent = "サーバーに繋がりません"; });
+    }, function(){ saveBtn.disabled = false; saveBtn.textContent = L.save; status.textContent = L.offline; });
   }
   function keys(e){
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); doSave(); }
@@ -462,10 +505,10 @@ function renderNext(box){
   if (!box || !curPos) return;
   box.innerHTML = "";
   var nk = curPos.nextKey;
-  box.appendChild(h("div", {cls: "dv-lab", text: nk ? "次の段階（" + nk.slice(nk.lastIndexOf(":") + 1) + (nk.split(":")[0] !== narr.slideKey ? "、次のスライド" : "") + "）" : "次の段階はありません"}));
+  box.appendChild(h("div", {cls: "dv-lab", text: nk ? L.next(nk.slice(nk.lastIndexOf(":") + 1), nk.split(":")[0] !== narr.slideKey) : L.noNext}));
   if (!nk) return;
   var sk = splitKey(nk), turns = ((DECK.NARRATION[sk[0]] || {})[sk[1]]) || [];
-  if (!turns.length) box.appendChild(h("p", {text: "（口述原稿なし）"}));
+  if (!turns.length) box.appendChild(h("p", {text: L.noNarr}));
   turns.forEach(function(t){ box.appendChild(h("p", {}, [t.role === "novice" ? h("span", {cls: "dv-role", text: "Novice"}) : null, t.text])); });
 }
 

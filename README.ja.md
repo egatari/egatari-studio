@@ -108,6 +108,22 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 詳しくは [docs/dev-server.ja.md](docs/dev-server.ja.md)（[English](docs/dev-server.md)）。
 
+## 編集アプリ（インストール不要）
+
+開発サーバーと同じ編集を、デッキのフォルダを直接開くウェブページでできる。Node もターミナルも要らない。**パソコンの Google Chrome か Microsoft Edge** が要る（File System Access API を使う。Safari と Firefox にはない）。
+
+- **開く：** リポジトリで GitHub Pages を有効にすれば `https://moiku.github.io/motion-academic-slides/editor/`（[docs/editor.ja.md](docs/editor.ja.md#github-pages-で配る)）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
+- **デッキを開く：** デッキのフォルダ（`deck.html` の入ったもの）を画面に落とすか「フォルダを開く」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いたフォルダは最初の画面に並ぶ
+- **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで Claude への指示（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
+- **Claude Code と一緒に：** ほかのもの（Claude Code・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・段階のまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
+- **道具の列：** 簡易チェック、1 つの HTML に書き出す、印刷 / PDF、発表者ビュー（口述原稿と次の段階が出る窓）、全画面
+
+できないこと：読み上げ音声（TTS）・動画・`npm run check`（全部の検査）・`tools/pdf.mjs` はコマンドで行い、フォルダの音声は鳴らない。簡易チェックは一部の検査（はみ出し・文字の大きさ・字数・口述原稿の抜け・コントラスト）で、目安にとどまる（全部は `npm run check`）。書き出す HTML は字を絞り込まず分割ファイルごと埋め込む（ブラウザに fonttools がない）ので、コマンドで組んだものより大きい（`examples/minimal` で 0.7 MB に対して約 2 MB）。リポジトリの部品とテーマはアプリを組んだときのもの。デッキのフォルダの中の部品・テーマはフォルダから読む。
+
+![編集アプリ](docs/images/editor-app.png)
+
+詳しくは [docs/editor.ja.md](docs/editor.ja.md)（[English](docs/editor.md)）。
+
 ## Claude Code で使う
 
 スキルを Claude Code のスキルのフォルダにリンクする。スキルはリンク先の実体の場所からリポジトリを探すので、clone した場所は動かさない。
@@ -214,12 +230,13 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | 場所 | 中身 |
 |---|---|
 | `docs/contract.ja.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
-| `docs/dev-server.ja.md`、`docs/video.ja.md` | 手引き：開発サーバー、動画にする（[English](docs/dev-server.md)、[English](docs/video.md)） |
+| `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
-| `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動 |
+| `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
 | `themes/` | テーマ |
 | `server/` | 開発サーバーとブラウザ上の編集 |
+| `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/editor/` と `dist/editor.html` を作る |
 | `tts/` `render/` | 段階 2：TTS（uv のプロジェクト）、動画の書き出し、バンドルの出力 |
 | `skills/` | Claude Code のスキル |
 | `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.sh`） |
@@ -234,6 +251,7 @@ node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
+node tools/test-app.mjs                                            # 編集アプリ（一時フォルダに dist/editor を組む）
 ```
 
 ## フィードバックと貢献

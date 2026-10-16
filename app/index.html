@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 読み込めるのはアプリ自身だけ。デッキ（sandbox の iframe）もこの決まりを受け継ぎ、外へは繋がらない。
+     'unsafe-eval' は部品（m-sweep の f="…" など）が式を new Function で作るため -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about: blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Motion Slides Editor</title>
+<link rel="icon" href="data:,">
+<!--APP_CSS-->
+</head>
+<body>
+<header id="top">
+  <div class="brand"><span class="logo" aria-hidden="true">▶</span><span data-t="brand"></span></div>
+  <div id="deckname" class="deckname"></div>
+  <nav id="tools" hidden>
+    <button type="button" id="b-open" data-t="open"></button>
+    <span class="sep"></span>
+    <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
+    <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
+    <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
+    <span class="sep"></span>
+    <button type="button" id="b-check" data-t="check"></button>
+    <button type="button" id="b-export" data-t="export"></button>
+    <button type="button" id="b-print" data-t="print"></button>
+    <button type="button" id="b-presenter" data-t="presenter"></button>
+    <button type="button" id="b-full" data-t="full"></button>
+    <span class="sep"></span>
+    <button type="button" id="b-warn" class="warn" hidden></button>
+    <button type="button" id="b-help" data-t="helpBtn"></button>
+  </nav>
+</header>
+
+<main>
+  <section id="welcome">
+    <div class="intro">
+      <h1 data-t="welcomeTitle"></h1>
+      <p data-t="welcomeLead"></p>
+    </div>
+    <div id="unsupported" class="note bad" hidden data-t="unsupported"></div>
+    <div id="drop" class="drop" tabindex="0">
+      <div class="drop-icon" aria-hidden="true">📁</div>
+      <div data-t="dropHere"></div>
+      <div class="row">
+        <button type="button" id="w-open" class="pri" data-t="openFolder"></button>
+        <button type="button" id="w-new" data-t="newDeck"></button>
+      </div>
+    </div>
+    <div id="newform" class="card" hidden>
+      <h2 data-t="newDeck"></h2>
+      <label><span data-t="newTitle"></span><input id="n-title" type="text"></label>
+      <label><span data-t="newLang"></span><select id="n-lang"><option value="ja">日本語</option><option value="en">English</option></select></label>
+      <label><span data-t="newTheme"></span><select id="n-theme"></select></label>
+      <p class="hint" data-t="newHint"></p>
+      <div class="row"><button type="button" id="n-cancel" data-t="cancel"></button><button type="button" id="n-go" class="pri" data-t="newGo"></button></div>
+    </div>
+    <div id="recent" class="card" hidden>
+      <h2 data-t="recent"></h2>
+      <ul id="recent-list"></ul>
+    </div>
+    <p class="note" data-t="privacy"></p>
+  </section>
+
+  <section id="deck" hidden>
+    <div id="viewer">
+      <iframe id="preview" title="slides" sandbox="allow-scripts allow-modals"></iframe>
+      <div id="errbox" hidden><div class="errcard"><h2 data-t="buildFailed"></h2><p data-t="buildFailedHint"></p><pre id="errtext"></pre></div></div>
+      <div id="loading" data-t="building"></div>
+    </div>
+    <aside id="panel" hidden>
+      <div class="panel-head"><b id="panel-title"></b><span class="sp"></span><button type="button" id="panel-close" class="ghost" aria-label="close">✕</button></div>
+      <div id="panel-body"></div>
+    </aside>
+  </section>
+</main>
+<footer id="status"><span id="st-msg"></span><span class="sp"></span><span id="st-info"></span></footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<!--APP_JS-->
+</body>
+</html>

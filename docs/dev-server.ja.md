@@ -5,6 +5,7 @@
 HTML の原稿を手で開かずに、ブラウザの上で文言・口述原稿を直し、Claude への指示を残すための小さなサーバー。
 選択肢・口・キーの一覧は [reference.ja.md#開発サーバー](reference.ja.md#開発サーバー)。
 VS Code は要らない。待ち受けは 127.0.0.1 だけ。
+Node を入れずに同じことをするなら[編集アプリ](editor.ja.md)（Chrome・Edge）。
 
 ## 起動
 

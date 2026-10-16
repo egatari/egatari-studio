@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { parseNarration, normalizeKey } from '../kit/narration.mjs';
+import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey } from '../kit/narration.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -131,89 +131,10 @@ function parseRange(s) {
 }
 
 // ---------------------------------------------------------------- 口述原稿の書き換え（その段階の行だけを置き換える）
-const ROLE = /^(Expert|Novice|E|N)\s*[:：]\s*/;
-const stepOrder = (s) => (s === 'concl' ? Infinity : +s);
-
-// parseNarration と同じ規則で、節（## 見出し）と段階（[k]）の行の範囲を求める
-function scanNarration(lines) {
-  const sections = [];
-  let sec = null, blk = null, inComment = false;
-  lines.forEach((ln, idx) => {
-    if (inComment) { if (ln.includes('-->')) inComment = false; return; }
-    if (/^\s*<!--/.test(ln) && !ln.includes('-->')) { inComment = true; return; }
-    if (/^\s*<!--.*-->\s*$/.test(ln)) return;
-    const h = ln.match(/^##\s+(.+?)\s*$/);
-    if (h) {
-      if (sec) sec.end = idx;
-      sec = { key: normalizeKey(h[1]), head: idx, end: lines.length, blocks: [], lastContent: idx };
-      sections.push(sec); blk = null; return;
-    }
-    if (/^#\s/.test(ln)) return;
-    const m = ln.match(/^\s*\[(\d+|concl)\]\s*(.*)$/);
-    if (m && sec) {
-      blk = { step: m[1], start: idx, end: idx + 1 };
-      sec.blocks.push(blk); sec.lastContent = idx; return;
-    }
-    if (ln.trim() && sec) { sec.lastContent = idx; if (blk) blk.end = idx + 1; }
-  });
-  return sections;
-}
-function oneLine(s) { return String(s).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).join(''); }
-function formatBlock(step, turns) {
-  // 話者の表記：全員が Expert で 1 発言なら書かない。Expert が複数の発言のときは、書かないと 1 発言に
-  // 繋がってしまう（parseNarration は話者のない行を前の発言の続きとして読む）ので Expert: を書く
-  const allExpert = turns.every((t) => t.role !== 'novice');
-  const bare = allExpert && turns.length === 1 && !ROLE.test(turns[0].text);
-  return turns.map((t, j) => (j ? '    ' : `[${step}] `) +
-    (bare ? '' : t.role === 'novice' ? 'Novice: ' : 'Expert: ') + t.text);
-}
-export function rewriteNarration(text, slideKey, stepKey, turns, slideOrder) {
-  const eol = text.includes('\r\n') ? '\r\n' : '\n';
-  const lines = text.split(/\r?\n/);
-  turns = turns.map((t) => ({ role: t.role === 'novice' ? 'novice' : 'expert', text: oneLine(t.text) })).filter((t) => t.text);
-  const block = turns.length ? formatBlock(stepKey, turns) : [];
-  const sections = scanNarration(lines);
-  const sec = [...sections].reverse().find((s) => s.key === slideKey);
-  if (sec) {
-    const same = sec.blocks.filter((b) => b.step === stepKey);
-    if (same.length) {
-      // 同じ段階が複数あれば、効いている最後のものを置き換え、前のものは消す
-      const last = same[same.length - 1];
-      lines.splice(last.start, last.end - last.start, ...block);
-      for (const b of same.slice(0, -1).reverse()) lines.splice(b.start, b.end - b.start);
-    } else if (block.length) {
-      const later = sec.blocks.find((b) => stepOrder(b.step) > stepOrder(stepKey));
-      const at = later ? later.start : sec.lastContent + 1;
-      lines.splice(at, 0, ...block);
-    }
-  } else if (block.length) {
-    // 新しい節：原稿のスライドの順で、次のスライドの節の前に入れる
-    const idx = slideOrder.indexOf(slideKey);
-    const nextSec = idx >= 0 ? slideOrder.slice(idx + 1).map((k) => sections.find((s) => s.key === k)).find(Boolean) : null;
-    const add = [`## ${slideKey}`, ...block, ''];
-    if (nextSec) lines.splice(nextSec.head, 0, ...add);
-    else {
-      while (lines.length && lines[lines.length - 1] === '') lines.pop();
-      lines.push('', ...add);
-    }
-  }
-  return lines.join(eol);
-}
-// その段階の行（同じ段階が複数あればすべて）の短い hash。口述原稿の保存の衝突を見分けるのに使う
-export function narrationRev(text, slideKey, stepKey) {
-  const lines = String(text).split(/\r?\n/);
-  const sec = [...scanNarration(lines)].reverse().find((s) => s.key === slideKey);
-  const blocks = sec ? sec.blocks.filter((b) => b.step === stepKey).map((b) => lines.slice(b.start, b.end).join('\n')) : [];
-  return short(JSON.stringify(blocks));
-}
+// 規則の本体は kit/core/narration-core.mjs（ブラウザの編集アプリと共有）。ここからも書き出す（以前の import 先を保つ）
+export { rewriteNarration, narrationRev };
 function readNarr() { return fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : ''; }
-function rawTurns(slideKey, stepKey) {
-  if (!fs.existsSync(NARR)) return { turns: [], exists: false };
-  const segs = parseNarration(fs.readFileSync(NARR, 'utf8')).filter((s) => s.slideKey === slideKey && s.stepKey === stepKey);
-  const seg = segs[segs.length - 1];
-  return seg ? { turns: seg.turns.map((t) => ({ role: t.role, text: t.raw })), exists: true, line: seg.line } : { turns: [], exists: false };
-}
-function splitKey(key) { const p = String(key).lastIndexOf(':'); return p < 0 ? [String(key), '0'] : [key.slice(0, p), key.slice(p + 1)]; }
+function rawTurns(slideKey, stepKey) { return narrRawTurns(fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : null, slideKey, stepKey); }
 
 // ---------------------------------------------------------------- コメント（Claude への指示）
 function readComments() {
