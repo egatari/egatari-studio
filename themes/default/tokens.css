@@ -35,6 +35,12 @@
   /* 字 */
   --font-sans: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
   --weight-body: 400;
+
+  /* 字幕（s）：字の大きさ・下端からの距離・左右の余白・1 まとまりの行数の上限。読む速さ（字/秒）は --cap-rate（既定 ja 7、en 15） */
+  --cap-size: 27px;
+  --cap-bottom: 18px;
+  --cap-side: 96px;
+  --cap-max-lines: 3;
 }
 /* 対応しているブラウザでは基調色から導く（Chrome/Edge 119+、Firefox 128+、Safari 18+）。
    テーマの tokens.css はこの後に読まれるので、テーマが上書きした値はそのまま勝つ */

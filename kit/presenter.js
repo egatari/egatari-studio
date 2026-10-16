@@ -8,10 +8,10 @@ var DECK = window.DECK;
 // 画面の言葉（<html lang> が ja 以外なら英語。deck.js の DECK.ja）
 var L = DECK.ja === false
   ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
-     laser: "Laser (x)", pen: "Pen (d)", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
+     laser: "Laser (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
      feedback: "Send feedback", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
   : {cur: "今の画面", nextFrame: "次の段階の画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
-     laser: "レーザー（x）", pen: "ペン（d）", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
+     laser: "レーザー（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
      feedback: "フィードバックを送る", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
@@ -25,7 +25,12 @@ DECK.presenterView = function(){
   var tools = PT ? '<span class="pv-tools">' + TOOLS.map(function(t){
     var name = L[t[0]].replace(/\s*[（(][^）)]*[）)]$/, "");
     return '<button type="button" data-k="' + t[1] + '" data-b="' + t[0] + '" title="' + L[t[0]] + '" aria-label="' + name + '"' +
-      (/^(laser|pen|vpen)$/.test(t[0]) ? ' aria-pressed="false"' : "") + ">" + (ic[t[0]] || t[0]) + '<kbd aria-hidden="true">' + t[2] + "</kbd></button>";
+      (/^(laser|pen|vpen)$/.test(t[0]) ? ' aria-pressed="false"' : "") + ">" + (ic[t[0]] || t[0]) + '<kbd aria-hidden="true">' + t[2] + "</kbd>" +
+      (/^(pen|vpen)$/.test(t[0]) ? '<i class="pv-dot" aria-hidden="true"></i>' : "") + "</button>" +
+      // 消えるペンの後ろに、ペンの間だけ出る色のボタン（本体と同じ番号を送る）
+      (t[0] === "vpen" && PT.colors ? '<span class="pv-sw" role="group" aria-label="' + L.color + '" hidden>' + PT.colors.map(function(c, j){
+        return '<button type="button" data-c="' + j + '" title="' + PT.label(j) + '" aria-label="' + PT.label(j) + '" aria-pressed="false"><i aria-hidden="true" style="background:var(--' + c + ')"></i></button>';
+      }).join("") + "</span>" : "");
   }).join("") + "</span>" : "";
   var legend = L.legend.map(function(x){ return "<span><kbd>" + x[0] + "</kbd> " + x[1] + "</span>"; }).join("");
   // 凡例の行の右端にフィードバックのリンク（版・ブラウザ・言語・モードだけ。デッキの中身は送らない）
@@ -64,6 +69,10 @@ DECK.presenterView = function(){
     "#pv .pv-tools button{display:flex;align-items:center;gap:5px;padding:0 9px;user-select:none}" +
     "#pv .pv-tools button:hover{background:#3d3d3d}#pv .pv-tools button.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
     "#pv .pv-tools svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}" +
+    "#pv .pv-tools button{position:relative}#pv .pv-dot{position:absolute;right:3px;top:3px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px #ddd}" +
+    "#pv .pv-sw{display:flex;gap:3px}#pv .pv-sw[hidden]{display:none}#pv .pv-sw button{padding:0 7px}" +
+    "#pv .pv-sw i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1.5px #bbb}#pv .pv-sw button[aria-pressed=true]{background:#555;border-color:#ddd}" +
+    "#pv .pv-sw button[aria-pressed=true] i{box-shadow:0 0 0 2px #fff}" +
     "#pv .pv-tools kbd{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv-auto.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
     "#pv-keys{display:flex;flex-wrap:wrap;gap:4px 18px;padding:5px 16px 7px;background:#111;color:#999;font-size:13px}" +
@@ -116,17 +125,22 @@ DECK.presenterView = function(){
   // 道具のボタン：キーと同じ（tools.js の DECK.ptools.key）。フォーカスを奪わないので、押した後も矢印で送れる
   [].forEach.call(document.querySelectorAll("#pv button"), function(b){ b.addEventListener("mousedown", function(e){ e.preventDefault(); }); });
   [].forEach.call(document.querySelectorAll("#pv .pv-tools button"), function(b){
-    b.onclick = function(e){ PT.key(b.getAttribute("data-k")); if (e.detail !== 0) b.blur(); };
+    b.onclick = function(e){ if (b.hasAttribute("data-c")) PT.color(+b.getAttribute("data-c")); else PT.key(b.getAttribute("data-k")); if (e.detail !== 0) b.blur(); };
   });
   function syncTools(){
     var m = PT && PT.mode();
-    [].forEach.call(document.querySelectorAll("#pv .pv-tools button"), function(b){
+    var c = PT && PT.color ? PT.color() : 0, sw = document.querySelector("#pv .pv-sw");
+    if (sw) sw.hidden = !(m === "pen" || m === "vpen");
+    [].forEach.call(document.querySelectorAll("#pv .pv-sw button"), function(b){ b.setAttribute("aria-pressed", +b.getAttribute("data-c") === c ? "true" : "false"); });
+    [].forEach.call(document.querySelectorAll("#pv .pv-dot"), function(d){ d.style.background = "var(--" + PT.colors[c] + ")"; });
+    [].forEach.call(document.querySelectorAll("#pv .pv-tools [data-b]"), function(b){
       var on = b.getAttribute("data-b") === m;
       b.classList.toggle("on", on);
       if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
   document.addEventListener("deck:ptool", syncTools);
+  syncTools();
   document.getElementById("pv-reset").onclick = function(){ started = Date.now(); };
   setInterval(function(){
     var s = Math.floor((Date.now() - started) / 1000);

@@ -2,7 +2,7 @@
 //   node tools/test-a11y.mjs <built.html> [画面の保存先]
 // aria-live の領域が次へ・前へで変わる・隠れたスライドは aria-hidden と inert・ボタンに名前と aria-pressed・
 // Tab で帯に入り Esc で戻る・一覧はフォーカスが縮図に付いてくる・ペンでもフォーカスが閉じ込められない・
-// s で字幕（今の段階の口述原稿）・印刷では字幕が出ない・a11y の属性は画素を変えない・動画では何も足さない
+// s で字幕（今の段階の口述原稿を 1 まとまりずつ、3 行まで、読む速さで送る）・Shift+s で字幕の大きさ・印刷では字幕が出ない・a11y の属性は画素を変えない・動画では何も足さない
 // （?captions=1 のときだけ字幕）・check が alt の無い画像と名前の無い SVG を警告する
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { spawnSync } from 'node:child_process';
@@ -157,11 +157,12 @@ ok(!(await p.evaluate(() => DECK.captions())), '初めは字幕なし');
 await p.keyboard.press('s'); await settle(p);
 const cap = () => p.evaluate(() => { const e = document.getElementById('deck-cap'); return e && !e.hidden && getComputedStyle(e).display !== 'none' ? [...e.querySelectorAll('.cap-line')].map((x) => x.textContent).join('') : null; });
 let c = await cap();
-ok(c && c.replace(/\s/g, '') === (await narr(p)).replace(/\s/g, ''), `s で字幕が出て、今の段階の口述原稿（${c && c.slice(0, 30)}…）`);
+const pre = (a, b) => !!a && b.replace(/\s/g, '').startsWith(a.replace(/\s/g, ''));
+ok(pre(c, await narr(p)), `s で字幕が出て、今の段階の口述原稿の初めから（${c && c.slice(0, 30)}…）`);
 ok(await p.evaluate(() => document.querySelector('#dt-cb [data-b="cap"]').getAttribute('aria-pressed')) === 'true', '字幕のボタンが aria-pressed="true"');
 await p.keyboard.press('ArrowRight'); await settle(p);
 c = await cap();
-ok(c && c.replace(/\s/g, '') === (await narr(p)).replace(/\s/g, ''), '次の段階で字幕も変わる');
+ok(pre(c, await narr(p)), '次の段階で字幕も変わる');
 const geo = await p.evaluate(() => { const r = document.getElementById('deck-cap').getBoundingClientRect(), st = document.getElementById('stage').getBoundingClientRect(); const l = document.querySelector('#deck-cap .cap-line'), cs = getComputedStyle(l); return { bottom: st.bottom - r.bottom, inside: r.left >= st.left && r.right <= st.right, fg: cs.color, bg: cs.backgroundColor }; });
 ok(geo.inside && geo.bottom >= 0 && geo.bottom < 40, '字幕は舞台の下端に');
 ok(geo.fg !== geo.bg, `字幕はテーマの色（文字 ${geo.fg}、地 ${geo.bg}）`);
@@ -172,7 +173,53 @@ ok(await p.evaluate(() => getComputedStyle(document.getElementById('deck-cap')).
 await p.emulateMedia({ media: 'screen' });
 await p.keyboard.press('s'); await settle(p);
 ok((await cap()) === null && !(await p.evaluate(() => DECK.captions())), 'もう一度 s で字幕を消す');
+
+// ---- 手で送るときの長い口述原稿：1 まとまり（3 行まで）ずつ、読む速さで進み、最後は残る。段階が変わると最初から
+const LONG = 'まず、目標を決めます。次に、ずれを測ります。それから、少しずつ動かします。そして、また測ります。最後に、確かめます。' + '学習とは、データに合うようにパラメータを少しずつ動かして、予測と正解のずれを減らしていく手続きのことです。'.repeat(2) +
+  'ここで大事なのは、ずれの測り方、つまり損失の形を先に決めておかないと、どの方向に動かせばよいかが決まらないという点で、この点はあとの勾配の話にもつながります。' +
+  '最後に、この考え方は回帰でも分類でも同じだということを覚えておいてください。';
+await p.evaluate((t) => { const s = DECK.slides[2]; DECK.NARRATION[s._key][DECK.stepKey(2, 1).slice(s._key.length + 1)] = [{ role: 'expert', text: t }]; s._cap = null; DECK.captionRate = 30; }, LONG);
+await p.keyboard.press('s');
+await p.evaluate(() => DECK.go(2, 1, false));
+const capGeo = () => p.evaluate(() => { const l = document.querySelector('#deck-cap .cap-line'); if (!l) return null; const cs = getComputedStyle(l), lh = parseFloat(cs.lineHeight);
+  return { n: document.querySelectorAll('#deck-cap .cap-line').length, lines: Math.round((l.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / lh), fs: parseFloat(cs.fontSize), text: l.textContent, over: l.scrollHeight > l.clientHeight + 1 }; });
+const g1 = await capGeo();
+ok(g1 && g1.n === 1 && g1.lines <= 3 && pre(g1.text, LONG) && g1.text.length < LONG.length / 2, `長い原稿でも 1 まとまりだけ、${g1 && g1.lines} 行（3 行まで）`);
+await p.screenshot({ path: path.join(outdir, 'caption-long-1.png') });
+await p.waitForTimeout(3200);
+const g2 = await capGeo();
+ok(g2 && g2.text !== g1.text && g2.lines <= 3 && LONG.includes(g2.text), `時間がたつと次のまとまりへ（${g2 && g2.text.slice(0, 16)}…、${g2 && g2.lines} 行）`);
+await p.screenshot({ path: path.join(outdir, 'caption-long-2.png') });
+const tail = LONG.slice(-20);
+await p.waitForFunction((t) => (document.querySelector('#deck-cap .cap-line') || {}).textContent?.endsWith(t), tail, { timeout: 30000 }).catch(() => {});
+await p.waitForTimeout(1500);
+const g3 = await capGeo();
+ok(g3 && LONG.endsWith(g3.text) && g3.lines <= 3, '最後のまとまりはそのまま残る');
+await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowLeft'); await settle(p);
+ok(pre((await capGeo()).text, LONG), '段階が変わると最初のまとまりから');
+// Shift+s：S / M / L
+const toast = () => p.evaluate(() => { const t = document.getElementById('deck-toast'); return t && t.classList.contains('show') ? t.textContent : null; });
+ok((await capGeo()).fs === 27 && await p.evaluate(() => DECK.captionSize()) === 'm', '字幕の大きさは初め M（27px）');
+await p.keyboard.press('Shift+S'); await settle(p);
+const tl = await toast();
+await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowLeft'); await settle(p);
+const gl = await capGeo();
+ok(gl.fs === 34 && await p.evaluate(() => DECK.captionSize()) === 'l' && tl === '字幕の大きさ：L', `Shift+s で L（${gl.fs}px）、「字幕の大きさ：L」と知らせる`);
+ok(gl.lines <= 3 && gl.text.length < g1.text.length, `大きいほど 1 まとまりが短い（M ${g1.text.length} 字 → L ${gl.text.length} 字、${gl.lines} 行）`);
+await p.mouse.move(10, 10); await p.waitForTimeout(400);
+await p.screenshot({ path: path.join(outdir, 'caption-size-l.png') });
+await p.keyboard.press('Shift+S'); await settle(p);
+ok((await capGeo()).fs === 22 && await toast() === '字幕の大きさ：S', 'もう一度で S（22px）');
+await p.keyboard.press('Shift+S'); await settle(p);
+ok((await capGeo()).fs === 27, 'もう一度で M に戻る');
+await p.keyboard.press('Shift+S'); await settle(p);
+const stored = await p.evaluate(() => { try { return localStorage.getItem('deck-capsize'); } catch (e) { return 'n/a'; } });
+ok(stored === 'l' || stored === 'n/a', `最後に選んだ大きさを覚える（${stored}）`);
 await p.close();
+const pl = await ctx.newPage(); watch(pl, '?capsize=s');
+await pl.goto(url + '?captions=1&capsize=s#2'); await ready(pl); await settle(pl);
+ok(await pl.evaluate(() => DECK.captionSize() === 's' && parseFloat(getComputedStyle(document.querySelector('#deck-cap .cap-line')).fontSize) === 22), '?capsize=s で S の大きさで開く（覚えた大きさより優先）');
+await pl.close();
 
 // ---- ?captions=1 で始める（発表）
 const q = await ctx.newPage(); watch(q, '?captions=1');
@@ -193,6 +240,8 @@ await vc.setViewportSize({ width: 1280, height: 720 });
 await vc.goto(url + '?mode=video&captions=1'); await ready(vc);
 const vt = await vc.evaluate(() => { DECK.seek(1, 1, 0.5); const a = DECK.caption(); DECK.seek(3, 0, 1); DECK.seek(1, 1, 0.5); return [a, DECK.caption(), DECK.captions()]; });
 ok(vt[2] && vt[0] && vt[0] === vt[1], `?mode=video&captions=1 では字幕が出て、(i, k, t) だけで決まる（${(vt[0] || '').slice(0, 20)}…）`);
+await vc.keyboard.press('Shift+S');
+ok(await vc.evaluate(() => DECK.captionSize() === null && !document.getElementById('deck-toast') && parseFloat(getComputedStyle(document.getElementById('deck-cap')).fontSize) === 27), '動画では Shift+s も覚えた大きさも効かない（27px のまま）');
 await vc.close();
 
 // ---- 発表者ビューのボタン

@@ -14,9 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Accessibility: screen-reader announcements of slide and step changes (`aria-live`), hidden slides made `inert`, labelled and keyboard-focusable control-bar, presenter and overview buttons, math exposed as MathML
 - Captions: `s` key / CC button / `?captions=1` show the current step's narration at the bottom of the slide; `render.mjs --captions` burns them into the video
 - Checker: warns about images without `alt` and SVG figures without an accessible name
+- Caption size: `Shift+s` cycles S / M / L (22 / 27 / 34px) with a brief notice, `?capsize=s|m|l`, the last choice is remembered; theme variables `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines`, `--cap-rate`
+- Pen color: the pen buttons in the control bar show the current color, and while a pen is active Red / Blue / Black swatches appear next to them (also in the presenter view, synced with the main window); changing the color shows "Pen color: Blue" and the bottom-left indicator names the color
 
 ### Changed
 
+- Captions while presenting by hand show one sentence group (about two lines, at most three) at a time and advance at reading speed (ja 7, en 15 characters/s), restarting at every step change, instead of stacking the whole step over the slide. Video mode (`?mode=video&captions=1`) is unchanged
 - The Japanese docs moved to `docs/contract.ja.md`, `docs/dev-server.ja.md` and `docs/video.ja.md`, following the scheme of `docs/reference.md` / `docs/reference.ja.md` (English = `.md`, Japanese = `.ja.md`). All links in the repository were updated
 - On a Mac, the help screen, the dev-server badge and the docs label the comment shortcut as ⌥ option + click instead of Alt + click
 

@@ -163,8 +163,9 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 | a | 自動再生（音声があれば流す） |
 | l | 授業モード |
 | b | 暗転 |
+| s / Shift+s | 字幕（口述原稿を 2 行ほどずつ）/ 字幕の大きさ S・M・L |
 | o | スライド一覧（矢印で選んで Enter） |
-| x / d / v | レーザー / ペン / 消えるペン。Shift+d でペンの色 |
+| x / d / v | レーザー / ペン / 消えるペン。Shift+d（または操作の帯の色のボタン）でペンの色 |
 | Backspace（Shift+Backspace） | ペンを使っている間：このスライドの書き込みを消す（全部消す） |
 | Esc | 道具を解除 |
 | ? | キーの一覧 |

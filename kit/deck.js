@@ -3,7 +3,7 @@
 // - 画面は (スライド i, 段階 k, 段階の開始からの秒数 t) だけで決まる。DECK.seek(i, k, t) が唯一の描画の入口
 // - 手動の発表は実時間で seek を呼び、動画の書き出しは仮想の時刻で呼ぶ
 // - 操作：→ / Space / PageDown で次の段階、← / PageUp で前の段階、Shift+→ / Shift+← でスライド単位、
-//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で授業モード、b で暗転、s で字幕
+//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で授業モード、b で暗転、s で字幕、Shift+s で字幕の大きさ
 // - 読み上げソフト向け（動画では作らない）：隠れたスライドは aria-hidden と inert、今のスライドは role="group"、
 //   位置と新しく出た段階の文字を aria-live の領域（#deck-live、画面には出ない）で知らせる
 (function(){
@@ -751,39 +751,96 @@ function setupA11y(){
 DECK.announce = function(){ return live ? live.textContent : null; };
 
 // ---------------------------------------------------------------- 字幕（s。動画では ?captions=1 のときだけ）
-// 今の段階の口述原稿（表示用の文字）を舞台の下に出す。自動再生で音声があれば、音声の進みに合わせて文ごとに区切って出す
-// 動画では (i, k, t) だけで決まる：区切りの時刻は音声の長さを字数で按分する
-var CAP = {on: /^(1|true|on|yes)$/i.test(Q.get("captions") || ""), el: null, key: null};
+// 今の段階の口述原稿（表示用の文字）を舞台の下に、文のまとまり（およそ 2 行）を 1 つずつ出す
+// - 動画では (i, k, t) だけで決まる：区切りの時刻は音声の長さを字数で按分する（音声がなければ全部を重ねて出す）
+// - 自動再生で音声があれば、音声の進みに合わせる
+// - 手で送っているとき（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。--cap-rate か DECK.captionRate で変える）で
+//   段階が変わるたびに最初から送り、最後のまとまりはそのまま残す
+// - 大きさ：テーマの --cap-size / --cap-bottom / --cap-side / --cap-max-lines。Shift+s で S / M / L（22 / 27 / 34px）、?capsize=s|m|l、
+//   最後に選んだ大きさは localStorage に覚える（動画では使わない）。字が大きいほど 1 まとまりを短くする
+var CAP = {on: /^(1|true|on|yes)$/i.test(Q.get("captions") || ""), el: null, key: null, lv: null, timer: 0, size: null};
 if (DECK.mode === "video" || DECK.view) CAP.allowed = CAP.on; else CAP.allowed = true;
+var CAP_SIZES = {s: 22, m: 27, l: 34}, CAP_LIVE = DECK.mode !== "video" && !DECK.view;
+if (CAP_LIVE){
+  var qs = (Q.get("capsize") || "").toLowerCase();
+  if (CAP_SIZES[qs]) CAP.size = qs;
+  else { try { var ls = localStorage.getItem("deck-capsize"); if (CAP_SIZES[ls]) CAP.size = ls; } catch (e) {} }
+}
 function capTurns(i, k){
   var s = slides[i], key = stepKey(s, k);
   return ((DECK.NARRATION[s._key] || {})[key]) || [];
 }
-// 文に分けて、短い文は次とつなぐ（1 区切りがおよそ 2 行に収まるように）
+// 1 まとまりの字数の上限（2 行）。既定の大きさ（27px、左右 96px）で ja 64 字・en 120 字。字が大きく幅が狭いほど短く
+function capMax(){
+  var cs = CAP.el ? getComputedStyle(CAP.el) : null;
+  var size = cs ? parseFloat(cs.fontSize) || 27 : 27;
+  var w = cs ? 1280 - (parseFloat(cs.left) || 96) - (parseFloat(cs.right) || 96) : 1088;
+  var lines = cs ? parseFloat(cs.getPropertyValue("--cap-max-lines")) || 3 : 3;
+  var max = Math.max(12, Math.round((DECK.ja ? 64 : 120) * (27 / size) * (w / 1088)));
+  return {max: max, lim: Math.round(max * Math.max(1, lines) / 2)};
+}
+// lim 字を超える文を、読点・語の切れ目（なければ字数）で max 字ほどに分ける
+function capSplit(p, max, lim){
+  if (p.length <= lim) return [p];
+  var toks = DECK.ja ? p.match(/[^、，,；;：:]+[、，,；;：:]*\s*/g) : p.match(/\S+\s*/g), out = [], buf = "";
+  (toks || [p]).forEach(function(t){
+    while (t.length > lim){ if (buf){ out.push(buf); buf = ""; } out.push(t.slice(0, max)); t = t.slice(max); }
+    if (buf && (buf + t).length > max){ out.push(buf); buf = ""; }
+    buf += t;
+  });
+  if (buf) out.push(buf);
+  return out;
+}
+// 文に分けて、短い文は次とつなぐ（1 まとまりがおよそ 2 行に収まるように）。長すぎる文は分ける（--cap-max-lines 行まで）
 function capChunks(i, k){
-  var s = slides[i];
+  var s = slides[i], m = capMax(), ck = k + ":" + m.max + ":" + m.lim;
   s._cap = s._cap || {};
-  if (s._cap[k]) return s._cap[k];
-  var max = DECK.ja ? 64 : 120, out = [];
+  if (s._cap[ck]) return s._cap[ck];
+  var out = [];
   capTurns(i, k).forEach(function(t){
     var parts = String(t.text || "").match(/[^。！？!?.]+(?:[。！？!?]+|\.(?=\s|$)|$)\s*/g) || [];
     var buf = "";
-    parts.forEach(function(p){
-      if (buf && (buf + p).length > max){ out.push({text: buf.trim(), role: t.role}); buf = ""; }
+    [].concat.apply([], parts.map(function(p){ return capSplit(p, m.max, m.lim); })).forEach(function(p){
+      if (buf && (buf + p).length > m.max){ out.push({text: buf.trim(), role: t.role}); buf = ""; }
       buf += p;
     });
     if (buf.trim()) out.push({text: buf.trim(), role: t.role});
   });
-  return (s._cap[k] = out);
+  return (s._cap[ck] = out);
 }
-// 区切りの番号（-1 なら全部）。時刻を使うのは動画と、自動再生で音声があるときだけ
+// 読む速さ（字/秒）
+function capRate(){
+  var r = +DECK.captionRate;
+  if (!(r > 0) && CAP.el) r = parseFloat(getComputedStyle(CAP.el).getPropertyValue("--cap-rate"));
+  return r > 0 ? r : DECK.ja ? 7 : 15;
+}
+// 手で送っているときの区切り：段階が変わったら最初から、読む速さで次へ。最後のまとまりは残す
+function capRestart(i, k, j){
+  clearTimeout(CAP.timer);
+  CAP.lv = {i: i, k: k, j: j || 0};
+  capSchedule();
+}
+function capSchedule(){
+  clearTimeout(CAP.timer);
+  var lv = CAP.lv;
+  if (!CAP.on || !lv) return;
+  var ch = capChunks(lv.i, lv.k);
+  if (lv.j >= ch.length - 1) return;
+  CAP.timer = setTimeout(function(){
+    if (CAP.lv !== lv) return;
+    lv.j++;
+    if (cur === lv.i && step === lv.k) drawCaption(cur, step, Infinity);
+    capSchedule();
+  }, Math.max(1.2, ch[lv.j].text.length / capRate()) * 1000);
+}
+// 区切りの番号（-1 なら全部）
 function capIndex(i, k, t){
-  var ch = capChunks(i, k), tm = timing(i, k), a = tm.audio;
-  if (!a || !a.dur || ch.length < 2) return -1;
-  var tt;
-  if (DECK.mode === "video"){ if (t === Infinity) return ch.length - 1; tt = t - tm.lead; }
-  else if (auto && audioEl && auto.tl[auto.idx] && auto.tl[auto.idx].i === i && auto.tl[auto.idx].k === k) tt = auto.playing === tm.key ? audioEl.currentTime || 0 : 0;
-  else return -1;
+  var ch = capChunks(i, k);
+  if (ch.length < 2) return -1;
+  var tm = timing(i, k), a = tm.audio, tt;
+  if (DECK.mode === "video"){ if (!a || !a.dur) return -1; if (t === Infinity) return ch.length - 1; tt = t - tm.lead; }
+  else if (a && a.dur && auto && audioEl && auto.tl[auto.idx] && auto.tl[auto.idx].i === i && auto.tl[auto.idx].k === k) tt = auto.playing === tm.key ? audioEl.currentTime || 0 : 0;
+  else return CAP.lv && CAP.lv.i === i && CAP.lv.k === k ? Math.min(CAP.lv.j, ch.length - 1) : 0;
   var total = ch.reduce(function(n, c){ return n + c.text.length; }, 0), acc = 0, x = Math.max(0, tt) / a.dur * total;
   for (var j = 0; j < ch.length; j++){ acc += ch[j].text.length; if (x < acc) return j; }
   return ch.length - 1;
@@ -793,7 +850,7 @@ function drawCaption(i, k, t){
   if (!e) return;
   var ch = capChunks(i, k), j = capIndex(i, k, t);
   var shown = j < 0 ? ch : [ch[j]];
-  var key = i + ":" + k + ":" + j;
+  var key = i + ":" + k + ":" + j + ":" + (CAP.size || "");
   if (CAP.key === key) return;
   CAP.key = key;
   e.textContent = "";
@@ -804,6 +861,11 @@ function drawCaption(i, k, t){
     e.appendChild(p);
   });
   e.classList.toggle("empty", !shown.length);
+  // --cap-max-lines 行を超えたら、後ろの行を見せる
+  [].forEach.call(e.children, function(p){ if (p.scrollHeight > p.clientHeight + 1) p.scrollTop = p.scrollHeight; });
+}
+function capApplySize(){
+  if (CAP.el && CAP.size) CAP.el.style.setProperty("--cap-size", CAP_SIZES[CAP.size] + "px");
 }
 function setCaptions(on){
   if (!CAP.allowed) return false;
@@ -814,22 +876,65 @@ function setCaptions(on){
     // 字幕は口述原稿を見せるもの。読み上げは #deck-live が受け持つので、二重に読ませない
     CAP.el.setAttribute("aria-hidden", "true");
     (st || document.body).appendChild(CAP.el);
+    capApplySize();
   }
   if (CAP.el) CAP.el.hidden = !CAP.on;
   document.documentElement.classList.toggle("captions", CAP.on);
   CAP.key = null;
+  if (CAP.on && CAP_LIVE && slides.length) capRestart(cur, step);
+  if (!CAP.on) clearTimeout(CAP.timer);
   if (CAP.on && slides.length) drawCaption(cur, step, Infinity);
   document.dispatchEvent(new CustomEvent("deck:captions", {detail: {on: CAP.on}}));
   return CAP.on;
 }
+// 字幕の大きさ：s / m / l。引数なしなら S → M → L → S と回す（字幕が出ていなければ出す）
+function capSize(z){
+  if (!CAP_LIVE) return null;
+  if (z === undefined){ var o = ["s", "m", "l"]; z = o[(o.indexOf(CAP.size || "m") + 1) % 3]; }
+  z = String(z).toLowerCase();
+  if (!CAP_SIZES[z]) return CAP.size;
+  // 今読んでいる字の位置を保ったまま区切りを変える
+  var off = 0, lv = CAP.lv;
+  if (CAP.on && lv && lv.i === cur && lv.k === step){ var ch0 = capChunks(cur, step); for (var a = 0; a < Math.min(lv.j, ch0.length); a++) off += ch0[a].text.length; }
+  CAP.size = z;
+  try { localStorage.setItem("deck-capsize", z); } catch (e) {}
+  if (!CAP.on) setCaptions(true);
+  capApplySize();
+  if (CAP.on && slides.length){
+    var ch = capChunks(cur, step), j = 0, acc = 0;
+    while (j < ch.length - 1 && acc + ch[j].text.length <= off){ acc += ch[j].text.length; j++; }
+    capRestart(cur, step, j);
+    CAP.key = null; drawCaption(cur, step, Infinity);
+  }
+  DECK.toast(L10N("字幕の大きさ：", "Caption size: ") + z.toUpperCase());
+  document.dispatchEvent(new CustomEvent("deck:captions", {detail: {on: CAP.on, size: z}}));
+  return z;
+}
 DECK.captions = function(on){ if (on === undefined) return CAP.on; return setCaptions(on); };
 DECK.caption = function(){ return CAP.on && CAP.el ? CAP.el.textContent : null; };
+DECK.captionSize = function(z){ return z === undefined ? (CAP_LIVE ? CAP.size || "m" : null) : capSize(z); };
+
+// ---------------------------------------------------------------- 短い知らせ（字幕の大きさ・ペンの色など）。動画と埋め込みでは出さない
+var toastEl = null, toastT = 0;
+DECK.toast = function(msg){
+  if (DECK.mode === "video" || DECK.view) return;
+  if (!toastEl){
+    toastEl = document.createElement("div"); toastEl.id = "deck-toast";
+    toastEl.setAttribute("role", "status"); toastEl.setAttribute("aria-live", "polite");
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ toastEl.classList.remove("show"); }, 1400);
+};
 
 // ---------------------------------------------------------------- 実時間での再生
 function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; }
 function play(i, k, animate, from){
   stopLoop();
   announce(i, k);
+  if (CAP.on && CAP_LIVE) capRestart(i, k);
   if (!animate || REDUCE){ seek(i, k, Infinity); broadcast(); return; }
   if (i !== cur){ slides[cur]._tok++; slides[cur]._legacyAt = undefined; }
   legacy(slides[i], k, false);
@@ -898,6 +1003,8 @@ function broadcast(){
   if (window.parent !== window) window.parent.postMessage(msg, "*");
   document.dispatchEvent(new CustomEvent("deck:pos", {detail: msg}));
 }
+// 発表者ビューに送る（tools.js がペンの色を知らせるのに使う）
+DECK.toPresenter = function(msg){ if (presenter && !presenter.closed) presenter.postMessage(msg, "*"); };
 function openPresenter(){
   var u = new URL(location.href); u.searchParams.set("presenter", "1"); u.hash = "";
   presenter = window.open(u.href, "deck-presenter", "width=1400,height=820");
@@ -912,7 +1019,7 @@ window.addEventListener("message", function(e){
     if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
     else if (m.cmd === "goto") go(m.i, m.k, !!m.animate);
     else if (m.cmd === "auto") DECK.autoplay();
-    else if (m.cmd === "hello"){ presenter = e.source; broadcast(); }
+    else if (m.cmd === "hello"){ presenter = e.source; broadcast(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length){
     go(m.i, m.k, !!m.animate);
   }
@@ -977,6 +1084,7 @@ document.addEventListener("keydown", function(e){
   else if (k === "l"){ DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); seek(cur, step, Infinity); }
   else if (k === "b") document.documentElement.classList.toggle("blackout");
   else if (k === "s") setCaptions();
+  else if (k === "S") capSize();
 });
 
 // 印刷（PDF 化）では、すべての段階を出した最終状態にする

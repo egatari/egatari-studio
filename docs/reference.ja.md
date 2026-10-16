@@ -163,6 +163,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
 | `--concl-bg` | 結論の行の背景（透明） |
 | `--stage-bg` | スライドのまわりと暗転の色（#2f2f2f） |
+| `--cap-size`、`--cap-bottom`、`--cap-side`、`--cap-max-lines` | 字幕の字の大きさ（27px）、下端からの距離（18px）、左右の余白（96px）、1 まとまりの行数の上限（3） |
+| `--cap-rate` | 手で送るときの字幕の読む速さ（字/秒。既定 ja 7、en 15。`DECK.captionRate` でも変えられる） |
 
 字：日本語のデッキ（`lang` が `ja` か、ない）は BIZ UDPゴシックを埋め込む。ほかの言語は Source Sans 3 を埋め込み、U+024F より後ろの字だけを BIZ UDPゴシックで補う。埋め込むのは使っている字を含む分割ファイルだけ（`fonts/*.ttf` と uv があれば使っている字だけ）。
 
@@ -182,6 +184,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `?mode=lecture` | 全部見せ、後の段階は薄く（0.28）、今の段階を強調（`.cur`）。印は最終状態 |
 | `?mode=video` | 書き出し用：道具と操作の帯を出さない。reduced-motion を無視する |
 | `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（書き出しで字幕を焼き込める） |
+| `?capsize=s` / `m` / `l` | 字幕の大きさ（22 / 27 / 34px）。覚えた大きさより優先。`?mode=video` では効かない |
 | `?presenter=1` | 発表者ビュー（`p` で開く） |
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
@@ -201,11 +204,12 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | l | 授業モードの入り切り |
 | b | 暗転の入り切り |
 | s | 字幕の入り切り：今の段階の口述原稿（表示用の文字）をスライドの下に出す |
+| Shift+s | 字幕の大きさ：S → M → L（22 / 27 / 34px）。上に短く知らせ、最後に選んだ大きさを覚える（localStorage） |
 | o | 一覧（矢印・Home/End で選び、Enter・Space・クリックで移る。Esc か o で閉じる） |
 | x | レーザー（マウスが 2 秒止まると消える） |
 | d | ペン（筆圧に対応。線はスライドごとに残る） |
 | v | 消えるペン（書き終えて 0.7 秒後から 0.5 秒で消える） |
-| Shift+d | ペンの色：`--emph` → `--term` → `--fg` |
+| Shift+d | ペンの色：`--emph` → `--term` → `--fg`（赤・青・黒）。上に「ペンの色：青」と短く知らせる |
 | Backspace / Shift+Backspace | ペンか消えるペンを使っている間：このスライド / 全スライドの書き込みを消す |
 | Tab / Shift+Tab | 操作の帯のボタンを選ぶ（Enter / Space で押す。Esc でスライドに戻る） |
 | Esc | 道具を解除、キーの一覧を閉じる |
@@ -213,13 +217,13 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 操作の帯（マウスを動かすと出て、2.5 秒で隠れる）
 
-ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、発表者ビュー、全画面、キーの一覧。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
+ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、発表者ビュー、全画面、キーの一覧。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（`v0.1.0`）がある。版・ブラウザ・OS・デッキの言語・モードだけを入れたフィードバックの form を開く。デッキの中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
 
 ### 字幕
 
-`s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（検査器がこの 2 色のコントラスト 4.5:1 以上を見ている）。手で送っている間は段階の全文を出す。音声つきの自動再生と `?mode=video&captions=1` では、段階を文のまとまり（2 行ほど）に分け、字数に比例して音声の時間を割り振って順に出す。動画では `(i, k, t)` だけで決まる。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
+`s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（検査器がこの 2 色のコントラスト 4.5:1 以上を見ている）。段階を文のまとまり（2 行ほど。字が大きいほど短い。長すぎる文は読点や語の切れ目で分ける）に分け、1 つずつ出す。1 まとまりは `--cap-max-lines` 行（3）までで、超えたら後ろの行を見せる。手で送っている間（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。`--cap-rate` か `DECK.captionRate`）で次のまとまりに進め、段階が変わると最初から、最後のまとまりはそのまま残す。音声つきの自動再生と `?mode=video&captions=1` では、字数に比例して音声の時間を割り振って順に出す（動画で音声がなければ全部を出す）。大きさは `Shift+s`・`?capsize=`・テーマの `--cap-size` で変える。動画では `(i, k, t)` だけで決まる。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
 
 ### 読み上げとキーボード（アクセシビリティ）
 
@@ -232,7 +236,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 発表者ビュー
 
-今の画面（左）、次の段階（右上）、今と次の段階の口述原稿（右下。Novice の発言には印）、スライドと段階の番号、自動再生のボタン、道具のボタン（レーザー・ペン・消えるペン・消す・一覧・授業モード）、経過時間と戻すボタン（⟲）、時刻。発表者ビューで効くキー：→ ↓ Space PageDown / ← ↑ PageUp、a、x、d、v、Shift+d、Backspace、Esc、o、l。左の画面に描いた線は本体に出る。`postMessage` でやり取りするので `file://` でも動く。キーの行の右端に「フィードバックを送る」のリンク（`?` の一覧と同じ）。
+今の画面（左）、次の段階（右上）、今と次の段階の口述原稿（右下。Novice の発言には印）、スライドと段階の番号、自動再生のボタン、道具のボタン（レーザー・ペン・消えるペン・消す・一覧・授業モード。ペンの間は本体と同じ赤・青・黒の色のボタン。本体とは色の番号でやり取りするので食い違わない）、経過時間と戻すボタン（⟲）、時刻。発表者ビューで効くキー：→ ↓ Space PageDown / ← ↑ PageUp、a、x、d、v、Shift+d、Backspace、Esc、o、l。左の画面に描いた線は本体に出る。`postMessage` でやり取りするので `file://` でも動く。キーの行の右端に「フィードバックを送る」のリンク（`?` の一覧と同じ）。
 
 ### 印刷と PDF
 
@@ -240,7 +244,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 実行時の API（スクリプトと検査用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview}`、`captions(on)`（引数なしなら入か切か）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
 
 ## 開発サーバー
 

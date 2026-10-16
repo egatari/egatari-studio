@@ -163,8 +163,9 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 | a | autoplay (plays the audio if the deck has it) |
 | l | lecture mode |
 | b | black screen |
+| s / Shift+s | captions (narration, about two lines at a time) / caption size S, M, L |
 | o | slide overview (arrows + Enter) |
-| x / d / v | laser / pen / fading pen; Shift+d changes the pen color |
+| x / d / v | laser / pen / fading pen; Shift+d (or the swatches in the control bar) changes the pen color |
 | Backspace (Shift+Backspace) | while a pen is active: clear the drawings on this slide (on all slides) |
 | Esc | leave the current tool |
 | ? | list of keys |

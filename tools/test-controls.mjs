@@ -62,6 +62,26 @@ await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(250);
 await p.keyboard.press('d');
 ok(await p.evaluate(() => DECK.tools.mode()) === null && !(await p.evaluate(() => document.querySelector('#dt-cb [data-b="pen"]').classList.contains('on'))), 'キーで解除すると強調も消える');
 
+// ペンの色：ペンの間だけ帯に赤・青・黒のボタン。押すと色が変わり、aria-pressed・知らせ・左下の表示・ペンのボタンの点に出る
+const sw = () => p.evaluate(() => { const g = document.querySelector('#dt-cb .dt-sw'); return { hidden: g.hidden || getComputedStyle(g).display === 'none', n: g.querySelectorAll('button').length,
+  pressed: [...g.querySelectorAll('button')].map((x) => x.getAttribute('aria-pressed')), labels: [...g.querySelectorAll('button')].map((x) => x.getAttribute('aria-label')) }; });
+ok((await sw()).hidden, 'ペンでないときは色のボタンを出さない');
+await p.mouse.move(320, 330, { steps: 2 }); await p.click(btn('pen'));
+let s0 = await sw();
+ok(!s0.hidden && s0.n === 3 && s0.pressed.join() === 'true,false,false' && s0.labels.join() === 'ペンの色：赤,ペンの色：青,ペンの色：黒', `ペンの間は色のボタンが 3 つ（${s0.labels.join(' / ')}）`);
+await p.click('#dt-cb .dt-sw [data-c="1"]'); await p.waitForTimeout(100);
+s0 = await sw();
+ok(await p.evaluate(() => DECK.tools.color()) === 1 && s0.pressed.join() === 'false,true,false', '青のボタンで青になり aria-pressed="true"');
+ok(await p.evaluate(() => { const t = document.getElementById('deck-toast'); return t && t.classList.contains('show') && t.textContent; }) === 'ペンの色：青', '色を変えると「ペンの色：青」と知らせる');
+ok(/青/.test(await p.locator('#dt-ind').innerText()), '左下の表示にも色の名前');
+ok(await p.evaluate(() => { const d = document.querySelector('#dt-cb [data-b="pen"] .dt-dot'); return getComputedStyle(d).backgroundColor === getComputedStyle(document.querySelector('#dt-cb .dt-sw [data-c="1"] i')).backgroundColor; }), 'ペンのボタンの点が今の色');
+await p.keyboard.press('Shift+D'); await p.waitForTimeout(100);
+ok(await p.evaluate(() => DECK.tools.color()) === 2 && (await sw()).pressed[2] === 'true' && await p.evaluate(() => document.getElementById('deck-toast').textContent) === 'ペンの色：黒', 'Shift+d でも色のボタンと知らせが変わる');
+await p.mouse.move(330, 330, { steps: 2 }); await p.waitForTimeout(150);
+await shot(p, 'pen-swatches');
+await p.keyboard.press('Shift+D'); await p.keyboard.press('d');
+ok((await sw()).hidden && await p.evaluate(() => DECK.tools.color()) === 0, 'ペンを解除すると色のボタンが隠れる');
+
 // 自動再生のボタン：■ に変わる
 await p.click(btn('auto')); await p.waitForTimeout(200);
 const autoOn = await p.evaluate(() => document.documentElement.classList.contains('autoplay') && document.querySelector('#dt-cb [data-b="auto"]').classList.contains('on'));
@@ -109,13 +129,24 @@ const [pv] = await Promise.all([ctx.waitForEvent('page'), p.click(btn('pres'))])
 watch(pv, '発表者ビュー');
 await pv.setViewportSize({ width: 1400, height: 820 });
 await pv.waitForLoadState('load'); await pv.waitForTimeout(1200);
-ok(await pv.locator('#pv .pv-tools button').count() === 6, '発表者ビューに道具のボタンが 6 つ');
+ok(await pv.locator('#pv .pv-tools button[data-b]').count() === 6, '発表者ビューに道具のボタンが 6 つ');
 ok(/レーザー|laser/.test(await pv.locator('#pv-keys').innerText()), '発表者ビューの下にキーの説明');
 await pv.click('#pv .pv-tools [data-b="laser"]'); await pv.waitForTimeout(200);
 ok(await p.evaluate(() => DECK.tools.mode()) === 'laser', '発表者ビューのレーザーのボタンで本体がレーザーになる');
 ok(await pv.evaluate(() => document.querySelector('#pv .pv-tools [data-b="laser"]').classList.contains('on')), '発表者ビューのボタンも強調される');
 await pv.click('#pv .pv-tools [data-b="pen"]'); await pv.waitForTimeout(200);
 ok(await p.evaluate(() => DECK.tools.mode()) === 'pen', '発表者ビューのペンのボタン');
+// 発表者ビューの色のボタン：本体と「今の画面」に番号で送る。本体で変えると発表者ビューも変わる
+const pvsw = () => pv.evaluate(() => { const g = document.querySelector('#pv .pv-sw'); return { hidden: g.hidden, pressed: [...g.querySelectorAll('button')].map((x) => x.getAttribute('aria-pressed')).join() }; });
+ok(!(await pvsw()).hidden, '発表者ビューでもペンの間は色のボタンが出る');
+await pv.click('#pv .pv-sw [data-c="1"]'); await pv.waitForTimeout(250);
+const fol = pv.frames().find((f) => /view=follow/.test(f.url()));
+ok(await p.evaluate(() => DECK.tools.color()) === 1 && (await pvsw()).pressed === 'false,true,false' && (!fol || await fol.evaluate(() => DECK.tools.color()) === 1), '発表者ビューの青で本体と「今の画面」が青になる');
+await p.keyboard.press('Shift+D'); await pv.waitForTimeout(250);
+ok((await pvsw()).pressed === 'false,false,true' && (!fol || await fol.evaluate(() => DECK.tools.color()) === 2), '本体で色を変えると発表者ビューの色のボタンも変わる');
+await pv.keyboard.press('Shift+D'); await pv.waitForTimeout(250);
+ok(await p.evaluate(() => DECK.tools.color()) === 0 && (await pvsw()).pressed === 'true,false,false', '発表者ビューの Shift+d も番号で送る（本体と食い違わない）');
+await shot(pv, 'presenter-swatches');
 const q0 = await pos(p);
 await pv.keyboard.press('ArrowRight'); await pv.waitForTimeout(300);
 ok(await pos(p) > q0, '発表者ビューでボタンを押した後も → で送れる');

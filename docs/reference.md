@@ -163,6 +163,8 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
 | `--concl-bg` | conclusion line background (transparent) |
 | `--stage-bg` | area around the slide and blackout (#2f2f2f) |
+| `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines` | caption font size (27px), distance from the bottom (18px), side margins (96px), max lines per caption chunk (3) |
+| `--cap-rate` | caption reading speed when presenting by hand (characters/s; default ja 7, en 15; also `DECK.captionRate`) |
 
 Fonts: Japanese decks (`lang` is `ja` or missing) embed BIZ UDPGothic; other languages embed Source Sans 3 and use BIZ UDPGothic only for characters past U+024F. Only the font files (or, with `fonts/*.ttf` and uv, the glyphs) that the deck uses are embedded.
 
@@ -182,6 +184,7 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 | `?mode=lecture` | everything visible, later steps faded (0.28), current step highlighted (`.cur`), marks in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
+| `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |
 | `?presenter=1` | presenter view (opened by `p`) |
 | `?view=follow` / `?view=next` | internal: the iframes inside the presenter view |
 | `#N` | open at slide N (1-based); updated while navigating |
@@ -201,11 +204,12 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 | l | lecture mode on/off |
 | b | blackout on/off |
 | s | captions on/off: the current step's narration (display text) at the bottom of the slide |
+| Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |
 | o | overview (arrows, Home/End, Enter/Space/click to go, Esc or o to close) |
 | x | laser (hides after 2 s without movement) |
 | d | pen (pressure-sensitive; ink stays per slide) |
 | v | fading pen (fades 0.7 s after you stop, over 0.5 s) |
-| Shift+d | pen color: `--emph` → `--term` → `--fg` |
+| Shift+d | pen color: `--emph` → `--term` → `--fg` (Red, Blue, Black), with a brief notice "Pen color: Blue" |
 | Backspace / Shift+Backspace | while the pen or fading pen is active: clear this slide / all slides |
 | Tab / Shift+Tab | focus the control-bar buttons (Enter / Space presses; Esc returns to the slide) |
 | Esc | leave the tool, close help |
@@ -213,13 +217,13 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 
 ### Control bar (mouse move, hides after 2.5 s)
 
-Buttons: previous, next, autoplay/stop, laser, pen, fading pen, clear ink (this slide, in any tool), overview, lecture, captions, presenter view, fullscreen, help. Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
+Buttons: previous, next, autoplay/stop, laser, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, lecture, captions, presenter view, fullscreen, help. Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
 The `?` help ends with a **Send feedback** link and the version (`v0.1.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
 
 ### Captions
 
-`s`, the CC button, or `?captions=1` shows the current step's narration (the display text of `narration.md`, readings and `{mark}` removed) in a bar at the bottom of the slide: `--fg` background, `--bg` text (the checker keeps their contrast ≥ 4.5:1). While presenting by hand the whole step is shown. During autoplay with audio, and in `?mode=video&captions=1`, the step is split into sentence groups (about two lines) and each is shown for a share of the audio proportional to its length; in video this depends only on `(i, k, t)`. Never printed. `render/render.mjs` opens `?mode=video` without captions; pass the parameter there to burn them in.
+`s`, the CC button, or `?captions=1` shows the current step's narration (the display text of `narration.md`, readings and `{mark}` removed) in a bar at the bottom of the slide: `--fg` background, `--bg` text (the checker keeps their contrast ≥ 4.5:1). The step is split into sentence groups (about two lines; shorter at larger sizes; overlong sentences are split at commas or word boundaries) and one group is shown at a time, at most `--cap-max-lines` (3) lines; if a group still overflows, its last lines are shown. While presenting by hand (and in autoplay without audio) the groups advance at reading speed (ja 7 characters/s, en 15; `--cap-rate` or `DECK.captionRate`), restart at every step change, and the last group stays. During autoplay with audio, and in `?mode=video&captions=1`, each group is shown for a share of the audio proportional to its length (in video without audio the whole step is shown); the size is set with `Shift+s`, `?capsize=` or the theme's `--cap-size`; in video this depends only on `(i, k, t)`. Never printed. `render/render.mjs` opens `?mode=video` without captions; pass the parameter there to burn them in.
 
 ### Accessibility
 
@@ -232,7 +236,7 @@ Not added in `?mode=video` or the presenter-view iframes, and none of it changes
 
 ### Presenter view
 
-Current screen (left), next step (top right), narration of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser, pen, fading pen, clear, overview, lecture), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
+Current screen (left), next step (top right), narration of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser, pen, fading pen, clear, overview, lecture; while a pen is active, the same Red/Blue/Black swatches, synced with the main window by color index), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
 
 ### Print and PDF
 
@@ -240,7 +244,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ### Run-time API (for scripts and tests)
 
-`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview}`, `captions(on)` (no argument: is it on), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
+`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview, color}` (`color()` is the pen color index 0–2, `color(n)` sets it), `captions(on)` (no argument: is it on), `captionSize(z)` (`"s"` / `"m"` / `"l"`; no argument: the current size; `null` in video), `captionRate` (characters/s), `toast(msg)` (brief notice), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
 
 ## Dev server
 
