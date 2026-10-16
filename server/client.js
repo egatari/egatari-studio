@@ -162,7 +162,9 @@ if (DECK.ready) setTimeout(restore, 0); else document.addEventListener("deck:rea
 
 // ---------------------------------------------------------------- 編集モード
 var editOn = false, hoverEl = null;
-var badge = h("div", {id: "dev-badge", cls: "edit-ui"}, [h("b", {text: "編集モード"}), h("span", {text: "ダブルクリックで編集 · Alt+クリックで指示 · e で終了"})]);
+// Mac の鍵盤は Alt ではなく option（⌥）と書かれている
+var ALT = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt";
+var badge = h("div", {id: "dev-badge", cls: "edit-ui"}, [h("b", {text: "編集モード"}), h("span", {text: "ダブルクリックで編集 · " + ALT + "+クリックで指示 · e で終了"})]);
 var warns = window.__DEV_WARN || [];
 if (warns.length){
   var wb = h("span", {cls: "dv-warn", text: "警告 " + warns.length, title: warns.join("\n"), on: {click: function(){ alert(warns.join("\n")); }}});
@@ -326,7 +328,7 @@ function loadComments(){
     if (!cpanel) return;
     var box = cpanel.querySelector(".dv-list"); box.innerHTML = "";
     var open = (Array.isArray(list) ? list : []).filter(function(c){ return c.status === "open"; });
-    if (!open.length){ box.appendChild(h("div", {cls: "dev-empty", text: "未対応の指示はありません。スライドの上で Alt+クリックすると残せます"})); return; }
+    if (!open.length){ box.appendChild(h("div", {cls: "dev-empty", text: "未対応の指示はありません。スライドの上で " + ALT + "+クリックすると残せます"})); return; }
     open.forEach(function(c){
       var item = h("div", {cls: "dev-c", title: "クリックでそのスライドへ"}, [
         h("div", {cls: "dv-k", text: c.key + " · " + new Date(c.created).toLocaleString("ja-JP", {month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}),

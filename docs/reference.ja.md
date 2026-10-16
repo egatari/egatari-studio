@@ -240,7 +240,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `e` | 編集モード。`h1 h2 p li td th`、`.big .note .sub .venue .au .thm .box .lead`、`.concl` の中の `span` をダブルクリック。⌘/Ctrl+Enter で保存、Esc で取消。build の警告の数を札に出す |
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
 | `c` | 指示の一覧。クリックでそのスライドへ、「解決」で閉じる |
-| Alt+クリック | Claude Code への指示を残す |
+| Alt+クリック（Mac は ⌥ option+クリック） | Claude Code への指示を残す |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`、`/deck/<ファイル>`、`/__dev/client.js`、`/__dev/events`（SSE）、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |

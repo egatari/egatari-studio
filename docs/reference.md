@@ -240,7 +240,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `e` | edit mode; double-click an `h1 h2 p li td th`, `.big .note .sub .venue .au .thm .box .lead` or a `span` in `.concl`; ⌘/Ctrl+Enter save, Esc cancel. A badge shows build warnings |
 | `n` | narration drawer for the current step (and preview of the next) |
 | `c` | open comments; click to jump, "resolve" to close |
-| Alt+click | leave a comment for Claude Code |
+| Alt+click (on a Mac: ⌥ Option+click) | leave a comment for Claude Code |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
 | endpoints | `GET /`, `/deck/<file>`, `/__dev/client.js`, `/__dev/events` (SSE), `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |

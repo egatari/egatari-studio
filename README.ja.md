@@ -90,10 +90,10 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 1. **文字を直す：`e` → ダブルクリック。** 直せる要素に点線の枠が出る。ダブルクリックでその部分の原稿（HTML と `\( … \)` の式）が開くので、直して ⌘/Ctrl+Enter。`deck.html` のその要素だけが書き換わる
 2. **口述原稿を直す：`n`。** 右に今の段階の口述原稿が出る。直して保存（発言の追加・削除・話者の変更もできる）。`narration.md` のその段階だけが書き換わる
-3. **Claude Code に頼む：Alt（Option）+クリック。** 直してほしいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。指示は `comments.json` に貯まり、`c` で一覧。Claude Code に「コメントを反映して」と頼むと直し、保存した時点で画面に出る
+3. **Claude Code に頼む：Alt+クリック（Mac は ⌥ option キーを押したままクリック）。** 直してほしいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。指示は `comments.json` に貯まり、`c` で一覧。Claude Code に「コメントを反映して」と頼むと直し、保存した時点で画面に出る
 4. **元に戻す：** 書き換える前の `deck.html`・`narration.md` は `.cache/edits/` に残る（新しい 30 個）
 
-| `e`＋ダブルクリック：原稿を直す | `n`：口述原稿を直す | Alt+クリック：Claude Code への指示 |
+| `e`＋ダブルクリック：原稿を直す | `n`：口述原稿を直す | Alt / ⌥ option+クリック：Claude Code への指示 |
 |---|---|---|
 | ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
 
@@ -120,7 +120,7 @@ ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 
 - 「`paper/main.tex` から 10 分の発表の HTML スライドを motion-slides で作って。テーマは default、1 人で話す」
 - 「学習率で損失の下がり方が変わる様子を m-sweep で見せるスライドを足して」
-- 「コメントを反映して」（開発サーバーで Alt+クリックの指示を残した後。Claude は `comments.json` を読む）
+- 「コメントを反映して」（開発サーバーで Alt / ⌥ option+クリックの指示を残した後。Claude は `comments.json` を読む）
 - 「`talks/intro` を motion-slides-video で読み上げ付きの動画にして」
 
 スキルはまず構成案を見せ、承認を得てから HTML を書く。

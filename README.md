@@ -90,10 +90,10 @@ The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by 
 
 1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
 2. **Fix the narration: `n`.** A drawer shows the narration of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
-3. **Ask Claude Code: Alt (Option) + click.** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then tell Claude Code "Apply the comments" and it edits the deck; the page updates as soon as it saves.
+3. **Ask Claude Code: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then tell Claude Code "Apply the comments" and it edits the deck; the page updates as soon as it saves.
 4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
 
-| `e` + double-click: edit the source | `n`: edit the narration | Alt+click: comment for Claude Code |
+| `e` + double-click: edit the source | `n`: edit the narration | Alt / ⌥ Option + click: comment for Claude Code |
 |---|---|---|
 | ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
 
@@ -120,7 +120,7 @@ Example prompts:
 
 - "Use motion-slides to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
 - "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
-- "Apply the comments." (after leaving Alt+click comments in the dev server; Claude reads `comments.json`)
+- "Apply the comments." (after leaving Alt / ⌥ Option+click comments in the dev server; Claude reads `comments.json`)
 - "Turn `talks/intro` into a narrated video with motion-slides-video."
 
 The skill first shows you an outline and writes HTML only after you approve it.

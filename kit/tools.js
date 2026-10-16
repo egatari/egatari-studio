@@ -467,7 +467,7 @@ function helpHtml(){
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
     row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "口述原稿" : "Narration"), row(K("c"), j ? "コメントの一覧" : "Comments"),
-    row(K("Alt") + "+" + (j ? "クリック" : "click"), j ? "Claude への指示" : "Note to Claude")]));
+    row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "Claude への指示" : "Note to Claude")]));
   // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();
   var fbHtml = fb ? '<div class="dt-fb"><a href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' +
