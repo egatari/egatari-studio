@@ -11,6 +11,7 @@
 // E. タイムラインの長さの一覧
 // F. 注目の演出（{mark:…}）：目印が見つかるか、段階ごとの印の一覧
 // G. モーフ（data-morph）：元のスライドと対応する data-id があるか、対応の一覧
+// H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
@@ -372,6 +373,36 @@ for (const { i, m } of morphInfo) {
   if (m.later.length) report(i, 'info', `モーフ：段階 0 で見えないので動かさない：${m.later.join('、')}`);
   for (const id of m.dupSrc) report(i, 'warn', `モーフ：元のスライドに data-id「${id}」が 2 つ以上（初めのものだけを使う）`);
   for (const id of m.dupDst) report(i, 'warn', `モーフ：data-id「${id}」が 2 つ以上（初めのものだけを使う）`);
+}
+
+// ================================================================ H. 読み上げ（画像と図の名前）
+phase = 'H 読み上げ';
+const a11y = await page.evaluate(() => {
+  const named = (e, root) => {
+    for (let a = e; a && a !== root; a = a.parentElement) {
+      if ((a.getAttribute('aria-label') || '').trim() || a.hasAttribute('aria-labelledby')) return true;
+      if (a.tagName === 'FIGURE' && a.querySelector('figcaption')) return true;
+    }
+    return !!e.querySelector(':scope > title') && !!e.querySelector(':scope > title').textContent.trim();
+  };
+  const hidden = (e, root) => { for (let a = e; a && a !== root; a = a.parentElement) if (a.getAttribute('aria-hidden') === 'true' || /^(presentation|none)$/.test(a.getAttribute('role') || '')) return true; return false; };
+  return DECK.slides.map((s, i) => {
+    const imgs = [...s.querySelectorAll('img')].filter((e) => !e.hasAttribute('alt') && !hidden(e, s)).map((e) => (e.getAttribute('src') || '').replace(/^data:([^;,]+).*/, 'data:$1').slice(0, 60));
+    const comps = s._comps.filter((c) => !hidden(c, s) && !named(c, s) && !(c.getAttribute('title') || '').trim()).map((c) => c.tagName.toLowerCase());
+    // 部品の外の、ある程度の大きさの SVG（KaTeX・注目の演出・入れ子の SVG は除く）
+    const svgs = [...s.querySelectorAll('svg')].filter((g) => {
+      if (g.parentElement.closest('svg') || g.closest('.katex') || g.classList.contains('marks') || hidden(g, s)) return false;
+      if (s._comps.some((c) => c.contains(g))) return false;
+      const r = g.getBoundingClientRect();
+      return r.width * r.height >= 120 * 80 && !named(g, s);
+    }).length;
+    return { i, imgs, comps, svgs };
+  });
+});
+for (const { i, imgs, comps, svgs } of a11y) {
+  if (imgs.length) report(i, 'warn', `alt の無い画像が ${imgs.length} 枚（読み上げソフトが内容を伝えられない。飾りなら alt=""）：${imgs.join('、')}`);
+  if (svgs) report(i, 'warn', `名前の無い SVG の図が ${svgs} 個（aria-label="…" か <title>…</title>、飾りなら aria-hidden="true"）`);
+  if (comps.length) report(i, 'info', `名前の無い部品：${[...new Set(comps)].join('、')}（読み上げ用に aria-label="…" を付けられる）`);
 }
 
 // ================================================================ E. タイムライン

@@ -181,6 +181,7 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 | `?mode=talk` | default: later steps hidden, current step fades in |
 | `?mode=lecture` | everything visible, later steps faded (0.28), current step highlighted (`.cur`), marks in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
+| `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?presenter=1` | presenter view (opened by `p`) |
 | `?view=follow` / `?view=next` | internal: the iframes inside the presenter view |
 | `#N` | open at slide N (1-based); updated while navigating |
@@ -199,20 +200,35 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | lecture mode on/off |
 | b | blackout on/off |
+| s | captions on/off: the current step's narration (display text) at the bottom of the slide |
 | o | overview (arrows, Home/End, Enter/Space/click to go, Esc or o to close) |
 | x | laser (hides after 2 s without movement) |
 | d | pen (pressure-sensitive; ink stays per slide) |
 | v | fading pen (fades 0.7 s after you stop, over 0.5 s) |
 | Shift+d | pen color: `--emph` → `--term` → `--fg` |
 | Backspace / Shift+Backspace | while the pen or fading pen is active: clear this slide / all slides |
+| Tab / Shift+Tab | focus the control-bar buttons (Enter / Space presses; Esc returns to the slide) |
 | Esc | leave the tool, close help |
 | ? | key list (with dev-server keys when served by `server/dev.mjs`) |
 
 ### Control bar (mouse move, hides after 2.5 s)
 
-Buttons: previous, next, autoplay/stop, laser, pen, fading pen, clear ink (this slide, in any tool), overview, lecture, presenter view, fullscreen, help. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
+Buttons: previous, next, autoplay/stop, laser, pen, fading pen, clear ink (this slide, in any tool), overview, lecture, captions, presenter view, fullscreen, help. Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
 The `?` help ends with a **Send feedback** link and the version (`v0.1.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
+
+### Captions
+
+`s`, the CC button, or `?captions=1` shows the current step's narration (the display text of `narration.md`, readings and `{mark}` removed) in a bar at the bottom of the slide: `--fg` background, `--bg` text (the checker keeps their contrast ≥ 4.5:1). While presenting by hand the whole step is shown. During autoplay with audio, and in `?mode=video&captions=1`, the step is split into sentence groups (about two lines) and each is shown for a share of the audio proportional to its length; in video this depends only on `(i, k, t)`. Never printed. `render/render.mjs` opens `?mode=video` without captions; pass the parameter there to burn them in.
+
+### Accessibility
+
+Not added in `?mode=video` or the presenter-view iframes, and none of it changes pixels.
+
+- Screen readers: a visually hidden `aria-live="polite"` region (`#deck-live`) announces "Slide n of N: title" on a slide change, the text of the newly revealed step on the next step (math read from KaTeX's glyphs), or "Step k of K" when going back or when a step reveals no text. Each slide is `role="group"` with `aria-roledescription="slide"` and an `aria-label`; hidden slides get `aria-hidden="true"` and `inert`, and in talk mode steps not yet shown are `aria-hidden` (lecture mode leaves them readable).
+- Keyboard: control-bar and presenter-view buttons have `aria-label` (Japanese or English after `<html lang>`), toggles have `aria-pressed`, and a focus ring appears only on `:focus-visible`. The overview is a `dialog` whose thumbnails are labelled buttons; focus follows the arrow keys and returns to where it was on Esc. The help (`?`) is a `dialog` that takes focus and gives it back on close. The ink layer is `aria-hidden` and never takes focus, so Tab and Esc keep working while drawing.
+- `prefers-reduced-motion` shows every step in its final state (except in video).
+- The checker warns about `<img>` without `alt` (`alt=""` marks decoration) and SVG figures without `aria-label` / `aria-labelledby` / `<title>`, and lists components without a name (info).
 
 ### Presenter view
 
@@ -224,7 +240,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ### Run-time API (for scripts and tests)
 
-`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview}`. Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
+`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview}`, `captions(on)` (no argument: is it on), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
 
 ## Dev server
 
@@ -269,6 +285,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | component drawing depends on call order | error |
 | mark target not found; list of marks per step | warn; info |
 | morph: source slide missing, no shared `data-id`, duplicate ids; pairs | warn; info |
+| `<img>` without `alt`; SVG figure without `aria-label`/`<title>`; component without a name | warn; warn; info |
 | timeline total and per slide | info |
 
 ## Build

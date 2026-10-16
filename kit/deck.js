@@ -3,7 +3,9 @@
 // - 画面は (スライド i, 段階 k, 段階の開始からの秒数 t) だけで決まる。DECK.seek(i, k, t) が唯一の描画の入口
 // - 手動の発表は実時間で seek を呼び、動画の書き出しは仮想の時刻で呼ぶ
 // - 操作：→ / Space / PageDown で次の段階、← / PageUp で前の段階、Shift+→ / Shift+← でスライド単位、
-//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で授業モード、b で暗転
+//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で授業モード、b で暗転、s で字幕
+// - 読み上げソフト向け（動画では作らない）：隠れたスライドは aria-hidden と inert、今のスライドは role="group"、
+//   位置と新しく出た段階の文字を aria-live の領域（#deck-live、画面には出ない）で知らせる
 (function(){
 "use strict";
 var DECK = window.DECK = window.DECK || {};
@@ -335,6 +337,7 @@ function seek(i, k, t, from){
   slides.forEach(function(x, j){
     var on = j === i, under = (fading || morph) && j === from;
     x.classList.toggle("active", on);
+    if (A11Y && x._ah !== !on){ x._ah = !on; if (on){ x.removeAttribute("aria-hidden"); x.inert = false; } else { x.setAttribute("aria-hidden", "true"); x.inert = true; } }
     x.style.visibility = on || under ? "visible" : "hidden";
     x.style.zIndex = on ? 2 : under ? 1 : 0;
     x.style.opacity = on ? (fading ? prog(t, 0, T.slide) : 1) : under ? 1 : 0;
@@ -353,6 +356,8 @@ function seek(i, k, t, from){
       }
       e.classList.toggle("on", n <= k);
       e.classList.toggle("cur", lecture && n === k && k > 0);
+      // 発表では、まだ出ていない段階を読み上げない（授業モードでは薄く見えているので読む）
+      if (A11Y){ var ah = !lecture && n > k; if (e._ah !== ah){ e._ah = ah; if (ah) e.setAttribute("aria-hidden", "true"); else e.removeAttribute("aria-hidden"); } }
     });
   }
   s._draws.forEach(function(w){
@@ -372,6 +377,7 @@ function seek(i, k, t, from){
   if (morph) applyMorph(morphPlan(from, i), t);
   s._final = k === s._max && t === Infinity;
   cur = i; step = k;
+  if (CAP.on) drawCaption(i, k, t);
   var bar = document.getElementById("bar");
   if (bar) bar.style.width = ((i + 1) / slides.length * 100) + "%";
   lastPos = {i: i, k: k};
@@ -692,10 +698,138 @@ DECK.timeline = function(){
 function titleOf(s){ var h = s.querySelector("h2, h1"); return h ? (h.getAttribute("data-title") || h.textContent.replace(/\s+/g, " ").trim()) : s._key; }
 function chapterOf(i){ for (var j = i; j >= 0; j--) if (slides[j].classList.contains("sec") || slides[j].hasAttribute("data-chapter")) return slides[j].getAttribute("data-chapter") || titleOf(slides[j]); return ""; }
 
+// ---------------------------------------------------------------- 読み上げソフト向け（docs/reference.md「Accessibility」）
+// 動画では何も作らない（画面の画素は変えない。#deck-live は画面の外、aria-* と inert は描画に効かない）
+var A11Y = DECK.mode !== "video" && !DECK.view;
+var live = null, lastSaid = null;
+function L10N(ja, en){ return DECK.ja ? ja : en; }
+// 読み上げる文字：aria-hidden と TeX の原文（annotation）は除く。式は MathML があればその字、
+// なければ（build は KaTeX の html だけを出す）見た目の部分の字（f(θ) など）を使う
+function speakText(e){
+  var out = "";
+  (function walk(n){
+    if (n.nodeType === 3){ out += n.textContent; return; }
+    if (n.nodeType !== 1 || /^(annotation|script|style)$/i.test(n.tagName)) return;
+    if (n !== e && n.getAttribute("aria-hidden") === "true" &&
+        !(n.classList.contains("katex-html") && !(n.parentNode && n.parentNode.querySelector(":scope > .katex-mathml")))) return;
+    for (var c = n.firstChild; c; c = c.nextSibling) walk(c);
+    if (/^(P|LI|DIV|TR|TD|TH|BR)$/.test(n.tagName)) out += " ";
+  })(e);
+  return out.replace(/\s+/g, " ").trim();
+}
+function slideLabel(i){
+  var h = slides[i].querySelector("h2, h1"), t = h ? (h.getAttribute("data-title") || speakText(h)) : "";
+  return L10N("スライド " + (i + 1) + " / " + slides.length + (t ? "：" + t : ""),
+              "Slide " + (i + 1) + " of " + slides.length + (t ? ": " + t : ""));
+}
+function announce(i, k){
+  if (!live) return;
+  var s = slides[i], msg;
+  if (!lastSaid || lastSaid.i !== i) msg = slideLabel(i);
+  else if (lastSaid.k === k) return;
+  else {
+    var txt = k > lastSaid.k ? s._items.filter(function(e){ return +e.getAttribute("data-step") === k; }).map(speakText).join(" ").trim() : "";
+    msg = txt || L10N("段階 " + k + " / " + s._max, "Step " + k + " of " + s._max);
+  }
+  lastSaid = {i: i, k: k};
+  // 同じ文でも読み直されるように、いったん空にしてから入れる
+  live.textContent = "";
+  setTimeout(function(){ if (live) live.textContent = msg; }, 30);
+}
+function setupA11y(){
+  if (!A11Y) return;
+  slides.forEach(function(s, i){
+    s.setAttribute("role", "group");
+    s.setAttribute("aria-roledescription", L10N("スライド", "slide"));
+    s.setAttribute("aria-label", slideLabel(i));
+  });
+  live = document.createElement("div");
+  live.id = "deck-live"; live.className = "sr-only";
+  live.setAttribute("aria-live", "polite"); live.setAttribute("aria-atomic", "true");
+  document.body.appendChild(live);
+}
+DECK.announce = function(){ return live ? live.textContent : null; };
+
+// ---------------------------------------------------------------- 字幕（s。動画では ?captions=1 のときだけ）
+// 今の段階の口述原稿（表示用の文字）を舞台の下に出す。自動再生で音声があれば、音声の進みに合わせて文ごとに区切って出す
+// 動画では (i, k, t) だけで決まる：区切りの時刻は音声の長さを字数で按分する
+var CAP = {on: /^(1|true|on|yes)$/i.test(Q.get("captions") || ""), el: null, key: null};
+if (DECK.mode === "video" || DECK.view) CAP.allowed = CAP.on; else CAP.allowed = true;
+function capTurns(i, k){
+  var s = slides[i], key = stepKey(s, k);
+  return ((DECK.NARRATION[s._key] || {})[key]) || [];
+}
+// 文に分けて、短い文は次とつなぐ（1 区切りがおよそ 2 行に収まるように）
+function capChunks(i, k){
+  var s = slides[i];
+  s._cap = s._cap || {};
+  if (s._cap[k]) return s._cap[k];
+  var max = DECK.ja ? 64 : 120, out = [];
+  capTurns(i, k).forEach(function(t){
+    var parts = String(t.text || "").match(/[^。！？!?.]+(?:[。！？!?]+|\.(?=\s|$)|$)\s*/g) || [];
+    var buf = "";
+    parts.forEach(function(p){
+      if (buf && (buf + p).length > max){ out.push({text: buf.trim(), role: t.role}); buf = ""; }
+      buf += p;
+    });
+    if (buf.trim()) out.push({text: buf.trim(), role: t.role});
+  });
+  return (s._cap[k] = out);
+}
+// 区切りの番号（-1 なら全部）。時刻を使うのは動画と、自動再生で音声があるときだけ
+function capIndex(i, k, t){
+  var ch = capChunks(i, k), tm = timing(i, k), a = tm.audio;
+  if (!a || !a.dur || ch.length < 2) return -1;
+  var tt;
+  if (DECK.mode === "video"){ if (t === Infinity) return ch.length - 1; tt = t - tm.lead; }
+  else if (auto && audioEl && auto.tl[auto.idx] && auto.tl[auto.idx].i === i && auto.tl[auto.idx].k === k) tt = auto.playing === tm.key ? audioEl.currentTime || 0 : 0;
+  else return -1;
+  var total = ch.reduce(function(n, c){ return n + c.text.length; }, 0), acc = 0, x = Math.max(0, tt) / a.dur * total;
+  for (var j = 0; j < ch.length; j++){ acc += ch[j].text.length; if (x < acc) return j; }
+  return ch.length - 1;
+}
+function drawCaption(i, k, t){
+  var e = CAP.el;
+  if (!e) return;
+  var ch = capChunks(i, k), j = capIndex(i, k, t);
+  var shown = j < 0 ? ch : [ch[j]];
+  var key = i + ":" + k + ":" + j;
+  if (CAP.key === key) return;
+  CAP.key = key;
+  e.textContent = "";
+  shown.forEach(function(c){
+    var p = document.createElement("span");
+    p.className = "cap-line" + (c.role === "novice" ? " novice" : "");
+    p.textContent = c.text;
+    e.appendChild(p);
+  });
+  e.classList.toggle("empty", !shown.length);
+}
+function setCaptions(on){
+  if (!CAP.allowed) return false;
+  CAP.on = on === undefined ? !CAP.on : !!on;
+  if (CAP.on && !CAP.el){
+    var st = document.getElementById("stage");
+    CAP.el = document.createElement("div"); CAP.el.id = "deck-cap"; CAP.el.className = "empty";
+    // 字幕は口述原稿を見せるもの。読み上げは #deck-live が受け持つので、二重に読ませない
+    CAP.el.setAttribute("aria-hidden", "true");
+    (st || document.body).appendChild(CAP.el);
+  }
+  if (CAP.el) CAP.el.hidden = !CAP.on;
+  document.documentElement.classList.toggle("captions", CAP.on);
+  CAP.key = null;
+  if (CAP.on && slides.length) drawCaption(cur, step, Infinity);
+  document.dispatchEvent(new CustomEvent("deck:captions", {detail: {on: CAP.on}}));
+  return CAP.on;
+}
+DECK.captions = function(on){ if (on === undefined) return CAP.on; return setCaptions(on); };
+DECK.caption = function(){ return CAP.on && CAP.el ? CAP.el.textContent : null; };
+
 // ---------------------------------------------------------------- 実時間での再生
 function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; }
 function play(i, k, animate, from){
   stopLoop();
+  announce(i, k);
   if (!animate || REDUCE){ seek(i, k, Infinity); broadcast(); return; }
   if (i !== cur){ slides[cur]._tok++; slides[cur]._legacyAt = undefined; }
   legacy(slides[i], k, false);
@@ -744,8 +878,11 @@ function runSeg(){
   if (!(g.i === cur && g.k === step && auto.started)) go(g.i, g.k, true);
   auto.started = true;
   if (g.audio){
-    audioEl = audioEl || new Audio();
-    auto.atimer = setTimeout(function(){ audioEl.src = g.audio; audioEl.currentTime = 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
+    if (!audioEl){
+      audioEl = new Audio();
+      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(cur, step, Infinity); });
+    }
+    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
   }
   auto.timer = setTimeout(function(){ if (!auto) return; auto.idx++; runSeg(); }, g.dur * 1000);
 }
@@ -804,6 +941,8 @@ function init(){
     s._comps.forEach(function(c){ try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); } catch (e) { console.error(c.tagName, e); } });
   });
   DECK.slides = slides;
+  setupA11y();
+  if (CAP.on) setCaptions(true);
   fit();
   if (DECK.view) document.documentElement.classList.add("embedded");
   var h = parseInt((location.hash || "#1").slice(1), 10);
@@ -818,6 +957,8 @@ document.addEventListener("keydown", function(e){
   if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   var k = e.key, j = document.getElementById("jump");
+  // フォーカスのあるボタンやリンクは、Enter と Space でそれ自身を押す（送りに使わない）
+  if ((k === "Enter" || k === " ") && !buf && e.target && e.target.closest && e.target.closest("button, a[href], [role=button]")) return;
   if (/^[0-9]$/.test(k)){ buf += k; if (j) j.textContent = buf; return; }
   if (k === "Enter" && buf){ stopAuto(); go(parseInt(buf, 10) - 1, 0, false); buf = ""; if (j) j.textContent = ""; return; }
   buf = ""; if (j) j.textContent = "";
@@ -835,6 +976,7 @@ document.addEventListener("keydown", function(e){
   else if (k === "a") DECK.autoplay();
   else if (k === "l"){ DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); seek(cur, step, Infinity); }
   else if (k === "b") document.documentElement.classList.toggle("blackout");
+  else if (k === "s") setCaptions();
 });
 
 // 印刷（PDF 化）では、すべての段階を出した最終状態にする

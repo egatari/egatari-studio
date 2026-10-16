@@ -181,6 +181,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `?mode=talk` | 既定：後の段階は隠し、今の段階はフェードで出す |
 | `?mode=lecture` | 全部見せ、後の段階は薄く（0.28）、今の段階を強調（`.cur`）。印は最終状態 |
 | `?mode=video` | 書き出し用：道具と操作の帯を出さない。reduced-motion を無視する |
+| `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（書き出しで字幕を焼き込める） |
 | `?presenter=1` | 発表者ビュー（`p` で開く） |
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
@@ -199,20 +200,35 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | a | 今の段階から自動再生（音声があれば流す）。移動のキーで止まる |
 | l | 授業モードの入り切り |
 | b | 暗転の入り切り |
+| s | 字幕の入り切り：今の段階の口述原稿（表示用の文字）をスライドの下に出す |
 | o | 一覧（矢印・Home/End で選び、Enter・Space・クリックで移る。Esc か o で閉じる） |
 | x | レーザー（マウスが 2 秒止まると消える） |
 | d | ペン（筆圧に対応。線はスライドごとに残る） |
 | v | 消えるペン（書き終えて 0.7 秒後から 0.5 秒で消える） |
 | Shift+d | ペンの色：`--emph` → `--term` → `--fg` |
 | Backspace / Shift+Backspace | ペンか消えるペンを使っている間：このスライド / 全スライドの書き込みを消す |
+| Tab / Shift+Tab | 操作の帯のボタンを選ぶ（Enter / Space で押す。Esc でスライドに戻る） |
 | Esc | 道具を解除、キーの一覧を閉じる |
 | ? | キーの一覧（`server/dev.mjs` で開いたときは開発サーバーのキーも） |
 
 ### 操作の帯（マウスを動かすと出て、2.5 秒で隠れる）
 
-ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、発表者ビュー、全画面、キーの一覧。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
+ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、発表者ビュー、全画面、キーの一覧。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（`v0.1.0`）がある。版・ブラウザ・OS・デッキの言語・モードだけを入れたフィードバックの form を開く。デッキの中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
+
+### 字幕
+
+`s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（検査器がこの 2 色のコントラスト 4.5:1 以上を見ている）。手で送っている間は段階の全文を出す。音声つきの自動再生と `?mode=video&captions=1` では、段階を文のまとまり（2 行ほど）に分け、字数に比例して音声の時間を割り振って順に出す。動画では `(i, k, t)` だけで決まる。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
+
+### 読み上げとキーボード（アクセシビリティ）
+
+`?mode=video` と発表者ビューの中の画面では足さない。どれも画素は変えない。
+
+- 読み上げソフト：画面に出ない `aria-live="polite"` の領域（`#deck-live`）が、スライドが変わると「スライド n / N：タイトル」、次の段階では新しく出た段階の文字（式は KaTeX の字から）、戻ったときや文字の無い段階では「段階 k / K」を知らせる。スライドは `role="group"`・`aria-roledescription="スライド"`・`aria-label` を持ち、隠れたスライドは `aria-hidden="true"` と `inert`。発表ではまだ出ていない段階も `aria-hidden`（授業モードでは読める）。
+- キーボード：操作の帯と発表者ビューのボタンは `aria-label`（`<html lang>` に従って日本語か英語）、切り替えのボタンは `aria-pressed` を持ち、フォーカスの枠は `:focus-visible` のときだけ出す。一覧は `dialog` で、縮図は名前つきのボタン。矢印で選ぶとフォーカスも動き、Esc で閉じると元のフォーカスに戻る。キーの一覧（`?`）も `dialog` で、開くとフォーカスが入り、閉じると戻る。書き込みの面は `aria-hidden` でフォーカスを取らないので、描いている間も Tab と Esc が効く。
+- `prefers-reduced-motion` では各段階を最終状態で見せる（動画を除く）。
+- 検査器は `alt` の無い `<img>`（飾りなら `alt=""`）と、`aria-label` / `aria-labelledby` / `<title>` の無い SVG の図を警告し、名前の無い部品を情報として挙げる。
 
 ### 発表者ビュー
 
@@ -224,7 +240,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 実行時の API（スクリプトと検査用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview}`。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview}`、`captions(on)`（引数なしなら入か切か）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
 
 ## 開発サーバー
 
@@ -269,6 +285,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | 部品の描画が呼び出し順で変わる | エラー |
 | 注目の演出の目印が無い。段階ごとの印の一覧 | 警告。情報 |
 | モーフ：元のスライドが無い、同じ `data-id` が無い、ID の重複。対応の一覧 | 警告。情報 |
+| `alt` の無い `<img>`、`aria-label`・`<title>` の無い SVG の図、名前の無い部品 | 警告、警告、情報 |
 | タイムラインの合計と 1 枚ごとの長さ | 情報 |
 
 ## build
