@@ -24,6 +24,8 @@ const DIST = path.join(work, 'dist');
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
+// 食い違ったら最初に違う所の前後を出す（Windows などで原因を追うため）
+const firstDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i >= a.length && a.length === b.length ? '' : `\n       at ${i}: app …${JSON.stringify(a.slice(Math.max(0, i - 80), i + 120))}\n       node …${JSON.stringify(b.slice(Math.max(0, i - 80), i + 120))}`; };
 const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.join(SHOTS, name) }); };
 
 // ---------------------------------------------------------------- 1. 組んで配る
@@ -137,9 +139,10 @@ try {
   // ブラウザで組んだものと Node の build が同じ（字を絞り込まない設定で）
   const appHtml = await page.evaluate(() => window.__APP_TEST.build({ dev: false }));
   const nodeHtml = build(path.join(SRC, 'deck.html'), { subset: false }).html;
-  ok(appHtml === nodeHtml, `build: browser build is byte-identical to Node build (subset off) (${(appHtml.length / 1024).toFixed(0)} KB)`);
+  ok(appHtml === nodeHtml, `build: browser build is byte-identical to Node build (subset off) (${(appHtml.length / 1024).toFixed(0)} KB)` + firstDiff(appHtml, nodeHtml));
   const appDev = await page.evaluate(() => window.__APP_TEST.build({ dev: true }));
-  ok(appDev === build(path.join(SRC, 'deck.html'), { dev: true }).html, 'build: dev build (data-src) is byte-identical to Node');
+  const nodeDev = build(path.join(SRC, 'deck.html'), { dev: true }).html;
+  ok(appDev === nodeDev, 'build: dev build (data-src) is byte-identical to Node' + firstDiff(appDev, nodeDev));
 
   // ---------------------------------------------------------------- 3. 原稿の編集
   await f.evaluate(() => DECK.go(2, 3, false));
