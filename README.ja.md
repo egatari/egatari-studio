@@ -57,7 +57,7 @@ winget install OpenJS.NodeJS.LTS Git.Git     # 入れたら端末を開き直す
 winget install astral-sh.uv Gyan.FFmpeg      # 任意：uv（字を小さくする）・ffmpeg（動画）
 ```
 
-Edge は最初からあるので、Chrome がなくても検査と PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。TTS のサーバー（mlx-audio）は Apple silicon の Mac が要る。Windows からは `IRODORI_URL` を同じネットワークの Mac に向ける。
+Edge は最初からあるので、Chrome がなくても検査と PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。読み上げ音声を作る（段階 2）には TTS のサーバーが要る。確かめている mlx-audio は Apple silicon の Mac でしか動かない。
 
 **ブラウザ**
 

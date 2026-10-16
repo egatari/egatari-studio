@@ -57,7 +57,7 @@ winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
 winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
 ```
 
-Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). The TTS server (mlx-audio) needs a Mac with Apple silicon; from Windows, set `IRODORI_URL` to a Mac on your network.
+Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon.
 
 **Browsers**
 
