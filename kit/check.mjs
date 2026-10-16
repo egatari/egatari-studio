@@ -152,6 +152,8 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     step0.push({ i: m.i, text: t.replace(/\s+/g, '').slice(0, 80) });
   });
 
+  // 見える文字だけ（KaTeX の読み上げ用の MathML は数えない）
+  const vis = (el) => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); return c.textContent; };
   // 2. 各スライドを最終段階まで出した状態で体裁を調べる
   metaList.forEach((m) => {
     DECK.seek(m.i, m.max, Infinity);
@@ -161,13 +163,13 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     const issues = [], warns = [];
     const h2 = s.querySelector('h2'), c = s.querySelector('.concl'), body = s.querySelector('.body');
     if (h2) {
-      const t = h2.textContent.trim();
+      const t = vis(h2).trim();
       if (JA && units(t) > 26) issues.push(`タイトル ${units(t)} 字（26 字まで）`);
       if (!JA && t.length > 60) warns.push(`タイトル ${t.length} 文字（英語は 60 文字まで）`);
       if (/[：:]$/.test(t)) issues.push('タイトルがコロンで終わる');
     }
     if (c) {
-      const t = c.textContent.trim();
+      const t = vis(c).trim();
       if (JA && units(t) > 35) issues.push(`結論の行 ${units(t)} 字（35 字まで）`);
       if (!JA && t.length > 70) warns.push(`結論の行 ${t.length} 文字（英語は 70 文字まで）`);
       if (c.scrollWidth > c.clientWidth + 1) issues.push('結論の行が枠からはみ出す');
@@ -207,7 +209,7 @@ const aOut = await page.evaluate(([metaList, JA]) => {
           if (fs.length && Math.min(...fs) * sc < 23.9) issues.push(`図中の文字が小さい（${(Math.min(...fs) * sc).toFixed(1)}px）`);
         });
       }
-      const txt = body.innerText;
+      const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
       // 句読点とです・ますは日本語のデッキだけ
       if (JA) punct.push({ i: m.i, jp: (txt.match(/[、。]/g) || []).length, en: (txt.match(/[，．]/g) || []).length });

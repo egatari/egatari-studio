@@ -335,6 +335,7 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--only key,…` | only these steps; the rest stay as they are |
 | `--full` | also `full.mp4`, and with two or more chapters `chapter_NN.mp4` and `chapters.json` (needs all clips) |
 | `--force` | ignore `.render-cache.json` |
+| `--captions` | burn the narration captions into the video (`?captions=1`); part of the cache key |
 
 Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
 

@@ -335,6 +335,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--only 鍵,…` | この段階だけ。ほかはそのまま |
 | `--full` | `full.mp4` も。章が 2 つ以上なら `chapter_NN.mp4` と `chapters.json` も（全部のクリップが要る） |
 | `--force` | `.render-cache.json` を無視する |
+| `--captions` | 口述原稿の字幕を映像に焼き込む（`?captions=1`）。キャッシュの鍵に入る |
 
 出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
 

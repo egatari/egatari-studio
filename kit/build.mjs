@@ -415,7 +415,7 @@ export function build(srcPath, opts = {}) {
   let count = 0;
   const render = (tex, display) => {
     count++;
-    try { return katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'html', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }); }
+    try { return katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }); }
     catch (e) { warn.push(`KaTeX: ${e.message.split('\n')[0]}  in: ${tex.slice(0, 60)}`); return `<span class="katex-error" title="${escAttr(e.message)}">${escAttr(tex)}</span>`; }
   };
   const parts = html.split(/(<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<svg[\s\S]*?<\/svg>|<textarea[\s\S]*?<\/textarea>|<!--[\s\S]*?-->)/);

@@ -26,7 +26,7 @@ const RENDER_VERSION = 4;   // 書き出しの方法を変えたら上げる（�
 const CACHE_FILE = '.render-cache.json';   // render/export-canon.mjs も読む
 
 function parseArgs(argv) {
-  const o = { fps: 30, scale: 1.5, only: null, full: false, force: false, out: null, src: null };
+  const o = { fps: 30, scale: 1.5, only: null, full: false, force: false, captions: false, out: null, src: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--out') o.out = argv[++i];
@@ -35,6 +35,7 @@ function parseArgs(argv) {
     else if (a === '--only') o.only = new Set(argv[++i].split(',').map((s) => s.trim()).filter(Boolean));
     else if (a === '--full') o.full = true;
     else if (a === '--force') o.force = true;
+    else if (a === '--captions') o.captions = true;   // 口述原稿の字幕を映像に焼き込む
     else o.src = a;
   }
   if (!o.src || !o.out) {
@@ -144,7 +145,7 @@ async function main() {
     page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
     const htmlUrl = pathToFileURL(src).href;
-    await page.goto(htmlUrl + '?mode=video');
+    await page.goto(htmlUrl + '?mode=video' + (o.captions ? '&captions=1' : ''));
     await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 30000 });
     await page.evaluate(() => document.fonts.ready.then(() => true));
     const { tl, narration } = await page.evaluate(() => ({ tl: DECK.timeline(), narration: DECK.NARRATION }));
@@ -219,7 +220,7 @@ async function main() {
       const per = inputs.per[n];
       const input = sha(globalHash, audioHash, JSON.stringify({
         slides: inputs.ok ? per.deps.map((j) => slideHash[j]) : null, data: per.data, key: s.key, i: s.i, k: s.k,
-        dur: s.dur, lead: s.lead, anim: s.anim, motion, frames: N, nA, fps: o.fps, scale: o.scale }));
+        dur: s.dur, lead: s.lead, anim: s.anim, motion, frames: N, nA, fps: o.fps, scale: o.scale, captions: o.captions }));
       rec.input = input;
       if (o.only && !o.only.has(s.key)) { fs.rmSync(tmp, { recursive: true, force: true }); continue; }
 
