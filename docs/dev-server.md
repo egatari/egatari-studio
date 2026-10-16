@@ -1,56 +1,58 @@
-# 開発サーバー（ブラウザで直す）
+# Dev server (fix the deck in the browser)
 
-HTML の原稿を手で開かずに、ブラウザの上で文言・口述原稿を直し、Claude への指示を残すための小さなサーバー。
-選択肢・口・キーの一覧は [reference.ja.md#開発サーバー](reference.ja.md#開発サーバー)。
-VS Code は要らない。待ち受けは 127.0.0.1 だけ。
+English | [日本語](dev-server.ja.md)
 
-## 起動
+A small server for fixing the text and the narration in the browser, and for leaving instructions for Claude, without opening the HTML source by hand.
+The list of options, endpoints and keys is in [reference.md#dev-server](reference.md#dev-server).
+You do not need VS Code. It listens on 127.0.0.1 only.
+
+## Starting
 
 ```bash
 node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
 npm run dev -- path/to/deck.html --port 5174 --theme tml
 ```
 
-原稿のフォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
-リポジトリの kit/、components/、themes/ を見張り、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
-組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
-`?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
+It watches the deck folder (deck.html, narration.md, timeline.json, macros.tex, data/, figs/, components/, audio/manifest.json)
+and the repository's kit/, components/ and themes/. When something changes it rebuilds and reloads the page (staying on the same slide and step).
+When the build fails, the error is shown on the page. Fix it and save, and the deck comes back.
+`?presenter=1`, `?mode=lecture` and the like work as usual. Audio is read from `/deck/audio/…`.
 
-## 操作
+## Controls
 
-| 鍵 | すること |
+| Key | Action |
 |---|---|
-| `e` | 編集モードの入り切り。直せる要素に枠が出る。**ダブルクリック**で原稿（HTML と `\( \)` の式）を開き、⌘/Ctrl+Enter で保存、Esc で取消 |
-| `n` | 口述原稿の引き出し（右）。今の段階の発言を直す（話者 Expert / Novice、発言の追加・削除・順番）。`{cue}` `{φ\|ファイ}` はそのまま書く。下に次の段階を表示 |
-| `c` | Claude への指示の一覧（未対応のもの）。クリックでそのスライドへ、「解決」で対応済み |
-| Alt+クリック（Mac は ⌥ option キーを押したままクリック） | その要素について Claude への指示を残す |
+| `e` | Toggle edit mode. Editable elements get an outline. **Double-click** to open the source (HTML, with math as `\( \)`), ⌘/Ctrl+Enter to save, Esc to cancel |
+| `n` | Narration drawer (right). Edit the turns of the current step (speaker Expert / Novice; add, delete and reorder turns). Write `{cue}` and `{φ\|ファイ}` as they are. The next step is shown below |
+| `c` | List of instructions for Claude (open ones). Click one to go to its slide; 「解決」 ("Resolve") marks it as done |
+| Alt+click (on a Mac, hold the ⌥ Option key and click) | Leave an instruction for Claude about that element |
 
-矢印・Space・p・a・l などの発表の操作は、入力欄の外ではいつもどおり効く。
-保存した時点で原稿が別の所で変わっていたら（ハッシュが合わない）、保存せずに「原稿が変わっています。再読み込みしてください」と出す。
-口述原稿も同じで、引き出しを開いたあとにその段階の行が別の所で変わっていたら、保存せずに「口述原稿が変わっています」と出す（入力は残る）。
+The presenting keys (arrows, Space, p, a, l, …) work as usual outside input fields.
+If the source has changed elsewhere by the time you save (the hash does not match), it does not save and shows 「原稿が変わっています。再読み込みしてください」 ("The source has changed. Please reload.")
+The same goes for the narration: if the lines of that step have changed elsewhere since the drawer was opened, it does not save and shows 「口述原稿が変わっています」 ("The narration has changed"; your input is kept).
 
-## 書き換えるファイル
+## Files it rewrites
 
-- `deck.html`：ダブルクリックで直した要素の中身だけを置き換える
-- `narration.md`：その段階の行（`[k] …` とその続きの行）だけを置き換える。なければスライドの順・段階の順の位置に足す。
-  ほかの行（コメントを含む）は元のまま。発言を全部消すとその段階の行を消す
-- `comments.json`：Claude への指示 `[{id, created, key, range, quote, comment, status}]`（key は `スライドの鍵:段階`、range は deck.html の位置）
-- `.cache/edits/`：書き換える前の deck.html・narration.md の写し（新しい 30 個）
+- `deck.html`: replaces only the contents of the element edited by double-click
+- `narration.md`: replaces only the lines of that step (`[k] …` and its continuation lines). If there are none, they are added at the position given by the order of slides and steps.
+  All other lines (including comments) stay as they were. Deleting all turns removes the lines of that step
+- `comments.json`: instructions for Claude, `[{id, created, key, range, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html)
+- `.cache/edits/`: copies of deck.html and narration.md from before each rewrite (the latest 30)
 
-## 守り
+## Protection
 
-ほかのサイトを開いたブラウザから原稿を書き換えられないように、次を断る。
+So that a browser that has another site open cannot rewrite your source, the following are refused.
 
-- Host が `127.0.0.1:番号` か `localhost:番号` でない要求（DNS rebinding 対策）は 403
-- `/__dev/` の口（書き込み・原稿の読み出し・コメント・`/__dev/events`）は、起動のたびに作る合言葉が要る。
-  配る画面に `window.__DECK_DEV_TOKEN` として埋め込み、client.js が `X-Deck-Token` で送る（`/__dev/events` は `?token=`）。
-  合言葉が違えば 403（サーバーを起動し直したら画面を読み込み直す）
-- 書き込み（POST）は `Content-Type: application/json` でなければ 415、Origin が付いていて同じ番号の 127.0.0.1・localhost でなければ 403
-- `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で原稿のフォルダの外を指すものも 403
-- 壊れた URL（`/%ZZ` など）は 400
+- Requests whose Host is not `127.0.0.1:port` or `localhost:port` (against DNS rebinding) get 403
+- The `/__dev/` endpoints (writing, reading the source, comments, `/__dev/events`) need a token created at every start.
+  It is embedded in the served page as `window.__DECK_DEV_TOKEN`, and client.js sends it as `X-Deck-Token` (for `/__dev/events`, `?token=`).
+  A wrong token gets 403 (after restarting the server, reload the page)
+- Writes (POST) get 415 unless `Content-Type: application/json`, and 403 if an Origin is present and is not 127.0.0.1 or localhost on the same port
+- `/deck/…` does not serve names starting with a dot (the copies in `.cache/edits/`, `.env`, and so on). Symlinks pointing outside the deck folder also get 403
+- Malformed URLs (such as `/%ZZ`) get 400
 
-## Claude Code への頼み方
+## Asking Claude Code
 
-「コメントを反映して」と頼む。Claude Code は `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに
-deck.html（または narration.md・部品）を直し、終わったものを `"status": "resolved"` にする。
-range は指示を残した時点の位置なので、ずれていれば quote で探す。サーバーが動いていれば、直した結果はすぐ画面に出る。
+Ask "Apply the comments." Claude Code reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
+to edit deck.html (or narration.md, or a component), and sets the finished ones to `"status": "resolved"`.
+range is the position at the time the instruction was left, so if it has shifted, Claude Code searches for quote. If the server is running, the result appears on the page as soon as it is saved.

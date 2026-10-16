@@ -50,7 +50,7 @@ CI は push と PR ごとに Node 22 と 24 で `npm test` を回す。
 
 ## 書き方の決まり
 
-正本は [docs/contract.md](docs/contract.md)。実行系・部品・口述原稿・タイムラインを変えるときは先にこれを直す。要点：
+正本は [docs/contract.ja.md](docs/contract.ja.md)（英語版 [docs/contract.md](docs/contract.md)）。実行系・部品・口述原稿・タイムラインを変えるときは先にこれを直す（両方の言語を）。要点：
 
 - 画面は `DECK.seek(i, k, t)` だけで決まる（動画の書き出しがこれに頼る）
 - 色を直接書かない。機関に依存するもの（基調色・ロゴ）は `themes/<名前>/` の中だけ

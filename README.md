@@ -76,7 +76,16 @@ node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf 
 node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
 ```
 
-To start your own deck, copy `examples/minimal/` to a new folder and edit `deck.html` and `narration.md`. Choose a theme with `<html data-theme="tml">` or `--theme tml`. For an English deck use `<html lang="en">`: body text is then set in Source Sans 3 and the checker uses English rules.
+### Start your own deck
+
+```bash
+npm run new -- talks/mytalk --lang en --theme default --title "My talk"
+npm run build -- talks/mytalk/deck.html    # -> talks/mytalk/out/deck.html
+npm run dev -- talks/mytalk/deck.html      # edit in the browser
+npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
+```
+
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="tml">` or `--theme tml`. With `<html lang="en">` body text is set in Source Sans 3 and the checker uses English rules. For a fuller example, see `examples/minimal/`.
 
 ## Editing in the browser (dev server)
 
@@ -97,7 +106,7 @@ The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by 
 |---|---|---|
 | ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
 
-Details: [docs/dev-server.md](docs/dev-server.md).
+Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.ja.md)).
 
 ## Using it with Claude Code
 
@@ -140,7 +149,7 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 - If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
 - `export-canon.mjs` writes a lesson bundle (Marp-style markdown plus one MP4 and one PNG per step) for canon, our lab's lecture delivery system; other systems that accept the same format can use it too. With `CANON_DIR` set, it also validates the bundle with canon's own parser. Without it, that check is skipped
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the narration inside the HTML, so the single file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
-- Details (caching, timing overrides in `timeline.json`, the reading dictionary): [docs/video.md](docs/video.md)
+- Details (caching, timing overrides in `timeline.json`, the reading dictionary): [docs/video.md](docs/video.md) ([日本語](docs/video.ja.md))
 
 ## Keys (presenting)
 
@@ -186,7 +195,7 @@ A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `defaul
 
 | Example | What it shows |
 |---|---|
-| [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. Use it as the template for new decks |
+| [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. A fuller example to learn from (`npm run new` makes a clean template) |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
 
 The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default voice. The published video of this example was narrated with the author's own reference voice, which is not included in the repository.
@@ -203,7 +212,8 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 
 | Path | Contents |
 |---|---|
-| `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** |
+| `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** ([日本語](docs/contract.ja.md)) |
+| `docs/dev-server.md`, `docs/video.md` | guides: the dev server, and making a video ([日本語](docs/dev-server.ja.md), [日本語](docs/video.ja.md)) |
 | `docs/reference.md` | reference: deck syntax, narration, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
 | `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher |
 | `components/` | animated figure components; catalog in `components/CATALOG.md` |
@@ -211,7 +221,8 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `server/` | dev server and in-browser editor |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
 | `skills/` | Claude Code skills |
-| `tools/` | tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
+| `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
+| `CHANGELOG.md` | changes in each release |
 
 Tests (need Chrome):
 
@@ -230,6 +241,7 @@ node tools/test-dev-server.mjs
 - In Claude Code, say "send feedback": the skill drafts an issue from the session and creates it only after you confirm
 - Want a new figure? [Request a component](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml), or write one in your deck and [submit it](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml)
 - Questions: [Discussions](https://github.com/moiku/motion-academic-slides/discussions). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
+- What changed in each release: [CHANGELOG.md](CHANGELOG.md)
 
 ## Security
 

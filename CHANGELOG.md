@@ -1,0 +1,45 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- `npm run new -- <folder> [--lang en|ja] [--theme name] [--title "…"]` (`tools/new.mjs`): creates a new deck from a clean template (a cover and sample slides for steps, math with an attention mark, and a component, with narration for every step). It refuses to write into a folder that is not empty and prints the next steps. `npm test` now builds and checks the Japanese and English templates
+- English versions of the contract, the dev-server guide and the video guide (`docs/contract.md`, `docs/dev-server.md`, `docs/video.md`)
+- This changelog
+- Accessibility: …
+
+### Changed
+
+- The Japanese docs moved to `docs/contract.ja.md`, `docs/dev-server.ja.md` and `docs/video.ja.md`, following the scheme of `docs/reference.md` / `docs/reference.ja.md` (English = `.md`, Japanese = `.ja.md`). All links in the repository were updated
+- On a Mac, the help screen, the dev-server badge and the docs label the comment shortcut as ⌥ option + click instead of Alt + click
+
+## [0.1.0] - 2026-10-16
+
+First public release.
+
+### Added
+
+- **Decks as a single HTML file**: `kit/build.mjs` turns `deck.html` (+ `narration.md`) into one self-contained file with fonts, KaTeX math and local images, videos and stylesheets embedded; it works offline
+- **Steps** (`data-step`), with the conclusion line (`.concl`) always last, and **three modes** from one source: talk, lecture (everything visible, current step highlighted) and video
+- **Math** rendered with KaTeX at build time, with theme-colored highlights (`\hlE`, `\hlT`, `\hlM`) and per-deck macros (`macros.tex`)
+- **Animated figure components** (Web Components) whose screen depends only on (slide, step, time): `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, with a generated catalog (`components/CATALOG.md`)
+- **Attention marks** (`{mark:ID|effect}` in the narration): hand-drawn underline, circle, box, spotlight and laser dot, timed to the narration
+- **Morph transitions** (`data-morph`, `\morph{ID}{…}`, `data-id`) that slide equations and elements from the previous slide
+- **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen and fading pen, a control bar, a key list (`?`), and a feedback link that sends no slide content
+- **Themes** derived from one base color (`themes/<name>/tokens.css`, optional `theme.json` with `extends` and logos): `default`, plus the institutional themes `tml`, `tcue`, `wsd` and `ohte`
+- **Checker** (`kit/check.mjs`): overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs, with Japanese and English rules
+- **Dev server** (`server/dev.mjs`, default port 8730): live reload, in-browser editing of the source and the narration, comments for Claude Code in `comments.json`, local-only with a per-start token
+- **PDF** export (`tools/pdf.mjs`), one page per slide
+- **Narrated video (optional tier 2)**: TTS through an OpenAI-compatible speech server (`tts/synth.py`, Irodori-TTS for Japanese, VoxCPM2 for other languages) with a reading dictionary and caching, frame-exact rendering to per-step MP4 clips and a full video (`render/render.mjs`), a lesson bundle for canon (`render/export-canon.mjs`), and self-playing HTML with embedded AAC audio (`--embed-audio`)
+- **Claude Code skills**: `motion-slides`, `motion-slides-video` and `motion-components`
+- **Examples**: `examples/minimal` (Japanese, gradient descent) and `examples/tmlr2026-calibration` (English, a TMLR 2026 paper)
+- Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
+- Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
+
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/moiku/motion-academic-slides/releases/tag/v0.1.0

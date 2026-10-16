@@ -50,7 +50,7 @@ CI runs `npm test` on Node 22 and 24 for every push and pull request.
 
 ## Coding rules
 
-[docs/contract.md](docs/contract.md) is the source of truth; change it first when you change the runtime, components, narration or timeline. In short:
+[docs/contract.md](docs/contract.md) (Japanese: [docs/contract.ja.md](docs/contract.ja.md)) is the source of truth; change it first (both languages) when you change the runtime, components, narration or timeline. In short:
 
 - the screen is determined by `DECK.seek(i, k, t)` alone (video export depends on it)
 - no hard-coded colors; institution-specific things (colors, logos) live only in `themes/<name>/`

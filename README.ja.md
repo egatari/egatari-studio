@@ -76,7 +76,16 @@ node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf 
 node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
 
-自分のデッキは `examples/minimal/` を別のフォルダに写し、`deck.html` と `narration.md` を直して作る。テーマは `<html data-theme="tml">` か `--theme tml` で選ぶ。英語のデッキは `<html lang="en">` にする（本文の字が Source Sans 3 になり、検査も英語の規則になる）。
+### 自分のデッキを作る
+
+```bash
+npm run new -- talks/mytalk --theme default --title "発表の題名"
+npm run build -- talks/mytalk/deck.html    # -> talks/mytalk/out/deck.html
+npm run dev -- talks/mytalk/deck.html      # ブラウザで直す
+npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」になればよい
+```
+
+`npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="tml">` か `--theme tml` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、検査も英語の規則になる。もっと作り込んだ見本は `examples/minimal/`。
 
 ## ブラウザで直す（開発サーバー）
 
@@ -97,7 +106,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 |---|---|---|
 | ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
 
-詳しくは [docs/dev-server.md](docs/dev-server.md)。
+詳しくは [docs/dev-server.ja.md](docs/dev-server.ja.md)（[English](docs/dev-server.md)）。
 
 ## Claude Code で使う
 
@@ -140,7 +149,7 @@ node render/export-canon.mjs $D --render $D/video --out $D/bundle
 - サーバーが動いていない、参照音声がないときは、`synth.py` がその URL やファイルを示して止まる
 - `export-canon.mjs` は教材のバンドル（Marp 形式の md と、段階ごとの MP4・PNG）を作る。canon は TML 研究室の講義配信システムだが、同じ形式を受け付けるほかのシステムにも使える。`CANON_DIR` があれば canon 自身の parser でも確かめ、なければその検査を飛ばす
 - **音声入りの HTML**：`node kit/build.mjs $D/deck.html --embed-audio` で口述原稿の音声を HTML の中に入れる。1 つのファイルだけで、どこでも `a`（自動再生）で音声付きで進む。音声は AAC（64 kbps・モノラル）に圧縮する（5 分で約 4.5 MB。WAV のままだと約 30 MB）。今の主要なブラウザはすべて再生できる。`--embed-audio` を付けなければ、HTML は `audio/` の WAV を参照するだけで変換しない。ffmpeg がなければ WAV のまま埋め込み、build が警告する
-- 詳しく（キャッシュ、`timeline.json` での長さの調整、読み辞書）：[docs/video.md](docs/video.md)
+- 詳しく（キャッシュ、`timeline.json` での長さの調整、読み辞書）：[docs/video.ja.md](docs/video.ja.md)（[English](docs/video.md)）
 
 ## 操作（発表）
 
@@ -186,7 +195,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 
 | 見本 | 内容 |
 |---|---|
-| [`examples/minimal`](examples/minimal) | 日本語・6 枚（勾配降下法）。段階、KaTeX と `\hlE`、`{mark}`、`data-morph`、`m-sweep`、全段階の口述原稿。新しいデッキの雛形 |
+| [`examples/minimal`](examples/minimal) | 日本語・6 枚（勾配降下法）。段階、KaTeX と `\hlE`、`{mark}`、`data-morph`、`m-sweep`、全段階の口述原稿。作り込んだ見本（新しいデッキの雛形は `npm run new` で作る） |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。デッキ専用の部品（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `tml` |
 
 `examples/tmlr2026-calibration` の `voice.json` は TTS の既定の声を使う。公開しているこの見本の動画は、著者本人の参照音声で読み上げたもの（参照音声はリポジトリに含めていない）。
@@ -203,7 +212,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 
 | 場所 | 中身 |
 |---|---|
-| `docs/contract.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む** |
+| `docs/contract.ja.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
+| `docs/dev-server.ja.md`、`docs/video.ja.md` | 手引き：開発サーバー、動画にする（[English](docs/dev-server.md)、[English](docs/video.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
@@ -211,7 +221,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `server/` | 開発サーバーとブラウザ上の編集 |
 | `tts/` `render/` | 段階 2：TTS（uv のプロジェクト）、動画の書き出し、バンドルの出力 |
 | `skills/` | Claude Code のスキル |
-| `tools/` | テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.sh`） |
+| `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.sh`） |
+| `CHANGELOG.md` | 版ごとの変更（英語） |
 
 テスト（Chrome が要る）：
 
@@ -230,6 +241,7 @@ node tools/test-dev-server.mjs
 - Claude Code では「感想を送って」と言う。スキルが作業中に困ったことを issue の下書きにまとめ、確認を取ってから作る
 - 新しい図が欲しいときは [部品の依頼](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml)。デッキの中で書いた部品は [部品の提案](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml) から
 - 質問は [Discussions](https://github.com/moiku/motion-academic-slides/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
+- 版ごとの変更は [CHANGELOG.md](CHANGELOG.md)（英語）
 
 ## セキュリティ
 

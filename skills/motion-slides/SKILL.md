@@ -5,7 +5,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 
 # motion-slides：動きのある HTML スライドを作る
 
-リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンクで入れたときは、リンク先の実体の 2 つ上。`realpath` で確かめる）。約束事は `<repo>/docs/contract.md`。
+リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンクで入れたときは、リンク先の実体の 2 つ上。`realpath` で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
 ## 1. 作るもの
 
@@ -27,7 +27,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
    - スライドごとに：見出し（章の見出し）／言いたいこと（結論の行）／材料／動く図にするか
    - 枚数の目安：発表 1 分 ≒ 1 枚。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
-3. **静的な版を書く**：`deck.html` を雛形から作り、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
+3. **静的な版を書く**：`deck.html` を雛形から作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` の雛形ができる。空でないフォルダには書かない）、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
 5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/components/CATALOG.md`）から選び、なければ新しく書く（motion-components スキル）
 6. **検査して直す**：`node <repo>/kit/check.mjs <deck>/deck.html` が error 0 になるまで。段階 0 で見えている本文の一覧は必ず読む
@@ -73,7 +73,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 
 ## 5. 口述原稿（narration.md）
 
-書式は `<repo>/docs/contract.md §4`。
+書式は `<repo>/docs/contract.ja.md §4`。
 
 ```markdown
 ## 更新の式
@@ -93,7 +93,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 
 ### 注目の演出（`{mark}`）
 
-話し手が「ここ」と言う瞬間に、スライドの該当箇所に印を付ける（約束事は `docs/contract.md §7`）。
+話し手が「ここ」と言う瞬間に、スライドの該当箇所に印を付ける（約束事は `docs/contract.ja.md §7`）。
 
 ```markdown
 [2] {mark:eta|circle}η は学習率です。{mark:grad}勾配は、損失が最も急に増える向きです。
@@ -107,7 +107,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 
 ### モーフ（`data-morph`）
 
-前のスライドの式や要素が、次のスライドの位置へ滑って移る切り替え（約束事は `docs/contract.md §8`）。式変形の続き（前の式を上に移して次の行を足す）、図や項目の並べ替えに使う。
+前のスライドの式や要素が、次のスライドの位置へ滑って移る切り替え（約束事は `docs/contract.ja.md §8`）。式変形の続き（前の式を上に移して次の行を足す）、図や項目の並べ替えに使う。
 
 ```html
 <section class="slide" data-morph>   <!-- 前のスライドから。data-morph="鍵" ならそのスライドから -->

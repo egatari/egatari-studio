@@ -2,7 +2,7 @@
 
 [English](reference.md) | 日本語
 
-使える選択肢・記法・キーを、コードから拾って 1 行ずつ並べたもの。理由と厳密な規則（位置と時刻、タイムラインの式、注目の演出、モーフ）は [contract.md](contract.md)。手順の説明は [README](../README.ja.md)、[dev-server.md](dev-server.md)、[video.md](video.md)。
+使える選択肢・記法・キーを、コードから拾って 1 行ずつ並べたもの。理由と厳密な規則（位置と時刻、タイムラインの式、注目の演出、モーフ）は [contract.ja.md](contract.ja.md)。手順の説明は [README](../README.ja.md)、[dev-server.ja.md](dev-server.ja.md)、[video.ja.md](video.ja.md)。
 
 目次：[原稿の記法](#原稿の記法) · [口述原稿](#口述原稿narrationmd) · [長さ](#長さtimelinejson) · [テーマ](#テーマ) · [部品](#部品) · [発表](#発表) · [開発サーバー](#開発サーバー) · [検査器](#検査器) · [build](#build) · [TTS](#tts) · [書き出し](#書き出し) · [道具](#道具) · [環境変数](#環境変数)
 
@@ -37,7 +37,7 @@
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
 | `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える |
 | section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける |
-| `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.md#8-モーフdata-morph)） |
+| `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `data-chapter="名前"` | ここから章を始める（`sec` と同じ扱い。章の名前を指定） |
 | `data-steps="n"` | 段階の数の下限（旧形式の `data-anim` 用） |
 | `data-anim="名前"` | 旧形式の動き：`DECK.ANIM[名前](slide, k, instant)` を呼ぶ。動画では各段階の最終状態だけになる。新しく書くなら部品にする |
@@ -62,8 +62,8 @@
 | `class="draw drawslow"` | 同じく 1.4 秒 |
 | `data-from="k"`（部品） | 部品の段階 1 をスライドの段階 k に合わせる（既定 1） |
 | `steps="n"`（部品） | 部品の段階の数を上書きする |
-| `data-id="ID"` | モーフの対応（[contract §8](contract.md#8-モーフdata-morph)） |
-| `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.md#7-注目の演出mark)） |
+| `data-id="ID"` | モーフの対応（[contract §8](contract.ja.md#8-モーフdata-morph)） |
+| `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.ja.md#7-注目の演出mark)） |
 | `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。section に手で `data-key` を書けば、それを鍵に使う（`id` より優先）。[スライドの鍵](#スライドの鍵) |
 
 ### 数式
@@ -128,7 +128,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## 長さ（timeline.json）
 
-`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 印の終わり + pad_after))`（[contract §5](contract.md#5-タイムライン)）。
+`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 印の終わり + pad_after))`（[contract §5](contract.ja.md#5-タイムライン)）。
 
 | `"スライドの鍵:段階"` の中の鍵 | 既定 | 意味 |
 |---|---|---|
@@ -168,7 +168,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## 部品
 
-部品の一覧と受け取る値は [components/CATALOG.md](../components/CATALOG.md)（各 README の frontmatter から `node tools/catalog.mjs` が作る）。部品の書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.md#3-部品web-components) と [skills/motion-components](../skills/motion-components/SKILL.md)。
+部品の一覧と受け取る値は [components/CATALOG.md](../components/CATALOG.md)（各 README の frontmatter から `node tools/catalog.mjs` が作る）。部品の書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.ja.md#3-部品web-components) と [skills/motion-components](../skills/motion-components/SKILL.md)。
 
 部品が使える `DECK` の道具：`el(tag, attrs, parent)`（SVG。`var()` の色は `style` に回す）、`mtext(parent, x, y, "*x*_0", attrs)`、`svgMath(parent, x, y, tex, {size, anchor, color, w, h})`、`Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})`（`.x() .y() .d(f, a, b, n) .poly(pts) .clip`）、`prog(t, start, dur)`、`lerp`、`ease`、`clamp01`、`color(名前)`。
 
@@ -228,7 +228,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## 開発サーバー
 
-`node server/dev.mjs <deck.html> [--port 8730] [--theme 名前]`（`npm run dev -- …` でも）。詳しくは [dev-server.md](dev-server.md)。
+`node server/dev.mjs <deck.html> [--port 8730] [--theme 名前]`（`npm run dev -- …` でも）。詳しくは [dev-server.ja.md](dev-server.ja.md)。
 
 | 項目 | ふるまい |
 |---|---|
@@ -286,7 +286,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## TTS
 
-`uv run --project tts python tts/synth.py <deckdir> [選択肢]`。詳しくは [video.md](video.md)。
+`uv run --project tts python tts/synth.py <deckdir> [選択肢]`。詳しくは [video.ja.md](video.ja.md)。
 
 | 選択肢 | 意味 |
 |---|---|
@@ -337,6 +337,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 | コマンド | 用途 |
 |---|---|
+| `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいな雛形から新しいデッキのフォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `sh tools/get-fonts.sh` | BIZ UDPゴシックの TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |

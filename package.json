@@ -8,6 +8,7 @@
     "build": "node kit/build.mjs",
     "dev": "node server/dev.mjs",
     "check": "node kit/check.mjs",
+    "new": "node tools/new.mjs",
     "test": "node tools/test-all.mjs"
   },
   "engines": {

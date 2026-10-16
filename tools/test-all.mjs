@@ -2,6 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal と examples/tmlr2026-calibration を組む（部品の見本は test-components が組む）
 // 2. 単体の検査（test-narration・test-deck-timing、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server
+// 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
 import os from 'node:os';
@@ -33,9 +34,16 @@ const steps = [
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
+  // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）
+  ...['ja', 'en'].flatMap((l) => [
+    [`new ${l}`, ['tools/new.mjs', path.join(tmp, 'new-' + l), '--lang', l]],
+    [`build new ${l}`, ['kit/build.mjs', path.join(tmp, 'new-' + l, 'deck.html')]],
+    [`check new ${l}`, ['kit/check.mjs', path.join(tmp, 'new-' + l, 'deck.html')]],
+  ]),
 ];
 // 組めなかったデッキに依るテストは飛ばす
-const needs = { 'check minimal': 'build minimal', smoke: 'build minimal', 'test-tools': 'build minimal', 'test-controls': 'build minimal', 'test-autoplay': 'build minimal', 'check tmlr2026': 'build tmlr2026' };
+const needs = { 'check minimal': 'build minimal', smoke: 'build minimal', 'test-tools': 'build minimal', 'test-controls': 'build minimal', 'test-autoplay': 'build minimal', 'check tmlr2026': 'build tmlr2026',
+  'build new ja': 'new ja', 'check new ja': 'build new ja', 'build new en': 'new en', 'check new en': 'build new en' };
 
 function run(name, argv) {
   return new Promise((resolve) => {

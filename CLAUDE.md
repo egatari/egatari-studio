@@ -4,7 +4,7 @@
 
 ## 守ること
 
-- `docs/contract.md` が約束事の正本。実行系・部品・口述原稿・タイムラインを変えるときは先にこれを直す
+- `docs/contract.md`（英語）と `docs/contract.ja.md`（日本語）が約束事の正本。実行系・部品・口述原稿・タイムラインを変えるときは先にこれを直す（両方を揃える）。`docs/dev-server` と `docs/video` も同じく `.md` が英語、`.ja.md` が日本語
 - 画面は `DECK.seek(i, k, t)` だけで決まる。部品の中で実時間の時計・`setTimeout`・`requestAnimationFrame`・シードのない乱数を使わない（動画の書き出しが壊れる）
 - 色は直接書かない。テーマの変数（`--term` `--emph` `--muted` `--fg` `--accent2` `--line` `--series-*`）だけを使う
 - 機関に依存するもの（基調色・ロゴ）は `themes/<名前>/` の中だけに置く（将来、中立テーマだけの汎用版を公開できるように）
