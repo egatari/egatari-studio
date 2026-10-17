@@ -1,7 +1,7 @@
 // 編集アプリ（app/）を組む：dist/editor/（GitHub Pages などで配る形）と dist/editor.html（1 ファイル版）。説明は docs/editor.md
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 //   node tools/build-app.mjs [--out dist] [--no-single]
-// アプリに入れるもの：kit/core（組み立ての本体）・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
+// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
 // server/client.js（編集の画面）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
@@ -73,11 +73,19 @@ for (const [name, s] of [['server/client.js', client], ['app/frame-shim.js', fs.
 const resources = { version, text, b64, lazy, client, themes, components };
 
 // ---------------------------------------------------------------- 組む（esbuild）
+// 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
+// アプリは Blob の URL から Worker を作る（1 ファイル版の file:// でも動く。CSP は worker-src blob:）
+const W = await esbuild.build({
+  entryPoints: [rel('app', 'portable-worker.js')], bundle: true, write: false, format: 'iife', platform: 'browser',
+  target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
+});
+const workerJs = W.outputFiles[0].text;
 const plugin = {
   name: 'app',
   setup(b) {
     b.onResolve({ filter: /^virtual:resources$/ }, () => ({ path: 'resources', namespace: 'virtual' }));
-    b.onLoad({ filter: /.*/, namespace: 'virtual' }, () => ({ contents: 'export default ' + JSON.stringify(resources), loader: 'js' }));
+    b.onResolve({ filter: /^virtual:portable-worker$/ }, () => ({ path: 'portable-worker', namespace: 'virtual' }));
+    b.onLoad({ filter: /.*/, namespace: 'virtual' }, (a) => ({ contents: 'export default ' + JSON.stringify(a.path === 'portable-worker' ? workerJs : resources), loader: 'js' }));
     b.onResolve({ filter: /\?text$/ }, (a) => ({ path: path.resolve(a.resolveDir, a.path.replace(/\?text$/, '')), namespace: 'text' }));
     b.onLoad({ filter: /.*/, namespace: 'text' }, (a) => ({ contents: fs.readFileSync(a.path, 'utf8').trim(), loader: 'text' }));
   },
@@ -115,7 +123,7 @@ if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, fil
 // 根（GitHub Pages の /）からは editor/ へ
 fs.writeFileSync(path.join(OUT, 'index.html'), '<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=editor/"><title>Motion Slides Editor</title><a href="editor/">Motion Slides Editor</a>\n');
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
-console.log(`dist/editor/: app.js ${kb(js.length)}, fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
+console.log(`dist/editor/: app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
 // 1 ファイル版：dist/editor.html（字を全部埋め込む）
 if (SINGLE) {
