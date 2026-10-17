@@ -9,9 +9,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { readPortable, manifestFromAudio, FormatError } from '../kit/core/portable.mjs';
+import { readPortable, manifestFromAudio, FormatError, RE } from '../kit/core/portable.mjs';
 import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
-import { safeWriteFile, checkWritable } from '../kit/safe-fs.mjs';
+import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -45,15 +45,28 @@ export async function unpack(file, dir, { force = false } = {}) {
     written.push(rel);
   }
   const warnings = [...r.warnings];
-  // 部品庫・テーマ庫の部品が、このリポジトリのものと同じか（違えば段 B・C の編集はできない）
-  const sha = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
-  for (const c of r.index.components || []) {
-    if (c.source !== 'registry') continue;
-    const f = path.join(ROOT, 'components', c.name, 'index.js');
-    if (!fs.existsSync(f)) warnings.push(`component ${c.tag} (${c.name} ${c.version}) is not in this registry`);
-    else if (sha(f) !== c.sha256) warnings.push(`component ${c.tag}: this registry has a different version (hash differs from ${c.version})`);
-  }
+  warnings.push(...registryWarnings(r.index));
   return { written, warnings, index: r.index };
+}
+
+// 部品庫・テーマ庫の部品が、このリポジトリのものと同じか（違えば段 B・C の編集はできない）。返すもの：知らせの配列。
+// 名前は文書が書いたもの（信頼しない）：1 つの識別子（RE.registryName。readPortable の検査器も断るが、ここでも確かめる）だけを
+// <root>/components/<名前>/index.js に結び、実体が components/ の中にある普通のファイルだけを読む（readContained。外を指すリンクは読まない）
+export function registryWarnings(index, root = ROOT) {
+  const warnings = [];
+  const regDir = path.join(root, 'components');
+  for (const c of index.components || []) {
+    if (c.source !== 'registry') continue;
+    if (typeof c.name !== 'string' || !RE.registryName.test(c.name)) { warnings.push(`component ${c.tag}: "${String(c.name).slice(0, 80)}" is not a registry name; not checked`); continue; }
+    let bytes = null;
+    try { bytes = readContained(regDir, path.join(regDir, c.name, 'index.js')); } catch { bytes = null; }
+    if (bytes === null) warnings.push(`component ${c.tag} (${c.name} ${c.version}) is not in this registry`);
+    else if (crypto.createHash('sha256').update(bytes).digest('hex') !== c.sha256) warnings.push(`component ${c.tag}: this registry has a different version (hash differs from ${c.version})`);
+  }
+  for (const t of index.themes || []) {
+    if (t.source === 'registry' && !(typeof t.name === 'string' && RE.registryName.test(t.name))) warnings.push(`theme "${String(t.name).slice(0, 80)}" is not a registry name`);
+  }
+  return warnings;
 }
 
 // フォルダの原稿（deck.html。なければ最上位の .html が 1 つだけのとき）

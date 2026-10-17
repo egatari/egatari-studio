@@ -18,7 +18,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { codeReasons, markupReasons, safeExpression, isDataBlock } from '../kit/core/code-scan.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
-import { unpack } from './portable.mjs';
+import { unpack, registryWarnings } from './portable.mjs';
 import { makeFixtures, silentWav, addUnknownMembers, makeDeck } from './portable-fixtures.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
@@ -525,6 +525,65 @@ ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生
     const { page: p2 } = await open(canary.file);
     assert.equal(await p2.evaluate((k) => window[k], canary.expect.canary), 1);
   } finally { await browser.close(); }
+});
+
+ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対パス・\\・. の名前を断り、components/ の外を読まない（検査器・展開・npm run portable の照合）', async () => {
+  const BAD = ['../../private', '../x', '/etc/passwd', 'C:/x', 'a\\b', '..\\..\\x', '.', '..', '.hidden', 'a/b', 'Upper', '1abc', '-x', 'a'.repeat(65), '', 'a b'];
+  const base = JSON.parse(fs.readFileSync(path.join(SPEC, 'fixtures', 'index', 'invalid', 'registry-name-traversal.json'), 'utf8'));
+  for (const name of BAD) {
+    const c = structuredClone(base); c.components[0].name = name;
+    assert.ok(PF.validateIndex(c).length > 0, `component name ${JSON.stringify(name)}`);
+    assert.equal(vIndex(c), false, `ajv component name ${JSON.stringify(name)}`);
+    const t = structuredClone(base); t.components[0].name = 'sweep'; t.themes = [{ name, version: '0', sha256: 'a'.repeat(64), source: 'registry' }];
+    assert.ok(PF.validateIndex(t).length > 0, `theme name ${JSON.stringify(name)}`);
+    assert.equal(vIndex(t), false, `ajv theme name ${JSON.stringify(name)}`);
+  }
+  const good = structuredClone(base); good.components[0].name = 'sweep'; good.themes = [{ name: 'tml', version: '0', sha256: 'a'.repeat(64), source: 'registry' }];
+  assert.deepEqual(PF.validateIndex(good), []);
+  // 原稿のフォルダの部品（embedded）の名前は仕様が決めない（ここでは読まない）
+  const emb = structuredClone(good); emb.components[0] = { tag: 'm-hello', name: 'Hello World', version: 'local', sha256: 'a'.repeat(64), source: 'embedded', path: 'components/hello/index.js' };
+  emb.files['components/hello/index.js'] = 's0';
+  assert.ok(!PF.validateIndex(emb).some((x) => /components\[0\]\.name/.test(x)));
+
+  // fs の読み取りを数える（展開・照合の間に components/ の外のパスに触れないこと）
+  const R = path.join(work, 'regroot'), OUTSIDE = path.join(work, 'private');
+  fs.mkdirSync(path.join(R, 'components', 'sweep'), { recursive: true });
+  fs.writeFileSync(path.join(R, 'components', 'sweep', 'index.js'), 'ok');
+  fs.mkdirSync(OUTSIDE, { recursive: true }); fs.writeFileSync(path.join(OUTSIDE, 'index.js'), 'secret');
+  fs.symlinkSync(OUTSIDE, path.join(R, 'components', 'evil'));
+  const seen = [];
+  const SPY = ['readFileSync', 'openSync', 'existsSync', 'statSync', 'lstatSync', 'realpathSync'];
+  const orig = Object.fromEntries(SPY.map((k) => [k, fs[k]]));
+  const spy = () => { for (const k of SPY) fs[k] = function (p, ...a) { if (typeof p === 'string') seen.push([k, path.resolve(p)]); return orig[k].call(this, p, ...a); }; };
+  const unspy = () => { for (const k of SPY) fs[k] = orig[k]; };
+  const sha = (await PF.sha256Hex(new TextEncoder().encode('ok')));
+  const ix = { components: [...BAD.map((name) => ({ tag: 'm-x', name, version: '0', sha256: sha, source: 'registry' })),
+    { tag: 'm-evil', name: 'evil', version: '0', sha256: sha, source: 'registry' }, { tag: 'm-sweep', name: 'sweep', version: '0', sha256: sha, source: 'registry' }],
+  themes: BAD.map((name) => ({ name, version: '0', sha256: sha, source: 'registry' })) };
+  spy();
+  let w; try { w = registryWarnings(ix, R); } finally { unspy(); }
+  const regDir = path.join(R, 'components'), regReal = fs.realpathSync(regDir);
+  const under = (p, d) => p === d || p.startsWith(d + path.sep);
+  const outside = seen.filter(([, p]) => !under(p, regDir) && !under(p, regReal));
+  assert.deepEqual(outside, [], 'nothing outside components/ is touched');
+  assert.ok(!seen.some(([k, p]) => k === 'readFileSync' && !under(p, path.join(regDir, 'sweep')) && !under(p, path.join(regReal, 'sweep'))), 'only components/sweep/index.js is read');
+  assert.ok(!seen.some(([k, p]) => k === 'readFileSync' && fs.realpathSync(p).startsWith(OUTSIDE)), 'the link to the outside is not read');
+  assert.equal(w.filter((x) => /is not a registry name/.test(x)).length, BAD.length * 2, w.join('\n'));
+  assert.ok(w.some((x) => /m-evil .*not in this registry/.test(x)), 'a link out of components/ is treated as missing');
+  assert.ok(!w.some((x) => /m-sweep/.test(x)), 'the real registry component matches');
+
+  // 展開：名前が ../../private の文書は、検査器が断り（invalid-index）、何も書かず、components/ の外を読まない
+  const D = makeDeck(path.join(work, 'regname-deck'));
+  const p = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'r' + FORMAT.FILE_EXT) });
+  const ix2 = JSON.parse(PF.scanDocument(p.html).byId.get(FORMAT.INDEX_ID).text);
+  ix2.components = [{ tag: 'm-sweep', name: '../../private', version: '0', sha256: 'a'.repeat(64), source: 'registry' }];
+  const f = path.join(work, 'regname' + FORMAT.FILE_EXT);
+  fs.writeFileSync(f, await PF.replaceIndexText(p.html, JSON.stringify(ix2)));
+  const U = path.join(work, 'regname-out');
+  seen.length = 0; spy();
+  try { await rejects(unpack(f, U), 'invalid-index'); } finally { unspy(); }
+  assert.ok(!fs.existsSync(U) || fs.readdirSync(U).length === 0, 'nothing written');
+  assert.ok(!seen.some(([, p]) => p.endsWith(path.sep + 'index.js') || p.startsWith(path.join(ROOT, 'components'))), 'no registry file is read: ' + JSON.stringify(seen.slice(0, 5)));
 });
 
 ok('検査器：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {

@@ -110,6 +110,8 @@ export const RE = Object.freeze({
   voice: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
   tag: /^[a-z][a-z0-9]*-[a-z0-9-]+$/,
   extName: /^[a-z][a-z0-9]{0,31}$/,
+  // 部品庫・テーマ庫の名前（source: registry）：1 つの識別子。読み手が components/<名前>/・themes/<名前>/ に結ぶので、パスを書かせない
+  registryName: /^[a-z][a-z0-9-]{0,63}$/,
   // 仕様の写しの schema の metadata の lang と同じ（BCP 47 の近似）
   lang: /^(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[Xx](?:-[A-Za-z0-9]{1,8})+)?|[Xx](?:-[A-Za-z0-9]{1,8})+|[Ii]-[A-Za-z]+)$/,
 });
@@ -305,7 +307,7 @@ export function validateIndex(ix) {
       if (!isObj(c)) { e.push(`${w}: not an object`); return; }
       need(c, ['tag', 'name', 'version', 'sha256', 'source'], w);
       if (own(c, 'tag')) str(c.tag, `${w}.tag`, RE.tag);
-      if (own(c, 'name')) str(c.name, `${w}.name`, null, 1);
+      if (own(c, 'name')) str(c.name, `${w}.name`, c.source === 'registry' ? RE.registryName : null, 1);
       if (own(c, 'version')) str(c.version, `${w}.version`, null, 1);
       if (own(c, 'sha256')) str(c.sha256, `${w}.sha256`, RE.sha256);
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
@@ -319,7 +321,7 @@ export function validateIndex(ix) {
       const w = `themes[${j}]`;
       if (!isObj(c)) { e.push(`${w}: not an object`); return; }
       need(c, ['name', 'version', 'sha256', 'source'], w);
-      if (own(c, 'name')) str(c.name, `${w}.name`, null, 1);
+      if (own(c, 'name')) str(c.name, `${w}.name`, c.source === 'registry' ? RE.registryName : null, 1);
       if (own(c, 'version')) str(c.version, `${w}.version`, null, 1);
       if (own(c, 'sha256')) str(c.sha256, `${w}.sha256`, RE.sha256);
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
@@ -717,10 +719,14 @@ export async function exportPortable(env, srcPath, opts = {}) {
   for (const t of r.stats.components) {
     const name = t.slice(2), local = `components/${name}/index.js`;
     if (files[local]) { components.push({ tag: t, name, version: 'local', sha256: await sha256Hex(files[local]), source: 'embedded', path: local }); embeddedCode = true; }
-    else if (regComp.has(name) && regComp.get(name).has('index.js')) components.push({ tag: t, name, version: env.version || '0', sha256: await sha256Hex(regComp.get(name).get('index.js')), source: 'registry' });
+    else if (regComp.has(name) && regComp.get(name).has('index.js')) {
+      if (!RE.registryName.test(name)) { warnings.push(`${LOG}: component ${t} is not a registry name (${RE.registryName}); not recorded`); continue; }
+      components.push({ tag: t, name, version: env.version || '0', sha256: await sha256Hex(regComp.get(name).get('index.js')), source: 'registry' });
+    }
   }
   const themes = [];
   for (const [name, m] of regTheme) {
+    if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
     const lines = [];
     for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(m.get(k))}\n`);
     themes.push({ name, version: env.version || '0', sha256: await sha256Hex(lines.join('')), source: 'registry' });
