@@ -21,7 +21,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
 
-export { annotate, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
+export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
 const require = createRequire(import.meta.url);
 const katex = require('katex');

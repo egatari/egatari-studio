@@ -16,7 +16,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
-import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS } from './narration-core.mjs';
+import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
 const EDITABLE = new Set(['h1', 'h2', 'p', 'li', 'td', 'th']);
@@ -31,7 +31,8 @@ const attr = (n, name) => (n.attrs || []).find((a) => a.name === name)?.value;
 const hasClass = (n, c) => (attr(n, 'class') || '').split(/\s+/).includes(c);
 
 // 原稿に data-key（常に）と data-src（開発時）を書き足す。挿入は後ろから行い、位置をずらさない
-// スライドの鍵は文書全体で重複しない：明示の data-key / id が重なれば警告して「#n」を付け、
+// スライドの鍵（spec/etoki-1.0.md §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
+// 鍵が重なる原稿は正しくない（検査器がエラーにする。analyzeSlideIds）が、組めるように、明示の id / data-key が重なれば警告して「#n」を付け、
 // 見出しや番号から作る鍵は、明示の鍵とも「#n」付きの鍵とも重ならないようにする。書き換えた鍵は data-key に書く
 export function annotate(src, dev, warn = []) {
   const doc = parse(src, { sourceCodeLocationInfo: true });
@@ -43,7 +44,7 @@ export function annotate(src, dev, warn = []) {
     const loc = n.sourceCodeLocation;
     if (n.tagName === 'section' && hasClass(n, 'slide')) {
       const h = findFirst(n, (x) => x.tagName === 'h2' || x.tagName === 'h1');
-      secs.push({ n, h, explicit: attr(n, 'data-key') || attr(n, 'id') || '' });
+      secs.push({ n, h, explicit: attr(n, 'id') || attr(n, 'data-key') || '' });
     }
     if (dev && loc.startTag && loc.endTag) {
       const cls = (attr(n, 'class') || '').split(/\s+/);
@@ -72,7 +73,9 @@ export function annotate(src, dev, warn = []) {
   });
   secs.forEach(({ n, h }, i) => {
     const key = keyOf[i], loc = n.sourceCodeLocation;
-    slides.push({ key, title: h ? inner(src, h) : key, start: loc.startOffset });
+    // id：section の id（鍵がその id のとき）。heading：見出しの 1 行の文字列（narration.md の新しい節の見出しに使う）
+    const id = attr(n, 'id') || null;
+    slides.push({ key, id: id && id === key ? id : null, title: h ? inner(src, h) : key, heading: h ? headingText(inner(src, h)) : '', start: loc.startOffset });
     const dk = loc.startTag.attrs && loc.startTag.attrs['data-key'];
     if (attr(n, 'data-key') === undefined) ins.push([loc.startTag.endOffset - 1, ` data-key="${escAttr(key)}"`, 0]);
     else if (attr(n, 'data-key') !== key && dk) ins.push([dk.startOffset, `data-key="${escAttr(key)}"`, dk.endOffset - dk.startOffset]);
@@ -92,6 +95,47 @@ function parentHasClass(n, c) { return n.parentNode && n.parentNode.tagName && h
 function inner(src, n) { const l = n.sourceCodeLocation; return l.startTag && l.endTag ? src.slice(l.startTag.endOffset, l.endTag.startOffset) : ''; }
 function plainTitle(s) { return s.replace(/<br\s*\/?>/g, ' ').replace(/<[^>]*>/g, '').replace(/\\\(|\\\)/g, '').replace(/\s+/g, ' ').trim(); }
 function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+// ---------------------------------------------------------------- スライドの id と鍵の検査（検査器・npm run ids が使う）
+// 原稿（deck.html の元の文字列）→ {slides:[{index, id, key, heading, line}], docIds: Map<id, 何か>, problems:[{sev, slide, msg}]}
+//   slides[].key は build と同じ規則の鍵（重なっても「#n」を付けない元の鍵）
+//   docIds：スライドの section 以外の要素の id 属性と、式の \htmlId{…}（注目の演出の目印）。スライドの id と同じ名前空間
+//   problems：id の書式の誤り・鍵の重なり・id とほかの id の衝突（どれも error）
+export function analyzeSlideIds(src) {
+  const doc = parse(src, { sourceCodeLocationInfo: true });
+  const slides = [], docIds = new Map();
+  const lineOf = (off) => src.slice(0, off).split('\n').length;
+  walk(doc, (n) => {
+    if (!n.tagName) return;
+    const isSlide = n.tagName === 'section' && hasClass(n, 'slide');
+    if (isSlide) {
+      const h = findFirst(n, (x) => x.tagName === 'h2' || x.tagName === 'h1');
+      const id = attr(n, 'id');
+      const off = n.sourceCodeLocation ? n.sourceCodeLocation.startOffset : 0;
+      slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || attr(n, 'data-key') || (h ? normalizeKey(inner(src, h)) : '') || `s${slides.length + 1}`,
+        heading: h ? headingText(inner(src, h)) : '', line: lineOf(off), start: off });
+      return;
+    }
+    const id = attr(n, 'id');
+    if (id !== undefined && !docIds.has(id)) docIds.set(id, `<${n.tagName} id="${id}">（${n.sourceCodeLocation ? lineOf(n.sourceCodeLocation.startOffset) : '?'} 行目）`);
+  });
+  for (const m of src.matchAll(/\\htmlId\s*\{([^{}]*)\}/g)) {
+    const id = m[1].trim();
+    if (!docIds.has(id)) docIds.set(id, `\\htmlId{${id}}（${lineOf(m.index)} 行目）`);
+  }
+  const problems = [];
+  const byKey = new Map();
+  for (const s of slides) {
+    const where = `スライド ${s.index + 1}（${s.line} 行目）`;
+    if (s.id !== null && !isSlideId(s.id)) problems.push({ sev: 'error', slide: s.index, msg: `slide id: ${where}の id「${s.id}」が規則に合わない（英字で始まり、英数字・_・- が続く 64 字まで）` });
+    if (s.id !== null && docIds.has(s.id)) problems.push({ sev: 'error', slide: s.index, msg: `slide id: ${where}の id「${s.id}」がほかの id と重なる：${docIds.get(s.id)}（スライドの id と注目の演出の目印は同じ名前空間）` });
+    if (byKey.has(s.key)) {
+      const o = byKey.get(s.key);
+      problems.push({ sev: 'error', slide: s.index, msg: `slide key: ${where}の鍵「${s.key}」がスライド ${o.index + 1}（${o.line} 行目）と重なる（どちらかの <section> に id を付ける。npm run ids は重なりを直さない）` });
+    } else byKey.set(s.key, s);
+  }
+  return { slides, docIds, problems };
+}
 
 // ---------------------------------------------------------------- 数式のマクロ（\newcommand と \def の簡単なもの）
 export function readMacros(text) {
@@ -408,7 +452,8 @@ export function build(env, srcPath, opts = {}) {
   const segs = env.exists(narrPath) && !inDeck(narrPath) ? [] : (env.exists(narrPath) ? parseNarration(env.readText(narrPath)) : Object.assign([], { warnings: [] }));
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
-  for (const s of segs) if (!keySet.has(s.slideKey)) warn.push(`narration: スライドが見つからない「## ${s.slideKey}」（narration.md ${s.line} 行目）`);
+  // 鍵がどのスライドにも合わない節（## 見出し）。段階のない節も知らせる
+  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${s.heading || s.key || s.slideKey}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
   const narration = narrationMap(segs, !!opts.dev);
   const marks = marksMap(segs);
   checkMarks(html, segs, warn);

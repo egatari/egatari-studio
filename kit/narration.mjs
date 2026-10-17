@@ -5,7 +5,8 @@ import crypto from 'node:crypto';
 import { parseNarration } from './core/narration-core.mjs';
 
 export { normalizeKey, MARK_EFFECTS, parseBound, renderText, joinLines, parseNarration, narrationMap, marksMap,
-  rewriteNarration, narrationRev, rawTurns, splitKey } from './core/narration-core.mjs';
+  rewriteNarration, narrationRev, rawTurns, splitKey, SLIDE_ID, isSlideId, newSlideId, STEP_KEY, isStepKey, parseHeading,
+  headingText, headingLine, EXT_LINE, parseExtLine } from './core/narration-core.mjs';
 
 export function readNarration(path) {
   if (!fs.existsSync(path)) return Object.assign([], { warnings: [] });
