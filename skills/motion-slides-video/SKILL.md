@@ -14,7 +14,7 @@ canon は TML 研究室の講義配信システム。出力は Marp 形式の md
 - `node <repo>/kit/check.mjs <deck>/deck.html` が error 0（口述原稿のない段階は警告で出る。動画にするなら埋める）
 - 口述原稿はユーザーが確認済みか。まだなら、先に開発サーバー（`node <repo>/server/dev.mjs <deck>/deck.html`、キー `n`）で見てもらう
 - 話者：既定は 1 人モードが bob、掛け合いが bob（Expert）× alice（Novice）。変えるときは `<deck>/voice.json` か `--voices`。参照音声は `<名前>.wav` を `IRODORI_REF_DIR`（既定 `<repo>/tts/voices/`）に置く
-- Irodori-TTS のサーバーが動いているか：`curl -s ${IRODORI_URL:-http://localhost:8882}/v1/models`
+- Irodori-TTS のサーバーが動いているか：`curl -s ${IRODORI_URL:-http://localhost:8882}/v1/models`（Windows の PowerShell では `curl` が別のコマンドになるので `curl.exe -s http://localhost:8882/v1/models`）
 - ffmpeg と uv があるか
 
 ## 2. 手順
@@ -26,6 +26,17 @@ node $R/kit/build.mjs $D/deck.html                    # 音声の長さと cue �
 node $R/render/render.mjs $D/out/deck.html --out $D/video [--full]
 node $R/render/export-canon.mjs $D --render $D/video --out $D/bundle   # CANON_DIR があれば canon の parser でも検査
 ```
+
+Windows の PowerShell では変数の書き方が違う（Git Bash なら上のままでよい）。パスに空白や日本語があれば `"…"` で囲む：
+
+```powershell
+$R = "<repo>"; $D = "<deck>"
+uv run --project "$R\tts" python "$R\tts\synth.py" $D --voices expert=bob,novice=alice
+node "$R\kit\build.mjs" "$D\deck.html"
+node "$R\render\render.mjs" "$D\out\deck.html" --out "$D\video" --full
+```
+
+- uv を winget で入れた直後は、開いていた端末では見つからない（端末を開き直す）
 
 - 流れだけを試すときは synth に `--dry-run`（無音・推定の長さ）。一部だけなら `--only "更新の式:2,更新の式:concl"`
 - 自動再生で先に確かめられる：`<deck>/out/deck.html` を開いて `a`（音声付きで、動画と同じタイムラインで進む）
