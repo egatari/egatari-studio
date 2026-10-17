@@ -14,35 +14,54 @@ import { unpackFiles } from './portable-ws.js';
 export { workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable-ws.js';
 
 // ---------------------------------------------------------------- Worker
-let worker = null, seq = 0;
-const waiting = new Map();
+// 要求は、それを出した Worker と代（generation）に結び付ける：止めた（terminate）・古い Worker からの答えは捨て、期限で止めるのはその要求を
+// 出した Worker だけ（もう替わっていれば新しい Worker に触れない）。要求の番号は代をまたいで一意
+let worker = null, gen = 0, seq = 0;
+const waiting = new Map();          // 要求の番号 → {resolve, reject, gen}
+let WorkerClass = typeof Worker === 'function' ? Worker : null;
+export function _setWorkerClass(W) { WorkerClass = W; }   // 試験
+const stopGen = (g, err) => {
+  for (const [id, w] of waiting) if (w.gen === g) { waiting.delete(id); w.reject(err); }
+  if (worker && gen === g) { const old = worker; worker = null; old.terminate(); }
+};
 function getWorker() {
   if (worker) return worker;
   const url = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
-  worker = new Worker(url, { name: 'portable-reader' });
-  worker.onmessage = (e) => { const m = e.data || {}; const w = waiting.get(m.id); if (w) { waiting.delete(m.id); w.resolve(m); } };
-  worker.onerror = (e) => {
-    e.preventDefault();
-    for (const w of waiting.values()) w.reject(Object.assign(new Error('reader worker failed: ' + (e.message || 'error')), { code: 'worker' }));
-    waiting.clear(); worker.terminate(); worker = null;
+  const me = new WorkerClass(url, { name: 'portable-reader' }), g = ++gen;
+  worker = me;
+  me.onmessage = (e) => {
+    if (worker !== me || gen !== g) return;      // 止めた・古い Worker から
+    const m = e.data || {}; const w = waiting.get(m.id);
+    if (w && w.gen === g) { waiting.delete(m.id); w.resolve(m); }
   };
-  return worker;
+  me.onerror = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (worker !== me) return;
+    stopGen(g, Object.assign(new Error('reader worker failed: ' + ((e && e.message) || 'error')), { code: 'worker' }));
+  };
+  return me;
 }
+// 返すもの：{p: 答えの Promise, g: 出した Worker の代}
 function call(msg, transfer = []) {
-  return new Promise((resolve, reject) => {
+  let g = 0;
+  const p = new Promise((resolve, reject) => {
     const id = ++seq;
-    waiting.set(id, { resolve, reject });
-    try { getWorker().postMessage({ ...msg, id }, transfer); } catch (e) { waiting.delete(id); reject(e); }
+    let me;
+    try { me = getWorker(); } catch (e) { reject(e); return; }
+    g = gen;
+    waiting.set(id, { resolve, reject, gen: g });
+    try { me.postMessage({ ...msg, id }, transfer); } catch (e) { waiting.delete(id); reject(e); }
   });
+  return { p, g };
 }
-// 読み取りの期限：これを過ぎたら Worker を止めて（terminate。解析の途中でも止まる）断る。次の読み取りは新しい Worker で
+// 読み取りの期限：これを過ぎたら、その要求を出した Worker を止めて（terminate。解析の途中でも止まる）断る。次の読み取りは新しい Worker で
 export const READER_TIMEOUT_MS = 30000;
-function deadline(p, ms) {
+function deadline({ p, g }, ms) {
   let t = 0;
   return Promise.race([p, new Promise((_, reject) => { t = setTimeout(() => {
-    if (worker) { worker.terminate(); worker = null; }
-    for (const w of waiting.values()) w.reject(Object.assign(new Error(`reading took longer than ${Math.round(ms / 1000)} s (stopped)`), { code: 'reader-timeout' }));
-    waiting.clear();
+    const err = Object.assign(new Error(`reading took longer than ${Math.round(ms / 1000)} s (stopped)`), { code: 'reader-timeout' });
+    stopGen(g, err);
+    reject(err);
   }, ms); })]).finally(() => clearTimeout(t));
 }
 export async function readInWorker(bytes, { extract = false, timeout = READER_TIMEOUT_MS } = {}) {
@@ -57,4 +76,4 @@ export async function readInWorker(bytes, { extract = false, timeout = READER_TI
   };
 }
 // 試験：Worker の大域変数（印のスクリプトが Worker の中でも動いていないこと）
-export const probeWorker = async (name) => (await call({ probe: name })).value;
+export const probeWorker = async (name) => (await call({ probe: name }).p).value;

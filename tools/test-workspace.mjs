@@ -22,6 +22,8 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { makeDeck } from './portable-fixtures.mjs';
+import * as esbuild from 'esbuild';
+import { pathToFileURL } from 'node:url';
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -232,6 +234,113 @@ ok('控えの掃除は控えの名前の形のファイルだけを消す（フ�
     assert.equal(gone.length, 40 - KEEP_EDITS); assert.ok(gone.every(isBackupName));
     for (const n of OTHER) assert.ok(fs.existsSync(path.join(ed, n)), `node kept ${n}`);
   } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+// Worker の口（app/build-client.js・app/portable.js）を、Worker をまねた object で試す（virtual: の Worker の中身は空にして 1 本にまとめる）
+class FakeWorker {
+  static all = [];
+  constructor() { this.sent = []; this.terminated = false; FakeWorker.all.push(this); }
+  postMessage(m) { if (this.terminated) throw new Error('posted to a terminated worker'); this.sent.push(m); }
+  terminate() { this.terminated = true; }
+  emit(data) { this.onmessage && this.onmessage({ data }); }     // 止めた後に届いたメッセージも渡す（まねる）
+}
+async function bundleApp(file) {
+  const r = await esbuild.build({ entryPoints: [path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), 'app', file)], bundle: true, format: 'esm', platform: 'node', write: false,
+    plugins: [{ name: 'virt', setup(b) { b.onResolve({ filter: /^virtual:/ }, (a) => ({ path: a.path, namespace: 'virt' })); b.onLoad({ filter: /.*/, namespace: 'virt' }, () => ({ contents: 'export default ""', loader: 'js' })); } }] });
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-')), file.replace(/\.js$/, '.mjs'));
+  fs.writeFileSync(f, r.outputFiles[0].text);
+  return import(pathToFileURL(f).href);
+}
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+ok('組み立ての Worker の口：止めた Worker からの答え・問い合わせは捨て、新しい Worker の要求に混ざらない。読み出しは要求の作業場所だけ・同時に 8 つまで', async () => {
+  const { createBuildClient, READ_CONCURRENCY } = await bundleApp('build-client.js');
+  FakeWorker.all.length = 0;
+  let reads = 0, inFlight = 0, maxInFlight = 0;
+  const mkWs = (name) => { const w = memoryWorkspace(name, { 'deck.html': name, 'a.txt': 'a' }); const rb = w.readBytes; w.readBytes = async (rel) => { reads++; inFlight++; maxInFlight = Math.max(maxInFlight, inFlight); await new Promise((r) => setTimeout(r, 5)); inFlight--; return rb(rel); }; return w; };
+  const A = mkWs('A'), B = mkWs('B');
+  const c = createBuildClient({ text: {}, b64: {} }, async () => 'lazy', { WorkerClass: FakeWorker });
+  const L = await A.list();
+  const p1 = c.build(A, L, 'deck.html', {}, null, { timeout: 60000 });
+  const W1 = FakeWorker.all[0];
+  const req1 = W1.sent.find((m) => m.op === 'build');
+  assert.equal(W1.sent[0].gen, 1);
+  // 要求の作業場所を読む（答えは出した Worker に）
+  W1.emit({ rpc: 1, gen: 1, op: 'read', arg: { ws: req1.ws, req: req1.id, rel: 'deck.html' } });
+  for (let i = 0; i < 20 && !W1.sent.some((m) => m.rpcReply === 1); i++) await new Promise((r) => setTimeout(r, 5));
+  const rep1 = W1.sent.find((m) => m.rpcReply === 1);
+  assert.ok(rep1 && rep1.ok && dec.decode(rep1.value) === 'A' && rep1.gen === 1);
+  // 要求のない作業場所（番号を偽っても）は読まない
+  const before = reads;
+  W1.emit({ rpc: 2, gen: 1, op: 'read', arg: { ws: req1.ws + 1, req: req1.id, rel: 'deck.html' } });
+  await tick(); await tick();
+  const rep2 = W1.sent.find((m) => m.rpcReply === 2);
+  assert.ok(rep2 && !rep2.ok && reads === before, 'a read for a workspace without a pending request is refused');
+  // 読み出しの途中で止める：その読み出しの答えはどこにも送られない
+  W1.emit({ rpc: 3, gen: 1, op: 'read', arg: { ws: req1.ws, req: req1.id, rel: 'a.txt' } });
+  await tick();
+  c.terminate();
+  await assert.rejects(p1, (e) => e.code === 'cancelled');
+  assert.ok(W1.terminated);
+  // 新しい Worker で新しい要求
+  const p2 = c.build(B, await B.list(), 'deck.html', {}, null, { timeout: 60000 });
+  const W2 = FakeWorker.all[1];
+  const req2 = W2.sent.find((m) => m.op === 'build');
+  assert.ok(W2 !== W1 && W2.sent[0].gen === 2);
+  assert.notEqual(req2.id, req1.id, 'request ids are unique across generations');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(!W1.sent.some((m) => m.rpcReply === 3) && !W2.sent.some((m) => m.rpcReply !== undefined), 'the pending read of the stopped worker is answered to nobody');
+  // 止めた Worker からの答え（古い番号・新しい要求の番号を名乗るもの）と問い合わせは捨てる
+  const r0 = reads;
+  W1.emit({ id: req1.id, ok: true, value: 'OLD' });
+  W1.emit({ id: req2.id, ok: true, value: 'OLD-FOR-NEW' });
+  W1.emit({ rpc: 1, gen: 1, op: 'read', arg: { ws: req2.ws, req: req2.id, rel: 'deck.html' } });
+  W1.emit({ rpc: 1, gen: 1, op: 'lazy', arg: '/x' });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(reads, r0, 'nothing is read for the stopped worker');
+  assert.ok(!W2.sent.some((m) => m.rpcReply !== undefined), 'no reply reaches the new worker');
+  // 新しい Worker の問い合わせ：同時に読むのは 8 つまで
+  maxInFlight = 0;
+  for (let i = 1; i <= 20; i++) W2.emit({ rpc: i, gen: 2, op: 'read', arg: { ws: req2.ws, req: req2.id, rel: i % 2 ? 'deck.html' : 'a.txt' } });
+  for (let i = 0; i < 200 && W2.sent.filter((m) => m.rpcReply !== undefined).length < 20; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(W2.sent.filter((m) => m.rpcReply !== undefined && m.ok).length, 20);
+  assert.ok(maxInFlight <= READ_CONCURRENCY && maxInFlight > 1, `in flight ${maxInFlight}`);
+  assert.ok(W2.sent.filter((m) => m.rpcReply !== undefined).every((m) => m.gen === 2));
+  // 新しい要求はふつうに終わる
+  W2.emit({ id: req2.id, ok: true, value: 'NEW' });
+  assert.equal(await p2, 'NEW');
+  // 期限：止めるのは要求を出した Worker だけ（替わった後の古い期限は新しい Worker に触れない）
+  const p3 = c.build(B, await B.list(), 'deck.html', {}, null, { timeout: 20 });
+  await assert.rejects(p3, (e) => e.code === 'build-timeout');
+  assert.ok(W2.terminated);
+});
+
+ok('持ち運べる 1 ファイルを読む Worker の口：期限で止めた Worker の答えは捨て、新しい読み取りに混ざらない', async () => {
+  const PW = await bundleApp('portable.js');
+  FakeWorker.all.length = 0;
+  PW._setWorkerClass(FakeWorker);
+  const p1 = PW.readInWorker(new Uint8Array([1]), { timeout: 20 });
+  const W1 = FakeWorker.all[0], id1 = W1.sent[0].id;
+  await assert.rejects(p1, (e) => e.code === 'reader-timeout');
+  assert.ok(W1.terminated);
+  const p2 = PW.readInWorker(new Uint8Array([2]), { timeout: 60000 });
+  const W2 = FakeWorker.all[1], id2 = W2.sent[0].id;
+  assert.ok(W2 !== W1 && id2 !== id1);
+  let settled = false; p2.then(() => { settled = true; }, () => { settled = true; });
+  W1.emit({ id: id1, ok: false, error: { code: 'x', message: 'old' } });
+  W1.emit({ id: id2, ok: true, indexText: '{"forged":true}', buffers: [], table: [] });
+  await tick(); await tick();
+  assert.equal(settled, false, 'replies of the stopped worker are dropped');
+  W2.emit({ id: id2, ok: true, indexText: '{"docId":"new"}', deckMetaText: null, buffers: [], table: [], warnings: [] });
+  const r = await p2;
+  assert.equal(r.index.docId, 'new');
+  // 古い Worker の失敗も新しい Worker の要求を断らない
+  const p3 = PW.readInWorker(new Uint8Array([3]), { timeout: 60000 });
+  const id3 = W2.sent.at(-1).id;
+  W1.onerror && W1.onerror({ message: 'old failure', preventDefault() {} });
+  W2.emit({ id: id3, ok: true, indexText: '{"docId":"three"}', deckMetaText: null, buffers: [], table: [], warnings: [] });
+  assert.equal((await p3).index.docId, 'three');
+  assert.ok(!W2.terminated);
 });
 
 ok('権利：改変を認めないライセンスと、ライセンスのない著作権の表示は確認が要る', () => {

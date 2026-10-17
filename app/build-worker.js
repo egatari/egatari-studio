@@ -7,18 +7,20 @@
 //         {id, op: 'exportIndex', ws, file, opts}               持ち運べる形式に書き出したときの索引だけ（部品庫の照合に使う）
 //         {id, op: 'scan', files, entry}                        取り出した原稿の全体の理由（codeReasons）
 //         {id, op: 'probe', name}                               試験：Worker の大域変数
-// 作業場所のファイルは親に問い合わせて読む（{rpc, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, ok, value}）
+// 作業場所のファイルは親に問い合わせて読む（{rpc, gen, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, gen, ok, value}）。
+// read・list の arg には、その読み出しを要る要求の番号（req）を付ける（親はその要求の作業場所だけを読む）。代（gen）の違う答えは捨てる
 import { createEngine } from './engine.js';
 import { documentReasons, codeReasons } from '../kit/core/code-scan.mjs';
 
-let engine = null, wsId = null, seq = 0;
+let engine = null, wsId = null, seq = 0, gen = 0, proxy = null;
 const pend = new Map();
 const rpc = (op, arg) => new Promise((resolve, reject) => {
   const id = ++seq;
   pend.set(id, { resolve, reject });
-  self.postMessage({ rpc: id, op, arg });
+  self.postMessage({ rpc: id, gen, op, arg });
 });
-const proxyWs = (id) => ({ kind: 'proxy', readBytes: (rel) => rpc('read', { ws: id, rel }), list: (o) => rpc('list', { ws: id, o: o || {} }) });
+// 作業場所の代わり。req は今の要求の番号（要求のたびに替える。読んだ中身の覚えは作業場所が同じなら残す）
+const proxyWs = (id) => { const w = { kind: 'proxy', req: null, readBytes: (rel) => rpc('read', { ws: id, req: w.req, rel }), list: (o) => rpc('list', { ws: id, req: w.req, o: o || {} }) }; return w; };
 
 // 表示する文書（信頼する先頭部分 + 組んだデッキ）から決める（main.js の renderedReasons と同じ）
 function rendered(r, pre) {
@@ -31,18 +33,20 @@ function rendered(r, pre) {
 self.onmessage = async (e) => {
   const m = e.data || {};
   if (m.rpcReply) {
+    if (m.gen !== gen) return;
     const p = pend.get(m.rpcReply); if (!p) return;
     pend.delete(m.rpcReply);
     if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }));
     return;
   }
-  if (m.init) { engine = createEngine(m.res, (p) => rpc('lazy', p)); return; }
+  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p)); return; }
   try {
     let value = null;
     if (m.op === 'probe') value = self[m.name] === undefined ? null : String(self[m.name]);
     else if (m.op === 'scan') value = codeReasons(m.files, { entry: m.entry });
     else {
-      if (m.ws !== wsId) { engine.setWorkspace(proxyWs(m.ws)); wsId = m.ws; }
+      if (m.ws !== wsId) { proxy = proxyWs(m.ws); engine.setWorkspace(proxy); wsId = m.ws; }
+      proxy.req = m.id;
       if (m.op === 'build') {
         engine.setListing(m.listing);
         const r = await engine.build(m.file, m.opts || {});

@@ -12,59 +12,91 @@ export const BUILD_TIMEOUT_MS = 60000;
 // 一覧（{files: Map(rel → {m, s, h?}), dirs}）を Worker に渡せる形に（ファイルのハンドルなどは渡さない。大きさと時刻だけ）
 const plain = (L) => ({ files: new Map([...L.files].map(([k, f]) => [k, { m: f.m, s: f.s }])), dirs: new Set(L.dirs) });
 
-export function createBuildClient(res, loadLazy) {
-  let worker = null, seq = 0, wsSeq = 0;
-  const waiting = new Map();
-  const wsIds = new WeakMap(), wsById = new Map();
-  const idOf = (ws) => {
-    if (!wsIds.has(ws)) { const id = ++wsSeq; wsIds.set(ws, id); wsById.set(id, ws); while (wsById.size > 4) wsById.delete(wsById.keys().next().value); }
-    return wsIds.get(ws);
+// Worker ごとの代（generation）：問い合わせ（rpc）と答えは、それを出した Worker の代に結び付ける。止めた（terminate）・古い Worker からの
+// メッセージは捨て、その問い合わせには答えない（答えは出した Worker にだけ送る。新しい Worker に古い答えが届かない）。要求の番号は代をまたいで一意。
+// 作業場所の読み出しは、その Worker に出した組み立ての要求（req）に結び付け、その要求の作業場所だけを読む。同時に読むのは代ごとに READ_CONCURRENCY まで、
+// Worker を止めたら、まだ始めていない読み出しは始めない
+export const READ_CONCURRENCY = 8;
+export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null) } = {}) {
+  let worker = null, gen = 0, seq = 0, wsSeq = 0;
+  const waiting = new Map();          // 要求の番号 → {resolve, reject, gen, ws}
+  const wsIds = new WeakMap();
+  const idOf = (ws) => { if (!wsIds.has(ws)) wsIds.set(ws, ++wsSeq); return wsIds.get(ws); };
+  const fail = (code, message, g = gen) => {
+    if (g !== gen) return;            // もう替わった Worker の失敗（その要求はもう断ってある）
+    for (const [id, w] of waiting) if (w.gen === g) { waiting.delete(id); w.reject(Object.assign(new Error(message), { code })); }
+    if (worker) { const old = worker; worker = null; old.terminate(); }
   };
-  const fail = (code, message) => {
-    for (const w of waiting.values()) w.reject(Object.assign(new Error(message), { code }));
-    waiting.clear();
-    if (worker) { worker.terminate(); worker = null; }
-  };
-  async function answer(m) {
-    const reply = (ok, value, err) => { if (worker) worker.postMessage(ok ? { rpcReply: m.rpc, ok: true, value } : { rpcReply: m.rpc, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } }); };
+  // 代ごとの読み出しの数の上限
+  function limiter(alive) {
+    let active = 0; const queue = [];
+    const pump = () => {
+      while (active < READ_CONCURRENCY && queue.length) {
+        const { fn, resolve, reject } = queue.shift();
+        if (!alive()) { reject(Object.assign(new Error('cancelled: the build worker was stopped'), { code: 'cancelled' })); continue; }
+        active++;
+        Promise.resolve().then(fn).then(resolve, reject).finally(() => { active--; pump(); });
+      }
+    };
+    return (fn) => new Promise((resolve, reject) => { queue.push({ fn, resolve, reject }); pump(); });
+  }
+  async function answer(me, g, lim, m) {
+    const alive = () => worker === me && gen === g;
+    const reply = (ok, value, err) => {
+      if (!alive()) return;           // 止めた Worker には答えない
+      me.postMessage(ok ? { rpcReply: m.rpc, gen: g, ok: true, value } : { rpcReply: m.rpc, gen: g, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } });
+    };
+    if (!alive()) return;
     try {
       if (m.op === 'lazy') return reply(true, await loadLazy(m.arg));
-      const ws = wsById.get(m.arg.ws);
-      if (!ws) throw Object.assign(new Error('the workspace was closed'), { code: 'ENOENT' });
-      if (m.op === 'read') return reply(true, await ws.readBytes(m.arg.rel));
-      if (m.op === 'list') return reply(true, plain(await ws.list(m.arg.o)));
-      throw new Error('unknown request ' + m.op);
+      if (m.op !== 'read' && m.op !== 'list') throw new Error('unknown request ' + m.op);
+      // その Worker に出した、まだ終わっていない要求の作業場所だけ（要求の番号の要求か、同じ Worker に出した同じ作業場所の要求。
+      // Worker の中で 2 つの要求が重なると、番号は後のものになる）
+      const bound = (w) => w && w.gen === g && w.ws && idOf(w.ws) === (m.arg && m.arg.ws);
+      let req = waiting.get(m.arg && m.arg.req);
+      if (!bound(req)) req = [...waiting.values()].find(bound);
+      if (!req) throw Object.assign(new Error('no pending build for this workspace'), { code: 'ENOENT' });
+      const ws = req.ws;
+      if (m.op === 'read') return reply(true, await lim(() => ws.readBytes(m.arg.rel)));
+      return reply(true, plain(await lim(() => ws.list(m.arg.o))));
     } catch (err) { reply(false, null, err); }
   }
   function getWorker() {
     if (worker) return worker;
     const url = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
-    worker = new Worker(url, { name: 'deck-builder' });
-    worker.onmessage = (e) => {
+    const me = new WorkerClass(url, { name: 'deck-builder' }), g = ++gen;
+    worker = me;
+    const lim = limiter(() => worker === me && gen === g);
+    me.onmessage = (e) => {
+      if (worker !== me || gen !== g) return;      // 止めた・古い Worker から
       const m = e.data || {};
-      if (m.rpc) { answer(m); return; }
-      const w = waiting.get(m.id); if (!w) return;
+      if (m.rpc) { answer(me, g, lim, m); return; }
+      const w = waiting.get(m.id); if (!w || w.gen !== g) return;
       waiting.delete(m.id);
       if (m.ok) w.resolve(m.value); else w.reject(Object.assign(new Error(m.error.message), { code: m.error.code }));
     };
-    worker.onerror = (e) => { e.preventDefault(); fail('worker', 'build worker failed: ' + (e.message || 'error')); };
-    worker.postMessage({ init: true, res });
-    return worker;
+    me.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); if (worker !== me) return; fail('worker', 'build worker failed: ' + ((e && e.message) || 'error'), g); };
+    me.postMessage({ init: true, res, gen: g });
+    return me;
   }
-  function call(msg, timeout = BUILD_TIMEOUT_MS) {
+  function call(msg, ws, timeout = BUILD_TIMEOUT_MS) {
     let t = 0;
     return new Promise((resolve, reject) => {
       const id = ++seq;
-      waiting.set(id, { resolve, reject });
-      try { getWorker().postMessage({ ...msg, id }); } catch (e) { waiting.delete(id); reject(e); return; }
-      t = setTimeout(() => fail('build-timeout', `building took longer than ${Math.round(timeout / 1000)} s (stopped)`), timeout);
+      let me;
+      try { me = getWorker(); } catch (e) { reject(e); return; }
+      const g = gen;
+      waiting.set(id, { resolve, reject, gen: g, ws });
+      try { me.postMessage({ ...msg, id }); } catch (e) { waiting.delete(id); reject(e); return; }
+      t = setTimeout(() => { if (waiting.has(id)) fail('build-timeout', `building took longer than ${Math.round(timeout / 1000)} s (stopped)`, g); }, timeout);
     }).finally(() => clearTimeout(t));
   }
   return {
-    build: (ws, listing, file, opts, prefix, o = {}) => call({ op: 'build', ws: idOf(ws), listing: plain(listing), file, opts, prefix }, o.timeout),
-    exportIndex: (ws, file, opts, o = {}) => call({ op: 'exportIndex', ws: idOf(ws), file, opts }, o.timeout),
-    scan: (files, entry, o = {}) => call({ op: 'scan', files, entry }, o.timeout),
-    probe: (name) => call({ op: 'probe', name }),
+    build: (ws, listing, file, opts, prefix, o = {}) => call({ op: 'build', ws: idOf(ws), listing: plain(listing), file, opts, prefix }, ws, o.timeout),
+    exportIndex: (ws, file, opts, o = {}) => call({ op: 'exportIndex', ws: idOf(ws), file, opts }, ws, o.timeout),
+    scan: (files, entry, o = {}) => call({ op: 'scan', files, entry }, null, o.timeout),
+    probe: (name) => call({ op: 'probe', name }, null),
     terminate: () => fail('cancelled', 'cancelled'),
+    get generation() { return gen; },
   };
 }
