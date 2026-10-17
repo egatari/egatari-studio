@@ -1,6 +1,6 @@
 // 開発サーバー（server/dev.mjs）の /__dev/… と同じ問い合わせを、作業場所（workspace.js：選んだフォルダか、持ち運べる 1 ファイルを開いたメモリの上のフォルダ）に対して答える
-// server/client.js（デッキの iframe の中）は運び手（postMessage）を通してここを呼ぶ。読み書きするのは
-// 原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
+// 呼ぶのはアプリ自身の編集の画面（server/editor-ui.js）だけ。プレビュー（デッキの iframe）からは呼べない（プレビューは知らせを送るだけ）。
+// 読み書きするのは原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 
@@ -15,7 +15,8 @@ function rid() {
   return 'c' + Date.now().toString(36) + [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-// ctx = {ws, deckFile(), slideOrder(), afterWrite(), msg, beforeWrite?}。slideOrder() は build の slides（{key, id, heading}）の配列。
+// ctx = {ws, deckFile(), slideOrder(), editable(range), afterWrite(), msg, beforeWrite?}。slideOrder() は build の slides（{key, id, heading}）の配列。
+// editable(range)：今のプレビューの組み立てで直せる要素（data-src を付けたもの）の範囲か
 // beforeWrite(kind)：原稿（'source'・'narration'）を書く前に呼ぶ。文字列を返したら書かずに 403 で断る（権利の確認・読むだけの文書）
 export function createDevApi(ctx) {
   const M = ctx.msg;
@@ -39,6 +40,7 @@ export function createDevApi(ctx) {
         const src = await ctx.ws.readText(ctx.deckFile());
         if (src === null) return err(404, M.notFound);
         if (!r || r[1] > src.length) return err(400, M.badRange);
+        if (ctx.editable && !ctx.editable(`${r[0]}-${r[1]}`)) return err(409, M.conflict);
         const text = src.slice(r[0], r[1]);
         return ok({ text, h: short(text) });
       }
@@ -48,7 +50,7 @@ export function createDevApi(ctx) {
         const file = ctx.deckFile();
         const src = await ctx.ws.readText(file);
         if (src === null) return err(404, M.notFound);
-        if (r[1] > src.length || short(src.slice(r[0], r[1])) !== body.h) return err(409, M.conflict);
+        if ((ctx.editable && !ctx.editable(`${r[0]}-${r[1]}`)) || r[1] > src.length || short(src.slice(r[0], r[1])) !== body.h) return err(409, M.conflict);
         const no = ctx.beforeWrite && await ctx.beforeWrite('source');
         if (no) return err(403, no);
         await ctx.ws.backup(file);
@@ -56,6 +58,7 @@ export function createDevApi(ctx) {
         const failed = await ctx.afterWrite();
         return ok({ ok: true, error: failed ? M.savedButFailed : null });
       }
+      if (method === 'GET' && p === '/__dev/info') return ok({ slides: ctx.slideOrder(), warn: [] });
       if (method === 'GET' && p === '/__dev/narration') {
         const [sk, st] = splitKey(u.searchParams.get('key') || '');
         const text = await ctx.ws.readText('narration.md');
@@ -65,6 +68,7 @@ export function createDevApi(ctx) {
         if (!body.slideKey || !isStepKey(body.stepKey) || !Array.isArray(body.turns)) return err(400, M.badNarr);
         if (typeof body.rev !== 'string') return err(400, M.noRev);
         const sk = String(body.slideKey), st = String(body.stepKey);
+        if (!ctx.slideOrder().some((x) => x.key === sk)) return err(400, M.badNarr);
         const cur = await ctx.ws.readText('narration.md');
         const text = cur ?? M.narrHead;
         if (narrationRev(text, sk, st) !== body.rev) return err(409, M.narrConflict);

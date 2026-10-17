@@ -1,8 +1,8 @@
 // デッキの iframe（sandbox、origin を持たない）の中で、実行系より前に動く小さな仲立ち。編集アプリが <head> の直後に入れる
-// cfg = {query, opener, dev, store, html, shim}
+// cfg = {query, opener, dev, load, html, shim}
 //   query   location.search にする文字列（"?presenter=1" など。srcdoc の文書は URL を持たないので history で付ける）
 //   opener  発表者ビュー：window.opener を親（アプリが開いた窓）にする。本体とのやり取りはアプリが中継する
-//   dev     server/client.js の運び手（window.__DECK_DEV_TRANSPORT）を置く。store は前の画面の位置など
+//   dev     プレビュー：印刷・位置・簡易な検査の頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
 //   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列
 (function frameShim(cfg){
 "use strict";
@@ -28,28 +28,11 @@ if (cfg.html && cfg.shim) {
 if (!cfg.dev) return;
 window.__APP_LOAD = cfg.load;   // 何回目の読み込みか（確かめ方が使う）
 
-// ---------------------------------------------------------------- 運び手（server/client.js が使う）
-var seq = 0, waits = {}, listeners = [], store = cfg.store || {};
-window.__DECK_DEV_TRANSPORT = {
-  api: function(method, url, body){
-    return new Promise(function(res){ var id = ++seq; waits[id] = res; parentWin.postMessage({type: "app-api", id: id, method: method, url: url, body: body || null}, "*"); });
-  },
-  listen: function(f){ listeners.push(f); },
-  reload: function(){ parentWin.postMessage({type: "app-reload-now"}, "*"); },
-  store: function(k, v){
-    if (v === undefined) return k in store ? store[k] : null;
-    if (v === null) delete store[k]; else store[k] = v;
-    parentWin.postMessage({type: "app-store", k: k, v: v}, "*");
-  }
-};
+// 親（編集アプリ）からの、書き込みのない頼みごと：印刷・その位置へ・簡易な検査。編集の知らせは server/hints.js が送る
 window.addEventListener("message", function(e){
   if (e.source !== parentWin) return;
   var m = e.data || {};
-  if (m.type === "app-api-reply" && waits[m.id]) { var f = waits[m.id]; delete waits[m.id]; f(m.body || {}); }
-  // client.js が動いていなければ（デッキの JS が先に止まったなど）、そのまま読み込み直してもらう
-  else if (m.type === "app-reload") { if (listeners.length) listeners.forEach(function(f){ f(); }); else parentWin.postMessage({type: "app-reload-now"}, "*"); }
-  else if (m.type === "app-print") window.print();
-  else if (m.type === "app-key") document.dispatchEvent(new KeyboardEvent("keydown", {key: m.key, bubbles: true}));
+  if (m.type === "app-print") window.print();
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
   else if (m.type === "app-check") parentWin.postMessage({type: "app-check-result", id: m.id, results: quickCheck()}, "*");
 });

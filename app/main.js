@@ -1,11 +1,13 @@
 // 編集アプリ（インストール不要。Chrome / Edge の File System Access API でデッキのフォルダを開く。持ち運べる 1 ファイルはフォルダなしで開ける）
 // 開発サーバー（server/dev.mjs）の代わりに、ブラウザの中で組み、プレビューし、原稿・口述原稿・コメントを書き戻す
 // 説明は docs/editor.md。触るのは選んだフォルダか開いたファイルだけで、外へは繋がらない（アプリ自身の読み込みを除く）
-// 読み書きはすべて作業場所（workspace.js：フォルダ／メモリの上のフォルダ）を通す
+// 読み書きはすべて作業場所（workspace.js：フォルダ／メモリの上のフォルダ）を通す。編集の画面（server/editor-ui.js）はこのページにあり、
+// プレビュー（sandbox の iframe）は「どこを直したいか」を知らせる（server/hints.js）だけで、書き込みを頼む口を持たない
 import RES from 'virtual:resources';
 import SHIM from './frame-shim.js?text';
 import { createEngine, bytesToBase64 } from './engine.js';
 import { createDevApi } from './devapi.js';
+import { createEditorUI } from '../server/editor-ui.js';
 import { writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
@@ -31,8 +33,8 @@ const engine = createEngine(RES, loadLazy);
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, rightsOk, extended, saved}
 const S = {
   ws: null, portable: null, deckFile: null, base: null, preview: null, slides: [], warn: [], error: null,
-  frameStore: {}, sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
-  presWin: null, checks: new Map(), lastBuildMs: 0,
+  sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
+  presWin: null, checks: new Map(), lastBuildMs: 0, ranges: new Set(), codeOk: null,
 };
 
 // ---------------------------------------------------------------- 画面の部品
@@ -95,14 +97,19 @@ async function openFolder(handle) {
   S.sig = signature(listing);
   recentAdd(handle);
   showDeck(handle.name + ' / ' + S.deckFile, handle.name);
+  // 原稿のフォルダの部品やスクリプト（そのデッキのコード）があれば、プレビューで動かす前に知らせて確かめる（§6）
+  if (!(await codeConsent(listing))) { S.ws = null; showWelcome(); return false; }
   await rebuild('open');
   startPoll();
   return true;
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.frameStore = {}; S.pos = null; S.fresh = true;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null;
   engine.setWorkspace(ws);
+  ui.reset();
+  // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
+  $('preview').srcdoc = '<!DOCTYPE html><html><body style="background:#2a2d33"></body></html>';
 }
 function showDeck(label, title) {
   $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
@@ -136,12 +143,15 @@ function signature(listing) {
 // ---------------------------------------------------------------- 組み立てとプレビュー
 const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 function withShim(html, cfg) {
-  const tag = `<script>${SHIM}(${enc(cfg)});</script>`;
+  const tag = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}"><script>${SHIM}(${enc(cfg)});</script>`;
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
 }
-function previewHtml(base, warn) {
-  const html = withShim(base, { dev: true, store: S.frameStore, load: S.loads });
-  const inject = `<script>window.__DEV_WARN=${enc(warn)};</script>\n<script>${RES.client}</script>\n`;
+// プレビューの文書の決まり（アプリのページの決まりに重ねる）：外へ繋がらない（connect-src 'none'）。読み込めるのは data: と blob: だけ
+// （デッキの組み立ては画像・字・CSS を data: で埋め込む）。フォームと <base> も使えない。<head> の直後、どのスクリプトよりも前に入れる
+const PREVIEW_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'";
+function previewHtml(base) {
+  const html = withShim(base, { dev: true, load: S.loads });
+  const inject = `<script>${RES.hints}</script>\n`;
   const at = html.lastIndexOf('</body>');
   return at >= 0 ? html.slice(0, at) + inject + html.slice(at) : html + inject;
 }
@@ -174,12 +184,13 @@ async function rebuild(reason) {
         }
         const changed = r.html !== S.base;
         S.base = r.html;
-        S.preview = previewHtml(r.html, r.stats.warn);
+        S.ranges = new Set([...r.html.matchAll(/ data-src="(\d+-\d+)" data-src-h="[0-9a-f]{8}"/g)].map((m) => m[1]));
+        S.preview = true;
         showError(null);
         showWarn();
         $('st-info').textContent = `${T.slidesN(r.stats.slides)} · ${(r.html.length / 1048576).toFixed(1)} MB · ${S.lastBuildMs} ms`;
         if (reason !== 'poll' || changed || wasError) status(T.rebuilt(time(), reason));
-        if (changed || !S.loads) refreshFrame();
+        if ((changed || !S.loads || S.fresh) && (await codeConsent(listing))) refreshFrame();
         if (changed && S.presWin && !S.presWin.closed) loadPresenter();
       } catch (e) {
         failed = true;
@@ -194,18 +205,14 @@ async function rebuild(reason) {
   })();
   return S.building;
 }
-// プレビューを新しい中身にする：まだ読み込んでいなければ直接、読み込んでいれば client.js に知らせる（未保存の入力があれば待つ）
-function refreshFrame() {
-  const f = $('preview');
-  if (!S.loads || S.fresh || !f.contentWindow) return loadFrame();
-  f.contentWindow.postMessage({ type: 'app-reload' }, '*');
-}
+// プレビューを新しい中身にする。入力中の欄はこのページ（編集の画面）にあるので、待たずに読み込み直してよい（同じ位置に戻す）
+function refreshFrame() { loadFrame(); }
 function loadFrame() {
-  if (!S.preview) return;
+  if (!S.preview || !S.base) return;
   const f = $('preview');
+  ui.frameLoading(!S.fresh);
   S.loads++; S.fresh = false;
-  S.frameStore['dev-restore'] = 1;
-  f.srcdoc = previewHtml(S.base, S.warn);
+  f.srcdoc = previewHtml(S.base);
 }
 $('preview').addEventListener('load', () => { try { $('preview').focus(); } catch { /* 無視 */ } });
 function showError(err) {
@@ -232,7 +239,8 @@ function startPoll() {
 }
 function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 
-// ---------------------------------------------------------------- デッキの iframe とのやり取り
+// ---------------------------------------------------------------- 編集の画面（このページ）と、デッキの iframe とのやり取り
+// 書き込みの口（devapi）を呼ぶのは編集の画面だけ。プレビューからの知らせ（edit-hint・deck-pos）は欄を開くだけで、書き込みにはならない
 const api = createDevApi({
   get ws() { return S.ws; },
   beforeWrite: async () => {
@@ -242,19 +250,27 @@ const api = createDevApi({
   },
   deckFile: () => S.deckFile,
   slideOrder: () => S.slides || [],   // {key, id, heading}：id のあるスライドの新しい節は「## 見出し {#id}」
+  editable: (range) => S.ranges.has(range),
   afterWrite: async () => { const failed = await rebuild('save'); updateName(); return failed; },
   msg: T.api,
 });
-window.addEventListener('message', async (e) => {
+const ui = createEditorUI({
+  frame: () => $('preview'),
+  api: (method, url, body) => (S.ws ? api(method, url, body) : { _status: 404 }),
+  lang: EN ? 'en' : 'ja',
+  drawerHost: $('deck'),
+  enabled: () => !!(S.ws && S.base && !$('deck').hidden),
+  beforeEdit: () => beforeEditing(),
+  reload: async () => { await rebuild('reload'); loadFrame(); },
+});
+// 口述原稿の引き出しは横の板（#panel）の前に置く
+new MutationObserver(() => { const d = $('dev-narr'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
+window.addEventListener('message', (e) => {
   const m = e.data || {};
   const frame = $('preview').contentWindow;
   if (e.source === frame) {
-    if (m.type === 'app-api') {
-      const body = await api(String(m.method || 'GET'), String(m.url || ''), m.body);
-      frame.postMessage({ type: 'app-api-reply', id: m.id, body }, '*');
-    } else if (m.type === 'app-reload-now') loadFrame();
-    else if (m.type === 'app-store' && typeof m.k === 'string') { if (m.v === null) delete S.frameStore[m.k]; else S.frameStore[m.k] = m.v; }
-    else if (m.type === 'app-open-presenter') openPresenter();
+    ui.message(e);
+    if (m.type === 'app-open-presenter') openPresenter();
     else if (m.type === 'app-check-result' && S.checks.has(m.id)) { S.checks.get(m.id)(m.results || []); S.checks.delete(m.id); }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
       if (m.type === 'deck-pos') S.pos = m;
@@ -264,7 +280,6 @@ window.addEventListener('message', async (e) => {
     if (frame) frame.postMessage(m.m, '*');
   }
 });
-const sendKey = (key) => { const f = $('preview').contentWindow; if (f) { f.postMessage({ type: 'app-key', key }, '*'); $('preview').focus(); } };
 
 // ---------------------------------------------------------------- 発表者ビュー（アプリが開く窓の中に、sandbox の iframe で）
 // 本体（プレビュー）との postMessage はアプリが中継する。発表者ビューの中の 2 つの画面は frame-shim.js が srcdoc で入れる
@@ -415,6 +430,38 @@ async function ensureRights() {
   })();
   return P.rightsPending;
 }
+// そのデッキのコード（§6）：持ち運べる 1 ファイルの extended、またはフォルダの部品（components/…/index.js などの .js）・deck.html のスクリプト。
+// プレビューで動かす前に知らせ、はっきり「プレビューを始める」を押してもらう（作業場所ごとに 1 回）
+const EXEC_SCRIPT = /<script\b([^>]*)>/gi;
+function hasOwnScript(html) {
+  for (const m of String(html || '').matchAll(EXEC_SCRIPT)) {
+    const t = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(m[1]);
+    if (!t || !t[1] || /^(module|(text|application)\/(x-)?(java|ecma)script)$/i.test(t[1])) return true;
+  }
+  return false;
+}
+async function ownCode(listing) {
+  if (S.portable) return S.portable.extended;
+  if ([...listing.files.keys()].some((rel) => /\.m?js$/i.test(rel))) return true;
+  return hasOwnScript(await S.ws.readText(S.deckFile).catch(() => ''));
+}
+// S.codeOk：null（まだ聞いていない）・true（始めてよい）・false（断った：この作業場所ではプレビューを読み込まない）
+async function codeConsent(listing) {
+  if (S.codeOk !== null) return S.codeOk;
+  if (S.portable) { S.codeOk = true; return true; }      // 持ち運べる 1 ファイルは開く前に聞いた（openPortable）
+  if (!(await ownCode(listing || engine.listing))) return true;   // コードが現れたら（Claude Code が部品を足したなど）そのときに聞く
+  if (S.codeAsking) return S.codeAsking;
+  S.codeAsking = (async () => {
+    const v = await ask({ title: T.codeTitle, kind: 'warn', body: [el('p', { id: 'code-lead', text: S.portable ? T.codeLeadFile : T.codeLeadFolder }), el('p', { cls: 'hint', text: T.codeSandbox })],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
+    S.codeAsking = null;
+    S.codeOk = v === 'run';
+    if (!S.codeOk) toast(T.codeDeclined, true);
+    return S.codeOk;
+  })();
+  return S.codeAsking;
+}
+
 // 編集モード・口述原稿を開く前に：読むだけの文書なら断り、まだなら権利を見せる
 async function beforeEditing() {
   if (!S.portable) return true;
@@ -469,9 +516,16 @@ async function openPortable(input) {
     }
     return false;
   }
+  // 独自のコード（extended）：中のコードが動く前に知らせる（§6）。取り消せば開かない（今開いているものはそのまま）
+  const extended = r.index.profile === 'extended';
+  if (extended) {
+    const v = await ask({ title: T.codeTitle, kind: 'warn', body: [el('p', { id: 'code-lead', text: T.codeLeadFile }), el('p', { cls: 'hint', text: T.codeSandbox })],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
+    if (v !== 'run') { status(''); toast(T.codeDeclined, true); return false; }
+  }
   stopPoll();
   const ws = workspaceFromPortable(name, r);
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, rightsOk: false, extended: r.index.profile === 'extended', saved: null };
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, rightsOk: false, extended, codeOk: true, saved: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
   // 作り直して保存できるか：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）
@@ -593,15 +647,15 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => showNewForm(true);
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
-$('b-edit').onclick = async () => { if (await beforeEditing()) sendKey('e'); };
-$('b-narr').onclick = async () => { if (await beforeEditing()) sendKey('n'); };
+$('b-edit').onclick = () => ui.toggleEdit();
+$('b-narr').onclick = () => ui.toggleNarr();
 $('w-openfile').onclick = async () => openPortable(await pickPortable());
 $('b-openfile').onclick = async () => openPortable(await pickPortable());
 $('b-save').onclick = () => savePortable(false);
 $('b-saveas').onclick = () => savePortable(true);
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
-$('b-comments').onclick = () => sendKey('c');
+$('b-comments').onclick = () => ui.toggleComments();
 $('b-check').onclick = quickCheck;
 $('b-export').onclick = exportHtml;
 $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };
@@ -641,6 +695,7 @@ window.__APP_TEST = {
   workerProbe: (name) => probeWorker(name),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
+  ui: () => ui.state(),
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);
 

@@ -2,7 +2,7 @@
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 //   node tools/build-app.mjs [--out dist] [--no-single]
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
-// server/client.js（編集の画面）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
+// server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
 import path from 'node:path';
@@ -64,13 +64,13 @@ for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3']) {
     }
   }
 }
-const client = fs.readFileSync(rel('server', 'client.js'), 'utf8');
+const hints = fs.readFileSync(rel('server', 'hints.js'), 'utf8');
 const version = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version || '';
-for (const [name, s] of [['server/client.js', client], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')]]) {
+for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')]]) {
   // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }
-const resources = { version, text, b64, lazy, client, themes, components };
+const resources = { version, text, b64, lazy, hints, themes, components };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。

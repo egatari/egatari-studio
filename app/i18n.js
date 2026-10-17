@@ -39,7 +39,11 @@ const ja = {
   // 持ち運べる 1 ファイル（フォルダなしで開く・保存する）
   openFile: 'ファイルを開く…', save: '保存', saveAs: '名前を付けて保存…', exportFolder: 'フォルダに書き出す…', exportPortable: '1 ファイル（持ち運べる形）を書き出す',
   portableType: '持ち運べる教材のファイル', unsaved: '保存していない変更があります', ok: 'OK', discard: '変更を捨てる',
-  extendedNotice: 'このファイルは独自のコードを含んでいます。編集中にファイルを書き換えられるおそれがあります。信頼できるファイルだけを開いてください',
+  extendedNotice: 'このファイルは独自のコード（動く部品やスクリプト）を含んでいます。コードはプレビューの中だけで、外へ繋がらずに動きます。ファイルを書き換えることはできません',
+  codeTitle: 'このデッキは独自のコードを含んでいます', codeRun: 'プレビューを始める', codeDeclined: 'プレビューを始めませんでした（独自のコード）',
+  codeLeadFile: 'このファイルには、独自の動く部品やスクリプトが入っています。プレビューを始めると、そのコードが動きます。信頼できるファイルだけで始めてください',
+  codeLeadFolder: 'このフォルダには、デッキ独自の部品（components/）やスクリプトが入っています。プレビューを始めると、そのコードが動きます。信頼できるフォルダだけで始めてください',
+  codeSandbox: 'コードはプレビューの枠（sandbox）の中だけで動き、ネットワークにもこのエディタにも触れず、ファイルを書き換えることもできません。書き込みはエディタのボタンを押したときだけです',
   readOnlyNotice: (why) => `このファイルは読むだけで開いています（編集・保存はできません。「フォルダに書き出す…」はできます）：${why}`,
   readOnlyNoEdit: 'このファイルは読むだけで開いています（編集できません）', readOnlyNoSave: 'このファイルは読むだけで開いているので保存できません（「フォルダに書き出す…」はできます）',
   roRuntime: (a, b) => `実行系の約束の版 ${a} がこのエディタ（${b}）と違います`, roRegistry: (p) => `部品庫の部品がこのエディタのものと違います（${p}）`, roBuild: (e) => `このエディタで組み立てられません（${e}）`,
@@ -74,7 +78,8 @@ const ja = {
 
   helpTitle: '使い方',
   help: [
-    ['スライドを直す', ['<kbd>e</kbd> か「編集」で編集モード。文字の上をダブルクリックすると原稿（deck.html）のその部分を直せます。⌘/Ctrl+Enter で保存',
+    ['スライドを直す', ['<kbd>e</kbd> か「編集」で編集モード。文字の上をダブルクリックすると、エディタの欄に原稿（deck.html）のその部分が出ます。⌘/Ctrl+Enter か「保存」で保存',
+      'プレビュー（スライド）は「どこを直したいか」を知らせるだけで、書き込みはエディタの欄のボタンを押したときだけです',
       '保存すると、元のファイルの控えを <code>.cache/edits/</code> に残します（新しい 30 個）']],
     ['口述原稿', ['<kbd>n</kbd> か「口述原稿」で、表示中の段階の原稿（narration.md）を開きます。話者・順番も変えられます']],
     ['Claude への指示', [`スライドの上で <kbd>${MOD}</kbd>+クリックすると、指示を comments.json に残します。<kbd>c</kbd> で一覧`,
@@ -121,7 +126,11 @@ const en = {
   // portable file (open and save without a folder)
   openFile: 'Open file…', save: 'Save', saveAs: 'Save as…', exportFolder: 'Export folder…', exportPortable: 'Export portable file',
   portableType: 'Portable lesson file', unsaved: 'unsaved changes', ok: 'OK', discard: 'Discard changes',
-  extendedNotice: 'This file contains its own code; it can modify the file while you edit. Open only files you trust.',
+  extendedNotice: 'This file contains its own code (interactive parts or scripts). The code runs only inside the preview, without network access, and cannot change the file.',
+  codeTitle: 'This deck contains its own code', codeRun: 'Start the preview', codeDeclined: 'Preview not started (the deck contains its own code)',
+  codeLeadFile: 'This file contains its own interactive parts or scripts. Starting the preview runs that code. Start it only for files you trust.',
+  codeLeadFolder: 'This folder contains components (components/) or scripts of its own. Starting the preview runs that code. Start it only for folders you trust.',
+  codeSandbox: 'The code runs only inside the preview frame (a sandbox): it cannot reach the network or the editor, and it cannot change any file. Writes happen only when you press a button of the editor.',
   readOnlyNotice: (why) => `This file is open read-only (no editing or saving; “Export folder…” works): ${why}`,
   readOnlyNoEdit: 'This file is open read-only (editing is off)', readOnlyNoSave: 'This file is open read-only and cannot be saved (“Export folder…” works)',
   roRuntime: (a, b) => `its runtime contract ${a} differs from this editor's (${b})`, roRegistry: (p) => `registry components differ from this editor's (${p})`, roBuild: (e) => `this editor cannot build it (${e})`,
@@ -156,7 +165,8 @@ const en = {
 
   helpTitle: 'Help',
   help: [
-    ['Edit slides', ['Press <kbd>e</kbd> or “Edit” for edit mode. Double-click text to edit that part of the source (deck.html). ⌘/Ctrl+Enter saves.',
+    ['Edit slides', ['Press <kbd>e</kbd> or “Edit” for edit mode. Double-click text to open that part of the source (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',
+      'The preview (the slides) only points at what to edit; writes happen only when you press a button in the editor’s card.',
       'Each save keeps a backup of the previous file in <code>.cache/edits/</code> (the newest 30).']],
     ['Narration', ['Press <kbd>n</kbd> or “Narration” to edit the narration (narration.md) of the step on screen, including speakers and order.']],
     ['Notes for Claude', [`<kbd>${MOD}</kbd>+click on a slide leaves a note in comments.json. <kbd>c</kbd> lists them.`,
