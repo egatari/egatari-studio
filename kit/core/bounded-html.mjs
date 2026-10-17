@@ -2,7 +2,8 @@
 // parse5 の解析の規則（字句と木の組み立て）はそのままに、木を作る口（tree adapter）を差し替えて、解析の途中で上限を数える：
 //   要素の数・属性の数・入れ子の深さ・残す文字の大きさ。超えたらその場で止める（全部の木を作ってから数えない）
 // 残すのは watch(attrs) が真の要素の文字と位置だけで、ほかの文字・注釈の中身・位置は捨てる（木の形だけを保つ）。
-// 何も実行しない（scriptingEnabled: false。DOMParser と同じ）。Node にもブラウザにも依存しない
+// 何も実行しない（parse5 は解析するだけ）。解析はブラウザがスクリプトを動かすときと同じ規則（scriptingEnabled: true。<noscript> の中は文字。
+// format spec §6：判定・境目・持ち運べる形式の読み取りはどれも同じ規則で、表示するブラウザと食い違わない）。Node にもブラウザにも依存しない
 //
 //   boundedParse(text, {watch, limits, fail})
 //     watch(attrs)  その要素の文字（直接の子の文字）と位置を残すか
@@ -52,5 +53,5 @@ export function boundedParse(text, { watch = () => false, limits = PARSE_LIMITS,
     getNodeSourceCodeLocation(node) { return node ? node.sourceCodeLocation : undefined; },
     updateNodeSourceCodeLocation(node, end) { if (node && node.__w && node.sourceCodeLocation) node.sourceCodeLocation = { ...node.sourceCodeLocation, ...end }; },
   };
-  return parse(String(text), { scriptingEnabled: false, sourceCodeLocationInfo: true, treeAdapter: adapter });
+  return parse(String(text), { scriptingEnabled: true, sourceCodeLocationInfo: true, treeAdapter: adapter });
 }

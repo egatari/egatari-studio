@@ -18,7 +18,7 @@ import { parse } from 'parse5';
 import { short } from './sha1.mjs';
 import { RUNTIME_FORMAT } from './format.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
-import { documentReasons } from './code-scan.mjs';
+import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
@@ -573,7 +573,8 @@ export function build(env, srcPath, opts = {}) {
   //   字と CSS：本当の <head> の開始タグの直後（原稿の <style> が後に来るように）
   //   実行系：原稿の中の <script>（部品の定義など）より前。<body> の中の最初の「データの type でない <script>」で、部品（m-…）・<template>・SVG・
   //   MathML・<noscript> の中にないものの前。なければ </body> の前、それもなければ文書の終わり（部品の子に実行系の JSON が入らないように）
-  const pdoc = parse(html, { sourceCodeLocationInfo: true, scriptingEnabled: false });
+  // 規則は判定（kit/core/code-scan.mjs の SCRIPTING）と同じ、スクリプトを動かすブラウザのもの（<noscript> の中は文字）
+  const pdoc = parse(html, { sourceCodeLocationInfo: true, scriptingEnabled: SCRIPTING });
   const htmlEl = (pdoc.childNodes || []).find((n) => n.tagName === 'html');
   const headEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'head');
   const bodyEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'body');

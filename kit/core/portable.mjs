@@ -889,7 +889,7 @@ export const readableStepOrder = stepOrder;
 export { escAttr as htmlAttr, escText as htmlText };
 
 // ---------------------------------------------------------------- 読み取り（何も実行しない）
-// parse5 の規則で文字列として解析し（スクリプトは実行しない・資源も読まない。scriptingEnabled: false は DOMParser と同じ）、
+// parse5 の規則で文字列として解析し（スクリプトは実行しない・資源も読まない。規則はスクリプトを動かすブラウザと同じ scriptingEnabled: true。<noscript> の中は文字）、
 // 形式の id（索引・塊・deck-meta・deck-audio）を持つ要素を集める。同じ id が 2 つあれば断る。
 // 木は上限つきで作る（kit/core/bounded-html.mjs：要素・属性・入れ子を解析の途中で数え、超えたらその場で断る。残す文字と位置は形式の id の
 // 要素のものだけ）。小さな要素を何百万も並べた文書でも、全部の木を作る前に止まる（§11）

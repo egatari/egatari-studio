@@ -28,6 +28,10 @@ const NOT_MARKUP = new Set(['comments.json', 'audio/manifest.json', 'timeline.js
 const DATA_TYPES = new Set(['application/json', 'application/ld+json', 'application/octet-stream', 'text/x-tex-macros', 'text/plain', FORMAT.MIME]);
 const EMBED = new Set(['iframe', 'frame', 'frameset', 'object', 'embed', 'portal']);
 const MAX_SCAN = 16 * 1024 * 1024;
+// 解析の規則：表示するブラウザと同じ、スクリプトを動かすときのもの（format spec §6。<noscript> の中は文字で、最初の </noscript> で閉じる。
+// スクリプトを止めた規則で読むと、<noscript><p title="</noscript><script>…"> が属性の文字に見えるが、ブラウザではスクリプトが動く）。
+// parse5 は解析するだけで何も実行しない。組み立ての境目（kit/core/build-core.mjs）と持ち運べる形式の読み取り（kit/core/bounded-html.mjs）も同じ規則
+export const SCRIPTING = true;
 const dec = new TextDecoder();
 const extOf = (rel) => { const m = /\.([A-Za-z0-9]+)$/.exec(rel); return m ? m[1].toLowerCase() : ''; };
 
@@ -82,7 +86,7 @@ const textOf = (n) => (n.childNodes || []).filter((c) => c.nodeName === '#text')
 const JS_URL = /(^|[\s;,])(javascript|vbscript|livescript):/;
 // resolveJson(name)：{{JSON:name}} の中身（文字列か null）。m-curves の子の JSON が取り込みのとき
 export function markupReasons(text, where = '', resolveJson = null) {
-  return scanTree(parse(String(text), { scriptingEnabled: false }), where, resolveJson, null);
+  return scanTree(parse(String(text), { scriptingEnabled: SCRIPTING }), where, resolveJson, null);
 }
 
 // 組んだ文書（表示するのと同じバイト）の中の理由（format spec §6：判定は取り込み・前処理の後の原稿全体に対し、表示するのと同じバイトで行う）。
@@ -93,7 +97,7 @@ export function documentReasons(html, trusted = []) {
   const text = String(html);
   const ranges = (trusted || []).map((r) => ({ ...r, ok: true }));
   const inside = (loc) => loc && typeof loc.startOffset === 'number' && typeof loc.endOffset === 'number' ? ranges.find((r) => r.ok && loc.startOffset >= r.start && loc.endOffset <= r.end) || null : null;
-  const doc = parse(text, { scriptingEnabled: false, sourceCodeLocationInfo: true });
+  const doc = parse(text, { scriptingEnabled: SCRIPTING, sourceCodeLocationInfo: true });
   // 範囲ごとに、すっかり収まる一番外側の要素の名前を並べて、tags と比べる
   const seen = new Map(ranges.map((r) => [r, []]));
   const look = (n) => {

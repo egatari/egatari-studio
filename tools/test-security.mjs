@@ -149,6 +149,38 @@ try {
     else ok(flagged, `formula ${name}: flagged as code (ask) — the decoy cannot hide the selected block`);
     if (name.startsWith('decoy')) ok(!ran, `formula ${name}: the runtime refuses an ambiguous data block (two candidates)`);
   }
+  // 解析の規則の食い違い（format spec §6）：判定はスクリプトを動かすブラウザと同じ規則で読む。<noscript> などの中の「属性の文字」に見える
+  // スクリプトがブラウザで動いたなら、判定は必ずコードとしている（プレビューを始める前の判定。組んだ文書と原稿のどちらでも）
+  const RUN = '<script>globalThis.__ran=1</script>';
+  const NOSCRIPT = {
+    'noscript-title': `<noscript><p title="</noscript>${RUN}"></p></noscript>`,
+    'noscript-comment': `<noscript><!--</noscript>${RUN}--></noscript>`,
+    'noscript-style': `<noscript><style></noscript>${RUN}</style></noscript>`,
+    'noscript-head': null,
+    'noembed-title': `<noembed><p title="</noembed>${RUN}"></p></noembed>`,
+    'noframes-title': `<noframes><p title="</noframes>${RUN}"></p></noframes>`,
+    'iframe-text': `<iframe><p title="</iframe>${RUN}"></p></iframe>`,
+    'iframe-srcdoc': `<iframe srcdoc="&lt;p title=&quot;&lt;/noscript&gt;&lt;script&gt;parent.__ran=1&lt;/script&gt;&quot;&gt;"></iframe>`,
+    'template-title': `<template><p title="</template>${RUN}"></p></template>`,
+    'textarea-title': `<textarea><p title="</textarea>${RUN}"></p></textarea>`,
+  };
+  for (const [name, fig] of Object.entries(NOSCRIPT)) {
+    const head = name === 'noscript-head' ? `<noscript><style></noscript>${RUN}</style></noscript>` : '';
+    const src = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title>${head}</head><body><div id="stage"><section class="slide"><h2>x</h2>${fig || ''}</section></div></body></html>`;
+    const dir = path.join(tmp, name); fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, 'deck.html'), src);
+    const r = build(path.join(dir, 'deck.html'), { subset: false });
+    const flagged = r.stats.codeReasons.length > 0, srcFlagged = markupReasons(src).length > 0;
+    let ran = false;
+    for (const html of [r.html, src]) {
+      await load(previewDocument(html, SHIM));
+      await frameOf().waitForTimeout(150).catch(() => {});
+      ran = (await frameOf().evaluate(() => globalThis.__ran === 1).catch(() => false)) || ran;
+    }
+    ok((!ran || (flagged && srcFlagged)) && (name.startsWith('template') || name.startsWith('textarea') || (flagged && srcFlagged)),
+      `parsing ${name}: a script the browser ran is flagged as code before the preview starts (ran=${ran}, built=${JSON.stringify(r.stats.codeReasons.slice(0, 2))}, source=${srcFlagged})`);
+    if (name === 'noscript-title') ok(ran, 'parsing noscript-title: control — the browser (scripting on) does run the script, so the scanner must see it');
+  }
   // 判定は組んだ文書（取り込み・前処理の後、拡張子によらずすべての依存を含む）に対して行う（format spec §6）
   const deckWith = (name, body, files = {}) => {
     const dir = path.join(tmp, name); fs.mkdirSync(dir, { recursive: true });

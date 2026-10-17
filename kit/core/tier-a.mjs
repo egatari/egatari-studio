@@ -56,7 +56,7 @@ const refuse = (code, reason, details) => { throw new Refuse(code, reason, detai
 
 // ---------------------------------------------------------------- 文書の場所（parse5 の位置。スクリプトは実行しない）
 export function scanLayout(text) {
-  const doc = parseHtml(text, { scriptingEnabled: false, sourceCodeLocationInfo: true });
+  const doc = parseHtml(text, { scriptingEnabled: true, sourceCodeLocationInfo: true });   // 表示するブラウザと同じ規則（<noscript> の中は文字）
   const blocks = new Map(), dupBlocks = new Set(), chunks = [], styles = [], slideKeys = new Set();
   let index = null, readable = null, headEnd = null;
   const attr = (n, k) => (n.attrs || []).find((a) => a.name === k)?.value;
