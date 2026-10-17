@@ -19,7 +19,7 @@ and the repository's kit/, components/ and themes/. When something changes it re
 When the build fails, the error is shown on the page. Fix it and save, and the deck comes back.
 `?presenter=1`, `?mode=lecture` and the like work as usual. Audio is read from `/deck/audio/…`.
 
-The page at `/` is a frame around the deck: the deck itself runs in a sandboxed iframe (`/deck/`), and the editing tools (the source card, the narration drawer, the comment box and the list) belong to the frame page, not to the deck. The deck only points at what you want to edit; the frame page reads the source, shows it and writes it when you press Save (see [Protection](#protection)).
+The page at `/` is a frame around the deck: the deck itself runs in a sandboxed iframe (`/preview`), and the editing tools (the source card, the narration drawer, the comment box and the list) belong to the frame page, not to the deck. The deck only points at what you want to edit; the frame page reads the source, shows it and writes it when you press Save (see [Protection](#protection)).
 
 ## Controls
 
@@ -48,8 +48,9 @@ The same goes for the narration: if the lines of that step have changed elsewher
 
 **The deck cannot write.** Scripts and components in the deck run, but only inside the sandboxed iframe:
 
-- The deck document (`/deck/`) is served in an `<iframe sandbox="allow-scripts allow-modals">` without `allow-same-origin`, so it has an opaque origin. It cannot read the frame page, its storage or the token, and every request it could send carries `Origin: null`.
-- The deck document has its own Content-Security-Policy: `connect-src 'none'` (no `fetch`, XHR, beacons or event streams), images, fonts and styles only from `data:` / `blob:` (the build embeds them), audio only from `/deck/audio/`, frames only from `/deck/` (the presenter view's inner views), no forms and no `<base>`.
+- The deck document (`/preview`) is served in an `<iframe sandbox="allow-scripts allow-modals">` without `allow-same-origin`, so it has an opaque origin. It cannot read the frame page, its storage or the token, and every request it could send carries `Origin: null`.
+- The deck document has its own Content-Security-Policy: `connect-src 'none'` (no `fetch`, XHR, beacons or event streams), images, fonts and styles only from `data:` / `blob:` (the build embeds them), audio only from `/deck/audio/`, frames only from the exact endpoint `/preview` (the presenter view's inner views), no forms and no `<base>`. The policy also carries a `sandbox` directive, so the deck document has an opaque origin even when opened directly in a tab.
+- Files of the deck folder under `/deck/…` never run as documents: every response carries `Content-Security-Policy: sandbox; default-src 'none'` and `X-Content-Type-Options: nosniff`. Audio, video, images and fonts keep their type; everything else (HTML, SVG, XML, scripts, text) is served as `text/plain` or `application/octet-stream` with `Content-Disposition: attachment`. Neither the deck nor the frame page may frame anything but `/preview`.
 - The deck only sends **hints** to the frame page: “edit the element with this `data-src` range and hash”, “a note at this element”, the keys `e` / `n` / `c` / Esc, and its position. A hint carries no text to write. The frame page checks the shape of each hint, reads the current source itself, checks the range and the hash, and shows its own card or drawer; it writes only when you press Save (or ⌘/Ctrl+Enter) in that card or drawer. Hints with forged text are ignored; a hint can at most open a card showing the real source.
 - The token exists only in the frame page, never in the deck document.
 

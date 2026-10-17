@@ -1,4 +1,4 @@
-// 開発サーバーの外枠（server/dev.mjs が / で配るページ）。デッキは sandbox の iframe（/deck/、origin を持たない）の中で動き、
+// 開発サーバーの外枠（server/dev.mjs が / で配るページ）。デッキは sandbox の iframe（/preview、origin を持たない）の中で動き、
 // 編集の画面（server/editor-ui.js）と合言葉はこの外枠にだけある。デッキからは知らせ（server/hints.js）を受けるだけで、
 // 読み書きはここが合言葉を付けて /__dev/ に頼む
 import { createEditorUI } from './editor-ui.js';
@@ -29,7 +29,7 @@ function deckUrl(first) {
   const q = new URLSearchParams(location.search);
   if (!first) q.set('_r', String(++n));
   const s = q.toString();
-  return '/deck/' + (s ? '?' + s : '') + (first ? location.hash : '');
+  return '/preview' + (s ? '?' + s : '') + (first ? location.hash : '');
 }
 function load(keepPos) {
   ui.frameLoading(keepPos);

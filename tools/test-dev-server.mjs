@@ -96,8 +96,11 @@ try {
   const TOKEN = await page.evaluate(() => JSON.parse(document.getElementById('dev-cfg').textContent).token);
   ok(/^[0-9a-f]{48}$/.test(TOKEN || ''), 'token is in the shell page');
   ok(await dk().evaluate(() => typeof window.__DECK_DEV_TOKEN) === 'undefined' && !(await dk().content()).includes(TOKEN), 'token is absent from the deck document');
-  const deckDoc = await raw('/deck/');
-  ok(deckDoc.status === 200 && !deckDoc.body.includes(TOKEN) && /connect-src 'none'/.test(deckDoc.headers['content-security-policy'] || ''), 'GET /deck/: no token, CSP with connect-src \'none\'');
+  const deckDoc = await raw('/preview');
+  const dcsp = deckDoc.headers['content-security-policy'] || '';
+  ok(deckDoc.status === 200 && !deckDoc.body.includes(TOKEN) && /connect-src 'none'/.test(dcsp) && /(^|; )sandbox allow-scripts allow-modals(;|$)/.test(dcsp), 'GET /preview: no token, CSP with connect-src \'none\' and a sandbox directive');
+  ok(/frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test(dcsp) && /frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test((await raw('/')).headers['content-security-policy'] || ''), 'frame-src is the single exact preview endpoint (deck and shell)');
+  ok((await raw('/deck/')).status === 403, 'GET /deck/ (the folder itself) is not a document');
   ok(await dk().evaluate(() => { try { return window.parent.document && 'reachable'; } catch { return 'blocked'; } }) === 'blocked', 'sandbox: the deck cannot reach the shell document (opaque origin)');
   const TH = { 'x-deck-token': TOKEN };
 
@@ -321,6 +324,10 @@ try {
   // ---- 7. 静的ファイル・ほかの表示
   const r404 = [(await page.request.get(base + 'deck/narration.md')).status(), (await page.request.get(base + 'deck/..%2F..%2Fetc%2Fpasswd')).status()];
   ok(r404[0] === 200 && r404[1] === 403, '/deck/ static + no traversal ' + r404);
+  const nh = (await raw('/deck/narration.md')).headers, ah = (await raw('/deck/audio/s1.wav')).headers;
+  ok(/^text\/plain/.test(nh['content-type']) && nh['content-disposition'] === 'attachment' && nh['x-content-type-options'] === 'nosniff' && /^sandbox;/.test(nh['content-security-policy'] || ''),
+    '/deck/ text files: text/plain, attachment, nosniff, CSP sandbox ' + JSON.stringify([nh['content-type'], nh['content-disposition'], nh['content-security-policy']]));
+  ok(ah['content-type'] === 'audio/wav' && !ah['content-disposition'] && ah['x-content-type-options'] === 'nosniff' && /^sandbox;/.test(ah['content-security-policy'] || ''), '/deck/ media: own type, nosniff, CSP sandbox');
   await page.goto(base + '?mode=lecture#3'); await ready();
   ok((await dk().evaluate(() => DECK.mode)) === 'lecture' && (await dk().evaluate(() => DECK.state().slide)) === 3, '?mode=lecture#3 is passed to the deck');
   // 発表者ビュー：デッキの p → 外枠が窓を開く（その中のデッキも sandbox）。→ で本体が進む
@@ -400,6 +407,45 @@ try {
   await hp.waitForFunction(() => !document.getElementById('dev-editor'));
   const after = fs.readFileSync(path.join(hostileDir, 'deck.html'), 'utf8');
   ok(after.includes('信頼する画面で直した見出し') && !after.includes(PWNED + '-HINT'), 'hostile: the write happens only on Save in the shell editor');
+
+  // ---- 9. 原稿のフォルダに置かれた文書（raw.html・SVG）：プレビューは iframe に入れられず、直接開いてもスクリプトは動かない（外へも出ない）
+  const hits = [];
+  const canary = http.createServer((q, r) => { hits.push(q.url); r.writeHead(200, { 'access-control-allow-origin': '*', 'content-type': 'text/plain' }); r.end('ok'); });
+  await new Promise((r) => canary.listen(0, '127.0.0.1', r));
+  const CAN = `http://127.0.0.1:${canary.address().port}`;
+  const leakJs = (tag) => `fetch("${CAN}/hit?${tag}").catch(function(){});new Image().src="${CAN}/img?${tag}";try{parent.postMessage({type:"raw-ran"},"*")}catch(e){}`;
+  fs.writeFileSync(path.join(hostileDir, 'raw.html'), `<!doctype html><html><body><script>${leakJs('raw')}</script></body></html>`);
+  fs.writeFileSync(path.join(hostileDir, 'x.svg'), `<svg xmlns="http://www.w3.org/2000/svg" onload='${leakJs('svgload')}'><script>${leakJs('svg')}</script></svg>`);
+  for (const f of ['raw.html', 'x.svg']) {
+    const h = (await rawAt(hb, '/deck/' + f)).headers;
+    ok(/^sandbox;/.test(h['content-security-policy'] || '') && /default-src 'none'/.test(h['content-security-policy']) && h['content-disposition'] === 'attachment' && /^text\/plain/.test(h['content-type']) && h['x-content-type-options'] === 'nosniff',
+      `hostile: /deck/${f} is served as an inert download (CSP sandbox, default-src 'none', text/plain, attachment, nosniff)`);
+  }
+  const fr9 = await deckOf(hp).evaluate((can) => new Promise((res) => {
+    const V = [], got = [];
+    document.addEventListener('securitypolicyviolation', (e) => V.push(e.effectiveDirective + ' ' + e.blockedURI));
+    addEventListener('message', (e) => { if (e.data && e.data.type === 'raw-ran') got.push('ran'); });
+    for (const u of ['/deck/raw.html', '/deck/x.svg']) { const f = document.createElement('iframe'); f.src = u; document.body.appendChild(f); }
+    const ob = document.createElement('object'); ob.data = '/deck/x.svg'; document.body.appendChild(ob);
+    fetch(can + '/hit?preview').catch(() => {});
+    setTimeout(() => res({ V, got }), 1500);
+  }), CAN);
+  ok(fr9.got.length === 0 && fr9.V.filter((v) => v.startsWith('frame-src')).length === 2 && fr9.V.some((v) => v.startsWith('object-src')), 'hostile: the preview cannot frame /deck/raw.html or /deck/x.svg (frame-src is only /preview) ' + JSON.stringify(fr9.V));
+  // プレビューが自分の iframe を /deck/raw.html に移そうとしても、外枠の frame-src が止める
+  await deckOf(hp).evaluate(() => { location.href = '/deck/raw.html'; }).catch(() => {});
+  await hp.waitForTimeout(1200);
+  ok(!(deckOf(hp) && deckOf(hp).url().includes('/deck/raw.html')), 'hostile: the preview cannot navigate itself to /deck/raw.html');
+  // 直接開く：/deck/ の文書はダウンロードになり、/preview は CSP の sandbox で origin を持たない（外へも繋がらない）
+  const dp = await ctx.newPage();
+  for (const f of ['raw.html', 'x.svg']) await dp.goto(hb + 'deck/' + f).catch(() => {});
+  await dp.goto(hb + 'preview');
+  await dp.waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: 15000 });
+  const top = await dp.evaluate((can) => fetch(can + '/hit?top').then(() => 'fetched', () => 'blocked').then((f) => ({ origin: self.origin, f })), CAN);
+  ok(top.origin === 'null' && top.f === 'blocked', 'hostile: /preview opened directly has an opaque origin (CSP sandbox) and no network ' + JSON.stringify(top));
+  await dp.waitForTimeout(500);
+  ok(hits.length === 0, 'hostile: nothing reached the outside canary ' + JSON.stringify(hits));
+  await dp.close();
+  canary.close();
   await hp.close();
 } catch (e) {
   fails++; console.error(e);

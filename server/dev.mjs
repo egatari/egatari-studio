@@ -1,6 +1,7 @@
 // 開発サーバー：ブラウザの上で原稿・口述原稿を直し、Claude への指示（コメント）を残す
-//   /         外枠（server/shell.js・server/editor-ui.js）。デッキは sandbox の iframe に入れ、編集の画面と合言葉は外枠にだけ置く
-//   /deck/    デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP）。/deck/<ファイル> は原稿のフォルダ
+//   /          外枠（server/shell.js・server/editor-ui.js）。デッキは sandbox の iframe に入れ、編集の画面と合言葉は外枠にだけ置く
+//   /preview   デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP と CSP の sandbox）。iframe に入れてよいのはここだけ
+//   /deck/…    原稿のフォルダのファイル（音声・画像・字はそのまま、ほかは文書として開けない形で。どれも CSP の sandbox 付き）
 //   /__dev/…  読み書き（合言葉・同じ origin・JSON が要る）
 //
 //   node server/dev.mjs <deck.html> [--port 8730] [--theme 名前]   （使われていれば次の番号を順に試す）
@@ -38,7 +39,7 @@ const KEEP_EDITS = 30;
 
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
 // 書き込みと原稿の読み出しに要る合言葉（起動のたびに作り直す）。外枠のページ（/）にだけ埋め込み、server/shell.js が X-Deck-Token で送る。
-// デッキの文書（/deck/）には入れない：デッキは sandbox の iframe（origin を持たない）の中で動き、知らせ（server/hints.js）を送るだけ
+// デッキの文書（/preview）には入れない：デッキは sandbox の iframe（origin を持たない）の中で動き、知らせ（server/hints.js）を送るだけ
 const TOKEN = crypto.randomBytes(24).toString('hex');
 const DIR_REAL = fs.realpathSync(DIR);
 // デッキの文書に入れる知らせの部品（そのまま <script> の中に入れるので、</script と <!-- を含んではいけない）
@@ -100,7 +101,7 @@ function presenterPage() {
 <body><iframe id="pf" sandbox="allow-scripts allow-modals" allow="fullscreen" title="presenter"></iframe><script src="/__dev/presenter.js"></script></body></html>`;
 }
 const PRESENTER_JS = `var f=document.getElementById("pf"),n=0;
-function load(){f.src="/deck/?presenter=1"+(n?"&_r="+n:"");n++;}
+function load(){f.src="/preview?presenter=1"+(n?"&_r="+n:"");n++;}
 load();
 addEventListener("message",function(e){
   var m=e.data||{};
@@ -108,14 +109,24 @@ addEventListener("message",function(e){
   else if(opener&&e.source===opener){ if(m.type==="app-pres-down"&&m.m) f.contentWindow&&f.contentWindow.postMessage(m.m,"*"); else if(m.type==="app-pres-reload") load(); }
 });`;
 // デッキの文書の決まり（Content-Security-Policy）：外へ繋がらない（connect-src 'none'）。読み込めるのは data: と blob: と、
-// このサーバーの /deck/audio/（音声）・/deck/（発表者ビューの中の画面）だけ。フォームと <base> も使えない
+// このサーバーの /deck/audio/（音声）だけ。iframe に入れられるのは /preview（発表者ビューの中の画面）だけ（/deck/ の下の文書は入れない）。
+// フォームと <base> も使えない。sandbox は iframe の sandbox と同じ（直接開いたときも origin を持たず、ほかの窓を開けない）
+const PREVIEW_PATH = '/preview';
+const DECK_SANDBOX = 'sandbox allow-scripts allow-modals';
+function selfOrigin(req) { return 'http://' + String(req.headers.host).toLowerCase(); }
 function deckCsp(req) {
-  const self = 'http://' + String(req.headers.host).toLowerCase();
-  return [`default-src 'none'`, `script-src 'unsafe-inline' 'unsafe-eval'`, `style-src 'unsafe-inline'`, `img-src data: blob:`, `font-src data:`,
-    `media-src data: blob: ${self}/deck/audio/`, `frame-src ${self}/deck/`, `connect-src 'none'`, `worker-src 'none'`, `object-src 'none'`,
+  const self = selfOrigin(req);
+  return [DECK_SANDBOX, `default-src 'none'`, `script-src 'unsafe-inline' 'unsafe-eval'`, `style-src 'unsafe-inline'`, `img-src data: blob:`, `font-src data:`,
+    `media-src data: blob: ${self}/deck/audio/`, `frame-src ${self}${PREVIEW_PATH}`, `connect-src 'none'`, `worker-src 'none'`, `object-src 'none'`,
     `manifest-src 'none'`, `form-action 'none'`, `base-uri 'none'`].join('; ');
 }
-const SHELL_CSP = `default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'`;
+// /deck/ の下のファイル：どれも CSP の sandbox（スクリプトは動かない）と default-src 'none'。音声・動画・画像・字は型のまま（sniff させない）、
+// それ以外（HTML・SVG・XML・JS・テキストなど、文書として開けるもの）は text/plain か octet-stream にして、ダウンロードさせる（attachment）
+const FILE_CSP = `sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; media-src 'self'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'`;
+const MEDIA_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.wav', '.mp3', '.m4a', '.ogg', '.opus', '.mp4', '.webm', '.woff2']);
+const TEXT_EXT = new Set(['.html', '.htm', '.svg', '.xml', '.xhtml', '.xsl', '.js', '.mjs', '.css', '.json', '.txt', '.md', '.tex', '.csv', '.yaml', '.yml']);
+// 外枠の決まり：iframe に入れてよいのは /preview だけ（デッキが自分の iframe を別の場所へ移すことも、この frame-src が止める）
+const shellCsp = (req) => `default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src ${selfOrigin(req)}${PREVIEW_PATH}; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'`;
 
 // ---------------------------------------------------------------- 再読み込みの通知（Server-Sent Events）
 const clients = new Set();
@@ -196,7 +207,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.md': 'text/markdown; charset=utf-8', '.woff2': 'font/woff2' };
 
 function send(res, code, body, type = 'application/json; charset=utf-8') {
-  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
+  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
   res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 function readBody(req) {
@@ -227,10 +238,24 @@ function tokenOk(given) {
   const a = Buffer.from(String(given || '')), b = Buffer.from(TOKEN);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+// 外枠が読み込む部品（server/ の中の決まったファイル）
 function serveFile(res, file) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found', 'text/plain; charset=utf-8');
-    res.writeHead(200, { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': st.size, 'cache-control': 'no-store' });
+    res.writeHead(200, { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'content-length': st.size, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+    fs.createReadStream(file).pipe(res);
+  });
+}
+// 原稿のフォルダのファイル（/deck/…）：どれも文書としては動かない（FILE_CSP）
+function serveDeckFile(res, file) {
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) return send(res, 404, 'not found', 'text/plain; charset=utf-8');
+    const ext = path.extname(file).toLowerCase();
+    const media = MEDIA_EXT.has(ext);
+    const h = { 'content-type': media ? MIME[ext] : TEXT_EXT.has(ext) ? 'text/plain; charset=utf-8' : 'application/octet-stream', 'content-length': st.size,
+      'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': FILE_CSP, 'referrer-policy': 'no-referrer' };
+    if (!media) h['content-disposition'] = 'attachment';
+    res.writeHead(200, h);
     fs.createReadStream(file).pipe(res);
   });
 }
@@ -255,7 +280,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       if (!page) await rebuild();
       const html = u.searchParams.get('presenter') ? presenterPage() : shellPage();
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': SHELL_CSP,
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': shellCsp(req),
         'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff' });
       return res.end(html);
     }
@@ -270,7 +295,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     // デッキの文書：sandbox の iframe の中で読む。合言葉は入っていない
-    if (req.method === 'GET' && p === '/deck/') {
+    if (req.method === 'GET' && p === PREVIEW_PATH) {
       if (!page) await rebuild();
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': deckCsp(req),
         'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff' });
@@ -279,7 +304,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/deck/')) {
       const r = deckFile(p.slice('/deck/'.length));
       if (!r.file) return send(res, r.code, r.code === 403 ? 'forbidden' : 'not found', 'text/plain; charset=utf-8');
-      return serveFile(res, r.file);
+      return serveDeckFile(res, r.file);
     }
     if (req.method === 'GET' && p === '/__dev/info') return send(res, 200, { slides: page?.slides || [], warn: page?.warn || [], error: page?.error ? true : false, lang: page?.lang || 'ja' });
     if (req.method === 'GET' && p === '/__dev/source') {

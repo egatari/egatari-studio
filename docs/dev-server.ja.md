@@ -19,7 +19,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
 `?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
 
-`/` のページはデッキを囲む外枠で、デッキそのものは sandbox の iframe（`/deck/`）の中で動く。編集の道具（原稿の欄・口述原稿の引き出し・コメントの欄と一覧）はデッキではなく外枠のページにある。デッキは「どこを直したいか」を知らせるだけで、原稿を読み・見せ・保存を押したときに書くのは外枠のページ（[守り](#守り)）。
+`/` のページはデッキを囲む外枠で、デッキそのものは sandbox の iframe（`/preview`）の中で動く。編集の道具（原稿の欄・口述原稿の引き出し・コメントの欄と一覧）はデッキではなく外枠のページにある。デッキは「どこを直したいか」を知らせるだけで、原稿を読み・見せ・保存を押したときに書くのは外枠のページ（[守り](#守り)）。
 
 ## 操作
 
@@ -48,8 +48,9 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 
 **デッキは書き込めない。** デッキの中のスクリプトや部品は動くが、sandbox の iframe の中だけで動く。
 
-- デッキの文書（`/deck/`）は `<iframe sandbox="allow-scripts allow-modals">`（`allow-same-origin` なし）の中で開くので、origin を持たない。外枠のページ・その保存領域・合言葉を読めず、出せる要求はどれも `Origin: null` になる。
-- デッキの文書には別の Content-Security-Policy を付ける：`connect-src 'none'`（`fetch`・XHR・beacon・イベントの流れを使えない）、画像・字・スタイルは `data:` / `blob:` だけ（組み立てが埋め込む）、音声は `/deck/audio/` だけ、iframe は `/deck/` だけ（発表者ビューの中の画面）、フォームと `<base>` は使えない。
+- デッキの文書（`/preview`）は `<iframe sandbox="allow-scripts allow-modals">`（`allow-same-origin` なし）の中で開くので、origin を持たない。外枠のページ・その保存領域・合言葉を読めず、出せる要求はどれも `Origin: null` になる。
+- デッキの文書には別の Content-Security-Policy を付ける：`connect-src 'none'`（`fetch`・XHR・beacon・イベントの流れを使えない）、画像・字・スタイルは `data:` / `blob:` だけ（組み立てが埋め込む）、音声は `/deck/audio/` だけ、iframe は決まった 1 つの口 `/preview` だけ（発表者ビューの中の画面）、フォームと `<base>` は使えない。決まりには `sandbox` も入れるので、タブで直接開いてもデッキの文書は origin を持たない。
+- 原稿のフォルダのファイル（`/deck/…`）は文書として動かない：どの応答にも `Content-Security-Policy: sandbox; default-src 'none'` と `X-Content-Type-Options: nosniff` を付ける。音声・動画・画像・字は型のまま、それ以外（HTML・SVG・XML・スクリプト・テキスト）は `text/plain` か `application/octet-stream` にして `Content-Disposition: attachment` で返す。デッキも外枠も、`/preview` のほかは iframe に入れられない。
 - デッキが外枠に送るのは**知らせ**だけ：「この `data-src` の範囲と hash の要素を直したい」「この要素にコメントしたい」、鍵の `e`・`n`・`c`・Esc、今の位置。知らせは書き込む本文を持たない。外枠は知らせの形を確かめ、今の原稿を自分で読み、範囲と hash を確かめて、自分の欄や引き出しを見せる。書くのは、その欄や引き出しで「保存」（か ⌘/Ctrl+Enter）を押したときだけ。偽の本文を付けた知らせは無視する。知らせにできるのは、本当の原稿を見せる欄を開くことまで。
 - 合言葉は外枠のページにだけあり、デッキの文書には入れない。
 
