@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-17
+
+Windows support, bundled default voices, and a test page for TTS in the browser.
+
+### Added
+
+- Windows: CI runs the tests and the tier-2 dry run on `windows-latest`; checked on a real Windows 11 PC (Japanese and space characters in paths, CRLF checkouts, PowerShell). README: setup with winget, installing the skills with directory junctions (no administrator rights needed), PowerShell versions of the video commands
+- Microsoft Edge as a fallback browser for the checker, PDF and tests when Chrome is missing (Chrome → Edge → Playwright's Chromium)
+- `node tools/get-fonts.mjs` downloads the BIZ UDPGothic TTF files without sh or curl (replaces `tools/get-fonts.sh`)
+- Default reference voices are now included: `tts/voices/bob.wav` (Expert) and `alice.wav` (Novice), with English versions `bob_en.wav` and `alice_en.wav`. All are synthetic, 48 kHz, −20 LUFS; where they come from and their licenses are in `tts/voices/README.md`
+- English decks use `<name>_en.wav` when it exists (a Japanese reference makes VoxCPM2 speak English with an accent)
+- Reference voices that are not 48 kHz mono are converted before they are sent to the TTS server (a 16 kHz reference made the mlx server read faster)
+- `lab/irodori.html` (on GitHub Pages): a test page that runs Irodori-TTS 500M-v3 in the browser on WebGPU, with determinism, reading-dictionary, speed and mlx-comparison tests and a JSON report
+
+### Changed
+
+- **The default voice names are swapped to match the voices**: Expert = `bob`, Novice = `alice` (single speaker: `bob`). Decks that named `alice` or `bob` in `voice.json` or `--voices` now get the other voice
+- Without uv, the build prints one line saying it skips subsetting, instead of a failure warning on stderr
+- The Japanese template of `npm run new` uses 、。 punctuation
+
+### Fixed
+
+- Windows: the component headers in built HTML used `\` paths, so the editor app and the command line built different files
+- Windows: the TTS scripts failed to read Japanese text because Python used the system code page (cp1252/cp932); input, output and console are now UTF-8
+
 ## [0.2.0] - 2026-10-16
 
 The editor app (no install), accessibility and captions, and `npm run new`.
@@ -56,6 +81,7 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/moiku/motion-academic-slides/releases/tag/v0.1.0
