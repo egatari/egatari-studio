@@ -17,6 +17,7 @@
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
 import { RUNTIME_FORMAT } from './format.mjs';
+import { KATEX_RANGES } from './katex-ranges.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
@@ -234,8 +235,17 @@ function rangeCss(env, fonts, text) {
   return { css, n, bytes };
 }
 // 分割ファイル 1 つの @font-face（f：fontFaces の要素、b64：woff2 の base64）。段 A の編集の字の補い（kit/core/tier-a.mjs）も同じ形で書く
+// f.style は任意（既定は normal。段 A の字の補いが、埋め込んである字と同じ font-style で書くため）
 export function fontFaceCss(f, b64) {
-  return `@font-face{font-family:"${f.family}";font-style:normal;font-display:block;font-weight:${f.w};src:url(data:font/woff2;base64,${b64}) format("woff2");unicode-range:${f.range.map(([a, b]) => a === b ? `U+${a.toString(16)}` : `U+${a.toString(16)}-${b.toString(16)}`).join(',')}}\n`;
+  return `@font-face{font-family:"${f.family}";font-style:${f.style || 'normal'};font-display:block;font-weight:${f.w};src:url(data:font/woff2;base64,${b64}) format("woff2");unicode-range:${unicodeRange(f.range)}}\n`;
+}
+// [[a, b], …] → unicode-range の値（U+61-7a,U+3042）
+export const unicodeRange = (range) => range.map(([a, b]) => a === b ? `U+${a.toString(16)}` : `U+${a.toString(16)}-${b.toString(16)}`).join(',');
+// 字の集まり → 続いた範囲 [[a, b], …]（小さい順）
+export function rangesOf(chars) {
+  const cps = [...new Set([...chars].map((c) => c.codePointAt(0)))].sort((a, b) => a - b), out = [];
+  for (const c of cps) { const last = out[out.length - 1]; if (last && c === last[1] + 1) last[1] = c; else out.push([c, c]); }
+  return out;
 }
 function fontCss(env, text, subset, lang) {
   const sub = (t) => (subset && env.subset ? env.subset(t) : null);
@@ -553,8 +563,10 @@ function katexCss(env) {
   if (_kcss.has(env)) return _kcss.get(env);
   const P = env.path, kdir = env.katexDir;
   let css = env.readText(P.join(kdir, 'katex.min.css'));
+  // unicode-range：字の cmap が持つ字（kit/core/katex-ranges.mjs。KaTeX の版が違えば書かない。試験が知らせる）
+  const ranges = env.katex && env.katex.version === KATEX_RANGES.version ? KATEX_RANGES.fonts : {};
   css = css.replace(/src:url\(fonts\/([^)]+?)\.woff2\) format\("woff2"\)[^;}]*/g, (_, f) =>
-    `src:url(data:font/woff2;base64,${env.readBase64(P.join(kdir, 'fonts', f + '.woff2'))}) format("woff2")`);
+    `src:url(data:font/woff2;base64,${env.readBase64(P.join(kdir, 'fonts', f + '.woff2'))}) format("woff2")` + (ranges[f] ? `;unicode-range:${ranges[f]}` : ''));
   if (/url\(fonts\//.test(css)) throw new Error('unreplaced font url');
   _kcss.set(env, css);
   return css;

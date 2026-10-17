@@ -64,7 +64,8 @@ function subsetCss(text) {
       }
       if (r.status !== 0) { console.warn('  ⚠ フォントの絞り込みに失敗（分割ファイルを使う）: ' + (r.stderr || r.error)); return null; }
     }
-    out.push(`@font-face{font-family:"BIZ UDPGothic";font-style:normal;font-display:block;font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(woff).toString('base64')}) format("woff2")}`);
+    // unicode-range：絞り込んだ字（format spec §7.2。段 A の編集が、どの字を持つかを範囲から知れるように）
+    out.push(`@font-face{font-family:"BIZ UDPGothic";font-style:normal;font-display:block;font-weight:${w};src:url(data:font/woff2;base64,${fs.readFileSync(woff).toString('base64')}) format("woff2");unicode-range:${core.unicodeRange(core.rangesOf(chars))}}`);
   }
   return { css: out.join('\n') + '\n', n: out.length, bytes: 0 };
 }
