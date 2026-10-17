@@ -1,0 +1,556 @@
+// 信頼する編集の画面。プレビュー（デッキの iframe）の外、開発サーバーの外枠（server/shell.js）と編集アプリ（app/main.js）の
+// ページで動く。デッキの中の server/hints.js からの知らせ（hint）を受けて、ここが原稿を自分で読み、範囲と hash を確かめ、
+// 自分の入力欄（原稿の欄・口述原稿の引き出し・コメントの欄・コメントの一覧）を見せる。書き込みはここのボタン
+// （保存・残す・解決、⌘/Ctrl+Enter）を押したときだけ。デッキからの知らせは信頼しない（開く場所を指すだけ）
+//
+//   const ui = createEditorUI({
+//     frame: () => iframe,                       プレビューの iframe
+//     api(method, url, body) → Promise<{…, _status}>   /__dev/source?range=… などの開発サーバーと同じ問い合わせ（合言葉は外で付ける）
+//     lang: 'ja' | 'en',
+//     drawerHost: 要素,                            口述原稿の引き出しを入れる横並びの箱（iframe の隣に並ぶ）
+//     beforeEdit?: async (kind) => bool,           編集モード（'edit'）・口述原稿（'narr'）を開く前（権利の確認など）
+//     enabled?: () => bool,                        デッキを開いているか
+//     reload?: () => void,                         プレビューを読み込み直す（衝突のとき）
+//     store?: {get(k), set(k, v)},                 画面の状態と位置を覚える（開発サーバーの外枠は sessionStorage）
+//     warnings?: () => string[],                   編集モードの札に出す組み立ての警告
+//   })
+//   ui.message(e)  プレビューからの message（e.source は呼ぶ側でも確かめる）。扱ったら true
+//   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
+//   ui.reset()  別のデッキを開いた（入力は捨てる）
+//   ui.toggleEdit(on?) / ui.toggleNarr(on?) / ui.toggleComments(on?) / ui.state()
+const STR = {
+  en: {
+    editMode: 'Edit mode', warn: 'Warnings ', editTip: (alt) => 'Double-click to edit · ' + alt + '+click to leave a note · e to exit',
+    save: 'Save', cancel: 'Cancel', editSrc: 'Edit source', closeEsc: 'Close (Esc)', editHint: '⌘/Ctrl+Enter to save · Esc to cancel · write math as \\( … \\)',
+    loading: 'Loading…', loadFail: 'Could not load', stale: 'The source has changed. Please reload (this view was built from an older source)',
+    saving: 'Saving…', saved: 'Saved', conflict: 'The source has changed. Please reload (copy what you typed first)', saveFail: 'Could not save', offline: 'Cannot reach the editor',
+    reload: 'Reload', cPlace: 'e.g. make this line shorter / match the figure colors / add one example', cSave: 'Leave', cTitle: 'Note for Claude', cHint: '⌘/Ctrl+Enter to leave · written to comments.json',
+    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for Claude (open)', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
+    toSlide: 'Click to go to the slide', nStale: (k) => 'You are editing a different step than the one shown (' + k + '). It will switch after you save or cancel',
+    nLine: (n) => 'narration.md line ' + n, nNone: 'No narration yet', revertT: 'Revert to before editing', nTitle: 'Narration', step: 'Step ', closeN: 'Close (n)',
+    discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No narration for this step yet. Start with “Add a turn”',
+    speaker: 'Speaker', expert: 'Expert (explains)', novice: 'Novice (asks)', tPlace: 'What to say. {cue} marks a sync point, {φ|phi} sets a reading',
+    up: 'Move up', del: 'Delete', delT: 'Delete this turn', add: '+ Add a turn', nConflict: 'The narration has changed. Please reload (copy what you typed first)',
+    noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
+    busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
+    dateLocale: 'en-US',
+  },
+  ja: {
+    editMode: '編集モード', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
+    save: '保存', cancel: '取消', editSrc: '原稿を編集', closeEsc: '閉じる（Esc）', editHint: '⌘/Ctrl+Enter で保存 · Esc で取消 · 数式は \\( … \\) のまま書けます',
+    loading: '読み込み中…', loadFail: '読み込めませんでした', stale: '原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）',
+    saving: '保存中…', saved: '保存しました', conflict: '原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
+    reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'Claudeへの指示', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
+    cFail: '残せませんでした', cDone: '指示を残しました（comments.json）', cList: 'Claudeへの指示（未対応）', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
+    toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中の段階（' + k + '）とは別の段階を編集中です。保存か取消のあとで切り替わります',
+    nLine: (n) => 'narration.md ' + n + ' 行目', nNone: 'まだ口述原稿がありません', revertT: '編集前に戻す', nTitle: '口述原稿', step: '段階 ', closeN: '閉じる（n）',
+    discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'この段階の口述原稿はまだありません。「発言を足す」で書き始めます',
+    speaker: '話者', expert: 'Expert（説明役）', novice: 'Novice（聞き役）', tPlace: '話す内容。{cue} で同期点、{φ|ファイ} で読みを指定できます',
+    up: '前へ', del: '削除', delT: 'この発言を消す', add: '＋ 発言を足す', nConflict: '口述原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）',
+    noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
+    busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
+    dateLocale: 'ja-JP',
+  },
+};
+
+const CSS = [
+  '.edit-ui{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Hiragino Sans","BIZ UDPGothic",sans-serif;color:#1d2330;box-sizing:border-box}',
+  '.edit-ui *{box-sizing:border-box}',
+  '.edit-ui button{font:inherit;font-size:13px;border:1px solid #c7ccd6;background:#fff;color:#1d2330;border-radius:6px;padding:4px 10px;cursor:pointer}',
+  '.edit-ui button:hover{background:#f1f3f7}.edit-ui button:disabled{opacity:.45;cursor:default}',
+  '.dev-msg button{margin-left:8px;font-size:12px;padding:1px 8px}',
+  '.edit-ui button.dv-pri{background:#2563eb;border-color:#2563eb;color:#fff}.edit-ui button.dv-pri:hover{background:#1d4fd8}',
+  '.edit-ui button.dv-ghost{border-color:transparent;background:transparent;color:#5b6475;padding:2px 6px}',
+  '.edit-ui textarea,.edit-ui select{font:inherit;color:#1d2330;background:#fff;border:1px solid #c7ccd6;border-radius:6px}',
+  '.edit-ui textarea:focus,.edit-ui select:focus{outline:2px solid #93b4f5;outline-offset:0;border-color:#2563eb}',
+  '.dev-card{position:fixed;z-index:1000;background:#fff;border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.08)}',
+  '#dev-badge{position:fixed;z-index:1001;display:none;align-items:center;gap:8px;background:#2563eb;color:#fff;border-radius:999px;padding:4px 12px 4px 10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.3)}',
+  '#dev-badge.dv-on{display:flex}#dev-badge b{font-weight:700}#dev-badge span{opacity:.85;font-size:12px}',
+  '#dev-badge .dv-warn{background:#f59e0b;color:#231400;border-radius:999px;padding:0 8px;cursor:pointer;opacity:1}',
+  '#dev-editor{width:640px;max-width:calc(100vw - 24px);padding:12px 14px}',
+  '.dev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dev-head .dv-t{font-weight:700}.dev-head .dv-m{color:#6b7385;font-size:12px;font-family:ui-monospace,Menlo,monospace}.dev-head .dv-sp{flex:1}',
+  '#dev-editor textarea{width:100%;min-height:96px;max-height:50vh;padding:8px 10px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre-wrap}',
+  '.dev-foot{display:flex;align-items:center;gap:8px;margin-top:8px}.dev-foot .dv-hint{color:#6b7385;font-size:12px;flex:1}',
+  '.dev-msg{display:none;margin-top:8px;padding:6px 10px;border-radius:6px;font-size:13px}',
+  '.dev-msg.dv-err{display:block;background:#fde8e8;color:#9b1c1c;border:1px solid #f5b5b5}.dev-msg.dv-ok{display:block;background:#e7f6ec;color:#16632f}',
+  '#dev-comment{width:420px;max-width:calc(100vw - 24px);padding:12px 14px}',
+  '#dev-comment .dv-q{color:#4b5363;background:#f4f5f8;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:8px;font-size:12.5px;max-height:4.6em;overflow:hidden}',
+  '#dev-comment textarea{width:100%;min-height:84px;padding:8px 10px;resize:vertical}',
+  '#dev-comments{width:360px;max-width:calc(100vw - 24px);display:flex;flex-direction:column}',
+  '#dev-comments .dev-head{padding:10px 12px 6px;margin:0;border-bottom:1px solid #e5e7ee}',
+  '#dev-comments .dv-list{overflow:auto;padding:6px 8px 10px}',
+  '.dev-c{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}.dev-c:hover{background:#f4f6fb;border-color:#e0e5f0}',
+  '.dev-c .dv-k{font-size:11.5px;color:#6b7385}.dev-c .dv-q{font-size:12px;color:#6b7385;border-left:2px solid #f59e0b;padding-left:6px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '.dev-c .dv-c{white-space:pre-wrap}.dev-c .dv-row{display:flex;justify-content:flex-end;margin-top:4px}',
+  '.dev-empty{color:#8a91a1;padding:14px 8px;text-align:center}',
+  '#dev-narr{flex:none;width:400px;max-width:45vw;background:#f7f8fb;border-left:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0}',
+  '#dev-narr .dev-head{padding:10px 14px;margin:0;background:#fff;border-bottom:1px solid #e3e6ee}',
+  '#dev-narr .dv-sub{padding:6px 14px 0;color:#6b7385;font-size:12px}',
+  '#dev-narr .dv-body{flex:1;overflow:auto;padding:8px 14px 14px}',
+  '.dev-turn{background:#fff;border:1px solid #e0e4ec;border-radius:8px;padding:8px;margin-bottom:8px}',
+  '.dev-turn .dv-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}.dev-turn .dv-row .dv-sp{flex:1}',
+  '.dev-turn select{padding:2px 6px;font-size:13px}',
+  '.dev-turn.novice{border-left:4px solid #f59e0b}.dev-turn.expert{border-left:4px solid #2563eb}',
+  '.dev-turn textarea{width:100%;min-height:70px;padding:6px 8px;font-size:14px;line-height:1.6;resize:vertical}',
+  '#dev-narr .dv-tools{display:flex;gap:8px;align-items:center;margin:4px 0 12px}',
+  '#dev-narr .dv-next{border-top:1px dashed #cfd4de;padding-top:8px;color:#5b6475}',
+  '#dev-narr .dv-next .dv-lab{font-size:12px;color:#8a91a1;margin-bottom:4px}#dev-narr .dv-next p{margin:0 0 6px;font-size:13px}',
+  '#dev-narr .dv-next .dv-role{font-size:11px;color:#b7791f;margin-right:4px}',
+  '#dev-narr .dv-foot{padding:10px 14px;background:#fff;border-top:1px solid #e3e6ee;display:flex;gap:8px;align-items:center}',
+  '#dev-narr .dv-foot .dv-st{flex:1;font-size:12px;color:#6b7385}#dev-narr .dv-foot .dv-st.dv-dirty{color:#b45309}',
+  '#dev-narr .dv-stale{display:none;margin:8px 0 0;padding:6px 8px;background:#fff7e6;border:1px solid #f5d38a;border-radius:6px;font-size:12.5px;color:#7a4b00}',
+  '#dev-toast{position:fixed;z-index:1002;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none;max-width:80vw}',
+  '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
+  '@media (max-width:720px){#dev-narr{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
+].join('\n');
+
+// 知らせの中身を確かめる（形が違えば捨てる）
+const RANGE = /^\d{1,9}-\d{1,9}$/, HASH = /^[0-9a-f]{8}$/;
+const str = (v, n) => (typeof v === 'string' && v.length <= n ? v : null);
+const num = (v) => (Number.isFinite(+v) ? Math.max(-1e5, Math.min(1e5, +v)) : 0);
+const rectOf = (r) => (r && typeof r === 'object' ? { l: num(r.l), t: num(r.t), r: num(r.r), b: num(r.b) } : { l: 0, t: 0, r: 0, b: 0 });
+const splitKey = (key) => { const p = key.lastIndexOf(':'); return [key.slice(0, p), key.slice(p + 1)]; };
+// 口述原稿の書き方（{cue}・{φ|ファイ}・{mark:…}）を外して読める文にする（次の段階の見せ方だけ）
+const plain = (s) => String(s || '').replace(/\{([^{}|]*)\|[^{}]*\}/g, '$1').replace(/\{[^{}]*\}/g, '');
+
+export function createEditorUI(o) {
+  const doc = o.document || document;
+  const win = doc.defaultView || window;
+  const EN = o.lang === 'en';
+  const L = EN ? STR.en : STR.ja;
+  const ALT = /mac|iphone|ipad/i.test((win.navigator.userAgentData && win.navigator.userAgentData.platform) || win.navigator.platform || win.navigator.userAgent) ? '⌥ option' : 'Alt';
+  const api = (m, u, b) => Promise.resolve(o.api(m, u, b)).then((j) => (j && typeof j === 'object' ? j : { _status: 0 }), () => ({ _status: 0, _offline: true }));
+  const enabled = () => !o.enabled || o.enabled();
+  const store = { get: (k) => { try { return o.store ? o.store.get(k) : null; } catch { return null; } }, set: (k, v) => { try { if (o.store) o.store.set(k, v); } catch { /* 使えない */ } } };
+  const frameEl = () => o.frame();
+  const frameWin = () => { const f = frameEl(); return f && f.contentWindow; };
+  const post = (m) => { const w = frameWin(); if (w) w.postMessage(m, '*'); };
+  const focusFrame = () => { const f = frameEl(); try { if (f) f.focus(); } catch { /* 無視 */ } };
+
+  if (!doc.getElementById('dev-ui-style')) {
+    const st = doc.createElement('style'); st.id = 'dev-ui-style'; st.textContent = CSS; doc.head.appendChild(st);
+  }
+  function h(tag, props, kids) {
+    const e = doc.createElement(tag);
+    for (const k in props || {}) {
+      if (k === 'text') e.textContent = props[k];
+      else if (k === 'on') for (const ev in props.on) e.addEventListener(ev, props.on[ev]);
+      else if (k === 'cls') e.className = props[k];
+      else e.setAttribute(k, props[k]);
+    }
+    for (const c of kids || []) if (c) e.appendChild(typeof c === 'string' ? doc.createTextNode(c) : c);
+    return e;
+  }
+  let toastTimer = 0;
+  function toast(msg, kind) {
+    let t = doc.getElementById('dev-toast');
+    if (!t) { t = h('div', { id: 'dev-toast', cls: 'edit-ui', role: 'status' }); doc.body.appendChild(t); }
+    t.textContent = msg; t.className = 'edit-ui ' + (kind ? 'dv-' + kind : ''); t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, kind === 'warn' ? 6000 : 2600);
+  }
+  // プレビューの中の座標（知らせの rect）→ このページの座標
+  function frameRect() { const f = frameEl(); return f ? f.getBoundingClientRect() : { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight, width: win.innerWidth, height: win.innerHeight }; }
+  function toPage(r) { const fr = frameRect(); return { left: fr.left + r.l, right: fr.left + r.r, top: fr.top + r.t, bottom: fr.top + r.b }; }
+  function place(card, rect) {
+    const W = win.innerWidth, H = win.innerHeight, w = card.offsetWidth, hh = card.offsetHeight;
+    const x = Math.max(12, Math.min(W - w - 12, rect.left));
+    let y = rect.bottom + 10;
+    if (y + hh > H - 12) y = rect.top - hh - 10;
+    if (y < 12) y = Math.max(12, Math.min(H - hh - 12, (H - hh) / 2));
+    card.style.left = x + 'px'; card.style.top = y + 'px';
+  }
+  function showErr(msg, text, reload) {
+    msg.className = 'dev-msg dv-err'; msg.textContent = text;
+    // 再読み込み：入力は捨てて（衝突の知らせで「コピーしておいて」と伝えてある）、今の原稿から読み直す
+    if (reload) msg.appendChild(h('button', { text: L.reload, on: { click: () => { closeEditor(true); if (narr) narr.dirty = false; if (o.reload) o.reload(); else narrFollow(true); } } }));
+  }
+
+  // ---------------------------------------------------------------- 状態
+  let editOn = false, pos = null, restorePos = null, info = null, target = null;
+  let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null;
+  const busy = () => !!((editor && editor.ta.value !== editor.orig) || (cbox && cbox.ta.value.trim()));
+  function sendState() { post({ type: 'edit-state', edit: editOn, target }); }
+  function setTarget(t) { target = t; sendState(); }
+  function saveUi() { store.set('dev-ui', { edit: editOn, narr: narrOpen, comments: commentsOpen }); }
+  async function loadInfo() {
+    const j = await api('GET', '/__dev/info');
+    if (j._status === 200) info = { slides: Array.isArray(j.slides) ? j.slides : [], warn: Array.isArray(j.warn) ? j.warn : [] };
+    return info;
+  }
+  const slideOf = (key) => (info ? info.slides.find((s) => s.key === key) : null);
+
+  // ---------------------------------------------------------------- 編集モードの札
+  const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) })]);
+  doc.body.appendChild(badge);
+  function drawBadge() {
+    badge.classList.toggle('dv-on', editOn);
+    const old = badge.querySelector('.dv-warn'); if (old) old.remove();
+    const warns = o.warnings ? o.warnings() : [];
+    if (warns.length) badge.appendChild(h('span', { cls: 'dv-warn', text: L.warn + warns.length, title: warns.join('\n'), on: { click: () => win.alert(warns.join('\n')) } }));
+    const fr = frameRect(); badge.style.left = (fr.left + 12) + 'px'; badge.style.top = (fr.top + 12) + 'px';
+  }
+  async function toggleEdit(on) {
+    on = on === undefined ? !editOn : !!on;
+    if (on && !enabled()) return false;
+    if (on && o.beforeEdit && !(await o.beforeEdit('edit'))) return false;
+    editOn = on;
+    if (!on) closeEditor();
+    drawBadge(); sendState(); saveUi();
+    return true;
+  }
+
+  // ---------------------------------------------------------------- 原稿の編集（デッキの edit の知らせ → ここで読む・確かめる・見せる・保存）
+  function closeEditor(force) {
+    if (!editor) return;
+    if (!force && editor.ta.value !== editor.orig) return;
+    editor.card.remove(); editor = null;
+    if (target && !cbox) setTarget(null);
+    focusFrame();
+  }
+  function openEditor(hint) {
+    const range = str(hint.src, 40), hh = str(hint.h, 8);
+    if (!editOn || !range || !RANGE.test(range) || !hh || !HASH.test(hh)) return;
+    if (busy()) { toast(L.busy, 'warn'); return; }
+    closeEditor(true); closeComment(true);
+    const tag = /^[a-z][a-z0-9-]{0,20}$/.test(String(hint.tag || '')) ? hint.tag : 'element';
+    const ta = h('textarea', { spellcheck: 'false' });
+    const msg = h('div', { cls: 'dev-msg' });
+    const save = h('button', { cls: 'dv-pri', text: L.save });
+    const cancel = h('button', { text: L.cancel });
+    const card = h('div', { id: 'dev-editor', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.editSrc }, [
+      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.editSrc }), h('span', { cls: 'dv-m', text: '<' + tag + '> ' + range }), h('span', { cls: 'dv-sp' }),
+        h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeEditor(true) } })]),
+      ta, msg,
+      h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.editHint }), cancel, save]),
+    ]);
+    doc.body.appendChild(card);
+    const rect = toPage(rectOf(hint.rect));
+    const ed = editor = { card, ta, orig: '', h: null, range };
+    setTarget(range);
+    ta.value = L.loading; ta.disabled = true; save.disabled = true;
+    place(card, rect);
+    api('GET', '/__dev/source?range=' + encodeURIComponent(range)).then((j) => {
+      if (editor !== ed) return;
+      ta.disabled = false;
+      if (j._status !== 200 || typeof j.text !== 'string') { ta.value = ''; showErr(msg, j._offline ? L.offline : (j.error || L.loadFail), j._status === 409); return; }
+      ta.value = j.text; ed.orig = j.text; ed.h = j.h;
+      // 知らせの hash（プレビューの組み立てのとき）と、今の原稿の hash が違えば保存しない
+      if (j.h !== hh) showErr(msg, L.stale, true); else save.disabled = false;
+      ta.rows = Math.min(16, Math.max(4, j.text.split('\n').length + 1));
+      place(card, rect);
+      ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+    ta.focus();
+    function doSave() {
+      if (save.disabled || editor !== ed) return;
+      if (ta.value === ed.orig) { closeEditor(true); return; }
+      save.disabled = true; save.textContent = L.saving;
+      api('POST', '/__dev/edit', { range, h: ed.h, text: ta.value }).then((j) => {
+        save.textContent = L.save;
+        if (j._status === 200) {
+          ed.orig = ta.value;
+          closeEditor(true);
+          toast(j.error || L.saved, j.error ? 'warn' : '');
+        } else if (j._offline) { save.disabled = false; showErr(msg, L.offline); }
+        else {
+          save.disabled = j._status === 409;
+          showErr(msg, j._status === 409 ? L.conflict : (j.error || L.saveFail), j._status === 409);
+        }
+      });
+    }
+    save.onclick = doSave;
+    cancel.onclick = () => closeEditor(true);
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); doSave(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeEditor(true); }
+      e.stopPropagation();
+    });
+  }
+
+  // ---------------------------------------------------------------- Claude への指示（デッキの comment の知らせ）
+  function closeComment(force) {
+    if (!cbox) return;
+    if (!force && cbox.ta.value.trim()) return;
+    cbox.card.remove(); cbox = null;
+    if (target && !editor) setTarget(null);
+    focusFrame();
+  }
+  function openComment(hint) {
+    const key = str(hint.key, 400), range = hint.src == null ? null : str(hint.src, 40);
+    if (!enabled() || !key || (range !== null && !RANGE.test(range))) return;
+    if (busy()) { toast(L.busy, 'warn'); return; }
+    closeEditor(true); closeComment(true);
+    const quote = (str(hint.quote, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const ta = h('textarea', { placeholder: L.cPlace });
+    const msg = h('div', { cls: 'dev-msg' });
+    const save = h('button', { cls: 'dv-pri', text: L.cSave });
+    const card = h('div', { id: 'dev-comment', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cTitle }, [
+      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: key }), h('span', { cls: 'dv-sp' }),
+        h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeComment(true) } })]),
+      quote ? h('div', { cls: 'dv-q', text: quote }) : null,
+      ta, msg,
+      h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.cHint }), h('button', { text: L.cancel, on: { click: () => closeComment(true) } }), save]),
+    ]);
+    doc.body.appendChild(card);
+    const box = cbox = { card, ta };
+    setTarget('#comment');
+    place(card, toPage(rectOf(hint.rect)));
+    ta.focus();
+    function doSave() {
+      if (!ta.value.trim() || cbox !== box) return;
+      save.disabled = true;
+      api('POST', '/__dev/comment', { key, range, quote, comment: ta.value }).then((j) => {
+        if (j._status !== 200) { save.disabled = false; showErr(msg, j._offline ? L.offline : (j.error || L.cFail)); return; }
+        ta.value = ''; closeComment(true); toast(L.cDone);
+        if (commentsOpen) loadComments();
+      });
+    }
+    save.onclick = doSave;
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); doSave(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeComment(true); }
+      e.stopPropagation();
+    });
+  }
+
+  // ---------------------------------------------------------------- コメントの一覧（c）
+  function toggleComments(on) {
+    on = on === undefined ? !commentsOpen : !!on;
+    if (on && !enabled()) return;
+    commentsOpen = on;
+    if (cpanel) { cpanel.remove(); cpanel = null; }
+    if (commentsOpen) {
+      cpanel = h('div', { id: 'dev-comments', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cList }, [
+        h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cList }), h('span', { cls: 'dv-sp' }),
+          h('button', { cls: 'dv-ghost', text: '✕', title: L.closeC, on: { click: () => toggleComments(false) } })]),
+        h('div', { cls: 'dv-list' }, [h('div', { cls: 'dev-empty', text: L.loading })]),
+      ]);
+      doc.body.appendChild(cpanel);
+      placeComments();
+      loadComments();
+    } else focusFrame();
+    saveUi();
+  }
+  function placeComments() {
+    if (!cpanel) return;
+    const fr = frameRect();
+    cpanel.style.left = (fr.left + 12) + 'px'; cpanel.style.top = (fr.top + 52) + 'px';
+    cpanel.style.maxHeight = Math.max(160, fr.bottom - fr.top - 80) + 'px';
+  }
+  function loadComments() {
+    api('GET', '/__dev/comments').then((list) => {
+      if (!cpanel) return;
+      const box = cpanel.querySelector('.dv-list'); box.innerHTML = '';
+      const open = (Array.isArray(list) ? list : []).filter((c) => c && c.status === 'open');
+      if (!open.length) { box.appendChild(h('div', { cls: 'dev-empty', text: L.noOpen(ALT) })); return; }
+      for (const c of open) {
+        const when = new Date(c.created);
+        const item = h('div', { cls: 'dev-c', title: L.toSlide }, [
+          h('div', { cls: 'dv-k', text: String(c.key) + (isNaN(when) ? '' : ' · ' + when.toLocaleString(L.dateLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })) }),
+          c.quote ? h('div', { cls: 'dv-q', text: String(c.quote) }) : null,
+          h('div', { cls: 'dv-c', text: String(c.comment) }),
+          h('div', { cls: 'dv-row' }, [h('button', { text: L.resolve, title: L.resolveT, on: { click: (e) => {
+            e.stopPropagation();
+            api('POST', '/__dev/comment/resolve', { id: c.id }).then(() => loadComments());
+          } } })]),
+        ]);
+        item.addEventListener('click', () => post({ type: 'edit-go-key', key: String(c.key) }));
+        box.appendChild(item);
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- 口述原稿の引き出し（n）
+  async function toggleNarr(on) {
+    on = on === undefined ? !narrOpen : !!on;
+    if (on === narrOpen) return true;
+    if (!on && narr && narr.dirty && !win.confirm(L.discard)) return false;
+    if (on && !enabled()) return false;
+    if (on && o.beforeEdit && !(await o.beforeEdit('narr'))) return false;
+    narrOpen = on;
+    if (drawer) { drawer.remove(); drawer = null; narr = null; }
+    if (narrOpen) {
+      drawer = h('aside', { id: 'dev-narr', cls: 'edit-ui', 'aria-label': L.nTitle });
+      o.drawerHost.appendChild(drawer);
+      narrFollow(true);
+    } else focusFrame();
+    saveUi();
+    return true;
+  }
+  function narrFollow(force) {
+    if (!drawer || !pos) { if (drawer && !narr) drawer.textContent = ''; return; }
+    const key = pos.key;
+    if (!force && narr && narr.key === key) { renderNext(); return; }
+    if (narr && narr.dirty) {
+      if (narr.key === key) return;
+      const stale = drawer.querySelector('.dv-stale');
+      if (stale) { stale.style.display = 'block'; stale.textContent = L.nStale(key); }
+      return;
+    }
+    const sk = splitKey(key);
+    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, i: pos.i };
+    renderDrawer(true);
+    Promise.all([info ? info : loadInfo(), api('GET', '/__dev/narration?key=' + encodeURIComponent(key))]).then(([, j]) => {
+      if (narr !== cur) return;
+      if (j._status !== 200) { cur.error = j._offline ? L.offline : (j.error || L.loadFail); renderDrawer(false); return; }
+      cur.turns = (Array.isArray(j.turns) ? j.turns : []).map((t) => ({ role: t.role === 'novice' ? 'novice' : 'expert', text: String(t.text ?? '') }));
+      cur.line = j.line; cur.rev = j.rev;
+      if (!slideOf(cur.slideKey)) cur.error = L.noSlideKey;
+      renderDrawer(false);
+    });
+  }
+  function renderDrawer(loading) {
+    drawer.innerHTML = '';
+    const s = slideOf(narr.slideKey);
+    const title = (s && (s.heading || s.title)) || narr.slideKey;
+    const status = h('span', { cls: 'dv-st', text: narr.line ? L.nLine(narr.line) : L.nNone });
+    const saveBtn = h('button', { cls: 'dv-pri', text: L.save });
+    const revert = h('button', { text: L.cancel, title: L.revertT });
+    const body = h('div', { cls: 'dv-body' });
+    drawer.appendChild(h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.nTitle }), h('span', { cls: 'dv-m', text: L.step + narr.stepKey }), h('span', { cls: 'dv-sp' }),
+      h('button', { cls: 'dv-ghost', text: '✕', title: L.closeN, on: { click: () => toggleNarr(false) } })]));
+    drawer.appendChild(h('div', { cls: 'dv-sub', text: L.slide(narr.i + 1, String(title).replace(/\s+/g, ' ').trim()) }));
+    drawer.appendChild(body);
+    drawer.appendChild(h('div', { cls: 'dv-foot' }, [status, revert, saveBtn]));
+    const stale = h('div', { cls: 'dv-stale' }); body.appendChild(stale);
+    const nmsg = h('div', { cls: 'dev-msg' }); body.appendChild(nmsg);
+    if (loading) { saveBtn.disabled = true; body.appendChild(h('div', { cls: 'dev-empty', text: L.loading })); return; }
+    if (narr.error) { saveBtn.disabled = true; showErr(nmsg, narr.error); return; }
+    const markDirty = () => { narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; };
+    const list = h('div', { cls: 'dv-turns' }); body.appendChild(list);
+    function drawTurns() {
+      list.innerHTML = '';
+      if (!narr.turns.length) list.appendChild(h('div', { cls: 'dev-empty', text: L.nEmpty }));
+      narr.turns.forEach((t, j) => {
+        const sel = h('select', { 'aria-label': L.speaker }, [h('option', { value: 'expert', text: L.expert }), h('option', { value: 'novice', text: L.novice })]);
+        sel.value = t.role;
+        const ta = h('textarea', { placeholder: L.tPlace });
+        ta.value = t.text;
+        const card = h('div', { cls: 'dev-turn ' + t.role }, [
+          h('div', { cls: 'dv-row' }, [sel, h('span', { cls: 'dv-sp' }),
+            j > 0 ? h('button', { cls: 'dv-ghost', text: '↑', title: L.up, on: { click: () => { const x = narr.turns.splice(j, 1)[0]; narr.turns.splice(j - 1, 0, x); markDirty(); drawTurns(); } } }) : null,
+            h('button', { cls: 'dv-ghost', text: L.del, title: L.delT, on: { click: () => { narr.turns.splice(j, 1); markDirty(); drawTurns(); } } })]),
+          ta]);
+        sel.addEventListener('change', () => { t.role = sel.value; card.className = 'dev-turn ' + t.role; markDirty(); });
+        ta.addEventListener('input', () => { t.text = ta.value; markDirty(); });
+        ta.addEventListener('keydown', keys);
+        list.appendChild(card);
+      });
+    }
+    drawTurns();
+    const last = () => (narr.turns.length ? narr.turns[narr.turns.length - 1].role : 'novice');
+    body.appendChild(h('div', { cls: 'dv-tools' }, [h('button', { text: L.add, on: { click: () => {
+      narr.turns.push({ role: last() === 'expert' ? 'novice' : 'expert', text: '' }); markDirty(); drawTurns();
+      const tas = list.querySelectorAll('textarea'); if (tas.length) tas[tas.length - 1].focus();
+    } } })]));
+    const next = h('div', { cls: 'dv-next' }); body.appendChild(next);
+    renderNext(next);
+    const cur = narr;
+    function doSave() {
+      if (saveBtn.disabled || narr !== cur) return;
+      saveBtn.disabled = true; saveBtn.textContent = L.saving;
+      api('POST', '/__dev/narration', { slideKey: cur.slideKey, stepKey: cur.stepKey, turns: cur.turns, rev: cur.rev }).then((j) => {
+        saveBtn.textContent = L.save;
+        if (j._status === 409) { showErr(nmsg, L.nConflict, true); return; }
+        saveBtn.disabled = false;
+        if (j._status !== 200) { status.textContent = j._offline ? L.offline : (j.error || L.saveFail); status.className = 'dv-st dv-dirty'; return; }
+        if (j.rev) cur.rev = j.rev;
+        cur.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = 'dv-st';
+        if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
+      });
+    }
+    function keys(e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); doSave(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); focusFrame(); }
+      e.stopPropagation();
+    }
+    saveBtn.onclick = doSave;
+    revert.onclick = () => { cur.dirty = false; narrFollow(true); };
+  }
+  function renderNext(box) {
+    box = box || (drawer && drawer.querySelector('.dv-next'));
+    if (!box || !pos || !narr) return;
+    const nk = typeof pos.nextKey === 'string' ? pos.nextKey : null;
+    box.innerHTML = '';
+    box.appendChild(h('div', { cls: 'dv-lab', text: nk ? L.next(splitKey(nk)[1], splitKey(nk)[0] !== narr.slideKey) : L.noNext }));
+    if (!nk) return;
+    const want = nk;
+    api('GET', '/__dev/narration?key=' + encodeURIComponent(nk)).then((j) => {
+      if (!box.isConnected || !pos || pos.nextKey !== want) return;
+      const turns = Array.isArray(j.turns) ? j.turns : [];
+      if (!turns.length) box.appendChild(h('p', { text: L.noNarr }));
+      for (const t of turns) box.appendChild(h('p', {}, [t.role === 'novice' ? h('span', { cls: 'dv-role', text: 'Novice' }) : null, plain(t.text)]));
+    });
+  }
+
+  // ---------------------------------------------------------------- 鍵盤（このページで押したものと、デッキから知らされたもの）
+  function key(k, fromDeck) {
+    if (!enabled()) return;
+    if (k === 'e') toggleEdit();
+    else if (k === 'n') { if (fromDeck && narr && narr.dirty) toast(L.busy, 'warn'); else toggleNarr(); }
+    else if (k === 'c') toggleComments();
+    else if (k === 'Escape') { closeEditor(!fromDeck); closeComment(!fromDeck); }
+  }
+  doc.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    if (doc.querySelector('dialog[open]')) return;
+    if (['e', 'n', 'c', 'Escape'].includes(e.key)) key(e.key, false);
+  });
+  win.addEventListener('resize', () => { drawBadge(); placeComments(); });
+
+  // ---------------------------------------------------------------- プレビューからの知らせ
+  function message(e) {
+    const w = frameWin();
+    if (!w || e.source !== w) return false;
+    const m = e.data;
+    if (!m || typeof m !== 'object') return false;
+    if (m.type === 'deck-pos') {
+      if (typeof m.key !== 'string' || m.key.length > 400 || !m.key.includes(':')) return true;
+      if (restorePos) return true;     // 読み込み直した直後の最初の位置（1 枚目）では、覚えている位置を上書きしない
+      pos = { i: Math.max(0, Math.floor(num(m.i))), k: Math.max(0, Math.floor(num(m.k))), key: m.key, nextKey: typeof m.nextKey === 'string' ? m.nextKey : null };
+      store.set('dev-pos', { i: pos.i, k: pos.k });
+      if (narrOpen) narrFollow();
+      return true;
+    }
+    if (m.type !== 'edit-hint') return false;
+    if (m.kind === 'ready') {
+      const r = restorePos; restorePos = null;
+      if (r) post({ type: 'deck-cmd', cmd: 'goto', i: r.i, k: r.k });
+      sendState(); drawBadge();
+      loadInfo().then(() => { if (narrOpen && (!narr || !narr.dirty)) narrFollow(true); });
+      if (commentsOpen) loadComments();
+    } else if (m.kind === 'key' && typeof m.key === 'string') key(m.key, true);
+    else if (m.kind === 'edit') openEditor(m);
+    else if (m.kind === 'comment') openComment(m);
+    return true;
+  }
+  // 読み込み直す前に：位置を覚えておき、読み込んだ後の ready で戻す。開いたままの欄で未保存でないものは閉じる（場所が変わるので）
+  function frameLoading(keepPos) {
+    restorePos = keepPos && pos ? { i: pos.i, k: pos.k } : null;
+    closeEditor(false);
+  }
+  function reset() {
+    closeEditor(true); closeComment(true);
+    if (narr) narr.dirty = false;
+    pos = null; restorePos = null; info = null; target = null;
+    if (drawer) { drawer.remove(); drawer = null; narr = null; }
+    narrOpen = false; editOn = false;
+    if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
+    drawBadge();
+  }
+  // 外枠のページを読み込み直したとき（開発サーバー）：覚えていた状態と位置に戻す
+  function restoreSaved(hashSlide) {
+    const ui = store.get('dev-ui') || {}, p = store.get('dev-pos');
+    if (p && Number.isFinite(p.i) && (hashSlide === null || hashSlide === p.i)) restorePos = { i: p.i, k: p.k };
+    if (ui.edit) toggleEdit(true);
+    if (ui.narr) toggleNarr(true);
+    if (ui.comments) toggleComments(true);
+  }
+  return {
+    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast,
+    state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
+      comment: !!cbox, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty) }),
+  };
+}
