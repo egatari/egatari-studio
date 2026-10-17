@@ -15,13 +15,13 @@ canon is the TML lab's lecture delivery system. The output is a Marp-style md pl
   - `POST {IRODORI_URL}/v1/audio/speech`: synthesizes one line at a time. The body is JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<sentence>", "ref_audio": "<path to the reference wav>", "response_format": "wav"}`.
     `ref_audio` is a path that the server reads (if the server is on another machine, a path on that machine)
-- You provide the reference voices (the wav files the voice is cloned from). Put them at `<reference voice folder>/<name>.wav` and refer to them by name
+- The default reference voices `alice` and `bob` (and `alice_en`, `bob_en`) are synthetic voices included in `tts/voices/` ([where they come from](../tts/voices/README.md)). For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
 - To check the bundle with canon's parser, the canon repository and bun (without them, only that check is skipped)
 
 | Environment variable | Meaning | Default |
 |---|---|---|
 | `IRODORI_URL` | the Irodori-TTS server | `http://localhost:8882` |
-| `IRODORI_REF_DIR` | the reference voice folder (`--ref-dir` takes precedence) | `tts/voices/` (gitignored) |
+| `IRODORI_REF_DIR` | the reference voice folder (`--ref-dir` takes precedence) | `tts/voices/` |
 | `MOTION_YOMI` | the reading dictionary (`--yomi` takes precedence) | `tts/yomi.yaml` |
 | `CANON_DIR` | the canon repository (`--canon` takes precedence). Used for export-canon's parser check | none (the check is skipped) |
 

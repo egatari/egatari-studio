@@ -69,7 +69,7 @@ Edge は最初からあるので、Chrome がなくても検査と PDF は動く
 - ffmpeg と ffprobe（`PATH` に置く）
 - uv（`tts/` の小さな Python プロジェクトを動かす）
 - OpenAI 互換の音声合成 API を持つ TTS のサーバー。たとえば [mlx-audio](https://github.com/Blaizzy/mlx-audio) で `mlx-community/Irodori-TTS-v4.1-Small-fp16`（日本語）か `mlx-community/VoxCPM2-8bit`（英語など）を動かす。場所は `IRODORI_URL`（既定 `http://localhost:8882`）
-- 参照音声は自分で用意する：`<名前>.wav` を `tts/voices/`（git 管理外）か `IRODORI_REF_DIR` に置く
+- 参照音声：既定の声 `alice` と `bob`（合成した声。日本語と英語）は `tts/voices/` に入っている（[詳しく](tts/voices/README.md)）。自分の声は `<名前>.wav` としてそこ（git 管理外）か `IRODORI_REF_DIR` に置く
 
 ## はじめ方（段階 1：スライド）
 

@@ -69,7 +69,7 @@ Edge is already there, so the checker and PDF work without Chrome. Run the comma
 - ffmpeg and ffprobe on `PATH`
 - uv (runs the small Python project in `tts/`)
 - A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`)
-- Reference voices that you provide: `<name>.wav` in `tts/voices/` (gitignored) or in `IRODORI_REF_DIR`
+- Reference voices: the default voices `alice` and `bob` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
 
 ## Quick start (tier 1: slides)
 

@@ -6,5 +6,8 @@ and Source Sans 3 (@fontsource/source-sans-3) are licensed under the SIL Open Fo
 License 1.1 (fonts/OFL.txt for BIZ UDPGothic; the @fontsource packages ship
 their own license files). Built decks embed subsets of these fonts and of the
 KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
+The default reference voices (tts/voices/alice*.wav, bob*.wav) are synthetic voices
+made with Qwen3-TTS (Apache-2.0), Irodori-TTS (MIT) and VoxCPM2 (Apache-2.0); see
+tts/voices/README.md. They may be redistributed with this project.
 University logos under themes/*/logos/ belong to their respective institutions and are
 not licensed under MIT.

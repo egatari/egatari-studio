@@ -15,13 +15,13 @@ canon は TML 研究室の講義配信システム。出力は Marp 形式の md
   - `POST {IRODORI_URL}/v1/audio/speech`：1 行ずつ合成。本体は JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<文>", "ref_audio": "<参照音声の wav のパス>", "response_format": "wav"}`。
     `ref_audio` はサーバーが読むパス（サーバーが別のマシンならそちらのパス）
-- 参照音声（声のクローン元の wav）は自分で用意する。`<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
+- 既定の参照音声 `alice` と `bob`（と `alice_en`・`bob_en`）は合成した声で、`tts/voices/` に入っている（[出どころ](../tts/voices/README.md)）。ほかの声は、wav を `<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
 - canon の parser での検査をするなら、canon のリポジトリと bun（なければその検査だけを飛ばす）
 
 | 環境変数 | 意味 | 既定 |
 |---|---|---|
 | `IRODORI_URL` | Irodori-TTS のサーバー | `http://localhost:8882` |
-| `IRODORI_REF_DIR` | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/`（git 管理外） |
+| `IRODORI_REF_DIR` | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 | `CANON_DIR` | canon のリポジトリ（`--canon` が優先）。export-canon の parser 検査に使う | なし（検査を飛ばす） |
 
