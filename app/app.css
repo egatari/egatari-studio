@@ -112,7 +112,8 @@ main{flex:1;min-height:0;display:flex}
 .split > #b-save{border-top-right-radius:0;border-bottom-right-radius:0}
 .split > .split-arrow{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:-1px;padding-left:6px;padding-right:6px}
 .split > #b-save.pri + .split-arrow{background:var(--accent);border-color:var(--accent);border-left-color:rgba(255,255,255,.5);color:var(--accent-fg)}
-/* デッキを開いている間は、名前の欄が縮み（…で切る）、題字は印だけにする */
-#top.has-deck .brand [data-t="brand"]{display:none}
+/* デッキを開いている間は、名前の欄が縮み（…で切る）、1440 px より狭ければ題字は印だけにする */
+@media (max-width:1439px){ #top.has-deck .brand [data-t="brand"]{display:none} }
 #top.has-deck .deckname{flex:1 1 auto;min-width:60px;max-width:none}
+#top.has-deck .brand{flex:none;white-space:nowrap}
 @media (min-width:1280px){ #top.has-deck, #top.has-deck #tools{flex-wrap:nowrap} }
