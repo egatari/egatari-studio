@@ -19,7 +19,7 @@ import * as PF from '../kit/core/portable.mjs';
 import { codeReasons, markupReasons, safeExpression, isDataBlock } from '../kit/core/code-scan.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
-import { makeFixtures, silentWav, addUnknownMembers } from './portable-fixtures.mjs';
+import { makeFixtures, silentWav, addUnknownMembers, makeDeck } from './portable-fixtures.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
 
@@ -406,6 +406,34 @@ ok('コードが動くかは中身から決める：データの type のない 
   assert.deepEqual(codeReasons(files({ 'deck.html': '<p>x</p>', 'export.html': '<script>1</script>' })), [], 'an exported HTML the deck does not name is not counted');
   assert.ok(codeReasons(files({ 'deck.html': '<p>/*INCLUDE:part.html*/</p>', 'part.html': '<script>1</script>' })).length === 1, 'an HTML the deck names is scanned');
   assert.ok(codeReasons(files({ 'deck.html': '<m-curves><script type="application/json">{{JSON:c.json}}</script></m-curves>', 'data/c.json': '[{"f":"x*x"}]' })).length === 0);
+});
+
+// ---------------------------------------------------------------- 解析の上限（§11）：小さな要素を何百万も並べた文書を、全部の木を作る前に速く断る
+ok('解析の上限：上限の大きさより小さいが小さな要素が何百万もある文書は、要素・属性・入れ子の数で解析の途中に断る（速く、メモリは入力の大きさの程度）', async () => {
+  const base = (await buildPortable(path.join(makeDeck(path.join(work, 'bounded-deck')), 'deck.html'), { out: path.join(work, 'bounded-out.html') })).html;
+  // 子の process で測る（最大の RSS は process ごと）：90 MiB の文書の <body> の直後に詰める
+  const script = `
+    import fs from 'node:fs';
+    import { readPortable } from ${JSON.stringify(path.join(ROOT, 'kit/core/portable.mjs'))};
+    const html = fs.readFileSync(process.argv[2], 'utf8'), filler = process.argv[3];
+    const j = html.indexOf('>', html.indexOf('<body')) + 1;
+    const bytes = new TextEncoder().encode(html.slice(0, j) + filler.repeat(Math.floor((90 * 1048576 - html.length) / filler.length)) + html.slice(j));
+    const rss0 = process.resourceUsage().maxRSS, t0 = performance.now();
+    let code = 'accepted'; try { await readPortable(bytes); } catch (e) { code = e.code; }
+    console.log(JSON.stringify({ code, ms: Math.round(performance.now() - t0), mib: bytes.length / 1048576, rssMiB: Math.round((process.resourceUsage().maxRSS - rss0) / 1024) }));`;
+  const sf = path.join(work, 'bounded-probe.mjs'); fs.writeFileSync(sf, script);
+  fs.writeFileSync(path.join(work, 'bounded.html'), base);
+  for (const filler of ['<p>', '<div>', '<br a b c d e f g h>']) {
+    const r = spawnSync(process.execPath, [sf, path.join(work, 'bounded.html'), filler], { encoding: 'utf8', timeout: 120000 });
+    const m = JSON.parse(r.stdout.trim().split('\n').pop());
+    console.log(`      ${filler}: ${m.mib.toFixed(0)} MiB → ${m.code} in ${m.ms} ms, peak RSS +${m.rssMiB} MiB`);
+    assert.equal(m.code, 'too-complex', filler);
+    assert.ok(m.ms < 5000, `${filler}: refused quickly (${m.ms} ms)`);
+    assert.ok(m.rssMiB < 700, `${filler}: bounded memory (peak RSS +${m.rssMiB} MiB for a 90 MiB input; a full tree would need several GiB)`);
+  }
+  // 普通の文書は上限の内（試験用ファイルも下で全部読む）。上限を小さくすれば断る（要素・入れ子・取り出した原稿のタグの数）
+  await PF.readPortable(base);
+  for (const lim of [{ elements: 10 }, { nesting: 3 }, { attributes: 20 }, { sourceTags: 10 }]) await assert.rejects(PF.readPortable(base, { limits: lim }), (e) => e.code === 'too-complex', JSON.stringify(lim));
 });
 
 // ---------------------------------------------------------------- 文書の試験用ファイル

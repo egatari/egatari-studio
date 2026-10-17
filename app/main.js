@@ -566,7 +566,8 @@ async function openPortable(input) {
   if (!(await leavePortable())) return false;
   status(T.reading(name));
   let r;
-  try { r = await readInWorker(bytes); }
+  const readerTimeout = (window.__APP_TEST && window.__APP_TEST.readerTimeout) || undefined;
+  try { r = await readInWorker(bytes, { timeout: readerTimeout }); }
   catch (e) {
     status('');
     // 知らない major の版・知らない必須の機能：編集も書き出し（作り直し）もしないが、1.x の規則で索引と塊が検査を通れば原稿をフォルダに
@@ -575,7 +576,7 @@ async function openPortable(input) {
     const v = await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code, e.message),
       buttons: [...(extract ? [{ id: 'extract', label: T.exportFolder }] : []), { id: 'ok', label: T.ok, pri: true }] });
     if (v === 'extract') {
-      try { const x = await readInWorker(bytes, { extract: true }); await exportFolder(workspaceFromPortable(name, x)); }
+      try { const x = await readInWorker(bytes, { extract: true, timeout: readerTimeout }); await exportFolder(workspaceFromPortable(name, x)); }
       catch (err) { await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(err.code, err.message), buttons: [{ id: 'ok', label: T.ok, pri: true }] }); }
     }
     return false;

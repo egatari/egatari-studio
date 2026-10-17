@@ -903,6 +903,25 @@ try {
     ok((await page.textContent('#dlg .tech')).includes('file-too-large') && !(await page.evaluate(() => window.__bigRead)), 'size: an oversized file is refused from File.size before it is read');
     await page.click('#dlg-ok');
     ok(await big === false, 'size: the oversized file is not opened');
+    // 解析の上限（§11）：上限の大きさより小さいが、小さな要素が何百万もある文書は、Worker の中で解析の途中に断る（全部の木を作らない）
+    const leave = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 1000 }).catch(() => null)) await page.click('#dlg-discard'); };
+    const t0c = Date.now();
+    let opc = page.evaluate((h) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(h), name: 'tiny-elements.html' }), pmin.html.replace('<body>', '<body>' + '<p>'.repeat(3000000)));
+    await leave();
+    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: 30000 });
+    ok((await page.textContent('#dlg .tech')).includes('too-complex') && Date.now() - t0c < 20000, `bounded: a file with millions of tiny elements is refused while parsing (too-complex, ${Date.now() - t0c} ms including the transfer)`);
+    await page.click('#dlg-ok');
+    ok(await opc === false, 'bounded: the file is not opened');
+    // 読み取りの期限：過ぎたら Worker を止めて断る。次の読み取りは新しい Worker で動く
+    await page.evaluate(() => { window.__APP_TEST.readerTimeout = 1; });
+    opc = page.evaluate((h) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(h), name: 'slow.html' }), pmin.html);
+    await leave();
+    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: 30000 });
+    ok((await page.textContent('#dlg .tech')).includes('reader-timeout'), 'deadline: reading past the deadline terminates the reader worker and refuses the file');
+    await page.click('#dlg-ok');
+    ok(await opc === false, 'deadline: the file is not opened');
+    await page.evaluate(() => { window.__APP_TEST.readerTimeout = null; });
+    ok((await page.evaluate(() => window.__APP_TEST.workerProbe('__nothing'))) === null, 'deadline: a new reader worker answers after the old one was terminated');
     // フォルダ：<script> も部品もなく、<img onerror> だけ → 聞く（以前は見逃していた）
     await mkdir('c-onerror', { 'deck.html': ONERR, 'narration.md': narrMin });
     let n0 = await loads();

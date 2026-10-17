@@ -35,9 +35,19 @@ function call(msg, transfer = []) {
     try { getWorker().postMessage({ ...msg, id }, transfer); } catch (e) { waiting.delete(id); reject(e); }
   });
 }
-export async function readInWorker(bytes, { extract = false } = {}) {
+// 読み取りの期限：これを過ぎたら Worker を止めて（terminate。解析の途中でも止まる）断る。次の読み取りは新しい Worker で
+export const READER_TIMEOUT_MS = 30000;
+function deadline(p, ms) {
+  let t = 0;
+  return Promise.race([p, new Promise((_, reject) => { t = setTimeout(() => {
+    if (worker) { worker.terminate(); worker = null; }
+    for (const w of waiting.values()) w.reject(Object.assign(new Error(`reading took longer than ${Math.round(ms / 1000)} s (stopped)`), { code: 'reader-timeout' }));
+    waiting.clear();
+  }, ms); })]).finally(() => clearTimeout(t));
+}
+export async function readInWorker(bytes, { extract = false, timeout = READER_TIMEOUT_MS } = {}) {
   const buf = new Uint8Array(bytes).slice().buffer;   // 写しを渡す（呼び手のバイト列はそのまま）
-  const m = await call({ bytes: buf, extract }, [buf]);
+  const m = await deadline(call({ bytes: buf, extract }, [buf]), timeout);
   if (!m.ok) throw Object.assign(new Error(m.error.message), { code: m.error.code });
   return {
     index: parseJsonStrict(m.indexText),

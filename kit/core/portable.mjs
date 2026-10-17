@@ -9,7 +9,7 @@
 //   parseJsonStrict(text, opts)        同じ名前の重複を断る JSON の解析（原型のない object を作る）
 //
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
-import { parse as parseHtml } from 'parse5';
+import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
@@ -30,6 +30,9 @@ const MiB = 1024 * 1024;
 export const LIMITS = Object.freeze({
   fileBytes: 100 * MiB, archiveBytes: 128 * MiB, files: 3000, depth: 10, indexBytes: 4 * MiB, fileMax: 32 * MiB,
   chunkChars: 262144, chunkBytes: 196608, chunkMax: 9999, members: 200000, jsonDepth: 64, pathBytes: 1024,
+  // 解析の上限（このエディタの決め。§11 の「上限を超えれば断ってよい」）：外側の文書の要素・属性・入れ子（kit/core/bounded-html.mjs）と、
+  // 取り出した原稿のファイルに書かれたタグの数（拡張子によらず「<」と英字の並びを数える。編集器が後で組み・調べる原稿の大きさの上限）
+  elements: PARSE_LIMITS.elements, attributes: PARSE_LIMITS.attributes, nesting: PARSE_LIMITS.nesting, sourceTags: 500000,
 });
 // 書き出しで「大きい」と知らせる大きさ（章ごとに分けることを勧める）
 export const WARN_BYTES = 30 * MiB;
@@ -886,11 +889,14 @@ export const readableStepOrder = stepOrder;
 export { escAttr as htmlAttr, escText as htmlText };
 
 // ---------------------------------------------------------------- 読み取り（何も実行しない）
-// parse5 で文字列として解析し（スクリプトは実行しない・資源も読まない。scriptingEnabled: false は DOMParser と同じ）、
-// 形式の id（索引・塊・deck-meta・deck-audio）を持つ要素を集める。同じ id が 2 つあれば断る
+// parse5 の規則で文字列として解析し（スクリプトは実行しない・資源も読まない。scriptingEnabled: false は DOMParser と同じ）、
+// 形式の id（索引・塊・deck-meta・deck-audio）を持つ要素を集める。同じ id が 2 つあれば断る。
+// 木は上限つきで作る（kit/core/bounded-html.mjs：要素・属性・入れ子を解析の途中で数え、超えたらその場で断る。残す文字と位置は形式の id の
+// 要素のものだけ）。小さな要素を何百万も並べた文書でも、全部の木を作る前に止まる（§11）
 const WATCH = new RegExp(`^(?:${reEsc(IX_ID)}|${reEsc(BP)}.*|${reEsc(FORMAT.SIGNATURES_ID)}|deck-meta|deck-audio)$`, 's');
-export function scanDocument(text) {
-  const doc = parseHtml(text, { scriptingEnabled: false, sourceCodeLocationInfo: true });
+const watched = (attrs) => attrs.some((a) => a.name === 'id' && WATCH.test(a.value));
+export function scanDocument(text, limits = LIMITS) {
+  const doc = boundedParse(text, { watch: watched, limits: { elements: limits.elements, attributes: limits.attributes, nesting: limits.nesting }, fail });
   const byId = new Map(), dups = new Set();
   const visit = (n) => {
     if (n.attrs) {
@@ -933,7 +939,7 @@ export async function readPortable(input, opts = {}) {
     if (input.length > L.fileBytes) fail('file-too-large', `file is larger than ${L.fileBytes} bytes`);
     try { text = new TextDecoder('utf-8', { fatal: true }).decode(input); } catch { fail('not-utf8', 'file is not valid UTF-8'); }
   }
-  const scan = scanDocument(text);
+  const scan = scanDocument(text, L);
   if (scan.dups.length) fail('duplicate-id', `duplicate element ids: ${scan.dups.slice(0, 5).join(', ')}`);
   const deckMeta = readDeckMeta(scan);
   const ixEl = scan.byId.get(IX_ID);
@@ -1011,6 +1017,16 @@ export async function readPortable(input, opts = {}) {
     if (len !== b.bytes) fail('bad-blob', `blob ${id} has ${len} bytes, expected ${b.bytes}`);
     if (await sha256Hex(out) !== b.sha256) fail('bad-blob', `blob ${id} is corrupt (sha256 mismatch)`);
     blobBytes.set(id, out);
+  }
+  // 取り出した原稿に書かれたタグの数（「<」と英字・「/」・「!」の並び。拡張子によらず、組み立てが取り込みうるどのファイルも）。
+  // 編集器は取り出した原稿を組み・調べるので、その解析の大きさもここで抑える（同じ塊は 1 回だけ数え、パスの数を掛ける）
+  let tags = 0;
+  for (const id of used) {
+    const b = blobBytes.get(id);
+    let n = 0;
+    for (let i = 0, e = b.length - 1; i < e; i++) if (b[i] === 0x3c) { const c = b[i + 1] | 0x20; if ((c >= 0x61 && c <= 0x7a) || b[i + 1] === 0x2f || b[i + 1] === 0x21) n++; }
+    tags += n * paths.filter((p) => ix.files[p] === id).length;
+    if (tags > L.sourceTags) fail('too-complex', `the source files contain more than ${L.sourceTags} tags`);
   }
   const files = dict();
   for (const p of paths) files[p] = blobBytes.get(ix.files[p]);
