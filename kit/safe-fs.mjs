@@ -21,9 +21,9 @@ import crypto from 'node:crypto';
 export class UnsafePathError extends Error {
   constructor(msg) { super(msg); this.name = 'UnsafePathError'; this.code = 'unsafe-path'; }
 }
-// 控えの名前：new Date().toISOString() の : と . を - にしたもの + '-' + 元の名前
-export const BACKUP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[^/\\]+$/;
-export const backupStamp = () => new Date().toISOString().replace(/[:.]/g, '-');
+// 控えの名前（<時刻>-<元の名前>）は編集アプリと同じもの（kit/core/backup-name.mjs）
+import { BACKUP_RE, backupStamp, isBackupName } from './core/backup-name.mjs';
+export { BACKUP_RE, backupStamp, isBackupName };
 
 const lst = (p) => { try { return fs.lstatSync(p); } catch (e) { if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return null; throw e; } };
 const inside = (p, root) => p === root || p.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
@@ -145,7 +145,7 @@ export function pruneBackups(base, editsRel = path.join('.cache', 'edits'), keep
   const segs = segments(base, path.join(path.resolve(base), editsRel), real);
   const dir = walkDirs(real, segs, editsRel, false);
   if (!dir) return [];
-  const names = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isFile() && BACKUP_RE.test(d.name)).map((d) => d.name).sort();
+  const names = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isFile() && isBackupName(d.name)).map((d) => d.name).sort();
   const gone = [];
   for (const n of names.slice(0, Math.max(0, names.length - keep))) {
     const f = path.join(dir, n), st = lst(f);

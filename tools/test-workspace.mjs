@@ -10,7 +10,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { memoryWorkspace, badRel, KEEP_EDITS } from '../app/memfs.js';
 import { folderWorkspace } from '../app/workspace.js';
-import { writeFile } from '../app/fsx.js';
+import { writeFile, backup as folderBackup, KEEP_EDITS as FOLDER_KEEP } from '../app/fsx.js';
+import { isBackupName, BACKUP_RE, backupStamp } from '../kit/core/backup-name.mjs';
+import * as SAFE from '../kit/safe-fs.mjs';
 import { createDevApi } from '../app/devapi.js';
 import { short } from '../kit/core/sha1.mjs';
 import { rightsOf, isNoDerivatives } from '../app/rights.js';
@@ -181,6 +183,55 @@ ok(`メモリの作業場所：控えは .cache/edits/ に（一覧と書き出�
   const w2 = memoryWorkspace('m', { 'a.md': '1' }, { now: () => t });
   await w2.backup('a.md'); await w2.backup('a.md');
   assert.equal([...w2.snapshot().keys()].filter((k) => k.startsWith('.cache/')).length, 2);
+});
+
+ok('控えの掃除は控えの名前の形のファイルだけを消す（フォルダの作業場所・メモリの作業場所・開発サーバーの pruneBackups が同じ判定）', async () => {
+  assert.equal(SAFE.BACKUP_RE, BACKUP_RE); assert.equal(SAFE.isBackupName, isBackupName);
+  assert.equal(FOLDER_KEEP, KEEP_EDITS);
+  const stamp0 = Date.UTC(2026, 0, 1);
+  const OTHER = ['notes.txt', 'keep-me.md', '2026-01-01-deck.html', '0000-00-00T00-00-00-000Z', 'README', '.hidden', 'a2026-01-01T00-00-00-000Z-x'];
+  for (const n of OTHER) assert.ok(!isBackupName(n), n);
+  assert.ok(isBackupName(`${backupStamp(stamp0)}-deck.html`) && isBackupName(`${backupStamp(stamp0)}-2-deck.html`));
+  // フォルダ（File System Access の口をまねる）：控えの 40 個と、ほかのファイル・フォルダ
+  const entries = new Map(), removed = [];
+  for (let i = 0; i < 40; i++) entries.set(`${backupStamp(stamp0 + i * 1000)}-deck.html`, { kind: 'file' });
+  for (const n of OTHER) entries.set(n, { kind: 'file' });
+  entries.set(`${backupStamp(stamp0 - 1000)}-old-dir`, { kind: 'directory' });   // 名前が控えの形でもフォルダは消さない
+  const edits = {
+    getFileHandle: async (n, o) => { if (!entries.has(n) && o && o.create) entries.set(n, { kind: 'file' }); return { createWritable: async () => ({ write: async () => {}, close: async () => {} }) }; },
+    async *entries() { for (const [n, e] of entries) yield [n, e]; },
+    removeEntry: async (n) => { removed.push(n); entries.delete(n); },
+  };
+  const deckH = { kind: 'file', getFile: async () => ({ text: async () => 'deck' }) };
+  const root = { getFileHandle: async (n) => { if (n === 'deck.html') return deckH; throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); },
+    getDirectoryHandle: async (n) => { if (n === '.cache') return { getDirectoryHandle: async () => edits }; throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); } };
+  await folderBackup(root, 'deck.html', () => stamp0 + 100000);
+  assert.equal(removed.length, 41 - KEEP_EDITS, removed.join(','));
+  assert.ok(removed.every(isBackupName), 'only backups are removed');
+  for (const n of OTHER) assert.ok(entries.has(n), `kept ${n}`);
+  assert.ok(entries.has(`${backupStamp(stamp0 - 1000)}-old-dir`), 'a directory is kept');
+  assert.equal([...entries.keys()].filter((n) => isBackupName(n) && entries.get(n).kind === 'file').length, KEEP_EDITS);
+  // メモリの作業場所
+  let t = stamp0;
+  const init = { 'deck.html': 'v0' };
+  for (const n of OTHER) init[`.cache/edits/${n}`] = 'x';
+  init[`.cache/edits/sub/${backupStamp(stamp0 - 5000)}-deck.html`] = 'nested';
+  const ws = memoryWorkspace('m', init, { now: () => t });
+  for (let i = 0; i < KEEP_EDITS + 10; i++) { await ws.backup('deck.html'); t += 1000; }
+  const keys = [...ws.snapshot().keys()];
+  for (const n of OTHER) assert.ok(keys.includes(`.cache/edits/${n}`), `memory kept ${n}`);
+  assert.ok(keys.includes(`.cache/edits/sub/${backupStamp(stamp0 - 5000)}-deck.html`), 'memory: nested file kept');
+  assert.equal(keys.filter((k) => /^\.cache\/edits\/[^/]+$/.test(k) && isBackupName(k.split('/').pop())).length, KEEP_EDITS);
+  // 開発サーバー・npm run の掃除（kit/safe-fs.mjs）
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'prune-'));
+  try {
+    const ed = path.join(d, '.cache', 'edits'); fs.mkdirSync(ed, { recursive: true });
+    for (let i = 0; i < 40; i++) fs.writeFileSync(path.join(ed, `${backupStamp(stamp0 + i * 1000)}-deck.html`), 'b');
+    for (const n of OTHER) fs.writeFileSync(path.join(ed, n), 'x');
+    const gone = SAFE.pruneBackups(d, path.join('.cache', 'edits'), KEEP_EDITS);
+    assert.equal(gone.length, 40 - KEEP_EDITS); assert.ok(gone.every(isBackupName));
+    for (const n of OTHER) assert.ok(fs.existsSync(path.join(ed, n)), `node kept ${n}`);
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
 });
 
 ok('権利：改変を認めないライセンスと、ライセンスのない著作権の表示は確認が要る', () => {

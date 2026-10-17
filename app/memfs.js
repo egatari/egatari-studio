@@ -4,6 +4,8 @@
 //
 // 場所は "/" 区切りの相対パス（先頭に / を付けない）。一覧（list）はフォルダの walk と同じものを外す：
 // ドットで始まる名前（.cache の控えなど）と、node_modules・out・audio・video・bundle・__pycache__（audio は {audio: true} のときだけ入れる）
+import { backupStamp, isBackupName } from '../kit/core/backup-name.mjs';
+
 const SKIP = new Set(['node_modules', 'out', 'audio', 'video', 'bundle', '__pycache__']);
 export const KEEP_EDITS = 30;
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -67,11 +69,12 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
     async backup(rel) {
       const e = store.get(rel);
       if (!e) return;
-      const stamp = new Date(now()).toISOString().replace(/[:.]/g, '-');
+      const stamp = backupStamp(now());
       let key = `.cache/edits/${stamp}-${rel.split('/').pop()}`, n = 2;
       while (store.has(key)) key = `.cache/edits/${stamp}-${n++}-${rel.split('/').pop()}`;
       store.set(key, { bytes: e.bytes.slice(), m: tick() });
-      const edits = [...store.keys()].filter((k) => k.startsWith('.cache/edits/')).sort();
+      // 消すのは .cache/edits/ のすぐ下の、控えの名前の形のものだけ（kit/core/backup-name.mjs。フォルダと開発サーバーと同じ）
+      const edits = [...store.keys()].filter((k) => k.startsWith('.cache/edits/') && isBackupName(k.slice('.cache/edits/'.length))).sort();
       for (const k of edits.slice(0, Math.max(0, edits.length - KEEP_EDITS))) store.delete(k);
     },
     // すべてのファイル（外すものも含む）：Map(rel → Uint8Array の写し)
