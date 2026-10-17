@@ -1,6 +1,11 @@
 // 原稿（deck.html）を、外部の読み込みなしで表示できる 1 つの HTML にする
 //
-//   node kit/build.mjs <deck.html> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio]
+//   node kit/build.mjs <deck.html> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]
+//
+//   --portable   持ち運べる 1 ファイル（format spec。out/<名前><FORMAT.FILE_EXT>）：再生できる HTML に原稿と音声を入れたもの（kit/core/portable.mjs）。
+//                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
+//   --play-only  その再生専用の派生（out/<名前><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   形式の名前・拡張子は kit/core/format.mjs
 //
 // 原稿の中で使える記法
 //   \( … \)，\[ … \]        数式。KaTeX で事前に組む（<script> <style> <svg> <textarea> の中は対象外）
@@ -20,6 +25,8 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
+import { exportPortable, playOnly } from './core/portable.mjs';
+import { FORMAT } from './core/format.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -91,6 +98,7 @@ export const nodeEnv = {
   isFile: (p) => fs.statSync(p).isFile(),
   readText: (p) => fs.readFileSync(p, 'utf8'),
   readBase64: (p) => fs.readFileSync(p).toString('base64'),
+  readBytes: (p) => new Uint8Array(fs.readFileSync(p)),
   within,
   subset: subsetCss,
   compressAudio,
@@ -102,6 +110,19 @@ export function build(srcPath, opts = {}) { return core.build(nodeEnv, srcPath, 
 export function bundleAssets(html, deckDir, warn = []) { return core.bundleAssets(nodeEnv, html, deckDir, warn); }
 export function defaultOut(srcPath) { return core.defaultOut(path, srcPath); }
 
+// 持ち運べる 1 ファイル（kit/core/portable.mjs）。設定のファイル（docId）を初めて作ったときは原稿のフォルダに書く
+export async function buildPortable(srcPath, opts = {}) {
+  const r = await exportPortable(nodeEnv, srcPath, opts);
+  const deckDir = path.dirname(path.resolve(srcPath));
+  for (const [rel, text] of Object.entries(r.writes)) fs.writeFileSync(path.join(deckDir, rel), text);
+  if (opts.playOnly) r.html = playOnly(r.html);
+  return r;
+}
+export function defaultPortableOut(srcPath, playOnlyOut = false) {
+  const p = path.parse(path.resolve(srcPath));
+  return path.join(p.dir, 'out', p.name + (playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT));
+}
+
 // ---------------------------------------------------------------- CLI
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = process.argv.slice(2);
@@ -111,14 +132,29 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--theme') opts.theme = a[++i];
     else if (a[i] === '--dev') opts.dev = true;
     else if (a[i] === '--embed-audio') opts.embedAudio = true;
+    else if (a[i] === '--portable') opts.portable = true;
+    else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio]'); process.exit(1); }
-  const out = opts.out || defaultOut(src);
-  const r = build(src, { ...opts, out });
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, r.html);
-  const s = r.stats;
-  console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
-  for (const w of s.warn) console.warn('  ⚠ ' + w);
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
+  if (opts.portable) {
+    if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }
+    const out = opts.out || defaultPortableOut(src, opts.playOnly);
+    let r;
+    try { r = await buildPortable(src, { ...opts, out }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, r.html);
+    const s = r.stats;
+    if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
+    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB -> ${out}`);
+    for (const w of r.warnings) console.warn('  ⚠ ' + w);
+  } else {
+    const out = opts.out || defaultOut(src);
+    const r = build(src, { ...opts, out });
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, r.html);
+    const s = r.stats;
+    console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
+    for (const w of s.warn) console.warn('  ⚠ ' + w);
+  }
 }

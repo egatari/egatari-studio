@@ -11,7 +11,8 @@
     "new": "node tools/new.mjs",
     "ids": "node tools/ids.mjs",
     "build:app": "node tools/build-app.mjs",
-    "test": "node tools/test-all.mjs"
+    "test": "node tools/test-all.mjs",
+    "portable": "node tools/portable.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -24,6 +25,7 @@
     "playwright-core": "1.64.1"
   },
   "devDependencies": {
+    "ajv": "8.17.1",
     "esbuild": "0.28.2"
   }
 }
