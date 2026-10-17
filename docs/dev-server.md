@@ -15,7 +15,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 ```
 
 It watches the deck folder (deck.html, narration.md, timeline.json, macros.tex, data/, figs/, components/, audio/manifest.json)
-and the repository's kit/, components/ and themes/. When something changes it rebuilds and reloads the page (staying on the same slide and step).
+and the repository's kit/, components/ and themes/ (a folder of the deck that is a symbolic link is not watched; the server warns once). When something changes it rebuilds and reloads the page (staying on the same slide and step).
 When the build fails, the error is shown on the page. Fix it and save, and the deck comes back.
 `?presenter=1`, `?mode=lecture` and the like work as usual. Audio is read from `/deck/audio/…`.
 

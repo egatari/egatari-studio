@@ -15,7 +15,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 ```
 
 原稿のフォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
-リポジトリの kit/、components/、themes/ を見張り、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
+リポジトリの kit/、components/、themes/ を見張り（原稿のフォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
 組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
 `?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
 
