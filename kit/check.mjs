@@ -12,13 +12,16 @@
 // F. 注目の演出（{mark:…}）：目印が見つかるか、段階ごとの印の一覧
 // G. モーフ（data-morph）：元のスライドと対応する data-id があるか、対応の一覧
 // H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
+// I. スライドの id と鍵（spec/etoki-1.0.md §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
+//    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
-import { build, isJapanese } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds } from './build.mjs';
+import { normalizeKey } from './narration.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -92,8 +95,25 @@ const JA = isJapanese(lang);
 for (const w of built.stats.warn) {
   // 目印の有無は F で、部品が作った要素も含めて実際の画面で調べる（build は原稿の文字列だけを見る）
   if (/^mark: 目印/.test(w)) continue;
+  // 鍵の重なりは I でエラーにする（build は「#n」を付けて組めるようにしただけ）
+  if (/^slide key: /.test(w)) continue;
   // narration.md の見出しがどのスライドにも対応しない → 原稿と見出しがずれている重大な不整合
   report(null, /^narration:/.test(w) ? 'error' : 'warn', w);
+}
+
+// ================================================================ I. スライドの id と鍵
+{
+  const ids = analyzeSlideIds(fs.readFileSync(src, 'utf8'));
+  for (const p of ids.problems) report(p.slide, p.sev, p.msg);
+  // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
+  const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
+  for (const sec of built.segs.sections || []) {
+    if (!sec.id) continue;
+    const s = byKey.get(sec.key);
+    if (s && sec.heading && normalizeKey(sec.heading) !== normalizeKey(s.heading)) {
+      report(s.i, 'info', `narration.md ${sec.line} 行目の見出し「${sec.heading}」がスライドの見出し「${s.heading}」と違う（{#${sec.id}} で対応しているので動きは変わらない）`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------- 2. 一時ファイルへ書き出し、ヘッドレス Chrome で開く
