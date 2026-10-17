@@ -11,7 +11,7 @@
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { codeReasons } from './code-scan.mjs';
-import { build as coreBuild, jsonScript, MIME } from './build-core.mjs';
+import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 
@@ -556,19 +556,23 @@ const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contra
 //   originalNarration      carry の文書の narration.md（あれば。行から作られた拡張を、行を消したら残さないため）
 //   identity               {docId, derivedFrom}：新しい教材として保存する（新しい docId・derivedFrom。§3.6.1・§7.3）。FORMAT.CONFIG_FILE を書き直し writes に
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
-export async function exportPortable(env, srcPath, opts = {}) {
-  const P = env.path;
+export async function exportPortable(env0, srcPath, opts = {}) {
+  const P = env0.path;
   const deckDir = P.dirname(P.resolve(srcPath));
   const rel = (p) => P.relative(deckDir, p).split(P.sep).join('/');
   const warnings = [], writes = dict();
-  const inDeck = (p) => env.within(p, deckDir);
+  const inDeck = (p) => env0.within(p, deckDir);
 
   // 組み立てが読んだファイルを記録する
   const reads = new Set();
-  const rec = { ...env,
-    readText(p) { reads.add(P.resolve(p)); return env.readText(p); },
-    readBase64(p) { reads.add(P.resolve(p)); return env.readBase64(p); },
+  const rec = { ...env0,
+    readText(p, max) { reads.add(P.resolve(p)); return env0.readText(p, max); },
+    readBase64(p, max) { reads.add(P.resolve(p)); return env0.readBase64(p, max); },
   };
+  // 組み立てと書き出しで 1 つの数え方（kit/core/build-core.mjs の buildBudget・chargedEnv）：書き出しが読むもの（口述原稿・原稿のファイルの写し・
+  // voice.json・設定のファイル・音声と、その圧縮の前の元のファイル・控えの JSON）も、組み立てが読むものと同じ回数と大きさの合計に、読む前に数える
+  const budget = buildBudget(opts.limits, 0), LIM = budget.L;
+  const env = chargedEnv(rec, budget);
   // 口述原稿：音声を段階に結び付け、inputHash と拡張の行に使う（build と同じ規則で読む）
   const narrPath = P.join(deckDir, 'narration.md');
   const segs = env.exists(narrPath) && inDeck(narrPath) ? parseNarration(env.readText(narrPath)) : [];
@@ -583,7 +587,7 @@ export async function exportPortable(env, srcPath, opts = {}) {
   };
   const metaPh = { format: FID, placeholder: tag };
   const prefixPh = `<!--archive-${tag}-->`;
-  const r = (opts.build || coreBuild)(rec, srcPath, { ...opts, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
@@ -622,7 +626,8 @@ export async function exportPortable(env, srcPath, opts = {}) {
   const ePath = P.join(deckDir, CFG);
   let econf = {};
   if (env.exists(ePath) && inDeck(ePath)) {
-    try { econf = parseJsonStrict(env.readText(ePath)); } catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
+    const text = env.readText(ePath);   // 上限で断るもの（build-too-large）は設定の誤りにしない
+    try { econf = parseJsonStrict(text); } catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
     if (!isObj(econf)) fail('bad-config', `${CFG}: not an object`);
   }
   if (own(econf, 'docId') && !(typeof econf.docId === 'string' && RE.docId.test(econf.docId))) fail('bad-config', `${CFG}: docId "${econf.docId}" is not a lowercase UUID`);
@@ -657,11 +662,14 @@ export async function exportPortable(env, srcPath, opts = {}) {
   const segJson = (v) => {
     const p = P.join(deckDir, 'audio', `seg_${v.digest}.json`);
     if (!v.digest || !/^[0-9a-f]+$/.test(v.digest) || !env.exists(p) || !inDeck(p)) return null;
-    try { return JSON.parse(env.readText(p)); } catch { return null; }
+    const text = env.readText(p);   // 上限で断るもの（build-too-large）は飲み込まない
+    try { return JSON.parse(text); } catch { return null; }
   };
   for (const { key, file, v } of pend) {
     let apath = fileOfSrc.get(file);
     if (!apath) {
+      // 圧縮は env の外で元のファイルを読む：読む前に数える（通常のファイルでなければ断る）。圧縮したものは env を通して読む（数える）
+      if (env.compressAudio) env.precharge(file);
       const packed = env.compressAudio ? env.compressAudio(file) : file;
       const bytes = readBytesVia(env, packed);
       const ext = P.extname(packed).toLowerCase();
@@ -699,6 +707,17 @@ export async function exportPortable(env, srcPath, opts = {}) {
   for (const p of Object.keys(all)) shaOf[p] = await sha256Hex(all[p]);
   const srcSha = await sourceSha256(Object.fromEntries(Object.keys(files).map((p) => [p, shaOf[p]])));
   const fileMap = dict(), blobs = dict(), chunks = [];
+  // 塊（base64）を作る前に、できる文書の大きさを見積もって組んだ文書の上限（bundledChars）で確かめる（塊ごとの要素の分も）
+  const CHUNK_TAG = `<script type="application/octet-stream" id="${BP}${'0'.repeat(32)}-0000"></script>\n`.length;
+  let chunkChars = 0;
+  { const seenSha = new Set();
+    for (const p of Object.keys(all)) {
+      if (seenSha.has(shaOf[p])) continue; seenSha.add(shaOf[p]);
+      const b = all[p], n = Math.max(1, Math.ceil(b.length / LIMITS.chunkBytes));
+      chunkChars += Math.ceil(b.length / 3) * 4 + n * CHUNK_TAG;
+    }
+    const projected = html.length + chunkChars;
+    if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (archive chunks)', projected, LIM.bundledChars); }
   for (const p of Object.keys(all).sort(cmpCodePoint)) {
     const id = shaOf[p].slice(0, 32);
     fileMap[p] = id;
@@ -784,9 +803,13 @@ export async function exportPortable(env, srcPath, opts = {}) {
     html = html.split(`"src":${ph}`).join(`"src":"${SCHEME}${id}","mime":"${blobs[id].mime}"`);
   });
   const indexText = htmlSafeJson(JSON.stringify(index, null, 1));
-  const layer = readableLayer(r.slides, segs, lang, warnings) + '\n' +
-    `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n` +
-    chunks.join('\n') + '\n';
+  const readable = readableLayer(r.slides, segs, lang, warnings) + '\n';
+  const ixScript = `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n`;
+  // つなぐ前に、組み立ての後に入れるもの（読める層・索引・塊）すべてを含めた出力の全体の大きさを確かめる
+  { const chunksLen = chunks.reduce((n, c) => n + c.length + 1, 0);
+    const n = html.length - prefixPh.length + readable.length + ixScript.length + chunksLen + 1;
+    if (n > LIM.bundledChars) throw new BuildLimitError('portable document', n, LIM.bundledChars); }
+  const layer = readable + ixScript + chunks.join('\n') + '\n';
   if (html.split(prefixPh).length !== 2) fail('internal', 'archive placeholder not found exactly once');
   html = html.replace(prefixPh, () => layer);
   if (html.includes('\r')) html = html.replace(/\r\n?/g, '\n');

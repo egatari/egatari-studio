@@ -410,6 +410,41 @@ try {
     ok(small === 'build-too-large', 'build limits: opts.limits can be lowered (includes: 5 refuses 10 includes)');
     const rbig = build(deckOf('ok', '/*INCLUDE:dep.txt*/'.repeat(12000), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 20000 } });
     ok(rbig.html.length > 0, 'build limits: opts.limits can be raised');
+    // 持ち運べる形式の書き出しも組み立てと 1 つの数え方：書き出しが読むもの（voice.json・音声・口述原稿）も読む前に数え、塊・読める層・索引を入れた
+    // 出力の全体もつなぐ前に確かめる（子の process で最大 RSS も見る）
+    {
+      const portableCase = (name, prep, re, extra = {}) => {
+        const f = deckOf(name, ''); const d = path.dirname(f);
+        fs.writeFileSync(path.join(d, 'narration.md'), '# n\n\n## x\n[0] hello\n');
+        prep(d);
+        const code = `import { buildPortable } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+        const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
+        let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
+        ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < 300 * 1024 && !fs.existsSync(path.join(d, 'out')), `portable limits: ${name} -> refused before allocating (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
+      };
+      const manifest = (d, file) => { fs.mkdirSync(path.join(d, 'audio'), { recursive: true }); fs.writeFileSync(path.join(d, 'audio', 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file, dur: 1, cues: [] } } })); };
+      portableCase('voice.json 1 GiB', (d) => sparse(path.join(d, 'voice.json'), 1024 * MiB), /files read/);
+      portableCase('audio manifest entry 1 GiB (.mp3)', (d) => { manifest(d, 'big.mp3'); sparse(path.join(d, 'audio', 'big.mp3'), 1024 * MiB); }, /files read/);
+      portableCase('audio manifest entry 1 GiB (.wav, before compressing)', (d) => { manifest(d, 'big.wav'); sparse(path.join(d, 'audio', 'big.wav'), 1024 * MiB); }, /files read/);
+      portableCase('narration.md 1 GiB', (d) => sparse(path.join(d, 'narration.md'), 1024 * MiB), /files read/);
+      portableCase('egatari.json 1 GiB', (d) => sparse(path.join(d, FORMAT.CONFIG_FILE), 1024 * MiB), /files read/);
+      // 組み立ては上限の内でも、書き出しが読む音声で合計が上限を超えれば断る（組み立てと書き出しで 1 つの数え方）
+      { const core = await import('../kit/core/build-core.mjs'); const { nodeEnv } = await import('../kit/build.mjs');
+        const f = deckOf('one-budget', ''); const d = path.dirname(f);
+        fs.writeFileSync(path.join(d, 'narration.md'), '# n\n\n## x\n[0] hello\n');
+        manifest(d, 'a.mp3'); fs.writeFileSync(path.join(d, 'audio', 'a.mp3'), Buffer.alloc(4 * MiB, 7));
+        const bud = core.buildBudget({}); core.build(nodeEnv, f, { subset: false, budget: bud, audioRef: () => 'x' });
+        const limits = { readChars: bud.input + 2 * MiB };
+        let e = null; try { await buildPortable(f, { subset: false, limits }); } catch (x) { e = x; }
+        ok(e && e.code === 'build-too-large' && /files read/.test(e.message), `portable limits: the build fits (${bud.input} chars read) but the exported 4 MiB audio goes over readChars -> refused (${e && e.message})`);
+        // 塊を作る前に、出力の全体（組み立ての出力と塊）の見積もりを確かめる
+        const b2 = core.buildBudget({}); const r2 = core.build(nodeEnv, f, { subset: false, budget: b2, audioRef: () => 'x' });
+        let e2 = null; try { await buildPortable(f, { subset: false, limits: { bundledChars: r2.html.length + 2 * MiB } }); } catch (x) { e2 = x; }
+        ok(e2 && e2.code === 'build-too-large' && /portable document/.test(e2.message), `portable limits: the build output fits bundledChars but the archive chunks would not -> refused before encoding (${e2 && e2.message})`);
+        const ok3 = await buildPortable(f, { subset: false });
+        ok(ok3.html.length > 4 * MiB, 'portable limits: the same deck exports under the default limits');
+        fs.rmSync(path.join(d, FORMAT.CONFIG_FILE), { force: true }); }
+    }
     // 通常のファイルだけを読む・実際に読んだバイトで数える（format spec §11）。FIFO は開けば止まる：子の process で、期限付きで（止まれば失敗）
     const child = (code, timeout = 20000) => {
       const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout });

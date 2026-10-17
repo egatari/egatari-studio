@@ -43,6 +43,8 @@ export function createEngine(res, loadLazy) {
   const relOf = (p) => P.relative(DECK, p);
   const inDeck = (p) => p === DECK || p.startsWith(DECK + '/');
   const inRepo = (p) => p === ROOT || p.startsWith(ROOT + '/');
+  const sizes = new Map();
+  const utf8Size = (p) => { if (!sizes.has(p)) sizes.set(p, new TextEncoder().encode(res.text[p]).length); return sizes.get(p); };
 
   // env を作る：getL() はその組み立てが見る一覧、missing はその組み立てで足りなかった場所（組み立てごとに別。書き出しとプレビューが混ざらない）
   const mkEnv = (getL, missing) => {
@@ -103,7 +105,7 @@ export function createEngine(res, loadLazy) {
           const c = cache.get(rel);
           return c && c.sig === sig(f) ? c.bytes.length : f.s;
         }
-        if (p in res.text) return res.text[p].length;
+        if (p in res.text) return utf8Size(p);   // バイト数（readBytes が返す UTF-8 の大きさ。字数ではない）
         if (p in res.b64) return Math.floor(res.b64[p].length / 4) * 3;
         return null;
       },
