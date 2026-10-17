@@ -18,9 +18,12 @@ fs.mkdirSync(work, { recursive: true });
 fs.cpSync(path.join(ROOT, 'examples/minimal'), deckDir, { recursive: true, filter: (s) => !s.includes(`${path.sep}out`) });
 const DECK = path.join(deckDir, 'deck.html'), NARR = path.join(deckDir, 'narration.md');
 // 「学習率と収束」の節を除いておく（節がないスライドへの挿入を試すため）
-fs.writeFileSync(NARR, fs.readFileSync(NARR, 'utf8').replace(/## 学習率と収束\n[\s\S]*?\n\n(?=## まとめ)/, ''));
+fs.writeFileSync(NARR, fs.readFileSync(NARR, 'utf8').replace(/## 学習率と収束\r?\n[\s\S]*?\r?\n\r?\n(?=## まとめ)/, ''));
 const narr0 = fs.readFileSync(NARR, 'utf8');
 if (narr0.includes('## 学習率と収束')) throw new Error('could not strip a section from narration.md');
+// Windows で CRLF のまま取り出したときも、書き戻しは元の改行に揃える
+const EOL = narr0.includes('\r\n') ? '\r\n' : '\n', nl = (s) => s.replace(/\n/g, EOL);
+const mixedEol = (s) => EOL === '\r\n' ? /(^|[^\r])\n/.test(s) : s.includes('\r');
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
@@ -111,7 +114,7 @@ try {
   await page.locator('#dev-narr .dev-turn textarea').nth(1).press('Meta+Enter');
   await nav2; await ready(); await page.waitForTimeout(400);
   const narr1 = fs.readFileSync(NARR, 'utf8');
-  const exp1 = narr0.replace('[2] {mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', '[2] Expert: η は、1 歩の{cue}大きさです。{φ|ファイ} とは違います。\n    Novice: 大きさ、ですか。');
+  const exp1 = narr0.replace('[2] {mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', nl('[2] Expert: η は、1 歩の{cue}大きさです。{φ|ファイ} とは違います。\n    Novice: 大きさ、ですか。'));
   ok(narr1 === exp1, 'narration.md: only that block changed');
   if (narr1 !== exp1) console.log(narr1);
   const seg = parseNarration(narr1).find((s) => s.slideKey === '更新の式' && s.stepKey === '2');
@@ -130,8 +133,9 @@ try {
   await post({ slideKey: '学習率と収束', stepKey: '0', turns: [{ role: 'expert', text: '学習率を変えます。' }] });
   await post({ slideKey: '学習率と収束', stepKey: 'concl', turns: [{ role: 'expert', text: '2 未満なら収束します。' }] });
   const narr2 = fs.readFileSync(NARR, 'utf8');
-  ok(narr2.includes('## 学習率と収束\n[0] 学習率を変えます。\n[1] 倍率を上げると速く下がります。\n[concl] 2 未満なら収束します。\n\n## まとめ'), 'new section inserted in slide order, steps ordered');
-  ok(narr2.replace(/## 学習率と収束\n[\s\S]*?\n\n(?=## まとめ)/, '') === narr1, 'rest of narration.md untouched');
+  ok(narr2.includes(nl('## 学習率と収束\n[0] 学習率を変えます。\n[1] 倍率を上げると速く下がります。\n[concl] 2 未満なら収束します。\n\n## まとめ')), 'new section inserted in slide order, steps ordered');
+  ok(!mixedEol(narr2), `narration.md keeps one kind of line ending (${EOL === '\r\n' ? 'CRLF' : 'LF'})`);
+  ok(narr2.replace(/## 学習率と収束\r?\n[\s\S]*?\r?\n\r?\n(?=## まとめ)/, '') === narr1, 'rest of narration.md untouched');
   await post({ slideKey: '学習率と収束', stepKey: '0', turns: [] });
   ok(!fs.readFileSync(NARR, 'utf8').includes('学習率を変えます'), 'empty turns remove the block');
   const gr = await getN('更新の式:2');

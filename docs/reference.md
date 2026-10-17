@@ -321,7 +321,7 @@ The summary line shows slides, math, components, font files, narration steps, au
 
 | `voice.json` field | Meaning |
 |---|---|
-| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the deck). Defaults `alice`, `bob` |
+| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the deck). Defaults `bob`, `alice` |
 | `lang` | language (default: `lang` of the deck's HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
 | `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
 
@@ -362,7 +362,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new deck folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run build:app` | build the editor app: `dist/editor/` (for GitHub Pages) and the single file `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
-| `sh tools/get-fonts.sh` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |
+| `node tools/get-fonts.mjs` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
 | `node tools/catalog.mjs` | regenerate `components/CATALOG.md` |
@@ -379,7 +379,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 
 | Variable | Used by | Meaning | Default |
 |---|---|---|---|
-| `CHROME_PATH` | check, pdf, shot, render, tests | browser executable | Google Chrome, then Playwright's Chromium |
+| `CHROME_PATH` | check, pdf, shot, render, tests | browser executable | Google Chrome, then Microsoft Edge, then Playwright's Chromium |
 | `IRODORI_URL` | TTS | OpenAI-compatible speech server | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | reference voice folder (`--ref-dir` wins) | `tts/voices/` |
 | `MOTION_YOMI` | TTS | reading dictionary (`--yomi` wins) | `tts/yomi.yaml` |

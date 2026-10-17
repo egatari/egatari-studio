@@ -321,7 +321,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 | `voice.json` の項目 | 意味 |
 |---|---|
-| `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対ならデッキから）。既定 `alice`、`bob` |
+| `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対ならデッキから）。既定 `bob`、`alice` |
 | `lang` | 言語（既定はデッキの HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
 | `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
 
@@ -362,7 +362,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいな雛形から新しいデッキのフォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `npm run build:app` | 編集アプリを作る：`dist/editor/`（GitHub Pages 用）と 1 ファイルの `dist/editor.html`。[editor.ja.md](editor.ja.md) |
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
-| `sh tools/get-fonts.sh` | BIZ UDPゴシックの TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
+| `node tools/get-fonts.mjs` | BIZ UDPゴシックの TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
 | `node tools/catalog.mjs` | `components/CATALOG.md` を作り直す |
@@ -379,7 +379,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 | 変数 | 使うもの | 意味 | 既定 |
 |---|---|---|---|
-| `CHROME_PATH` | 検査・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Playwright の Chromium |
+| `CHROME_PATH` | 検査・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
 | `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |

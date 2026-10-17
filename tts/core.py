@@ -10,6 +10,7 @@ marp2mp4（main_irodori.py）の関数を移したもの。ffmpeg のフィル�
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -50,7 +51,7 @@ def server_is_local() -> bool:
 
 
 def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
-    """声の指定 → 参照音声のパス。名前（alice）なら <refs>/<名前>.wav、
+    """声の指定 → 参照音声のパス。名前（bob）なら <refs>/<名前>.wav、
     パス（/ を含むか .wav で終わる）ならそのファイル（相対なら base から）。
 
     サーバーが別のマシンのときはパスはサーバー側のものなので、有無を確かめない。
@@ -65,6 +66,31 @@ def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
         raise FileNotFoundError(f"参照音声が見つかりません: {p}"
                                 "（IRODORI_REF_DIR か --ref-dir、または voice.json にパスで書く）")
     return p
+
+
+REF_RATE = 48000  # TTS のモデル（Irodori・VoxCPM2）が前提にする参照音声のサンプリング周波数
+
+
+def ref_at_model_rate(path: Path, cache_dir: Path) -> Path:
+    """参照音声が 48 kHz・モノラルでなければ、変換したものを cache_dir に作ってそのパスを返す。
+
+    16 kHz のまま渡すと、mlx のサーバーでは読む速さが変わった（ブラウザ版より 2〜4 割速い）。
+    サーバーが別のマシンのときはパスが向こうのものなので、何もしない。
+    """
+    if not server_is_local() or not path.exists():
+        return path
+    info = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate,channels",
+         "-of", "csv=p=0", str(path)], capture_output=True, text=True, encoding="utf-8").stdout.strip()
+    if info == f"{REF_RATE},1":
+        return path
+    digest = hashlib.sha1(path.read_bytes()).hexdigest()[:12]
+    out = cache_dir / f"{path.stem}-{digest}-48k.wav"
+    if not out.exists():
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-ac", "1", "-ar", str(REF_RATE), str(out)],
+                       check=True)
+    return out
 
 
 def ping(timeout: float = 5):
@@ -126,7 +152,7 @@ def normalize_level(path: Path):
     probe = subprocess.run(
         ["ffmpeg", "-v", "info", "-i", str(path), "-af",
          f"loudnorm=I={TARGET_LUFS}:TP={TARGET_TP_DB}:LRA={TARGET_LRA}:print_format=json",
-         "-f", "null", "-"], capture_output=True, text=True).stderr
+         "-f", "null", "-"], capture_output=True, text=True, encoding="utf-8", errors="replace").stderr
     m = re.search(r"\{[^{}]*input_i[^{}]*\}", probe, re.DOTALL)
     if not m:
         return
@@ -203,6 +229,6 @@ def media_duration(path: Path) -> float:
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", check=True,
     )
     return float(result.stdout.strip())

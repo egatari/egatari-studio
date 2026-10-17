@@ -4,7 +4,12 @@ node_modules/
 **/.cache/
 fonts/*.ttf
 tts/.venv/
-tts/voices
+tts/voices/*
+!tts/voices/README.md
+!tts/voices/alice.wav
+!tts/voices/alice_en.wav
+!tts/voices/bob.wav
+!tts/voices/bob_en.wav
 **/__pycache__/
 **/audio/
 **/video/

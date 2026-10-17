@@ -45,20 +45,31 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 **Tier 1 (slides)**
 
 - [Node.js](https://nodejs.org/) 22 or newer
-- Google Chrome for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`, channel `chrome`). Building and presenting only need a browser to open the file. Without Chrome, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
-- Optional: [uv](https://docs.astral.sh/uv/). After `sh tools/get-fonts.sh` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+- Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
+- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+
+**Windows**
+
+A fresh Windows has neither Node.js nor Git. In PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
+winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
+```
+
+Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon.
 
 **Browsers**
 
 - Presenting the built HTML: Chrome/Edge 119+, Firefox 128+ or Safari 18+ (these support the CSS relative color syntax and `color-mix()` that themes use to derive tints from `--base`). Older browsers still show the deck, with fixed fallback colors taken from the default theme instead of colors derived from the theme's `--base`
-- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only
+- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only; Edge uses the same engine
 
 **Tier 2 (video)**
 
 - ffmpeg and ffprobe on `PATH`
 - uv (runs the small Python project in `tts/`)
 - A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`)
-- Reference voices that you provide: `<name>.wav` in `tts/voices/` (gitignored) or in `IRODORI_REF_DIR`
+- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
 
 ## Quick start (tier 1: slides)
 
@@ -66,7 +77,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 git clone https://github.com/moiku/motion-academic-slides.git
 cd motion-academic-slides
 npm ci
-sh tools/get-fonts.sh                               # optional: smaller font embedding (needs curl; uses uv at build time)
+node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
 
 node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
@@ -136,6 +147,15 @@ ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
 ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 ```
 
+On Windows, use directory junctions instead (PowerShell, in the clone; no administrator rights or developer mode needed):
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
+  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
+}
+```
+
 | Skill | Use it for |
 |---|---|
 | `motion-slides` | plan, write, step, narrate, check and build a deck (tier 1) |
@@ -162,7 +182,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 node render/export-canon.mjs $D --render $D/video --out $D/bundle
 ```
 
-- Voices: `--voices expert=alice,novice=bob`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `alice` (single speaker) and `alice` / `bob` (dialogue), looked up as `tts/voices/<name>.wav`
+- Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English deck `<name>_en.wav` is used when it exists
 - If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
 - `export-canon.mjs` writes a lesson bundle (Marp-style markdown plus one MP4 and one PNG per step) for canon, our lab's lecture delivery system; other systems that accept the same format can use it too. With `CANON_DIR` set, it also validates the bundle with canon's own parser. Without it, that check is skipped
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the narration inside the HTML, so the single file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
@@ -240,7 +260,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `app/` | editor app (no install): sources; `npm run build:app` makes `dist/editor/` and `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
 | `skills/` | Claude Code skills |
-| `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.sh`) |
+| `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |
 
 Tests (need Chrome):

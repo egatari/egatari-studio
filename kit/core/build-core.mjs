@@ -397,7 +397,7 @@ export function build(env, srcPath, opts = {}) {
     const name = tag.slice(2);
     const file = [P.join(deckDir, 'components', name, 'index.js'), P.join(ROOT, 'components', name, 'index.js')].find((p) => env.exists(p));
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
-    compJs += `\n// ---- ${tag} (${P.relative(ROOT, file)})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
+    compJs += `\n// ---- ${tag} (${P.relative(ROOT, file).split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
   }
   // 原稿の中の <script> の部品定義も含めて、SVG の中の式（svgMath）を使うなら KaTeX を実行時にも読み込む
   const needKatexJs = /svgMath/.test(compJs) || /DECK\.svgMath/.test(html.replace(/<script[^>]*src=[^>]*>/g, ''));

@@ -54,7 +54,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 - **Chrome / Edge only.** Mobile browsers cannot open folders either.
 - **Command line only:** narration audio (TTS), video and bundles (`tts/`, `render/`), the full check (`npm run check`), `tools/pdf.mjs`. Audio in the folder (`audio/`) is ignored: autoplay uses the default timing, as without audio.
-- **Bigger exports.** The command-line build can subset the Japanese font with fonttools (`sh tools/get-fonts.sh`); the browser cannot, so the editor embeds the matching font files whole (as the command line does without the TTF files). `examples/minimal` is about 2.0 MB from the editor and 0.7 MB from `npm run build` with subsetting. The deck looks the same.
+- **Bigger exports.** The command-line build can subset the Japanese font with fonttools (`node tools/get-fonts.mjs`); the browser cannot, so the editor embeds the matching font files whole (as the command line does without the TTF files). `examples/minimal` is about 2.0 MB from the editor and 0.7 MB from `npm run build` with subsetting. The deck looks the same.
 - **Bundled parts.** Components (`components/`), themes (`themes/`) and the runtime (`kit/`) of the repository are the ones bundled when the editor was built. Components and themes inside the deck folder (`components/<name>/index.js`, `themes/<name>/`) are read from the folder as usual.
 - **Not read:** names starting with `.`, and the `out/`, `audio/`, `video/`, `bundle/` and `node_modules/` folders (up to 3000 files, 10 levels deep).
 - **Network in the deck is blocked.** External images and scripts (`https://…`) do not load in the editor's preview; the build warns about them anyway.

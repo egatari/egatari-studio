@@ -45,20 +45,31 @@
 **段階 1（スライド）**
 
 - [Node.js](https://nodejs.org/) 22 以上
-- Google Chrome：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` の channel `chrome`）。組むことと発表には、ファイルを開くブラウザがあればよい。Chrome がなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
-- あると良い：[uv](https://docs.astral.sh/uv/)。`sh tools/get-fonts.sh` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
+- Google Chrome か Microsoft Edge：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` で Chrome、なければ Edge を探す）。組むことと発表には、ファイルを開くブラウザがあればよい。どちらもなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
+- あると良い：[uv](https://docs.astral.sh/uv/)。`node tools/get-fonts.mjs` で BIZ UDPゴシックの TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
+
+**Windows**
+
+入れたばかりの Windows には Node.js も Git もない。PowerShell で：
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git     # 入れたら端末を開き直す
+winget install astral-sh.uv Gyan.FFmpeg      # 任意：uv（字を小さくする）・ffmpeg（動画）
+```
+
+Edge は最初からあるので、Chrome がなくても検査と PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。読み上げ音声を作る（段階 2）には TTS のサーバーが要る。確かめている mlx-audio は Apple silicon の Mac でしか動かない。
 
 **ブラウザ**
 
 - 組んだ HTML の発表：Chrome/Edge 119 以上、Firefox 128 以上、Safari 18 以上（テーマが `--base` から淡色などを導くのに使う CSS の相対色の記法と `color-mix()` に対応しているもの）。それより古いブラウザでも表示はできるが、色はテーマの `--base` から導いたものではなく、既定のテーマから計算した固定の予備の色になる
-- PDF（`tools/pdf.mjs`）・動画（`render/`）・`kit/check.mjs`・テストは Google Chrome（または Playwright の Chromium）だけで作り、確かめている
+- PDF（`tools/pdf.mjs`）・動画（`render/`）・`kit/check.mjs`・テストは Google Chrome（または Playwright の Chromium）だけで作り、確かめている（Edge も同じエンジン）
 
 **段階 2（動画）**
 
 - ffmpeg と ffprobe（`PATH` に置く）
 - uv（`tts/` の小さな Python プロジェクトを動かす）
 - OpenAI 互換の音声合成 API を持つ TTS のサーバー。たとえば [mlx-audio](https://github.com/Blaizzy/mlx-audio) で `mlx-community/Irodori-TTS-v4.1-Small-fp16`（日本語）か `mlx-community/VoxCPM2-8bit`（英語など）を動かす。場所は `IRODORI_URL`（既定 `http://localhost:8882`）
-- 参照音声は自分で用意する：`<名前>.wav` を `tts/voices/`（git 管理外）か `IRODORI_REF_DIR` に置く
+- 参照音声：既定の声 `bob` と `alice`（合成した声。日本語と英語）は `tts/voices/` に入っている（[詳しく](tts/voices/README.md)）。自分の声は `<名前>.wav` としてそこ（git 管理外）か `IRODORI_REF_DIR` に置く
 
 ## はじめ方（段階 1：スライド）
 
@@ -66,7 +77,7 @@
 git clone https://github.com/moiku/motion-academic-slides.git
 cd motion-academic-slides
 npm ci
-sh tools/get-fonts.sh                               # 任意：埋め込む字を小さくする（curl が要る。build で uv を使う）
+node tools/get-fonts.mjs                            # 任意：埋め込む字を小さくする（build で uv を使う）
 
 node kit/build.mjs examples/minimal/deck.html       # → examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS。ほかの OS ではファイルをブラウザで開く
@@ -136,6 +147,15 @@ ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
 ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 ```
 
+Windows では、代わりにジャンクションを作る（clone したフォルダで PowerShell から。管理者の権限も開発者モードも要らない）：
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
+  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
+}
+```
+
 | スキル | 使いどころ |
 |---|---|
 | `motion-slides` | 構成案・原稿・段階・口述原稿・検査・build（段階 1） |
@@ -162,7 +182,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら 
 node render/export-canon.mjs $D --render $D/video --out $D/bundle
 ```
 
-- 声：`--voices expert=alice,novice=bob` か `<デッキ>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `alice`、掛け合いなら `alice`（Expert）と `bob`（Novice）で、`tts/voices/<名前>.wav` を探す
+- 声：`--voices expert=bob,novice=alice` か `<デッキ>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `bob`、掛け合いなら `bob`（Expert）と `alice`（Novice）で、`tts/voices/<名前>.wav` を探す。英語のデッキでは `<名前>_en.wav` があればそちらを使う
 - サーバーが動いていない、参照音声がないときは、`synth.py` がその URL やファイルを示して止まる
 - `export-canon.mjs` は教材のバンドル（Marp 形式の md と、段階ごとの MP4・PNG）を作る。canon は TML 研究室の講義配信システムだが、同じ形式を受け付けるほかのシステムにも使える。`CANON_DIR` があれば canon 自身の parser でも確かめ、なければその検査を飛ばす
 - **音声入りの HTML**：`node kit/build.mjs $D/deck.html --embed-audio` で口述原稿の音声を HTML の中に入れる。1 つのファイルだけで、どこでも `a`（自動再生）で音声付きで進む。音声は AAC（64 kbps・モノラル）に圧縮する（5 分で約 4.5 MB。WAV のままだと約 30 MB）。今の主要なブラウザはすべて再生できる。`--embed-audio` を付けなければ、HTML は `audio/` の WAV を参照するだけで変換しない。ffmpeg がなければ WAV のまま埋め込み、build が警告する
@@ -240,7 +260,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/editor/` と `dist/editor.html` を作る |
 | `tts/` `render/` | 段階 2：TTS（uv のプロジェクト）、動画の書き出し、バンドルの出力 |
 | `skills/` | Claude Code のスキル |
-| `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.sh`） |
+| `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
 | `CHANGELOG.md` | 版ごとの変更（英語） |
 
 テスト（Chrome が要る）：

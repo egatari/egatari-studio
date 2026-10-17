@@ -15,13 +15,13 @@ canon は TML 研究室の講義配信システム。出力は Marp 形式の md
   - `POST {IRODORI_URL}/v1/audio/speech`：1 行ずつ合成。本体は JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<文>", "ref_audio": "<参照音声の wav のパス>", "response_format": "wav"}`。
     `ref_audio` はサーバーが読むパス（サーバーが別のマシンならそちらのパス）
-- 参照音声（声のクローン元の wav）は自分で用意する。`<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
+- 既定の参照音声 `bob` と `alice`（と `alice_en`・`bob_en`）は合成した声で、`tts/voices/` に入っている（[出どころ](../tts/voices/README.md)）。ほかの声は、wav を `<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
 - canon の parser での検査をするなら、canon のリポジトリと bun（なければその検査だけを飛ばす）
 
 | 環境変数 | 意味 | 既定 |
 |---|---|---|
 | `IRODORI_URL` | Irodori-TTS のサーバー | `http://localhost:8882` |
-| `IRODORI_REF_DIR` | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/`（git 管理外） |
+| `IRODORI_REF_DIR` | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 | `CANON_DIR` | canon のリポジトリ（`--canon` が優先）。export-canon の parser 検査に使う | なし（検査を飛ばす） |
 
@@ -34,7 +34,7 @@ D=examples/mydeck          # deck.html と narration.md のあるフォルダ
 node kit/build.mjs $D/deck.html
 
 # 2. TTS（Irodori-TTS）
-uv run --project tts python tts/synth.py $D --voices expert=alice,novice=bob
+uv run --project tts python tts/synth.py $D --voices expert=bob,novice=alice
 #    オフラインで流れを試すなら --dry-run（無音・7.5 字/秒の推定長）。一部だけなら --only "更新の式:2,更新の式:concl"
 
 # 3. build し直す（audio/manifest.json を読み、音声の長さと cue をタイムラインに入れる）
@@ -63,7 +63,7 @@ CANON_DIR=<canon のリポジトリ> node render/export-canon.mjs $D --render $D
 
 ## 声
 
-`--voices` > `<デッキ>/voice.json`（`{"expert": "alice", "novice": "bob"}`）> 既定（1 人モードは alice、掛け合いは Expert = alice・Novice = bob）。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対ならデッキから）も書ける。既定の alice・bob は手元にないことが多いので、自分の参照音声を voice.json で指定する。
+`--voices` > `<デッキ>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外のデッキでは、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対ならデッキから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 

@@ -2,7 +2,7 @@
 """口述原稿（narration.md）→ 段階ごとの音声（audio/seg_<digest>.wav）と audio/manifest.json。
 
     uv run --project tts python tts/synth.py <deckdir> \
-        [--voices expert=alice,novice=bob] [--ref-dir DIR] [--yomi FILE] [--only key,...] [--dry-run]
+        [--voices expert=bob,novice=alice] [--ref-dir DIR] [--yomi FILE] [--only key,...] [--dry-run]
 
 - 原稿の解析は node（tools/narration-json.mjs → kit/narration.mjs）に任せる。parser を二重に持たない
 - 合成・無音除去・音量の正規化・結合は core.py、読み辞書は yomi.py。行間の無音は PAUSE_MS。
@@ -11,7 +11,7 @@
 - キャッシュ：seg_<digest>.wav が既にあれば作らない。digest は segDigest(seg, voice) で、
   voice には声・モデル・正規化の目標・行間・読み辞書と適用規則の版が入る（どれかが変われば作り直し）
 - --dry-run：TTS を呼ばず、推定の長さ（日本語 7.5 字/秒）の無音を作る。digest は別になる
-- 声の設定：--voices > <deckdir>/voice.json > 既定（Expert = alice、Novice = bob）。
+- 声の設定：--voices > <deckdir>/voice.json > 既定（Expert = bob、Novice = alice）。
   名前は <参照音声のフォルダ>/<名前>.wav（--ref-dir > IRODORI_REF_DIR > tts/voices）、パスも書ける
 - 読み辞書：--yomi > MOTION_YOMI > tts/yomi.yaml
 - サーバー：IRODORI_URL（既定 http://localhost:8882）
@@ -47,7 +47,7 @@ ROLE_LABEL = {"expert": "Expert", "novice": "Novice"}
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("deckdir")
-    p.add_argument("--voices", default=None, help="expert=alice,novice=bob")
+    p.add_argument("--voices", default=None, help="expert=bob,novice=alice")
     p.add_argument("--ref-dir", default=None, help="参照音声（<名前>.wav）のフォルダ（既定 IRODORI_REF_DIR か tts/voices）")
     p.add_argument("--engine", default=None, choices=sorted(M.ENGINES), help="TTS のエンジン（既定：英語のデッキは voxcpm2、それ以外は irodori）")
     p.add_argument("--yomi", default=None, help="読み辞書（既定 MOTION_YOMI か tts/yomi.yaml）")
@@ -57,7 +57,7 @@ def parse_args():
     return p.parse_args()
 
 
-DEFAULT_VOICES = {"expert": "alice", "novice": "bob"}
+DEFAULT_VOICES = {"expert": "bob", "novice": "alice"}
 
 
 def resolve_voices(deckdir: Path, cli: str | None) -> tuple[dict[str, str], list[str], dict[str, str]]:
@@ -77,12 +77,12 @@ def resolve_voices(deckdir: Path, cli: str | None) -> tuple[dict[str, str], list
             k, _, v = item.partition("=")
             k = k.strip().lower()
             if k not in ROLE_LABEL or not v.strip():
-                sys.exit(f"--voices の書式が不正です: {item!r}（例: expert=alice,novice=bob）")
+                sys.exit(f"--voices の書式が不正です: {item!r}（例: expert=bob,novice=alice）")
             if k in voices and voices[k] != v.strip():
                 print(f"  --voices が voice.json を上書き: {k} {voices[k]} → {v.strip()}")
             voices[k] = v.strip()
             src[k] = "--voices"
-    # 既定の声：1 人モードは alice、掛け合いは alice（Expert）× bob（Novice）。
+    # 既定の声：1 人モードは bob、掛け合いは bob（Expert）× alice（Novice）。
     # 既定を使っても警告はしない（既定は決まった声で、尺が黙ってずれることはない）
     defaulted = []
     for role in ROLE_LABEL:
@@ -111,7 +111,7 @@ def narration_json(narr: Path, voice: dict) -> list[dict]:
         sys.exit("node が見つかりません（tools/narration-json.mjs を動かすのに要ります）")
     out = subprocess.run(
         [node, str(REPO / "tools/narration-json.mjs"), str(narr), "--voice", json.dumps(voice, ensure_ascii=False)],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding="utf-8")
     if out.returncode != 0:
         sys.exit(f"narration-json.mjs が失敗しました:\n{out.stderr}")
     data = json.loads(out.stdout)
@@ -233,6 +233,13 @@ def main():
     yomi_path = Path(yomi_src).expanduser().resolve() if yomi_src else TTS_DIR / "yomi.yaml"
     if yomi_src and not yomi_path.exists():
         sys.exit(f"読み辞書がありません: {yomi_path}")
+    # 日本語以外のデッキでは、名前で指定した声に <名前>_<言語>.wav（例：alice_en.wav）があればそちらを使う
+    # （日本語の参照音声で英語を読ませると訛りが出るため。ファイルの有無はこの PC の参照音声のフォルダで見る）
+    if not lang.startswith("ja"):
+        suffix = "_" + lang.split("-")[0]
+        for r, v in list(voices.items()):
+            if not ("/" in v or v.endswith(".wav")) and (ref_dir / f"{v}{suffix}.wav").exists():
+                voices[r] = v + suffix
     voice = {
         "engine": "dry-run" if args.dry_run else engine,
         "model": MODEL,
@@ -262,6 +269,7 @@ def main():
         for r in used_roles:
             try:
                 refs[r] = M.resolve_voice(voices[r], ref_dir, deckdir)   # 参照音声が無ければここで止める
+                refs[r] = M.ref_at_model_rate(refs[r], deckdir / ".cache" / "voices")   # 48 kHz・モノラルにそろえる
             except FileNotFoundError as e:
                 sys.exit(f"⚠ {e}")
 
@@ -350,4 +358,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows の端末やパイプでも日本語の表示で落ちないように
+    for _s in (sys.stdout, sys.stderr):
+        if hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
     main()

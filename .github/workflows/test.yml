@@ -48,10 +48,45 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: npm test
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        run: npm test
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-artifacts-windows
+          path: |
+            ${{ runner.temp }}/motion-test-*
+            components/*/out/shots/det_fail_*
+          if-no-files-found: ignore
+          retention-days: 7
+
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
+  # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.
   tier2:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -60,9 +95,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Playwright Chromium
+        if: runner.os == 'Linux'
         run: npx playwright-core install --with-deps chromium
-      - name: Install ffmpeg
+      - name: Install ffmpeg (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true

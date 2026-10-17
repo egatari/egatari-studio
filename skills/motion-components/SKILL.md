@@ -5,7 +5,7 @@ description: motion-academic-slides の動く図の部品（Web Components）を
 
 # motion-components：動く図の部品を書く
 
-リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンクで入れたときは、リンク先の実体の 2 つ上。`realpath` で確かめる）。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/components/CATALOG.md`。
+リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/components/CATALOG.md`。
 
 ## 1. まず既存の部品で足りないか確かめる
 
