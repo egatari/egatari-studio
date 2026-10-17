@@ -316,14 +316,14 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 組み立ての上限
 
-組み立ては埋め込みながら数え、上限を超えたらその場で `build-too-large` で止まる：原稿（32 Mi 字）、取り込みと埋め込みの回数の合計（`/*INCLUDE*/`・`{{JSON}}`・`{{FIG}}`・`data:` URI・`<link rel="stylesheet">`・`<script src>`・`@import`：10000）、前処理の後の大きさ（64 Mi 字）と埋め込み・式の後の大きさ（256 Mi 字）、解析の前のタグの数（500000）、式の数（20000）。実際のデッキははるかに小さい（`examples/tmlr2026-calibration`：原稿 11 KB・式 27・タグ 3400）。`build(env, src, {limits: {...}})` で変えられる（`kit/core/build-core.mjs` の `BUILD_LIMITS`）。編集アプリでは組み立てを Worker で動かし、60 秒で止める。
+組み立ては埋め込みながら数え、上限を超えたらその場で `build-too-large` で止まる：原稿（32 Mi 字）、取り込みと埋め込みの回数の合計（`/*INCLUDE*/`・`{{JSON}}`・`{{FIG}}`・`data:` URI・`<link rel="stylesheet">`・`<script src>`・`@import`：10000）、前処理の後の大きさ（64 Mi 字）と埋め込み・式の後の大きさ（256 Mi 字）、解析の前のタグの数（500000）、式の数（20000）。読むファイルはすべて（テーマのファイル・ロゴ・親のテーマ、部品、口述原稿、音声、字、実行系も）取り込みの回数に数え、読んだ大きさの合計（`readChars`：256 Mi。文字のファイルはバイト数、base64 は字数）にも、読む前にファイルの大きさで数える（大きすぎるものは読まずに断る）。組んだ出力の全体も、つなぐ前に 256 Mi 字までかを確かめる。実際のデッキははるかに小さい（`examples/tmlr2026-calibration`：原稿 11 KB・式 27・タグ 3400）。`build(env, src, {limits: {...}})` で変えられる（`kit/core/build-core.mjs` の `BUILD_LIMITS`）。編集アプリでは組み立てを Worker で動かし、60 秒で止める。作業場所から読むのは組み立てが参照したファイルだけで、同時に 8 つまで。
 
 ### 持ち運べる 1 ファイル（`--portable`）
 
 `node kit/build.mjs <deck.html> --portable` は `out/<名前>.ega.html` を書く。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。[持ち運べるデッキの形式](https://github.com/egatari/egatari-spec)（1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
 
 - **入るもの**：build が原稿のフォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・原稿のフォルダの部品とテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち口述原稿にある段階のもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
-- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する。
+- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
 - **教材の id**：初めての書き出しで、原稿のフォルダに乱数の `docId` を持つ `egatari.json` を作る。デッキと一緒に残す（次の書き出しも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **スクリプトなしで読める口述原稿**：全段階の表示用の文字を、ふつうの HTML としても入れる（デッキが動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）は段階ごとにファイルの索引に集める。
