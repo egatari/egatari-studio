@@ -20,7 +20,8 @@ function rid() {
 // beforeWrite(kind)：原稿（'source'・'narration'）を書く前に呼ぶ。文字列を返したら書かずに 403 で断る（権利の確認・読むだけの文書）
 // generation()：作業場所を替えるたびに増える数。問い合わせは始めたときの作業場所（ctx.ws）と generation に結び付け、
 //   途中の await（権利の確認・控え）の間に替わったら、何も書かずに 410（取り消し）で終える（替わった先の作業場所には書かない）
-// 書き込みは 1 つずつ（前の保存が終わってから次）。書く直前に原稿をもう一度読み、確かめたときと違えば 409（上書きしない）
+// 書き込みは 1 つずつ（前の保存が終わってから次）。書く直前に原稿をもう一度読み、確かめたときと違えば 409（上書きしない）。
+// 書き込みそのものにも live を渡す（書いている途中で替われば、フォルダのファイルは入れ替えずに取り消す）
 export function createDevApi(ctx) {
   const M = ctx.msg;
   const ok = (body) => ({ ...body, _status: 200 });
@@ -33,7 +34,7 @@ export function createDevApi(ctx) {
     if (t === null) return [];
     try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
   }
-  const writeComments = (ws, list) => ws.writeText('comments.json', JSON.stringify(list, null, 2) + '\n');
+  const writeComments = (ws, list, live) => ws.writeText('comments.json', JSON.stringify(list, null, 2) + '\n', { live });
 
   return async function handle(method, url, body) {
     let u;
@@ -74,7 +75,7 @@ export function createDevApi(ctx) {
           if (!live()) return CANCEL();
           if ((await ws.readText(file)) !== src) return err(409, M.conflict);
           if (!live()) return CANCEL();
-          await ws.writeText(file, src.slice(0, r[0]) + body.text + src.slice(r[1]));
+          await ws.writeText(file, src.slice(0, r[0]) + body.text + src.slice(r[1]), { live });
           const failed = live() ? await ctx.afterWrite() : false;
           return ok({ ok: true, error: failed ? M.savedButFailed : null });
         });
@@ -108,7 +109,7 @@ export function createDevApi(ctx) {
             if (!live()) return CANCEL();
             if ((await ws.readText('narration.md')) !== cur) return err(409, M.narrConflict);
             if (!live()) return CANCEL();
-            await ws.writeText('narration.md', out);
+            await ws.writeText('narration.md', out, { live });
             if (live()) await ctx.afterWrite();
           }
           return ok({ ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
@@ -127,7 +128,7 @@ export function createDevApi(ctx) {
           if (!live()) return CANCEL();
           const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null,
             quote: String(body.quote || '').slice(0, 200), comment: String(body.comment).trim(), status: 'open' };
-          list.push(c); await writeComments(ws, list);
+          list.push(c); await writeComments(ws, list, live);
           if (live()) ctx.onComment && ctx.onComment();
           return ok(c);
         });
@@ -138,13 +139,15 @@ export function createDevApi(ctx) {
           const list = await readComments(ws); const c = list.find((x) => x.id === body.id);
           if (!live()) return CANCEL();
           if (!c) return err(404, M.noComment);
-          c.status = 'resolved'; c.resolved = new Date().toISOString(); await writeComments(ws, list);
+          c.status = 'resolved'; c.resolved = new Date().toISOString(); await writeComments(ws, list, live);
           if (live()) ctx.onComment && ctx.onComment();
           return ok(c);
         });
       }
       return err(404, 'not found');
     } catch (e) {
+      // 書いている途中で作業場所が替わった（書き込みを入れ替えずに取り消した）
+      if (e && e.name === 'Cancelled') return CANCEL();
       console.error(e);
       return err(500, String((e && e.message) || e));
     }

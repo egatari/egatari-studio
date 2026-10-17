@@ -16,6 +16,7 @@ export function badRel(rel) {
   for (const s of rel.split('/')) if (s === '' || s === '.' || s === '..' || s === '__proto__') return `bad segment "${s}"`;
   return null;
 }
+const cancelled = () => Object.assign(new Error('cancelled: the workspace changed'), { name: 'Cancelled', code: 'cancelled' });
 const notFound = (rel) => Object.assign(new Error('not found: ' + rel), { name: 'NotFoundError', code: 'ENOENT' });
 
 // files：{rel: Uint8Array | 文字列} か Map。opts.now：時刻（試験用）。opts.content(rel)：保存するファイルに入る場所か
@@ -24,7 +25,7 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
   const now = opts.now || (() => Date.now());
   const content = opts.content || (() => true);
   const store = new Map();   // rel → {bytes, m}
-  let clock = 0, dirty = false;
+  let clock = 0, dirty = false, revision = 0;
   // 書くたびに必ず増える「更新時刻」（同じミリ秒に 2 回書いても一覧の署名が変わるように）
   const tick = () => (clock = Math.max(now(), clock + 1));
   // share：初めの中身（持ち運べる 1 ファイルから取り出したもの）は写さずに持つ（同じ塊を指すパスは同じバイト列。読み出しは写しを返す）
@@ -41,7 +42,10 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
   return {
     kind: 'memory', name,
     get dirty() { return dirty; },
-    markClean() { dirty = false; },
+    // 中身の版：保存するファイルに入るものを書くたびに増える。保存は始めたときの版を覚え、markClean(その版) で「保存した」にする。
+    // 保存の途中で編集したら版が違うので、dirty のまま（保存したものに入っていない変更を「保存した」にしない）。rev を渡さなければいつでも
+    get revision() { return revision; },
+    markClean(rev) { if (rev !== undefined && rev !== revision) return false; dirty = false; return true; },
     // {files: Map(rel → {m, s}), dirs: Set(rel)}（フォルダの walk と同じ形）
     async list({ audio = false } = {}) {
       const out = new Map(), dirs = new Set();
@@ -56,8 +60,8 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
     },
     async readBytes(rel) { const e = store.get(rel); if (!e) throw notFound(rel); return e.bytes.slice(); },
     async readText(rel) { const e = store.get(rel); return e ? dec.decode(e.bytes) : null; },
-    async writeBytes(rel, bytes) { put(rel, bytes); if (content(rel)) dirty = true; },
-    async writeText(rel, text) { put(rel, String(text)); if (content(rel)) dirty = true; },
+    async writeBytes(rel, bytes, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, bytes); if (content(rel)) { dirty = true; revision++; } },
+    async writeText(rel, text, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, String(text)); if (content(rel)) { dirty = true; revision++; } },
     async exists(rel) { if (store.has(rel)) return true; for (const k of store.keys()) if (k.startsWith(rel + '/')) return true; return false; },
     // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ。フォルダと同じ）。控えは保存するファイルには入らない
     async backup(rel) {

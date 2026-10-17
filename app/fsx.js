@@ -46,11 +46,25 @@ export async function readText(root, rel) {
 export async function readBytes(root, rel) {
   return new Uint8Array(await (await (await fileHandle(root, rel)).getFile()).arrayBuffer());
 }
-export async function writeText(root, rel, text) {
-  const h = await fileHandle(root, rel, true);
+// 書き込みの取り消し：live() が false（始めたときの作業場所・保存がもう今のものでない）なら書かない
+export function cancelledError() { return Object.assign(new Error('cancelled: the workspace changed'), { name: 'Cancelled', code: 'cancelled' }); }
+// ファイルのハンドルに書く（File System Access API の書き込みは一時ファイルに書いて close() で入れ替える）。
+// live()：await のたび（書き込みを作る・書く）に確かめ、今のものでなくなっていれば abort() して入れ替えない（取り消しを書き込みの中まで運ぶ）。
+// 最後に確かめてから close() を呼ぶまでの間に await はない
+export async function writeFile(h, data, live = () => true) {
+  if (!live()) throw cancelledError();
   const w = await h.createWritable();
-  await w.write(text);
+  try {
+    if (!live()) throw cancelledError();
+    await w.write(data);
+    if (!live()) throw cancelledError();
+  } catch (e) { try { await w.abort(); } catch { /* 閉じられない */ } throw e; }
   await w.close();
+}
+export async function writeText(root, rel, text, live = () => true) {
+  if (!live()) throw cancelledError();
+  const h = await fileHandle(root, rel, true);
+  await writeFile(h, text, live);
 }
 export const writeBytes = writeText;   // createWritable の write は文字列もバイト列も受け取る
 export async function exists(root, rel) {

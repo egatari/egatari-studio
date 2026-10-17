@@ -994,6 +994,115 @@ try {
     hostileQuiet = false;
   }
 
+  // ---------------------------------------------------------------- 10f. 保存の生き死に：await（権利の確認・選ぶ画面・書き込み）のたびに作業場所を確かめ、
+  // 書き込みの中まで取り消しを運ぶ。保存の途中の編集は「保存した」にしない。設定の書き込みと「保存した」は最後の書き込みが済んでから
+  {
+    await page.evaluate(() => {
+      window.__gates = {};
+      window.__gate = (k) => new Promise((r) => { window.__gates[k] = r; });
+      // 試験用のファイルのハンドル：権利の確認・書き込み・close を待たせられ、何をしたかを log に残す
+      window.__mkHandle = (name, o = {}) => {
+        const h = { kind: 'file', name, log: [], data: null,
+          getFile: async () => new File([o.initial || ''], name),
+          queryPermission: async () => (o.perm ? 'prompt' : 'granted'),
+          requestPermission: async () => { h.log.push('ask'); if (o.perm) await window.__gate('perm'); return 'granted'; },
+          createWritable: async () => { h.log.push('create'); let buf = null; return {
+            write: async (d) => { h.log.push('write'); if (o.writeGate) await window.__gate(o.writeGate); buf = d; },
+            close: async () => { h.log.push('close'); if (o.closeFail) throw new Error('disk full'); h.data = typeof buf === 'string' ? buf : new TextDecoder().decode(buf); },
+            abort: async () => { h.log.push('abort'); } }; } };
+        return h;
+      };
+    });
+    const KEY = '何を最小化するか:0';
+    const edit = async (text) => {
+      const g = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), KEY);
+      const pr = page.evaluate(([k, rev, turns]) => { const [sk, st] = [k.slice(0, k.lastIndexOf(':')), k.slice(k.lastIndexOf(':') + 1)]; return window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: sk, stepKey: st, rev, turns }); },
+        [KEY, g.rev, g.turns.map((t) => ({ role: t.role, text }))]);
+      // 最初の編集の前の権利の確認
+      const first = await Promise.race([pr.then(() => 'done'), page.waitForSelector('#dlg[open] #rights-list', { timeout: 8000 }).then(() => 'rights', () => 'none')]);
+      if (first === 'rights') await page.click('#dlg-ok');
+      const r = await pr;
+      if (r._status !== 200) throw new Error('edit failed ' + JSON.stringify(r));
+    };
+    // 開く（今のものが未保存なら「捨てる」）
+    const discardIfAsked = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 1500 }).catch(() => null)) await page.click('#dlg-discard'); };
+    const openWith = async (handleJs) => {
+      const n0 = await loads();
+      const pr = page.evaluate(([js, html]) => { const h = new Function('html', 'return ' + js)(html); window.__H = h; return window.__APP_TEST.openFile({ handle: h }); }, [handleJs, pmin.html]);
+      await discardIfAsked();
+      ok(await pr === true, 'liveness: opened the lesson with a test handle');
+      await waitLoads(n0);
+    };
+    const switchAway = async () => {
+      const pr = page.evaluate(async () => { const root = await navigator.storage.getDirectory(); return window.__APP_TEST_OPEN(await root.getDirectoryHandle('minimal')); });
+      await discardIfAsked();
+      ok(await pr === true, 'liveness: another workspace (a folder) was opened during the save');
+    };
+    const minimalBefore = { deck: await opfs.read('deck.html'), narr: await opfs.read('narration.md'), cfg: await opfs.read(FORMAT.CONFIG_FILE) };
+    const minimalSame = async () => (await opfs.read('deck.html')) === minimalBefore.deck && (await opfs.read('narration.md')) === minimalBefore.narr && (await opfs.read(FORMAT.CONFIG_FILE)) === minimalBefore.cfg;
+    const hlog = () => page.evaluate(() => window.__H.log.slice());
+
+    // 1. 権利の確認（requestPermission）を待つ間に別の作業場所を開く → そのファイルに書かない（書き込みを作りもしない）
+    await openWith(`window.__mkHandle('a.html', { initial: html, perm: true })`);
+    await edit('保存の途中で替える 1');
+    let sv = page.evaluate(() => window.__APP_TEST.save('save'));
+    await page.waitForFunction(() => window.__H.log.includes('ask'));
+    await switchAway();
+    await page.evaluate(() => window.__gates.perm());
+    await sv;
+    ok(!(await hlog()).includes('create') && await minimalSame(), 'liveness: switching workspace during the permission prompt → nothing written to the file or to the new workspace (cancelled) ' + JSON.stringify(await hlog()));
+
+    // 2. 書き込みの途中（write を待つ間）に替える → abort（入れ替えない）。close しない
+    await openWith(`window.__mkHandle('b.html', { initial: html, writeGate: 'w' })`);
+    await edit('保存の途中で替える 2');
+    sv = page.evaluate(() => window.__APP_TEST.save('save'));
+    await page.waitForFunction(() => window.__H.log.includes('write'));
+    await switchAway();
+    await page.evaluate(() => window.__gates.w());
+    await sv;
+    const l2 = await hlog();
+    ok(l2.includes('abort') && !l2.includes('close') && (await page.evaluate(() => window.__H.data)) === null && await minimalSame(), 'liveness: switching during the write aborts the writable stream (the file is not replaced) ' + JSON.stringify(l2));
+
+    // 3. 選ぶ画面（showSaveFilePicker）を待つ間に替える → 選んだファイルに書かない
+    await openWith(`window.__mkHandle('c.html', { initial: html })`);
+    await edit('保存の途中で替える 3');
+    await page.evaluate(() => { window.__P = window.__mkHandle('picked.html'); window.__origPicker = window.showSaveFilePicker; window.showSaveFilePicker = () => window.__gate('pick').then(() => window.__P); window.__APP_TEST.saveHandle = null; });
+    sv = page.evaluate(() => window.__APP_TEST.save('copy'));
+    await page.waitForFunction(() => !!window.__gates.pick);
+    await switchAway();
+    await page.evaluate(() => window.__gates.pick());
+    await sv;
+    ok((await page.evaluate(() => window.__P.log.slice())).length === 0 && await minimalSame(), 'liveness: switching while the save picker is open → the picked file is not written');
+    await page.evaluate(() => { window.showSaveFilePicker = window.__origPicker; delete window.__gates.pick; });
+
+    // 4. 保存の途中の編集：保存したファイルに入らない編集が残るので、「保存した」にしない（dirty のまま）
+    await openWith(`window.__mkHandle('d.html', { initial: html, writeGate: 'w4' })`);
+    await edit('保存する版');
+    sv = page.evaluate(() => window.__APP_TEST.save('save'));
+    await page.waitForFunction(() => window.__H.log.includes('write'));
+    await edit('保存の途中の編集');
+    await page.evaluate(() => window.__gates.w4());
+    await sv;
+    const d4 = await page.evaluate(() => window.__H.data || '');
+    const st4 = (await page.evaluate(() => window.__APP_TEST.state())).portable;
+    ok(d4.includes('保存する版') && !d4.includes('保存の途中の編集') && st4.dirty === true && (await page.textContent('#deckname')).startsWith('●'), 'liveness: an edit made while the save was pending keeps the unsaved mark (only the snapshot was saved) ' + JSON.stringify({ dirty: st4.dirty }));
+    // 次の保存でその編集も保存し、そのときは「保存した」になる
+    await page.evaluate(() => { window.__H = window.__mkHandle('d2.html'); window.__APP_TEST.state(); });
+    await page.evaluate(() => { window.__APP_TEST.saveHandle = window.__H; });
+    await page.evaluate(() => window.__APP_TEST.save('copy'));
+    ok((await page.evaluate(() => window.__H.data || '')).includes('保存の途中の編集') && !(await page.evaluate(() => window.__APP_TEST.state())).portable.dirty, 'liveness: the next save includes the edit and marks the lesson saved');
+
+    // 5. 「新しい教材として保存」で書き込みが失敗（close で失敗）→ 作業場所の設定のファイル（新しい docId）を書かず、dirty のまま
+    await edit('新しい教材の失敗');
+    const cfg0 = await page.evaluate((c) => { const f = window.__APP_TEST.files(); return f[c] || null; }, FORMAT.CONFIG_FILE);
+    await page.evaluate(() => { window.__APP_TEST.saveHandle = window.__mkHandle('new.html', { closeFail: true }); });
+    await page.evaluate(() => window.__APP_TEST.save('new'));
+    const cfg1 = await page.evaluate((c) => { const f = window.__APP_TEST.files(); return f[c] || null; }, FORMAT.CONFIG_FILE);
+    ok(cfg1 === cfg0 && (await page.evaluate(() => window.__APP_TEST.state())).portable.dirty, 'liveness: when the final write fails, the config (new docId) is not written and the lesson stays unsaved');
+    await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+    await discardIfAsked();
+  }
+
   // ---------------------------------------------------------------- 10d. 道具の列：1280 px 以上では 1 行に収まる（日本語・英語、フォルダ・1 ファイル）
   for (const lang of ['ja', 'en']) {
     const pt = await ctx.newPage();   // 同じ文脈（OPFS の minimal を開く）。言葉は ?lang= で

@@ -9,6 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { memoryWorkspace, badRel, KEEP_EDITS } from '../app/memfs.js';
+import { folderWorkspace } from '../app/workspace.js';
+import { writeFile } from '../app/fsx.js';
 import { createDevApi } from '../app/devapi.js';
 import { short } from '../kit/core/sha1.mjs';
 import { rightsOf, isNoDerivatives } from '../app/rights.js';
@@ -59,6 +61,52 @@ ok('保存の競合：作業場所とその代に結び付け、控えの間に�
   const [a, b] = await Promise.all([api('POST', '/__dev/edit', { range, h, text: '一つ目' }), api('POST', '/__dev/edit', { range, h, text: '二つ目' })]);
   assert.deepEqual([a._status, b._status], [200, 409]);
   assert.equal(await A.readText('deck.html'), '<h2>一つ目</h2>');
+});
+
+ok('書き込みの取り消し：書いている途中で作業場所が替われば abort（入れ替えない）・live が false なら書かない・中身の版と markClean(rev)', async () => {
+  // fsx.js の writeFile（File System Access API のハンドルの形を真似る）
+  const mk = (gate) => { const h = { log: [], data: 'old', createWritable: async () => { h.log.push('create'); let b = null; return {
+    write: async (d) => { h.log.push('write'); if (gate) await gate; b = d; }, close: async () => { h.log.push('close'); h.data = b; }, abort: async () => { h.log.push('abort'); } }; } }; return h; };
+  let alive = true, release; const gate = new Promise((r) => { release = r; });
+  const h = mk(gate);
+  const p = writeFile(h, 'new', () => alive);
+  await new Promise((r) => setTimeout(r, 5));
+  alive = false; release();
+  await assert.rejects(p, (e) => e.name === 'Cancelled');
+  assert.deepEqual(h.log, ['create', 'write', 'abort']); assert.equal(h.data, 'old', 'not replaced');
+  const h2 = mk(null);
+  await assert.rejects(writeFile(h2, 'x', () => false), (e) => e.name === 'Cancelled');
+  assert.deepEqual(h2.log, [], 'nothing created when already stale');
+  await writeFile(h2, 'ok'); assert.equal(h2.data, 'ok');
+  // フォルダの作業場所（folderWorkspace）を通した devapi の保存：書き込みの途中で替われば 410、ファイルはそのまま
+  const fileH = (text, g) => { const f = { kind: 'file', text, log: [], getFile: async () => ({ text: async () => f.text, arrayBuffer: async () => new TextEncoder().encode(f.text).buffer, size: f.text.length, lastModified: 1 }),
+    createWritable: async () => { let b = null; return { write: async (d) => { f.log.push('write'); if (g && g.on) await g.p; b = d; }, close: async () => { f.log.push('close'); f.text = b; }, abort: async () => { f.log.push('abort'); } }; } }; return f; };
+  const g = { on: false }; g.p = new Promise((r) => { g.r = r; });
+  const deck = '<h2>A の見出し</h2>';
+  const files = { 'deck.html': fileH(deck, g) };
+  const dir = { kind: 'directory', name: 'F', getFileHandle: async (n) => { if (!files[n]) throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); return files[n]; },
+    getDirectoryHandle: async (n) => { if (n === '.cache') return dir2; throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); } };
+  const dir2 = { getDirectoryHandle: async () => dir3 }, dir3 = { getFileHandle: async () => fileH(''), async *entries() {}, removeEntry: async () => {} };
+  const F = folderWorkspace(dir), B = memoryWorkspace('B', { 'deck.html': deck });
+  const ctx = { ws: F, gen: 1, generation() { return this.gen; }, deckFile: () => 'deck.html', slideOrder: () => [], editable: () => true, afterWrite: async () => false, msg: { conflict: 'c', cancelled: 'cancelled', notFound: 'nf', badRange: 'br' } };
+  const api = createDevApi(ctx);
+  g.on = true;
+  const pr = api('POST', '/__dev/edit', { range: `4-${4 + 'A の見出し'.length}`, h: short('A の見出し'), text: '直した' });
+  for (let i = 0; i < 50 && !files['deck.html'].log.includes('write'); i++) await new Promise((r) => setTimeout(r, 2));
+  ctx.ws = B; ctx.gen = 2; g.r();
+  const res = await pr;
+  assert.equal(res._status, 410);
+  assert.equal(files['deck.html'].text, deck, 'the folder file was not replaced');
+  assert.ok(files['deck.html'].log.includes('abort') && !files['deck.html'].log.includes('close'));
+  assert.equal(await B.readText('deck.html'), deck, 'nothing written to the new workspace');
+  // メモリの作業場所：live が false なら書かない。版は書くたびに増え、markClean は渡した版が今の版のときだけ効く
+  const M = memoryWorkspace('M', { 'a.txt': '1' });
+  await assert.rejects(M.writeText('a.txt', '2', { live: () => false }), (e) => e.name === 'Cancelled');
+  assert.equal(await M.readText('a.txt'), '1'); assert.equal(M.revision, 0); assert.equal(M.dirty, false);
+  await M.writeText('a.txt', '2'); const r1 = M.revision;
+  await M.writeText('a.txt', '3');
+  assert.equal(M.markClean(r1), false); assert.equal(M.dirty, true, 'an edit after the snapshot keeps it dirty');
+  assert.equal(M.markClean(M.revision), true); assert.equal(M.dirty, false);
 });
 
 ok('Worker との受け渡し：同じ塊を指すパスは 1 つのバッファを 1 回だけ渡し、取り出した側でも作業場所でも写さない', async () => {

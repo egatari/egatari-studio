@@ -9,7 +9,7 @@ import { createEngine, bytesToBase64 } from './engine.js';
 import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
-import { writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
+import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
@@ -407,7 +407,7 @@ async function exportHtml() {
 }
 
 // ---------------------------------------------------------------- 保存の口（ファイルのハンドル・ダウンロード）
-async function writeHandle(h, data) { const w = await h.createWritable(); await w.write(data); await w.close(); }
+const writeHandle = (h, data, live) => writeFile(h, data, live);   // fsx.js：live() が false になれば入れ替えずに取り消す
 function download(name, text) {
   const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/html' })), download: name });
   document.body.append(a); a.click(); a.remove();
@@ -415,12 +415,15 @@ function download(name, text) {
 }
 const portableTypes = () => [{ description: T.portableType, accept: { 'text/html': [FORMAT.FILE_EXT, '.html'] } }];
 // 名前を付けて保存：ファイルを選ぶ画面（Chrome / Edge）か、なければダウンロード。返すもの：書いたハンドル（ダウンロードなら null）
-async function saveWithPicker(name, html, startIn) {
+// live()：選ぶ画面を待つ間に作業場所が替わったら書かない（書き込みの中でも確かめる）
+async function saveWithPicker(name, html, startIn, live = () => true) {
   if (window.showSaveFilePicker) {
     const h = await window.showSaveFilePicker({ id: 'motion-portable', suggestedName: name, ...(startIn ? { startIn } : {}), types: portableTypes() });
-    await writeHandle(h, html);
+    if (!live()) throw cancelledError();
+    await writeHandle(h, html, live);
     return h;
   }
+  if (!live()) throw cancelledError();
   download(name, html);
   return null;
 }
@@ -636,15 +639,20 @@ async function savePortable(mode = 'save') {
 async function savePortableBound(mode) {
   const P = S.portable, ws = S.ws, g = S.gen;
   if (!P) return;
+  // 始めたときの文書・作業場所・代のままか。await（組み立て・確かめの窓・権利の確認・ファイルを選ぶ画面・書き込み）の後のたびに確かめ、
+  // 書き込みにも渡す（途中で替われば入れ替えずに取り消す）。替わっていたら、その後は何も書かず状態も変えない
   const live = () => S.portable === P && S.ws === ws && S.gen === g;
-  const cancelled = () => { toast(T.api.cancelled, true); };
+  const cancelled = () => { status(''); toast(T.api.cancelled, true); };
   if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
   if (S.building) await S.building;
+  if (!live()) { cancelled(); return; }
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
   let saveWarnings = [];
   const CFG = FORMAT.CONFIG_FILE;
   let identity = null, cfgText = null;
+  // 保存するものの版（memfs の revision）。保存の途中で編集があれば版が変わるので、終わっても「保存した」にしない
+  let rev = ws.revision;
   const files = ws.snapshot();
   if (mode === 'new') {
     identity = { docId: newDocId(), derivedFrom: { docId: P.index.docId, sourceSha256: P.index.sourceSha256 } };
@@ -655,9 +663,10 @@ async function savePortableBound(mode) {
     cfgText = JSON.stringify({ ...cfg, docId: identity.docId, metadata: m }, null, 2) + '\n';
     files.set(CFG, new TextEncoder().encode(cfgText));
   }
-  let html, index, deckMeta, tier;
+  let html, index, deckMeta, tier, narrB = null;
   try {
     const a = await tierA(P.original, files, { identity, fonts: engine.fonts });
+    if (!live()) { cancelled(); return; }
     if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; }
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
@@ -667,7 +676,12 @@ async function savePortableBound(mode) {
         buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
       if (v !== 'rebuild') { status(''); return; }
       if (!live()) { cancelled(); return; }
+      // 段 B は今の作業場所から組む：組み始めの版を保存するものの版にし、組んでいる間に編集があれば（混ざりうるので）「保存した」にしない
+      rev = ws.revision;
+      narrB = await ws.readText('narration.md');
+      if (ws.revision !== rev || !live()) { if (!live()) { cancelled(); return; } rev = null; }
       const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
+      if (ws.revision !== rev) rev = null;
       html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
     }
   } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
@@ -677,31 +691,48 @@ async function savePortableBound(mode) {
     if (h) {
       try {
         if (!(await hasPermission(h)) && !(await askPermission(h))) throw new Error(T.noPermission);
-        await writeHandle(h, html); wrote = true;
-      } catch (e) { if (e && e.name === 'AbortError') throw e; console.warn('[editor] cannot overwrite the file, asking where to save', e); h = null; }
+        if (!live()) throw cancelledError();                 // 権利の確認を待つ間に替わった
+        await writeFile(h, html, live); wrote = true;
+      } catch (e) { if (e && (e.name === 'AbortError' || e.name === 'Cancelled')) throw e; console.warn('[editor] cannot overwrite the file, asking where to save', e); h = null; }
     }
     if (!wrote) {
+      if (!live()) throw cancelledError();
       const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
-      h = th ? (await writeHandle(th, html), th) : await saveWithPicker(name, html);
-      if (h) { P.handle = h; P.name = h.name; if (live()) { S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; } }
+      h = th ? (await writeFile(th, html, live), th) : await saveWithPicker(name, html, null, live);
+      if (!live()) throw cancelledError();
+      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; }
       else P.name = name;
     }
-    // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）
-    if (cfgText) await ws.writeText(CFG, cfgText);
-    ws.markClean();
+    // ここまでで書いた。この後の作業場所の書き込みと「保存した」は、今も同じ作業場所のときだけ（最後の確かめの後）
+    if (!live()) throw cancelledError();
+    // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）。保存したものに入っているので、
+    // 保存の途中で編集がなかったときは、この書き込みの後の版を保存した版とする
+    if (cfgText) {
+      const before = ws.revision;
+      const wp = ws.writeText(CFG, cfgText, { live });
+      if (rev !== null && before === rev) rev = ws.revision;
+      await wp;
+      if (!live()) throw cancelledError();
+    }
+    const clean = rev !== null && ws.markClean(rev);
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
     P.saveWarnings = saveWarnings;
-    P.narr0 = await ws.readText('narration.md');
-    if (!live()) return;
+    // 段 A の元の口述原稿：保存したもの（保存の途中の編集は入れない）。段 B は組み始めの作業場所から組んだので、そのときのもの
+    const nb = files.get('narration.md');
+    P.narr0 = tier === 'A' ? (nb ? new TextDecoder().decode(nb) : null) : narrB;
     updateName();
     const mb = (html.length / 1048576).toFixed(1);
     status(tier === 'A' ? T.savedAtA(time(), mb) : T.savedAtB(time(), mb));
+    if (!clean) console.warn('[editor] edited while saving: the newer edits are not in the saved file (still unsaved)');
     // 段 A の知らせ（音声も消した段階など）は警告の一覧に入れ、保存の知らせ（toast）にも件数を出す
     if (saveWarnings.length) { for (const w of saveWarnings) console.warn('[editor] save:', w); S.warn.push(...saveWarnings); showWarn(); }
     toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : '') + (saveWarnings.length ? T.saveWarned(saveWarnings.length) : ''), saveWarnings.length > 0);
     showNotice();
-  } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
+  } catch (e) {
+    if (e && e.name === 'Cancelled') { cancelled(); return; }
+    if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
+  }
 }
 
 // ---------------------------------------------------------------- フォルダに書き出す（空のフォルダにだけ。npm run portable -- unpack と同じ中身）
@@ -727,16 +758,21 @@ async function exportPortableFile() {
   let r;
   try { r = await engine.exportPortable(S.deckFile); }
   catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
-  if (S.ws !== ws0 || S.gen !== g0) { status(''); toast(T.api.cancelled, true); return; }
+  const live = () => S.ws === ws0 && S.gen === g0;
+  if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   try {
-    // docId を初めて作ったときは、原稿のフォルダの設定のファイルに残す（次の書き出しでも同じ文書）
-    for (const [rel, text] of Object.entries(r.writes)) await ws0.writeText(rel, text);
     const name = S.deckFile.replace(/\.html?$/i, '') + FORMAT.FILE_EXT;
     const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
-    const h = th ? (await writeHandle(th, r.html), th) : await saveWithPicker(name, r.html, ws0.handle);
+    const h = th ? (await writeHandle(th, r.html, live), th) : await saveWithPicker(name, r.html, ws0.handle, live);
+    if (!live()) throw cancelledError();
+    // docId を初めて作ったときは、原稿のフォルダの設定のファイルに残す（次の書き出しでも同じ文書）。書き出しを書いた後、今も同じ作業場所のときだけ
+    for (const [rel, text] of Object.entries(r.writes)) await ws0.writeText(rel, text, { live });
     status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
     toast(h ? T.portableExportedToast : T.downloadedToast(name));
-  } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
+  } catch (e) {
+    if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
+    if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
+  }
 }
 
 // ---------------------------------------------------------------- 新しいデッキ
@@ -852,6 +888,8 @@ window.__APP_TEST = {
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   saved: () => (S.portable ? S.portable.saved : null),
+  save: (mode) => savePortable(mode || 'save'),
+  api: (method, url, body) => api(method, url, body),
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
   workerProbe: (name) => probeWorker(name),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
