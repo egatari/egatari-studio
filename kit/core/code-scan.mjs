@@ -61,6 +61,19 @@ export function safeExpression(expr, { vars = [], withMath = false } = {}) {
   return true;
 }
 
+// 部品の子のデータの <script>（kit/deck.js の MotionElement の data と同じ選び方：type の前後の空白を除き、大文字小文字を区別せずに
+// application/json。id によらない）。実行系と判定はこの規則を共有する（変えるときは両方を同時に。試験が両方を比べる）
+export function isDataBlock(type) { return String(type ?? '').trim().toLowerCase() === 'application/json'; }
+// 部品の系列（配列か 1 つのもの）の式がどれも決まった数式の形か。実行系（m-curves）は配列の各項目の f を読む。
+// 項目が物でないもの・f が文字列でないものも通さない（文字列にして式にされうる）
+function formulasOk(data, ex) {
+  for (const item of Array.isArray(data) ? data : [data]) {
+    if (item === null || typeof item !== 'object') continue;
+    if (Object.prototype.hasOwnProperty.call(item, ex.json) && !safeExpression(item[ex.json], ex)) return false;
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------- 文書の中
 const attr = (n, name) => { const a = (n.attrs || []).find((x) => x.name === name); return a ? a.value : null; };
 const textOf = (n) => (n.childNodes || []).filter((c) => c.nodeName === '#text').map((c) => c.value).join('');
@@ -87,17 +100,23 @@ export function markupReasons(text, where = '', resolveJson = null) {
       if (ex) {
         for (const k of ex.attrs || []) { const v = attr(n, k); if (v !== null && !safeExpression(v, ex)) out.add(`<${tag} ${k}="…"> (not a plain formula)${where}`); }
         if (ex.json) {
-          const s = (n.childNodes || []).find((c) => c.tagName === 'script' && (attr(c, 'type') || '').trim().toLowerCase() === 'application/json');
-          if (s) {
+          // 実行系（kit/deck.js の MotionElement の data）が選ぶのは、直接の子のうち isDataBlock に当たる <script> がちょうど 1 つのとき。
+          // 2 つ以上なら実行系は使わないが、どれが選ばれるかを判定と実行系で食い違わせないために、判定できないもの（コード）とする。
+          // 直接の子に限らず、部品の中の isDataBlock に当たる <script> はどれも式を確かめる（木の作り方の違いで選ばれるものが変わっても通らないように）
+          const direct = (n.childNodes || []).filter((c) => c.tagName === 'script' && isDataBlock(attr(c, 'type')));
+          if (direct.length > 1) out.add(`<${tag}> has ${direct.length} data blocks (ambiguous)${where}`);
+          const all = [];
+          const collect = (x) => { for (const c of x.childNodes || []) { if (c.tagName === 'script' && isDataBlock(attr(c, 'type'))) all.push(c); collect(c); } if (x.content) collect(x.content); };
+          collect(n);
+          if (all.length > direct.length) out.add(`<${tag}> has a nested data block (ambiguous)${where}`);
+          for (const s of all) {
             let raw = textOf(s);
             const inc = /^\s*\{\{JSON:([^}]+?)\}\}\s*$/.exec(raw);
             if (inc) raw = resolveJson ? resolveJson(inc[1].trim()) : null;
             let data = null;
             try { data = raw === null ? undefined : JSON.parse(raw); } catch { data = undefined; }
             if (data === undefined) out.add(`<${tag}> data (cannot check the formulas)${where}`);
-            else for (const item of Array.isArray(data) ? data : [data]) {
-              if (item && typeof item === 'object' && ex.json in item && !safeExpression(item[ex.json], ex)) out.add(`<${tag}> ${ex.json}: (not a plain formula)${where}`);
-            }
+            else if (!formulasOk(data, ex)) out.add(`<${tag}> ${ex.json}: (not a plain formula)${where}`);
           }
         }
       }

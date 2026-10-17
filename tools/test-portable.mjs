@@ -16,7 +16,7 @@ import Ajv from 'ajv/dist/2020.js';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
-import { codeReasons, markupReasons, safeExpression } from '../kit/core/code-scan.mjs';
+import { codeReasons, markupReasons, safeExpression, isDataBlock } from '../kit/core/code-scan.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav, addUnknownMembers } from './portable-fixtures.mjs';
@@ -387,7 +387,16 @@ ok('コードが動くかは中身から決める：データの type のない 
     ['<m-curves><script type="application/json">[{"f":"exp(-x*x/2)/sqrt(2*PI)"},{"pts":[[0,1]]}]</script></m-curves>', false],
     ['<m-curves><script type="application/json">[{"f":"top.location"}]</script></m-curves>', true],
     ['<m-curves><script type="application/json">{{JSON:missing.json}}</script></m-curves>', true],
+    // 実行系と同じ選び方（isDataBlock）：id="deck-…" のおとり・type の空白と大文字・入れ子・2 つ以上・f が文字列でないもの
+    ['<m-curves><script type="application/json" id="deck-decoy">[]</script><script type="application/json">[{"f":"(globalThis.__bypass=1,x)"}]</script></m-curves>', true],
+    ['<m-curves><script type="application/json" id="deck-decoy">[]</script><script type="application/json">[{"f":"x*x"}]</script></m-curves>', true],
+    ['<m-curves><script type=" Application/JSON ">[{"f":"(globalThis.__bypass=1,x)"}]</script></m-curves>', true],
+    ['<m-curves><div><script type="application/json">[{"f":"(globalThis.__bypass=1,x)"}]</script></div></m-curves>', true],
+    ['<m-curves><script type="application/json">[{"f":["x"]}]</script></m-curves>', true],
+    ['<m-curves><script type="application/json">[{"f":"x"}]</script></m-curves><m-curves><script type="application/json">[{"f":"top.x"}]</script></m-curves>', true],
+    ['<m-sweep F="fetch(1)"></m-sweep>', true], ['<m-sweep f="u*c" f="fetch(1)"></m-sweep>', false],
   ]) assert.equal(has(html), want, html);
+  assert.ok(isDataBlock(' APPLICATION/json ') && !isDataBlock('application/json;x') && !isDataBlock(null) && !isDataBlock('text/json'));
   assert.ok(safeExpression('u*u + c*u*u*u + c*c*u**4', { vars: ['u', 'c'] }));
   assert.ok(!safeExpression('(u)=>u', { vars: ['u'] }) && !safeExpression('u;alert(1)', { vars: ['u'] }) && !safeExpression('Math.constructor', { vars: [] }));
   const files = (o) => new Map(Object.entries(o).map(([k, v]) => [k, new TextEncoder().encode(v)]));

@@ -11,7 +11,10 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
+import os from 'node:os';
 import { previewDocument, PREVIEW_CSP } from '../app/preview-doc.js';
+import { build } from '../kit/build.mjs';
+import { markupReasons } from '../kit/core/code-scan.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -103,6 +106,34 @@ try {
     const late = await frameOf().evaluate((o) => fetch(o + '/canary?late').then(() => 'fetched', () => 'blocked'), ORIGIN).catch(() => 'blocked');
     ok(late === 'blocked' && !hits.some((u) => u.includes('late')), `${name}: fetch to the app origin is blocked (connect-src 'none')`);
   }
+  // 部品の式（m-curves の子の JSON・m-sweep の f）：実行系（kit/deck.js の data）が選んで new Function にするものを、判定（code-scan）も
+  // 同じ規則で選ぶ。組んだデッキを読み込み、式が動いた（__bypass）なら判定は必ずコードとしていること、おとりの id="deck-…" で判定を
+  // すり抜けられないことを確かめる
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-sec-'));
+  const EVIL = '(globalThis.__bypass=1,x)';
+  const VARIANTS = {
+    'decoy-id': `<m-curves><script type="application/json" id="deck-decoy">[]</script><script type="application/json">[{"f":"${EVIL}"}]</script></m-curves>`,
+    'decoy-after': `<m-curves><script type="application/json">[{"f":"x*x"}]</script><script type="application/json" id="deck-x">[{"f":"${EVIL}"}]</script></m-curves>`,
+    'type-spaces': `<m-curves><script type=" Application/JSON ">[{"f":"${EVIL}"}]</script></m-curves>`,
+    'two-components': `<m-curves><script type="application/json">[{"f":"x*x"}]</script></m-curves><m-curves><script type="application/json">[{"f":"${EVIL}"}]</script></m-curves>`,
+    'sweep-attr': `<m-sweep f="(globalThis.__bypass=1,u)" values="[0,1]"></m-sweep>`,
+    'plain': `<m-curves><script type="application/json">[{"f":"exp(-x*x/2)"}]</script></m-curves><m-sweep f="u*c" values="[0,1]"></m-sweep>`,
+  };
+  for (const [name, fig] of Object.entries(VARIANTS)) {
+    const dir = path.join(tmp, name); fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, 'deck.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>${fig}</section></div></body></html>`);
+    const r = build(path.join(dir, 'deck.html'), { subset: false });
+    const flagged = markupReasons(fs.readFileSync(path.join(dir, 'deck.html'), 'utf8')).length > 0;
+    await load(previewDocument(r.html, SHIM));
+    await frameOf().waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: 15000 }).catch(() => {});
+    const ran = await frameOf().evaluate(() => { try { DECK.seek(0, 3, Infinity); } catch (e) { /* 無視 */ } return globalThis.__bypass === 1; }).catch(() => false);
+    ok(!ran || flagged, `formula ${name}: a formula the runtime evaluated is flagged as code by the scanner (ran=${ran}, flagged=${flagged})`);
+    if (name === 'plain') ok(!flagged && !ran, 'formula plain: plain formulas are not code');
+    else ok(flagged, `formula ${name}: flagged as code (ask) — the decoy cannot hide the selected block`);
+    if (name.startsWith('decoy')) ok(!ran, `formula ${name}: the runtime refuses an ambiguous data block (two candidates)`);
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+
   // 信頼する仲立ちに </script や <!-- を入れたら組まない
   let threw = false; try { previewDocument('<p>x</p>', 'a("</script>")'); } catch { threw = true; }
   ok(threw, 'previewDocument refuses a shim containing </script');

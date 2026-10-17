@@ -152,11 +152,14 @@ class MotionElement extends HTMLElement {
     }
     return (this._props = out);
   }
-  // 子の <script type="application/json"> の中身
+  // 子の <script type="application/json"> の中身。選び方は kit/core/code-scan.mjs の isDataBlock と同じ（type の前後の空白を除いて
+  // 大文字小文字を区別せずに application/json、id によらない）。子に 2 つ以上あれば、どれを使うか決められないので使わない（null）。
+  // 「コードを動かせるか」の判定（code-scan.mjs）は同じ規則で同じものを選び、2 つ以上なら判定できない（コードとみなす）
   get data(){
     if (this._data !== undefined) return this._data;
-    var s = this.querySelector(':scope > script[type="application/json"]:not([id^="deck-"])');
-    return (this._data = s ? JSON.parse(s.textContent) : null);
+    var c = [].filter.call(this.children, function(x){ return x.localName === "script" && String(x.getAttribute("type") || "").trim().toLowerCase() === "application/json"; });
+    if (c.length > 1) console.warn("[deck] " + this.tagName.toLowerCase() + ": more than one <script type=\"application/json\"> child (ignored)");
+    return (this._data = c.length === 1 ? JSON.parse(c[0].textContent) : null);
   }
   mount(ctx){}
   render(k, t, ctx){}
