@@ -200,7 +200,32 @@ for (var narrKey in DECK.NARRATION) DECK.NARRATION[narrKey] = dict(DECK.NARRATIO
 DECK.AUDIO = dict(json("deck-audio"));           // {"slideKey:stepKey": {src, dur, cues:[秒…]}}
 DECK.MARKS = dict(json("deck-marks"));           // {"slideKey:stepKey": [{type:"cue"} | {type:"mark", id, effect, hold} | {type:"clear"}]}
 DECK.TIMING = dict(json("deck-timing"));         // {"slideKey:stepKey": {dur, hold, lead, pad_after}}
-DECK.VERSION = (json("deck-meta") || {}).version || "";   // package.json の version（build が埋め込む）
+// deck-meta：持ち運べる形式の書き出しでは {format:<形式の名前>, version:{major,minor}, generator:{name, version}, docId, …}、
+// ふつうの build では {version:"0.2.1"}。DECK.VERSION は作った版（package.json の version）
+DECK.META = json("deck-meta") || {};
+DECK.VERSION = (DECK.META.generator && DECK.META.generator.version) || (typeof DECK.META.version === "string" ? DECK.META.version : "");
+// 持ち運べる形式の音声の参照（<scheme><blobId>）を data: URI にする：塊 <prefix><blobId>-0, -1, … を、次が無くなるまで順に復号してつなぐ
+// （format spec §3.7・§4。形式の識別子は build が DECK.FORMAT に入れる（kit/core/format.mjs）。塊の境が 3 バイトの倍数（= を含まない）なら base64 の文字列をそのままつなげる）
+var FMT = DECK.FORMAT || null;
+function blobUri(id){
+  if (!FMT) return null;
+  var parts = [], n = 0, el, pad = false, P = FMT.blobPrefix + id + "-";
+  while ((el = document.getElementById(P + n))){ var t = (el.textContent || "").trim(); if (t.indexOf("=") >= 0 && document.getElementById(P + (n + 1))) pad = true; parts.push(t); n++; }
+  if (!n) return null;
+  var b64 = pad ? btoa(parts.map(function(t){ return atob(t); }).join("")) : parts.join("");
+  var head = atob(b64.slice(0, 16)), mime = "audio/mpeg";
+  if (head.slice(0, 4) === "RIFF") mime = "audio/wav";
+  else if (head.slice(4, 8) === "ftyp") mime = "audio/mp4";
+  else if (head.slice(0, 4) === "OggS") mime = "audio/ogg";
+  return "data:" + mime + ";base64," + b64;
+}
+DECK.blobUri = blobUri;
+for (var audioKey in DECK.AUDIO){
+  var au = DECK.AUDIO[audioKey], am = FMT && au && typeof au.src === "string" && au.src.indexOf(FMT.uriScheme) === 0 && au.src.slice(FMT.uriScheme.length);
+  if (am && /^[A-Za-z0-9_]{1,32}$/.test(am)){ var uri = null; try { uri = blobUri(am); } catch (e) { console.warn("audio blob is not base64: " + am); } if (uri) au.src = uri; else { console.warn("audio blob not found: " + am); delete DECK.AUDIO[audioKey]; } }
+}
+// スクリプトなしで読める層（format spec §2.1。全段階の口述原稿の文字）は、実行系が動くときは隠す
+(function(){ var r = FMT && document.getElementById(FMT.readableId); if (r) r.hidden = true; })();
 
 // ---------------------------------------------------------------- フィードバックの宛先（? の一覧と発表者ビューのリンク）
 // <html data-feedback-url="…"> で宛先を変え、data-feedback="off" で消す（DECK.FEEDBACK_URL = null）
@@ -503,7 +528,7 @@ function boundsOf(i, k){ return DECK.MARKS[DECK.stepKey(i, k)] || null; }
 // 部品の伸縮に使う音声の cue（{cue} の区切りの分だけ）。区切りの数が合わない古い音声なら使わない
 function compCues(i, k){
   var a = DECK.AUDIO[DECK.stepKey(i, k)], b = boundsOf(i, k);
-  if (!a || !a.cues) return null;
+  if (!a || !a.cues || a.sync === "none") return null;   // sync:"none"（区切りをまだ置いていない収録）は同期しない
   if (!b) return a.cues;
   if (a.cues.length !== b.length) return null;
   return a.cues.filter(function(_, j){ return b[j].type === "cue"; });
@@ -517,7 +542,7 @@ function markPlan(i, k){
   s._mk[k] = out;
   if (!b || !b.some(function(x){ return x.type !== "cue"; })) return out;
   var a = DECK.AUDIO[DECK.stepKey(i, k)], times;
-  if (a && a.cues && a.cues.length === b.length){
+  if (a && a.cues && a.sync !== "none" && a.cues.length === b.length){
     var lead = timing(i, k).lead || 0;
     times = a.cues.map(function(x){ return x + lead; });
     out.audio = true;
