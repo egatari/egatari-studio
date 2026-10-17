@@ -10,8 +10,8 @@ import { parseNarration, segDigest, joinLines, marksMap, narrationMap, splitKey,
 import { annotate, analyzeSlideIds } from '../kit/build.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-// Etoki の仕様の試験用の入力と正解（narration.md・expected.json）の置き場所。ここだけを直せば移せる
-const SPEC_INPUT_HASH = path.join(ROOT, 'vendor', 'etoki-spec', 'fixtures', 'input-hash');
+// 形式の仕様（format spec）の試験用の入力と正解（narration.md・expected.json）の置き場所。ここだけを直せば移せる
+const SPEC_INPUT_HASH = path.join(ROOT, 'vendor', 'format-spec', 'fixtures', 'input-hash');
 
 let n = 0;
 const ok = (name, f) => { f(); n++; console.log(`  ok ${name}`); };
@@ -53,7 +53,7 @@ ok('重複がなければ warnings は空', () => {
   assert.deepEqual(parseNarration('## A\n[0] x\n').warnings, []);
 });
 
-// ---------------------------------------------------------------- スライドの鍵（Etoki 1.0 §8.1）
+// ---------------------------------------------------------------- スライドの鍵（format spec §8.1）
 ok('鍵：{#id} が見出しの文字列より強い', () => {
   assert.deepEqual(parseHeading('更新の式 {#s-k3f9q2}'), { key: 's-k3f9q2', id: 's-k3f9q2', heading: '更新の式', badId: false });
   assert.equal(parseHeading('{#s-k3f9q2}').key, 's-k3f9q2');
@@ -143,7 +143,7 @@ ok('新しい節：id のあるスライドは「## 見出し {#id}」', () => {
   assert.match(rewriteNarration('', 'X', '0', [{ role: 'expert', text: 'x' }], ['X']), /## X\n\[0\] x/);
 });
 
-// ---------------------------------------------------------------- 拡張の行（@x-名前-欄 値、Etoki 1.0 §8.2）
+// ---------------------------------------------------------------- 拡張の行（@x-名前-欄 値、format spec §8.2）
 ok('拡張の行：発言の間・段階の初め・終わり。発言にも区切りにも digest にも入らない', () => {
   const src = '## A\n[0]\n@x-quiz-start yes\nExpert: one\n  @x-quiz-q What is {cue} η?\ncontinued\nNovice: two\n@x-quiz-q again\n@x-cap-style big bold  \n[1] three\n';
   const segs = parseNarration(src);
@@ -177,8 +177,8 @@ ok('拡張の行：CRLF でも読め、書き換えで位置・中身・改行�
   assert.deepEqual(rawTurns(src, 'A', '0').turns, [{ role: 'expert', text: 'one' }, { role: 'novice', text: 'two' }]);
 });
 
-// ---------------------------------------------------------------- vendor/etoki-spec/fixtures/input-hash（鍵と inputHash）
-ok('vendor/etoki-spec/fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
+// ---------------------------------------------------------------- vendor/format-spec/fixtures/input-hash（鍵と inputHash）
+ok('vendor/format-spec/fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
   const dir = SPEC_INPUT_HASH;
   const expected = JSON.parse(fs.readFileSync(path.join(dir, 'expected.json'), 'utf8'));
   const segs = parseNarration(fs.readFileSync(path.join(dir, 'narration.md'), 'utf8'));

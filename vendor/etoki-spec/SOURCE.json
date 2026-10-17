@@ -1,6 +1,0 @@
-{
-  "repository": "https://github.com/etoki-org/etoki-spec",
-  "commit": "d1d030329393055e6d36019d1319fd99e0f20600",
-  "files": 28,
-  "note": "Copied by tools/sync-etoki-spec.mjs. Do not edit; change the spec repository and sync again."
-}
