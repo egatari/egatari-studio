@@ -51,12 +51,12 @@ const PAIRS = [
 // 試験 D の比較用の音：Mac の mlx-audio サーバー（mlx-community/Irodori-TTS-500M-v3-fp16、POST /v1/audio/speech）で
 // 作り、48 kHz モノラルの AAC（m4a）にして samples/mlx/ に置いた。sec は元の wav の長さ、genSec はサーバーの応答時間
 const MLX = [
-  { id: 'd1', voice: 'alice', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.4, genSec: 5.15 },
-  { id: 'd2', voice: 'alice', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 4.36, genSec: 1.53 },
-  { id: 'd3', voice: 'alice', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 4.04, genSec: 1.46 },
-  { id: 'd1', voice: 'bob', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.2, genSec: 1.31 },
-  { id: 'd2', voice: 'bob', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 3.64, genSec: 1.23 },
-  { id: 'd3', voice: 'bob', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 4.0, genSec: 1.3 },
+  { id: 'd1', voice: 'bob', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.2, genSec: 1.59 },
+  { id: 'd2', voice: 'bob', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 3.84, genSec: 1.52 },
+  { id: 'd3', voice: 'bob', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 3.52, genSec: 1.45 },
+  { id: 'd1', voice: 'alice', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.24, genSec: 1.69 },
+  { id: 'd2', voice: 'alice', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 3.68, genSec: 1.58 },
+  { id: 'd3', voice: 'alice', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 3.84, genSec: 1.55 },
 ];
 
 const $ = (id) => document.getElementById(id);
