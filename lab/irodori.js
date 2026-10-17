@@ -48,6 +48,17 @@ const PAIRS = [
   { key: '読みの試験:8', raw: '双対問題を解いてから、閾値を決定木で調べます。', yomi: 'そうついもんだいを解いてから、しきいちをけっていぎで調べます。' },
 ];
 
+// 試験 D の比較用の音：Mac の mlx-audio サーバー（mlx-community/Irodori-TTS-500M-v3-fp16、POST /v1/audio/speech）で
+// 作り、48 kHz モノラルの AAC（m4a）にして samples/mlx/ に置いた。sec は元の wav の長さ、genSec はサーバーの応答時間
+const MLX = [
+  { id: 'd1', voice: 'alice', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.4, genSec: 5.15 },
+  { id: 'd2', voice: 'alice', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 4.36, genSec: 1.53 },
+  { id: 'd3', voice: 'alice', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 4.04, genSec: 1.46 },
+  { id: 'd1', voice: 'bob', text: 'ゆうどを最大にするパラメータを求めるのが、さいゆうすいていです。', sec: 4.2, genSec: 1.31 },
+  { id: 'd2', voice: 'bob', text: 'たいすうゆうどは、ゆうどかんすうの対数をとったものです。', sec: 3.64, genSec: 1.23 },
+  { id: 'd3', voice: 'bob', text: '行列の固有値が負になると、その点はあんてんになります。', sec: 4.0, genSec: 1.3 },
+];
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const mb = (n) => (n / 1e6).toFixed(1);
@@ -55,11 +66,12 @@ const f2 = (x) => (x == null ? '–' : x.toFixed(2));
 
 // ---------------------------------------------------------------- 状態（報告の JSON の元）
 const state = {
-  env: {}, load: null, voice: null, runs: [], testA: null, testB: {},
+  env: {}, load: null, voice: null, runs: [], testA: null, testB: {}, testD: {},
   errors: [],
 };
 let ort = null, tokenizer = null, tts = null, loadedPrec = null;
-let voicePcm = null;     // Float32Array @48 kHz mono
+let gpuAdapter = null;   // high-performance で取ったアダプタ。ORT にそのまま渡す（ノート PC の外部 GPU を使わせる）
+let voice = null;     // 選んでいる声 {pcm: Float32Array @48 kHz mono, info}
 let queue = Promise.resolve();   // 合成は 1 本ずつ（GPU を取り合わない）
 const serial = (fn) => (queue = queue.then(fn, fn));
 
@@ -83,17 +95,19 @@ async function detectEnv() {
   env.webgpu = !!navigator.gpu;
   if (navigator.gpu) {
     try {
+      // GPU が 2 つある PC（Intel 内蔵＋NVIDIA など）では high-performance で外部 GPU を頼む。
+      // 比べるために low-power のアダプタの情報も取る（同じなら GPU は 1 つか、OS が外部 GPU を出していない）
       const a = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      const lp = await navigator.gpu.requestAdapter({ powerPreference: 'low-power' }).catch(() => null);
       if (!a) env.webgpuError = 'requestAdapter() が null を返した（GPU が使えない）';
       else {
-        const info = a.info || (a.requestAdapterInfo ? await a.requestAdapterInfo() : {});
-        env.adapter = {
-          vendor: info.vendor || '', architecture: info.architecture || '', device: info.device || '', description: info.description || '',
-          isFallbackAdapter: !!(info.isFallbackAdapter ?? a.isFallbackAdapter),
-        };
+        gpuAdapter = a;
+        env.adapter = adapterInfo(a);
+        if (lp) env.adapterLowPower = adapterInfo(lp);
         env.shaderF16 = a.features.has('shader-f16');
         env.features = [...a.features].sort();
         env.limits = { maxBufferSize: a.limits.maxBufferSize, maxStorageBufferBindingSize: a.limits.maxStorageBufferBindingSize, maxComputeWorkgroupStorageSize: a.limits.maxComputeWorkgroupStorageSize };
+        env.integratedHint = looksIntegrated(env.adapter);
       }
     } catch (e) { env.webgpuError = String(e.message || e); }
   }
@@ -109,12 +123,23 @@ async function detectEnv() {
   }
 }
 
+function adapterInfo(a) {
+  const info = a.info || {};
+  return { vendor: info.vendor || '', architecture: info.architecture || '', device: info.device || '', description: info.description || '', isFallbackAdapter: !!(info.isFallbackAdapter ?? a.isFallbackAdapter) };
+}
+const adapterText = (i) => [i.vendor, i.architecture, i.device, i.description].filter(Boolean).join(' / ') || '（ブラウザが情報を出さない）';
+// Intel の内蔵 GPU に見えるか（NVIDIA を積んだノート PC で、Chrome が内蔵 GPU を使っているときに案内を出す）
+const looksIntegrated = (i) => /intel/i.test(i.vendor) || /intel|iris|uhd graphics/i.test(i.description);
+const GPU_HINT = 'GPU が Intel（内蔵）になっています。NVIDIA などの外部 GPU を積んだ PC なら、Windows の［設定］→［システム］→［ディスプレイ］→［グラフィック］で Chrome を追加し（一覧に無ければ「参照」から chrome.exe）、［オプション］で「高パフォーマンス」を選んでから Chrome を完全に終了して開き直してください。';
+
 function renderEnv() {
   const e = state.env;
   const yes = (b) => (b ? '<span class="ok">はい</span>' : '<span class="bad">いいえ</span>');
   const rows = [
     ['WebGPU', e.webgpu ? (e.adapter ? '<span class="ok">使える</span>' : `<span class="bad">navigator.gpu はあるがアダプタが取れない</span> ${esc(e.webgpuError || '')}`) : '<span class="bad">使えない（navigator.gpu がない）</span>'],
-    ['GPU（アダプタ）', e.adapter ? esc([e.adapter.vendor, e.adapter.architecture, e.adapter.device, e.adapter.description].filter(Boolean).join(' / ') || '（ブラウザが情報を出さない）') + (e.adapter.isFallbackAdapter ? ' <span class="bad">（ソフトウェア実装）</span>' : '') : '–'],
+    ['GPU（high-performance で取ったもの。合成に使う）', e.adapter ? esc(adapterText(e.adapter)) + (e.adapter.isFallbackAdapter ? ' <span class="bad">（ソフトウェア実装）</span>' : '') + (e.integratedHint ? `<div class="note">${GPU_HINT}</div>` : '') : '–'],
+    ['GPU（low-power で取ったもの。比較用）', e.adapterLowPower ? esc(adapterText(e.adapterLowPower)) : '–'],
+    ['ORT が実際に使っている GPU', state.load?.ortAdapter ? esc(adapterText(state.load.ortAdapter)) : '<span class="muted">（モデルの読み込み後に表示）</span>'],
     ['fp16 シェーダー（shader-f16）', e.adapter ? yes(e.shaderF16) : '–'],
     ['maxBufferSize / maxStorageBufferBindingSize', e.limits ? `${mb(e.limits.maxBufferSize)} MB / ${mb(e.limits.maxStorageBufferBindingSize)} MB` : '–'],
     ['crossOriginIsolated', yes(e.crossOriginIsolated) + ' <span class="muted">（いいえでも動く。WASM のスレッドが 1 本になるだけ）</span>'],
@@ -188,7 +213,8 @@ async function loadModel() {
     if (!ort) {
       ort = await import(ORT_URL);
       ort.env.wasm.wasmPaths = ORT_WASM;
-      ort.env.webgpu.powerPreference = 'high-performance';
+      ort.env.webgpu.powerPreference = 'high-performance';   // 念のため（adapter を渡すので普通は使われない）
+      if (gpuAdapter) ort.env.webgpu.adapter = gpuAdapter;   // 環境の欄に出したアダプタをそのまま使わせる
       ort.env.logLevel = 'error';
     }
     const sizes = SIZES[prec];
@@ -232,6 +258,7 @@ async function loadModel() {
       precision: prec, seconds: +sec.toFixed(2), totalMB: +mb(progress.total), downloadedMB: +mb(progress.net), fromCacheMB: +mb(progress.cached),
       hfRevision: HF_REV, ortVersion: ORT_VERSION, transformersVersion: TRANSFORMERS_VERSION, ortAdapter: used, files: perFile, cacheErrors,
     };
+    renderEnv();
     showProgress('読み込み完了');
     $('load-status').innerHTML += ` <b class="ok">読み込み完了：${sec.toFixed(1)} 秒（${prec}）</b>`;
   } catch (e) {
@@ -320,42 +347,58 @@ async function sha1(f32) {
   return 'fnv1a32:' + h.toString(16).padStart(8, '0');
 }
 
-async function loadVoice() {
-  const which = document.querySelector('input[name=voice]:checked').value;
-  let ab, name;
-  if (which === 'file') {
-    const f = $('voice-file').files[0];
-    if (!f) { $('voice-status').textContent = '声：ファイルを選んでください'; voicePcm = null; return null; }
-    ab = await f.arrayBuffer(); name = f.name;
-  } else {
-    const res = await fetch(`voices/${which}.wav`);
-    if (!res.ok) throw new Error(`voices/${which}.wav: HTTP ${res.status}`);
-    ab = await res.arrayBuffer(); name = `${which}.wav`;
-  }
-  let w = parseWav(ab), how;
+// 音声ファイル（ArrayBuffer）→ 48 kHz モノラルの Float32 と、その情報
+async function decodeVoice(ab, name) {
+  let w = parseWav(ab), how, pcm;
   if (w) {
-    voicePcm = resample(w.pcm, w.sr, SR);
+    pcm = resample(w.pcm, w.sr, SR);
     how = w.sr === SR ? 'そのまま' : `${w.sr} Hz → ${SR} Hz（窓付き sinc）`;
   } else {
     const ctx = new OfflineAudioContext(1, 1, SR);   // 48 kHz の文脈で復号すると 48 kHz になる
     const buf = await ctx.decodeAudioData(ab.slice(0));
-    const m = new Float32Array(buf.length);
-    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < m.length; i++) m[i] += d[i] / buf.numberOfChannels; }
-    voicePcm = m; w = { sr: buf.sampleRate, channels: buf.numberOfChannels, bits: null };
+    pcm = new Float32Array(buf.length);
+    for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < pcm.length; i++) pcm[i] += d[i] / buf.numberOfChannels; }
+    w = { sr: buf.sampleRate, channels: buf.numberOfChannels, bits: null };
     how = 'ブラウザで復号（decodeAudioData）';
   }
-  state.voice = { name, sourceRate: w.sr, channels: w.channels, bits: w.bits, seconds: +(voicePcm.length / SR).toFixed(2), conversion: how, sha1_48k: await sha1(voicePcm) };
-  $('voice-status').textContent = `声：${name}（${w.sr} Hz、${w.channels} ch、${state.voice.seconds} 秒）→ ${how}。48 kHz の参照の SHA-1 ${state.voice.sha1_48k.slice(0, 12)}…`;
-  const p = $('voice-player'); p.src = URL.createObjectURL(new Blob([ab], { type: 'audio/wav' })); p.hidden = false;
+  const info = { name, sourceRate: w.sr, channels: w.channels, bits: w.bits, seconds: +(pcm.length / SR).toFixed(2), conversion: how, sha1_48k: await sha1(pcm) };
+  return { pcm, info };
+}
+// 既定の声（voices/<名前>.wav）は 1 度だけ読む
+const presetVoices = {};
+async function presetVoice(which) {
+  if (!presetVoices[which]) {
+    const res = await fetch(`voices/${which}.wav`);
+    if (!res.ok) throw new Error(`voices/${which}.wav: HTTP ${res.status}`);
+    const ab = await res.arrayBuffer();
+    presetVoices[which] = { ...(await decodeVoice(ab, `${which}.wav`)), url: URL.createObjectURL(new Blob([ab], { type: 'audio/wav' })) };
+  }
+  return presetVoices[which];
+}
+
+async function loadVoice() {
+  const which = document.querySelector('input[name=voice]:checked').value;
+  let v;
+  if (which === 'file') {
+    const f = $('voice-file').files[0];
+    if (!f) { $('voice-status').textContent = '声：ファイルを選んでください'; voice = null; return null; }
+    const ab = await f.arrayBuffer();
+    v = { ...(await decodeVoice(ab, f.name)), url: URL.createObjectURL(f) };
+  } else v = await presetVoice(which);
+  voice = v; state.voice = v.info;
+  const i = v.info;
+  $('voice-status').textContent = `声：${i.name}（${i.sourceRate} Hz、${i.channels} ch、${i.seconds} 秒）→ ${i.conversion}。48 kHz の参照の SHA-1 ${i.sha1_48k.slice(0, 12)}…`;
+  const p = $('voice-player'); p.src = v.url; p.hidden = false;
   renderReport();
-  return voicePcm;
+  return v;
 }
 
 // ---------------------------------------------------------------- 合成（pipeline.mjs の synthesize と同じ呼び出しを、段階ごとに時間を測りながら行う）
-async function synth(test, label, text, seed) {
+async function synth(test, label, text, seed, useVoice = null) {
   if (!tts) throw new Error('先にモデルを読み込んでください');
-  const ref = voicePcm || (await loadVoice());
-  if (!ref) throw new Error('声を選んでください');
+  const v = useVoice || voice || (await loadVoice());
+  if (!v) throw new Error('声を選んでください');
+  const ref = v.pcm;
   const steps = Math.max(1, parseInt($('steps').value, 10) || 40);
   const opts = { numSteps: steps, seed };
   const ms = {};
@@ -372,7 +415,7 @@ async function synth(test, label, text, seed) {
   const audioSec = audio.length / SR;
   const pcm = audio instanceof Float32Array ? audio : Float32Array.from(audio);
   const run = {
-    n: state.runs.length + 1, test, label, text, chars: [...text].length, voice: state.voice?.name, seed, steps, precision: loadedPrec,
+    n: state.runs.length + 1, test, label, text, chars: [...text].length, voice: v.info.name, seed, steps, precision: loadedPrec,
     genSec: +genSec.toFixed(3), audioSec: +audioSec.toFixed(3), rtf: +(genSec / audioSec).toFixed(3), seqLen, ms, firstRun: first,
     sha1: await sha1(pcm), peak: +pcm.reduce((m, v) => Math.max(m, Math.abs(v)), 0).toFixed(4),
   };
@@ -448,6 +491,29 @@ async function testBPair(i) {
 }
 async function testBAll() { for (let i = 0; i < PAIRS.length; i++) await testBPair(i); }
 
+// ---------------------------------------------------------------- 試験 D（mlx とブラウザ）
+function renderMlx() {
+  $('d-list').innerHTML = MLX.map((m, i) => `
+    <div class="pair">
+      <div class="row"><b>${i + 1}.</b> 声 ${m.voice}：${esc(m.text)}</div>
+      <div class="cols">
+        <div><div class="label">mlx（Mac のサーバー）</div><audio controls preload="none" src="samples/mlx/${m.id}_${m.voice}.m4a"></audio><div class="muted">${f2(m.sec)} s</div></div>
+        <div><div class="label">ブラウザ（このページ）</div><button class="sub" data-mlx="${i}" disabled>同じものをブラウザで生成</button><div class="out" id="mlx-${i}"></div></div>
+      </div>
+    </div>`).join('');
+  for (const b of document.querySelectorAll('button[data-mlx]')) b.addEventListener('click', () => run(() => testDOne(+b.dataset.mlx)));
+}
+async function testDOne(i) {
+  const m = MLX[i], seed = parseInt($('seed').value, 10) || 0;
+  const el = $(`mlx-${i}`);
+  el.innerHTML = '<span class="muted">生成中…</span>';
+  const r = await synth('D', `D${i + 1}-${m.id}-${m.voice}`, m.text, seed, await presetVoice(m.voice));
+  el.innerHTML = `${player(r, `testD_${m.id}_${m.voice}_web`)}<div class="muted">${f2(r.audioSec)} s（mlx ${f2(m.sec)} s）・生成 ${f2(r.genSec)} s・RTF ${f2(r.rtf)}</div>`;
+  state.testD[`${m.id}_${m.voice}`] = { text: m.text, voice: m.voice, seed, precision: loadedPrec, mlxSec: m.sec, webSec: r.audioSec, webGenSec: r.genSec, run: r.n, sha1: r.sha1 };
+  renderReport();
+}
+async function testDAll() { for (let i = 0; i < MLX.length; i++) await testDOne(i); }
+
 // ---------------------------------------------------------------- 6. 試験 C（一覧と要約）
 function renderRuns() {
   $('c-table').tBodies[0].innerHTML = state.runs.map((r) => `<tr><td class="num">${r.n}</td><td>${esc(r.label)}${r.firstRun ? ' <span class="muted">（初回）</span>' : ''}</td><td>${r.precision}</td><td class="num">${r.seed}</td><td class="num">${r.chars}</td>`
@@ -476,7 +542,7 @@ function report() {
     upstream: { irodoriTtsWebgpu: 'aa3b6390018bb09a2e461c95d1f55992c06e197d', hfRepo: HF_REPO, hfRevision: HF_REV, ort: ORT_VERSION, transformers: TRANSFORMERS_VERSION },
     env: state.env, load: state.load, voice: state.voice,
     settings: { seed: parseInt($('seed').value, 10) || 0, steps: parseInt($('steps').value, 10) || 40 },
-    testA: state.testA, testB: state.testB, summary: summary(),
+    testA: state.testA, testB: state.testB, testD: state.testD, summary: summary(),
     runs: state.runs.map(({ _url, _pcm, ...r }) => r),
     errors: state.errors,
   };
@@ -494,7 +560,7 @@ async function copyReport() {
 
 // ---------------------------------------------------------------- つなぐ
 function setRunButtons(on) {
-  for (const b of [$('btn-a'), $('btn-b-all'), ...document.querySelectorAll('button[data-pair]')]) b.disabled = !on;
+  for (const b of [$('btn-a'), $('btn-b-all'), $('btn-d-all'), ...document.querySelectorAll('button[data-pair], button[data-mlx]')]) b.disabled = !on;
 }
 // 合成の実行：1 本ずつ、終わるまで他のボタンを止める。失敗は画面と報告に出す
 function run(fn) {
@@ -507,6 +573,8 @@ function run(fn) {
 }
 
 renderPairs();
+renderMlx();
+$('btn-d-all').addEventListener('click', () => run(testDAll));
 $('btn-load').addEventListener('click', () => serial(loadModel));
 $('btn-clear').addEventListener('click', clearCache);
 $('btn-a').addEventListener('click', () => run(testA));
@@ -518,4 +586,4 @@ await detectEnv();
 loadVoice().catch((e) => { $('voice-status').textContent = '声を読めませんでした：' + (e.message || e); });
 renderReport();
 // 自動の確かめ（Playwright）用の口
-window.__lab = { state, report, loadModel: () => serial(loadModel), testA: () => run(testA), testBPair: (i) => run(() => testBPair(i)), loadVoice };
+window.__lab = { state, report, loadModel: () => serial(loadModel), testA: () => run(testA), testBPair: (i) => run(() => testBPair(i)), testD: (i) => run(() => testDOne(i)), loadVoice };

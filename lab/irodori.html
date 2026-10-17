@@ -144,8 +144,15 @@
   <div id="c-summary" class="muted"></div>
 </section>
 
+<section id="test-d">
+  <h2>7. 試験 D：mlx（Mac の常駐サーバー）とブラウザ</h2>
+  <p class="muted">左は同じ Irodori-TTS 500M-v3 を Mac の mlx-audio サーバーで作った音（参照音声は同じ alice.wav・bob.wav、文は読み辞書の後。シードはサーバー任せなので波形は一致しません）。右のボタンで同じ文・同じ声をこのブラウザで作ります。声の質が同じに聞こえるかを判断してください。</p>
+  <div class="row"><button id="btn-d-all" disabled>全部をブラウザで生成</button></div>
+  <div id="d-list"></div>
+</section>
+
 <section id="report">
-  <h2>7. 結果の報告</h2>
+  <h2>8. 結果の報告</h2>
   <div class="row">
     <button id="btn-copy">結果を JSON でコピー</button>
     <span id="copy-status" class="muted"></span>
