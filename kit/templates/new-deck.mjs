@@ -1,9 +1,16 @@
 // 新しいデッキの雛形（npm run new と編集アプリの「新しいデッキ」が共有する）。依存なし（Node にもブラウザにも依存しない）
-//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title}) → {'deck.html': 文字列, 'narration.md': 文字列}
+//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids}) → {'deck.html': 文字列, 'narration.md': 文字列}
 // 表紙＋見本 3 枚（段階・数式と注目の演出・部品）＋まとめと、全段階ぶんの口述原稿
+// どのスライドにも乱数の id（s-xxxxxx）を付け、口述原稿の見出しは「## 見出し {#id}」（spec/etoki-1.0.md §8.1）。
+// ids を渡せばその 5 つを使う（試験用）
 // （中身は字下げしない：テンプレート文字列の中の空白がそのままファイルに入るため）
+import { newSlideId, headingLine } from '../core/narration-core.mjs';
+
 export function newDeckFiles(opts = {}) {
 opts = { lang: 'ja', theme: 'default', title: null, ...opts };
+// 見本の中の目印（slope）とは重ならないように
+const taken = new Set(['slope', 'stage', 'bar', 'jump']);
+const ID = opts.ids || Array.from({ length: 5 }, () => { const id = newSlideId(taken); taken.add(id); return id; });
 const EN = opts.lang === 'en';
 const title = (opts.title ?? (EN ? 'Untitled deck' : '新しいデッキ')).trim() || (EN ? 'Untitled deck' : '新しいデッキ');
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -93,13 +100,13 @@ ${T.hint.map((l) => '  ' + l).join('\n')}
 <body>
 <div id="stage">
 
-<section class="slide cover noconcl static" id="cover">
+<section class="slide cover noconcl static" id="${ID[0]}">
   <div class="venue">${T.venue}</div>
   <h1>${esc(title)}</h1>
   <div class="au">${T.au}</div>
 </section>
 
-<section class="slide">
+<section class="slide" id="${ID[1]}">
   <h2>${T.s1.h}</h2>
   <div class="body">
     <ul>
@@ -111,7 +118,7 @@ ${T.hint.map((l) => '  ' + l).join('\n')}
   <div class="concl"><span>${T.s1.concl}</span></div>
 </section>
 
-<section class="slide">
+<section class="slide" id="${ID[2]}">
   <h2>${T.s2.h}</h2>
   <div class="body">
     <p>${T.s2.p}</p>
@@ -124,7 +131,7 @@ ${T.hint.map((l) => '  ' + l).join('\n')}
   <div class="concl"><span>${T.s2.concl}</span></div>
 </section>
 
-<section class="slide">
+<section class="slide" id="${ID[3]}">
   <h2>${T.s3.h}</h2>
   <div class="body">
     <div class="cols" style="gap:24px">
@@ -139,7 +146,7 @@ ${T.hint.map((l) => '  ' + l).join('\n')}
   <div class="concl"><span>${T.s3.concl}</span></div>
 </section>
 
-<section class="slide noconcl">
+<section class="slide noconcl" id="${ID[4]}">
   <h2>${T.s4.h}</h2>
   <div class="body">
     <ol>
@@ -156,19 +163,19 @@ ${T.s4.li.map((l, i) => `      <li data-step="${i + 1}">${l}</li>`).join('\n')}
 const turns = (n, c) => n.map((t, i) => `[${i}] ${t}`).join('\n') + (c ? `\n[concl] ${c}` : '');
 const narration = `# ${EN ? 'Narration' : '口述原稿'}: ${title}
 
-## cover
+${headingLine({ key: ID[0], id: ID[0], heading: title })}
 [0] ${T.cover}
 
-## ${T.s1.h}
+## ${T.s1.h} {#${ID[1]}}
 ${turns(T.s1.n, T.s1.nc)}
 
-## ${T.s2.h}
+## ${T.s2.h} {#${ID[2]}}
 ${turns(T.s2.n, T.s2.nc)}
 
-## ${T.s3.h}
+## ${T.s3.h} {#${ID[3]}}
 ${turns(T.s3.n, T.s3.nc)}
 
-## ${T.s4.h}
+## ${T.s4.h} {#${ID[4]}}
 ${turns(T.s4.n)}
 `;
 return { 'deck.html': deck, 'narration.md': narration };
