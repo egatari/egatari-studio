@@ -18,7 +18,10 @@
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
 // drawerHost の中で iframe の隣）に出す。スライドの場所に重ねる欄はない。板の上には、デッキが自分の枠の外に描けない印（色の帯）を付ける。
 // スライドの場所に見えるものは、どれもデッキが描けるもの：信じてよいのはこの板の道具だけ。
-// 原稿の欄・コメントの欄を開いている間は、プレビューを inert にしてクリックを受けない（欄への入力をデッキが横取りできない）
+// 信頼する入力の欄で編集している間（原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している・未保存の変更がある）は、
+// プレビューを inert にしてクリックも鍵盤も受けない（欄への入力をデッキが横取りできない）。その間もデッキの位置の知らせは受け取るが、
+// デッキからの知らせで板の欄を開け閉めしたり、編集中の口述原稿の段階を替えたりはしない（頼んでいない切り替えで編集から離されない）。
+// 口述原稿の引き出しは、入力していなければ（欄から離れれば）今のスライドの段階に付いていく
 //   ui.message(e)  プレビューからの message（e.source は呼ぶ側でも確かめる）。扱ったら true
 //   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
 //   ui.reset()  別のデッキを開いた（入力は捨てる）
@@ -79,6 +82,7 @@ const CSS = [
   '#dev-badge .dv-warn{background:#f59e0b;color:#231400;border-radius:999px;padding:0 8px;cursor:pointer;opacity:1}',
   '.dev-where{color:#4b5363;font-size:12.5px;margin:-2px 0 8px}',
   '.dev-lock{color:#7a4b00;font-size:12px;margin-top:6px}',
+  '#dev-narr .dev-lock{display:none;margin:0;padding:6px 14px;background:#fff;border-top:1px solid #e3e6ee}#dev-side.dv-locked #dev-narr .dev-lock{display:block}',
   'iframe.dev-locked{opacity:.55;filter:grayscale(.3)}',
   '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-narr{order:5}',
   '#dev-editor{padding:12px 14px}',
@@ -172,13 +176,16 @@ export function createEditorUI(o) {
   }
 
   // ---------------------------------------------------------------- 状態
-  let editOn = false, pos = null, restorePos = null, info = null, target = null;
-  let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null;
-  // 板を出すか（何か開いているとき）と、欄を開いている間のプレビューの鍵（inert：クリックも入力も受けない）
+  let editOn = false, pos = null, restorePos = null, info = null, target = null, ignored = 0;
+  let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null, narrFocus = false;
+  // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
+  const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)));
+  // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
   function updateSide() {
     side.hidden = !(editOn || editor || cbox || cpanel || drawer);
-    const lock = !!(editor || cbox), f = frameEl();
+    const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
+    side.classList.toggle('dv-locked', lock);
   }
   const busy = () => !!((editor && editor.ta.value !== editor.orig) || (cbox && cbox.ta.value.trim()));
   function sendState() { post({ type: 'edit-state', edit: editOn, target }); }
@@ -385,9 +392,17 @@ export function createEditorUI(o) {
     if (on && !enabled()) return false;
     if (on && o.beforeEdit && !(await o.beforeEdit('narr'))) return false;
     narrOpen = on;
-    if (drawer) { drawer.remove(); drawer = null; narr = null; }
+    if (drawer) { drawer.remove(); drawer = null; narr = null; narrFocus = false; }
     if (narrOpen) {
       drawer = h('aside', { id: 'dev-narr', cls: 'edit-ui', 'aria-label': L.nTitle });
+      // 口述原稿の欄（文字と話者）に入っている間は「編集している」。欄から離れたら、その間に動いた位置に付いていく
+      const field = (t) => !!(t && t.matches && t.matches('textarea, select'));
+      drawer.addEventListener('focusin', (e) => { if (field(e.target)) { narrFocus = true; updateSide(); } });
+      drawer.addEventListener('focusout', (e) => {
+        if (field(e.relatedTarget) && drawer && drawer.contains(e.relatedTarget)) return;
+        narrFocus = false; updateSide();
+        if (narr && !narr.dirty) setTimeout(() => { if (!narrFocus && narr && !narr.dirty) narrFollow(); }, 0);
+      });
       side.appendChild(drawer);
       narrFollow(true);
     } else focusFrame();
@@ -399,6 +414,7 @@ export function createEditorUI(o) {
     if (!drawer || !pos) { if (drawer && !narr) drawer.textContent = ''; return; }
     const key = pos.key;
     if (!force && narr && narr.key === key) { renderNext(); return; }
+    if (!force && narrFocus && narr && !narr.dirty) return;   // 入力している間は段階を替えない（欄から離れたら付いていく）
     if (narr && narr.dirty) {
       if (narr.key === key) return;
       const stale = drawer.querySelector('.dv-stale');
@@ -430,11 +446,12 @@ export function createEditorUI(o) {
     drawer.appendChild(h('div', { cls: 'dv-sub', text: L.slide(narr.i + 1, String(title).replace(/\s+/g, ' ').trim()) }));
     drawer.appendChild(body);
     drawer.appendChild(h('div', { cls: 'dv-foot' }, [status, revert, saveBtn]));
+    drawer.appendChild(h('div', { cls: 'dev-lock', text: L.locked }));
     const stale = h('div', { cls: 'dv-stale' }); body.appendChild(stale);
     const nmsg = h('div', { cls: 'dev-msg' }); body.appendChild(nmsg);
     if (loading) { saveBtn.disabled = true; body.appendChild(h('div', { cls: 'dev-empty', text: L.loading })); return; }
     if (narr.error) { saveBtn.disabled = true; showErr(nmsg, narr.error); return; }
-    const markDirty = () => { narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; };
+    const markDirty = () => { narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); };
     const list = h('div', { cls: 'dv-turns' }); body.appendChild(list);
     function drawTurns() {
       list.innerHTML = '';
@@ -473,7 +490,7 @@ export function createEditorUI(o) {
         saveBtn.disabled = false;
         if (j._status !== 200) { status.textContent = j._offline ? L.offline : (j.error || L.saveFail); status.className = 'dv-st dv-dirty'; return; }
         if (j.rev) cur.rev = j.rev;
-        cur.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = 'dv-st';
+        cur.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
         if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
       });
     }
@@ -483,7 +500,7 @@ export function createEditorUI(o) {
       e.stopPropagation();
     }
     saveBtn.onclick = doSave;
-    revert.onclick = () => { cur.dirty = false; narrFollow(true); };
+    revert.onclick = () => { cur.dirty = false; narrFocus = false; updateSide(); narrFollow(true); };
   }
   function renderNext(box) {
     box = box || (drawer && drawer.querySelector('.dv-next'));
@@ -536,9 +553,14 @@ export function createEditorUI(o) {
       const r = restorePos; restorePos = null;
       if (r) post({ type: 'deck-cmd', cmd: 'goto', i: r.i, k: r.k });
       sendState(); drawBadge();
-      loadInfo().then(() => { if (narrOpen && (!narr || !narr.dirty)) narrFollow(true); });
+      loadInfo().then(() => { if (narrOpen && (!narr || !(narr.dirty || narrFocus))) narrFollow(true); });
       if (commentsOpen) loadComments();
-    } else if (m.kind === 'key' && typeof m.key === 'string') key(m.key, true);
+      return true;
+    }
+    // 信頼する欄で編集している間は、デッキからの知らせで板の欄を開け閉め・切り替えしない（頼んでいない切り替えで編集から離されない。
+    // 本当にキーを押したのなら、プレビューは inert なのでデッキには届かない：知らせはデッキが自分で送ったもの）
+    if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; return true; }
+    if (m.kind === 'key' && typeof m.key === 'string') key(m.key, true);
     else if (m.kind === 'edit') openEditor(m);
     else if (m.kind === 'comment') openComment(m);
     return true;
@@ -569,6 +591,6 @@ export function createEditorUI(o) {
   return {
     message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast,
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
-      comment: !!cbox, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty) }),
+      comment: !!cbox, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
   };
 }

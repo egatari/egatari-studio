@@ -265,9 +265,11 @@ try {
   await page.click('#dev-narr button:has-text("発言を足す")');
   await page.locator('#dev-narr .dev-turn textarea').last().fill('足した発言です。');
   await shot(page, 'narration.png');
+  ok(await page.evaluate(() => document.getElementById('preview').inert && window.__APP_TEST.ui().editing), 'narration: the preview is inert while a narration field is being edited (unsaved)');
   n = await loads();
   await page.click('#dev-narr .dv-foot button.dv-pri');
   f = await waitLoads(n);
+  ok(await page.evaluate(() => !document.getElementById('preview').inert && !window.__APP_TEST.ui().editing), 'narration: after Save the preview takes input again');
   const narr1 = await opfs.read('narration.md');
   ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
   ok(!/(^|[^\r])\n/.test(narr1), 'narration: CRLF line endings kept');

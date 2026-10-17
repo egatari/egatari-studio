@@ -420,6 +420,41 @@ try {
   await hp.waitForSelector('#dev-narr');
   await hp.waitForTimeout(300);
   ok(untouched(), 'hostile: forged hints (edit, comment, n) wrote nothing');
+  // 口述原稿の欄に入力している間・未保存の変更がある間は、プレビューを inert にし（クリックも鍵盤も受けない）、デッキからの知らせで
+  // 板の欄を開け閉め・切り替えしない。位置の知らせは受け取り、編集していなければ引き出しは今の段階に付いていく
+  {
+    const ui = () => hp.evaluate(() => window.__DEV_UI.state());
+    const inert = () => hp.evaluate(() => document.getElementById('deck').inert);
+    await hf.evaluate(() => DECK.go(1, 0, false));
+    await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return s.narr && s.pos && s.narrKey === s.pos.key; });
+    await hp.waitForSelector('#dev-narr .dev-turn textarea');
+    ok(!(await inert()), 'narration drawer open but not editing: the preview stays interactive (the drawer follows the slide)');
+    const k0 = (await ui()).narrKey;
+    // 入力の欄に入る（まだ変えていない）→ inert。デッキが動いても段階は替えない。欄から離れたら付いていく
+    await hp.locator('#dev-narr .dev-turn textarea').first().focus();
+    ok(await inert() && (await ui()).editing, 'focus in a narration field → the preview is inert');
+    await hf.evaluate(() => DECK.go(2, 0, false));
+    await hp.waitForFunction(() => window.__DEV_UI.state().pos.i === 2);
+    ok((await ui()).narrKey === k0, 'while a narration field has the focus, a deck position change does not switch the step (received, deferred)');
+    await hp.locator('#dev-narr .dev-turn textarea').first().press('Escape');
+    await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return s.narrKey === s.pos.key; });
+    ok(!(await inert()) && (await ui()).narrKey !== k0, 'leaving the field → the preview is interactive again and the drawer follows to the current step');
+    // 未保存の変更がある：欄から離れても inert のまま。デッキからの知らせ（n・c・Escape・コメント・位置）では何も替わらない
+    await hp.locator('#dev-narr button', { hasText: '発言を足す' }).click();
+    await hp.locator('#dev-narr .dev-head .dv-t').click();
+    const k1 = (await ui()).narrKey, ig0 = (await ui()).ignored;
+    ok(await inert() && (await ui()).narrDirty, 'unsaved narration (focus elsewhere) → the preview stays inert');
+    for (const k of ['n', 'c', 'Escape', 'comment']) await hf.evaluate((k) => window.__hint(k), k);
+    await hf.evaluate(() => DECK.go(3, 0, false));
+    await hp.waitForFunction(() => window.__DEV_UI.state().pos.i === 3);
+    const s6 = await ui();
+    ok(s6.narr && s6.narrKey === k1 && s6.narrDirty && !s6.comments && !s6.comment && s6.ignored === ig0 + 4 && !(await hp.$('#dev-comment')),
+      'while editing, unsolicited deck hints (n, c, Escape, comment) and position changes neither close nor switch the drawer, nor open other panels ' + JSON.stringify({ ignored: s6.ignored - ig0, key: s6.narrKey }));
+    await hp.locator('#dev-narr .dv-foot button:not(.dv-pri)').click();   // 取消
+    await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return !s.narrDirty && s.narrKey === s.pos.key; });
+    ok(!(await inert()) && !(await ui()).editing, 'after Cancel the preview is interactive and the drawer follows again');
+    ok(untouched(), 'hostile: nothing written during the narration-lock checks');
+  }
   // 外枠の欄で「保存」を押したときだけ書く
   await hf.evaluate(() => window.__hint('edit'));
   await hp.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
