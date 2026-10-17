@@ -52,6 +52,8 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 - `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で原稿のフォルダの外を指すものも 403
 - 壊れた URL（`/%ZZ` など）は 400
 
+これはほかのサイトへの守りで、デッキ自身への守りではない。合言葉は配る画面のどのスクリプトからも見えるので、デッキの中のスクリプトや部品も、編集の画面と同じ依頼を送って `deck.html`・`narration.md`・`comments.json` を書き換えられる。信頼できるデッキだけを開くこと。v0.3 で編集の画面をデッキの画面の外に移す。
+
 ## Claude Code への頼み方
 
 「コメントを反映して」と頼む。Claude Code は `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに

@@ -52,6 +52,8 @@ So that a browser that has another site open cannot rewrite your source, the fol
 - `/deck/…` does not serve names starting with a dot (the copies in `.cache/edits/`, `.env`, and so on). Symlinks pointing outside the deck folder also get 403
 - Malformed URLs (such as `/%ZZ`) get 400
 
+These protect against other sites, not against the deck itself: the token is visible to every script in the served page, so code in the deck (an inline script or a component) can send the same edit requests as the editing UI and rewrite `deck.html`, `narration.md` and `comments.json`. Serve only decks you trust. v0.3 moves the editing UI out of the deck page.
+
 ## Asking Claude Code
 
 Ask "Apply the comments." Claude Code reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
