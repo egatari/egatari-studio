@@ -363,7 +363,8 @@ function audioRecordCheck(r, w, e) {
   if (own(r, 'sync') && !['auto', 'manual', 'none'].includes(r.sync)) e.push(`${w}.sync: not auto, manual or none`);
   if (r.sync === 'none' && Array.isArray(r.cues) && r.cues.length) e.push(`${w}: sync "none" with cues`);
   if (own(r, 'kind') && !['tts', 'recorded', 'imported'].includes(r.kind)) e.push(`${w}.kind: not tts, recorded or imported`);
-  if (own(r, 'inputHash') && !(typeof r.inputHash === 'string' && RE.sha256.test(r.inputHash))) e.push(`${w}.inputHash: not a sha256`);
+  // null は「分からない」（古い組み立てから持ち込んだ音声など）。読み手は古い（作り直しが要る）とみなす（§5.2）
+  if (own(r, 'inputHash') && !(r.inputHash === null || (typeof r.inputHash === 'string' && RE.sha256.test(r.inputHash)))) e.push(`${w}.inputHash: not a sha256 or null`);
   if (r.kind === 'tts' && !own(r, 'recipe')) e.push(`${w}: tts without recipe`);
   if (own(r, 'recipe')) {
     const c = r.recipe, x = `${w}.recipe`;
@@ -480,6 +481,11 @@ const token = (b) => b.type === 'cue' ? 'cue' : b.type === 'clear' ? 'mark:clear
 // seg：parseNarration の段階（turns に role・ttsParts・bounds）
 export const inputCanonical = (seg) => JSON.stringify(seg.turns.map((t) => [t.role, t.ttsParts, t.bounds.map(token)]));
 export const inputHash = (seg) => sha256Hex(inputCanonical(seg));
+// 音声が古いか（§5.4）：記録の inputHash が null（分からない）か、今の口述原稿の段階（seg。なければ古い）の hash と違う
+export async function isStale(record, seg) {
+  if (!record || record.inputHash == null || !seg) return true;
+  return record.inputHash !== await inputHash(seg);
+}
 // fileShas：{path: sha256}（audio/ の下は入れない）
 export function sourceSha256(fileShas) {
   const paths = Object.keys(fileShas).filter((p) => !p.startsWith('audio/')).sort(cmpCodePoint);
@@ -650,11 +656,13 @@ export async function exportPortable(env, srcPath, opts = {}) {
     // manifest の digest と違う（原稿を直した後に合成していない）なら、今の原稿の hash は使えないので「古い」印の値にする
     const sj = segJson(v);
     if (typeof v.inputHash === 'string' && RE.sha256.test(v.inputHash)) rcd.inputHash = v.inputHash;
+    else if (own(v, 'inputHash') && v.inputHash === null) rcd.inputHash = null;   // 展開したフォルダ：分からないまま（古い）
     else {
       rcd.inputHash = await inputHash(seg);
       if (sj && sj.voice && v.digest) {
         const d = (await sha256Hex(JSON.stringify({ turns: seg.turns.map((t) => [t.role, t.ttsParts]), voice: sj.voice }))).slice(0, 12);
-        if (d !== v.digest) { rcd.inputHash = await sha256Hex('stale\t' + v.digest); warnings.push(`${LOG}: audio for "${key}" was made from older narration (stale)`); }
+        // 原稿を直した後に合成していない：どの原稿から作ったか分からないので null（§5.2。読み手は古いとみなす）
+        if (d !== v.digest) { rcd.inputHash = null; warnings.push(`${LOG}: audio for "${key}" was made from older narration (stale)`); }
       }
     }
     if (rcd.kind === 'tts') rcd.recipe = isObj(v.recipe) ? v.recipe : recipeOf(sj, v);
