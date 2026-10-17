@@ -11,7 +11,7 @@ export const FORMAT = Object.freeze({
   BLOB_PREFIX: `${NAME}-b-`,                          // 塊の <script id> の前置（<prefix><blobId>-<n>）
   READABLE_ID: `${NAME}-readable`,                    // スクリプトなしで読める層の id
   SIGNATURES_ID: `${NAME}-signatures`,                // 署名のブロック（予約。まだ作らない）
-  FONT_SUPPLEMENT_PREFIX: `${NAME}-font-supplement-`, // 段 A の編集で足す字の <style id>（予約。後の段階）
+  FONT_SUPPLEMENT_PREFIX: `${NAME}-font-supplement-`, // 段 A の編集で足す字の <style id>（<prefix><n>。kit/core/tier-a.mjs）
   MESSAGE_KEY: NAME,                                  // 埋め込みの postMessage の鍵（{<key>: "seek", …}。後の段階）
   MIME: `application/vnd.${NAME}+json`,               // 索引の type
   URI_SCHEME: `${NAME}:`,                             // deck-audio の src（<scheme><blobId>）

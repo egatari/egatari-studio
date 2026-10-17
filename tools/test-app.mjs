@@ -22,6 +22,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav } from './portable-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
+import { regionDiff } from './tier-a-diff.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -126,6 +127,16 @@ async function frameReady(timeout = 20000) {
   }
 }
 const loads = () => page.evaluate(() => window.__APP_TEST.state().loads);
+// 「書き出す ▾」の一覧の項目を押す（一覧を開いてから）
+async function menuClick(id, p = page, menu = '#b-exportmenu') { await p.click(menu); await p.waitForSelector(`#${await p.getAttribute(menu, 'aria-controls')}:not([hidden])`); await p.click(id); }
+// プレビューが空か（確かめの前に、前のデッキも新しいデッキも何も出ていない・動いていない）
+async function previewBlank(p = page) {
+  const attr = await p.evaluate(() => { const f = document.getElementById('preview'); return { srcdoc: f.hasAttribute('srcdoc'), src: f.getAttribute('src') }; });
+  const fr = p.frames().find((x) => x.parentFrame() === p.mainFrame());
+  let inner = null;
+  try { inner = fr ? await fr.evaluate(() => ({ deck: typeof window.DECK !== 'undefined', kids: document.body ? document.body.childElementCount : 0, url: location.href })) : null; } catch { inner = null; }
+  return !attr.srcdoc && !attr.src && (!inner || (!inner.deck && inner.kids === 0));
+}
 async function waitLoads(n, timeout = 15000) {
   await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout });
   return frameReady();
@@ -315,7 +326,7 @@ try {
 
   // ---------------------------------------------------------------- 8. 書き出し
   await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('export.html', { create: true }); });
-  await page.click('#b-export');
+  await menuClick('#b-export');
   let exp = '';
   for (let i = 0; i < 200 && exp.length < 1000; i++) { await page.waitForTimeout(100); exp = (await opfs.read('export.html')) || ''; }
   ok(exp.startsWith('<!DOCTYPE html>') && exp.includes('id="deck-narration"') && !exp.includes('data-src=') && !exp.includes('edit-hint'), `export: single HTML without editing hooks (${(exp.length / 1024).toFixed(0)} KB)`);
@@ -371,6 +382,7 @@ try {
     const op = page.evaluate(() => window.__APP_TEST_OPEN(window.__tmlr));
     await page.waitForSelector('#dlg[open] #dlg-run');
     ok((await page.textContent('#code-lead')).includes('components/') && (await loads()) === n0, 'tmlr: deck-local components → asked before the preview starts (nothing loaded yet)');
+    ok(await previewBlank(), 'tmlr: the preview is blank behind the question (the previous deck is gone, nothing of the new deck rendered or ran)');
     await shot(page, 'code-consent.png');
     await page.click('#dlg-run');
     ok(await op === true, 'tmlr: opened after "Start the preview"');
@@ -416,8 +428,9 @@ try {
       const n0 = await loads();
       const p = page.evaluate((name) => window.__APP_TEST.openFile({ handle: window.__pf[name] }), name);
       const asked = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
-      if (asked) { if ((await loads()) !== n0) throw new Error('preview loaded before the code notice'); await page.click(run ? '#dlg-run' : '#dlg-cancel'); }
-      return { r: await p, n0, asked };
+      let blank = null;
+      if (asked) { if ((await loads()) !== n0) throw new Error('preview loaded before the code notice'); blank = await previewBlank(); await page.click(run ? '#dlg-run' : '#dlg-cancel'); }
+      return { r: await p, n0, asked, blank };
     };
     const pstate = () => page.evaluate(() => window.__APP_TEST.state());
     const dlgOpen = () => page.evaluate(() => document.getElementById('dlg').open);
@@ -427,9 +440,11 @@ try {
     await putFile('canary' + FORMAT.FILE_EXT, fs.readFileSync(fixture('canary-script').file));
     ok(await page.evaluate(() => window.__portableCanary) === undefined, 'portable: canary not set before opening');
     let o = await openFile('canary' + FORMAT.FILE_EXT, false);
-    ok(o.asked && o.r === false && (await loads()) === o.n0 && (await pstate()).kind === 'folder', 'portable: a file with its own code asks before any of it runs; Cancel → not opened (the folder stays), no preview loaded');
+    ok(o.asked && o.blank && o.r === false && (await pstate()).kind === 'folder', 'portable: a file with its own code asks before any of it runs (the preview is blank behind the question); Cancel → not opened (the folder stays)');
+    await waitLoads(o.n0);
+    ok(await deckFrame().evaluate(() => DECK.slides.length) > 0, 'portable: after Cancel the open folder\'s preview comes back');
     o = await openFile('canary' + FORMAT.FILE_EXT);
-    ok(o.asked && o.r === true, 'portable: canary fixture opens after "Start the preview"');
+    ok(o.asked && o.blank && o.r === true, 'portable: canary fixture opens after "Start the preview" (blank preview while asking)');
     await waitLoads(o.n0);
     ok(await page.evaluate(() => window.__portableCanary) === undefined, 'portable: the canary script never ran in the app page (import reads bytes in a worker)');
     ok(await page.evaluate(() => window.__APP_TEST.workerProbe('__portableCanary')) === null, 'portable: the canary script never ran in the reader worker');
@@ -452,7 +467,15 @@ try {
     ok(ps.kind === 'memory' && ps.portable.docId === pmin.index.docId && !ps.error, `portable: in-memory workspace, docId ${ps.portable.docId}`);
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice'), 'portable: core profile → no code notice');
-    ok(await page.isVisible('#b-save') && await page.isVisible('#b-unpack') && await page.isHidden('#b-export') && await page.isHidden('#b-export-portable'), 'portable: toolbar shows Save / Export folder, hides the folder exports');
+    ok(await page.isVisible('#b-save') && await page.isVisible('#b-savemenu') && await page.isHidden('#m-save'), 'portable: toolbar shows Save and its menu button');
+    await page.click('#b-savemenu');
+    ok(await page.isVisible('#b-savenew') && await page.isVisible('#b-saveas'), 'portable: the Save menu has Save as new lesson / Save a copy');
+    await shot(page, 'portable-save-menu.png');
+    await page.keyboard.press('Escape');
+    await page.click('#b-exportmenu');
+    ok(await page.isVisible('#b-unpack') && await page.isHidden('#b-export') && await page.isHidden('#b-export-portable') && await page.isHidden('#m-save'), 'portable: the Export menu has Export folder, not the folder exports (and opening it closed the Save menu)');
+    await page.keyboard.press('Escape');
+    ok(await page.isHidden('#m-export'), 'menu: Esc closes the Export menu');
     ok(ps.portable.stale.length === 0 && ps.portable.readOnly === null, 'portable: no stale audio, editable');
 
     // 最初の編集の前に権利を見せる
@@ -466,6 +489,33 @@ try {
     await page.click('#dlg-ok');
     await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
     ok((await pstate()).portable.rightsOk, 'rights: accepted, edit mode on');
+    await page.click('#b-edit');
+
+    // 段 A：口述原稿だけを直して保存 → 組み直さない。決まった場所の外は 1 バイトも変わらず、新しい字は字の補いで
+    await f.evaluate(() => DECK.go(1, 0, false));
+    await page.click('#b-narr');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.locator('#dev-narr .dev-turn textarea').first().fill('まず、何を最小化するのかを確かめます。鬱蒼とした森で考えます。');
+    n = await loads();
+    await page.click('#dev-narr .dv-foot button.dv-pri');
+    f = await waitLoads(n);
+    await page.click('#b-narr');
+    await page.click('#b-save');
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    ok(!(await dlgOpen()), 'tier A: narration-only change saves without the rebuild warning');
+    const aBuf = await getFile(MINF);
+    let ps0 = await pstate();
+    ok(ps0.portable.lastTier === 'A' && ps0.portable.lastTierA && ps0.portable.lastTierA.narration.join() === '何を最小化するか:0', 'tier A: saved without rebuilding (only the edited step)');
+    try { regionDiff(pmin.html, aBuf.toString(), { narration: ['何を最小化するか:0'] }); ok(true, 'tier A: every byte outside the §7.2 regions is unchanged (region-aware diff)'); }
+    catch (e) { ok(false, 'tier A: region-aware diff: ' + e.message.slice(0, 300)); }
+    ok(aBuf.toString().includes(`id="${FORMAT.FONT_SUPPLEMENT_PREFIX}0"`) && ps0.portable.lastTierA.supplement && ps0.portable.lastTierA.supplement.chars.includes('鬱'), 'tier A: a font supplement for the new glyphs (fetched from the app\'s own font files)');
+    const aRead = await readPortable(new Uint8Array(aBuf));
+    ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
+    ok(ps0.portable.stale.includes('何を最小化するか:0') && JSON.stringify(aRead.index.audio['何を最小化するか:0']) === JSON.stringify(pmin.index.audio['何を最小化するか:0']), 'tier A: the edited step\'s audio is kept as is and shown as stale');
+    await shot(page, 'portable-tier-a-saved.png');
+    await f.evaluate(() => DECK.go(2, 3, false));
+    await page.click('#b-edit');
+    await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
 
     // 文字を直す（いつもの編集の画面）
     const pli = f.locator('#stage .slide.active li[data-step="2"]');
@@ -497,9 +547,20 @@ try {
     ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === '何を最小化するか:0' && ps.warn.some((w) => w.includes('何を最小化するか:0')), `portable narration: the edited step is shown as stale (${ps.portable.stale.join(', ')})`);
     await page.click('#b-narr');
 
-    // 保存：同じファイル（OPFS のハンドル）に上書き
+    // 保存：スライドを直したので段 B（組み直す）。保存の前に、編集していないスライドの見え方が変わりうることを知らせる
     await page.click('#b-save');
+    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+    ok((await page.textContent('#tier-b-warn')).includes('編集していないスライドも、見え方が変わることがあります'), 'tier B: warns before saving that slides you did not edit may look different');
+    ok((await page.textContent('#dlg-body')).includes('スライドの原稿を直したので'), 'tier B: says why it cannot save without rebuilding');
+    await shot(page, 'portable-tier-b-warning.png');
+    await page.click('#dlg-cancel');
+    await page.waitForTimeout(200);
+    ok((await pstate()).portable.dirty, 'tier B: Cancel → not saved');
+    await page.click('#b-save');
+    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+    await page.click('#dlg-rebuild');
     await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    ok((await pstate()).portable.lastTier === 'B', 'tier B: rebuilt and saved');
     const savedBuf = await getFile(MINF);
     const saved = await readPortable(new Uint8Array(savedBuf));
     ok(savedBuf.toString() === (await page.evaluate(() => window.__APP_TEST.saved())), 'save: the file handle was overwritten with the saved document');
@@ -521,6 +582,17 @@ try {
     const memArchive = Object.keys(mem).filter((k) => !/^\.cache\//.test(k) && k !== 'comments.json').sort();
     ok(JSON.stringify(u.written.slice().sort()) === JSON.stringify(memArchive) && u.written.every((k) => fs.readFileSync(path.join(U, k)).equals(mem[k])), `save: unpacked folder matches the in-memory workspace (${u.written.length} files)`);
 
+    // 新しい教材として保存：新しい docId と derivedFrom（元の docId と sourceSha256）。権利の表示と作り手はそのまま。変更がなければ段 A
+    await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); const d = await root.getDirectoryHandle('pf', { create: true }); window.__APP_TEST.saveHandle = await d.getFileHandle('new-lesson.html', { create: true }); });
+    await menuClick('#b-savenew', page, '#b-savemenu');
+    await page.waitForFunction((id) => window.__APP_TEST.state().portable.docId !== id, pmin.index.docId, { timeout: 30000 });
+    const nl = await readPortable(new Uint8Array(Buffer.from(await page.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }), 'base64')));
+    ok(nl.docId !== pmin.index.docId && nl.deckMeta.docId === nl.docId && JSON.parse(new TextDecoder().decode(nl.files[FORMAT.CONFIG_FILE])).docId === nl.docId, `save as new lesson: new docId ${nl.docId} (index, deck-meta and ${FORMAT.CONFIG_FILE})`);
+    ok(JSON.stringify(nl.index.metadata.derivedFrom) === JSON.stringify({ docId: pmin.index.docId, sourceSha256: saved.index.sourceSha256 }), 'save as new lesson: derivedFrom = the original docId and sourceSha256');
+    ok(['license', 'copyright', 'attribution', 'creators'].every((k) => JSON.stringify(nl.index.metadata[k]) === JSON.stringify(pmin.index.metadata[k])), 'save as new lesson: copyright, attribution and creators kept');
+    ok((await pstate()).portable.lastTier === 'A' && nl.sourceMatches, 'save as new lesson: no other change → saved without rebuilding');
+    await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+
     // 開き直す
     o = await openFile(MINF);
     f = await waitLoads(o.n0);
@@ -530,11 +602,11 @@ try {
 
     // フォルダに書き出す（空のフォルダ）→ 中身は unpack と同じ。空でないフォルダは断る
     await emptyDir('unpacked');
-    await page.click('#b-unpack');
+    await menuClick('#b-unpack');
     await page.waitForFunction(() => document.getElementById('st-msg').textContent.includes('unpacked'), null, { timeout: 15000 });
     const out1 = await dirFiles('unpacked');
     ok(JSON.stringify(Object.keys(out1).sort()) === JSON.stringify(u.written.slice().sort()) && u.written.every((k) => Buffer.from(out1[k], 'base64').equals(fs.readFileSync(path.join(U, k)))), `export folder: same files and bytes as npm run portable -- unpack (${Object.keys(out1).length})`);
-    await page.click('#b-unpack');
+    await menuClick('#b-unpack');
     await page.waitForSelector('#toast.show.bad');
     ok((await page.textContent('#toast')).includes('空ではありません') && Object.keys(await dirFiles('unpacked')).length === Object.keys(out1).length, 'export folder: a non-empty folder is refused');
     await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
@@ -543,9 +615,11 @@ try {
     n = await loads();
     ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dirs.unpacked)) === true, 'export folder: the exported folder opens as a folder');
     await waitLoads(n);
-    ok(await page.isVisible('#b-export-portable') && await page.isHidden('#b-save'), 'folder: toolbar shows Export portable file, hides Save');
+    await page.click('#b-exportmenu');
+    ok(await page.isVisible('#b-export-portable') && await page.isHidden('#b-save') && await page.isHidden('#b-savenew'), 'folder: the Export menu has Export portable file; Save is hidden');
+    await page.keyboard.press('Escape');
     await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__dirs.unpacked.getFileHandle('re-exported.html', { create: true }); });
-    await page.click('#b-export-portable');
+    await menuClick('#b-export-portable');
     let rx = '';
     for (let i = 0; i < 300 && rx.length < 1000; i++) { await page.waitForTimeout(100); rx = Buffer.from((await dirFiles('unpacked'))['re-exported.html'] || '', 'base64').toString(); }
     const rxr = await readPortable(rx);
@@ -583,7 +657,7 @@ try {
     await page.click('#b-narr');
 
     // 断るファイル：理由を見せる。新しい major の版だけは原稿をフォルダに取り出せる
-    for (const [name, code, extract] of [['path-traversal', 'bad-path', false], ['duplicate-member', 'duplicate-member', false], ['unknown-required-feature', 'unknown-feature', false], ['manifest-in-files', 'bad-path', false], ['future-major', 'unsupported-version', true]]) {
+    for (const [name, code, extract] of [['path-traversal', 'bad-path', false], ['duplicate-member', 'duplicate-member', false], ['unknown-required-feature', 'unknown-feature', true], ['manifest-in-files', 'bad-path', false], ['future-major', 'unsupported-version', true]]) {
       await putFile(name + FORMAT.FILE_EXT, fs.readFileSync(fixture(name).file));
       const before = (await pstate()).portable.name;
       const p = page.evaluate((name) => window.__APP_TEST.openFile({ handle: window.__pf[name] }), name + FORMAT.FILE_EXT);
@@ -604,6 +678,47 @@ try {
       }
       ok((await pstate()).portable.name === before, `refuse: ${name} → the open file stays open`);
     }
+
+    // 知らない項目をどの深さにも持つ文書：段 A の保存でも段 B の保存でも残る（§7.1）
+    {
+      const UF = 'unknown' + FORMAT.FILE_EXT;
+      await putFile(UF, fs.readFileSync(fixture('unknown-members-everywhere').file));
+      o = await openFile(UF);
+      f = await waitLoads(o.n0);
+      const kept = (ix) => ix.futureMember && ix.futureMember.kept === true && ix.version.xPatch === 7 && ix.metadata.xAudienceNote === 'kept'
+        && Object.values(ix.audio).every((a) => a.xTake && a.xTake.kept === true) && ix.extensions.chapters && ix.extensions.chapters.xNote === 'kept'
+        && (ix.themes || []).every((t) => t.xRegistryUrl === 'kept');
+      await page.click('#b-narr');
+      await page.waitForSelector('#dlg[open] #dlg-ok');
+      await page.click('#dlg-ok');
+      await page.waitForSelector('#dev-narr .dev-turn textarea');
+      await page.locator('#dev-narr .dev-turn textarea').first().fill('知らない項目を残す試験です。');
+      n = await loads();
+      await page.click('#dev-narr .dv-foot button.dv-pri');
+      f = await waitLoads(n);
+      await page.click('#b-narr');
+      await page.click('#b-save');
+      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+      const u1 = await readPortable(new Uint8Array(await getFile(UF)));
+      ok((await pstate()).portable.lastTier === 'A' && kept(u1.index) && u1.sourceMatches, 'unknown members: kept at every level by a tier A save');
+      // スライドを直す → 段 B（組み直し）でも残る
+      await page.click('#b-edit');
+      await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
+      await f.locator('#stage .slide.active h1, #stage .slide.active h2').first().dblclick();
+      await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+      await page.locator('#dev-editor textarea').fill('はじめに（段 B）');
+      n = await loads();
+      await page.click('#dev-editor button.dv-pri');
+      f = await waitLoads(n);
+      await page.click('#b-edit');
+      await page.click('#b-save');
+      await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+      await page.click('#dlg-rebuild');
+      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+      const u2 = await readPortable(new Uint8Array(await getFile(UF)));
+      ok((await pstate()).portable.lastTier === 'B' && kept(u2.index) && u2.sourceMatches && new TextDecoder().decode(u2.files['deck.html']).includes('はじめに（段 B）'), 'unknown members: kept at every level by a tier B save (rebuild)');
+      ok(!u2.index.metadata.derivedFrom && u2.docId === u1.docId, 'unknown members: Save keeps the docId and adds no derivedFrom');
+    }
   }
 
   // 部品庫・テーマ庫がこのエディタと違う文書：読むだけ（編集・保存は断り、フォルダへの書き出しはできる）
@@ -619,13 +734,30 @@ try {
     ok(await page.evaluate(() => window.__APP_TEST.openFile({ handle: window.__other })) === true, 'read-only: a file whose registry theme differs still opens');
     await waitLoads(n0);
     const st = await page.evaluate(() => window.__APP_TEST.state());
-    ok(/theme default/.test(st.portable.readOnly || '') && await page.isVisible('#notice-readonly'), 'read-only: registry hash mismatch → read-only notice: ' + st.portable.readOnly);
+    ok(/theme default/.test(st.portable.tierAOnly || '') && !st.portable.readOnly && await page.isVisible('#notice-tier-a'), 'tier A only: registry hash mismatch → only narration, audio and timing can be edited (§6): ' + st.portable.tierAOnly);
     await page.click('#b-edit');
     await page.waitForSelector('#toast.show.bad');
-    ok(!(await page.evaluate(() => document.getElementById('dlg').open)) && (await page.textContent('#toast')).includes('読むだけ'), 'read-only: editing is refused (no rights prompt)');
-    await page.click('#b-save');
-    ok((await page.textContent('#toast')).includes('保存できません'), 'read-only: saving is refused');
+    ok(!(await page.evaluate(() => document.getElementById('dlg').open)) && (await page.textContent('#toast')).includes('スライドを編集できません'), 'tier A only: slide editing is refused (no rights prompt)');
+    await shot(page, 'portable-tier-a-only.png');
     await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+    // 口述原稿は直せる（権利を見せてから）。保存は段 A
+    let of = deckFrame();
+    await of.evaluate(() => DECK.go(1, 1, false));
+    await page.click('#b-narr');
+    await page.waitForSelector('#dlg[open] #dlg-ok');
+    await page.click('#dlg-ok');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.locator('#dev-narr .dev-turn textarea').first().fill('部品庫の違う文書でも口述原稿は直せます。');
+    const nn = await loads();
+    await page.click('#dev-narr .dv-foot button.dv-pri');
+    of = await waitLoads(nn);
+    await page.click('#b-narr');
+    await page.click('#b-save');
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    const oth = await page.evaluate(async () => { const u = new Uint8Array(await (await window.__other.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); });
+    const othText = Buffer.from(oth, 'base64').toString();
+    let othOk = true; try { regionDiff(pother, othText, { narration: ['何を最小化するか:1'] }); } catch (e) { othOk = false; console.log('    ' + e.message.slice(0, 300)); }
+    ok((await page.evaluate(() => window.__APP_TEST.state())).portable.lastTier === 'A' && othOk && JSON.parse(scanDocument(othText).byId.get(FORMAT.INDEX_ID).text).themes[0].sha256 === '0'.repeat(64), 'tier A only: narration saved without rebuilding; the registry entry and every other byte kept');
   }
 
   // ---------------------------------------------------------------- 10c. 書き込みを試みるデッキ（tools/hostile-deck.mjs：部品とインラインのスクリプト）
@@ -712,6 +844,52 @@ try {
     await page.click('#b-narr');
     await page.click('#b-edit');
     hostileQuiet = false;
+  }
+
+  // ---------------------------------------------------------------- 10d. 道具の列：1280 px 以上では 1 行に収まる（日本語・英語、フォルダ・1 ファイル）
+  for (const lang of ['ja', 'en']) {
+    const pt = await ctx.newPage();   // 同じ文脈（OPFS の minimal を開く）。言葉は ?lang= で
+    watch(pt, 'toolbar-' + lang);
+    await pt.goto(BASE + '?lang=' + lang);
+    await pt.waitForSelector('#drop');
+    const rows = () => pt.evaluate(() => {
+      const els = [...document.querySelectorAll('#top > *, #tools > *')].filter((e) => e.getClientRects().length && getComputedStyle(e).display !== 'none' && e.id !== 'tools');
+      const mids = els.map((e) => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); });
+      const right = Math.round(Math.max(...els.map((e) => e.getBoundingClientRect().right)));
+      return { spread: Math.max(...mids) - Math.min(...mids), h: document.getElementById('top').getBoundingClientRect().height, n: els.length, right, fits: right <= innerWidth && document.documentElement.scrollWidth <= innerWidth + 1 };
+    });
+    await pt.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__open = await root.getDirectoryHandle('minimal'); });
+    await pt.evaluate(() => window.__APP_TEST_OPEN(window.__open));
+    await pt.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
+    for (const [kind, open] of [['folder', null], ['portable', async () => {
+      await pt.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'lesson-with-a-long-name' + ext }); }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]);
+      await pt.waitForFunction(() => window.__APP_TEST.state().kind === 'memory' && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
+    }]]) {
+      if (open) await open();
+      // 警告のボタンも出ているとき（いちばん長いとき）
+      await pt.evaluate(() => { const b = document.getElementById('b-warn'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 warnings' : '警告 12'; });
+      for (const w of [1440, 1280]) {
+        await pt.setViewportSize({ width: w, height: 860 });
+        await pt.waitForTimeout(150);
+        const r = await rows();
+        ok(r.spread <= 6 && r.fits, `toolbar (${lang}, ${kind}, ${w} px): one row, nothing cut off (${r.n} items, height ${Math.round(r.h)} px, spread ${r.spread} px, right edge ${r.right}/${w})`);
+        if (SHOTS && w === 1440) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-${w}.png`), clip: { x: 0, y: 0, width: w, height: 120 } });
+      }
+      await pt.setViewportSize({ width: 1440, height: 860 });
+      await pt.click('#b-exportmenu');
+      await pt.waitForSelector('#m-export:not([hidden])');
+      if (SHOTS) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-menu.png`), clip: { x: 640, y: 0, width: 800, height: 300 } });
+      ok(await pt.evaluate(() => document.activeElement && document.activeElement.closest('#m-export') !== null), `menu (${lang}, ${kind}): opening focuses the first item`);
+      await pt.keyboard.press('ArrowDown');
+      await pt.keyboard.press('Escape');
+      ok(await pt.isHidden('#m-export') && await pt.evaluate(() => document.activeElement.id === 'b-exportmenu'), `menu (${lang}, ${kind}): Esc closes it and returns focus`);
+      // 狭い幅では 2 行に折り返し、はみ出さない
+      await pt.setViewportSize({ width: 900, height: 860 });
+      await pt.waitForTimeout(150);
+      ok(await pt.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `toolbar (${lang}, ${kind}, 900 px): wraps without horizontal overflow`);
+      await pt.setViewportSize({ width: 1440, height: 860 });
+    }
+    await pt.close();
   }
 
   // ---------------------------------------------------------------- 11. 英語の画面

@@ -100,3 +100,19 @@ main{flex:1;min-height:0;display:flex}
 #dlg .hint{color:var(--muted);font-size:12.5px;margin:6px 0}
 #dlg .confirm{display:flex;gap:8px;align-items:flex-start;margin:10px 0}
 #dlg pre.tech{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:8px;max-height:30vh;overflow:auto}
+/* 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：まとめて、1280 px 以上で 1 行に収める */
+.menu{position:relative;display:inline-flex}
+.menu[hidden]{display:none}
+.menu-list{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;gap:2px;min-width:220px;padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+#m-open{left:0;right:auto}
+.menu-list[hidden]{display:none}
+.menu-list button{text-align:left;border-color:transparent;background:transparent;padding:6px 10px}
+.menu-list button:hover,.menu-list button:focus-visible{background:var(--bg);border-color:var(--line)}
+.menu button[aria-expanded="true"]{border-color:var(--accent)}
+.split > #b-save{border-top-right-radius:0;border-bottom-right-radius:0}
+.split > .split-arrow{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:-1px;padding-left:6px;padding-right:6px}
+.split > #b-save.pri + .split-arrow{background:var(--accent);border-color:var(--accent);border-left-color:rgba(255,255,255,.5);color:var(--accent-fg)}
+/* デッキを開いている間は、名前の欄が縮み（…で切る）、題字は印だけにする */
+#top.has-deck .brand [data-t="brand"]{display:none}
+#top.has-deck .deckname{flex:1 1 auto;min-width:60px;max-width:none}
+@media (min-width:1280px){ #top.has-deck, #top.has-deck #tools{flex-wrap:nowrap} }

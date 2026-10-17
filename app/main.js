@@ -12,7 +12,8 @@ import { writeText, readText, hasPermission, askPermission, recentList, recentAd
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS } from '../kit/core/portable.mjs';
+import { CONTRACTS, newDocId } from '../kit/core/portable.mjs';
+import { tierA } from '../kit/core/tier-a.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -30,7 +31,8 @@ const loadLazy = async (p) => {
 };
 const engine = createEngine(RES, loadLazy);
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
-//   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, rightsOk, extended, saved}
+//   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
+//    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches}
 const S = {
   ws: null, portable: null, deckFile: null, base: null, preview: null, slides: [], warn: [], error: null,
   sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
@@ -58,6 +60,7 @@ const time = () => new Date().toLocaleTimeString(EN ? 'en-US' : 'ja-JP', { hour:
 // ---------------------------------------------------------------- はじめの画面
 async function showWelcome() {
   $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true;
+  $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
   $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
   const list = await recentList();
@@ -109,10 +112,20 @@ function resetDeck(ws, portable) {
   engine.setWorkspace(ws);
   ui.reset();
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
-  $('preview').srcdoc = '<!DOCTYPE html><html><body style="background:#2a2d33"></body></html>';
+  blankPreview();
 }
+// プレビューを空にする：iframe を新しいもの（何も読み込まない）に取り替える。srcdoc を変えるだけでは、新しい文書が読み込まれるまで
+// 前のデッキが見え、そのコードも動き続ける。取り替えれば前の文書はすぐに消え、確かめの窓の後ろには何も出ない
+function blankPreview() {
+  const f = $('preview'), g = document.createElement('iframe');
+  for (const a of f.attributes) if (a.name !== 'srcdoc' && a.name !== 'src') g.setAttribute(a.name, a.value);
+  g.addEventListener('load', focusPreview);
+  f.replaceWith(g);
+}
+function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 function showDeck(label, title) {
   $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
+  $('top').classList.add('has-deck');
   for (const e of document.querySelectorAll('.only-folder')) e.hidden = !!S.portable;
   for (const e of document.querySelectorAll('.only-portable')) e.hidden = !S.portable;
   S.label = label;
@@ -132,6 +145,8 @@ function showNotice() {
   const P = S.portable, lines = [];
   if (P && P.extended) lines.push(['notice-extended', T.extendedNotice]);
   if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
+  else if (P && P.tierAOnly) lines.push(['notice-tier-a', T.tierAOnlyNotice(P.tierAOnly)]);
+  if (P && !P.readOnly && P.sourceMatches === false) lines.push(['notice-mismatch', T.mismatchNotice]);
   const n = $('notice'); n.innerHTML = '';
   for (const [id, text] of lines) n.append(el('p', { id, text }));
   n.hidden = !lines.length;
@@ -214,7 +229,7 @@ function loadFrame() {
   S.loads++; S.fresh = false;
   f.srcdoc = previewHtml(S.base);
 }
-$('preview').addEventListener('load', () => { try { $('preview').focus(); } catch { /* 無視 */ } });
+$('preview').addEventListener('load', focusPreview);
 function showError(err) {
   $('errbox').hidden = !err;
   $('errtext').textContent = err || '';
@@ -243,9 +258,11 @@ function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 // 書き込みの口（devapi）を呼ぶのは編集の画面だけ。プレビューからの知らせ（edit-hint・deck-pos）は欄を開くだけで、書き込みにはならない
 const api = createDevApi({
   get ws() { return S.ws; },
-  beforeWrite: async () => {
+  beforeWrite: async (kind) => {
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
+    // 段 A の編集だけの文書（実行系の約束の版・部品庫の hash が違う。§6・§7.2）：スライドの原稿は直せない
+    if (S.portable.tierAOnly && kind === 'source') return T.tierAOnlyNoSlides;
     return (await ensureRights()) ? null : T.rightsDeclined;
   },
   deckFile: () => S.deckFile,
@@ -260,7 +277,7 @@ const ui = createEditorUI({
   lang: EN ? 'en' : 'ja',
   drawerHost: $('deck'),
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
-  beforeEdit: () => beforeEditing(),
+  beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
 });
 // 口述原稿の引き出しは横の板（#panel）の前に置く
@@ -463,9 +480,10 @@ async function codeConsent(listing) {
 }
 
 // 編集モード・口述原稿を開く前に：読むだけの文書なら断り、まだなら権利を見せる
-async function beforeEditing() {
+async function beforeEditing(kind) {
   if (!S.portable) return true;
   if (S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return false; }
+  if (S.portable.tierAOnly && kind === 'edit') { toast(T.tierAOnlyNoSlides, true); return false; }
   return ensureRights();
 }
 
@@ -506,8 +524,9 @@ async function openPortable(input) {
   try { r = await readInWorker(bytes); }
   catch (e) {
     status('');
-    // 知らない major の版：編集はしないが、1.x の規則で検査が通れば原稿をフォルダに取り出せる（§7.1・§9.3）。知らない必須の機能は断るだけ
-    const extract = e.code === 'unsupported-version' && !!window.showDirectoryPicker;
+    // 知らない major の版・知らない必須の機能：編集も書き出し（作り直し）もしないが、1.x の規則で索引と塊が検査を通れば原稿をフォルダに
+    // 取り出せる（§7.1・§3.5・§9.3。取り出しは書き出しではない）。通らなければ取り出しも断る
+    const extract = (e.code === 'unsupported-version' || e.code === 'unknown-feature') && !!window.showDirectoryPicker;
     const v = await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code, e.message),
       buttons: [...(extract ? [{ id: 'extract', label: T.exportFolder }] : []), { id: 'ok', label: T.ok, pri: true }] });
     if (v === 'extract') {
@@ -516,59 +535,102 @@ async function openPortable(input) {
     }
     return false;
   }
-  // 独自のコード（extended）：中のコードが動く前に知らせる（§6）。取り消せば開かない（今開いているものはそのまま）
+  // 独自のコード（extended）：中のコードが動く前に知らせる（§6）。プレビューは空にしてから聞く（前の文書も後ろに見せない）。
+  // 取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
   const extended = r.index.profile === 'extended';
   if (extended) {
+    blankPreview();
     const v = await ask({ title: T.codeTitle, kind: 'warn', body: [el('p', { id: 'code-lead', text: T.codeLeadFile }), el('p', { cls: 'hint', text: T.codeSandbox })],
       buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
-    if (v !== 'run') { status(''); toast(T.codeDeclined, true); return false; }
+    if (v !== 'run') { status(''); toast(T.codeDeclined, true); if (S.ws && S.base && S.codeOk !== false) loadFrame(); return false; }
   }
   stopPoll();
   const ws = workspaceFromPortable(name, r);
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, rightsOk: false, extended, codeOk: true, saved: null };
+  const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: false, extended, codeOk: true, saved: null,
+    original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
-  // 作り直して保存できるか：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）
-  if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.readOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);
+  // 作り直して保存できるか（段 B）：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）。
+  // できなければ段 A の編集（口述原稿・音声・秒数）だけ。組み立てられない文書と、段 A も段 B もできない文書は読むだけ
+  if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.tierAOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);
   else {
     try {
       const dry = await engine.exportPortable(S.deckFile, { carry: r.index });
       const probs = registryProblems(r.index, dry.index);
-      if (probs.length) P.readOnly = T.roRegistry(probs.join('; '));
+      if (probs.length) P.tierAOnly = T.roRegistry(probs.join('; '));
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
+  if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
   showDeck(name, name);
   await rebuild('open');
   return true;
 }
 
-// ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する（エディタの組み立てで作り直す。docId は変えない）
-async function savePortable(saveAs) {
+// ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する
+// mode：'save'（同じファイルに。docId を変えず、derivedFrom を付けも変えもしない）・'copy'（別のファイルに。docId は同じ）・
+//       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作り手はそのまま。§3.6.1・§7.3）
+// 口述原稿・音声・秒数だけが変わったなら段 A（組み直さずに決まった場所だけを書き換える。kit/core/tier-a.mjs、§7.2）。
+// スライドの原稿が変わった（など段 A でできない）なら段 B（このエディタの版で組み直す）で、保存の前にそのことを知らせて確かめる
+async function savePortable(mode = 'save') {
   const P = S.portable;
   if (!P) return;
   if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
   if (S.building) await S.building;
   status(T.saving);
-  let r;
-  try { r = await engine.exportPortable(S.deckFile, { carry: P.index }); }
-  catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  P.lastRefusal = null; P.lastTierA = null;
+  const CFG = FORMAT.CONFIG_FILE;
+  let identity = null, cfgText = null;
+  const files = S.ws.snapshot();
+  if (mode === 'new') {
+    identity = { docId: newDocId(), derivedFrom: { docId: P.index.docId, sourceSha256: P.index.sourceSha256 } };
+    let cfg = {};
+    try { cfg = JSON.parse(new TextDecoder().decode(files.get(CFG) || new Uint8Array())); } catch { cfg = {}; }
+    const m = cfg && typeof cfg.metadata === 'object' && cfg.metadata ? { ...cfg.metadata } : {};
+    m.derivedFrom = identity.derivedFrom;
+    cfgText = JSON.stringify({ ...cfg, docId: identity.docId, metadata: m }, null, 2) + '\n';
+    files.set(CFG, new TextEncoder().encode(cfgText));
+  }
+  let html, index, deckMeta, tier;
   try {
-    let h = saveAs ? null : P.handle, wrote = false;
+    const a = await tierA(P.original, files, { identity, fonts: engine.fonts });
+    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; }
+    else {
+      P.lastRefusal = { code: a.code, reason: a.reason };
+      if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
+      const v = await ask({ title: T.tierBTitle, kind: 'warn',
+        body: [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { cls: 'hint', text: T.tierBWhy(a.code) }), el('p', { cls: 'hint', text: T.tierBGap })],
+        buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
+      if (v !== 'rebuild') { status(''); return; }
+      const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
+      html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
+    }
+  } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  try {
+    let h = mode === 'save' ? P.handle : null, wrote = false;
     if (h) {
       try {
         if (!(await hasPermission(h)) && !(await askPermission(h))) throw new Error(T.noPermission);
-        await writeHandle(h, r.html); wrote = true;
+        await writeHandle(h, html); wrote = true;
       } catch (e) { if (e && e.name === 'AbortError') throw e; console.warn('[editor] cannot overwrite the file, asking where to save', e); h = null; }
     }
     if (!wrote) {
-      h = await saveWithPicker(P.name, r.html);
+      const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
+      const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
+      h = th ? (await writeHandle(th, html), th) : await saveWithPicker(name, html);
       if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; }
+      else P.name = name;
     }
+    // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）
+    if (cfgText) await S.ws.writeText(CFG, cfgText);
     S.ws.markClean();
-    P.index = r.index; P.deckMeta = r.deckMeta; P.saved = r.html;
+    P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
+    P.narr0 = await S.ws.readText('narration.md');
     updateName();
-    status(T.savedAt(time(), (r.html.length / 1048576).toFixed(1)));
-    toast(h ? T.savedToast(P.name) : T.downloadedToast(P.name));
+    const mb = (html.length / 1048576).toFixed(1);
+    status(tier === 'A' ? T.savedAtA(time(), mb) : T.savedAtB(time(), mb));
+    toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : ''));
+    showNotice();
   } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
 }
 
@@ -642,6 +704,7 @@ async function createDeck() {
 
 // ---------------------------------------------------------------- つなぎ
 applyTexts();
+document.querySelector('#top .brand').title = T.brand;
 $('w-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('w-new').onclick = () => showNewForm(true);
@@ -651,8 +714,9 @@ $('b-edit').onclick = () => ui.toggleEdit();
 $('b-narr').onclick = () => ui.toggleNarr();
 $('w-openfile').onclick = async () => openPortable(await pickPortable());
 $('b-openfile').onclick = async () => openPortable(await pickPortable());
-$('b-save').onclick = () => savePortable(false);
-$('b-saveas').onclick = () => savePortable(true);
+$('b-save').onclick = () => savePortable('save');
+$('b-savenew').onclick = () => savePortable('new');
+$('b-saveas').onclick = () => savePortable('copy');
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-comments').onclick = () => ui.toggleComments();
@@ -662,6 +726,29 @@ $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.po
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); };
 $('b-warn').onclick = showWarnings;
+// 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：開くと最初の項目に。↑↓ で移り、Esc・外を押す・項目を選ぶと閉じる
+const MENUS = [['b-openmenu', 'm-open'], ['b-savemenu', 'm-save'], ['b-exportmenu', 'm-export']].map(([b, m]) => ({ btn: $(b), list: $(m) }));
+const menuItems = (M) => [...M.list.querySelectorAll('button')].filter((b) => !b.hidden);
+function closeMenu(M, focusBtn) { if (M.list.hidden) return; M.list.hidden = true; M.btn.setAttribute('aria-expanded', 'false'); if (focusBtn) M.btn.focus(); }
+const closeMenus = () => MENUS.forEach((M) => closeMenu(M));
+for (const M of MENUS) {
+  M.btn.onclick = (e) => {
+    e.stopPropagation();
+    const was = !M.list.hidden;
+    closeMenus();
+    if (was) return;
+    M.list.hidden = false; M.btn.setAttribute('aria-expanded', 'true');
+    const f = menuItems(M)[0]; if (f) f.focus();
+  };
+  M.list.addEventListener('click', (e) => { if (e.target.closest('button')) closeMenu(M); });
+  M.list.addEventListener('keydown', (e) => {
+    const list = menuItems(M), i = list.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(M, true); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = list.length; if (n) list[((i < 0 ? 0 : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n].focus(); }
+    else if (e.key === 'Tab') closeMenu(M);
+  });
+}
+document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) closeMenus(); });
 $('b-help').onclick = showHelp;
 const drop = $('drop');
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -688,7 +775,8 @@ window.__APP_TEST = {
   saveHandle: null,
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
-    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, readOnly: S.portable.readOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice() } : null }),
+    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
+      lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   saved: () => (S.portable ? S.portable.saved : null),
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),

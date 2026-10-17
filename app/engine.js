@@ -6,6 +6,7 @@ import katex from 'katex';
 import * as P from '../kit/core/path-posix.mjs';
 import { build as coreBuild } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
+import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
 
 export const DECK = '/deck', ROOT = '/repo';
 
@@ -109,8 +110,21 @@ export function createEngine(res, loadLazy) {
     await Promise.all(todo.map(async ([rel, f]) => { try { cache.set(rel, { sig: sig(f), bytes: await ws.readBytes(rel) }); } catch { /* 消えた */ } }));
   }
 
+  // 字の分割ファイル（段 A の編集の字の補い。kit/core/tier-a.mjs の opts.fonts）：一覧は同梱の CSS から、中身は必要なものだけ読む
+  const fonts = {
+    faces: (key) => fontFaces(env, FONTS[key]),
+    async load(p) {
+      p = P.resolve(p);
+      if (p in res.b64) return res.b64[p];
+      if (!lazySet.has(p)) throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
+      if (!lazyCache.has(p)) lazyCache.set(p, await loadLazy(p));
+      return lazyCache.get(p);
+    },
+  };
+
   return {
     env,
+    fonts,
     // 作業場所を替える（フォルダ／メモリ。workspace.js）
     setWorkspace(w) { ws = w; cache.clear(); listing = { files: new Map(), dirs: new Set() }; },
     get workspace() { return ws; },
