@@ -262,7 +262,15 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
       }
       if (f.expect.canary) assert.equal(globalThis[f.expect.canary], undefined, 'reading never executes the runtime layer');
     } else await rejects(PF.readPortable(text), f.expect.read.error);
+    // 取り出しだけ（§7.1・§9.3）：知らない major は 1.x の規則で検査して取り出せる（編集はさせない）。知らない必須の機能は断る
+    if (f.expect.extract === 'ok') {
+      const r = await PF.readPortable(text, { extract: true });
+      assert.equal(r.extractOnly, true, f.name);
+      assert.ok(r.files['deck.html'] && r.warnings.some((w) => /extracted, not edited/.test(w)), f.name);
+    } else if (f.expect.extract) await rejects(PF.readPortable(text, { extract: true }), f.expect.extract.error);
   }
+  // 取り出しの印がなければ今の版の文書は extractOnly ではない
+  assert.equal((await PF.readPortable(fs.readFileSync(fixtures[0].file, 'utf8'), { extract: true })).extractOnly, false);
 });
 
 // ---------------------------------------------------------------- ブラウザ

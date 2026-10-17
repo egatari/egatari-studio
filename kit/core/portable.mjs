@@ -852,7 +852,9 @@ export function readDeckMeta(scan) {
 }
 
 // input：文字列か UTF-8 のバイト列。opts.limits で上限を変えられる（試験用）
-// 返すもの：{index, files: {path: Uint8Array}, audio: {stepKey: record}, deckMeta, docId, warnings, sourceMatches}
+// opts.extract：取り出すだけ（§7.1・§9.3）。知らない major の版でも、1.x の規則で検査が通れば原稿を返す（編集はさせない。extractOnly: true）。
+//   知らない必須の機能（requires）は取り出しでも断る（塊の中身の意味が分からないので）
+// 返すもの：{index, files: {path: Uint8Array}, audio: {stepKey: record}, deckMeta, docId, warnings, sourceMatches, extractOnly}
 export async function readPortable(input, opts = {}) {
   const L = { ...LIMITS, ...(opts.limits || {}) };
   // 1. ファイルの大きさ（解析の前）
@@ -876,20 +878,24 @@ export async function readPortable(input, opts = {}) {
   const ix = parseJsonStrict(ixEl.text, { maxMembers: L.members, maxDepth: L.jsonDepth });
   // 3. 版・必須の機能（形の検査より先に、分かりやすい理由で断る）
   if (!isObj(ix) || ix.format !== FID) fail('bad-index', `index format is not "${FID}"`);
-  if (!isObj(ix.version) || ix.version.major !== FORMAT_VERSION.major) fail('unsupported-version', `${FORMAT.DISPLAY_NAME} ${isObj(ix.version) ? ix.version.major : '?'}.x is not supported by this reader (it reads 1.x); play the file or extract its source with a newer editor`);
+  const futureMajor = !isObj(ix.version) || ix.version.major !== FORMAT_VERSION.major;
+  const extractOnly = futureMajor && !!opts.extract && isObj(ix.version) && Number.isInteger(ix.version.major) && ix.version.major > FORMAT_VERSION.major;
+  if (futureMajor && !extractOnly) fail('unsupported-version', `${FORMAT.DISPLAY_NAME} ${isObj(ix.version) ? ix.version.major : '?'}.x is not supported by this reader (it reads 1.x); play the file or extract its source with a newer editor`);
   if (Array.isArray(ix.requires)) {
     const unknown = ix.requires.filter((f) => !FEATURES.includes(f));
     if (unknown.length) fail('unknown-feature', `the file requires features this reader does not implement: ${unknown.join(', ')}`);
   }
-  if (isObj(ix.contracts) && Number.isInteger(ix.contracts.source) && ix.contracts.source > CONTRACTS.source) fail('unsupported-contract', `source contract ${ix.contracts.source} is newer than this reader (${CONTRACTS.source})`);
+  if (!extractOnly && isObj(ix.contracts) && Number.isInteger(ix.contracts.source) && ix.contracts.source > CONTRACTS.source) fail('unsupported-contract', `source contract ${ix.contracts.source} is newer than this reader (${CONTRACTS.source})`);
   // 4. パス（フォルダを作る前に全部。形の検査より先に、パスの理由で断る）
   if (isObj(ix.files)) {
     const fp = Object.keys(ix.files);
     if (fp.length > L.files) fail('too-many-files', `more than ${L.files} files`);
     const pe = checkArchivePaths(fp, L);
     if (pe.length) fail('bad-path', 'archive paths are not allowed: ' + pe.slice(0, 8).join('; '), pe);
+    // audio/manifest.json は index.audio から作るもの（§3.3）。入っていれば、展開で記録と食い違うので断る
+    if (fp.some((p) => foldPath(p) === 'audio/manifest.json')) fail('bad-path', 'audio/manifest.json must not be in files (it is derived from index.audio)');
   }
-  const errs = validateIndex(ix);
+  const errs = validateIndex(ix).filter((x) => !(extractOnly && /^version\.major:/.test(x)));
   if (errs.length) fail('invalid-index', 'index is invalid: ' + errs.slice(0, 8).join('; '), errs);
   const paths = Object.keys(ix.files);
   if (!own(ix.files, ix.entry)) fail('invalid-index', `entry "${ix.entry}" is not in files`);
@@ -936,6 +942,13 @@ export async function readPortable(input, opts = {}) {
   }
   const files = dict();
   for (const p of paths) files[p] = blobBytes.get(ix.files[p]);
+  // 設定のファイル（FORMAT.CONFIG_FILE）：あれば、その docId は索引の docId と同じであること（§3.3）
+  if (own(files, CFG)) {
+    let c;
+    try { c = parseJsonStrict(new TextDecoder('utf-8', { fatal: true }).decode(files[CFG]), { maxMembers: L.members, maxDepth: L.jsonDepth }); }
+    catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
+    if (!isObj(c) || c.docId !== ix.docId) fail('docid-mismatch', `${CFG}: docId ${isObj(c) && typeof c.docId === 'string' ? `"${c.docId.slice(0, 40)}"` : '(missing)'} differs from the index docId ${ix.docId}`);
+  }
   const audio = dict();
   if (ix.audio) for (const k of Object.keys(ix.audio)) audio[k] = ix.audio[k];
   // 6. ずれの確認（断らない。知らせて、段 A の編集を止めるのは編集器の役目）
@@ -943,7 +956,8 @@ export async function readPortable(input, opts = {}) {
   const shas = dict();
   for (const p of paths) shas[p] = ix.blobs[ix.files[p]].sha256;
   const computed = await sourceSha256(shas);
-  if (computed !== ix.sourceSha256) warnings.push('index sourceSha256 does not match its files (the producer wrote a wrong hash)');
+  // §3.4：索引の値・計算し直した値・deck-meta の値のどれか 2 つが違えば「組んだ教材と原稿が食い違う」（段 A の編集はしない）
+  if (computed !== ix.sourceSha256) warnings.push('the compiled lesson and its source disagree (the index sourceSha256 does not match its files): tier A edits are not allowed');
   const sourceMatches = !!deckMeta && deckMeta.sourceSha256 === ix.sourceSha256 && computed === ix.sourceSha256;
   if (!deckMeta) warnings.push('no deck-meta in the runtime layer');
   else {
@@ -962,7 +976,8 @@ export async function readPortable(input, opts = {}) {
       }
     } catch (e) { warnings.push('deck-audio: ' + e.message); }
   }
-  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches };
+  if (extractOnly) warnings.push(`${FORMAT.DISPLAY_NAME} ${ix.version.major}.${ix.version.minor} is newer than this reader (1.x): the source can be extracted, not edited`);
+  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, extractOnly };
 }
 
 // ---------------------------------------------------------------- 再生専用の派生（§3.7）

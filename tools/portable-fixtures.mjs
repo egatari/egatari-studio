@@ -97,14 +97,20 @@ export async function makeFixtures(out) {
   put('path-reserved', await editIndex(base, (x) => { x.files['CON.txt'] = anyBlob(x); }), { read: { error: 'bad-path' } });
   put('path-case-collision', await editIndex(base, (x) => { x.files['Deck.HTML'] = anyBlob(x); }), { read: { error: 'bad-path' } });
   put('path-file-dir', await editIndex(base, (x) => { x.files['deck.html/x'] = anyBlob(x); }), { read: { error: 'bad-path' } });
-  put('future-major', await editIndex(base, (x) => { x.version.major = 2; }), { read: { error: 'unsupported-version' }, play: true });
-  put('unknown-required-feature', await editIndex(base, (x) => { x.requires.push('something-v9'); }), { read: { error: 'unknown-feature' }, play: true });
+  put('future-major', await editIndex(base, (x) => { x.version.major = 2; }), { read: { error: 'unsupported-version' }, extract: 'ok', play: true });
+  put('manifest-in-files', await editIndex(base, (x) => { x.files['audio/manifest.json'] = Object.values(x.audio)[0] && x.files[Object.values(x.audio)[0].file]; }), { read: { error: 'bad-path' } });
+  put('config-docid-mismatch', await editIndex(base, (x) => { x.docId = '00000000-0000-4000-8000-000000000000'; }), { read: { error: 'docid-mismatch' } });
+  put('unknown-required-feature', await editIndex(base, (x) => { x.requires.push('something-v9'); }), { read: { error: 'unknown-feature' }, extract: { error: 'unknown-feature' }, play: true });
   put('unknown-optional-member', await editIndex(base, (x) => { x.futureMember = { kept: true }; }), { read: 'ok', preserved: 'futureMember' });
   put('duplicate-member', await editIndex(base, (x) => JSON.stringify(x, null, 1).replace('\n "docId"', `\n "docId": "${x.docId}",\n "docId"`)), { read: { error: 'duplicate-member' } });
   put('oversize', await editIndex(base, (x) => { x.padding = 'x'.repeat(4 * 1024 * 1024 + 16); }), { read: { error: 'index-too-large' } });
   {
     const meta = scanDocument(base).byId.get('deck-meta');
     const m = JSON.parse(meta.text); m.sourceSha256 = 'f'.repeat(64);
+    // 索引と deck-meta は同じ値だが、files から計算し直すと違う（§3.4：読み手が計算し直して見つける）
+    const wrong = 'e'.repeat(64), m2 = JSON.parse(meta.text); m2.sourceSha256 = wrong;
+    const both = base.slice(0, meta.start) + `<script type="application/json" id="deck-meta">${htmlSafeJson(JSON.stringify(m2))}</script>` + base.slice(meta.end);
+    put('source-recomputed-mismatch', await editIndex(both, (x) => { x.sourceSha256 = wrong; }), { read: 'ok', sourceMatches: false, play: true });
     put('source-mismatch', base.slice(0, meta.start) + `<script type="application/json" id="deck-meta">${htmlSafeJson(JSON.stringify(m))}</script>` + base.slice(meta.end), { read: 'ok', sourceMatches: false, play: true });
   }
   { const at = base.lastIndexOf('</body>'); put('duplicate-index', base.slice(0, at) + base.slice(ix.start, ix.end) + '\n' + base.slice(at), { read: { error: 'duplicate-id' } }); }
