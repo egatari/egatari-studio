@@ -5,7 +5,7 @@ description: motion-academic-slides のデッキ（deck.html＋narration.md）�
 
 # motion-slides-video：デッキを TTS 動画と canon のバンドルにする
 
-リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンクで入れたときは、リンク先の実体の 2 つ上。`realpath` で確かめる）。詳しい仕様（要るもの・環境変数・API）は `<repo>/docs/video.ja.md`、約束事は `<repo>/docs/contract.ja.md §4〜6`。
+リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。詳しい仕様（要るもの・環境変数・API）は `<repo>/docs/video.ja.md`、約束事は `<repo>/docs/contract.ja.md §4〜6`。
 
 canon は TML 研究室の講義配信システム。出力は Marp 形式の md とコマごとの mp4/png という形式なので、同じ形式を受け付けるほかのシステムにも使える。
 

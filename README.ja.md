@@ -147,6 +147,15 @@ ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
 ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 ```
 
+Windows では、代わりにジャンクションを作る（clone したフォルダで PowerShell から。管理者の権限も開発者モードも要らない）：
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
+  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
+}
+```
+
 | スキル | 使いどころ |
 |---|---|
 | `motion-slides` | 構成案・原稿・段階・口述原稿・検査・build（段階 1） |

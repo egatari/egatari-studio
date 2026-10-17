@@ -147,6 +147,15 @@ ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
 ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 ```
 
+On Windows, use directory junctions instead (PowerShell, in the clone; no administrator rights or developer mode needed):
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
+foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
+  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
+}
+```
+
 | Skill | Use it for |
 |---|---|
 | `motion-slides` | plan, write, step, narrate, check and build a deck (tier 1) |

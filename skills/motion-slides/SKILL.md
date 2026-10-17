@@ -5,7 +5,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 
 # motion-slides：動きのある HTML スライドを作る
 
-リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンクで入れたときは、リンク先の実体の 2 つ上。`realpath` で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
+リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
 ## 1. 作るもの
 
