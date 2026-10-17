@@ -104,9 +104,17 @@ try {
   const TOKEN = await page.evaluate(() => JSON.parse(document.getElementById('dev-cfg').textContent).token);
   ok(/^[0-9a-f]{48}$/.test(TOKEN || ''), 'token is in the shell page');
   ok(await dk().evaluate(() => typeof window.__DECK_DEV_TOKEN) === 'undefined' && !(await dk().content()).includes(TOKEN), 'token is absent from the deck document');
-  const deckDoc = await raw('/preview');
+  // /preview は外枠の印（?cap=）と Sec-Fetch-Dest: iframe がそろったときだけデッキを出す（直接開いた最上位の文書には出さない）
+  const CAP = await page.evaluate(() => JSON.parse(document.getElementById('dev-cfg').textContent).cap);
+  ok(/^[0-9a-f]{32}$/.test(CAP || '') && dk().url().includes('cap=' + CAP), 'the shell loads /preview with its own capability');
+  const harmless = (r) => r.status === 403 && /^text\/plain/.test(r.headers['content-type'] || '') && /^sandbox;/.test(r.headers['content-security-policy'] || '') && /default-src 'none'/.test(r.headers['content-security-policy']) && !/<script|DECK/.test(r.body);
+  for (const [what, q, h] of [['no capability, no Sec-Fetch-Dest', '', {}], ['capability but Sec-Fetch-Dest: document', '?cap=' + CAP, { 'sec-fetch-dest': 'document' }],
+    ['Sec-Fetch-Dest: iframe but no capability', '', { 'sec-fetch-dest': 'iframe' }], ['a guessed capability', '?cap=' + '0'.repeat(32), { 'sec-fetch-dest': 'iframe' }]]) {
+    ok(harmless(await raw('/preview' + q, { headers: h })), `GET /preview with ${what} → a harmless page (403, text/plain, CSP sandbox, no deck)`);
+  }
+  const deckDoc = await raw('/preview?cap=' + CAP, { headers: { 'sec-fetch-dest': 'iframe' } });
   const dcsp = deckDoc.headers['content-security-policy'] || '';
-  ok(deckDoc.status === 200 && !deckDoc.body.includes(TOKEN) && /connect-src 'none'/.test(dcsp) && /(^|; )sandbox allow-scripts allow-modals(;|$)/.test(dcsp), 'GET /preview: no token, CSP with connect-src \'none\' and a sandbox directive');
+  ok(deckDoc.status === 200 && deckDoc.body.includes('DECK') && !deckDoc.body.includes(TOKEN) && /connect-src 'none'/.test(dcsp) && /(^|; )sandbox allow-scripts allow-modals(;|$)/.test(dcsp), 'GET /preview: no token, CSP with connect-src \'none\' and a sandbox directive');
   ok(/frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test(dcsp) && /frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test((await raw('/')).headers['content-security-policy'] || ''), 'frame-src is the single exact preview endpoint (deck and shell)');
   ok((await raw('/deck/')).status === 403, 'GET /deck/ (the folder itself) is not a document');
   ok(await dk().evaluate(() => { try { return window.parent.document && 'reachable'; } catch { return 'blocked'; } }) === 'blocked', 'sandbox: the deck cannot reach the shell document (opaque origin)');
@@ -448,13 +456,35 @@ try {
   await deckOf(hp).evaluate(() => { location.href = '/deck/raw.html'; }).catch(() => {});
   await hp.waitForTimeout(1200);
   ok(!(deckOf(hp) && deckOf(hp).url().includes('/deck/raw.html')), 'hostile: the preview cannot navigate itself to /deck/raw.html');
-  // 直接開く：/deck/ の文書はダウンロードになり、/preview は CSP の sandbox で origin を持たない（外へも繋がらない）
+  // 外へ移る（遷移の URL がデータを運ぶ）：iframe の中のデッキが location.replace・top.location・window.open（デッキが先に取っておいた本物）・
+  // target=_blank のリンクで外の受け口へ移ろうとしても、外枠の frame-src（/preview ちょうど）と sandbox（allow-top-navigation・allow-popups なし）が止める
+  await hp.reload(); await ready(hp);                 // 前の試み（/deck/raw.html への移動）で枠はエラーの画面になっている
+  const pagesBefore = ctx.pages().length;
+  const nav = await deckOf(hp).evaluate((can) => {
+    const R = {};
+    try { top.location.href = can + '/nav?top'; R.top = 'no error'; } catch (e) { R.top = e.name; }
+    try { const w = (window.__origOpen || window.open).call(window, can + '/nav?open'); R.open = w === null ? 'null' : typeof w; } catch (e) { R.open = e.name; }
+    try { const a = document.createElement('a'); a.href = can + '/nav?blank'; a.target = '_blank'; document.body.appendChild(a); a.click(); R.blank = 'clicked'; } catch (e) { R.blank = e.name; }
+    return R;
+  }, CAN);
+  await hp.waitForTimeout(800);
+  ok(hits.length === 0 && ctx.pages().length === pagesBefore && hp.url().startsWith(hb), 'hostile: top.location / window.open / target=_blank from the framed preview reach nothing outside (sandbox) ' + JSON.stringify(nav));
+  console.log('    chrome (framed preview): ' + JSON.stringify(nav));
+  await deckOf(hp).evaluate((can) => { location.replace(can + '/nav?replace'); }, CAN).catch(() => {});
+  await hp.waitForTimeout(1200);
+  const fu = deckOf(hp) ? deckOf(hp).url() : '(no frame)';
+  ok(hits.length === 0 && !fu.startsWith(CAN), 'hostile: location.replace of the framed preview to an outside URL is blocked by the shell frame-src (frame shows ' + fu + ')');
+  console.log('    chrome (framed location.replace): frame url ' + fu);
+  // 直接開く：/deck/ の文書はダウンロードになり、/preview は（印があっても）デッキを出さない無害なページ。どれも外へ繋がらない
   const dp = await ctx.newPage();
   for (const f of ['raw.html', 'x.svg']) await dp.goto(hb + 'deck/' + f).catch(() => {});
-  await dp.goto(hb + 'preview');
-  await dp.waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: 15000 });
-  const top = await dp.evaluate((can) => fetch(can + '/hit?top').then(() => 'fetched', () => 'blocked').then((f) => ({ origin: self.origin, f })), CAN);
-  ok(top.origin === 'null' && top.f === 'blocked', 'hostile: /preview opened directly has an opaque origin (CSP sandbox) and no network ' + JSON.stringify(top));
+  const hcap = await hp.evaluate(() => JSON.parse(document.getElementById('dev-cfg').textContent).cap);
+  for (const q of ['preview', 'preview?cap=' + hcap]) {
+    const resp = await dp.goto(hb + q);
+    await dp.waitForTimeout(400);
+    const top = await dp.evaluate(() => ({ deck: typeof window.DECK, scripts: document.scripts.length, text: document.body ? document.body.innerText.slice(0, 40) : '' })).catch((e) => ({ error: String(e.message || e) }));
+    ok(resp.status() === 403 && top.deck === 'undefined' && top.scripts === 0, `hostile: /${q} opened at top level runs no deck code (harmless page) ` + JSON.stringify({ status: resp.status(), ...top }));
+  }
   await dp.waitForTimeout(500);
   ok(hits.length === 0, 'hostile: nothing reached the outside canary ' + JSON.stringify(hits));
   await dp.close();

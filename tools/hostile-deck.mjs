@@ -29,6 +29,7 @@ DECK.define("m-evil", class extends DECK.MotionElement {
 const SCRIPT = `<script>
 (function(){
   var W = "${PWNED}", V = [];
+  window.__origOpen = window.open;   // 編集の部品（hints.js）が window.open を差し替える前の本物（外へ移る試みに使う）
   // 決まり（CSP）に止められたもの
   document.addEventListener("securitypolicyviolation", function(e){ V.push(e.effectiveDirective + " " + e.blockedURI); });
   function el(){ return document.querySelector("#stage [data-src]"); }

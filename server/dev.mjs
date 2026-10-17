@@ -1,6 +1,8 @@
 // 開発サーバー：ブラウザの上で原稿・口述原稿を直し、Claude への指示（コメント）を残す
 //   /          外枠（server/shell.js・server/editor-ui.js）。デッキは sandbox の iframe に入れ、編集の画面と合言葉は外枠にだけ置く
-//   /preview   デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP と CSP の sandbox）。iframe に入れてよいのはここだけ
+//   /preview   デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP と CSP の sandbox）。iframe に入れてよいのはここだけ。
+//              外枠が読み込むたびに渡す印（?cap=…）と、ブラウザが付ける Sec-Fetch-Dest: iframe がそろったときだけ出す
+//              （タブで直接開いた最上位の文書には、外枠の frame-src が効かないので、デッキを出さずに無害なページを返す。format spec §11）
 //   /deck/…    原稿のフォルダのファイル（音声・画像・字はそのまま、ほかは文書として開けない形で。どれも CSP の sandbox 付き）
 //   /__dev/…  読み書き（合言葉・同じ origin・JSON が要る）
 //
@@ -46,6 +48,16 @@ const DIR_REAL = fs.realpathSync(DIR);
 const HINTS = fs.readFileSync(path.join(HERE, 'hints.js'), 'utf8');
 if (/<\/script|<!--/i.test(HINTS)) throw new Error('server/hints.js contains </script or <!-- (cannot be inlined)');
 const HINTS_TAG = `<script>${HINTS}</script>`;
+// /preview の印（capability）：外枠のページ（と発表者ビューの窓）を出すたびに 1 つ作り、そのページだけに入れる。新しい 64 個だけ覚える。
+// 印だけでは足りない（デッキは自分の URL から印を知りうる）ので、Sec-Fetch-Dest: iframe（ページの script からは偽れない）も要る
+const CAPS = new Map();
+function issueCap() {
+  const c = crypto.randomBytes(16).toString('hex');
+  CAPS.set(c, Date.now());
+  while (CAPS.size > 64) CAPS.delete(CAPS.keys().next().value);
+  return c;
+}
+const capOk = (c) => typeof c === 'string' && /^[0-9a-f]{32}$/.test(c) && CAPS.has(c);
 // 外枠が読み込む部品（合言葉を含まない。誰でも読める）
 const STATIC = { '/__dev/shell.js': 'shell.js', '/__dev/editor-ui.js': 'editor-ui.js' };
 
@@ -86,7 +98,7 @@ const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<':
 const jsonInHtml = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // 外枠のページ：デッキを sandbox の iframe（allow-same-origin なし）に入れ、編集の画面（server/editor-ui.js）を外に置く。合言葉はここだけ
 function shellPage() {
-  const cfg = { token: TOKEN, lang: page?.lang || 'ja', warn: page?.warn || [] };
+  const cfg = { token: TOKEN, cap: issueCap(), lang: page?.lang || 'ja', warn: page?.warn || [] };
   return `<!DOCTYPE html><html lang="${cfg.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer"><title>${escHtml(deckBase)} — dev</title><link rel="icon" href="data:,">
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}#wrap{display:flex;height:100%}#deck{flex:1;min-width:0;height:100%;border:0;display:block;background:#1b1b1b}</style>
@@ -98,10 +110,10 @@ function shellPage() {
 function presenterPage() {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Presenter — ${escHtml(deckBase)}</title><link rel="icon" href="data:,">
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
-<body><iframe id="pf" sandbox="allow-scripts allow-modals" allow="fullscreen" title="presenter"></iframe><script src="/__dev/presenter.js"></script></body></html>`;
+<body><script type="application/json" id="pres-cfg">${jsonInHtml({ cap: issueCap() })}</script><iframe id="pf" sandbox="allow-scripts allow-modals" allow="fullscreen" title="presenter"></iframe><script src="/__dev/presenter.js"></script></body></html>`;
 }
-const PRESENTER_JS = `var f=document.getElementById("pf"),n=0;
-function load(){f.src="/preview?presenter=1"+(n?"&_r="+n:"");n++;}
+const PRESENTER_JS = `var f=document.getElementById("pf"),n=0,cap=JSON.parse(document.getElementById("pres-cfg").textContent).cap;
+function load(){f.src="/preview?presenter=1&cap="+encodeURIComponent(cap)+(n?"&_r="+n:"");n++;}
 load();
 addEventListener("message",function(e){
   var m=e.data||{};
@@ -294,7 +306,12 @@ const server = http.createServer(async (req, res) => {
       req.on('close', () => clients.delete(res));
       return;
     }
-    // デッキの文書：sandbox の iframe の中で読む。合言葉は入っていない
+    // デッキの文書：sandbox の iframe の中で読む。合言葉は入っていない。外枠の印と Sec-Fetch-Dest: iframe がなければ（タブで直接開いた・
+    // ほかのページの中など）、デッキを出さずに無害なページ（動かない・どこへも繋がらない）を返す
+    if (req.method === 'GET' && p === PREVIEW_PATH && !(capOk(u.searchParams.get('cap')) && req.headers['sec-fetch-dest'] === 'iframe')) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': FILE_CSP, 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' });
+      return res.end(`The preview is shown only inside the dev server page. Open http://${String(req.headers.host)}/ instead.\nプレビューは開発サーバーのページの中でだけ表示します。http://${String(req.headers.host)}/ を開いてください。\n`);
+    }
     if (req.method === 'GET' && p === PREVIEW_PATH) {
       if (!page) await rebuild();
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': deckCsp(req),

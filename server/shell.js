@@ -28,6 +28,7 @@ window.__DEV_UI = ui;   // 確かめ方（tools/test-dev-server.mjs）が状態�
 let n = 0;
 function deckUrl(first) {
   const q = new URLSearchParams(location.search);
+  q.set('cap', cfg.cap);              // 外枠ごとの /preview の印（server/dev.mjs。直接開いた最上位の文書にはデッキを出さない）
   if (!first) q.set('_r', String(++n));
   const s = q.toString();
   return '/preview' + (s ? '?' + s : '') + (first ? location.hash : '');
