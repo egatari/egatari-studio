@@ -840,13 +840,16 @@ export async function readPortable(input, opts = {}) {
     if (unknown.length) fail('unknown-feature', `the file requires features this reader does not implement: ${unknown.join(', ')}`);
   }
   if (isObj(ix.contracts) && Number.isInteger(ix.contracts.source) && ix.contracts.source > CONTRACTS.source) fail('unsupported-contract', `source contract ${ix.contracts.source} is newer than this reader (${CONTRACTS.source})`);
+  // 4. パス（フォルダを作る前に全部。形の検査より先に、パスの理由で断る）
+  if (isObj(ix.files)) {
+    const fp = Object.keys(ix.files);
+    if (fp.length > L.files) fail('too-many-files', `more than ${L.files} files`);
+    const pe = checkArchivePaths(fp, L);
+    if (pe.length) fail('bad-path', 'archive paths are not allowed: ' + pe.slice(0, 8).join('; '), pe);
+  }
   const errs = validateIndex(ix);
   if (errs.length) fail('invalid-index', 'index is invalid: ' + errs.slice(0, 8).join('; '), errs);
-  // 4. パス（フォルダを作る前に全部）
   const paths = Object.keys(ix.files);
-  if (paths.length > L.files) fail('too-many-files', `more than ${L.files} files`);
-  const pe = checkArchivePaths(paths, L);
-  if (pe.length) fail('bad-path', 'archive paths are not allowed: ' + pe.slice(0, 8).join('; '), pe);
   if (!own(ix.files, ix.entry)) fail('invalid-index', `entry "${ix.entry}" is not in files`);
   for (const p of paths) if (!own(ix.blobs, ix.files[p])) fail('invalid-index', `files["${p}"] refers to a missing blob ${ix.files[p]}`);
   if (ix.audio) for (const [k, a] of Object.entries(ix.audio)) {

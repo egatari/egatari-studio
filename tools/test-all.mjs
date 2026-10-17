@@ -1,7 +1,7 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal と examples/tmlr2026-calibration を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-ids・test-deck-timing、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-a11y・test-app（編集アプリ）
+// 2. 単体の検査（test-narration・test-ids・test-deck-timing、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-a11y・test-portable（持ち運べる 1 ファイル）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
@@ -35,6 +35,8 @@ const steps = [
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
+  // 持ち運べる 1 ファイル（format spec）：Schema・往復・文書の試験用ファイル・file:// での再生
+  ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 編集アプリ（app/）：dist/editor を組んで配り、OPFS のフォルダで編集・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）
