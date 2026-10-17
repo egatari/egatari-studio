@@ -27,14 +27,15 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
   let clock = 0, dirty = false;
   // 書くたびに必ず増える「更新時刻」（同じミリ秒に 2 回書いても一覧の署名が変わるように）
   const tick = () => (clock = Math.max(now(), clock + 1));
-  const put = (rel, data) => {
+  // share：初めの中身（持ち運べる 1 ファイルから取り出したもの）は写さずに持つ（同じ塊を指すパスは同じバイト列。読み出しは写しを返す）
+  const put = (rel, data, share = false) => {
     const why = badRel(rel);
     if (why) throw Object.assign(new Error(`refusing to write "${rel}": ${why}`), { code: 'bad-path' });
     // ファイルとフォルダが重ならない（a と a/b を同時に持たない）
     for (const k of store.keys()) if (k.startsWith(rel + '/') || rel.startsWith(k + '/')) throw Object.assign(new Error(`refusing to write "${rel}": collides with "${k}"`), { code: 'bad-path' });
-    store.set(rel, { bytes: typeof data === 'string' ? enc.encode(data) : new Uint8Array(data), m: tick() });
+    store.set(rel, { bytes: typeof data === 'string' ? enc.encode(data) : share && data instanceof Uint8Array ? data : new Uint8Array(data), m: tick() });
   };
-  for (const [rel, data] of files instanceof Map ? files : Object.entries(files)) put(rel, data);
+  for (const [rel, data] of files instanceof Map ? files : Object.entries(files)) put(rel, data, true);
   const hidden = (rel, audio) => rel.split('/').some((s) => s.startsWith('.') || (SKIP.has(s) && !(audio && s === 'audio')));
 
   return {

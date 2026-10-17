@@ -8,6 +8,27 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 
+// ---------------------------------------------------------------- Worker との受け渡し（同じ塊を指すパスは同じバッファを共有する）
+// packFiles(files)：{path: Uint8Array} → {buffers: [ArrayBuffer…]（塊ごとに 1 つ）, table: [[path, buffer の番号]…]}。buffers は transfer に渡す
+export function packFiles(files) {
+  const seen = new Map(), buffers = [], table = [];
+  for (const p of Object.keys(files)) {
+    const b = files[p];
+    let i = seen.get(b);
+    if (i === undefined) {
+      i = buffers.length; seen.set(b, i);
+      buffers.push(b.byteOffset === 0 && b.byteLength === b.buffer.byteLength ? b.buffer : b.slice().buffer);
+    }
+    table.push([p, i]);
+  }
+  return { buffers, table };
+}
+// unpackFiles({buffers, table}) → Map(path → Uint8Array)。同じ塊のパスは同じ Uint8Array（写さない）
+export function unpackFiles({ buffers, table }) {
+  const views = buffers.map((b) => new Uint8Array(b));
+  return new Map(table.map(([p, i]) => [p, views[i]]));
+}
+
 // ---------------------------------------------------------------- 作業場所
 const RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
 export function workspaceFromPortable(name, r) {

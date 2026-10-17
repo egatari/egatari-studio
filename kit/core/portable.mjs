@@ -980,6 +980,10 @@ export async function readPortable(input, opts = {}) {
     if (paths.some((p) => ix.files[p] === id && p.startsWith('audio/')) && !AUDIO_MIME.has(b.mime)) fail('bad-mime', `blob ${id} is used as audio but its type is ${b.mime}`);
   }
   if (declared > L.archiveBytes) fail('archive-too-large', `archive is larger than ${L.archiveBytes} bytes`);
+  // 取り出した大きさ（論理）：パスごとの塊の大きさの合計（いくつものパスが 1 つの塊を指せる）。パスごとの写しを作る前、復号の前に（§11）
+  let logical = 0;
+  for (const p of paths) logical += ix.blobs[ix.files[p]].bytes;
+  if (logical > L.archiveBytes) fail('archive-too-large', `extracted files (counted per path) would be larger than ${L.archiveBytes} bytes`);
   const blobBytes = new Map();
   let total = 0;
   for (const id of used) {

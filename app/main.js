@@ -13,7 +13,7 @@ import { writeText, readText, hasPermission, askPermission, recentList, recentAd
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, newDocId } from '../kit/core/portable.mjs';
+import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { codeReasons } from '../kit/core/code-scan.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -540,6 +540,12 @@ async function openPortable(input) {
   try {
     const file = input.file || (handle ? await handle.getFile() : null);
     name = input.name || (file && file.name) || 'lesson' + FORMAT.FILE_EXT;
+    // 大きさは読む前に（File.size。読んでから比べると、断るファイルでもまず全部を確保してしまう。§11）
+    const size = input.bytes ? input.bytes.byteLength : file ? file.size : 0;
+    if (!(size <= LIMITS.fileBytes)) {
+      await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal('file-too-large', `file is larger than ${LIMITS.fileBytes} bytes (${size})`), buttons: [{ id: 'ok', label: T.ok, pri: true }] });
+      return false;
+    }
     bytes = input.bytes ? new Uint8Array(input.bytes) : new Uint8Array(await file.arrayBuffer());
   } catch (e) { toast(T.cannotReadFile + ': ' + (e.message || e), true); return false; }
   if (!(await leavePortable())) return false;

@@ -10,6 +10,7 @@
 //   staleSteps(ws)                  音声が古い段階（§5.4：inputHash が null か、今の口述原稿と違う）
 import WORKER_SRC from 'virtual:portable-worker';
 import { parseJsonStrict } from '../kit/core/portable.mjs';
+import { unpackFiles } from './portable-ws.js';
 export { workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable-ws.js';
 
 // ---------------------------------------------------------------- Worker
@@ -41,7 +42,7 @@ export async function readInWorker(bytes, { extract = false } = {}) {
   return {
     index: parseJsonStrict(m.indexText),
     deckMeta: m.deckMetaText ? parseJsonStrict(m.deckMetaText) : null,
-    files: new Map(m.files.map(([p, b]) => [p, new Uint8Array(b)])),
+    files: unpackFiles(m),
     warnings: m.warnings || [], sourceMatches: !!m.sourceMatches, extractOnly: !!m.extractOnly,
   };
 }

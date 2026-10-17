@@ -10,7 +10,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { memoryWorkspace, badRel, KEEP_EDITS } from '../app/memfs.js';
 import { rightsOf, isNoDerivatives } from '../app/rights.js';
-import { workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from '../app/portable-ws.js';
+import { workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps, packFiles, unpackFiles } from '../app/portable-ws.js';
 import { readPortable, parseJsonStrict, inputHash } from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -20,6 +20,22 @@ import { makeDeck } from './portable-fixtures.mjs';
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 const dec = new TextDecoder();
+
+ok('Worker との受け渡し：同じ塊を指すパスは 1 つのバッファを 1 回だけ渡し、取り出した側でも作業場所でも写さない', async () => {
+  const blob = new Uint8Array([1, 2, 3, 4]), other = new Uint8Array([9]);
+  const files = { 'a.bin': blob, 'b.bin': blob, 'c.bin': blob, 'd.bin': other };
+  const msg = packFiles(files);
+  assert.equal(msg.buffers.length, 2);
+  assert.deepEqual(msg.table.map(([, i]) => i), [0, 0, 0, 1]);
+  const back = structuredClone(msg, { transfer: msg.buffers });
+  const m = unpackFiles(back);
+  assert.ok(m.get('a.bin') === m.get('b.bin') && m.get('b.bin') === m.get('c.bin') && m.get('a.bin') !== m.get('d.bin'));
+  assert.equal(blob.byteLength, 0, 'the original buffer was transferred, not copied');
+  const ws = memoryWorkspace('w', m);
+  assert.deepEqual([...await ws.readBytes('c.bin')], [1, 2, 3, 4]);
+  await ws.writeBytes('a.bin', new Uint8Array([7]));
+  assert.deepEqual([...await ws.readBytes('b.bin')], [1, 2, 3, 4], 'writing one path does not change the others');
+});
 
 ok('メモリの作業場所：一覧はドットで始まる名前・out・audio などを外す（{audio: true} で audio/ を入れる）。フォルダの一覧も作る', async () => {
   const ws = memoryWorkspace('m', { 'deck.html': '<p>', 'figs/a.svg': '<svg/>', '.cache/edits/x': 'b', 'out/deck.html': 'o', 'audio/manifest.json': '{}', 'audio/seg.wav': new Uint8Array([1, 2]), 'a/node_modules/x.js': '1', 'a/.git/HEAD': 'h' });

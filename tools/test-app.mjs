@@ -861,6 +861,12 @@ try {
       (window.__cdirs ||= {})[name] = d;
     }, [name, files]);
     const narrMin = fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8');
+    // 大きすぎるファイル：File.size で読む前に断る（arrayBuffer() を呼ばない）
+    const big = page.evaluate(() => window.__APP_TEST.openFile({ file: { name: 'big.html', size: 200 * 1024 * 1024, arrayBuffer() { window.__bigRead = true; return Promise.resolve(new ArrayBuffer(8)); } } }));
+    await page.waitForSelector('#dlg[open] #refuse-reason');
+    ok((await page.textContent('#dlg .tech')).includes('file-too-large') && !(await page.evaluate(() => window.__bigRead)), 'size: an oversized file is refused from File.size before it is read');
+    await page.click('#dlg-ok');
+    ok(await big === false, 'size: the oversized file is not opened');
     // フォルダ：<script> も部品もなく、<img onerror> だけ → 聞く（以前は見逃していた）
     await mkdir('c-onerror', { 'deck.html': ONERR, 'narration.md': narrMin });
     let n0 = await loads();

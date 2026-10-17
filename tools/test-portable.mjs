@@ -328,6 +328,25 @@ ok('上限は決まった順に効く：ファイル → 索引の大きさ（�
   await rejects(PF.readPortable(firstHtml, { limits: { archiveBytes: 1000 } }), 'archive-too-large');
   await rejects(PF.readPortable(firstHtml, { limits: { fileMax: 100 } }), 'file-too-large');
   await rejects(PF.readPortable(firstHtml, { limits: { files: 2 } }), 'too-many-files');
+  // 取り出した大きさはパスごとに数える：3000 のパスが 1 つの 32 MiB の塊を指す索引（塊そのものは文書にない）は、復号より前・
+  // パスごとの写しを作るより前に断る（この上限がなければ、塊を探しに行って missing-chunk になる＝確保の前に止まっていることの印）
+  {
+    const ix0 = JSON.parse(PF.scanDocument(firstHtml).byId.get(FORMAT.INDEX_ID).text);
+    const id = 'f'.repeat(64).slice(0, Object.keys(ix0.blobs)[0].length);
+    const big = 32 * 1024 * 1024, n = Math.ceil(big / PF.LIMITS.chunkBytes);
+    ix0.blobs[id] = { ...Object.values(ix0.blobs)[0], bytes: big, sha256: 'a'.repeat(64), chunks: Array.from({ length: n }, (_, j) => `${FORMAT.BLOB_PREFIX}${id}-${j}`) };
+    const keep = { [ix0.entry]: ix0.files[ix0.entry] };
+    for (let i = 0; Object.keys(keep).length < PF.LIMITS.files; i++) keep[`fill/f${i}.bin`] = id;
+    ix0.files = keep; delete ix0.audio;
+    const crafted = await PF.replaceIndexText(firstHtml, JSON.stringify(ix0));
+    const t0 = process.memoryUsage().arrayBuffers;
+    const e = await rejects(PF.readPortable(crafted), 'archive-too-large');
+    assert.match(e.message, /per path/);
+    assert.ok(process.memoryUsage().arrayBuffers - t0 < 64 * 1024 * 1024, 'refused before allocating the extracted files');
+    // 同じ大きさでも 1 つのパスなら上限の中（塊がないので、そこで初めて断る）
+    ix0.files = { [ix0.entry]: ix0.files[ix0.entry], 'fill/one.bin': id };
+    await rejects(PF.readPortable(await PF.replaceIndexText(firstHtml, JSON.stringify(ix0))), 'missing-chunk');
+  }
   void ix;
 });
 
