@@ -13,14 +13,19 @@
 //     reload?: () => void,                         プレビューを読み込み直す（衝突のとき）
 //     store?: {get(k), set(k, v)},                 画面の状態と位置を覚える（開発サーバーの外枠は sessionStorage）
 //     warnings?: () => string[],                   編集モードの札に出す組み立ての警告
+//     markLabel?: string,                          信頼する板の印の言葉（既定は「編集中 — アプリ」／「Editing — app」）
 //   })
+// 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
+// drawerHost の中で iframe の隣）に出す。スライドの場所に重ねる欄はない。板の上には、デッキが自分の枠の外に描けない印（色の帯）を付ける。
+// スライドの場所に見えるものは、どれもデッキが描けるもの：信じてよいのはこの板の道具だけ。
+// 原稿の欄・コメントの欄を開いている間は、プレビューを inert にしてクリックを受けない（欄への入力をデッキが横取りできない）
 //   ui.message(e)  プレビューからの message（e.source は呼ぶ側でも確かめる）。扱ったら true
 //   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
 //   ui.reset()  別のデッキを開いた（入力は捨てる）
 //   ui.toggleEdit(on?) / ui.toggleNarr(on?) / ui.toggleComments(on?) / ui.state()
 const STR = {
   en: {
-    editMode: 'Edit mode', warn: 'Warnings ', editTip: (alt) => 'Double-click to edit · ' + alt + '+click to leave a note · e to exit',
+    mark: 'Editing — app', editMode: 'Edit mode', where: (n, t) => 'Slide ' + n + (t ? ': ' + t : ''), locked: 'The slides do not take clicks while this editor is open', warn: 'Warnings ', editTip: (alt) => 'Double-click to edit · ' + alt + '+click to leave a note · e to exit',
     save: 'Save', cancel: 'Cancel', editSrc: 'Edit source', closeEsc: 'Close (Esc)', editHint: '⌘/Ctrl+Enter to save · Esc to cancel · write math as \\( … \\)',
     loading: 'Loading…', loadFail: 'Could not load', stale: 'The source has changed. Please reload (this view was built from an older source)',
     saving: 'Saving…', saved: 'Saved', conflict: 'The source has changed. Please reload (copy what you typed first)', saveFail: 'Could not save', offline: 'Cannot reach the editor',
@@ -36,7 +41,7 @@ const STR = {
     dateLocale: 'en-US',
   },
   ja: {
-    editMode: '編集モード', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
+    mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
     save: '保存', cancel: '取消', editSrc: '原稿を編集', closeEsc: '閉じる（Esc）', editHint: '⌘/Ctrl+Enter で保存 · Esc で取消 · 数式は \\( … \\) のまま書けます',
     loading: '読み込み中…', loadFail: '読み込めませんでした', stale: '原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）',
     saving: '保存中…', saved: '保存しました', conflict: '原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
@@ -63,27 +68,36 @@ const CSS = [
   '.edit-ui button.dv-ghost{border-color:transparent;background:transparent;color:#5b6475;padding:2px 6px}',
   '.edit-ui textarea,.edit-ui select{font:inherit;color:#1d2330;background:#fff;border:1px solid #c7ccd6;border-radius:6px}',
   '.edit-ui textarea:focus,.edit-ui select:focus{outline:2px solid #93b4f5;outline-offset:0;border-color:#2563eb}',
-  '.dev-card{position:fixed;z-index:1000;background:#fff;border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.08)}',
-  '#dev-badge{position:fixed;z-index:1001;display:none;align-items:center;gap:8px;background:#2563eb;color:#fff;border-radius:999px;padding:4px 12px 4px 10px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.3)}',
-  '#dev-badge.dv-on{display:flex}#dev-badge b{font-weight:700}#dev-badge span{opacity:.85;font-size:12px}',
+  // 信頼する横の板（プレビューの外）。上の色の帯は、デッキが自分の枠の外には描けない印
+  '#dev-side{flex:none;width:420px;max-width:45vw;background:#f7f8fb;border-left:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0;overflow:auto}',
+  '#dev-side[hidden]{display:none}',
+  '#dev-mark{flex:none;position:sticky;top:0;z-index:2;background:#b45309;color:#fff;font-weight:700;font-size:13px;padding:6px 14px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}',
+  '#dev-mark::before{content:"";width:10px;height:10px;border-radius:50%;background:#fde68a;flex:none}',
+  '.dev-card{flex:none;margin:10px 10px 0;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.12),0 0 0 1px rgba(0,0,0,.08)}',
+  '#dev-badge{flex:none;display:none;flex-wrap:wrap;align-items:center;gap:4px 8px;background:#2563eb;color:#fff;padding:6px 14px;font-size:13px}',
+  '#dev-badge.dv-on{display:flex}#dev-badge b{font-weight:700}#dev-badge span{opacity:.9;font-size:12px}',
   '#dev-badge .dv-warn{background:#f59e0b;color:#231400;border-radius:999px;padding:0 8px;cursor:pointer;opacity:1}',
-  '#dev-editor{width:640px;max-width:calc(100vw - 24px);padding:12px 14px}',
+  '.dev-where{color:#4b5363;font-size:12.5px;margin:-2px 0 8px}',
+  '.dev-lock{color:#7a4b00;font-size:12px;margin-top:6px}',
+  'iframe.dev-locked{opacity:.55;filter:grayscale(.3)}',
+  '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-narr{order:5}',
+  '#dev-editor{padding:12px 14px}',
   '.dev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dev-head .dv-t{font-weight:700}.dev-head .dv-m{color:#6b7385;font-size:12px;font-family:ui-monospace,Menlo,monospace}.dev-head .dv-sp{flex:1}',
   '#dev-editor textarea{width:100%;min-height:96px;max-height:50vh;padding:8px 10px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre-wrap}',
   '.dev-foot{display:flex;align-items:center;gap:8px;margin-top:8px}.dev-foot .dv-hint{color:#6b7385;font-size:12px;flex:1}',
   '.dev-msg{display:none;margin-top:8px;padding:6px 10px;border-radius:6px;font-size:13px}',
   '.dev-msg.dv-err{display:block;background:#fde8e8;color:#9b1c1c;border:1px solid #f5b5b5}.dev-msg.dv-ok{display:block;background:#e7f6ec;color:#16632f}',
-  '#dev-comment{width:420px;max-width:calc(100vw - 24px);padding:12px 14px}',
+  '#dev-comment{padding:12px 14px}',
   '#dev-comment .dv-q{color:#4b5363;background:#f4f5f8;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:8px;font-size:12.5px;max-height:4.6em;overflow:hidden}',
   '#dev-comment textarea{width:100%;min-height:84px;padding:8px 10px;resize:vertical}',
-  '#dev-comments{width:360px;max-width:calc(100vw - 24px);display:flex;flex-direction:column}',
+  '#dev-comments{display:flex;flex-direction:column;max-height:50vh}',
   '#dev-comments .dev-head{padding:10px 12px 6px;margin:0;border-bottom:1px solid #e5e7ee}',
   '#dev-comments .dv-list{overflow:auto;padding:6px 8px 10px}',
   '.dev-c{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}.dev-c:hover{background:#f4f6fb;border-color:#e0e5f0}',
   '.dev-c .dv-k{font-size:11.5px;color:#6b7385}.dev-c .dv-q{font-size:12px;color:#6b7385;border-left:2px solid #f59e0b;padding-left:6px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
   '.dev-c .dv-c{white-space:pre-wrap}.dev-c .dv-row{display:flex;justify-content:flex-end;margin-top:4px}',
   '.dev-empty{color:#8a91a1;padding:14px 8px;text-align:center}',
-  '#dev-narr{flex:none;width:400px;max-width:45vw;background:#f7f8fb;border-left:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0}',
+  '#dev-narr{flex:1 0 320px;background:#f7f8fb;border-top:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0;margin-top:10px}',
   '#dev-narr .dev-head{padding:10px 14px;margin:0;background:#fff;border-bottom:1px solid #e3e6ee}',
   '#dev-narr .dv-sub{padding:6px 14px 0;color:#6b7385;font-size:12px}',
   '#dev-narr .dv-body{flex:1;overflow:auto;padding:8px 14px 14px}',
@@ -99,9 +113,9 @@ const CSS = [
   '#dev-narr .dv-foot{padding:10px 14px;background:#fff;border-top:1px solid #e3e6ee;display:flex;gap:8px;align-items:center}',
   '#dev-narr .dv-foot .dv-st{flex:1;font-size:12px;color:#6b7385}#dev-narr .dv-foot .dv-st.dv-dirty{color:#b45309}',
   '#dev-narr .dv-stale{display:none;margin:8px 0 0;padding:6px 8px;background:#fff7e6;border:1px solid #f5d38a;border-radius:6px;font-size:12.5px;color:#7a4b00}',
-  '#dev-toast{position:fixed;z-index:1002;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none;max-width:80vw}',
+  '#dev-toast{position:fixed;z-index:1002;right:16px;bottom:22px;max-width:388px;background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}',
   '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
-  '@media (max-width:720px){#dev-narr{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
+  '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
 ].join('\n');
 
 // 知らせの中身を確かめる（形が違えば捨てる）
@@ -148,17 +162,9 @@ export function createEditorUI(o) {
     t.textContent = msg; t.className = 'edit-ui ' + (kind ? 'dv-' + kind : ''); t.style.display = 'block';
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = 'none'; }, kind === 'warn' ? 6000 : 2600);
   }
-  // プレビューの中の座標（知らせの rect）→ このページの座標
-  function frameRect() { const f = frameEl(); return f ? f.getBoundingClientRect() : { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight, width: win.innerWidth, height: win.innerHeight }; }
-  function toPage(r) { const fr = frameRect(); return { left: fr.left + r.l, right: fr.left + r.r, top: fr.top + r.t, bottom: fr.top + r.b }; }
-  function place(card, rect) {
-    const W = win.innerWidth, H = win.innerHeight, w = card.offsetWidth, hh = card.offsetHeight;
-    const x = Math.max(12, Math.min(W - w - 12, rect.left));
-    let y = rect.bottom + 10;
-    if (y + hh > H - 12) y = rect.top - hh - 10;
-    if (y < 12) y = Math.max(12, Math.min(H - hh - 12, (H - hh) / 2));
-    card.style.left = x + 'px'; card.style.top = y + 'px';
-  }
+  // 信頼する横の板（プレビューの外）。編集の道具はどれもここに入れる
+  const side = h('aside', { id: 'dev-side', cls: 'edit-ui', 'aria-label': o.markLabel || L.mark, hidden: '' }, [h('div', { id: 'dev-mark', text: o.markLabel || L.mark })]);
+  o.drawerHost.appendChild(side);
   function showErr(msg, text, reload) {
     msg.className = 'dev-msg dv-err'; msg.textContent = text;
     // 再読み込み：入力は捨てて（衝突の知らせで「コピーしておいて」と伝えてある）、今の原稿から読み直す
@@ -168,6 +174,12 @@ export function createEditorUI(o) {
   // ---------------------------------------------------------------- 状態
   let editOn = false, pos = null, restorePos = null, info = null, target = null;
   let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null;
+  // 板を出すか（何か開いているとき）と、欄を開いている間のプレビューの鍵（inert：クリックも入力も受けない）
+  function updateSide() {
+    side.hidden = !(editOn || editor || cbox || cpanel || drawer);
+    const lock = !!(editor || cbox), f = frameEl();
+    if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
+  }
   const busy = () => !!((editor && editor.ta.value !== editor.orig) || (cbox && cbox.ta.value.trim()));
   function sendState() { post({ type: 'edit-state', edit: editOn, target }); }
   function setTarget(t) { target = t; sendState(); }
@@ -181,13 +193,13 @@ export function createEditorUI(o) {
 
   // ---------------------------------------------------------------- 編集モードの札
   const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) })]);
-  doc.body.appendChild(badge);
+  side.appendChild(badge);
   function drawBadge() {
     badge.classList.toggle('dv-on', editOn);
     const old = badge.querySelector('.dv-warn'); if (old) old.remove();
     const warns = o.warnings ? o.warnings() : [];
     if (warns.length) badge.appendChild(h('span', { cls: 'dv-warn', text: L.warn + warns.length, title: warns.join('\n'), on: { click: () => win.alert(warns.join('\n')) } }));
-    const fr = frameRect(); badge.style.left = (fr.left + 12) + 'px'; badge.style.top = (fr.top + 12) + 'px';
+    updateSide();
   }
   async function toggleEdit(on) {
     on = on === undefined ? !editOn : !!on;
@@ -199,12 +211,20 @@ export function createEditorUI(o) {
     return true;
   }
 
+  // 欄の中に、何を直しているか（今の位置のスライド）を信頼する板の側で見せる
+  function whereLine() {
+    if (!pos) return null;
+    const sl = info && info.slides[pos.i];
+    const t = sl ? String(sl.heading || sl.title || sl.key || '').replace(/\s+/g, ' ').trim() : '';
+    return h('div', { cls: 'dev-where', text: L.where(pos.i + 1, t) });
+  }
   // ---------------------------------------------------------------- 原稿の編集（デッキの edit の知らせ → ここで読む・確かめる・見せる・保存）
   function closeEditor(force) {
     if (!editor) return;
     if (!force && editor.ta.value !== editor.orig) return;
     editor.card.remove(); editor = null;
     if (target && !cbox) setTarget(null);
+    updateSide();
     focusFrame();
   }
   function openEditor(hint) {
@@ -220,15 +240,16 @@ export function createEditorUI(o) {
     const card = h('div', { id: 'dev-editor', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.editSrc }, [
       h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.editSrc }), h('span', { cls: 'dv-m', text: '<' + tag + '> ' + range }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeEditor(true) } })]),
+      whereLine(),
       ta, msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.editHint }), cancel, save]),
+      h('div', { cls: 'dev-lock', text: L.locked }),
     ]);
-    doc.body.appendChild(card);
-    const rect = toPage(rectOf(hint.rect));
+    side.appendChild(card);
     const ed = editor = { card, ta, orig: '', h: null, range };
+    updateSide();
     setTarget(range);
     ta.value = L.loading; ta.disabled = true; save.disabled = true;
-    place(card, rect);
     api('GET', '/__dev/source?range=' + encodeURIComponent(range)).then((j) => {
       if (editor !== ed) return;
       ta.disabled = false;
@@ -237,7 +258,6 @@ export function createEditorUI(o) {
       // 知らせの hash（プレビューの組み立てのとき）と、今の原稿の hash が違えば保存しない
       if (j.h !== hh) showErr(msg, L.stale, true); else save.disabled = false;
       ta.rows = Math.min(16, Math.max(4, j.text.split('\n').length + 1));
-      place(card, rect);
       ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
     });
     ta.focus();
@@ -273,6 +293,7 @@ export function createEditorUI(o) {
     if (!force && cbox.ta.value.trim()) return;
     cbox.card.remove(); cbox = null;
     if (target && !editor) setTarget(null);
+    updateSide();
     focusFrame();
   }
   function openComment(hint) {
@@ -287,14 +308,16 @@ export function createEditorUI(o) {
     const card = h('div', { id: 'dev-comment', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cTitle }, [
       h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: key }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeComment(true) } })]),
+      whereLine(),
       quote ? h('div', { cls: 'dv-q', text: quote }) : null,
       ta, msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.cHint }), h('button', { text: L.cancel, on: { click: () => closeComment(true) } }), save]),
+      h('div', { cls: 'dev-lock', text: L.locked }),
     ]);
-    doc.body.appendChild(card);
+    side.appendChild(card);
     const box = cbox = { card, ta };
+    updateSide();
     setTarget('#comment');
-    place(card, toPage(rectOf(hint.rect)));
     ta.focus();
     function doSave() {
       if (!ta.value.trim() || cbox !== box) return;
@@ -325,17 +348,11 @@ export function createEditorUI(o) {
           h('button', { cls: 'dv-ghost', text: '✕', title: L.closeC, on: { click: () => toggleComments(false) } })]),
         h('div', { cls: 'dv-list' }, [h('div', { cls: 'dev-empty', text: L.loading })]),
       ]);
-      doc.body.appendChild(cpanel);
-      placeComments();
+      side.appendChild(cpanel);
       loadComments();
     } else focusFrame();
+    updateSide();
     saveUi();
-  }
-  function placeComments() {
-    if (!cpanel) return;
-    const fr = frameRect();
-    cpanel.style.left = (fr.left + 12) + 'px'; cpanel.style.top = (fr.top + 52) + 'px';
-    cpanel.style.maxHeight = Math.max(160, fr.bottom - fr.top - 80) + 'px';
   }
   function loadComments() {
     api('GET', '/__dev/comments').then((list) => {
@@ -371,9 +388,10 @@ export function createEditorUI(o) {
     if (drawer) { drawer.remove(); drawer = null; narr = null; }
     if (narrOpen) {
       drawer = h('aside', { id: 'dev-narr', cls: 'edit-ui', 'aria-label': L.nTitle });
-      o.drawerHost.appendChild(drawer);
+      side.appendChild(drawer);
       narrFollow(true);
     } else focusFrame();
+    updateSide();
     saveUi();
     return true;
   }
@@ -498,7 +516,6 @@ export function createEditorUI(o) {
     if (doc.querySelector('dialog[open]')) return;
     if (['e', 'n', 'c', 'Escape'].includes(e.key)) key(e.key, false);
   });
-  win.addEventListener('resize', () => { drawBadge(); placeComments(); });
 
   // ---------------------------------------------------------------- プレビューからの知らせ
   function message(e) {
@@ -539,6 +556,7 @@ export function createEditorUI(o) {
     narrOpen = false; editOn = false;
     if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
     drawBadge();
+    updateSide();
   }
   // 外枠のページを読み込み直したとき（開発サーバー）：覚えていた状態と位置に戻す
   function restoreSaved(hashSlide) {

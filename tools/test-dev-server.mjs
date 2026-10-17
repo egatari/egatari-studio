@@ -87,6 +87,14 @@ async function ready(p = page) {
   }
   throw new Error('deck frame not ready');
 }
+// 信頼する編集の道具がどれもプレビューの外にあるか（矩形が重ならない）。印の帯が見えるか。欄を開いている間、プレビューは inert か
+const trustedLayout = (p, frameId) => p.evaluate((fid) => {
+  const f = document.getElementById(fid).getBoundingClientRect();
+  const ids = ['dev-side', 'dev-mark', 'dev-badge', 'dev-editor', 'dev-comment', 'dev-comments', 'dev-narr'].filter((id) => { const e = document.getElementById(id); return e && e.getClientRects().length; });
+  const outside = ids.every((id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.right <= f.left + 0.5 || r.left >= f.right - 0.5 || r.bottom <= f.top + 0.5 || r.top >= f.bottom - 0.5; });
+  const mark = document.getElementById('dev-mark');
+  return { ids, outside, mark: mark && mark.getClientRects().length ? mark.textContent : null, inert: document.getElementById(fid).inert };
+}, frameId);
 const loads = (p = page) => p.evaluate(() => window.__DEV_LOADS);
 async function reloaded(n, p = page) { await p.waitForFunction((n) => window.__DEV_LOADS > n, n, { timeout: 15000 }); return ready(p); }
 const deckKey = async (k, p = page) => { await deckOf(p).locator('body').press(k); await p.waitForTimeout(120); };
@@ -118,6 +126,8 @@ try {
   await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
   ok((await ta.inputValue()).includes('学習率'), 'editor (in the shell) shows raw source with TeX: ' + JSON.stringify(await ta.inputValue()));
   ok(await page.evaluate(() => !!(document.activeElement && document.activeElement.matches('#dev-editor textarea'))), 'the shell editor takes the focus');
+  const lay = await trustedLayout(page, 'deck');
+  ok(lay.outside && lay.ids.includes('dev-editor') && lay.ids.includes('dev-badge') && lay.mark === '編集中 — 開発サーバー' && lay.inert === true, 'trusted controls (badge, editor) are outside the slide area under the marker; the preview is inert while the editor is open ' + JSON.stringify(lay));
   await ta.fill('\\(\\eta>0\\)：<b>学習率</b>（編集済み）');
   await shot('2-editor.png');
   let n = await loads();
@@ -239,6 +249,8 @@ try {
   await tgt.click({ modifiers: ['Alt'] });
   await page.waitForSelector('#dev-comment textarea');
   await page.locator('#dev-comment textarea').fill('「今いる点の傾き」を色付きのまま、もっと短く');
+  const lay2 = await trustedLayout(page, 'deck');
+  ok(lay2.outside && lay2.ids.includes('dev-comment') && lay2.inert === true, 'comment box is in the trusted side panel; the preview is inert ' + JSON.stringify(lay2));
   await shot('5-comment-box.png');
   await page.locator('#dev-comment textarea').press('Meta+Enter');
   await page.waitForTimeout(300);
@@ -247,6 +259,7 @@ try {
   await dk().evaluate(() => DECK.go(0, 0, false));
   await deckKey('c');
   await page.waitForSelector('#dev-comments .dev-c');
+  ok((await trustedLayout(page, 'deck')).outside, 'comment list is outside the slide area');
   await shot('6-comments.png');
   await page.locator('#dev-comments .dev-c').first().click();
   await page.waitForTimeout(200);

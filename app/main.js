@@ -284,8 +284,9 @@ const ui = createEditorUI({
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
 });
-// 口述原稿の引き出しは横の板（#panel）の前に置く
-new MutationObserver(() => { const d = $('dev-narr'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
+// 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
+new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
+{ const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }
 window.addEventListener('message', (e) => {
   const m = e.data || {};
   const frame = $('preview').contentWindow;

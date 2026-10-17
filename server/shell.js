@@ -19,6 +19,7 @@ const store = {
 };
 const ui = createEditorUI({
   frame: () => frame, api, lang: cfg.lang, drawerHost: document.getElementById('wrap'), store,
+  markLabel: cfg.lang === 'en' ? 'Editing — dev server' : '編集中 — 開発サーバー',
   warnings: () => info.warn, reload: () => load(true),
 });
 window.__DEV_UI = ui;   // 確かめ方（tools/test-dev-server.mjs）が状態を読む

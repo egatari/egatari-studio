@@ -127,6 +127,14 @@ async function frameReady(timeout = 20000) {
     await page.waitForTimeout(100);
   }
 }
+// 信頼する編集の道具がどれもプレビューの外にあるか（矩形が重ならない）。印の帯が見えるか。欄を開いている間、プレビューは inert か
+const trustedLayout = (p, frameId) => p.evaluate((fid) => {
+  const f = document.getElementById(fid).getBoundingClientRect();
+  const ids = ['dev-side', 'dev-mark', 'dev-badge', 'dev-editor', 'dev-comment', 'dev-comments', 'dev-narr'].filter((id) => { const e = document.getElementById(id); return e && e.getClientRects().length; });
+  const outside = ids.every((id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.right <= f.left + 0.5 || r.left >= f.right - 0.5 || r.bottom <= f.top + 0.5 || r.top >= f.bottom - 0.5; });
+  const mark = document.getElementById('dev-mark');
+  return { ids, outside, mark: mark && mark.getClientRects().length ? mark.textContent : null, inert: document.getElementById(fid).inert };
+}, frameId);
 const loads = () => page.evaluate(() => window.__APP_TEST.state().loads);
 const POLL_WAIT = 3500;   // 外での変更の見張り（1.5 秒ごと）と組み直しが一巡りする時間
 // 「書き出す ▾」の一覧の項目を押す（一覧を開いてから）
@@ -210,6 +218,8 @@ try {
   const ta = page.locator('#dev-editor textarea');
   ok((await ta.inputValue()).includes('学習率'), 'edit: the editor (in the app page, outside the preview) shows the raw source');
   ok(!(await f.$('#dev-editor')), 'edit: no editor inside the preview');
+  const lay = await trustedLayout(page, 'preview');
+  ok(lay.outside && lay.ids.includes('dev-editor') && lay.mark === '編集中 — アプリ' && lay.inert === true, 'edit: every trusted control is outside the slide area, under the "編集中 — アプリ" marker; the preview is inert while the editor is open ' + JSON.stringify(lay));
   await ta.fill('\\(\\eta>0\\)：<b>学習率</b>（アプリで編集）');
   await shot(page, 'editing.png');
   n = await loads();
@@ -285,8 +295,11 @@ try {
   await page.waitForSelector('#dev-comment textarea');
   await page.fill('#dev-comment textarea', 'この見出しを短く');
   await shot(page, 'comment.png');
+  const lay2 = await trustedLayout(page, 'preview');
+  ok(lay2.outside && lay2.ids.includes('dev-comment') && lay2.inert === true, 'comment: the note box is in the trusted side panel, the preview is inert ' + JSON.stringify(lay2));
   await page.press('#dev-comment textarea', 'Meta+Enter');
   await page.waitForTimeout(400);
+  ok((await trustedLayout(page, 'preview')).inert === false, 'comment: the preview takes clicks again after the note box closes');
   const comments = JSON.parse(await opfs.read('comments.json') || '[]');
   ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === '何を最小化するか:0', 'comment: comments.json written');
   await page.click('#b-comments');

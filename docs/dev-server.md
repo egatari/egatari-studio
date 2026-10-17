@@ -25,12 +25,14 @@ The page at `/` is a frame around the deck: the deck itself runs in a sandboxed 
 
 | Key | Action |
 |---|---|
-| `e` | Toggle edit mode. Editable elements get an outline. **Double-click** to open the source (HTML, with math as `\( \)`) in a card next to the element, ⌘/Ctrl+Enter or Save to save, Esc to cancel |
+| `e` | Toggle edit mode. Editable elements get an outline. **Double-click** to open the source (HTML, with math as `\( \)`) in the side panel of the frame page (never over the slide), ⌘/Ctrl+Enter or Save to save, Esc to cancel. While the source or note box is open the slides do not take clicks |
 | `n` | Narration drawer (right; the slide shrinks beside it). Edit the turns of the current step (speaker Expert / Novice; add, delete and reorder turns). Write `{cue}` and `{φ\|ファイ}` as they are. The next step is shown below |
 | `c` | List of instructions for Claude (open ones). Click one to go to its slide; 「解決」 ("Resolve") marks it as done |
 | Alt+click (on a Mac, hold the ⌥ Option key and click) | Leave an instruction for Claude about that element |
 
-The keys work whether the focus is on the slide or on the frame page; the card or drawer that opens takes the focus, and closing it gives the focus back to the slide.
+The keys work whether the focus is on the slide or on the frame page; the box or drawer that opens takes the focus, and closing it gives the focus back to the slide.
+
+All editing tools (the edit-mode bar, the source box, the note box and list, the narration drawer) live in one side panel next to the slides, under an orange bar **編集中 — 開発サーバー** (“Editing — dev server”). **Anything inside the slide area can be drawn by the deck; trust only controls in the side panel under that bar.**
 The presenting keys (arrows, Space, p, a, l, …) work as usual outside input fields. `p` opens the presenter view in a window of its own (the deck runs sandboxed there too).
 Your input stays when the deck reloads (after a save or an outside change), so you can keep typing; if the same element or step changed in the meantime, the save is refused.
 If the source has changed elsewhere by the time you save (the hash does not match), it does not save and shows 「原稿が変わっています。再読み込みしてください」 ("The source has changed. Please reload.")
@@ -53,6 +55,7 @@ The same goes for the narration: if the lines of that step have changed elsewher
 - Files of the deck folder under `/deck/…` never run as documents: every response carries `Content-Security-Policy: sandbox; default-src 'none'` and `X-Content-Type-Options: nosniff`. Audio, video, images and fonts keep their type; everything else (HTML, SVG, XML, scripts, text) is served as `text/plain` or `application/octet-stream` with `Content-Disposition: attachment`. Neither the deck nor the frame page may frame anything but `/preview`.
 - The deck only sends **hints** to the frame page: “edit the element with this `data-src` range and hash”, “a note at this element”, the keys `e` / `n` / `c` / Esc, and its position. A hint carries no text to write. The frame page checks the shape of each hint, reads the current source itself, checks the range and the hash, and shows its own card or drawer; it writes only when you press Save (or ⌘/Ctrl+Enter) in that card or drawer. Hints with forged text are ignored; a hint can at most open a card showing the real source.
 - The token exists only in the frame page, never in the deck document.
+- The editing tools are drawn only outside the slide area, in the frame page's side panel with its orange marker bar; the deck cannot draw outside its frame. While a source or note box is open, the deck's iframe is `inert`, so the deck cannot catch the clicks or keys meant for the box. A deck can still draw a fake card inside the slide area (it cannot save anything); trust only the side panel.
 
 So that a browser that has another site open cannot rewrite your source, the following are refused as well.
 
