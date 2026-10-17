@@ -1,7 +1,7 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal と examples/tmlr2026-calibration を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-deck-timing、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-a11y・test-app（編集アプリ）
+// 2. 単体の検査（test-narration・test-deck-timing、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-security・test-a11y・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
@@ -34,6 +34,8 @@ const steps = [
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
+  // 原稿のフォルダに置かれたシンボリックリンク・テーマの extends で外へ出るもの（開発サーバー・組み立て・TTS の dry-run。SECURITY.md）
+  ['test-security', ['tools/test-security.mjs', path.join(tmp, 'security')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 編集アプリ（app/）：dist/editor を組んで配り、OPFS のフォルダで編集・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
