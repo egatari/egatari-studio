@@ -93,6 +93,7 @@ const errs = [];
 let hostileQuiet = false;   // 書き込みを試みるデッキの試験の間は、決まり（CSP）に止められた知らせを数えない（止められることを確かめている）
 const watch = (p, tag) => {
   p.on('pageerror', (e) => errs.push(`${tag} pageerror: ${e.message}`));
+  if (process.env.APP_DEBUG) p.on('console', (m) => console.log(`    [${tag} ${m.type()}] ${m.text()}`));
   // 衝突の確認（409）とポップアップの許可は意図したもの
   p.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text()) && !(hostileQuiet && /Content Security Policy|Refused to|Failed to fetch|ERR_/.test(m.text()))) errs.push(`${tag} console: ${m.text()}`); });
 };
@@ -127,6 +128,7 @@ async function frameReady(timeout = 20000) {
   }
 }
 const loads = () => page.evaluate(() => window.__APP_TEST.state().loads);
+const POLL_WAIT = 3500;   // 外での変更の見張り（1.5 秒ごと）と組み直しが一巡りする時間
 // 「書き出す ▾」の一覧の項目を押す（一覧を開いてから）
 async function menuClick(id, p = page, menu = '#b-exportmenu') { await p.click(menu); await p.waitForSelector(`#${await p.getAttribute(menu, 'aria-controls')}:not([hidden])`); await p.click(id); }
 // プレビューが空か（確かめの前に、前のデッキも新しいデッキも何も出ていない・動いていない）
@@ -843,6 +845,60 @@ try {
     ok(after['deck.html'].includes('信頼する画面で直した見出し') && after['narration.md'] === HF['narration.md'] && after['comments.json'] === null, 'hostile: the write happens only on Save in the app editor');
     await page.click('#b-narr');
     await page.click('#b-edit');
+    hostileQuiet = false;
+  }
+
+  // ---------------------------------------------------------------- 10e. コードが動くかは中身から決める（申告の profile を信じない。§6）・確かめはプレビューと発表者ビューのどちらにも効く
+  {
+    hostileQuiet = true;
+    const MIN = fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8');
+    const ONERR = MIN.replace('</section>', '<img alt="" src="data:," onerror="window.__onerrorRan = 1">\n</section>');
+    const mkdir = (name, files) => page.evaluate(async ([name, files]) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry(name, { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle(name, { create: true });
+      for (const [rel, text] of Object.entries(files)) { const w = await (await d.getFileHandle(rel, { create: true })).createWritable(); await w.write(text); await w.close(); }
+      (window.__cdirs ||= {})[name] = d;
+    }, [name, files]);
+    const narrMin = fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8');
+    // フォルダ：<script> も部品もなく、<img onerror> だけ → 聞く（以前は見逃していた）
+    await mkdir('c-onerror', { 'deck.html': ONERR, 'narration.md': narrMin });
+    let n0 = await loads();
+    let op = page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-onerror']));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    ok((await page.textContent('#code-why')).includes('onerror') && (await loads()) === n0, 'consent: a folder deck with only <img onerror> (no <script>, no component) is asked about before anything runs');
+    await page.click('#dlg-cancel');
+    ok(await op === false && (await loads()) === n0, 'consent: Cancel → not opened, nothing loaded');
+    // 持ち運べる 1 ファイル：申告は core、中身には <script>（hash は正しい） → コードを含むものとして聞き、食い違いを知らせる
+    const mis = fs.readFileSync(fixture('mislabelled-core-script').file);
+    n0 = await loads();
+    op = page.evaluate((b64) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'mislabelled.html' }); }, mis.toString('base64'));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    ok(await page.isVisible('#code-mislabel') && (await page.textContent('#code-why')).includes('<script>') && (await loads()) === n0 && await previewBlank(), 'consent: a hash-valid archive labelled core but carrying <script> is asked about (label ignored), with a warning about the inconsistent label; the preview is blank meanwhile');
+    await shot(page, 'code-mislabelled.png');
+    await page.click('#dlg-run');
+    ok(await op === true, 'consent: opened after "Start the preview"');
+    await waitLoads(n0);
+    const ms = (await page.evaluate(() => window.__APP_TEST.state())).portable;
+    ok(ms.profile === 'core' && ms.extended && ms.mislabelled && await page.isVisible('#notice-mislabel') && (await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => /core/.test(w)), 'consent: the mislabelled file is treated as containing code (notice and warning shown)');
+    // 組み直し（外での変更の見張り）で後からコードが現れたとき：取り消せば、プレビューも発表者ビューも読み込まない
+    await mkdir('c-poll', { 'deck.html': MIN, 'narration.md': narrMin });
+    op = await page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-poll']));
+    await frameReady();
+    ok(op === true && !(await page.$('#dlg[open]')), 'consent: a deck without code opens without a question');
+    const [pp] = await Promise.all([ctx.waitForEvent('page'), page.click('#b-presenter')]);
+    await page.waitForFunction(() => window.__APP_TEST.state().presLoads > 0);
+    const before = await page.evaluate(() => window.__APP_TEST.state());
+    await page.evaluate(async (text) => { const w = await (await window.__cdirs['c-poll'].getFileHandle('deck.html')).createWritable(); await w.write(text); await w.close(); }, ONERR);
+    await page.waitForSelector('#dlg[open] #dlg-run', { timeout: 20000 });
+    ok((await page.evaluate(() => window.__APP_TEST.state().presLoads)) === before.presLoads && (await loads()) === before.loads, 'consent: code appearing on a polling rebuild is asked about before the preview or the presenter view loads it');
+    await page.click('#dlg-cancel');
+    await page.waitForTimeout(POLL_WAIT);
+    await page.evaluate(async (text) => { const w = await (await window.__cdirs['c-poll'].getFileHandle('deck.html')).createWritable(); await w.write(text); await w.close(); }, ONERR.replace('</body>', '<p>again</p></body>'));
+    await page.waitForTimeout(POLL_WAIT);
+    const aft = await page.evaluate(() => window.__APP_TEST.state());
+    ok(aft.presLoads === before.presLoads && aft.loads === before.loads && !aft.allowed && !aft.presenter && pp.isClosed() && await previewBlank() && !(await page.$('#dlg[open]')),
+      'consent: after Cancel, later rebuilds load neither the preview nor the presenter view (presenter closed, preview blank, not asked again) ' + JSON.stringify({ presLoads: [before.presLoads, aft.presLoads], loads: [before.loads, aft.loads], allowed: aft.allowed }));
     hostileQuiet = false;
   }
 

@@ -10,6 +10,7 @@
 //
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { parse as parseHtml } from 'parse5';
+import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
@@ -721,10 +722,10 @@ export async function exportPortable(env, srcPath, opts = {}) {
     for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(m.get(k))}\n`);
     themes.push({ name, version: env.version || '0', sha256: await sha256Hex(lines.join('')), source: 'registry' });
   }
-  // 原稿の中の実行するスクリプト（部品の定義など）も、文書が持ち込むコード
+  // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
+  // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める
   const deckSrc = new TextDecoder().decode(files[entry]);
-  if ([...deckSrc.matchAll(/<script\b([^>]*)>/gi)].some((m) => !/type\s*=\s*["']?(?:application\/(?:ld\+)?json|text\/x-tex-macros)/i.test(m[1]))) embeddedCode = true;
-  if (Object.keys(files).some((p) => /\.m?js$/i.test(p) && !/^components\/[^/]+\/index\.js$/.test(p))) embeddedCode = true;
+  if (codeReasons(files, { entry }).length) embeddedCode = true;
 
   // 拡張の行 → extensions.<名前>[<段階の鍵>].<欄>（同じ欄が繰り返せば配列）
   const extensions = extensionsFrom(segs);

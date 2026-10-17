@@ -21,7 +21,8 @@ export function silentWav(sec) {
 
 // 小さなデッキ（2 スライド、口述原稿 3 段階、音声 2 つ）を dir に作る
 //   ids: スライドに id を付ける / component: 原稿のフォルダの部品（Extended） / breakout: </script> と <!-- を含む原稿 / canary: 実行されると印を付けるスクリプト
-export function makeDeck(dir, { ids = true, component = false, breakout = false, canary = false } = {}) {
+//   onerror: <script> のない、イベントの属性（<img onerror>）だけで印を付ける原稿
+export function makeDeck(dir, { ids = true, component = false, breakout = false, canary = false, onerror = false } = {}) {
   fs.mkdirSync(path.join(dir, 'audio'), { recursive: true });
   const id1 = ids ? ' id="s-intro1"' : '', id2 = ids ? ' id="s-step22"' : '';
   const h1 = ids ? '## はじめに {#s-intro1}' : '## はじめに', h2 = ids ? '## 一歩ずつ {#s-step22}' : '## 一歩ずつ';
@@ -32,7 +33,7 @@ export function makeDeck(dir, { ids = true, component = false, breakout = false,
 <body>
 <div id="stage">
 <section class="slide cover"${id1}><h1>はじめに</h1><p class="sub">試験用</p></section>
-<section class="slide"${id2}><h2>一歩ずつ</h2><div class="body"><p data-step="1">次の段階</p>${breakout ? '<p>&lt;/script&gt; と &lt;!-- を本文に書く</p>\n<!-- comment with </script> and <!-- inside -->' : ''}${component ? '<m-hello></m-hello>' : ''}</div></section>
+<section class="slide"${id2}><h2>一歩ずつ</h2><div class="body"><p data-step="1">次の段階</p>${breakout ? '<p>&lt;/script&gt; と &lt;!-- を本文に書く</p>\n<!-- comment with </script> and <!-- inside -->' : ''}${component ? '<m-hello></m-hello>' : ''}${onerror ? '<img alt="" src="data:," onerror="window.__portableCanary = (window.__portableCanary || 0) + 1">' : ''}</div></section>
 </div>
 ${canary ? '<script>window.__portableCanary = (window.__portableCanary || 0) + 1;</script>\n' : ''}</body>
 </html>
@@ -86,12 +87,18 @@ export async function makeFixtures(out) {
   const build = async (name, o) => (await buildPortable(path.join(makeDeck(path.join(work, name), o), 'deck.html'), { out: path.join(work, name, 'out.html') })).html;
 
   const base = await build('base', {});
-  put('minimal-portable-core', base, { read: 'ok', profile: 'core', play: true });
+  put('minimal-portable-core', base, { read: 'ok', profile: 'core', code: false, play: true });
   put('minimal-play-only', playOnly(base), { read: { error: 'no-source' }, play: true });
   put('portable-extended', await build('ext', { component: true }), { read: 'ok', profile: 'extended', play: true });
   put('legacy-heading-keys', await build('legacy', { ids: false }), { read: 'ok', audioKeys: ['はじめに:0', '一歩ずつ:0'], play: true });
   put('script-breakout', await build('breakout', { breakout: true }), { read: 'ok', identicalSource: true, play: true });
-  put('canary-script', await build('canary', { canary: true }), { read: 'ok', canary: '__portableCanary', play: true });
+  const canaryHtml = await build('canary', { canary: true });
+  put('canary-script', canaryHtml, { read: 'ok', canary: '__portableCanary', profile: 'extended', code: true, play: true });
+  // 申告と中身が食い違うもの（§6：読み手は profile を信じず、中身から「コードが動く」と決める）。hash は付け直すので検査は通る
+  put('mislabelled-core-script', await editIndex(canaryHtml, (x) => { x.profile = 'core'; }), { read: 'ok', profile: 'core', code: true, play: true });
+  const onerrorHtml = await build('onerror', { onerror: true });
+  put('event-handler-only', onerrorHtml, { read: 'ok', profile: 'extended', code: true });
+  put('mislabelled-core-onerror', await editIndex(onerrorHtml, (x) => { x.profile = 'core'; }), { read: 'ok', profile: 'core', code: true });
 
   // 壊したもの（hash は付け直すので、狙った理由だけで断られる）
   const ix = scanDocument(base).byId.get(FORMAT.INDEX_ID);

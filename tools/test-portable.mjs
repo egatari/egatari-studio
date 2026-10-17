@@ -16,6 +16,7 @@ import Ajv from 'ajv/dist/2020.js';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
+import { codeReasons, markupReasons, safeExpression } from '../kit/core/code-scan.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav, addUnknownMembers } from './portable-fixtures.mjs';
@@ -330,6 +331,33 @@ ok('上限は決まった順に効く：ファイル → 索引の大きさ（�
   void ix;
 });
 
+// ---------------------------------------------------------------- コードが動くか（申告ではなく中身から。kit/core/code-scan.mjs、§6）
+ok('コードが動くかは中身から決める：データの type のない script・on… の属性・javascript: の URL・srcdoc・文書を入れる要素・取り込む SVG・JS のファイル・部品の式', () => {
+  const has = (html) => markupReasons(html).length > 0;
+  for (const [html, want] of [
+    ['<p>plain</p><script type="application/json">{"a":1}</script><script type="text/x-tex-macros">x</script>', false],
+    ['<script>1</script>', true], ['<script type="module">1</script>', true], ['<script type="text/babel">1</script>', true], ['<script type="importmap">{}</script>', true],
+    ['<img src="data:," onerror="x()">', true], ['<svg><circle ONLOAD="x()"/></svg>', true], ['<body onload="x()">', true],
+    ['<a href=" java	script:x()">a</a>', true], ['<a href="JaVaScRiPt:x()">a</a>', true], ['<svg><a><animate attributeName="href" values="#a; javascript:x()"/></a></svg>', true],
+    ['<iframe srcdoc="&lt;b&gt;"></iframe>', true], ['<object data="x.svg"></object>', true], ['<embed src="x.svg">', true],
+    ['<template><img src="data:," onerror="x()"></template>', true], ['<a href="https://example.org/javascript:x">ok</a>', false],
+    ['<m-sweep f="((1-c)**2)**u" values="[0,1]"></m-sweep>', false], ['<m-sweep f="Math.exp(-u*c) + Math.sin(u)"></m-sweep>', false],
+    ['<m-sweep f="fetch(\'x\')"></m-sweep>', true], ['<m-sweep f="u.constructor.constructor(\'x\')()"></m-sweep>', true], ['<m-sweep f="[][\'flat\']"></m-sweep>', true],
+    ['<m-curves><script type="application/json">[{"f":"exp(-x*x/2)/sqrt(2*PI)"},{"pts":[[0,1]]}]</script></m-curves>', false],
+    ['<m-curves><script type="application/json">[{"f":"top.location"}]</script></m-curves>', true],
+    ['<m-curves><script type="application/json">{{JSON:missing.json}}</script></m-curves>', true],
+  ]) assert.equal(has(html), want, html);
+  assert.ok(safeExpression('u*u + c*u*u*u + c*c*u**4', { vars: ['u', 'c'] }));
+  assert.ok(!safeExpression('(u)=>u', { vars: ['u'] }) && !safeExpression('u;alert(1)', { vars: ['u'] }) && !safeExpression('Math.constructor', { vars: [] }));
+  const files = (o) => new Map(Object.entries(o).map(([k, v]) => [k, new TextEncoder().encode(v)]));
+  assert.deepEqual(codeReasons(files({ 'deck.html': '<p>x</p>', 'figs/a.svg': '<svg><rect/></svg>', 'narration.md': '<script>not markup</script>', 'figs/a.png': '<script>' })), []);
+  assert.ok(codeReasons(files({ 'deck.html': '<p>{{FIG:a}}</p>', 'figs/a.svg': '<svg><script>x()</script></svg>' }))[0].includes('figs/a.svg'));
+  assert.ok(codeReasons(files({ 'deck.html': '<p>x</p>', 'components/x/index.js': '1' }))[0].includes('components/x/index.js'));
+  assert.deepEqual(codeReasons(files({ 'deck.html': '<p>x</p>', 'export.html': '<script>1</script>' })), [], 'an exported HTML the deck does not name is not counted');
+  assert.ok(codeReasons(files({ 'deck.html': '<p>/*INCLUDE:part.html*/</p>', 'part.html': '<script>1</script>' })).length === 1, 'an HTML the deck names is scanned');
+  assert.ok(codeReasons(files({ 'deck.html': '<m-curves><script type="application/json">{{JSON:c.json}}</script></m-curves>', 'data/c.json': '[{"f":"x*x"}]' })).length === 0);
+});
+
 // ---------------------------------------------------------------- 文書の試験用ファイル
 const FIX = path.join(work, 'fixtures');
 let fixtures;
@@ -342,6 +370,7 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
       assert.ok(!/\/(?:Users|home|private|var\/folders|tmp)\//.test(text), `${f.name}: machine-specific path in the file`);
       const r = await PF.readPortable(text);
       if (f.expect.profile) assert.equal(r.index.profile, f.expect.profile, f.name);
+      if ('code' in f.expect) assert.equal(codeReasons(r.files, { entry: r.index.entry }).length > 0, f.expect.code, `${f.name}: code decided from the content, not from profile "${r.index.profile}"`);
       if (f.expect.sourceMatches === false) { assert.equal(r.sourceMatches, false, f.name); assert.ok(r.warnings.some((w) => /disagree/.test(w))); }
       else assert.equal(r.sourceMatches, true, f.name);
       if (f.expect.preserved) assert.deepEqual(plainJson(r.index[f.expect.preserved]), { kept: true });

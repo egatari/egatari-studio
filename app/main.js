@@ -15,6 +15,7 @@ import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeTo
 import { rightsOf } from './rights.js';
 import { CONTRACTS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
+import { codeReasons } from '../kit/core/code-scan.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -109,7 +110,8 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null; S.allowed = false; S.codeAsking = null;
+  closePresenter();
   engine.setWorkspace(ws);
   ui.reset();
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
@@ -145,6 +147,7 @@ function updateName() {
 function showNotice() {
   const P = S.portable, lines = [];
   if (P && P.extended) lines.push(['notice-extended', T.extendedNotice]);
+  if (P && P.mislabelled) lines.push(['notice-mislabel', T.codeMislabelled]);
   if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
   else if (P && P.tierAOnly) lines.push(['notice-tier-a', T.tierAOnlyNotice(P.tierAOnly)]);
   if (P && !P.readOnly && P.sourceMatches === false) lines.push(['notice-mismatch', T.mismatchNotice]);
@@ -202,8 +205,11 @@ async function rebuild(reason) {
         showWarn();
         $('st-info').textContent = `${T.slidesN(r.stats.slides)} · ${(r.html.length / 1048576).toFixed(1)} MB · ${S.lastBuildMs} ms`;
         if (reason !== 'poll' || changed || wasError) status(T.rebuilt(time(), reason));
-        if ((changed || !S.loads || S.fresh) && (await codeConsent(listing))) refreshFrame();
-        if (changed && S.presWin && !S.presWin.closed) loadPresenter();
+        // プレビューも発表者ビューも、コードの確かめ（codeConsent）を通ったときだけ読み込む
+        const allow = await codeConsent(listing);
+        S.allowed = allow;
+        if (allow && (changed || !S.loads || S.fresh)) refreshFrame();
+        if (allow && changed && S.presWin && !S.presWin.closed) loadPresenter();
       } catch (e) {
         failed = true;
         S.error = String((e && (e.stack || e.message)) || e);
@@ -220,7 +226,7 @@ async function rebuild(reason) {
 // プレビューを新しい中身にする。入力中の欄はこのページ（編集の画面）にあるので、待たずに読み込み直してよい（同じ位置に戻す）
 function refreshFrame() { loadFrame(); }
 function loadFrame() {
-  if (!S.preview || !S.base) return;
+  if (!S.preview || !S.base || !S.allowed) return;
   const f = $('preview');
   ui.frameLoading(!S.fresh);
   S.loads++; S.fresh = false;
@@ -306,8 +312,10 @@ addEventListener("message",function(e){
   else if(e.source===opener&&e.data&&e.data.type==="app-pres-down"){ f.contentWindow&&f.contentWindow.postMessage(e.data.m,"*"); }
 });
 </script></body></html>`;
+function closePresenter() { if (S.presWin && !S.presWin.closed) S.presWin.close(); S.presWin = null; }
 function openPresenter() {
   if (!S.base) return;
+  if (!S.allowed) { toast(T.codeDeclined, true); return; }
   const w = window.open('', 'motion-presenter', 'width=1400,height=820');
   if (!w) { toast(T.popupBlocked, true); return; }
   S.presWin = w;
@@ -315,10 +323,12 @@ function openPresenter() {
   loadPresenter();
 }
 function loadPresenter() {
+  if (!S.allowed) return;
   const w = S.presWin;
   const f = w && !w.closed && w.document.getElementById('pf');
   if (!f) return;
   w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
+  S.presLoads = (S.presLoads || 0) + 1;
   f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM, prefix: trustedPrefix() });
 }
 
@@ -400,8 +410,12 @@ async function saveWithPicker(name, html, startIn) {
 
 // ---------------------------------------------------------------- 確かめの窓（エディタの画面の中。プレビューのものではない）
 // buttons：[{id, label, pri, needsConfirm}]。confirmText があればチェックボックス（入れるまで needsConfirm のボタンは押せない）
+// 前の確かめが開いたまま次を聞くとき（別の作業場所を開いたなど）は、前のものを「取り消し」で終える（待ったままにしない）
+let askPending = null;
 function ask({ title, body, buttons, confirmText = null, kind = '' }) {
+  if (askPending) { const r = askPending; askPending = null; r('cancel'); }
   return new Promise((resolve) => {
+    askPending = resolve;
     const d = $('dlg');
     d.className = kind;
     $('dlg-title').textContent = title;
@@ -415,7 +429,7 @@ function ask({ title, body, buttons, confirmText = null, kind = '' }) {
       row.append(btn);
     }
     d.returnValue = '';
-    d.onclose = () => resolve(d.returnValue || 'cancel');
+    d.onclose = () => { if (askPending === resolve) askPending = null; resolve(d.returnValue || 'cancel'); };
     d.showModal();
   });
 }
@@ -444,36 +458,49 @@ async function ensureRights() {
   })();
   return P.rightsPending;
 }
-// そのデッキのコード（§6）：持ち運べる 1 ファイルの extended、またはフォルダの部品（components/…/index.js などの .js）・deck.html のスクリプト。
-// プレビューで動かす前に知らせ、はっきり「プレビューを始める」を押してもらう（作業場所ごとに 1 回）
-const EXEC_SCRIPT = /<script\b([^>]*)>/gi;
-function hasOwnScript(html) {
-  for (const m of String(html || '').matchAll(EXEC_SCRIPT)) {
-    const t = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(m[1]);
-    if (!t || !t[1] || /^(module|(text|application)\/(x-)?(java|ecma)script)$/i.test(t[1])) return true;
-  }
-  return false;
-}
+// そのデッキのコード（§6）：申告（index.profile）ではなく中身から決める（kit/core/code-scan.mjs：データの type のない <script>・on… の属性・
+// javascript: の URL・srcdoc・取り込む SVG や HTML の中のもの・JavaScript のファイル・部品の式）。
+// プレビューと発表者ビューで動かす前に知らせ、はっきり「プレビューを始める」を押してもらう（作業場所ごとに 1 回）
+const SCAN_SKIP = /\.(png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|wav|mp3|m4a|aac|ogg|opus|flac|mp4|webm|mov|pdf)$/i;
 async function ownCode(listing) {
-  if (S.portable) return S.portable.extended;
-  if ([...listing.files.keys()].some((rel) => /\.m?js$/i.test(rel))) return true;
-  return hasOwnScript(await S.ws.readText(S.deckFile).catch(() => ''));
+  if (S.portable) return S.portable.codeReasons || [];
+  const rels = [...listing.files.keys()];
+  const js = rels.filter((rel) => /\.(m|c)?js$/i.test(rel) && !rel.split('/').some((x) => x.startsWith('.')));
+  if (js.length) return js.slice(0, 5).map((rel) => 'script file ' + rel);
+  const files = new Map();
+  for (const rel of rels) if (!SCAN_SKIP.test(rel)) { try { files.set(rel, await S.ws.readBytes(rel)); } catch { /* 読めない：飛ばす */ } }
+  return codeReasons(files, { entry: S.deckFile });
 }
-// S.codeOk：null（まだ聞いていない）・true（始めてよい）・false（断った：この作業場所ではプレビューを読み込まない）
+function codeDialog(lead, reasons, mislabelled) {
+  return ask({ title: T.codeTitle, kind: 'warn', body: [
+    el('p', { id: 'code-lead', text: lead }),
+    mislabelled ? el('p', { id: 'code-mislabel', cls: 'note bad', text: T.codeMislabelled }) : null,
+    reasons && reasons.length ? el('p', { id: 'code-why', cls: 'hint', text: T.codeWhy(reasons.slice(0, 5).join(', ') + (reasons.length > 5 ? ' …' : '')) }) : null,
+    el('p', { cls: 'hint', text: T.codeSandbox })],
+  buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
+}
+// S.codeOk：null（まだ聞いていない）・true（始めてよい）・false（断った：この作業場所ではプレビューも発表者ビューも読み込まない）
 async function codeConsent(listing) {
   if (S.codeOk !== null) return S.codeOk;
-  if (S.portable) { S.codeOk = true; return true; }      // 持ち運べる 1 ファイルは開く前に聞いた（openPortable）
-  if (!(await ownCode(listing || engine.listing))) return true;   // コードが現れたら（Claude Code が部品を足したなど）そのときに聞く
+  if (S.portable) { S.codeOk = true; return true; }      // 持ち運べる 1 ファイルは開く前に中身から決めて聞いた（openPortable）
+  // 同時に頼まれても（開く・見張りの組み直し）確かめは 1 つだけ。中身を読む間も含めて 1 つの約束にする
   if (S.codeAsking) return S.codeAsking;
-  S.codeAsking = (async () => {
-    const v = await ask({ title: T.codeTitle, kind: 'warn', body: [el('p', { id: 'code-lead', text: S.portable ? T.codeLeadFile : T.codeLeadFolder }), el('p', { cls: 'hint', text: T.codeSandbox })],
-      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
-    S.codeAsking = null;
+  const ws = S.ws;
+  const job = S.codeAsking = (async () => {
+    const reasons = await ownCode(listing || engine.listing);
+    if (S.ws !== ws) return false;                        // 確かめている間に別の作業場所になった
+    if (!reasons.length) return true;                     // コードが現れたら（Claude Code が部品を足したなど）そのときに聞く
+    const v = await codeDialog(T.codeLeadFolder, reasons, false);
+    if (S.ws !== ws) return false;
     S.codeOk = v === 'run';
-    if (!S.codeOk) toast(T.codeDeclined, true);
+    if (!S.codeOk) {
+      toast(T.codeDeclined, true);
+      // 断った：今のプレビューと発表者ビューも閉じる（前の中身も、この後の組み直しも読み込まない）
+      S.allowed = false; blankPreview(); closePresenter();
+    }
     return S.codeOk;
   })();
-  return S.codeAsking;
+  try { return await job; } finally { if (S.codeAsking === job) S.codeAsking = null; }
 }
 
 // 編集モード・口述原稿を開く前に：読むだけの文書なら断り、まだなら権利を見せる
@@ -532,19 +559,22 @@ async function openPortable(input) {
     }
     return false;
   }
-  // 独自のコード（extended）：中のコードが動く前に知らせる（§6）。プレビューは空にしてから聞く（前の文書も後ろに見せない）。
-  // 取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
-  const extended = r.index.profile === 'extended';
+  // 独自のコード：申告（index.profile）を信じず、取り出した原稿の中身から決める（§6）。中のコードが動く前に知らせる。
+  // 申告が core なのに中身にコードがあれば、コードを含むものとして聞き、申告が食い違うことも知らせる。
+  // プレビューは空にしてから聞く（前の文書も後ろに見せない）。取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
+  const reasons = codeReasons(r.files, { entry: r.index.entry });
+  const mislabelled = r.index.profile !== 'extended' && reasons.length > 0;
+  const extended = r.index.profile === 'extended' || reasons.length > 0;
+  if (mislabelled) r.warnings = [...r.warnings, T.codeMislabelled];
   if (extended) {
     blankPreview();
-    const v = await ask({ title: T.codeTitle, kind: 'warn', body: [el('p', { id: 'code-lead', text: T.codeLeadFile }), el('p', { cls: 'hint', text: T.codeSandbox })],
-      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
+    const v = await codeDialog(T.codeLeadFile, reasons, mislabelled);
     if (v !== 'run') { status(''); toast(T.codeDeclined, true); if (S.ws && S.base && S.codeOk !== false) loadFrame(); return false; }
   }
   stopPoll();
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: false, extended, codeOk: true, saved: null,
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: false, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
@@ -772,7 +802,8 @@ window.__APP_TEST = {
   saveHandle: null,
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
-    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
+    allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0,
+    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   saved: () => (S.portable ? S.portable.saved : null),

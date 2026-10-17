@@ -1,0 +1,135 @@
+// 「このデッキはコードを動かせるか」を、申告（持ち運べる 1 ファイルの index.profile）ではなく中身から決める（format spec §6）。
+// 編集アプリが、プレビューと発表者ビューでデッキのコードを動かす前に知らせて確かめるかどうかに使い、持ち運べる 1 ファイルの書き出しも
+// profile をこれで決める。何も実行しない（parse5 で文字列として読むだけ）。Node にもブラウザにも依存しない
+//
+//   codeReasons(files, {entry})  files：Map か {相対パス: Uint8Array | 文字列}。返すもの：理由の文字列の配列（空ならコードなし）
+//   markupReasons(text, where)   1 つの文書（HTML・SVG・XML、組み立てが取り込みうるテキスト）の中の理由
+//
+// コードと見なすもの（どれか 1 つでもあれば、そのデッキのコードが動く）：
+//   - JavaScript のファイル（.js・.mjs・.cjs。原稿のフォルダの部品 components/<名前>/index.js も）
+//   （原稿のほかの .html は、原稿がその名前を書いているときだけ。書き出した教材などを数えない）
+//   - データの type を持たない <script>（type なし・JavaScript の MIME・module・importmap、知らない type も含む）
+//   - on で始まる属性（onerror・onload などのイベントの処理）
+//   - javascript: / vbscript: の URL を値に持つ属性（SVG の <animate values="…; javascript:…"> も）
+//   - srcdoc 属性、文書を入れる要素（iframe・frame・frameset・object・embed・portal）
+//   - 部品庫の部品で式を new Function で作るもの（m-sweep の f・m-curves の系列の f）の、決まった数式の形に入らない式
+// 中身を読めないもの（大きすぎるテキスト・解けない {{JSON:…}}）も、確かめられないのでコードと見なす（少しでも疑わしければ聞く側に倒す）
+import { parse } from 'parse5';
+import { FORMAT } from './format.mjs';
+
+const BINARY = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'ico', 'bmp', 'tif', 'tiff', 'woff', 'woff2', 'ttf', 'otf', 'eot',
+  'wav', 'mp3', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'mp4', 'm4v', 'webm', 'mov', 'pdf', 'zip', 'gz']);
+const JS_EXT = new Set(['js', 'mjs', 'cjs']);
+// 中身を読まないもの：口述原稿・コメント・音声の記録・秒数（組み立ては JSON の中に < を逃がして入れるだけで、文書には入れない）
+const NOT_MARKUP = new Set(['comments.json', 'audio/manifest.json', 'timeline.json', 'narration.md', 'voice.json']);
+// データの type（実行しない）
+const DATA_TYPES = new Set(['application/json', 'application/ld+json', 'application/octet-stream', 'text/x-tex-macros', 'text/plain', FORMAT.MIME]);
+const EMBED = new Set(['iframe', 'frame', 'frameset', 'object', 'embed', 'portal']);
+const MAX_SCAN = 16 * 1024 * 1024;
+const dec = new TextDecoder();
+const extOf = (rel) => { const m = /\.([A-Za-z0-9]+)$/.exec(rel); return m ? m[1].toLowerCase() : ''; };
+
+// ---------------------------------------------------------------- 部品庫の部品の式（m-sweep・m-curves）
+const MATH_NAMES = new Set(Object.getOwnPropertyNames(Math));
+const EXPR = {
+  'm-sweep': { attrs: ['f'], vars: ['u', 'c'], withMath: false },
+  'm-curves': { json: 'f', vars: ['x', 'N'], withMath: true },
+};
+// 決まった数式の形：数・許した名前（変数・Math・Math.<名前>、with(Math) の部品では Math の名前そのまま）・演算子・括弧・コンマ・?:。
+// 文字列・[ ]・{ }・代入・; ・\ は通さない（[ ] と文字列がなければ、許した名前の外の値に届かない）
+export function safeExpression(expr, { vars = [], withMath = false } = {}) {
+  if (typeof expr !== 'string' || expr.length > 2000) return false;
+  const allowed = new Set([...vars, 'Math', ...(withMath ? MATH_NAMES : [])]);
+  const re = /\s+|(\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)|([A-Za-z_$][\w$]*)|(\*\*|===|!==|==|!=|<=|>=|&&|\|\||[-+*/%<>!?:,().&|^~])/y;
+  let i = 0, prev = null, prevIdent = null;
+  while (i < expr.length) {
+    re.lastIndex = i;
+    const m = re.exec(expr);
+    if (!m || m.index !== i) return false;
+    i = re.lastIndex;
+    if (m[0].trim() === '') continue;
+    if (m[2]) {
+      const id = m[2];
+      if (prev === '.') { if (prevIdent !== 'Math' || !MATH_NAMES.has(id)) return false; }
+      else if (!allowed.has(id)) return false;
+      prevIdent = id; prev = 'id';
+      continue;
+    }
+    if (m[3] === '.' && prev !== 'id') return false;
+    prev = m[3] || 'num'; if (m[3] !== '.') prevIdent = null;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------- 文書の中
+const attr = (n, name) => { const a = (n.attrs || []).find((x) => x.name === name); return a ? a.value : null; };
+const textOf = (n) => (n.childNodes || []).filter((c) => c.nodeName === '#text').map((c) => c.value).join('');
+const JS_URL = /(^|[\s;,])(javascript|vbscript|livescript):/;
+// resolveJson(name)：{{JSON:name}} の中身（文字列か null）。m-curves の子の JSON が取り込みのとき
+export function markupReasons(text, where = '', resolveJson = null) {
+  const out = new Set();
+  const doc = parse(String(text), { scriptingEnabled: false });
+  const visit = (n) => {
+    if (n.tagName) {
+      const tag = n.tagName.toLowerCase();
+      if (tag === 'script') {
+        const t = (attr(n, 'type') || '').trim().toLowerCase().split(';')[0].trim();
+        if (!DATA_TYPES.has(t)) out.add(`<script${t ? ` type="${t}"` : ''}>${where}`);
+      }
+      if (EMBED.has(tag)) out.add(`<${tag}>${where}`);
+      for (const a of n.attrs || []) {
+        const name = a.name.toLowerCase();
+        if (/^on/.test(name)) out.add(`${name}=${where}`);
+        if (name === 'srcdoc') out.add(`srcdoc=${where}`);
+        if (JS_URL.test(String(a.value).toLowerCase().replace(/[\u0000-\u001f]/g, ''))) out.add(`${name}="javascript:…"${where}`);
+      }
+      const ex = EXPR[tag];
+      if (ex) {
+        for (const k of ex.attrs || []) { const v = attr(n, k); if (v !== null && !safeExpression(v, ex)) out.add(`<${tag} ${k}="…"> (not a plain formula)${where}`); }
+        if (ex.json) {
+          const s = (n.childNodes || []).find((c) => c.tagName === 'script' && (attr(c, 'type') || '').trim().toLowerCase() === 'application/json');
+          if (s) {
+            let raw = textOf(s);
+            const inc = /^\s*\{\{JSON:([^}]+?)\}\}\s*$/.exec(raw);
+            if (inc) raw = resolveJson ? resolveJson(inc[1].trim()) : null;
+            let data = null;
+            try { data = raw === null ? undefined : JSON.parse(raw); } catch { data = undefined; }
+            if (data === undefined) out.add(`<${tag}> data (cannot check the formulas)${where}`);
+            else for (const item of Array.isArray(data) ? data : [data]) {
+              if (item && typeof item === 'object' && ex.json in item && !safeExpression(item[ex.json], ex)) out.add(`<${tag}> ${ex.json}: (not a plain formula)${where}`);
+            }
+          }
+        }
+      }
+    }
+    for (const c of n.childNodes || []) visit(c);
+    if (n.content) visit(n.content);
+  };
+  visit(doc);
+  return [...out];
+}
+
+// ---------------------------------------------------------------- 原稿のフォルダ・取り出した原稿の全体
+export function codeReasons(files, { entry = 'deck.html' } = {}) {
+  const map = files instanceof Map ? files : new Map(Object.entries(files || {}));
+  const text = (v) => (typeof v === 'string' ? v : dec.decode(v));
+  const out = [];
+  const resolveJson = (name) => {
+    for (const p of ['data/' + name, name]) if (map.has(p)) { const v = map.get(p); return (typeof v === 'string' ? v.length : v.length) > MAX_SCAN ? null : text(v); }
+    return null;
+  };
+  let et = null;
+  const entryText = () => (et ??= map.has(entry) ? text(map.get(entry)) : '');
+  for (const [rel, v] of [...map].sort(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a < b ? -1 : a > b ? 1 : 0))) {
+    if (rel.split('/').some((s) => s.startsWith('.'))) continue;            // 控え（.cache）など
+    const ext = extOf(rel);
+    if (JS_EXT.has(ext)) { out.push(`script file ${rel}`); continue; }
+    if (BINARY.has(ext) || (NOT_MARKUP.has(rel) && rel !== entry)) continue;
+    // 原稿のほかの HTML（書き出した教材・持ち運べる 1 ファイルなど）は、原稿がその名前を書いているとき（取り込みうるとき）だけ読む
+    if ((ext === 'html' || ext === 'htm') && rel !== entry && !entryText().includes(rel.split('/').pop())) continue;
+    const size = typeof v === 'string' ? v.length : v.length;
+    if (size > MAX_SCAN) { out.push(`${rel} is too large to check`); continue; }
+    out.push(...markupReasons(text(v), rel === entry ? '' : ` in ${rel}`, resolveJson));
+  }
+  return out;
+}
