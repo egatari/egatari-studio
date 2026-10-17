@@ -86,6 +86,9 @@ def ref_at_model_rate(path: Path, cache_dir: Path) -> Path:
         return path
     digest = hashlib.sha1(path.read_bytes()).hexdigest()[:12]
     out = cache_dir / f"{path.stem}-{digest}-48k.wav"
+    # 原稿のフォルダの .cache に置かれたリンクを通して外に書かない（途中のフォルダは呼び出す側が確かめる。SECURITY.md）
+    if cache_dir.is_symlink() or out.is_symlink():
+        raise PermissionError(f"シンボリックリンクを通しては書きません / refusing to write through a symbolic link: {out}")
     if not out.exists():
         cache_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-ac", "1", "-ar", str(REF_RATE), str(out)],

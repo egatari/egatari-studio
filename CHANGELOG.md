@@ -91,6 +91,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Editor app: when a folder or file with its own code asked before starting the preview, the previous deck stayed visible (and running) behind the question; the preview is now emptied first (the iframe is replaced), so nothing of either deck is shown or runs until you choose
 - Runtime key list: the check for the dev server no longer looks for the removed `server/client.js` script or the badge that moved out of the deck; it uses `DECK_DEV`, set by the hints script
 
+## [0.2.3] - 2026-10-18
+
+### Fixed
+
+- Dev server on Linux: after the first save, changes made outside the browser (in a text editor or by Claude Code) were no longer noticed, so the page did not reload. The 0.2.2 safe save replaces the file, and Node's recursive file watching on Linux watches each file. The deck folder and `audio/` are now watched as folders
+
+## [0.2.2] - 2026-10-18
+
+A security release. It matters only if you build, check or serve a deck folder that you did not create yourself (for example, one downloaded or received from someone else). The editor app in Chromium is not affected by the first two items.
+
+### Security
+
+- The dev server (`npm run dev`) no longer follows symbolic links placed in the deck folder when it saves. Up to 0.2.1, a deck folder that shipped `comments.json`, `narration.md` or `deck.html` as a link, or `.cache` or `.cache/edits` as a link to another folder, could make a save overwrite a file outside the deck folder, and the cleanup of old backups could delete files in that other folder. Saves now go through one checked path (`kit/safe-fs.mjs`): if the file or any folder on the way is a link, the save is refused with HTTP 403 and nothing is written; files are written to a temporary file and renamed into place. Reads of the deck, narration and comments are limited to the deck folder
+- The build no longer reads files outside the deck folder through components and themes. Up to 0.2.1, a deck-local component (`components/<name>/index.js`), a theme's `tokens.css`, `theme.json` or logos, or a theme's `extends` (through `../`, an absolute path or a link) could pull the contents of a file outside the deck folder into the built HTML, contrary to what SECURITY.md said. Each of these is now checked against its allowed folder before it is read, through every level of `extends` (at most 16); anything outside is skipped with a `refused:` warning, and a refused theme falls back to `default`
+- `kit/build.mjs` does not write `out/` through a link, and `tts/synth.py` stops before writing `audio/`, `.cache/voices/` or the files in them through a link
+- Low: the cleanup of old backups in `.cache/edits/`, in both the dev server and the editor app, deleted any file there beyond the newest 30, not just backups. It now deletes only files with the backup name form (`<timestamp>-<name>`), shared by both through `kit/core/backup-name.mjs`
+- SECURITY.md now says exactly what is and is not contained (see "What is not covered")
+
+### Added
+
+- `tools/test-security.mjs` (in `npm test`): symbolic-link and `extends` cases for the dev server, the build, the build output and the TTS dry run
+
 ## [0.2.1] - 2026-10-17
 
 Windows support, bundled default voices, and a test page for TTS in the browser.
@@ -166,7 +188,9 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/moiku/motion-academic-slides/releases/tag/v0.1.0
