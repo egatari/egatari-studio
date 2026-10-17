@@ -566,6 +566,38 @@ try {
     ok(!(await inert()) && !(await ui()).editing, 'after Cancel the preview is interactive and the drawer follows again');
     ok(untouched(), 'hostile: nothing written during the narration-lock checks');
   }
+  // 保存の途中の入力（format spec §11 の inert）：入力→保存→応答の前にまた入力。応答の後も未保存のままで、入力は消えず、プレビューは inert のまま
+  {
+    const ui = () => hp.evaluate(() => window.__DEV_UI.state());
+    const inert = () => hp.evaluate(() => document.getElementById('deck').inert);
+    let release, held = 0;
+    const gate = new Promise((r) => { release = r; });
+    await hp.route('**/__dev/narration', async (route) => { if (route.request().method() === 'POST') { held++; await gate; } await route.continue(); });
+    await hp.waitForSelector('#dev-narr .dev-turn textarea');
+    const ta = hp.locator('#dev-narr .dev-turn textarea').first();
+    await ta.fill('保存する入力');
+    await hp.click('#dev-narr .dv-foot button.dv-pri');
+    await hp.waitForFunction(() => document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
+    await ta.fill('保存する入力、その後の入力');
+    await hp.locator('#dev-narr .dev-head .dv-t').click();   // 欄から離れる（未保存の変更だけが inert の理由になる）
+    const k = (await ui()).narrKey;
+    await hf.evaluate(() => DECK.go(4, 0, false));            // 応答の後に付いていく先を作る
+    await hp.waitForFunction(() => window.__DEV_UI.state().pos.i === 4);
+    release();
+    await hp.waitForFunction(() => !document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
+    await hp.waitForTimeout(400);
+    const s7 = await ui(), v = await hp.locator('#dev-narr .dev-turn textarea').first().inputValue().catch(() => null);
+    ok(held === 1 && s7.narrDirty && s7.narrKey === k && v === '保存する入力、その後の入力' && await inert() && s7.editing,
+      'narration: typing again before the save response keeps the drawer dirty, keeps the newer input, does not follow the deck, and the preview stays inert ' + JSON.stringify({ held, dirty: s7.narrDirty, follow: s7.narrKey !== k, v }));
+    await hp.unroute('**/__dev/narration');
+    // 次の保存で保存済みになり、付いていく
+    await hp.click('#dev-narr .dv-foot button.dv-pri');
+    await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return !s.narrDirty && s.narrKey === s.pos.key; });
+    ok(!(await inert()) && fs.readFileSync(path.join(hostileDir, 'narration.md'), 'utf8').includes('保存する入力、その後の入力'), 'narration: the next save stores the newer input, then the drawer follows and the preview is interactive');
+    // 保存で組み直したデッキが読み込み直されるのを待つ（次の試験がデッキの __hint を使う）
+    await hp.waitForTimeout(500);
+    await deckOf(hp).waitForFunction(() => typeof window.__hint === 'function' && window.DECK && DECK.ready, null, { timeout: 15000 });
+  }
   // 外枠の欄で「保存」を押したときだけ書く
   await hf.evaluate(() => window.__hint('edit'));
   await hp.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });

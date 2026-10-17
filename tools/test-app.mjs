@@ -274,6 +274,36 @@ try {
   ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
   ok(!/(^|[^\r])\n/.test(narr1), 'narration: CRLF line endings kept');
   ok(await f.evaluate(() => JSON.stringify(DECK.NARRATION).includes('アプリから書き直した')), 'narration: rebuilt deck has the new narration');
+  // 保存の途中の入力：書き込みを止めておき、その間にまた入力する。応答の後も未保存のままで、入力は消えず、プレビューは inert のまま
+  {
+    await page.evaluate(() => {
+      const orig = FileSystemFileHandle.prototype.createWritable; window.__origCW = orig; window.__holdNarr = true; window.__nGate = null;
+      FileSystemFileHandle.prototype.createWritable = async function (...a) {
+        if (this.name === 'narration.md' && window.__holdNarr) await new Promise((r) => { window.__nGate = r; });
+        return orig.apply(this, a);
+      };
+    });
+    const ta = page.locator('#dev-narr .dev-turn textarea').first();
+    await ta.fill('保存する入力（アプリ）');
+    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await page.waitForFunction(() => !!window.__nGate);
+    await ta.fill('保存する入力（アプリ）、その後の入力');
+    await page.locator('#dev-narr .dev-head .dv-t').click();
+    n = await loads();
+    await page.evaluate(() => { window.__holdNarr = false; window.__nGate(); });
+    f = await waitLoads(n);
+    await page.waitForFunction(() => !document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
+    await page.waitForTimeout(300);
+    const st = await page.evaluate(() => ({ ui: window.__APP_TEST.ui(), inert: document.getElementById('preview').inert, v: document.querySelector('#dev-narr .dev-turn textarea').value }));
+    ok(st.ui.narrDirty && st.ui.editing && st.inert && st.v === '保存する入力（アプリ）、その後の入力' && (await opfs.read('narration.md')).includes('保存する入力（アプリ）') && !(await opfs.read('narration.md')).includes('その後の入力'),
+      'narration: typing again before the save finishes keeps the drawer dirty and the newer input, and the preview stays inert ' + JSON.stringify({ dirty: st.ui.narrDirty, inert: st.inert, v: st.v }));
+    await page.evaluate(() => { FileSystemFileHandle.prototype.createWritable = window.__origCW; });
+    n = await loads();
+    await page.click('#dev-narr .dv-foot button.dv-pri');
+    f = await waitLoads(n);
+    await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty);
+    ok(await page.evaluate(() => !document.getElementById('preview').inert) && (await opfs.read('narration.md')).includes('保存する入力（アプリ）、その後の入力'), 'narration: the next save stores the newer input and the preview takes input again');
+  }
   ok(await page.isVisible('#dev-narr'), 'narration: drawer stays open after reload');
   // 外で変わった後の保存は 409（引き出しに出る）
   await page.locator('#dev-narr .dev-turn textarea').first().fill('書きかけ');

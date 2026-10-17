@@ -422,7 +422,8 @@ export function createEditorUI(o) {
       return;
     }
     const sk = splitKey(key);
-    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, i: pos.i };
+    // edit：入力のたびに増える版。保存の応答は、送った版が今も同じときだけ「保存した」にする（保存の途中の入力を未保存のまま残す）
+    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, edit: 0, i: pos.i };
     renderDrawer(true);
     Promise.all([info ? info : loadInfo(), api('GET', '/__dev/narration?key=' + encodeURIComponent(key))]).then(([, j]) => {
       if (narr !== cur) return;
@@ -451,7 +452,7 @@ export function createEditorUI(o) {
     const nmsg = h('div', { cls: 'dev-msg' }); body.appendChild(nmsg);
     if (loading) { saveBtn.disabled = true; body.appendChild(h('div', { cls: 'dev-empty', text: L.loading })); return; }
     if (narr.error) { saveBtn.disabled = true; showErr(nmsg, narr.error); return; }
-    const markDirty = () => { narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); };
+    const markDirty = () => { narr.edit++; narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); };
     const list = h('div', { cls: 'dv-turns' }); body.appendChild(list);
     function drawTurns() {
       list.innerHTML = '';
@@ -484,12 +485,15 @@ export function createEditorUI(o) {
     function doSave() {
       if (saveBtn.disabled || narr !== cur) return;
       saveBtn.disabled = true; saveBtn.textContent = L.saving;
-      api('POST', '/__dev/narration', { slideKey: cur.slideKey, stepKey: cur.stepKey, turns: cur.turns, rev: cur.rev }).then((j) => {
+      const sent = cur.edit;
+      api('POST', '/__dev/narration', { slideKey: cur.slideKey, stepKey: cur.stepKey, turns: cur.turns.map((t) => ({ ...t })), rev: cur.rev }).then((j) => {
         saveBtn.textContent = L.save;
         if (j._status === 409) { showErr(nmsg, L.nConflict, true); return; }
         saveBtn.disabled = false;
         if (j._status !== 200) { status.textContent = j._offline ? L.offline : (j.error || L.saveFail); status.className = 'dv-st dv-dirty'; return; }
         if (j.rev) cur.rev = j.rev;
+        // 送った後に入力があれば（版が進んだ）、未保存のまま：欄の中身を替えず、デッキに付いていかず、プレビューは inert のまま
+        if (cur.edit !== sent) { status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); return; }
         cur.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
         if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
       });
