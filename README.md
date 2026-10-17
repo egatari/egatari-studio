@@ -109,7 +109,7 @@ You rarely need to open `deck.html` by hand. Start the dev server and fix things
 node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:8730/  (Ctrl+C to stop)
 ```
 
-The page is the normal deck (arrow keys, `p`, `a`, … all work). It reloads by itself whenever a file of the deck changes, and stays on the same slide and step.
+The page shows the deck (arrow keys, `p`, `a`, … all work), with the editing tools around it: the deck runs in a sandboxed frame and can only point at what to edit, and nothing is written until you press Save in the editing tools. It reloads by itself whenever a file of the deck changes, and stays on the same slide and step.
 
 1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
 2. **Fix the narration: `n`.** A drawer shows the narration of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.

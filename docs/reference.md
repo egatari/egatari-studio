@@ -265,7 +265,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | Alt+click (on a Mac: ⌥ Option+click) | leave a comment for Claude Code |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
-| endpoints | `GET /`, `/deck/<file>`, `/__dev/client.js`, `/__dev/events` (SSE), `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |
+| endpoints | `GET /` (frame page; `?presenter=1`: presenter window), `GET /deck/` (the deck document, sandboxed), `/deck/<file>`, `/__dev/shell.js`, `/__dev/editor-ui.js`, `/__dev/presenter.js`, `/__dev/events` (SSE), `GET /__dev/info`, `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |
 
 ## Checker
 
