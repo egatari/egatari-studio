@@ -18,6 +18,7 @@ import { parse } from 'parse5';
 import { short } from './sha1.mjs';
 import { RUNTIME_FORMAT } from './format.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
+import { documentReasons } from './code-scan.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
@@ -455,12 +456,14 @@ export function build(env, srcPath, opts = {}) {
   // 部品：使われている <m-名前> を探して読み込む
   const used = [...new Set([...html.matchAll(/<(m-[a-z0-9-]+)[\s>]/g)].map((m) => m[1]))];
   let compJs = '';
+  const localComps = [];
   for (const tag of used) {
     const name = tag.slice(2);
     const file = [P.join(deckDir, 'components', name, 'index.js'), P.join(ROOT, 'components', name, 'index.js')].find((p) => env.exists(p));
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
     // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（機械ごとのパスを出力に書かない）
     const where = env.within(file, deckDir) ? P.relative(deckDir, file) : P.relative(ROOT, file);
+    if (env.within(file, deckDir)) localComps.push(where.split(P.sep).join('/'));
     compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
   }
   // 原稿の中の <script> の部品定義も含めて、SVG の中の式（svgMath）を使うなら KaTeX を実行時にも読み込む
@@ -509,32 +512,61 @@ export function build(env, srcPath, opts = {}) {
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
   const textForFont = glyphText(html, narration, compJs, lang);
   const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang);
-  const headCss = `<style id="deck-base">\n${fonts.css}${kcss}\n${theme.css}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}</style>`;
-  if (/<head[^>]*>/.test(html)) {
-    // 原稿の <style> が後に来るように、<head> の直後に入れる
-    html = html.replace(/<head[^>]*>/, (m) => m + '\n' + headCss);
-  } else throw new Error('<head> がない');
+  // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
+  const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
+  const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
+  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${theme.css}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
-  const scripts = [
+  const scriptList = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
     j('deck-meta', opts.deckMeta || { version: env.version }),
-    needKatexJs ? `<script>${read(env.katexDir, 'katex.min.js')}\nkatex.__macros=${JSON.stringify(macros)};</script>` : '',
+    // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
+    needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT).replace(/</g, '\\u003c')};\n${read(KIT, 'deck.js')}\n</script>`,
-    `<script>\n${read(KIT, 'presenter.js')}\n</script>`,
-    `<script>\n${read(KIT, 'tools.js')}\n</script>`,
-    compJs ? `<script>${compJs}\n</script>` : '',
-  ].join('\n');
-  // 原稿の中の <script>（部品の定義など）より前に実行系を置く：最初の <script> の前、なければ </body> の前
-  const bodyClose = html.lastIndexOf('</body>');
-  // 部品の子の JSON（<script type="application/json">）は飛ばす。その中に実行系が入ると部品のデータを取り違える
-  const bodyAt = html.indexOf('<body'), mScript = html.slice(bodyAt).search(/<script(?![^>]*type="application\/json")/);
-  const firstScript = mScript >= 0 ? bodyAt + mScript : -1;
-  const at = firstScript >= 0 && firstScript < bodyClose ? firstScript : bodyClose;
-  // opts.runtimePrefix：実行系の前に入れる文字列（持ち運べる形式の書き出しが、読める層・索引・塊をここに入れる。実行系が読む前に DOM にあるように）
-  html = html.slice(0, at) + (opts.runtimePrefix || '') + scripts + '\n' + html.slice(at);
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
+    `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
+    compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
+  ].filter(Boolean);
+  const scripts = scriptList.join('\n');
+  // 入れる場所は、正規表現ではなく解析した文書の要素の境目（注釈・属性・<template> の中の <head> や <script> の文字に飲み込まれない）。
+  //   字と CSS：本当の <head> の開始タグの直後（原稿の <style> が後に来るように）
+  //   実行系：原稿の中の <script>（部品の定義など）より前。<body> の中の最初の「データの type でない <script>」で、部品（m-…）・<template>・SVG・
+  //   MathML・<noscript> の中にないものの前。なければ </body> の前、それもなければ文書の終わり（部品の子に実行系の JSON が入らないように）
+  const pdoc = parse(html, { sourceCodeLocationInfo: true, scriptingEnabled: false });
+  const htmlEl = (pdoc.childNodes || []).find((n) => n.tagName === 'html');
+  const headEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'head');
+  const bodyEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'body');
+  const headTag = headEl && headEl.sourceCodeLocation && headEl.sourceCodeLocation.startTag;
+  if (!headTag) throw new Error('<head> がない');
+  const headAt = headTag.endOffset;
+  const FENCE = (n) => n.tagName && (n.tagName.startsWith('m-') || ['template', 'svg', 'math', 'noscript'].includes(n.tagName));
+  let at = -1;
+  const seekScript = (n) => {
+    for (const c of n.childNodes || []) {
+      if (at >= 0) return;
+      if (c.tagName === 'script' && c.namespaceURI === 'http://www.w3.org/1999/xhtml' && c.sourceCodeLocation && !/^(application\/json|application\/ld\+json|text\/x-tex-macros)$/.test((attr(c, 'type') || '').trim().toLowerCase())) { at = c.sourceCodeLocation.startOffset; return; }
+      if (!FENCE(c)) seekScript(c);
+    }
+  };
+  if (bodyEl) seekScript(bodyEl);
+  if (at < 0) at = bodyEl && bodyEl.sourceCodeLocation && bodyEl.sourceCodeLocation.endTag ? bodyEl.sourceCodeLocation.endTag.startOffset : html.length;
+  if (at < headAt) at = html.length;
+  // opts.runtimePrefix：実行系の前に入れる文字列（持ち運べる形式の書き出しが、読める層・索引・塊をここに入れる。実行系が読む前に DOM にあるように）。
+  // これは信頼する部分に数えない（判定が読む）
+  const pre = opts.runtimePrefix || '';
+  const a1 = html.slice(0, headAt) + '\n', a2 = html.slice(headAt, at) + pre;
+  html = a1 + headCss + a2 + scripts + '\n' + html.slice(at);
+  const trusted = [
+    { name: 'deck-base', start: a1.length, end: a1.length + headCss.length, tags: ['style'] },
+    { name: 'runtime', start: a1.length + headCss.length + a2.length, end: a1.length + headCss.length + a2.length + scripts.length, tags: scriptList.map(() => 'script') },
+  ];
+  // コードが動くか（format spec §6）：組んだ文書そのもの（表示するバイト）を、組み立てが入れた信頼する部分を除いて読む。
+  // 原稿のフォルダの部品（components/<名前>/index.js）は、組み立てが実行系の中に入れるので、別に数える
+  const codeReasons = documentReasons(html, trusted);
+  for (const f of localComps) codeReasons.push(`script file ${f}`);
 
-  return { html, stats: { math: count, slides: slides.length, components: used, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName }, slides, segs };
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
 export function jsonScript(id, o) {

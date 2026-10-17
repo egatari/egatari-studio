@@ -923,6 +923,56 @@ try {
     await waitLoads(n0);
     const ms = (await page.evaluate(() => window.__APP_TEST.state())).portable;
     ok(ms.profile === 'core' && ms.extended && ms.mislabelled && await page.isVisible('#notice-mislabel') && (await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => /core/.test(w)), 'consent: the mislabelled file is treated as containing code (notice and warning shown)');
+    // 取り込み（/*INCLUDE:…*/）で、拡張子が画像のファイルの中のスクリプトが文書に入る：組んだ文書から決めるので聞く（format spec §6）
+    const PAYLOAD = '<script>window.__includeRan = 1</script>';
+    const INC = MIN.replace('</section>', '/*INCLUDE:payload.png*/\n</section>');
+    await mkdir('c-include', { 'deck.html': INC, 'narration.md': narrMin, 'payload.png': PAYLOAD });
+    n0 = await loads();
+    op = page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-include']));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    ok((await page.textContent('#code-why')).includes('<script>') && (await loads()) === n0, 'consent: a folder deck that includes payload.png carrying <script> is asked about (the expanded document is classified, not the file extension)');
+    await page.click('#dlg-cancel');
+    ok(await op === false && (await loads()) === n0, 'consent: include payload: Cancel → not opened, nothing loaded');
+    // 同じものを持ち運べる 1 ファイルで（正しく extended と書いたもの・core と偽ったもの）。読み取りの補いは画像の拡張子を読まないが、組んだ文書の判定が見つける
+    const incDir = path.join(PW, 'inc');
+    fs.rmSync(incDir, { recursive: true, force: true });
+    fs.cpSync(path.join(ROOT, 'examples', 'minimal'), incDir, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(ROOT, x)) });
+    fs.writeFileSync(path.join(incDir, 'deck.html'), INC); fs.writeFileSync(path.join(incDir, 'payload.png'), PAYLOAD);
+    const pinc = await buildPortable(path.join(incDir, 'deck.html'), { out: path.join(PW, 'inc.html') });
+    const ixInc = JSON.parse(scanDocument(pinc.html).byId.get(FORMAT.INDEX_ID).text);
+    ok(ixInc.profile === 'extended' && Object.keys(ixInc.files).includes('payload.png'), 'include payload: the exporter labels the lesson extended (decided from the built document) ' + ixInc.profile);
+    const forged = await replaceIndexText(pinc.html, JSON.stringify({ ...ixInc, profile: 'core' }));
+    for (const [label, html] of [['extended', pinc.html], ['forged core', forged]]) {
+      n0 = await loads();
+      op = page.evaluate(([h, nm]) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(h), name: nm }), [html, 'inc.html']);
+      await page.waitForSelector('#dlg[open] #dlg-run');
+      ok((await page.textContent('#code-why')).includes('<script>') && (await loads()) === n0 && await previewBlank(), `consent: include payload in a portable file (${label}) is asked about before anything runs`);
+      await page.click('#dlg-cancel');
+      ok(await op === false && (await loads()) === n0, `consent: include payload in a portable file (${label}): Cancel → not opened`);
+    }
+    // 読むたびに中身が変わる作業場所：初めの読み込みはスクリプト、2 回目からは無害（調べるときに読み直すと、調べたものと表示するものが違う）。
+    // 判定は組んだ文書（表示するバイト）からなので、読み直しても入れ替わらない：聞かれ、取り消せばスクリプトは動かない
+    n0 = await loads();
+    op = page.evaluate(([deck, narr, evil]) => {
+      const enc = new TextEncoder();
+      const benign = '<!--' + ' '.repeat(Math.max(0, evil.length - 7)) + '-->';
+      let reads = 0;
+      const fileH = (name, bytes) => ({ kind: 'file', name, getFile: async () => {
+        const b = typeof bytes === 'function' ? bytes() : bytes;
+        return { name, size: b.length, lastModified: 1, arrayBuffer: async () => (typeof bytes === 'function' ? enc.encode(name === 'payload.png' && reads++ > 0 ? benign : evil) : b).slice().buffer, text: async () => new TextDecoder().decode(b) };
+      } });
+      const files = { 'deck.html': fileH('deck.html', enc.encode(deck)), 'narration.md': fileH('narration.md', enc.encode(narr)), 'payload.png': fileH('payload.png', () => enc.encode(evil)) };
+      window.__raceReads = () => reads;
+      const dir = { kind: 'directory', name: 'race', async *entries() { for (const [k, v] of Object.entries(files)) yield [k, v]; }, async *keys() { for (const k of Object.keys(files)) yield k; },
+        getFileHandle: async (n) => { if (!files[n]) throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); return files[n]; },
+        getDirectoryHandle: async () => { throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); }, isSameEntry: async () => false };
+      return window.__APP_TEST_OPEN(dir);
+    }, [INC, narrMin, PAYLOAD]);
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    ok((await page.textContent('#code-why')).includes('<script>') && (await loads()) === n0, 'race: a workspace that returns different bytes on the next read cannot swap the classified bytes (asked; the classified document is the rendered one)');
+    await page.click('#dlg-cancel');
+    ok(await op === false && (await loads()) === n0 && !(await page.evaluate(() => window.__includeRan)), 'race: Cancel → nothing loaded, the payload never ran');
+
     // 組み直し（外での変更の見張り）で後からコードが現れたとき：取り消せば、プレビューも発表者ビューも読み込まない
     await mkdir('c-poll', { 'deck.html': MIN, 'narration.md': narrMin });
     op = await page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-poll']));

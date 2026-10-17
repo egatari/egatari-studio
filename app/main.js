@@ -15,7 +15,7 @@ import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeTo
 import { rightsOf } from './rights.js';
 import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
-import { codeReasons } from '../kit/core/code-scan.mjs';
+import { codeReasons, documentReasons } from '../kit/core/code-scan.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -102,9 +102,10 @@ async function openFolder(handle) {
   S.sig = signature(listing);
   recentAdd(handle);
   showDeck(handle.name + ' / ' + S.deckFile, handle.name);
-  // 原稿のフォルダの部品やスクリプト（そのデッキのコード）があれば、プレビューで動かす前に知らせて確かめる（§6）
-  if (!(await codeConsent(listing))) { S.ws = null; showWelcome(); return false; }
+  // 原稿のフォルダの部品やスクリプト（そのデッキのコード）があれば、プレビューで動かす前に知らせて確かめる（§6）。
+  // 確かめは組んだ文書から決めるので、組み立て（rebuild）の中で聞く。取り消したらはじめの画面に戻る
   await rebuild('open');
+  if (S.ws === ws && S.codeOk === false) { S.ws = null; showWelcome(); return false; }
   startPoll();
   return true;
 }
@@ -163,12 +164,18 @@ function signature(listing) {
 const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // プレビューの文書：信頼する先頭部分（決まり（CSP）と仲立ちのスクリプト）の後ろに、組んだデッキをそのまま続ける（app/preview-doc.js。
 // デッキの文書の中を探して決まりを入れることはしない）
-function withShim(html, cfg) { return previewDocument(html, `${SHIM}(${enc(cfg)});`); }
-function previewHtml(base) {
-  const html = withShim(base, { dev: true, load: S.loads });
-  const inject = `<script>${RES.hints}</script>\n`;
-  const at = html.lastIndexOf('</body>');
-  return at >= 0 ? html.slice(0, at) + inject + html.slice(at) : html + inject;
+// プレビューでは、知らせの部品（server/hints.js）も信頼する先頭部分に入れる（デッキの文書の中の </body> を探して入れない）
+function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
+function previewHtml(base) { return withShim(base, { dev: true, load: S.loads }, '\n' + RES.hints); }
+// 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
+// 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
+// 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
+function renderedReasons(r) {
+  const pre = trustedPrefix(`${SHIM}(${enc({ dev: true, load: 0 })});\n${RES.hints}`);
+  const trusted = [{ name: 'prefix', start: 0, end: pre.length }, ...(r.trusted || []).map((t) => ({ ...t, start: t.start + pre.length, end: t.end + pre.length }))];
+  const out = new Set(documentReasons(pre + r.html, trusted));
+  for (const x of r.stats.codeReasons || []) out.add(x);
+  return [...out];
 }
 // 組み直す（同時に 1 つだけ。途中で頼まれたら終わってからもう一度）。戻り値：失敗したら true
 async function rebuild(reason) {
@@ -180,10 +187,17 @@ async function rebuild(reason) {
       const t0 = performance.now();
       $('viewer').classList.add('busy');
       try {
+        const ws0 = S.ws, g0 = S.gen;
         const listing = await S.ws.list();
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         const r = await engine.build(S.deckFile, { dev: true });
+        // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
+        // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
+        const reasons = [...new Set([...renderedReasons(r), ...jsFiles(listing)])];
+        S.reasons = reasons;
+        const allow = await codeConsent(reasons);
+        if (S.ws !== ws0 || S.gen !== g0) continue;          // 確かめている間に別の作業場所になった（その組み立ては捨てる）
         S.lastBuildMs = Math.round(performance.now() - t0);
         S.builds++;
         const wasError = !!S.error;
@@ -208,7 +222,6 @@ async function rebuild(reason) {
         $('st-info').textContent = `${T.slidesN(r.stats.slides)} · ${(r.html.length / 1048576).toFixed(1)} MB · ${S.lastBuildMs} ms`;
         if (reason !== 'poll' || changed || wasError) status(T.rebuilt(time(), reason));
         // プレビューも発表者ビューも、コードの確かめ（codeConsent）を通ったときだけ読み込む
-        const allow = await codeConsent(listing);
         S.allowed = allow;
         if (allow && (changed || !S.loads || S.fresh)) refreshFrame();
         if (allow && changed && S.presWin && !S.presWin.closed) loadPresenter();
@@ -465,15 +478,11 @@ async function ensureRights() {
 // そのデッキのコード（§6）：申告（index.profile）ではなく中身から決める（kit/core/code-scan.mjs：データの type のない <script>・on… の属性・
 // javascript: の URL・srcdoc・取り込む SVG や HTML の中のもの・JavaScript のファイル・部品の式）。
 // プレビューと発表者ビューで動かす前に知らせ、はっきり「プレビューを始める」を押してもらう（作業場所ごとに 1 回）
-const SCAN_SKIP = /\.(png|jpe?g|gif|webp|avif|ico|bmp|woff2?|ttf|otf|wav|mp3|m4a|aac|ogg|opus|flac|mp4|webm|mov|pdf)$/i;
-async function ownCode(listing) {
-  if (S.portable) return S.portable.codeReasons || [];
-  const rels = [...listing.files.keys()];
-  const js = rels.filter((rel) => /\.(m|c)?js$/i.test(rel) && !rel.split('/').some((x) => x.startsWith('.')));
-  if (js.length) return js.slice(0, 5).map((rel) => 'script file ' + rel);
-  const files = new Map();
-  for (const rel of rels) if (!SCAN_SKIP.test(rel)) { try { files.set(rel, await S.ws.readBytes(rel)); } catch { /* 読めない：飛ばす */ } }
-  return codeReasons(files, { entry: S.deckFile });
+// 中身は、組んだ文書そのもの（renderedReasons：取り込み・前処理の後、拡張子によらずすべての依存を含む、表示するのと同じバイト）から決める。
+// 作業場所をもう一度読んで調べることはしない（読むたびに中身が変わりうるので、調べたものと表示するものが食い違う）。
+// 補いとして、作業場所の JavaScript のファイル（名前だけ。組み立てが使わなくても、少しでも疑わしければ聞く）も数える
+function jsFiles(listing) {
+  return [...listing.files.keys()].filter((rel) => /\.(m|c)?js$/i.test(rel) && !rel.split('/').some((x) => x.startsWith('.'))).slice(0, 5).map((rel) => 'script file ' + rel);
 }
 function codeDialog(lead, reasons, mislabelled) {
   return ask({ title: T.codeTitle, kind: 'warn', body: [
@@ -484,17 +493,16 @@ function codeDialog(lead, reasons, mislabelled) {
   buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
 }
 // S.codeOk：null（まだ聞いていない）・true（始めてよい）・false（断った：この作業場所ではプレビューも発表者ビューも読み込まない）
-async function codeConsent(listing) {
+// reasons：その組み立ての文書から決めた理由（renderedReasons）。持ち運べる 1 ファイルは開く前に同じ規則で決めて聞いた（openPortable。
+// 聞いて「始める」を押したなら S.codeOk は true）。コードがなかった文書を直してコードが現れたら、そのときに聞く（フォルダと同じ）
+async function codeConsent(reasons) {
   if (S.codeOk !== null) return S.codeOk;
-  if (S.portable) { S.codeOk = true; return true; }      // 持ち運べる 1 ファイルは開く前に中身から決めて聞いた（openPortable）
-  // 同時に頼まれても（開く・見張りの組み直し）確かめは 1 つだけ。中身を読む間も含めて 1 つの約束にする
+  if (!reasons || !reasons.length) return true;          // コードが現れたら（Claude Code が部品を足したなど）そのときに聞く
+  // 同時に頼まれても（開く・見張りの組み直し）確かめは 1 つだけ
   if (S.codeAsking) return S.codeAsking;
   const ws = S.ws;
   const job = S.codeAsking = (async () => {
-    const reasons = await ownCode(listing || engine.listing);
-    if (S.ws !== ws) return false;                        // 確かめている間に別の作業場所になった
-    if (!reasons.length) return true;                     // コードが現れたら（Claude Code が部品を足したなど）そのときに聞く
-    const v = await codeDialog(T.codeLeadFolder, reasons, false);
+    const v = await codeDialog(S.portable ? T.codeLeadFile : T.codeLeadFolder, reasons, false);
     if (S.ws !== ws) return false;
     S.codeOk = v === 'run';
     if (!S.codeOk) {
@@ -572,7 +580,15 @@ async function openPortable(input) {
   // 独自のコード：申告（index.profile）を信じず、取り出した原稿の中身から決める（§6）。中のコードが動く前に知らせる。
   // 申告が core なのに中身にコードがあれば、コードを含むものとして聞き、申告が食い違うことも知らせる。
   // プレビューは空にしてから聞く（前の文書も後ろに見せない）。取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
+  // 中身は、取り出した原稿の全体（拡張子によらず）と、それを組んだ文書そのもの（取り込み・前処理の後。表示するのと同じ規則）の両方から。
+  // 組めなければ確かめられないので、コードを含むものとして聞く
   const reasons = codeReasons(r.files, { entry: r.index.entry });
+  try {
+    const probe = createEngine(RES, loadLazy);
+    const pws = workspaceFromPortable(name, r);
+    probe.setWorkspace(pws); probe.setListing(await pws.list());
+    for (const x of renderedReasons(await probe.build(r.index.entry, { dev: true }))) if (!reasons.includes(x)) reasons.push(x);
+  } catch (e) { reasons.push('cannot build the lesson to check it: ' + String(e && e.message || e).slice(0, 120)); }
   const mislabelled = r.index.profile !== 'extended' && reasons.length > 0;
   const extended = r.index.profile === 'extended' || reasons.length > 0;
   if (mislabelled) r.warnings = [...r.warnings, T.codeMislabelled];
@@ -588,6 +604,7 @@ async function openPortable(input) {
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
+  if (extended) S.codeOk = true;                          // 開く前に聞いて「始める」を押した
   // 作り直して保存できるか（段 B）：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）。
   // できなければ段 A の編集（口述原稿・音声・秒数）だけ。組み立てられない文書と、段 A も段 B もできない文書は読むだけ
   if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.tierAOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);

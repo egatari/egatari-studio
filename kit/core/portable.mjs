@@ -725,7 +725,8 @@ export async function exportPortable(env, srcPath, opts = {}) {
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める
   const deckSrc = new TextDecoder().decode(files[entry]);
-  if (codeReasons(files, { entry }).length) embeddedCode = true;
+  // 組んだ文書そのもの（取り込み・前処理の後。build の stats.codeReasons）と、文書に入れる原稿のファイルの全体（拡張子によらない補い）の両方で
+  if (r.stats.codeReasons.length || codeReasons(files, { entry }).length) embeddedCode = true;
 
   // 拡張の行 → extensions.<名前>[<段階の鍵>].<欄>（同じ欄が繰り返せば配列）
   const extensions = extensionsFrom(segs);

@@ -14,7 +14,7 @@ import { launch } from '../kit/browser.mjs';
 import os from 'node:os';
 import { previewDocument, PREVIEW_CSP } from '../app/preview-doc.js';
 import { build } from '../kit/build.mjs';
-import { markupReasons } from '../kit/core/code-scan.mjs';
+import { markupReasons, documentReasons } from '../kit/core/code-scan.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -123,7 +123,8 @@ try {
     const dir = path.join(tmp, name); fs.mkdirSync(dir);
     fs.writeFileSync(path.join(dir, 'deck.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>${fig}</section></div></body></html>`);
     const r = build(path.join(dir, 'deck.html'), { subset: false });
-    const flagged = markupReasons(fs.readFileSync(path.join(dir, 'deck.html'), 'utf8')).length > 0;
+    const flagged = r.stats.codeReasons.length > 0;
+    ok(markupReasons(fs.readFileSync(path.join(dir, 'deck.html'), 'utf8')).length > 0 === flagged, `formula ${name}: the source scan and the scan of the built document agree`);
     await load(previewDocument(r.html, SHIM));
     await frameOf().waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: 15000 }).catch(() => {});
     const ran = await frameOf().evaluate(() => { try { DECK.seek(0, 3, Infinity); } catch (e) { /* 無視 */ } return globalThis.__bypass === 1; }).catch(() => false);
@@ -132,6 +133,34 @@ try {
     else ok(flagged, `formula ${name}: flagged as code (ask) — the decoy cannot hide the selected block`);
     if (name.startsWith('decoy')) ok(!ran, `formula ${name}: the runtime refuses an ambiguous data block (two candidates)`);
   }
+  // 判定は組んだ文書（取り込み・前処理の後、拡張子によらずすべての依存を含む）に対して行う（format spec §6）
+  const deckWith = (name, body, files = {}) => {
+    const dir = path.join(tmp, name); fs.mkdirSync(dir, { recursive: true });
+    for (const [rel, text] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), text); }
+    fs.writeFileSync(path.join(dir, 'deck.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>${body}</section></div></body></html>`);
+    return build(path.join(dir, 'deck.html'), { subset: false });
+  };
+  const XSS = '<img src="data:," onerror="window.__x=1">';
+  for (const [name, body, files] of [
+    ['include-png', '/*INCLUDE:payload.png*/', { 'payload.png': '<script>window.__x=1</script>' }],
+    ['include-in-style', '<style>/*INCLUDE:a.woff2*/</style>', { 'a.woff2': '</style>' + XSS }],
+    ['fig', '{{FIG:f}}', { 'figs/f.svg': '<svg><a href="javascript:x()">a</a></svg>' }],
+    ['css-import', '<style>@import "evil.dat";</style>', { 'evil.dat': '</style>' + XSS }],
+  ]) {
+    const r = deckWith(name, body, files);
+    ok(r.stats.codeReasons.length > 0, `expanded source: ${name} is classified as code (${JSON.stringify(r.stats.codeReasons.slice(0, 2))})`);
+  }
+  // {{JSON:…}} は組み立てが書き直す（</ を逃がす）ので抜け出せない：データのまま
+  const rj = deckWith('json-include', '<script type="application/json" id="x">{{JSON:d.bin}}</script>', { 'data/d.bin': JSON.stringify({ a: '</script>' + XSS }) });
+  ok(rj.stats.codeReasons.length === 0 && !markupReasons(rj.html).some((x) => x.startsWith('onerror')), 'expanded source: a {{JSON:…}} include with </script> stays data ' + JSON.stringify(rj.stats.codeReasons));
+  // 原稿のマクロ（macros.tex）は信頼する実行系の <script> の中に入る：</script で抜け出せない（抜け出したら判定が範囲を信頼しない）
+  const rm = deckWith('macros', '<p>DECK.svgMath</p>', { 'macros.tex': '\\newcommand{\\evil}{</script>' + XSS + '}' });
+  ok(rm.html.includes('katex.__macros=') && !markupReasons(rm.html).some((x) => x.startsWith('onerror')) && rm.stats.codeReasons.length === 0, 'macros: a macro containing </script> cannot break out of the trusted runtime script ' + JSON.stringify(rm.stats.codeReasons));
+  // 信頼する範囲が信頼しないバイトに飲み込まれたら（属性の中に入った）、範囲を信頼せずに読む
+  const sw = '<div title="' + '<script>trusted()</script>' + '">' + XSS;
+  ok(documentReasons(sw, [{ start: 12, end: 12 + '<script>trusted()</script>'.length, tags: ['script'] }]).some((x) => /trusted part/.test(x)), 'documentReasons: a trusted range swallowed by an attribute is not trusted');
+  ok(documentReasons('<p>a</p><script>t()</script><p>b</p>', [{ start: 8, end: 28, tags: ['script'] }]).length === 0, 'documentReasons: a cleanly inserted trusted script is skipped');
+  ok(markupReasons('<meta http-equiv="Refresh" content="0;url=x">').length === 1, 'meta refresh counts as code');
   fs.rmSync(tmp, { recursive: true, force: true });
 
   // 信頼する仲立ちに </script や <!-- を入れたら組まない

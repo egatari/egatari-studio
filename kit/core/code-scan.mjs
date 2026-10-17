@@ -4,6 +4,8 @@
 //
 //   codeReasons(files, {entry})  files：Map か {相対パス: Uint8Array | 文字列}。返すもの：理由の文字列の配列（空ならコードなし）
 //   markupReasons(text, where)   1 つの文書（HTML・SVG・XML、組み立てが取り込みうるテキスト）の中の理由
+//   documentReasons(html, trusted) 組んだ文書（表示するバイトそのもの）の中の理由。組み立てとエディタはこれで決める（build の stats.codeReasons）。
+//                                codeReasons は原稿のフォルダ・取り出した原稿の全体を見る補い（同じバイトから、少しでも疑わしいものを足す）
 //
 // コードと見なすもの（どれか 1 つでもあれば、そのデッキのコードが動く）：
 //   - JavaScript のファイル（.js・.mjs・.cjs。原稿のフォルダの部品 components/<名前>/index.js も）
@@ -80,9 +82,44 @@ const textOf = (n) => (n.childNodes || []).filter((c) => c.nodeName === '#text')
 const JS_URL = /(^|[\s;,])(javascript|vbscript|livescript):/;
 // resolveJson(name)：{{JSON:name}} の中身（文字列か null）。m-curves の子の JSON が取り込みのとき
 export function markupReasons(text, where = '', resolveJson = null) {
+  return scanTree(parse(String(text), { scriptingEnabled: false }), where, resolveJson, null);
+}
+
+// 組んだ文書（表示するのと同じバイト）の中の理由（format spec §6：判定は取り込み・前処理の後の原稿全体に対し、表示するのと同じバイトで行う）。
+// trusted：組み立て・エディタが自分で入れた部分 [{start, end, tags}]（文字の位置。tags はその範囲にあるはずの要素の名前の並び）。
+// 範囲の中にすっかり収まる要素だけを飛ばす。tags のある範囲は、範囲から作られた要素の並びが tags と違えば（信頼しないバイトに飲み込まれた・抜け出された）、
+// その範囲は信頼せずに読み、そのことも理由にする（少しでも疑わしければコードとする）
+export function documentReasons(html, trusted = []) {
+  const text = String(html);
+  const ranges = (trusted || []).map((r) => ({ ...r, ok: true }));
+  const inside = (loc) => loc && typeof loc.startOffset === 'number' && typeof loc.endOffset === 'number' ? ranges.find((r) => r.ok && loc.startOffset >= r.start && loc.endOffset <= r.end) || null : null;
+  const doc = parse(text, { scriptingEnabled: false, sourceCodeLocationInfo: true });
+  // 範囲ごとに、すっかり収まる一番外側の要素の名前を並べて、tags と比べる
+  const seen = new Map(ranges.map((r) => [r, []]));
+  const look = (n) => {
+    if (n.tagName) {
+      const r = inside(n.sourceCodeLocation);
+      if (r) { seen.get(r).push(n.tagName); return; }
+      const l = n.sourceCodeLocation;
+      // 範囲の中で始まって外で終わる要素（範囲を飲み込んだ・範囲から抜け出した）
+      if (l && typeof l.startOffset === 'number') for (const q of ranges) if (q.tags && l.startOffset >= q.start && l.startOffset < q.end && !(l.endOffset <= q.end)) q.spill = true;
+    }
+    for (const c of n.childNodes || []) look(c);
+    if (n.content) look(n.content);
+  };
+  look(doc);
+  const extra = [];
+  for (const r of ranges) {
+    if (r.spill || (r.tags && seen.get(r).join(',') !== r.tags.join(','))) { r.ok = false; extra.push(`trusted part ${r.name || r.start} was not parsed as inserted`); }
+  }
+  return [...extra, ...scanTree(doc, '', null, (n) => !!inside(n.sourceCodeLocation))];
+}
+
+// skip(n)：その要素（と中身）を読まない（信頼する部分）
+function scanTree(doc, where, resolveJson, skip) {
   const out = new Set();
-  const doc = parse(String(text), { scriptingEnabled: false });
   const visit = (n) => {
+    if (n.tagName && skip && skip(n)) return;
     if (n.tagName) {
       const tag = n.tagName.toLowerCase();
       if (tag === 'script') {
@@ -90,6 +127,7 @@ export function markupReasons(text, where = '', resolveJson = null) {
         if (!DATA_TYPES.has(t)) out.add(`<script${t ? ` type="${t}"` : ''}>${where}`);
       }
       if (EMBED.has(tag)) out.add(`<${tag}>${where}`);
+      if (tag === 'meta' && (attr(n, 'http-equiv') || '').trim().toLowerCase() === 'refresh') out.add(`<meta http-equiv="refresh">${where}`);
       for (const a of n.attrs || []) {
         const name = a.name.toLowerCase();
         if (/^on/.test(name)) out.add(`${name}=${where}`);
