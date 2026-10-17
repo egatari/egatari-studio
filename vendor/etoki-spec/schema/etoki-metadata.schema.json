@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://etoki-org.github.io/etoki-spec/schema/etoki-metadata.schema.json",
+  "$id": "https://etoki.dev/schema/etoki-metadata.schema.json",
   "title": "Etoki 1.0 metadata (index.metadata)",
   "type": "object",
   "required": [
@@ -132,6 +132,12 @@
         "individual"
       ],
       "default": "public"
+    },
+    "copyright": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
     }
   },
   "not": {

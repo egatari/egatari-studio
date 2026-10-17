@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://etoki-org.github.io/etoki-spec/schema/deck-audio.schema.json",
+  "$id": "https://etoki.dev/schema/deck-audio.schema.json",
   "title": "Etoki 1.0 runtime audio (#deck-audio)",
   "type": "object",
   "propertyNames": {

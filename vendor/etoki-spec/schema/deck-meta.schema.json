@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://etoki-org.github.io/etoki-spec/schema/deck-meta.schema.json",
+  "$id": "https://etoki.dev/schema/deck-meta.schema.json",
   "title": "Etoki 1.0 runtime metadata (#deck-meta)",
   "type": "object",
   "required": [
@@ -54,6 +54,15 @@
         "type": "string",
         "pattern": "^[a-z0-9-]+$"
       }
+    },
+    "license": {
+      "type": "string"
+    },
+    "copyright": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
     }
   },
   "if": {

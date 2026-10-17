@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://etoki-org.github.io/etoki-spec/schema/etoki-audio.schema.json",
+  "$id": "https://etoki.dev/schema/etoki-audio.schema.json",
   "title": "Etoki 1.0 audio record (index.audio[stepKey])",
   "type": "object",
   "required": [

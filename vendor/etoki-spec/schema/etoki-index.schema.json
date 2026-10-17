@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://etoki-org.github.io/etoki-spec/schema/etoki-index.schema.json",
+  "$id": "https://etoki.dev/schema/etoki-index.schema.json",
   "title": "Etoki 1.0 archive index (#etoki-index)",
   "type": "object",
   "required": [
