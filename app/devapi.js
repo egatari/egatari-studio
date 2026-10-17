@@ -2,7 +2,7 @@
 // server/client.js（デッキの iframe の中）は運び手（postMessage）を通してここを呼ぶ。読み書きするのは
 // 原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
-import { rewriteNarration, narrationRev, rawTurns, splitKey } from '../kit/core/narration-core.mjs';
+import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 import { readText, writeText, backup } from './fsx.js';
 
 function parseRange(s) {
@@ -16,7 +16,7 @@ function rid() {
   return 'c' + Date.now().toString(36) + [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-// ctx = {root, deckFile(), slideOrder(), afterWrite(), msg}
+// ctx = {root, deckFile(), slideOrder(), afterWrite(), msg}。slideOrder() は build の slides（{key, id, heading}）の配列
 export function createDevApi(ctx) {
   const M = ctx.msg;
   const ok = (body) => ({ ...body, _status: 200 });
@@ -60,7 +60,7 @@ export function createDevApi(ctx) {
         return ok({ key: `${sk}:${st}`, slideKey: sk, stepKey: st, rev: narrationRev(text ?? '', sk, st), ...rawTurns(text, sk, st) });
       }
       if (method === 'POST' && p === '/__dev/narration') {
-        if (!body.slideKey || !/^(\d+|concl)$/.test(String(body.stepKey)) || !Array.isArray(body.turns)) return err(400, M.badNarr);
+        if (!body.slideKey || !isStepKey(body.stepKey) || !Array.isArray(body.turns)) return err(400, M.badNarr);
         if (typeof body.rev !== 'string') return err(400, M.noRev);
         const sk = String(body.slideKey), st = String(body.stepKey);
         const cur = await readText(ctx.root, 'narration.md');

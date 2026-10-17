@@ -193,7 +193,7 @@ function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 const api = createDevApi({
   get root() { return S.root; },
   deckFile: () => S.deckFile,
-  slideOrder: () => S.slides.map((s) => s.key),
+  slideOrder: () => S.slides || [],   // {key, id, heading}：id のあるスライドの新しい節は「## 見出し {#id}」
   afterWrite: async () => { const failed = await rebuild('save'); return failed; },
   msg: T.api,
 });

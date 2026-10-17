@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey } from '../kit/narration.mjs';
+import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -246,13 +246,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && p === '/__dev/narration') {
       const b = await readBody(req);
-      if (!b.slideKey || !/^(\d+|concl)$/.test(String(b.stepKey)) || !Array.isArray(b.turns)) return send(res, 400, { error: 'slideKey / stepKey / turns が正しくありません' });
+      if (!b.slideKey || !isStepKey(b.stepKey) || !Array.isArray(b.turns)) return send(res, 400, { error: 'slideKey / stepKey / turns が正しくありません' });
       if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
       const text = fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : '# 口述原稿\n';
       if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '口述原稿が変わっています。再読み込みしてください' });
-      const order = (page?.slides || []).map((s) => s.key);
-      const out = rewriteNarration(text, sk, st, b.turns, order);
+      // 新しい節の見出しは、id のあるスライドなら「## 見出し {#id}」（スライドの一覧 {key, id, heading} を渡す）
+      const out = rewriteNarration(text, sk, st, b.turns, page?.slides || []);
       if (out !== text) { backup(NARR); fs.writeFileSync(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }
       return send(res, 200, { ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
     }

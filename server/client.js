@@ -505,7 +505,7 @@ function renderNext(box){
   if (!box || !curPos) return;
   box.innerHTML = "";
   var nk = curPos.nextKey;
-  box.appendChild(h("div", {cls: "dv-lab", text: nk ? L.next(nk.slice(nk.lastIndexOf(":") + 1), nk.split(":")[0] !== narr.slideKey) : L.noNext}));
+  box.appendChild(h("div", {cls: "dv-lab", text: nk ? L.next(splitKey(nk)[1], splitKey(nk)[0] !== narr.slideKey) : L.noNext}));
   if (!nk) return;
   var sk = splitKey(nk), turns = ((DECK.NARRATION[sk[0]] || {})[sk[1]]) || [];
   if (!turns.length) box.appendChild(h("p", {text: L.noNarr}));
