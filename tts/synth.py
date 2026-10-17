@@ -233,6 +233,13 @@ def main():
     yomi_path = Path(yomi_src).expanduser().resolve() if yomi_src else TTS_DIR / "yomi.yaml"
     if yomi_src and not yomi_path.exists():
         sys.exit(f"読み辞書がありません: {yomi_path}")
+    # 日本語以外のデッキでは、名前で指定した声に <名前>_<言語>.wav（例：alice_en.wav）があればそちらを使う
+    # （日本語の参照音声で英語を読ませると訛りが出るため。ファイルの有無はこの PC の参照音声のフォルダで見る）
+    if not lang.startswith("ja"):
+        suffix = "_" + lang.split("-")[0]
+        for r, v in list(voices.items()):
+            if not ("/" in v or v.endswith(".wav")) and (ref_dir / f"{v}{suffix}.wav").exists():
+                voices[r] = v + suffix
     voice = {
         "engine": "dry-run" if args.dry_run else engine,
         "model": MODEL,

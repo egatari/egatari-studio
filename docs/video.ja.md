@@ -63,7 +63,7 @@ CANON_DIR=<canon のリポジトリ> node render/export-canon.mjs $D --render $D
 
 ## 声
 
-`--voices` > `<デッキ>/voice.json`（`{"expert": "alice", "novice": "bob"}`）> 既定（1 人モードは alice、掛け合いは Expert = alice・Novice = bob）。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対ならデッキから）も書ける。既定の alice・bob は手元にないことが多いので、自分の参照音声を voice.json で指定する。
+`--voices` > `<デッキ>/voice.json`（`{"expert": "alice", "novice": "bob"}`）> 既定（1 人モードは alice、掛け合いは Expert = alice・Novice = bob）。日本語以外のデッキでは、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対ならデッキから）も書ける。既定の alice・bob は手元にないことが多いので、自分の参照音声を voice.json で指定する。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 

@@ -63,7 +63,7 @@ CANON_DIR=<canon repository> node render/export-canon.mjs $D --render $D/video -
 
 ## Voices
 
-`--voices` > `<deck>/voice.json` (`{"expert": "alice", "novice": "bob"}`) > the defaults (alice for single-speaker mode; Expert = alice and Novice = bob for dialogue). A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the deck). The default alice and bob are often not available locally, so specify your own reference voices in voice.json.
+`--voices` > `<deck>/voice.json` (`{"expert": "alice", "novice": "bob"}`) > the defaults (alice for single-speaker mode; Expert = alice and Novice = bob for dialogue). In a deck that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the deck). The default alice and bob are often not available locally, so specify your own reference voices in voice.json.
 
 After each line is synthesized, the silence before and after is trimmed (-45 dB, keeping 0.05 s), the loudness is normalized with EBU R128 two-pass loudnorm to -20 LUFS / TP -1.5 dB / LRA 11, and the lines are joined with 350 ms of silence between them (`tts/core.py`).
 
