@@ -172,7 +172,7 @@ ok('書き出し：Schema に合う・外すもの・伏せ字・docId を残す
   assert.equal(chunkIds.length, Object.values(first.index.blobs).reduce((a, b) => a + b.chunks.length, 0));
   // 読める層：全段階の表示用の文字が、スクリプトの外の DOM に
   assert.ok(scan.byId.size);
-  const layer = firstHtml.slice(firstHtml.indexOf(`<div id="${FORMAT.READABLE_ID}"`));
+  const layer = firstHtml.slice(firstHtml.indexOf(`<section id="${FORMAT.READABLE_ID}"`));
   for (const s of segs) for (const t of s.turns) assert.ok(layer.includes(t.display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')), `readable: ${t.display}`);
   assert.ok(!/\r/.test(firstHtml));
 });

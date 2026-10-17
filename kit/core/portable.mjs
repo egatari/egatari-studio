@@ -309,6 +309,19 @@ export function validateIndex(ix) {
       if (own(c, 'path')) path(c.path, `${w}.path`);
     });
   }
+  if (own(ix, 'themes')) {
+    if (!Array.isArray(ix.themes)) e.push('themes: not an array');
+    else ix.themes.forEach((c, j) => {
+      const w = `themes[${j}]`;
+      if (!isObj(c)) { e.push(`${w}: not an object`); return; }
+      need(c, ['name', 'version', 'sha256', 'source'], w);
+      if (own(c, 'name')) str(c.name, `${w}.name`, null, 1);
+      if (own(c, 'version')) str(c.version, `${w}.version`, null, 1);
+      if (own(c, 'sha256')) str(c.sha256, `${w}.sha256`, RE.sha256);
+      if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
+      if (own(c, 'path')) path(c.path, `${w}.path`);
+    });
+  }
   if (own(ix, 'metadata')) metadataCheck(ix.metadata, 'metadata', e);
   if (own(ix, 'excluded') && !(Array.isArray(ix.excluded) && ix.excluded.every((x) => typeof x === 'string'))) e.push('excluded: not an array of strings');
   if (own(ix, 'extensions')) {
@@ -760,7 +773,7 @@ function recipeOf(sj, v) {
 function readableLayer(slides, segs, lang) {
   const bySlide = new Map();
   for (const s of segs) { if (!bySlide.has(s.slideKey)) bySlide.set(s.slideKey, []); bySlide.get(s.slideKey).push(s); }
-  const out = [`<div id="${RD_ID}" lang="${escAttr(lang)}">`];
+  const out = [`<section id="${RD_ID}" lang="${escAttr(lang)}">`];
   for (const sl of slides) {
     const steps = (bySlide.get(sl.key) || []).slice().sort((a, b) => stepOrder(a.stepKey) - stepOrder(b.stepKey));
     out.push(`<article data-slide-key="${escAttr(sl.key)}"><h2>${escText(plain(sl.title || sl.key))}</h2>`);
@@ -770,7 +783,7 @@ function readableLayer(slides, segs, lang) {
     }
     out.push('</article>');
   }
-  out.push('</div>');
+  out.push('</section>');
   return out.join('\n');
 }
 
