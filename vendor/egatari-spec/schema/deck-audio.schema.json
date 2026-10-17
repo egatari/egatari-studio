@@ -36,6 +36,10 @@
           "none"
         ],
         "default": "auto"
+      },
+      "mime": {
+        "type": "string",
+        "pattern": "^audio/[a-z0-9.+-]+$"
       }
     },
     "if": {

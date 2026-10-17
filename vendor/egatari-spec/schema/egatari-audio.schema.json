@@ -51,8 +51,12 @@
       ]
     },
     "inputHash": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "null = unknown, treated as stale"
     },
     "recipe": {
       "type": "object",

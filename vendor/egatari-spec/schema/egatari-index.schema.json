@@ -156,6 +156,40 @@
           }
         }
       }
+    },
+    "themes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "sha256",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "source": {
+            "enum": [
+              "registry",
+              "embedded"
+            ]
+          },
+          "path": {
+            "$ref": "#/$defs/archivePath"
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -178,7 +212,7 @@
       "description": "Relative /-separated path. Further checks (reserved device names, case-folded collisions, file/directory prefix collisions, prototype keys, 10 segments, 1024 bytes) are normative in spec §3.3 and MUST be enforced by readers beyond schema validation.",
       "minLength": 1,
       "maxLength": 1024,
-      "pattern": "^(?![/])(?!.*\\\\)(?!.*(^|/)\\.{1,2}(/|$))(?!.*//)(?!.*/$)(?!.*[\\u0000-\\u001f\\u007f<>:\"|?*]).+$"
+      "pattern": "^(?![/])(?!.*\\\\)(?!.*(^|/)\\.{1,2}(/|$))(?!.*//)(?!.*/$)(?!.*[\\u0000-\\u001f\\u007f-\\u009f<>:\"|?*]).+$"
     },
     "blob": {
       "type": "object",
