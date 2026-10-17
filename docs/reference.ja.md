@@ -64,7 +64,7 @@
 | `steps="n"`（部品） | 部品の段階の数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.ja.md#7-注目の演出mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。section に手で `data-key` を書けば、それを鍵に使う（`id` より優先）。[スライドの鍵](#スライドの鍵) |
+| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。`id` のない section に手で `data-key` を書けば、それを鍵に使う（旧来の書き方。検査器が警告する）。[スライドの鍵](#スライドの鍵) |
 
 ### 数式
 
@@ -276,6 +276,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | build の警告。どのスライドにも合わない口述原稿の `##`、決まった書き方でない段階の番号（`[01]`）、規則に合わない `{#id}` | 警告。エラー |
 | `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合わないスライドの id（`slide id: …`）。鍵が同じスライドが 2 枚（`slide key: …`）。デッキのほかの id や `\htmlId{…}` と同じスライドの id（`slide id: …`） | エラー |
 | `## 見出し {#id}` の見出しの文字列が、そのスライドの見出しと違う（id が勝つ） | 情報 |
+| 旧来の規則で鍵が決まるスライド：手で書いた `data-key`、または `s<番号>`（id も見出しもない）—`slide key: legacy` | 警告 |
 | コンソールのエラー | エラー |
 | 段階 0 で見えている本文 | 情報 |
 | タイトルが 26 字（全角）を超える（日本語）/ 60 文字を超える（英語） | エラー / 警告 |
@@ -298,7 +299,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## build
 
-`node kit/build.mjs <deck.html> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio]`（`npm run build -- …` でも）。
+`node kit/build.mjs <deck.html> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]`（`npm run build -- …` でも）。
 
 | 選択肢 | 意味 |
 |---|---|
@@ -306,8 +307,28 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--theme 名前` | テーマ（[テーマ](#テーマ)） |
 | `--dev` | 編集用の `data-src` を付け、字を絞らない（開発サーバーが使う） |
 | `--embed-audio` | 音声を AAC 64 kbps モノラルで埋め込む（ffmpeg が要る。なければ WAV のまま、警告）。なしでは出力からの相対パスで参照する |
+| `--portable`・`--play-only` | 原稿も中に持つ 1 ファイル。[持ち運べる 1 ファイル](#持ち運べる-1-ファイル--portable) |
 
 最後の行に、スライド・式・部品・字のファイル・口述原稿の段階・音声の段階・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と口述原稿の文字列、使う部品の JS の文字列（日本語以外のデッキでは和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語のデッキではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
+
+
+### 持ち運べる 1 ファイル（`--portable`）
+
+`node kit/build.mjs <deck.html> --portable` は `out/<名前>.ega.html` を書く。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。[持ち運べるデッキの形式](https://github.com/egatari/egatari-spec)（1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
+
+- **入るもの**：build が原稿のフォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・原稿のフォルダの部品とテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち口述原稿にある段階のもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
+- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する。
+- **教材の id**：初めての書き出しで、原稿のフォルダに乱数の `docId` を持つ `egatari.json` を作る。デッキと一緒に残す（次の書き出しも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
+- **スクリプトなしで読める口述原稿**：全段階の表示用の文字を、ふつうの HTML としても入れる（デッキが動いているときは隠す）。保存・検索・読み上げのため。
+- **拡張の行**（`@x-<名前>-<欄> 値`）は段階ごとにファイルの索引に集める。
+- 30 MiB を超えると警告する（長い教材は章に分ける）。
+
+| 選択肢 | 意味 |
+|---|---|
+| `--portable` | 持ち運べる 1 ファイルを書く（既定 `out/<名前>.ega.html`。`-o` で場所） |
+| `--play-only` | 再生専用の写しを書く（既定 `out/<名前>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
+
+`npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。
 
 ## TTS
 
@@ -365,6 +386,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 |---|---|
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいな雛形から新しいデッキのフォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <デッキのフォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のあるデッキでは何もしない |
+| `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` | 持ち運べる 1 ファイル ↔ フォルダ。[持ち運べる 1 ファイル](#持ち運べる-1-ファイル--portable) |
 | `npm run build:app` | 編集アプリを作る：`dist/editor/`（GitHub Pages 用）と 1 ファイルの `dist/editor.html`。[editor.ja.md](editor.ja.md) |
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックの TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |

@@ -64,7 +64,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 | `steps="n"` (component) | override the component's step count |
 | `data-id="ID"` | morph pairing ([contract §8](contract.md#8-morphs-data-morph)) |
 | `id="ID"` / `data-mark="ID"` | target of `{mark:ID}` ([contract §7](contract.md#7-attention-marks-mark)) |
-| `data-key`, `data-title` | added by build (slide key, plain heading). A hand-written `data-key` on a section is used as the slide key (it wins over `id`); see [Slide keys](#slide-keys) |
+| `data-key`, `data-title` | added by build (slide key, plain heading). A hand-written `data-key` on a section without `id` is used as the slide key (legacy; the checker warns); see [Slide keys](#slide-keys) |
 
 ### Math
 
@@ -276,6 +276,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | build warnings; a narration `##` that matches no slide, a non-canonical step number (`[01]`), an invalid `{#id}` | warn; error |
 | slide id not matching `^[A-Za-z][A-Za-z0-9_-]{0,63}$` (`slide id: …`); two slides with the same key (`slide key: …`); a slide id equal to another id or `\htmlId{…}` in the deck (`slide id: …`) | error |
 | the heading text of a `## heading {#id}` differs from that slide's heading (the id wins) | info |
+| a slide keyed by a legacy rule: a hand-written `data-key`, or `s<n>` (no id and no heading) — `slide key: legacy` | warn |
 | console errors | error |
 | text visible at step 0 | info |
 | title > 26 full-width units (Japanese) / > 60 characters (English) | error / warn |
@@ -298,7 +299,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ## Build
 
-`node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio]` (or `npm run build -- …`).
+`node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]` (or `npm run build -- …`).
 
 | Option | Meaning |
 |---|---|
@@ -306,8 +307,28 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `--theme name` | theme (see [Themes](#themes)) |
 | `--dev` | add `data-src` for the editor and skip glyph subsetting (used by the dev server) |
 | `--embed-audio` | embed audio as AAC 64 kbps mono (needs ffmpeg; otherwise WAV, with a warning). Without it, audio is referenced relative to the output |
+| `--portable`, `--play-only` | a single file that also carries the source; see [Portable file](#portable-file---portable) |
 
 The summary line shows slides, math, components, font files, narration steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/` (keyed by the glyphs, the TTF file's hash and the fonttools version; `uv` runs `fonttools==4.67.0` and `brotli==1.2.0`), compressed audio in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the deck text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the narration, string literals of the components used (without CJK in non-Japanese decks), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese decks `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
+
+
+### Portable file (`--portable`)
+
+`node kit/build.mjs <deck.html> --portable` writes `out/<name>.ega.html`: one HTML file that plays like the normal build and also carries the deck's source, so it can be unpacked into a folder (or reopened by an editor) without the original folder. It follows the [portable deck format](https://github.com/egatari/egatari-spec) (draft 1.0); the file name extension, block ids and media type come from that spec.
+
+- **What goes in**: every file the build reads from the deck folder (`deck.html`, `narration.md`, `macros.tex`, `timeline.json`, data, figures, images, styles, deck-local components and themes), `voice.json` with local paths reduced to voice names, and the audio listed in `audio/manifest.json` for steps that exist in the narration (compressed to AAC as with `--embed-audio`; WAV with a warning if ffmpeg is missing). Each audio clip is stored once and the runtime plays it from there.
+- **What stays out**: `comments.json`, hidden files and folders (`.cache/`, `.git/`, `.env`, …), `out/`, `video/`, `bundle/`, `node_modules/`, backups, `*.local.json`, credentials, unused audio and the TTS cache files. A file the build read but that is excluded is reported. Components and themes from this repository are referenced by name, version and SHA-256 instead of being copied.
+- **Lesson id**: the first export creates `egatari.json` in the deck folder with a random `docId`; keep it with the deck so later exports keep the same id. Its optional `metadata` object may hold `license` (SPDX id or URL), `copyright`, `attribution`, `creators`, `description`, `accessibility`, `curriculum`, `completion`, `derivedFrom`, `authorship` and `audience`; `license`, `copyright` and `attribution` are also copied to the runtime metadata, so a play-only copy keeps them. Title and language come from `<title>` and `<html lang>`.
+- **Narration without script**: the file also contains the display text of every step as ordinary HTML (hidden while the deck runs), for archiving, search and accessibility.
+- **Extension lines** (`@x-<name>-<field> value`) are collected per step into the file's index.
+- Warns above 30 MiB (split long lessons into chapters).
+
+| Option | Meaning |
+|---|---|
+| `--portable` | write the portable file (default `out/<name>.ega.html`; `-o` sets the path) |
+| `--play-only` | write a play-only copy (default `out/<name>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
+
+`npm run portable -- unpack <file> <dir> [--force]` extracts the source and audio into `<dir>` (and writes `audio/manifest.json` from the audio records, so the folder builds and packs again). It reads the file as text and never runs its scripts; it checks the index and every hash, the size limits and the path rules of the spec, refuses to write outside `<dir>` or through symbolic links, and refuses a non-empty `<dir>` unless `--force`. `npm run portable -- pack <dir> [-o file] [--play-only]` is `build --portable` on that folder: packing an unpacked folder gives the same file again.
 
 ## TTS
 
@@ -365,6 +386,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 |---|---|
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new deck folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run ids -- <deck folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a deck with duplicate keys, id collisions or invalid ids |
+| `npm run portable -- unpack <file> <dir> [--force]`, `npm run portable -- pack <dir> [-o file] [--play-only]` | portable file ↔ folder; see [Portable file](#portable-file---portable) |
 | `npm run build:app` | build the editor app: `dist/editor/` (for GitHub Pages) and the single file `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |

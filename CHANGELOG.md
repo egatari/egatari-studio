@@ -8,17 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Stable slide ids (Etoki §8.1): `<section class="slide" id="s-k3f9q2">` keys the slide, and `narration.md` addresses it as `## Heading {#s-k3f9q2}` (also `## s-k3f9q2`; plain `## Heading` stays for slides without id). The id wins over the heading text, so renaming a heading no longer breaks narration, audio or timing. Decks may mix slides with and without ids
+- Stable slide ids ([format spec](https://github.com/egatari/egatari-spec) §8.1): `<section class="slide" id="s-k3f9q2">` keys the slide, and `narration.md` addresses it as `## Heading {#s-k3f9q2}` (also `## s-k3f9q2`; plain `## Heading` stays for slides without id). The id wins over the heading text, so renaming a heading no longer breaks narration, audio or timing. Decks may mix slides with and without ids
 - `npm run ids -- <deck>`: adds ids to the slides that lack one, rewrites the narration headings, and renames the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph` (audio is reused). Idempotent, keeps line endings, backs up to `.cache/edits/`, refuses decks with duplicate keys or id collisions
 - `npm run new` gives every slide a random id and writes `{#id}` headings; the dev server and the editor app write `## Heading {#id}` when they add a narration section for a slide with an id
 - Checker: errors for an invalid slide id, two slides with the same key, a slide id equal to another id or `\htmlId{…}` in the deck, and a narration section (also one without steps) that matches no slide; info when a `{#id}` heading's text differs from the slide's heading
-- Extension lines `@x-<name>-<field> <value>` inside a narration step (Etoki §8.2): excluded from turns, display text, TTS text, boundaries and digests, exposed by the parser as `ext` per step (`tools/narration-json.mjs` too), and kept verbatim by every edit path
-- `vendor/etoki-spec/`: the JSON Schemas and test fixtures of the [Etoki specification](https://github.com/etoki-org/etoki-spec), copied at a pinned commit by `node tools/sync-etoki-spec.mjs <clone>` (the commit is recorded in `vendor/etoki-spec/SOURCE.json`); the tests check the parser against them
+- Extension lines `@x-<name>-<field> <value>` inside a narration step (format spec §8.2): excluded from turns, display text, TTS text, boundaries and digests, exposed by the parser as `ext` per step (`tools/narration-json.mjs` too), and kept verbatim by every edit path
+- `vendor/egatari-spec/`: the JSON Schemas and test fixtures of the [portable deck format specification](https://github.com/egatari/egatari-spec), copied at a pinned commit by `node tools/sync-spec.mjs <clone>` (the commit is recorded in `SOURCE.json` there); the tests check the parser, the writer and the reader against them. Schemas are always loaded from this copy, never over the network
+- Portable file: `node kit/build.mjs <deck.html> --portable` writes `out/<name>.ega.html`, one HTML file that plays like the normal build and also carries the deck's source (the files the build reads, `voice.json` without local paths) and its audio (stored once, AAC as with `--embed-audio`), following the [portable deck format](https://github.com/egatari/egatari-spec) draft. Comments, caches, backups, build output, credentials and unused audio stay out; registry components and themes are referenced by name, version and hash. A lesson id is kept in `egatari.json` in the deck folder, whose `metadata` may hold license, copyright, attribution and other descriptive fields
+- `--play-only`: a copy without the source (keeps the audio, the lesson id and the license/copyright/attribution)
+- `npm run portable -- unpack <file> <dir>` / `pack <dir>`: file ↔ folder. Unpacking reads the file as text without running it, checks every hash, size limit and path rule of the spec, and never writes outside `<dir>`; packing an unpacked folder gives the same file again
+- The runtime plays audio stored inside the file (`<scheme>:<blobId>` references) as well as `data:` URIs, and ignores cue times of audio marked `sync: none`
+- Checker: `slide key: legacy` warning for slides keyed by a hand-written `data-key` or by position (`s<n>`)
+- `tools/test-portable.mjs` (in `npm test`) and `tools/portable-fixtures.mjs <dir>` (document fixtures for the spec: canary script, `</script>` break-out, path traversal, future major version, unknown required feature, bad hashes, missing chunk, oversize index, duplicate JSON members, …)
 
 ### Changed
 
 - A slide's `id` now wins over a hand-written `data-key`
 - Step numbers must be canonical (`0`–`999`, no leading zeros, or `concl`): `[01]` is no longer read as step 1 (build warns, the checker reports an error)
+- Every `<` in the runtime JSON blocks is written as `\u003c`
 - Duplicate slide keys are now a checker error (the build still adds `#2`, `#3`, … so the deck builds)
 - Rewriting a narration step keeps the line ending of every other line (files with mixed CRLF/LF are no longer normalized)
 
