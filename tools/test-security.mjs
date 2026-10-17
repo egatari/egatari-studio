@@ -32,9 +32,21 @@ ok(!/frame-src[^;]*'self'/.test(APP_CSP), "app CSP: the preview cannot navigate 
 
 const hits = [];
 const HOST = `<!doctype html><html><head><meta charset="utf-8"></head><body><iframe id="f" sandbox="allow-scripts allow-modals"></iframe><script src="/host.js"></script></body></html>`;
+// 編集アプリのフォルダの作業場所（File System Access）がリンクを見せるか：落としたフォルダの中を一覧し、名前で開き、書いてみる
+const FSA_PAGE = `<!doctype html><body style="margin:0"><div id="d" style="width:400px;height:400px">drop</div><script>
+d.addEventListener('dragover', (e) => e.preventDefault());
+d.addEventListener('drop', async (e) => { e.preventDefault(); const R = { names: [] };
+  try { const h = await e.dataTransfer.items[0].getAsFileSystemHandle();
+    for await (const [n] of h.entries()) R.names.push(n);
+    for (const n of ['link.txt', 'linkdir', 'inner.txt']) { try { const f = await h.getFileHandle(n); R[n] = (await (await f.getFile()).text()).trim(); } catch (err) { try { await h.getDirectoryHandle(n); R[n] = 'dir'; } catch (err2) { R[n] = err.name; } } }
+    try { const w = await (await h.getFileHandle('link.txt')).createWritable(); await w.write('PWNED'); await w.close(); R.write = 'written'; } catch (err) { R.write = err.name; }
+  } catch (err) { R.error = String(err); }
+  window.R = R; });
+</script>`;
 const srv = http.createServer((req, res) => {
   if (req.url.startsWith('/canary')) { hits.push(req.url); res.writeHead(200, { 'content-type': 'text/plain', 'access-control-allow-origin': '*' }); return res.end('ok'); }
   if (req.url === '/host') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': APP_CSP }); return res.end(HOST); }
+  if (req.url === '/fsa') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(FSA_PAGE); }
   if (req.url === '/host.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end('window.__ready = true;'); }
   res.writeHead(404); res.end();
 });
@@ -238,6 +250,67 @@ try {
     const u2 = path.join(sy, 'un-ok');
     const ur = await unpack(path.join(sy, 'p.ega.html'), u2);
     ok(ur.written.includes('deck.html') && fs.existsSync(path.join(u2, 'deck.html')), 'portable unpack: a normal unpack still works');
+
+    // ---- 組み立てが読むもの（部品・テーマの設定・字の変数・ロゴ・親のテーマ）：外を指すリンクは読まない（組んだ文書に外のバイトが入らない）
+    const SECRET = 'OUTSIDE-SECRET-BYTES-7f3a';
+    const outB = path.join(sy, 'outside-b'); fs.mkdirSync(outB);
+    const sec = path.join(outB, 'private.css'); fs.writeFileSync(sec, `:root{--leak:"${SECRET}"}`);
+    const secJs = path.join(outB, 'private.js'); fs.writeFileSync(secJs, `window.__leak="${SECRET}";`);
+    const secJson = path.join(outB, 'theme.json'); fs.writeFileSync(secJson, `{"name":"${SECRET}","extends":"default"}`);
+    const oTheme = path.join(outB, 'otheme'); fs.mkdirSync(oTheme); fs.writeFileSync(path.join(oTheme, 'tokens.css'), `:root{--leak2:"${SECRET}"}`);
+    fs.writeFileSync(path.join(outB, 'logo.png'), SECRET);
+    const themed = (name, prep, attrs = '', body = '') => {
+      const d = path.join(sy, 'th-' + name); fs.mkdirSync(d);
+      prep(d);
+      fs.writeFileSync(path.join(d, 'deck.html'), `<!doctype html><html lang="en"${attrs}><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide cover"><h2>x</h2>${body}</section></div></body></html>`);
+      return build(path.join(d, 'deck.html'), { subset: false });
+    };
+    const mkTheme = (d, n, files) => { const t = path.join(d, 'themes', n); fs.mkdirSync(t, { recursive: true }); for (const [f, v] of Object.entries(files)) { if (typeof v === 'object') fs.symlinkSync(v.link, path.join(t, f)); else fs.writeFileSync(path.join(t, f), v); } return t; };
+    const b64 = Buffer.from(SECRET).toString('base64');
+    const leaks = (r) => r.html.includes(SECRET) || r.html.includes(b64);
+    for (const [name, prep, attrs, body] of [
+      ['tokens', (d) => mkTheme(d, 'mine', { 'tokens.css': { link: sec } }), ' data-theme="mine"'],
+      ['theme-json', (d) => mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': { link: secJson } }), ' data-theme="mine"'],
+      ['logo', (d) => mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': '{"logos":["l.png"]}', 'l.png': { link: path.join(outB, 'logo.png') } }), ' data-theme="mine"'],
+      ['theme-dir', (d) => { fs.mkdirSync(path.join(d, 'themes')); fs.symlinkSync(oTheme, path.join(d, 'themes', 'mine')); }, ' data-theme="mine"'],
+      // 親のテーマ（extends）：原稿のフォルダのテーマが、外を指すリンクのテーマ・../ で外のテーマ・何段か先で外を継ぐ
+      ['extends-link', (d) => { mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': '{"extends":"base"}' }); fs.symlinkSync(oTheme, path.join(d, 'themes', 'base')); }, ' data-theme="mine"'],
+      ['extends-dotdot', (d) => mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': `{"extends":${JSON.stringify(path.relative(path.join(d, 'themes'), oTheme))}}` }), ' data-theme="mine"'],
+      ['extends-chain', (d) => { mkTheme(d, 'a', { 'tokens.css': ':root{}', 'theme.json': '{"extends":"b"}' }); mkTheme(d, 'b', { 'tokens.css': ':root{}', 'theme.json': '{"extends":"c"}' }); fs.symlinkSync(oTheme, path.join(d, 'themes', 'c')); }, ' data-theme="a"'],
+      ['extends-absolute', (d) => mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': JSON.stringify({ extends: oTheme }) }), ' data-theme="mine"'],
+      ['component', (d) => { fs.mkdirSync(path.join(d, 'components', 'x'), { recursive: true }); fs.symlinkSync(secJs, path.join(d, 'components', 'x', 'index.js')); }, '', '<m-x></m-x>'],
+      ['component-dir', (d) => { fs.mkdirSync(path.join(d, 'components')); fs.mkdirSync(path.join(outB, 'cx')); fs.writeFileSync(path.join(outB, 'cx', 'index.js'), `window.__leak="${SECRET}";`); fs.symlinkSync(path.join(outB, 'cx'), path.join(d, 'components', 'x')); }, '', '<m-x></m-x>'],
+      ['component-shadow', (d) => { fs.mkdirSync(path.join(d, 'components')); fs.symlinkSync(path.join(outB, 'cx'), path.join(d, 'components', 'curves')); }, '', '<m-curves></m-curves>'],
+    ]) {
+      let r = null, err = null;
+      try { r = themed(name, prep, attrs, body); } catch (e) { err = e; }
+      ok(r && !leaks(r) && r.stats.warn.some((w) => /^refused: /.test(w)), `build reads: ${name} linking outside -> not read, warned, no outside bytes in the build ${err ? 'ERR ' + err.message : JSON.stringify(r.stats.warn.filter((w) => /refused/.test(w)).slice(0, 1))}`);
+    }
+    // 中を指すリンク・普通の継承（部品庫の default）はこれまでどおり
+    const rin = themed('inner', (d) => { const t = mkTheme(d, 'mine', { 'real.css': ':root{--in:"INNER-OK"}', 'theme.json': '{"extends":"default"}' }); fs.symlinkSync(path.join(t, 'real.css'), path.join(t, 'tokens.css')); }, ' data-theme="mine"');
+    ok(rin.html.includes('INNER-OK') && rin.stats.theme === 'mine' && !rin.stats.warn.some((w) => /refused/.test(w)), 'build reads: a link inside the theme folder and extends "default" still work');
+    const rself = (() => { try { return themed('self', (d) => mkTheme(d, 'mine', { 'tokens.css': ':root{}', 'theme.json': '{"extends":"mine"}' }), ' data-theme="mine"'); } catch (e) { return e; } })();
+    // File System Access（Chromium）：落としたフォルダの中のリンク（外のファイル・外のフォルダ・中のファイルへのもの）は一覧に出ず、名前でも開けず、
+    // 書けない（編集アプリのフォルダの作業場所はリンクを見ない。ブラウザが変わればこの試験が知らせる）
+    {
+      const pick = path.join(sy, 'pick'); fs.mkdirSync(pick);
+      fs.writeFileSync(path.join(pick, 'plain.txt'), 'inner');
+      fs.symlinkSync(secret, path.join(pick, 'link.txt'));
+      fs.symlinkSync(outside, path.join(pick, 'linkdir'));
+      fs.symlinkSync('plain.txt', path.join(pick, 'inner.txt'));
+      const fctx = await browser.newContext();
+      const fp = await fctx.newPage();
+      await fp.goto(ORIGIN + '/fsa');
+      const cdp = await fctx.newCDPSession(fp);
+      const data = { items: [], files: [pick], dragOperationsMask: 1 };
+      for (const type of ['dragEnter', 'dragOver', 'drop']) await cdp.send('Input.dispatchDragEvent', { type, x: 100, y: 100, data });
+      await fp.waitForFunction(() => window.R, null, { timeout: 10000 }).catch(() => {});
+      const R = await fp.evaluate(() => window.R);
+      await fctx.close();
+      ok(R && !R.error && R.names.join() === 'plain.txt' && R['link.txt'] === 'NotFoundError' && R['linkdir'] === 'NotFoundError' && R['inner.txt'] === 'NotFoundError' && R.write === 'NotFoundError' && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET',
+        'File System Access (Chromium ' + browser.version() + '): links in a picked folder are not listed, cannot be opened by name and cannot be written ' + JSON.stringify(R));
+    }
+    ok(rself instanceof Error && /nested too deeply/.test(rself.message), 'build reads: a theme that extends itself stops with an error (no endless recursion)');
     const sub = (ur.written.find((w) => w.includes('/')) || 'missing/x').split('/')[0];
     ok(sub === 'data', 'portable unpack: the archive has a sub folder to attack (' + ur.written.join(' ') + ')');
     for (const [label, prep] of [
