@@ -1,4 +1,7 @@
 // 開発サーバー：ブラウザの上で原稿・口述原稿を直し、Claude への指示（コメント）を残す
+//   /         外枠（server/shell.js・server/editor-ui.js）。デッキは sandbox の iframe に入れ、編集の画面と合言葉は外枠にだけ置く
+//   /deck/    デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP）。/deck/<ファイル> は原稿のフォルダ
+//   /__dev/…  読み書き（合言葉・同じ origin・JSON が要る）
 //
 //   node server/dev.mjs <deck.html> [--port 8730] [--theme 名前]   （使われていれば次の番号を順に試す）
 //   npm run dev -- <deck.html>
@@ -34,29 +37,36 @@ const EDITS = path.join(DIR, '.cache', 'edits');
 const KEEP_EDITS = 30;
 
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
-// 書き込みと原稿の読み出しに要る合言葉（起動のたびに作り直す）。配る画面に埋め込み、client.js が X-Deck-Token で送る
+// 書き込みと原稿の読み出しに要る合言葉（起動のたびに作り直す）。外枠のページ（/）にだけ埋め込み、server/shell.js が X-Deck-Token で送る。
+// デッキの文書（/deck/）には入れない：デッキは sandbox の iframe（origin を持たない）の中で動き、知らせ（server/hints.js）を送るだけ
 const TOKEN = crypto.randomBytes(24).toString('hex');
-const TOKEN_TAG = `<script>window.__DECK_DEV_TOKEN=${JSON.stringify(TOKEN)};</script>`;
 const DIR_REAL = fs.realpathSync(DIR);
+// デッキの文書に入れる知らせの部品（そのまま <script> の中に入れるので、</script と <!-- を含んではいけない）
+const HINTS = fs.readFileSync(path.join(HERE, 'hints.js'), 'utf8');
+if (/<\/script|<!--/i.test(HINTS)) throw new Error('server/hints.js contains </script or <!-- (cannot be inlined)');
+const HINTS_TAG = `<script>${HINTS}</script>`;
+// 外枠が読み込む部品（合言葉を含まない。誰でも読める）
+const STATIC = { '/__dev/shell.js': 'shell.js', '/__dev/editor-ui.js': 'editor-ui.js' };
 
 // ---------------------------------------------------------------- 組み立て
 let buildFn = null, buildVer = 0, needReimport = true;
-let page = null;     // {html, error, slides}
+let page = null;     // {html, error, slides, warn, lang, ranges}（ranges：この組み立てで直せる要素の data-src の範囲）
 async function rebuild() {
   try {
     if (needReimport) { buildFn = (await import(pathToFileURL(BUILD).href + '?v=' + (++buildVer))).build; needReimport = false; }
     const r = buildFn(SRC, { dev: true, audioBase: '/deck/audio/', ...(theme ? { theme } : {}) });
-    const warn = `<script>window.__DEV_WARN=${JSON.stringify(r.stats.warn).replace(/<\//g, '<\\/')};</script>`;
-    const inject = `${warn}\n${TOKEN_TAG}\n<script src="/__dev/client.js"></script>\n`;
+    const inject = `${HINTS_TAG}\n`;
     const at = r.html.lastIndexOf('</body>');
     const html = at >= 0 ? r.html.slice(0, at) + inject + r.html.slice(at) : r.html + inject;
     const changed = !page || page.html !== html;
-    page = { html, error: null, slides: r.slides };
+    const ranges = new Set([...r.html.matchAll(/ data-src="(\d+-\d+)" data-src-h="[0-9a-f]{8}"/g)].map((m) => m[1]));
+    const lang = (/<html\b[^>]*\blang="([^"]*)"/i.exec(r.html) || [])[1] || 'ja';
+    page = { html, error: null, slides: r.slides, warn: r.stats.warn.slice(), lang: /^en\b/i.test(lang) ? 'en' : 'ja', ranges };
     for (const w of r.stats.warn) console.warn('  ⚠ ' + w);
     return changed;
   } catch (e) {
     const changed = !page || page.error !== String(e.stack || e);
-    page = { html: null, error: String(e.stack || e), slides: page?.slides || [] };
+    page = { html: null, error: String(e.stack || e), slides: page?.slides || [], warn: [], lang: page?.lang || 'ja', ranges: new Set() };
     console.error('build error: ' + (e.message || e));
     return changed;
   }
@@ -69,8 +79,43 @@ function errorPage(err) {
 h1{font-size:20px;margin:0 0 12px;color:#fff}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;color:#fcc}
 p{color:#dbb}</style></head><body><div class="box"><h1>原稿を組み立てられませんでした</h1>
 <p>原稿を直して保存すると、自動で読み込み直します。</p><pre>${esc}</pre></div>
-${TOKEN_TAG}<script src="/__dev/client.js"></script></body></html>`;
+</body></html>`;
 }
+const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const jsonInHtml = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
+// 外枠のページ：デッキを sandbox の iframe（allow-same-origin なし）に入れ、編集の画面（server/editor-ui.js）を外に置く。合言葉はここだけ
+function shellPage() {
+  const cfg = { token: TOKEN, lang: page?.lang || 'ja', warn: page?.warn || [] };
+  return `<!DOCTYPE html><html lang="${cfg.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>${escHtml(deckBase)} — dev</title><link rel="icon" href="data:,">
+<style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}#wrap{display:flex;height:100%}#deck{flex:1;min-width:0;height:100%;border:0;display:block;background:#1b1b1b}</style>
+<script type="application/json" id="dev-cfg">${jsonInHtml(cfg)}</script>
+</head><body><div id="wrap"><iframe id="deck" title="slides" sandbox="allow-scripts allow-modals" allow="fullscreen; autoplay"></iframe></div>
+<script type="module" src="/__dev/shell.js"></script></body></html>`;
+}
+// 発表者ビューの窓（外枠が開く）：中のデッキも sandbox の iframe。外枠（opener）との間の知らせを中継するだけで、合言葉は持たない
+function presenterPage() {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Presenter — ${escHtml(deckBase)}</title><link rel="icon" href="data:,">
+<style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
+<body><iframe id="pf" sandbox="allow-scripts allow-modals" allow="fullscreen" title="presenter"></iframe><script src="/__dev/presenter.js"></script></body></html>`;
+}
+const PRESENTER_JS = `var f=document.getElementById("pf"),n=0;
+function load(){f.src="/deck/?presenter=1"+(n?"&_r="+n:"");n++;}
+load();
+addEventListener("message",function(e){
+  var m=e.data||{};
+  if(e.source===f.contentWindow){ if(opener&&!opener.closed) opener.postMessage({type:"app-pres-up",m:m},"*"); }
+  else if(opener&&e.source===opener){ if(m.type==="app-pres-down"&&m.m) f.contentWindow&&f.contentWindow.postMessage(m.m,"*"); else if(m.type==="app-pres-reload") load(); }
+});`;
+// デッキの文書の決まり（Content-Security-Policy）：外へ繋がらない（connect-src 'none'）。読み込めるのは data: と blob: と、
+// このサーバーの /deck/audio/（音声）・/deck/（発表者ビューの中の画面）だけ。フォームと <base> も使えない
+function deckCsp(req) {
+  const self = 'http://' + String(req.headers.host).toLowerCase();
+  return [`default-src 'none'`, `script-src 'unsafe-inline' 'unsafe-eval'`, `style-src 'unsafe-inline'`, `img-src data: blob:`, `font-src data:`,
+    `media-src data: blob: ${self}/deck/audio/`, `frame-src ${self}/deck/`, `connect-src 'none'`, `worker-src 'none'`, `object-src 'none'`,
+    `manifest-src 'none'`, `form-action 'none'`, `base-uri 'none'`].join('; ');
+}
+const SHELL_CSP = `default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'`;
 
 // ---------------------------------------------------------------- 再読み込みの通知（Server-Sent Events）
 const clients = new Set();
@@ -196,19 +241,27 @@ const server = http.createServer(async (req, res) => {
   let u, p;
   try { u = new URL(req.url, 'http://127.0.0.1'); p = decodeURIComponent(u.pathname); }
   catch { return send(res, 400, 'bad request', 'text/plain; charset=utf-8'); }
-  const isApi = p.startsWith('/__dev/') && p !== '/__dev/client.js';
+  const isApi = p.startsWith('/__dev/') && !Object.hasOwn(STATIC, p) && p !== '/__dev/presenter.js';
   if (isApi || req.method !== 'GET' && req.method !== 'HEAD') {
+    // デッキ（sandbox の iframe）からの問い合わせは Origin: null・Sec-Fetch-Site: cross-site になる。どちらも断る
+    if (req.headers.origin === 'null') return send(res, 403, { error: 'origin が違います（null）' });
     if (!originOk(req)) return send(res, 403, { error: 'origin が違います' });
+    const site = req.headers['sec-fetch-site'];
+    if (isApi && site !== undefined && site !== 'same-origin') return send(res, 403, { error: '同じ origin からの問い合わせではありません' });
     if (!tokenOk(p === '/__dev/events' ? u.searchParams.get('token') : req.headers['x-deck-token'])) return send(res, 403, { error: '合言葉（token）が違います。再読み込みしてください' });
     if (req.method === 'POST' && !/^application\/json(\s*;|$)/i.test(String(req.headers['content-type'] || ''))) return send(res, 415, { error: 'Content-Type は application/json にしてください' });
   }
   try {
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       if (!page) await rebuild();
-      return send(res, 200, page.html || errorPage(page.error), 'text/html; charset=utf-8');
+      const html = u.searchParams.get('presenter') ? presenterPage() : shellPage();
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': SHELL_CSP,
+        'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff' });
+      return res.end(html);
     }
     if (p === '/favicon.ico') { res.writeHead(204); return res.end(); }
-    if (p === '/__dev/client.js') return serveFile(res, path.join(HERE, 'client.js'));
+    if (Object.hasOwn(STATIC, p)) return serveFile(res, path.join(HERE, STATIC[p]));
+    if (p === '/__dev/presenter.js') return send(res, 200, PRESENTER_JS, 'text/javascript; charset=utf-8');
     if (p === '/__dev/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write('retry: 1000\n\n');
@@ -216,15 +269,25 @@ const server = http.createServer(async (req, res) => {
       req.on('close', () => clients.delete(res));
       return;
     }
+    // デッキの文書：sandbox の iframe の中で読む。合言葉は入っていない
+    if (req.method === 'GET' && p === '/deck/') {
+      if (!page) await rebuild();
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': deckCsp(req),
+        'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff' });
+      return res.end(page.html || errorPage(page.error));
+    }
     if (p.startsWith('/deck/')) {
       const r = deckFile(p.slice('/deck/'.length));
       if (!r.file) return send(res, r.code, r.code === 403 ? 'forbidden' : 'not found', 'text/plain; charset=utf-8');
       return serveFile(res, r.file);
     }
+    if (req.method === 'GET' && p === '/__dev/info') return send(res, 200, { slides: page?.slides || [], warn: page?.warn || [], error: page?.error ? true : false, lang: page?.lang || 'ja' });
     if (req.method === 'GET' && p === '/__dev/source') {
       const r = parseRange(u.searchParams.get('range'));
       const src = fs.readFileSync(SRC, 'utf8');
       if (!r || r[1] > src.length) return send(res, 400, { error: '範囲が正しくありません' });
+      // 今の組み立てで直せる要素（data-src を付けたもの）の範囲だけ
+      if (!page.ranges.has(`${r[0]}-${r[1]}`)) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
       const text = src.slice(r[0], r[1]);
       return send(res, 200, { text, h: short(text) });
     }
@@ -233,7 +296,7 @@ const server = http.createServer(async (req, res) => {
       const r = parseRange(b.range);
       if (!r || typeof b.text !== 'string') return send(res, 400, { error: '範囲または本文が正しくありません' });
       const src = fs.readFileSync(SRC, 'utf8');
-      if (r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
+      if (!page.ranges.has(`${r[0]}-${r[1]}`) || r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
       backup(SRC);
       fs.writeFileSync(SRC, src.slice(0, r[0]) + b.text + src.slice(r[1]));
       console.log(`edit ${deckBase} ${b.range}`);
@@ -249,6 +312,7 @@ const server = http.createServer(async (req, res) => {
       if (!b.slideKey || !isStepKey(b.stepKey) || !Array.isArray(b.turns)) return send(res, 400, { error: 'slideKey / stepKey / turns が正しくありません' });
       if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
+      if (!(page?.slides || []).some((x) => x.key === sk)) return send(res, 400, { error: 'そのスライドはデッキにありません' });
       const text = fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : '# 口述原稿\n';
       if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '口述原稿が変わっています。再読み込みしてください' });
       // 新しい節の見出しは、id のあるスライドなら「## 見出し {#id}」（スライドの一覧 {key, id, heading} を渡す）
