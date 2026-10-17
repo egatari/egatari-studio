@@ -540,9 +540,12 @@ const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 // 書き出す metadata：設定のファイル（FORMAT.CONFIG_FILE）の metadata のうち仕様の項目だけ（時刻・メールなどは入れない）
 const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience'];
 
+// この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
+const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions']);
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
 //   build(env, src, opts)  組み立ての関数（既定は build-core の build。編集アプリは自分の組み立てを渡せる）
+//   carry                  読み取った文書の索引（編集アプリが作り直すとき）。知らない項目と、作られなかった拡張を残す
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
 export async function exportPortable(env, srcPath, opts = {}) {
   const P = env.path;
@@ -740,6 +743,18 @@ export async function exportPortable(env, srcPath, opts = {}) {
     excluded: [...EXCLUDED_CATEGORIES],
     ...(Object.keys(extensions).length ? { extensions } : {}),
   };
+  // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない索引の項目と、口述原稿の行から作られなかった拡張を残す（§7.1・§9A）
+  if (isObj(opts.carry)) {
+    for (const k of Object.keys(opts.carry)) {
+      if (KNOWN_INDEX.has(k) || own(index, k)) continue;
+      index[k] = opts.carry[k];
+    }
+    if (isObj(opts.carry.extensions)) {
+      const ex = index.extensions || dict();
+      for (const k of Object.keys(opts.carry.extensions)) if (!own(ex, k)) ex[k] = opts.carry.extensions[k];
+      if (Object.keys(ex).length) index.extensions = ex;
+    }
+  }
   const ie = validateIndex(index);
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {
