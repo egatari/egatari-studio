@@ -1,0 +1,59 @@
+// デッキを組む・コードが動くかを決める Worker（tools/build-app.mjs が 1 本にまとめて main.js に文字列で入れる。app/build-client.js が使う）。
+// 開いたデッキ（フォルダ・持ち運べる 1 ファイル）の組み立て（kit/core/build-core.mjs）と判定（kit/core/code-scan.mjs）を、ページの外で動かす：
+// 重い原稿でもページは固まらず、期限を過ぎれば親が Worker ごと止める（terminate。解析の途中でも止まる）。何も実行しない（DOM もない）
+//
+// 親から：{init, res}（同梱の資源。Worker を作るたびに 1 回）
+//         {id, op: 'build', ws, listing, file, opts, prefix}   組んで {html, trusted, stats, slides, reasons}（reasons：prefix（信頼する先頭部分）+ 組んだ文書から決めた理由）
+//         {id, op: 'exportIndex', ws, file, opts}               持ち運べる形式に書き出したときの索引だけ（部品庫の照合に使う）
+//         {id, op: 'scan', files, entry}                        取り出した原稿の全体の理由（codeReasons）
+//         {id, op: 'probe', name}                               試験：Worker の大域変数
+// 作業場所のファイルは親に問い合わせて読む（{rpc, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, ok, value}）
+import { createEngine } from './engine.js';
+import { documentReasons, codeReasons } from '../kit/core/code-scan.mjs';
+
+let engine = null, wsId = null, seq = 0;
+const pend = new Map();
+const rpc = (op, arg) => new Promise((resolve, reject) => {
+  const id = ++seq;
+  pend.set(id, { resolve, reject });
+  self.postMessage({ rpc: id, op, arg });
+});
+const proxyWs = (id) => ({ kind: 'proxy', readBytes: (rel) => rpc('read', { ws: id, rel }), list: (o) => rpc('list', { ws: id, o: o || {} }) });
+
+// 表示する文書（信頼する先頭部分 + 組んだデッキ）から決める（main.js の renderedReasons と同じ）
+function rendered(r, pre) {
+  const trusted = [{ name: 'prefix', start: 0, end: pre.length }, ...(r.trusted || []).map((t) => ({ ...t, start: t.start + pre.length, end: t.end + pre.length }))];
+  const out = new Set(documentReasons(pre + r.html, trusted));
+  for (const x of r.stats.codeReasons || []) out.add(x);
+  return [...out];
+}
+
+self.onmessage = async (e) => {
+  const m = e.data || {};
+  if (m.rpcReply) {
+    const p = pend.get(m.rpcReply); if (!p) return;
+    pend.delete(m.rpcReply);
+    if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }));
+    return;
+  }
+  if (m.init) { engine = createEngine(m.res, (p) => rpc('lazy', p)); return; }
+  try {
+    let value = null;
+    if (m.op === 'probe') value = self[m.name] === undefined ? null : String(self[m.name]);
+    else if (m.op === 'scan') value = codeReasons(m.files, { entry: m.entry });
+    else {
+      if (m.ws !== wsId) { engine.setWorkspace(proxyWs(m.ws)); wsId = m.ws; }
+      if (m.op === 'build') {
+        engine.setListing(m.listing);
+        const r = await engine.build(m.file, m.opts || {});
+        value = { html: r.html, trusted: r.trusted, stats: r.stats, slides: r.slides, reasons: typeof m.prefix === 'string' ? rendered(r, m.prefix) : null };
+      } else if (m.op === 'exportIndex') {
+        const r = await engine.exportPortable(m.file, m.opts || {});
+        value = { index: r.index };
+      } else throw new Error('unknown op ' + m.op);
+    }
+    self.postMessage({ id: m.id, ok: true, value });
+  } catch (err) {
+    self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } });
+  }
+};

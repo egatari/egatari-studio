@@ -954,6 +954,31 @@ try {
     ok(await opc === false, 'deadline: the file is not opened');
     await page.evaluate(() => { window.__APP_TEST.readerTimeout = null; });
     ok((await page.evaluate(() => window.__APP_TEST.workerProbe('__nothing'))) === null, 'deadline: a new reader worker answers after the old one was terminated');
+    // 組み立ての上限と期限（§11）：開いたデッキの組み立てと判定は Worker の中（app/build-worker.js）。小さな依存を 100000 回取り込むデッキは
+    // 断り（build-too-large）、上限の内でも重い組み立ては期限で Worker ごと止める（build-timeout）。その間もページは動く（10 ms ごとのタイマーの
+    // 間が開かない）。次の組み立ては新しい Worker で
+    {
+      const gapStart = () => page.evaluate(() => { window.__gap = 0; let last = performance.now(); clearInterval(window.__gapT); window.__gapT = setInterval(() => { const t = performance.now(); window.__gap = Math.max(window.__gap, t - last); last = t; }, 10); });
+      const gapEnd = () => page.evaluate(() => { clearInterval(window.__gapT); return Math.round(window.__gap); });
+      await mkdir('c-bomb', { 'deck.html': MIN.replace('</section>', '/*INCLUDE:dep.txt*/'.repeat(100000) + '</section>'), 'dep.txt': '<p>x</p>', 'narration.md': narrMin });
+      await gapStart();
+      const tb = Date.now();
+      page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-bomb'])).catch(() => {});
+      await page.waitForFunction(() => /build-too-large|over the limit/.test(window.__APP_TEST.state().error || ''), null, { timeout: 30000 });
+      const gb = await gapEnd();
+      ok(Date.now() - tb < 15000 && gb < 300, `build limits: a folder deck including a small file 100000 times is refused (build-too-large) in ${Date.now() - tb} ms; the page stayed responsive (longest timer gap ${gb} ms)`);
+      // 重い組み立て（式 15000）を期限 800 ms で：Worker を止めて失敗にし、その間もページは動く
+      await mkdir('c-slow', { 'deck.html': MIN.replace('</section>', '\\(\\frac{a^2+b^2}{\\sqrt{c}}\\)'.repeat(15000) + '</section>'), 'narration.md': narrMin });
+      await page.evaluate(() => { window.__APP_TEST.buildTimeout = 800; });
+      await gapStart();
+      const ts = Date.now();
+      page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-slow'])).catch(() => {});
+      await page.waitForFunction(() => /build-timeout|longer than/.test(window.__APP_TEST.state().error || ''), null, { timeout: 30000 });
+      const gs = await gapEnd();
+      ok(Date.now() - ts < 15000 && gs < 300, `build deadline: a slow build is stopped after the deadline (build-timeout, ${Date.now() - ts} ms); the page stayed responsive (longest timer gap ${gs} ms)`);
+      await page.evaluate(() => { window.__APP_TEST.buildTimeout = 0; });
+      ok((await page.evaluate(() => window.__APP_TEST.buildWorkerProbe('__nothing'))) === null, 'build deadline: a new build worker answers after the old one was terminated');
+    }
     // フォルダ：<script> も部品もなく、<img onerror> だけ → 聞く（以前は見逃していた）
     await mkdir('c-onerror', { 'deck.html': ONERR, 'narration.md': narrMin });
     let n0 = await loads();

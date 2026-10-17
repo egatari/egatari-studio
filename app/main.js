@@ -15,7 +15,7 @@ import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeTo
 import { rightsOf } from './rights.js';
 import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
-import { codeReasons, documentReasons } from '../kit/core/code-scan.mjs';
+import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -32,6 +32,10 @@ const loadLazy = async (p) => {
   return bytesToBase64(new Uint8Array(await r.arrayBuffer()));
 };
 const engine = createEngine(RES, loadLazy);
+// 開いたデッキの組み立てと判定は Worker で（app/build-client.js。ページを固めず、期限を過ぎたら止める）。保存・書き出しの組み立ては
+// このページの engine で（確かめた後のデッキ。組み立ての上限は同じ）
+const builder = createBuildClient(RES, loadLazy);
+const buildTimeout = () => (window.__APP_TEST && window.__APP_TEST.buildTimeout) || BUILD_TIMEOUT_MS;
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
 //    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches}
@@ -170,13 +174,8 @@ function previewHtml(base) { return withShim(base, { dev: true, load: S.loads },
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
 // 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
-function renderedReasons(r) {
-  const pre = trustedPrefix(`${SHIM}(${enc({ dev: true, load: 0 })});\n${RES.hints}`);
-  const trusted = [{ name: 'prefix', start: 0, end: pre.length }, ...(r.trusted || []).map((t) => ({ ...t, start: t.start + pre.length, end: t.end + pre.length }))];
-  const out = new Set(documentReasons(pre + r.html, trusted));
-  for (const x of r.stats.codeReasons || []) out.add(x);
-  return [...out];
-}
+// 読むのは Worker（app/build-worker.js の rendered。ここは先頭部分の文字列を渡す）
+const reasonsPrefix = () => trustedPrefix(`${SHIM}(${enc({ dev: true, load: 0 })});\n${RES.hints}`);
 // 組み直す（同時に 1 つだけ。途中で頼まれたら終わってからもう一度）。戻り値：失敗したら true
 async function rebuild(reason) {
   if (S.building) { S.again = true; return S.building; }
@@ -191,10 +190,11 @@ async function rebuild(reason) {
         const listing = await S.ws.list();
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
-        const r = await engine.build(S.deckFile, { dev: true });
+        // 組み立てと判定は Worker で（期限を過ぎれば止めて失敗にする）。理由は Worker が組んだ文書（表示するバイト）から決める
+        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
-        const reasons = [...new Set([...renderedReasons(r), ...jsFiles(listing)])];
+        const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
         S.reasons = reasons;
         const allow = await codeConsent(reasons);
         if (S.ws !== ws0 || S.gen !== g0) continue;          // 確かめている間に別の作業場所になった（その組み立ては捨てる）
@@ -391,7 +391,7 @@ async function exportHtml() {
   if (!S.ws) return;
   status(T.exporting);
   let r;
-  try { r = await engine.build(S.deckFile, { dev: false }); }
+  try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false }, null, { timeout: buildTimeout() }); }
   catch (e) { toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   const name = S.deckFile.replace(/\.html?$/i, '') + '.html';
   try {
@@ -481,7 +481,7 @@ async function ensureRights() {
 // そのデッキのコード（§6）：申告（index.profile）ではなく中身から決める（kit/core/code-scan.mjs：データの type のない <script>・on… の属性・
 // javascript: の URL・srcdoc・取り込む SVG や HTML の中のもの・JavaScript のファイル・部品の式）。
 // プレビューと発表者ビューで動かす前に知らせ、はっきり「プレビューを始める」を押してもらう（作業場所ごとに 1 回）
-// 中身は、組んだ文書そのもの（renderedReasons：取り込み・前処理の後、拡張子によらずすべての依存を含む、表示するのと同じバイト）から決める。
+// 中身は、組んだ文書そのもの（Worker の rendered：取り込み・前処理の後、拡張子によらずすべての依存を含む、表示するのと同じバイト）から決める。
 // 作業場所をもう一度読んで調べることはしない（読むたびに中身が変わりうるので、調べたものと表示するものが食い違う）。
 // 補いとして、作業場所の JavaScript のファイル（名前だけ。組み立てが使わなくても、少しでも疑わしければ聞く）も数える
 function jsFiles(listing) {
@@ -496,7 +496,7 @@ function codeDialog(lead, reasons, mislabelled) {
   buttons: [{ id: 'cancel', label: T.cancel }, { id: 'run', label: T.codeRun, pri: true }] });
 }
 // S.codeOk：null（まだ聞いていない）・true（始めてよい）・false（断った：この作業場所ではプレビューも発表者ビューも読み込まない）
-// reasons：その組み立ての文書から決めた理由（renderedReasons）。持ち運べる 1 ファイルは開く前に同じ規則で決めて聞いた（openPortable。
+// reasons：その組み立ての文書から決めた理由（Worker の rendered）。持ち運べる 1 ファイルは開く前に同じ規則で決めて聞いた（openPortable。
 // 聞いて「始める」を押したなら S.codeOk は true）。コードがなかった文書を直してコードが現れたら、そのときに聞く（フォルダと同じ）
 async function codeConsent(reasons) {
   if (S.codeOk !== null) return S.codeOk;
@@ -586,13 +586,20 @@ async function openPortable(input) {
   // プレビューは空にしてから聞く（前の文書も後ろに見せない）。取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
   // 中身は、取り出した原稿の全体（拡張子によらず）と、それを組んだ文書そのもの（取り込み・前処理の後。表示するのと同じ規則）の両方から。
   // 組めなければ確かめられないので、コードを含むものとして聞く
-  const reasons = codeReasons(r.files, { entry: r.index.entry });
+  // 判定と組み立ては Worker で（期限を過ぎれば止めて、開かずに断る）
+  let reasons;
   try {
-    const probe = createEngine(RES, loadLazy);
+    reasons = await builder.scan(r.files, r.index.entry, { timeout: buildTimeout() });
     const pws = workspaceFromPortable(name, r);
-    probe.setWorkspace(pws); probe.setListing(await pws.list());
-    for (const x of renderedReasons(await probe.build(r.index.entry, { dev: true }))) if (!reasons.includes(x)) reasons.push(x);
-  } catch (e) { reasons.push('cannot build the lesson to check it: ' + String(e && e.message || e).slice(0, 120)); }
+    try {
+      const pr = await builder.build(pws, await pws.list(), r.index.entry, { dev: true }, reasonsPrefix(), { timeout: buildTimeout() });
+      for (const x of pr.reasons) if (!reasons.includes(x)) reasons.push(x);
+    } catch (e) { if (e.code === 'build-timeout') throw e; reasons.push('cannot build the lesson to check it: ' + String(e && e.message || e).slice(0, 120)); }
+  } catch (e) {
+    status('');
+    await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code || 'error', String(e.message || e)), buttons: [{ id: 'ok', label: T.ok, pri: true }] });
+    return false;
+  }
   const mislabelled = r.index.profile !== 'extended' && reasons.length > 0;
   const extended = r.index.profile === 'extended' || reasons.length > 0;
   if (mislabelled) r.warnings = [...r.warnings, T.codeMislabelled];
@@ -614,7 +621,7 @@ async function openPortable(input) {
   if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.tierAOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);
   else {
     try {
-      const dry = await engine.exportPortable(S.deckFile, { carry: r.index });
+      const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
       const probs = registryProblems(r.index, dry.index);
       if (probs.length) P.tierAOnly = T.roRegistry(probs.join('; '));
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
@@ -893,6 +900,8 @@ window.__APP_TEST = {
   api: (method, url, body) => api(method, url, body),
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
   workerProbe: (name) => probeWorker(name),
+  buildWorkerProbe: (name) => builder.probe(name),
+  buildTimeout: 0,
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
   ui: () => ui.state(),

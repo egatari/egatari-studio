@@ -80,12 +80,19 @@ const W = await esbuild.build({
   target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
 });
 const workerJs = W.outputFiles[0].text;
+// 開いたデッキを組み・判定する Worker（app/build-worker.js）も同じように（virtual:build-worker。期限を過ぎたら止める。app/build-client.js）
+const BW = await esbuild.build({
+  entryPoints: [rel('app', 'build-worker.js')], bundle: true, write: false, format: 'iife', platform: 'browser',
+  target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
+});
+const buildWorkerJs = BW.outputFiles[0].text;
 const plugin = {
   name: 'app',
   setup(b) {
     b.onResolve({ filter: /^virtual:resources$/ }, () => ({ path: 'resources', namespace: 'virtual' }));
     b.onResolve({ filter: /^virtual:portable-worker$/ }, () => ({ path: 'portable-worker', namespace: 'virtual' }));
-    b.onLoad({ filter: /.*/, namespace: 'virtual' }, (a) => ({ contents: 'export default ' + JSON.stringify(a.path === 'portable-worker' ? workerJs : resources), loader: 'js' }));
+    b.onResolve({ filter: /^virtual:build-worker$/ }, () => ({ path: 'build-worker', namespace: 'virtual' }));
+    b.onLoad({ filter: /.*/, namespace: 'virtual' }, (a) => ({ contents: 'export default ' + JSON.stringify(a.path === 'portable-worker' ? workerJs : a.path === 'build-worker' ? buildWorkerJs : resources), loader: 'js' }));
     b.onResolve({ filter: /\?text$/ }, (a) => ({ path: path.resolve(a.resolveDir, a.path.replace(/\?text$/, '')), namespace: 'text' }));
     b.onLoad({ filter: /.*/, namespace: 'text' }, (a) => ({ contents: fs.readFileSync(a.path, 'utf8').trim(), loader: 'text' }));
   },
