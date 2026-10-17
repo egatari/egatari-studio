@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-18
+
+### Fixed
+
+- Dev server on Linux: after the first save, changes made outside the browser (in a text editor or by Claude Code) were no longer noticed, so the page did not reload. The 0.2.2 safe save replaces the file, and Node's recursive file watching on Linux watches each file. The deck folder and `audio/` are now watched as folders
+
 ## [0.2.2] - 2026-10-18
 
 A security release. It matters only if you build, check or serve a deck folder that you did not create yourself (for example, one downloaded or received from someone else). The editor app in Chromium is not affected by the first two items.
@@ -97,7 +103,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...v0.2.0
