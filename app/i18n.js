@@ -1,6 +1,8 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
+// 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
+const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
 export const LANG_KEY = 'motion-editor-lang';
 function pickLang() {
   const q = new URLSearchParams(location.search).get('lang');
@@ -73,12 +75,12 @@ const ja = {
   unsavedLang: '保存していない変更は消えます。言葉を切り替えますか？',
   saving: '保存しています…', saveFailed: '保存できませんでした',
   savedAtA: (t, mb) => `${t} 保存しました（組み直さずに、口述原稿・音声・秒数の所だけを書き換え。${mb} MB）`, savedAtB: (t, mb) => `${t} スライドを組み直して保存しました（${mb} MB）`,
-  newLessonName: (n) => n.replace(/(\.ega)?\.html?$/i, '') + '-new' + FX, newLessonToast: '（新しい教材として。文書の識別子は新しく、元の教材を derivedFrom に記録）',
+  newLessonName, newLessonToast: '（新しい教材として。文書の識別子は新しく、元の教材を derivedFrom に記録）',
   tierBTitle: 'スライドを組み直して保存します', tierBGo: '組み直して保存',
   tierBWarn: 'スライドはこのエディタの今のバージョンで組み直されます。編集していないスライドも、見え方が変わることがあります。',
   tierBWhy: (c) => ({ 'source-changed': 'スライドの原稿を直したので、組み直さない保存（口述原稿・音声・秒数の所だけの書き換え）はできません。',
     'source-mismatch': 'このファイルは組んだ教材と原稿が食い違っているので、組み直さない保存はできません。',
-    'config-changed': '教材の情報（egatari.json）が変わったので、組み直さない保存はできません。' }[c] || `組み直さない保存ができませんでした（${c}）。`),
+    'config-changed': `教材の情報（${FORMAT.CONFIG_FILE}）が変わったので、組み直さない保存はできません。` }[c] || `組み直さない保存ができませんでした（${c}）。`),
   tierBGap: '編集の前と後のスライドを並べて比べる機能はまだありません（後の版で入れます）。保存した後にプレビューで確かめてください。',
   tierAOnlyTitle: '組み直さない保存ができません', tierAOnlySave: (w) => `このファイルは組み直せないので（${w}）、口述原稿・音声・秒数の変更だけを保存できます。今の変更はそれに収まりません。`,
   tierAOnlyNotice: (w) => `このファイルは組み直せないので、口述原稿・音声・秒数だけを編集できます（スライドは編集できません）：${w}`,
@@ -176,12 +178,12 @@ const en = {
   unsavedLang: 'Unsaved changes will be lost. Switch the language?',
   saving: 'Saving…', saveFailed: 'Could not save',
   savedAtA: (t, mb) => `${t} saved without rebuilding (only narration, audio and timing were rewritten; ${mb} MB)`, savedAtB: (t, mb) => `${t} slides rebuilt and saved (${mb} MB)`,
-  newLessonName: (n) => n.replace(/(\.ega)?\.html?$/i, '') + '-new' + FX, newLessonToast: ' (as a new lesson: a new document id, with the original recorded as derivedFrom)',
+  newLessonName, newLessonToast: ' (as a new lesson: a new document id, with the original recorded as derivedFrom)',
   tierBTitle: 'The slides will be rebuilt', tierBGo: 'Rebuild and save',
   tierBWarn: 'The slides are rebuilt with the current version of this editor. Slides you did not edit may look different.',
   tierBWhy: (c) => ({ 'source-changed': 'You edited the slide source, so the file cannot be saved without rebuilding (rewriting only narration, audio and timing).',
     'source-mismatch': 'The compiled lesson and its source disagree in this file, so it cannot be saved without rebuilding.',
-    'config-changed': 'The lesson information (egatari.json) changed, so the file cannot be saved without rebuilding.' }[c] || `The file could not be saved without rebuilding (${c}).`),
+    'config-changed': `The lesson information (${FORMAT.CONFIG_FILE}) changed, so the file cannot be saved without rebuilding.` }[c] || `The file could not be saved without rebuilding (${c}).`),
   tierBGap: 'A side-by-side comparison of the slides before and after is not available yet (planned for a later version). Check the preview after saving.',
   tierAOnlyTitle: 'Cannot save without rebuilding', tierAOnlySave: (w) => `This file cannot be rebuilt (${w}), so only changes to narration, audio and timing can be saved. The current changes go beyond that.`,
   tierAOnlyNotice: (w) => `This file cannot be rebuilt, so only narration, audio and timing can be edited (not the slides): ${w}`,
