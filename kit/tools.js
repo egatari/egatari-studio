@@ -527,8 +527,8 @@ function syncBar(){
   }
 }
 
-// 開発サーバー（server/client.js）が入っているか。入っていれば e / n / c も一覧に載せる
-function isDev(){ return !!(window.DECK_DEV || document.querySelector('script[src*="/__dev/client.js"]') || document.getElementById("dev-badge")); }
+// 開発サーバー・編集アプリのプレビューか（そこに入る server/hints.js が DECK_DEV を立てる）。そうなら e / n / c も一覧に載せる
+function isDev(){ return !!window.DECK_DEV; }
 function helpHtml(){
   var K = function(){ return [].map.call(arguments, function(k){ return "<kbd>" + k + "</kbd>"; }).join(""); };
   var row = function(k, t){ return '<div class="dt-row"><span>' + k + "</span><span>" + t + "</span></div>"; };
