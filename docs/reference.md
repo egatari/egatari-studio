@@ -321,6 +321,7 @@ The summary line shows slides, math, components, font files, narration steps, au
 - **Lesson id**: the first export creates `egatari.json` in the deck folder with a random `docId`; keep it with the deck so later exports keep the same id. Its optional `metadata` object may hold `license` (SPDX id or URL), `copyright`, `attribution`, `creators`, `description`, `accessibility`, `curriculum`, `completion`, `derivedFrom`, `authorship` and `audience`; `license`, `copyright` and `attribution` are also copied to the runtime metadata, so a play-only copy keeps them. Title and language come from `<title>` and `<html lang>`.
 - **Narration without script**: the file also contains the display text of every step as ordinary HTML (hidden while the deck runs), for archiving, search and accessibility.
 - **Extension lines** (`@x-<name>-<field> value`) are collected per step into the file's index.
+- **Audio records**: each step's audio keeps the hash of the narration it was made from. When the TTS cache shows that the narration changed after the audio was made, that hash is written as `null` (unknown, so the step counts as stale); unpacking and packing keep the `null`. The runtime's audio entries also carry the audio media type, so a player does not need to guess it.
 - Warns above 30 MiB (split long lessons into chapters).
 
 | Option | Meaning |
@@ -329,6 +330,8 @@ The summary line shows slides, math, components, font files, narration steps, au
 | `--play-only` | write a play-only copy (default `out/<name>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
 
 `npm run portable -- unpack <file> <dir> [--force]` extracts the source and audio into `<dir>` (and writes `audio/manifest.json` from the audio records, so the folder builds and packs again). It reads the file as text and never runs its scripts; it checks the index and every hash, the size limits and the path rules of the spec, refuses to write outside `<dir>` or through symbolic links, and refuses a non-empty `<dir>` unless `--force`. `npm run portable -- pack <dir> [-o file] [--play-only]` is `build --portable` on that folder: packing an unpacked folder gives the same file again.
+
+Reading a portable file (unpack and the [editor app](editor.md#portable-files-no-folder)) also refuses an `audio/manifest.json` inside the archive (it is always made from the audio records) and a settings file whose `docId` differs from the index, and recomputes the source hash from the files: when it differs from the index or from the runtime metadata, the reader warns that the compiled lesson and its source disagree. A file of a newer major version can only have its source extracted (in the editor); a file that requires an unknown feature is refused.
 
 ## TTS
 
