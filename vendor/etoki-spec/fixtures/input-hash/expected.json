@@ -1,0 +1,14 @@
+{
+  "s-k3f9q2:0": {
+    "canonical": "[[\"expert\",[\"更新の式です。今の点から、次の点を決めます。\"],[]]]",
+    "inputHash": "a86428f59b6b6015819563e4d172c84d7db898e5dccb6dbe9ad4cbd502d49e86"
+  },
+  "s-k3f9q2:2": {
+    "canonical": "[[\"expert\",[\"\",\"η は学習率で、\",\"1 歩の大きさを決めます。\"],[\"mark:eta|circle\",\"cue\"]],[\"novice\",[\"大きすぎると、\",\"どうなりますか。\",\"\"],[\"mark:grad|underline|hold=1.5\",\"mark:clear\"]]]",
+    "inputHash": "f9909bd77d47c2148c995f2bc1d456522eb5aaa17914430d29883ebd2e03d594"
+  },
+  "s-k3f9q2:concl": {
+    "canonical": "[[\"expert\",[\"つまり、ファイの向きに進みます。\"],[]]]",
+    "inputHash": "7499c301852353ca3000c4cf42b8e2151cbc872a125a97aae31345de77bfc36d"
+  }
+}

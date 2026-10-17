@@ -1,4 +1,4 @@
-// スライドに安定した id を付ける（npm run ids）。spec/etoki-1.0.md §8.1、docs/contract.md §4
+// スライドに安定した id を付ける（npm run ids）。Etoki 1.0 §8.1、docs/contract.md §4
 //   npm run ids -- <デッキのフォルダ | deck.html> [--dry-run]
 //   node tools/ids.mjs <デッキのフォルダ | deck.html> [--dry-run]
 //

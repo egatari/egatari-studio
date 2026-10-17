@@ -31,7 +31,7 @@ const attr = (n, name) => (n.attrs || []).find((a) => a.name === name)?.value;
 const hasClass = (n, c) => (attr(n, 'class') || '').split(/\s+/).includes(c);
 
 // 原稿に data-key（常に）と data-src（開発時）を書き足す。挿入は後ろから行い、位置をずらさない
-// スライドの鍵（spec/etoki-1.0.md §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
+// スライドの鍵（Etoki 1.0 §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
 // 鍵が重なる原稿は正しくない（検査器がエラーにする。analyzeSlideIds）が、組めるように、明示の id / data-key が重なれば警告して「#n」を付け、
 // 見出しや番号から作る鍵は、明示の鍵とも「#n」付きの鍵とも重ならないようにする。書き換えた鍵は data-key に書く
 export function annotate(src, dev, warn = []) {

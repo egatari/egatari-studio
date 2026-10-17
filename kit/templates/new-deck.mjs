@@ -1,7 +1,7 @@
 // 新しいデッキの雛形（npm run new と編集アプリの「新しいデッキ」が共有する）。依存なし（Node にもブラウザにも依存しない）
 //   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids}) → {'deck.html': 文字列, 'narration.md': 文字列}
 // 表紙＋見本 3 枚（段階・数式と注目の演出・部品）＋まとめと、全段階ぶんの口述原稿
-// どのスライドにも乱数の id（s-xxxxxx）を付け、口述原稿の見出しは「## 見出し {#id}」（spec/etoki-1.0.md §8.1）。
+// どのスライドにも乱数の id（s-xxxxxx）を付け、口述原稿の見出しは「## 見出し {#id}」（Etoki 1.0 §8.1）。
 // ids を渡せばその 5 つを使う（試験用）
 // （中身は字下げしない：テンプレート文字列の中の空白がそのままファイルに入るため）
 import { newSlideId, headingLine } from '../core/narration-core.mjs';

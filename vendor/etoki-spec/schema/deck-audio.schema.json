@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://etoki-org.github.io/etoki-spec/schema/deck-audio.schema.json",
+  "title": "Etoki 1.0 runtime audio (#deck-audio)",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "etoki-index.schema.json#/$defs/stepKey"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": [
+      "src",
+      "dur",
+      "cues"
+    ],
+    "properties": {
+      "src": {
+        "type": "string",
+        "pattern": "^(data:audio/[a-z0-9.+-]+;base64,|etoki:[A-Za-z0-9_]{1,32}$)"
+      },
+      "dur": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "cues": {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "sync": {
+        "enum": [
+          "auto",
+          "manual",
+          "none"
+        ],
+        "default": "auto"
+      }
+    },
+    "if": {
+      "properties": {
+        "sync": {
+          "const": "none"
+        }
+      },
+      "required": [
+        "sync"
+      ]
+    },
+    "then": {
+      "properties": {
+        "cues": {
+          "maxItems": 0
+        }
+      }
+    }
+  }
+}

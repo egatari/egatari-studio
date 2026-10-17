@@ -3,7 +3,7 @@
 // 書式は docs/contract.md §4
 import { short } from './sha1.mjs';
 
-// スライドの鍵（docs/contract.md §4、spec/etoki-1.0.md §8.1）：section の id、なければ見出しの正規化
+// スライドの鍵（docs/contract.md §4、Etoki 1.0 §8.1）：section の id、なければ見出しの正規化
 // （タグを除き、&nbsp; を空白とみなし、空白をすべて除いたもの）
 export function normalizeKey(s) {
   return String(s).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, '');
@@ -53,7 +53,7 @@ export function headingLine(slide) {
 
 const ROLE = /^(Expert|Novice|E|N)\s*[:：]\s*/;
 
-// 拡張の行（spec/etoki-1.0.md §8.2・§9A）：段階の中の「@x-<名前>-<欄> <値>」。名前に - は入らない。
+// 拡張の行（Etoki 1.0 §8.2・§9A）：段階の中の「@x-<名前>-<欄> <値>」。名前に - は入らない。
 // 発言・表示・TTS・区切り・hash のどれにも入らず、段階ごとの ext: [{name, field, value, line}] として返す。
 // 書き換え（rewriteNarration）でも行はそのまま残す
 export const EXT_LINE = /^\s*@x-([a-z][a-z0-9]{0,31})-([a-z][a-z0-9-]{0,31})(?:[ \t]+(.*))?$/;

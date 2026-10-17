@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://etoki-org.github.io/etoki-spec/schema/etoki-audio.schema.json",
+  "title": "Etoki 1.0 audio record (index.audio[stepKey])",
+  "type": "object",
+  "required": [
+    "file",
+    "dur",
+    "cues",
+    "kind",
+    "inputHash"
+  ],
+  "properties": {
+    "file": {
+      "allOf": [
+        {
+          "$ref": "etoki-index.schema.json#/$defs/archivePath"
+        },
+        {
+          "type": "string",
+          "pattern": "^audio/"
+        }
+      ]
+    },
+    "dur": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cues": {
+      "type": "array",
+      "description": "Time (s) of every boundary of the step, in order. Non-decreasing and <= dur (validators check order).",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "sync": {
+      "enum": [
+        "auto",
+        "manual",
+        "none"
+      ],
+      "description": "auto: cues derived during synthesis; manual: placed by a person; none: cues not yet placed (players treat as unsynchronized)",
+      "default": "auto"
+    },
+    "kind": {
+      "enum": [
+        "tts",
+        "recorded",
+        "imported"
+      ]
+    },
+    "inputHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "recipe": {
+      "type": "object",
+      "required": [
+        "engine",
+        "model",
+        "voice",
+        "processing"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "voice": {
+          "description": "Public voice identifiers by role, never file-system paths",
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "expert",
+              "novice"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          }
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dictionary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "SHA-256 of the effective reading dictionary"
+        },
+        "processing": {
+          "type": "string",
+          "description": "Identifier of the post-processing profile, e.g. trim-45-loud-20-v1"
+        }
+      }
+    },
+    "recipeDigest": {
+      "type": "string"
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "mime",
+          "startOffset"
+        ],
+        "properties": {
+          "file": {
+            "allOf": [
+              {
+                "$ref": "etoki-index.schema.json#/$defs/archivePath"
+              },
+              {
+                "type": "string",
+                "pattern": "^audio/"
+              }
+            ]
+          },
+          "mime": {
+            "type": "string"
+          },
+          "startOffset": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "tts"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "recipe"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sync": {
+            "const": "none"
+          }
+        },
+        "required": [
+          "sync"
+        ]
+      },
+      "then": {
+        "properties": {
+          "cues": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

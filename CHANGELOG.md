@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `npm run new` gives every slide a random id and writes `{#id}` headings; the dev server and the editor app write `## Heading {#id}` when they add a narration section for a slide with an id
 - Checker: errors for an invalid slide id, two slides with the same key, a slide id equal to another id or `\htmlId{…}` in the deck, and a narration section (also one without steps) that matches no slide; info when a `{#id}` heading's text differs from the slide's heading
 - Extension lines `@x-<name>-<field> <value>` inside a narration step (Etoki §8.2): excluded from turns, display text, TTS text, boundaries and digests, exposed by the parser as `ext` per step (`tools/narration-json.mjs` too), and kept verbatim by every edit path
+- `vendor/etoki-spec/`: the JSON Schemas and test fixtures of the [Etoki specification](https://github.com/etoki-org/etoki-spec), copied at a pinned commit by `node tools/sync-etoki-spec.mjs <clone>` (the commit is recorded in `vendor/etoki-spec/SOURCE.json`); the tests check the parser against them
 
 ### Changed
 
