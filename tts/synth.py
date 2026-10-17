@@ -120,6 +120,31 @@ def narration_json(narr: Path, voice: dict) -> list[dict]:
     return data["segments"]
 
 
+def no_link(deckdir: Path, p: Path) -> Path:
+    """deckdir から p までの途中のフォルダと p 自身のどれかがシンボリックリンクなら止める（壊れたリンクも）。
+    原稿のフォルダに置かれたリンクを通して外のファイルに書かない（SECURITY.md）。deckdir 自身は呼び出した人が選んだもの。"""
+    q = deckdir
+    for part in p.relative_to(deckdir).parts:
+        q = q / part
+        if q.is_symlink():
+            sys.exit(f"⚠ シンボリックリンクを通しては書きません / refusing to write through a symbolic link: {q}")
+    return p
+
+
+def write_text_safe(deckdir: Path, p: Path, text: str):
+    """p に書く（no_link で確かめ、同じフォルダに排他的に作った一時ファイルに書いて rename で入れ替える）。"""
+    no_link(deckdir, p)
+    tmp = p.with_name(f".{p.name}.{os.urandom(8).hex()}.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o666)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, p)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def est_dur(text: str) -> float:
     if re.search(r"[A-Za-z]{3}", text) and not re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", text):
         n = len(text.split())                       # 英語：1 秒 ≒ 2.5 語
@@ -216,7 +241,7 @@ def main():
     narr = deckdir / "narration.md"
     if not narr.exists():
         sys.exit(f"narration.md がありません: {narr}")
-    audio_dir = deckdir / "audio"
+    audio_dir = no_link(deckdir, deckdir / "audio")
     audio_dir.mkdir(exist_ok=True)
 
     voices, _, src = resolve_voices(deckdir, args.voices)
@@ -269,8 +294,8 @@ def main():
         for r in used_roles:
             try:
                 refs[r] = M.resolve_voice(voices[r], ref_dir, deckdir)   # 参照音声が無ければここで止める
-                refs[r] = M.ref_at_model_rate(refs[r], deckdir / ".cache" / "voices")   # 48 kHz・モノラルにそろえる
-            except FileNotFoundError as e:
+                refs[r] = M.ref_at_model_rate(refs[r], no_link(deckdir, deckdir / ".cache" / "voices"))   # 48 kHz・モノラルにそろえる
+            except (FileNotFoundError, PermissionError) as e:
                 sys.exit(f"⚠ {e}")
 
     only = set(k.strip() for k in args.only.split(",")) if args.only else None
@@ -283,7 +308,7 @@ def main():
     watch_kanji = Y.load_watch_kanji(yomi_path) if use_yomi else None
     stats = {"replaced": {}, "warns": set(), "watched": set()}
 
-    man_path = audio_dir / "manifest.json"
+    man_path = no_link(deckdir, audio_dir / "manifest.json")
     manifest = {"segments": {}}
     if man_path.exists():
         try:
@@ -305,15 +330,15 @@ def main():
             continue
         turns = plan(seg, terms, watch_kanji, watch, stats)
         fname = f"seg_{seg['digest']}.wav"
-        out = audio_dir / fname
-        meta = audio_dir / f"seg_{seg['digest']}.json"   # 長さと cues の控え（キャッシュ時に測り直さない）
+        out = no_link(deckdir, audio_dir / fname)
+        meta = no_link(deckdir, audio_dir / f"seg_{seg['digest']}.json")   # 長さと cues の控え（キャッシュ時に測り直さない）
         if out.exists() and meta.exists() and not args.force:
             info = json.loads(meta.read_text(encoding="utf-8"))
             cached += 1
             print(f"  [{n+1}/{len(segs)}] {key}: キャッシュ使用 ({fname}, {info['dur']:.2f}s)")
         else:
             print(f"  [{n+1}/{len(segs)}] {key}: {len(turns)} ターン合成中…", end="")
-            tmp_out = out.with_suffix(".tmp.wav")
+            tmp_out = no_link(deckdir, out.with_suffix(".tmp.wav"))
             try:
                 dur, cues = synth_segment(seg, turns, tmp_out, args.dry_run, refs)
             except Exception as e:
@@ -325,7 +350,7 @@ def main():
                 continue
             tmp_out.replace(out)
             info = {"dur": dur, "cues": cues, "voice": voice, "tts": turns}
-            meta.write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
+            write_text_safe(deckdir, meta, json.dumps(info, ensure_ascii=False, indent=1))
             made += 1
             print(f" {dur:.2f}s" + (f", cues {cues}" if cues else ""))
         manifest["segments"][key] = {"file": fname, "dur": info["dur"], "cues": info["cues"], "digest": seg["digest"],
@@ -334,7 +359,7 @@ def main():
     # 原稿の順に並べ直して書く
     order = {s["key"]: i for i, s in enumerate(segs)}
     manifest["segments"] = dict(sorted(manifest["segments"].items(), key=lambda kv: order.get(kv[0], 1e9)))
-    man_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    write_text_safe(deckdir, man_path, json.dumps(manifest, ensure_ascii=False, indent=1))
 
     dry = [k for k, v in manifest["segments"].items() if v.get("engine") == "dry-run"]
     if dry and not args.dry_run:

@@ -1,5 +1,6 @@
 // フォルダの読み書き（File System Access API）。編集アプリはここを通してだけ、選ばれたデッキのフォルダに触る
 // 場所はフォルダからの相対パス（"/" 区切り、先頭に / を付けない）
+import { backupStamp, isBackupName } from '../kit/core/backup-name.mjs';
 
 // 一覧に入れないもの：ドットで始まる名前（.cache の控え・.git・.env など）、組んだ出力・音声・動画・依存
 const SKIP = new Set(['node_modules', 'out', 'audio', 'video', 'bundle', '__pycache__']);
@@ -56,16 +57,16 @@ export async function exists(root, rel) {
 }
 
 // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ残す。開発サーバーと同じ）
+// 掃除で消すのは控えの名前の形（kit/core/backup-name.mjs）をしたファイルだけ。利用者やデッキが置いたほかのファイルには触れない
 const KEEP_EDITS = 30;
 export async function backup(root, rel) {
   const text = await readText(root, rel);
   if (text === null) return;
   const edits = await (await root.getDirectoryHandle('.cache', { create: true })).getDirectoryHandle('edits', { create: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const h = await edits.getFileHandle(`${stamp}-${rel.split('/').pop()}`, { create: true });
+  const h = await edits.getFileHandle(`${backupStamp()}-${rel.split('/').pop()}`, { create: true });
   const w = await h.createWritable(); await w.write(text); await w.close();
   const names = [];
-  for await (const [name, e] of edits.entries()) if (e.kind === 'file') names.push(name);
+  for await (const [name, e] of edits.entries()) if (e.kind === 'file' && isBackupName(name)) names.push(name);
   names.sort();
   for (const n of names.slice(0, Math.max(0, names.length - KEEP_EDITS))) { try { await edits.removeEntry(n); } catch { /* 消せなくてもよい */ } }
 }

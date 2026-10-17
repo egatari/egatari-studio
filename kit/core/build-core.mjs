@@ -204,25 +204,51 @@ function fontCss(env, text, subset, lang) {
 }
 
 // ---------------------------------------------------------------- テーマ
-// fromDeck：原稿の <html data-theme> で指定されたとき。原稿のフォルダかリポジトリの themes/ の中だけを探す
-function resolveTheme(env, name, deckDir, fromDeck = false) {
-  const P = env.path;
-  const cands = [P.resolve(deckDir, name), P.join(deckDir, 'themes', name), P.join(env.ROOT, 'themes', name)];
+// テーマのファイル（theme.json・tokens.css・ロゴ）と親のテーマ（extends、何段でも）は、読む前に許した根（authorized root）の中にあるかを
+// 確かめる（env.within は Node では実体のパスで比べるので、外を指すシンボリックリンクは外に数える。SECURITY.md）。根は
+//   原稿のフォルダのテーマ：原稿のフォルダ　　部品庫のテーマ（リポジトリの themes/）：themes/　　--theme で呼び出した人が選んだ外の場所：そのテーマのフォルダ
+// で、親のテーマはその根か themes/ の中だけを探す（根は継承の間ずっと運ぶ。原稿のフォルダのテーマの extends で外へ出ない）
+// 返すもの：{dir, root}。root === null は呼び出した人が選んだもの（--theme）。外に出るものしかなければ null（warn に知らせる）
+function resolveTheme(env, name, baseDir, root, warn) {
+  const P = env.path, reg = P.join(env.ROOT, 'themes');
+  const cands = [P.resolve(baseDir, name), P.join(baseDir, 'themes', name), P.join(reg, name)];
+  let refused = false;
   for (const d of cands) {
-    if (!env.exists(P.join(d, 'tokens.css'))) continue;
-    if (fromDeck && !env.within(d, deckDir) && !env.within(d, P.join(env.ROOT, 'themes'))) continue;
-    return d;
+    const tok = P.join(d, 'tokens.css');
+    if (!env.exists(tok)) continue;
+    const ok = (r) => env.within(d, r) && env.within(tok, r);
+    const r = ok(reg) ? reg : root && ok(root) ? root : root === null ? (env.within(tok, d) ? d : null) : null;
+    if (!r) { refused = true; continue; }
+    return { dir: d, root: r };
   }
+  if (refused) { warn.push(`refused: テーマ「${name}」は許した場所（原稿のフォルダ・themes/）の外にある（シンボリックリンクなど。読まない）`); return null; }
   throw new Error(`theme not found: ${name}`);
 }
-function themeAssets(env, dir) {
-  const P = env.path;
+function themeAssets(env, t, warn, depth = 0) {
+  const P = env.path, { dir, root } = t;
+  if (depth > 16) throw new Error(`theme: extends is nested too deeply (${dir})`);
+  const inRoot = (f) => env.within(f, root) && env.within(f, dir);
   const cfgPath = P.join(dir, 'theme.json');
-  const cfg = env.exists(cfgPath) ? JSON.parse(env.readText(cfgPath)) : {};
+  let cfg = {};
+  if (env.exists(cfgPath)) {
+    if (inRoot(cfgPath)) cfg = JSON.parse(env.readText(cfgPath));
+    else warn.push(`refused: テーマの theme.json（${P.basename(dir)}）が許した場所の外を指している（読まない）`);
+  }
   // "extends" なら、親の tokens.css を先に置き、差分だけを上書きする。logos を書かなければ親のロゴを使う（"logos": [] で消せる）
-  const par = cfg.extends ? themeAssets(env, resolveTheme(env, cfg.extends, P.dirname(dir))) : null;
-  const logos = cfg.logos ? cfg.logos.filter((f) => env.within(P.join(dir, f), dir)).map((f) => dataUri(env, P.join(dir, f))) : (par ? par.logos : []);
-  return { css: (par ? par.css + '\n' : '') + env.readText(P.join(dir, 'tokens.css')), logos, cfg };
+  // 親はこのテーマの根の中か themes/ の中だけ（呼び出した人が選んだテーマなら、そのフォルダの中か themes/）
+  const pt = cfg.extends ? resolveTheme(env, String(cfg.extends), P.dirname(dir), root, warn) : null;
+  const par = pt ? themeAssets(env, pt, warn, depth + 1) : null;
+  const logos = cfg.logos ? cfg.logos.filter((f) => {
+    const p = P.join(dir, String(f));
+    if (!env.exists(p)) return false;
+    if (inRoot(p)) return true;
+    warn.push(`refused: テーマのロゴ「${f}」が許した場所の外にある（読まない）`);
+    return false;
+  }).map((f) => dataUri(env, P.join(dir, String(f)))) : (par ? par.logos : []);
+  const tok = P.join(dir, 'tokens.css');
+  // resolveTheme が確かめたが、読む直前にもう一度（同じ根で）
+  if (!inRoot(tok)) { warn.push(`refused: テーマの tokens.css（${P.basename(dir)}）が許した場所の外を指している（読まない）`); return { css: par ? par.css : '', logos, cfg }; }
+  return { css: (par ? par.css + '\n' : '') + env.readText(tok), logos, cfg };
 }
 export const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon',
   wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', opus: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
@@ -362,8 +388,11 @@ export function build(env, srcPath, opts = {}) {
   html = bundleAssets(env, html, deckDir, warn);
 
   // テーマ：引数 → <html data-theme> → default
-  const themeName = opts.theme || html.match(/<html[^>]*\sdata-theme="([^"]+)"/)?.[1] || 'default';
-  const theme = themeAssets(env, resolveTheme(env, themeName, deckDir, !opts.theme));
+  let themeName = opts.theme || html.match(/<html[^>]*\sdata-theme="([^"]+)"/)?.[1] || 'default';
+  // 原稿が選んだテーマの根は原稿のフォルダ（themes/ も）。外へ出るものなら読まずに既定のテーマ（themes/default）にする
+  let tsel = resolveTheme(env, themeName, deckDir, opts.theme ? null : deckDir, warn);
+  if (!tsel) { themeName = 'default'; tsel = resolveTheme(env, 'default', P.join(ROOT, 'themes'), P.join(ROOT, 'themes'), warn); }
+  const theme = themeAssets(env, tsel, warn);
   if (theme.logos.length) {
     const imgs = `<div class="logos">${theme.logos.map((u) => `<img alt="" src="${u}">`).join('')}</div>`;
     html = html.replace(/(<section\b[^>]*class="[^"]*\bcover\b[^"]*"[^>]*>)([\s\S]*?)(<\/section>)/g,
@@ -393,9 +422,20 @@ export function build(env, srcPath, opts = {}) {
   // 部品：使われている <m-名前> を探して読み込む
   const used = [...new Set([...html.matchAll(/<(m-[a-z0-9-]+)[\s>]/g)].map((m) => m[1]))];
   let compJs = '';
+  const compRoot = P.join(ROOT, 'components');
   for (const tag of used) {
     const name = tag.slice(2);
-    const file = [P.join(deckDir, 'components', name, 'index.js'), P.join(ROOT, 'components', name, 'index.js')].find((p) => env.exists(p));
+    // 読む前に、原稿のフォルダの部品は原稿のフォルダの中に、部品庫の部品は components/ の中にあること（実体のパスで。外を指すリンクは読まない。
+    // 原稿のフォルダにあって外を指すものは、部品庫のものに替えずに使わない）
+    const local = P.join(deckDir, 'components', name, 'index.js'), lib = P.join(compRoot, name, 'index.js');
+    let file = null;
+    if (env.exists(local)) {
+      if (env.within(local, deckDir)) file = local;
+      else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が原稿のフォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
+    } else if (env.exists(lib)) {
+      if (env.within(lib, compRoot)) file = lib;
+      else { warn.push(`refused: 部品庫の部品 ${tag} が components/ の外を指している（読まない）`); continue; }
+    }
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
     compJs += `\n// ---- ${tag} (${P.relative(ROOT, file).split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
   }

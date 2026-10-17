@@ -12,6 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { build } from '../kit/build.mjs';
+import { isBackupName } from '../kit/core/backup-name.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -145,6 +146,10 @@ try {
   ok(appDev === nodeDev, 'build: dev build (data-src) is byte-identical to Node' + firstDiff(appDev, nodeDev));
 
   // ---------------------------------------------------------------- 3. 原稿の編集
+  // 控えの掃除が消すのは控えの名前の形をしたものだけ：控えの名前の古いもの 35 個と、ほかの名前のファイルを先に置く
+  for (let i = 0; i < 35; i++) await opfs.write(`.cache/edits/2000-01-01T00-00-${String(i).padStart(2, '0')}-000Z-deck.html`, 'old ' + i);
+  await opfs.write('.cache/edits/000-important.txt', 'mine');
+  await opfs.write('.cache/edits/notes.md', 'mine');
   await f.evaluate(() => DECK.go(2, 3, false));
   await page.click('#b-edit');
   ok(await f.evaluate(() => document.documentElement.classList.contains('dev-edit')), 'edit: toolbar button turns on edit mode');
@@ -163,8 +168,10 @@ try {
   const st1 = await f.evaluate(() => DECK.state());
   ok(st1.slide === 3 && st1.step === 3, `edit: position kept after reload (${st1.slide}:${st1.step})`);
   ok(await f.evaluate(() => document.querySelector('#stage .slide.active li[data-step="2"]').textContent.includes('アプリで編集')), 'edit: preview shows the new text');
-  const backups = await opfs.list('.cache/edits');
-  ok(backups.length === 1 && backups[0].endsWith('-deck.html'), 'edit: backup in .cache/edits/');
+  const editsList = await opfs.list('.cache/edits');
+  const backups = editsList.filter((n) => isBackupName(n));
+  ok(backups.length === 30 && backups.filter((n) => !n.startsWith('2000-')).length === 1 && backups.at(-1).endsWith('-deck.html'), `edit: backup in .cache/edits/, cleanup keeps the newest 30 (${backups.length})`);
+  ok(editsList.includes('000-important.txt') && editsList.includes('notes.md'), 'edit: backup cleanup never deletes files with other names in .cache/edits/');
   // 古い hash での保存は 409
   const conflict = await f.evaluate(() => window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/edit', { range: '0-5', h: 'deadbeef', text: 'x' }));
   ok(conflict._status === 409, 'edit: stale hash is rejected (409)');

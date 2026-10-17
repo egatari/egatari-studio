@@ -20,6 +20,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
+import { safeWriteFile } from './safe-fs.mjs';
 
 export { annotate, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -101,6 +102,15 @@ export const nodeEnv = {
 export function build(srcPath, opts = {}) { return core.build(nodeEnv, srcPath, opts); }
 export function bundleAssets(html, deckDir, warn = []) { return core.bundleAssets(nodeEnv, html, deckDir, warn); }
 export function defaultOut(srcPath) { return core.defaultOut(path, srcPath); }
+// 組んだものを書く。原稿のフォルダの中（既定の out/）なら、途中のフォルダも書く先もリンクでないこと（原稿のフォルダに置かれたリンクで
+// 外のファイルを上書きしない。SECURITY.md）。外（-o で選んだ場所）なら、そのフォルダを作り、書く先がリンクでないこと。どちらも一時ファイル + rename
+export function writeOutput(srcPath, out, data) {
+  const deckDir = path.dirname(path.resolve(srcPath)), o = path.resolve(out);
+  const rel = path.relative(deckDir, o);
+  if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) return safeWriteFile(deckDir, o, data);
+  fs.mkdirSync(path.dirname(o), { recursive: true });
+  return safeWriteFile(path.dirname(o), o, data);
+}
 
 // ---------------------------------------------------------------- CLI
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -116,8 +126,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (!src) { console.error('usage: node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio]'); process.exit(1); }
   const out = opts.out || defaultOut(src);
   const r = build(src, { ...opts, out });
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, r.html);
+  try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   const s = r.stats;
   console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
   for (const w of s.warn) console.warn('  ⚠ ' + w);
