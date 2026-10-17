@@ -161,7 +161,7 @@ export const FONTS = {
 };
 export const isJapanese = (lang) => !lang || /^ja\b/i.test(lang);
 // 英語などのデッキで、BIZ UDPゴシックに任せる字（Source Sans 3 が持つラテン文字・記号の大部分より後ろ）
-const LATIN_MAX = 0x24f;
+export const LATIN_MAX = 0x24f;
 // 字の分割ファイルの一覧：{w, family, file, range}（file は env.path の上の場所）
 export function fontFaces(env, font, weights = [400, 700]) {
   const P = env.path;
@@ -178,7 +178,7 @@ export function fontFaces(env, font, weights = [400, 700]) {
   }
   return faces;
 }
-function parseRange(s) {
+export function parseRange(s) {
   return s.split(',').map((p) => {
     const [a, b] = p.trim().replace(/^U\+/i, '').split('-');
     if (a.includes('?')) return [parseInt(a.replace(/\?/g, '0'), 16), parseInt(a.replace(/\?/g, 'F'), 16)];
@@ -229,9 +229,13 @@ function rangeCss(env, fonts, text) {
     if (!hit(f.range)) continue;
     const b64 = env.readBase64(f.file);
     bytes += b64.length; n++;
-    css += `@font-face{font-family:"${f.family}";font-style:normal;font-display:block;font-weight:${f.w};src:url(data:font/woff2;base64,${b64}) format("woff2");unicode-range:${f.range.map(([a, b]) => a === b ? `U+${a.toString(16)}` : `U+${a.toString(16)}-${b.toString(16)}`).join(',')}}\n`;
+    css += fontFaceCss(f, b64);
   }
   return { css, n, bytes };
+}
+// 分割ファイル 1 つの @font-face（f：fontFaces の要素、b64：woff2 の base64）。段 A の編集の字の補い（kit/core/tier-a.mjs）も同じ形で書く
+export function fontFaceCss(f, b64) {
+  return `@font-face{font-family:"${f.family}";font-style:normal;font-display:block;font-weight:${f.w};src:url(data:font/woff2;base64,${b64}) format("woff2");unicode-range:${f.range.map(([a, b]) => a === b ? `U+${a.toString(16)}` : `U+${a.toString(16)}-${b.toString(16)}`).join(',')}}\n`;
 }
 function fontCss(env, text, subset, lang) {
   const sub = (t) => (subset && env.subset ? env.subset(t) : null);

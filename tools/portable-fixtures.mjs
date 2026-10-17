@@ -60,6 +60,17 @@ async function editIndex(html, fn) {
   const r = fn(ix);
   return replaceIndexText(html, typeof r === 'string' ? r : JSON.stringify(ix, null, 1));
 }
+// 知らない項目（名前は x… で、どの版の仕様の項目とも重ならない）：索引の上・metadata・音声の記録・塊・部品とテーマ・版・拡張
+export function addUnknownMembers(x) {
+  x.futureMember = { kept: true };
+  x.version.xPatch = 7;
+  x.metadata.xAudienceNote = 'kept';
+  for (const a of Object.values(x.audio || {})) a.xTake = { kept: true };
+  for (const b of Object.values(x.blobs)) b.xStorage = 'kept';
+  for (const c of x.components || []) c.xRegistryUrl = 'kept';
+  for (const t of x.themes || []) t.xRegistryUrl = 'kept';
+  x.extensions = { ...(x.extensions || {}), chapters: { v: 1, xNote: 'kept', [Object.keys(x.audio || { 'a:0': 1 })[0]]: { title: 'kept' } } };
+}
 const cutElement = (html, id) => { const el = scanDocument(html).byId.get(id); return html.slice(0, el.start) + html.slice(el.end); };
 
 export async function makeFixtures(out) {
@@ -100,8 +111,18 @@ export async function makeFixtures(out) {
   put('future-major', await editIndex(base, (x) => { x.version.major = 2; }), { read: { error: 'unsupported-version' }, extract: 'ok', play: true });
   put('manifest-in-files', await editIndex(base, (x) => { x.files['audio/manifest.json'] = Object.values(x.audio)[0] && x.files[Object.values(x.audio)[0].file]; }), { read: { error: 'bad-path' } });
   put('config-docid-mismatch', await editIndex(base, (x) => { x.docId = '00000000-0000-4000-8000-000000000000'; }), { read: { error: 'docid-mismatch' } });
-  put('unknown-required-feature', await editIndex(base, (x) => { x.requires.push('something-v9'); }), { read: { error: 'unknown-feature' }, extract: { error: 'unknown-feature' }, play: true });
+  put('unknown-required-feature', await editIndex(base, (x) => { x.requires.push('something-v9'); }), { read: { error: 'unknown-feature' }, extract: 'ok', play: true });
   put('unknown-optional-member', await editIndex(base, (x) => { x.futureMember = { kept: true }; }), { read: 'ok', preserved: 'futureMember' });
+  // 知らない項目をどの深さにも（§7.1：編集器は保存のたびに残す。試験は tools/test-tier-a.mjs と test-app）
+  put('unknown-members-everywhere', await editIndex(base, addUnknownMembers), { read: 'ok', preserved: 'futureMember', unknownEverywhere: true });
+  // 取り出しも断る：知らない major で 1.x の規則に合わない索引、知らない必須の機能で塊が壊れているもの（§7.1・§3.5）
+  put('future-major-invalid', await editIndex(base, (x) => { x.version.major = 2; x.profile = 'holographic'; }), { read: { error: 'unsupported-version' }, extract: { error: 'invalid-index' } });
+  {
+    const fb = await editIndex(base, (x) => { x.requires.push('something-v9'); });
+    const id = [...scanDocument(fb).byId.keys()].find((k) => k.startsWith(FORMAT.BLOB_PREFIX));
+    const el = scanDocument(fb).byId.get(id), t = el.text;
+    put('unknown-feature-bad-blob', fb.slice(0, el.start) + fb.slice(el.start, el.end).replace(t, (t[0] === 'A' ? 'B' : 'A') + t.slice(1)) + fb.slice(el.end), { read: { error: 'unknown-feature' }, extract: { error: 'bad-blob' } });
+  }
   put('duplicate-member', await editIndex(base, (x) => JSON.stringify(x, null, 1).replace('\n "docId"', `\n "docId": "${x.docId}",\n "docId"`)), { read: { error: 'duplicate-member' } });
   put('oversize', await editIndex(base, (x) => { x.padding = 'x'.repeat(4 * 1024 * 1024 + 16); }), { read: { error: 'index-too-large' } });
   {

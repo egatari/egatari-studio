@@ -18,7 +18,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
-import { makeFixtures, silentWav } from './portable-fixtures.mjs';
+import { makeFixtures, silentWav, addUnknownMembers } from './portable-fixtures.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
 
@@ -264,6 +264,52 @@ ok('作り直し（carry）：書き手の知らない索引の項目と、口�
   assert.deepEqual(plainJson(again.index.extensions.tutor), plainJson(first.index.extensions.tutor));
   assert.equal(again.index.docId, first.index.docId);
 });
+ok('作り直し（carry）：知らない項目はどの深さでも残す（metadata・音声の記録・塊・部品とテーマ・版・拡張。§7.1）。docId を変えない保存は derivedFrom を付けも変えもしない', async () => {
+  const r = await PF.readPortable(firstHtml);
+  const carry = PF.parseJsonStrict(JSON.stringify(r.index));
+  addUnknownMembers(carry);
+  carry.metadata.derivedFrom = { docId: '11111111-2222-4333-8444-555555555555', sourceSha256: 'a'.repeat(64) };
+  carry.metadata.description = 'written by another producer';
+  const again = await buildPortable(path.join(MIN, 'deck.html'), { out: path.join(MIN, 'out', 'carry2.html'), carry, originalNarration: narr(MIN) });
+  const x = plainJson(again.index);
+  assert.deepEqual(x.futureMember, { kept: true });
+  assert.equal(x.version.xPatch, 7);
+  assert.equal(x.metadata.xAudienceNote, 'kept');
+  assert.equal(x.metadata.description, 'written by another producer');
+  assert.deepEqual(x.metadata.derivedFrom, carry.metadata.derivedFrom, 'derivedFrom kept as is');
+  for (const a of Object.values(x.audio)) assert.deepEqual(a.xTake, { kept: true });
+  for (const b of Object.values(x.blobs)) assert.equal(b.xStorage, 'kept');
+  for (const t of x.themes || []) assert.equal(t.xRegistryUrl, 'kept');
+  assert.equal(x.extensions.chapters.xNote, 'kept');
+  assert.deepEqual(x.extensions.tutor, plainJson(first.index.extensions.tutor));
+  assert.deepEqual(PF.validateIndex(again.index), []);
+  schemaOk(vIndex, again.index, 'index with unknown members');
+  // derivedFrom のない文書を docId を変えずに保存しても付かない（設定のファイルに書いてあっても）
+  const c2 = PF.parseJsonStrict(JSON.stringify(r.index));
+  const D = path.join(work, 'derived'); fs.cpSync(MIN, D, { recursive: true, filter: (q) => !/[\\/]out([\\/]|$)/.test(path.relative(MIN, q)) });
+  const cfg = JSON.parse(fs.readFileSync(path.join(D, FORMAT.CONFIG_FILE), 'utf8'));
+  cfg.metadata.derivedFrom = { docId: '11111111-2222-4333-8444-555555555555', sourceSha256: 'b'.repeat(64) };
+  fs.writeFileSync(path.join(D, FORMAT.CONFIG_FILE), JSON.stringify(cfg, null, 2) + '\n');
+  const keep = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'k.html'), carry: c2 });
+  assert.equal(keep.index.metadata.derivedFrom, undefined, 'Save keeps the absence of derivedFrom');
+  // 行を消した拡張は残さない（元の口述原稿の行から作られたもの）
+  fs.writeFileSync(path.join(D, 'narration.md'), narr(D).replace(/@x-tutor-q[^\n]*\n/g, ''));
+  const noTutor = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'k2.html'), carry: c2, originalNarration: narr(MIN) });
+  assert.equal(noTutor.index.extensions, undefined, 'extension lines removed → extension not carried');
+  // 新しい教材として保存（identity）：新しい docId・derivedFrom・設定のファイルも。権利の表示はそのまま
+  const nid = PF.newDocId();
+  const asNew = await buildPortable(path.join(MIN, 'deck.html'), { out: path.join(MIN, 'out', 'new.html'), carry: PF.parseJsonStrict(JSON.stringify(r.index)),
+    identity: { docId: nid, derivedFrom: { docId: r.index.docId, sourceSha256: r.index.sourceSha256 } } });
+  assert.equal(asNew.index.docId, nid); assert.equal(asNew.deckMeta.docId, nid);
+  assert.deepEqual(plainJson(asNew.index.metadata.derivedFrom), { docId: r.index.docId, sourceSha256: r.index.sourceSha256 });
+  for (const k of ['license', 'copyright', 'attribution', 'creators']) assert.deepEqual(asNew.index.metadata[k], r.index.metadata[k], k);
+  assert.equal(JSON.parse(new TextDecoder().decode(asNew.files[FORMAT.CONFIG_FILE])).docId, nid);
+  assert.equal(JSON.parse(asNew.writes[FORMAT.CONFIG_FILE]).docId, nid);
+  const back = await PF.readPortable(asNew.html);
+  assert.equal(back.sourceMatches, true);
+  // 書いた原稿のフォルダの設定のファイルは元に戻す（この試験の後の試験のため）
+  fs.writeFileSync(path.join(MIN, FORMAT.CONFIG_FILE), new TextDecoder().decode(r.files[FORMAT.CONFIG_FILE]));
+});
 
 // ---------------------------------------------------------------- 上限の順
 ok('上限は決まった順に効く：ファイル → 索引の大きさ（解析の前）→ 塊の長さ（復号の前）→ 復号の累計', async () => {
@@ -308,7 +354,7 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
       }
       if (f.expect.canary) assert.equal(globalThis[f.expect.canary], undefined, 'reading never executes the runtime layer');
     } else await rejects(PF.readPortable(text), f.expect.read.error);
-    // 取り出しだけ（§7.1・§9.3）：知らない major は 1.x の規則で検査して取り出せる（編集はさせない）。知らない必須の機能は断る
+    // 取り出しだけ（§7.1・§3.5・§9.3）：知らない major・知らない必須の機能も、1.x の規則で索引と塊が検査を通れば取り出せる（編集・書き出しはさせない）
     if (f.expect.extract === 'ok') {
       const r = await PF.readPortable(text, { extract: true });
       assert.equal(r.extractOnly, true, f.name);

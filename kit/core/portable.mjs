@@ -545,7 +545,10 @@ const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contra
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
 //   build(env, src, opts)  組み立ての関数（既定は build-core の build。編集アプリは自分の組み立てを渡せる）
-//   carry                  読み取った文書の索引（編集アプリが作り直すとき）。知らない項目と、作られなかった拡張を残す
+//   carry                  読み取った文書の索引（編集アプリが作り直すとき）。知らない項目（どの深さでも）と、作られなかった拡張を残す。
+//                          identity がなければ derivedFrom は carry のまま（docId を変えない保存は derivedFrom を付けも変えもしない。§7.3）
+//   originalNarration      carry の文書の narration.md（あれば。行から作られた拡張を、行を消したら残さないため）
+//   identity               {docId, derivedFrom}：新しい教材として保存する（新しい docId・derivedFrom。§3.6.1・§7.3）。FORMAT.CONFIG_FILE を書き直し writes に
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
 export async function exportPortable(env, srcPath, opts = {}) {
   const P = env.path;
@@ -617,7 +620,16 @@ export async function exportPortable(env, srcPath, opts = {}) {
     if (!isObj(econf)) fail('bad-config', `${CFG}: not an object`);
   }
   if (own(econf, 'docId') && !(typeof econf.docId === 'string' && RE.docId.test(econf.docId))) fail('bad-config', `${CFG}: docId "${econf.docId}" is not a lowercase UUID`);
-  if (!own(econf, 'docId')) {
+  // 新しい教材として保存（§7.3）：新しい docId と derivedFrom（§3.6.1）。原稿のフォルダの設定のファイルも書き換える（writes）
+  if (opts.identity) {
+    const id = opts.identity;
+    if (!(typeof id.docId === 'string' && RE.docId.test(id.docId))) fail('bad-config', `identity: docId "${id.docId}" is not a lowercase UUID`);
+    const m = isObj(econf.metadata) ? { ...econf.metadata } : {};
+    if (id.derivedFrom) m.derivedFrom = id.derivedFrom; else delete m.derivedFrom;
+    const text = JSON.stringify({ ...econf, docId: id.docId, metadata: m }, null, 2) + '\n';
+    econf = parseJsonStrict(text);
+    writes[CFG] = text;
+  } else if (!own(econf, 'docId')) {
     const text = JSON.stringify({ docId: newDocId(), ...Object.fromEntries(Object.entries(econf)) }, null, 2) + '\n';
     econf = JSON.parse(text);
     writes[CFG] = text;
@@ -715,14 +727,7 @@ export async function exportPortable(env, srcPath, opts = {}) {
   if (Object.keys(files).some((p) => /\.m?js$/i.test(p) && !/^components\/[^/]+\/index\.js$/.test(p))) embeddedCode = true;
 
   // 拡張の行 → extensions.<名前>[<段階の鍵>].<欄>（同じ欄が繰り返せば配列）
-  const extensions = dict();
-  for (const s of segs) for (const x of s.ext || []) {
-    const ext = (extensions[x.name] ||= Object.assign(dict(), { v: 1 }));
-    const step = (ext[`${s.slideKey}:${s.stepKey}`] ||= dict());
-    if (!own(step, x.field)) step[x.field] = x.value;
-    else if (Array.isArray(step[x.field])) step[x.field].push(x.value);
-    else step[x.field] = [step[x.field], x.value];
-  }
+  const extensions = extensionsFrom(segs);
 
   // metadata と deck-meta
   const lang = (deckSrc.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
@@ -743,18 +748,9 @@ export async function exportPortable(env, srcPath, opts = {}) {
     excluded: [...EXCLUDED_CATEGORIES],
     ...(Object.keys(extensions).length ? { extensions } : {}),
   };
-  // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない索引の項目と、口述原稿の行から作られなかった拡張を残す（§7.1・§9A）
-  if (isObj(opts.carry)) {
-    for (const k of Object.keys(opts.carry)) {
-      if (KNOWN_INDEX.has(k) || own(index, k)) continue;
-      index[k] = opts.carry[k];
-    }
-    if (isObj(opts.carry.extensions)) {
-      const ex = index.extensions || dict();
-      for (const k of Object.keys(opts.carry.extensions)) if (!own(ex, k)) ex[k] = opts.carry.extensions[k];
-      if (Object.keys(ex).length) index.extensions = ex;
-    }
-  }
+  // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
+  // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
+  if (isObj(opts.carry)) carryUnknown(index, opts.carry, { identity: !!opts.identity, lineExtensions: opts.originalNarration != null ? new Set(Object.keys(extensionsFrom(parseNarration(String(opts.originalNarration))))) : null });
   const ie = validateIndex(index);
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {
@@ -789,6 +785,71 @@ export async function exportPortable(env, srcPath, opts = {}) {
   return { html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length } };
 }
 
+// ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）
+// この書き手が意味を知っている項目（ほかは知らない項目として残す）
+export const KNOWN = Object.freeze({
+  index: KNOWN_INDEX,
+  metadata: new Set(['title', 'lang', ...META_KEYS]),
+  audio: new Set(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'recipe', 'recipeDigest', 'alternatives']),
+  component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path']),
+  theme: new Set(['name', 'version', 'sha256', 'source', 'path']),
+  blob: new Set(['mime', 'bytes', 'sha256', 'chunks']),
+  version: new Set(['major', 'minor']), contracts: new Set(['source', 'runtime']), generator: new Set(['name', 'version']),
+});
+// src の、dst にも known にもない項目を dst に写す（同じ値の参照のまま。書き出しで JSON にする）
+export function copyUnknown(dst, src, known) {
+  if (!isObj(dst) || !isObj(src)) return dst;
+  for (const k of Object.keys(src)) if (!known.has(k) && !own(dst, k)) dst[k] = src[k];
+  return dst;
+}
+// opts.identity：新しい docId で保存する（derivedFrom はこの書き手が付けた）。opts.lineExtensions：元の口述原稿の行から作られた拡張の名前
+// （今の行から作られなければ、行を消したということなので残さない）
+function carryUnknown(index, carry, opts) {
+  for (const k of Object.keys(carry)) if (!KNOWN_INDEX.has(k) && !own(index, k)) index[k] = carry[k];
+  for (const k of ['version', 'contracts', 'generator']) copyUnknown(index[k], carry[k], KNOWN[k]);
+  if (isObj(carry.metadata)) {
+    // 知っている項目でも、この書き手が作らなかったもの（ほかの書き手が書いた description など）は残す
+    for (const k of Object.keys(carry.metadata)) if (k !== 'derivedFrom' && !own(index.metadata, k)) index.metadata[k] = carry.metadata[k];
+    if (!opts.identity) {
+      if (own(carry.metadata, 'derivedFrom')) index.metadata.derivedFrom = carry.metadata.derivedFrom;
+      else delete index.metadata.derivedFrom;
+    }
+  } else if (!opts.identity) delete index.metadata.derivedFrom;
+  if (isObj(index.audio) && isObj(carry.audio)) for (const k of Object.keys(index.audio)) copyUnknown(index.audio[k], carry.audio[k], KNOWN.audio);
+  if (isObj(index.blobs) && isObj(carry.blobs)) for (const id of Object.keys(index.blobs)) {
+    const c = carry.blobs[id];
+    if (isObj(c) && c.sha256 === index.blobs[id].sha256) copyUnknown(index.blobs[id], c, KNOWN.blob);
+  }
+  const byKey = (list, key) => new Map((Array.isArray(list) ? list : []).filter(isObj).map((c) => [c[key], c]));
+  for (const [list, key, known] of [['components', 'tag', KNOWN.component], ['themes', 'name', KNOWN.theme]]) {
+    const old = byKey(carry[list], key);
+    for (const c of Array.isArray(index[list]) ? index[list] : []) copyUnknown(c, old.get(c[key]), known);
+  }
+  if (isObj(carry.extensions)) {
+    const ex = index.extensions || dict();
+    for (const k of Object.keys(carry.extensions)) {
+      const c = carry.extensions[k];
+      if (!own(ex, k)) { if (!(opts.lineExtensions && opts.lineExtensions.has(k))) ex[k] = c; continue; }
+      // 行から作った拡張：段階の鍵でない項目（拡張そのものの設定など）と v は元のものを残す。段階の項目は今の行が決める
+      if (isObj(c)) for (const f of Object.keys(c)) if (!RE.stepKey.test(f) && (f === 'v' || !own(ex[k], f))) ex[k][f] = c[f];
+    }
+    if (Object.keys(ex).length) index.extensions = ex;
+  }
+}
+
+// 拡張の行（§8.2）→ {名前: {v: 1, <段階の鍵>: {欄: 値 | [値…]}}}（同じ欄が繰り返せば配列）
+export function extensionsFrom(segs) {
+  const extensions = dict();
+  for (const s of segs) for (const x of s.ext || []) {
+    const ext = (extensions[x.name] ||= Object.assign(dict(), { v: 1 }));
+    const step = (ext[`${s.slideKey}:${s.stepKey}`] ||= dict());
+    if (!own(step, x.field)) step[x.field] = x.value;
+    else if (Array.isArray(step[x.field])) step[x.field].push(x.value);
+    else step[x.field] = [step[x.field], x.value];
+  }
+  return extensions;
+}
+
 // TTS の控え（audio/seg_<digest>.json の voice）→ recipe（§5.2）。声は公開の名前だけ（パスは書かない）
 function recipeOf(sj, v) {
   const vc = sj && isObj(sj.voice) ? sj.voice : {};
@@ -806,15 +867,18 @@ function readableLayer(slides, segs, lang) {
   for (const sl of slides) {
     const steps = (bySlide.get(sl.key) || []).slice().sort((a, b) => stepOrder(a.stepKey) - stepOrder(b.stepKey));
     out.push(`<article data-slide-key="${escAttr(sl.key)}"><h2>${escText(plain(sl.title || sl.key))}</h2>`);
-    for (const s of steps) {
-      out.push(`<div data-step-key="${escAttr(`${s.slideKey}:${s.stepKey}`)}">` +
-        s.turns.map((t) => `<p data-role="${t.role}">${escText(t.display)}</p>`).join('') + '</div>');
-    }
+    for (const s of steps) out.push(readableStep(s));
     out.push('</article>');
   }
   out.push('</section>');
   return out.join('\n');
 }
+
+// 読める層の 1 段階（段 A の編集が、変わった段階の div だけをこれで書き直す）
+export const readableStep = (s) => `<div data-step-key="${escAttr(`${s.slideKey}:${s.stepKey}`)}">` +
+  s.turns.map((t) => `<p data-role="${t.role}">${escText(t.display)}</p>`).join('') + '</div>';
+export const readableStepOrder = stepOrder;
+export { escAttr as htmlAttr, escText as htmlText };
 
 // ---------------------------------------------------------------- 読み取り（何も実行しない）
 // parse5 で文字列として解析し（スクリプトは実行しない・資源も読まない。scriptingEnabled: false は DOMParser と同じ）、
@@ -852,8 +916,8 @@ export function readDeckMeta(scan) {
 }
 
 // input：文字列か UTF-8 のバイト列。opts.limits で上限を変えられる（試験用）
-// opts.extract：取り出すだけ（§7.1・§9.3）。知らない major の版でも、1.x の規則で検査が通れば原稿を返す（編集はさせない。extractOnly: true）。
-//   知らない必須の機能（requires）は取り出しでも断る（塊の中身の意味が分からないので）
+// opts.extract：取り出すだけ（§7.1・§3.5・§9.3）。知らない major の版や知らない必須の機能（requires）の文書でも、1.x の規則で索引と塊の検査が
+//   通れば原稿を返す（編集も書き出し（作り直し）もさせない。extractOnly: true、extractReason: 'major' | 'feature'）。取り出しは書き出しではない
 // 返すもの：{index, files: {path: Uint8Array}, audio: {stepKey: record}, deckMeta, docId, warnings, sourceMatches, extractOnly}
 export async function readPortable(input, opts = {}) {
   const L = { ...LIMITS, ...(opts.limits || {}) };
@@ -879,12 +943,11 @@ export async function readPortable(input, opts = {}) {
   // 3. 版・必須の機能（形の検査より先に、分かりやすい理由で断る）
   if (!isObj(ix) || ix.format !== FID) fail('bad-index', `index format is not "${FID}"`);
   const futureMajor = !isObj(ix.version) || ix.version.major !== FORMAT_VERSION.major;
-  const extractOnly = futureMajor && !!opts.extract && isObj(ix.version) && Number.isInteger(ix.version.major) && ix.version.major > FORMAT_VERSION.major;
-  if (futureMajor && !extractOnly) fail('unsupported-version', `${FORMAT.DISPLAY_NAME} ${isObj(ix.version) ? ix.version.major : '?'}.x is not supported by this reader (it reads 1.x); play the file or extract its source with a newer editor`);
-  if (Array.isArray(ix.requires)) {
-    const unknown = ix.requires.filter((f) => !FEATURES.includes(f));
-    if (unknown.length) fail('unknown-feature', `the file requires features this reader does not implement: ${unknown.join(', ')}`);
-  }
+  const majorOk = !futureMajor || (isObj(ix.version) && Number.isInteger(ix.version.major) && ix.version.major > FORMAT_VERSION.major);
+  const unknownFeatures = Array.isArray(ix.requires) ? ix.requires.filter((f) => typeof f === 'string' && !FEATURES.includes(f)) : [];
+  if (futureMajor && !(opts.extract && majorOk)) fail('unsupported-version', `${FORMAT.DISPLAY_NAME} ${isObj(ix.version) ? ix.version.major : '?'}.x is not supported by this reader (it reads 1.x); play the file or extract its source`);
+  if (unknownFeatures.length && !opts.extract) fail('unknown-feature', `the file requires features this reader does not implement: ${unknownFeatures.join(', ')} (it can be played, and its source extracted, but not edited or re-exported)`);
+  const extractOnly = futureMajor || unknownFeatures.length > 0;
   if (!extractOnly && isObj(ix.contracts) && Number.isInteger(ix.contracts.source) && ix.contracts.source > CONTRACTS.source) fail('unsupported-contract', `source contract ${ix.contracts.source} is newer than this reader (${CONTRACTS.source})`);
   // 4. パス（フォルダを作る前に全部。形の検査より先に、パスの理由で断る）
   if (isObj(ix.files)) {
@@ -976,8 +1039,9 @@ export async function readPortable(input, opts = {}) {
       }
     } catch (e) { warnings.push('deck-audio: ' + e.message); }
   }
-  if (extractOnly) warnings.push(`${FORMAT.DISPLAY_NAME} ${ix.version.major}.${ix.version.minor} is newer than this reader (1.x): the source can be extracted, not edited`);
-  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, extractOnly };
+  if (futureMajor) warnings.push(`${FORMAT.DISPLAY_NAME} ${ix.version.major}.${ix.version.minor} is newer than this reader (1.x): the source can be extracted, not edited`);
+  if (unknownFeatures.length) warnings.push(`the file requires features this reader does not implement (${unknownFeatures.join(', ')}): the source can be extracted, not edited or re-exported`);
+  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, extractOnly, extractReason: futureMajor ? 'major' : unknownFeatures.length ? 'feature' : null };
 }
 
 // ---------------------------------------------------------------- 再生専用の派生（§3.7）
