@@ -104,15 +104,17 @@ Relative paths are resolved from the deck folder and must stay inside it. `data:
 
 ### Slide keys
 
-Each slide gets one key, unique in the deck: `data-key`, else `id`, else the normalized heading, else `s<n>`. Explicit keys (`data-key`/`id`) are claimed first, in document order. A repeated explicit key gets a warning (`slide key: …`) and a suffix `#2`, `#3`, … on the later slides. Keys made from a heading or a number never take an explicit key or an existing `#n` key; they also get the next free `#n`. The final key is written to the section's `data-key` (a hand-written `data-key` is rewritten when it had to change), and `narration.md` headings (`## key`) must use it.
+Each slide gets one key ([contract §4](contract.md#4-narration-narrationmd)): the section's `id`, else a hand-written `data-key`, else the normalized heading (tags removed, `&nbsp;` as a space, all whitespace removed), else `s<n>`. Give every slide an id (`npm run new` does; `npm run ids -- <deck>` adds them to an existing deck). Ids match `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and must not equal any other id in the deck, including mark targets and `\htmlId{…}`. Duplicate keys make the deck invalid (the checker reports an error); so that it still builds, the build warns (`slide key: …`) and gives the later slides a suffix `#2`, `#3`, …. The final key is written to the section's `data-key`.
 
 ## Narration (narration.md)
 
 | Syntax | Meaning |
 |---|---|
-| `## heading` | slide: the heading text without tags and spaces, or the section `id` |
-| `## heading#2` | second slide with the same heading (third: `#3`); better: give it an `id` |
-| `[0]` `[1]` … `[concl]` | narration for that step; following lines continue it |
+| `## heading {#s-k3f9q2}` | slide with that id (recommended; the id wins over the heading text) |
+| `## s-k3f9q2` | slide with that id |
+| `## heading` | legacy, slide without id: the heading text without tags and whitespace |
+| `[0]` `[1]` … `[concl]` | narration for that step; following lines continue it. Steps are `0`–`999` without leading zeros (`[01]` is not a step) |
+| `@x-<name>-<field> <value>` | extension line inside a step: kept as data for the step, never shown or spoken, not hashed |
 | `Expert:` / `Novice:` (`E:` / `N:`, full-width colon allowed) | speaker turn. Lines without a speaker are Expert (single speaker) or continue the previous turn |
 | `{cue}` | sync point within a step; matches the component's `cues(k)` in order |
 | `{mark:ID}` | underline the target at this word |
@@ -124,7 +126,7 @@ Each slide gets one key, unique in the deck: `data-key`, else `id`, else the nor
 | `<!-- … -->` | comment on its own line(s), ignored |
 | a step written twice | the last one wins |
 
-Build warns about a `##` that matches no slide (the checker makes this an error), unknown mark effects, and mark targets not found in the source.
+Build warns about a `##` that matches no slide (the checker makes this an error), a step number that is not canonical, an invalid `{#id}`, unknown mark effects, and mark targets not found in the source.
 
 ## Timing (timeline.json)
 
@@ -271,7 +273,9 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 | Check | Severity |
 |---|---|
-| build warnings; a narration `##` that matches no slide | warn; error |
+| build warnings; a narration `##` that matches no slide, a non-canonical step number (`[01]`), an invalid `{#id}` | warn; error |
+| slide id not matching `^[A-Za-z][A-Za-z0-9_-]{0,63}$` (`slide id: …`); two slides with the same key (`slide key: …`); a slide id equal to another id or `\htmlId{…}` in the deck (`slide id: …`) | error |
+| the heading text of a `## heading {#id}` differs from that slide's heading (the id wins) | info |
 | console errors | error |
 | text visible at step 0 | info |
 | title > 26 full-width units (Japanese) / > 60 characters (English) | error / warn |
@@ -360,6 +364,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | Command | Purpose |
 |---|---|
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new deck folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
+| `npm run ids -- <deck folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a deck with duplicate keys, id collisions or invalid ids |
 | `npm run build:app` | build the editor app: `dist/editor/` (for GitHub Pages) and the single file `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |

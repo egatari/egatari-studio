@@ -98,6 +98,8 @@ npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」に
 
 `npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="tml">` か `--theme tml` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、検査も英語の規則になる。もっと作り込んだ見本は `examples/minimal/`。
 
+新しいデッキのスライドにはどれも変わらない id（`<section class="slide" id="s-k3f9q2">`）があり、口述原稿の見出しがそれを指す（`## 見出し {#s-k3f9q2}`）。見出しを直しても、口述原稿・音声・秒数の対応は崩れない。id のない頃に作ったデッキは、一度 `npm run ids -- talks/mytalk` を打つ：id を付け、`narration.md`・`audio/manifest.json`・`timeline.json`・`comments.json` の鍵を付け替える（控えは `.cache/edits/`）。
+
 ## ブラウザで直す（開発サーバー）
 
 `deck.html` を手で開いて書き換える必要はほとんどない。開発サーバーを起動して、スライドの上で直す。

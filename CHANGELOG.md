@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Stable slide ids (Etoki §8.1): `<section class="slide" id="s-k3f9q2">` keys the slide, and `narration.md` addresses it as `## Heading {#s-k3f9q2}` (also `## s-k3f9q2`; plain `## Heading` stays for slides without id). The id wins over the heading text, so renaming a heading no longer breaks narration, audio or timing. Decks may mix slides with and without ids
+- `npm run ids -- <deck>`: adds ids to the slides that lack one, rewrites the narration headings, and renames the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph` (audio is reused). Idempotent, keeps line endings, backs up to `.cache/edits/`, refuses decks with duplicate keys or id collisions
+- `npm run new` gives every slide a random id and writes `{#id}` headings; the dev server and the editor app write `## Heading {#id}` when they add a narration section for a slide with an id
+- Checker: errors for an invalid slide id, two slides with the same key, a slide id equal to another id or `\htmlId{…}` in the deck, and a narration section (also one without steps) that matches no slide; info when a `{#id}` heading's text differs from the slide's heading
+- Extension lines `@x-<name>-<field> <value>` inside a narration step (Etoki §8.2): excluded from turns, display text, TTS text, boundaries and digests, exposed by the parser as `ext` per step (`tools/narration-json.mjs` too), and kept verbatim by every edit path
+
+### Changed
+
+- A slide's `id` now wins over a hand-written `data-key`
+- Step numbers must be canonical (`0`–`999`, no leading zeros, or `concl`): `[01]` is no longer read as step 1 (build warns, the checker reports an error)
+- Duplicate slide keys are now a checker error (the build still adds `#2`, `#3`, … so the deck builds)
+- Rewriting a narration step keeps the line ending of every other line (files with mixed CRLF/LF are no longer normalized)
+
+### Fixed
+
+- Narration maps are prototype-free: slide keys such as `__proto__` or `constructor` no longer collide with `Object.prototype` (build and runtime)
+- Extension-like lines were glued onto the previous turn's text
+- Dev-server narration drawer: "next step is on another slide" was wrong for slide keys containing `:`
+
 ## [0.2.1] - 2026-10-17
 
 Windows support, bundled default voices, and a test page for TTS in the browser.

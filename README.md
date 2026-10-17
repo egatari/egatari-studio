@@ -98,6 +98,8 @@ npm run check -- talks/mytalk/deck.html    # the last line should read "エラ�
 
 `npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="tml">` or `--theme tml`. With `<html lang="en">` body text is set in Source Sans 3 and the checker uses English rules. For a fuller example, see `examples/minimal/`.
 
+Every slide of a new deck has a stable id (`<section class="slide" id="s-k3f9q2">`), and its narration heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking narration, audio or timing. For a deck made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
+
 ## Editing in the browser (dev server)
 
 You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:

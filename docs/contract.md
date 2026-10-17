@@ -53,7 +53,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 ## 4. Narration (narration.md)
 
 ```markdown
-## 更新の式                       ← the slide heading text (or the section's id)
+## 更新の式 {#s-k3f9q2}           ← the slide heading, then the slide's id
 [0] 更新の式です。今の点から、次の点を決めます。
 [1] 次の点は、今の点から勾配に比例した分だけ引いて作ります。
 [2] Expert: η は学習率で、1 歩の大きさを決めます。
@@ -68,9 +68,15 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - The step's boundaries (`{cue}` and `{mark:…}`), listed in order across turns (`bounds`), correspond one to one with the TTS `cues` (the array of boundary times). Component time-stretching uses only the `{cue}` ones
 - `{φ|ファイ}` is an inline reading (displayed as φ, read by TTS as "ファイ"). Other symbols are read with the reading dictionary
 - Do not read whole equations aloud (the checker warns)
-- For slides whose headings collide, give the `<section id="…">` an id and write that id in `## …`
+- Extension lines `@x-<name>-<field> <value>` (`<name>` without hyphens) inside a step carry extension data for that step. They are not part of any turn: never shown, never spoken, not in `bounds` nor in any hash, so editing them never makes audio stale. Editors (dev server, editor app, `npm run ids`) keep them as they are
 
-The slide key (`data-key`) is the section's id or, if there is none, the heading text (tags removed, whitespace collapsed). The build adds it.
+**Slide keys** (Etoki §8.1). Every slide should have a stable id: `<section class="slide" id="s-k3f9q2">`. Ids match `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and share the document's id namespace with attention-mark targets (`id="…"`, `\htmlId{…}`), so they must not equal any other id in `deck.html`. New ids are `s-` plus 6 random base32 characters (`[a-z2-7]`), never derived from the heading, so that renaming a heading changes nothing. `npm run new` gives every slide an id; `npm run ids -- <deck>` adds ids to an existing deck.
+
+- In `deck.html` the slide key (`data-key`, added by the build) is the section's `id`; a slide without id (legacy) is keyed by the **normalized** text of its first heading: tags removed, `&nbsp;` read as a space, and **all** whitespace removed
+- In `narration.md` a slide is addressed as `## <heading> {#<id>}` (recommended), `## <id>`, or `## <heading>` (legacy, only for slides without id). When `{#id}` is present it wins over the heading text; if the heading text differs from the slide's, the checker only reports it (info)
+- A deck may mix slides with and without ids; each slide is keyed independently
+- Two slides with the same key make the deck invalid (the checker reports an error); give one of them an id
+- Step keys are `<slideKey>:<step>`, split at the **last** `:` (slide keys may contain `:`). Steps are written in canonical decimal, `0`–`999` without leading zeros, or `concl`; `[01]` and `[1000]` are not steps (build warns, the checker reports an error)
 
 ## 5. Timeline
 
