@@ -130,7 +130,7 @@ function adapterInfo(a) {
 const adapterText = (i) => [i.vendor, i.architecture, i.device, i.description].filter(Boolean).join(' / ') || '（ブラウザが情報を出さない）';
 // Intel の内蔵 GPU に見えるか（NVIDIA を積んだノート PC で、Chrome が内蔵 GPU を使っているときに案内を出す）
 const looksIntegrated = (i) => /intel/i.test(i.vendor) || /intel|iris|uhd graphics/i.test(i.description);
-const GPU_HINT = 'GPU が Intel（内蔵）になっています。NVIDIA などの外部 GPU を積んだ PC なら、Windows の［設定］→［システム］→［ディスプレイ］→［グラフィック］で Chrome を追加し（一覧に無ければ「参照」から chrome.exe）、［オプション］で「高パフォーマンス」を選んでから Chrome を完全に終了して開き直してください。';
+const GPU_HINT = 'GPU が Intel（内蔵）になっています。Windows の Chrome はページからの GPU の指定を無視するので（crbug.com/369219127）、内蔵 GPU だと 1 文に 1 分以上かかります。NVIDIA などの外部 GPU を積んだ PC なら、Windows の［設定］→［システム］→［ディスプレイ］→［グラフィック］で Chrome を追加し（一覧に無ければ「参照」から chrome.exe）、［オプション］で「高パフォーマンス」を選んでから Chrome を完全に終了して開き直してください。';
 
 function renderEnv() {
   const e = state.env;
