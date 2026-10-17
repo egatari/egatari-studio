@@ -219,6 +219,52 @@ ok('再生専用の派生：索引と原稿の塊がなく、音声の塊は残�
   assert.equal(PF.playOnly(po), po.replace(/"portable":false/, '"portable":false'), 'idempotent');
 });
 
+ok('deck-audio の mime（任意）：塊の MIME と同じで、再生器は中身から推し量らずに使う', async () => {
+  const scan = PF.scanDocument(firstHtml);
+  const da = JSON.parse(scan.byId.get('deck-audio').text);
+  for (const [k, a] of Object.entries(da)) {
+    const id = a.src.slice(FORMAT.URI_SCHEME.length);
+    assert.equal(a.mime, first.index.blobs[id].mime, k);
+    assert.deepEqual(Object.keys(a).slice(0, 2), ['src', 'mime'], k);
+  }
+  assert.deepEqual(PF.validateDeckAudio({ 'a:0': { src: 'data:audio/wav;base64,AA==', dur: 1, cues: [], mime: 'text/html' } }).length, 1);
+});
+ok('古い音声（原稿を直した後に合成していない）は inputHash: null（§5.2）。展開してまとめ直しても null のまま。読み手は null を古いとみなす', async () => {
+  const D = path.join(work, 'stale');
+  fs.cpSync(MIN, D, { recursive: true, filter: (s) => !/[\\/]out([\\/]|$)/.test(path.relative(MIN, s)) });
+  const man = JSON.parse(fs.readFileSync(path.join(D, 'audio', 'manifest.json'), 'utf8'));
+  const [k0, e0] = Object.entries(man.segments)[0];
+  e0.digest = 'abcdef123456';
+  delete e0.inputHash;
+  fs.writeFileSync(path.join(D, 'audio', 'seg_abcdef123456.json'), JSON.stringify({ voice: { expert: 'x', engine: 'dry-run' } }));
+  fs.writeFileSync(path.join(D, 'audio', 'manifest.json'), JSON.stringify(man, null, 1));
+  const r = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'deck' + FORMAT.FILE_EXT) });
+  assert.equal(r.index.audio[k0].inputHash, null);
+  assert.ok(r.warnings.some((w) => /stale/.test(w)));
+  schemaOk(vIndex, r.index, 'index with a null inputHash');
+  assert.deepEqual(PF.validateIndex(r.index), []);
+  const seg = parseNarration(narr(D)).find((s) => `${s.slideKey}:${s.stepKey}` === k0);
+  assert.equal(await PF.isStale(r.index.audio[k0], seg), true);
+  const [k1, a1] = Object.entries(r.index.audio)[1];
+  assert.equal(await PF.isStale(a1, parseNarration(narr(D)).find((s) => `${s.slideKey}:${s.stepKey}` === k1)), false);
+  fs.writeFileSync(path.join(D, 'out', 'deck' + FORMAT.FILE_EXT), r.html);
+  const U = path.join(work, 'stale-unpacked');
+  await unpack(path.join(D, 'out', 'deck' + FORMAT.FILE_EXT), U);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(U, 'audio', 'manifest.json'), 'utf8')).segments[k0].inputHash, null);
+  const again = await buildPortable(path.join(U, 'deck.html'), { out: path.join(U, 'out', 'deck' + FORMAT.FILE_EXT) });
+  assert.equal(again.index.audio[k0].inputHash, null);
+  assert.equal(again.html, r.html, 'pack(unpack(x)) === x with a null inputHash');
+});
+ok('作り直し（carry）：書き手の知らない索引の項目と、口述原稿から作られなかった拡張を残す（§7.1・§9A）', async () => {
+  const r = await PF.readPortable(firstHtml);
+  const carry = { ...PF.parseJsonStrict(JSON.stringify(r.index)), futureMember: { kept: true }, extensions: { ...r.index.extensions, chapters: { v: 1, x: 1 } } };
+  const again = await buildPortable(path.join(MIN, 'deck.html'), { out: path.join(MIN, 'out', 'carry.html'), carry });
+  assert.deepEqual(plainJson(again.index.futureMember), { kept: true });
+  assert.deepEqual(plainJson(again.index.extensions.chapters), { v: 1, x: 1 });
+  assert.deepEqual(plainJson(again.index.extensions.tutor), plainJson(first.index.extensions.tutor));
+  assert.equal(again.index.docId, first.index.docId);
+});
+
 // ---------------------------------------------------------------- 上限の順
 ok('上限は決まった順に効く：ファイル → 索引の大きさ（解析の前）→ 塊の長さ（復号の前）→ 復号の累計', async () => {
   await rejects(PF.readPortable(firstHtml, { limits: { fileBytes: 1000 } }), 'file-too-large');
