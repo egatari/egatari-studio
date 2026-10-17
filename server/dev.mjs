@@ -16,6 +16,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
+import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -34,16 +35,18 @@ if (!srcArg) { console.error('usage: node server/dev.mjs <deck.html> [--port 873
 const SRC = path.resolve(srcArg);
 if (!fs.existsSync(SRC)) { console.error('not found: ' + SRC); process.exit(1); }
 const DIR = path.dirname(SRC);
-const NARR = path.join(DIR, 'narration.md');
-const COMMENTS = path.join(DIR, 'comments.json');
-const EDITS = path.join(DIR, '.cache', 'edits');
+// 書き込み・控え・読み出しは、どれも原稿のフォルダの実体（DIR_REAL）の中だけ（kit/safe-fs.mjs。リンクを通る書き込みは断る。format spec §11）
+const DIR_REAL = fs.realpathSync(DIR);
+const SRC_IN = path.join(DIR_REAL, path.basename(SRC));
+const NARR = path.join(DIR_REAL, 'narration.md');
+const COMMENTS = path.join(DIR_REAL, 'comments.json');
+const EDITS_REL = path.join('.cache', 'edits');
 const KEEP_EDITS = 30;
 
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
 // 書き込みと原稿の読み出しに要る合言葉（起動のたびに作り直す）。外枠のページ（/）にだけ埋め込み、server/shell.js が X-Deck-Token で送る。
 // デッキの文書（/preview）には入れない：デッキは sandbox の iframe（origin を持たない）の中で動き、知らせ（server/hints.js）を送るだけ
 const TOKEN = crypto.randomBytes(24).toString('hex');
-const DIR_REAL = fs.realpathSync(DIR);
 // デッキの文書に入れる知らせの部品（そのまま <script> の中に入れるので、</script と <!-- を含んではいけない）
 const HINTS = fs.readFileSync(path.join(HERE, 'hints.js'), 'utf8');
 if (/<\/script|<!--/i.test(HINTS)) throw new Error('server/hints.js contains </script or <!-- (cannot be inlined)');
@@ -183,14 +186,14 @@ for (const d of ['kit', 'components', 'themes']) {
 }
 
 // ---------------------------------------------------------------- 原稿の書き換え
+// 控えは .cache/edits の中に、掃除はそこの控えの名前のファイルだけ（フォルダがリンクなら控えを書かず、何も消さずに断る）
 function backup(file) {
-  if (!fs.existsSync(file)) return;
-  fs.mkdirSync(EDITS, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  fs.copyFileSync(file, path.join(EDITS, `${stamp}-${path.basename(file)}`));
-  const all = fs.readdirSync(EDITS).sort();
-  for (const f of all.slice(0, Math.max(0, all.length - KEEP_EDITS))) fs.rmSync(path.join(EDITS, f), { force: true });
+  if (backupFile(DIR_REAL, file, EDITS_REL) === null) return;
+  pruneBackups(DIR_REAL, EDITS_REL, KEEP_EDITS);
 }
+// 書く（原稿・口述原稿・コメント）。リンクを通るなら UnsafePathError（応答は 403）
+const writeIn = (file, text) => safeWriteFile(DIR_REAL, file, text);
+const readIn = (file) => readContained(DIR_REAL, file, 'utf8');
 function parseRange(s) {
   const m = /^(\d+)-(\d+)$/.exec(String(s || ''));
   if (!m) return null;
@@ -201,15 +204,16 @@ function parseRange(s) {
 // ---------------------------------------------------------------- 口述原稿の書き換え（その段階の行だけを置き換える）
 // 規則の本体は kit/core/narration-core.mjs（ブラウザの編集アプリと共有）。ここからも書き出す（以前の import 先を保つ）
 export { rewriteNarration, narrationRev };
-function readNarr() { return fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : ''; }
-function rawTurns(slideKey, stepKey) { return narrRawTurns(fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : null, slideKey, stepKey); }
+function readNarr() { return readIn(NARR) ?? ''; }
+function rawTurns(slideKey, stepKey) { return narrRawTurns(readIn(NARR), slideKey, stepKey); }
 
 // ---------------------------------------------------------------- コメント（Claude への指示）
 function readComments() {
-  if (!fs.existsSync(COMMENTS)) return [];
-  try { return JSON.parse(fs.readFileSync(COMMENTS, 'utf8')); } catch { return []; }
+  const t = readIn(COMMENTS);
+  if (t === null) return [];
+  try { return JSON.parse(t); } catch { return []; }
 }
-function writeComments(list) { fs.writeFileSync(COMMENTS, JSON.stringify(list, null, 2) + '\n'); }
+function writeComments(list) { writeIn(COMMENTS, JSON.stringify(list, null, 2) + '\n'); }
 
 // ---------------------------------------------------------------- HTTP
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -326,7 +330,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && p === '/__dev/info') return send(res, 200, { slides: page?.slides || [], warn: page?.warn || [], error: page?.error ? true : false, lang: page?.lang || 'ja' });
     if (req.method === 'GET' && p === '/__dev/source') {
       const r = parseRange(u.searchParams.get('range'));
-      const src = fs.readFileSync(SRC, 'utf8');
+      const src = readIn(SRC_IN) ?? '';
       if (!r || r[1] > src.length) return send(res, 400, { error: '範囲が正しくありません' });
       // 今の組み立てで直せる要素（data-src を付けたもの）の範囲だけ
       if (!page.ranges.has(`${r[0]}-${r[1]}`)) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
@@ -337,10 +341,10 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       const r = parseRange(b.range);
       if (!r || typeof b.text !== 'string') return send(res, 400, { error: '範囲または本文が正しくありません' });
-      const src = fs.readFileSync(SRC, 'utf8');
+      const src = readIn(SRC_IN) ?? '';
       if (!page.ranges.has(`${r[0]}-${r[1]}`) || r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
-      backup(SRC);
-      fs.writeFileSync(SRC, src.slice(0, r[0]) + b.text + src.slice(r[1]));
+      backup(SRC_IN);
+      writeIn(SRC_IN, src.slice(0, r[0]) + b.text + src.slice(r[1]));
       console.log(`edit ${deckBase} ${b.range}`);
       await afterWrite();
       return send(res, 200, { ok: true, error: page.error ? '保存しましたが、組み立てに失敗しました' : null });
@@ -355,11 +359,11 @@ const server = http.createServer(async (req, res) => {
       if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
       if (!(page?.slides || []).some((x) => x.key === sk)) return send(res, 400, { error: 'そのスライドはデッキにありません' });
-      const text = fs.existsSync(NARR) ? fs.readFileSync(NARR, 'utf8') : '# 口述原稿\n';
+      const text = readIn(NARR) ?? '# 口述原稿\n';
       if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '口述原稿が変わっています。再読み込みしてください' });
       // 新しい節の見出しは、id のあるスライドなら「## 見出し {#id}」（スライドの一覧 {key, id, heading} を渡す）
       const out = rewriteNarration(text, sk, st, b.turns, page?.slides || []);
-      if (out !== text) { backup(NARR); fs.writeFileSync(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }
+      if (out !== text) { backup(NARR); writeIn(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }
       return send(res, 200, { ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
     }
     if (req.method === 'GET' && p === '/__dev/comments') return send(res, 200, readComments());
@@ -382,6 +386,8 @@ const server = http.createServer(async (req, res) => {
     }
     send(res, 404, 'not found', 'text/plain; charset=utf-8');
   } catch (e) {
+    // 原稿のフォルダの外を指すリンクを通る読み書き（kit/safe-fs.mjs）：書かずに 403
+    if (e && e.code === 'unsafe-path') { console.error('  refused: ' + e.message); return send(res, 403, { error: 'リンク（symlink）を通る読み書きは断りました / refused a read or write through a symbolic link: ' + e.message }); }
     console.error(e);
     send(res, 500, { error: String(e.message || e) });
   }

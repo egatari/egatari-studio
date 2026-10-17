@@ -10,7 +10,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readPortable, manifestFromAudio, FormatError } from '../kit/core/portable.mjs';
-import { buildPortable, defaultPortableOut } from '../kit/build.mjs';
+import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
+import { safeWriteFile, checkWritable } from '../kit/safe-fs.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -30,19 +31,17 @@ export async function unpack(file, dir, { force = false } = {}) {
     files['audio/manifest.json'] = new TextEncoder().encode(manifestFromAudio(r.audio));
   }
   const written = [];
-  for (const rel of Object.keys(files).sort()) {
-    const target = path.resolve(out, ...rel.split('/'));
-    if (!target.startsWith(out + path.sep)) throw new FormatError('bad-path', `refusing to write outside ${dir}: ${rel}`);
-    // 途中のフォルダ：既にあるならシンボリックリンクでないこと
-    let d = out;
-    for (const seg of rel.split('/').slice(0, -1)) {
-      d = path.join(d, seg);
-      if (fs.existsSync(d)) { if (fs.lstatSync(d).isSymbolicLink() || !fs.lstatSync(d).isDirectory()) throw new FormatError('bad-path', `refusing to write through ${path.relative(out, d)}`); }
-      else fs.mkdirSync(d);
-    }
-    if (fs.existsSync(target) && fs.lstatSync(target).isSymbolicLink()) throw new FormatError('bad-path', `refusing to overwrite the symbolic link ${rel}`);
-    if (!fs.realpathSync(path.dirname(target)).startsWith(real)) throw new FormatError('bad-path', `refusing to write outside ${dir}: ${rel}`);
-    fs.writeFileSync(target, files[rel]);
+  // 書く先は <dir> の中だけで、途中のフォルダも書く先もシンボリックリンクでないこと（壊れたリンクも。kit/safe-fs.mjs）。
+  // どれか 1 つでも断るなら、何も書かないうちに断る
+  const targets = Object.keys(files).sort().map((rel) => {
+    const target = path.resolve(real, ...rel.split('/'));
+    if (!target.startsWith(real + path.sep)) throw new FormatError('bad-path', `refusing to write outside ${dir}: ${rel}`);
+    return [rel, target];
+  });
+  const safe = (fn) => { try { return fn(); } catch (e) { if (e.code === 'unsafe-path') throw new FormatError('bad-path', e.message); throw e; } };
+  for (const [, target] of targets) safe(() => checkWritable(real, target));
+  for (const [rel, target] of targets) {
+    safe(() => safeWriteFile(real, target, files[rel]));
     written.push(rel);
   }
   const warnings = [...r.warnings];
@@ -80,8 +79,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const playOnly = flags.has('--play-only');
       const out = oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly);
       const r = await buildPortable(src, { out, playOnly });
-      fs.mkdirSync(path.dirname(out), { recursive: true });
-      fs.writeFileSync(out, r.html);
+      writeOutput(src, out, r.html);
       console.log(`packed ${r.stats.files} source files, ${r.stats.audio} audio (docId ${r.index.docId}, sourceSha256 ${r.index.sourceSha256.slice(0, 12)}…) -> ${out}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
     } else {

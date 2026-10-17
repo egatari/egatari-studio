@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
+import { safeWriteFile } from './safe-fs.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -115,9 +116,19 @@ export function defaultOut(srcPath) { return core.defaultOut(path, srcPath); }
 export async function buildPortable(srcPath, opts = {}) {
   const r = await exportPortable(nodeEnv, srcPath, opts);
   const deckDir = path.dirname(path.resolve(srcPath));
-  for (const [rel, text] of Object.entries(r.writes)) fs.writeFileSync(path.join(deckDir, rel), text);
+  // 原稿のフォルダに残すもの（FORMAT.CONFIG_FILE）：リンクを通しては書かない（kit/safe-fs.mjs）
+  for (const [rel, text] of Object.entries(r.writes)) safeWriteFile(deckDir, path.join(deckDir, ...rel.split('/')), text);
   if (opts.playOnly) r.html = playOnly(r.html);
   return r;
+}
+// 組んだものを書く。原稿のフォルダの中（既定の out/）なら、途中のフォルダも書く先もリンクでないこと（原稿のフォルダに置かれたリンクで
+// 外のファイルを上書きしない。format spec §11）。外（-o で選んだ場所）なら、そのフォルダを作り、書く先がリンクでないこと。どちらも一時ファイル + rename
+export function writeOutput(srcPath, out, data) {
+  const deckDir = path.dirname(path.resolve(srcPath)), o = path.resolve(out);
+  const rel = path.relative(deckDir, o);
+  if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) return safeWriteFile(deckDir, o, data);
+  fs.mkdirSync(path.dirname(o), { recursive: true });
+  return safeWriteFile(path.dirname(o), o, data);
 }
 export function defaultPortableOut(srcPath, playOnlyOut = false) {
   const p = path.parse(path.resolve(srcPath));
@@ -143,8 +154,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const out = opts.out || defaultPortableOut(src, opts.playOnly);
     let r;
     try { r = await buildPortable(src, { ...opts, out }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, r.html);
+    try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
     if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
     console.log(`portable${opts.playOnly ? ' (play-only)' : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB -> ${out}`);
@@ -152,8 +162,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else {
     const out = opts.out || defaultOut(src);
     const r = build(src, { ...opts, out });
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, r.html);
+    try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
     for (const w of s.warn) console.warn('  ⚠ ' + w);

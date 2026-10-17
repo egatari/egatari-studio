@@ -373,6 +373,117 @@ try {
   fails++; console.error(e); await shot('error.png').catch(() => {});
 }
 
+// ---- 7b. 原稿のフォルダに置かれたシンボリックリンク（format spec §11）：書き込み・控え・控えの掃除は、葉や途中のフォルダが
+// リンクなら断り（403）、外のファイルは変わらず、何も消えない。リンクのある場所ごとに新しいサーバーで確かめる（HTTP だけ。ブラウザは使わない）
+await (async () => {
+  if (process.platform === 'win32') { console.log('  skip symlink cases on Windows (needs privileges)'); return; }
+  const symRoot = path.join(work, 'sym');
+  fs.rmSync(symRoot, { recursive: true, force: true });
+  const outside = path.join(symRoot, 'outside');
+  const snap = (d) => Object.fromEntries(fs.readdirSync(d).sort().map((f) => [f, fs.readFileSync(path.join(d, f), 'utf8')]));
+  const mkOutside = () => {
+    fs.rmSync(outside, { recursive: true, force: true });
+    fs.mkdirSync(outside, { recursive: true });
+    fs.writeFileSync(path.join(outside, 'secret.txt'), 'OUTSIDE-SECRET\n');
+    fs.writeFileSync(path.join(outside, 'comments.json'), '[]\n');
+    // 控えの名前の形をしたもの（掃除が外で消さないこと）が 40 個
+    for (let i = 0; i < 40; i++) fs.writeFileSync(path.join(outside, `2000-01-01T00-00-${String(i).padStart(2, '0')}-000Z-deck.html`), 'keep ' + i);
+    return snap(outside);
+  };
+  const mkDeck = (name, prep) => {
+    const d = path.join(symRoot, name);
+    fs.cpSync(path.join(ROOT, 'examples/minimal'), d, { recursive: true, filter: (x) => !x.includes(`${path.sep}out`) });
+    prep(d);
+    return d;
+  };
+  const tokOf = async (b) => {
+    const r = await rawAt(b, '/');
+    return JSON.parse(/<script type="application\/json" id="dev-cfg">([^<]*)<\/script>/.exec(r.body)[1]).token;
+  };
+  const cases = [
+    ['comments.json is a symlink to an outside file', (d) => fs.symlinkSync(path.join(outside, 'comments.json'), path.join(d, 'comments.json')), 'comment'],
+    ['narration.md is a symlink to an outside file', (d) => { fs.rmSync(path.join(d, 'narration.md')); fs.symlinkSync(path.join(outside, 'secret.txt'), path.join(d, 'narration.md')); }, 'narration'],
+    ['.cache (ancestor of the backups) is a symlink to an outside folder', (d) => fs.symlinkSync(outside, path.join(d, '.cache')), 'edit'],
+    ['.cache/edits (the backup folder) is a symlink to an outside folder', (d) => { fs.mkdirSync(path.join(d, '.cache')); fs.symlinkSync(outside, path.join(d, '.cache', 'edits')); }, 'edit'],
+    ['deck.html is a symlink to a file in the deck folder (leaf)', (d) => { fs.renameSync(path.join(d, 'deck.html'), path.join(d, 'real.html')); fs.symlinkSync(path.join(d, 'real.html'), path.join(d, 'deck.html')); }, 'edit'],
+    ['deck.html is a symlink to an outside file', (d) => { fs.copyFileSync(path.join(d, 'deck.html'), path.join(outside, 'deck.html')); fs.rmSync(path.join(d, 'deck.html')); fs.symlinkSync(path.join(outside, 'deck.html'), path.join(d, 'deck.html')); }, 'edit'],
+  ];
+  for (const [label, prep, what] of cases) {
+    mkOutside();
+    const d = mkDeck('deck-' + cases.findIndex((c) => c[0] === label), prep);
+    const before = snap(outside);
+    const real = fs.existsSync(path.join(d, 'real.html')) ? path.join(d, 'real.html') : null;
+    const realBefore = real && fs.readFileSync(real, 'utf8');
+    const S = start(path.join(d, 'deck.html'));
+    try {
+      const b = await S.base;
+      const T = await tokOf(b);
+      const H = { 'content-type': 'application/json', 'x-deck-token': T, origin: b.replace(/\/$/, '') };
+      let r;
+      if (what === 'comment') r = await rawAt(b, '/__dev/comment', { method: 'POST', headers: H, body: JSON.stringify({ key: 'x', comment: 'PWNED-by-symlink' }) });
+      else if (what === 'narration') {
+        const k0 = JSON.parse((await rawAt(b, '/__dev/info', { headers: H })).body).slides[0].key;
+        const g = await rawAt(b, '/__dev/narration?key=' + encodeURIComponent(k0 + ':0'), { headers: H });
+        ok(g.status === 403 && !g.body.includes('OUTSIDE-SECRET'), `symlink: ${label}: GET /__dev/narration does not read the outside file (${g.status})`);
+        r = await rawAt(b, '/__dev/narration', { method: 'POST', headers: H, body: JSON.stringify({ slideKey: k0, stepKey: '0', rev: '', turns: [{ who: null, text: 'PWNED-by-symlink' }] }) });
+      } else {
+        // 直せる要素の範囲を組み立てから取る（デッキの文書の data-src）
+        const cap = JSON.parse(/<script type="application\/json" id="dev-cfg">([^<]*)<\/script>/.exec((await rawAt(b, '/')).body)[1]).cap;
+        const prev = await rawAt(b, '/preview?cap=' + cap, { headers: { 'sec-fetch-dest': 'iframe' } });
+        const m = / data-src="(\d+-\d+)" data-src-h="([0-9a-f]{8})"/.exec(prev.body);
+        r = await rawAt(b, '/__dev/edit', { method: 'POST', headers: H, body: JSON.stringify({ range: m ? m[1] : '0-1', h: m ? m[2] : '', text: 'PWNED-by-symlink' }) });
+      }
+      ok(r.status === 403, `symlink: ${label}: the ${what} write is refused (${r.status} ${r.body.slice(0, 90)})`);
+      const after = snap(outside);
+      ok(JSON.stringify(after) === JSON.stringify(before), `symlink: ${label}: the outside folder is unchanged (nothing written, nothing deleted; ${Object.keys(after).length} files)`);
+      if (real) ok(fs.readFileSync(real, 'utf8') === realBefore, `symlink: ${label}: the link target is unchanged`);
+      ok(!fs.readdirSync(d).some((f) => /\.tmp$/.test(f)), `symlink: ${label}: no temporary file left in the deck folder`);
+    } finally { S.srv.kill(); }
+  }
+  // 中を指すリンク（narration.md → 原稿のフォルダの中の別の名前）は読めるが、書き込みは断る（リンクを通しては書かない）
+  {
+    mkOutside();
+    const d = mkDeck('deck-inner', (x) => { fs.renameSync(path.join(x, 'narration.md'), path.join(x, 'narr-real.md')); fs.symlinkSync('narr-real.md', path.join(x, 'narration.md')); });
+    const S = start(path.join(d, 'deck.html'));
+    try {
+      const b = await S.base, T = await tokOf(b);
+      const H = { 'content-type': 'application/json', 'x-deck-token': T, origin: b.replace(/\/$/, '') };
+      const k0 = JSON.parse((await rawAt(b, '/__dev/info', { headers: H })).body).slides[0].key;
+      const g = await rawAt(b, '/__dev/narration?key=' + encodeURIComponent(k0 + ':0'), { headers: H });
+      ok(g.status === 200, 'symlink: narration.md linking inside the deck folder can be read (' + g.status + ')');
+      const j = JSON.parse(g.body), was = fs.readFileSync(path.join(d, 'narr-real.md'), 'utf8');
+      const r = await rawAt(b, '/__dev/narration', { method: 'POST', headers: H, body: JSON.stringify({ slideKey: j.slideKey, stepKey: j.stepKey, rev: j.rev, turns: [{ who: null, text: 'changed via link' }] }) });
+      ok(r.status === 403 && fs.readFileSync(path.join(d, 'narr-real.md'), 'utf8') === was && fs.lstatSync(path.join(d, 'narration.md')).isSymbolicLink(), 'symlink: but a save through that link is refused (' + r.status + ')');
+    } finally { S.srv.kill(); }
+  }
+  // 普通のフォルダでは、控えの掃除が控えの名前の普通のファイルだけを消し、ほかのもの（名前の違うもの・リンク）を残す
+  {
+    mkOutside();
+    const d = mkDeck('deck-prune', (x) => {
+      const e = path.join(x, '.cache', 'edits'); fs.mkdirSync(e, { recursive: true });
+      for (let i = 0; i < 35; i++) fs.writeFileSync(path.join(e, `2000-01-01T00-00-${String(i).padStart(2, '0')}-000Z-deck.html`), 'old ' + i);
+      fs.writeFileSync(path.join(e, 'notes.txt'), 'mine');
+      fs.symlinkSync(path.join(outside, '2000-01-01T00-00-00-000Z-deck.html'), path.join(e, '1999-01-01T00-00-00-000Z-link.html'));
+    });
+    const S = start(path.join(d, 'deck.html'));
+    try {
+      const b = await S.base, T = await tokOf(b);
+      const H = { 'content-type': 'application/json', 'x-deck-token': T, origin: b.replace(/\/$/, '') };
+      const cap = JSON.parse(/<script type="application\/json" id="dev-cfg">([^<]*)<\/script>/.exec((await rawAt(b, '/')).body)[1]).cap;
+      const prev = await rawAt(b, '/preview?cap=' + cap, { headers: { 'sec-fetch-dest': 'iframe' } });
+      const m = / data-src="(\d+-\d+)" data-src-h="([0-9a-f]{8})"/.exec(prev.body);
+      const src = fs.readFileSync(path.join(d, 'deck.html'), 'utf8');
+      const [a0, b0] = m[1].split('-').map(Number);
+      const r = await rawAt(b, '/__dev/edit', { method: 'POST', headers: H, body: JSON.stringify({ range: m[1], h: m[2], text: src.slice(a0, b0) + '!' }) });
+      const e = path.join(d, '.cache', 'edits'), names = fs.readdirSync(e);
+      const backups = names.filter((n) => /^\d{4}-.*Z-deck\.html$/.test(n));
+      ok(r.status === 200 && fs.readFileSync(path.join(d, 'deck.html'), 'utf8').includes(src.slice(a0, b0) + '!'), 'symlink: a normal edit still saves (atomic rename over the existing deck.html) ' + r.status);
+      ok(backups.length === 30 && names.includes('notes.txt') && names.includes('1999-01-01T00-00-00-000Z-link.html') && fs.existsSync(path.join(outside, '2000-01-01T00-00-00-000Z-deck.html')), `symlink: backup cleanup keeps 30 backups, never touches other names or links (${backups.length} backups, ${names.length} entries)`);
+      ok(!names.some((n) => /\.tmp$/.test(n)) && !fs.readdirSync(d).some((n) => /\.tmp$/.test(n)), 'symlink: no temporary files left after a normal save');
+    } finally { S.srv.kill(); }
+  }
+})().catch((e) => { fails++; console.error(e); });
+
 // ---- 8. 書き込みを試みるデッキ（部品とインラインのスクリプト）：プレビューからは何も書けない。知らせは外枠の欄を開くだけ
 const hostileDir = path.join(work, 'hostile');
 const S2 = start(writeHostileDeck(hostileDir));

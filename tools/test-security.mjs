@@ -13,7 +13,11 @@ import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import os from 'node:os';
 import { previewDocument, PREVIEW_CSP } from '../app/preview-doc.js';
-import { build } from '../kit/build.mjs';
+import { build, buildPortable } from '../kit/build.mjs';
+import { spawnSync } from 'node:child_process';
+import { safeWriteFile, readContained, pruneBackups, backupFile } from '../kit/safe-fs.mjs';
+import { unpack } from './portable.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import { markupReasons, documentReasons } from '../kit/core/code-scan.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -161,6 +165,91 @@ try {
   ok(documentReasons(sw, [{ start: 12, end: 12 + '<script>trusted()</script>'.length, tags: ['script'] }]).some((x) => /trusted part/.test(x)), 'documentReasons: a trusted range swallowed by an attribute is not trusted');
   ok(documentReasons('<p>a</p><script>t()</script><p>b</p>', [{ start: 8, end: 28, tags: ['script'] }]).length === 0, 'documentReasons: a cleanly inserted trusted script is skipped');
   ok(markupReasons('<meta http-equiv="Refresh" content="0;url=x">').length === 1, 'meta refresh counts as code');
+
+  // ---- 原稿のフォルダのシンボリックリンク（format spec §11）：書き込み（kit/safe-fs.mjs）と、それを使う npm run ids・npm run portable・組み立ての書き出し
+  if (process.platform !== 'win32') {
+    const sy = path.join(tmp, 'sym'); fs.mkdirSync(sy);
+    const outside = path.join(sy, 'outside'); fs.mkdirSync(outside);
+    const secret = path.join(outside, 'secret.txt'); fs.writeFileSync(secret, 'OUTSIDE-SECRET');
+    for (let i = 0; i < 40; i++) fs.writeFileSync(path.join(outside, `2000-01-01T00-00-${String(i).padStart(2, '0')}-000Z-x.html`), 'keep');
+    const snapOut = () => fs.readdirSync(outside).sort().map((f) => f + ':' + fs.readFileSync(path.join(outside, f), 'utf8')).join('|');
+    const out0 = snapOut();
+    const refuses = (fn) => { try { fn(); return false; } catch (e) { return e.code === 'unsafe-path'; } };
+    const D = path.join(sy, 'd'); fs.mkdirSync(D);
+    // 葉のリンク・途中のフォルダのリンク・壊れたリンク・base の外
+    fs.symlinkSync(secret, path.join(D, 'leaf.txt'));
+    fs.symlinkSync(outside, path.join(D, 'sub'));
+    fs.symlinkSync(path.join(outside, 'new.txt'), path.join(D, 'dangling.txt'));
+    ok(refuses(() => safeWriteFile(D, path.join(D, 'leaf.txt'), 'PWNED')), 'safe-fs: writing to a leaf symlink is refused');
+    ok(refuses(() => safeWriteFile(D, path.join(D, 'sub', 'x.txt'), 'PWNED')), 'safe-fs: writing through a symlinked folder is refused');
+    ok(refuses(() => safeWriteFile(D, path.join(D, 'dangling.txt'), 'PWNED')) && !fs.existsSync(path.join(outside, 'new.txt')), 'safe-fs: writing to a dangling symlink is refused (the target is not created)');
+    ok(refuses(() => safeWriteFile(D, path.join(sy, 'x.txt'), 'PWNED')), 'safe-fs: writing outside the base is refused');
+    ok(refuses(() => readContained(D, path.join(D, 'leaf.txt'))) && refuses(() => readContained(D, path.join(D, 'sub', 'secret.txt'))), 'safe-fs: reading through a link that leaves the base is refused');
+    ok(refuses(() => backupFile(D, path.join(D, 'leaf.txt'), 'bk')), 'safe-fs: backing up a file that links outside is refused');
+    fs.symlinkSync(outside, path.join(D, 'bk'));
+    fs.writeFileSync(path.join(D, 'real.txt'), 'v1');
+    ok(refuses(() => backupFile(D, path.join(D, 'real.txt'), 'bk')) && refuses(() => pruneBackups(D, 'bk', 0)), 'safe-fs: a backup folder that is a symlink is refused (no backup, no cleanup)');
+    // 普通の書き込み：既にあるファイルの上に rename（Windows でも同じ手順）、モードを保つ、一時ファイルを残さない、新しいフォルダを作る
+    fs.chmodSync(path.join(D, 'real.txt'), 0o640);
+    safeWriteFile(D, path.join(D, 'real.txt'), 'v2');
+    safeWriteFile(D, path.join(D, 'n1', 'n2', 'new.txt'), new Uint8Array([104, 105]));
+    ok(fs.readFileSync(path.join(D, 'real.txt'), 'utf8') === 'v2' && (fs.statSync(path.join(D, 'real.txt')).mode & 0o777) === 0o640 && fs.readFileSync(path.join(D, 'n1', 'n2', 'new.txt'), 'utf8') === 'hi'
+      && !fs.readdirSync(D).some((f) => f.endsWith('.tmp')), 'safe-fs: a normal write replaces the file atomically (mode kept, new folders made, no temp file left)');
+    ok(snapOut() === out0, 'safe-fs: nothing outside was written or deleted');
+
+    // npm run ids：.cache が外を指すリンクなら、何も書かずに断る
+    const mkDeck = (name) => { const d = path.join(sy, name); fs.cpSync(path.join(ROOT, 'examples/minimal'), d, { recursive: true, filter: (x) => !x.includes(`${path.sep}out`) }); return d; };
+    const ids = mkDeck('ids');
+    fs.writeFileSync(path.join(ids, 'deck.html'), fs.readFileSync(path.join(ids, 'deck.html'), 'utf8').replace(/<section class="slide" id="[^"]*"/g, '<section class="slide"'));
+    fs.symlinkSync(outside, path.join(ids, '.cache'));
+    const deckBefore = fs.readFileSync(path.join(ids, 'deck.html'), 'utf8'), narrBefore = fs.readFileSync(path.join(ids, 'narration.md'), 'utf8');
+    const ri = spawnSync(process.execPath, [path.join(ROOT, 'tools/ids.mjs'), ids], { encoding: 'utf8' });
+    ok(ri.status === 1 && /symbolic link/.test(ri.stderr) && fs.readFileSync(path.join(ids, 'deck.html'), 'utf8') === deckBefore && fs.readFileSync(path.join(ids, 'narration.md'), 'utf8') === narrBefore && snapOut() === out0,
+      'ids: a .cache symlinked outside -> refused before writing anything (deck, narration and the outside folder unchanged) ' + ri.stderr.trim().slice(0, 80));
+    fs.rmSync(path.join(ids, '.cache'));
+    fs.symlinkSync(secret, path.join(ids, 'comments.json'));
+    const ri2 = spawnSync(process.execPath, [path.join(ROOT, 'tools/ids.mjs'), ids], { encoding: 'utf8' });
+    ok(ri2.status === 1 && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET' && fs.readFileSync(path.join(ids, 'deck.html'), 'utf8') === deckBefore, 'ids: comments.json linking outside -> not read, nothing written ' + ri2.stderr.trim().slice(0, 80));
+    fs.rmSync(path.join(ids, 'comments.json'));
+    const ri3 = spawnSync(process.execPath, [path.join(ROOT, 'tools/ids.mjs'), ids], { encoding: 'utf8' });
+    ok(ri3.status === 0 && fs.readFileSync(path.join(ids, 'deck.html'), 'utf8') !== deckBefore && fs.readdirSync(path.join(ids, '.cache', 'edits')).length >= 2, 'ids: without links it still writes (with backups)');
+
+    // 組み立ての書き出し：out/ や out/deck.html が外を指すリンクなら断る（外は変わらない）
+    const bd = mkDeck('bout');
+    fs.symlinkSync(outside, path.join(bd, 'out'));
+    const rb = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(bd, 'deck.html')], { encoding: 'utf8' });
+    ok(rb.status === 1 && snapOut() === out0, 'build: out/ symlinked outside -> refused, nothing written outside ' + rb.stderr.trim().slice(0, 80));
+    fs.rmSync(path.join(bd, 'out')); fs.mkdirSync(path.join(bd, 'out'));
+    fs.symlinkSync(secret, path.join(bd, 'out', 'deck.html'));
+    const rb2 = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(bd, 'deck.html')], { encoding: 'utf8' });
+    ok(rb2.status === 1 && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET', 'build: out/deck.html symlinked outside -> refused, the target unchanged');
+    // 持ち運べる形式の書き出しが原稿のフォルダに残す設定のファイル（新しい docId）：外を指すリンクなら読まず、書かない
+    const pd = mkDeck('pconf');
+    // 取り出すときに途中のフォルダ（data/）ができるように、data/ のファイルを取り込む
+    fs.mkdirSync(path.join(pd, 'data')); fs.writeFileSync(path.join(pd, 'data', 'd.json'), '{"a":1}');
+    fs.writeFileSync(path.join(pd, 'deck.html'), fs.readFileSync(path.join(pd, 'deck.html'), 'utf8').replace('</body>', '<script type="application/json" id="dd">{{JSON:d.json}}</script>\n</body>'));
+    fs.symlinkSync(path.join(outside, 'conf.json'), path.join(pd, FORMAT.CONFIG_FILE));
+    let pthrew = null; try { await buildPortable(path.join(pd, 'deck.html'), { out: path.join(sy, 'p.ega.html') }); } catch (e) { pthrew = e.code; }
+    ok(pthrew === 'unsafe-path' && !fs.existsSync(path.join(outside, 'conf.json')), `portable: ${FORMAT.CONFIG_FILE} as a dangling symlink to outside -> not written (${pthrew})`);
+    // npm run portable -- unpack：途中のフォルダ・書く先（壊れたリンクも）がリンクなら、何も書かないうちに断る
+    fs.rmSync(path.join(pd, FORMAT.CONFIG_FILE));
+    const pr = await buildPortable(path.join(pd, 'deck.html'), { out: path.join(sy, 'p.ega.html') });
+    fs.writeFileSync(path.join(sy, 'p.ega.html'), pr.html);
+    const u2 = path.join(sy, 'un-ok');
+    const ur = await unpack(path.join(sy, 'p.ega.html'), u2);
+    ok(ur.written.includes('deck.html') && fs.existsSync(path.join(u2, 'deck.html')), 'portable unpack: a normal unpack still works');
+    const sub = (ur.written.find((w) => w.includes('/')) || 'missing/x').split('/')[0];
+    ok(sub === 'data', 'portable unpack: the archive has a sub folder to attack (' + ur.written.join(' ') + ')');
+    for (const [label, prep] of [
+      ['dangling deck.html', (u) => fs.symlinkSync(path.join(outside, 'unpacked.html'), path.join(u, 'deck.html'))],
+      ['narration.md linking to an outside file', (u) => fs.symlinkSync(secret, path.join(u, 'narration.md'))],
+      [`symlinked ${sub}/`, (u) => fs.symlinkSync(outside, path.join(u, sub))],
+    ]) {
+      const u = path.join(sy, 'un-' + label.replace(/\W+/g, '-')); fs.mkdirSync(u); prep(u);
+      let code = null; try { await unpack(path.join(sy, 'p.ega.html'), u, { force: true }); } catch (e) { code = e.code; }
+      ok(code === 'bad-path' && !fs.existsSync(path.join(outside, 'unpacked.html')) && snapOut() === out0 && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET' && fs.readdirSync(u).length === 1, `portable unpack --force: ${label} -> refused before writing anything (${code})`);
+    }
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
 
   // 信頼する仲立ちに </script や <!-- を入れたら組まない

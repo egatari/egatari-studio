@@ -16,6 +16,7 @@ import path from 'node:path';
 import { analyzeSlideIds } from '../kit/build.mjs';
 import { parseHeading, newSlideId, splitKey, isSlideId } from '../kit/narration.mjs';
 import { parse } from 'parse5';
+import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 
 const USAGE = 'usage: npm run ids -- <deck folder | deck.html> [--dry-run]';
 const KEEP_EDITS = 30;
@@ -33,11 +34,15 @@ let SRC = path.resolve(base, rest[0]);
 if (fs.existsSync(SRC) && fs.statSync(SRC).isDirectory()) SRC = path.join(SRC, 'deck.html');
 if (!fs.existsSync(SRC)) fail(`not found: ${SRC}`);
 const DIR = path.dirname(SRC);
+// 読み書きは原稿のフォルダの中だけ（kit/safe-fs.mjs：外を指すリンクは読まない、リンクを通しては書かない。format spec §11）
+const rd = (file) => { try { return readContained(DIR, file, 'utf8'); } catch (e) { fail(e.message); } };
+const has = (file) => rd(file) !== null;
 const FILES = { narration: path.join(DIR, 'narration.md'), manifest: path.join(DIR, 'audio', 'manifest.json'),
   timeline: path.join(DIR, 'timeline.json'), comments: path.join(DIR, 'comments.json') };
 
 // ---------------------------------------------------------------- 1. 原稿を調べる
-const src = fs.readFileSync(SRC, 'utf8');
+const src = rd(SRC);
+if (src === null) fail(`not found: ${SRC}`);
 const { slides, docIds, problems } = analyzeSlideIds(src);
 if (problems.length) {
   console.error('ids: このデッキには id を付けられない（先に直すこと）');
@@ -137,7 +142,7 @@ function writeJsonLike(orig, value) {
   return t + (/\r?\n$/.test(orig) ? eol : '');
 }
 function rewriteJson(file, fn) {
-  const text = fs.readFileSync(file, 'utf8');
+  const text = rd(file);
   let j;
   try { j = JSON.parse(text); } catch (e) { fail(`${path.relative(DIR, file)} が JSON として読めない: ${e.message}`); }
   const r = fn(j);
@@ -152,24 +157,24 @@ writes.push([SRC, deck.out]);
 summary.push(`deck.html: ${rename.size} 枚に id を付けた${deck.morphs ? `、data-morph ${deck.morphs} 個を付け替えた` : ''}`);
 for (const s of slides) if (newIds.has(s.index)) summary.push(`  ${String(s.index + 1).padStart(3)}  ${newIds.get(s.index)}  ← ${s.key}`);
 
-if (fs.existsSync(FILES.narration)) {
-  const text = fs.readFileSync(FILES.narration, 'utf8');
+if (has(FILES.narration)) {
+  const text = rd(FILES.narration);
   const r = rewriteNarration(text);
   if (r.n) { writes.push([FILES.narration, r.out]); summary.push(`narration.md: 見出し ${r.n} 個を「## 見出し {#id}」にした`); }
   else summary.push('narration.md: 変えるものはない');
 }
-if (fs.existsSync(FILES.manifest)) {
+if (has(FILES.manifest)) {
   const r = rewriteJson(FILES.manifest, (j) => {
     if (j && typeof j === 'object' && j.segments && typeof j.segments === 'object') { const x = renameObjectKeys(j.segments); return { value: { ...j, segments: x.out }, n: x.n }; }
     const x = renameObjectKeys(j || {}); return { value: x.out, n: x.n };
   });
   if (r.n) { writes.push([FILES.manifest, r.out]); summary.push(`audio/manifest.json: 鍵 ${r.n} 個を付け替えた（音声は作り直さない）`); }
 }
-if (fs.existsSync(FILES.timeline)) {
+if (has(FILES.timeline)) {
   const r = rewriteJson(FILES.timeline, (j) => { const x = renameObjectKeys(j || {}); return { value: x.out, n: x.n }; });
   if (r.n) { writes.push([FILES.timeline, r.out]); summary.push(`timeline.json: 鍵 ${r.n} 個を付け替えた`); }
 }
-if (fs.existsSync(FILES.comments)) {
+if (has(FILES.comments)) {
   const r = rewriteJson(FILES.comments, (j) => {
     if (!Array.isArray(j)) return { value: j, n: 0 };
     let n = 0;
@@ -191,16 +196,15 @@ if (fs.existsSync(FILES.comments)) {
 }
 
 // ---------------------------------------------------------------- 6. 控えを残して書く
-const EDITS = path.join(DIR, '.cache', 'edits');
-function backup(file) {
-  fs.mkdirSync(EDITS, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  fs.copyFileSync(file, path.join(EDITS, `${stamp}-${path.basename(file)}`));
-}
+// 控えも書き込みも、リンクを通らない（kit/safe-fs.mjs）。どれか 1 つでも断るなら、何も書かないうちに断る
+const EDITS_REL = path.join('.cache', 'edits');
+const EDITS = path.join(DIR, EDITS_REL);
 if (!dry) {
-  for (const [file, text] of writes) { backup(file); fs.writeFileSync(file, text); }
-  const all = fs.readdirSync(EDITS).sort();
-  for (const f of all.slice(0, Math.max(0, all.length - KEEP_EDITS))) fs.rmSync(path.join(EDITS, f), { force: true });
+  try {
+    for (const [file] of writes) { checkWritable(DIR, file); checkWritable(DIR, path.join(EDITS, `2000-01-01T00-00-00-000Z-${path.basename(file)}`)); }
+  } catch (e) { fail(`${e.message}（何も書いていない / nothing written）`); }
+  for (const [file, text] of writes) { backupFile(DIR, file, EDITS_REL); safeWriteFile(DIR, file, text); }
+  pruneBackups(DIR, EDITS_REL, KEEP_EDITS);
 }
 console.log((dry ? '[dry-run] ' : '') + summary.join('\n'));
 if (!dry) console.log(`控え / backups: ${shown(EDITS)}\n動画（render/）の書き出しは鍵が変わったので作り直しになる / re-render videos: their keys changed`);
