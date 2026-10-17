@@ -44,7 +44,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     const alive = () => worker === me && gen === g;
     const reply = (ok, value, err) => {
       if (!alive()) return;           // 止めた Worker には答えない
-      me.postMessage(ok ? { rpcReply: m.rpc, gen: g, ok: true, value } : { rpcReply: m.rpc, gen: g, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } });
+      me.postMessage(ok ? { rpcReply: m.rpc, gen: g, ok: true, value } : { rpcReply: m.rpc, gen: g, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err), ...(err && Number.isFinite(err.n) ? { n: err.n } : {}) } });
     };
     if (!alive()) return;
     try {
@@ -57,7 +57,8 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
       if (!bound(req)) req = [...waiting.values()].find(bound);
       if (!req) throw Object.assign(new Error('no pending build for this workspace'), { code: 'ENOENT' });
       const ws = req.ws;
-      if (m.op === 'read') return reply(true, await lim(() => ws.readBytes(m.arg.rel)));
+      // max：読んでよいバイト数（Worker の組み立てが残りの上限から決める。作業場所が File.size で確かめ直す）
+      if (m.op === 'read') return reply(true, await lim(() => ws.readBytes(m.arg.rel, Number.isFinite(m.arg.max) ? { max: m.arg.max } : {})));
       return reply(true, plain(await lim(() => ws.list(m.arg.o))));
     } catch (err) { reply(false, null, err); }
   }

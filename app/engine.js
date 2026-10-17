@@ -8,7 +8,7 @@
 export const READ_CONCURRENCY = 8;
 import katex from 'katex';
 import * as P from '../kit/core/path-posix.mjs';
-import { build as coreBuild, BUILD_LIMITS, BuildLimitError } from '../kit/core/build-core.mjs';
+import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
 import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
 
@@ -46,11 +46,12 @@ export function createEngine(res, loadLazy) {
 
   // env を作る：getL() はその組み立てが見る一覧、missing はその組み立てで足りなかった場所（組み立てごとに別。書き出しとプレビューが混ざらない）
   const mkEnv = (getL, missing) => {
-    function deckBytes(p) {
+    // max：読んでよいバイト数（chargedEnv が渡す）。読んだ中身がそれより大きければ ReadOverError（chargedEnv が断る）
+    function deckBytes(p, max = Infinity) {
       const rel = relOf(p), f = getL().files.get(rel);
       if (!f) throw Object.assign(new Error('ENOENT: ' + rel), { code: 'ENOENT' });
       const c = cache.get(rel);
-      if (c && c.sig === sig(f)) return c.bytes;
+      if (c && c.sig === sig(f)) { if (c.bytes.length > max) throw new ReadOverError(c.bytes.length, max); return c.bytes; }
       missing.add(p);
       return null;
     }
@@ -68,34 +69,40 @@ export function createEngine(res, loadLazy) {
         if (inDeck(p)) return getL().files.has(relOf(p));
         return p in res.text || p in res.b64 || lazySet.has(p);
       },
-      readText(p) {
+      readText(p, max) {
         p = P.resolve(p);
-        if (inDeck(p)) { const b = deckBytes(p); return b ? dec.decode(b) : ''; }
+        if (inDeck(p)) { const b = deckBytes(p, max); return b ? dec.decode(b) : ''; }
         if (p in res.text) return res.text[p];
         if (p in res.b64) return base64ToText(res.b64[p]);
         throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
       },
-      readBase64(p) {
+      readBase64(p, max) {
         p = P.resolve(p);
-        if (inDeck(p)) { const b = deckBytes(p); return b ? bytesToBase64(b) : ''; }
+        if (inDeck(p)) { const b = deckBytes(p, max); return b ? bytesToBase64(b) : ''; }
         if (p in res.b64) return res.b64[p];
         if (p in res.text) return btoa(unescape(encodeURIComponent(res.text[p])));
         if (lazySet.has(p)) { if (lazyCache.has(p)) return lazyCache.get(p); missing.add(p); return ''; }
         throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
       },
       // 作業場所のファイルはバイト列のまま（音声など。base64 を通さない）。ほかは readBase64 から
-      readBytes(p) {
+      readBytes(p, max) {
         p = P.resolve(p);
-        if (inDeck(p)) return deckBytes(p) || new Uint8Array(0);
+        if (inDeck(p)) return deckBytes(p, max) || new Uint8Array(0);
         const b = atob(this.readBase64(p)), u = new Uint8Array(b.length);
         for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
         return u;
       },
       within(p, dir) { p = P.resolve(p); dir = P.resolve(dir); return p === dir || p.startsWith(dir === '/' ? '/' : dir + '/'); },
-      // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）：作業場所のファイルは一覧の大きさ（まだ読んでいなくても）
+      // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）：作業場所のファイルは、読んだものは読んだ中身の大きさ
+      // （一覧の後で大きくなっていても実際のバイトで数える）、まだ読んでいなければ一覧の大きさ
       size(p) {
         p = P.resolve(p);
-        if (inDeck(p)) { const f = getL().files.get(relOf(p)); return f ? f.s : null; }
+        if (inDeck(p)) {
+          const rel = relOf(p), f = getL().files.get(rel);
+          if (!f) return null;
+          const c = cache.get(rel);
+          return c && c.sig === sig(f) ? c.bytes.length : f.s;
+        }
         if (p in res.text) return res.text[p].length;
         if (p in res.b64) return Math.floor(res.b64[p].length / 4) * 3;
         return null;
@@ -124,7 +131,13 @@ export function createEngine(res, loadLazy) {
         if (inDeck(p)) {
           const rel = relOf(p), f = L.files.get(rel);
           if (!f) continue;
-          const bytes = await ws.readBytes(rel);
+          // 読んでよいのは、一覧の大きさ（数えた）と残りの上限まで。作業場所はその直前にファイルの大きさを確かめ直し、超えるなら読まずに断る
+          // （ReadOverError。一覧の後で大きくなったもの）。読んだ後も実際の大きさで数え直す
+          let bytes;
+          try { bytes = await ws.readBytes(rel, { max: f.s + Math.max(0, tally.max - tally.n) }); } catch (e) {
+            if (e && e.code === 'read-over') throw new BuildLimitError('files read from the workspace', tally.n - f.s + e.n, tally.max);
+            throw e;
+          }
           if (bytes.length > f.s) { tally.n += bytes.length - f.s; if (tally.n > tally.max) throw new BuildLimitError('files read from the workspace', tally.n, tally.max); }
           cache.set(rel, { sig: sig(f), bytes });
         } else if (lazySet.has(p)) lazyCache.set(p, await loadLazy(p));

@@ -492,6 +492,37 @@ ok('フォルダへの書き出し：空でないフォルダには書かない�
   await assert.rejects(writeToDirectory(d, files), (e) => e.code === 'not-empty');
   await assert.rejects(writeToDirectory(new D('e'), new Map([['../x', new Uint8Array(1)]])), (e) => e.code === 'bad-path');
 });
+ok('編集アプリの読み取り：arrayBuffer() の直前に File.size を確かめ直し、読んだ後も実際のバイトで数える（一覧の後で大きくなったファイルは断る）', async () => {
+  const { readBytes: fsxRead } = await import('../app/fsx.js');
+  // File System Access のまね：File.size と arrayBuffer() の中身を別々に偽れる
+  const handleOf = (size, bytes, calls) => ({ async getFileHandle() { return { async getFile() { return { size, async arrayBuffer() { calls.n++; return bytes.buffer; } }; } }; } });
+  const c1 = { n: 0 };
+  await assert.rejects(fsxRead(handleOf(1 << 30, new Uint8Array(1), c1), 'a.bin', { max: 1000 }), (e) => e.code === 'read-over' && e.n === 1 << 30);
+  assert.equal(c1.n, 0, 'File.size over max -> arrayBuffer() not called');
+  const c2 = { n: 0 };
+  await assert.rejects(fsxRead(handleOf(10, new Uint8Array(5000), c2), 'a.bin', { max: 1000 }), (e) => e.code === 'read-over' && e.n === 5000);
+  assert.equal((await fsxRead(handleOf(3, new Uint8Array(3), { n: 0 }), 'a.bin', { max: 3 })).length, 3);
+  // 作業場所の読み取りには max（一覧の大きさ + 残りの上限）が渡り、それを超えるなら組み立ては上限で断る
+  const { res, loadLazy } = appResources();
+  const deck = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>/*INCLUDE:part.html*/</section></div></body></html>';
+  const files = { 'deck.html': deck, 'part.html': '<p>' + 'p'.repeat(16 << 20) + '</p>' };
+  const small = { 'deck.html': deck, 'part.html': '<p>' + 'p'.repeat(4000) + '</p>' };
+  const seen = [];
+  const ws = countingWs(files, { 'part.html': 10 });
+  const rb = ws.readBytes;
+  ws.readBytes = async (rel, o) => { seen.push([rel, o && o.max]); const b = await rb(rel); if (o && b.length > o.max) throw Object.assign(new Error('over'), { code: 'read-over', n: b.length }); return b; };
+  const E = createEngine(res, loadLazy);
+  E.setWorkspace(ws); E.setListing(await ws.list());
+  await assert.rejects(E.build('deck.html', { limits: { readChars: 8 << 20 } }), (e) => e.code === 'build-too-large');
+  assert.ok(seen.some(([r]) => r === 'part.html') && seen.every(([, m]) => Number.isFinite(m) && m <= 8 << 20), 'max passed to the workspace ' + JSON.stringify(seen));
+  // 上限の内なら、一覧（10 バイト）でなく読んだ中身の大きさで数える（組み立ての env.size も読んだ中身の大きさを返す）
+  const E2 = createEngine(res, loadLazy);
+  const ws2 = countingWs(small, { 'part.html': 10 });
+  E2.setWorkspace(ws2); E2.setListing(await ws2.list());
+  const r = await E2.build('deck.html', {});
+  assert.ok(r.html.includes('pppp'));
+  assert.equal(E2.env.size('/deck/part.html'), small['part.html'].length);
+});
 ok('inputHash の確かめ：作業場所の古い段階は §5.4 の hash で決まる', async () => {
   const { read } = await portable('c');
   const segs = parseNarration(dec.decode(read.files['narration.md']));

@@ -44,8 +44,15 @@ export async function readText(root, rel) {
   try { return await (await (await fileHandle(root, rel)).getFile()).text(); }
   catch (e) { if (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError')) return null; throw e; }
 }
-export async function readBytes(root, rel) {
-  return new Uint8Array(await (await (await fileHandle(root, rel)).getFile()).arrayBuffer());
+// opts.max：読んでよいバイト数。arrayBuffer() の直前に File.size を確かめ直し、超えるなら読まずに、読んだ後も超えていれば断る
+// （code 'read-over'、n は超えた大きさ。編集アプリの組み立てが上限の知らせに替える）
+export async function readBytes(root, rel, { max = Infinity } = {}) {
+  const file = await (await fileHandle(root, rel)).getFile();
+  const over = (n) => Object.assign(new Error(`${rel}: ${n} bytes is over ${max}`), { code: 'read-over', n, max });
+  if (file.size > max) throw over(file.size);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length > max) throw over(bytes.length);
+  return bytes;
 }
 // 書き込みの取り消し：live() が false（始めたときの作業場所・保存がもう今のものでない）なら書かない
 export function cancelledError() { return Object.assign(new Error('cancelled: the workspace changed'), { name: 'Cancelled', code: 'cancelled' }); }

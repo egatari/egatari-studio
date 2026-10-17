@@ -75,7 +75,8 @@ function subsetCss(text) {
 // 埋め込む音声は AAC（64 kbps・モノラル）にする。WAV のままだと 5 分で 30 MB を超える。結果はキャッシュする
 function compressAudio(file) {
   if (!/\.wav$/i.test(file)) return file;
-  const out = path.join(os.tmpdir(), 'motion-slides-audio', short(fs.readFileSync(file).toString('base64')) + '.m4a');
+  // 元のファイルは読む前に組み立ての上限に数えてある（chargedEnv の precharge）。読むのは通常のファイルだけ（FIFO で止まらない）
+  const out = path.join(os.tmpdir(), 'motion-slides-audio', short(readRegular(file).toString('base64')) + '.m4a');
   if (fs.existsSync(out)) return out;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-c:a', 'aac', '-b:a', '64k', '-ac', '1', out]);
@@ -92,17 +93,44 @@ function within(p, dir) {
     return rp === rd || rp.startsWith(rd + path.sep);
   } catch { return false; }
 }
+// 通常のファイルか（リンクなら指す先が）。FIFO・デバイス・ソケットは NotRegularFileError（読まずに断る。開けば止まるものもある）
+function regularStat(p) {
+  const ls = fs.lstatSync(p);
+  const st = ls.isSymbolicLink() ? fs.statSync(p) : ls;
+  if (!st.isFile()) throw new core.NotRegularFileError(p);
+  return st;
+}
+// p を読む：通常のファイルであることを確かめてから、止まらないように開き（O_NONBLOCK）、開いた fd でも通常のファイルで、確かめたものと同じ
+// （dev・ino）であることを確かめ、その fd から max バイトまでだけ読む（readFileSync は使わない）。max より大きい・読む途中で max を超える・
+// 開いたときの大きさより多く読める（大きくなった）なら ReadOverError
+export function readRegular(p, max = Infinity) {
+  const st = regularStat(p);
+  const fd = fs.openSync(p, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+  try {
+    const fst = fs.fstatSync(fd);
+    if (!fst.isFile() || fst.dev !== st.dev || fst.ino !== st.ino) throw new core.NotRegularFileError(p);
+    if (fst.size > max) throw new core.ReadOverError(fst.size, max);
+    const buf = Buffer.allocUnsafe(fst.size);
+    let got = 0;
+    while (got < fst.size) { const k = fs.readSync(fd, buf, got, fst.size - got, null); if (k === 0) break; got += k; }
+    // 開いたときの大きさの先にまだあれば（読む間に大きくなった）断る
+    const extra = fs.readSync(fd, Buffer.alloc(1), 0, 1, null);
+    if (extra > 0) throw new core.ReadOverError(Math.max(fst.size, got) + extra, Math.min(max, fst.size));
+    return got === fst.size ? buf : buf.subarray(0, got);
+  } finally { fs.closeSync(fd); }
+}
+// max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ限りなし）
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex,
   katexDir: path.dirname(require.resolve('katex')),
   fontDir: (pkg) => path.dirname(require.resolve(`${pkg}/package.json`)),
   exists: (p) => fs.existsSync(p),
   isFile: (p) => fs.statSync(p).isFile(),
-  readText: (p) => fs.readFileSync(p, 'utf8'),
-  readBase64: (p) => fs.readFileSync(p).toString('base64'),
-  readBytes: (p) => new Uint8Array(fs.readFileSync(p)),
-  // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）
-  size: (p) => fs.statSync(p).size,
+  readText: (p, max) => readRegular(p, max).toString('utf8'),
+  readBase64: (p, max) => readRegular(p, max).toString('base64'),
+  readBytes: (p, max) => new Uint8Array(readRegular(p, max)),
+  // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）。通常のファイルでなければ NotRegularFileError
+  size: (p) => regularStat(p).size,
   within,
   subset: subsetCss,
   compressAudio,
@@ -164,7 +192,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else {
     const out = opts.out || defaultOut(src);
     let r;
-    try { r = build(src, { ...opts, out }); } catch (e) { if (e.code !== 'build-too-large') throw e; console.error(e.message); process.exit(1); }
+    try { r = build(src, { ...opts, out }); } catch (e) { if (e.code !== 'build-too-large' && e.code !== 'build-not-a-file') throw e; console.error(e.message); process.exit(1); }
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);

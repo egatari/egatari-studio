@@ -410,6 +410,54 @@ try {
     ok(small === 'build-too-large', 'build limits: opts.limits can be lowered (includes: 5 refuses 10 includes)');
     const rbig = build(deckOf('ok', '/*INCLUDE:dep.txt*/'.repeat(12000), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 20000 } });
     ok(rbig.html.length > 0, 'build limits: opts.limits can be raised');
+    // 通常のファイルだけを読む・実際に読んだバイトで数える（format spec §11）。FIFO は開けば止まる：子の process で、期限付きで（止まれば失敗）
+    const child = (code, timeout = 20000) => {
+      const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout });
+      try { return JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { return { m: rr.error && rr.error.code === 'ETIMEDOUT' ? 'hung (timeout)' : 'no result: ' + String(rr.stderr).slice(0, 200) }; }
+    };
+    const buildIn = (file, extra = {}, fn = 'build') => `import { ${fn} } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { await ${fn}(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+    if (process.platform !== 'win32' && spawnSync('mkfifo', ['--help']).error?.code !== 'ENOENT') {
+      const fifo = (f) => { fs.mkdirSync(path.dirname(f), { recursive: true }); spawnSync('mkfifo', [f]); return fs.statSync(f).isFIFO(); };
+      { const f = deckOf('fifo-inc', '/*INCLUDE:pipe.txt*/'); const made = fifo(path.join(path.dirname(f), 'pipe.txt'));
+        const o = child(buildIn(f));
+        ok(made && /^build-not-a-file: /.test(o.m) && o.ms < 5000, `regular files only: a FIFO as an include -> refused at once, no hang (${o.m}; ${o.ms} ms)`); }
+      { const f = themed('fifo-tok', 'ft'); const d = theme(f, 'ft', { 'theme.json': '{}' }); const made = fifo(path.join(d, 'tokens.css'));
+        const o = child(buildIn(f));
+        ok(made && /^build-not-a-file: /.test(o.m) && o.ms < 5000, `regular files only: a FIFO as the theme's tokens.css -> refused at once, no hang (${o.m}; ${o.ms} ms)`); }
+      { const f = deckOf('fifo-aud', ''); const a = path.join(path.dirname(f), 'audio'); const made = fifo(path.join(a, 'p.wav'));
+        fs.writeFileSync(path.join(a, 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file: 'p.wav', dur: 1, cues: [] } } }));
+        fs.writeFileSync(path.join(path.dirname(f), 'narration.md'), '# n\n\n## x\n[0] hello\n');
+        const o1 = child(buildIn(f, { embedAudio: true })), o2 = child(buildIn(f, {}, 'buildPortable'));
+        ok(made && /^build-not-a-file: /.test(o1.m) && /^build-not-a-file: /.test(o2.m), `regular files only: a FIFO as embedded / exported audio -> refused, no hang (${o1.m}; ${o2.m})`); }
+    }
+    // env.size は見積もり：嘘をついても（0）実際に読んだバイトで数え、上限を効かせる。大きさを見た後に大きくなったファイルは断る
+    {
+      const core = await import('../kit/core/build-core.mjs');
+      const lie = { path, readText: () => 'x'.repeat(32), readBase64: () => 'eHh4eHh4eHh4eHh4', size: () => 0 };
+      const b1 = core.buildBudget({ readChars: 4 }); let e1 = null; try { core.chargedEnv(lie, b1).readText('/a'); } catch (e) { e1 = e; }
+      ok(e1 && e1.code === 'build-too-large' && /files read \(32\)/.test(e1.message), `actual bytes: size() says 0 but 32 are read -> charged and refused by the limit 4 (${e1 && e1.message})`);
+      const b2 = core.buildBudget({}); let e2 = null; try { core.chargedEnv(lie, b2).readText('/a'); } catch (e) { e2 = e; }
+      ok(e2 && e2.what === 'changed file' && b2.input === 32, `actual bytes: under a large limit the 32 bytes are still charged (${b2.input}) and the mismatch refused (${e2 && e2.message})`);
+      const noSize = { path, readText: () => 'x'.repeat(32) };
+      const b3 = core.buildBudget({}); core.chargedEnv(noSize, b3).readText('/a');
+      ok(b3.input === 32, `actual bytes: without size() the bytes read are charged (${b3.input})`);
+      // Node：size() が嘘（0）なら、その大きさまでしか読まない（読んでから数えるのでなく、0 バイトを超えたところで断る）
+      const { nodeEnv } = await import('../kit/build.mjs');
+      const f = deckOf('lying', '/*INCLUDE:dep.txt*/', { 'dep.txt': 'y'.repeat(4096) });
+      let e3 = null; try { core.build({ ...nodeEnv, size: (p) => (p.endsWith('dep.txt') ? 0 : nodeEnv.size(p)) }, f, { subset: false }); } catch (e) { e3 = e; }
+      ok(e3 && e3.what === 'changed file', `actual bytes: Node with a lying size() (0) refuses the 4096-byte include (${e3 && e3.message})`);
+      // 大きさを見た後に大きくなる
+      const g = deckOf('growing', '/*INCLUDE:dep.txt*/', { 'dep.txt': 'z'.repeat(100) });
+      let e4 = null; try { core.build({ ...nodeEnv, size: (p) => { const n = nodeEnv.size(p); if (p.endsWith('dep.txt')) fs.appendFileSync(p, 'z'.repeat(1 << 20)); return n; } }, g, { subset: false }); } catch (e) { e4 = e; }
+      ok(e4 && e4.what === 'changed file', `actual bytes: a file growing between size and read -> refused (${e4 && e4.message})`);
+      // 読む間に大きくなる（開いた fd の大きさより多く読める）
+      const { readRegular } = await import('../kit/build.mjs');
+      const gf = path.join(path.dirname(g), 'grow2.txt'); fs.writeFileSync(gf, 'a'.repeat(10));
+      const fd0 = fs.openSync(gf, 'a'); const realFstat = fs.fstatSync;
+      fs.fstatSync = (fd, ...r) => { const st = realFstat(fd, ...r); fs.writeSync(fd0, 'b'.repeat(10)); fs.fstatSync = realFstat; return st; };
+      let e5 = null; try { readRegular(gf, 1000); } catch (e) { e5 = e; } finally { fs.fstatSync = realFstat; fs.closeSync(fd0); }
+      ok(e5 && e5.code === 'read-over', `actual bytes: a file growing while it is read -> refused (${e5 && e5.code})`);
+    }
   }
   fs.rmSync(tmp, { recursive: true, force: true });
 

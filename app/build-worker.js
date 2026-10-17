@@ -20,7 +20,7 @@ const rpc = (op, arg) => new Promise((resolve, reject) => {
   self.postMessage({ rpc: id, gen, op, arg });
 });
 // 作業場所の代わり。req は今の要求の番号（要求のたびに替える。読んだ中身の覚えは作業場所が同じなら残す）
-const proxyWs = (id) => { const w = { kind: 'proxy', req: null, readBytes: (rel) => rpc('read', { ws: id, req: w.req, rel }), list: (o) => rpc('list', { ws: id, req: w.req, o: o || {} }) }; return w; };
+const proxyWs = (id) => { const w = { kind: 'proxy', req: null, readBytes: (rel, o) => rpc('read', { ws: id, req: w.req, rel, max: o && Number.isFinite(o.max) ? o.max : null }), list: (o) => rpc('list', { ws: id, req: w.req, o: o || {} }) }; return w; };
 
 // 表示する文書（信頼する先頭部分 + 組んだデッキ）から決める（main.js の renderedReasons と同じ）
 function rendered(r, pre) {
@@ -36,7 +36,7 @@ self.onmessage = async (e) => {
     if (m.gen !== gen) return;
     const p = pend.get(m.rpcReply); if (!p) return;
     pend.delete(m.rpcReply);
-    if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }));
+    if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }, Number.isFinite(m.error.n) ? { n: m.error.n } : {}));
     return;
   }
   if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p)); return; }

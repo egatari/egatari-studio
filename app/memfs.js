@@ -60,7 +60,11 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
       }
       return { files: out, dirs };
     },
-    async readBytes(rel) { const e = store.get(rel); if (!e) throw notFound(rel); return e.bytes.slice(); },
+    async readBytes(rel, { max = Infinity } = {}) {
+      const e = store.get(rel); if (!e) throw notFound(rel);
+      if (e.bytes.length > max) throw Object.assign(new Error(`${rel}: ${e.bytes.length} bytes is over ${max}`), { code: 'read-over', n: e.bytes.length, max });
+      return e.bytes.slice();
+    },
     async readText(rel) { const e = store.get(rel); return e ? dec.decode(e.bytes) : null; },
     async writeBytes(rel, bytes, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, bytes); if (content(rel)) { dirty = true; revision++; } },
     async writeText(rel, text, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, String(text)); if (content(rel)) { dirty = true; revision++; } },

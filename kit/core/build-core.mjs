@@ -460,25 +460,56 @@ export function buildBudget(limits = {}, start = 0) {
     reset(n) { used = n; },
   };
 }
+// 通常のファイルでないもの（FIFO・デバイス・ソケット）を読もうとした（env.size か読み取りが投げる。読まずに断る。format spec §11）
+export class NotRegularFileError extends Error {
+  constructor(p) { super(`build: ${p} is not a regular file (FIFO, device or socket); refusing to read it`); this.name = 'NotRegularFileError'; this.code = 'build-not-a-file'; }
+}
+// 読み取りが、許された大きさ（max バイト）を超えた（env の読み取りが投げる。n は超えたと分かった大きさ）。chargedEnv が上限か「変わった」の知らせに替える
+export class ReadOverError extends Error {
+  constructor(n, max) { super(`read over ${max} bytes`); this.name = 'ReadOverError'; this.code = 'read-over'; this.n = n; this.max = max; }
+}
+// 大きさを読んだ後に、ファイルが大きくなった（読む前の大きさより多く読めた）
+export class FileChangedError extends Error {
+  constructor(p, was, now) { super(`build: ${p} changed while reading (${was} bytes before, ${now} read); refusing to build`); this.name = 'FileChangedError'; this.code = 'build-too-large'; this.what = 'changed file'; }
+}
 // env の読み取り（readText・readBase64・readBytes）のたびに bud.read で数える。env.size(p) があれば読む前に（大きすぎるものは読まずに断る）、
-// なければ読んだ直後・使う前に数える。同じ bud で包んだ env はそのまま返す
+// 読んだ後にも実際の大きさで数え直す（数えるのは max(読む前の大きさ, 実際の大きさ)。env.size は見積もりで、嘘をつくことも、読むまでに
+// ファイルが大きくなることもある）。読む前の大きさより多く読めたら、上限の内でも断る（FileChangedError）。
+// 読み取りには、読んでよい大きさ（バイト。大きさが分かればそれ、分からなければ残りの上限）を 2 つ目の引数で渡す：Node の env はそれを超えて
+// 読まない（ReadOverError）。env.size が NotRegularFileError を投げたら（FIFO など）読まずに断る。同じ bud で包んだ env はそのまま返す
 const CHARGED = Symbol('charged');
 export function chargedEnv(env, bud) {
   if (env[CHARGED] === bud) return env;
   const sizeOf = (p) => {
     if (typeof env.size !== 'function') return null;
-    let n; try { n = env.size(p); } catch { return null; }
+    let n; try { n = env.size(p); } catch (e) { if (e && e.code === 'build-not-a-file') throw e; return null; }
     return Number.isFinite(n) && n >= 0 ? n : null;
   };
-  // 読む前：大きさが分かれば回数と大きさを数える（base64 は 4/3 倍）。分からなければ回数だけ数え、読んだ後に大きさを足す
-  const before = (p, b64) => { const n = sizeOf(p); bud.read(n === null ? 0 : b64 ? Math.ceil(n / 3) * 4 : n); return n !== null; };
+  const room = () => Math.max(0, bud.L.readChars - bud.input);
+  // kind：'text'（実際の大きさは字数。字数はバイト数より大きくならない：バイト数で読まない env を数え直すための下限。Node と編集アプリの env は
+  // max をバイトで守る）・'b64'（base64 の字数）・'bytes'
+  const read = (p, kind, fn) => {
+    const n = sizeOf(p), b64 = kind === 'b64';
+    const est = n === null ? 0 : b64 ? Math.ceil(n / 3) * 4 : n;
+    bud.read(est);
+    const max = n !== null ? n : b64 ? Math.floor(room() / 4) * 3 : room();
+    let v;
+    try { v = fn(p, max); } catch (e) {
+      if (!e || e.code !== 'read-over') throw e;
+      if (n !== null) throw new FileChangedError(p, n, e.n);
+      throw new BuildLimitError('files read', bud.input + (b64 ? Math.ceil(e.n / 3) * 4 : e.n), bud.L.readChars);
+    }
+    const len = v.length;
+    if (len > est) { bud.charge(len - est); if (n !== null) throw new FileChangedError(p, n, b64 ? Math.floor(len / 4) * 3 : len); }
+    return v;
+  };
   const w = Object.create(env);
   Object.defineProperty(w, CHARGED, { value: bud });
-  w.readText = (p) => { const known = before(p, false); const t = env.readText(p); if (!known) bud.charge(t.length); return t; };
-  w.readBase64 = (p) => { const known = before(p, true); const t = env.readBase64(p); if (!known) bud.charge(t.length); return t; };
-  if (typeof env.readBytes === 'function') w.readBytes = (p) => { const known = before(p, false); const b = env.readBytes(p); if (!known) bud.charge(b.length); return b; };
-  // 読む前に数えるだけ（env.compressAudio のように、env の外で読むもの）
-  w.precharge = (p) => { before(p, false); };
+  w.readText = (p) => read(p, 'text', (q, m) => env.readText(q, m));
+  w.readBase64 = (p) => read(p, 'b64', (q, m) => env.readBase64(q, m));
+  if (typeof env.readBytes === 'function') w.readBytes = (p) => read(p, 'bytes', (q, m) => env.readBytes(q, m));
+  // 読む前に数えるだけ（env.compressAudio のように、env の外で読むもの）。通常のファイルでなければ断る
+  w.precharge = (p) => { const n = sizeOf(p); bud.read(n === null ? 0 : n); };
   // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
   if (typeof env.subset === 'function') w.subset = (t) => { const r = env.subset(t); if (r && typeof r.css === 'string') bud.read(r.css.length); return r; };
   return w;
@@ -491,9 +522,10 @@ export function build(env0, srcPath, opts = {}) {
   const P = env0.path, KIT = env0.KIT, ROOT = env0.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
   // 読むものはすべて 1 つの数え方（回数と読んだ大きさの合計）に、読む前に数える（chargedEnv）
-  const budget = buildBudget(opts.limits, 0), LIM = budget.L;
+  // opts.budget：呼び手（持ち運べる形式の書き出し）と共有する数え方（組み立てと書き出しで 1 つ）
+  const budget = opts.budget || buildBudget(opts.limits, 0), LIM = budget.L;
   const env = chargedEnv(env0, budget);
-  { const n = typeof env0.size === 'function' ? env0.size(srcPath) : null;
+  { let n = null; if (typeof env0.size === 'function') { try { n = env0.size(srcPath); } catch (e) { if (e && e.code === 'build-not-a-file') throw e; } }
     if (Number.isFinite(n) && n > LIM.sourceChars * 4) throw new BuildLimitError('source', n, LIM.sourceChars); }   // UTF-8 は 1 字 4 バイトまで
   const raw = env.readText(srcPath);
   budget.reset(raw.length);
