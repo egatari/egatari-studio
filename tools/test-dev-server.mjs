@@ -456,6 +456,31 @@ await (async () => {
       ok(r.status === 403 && fs.readFileSync(path.join(d, 'narr-real.md'), 'utf8') === was && fs.lstatSync(path.join(d, 'narration.md')).isSymbolicLink(), 'symlink: but a save through that link is refused (' + r.status + ')');
     } finally { S.srv.kill(); }
   }
+  // 見張りは原稿のフォルダの実体の中のフォルダだけ：外を指すリンクの audio/・data/ は見張らず（一度だけ知らせる）、外での変更で組み直さない
+  {
+    mkOutside();
+    const oa = path.join(symRoot, 'outside-audio'), od = path.join(symRoot, 'outside-data');
+    for (const x of [oa, od]) { fs.rmSync(x, { recursive: true, force: true }); fs.mkdirSync(x, { recursive: true }); }
+    fs.writeFileSync(path.join(oa, 'manifest.json'), '{"segments":{}}\n'); fs.writeFileSync(path.join(od, 'v.json'), '{}\n');
+    // 組み立てのたびに出る知らせ（外部の画像）で、組み直しを数える（外の中身は組み立てが読まないので、出力は変わらない）
+    const d = mkDeck('deck-watch', (x) => { fs.rmSync(path.join(x, 'audio'), { recursive: true, force: true }); fs.symlinkSync(oa, path.join(x, 'audio')); fs.symlinkSync(od, path.join(x, 'data'));
+      const f = path.join(x, 'deck.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('</section>', '<img alt="" src="https://example.invalid/watch-probe.png"></section>')); });
+    const builds = (t) => t.split('watch-probe.png').length - 1;
+    const S = start(path.join(d, 'deck.html'));
+    try {
+      await S.base;
+      await new Promise((r) => setTimeout(r, 800));
+      ok(/not watching audio: it is a symbolic link/.test(S.log) && /not watching data: it is a symbolic link/.test(S.log) && S.log.split('not watching audio').length === 2, 'watch: symlinked audio/ and data/ are not watched (warned once each)');
+      const at = S.log.length;
+      for (let i = 0; i < 3; i++) { fs.writeFileSync(path.join(oa, 'manifest.json'), `{"segments":{},"n":${i}}\n`); fs.writeFileSync(path.join(od, 'v.json'), `{"n":${i}}\n`); fs.writeFileSync(path.join(oa, `x${i}.wav`), 'x'); await new Promise((r) => setTimeout(r, 300)); }
+      await new Promise((r) => setTimeout(r, 1200));
+      ok(builds(S.log.slice(0, at)) >= 1 && builds(S.log.slice(at)) === 0 && !/rebuilt/.test(S.log.slice(at)), `watch: changes in the outside folders behind the links cause no rebuild (${builds(S.log.slice(at))} builds after the changes)`);
+      // 対照：原稿のフォルダの中の変更では組み直す
+      fs.appendFileSync(path.join(d, 'narration.md'), '\n## 追加の節\n[0] 見張りの対照。\n');
+      const t0 = Date.now(); while (!/rebuilt/.test(S.log.slice(at)) && Date.now() - t0 < 8000) await new Promise((r) => setTimeout(r, 100));
+      ok(/rebuilt/.test(S.log.slice(at)) && builds(S.log.slice(at)) >= 1, 'watch: a change inside the deck folder still rebuilds');
+    } finally { S.srv.kill(); }
+  }
   // 普通のフォルダでは、控えの掃除が控えの名前の普通のファイルだけを消し、ほかのもの（名前の違うもの・リンク）を残す
   {
     mkOutside();

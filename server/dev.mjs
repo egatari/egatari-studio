@@ -168,8 +168,22 @@ function deckRelevant(rel) {
   if (rel === 'audio/manifest.json') return true;
   return /^(data|figs|components)(\/|$)/.test(rel);
 }
+// 原稿のフォルダの見張りは、原稿のフォルダの実体（DIR_REAL）の中のフォルダだけ。リンク（外を指す・中を指すどちらも）や、実体が DIR_REAL の
+// 外にあるフォルダは見張らない（一度だけ知らせる）。外のフォルダの変更で組み直しを繰り返させない
+function deckWatchDir(rel) {
+  const dir = rel ? path.join(DIR_REAL, rel) : DIR_REAL;
+  let st;
+  try { st = fs.lstatSync(dir); } catch { return null; }
+  let real = null;
+  try { real = fs.realpathSync(dir); } catch { /* 下で断る */ }
+  if (!st.isDirectory() || st.isSymbolicLink() || real !== dir) {
+    console.warn(`  ⚠ not watching ${rel || '.'}: it is ${st.isSymbolicLink() ? 'a symbolic link' : 'not a folder inside the deck folder'} (changes there do not rebuild)`);
+    return null;
+  }
+  return dir;
+}
 function watch(dir, filter, onKit) {
-  if (!fs.existsSync(dir)) return;
+  if (!dir || !fs.existsSync(dir)) return;
   try {
     fs.watch(dir, { recursive: true }, (_ev, name) => {
       if (filter && !filter(name)) return;
@@ -181,18 +195,18 @@ function watch(dir, filter, onKit) {
 // 原稿のフォルダの直下と audio/ は、フォルダそのものを見張る（recursive にしない）。Linux の recursive はファイルごとの見張りで、
 // 保存（一時ファイルに書いて rename で入れ替える）でファイルの実体が替わると、その後の変更に気づかなくなる（v0.2.3 と同じ直し）
 function watchDir(dir, filter) {
-  if (!fs.existsSync(dir)) return;
+  if (!dir) return;
   try {
     fs.watch(dir, (_ev, name) => {
-      const rel = path.relative(DIR, path.join(dir, String(name || '')));
+      const rel = path.relative(DIR_REAL, path.join(dir, String(name || '')));
       if (filter && !filter(rel)) return;
       schedule(rel || path.basename(dir));
     });
   } catch (e) { console.warn('watch failed: ' + dir + ' ' + e.message); }
 }
-watchDir(DIR, deckRelevant);
-watchDir(path.join(DIR, 'audio'), deckRelevant);
-for (const d of ['data', 'figs', 'components']) watch(path.join(DIR, d), (name) => deckRelevant(path.join(d, String(name || ''))));
+watchDir(deckWatchDir(''), deckRelevant);
+watchDir(deckWatchDir('audio'), deckRelevant);
+for (const d of ['data', 'figs', 'components']) watch(deckWatchDir(d), (name) => deckRelevant(path.join(d, String(name || ''))));
 for (const d of ['kit', 'components', 'themes']) {
   const abs = path.join(ROOT, d);
   if (abs === DIR || DIR.startsWith(abs + path.sep)) continue;
