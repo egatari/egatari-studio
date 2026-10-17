@@ -16,6 +16,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
+import { RUNTIME_FORMAT } from './format.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
@@ -31,7 +32,7 @@ const attr = (n, name) => (n.attrs || []).find((a) => a.name === name)?.value;
 const hasClass = (n, c) => (attr(n, 'class') || '').split(/\s+/).includes(c);
 
 // 原稿に data-key（常に）と data-src（開発時）を書き足す。挿入は後ろから行い、位置をずらさない
-// スライドの鍵（Etoki 1.0 §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
+// スライドの鍵（format spec §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
 // 鍵が重なる原稿は正しくない（検査器がエラーにする。analyzeSlideIds）が、組めるように、明示の id / data-key が重なれば警告して「#n」を付け、
 // 見出しや番号から作る鍵は、明示の鍵とも「#n」付きの鍵とも重ならないようにする。書き換えた鍵は data-key に書く
 export function annotate(src, dev, warn = []) {
@@ -97,7 +98,7 @@ function plainTitle(s) { return s.replace(/<br\s*\/?>/g, ' ').replace(/<[^>]*>/g
 function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
 // ---------------------------------------------------------------- スライドの id と鍵の検査（検査器・npm run ids が使う）
-// 原稿（deck.html の元の文字列）→ {slides:[{index, id, key, heading, line}], docIds: Map<id, 何か>, problems:[{sev, slide, msg}]}
+// 原稿（deck.html の元の文字列）→ {slides:[{index, id, key, rule, heading, line}], docIds: Map<id, 何か>, problems:[{sev, slide, msg}]}
 //   slides[].key は build と同じ規則の鍵（重なっても「#n」を付けない元の鍵）
 //   docIds：スライドの section 以外の要素の id 属性と、式の \htmlId{…}（注目の演出の目印）。スライドの id と同じ名前空間
 //   problems：id の書式の誤り・鍵の重なり・id とほかの id の衝突（どれも error）
@@ -112,7 +113,10 @@ export function analyzeSlideIds(src) {
       const h = findFirst(n, (x) => x.tagName === 'h2' || x.tagName === 'h1');
       const id = attr(n, 'id');
       const off = n.sourceCodeLocation ? n.sourceCodeLocation.startOffset : 0;
-      slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || attr(n, 'data-key') || (h ? normalizeKey(inner(src, h)) : '') || `s${slides.length + 1}`,
+      // rule：鍵をどの規則で決めたか（id / data-key / heading / index）。data-key と index（s<n>）は旧来の規則（検査器が警告する）
+      const dk = attr(n, 'data-key'), hk = h ? normalizeKey(inner(src, h)) : '';
+      const rule = id ? 'id' : dk ? 'data-key' : hk ? 'heading' : 'index';
+      slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,
         heading: h ? headingText(inner(src, h)) : '', line: lineOf(off), start: off });
       return;
     }
@@ -468,11 +472,19 @@ export function build(env, srcPath, opts = {}) {
       const file = P.resolve(deckDir, 'audio', v.file);
       if (!env.exists(file)) continue;
       if (!inDeck(file)) { warn.push(`refused: audio/manifest.json の「${v.file}」は原稿のフォルダの外にある（使わない）`); continue; }
+      // opts.audioRef(key, file, entry)：持ち運べる形式の書き出し（kit/core/portable.mjs）が音声の参照（<scheme><blob>）を決める。null なら入れない
+      if (opts.audioRef) {
+        const src = opts.audioRef(k, file, v);
+        if (src == null) continue;
+        audio[k] = { src, dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
+        if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
+        continue;
+      }
       audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.cues || [] };
     }
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');
-  const j = (id, o) => `<script type="application/json" id="${id}">${JSON.stringify(o).replace(/<\//g, '<\\/')}</script>`;
+  const j = jsonScript;
 
   // CSS と JS を組み込む
   const kcss = katexCss(env);
@@ -489,9 +501,10 @@ export function build(env, srcPath, opts = {}) {
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scripts = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
-    j('deck-meta', { version: env.version }),
+    j('deck-meta', opts.deckMeta || { version: env.version }),
     needKatexJs ? `<script>${read(env.katexDir, 'katex.min.js')}\nkatex.__macros=${JSON.stringify(macros)};</script>` : '',
-    `<script>\n${read(KIT, 'deck.js')}\n</script>`,
+    // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT).replace(/</g, '\\u003c')};\n${read(KIT, 'deck.js')}\n</script>`,
     `<script>\n${read(KIT, 'presenter.js')}\n</script>`,
     `<script>\n${read(KIT, 'tools.js')}\n</script>`,
     compJs ? `<script>${compJs}\n</script>` : '',
@@ -502,9 +515,14 @@ export function build(env, srcPath, opts = {}) {
   const bodyAt = html.indexOf('<body'), mScript = html.slice(bodyAt).search(/<script(?![^>]*type="application\/json")/);
   const firstScript = mScript >= 0 ? bodyAt + mScript : -1;
   const at = firstScript >= 0 && firstScript < bodyClose ? firstScript : bodyClose;
-  html = html.slice(0, at) + scripts + '\n' + html.slice(at);
+  // opts.runtimePrefix：実行系の前に入れる文字列（持ち運べる形式の書き出しが、読める層・索引・塊をここに入れる。実行系が読む前に DOM にあるように）
+  html = html.slice(0, at) + (opts.runtimePrefix || '') + scripts + '\n' + html.slice(at);
 
   return { html, stats: { math: count, slides: slides.length, components: used, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName }, slides, segs };
+}
+// 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
+export function jsonScript(id, o) {
+  return `<script type="application/json" id="${id}">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 }
 // {mark:ID} の目印（id="ID" か data-mark="ID"）がそのスライドにあるか。効果の名前が正しいか
 function checkMarks(html, segs, warn) {
