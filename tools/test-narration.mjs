@@ -8,10 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { parseNarration, segDigest, joinLines, marksMap, narrationMap, splitKey, parseHeading, normalizeKey, newSlideId, isSlideId,
   rewriteNarration, rawTurns, headingLine } from '../kit/narration.mjs';
 import { annotate, analyzeSlideIds } from '../kit/build.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // 形式の仕様（format spec）の試験用の入力と正解（narration.md・expected.json）の置き場所。ここだけを直せば移せる
-const SPEC_INPUT_HASH = path.join(ROOT, 'vendor', 'format-spec', 'fixtures', 'input-hash');
+const SPEC_INPUT_HASH = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'), 'fixtures', 'input-hash');
 
 let n = 0;
 const ok = (name, f) => { f(); n++; console.log(`  ok ${name}`); };
@@ -177,8 +178,8 @@ ok('拡張の行：CRLF でも読め、書き換えで位置・中身・改行�
   assert.deepEqual(rawTurns(src, 'A', '0').turns, [{ role: 'expert', text: 'one' }, { role: 'novice', text: 'two' }]);
 });
 
-// ---------------------------------------------------------------- vendor/format-spec/fixtures/input-hash（鍵と inputHash）
-ok('vendor/format-spec/fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
+// ---------------------------------------------------------------- <仕様の写し>/fixtures/input-hash（鍵と inputHash）
+ok('仕様の写しの fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
   const dir = SPEC_INPUT_HASH;
   const expected = JSON.parse(fs.readFileSync(path.join(dir, 'expected.json'), 'utf8'));
   const segs = parseNarration(fs.readFileSync(path.join(dir, 'narration.md'), 'utf8'));

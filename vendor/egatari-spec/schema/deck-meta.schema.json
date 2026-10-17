@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://egatari.org/schema/deck-meta.schema.json",
+  "title": "Egatari 1.0 runtime metadata (#deck-meta)",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "contracts",
+    "generator",
+    "docId",
+    "title",
+    "lang",
+    "portable",
+    "tracking"
+  ],
+  "properties": {
+    "format": {
+      "const": "egatari"
+    },
+    "version": {
+      "$ref": "egatari-index.schema.json#/properties/version"
+    },
+    "contracts": {
+      "$ref": "egatari-index.schema.json#/properties/contracts"
+    },
+    "generator": {
+      "$ref": "egatari-index.schema.json#/properties/generator"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "portable": {
+      "type": "boolean"
+    },
+    "docId": {
+      "$ref": "egatari-index.schema.json#/properties/docId"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lang": {
+      "$ref": "egatari-metadata.schema.json#/properties/lang"
+    },
+    "completion": {
+      "$ref": "egatari-metadata.schema.json#/properties/completion"
+    },
+    "tracking": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "license": {
+      "type": "string"
+    },
+    "copyright": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
+    }
+  },
+  "if": {
+    "properties": {
+      "portable": {
+        "const": true
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "sourceSha256"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 // 持ち運べる 1 ファイル（format spec。kit/core/portable.mjs）の試験
 //   node tools/test-portable.mjs [作業フォルダ]
-// 1. vendor/format-spec の Schema（ajv。ネットワークは使わない）と、依存のない検査器（validateIndex）が、仕様の試験用の索引で同じ判定をする
+// 1. 仕様の写し（FORMAT.VENDOR_DIR）の Schema（ajv。ネットワークは使わない）と、依存のない検査器（validateIndex）が、仕様の試験用の索引で同じ判定をする
 // 2. パスの規則・重複を断る JSON・上限の順
 // 3. 往復：フォルダ → 1 ファイル → 展開 → フォルダで、原稿のバイト・音声のバイト・docId が同じ。もう一度まとめると同じファイル・同じ sourceSha256。
 //    展開したフォルダを組むと同じ HTML。外すもの（comments.json・.cache・out/・使わない音声）と voice.json の伏せ字
@@ -23,7 +23,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const SPEC = path.join(ROOT, 'vendor', 'format-spec');
+const SPEC = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-portable-'));
 fs.rmSync(work, { recursive: true, force: true });
 fs.mkdirSync(work, { recursive: true });
@@ -36,7 +36,7 @@ const rejects = async (p, code) => { try { await p; } catch (e) { assert.equal(e
 const ajv = new Ajv({ allErrors: true, strict: false, loadSchema: () => { throw new Error('no network'); } });
 for (const f of fs.readdirSync(path.join(SPEC, 'schema'))) ajv.addSchema(JSON.parse(fs.readFileSync(path.join(SPEC, 'schema', f), 'utf8')));
 const schema = (name) => { const v = ajv.getSchema(FORMAT.SCHEMA_BASE + name + '.schema.json'); assert.ok(v, `schema ${name} not found by $id ${FORMAT.SCHEMA_BASE}${name}.schema.json`); return v; };
-const vIndex = schema(`${FORMAT.NAME}-index`), vMeta = schema('deck-meta'), vAudio = schema('deck-audio');
+const vIndex = schema(`${FORMAT.SCHEMA_PREFIX}index`), vMeta = schema('deck-meta'), vAudio = schema('deck-audio');
 const plainJson = (o) => JSON.parse(JSON.stringify(o));   // 原型のない object を ajv に渡す前にふつうの object に
 const schemaOk = (v, o, what) => { assert.ok(v(plainJson(o)), `${what}: ${JSON.stringify(v.errors?.slice(0, 3))}`); };
 

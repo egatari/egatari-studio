@@ -1,0 +1,33 @@
+# Egatari conformance fixtures
+
+| Directory | Content | Status |
+|---|---|---|
+| `index/valid/`, `index/invalid/` | index JSON documents; every `invalid/` file must be rejected by the schemas | present |
+| `input-hash/` | `narration.md` and `expected.json` with the canonical string and `inputHash` per step (§5.4) | present |
+| `documents/` | complete `.ega.html` files (see below) | to be produced with the reference implementation (slice 2) |
+
+## Planned document fixtures
+
+Each fixture is a small `.ega.html` file and a `expect.json` describing what a conforming reader must do.
+
+| Name | Purpose | Expected reader behavior |
+|---|---|---|
+| `minimal-play-only` | runtime layer only | plays; editor reports "no source" and offers nothing to edit |
+| `minimal-portable-core` | 2 slides, 1 narrated step with MP3, Core profile | plays offline from `file://`; editor opens it, tier A edit re-exports with untouched bytes identical |
+| `portable-extended` | one embedded component | editor warns before opening, runs the component only in the sandbox |
+| `legacy-heading-keys` | no slide ids | keys by heading text; migration assigns ids |
+| `aac-legacy-audio` | AAC audio record | plays; re-export keeps the AAC bytes |
+| `stale-audio` | narration changed after synthesis | editor marks the step stale, keeps the audio |
+| `recorded-unsynced` | `kind:"recorded"`, `sync:"none"` | player uses unsynchronized timing; CLI does not overwrite |
+| `script-breakout` | source containing `</script>` and `<!--` | round-trips byte-identically |
+| `bad-index-hash` | `data-sha256` mismatch | editor refuses; player still plays |
+| `bad-blob-hash` | one blob corrupted | editor refuses |
+| `missing-chunk` | chunk listed but absent | editor refuses |
+| `path-traversal` | `files` key `../x`, `CON.txt`, case collision | editor refuses before building any workspace |
+| `future-major` | `version.major = 2` | editor refuses with an upgrade message; player plays; source extraction offered |
+| `unknown-required-feature` | `requires: ["something-v9"]` | editor refuses; player plays |
+| `unknown-optional-member` | extra member in index | editor preserves it through a tier A edit |
+| `canary-script` | runtime layer sets a global when executed | importing into the editor never sets it |
+| `source-mismatch` | `deck-meta.sourceSha256` ≠ index | editor warns and disallows tier A |
+| `oversize` | index > 4 MiB | editor refuses before allocation |
+| `scorm12-package` | the SCORM 1.2 ZIP of `minimal-portable-core` | `index.html` is byte-identical to the source file; manifest validates |

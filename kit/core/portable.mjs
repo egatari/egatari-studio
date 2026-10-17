@@ -4,7 +4,7 @@
 //   exportPortable(env, deck.html, opts)  組み立て（build-core）の読み込みを記録して依存の閉包を取り、持ち運べる 1 ファイルの文字列を作る
 //   readPortable(text | bytes, opts)    文字列として読む（何も実行しない）。索引・ハッシュ・塊・上限・パスを検査し、メモリ上のフォルダを返す
 //   playOnly(text)                     再生専用の派生（§3.7）：索引と、実行系が参照しない塊を除く
-//   validateIndex(index)               索引の形（vendor/format-spec/schema と同じ規則。依存なし）→ エラーの配列
+//   validateIndex(index)               索引の形（仕様の写し（FORMAT.VENDOR_DIR）の schema と同じ規則。依存なし）→ エラーの配列
 //   checkArchivePaths(paths)           パスの規則（§3.3）→ エラーの配列
 //   parseJsonStrict(text, opts)        同じ名前の重複を断る JSON の解析（原型のない object を作る）
 //
@@ -106,7 +106,7 @@ export const RE = Object.freeze({
   voice: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
   tag: /^[a-z][a-z0-9]*-[a-z0-9-]+$/,
   extName: /^[a-z][a-z0-9]{0,31}$/,
-  // vendor/format-spec/schema の metadata の lang と同じ（BCP 47 の近似）
+  // 仕様の写しの schema の metadata の lang と同じ（BCP 47 の近似）
   lang: /^(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[Xx](?:-[A-Za-z0-9]{1,8})+)?|[Xx](?:-[A-Za-z0-9]{1,8})+|[Ii]-[A-Za-z]+)$/,
 });
 // 音声の塊に許す MIME（§5.1 と、残すだけのもの）
@@ -238,7 +238,7 @@ export function parseJsonStrict(text, { maxMembers = LIMITS.members, maxDepth = 
   return v;
 }
 
-// ---------------------------------------------------------------- 索引の検査（vendor/format-spec/schema と同じ規則、依存なし）
+// ---------------------------------------------------------------- 索引の検査（仕様の写し（FORMAT.VENDOR_DIR）の schema と同じ規則、依存なし）
 export function validateIndex(ix) {
   const e = [];
   const need = (o, keys, where) => { for (const k of keys) if (!own(o, k)) e.push(`${where}: missing "${k}"`); };
@@ -425,7 +425,7 @@ function completionCheck(c, w, e) {
   if (own(c, 'visitedFraction') && !(typeof c.visitedFraction === 'number' && c.visitedFraction > 0 && c.visitedFraction <= 1)) e.push(`${w}.visitedFraction: not in (0, 1]`);
   if (own(c, 'reachedEnd') && c.reachedEnd !== true) e.push(`${w}.reachedEnd: not true`);
 }
-// 実行系の deck-meta（vendor/format-spec/schema/deck-meta.schema.json）
+// 実行系の deck-meta（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-meta.schema.json）
 export function validateDeckMeta(m) {
   const e = [];
   if (!isObj(m)) return ['deck-meta: not an object'];
@@ -445,7 +445,7 @@ export function validateDeckMeta(m) {
   for (const k of ['license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`deck-meta.${k}: not a string`);
   return e;
 }
-// 実行系の deck-audio（vendor/format-spec/schema/deck-audio.schema.json）
+// 実行系の deck-audio（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-audio.schema.json）
 export function validateDeckAudio(a) {
   const e = [];
   if (!isObj(a)) return ['deck-audio: not an object'];
