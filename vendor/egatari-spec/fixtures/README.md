@@ -30,4 +30,8 @@ Each fixture is a small `.ega.html` file and a `expect.json` describing what a c
 | `canary-script` | runtime layer sets a global when executed | importing into the editor never sets it |
 | `source-mismatch` | `deck-meta.sourceSha256` ≠ index | editor warns and disallows tier A |
 | `oversize` | index > 4 MiB | editor refuses before allocation |
+| `mislabelled-core-script` | `profile: core` but an archived file has `<script>` | editor treats as Extended (asks before running code) or rejects |
+| `event-handler-only` | code only in an `onerror` attribute | detected as code |
+| `mislabelled-core-onerror` | `profile: core` with an `onerror` handler | as `mislabelled-core-script` |
+| `logical-size` | 3000 paths sharing one 32 MiB blob | editor refuses before per-path allocation |
 | `scorm12-package` | the SCORM 1.2 ZIP of `minimal-portable-core` | `index.html` is byte-identical to the source file; manifest validates |
