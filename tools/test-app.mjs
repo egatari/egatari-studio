@@ -21,6 +21,7 @@ import { readPortable, isStale, scanDocument, replaceIndexText } from '../kit/co
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav } from './portable-fixtures.mjs';
+import { hostileFiles, PWNED } from './hostile-deck.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -88,10 +89,11 @@ const browser = await launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP' });
 const page = await ctx.newPage();
 const errs = [];
+let hostileQuiet = false;   // 書き込みを試みるデッキの試験の間は、決まり（CSP）に止められた知らせを数えない（止められることを確かめている）
 const watch = (p, tag) => {
   p.on('pageerror', (e) => errs.push(`${tag} pageerror: ${e.message}`));
   // 衝突の確認（409）とポップアップの許可は意図したもの
-  p.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text())) errs.push(`${tag} console: ${m.text()}`); });
+  p.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text()) && !(hostileQuiet && /Content Security Policy|Refused to|Failed to fetch|ERR_/.test(m.text()))) errs.push(`${tag} console: ${m.text()}`); });
 };
 watch(page, 'main');
 
@@ -118,7 +120,7 @@ async function frameReady(timeout = 20000) {
     const f = deckFrame();
     // 今の読み込み（アプリの loads）の画面が組み上がるまで待つ（前の画面を掴まない）
     const want = await page.evaluate(() => window.__APP_TEST.state().loads);
-    try { if (f && await f.evaluate((w) => !!(window.DECK && DECK.ready && window.__DECK_DEV_TRANSPORT && window.__APP_LOAD === w), want)) return f; } catch { /* 読み込み中 */ }
+    try { if (f && await f.evaluate((w) => !!(window.DECK && DECK.ready && window.DECK_DEV && window.__APP_LOAD === w), want)) { await page.waitForTimeout(120); return f; } } catch { /* 読み込み中 */ }
     if (Date.now() - t0 > timeout) throw new Error('deck frame not ready');
     await page.waitForTimeout(100);
   }
@@ -184,15 +186,17 @@ try {
   const nodeDev = build(path.join(SRC, 'deck.html'), { dev: true }).html;
   ok(appDev === nodeDev, 'build: dev build (data-src) is byte-identical to Node' + firstDiff(appDev, nodeDev));
 
-  // ---------------------------------------------------------------- 3. 原稿の編集
+  // ---------------------------------------------------------------- 3. 原稿の編集（プレビューは知らせるだけ。欄はアプリのページに出る）
   await f.evaluate(() => DECK.go(2, 3, false));
   await page.click('#b-edit');
-  ok(await f.evaluate(() => document.documentElement.classList.contains('dev-edit')), 'edit: toolbar button turns on edit mode');
+  await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
+  ok(true, 'edit: toolbar button turns on edit mode');
   const li = f.locator('#stage .slide.active li[data-step="2"]');
   await li.dblclick();
-  await f.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
-  const ta = f.locator('#dev-editor textarea');
-  ok((await ta.inputValue()).includes('学習率'), 'edit: editor shows the raw source');
+  await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+  const ta = page.locator('#dev-editor textarea');
+  ok((await ta.inputValue()).includes('学習率'), 'edit: the editor (in the app page, outside the preview) shows the raw source');
+  ok(!(await f.$('#dev-editor')), 'edit: no editor inside the preview');
   await ta.fill('\\(\\eta>0\\)：<b>学習率</b>（アプリで編集）');
   await shot(page, 'editing.png');
   n = await loads();
@@ -205,42 +209,77 @@ try {
   ok(await f.evaluate(() => document.querySelector('#stage .slide.active li[data-step="2"]').textContent.includes('アプリで編集')), 'edit: preview shows the new text');
   const backups = await opfs.list('.cache/edits');
   ok(backups.length === 1 && backups[0].endsWith('-deck.html'), 'edit: backup in .cache/edits/');
-  // 古い hash での保存は 409
-  const conflict = await f.evaluate(() => window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/edit', { range: '0-5', h: 'deadbeef', text: 'x' }));
-  ok(conflict._status === 409, 'edit: stale hash is rejected (409)');
+  // 書きかけのあいだに外で原稿が変わった → 保存は 409（入力は残る）
+  await f.locator('#stage .slide.active li[data-step="3"]').dblclick();
+  await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+  await page.fill('#dev-editor textarea', '書きかけ');
+  n = await loads();
+  const deckExt = deck1.replace('<h2>更新の式</h2>', '<h2>更新の式（外で）</h2>');
+  await opfs.write('deck.html', deckExt);
+  f = await waitLoads(n, 10000);
+  ok((await page.inputValue('#dev-editor textarea')) === '書きかけ', 'edit conflict: the open editor keeps unsaved input across the reload');
+  await page.press('#dev-editor textarea', 'Meta+Enter');
+  await page.waitForSelector('#dev-editor .dev-msg.dv-err');
+  ok(/原稿が変わっています/.test(await page.textContent('#dev-editor .dev-msg')) && (await opfs.read('deck.html')) === deckExt, 'edit conflict: stale hash is rejected (409), shown in the editor, file untouched');
+  await page.press('#dev-editor textarea', 'Escape');
+  n = await loads();
+  await opfs.write('deck.html', deck1);
+  f = await waitLoads(n, 10000);
 
-  // ---------------------------------------------------------------- 4. 口述原稿
-  await page.keyboard.press('e');   // 編集モードを切る（フォーカスはデッキ）
+  // ---------------------------------------------------------------- 4. 口述原稿（narration.md を CRLF にして、書き戻しが CRLF のままか）
+  // （改行だけの違いは組み立ての結果を変えないので、プレビューは読み込み直さない。組み直しを待つ）
+  const b0 = await page.evaluate(() => window.__APP_TEST.state().builds);
+  await opfs.write('narration.md', (await opfs.read('narration.md')).replace(/\r?\n/g, '\r\n'));
+  await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: 10000 });
+  await f.locator('body').press('e');   // 編集モードを切る（デッキで押した e は知らせとしてアプリに届く）
+  await page.waitForFunction(() => !window.__APP_TEST.ui().edit);
+  ok(!(await f.evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'edit: e pressed in the preview turns edit mode off (forwarded hint)');
   await f.evaluate(() => DECK.go(1, 0, false));
   await page.click('#b-narr');
-  await f.waitForSelector('#dev-narr .dev-turn textarea');
-  const nta = f.locator('#dev-narr .dev-turn textarea').first();
+  await page.waitForSelector('#dev-narr .dev-turn textarea');
+  const nta = page.locator('#dev-narr .dev-turn textarea').first();
   await nta.fill('アプリから書き直した口述原稿です。');
+  await page.click('#dev-narr button:has-text("発言を足す")');
+  await page.locator('#dev-narr .dev-turn textarea').last().fill('足した発言です。');
   await shot(page, 'narration.png');
   n = await loads();
-  await f.click('#dev-narr .dv-foot button.dv-pri');
+  await page.click('#dev-narr .dv-foot button.dv-pri');
   f = await waitLoads(n);
   const narr1 = await opfs.read('narration.md');
-  ok(narr1.includes('アプリから書き直した口述原稿です。'), 'narration: narration.md changed');
+  ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
+  ok(!/(^|[^\r])\n/.test(narr1), 'narration: CRLF line endings kept');
   ok(await f.evaluate(() => JSON.stringify(DECK.NARRATION).includes('アプリから書き直した')), 'narration: rebuilt deck has the new narration');
-  ok(await f.isVisible('#dev-narr'), 'narration: drawer stays open after reload');
-  const stale = await f.evaluate(() => window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/narration', { slideKey: 'x', stepKey: '0', turns: [], rev: 'nope' }));
-  ok(stale._status === 409, 'narration: stale revision is rejected (409)');
+  ok(await page.isVisible('#dev-narr'), 'narration: drawer stays open after reload');
+  // 外で変わった後の保存は 409（引き出しに出る）
+  await page.locator('#dev-narr .dev-turn textarea').first().fill('書きかけ');
+  n = await loads();
+  const narrExt = narr1.replace('足した発言です。', '外で直した発言です。');
+  await opfs.write('narration.md', narrExt);
+  f = await waitLoads(n, 10000);
+  await page.press('#dev-narr .dev-turn textarea >> nth=0', 'Meta+Enter');
+  await page.waitForSelector('#dev-narr .dev-msg.dv-err');
+  ok(/口述原稿が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
+  n = await loads();
+  await page.click('#dev-narr .dev-msg button');
+  f = await waitLoads(n);
+  await page.waitForFunction(() => [...document.querySelectorAll('#dev-narr .dev-turn textarea')].some((t) => t.value === '外で直した発言です。'));
+  ok(true, 'narration: reload after the conflict shows the current text');
   await page.click('#b-narr');
 
   // ---------------------------------------------------------------- 5. コメント（Alt+クリック）
   const target = f.locator('#stage .slide.active h2');
   await target.click({ modifiers: ['Alt'] });
-  await f.waitForSelector('#dev-comment textarea');
-  await f.fill('#dev-comment textarea', 'この見出しを短く');
-  await f.press('#dev-comment textarea', 'Meta+Enter');
+  await page.waitForSelector('#dev-comment textarea');
+  await page.fill('#dev-comment textarea', 'この見出しを短く');
+  await shot(page, 'comment.png');
+  await page.press('#dev-comment textarea', 'Meta+Enter');
   await page.waitForTimeout(400);
   const comments = JSON.parse(await opfs.read('comments.json') || '[]');
-  ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open', 'comment: comments.json written');
+  ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === '何を最小化するか:0', 'comment: comments.json written');
   await page.click('#b-comments');
-  await f.waitForSelector('#dev-comments .dev-c');
-  ok((await f.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
-  await f.click('#dev-comments .dev-c button');
+  await page.waitForSelector('#dev-comments .dev-c');
+  ok((await page.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
+  await page.click('#dev-comments .dev-c button');
   await page.waitForTimeout(300);
   ok(JSON.parse(await opfs.read('comments.json'))[0].status === 'resolved', 'comment: resolved from the panel');
   await page.click('#b-comments');
@@ -279,7 +318,7 @@ try {
   await page.click('#b-export');
   let exp = '';
   for (let i = 0; i < 200 && exp.length < 1000; i++) { await page.waitForTimeout(100); exp = (await opfs.read('export.html')) || ''; }
-  ok(exp.startsWith('<!DOCTYPE html>') && exp.includes('id="deck-narration"') && !exp.includes('data-src=') && !exp.includes('__DECK_DEV_TRANSPORT'), `export: single HTML without editing hooks (${(exp.length / 1024).toFixed(0)} KB)`);
+  ok(exp.startsWith('<!DOCTYPE html>') && exp.includes('id="deck-narration"') && !exp.includes('data-src=') && !exp.includes('edit-hint'), `export: single HTML without editing hooks (${(exp.length / 1024).toFixed(0)} KB)`);
   const ep = await ctx.newPage();
   watch(ep, 'export');
   await ep.setContent(exp, { waitUntil: 'load' });
@@ -328,7 +367,13 @@ try {
       window.__tmlr = d;
     }, tf);
     const n0 = await loads();
-    ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__tmlr)) === true, 'tmlr: opened');
+    // 原稿のフォルダの部品（そのデッキのコード）：プレビューを始める前に知らせる
+    const op = page.evaluate(() => window.__APP_TEST_OPEN(window.__tmlr));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    ok((await page.textContent('#code-lead')).includes('components/') && (await loads()) === n0, 'tmlr: deck-local components → asked before the preview starts (nothing loaded yet)');
+    await shot(page, 'code-consent.png');
+    await page.click('#dlg-run');
+    ok(await op === true, 'tmlr: opened after "Start the preview"');
     await waitLoads(n0);
     // 部品の出どころの注釈（原稿のフォルダの場所）だけが違う
     const norm = (h) => h.replace(/\/\/ ---- (m-[a-z0-9-]+) \([^)]*\)/g, '// ---- $1');
@@ -366,7 +411,14 @@ try {
       async function go(d, pre) { for await (const [k, h] of d.entries()) { if (h.kind === 'directory') await go(h, pre + k + '/'); else { const u = new Uint8Array(await (await h.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); out[pre + k] = btoa(s); } } }
       await go(window.__dirs[name], ''); return out;
     }, name);
-    const openFile = async (name) => { const n0 = await loads(); const r = await page.evaluate((name) => window.__APP_TEST.openFile({ handle: window.__pf[name] }), name); return { r, n0 }; };
+    // 開く。独自のコードを含むファイルなら、プレビューを始める前の確かめが出る（run：始める／取り消す）
+    const openFile = async (name, run = true) => {
+      const n0 = await loads();
+      const p = page.evaluate((name) => window.__APP_TEST.openFile({ handle: window.__pf[name] }), name);
+      const asked = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
+      if (asked) { if ((await loads()) !== n0) throw new Error('preview loaded before the code notice'); await page.click(run ? '#dlg-run' : '#dlg-cancel'); }
+      return { r: await p, n0, asked };
+    };
     const pstate = () => page.evaluate(() => window.__APP_TEST.state());
     const dlgOpen = () => page.evaluate(() => document.getElementById('dlg').open);
     const MINF = 'min' + FORMAT.FILE_EXT;
@@ -374,8 +426,10 @@ try {
     // 印のスクリプトのある文書：取り出しの間、アプリのページでも Worker でも動かない
     await putFile('canary' + FORMAT.FILE_EXT, fs.readFileSync(fixture('canary-script').file));
     ok(await page.evaluate(() => window.__portableCanary) === undefined, 'portable: canary not set before opening');
-    let o = await openFile('canary' + FORMAT.FILE_EXT);
-    ok(o.r === true, 'portable: canary fixture opens');
+    let o = await openFile('canary' + FORMAT.FILE_EXT, false);
+    ok(o.asked && o.r === false && (await loads()) === o.n0 && (await pstate()).kind === 'folder', 'portable: a file with its own code asks before any of it runs; Cancel → not opened (the folder stays), no preview loaded');
+    o = await openFile('canary' + FORMAT.FILE_EXT);
+    ok(o.asked && o.r === true, 'portable: canary fixture opens after "Start the preview"');
     await waitLoads(o.n0);
     ok(await page.evaluate(() => window.__portableCanary) === undefined, 'portable: the canary script never ran in the app page (import reads bytes in a worker)');
     ok(await page.evaluate(() => window.__APP_TEST.workerProbe('__portableCanary')) === null, 'portable: the canary script never ran in the reader worker');
@@ -385,6 +439,7 @@ try {
     // 独自の部品（原稿のフォルダの部品）のある文書も同じ知らせ
     await putFile('ext' + FORMAT.FILE_EXT, fs.readFileSync(fixture('portable-extended').file));
     o = await openFile('ext' + FORMAT.FILE_EXT);
+    ok(o.asked, 'portable: embedded component → asked before the preview starts');
     await waitLoads(o.n0);
     ok((await pstate()).portable.profile === 'extended' && await page.isVisible('#notice-extended'), 'portable: embedded component → extended notice');
 
@@ -415,10 +470,10 @@ try {
     // 文字を直す（いつもの編集の画面）
     const pli = f.locator('#stage .slide.active li[data-step="2"]');
     await pli.dblclick();
-    await f.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
-    await f.locator('#dev-editor textarea').fill('\\(\\eta>0\\)：<b>学習率</b>（1 ファイルで編集）');
+    await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+    await page.locator('#dev-editor textarea').fill('\\(\\eta>0\\)：<b>学習率</b>（1 ファイルで編集）');
     n = await loads();
-    await f.locator('#dev-editor textarea').press('Meta+Enter');
+    await page.click('#dev-editor button.dv-pri');   // 保存（⌘+Enter はフォルダの試験で確かめた）
     f = await waitLoads(n);
     const wsFiles = async () => Object.fromEntries(Object.entries(await page.evaluate(() => window.__APP_TEST.files())).map(([k, v]) => [k, Buffer.from(v, 'base64')]));
     let mem = await wsFiles();
@@ -426,15 +481,15 @@ try {
     ok(await f.evaluate(() => document.querySelector('#stage .slide.active li[data-step="2"]').textContent.includes('1 ファイルで編集')), 'portable edit: preview shows the new text');
     ok((await pstate()).portable.dirty && (await page.textContent('#deckname')).startsWith('●'), 'portable edit: marked as unsaved');
     ok(Object.keys(mem).some((k) => k.startsWith('.cache/edits/')), 'portable edit: backup kept in memory');
-    await page.keyboard.press('e');
+    await page.click('#b-edit');
 
     // 口述原稿を直す → その段階の音声は古い（消さない）
     await f.evaluate(() => DECK.go(1, 0, false));
     await page.click('#b-narr');
-    await f.waitForSelector('#dev-narr .dev-turn textarea');
-    await f.locator('#dev-narr .dev-turn textarea').first().fill('1 ファイルで書き直した口述原稿です。');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.locator('#dev-narr .dev-turn textarea').first().fill('1 ファイルで書き直した口述原稿です。');
     n = await loads();
-    await f.locator('#dev-narr .dev-turn textarea').first().press('Meta+Enter');   // ⌘+Enter で保存（引き出しの描き直しでクリックを取りこぼさない）
+    await page.click('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
     mem = await wsFiles();
     ok(mem['narration.md'].toString().includes('1 ファイルで書き直した口述原稿です。'), 'portable narration: narration.md changed in memory');
@@ -502,27 +557,28 @@ try {
     await putFile('nd' + FORMAT.FILE_EXT, pnd.html);
     o = await openFile('nd' + FORMAT.FILE_EXT);
     f = await waitLoads(o.n0);
-    await f.evaluate(() => { window.__w = window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/comment', { comment: 'x' }); });   // コメントは原稿の編集ではない
-    await f.evaluate(() => window.__w);
+    // コメントは原稿の編集ではない（権利を聞かない）
+    await f.locator('#stage .slide.active h1, #stage .slide.active h2').first().click({ modifiers: ['Alt'] });
+    await page.waitForSelector('#dev-comment textarea');
+    await page.fill('#dev-comment textarea', 'x');
+    await page.press('#dev-comment textarea', 'Meta+Enter');
+    await page.waitForSelector('#dev-comment', { state: 'detached' });
     ok(!(await dlgOpen()), 'rights: a note (comment) is not an edit and does not ask');
-    await f.evaluate(async () => {
-      const k = '何を最小化するか';
-      const cur = await window.__DECK_DEV_TRANSPORT.api('GET', '/__dev/narration?key=' + encodeURIComponent(k + ':0'));
-      window.__w = window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/narration', { slideKey: k, stepKey: '0', rev: cur.rev, turns: [{ role: 'expert', text: '書き換え' }] });
-    });
+    // デッキで押した n（知らせ）でも、口述原稿を開く前に権利を見せる
+    await f.locator('body').press('n');
     await page.waitForSelector('#dlg[open]');
-    ok(await page.isVisible('#rights-nd') && (await page.textContent('#rights-nd')).includes('改変を認めていません'), 'rights: ND license → warning shown (also when the write comes from the preview)');
+    ok(await page.isVisible('#rights-nd') && (await page.textContent('#rights-nd')).includes('改変を認めていません'), 'rights: ND license → warning shown (also when n is pressed in the preview)');
     ok(await page.isDisabled('#dlg-ok'), 'rights: ND license → "Start editing" disabled until confirmed');
     await shot(page, 'portable-rights-nd.png');
     await page.click('#dlg-cancel');
-    const refused = await f.evaluate(() => window.__w);
-    ok(refused._status === 403 && !(await pstate()).portable.dirty, 'rights: declined → the write is refused (403), nothing changed');
+    await page.waitForTimeout(200);
+    ok(!(await page.$('#dev-narr')) && !(await pstate()).portable.dirty, 'rights: declined → the drawer does not open, nothing changed');
     await page.click('#b-narr');
     await page.waitForSelector('#dlg[open]');
     await page.check('#dlg-confirm');
     ok(!(await page.isDisabled('#dlg-ok')), 'rights: confirmed → "Start editing" enabled');
     await page.click('#dlg-ok');
-    await f.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
     ok((await pstate()).portable.rightsOk, 'rights: ND license accepted after explicit confirmation');
     await page.click('#b-narr');
 
@@ -570,6 +626,92 @@ try {
     await page.click('#b-save');
     ok((await page.textContent('#toast')).includes('保存できません'), 'read-only: saving is refused');
     await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+  }
+
+  // ---------------------------------------------------------------- 10c. 書き込みを試みるデッキ（tools/hostile-deck.mjs：部品とインラインのスクリプト）
+  // プレビューからは何も書けない：古い書き込みの知らせ（app-api）は受け取られず、ネットワークは決まり（CSP）で止まり、合言葉もアプリの文書もない。
+  // 知らせ（edit-hint）はアプリの欄を開くだけで、書き込みはアプリの欄の「保存」を押したときだけ
+  {
+    const HF = hostileFiles();
+    await page.evaluate(async (files) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry('hostile', { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle('hostile', { create: true });
+      for (const [rel, text] of Object.entries(files)) {
+        const parts = rel.split('/'); const name = parts.pop(); let x = d;
+        for (const q of parts) x = await x.getDirectoryHandle(q, { create: true });
+        const w = await (await x.getFileHandle(name, { create: true })).createWritable(); await w.write(text); await w.close();
+      }
+      window.__hostile = d;
+    }, HF);
+    const hsnap = () => page.evaluate(async (names) => {
+      const out = {};
+      for (const rel of names) {
+        try { const parts = rel.split('/'); const name = parts.pop(); let d = window.__hostile; for (const x of parts) d = await d.getDirectoryHandle(x); out[rel] = await (await (await d.getFileHandle(name)).getFile()).text(); }
+        catch { out[rel] = null; }
+      }
+      out['.cache'] = await window.__hostile.getDirectoryHandle('.cache').then(() => 'exists', () => null);
+      return out;
+    }, [...Object.keys(HF), 'comments.json']);
+    const want0 = JSON.stringify({ ...HF, 'comments.json': null, '.cache': null });
+    const untouched = async () => JSON.stringify(await hsnap()) === want0;
+    hostileQuiet = true;
+    // 1. 取り消せばプレビューは始まらない
+    let n0 = await loads();
+    let op = page.evaluate(() => window.__APP_TEST_OPEN(window.__hostile));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    await page.click('#dlg-cancel');
+    ok(await op === false && (await loads()) === n0 && !(await page.evaluate(() => window.__APP_TEST.state().open)), 'hostile: Cancel on the code notice → the folder is not opened and no preview runs');
+    // 2. 始める → 部品とスクリプトはプレビューの中だけで動く
+    op = page.evaluate(() => window.__APP_TEST_OPEN(window.__hostile));
+    await page.waitForSelector('#dlg[open] #dlg-run');
+    await page.click('#dlg-run');
+    ok(await op === true, 'hostile: opened after "Start the preview"');
+    f = await waitLoads(n0);
+    ok(await f.evaluate(() => window.__evilMounted === true), 'hostile: the component ran (in the sandboxed preview)');
+    await page.waitForTimeout(600);   // 読み込んだときの試み（古い書き込みの知らせ）
+    const R = await f.evaluate((o) => window.__attack(o), { base: BASE, guess: '0'.repeat(48) });
+    ok(R.token === 'undefined' && R.parentToken === 'blocked', 'hostile: no token in the preview');
+    ok(R.parentDoc === 'blocked' && R.topDoc === 'blocked' && R.storage === 'blocked', 'hostile: parent.document / top.document / storage blocked (opaque origin)');
+    ok(R.net.length === 12 && R.net.every((x) => / blocked$/.test(x)), 'hostile: fetch / XHR POST to /__dev/edit, /__dev/narration, /__dev/comment blocked by the preview CSP (connect-src \'none\') ' + JSON.stringify(R.net));
+    ok(R.violations.some((v) => v.startsWith('connect-src')), 'hostile: connect-src violations reported');
+    await page.waitForTimeout(400);
+    ok(await untouched(), 'hostile: the old app-api write messages and the network attempts changed nothing in the folder');
+    // 3. 偽の本文を付けた知らせ
+    await f.evaluate(() => window.__hint('edit'));
+    await page.waitForTimeout(300);
+    ok(!(await page.$('#dev-editor')), 'hostile: an edit hint outside edit mode opens nothing');
+    await page.click('#b-edit');
+    await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
+    await f.evaluate(() => window.__hint('edit'));
+    await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+    const range = await f.evaluate(() => document.querySelector('#stage [data-src]').getAttribute('data-src').split('-').map(Number));
+    const shown = await page.inputValue('#dev-editor textarea');
+    ok(shown === HF['deck.html'].slice(range[0], range[1]) && !shown.includes(PWNED), 'hostile: the edit hint opens the app editor with the real source, not the forged text: ' + JSON.stringify(shown));
+    await shot(page, 'hostile-hint.png');
+    await page.waitForTimeout(300);
+    ok(await untouched(), 'hostile: nothing written while the editor is open');
+    await page.press('#dev-editor textarea', 'Escape');
+    await f.evaluate(() => window.__hint('comment'));
+    await page.waitForSelector('#dev-comment textarea');
+    ok((await page.inputValue('#dev-comment textarea')) === '' && (await page.textContent('#dev-comment .dv-q')).includes(PWNED + '-QUOTE'), 'hostile: a comment hint opens an empty note box (the forged note text is ignored)');
+    await page.press('#dev-comment textarea', 'Escape');
+    await f.evaluate(() => window.__hint('n'));
+    await page.waitForSelector('#dev-narr');
+    await page.waitForTimeout(300);
+    ok(await untouched(), 'hostile: forged hints (edit, comment, n) wrote nothing');
+    // 4. アプリの欄の「保存」を押したときだけ書く
+    await f.evaluate(() => window.__hint('edit'));
+    await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
+    await page.fill('#dev-editor textarea', '信頼する画面で直した見出し');
+    n0 = await loads();
+    await page.click('#dev-editor button.dv-pri');
+    f = await waitLoads(n0);
+    const after = await hsnap();
+    ok(after['deck.html'].includes('信頼する画面で直した見出し') && after['narration.md'] === HF['narration.md'] && after['comments.json'] === null, 'hostile: the write happens only on Save in the app editor');
+    await page.click('#b-narr');
+    await page.click('#b-edit');
+    hostileQuiet = false;
   }
 
   // ---------------------------------------------------------------- 11. 英語の画面
