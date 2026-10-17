@@ -472,6 +472,7 @@ export function validateDeckAudio(a) {
     if (!numArr(r.cues)) e.push(`${w}.cues: not an array of numbers >= 0`);
     if (own(r, 'sync') && !['auto', 'manual', 'none'].includes(r.sync)) e.push(`${w}.sync: not auto, manual or none`);
     if (r.sync === 'none' && Array.isArray(r.cues) && r.cues.length) e.push(`${w}: sync "none" with cues`);
+    if (own(r, 'mime') && !(typeof r.mime === 'string' && /^audio\/[a-z0-9.+-]+$/.test(r.mime))) e.push(`${w}.mime: not an audio media type`);
   }
   return e;
 }
@@ -754,7 +755,12 @@ export async function exportPortable(env, srcPath, opts = {}) {
   const oldMeta = jsonScript('deck-meta', metaPh);
   if (html.split(oldMeta).length !== 2) fail('internal', 'deck-meta placeholder not found exactly once');
   html = html.replace(oldMeta, () => jsonScript('deck-meta', deckMeta));
-  pend.forEach(({ file }, n) => { html = html.split(`"${SCHEME}P${tag}_${n}"`).join(`"${SCHEME}${fileMap[fileOfSrc.get(file)]}"`); });
+  // 音声の参照（deck-audio の src）と、その MIME（任意の mime。再生器が中身から推し量らずに済む）
+  pend.forEach(({ file }, n) => {
+    const ph = `"${SCHEME}P${tag}_${n}"`, id = fileMap[fileOfSrc.get(file)];
+    if (html.split(ph).length !== html.split(`"src":${ph}`).length) fail('internal', 'audio placeholder found outside deck-audio');
+    html = html.split(`"src":${ph}`).join(`"src":"${SCHEME}${id}","mime":"${blobs[id].mime}"`);
+  });
   const indexText = htmlSafeJson(JSON.stringify(index, null, 1));
   const layer = readableLayer(r.slides, segs, lang) + '\n' +
     `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n` +

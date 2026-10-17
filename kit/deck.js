@@ -207,12 +207,14 @@ DECK.VERSION = (DECK.META.generator && DECK.META.generator.version) || (typeof D
 // 持ち運べる形式の音声の参照（<scheme><blobId>）を data: URI にする：塊 <prefix><blobId>-0, -1, … を、次が無くなるまで順に復号してつなぐ
 // （format spec §3.7・§4。形式の識別子は build が DECK.FORMAT に入れる（kit/core/format.mjs）。塊の境が 3 バイトの倍数（= を含まない）なら base64 の文字列をそのままつなげる）
 var FMT = DECK.FORMAT || null;
-function blobUri(id){
+function blobUri(id, known){
   if (!FMT) return null;
   var parts = [], n = 0, el, pad = false, P = FMT.blobPrefix + id + "-";
   while ((el = document.getElementById(P + n))){ var t = (el.textContent || "").trim(); if (t.indexOf("=") >= 0 && document.getElementById(P + (n + 1))) pad = true; parts.push(t); n++; }
   if (!n) return null;
   var b64 = pad ? btoa(parts.map(function(t){ return atob(t); }).join("")) : parts.join("");
+  // deck-audio の mime があればそれを使い、なければ中身の先頭から推し量る
+  if (typeof known === "string" && /^audio\/[a-z0-9.+-]+$/.test(known)) return "data:" + known + ";base64," + b64;
   var head = atob(b64.slice(0, 16)), mime = "audio/mpeg";
   if (head.slice(0, 4) === "RIFF") mime = "audio/wav";
   else if (head.slice(4, 8) === "ftyp") mime = "audio/mp4";
@@ -222,7 +224,7 @@ function blobUri(id){
 DECK.blobUri = blobUri;
 for (var audioKey in DECK.AUDIO){
   var au = DECK.AUDIO[audioKey], am = FMT && au && typeof au.src === "string" && au.src.indexOf(FMT.uriScheme) === 0 && au.src.slice(FMT.uriScheme.length);
-  if (am && /^[A-Za-z0-9_]{1,32}$/.test(am)){ var uri = null; try { uri = blobUri(am); } catch (e) { console.warn("audio blob is not base64: " + am); } if (uri) au.src = uri; else { console.warn("audio blob not found: " + am); delete DECK.AUDIO[audioKey]; } }
+  if (am && /^[A-Za-z0-9_]{1,32}$/.test(am)){ var uri = null; try { uri = blobUri(am, au.mime); } catch (e) { console.warn("audio blob is not base64: " + am); } if (uri) au.src = uri; else { console.warn("audio blob not found: " + am); delete DECK.AUDIO[audioKey]; } }
 }
 // スクリプトなしで読める層（format spec §2.1。全段階の口述原稿の文字）は、実行系が動くときは隠す
 (function(){ var r = FMT && document.getElementById(FMT.readableId); if (r) r.hidden = true; })();
