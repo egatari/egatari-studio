@@ -328,8 +328,11 @@ function dataUri(env, file) {
 // http(s) の参照はそのまま残して警告する（オフラインでは表示されない）。原稿のフォルダの外のファイルは読まない
 const SKIP_REF = /^(?:data:|blob:|#|about:|javascript:|mailto:)/i;
 const EXT_REF = /^(?:https?:)?\/\//i;
-export function bundleAssets(env, html, deckDir, warn = []) {
+export function bundleAssets(env, html, deckDir, warn = [], budget = null) {
   const P = env.path;
+  // 埋め込むたびに増える大きさと回数を数える（同じファイルの参照・@import の繰り返しで膨らませない）
+  const bud = budget || buildBudget({}, html.length);
+  const grow = (t) => { bud.add(t.length, bud.L.bundledChars, 'bundled document'); return t; };
   const seen = new Set();
   const once = (msg) => { if (!seen.has(msg)) { seen.add(msg); warn.push(msg); } };
   // ref を、baseDir から見たローカルのファイルにする。埋め込めなければ null（元のまま残す）
@@ -345,11 +348,11 @@ export function bundleAssets(env, html, deckDir, warn = []) {
     if (!env.within(file, deckDir)) { once(`refused: ${what} の「${r}」は原稿のフォルダの外にある（埋め込まない）`); return null; }
     return file;
   };
-  const uri = (ref, baseDir, what) => { const f = local(ref, baseDir, what); return f ? dataUri(env, f) : null; };
+  const uri = (ref, baseDir, what) => { const f = local(ref, baseDir, what); return f ? grow(dataUri(env, f)) : null; };
   const css = (text, baseDir, depth = 0) => text
     .replace(/@import\s+(?:url\(\s*)?(['"]?)([^'")\s;]+)\1\s*\)?\s*([^;]*);/g, (m, q, ref) => {
       const f = depth < 8 && local(ref, baseDir, '@import');
-      return f ? css(env.readText(f), P.dirname(f), depth + 1) : m;
+      return f ? css(grow(env.readText(f)), P.dirname(f), depth + 1) : m;
     })
     .replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/g, (m, q, ref) => { const u = uri(ref, baseDir, 'CSS の url()'); return u ? `url("${u}")` : m; });
   const srcset = (v, what) => v.split(',').map((part) => {
@@ -368,7 +371,7 @@ export function bundleAssets(env, html, deckDir, warn = []) {
       const ref = href[1] ?? href[2] ?? href[3];
       if (/\bstylesheet\b/.test(rel)) {
         const f = local(ref, deckDir, '<link rel="stylesheet">');
-        return f ? `<style>\n${css(env.readText(f), P.dirname(f)).replace(/<\/style/gi, '<\\/style')}\n</style>` : tag;
+        return f ? `<style>\n${css(grow(env.readText(f)), P.dirname(f)).replace(/<\/style/gi, '<\\/style')}\n</style>` : tag;
       }
       if (/\b(?:icon|apple-touch-icon|preload|prefetch|modulepreload|manifest)\b/.test(rel)) return setAttrs(tag, 'href', (v) => uri(v, deckDir, `<link rel="${rel}">`));
       if (EXT_REF.test(ref.trim())) once(`external: <link rel="${rel}"> が外部の「${ref.slice(0, 80)}」を参照している（オフラインでは使えない）`);
@@ -404,10 +407,43 @@ export function bundleAssets(env, html, deckDir, warn = []) {
       if (!src) continue;
       const ref = src[1] ?? src[2] ?? src[3];
       const f = local(ref, deckDir, '<script src>');
-      if (f) parts[i] = open.replace(src[0], '') + env.readText(f).replace(/<\/script/gi, '<\\/script') + '</script>';
+      if (f) parts[i] = open.replace(src[0], '') + grow(env.readText(f)).replace(/<\/script/gi, '<\\/script') + '</script>';
     }
   }
   return parts.join('');
+}
+
+// ---------------------------------------------------------------- 上限（format spec §11：確保の前・解析の前に大きさを確かめる）
+// 組み立ては原稿を何倍にも膨らませうる（同じ小さなファイルを何万回も取り込む・@import や画像の参照を繰り返す・式を何万も書く）。
+// 前処理（INCLUDE・JSON・FIG）と埋め込みの途中で、増えた大きさと取り込みの回数を数え、超えたらその場で断る（全部を作ってから数えない）。
+// 解析（parse5）の前にもタグの数を数える。opts.limits で変えられる。既定は実際のデッキ（examples/tmlr2026-calibration：原稿 11 KB・
+// 取り込み数個・式 27・タグ 3400）の 100 倍以上
+export const BUILD_LIMITS = Object.freeze({
+  sourceChars: 32 * 1048576,     // 原稿（deck.html）の文字数
+  includes: 10000,               // INCLUDE・JSON・FIG・埋め込み（data: URI・<link>・<script src>・@import）の回数の合計
+  expandedChars: 64 * 1048576,   // 前処理（INCLUDE・JSON・FIG）の後の文字数
+  bundledChars: 256 * 1048576,   // 埋め込みと式の後の文字数（画像・動画の data: URI を含む）
+  tags: 500000,                  // 解析する文書のタグ（「<」と英字・/・!）の数（原稿と、組んだデッキの部分）
+  math: 20000,                   // 式の数
+});
+export class BuildLimitError extends Error {
+  constructor(what, n, max) { super(`build: ${what} (${n}) is over the limit (${max}); refusing to build`); this.name = 'BuildLimitError'; this.code = 'build-too-large'; this.what = what; }
+}
+const countTags = (t, max) => { let n = 0; const re = /<[A-Za-z!/?]/g; while (re.exec(t)) if (++n > max) break; return n; };
+// 埋め込みの数え方（bundleAssets と本体の前処理が共有する）：add(n) は n 字増える 1 回の取り込み
+export function buildBudget(limits = {}, start = 0) {
+  const L = { ...BUILD_LIMITS, ...(limits || {}) };
+  let used = start, count = 0;
+  return {
+    L,
+    add(n, max = L.expandedChars, what = 'expanded source') {
+      if (++count > L.includes) throw new BuildLimitError('includes and embeds', count, L.includes);
+      used += n;
+      if (used > max) throw new BuildLimitError(what, used, max);
+    },
+    get used() { return used; },
+    reset(n) { used = n; },
+  };
 }
 
 // ---------------------------------------------------------------- 本体
@@ -417,6 +453,9 @@ export function build(env, srcPath, opts = {}) {
   const P = env.path, KIT = env.KIT, ROOT = env.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
   const raw = env.readText(srcPath);
+  const budget = buildBudget(opts.limits, raw.length), LIM = budget.L;
+  if (raw.length > LIM.sourceChars) throw new BuildLimitError('source', raw.length, LIM.sourceChars);
+  { const n = countTags(raw, LIM.tags); if (n > LIM.tags) throw new BuildLimitError('tags in the source', n, LIM.tags); }
   const warn = [];
   const { html: annotated, slides } = annotate(raw, !!opts.dev, warn);
   let html = annotated;
@@ -434,7 +473,8 @@ export function build(env, srcPath, opts = {}) {
     if (outside) { warn.push(`refused: 「${name}」は原稿のフォルダの外にある（読まない）`); return null; }
     throw new Error('not found: ' + name);
   };
-  const readIn = (name, dirs) => { const p = find(name, dirs); return p === null ? null : env.readText(p); };
+  // 取り込むたびに、回数と増える大きさを数える（読んだ後・置き換える前に。同じ小さなファイルを何万回も取り込ませない）
+  const readIn = (name, dirs) => { const p = find(name, dirs); if (p === null) return null; const t = env.readText(p); budget.add(t.length); return t; };
   html = html.replace(/\/\*INCLUDE:([^*]+?)\*\//g, (_, f) => readIn(f.trim(), [deckDir, KIT]) ?? '');
   html = html.replace(/\/\*KATEX_CSS\*\//g, '');
   html = html.replace(/\{\{JSON:([^}]+?)\}\}/g, (_, f) => { const t = readIn(f.trim(), [P.join(deckDir, 'data'), deckDir]); return t === null ? 'null' : JSON.stringify(JSON.parse(t)).replace(/<\//g, '<\\/'); });
@@ -448,7 +488,9 @@ export function build(env, srcPath, opts = {}) {
     return svg;
   });
   // 原稿が参照するローカルのファイル（画像・動画・CSS・スクリプト）を埋め込み、1 ファイルで完結させる
-  html = bundleAssets(env, html, deckDir, warn);
+  if (html.length > LIM.expandedChars) throw new BuildLimitError('expanded source', html.length, LIM.expandedChars);
+  budget.reset(html.length);
+  html = bundleAssets(env, html, deckDir, warn, budget);
 
   // テーマ：引数 → <html data-theme> → default
   let themeName = opts.theme || html.match(/<html[^>]*\sdata-theme="([^"]+)"/)?.[1] || 'default';
@@ -472,7 +514,7 @@ export function build(env, srcPath, opts = {}) {
   for (const s of html.match(/<script type="text\/x-tex-macros">([\s\S]*?)<\/script>/g) || []) Object.assign(macros, readMacros(s));
   let count = 0;
   const render = (tex, display) => {
-    count++;
+    if (++count > LIM.math) throw new BuildLimitError('formulas', count, LIM.math);
     try { return env.katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }); }
     catch (e) { warn.push(`KaTeX: ${e.message.split('\n')[0]}  in: ${tex.slice(0, 60)}`); return `<span class="katex-error" title="${escAttr(e.message)}">${escAttr(tex)}</span>`; }
   };
@@ -481,6 +523,7 @@ export function build(env, srcPath, opts = {}) {
     parts[i] = parts[i].replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => render(t, true)).replace(/\\\(([\s\S]+?)\\\)/g, (_, t) => render(t, false));
   }
   html = parts.join('');
+  if (html.length > LIM.bundledChars) throw new BuildLimitError('document with formulas', html.length, LIM.bundledChars);
 
   // 部品：使われている <m-名前> を探して読み込む
   const used = [...new Set([...html.matchAll(/<(m-[a-z0-9-]+)[\s>]/g)].map((m) => m[1]))];
@@ -574,6 +617,7 @@ export function build(env, srcPath, opts = {}) {
   //   実行系：原稿の中の <script>（部品の定義など）より前。<body> の中の最初の「データの type でない <script>」で、部品（m-…）・<template>・SVG・
   //   MathML・<noscript> の中にないものの前。なければ </body> の前、それもなければ文書の終わり（部品の子に実行系の JSON が入らないように）
   // 規則は判定（kit/core/code-scan.mjs の SCRIPTING）と同じ、スクリプトを動かすブラウザのもの（<noscript> の中は文字）
+  { const n = countTags(html, LIM.tags); if (n > LIM.tags) throw new BuildLimitError('tags in the built deck', n, LIM.tags); }
   const pdoc = parse(html, { sourceCodeLocationInfo: true, scriptingEnabled: SCRIPTING });
   const htmlEl = (pdoc.childNodes || []).find((n) => n.tagName === 'html');
   const headEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'head');

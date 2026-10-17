@@ -161,7 +161,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
   } else {
     const out = opts.out || defaultOut(src);
-    const r = build(src, { ...opts, out });
+    let r;
+    try { r = build(src, { ...opts, out }); } catch (e) { if (e.code !== 'build-too-large') throw e; console.error(e.message); process.exit(1); }
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);

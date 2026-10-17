@@ -355,6 +355,38 @@ try {
       ok(code === 'bad-path' && !fs.existsSync(path.join(outside, 'unpacked.html')) && snapOut() === out0 && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET' && fs.readdirSync(u).length === 1, `portable unpack --force: ${label} -> refused before writing anything (${code})`);
     }
   }
+  // ---- 組み立ての上限（format spec §11）：小さな依存を何万回も取り込む・@import の繰り返し・式の数で膨らませると、その場で断る（子の process で、
+  // かかった時間と最大の RSS も見る）。上限は opts.limits で変えられ、実際のデッキは既定の上限の内（examples の組み立てが通ること）
+  {
+    const bombs = path.join(tmp, 'bombs'); fs.mkdirSync(bombs);
+    const deckOf = (name, body, files = {}) => {
+      const d = path.join(bombs, name); fs.mkdirSync(d);
+      for (const [f, t] of Object.entries(files)) fs.writeFileSync(path.join(d, f), t);
+      fs.writeFileSync(path.join(d, 'deck.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>${body}</section></div></body></html>`);
+      return path.join(d, 'deck.html');
+    };
+    const imp = (n, to) => Array.from({ length: n }, () => `@import "${to}";`).join('\n');
+    const CASES2 = [
+      ['include x100000', deckOf('inc', '/*INCLUDE:dep.txt*/'.repeat(100000), { 'dep.txt': '<p>' + 'x'.repeat(200) + '</p>' }), /includes and embeds/],
+      ['include 5000 x 20 KB', deckOf('big', '/*INCLUDE:dep.txt*/'.repeat(5000), { 'dep.txt': '<p>' + 'x'.repeat(20000) + '</p>' }), /expanded source/],
+      ['json x20000', deckOf('json', '<script type="application/json" id="j">[' + Array(20000).fill('{{JSON:d.json}}').join(',') + ']</script>', { 'd.json': '{"a":1}' }), /includes and embeds/],
+      ['@import 40^3', deckOf('css', '<style>@import "a.css";</style>', { 'a.css': imp(40, 'b.css'), 'b.css': imp(40, 'c.css'), 'c.css': imp(40, 'd.css'), 'd.css': 'p{color:red}' }), /includes and embeds/],
+      ['image x20000', deckOf('img', '<img src="i.png">'.repeat(20000), { 'i.png': 'x'.repeat(100) }), /includes and embeds|tags/],
+      ['formulas x30000', deckOf('math', '\\(x\\)'.repeat(30000)), /formulas/],
+      ['tags x600000', deckOf('tags', '<b>'.repeat(600000)), /tags in the source/],
+    ];
+    for (const [name, file, re] of CASES2) {
+      const code = `import { build } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+      const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
+      let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
+      ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < 1024 * 1024, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
+    }
+    // 上限は変えられる。小さくすれば普通のデッキも断り、大きくすれば通る
+    let small = null; try { build(deckOf('low', '/*INCLUDE:dep.txt*/'.repeat(10), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 5 } }); } catch (e) { small = e.code; }
+    ok(small === 'build-too-large', 'build limits: opts.limits can be lowered (includes: 5 refuses 10 includes)');
+    const rbig = build(deckOf('ok', '/*INCLUDE:dep.txt*/'.repeat(12000), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 20000 } });
+    ok(rbig.html.length > 0, 'build limits: opts.limits can be raised');
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
 
   // 信頼する仲立ちに </script や <!-- を入れたら組まない
