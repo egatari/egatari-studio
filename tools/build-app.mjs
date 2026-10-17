@@ -1,4 +1,5 @@
 // 編集アプリ（app/）を組む：dist/editor/（GitHub Pages などで配る形）と dist/editor.html（1 ファイル版）。説明は docs/editor.md
+// 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 //   node tools/build-app.mjs [--out dist] [--no-single]
 // アプリに入れるもの：kit/core（組み立ての本体）・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
 // server/client.js（編集の画面）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
@@ -107,6 +108,10 @@ for (const [v, f] of Object.entries(lazyFiles)) {
   fontBytes += fs.statSync(f).size;
 }
 for (const f of ['LICENSE', 'NOTICE']) if (fs.existsSync(rel(f))) fs.copyFileSync(rel(f), path.join(ED, f + '.txt'));
+// 試験ページ（lab/）：そのまま写す（静的なファイルだけ。重みは実行時に Hugging Face から取る）
+const LAB = path.join(OUT, 'lab');
+fs.rmSync(LAB, { recursive: true, force: true });
+if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, filter: (f) => !path.basename(f).startsWith('.') });
 // 根（GitHub Pages の /）からは editor/ へ
 fs.writeFileSync(path.join(OUT, 'index.html'), '<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=editor/"><title>Motion Slides Editor</title><a href="editor/">Motion Slides Editor</a>\n');
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';

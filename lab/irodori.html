@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Irodori TTS Lab</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1d1d1f; --muted: #6a6a70; --line: #d9d9de; --card: #ffffff;
+    --accent: #2457c5; --ok: #1b7f3b; --bad: #b3261e; --warn-bg: #fff4d6; --warn-fg: #6b4d00;
+    --code: #f1f1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151517; --fg: #ececf0; --muted: #a0a0a8; --line: #34343a; --card: #1e1e22;
+      --accent: #7aa2ff; --ok: #5fd08a; --bad: #ff8a80; --warn-bg: #3a3014; --warn-fg: #f3d68a;
+      --code: #26262b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151517; --fg: #ececf0; --muted: #a0a0a8; --line: #34343a; --card: #1e1e22;
+    --accent: #7aa2ff; --ok: #5fd08a; --bad: #ff8a80; --warn-bg: #3a3014; --warn-fg: #f3d68a;
+    --code: #26262b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 .4rem; }
+  h2 { font-size: 1.15rem; margin: 0 0 .6rem; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+  .note { background: var(--warn-bg); color: var(--warn-fg); border-radius: 8px; padding: 10px 14px; font-size: .92rem; }
+  .note p { margin: .2rem 0; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0; }
+  button {
+    font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button.sub { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  input[type=number] { width: 6.5em; font: inherit; padding: 3px 6px; }
+  input[type=text], textarea { font: inherit; width: 100%; padding: 6px 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { border-bottom: 1px solid var(--line); padding: 5px 6px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .85em; }
+  .hash { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .78rem; word-break: break-all; }
+  .ok { color: var(--ok); font-weight: 700; }
+  .bad { color: var(--bad); font-weight: 700; }
+  .bar { height: 8px; background: var(--code); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  audio { width: 100%; max-width: 320px; height: 36px; display: block; }
+  .pair { border-top: 1px solid var(--line); padding: 10px 0; }
+  .pair:first-of-type { border-top: 0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cols > div { min-width: 0; }
+  .label { font-size: .8rem; color: var(--muted); }
+  .txt { margin: 2px 0 6px; }
+  .same { font-size: .8rem; color: var(--muted); }
+  pre { background: var(--code); padding: 10px; border-radius: 6px; overflow: auto; max-height: 320px; font-size: .78rem; }
+  .log { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .8rem; white-space: pre-wrap; background: var(--code); padding: 8px; border-radius: 6px; max-height: 180px; overflow: auto; }
+  .scroll { overflow-x: auto; }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Irodori-TTS をブラウザだけで動かす試験ページ</h1>
+<div class="note">
+  <p><b>モデル</b>：Irodori-TTS 500M-v3（ゼロショットの声のクローン）を ONNX にしたもの（<a href="https://huggingface.co/noguchis/irodori-tts-onnx">noguchis/irodori-tts-onnx</a>）を、<a href="https://github.com/ngc-shj/irodori-tts-webgpu">irodori-tts-webgpu</a> と onnxruntime-web（WebGPU）で動かします。</p>
+  <p><b>ライセンス</b>：コードと重みは MIT（Irodori-TTS・Semantic-DACVAE・irodori-tts-webgpu）、トークナイザ（llm-jp-3-150m）は Apache-2.0。</p>
+  <p><b>端末の外には何も送りません</b>。合成はこの PC の GPU で行います。通信はモデルとライブラリの取得（Hugging Face と jsDelivr から）だけで、文や参照音声は送りません。</p>
+  <p><b>初回の読み込みで約 1.26 GB（fp16。fp32 は約 2.44 GB）を取得します</b>。2 回目からはブラウザのキャッシュから読みます。</p>
+  <p>作った音声は AI で生成したものです。参照音声は使う権利のある声だけを使ってください。</p>
+</div>
+
+<section id="env">
+  <h2>1. 環境</h2>
+  <div class="scroll"><table id="env-table"><tbody></tbody></table></div>
+</section>
+
+<section id="load">
+  <h2>2. モデルの読み込み</h2>
+  <div class="row">
+    <label><input type="radio" name="prec" value="fp16" checked> fp16（既定）</label>
+    <label><input type="radio" name="prec" value="fp32"> fp32</label>
+    <button id="btn-load">モデルを読み込む</button>
+    <button id="btn-clear" class="sub">キャッシュを消す</button>
+  </div>
+  <div class="bar"><div id="load-bar"></div></div>
+  <div id="load-status" class="muted">未読み込み</div>
+  <div id="load-log" class="log" hidden></div>
+</section>
+
+<section id="voice">
+  <h2>3. 声（参照音声）と共通の設定</h2>
+  <div class="row">
+    <label><input type="radio" name="voice" value="alice" checked> alice（48 kHz）</label>
+    <label><input type="radio" name="voice" value="bob"> bob（16 kHz → 48 kHz に変換）</label>
+    <label><input type="radio" name="voice" value="file"> 手元の wav：<input type="file" id="voice-file" accept="audio/*,.wav"></label>
+  </div>
+  <div class="row">
+    <label>シード <input type="number" id="seed" value="42" step="1"></label>
+    <label>ステップ数 <input type="number" id="steps" value="40" min="4" max="80" step="1"></label>
+    <span class="muted">既定のシード 42 をすべての試験で使います。ステップ数 40 は Irodori-TTS の既定（irodori-tts-webgpu のデモは 16）。</span>
+  </div>
+  <div id="voice-status" class="muted">声：まだ読んでいません</div>
+  <audio id="voice-player" controls preload="none" hidden></audio>
+</section>
+
+<section id="test-a">
+  <h2>4. 試験 A：同じシードで同じ音になるか</h2>
+  <label for="a-text" class="label">文</label>
+  <input type="text" id="a-text" value="本日は、確率的勾配降下法がなぜ収束するのかを、順を追って説明します。">
+  <div class="row">
+    <button id="btn-a" disabled>試験 A を実行（同じシードで 2 回、別のシードで 1 回）</button>
+  </div>
+  <div class="scroll"><table id="a-table">
+    <thead><tr><th>回</th><th>シード</th><th>長さ</th><th>生成時間</th><th>RTF</th><th>SHA-1（Float32 PCM）</th><th>再生</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div id="a-verdict"></div>
+</section>
+
+<section id="test-b">
+  <h2>5. 試験 B：読み辞書の前と後</h2>
+  <p class="muted">左は原稿の文、右は読み辞書（tts/yomi.yaml）を通して TTS に渡す文です。右の文は tts/synth.py --dry-run が書いた audio/seg_*.json の tts から取りました。聞き比べて、読みの正誤を判断してください。</p>
+  <div class="row"><button id="btn-b-all" disabled>全部の組を生成</button></div>
+  <div id="b-list"></div>
+</section>
+
+<section id="test-c">
+  <h2>6. 試験 C：速さ</h2>
+  <p class="muted">RTF = 生成時間 ÷ 音声の長さ（1 より小さければ実時間より速い）。最初の 1 回は GPU のシェーダーの準備を含むので遅くなります。</p>
+  <div class="scroll"><table id="c-table">
+    <thead><tr><th>#</th><th>試験</th><th>精度</th><th>シード</th><th>字数</th><th>生成時間</th><th>音声の長さ</th><th>RTF</th><th>内訳（ms）</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div id="c-summary" class="muted"></div>
+</section>
+
+<section id="report">
+  <h2>7. 結果の報告</h2>
+  <div class="row">
+    <button id="btn-copy">結果を JSON でコピー</button>
+    <span id="copy-status" class="muted"></span>
+  </div>
+  <pre id="report-json">（まだ結果がありません）</pre>
+</section>
+</main>
+<script type="module" src="./irodori.js"></script>
+</body>
+</html>
