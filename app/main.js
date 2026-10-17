@@ -110,7 +110,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null; S.allowed = false; S.codeAsking = null;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   engine.setWorkspace(ws);
   ui.reset();
@@ -261,6 +261,7 @@ function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 // 書き込みの口（devapi）を呼ぶのは編集の画面だけ。プレビューからの知らせ（edit-hint・deck-pos）は欄を開くだけで、書き込みにはならない
 const api = createDevApi({
   get ws() { return S.ws; },
+  generation: () => S.gen,
   beforeWrite: async (kind) => {
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
@@ -605,16 +606,25 @@ async function openPortable(input) {
 //       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作り手はそのまま。§3.6.1・§7.3）
 // 口述原稿・音声・秒数だけが変わったなら段 A（組み直さずに決まった場所だけを書き換える。kit/core/tier-a.mjs、§7.2）。
 // スライドの原稿が変わった（など段 A でできない）なら段 B（このエディタの版で組み直す）で、保存の前にそのことを知らせて確かめる
+// 保存は 1 つずつ。始めたときの作業場所と文書に結び付け、途中（組み直し・確かめの窓・書き込み）で別のものを開いたら、
+// その後の作業場所の書き込みと状態の更新はしない（開いた先には何も書かない）
 async function savePortable(mode = 'save') {
-  const P = S.portable;
+  if (S.saving) { toast(T.api.busySave, true); return; }
+  S.saving = true;
+  try { await savePortableBound(mode); } finally { S.saving = false; }
+}
+async function savePortableBound(mode) {
+  const P = S.portable, ws = S.ws, g = S.gen;
   if (!P) return;
+  const live = () => S.portable === P && S.ws === ws && S.gen === g;
+  const cancelled = () => { toast(T.api.cancelled, true); };
   if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
   if (S.building) await S.building;
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
   const CFG = FORMAT.CONFIG_FILE;
   let identity = null, cfgText = null;
-  const files = S.ws.snapshot();
+  const files = ws.snapshot();
   if (mode === 'new') {
     identity = { docId: newDocId(), derivedFrom: { docId: P.index.docId, sourceSha256: P.index.sourceSha256 } };
     let cfg = {};
@@ -635,10 +645,12 @@ async function savePortable(mode = 'save') {
         body: [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { cls: 'hint', text: T.tierBWhy(a.code) }), el('p', { cls: 'hint', text: T.tierBGap })],
         buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
       if (v !== 'rebuild') { status(''); return; }
+      if (!live()) { cancelled(); return; }
       const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
       html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
     }
   } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  if (!live()) { cancelled(); return; }
   try {
     let h = mode === 'save' ? P.handle : null, wrote = false;
     if (h) {
@@ -651,14 +663,15 @@ async function savePortable(mode = 'save') {
       const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
       h = th ? (await writeHandle(th, html), th) : await saveWithPicker(name, html);
-      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; }
+      if (h) { P.handle = h; P.name = h.name; if (live()) { S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; } }
       else P.name = name;
     }
     // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）
-    if (cfgText) await S.ws.writeText(CFG, cfgText);
-    S.ws.markClean();
+    if (cfgText) await ws.writeText(CFG, cfgText);
+    ws.markClean();
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
-    P.narr0 = await S.ws.readText('narration.md');
+    P.narr0 = await ws.readText('narration.md');
+    if (!live()) return;
     updateName();
     const mb = (html.length / 1048576).toFixed(1);
     status(tier === 'A' ? T.savedAtA(time(), mb) : T.savedAtB(time(), mb));
@@ -685,16 +698,18 @@ async function exportFolder(ws = S.ws) {
 // ---------------------------------------------------------------- フォルダのデッキを持ち運べる 1 ファイルに書き出す
 async function exportPortableFile() {
   if (!S.ws || S.portable) return;
+  const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
   let r;
   try { r = await engine.exportPortable(S.deckFile); }
   catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  if (S.ws !== ws0 || S.gen !== g0) { status(''); toast(T.api.cancelled, true); return; }
   try {
     // docId を初めて作ったときは、原稿のフォルダの設定のファイルに残す（次の書き出しでも同じ文書）
-    for (const [rel, text] of Object.entries(r.writes)) await S.ws.writeText(rel, text);
+    for (const [rel, text] of Object.entries(r.writes)) await ws0.writeText(rel, text);
     const name = S.deckFile.replace(/\.html?$/i, '') + FORMAT.FILE_EXT;
     const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
-    const h = th ? (await writeHandle(th, r.html), th) : await saveWithPicker(name, r.html, S.ws.handle);
+    const h = th ? (await writeHandle(th, r.html), th) : await saveWithPicker(name, r.html, ws0.handle);
     status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
     toast(h ? T.portableExportedToast : T.downloadedToast(name));
   } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }

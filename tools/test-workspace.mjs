@@ -9,6 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { memoryWorkspace, badRel, KEEP_EDITS } from '../app/memfs.js';
+import { createDevApi } from '../app/devapi.js';
+import { short } from '../kit/core/sha1.mjs';
 import { rightsOf, isNoDerivatives } from '../app/rights.js';
 import { workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps, packFiles, unpackFiles } from '../app/portable-ws.js';
 import { readPortable, parseJsonStrict, inputHash } from '../kit/core/portable.mjs';
@@ -20,6 +22,44 @@ import { makeDeck } from './portable-fixtures.mjs';
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 const dec = new TextDecoder();
+
+ok('保存の競合：作業場所とその代に結び付け、控えの間に別の作業場所を開いたら書かずに取り消す・書く直前に原稿を読み直す・保存は 1 つずつ', async () => {
+  const deck = '<h2>A の見出し</h2>';
+  const mk = (name) => memoryWorkspace(name, { 'deck.html': deck, 'narration.md': '# n\n\n## s\n[0] x\n' });
+  const A = mk('A'), B = mk('B');
+  const ctx = { ws: A, gen: 1, generation() { return this.gen; }, deckFile: () => 'deck.html', slideOrder: () => [{ key: 's' }], editable: () => true,
+    afterWrite: async () => false, msg: { conflict: 'conflict', cancelled: 'cancelled', notFound: 'nf', badRange: 'br', narrConflict: 'nc', badNarr: 'bn', noRev: 'nr', narrHead: '# n\n' } };
+  const api = createDevApi(ctx);
+  const range = `4-${4 + 'A の見出し'.length}`, h = short('A の見出し');
+  // 1. A で保存を始め、控え（await）の間に B を開く → B には何も書かず、A の保存は取り消し（理由つき）
+  let release; const gate = new Promise((r) => { release = r; });
+  const backup0 = A.backup; A.backup = async (rel) => { await gate; return backup0(rel); };
+  const p1 = api('POST', '/__dev/edit', { range, h, text: '直した' });
+  await new Promise((r) => setTimeout(r, 10));
+  ctx.ws = B; ctx.gen = 2;
+  release();
+  const r1 = await p1;
+  assert.equal(r1._status, 410); assert.equal(r1.error, 'cancelled');
+  assert.equal(await B.readText('deck.html'), deck, 'nothing written to B');
+  assert.equal(await A.readText('deck.html'), deck, 'A not written either (cancelled, with a message)');
+  // 2. 確かめと書き込みの間（控えの間）に外で原稿が変わった → 409、上書きしない
+  ctx.ws = A; ctx.gen = 3;
+  A.backup = async (rel) => { await backup0(rel); await A.writeText('deck.html', deck + '<p>外で</p>'); };
+  const r2 = await api('POST', '/__dev/edit', { range, h, text: '直した' });
+  assert.equal(r2._status, 409);
+  assert.equal(await A.readText('deck.html'), deck + '<p>外で</p>', 'the outside change is kept');
+  // 口述原稿も同じ
+  A.backup = async (rel) => { await backup0(rel); if (rel === 'narration.md') await A.writeText('narration.md', '# n\n\n## s\n[0] 外で\n'); };
+  const g = await api('GET', '/__dev/narration?key=s:0');
+  const r3 = await api('POST', '/__dev/narration', { slideKey: 's', stepKey: '0', turns: [{ role: 'expert', text: 'y' }], rev: g.rev });
+  assert.equal(r3._status, 409); assert.match(await A.readText('narration.md'), /外で/);
+  // 3. 保存は 1 つずつ：2 つ同時に頼むと、後のものは前のものが書いた後の原稿で確かめる（同じ範囲の hash が変わっていて 409）
+  A.backup = backup0;
+  await A.writeText('deck.html', deck);
+  const [a, b] = await Promise.all([api('POST', '/__dev/edit', { range, h, text: '一つ目' }), api('POST', '/__dev/edit', { range, h, text: '二つ目' })]);
+  assert.deepEqual([a._status, b._status], [200, 409]);
+  assert.equal(await A.readText('deck.html'), '<h2>一つ目</h2>');
+});
 
 ok('Worker との受け渡し：同じ塊を指すパスは 1 つのバッファを 1 回だけ渡し、取り出した側でも作業場所でも写さない', async () => {
   const blob = new Uint8Array([1, 2, 3, 4]), other = new Uint8Array([9]);

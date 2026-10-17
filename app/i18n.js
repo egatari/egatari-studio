@@ -115,6 +115,7 @@ const ja = {
       'Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません）']],
   ],
   api: {
+    cancelled: '別のデッキ（作業場所）を開いたので、この保存を取り消しました。何も書いていません', busySave: '保存しています。終わってからもう一度押してください',
     notFound: '原稿が見つかりません', badRange: '範囲または本文が正しくありません', conflict: '原稿が変わっています。再読み込みしてください',
     savedButFailed: '保存しましたが、組み立てに失敗しました', badNarr: 'slideKey / stepKey / turns が正しくありません', noRev: 'rev（読み込んだときの版）がありません',
     narrConflict: '口述原稿が変わっています。再読み込みしてください', narrHead: '# 口述原稿\n', emptyComment: '指示が空です', noComment: 'コメントが見つかりません',
@@ -221,6 +222,7 @@ const en = {
       'Chrome / Edge only (Safari and Firefox cannot open folders).']],
   ],
   api: {
+    cancelled: 'Another deck (workspace) was opened, so this save was cancelled. Nothing was written.', busySave: 'Saving. Press again when it has finished.',
     notFound: 'Source not found', badRange: 'Bad range or text', conflict: 'The source has changed. Please reload',
     savedButFailed: 'Saved, but the build failed', badNarr: 'Bad slideKey / stepKey / turns', noRev: 'Missing rev (version when loaded)',
     narrConflict: 'The narration has changed. Please reload', narrHead: '# Narration\n', emptyComment: 'The note is empty', noComment: 'Note not found',
