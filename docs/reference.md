@@ -321,7 +321,7 @@ The summary line shows slides, math, components, font files, narration steps, au
 
 | `voice.json` field | Meaning |
 |---|---|
-| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the deck). Defaults `alice`, `bob` |
+| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the deck). Defaults `bob`, `alice` |
 | `lang` | language (default: `lang` of the deck's HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
 | `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
 

@@ -13,7 +13,7 @@ canon は TML 研究室の講義配信システム。出力は Marp 形式の md
 
 - `node <repo>/kit/check.mjs <deck>/deck.html` が error 0（口述原稿のない段階は警告で出る。動画にするなら埋める）
 - 口述原稿はユーザーが確認済みか。まだなら、先に開発サーバー（`node <repo>/server/dev.mjs <deck>/deck.html`、キー `n`）で見てもらう
-- 話者：既定は 1 人モードが alice、掛け合いが alice（Expert）× bob（Novice）。変えるときは `<deck>/voice.json` か `--voices`。参照音声は `<名前>.wav` を `IRODORI_REF_DIR`（既定 `<repo>/tts/voices/`）に置く
+- 話者：既定は 1 人モードが bob、掛け合いが bob（Expert）× alice（Novice）。変えるときは `<deck>/voice.json` か `--voices`。参照音声は `<名前>.wav` を `IRODORI_REF_DIR`（既定 `<repo>/tts/voices/`）に置く
 - Irodori-TTS のサーバーが動いているか：`curl -s ${IRODORI_URL:-http://localhost:8882}/v1/models`
 - ffmpeg と uv があるか
 
@@ -21,7 +21,7 @@ canon は TML 研究室の講義配信システム。出力は Marp 形式の md
 
 ```bash
 R=<repo>; D=<deck>
-uv run --project $R/tts python $R/tts/synth.py $D --voices expert=alice,novice=bob
+uv run --project $R/tts python $R/tts/synth.py $D --voices expert=bob,novice=alice
 node $R/kit/build.mjs $D/deck.html                    # 音声の長さと cue をタイムラインに入れる（TTS の後に必ずやり直す）
 node $R/render/render.mjs $D/out/deck.html --out $D/video [--full]
 node $R/render/export-canon.mjs $D --render $D/video --out $D/bundle   # CANON_DIR があれば canon の parser でも検査

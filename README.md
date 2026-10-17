@@ -69,7 +69,7 @@ Edge is already there, so the checker and PDF work without Chrome. Run the comma
 - ffmpeg and ffprobe on `PATH`
 - uv (runs the small Python project in `tts/`)
 - A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`)
-- Reference voices: the default voices `alice` and `bob` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
+- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
 
 ## Quick start (tier 1: slides)
 
@@ -173,7 +173,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 node render/export-canon.mjs $D --render $D/video --out $D/bundle
 ```
 
-- Voices: `--voices expert=alice,novice=bob`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `alice` (single speaker) and `alice` / `bob` (dialogue), looked up as `tts/voices/<name>.wav`; in an English deck `<name>_en.wav` is used when it exists
+- Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English deck `<name>_en.wav` is used when it exists
 - If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
 - `export-canon.mjs` writes a lesson bundle (Marp-style markdown plus one MP4 and one PNG per step) for canon, our lab's lecture delivery system; other systems that accept the same format can use it too. With `CANON_DIR` set, it also validates the bundle with canon's own parser. Without it, that check is skipped
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the narration inside the HTML, so the single file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
