@@ -19,7 +19,7 @@
 
 ## model
 [0] We start from a simple model.
-[1] {mark:ts}Each input has a true logit, theta star: the log-odds of the true class probability.
+[1] {mark:theta-star}Each input has a true logit, theta star: the log-odds of the true class probability.
 [2] {mark:eps}The classifier does not see it exactly. Its logit is the true logit plus Gaussian noise, with scale tau.
 [3] {mark:sig}The sigmoid then turns this noisy logit into the predicted probability.
 [concl] This is the assumption everything else builds on.
