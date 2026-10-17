@@ -1,9 +1,10 @@
-// デッキの iframe（sandbox、origin を持たない）の中で、実行系より前に動く小さな仲立ち。編集アプリが <head> の直後に入れる
-// cfg = {query, opener, dev, load, html, shim}
+// デッキの iframe（sandbox、origin を持たない）の中で、実行系より前に動く小さな仲立ち。編集アプリが文書の信頼する先頭部分に入れる（app/preview-doc.js）
+// cfg = {query, opener, dev, load, html, shim, prefix}
 //   query   location.search にする文字列（"?presenter=1" など。srcdoc の文書は URL を持たないので history で付ける）
 //   opener  発表者ビュー：window.opener を親（アプリが開いた窓）にする。本体とのやり取りはアプリが中継する
 //   dev     プレビュー：印刷・位置・簡易な検査の頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
-//   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列
+//   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列、
+//           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
 (function frameShim(cfg){
 "use strict";
 var parentWin = window.parent;
@@ -15,14 +16,14 @@ window.open = function(u){
   return null;
 };
 // 発表者ビューの中の画面：src="about:srcdoc?view=…" の代わりに、同じデッキを srcdoc で入れる
-if (cfg.html && cfg.shim) {
+if (cfg.html && cfg.shim && cfg.prefix) {
   var d = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, "src");
   Object.defineProperty(HTMLIFrameElement.prototype, "src", {configurable: true, get: d.get, set: function(v){
     var s = String(v);
     if (s.indexOf("about:srcdoc") !== 0) return d.set.call(this, v);
     var q = s.slice("about:srcdoc".length);
     var tag = "<script>(" + cfg.shim + ")(" + JSON.stringify({query: q}).replace(/</g, "\\u003c") + ");<\/script>";
-    this.srcdoc = cfg.html.replace(/<head[^>]*>/i, function(m){ return m + tag; });
+    this.srcdoc = cfg.prefix + tag + cfg.html;
   }});
 }
 if (!cfg.dev) return;

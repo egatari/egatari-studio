@@ -1,0 +1,117 @@
+// 守りの試験（npm test の test-security）：プレビューの決まり（CSP）が、デッキの文書（信頼しないバイト）より先に効くこと
+//   node tools/test-security.mjs
+// 編集アプリと同じ決まりのページ（app/index.html の CSP。同じ origin への接続はできる）を立て、その中の sandbox の iframe に
+// app/preview-doc.js の previewDocument で組んだ文書を srcdoc で入れる。デッキの側には、決まりを飲み込む・追い越す・緩める・
+// 外へ出るための細工（<!-- <head> -->、<head> より前のスクリプト、<template>・<noscript>・属性の中の <head>、2 つ目の CSP、
+// <meta http-equiv=refresh>、<base>、data: や同じ origin への移動）を入れ、同じ origin の受け口（/canary）に何も届かないこと、
+// 決まりの <meta> が文書の最初の CSP で <head> の 2 番目の要素であること、信頼する仲立ちがデッキのどのスクリプトよりも先に動くことを確かめる。
+// 対照として、以前のやり方（<head> を正規表現で探して入れる）では受け口に届くことも確かめる（試験が攻めを見分けられること）
+import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { launch } from '../kit/browser.mjs';
+import { previewDocument, PREVIEW_CSP } from '../app/preview-doc.js';
+
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+let fails = 0;
+const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
+
+// 編集アプリのページの決まり（app/index.html の <meta>）
+const appHtml = fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8');
+const APP_CSP = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(appHtml) || [])[1];
+ok(!!APP_CSP, 'app CSP found in app/index.html');
+ok(!/frame-src[^;]*'self'/.test(APP_CSP), "app CSP: the preview cannot navigate its frame to the app's own origin (no 'self' in frame-src)");
+
+const hits = [];
+const HOST = `<!doctype html><html><head><meta charset="utf-8"></head><body><iframe id="f" sandbox="allow-scripts allow-modals"></iframe><script src="/host.js"></script></body></html>`;
+const srv = http.createServer((req, res) => {
+  if (req.url.startsWith('/canary')) { hits.push(req.url); res.writeHead(200, { 'content-type': 'text/plain', 'access-control-allow-origin': '*' }); return res.end('ok'); }
+  if (req.url === '/host') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': APP_CSP }); return res.end(HOST); }
+  if (req.url === '/host.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); return res.end('window.__ready = true;'); }
+  res.writeHead(404); res.end();
+});
+await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+const ORIGIN = `http://127.0.0.1:${srv.address().port}`;
+
+// デッキの中の印：同じ origin の受け口に、fetch・画像・beacon で知らせる（決まりが効いていれば止まる）
+const canary = (tag) => `<script>window.__deckFirst = window.__deckFirst || (window.__shim ? 'shim' : 'deck');`
+  + `try{fetch("${ORIGIN}/canary?fetch-${tag}").catch(function(){})}catch(e){}`
+  + `try{new Image().src="${ORIGIN}/canary?img-${tag}"}catch(e){}`
+  + `try{navigator.sendBeacon("${ORIGIN}/canary?beacon-${tag}","x")}catch(e){}</script>`;
+const body = (tag) => `<body><section class="slide"><h2>x</h2></section>${canary(tag + '-body')}</body></html>`;
+const CASES = {
+  'comment-head': `<!doctype html><!-- <head> --><html lang="en"><head>${canary('comment')}<title>t</title></head>${body('comment')}`,
+  'script-before-head': `<!doctype html>${canary('before')}<html><head><title>t</title></head>${body('before')}`,
+  'head-in-template': `<!doctype html><template><head></template><html><head>${canary('template')}</head>${body('template')}`,
+  'head-in-noscript': `<!doctype html><noscript><head></noscript><html><head>${canary('noscript')}</head>${body('noscript')}`,
+  'head-in-attribute': `<!doctype html><html data-x="<head>"><head title="<head>">${canary('attr')}</head>${body('attr')}`,
+  'second-csp': `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline'; connect-src *">${canary('csp2')}</head>${body('csp2')}`,
+  'meta-refresh': `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${ORIGIN}/canary?refresh"></head>${body('refresh')}`,
+  'base-and-link': `<!doctype html><html><head><base href="${ORIGIN}/canary/"><link rel="stylesheet" href="${ORIGIN}/canary?css"></head><body><img src="img-base"><img src="${ORIGIN}/canary?img-abs"></body></html>`,
+  'navigate-data': `<!doctype html><html><head><script>location.href = "data:text/html," + encodeURIComponent('<script>fetch("${ORIGIN}/canary?data-url").catch(function(){})<\\/script>');</script></head><body></body></html>`,
+  'navigate-self': `<!doctype html><html><head><script>location.href = "${ORIGIN}/canary?navigate";</script></head><body></body></html>`,
+  'nested-srcdoc': `<!doctype html><html><head></head><body><iframe srcdoc="${canary('nested').replace(/"/g, '&quot;')}"></iframe></body></html>`,
+};
+// 信頼する仲立ち（試験用）：動いた印と、そのときの文書のスクリプトの数（自分だけなら 1）
+const SHIM = `window.__shim = true; window.__shimScripts = document.scripts.length;`;
+
+const browser = await launch();
+const page = await browser.newPage();
+const errs = [];
+page.on('pageerror', (e) => errs.push(e.message));
+await page.goto(ORIGIN + '/host');
+await page.waitForFunction(() => window.__ready === true);
+const frameOf = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
+
+async function load(doc) {
+  await page.evaluate((d) => new Promise((res) => {
+    const old = document.getElementById('f'), f = document.createElement('iframe');
+    f.id = 'f'; f.setAttribute('sandbox', 'allow-scripts allow-modals');
+    f.addEventListener('load', () => res(), { once: true });
+    old.replaceWith(f); f.srcdoc = d;
+  }), doc);
+  await page.waitForTimeout(700);
+}
+// 文書の中の様子（Playwright の evaluate は CSP の外で動くので、見るだけ）
+const inspect = () => frameOf().evaluate((csp) => {
+  const metas = [...document.querySelectorAll('meta')].filter((m) => (m.getAttribute('http-equiv') || '').toLowerCase() === 'content-security-policy');
+  const h = document.head;
+  return { first: metas[0] ? metas[0].content === csp : false, pos: h ? [...h.children].indexOf(metas[0]) : -1, charset: h && h.children[0] ? h.children[0].getAttribute('charset') : null,
+    shim: window.__shim === true, shimScripts: window.__shimScripts, deckFirst: window.__deckFirst || null, lang: document.documentElement.lang, metas: metas.length,
+    url: location.href };
+}, PREVIEW_CSP).catch((e) => ({ error: String(e.message || e) }));
+
+try {
+  // 対照：以前のやり方（<head> を正規表現で探して、その直後に入れる）では、<!-- <head> --> の細工で決まりが注釈に飲み込まれ、受け口に届く
+  const legacy = (html) => html.replace(/<head[^>]*>/i, (m) => m + `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}"><script>${SHIM}</script>`);
+  hits.length = 0;
+  await load(legacy(CASES['comment-head']));
+  ok(hits.some((u) => u.includes('comment')), 'control: the old regex insertion is swallowed by <!-- <head> --> and the canary is reached ' + JSON.stringify(hits));
+
+  for (const [name, html] of Object.entries(CASES)) {
+    hits.length = 0;
+    await load(previewDocument(html, SHIM));
+    const st = await inspect();
+    ok(hits.length === 0, `${name}: nothing reached the same-origin canary ${JSON.stringify(hits)}`);
+    if (['navigate-data', 'navigate-self', 'meta-refresh'].includes(name)) { ok(!/canary|^data:/.test(st.url || ''), `${name}: the preview frame did not navigate away (${st.url || st.error})`); continue; }
+    ok(st.first && st.pos === 1 && st.charset === 'utf-8', `${name}: the trusted policy is the first CSP in the document, second in <head> after <meta charset> ` + JSON.stringify(st));
+    ok(st.shim && st.shimScripts === 1 && st.deckFirst !== 'deck', `${name}: the trusted shim ran before any deck script ` + JSON.stringify({ shim: st.shim, scripts: st.shimScripts, deckFirst: st.deckFirst }));
+    if (name === 'second-csp') ok(st.metas === 2, 'second-csp: the deck may add a policy, which can only restrict further (fetch still blocked)');
+    if (name === 'comment-head') ok(st.lang === 'en', 'comment-head: the deck\'s <html lang> still applies (attributes move to the trusted <html>)');
+    // 決まりが効いたあとで、文書から同じ origin へ（Playwright から頼む fetch も決まりに従う）
+    const late = await frameOf().evaluate((o) => fetch(o + '/canary?late').then(() => 'fetched', () => 'blocked'), ORIGIN).catch(() => 'blocked');
+    ok(late === 'blocked' && !hits.some((u) => u.includes('late')), `${name}: fetch to the app origin is blocked (connect-src 'none')`);
+  }
+  // 信頼する仲立ちに </script や <!-- を入れたら組まない
+  let threw = false; try { previewDocument('<p>x</p>', 'a("</script>")'); } catch { threw = true; }
+  ok(threw, 'previewDocument refuses a shim containing </script');
+} catch (e) {
+  fails++; console.error(e);
+} finally {
+  ok(errs.length === 0, 'no page errors in the host ' + JSON.stringify(errs));
+  await browser.close();
+  srv.close();
+  console.log(fails ? `${fails} FAILED` : 'all passed');
+  process.exit(fails ? 1 : 0);
+}

@@ -6,6 +6,7 @@
 import RES from 'virtual:resources';
 import SHIM from './frame-shim.js?text';
 import { createEngine, bytesToBase64 } from './engine.js';
+import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
 import { writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
@@ -157,13 +158,9 @@ function signature(listing) {
 
 // ---------------------------------------------------------------- 組み立てとプレビュー
 const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
-function withShim(html, cfg) {
-  const tag = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}"><script>${SHIM}(${enc(cfg)});</script>`;
-  return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + tag) : tag + html;
-}
-// プレビューの文書の決まり（アプリのページの決まりに重ねる）：外へ繋がらない（connect-src 'none'）。読み込めるのは data: と blob: だけ
-// （デッキの組み立ては画像・字・CSS を data: で埋め込む）。フォームと <base> も使えない。<head> の直後、どのスクリプトよりも前に入れる
-const PREVIEW_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'";
+// プレビューの文書：信頼する先頭部分（決まり（CSP）と仲立ちのスクリプト）の後ろに、組んだデッキをそのまま続ける（app/preview-doc.js。
+// デッキの文書の中を探して決まりを入れることはしない）
+function withShim(html, cfg) { return previewDocument(html, `${SHIM}(${enc(cfg)});`); }
 function previewHtml(base) {
   const html = withShim(base, { dev: true, load: S.loads });
   const inject = `<script>${RES.hints}</script>\n`;
@@ -322,7 +319,7 @@ function loadPresenter() {
   const f = w && !w.closed && w.document.getElementById('pf');
   if (!f) return;
   w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
-  f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM });
+  f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM, prefix: trustedPrefix() });
 }
 
 // ---------------------------------------------------------------- 横の板（検査・警告・使い方）
