@@ -178,7 +178,21 @@ function watch(dir, filter, onKit) {
     });
   } catch (e) { console.warn('watch failed: ' + dir + ' ' + e.message); }
 }
-watch(DIR, deckRelevant);
+// 原稿のフォルダの直下と audio/ は、フォルダそのものを見張る（recursive にしない）。Linux の recursive はファイルごとの見張りで、
+// 保存（一時ファイルに書いて rename で入れ替える）でファイルの実体が替わると、その後の変更に気づかなくなる（v0.2.3 と同じ直し）
+function watchDir(dir, filter) {
+  if (!fs.existsSync(dir)) return;
+  try {
+    fs.watch(dir, (_ev, name) => {
+      const rel = path.relative(DIR, path.join(dir, String(name || '')));
+      if (filter && !filter(rel)) return;
+      schedule(rel || path.basename(dir));
+    });
+  } catch (e) { console.warn('watch failed: ' + dir + ' ' + e.message); }
+}
+watchDir(DIR, deckRelevant);
+watchDir(path.join(DIR, 'audio'), deckRelevant);
+for (const d of ['data', 'figs', 'components']) watch(path.join(DIR, d), (name) => deckRelevant(path.join(d, String(name || ''))));
 for (const d of ['kit', 'components', 'themes']) {
   const abs = path.join(ROOT, d);
   if (abs === DIR || DIR.startsWith(abs + path.sep)) continue;
