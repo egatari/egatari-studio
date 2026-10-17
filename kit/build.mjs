@@ -101,6 +101,8 @@ export const nodeEnv = {
   readText: (p) => fs.readFileSync(p, 'utf8'),
   readBase64: (p) => fs.readFileSync(p).toString('base64'),
   readBytes: (p) => new Uint8Array(fs.readFileSync(p)),
+  // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）
+  size: (p) => fs.statSync(p).size,
   within,
   subset: subsetCss,
   compressAudio,

@@ -23,6 +23,8 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { makeDeck } from './portable-fixtures.mjs';
 import * as esbuild from 'esbuild';
+import { createRequire } from 'node:module';
+import { createEngine, READ_CONCURRENCY as ENGINE_READS } from '../app/engine.js';
 import { pathToFileURL } from 'node:url';
 
 const tests = [];
@@ -341,6 +343,77 @@ ok('持ち運べる 1 ファイルを読む Worker の口：期限で止めた W
   W2.emit({ id: id3, ok: true, indexText: '{"docId":"three"}', deckMetaText: null, buffers: [], table: [], warnings: [] });
   assert.equal((await p3).index.docId, 'three');
   assert.ok(!W2.terminated);
+});
+
+// 編集アプリの組み立て（app/engine.js）に渡す同梱の資源（tools/build-app.mjs と同じ集め方の小さな写し）
+function appResources() {
+  const R = path.dirname(path.dirname(new URL(import.meta.url).pathname)), req = createRequire(import.meta.url);
+  const text = {}, b64 = {}, lazy = [], lazyFiles = {};
+  const add = (v, f) => { if (/\.(css|js|json|svg|txt|md|tex)$/i.test(f)) text[v] = fs.readFileSync(f, 'utf8'); else b64[v] = fs.readFileSync(f).toString('base64'); };
+  const tree = (v, d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.name.startsWith('.')) continue; const f = path.join(d, e.name); if (e.isDirectory()) tree(v + '/' + e.name, f); else add(v + '/' + e.name, f); } };
+  for (const f of fs.readdirSync(path.join(R, 'kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, path.join(R, 'kit', f));
+  for (const d of fs.readdirSync(path.join(R, 'components'), { withFileTypes: true })) if (d.isDirectory() && fs.existsSync(path.join(R, 'components', d.name, 'index.js'))) add(`/repo/components/${d.name}/index.js`, path.join(R, 'components', d.name, 'index.js'));
+  tree('/repo/themes', path.join(R, 'themes'));
+  const kdir = path.dirname(req.resolve('katex'));
+  add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css')); add('/repo/katex/katex.min.js', path.join(kdir, 'katex.min.js'));
+  for (const f of fs.readdirSync(path.join(kdir, 'fonts'))) if (f.endsWith('.woff2')) add('/repo/katex/fonts/' + f, path.join(kdir, 'fonts', f));
+  for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3']) {
+    const dir = path.dirname(req.resolve(`${pkg}/package.json`));
+    for (const w of [400, 700]) {
+      const css = fs.readFileSync(path.join(dir, `${w}.css`), 'utf8'); text[`/repo/fonts/${pkg}/${w}.css`] = css;
+      for (const m of css.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)) { const v = `/repo/fonts/${pkg}/files/${m[1]}`; if (!lazyFiles[v]) { lazy.push(v); lazyFiles[v] = path.join(dir, 'files', m[1]); } }
+    }
+  }
+  return { res: { version: 't', text, b64, lazy }, loadLazy: async (v) => fs.readFileSync(lazyFiles[v]).toString('base64') };
+}
+// 一覧の大きさを偽れる作業場所（読んだ回数・同時に読んだ数を数える）
+function countingWs(files, sizes = {}) {
+  const reads = new Map(); let inFlight = 0, max = 0;
+  const ws = {
+    reads, get maxInFlight() { return max; },
+    async list() { return { files: new Map(Object.keys(files).map((k) => [k, { m: 1, s: sizes[k] ?? enc.encode(files[k]).length }])), dirs: new Set(Object.keys(files).filter((k) => k.includes('/')).map((k) => k.split('/').slice(0, -1).join('/'))) }; },
+    async readBytes(rel) { reads.set(rel, (reads.get(rel) || 0) + 1); inFlight++; max = Math.max(max, inFlight); await new Promise((r) => setTimeout(r, 2)); inFlight--; return enc.encode(files[rel]); },
+  };
+  return ws;
+}
+const enc = new TextEncoder();
+ok('編集アプリの組み立ては、組み立てが参照したファイルだけを読む（一覧のほかのファイルは読まない）・同時に 8 つまで・上限を超えるなら読む前に断る', async () => {
+  const { res, loadLazy } = appResources();
+  const imgs = Array.from({ length: 30 }, (_, i) => `figs/i${i}.svg`);
+  const files = { 'deck.html': `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>${imgs.map((f) => `<img src="${f}">`).join('')}/*INCLUDE:part.html*/</section></div></body></html>`, 'part.html': '<p>part</p>' };
+  for (const f of imgs) files[f] = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+  for (let i = 0; i < 500; i++) files[`junk/u${i}.txt`] = 'u';
+  files['big-unused.bin'] = 'x'; files['notes.md'] = 'n';
+  const ws = countingWs(files, { 'big-unused.bin': 900 * 1048576 });
+  const E = createEngine(res, loadLazy);
+  E.setWorkspace(ws); E.setListing(await ws.list());
+  const r = await E.build('deck.html', {});
+  assert.ok(r.html.includes('part'));
+  const read = [...ws.reads.keys()].sort();
+  assert.deepEqual(read, ['deck.html', ...imgs, 'part.html'].sort(), 'only referenced files are read');
+  assert.ok([...ws.reads.values()].every((n) => n === 1), 'each read once');
+  assert.ok(ws.maxInFlight <= ENGINE_READS && ws.maxInFlight > 1, `in flight ${ws.maxInFlight}`);
+  // 組み直しは変わっていないものを読み直さない
+  await E.build('deck.html', {});
+  assert.ok([...ws.reads.values()].every((n) => n === 1));
+  // 書き出し（持ち運べる 1 ファイル）も参照したものだけ
+  const ws2 = countingWs(files, { 'big-unused.bin': 900 * 1048576 });
+  E.setWorkspace(ws2);
+  await E.exportPortable('deck.html', {});
+  assert.ok(!ws2.reads.has('big-unused.bin') && ![...ws2.reads.keys()].some((k) => k.startsWith('junk/')), 'export reads only referenced files: ' + [...ws2.reads.keys()].filter((k) => !files[k] || k.startsWith('junk')).join(','));
+  // 参照したファイルの一覧の大きさが上限を超えるなら、読まずに断る（build-too-large）
+  const big = { 'deck.html': files['deck.html'].replace('/*INCLUDE:part.html*/', '<img src="huge.png">'), 'huge.png': 'x' };
+  for (const f of imgs) big[f] = files[f];
+  const ws3 = countingWs(big, { 'huge.png': 2048 * 1048576 });
+  E.setWorkspace(ws3); E.setListing(await ws3.list());
+  await assert.rejects(E.build('deck.html', {}), (e) => e.code === 'build-too-large');
+  assert.ok(!ws3.reads.has('huge.png'), 'the huge file is never read');
+  // 止められたら（signal）次の読み取りを始めない
+  const ws4 = countingWs(files);
+  E.setWorkspace(ws4); E.setListing(await ws4.list());
+  const ac = new AbortController(); ac.abort();
+  await assert.rejects(E.build('deck.html', { signal: ac.signal }), (e) => e.code === 'cancelled');
+  assert.equal(ws4.reads.size, 0);
 });
 
 ok('権利：改変を認めないライセンスと、ライセンスのない著作権の表示は確認が要る', () => {

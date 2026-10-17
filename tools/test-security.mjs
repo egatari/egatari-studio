@@ -375,11 +375,35 @@ try {
       ['formulas x30000', deckOf('math', '\\(x\\)'.repeat(30000)), /formulas/],
       ['tags x600000', deckOf('tags', '<b>'.repeat(600000)), /tags in the source/],
     ];
-    for (const [name, file, re] of CASES2) {
-      const code = `import { build } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+    // 読むものすべて（テーマのロゴ・テーマと親のテーマ・部品・音声）を 1 つの数え方に、読む前に（大きさで）数える。
+    // 大きなファイルは中身が 0 の疎なファイル（ftruncate。ディスクを使わない）にして、読まずに断ること（最大 RSS が小さいまま）を見る
+    const MiB = 1048576;
+    const sparse = (f, n) => { fs.mkdirSync(path.dirname(f), { recursive: true }); const fd = fs.openSync(f, 'w'); fs.ftruncateSync(fd, n); fs.closeSync(fd); };
+    const themed = (name, theme, body = '') => { const f = deckOf(name, body); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`).replace('<section class="slide">', '<section class="slide cover">')); return f; };
+    const theme = (deck, name, files) => { const d = path.join(path.dirname(deck), 'themes', name); fs.mkdirSync(d, { recursive: true }); for (const [f, t] of Object.entries(files)) fs.writeFileSync(path.join(d, f), t); return d; };
+    { const f = themed('logos', 'lg'); theme(f, 'lg', { 'tokens.css': ':root{}', 'theme.json': JSON.stringify({ logos: Array(10001).fill('l.png') }), 'l.png': 'x'.repeat(10) });
+      CASES2.push(['theme logos x10001', f, /includes and embeds/]); }
+    { const f = themed('logobig', 'lb'); const d = theme(f, 'lb', { 'tokens.css': ':root{}', 'theme.json': JSON.stringify({ logos: ['l.png'] }) }); sparse(path.join(d, 'l.png'), 1024 * MiB);
+      CASES2.push(['theme logo 1 GiB', f, /files read/]); }
+    { const f = themed('tokbig', 'tb'); const d = theme(f, 'tb', { 'theme.json': '{}' }); sparse(path.join(d, 'tokens.css'), 1024 * MiB);
+      CASES2.push(['theme tokens.css 1 GiB', f, /files read/]); }
+    { const f = themed('chain', 't0');
+      for (let i = 0; i < 16; i++) { const d = theme(f, 't' + i, { 'theme.json': JSON.stringify(i < 15 ? { extends: 't' + (i + 1) } : {}) }); sparse(path.join(d, 'tokens.css'), 4 * MiB); }
+      CASES2.push(['16 inherited themes x 4 MiB (readChars 32 MiB)', f, /files read/, { limits: { readChars: 32 * MiB } }]); }
+    { const f = deckOf('compbig', '<m-huge></m-huge>'); sparse(path.join(path.dirname(f), 'components', 'huge', 'index.js'), 1024 * MiB);
+      CASES2.push(['component script 1 GiB', f, /files read/]); }
+    { const f = deckOf('comps', Array.from({ length: 12 }, (_, i) => `<m-c${i}></m-c${i}>`).join(''));
+      for (let i = 0; i < 12; i++) sparse(path.join(path.dirname(f), 'components', 'c' + i, 'index.js'), 4 * MiB);
+      CASES2.push(['12 component scripts x 4 MiB (readChars 32 MiB)', f, /files read/, { limits: { readChars: 32 * MiB } }]); }
+    { const f = deckOf('audbig', ''); const a = path.join(path.dirname(f), 'audio'); sparse(path.join(a, 'big.mp3'), 1024 * MiB);
+      fs.writeFileSync(path.join(a, 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file: 'big.mp3', dur: 1, cues: [] } } }));
+      CASES2.push(['embedded audio 1 GiB', f, /files read/, { embedAudio: true }]); }
+    for (const [name, file, re, extra] of CASES2) {
+      const code = `import { build } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
       const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
       let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
-      ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < 1024 * 1024, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
+      const maxRss = extra || /GiB|x10001/.test(name) ? 300 * 1024 : 1024 * 1024;   // 読まずに断るもの：大きなファイルの中身を確保しない
+      ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < maxRss, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
     }
     // 上限は変えられる。小さくすれば普通のデッキも断り、大きくすれば通る
     let small = null; try { build(deckOf('low', '/*INCLUDE:dep.txt*/'.repeat(10), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 5 } }); } catch (e) { small = e.code; }

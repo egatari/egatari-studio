@@ -7,6 +7,7 @@
 //   env.readText(p)                UTF-8 の文字列
 //   env.readBase64(p)              中身の base64
 //   env.within(p, dir)             p が dir の中にあるか（Node では実体のパスで比べる）
+//   env.size(p)                    任意。ファイルのバイト数（読む前に上限に数える。なければ読んだ後・つなぐ前に数える）
 //   env.katex                      KaTeX（renderToString）
 //   env.katexDir                   katex の dist（katex.min.css・katex.min.js・fonts/）
 //   env.fontDir(pkg)               @fontsource の包みの場所（{w}.css と files/）
@@ -330,8 +331,9 @@ const SKIP_REF = /^(?:data:|blob:|#|about:|javascript:|mailto:)/i;
 const EXT_REF = /^(?:https?:)?\/\//i;
 export function bundleAssets(env, html, deckDir, warn = [], budget = null) {
   const P = env.path;
-  // 埋め込むたびに増える大きさと回数を数える（同じファイルの参照・@import の繰り返しで膨らませない）
+  // 埋め込むたびに増える大きさと回数を数える（同じファイルの参照・@import の繰り返しで膨らませない）。読むたびに回数と読んだ大きさも（chargedEnv）
   const bud = budget || buildBudget({}, html.length);
+  env = chargedEnv(env, bud);
   const grow = (t) => { bud.add(t.length, bud.L.bundledChars, 'bundled document'); return t; };
   const seen = new Set();
   const once = (msg) => { if (!seen.has(msg)) { seen.add(msg); warn.push(msg); } };
@@ -420,9 +422,12 @@ export function bundleAssets(env, html, deckDir, warn = [], budget = null) {
 // 取り込み数個・式 27・タグ 3400）の 100 倍以上
 export const BUILD_LIMITS = Object.freeze({
   sourceChars: 32 * 1048576,     // 原稿（deck.html）の文字数
-  includes: 10000,               // INCLUDE・JSON・FIG・埋め込み（data: URI・<link>・<script src>・@import）の回数の合計
+  includes: 10000,               // 組み立てがファイルを読む回数の合計（INCLUDE・JSON・FIG・埋め込み（data: URI・<link>・<script src>・@import）・
+                                 // テーマ（theme.json・tokens.css・ロゴ・親のテーマ）・部品・口述原稿・音声・字・実行系）
   expandedChars: 64 * 1048576,   // 前処理（INCLUDE・JSON・FIG）の後の文字数
-  bundledChars: 256 * 1048576,   // 埋め込みと式の後の文字数（画像・動画の data: URI を含む）
+  bundledChars: 256 * 1048576,   // 埋め込みと式の後の文字数（画像・動画の data: URI を含む）。組んだ出力の全体（字・テーマ・実行系・部品を入れた後）も
+  readChars: 256 * 1048576,      // 組み立てが読むファイルの大きさの合計（原稿・取り込み・埋め込み・テーマと親のテーマ・ロゴ・部品・音声・字・実行系。
+                                 // 文字で読むものはバイト数、base64 で読むものは base64 の字数。env.size があれば読む前に数える）
   tags: 500000,                  // 解析する文書のタグ（「<」と英字・/・!）の数（原稿と、組んだデッキの部分）
   math: 20000,                   // 式の数
 });
@@ -430,30 +435,68 @@ export class BuildLimitError extends Error {
   constructor(what, n, max) { super(`build: ${what} (${n}) is over the limit (${max}); refusing to build`); this.name = 'BuildLimitError'; this.code = 'build-too-large'; this.what = what; }
 }
 const countTags = (t, max) => { let n = 0; const re = /<[A-Za-z!/?]/g; while (re.exec(t)) if (++n > max) break; return n; };
-// 埋め込みの数え方（bundleAssets と本体の前処理が共有する）：add(n) は n 字増える 1 回の取り込み
+// 数え方（本体・bundleAssets・chargedEnv が共有する。組み立て 1 回に 1 つ）：
+//   read(n)   ファイルを 1 回読む（回数を数え、n を読んだ大きさの合計に足す）。読む前に（大きさが分かれば）呼ぶ
+//   charge(n) 読んだ大きさの合計に n を足す（回数は数えない）
+//   add(n)    文書が n 字増える（前処理・埋め込み・ロゴ）。つなぐ前に呼ぶ
 export function buildBudget(limits = {}, start = 0) {
   const L = { ...BUILD_LIMITS, ...(limits || {}) };
-  let used = start, count = 0;
+  let used = start, count = 0, input = 0;
+  const charge = (n) => { input += n; if (input > L.readChars) throw new BuildLimitError('files read', input, L.readChars); };
   return {
     L,
-    add(n, max = L.expandedChars, what = 'expanded source') {
+    read(n = 0) {
       if (++count > L.includes) throw new BuildLimitError('includes and embeds', count, L.includes);
+      charge(n);
+    },
+    charge,
+    add(n, max = L.expandedChars, what = 'expanded source') {
       used += n;
       if (used > max) throw new BuildLimitError(what, used, max);
     },
     get used() { return used; },
+    get count() { return count; },
+    get input() { return input; },
     reset(n) { used = n; },
   };
+}
+// env の読み取り（readText・readBase64・readBytes）のたびに bud.read で数える。env.size(p) があれば読む前に（大きすぎるものは読まずに断る）、
+// なければ読んだ直後・使う前に数える。同じ bud で包んだ env はそのまま返す
+const CHARGED = Symbol('charged');
+export function chargedEnv(env, bud) {
+  if (env[CHARGED] === bud) return env;
+  const sizeOf = (p) => {
+    if (typeof env.size !== 'function') return null;
+    let n; try { n = env.size(p); } catch { return null; }
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  // 読む前：大きさが分かれば回数と大きさを数える（base64 は 4/3 倍）。分からなければ回数だけ数え、読んだ後に大きさを足す
+  const before = (p, b64) => { const n = sizeOf(p); bud.read(n === null ? 0 : b64 ? Math.ceil(n / 3) * 4 : n); return n !== null; };
+  const w = Object.create(env);
+  Object.defineProperty(w, CHARGED, { value: bud });
+  w.readText = (p) => { const known = before(p, false); const t = env.readText(p); if (!known) bud.charge(t.length); return t; };
+  w.readBase64 = (p) => { const known = before(p, true); const t = env.readBase64(p); if (!known) bud.charge(t.length); return t; };
+  if (typeof env.readBytes === 'function') w.readBytes = (p) => { const known = before(p, false); const b = env.readBytes(p); if (!known) bud.charge(b.length); return b; };
+  // 読む前に数えるだけ（env.compressAudio のように、env の外で読むもの）
+  w.precharge = (p) => { before(p, false); };
+  // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
+  if (typeof env.subset === 'function') w.subset = (t) => { const r = env.subset(t); if (r && typeof r.css === 'string') bud.read(r.css.length); return r; };
+  return w;
 }
 
 // ---------------------------------------------------------------- 本体
 // KaTeX で許す HTML 拡張：\htmlClass（色）、\htmlId と \htmlData（注目の演出の目印 §7、モーフの対応 §8。docs/contract.md）
 const TRUSTED = new Set(['\\htmlClass', '\\htmlId', '\\htmlData']);
-export function build(env, srcPath, opts = {}) {
-  const P = env.path, KIT = env.KIT, ROOT = env.ROOT;
+export function build(env0, srcPath, opts = {}) {
+  const P = env0.path, KIT = env0.KIT, ROOT = env0.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
+  // 読むものはすべて 1 つの数え方（回数と読んだ大きさの合計）に、読む前に数える（chargedEnv）
+  const budget = buildBudget(opts.limits, 0), LIM = budget.L;
+  const env = chargedEnv(env0, budget);
+  { const n = typeof env0.size === 'function' ? env0.size(srcPath) : null;
+    if (Number.isFinite(n) && n > LIM.sourceChars * 4) throw new BuildLimitError('source', n, LIM.sourceChars); }   // UTF-8 は 1 字 4 バイトまで
   const raw = env.readText(srcPath);
-  const budget = buildBudget(opts.limits, raw.length), LIM = budget.L;
+  budget.reset(raw.length);
   if (raw.length > LIM.sourceChars) throw new BuildLimitError('source', raw.length, LIM.sourceChars);
   { const n = countTags(raw, LIM.tags); if (n > LIM.tags) throw new BuildLimitError('tags in the source', n, LIM.tags); }
   const warn = [];
@@ -473,7 +516,7 @@ export function build(env, srcPath, opts = {}) {
     if (outside) { warn.push(`refused: 「${name}」は原稿のフォルダの外にある（読まない）`); return null; }
     throw new Error('not found: ' + name);
   };
-  // 取り込むたびに、回数と増える大きさを数える（読んだ後・置き換える前に。同じ小さなファイルを何万回も取り込ませない）
+  // 取り込むたびに、回数と読んだ大きさ（読む前に。env を通して）と増える大きさ（置き換える前に）を数える（同じ小さなファイルを何万回も取り込ませない）
   const readIn = (name, dirs) => { const p = find(name, dirs); if (p === null) return null; const t = env.readText(p); budget.add(t.length); return t; };
   html = html.replace(/\/\*INCLUDE:([^*]+?)\*\//g, (_, f) => readIn(f.trim(), [deckDir, KIT]) ?? '');
   html = html.replace(/\/\*KATEX_CSS\*\//g, '');
@@ -499,9 +542,19 @@ export function build(env, srcPath, opts = {}) {
   if (!tsel) { themeName = 'default'; tsel = resolveTheme(env, 'default', P.join(ROOT, 'themes'), P.join(ROOT, 'themes'), warn); }
   const theme = themeAssets(env, tsel, warn);
   if (theme.logos.length) {
+    // ロゴの data: URI（読む前に数えた）を表紙ごとに入れる：つなぐ前に、増える大きさを組んだ文書の上限に数える
+    budget.reset(html.length);
+    const imgsLen = theme.logos.reduce((n, u) => n + u.length + 20, 20);
+    budget.add(imgsLen, LIM.bundledChars, 'document with logos');
     const imgs = `<div class="logos">${theme.logos.map((u) => `<img alt="" src="${u}">`).join('')}</div>`;
+    let first = true;
     html = html.replace(/(<section\b[^>]*class="[^"]*\bcover\b[^"]*"[^>]*>)([\s\S]*?)(<\/section>)/g,
-      (m, a, body, c) => /class="logos"|data-nologos/.test(a + body) ? m : a + body + imgs + c);
+      (m, a, body, c) => {
+        if (/class="logos"|data-nologos/.test(a + body)) return m;
+        if (!first) budget.add(imgs.length, LIM.bundledChars, 'document with logos');
+        first = false;
+        return a + body + imgs + c;
+      });
   }
 
   // 数式
@@ -582,6 +635,7 @@ export function build(env, srcPath, opts = {}) {
         if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
         continue;
       }
+      if (opts.embedAudio && env.compressAudio) env.precharge(file);   // 圧縮は env の外で元のファイルを読む：読む前に数える
       audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.cues || [] };
     }
   }
@@ -589,7 +643,9 @@ export function build(env, srcPath, opts = {}) {
   const j = jsonScript;
 
   // CSS と JS を組み込む
-  const kcss = katexCss(env);
+  // KaTeX の CSS は env ごとに 1 回だけ作る（元の env で覚える）。読んだ回と同じ大きさを毎回数える
+  const kcss = katexCss(env0);
+  budget.read(kcss.length);
   const read = (dir, f) => env.readText(P.join(dir, f));
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
@@ -640,6 +696,9 @@ export function build(env, srcPath, opts = {}) {
   // opts.runtimePrefix：実行系の前に入れる文字列（持ち運べる形式の書き出しが、読める層・索引・塊をここに入れる。実行系が読む前に DOM にあるように）。
   // これは信頼する部分に数えない（判定が読む）
   const pre = opts.runtimePrefix || '';
+  // 組んだ出力の全体の大きさを、つなぐ前に確かめる（字・テーマ・実行系・部品・音声を入れた後）
+  { const n = html.length + 1 + headCss.length + pre.length + scripts.length + 1;
+    if (n > LIM.bundledChars) throw new BuildLimitError('built document', n, LIM.bundledChars); }
   const a1 = html.slice(0, headAt) + '\n', a2 = html.slice(headAt, at) + pre;
   html = a1 + headCss + a2 + scripts + '\n' + html.slice(at);
   const trusted = [
