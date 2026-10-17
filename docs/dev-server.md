@@ -70,6 +70,8 @@ So that a browser that has another site open cannot rewrite your source, the fol
 - The frame page cannot be put in a frame by another page (`frame-ancestors 'none'`)
 - `/deck/…` does not serve names starting with a dot (the copies in `.cache/edits/`, `.env`, and so on). Symlinks pointing outside the deck folder also get 403
 - Malformed URLs (such as `/%ZZ`) get 400
+- Writes and backups never go through a symbolic link: if `deck.html`, `narration.md`, `comments.json`, `.cache` or `.cache/edits` is a link (also one pointing inside the folder, or a dangling one), the save is refused with 403 and nothing is written or deleted. Files are written to a temporary file in the same folder and renamed over the old one; backup cleanup deletes only backup-named regular files. `narration.md` and `comments.json` are read only if their real path is inside the deck folder ([format spec](https://github.com/egatari/egatari-spec) §11)
+- After you press Save in the narration drawer, typing again before the server answers keeps the drawer unsaved (the newer text stays, the drawer does not follow the deck, the preview stays inert) until you save again
 
 `tools/test-dev-server.mjs` checks this with a deck that tries to write (`tools/hostile-deck.mjs`: a component and an inline script that send the old write messages with forged text, read the token, reach for the frame page, and `fetch` / XHR / beacon the write endpoints with and without a guessed token): nothing in the folder changes until Save is pressed in the frame page.
 

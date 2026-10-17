@@ -70,6 +70,8 @@ npm run dev -- path/to/deck.html --port 5174 --theme tml
 - 外枠のページはほかのページの iframe に入れられない（`frame-ancestors 'none'`）
 - `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で原稿のフォルダの外を指すものも 403
 - 壊れた URL（`/%ZZ` など）は 400
+- 書き込みと控えは、シンボリックリンクを一切通らない：`deck.html`・`narration.md`・`comments.json`・`.cache`・`.cache/edits` のどれかがリンクなら（フォルダの中を指すもの・壊れたものも）、保存を 403 で断り、何も書かず何も消さない。書くときは同じフォルダの一時ファイルに書いてから rename で入れ替え、控えの掃除は控えの名前の普通のファイルだけを消す。`narration.md`・`comments.json` は実体が原稿のフォルダの中にあるときだけ読む（[format spec](https://github.com/egatari/egatari-spec) §11）
+- 口述原稿の引き出しで「保存」を押した後、応答の前にまた入力すると、もう一度保存するまで未保存のまま（新しい入力は残り、引き出しはデッキに付いていかず、プレビューは inert のまま）
 
 `tools/test-dev-server.mjs` は、書き込みを試みるデッキ（`tools/hostile-deck.mjs`：古い書き込みの知らせを偽の本文で送り、合言葉を読み、外枠のページに触り、書き込みの口に合言葉なし・当て推量の合言葉で `fetch`・XHR・beacon する部品とインラインのスクリプト）で、外枠で「保存」を押すまでフォルダの中が何も変わらないことを確かめる。
 

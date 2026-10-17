@@ -145,7 +145,7 @@ Built-in durations (`DECK.T`, seconds): fade 0.45, draw 0.7, drawSlow 1.4, drawD
 
 ## Themes
 
-Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as a path relative to the deck folder, then `<deck>/themes/<name>/`, then `themes/<name>/`; the folder must contain `tokens.css`.
+Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as a path relative to the deck folder, then `<deck>/themes/<name>/`, then `themes/<name>/`; the folder must contain `tokens.css`. Before anything is read, `theme.json`, `tokens.css`, logos and every parent theme (`extends`, at any depth) must resolve, by real path, inside the theme's authorized root: the deck folder for a theme of the deck, `themes/` for a registry theme, the theme folder itself for one given with `--theme`. A parent may also come from `themes/`. Otherwise the build warns (`refused: …`) and does not read it; a refused deck theme falls back to `default` ([format spec](https://github.com/egatari/egatari-spec) §11). Deeper than 16 levels of `extends` is an error.
 
 | `theme.json` field | Meaning |
 |---|---|
@@ -311,6 +311,12 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 The summary line shows slides, math, components, font files, narration steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/` (keyed by the glyphs, the TTF file's hash and the fonttools version; `uv` runs `fonttools==4.67.0` and `brotli==1.2.0`), compressed audio in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the deck text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the narration, string literals of the components used (without CJK in non-Japanese decks), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese decks `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
 
+
+A deck-local component (`<deck>/components/<name>/index.js`) is read only if its real path is inside the deck folder, a registry component only inside `components/`; a deck-local one that resolves outside is refused with a warning and not replaced by the registry one. Inside the deck folder, the output (`out/…`) and `egatari.json` are never written through a symbolic link (the file or a folder on the way); a link there makes the build fail without writing.
+
+### Build limits
+
+The build counts while it expands and stops with `build-too-large` as soon as a limit is exceeded: the source (32 Mi characters), includes and embeds together (`/*INCLUDE*/`, `{{JSON}}`, `{{FIG}}`, `data:` URIs, `<link rel="stylesheet">`, `<script src>`, `@import`: 10 000), the size after preprocessing (64 Mi characters) and after embedding and math (256 Mi), the tags before each parse (500 000) and formulas (20 000). Real decks are far below (`examples/tmlr2026-calibration`: 11 KB source, 27 formulas, 3 400 tags). `build(env, src, {limits: {...}})` changes them (`BUILD_LIMITS` in `kit/core/build-core.mjs`). In the editor app the build runs in a worker that is stopped after 60 s.
 
 ### Portable file (`--portable`)
 

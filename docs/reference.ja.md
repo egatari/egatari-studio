@@ -145,7 +145,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## テーマ
 
-決め方：`--theme` > `<html data-theme>` > `default`。名前は、原稿のフォルダからの相対パス → `<deck>/themes/<名前>/` → `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。
+決め方：`--theme` > `<html data-theme>` > `default`。名前は、原稿のフォルダからの相対パス → `<deck>/themes/<名前>/` → `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。`theme.json`・`tokens.css`・ロゴ・親のテーマ（`extends`、何段でも）は、読む前に、実体のパスがそのテーマの許した根の中にあることを確かめる：原稿のテーマなら原稿のフォルダ、部品庫のテーマなら `themes/`、`--theme` で選んだものならそのテーマのフォルダ。親は `themes/` からも取れる。外なら警告（`refused: …`）して読まず、原稿のテーマなら `default` にする（[format spec](https://github.com/egatari/egatari-spec) §11）。`extends` が 16 段より深ければ誤り。
 
 | `theme.json` の項目 | 意味 |
 |---|---|
@@ -311,6 +311,12 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 最後の行に、スライド・式・部品・字のファイル・口述原稿の段階・音声の段階・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と口述原稿の文字列、使う部品の JS の文字列（日本語以外のデッキでは和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語のデッキではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
+
+原稿のフォルダの部品（`<deck>/components/<名前>/index.js`）は実体のパスが原稿のフォルダの中にあるときだけ、部品庫の部品は `components/` の中にあるときだけ読む。原稿のフォルダの部品が外を指していれば、警告して読まず、部品庫のものにも替えない。原稿のフォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。
+
+### 組み立ての上限
+
+組み立ては埋め込みながら数え、上限を超えたらその場で `build-too-large` で止まる：原稿（32 Mi 字）、取り込みと埋め込みの回数の合計（`/*INCLUDE*/`・`{{JSON}}`・`{{FIG}}`・`data:` URI・`<link rel="stylesheet">`・`<script src>`・`@import`：10000）、前処理の後の大きさ（64 Mi 字）と埋め込み・式の後の大きさ（256 Mi 字）、解析の前のタグの数（500000）、式の数（20000）。実際のデッキははるかに小さい（`examples/tmlr2026-calibration`：原稿 11 KB・式 27・タグ 3400）。`build(env, src, {limits: {...}})` で変えられる（`kit/core/build-core.mjs` の `BUILD_LIMITS`）。編集アプリでは組み立てを Worker で動かし、60 秒で止める。
 
 ### 持ち運べる 1 ファイル（`--portable`）
 
