@@ -9,6 +9,7 @@
     "dev": "node server/dev.mjs",
     "check": "node kit/check.mjs",
     "new": "node tools/new.mjs",
+    "ids": "node tools/ids.mjs",
     "build:app": "node tools/build-app.mjs",
     "test": "node tools/test-all.mjs"
   },
