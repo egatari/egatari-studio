@@ -47,7 +47,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - `render` must give **the same screen for the same (k, t)**. Do not rely on state from the previous call (going back, jumping and video export change the order of calls)
 - `ctx = {mode, slide, instant, deck}`. The component can choose, for example, to show the final state and highlight the current step when `ctx.mode === "lecture"`
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
-- Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data`
+- Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the deck is treated as having code of its own)
 - Location: `components/<name>/{index.js, demo.html, README.md}`. Write `name` `summary` `steps` `props` at the top of the README (frontmatter)
 
 ## 4. Narration (narration.md)

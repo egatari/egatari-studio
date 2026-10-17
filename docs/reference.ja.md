@@ -265,7 +265,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | Alt+クリック（Mac は ⌥ option+クリック） | Claude Code への指示を残す |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
-| 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
+| 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
 
 ## 検査器
 

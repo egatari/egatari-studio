@@ -47,7 +47,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - `render` は**同じ (k, t) なら必ず同じ画面**にする。前回の呼び出しの状態に頼らない（戻る・飛ぶ・動画の書き出しで順番が変わるため）
 - `ctx = {mode, slide, instant, deck}`。`ctx.mode === "lecture"` のときは最終状態を見せて今の段階を強調する、などを部品が選べる
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
-- 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める
+- 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、デッキは自前のコードを持つものとして扱う）
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `summary` `steps` `props` を書く
 
 ## 4. 口述原稿（narration.md）
