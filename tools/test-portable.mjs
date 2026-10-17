@@ -177,6 +177,28 @@ ok('書き出し：Schema に合う・外すもの・伏せ字・docId を残す
   for (const s of segs) for (const t of s.turns) assert.ok(layer.includes(t.display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')), `readable: ${t.display}`);
   assert.ok(!/\r/.test(firstHtml));
 });
+ok('読める層（§2.1）：段階は番号の小さい順で concl が最後（原稿の書き順によらない）。どのスライドにも当たらない口述原稿は入れず知らせる', async () => {
+  const D = path.join(work, 'readable-order');
+  fs.cpSync(MIN, D, { recursive: true, filter: (q) => !/[\\/]out([\\/]|$)/.test(path.relative(MIN, q)) });
+  // 「更新の式」の段階を concl・3・2・1・0 の順に書き、行き先のない節を足す
+  const text = narr(D), lines = text.split('\n'), sk = '更新の式';
+  const segs = parseNarration(text).filter((x) => x.slideKey === sk);
+  const own = segs.map((x) => lines[x.line - 1]);
+  const at = segs[0].line - 1;
+  lines.splice(at, own.length, ...own.slice().reverse());
+  fs.writeFileSync(path.join(D, 'narration.md'), lines.join('\n') + '\n## 存在しないスライド\n[0] 行き先のない口述原稿です。\n');
+  const p = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'r' + FORMAT.FILE_EXT) });
+  const layer = p.html.slice(p.html.indexOf(`<section id="${FORMAT.READABLE_ID}"`), p.html.indexOf('</section>', p.html.indexOf(`<section id="${FORMAT.READABLE_ID}"`)));
+  const art = layer.slice(layer.indexOf(`<article data-slide-key="${sk}">`), layer.indexOf('</article>', layer.indexOf(`<article data-slide-key="${sk}">`)));
+  const order = [...art.matchAll(/data-step-key="[^"]*:([^":]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(order, segs.map((x) => x.stepKey), `numbers ascending, concl last: ${order}`);
+  assert.deepEqual(order.slice(-1), ['concl']);
+  assert.ok(!layer.includes('存在しないスライド') && !layer.includes('行き先のない口述原稿です'), 'orphan narration is not in the readable layer');
+  assert.ok(p.warnings.some((w) => w.includes('"存在しないスライド:0"') && /omitted from the readable layer/.test(w)), `reported: ${JSON.stringify(p.warnings)}`);
+  // 見本の書き順の文書と同じ読める層（行き先のない節を除けば）
+  const base = firstHtml.slice(firstHtml.indexOf(`<section id="${FORMAT.READABLE_ID}"`), firstHtml.indexOf('</section>', firstHtml.indexOf(`<section id="${FORMAT.READABLE_ID}"`)));
+  assert.equal(layer, base);
+});
 ok('往復：展開 → もう一度まとめると同じファイル・同じ原稿と音声のバイト・同じ docId と sourceSha256。展開したフォルダを組むと同じ HTML', async () => {
   const r = await PF.readPortable(new Uint8Array(fs.readFileSync(path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT))));
   assert.equal(r.sourceMatches, true);

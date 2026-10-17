@@ -192,6 +192,8 @@ async function rebuild(reason) {
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);
+          // 前の保存（段 A）の知らせ：段階ごと消した口述原稿の音声を消した・行き先のない口述原稿など
+          S.warn.push(...(S.portable.saveWarnings || []));
           const stale = await staleSteps(S.ws);
           S.stale = stale;
           for (const k of stale) S.warn.push(T.staleStep(k));
@@ -623,6 +625,7 @@ async function savePortableBound(mode) {
   if (S.building) await S.building;
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
+  let saveWarnings = [];
   const CFG = FORMAT.CONFIG_FILE;
   let identity = null, cfgText = null;
   const files = ws.snapshot();
@@ -638,7 +641,7 @@ async function savePortableBound(mode) {
   let html, index, deckMeta, tier;
   try {
     const a = await tierA(P.original, files, { identity, fonts: engine.fonts });
-    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; }
+    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; }
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
@@ -671,12 +674,15 @@ async function savePortableBound(mode) {
     if (cfgText) await ws.writeText(CFG, cfgText);
     ws.markClean();
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
+    P.saveWarnings = saveWarnings;
     P.narr0 = await ws.readText('narration.md');
     if (!live()) return;
     updateName();
     const mb = (html.length / 1048576).toFixed(1);
     status(tier === 'A' ? T.savedAtA(time(), mb) : T.savedAtB(time(), mb));
-    toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : ''));
+    // 段 A の知らせ（音声も消した段階など）は警告の一覧に入れ、保存の知らせ（toast）にも件数を出す
+    if (saveWarnings.length) { for (const w of saveWarnings) console.warn('[editor] save:', w); S.warn.push(...saveWarnings); showWarn(); }
+    toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : '') + (saveWarnings.length ? T.saveWarned(saveWarnings.length) : ''), saveWarnings.length > 0);
     showNotice();
   } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
 }
@@ -826,7 +832,7 @@ window.__APP_TEST = {
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0,
     portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
-      lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
+      lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   saved: () => (S.portable ? S.portable.saved : null),
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),

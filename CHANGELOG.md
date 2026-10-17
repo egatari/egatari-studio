@@ -47,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Builds declare `unicode-range` on every embedded `@font-face`: subset fonts list the characters they keep, KaTeX fonts the characters of their `cmap` (precomputed in `kit/core/katex-ranges.mjs` by `node tools/katex-ranges.mjs`, so the command-line and editor builds stay byte-identical)
+- Saving without rebuilding ([format spec](https://github.com/egatari/egatari-spec) §7.2): a font supplement is numbered one past the largest existing supplement, follows the last font style element, and has one `@font-face` per embedded face (family, weight, style) that lacks the new characters, so a file that embeds only weight 400 gets only 400
+- Saving without rebuilding: removing a step's narration altogether also removes its audio record and audio data, with a warning (returned by `tierA()` and shown by the editor after saving); edited steps keep their audio as before (stale)
+- Readable layer (§2.1): narration whose key matches no slide is left out and reported as a warning, by the portable writer and by saving without rebuilding; steps are in numeric order with `concl` last
+- Saving without rebuilding (§9A): only the extension entries made from changed extension lines are rewritten; the version, other members, other steps and other extensions keep their bytes
 - Dev server: `/` is a frame page around the deck (the deck document is at `/deck/`); `?presenter=1` on `/` opens a presenter window whose deck is sandboxed too, and the frame page relays its messages. The narration drawer sits beside the slide instead of over it, and typed input survives reloads (the save is refused if that part changed meanwhile)
 - Editor app: the editing tools follow the editor's language (they followed the deck's language)
 - Editor app: files whose runtime contract or registry component/theme hashes differ from the editor's open for narration, audio and timing edits only (saved without rebuilding) instead of read-only; read-only is left for files the editor cannot build, or that it can neither rebuild nor edit without rebuilding

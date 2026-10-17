@@ -13,7 +13,10 @@
 //   deck-meta の sourceSha256（新しい教材として保存するときは docId も）
 //   索引（files・blobs・audio の変わった記録・requires・sourceSha256・拡張・新しい教材の docId と derivedFrom）と data-sha256
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
-//   字の補い：新しい <style id="<前置><n>">（今の文書の字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
+//   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
+//     ごとに、その字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
+//   段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して warnings に知らせる（直しただけの段階の音声は残す。古いと分かる）
+//   どのスライドにも当たらない鍵の口述原稿は読める層に入れず、warnings に知らせる
 // それ以外のバイト（実行系・スライド・ほかの書き手や版が書いた注釈など）は 1 バイトも変えない。
 // 段 A でできない変更（スライドの原稿が変わった・組んだ教材と原稿が食い違う・場所が見つからない）は ok: false と理由を返す（呼び手は段 B へ）
 import { parse as parseHtml } from 'parse5';
@@ -193,9 +196,10 @@ function fontFacesOf(text, styles) {
       const b = m[1];
       const fam = /font-family\s*:\s*(?:"([^"]+)"|'([^']+)'|([^;]+))/.exec(b);
       if (!fam) continue;
-      const w = /font-weight\s*:\s*(\d+)/.exec(b);
+      const w = /font-weight\s*:\s*(\d+|normal|bold)/.exec(b);
+      const st = /font-style\s*:\s*([a-z]+)/i.exec(b);
       const r = /unicode-range\s*:\s*([^;]+)/.exec(b);
-      faces.push({ family: (fam[1] || fam[2] || fam[3]).trim(), w: w ? +w[1] : 400, range: r ? parseRange(r[1].trim()) : null });
+      faces.push({ family: (fam[1] || fam[2] || fam[3]).trim(), w: !w || w[1] === 'normal' ? 400 : w[1] === 'bold' ? 700 : +w[1], style: st ? st[1].toLowerCase() : 'normal', range: r ? parseRange(r[1].trim()) : null });
     }
   }
   return faces;
@@ -289,7 +293,7 @@ async function run(original, filesIn, opts) {
     if (!isObj(v) || typeof v.file !== 'string') continue;
     const apath = 'audio/' + v.file;
     if (!bytesOf(apath)) continue;                                  // 組み立てと同じく、ないファイルは使わない
-    if (!segByKey.has(k)) { if (own(oldAudio, k)) warnings.push(`audio for "${k}" has no narration step any more; not included (as a rebuild would)`); continue; }
+    if (!segByKey.has(k)) continue;                                 // 口述原稿ごと消した段階（下で知らせる）
     if (!(typeof v.dur === 'number' && v.dur > 0)) continue;
     const o = oldAudio[k];
     if (o && o.file === apath && eqBytes(NEW.get(apath) || old[apath], old[apath]) && deepEqual(JSON.parse(manifestFromAudio({ [k]: o })).segments[k], JSON.parse(JSON.stringify(v)))) {
@@ -307,6 +311,9 @@ async function run(original, filesIn, opts) {
     audioChanged.push(k);
   }
   for (const k of Object.keys(oldAudio)) if (!own(newAudio, k)) audioChanged.push(k);
+  // 段階の口述原稿をまるごと消したら、その音声の記録と塊も消す（§5.4。知らせる）。直しただけの段階の音声は残す（古いと分かる）
+  const audioRemoved = Object.keys(oldAudio).filter((k) => !segByKey.has(k));
+  for (const k of audioRemoved) warnings.push(`the narration of "${k}" was removed, so its audio was removed too (record and audio data)`);
 
   // 5. 原稿のファイル・塊・sourceSha256（変わっていない塊はそのまま。新しい中身は sha256 の先頭 32 字を id に）
   const finalFiles = dict();
@@ -377,22 +384,25 @@ async function run(original, filesIn, opts) {
     if (identity.derivedFrom) setIx(['metadata', 'derivedFrom'], identity.derivedFrom, [...KNOWN.metadata]);
     else if (isObj(ix.metadata) && own(ix.metadata, 'derivedFrom')) setIx(['metadata', 'derivedFrom'], undefined);
   }
-  // 拡張の行から作る拡張（§9A）：行が変わった名前だけ。段階の鍵でない項目と v は元のまま
+  // 拡張の行から作る拡張（§9A）：変わった行から作られる項目（段階の鍵の項目）だけを書き換える。ほかの項目（v・段階の鍵でない項目・
+  // 行から作られていない段階の項目・ほかの拡張）はバイトのまま。行がすべてなくなり v のほかに何も残らない拡張は消す（書き出しと同じ）
   const exOld = extensionsFrom(oldSegs), exNew = extensionsFrom(newSegs), exCur = isObj(ix.extensions) ? ix.extensions : dict();
   const exChanged = [...new Set([...Object.keys(exOld), ...Object.keys(exNew)])].filter((n) => !deepEqual(exOld[n], exNew[n]));
-  if (exChanged.length) {
-    const target = dict();
-    for (const n of Object.keys(exCur)) target[n] = exCur[n];
-    for (const n of exChanged) {
-      if (!own(exNew, n)) { delete target[n]; continue; }
-      const v = exNew[n];
-      if (isObj(exCur[n])) for (const f of Object.keys(exCur[n])) if (!RE.stepKey.test(f) && (f === 'v' || !own(v, f))) v[f] = exCur[n][f];
-      target[n] = v;
+  const exNow = () => parseJsonStrict(ixText).extensions;
+  for (const n of exChanged) {
+    const o = isObj(exOld[n]) ? exOld[n] : dict(), w = isObj(exNew[n]) ? exNew[n] : null, cur = exCur[n];
+    if (!isObj(cur)) {                                   // まだない拡張：行から作ったものをそのまま足す
+      if (!w) continue;
+      if (!isObj(exNow())) setIx(['extensions'], { [n]: w });
+      else setIx(['extensions', n], w, [...Object.keys(exCur), ...exChanged]);
+      continue;
     }
-    if (!Object.keys(target).length) setIx(['extensions'], undefined);
-    else if (!own(ix, 'extensions')) setIx(['extensions'], target);
-    else for (const n of exChanged) setIx(['extensions', n], target[n], Object.keys(target));
+    const gone = (k) => !(w && own(w, k));
+    const steps = [...new Set([...Object.keys(o), ...Object.keys(w || {})])].filter((k) => RE.stepKey.test(k) && !deepEqual(o[k], w ? w[k] : undefined));
+    if (!w && Object.keys(cur).filter((k) => !(steps.includes(k) && gone(k))).every((k) => k === 'v')) { setIx(['extensions', n], undefined); continue; }
+    for (const k of steps) setIx(['extensions', n, k], gone(k) ? undefined : w[k], [...Object.keys(w || {}), ...Object.keys(cur)]);
   }
+  if (exChanged.length && isObj(exNow()) && !Object.keys(exNow()).length) setIx(['extensions'], undefined);
   const newIndex = parseJsonStrict(ixText);
 
   // 7. 実行系の JSON：変わった段階の項目だけ
@@ -420,34 +430,47 @@ async function run(original, filesIn, opts) {
     // 範囲（unicode-range）のない字（字を絞り込んだもの）は、元の口述原稿の字だけを持つとみなす（足りなければ補う。多めに足すことはあっても欠けない）
     const known = new Set();
     for (const x of strings(parseJsonStrict(blockText('deck-narration')))) for (const ch of x) known.add(ch.codePointAt(0));
-    const covered = (c, family, w) => have.some((f) => f.family === family && f.w === w && (f.range ? inRange(f.range, c) : known.has(c)));
+    const covered = (c, family, w, style) => have.some((f) => f.family === family && f.w === w && f.style === style && (f.range ? inRange(f.range, c) : known.has(c)));
     const families = { biz: 'BIZ UDPGothic', sans3: 'Source Sans 3' };
+    // 補うのは、文書が埋め込んでいる字（同じ family・weight・style）だけ（§7.2。400 だけを埋め込んだ文書には 400 だけ）
+    const embedded = (family) => { const m = new Map(); for (const f of have) if (f.family === family) m.set(`${f.w}/${f.style}`, { w: f.w, style: f.style }); return [...m.values()]; };
     const facesOf = (key) => (opts.fonts ? opts.fonts.faces(key) : null);
     const sans = isJapanese(lang) ? null : facesOf('sans3');
     const inSans = (c) => !!sans && sans.some((f) => inRange(f.range, c));
-    const add = [], seen = new Set(), missing = [];
+    // 分割ファイルのうち字 c を持つもの：同じ太さ、なければいちばん近い太さ（同じ近さなら細いほう）
+    const source = (list, w, c) => {
+      const hit = list.filter((x) => inRange(x.range, c));
+      return hit.sort((a, b) => Math.abs(a.w - w) - Math.abs(b.w - w) || a.w - b.w)[0] || null;
+    };
+    const add = [], seen = new Set(), missing = [], noFace = new Set();
     for (const c of [...need].sort((a, b) => a - b)) {
       const key = isJapanese(lang) ? 'biz' : inSans(c) ? 'sans3' : c > LATIN_MAX ? 'biz' : null;
       if (!key) continue;
-      for (const w of [400, 700]) {
-        if (covered(c, families[key], w)) continue;
+      const want = embedded(families[key]);
+      if (!want.length) { if (!have.some((f) => f.range && inRange(f.range, c))) noFace.add(families[key]); continue; }
+      for (const { w, style } of want) {
+        if (covered(c, families[key], w, style)) continue;
         const list = facesOf(key);
         if (!list) { missing.push(c); continue; }
-        const f = list.find((x) => x.w === w && inRange(x.range, c));
-        if (f && !seen.has(f.file)) { seen.add(f.file); add.push({ f, key }); }
+        const f = source(list, w, c);
+        const id = f && `${f.file}|${w}|${style}`;
+        if (f && !seen.has(id)) { seen.add(id); add.push({ f: { ...f, w, style }, key }); }
       }
     }
+    for (const fam of noFace) warnings.push(`new narration characters need "${fam}", which the document does not embed: no font supplement for them (they use the viewer's fonts)`);
     if (missing.length) refuse('fonts', `glyphs for ${missing.length} new characters are needed but no font source was given`);
     if (add.length) {
-      // 分割ファイルの並び（組み立てと同じ：字の種類 → 太さ → 分割の順）
+      // 分割ファイルの並び（組み立てと同じ：字の種類 → 太さ → 分割の順）。同じファイルを別の太さ・style に使うときはその順
       const order = new Map();
       for (const key of ['sans3', 'biz']) (facesOf(key) || []).forEach((f, j) => order.set(f.file, (key === 'sans3' ? 0 : 1e6) + j));
-      add.sort((a, b) => order.get(a.f.file) - order.get(b.f.file));
+      add.sort((a, b) => order.get(a.f.file) - order.get(b.f.file) || a.f.w - b.f.w || (a.f.style < b.f.style ? -1 : a.f.style > b.f.style ? 1 : 0));
       let css = '';
       for (const { f } of add) css += fontFaceCss(f, await opts.fonts.load(f.file));
-      const nums = L.styles.map((s) => s.id && s.id.startsWith(SUP) ? s.id.slice(SUP.length) : null).filter((x) => x !== null && /^(0|[1-9]\d*)$/.test(x)).map(Number);
-      const n = nums.length ? Math.max(...nums) + 1 : 0;
-      supplement = { id: SUP + n, files: add.map((x) => x.f.file), chars: [...need].filter((c) => add.some((x) => inRange(x.f.range, c))).map((c) => String.fromCodePoint(c)).join(''), css };
+      // 番号：今ある補いの番号（正準の 10 進）のいちばん大きいものの次、なければ 0
+      const nums = L.styles.map((s) => s.id && s.id.startsWith(SUP) ? s.id.slice(SUP.length) : null).filter((x) => x !== null && /^(0|[1-9]\d*)$/.test(x)).map(BigInt);
+      const n = nums.length ? nums.reduce((a, b) => (b > a ? b : a)) + 1n : 0n;
+      supplement = { id: SUP + n, files: [...new Set(add.map((x) => x.f.file))], faces: add.map((x) => ({ family: x.f.family, weight: x.f.w, style: x.f.style })),
+        chars: [...need].filter((c) => add.some((x) => inRange(x.f.range, c))).map((c) => String.fromCodePoint(c)).join(''), css };
     }
   }
 
@@ -462,6 +485,9 @@ async function run(original, filesIn, opts) {
     ops.push([at, at + 64, h]);
     ops.push([L.index.cStart, L.index.cEnd, ixText]);
   }
+  // 読める層：どのスライドにも当たらない鍵の口述原稿は入れず、知らせる（§2.1。書き出しと同じ）
+  const orphans = newSegs.filter((sg) => !L.slideKeys.has(sg.slideKey) && !(L.readable && L.readable.articles.has(sg.slideKey)));
+  for (const sg of orphans) warnings.push(`narration for "${sg.slideKey}:${sg.stepKey}" matches no slide; omitted from the readable layer`);
   // 読める層：変わった段階の div（足す・書き直す・消す）
   if (narrChanged.length) {
     const R = L.readable;
@@ -499,12 +525,11 @@ async function run(original, filesIn, opts) {
     const at = kept.length ? Math.max(...kept.map((c) => c.end)) : L.index.end;
     ops.push([at, at, '\n' + newChunks.join('\n')]);
   }
-  // 字の補い：前の補いの後、なければ組み立ての字（deck-base）の後、なければ </head> の前
+  // 字の補い：字の <style>（@font-face を持つもの・前の補い）のうち最後のものの後（§7.2）。なければ </head> の前
   if (supplement) {
-    const sups = L.styles.filter((s) => s.id && s.id.startsWith(SUP));
-    const base = L.styles.find((s) => s.id === 'deck-base');
-    const at = sups.length ? Math.max(...sups.map((s) => s.end)) : base ? base.end : L.headEnd;
-    if (at == null) refuse('layout', 'no place for a font supplement (no deck-base style and no </head>)');
+    const fontStyles = L.styles.filter((s) => (s.id && s.id.startsWith(SUP)) || /@font-face/i.test(original.slice(s.cStart, s.cEnd)));
+    const at = fontStyles.length ? Math.max(...fontStyles.map((s) => s.end)) : L.headEnd;
+    if (at == null) refuse('layout', 'no place for a font supplement (no font style and no </head>)');
     ops.push([at, at, `\n<style id="${supplement.id}">\n${supplement.css}</style>`]);
   }
   ops.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
@@ -524,7 +549,7 @@ async function run(original, filesIn, opts) {
     changes: {
       files: changed, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
       extensions: exChanged, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
-      supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split('/').pop()), chars: supplement.chars } : null,
+      supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split('/').pop()), faces: supplement.faces, chars: supplement.chars } : null,
       identity: !!identity, unchanged: html === original,
     },
   };

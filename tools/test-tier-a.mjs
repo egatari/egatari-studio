@@ -336,6 +336,19 @@ ok('断る：スライドの原稿が変わった（段 B へ）・組んだ教�
   const vk = `${victim.slideKey}:${victim.stepKey}`;
   regionDiff(d.html, a.html, { narration: [vk], marks: [vk], audio: [vk] });
   assert.ok(!scanLayout(a.html).readable.articles.get(victim.slideKey).divs.has(vk));
+  // 段階の口述原稿をまるごと消した：その音声の記録と塊も消し、知らせる（§5.4）。作業場所の audio/manifest.json に残っていても、消してあっても同じ
+  assert.ok(r.index.audio[vk], 'the removed step had audio');
+  const vBlob = r.index.files[r.index.audio[vk].file];
+  const removedWarn = (x) => x.warnings.filter((w) => w.includes(`"${vk}"`) && /removed/.test(w));
+  assert.equal(removedWarn(a).length, 1, `one warning for the removed audio: ${JSON.stringify(a.warnings)}`);
+  assert.ok(!a.index.audio[vk] && a.changes.audio.includes(vk) && !a.index.files[r.index.audio[vk].file], 'record and file entry removed');
+  if (!Object.entries(r.index.audio).some(([k, x]) => k !== vk && r.index.files[x.file] === vBlob)) assert.ok(a.changes.blobsDropped.includes(vBlob) && !a.html.includes(`id="${FORMAT.BLOB_PREFIX}${vBlob}-0"`), 'blob removed');
+  const ws3b = new Map(ws3), man3 = JSON.parse(getText(ws3b, 'audio/manifest.json'));
+  delete man3.segments[vk]; setText(ws3b, 'audio/manifest.json', JSON.stringify(man3, null, 1) + '\n');
+  const a2 = await tierA(d.html, ws3b);
+  assert.ok(a2.ok && removedWarn(a2).length === 1 && !a2.index.audio[vk], 'same when the manifest entry was removed as well');
+  // 直しただけの段階の音声は残る（古い。知らせはない）：最初の試験のとおり
+  assert.equal(results.minimal.a.warnings.filter((w) => /removed/.test(w)).length, 0);
   const b = await tierA(a.html, workspace(r), { fonts: FONTS_SRC });   // 元に戻す（足す。字を絞り込んだ文書では、消した段階の字を持つとみなせないので補いが要ることがある）
   assert.ok(b.ok, `[${b.code}] ${b.reason}`);
   const rd = (h) => { const L = scanLayout(h); return h.slice(L.readable.start, L.readable.end); };
@@ -343,6 +356,129 @@ ok('断る：スライドの原稿が変わった（段 B へ）・組んだ教�
   const blk = (h, id) => { const L = scanLayout(h); return h.slice(L.blocks.get(id).cStart, L.blocks.get(id).cEnd); };
   for (const id of ['deck-narration', 'deck-marks', 'deck-audio']) assert.equal(blk(b.html, id), blk(d.html, id), `${id} restored byte for byte`);
   assert.ok(deepEqual(plain(b.index.audio), plain(r.index.audio)), 'audio records restored');
+});
+
+// ---------------------------------------------------------------- 字の補い（§7.2）：番号・位置・埋め込んである字ごと
+ok('書き手：埋め込む @font-face はどれも unicode-range を持つ（段 A が字の範囲から分かるように）', async () => {
+  for (const name of Object.keys(decks)) {
+    const h = decks[name].html, L = scanLayout(h);
+    const faces = L.styles.flatMap((st) => h.slice(st.cStart, st.cEnd).match(/@font-face\s*\{[^}]*\}/g) || []);
+    assert.ok(faces.length > 0, `${name}: has font faces`);
+    for (const f of faces) assert.match(f, /unicode-range\s*:/, `${name}: ${f.slice(0, 80)}…`);
+  }
+  // KaTeX の字の範囲（前もって cmap から求めたもの）が今の KaTeX と合う
+  const c = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'katex-ranges.mjs'), '--check'], { encoding: 'utf8' });
+  assert.equal(c.status, 0, c.stdout + c.stderr);
+});
+ok('字の補い：番号は今ある補い（正準の 10 進）の次、最後の字の <style> の後に、埋め込んである字（family・weight・style）ごとに。400 だけなら 400 だけ', async () => {
+  const d = decks.minimal, SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
+  let h = d.html;
+  const base = scanLayout(h).styles.find((x) => x.id === 'deck-base');
+  // 太字の字を除く（400 だけを埋め込んだ文書）。ほかの書き手の補い（3 と、正準でない 07）と、斜体の字（A だけ）を足す
+  const css = h.slice(base.cStart, base.cEnd).replace(/@font-face\{[^}]*font-weight:700;[^}]*\}\n?/g, '');
+  const faceRules = css.match(/@font-face\{[^}]*\}/g) || [];
+  assert.ok(!faceRules.some((x) => /font-weight:700/.test(x)) && faceRules.some((x) => /BIZ UDPGothic[^}]*font-weight:400/.test(x)));
+  const extra = `\n<style id="${SUP}3">/* another editor */</style>\n<style id="${SUP}07">@font-face{font-family:"BIZ UDPGothic";font-style:italic;font-display:block;font-weight:400;src:url(data:font/woff2;base64,AA==) format("woff2");unicode-range:U+41}\n</style>`;
+  h = h.slice(0, base.cStart) + css + h.slice(base.cEnd, base.end) + extra + h.slice(base.end);
+  const r = await PF.readPortable(h);
+  assert.ok(r.sourceMatches);
+  const ws = workspace(r), key = Object.keys(r.audio)[1];
+  setText(ws, 'narration.md', editTurn(getText(ws, 'narration.md'), key, ` ${NEW_GLYPHS}の森。`));
+  const a = await tierA(h, ws, { fonts: FONTS_SRC });
+  assert.ok(a.ok, `[${a.code}] ${a.reason}`);
+  assert.equal(a.changes.supplement.id, SUP + '4');
+  const fam = 'BIZ UDPGothic';
+  // 斜体の字は A しか持たないので、変えた段階の字の分も補う（それも 400 だけ）
+  assert.deepEqual([...new Set(a.changes.supplement.faces.map((f) => `${f.family}/${f.weight}/${f.style}`))].sort(), [`${fam}/400/italic`, `${fam}/400/normal`], 'faces only for the embedded (family, weight, style) that lack the characters, no 700');
+  const L = scanLayout(a.html), sup = L.styles.find((x) => x.id === SUP + '4'), prev = L.styles.find((x) => x.id === SUP + '07');
+  assert.ok(sup && prev && a.html.slice(prev.end, sup.start) === '\n', 'placed right after the last font style element');
+  const supCss = a.html.slice(sup.cStart, sup.cEnd), rules = supCss.match(/@font-face\{[^}]*\}/g);
+  const faceKey = (b) => `${/font-family:"?([^";]+)"?/.exec(b)[1]}/${/font-weight:(\d+)/.exec(b)[1]}/${/font-style:(\w+)/.exec(b)[1]}`;
+  const embedded = new Set([...h.matchAll(/@font-face\{([^}]*)\}/g)].map((m) => faceKey(m[1])));
+  for (const x of rules) assert.ok(embedded.has(faceKey(x)) && /unicode-range:/.test(x), x.slice(0, 100));
+  regionDiff(h, a.html, { narration: [key] });
+  // もう一度足すと 5
+  const ws2 = new Map(ws); setText(ws2, 'narration.md', editTurn(getText(ws, 'narration.md'), Object.keys(r.audio)[2], '　饕餮。'));
+  const b = await tierA(a.html, ws2, { fonts: FONTS_SRC });
+  assert.ok(b.ok && b.changes.supplement.id === SUP + '5', JSON.stringify(b.changes && b.changes.supplement));
+  const L2 = scanLayout(b.html);
+  assert.ok(L2.styles.find((x) => x.id === SUP + '5').start === L2.styles.find((x) => x.id === SUP + '4').end + 1, 'after the previous supplement');
+});
+
+// ---------------------------------------------------------------- 読める層（§2.1）：段階の並び・行き先のない口述原稿
+ok('読める層：段階は番号の小さい順で concl が最後（原稿の書き順によらない）。どのスライドにも当たらない口述原稿は入れず知らせる', async () => {
+  const d = decks.minimal, r = d.r;
+  const ws = workspace(r), narr = getText(ws, 'narration.md');
+  const sk = '何を最小化するか';
+  const segs = parseNarration(narr).filter((x) => x.slideKey === sk);
+  const lineOf = (st) => narr.split('\n')[segs.find((x) => x.stepKey === st).line - 1];
+  // 1. 1・2・concl を消す
+  const lines = narr.split('\n');
+  const drop = new Set(['1', '2', 'concl'].map((st) => segs.find((x) => x.stepKey === st).line - 1));
+  setText(ws, 'narration.md', lines.filter((_, j) => !drop.has(j)).join('\n'));
+  const a = await tierA(d.html, ws);
+  assert.ok(a.ok, `[${a.code}] ${a.reason}`);
+  // 2. 書き順を逆にして戻す（[0] の後に concl・2・1）。行き先のない節も足す
+  const back = lines.filter((_, j) => !drop.has(j));
+  const at = back.indexOf(lineOf('0')) + 1;
+  back.splice(at, 0, lineOf('concl'), lineOf('2'), lineOf('1'));
+  const ws2 = workspace(r);
+  setText(ws2, 'narration.md', back.join('\n') + '\n## 存在しないスライド\n[0] 勾配の話の続きです。\n');
+  const b = await tierA(a.html, ws2, { fonts: FONTS_SRC });
+  assert.ok(b.ok, `[${b.code}] ${b.reason}`);
+  const L = scanLayout(b.html), art = L.readable.articles.get(sk);
+  const order = [...art.divs.entries()].sort((x, y) => x[1].start - y[1].start).map(([k]) => k.slice(sk.length + 1));
+  assert.deepEqual(order, ['0', '1', '2', '3', 'concl']);
+  const rd = (h) => { const M = scanLayout(h); return h.slice(M.readable.start, M.readable.end); };
+  assert.equal(rd(b.html), rd(d.html), 'same readable layer as the original (whose writer sorts the same way)');
+  assert.ok(!L.readable.articles.has('存在しないスライド') && !rd(b.html).includes('存在しないスライド'), 'no article for the orphan narration');
+  assert.ok(b.warnings.some((w) => w.includes('"存在しないスライド:0"') && /matches no slide/.test(w)), `orphan reported: ${JSON.stringify(b.warnings)}`);
+});
+
+// ---------------------------------------------------------------- 拡張（§9A）：変わった行から作られる項目だけが変わる
+ok('拡張：段 A は変わった拡張の行から作られる項目だけを書き換え、ほかの項目（v・設定・ほかの段階・ほかの拡張）はバイトのまま', async () => {
+  const d = decks.minimal;
+  const ix = JSON.parse(PF.scanDocument(d.html).byId.get(FORMAT.INDEX_ID).text);
+  addUnknownMembers(ix);
+  ix.extensions.tutor = { v: 1, xConf: { kept: true } };
+  const h = await PF.replaceIndexText(d.html, JSON.stringify(ix, null, 1));
+  const r = await PF.readPortable(h);
+  const keys = Object.keys(r.audio), [k1, k2] = [keys[1], keys[3]];
+  const withLines = (narr, adds) => {
+    const L = narr.split('\n'), segs = parseNarration(narr);
+    for (const [k, lines] of Object.entries(adds).sort((x, y) => segOf(narr, y[0]).line - segOf(narr, x[0]).line)) L.splice(segs.find((x) => `${x.slideKey}:${x.stepKey}` === k).line, 0, ...lines);
+    return L.join('\n');
+  };
+  const memberText = (html, ...path) => {
+    const t = PF.scanDocument(html).byId.get(FORMAT.INDEX_ID).text;
+    let at = t.indexOf('{'), m = null;
+    for (const p of path) { m = jsonObjectAt(t, at).members.find((q) => q.key === p); if (!m) return undefined; at = m.valStart; }
+    return t.slice(m.valStart, m.valEnd);
+  };
+  const narr0 = getText(workspace(r), 'narration.md');
+  // 1. 2 つの段階に行を足す
+  const ws = workspace(r);
+  setText(ws, 'narration.md', withLines(narr0, { [k1]: ['@x-tutor-q 問い 1'], [k2]: ['@x-tutor-q 問い 2', '@x-tutor-hint ヒント'] }));
+  const a = await tierA(h, ws);
+  assert.ok(a.ok, `[${a.code}] ${a.reason}`);
+  assert.deepEqual(a.changes.extensions, ['tutor']);
+  assert.deepEqual(plain(a.index.extensions.tutor), { v: 1, xConf: { kept: true }, [k1]: { q: '問い 1' }, [k2]: { q: '問い 2', hint: 'ヒント' } });
+  for (const p of [['chapters'], ['tutor', 'v'], ['tutor', 'xConf']]) assert.equal(memberText(a.html, 'extensions', ...p), memberText(h, 'extensions', ...p), `byte-for-byte: ${p.join('.')}`);
+  // 2. 1 つの段階の行だけを直す：その項目だけが変わる
+  const ws2 = workspace(r);
+  setText(ws2, 'narration.md', withLines(narr0, { [k1]: ['@x-tutor-q 問い 1（直した）'], [k2]: ['@x-tutor-q 問い 2', '@x-tutor-hint ヒント'] }));
+  const b = await tierA(a.html, ws2);
+  assert.ok(b.ok, `[${b.code}] ${b.reason}`);
+  assert.deepEqual(plain(b.index.extensions.tutor[k1]), { q: '問い 1（直した）' });
+  for (const p of [['chapters'], ['tutor', 'v'], ['tutor', 'xConf'], ['tutor', k2]]) assert.equal(memberText(b.html, 'extensions', ...p), memberText(a.html, 'extensions', ...p), `byte-for-byte: ${p.join('.')}`);
+  // 3. 行をすべて消す：行から作った項目だけが消え、v と設定は残る（v だけになる拡張は消える）
+  const c = await tierA(b.html, workspace(r));
+  assert.ok(c.ok, `[${c.code}] ${c.reason}`);
+  assert.deepEqual(plain(c.index.extensions.tutor), { v: 1, xConf: { kept: true } });
+  assert.equal(memberText(c.html, 'extensions', 'chapters'), memberText(h, 'extensions', 'chapters'));
+  const plainH = await PF.replaceIndexText(d.html, JSON.stringify(JSON.parse(PF.scanDocument(d.html).byId.get(FORMAT.INDEX_ID).text), null, 1));
+  const e1 = await tierA(plainH, ws), e2 = e1.ok && await tierA(e1.html, workspace(r));
+  assert.ok(e1.ok && e1.index.extensions.tutor && e2.ok && !(e2.index.extensions && e2.index.extensions.tutor), 'an extension made only from lines goes away with its lines');
 });
 
 for (const [name, fn] of tests) {

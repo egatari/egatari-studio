@@ -774,7 +774,7 @@ export async function exportPortable(env, srcPath, opts = {}) {
     html = html.split(`"src":${ph}`).join(`"src":"${SCHEME}${id}","mime":"${blobs[id].mime}"`);
   });
   const indexText = htmlSafeJson(JSON.stringify(index, null, 1));
-  const layer = readableLayer(r.slides, segs, lang) + '\n' +
+  const layer = readableLayer(r.slides, segs, lang, warnings) + '\n' +
     `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n` +
     chunks.join('\n') + '\n';
   if (html.split(prefixPh).length !== 2) fail('internal', 'archive placeholder not found exactly once');
@@ -860,10 +860,13 @@ function recipeOf(sj, v) {
   return { engine: String(vc.engine || v.engine || 'unknown'), model: String(vc.model || 'unknown'), voice, seed: null, dictionary: typeof vc.yomi === 'string' ? vc.yomi : null, processing };
 }
 
-// §2.1 スクリプトなしで読める層：全段階の口述原稿の表示用の文字（スクリプトが動くと deck.js が隠す）
-function readableLayer(slides, segs, lang) {
+// §2.1 スクリプトなしで読める層：全段階の口述原稿の表示用の文字（スクリプトが動くと deck.js が隠す）。
+// 記事の中の段階は番号の小さい順、concl は最後。どのスライドにも当たらない鍵の口述原稿は入れず、warnings に知らせる
+function readableLayer(slides, segs, lang, warnings = []) {
   const bySlide = new Map();
   for (const s of segs) { if (!bySlide.has(s.slideKey)) bySlide.set(s.slideKey, []); bySlide.get(s.slideKey).push(s); }
+  const keys = new Set(slides.map((sl) => sl.key));
+  for (const s of segs) if (!keys.has(s.slideKey)) warnings.push(`${LOG}: narration for "${s.slideKey}:${s.stepKey}" matches no slide; omitted from the readable layer`);
   const out = [`<section id="${RD_ID}" lang="${escAttr(lang)}">`];
   for (const sl of slides) {
     const steps = (bySlide.get(sl.key) || []).slice().sort((a, b) => stepOrder(a.stepKey) - stepOrder(b.stepKey));

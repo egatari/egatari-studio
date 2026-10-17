@@ -671,6 +671,29 @@ try {
     ok((await pstate()).portable.rightsOk, 'rights: ND license accepted after explicit confirmation');
     await page.click('#b-narr');
 
+    // 段階の口述原稿をまるごと消して保存（段 A）→ その音声の記録と塊も消え、保存の知らせと警告の一覧に出る（§5.4）
+    const rk = '何を最小化するか:3';
+    ok(!!pnd.index.audio[rk], 'removed step: it had audio');
+    await f.evaluate(() => DECK.go(1, 3, false));
+    await page.click('#b-narr');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    for (let i = 0; i < 10 && await page.locator('#dev-narr .dev-turn').count(); i++) await page.locator('#dev-narr .dev-turn').first().locator('button.dv-ghost').last().click();
+    n = await loads();
+    await page.click('#dev-narr .dv-foot button.dv-pri');
+    f = await waitLoads(n);
+    await page.click('#b-narr');
+    ok(!parseNarration((await wsFiles())['narration.md'].toString()).some((x) => `${x.slideKey}:${x.stepKey}` === rk), 'removed step: gone from narration.md');
+    await page.click('#b-save');
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    const rps = await pstate();
+    ok(rps.portable.lastTier === 'A' && rps.portable.lastTierA.audio.includes(rk), 'removed step: saved with tier A, its audio record changed');
+    ok(rps.portable.saveWarnings.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)) && rps.warn.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)), `removed step: the warning is returned and in the warnings list (${JSON.stringify(rps.portable.saveWarnings)})`);
+    ok((await page.textContent('#toast')).includes('保存の警告') && await page.isVisible('#b-warn'), 'removed step: the save notice says there are warnings');
+    const rsaved = await readPortable(new Uint8Array(await getFile('nd' + FORMAT.FILE_EXT)));
+    const rblob = pnd.index.files[pnd.index.audio[rk].file];
+    const rshared = Object.entries(pnd.index.audio).some(([k, x]) => k !== rk && pnd.index.files[x.file] === rblob);
+    ok(rsaved.sourceMatches && !rsaved.index.audio[rk] && (rshared || !rsaved.index.blobs[rblob]) && Object.keys(rsaved.index.audio).length === Object.keys(pnd.index.audio).length - 1, 'removed step: the saved file has no record or blob for it, the other audio is kept');
+
     // 断るファイル：理由を見せる。新しい major の版だけは原稿をフォルダに取り出せる
     for (const [name, code, extract] of [['path-traversal', 'bad-path', false], ['duplicate-member', 'duplicate-member', false], ['unknown-required-feature', 'unknown-feature', true], ['manifest-in-files', 'bad-path', false], ['future-major', 'unsupported-version', true]]) {
       await putFile(name + FORMAT.FILE_EXT, fs.readFileSync(fixture(name).file));
