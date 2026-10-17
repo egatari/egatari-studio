@@ -25,9 +25,10 @@ button:disabled{opacity:.5;cursor:default}
 #top{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700}
 .logo{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;font-size:12px}
-.deckname{color:var(--muted);font-size:13px;max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deckname{color:var(--muted);font-size:13px;max-width:20vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #tools{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap}
 #tools .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
+#tools button{padding:4px 8px;font-size:13px}
 
 main{flex:1;min-height:0;display:flex}
 #welcome{flex:1;overflow:auto;padding:36px 16px 24px;display:flex;flex-direction:column;align-items:center;gap:18px}
@@ -85,3 +86,17 @@ main{flex:1;min-height:0;display:flex}
 @media (max-width:720px){ #panel{position:absolute;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:5} #deck{position:relative} }
 #b-lang{margin-left:auto;border:1px solid var(--line);font-size:13px;padding:4px 10px}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
+#notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
+#notice p{margin:2px 0}
+#dlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);padding:18px 22px;width:min(560px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+#dlg::backdrop{background:rgba(10,12,16,.45)}
+#dlg.warn{border-color:var(--bad-fg)}
+#dlg h2{font-size:17px;margin:0 0 10px}
+#dlg .row{justify-content:flex-end}
+#dlg dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:10px 0}
+#dlg dt{color:var(--muted)}
+#dlg dd{margin:0;overflow-wrap:anywhere}
+#dlg .note{width:auto}
+#dlg .hint{color:var(--muted);font-size:12.5px;margin:6px 0}
+#dlg .confirm{display:flex;gap:8px;align-items:flex-start;margin:10px 0}
+#dlg pre.tech{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:8px;max-height:30vh;overflow:auto}

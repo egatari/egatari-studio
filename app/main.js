@@ -1,11 +1,17 @@
-// 編集アプリ（インストール不要。Chrome / Edge の File System Access API でデッキのフォルダを開く）
+// 編集アプリ（インストール不要。Chrome / Edge の File System Access API でデッキのフォルダを開く。持ち運べる 1 ファイルはフォルダなしで開ける）
 // 開発サーバー（server/dev.mjs）の代わりに、ブラウザの中で組み、プレビューし、原稿・口述原稿・コメントを書き戻す
-// 説明は docs/editor.md。触るのは選んだフォルダだけで、外へは繋がらない（アプリ自身の読み込みを除く）
+// 説明は docs/editor.md。触るのは選んだフォルダか開いたファイルだけで、外へは繋がらない（アプリ自身の読み込みを除く）
+// 読み書きはすべて作業場所（workspace.js：フォルダ／メモリの上のフォルダ）を通す
 import RES from 'virtual:resources';
 import SHIM from './frame-shim.js?text';
 import { createEngine, bytesToBase64 } from './engine.js';
 import { createDevApi } from './devapi.js';
-import { walk, writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
+import { writeText, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
+import { folderWorkspace } from './workspace.js';
+import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
+import { rightsOf } from './rights.js';
+import { CONTRACTS } from '../kit/core/portable.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 
@@ -21,8 +27,10 @@ const loadLazy = async (p) => {
   return bytesToBase64(new Uint8Array(await r.arrayBuffer()));
 };
 const engine = createEngine(RES, loadLazy);
+// ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
+//   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, rightsOk, extended, saved}
 const S = {
-  root: null, deckFile: null, base: null, preview: null, slides: [], warn: [], error: null,
+  ws: null, portable: null, deckFile: null, base: null, preview: null, slides: [], warn: [], error: null,
   frameStore: {}, sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
   presWin: null, checks: new Map(), lastBuildMs: 0,
 };
@@ -47,7 +55,7 @@ const time = () => new Date().toLocaleTimeString(EN ? 'en-US' : 'ja-JP', { hour:
 
 // ---------------------------------------------------------------- はじめの画面
 async function showWelcome() {
-  $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = '';
+  $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true;
   $('unsupported').hidden = SUPPORTED;
   $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
   const list = await recentList();
@@ -75,24 +83,51 @@ async function pickFolder() {
 async function openFolder(handle) {
   if (!handle || handle.kind !== 'directory') { toast(T.dropFolder, true); return false; }
   if (!(await hasPermission(handle)) && !(await askPermission(handle))) { toast(T.noPermission, true); return false; }
+  if (!(await leavePortable())) return false;
   stopPoll();
   // 別のフォルダ：プレビューは読み込み直さずに入れ替える（前のデッキの未保存の入力は待たない）
-  S.root = handle; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.frameStore = {}; S.pos = null; S.fresh = true;
-  engine.setRoot(handle);
-  const listing = await walk(handle);
+  const ws = folderWorkspace(handle);
+  resetDeck(ws, null);
+  const listing = await ws.list();
   engine.setListing(listing);
   S.deckFile = engine.deckFile();
-  if (!S.deckFile) { toast(T.noDeck, true); S.root = null; return false; }
+  if (!S.deckFile) { toast(T.noDeck, true); S.ws = null; return false; }
   S.sig = signature(listing);
   recentAdd(handle);
-  $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
-  $('deckname').textContent = handle.name + ' / ' + S.deckFile;
-  $('deckname').title = $('deckname').textContent;
-  document.title = handle.name + ' — Motion Slides Editor';
-  closePanel();
+  showDeck(handle.name + ' / ' + S.deckFile, handle.name);
   await rebuild('open');
   startPoll();
   return true;
+}
+// 作業場所を替える（プレビューの状態は捨てる）
+function resetDeck(ws, portable) {
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.frameStore = {}; S.pos = null; S.fresh = true;
+  engine.setWorkspace(ws);
+}
+function showDeck(label, title) {
+  $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
+  for (const e of document.querySelectorAll('.only-folder')) e.hidden = !!S.portable;
+  for (const e of document.querySelectorAll('.only-portable')) e.hidden = !S.portable;
+  S.label = label;
+  updateName();
+  document.title = title + ' — Motion Slides Editor';
+  showNotice();
+  closePanel();
+}
+function updateName() {
+  const dirty = S.portable && S.ws && S.ws.dirty;
+  $('deckname').textContent = (dirty ? '● ' : '') + (S.label || '');
+  $('deckname').title = (S.label || '') + (dirty ? ' — ' + T.unsaved : '');
+  if (S.portable) $('b-save').classList.toggle('pri', !!dirty);
+}
+// 持ち運べる 1 ファイルの知らせ（その文書のコード・読むだけ）。プレビューの外（エディタの画面）に出す
+function showNotice() {
+  const P = S.portable, lines = [];
+  if (P && P.extended) lines.push(['notice-extended', T.extendedNotice]);
+  if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
+  const n = $('notice'); n.innerHTML = '';
+  for (const [id, text] of lines) n.append(el('p', { id, text }));
+  n.hidden = !lines.length;
 }
 function signature(listing) {
   return [...listing.files].filter(([rel]) => rel !== 'comments.json').map(([rel, f]) => rel + ':' + f.m + ':' + f.s).sort().join('\n');
@@ -120,15 +155,23 @@ async function rebuild(reason) {
       const t0 = performance.now();
       $('viewer').classList.add('busy');
       try {
-        const listing = await walk(S.root);
+        const listing = await S.ws.list();
         engine.setListing(listing); S.sig = signature(listing);
-        S.deckFile = engine.deckFile() || S.deckFile;
+        if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         const r = await engine.build(S.deckFile, { dev: true });
         S.lastBuildMs = Math.round(performance.now() - t0);
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn;
+        S.slides = r.slides; S.warn = r.stats.warn.slice();
+        if (S.portable) {
+          // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
+          S.warn.push(...S.portable.warnings);
+          const stale = await staleSteps(S.ws);
+          S.stale = stale;
+          for (const k of stale) S.warn.push(T.staleStep(k));
+          updateName();
+        }
         const changed = r.html !== S.base;
         S.base = r.html;
         S.preview = previewHtml(r.html, r.stats.warn);
@@ -179,9 +222,9 @@ function showWarn() {
 function startPoll() {
   stopPoll();
   S.poll = setInterval(async () => {
-    if (!S.root || S.building) return;
+    if (!S.ws || S.portable || S.building) return;
     try {
-      const listing = await walk(S.root);
+      const listing = await S.ws.list();
       const sig = signature(listing);
       if (sig !== S.sig) { S.sig = sig; await rebuild('poll'); }
     } catch (e) { console.warn('[editor] poll failed', e); }
@@ -191,10 +234,15 @@ function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 
 // ---------------------------------------------------------------- デッキの iframe とのやり取り
 const api = createDevApi({
-  get root() { return S.root; },
+  get ws() { return S.ws; },
+  beforeWrite: async () => {
+    if (!S.portable) return null;
+    if (S.portable.readOnly) return T.readOnlyNoEdit;
+    return (await ensureRights()) ? null : T.rightsDeclined;
+  },
   deckFile: () => S.deckFile,
   slideOrder: () => S.slides || [],   // {key, id, heading}：id のあるスライドの新しい節は「## 見出し {#id}」
-  afterWrite: async () => { const failed = await rebuild('save'); return failed; },
+  afterWrite: async () => { const failed = await rebuild('save'); updateName(); return failed; },
   msg: T.api,
 });
 window.addEventListener('message', async (e) => {
@@ -241,7 +289,7 @@ function loadPresenter() {
   const w = S.presWin;
   const f = w && !w.closed && w.document.getElementById('pf');
   if (!f) return;
-  w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.root ? S.root.name : '');
+  w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
   f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM });
 }
 
@@ -284,7 +332,7 @@ function showHelp() {
 
 // ---------------------------------------------------------------- 書き出し・印刷
 async function exportHtml() {
-  if (!S.root) return;
+  if (!S.ws) return;
   status(T.exporting);
   let r;
   try { r = await engine.build(S.deckFile, { dev: false }); }
@@ -293,15 +341,213 @@ async function exportHtml() {
   try {
     let h = window.__APP_TEST && window.__APP_TEST.saveHandle;
     if (!h && window.showSaveFilePicker) {
-      h = await window.showSaveFilePicker({ suggestedName: name, startIn: S.root, types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] });
+      h = await window.showSaveFilePicker({ suggestedName: name, ...(S.ws.handle ? { startIn: S.ws.handle } : {}), types: [{ description: 'HTML', accept: { 'text/html': ['.html'] } }] });
     }
-    if (h) { const w = await h.createWritable(); await w.write(r.html); await w.close(); }
-    else {
-      const a = el('a', { href: URL.createObjectURL(new Blob([r.html], { type: 'text/html' })), download: name });
-      document.body.append(a); a.click(); a.remove();
-    }
+    if (h) await writeHandle(h, r.html);
+    else download(name, r.html);
     status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
     toast(T.exportedToast);
+  } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
+}
+
+// ---------------------------------------------------------------- 保存の口（ファイルのハンドル・ダウンロード）
+async function writeHandle(h, data) { const w = await h.createWritable(); await w.write(data); await w.close(); }
+function download(name, text) {
+  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/html' })), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+const portableTypes = () => [{ description: T.portableType, accept: { 'text/html': [FORMAT.FILE_EXT, '.html'] } }];
+// 名前を付けて保存：ファイルを選ぶ画面（Chrome / Edge）か、なければダウンロード。返すもの：書いたハンドル（ダウンロードなら null）
+async function saveWithPicker(name, html, startIn) {
+  if (window.showSaveFilePicker) {
+    const h = await window.showSaveFilePicker({ id: 'motion-portable', suggestedName: name, ...(startIn ? { startIn } : {}), types: portableTypes() });
+    await writeHandle(h, html);
+    return h;
+  }
+  download(name, html);
+  return null;
+}
+
+// ---------------------------------------------------------------- 確かめの窓（エディタの画面の中。プレビューのものではない）
+// buttons：[{id, label, pri, needsConfirm}]。confirmText があればチェックボックス（入れるまで needsConfirm のボタンは押せない）
+function ask({ title, body, buttons, confirmText = null, kind = '' }) {
+  return new Promise((resolve) => {
+    const d = $('dlg');
+    d.className = kind;
+    $('dlg-title').textContent = title;
+    const b = $('dlg-body'); b.innerHTML = ''; b.append(...body.filter(Boolean));
+    let cb = null;
+    if (confirmText) { cb = el('input', { type: 'checkbox', id: 'dlg-confirm' }); b.append(el('label', { cls: 'confirm' }, [cb, el('span', { text: confirmText })])); }
+    const row = $('dlg-buttons'); row.innerHTML = '';
+    for (const x of buttons) {
+      const btn = el('button', { type: 'button', id: 'dlg-' + x.id, cls: x.pri ? 'pri' : '', text: x.label, onclick: () => d.close(x.id) });
+      if (x.needsConfirm && cb) { btn.disabled = true; cb.addEventListener('change', () => { btn.disabled = !cb.checked; }); }
+      row.append(btn);
+    }
+    d.returnValue = '';
+    d.onclose = () => resolve(d.returnValue || 'cancel');
+    d.showModal();
+  });
+}
+
+// ---------------------------------------------------------------- 権利（format spec §7.3）：最初の編集の前に、ライセンス・著作権・クレジットを見せる
+async function ensureRights() {
+  const P = S.portable;
+  if (!P || P.rightsOk) return true;
+  if (P.rightsPending) return P.rightsPending;
+  P.rightsPending = (async () => {
+    const R = rightsOf(P.index.metadata);
+    const rows = [[T.rTitle, R.title], [T.rCreators, R.creators.join(', ')], [T.rCopyright, R.copyright], [T.rLicense, R.license || T.rNoLicense], [T.rAttribution, R.attribution]];
+    const dl = el('dl', { id: 'rights-list' }, rows.filter(([, v]) => v).flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]));
+    const v = await ask({
+      title: T.rightsTitle, kind: R.noDerivatives ? 'warn' : '',
+      body: [el('p', { text: T.rightsLead }), dl,
+        R.noDerivatives ? el('p', { id: 'rights-nd', cls: 'note bad', text: R.reason === 'nd-license' ? T.rNdLicense : T.rNdCopyright }) : null,
+        el('p', { cls: 'hint', text: T.rKeep }), el('p', { cls: 'hint', text: T.rClaims })],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: T.rContinue, pri: true, needsConfirm: R.noDerivatives }],
+      confirmText: R.noDerivatives ? T.rConfirm : null,
+    });
+    P.rightsPending = null;
+    if (v !== 'ok') { toast(T.rightsDeclined, true); return false; }
+    P.rightsOk = true;
+    return true;
+  })();
+  return P.rightsPending;
+}
+// 編集モード・口述原稿を開く前に：読むだけの文書なら断り、まだなら権利を見せる
+async function beforeEditing() {
+  if (!S.portable) return true;
+  if (S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return false; }
+  return ensureRights();
+}
+
+// ---------------------------------------------------------------- 持ち運べる 1 ファイルを開く
+// 開いたファイルはバイト列として Worker に渡すだけ（このページでは読み込まない・実行しない）
+async function pickPortable() {
+  if (window.showOpenFilePicker) {
+    try { const [h] = await window.showOpenFilePicker({ id: 'motion-portable', types: portableTypes(), multiple: false }); return h ? { handle: h } : null; }
+    catch (e) { if (e && e.name === 'AbortError') return null; if (!(e instanceof TypeError)) { toast(String(e.message || e), true); return null; } }
+  }
+  return new Promise((res) => {
+    const i = el('input', { type: 'file', accept: `${FORMAT.FILE_EXT},.html,text/html`, hidden: '' });
+    i.addEventListener('change', () => { res(i.files && i.files[0] ? { file: i.files[0] } : null); i.remove(); });
+    document.body.append(i); i.click();
+  });
+}
+// 未保存の変更があれば、捨ててよいか聞く。戻り値：先へ進んでよいか
+async function leavePortable() {
+  if (!S.portable || !S.ws || !S.ws.dirty) return true;
+  return (await ask({ title: T.unsavedTitle, body: [el('p', { text: T.unsavedLead })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'discard', label: T.discard, pri: true }] })) === 'discard';
+}
+function refusal(code, message) {
+  return [el('p', { id: 'refuse-reason', text: T.refuse(code) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
+}
+// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?}
+async function openPortable(input) {
+  if (!input) return false;
+  let bytes, name;
+  const handle = input.handle || null;
+  try {
+    const file = input.file || (handle ? await handle.getFile() : null);
+    name = input.name || (file && file.name) || 'lesson' + FORMAT.FILE_EXT;
+    bytes = input.bytes ? new Uint8Array(input.bytes) : new Uint8Array(await file.arrayBuffer());
+  } catch (e) { toast(T.cannotReadFile + ': ' + (e.message || e), true); return false; }
+  if (!(await leavePortable())) return false;
+  status(T.reading(name));
+  let r;
+  try { r = await readInWorker(bytes); }
+  catch (e) {
+    status('');
+    // 知らない major の版：編集はしないが、1.x の規則で検査が通れば原稿をフォルダに取り出せる（§7.1・§9.3）。知らない必須の機能は断るだけ
+    const extract = e.code === 'unsupported-version' && !!window.showDirectoryPicker;
+    const v = await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code, e.message),
+      buttons: [...(extract ? [{ id: 'extract', label: T.exportFolder }] : []), { id: 'ok', label: T.ok, pri: true }] });
+    if (v === 'extract') {
+      try { const x = await readInWorker(bytes, { extract: true }); await exportFolder(workspaceFromPortable(name, x)); }
+      catch (err) { await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(err.code, err.message), buttons: [{ id: 'ok', label: T.ok, pri: true }] }); }
+    }
+    return false;
+  }
+  stopPoll();
+  const ws = workspaceFromPortable(name, r);
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, rightsOk: false, extended: r.index.profile === 'extended', saved: null };
+  resetDeck(ws, P);
+  S.deckFile = r.index.entry;
+  // 作り直して保存できるか：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）
+  if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.readOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);
+  else {
+    try {
+      const dry = await engine.exportPortable(S.deckFile, { carry: r.index });
+      const probs = registryProblems(r.index, dry.index);
+      if (probs.length) P.readOnly = T.roRegistry(probs.join('; '));
+    } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
+  }
+  showDeck(name, name);
+  await rebuild('open');
+  return true;
+}
+
+// ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する（エディタの組み立てで作り直す。docId は変えない）
+async function savePortable(saveAs) {
+  const P = S.portable;
+  if (!P) return;
+  if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
+  if (S.building) await S.building;
+  status(T.saving);
+  let r;
+  try { r = await engine.exportPortable(S.deckFile, { carry: P.index }); }
+  catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  try {
+    let h = saveAs ? null : P.handle, wrote = false;
+    if (h) {
+      try {
+        if (!(await hasPermission(h)) && !(await askPermission(h))) throw new Error(T.noPermission);
+        await writeHandle(h, r.html); wrote = true;
+      } catch (e) { if (e && e.name === 'AbortError') throw e; console.warn('[editor] cannot overwrite the file, asking where to save', e); h = null; }
+    }
+    if (!wrote) {
+      h = await saveWithPicker(P.name, r.html);
+      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; }
+    }
+    S.ws.markClean();
+    P.index = r.index; P.deckMeta = r.deckMeta; P.saved = r.html;
+    updateName();
+    status(T.savedAt(time(), (r.html.length / 1048576).toFixed(1)));
+    toast(h ? T.savedToast(P.name) : T.downloadedToast(P.name));
+  } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
+}
+
+// ---------------------------------------------------------------- フォルダに書き出す（空のフォルダにだけ。npm run portable -- unpack と同じ中身）
+async function exportFolder(ws = S.ws) {
+  if (!ws) return;
+  if (!window.showDirectoryPicker) { toast(T.noFolderPicker, true); return; }
+  let dir;
+  try { dir = (window.__APP_TEST && window.__APP_TEST.dirHandle) || await window.showDirectoryPicker({ id: 'motion-unpack', mode: 'readwrite' }); }
+  catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); return; }
+  if (!(await hasPermission(dir)) && !(await askPermission(dir))) { toast(T.noPermission, true); return; }
+  try {
+    const n = await writeToDirectory(dir, archiveFiles(ws));
+    status(T.unpackedAt(time(), n, dir.name));
+    toast(T.unpackedToast(n, dir.name));
+  } catch (e) { toast(e.code === 'not-empty' ? T.notEmpty(dir.name) : String(e.message || e), true); }
+}
+
+// ---------------------------------------------------------------- フォルダのデッキを持ち運べる 1 ファイルに書き出す
+async function exportPortableFile() {
+  if (!S.ws || S.portable) return;
+  status(T.exporting);
+  let r;
+  try { r = await engine.exportPortable(S.deckFile); }
+  catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  try {
+    // docId を初めて作ったときは、原稿のフォルダの設定のファイルに残す（次の書き出しでも同じ文書）
+    for (const [rel, text] of Object.entries(r.writes)) await S.ws.writeText(rel, text);
+    const name = S.deckFile.replace(/\.html?$/i, '') + FORMAT.FILE_EXT;
+    const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
+    const h = th ? (await writeHandle(th, r.html), th) : await saveWithPicker(name, r.html, S.ws.handle);
+    status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
+    toast(h ? T.portableExportedToast : T.downloadedToast(name));
   } catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status(''); }
 }
 
@@ -347,8 +593,14 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => showNewForm(true);
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
-$('b-edit').onclick = () => sendKey('e');
-$('b-narr').onclick = () => sendKey('n');
+$('b-edit').onclick = async () => { if (await beforeEditing()) sendKey('e'); };
+$('b-narr').onclick = async () => { if (await beforeEditing()) sendKey('n'); };
+$('w-openfile').onclick = async () => openPortable(await pickPortable());
+$('b-openfile').onclick = async () => openPortable(await pickPortable());
+$('b-save').onclick = () => savePortable(false);
+$('b-saveas').onclick = () => savePortable(true);
+$('b-unpack').onclick = () => exportFolder();
+$('b-export-portable').onclick = exportPortableFile;
 $('b-comments').onclick = () => sendKey('c');
 $('b-check').onclick = quickCheck;
 $('b-export').onclick = exportHtml;
@@ -363,9 +615,16 @@ drop.addEventListener('dragleave', () => drop.classList.remove('over'));
 drop.addEventListener('drop', async (e) => {
   e.preventDefault(); drop.classList.remove('over');
   const item = [...(e.dataTransfer.items || [])].find((i) => i.kind === 'file');
-  if (!item || !item.getAsFileSystemHandle) { toast(T.dropFolder, true); return; }
-  const h = await item.getAsFileSystemHandle();
-  openFolder(h);
+  if (!item) { toast(T.dropFolder, true); return; }
+  // 項目は drop の間しか読めないので、ハンドルとファイルを先に取る
+  const hp = item.getAsFileSystemHandle ? item.getAsFileSystemHandle() : null;
+  const file = item.getAsFile();
+  const h = hp ? await hp.catch(() => null) : null;
+  if (h && h.kind === 'directory') { openFolder(h); return; }
+  // ファイル：持ち運べる 1 ファイルとして開く（ドロップのハンドルがあれば、保存でそのファイルに上書きできる）
+  if (h && h.kind === 'file') openPortable({ handle: h });
+  else if (file) openPortable({ file });
+  else toast(T.dropFolder, true);
 });
 drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('w-open').click(); } });
 
@@ -373,7 +632,13 @@ drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '
 window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
-  state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.root }),
+  dirHandle: null,
+  state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
+    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, readOnly: S.portable.readOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice() } : null }),
+  openFile: (input) => openPortable(input),
+  saved: () => (S.portable ? S.portable.saved : null),
+  files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
+  workerProbe: (name) => probeWorker(name),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
 };
@@ -388,9 +653,12 @@ langBtn.setAttribute('aria-label', EN ? '日本語に切り替える' : 'Switch 
 langBtn.onclick = () => {
   const to = EN ? 'ja' : 'en';
   try { localStorage.setItem(LANG_KEY, to); } catch { /* 使えない環境 */ }
-  try { if (S.root) sessionStorage.setItem('motion-editor-reopen', '1'); } catch { /* 使えない環境 */ }
+  // 持ち運べる 1 ファイルはメモリの上にあるので、読み直すと閉じる（未保存の変更があれば確かめる）
+  if (S.portable && S.ws.dirty && !window.confirm(T.unsavedLang)) return;
+  try { if (S.ws && !S.portable) sessionStorage.setItem('motion-editor-reopen', '1'); } catch { /* 使えない環境 */ }
   const u = new URL(location.href); u.searchParams.set('lang', to); location.href = u.href;
 };
+window.addEventListener('beforeunload', (e) => { if (S.portable && S.ws && S.ws.dirty) { e.preventDefault(); e.returnValue = ''; } });
 (async () => {
   let reopen = false;
   try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }

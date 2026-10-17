@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- 読み込めるのはアプリ自身だけ。デッキ（sandbox の iframe）もこの決まりを受け継ぎ、外へは繋がらない。
-     'unsafe-eval' は部品（m-sweep の f="…" など）が式を new Function で作るため -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about: blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+     'unsafe-eval' は部品（m-sweep の f="…" など）が式を new Function で作るため。worker-src blob: は持ち運べる 1 ファイルを読む Worker（アプリに同梱） -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'self' about: blob: data:; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Motion Slides Editor</title>
 <link rel="icon" href="data:,">
@@ -17,13 +17,18 @@
   <div id="deckname" class="deckname"></div>
   <nav id="tools" hidden>
     <button type="button" id="b-open" data-t="open"></button>
+    <button type="button" id="b-openfile" data-t="openFile"></button>
+    <button type="button" id="b-save" class="only-portable" data-t="save" hidden></button>
+    <button type="button" id="b-saveas" class="only-portable" data-t="saveAs" hidden></button>
+    <button type="button" id="b-unpack" class="only-portable" data-t="exportFolder" hidden></button>
     <span class="sep"></span>
     <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
     <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
     <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
     <span class="sep"></span>
     <button type="button" id="b-check" data-t="check"></button>
-    <button type="button" id="b-export" data-t="export"></button>
+    <button type="button" id="b-export" class="only-folder" data-t="export"></button>
+    <button type="button" id="b-export-portable" class="only-folder" data-t="exportPortable"></button>
     <button type="button" id="b-print" data-t="print"></button>
     <button type="button" id="b-presenter" data-t="presenter"></button>
     <button type="button" id="b-full" data-t="full"></button>
@@ -34,6 +39,7 @@
   <button type="button" id="b-lang" class="ghost lang" lang="en" title="English / 日本語"></button>
 </header>
 
+<div id="notice" role="alert" hidden></div>
 <main>
   <section id="welcome">
     <div class="intro">
@@ -46,6 +52,7 @@
       <div data-t="dropHere"></div>
       <div class="row">
         <button type="button" id="w-open" class="pri" data-t="openFolder"></button>
+        <button type="button" id="w-openfile" data-t="openFile"></button>
         <button type="button" id="w-new" data-t="newDeck"></button>
       </div>
     </div>
@@ -78,6 +85,7 @@
 </main>
 <footer id="status"><span id="st-msg"></span><span class="sp"></span><span id="st-info"></span></footer>
 <div id="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg" aria-labelledby="dlg-title"><h2 id="dlg-title"></h2><div id="dlg-body"></div><div class="row" id="dlg-buttons"></div></dialog>
 <!--APP_JS-->
 </body>
 </html>
