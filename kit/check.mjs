@@ -12,7 +12,7 @@
 // F. 注目の演出（{mark:…}）：目印が見つかるか、段階ごとの印の一覧
 // G. モーフ（data-morph）：元のスライドと対応する data-id があるか、対応の一覧
 // H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
-// I. スライドの id と鍵（Etoki 1.0 §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
+// I. スライドの id と鍵（format spec §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
 //    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
@@ -105,6 +105,11 @@ for (const w of built.stats.warn) {
 {
   const ids = analyzeSlideIds(fs.readFileSync(src, 'utf8'));
   for (const p of ids.problems) report(p.slide, p.sev, p.msg);
+  // 旧来の鍵（format spec §8.1）：手書きの data-key と s<n>（見出しも id もない）。鍵は変えずに知らせるだけ
+  for (const s of ids.slides) {
+    if (s.rule === 'data-key') report(s.index, 'warn', `slide key: legacy — スライド ${s.index + 1}（${s.line} 行目）の鍵「${s.key}」は手書きの data-key から決めている（<section> に id を付ける。npm run ids）`);
+    else if (s.rule === 'index') report(s.index, 'warn', `slide key: legacy — スライド ${s.index + 1}（${s.line} 行目）は見出しも id もないので、鍵が位置の「${s.key}」になる（スライドを足すと変わる。<section> に id を付ける）`);
+  }
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {
