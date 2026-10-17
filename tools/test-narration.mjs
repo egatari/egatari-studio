@@ -10,6 +10,8 @@ import { parseNarration, segDigest, joinLines, marksMap, narrationMap, splitKey,
 import { annotate, analyzeSlideIds } from '../kit/build.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+// Etoki の仕様の試験用の入力と正解（narration.md・expected.json）の置き場所。ここだけを直せば移せる
+const SPEC_INPUT_HASH = path.join(ROOT, 'spec', 'fixtures', 'input-hash');
 
 let n = 0;
 const ok = (name, f) => { f(); n++; console.log(`  ok ${name}`); };
@@ -177,7 +179,7 @@ ok('拡張の行：CRLF でも読め、書き換えで位置・中身・改行�
 
 // ---------------------------------------------------------------- spec/fixtures/input-hash（鍵と inputHash）
 ok('spec/fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
-  const dir = path.join(ROOT, 'spec', 'fixtures', 'input-hash');
+  const dir = SPEC_INPUT_HASH;
   const expected = JSON.parse(fs.readFileSync(path.join(dir, 'expected.json'), 'utf8'));
   const segs = parseNarration(fs.readFileSync(path.join(dir, 'narration.md'), 'utf8'));
   assert.deepEqual(segs.map((s) => `${s.slideKey}:${s.stepKey}`), Object.keys(expected));
