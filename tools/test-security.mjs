@@ -98,7 +98,7 @@ function start(deck) {
     srv.stdout.on('data', (d) => { log += d; const m = String(d).match(/http:\/\/127\.0\.0\.1:\d+\//); if (m) { clearTimeout(t); res(m[0]); } });
     srv.on('exit', (c) => { clearTimeout(t); rej(new Error('server exited ' + c + '\n' + log)); });
   });
-  return { srv, base };
+  return { srv, base, log: () => log };
 }
 const rawAt = (base, pathname, { method = 'GET', headers = {}, body } = {}) => new Promise((res, rej) => {
   const u = new URL(base);
@@ -186,6 +186,33 @@ for (const [label, prep, what] of devCases) {
     ok(backups.length === 30 && names.includes('notes.txt') && names.includes('000-important.txt') && names.includes('1999-01-01T00-00-00-000Z-link.html'), `dev: backup cleanup keeps 30 backups, never touches other names or links (${backups.length} backups, ${names.length} entries)`);
     unchanged(before, 'dev: normal save');
     noTmp(d, 'dev: normal save');
+  } catch (e) { fails++; console.error(e); } finally { S.srv.kill(); }
+}
+
+// 見張りは原稿のフォルダの実体の中のフォルダだけ：外を指すリンクの audio/・data/ は見張らず（一度ずつ知らせる）、外での変更で組み直さない
+{
+  mkOutside();
+  const oa = path.join(work, 'outside-audio'), od = path.join(work, 'outside-data');
+  for (const x of [oa, od]) { fs.rmSync(x, { recursive: true, force: true }); fs.mkdirSync(x, { recursive: true }); }
+  fs.writeFileSync(path.join(oa, 'manifest.json'), '{"segments":{}}\n'); fs.writeFileSync(path.join(od, 'v.json'), '{}\n');
+  // 組み立てのたびに出る知らせ（外部の画像）で、組み直しを数える（外の中身は組み立てが読まないので、出力は変わらない）
+  const d = mkDeck((x) => { fs.rmSync(path.join(x, 'audio'), { recursive: true, force: true }); fs.symlinkSync(oa, path.join(x, 'audio')); fs.symlinkSync(od, path.join(x, 'data'));
+    const f = path.join(x, 'deck.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('</section>', '<img alt="" src="https://example.invalid/watch-probe.png"></section>')); });
+  const builds = (t) => t.split('watch-probe.png').length - 1;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const S = start(path.join(d, 'deck.html'));
+  try {
+    await S.base;
+    await wait(800);
+    ok(/not watching audio: it is a symbolic link/.test(S.log()) && /not watching data: it is a symbolic link/.test(S.log()) && S.log().split('not watching audio').length === 2, 'dev watch: symlinked audio/ and data/ are not watched (warned once each)');
+    const at = S.log().length;
+    for (let i = 0; i < 3; i++) { fs.writeFileSync(path.join(oa, 'manifest.json'), `{"segments":{},"n":${i}}\n`); fs.writeFileSync(path.join(od, 'v.json'), `{"n":${i}}\n`); fs.writeFileSync(path.join(oa, `x${i}.wav`), 'x'); await wait(300); }
+    await wait(1200);
+    ok(builds(S.log().slice(0, at)) >= 1 && builds(S.log().slice(at)) === 0 && !/rebuilt/.test(S.log().slice(at)), `dev watch: changes in the outside folders behind the links cause no rebuild (${builds(S.log().slice(at))} builds after the changes)`);
+    // 対照：原稿のフォルダの中の変更では組み直す
+    fs.appendFileSync(path.join(d, 'narration.md'), '\n## 追加の節\n[0] 見張りの対照。\n');
+    const t0 = Date.now(); while (!/rebuilt/.test(S.log().slice(at)) && Date.now() - t0 < 8000) await wait(100);
+    ok(/rebuilt/.test(S.log().slice(at)) && builds(S.log().slice(at)) >= 1, 'dev watch: a change inside the deck folder still rebuilds');
   } catch (e) { fails++; console.error(e); } finally { S.srv.kill(); }
 }
 
