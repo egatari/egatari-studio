@@ -12,8 +12,11 @@
 //   段階 0 は白の木だけを広げた初めの姿。段階 k の中：木を広げ直す（move 秒）→ 根から色の木へ → 1 ビットごとに 1 本（bit 秒）→ 葉に着く →
 //   画素の升目を塗る（fill 秒）。最後の段階（summary="false" で外す）は両方の木と復号したすべての道（印刷・静止の姿）
 // data-mark（頭の ct は属性 mark で変える）：ct-root、ct-w / ct-b（色の木の根）、ct-w-1101（白の木の符号 1101 の節・葉）、ct-w64 / ct-b2 / ct-weol
-//   （葉の数字）、ct-bit-3（系列の 3 桁目）、ct-cw-2（2 つ目の符号語の括弧と結果）、ct-run-1（1 つ目の画素のラン）、ct-scan（画素の並び）、ct-bad（表にない枝）
-// JSON の labels で文言を変える：white black start read makeup term eol invalid incomplete dangling done scan（{c} は色、{n} は桁）
+//   （葉の数字）、ct-bit-3（系列の 3 桁目）、ct-cw-2（2 つ目の符号語の括弧と結果）、ct-run-1（1 つ目の画素のラン）、ct-scan（画素の並び）、ct-bad（表にない枝）、
+//   ct-crumb（窓の上の「ここまで」）
+// 深い木（黒の符号は 13 ビットまで）：入らなければ window 段の窓だけを見せ、たどる点を追って木を下から上へ流す（窓の位置も (k, t) だけで決まる）。
+//   窓の上に「黒の木：ここまで 0000 0110」。window="auto"（既定）は段の間が 44 px より狭くなるときだけ流す。まとめの段階はいちばん深い道の窓
+// JSON の labels で文言を変える：white black start read makeup term eol invalid incomplete dangling done scan crumb（{c} は色、{n} は桁）
 // 復号の規則は DECK.codetree（試験は tools/test-codetree.mjs）
 (function(){
 var D = window.DECK;
@@ -102,7 +105,7 @@ if (!D.MotionElement) return;   // 試験（Node）では復号の規則だけ
 // ---------------------------------------------------------------- 部品
 var NAMES = {white: "白", black: "黒", start: "最初は白の木から読む", read: "{c}の木をたどる", makeup: "メイクアップ符号：次も{c}",
   term: "終端符号：次は{c}", eol: "行の終わり：次は白", invalid: "表にない符号（{n} 桁目）", incomplete: "系列が符号の途中で終わる",
-  dangling: "メイクアップ符号の後に終端符号がない", done: "復号完了", scan: "画素"};
+  dangling: "メイクアップ符号の後に終端符号がない", done: "復号完了", scan: "画素", crumb: "{c}の木：ここまで"};
 var LETTER = {white: "w", black: "b"};
 // 字の幅の見積もり（字の読み込みによらず同じ配置にする）
 // 誤りの段階でたどれる道（表にない枝の手前まで）
@@ -112,6 +115,7 @@ function labelAt(a, b, f, off){
   var dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = dx < 0 ? -dy / L : dy / L, ny = -Math.abs(dx) / L;
   return {x: a.x + dx * f + nx * off, y: a.y + dy * f + ny * off + 8};
 }
+function fmt0(s, c){ return String(s).replace("{c}", c); }
 function textW(s, fs){ return [...String(s)].reduce(function(a, ch){ return a + (/[\u0000-ɏ]/.test(ch) ? 0.6 : 1); }, 0) * fs; }
 
 D.define("m-codetree", class extends D.MotionElement {
@@ -130,6 +134,7 @@ D.define("m-codetree", class extends D.MotionElement {
     fill:    {type: "number", default: 0.8, doc: "画素の升目を塗る秒数"},
     summary: {type: "bool", default: true, doc: "最後にまとめの段階を足す"},
     mark:    {type: "string", default: "ct", doc: "data-mark の頭"},
+    window:  {type: "string", default: "auto", doc: "木を見せる段の数（auto：入らなければ、たどる点を追って木を流す）"},
   };
   // 復号と段階の計画（データだけから決める）
   model(){
@@ -214,15 +219,37 @@ D.define("m-codetree", class extends D.MotionElement {
     var px = function(o){ if (o.x === undefined){ o.kids.forEach(px); o.x = (o.kids[0].x + o.kids[o.kids.length - 1].x) / 2; } return o.x; };
     px(L.nodes.r);
     // 段の間：葉の数字と畳んだ節の三角の分を下に空ける
-    var gap = Math.min(78, (G.treeBottom - G.treeTop - 44) / L.maxLv);
-    Object.keys(L.nodes).forEach(function(id){ var o = L.nodes[id]; o.y = G.treeTop + o.lv * gap; });
-    Object.keys(L.ghosts).forEach(function(id){ var o = L.ghosts[id]; o.y = G.treeTop + o.lv * gap; });
+    // 木が入らなければ（段の間が 44 px より狭くなる、または段の数が属性 window より多い）、win 段の窓だけを見せ、
+    // たどる点を追って窓を下へ流す（窓の上は「ここまで」の行）。段の位置は y0 + (lv − cam) × gap（cam は render が (k, t) から決める）
+    var avail = G.treeBottom - G.treeTop - 44, wp = String(this.props.window || "auto").trim(), nwin = /^\d+$/.test(wp) ? Math.max(2, +wp) : 0;
+    L.follow = nwin ? L.maxLv > nwin : avail / L.maxLv < 44;
+    if (!L.follow){ L.y0 = G.treeTop; L.win = L.maxLv; L.gap = Math.min(78, avail / L.maxLv); }
+    else { L.y0 = G.treeTop + 44; var av2 = G.treeBottom - 44 - L.y0; L.win = nwin || Math.max(3, Math.floor(av2 / 56)); L.gap = av2 / L.win; }
+    L.camMax = Math.max(0, L.maxLv - L.win);
+    var gap = L.gap;
+    Object.keys(L.nodes).forEach(function(id){ var o = L.nodes[id]; o.y = L.y0 + o.lv * gap; });
+    Object.keys(L.ghosts).forEach(function(id){ var o = L.ghosts[id]; o.y = L.y0 + o.lv * gap; });
+    // まとめで窓を合わせる道（いちばん深い道）
+    L.deep = null;
+    COLORS.forEach(function(c){ paths[c].forEach(function(q){ if (!L.deep || q.length > L.deep.code.length) L.deep = {color: c, code: q}; }); });
     // 0 と 1 を書く枝：今の道（とまとめのすべての道）の節の 2 つの子へ。根から色の木への枝はいつも
     var lab = {w: 1, b: 1};
     COLORS.forEach(function(c){ paths[c].forEach(function(q){ for (var i = 0; i < q.length; i++){ var pre = LETTER[c] + q.slice(0, i); lab[pre + "0"] = 1; lab[pre + "1"] = 1; } }); });
     if (cur && cur.bad){ var pre = LETTER[cur.color] + cur.code; lab[pre + "0"] = 1; lab[pre + "1"] = 1; }
     L.lab = lab; L.sw = sw; L.gap = gap; L.cur = cur; L.paths = paths; L.both = both; L.focus = focus;
     return L;
+  }
+  // 窓の位置（段の数で。0 は根が窓の上の段）：たどる点の段 λ の 1 段下までが窓に入るように、λ から滑らかに決める
+  camAt(k, t){
+    var L = this.lay[k];
+    if (!L.follow) return 0;
+    var p = k ? this.model().plan[k - 1] : null, lam = 0;
+    if (p && (p.type === "tok" || p.type === "err")){
+      var T = this.times(k), P = this.props, n = L.cur.code.length + 1;
+      for (var i = 0; i < n; i++) lam += D.prog(t, T.s(i), 0.7 * P.bit);
+      if (L.cur.bad) lam += 0.6 * D.prog(t, T.s(T.nb), 0.3);
+    } else if (p && L.deep) lam = L.deep.code.length + 1;
+    return Math.max(0, Math.min(L.camMax, lam + 1 - L.win));
   }
   mount(){
     var D2 = D, P = this.props, self = this, m = this.model(), dec = m.dec, Lb = m.L, MK = P.mark;
@@ -304,6 +331,10 @@ D.define("m-codetree", class extends D.MotionElement {
     this.stubLab = D2.el("text", {"font-size": 24, "font-weight": 700, "text-anchor": "middle", fill: "var(--emph)"}, this.stub);
     this.cross = D2.el("text", {"font-size": 34, "font-weight": 700, "text-anchor": "middle", fill: "var(--emph)"}, this.stub);
     this.cross.textContent = "×";
+    // 窓の上の「ここまで」の行：今の符号語の色と、ここまで読んだビット
+    this.crumb = D2.el("text", {x: 0, y: this.G.treeTop + 14, "font-size": 24, fill: "var(--muted)", opacity: 0, "data-mark": MK + "-crumb"}, root);
+    this.crumbHead = D2.el("tspan", {}, this.crumb);
+    this.crumbBits = D2.el("tspan", {"font-weight": 700, fill: "var(--emph)"}, this.crumb);
     this.token = D2.el("circle", {r: 9, fill: "var(--emph)", stroke: "var(--bg)", "stroke-width": 2.5, opacity: 0}, gP);
     // ---- 下：復号した画素の並び
     var G = this.G, sx0 = 70, total = m.runs.reduce(function(a, r){ return a + r.len; }, 0);
@@ -340,14 +371,25 @@ D.define("m-codetree", class extends D.MotionElement {
     var mv = k ? D2.prog(t, 0, P.move) : 1;
     // ---- 節の位置：両方にあれば滑らせ、片方だけなら近い祖先から伸びる／祖先へ縮む
     var anc = function(L, id){ var o = L.nodes[id]; if (o) return o; var e = self.els[id]; while (e && !L.nodes[e.id]) e = self.els[e.parent]; return e ? L.nodes[e.id] : L.nodes.r; };
+    var camA = k ? this.camAt(k - 1, Infinity) : 0, camB = this.camAt(k, t), G = this.G;
+    var yOf = function(L, o, cam){ return L.y0 + (o.lv - cam) * L.gap; };
+    // 窓の上下（木が入るときは広く）。外へ出る節は 26 px で薄れる
+    var bnd = function(L){ return L.follow ? [L.y0 - 8, L.y0 + L.win * L.gap + 8] : [G.treeTop - 40, G.treeBottom + 40]; };
+    var bA = bnd(A), bB = bnd(B), wTop = D2.lerp(bA[0], bB[0], mv), wBot = D2.lerp(bA[1], bB[1], mv);
+    var wf = function(y){ return D2.clamp01((y - (wTop - 26)) / 26) * D2.clamp01((wBot + 26 - y) / 26); };
+    var lim = wTop - 10;
+    // 線の始め（親）が窓の上にあれば、窓の上の縁で切る（線は上から流れ込む）
+    var clip = function(a, b){ if (a.y >= lim || b.y <= lim) return a; var f = (lim - a.y) / (b.y - a.y); return {x: D2.lerp(a.x, b.x, f), y: lim}; };
     var pos = {};
     Object.keys(this.els).forEach(function(id){
       var a = A.nodes[id], b = B.nodes[id], pa = a || anc(A, id), pb = b || anc(B, id);
-      var op = (a ? 1 - mv : 0) + (b ? mv : 0);
+      // 消える節は前半で消え、現れる節は後半で現れる（深い木を畳むときに途中の姿が重ならない）
+      var op = (a ? Math.max(0, 1 - 2 * mv) : 0) + (b ? Math.max(0, 2 * mv - 1) : 0);
       if (a && b) op = 1;
       var fan = ((a && a.kind === "fan" ? 1 - mv : 0) + (b && b.kind === "fan" ? mv : 0));
-      pos[id] = {x: D2.lerp(pa.x, pb.x, mv), y: D2.lerp(pa.y, pb.y, mv), op: op, fan: fan,
-        lab: (A.lab[id] && a ? 1 - mv : 0) + (B.lab[id] && b ? mv : 0)};
+      var y = D2.lerp(yOf(A, pa, camA), yOf(B, pb, camB), mv);
+      pos[id] = {x: D2.lerp(pa.x, pb.x, mv), y: y, op: op * wf(y), fan: fan,
+        lab: (A.lab[id] && a ? (b ? 1 - mv : 1) : 0) + (B.lab[id] && b ? (a ? mv : 1) : 0)};
     });
     // ---- 今の道・前の道
     var segP = function(i){ return T ? D2.prog(t, T.s(i), 0.7 * P.bit) : 0; };
@@ -357,13 +399,13 @@ D.define("m-codetree", class extends D.MotionElement {
       var st = j + 1, dr, op;
       if (p && p.type === "sum"){ op = 1; dr = function(){ return st === k - 1 ? 1 : D2.prog(t, P.move * 0.5, 0.9); }; }
       else if (st === k){ op = 1; dr = segP; }
-      else if (st === k - 1){ op = 1 - D2.prog(t, 0, P.move * 0.7); dr = function(){ return 1; }; }
+      else if (st === k - 1){ op = Math.max(0, 1 - 2 * mv); dr = function(){ return 1; }; }
       else { op = 0; dr = function(){ return 0; }; }
       q.segs.forEach(function(s, i){
-        var a = pos[s.a], b = pos[s.b], f = dr(i);
-        s.line.setAttribute("x1", a.x.toFixed(2)); s.line.setAttribute("y1", a.y.toFixed(2));
-        s.line.setAttribute("x2", D2.lerp(a.x, b.x, f).toFixed(2)); s.line.setAttribute("y2", D2.lerp(a.y, b.y, f).toFixed(2));
-        s.line.setAttribute("opacity", f > 0 ? op.toFixed(3) : 0);
+        var a = pos[s.a], b = pos[s.b], f = dr(i), tip = {x: D2.lerp(a.x, b.x, f), y: D2.lerp(a.y, b.y, f)}, a0 = clip(a, tip);
+        s.line.setAttribute("x1", a0.x.toFixed(2)); s.line.setAttribute("y1", a0.y.toFixed(2));
+        s.line.setAttribute("x2", tip.x.toFixed(2)); s.line.setAttribute("y2", tip.y.toFixed(2));
+        s.line.setAttribute("opacity", f > 0 && tip.y > lim ? (op * Math.min(1, wf(tip.y) * 1.5)).toFixed(3) : 0);
         if (f >= 1 && op > 0.5) onPath[s.b] = 1;
       });
     });
@@ -377,15 +419,15 @@ D.define("m-codetree", class extends D.MotionElement {
       e.g.setAttribute("opacity", q.op.toFixed(3));
       e.fan.setAttribute("opacity", q.fan.toFixed(3));
       if (e.edge){
-        var a = pos[e.parent];
-        e.edge.setAttribute("x1", a.x.toFixed(2)); e.edge.setAttribute("y1", a.y.toFixed(2));
+        var a = pos[e.parent], a1 = clip(a, q);
+        e.edge.setAttribute("x1", a1.x.toFixed(2)); e.edge.setAttribute("y1", a1.y.toFixed(2));
         e.edge.setAttribute("x2", q.x.toFixed(2)); e.edge.setAttribute("y2", q.y.toFixed(2));
         e.edge.setAttribute("opacity", q.op.toFixed(3));
         // 枝の字：根からの枝は線の中ほどの上、0 と 1 は親に近いところの外側
         // 線に垂直に、外側（0 は左上、1 は右上）へ離す
         var top = e.parent === "r", lp = labelAt(a, q, top ? 0.5 : 0.42, top ? 20 : 17);
         e.lab.setAttribute("x", lp.x.toFixed(2)); e.lab.setAttribute("y", lp.y.toFixed(2));
-        e.lab.setAttribute("opacity", Math.min(q.op, q.lab).toFixed(3));
+        e.lab.setAttribute("opacity", Math.min(q.op, q.lab, wf(lp.y - 8)).toFixed(3));
         e.lab.style.fill = onPath[id] ? "var(--emph)" : "var(--muted)";
         e.lab.setAttribute("font-weight", onPath[id] ? 700 : 400);
       }
@@ -415,6 +457,7 @@ D.define("m-codetree", class extends D.MotionElement {
     if (p && dec.error && dec.error.kind === "invalid" && (p.type === "err" || p.type === "sum")){
       var er = dec.error, last = pos[LETTER[er.color] + errPath(er)], gh = this.lay[k].ghosts[LETTER[er.color] + er.code];
       if (gh){
+        gh = {x: gh.x, y: yOf(this.lay[k], gh, camB)};
         this.stubLine.setAttribute("x1", last.x.toFixed(2)); this.stubLine.setAttribute("y1", last.y.toFixed(2));
         this.stubLine.setAttribute("x2", gh.x.toFixed(2)); this.stubLine.setAttribute("y2", (gh.y - 14).toFixed(2));
         this.cross.setAttribute("x", gh.x.toFixed(2)); this.cross.setAttribute("y", (gh.y + 12).toFixed(2));
@@ -477,6 +520,19 @@ D.define("m-codetree", class extends D.MotionElement {
       o.tx.textContent = s;
       o.g.setAttribute("opacity", 1);
     });
+    // ---- 「ここまで」の行：窓が根から離れたときだけ。今の段階でまだ読んでいなければ前の符号語
+    var cw = null, nread = 0;
+    if (p && (p.type === "tok" || p.type === "err")){
+      cw = this.lay[k].cur; for (var j3 = 1; j3 <= T.nb; j3++) if (t >= T.s(j3)) nread = j3;
+      cw = {color: cw.color, code: (cw.bad || cw.code).slice(0, nread)};
+    } else if (p && p.type === "sum") cw = B.deep;
+    if ((!cw || !cw.code) && k > 1 && this.lay[k - 1].cur) cw = this.lay[k - 1].cur;
+    var camNow = D2.lerp(camA, camB, mv), co = cw && cw.code ? D2.clamp01((camNow - 0.3) / 0.4) * (B.follow ? 1 : Math.max(0, 1 - 2 * mv)) : 0;
+    if (cw){
+      this.crumbHead.textContent = fmt0(Lb.crumb, cw.color ? Lb[cw.color] : "") + " ";
+      this.crumbBits.textContent = (cw.code.match(/.{1,4}/g) || []).join(" ");
+    }
+    this.crumb.setAttribute("opacity", co.toFixed(3));
     // ---- 右上の一言
     var fmt = function(s, o){ return s.replace("{c}", o.c ? Lb[o.c] : "").replace("{n}", o.n || ""); };
     var other = function(c){ return c === "white" ? "black" : "white"; };
