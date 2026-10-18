@@ -1,3 +1,4 @@
+<!-- i18n: pair=dev-server.md sha256=1b56b3608bf92ea1 -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語

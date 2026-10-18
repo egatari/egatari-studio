@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Stale translation check for English/Japanese document pairs (`X.md` + `X.ja.md`): each file's first line is an invisible comment recording a hash of its counterpart at the last sync. `npm run i18n -- --check` warns when one side changed after that (e.g. “README.ja.md is older than README.md”) or the comment is missing; `--stamp <file>` records a pair as in sync after a person has compared it, `--stamp-all` stamps every pair. It runs in `npm test` and in CI (GitHub warning annotations) and only warns; `--strict` exits 1. How to update a translation is in CONTRIBUTING (`tools/i18n-pairs.mjs`, test `tools/test-i18n-pairs.mjs`)
+
 ## [0.3.1] - 2026-10-18
 
 ### Changed

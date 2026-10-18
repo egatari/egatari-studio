@@ -32,6 +32,10 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - name: Stale English/Japanese document pairs (warnings only)
+        # X.ja.md older than X.md (or the reverse) shows as a warning annotation; it does not fail the build (add --strict to make it fail)
+        if: matrix.node == 22
+        run: node tools/i18n-pairs.mjs --check
       - name: Install Playwright Chromium
         run: npx playwright-core install --with-deps chromium
       - name: npm test

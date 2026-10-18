@@ -34,6 +34,7 @@ const ALLOW = [
   ['server/dev.mjs', 'fs.createReadStream(file, { start: 0, end: st.size - 1 })', '原稿のフォルダのファイルを stat の大きさまで流す（中身をメモリに貯めない。通常のファイルだけ）'],
   ['server/shell.js', 'r.json()', '開発サーバー自身の API の答え（同じ origin・合言葉つき）'],
   ['app/main.js', 'await r.arrayBuffer()', 'アプリに同梱した字の分割ファイルを、アプリ自身の配信元から fetch する'],
+  ['tools/i18n-pairs.mjs', "fs.readFileSync(path.join(root, f), 'utf8')", 'リポジトリの文書の組（X.md と X.ja.md。node_modules・vendor・out・dist の外）を読む（開発者の道具。原稿のフォルダは読まない）'],
   ['kit/check.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）。ファイルは読まない'],
   ['render/render.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）'],
   ['tools/smoke.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）'],

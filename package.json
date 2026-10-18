@@ -18,6 +18,7 @@
     "check": "node kit/check.mjs",
     "new": "node tools/new.mjs",
     "ids": "node tools/ids.mjs",
+    "i18n": "node tools/i18n-pairs.mjs",
     "build:app": "node tools/build-app.mjs",
     "test": "node tools/test-all.mjs",
     "portable": "node tools/portable.mjs"
