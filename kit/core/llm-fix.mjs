@@ -4,8 +4,10 @@
 //
 //   guideRules(guide) → Map(R-名前 → 文章)
 //   rulesFor(problem) → ['R-…']           問題（{code} か {msg}）に効く決まり
+//   amountOf(problem, lang)  はみ出し・小さい字の量の目安（「本文を 18 px（およそ 1 行）減らす」）
+//   cutOffRequest(err, lang)  返事が切れたときの依頼（閉じていない囲みだけを送り直す／短くして送り直す）
 //   buildFixRequest({problems, deck, narration, guide, lang, limit}) → {text, partial, slides: [id…]}
-//     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, msg?}]
+//     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は簡易チェックの arg でもよい）
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
 
@@ -40,6 +42,7 @@ const BY_TEXT = [
   [/句読点/, ['R-style']],
 ];
 export function rulesFor(p) {
+  if (p.rule) return [p.rule];   // 検査器の JSON（kit/check.mjs --json）の rule
   if (p.code && BY_CODE[p.code]) return BY_CODE[p.code];
   const s = p.msg || p.text || '';
   for (const [re, r] of BY_TEXT) if (re.test(s)) return r;
@@ -64,6 +67,45 @@ const L = {
     sev: { error: 'エラー', warn: '警告' },
   },
 };
+// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は検査器の JSON の data（{px, lim}）か、簡易チェックの arg（"583 > 565"・"23.2px「…」"）
+const LINE = 46;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
+const num = (x) => { const m = String(x ?? '').match(/-?\d+(?:\.\d+)?/g); return m ? m.map(Number) : []; };
+export function amountOf(p, lang = 'en') {
+  const d = p.data, ja = lang === 'ja';
+  const pick = (k, i) => (d && typeof d === 'object' && Number.isFinite(+d[k]) ? +d[k] : num(d)[i]);
+  if (p.code === 'bodyBottom' || p.code === 'overflowBottom') {
+    const px = pick('px', 0), lim = pick('lim', 1) || 565;
+    if (!Number.isFinite(px)) return '';
+    const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / LINE));
+    return ja ? `本文を ${over} px（${LINE} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
+      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${LINE} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
+  }
+  if (p.code === 'bodyRight' || p.code === 'overflowRight') {
+    const px = pick('px', 0);
+    if (!Number.isFinite(px)) return '';
+    const over = Math.ceil(px - 1236);
+    return ja ? `右へ ${over} px はみ出している：幅を ${over} px 減らす` : `${over} px too wide: make it ${over} px narrower`;
+  }
+  if (p.code === 'smallSvgText' || p.code === 'smallText') {
+    const px = pick('px', 0);
+    if (!Number.isFinite(px)) return '';
+    const svg = p.code === 'smallSvgText', min = svg ? 24 : 27;
+    return ja ? `字を ${px}px から ${min}px 以上に上げる${svg ? '（その場の <svg> なら viewBox の幅を表示の幅と同じにするか、font-size を 24 × viewBox の幅 ÷ 表示の幅 以上に）' : '（font-size を書かない。表と図の中は 24px 以上）'}`
+      : `raise the text from ${px}px to at least ${min}px${svg ? ' (for an inline <svg>, make the viewBox width equal to the displayed width, or font-size ≥ 24 × viewBox width ÷ displayed width)' : ' (remove the font-size; 24px is enough in tables and figures)'}`;
+  }
+  return '';
+}
+
+// 返事が途中で切れて取り込めなかったとき（kit/core/llm-import.mjs の unclosed）の依頼
+export function cutOffRequest(err, lang = 'en') {
+  const file = err.kind === 'deck' ? 'deck.html' : err.kind === 'narration' ? 'narration.md' : null;
+  return lang === 'ja'
+    ? `前の返事は途中で切れていました${file ? `（${file} の囲みが閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md の囲みだけを、最初から最後まで書いて閉じた形で送り直してください（deck.html は受け取りました）。' : '同じ教材を、枚数を減らした短い形で、2 つの囲み ```deck.html と ```narration.md をどちらも閉じて送り直してください。'}囲みの途中で終わらないでください（R-output）。
+`
+    : `Your previous reply was cut off${file ? ` (the ${file} block is not closed)` : ''}. ${file === 'narration.md' ? 'Send only the narration.md block again, complete and closed (the deck.html block arrived).' : 'Send the lesson again in a shorter form (fewer slides), as two closed blocks, ```deck.html and ```narration.md.'} Never stop in the middle of a block (R-output).
+`;
+}
+
 const fence = (name, body) => '````' + name + '\n' + String(body).replace(/\s+$/, '') + '\n````';
 
 export function buildFixRequest({ problems, deck, narration = '', guide, lang = 'en', limit = 40000 }) {
@@ -77,7 +119,7 @@ export function buildFixRequest({ problems, deck, narration = '', guide, lang = 
   const slideIds = partial ? [...new Set(list.map((p) => p.id).filter(Boolean))] : [];
   if (partial) out.push(M.askPartial(slideIds.length), '');
   out.push(`## ${M.problems}`, '');
-  list.forEach((p, n) => out.push(`${n + 1}. [${M.sev[p.sev] || p.sev}] ${M.where(p)}: ${p.text}${p.rules.length ? ' — ' + p.rules.join(', ') : ''}`));
+  list.forEach((p, n) => { const a = amountOf(p, lang); out.push(`${n + 1}. [${M.sev[p.sev] || p.sev}] ${M.where(p)}: ${p.text}${a ? ' → ' + a : ''}${p.rules.length ? ' — ' + p.rules.join(', ') : ''}`); });
   if (used.length) {
     out.push('', `## ${M.rules}`, '');
     for (const r of used) out.push(`- **${r}** ${rules.get(r)}`);

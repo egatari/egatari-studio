@@ -228,9 +228,9 @@ await b.close();
 await t('checker: vertical heading, conclusion and body overlaps are errors', () => {
   const r = node('kit/check.mjs', bad, '--json');
   const j = JSON.parse(r.stdout);
-  const e = (key) => j.results.filter((x) => x.sev === 'error' && x.title === key).map((x) => x.msg);
+  const e = (key) => j.results.filter((x) => x.sev === 'error' && x.id === key).map((x) => x.msg);
   const has = (title, re) => assert.ok(e(title).some((m) => re.test(m)), `${title}: ${JSON.stringify(e(title))} lacks ${re}`);
-  has('longtitle', /縦組みのタイトルが列に収まらない/);
+  has('longtitle', /縦組みの見出しが列に収まらない/);
   has('longtitle', /結論の行が枠からはみ出す/);
   has('overconcl', /本文が結論の列に重なる/);
   has('overhead', /本文が見出しの列に重なる/);

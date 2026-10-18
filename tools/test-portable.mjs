@@ -630,7 +630,7 @@ ok('検査器：旧来の鍵（手書きの data-key と s<n>）は「legacy」�
   fs.writeFileSync(path.join(d, 'deck.html'), '<!doctype html><html lang="ja" data-theme="default"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage">\n' +
     '<section class="slide" data-key="hand"><h2>手書き</h2></section>\n<section class="slide"><div class="body">見出しなし</div></section>\n<section class="slide" id="s-abcdef"><h2>id</h2></section>\n<section class="slide"><h2>見出し</h2></section>\n</div></body></html>\n');
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), path.join(d, 'deck.html')], { encoding: 'utf8' });
-  const legacy = r.stdout.split('\n').filter((l) => /slide key: legacy/.test(l));
+  const legacy = r.stdout.split('\n').filter((l) => /(手書きの data-key|鍵が位置の).*npm run ids/.test(l));
   assert.equal(legacy.length, 2, r.stdout);
   assert.ok(legacy.every((l) => /\[警告\]/.test(l)));
   assert.ok(legacy.some((l) => /「hand」/.test(l)) && legacy.some((l) => /「s2」/.test(l)));

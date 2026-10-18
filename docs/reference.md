@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=2b92aa6e6f9eab1e -->
+<!-- i18n: pair=reference.ja.md sha256=f3c3f348182124a4 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -295,7 +295,29 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ## Checker
 
-`node kit/check.mjs <deck.html> [--theme name] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 1 if there is any error. `--json` prints `{ok, counts, results: [{slide, title, sev, msg}]}`. `--theme` checks with another theme (otherwise `<html data-theme>`).
+`node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 1 if there is any error. `--theme` checks with another theme (otherwise `<html data-theme>`). Each error and warning says where (slide number, heading, id, step), what is wrong and how to fix it, with the rule id of the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the messages can be pasted into a fix request as they are. `--lang` chooses the language of the messages (default: the deck's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
+
+`--json` prints:
+
+```json
+{"ok": false, "lang": "en", "counts": {"error": 1, "warn": 0, "info": 12},
+ "results": [{"slide": 2, "id": "s-k3f9q2", "key": "s-k3f9q2", "title": "The decay law", "step": "3",
+              "sev": "error", "code": "narrOrphan", "rule": "R-narr-steps", "data": {…},
+              "msg": "Slide 2 “The decay law” (s-k3f9q2), step 3: narration [3] has no matching step … (R-narr-steps)"}]}
+```
+
+| Field | Meaning |
+|---|---|
+| `slide` | slide number, from 1; `null` for the whole deck |
+| `id` | the slide's `id`, or `null` (a slide without id, or the whole deck) |
+| `key` | the slide key (the id, or the legacy key from the heading) |
+| `title` | the heading text of the slide (`h2` / `h1`, without tags) |
+| `step` | the step the result is about: `"0"`, `"1"`, … or `"concl"`; `null` when it is about the whole slide |
+| `sev` | `error`, `warn` or `info` |
+| `code` | the kind of result (stable; the list is `kit/check-messages.mjs`) |
+| `rule` | the rule id in the authoring guide (`R-title`, `R-fit`, …), or `null` |
+| `data` | the values of the result (e.g. `{"px": 583, "lim": 565, "concl": true}` for a body overflow), used by fix requests to give the amount to cut |
+| `msg` | the whole message in `lang`: where, what and how to fix |
 
 | Check | Severity |
 |---|---|

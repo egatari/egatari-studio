@@ -91,6 +91,8 @@ export function extractBlocks(text) {
     const d = pick('deck'), n = pick('narration');
     // 閉じていない囲み：中身があり、2 つのどちらかが欠けているか、その囲みがどちらかのファイルなら、返事が切れている
     if (open && open.body.trim() && (!d || !n || open.kind)) {
+      // 閉じている方は返す（切れたのが narration.md なら、送り直してもらった口述原稿と合わせられる。app/llm.js）
+      res.deck = d ? d.body.replace(/\s+$/, '') + '\n' : null; res.narration = n ? n.body.replace(/\s+$/, '') + '\n' : null;
       res.error = { code: 'unclosed', kind: open.kind, line: open.line, message: `the code block that starts on line ${open.line}${open.kind ? ` (${open.kind === 'deck' ? 'deck.html' : 'narration.md'})` : ''} has no closing fence: the reply was probably cut off` };
       return res;
     }

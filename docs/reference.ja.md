@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=447e5cae6aedc086 -->
+<!-- i18n: pair=reference.md sha256=e18839e1604e95d5 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -295,7 +295,29 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## 検査器
 
-`node kit/check.mjs <deck.html> [--theme 名前] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--json` は `{ok, counts, results: [{slide, title, sev, msg}]}`。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。
+`node kit/check.mjs <deck.html> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告は、どこか（スライドの番号・見出し・id・段階）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の決まりがあればその名前（`（R-title）` など）を添える。そのまま直しの依頼に貼れる。`--lang` は言葉の言語（既定はデッキの `<html lang>`。`ja` かなければ日本語、ほかは英語）。
+
+`--json` の形：
+
+```json
+{"ok": false, "lang": "ja", "counts": {"error": 1, "warn": 0, "info": 12},
+ "results": [{"slide": 2, "id": "s-k3f9q2", "key": "s-k3f9q2", "title": "減衰の式", "step": "3",
+              "sev": "error", "code": "narrOrphan", "rule": "R-narr-steps", "data": {…},
+              "msg": "スライド 2「減衰の式」（s-k3f9q2）、段階 3：口述原稿の [3] に当たる段階がスライドにない……（R-narr-steps）"}]}
+```
+
+| 欄 | 意味 |
+|---|---|
+| `slide` | スライドの番号（1 から）。デッキ全体なら `null` |
+| `id` | スライドの `id`。なければ `null`（id のないスライド・デッキ全体） |
+| `key` | スライドの鍵（id、なければ見出しから決めた旧来の鍵） |
+| `title` | スライドの見出しの字（`h2` / `h1`、タグなし） |
+| `step` | その結果の段階：`"0"`・`"1"`・… か `"concl"`。スライド全体のことなら `null` |
+| `sev` | `error`・`warn`・`info` |
+| `code` | 結果の種類（変えない名前。一覧は `kit/check-messages.mjs`） |
+| `rule` | 書き方の指示の決まりの名前（`R-title`・`R-fit` など）。なければ `null` |
+| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など）。直しの依頼が削る量を言うのに使う |
+| `msg` | `lang` の言葉の全体：どこか・何が違うか・どう直すか |
 
 | 検査 | 重さ |
 |---|---|

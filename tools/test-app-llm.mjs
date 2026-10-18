@@ -6,7 +6,7 @@
 // 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）
 // 4. 決まりを破った返事 → 簡易チェックのエラー → 直しの依頼の文章に、エラーの言葉・決まりの名前と文章・今のファイルが入る →
 //    直したスライドだけの返事を「今のデッキを置き換える」で取り込む → docId はそのまま、そのスライドだけが替わり、エラー 0
-// 画像（shotDir があれば）：paste-dialog(-ja).png・paste-error.png・paste-opened.png・fix-check.png・fix-request.png・fix-replaced.png（1280×800）
+// 画像（shotDir があれば）：paste-dialog(-ja).png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・fix-replaced.png（1280×800）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,8 +56,19 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.waitForFunction(() => /No code blocks/.test(document.getElementById('paste-msg').textContent));
   ok(true, 'llm: a reply without code blocks shows “No code blocks …”');
 
-  // ---------------------------------------------------------------- 2. 見本の返事を取り込む
-  await page.fill('#paste-text', replyOf(bdeck, bnarr, { crlf: true }));
+  // ---------------------------------------------------------------- 2. 見本の返事を取り込む：はじめは narration.md の途中で切れた返事 →
+  // 送り直しを頼む文を写す → narration.md の囲みだけの返事で、前の deck.html と合わせて開く
+  const cutReply = replyOf(bdeck, bnarr, { crlf: true }).replace(/\r\n```\r\n\r\nLet me know[\s\S]*$/, '').replace(/\[concl\] 次は[^\r]*$/, '[concl] 次は、伸びの');
+  await page.fill('#paste-text', cutReply);
+  await page.click('#dlg-import');
+  await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
+  ok(/narration\.md/.test(await page.textContent('#paste-msg')), 'llm: a reply cut off inside narration.md says so and offers “Copy a resend request for your AI”');
+  await page.click('#paste-copy-cutoff');
+  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-copied').textContent));
+  const resend = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  ok(/cut off/.test(resend) && /Send only the narration\.md block again/.test(resend) && /R-output/.test(resend), 'llm: the resend request asks for only the missing narration.md block: ' + JSON.stringify(resend.slice(0, 90)));
+  await shot('paste-cutoff.png');
+  await page.fill('#paste-text', 'Here is the narration again:\n\n```narration.md\n' + bnarr.trim() + '\n```\n');
   await page.click('#dlg-import');
   await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
   await waitPanel();

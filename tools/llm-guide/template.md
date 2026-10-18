@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=a79a2d4fffaa2863 -->
+<!-- i18n: pair=template.ja.md sha256=0fa2a30e9dda0c7e -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -17,6 +17,13 @@ Size: this full pack is about {{SIZE_FULL}} KB; [authoring-with-llms.core.md](au
 # Instructions for the AI
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Rules have ids such as **R-fit**; a fix request names the rules a draft broke.
+
+**Before you start (the most common failures):**
+
+- **Both code blocks must be complete and closed.** If the reply may be long, make fewer slides (5–7 is plenty); never stop in the middle of a block (R-output).
+- **Sizes on the 1280×720 slide** (the checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and components, is at least 24 px.**
+- **Charts and figures:** components draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the component, not the text. Axis charts (`m-sweep`, `m-curves`, `m-seq`) reserve 86 px at the left and 80 px in all at the top and bottom for ticks and names: give them a height of **300–380 px** and a width of **at least 560 px** (in `<div class="cols">`, give the chart column at least 55%). A component of 380 px leaves room for one short line; with two lines, use 330 px.
+- **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox="0 0 560 320" width="560" height="320">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a component when one fits.
 
 ## 1. Output format
 
@@ -82,7 +89,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
-- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and at most 2 short lines. If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px.
+- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px.
 - **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole deck (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Component catalog

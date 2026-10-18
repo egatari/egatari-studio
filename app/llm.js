@@ -11,7 +11,7 @@ import CORE_EN from '../docs/authoring-with-llms.core.md?text';
 import CORE_JA from '../docs/authoring-with-llms.core.ja.md?text';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
-import { buildFixRequest } from '../kit/core/llm-fix.mjs';
+import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -55,6 +55,7 @@ const TX = {
     fix: 'AI への直しの依頼を写す', fixTitle: 'AI への直しの依頼',
     fixLead: (n, partial) => `問題 ${n} 件と、その決まり、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} を写しました。同じチャットに貼り付け、返事を「AI の出力を貼り付ける」で取り込みます（今のデッキを置き換える）`,
     fixCopyFailed: '自動では写せませんでした。下の文字を選んで写してください',
+    copyCutOff: 'AI に送り直しを頼む文を写す', cutOffCopied: '写しました。チャットに貼り付け、返事をここに貼り付けてください',
     fixNone: '直す問題はありません', pasteReply: '返事を貼り付ける…', close: '閉じる',
     checkMsg: {
       orphanNarration: (a) => `スライドにない段階の口述原稿 [${a}]`,
@@ -95,6 +96,7 @@ const TX = {
     fix: 'Copy fix request for your AI', fixTitle: 'Fix request for your AI',
     fixLead: (n, partial) => `Copied ${n} problem(s), their rules and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then import the reply with “Paste AI output” (replace the current deck).`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
+    copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the reply…', close: 'Close',
     checkMsg: {
       orphanNarration: (a) => `Narration for a step the slide does not have [${a}]`,
@@ -127,6 +129,8 @@ export function setupLlm(app) {
     const canReplace = !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
     const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: '12' });
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', hidden: '' });
+    // 返事が切れていたとき：AI に送り直しを頼む文を写すボタン
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, EN ? 'en' : 'ja'); const ok = await copyText(t); copyMsg.hidden = false; copyMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', hidden: '' });
     const mk = (id, label, text) => el('button', { type: 'button', id, text: label, onclick: async () => { const ok = await copyText(forAi(text)); copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(forAi(text))) : X.fixCopyFailed; } });
     const radios = canReplace ? el('div', { cls: 'paste-mode' }, [
@@ -138,13 +142,14 @@ export function setupLlm(app) {
       const v = await ask({ title: X.title, kind: 'paste', body: [
         el('p', { text: X.lead }),
         el('div', { cls: 'paste-guide' }, [el('span', { cls: 'hint', text: X.guide }), mk('paste-copy-guide', X.copyGuide, GUIDE), mk('paste-copy-core', X.copyCore, CORE)]),
-        copyMsg, area, radios, msg, el('p', { cls: 'hint', text: X.untrusted })],
+        copyMsg, area, radios, msg, cut, el('p', { cls: 'hint', text: X.untrusted })],
         buttons: [{ id: 'cancel', label: T.cancel }, { id: 'import', label: X.go, pri: true }] });
       if (v !== 'import') return false;
       const mode = radios && radios.querySelector('#paste-replace').checked ? 'replace' : 'new';
       const err = await importText(area.value, mode);
       if (!err) return true;
       msg.hidden = false; msg.textContent = err;
+      cut.hidden = !S.cutOff;
     }
   }
 
@@ -152,6 +157,10 @@ export function setupLlm(app) {
   async function importText(text, mode) {
     if (!String(text).trim()) return X.err.empty;
     const r = extractBlocks(text);
+    // 前の返事が narration.md の途中で切れ、今度はその囲みだけが届いた：前の deck.html と合わせる
+    if (r.error && r.error.code === 'no-deck' && r.narration !== null && S.pendingDeck) { r.deck = S.pendingDeck; r.error = null; }
+    S.cutOff = r.error && r.error.code === 'unclosed' ? r.error : null;
+    S.pendingDeck = S.cutOff && r.deck ? r.deck : (r.error ? S.pendingDeck : null);
     if (r.error) return typeof X.err[r.error.code] === 'function' ? X.err[r.error.code](r.error) : (X.err[r.error.code] || r.error.message);
     const notes = r.warnings.map((w) => (X.warn[w.code] ? (typeof X.warn[w.code] === 'function' ? X.warn[w.code](w) : X.warn[w.code]) : w.code));
     if (r.narration === null && mode === 'new') return X.err['no-narration'];
@@ -262,7 +271,7 @@ export function setupLlm(app) {
 
   // ---------------------------------------------------------------- 直しの依頼
   async function fixRequest(results) {
-    const probs = results.filter((r) => r.sev === 'error' || r.sev === 'warn').map((r) => ({ sev: r.sev, i: r.i, title: r.title, code: r.code, text: T.checkMsg(r.code, r.arg) }));
+    const probs = results.filter((r) => r.sev === 'error' || r.sev === 'warn').map((r) => ({ sev: r.sev, i: r.i, title: r.title, code: r.code, data: r.arg, text: T.checkMsg(r.code, r.arg) }));
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
     for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
     if (!probs.length) { toast(X.fixNone); return; }

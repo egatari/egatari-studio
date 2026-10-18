@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
-import { buildFixRequest, guideRules, rulesFor } from '../kit/core/llm-fix.mjs';
+import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -160,6 +160,22 @@ ok('長いデッキの直しの依頼：問題のあるスライドとその節�
   assert.ok(/only those <section> elements/.test(r.text));
 });
 
+ok('直しの依頼の量の目安：はみ出しは「何 px・およそ何行」、小さい字は「何 px から 24px 以上へ」。切れた返事は送り直しを頼む', () => {
+  assert.match(amountOf({ code: 'bodyBottom', data: { px: 583, lim: 565 } }, 'en'), /^cut 18 px from the body \(about 1 line of 46 px\)/);
+  assert.match(amountOf({ code: 'overflowBottom', data: '662 > 565' }, 'ja'), /^本文を 97 px（46 px の行でおよそ 3 行）減らす/);
+  assert.match(amountOf({ code: 'smallSvgText', data: { px: '23.2' } }, 'en'), /^raise the text from 23\.2px to at least 24px \(for an inline <svg>, make the viewBox width equal to the displayed width/);
+  assert.match(amountOf({ code: 'smallText', data: '20px「注」' }, 'ja'), /^字を 20px から 27px 以上に上げる/);
+  assert.equal(amountOf({ code: 'titleLong', data: { n: 30 } }, 'en'), '');
+  const a = assignIds(worked('business', 'deck.html'), worked('business', 'narration.md'), { byOrder: true });
+  const r = buildFixRequest({ problems: [{ sev: 'error', i: 1, title: 't', code: 'bodyBottom', rule: 'R-fit', data: { px: 662, lim: 565 }, text: 'x' }], deck: a.deck, narration: a.narration, guide: GUIDE_EN, lang: 'en' });
+  assert.ok(r.text.includes('x → cut 97 px from the body (about 3 lines of 46 px)') && r.text.includes('— R-fit'));
+  assert.match(cutOffRequest({ kind: 'narration', line: 40 }, 'en'), /cut off \(the narration\.md block is not closed\)\. Send only the narration\.md block again/);
+  assert.match(cutOffRequest({ kind: 'deck', line: 3 }, 'ja'), /枚数を減らした短い形で/);
+  // 切れた返事でも、閉じている deck.html は返す
+  const cut = extractBlocks(`\`\`\`deck.html\n${D}\n\`\`\`\n\`\`\`narration.md\n## A\n[0] あ`);
+  assert.equal(cut.error.code, 'unclosed'); assert.equal(cut.deck.trim(), D);
+});
+
 // ---------------------------------------------------------------- 5. 読みの指定
 ok('読みの指定：1 つの記号・用語はよい。式・記号の組は知らせる', () => {
   for (const s of ['{θ|シータ}', '{N₀|エヌゼロ}', '{x̄|エックスバー}', '{ReLU|レルー}', '{t-SNE|ティースニー}', '{f(x)|エフエックス}', '{論語|ろんご}', '{mark:eta|circle}η', '{λ|lambda}']) assert.deepEqual(readingProblems(s), [], s);
@@ -221,12 +237,38 @@ ok('検査器：static の表紙の口述原稿がない → 警告。スライ�
   const c = node('kit/check.mjs', path.join(d, 'deck.html'), '--json');
   const j = JSON.parse(c.stdout);
   const has = (sev, slide, re) => j.results.some((x) => x.sev === sev && x.slide === slide && re.test(x.msg));
-  assert.ok(has('warn', 1, /口述原稿が無い（段階 0）/), 'static cover narration');
-  assert.ok(has('error', 2, /口述原稿の段階 \[3\] がスライドにない.*0〜2 と concl/), 'orphan [3]');
-  assert.ok(has('error', 3, /口述原稿の段階 \[concl\] がスライドにない.*0 だけ/), 'orphan [concl]');
+  assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、段階 0：この段階の口述原稿がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
+  assert.ok(has('error', 2, /段階 3：口述原稿の \[3\] に当たる段階がスライドにない.*0〜2 と concl.*data-step="3".*（R-narr-steps）$/), 'orphan [3]');
+  assert.ok(has('error', 3, /口述原稿の \[concl\] に当たる段階がスライドにない.*0 だけ/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');
+  // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「検査器」）
+  const o = j.results.find((x) => x.code === 'narrOrphan' && x.slide === 2);
+  assert.deepEqual({ slide: o.slide, id: o.id, key: o.key, title: o.title, step: o.step, sev: o.sev, code: o.code, rule: o.rule },
+    { slide: 2, id: 's-steps1', key: 's-steps1', title: '段階のスライド', step: '3', sev: 'error', code: 'narrOrphan', rule: 'R-narr-steps' });
+  assert.equal(j.lang, 'ja');
+  assert.deepEqual(o.data.range, { ja: '0〜2 と concl', en: 'steps 0–2 and concl' });
+  // 英語の言葉（--lang en）
+  const ce = node('kit/check.mjs', path.join(d, 'deck.html'), '--json', '--lang', 'en');
+  const je = JSON.parse(ce.stdout);
+  assert.ok(je.lang === 'en' && je.results.some((x) => x.code === 'narrOrphan' && /^Slide 2 “段階のスライド” \(s-steps1\), step 3: narration \[3\] has no matching step/.test(x.msg)));
+  assert.ok(je.results.some((x) => x.code === 'narrMissing' && /add a \[0\] line/.test(x.msg)));
   assert.equal(c.status, 1);
+});
+
+ok('検査器：です・ます の知らせは、どこ（id・見出し）・何が違うか・どう直すか・決まりの名前を言う', () => {
+  const d = path.join(work, 'desu');
+  fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'deck.html'), `<!DOCTYPE html>
+<html lang="ja" data-theme="default"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage">
+<section class="slide noconcl static" id="s-desu01"><h2>丁寧すぎる</h2><div class="body"><p>これは例です。</p></div></section>
+</div></body></html>
+`);
+  fs.writeFileSync(path.join(d, 'narration.md'), '## 丁寧すぎる {#s-desu01}\n[0] 例です。\n');
+  const j = JSON.parse(node('kit/check.mjs', path.join(d, 'deck.html'), '--json').stdout);
+  const e = j.results.find((x) => x.code === 'desuMasu');
+  assert.ok(e && e.sev === 'error' && e.rule === 'R-style' && e.id === 's-desu01' && e.title === '丁寧すぎる', JSON.stringify(e));
+  assert.match(e.msg, /^スライド 1「丁寧すぎる」（s-desu01）：スライドの字に です・ます がある（「これは例です」）：スライドは常体.*（R-style）$/);
 });
 
 console.log(`llm: ${n} ok (${work})`);
