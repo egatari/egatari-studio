@@ -700,7 +700,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const shaOf = dict();
   for (const p of Object.keys(all)) shaOf[p] = await sha256Hex(all[p]);
   const srcSha = await sourceSha256(Object.fromEntries(Object.keys(files).map((p) => [p, shaOf[p]])));
-  const fileMap = dict(), blobs = dict(), chunks = [];
+  const fileMap = dict(), blobs = dict();
   // 塊（base64）を作る前に、できる文書の大きさを見積もって組んだ文書の上限（bundledChars）で確かめる（塊ごとの要素の分も）
   const CHUNK_TAG = `<script type="application/octet-stream" id="${BP}${'0'.repeat(32)}-0000"></script>\n`.length;
   let chunkChars = 0;
@@ -712,6 +712,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     }
     const projected = html.length + chunkChars;
     if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (archive chunks)', projected, LIM.bundledChars); }
+  // 塊の id と索引の記録だけを先に（base64 はすべての大きさを確かめた後に作る）
+  const chunkJobs = [];
   for (const p of Object.keys(all).sort(cmpCodePoint)) {
     const id = shaOf[p].slice(0, 32);
     fileMap[p] = id;
@@ -719,10 +721,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const b = all[p], ids = [];
     const n = Math.max(1, Math.ceil(b.length / LIMITS.chunkBytes));
     if (n - 1 > LIMITS.chunkMax) fail('too-large', `${p}: more than ${LIMITS.chunkMax + 1} chunks`);
-    for (let j = 0; j < n; j++) {
-      ids.push(`${BP}${id}-${j}`);
-      chunks.push(`<script type="application/octet-stream" id="${BP}${id}-${j}">${toBase64(b.subarray(j * LIMITS.chunkBytes, (j + 1) * LIMITS.chunkBytes))}</script>`);
-    }
+    for (let j = 0; j < n; j++) ids.push(`${BP}${id}-${j}`);
+    chunkJobs.push({ id, b, n });
     blobs[id] = { mime: p.startsWith('audio/') ? (mimeOf(p) === 'application/octet-stream' ? 'audio/mpeg' : mimeOf(p)) : mimeOf(p), bytes: b.length, sha256: shaOf[p], chunks: ids };
   }
 
@@ -796,10 +796,25 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (html.split(ph).length !== html.split(`"src":${ph}`).length) fail('internal', 'audio placeholder found outside deck-audio');
     html = html.split(`"src":${ph}`).join(`"src":"${SCHEME}${id}","mime":"${blobs[id].mime}"`);
   });
+  // つなぐ前に、組み立ての後に入れるもの（塊・索引・読める層）すべてを含めた出力の全体の大きさを、それぞれを作る前に確かめる：
+  // 塊は上で見積もった字数（chunkChars）、索引は JSON にする前に下から見積もり（jsonLowerBound）、読める層は書き出す字（実体参照に直した後）を
+  // 数えながら作る（readableLayer の cap）。どれも超えると分かった時点で、その文字列を作らずに断る
+  let projected = html.length - prefixPh.length + chunkChars + 1;
+  const room = () => LIM.bundledChars - projected;
+  const ixCap = Math.min(LIMITS.indexBytes, room());
+  { const lb = jsonLowerBound(index, ixCap);
+    if (lb > ixCap) throw new BuildLimitError(lb > LIMITS.indexBytes ? 'portable index' : 'portable document (index)', projected + lb, lb > LIMITS.indexBytes ? LIMITS.indexBytes : LIM.bundledChars); }
   const indexText = htmlSafeJson(JSON.stringify(index, null, 1));
-  const readable = readableLayer(r.slides, segs, lang, warnings) + '\n';
+  if (utf8Length(indexText) > LIMITS.indexBytes) throw new BuildLimitError('portable index', utf8Length(indexText), LIMITS.indexBytes);
   const ixScript = `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n`;
-  // つなぐ前に、組み立ての後に入れるもの（読める層・索引・塊）すべてを含めた出力の全体の大きさを確かめる
+  projected += ixScript.length;
+  if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (index)', projected, LIM.bundledChars);
+  const readable = readableLayer(r.slides, segs, lang, warnings, room() - 1) + '\n';
+  projected += readable.length;
+  if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (readable layer)', projected, LIM.bundledChars);
+  // 塊（base64）：すべての大きさを確かめた後にだけ作る
+  const chunks = [];
+  for (const { id, b, n } of chunkJobs) for (let j = 0; j < n; j++) chunks.push(`<script type="application/octet-stream" id="${BP}${id}-${j}">${toBase64(b.subarray(j * LIMITS.chunkBytes, (j + 1) * LIMITS.chunkBytes))}</script>`);
   { const chunksLen = chunks.reduce((n, c) => n + c.length + 1, 0);
     const n = html.length - prefixPh.length + readable.length + ixScript.length + chunksLen + 1;
     if (n > LIM.bundledChars) throw new BuildLimitError('portable document', n, LIM.bundledChars); }
@@ -889,20 +904,58 @@ function recipeOf(sj, v) {
 
 // §2.1 スクリプトなしで読める層：全段階の口述原稿の表示用の文字（スクリプトが動くと deck.js が隠す）。
 // 記事の中の段階は番号の小さい順、concl は最後。どのスライドにも当たらない鍵の口述原稿は入れず、warnings に知らせる
-function readableLayer(slides, segs, lang, warnings = []) {
+// cap：書き出してよい字数（組んだ文書の上限の残り）。実体参照に直した後の字数を、その文字列を作る前に数え、超えるなら作らずに断る
+function readableLayer(slides, segs, lang, warnings = [], cap = Infinity) {
   const bySlide = new Map();
   for (const s of segs) { if (!bySlide.has(s.slideKey)) bySlide.set(s.slideKey, []); bySlide.get(s.slideKey).push(s); }
   const keys = new Set(slides.map((sl) => sl.key));
   for (const s of segs) if (!keys.has(s.slideKey)) warnings.push(`${LOG}: narration for "${s.slideKey}:${s.stepKey}" matches no slide; omitted from the readable layer`);
-  const out = [`<section id="${RD_ID}" lang="${escAttr(lang)}">`];
+  let n = 0;
+  const take = (k) => { n += k; if (n > cap) throw new BuildLimitError('portable document (readable layer)', n, cap); };
+  const out = [];
+  const push = (t) => { out.push(t); n += 1; };   // 1：つなぐ改行
+  take(`<section id="${RD_ID}" lang="">`.length + escAttrLength(lang)); push(`<section id="${RD_ID}" lang="${escAttr(lang)}">`);
   for (const sl of slides) {
     const steps = (bySlide.get(sl.key) || []).slice().sort((a, b) => stepOrder(a.stepKey) - stepOrder(b.stepKey));
-    out.push(`<article data-slide-key="${escAttr(sl.key)}"><h2>${escText(plain(sl.title || sl.key))}</h2>`);
-    for (const s of steps) out.push(readableStep(s));
-    out.push('</article>');
+    const title = plain(sl.title || sl.key);
+    take('<article data-slide-key=""><h2></h2>'.length + escAttrLength(sl.key) + escTextLength(title));
+    push(`<article data-slide-key="${escAttr(sl.key)}"><h2>${escText(title)}</h2>`);
+    for (const s of steps) { take(readableStepLength(s)); push(readableStep(s)); }
+    take('</article>'.length); push('</article>');
   }
-  out.push('</section>');
+  take('</section>'.length); push('</section>');
   return out.join('\n');
+}
+// 実体参照に直した後の字数（直した文字列を作らずに数える）：& → &amp;（+4）、< > → &lt; &gt;（+3）、属性の " → &quot;（+5）
+function escTextLength(s) {
+  s = String(s); let n = s.length;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); if (c === 38) n += 4; else if (c === 60 || c === 62) n += 3; }
+  return n;
+}
+function escAttrLength(s) {
+  s = String(s); let n = escTextLength(s);
+  for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 34) n += 5;
+  return n;
+}
+const readableStepLength = (s) => '<div data-step-key=""></div>'.length + escAttrLength(`${s.slideKey}:${s.stepKey}`) +
+  s.turns.reduce((n, t) => n + '<p data-role=""></p>'.length + String(t.role).length + escTextLength(t.display), 0);
+// JSON.stringify(v) の字数の下限（文字列を作らずに数える。字下げと実体参照の分は数えない）。cap を超えたらそこで止めて返す
+export function jsonLowerBound(v, cap = Infinity) {
+  let n = 0;
+  const go = (x) => {
+    if (n > cap) return;
+    if (x === null || typeof x === 'boolean' || typeof x === 'number') { n += String(x).length; return; }
+    if (typeof x === 'string') { n += x.length + 2; return; }
+    if (Array.isArray(x)) { n += 2 + Math.max(0, x.length - 1); for (const e of x) { go(e === undefined || typeof e === 'function' ? null : e); if (n > cap) return; } return; }
+    if (typeof x === 'object') {
+      if (typeof x.toJSON === 'function') { go(x.toJSON()); return; }
+      const ks = Object.keys(x).filter((k) => x[k] !== undefined && typeof x[k] !== 'function');
+      n += 2 + Math.max(0, ks.length - 1);
+      for (const k of ks) { n += k.length + 3; go(x[k]); if (n > cap) return; }
+    }
+  };
+  go(v);
+  return n;
 }
 
 // 読める層の 1 段階（段 A の編集が、変わった段階の div だけをこれで書き直す）
