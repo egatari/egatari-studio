@@ -7,7 +7,8 @@
 //                                      （O_EXCL、名前は乱数）に書いて fsync し、rename で入れ替える（途中で止まっても半分のファイルが残らない。
 //                                      Windows でも既にあるファイルの上に rename できる）
 //   checkWritable(base, file)         safeWriteFile が断るものを、何も作らずに先に断る
-//   readContained(base, file, enc)     読む。実体のパスが base の実体の中にあるときだけ（中を指すリンクはよい）。なければ null
+//   readContained(base, file, enc, max) 読む。実体のパスが base の実体の中にあるときだけ（中を指すリンクはよい）。なければ null。
+//                                      max バイトより大きければ読まずに TooLargeError（code 'too-large'。読む間に大きくなっても max+1 バイトで止める）
 //   backupFile(base, file, editsRel)   file の控えを base/<editsRel>/<時刻>-<名前> に書く（safeWriteFile で）
 //   pruneBackups(base, editsRel, keep) 控えのフォルダ（途中も含めてリンクでなく、base の中にあること）の中の、控えの名前の形をした
 //                                      普通のファイルだけを、古いものから消して keep 個にする（ほかのものには触れない）
@@ -24,6 +25,8 @@ export class UnsafePathError extends Error {
 // 控えの名前の形（BACKUP_RE）は編集アプリ（app/fsx.js）と共有する
 import { BACKUP_RE, backupStamp } from './core/backup-name.mjs';
 export { BACKUP_RE, backupStamp };
+import { TooLargeError } from './core/read-limits.mjs';
+export { TooLargeError };
 
 const lst = (p) => { try { return fs.lstatSync(p); } catch (e) { if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return null; throw e; } };
 const inside = (p, root) => p === root || p.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
@@ -122,14 +125,28 @@ function renameOver(from, to) {
 }
 
 // 実体のパスが base の実体の中にあるファイルだけを読む。ないなら null。外を指すなら UnsafePathError
-export function readContained(base, file, enc = null) {
+export function readContained(base, file, enc = null, max = Infinity) {
   const real = baseReal(base);
   segments(base, file, real);
   let rp;
   try { rp = fs.realpathSync(path.resolve(file)); } catch (e) { if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return null; throw e; }
   if (!inside(rp, real) || rp === real) throw new UnsafePathError(`refusing to read outside ${base}: ${file}`);
-  if (!fs.statSync(rp).isFile()) throw new UnsafePathError(`not a regular file: ${file}`);
-  return fs.readFileSync(rp, enc || undefined);
+  const st = fs.statSync(rp);
+  if (!st.isFile()) throw new UnsafePathError(`not a regular file: ${file}`);
+  if (st.size > max) throw new TooLargeError(path.basename(file), st.size, max);
+  if (max === Infinity) return fs.readFileSync(rp, enc || undefined);
+  // 上限があるとき：開いた fd も同じ通常のファイルか確かめ、max+1 バイトまでだけ読む（読む間に大きくなっても上限の先は読まない）
+  const fd = fs.openSync(rp, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+  try {
+    const fst = fs.fstatSync(fd);
+    if (!fst.isFile() || fst.dev !== st.dev || fst.ino !== st.ino) throw new UnsafePathError(`not a regular file: ${file}`);
+    const buf = Buffer.allocUnsafe(Math.min(Math.max(fst.size, 0), max) + 1);
+    let got = 0;
+    while (got < buf.length) { const k = fs.readSync(fd, buf, got, buf.length - got, null); if (k === 0) break; got += k; }
+    if (got > max) throw new TooLargeError(path.basename(file), Math.max(fst.size, got), max);
+    const out = buf.subarray(0, got);
+    return enc ? out.toString(enc) : Buffer.from(out);
+  } finally { fs.closeSync(fd); }
 }
 export const existsContained = (base, file) => { try { return readContained(base, file) !== null; } catch { return false; } };
 

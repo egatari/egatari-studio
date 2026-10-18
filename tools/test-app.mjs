@@ -211,6 +211,18 @@ try {
   await page.waitForTimeout(300);
   ok(JSON.parse(await opfs.read('comments.json'))[0].status === 'resolved', 'comment: resolved from the panel');
   await page.click('#b-comments');
+  // 大きすぎる comments.json（8 MiB を超える。kit/core/read-limits.mjs）：読まずに 413、何も書かない
+  {
+    const keep = await opfs.read('comments.json');
+    const sizeOf = () => page.evaluate(async () => (await (await window.__testDir.getFileHandle('comments.json')).getFile()).size);
+    await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('comments.json')).createWritable(); await w.write('[' + ' '.repeat(8 * 1024 * 1024) + ']'); await w.close(); });
+    const s0 = await sizeOf();
+    const g = await f.evaluate(() => window.__DECK_DEV_TRANSPORT.api('GET', '/__dev/comments'));
+    const r = await f.evaluate(() => window.__DECK_DEV_TRANSPORT.api('POST', '/__dev/comment', { key: 'x', comment: 'note' }));
+    ok(g._status === 413 && r._status === 413 && /大きすぎる/.test(r.error || ''), `comment: an oversized comments.json is refused (GET ${g._status}, POST ${r._status}: ${String(r.error).slice(0, 60)})`);
+    ok(await sizeOf() === s0 && s0 > 8 * 1024 * 1024, 'comment: the oversized comments.json is left unchanged (nothing written)');
+    await opfs.write('comments.json', keep);
+  }
 
   // ---------------------------------------------------------------- 6. 外での変更（Claude Code など）
   await f.evaluate(() => DECK.go(4, 1, false));

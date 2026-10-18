@@ -50,7 +50,7 @@ const ja = {
   api: {
     notFound: '原稿が見つかりません', badRange: '範囲または本文が正しくありません', conflict: '原稿が変わっています。再読み込みしてください',
     savedButFailed: '保存しましたが、組み立てに失敗しました', badNarr: 'slideKey / stepKey / turns が正しくありません', noRev: 'rev（読み込んだときの版）がありません',
-    narrConflict: '口述原稿が変わっています。再読み込みしてください', narrHead: '# 口述原稿\n', emptyComment: '指示が空です', noComment: 'コメントが見つかりません',
+    narrConflict: '口述原稿が変わっています。再読み込みしてください', narrHead: '# 口述原稿\n', emptyComment: '指示が空です', noComment: 'コメントが見つかりません', tooLarge: 'ファイルが大きすぎるので読みません（何も書いていません）',
   },
 };
 const en = {
@@ -93,7 +93,7 @@ const en = {
   api: {
     notFound: 'Source not found', badRange: 'Bad range or text', conflict: 'The source has changed. Please reload',
     savedButFailed: 'Saved, but the build failed', badNarr: 'Bad slideKey / stepKey / turns', noRev: 'Missing rev (version when loaded)',
-    narrConflict: 'The narration has changed. Please reload', narrHead: '# Narration\n', emptyComment: 'The note is empty', noComment: 'Note not found',
+    narrConflict: 'The narration has changed. Please reload', narrHead: '# Narration\n', emptyComment: 'The note is empty', noComment: 'Note not found', tooLarge: 'The file is too large to read (nothing was written)',
   },
 };
 export const T = EN ? en : ja;

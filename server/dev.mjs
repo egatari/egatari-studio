@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey } from '../kit/narration.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
+import { readLimit } from '../kit/core/read-limits.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -153,7 +154,8 @@ function backup(file) {
 }
 // 書く（原稿・口述原稿・コメント）。リンクを通るなら UnsafePathError（応答は 403）
 const writeIn = (file, text) => safeWriteFile(DIR_REAL, file, text);
-const readIn = (file) => readContained(DIR_REAL, file, 'utf8');
+// 読む。大きさの上限（kit/core/read-limits.mjs：comments.json・narration.md 8 MiB、原稿 32 MiB）を超えれば TooLargeError（応答は 413）
+const readIn = (file) => readContained(DIR_REAL, file, 'utf8', readLimit(file));
 function parseRange(s) {
   const m = /^(\d+)-(\d+)$/.exec(String(s || ''));
   if (!m) return null;
@@ -309,6 +311,8 @@ const server = http.createServer(async (req, res) => {
     send(res, 404, 'not found', 'text/plain; charset=utf-8');
   } catch (e) {
     // 原稿のフォルダの外を指すリンクを通る読み書き（kit/safe-fs.mjs）：書かずに 403
+    // 大きすぎるファイル（kit/core/read-limits.mjs）：読まず、書かずに 413
+    if (e && e.code === 'too-large') { console.error('  refused: ' + e.message); return send(res, 413, { error: 'ファイルが大きすぎるので読みません / refused: ' + e.message }); }
     if (e && e.code === 'unsafe-path') { console.error('  refused: ' + e.message); return send(res, 403, { error: 'リンク（symlink）を通る読み書きは断りました / refused a read or write through a symbolic link: ' + e.message }); }
     console.error(e);
     send(res, 500, { error: String(e.message || e) });

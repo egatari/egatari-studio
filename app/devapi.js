@@ -3,7 +3,12 @@
 // 原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey } from '../kit/core/narration-core.mjs';
-import { readText, writeText, backup } from './fsx.js';
+import { readText as readAny, writeText, backup as backupAny } from './fsx.js';
+import { readLimit } from '../kit/core/read-limits.mjs';
+
+// 読むのは大きさの上限（kit/core/read-limits.mjs：comments.json・narration.md 8 MiB、原稿 32 MiB）まで。超えれば 413（何も書かない）
+const readText = (root, rel) => readAny(root, rel, readLimit(rel));
+const backup = (root, rel) => backupAny(root, rel, readLimit(rel));
 
 function parseRange(s) {
   const m = /^(\d+)-(\d+)$/.exec(String(s || ''));
@@ -93,6 +98,7 @@ export function createDevApi(ctx) {
       }
       return err(404, 'not found');
     } catch (e) {
+      if (e && e.code === 'too-large') return err(413, M.tooLarge + ' (' + e.message + ')');
       console.error(e);
       return err(500, String((e && e.message) || e));
     }

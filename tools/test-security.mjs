@@ -216,6 +216,28 @@ for (const [label, prep, what] of devCases) {
   } catch (e) { fails++; console.error(e); } finally { S.srv.kill(); }
 }
 
+// 大きすぎる comments.json（8 MiB を超える。kit/core/read-limits.mjs）：読まずに 413、何も書かず、サーバーは動き続ける
+{
+  const big = '[' + ' '.repeat(8 * 1024 * 1024) + ']';
+  const d = mkDeck((x) => fs.writeFileSync(path.join(x, 'comments.json'), big));
+  const hash = () => crypto.createHash('sha1').update(fs.readFileSync(path.join(d, 'comments.json'))).digest('hex');
+  const h0 = hash();
+  const S = start(path.join(d, 'deck.html'));
+  try {
+    const b = await S.base;
+    const page = (await rawAt(b, '/')).body;
+    const T = JSON.parse(/window\.__DECK_DEV_TOKEN=("[0-9a-f]+")/.exec(page)[1]);
+    const H = { 'content-type': 'application/json', 'x-deck-token': T, origin: b.replace(/\/$/, '') };
+    const g = await rawAt(b, '/__dev/comments', { headers: H });
+    const r = await rawAt(b, '/__dev/comment', { method: 'POST', headers: H, body: JSON.stringify({ key: 'x', comment: 'note' }) });
+    ok(g.status === 413 && r.status === 413 && /too large/.test(r.body), `dev: an oversized comments.json (8 MiB + 2) is refused (GET ${g.status}, POST ${r.status}: ${r.body.slice(0, 80)})`);
+    ok(hash() === h0 && !fs.readdirSync(d).some((f) => /\.tmp$/.test(f)), 'dev: an oversized comments.json is left unchanged (nothing written)');
+    fs.writeFileSync(path.join(d, 'comments.json'), '[]\n');
+    const r2 = await rawAt(b, '/__dev/comment', { method: 'POST', headers: H, body: JSON.stringify({ key: 'x', comment: 'note' }) });
+    ok(r2.status === 200 && S.srv.exitCode === null, `dev: the server keeps running, and a normal comments.json still works (${r2.status})`);
+  } catch (e) { fails++; console.error(e); } finally { S.srv.kill(); }
+}
+
 // ---------------------------------------------------------------- 3. 組み立ての読み出し
 const withTheme = (d, theme) => fs.writeFileSync(path.join(d, 'deck.html'), fs.readFileSync(path.join(d, 'deck.html'), 'utf8').replace('data-theme="default"', `data-theme="${theme}"`));
 const mkTheme = (d, name, cfg) => {
