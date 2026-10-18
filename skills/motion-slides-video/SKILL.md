@@ -1,6 +1,6 @@
 ---
 name: motion-slides-video
-description: motion-academic-slides のデッキ（deck.html＋narration.md）を TTS（Irodori）で読み上げ、段階ごとの動画と canon 向けの教材バンドル（Marp 形式の md＋コマごとの mp4/png）にする。「HTMLスライドを動画にして」「TTS動画を作って」「canonに入れる形にして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。
+description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.html＋narration.md）を TTS（Irodori）で読み上げ、段階ごとの動画と canon 向けの教材バンドル（Marp 形式の md＋コマごとの mp4/png）にする。「HTMLスライドを動画にして」「TTS動画を作って」「canonに入れる形にして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。
 ---
 
 # motion-slides-video：デッキを TTS 動画と canon のバンドルにする
@@ -64,4 +64,4 @@ export-canon が最後に表示するコマンドで、まず `--dry-run` を付
 
 ## 5. 使い終わりの感想
 
-「感想を送って」「フィードバックして」と言われたら（または、送ってよいと前もって言われていて長い作業が終わったら）、motion-slides スキルの §9 と同じ手順で feedback の issue の下書きを作り、見せて、明示の確認の後にだけ `gh issue create -R moiku/motion-academic-slides --label feedback --body-file <下書き>` で作る。TTS まわり（読み間違い・音量・接続）の困りごとは Context に `via motion-slides-video` と書く。原稿の文・音声・参照音声の名前・`IRODORI_URL` などの個人の設定は入れない。
+「感想を送って」「フィードバックして」と言われたら（または、送ってよいと前もって言われていて長い作業が終わったら）、motion-slides スキルの §9 と同じ手順で feedback の issue の下書きを作り、見せて、明示の確認の後にだけ `gh issue create -R egatari/egatari-studio --label feedback --body-file <下書き>` で作る。TTS まわり（読み間違い・音量・接続）の困りごとは Context に `via motion-slides-video` と書く。原稿の文・音声・参照音声の名前・`IRODORI_URL` などの個人の設定は入れない。

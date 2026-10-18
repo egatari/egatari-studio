@@ -35,4 +35,4 @@ After seven independent review rounds of this version line, no high-severity iss
 
 ## Reporting a vulnerability
 
-Please report security issues privately through GitHub's **Report a vulnerability** button (Security → Advisories) on <https://github.com/moiku/motion-academic-slides>, rather than in a public issue. Include the affected file or command, a minimal deck that reproduces it, and the impact. You should get a reply within two weeks. There is no bug bounty.
+Please report security issues privately through GitHub's **Report a vulnerability** button (Security → Advisories) on <https://github.com/egatari/egatari-studio>, rather than in a public issue. Include the affected file or command, a minimal deck that reproduces it, and the impact. You should get a reply within two weeks. There is no bug bounty.

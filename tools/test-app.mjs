@@ -1,6 +1,6 @@
 // 編集アプリ（app/）の確認
 //   node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
-// 1. tools/build-app.mjs で作業用のフォルダに組み、dist/editor/ を 127.0.0.1 で配る
+// 1. tools/build-app.mjs で作業用のフォルダに組み、dist/ を 127.0.0.1 で配る（根と /egatari-studio/ の両方。13 でサイトの形を確かめる）
 // 2. OPFS（navigator.storage.getDirectory()）に examples/minimal を写したフォルダを作り、window.__APP_TEST_OPEN(handle) で開く
 // 3. ブラウザで組んだ HTML が Node の build（字を絞り込まない）と同じか・原稿の編集・口述原稿・コメント・外での変更・
 //    組み立ての失敗・書き出し・簡易チェック・発表者ビュー・1 ファイル版（file://）を確かめる。コンソールのエラーが無いこと
@@ -72,12 +72,15 @@ const fixture = (name) => fixtures.find((f) => f.name === name);
 
 // ---------------------------------------------------------------- 1. 組んで配る
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain', '.md': 'text/plain', '.wav': 'audio/wav', '.m4a': 'audio/mp4' };
 let fontFetches = 0;
+// dist/ をサイトの根（https://editor.egatari.org/ の形）と下のパス /egatari-studio/（https://egatari.github.io/egatari-studio/ の形）の両方で配る
+const SUB = 'egatari-studio/';
 const srv = http.createServer((req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  const file = path.join(DIST, 'editor', p.endsWith('/') ? p + 'index.html' : p);
-  if (!file.startsWith(path.join(DIST, 'editor')) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('not found'); }
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p.startsWith('/' + SUB)) p = p.slice(SUB.length);
+  const file = path.join(DIST, p.endsWith('/') ? p + 'index.html' : p);
+  if (!file.startsWith(DIST + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('not found'); }
   if (file.endsWith('.woff2')) fontFetches++;
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
   fs.createReadStream(file).pipe(res);
@@ -1266,6 +1269,31 @@ try {
   const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
   await p1.close();
+
+  // ---------------------------------------------------------------- 13. サイトの形（GitHub Pages）：根と下のパスの両方
+  // 根 = 配信版の編集アプリ、/editor/ = 前の場所（根へ移す。問い合わせと # を残す）、/editor.html = 1 ファイル版、/lab/irodori.html = 試験ページ
+  for (const base of [BASE, BASE + SUB]) {
+    const tag = base === BASE ? 'root' : 'subpath';
+    const ps = await browser.newPage({ locale: 'ja-JP' });
+    watch(ps, 'site-' + tag);
+    await ps.goto(base);
+    await ps.waitForSelector('#drop');
+    ok(await ps.evaluate(() => [...document.styleSheets].some((x) => x.href && x.href.endsWith('/app.css')) && document.title === 'Egatari Studio'), `site (${tag}): the editor loads at ${base}`);
+    await ps.goto(base + 'editor/?lang=en#x');
+    await ps.waitForURL(base + '?lang=en#x', { timeout: 10000 }).catch(() => {});
+    await ps.waitForSelector('#drop');
+    ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#welcome h1')) === 'Open a deck folder', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
+    // スクリプトが動かなくても行ける：meta refresh とリンク（ページを開くと移ってしまうので、HTML を読んで確かめる）
+    const stub = await (await fetch(base + 'editor/')).text();
+    ok(/<meta http-equiv="refresh" content="0; url=\.\.\/">/.test(stub) && /<a href="\.\.\/">/.test(stub) && /location\.replace/.test(stub), `site (${tag}): editor/ also has a meta refresh and a link to ../`);
+    await ps.goto(base + 'editor.html');
+    await ps.waitForSelector('#drop');
+    ok(await ps.evaluate(() => typeof window.__FONTPACK === 'object'), `site (${tag}): editor.html (single file) loads`);
+    const lr = await ps.goto(base + 'lab/irodori.html');
+    await ps.waitForLoadState('load');
+    ok(lr.status() === 200 && (await ps.title()).length > 0 && await ps.evaluate(() => document.querySelectorAll('script[type=module]').length > 0), `site (${tag}): lab/irodori.html loads`);
+    await ps.close();
+  }
 } catch (e) {
   console.error(e);
   fails++;

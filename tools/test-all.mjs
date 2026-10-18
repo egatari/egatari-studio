@@ -41,7 +41,7 @@ const steps = [
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
-  // 編集アプリ（app/）：dist/editor を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
+  // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）
   ...['ja', 'en'].flatMap((l) => [

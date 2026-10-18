@@ -6,9 +6,9 @@
 
 ## フィードバック
 
-- **デッキから**：`?` を押して、一覧の下の「**フィードバックを送る**」を押す（発表者ビューのキーの行の右端にもある）。[フィードバックの form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) が、版・ブラウザ・OS・デッキの言語・モードだけを入れた状態で開く。スライドの中身は送らない。断片を貼るのは公開してよいものだけにする
+- **デッキから**：`?` を押して、一覧の下の「**フィードバックを送る**」を押す（発表者ビューのキーの行の右端にもある）。[フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が、版・ブラウザ・OS・デッキの言語・モードだけを入れた状態で開く。スライドの中身は送らない。断片を貼るのは公開してよいものだけにする
 - **Claude Code から**：「感想を送って」「フィードバックして」と言う。`motion-slides` スキルが、その作業で困ったこと・不具合を issue の下書きにまとめて見せ、確認を取ってから作る。スライドの本文・音声・個人のパスは入れない
-- **使い方の質問**は [Discussions の Q&A](https://github.com/moiku/motion-academic-slides/discussions/categories/q-a) へ。作ったデッキや動画は [Show and tell](https://github.com/moiku/motion-academic-slides/discussions/categories/show-and-tell) へ
+- **使い方の質問**は [Discussions の Q&A](https://github.com/egatari/egatari-studio/discussions/categories/q-a) へ。作ったデッキや動画は [Show and tell](https://github.com/egatari/egatari-studio/discussions/categories/show-and-tell) へ
 - **脆弱性**は公開の issue でなく [SECURITY.md](SECURITY.md) の方法で
 
 ## 部品
@@ -16,7 +16,7 @@
 ### 1. まず頼むか、デッキの中で書く
 
 - [components/CATALOG.md](components/CATALOG.md) を見る。既存の部品に属性を足すだけで済むことが多い
-- 案だけなら [部品の依頼](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml) を出す：何を動かすか、どの論文・図か、スケッチ、段階ごとに何が出るか
+- 案だけなら [部品の依頼](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml) を出す：何を動かすか、どの論文・図か、スケッチ、段階ごとに何が出るか
 - 自分で書くなら、まず**デッキ専用**に `<deck>/components/<名前>/index.js` に置く（build はデッキ → リポジトリの順に探す）。手順は `motion-components` スキル
 
 ### 2. 部品庫に入れる条件
@@ -28,7 +28,7 @@
 
 ### 3. PR のチェックリスト
 
-PR（または、コードを貼った [部品の提案](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml) の issue）に次をそろえる。
+PR（または、コードを貼った [部品の提案](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) の issue）に次をそろえる。
 
 - [ ] `components/<名前>/README.md`：frontmatter に `name` `summary` `steps` `props`、本文に「いつ使うか」
 - [ ] `components/<名前>/demo.html`：1〜2 枚の見本のデッキ

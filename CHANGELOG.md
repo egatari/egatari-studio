@@ -215,11 +215,11 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/moiku/motion-academic-slides/compare/v0.2.4...v0.3.0
-[0.2.4]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...v0.2.4
-[0.2.3]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/moiku/motion-academic-slides/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/moiku/motion-academic-slides/releases/tag/v0.1.0
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/egatari/egatari-studio/compare/v0.2.4...v0.3.0
+[0.2.4]: https://github.com/egatari/egatari-studio/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/egatari/egatari-studio/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/egatari/egatari-studio/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/egatari/egatari-studio/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/egatari/egatari-studio/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/egatari/egatari-studio/releases/tag/v0.1.0

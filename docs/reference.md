@@ -45,7 +45,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `<html lang="en">` | English deck: Source Sans 3 body font, English UI text, English checker rules, `voxcpm2` TTS |
 | `<html data-theme="name">` | theme (overridden by `--theme`) |
 | `<html data-mode="lecture">` | default mode when the URL has no `?mode=` |
-| `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/moiku/motion-academic-slides/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
+| `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/egatari/egatari-studio/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
 | `<html data-feedback="off">` | no feedback link in the `?` help or the presenter view (`DECK.FEEDBACK_URL = null`) |
 
 Body classes (all colors come from the theme): `.sub` subheading · `.big` main equation · `.note` note (27px) · `.thm` theorem box · `.box` tinted box · `.cols` side-by-side columns · `.arrow` centered arrow line · `.fig` / `.figcap` figure and caption · `.cite` citation (20px) · `.plot` box for `DECK.Plot` · `.readout .num` tabular number · `td.r` right-aligned cell · `.term`/`.blue`, `.emph`/`.red`, `.muted`/`.gray`, `.b` colors and bold.
@@ -400,7 +400,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new deck folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run ids -- <deck folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a deck with duplicate keys, id collisions or invalid ids |
 | `npm run portable -- unpack <file> <dir> [--force]`, `npm run portable -- pack <dir> [-o file] [--play-only]` | portable file ↔ folder; see [Portable file](#portable-file---portable) |
-| `npm run build:app` | build the editor app: `dist/editor/` (for GitHub Pages) and the single file `dist/editor.html`. See [editor.md](editor.md) |
+| `npm run build:app` | build the editor app: the hosted editor in `dist/` (for GitHub Pages; `dist/index.html`) and the single file `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download BIZ UDPGothic TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |

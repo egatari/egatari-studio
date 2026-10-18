@@ -1,5 +1,7 @@
-// 編集アプリ（app/）を組む：dist/editor/（GitHub Pages などで配る形）と dist/editor.html（1 ファイル版）。説明は docs/editor.md
+// 編集アプリ（app/）を組む：dist/ の根に配信版（GitHub Pages などで配る形。dist/index.html）と dist/editor.html（1 ファイル版）。説明は docs/editor.md
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
+// dist/editor/index.html は、前の場所（/editor/）からの古いリンクを根へ送る（問い合わせと # はそのまま）。
+// どのパスも相対なので、サイトの根（https://editor.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
 //   node tools/build-app.mjs [--out dist] [--no-single]
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
@@ -105,12 +107,12 @@ const r = await esbuild.build({
 let js = r.outputFiles[0].text;
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
-const NOTICE = `/* Motion Slides Editor ${version} — https://github.com/moiku/motion-academic-slides (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic and Source Sans 3 (SIL OFL 1.1). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic and Source Sans 3 (SIL OFL 1.1). */\n`;
 
-// 配信版：dist/editor/
-const ED = path.join(OUT, 'editor');
-fs.rmSync(ED, { recursive: true, force: true });
+// 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
+const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
+for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll']) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
@@ -125,12 +127,24 @@ for (const [v, f] of Object.entries(lazyFiles)) {
 for (const f of ['LICENSE', 'NOTICE']) if (fs.existsSync(rel(f))) fs.copyFileSync(rel(f), path.join(ED, f + '.txt'));
 // 試験ページ（lab/）：そのまま写す（静的なファイルだけ。重みは実行時に Hugging Face から取る）
 const LAB = path.join(OUT, 'lab');
-fs.rmSync(LAB, { recursive: true, force: true });
 if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, filter: (f) => !path.basename(f).startsWith('.') });
-// 根（GitHub Pages の /）からは editor/ へ
-fs.writeFileSync(path.join(OUT, 'index.html'), '<!DOCTYPE html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=editor/"><title>Motion Slides Editor</title><a href="editor/">Motion Slides Editor</a>\n');
+// 前の場所 editor/ からは根へ（問い合わせ ?lang=en と # を残す）。スクリプトが動かなくても meta refresh とリンクで行ける
+fs.mkdirSync(path.join(OUT, 'editor'), { recursive: true });
+fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<title>Egatari Studio</title>
+<script>try { var u = new URL('../', location.href); u.search = location.search; u.hash = location.hash; location.replace(u.href); } catch (e) {}</script>
+<meta http-equiv="refresh" content="0; url=../">
+<link rel="canonical" href="../">
+</head>
+<body><p>The editor has moved to <a href="../">the top of this site</a>. / 編集器は<a href="../">このサイトの最上位</a>に移りました。</p></body>
+</html>
+`);
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
-console.log(`dist/editor/: app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
+console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
 // 1 ファイル版：dist/editor.html（字を全部埋め込む）
 if (SINGLE) {

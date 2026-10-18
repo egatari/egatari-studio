@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        See [CONTRIBUTING.md](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.md) ([日本語](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.ja.md)) for the promotion rules. A pull request is best; pasting the code here is also fine.
-        昇格の条件は [CONTRIBUTING.ja.md](https://github.com/moiku/motion-academic-slides/blob/main/CONTRIBUTING.ja.md) を参照。PR が一番ですが、ここにコードを貼るのでも構いません。
+        See [CONTRIBUTING.md](https://github.com/egatari/egatari-studio/blob/main/CONTRIBUTING.md) ([日本語](https://github.com/egatari/egatari-studio/blob/main/CONTRIBUTING.ja.md)) for the promotion rules. A pull request is best; pasting the code here is also fine.
+        昇格の条件は [CONTRIBUTING.ja.md](https://github.com/egatari/egatari-studio/blob/main/CONTRIBUTING.ja.md) を参照。PR が一番ですが、ここにコードを貼るのでも構いません。
   - type: input
     id: name
     attributes:

@@ -3,6 +3,14 @@
   "version": "0.3.0",
   "private": true,
   "license": "MIT",
+  "homepage": "https://github.com/egatari/egatari-studio#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egatari/egatari-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/egatari/egatari-studio/issues"
+  },
   "type": "module",
   "scripts": {
     "build": "node kit/build.mjs",

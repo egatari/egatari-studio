@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Check [components/CATALOG.md](https://github.com/moiku/motion-academic-slides/blob/main/components/CATALOG.md) first — an existing component with a new attribute may be enough.
-        まず [部品の一覧](https://github.com/moiku/motion-academic-slides/blob/main/components/CATALOG.md) を見てください。既存の部品に属性を足すだけで済むこともあります。
+        Check [components/CATALOG.md](https://github.com/egatari/egatari-studio/blob/main/components/CATALOG.md) first — an existing component with a new attribute may be enough.
+        まず [部品の一覧](https://github.com/egatari/egatari-studio/blob/main/components/CATALOG.md) を見てください。既存の部品に属性を足すだけで済むこともあります。
   - type: textarea
     id: animate
     attributes:

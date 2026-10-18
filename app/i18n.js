@@ -15,7 +15,7 @@ document.documentElement.lang = EN ? 'en' : 'ja';
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
-  brand: 'Motion Slides エディタ', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)',
+  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)',
   check: '簡易チェック', export: 'HTML を書き出す', print: '印刷 / PDF', presenter: '発表者ビュー', full: '全画面', helpBtn: '使い方',
   welcomeTitle: 'デッキのフォルダを開く', welcomeLead: `インストールは要りません。deck.html の入ったフォルダ（Chrome / Edge）か、持ち運べる 1 ファイル（${FX}）を開くと、ここで表示・編集できます`,
   unsupported: 'このブラウザではフォルダを開けません。Google Chrome か Microsoft Edge（パソコン版）で開いてください',
@@ -125,7 +125,7 @@ const ja = {
   },
 };
 const en = {
-  brand: 'Motion Slides Editor', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)',
+  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)',
   check: 'Quick check', export: 'Export HTML', print: 'Print / PDF', presenter: 'Presenter view', full: 'Fullscreen', helpBtn: 'Help',
   welcomeTitle: 'Open a deck folder', welcomeLead: `Nothing to install. Open a folder that contains deck.html (Chrome / Edge), or a portable single file (${FX}), to view and edit it here.`,
   unsupported: 'This browser cannot open folders. Please use Google Chrome or Microsoft Edge (desktop).',

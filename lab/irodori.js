@@ -544,7 +544,7 @@ function summary() {
 // ---------------------------------------------------------------- 7. 報告
 function report() {
   return {
-    page: 'motion-academic-slides lab/irodori.html', time: new Date().toISOString(), location: location.href,
+    page: 'Egatari Studio lab/irodori.html', time: new Date().toISOString(), location: location.href,
     upstream: { irodoriTtsWebgpu: 'aa3b6390018bb09a2e461c95d1f55992c06e197d', hfRepo: HF_REPO, hfRevision: HF_REV, ort: ORT_VERSION, transformers: TRANSFORMERS_VERSION },
     env: state.env, load: state.load, voice: state.voice,
     settings: { seed: parseInt($('seed').value, 10) || 0, steps: parseInt($('steps').value, 10) || 40 },

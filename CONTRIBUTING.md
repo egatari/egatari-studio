@@ -6,9 +6,9 @@ Feedback and new components are both welcome. Small reports help as much as pull
 
 ## Feedback
 
-- **From a deck**: press `?` and click **Send feedback** at the bottom (also in the presenter view's key row). It opens the [feedback form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) with only the version, browser, OS, deck language and mode filled in. Nothing from your slides is sent; add a snippet yourself only if it is public
+- **From a deck**: press `?` and click **Send feedback** at the bottom (also in the presenter view's key row). It opens the [feedback form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) with only the version, browser, OS, deck language and mode filled in. Nothing from your slides is sent; add a snippet yourself only if it is public
 - **From Claude Code**: say "send feedback" / 「感想を送って」. The `motion-slides` skill summarizes the problems from the session into a draft issue, shows it to you, and creates it only after you confirm. It leaves out deck text, voices and local paths
-- **Questions** go to [Discussions → Q&A](https://github.com/moiku/motion-academic-slides/discussions/categories/q-a); decks and videos you made to [Show and tell](https://github.com/moiku/motion-academic-slides/discussions/categories/show-and-tell)
+- **Questions** go to [Discussions → Q&A](https://github.com/egatari/egatari-studio/discussions/categories/q-a); decks and videos you made to [Show and tell](https://github.com/egatari/egatari-studio/discussions/categories/show-and-tell)
 - **Security issues**: see [SECURITY.md](SECURITY.md), not a public issue
 
 ## Components
@@ -16,7 +16,7 @@ Feedback and new components are both welcome. Small reports help as much as pull
 ### 1. Ask first, or write it in your deck
 
 - Check [components/CATALOG.md](components/CATALOG.md). Often a new attribute on an existing component is enough
-- If you only have an idea, open a [component request](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml): what to animate, the paper or figure, a sketch, and what each step shows
+- If you only have an idea, open a [component request](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml): what to animate, the paper or figure, a sketch, and what each step shows
 - To write it yourself, start **deck-local**: `<deck>/components/<name>/index.js`. The build looks in the deck first, then in the repository. The `motion-components` skill walks through this
 
 ### 2. When a component is ready for the library
@@ -28,7 +28,7 @@ Move it to `components/<name>/` when either holds:
 
 ### 3. Pull request checklist
 
-Open a PR (or a [component submission](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml) issue with the code pasted) with:
+Open a PR (or a [component submission](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) issue with the code pasted) with:
 
 - [ ] `components/<name>/README.md` with frontmatter `name`, `summary`, `steps`, `props`, and a body saying when to use it
 - [ ] `components/<name>/demo.html`: a 1–2 slide sample deck

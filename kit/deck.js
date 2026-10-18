@@ -1,4 +1,4 @@
-// motion-academic-slides の実行系（deck.js）
+// Egatari Studio（旧 motion-academic-slides）の実行系（deck.js）
 // 約束事は docs/contract.md
 // - 画面は (スライド i, 段階 k, 段階の開始からの秒数 t) だけで決まる。DECK.seek(i, k, t) が唯一の描画の入口
 // - 手動の発表は実時間で seek を呼び、動画の書き出しは仮想の時刻で呼ぶ
@@ -238,7 +238,7 @@ for (var audioKey in DECK.AUDIO){
 DECK.FEEDBACK_URL = (function(){
   var h = document.documentElement;
   if (/^(off|false|no|0)$/i.test(h.getAttribute("data-feedback") || "")) return null;
-  return h.getAttribute("data-feedback-url") || "https://github.com/moiku/motion-academic-slides/issues/new";
+  return h.getAttribute("data-feedback-url") || "https://github.com/egatari/egatari-studio/issues/new";
 })();
 function shortUA(){
   var u = navigator.userAgent || "", m;

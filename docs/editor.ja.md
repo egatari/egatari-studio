@@ -11,9 +11,9 @@
 
 | 形 | 開き方 | 備考 |
 |---|---|---|
-| 配信 | <https://moiku.github.io/motion-academic-slides/editor/> | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む |
+| 配信 | <https://editor.egatari.org/>（このドメインが使えるようになるまでは <https://egatari.github.io/egatari-studio/>） | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む。前の場所 `…/editor/` からはここへ移る |
 | 1 ファイル | `npm run build:app` のあと `dist/editor.html` をダブルクリック | 約 10 MB（字を全部入れてある）。Chrome・Edge なら `file://` で動く。このファイルを人に渡してもよい |
-| 自分のサーバー | `npm run build:app` のあと `dist/editor/` を静的に配る | どこでもよい（https か `http://localhost`） |
+| 自分のサーバー | `npm run build:app` のあと `dist/` を静的に配る | どこでもよい（https か `http://localhost`）。サイトの根でも、下のパスでもよい |
 
 `npm run build:app`（`node tools/build-app.mjs [--out dist] [--no-single]`）は先に `npm ci` が要る（版を固定した開発用の依存 esbuild を使う）。
 
@@ -108,7 +108,7 @@
 
 ## GitHub Pages で配る
 
-`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは `/editor/`、1 ファイル版は `/editor.html`）。Pages を設定するまでは何もしない
+`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/> でも動く。置く（deploy）のは `main` だけで、ほかのブランチで走らせると組んで artifact を上げるところまでする。Pages を設定するまでは何もしない
 
 1. Settings → Pages → Build and deployment → Source を **GitHub Actions** にする
 2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ push で置く手順を飛ばすので、Pages を有効にする前に失敗しない）
@@ -116,8 +116,8 @@
 
 ## 確かめ方
 
-`node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ]`（`npm test` に入っている）は、作業用のフォルダに編集アプリを組んで 127.0.0.1 で配り、ブラウザの OPFS（origin-private file system）にデッキのフォルダを作って `window.__APP_TEST_OPEN(handle)` で開く。同じ HTML になること・原稿の編集（その間にファイルが変わったときの 409 も）・口述原稿の引き出し（発言を足す・CRLF のまま・409）・指示・外での変更・組み立ての失敗・簡易チェック・書き出し・発表者ビュー・英語の画面・`file://` の 1 ファイル版と、コンソールのエラーが無いことを確かめる。書き込みを試みるデッキのフォルダ（`tools/hostile-deck.mjs`：古い書き込みの知らせと偽の本文の知らせを送り、合言葉を探し、編集アプリのページに触り、書き込みの口に `fetch`・XHR・beacon する部品とインラインのスクリプト）は、動く前にたずね、フォルダの中を何も変えず、編集アプリで「保存」を押したときだけ書かれることを確かめる。持ち運べる 1 ファイルは、`examples/minimal`（dry-run の音声つき）と `tools/portable-fixtures.mjs` の試験用の文書から作り、開く・権利の確認（改変を認めないライセンスの確認も）・文字と口述原稿の編集・OPFS のファイルのハンドルへの保存・開き直し（同じ `docId`、変えていない音声の hash が同じ、展開したフォルダがメモリの上のものと同じ）・「フォルダに書き出す…」と「1 ファイルを書き出す」（同じバイト）・独自のコードの知らせ・印のスクリプトが編集アプリのページでも読み取りの Worker でも動かないこと・断るファイル（パスの抜け出し・新しい major の版・索引の重複・知らない必須の機能）・読むだけのファイル・ダウンロードでの保存、組み直さない保存（形式の所だけが変わることを、場所を見分ける差分で。新しい漢字の字の補い）、組み直しの知らせと取消、新しい教材として保存（`docId`・`derivedFrom`）、知らない索引の項目がどちらの保存でも残ること、テーマ庫の hash が違うファイル（口述原稿だけ）、知らない必須の機能のファイルの取り出し、独自のコードをたずねる後ろのプレビューが空であること、道具の列が両方の言葉で 1280 px と 1440 px で 1 行に収まることを確かめる。`node tools/test-tier-a.mjs`（これも `npm test` に入っている）は組み直さない保存だけを、`examples/minimal` と `examples/tmlr2026-calibration` で確かめる：場所を見分ける差分、ヘッドレス Chrome での再生、展開とまとめ直し、ほかの書き手のファイル、知らない項目、音声の差し替え、新しい教材、断る場合。`node tools/test-workspace.mjs` は、メモリの上のフォルダと権利の規則をブラウザなしで確かめる。
+`node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ]`（`npm test` に入っている）は、作業用のフォルダに編集アプリを組んで 127.0.0.1 で配り（サイトの形も、根と下のパスの両方で確かめる：編集アプリがコンソールのエラーなしに開く、`/editor/?lang=en#x` が `/?lang=en#x` へ移る、`/editor.html` と `/lab/irodori.html` が開く）、ブラウザの OPFS（origin-private file system）にデッキのフォルダを作って `window.__APP_TEST_OPEN(handle)` で開く。同じ HTML になること・原稿の編集（その間にファイルが変わったときの 409 も）・口述原稿の引き出し（発言を足す・CRLF のまま・409）・指示・外での変更・組み立ての失敗・簡易チェック・書き出し・発表者ビュー・英語の画面・`file://` の 1 ファイル版と、コンソールのエラーが無いことを確かめる。書き込みを試みるデッキのフォルダ（`tools/hostile-deck.mjs`：古い書き込みの知らせと偽の本文の知らせを送り、合言葉を探し、編集アプリのページに触り、書き込みの口に `fetch`・XHR・beacon する部品とインラインのスクリプト）は、動く前にたずね、フォルダの中を何も変えず、編集アプリで「保存」を押したときだけ書かれることを確かめる。持ち運べる 1 ファイルは、`examples/minimal`（dry-run の音声つき）と `tools/portable-fixtures.mjs` の試験用の文書から作り、開く・権利の確認（改変を認めないライセンスの確認も）・文字と口述原稿の編集・OPFS のファイルのハンドルへの保存・開き直し（同じ `docId`、変えていない音声の hash が同じ、展開したフォルダがメモリの上のものと同じ）・「フォルダに書き出す…」と「1 ファイルを書き出す」（同じバイト）・独自のコードの知らせ・印のスクリプトが編集アプリのページでも読み取りの Worker でも動かないこと・断るファイル（パスの抜け出し・新しい major の版・索引の重複・知らない必須の機能）・読むだけのファイル・ダウンロードでの保存、組み直さない保存（形式の所だけが変わることを、場所を見分ける差分で。新しい漢字の字の補い）、組み直しの知らせと取消、新しい教材として保存（`docId`・`derivedFrom`）、知らない索引の項目がどちらの保存でも残ること、テーマ庫の hash が違うファイル（口述原稿だけ）、知らない必須の機能のファイルの取り出し、独自のコードをたずねる後ろのプレビューが空であること、道具の列が両方の言葉で 1280 px と 1440 px で 1 行に収まることを確かめる。`node tools/test-tier-a.mjs`（これも `npm test` に入っている）は組み直さない保存だけを、`examples/minimal` と `examples/tmlr2026-calibration` で確かめる：場所を見分ける差分、ヘッドレス Chrome での再生、展開とまとめ直し、ほかの書き手のファイル、知らない項目、音声の差し替え、新しい教材、断る場合。`node tools/test-workspace.mjs` は、メモリの上のフォルダと権利の規則をブラウザなしで確かめる。
 
 ## 画面の言葉
 
-ふだんはブラウザの言語（日本語か英語）に合わせる。右上の **English / 日本語** のボタンで切り替えるか、`…/editor/?lang=en`・`?lang=ja` で開く。選んだ言葉は覚えておき、デッキを開いたまま切り替えても同じフォルダを開き直す（開いた持ち運べる 1 ファイルは閉じる。保存していない変更があれば先にたずねる）。編集の道具（編集モード・原稿の欄・口述原稿の引き出し・コメント）は編集アプリの言葉に合わせる（開発サーバーではデッキの言語 `<html lang>` に合わせる）。
+ふだんはブラウザの言語（日本語か英語）に合わせる。右上の **English / 日本語** のボタンで切り替えるか、`…/?lang=en`・`?lang=ja` で開く。選んだ言葉は覚えておき、デッキを開いたまま切り替えても同じフォルダを開き直す（開いた持ち運べる 1 ファイルは閉じる。保存していない変更があれば先にたずねる）。編集の道具（編集モード・原稿の欄・口述原稿の引き出し・コメント）は編集アプリの言葉に合わせる（開発サーバーではデッキの言語 `<html lang>` に合わせる）。

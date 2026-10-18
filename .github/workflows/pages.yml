@@ -1,7 +1,11 @@
 # Editor app (app/) on GitHub Pages: builds dist with tools/build-app.mjs and deploys it.
-#   /editor/      the hosted editor (loads only the font files a deck needs)
+#   /             the hosted editor (loads only the font files a deck needs)
 #   /editor.html  the single-file editor (all fonts embedded, ~10 MB)
 #   /lab/         test pages copied as-is from lab/ (lab/irodori.html: Irodori-TTS in the browser on WebGPU)
+#   /editor/      redirects to / keeping ?query and #hash (the editor used to live here)
+# All paths are relative: the site works at the custom domain https://editor.egatari.org/ (whole site)
+# and at https://egatari.github.io/egatari-studio/.
+# Only main deploys. "Run workflow" on another branch builds and uploads the artifact without deploying it.
 # DRAFT: this only works once Pages is enabled for the repository:
 #   1. Settings -> Pages -> Build and deployment -> Source: GitHub Actions
 #   2. Settings -> Secrets and variables -> Actions -> Variables: EDITOR_PAGES = true
@@ -56,10 +60,11 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}editor/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4

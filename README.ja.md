@@ -1,6 +1,10 @@
-# motion-academic-slides
+# Egatari Studio
+
+[![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
 
 [English](README.md) | 日本語
+
+*Egatari Studio（旧 motion-academic-slides）。npm のパッケージ・スキル・コマンドの名前は変わらない。*
 
 動きのある HTML の学術スライド。段階表示と動く図で説明の順を見せる。1 つの原稿（`deck.html` と `narration.md`）から、発表・授業・PDF、そして必要なら TTS の動画まで作る。[Claude Code](https://claude.com/claude-code) のスキル（`skills/`）で動かす前提で作ってあるが、どの手順も Node のコマンドなので、Claude Code なしでも使える。
 
@@ -75,8 +79,8 @@ Edge は最初からあるので、Chrome がなくても検査と PDF は動く
 ## はじめ方（段階 1：スライド）
 
 ```bash
-git clone https://github.com/moiku/motion-academic-slides.git
-cd motion-academic-slides
+git clone https://github.com/egatari/egatari-studio.git
+cd egatari-studio
 npm ci
 node tools/get-fonts.mjs                            # 任意：埋め込む字を小さくする（build で uv を使う）
 
@@ -126,7 +130,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 開発サーバーと同じ編集を、デッキのフォルダを直接開くウェブページでできる。Node もターミナルも要らない。**パソコンの Google Chrome か Microsoft Edge** が要る（File System Access API を使う。Safari と Firefox にはない）。
 
-- **開く：** Chrome か Edge で **<https://moiku.github.io/motion-academic-slides/editor/>** を開く（インストール不要）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
+- **開く：** Chrome か Edge で **<https://editor.egatari.org/>** を開く（インストール不要。このドメインが使えるようになるまでは、同じアプリが <https://egatari.github.io/egatari-studio/> にある）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
 - **デッキを開く：** デッキのフォルダ（`deck.html` の入ったもの）を画面に落とすか「フォルダを開く」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いたフォルダは最初の画面に並ぶ
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで Claude への指示（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **持ち運べる 1 ファイルをフォルダなしで：** 「ファイルを開く…」（またはファイルを落とす）で[持ち運べる 1 ファイル](docs/reference.ja.md#持ち運べる-1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「新しい教材として保存…」で元の教材を記録した新しい識別子の教材に、「フォルダに書き出す…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。口述原稿・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「1 ファイル（持ち運べる形）を書き出す」。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
@@ -261,7 +265,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
 | `themes/` | テーマ |
 | `server/` | 開発サーバーとブラウザ上の編集 |
-| `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/editor/` と `dist/editor.html` を作る |
+| `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/` に配信版（`dist/index.html`）と 1 ファイルの `dist/editor.html` を作る |
 | `tts/` `render/` | 段階 2：TTS（uv のプロジェクト）、動画の書き出し、バンドルの出力 |
 | `skills/` | Claude Code のスキル |
 | `tools/` | 新しいデッキの雛形（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
@@ -276,15 +280,15 @@ node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
-node tools/test-app.mjs                                            # 編集アプリ（一時フォルダに dist/editor を組む）
+node tools/test-app.mjs                                            # 編集アプリ（一時フォルダに dist/ を組む）
 ```
 
 ## フィードバックと貢献
 
-- デッキで `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。版・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
+- デッキで `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。版・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
 - Claude Code では「感想を送って」と言う。スキルが作業中に困ったことを issue の下書きにまとめ、確認を取ってから作る
-- 新しい図が欲しいときは [部品の依頼](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml)。デッキの中で書いた部品は [部品の提案](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml) から
-- 質問は [Discussions](https://github.com/moiku/motion-academic-slides/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
+- 新しい図が欲しいときは [部品の依頼](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml)。デッキの中で書いた部品は [部品の提案](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) から
+- 質問は [Discussions](https://github.com/egatari/egatari-studio/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
 - 版ごとの変更は [CHANGELOG.md](CHANGELOG.md)（英語）
 
 ## セキュリティ

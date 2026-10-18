@@ -1,6 +1,6 @@
 ---
 name: motion-slides
-description: 動きのある HTML の学術スライドを、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作る（motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表・授業・動画の 3 モード。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
+description: 動きのある HTML の学術スライドを、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作る（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表・授業・動画の 3 モード。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
 ---
 
 # motion-slides：動きのある HTML スライドを作る
@@ -181,6 +181,6 @@ Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタ�
    ```
 4. ユーザーが「送って」と明示したときだけ作る（直してと言われたら直して見せ直す）：
    ```bash
-   gh issue create -R moiku/motion-academic-slides --title "[feedback] 一行の要約" --label feedback --body-file <下書き>
+   gh issue create -R egatari/egatari-studio --title "[feedback] 一行の要約" --label feedback --body-file <下書き>
    ```
-5. 作った issue の URL を伝える。`gh` が使えない・ログインしていないときは、下書きと `https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml` を渡して、ユーザーに貼ってもらう
+5. 作った issue の URL を伝える。`gh` が使えない・ログインしていないときは、下書きと `https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml` を渡して、ユーザーに貼ってもらう

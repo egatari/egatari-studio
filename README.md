@@ -1,6 +1,10 @@
-# motion-academic-slides
+# Egatari Studio
+
+[![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
 
 English | [日本語](README.ja.md)
+
+*Egatari Studio (formerly motion-academic-slides). The npm package, the skills and the commands keep their names.*
 
 Academic slides as a single HTML file, with step-by-step reveals and animated figures that follow the order of your explanation. One source (`deck.html` + `narration.md`) gives you a live talk, a lecture view, a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
 
@@ -75,8 +79,8 @@ Edge is already there, so the checker and PDF work without Chrome. Run the comma
 ## Quick start (tier 1: slides)
 
 ```bash
-git clone https://github.com/moiku/motion-academic-slides.git
-cd motion-academic-slides
+git clone https://github.com/egatari/egatari-studio.git
+cd egatari-studio
 npm ci
 node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
 
@@ -126,7 +130,7 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 
 The same editing as the dev server, as a web page that opens a deck folder directly. Nothing to install: no Node, no terminal. It needs **Google Chrome or Microsoft Edge on a computer** (it uses the File System Access API, which Safari and Firefox do not have).
 
-- **Open the editor:** **<https://moiku.github.io/motion-academic-slides/editor/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
+- **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install; until that domain is live, the same app is at <https://egatari.github.io/egatari-studio/>), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
 - **Open a deck:** drop the deck folder (the one with `deck.html`) on the page, or press 「フォルダを開く」 / "Open folder", and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent folders are listed on the first screen.
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a portable file, no folder needed:** “Open file…” (or drop the file) opens a [portable file](docs/reference.md#portable-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export portable file” writes one. Works in any current browser (saving downloads where there is no file picker)
@@ -261,7 +265,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `components/` | animated figure components; catalog in `components/CATALOG.md` |
 | `themes/` | themes |
 | `server/` | dev server and in-browser editor |
-| `app/` | editor app (no install): sources; `npm run build:app` makes `dist/editor/` and `dist/editor.html` |
+| `app/` | editor app (no install): sources; `npm run build:app` makes the hosted editor in `dist/` (`dist/index.html`) and the single file `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
 | `skills/` | Claude Code skills |
 | `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
@@ -276,15 +280,15 @@ node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
 node tools/test-dev-server.mjs
-node tools/test-app.mjs                                            # editor app (builds dist/editor in a temp folder)
+node tools/test-app.mjs                                            # editor app (builds dist/ in a temp folder)
 ```
 
 ## Feedback & contributing
 
-- In a deck, press `?` and click **Send feedback** (also in the presenter view). It opens a [feedback form](https://github.com/moiku/motion-academic-slides/issues/new?template=feedback.yml) with only the version, browser, OS, language and mode filled in; nothing from your slides is sent. Turn it off with `<html data-feedback="off">`
+- In a deck, press `?` and click **Send feedback** (also in the presenter view). It opens a [feedback form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) with only the version, browser, OS, language and mode filled in; nothing from your slides is sent. Turn it off with `<html data-feedback="off">`
 - In Claude Code, say "send feedback": the skill drafts an issue from the session and creates it only after you confirm
-- Want a new figure? [Request a component](https://github.com/moiku/motion-academic-slides/issues/new?template=component-request.yml), or write one in your deck and [submit it](https://github.com/moiku/motion-academic-slides/issues/new?template=component-submission.yml)
-- Questions: [Discussions](https://github.com/moiku/motion-academic-slides/discussions). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Want a new figure? [Request a component](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml), or write one in your deck and [submit it](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml)
+- Questions: [Discussions](https://github.com/egatari/egatari-studio/discussions). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
 - What changed in each release: [CHANGELOG.md](CHANGELOG.md)
 
 ## Security

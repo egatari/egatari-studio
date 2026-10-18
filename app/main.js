@@ -139,7 +139,7 @@ function showDeck(label, title) {
   for (const e of document.querySelectorAll('.only-portable')) e.hidden = !S.portable;
   S.label = label;
   updateName();
-  document.title = title + ' — Motion Slides Editor';
+  document.title = title + ' — Egatari Studio';
   showNotice();
   closePanel();
 }
@@ -711,7 +711,7 @@ async function savePortableBound(mode) {
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
       h = th ? (await writeFile(th, html, live), th) : await saveWithPicker(name, html, null, live);
       if (!live()) throw cancelledError();
-      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Motion Slides Editor'; }
+      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Egatari Studio'; }
       else P.name = name;
     }
     // ここまでで書いた。この後の作業場所の書き込みと「保存した」は、今も同じ作業場所のときだけ（最後の確かめの後）
