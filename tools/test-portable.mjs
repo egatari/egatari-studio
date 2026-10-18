@@ -398,6 +398,10 @@ ok('コードが動くかは中身から決める：データの type のない 
     ['<m-curves><script type="application/json">[{"f":["x"]}]</script></m-curves>', true],
     ['<m-curves><script type="application/json">[{"f":"x"}]</script></m-curves><m-curves><script type="application/json">[{"f":"top.x"}]</script></m-curves>', true],
     ['<m-sweep F="fetch(1)"></m-sweep>', true], ['<m-sweep f="u*c" f="fetch(1)"></m-sweep>', false],
+    // 空の <script>（§6）：src がなく中身が空か空白だけならコードではない。コメント・; だけのもの、src のあるもの、ほかの空白の字はコード
+    ['<script></script>', false], ['<script>\n  \t\r\n</script>', false], ['<script type="module"> </script>', false], ['<svg><script></script></svg>', false],
+    ['<script>// placeholder\n</script>', true], ['<script>/* */</script>', true], ['<script>;</script>', true], ['<script><!-- --></script>', true],
+    ['<script src="x.js"></script>', true], ['<script src=""></script>', true], ['<script>\u00a0</script>', true], ['<script>\ufeff</script>', true],
   ]) assert.equal(has(html), want, html);
   assert.ok(isDataBlock(' APPLICATION/json ') && !isDataBlock('application/json;x') && !isDataBlock(null) && !isDataBlock('text/json'));
   assert.ok(safeExpression('u*u + c*u*u*u + c*c*u**4', { vars: ['u', 'c'] }));
@@ -409,6 +413,19 @@ ok('コードが動くかは中身から決める：データの type のない 
   assert.deepEqual(codeReasons(files({ 'deck.html': '<p>x</p>', 'export.html': '<script>1</script>' })), [], 'an exported HTML the deck does not name is not counted');
   assert.ok(codeReasons(files({ 'deck.html': '<p>/*INCLUDE:part.html*/</p>', 'part.html': '<script>1</script>' })).length === 1, 'an HTML the deck names is scanned');
   assert.ok(codeReasons(files({ 'deck.html': '<m-curves><script type="application/json">{{JSON:c.json}}</script></m-curves>', 'data/c.json': '[{"f":"x*x"}]' })).length === 0);
+});
+
+ok('空の <script>（§6）：src のない、中身が空か空白だけの <script> を持つデッキは core に書き出し、コメントだけのものは extended', async () => {
+  const profileOf = async (name, tag) => {
+    const D = makeDeck(path.join(work, name));
+    const f = path.join(D, 'deck.html');
+    fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('<body>\n', `<body>\n${tag}\n`));
+    const p = await buildPortable(f, { out: path.join(D, 'out', 'p' + FORMAT.FILE_EXT) });
+    return JSON.parse(PF.scanDocument(p.html).byId.get(FORMAT.INDEX_ID).text).profile;
+  };
+  assert.equal(await profileOf('empty-script', '<script>\n</script>'), 'core');
+  assert.equal(await profileOf('empty-script-0', '<script></script>'), 'core');
+  assert.equal(await profileOf('comment-script', '<script>\n// placeholder\n</script>'), 'extended');
 });
 
 // ---------------------------------------------------------------- 解析の上限（§11）：小さな要素を何百万も並べた文書を、全部の木を作る前に速く断る

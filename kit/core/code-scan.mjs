@@ -10,7 +10,8 @@
 // コードと見なすもの（どれか 1 つでもあれば、そのデッキのコードが動く）：
 //   - JavaScript のファイル（.js・.mjs・.cjs。原稿のフォルダの部品 components/<名前>/index.js も）
 //   （原稿のほかの .html は、原稿がその名前を書いているときだけ。書き出した教材などを数えない）
-//   - データの type を持たない <script>（type なし・JavaScript の MIME・module・importmap、知らない type も含む）
+//   - データの type を持たない <script>（type なし・JavaScript の MIME・module・importmap、知らない type も含む）。
+//     ただし src のない、中身が空か空白だけの <script> はコードではない（format spec §6。何も動かない。コメントだけのものはコード）
 //   - on で始まる属性（onerror・onload などのイベントの処理）
 //   - javascript: / vbscript: の URL を値に持つ属性（SVG の <animate values="…; javascript:…"> も）
 //   - srcdoc 属性、文書を入れる要素（iframe・frame・frameset・object・embed・portal）
@@ -83,6 +84,9 @@ function formulasOk(data, ex) {
 // ---------------------------------------------------------------- 文書の中
 const attr = (n, name) => { const a = (n.attrs || []).find((x) => x.name === name); return a ? a.value : null; };
 const textOf = (n) => (n.childNodes || []).filter((c) => c.nodeName === '#text').map((c) => c.value).join('');
+// src のない、中身が空か空白（空白・タブ・改行・改ページ・垂直タブ）だけの <script>（format spec §6：コードではない）。
+// 空白はわざと狭く取る（ほかの字が 1 つでもあればコードとする。コメント・; だけのものもコード）
+export function emptyScript(n) { return attr(n, 'src') === null && /^[ \t\n\r\f\v]*$/.test(textOf(n)); }
 const JS_URL = /(^|[\s;,])(javascript|vbscript|livescript):/;
 // resolveJson(name)：{{JSON:name}} の中身（文字列か null）。m-curves の子の JSON が取り込みのとき
 export function markupReasons(text, where = '', resolveJson = null) {
@@ -128,7 +132,7 @@ function scanTree(doc, where, resolveJson, skip) {
       const tag = n.tagName.toLowerCase();
       if (tag === 'script') {
         const t = (attr(n, 'type') || '').trim().toLowerCase().split(';')[0].trim();
-        if (!DATA_TYPES.has(t)) out.add(`<script${t ? ` type="${t}"` : ''}>${where}`);
+        if (!DATA_TYPES.has(t) && !emptyScript(n)) out.add(`<script${t ? ` type="${t}"` : ''}>${where}`);
       }
       if (EMBED.has(tag)) out.add(`<${tag}>${where}`);
       if (tag === 'meta' && (attr(n, 'http-equiv') || '').trim().toLowerCase() === 'refresh') out.add(`<meta http-equiv="refresh">${where}`);

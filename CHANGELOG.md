@@ -28,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Example `examples/kokugo-kanbun` (10 slides, narration for every step): 『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』, 『枕草子』 and an original modern text. `npm test` runs `test-kokugo`, builds the example normally and as a portable file, and checks it (0 errors)
 - Stale translation check for English/Japanese document pairs (`X.md` + `X.ja.md`): each file's first line is an invisible comment recording a hash of its counterpart at the last sync. `npm run i18n -- --check` warns when one side changed after that (e.g. “README.ja.md is older than README.md”) or the comment is missing; `--stamp <file>` records a pair as in sync after a person has compared it, `--stamp-all` stamps every pair. It runs in `npm test` and in CI (GitHub warning annotations) and only warns; `--strict` exits 1. How to update a translation is in CONTRIBUTING (`tools/i18n-pairs.mjs`, test `tools/test-i18n-pairs.mjs`)
 
+### Changed
+
+- Code detection (format spec §6): a `<script>` without `src` whose content is empty or only whitespace (space, tab, line feed, carriage return, form feed, vertical tab) is no longer code, so a deck with one exports with the `core` profile and opens in the editor without the code question; a script with only a comment (or `;`, or any other character) is still code. One rule in `kit/core/code-scan.mjs`, used by the build, the portable export and reader and the editor. The comment-only placeholder `<script>` in the demos of `m-bars`, `m-flow`, `m-kpi`, `m-market` and `m-quad` is removed (it was not needed: the build puts the runtime before `</body>` when there is no script)
+
 ## [0.3.1] - 2026-10-18
 
 ### Changed
