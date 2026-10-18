@@ -1,1 +1,5 @@
 vendor/egatari-spec/** -text
+# tools/make-llm-guide.mjs が作るファイル（AI への指示）：どの OS の checkout でも LF（作り直したもの・buildPack の出力と同じバイト）
+docs/authoring-with-llms*.md text eol=lf
+docs/llm-parts/*.md text eol=lf
+kit/core/llm-pack-data.mjs text eol=lf

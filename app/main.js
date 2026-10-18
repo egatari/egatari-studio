@@ -1135,6 +1135,7 @@ window.__APP_TEST = {
     portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
+  attachBusy: () => attach.isBusy(),
   saved: () => (S.portable ? S.portable.saved : null),
   save: (mode) => savePortable(mode || 'save'),
   api: (method, url, body) => api(method, url, body),

@@ -251,7 +251,7 @@ const browser = await launch();
   await page.waitForSelector('#drop');
   const st = () => page.evaluate(() => window.__APP_TEST.state());
   const toastText = async () => (await page.textContent('#toast')) || '';
-  const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && document.getElementById('attach-list'), null, { timeout: 15000 }); await page.waitForTimeout(400); };
+  const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy() && document.getElementById('attach-list'), null, { timeout: 30000 }); await page.waitForTimeout(200); };
   const rowsOf = () => page.$$eval('#attach-list .attach-row', (xs) => xs.map((x) => x.getAttribute('data-attach')));
   // 1 ファイル（OPFS のハンドル）
   await page.evaluate(async (b64) => {

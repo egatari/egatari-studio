@@ -27,7 +27,8 @@ const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(pa
 fs.mkdirSync(work, { recursive: true });
 let n = 0;
 const ok = (name, f) => { f(); n++; console.log(`  ok ${name}`); };
-const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
+// 改行は LF にそろえて読む（Windows の checkout で CRLF になっても、組み立ての出力（LF）と同じ物差しで比べる。make-llm-guide.mjs の read と同じ）
+const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\r\n/g, '\n');
 const worked = (name, f) => read('tools', 'llm-guide', 'worked', name, f);
 const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8' });
 const GUIDE_EN = read('docs', 'authoring-with-llms.md'), GUIDE_JA = read('docs', 'authoring-with-llms.ja.md');
@@ -95,7 +96,7 @@ ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つ�
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
   for (const d of ['tools', 'docs', 'components', 'themes', 'kit']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
   const rd = path.join(tmp, 'components', 'kpi', 'README.md');
-  fs.writeFileSync(rd, fs.readFileSync(rd, 'utf8').replace(/^series: .*\n/m, ''));
+  fs.writeFileSync(rd, fs.readFileSync(rd, 'utf8').replace(/^series: .*\r?\n/m, ''));
   const r = spawnSync(process.execPath, ['tools/make-llm-guide.mjs', '--check'], { cwd: tmp, encoding: 'utf8' });
   assert.ok(r.status !== 0 && /components\/kpi\/README\.md has no frontmatter series/.test(r.stderr), r.stderr);
   fs.rmSync(tmp, { recursive: true, force: true });

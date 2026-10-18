@@ -81,14 +81,23 @@ export function createAttachPanel(o) {
     await ws.writeText(CFG, text);
   }
   const listOf = (st) => [...st.entries.values()].map((e) => ({ ...e }));
-  // 書き込み：作業場所と代が始めたときのままのときだけ。権利の確認（1 ファイル）は beforeWrite
-  async function write(fn, done) {
-    if (busy) return;
+  // 書き込み：作業場所と代が始めたときのままのときだけ。権利の確認（1 ファイル）は beforeWrite。
+  // 書き込みは 1 つずつ順に（前の書き込みと組み直しが終わる前の操作も捨てない。どれも始めるときの状態を読み直す）
+  let queue = Promise.resolve(), pending = 0;
+  const hold = () => { pending++; busy = true; return () => { if (--pending === 0) busy = false; }; };
+  // 確かめる窓（名前を替える・消す）を開いているあいだも busy（窓を閉じてから書き始めるまでのすきまを作らない）
+  const held = (f) => async (...a) => { const release = hold(); try { return await f(...a); } finally { release(); } };
+  function write(fn, done) {
+    const release = hold();
+    const run = queue.then(() => writeNow(fn, done));
+    queue = run.catch((e) => o.toast(X.fail + ((e && e.message) || e), true)).finally(release);
+    return queue;
+  }
+  async function writeNow(fn, done) {
     const why = await o.beforeWrite();
     if (why) { o.toast(why, true); return; }
     const ws = o.ws(), g = o.generation();
     if (!ws) return;
-    busy = true;
     try {
       const st = await state();
       if (o.ws() !== ws || o.generation() !== g) return;
@@ -98,7 +107,7 @@ export function createAttachPanel(o) {
       if (msg) o.toast(msg + (ws.kind === 'memory' ? ' · ' + X.portableNote : ''));
       if (done) done();
     } catch (e) { o.toast(X.fail + (e.message || e), true); }
-    finally { busy = false; if (o.isOpen()) render(); }
+    finally { if (o.isOpen()) await render(); }
   }
 
   async function addFiles(list) {
@@ -127,7 +136,7 @@ export function createAttachPanel(o) {
       return X.added(adds.length);
     });
   }
-  async function remove(p) {
+  const remove = held(async (p) => {
     const v = await o.ask({ title: X.title, body: [el('p', { id: 'attach-remove-ask', text: X.removeAsk(p) })], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.remove, pri: true }] });
     if (v !== 'ok') return;
     await write(async (st) => {
@@ -135,8 +144,8 @@ export function createAttachPanel(o) {
       await writeConfig(st.ws, st.conf, listOf(st).filter((e) => e.path !== p));
       return X.removed(p);
     });
-  }
-  async function rename(p) {
+  });
+  const rename = held(async (p) => {
     const input = el('input', { type: 'text', id: 'attach-rename-input', value: p.slice(ATTACH_PREFIX.length) });
     const v = await o.ask({ title: X.rename, body: [el('label', {}, [el('span', { text: X.renameAsk }), input])], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.ok, pri: true }] });
     if (v !== 'ok') return;
@@ -155,7 +164,7 @@ export function createAttachPanel(o) {
       await writeConfig(st.ws, st.conf, entries);
       return X.renamed(p, q);
     });
-  }
+  });
   async function setMeta(p, role, title) {
     await write(async (st) => {
       const entries = listOf(st);
