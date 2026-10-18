@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Your own theme folders.** The build, checker, dev server and portable export also look for themes in the folders of `EGATARI_THEMES` (a list separated by the OS path delimiter, `:` or `;` on Windows) and then in `~/.egatari/themes` when it exists. Search order: the deck folder, its `themes/`, your theme folders, the bundled `themes/`. Each folder is a caller-chosen root: its real path is taken once (so `~/.egatari/themes` may be a symbolic link), and the containment rules hold inside it (no link or `extends` leaves that folder except to the bundled themes; `"extends": "default"` is the bundled `default`). A folder of `EGATARI_THEMES` that does not exist is skipped with a warning. The dev server rebuilds when a theme folder changes. A portable file stores a theme from these folders as the deck's `themes/<name>/`, so it rebuilds with the same theme on another machine and in the editor app (`kit/theme-dirs.mjs`; docs: reference ja/en, Themes and Environment variables)
+- A theme the deck names (`<html data-theme>` or a parent in `extends`) that is found nowhere no longer stops the build with `theme not found`: it warns `theme not found: "<name>" — …` with where it looked and where to put the theme, and builds with `default` (or without the parent). The editor app, which cannot read your theme folders, says so in the same warning. `--theme` with a name that is not found is still an error. Tests: `tools/test-theme-dirs.mjs` (in `npm test`: search order, `EGATARI_THEMES`, a symbolic-link `~/.egatari/themes`, the missing-theme warning, containment, the portable export)
+
+### Removed
+
+- The institutional themes `tml`, `tcue`, `wsd` and `ohte` and their university logos are no longer bundled (the logos were not under the MIT license). Put such themes in one of your theme folders (`EGATARI_THEMES` or `~/.egatari/themes`) or in the deck's `themes/`. Decks that name one of them and do not have it build with `default` and a warning. `examples/tmlr2026-calibration` now uses `default`; README, NOTICE, the authoring packs and the motion-slides skill no longer list them
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=ab28864869d15441 -->
+<!-- i18n: pair=dev-server.md sha256=5f09b364fbddc02f -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -12,11 +12,11 @@ Node を入れずに同じことをするなら[編集アプリ](editor.ja.md)�
 
 ```bash
 node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
-npm run dev -- path/to/deck.html --port 5174 --theme tml
+npm run dev -- path/to/deck.html --port 5174 --theme business
 ```
 
 原稿のフォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
-リポジトリの kit/、components/、themes/ を見張り（原稿のフォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
+リポジトリの kit/、components/、themes/、自分のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を見張り（原稿のフォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
 組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
 `?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
 

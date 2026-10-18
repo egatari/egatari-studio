@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=990be003810e7195 -->
+<!-- i18n: pair=README.ja.md sha256=aacb0b30c415be0f -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -104,7 +104,7 @@ npm run dev -- talks/mytalk/deck.html      # edit in the browser
 npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
 ```
 
-`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="tml">` or `--theme tml`. With `<html lang="en">` body text is set in Source Sans 3 and the checker uses English rules. For a fuller example, see `examples/minimal/`.
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the checker uses English rules. For a fuller example, see `examples/minimal/`.
 
 Every slide of a new deck has a stable id (`<section class="slide" id="s-k3f9q2">`), and its narration heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking narration, audio or timing. For a deck made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
 
@@ -240,14 +240,14 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo), `kokugo` (Mincho, for Japanese language arts) and the institutional themes `tml`, `tcue`, `wsd` and `ohte`, which include university logos (see License).
+A theme can also sit next to a deck (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the deck folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). The editor app cannot read your theme folders: put the theme in the deck's `themes/`, or it builds with `default` and a warning naming the missing theme. A portable file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
 
 ## Examples
 
 | Example | What it shows |
 |---|---|
 | [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. A fuller example to learn from (`npm run new` makes a clean template) |
-| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
+| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `default` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | Japanese, 10 slides: a pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports). `m-kpi`, `m-flow` (money flows and `pulse`), `m-bars` (with an axis rescale), `m-quad`, `m-market`, theme `business`, data written by a script (`scripts/`, `data/`). The company, product and every number are made up |
 | [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 11 slides for a 国語 lesson: a contents slide with `m-menu` (links to each part, Back to return), kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
 
@@ -310,6 +310,6 @@ A deck is code: its scripts and components run in your browser and in the headle
 
 ## License
 
-- Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts, KaTeX fonts and logos: see [NOTICE](NOTICE)
+- Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts and KaTeX fonts: see [NOTICE](NOTICE)
 - Fonts: BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic, [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt) for BIZ UDPMincho; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
-- The university logos in `themes/tml`, `themes/tcue`, `themes/wsd` and `themes/ohte` belong to their institutions and are not covered by the MIT license
+- No university or other institutional logos are included (the institutional themes were removed after 0.4.0; see [CHANGELOG.md](CHANGELOG.md)). A theme you add yourself, with its logos, is under its own terms

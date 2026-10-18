@@ -1,7 +1,0 @@
-{
-  "name": "ohte",
-  "extends": "default",
-  "logos": [
-    "logos/cover.png"
-  ]
-}

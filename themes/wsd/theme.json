@@ -1,7 +1,0 @@
-{
-  "name": "wsd",
-  "extends": "default",
-  "logos": [
-    "logos/cover.png"
-  ]
-}

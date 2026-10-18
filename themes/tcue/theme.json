@@ -1,7 +1,0 @@
-{
-  "name": "tcue",
-  "extends": "default",
-  "logos": [
-    "logos/cover.png"
-  ]
-}

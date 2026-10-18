@@ -1,8 +1,0 @@
-/* 長岡大手高等学校（校章グリーン #58B530）（marp-theme-academic の academic-ohte.css から移植）
-   基調色と強調色だけを指定し、淡色などは default と同じ式で導く */
-:root{
-  --base: #244715;              /* --color-highlight。校章グリーン #58B530 は淡色に使う */
-  --fg: #3E3A39;
-  --cover-bg: #F0F3EE;
-  --logo-h: 150px;
-}
