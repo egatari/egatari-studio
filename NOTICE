@@ -23,5 +23,5 @@ and saves WAV instead. Its browser TTS window loads onnxruntime-web
 (MIT), transformers.js (Apache-2.0) and kokoro-js (Apache-2.0) from jsDelivr, and model weights
 from Hugging Face (Irodori-TTS and Semantic-DACVAE: MIT; Kokoro-82M: Apache-2.0); these are
 not part of this repository.
-University logos under themes/*/logos/ belong to their respective institutions and are
-not licensed under MIT.
+This repository contains no institutional logos. A theme added by a user (in a deck's
+themes/ or a folder in EGATARI_THEMES) is under its own terms.

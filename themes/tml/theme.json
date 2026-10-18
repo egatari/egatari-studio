@@ -1,7 +1,0 @@
-{
-  "name": "tml",
-  "extends": "default",
-  "logos": [
-    "logos/cover.png"
-  ]
-}

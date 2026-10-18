@@ -577,7 +577,7 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
     assert.ok(PF.validateIndex(t).length > 0, `theme name ${JSON.stringify(name)}`);
     assert.equal(vIndex(t), false, `ajv theme name ${JSON.stringify(name)}`);
   }
-  const good = structuredClone(base); good.components[0].name = 'sweep'; good.themes = [{ name: 'tml', version: '0', sha256: 'a'.repeat(64), source: 'registry' }];
+  const good = structuredClone(base); good.components[0].name = 'sweep'; good.themes = [{ name: 'business', version: '0', sha256: 'a'.repeat(64), source: 'registry' }];
   assert.deepEqual(PF.validateIndex(good), []);
   // 原稿のフォルダの部品（embedded）の名前は仕様が決めない（ここでは読まない）
   const emb = structuredClone(good); emb.components[0] = { tag: 'm-hello', name: 'Hello World', version: 'local', sha256: 'a'.repeat(64), source: 'embedded', path: 'components/hello/index.js' };

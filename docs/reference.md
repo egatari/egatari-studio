@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=a1c86556b568196c -->
+<!-- i18n: pair=reference.ja.md sha256=2fec086ff6a71474 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -148,11 +148,11 @@ Built-in durations (`DECK.T`, seconds): fade 0.45, draw 0.7, drawSlow 1.4, drawD
 
 ## Themes
 
-Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as a path relative to the deck folder, then `<deck>/themes/<name>/`, then `themes/<name>/`; the folder must contain `tokens.css`. Before anything is read, `theme.json`, `tokens.css`, logos and every parent theme (`extends`, at any depth) must resolve, by real path, inside the theme's authorized root: the deck folder for a theme of the deck, `themes/` for a registry theme, the theme folder itself for one given with `--theme`. A parent may also come from `themes/`. Otherwise the build warns (`refused: …`) and does not read it; a refused deck theme falls back to `default` ([format spec](https://github.com/egatari/egatari-spec) §11). Deeper than 16 levels of `extends` is an error.
+Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as a path relative to the deck folder, then `<deck>/themes/<name>/`, then in your theme folders (each folder of `EGATARI_THEMES` in order, then `~/.egatari/themes` if it exists), then the bundled `themes/<name>/`; the folder must contain `tokens.css`. `EGATARI_THEMES` is a list of folders separated by the OS path delimiter (`:`, or `;` on Windows); a folder in it that does not exist is skipped with a warning. Before anything is read, `theme.json`, `tokens.css`, logos and every parent theme (`extends`, at any depth) must resolve, by real path, inside the theme's authorized root: the deck folder for a theme of the deck, `themes/` for a registry theme, the theme folder (its real path, computed once, so `~/.egatari/themes` may be a symbolic link) for a theme in your theme folders, the theme folder itself for one given with `--theme`. A parent may also come from your theme folders or `themes/`; `"extends": "default"` is the bundled `default` unless a theme folder has its own `default`. Otherwise the build warns (`refused: …`) and does not read it; a refused deck theme falls back to `default` ([format spec](https://github.com/egatari/egatari-spec) §11). A theme named by the deck (or by `extends`) that is found nowhere is not an error: the build warns `theme not found: "<name>" …` and uses `default` (or no parent); a `--theme` that is not found is an error. The editor app has no theme folders (it reads only the deck folder and its bundled themes), so a deck whose theme is in your theme folders shows that warning there; put the theme in the deck's `themes/` to use it in the editor. A portable file stores a theme from your theme folders as the deck's `themes/<name>/`, so it rebuilds with the same theme anywhere. Deeper than 16 levels of `extends` is an error.
 
 | `theme.json` field | Meaning |
 |---|---|
-| `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in `themes/`) |
+| `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in your theme folders, then in `themes/`) |
 | `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
 
@@ -283,7 +283,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `--port n` | default 8730; if taken, tries the next ones (up to 20). `--port 0`: any free port |
 | `--theme name` | same as the build option |
 | listens on | 127.0.0.1 only |
-| rebuilds on | deck file, `narration.md`, `timeline.json`, `macros.tex`, `audio/manifest.json`, `data/`, `figs/`, `components/`, and the repository's `kit/`, `components/`, `themes/`; the page reloads at the same slide and step |
+| rebuilds on | deck file, `narration.md`, `timeline.json`, `macros.tex`, `audio/manifest.json`, `data/`, `figs/`, `components/`, the repository's `kit/`, `components/`, `themes/`, and your theme folders (`EGATARI_THEMES`, `~/.egatari/themes`); the page reloads at the same slide and step |
 | dev build | no glyph subsetting (faster), `data-src` on editable elements, audio from `/deck/audio/…`, build errors shown as a page |
 | `e` | edit mode; double-click an `h1 h2 p li td th`, `.big .note .sub .venue .au .thm .box .lead` or a `span` in `.concl`; ⌘/Ctrl+Enter save, Esc cancel. A badge shows build warnings |
 | `n` | narration drawer for the current step (and preview of the next) |
@@ -375,7 +375,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 `node kit/build.mjs <deck.html> --portable` writes `out/<name>.ega.html`: one HTML file that plays like the normal build and also carries the deck's source, so it can be unpacked into a folder (or reopened by an editor) without the original folder. It follows **Egatari**, the open [portable deck format](https://github.com/egatari/egatari-spec) (draft 1.0); the file name extension, block ids and media type come from that spec.
 
 - **What goes in**: every file the build reads from the deck folder (`deck.html`, `narration.md`, `macros.tex`, `timeline.json`, data, figures, images, styles, deck-local components and themes), `voice.json` with local paths reduced to voice names, and the audio listed in `audio/manifest.json` for steps that exist in the narration (compressed to AAC as with `--embed-audio`; WAV with a warning if ffmpeg is missing). Each audio clip is stored once and the runtime plays it from there.
-- **What stays out**: `comments.json`, hidden files and folders (`.cache/`, `.git/`, `.env`, …), `out/`, `video/`, `bundle/`, `node_modules/`, backups, `*.local.json`, credentials, unused audio and the TTS cache files. A file the build read but that is excluded is reported. Components and themes from this repository are referenced by name, version and SHA-256 instead of being copied; a registry name is a single identifier (`^[a-z][a-z0-9-]{0,63}$`), and the reader refuses a file whose registry names are anything else (a path, `..`, uppercase).
+- **What stays out**: `comments.json`, hidden files and folders (`.cache/`, `.git/`, `.env`, …), `out/`, `video/`, `bundle/`, `node_modules/`, backups, `*.local.json`, credentials, unused audio and the TTS cache files. A file the build read but that is excluded is reported. Components and themes from this repository are referenced by name, version and SHA-256 instead of being copied (a theme from your theme folders, `EGATARI_THEMES` or `~/.egatari/themes`, is copied in as the deck's `themes/<name>/`); a registry name is a single identifier (`^[a-z][a-z0-9-]{0,63}$`), and the reader refuses a file whose registry names are anything else (a path, `..`, uppercase).
 - **Lesson id**: the first export creates `egatari.json` in the deck folder with a random `docId`; keep it with the deck so later exports keep the same id. Its optional `metadata` object may hold `license` (SPDX id or URL), `copyright`, `attribution`, `creators`, `description`, `accessibility`, `curriculum`, `completion`, `derivedFrom`, `authorship` and `audience`; `license`, `copyright` and `attribution` are also copied to the runtime metadata, so a play-only copy keeps them. Title and language come from `<title>` and `<html lang>`.
 - **Narration without script**: the file also contains the display text of every step as ordinary HTML (hidden while the deck runs), for archiving, search and accessibility.
 - **Extension lines** (`@x-<name>-<field> value`) are collected per step into the file's index.
@@ -481,3 +481,4 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `IRODORI_REF_DIR` | TTS | reference voice folder (`--ref-dir` wins) | `tts/voices/` |
 | `MOTION_YOMI` | TTS | reading dictionary (`--yomi` wins) | `tts/yomi.yaml` |
 | `CANON_DIR` | export-canon | canon repository (`--canon` wins) | none (check skipped) |
+| `EGATARI_THEMES` | build, check, dev server, portable | your theme folders, searched after the deck folder and before the bundled `themes/` ([Themes](#themes)); separated by `:` (`;` on Windows) | none; `~/.egatari/themes` is searched after them when it exists |

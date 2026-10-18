@@ -610,6 +610,13 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regTheme.get(name).set(P.relative(P.join(themeDir, name), p).split(P.sep).join('/'), readBytesVia(env, p));
+    } else {
+      // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの機械・編集アプリでも同じテーマで組み直せる）
+      const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
+      if (!u) continue;
+      const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
+      if (files[rp] || env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
+      files[rp] = readBytesVia(env, p);
     }
   }
   const entry = rel(P.resolve(srcPath));

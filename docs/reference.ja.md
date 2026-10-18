@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=053845887b13c029 -->
+<!-- i18n: pair=reference.md sha256=b40650645adf8279 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -148,11 +148,11 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ## テーマ
 
-決め方：`--theme` > `<html data-theme>` > `default`。名前は、原稿のフォルダからの相対パス → `<deck>/themes/<名前>/` → `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。`theme.json`・`tokens.css`・ロゴ・親のテーマ（`extends`、何段でも）は、読む前に、実体のパスがそのテーマの許した根の中にあることを確かめる：原稿のテーマなら原稿のフォルダ、部品庫のテーマなら `themes/`、`--theme` で選んだものならそのテーマのフォルダ。親は `themes/` からも取れる。外なら警告（`refused: …`）して読まず、原稿のテーマなら `default` にする（[format spec](https://github.com/egatari/egatari-spec) §11）。`extends` が 16 段より深ければ誤り。
+決め方：`--theme` > `<html data-theme>` > `default`。名前は、原稿のフォルダからの相対パス → `<deck>/themes/<名前>/` → 自分のテーマのフォルダ（`EGATARI_THEMES` のフォルダを順に、その後に `~/.egatari/themes` があれば）→ 同梱の `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。`EGATARI_THEMES` はフォルダの並びで、区切りは OS のもの（`:`、Windows は `;`）。ないフォルダは警告して飛ばす。`theme.json`・`tokens.css`・ロゴ・親のテーマ（`extends`、何段でも）は、読む前に、実体のパスがそのテーマの許した根の中にあることを確かめる：原稿のテーマなら原稿のフォルダ、部品庫のテーマなら `themes/`、自分のテーマのフォルダのテーマならそのフォルダ（実体のパスを 1 回だけ求める。`~/.egatari/themes` はシンボリックリンクでもよい）、`--theme` で選んだものならそのテーマのフォルダ。親は自分のテーマのフォルダと `themes/` からも取れる。`"extends": "default"` は、テーマのフォルダに自前の `default` がなければ同梱の `default`。外なら警告（`refused: …`）して読まず、原稿のテーマなら `default` にする（[format spec](https://github.com/egatari/egatari-spec) §11）。原稿（か `extends`）が選んだテーマがどこにもなければ誤りにせず、`theme not found: "<名前>" …` と警告して `default`（親はなし）で組む。`--theme` で選んで見つからないものは誤り。編集アプリには自分のテーマのフォルダがない（原稿のフォルダと同梱のテーマだけを読む）ので、テーマが自分のテーマのフォルダにあるデッキは、そこでこの警告を出す。編集アプリで使うなら、テーマを原稿の `themes/` に置く。持ち運べる 1 ファイルは、自分のテーマのフォルダのテーマを原稿の `themes/<名前>/` として入れるので、どこでも同じテーマで組み直せる。`extends` が 16 段より深ければ誤り。
 
 | `theme.json` の項目 | 意味 |
 |---|---|
-| `extends` | 親のテーマ：その `tokens.css` を先に置く（このテーマの隣 → `themes/` の順に探す） |
+| `extends` | 親のテーマ：その `tokens.css` を先に置く（このテーマの隣 → 自分のテーマのフォルダ → `themes/` の順に探す） |
 | `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
 
@@ -283,7 +283,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--port n` | 既定 8730。使われていれば次の番号を順に試す（20 回まで）。`--port 0` は空いている番号 |
 | `--theme 名前` | build と同じ |
 | 待ち受け | 127.0.0.1 だけ |
-| 組み直すきっかけ | 原稿、`narration.md`、`timeline.json`、`macros.tex`、`audio/manifest.json`、`data/`、`figs/`、`components/`、リポジトリの `kit/`、`components/`、`themes/`。同じスライド・段階のまま読み込み直す |
+| 組み直すきっかけ | 原稿、`narration.md`、`timeline.json`、`macros.tex`、`audio/manifest.json`、`data/`、`figs/`、`components/`、リポジトリの `kit/`、`components/`、`themes/`、自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）。同じスライド・段階のまま読み込み直す |
 | 開発用の build | 字を絞らない（速い）、直せる要素に `data-src`、音声は `/deck/audio/…`、組み立ての失敗は画面に出す |
 | `e` | 編集モード。`h1 h2 p li td th`、`.big .note .sub .venue .au .thm .box .lead`、`.concl` の中の `span` をダブルクリック。⌘/Ctrl+Enter で保存、Esc で取消。build の警告の数を札に出す |
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
@@ -375,7 +375,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 `node kit/build.mjs <deck.html> --portable` は `out/<名前>.ega.html` を書く。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
 
 - **入るもの**：build が原稿のフォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・原稿のフォルダの部品とテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち口述原稿にある段階のもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
-- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
+- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、原稿の `themes/<名前>/` として写す）。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
 - **教材の id**：初めての書き出しで、原稿のフォルダに乱数の `docId` を持つ `egatari.json` を作る。デッキと一緒に残す（次の書き出しも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **スクリプトなしで読める口述原稿**：全段階の表示用の文字を、ふつうの HTML としても入れる（デッキが動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）は段階ごとにファイルの索引に集める。
@@ -481,3 +481,4 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 | `CANON_DIR` | export-canon | canon のリポジトリ（`--canon` が優先） | なし（検査を飛ばす） |
+| `EGATARI_THEMES` | 組み立て・検査・開発サーバー・持ち運べる 1 ファイル | 自分のテーマのフォルダ。原稿のフォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=08592de3ec37a14c -->
+<!-- i18n: pair=README.md sha256=5f7a713c5299cbc6 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -104,7 +104,7 @@ npm run dev -- talks/mytalk/deck.html      # ブラウザで直す
 npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」になればよい
 ```
 
-`npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="tml">` か `--theme tml` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、検査も英語の規則になる。もっと作り込んだ見本は `examples/minimal/`。
+`npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、検査も英語の規則になる。もっと作り込んだ見本は `examples/minimal/`。
 
 新しいデッキのスライドにはどれも変わらない id（`<section class="slide" id="s-k3f9q2">`）があり、口述原稿の見出しがそれを指す（`## 見出し {#s-k3f9q2}`）。見出しを直しても、口述原稿・音声・秒数の対応は崩れない。id のない頃に作ったデッキは、一度 `npm run ids -- talks/mytalk` を打つ：id を付け、`narration.md`・`audio/manifest.json`・`timeline.json`・`comments.json` の鍵を付け替える（控えは `.cache/edits/`）。
 
@@ -240,14 +240,14 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-テーマはデッキの隣（`<デッキ>/themes/<名前>/`）にも置ける。同梱：`default`（中立）、`business`（中立。ビジネス・ピッチ向けの紺と橙、ロゴなし）、`kokugo`（明朝。国語向け）と、機関のテーマ `tml` `tcue` `wsd` `ohte`（大学のロゴを含む。ライセンスの節を参照）。
+テーマはデッキの隣（`<デッキ>/themes/<名前>/`）にも置ける。自分のテーマのフォルダにも置ける：`EGATARI_THEMES` にフォルダの並び（区切りは `:`、Windows は `;`）を書くか、`~/.egatari/themes`（シンボリックリンクでもよい）を使う。探す順は 原稿のフォルダ → その `themes/` → 自分のテーマのフォルダ → 同梱の `themes/`（[リファレンス](docs/reference.ja.md#テーマ)）。編集アプリは自分のテーマのフォルダを読めない：テーマを原稿の `themes/` に置く。置かなければ、見つからないテーマの名前を言う警告を出して `default` で組む。持ち運べる 1 ファイルは、そのテーマを中に持つ。同梱：`default`（中立）、`business`（中立。ビジネス・ピッチ向けの紺と橙、ロゴなし）、`kokugo`（明朝。国語向け）。機関のテーマとロゴは同梱しない。
 
 ## 見本
 
 | 見本 | 内容 |
 |---|---|
 | [`examples/minimal`](examples/minimal) | 日本語・6 枚（勾配降下法）。段階、KaTeX と `\hlE`、`{mark}`、`data-morph`、`m-sweep`、全段階の口述原稿。作り込んだ見本（新しいデッキの雛形は `npm run new` で作る） |
-| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。デッキ専用の部品（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `tml` |
+| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。デッキ専用の部品（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `default` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | 日本語・10 枚（架空の会社「株式会社レポミル」（報告書の下書きを作る SaaS）のピッチ）。`m-kpi`、`m-flow`（お金の流れと `pulse`）、`m-bars`（軸の広がり）、`m-quad`、`m-market`、テーマ `business`、スクリプトで書いたデータ（`scripts/` `data/`）。社名・製品・数字はすべて架空 |
 | [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | 日本語・11 枚（国語の授業）。`m-menu` の目次（各部へのリンクと「戻る」）、`m-kanbun` の漢文（『史記』、孟浩然「春暁」、杜甫「春望」、『論語』）、`m-kobun` の『枕草子』、`m-gendai` の現代文（見本のために書いた文章、縦書き）、テーマ `kokugo` |
 
@@ -310,6 +310,6 @@ node tools/test-app.mjs                                            # 編集ア�
 
 ## ライセンス
 
-- コード：[MIT](LICENSE)、Copyright (c) 2026 Gendo Kumoi。フォント・KaTeX のフォント・ロゴは [NOTICE](NOTICE) を参照
+- コード：[MIT](LICENSE)、Copyright (c) 2026 Gendo Kumoi。フォントと KaTeX のフォントは [NOTICE](NOTICE) を参照
 - 字：BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3 は SIL Open Font License 1.1（BIZ UDPゴシックは [fonts/OFL.txt](fonts/OFL.txt)、BIZ UDP明朝は [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt)、`@fontsource` のパッケージにはそれぞれのライセンスのファイルがある）。組んだデッキはこれらの一部を埋め込む。KaTeX とその字は MIT
-- `themes/tml` `themes/tcue` `themes/wsd` `themes/ohte` の大学のロゴは各機関のもので、MIT ライセンスの対象外
+- 大学などの機関のロゴは含まない（機関のテーマは 0.4.0 の後に外した。[CHANGELOG.md](CHANGELOG.md)）。自分で足したテーマとそのロゴは、それぞれの条件に従う

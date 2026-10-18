@@ -19,6 +19,7 @@ import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isS
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
 import { normPin } from '../kit/core/comment-core.mjs';
+import { userThemeDirs } from '../kit/theme-dirs.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -214,6 +215,8 @@ for (const d of ['kit', 'components', 'themes']) {
   if (abs === DIR || DIR.startsWith(abs + path.sep)) continue;
   watch(abs, null, d === 'kit');
 }
+// 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes。kit/theme-dirs.mjs）：変われば組み直す
+for (const d of userThemeDirs()) watch(d, null, false);
 
 // ---------------------------------------------------------------- 原稿の書き換え
 // 控えは .cache/edits の中に、掃除はそこの控えの名前のファイルだけ（フォルダがリンクなら控えを書かず、何も消さずに断る）

@@ -295,24 +295,33 @@ function fontCssGothic(env, text, subset, lang) {
 // テーマのファイル（theme.json・tokens.css・ロゴ）と親のテーマ（extends、何段でも）は、読む前に許した根（authorized root）の中にあるかを
 // 確かめる（env.within は Node では実体のパスで比べるので、外を指すシンボリックリンクは外に数える。format spec §11）。根は
 //   原稿のフォルダのテーマ：原稿のフォルダ　　部品庫のテーマ（リポジトリの themes/）：themes/　　--theme で呼び出した人が選んだ外の場所：そのテーマのフォルダ
-// で、親のテーマはその根か themes/ の中だけを探す（根は継承の間ずっと運ぶ。原稿のフォルダのテーマの extends で外へ出ない）
-// 返すもの：{dir, root}。root === null は呼び出した人が選んだもの（--theme）。外に出るものしかなければ null（warn に知らせる）
-function resolveTheme(env, name, baseDir, root, warn) {
+//   利用者のテーマのフォルダ（env.themeDirs：EGATARI_THEMES・~/.egatari/themes。kit/theme-dirs.mjs が実体のパスにしたもの）：そのフォルダ
+// 探す順は 原稿のフォルダ → その themes/ → 利用者のテーマのフォルダ（並びの順）→ 同梱の themes/
+// 親のテーマはその根か利用者のテーマのフォルダか themes/ の中だけを探す（根は継承の間ずっと運ぶ。原稿のフォルダのテーマの extends で外へ出ない）
+// 返すもの：{dir, root}。root === null は呼び出した人が選んだもの（--theme）。外に出るものしかなければ null（warn に知らせる）。
+// どこにもなければ null と見つからない知らせ（missing の配列に名前を入れる）。missing を渡さなければ投げる
+function resolveTheme(env, name, baseDir, root, warn, ud = [], missing = null) {
   const P = env.path, reg = P.join(env.ROOT, 'themes');
-  const cands = [P.resolve(baseDir, name), P.join(baseDir, 'themes', name), P.join(reg, name)];
+  const cands = [P.resolve(baseDir, name), P.join(baseDir, 'themes', name), ...ud.map((u) => P.join(u, name)), P.join(reg, name)];
   let refused = false;
   for (const d of cands) {
     const tok = P.join(d, 'tokens.css');
     if (!env.exists(tok)) continue;
     const ok = (r) => env.within(d, r) && env.within(tok, r);
-    const r = ok(reg) ? reg : root && ok(root) ? root : root === null ? (env.within(tok, d) ? d : null) : null;
+    const r = ok(reg) ? reg : root && ok(root) ? root : ud.find(ok) || (root === null ? (env.within(tok, d) ? d : null) : null);
     if (!r) { refused = true; continue; }
     return { dir: d, root: r };
   }
-  if (refused) { warn.push(`refused: テーマ「${name}」は許した場所（原稿のフォルダ・themes/）の外にある（シンボリックリンクなど。読まない）`); return null; }
+  if (refused) { warn.push(`refused: テーマ「${name}」は許した場所（原稿のフォルダ・利用者のテーマのフォルダ・themes/）の外にある（シンボリックリンクなど。読まない）`); return null; }
+  if (missing) { missing.push(name); return null; }
   throw new Error(`theme not found: ${name}`);
 }
-function themeAssets(env, t, warn, depth = 0) {
+// 見つからないテーマの知らせ（原稿の data-theme・extends）：既定のテーマで組む。編集アプリ（env.themeDirs がない）は利用者のテーマのフォルダを読めない
+function missingThemeWarning(env, name, used) {
+  const where = env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
+  return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：原稿のフォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}原稿のフォルダの themes/${name}/ に置く`;
+}
+function themeAssets(env, t, warn, depth = 0, ud = []) {
   const P = env.path, { dir, root } = t;
   if (depth > 16) throw new Error(`theme: extends is nested too deeply (${dir})`);
   const inRoot = (f) => env.within(f, root) && env.within(f, dir);
@@ -323,9 +332,11 @@ function themeAssets(env, t, warn, depth = 0) {
     else warn.push(`refused: テーマの theme.json（${P.basename(dir)}）が許した場所の外を指している（読まない）`);
   }
   // "extends" なら、親の tokens.css を先に置き、差分だけを上書きする。logos を書かなければ親のロゴを使う（"logos": [] で消せる）
-  // 親はこのテーマの根の中か themes/ の中だけ（呼び出した人が選んだテーマなら、そのフォルダの中か themes/）
-  const pt = cfg.extends ? resolveTheme(env, String(cfg.extends), P.dirname(dir), root, warn) : null;
-  const par = pt ? themeAssets(env, pt, warn, depth + 1) : null;
+  // 親はこのテーマの根の中か利用者のテーマのフォルダか themes/ の中だけ（呼び出した人が選んだテーマなら、そのフォルダの中か利用者のテーマのフォルダか themes/）
+  const miss = [];
+  const pt = cfg.extends ? resolveTheme(env, String(cfg.extends), P.dirname(dir), root, warn, ud, miss) : null;
+  if (miss.length) warn.push(missingThemeWarning(env, miss[0], `「${P.basename(dir)}」（親のテーマなし）`));
+  const par = pt ? themeAssets(env, pt, warn, depth + 1, ud) : null;
   const logos = cfg.logos ? cfg.logos.filter((f) => {
     const p = P.join(dir, String(f));
     if (!env.exists(p)) return false;
@@ -599,9 +610,14 @@ export function build(env0, srcPath, opts = {}) {
   // テーマ：引数 → <html data-theme> → default
   let themeName = opts.theme || html.match(/<html[^>]*\sdata-theme="([^"]+)"/)?.[1] || 'default';
   // 原稿が選んだテーマの根は原稿のフォルダ（themes/ も）。外へ出るものなら読まずに既定のテーマ（themes/default）にする
-  let tsel = resolveTheme(env, themeName, deckDir, opts.theme ? null : deckDir, warn);
+  // 利用者のテーマのフォルダ（Node：EGATARI_THEMES・~/.egatari/themes）は 1 回だけ求める。--theme で選んで見つからないものは投げる（今までどおり）
+  const ud = Array.isArray(env0.themeDirs) ? env0.themeDirs : [];
+  for (const m of ud.missing || []) warn.push(`EGATARI_THEMES: フォルダ「${m}」が見つからない（飛ばす）`);
+  const miss = opts.theme ? null : [];
+  let tsel = resolveTheme(env, themeName, deckDir, opts.theme ? null : deckDir, warn, ud, miss);
+  if (miss && miss.length) warn.push(missingThemeWarning(env0, themeName, 'default'));
   if (!tsel) { themeName = 'default'; tsel = resolveTheme(env, 'default', P.join(ROOT, 'themes'), P.join(ROOT, 'themes'), warn); }
-  const theme = themeAssets(env, tsel, warn);
+  const theme = themeAssets(env, tsel, warn, 0, ud);
   if (theme.logos.length) {
     // ロゴの data: URI（読む前に数えた）を表紙ごとに入れる：つなぐ前に、増える大きさを組んだ文書の上限に数える
     budget.reset(html.length);

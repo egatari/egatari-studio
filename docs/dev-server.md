@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=0f81003086e42f0f -->
+<!-- i18n: pair=dev-server.ja.md sha256=8ae31a48367ee712 -->
 # Dev server (fix the deck in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -12,11 +12,11 @@ To do the same without Node, use the [editor app](editor.md) (Chrome / Edge).
 
 ```bash
 node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
-npm run dev -- path/to/deck.html --port 5174 --theme tml
+npm run dev -- path/to/deck.html --port 5174 --theme business
 ```
 
 It watches the deck folder (deck.html, narration.md, timeline.json, macros.tex, data/, figs/, components/, audio/manifest.json)
-and the repository's kit/, components/ and themes/ (a folder of the deck that is a symbolic link is not watched; the server warns once). When something changes it rebuilds and reloads the page (staying on the same slide and step).
+the repository's kit/, components/ and themes/, and your theme folders (EGATARI_THEMES, ~/.egatari/themes) (a folder of the deck that is a symbolic link is not watched; the server warns once). When something changes it rebuilds and reloads the page (staying on the same slide and step).
 When the build fails, the error is shown on the page. Fix it and save, and the deck comes back.
 `?presenter=1`, `?mode=lecture` and the like work as usual. Audio is read from `/deck/audio/…`.
 

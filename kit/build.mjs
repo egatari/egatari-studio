@@ -29,6 +29,7 @@ import { exportPortable, playOnly } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat } from './bounded-read.mjs';
+import { userThemeDirs } from './theme-dirs.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -125,6 +126,8 @@ export const nodeEnv = {
   // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）。通常のファイルでなければ NotRegularFileError
   size: (p) => regularStat(p).size,
   within,
+  // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes。kit/theme-dirs.mjs）：読むたびに求め直す（組み立てが 1 回だけ読む）
+  get themeDirs() { return userThemeDirs(); },
   subset: subsetCss,
   compressAudio,
   audioFailed: () => !!compressAudio.failed,

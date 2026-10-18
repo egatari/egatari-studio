@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=4e17c43344081bf1 -->
+<!-- i18n: pair=editor.ja.md sha256=ecae3d5c356b142f -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -114,7 +114,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 - **Audio panel in the editor app only.** The dev server has no Audio panel (open the folder in the editor app, or use `tts/synth.py`). Browser TTS needs WebGPU and the hosted or served editor.
 - **Bigger exports.** The command-line build can subset the Japanese font with fonttools (`node tools/get-fonts.mjs`); the browser cannot, so the editor embeds the matching font files whole (as the command line does without the TTF files). `examples/minimal` is about 2.0 MB from the editor and 0.7 MB from `npm run build` with subsetting. The deck looks the same.
 - **No Mincho in the single file.** The hosted editor includes BIZ UDPMincho (loaded only for decks that use it, such as theme `kokugo`); the single file `dist/editor.html` does not, to stay small. There a Mincho deck builds with a warning and shows the viewer's own Mincho font.
-- **Bundled parts.** Components (`components/`), themes (`themes/`) and the runtime (`kit/`) of the repository are the ones bundled when the editor was built. Components and themes inside the deck folder (`components/<name>/index.js`, `themes/<name>/`) are read from the folder as usual.
+- **Bundled parts.** Components (`components/`), themes (`themes/`) and the runtime (`kit/`) of the repository are the ones bundled when the editor was built. Components and themes inside the deck folder (`components/<name>/index.js`, `themes/<name>/`) are read from the folder as usual. The editor cannot read your theme folders (`EGATARI_THEMES`, `~/.egatari/themes`): a deck whose theme is only there builds with `default` and the warning `theme not found: "<name>"`; put the theme in the deck's `themes/<name>/` (a portable file made with `npm run build -- --portable` already carries it there).
 - **Not read:** names starting with `.`, and the `out/`, `audio/`, `video/`, `bundle/` and `node_modules/` folders (up to 3000 files, 10 levels deep). `audio/` is read only to export a portable file.
 - **Rebuilds are not compared yet.** A save that rebuilds (after a slide edit) builds the whole file again with the bundled kit, so a file made by an older or newer build changes outside the edited parts, and fonts are embedded whole. The editor does not yet show which slides changed besides the edited ones.
 - **Font supplements err on the side of more.** For a file whose subset fonts declare no `unicode-range` (made on the command line by an earlier version), the editor knows only that the characters of the original narration are covered, so it may add font files for characters the subset already had (the file grows a little; it never lacks a glyph).
