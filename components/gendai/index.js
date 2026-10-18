@@ -65,7 +65,11 @@ if (!D.MotionElement) return;   // 試験（Node）では読み取りだけ
 // ---------------------------------------------------------------- 部品
 var ROLE_COLOR = function(role){ return /主張|結論|筆者/.test(role) ? "var(--emph)" : /対比|反論|対立/.test(role) ? "var(--accent2)" : /具体|例/.test(role) ? "var(--term)" : "var(--muted)"; };
 var PH = ["marks", "refs", "roles"];
-var LANE = 64;   // 枠をつなぐ線の通り道（縦書きは上、横書きは左）の幅
+// 枠をつなぐ線は札（枠の上の名前）から札へ、札と枠の外の通り道（縦書きは札の上、横書きは札の左）を通す。
+// 通り道は線ごとに段（level）を分け、間の段落を越える線ほど外の段を通る。段の数だけ場所を空ける（線が札や枠に重ならないように）
+var CHIP = 34;              // 札の高さ
+var STUB = 22, STEP = 16;   // 札から 1 段目までの距離、段の間
+var LH_TATE = 2.4;          // 縦書きの行の送り（傍線と記号 A の入る列の間を空ける）
 D.define("m-gendai", class extends D.MotionElement {
   static props = {
     size:   {type: "number", default: 28, doc: "本文の字の大きさ（px）"},
@@ -93,10 +97,27 @@ D.define("m-gendai", class extends D.MotionElement {
     this.style.display = "block"; this.style.position = "relative";
     this.style.fontFamily = "var(--font-mincho)";
     var W =this.clientWidth || 1184, H = this.clientHeight || 440;
+    var roles = m.paras.some(function(p){ return p.role; });
+    // つなぐ線の段：つなぐ段落の間の短いものから順に、重なる線より 1 つ外の段へ
+    var pIdx = {};
+    m.paras.forEach(function(p, i){ if (p.id) pIdx[p.id] = i; });
+    var spans = m.paras.map(function(p, i){ return p.to && pIdx[p.to] !== undefined ? {i: i, lo: Math.min(i, pIdx[p.to]), hi: Math.max(i, pIdx[p.to])} : null; }).filter(Boolean)
+      .sort(function(a, b){ return (a.hi - a.lo) - (b.hi - b.lo) || a.lo - b.lo; });
+    var levelOf = {}, placed = [], nLev = 0;
+    spans.forEach(function(o){
+      var lv = 1;
+      placed.forEach(function(q){ if (q.lo < o.hi && o.lo < q.hi) lv = Math.max(lv, q.lv + 1); });
+      o.lv = lv; placed.push(o); levelOf[o.i] = lv; nLev = Math.max(nLev, lv);
+    });
+    this.nLev = nLev;
+    // 通り道と札の場所：縦書きは上に（札 + 段）、横書きは左に（段）と上に（札）
+    var lane = nLev ? STUB + (nLev - 1) * STEP + 10 : 0;
+    this.padTop = tate ? (roles ? CHIP + lane + 10 : 20) : (roles ? CHIP + 10 : 20);
+    this.padLeft = tate ? 0 : (nLev ? lane - 2 : 4);
     // 重ね順：塗り（指す先の淡い色）→ 字 → 線・枠・矢印
     this.back = D.el("svg", {width: W, height: H, viewBox: "0 0 " + W + " " + H, style: "position:absolute;left:0;top:0;overflow:visible;pointer-events:none"}, this);
     var text = document.createElement("div");
-    text.style.cssText = "position:absolute;inset:0;font-size:" + P.size + "px;line-height:1.85;" + (tate ? "writing-mode:vertical-rl;padding-top:" + LANE + "px;" : "padding-left:" + LANE + "px;padding-top:20px;");
+    text.style.cssText = "position:absolute;inset:0;font-size:" + P.size + "px;line-height:" + (tate ? LH_TATE : 1.85) + ";padding-top:" + this.padTop + "px;" + (tate ? "writing-mode:vertical-rl;" : "padding-left:" + this.padLeft + "px;");
     this.appendChild(text);
     this.front = D.el("svg", {width: W, height: H, viewBox: "0 0 " + W + " " + H, style: "position:absolute;left:0;top:0;overflow:visible;pointer-events:none"}, this);
     this.text = text;
@@ -104,7 +125,8 @@ D.define("m-gendai", class extends D.MotionElement {
     this.paras = m.paras.map(function(p, pi){
       var d = document.createElement("div");
       // 枠の内側の余白と、段落の間（枠の名前の札が入る）
-      d.style.cssText = "padding:10px 14px;text-indent:1em;" + (tate ? "margin:0 0 0 22px;" : "margin:0 0 22px 0;");
+      // 横書きは次の段落の札が前の枠に掛からないように空ける
+      d.style.cssText = "padding:10px 14px;text-indent:1em;" + (tate ? "margin:0 0 0 22px;" : "margin:0 0 " + (roles ? CHIP + 12 : 22) + "px 0;");
       text.appendChild(d);
       var P2 = {p: p, el: d, spans: []};
       p.runs.forEach(function(r){
@@ -147,7 +169,7 @@ D.define("m-gendai", class extends D.MotionElement {
     });
     this.links = this.paras.filter(function(P2){ return P2.p.to && pById[P2.p.to]; }).map(function(P2){
       var c = P2.p.rel === "~" ? "var(--accent2)" : "var(--muted)";
-      return {a: P2, b: pById[P2.p.to], rel: P2.p.rel, c: c,
+      return {a: P2, b: pById[P2.p.to], rel: P2.p.rel, c: c, lv: levelOf[self.paras.indexOf(P2)] || 1,
         path: D.el("path", {fill: "none", stroke: c, "stroke-width": 2.5, "stroke-dasharray": P2.p.rel === "~" ? "none" : "none", pathLength: 1}, self.front),
         h1: D.el("path", {d: "M0,0L-13,-6.5L-13,6.5Z", fill: c, opacity: 0}, self.front),
         h0: P2.p.rel === "~" ? D.el("path", {d: "M0,0L-13,-6.5L-13,6.5Z", fill: c, opacity: 0}, self.front) : null};
@@ -193,7 +215,8 @@ D.define("m-gendai", class extends D.MotionElement {
       if (o.lab && rs.length){
         var r0 = rs[0];
         // 記号（A など）は線の始まりの外：縦書きは線の右の列の間で始まりより上、横書きは線の下の行の間
-        if (tate){ o.lab.setAttribute("x", f1(r0.r + 3 + o.r.line * 5 + 9)); o.lab.setAttribute("y", f1(r0.t + 2)); }
+        // 縦書きは線のすぐ右（列の間の、自分の列に寄ったところ）に、線の始まりから下へ
+        if (tate){ o.lab.setAttribute("x", f1(r0.r + 3 + o.r.line * 5 + 7)); o.lab.setAttribute("y", f1(r0.t + 22)); }
         else { o.lab.setAttribute("x", f1(r0.l + 10)); o.lab.setAttribute("y", f1(r0.b + 3 + o.r.line * 5 + 20)); }
         o.lab.setAttribute("opacity", pr(tm, j * P.draw * 0.8, 0.3).toFixed(3));
       }
@@ -216,6 +239,13 @@ D.define("m-gendai", class extends D.MotionElement {
       else if (tate){ x0 = ac.x; y0 = A.t - 4; x1 = (Bn.l + Bn.r) / 2; y1 = Bn.t - 4; cx = (x0 + x1) / 2; cy = Math.min(y0, y1) - 60; }
       else if (same){ x0 = ac.x; y0 = A.t - 2; x1 = (Bn.l + Bn.r) / 2; y1 = Bn.t - 2; cx = (x0 + x1) / 2; cy = Math.min(y0, y1) - 46; }
       else { var above = Bn.b <= A.t; x0 = ac.x; y0 = above ? A.t - 2 : A.b + 2; x1 = (Bn.l + Bn.r) / 2; y1 = above ? Bn.b + 2 : Bn.t - 2; cx = (x0 + x1) / 2 + 40; cy = (y0 + y1) / 2; }
+      // 指示語と指す先が同じ段落なら、弧の膨らみをその段落の枠の内側にとどめる（2 次曲線の頂は端と制御点の中ほど）
+      var para = o.from.parentNode === o.to.parentNode ? self.box(o.from.parentNode) : null, pad = 6;
+      if (para){
+        var mid = function(a, b){ return (a + b) / 2; };
+        if (cy < mid(y0, y1)) cy = Math.max(cy, 2 * (para.t + pad) - mid(y0, y1));
+        if (cx > mid(x0, x1)) cx = Math.min(cx, 2 * (para.r - pad) - mid(x0, x1));
+      }
       o.path.setAttribute("d", "M" + f1(x0) + "," + f1(y0) + "Q" + f1(cx) + "," + f1(cy) + " " + f1(x1) + "," + f1(y1));
       o.path.setAttribute("stroke-dashoffset", (1 - ea).toFixed(4));
       o.path.setAttribute("opacity", ea > 0 ? 1 : 0);
@@ -224,7 +254,7 @@ D.define("m-gendai", class extends D.MotionElement {
     });
     // ---- 段落の枠：順に囲み、札を出し、最後につなぐ線
     var nb = this.boxes.length, tLink = nb * 0.35 + P.draw;
-    var boxOf = {};
+    var boxOf = {}, chipOf = {};
     this.boxes.forEach(function(o, j){
       var e = pr(tro, j * 0.35, P.draw), el = o.P2.el;
       var x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight;
@@ -239,21 +269,41 @@ D.define("m-gendai", class extends D.MotionElement {
       o.cr.setAttribute("x", f1(cx - tw / 2)); o.cr.setAttribute("y", f1(cy - 17)); o.cr.setAttribute("width", tw);
       o.ct.setAttribute("x", f1(cx)); o.ct.setAttribute("y", f1(cy + 8.5));
       o.chip.setAttribute("opacity", pr(tro, j * 0.35 + P.draw * 0.5, 0.3).toFixed(3));
+      chipOf[o.P2.p.id || j] = {l: cx - tw / 2, r: cx + tw / 2, t: cy - 17, b: cy + 17, at: []};
+    });
+    // 札に付く線の端：縦書きは札の上の辺に左から、横書きは札の左の辺に上から並べる。
+    // 相手が左（上）にある線を先に、段の低い順に。相手が右（下）にある線は後に、段の高い順に（縦の線が横の線を横切らないように）
+    var ends = [];
+    this.links.forEach(function(o){
+      var A = chipOf[o.a.p.id], B = chipOf[o.b.p.id];
+      if (!A || !B) return;
+      var ca = tate ? (A.l + A.r) / 2 : (A.t + A.b) / 2, cb = tate ? (B.l + B.r) / 2 : (B.t + B.b) / 2;
+      o.ea = {link: o, chip: A, dir: cb < ca ? -1 : 1}; o.eb = {link: o, chip: B, dir: ca < cb ? -1 : 1};
+      A.at.push(o.ea); B.at.push(o.eb); ends.push(A, B);
+    });
+    ends.forEach(function(C){
+      if (C.done) return; C.done = true;
+      C.at.sort(function(p, q){ return p.dir !== q.dir ? p.dir - q.dir : p.dir < 0 ? p.link.lv - q.link.lv : q.link.lv - p.link.lv; });
+      var n = C.at.length;
+      C.at.forEach(function(e, i){
+        if (tate){ e.x = C.l + (C.r - C.l) * (i + 1) / (n + 1); e.y = C.t - 1; }
+        else { e.x = C.l - 1; e.y = C.t + (C.b - C.t) * (i + 1) / (n + 1); }
+      });
     });
     this.links.forEach(function(o){
-      var A = boxOf[o.a.p.id], B = boxOf[o.b.p.id];
-      if (!A || !B){ o.path.setAttribute("opacity", 0); return; }
-      var e = pr(tro, tLink, P.draw), d, ang1, ang0, x0, y0, x1, y1;
+      if (!o.ea){ o.path.setAttribute("opacity", 0); o.h1.setAttribute("opacity", 0); if (o.h0) o.h0.setAttribute("opacity", 0); return; }
+      var e = pr(tro, tLink, P.draw), d, ang1, ang0, x0 = o.ea.x, y0 = o.ea.y, x1 = o.eb.x, y1 = o.eb.y, rr = 8;
       if (tate){
-        // 枠の上の辺の真ん中から上の通り道へ出て、相手の枠の上の辺の真ん中へ
-        x0 = A.x + A.w / 2; x1 = B.x + B.w / 2; y0 = A.y - 2; y1 = B.y - 2;
-        var yl = Math.min(y0, y1) - LANE + 18;
-        d = "M" + f1(x0) + "," + f1(y0) + "C" + f1(x0) + "," + f1(yl) + " " + f1(x1) + "," + f1(yl) + " " + f1(x1) + "," + f1(y1);
+        // 札の上の辺から上へ出て、段の高さを横に通り、相手の札の上の辺へ下りる（角は丸める）
+        var top = Math.min(o.ea.chip.t, o.eb.chip.t), yl = top - STUB - (o.lv - 1) * STEP, sx = x1 < x0 ? -1 : 1;
+        d = "M" + f1(x0) + "," + f1(y0) + "V" + f1(yl + rr) + "Q" + f1(x0) + "," + f1(yl) + " " + f1(x0 + sx * rr) + "," + f1(yl) +
+          "H" + f1(x1 - sx * rr) + "Q" + f1(x1) + "," + f1(yl) + " " + f1(x1) + "," + f1(yl + rr) + "V" + f1(y1);
         ang1 = 90; ang0 = 90;
       } else {
-        x0 = A.x - 2; x1 = B.x - 2; y0 = A.y + A.h / 2; y1 = B.y + B.h / 2;
-        var xl = Math.min(x0, x1) - LANE + 14;
-        d = "M" + f1(x0) + "," + f1(y0) + "C" + f1(xl) + "," + f1(y0) + " " + f1(xl) + "," + f1(y1) + " " + f1(x1) + "," + f1(y1);
+        // 札の左の辺から左へ出て、段の位置を縦に通り、相手の札の左の辺へ
+        var lft = Math.min(o.ea.chip.l, o.eb.chip.l), xl = lft - STUB - (o.lv - 1) * STEP, sy = y1 < y0 ? -1 : 1;
+        d = "M" + f1(x0) + "," + f1(y0) + "H" + f1(xl + rr) + "Q" + f1(xl) + "," + f1(y0) + " " + f1(xl) + "," + f1(y0 + sy * rr) +
+          "V" + f1(y1 - sy * rr) + "Q" + f1(xl) + "," + f1(y1) + " " + f1(xl + rr) + "," + f1(y1) + "H" + f1(x1);
         ang1 = 0; ang0 = 0;
       }
       o.path.setAttribute("d", d);

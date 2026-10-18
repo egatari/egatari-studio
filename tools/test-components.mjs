@@ -1,7 +1,7 @@
 // 部品の見本（components/<名前>/demo.html）を組んで、ブラウザで動かして確かめる
 //   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
 // 確かめること：コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
-// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること
+// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること／m-gendai の線（つなぐ線・指示語の矢印・傍線）が自分の端のほかで札に入らず、段落の枠の辺を横切らないこと
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -111,6 +111,31 @@ for (const name of names) {
             if (!d || d.c.col !== e.c.col || Array.from(e.c.okuri).length < 3 || d.c.ruby || e.c.punct || e.c.join || e.c.mark || e.c.re || e.c.second !== null) return;
             if (Math.abs(d.y - e.y - S * 1.2) > 0.5) out.push(`kanbun: long okuri ${e.c.ch}(${e.c.okuri}) pushed ${d.c.ch} by ${(d.y - e.y - S * 1.2).toFixed(1)}px`);
           });
+        }
+        // m-gendai：線（つなぐ線・指示語の矢印・傍線）は、自分の端のほかでは札（rect）に入らず、段落の枠の辺を横切らない
+        for (const c of sl._comps.filter((x) => x.localName === 'm-gendai' && x.boxes)) {
+          const chips = c.boxes.filter((o) => vis(o.chip)).map((o) => ({ s: o.P2.p.role, r: o.cr.getBoundingClientRect() }));
+          const frames = c.boxes.filter((o) => vis(o.rect) && +o.rect.getAttribute('opacity') > 0).map((o) => ({ s: o.P2.p.role, r: o.rect.getBoundingClientRect() }));
+          const strokes = [...c.links.map((o) => ['link ' + o.a.p.id + o.rel + o.b.p.id, o.path]), ...c.refs.map((o, j) => ['ref ' + j, o.path]),
+            ...c.lines.flatMap((o, j) => [...o.g.querySelectorAll('line')].map((e) => ['line ' + j, e]))];
+          for (const [name, e] of strokes) {
+            if (!vis(e) || e.getAttribute('opacity') === '0') continue;
+            const L = e.getTotalLength(), M = e.getScreenCTM();
+            if (!L || !M) continue;
+            const pt = (d) => { const q = e.getPointAtLength(d); return { x: M.a * q.x + M.c * q.y + M.e, y: M.b * q.x + M.d * q.y + M.f }; };
+            const A = pt(0), B = pt(L), hit = new Set();
+            for (let d = 0; d <= L; d += 2) {
+              const q = pt(d);
+              if (Math.hypot(q.x - A.x, q.y - A.y) < 5 || Math.hypot(q.x - B.x, q.y - B.y) < 5) continue;
+              for (const ch of chips) if (q.x > ch.r.left - 2 && q.x < ch.r.right + 2 && q.y > ch.r.top - 2 && q.y < ch.r.bottom + 2) hit.add(`gendai: ${name} crosses the label ${ch.s}`);
+              for (const f of frames) {
+                const r = f.r, inX = q.x > r.left - 2 && q.x < r.right + 2, inY = q.y > r.top - 2 && q.y < r.bottom + 2;
+                const nearV = inY && (Math.abs(q.x - r.left) < 2 || Math.abs(q.x - r.right) < 2), nearH = inX && (Math.abs(q.y - r.top) < 2 || Math.abs(q.y - r.bottom) < 2);
+                if (nearV || nearH) hit.add(`gendai: ${name} crosses the frame of ${f.s}`);
+              }
+            }
+            out.push(...hit);
+          }
         }
         return out;
       }, s.i);
