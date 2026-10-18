@@ -76,7 +76,8 @@ for (const f of fs.readdirSync(path.join(kdir, 'fonts')).filter((x) => x.endsWit
 const text = `// 生成したファイル（node tools/katex-ranges.mjs）。手で直さない。KaTeX の字（woff2）の cmap が持つ字の範囲（unicode-range の値）\n` +
   `export const KATEX_RANGES = Object.freeze(${JSON.stringify({ version, fonts }, null, 1)});\n`;
 if (process.argv.includes('--check')) {
-  const same = fs.existsSync(OUT) && fs.readFileSync(OUT, 'utf8') === text;
+  // 改行は比べない（Windows の git は CRLF で取り出すことがある。中身の範囲だけを比べる）
+  const same = fs.existsSync(OUT) && fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') === text;
   console.log(same ? `kit/core/katex-ranges.mjs matches KaTeX ${version}` : `kit/core/katex-ranges.mjs is out of date for KaTeX ${version}: run node tools/katex-ranges.mjs`);
   process.exit(same ? 0 : 1);
 }
