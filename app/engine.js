@@ -3,12 +3,12 @@
 //   /repo/…   アプリに同梱した kit/ components/ themes/ katex/ fonts/（tools/build-app.mjs が集める）
 // build は同期で動くので、まだ読んでいないファイルは「足りない」と記録して空を返し、読んでから組み直す。
 // 作業場所から読むのは、組み立てが実際に参照したファイルだけ（一覧のほかのファイルは読まない）。同時に読むのは READ_CONCURRENCY まで、
-// 組み立て 1 回に読む大きさの合計は上限（BUILD_LIMITS.readChars）まで（読む前に一覧の大きさで数える）。opts.signal が止まれば
+// 組み立て 1 回に読む大きさの合計は上限（BUILD_LIMITS.readChars）まで（読む前に一覧の大きさで数えて取っておき、1 つの読み取りはその大きさまで）。opts.signal が止まれば
 // （Worker の組み立てが止められたとき）次の読み取りを始めない
 export const READ_CONCURRENCY = 8;
 import katex from 'katex';
 import * as P from '../kit/core/path-posix.mjs';
-import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError } from '../kit/core/build-core.mjs';
+import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError, FileChangedError } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
 import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
 
@@ -135,14 +135,15 @@ export function createEngine(res, loadLazy) {
         if (inDeck(p)) {
           const rel = relOf(p), f = L.files.get(rel);
           if (!f) continue;
-          // 読んでよいのは、一覧の大きさ（数えた）と残りの上限まで。作業場所はその直前にファイルの大きさを確かめ直し、超えるなら読まずに断る
-          // （ReadOverError。一覧の後で大きくなったもの）。読んだ後も実際の大きさで数え直す
+          // 読んでよいのは、一覧の大きさまで（その大きさは読み始める前に上限に数えて取ってある。同時に読むものどうしが残りの上限を
+          // 分け合わない）。作業場所はその直前にファイルの大きさを確かめ直し、超えるなら読まずに、読んだ後も実際の大きさで確かめる。
+          // 一覧の後で大きくなったものは、上限の内でも断る（FileChangedError。次の一覧で組み直す）
           let bytes;
-          try { bytes = await ws.readBytes(rel, { max: f.s + Math.max(0, tally.max - tally.n) }); } catch (e) {
-            if (e && e.code === 'read-over') throw new BuildLimitError('files read from the workspace', tally.n - f.s + e.n, tally.max);
+          try { bytes = await ws.readBytes(rel, { max: f.s }); } catch (e) {
+            if (e && e.code === 'read-over') throw new FileChangedError(rel, f.s, e.n);
             throw e;
           }
-          if (bytes.length > f.s) { tally.n += bytes.length - f.s; if (tally.n > tally.max) throw new BuildLimitError('files read from the workspace', tally.n, tally.max); }
+          if (bytes.length > f.s) throw new FileChangedError(rel, f.s, bytes.length);
           cache.set(rel, { sig: sig(f), bytes });
         } else if (lazySet.has(p)) lazyCache.set(p, await loadLazy(p));
       }

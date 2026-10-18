@@ -492,7 +492,7 @@ ok('フォルダへの書き出し：空でないフォルダには書かない�
   await assert.rejects(writeToDirectory(d, files), (e) => e.code === 'not-empty');
   await assert.rejects(writeToDirectory(new D('e'), new Map([['../x', new Uint8Array(1)]])), (e) => e.code === 'bad-path');
 });
-ok('編集アプリの読み取り：arrayBuffer() の直前に File.size を確かめ直し、読んだ後も実際のバイトで数える（一覧の後で大きくなったファイルは断る）', async () => {
+ok('編集アプリの読み取り：arrayBuffer() の直前に File.size を確かめ直し、読んだ後も実際のバイトで確かめる（一覧の後で大きくなったファイルは上限の内でも断る）', async () => {
   const { readBytes: fsxRead } = await import('../app/fsx.js');
   // File System Access のまね：File.size と arrayBuffer() の中身を別々に偽れる
   const handleOf = (size, bytes, calls) => ({ async getFileHandle() { return { async getFile() { return { size, async arrayBuffer() { calls.n++; return bytes.buffer; } }; } }; } });
@@ -515,13 +515,43 @@ ok('編集アプリの読み取り：arrayBuffer() の直前に File.size を確
   E.setWorkspace(ws); E.setListing(await ws.list());
   await assert.rejects(E.build('deck.html', { limits: { readChars: 8 << 20 } }), (e) => e.code === 'build-too-large');
   assert.ok(seen.some(([r]) => r === 'part.html') && seen.every(([, m]) => Number.isFinite(m) && m <= 8 << 20), 'max passed to the workspace ' + JSON.stringify(seen));
-  // 上限の内なら、一覧（10 バイト）でなく読んだ中身の大きさで数える（組み立ての env.size も読んだ中身の大きさを返す）
+  // 一覧の後で大きくなったもの（一覧は 10 バイト、中身は 4007 バイト）は、上限の内でも断る（1 つの読み取りは一覧の大きさまで。
+  // 同時に読むものどうしが残りの上限を分け合わない）。一覧が中身と合っていれば組め、env.size は読んだ中身の大きさを返す
   const E2 = createEngine(res, loadLazy);
   const ws2 = countingWs(small, { 'part.html': 10 });
   E2.setWorkspace(ws2); E2.setListing(await ws2.list());
-  const r = await E2.build('deck.html', {});
+  await assert.rejects(E2.build('deck.html', {}), (e) => e.code === 'build-too-large' && e.what === 'changed file');
+  const E3 = createEngine(res, loadLazy);
+  const ws3 = countingWs(small);
+  E3.setWorkspace(ws3); E3.setListing(await ws3.list());
+  const r = await E3.build('deck.html', {});
   assert.ok(r.html.includes('pppp'));
-  assert.equal(E2.env.size('/deck/part.html'), small['part.html'].length);
+  assert.equal(E3.env.size('/deck/part.html'), small['part.html'].length);
+});
+ok('編集アプリの読み取り：同時に読むものは、それぞれ一覧の大きさまで（読む前に取った分だけ。残りの上限を分け合わない）', async () => {
+  // Codex の 6 回目の指摘 1：一覧では 1 バイトの 8 つのファイルが実は 57 バイト、上限 64 バイト。これまでは 8 つが同時に「残りの上限」（57）を
+  // それぞれ渡され、8 × 57 バイトを確保してから断った。今は 1 つの読み取りに一覧の大きさ（1）だけを渡し、大きいものは読まずに断る
+  const { res, loadLazy } = appResources();
+  const parts = Array.from({ length: 8 }, (_, i) => `p${i}.html`);
+  const deck = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage"><section class="slide"><h2>x</h2>' + parts.map((p) => `/*INCLUDE:${p}*/`).join('') + '</section></div></body></html>';
+  const files = { 'deck.html': deck }; const sizes = {};
+  for (const p of parts) { files[p] = 'q'.repeat(57); sizes[p] = 1; }
+  const ws = countingWs(files, sizes);
+  const maxes = []; let allocated = 0;
+  // フォルダの作業場所（fsx.readBytes）と同じ：max を超えるなら確保せずに断る
+  ws.readBytes = async (rel, o) => {
+    const b = enc.encode(files[rel]); maxes.push([rel, o && o.max]);
+    await new Promise((r) => setTimeout(r, 2));
+    if (o && b.length > o.max) throw Object.assign(new Error('over'), { code: 'read-over', n: b.length, max: o.max });
+    allocated += b.length; return b;
+  };
+  const E = createEngine(res, loadLazy);
+  E.setWorkspace(ws); E.setListing(await ws.list());
+  // 上限（readChars）は組み立てが読む同梱の資源（kit の CSS・KaTeX）にも効くので 4 MiB に。これまでは各読み取りに「1 + 残り（4 MiB 近く）」が渡った
+  await assert.rejects(E.build('deck.html', { limits: { readChars: 4 << 20 } }), (e) => e.code === 'build-too-large' && e.what === 'changed file');
+  const partMax = maxes.filter(([r]) => r !== 'deck.html');
+  assert.ok(partMax.length >= 8 && partMax.every(([, m]) => m === 1), 'each concurrent read is capped at its listed size ' + JSON.stringify(partMax));
+  assert.equal(allocated, enc.encode(deck).length, 'nothing over the listed sizes was allocated');
 });
 ok('inputHash の確かめ：作業場所の古い段階は §5.4 の hash で決まる', async () => {
   const { read } = await portable('c');
