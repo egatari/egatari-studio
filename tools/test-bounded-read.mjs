@@ -122,7 +122,7 @@ ok('音声の圧縮：ffmpeg には元のパスを開き直させず、読んだ
   fs.writeFileSync(path.join(bin, 'ffmpeg'), `#!/bin/sh
 while [ $# -gt 1 ]; do if [ "$1" = "-i" ]; then IN="$2"; fi; OUT="$2"; shift; done
 OUT="$1"
-{ echo "$IN"; stat -f '%Lp' "$(dirname "$IN")" 2>/dev/null || stat -c '%a' "$(dirname "$IN")"; cat "$IN"; } > ${JSON.stringify(log)}
+{ echo "$IN"; stat -c '%a' "$(dirname "$IN")" 2>/dev/null || stat -f '%Lp' "$(dirname "$IN")"; cat "$IN"; } > ${JSON.stringify(log)}
 printf m4a > "$OUT"
 `, { mode: 0o755 });
   const d = path.join(tmp, 'aud2'); fs.mkdirSync(d);
