@@ -10,7 +10,7 @@
 - 機関に依存するもの（基調色・ロゴ）は `themes/<名前>/` の中だけに置く（将来、中立テーマだけの汎用版を公開できるように）
 - スライドだけの使い方（build・check・開発サーバー・PDF）は TTS なしで完結させる。`kit/` `server/` から `tts/` `render/` を読み込まない。`audio/` や `voice.json` がなくても動くこと
 - 組み立ての本体は `kit/core/`（`build-core.mjs` `narration-core.mjs`）で、Node とブラウザの編集アプリ（`app/`）が共有する。ここでは `node:` の読み込み・`fs`・`process` を使わない（読み書きは渡された env を通す）。`kit/build.mjs` を変えたら、字の絞り込みを切った出力が編集アプリと同じか `node tools/test-app.mjs` で確かめる
-- 持ち運べる 1 ファイル（`--portable`、`kit/core/portable.mjs`）の形式の名前・拡張子・id・MIME・Schema の場所は `kit/core/format.mjs` だけに書く（名前が変わったらそこと `vendor/<名前>-spec` の同期だけで済むように）。README・docs・CHANGELOG では形式の名前を使わず「持ち運べるデッキの形式」と仕様へのリンクで書く。Schema は写し（vendor）から読み、試験でネットワークを使わない
+- 持ち運べる 1 ファイル（`--portable`、`kit/core/portable.mjs`）の形式の名前・拡張子・id・MIME・Schema の場所は `kit/core/format.mjs` だけに書く（名前が変わったらそこと `vendor/<名前>-spec` の同期だけで済むように）。README・docs・CHANGELOG では「持ち運べる 1 ファイル」と書き、形式の名前（Egatari）は仕様へのリンクと一緒に、紹介するところでだけ使う（コードでは format.mjs から読む）。Schema は写し（vendor）から読み、試験でネットワークを使わない
 - ブラウザは `kit/browser.mjs` の `launch()` で起動する（`CHROME_PATH` → Chrome → Playwright の Chromium の順）
 - TTS は `tts/` の中で完結させる（`uv run --project tts python tts/synth.py`）。外のリポジトリに依存しない。設定は環境変数（`IRODORI_URL` `IRODORI_REF_DIR` `MOTION_YOMI`）と CLI で、個人のパスやアドレスをリポジトリに書かない
 - `tts/core.py`（合成・無音除去・音量・結合）と `tts/yomi.py`（読み辞書の規則）を変えると音声が変わる。yomi.py は digest に入るので、変えると全段階が作り直しになる

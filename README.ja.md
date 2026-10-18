@@ -18,7 +18,7 @@
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。部品はテーマの変数だけを使う
 - **検査**：`kit/check.mjs` がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と口述原稿を直し、Claude Code への指示を残せる
-- **持ち運べる 1 ファイル**：`--portable` で、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。デッキのフォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は原稿を入れない写し。[持ち運べるデッキの形式](https://github.com/egatari/egatari-spec)（草案）に従う。[参照](docs/reference.ja.md#持ち運べる-1-ファイル--portable)
+- **持ち運べる 1 ファイル**：`--portable` で、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。デッキのフォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は原稿を入れない写し。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#持ち運べる-1-ファイル--portable)
 - **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
 **リファレンス**：選択肢・記法・キー・環境変数をすべて 1 ページに：[docs/reference.ja.md](docs/reference.ja.md)

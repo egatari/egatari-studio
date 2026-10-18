@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
+A deck as one portable file you can reopen and fix, following **Egatari** (絵語り), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0): stable slide ids, `--portable` / `--play-only` export and `npm run portable -- unpack|pack`, the editor app opens and saves these files without the folder (narration and timing edits are saved without rebuilding the slides), and the editing UI now runs outside the deck so a deck cannot change your files. The security section below collects the results of seven review rounds.
+
 ### Security
 
 - `tools/get-fonts.mjs` downloads the fonts from a fixed commit of google/fonts, stops if a file is larger than expected and checks its SHA-256 before using it (it used the moving `main` branch without limits)
@@ -211,7 +215,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/moiku/motion-academic-slides/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...v0.2.2

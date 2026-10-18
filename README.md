@@ -18,7 +18,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
 - **Dev server**: edit text and narration in the browser, leave comments for Claude Code
-- **Portable file**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a deck folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows the [portable deck format](https://github.com/egatari/egatari-spec) (draft). See [reference](docs/reference.md#portable-file---portable)
+- **Portable file**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a deck folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#portable-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
 **Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
