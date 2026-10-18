@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=a3af995f80cdf857 -->
+<!-- i18n: pair=reference.md sha256=447e5cae6aedc086 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -435,6 +435,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、検査器の規則、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
+| `npm run comment-shots -- <デッキのフォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピンを描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
 | `node tools/catalog.mjs` | `components/CATALOG.md` を作り直す |
 | `node tools/narration-json.mjs <narration.md> [--voice json]` | 口述原稿を解析した JSON（`synth.py` が使う） |
 | `node tools/smoke.mjs <組んだ.html> <フォルダ>` | タイムラインといくつかの画面 |

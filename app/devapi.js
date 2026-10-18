@@ -3,6 +3,7 @@
 // 読み書きするのは原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
+import { normPin } from '../kit/core/comment-core.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 
 function parseRange(s) {
@@ -133,7 +134,8 @@ export function createDevApi(ctx) {
           if (!body.comment || !String(body.comment).trim()) return err(400, M.emptyComment);
           const list = await readComments(ws);
           if (!live()) return CANCEL();
-          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null,
+          const pin = normPin(body.pin);   // 開発サーバーと同じ規則（kit/core/comment-core.mjs）
+          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null, ...(pin ? { pin } : {}),
             quote: String(body.quote || '').slice(0, 200), comment: String(body.comment).trim(), status: 'open' };
           list.push(c); await writeComments(ws, list, live);
           if (live()) ctx.onComment && ctx.onComment();

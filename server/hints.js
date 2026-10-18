@@ -7,7 +7,9 @@
 //   ready                           実行系の準備ができた（親は位置を戻し、編集モードの状態を送り返す）
 //   key      {key}                  e・n・c・Escape が押された（入力中でないとき）
 //   edit     {src, h, tag, rect}     編集モードでダブルクリックした要素（data-src の範囲と data-src-h）
-//   comment  {key, src, quote, rect} Alt/⌥+クリックした所（段階の鍵・要素の範囲・80 字までの引用）
+//   comment  {key, src, quote, near, pin, rect} Alt/⌥+クリックした所（段階の鍵・要素の範囲・80 字までの引用、
+//            near：押した所の近くの字（部品の中の札・語など。60 字まで）、pin：押した点のスライドの座標 {x, y}（1280×720、表示の倍率によらない））
+//            段階の途中（動いている間）に押しても、点は鍵の段階の最後の状態（DECK.seek(i, k, Infinity)）を指すものとして残す
 //   位置は実行系の deck-pos（kit/deck.js）をそのまま使う
 // 親 → デッキ：
 //   {type: "edit-state", edit, target}  編集モードの枠を出す・消す、target の要素（data-src の範囲か "#comment"）に印
@@ -38,6 +40,66 @@ var st = document.createElement("style"); st.className = "edit-ui"; st.textConte
 function stage(){ return document.getElementById("stage"); }
 function inStage(el){ var s = stage(); return !!(s && el && s.contains(el)); }
 function rectOf(r){ return {l: r.left, t: r.top, r: r.right, b: r.bottom}; }
+function clip(v, n){ v = String(v || "").replace(/\s+/g, " ").trim(); return v.length > n ? v.slice(0, n - 1) + "…" : v; }
+// 押した点をスライドの座標（1280×720）にする：#stage の見えている四角から測る（表示の倍率・窓の大きさによらない）
+function slidePoint(e){
+  var s = stage(); if (!s) return null;
+  var r = s.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return null;
+  return {x: Math.round((e.clientX - r.left) * 12800 / r.width) / 10, y: Math.round((e.clientY - r.top) * 7200 / r.height) / 10};
+}
+// 押した所の近くの字（部品の中の札・語・図の中の文字）。影の木（shadow DOM）の中も composedPath で辿る。60 字まで
+function ownText(n){
+  for (var c = n.firstChild; c; c = c.nextSibling) if (c.nodeType === 3 && /\S/.test(c.nodeValue)) return true;
+  return false;
+}
+function up(n){ return n.parentNode && n.parentNode.nodeType === 11 ? n.parentNode.host : n.parentElement; }
+function nearText(e, el){
+  var path = e.composedPath ? e.composedPath() : [e.target], deep = path[0];
+  if (!deep || deep.nodeType !== 1) deep = e.target;
+  // 1. 押した要素から el まで：短い名前（aria-label）か、短い字を持つもの
+  for (var n = deep, i = 0; n && i < 12; n = up(n), i++){
+    var lab = n.getAttribute && n.getAttribute("aria-label");
+    if (lab && /\S/.test(lab) && clip(lab, 400).length <= 60) return clip(lab, 60);   // 長い名前（段落全体の読み上げなど）は点の手がかりにならない
+    if (n !== el){ var t = clip(n.textContent, 400); if (t && t.length <= 60) return t; }
+    if (n === el) break;
+  }
+  // 2. 長い字の中を押した：その点の前後の字（影の木の外だけ）
+  var root = deep.getRootNode ? deep.getRootNode() : document;
+  if (root === document && document.caretRangeFromPoint){
+    var cr = document.caretRangeFromPoint(e.clientX, e.clientY), tn = cr && cr.startContainer;
+    // 字の上を押したときだけ（字のない所では、いちばん近い字に寄せられてしまう）
+    var on = false;
+    if (tn && tn.nodeType === 3 && deep.contains(tn) && tn.nodeValue.length){
+      var q = document.createRange(), at = Math.min(cr.startOffset, tn.nodeValue.length - 1);
+      q.setStart(tn, at); q.setEnd(tn, at + 1);
+      var cb = q.getBoundingClientRect(), pad = Math.max(cb.width, cb.height) * 0.75;
+      on = cb.width + cb.height > 0 && e.clientX >= cb.left - pad && e.clientX <= cb.right + pad && e.clientY >= cb.top - pad && e.clientY <= cb.bottom + pad;
+    }
+    if (on){
+      var v = tn.nodeValue, o = cr.startOffset, a = Math.max(0, o - 24), b = Math.min(v.length, o + 24);
+      var w = clip(v.slice(a, b), 60);
+      if (w) return (a > 0 ? "…" : "") + w + (b < v.length ? "…" : "");
+    }
+  }
+  // 3. 字のない所（図の線・面）：点にいちばん近い字（160px まで）。まず図（svg）の中の字（札）から探し、なければ同じ木（影の木か el）の中から
+  function dist(x){
+    var r = x.getBoundingClientRect(); if (!r.width && !r.height) return Infinity;
+    var dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right), dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
+    return dx * dx + dy * dy;
+  }
+  function nearest(scope){
+    var best = null, bd = 160 * 160, all = scope.querySelectorAll("*");
+    for (var j = 0; j < all.length && j < 3000; j++){
+      var x = all[j]; if (!ownText(x)) continue;
+      var d = dist(x); if (d < bd){ bd = d; best = x; }
+    }
+    return best;
+  }
+  var scope = root !== document && root.querySelectorAll ? root : el, best = null;
+  [].some.call(scope.querySelectorAll("svg"), function(g){ var x = nearest(g); if (x && (!best || dist(x) < dist(best))) best = x; return false; });
+  if (!best) best = nearest(scope);
+  return best ? clip(best.textContent, 60) : "";
+}
 function typing(e){ var t = e.target; return t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName)); }
 
 var editOn = false, hoverEl = null, lastComment = null;
@@ -92,8 +154,12 @@ document.addEventListener("click", function(e){
   var target = e.target;
   var el = target.closest("[data-src]") || target.closest("[data-step], m-sweep, svg, .concl, .body, .slide") || target;
   lastComment = el;
+  var full = (el.textContent || "").replace(/\s+/g, " ").trim(), quote = full.slice(0, 80), near = "";
+  try { near = nearText(e, el); } catch (err) { near = ""; }
+  // 要素の字が引用に収まり、近くの字もその中にあるなら、付けても手がかりは増えない
+  if (full.length <= 80 && quote.indexOf(near.replace(/^…|…$/g, "")) >= 0) near = "";
   send({kind: "comment", key: window.DECK.state().key, src: el.getAttribute("data-src") || null,
-    quote: (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+    quote: quote, near: near && near !== quote ? near : "", pin: slidePoint(e),
     rect: {l: e.clientX - 20, t: e.clientY - 8, r: e.clientX, b: e.clientY + 8}});
 }, true);
 document.addEventListener("keydown", function(e){

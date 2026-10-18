@@ -1,7 +1,7 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-ids・test-build-args・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）・test-i18n-pairs（英語と日本語の文書の組）、あれば）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-app（編集アプリ）
+// 2. 単体の検査（test-narration・test-ids・test-build-args・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）・test-i18n-pairs（英語と日本語の文書の組）、あれば）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
@@ -40,6 +40,7 @@ const steps = [
   // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・検査器
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
+  ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
   // 守り：プレビューの決まり（CSP）が、デッキの文書のどの細工よりも先に効くこと（編集アプリと同じ決まりのページで）
   ['test-security', ['tools/test-security.mjs']],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],

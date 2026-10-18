@@ -18,6 +18,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
+import { normPin } from '../kit/core/comment-core.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -409,8 +410,10 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       if (!b.comment || !String(b.comment).trim()) return send(res, 400, { error: '指示が空です' });
       const list = readComments();
+      // pin（押した点のスライドの座標）は確かめて丸める（kit/core/comment-core.mjs）。なければ・形が違えば付けない（古いコメントと同じ形）
+      const pin = normPin(b.pin);
       const c = { id: 'c' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'), created: new Date().toISOString(),
-        key: String(b.key || ''), range: b.range || null, quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
+        key: String(b.key || ''), range: b.range || null, ...(pin ? { pin } : {}), quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
       list.push(c); writeComments(list);
       console.log(`comment ${c.key}: ${c.comment.slice(0, 40)}`);
       return send(res, 200, c);

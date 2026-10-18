@@ -129,7 +129,7 @@ try {
   ok(/frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test(dcsp) && /frame-src http:\/\/127\.0\.0\.1:\d+\/preview(;|$)/.test((await raw('/')).headers['content-security-policy'] || ''), 'frame-src is the single exact preview endpoint (deck and shell)');
   ok((await raw('/deck/')).status === 403, 'GET /deck/ (the folder itself) is not a document');
   ok(await dk().evaluate(() => { try { return window.parent.document && 'reachable'; } catch { return 'blocked'; } }) === 'blocked', 'sandbox: the deck cannot reach the shell document (opaque origin)');
-  const TH = { 'x-deck-token': TOKEN };
+  const TH = { 'x-deck-token': TOKEN }, J0 = { 'content-type': 'application/json' };
 
   // ---- 1. 原稿の編集：更新の式（スライド 3）の段階 2 の <li>（デッキの e とダブルクリックは知らせ。欄は外枠に出る）
   await dk().evaluate(() => DECK.go(2, 3, false));
@@ -265,7 +265,13 @@ try {
   await page.waitForTimeout(200);
   if (await page.isVisible('#dev-narr')) await deckKey('n');
   const tgt = dk().locator('#stage .slide.active .body > ul > li').nth(1);
-  await tgt.click({ modifiers: ['Alt'] });
+  // 押す点（要素の左から 30%・上から 50%）と、そのスライドの座標（#stage の見えている四角から測る）
+  const want = await tgt.evaluate((el) => {
+    const r = el.getBoundingClientRect(), s = document.getElementById('stage').getBoundingClientRect();
+    const cx = r.width * 0.3, cy = r.height / 2;
+    return { cx, cy, x: (r.left + cx - s.left) * 1280 / s.width, y: (r.top + cy - s.top) * 720 / s.height };
+  });
+  await tgt.click({ modifiers: ['Alt'], position: { x: want.cx, y: want.cy } });
   await page.waitForSelector('#dev-comment textarea');
   await page.locator('#dev-comment textarea').fill('「今いる点の傾き」を色付きのまま、もっと短く');
   const lay2 = await trustedLayout(page, 'deck');
@@ -275,14 +281,49 @@ try {
   await page.waitForTimeout(300);
   const cm = JSON.parse(fs.readFileSync(path.join(deckDir, 'comments.json'), 'utf8'));
   ok(cm.length === 1 && cm[0].key === '何を最小化するか:concl' && cm[0].status === 'open' && /次元/.test(cm[0].quote) && cm[0].range, 'comments.json entry ' + JSON.stringify(cm[0]));
+  ok(cm[0].pin && Object.keys(cm[0].pin).join() === 'x,y' && Math.abs(cm[0].pin.x - want.x) < 1 && Math.abs(cm[0].pin.y - want.y) < 1,
+    'comments.json keeps the clicked point in slide coordinates (1280×720) ' + JSON.stringify({ pin: cm[0].pin, want }));
   await dk().evaluate(() => DECK.go(0, 0, false));
   await deckKey('c');
   await page.waitForSelector('#dev-comments .dev-c');
   ok((await trustedLayout(page, 'deck')).outside, 'comment list is outside the slide area');
+  ok((await page.evaluate(() => __DEV_UI.state().pins)) === 0 && /1/.test(await page.textContent('#dev-comments .dev-c .dv-n')) && (await page.textContent('#dev-comments .dev-c .dv-p')).includes(String(Math.round(cm[0].pin.x))),
+    'pins: the list shows the number and the point; no pin is drawn on another step');
   await shot('6-comments.png');
   await page.locator('#dev-comments .dev-c').first().click();
   await page.waitForTimeout(200);
   ok((await dk().evaluate(() => DECK.state().key)) === '何を最小化するか:concl', 'click comment jumps to slide');
+  // 点の印：信頼する画面がプレビューの上に描き、押した所（ページの座標）に重なる。窓の大きさ（スライドの倍率）を変えても付いていく
+  const pinPlace = async () => {
+    await page.waitForTimeout(150);
+    const fr = await page.evaluate(() => { const r = document.getElementById('deck').getBoundingClientRect(); return { l: r.left, t: r.top }; });
+    const at = await tgt.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width * 0.3, y: r.top + r.height / 2 }; });
+    const pin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash'), pe: getComputedStyle(e).pointerEvents }; });
+    const scale = await dk().evaluate(() => document.getElementById('stage').getBoundingClientRect().width / 1280);
+    return { pin, want: { x: fr.l + at.x, y: fr.t + at.y }, scale };
+  };
+  const z1 = await pinPlace();
+  ok(z1.pin && Math.abs(z1.pin.x - z1.want.x) < 1.5 && Math.abs(z1.pin.y - z1.want.y) < 1.5 && z1.pin.flash && z1.pin.pe === 'none',
+    'pins: the overlay marker sits on the clicked spot, flashes after the click in the list, and lets clicks through ' + JSON.stringify(z1));
+  await shot('6b-pin.png');
+  await page.setViewportSize({ width: 1000, height: 640 });
+  const z2 = await pinPlace();
+  ok(z2.pin && Math.abs(z2.scale - z1.scale) > 0.05 && Math.abs(z2.pin.x - z2.want.x) < 1.5 && Math.abs(z2.pin.y - z2.want.y) < 1.5,
+    'pins: the marker follows when the slide is shown at another scale ' + JSON.stringify(z2));
+  await page.setViewportSize({ width: 1440, height: 810 });
+  await page.waitForTimeout(150);
+  // 点の形が違う・範囲の外：数でなければ点なし、外は端に寄せる、ほかの項目は捨てる（サーバーの側でも確かめる）
+  const pinBodies = [[{ x: '10', y: 5 }, null], [{ x: 1e9, y: -5 }, { x: 1280, y: 0 }], [{ x: 12.345, y: 7, evil: 1 }, { x: 12.3, y: 7 }], [[1, 2], null], [{ x: null, y: 1 }, null], ['10,20', null]];
+  const pinGot = [];
+  for (const [pin] of pinBodies) {
+    const r = await raw('/__dev/comment', { method: 'POST', headers: { ...TH, ...J0 }, body: JSON.stringify({ key: '何を最小化するか:concl', comment: 'pin test', pin }) });
+    pinGot.push(r.status === 200 ? JSON.parse(r.body).pin ?? null : 'status ' + r.status);
+  }
+  ok(pinBodies.every(([, w], i) => JSON.stringify(w) === JSON.stringify(pinGot[i])), 'pins: forged or out-of-range points are dropped or clamped by the server ' + JSON.stringify(pinGot));
+  const cmAll = JSON.parse(fs.readFileSync(path.join(deckDir, 'comments.json'), 'utf8'));
+  for (const c of cmAll.slice(1)) await raw('/__dev/comment/resolve', { method: 'POST', headers: { ...TH, ...J0 }, body: JSON.stringify({ id: c.id }) });
+  await deckKey('c'); await deckKey('c');
+  await page.waitForSelector('#dev-comments .dev-c');
   await page.locator('#dev-comments .dev-c button', { hasText: '解決' }).click();
   await page.waitForSelector('#dev-comments .dev-empty');
   ok(JSON.parse(fs.readFileSync(path.join(deckDir, 'comments.json'), 'utf8'))[0].status === 'resolved', 'resolve marks comment');
@@ -562,6 +603,13 @@ try {
   await hf.evaluate(() => window.__hint('comment'));
   await hp.waitForSelector('#dev-comment textarea');
   ok((await hp.locator('#dev-comment textarea').inputValue()) === '' && (await hp.textContent('#dev-comment .dv-q')).includes(PWNED + '-QUOTE'), 'hostile: a comment hint opens an empty comment box (the forged comment text is ignored)');
+  await hp.locator('#dev-comment textarea').press('Escape');
+  // 偽の点：変わるのは印の位置だけ（範囲の外は端に寄せ、近くの字は 60 字まで）。本文は空のまま、残すボタンを押すまで書かない
+  await hf.evaluate(() => window.__hint('comment-pin'));
+  await hp.waitForSelector('#dev-comment textarea');
+  const fq = await hp.textContent('#dev-comment .dv-q'), fp = await hp.textContent('#dev-comment .dv-p');
+  ok((await hp.locator('#dev-comment textarea').inputValue()) === '' && fp.includes('1280, 0') && fq.includes(PWNED + '-NEAR') && fq.split(' ｜ ')[0].length <= 60 && !(await hp.$('#dev-pins .dev-pin:not(.dv-new)')),
+    'hostile: a forged point is clamped to the slide and the near text capped; it only places the marker ' + JSON.stringify({ fp, fq: fq.slice(0, 70) }));
   await hp.locator('#dev-comment textarea').press('Escape');
   await hf.evaluate(() => window.__hint('n'));
   await hp.waitForSelector('#dev-narr');

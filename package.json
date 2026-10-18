@@ -21,7 +21,8 @@
     "i18n": "node tools/i18n-pairs.mjs",
     "build:app": "node tools/build-app.mjs",
     "test": "node tools/test-all.mjs",
-    "portable": "node tools/portable.mjs"
+    "portable": "node tools/portable.mjs",
+    "comment-shots": "node tools/comment-shots.mjs"
   },
   "engines": {
     "node": ">=22"

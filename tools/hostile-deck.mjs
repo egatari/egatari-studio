@@ -5,7 +5,7 @@
 //   古い書き込みの知らせ（app-api の edit・narration・comment）を偽の本文で親に送る、
 //   合言葉（window.__DECK_DEV_TOKEN）を読む、親の文書（parent.document）に触る、
 //   fetch・XHR・sendBeacon で /__dev/edit・/__dev/narration・/__dev/comment に POST（合言葉なし・当て推量の合言葉）
-// window.__hint(kind) は偽の本文を付けた知らせ（edit・comment・key）を送る
+// window.__hint(kind) は偽の本文を付けた知らせ（edit・comment・key）を送る。comment-pin は範囲の外の点と長すぎる近くの字を付けた comment
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,7 @@ const SCRIPT = `<script>
   window.__hint = function(kind){
     var e = el(), r = {l: 40, t: 40, r: 200, b: 80};
     if (kind === "edit") parent.postMessage({type: "edit-hint", kind: "edit", src: e.getAttribute("data-src"), h: e.getAttribute("data-src-h"), tag: "h2", text: W + "-HINT", body: {text: W + "-HINT"}, rect: r}, "*");
+    else if (kind === "comment-pin") parent.postMessage({type: "edit-hint", kind: "comment", key: window.DECK.state().key, src: null, quote: W + "-QUOTE", near: (W + "-NEAR ").repeat(30), pin: {x: 99999, y: -3, evil: W}, rect: r}, "*");
     else if (kind === "comment") parent.postMessage({type: "edit-hint", kind: "comment", key: window.DECK.state().key, src: null, quote: W + "-QUOTE", comment: W + "-HINT-COMMENT", rect: r}, "*");
     else parent.postMessage({type: "edit-hint", kind: "key", key: kind}, "*");
   };

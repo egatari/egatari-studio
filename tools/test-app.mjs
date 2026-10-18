@@ -326,7 +326,11 @@ try {
 
   // ---------------------------------------------------------------- 5. コメント（Alt+クリック）
   const target = f.locator('#stage .slide.active h2');
-  await target.click({ modifiers: ['Alt'] });
+  const cwant = await target.evaluate((el) => {
+    const r = el.getBoundingClientRect(), s = document.getElementById('stage').getBoundingClientRect();
+    return { x: (r.left + 20 - s.left) * 1280 / s.width, y: (r.top + r.height / 2 - s.top) * 720 / s.height, h: r.height };
+  });
+  await target.click({ modifiers: ['Alt'], position: { x: 20, y: cwant.h / 2 } });
   await page.waitForSelector('#dev-comment textarea');
   await page.fill('#dev-comment textarea', 'この見出しを短く');
   await shot(page, 'comment.png');
@@ -337,9 +341,25 @@ try {
   ok((await trustedLayout(page, 'preview')).inert === false, 'comment: the preview takes clicks again after the note box closes');
   const comments = JSON.parse(await opfs.read('comments.json') || '[]');
   ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === '何を最小化するか:0', 'comment: comments.json written');
+  ok(comments[0].pin && Math.abs(comments[0].pin.x - cwant.x) < 1 && Math.abs(comments[0].pin.y - cwant.y) < 1, 'comment: the clicked point is kept in slide coordinates ' + JSON.stringify({ pin: comments[0].pin, cwant }));
+  // 点の形が違う・範囲の外（アプリの devapi.js も開発サーバーと同じ規則）
+  const appPins = [];
+  for (const pin of [{ x: '1', y: 2 }, { x: -50, y: 9999 }, { x: 3.21, y: 4, z: 1 }]) appPins.push((await page.evaluate((pin) => window.__APP_TEST.api('POST', '/__dev/comment', { key: '何を最小化するか:0', comment: 'pin test', pin }), pin)).pin ?? null);
+  ok(JSON.stringify(appPins) === JSON.stringify([null, { x: 0, y: 720 }, { x: 3.2, y: 4 }]), 'comment: forged or out-of-range points are dropped or clamped in the app too ' + JSON.stringify(appPins));
+  for (const c of JSON.parse(await opfs.read('comments.json')).slice(1)) await page.evaluate((id) => window.__APP_TEST.api('POST', '/__dev/comment/resolve', { id }), c.id);
+  await f.evaluate(() => DECK.go(0, 0, false));
   await page.click('#b-comments');
   await page.waitForSelector('#dev-comments .dev-c');
   ok((await page.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
+  ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
+  await page.click('#dev-comments .dev-c');
+  await page.waitForTimeout(300);
+  const appPin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash') }; });
+  const appWant = await page.evaluate(() => { const r = document.getElementById('preview').getBoundingClientRect(); return { l: r.left, t: r.top }; });
+  const hAt = await f.evaluate((p) => { const s = document.getElementById('stage').getBoundingClientRect(); return { x: s.left + p.x * s.width / 1280, y: s.top + p.y * s.height / 720 }; }, comments[0].pin);
+  ok((await f.evaluate(() => DECK.state().key)) === '何を最小化するか:0' && appPin && appPin.flash && Math.abs(appPin.x - appWant.l - hAt.x) < 1.5 && Math.abs(appPin.y - appWant.t - hAt.y) < 1.5,
+    'comment: clicking it in the list goes to its step and flashes the marker on the clicked spot ' + JSON.stringify({ appPin, appWant, hAt }));
+  await shot(page, 'comment-pin.png');
   await page.click('#dev-comments .dev-c button');
   await page.waitForTimeout(300);
   ok(JSON.parse(await opfs.read('comments.json'))[0].status === 'resolved', 'comment: resolved from the panel');

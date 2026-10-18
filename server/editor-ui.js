@@ -22,6 +22,9 @@
 // プレビューを inert にしてクリックも鍵盤も受けない（欄への入力をデッキが横取りできない）。その間もデッキの位置の知らせは受け取るが、
 // デッキからの知らせで板の欄を開け閉めしたり、編集中の口述原稿の段階を替えたりはしない（頼んでいない切り替えで編集から離されない）。
 // 口述原稿の引き出しは、入力していなければ（欄から離れれば）今のスライドの段階に付いていく
+// コメントの点（pin）：Alt/⌥+クリックの知らせが持つ点（スライドの座標 1280×720）を確かめて comments.json に残し、一覧と、プレビューの上に
+// この画面が重ねる印（#dev-pins。pointer-events なし）で見せる。印の位置は、この画面が iframe の大きさから自分で求める
+// （デッキは #stage を 1280×720 のまま、窓に収まる最大の倍率で真ん中に置く：kit/deck.js の fit）。デッキからの知らせは位置を変えない
 //   ui.message(e)  プレビューからの message（e.source は呼ぶ側でも確かめる）。扱ったら true
 //   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
 //   ui.reset()  別のデッキを開いた（入力は捨てる）
@@ -41,6 +44,7 @@ const STR = {
     up: 'Move up', del: 'Delete', delT: 'Delete this turn', add: '+ Add a turn', nConflict: 'The narration has changed. Please reload (copy what you typed first)',
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
+    pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
     dateLocale: 'en-US',
   },
   ja: {
@@ -57,6 +61,7 @@ const STR = {
     up: '前へ', del: '削除', delT: 'この発言を消す', add: '＋ 発言を足す', nConflict: '口述原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）',
     noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
+    pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
     dateLocale: 'ja-JP',
   },
 };
@@ -117,6 +122,21 @@ const CSS = [
   '#dev-narr .dv-foot{padding:10px 14px;background:#fff;border-top:1px solid #e3e6ee;display:flex;gap:8px;align-items:center}',
   '#dev-narr .dv-foot .dv-st{flex:1;font-size:12px;color:#6b7385}#dev-narr .dv-foot .dv-st.dv-dirty{color:#b45309}',
   '#dev-narr .dv-stale{display:none;margin:8px 0 0;padding:6px 8px;background:#fff7e6;border:1px solid #f5d38a;border-radius:6px;font-size:12.5px;color:#7a4b00}',
+  '.dev-c .dv-n,#dev-comment .dv-n{display:inline-block;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;background:#e11d48;color:#fff;font-size:11px;font-weight:700;margin-right:6px;padding:0 4px}',
+  '#dev-comment .dv-n{background:#f59e0b}',
+  '.dev-c .dv-p,#dev-comment .dv-p{font-size:11.5px;color:#9f1239;margin-left:6px}',
+  '.dev-c.dv-sel{background:#fff1f3;border-color:#fecdd3}',
+  // プレビューの上の点の印（信頼する画面が描く。クリックは下のプレビューへ通す）
+  '#dev-pins{position:fixed;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;z-index:999}',
+  '.dev-pin{position:fixed;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #e11d48;box-shadow:0 0 0 2px #fff,inset 0 0 0 1.5px #fff,0 1px 6px rgba(0,0,0,.4);pointer-events:none}',
+  '.dev-pin i{position:absolute;background:#e11d48;box-shadow:0 0 0 1.5px #fff}',
+  '.dev-pin i:nth-child(1){left:10.5px;top:-12px;width:3px;height:8px}.dev-pin i:nth-child(2){left:10.5px;top:28px;width:3px;height:8px}',
+  '.dev-pin i:nth-child(3){left:-12px;top:10.5px;width:8px;height:3px}.dev-pin i:nth-child(4){left:28px;top:10.5px;width:8px;height:3px}',
+  '.dev-pin b{position:absolute;left:24px;top:-26px;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;background:#e11d48;color:#fff;font:700 11px/18px -apple-system,BlinkMacSystemFont,sans-serif;padding:0 4px;box-shadow:0 0 0 2px #fff}',
+  '.dev-pin.dv-new{border-color:#f59e0b}.dev-pin.dv-new i,.dev-pin.dv-new b{background:#f59e0b}',
+  '.dev-pin.dv-flash{animation:dv-flash .45s ease-in-out 4}',
+  '@keyframes dv-flash{50%{transform:scale(1.9);box-shadow:0 0 0 6px rgba(225,29,72,.35),0 1px 6px rgba(0,0,0,.45)}}',
+  '@media (prefers-reduced-motion:reduce){.dev-pin.dv-flash{animation:none;outline:4px solid #e11d48;outline-offset:4px}}',
   '#dev-toast{position:fixed;z-index:1002;right:16px;bottom:22px;max-width:388px;background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}',
   '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
   '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
@@ -127,6 +147,14 @@ const RANGE = /^\d{1,9}-\d{1,9}$/, HASH = /^[0-9a-f]{8}$/;
 const str = (v, n) => (typeof v === 'string' && v.length <= n ? v : null);
 const num = (v) => (Number.isFinite(+v) ? Math.max(-1e5, Math.min(1e5, +v)) : 0);
 const rectOf = (r) => (r && typeof r === 'object' ? { l: num(r.l), t: num(r.t), r: num(r.r), b: num(r.b) } : { l: 0, t: 0, r: 0, b: 0 });
+// 点（スライドの座標）：数でなければ捨て、スライドの外は端に寄せ、0.1 に丸める（kit/core/comment-core.mjs の normPin と同じ規則。
+// 開発サーバーはこのファイルを 1 つのまま配るので、ここに写しを持つ）
+const W = 1280, H = 720;
+const pinOf = (p) => {
+  if (!p || typeof p !== 'object' || typeof p.x !== 'number' || typeof p.y !== 'number' || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
+  return { x: c(p.x, W), y: c(p.y, H) };
+};
 const splitKey = (key) => { const p = key.lastIndexOf(':'); return [key.slice(0, p), key.slice(p + 1)]; };
 // 口述原稿の書き方（{cue}・{φ|ファイ}・{mark:…}）を外して読める文にする（次の段階の見せ方だけ）
 const plain = (s) => String(s || '').replace(/\{([^{}|]*)\|[^{}]*\}/g, '$1').replace(/\{[^{}]*\}/g, '');
@@ -178,6 +206,8 @@ export function createEditorUI(o) {
   // ---------------------------------------------------------------- 状態
   let editOn = false, pos = null, restorePos = null, info = null, target = null, ignored = 0;
   let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null, narrFocus = false;
+  // 点の印：一覧の未対応のコメントのうち点のあるもの（{id, n, key, pin}）、書いている途中の指示の点（{key, pin}）、光らせる印
+  let pinList = [], pending = null, flash = null;
   // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
   const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)));
   // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
@@ -186,6 +216,39 @@ export function createEditorUI(o) {
     const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
+    drawPins();
+  }
+  // ---------------------------------------------------------------- 点の印（プレビューの上に重ねる。クリックは通す）
+  const pinLayer = h('div', { id: 'dev-pins', cls: 'edit-ui', 'aria-hidden': 'true' });
+  doc.body.appendChild(pinLayer);
+  const watched = new WeakSet();
+  const ro = typeof win.ResizeObserver === 'function' ? new win.ResizeObserver(() => drawPins()) : null;
+  win.addEventListener('resize', () => drawPins());
+  // スライド（1280×720）が iframe の中でどこに見えるか：デッキの fit と同じく、収まる最大の倍率で真ん中（この画面が自分で求める）
+  function slideBox() {
+    const f = frameEl();
+    if (!f || !f.isConnected) return null;
+    if (ro && !watched.has(f)) { watched.add(f); ro.observe(f); }
+    const w = f.clientWidth, hh = f.clientHeight;
+    if (!(w > 0 && hh > 0)) return null;
+    const r = f.getBoundingClientRect(), k = Math.min(w / W, hh / H);
+    return { l: r.left + f.clientLeft + (w - W * k) / 2, t: r.top + f.clientTop + (hh - H * k) / 2, k };
+  }
+  function drawPins() {
+    pinLayer.textContent = '';
+    if (!pos || !enabled()) return;
+    const show = commentsOpen ? pinList.filter((c) => c.key === pos.key) : [];
+    if (pending && pending.key === pos.key) show.push({ ...pending, isNew: true });
+    if (!show.length) return;
+    const b = slideBox();
+    if (!b) return;
+    for (const c of show) {
+      const el = h('div', { cls: 'dev-pin' + (c.isNew ? ' dv-new' : ''), 'data-id': c.id || 'new' }, [h('i'), h('i'), h('i'), h('i'), c.n ? h('b', { text: String(c.n) }) : null]);
+      el.style.left = (b.l + c.pin.x * b.k).toFixed(1) + 'px';
+      el.style.top = (b.t + c.pin.y * b.k).toFixed(1) + 'px';
+      if (flash && c.id === flash.id && Date.now() < flash.until) el.classList.add('dv-flash');
+      pinLayer.appendChild(el);
+    }
   }
   const busy = () => !!((editor && editor.ta.value !== editor.orig) || (cbox && cbox.ta.value.trim()));
   function sendState() { post({ type: 'edit-state', edit: editOn, target }); }
@@ -298,7 +361,7 @@ export function createEditorUI(o) {
   function closeComment(force) {
     if (!cbox) return;
     if (!force && cbox.ta.value.trim()) return;
-    cbox.card.remove(); cbox = null;
+    cbox.card.remove(); cbox = null; pending = null;
     if (target && !editor) setTarget(null);
     updateSide();
     focusFrame();
@@ -308,7 +371,11 @@ export function createEditorUI(o) {
     if (!enabled() || !key || (range !== null && !RANGE.test(range))) return;
     if (busy()) { toast(L.busy, 'warn'); return; }
     closeEditor(true); closeComment(true);
-    const quote = (str(hint.quote, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    // 引用：要素の字の頭（80 字）。押した所の近くの字（部品の中の札・語など）があれば前に付ける
+    const q80 = (str(hint.quote, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const near = (str(hint.near, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const quote = (near && near !== q80 ? near + ' ｜ ' + q80 : q80).slice(0, 160);
+    const pin = pinOf(hint.pin);
     const ta = h('textarea', { placeholder: L.cPlace });
     const msg = h('div', { cls: 'dev-msg' });
     const save = h('button', { cls: 'dv-pri', text: L.cSave });
@@ -316,6 +383,7 @@ export function createEditorUI(o) {
       h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: key }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeComment(true) } })]),
       whereLine(),
+      pin ? h('div', { cls: 'dev-where' }, [h('span', { cls: 'dv-n', text: '●' }), h('span', { cls: 'dv-p', text: L.pinAt(Math.round(pin.x), Math.round(pin.y)), title: L.pinT })]) : null,
       quote ? h('div', { cls: 'dv-q', text: quote }) : null,
       ta, msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.cHint }), h('button', { text: L.cancel, on: { click: () => closeComment(true) } }), save]),
@@ -323,13 +391,14 @@ export function createEditorUI(o) {
     ]);
     side.appendChild(card);
     const box = cbox = { card, ta };
+    pending = pin ? { key, pin } : null;
     updateSide();
     setTarget('#comment');
     ta.focus();
     function doSave() {
       if (!ta.value.trim() || cbox !== box) return;
       save.disabled = true;
-      api('POST', '/__dev/comment', { key, range, quote, comment: ta.value }).then((j) => {
+      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), comment: ta.value }).then((j) => {
         if (j._status !== 200) { save.disabled = false; showErr(msg, j._offline ? L.offline : (j.error || L.cFail)); return; }
         ta.value = ''; closeComment(true); toast(L.cDone);
         if (commentsOpen) loadComments();
@@ -357,7 +426,7 @@ export function createEditorUI(o) {
       ]);
       side.appendChild(cpanel);
       loadComments();
-    } else focusFrame();
+    } else { pinList = []; focusFrame(); }
     updateSide();
     saveUi();
   }
@@ -366,11 +435,17 @@ export function createEditorUI(o) {
       if (!cpanel) return;
       const box = cpanel.querySelector('.dv-list'); box.innerHTML = '';
       const open = (Array.isArray(list) ? list : []).filter((c) => c && c.status === 'open');
+      // comments.json は手でも直せるので、読んだ点もここで確かめ直す
+      pinList = [];
+      open.forEach((c, i) => { const p = pinOf(c.pin); if (p) pinList.push({ id: String(c.id), n: i + 1, key: String(c.key), pin: p }); });
+      drawPins();
       if (!open.length) { box.appendChild(h('div', { cls: 'dev-empty', text: L.noOpen(ALT) })); return; }
-      for (const c of open) {
-        const when = new Date(c.created);
-        const item = h('div', { cls: 'dev-c', title: L.toSlide }, [
-          h('div', { cls: 'dv-k', text: String(c.key) + (isNaN(when) ? '' : ' · ' + when.toLocaleString(L.dateLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })) }),
+      open.forEach((c, i) => {
+        const when = new Date(c.created), p = pinOf(c.pin);
+        const item = h('div', { cls: 'dev-c', title: L.toSlide, 'data-id': String(c.id) }, [
+          h('div', { cls: 'dv-k' }, [p ? h('span', { cls: 'dv-n', text: String(i + 1) }) : null,
+            String(c.key) + (isNaN(when) ? '' : ' · ' + when.toLocaleString(L.dateLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })),
+            p ? h('span', { cls: 'dv-p', text: L.pinAt(Math.round(p.x), Math.round(p.y)), title: L.pinT }) : null]),
           c.quote ? h('div', { cls: 'dv-q', text: String(c.quote) }) : null,
           h('div', { cls: 'dv-c', text: String(c.comment) }),
           h('div', { cls: 'dv-row' }, [h('button', { text: L.resolve, title: L.resolveT, on: { click: (e) => {
@@ -378,9 +453,16 @@ export function createEditorUI(o) {
             api('POST', '/__dev/comment/resolve', { id: c.id }).then(() => loadComments());
           } } })]),
         ]);
-        item.addEventListener('click', () => post({ type: 'edit-go-key', key: String(c.key) }));
+        // その段階へ移り、点の印を光らせる（移った後の deck-pos でも描き直す）
+        item.addEventListener('click', () => {
+          for (const x of box.querySelectorAll('.dev-c.dv-sel')) x.classList.remove('dv-sel');
+          item.classList.add('dv-sel');
+          flash = p ? { id: String(c.id), until: Date.now() + 2000 } : null;
+          post({ type: 'edit-go-key', key: String(c.key) });
+          drawPins();
+        });
         box.appendChild(item);
-      }
+      });
     });
   }
 
@@ -550,6 +632,7 @@ export function createEditorUI(o) {
       pos = { i: Math.max(0, Math.floor(num(m.i))), k: Math.max(0, Math.floor(num(m.k))), key: m.key, nextKey: typeof m.nextKey === 'string' ? m.nextKey : null };
       store.set('dev-pos', { i: pos.i, k: pos.k });
       if (narrOpen) narrFollow();
+      drawPins();
       return true;
     }
     if (m.type !== 'edit-hint') return false;
@@ -577,7 +660,7 @@ export function createEditorUI(o) {
   function reset() {
     closeEditor(true); closeComment(true);
     if (narr) narr.dirty = false;
-    pos = null; restorePos = null; info = null; target = null;
+    pos = null; restorePos = null; info = null; target = null; pinList = []; pending = null; flash = null;
     if (drawer) { drawer.remove(); drawer = null; narr = null; }
     narrOpen = false; editOn = false;
     if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
@@ -595,6 +678,6 @@ export function createEditorUI(o) {
   return {
     message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast,
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
-      comment: !!cbox, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
+      comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
   };
 }

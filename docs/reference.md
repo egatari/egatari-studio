@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4715e3d5a230534e -->
+<!-- i18n: pair=reference.ja.md sha256=2b92aa6e6f9eab1e -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -435,6 +435,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, checker rules, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
+| `npm run comment-shots -- <deck folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
 | `node tools/catalog.mjs` | regenerate `components/CATALOG.md` |
 | `node tools/narration-json.mjs <narration.md> [--voice json]` | parsed narration as JSON (used by `synth.py`) |
 | `node tools/smoke.mjs <built.html> <outdir>` | timeline and a few screenshots |
