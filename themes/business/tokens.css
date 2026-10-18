@@ -1,0 +1,28 @@
+/* ビジネス・ピッチ向けの中立テーマ（business）。機関のロゴを持たない
+   紺の基調色に、結論・強調は橙、3 つ目の系列は青緑。遠くからでも読めるように、文字は黒に近い濃い灰、
+   細い線と淡色は少し濃くする。字は既定の BIZ UDPゴシック（default と同じ） */
+:root{
+  --base: #1b3a5c;                 /* 紺 */
+  --emph: #c2410c;                 /* 橙（白地とのコントラスト 5.2:1） */
+  --accent2: #0f6e6a;              /* 青緑。3 つ目の系列 */
+  --fg: #1c2530;
+  --muted: #5b6573;                /* 白地とのコントラスト 5.8:1 */
+  --line: #c3cad3;
+  --title: var(--base);
+  --rule: var(--emph);             /* 見出しの下線は橙 */
+  --concl-bg: #fdf3ec;             /* 結論の行は淡い橙の地 */
+  --cover-bg: #f2f5f8;
+  --sec-bg: var(--base);
+  --stage-bg: #1e2329;
+  --series-1: var(--base);
+  --series-2: var(--emph);
+  --series-3: var(--accent2);
+  --series-4: var(--muted);
+}
+@supports (color: color-mix(in oklch, red 10%, white)){
+  :root{
+    --term-tint: color-mix(in oklch, var(--base) 9%, white);
+    --emph-tint: color-mix(in oklch, var(--emph) 13%, white);
+    --concl-bg: color-mix(in oklch, var(--emph) 6%, white);
+  }
+}
