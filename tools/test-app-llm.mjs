@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildPack, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // Windows の checkout では CRLF になることがあるので LF にそろえる（試験の正規表現と、textarea が CRLF を LF にすることに合わせる）
@@ -41,9 +42,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#w-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
   const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
-  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).map((b) => b[0]).join() === 'academic' && boxes.every((b) => /\+\d+ KB$/.test(b[2])),
+  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).map((b) => b[0]).join() === 'academic' && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
     'llm: the instructions have series checkboxes with sizes; with no deck open, academic is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
-  ok(/^Series \(added to the common body, \d+ KB\)$/.test(await page.textContent('#paste-series legend')) && /^\d+ KB in all$/.test(await page.textContent('#paste-pack-size')), 'llm: the legend gives the common body size and the total is shown');
+  ok((await page.textContent('#paste-series legend')) === `Series (added to the common body, ${packKb(buildPack({ series: [], lang: 'en' }))} KB)` && (await page.textContent('#paste-pack-size')) === `${packKb(buildPack({ series: ['academic'], lang: 'en' }))} KB in all`,
+    'llm: the legend gives the common body size and the total is shown, with the same calculation as node kit/llm-pack.mjs --list (UTF-8 bytes / 1024, English UI → English pack)');
   await page.click('#paste-copy-guide');
   await page.waitForSelector('#paste-copied:not([hidden])');
   const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
@@ -171,6 +173,20 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(/^0 errors/.test(sum3), 'llm: after the fix the quick check reports no errors: ' + sum3);
   await shot('fix-replaced.png');
 
+  // 日本語の画面：大きさは日本語の指示のもの（英語の大きさではない）。node kit/llm-pack.mjs --list --lang ja と同じ計算
+  {
+    const pj = await ctx.newPage();
+    watch(pj, 'llm-ja-size');
+    await pj.goto(BASE + '?lang=ja');
+    await pj.waitForSelector('#drop');
+    await pj.click('#w-paste');
+    await pj.waitForSelector('#dlg[open] #paste-text');
+    const legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
+    const ja = packKb(buildPack({ series: [], lang: 'ja' })), jaA = packKb(buildPack({ series: ['academic'], lang: 'ja' }));
+    ok(legend.includes(`${ja} KB`) && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
+      `llm: the Japanese UI shows the sizes of the Japanese instructions (${legend} / ${total})`);
+    await pj.close();
+  }
   // 日本語の画面の窓（画像だけ）
   if (shotDir) {
     const pj = await ctx.newPage();

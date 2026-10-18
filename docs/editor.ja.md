@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=9e8149e54135ab19 -->
+<!-- i18n: pair=editor.md sha256=663e7733b4bd918a -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -100,7 +100,7 @@
 
 ## チャットの AI で下書きする（貼り付けと直しの依頼）
 
-初めの下書きは、Claude Code なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示は、**共通の本体** [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。決まり・出力の形と、どの教材でも使える部品 `m-menu`・`m-flow`・`m-bars`）と、教材の種類ごとの**系列の指示** [llm-parts/](llm-parts/)：`academic`（`m-sweep`・`m-curves`・`m-seq`・`m-collect`）、`business`（`m-kpi`・`m-quad`・`m-market` と `m-flow` のお金の流れ）、`kokugo`（`m-kanbun`・`m-kobun`・`m-gendai`・縦書きのスライド）、`info`（`m-codetree`）。部品はどれもちょうど 1 か所に属す（README の `series:` の行）。`node tools/make-llm-guide.mjs` が約束事・部品の README・`tools/llm-guide/` から作り、古くなるか、共通の本体と系列 1 つで 40 KB を超えると `npm test` が失敗する。`node kit/llm-pack.mjs --series academic,info --lang ja` はエディタが写すのと同じ文章を出す（`--list` で系列と大きさ）。
+初めの下書きは、Claude Code なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示は、**共通の本体** [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。決まり・出力の形と、どの教材でも使える部品 `m-menu`・`m-flow`・`m-bars`）と、教材の種類ごとの**系列の指示** [llm-parts/](llm-parts/)：`academic`（`m-sweep`・`m-curves`・`m-seq`・`m-collect`）、`business`（`m-kpi`・`m-quad`・`m-market` と `m-flow` のお金の流れ）、`kokugo`（`m-kanbun`・`m-kobun`・`m-gendai`・縦書きのスライド）、`info`（`m-codetree`）。部品はどれもちょうど 1 か所に属す（README の `series:` の行）。`node tools/make-llm-guide.mjs` が約束事・部品の README・`tools/llm-guide/` から作り、古くなるか、共通の本体と系列 1 つで 40 KB を超えると `npm test` が失敗する。`node kit/llm-pack.mjs --series academic,info --lang ja` はエディタが写すのと同じ文章を出す（`--list` で系列と大きさ。KB は UTF-8 のバイト数 / 1024 で、貼り付けの窓と同じ数。英語と日本語の列、`--lang` を付ければその言語だけ。`--help` で使い方）。
 
 - **AI の出力を貼り付ける。** 最初の画面か、**開く ▾ → AI の出力を貼り付ける…**。窓にはまずチャットに貼る指示がある：教材に要る系列に印を付け（それぞれ加わる大きさ付き。デッキを開いていれば、その部品とテーマから推した系列、なければ `academic` に印）、**AI への指示を写す** を押す（共通の本体の「AI への指示」から後ろと、印を付けた系列の指示）。次に AI の**返事の全体**を（チャットの写すボタンで）貼り付けて **取り込む** を押す。エディタは 2 つのコードの囲み `deck.html` と `narration.md` を取り出す（```` ```html ````・```` ```markdown ````・```` ```html title="deck.html" ```` のような名前や、囲みの前の行のファイル名も分かる。Windows の改行、囲みの前・間・後の文章、余分な囲みはかまわない。同じファイルの囲みが 2 つなら最後のものを使う）。閉じていない囲みは返事が途中で切れたということなので、窓にそう書き、何も開かず、**AI に送り直しを頼む文を写す**を出す（足りない `narration.md` の囲みだけ、または教材の全体を短くして送り直してもらう）。切れたのが `narration.md` だけなら、その囲みだけの返事を、届いていた `deck.html` と合わせて開く。囲みのない返事も断る。囲みの印なしで画面から写した返事は、`<!DOCTYPE html>` から `</html>` までをデッキ、その後ろを口述原稿として取り出し、そのことを知らせる
 - **id。** AI にはスライドの id を書かないように頼んでいる。エディタは、id のないスライドに新しい id を付け、口述原稿の見出しを `## 見出し {#id}` に書き換える（`npm run ids` と同じ本体の `kit/core/slide-ids.mjs`）。見出しが同じスライドが 2 枚以上あれば、口述原稿のその見出しの節を順に対応させる

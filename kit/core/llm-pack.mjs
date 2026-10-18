@@ -12,6 +12,7 @@
 //   seriesForDeck(html)                          デッキの部品・テーマから推した系列（編集アプリの既定の選び方）
 //   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。直しの依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
+//   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 import { PACK } from './llm-pack-data.mjs';
 import { assemble, normalizeSeries as norm, commonOf, partOf, membersOf, langOf } from './llm-pack-assemble.mjs';
@@ -57,3 +58,6 @@ export function componentNotes(names, lang = 'en') {
 }
 
 export const packSize = (text) => new TextEncoder().encode(String(text)).length;
+// 大きさの表示（KB = UTF-8 のバイト数 / 1024、小数 1 桁）。node kit/llm-pack.mjs --list と編集アプリの貼り付けの窓が同じ計算を使う
+export const kbOf = (bytes) => (bytes / 1024).toFixed(1);
+export const packKb = (text) => kbOf(packSize(text));

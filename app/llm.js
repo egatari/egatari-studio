@@ -6,7 +6,7 @@
 //   「今のデッキを置き換える」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
 //   「AI への直しの依頼を写す」：簡易チェックの結果・組み立ての知らせ・その決まりの文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize } from '../kit/core/llm-pack.mjs';
+import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
@@ -130,7 +130,8 @@ export function setupLlm(app) {
       try { if (area) { area.focus(); area.select(); } return document.execCommand('copy'); } catch { return false; }
     }
   }
-  const kb = (s) => Math.ceil(packSize(s) / 1024);
+  // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
+  const kb = (s) => packKb(s);
 
   // ---------------------------------------------------------------- AI への指示を写す（共通の本体 + 選んだ系列）
   // 既定の選び方：今のデッキの部品・テーマから推した系列（kit/core/llm-pack.mjs の seriesForDeck）。なければ academic
@@ -163,7 +164,7 @@ export function setupLlm(app) {
       el('fieldset', { id: 'paste-series', cls: 'paste-series' }, [
         el('legend', { text: X.seriesLegend(kb(base)) }),
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
-          el('span', { cls: 'hint', text: X.plusKb(kb(buildPack({ series: [s], lang: LANG })) - kb(base)) })])),
+          el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
       ]),
       copy, total,
     ]);

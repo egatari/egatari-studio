@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, SERIES, seriesOf, seriesForDeck, componentsIn, packSize } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -61,8 +61,21 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   assert.throws(() => buildPack({ series: ['math'], lang: 'en' }), /unknown series "math"/);
   const cli = node('kit/llm-pack.mjs', '--series', 'kokugo,academic', '--lang', 'ja');
   assert.equal(cli.status, 0, cli.stderr); assert.equal(cli.stdout, buildPack({ series: ['academic', 'kokugo'], lang: 'ja' }));
+  // --list：--lang がなければ en と ja の両方の列、あれば その言語の大きさ（UTF-8 のバイト数 / 1024。編集アプリと同じ packKb）
+  const kbx = (series, lang) => packKb(buildPack({ series, lang })) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && /^common\t[\d.]+ KB\tm-bars, m-flow, m-menu$/m.test(list.stdout) && /^kokugo\t[\d.]+ KB\tm-gendai, m-kanbun, m-kobun$/m.test(list.stdout) && /^all\t/m.test(list.stdout), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
+  const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
+  assert.ok(listJa.status === 0 && listJa.stdout.includes(`common\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`academic\t${kbx(['academic'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
+  const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');
+  assert.ok(listEn.status === 0 && listEn.stdout.includes(`common\t${kbx([], 'en')}\tm-bars`), listEn.stdout);
+  // --help / -h：使い方を出す（指示の文章ではない）
+  for (const h of ['--help', '-h']) {
+    const r = node('kit/llm-pack.mjs', h);
+    assert.ok(r.status === 0 && /^usage: node kit\/llm-pack\.mjs/.test(r.stdout) && !r.stdout.includes('Instructions for the AI'), h + ': ' + r.stdout.slice(0, 200));
+  }
+  const badOpt = node('kit/llm-pack.mjs', '--sereis', 'academic');
+  assert.ok(badOpt.status === 2 && /unknown option --sereis/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
 });
 ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つの系列）。共通の部品は系列に重ねない・README に series がなければ作れない', () => {
   const dirs = fs.readdirSync(path.join(ROOT, 'components')).filter((x) => fs.existsSync(path.join(ROOT, 'components', x, 'README.md')));

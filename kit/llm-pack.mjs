@@ -1,27 +1,43 @@
 // チャットの AI への指示を組み立てて出す（kit/core/llm-pack.mjs の buildPack。編集アプリの「AI への指示を写す」と同じ文章）
 //   node kit/llm-pack.mjs --series academic,info --lang ja     共通の本体 + 系列（'all' で全部、指定なしで共通の本体だけ）
-//   node kit/llm-pack.mjs --list [--lang ja]                   系列・その部品・大きさ（共通の本体 + その系列）
-import { buildPack, SERIES, membersOfSeries, packSize } from './core/llm-pack.mjs';
+//   node kit/llm-pack.mjs --list [--lang ja]                   系列・その部品・大きさ（共通の本体 + その系列）。--lang がなければ en と ja の両方の列
+//   node kit/llm-pack.mjs --help | -h                          使い方
+import { buildPack, SERIES, membersOfSeries, packKb } from './core/llm-pack.mjs';
 
+const USAGE = `usage: node kit/llm-pack.mjs [--series <name,…|all>] [--lang en|ja]
+       node kit/llm-pack.mjs --list [--lang en|ja]
+       node kit/llm-pack.mjs --help
+
+Prints the instructions for a chat AI: the common body plus the series packs
+(${SERIES.join(', ')}; 'all' for every pack; none: the common body only).
+--lang   language of the instructions (default en)
+--list   lists the series, their components and the size of the common body
+         with that series (KB = UTF-8 bytes / 1024); without --lang, en and ja sizes
+`;
+const argv = process.argv.slice(2);
 function arg(name) {
-  const a = process.argv.slice(2);
-  const i = a.indexOf(name);
-  if (i >= 0) return a[i + 1];
-  const eq = a.find((x) => x.startsWith(name + '='));
+  const i = argv.indexOf(name);
+  if (i >= 0) return argv[i + 1];
+  const eq = argv.find((x) => x.startsWith(name + '='));
   return eq ? eq.slice(name.length + 1) : undefined;
 }
-const lang = arg('--lang') || 'en';
-if (!['en', 'ja'].includes(lang)) { console.error(`--lang must be en or ja (got ${lang})`); process.exit(2); }
-const kb = (s) => (packSize(s) / 1024).toFixed(1) + ' KB';
+if (argv.includes('--help') || argv.includes('-h')) { process.stdout.write(USAGE); process.exit(0); }
+const langArg = arg('--lang');
+if (langArg !== undefined && !['en', 'ja'].includes(langArg)) { console.error(`--lang must be en or ja (got ${langArg})\n\n${USAGE}`); process.exit(2); }
+const known = new Set(['--series', '--lang', '--list']);
+const bad = argv.filter((a, i) => a.startsWith('-') && !known.has(a.split('=')[0]) && !(i > 0 && ['--series', '--lang'].includes(argv[i - 1])));
+if (bad.length) { console.error(`unknown option ${bad[0]}\n\n${USAGE}`); process.exit(2); }
 
-if (process.argv.includes('--list')) {
-  const base = buildPack({ series: [], lang });
-  console.log(`common\t${kb(base)}\t${membersOfSeries('common').join(', ')}`);
-  for (const s of SERIES) console.log(`${s}\t${kb(buildPack({ series: [s], lang }))}\t${membersOfSeries(s).join(', ')}`);
-  console.log(`all\t${kb(buildPack({ series: 'all', lang }))}`);
+if (argv.includes('--list')) {
+  const langs = langArg ? [langArg] : ['en', 'ja'];
+  const cols = (series) => langs.map((lang) => packKb(buildPack({ series, lang })) + ' KB').join('\t');
+  console.log(['series', ...langs.map((l) => `${l} (common + series)`), 'components'].join('\t'));
+  console.log(`common\t${cols([])}\t${membersOfSeries('common').join(', ')}`);
+  for (const s of SERIES) console.log(`${s}\t${cols([s])}\t${membersOfSeries(s).join(', ')}`);
+  console.log(`all\t${cols('all')}`);
 } else {
   const s = arg('--series');
   try {
-    process.stdout.write(buildPack({ series: s === undefined ? [] : s, lang }));
+    process.stdout.write(buildPack({ series: s === undefined ? [] : s, lang: langArg || 'en' }));
   } catch (e) { console.error(e.message); process.exit(2); }
 }
