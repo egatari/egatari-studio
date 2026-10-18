@@ -2,6 +2,7 @@
 // （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、段階）は check.mjs が前に付ける
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
+const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 const stepJa = (s) => (s === 'concl' ? '結論の段階' : `段階 ${s}`);
 const stepEn = (s) => (s === 'concl' ? 'conclusion step' : `step ${s}`);
 
@@ -32,6 +33,19 @@ export const MESSAGES = {
   linkNumber: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）は番号なので、スライドを足すとずれる：スライドの id で #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") uses a slide number, which shifts when slides are added: link by slide id, #<id>` },
   linkNoId: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライドに id がなく、見出しを直すと切れる：npm run ids で id を付けて #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") targets a slide without an id, so it breaks when the heading changes: run npm run ids and link to #<id>` },
   linkCount: { ja: (a) => `スライドへのリンク：${a.ok} 本（ほかのファイルへ ${a.other} 本）`, en: (a) => `links to slides: ${a.ok} (to other files: ${a.other})` },
+  // ---------------------------------------------------------------- 添付（attachments/。format spec §9C.3）
+  attachBadConfig: { ja: (a) => `egatari.json の attachments が読めない（${a.why}）：[{"path": "attachments/…", "role": "pdf", "title": "…"}] の形にする`, en: (a) => `attachments in egatari.json cannot be read (${a.why}): use [{"path": "attachments/…", "role": "pdf", "title": "…"}]` },
+  attachBadName: { ja: (a) => `添付「${a.path}」の名前は使えない（${a.why}）：attachments/ の下の、ふつうの名前（.. ・ \\ ・ : * ? " < > | ・制御文字・末尾の点や空白・CON などの予約名なし）にする`, en: (a) => `the attachment name “${a.path}” is not allowed (${a.why}): use a plain name under attachments/ (no .., \\, : * ? " < > |, control characters, trailing dot or space, or reserved names such as CON)` },
+  attachExcluded: { ja: (a) => `添付「${a.path}」は 1 ファイル（.ega.html）に入らない（${a.why}）：入れるなら名前を替える`, en: (a) => `the attachment “${a.path}” is left out of the single file (.ega.html) (${a.why}): rename it to include it` },
+  attachDuplicate: { ja: (a) => `添付「${a.path}」が egatari.json に 2 度書いてある（「${a.other}」と同じ。大文字小文字は区別しない）：1 つにする`, en: (a) => `the attachment “${a.path}” is listed twice in egatari.json (same as “${a.other}”, ignoring case): keep one entry` },
+  attachBadRole: { ja: (a) => `添付「${a.path}」の役割「${a.role}」は使えない：source・pdf・code・data・supplement のどれかにする（読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has the role “${a.role}”: use source, pdf, code, data or supplement (it is not listed for readers)` },
+  attachBadTitle: { ja: (a) => `添付「${a.path}」の title が ${a.max} 字までの文字列でない：短い文字列にする`, en: (a) => `the title of the attachment “${a.path}” is not a string of at most ${a.max} characters: shorten it` },
+  attachMissing: { ja: (a) => `egatari.json の添付「${a.path}」のファイルがない：attachments/ に置くか、項目を消す`, en: (a) => `the attachment “${a.path}” in egatari.json does not exist: put the file in attachments/ or remove the entry` },
+  attachNoRole: { ja: (a) => `添付「${a.path}」に役割がない：egatari.json の attachments に {"path": "${a.path}", "role": "pdf"}（source・pdf・code・data・supplement）を書く（1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no role: add {"path": "${a.path}", "role": "pdf"} (source, pdf, code, data or supplement) to attachments in egatari.json (it is packed but not listed for readers)` },
+  attachTooLarge: { ja: (a) => `添付「${a.path}」が大きすぎる（${mibOf(a.n)}。1 つ ${mibOf(a.max)} まで）：小さくするか、別の場所で配る（1 ファイルに入らない）`, en: (a) => `the attachment “${a.path}” is too large (${mibOf(a.n)}; at most ${mibOf(a.max)} each): make it smaller or share it elsewhere (it is not packed)` },
+  attachTotal: { ja: (a) => `添付を合わせると大きすぎる（「${a.path}」で ${mibOf(a.n)}。合わせて ${mibOf(a.max)} まで）：減らす（この添付から後は 1 ファイルに入らない）`, en: (a) => `the attachments are too large together (${mibOf(a.n)} with “${a.path}”; at most ${mibOf(a.max)}): remove some (this one and later ones are not packed)` },
+  attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は 1 ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed` },
+  attachList: { ja: (a) => `添付：${a.n} 個（${a.size}。読み手の一覧に ${a.listed} 個）。1 ファイル（.ega.html）の再生ではダウンロードだけで、再生専用（--play-only）には入らない`, en: (a) => `attachments: ${a.n} (${a.size}; ${a.listed} listed for readers). In the single file (.ega.html) they are download-only; play-only files (--play-only) do not carry them` },
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
   titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：「${a.t}」を短くするか、言いたいことを結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
   titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英語は 60 文字まで）：「${a.t}」を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },

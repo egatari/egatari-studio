@@ -39,6 +39,7 @@ var ICON = {
   pres: SVG('<rect x="1.5" y="2.5" width="13" height="8.8" rx="1.2"/><path d="M8 11.3v2.4M5 13.7h6M4.2 5.6h4.6M4.2 8.1h2.8"/>'),
   full: SVG('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
   help: SVG('<path d="M5.8 5.8a2.3 2.3 0 1 1 3.3 2.1c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="8" cy="12.6" r=".4" fill="currentColor"/>'),
+  attach: SVG('<path d="M10.6 4.6L5.4 9.8a1.4 1.4 0 0 0 2 2l5.4-5.4a2.6 2.6 0 0 0-3.7-3.7L3.7 8.1a3.8 3.8 0 0 0 5.4 5.4l4.2-4.2"/>'),
   cap: SVG('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M7 6.6a1.7 1.7 0 1 0 0 2.8M11.6 6.6a1.7 1.7 0 1 0 0 2.8"/>')
 };
 function typing(t){ return t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName)); }
@@ -157,7 +158,14 @@ css(
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
   "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +
   "#dt-help .dt-fb{margin-top:8px;text-align:center;font-size:12px}#dt-help .dt-fb a{color:#9cc8ff;text-decoration:none}#dt-help .dt-fb a:hover{text-decoration:underline}" +
-  "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}"
+  "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
+  // 添付（ダウンロードだけ）
+  "#dt-help .dt-att{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-att ul{list-style:none;margin:0;padding:0}" +
+  "#dt-help .dt-att li{display:flex;align-items:center;gap:12px;padding:5px 0}#dt-help .dt-att .dt-att-n{flex:1;min-width:0}" +
+  "#dt-help .dt-att .dt-att-t{display:block;color:#fff;overflow-wrap:anywhere}#dt-help .dt-att .dt-att-m{display:block;color:#9a9a9a;font-size:11.5px;overflow-wrap:anywhere}" +
+  "#dt-help .dt-att button{font:inherit;font-size:12px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:3px 10px;cursor:pointer}" +
+  "#dt-help .dt-att button:hover{background:rgba(255,255,255,.18)}#dt-help .dt-att button:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
+  "#dt-help .dt-att .dt-att-note{margin:4px 0 0;color:#888;font-size:11.5px}#dt-help .dt-att .dt-att-err{color:#fca5a5}"
 );
 
 // ---------------------------------------------------------------- 状態
@@ -207,7 +215,95 @@ function build(){
     cur = e.detail.i; drawing = null; vanish = []; redraw();
   });
   window.addEventListener("resize", function(){ requestAnimationFrame(resize); });
-  if (!FOLLOW) buildBar();
+  if (!FOLLOW){ buildBar(); loadAttachments(); }
+}
+
+// ---------------------------------------------------------------- 添付（format spec §9C.3）：ダウンロードだけ
+// 1 ファイル（.ega.html）の索引（DECK.FORMAT.indexId。data-sha256 を確かめる）の attachments を読み、キーの一覧（?）の下と帯のボタンに出す。
+// ダウンロードは塊を復号し、大きさと sha256 を確かめてから、中身によらない型（application/octet-stream）の Blob を <a download> で渡す：
+// このページでも新しいタブでも開かない（HTML・SVG・PDF も描かない・実行しない）。再生専用の派生と組んだ HTML には索引がないので出ない
+var FMT = DECK.FORMAT || null, ATT = [];
+function roleName(r){ return (JA ? {source: "元の原稿", pdf: "PDF", code: "コード", data: "データ", supplement: "補足資料"} : {source: "Source", pdf: "PDF", code: "Code", data: "Data", supplement: "Supplement"})[r] || r; }
+var HAS = function(o, k){ return o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k); };
+function hexOf(buf){ var u = new Uint8Array(buf), s = ""; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? "0" : "") + u[i].toString(16); return s; }
+function esc(t){ return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function attName(p){ var n = String(p).split("/").pop().replace(/[\u0000-\u001f\u007f-\u009f\\/:*?"<>|]/g, "_").trim(); return n || "attachment"; }
+function attSize(n){ return n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
+function loadAttachments(){
+  if (!FMT || !FMT.indexId || !FMT.attachKey || !window.crypto || !crypto.subtle || typeof TextEncoder === "undefined") return;
+  var el = document.getElementById(FMT.indexId);
+  if (!el || el.tagName !== "SCRIPT") return;
+  var t = el.textContent || "";
+  if (t.indexOf('"' + FMT.attachKey + '"') < 0) return;
+  var want = (el.getAttribute("data-sha256") || "").trim();
+  crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)).then(function(d){
+    if (hexOf(d) !== want) return;   // 索引が壊れている：何も出さない
+    var ix; try { ix = JSON.parse(t); } catch (e) { return; }
+    var list = HAS(ix, FMT.attachKey) ? ix[FMT.attachKey] : null, files = HAS(ix, "files") ? ix.files : null, blobs = HAS(ix, "blobs") ? ix.blobs : null;
+    if (!Array.isArray(list) || !files || !blobs) return;
+    var pre = FMT.attachDir + "/", seen = Object.create(null);
+    list.forEach(function(e){
+      if (!e || typeof e.path !== "string" || e.path.indexOf(pre) !== 0 || FMT.attachRoles.indexOf(e.role) < 0 || seen[e.path]) return;
+      if (e.path.split("/").some(function(x){ return x === "" || x === "." || x === ".." || x === "__proto__"; })) return;
+      if (!HAS(files, e.path) || typeof files[e.path] !== "string" || !HAS(blobs, files[e.path])) return;
+      var id = files[e.path], b = blobs[id];
+      if (!b || !Array.isArray(b.chunks) || !b.chunks.length || typeof b.sha256 !== "string" || typeof b.bytes !== "number") return;
+      if (!b.chunks.every(function(c, j){ return c === FMT.blobPrefix + id + "-" + j; })) return;
+      seen[e.path] = 1;
+      ATT.push({path: e.path, role: e.role, title: typeof e.title === "string" && e.title ? e.title : null, bytes: b.bytes, sha256: b.sha256, chunks: b.chunks.slice()});
+    });
+    if (ATT.length) addAttachButton();
+  }).catch(function(){});
+}
+function addAttachButton(){
+  if (!cb || cb.querySelector('[data-b="attach"]')) return;
+  var lab = (JA ? "添付ファイル（" : "Attachments (") + ATT.length + (JA ? "）" : ")");
+  var e = document.createElement("button"); e.type = "button"; e.setAttribute("data-b", "attach");
+  e.title = lab; e.setAttribute("aria-label", lab);
+  e.innerHTML = ICON.attach + "<kbd>" + ATT.length + "</kbd>";
+  e._act = function(){ toggleHelp(true); var f = helpBox && helpBox.querySelector("[data-att]"); if (f) f.focus({preventScroll: false}); };
+  var h = cb.querySelector('[data-b="help"]');
+  cb.insertBefore(e, h);
+  DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, bytes: a.bytes}; });
+  document.dispatchEvent(new CustomEvent("deck:attachments", {detail: {n: ATT.length}}));
+}
+function attHtml(){
+  if (!ATT.length) return "";
+  var rows = ATT.map(function(a, i){
+    var n = attName(a.path);
+    return '<li><span class="dt-att-n"><span class="dt-att-t">' + esc(a.title || n) + '</span><span class="dt-att-m">' + esc((a.title ? n + " · " : "") + roleName(a.role) + " · " + attSize(a.bytes)) +
+      '</span></span><button type="button" data-att="' + i + '">' + (JA ? "ダウンロード" : "Download") + "</button></li>";
+  }).join("");
+  return '<div class="dt-att"><h3>' + (JA ? "添付ファイル" : "Attachments") + "</h3><ul>" + rows + '</ul><p class="dt-att-note" aria-live="polite">' +
+    (JA ? "保存するだけで、このページでは開きません" : "Saved as files only; nothing is opened in this page") + "</p></div>";
+}
+// 塊を復号して確かめ、Blob（application/octet-stream）を <a download> で保存させる。何も開かない・実行しない
+function downloadAttachment(i, btn){
+  var a = ATT[i], note = helpBox && helpBox.querySelector(".dt-att-note");
+  var fail = function(){ if (note){ note.textContent = (JA ? "壊れているので保存できません：" : "Corrupt, not saved: ") + attName(a.path); note.classList.add("dt-att-err"); } };
+  if (!a) return;
+  var parts = [], n = 0;
+  for (var j = 0; j < a.chunks.length; j++){
+    var el = document.getElementById(a.chunks[j]);
+    if (!el || el.tagName !== "SCRIPT" || (el.getAttribute("type") || "").toLowerCase() !== "application/octet-stream") return fail();
+    var bin; try { bin = atob((el.textContent || "").trim()); } catch (e) { return fail(); }
+    var u = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+    parts.push(u); n += u.length;
+    if (n > a.bytes) return fail();
+  }
+  if (n !== a.bytes) return fail();
+  var all = new Uint8Array(n), o = 0;
+  parts.forEach(function(x){ all.set(x, o); o += x.length; });
+  crypto.subtle.digest("SHA-256", all).then(function(d){
+    if (hexOf(d) !== a.sha256) return fail();
+    var url = URL.createObjectURL(new Blob([all], {type: "application/octet-stream"}));
+    var l = document.createElement("a");
+    l.href = url; l.download = attName(a.path); l.rel = "noopener"; l.style.display = "none";
+    document.body.appendChild(l); l.click(); l.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    if (note){ note.classList.remove("dt-att-err"); note.textContent = (JA ? "保存しました：" : "Saved: ") + attName(a.path); }
+  }, fail);
 }
 
 // canvas の画素数を、画面上の舞台の大きさに合わせる（座標は常に 1280×720）
@@ -563,14 +659,18 @@ function helpHtml(){
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
     (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + fbHtml + "</div>";
+    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + attHtml() + fbHtml + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){
     helpBox = document.createElement("div"); helpBox.id = "dt-help"; helpBox.className = "deck-tools";
     helpBox.setAttribute("role", "dialog"); helpBox.setAttribute("aria-modal", "true"); helpBox.setAttribute("aria-label", TIP.help);
     helpBox.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
-    helpBox.addEventListener("click", function(e){ e.stopPropagation(); if (e.target === helpBox) toggleHelp(false); });
+    helpBox.addEventListener("click", function(e){
+      e.stopPropagation(); if (e.target === helpBox) toggleHelp(false);
+      var d = e.target.closest && e.target.closest("[data-att]");
+      if (d){ e.preventDefault(); downloadAttachment(+d.getAttribute("data-att"), d); }
+    });
     document.body.appendChild(helpBox);
   }
   if (on === undefined) on = !helpBox.classList.contains("show");

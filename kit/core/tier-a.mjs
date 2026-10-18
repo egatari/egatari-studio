@@ -15,6 +15,8 @@
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
 //   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
 //     ごとに、その字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
+//   添付（attachments/ の下のファイルと index.attachments。§9C.3・§7.2 の「archive entries」）：足す・消す・名前を替える・役割と題（設定のファイル）。
+//     スライドの原稿（テキストのファイル）がその添付のパスを書いていれば（組み立てが読んだかもしれない）断る（段 B へ）
 //   段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して warnings に知らせる（直しただけの段階の音声は残す。古いと分かる）
 //   どのスライドにも当たらない鍵の口述原稿は読める層に入れず、warnings に知らせる
 // それ以外のバイト（実行系・スライド・ほかの書き手や版が書いた注釈など）は 1 バイトも変えない。
@@ -27,6 +29,7 @@ import {
 } from './portable.mjs';
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
 import { isJapanese, LATIN_MAX, parseRange, fontFaceCss } from './build-core.mjs';
+import { planAttachments, problemText, isAttachPath } from './attachments.mjs';
 
 const IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, RD_ID = FORMAT.READABLE_ID, CFG = FORMAT.CONFIG_FILE;
 const SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
@@ -34,7 +37,8 @@ const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'de
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // 索引の項目の並び（足すときの位置。書き出し（exportPortable）と同じ順）
-const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions'];
+const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY];
+const ATTACH_KNOWN = new Set(['path', 'role', 'title']);
 const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
 
 const dict = () => Object.create(null);
@@ -237,8 +241,15 @@ async function run(original, filesIn, opts) {
     if (eqBytes(a, b)) continue;
     changed.push(p);
   }
-  const outside = changed.filter((p) => !TIER_A_FILES.has(p));
+  const outside = changed.filter((p) => !TIER_A_FILES.has(p) && !isAttachPath(p));
   if (outside.length) refuse('source-changed', `slide source changed (${outside.join(', ')}): the lesson must be rebuilt (tier B)`, outside);
+  // 添付の変更：スライドの原稿（添付と音声でない文字のファイル）がそのパスを書いていれば、組み立てが読んだかもしれないので組み直す
+  const attachChanged = changed.filter((p) => isAttachPath(p));
+  if (attachChanged.length) {
+    const srcText = Object.keys(old).filter((p) => !isAttachPath(p) && !p.startsWith('audio/') && p !== CFG && /^text\/|json|xml|svg/.test(mimeOf(p))).map((p) => dec.decode(old[p])).join('\n');
+    const used = attachChanged.filter((p) => srcText.includes(p));
+    if (used.length) refuse('source-changed', `the slide source refers to the changed attachment (${used.join(', ')}): the lesson must be rebuilt (tier B)`, used);
+  }
   if (changed.includes(CFG)) {
     let c;
     try { c = NEW.get(CFG) ? parseJsonStrict(dec.decode(NEW.get(CFG))) : null; } catch (e) { refuse('config-changed', `${CFG}: ${e.message}`); }
@@ -319,7 +330,7 @@ async function run(original, filesIn, opts) {
 
   // 5. 原稿のファイル・塊・sourceSha256（変わっていない塊はそのまま。新しい中身は sha256 の先頭 32 字を id に）
   const finalFiles = dict();
-  for (const p of Object.keys(old)) if (!p.startsWith('audio/') && (NEW.has(p) || !TIER_A_FILES.has(p))) finalFiles[p] = NEW.get(p) || old[p];
+  for (const p of Object.keys(old)) if (!p.startsWith('audio/') && (NEW.has(p) || (!TIER_A_FILES.has(p) && !isAttachPath(p)))) finalFiles[p] = NEW.get(p) || old[p];
   for (const p of changed) if (!own(finalFiles, p) && NEW.get(p)) finalFiles[p] = NEW.get(p);
   for (const a of Object.values(newAudio)) {
     for (const f of [a.file, ...(Array.isArray(a.alternatives) ? a.alternatives.map((x) => x.file) : [])]) {
@@ -328,6 +339,20 @@ async function run(original, filesIn, opts) {
       finalFiles[f] = b;
     }
   }
+  // 添付の一覧（index.attachments）：設定のファイルの役割と題から、書き出しと同じ規則で（kit/core/attachments.mjs）。上限を超える・名前が正しくない
+  // 添付は段 A でも入れない（断る。編集器は書く前に止める）
+  let cfgNew = null;
+  try { const cb = NEW.get(CFG) || (own(old, CFG) ? old[CFG] : null); cfgNew = cb ? parseJsonStrict(dec.decode(cb)) : null; } catch { cfgNew = null; }
+  const oldAttach = Array.isArray(ix[FORMAT.ATTACH_KEY]) ? ix[FORMAT.ATTACH_KEY] : null;
+  const aFiles = Object.keys(finalFiles).filter(isAttachPath).map((p) => ({ path: p, size: finalFiles[p].length }));
+  const aPlan = planAttachments(aFiles, cfgNew, { carry: oldAttach });
+  const aDropped = aFiles.filter((f) => !aPlan.include.includes(f.path));
+  if (aDropped.length) refuse('attachments', aPlan.problems.filter((x) => aDropped.some((f) => f.path === x.path)).map(problemText).join('; ') || 'attachments over the limits', aDropped.map((f) => f.path));
+  for (const x of aPlan.problems) if (x.code !== 'attachMissing' || attachChanged.length || changed.includes(CFG)) warnings.push(problemText(x));
+  const carryBy = new Map((oldAttach || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
+  const attachList = aPlan.list.map((e) => copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));
+  const attachDiff = !deepEqual(attachList, oldAttach || []) && !(attachList.length === 0 && !own(ix, FORMAT.ATTACH_KEY));
+
   const paths = Object.keys(finalFiles).sort(cmpCodePoint);
   const oldSha = (p) => (own(ix.files, p) && eqBytes(finalFiles[p], old[p]) ? ix.blobs[ix.files[p]].sha256 : null);
   const shas = dict();
@@ -378,6 +403,7 @@ async function run(original, filesIn, opts) {
   if (hasAudio && !req.includes('audio-v1')) req.push('audio-v1');
   if (!hasAudio && req.includes('audio-v1')) req.splice(req.indexOf('audio-v1'), 1);
   if (!deepEqual(req, ix.requires)) setIx(['requires'], req);
+  if (attachDiff) setIx([FORMAT.ATTACH_KEY], attachList.length ? attachList : undefined);
   if (!hasAudio) { if (own(ix, 'audio')) setIx(['audio'], undefined); }
   else if (!own(ix, 'audio')) setIx(['audio'], newAudio);
   else for (const k of audioChanged) setIx(['audio', k], own(newAudio, k) ? newAudio[k] : undefined, Object.keys(newAudio));
@@ -553,7 +579,7 @@ async function run(original, filesIn, opts) {
     ok: true, html, index: newIndex, deckMeta: back.deckMeta, warnings: [...warnings],
     changes: {
       files: changed, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
-      extensions: exChanged, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
+      extensions: exChanged, attachments: attachDiff || attachChanged.length > 0, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
       supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split(/[\\/]/).pop()), faces: supplement.faces, chars: supplement.chars } : null,
       identity: !!identity, unchanged: html === original,
     },
@@ -561,5 +587,5 @@ async function run(original, filesIn, opts) {
 }
 
 // 段 A の場所の一覧（試験と、ほかの道具が「どこが変わってよいか」を知るため）
-export const TIER_A_REGIONS = Object.freeze({ blocks: BLOCKS, index: IX_ID, chunkPrefix: BP, readable: RD_ID, supplementPrefix: SUP, files: [...TIER_A_FILES] });
+export const TIER_A_REGIONS = Object.freeze({ blocks: BLOCKS, index: IX_ID, chunkPrefix: BP, readable: RD_ID, supplementPrefix: SUP, files: [...TIER_A_FILES], filePrefixes: [FORMAT.ATTACH_DIR + '/'] });
 export { splitKey, objectAt as jsonObjectAt };

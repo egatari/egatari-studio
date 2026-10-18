@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=5eb52d68fd23db1b -->
+<!-- i18n: pair=reference.md sha256=99522faa4892e1f2 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -379,6 +379,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 - **教材の id**：初めての書き出しで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。デッキと一緒に残す（次の書き出しも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **スクリプトなしで読める口述原稿**：全段階の表示用の文字を、ふつうの HTML としても入れる（デッキが動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）は段階ごとにファイルの索引に集める。
+- **添付**（形式の §9C.3）：組み立てには使わない、読み手のためのファイル。`attachments/` の下（下のフォルダもよい）に置く：元の原稿（TeX・Word）、組んだ PDF、コード、データ、補足。役割と題は `egatari.json` に、ファイルの `index.attachments` と同じ形で書く：`"attachments": [{"path": "attachments/paper.pdf", "role": "pdf", "title": "論文（PDF）"}]`。`role` は `source`・`pdf`・`code`・`data`・`supplement` のどれか、`title` は任意（200 字まで。ほかの項目は残す）。`attachments/` の下の通常のファイルはみな入れる（シンボリックリンクはたどらない。隠しファイル・控え・認証の情報は上と同じく外す）。`index.attachments` に載るのは正しい役割のあるものだけで、ほかは知らせて入れるだけ。上限は 1 つ 20 MiB・合わせて 50 MiB・100 個（base64 なので 1 ファイルではおよそ 4/3 倍）。超えるものは知らせて外す（`kit/core/attachments.mjs` の `ATTACH_LIMITS`）。添付はコードに数えない（`.html` の添付があっても Extended にならない）。`requires` にも入れない（読み手は無視してよい）。読むのは組み立てと同じ大きさの数え方の内。1 ファイルの再生器は **?** の一覧と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：索引の hash と、添付ごとの大きさと SHA-256 を確かめ、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。HTML・SVG・PDF も、ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。検査器は、役割がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものを警告する
 - **音声の記録**：段階の音声ごとに、作ったときの口述原稿の hash を残す。TTS の控えから、音声を作った後に口述原稿が変わったと分かるときは、その hash を `null`（分からない＝古い）にする。展開してまとめ直しても `null` のまま。実行系の音声の項目には音声のメディアタイプも書くので、再生器が推し量らずに済む。
 - 30 MiB を超えると警告する（長い教材は章に分ける）。
 
@@ -394,6 +395,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 #### 組み直さない編集（段 A）
 
 `kit/core/tier-a.mjs`（`tierA(original, files, {identity?, fonts?})`。Node にもブラウザにも依存せず、何も実行しない）は、口述原稿・音声・秒数の上書きの編集を、形式の段 A（§7.2）として、組み直さずに 1 ファイルに入れる。`files` は直した作業フォルダ（展開した形。`audio/manifest.json` を含む）。書き換えるのは次の所だけ：`deck-narration`・`deck-marks`・`deck-timing`・`deck-audio` の変わった項目（ほかの項目は書き方ごとバイトのまま）、読める層の変わった `<div data-step-key>`、`deck-meta` の `sourceSha256`（`identity` があれば `docId` も）、索引の変わった項目（`files`・`blobs`・変わった音声の記録・`requires`・`sourceSha256`・拡張の行から作る拡張のうち変わった行から作られる項目、`identity` があれば `docId` と `metadata.derivedFrom`）とその `data-sha256`、塊（新しい中身を足し、参照されなくなったものを除く）、そして変わった口述原稿に、ファイルの `@font-face` がまかなわない字があるときだけ、その字を含む `@fontsource` の分割ファイルを入れた新しい `<style id="…font-supplement-<n>">`（`fonts`：`{faces(key), load(file)}`）。`<n>` は今ある補いの番号のいちばん大きいものの次（0 から）で、`@font-face` を持つ最後の style 要素の後に置き、埋め込んである字（family・weight・style）のうちその字を持たないものごとに 1 つの `@font-face` を書く（400 だけを埋め込んだファイルには 400 だけ。ファイルが埋め込まない family には書かず、知らせる）。ほかのバイトはそのまま。知らない項目はどの深さでも残す。口述原稿が変わった段階の音声の記録はそのまま（`inputHash` が合わなくなるので古い）。段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して知らせる。どのスライドにも当たらない鍵の口述原稿は読める層に入れず、知らせる。返すのは `{ok: true, html, index, deckMeta, changes, warnings}` か、組み直しが要るとき（`source-changed`：`narration.md`・`timeline.json`・設定のファイルのほかが変わった）、組んだ教材と原稿が食い違うとき（`source-mismatch`）、`timeline.json` が JSON の object でないとき（`timeline`）、場所が見つからないとき（`layout`）の `{ok: false, code, reason}`。結果を展開してまとめ直すと、原稿のファイル・音声の記録・実行系の JSON・読める層・索引は同じで、字（組み直しは `deck-base` に字を選び直し、補いは足さない）と、塊の並びが違うことがある。`tools/test-tier-a.mjs` が場所を見分ける差分（`tools/tier-a-diff.mjs`）で確かめる。
+
+添付は保存の層の項目なので、`attachments/` の下のファイルを足す・消す・名前を替えること、`egatari.json` の役割と題を替えることも段 A で済む：変わるのは索引（`files`・`blobs`・`sourceSha256`・`attachments`）・塊・`deck-meta.sourceSha256` だけ。スライドの原稿がその添付のパスを書いているとき（組み立てが読んだかもしれない）は `source-changed`、添付が上限や名前の規則に合わないときは `attachments` で断る。
 
 ## TTS
 

@@ -18,13 +18,16 @@
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
 // K. 音声が古い段階（format spec §5.4）：audio/manifest.json の記録の inputHash が今の口述原稿と違うか null（警告）。inputHash の無い
 //    記録（前の tts/synth.py）は TTS の控えの digest で比べる。音声は消さない
+// L. 添付（format spec §9C.3）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
-import { build, isJapanese, analyzeSlideIds } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds, listFiles } from './build.mjs';
+import { FORMAT } from './core/format.mjs';
+import { planAttachments } from './core/attachments.mjs';
 import { normalizeKey } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
@@ -153,6 +156,34 @@ for (const w of built.stats.warn) {
       const i = slideOf.has(seg.slideKey) ? slideOf.get(seg.slideKey) : null;
       report(i, 'warn', `audio: stale — 段階 ${k} の音声は今の口述原稿から作ったものではない（${e && e.kind === 'recorded' ? '録音' : e && e.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`);
     }
+  }
+}
+
+// ================================================================ L. 添付（attachments/。format spec §9C.3）
+// 1 ファイル（.ega.html）への書き出しと同じ規則（kit/core/attachments.mjs）：役割のないもの・名前の使えないもの・大きすぎるもの・ないもの
+{
+  const deckDir = fs.realpathSync(path.dirname(path.resolve(src)));
+  const aDir = path.join(deckDir, FORMAT.ATTACH_DIR);
+  let conf = null;
+  const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
+  try { if (fs.existsSync(cfgPath)) conf = JSON.parse(readRegular(cfgPath, { max: READ_LIMITS.json }).toString('utf8')); } catch (e) { report(null, 'warn', 'attachBadConfig', { why: `${FORMAT.CONFIG_FILE}: ${e.message}` }); }
+  const found = [];
+  let isLink = false;
+  try { isLink = fs.lstatSync(aDir).isSymbolicLink(); } catch { /* ない */ }
+  if (isLink) report(null, 'warn', 'attachBadName', { path: FORMAT.ATTACH_DIR + '/', why: 'a symbolic link (not followed)' });
+  else if (fs.existsSync(aDir)) {
+    for (const abs of listFiles(aDir)) found.push({ path: path.relative(deckDir, abs).split(path.sep).join('/'), size: fs.statSync(abs).size });
+    // ドットで始まる名前・リンクは一覧に入らない（書き出しも入れない）：知らせる
+    const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n), st = fs.lstatSync(p), rel = path.relative(deckDir, p).split(path.sep).join('/');
+      if (st.isSymbolicLink()) report(null, 'warn', 'attachBadName', { path: rel, why: 'a symbolic link (not followed)' });
+      else if (n.startsWith('.')) report(null, 'warn', 'attachExcluded', { path: rel, why: 'hidden file' });
+      else if (st.isDirectory()) walk(p); } };
+    try { walk(aDir); } catch { /* 読めない */ }
+  }
+  if (found.length || (conf && conf[FORMAT.ATTACH_KEY] !== undefined)) {
+    const plan = planAttachments(found, conf);
+    for (const x of plan.problems) report(null, 'warn', x.code, x);
+    if (plan.include.length) report(null, 'info', 'attachList', { n: plan.include.length, listed: plan.list.length, size: plan.total < 1048576 ? `${(plan.total / 1024).toFixed(0)} KB` : `${(plan.total / 1048576).toFixed(1)} MiB` });
   }
 }
 

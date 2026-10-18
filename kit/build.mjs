@@ -112,6 +112,27 @@ function within(p, dir) {
 }
 // 読み取りは上限つきの読み取りの口（kit/bounded-read.mjs）だけを通す：通常のファイルだけを、渡された大きさまで
 export { readRegular };
+// dir の下の通常のファイル（絶対パス、パスの順）。シンボリックリンクはたどらず数えない（ファイルもフォルダも）。ドットで始まる名前は外す。
+// 深さ 10・数 LIST_MAX まで（添付の一覧。kit/core/portable.mjs）
+const LIST_MAX = 1000;
+export function listFiles(dir) {
+  const out = [];
+  const go = (d, depth) => {
+    if (depth > 10 || out.length >= LIST_MAX) return;
+    let st; try { st = fs.lstatSync(d); } catch { return; }
+    if (!st.isDirectory()) return;
+    for (const name of fs.readdirSync(d).sort()) {
+      if (name.startsWith('.') || out.length >= LIST_MAX) continue;
+      const p = path.join(d, name);
+      let s2; try { s2 = fs.lstatSync(p); } catch { continue; }
+      if (s2.isSymbolicLink()) continue;
+      if (s2.isDirectory()) go(p, depth + 1);
+      else if (s2.isFile()) out.push(p);
+    }
+  };
+  go(dir, 1);
+  return out;
+}
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex,
@@ -126,6 +147,7 @@ export const nodeEnv = {
   // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）。通常のファイルでなければ NotRegularFileError
   size: (p) => regularStat(p).size,
   within,
+  listFiles,
   // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes。kit/theme-dirs.mjs）：読むたびに求め直す（組み立てが 1 回だけ読む）
   get themeDirs() { return userThemeDirs(); },
   subset: subsetCss,

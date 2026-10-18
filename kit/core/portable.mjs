@@ -15,6 +15,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
+import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath } from './attachments.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -545,7 +546,8 @@ const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
-const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions']);
+const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY]);
+const ATTACH_KNOWN = new Set(['path', 'role', 'title']);
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
 //   build(env, src, opts)  組み立ての関数（既定は build-core の build。編集アプリは自分の組み立てを渡せる）
@@ -553,6 +555,9 @@ const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contra
 //                          identity がなければ derivedFrom は carry のまま（docId を変えない保存は derivedFrom を付けも変えもしない。§7.3）
 //   originalNarration      carry の文書の narration.md（あれば。行から作られた拡張を、行を消したら残さないため）
 //   identity               {docId, derivedFrom}：新しい教材として保存する（新しい docId・derivedFrom。§3.6.1・§7.3）。FORMAT.CONFIG_FILE を書き直し writes に
+//   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
+// 添付（§9C.3）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
+//   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
 export async function exportPortable(env0, srcPath, opts = {}) {
   const P = env0.path;
@@ -653,6 +658,44 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   }
   files[CFG] = writes[CFG] ? utf8(writes[CFG]) : readBytesVia(env, ePath);
   const docId = econf.docId;
+
+  // 添付（§9C.3）：attachments/ の下の通常のファイル（リンクはたどらない）。上限（ATTACH_LIMITS）を超えるものは読まずに外して知らせる
+  const attachList = [];
+  {
+    const aDir = P.join(deckDir, FORMAT.ATTACH_DIR);
+    const found = [];
+    const sizeOf = (p) => { if (typeof env.size !== 'function') return null; try { const n = env.size(p); return Number.isFinite(n) ? n : null; } catch (e) { if (e && e.code === 'build-not-a-file') return -1; return null; } };
+    const consider = (abs) => {
+      if (!inDeck(abs)) { warnings.push(`${LOG}: attachment "${rel(abs)}" is outside the working folder; not included`); return; }
+      const n = sizeOf(abs);
+      if (n === -1) { warnings.push(`${LOG}: attachment "${rel(abs)}" is not a regular file; not included`); return; }
+      found.push({ path: rel(abs), size: n });
+    };
+    if (env.exists(aDir) && inDeck(aDir)) {
+      if (typeof env.listFiles === 'function') for (const abs of env.listFiles(aDir)) consider(abs);
+      else {
+        // 一覧の口がない env：設定のファイルに書いたものだけ
+        const list = Array.isArray(econf[FORMAT.ATTACH_KEY]) ? econf[FORMAT.ATTACH_KEY] : [];
+        for (const e of list) if (isObj(e) && isAttachPath(e.path) && !pathProblem(e.path)) { const abs = P.join(deckDir, ...e.path.split('/')); if (env.exists(abs) && env.isFile(abs)) consider(abs); }
+      }
+    }
+    const carryList = isObj(opts.carry) && Array.isArray(opts.carry[FORMAT.ATTACH_KEY]) ? opts.carry[FORMAT.ATTACH_KEY] : null;
+    const plan = planAttachments(found, econf, { carry: carryList, limits: opts.attachLimits });
+    for (const x of plan.problems) warnings.push(`${LOG}: ${problemText(x)}`);
+    const L = plan.limits;
+    let total = 0;
+    const got = new Set();
+    for (const p of plan.include) {
+      const b = files[p] || readBytesVia(env, P.join(deckDir, ...p.split('/')));
+      // 一覧の後で大きくなったもの：読んだ大きさで確かめ直す
+      if (b.length > L.fileBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTooLarge', path: p, n: b.length, max: L.fileBytes })}`); continue; }
+      if (total + b.length > L.totalBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTotal', path: p, n: total + b.length, max: L.totalBytes })}`); continue; }
+      total += b.length;
+      files[p] = b; got.add(p);
+    }
+    const carryBy = new Map((carryList || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
+    for (const e of plan.list) if (got.has(e.path)) attachList.push(copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));
+  }
 
   // 外したもの・パスの規則
   const pathErr = checkArchivePaths(Object.keys(files));
@@ -785,6 +828,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     metadata,
     excluded: [...EXCLUDED_CATEGORIES],
     ...(Object.keys(extensions).length ? { extensions } : {}),
+    ...(attachList.length ? { [FORMAT.ATTACH_KEY]: attachList } : {}),
   };
   // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
   // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
@@ -839,7 +883,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const size = utf8Length(html);
   if (size > WARN_BYTES) warnings.push(`${LOG}: the file is ${(size / MiB).toFixed(1)} MiB (over ${WARN_BYTES / MiB} MiB): consider splitting the lesson into chapters`);
   if (size > LIMITS.fileBytes) warnings.push(`${LOG}: the file is over ${LIMITS.fileBytes / MiB} MiB; editors may refuse it`);
-  return { html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length } };
+  return { html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）
@@ -1131,7 +1175,7 @@ export async function readPortable(input, opts = {}) {
     const b = blobBytes.get(id);
     let n = 0;
     for (let i = 0, e = b.length - 1; i < e; i++) if (b[i] === 0x3c) { const c = b[i + 1] | 0x20; if ((c >= 0x61 && c <= 0x7a) || b[i + 1] === 0x2f || b[i + 1] === 0x21) n++; }
-    tags += n * paths.filter((p) => ix.files[p] === id).length;
+    tags += n * paths.filter((p) => ix.files[p] === id && !isAttachPath(p)).length;   // 添付は組み立ても解析もしない（§9C.3）
     if (tags > L.sourceTags) fail('too-complex', `the source files contain more than ${L.sourceTags} tags`);
   }
   const files = dict();
@@ -1170,6 +1214,7 @@ export async function readPortable(input, opts = {}) {
       }
     } catch (e) { warnings.push('deck-audio: ' + e.message); }
   }
+  for (const w of attachmentIndexWarnings(ix)) warnings.push(w);
   if (futureMajor) warnings.push(`${FORMAT.DISPLAY_NAME} ${ix.version.major}.${ix.version.minor} is newer than this reader (1.x): the source can be extracted, not edited`);
   if (unknownFeatures.length) warnings.push(`the file requires features this reader does not implement (${unknownFeatures.join(', ')}): the source can be extracted, not edited or re-exported`);
   return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, extractOnly, extractReason: futureMajor ? 'major' : unknownFeatures.length ? 'feature' : null };

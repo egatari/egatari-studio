@@ -75,6 +75,14 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
     },
     async writeBytes(rel, bytes, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, bytes); if (content(rel)) { dirty = true; revision++; } },
     async writeText(rel, text, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, String(text)); if (content(rel)) { dirty = true; revision++; } },
+    // 消す（添付の板）。控えは .cache/edits/ に（フォルダと同じ。保存するファイルには入らない）
+    async remove(rel, o) {
+      if (o && o.live && !o.live()) throw cancelled();
+      const e = store.get(rel); if (!e) throw notFound(rel);
+      await this.backup(rel, { max: Infinity });
+      store.delete(rel);
+      if (content(rel)) { dirty = true; revision++; }
+    },
     async exists(rel) { if (store.has(rel)) return true; for (const k of store.keys()) if (k.startsWith(rel + '/')) return true; return false; },
     // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ。フォルダと同じ）。控えは保存するファイルには入らない
     async backup(rel, opts = {}) {

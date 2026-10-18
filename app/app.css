@@ -159,3 +159,10 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-mode{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13.5px}
 #dlg .paste-mode label{display:flex;gap:8px;align-items:flex-start}
 #panel-body .fixreq{width:100%;margin:2px 0 8px}
+/* 添付の板（app/attachments-panel.js） */
+#panel-body ul.attach-list{list-style:none;padding:0;margin:8px 0}
+#panel-body .attach-row{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-bottom:7px}
+#panel-body .attach-name{overflow-wrap:anywhere;margin-bottom:4px}
+#panel-body .attach-meta{display:flex;gap:6px;margin-bottom:5px}#panel-body .attach-meta input{flex:1;min-width:0}
+#panel-body .attach-row .row button{padding:2px 10px;font-size:12.5px}
+#attach-problems{margin-top:8px;font-size:12.5px}

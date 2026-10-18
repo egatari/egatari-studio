@@ -84,6 +84,17 @@ export async function exists(root, rel) {
 
 // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ残す。開発サーバーと同じ）。
 // 掃除で消すのは控えの名前の形（kit/core/backup-name.mjs。開発サーバーの pruneBackups と同じ）のファイルだけ。ほかのファイルとフォルダには触れない
+// ファイルを消す（添付の板）。消す前に中身のバイトを .cache/edits/ に控える（控えは opts.max バイトまで。超えれば控えずに断る）
+export async function removeFile(root, rel, live = () => true, opts = {}) {
+  const { d, name } = await dirOf(root, rel, false);
+  const bytes = await readBytes(root, rel, { max: opts.max === undefined ? Infinity : opts.max });
+  if (!live()) throw cancelledError();
+  const edits = await (await root.getDirectoryHandle('.cache', { create: true })).getDirectoryHandle('edits', { create: true });
+  const h = await edits.getFileHandle(`${backupStamp(Date.now())}-${name}`, { create: true });
+  const w = await h.createWritable(); await w.write(bytes); await w.close();
+  if (!live()) throw cancelledError();
+  await d.removeEntry(name);
+}
 export const KEEP_EDITS = 30;
 export async function backup(root, rel, now = Date.now, opts = {}) {
   const text = await readText(root, rel, opts);

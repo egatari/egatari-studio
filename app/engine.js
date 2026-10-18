@@ -132,6 +132,13 @@ export function createEngine(res, loadLazy) {
         return u;
       },
       within(p, dir) { p = P.resolve(p); dir = P.resolve(dir); return p === dir || p.startsWith(dir === '/' ? '/' : dir + '/'); },
+      // 作業場所の dir の下のファイル（絶対パス、パスの順。一覧にあるものだけ。添付の一覧：kit/core/portable.mjs）
+      listFiles(dir) {
+        dir = P.resolve(dir);
+        if (!inDeck(dir)) return [];
+        const r = relOf(dir), pre = r ? r + '/' : '';
+        return [...getL().files.keys()].filter((k) => k.startsWith(pre)).sort().map((k) => DECK + '/' + k);
+      },
       // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）：作業場所のファイルは、読んだものは読んだ中身の大きさ
       // （一覧の後で大きくなっていても実際のバイトで数える）、まだ読んでいなければ一覧の大きさ
       size(p) {

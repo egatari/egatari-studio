@@ -10,6 +10,7 @@ import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
 import { createAudioPanel } from './audio-panel.js';
+import { createAttachPanel } from './attachments-panel.js';
 import { createTtsClient } from './tts-client.js';
 import { loadLame } from './mp3-loader.js';
 import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
@@ -159,6 +160,7 @@ function resetDeck(ws, portable) {
   engine.setWorkspace(ws);
   audio.reset();
   ui.reset();
+  if ($('attach-panel')) closePanel();
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
   blankPreview();
 }
@@ -463,6 +465,17 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
+});
+// 添付の板（app/attachments-panel.js。§9C.3）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
+const attach = createAttachPanel({
+  lang: EN ? 'en' : 'ja', el, ask, toast, ws: () => S.ws, generation: () => S.gen,
+  openPanel: (title, body) => openPanel(title, body), isOpen: () => !$('panel').hidden && !!$('attach-panel'),
+  beforeWrite: async () => {
+    if (!S.portable) return null;
+    if (S.portable.readOnly) return T.readOnlyNoEdit;
+    return (await ensureRights()) ? null : T.rightsDeclined;   // 添付は段 A の場所（段 A の編集だけの文書でも直せる）
+  },
+  afterWrite: async () => { await rebuild('save'); updateName(); },
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
@@ -1060,6 +1073,7 @@ $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-comments').onclick = () => ui.toggleComments();
 $('b-audio').onclick = () => audio.toggle();
+$('b-attach').onclick = async () => { if (!$('panel').hidden && $('attach-panel')) { closePanel(); return; } if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; } await attach.open(); };
 $('b-check').onclick = quickCheck;
 $('b-export').onclick = exportHtml;
 $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };

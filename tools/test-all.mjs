@@ -1,7 +1,7 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-ids・test-build-args・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）・test-i18n-pairs（英語と日本語の文書の組）・test-theme-dirs（利用者のテーマのフォルダ）・test-codetree（m-codetree の木と MH の復号）、あれば）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-app（編集アプリ）
+// 2. 単体の検査（test-narration・test-ids・test-build-args・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）・test-i18n-pairs（英語と日本語の文書の組）・test-theme-dirs（利用者のテーマのフォルダ）・test-codetree（m-codetree の木と MH の復号）、あれば）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
@@ -48,6 +48,7 @@ const steps = [
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
+  ['test-attachments', ['tools/test-attachments.mjs', path.join(tmp, 'attachments'), '--shots', path.join(tmp, 'attachments-shots')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）

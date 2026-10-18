@@ -17,11 +17,16 @@ export const FORMAT = Object.freeze({
   URI_SCHEME: `${NAME}:`,                             // deck-audio の src（<scheme><blobId>）
   FILE_EXT: '.ega.html',                              // 書き出すファイルの拡張子
   PLAY_EXT: '.play.ega.html',                         // 再生専用の派生の拡張子
-  CONFIG_FILE: `${NAME}.json`,                        // 原稿のフォルダに残す docId と metadata
+  CONFIG_FILE: `${NAME}.json`,                        // 作業フォルダに残す docId と metadata（と添付の一覧 ATTACH_KEY）
+  // 添付（§9C.3）：読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。組み立てには使わず、再生器はダウンロードだけ（実行しない）
+  ATTACH_DIR: 'attachments',                          // 置き場所（archive path は 'attachments/…'）
+  ATTACH_KEY: 'attachments',                          // index.attachments（[{path, role, title?}]）。作業フォルダでは CONFIG_FILE の同じ名前の項目
+  ATTACH_ROLES: Object.freeze(['source', 'pdf', 'code', 'data', 'supplement']),
   SCHEMA_PREFIX: `${NAME}-`,                          // 仕様の Schema のファイル名の前置（<prefix>index.schema.json など）
   SCHEMA_BASE: 'https://egatari.org/schema/',         // Schema の $id の前置（試験は写しを $id で引く。ネットワークは使わない）
   SPEC_URL: 'https://github.com/egatari/egatari-spec',
   VENDOR_DIR: `vendor/${NAME}-spec`,                  // 仕様の Schema と試験用の入力の写し（リポジトリの根から）
 });
 // 実行系（kit/deck.js）に渡す分（build-core が DECK.FORMAT として埋め込む）
-export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID });
+export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID,
+  indexId: FORMAT.INDEX_ID, attachKey: FORMAT.ATTACH_KEY, attachDir: FORMAT.ATTACH_DIR, attachRoles: FORMAT.ATTACH_ROLES });

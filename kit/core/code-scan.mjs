@@ -187,6 +187,7 @@ export function codeReasons(files, { entry = 'deck.html' } = {}) {
   const entryText = () => (et ??= map.has(entry) ? text(map.get(entry)) : '');
   for (const [rel, v] of [...map].sort(([a], [b]) => (a === entry ? -1 : b === entry ? 1 : a < b ? -1 : a > b ? 1 : 0))) {
     if (rel.split('/').some((s) => s.startsWith('.'))) continue;            // 控え（.cache）など
+    if (rel.startsWith(FORMAT.ATTACH_DIR + '/')) continue;                   // 添付（§9C.3）：組み立てに使わず、再生器はダウンロードだけ（実行しない）
     const ext = extOf(rel);
     if (JS_EXT.has(ext)) { out.push(`script file ${rel}`); continue; }
     if (BINARY.has(ext) || (NOT_MARKUP.has(rel) && rel !== entry)) continue;
