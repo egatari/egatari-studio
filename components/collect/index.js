@@ -5,6 +5,14 @@
 // 段階 1 で、札 i が targets[to] へ動く（to は番号か番号の配列。配列なら札の写しがそれぞれへ動く）。
 // 箱は始めに点線の枠だけ出し、札が着いてから中身（label / tex / value）を出す
 DECK.define("m-collect", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["chips", "targets"], properties: {
+      chips: {type: "array", minItems: 1, items: {type: "object", required: ["to"], properties: {label: {type: "string"}, to: {type: ["integer", "array"], items: {type: "integer"}}}}},
+      targets: {type: "array", minItems: 1, items: {type: "object", properties: {label: {type: "string"}, tex: {type: "string"}, value: {type: ["string", "number"]}, tone: {type: "string"}, x: {type: "number"}, y: {type: "number"}}}},
+      cols: {type: "integer"}}},
+    example: {chips: [{label: "表", to: 0}, {label: "裏", to: 1}], targets: [{label: "表の数"}, {label: "裏の数"}], cols: 2},
+  };
   static steps = 1;
   static props = {
     move:    {type: "number", default: 0.9, doc: "札 1 枚が動く秒数"},

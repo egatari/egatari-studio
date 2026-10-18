@@ -38,6 +38,7 @@ DECK.define("m-名前", class extends DECK.MotionElement {
 5. 数値は検算済みのスクリプトの出力（子の `<script type="application/json">` → `this.data`）だけを使う
 6. 補間は `DECK.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `DECK.lerp`
 7. 図の中の式は `DECK.svgMath(親, x, y, "TeX", {size, anchor})`、簡単な記号は `DECK.mtext`（`*u*_0`）
+8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書く部品は `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えば部品の代わりに札を出して、検査器が「どこが・何のはずが・どう書くか」を知らせる。指示の部品の一覧にも出る（`node tools/make-llm-guide.mjs`）
 
 ## 3. 確かめる
 

@@ -6,6 +6,14 @@
 // steps[0] は始めの状態（段階 0）。steps[1..] が 1 回ずつの更新。1 段階に per-step 回の更新を、等しい時間枠で順に動かす。
 // 今の分布は濃く、前の分布は薄い線で残す。右の欄に readout の数値（桁をそろえる）。mark は今回の観測の位置
 DECK.define("m-seq", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）。軸の設定（xl yl yr など）も JSON に書ける
+  static shape = {
+    schema: {type: "object", required: ["xs", "steps"], properties: {
+      xs: {type: "array", minItems: 2, items: {type: "number"}},
+      steps: {type: "array", minItems: 1, items: {type: "object", required: ["dens"], properties: {dens: {type: "array", items: {type: "number"}}, readout: {type: "object"}, mark: {type: "number"}}}},
+      digits: {type: "object"}, markLabel: {type: "string"}}},
+    example: {xs: [-2, -1, 0, 1, 2], steps: [{dens: [0.05, 0.24, 0.4, 0.24, 0.05], readout: {n: 0}}, {dens: [0.02, 0.2, 0.5, 0.2, 0.02], readout: {n: 1}, mark: 0.3}]},
+  };
   static props = {
     "per-step": {type: "number", default: 1, doc: "1 段階で動かす更新の回数"},
     slot:  {type: "number", default: 0.9, doc: "更新 1 回の秒数（cues はこの間隔）"},

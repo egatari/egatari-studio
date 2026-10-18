@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=8da0aa873ef9c54b -->
+<!-- i18n: pair=contract.ja.md sha256=7a81bd82b18137d7 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -50,6 +50,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - A component may open an overlay on a click (the conjugation card of `m-kobun`). This is a presenting control, like the pen, outside the (i, k, t) rule: it must close when the step changes, never open in `?mode=video`, not print, take nothing from the network, and show text only
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
 - Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the deck is treated as having code of its own)
+- Declare the data's shape in `static shape` (`kit/shape.js`: a small subset of JSON Schema, `{schema, example, note?}`; `{text: true, example}` for components written as text, `{links: true, example}` for child `<a href>`; a json attribute may have `shape` in `static props`). The runtime checks it before counting steps: on a mismatch, or when `mount`/`render` throws, the component is not drawn, an inline placeholder (`.m-error`) says what is wrong, its steps are the `steps` attribute (else 0), and the problem goes to `DECK.componentErrors` (read by the checker and the editor's quick check; never a stack trace). The guide's component list shows the shape and example
 - Location: `components/<name>/{index.js, demo.html, README.md}`. Write `name` `summary` `steps` `props` at the top of the README (frontmatter)
 
 ## 4. Narration (narration.md)

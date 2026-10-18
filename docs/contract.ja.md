@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=20d3cf7107cf5de7 -->
+<!-- i18n: pair=contract.md sha256=eeb16e5a0092833e -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -50,6 +50,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - 部品は、押したときに札を重ねて出してよい（`m-kobun` の活用表）。これはペンと同じ発表の操作で、(i, k, t) の決まりの外にある：段階が動いたら閉じ、`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにする
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、デッキは自前のコードを持つものとして扱う）
+- データの形は `static shape` に書く（`kit/shape.js`：JSON Schema の小さな部分集合で `{schema, example, note?}`。字で書く部品は `{text: true, example}`、子の `<a href>` で書く部品は `{links: true, example}`。json の属性は `static props` の `shape`）。実行系は段階を数える前に確かめ、違うとき・`mount` や `render` が例外を出したときは部品を描かず、その場に札（`.m-error`）で何が違うかを出し、部品の段階は属性 `steps`（なければ 0）にし、知らせを `DECK.componentErrors` に積む（検査器と編集アプリの簡易チェックが読む。スタックは載せない）。指示の部品の一覧に形と見本が出る
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `summary` `steps` `props` を書く
 
 ## 4. 口述原稿（narration.md）

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>部品のデータの形の試験</title>
+</head>
+<body>
+<div id="stage">
+<!-- 試験の見本（tools/test-shape.mjs）：AI が書いた形のまま、m-curves のデータが配列でなく {"series": …} になっている。
+     data-step の 2 つと結論の行は数えられ、口述原稿の [0] [1] [2] [concl] は「スライドにない段階」にならないこと。[3] だけが段階の外 -->
+<section class="slide" id="s-ygij2b">
+  <h2>市場均衡：交点で決まる価格</h2>
+  <div class="body">
+    <div class="cols" style="gap:24px">
+      <div style="flex:0 0 38%">
+        <p>需要と供給が一致する点を<span class="term">市場均衡</span>と呼ぶ。</p>
+        <div class="big" data-step="1">\[ 10 - P = 2 + P \]</div>
+        <p data-step="2" class="note">解くと \(P = 4\)</p>
+      </div>
+      <m-curves style="height:380px" aria-label="需要曲線と供給曲線の交点">
+        <script type="application/json">{
+          "xr": [0, 10], "yr": [0, 10],
+          "xt": [0, 2, 4, 6, 8, 10], "yt": [0, 2, 4, 6, 8, 10],
+          "xl": "数量 Q", "yl": "価格 P",
+          "series": [
+            {"label": "需要 D", "fn": "10 - u"},
+            {"label": "供給 S", "fn": "2 + u"}
+          ]
+        }</script>
+      </m-curves>
+    </div>
+  </div>
+  <div class="concl"><span>交点で均衡価格が決まる</span></div>
+</section>
+</div>
+</body>
+</html>

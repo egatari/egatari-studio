@@ -10,6 +10,7 @@
 //     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は簡易チェックの arg でもよい）
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
+import { cleanErrorText } from './error-text.mjs';
 
 export function guideRules(guide) {
   const out = new Map();
@@ -29,7 +30,8 @@ const BY_CODE = {
   titleLong: ['R-title'], titleLongEn: ['R-title'], conclLong: ['R-concl'], conclLongEn: ['R-concl'], conclOverflow: ['R-concl', 'R-fit'],
   overflowBottom: ['R-fit'], overflowRight: ['R-fit'], smallText: ['R-fit'], katexError: ['R-math'],
   noNarration: ['R-narr-steps'], orphanNarration: ['R-narr-steps'], readingExpr: ['R-reading', 'R-formula'], readingSeveral: ['R-reading'],
-  contrast: ['R-colors'], formula: ['R-formula'], missingSection: ['R-headings'], markTarget: ['R-marks'],
+compData: ['R-components'], consoleError: ['R-components'],
+    contrast: ['R-colors'], formula: ['R-formula'], missingSection: ['R-headings'], markTarget: ['R-marks'],
 };
 const BY_TEXT = [
   [/スライドが見つからない|slide not found|no slide/i, ['R-headings']],
@@ -97,7 +99,13 @@ export function amountOf(p, lang = 'en') {
 }
 
 // 返事が途中で切れて取り込めなかったとき（kit/core/llm-import.mjs の unclosed）の依頼
+// 囲みがなかったとき（no-blocks：ファイル・キャンバス・添付で返したなど）も、この関数で送り直しを頼む（err.code === 'no-blocks'）
 export function cutOffRequest(err, lang = 'en') {
+  if (err && err.code === 'no-blocks') {
+    return lang === 'ja'
+      ? '前の返事にはコードの囲みがありませんでした。ファイル・キャンバス・添付では出さず、チャットの返事の本文に、2 つのコードの囲み ```deck.html と ```narration.md を書いて送り直してください。どちらも最後まで書いて閉じてください（R-output）。\n'
+      : 'Your previous reply had no code blocks. Do not output files, a canvas or attachments: write both code blocks, ```deck.html and ```narration.md, in the body of your chat message, complete and closed (R-output).\n';
+  }
   const file = err.kind === 'deck' ? 'deck.html' : err.kind === 'narration' ? 'narration.md' : null;
   return lang === 'ja'
     ? `前の返事は途中で切れていました${file ? `（${file} の囲みが閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md の囲みだけを、最初から最後まで書いて閉じた形で送り直してください（deck.html は受け取りました）。' : '同じ教材を、枚数を減らした短い形で、2 つの囲み ```deck.html と ```narration.md をどちらも閉じて送り直してください。'}囲みの途中で終わらないでください（R-output）。
@@ -112,7 +120,8 @@ export function buildFixRequest({ problems, deck, narration = '', guide, lang = 
   const M = L[lang] || L.en;
   const rules = guideRules(guide);
   const secs = sectionsOf(deck);
-  const list = problems.map((p) => ({ ...p, id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
+  // 言葉からスタックの行とファイルの場所（一時フォルダ・file://・手元のサーバー）を除く（kit/core/error-text.mjs）
+  const list = problems.map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
   const used = [...new Set(list.flatMap((p) => p.rules))].filter((r) => rules.has(r));
   const out = [M.head, '', M.ask, ''];
   const partial = deck.length + narration.length > limit && list.some((p) => p.id);

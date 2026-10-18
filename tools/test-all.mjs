@@ -76,6 +76,7 @@ Object.assign(needs, { 'check kokugo': 'build kokugo' });
 steps.push(
   ['llm guide', ['tools/make-llm-guide.mjs', '--check']],
   ['test-llm', ['tools/test-llm.mjs', path.join(tmp, 'llm')]],
+  ['test-shape', ['tools/test-shape.mjs', path.join(tmp, 'shape')]],
 );
 // 段階の音声（編集アプリの音声の板）：後処理を tts/core.py と比べる・MP3・読み辞書・記録と古さ・段 A（ブラウザなし）と、
 // 偽のマイクと差し替えの TTS で音声の板（録音・使う・古い・作り直し・段 A の保存・TTS の窓）

@@ -8,6 +8,16 @@
 //        上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる（「軸を突き抜ける」見せ方）
 // 値の数字は伸びきってから出す（途中の値を読ませない）。count="true" なら伸びに合わせて数え上げる
 DECK.define("m-bars", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["groups"], properties: {
+      groups: {type: "array", minItems: 1, items: {type: "object", anyOf: [{required: ["value"]}, {required: ["values"]}], properties: {
+        label: {type: "string"}, value: {type: "number"}, values: {type: "array", items: {type: "number"}}, step: {type: "integer"}, at: {type: "number"}, tone: {type: "string"}}}},
+      series: {type: "array", items: {type: "object", properties: {label: {type: "string"}, tone: {type: "string"}}}},
+      scale: {type: "array", items: {type: "object", required: ["step"], properties: {step: {type: "integer"}, max: {type: "number"}, at: {type: "number"}}}},
+      max: {type: "number"}}},
+    example: {series: [{label: "売上"}], groups: [{label: "1 年目", value: 1.2}, {label: "2 年目", value: 3.4}]},
+  };
   static props = {
     orient:     {type: "string", default: "v", doc: "v（縦棒）か h（横棒。順位や比較に）"},
     max:        {type: "number", default: 0, doc: "値の軸の上限（0 = 自動。scale があれば最初の上限）"},

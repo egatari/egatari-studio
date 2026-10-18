@@ -4,6 +4,17 @@
 //   （JSON の終わり）</m-curves>
 // 段階 j（1〜系列の数）で j 本目の線を引く。f は x の式（Math の関数と N(x,平均,標準偏差) が使える）、pts は点列
 DECK.define("m-curves", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）：線の配列。軸（xr yr xt yt xl yl）は属性に書く（JSON の中ではない）
+  static shape = {
+    schema: {type: "array", items: {type: "object", additionalProperties: false, anyOf: [{required: ["f"]}, {required: ["pts"]}],
+      properties: {label: {type: "string"}, f: {type: "string"}, pts: {type: "array", items: {type: "array", items: {type: "number"}, minItems: 2, maxItems: 2}},
+        color: {type: "string"}, dash: {type: "boolean"}, xr: {type: "array", items: {type: "number"}, minItems: 2, maxItems: 2},
+        at: {type: "number"}, anchor: {enum: ["start", "middle", "end"]}, dx: {type: "number"}, dy: {type: "number"}, ly: {type: "number"}}}},
+    example: [{label: "需要 D", f: "10 - x"}, {label: "供給 S", f: "2 + x"}, {label: "均衡", pts: [[4, 0], [4, 6]], dash: true}],
+    // よくある書き違い（指示の部品の一覧に書く）
+    note: {en: "the data is the array itself, not {\"series\": […]}; axes go in attributes (xr=\"[0,10]\" xl=\"…\"); the expression field is f in x (not fn, not u)",
+           ja: "データは配列そのもの（{\"series\": […]} ではない）。軸は属性に書く（xr=\"[0,10]\" xl=\"…\"）。式の欄は f で、変数は x（fn・u ではない）"},
+  };
   static props = {
     xr: {type: "json", default: [0, 1], doc: "横軸の範囲"}, yr: {type: "json", default: [0, 1], doc: "縦軸の範囲"},
     xt: {type: "json", default: []}, yt: {type: "json", default: []},

@@ -12,7 +12,9 @@ import CORE_JA from '../docs/authoring-with-llms.core.ja.md?text';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { readingProblems } from '../kit/core/narration-lint.mjs';
+import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
+import { message } from '../kit/check-messages.mjs';
+import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -46,6 +48,7 @@ const TX = {
       ignored: (w) => `どちらのファイルでもない囲み ${w.n} 個は使いませんでした`,
       unfenced: '囲みがなかったので、<!DOCTYPE html> から </html> までと、その後ろの口述原稿を取り出しました',
       autoclosed: (w) => `${w.line} 行目からの囲みが閉じていなかったので、次の囲みの手前で閉じました`,
+      unclosedAccepted: (w) => `${w.line} 行目からの narration.md の囲みに閉じる行（\`\`\`）がありませんでしたが、口述原稿は最後まであるので受け取りました`,
     },
     building: '取り込んでいます…', buildFailed: '取り込んだ原稿を組み立てられませんでした',
     imported: (n, ids) => `取り込みました：${n} 枚${ids ? `、id を ${ids} 枚に付けました` : ''}`,
@@ -58,7 +61,9 @@ const TX = {
     copyCutOff: 'AI に送り直しを頼む文を写す', cutOffCopied: '写しました。チャットに貼り付け、返事をここに貼り付けてください',
     fixNone: '直す問題はありません', pasteReply: '返事を貼り付ける…', close: '閉じる',
     checkMsg: {
-      orphanNarration: (a) => `スライドにない段階の口述原稿 [${a}]`,
+      orphanNarration: (a) => (a && typeof a === 'object' ? message('ja', 'narrOrphan', a) : `スライドにない段階の口述原稿 [${a}]`),
+      compData: (a) => message('ja', 'compData', a),
+      consoleError: (a) => message('ja', 'consoleError', { e: cleanErrorText(a) }),
       readingExpr: (a) => `読みの指定 ${a} が式を読んでいる（記号か用語だけに）`,
       readingSeveral: (a) => `読みの指定 ${a} に記号が 2 つ以上（記号ごとに分ける）`,
     },
@@ -87,6 +92,7 @@ const TX = {
       ignored: (w) => `${w.n} block(s) that are neither file were ignored.`,
       unfenced: 'No code blocks: took <!DOCTYPE html> … </html> and the narration after it.',
       autoclosed: (w) => `The block from line ${w.line} was not closed; it was closed before the next block.`,
+      unclosedAccepted: (w) => `The narration.md block from line ${w.line} has no closing \`\`\`; it was accepted because the narration looks complete.`,
     },
     building: 'Importing…', buildFailed: 'Could not build the imported deck',
     imported: (n, ids) => `Imported ${n} slides${ids ? `; added ids to ${ids}` : ''}`,
@@ -99,7 +105,9 @@ const TX = {
     copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the reply…', close: 'Close',
     checkMsg: {
-      orphanNarration: (a) => `Narration for a step the slide does not have [${a}]`,
+      orphanNarration: (a) => (a && typeof a === 'object' ? message('en', 'narrOrphan', a) : `Narration for a step the slide does not have [${a}]`),
+      compData: (a) => message('en', 'compData', a),
+      consoleError: (a) => message('en', 'consoleError', { e: cleanErrorText(a) }),
       readingExpr: (a) => `The reading ${a} reads an expression (one symbol or term only)`,
       readingSeveral: (a) => `The reading ${a} has several symbols (one reading each)`,
     },
@@ -159,8 +167,9 @@ export function setupLlm(app) {
     const r = extractBlocks(text);
     // 前の返事が narration.md の途中で切れ、今度はその囲みだけが届いた：前の deck.html と合わせる
     if (r.error && r.error.code === 'no-deck' && r.narration !== null && S.pendingDeck) { r.deck = S.pendingDeck; r.error = null; }
-    S.cutOff = r.error && r.error.code === 'unclosed' ? r.error : null;
-    S.pendingDeck = S.cutOff && r.deck ? r.deck : (r.error ? S.pendingDeck : null);
+    // 囲みが切れていた（unclosed）か、囲みがなかった（no-blocks：ファイル・キャンバス・添付で返した）：送り直しを頼む文を写せる
+    S.cutOff = r.error && (r.error.code === 'unclosed' || r.error.code === 'no-blocks') ? r.error : null;
+    S.pendingDeck = S.cutOff && S.cutOff.code === 'unclosed' && r.deck ? r.deck : (r.error ? S.pendingDeck : null);
     if (r.error) return typeof X.err[r.error.code] === 'function' ? X.err[r.error.code](r.error) : (X.err[r.error.code] || r.error.message);
     const notes = r.warnings.map((w) => (X.warn[w.code] ? (typeof X.warn[w.code] === 'function' ? X.warn[w.code](w) : X.warn[w.code]) : w.code));
     if (r.narration === null && mode === 'new') return X.err['no-narration'];
@@ -271,7 +280,19 @@ export function setupLlm(app) {
 
   // ---------------------------------------------------------------- 直しの依頼
   async function fixRequest(results) {
-    const probs = results.filter((r) => r.sev === 'error' || r.sev === 'warn').map((r) => ({ sev: r.sev, i: r.i, title: r.title, code: r.code, data: r.arg, text: T.checkMsg(r.code, r.arg) }));
+    // スライドにない段階の口述原稿：narration.md の行（そのまま）と、合わせる先の段階を足す（kit/core/narration-lint.mjs の orphanDetail）
+    let narrText = '';
+    try { narrText = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }) || ''; } catch { /* なければ行は出さない */ }
+    const segs = narrText ? parseNarration(narrText) : [];
+    const withLines = (r) => {
+      if (r.code !== 'orphanNarration' || !r.arg || typeof r.arg !== 'object') return r.arg;
+      const key = S.slides && S.slides[r.i] && S.slides[r.i].key;
+      const seg = segs.find((x) => x.slideKey === key && x.stepKey === r.arg.step);
+      if (!seg) return r.arg;
+      const o = { stepKey: seg.stepKey, line: seg.line, end: seg.end };
+      return { ...r.arg, line: seg.line, end: seg.end, ...orphanDetail(o, r.arg, narrText) };
+    };
+    const probs = results.filter((r) => r.sev === 'error' || r.sev === 'warn').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
     for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
     if (!probs.length) { toast(X.fixNone); return; }

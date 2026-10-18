@@ -8,6 +8,16 @@
 // 点は既定で 1 つ = 1 段階（step で直接、at で段階の中の開始秒）。self の点は強調の色で大きく、着いたときに輪が広がる
 // to は移動先：to.step（既定は点の次の段階）に、点が破線の跡を引きながら滑る
 DECK.define("m-quad", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）。x・y は 0〜1（0.5 が軸の交わるところ）
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["items"], properties: {
+      x: {type: "object", properties: {lo: {type: "string"}, hi: {type: "string"}}}, y: {type: "object", properties: {lo: {type: "string"}, hi: {type: "string"}}},
+      quads: {type: "object", properties: {tr: {type: "string"}, tl: {type: "string"}, bl: {type: "string"}, br: {type: "string"}, fill: {type: "string"}}},
+      items: {type: "array", minItems: 1, items: {type: "object", required: ["x", "y"], properties: {
+        label: {type: "string"}, x: {type: "number"}, y: {type: "number"}, step: {type: "integer"}, at: {type: "number"}, tone: {type: "string"}, anchor: {enum: ["right", "left", "above", "below"]},
+        r: {type: "number"}, self: {type: "boolean"}, to: {type: "object", required: ["x", "y"], properties: {x: {type: "number"}, y: {type: "number"}, label: {type: "string"}, step: {type: "integer"}, at: {type: "number"}}}}}}}},
+    example: {x: {lo: "手作業", hi: "自動"}, y: {lo: "高い", hi: "安い"}, items: [{label: "A 社", x: 0.25, y: 0.7}, {label: "自社", x: 0.8, y: 0.82, self: true}]},
+  };
   static props = {
     fade:  {type: "number", default: 0.5, doc: "点が現れる秒数"},
     move:  {type: "number", default: 1.2, doc: "to の移動の秒数"},

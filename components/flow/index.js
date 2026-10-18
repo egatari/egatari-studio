@@ -9,6 +9,17 @@
 // 同じ 2 つの箱の行きと帰りは shift（線に垂直にずらす px）で分ける。pulse の辺は、点の列が始点から終点へ流れる
 // （pulse: true なら辺の段階に 1 回、[段階, …] ならその段階ごとに 1 回。位置は (k, t) だけで決まり、流れ終わると消える）
 DECK.define("m-flow", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）。座標は要素の箱の px（x, y は箱の左上）
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["nodes"], properties: {
+      nodes: {type: "array", minItems: 1, items: {type: "object", required: ["id", "x", "y", "w", "h"], properties: {
+        id: {type: ["string", "integer"]}, label: {type: "string"}, tex: {type: "string"}, x: {type: "number"}, y: {type: "number"}, w: {type: "number"}, h: {type: "number"},
+        step: {type: "integer"}, tone: {type: "string"}, at: {type: "number"}}}},
+      edges: {type: "array", items: {type: "object", required: ["from", "to"], properties: {
+        from: {type: ["string", "integer"]}, to: {type: ["string", "integer"]}, step: {type: "integer"}, label: {type: "string"}, tone: {type: "string"}, dash: {type: "boolean"},
+        kind: {enum: ["money", "service", "data"]}, amount: {type: ["string", "number"]}, shift: {type: "number"}, pulse: {type: ["boolean", "array"]}, offset: {type: "number"}, at: {type: "number"}}}}}},
+    example: {nodes: [{id: "a", label: "観測", x: 20, y: 40, w: 200, h: 70, step: 1}, {id: "b", label: "更新", x: 320, y: 40, w: 200, h: 70, step: 2}], edges: [{from: "a", to: "b", step: 2}]},
+  };
   static props = {
     fade: {type: "number", default: 0.45, doc: "箱が現れる秒数"},
     draw: {type: "number", default: 0.6, doc: "矢印を引く秒数"},

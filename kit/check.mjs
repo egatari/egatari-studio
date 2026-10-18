@@ -26,7 +26,8 @@ import path from 'node:path';
 import { launch } from './browser.mjs';
 import { build, isJapanese, analyzeSlideIds } from './build.mjs';
 import { normalizeKey } from './narration.mjs';
-import { readingProblems, orphanSteps } from './core/narration-lint.mjs';
+import { readingProblems, orphanSteps, orphanDetail } from './core/narration-lint.mjs';
+import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { MESSAGES, message, where } from './check-messages.mjs';
 import { readRegular, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
@@ -181,10 +182,29 @@ const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
   static: s.classList.contains('static'),
   comps: s._comps.length,
   id: s.id || null,
+  // 段階を DOM から数える（実行系とは別に。部品が例外で止まっても data-step と .concl は数える）：番号の段階の最大と、結論の行があるか
+  domMax: [...s.querySelectorAll('[data-step]:not([data-concl])')].reduce((a, e) => { const n = +e.getAttribute('data-step'); return Number.isInteger(n) && n >= 0 ? Math.max(a, n) : a; }, 0),
+  domConcl: !!s.querySelector('.concl'),
   // 見出しの字（隠れているスライドでは innerText が空になるので textContent。KaTeX の読み上げ用の MathML は除く）
   title: (() => { const h = s.querySelector('h2, h1'); if (!h) return ''; const c = h.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); c.querySelectorAll('br').forEach((x) => x.replaceWith(' ')); return c.textContent.replace(/\s+/g, ' ').trim(); })(),
 })));
 const titleOf = (i) => (meta[i] ? meta[i].title : '');
+// 口述原稿と合わせる段階：実行系の数（_max・_cstep）と DOM から数えたものの大きいほう（数えられないもの（NaN）は DOM のほう）
+for (const m of meta) {
+  const hasC = !m.static && (m.cstep >= 0 || m.domConcl);
+  const rtNum = Number.isFinite(m.max) ? (m.cstep >= 0 ? m.max - 1 : m.max) : 0;
+  const num = Math.max(rtNum, m.domMax);
+  m.smax = m.static ? 0 : num + (hasC ? 1 : 0);
+  m.scstep = hasC ? m.smax : -1;
+}
+// 部品のデータの形（kit/deck.js の DECK.componentErrors）：スライドごとに、どの部品の何が違うか
+const compErrors = await page.evaluate(() => (DECK.componentErrors || []).map((r) => JSON.parse(JSON.stringify(r))));
+const badComps = new Map();
+for (const r of compErrors) {
+  report(r.slide, 'error', 'compData', { ...r, msg: r.msg === undefined ? undefined : cleanErrorText(r.msg) });
+  if (!badComps.has(r.slide)) badComps.set(r.slide, []);
+  badComps.get(r.slide).push(r.tag);
+}
 
 // ================================================================ J. スライドへのリンク
 phase = 'J リンク';
@@ -237,7 +257,7 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     let n, t = '';
     while ((n = tw.nextNode())) {
       const e = n.parentElement;
-      if (e.closest('.katex-mathml') || e.closest('svg')) continue;
+      if (e.closest('.katex-mathml') || e.closest('svg') || e.closest('script')) continue;
       let hid = false;
       for (let a = e; a && a !== body; a = a.parentElement) {
         if (a.hasAttribute('data-step') && !a.classList.contains('on')) { hid = true; break; }
@@ -370,13 +390,16 @@ for (const { i, stepKey, turns } of narrInfo) {
 }
 
 // スライドにない段階の口述原稿（[k] が段階の数を超える・結論のないスライドの [concl]・結論の段階を番号で書いた）：読まれないのでエラー
-for (const o of orphanSteps(built.segs, meta)) {
+let narrText = '';
+try { narrText = readRegular(path.join(path.dirname(path.resolve(src)), 'narration.md'), { max: READ_LIMITS.narration }).toString('utf8'); } catch { /* なければ行は出さない */ }
+const stepMeta = meta.map((m) => ({ key: m.key, max: m.smax, cstep: m.scstep, static: m.static }));
+for (const o of orphanSteps(built.segs, stepMeta)) {
   const i = meta.findIndex((m) => m.key === o.slideKey);
-  const max = meta[i].static ? 0 : meta[i].max, hasConcl = !meta[i].static && meta[i].cstep >= 0;
+  const max = stepMeta[i].max, hasConcl = !meta[i].static && stepMeta[i].cstep >= 0;
   const st = meta[i].static ? '（static）' : '', stEn = meta[i].static ? ' (static)' : '';
   const range = hasConcl ? { ja: (max > 1 ? `0〜${max - 1} と concl` : '0 と concl') + st, en: (max > 1 ? `steps 0–${max - 1} and concl` : 'step 0 and concl') + stEn }
     : { ja: (max ? `0〜${max}` : '0 だけ') + st, en: (max ? `steps 0–${max}` : 'step 0 only') + stEn };
-  report(i, 'error', 'narrOrphan', { step: o.stepKey, line: o.line, range, static: meta[i].static }, o.stepKey);
+  report(i, 'error', 'narrOrphan', { step: o.stepKey, line: o.line, end: o.end, range, static: meta[i].static, ...orphanDetail(o, stepMeta[i], narrText), comps: badComps.get(i) || [] }, o.stepKey);
 }
 // 読みの指定 {x|y} は 1 つの記号か用語だけ（式や記号の組を 1 つの読みにしない）
 for (const seg of built.segs) {
@@ -544,7 +567,14 @@ for (const [i, dur] of perSlide) report(i, 'info', 'slideLength', { s: dur.toFix
 await page.waitForTimeout(100);
 await browser.close();
 fs.rmSync(tmpDir, { recursive: true, force: true });
-for (const e of [...new Set(consoleErrors)]) report(null, 'error', 'consoleError', { e });
+// スタックの行とファイルの場所は除き、言葉だけにする。部品の例外（古い形の「M-CURVES TypeError: …」）は部品のデータの知らせにする
+const compTags = new Set(compErrors.map((r) => r.tag));
+for (const e of [...new Set(consoleErrors.map(cleanErrorText))]) {
+  const c = componentError(e);
+  if (c && compTags.has(c.tag)) continue;   // 実行系が DECK.componentErrors で知らせたもの
+  if (c) report(null, 'error', 'compData', { tag: c.tag, kind: 'exception', msg: c.msg, dataLike: /is not a function|is not iterable|Cannot read propert|undefined|null/.test(c.msg) });
+  else report(null, 'error', 'consoleError', { e });
+}
 
 // ================================================================ 出力
 const counts = { error: 0, warn: 0, info: 0 };

@@ -728,7 +728,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',

@@ -135,7 +135,7 @@ export function parseNarration(text) {
       cur = null; turn = null; return;
     }
     if (m && slideKey !== null) {
-      cur = { slideKey, stepKey: m[1], line: idx + 1, turns: [], ext: [] };
+      cur = { slideKey, stepKey: m[1], line: idx + 1, end: idx + 1, turns: [], ext: [] };   // end：この段階の最後の行（空行を除く）
       out.push(cur); turn = null;
       if (m[2].trim()) addLine(m[2]);
       return;
@@ -143,11 +143,11 @@ export function parseNarration(text) {
     // 拡張の行：発言には入れない（前の発言の続きにもしない）。段階の外のものは使わない
     const x = parseExtLine(ln);
     if (x) {
-      if (cur) cur.ext.push({ ...x, line: idx + 1 });
+      if (cur) { cur.ext.push({ ...x, line: idx + 1 }); cur.end = idx + 1; }
       else if (slideKey !== null) warnings.push(`narration.md ${idx + 1} 行目: 拡張の行が段階（[k]）の外にある（使わない）`);
       return;
     }
-    if (cur && ln.trim()) addLine(ln.trim());  // 空行は飛ばす（同じ段階の続き）
+    if (cur && ln.trim()) { addLine(ln.trim()); cur.end = idx + 1; }  // 空行は飛ばす（同じ段階の続き）
   });
   function addLine(s) {
     const r = s.match(ROLE);

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=adb1c5403cd6984d -->
+<!-- i18n: pair=reference.ja.md sha256=a1c86556b568196c -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -326,7 +326,8 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | the heading text of a `## heading {#id}` differs from that slide's heading (the id wins) | info |
 | a slide keyed by a legacy rule: a hand-written `data-key`, or `s<n>` (no id and no heading) — `slide key: legacy` | warn |
 | a link to a slide (`#<id>`, `#<id>:<stepKey>`, `#N`) whose slide does not exist, whose step is out of range, or `:concl` on a slide without a conclusion; a link `#N` or to a slide without an id; a relative link to a file that does not exist ([contract §9](contract.md#9-links-to-slides)) | error; warn; warn |
-| console errors | error |
+| a component's data does not match its declared shape (`static shape`), or the component throws while drawing (`compData`: which component, what differs (path, expected, got), its shape and an example; rule R-components). The step count of a slide also comes from its `data-step` elements and `.concl`, so a failing component does not turn the slide's narration into orphans | error |
+| console errors (the message only: stack lines and file paths, temp folders and local-server URLs are removed) | error |
 | text visible at step 0 | info |
 | title > 26 full-width units (Japanese) / > 60 characters (English) | error / warn |
 | title ends with a colon | error |

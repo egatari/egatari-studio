@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=0fa2a30e9dda0c7e -->
+<!-- i18n: pair=template.ja.md sha256=ad636a49c8f79d1d -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -27,7 +27,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ## 1. Output format
 
-- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the deck would be too long, make fewer slides.
+- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. Do not output files, a canvas or attachments: write both code blocks in the body of your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the deck would be too long, make fewer slides.
 - **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and narration headings without `{#…}`. The editor adds ids after import. When you are given a deck that already has ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
 
 ## 2. deck.html
@@ -118,7 +118,7 @@ Generated from the component READMEs (their notes are in Japanese). “steps” 
 - **R-dialogue** Lines start with `Expert:` or `Novice:`; a step may have several turns (continuation lines indented). A line without a speaker is Expert. Write an Expert/Novice dialogue: Expert explains, Novice asks the short question a learner would ask (on most content slides, not at every step). If the user wants one speaker, leave out the names.
 - `{cue}`: a sync point inside a step, one per entry of the component’s `cues(k)` (only where a component’s README asks for it; otherwise omit).
 - `{mark:ID}`, `{mark:ID|effect}`, `{mark:ID|effect|hold=seconds}`, `{mark:clear}`: placed **right before** the words about the target; at most 1–2 per step; still say the thing in words. {{contract §7 "Effects:"}}
-- **R-reading** `{display|reading}` gives the reading of **one symbol or one term**: `{θ|theta}`, `{N₀|N naught}`, `{x̄|x bar}`, `{論語|ろんご}`. The display part is plain Unicode, never LaTeX, never an expression or several symbols (`{1-η|…}` and `{θとη|…}` are wrong: give each symbol its own reading and say the relation in words).
+- **R-reading** `{display|reading}` gives the reading of **one symbol or one term**: `{θ|theta}`, `{N₀|N naught}`, `{x̄|x bar}`, `{論語|ろんご}`. One symbol may carry a star, a prime, a subscript or superscript, or a hat/bar/tilde (`{Q*|Q star}`, `{x′|x prime}`, `{θ̂|theta hat}`). Write the display part in plain Unicode, not LaTeX, and never as an expression or several symbols (`{1-η|…}`, `{a*b|…}` and `{θとη|…}` are wrong: give each symbol its own reading and say the relation in words).
 - **R-formula** **Never read an equation aloud**: no LaTeX, no `\`, `^`, `_`, and no strings such as `a + b = c` in the narration. Say what the equation means (“the number left is the starting number times a shrinking exponential”).
 - Japanese narration is polite spoken Japanese (です・ます); English narration is plain spoken English. About 5 Japanese characters or 2.5 English words per second; 1–3 sentences per turn.
 

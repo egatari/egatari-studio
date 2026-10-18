@@ -3,9 +3,11 @@
 //          xl="*u*" yl="損失" param="c" style="height:380px"></m-sweep>
 // 段階 k（1〜values.length-1）で、値を values[k-1] から values[k] へ動かす
 DECK.define("m-sweep", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）：JSON の子はなく、属性で書く（values は数の配列、2 つ以上）
+  static shape = {schema: null, example: '<m-sweep f="u*u + c*u" values="[0,0.5,1]" xr="[-3,3]" yr="[0,10]"></m-sweep>'};
   static props = {
     f:      {type: "string", default: "u*u", doc: "関数の式（JavaScript の式。変数は横軸 u とパラメータ c）"},
-    values: {type: "json",   default: [0, 1], doc: "パラメータの値の列。段階ごとに次の値へ動く"},
+    values: {type: "json",   default: [0, 1], doc: "パラメータの値の列。段階ごとに次の値へ動く", shape: {type: "array", items: {type: "number"}, minItems: 2}, example: [0, 0.5, 1]},
     param:  {type: "string", default: "c", doc: "表示するパラメータの名前"},
     xr: {type: "json", default: [-3, 3]}, yr: {type: "json", default: [0, 10]},
     xt: {type: "json", default: []}, yt: {type: "json", default: []},

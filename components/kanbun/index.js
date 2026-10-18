@@ -180,6 +180,8 @@ function okSquash(n, F, fit){
   return ";letter-spacing:" + ls.toFixed(2) + "px" + (sy < 0.999 ? ";transform:scaleY(" + sy.toFixed(3) + ");transform-origin:50% 0" : "");
 }
 D.define("m-kanbun", class extends D.MotionElement {
+  // データの形（kit/shape.js）：JSON ではなく、要素の中に 1 行 1 句の字（送り仮名 (…)・返り点 […]）
+  static shape = {text: true, example: "学(ビテ)而{-}時(ニ)習(フ)[レ]之(ヲ)"};
   static props = {
     size:   {type: "number", default: 60, doc: "漢字の大きさ（px）。送り仮名・返り点はその 0.42 倍（24px より小さくしない）"},
     slot:   {type: "number", default: 0.55, doc: "読む順で 1 字にかける秒数"},

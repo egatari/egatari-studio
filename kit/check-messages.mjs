@@ -58,9 +58,28 @@ export const MESSAGES = {
   narrMissing: { rule: 'R-narr-steps', ja: (a) => `この段階の口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（その段階で現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
   narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
   turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つの段階に分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },
+  // a = {step, line, end, range, static, keys, n, concl, target, lines: [{n, text}], comps: [部品の名前…]}（keys 以下は narration-lint の orphanDetail）
   narrOrphan: { rule: 'R-narr-steps',
-    ja: (a) => `口述原稿の [${a.step}] に当たる段階がスライドにない（narration.md ${a.line} 行目。このスライドの段階は ${a.range.ja}）：その行を前の段階に移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外して段階を付ける' : `スライドに data-step="${a.step}" の要素を足す`}`,
-    en: (a) => `narration [${a.step}] has no matching step on the slide (narration.md line ${a.line}; the slide has ${a.range.en}): move the line into an existing step, or ${a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}"`}` },
+    ja: (a) => {
+      const L = a.end > a.line ? `${a.line}〜${a.end}` : `${a.line}`;
+      if (!a.keys) return `口述原稿の [${a.step}] に当たる段階がスライドにない（narration.md ${L} 行目。このスライドの段階は ${a.range.ja}）：その行を前の段階に移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外して段階を付ける' : `スライドに data-step="${a.step}" の要素を足す`}`;
+      const add = a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外して段階を付ける' : `スライドに data-step="${a.step}" の要素を足す`;
+      const lines = (a.lines || []).map((l) => `${l.n} 行目「${l.text.trim()}」`).join('、');
+      return `口述原稿の [${a.step}] に当たる段階がスライドにない${a.line ? `（narration.md ${L} 行目）` : ''}。このスライドの段階は${a.static ? 'static なので 0 だけ' : `番号が 0〜${a.n}${a.concl ? ' と結論' : ''}`}で、使える鍵は ${a.keys.map((k) => `[${k}]`).join(' ')}。`
+        + `直し方：(1) 行の頭の「[${a.step}]」を消し、その発言を前の段階 [${a.target}] の発言の後ろに続ける（前の段階に合わせる）か、(2) ${add}`
+        + (lines ? `。直す行：${lines}` : '')
+        + (a.comps && a.comps.length ? `。このスライドの部品 ${a.comps.map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、その段階を数えていない：先に部品のデータを直す（R-components）` : '');
+    },
+    en: (a) => {
+      const L = a.end > a.line ? `lines ${a.line}–${a.end}` : `line ${a.line}`;
+      if (!a.keys) return `narration [${a.step}] has no matching step on the slide (narration.md ${L}; the slide has ${a.range.en}): move the line into an existing step, or ${a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}"`}`;
+      const add = a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> to the slide (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}" to the slide`;
+      const lines = (a.lines || []).map((l) => `line ${l.n}: “${l.text.trim()}”`).join('; ');
+      return `narration [${a.step}] has no matching step on the slide${a.line ? ` (narration.md ${L})` : ''}. The slide has ${a.static ? 'only step 0 (static)' : `steps 0–${a.n}${a.concl ? ' and concl' : ''}`}; the valid keys are ${a.keys.map((k) => `[${k}]`).join(' ')}. `
+        + `Fix: (1) delete “[${a.step}]” at the start of the line and append its turns to the previous step [${a.target}] (merge into that step), or (2) ${add}`
+        + (lines ? `. Lines to change: ${lines}` : '')
+        + (a.comps && a.comps.length ? `. The component ${a.comps.map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so its steps are not counted: fix its data first (R-components)` : '');
+    } },
   readingExpr: { rule: 'R-reading', ja: (a) => `読みの指定 ${a.t} が式を読んでいる（narration.md ${a.line} 行目）：読みは 1 つの記号か用語だけに付け（{θ|シータ}）、式は意味を言葉で言う`, en: (a) => `the reading ${a.t} reads an expression (narration.md line ${a.line}): give readings to single symbols or terms only ({θ|theta}) and say the relation in words` },
   readingSeveral: { rule: 'R-reading', ja: (a) => `読みの指定 ${a.t} に記号が 2 つ以上ある（narration.md ${a.line} 行目）：記号ごとに分ける（{θ|シータ} と {η|イータ}）`, en: (a) => `the reading ${a.t} covers several symbols (narration.md line ${a.line}): give each symbol its own reading ({θ|theta} and {η|eta})` },
   // ---------------------------------------------------------------- 色・部品・注目の演出・モーフ・読み上げ
@@ -80,8 +99,58 @@ export const MESSAGES = {
   compName: { ja: (a) => `名前の無い部品：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `components without a name: ${a.list} (an aria-label="…" helps screen readers)` },
   timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} 段階）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
   slideLength: { ja: (a) => `この枚の長さ：${a.s} 秒`, en: (a) => `slide length: ${a.s} s` },
+  compData: { rule: 'R-components',
+    ja: (a) => `${compName(a, true)}のデータが合わない：${compWhat(a, true)}${compHow(a, true) ? `。${compHow(a, true)}` : ''}`,
+    en: (a) => `${compName(a, false)} has data it cannot draw: ${compWhat(a, false)}${compHow(a, false) ? `. Write it like this: ${compHow(a, false)}` : ''}` },
   consoleError: { ja: (a) => `コンソールエラー：${a.e}（デッキの部品やスクリプトを直す）`, en: (a) => `console error: ${a.e} (fix the deck’s component or script)` },
 };
+
+// ---------------------------------------------------------------- 部品のデータ（kit/deck.js の DECK.componentErrors。形は kit/shape.js）
+// a = {tag, label, index, kind, path, why, expected, got, key, near, keys, attrKeys, arrayKey, inner, msg, attr, dataLike, shape, example}
+function compWhat(a, ja) {
+  const p = (x) => (x ? x + (ja ? ' ' : '') : ja ? 'データ全体' : 'the data');
+  const innerOf = (i) => (!i ? '' : i.why === 'unknown'
+    ? (ja ? `${a.arrayKey}${i.path} の欄「${i.key}」はない${i.near ? `（${i.near} と書く）` : ''}` : `${a.arrayKey}${i.path}: there is no field “${i.key}”${i.near ? ` (write ${i.near})` : ''}`)
+    : (ja ? `${a.arrayKey}${i.path} も違う（${i.expected} のはずが ${i.got}）` : `${a.arrayKey}${i.path} is also wrong (expected ${i.expected}, got ${i.got})`));
+  switch (a.kind) {
+    case 'shape':
+      if (a.why === 'required') return ja ? `${p(a.path.replace(/\.?[^.[\]]+$/, ''))}に欄 ${a.key} がない（${a.expected}）` : `${p(a.path.replace(/\.?[^.[\]]+$/, ''))} has no field ${a.key} (${a.expected})`;
+      if (a.why === 'unknown') return ja ? `欄「${a.path}」はない${a.near ? `（${a.near} のこと？）` : ''}。使える欄：${a.expected}` : `there is no field “${a.path}”${a.near ? ` (did you mean ${a.near}?)` : ''}; the fields are: ${a.expected}`;
+      if (a.why === 'anyOf') return ja ? `${p(a.path)}に ${a.expected} のどちらかが要る（今は ${a.got}）` : `${p(a.path)} needs ${a.expected} (it is ${a.got})`;
+      if (a.why === 'minItems') return ja ? `${p(a.path)}は ${a.n} 個以上要る（今は ${a.got}）` : `${p(a.path)} needs at least ${a.n} items (it is ${a.got})`;
+      if (a.why === 'maxItems') return ja ? `${p(a.path)}は ${a.n} 個まで（今は ${a.got}）` : `${p(a.path)} takes at most ${a.n} items (it is ${a.got})`;
+      if (a.keys && a.keys.length) {
+        // 配列のはずが object：{"series": [...], "xr": [...]} のような形
+        const extra = [];
+        if (a.arrayKey) extra.push(ja ? `「${a.arrayKey}」という欄はない。その中の配列そのものをデータにする` : `“${a.arrayKey}” is not a field: make the array inside it the data itself`);
+        if (a.attrKeys && a.attrKeys.length) extra.push(ja ? `${a.attrKeys.join('・')} は JSON ではなく <${a.tag}> の属性に書く（${a.attrKeys[0]}="…"）` : `${a.attrKeys.join(', ')} are attributes of <${a.tag}>, not JSON fields (${a.attrKeys[0]}="…")`);
+        if (a.inner) extra.push(innerOf(a.inner));
+        return ja ? `${p(a.path)}は配列（${a.expected}）のはずが ${a.got}${extra.length ? '：' + extra.join('。') : ''}` : `${p(a.path)} must be an array (${a.expected}) but is ${a.got}${extra.length ? ': ' + extra.join('; ') : ''}`;
+      }
+      return ja ? `${p(a.path)}は ${a.expected} のはずが ${a.got}` : `${p(a.path)} must be ${a.expected} but is ${a.got}`;
+    case 'missing': return ja ? 'データ（子の <script type="application/json">）がない' : 'there is no data (child <script type="application/json">)';
+    case 'json': return ja ? `データの JSON が読めない（${a.msg}）。JSON の書き方（" で囲んだ名前、最後の , なし）に直す` : `the data is not valid JSON (${a.msg}): fix the JSON syntax (quoted names, no trailing commas)`;
+    case 'attrJson': return ja ? `属性 ${a.attr} の値が JSON として読めない（${a.msg}）` : `the attribute ${a.attr} is not valid JSON (${a.msg})`;
+    case 'attr': return ja ? `属性 ${a.attr}${a.path ? ` の ${a.path}` : ''} は ${a.expected} のはずが ${a.got}` : `the attribute ${a.attr}${a.path ? ` at ${a.path}` : ''} must be ${a.expected} but is ${a.got}`;
+    case 'notText': return ja ? 'この部品は JSON ではなく、要素の中に字で書く' : 'this component is written as text inside the element, not as JSON';
+    case 'empty': return ja ? '要素の中に字がない' : 'there is no text inside the element';
+    case 'notLinks': return ja ? 'この部品は JSON ではなく、子のリンク <a href> で書く' : 'this component is written as child <a href> links, not as JSON';
+    case 'noLinks': return ja ? '子のリンク <a href> がない' : 'there are no child <a href> links';
+    default: return a.dataLike
+      ? (ja ? `部品が描けずに止まった（${a.msg}）。データの形が部品の形と合っていないときに出る誤り` : `the component stopped while drawing (${a.msg}); this usually means the data does not have the component’s shape`)
+      : (ja ? `部品が描けずに止まった（${a.msg}）` : `the component stopped while drawing (${a.msg})`);
+  }
+}
+function compHow(a, ja) {
+  const ex = a.example ? (ja ? `例：${a.example}` : `example: ${a.example}`) : '';
+  if (a.kind === 'attr' || a.kind === 'attrJson') return ex ? (ja ? `例：${a.attr}='${a.example}'` : `example: ${a.attr}='${a.example}'`) : '';
+  if (a.shape) return ja ? `データの形は ${a.shape}${ex ? `。${ex}` : ''}` : `the data is ${a.shape}${ex ? `; ${ex}` : ''}`;
+  return ex;
+}
+function compName(a, ja) {
+  const n = a.index > 0 ? (ja ? `（${a.index + 1} 個目）` : ` (#${a.index + 1})`) : '';
+  return ja ? `部品 <${a.tag}>${n}${a.label ? `「${a.label}」` : ''}` : `the component <${a.tag}>${n}${a.label ? ` “${a.label}”` : ''}`;
+}
 
 export function message(lang, code, a = {}) {
   const m = MESSAGES[code];

@@ -11,6 +11,7 @@
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
+import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
@@ -33,7 +34,28 @@ function frontmatter(text) {
   return [fm, m[2].trim()];
 }
 // static props = { name: {type: "…", default: …, doc: "…"}, … }（1 行に 2 つ以上あってもよい）
-function propDocs(js) {
+// 値の宣言の中の入れ子（shape: {…}・example: […]）は除いてから読む（{…} が入れ子になると下の正規表現が切れる）
+function dropNested(js) {
+  let out = '', i = 0;
+  const re = /,\s*(?:shape|example):\s*[[{]/g;
+  let m;
+  while ((m = re.exec(js))) {
+    let j = m.index + m[0].length, depth = 1;
+    while (j < js.length && depth) { const c = js[j]; if (c === '{' || c === '[') depth++; else if (c === '}' || c === ']') depth--; else if (c === '"' || c === "'") { const q = c; j++; while (j < js.length && js[j] !== q) j += js[j] === '\\' ? 2 : 1; } j++; }
+    out += js.slice(i, m.index); i = j; re.lastIndex = j;
+  }
+  return out + js.slice(i);
+}
+// static shape = {…};（データの形。props ではない）を除く
+function dropShape(js) {
+  const m = /static shape\s*=\s*\{/.exec(js);
+  if (!m) return js;
+  let j = m.index + m[0].length, depth = 1;
+  while (j < js.length && depth) { const c = js[j]; if (c === '{' || c === '[') depth++; else if (c === '}' || c === ']') depth--; else if (c === '"' || c === "'") { const q = c; j++; while (j < js.length && js[j] !== q) j += js[j] === '\\' ? 2 : 1; } j++; }
+  return js.slice(0, m.index) + js.slice(j);
+}
+function propDocs(js0) {
+  const js = dropNested(dropShape(js0));
   const m = js.match(/static props\s*=\s*\{([\s\S]*?)\n\s*\};/);
   const out = new Map();
   if (!m) return out;
@@ -56,19 +78,57 @@ function stripRepoRefs(body) {
   return body.split('\n').filter((ln) => !/demo\.html|examples\/|tools\/|motion-components スキル/.test(ln)).join('\n')
     .replace(/\n?（motion-slides スキル §\d+「[^」]*」）/g, '').replace(/\n{3,}/g, '\n\n').trim();
 }
+// 部品のデータの形（static shape。kit/shape.js）：index.js を vm で読み、DECK.define に渡されたクラスから取る
+function shapeApi() {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(read('kit', 'shape.js'), ctx, { filename: 'kit/shape.js' });
+  return ctx.DECK.shape;
+}
+function classOf(js, name) {
+  let cls = null;
+  const D = { define: (n, c) => { if (n === name) cls = c; }, MotionElement: class {} };
+  const ctx = { DECK: D, window: { DECK: D } };
+  vm.createContext(ctx);
+  try { vm.runInContext(js, ctx, { filename: name + '/index.js' }); } catch (e) { throw new Error(`components: ${name}/index.js could not be read for its shape: ${e.message}`); }
+  return cls;
+}
 function components() {
   const dir = rel('components');
   return fs.readdirSync(dir).sort().filter((n) => fs.existsSync(path.join(dir, n, 'README.md'))).map((n) => {
     const [fm, body] = frontmatter(read('components', n, 'README.md'));
     const js = fs.existsSync(path.join(dir, n, 'index.js')) ? read('components', n, 'index.js') : '';
     if (!fm.name) throw new Error(`components/${n}/README.md has no frontmatter name`);
-    return { fm, body, props: propDocs(js) };
+    const cls = js ? classOf(js, fm.name) : null;
+    return { fm, body, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {} };
   });
 }
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+// データの形の短い書き方（一覧の欄）と見本（詳しい節）
+const SH = shapeApi();
+function shapeBrief(c, lang) {
+  const sh = c.shape;
+  if (!sh) return '';
+  const ja = lang === 'ja';
+  if (sh.text) return ja ? '要素の中の字（JSON ではない）' : 'text inside the element (not JSON)';
+  if (sh.links) return ja ? '子の `<a href>`（JSON ではない）' : 'child `<a href>` links (not JSON)';
+  if (!sh.schema) {
+    const attrs = Object.entries(c.rawProps).filter(([, d]) => d && d.shape).map(([n, d]) => `${n}="${JSON.stringify(d.example ?? d.default)}"`);
+    return (ja ? '属性だけ（JSON の子なし）' : 'attributes only (no JSON child)') + (attrs.length ? ': `' + attrs.join(' ') + '`' : '');
+  }
+  return '`' + SH.brief(sh.schema) + '`' + (sh.note ? ' — ' + sh.note[lang] : '');
+}
+function shapeExample(c, lang) {
+  const sh = c.shape;
+  if (!sh || sh.example === undefined) return '';
+  const ja = lang === 'ja';
+  const ex = typeof sh.example === 'string' ? sh.example : JSON.stringify(sh.example);
+  const where = sh.schema ? (ja ? 'データ（子の `<script type="application/json">`）の見本' : 'Data example (child `<script type="application/json">`)') : (ja ? '書き方の見本' : 'Example');
+  return `${where}: \`${ex.replace(/\n/g, '⏎')}\``;
+}
 function catalogTable(comps, lang) {
-  const head = lang === 'ja' ? '| 部品 | 内容 | steps |\n|---|---|---|' : '| component | what it shows | steps |\n|---|---|---|';
-  return head + '\n' + comps.map((c) => `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} |`).join('\n');
+  const head = lang === 'ja' ? '| 部品 | 内容 | steps | データの形 |\n|---|---|---|---|' : '| component | what it shows | steps | data shape |\n|---|---|---|---|';
+  return head + '\n' + comps.map((c) => `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`).join('\n');
 }
 function catalogDetails(comps, lang) {
   const H = lang === 'ja' ? ['値', '型', '既定', '意味'] : ['prop', 'type', 'default', 'meaning'];
@@ -82,7 +142,8 @@ function catalogDetails(comps, lang) {
     });
     // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
     const body = stripRepoRefs(c.body).replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
-    return `### \`<${c.fm.name}>\`\n\n` + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
+    const ex = shapeExample(c, lang);
+    return `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
   });
   const note = sup ? (lang === 'ja' ? '（* はこの指示が補った説明）\n\n' : '(* = description added by this guide)\n\n') : '';
   return note + parts.join('\n\n');

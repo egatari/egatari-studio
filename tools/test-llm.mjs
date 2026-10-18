@@ -178,8 +178,8 @@ ok('直しの依頼の量の目安：はみ出しは「何 px・およそ何行�
 
 // ---------------------------------------------------------------- 5. 読みの指定
 ok('読みの指定：1 つの記号・用語はよい。式・記号の組は知らせる', () => {
-  for (const s of ['{θ|シータ}', '{N₀|エヌゼロ}', '{x̄|エックスバー}', '{ReLU|レルー}', '{t-SNE|ティースニー}', '{f(x)|エフエックス}', '{論語|ろんご}', '{mark:eta|circle}η', '{λ|lambda}']) assert.deepEqual(readingProblems(s), [], s);
-  for (const [s, why] of [['{1-η|いちマイナスイータ}', 'operator'], ['{a+b|エープラスビー}', 'operator'], ['{x^2|エックスじじょう}', 'operator'], ['{\\theta|シータ}', 'operator'], ['{θとη|シータとイータ}', 'several'], ['{x y|エックスワイ}', 'several'], ['{a, b|エー、ビー}', 'several'], ['{p(x|y)|…}', null]]) {
+  for (const s of ['{θ|シータ}', '{N₀|エヌゼロ}', '{x̄|エックスバー}', '{ReLU|レルー}', '{t-SNE|ティースニー}', '{f(x)|エフエックス}', '{論語|ろんご}', '{mark:eta|circle}η', '{λ|lambda}', '{x^2|エックスじじょう}', '{\\theta|シータ}', '{Q*|キュースター}']) assert.deepEqual(readingProblems(s), [], s);
+  for (const [s, why] of [['{1-η|いちマイナスイータ}', 'operator'], ['{a+b|エープラスビー}', 'operator'], ['{x^2+1|エックスじじょうたすいち}', 'operator'], ['{a*b|エーかけるビー}', 'operator'], ['{θとη|シータとイータ}', 'several'], ['{x y|エックスワイ}', 'several'], ['{a, b|エー、ビー}', 'several'], ['{p(x|y)|…}', null]]) {
     const p = readingProblems(s);
     if (why === null) continue;
     assert.equal(p.length, 1, s); assert.equal(p[0].why, why, s);
@@ -238,8 +238,8 @@ ok('検査器：static の表紙の口述原稿がない → 警告。スライ�
   const j = JSON.parse(c.stdout);
   const has = (sev, slide, re) => j.results.some((x) => x.sev === sev && x.slide === slide && re.test(x.msg));
   assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、段階 0：この段階の口述原稿がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
-  assert.ok(has('error', 2, /段階 3：口述原稿の \[3\] に当たる段階がスライドにない.*0〜2 と concl.*data-step="3".*（R-narr-steps）$/), 'orphan [3]');
-  assert.ok(has('error', 3, /口述原稿の \[concl\] に当たる段階がスライドにない.*0 だけ/), 'orphan [concl]');
+  assert.ok(has('error', 2, /段階 3：口述原稿の \[3\] に当たる段階がスライドにない.*番号が 0〜2 と結論.*使える鍵は \[0\] \[1\] \[2\] \[concl\].*前の段階 \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
+  assert.ok(has('error', 3, /口述原稿の \[concl\] に当たる段階がスライドにない.*使える鍵は \[0\]。.*前の段階 \[0\].*結論の行/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');
   // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「検査器」）

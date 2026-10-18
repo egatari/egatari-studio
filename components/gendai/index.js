@@ -71,6 +71,8 @@ var CHIP = 34;              // 札の高さ
 var STUB = 22, STEP = 16;   // 札から 1 段目までの距離、段の間
 var LH_TATE = 2.4;          // 縦書きの行の送り（傍線と記号 A の入る列の間を空ける）
 D.define("m-gendai", class extends D.MotionElement {
+  // データの形（kit/shape.js）：JSON ではなく、要素の中に本文の字（段落は空行で区切る）
+  static shape = {text: true, example: "@主張#p1\n便利な道具は、私たちから==迷う機会を奪う==。"};
   static props = {
     size:   {type: "number", default: 28, doc: "本文の字の大きさ（px）"},
     tate:   {type: "bool", default: false, doc: "縦書きにする（段落は右から左へ、枠をつなぐ線は上を通す）"},

@@ -126,6 +126,8 @@ var CSS = [
   "@media print{m-kobun .kb-pop{display:none!important}}",
 ].join("\n");
 D.define("m-kobun", class extends D.MotionElement {
+  // データの形（kit/shape.js）：JSON ではなく、要素の中に 1 行 1 文の字（語を / で切り [品詞]）
+  static shape = {text: true, example: "春[名]/は[係助]/あけぼの[名]。\n= 春は明け方（がよい）。"};
   static props = {
     size: {type: "number", default: 34, doc: "本文の字の大きさ（px）"},
     tate: {type: "bool", default: false, doc: "縦書きにする（品詞は語の左、現代語訳は文の左に）"},

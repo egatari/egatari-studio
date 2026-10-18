@@ -28,6 +28,16 @@ if (cfg.html && cfg.shim && cfg.prefix) {
 }
 if (!cfg.dev) return;
 window.__APP_LOAD = cfg.load;   // 何回目の読み込みか（確かめ方が使う）
+// デッキのスクリプトのエラー（コンソールのエラーと捕まらなかった例外）を簡易チェックに出す。言葉だけ（スタックは持たない。場所は app/llm.js が除く）
+var jsErrors = [];
+var noteError = function(t){ t = String(t || "").split("\n")[0].slice(0, 300); if (t && jsErrors.indexOf(t) < 0 && jsErrors.length < 20) jsErrors.push(t); };
+window.addEventListener("error", function(e){ noteError((e.error && e.error.name ? e.error.name + ": " : "") + (e.message || "")); });
+window.addEventListener("unhandledrejection", function(e){ noteError(e.reason && e.reason.message || e.reason); });
+var cerr = console.error;
+console.error = function(){
+  noteError([].map.call(arguments, function(x){ return x && x.message !== undefined ? (x.name ? x.name + ": " : "") + x.message : String(x); }).join(" "));
+  return cerr.apply(console, arguments);
+};
 
 // 親（編集アプリ）からの、書き込みのない頼みごと：印刷・その位置へ・簡易な検査。編集の知らせは server/hints.js が送る
 window.addEventListener("message", function(e){
@@ -94,8 +104,22 @@ function quickCheck(){
       var turns = (DECK.NARRATION[s._key] || {})[sk] || [];
       if (!turns.length) add(i, "warn", "noNarration", sk);
     }
-    Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", sk); });
+    // 段階は DOM からも数える（部品が描けなくても data-step と .concl は数える。kit/check.mjs と同じ）
+    var dmax = 0;
+    s.querySelectorAll("[data-step]:not([data-concl])").forEach(function(e){ var n = +e.getAttribute("data-step"); if (n === Math.floor(n) && n >= 0) dmax = Math.max(dmax, n); });
+    var hasC = !isStatic && (s._cstep >= 0 || !!s.querySelector(".concl"));
+    var num = Math.max(isFinite(s._max) ? (s._cstep >= 0 ? s._max - 1 : s._max) : 0, dmax);
+    var smax = isStatic ? 0 : num + (hasC ? 1 : 0), keys = [];
+    for (var q = 0; q <= num && !isStatic; q++) { keys.push(String(q)); valid[String(q)] = true; }
+    if (isStatic) keys.push("0");
+    if (hasC) { keys.push("concl"); valid.concl = true; }
+    var bad = (DECK.componentErrors || []).filter(function(r){ return r.slide === i; }).map(function(r){ return r.tag; });
+    Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
   });
+  // 部品のデータの形（kit/deck.js の DECK.componentErrors）と、スクリプトのエラー
+  (DECK.componentErrors || []).forEach(function(r){ add(r.slide, "error", "compData", JSON.parse(JSON.stringify(r))); });
+  var compTags = (DECK.componentErrors || []).map(function(r){ return r.tag; });
+  jsErrors.forEach(function(t){ if (!compTags.some(function(g){ return t.toLowerCase().indexOf(g + " ") === 0; })) add(null, "error", "consoleError", t); });
   // コントラスト（WCAG）：canvas に塗って実際の色を読む
   try {
     var probe = document.createElement("div"); probe.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";

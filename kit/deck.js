@@ -168,6 +168,97 @@ class MotionElement extends HTMLElement {
 }
 DECK.MotionElement = MotionElement;
 
+// ---------------------------------------------------------------- 部品のデータの形（static shape。確かめるのは kit/shape.js の DECK.shape）
+// 段階を数える前に確かめ、違えば（または mount・render が例外を出したら）部品を描かず、その場に知らせの札を出す（ほかのスライドは動く）。
+// 知らせは DECK.componentErrors に積む（検査器と編集アプリの簡易チェックが読む）：
+//   {slide, key, id, tag, label, index, phase: data | steps | mount | render, kind, …}
+//   kind：shape（path・why・expected・got）、missing（JSON がない）、json（JSON が読めない。msg）、attr・attrJson（属性 attr の値）、
+//         notText・empty（字で書く部品）、notLinks・noLinks（<a href> で書く部品）、exception（msg、dataLike：データの形が違うときによく出る言葉か）
+//   shape・example：部品の宣言した形と見本（あれば）
+DECK.componentErrors = [];
+function compText(c){
+  var t = "";
+  [].forEach.call(c.childNodes, function(n){ if (!(n.nodeType === 1 && n.localName === "script")) t += n.textContent; });
+  return t.trim();
+}
+function compProblem(c){
+  var C = c.constructor, decl = C.props || {}, sh = C.shape, SH = DECK.shape;
+  for (var name in decl){
+    var d = decl[name], a = c.getAttribute(name);
+    if (d.type !== "json" || a === null) continue;
+    var v;
+    try { v = JSON.parse(a); } catch (e) { return {kind: "attrJson", attr: name, msg: String(e && e.message || e), example: JSON.stringify(d.default)}; }
+    var ea = d.shape && SH ? SH.check(d.shape, v) : null;
+    if (ea) return Object.assign({kind: "attr", attr: name, example: JSON.stringify(d.example !== undefined ? d.example : d.default)}, ea);
+  }
+  var data;
+  try { data = c.data; } catch (e) { return {kind: "json", msg: String(e && e.message || e)}; }
+  if (!sh || !SH) return null;
+  if (sh.text){ if (data !== null) return {kind: "notText"}; if (!compText(c)) return {kind: "empty"}; return null; }
+  if (sh.links){ if (data !== null) return {kind: "notLinks"}; if (!c.querySelector("a[href]")) return {kind: "noLinks"}; return null; }
+  if (sh.schema){
+    if (data === null) return {kind: "missing"};
+    var e2 = SH.check(sh.schema, data);
+    if (e2 && e2.path === "" && e2.why === "type" && SH.typeOf(data) === "object" && [].concat(sh.schema.type)[0] === "array"){
+      // 配列のはずが object：よくある書き方（{"series": [...], "xr": [...]}）なら、どれが属性で、どの配列が中身かを言う
+      var ks = Object.keys(data);
+      e2.keys = ks;
+      e2.attrKeys = ks.filter(function(k){ return Object.prototype.hasOwnProperty.call(decl, k); });
+      // 中身らしい配列：object の並び（{"series": [{…}]}）を先に、なければ属性でない配列
+      var arr = ks.filter(function(k){ return Array.isArray(data[k]); });
+      e2.arrayKey = arr.filter(function(k){ return SH.typeOf(data[k][0]) === "object"; })[0] || arr.filter(function(k){ return e2.attrKeys.indexOf(k) < 0; })[0] || null;
+      var it = e2.arrayKey && data[e2.arrayKey][0];
+      if (it && SH.typeOf(it) === "object" && sh.schema.items){ var ei = SH.check(sh.schema.items, it, "[0]"); if (ei) e2.inner = ei; }
+    }
+    if (e2) return Object.assign({kind: "shape"}, e2);
+  }
+  return null;
+}
+function errText(e){ return e && e.message !== undefined ? (e.name && e.name !== "Error" ? e.name + ": " : "") + e.message : String(e); }
+function compFail(c, s, i, p, phase){
+  if (c._bad) return;
+  var tag = c.tagName.toLowerCase(), sh = c.constructor.shape || {}, SH = DECK.shape;
+  var rec = Object.assign({slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: tag,
+    label: c.getAttribute("aria-label") || "", index: [].indexOf.call(s.querySelectorAll(tag), c), phase: phase}, p);
+  if (rec.kind === "exception") rec.dataLike = !!(SH && SH.dataLike(rec.msg));
+  if (sh.schema && SH && rec.shape === undefined) rec.shape = SH.brief(sh.schema);
+  if (sh.example !== undefined && rec.example === undefined) rec.example = typeof sh.example === "string" ? sh.example : JSON.stringify(sh.example);
+  c._bad = rec;
+  DECK.componentErrors.push(rec);
+  console.warn("[deck] " + tag + " (" + (s.id || rec.key) + "): " + compSummary(rec, false));
+  // 描かない：段階は属性 steps（なければ 0）、mount は札を出すだけ、render・duration・cues は何もしない
+  var n = stepInt(c.getAttribute("steps"), tag + " steps");
+  Object.defineProperty(c, "steps", {value: n !== null ? n : 0, configurable: true});
+  c.mount = function(){ compPlaceholder(c, rec); };
+  c.render = function(){}; c.duration = function(){ return 0; }; c.cues = function(){ return null; };
+}
+// 札の 1 行（実行系の言葉。くわしい知らせは検査器の言葉 kit/check-messages.mjs の compData）
+function compSummary(r, ja){
+  var at = r.path ? r.path : (ja ? "データ" : "data");
+  switch (r.kind){
+    case "shape": return r.why === "required" ? (ja ? at + " がない（" + r.expected + "）" : at + " is missing (" + r.expected + ")")
+      : r.why === "unknown" ? (ja ? "知らない欄 " + r.key : "unknown field " + r.key)
+      : r.why === "anyOf" ? (ja ? (r.path || "データ") + " に " + r.expected + " がない" : (r.path || "data") + " needs " + r.expected)
+      : (ja ? at + "：" + r.expected + " のはずが " + r.got : at + ": expected " + r.expected + ", got " + r.got);
+    case "missing": return ja ? "データ（子の <script type=\"application/json\">）がない" : "no data (child <script type=\"application/json\">)";
+    case "json": return (ja ? "データの JSON が読めない：" : "the data is not valid JSON: ") + r.msg;
+    case "attrJson": return (ja ? "属性 " + r.attr + " の JSON が読めない：" : "attribute " + r.attr + " is not valid JSON: ") + r.msg;
+    case "attr": return (ja ? "属性 " + r.attr + (r.path ? " の " + r.path : "") + "：" + r.expected + " のはずが " + r.got : "attribute " + r.attr + (r.path ? " at " + r.path : "") + ": expected " + r.expected + ", got " + r.got);
+    case "notText": return ja ? "JSON ではなく要素の中の字で書く" : "write it as text inside the element, not JSON";
+    case "empty": return ja ? "中身の字がない" : "no text inside";
+    case "notLinks": return ja ? "JSON ではなく子の <a href> で書く" : "write it as child <a href> links, not JSON";
+    case "noLinks": return ja ? "子の <a href> がない" : "no child <a href> links";
+    default: return (ja ? "描けない：" : "cannot draw: ") + r.msg;
+  }
+}
+function compPlaceholder(c, r){
+  [].slice.call(c.childNodes).forEach(function(n){ if (!(n.nodeType === 1 && n.localName === "script")) c.removeChild(n); });
+  var box = document.createElement("div");
+  box.className = "m-error"; box.setAttribute("role", "note");
+  box.textContent = "<" + r.tag + "> " + (DECK.ja ? "のデータの形が違う：" : "data problem: ") + compSummary(r, DECK.ja);
+  c.appendChild(box);
+}
+
 // キットの形式（<section data-anim="名前">、DECK.ANIM.名前 = function(slide, k, instant)）の互換。
 // 実時間の補間に頼るので、動画の書き出しでは段階ごとの最終状態になる。新しい図は部品で書く
 var ANIM = DECK.ANIM = DECK.ANIM || {};
@@ -278,6 +369,13 @@ function setupSlide(s, i, mainEnd){
     return n !== null;
   });
   var comps = [].slice.call(s.querySelectorAll("*")).filter(function(e){ return e instanceof MotionElement; });
+  // データの形を先に確かめる（段階の数はデータから決まる部品が多い）。違えば描かない
+  comps.forEach(function(c){
+    var p = compProblem(c);
+    if (p){ compFail(c, s, i, p, "data"); return; }
+    try { var n = c.steps; if (typeof n !== "number" || !isFinite(n)) throw new TypeError("steps is " + n); }
+    catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "steps"); }
+  });
   var max = 0;
   items.forEach(function(e){ max = Math.max(max, +e.getAttribute("data-step")); });
   comps.forEach(function(c){ max = Math.max(max, c.from + c.steps - 1); });
@@ -404,7 +502,8 @@ function seek(i, k, t, from){
   var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
     var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
-    try { c.render(p.k, p.t, {mode: mode, slide: s, instant: p.t === Infinity, deck: DECK}); } catch (e) { console.error(c.tagName, e); }
+    try { c.render(p.k, p.t, {mode: mode, slide: s, instant: p.t === Infinity, deck: DECK}); }
+    catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(); }
   });
   if (lastPos && lastPos.i !== i){ var ls = slides[lastPos.i]; ls._tok++; ls._legacyAt = undefined; }
   legacy(s, k, t === Infinity);
@@ -1243,8 +1342,11 @@ function init(){
     [].forEach.call(s.querySelectorAll("[data-id]"), function(e){ if (!e.closest("svg") && getComputedStyle(e).display === "inline") e.style.display = "inline-block"; });
   });
   document.documentElement.setAttribute("data-mode", DECK.mode);
-  slides.forEach(function(s){
-    s._comps.forEach(function(c){ try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); } catch (e) { console.error(c.tagName, e); } });
+  slides.forEach(function(s, i){
+    s._comps.forEach(function(c){
+      try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); }
+      catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(); }
+    });
   });
   DECK.slides = slides;
   setupA11y();

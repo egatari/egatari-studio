@@ -6,6 +6,12 @@
 // 円の大きさ：scale="fixed"（既定。見やすい決まった比）か "area"（面積を値に比例。小さすぎる円は最小の大きさにする）
 // 配置：layout="bottom"（既定。下端をそろえる）か "center"（同心）。円の名前・値・根拠（basis）は右に引き出し線で書く
 DECK.define("m-market", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）。円は外から順
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["rings"], properties: {
+      rings: {type: "array", minItems: 1, items: {type: "object", required: ["value"], properties: {key: {type: "string"}, value: {type: "number"}, basis: {type: "string"}, tone: {type: "string"}}}}}},
+    example: {rings: [{key: "TAM", value: 3000, basis: "国内の…"}, {key: "SAM", value: 600, basis: "…"}, {key: "SOM", value: 30, basis: "…"}]},
+  };
   static props = {
     unit:   {type: "string", default: "", doc: "値の単位（数字の後ろに付ける）"},
     digits: {type: "number", default: 0, doc: "値の小数桁"},

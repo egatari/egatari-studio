@@ -55,6 +55,12 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#dlg-import');
   await page.waitForFunction(() => /No code blocks/.test(document.getElementById('paste-msg').textContent));
   ok(true, 'llm: a reply without code blocks shows “No code blocks …”');
+  await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
+  await page.click('#paste-copy-cutoff');
+  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-copied').textContent));
+  const nob = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  ok(/no code blocks/.test(nob) && /Do not output files, a canvas or attachments/.test(nob) && /R-output/.test(nob), 'llm: no code blocks → “Copy a resend request” asks for both blocks in the message body');
+  await page.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
 
   // ---------------------------------------------------------------- 2. 見本の返事を取り込む：はじめは narration.md の途中で切れた返事 →
   // 送り直しを頼む文を写す → narration.md の囲みだけの返事で、前の deck.html と合わせて開く
@@ -113,7 +119,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await waitPanel();
   const sum2 = await page.textContent('#panel-body .sum');
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
-  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /step the slide does not have \[4\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
+  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /narration \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
     'llm: quick check reports the long title, the orphan [4] and the expression reading: ' + sum2);
   await shot('fix-check.png');
   const docId2 = (await state()).portable.docId;
@@ -124,6 +130,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(req.includes('R-title') && /\*\*R-title\*\* Heading: Japanese at most 26 units/.test(req) && req.includes('R-narr-steps') && req.includes('R-reading') && /title is \d+(\.\d+)? units/.test(req) && req.includes('````deck.html') && req.includes('{#s-'),
     'llm: the fix request names the errors, quotes their rules from the guide and includes the current files');
   ok(clip2 === req, 'llm: the fix request is on the clipboard');
+  ok(/narration \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req) && /previous step \[\d\]/.test(req), 'llm: the fix request quotes the orphan narration lines and the step to merge into');
   await shot('fix-request.png');
   // 返事：直したスライドだけ（id はそのまま）
   F = await files();

@@ -6,6 +6,14 @@
 // 数え上げは (k, t) だけで決まる（初めに速く、終わりにゆっくり。t = Infinity なら最後の値）。count="false" で数えずに出す
 // 札の幅は cols（既定は札の数、4 まで）で決める。数字と単位の幅は字数から見積もって中央にそろえる（字の読み込みを待たない）
 DECK.define("m-kpi", class extends DECK.MotionElement {
+  // データの形（kit/shape.js）
+  static shape = {
+    schema: {type: "object", additionalProperties: false, required: ["cards"], properties: {
+      cards: {type: "array", minItems: 1, items: {type: "object", required: ["value"], properties: {
+        label: {type: "string"}, value: {type: "number"}, digits: {type: "integer"}, unit: {type: "string"}, prefix: {type: "string"}, from: {type: "number"}, tone: {type: "string"},
+        delta: {type: "object", properties: {dir: {enum: ["up", "down"]}, text: {type: "string"}, good: {type: "boolean"}}}, note: {type: "string"}, step: {type: "integer"}, at: {type: "number"}}}}}},
+    example: {cards: [{label: "作成時間", value: 62, unit: "%", prefix: "−", delta: {dir: "down", text: "前の版から 8 pt", good: true}}]},
+  };
   static props = {
     cols:       {type: "number", default: 0, doc: "1 行の札の数（0 = 札の数、4 まで）"},
     digits:     {type: "number", default: 0, doc: "数字の小数桁（札の digits が優先）"},

@@ -90,14 +90,19 @@ export function extractBlocks(text) {
   if (blocks.length) {
     const d = pick('deck'), n = pick('narration');
     // 閉じていない囲み：中身があり、2 つのどちらかが欠けているか、その囲みがどちらかのファイルなら、返事が切れている
-    if (open && open.body.trim() && (!d || !n || open.kind)) {
+    // 最後の narration.md の囲みだけ閉じる行がないが、中身は終わっている（どのスライドにも節があり、最後の節の最後の行が
+    // 文の終わり（。.!? など）で終わる）なら、閉じたものとして受け取る（知らせる）
+    if (open && open.kind === 'narration' && d && !n && narrationComplete(d.body, open.body)) {
+      warnings.push({ code: 'unclosedAccepted', kind: 'narration', line: open.line });
+      open.unclosed = false;
+      res.deck = d.body; res.narration = open.body;
+    } else if (open && open.body.trim() && (!d || !n || open.kind)) {
       // 閉じている方は返す（切れたのが narration.md なら、送り直してもらった口述原稿と合わせられる。app/llm.js）
       res.deck = d ? d.body.replace(/\s+$/, '') + '\n' : null; res.narration = n ? n.body.replace(/\s+$/, '') + '\n' : null;
       res.error = { code: 'unclosed', kind: open.kind, line: open.line, message: `the code block that starts on line ${open.line}${open.kind ? ` (${open.kind === 'deck' ? 'deck.html' : 'narration.md'})` : ''} has no closing fence: the reply was probably cut off` };
       return res;
     }
-    res.deck = d ? d.body : null;
-    res.narration = n ? n.body : null;
+    if (!res.deck) { res.deck = d ? d.body : null; res.narration = n ? n.body : null; }
     const unknown = blocks.filter((b) => !b.kind && !b.unclosed).length;
     if (unknown) warnings.push({ code: 'ignored', n: unknown });
   } else {
@@ -124,6 +129,29 @@ export function extractBlocks(text) {
   res.deck = res.deck.replace(/\s+$/, '') + '\n';
   if (res.narration !== null) res.narration = res.narration.replace(/\s+$/, '') + '\n';
   return res;
+}
+
+// 閉じていない narration.md の中身が終わっているか：deck.html のどのスライド（id か見出しの字）にも「## 」の節があり、最後の節の最後の行が
+// 文の終わりの字（。．.!?！？ と閉じ括弧）で終わる（[concl] の行でも同じ）
+function narrationComplete(deck, narr) {
+  const lines = String(narr).replace(/\s+$/, '').split('\n');
+  const N = narrSections(lines.join('\n'));
+  if (!N.out.length) return false;
+  const ids = new Set(N.out.map((x) => x.id).filter(Boolean));
+  const heads = new Set(N.out.map((x) => parseHeading(lines[x.start].replace(/^##\s+/, '').trim()).heading.trim()));
+  const slides = sectionsOf(deck);
+  if (!slides.length) return false;
+  for (const sl of slides) {
+    const h = (deck.slice(sl.start, sl.end).match(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/i) || [])[1];
+    const title = h ? h.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
+    if (!((sl.id && ids.has(sl.id)) || (title && heads.has(title)))) return false;
+  }
+  const last = N.out[N.out.length - 1];
+  const body = lines.slice(last.start + 1, last.end).filter((ln) => ln.trim());
+  if (!body.length) return false;
+  const tail = body[body.length - 1].trim();
+  // [concl] の行でも、文の終わりの字で終わっていなければ切れているとみなす（「[concl] 次は、伸びの」）
+  return /[。．.!?！？][」』）)"”]*$/.test(tail);
 }
 
 export const isPatch = (deck) => !/<!doctype\s|<html[\s>]/i.test(deck) && /<section\b[^>]*\bclass\s*=\s*["'][^"']*\bslide\b/i.test(deck);
