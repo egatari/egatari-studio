@@ -1,5 +1,6 @@
 // 持ち運べる 1 ファイルから取り出した原稿の作業場所と、その確かめ（Worker もブラウザの API も使わない。Node の単体の試験でも動く）。説明は portable.js
-import { parseJsonStrict, manifestFromAudio, excludedReason, isStale } from '../kit/core/portable.mjs';
+import { parseJsonStrict, manifestFromAudio, excludedReason } from '../kit/core/portable.mjs';
+import { audioState } from '../kit/core/audio-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { memoryWorkspace, badRel } from './memfs.js';
@@ -84,14 +85,24 @@ export function registryProblems(orig, fresh) {
   }
   return out;
 }
+// 音声が古い段階（§5.4。kit/core/audio-core.mjs の audioState）：inputHash が null か今の口述原稿と違う段階。inputHash の無い記録
+// （tts/synth.py の manifest）は TTS の控え（audio/seg_<digest>.json）の声で digest を作り直して比べ、控えがなければ知らせない
 export async function staleSteps(ws) {
   const man = await ws.readText('audio/manifest.json', { max: READ_LIMITS.json });
   if (!man) return [];
   let segments;
   try { segments = JSON.parse(man).segments || {}; } catch { return []; }
+  if (!isObj(segments)) return [];
   const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
   const segs = new Map(parseNarration(narr || '').map((s) => [`${s.slideKey}:${s.stepKey}`, s]));
   const out = [];
-  for (const k of Object.keys(segments)) if (await isStale(segments[k], segs.get(k))) out.push(k);
+  for (const k of Object.keys(segments)) {
+    const e = segments[k];
+    let sj = null;
+    if (isObj(e) && !own(e, 'inputHash') && typeof e.digest === 'string' && /^[0-9a-f]{1,64}$/.test(e.digest)) {
+      try { const t = await ws.readText(`audio/seg_${e.digest}.json`, { max: READ_LIMITS.json }); sj = t ? JSON.parse(t) : null; } catch { sj = null; }
+    }
+    if ((await audioState(e, segs.get(k), sj)) === 'stale') out.push(k);
+  }
   return out;
 }

@@ -10,5 +10,11 @@ KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
 The default reference voices (tts/voices/bob*.wav, alice*.wav) are synthetic voices
 made with Qwen3-TTS (Apache-2.0), Irodori-TTS (MIT) and VoxCPM2 (Apache-2.0); see
 tts/voices/README.md. They may be redistributed with this project.
+The editor app bundles lame-wasm 0.3.0 (MIT, https://github.com/dairyisscary/lame-wasm),
+which contains object code of the LAME MP3 encoder (LGPL-2.0, https://lame.sourceforge.io/;
+lame-wasm contains no modifications of LAME). Its browser TTS window loads onnxruntime-web
+(MIT), transformers.js (Apache-2.0) and kokoro-js (Apache-2.0) from jsDelivr, and model weights
+from Hugging Face (Irodori-TTS and Semantic-DACVAE: MIT; Kokoro-82M: Apache-2.0); these are
+not part of this repository.
 University logos under themes/*/logos/ belong to their respective institutions and are
 not licensed under MIT.

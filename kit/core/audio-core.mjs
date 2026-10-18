@@ -1,0 +1,293 @@
+// 段階の音声の後処理と記録（編集アプリの音声の板 app/audio-panel.js と、試験・道具が共有する。node: も fs も使わない）
+//
+// 後処理は tts/core.py と同じ意図・同じ数にする（同じ入力なら、同じ長さ・同じ音量の音声になる。tools/test-audio-core.mjs が
+// ffmpeg と比べる）：
+//   モノラル（チャンネルの平均）→ 44.1 kHz（窓付き sinc）→ 前後の無音を削る（-45 dB、20 ms の窓の RMS、削った後に 50 ms 残す。
+//   ffmpeg の silenceremove=start_periods=1:start_silence=0.05:start_threshold=-45dB を前と、逆にして後ろに）→
+//   音量を -20 LUFS に（EBU R128 / ITU-R BS.1770 の積分ラウドネスを測り、一律のゲインで当てる。ffmpeg の loudnorm の linear=true）
+//   違い：ffmpeg の loudnorm は、一律のゲインでトゥルーピークが -1.5 dBTP を超えるときは動的な処理に切り替える（抑揚が変わる）。
+//   ここでは切り替えず、ピークが -1.5 dBTP になるところでゲインを止める（小さめになるが、抑揚は変えない）
+// 行間：同じ段階の中の発言（ターン）の間に PAUSE_MS の無音（tts/synth.py と同じ。{cue} の区切りの間には入れない）。
+// 段階の末尾の間（pad_after）は実行系が足すので、音声には付けない
+//
+//   processTake(channels, sr)              → {pcm: Float32Array（44.1 kHz モノラル）, sr, dur, gainDb, loudness, peakDb, trimmed: {head, tail}}
+//   joinParts(turns, sr)                    turns：[[Float32Array…]…]（ターンごとの {cue} の部分）→ {pcm, cues}
+//   integratedLoudness(pcm, sr)             LUFS（測れなければ null）
+//   truePeakDb(pcm)                         4 倍の補間で見たピーク（dBTP）
+//   encodeWav(pcm, sr) / decodeWav(bytes)   16 bit の WAV
+//   takeEntry({...})                        audio/manifest.json の段階の記録（kind・inputHash・recipe・sync。format spec §5）
+//   setManifestEntry(text, key, entry, order)   manifest の文字列に段階の記録を入れる（ほかの段階の記録はそのまま）
+//   audioState(entry, seg, segJson)         'fresh' | 'stale' | 'unknown'（§5.4。inputHash の無い manifest は TTS の控えの digest で）
+
+export const SR = 44100;                 // tts/core.py の normalize_level・concat と同じ（-ar 44100）
+export const PAUSE_MS = 350;             // tts/core.py の PAUSE_MS
+export const TRIM = Object.freeze({ thresholdDb: -45, keepS: 0.05, windowS: 0.02 });   // TRIM_THRESHOLD・TRIM_KEEP_S（窓は silenceremove の既定）
+export const TARGET = Object.freeze({ lufs: -20, tpDb: -1.5, lra: 11 });               // TARGET_LUFS・TARGET_TP_DB・TARGET_LRA
+export const MP3 = Object.freeze({ kbps: 64, sr: SR, channels: 1 });                   // 組み立ての AAC（64 kbps・モノラル）と同じ大きさの見当
+// 後処理の版（記録の recipe.processing。数を変えたら名前も変える。format spec §5.2 の例と同じ形）
+export const PROCESSING = 'trim-45-loud-20-v1';
+// 1 つの音声の上限：長さ（秒）と、読む・書くバイト数（取り込む音声のファイル・作業場所の音声）
+export const AUDIO_LIMITS = Object.freeze({ maxSeconds: 600, fileBytes: 64 * 1048576 });
+
+import { inputHash, sha256Hex } from './portable.mjs';
+
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
+
+// ---------------------------------------------------------------- モノラル・標本化周波数
+export function toMono(channels) {
+  if (!channels.length) return new Float32Array(0);
+  if (channels.length === 1) return Float32Array.from(channels[0]);
+  const n = Math.min(...channels.map((c) => c.length)), out = new Float32Array(n);
+  for (const c of channels) for (let i = 0; i < n; i++) out[i] += c[i];
+  for (let i = 0; i < n; i++) out[i] /= channels.length;
+  return out;
+}
+// 窓付き sinc による再標本化（lab/irodori.js と同じ。純粋な JS の計算なので、どの PC でも同じ結果になる）
+export function resample(x, from, to) {
+  if (from === to) return Float32Array.from(x);
+  const ratio = to / from, fc = Math.min(1, ratio) * 0.97, half = 32 / Math.min(1, ratio);
+  const n = Math.round(x.length * ratio), y = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / ratio;
+    let s = 0, w = 0;
+    const k0 = Math.max(0, Math.ceil(t - half)), k1 = Math.min(x.length - 1, Math.floor(t + half));
+    for (let k = k0; k <= k1; k++) {
+      const d = t - k;
+      const sinc = d === 0 ? 1 : Math.sin(Math.PI * fc * d) / (Math.PI * fc * d);
+      const h = fc * sinc * (0.5 + 0.5 * Math.cos((Math.PI * d) / half));
+      s += x[k] * h; w += h;
+    }
+    y[i] = w ? s / w : 0;
+  }
+  return y;
+}
+
+// ---------------------------------------------------------------- 無音を削る（silenceremove の rms 検出と同じ：直前の窓の RMS がしきい値を超えた所）
+// 返すもの：音のある最初の標本の位置（なければ -1）
+function onset(x, sr, step) {
+  const win = Math.max(1, Math.round(TRIM.windowS * sr)), thr = Math.pow(10, TRIM.thresholdDb / 20), thr2 = thr * thr * win;
+  let sum = 0;
+  const n = x.length;
+  for (let j = 0; j < n; j++) {
+    const i = step > 0 ? j : n - 1 - j;
+    sum += x[i] * x[i];
+    if (j >= win) { const o = step > 0 ? j - win : n - 1 - (j - win); sum -= x[o] * x[o]; }
+    if (sum > thr2) return j;
+  }
+  return -1;
+}
+export function trimSilence(x, sr) {
+  const keep = Math.round(TRIM.keepS * sr);
+  const a = onset(x, sr, 1);
+  if (a < 0) return { pcm: new Float32Array(0), head: x.length, tail: 0 };
+  const b = onset(x, sr, -1);
+  const start = Math.max(0, a - keep), end = Math.min(x.length, x.length - b + keep);
+  return { pcm: x.slice(start, end), head: start, tail: x.length - end };
+}
+
+// ---------------------------------------------------------------- ラウドネス（ITU-R BS.1770-4。K 特性の係数は標本化周波数から作る：libebur128 と同じ式）
+function kWeight(sr) {
+  let f0 = 1681.974450955533, G = 3.999843853973347, Q = 0.7071752369554196;
+  let K = Math.tan((Math.PI * f0) / sr);
+  const Vh = Math.pow(10, G / 20), Vb = Math.pow(Vh, 0.4996667741545416);
+  let a0 = 1 + K / Q + K * K;
+  const pre = { b: [(Vh + (Vb * K) / Q + K * K) / a0, (2 * (K * K - Vh)) / a0, (Vh - (Vb * K) / Q + K * K) / a0], a: [1, (2 * (K * K - 1)) / a0, (1 - K / Q + K * K) / a0] };
+  f0 = 38.13547087602444; Q = 0.5003270373238773; K = Math.tan((Math.PI * f0) / sr);
+  a0 = 1 + K / Q + K * K;
+  const rlb = { b: [1, -2, 1], a: [1, (2 * (K * K - 1)) / a0, (1 - K / Q + K * K) / a0] };
+  return [pre, rlb];
+}
+function biquad(x, { b, a }) {
+  const y = new Float64Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let n = 0; n < x.length; n++) {
+    const v = x[n], o = b[0] * v + b[1] * x1 + b[2] * x2 - a[1] * y1 - a[2] * y2;
+    y[n] = o; x2 = x1; x1 = v; y2 = y1; y1 = o;
+  }
+  return y;
+}
+// 積分ラウドネス（LUFS）。400 ms の区間を 100 ms ずつずらし、-70 LUFS の絶対ゲートと -10 LU の相対ゲート。短すぎる・無音なら null
+export function integratedLoudness(x, sr) {
+  let d = x;
+  for (const f of kWeight(sr)) d = biquad(d, f);
+  const block = Math.round(0.4 * sr), hop = Math.round(0.1 * sr);
+  if (d.length < block) return null;
+  const z = [];
+  // 累積和で区間の平均を取る（区間は 400 ms をまるごと含むものだけ）
+  const cum = new Float64Array(d.length + 1);
+  for (let i = 0; i < d.length; i++) cum[i + 1] = cum[i] + d[i] * d[i];
+  for (let s = 0; s + block <= d.length; s += hop) z.push((cum[s + block] - cum[s]) / block);
+  const L = (e) => -0.691 + 10 * Math.log10(e);
+  const abs = z.filter((e) => e > 0 && L(e) > -70);
+  if (!abs.length) return null;
+  const rel = L(abs.reduce((a, b) => a + b, 0) / abs.length) - 10;
+  const keep = abs.filter((e) => L(e) > rel);
+  if (!keep.length) return null;
+  return L(keep.reduce((a, b) => a + b, 0) / keep.length);
+}
+// トゥルーピーク（dBTP）：4 倍に補間した波形の絶対値の最大（BS.1770 の考え方。補間は窓付き sinc の 48 タップ）
+export function truePeakDb(x) {
+  let peak = 0;
+  for (let i = 0; i < x.length; i++) { const v = Math.abs(x[i]); if (v > peak) peak = v; }
+  const OS = 4, HALF = 12;
+  const taps = [];
+  for (let p = 1; p < OS; p++) {
+    const frac = p / OS, t = [];
+    for (let k = -HALF + 1; k <= HALF; k++) {
+      const d = k - frac, sinc = Math.sin(Math.PI * d) / (Math.PI * d);
+      t.push(sinc * (0.5 + 0.5 * Math.cos((Math.PI * d) / HALF)));
+    }
+    taps.push(t);
+  }
+  for (let i = 0; i + 1 < x.length; i++) {
+    // 隣の標本の片方でも大きくなければ、その間の補間がピークを超えることは少ない：大きな所だけ調べる（ピークの 1/2 以上）
+    if (Math.max(Math.abs(x[i]), Math.abs(x[i + 1])) < peak * 0.5) continue;
+    for (const t of taps) {
+      let s = 0;
+      for (let k = -HALF + 1, j = 0; k <= HALF; k++, j++) { const idx = i + k; if (idx >= 0 && idx < x.length) s += x[idx] * t[j]; }
+      const v = Math.abs(s); if (v > peak) peak = v;
+    }
+  }
+  return peak > 0 ? 20 * Math.log10(peak) : -Infinity;
+}
+// 音量を揃える：測れないもの（短すぎる・無音）はそのまま（tts/core.py と同じ：音が消えるよりはレベルが揃わないほうがよい）
+export function normalizeLevel(x, sr) {
+  const loud = integratedLoudness(x, sr);
+  if (loud === null || !Number.isFinite(loud)) return { pcm: Float32Array.from(x), gainDb: 0, loudness: loud, peakDb: truePeakDb(x) };
+  const tp = truePeakDb(x);
+  let gainDb = TARGET.lufs - loud;
+  if (Number.isFinite(tp) && tp + gainDb > TARGET.tpDb) gainDb = TARGET.tpDb - tp;
+  const g = Math.pow(10, gainDb / 20), out = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) out[i] = x[i] * g;
+  return { pcm: out, gainDb, loudness: loud, peakDb: tp + gainDb };
+}
+
+// ---------------------------------------------------------------- 1 つの音声（録音・TTS の 1 行・取り込んだファイル）を整える
+export function processTake(channels, sr, { normalize = true, trim = true } = {}) {
+  let x = toMono(channels);
+  if (x.length > AUDIO_LIMITS.maxSeconds * sr) throw Object.assign(new Error(`audio longer than ${AUDIO_LIMITS.maxSeconds} s`), { code: 'audio-too-long' });
+  x = resample(x, sr, SR);
+  let head = 0, tail = 0;
+  if (trim) { const t = trimSilence(x, SR); x = t.pcm; head = t.head; tail = t.tail; }
+  const n = normalize ? normalizeLevel(x, SR) : { pcm: x, gainDb: 0, loudness: integratedLoudness(x, SR), peakDb: truePeakDb(x) };
+  return { pcm: n.pcm, sr: SR, dur: round3(n.pcm.length / SR), gainDb: n.gainDb, loudness: n.loudness, peakDb: n.peakDb, trimmed: { head: round3(head / SR), tail: round3(tail / SR) } };
+}
+const round3 = (v) => Math.round(v * 1000) / 1000;
+
+// 段階の音声：ターンの間に PAUSE_MS の無音。cues は 2 つ目からの {cue} の部分の始まり（秒。tts/synth.py の synth_segment と同じ）
+export function joinParts(turns, sr = SR) {
+  const pause = Math.round((PAUSE_MS / 1000) * sr);
+  const pieces = [], cues = [];
+  let n = 0;
+  turns.forEach((parts, ti) => {
+    if (ti > 0 && pause > 0) { pieces.push(new Float32Array(pause)); n += pause; }
+    parts.forEach((p, pi) => {
+      if (pi > 0) cues.push(round3(n / sr));
+      if (p && p.length) { pieces.push(p); n += p.length; }
+    });
+  });
+  const out = new Float32Array(n);
+  let o = 0;
+  for (const p of pieces) { out.set(p, o); o += p.length; }
+  return { pcm: out, cues, dur: round3(n / sr) };
+}
+
+// ---------------------------------------------------------------- WAV（16 bit・モノラル）
+export function encodeWav(pcm, sr) {
+  const n = pcm.length, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true);
+  dv.setUint16(34, 16, true); ws(36, 'data'); dv.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, pcm[i])) * 32767), true);
+  return new Uint8Array(buf);
+}
+// 16/24/32 bit の整数・32/64 bit の浮動小数の WAV → {channels: [Float32Array…], sr}（WAV でなければ null）
+export function decodeWav(bytes) {
+  const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+  const tag = (o) => String.fromCharCode(u[o], u[o + 1], u[o + 2], u[o + 3]);
+  if (u.length < 12 || tag(0) !== 'RIFF' || tag(8) !== 'WAVE') return null;
+  let fmt = null, data = null;
+  for (let o = 12; o + 8 <= u.length;) {
+    const id = tag(o), size = dv.getUint32(o + 4, true);
+    if (id === 'fmt ') {
+      fmt = { format: dv.getUint16(o + 8, true), ch: dv.getUint16(o + 10, true), sr: dv.getUint32(o + 12, true), bits: dv.getUint16(o + 22, true) };
+      if (fmt.format === 0xfffe && size >= 40) fmt.format = dv.getUint16(o + 32, true);
+    }
+    if (id === 'data') data = { off: o + 8, size: Math.min(size, u.length - o - 8) };
+    o += 8 + size + (size & 1);
+  }
+  if (!fmt || !data || !fmt.ch || !fmt.bits) return null;
+  const bps = fmt.bits / 8, n = Math.floor(data.size / (bps * fmt.ch));
+  const chans = Array.from({ length: fmt.ch }, () => new Float32Array(n));
+  const fl = fmt.format === 3;
+  for (let i = 0; i < n; i++) for (let c = 0; c < fmt.ch; c++) {
+    const o = data.off + (i * fmt.ch + c) * bps;
+    let v;
+    if (fl && bps === 4) v = dv.getFloat32(o, true);
+    else if (fl && bps === 8) v = dv.getFloat64(o, true);
+    else if (bps === 2) v = dv.getInt16(o, true) / 32768;
+    else if (bps === 3) v = (u[o] | (u[o + 1] << 8) | (dv.getInt8(o + 2) << 16)) / 8388608;
+    else if (bps === 4) v = dv.getInt32(o, true) / 2147483648;
+    else if (bps === 1) v = (u[o] - 128) / 128;
+    else return null;
+    chans[c][i] = v;
+  }
+  return { channels: chans, sr: fmt.sr };
+}
+
+// ---------------------------------------------------------------- 記録（audio/manifest.json の段階。format spec §5：kind・inputHash・recipe・sync）
+// source：{kind: 'recorded' | 'tts' | 'imported', recipe?（tts のとき。engine・model・voice・seed・dictionary・processing）}
+// cues：{cue} の区切りの時刻（TTS で部分ごとに作ったとき）。録音・取り込みは区切りを置いていないので sync "none"（cues は空）
+export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = null }) {
+  if (!['recorded', 'tts', 'imported'].includes(kind)) throw new Error('bad take kind: ' + kind);
+  if (!(typeof dur === 'number' && dur > 0)) throw Object.assign(new Error('the take is empty (no sound after trimming silence)'), { code: 'audio-empty' });
+  const e = { file, dur: round3(dur), cues: Array.isArray(cues) ? cues.slice() : [] };
+  e.sync = Array.isArray(cues) ? 'auto' : 'none';
+  if (kind === 'tts') { if (!isObj(recipe)) throw new Error('tts take without recipe'); e.engine = String(recipe.engine); }
+  e.kind = kind;
+  e.inputHash = typeof inputHash === 'string' ? inputHash : null;
+  if (kind === 'tts') e.recipe = recipe;
+  return e;
+}
+// manifest の文字列（なければ null）に、段階 key の記録を入れる（ほかの段階の記録はそのまま。並びは order（口述原稿の段階の順）に）。
+// 形の違う manifest（JSON でない・segments が object でない）は断る（上書きして消さない）
+export function setManifestEntry(text, key, entry, order = []) {
+  let man = { segments: {} };
+  if (text != null && String(text).trim()) {
+    man = JSON.parse(text);
+    if (!isObj(man) || (own(man, 'segments') && !isObj(man.segments))) throw Object.assign(new Error('audio/manifest.json is not {segments: {...}}'), { code: 'bad-manifest' });
+    if (!own(man, 'segments')) man.segments = {};
+  }
+  const seg = { ...man.segments };
+  if (entry === null) delete seg[key]; else seg[key] = entry;
+  // 口述原稿の順。口述原稿にない段階は、今の並びのまま後ろに
+  const pos = new Map(order.map((k, i) => [k, i]));
+  const was = new Map(Object.keys(seg).map((k, i) => [k, i]));
+  const rank = (k) => (pos.has(k) ? pos.get(k) : 1e9 + was.get(k));
+  const keys = Object.keys(seg).sort((a, b) => rank(a) - rank(b));
+  man.segments = Object.fromEntries(keys.map((k) => [k, seg[k]]));
+  return JSON.stringify(man, null, 1) + '\n';
+}
+// 音声のファイルの名前：中身の sha256 の先頭 16 字（同じ中身は同じ名前。前の取り直しのファイルは消さない：tts/synth.py と同じ）
+export const takeFileName = (kind, sha256) => `${kind === 'tts' ? 'tts' : kind === 'imported' ? 'imp' : 'rec'}_${String(sha256).slice(0, 16)}.mp3`;
+
+// tts/synth.py の音声の digest（kit/narration.mjs の segDigest と同じ値。ブラウザでも作れるように Web Crypto で）
+export const segDigest = async (seg, voice = {}) => (await sha256Hex(JSON.stringify({ turns: seg.turns.map((t) => [t.role, t.ttsParts]), voice }))).slice(0, 12);
+// 音声が今の口述原稿に合っているか（§5.4）。entry：manifest の段階の記録、seg：今の口述原稿のその段階（parseNarration。なければ古い）、
+// segJson：audio/seg_<digest>.json（任意。tts/synth.py の控え）
+//   inputHash がある → 合えば 'fresh'、違えば 'stale'。null → 'stale'（分からない）。無い（tts/synth.py の manifest）→ 控えの声で digest を
+//   作り直して比べ、控えがなければ 'unknown'（知らせない）
+export async function audioState(entry, seg, segJson = null) {
+  if (!isObj(entry)) return 'unknown';
+  if (!seg) return 'stale';
+  if (own(entry, 'inputHash')) {
+    if (entry.inputHash === null) return 'stale';
+    return entry.inputHash === await inputHash(seg) ? 'fresh' : 'stale';
+  }
+  if (isObj(segJson) && isObj(segJson.voice) && typeof entry.digest === 'string') return (await segDigest(seg, segJson.voice)) === entry.digest ? 'fresh' : 'stale';
+  return 'unknown';
+}

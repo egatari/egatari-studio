@@ -696,7 +696,9 @@ export function build(env0, srcPath, opts = {}) {
         if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
         continue;
       }
-      audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.cues || [] };
+      audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
+      // 区切りをまだ置いていない録音（sync: "none"。編集アプリの音声の板）は同期しない（持ち運べる形式と同じ。format spec §5）
+      if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
     }
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');

@@ -10,7 +10,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
+import { parseYomiTerms } from '../kit/core/yomi.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -75,7 +77,10 @@ for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.re
   // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }
-const resources = { version, text, b64, lazy, hints, themes, components };
+// 読み辞書（tts/yomi.yaml の terms と、その sha256。音声の板のブラウザの TTS が、tts/yomi.py と同じ規則で使う。kit/core/yomi.mjs）
+const yomiText = fs.readFileSync(rel('tts', 'yomi.yaml'), 'utf8');
+const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha256').update(fs.readFileSync(rel('tts', 'yomi.yaml'))).digest('hex') };
+const resources = { version, text, b64, lazy, hints, themes, components, yomi };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 
@@ -113,7 +118,7 @@ const bundleMain = async (res) => (await esbuild.build({
 let js = await bundleMain(resources);
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), lame-wasm (MIT) with LAME (LGPL-2.0, https://lame.sourceforge.io/), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;

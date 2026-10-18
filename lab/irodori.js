@@ -2,36 +2,8 @@
 // 推論の本体は lab/vendor/irodori-tts-webgpu/pipeline.mjs（上流のまま。UPSTREAM.md）
 // 重みとトークナイザは Hugging Face から実行時に取り、Cache Storage に置く（2 回目は取りに行かない）
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
-
-const ORT_VERSION = '1.23.0';            // 上流（web/app.mjs・space/app.mjs）と同じ版
-const TRANSFORMERS_VERSION = '3.7.6';    // 同上（トークナイザだけに使う）
-const ORT_URL = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort.webgpu.mjs`;
-const ORT_WASM = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
-const TRANSFORMERS_URL = `https://cdn.jsdelivr.net/npm/@huggingface/transformers@${TRANSFORMERS_VERSION}/dist/transformers.min.js`;
-const HF_REPO = 'noguchis/irodori-tts-onnx';
-const HF_REV = 'b75a9bbf2c10e12682d37e91e0efaf6d4e54bd29'; // 版を固定（重みが差し替わっても結果が変わらない）
-const HF_BASE = `https://huggingface.co/${HF_REPO}/resolve/${HF_REV}`;
-const CACHE_NAME = `irodori-lab-${HF_REV.slice(0, 12)}`;
-const SR = 48000;
-
-// セッションの鍵 → ONNX の名前（pipeline.mjs の sessions に要る 6 つ）
-const MODELS = {
-  text: 'text_encoder', speaker: 'speaker_encoder', duration: 'duration',
-  dit: 'dit', dac: 'dacvae_decoder', enc: 'dacvae_encoder',
-};
-// 大きさ（バイト。HF の一覧から。進み具合の分母）
-const SIZES = {
-  fp16: {
-    text_encoder: [1871518, 169596928], speaker_encoder: [1635127, 121292800], duration: [237373, 34144256],
-    dit: [3090595, 700841984], dacvae_decoder: [892789, 166184768], dacvae_encoder: [962319, 54697984],
-  },
-  fp32: {
-    text_encoder: [1664896, 339062784], speaker_encoder: [1454728, 242454528], duration: [222559, 68222976],
-    dit: [2731021, 1401225216], dacvae_decoder: [847311, 261488640], dacvae_encoder: [945688, 109445120],
-  },
-};
-const TOKENIZER_BYTES = 996 + 6409995 + 1890;
-const folderOf = (prec) => (prec === 'fp16' ? 'onnx_fp16' : 'onnx');
+// 版・場所・大きさ・WAV の読み取り・再標本化は、編集アプリの TTS の窓（lab/tts-helper.html）と共有する（lab/tts-engine.mjs）
+import { ORT_VERSION, TRANSFORMERS_VERSION, ORT_URL, ORT_WASM, TRANSFORMERS_URL, HF_REPO, HF_REV, HF_BASE, CACHE_NAME, SR, MODELS, SIZES, TOKENIZER_BYTES, folderOf, parseWav, resample } from './tts-engine.mjs';
 
 // 試験 B の組。左 raw は原稿（{θ|シータ} などの指定を解いた後）、右 yomi は読み辞書を通した後。
 // examples/minimal の写しに文を足し、`uv run --project tts python tts/synth.py <写し> --dry-run` が
@@ -278,63 +250,7 @@ async function clearCache() {
 }
 
 // ---------------------------------------------------------------- 3. 声
-// WAV を自前で読む（ブラウザの復号・再標本化の違いを入れないため）。WAV 以外は decodeAudioData に任せる
-function parseWav(ab) {
-  const dv = new DataView(ab);
-  const tag = (o) => String.fromCharCode(dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3));
-  if (ab.byteLength < 12 || tag(0) !== 'RIFF' || tag(8) !== 'WAVE') return null;
-  let fmt = null, data = null;
-  for (let o = 12; o + 8 <= ab.byteLength;) {
-    const id = tag(o), size = dv.getUint32(o + 4, true);
-    if (id === 'fmt ') {
-      fmt = { format: dv.getUint16(o + 8, true), ch: dv.getUint16(o + 10, true), sr: dv.getUint32(o + 12, true), bits: dv.getUint16(o + 22, true) };
-      if (fmt.format === 0xfffe && size >= 40) fmt.format = dv.getUint16(o + 32, true);   // WAVE_FORMAT_EXTENSIBLE：SubFormat の先頭
-    }
-    if (id === 'data') data = { off: o + 8, size: Math.min(size, ab.byteLength - o - 8) };
-    o += 8 + size + (size & 1);
-  }
-  if (!fmt || !data) return null;
-  const bps = fmt.bits / 8, n = Math.floor(data.size / (bps * fmt.ch));
-  const out = new Float32Array(n);
-  const isFloat = fmt.format === 3;
-  for (let i = 0; i < n; i++) {
-    let s = 0;
-    for (let c = 0; c < fmt.ch; c++) {
-      const o = data.off + (i * fmt.ch + c) * bps;
-      let v;
-      if (isFloat && bps === 4) v = dv.getFloat32(o, true);
-      else if (isFloat && bps === 8) v = dv.getFloat64(o, true);
-      else if (bps === 2) v = dv.getInt16(o, true) / 32768;
-      else if (bps === 3) { const x = dv.getUint8(o) | (dv.getUint8(o + 1) << 8) | (dv.getInt8(o + 2) << 16); v = x / 8388608; }
-      else if (bps === 4) v = dv.getInt32(o, true) / 2147483648;
-      else if (bps === 1) v = (dv.getUint8(o) - 128) / 128;
-      else throw new Error(`未対応の WAV（${fmt.bits} bit）`);
-      s += v;
-    }
-    out[i] = s / fmt.ch;
-  }
-  return { pcm: out, sr: fmt.sr, channels: fmt.ch, bits: fmt.bits };
-}
-
-// 窓付き sinc による再標本化（純粋な JS の計算なので、どの PC でも同じ結果になる）
-function resample(x, from, to) {
-  if (from === to) return x;
-  const ratio = to / from, fc = Math.min(1, ratio) * 0.97, half = 32 / Math.min(1, ratio);
-  const n = Math.round(x.length * ratio), y = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const t = i / ratio;
-    let s = 0, w = 0;
-    for (let k = Math.max(0, Math.ceil(t - half)); k <= Math.min(x.length - 1, Math.floor(t + half)); k++) {
-      const d = t - k;
-      const sinc = d === 0 ? 1 : Math.sin(Math.PI * fc * d) / (Math.PI * fc * d);
-      const win = 0.5 + 0.5 * Math.cos((Math.PI * d) / half);   // Hann 窓
-      const h = fc * sinc * win;
-      s += x[k] * h; w += h;
-    }
-    y[i] = w ? s / w : 0;   // 重みの和で割る（直流の利得を 1 に）
-  }
-  return y;
-}
+// WAV の読み取り（parseWav）と窓付き sinc の再標本化（resample）は lab/tts-engine.mjs
 
 async function sha1(f32) {
   const bytes = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);

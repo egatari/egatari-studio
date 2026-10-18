@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=2b92aa6e6f9eab1e -->
+<!-- i18n: pair=reference.ja.md sha256=c0825dbf26c83404 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -17,7 +17,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `narration.md` | build, TTS, export | narration per step |
 | `timeline.json` | build | per-step timing overrides |
 | `macros.tex` | build | KaTeX macros (`\newcommand`, `\renewcommand`, `\def`; added to the default macros) |
-| `audio/manifest.json` | build | written by `tts/synth.py` |
+| `audio/manifest.json` | build | written by `tts/synth.py` and the editor app's Audio panel (each step: `file`, `dur`, `cues`, `sync`, `kind`, `inputHash`, for TTS `recipe`) |
 | `voice.json` | TTS | voices, language, engine |
 | `figs/*.svg`, `data/*.json` | build | for `{{FIG:…}}` / `{{JSON:…}}` |
 | `components/<name>/index.js` | build | deck-local components (found before the repository's) |
@@ -316,6 +316,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | unrendered math or KaTeX errors | error |
 | mixed punctuation 、。 vs ，． across the deck (Japanese) | warn |
 | a step without narration | warn |
+| stale audio: a step's audio was made from other narration (`inputHash` differs or is `null`; without `inputHash`, the TTS cache record `audio/seg_<digest>.json` is compared) — `audio: stale` | warn |
 | narration that reads a formula | warn |
 | turn > 200 characters / > 60 words | info |
 | contrast of `--fg --term --emph --title --accent2` vs `--bg` < 4.5:1; `--muted` < 3:1 | error; warn |
@@ -384,6 +385,7 @@ Reading a portable file (unpack and the [editor app](editor.md#portable-files-no
 | `--only key,…` | only these steps (`slideKey:step`) |
 | `--dry-run` | no TTS: silence of estimated length (7.5 characters/s Japanese, 2.5 words/s English); separate cache |
 | `--force` | ignore the audio cache |
+| `--replace-recorded` | also replace recorded and imported audio (manifest `kind` `recorded` / `imported`, written by the editor app's Audio panel) with TTS; without it they are kept |
 
 | `voice.json` field | Meaning |
 |---|---|
@@ -391,7 +393,7 @@ Reading a portable file (unpack and the [editor app](editor.md#portable-files-no
 | `lang` | language (default: `lang` of the deck's HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
 | `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
 
-Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.json` (steps removed from the narration are dropped from the manifest; their wav files stay). Warns if dry-run audio remains. When the server is not localhost, voice paths are not checked locally. Rebuild afterwards.
+Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.json` (steps removed from the narration are dropped from the manifest; their wav files stay). Each manifest entry also carries `kind: "tts"` and `inputHash`, the hash of the step's narration (format spec §5.4), so the editor app and the checker can tell when the narration changed afterwards. Recorded and imported takes are kept (see `--replace-recorded`). The editor app can also record, import or regenerate one step at a time in the browser ([editor](editor.md#narration-audio-audio-panel)); its post-processing uses the same numbers as `tts/core.py`. Warns if dry-run audio remains. When the server is not localhost, voice paths are not checked locally. Rebuild afterwards.
 
 ## Render and export
 

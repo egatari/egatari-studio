@@ -16,6 +16,8 @@
 //    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
 // J. スライドへのリンク（format spec §9.1A）：<a href="#<id>"> と #<id>:<段階の鍵> の行き先がないか段階が範囲の外ならエラー。
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
+// K. 音声が古い段階（format spec §5.4）：audio/manifest.json の記録の inputHash が今の口述原稿と違うか null（警告）。inputHash の無い
+//    記録（前の tts/synth.py）は TTS の控えの digest で比べる。音声は消さない
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
@@ -25,6 +27,7 @@ import { launch } from './browser.mjs';
 import { build, isJapanese, analyzeSlideIds } from './build.mjs';
 import { normalizeKey } from './narration.mjs';
 import { readRegular, READ_LIMITS } from './bounded-read.mjs';
+import { audioState } from './core/audio-core.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -120,6 +123,29 @@ for (const w of built.stats.warn) {
     const s = byKey.get(sec.key);
     if (s && sec.heading && normalizeKey(sec.heading) !== normalizeKey(s.heading)) {
       report(s.i, 'info', `narration.md ${sec.line} 行目の見出し「${sec.heading}」がスライドの見出し「${s.heading}」と違う（{#${sec.id}} で対応しているので動きは変わらない）`);
+    }
+  }
+}
+
+// ================================================================ K. 音声が古い段階
+{
+  const deckDir = fs.realpathSync(path.dirname(path.resolve(src)));
+  // 原稿のフォルダの中の通常のファイルだけ、上限つきで（kit/bounded-read.mjs）。なければ・読めなければ null
+  const readJson = (rel) => {
+    const p = path.join(deckDir, rel);
+    try { if (!fs.existsSync(p) || !fs.realpathSync(p).startsWith(deckDir + path.sep)) return null; return JSON.parse(readRegular(p, { max: READ_LIMITS.json }).toString('utf8')); } catch { return null; }
+  };
+  const man = readJson(path.join('audio', 'manifest.json'));
+  const segments = man && typeof man.segments === 'object' && man.segments && !Array.isArray(man.segments) ? man.segments : {};
+  const byKey = new Map(built.segs.map((s) => [`${s.slideKey}:${s.stepKey}`, s]));
+  const slideOf = new Map(built.slides.map((s, i) => [s.key, i]));
+  for (const [k, e] of Object.entries(segments)) {
+    const seg = byKey.get(k);
+    if (!seg) continue;   // 口述原稿にない段階の音声は組み立てが使わない（tts/synth.py が manifest から消す）
+    const sj = e && typeof e === 'object' && !('inputHash' in e) && /^[0-9a-f]{1,64}$/.test(String(e.digest || '')) ? readJson(path.join('audio', `seg_${e.digest}.json`)) : null;
+    if ((await audioState(e, seg, sj)) === 'stale') {
+      const i = slideOf.has(seg.slideKey) ? slideOf.get(seg.slideKey) : null;
+      report(i, 'warn', `audio: stale — 段階 ${k} の音声は今の口述原稿から作ったものではない（${e && e.kind === 'recorded' ? '録音' : e && e.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`);
     }
   }
 }

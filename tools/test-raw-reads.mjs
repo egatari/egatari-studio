@@ -50,6 +50,9 @@ const ALLOW = [
   ['tools/get-fonts.mjs', 'sha(fs.readFileSync(out))', '字：リポジトリの fonts/ の、決まった大きさのファイルのハッシュを確かめる（取ってくる側は決まったコミット・大きさの上限・SHA-256 で確かめる）'],
   ['tools/hostile-deck.mjs', 'fs.readFileSync(path.join(min,', '試験の材料：リポジトリの examples/minimal を読む'],
   ['tools/katex-ranges.mjs', 'fs.readFileSync(', 'node_modules の KaTeX（package.json と字）と、このツールが書く表を読む'],
+  ['lab/tts-engine.mjs', 'await hit.arrayBuffer()', 'TTS の窓と試験ページ：Cache Storage に自分で入れた重み（固定の Hugging Face の版）。読んだ後に期待の大きさと比べる'],
+  ['lab/tts-engine.mjs', 'await res.arrayBuffer()', 'TTS の窓と試験ページ：固定の Hugging Face の版の重み・同梱の既定の声（自分の配信元）を fetch する'],
+  ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
 ];
 
 const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT }).toString().split('\0')

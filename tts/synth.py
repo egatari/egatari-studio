@@ -15,6 +15,8 @@
   名前は <参照音声のフォルダ>/<名前>.wav（--ref-dir > IRODORI_REF_DIR > tts/voices）、パスも書ける
 - 読み辞書：--yomi > MOTION_YOMI > tts/yomi.yaml
 - サーバー：IRODORI_URL（既定 http://localhost:8882）
+- 録音・取り込みの音声（manifest の kind が recorded か imported。編集アプリの音声の板が書く）は作り直さず、そのまま残す
+  （--replace-recorded で TTS に替える）。manifest の各段階には kind と inputHash（その段階の口述原稿の hash。format spec §5.4）も書く
 """
 
 from __future__ import annotations
@@ -54,6 +56,7 @@ def parse_args():
     p.add_argument("--only", default=None, help="この鍵（slideKey:stepKey）の段階だけ作る。カンマ区切り")
     p.add_argument("--dry-run", action="store_true", help="TTS を呼ばず、推定の長さの無音を作る")
     p.add_argument("--force", action="store_true", help="キャッシュを無視して作り直す")
+    p.add_argument("--replace-recorded", action="store_true", help="録音・取り込みの音声（kind が recorded か imported）も TTS で作り直す")
     return p.parse_args()
 
 
@@ -322,11 +325,16 @@ def main():
         if k not in keys:
             del manifest["segments"][k]
 
-    made = cached = 0
+    made = cached = kept = 0
     failed: list[tuple[str, str]] = []
     for n, seg in enumerate(segs):
         key = seg["key"]
         if only and key not in only:
+            continue
+        prev = manifest["segments"].get(key)
+        if isinstance(prev, dict) and prev.get("kind") in ("recorded", "imported") and not args.replace_recorded:
+            kept += 1
+            print(f"  [{n+1}/{len(segs)}] {key}: {'録音' if prev['kind'] == 'recorded' else '取り込み'}の音声を残す（--replace-recorded で TTS に替える）")
             continue
         turns = plan(seg, terms, watch_kanji, watch, stats)
         fname = f"seg_{seg['digest']}.wav"
@@ -354,7 +362,8 @@ def main():
             made += 1
             print(f" {dur:.2f}s" + (f", cues {cues}" if cues else ""))
         manifest["segments"][key] = {"file": fname, "dur": info["dur"], "cues": info["cues"], "digest": seg["digest"],
-                                     "engine": info.get("voice", {}).get("engine", voice["engine"])}
+                                     "engine": info.get("voice", {}).get("engine", voice["engine"]),
+                                     "kind": "tts", "inputHash": seg.get("inputHash")}
 
     # 原稿の順に並べ直して書く
     order = {s["key"]: i for i, s in enumerate(segs)}
@@ -372,13 +381,13 @@ def main():
     for w in sorted(stats["watched"]):
         print(f"  ? 文脈依存の語: {w} — 読みが正しいか確認してください")
     if failed:
-        print(f"✗ 失敗 {len(failed)} 段階（新規 {made} / キャッシュ {cached}）→ {man_path}", file=sys.stderr)
+        print(f"✗ 失敗 {len(failed)} 段階（新規 {made} / キャッシュ {cached} / 録音を残した {kept}）→ {man_path}", file=sys.stderr)
         for k, e in failed:
             print(f"    {k}: {e}", file=sys.stderr)
         print("  失敗した段階は manifest から外した（音声なしになる）。サーバーを確かめて、"
               f"--only {','.join(k for k, _ in failed)} でやり直すこと", file=sys.stderr)
         sys.exit(1)
-    print(f"完了: 新規 {made} / キャッシュ {cached} → {man_path}")
+    print(f"完了: 新規 {made} / キャッシュ {cached}" + (f" / 録音を残した {kept}" if kept else "") + f" → {man_path}")
     print("  音声を反映するには build をやり直す（node kit/build.mjs <deck.html>）")
 
 
