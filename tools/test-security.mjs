@@ -243,6 +243,22 @@ for (const [label, prep] of buildCases) {
   try { build(path.join(d2, 'deck.html'), { out: path.join(d2, 'out', 'deck.html') }); } catch (x) { e = x; }
   ok(e && /nested too deeply/.test(e.message), 'build: a theme that extends itself stops with an error (' + (e && e.message) + ')');
 }
+// 通常のファイルだけを読む。FIFO は開けば止まる：CLI を子の process で、期限付きで（止まれば失敗）
+if (process.platform !== 'win32' && spawnSync('mkfifo', ['--help']).error?.code !== 'ENOENT') {
+  const fifo = (f) => { fs.mkdirSync(path.dirname(f), { recursive: true }); spawnSync('mkfifo', [f]); return fs.lstatSync(f).isFIFO(); };
+  const cli = (d) => { const t0 = Date.now(); const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(d, 'deck.html')], { encoding: 'utf8', timeout: 20000 });
+    return { r, ms: Date.now() - t0, m: r.error && r.error.code === 'ETIMEDOUT' ? 'hung (timeout)' : r.stderr.trim().split('\n')[0] }; };
+  const fifoCases = [
+    ['an include', (d) => { fs.writeFileSync(path.join(d, 'deck.html'), fs.readFileSync(path.join(d, 'deck.html'), 'utf8').replace('</section>', '<style>/*INCLUDE:pipe.css*/</style></section>')); return path.join(d, 'pipe.css'); }],
+    ["the theme's tokens.css", (d) => { const t = mkTheme(d, 'ft'); fs.rmSync(path.join(t, 'tokens.css')); withTheme(d, 'ft'); return path.join(t, 'tokens.css'); }],
+  ];
+  for (const [label, prep] of fifoCases) {
+    let made = false;
+    const d = mkDeck((x) => { made = fifo(prep(x)); });
+    const o = cli(d);
+    ok(made && o.r.status === 1 && /is not a regular file/.test(o.m) && o.ms < 10000, `build: a FIFO as ${label} -> refused at once, no hang (exit ${o.r.status}: …${o.m.slice(-80)}; ${o.ms} ms)`);
+  }
+} else console.log('  skip FIFO cases (no mkfifo)');
 
 // ---------------------------------------------------------------- 4. 組み立ての書き出し（kit/build.mjs の CLI）
 const outCases = [

@@ -67,7 +67,7 @@ function subsetCss(text) {
 // 埋め込む音声は AAC（64 kbps・モノラル）にする。WAV のままだと 5 分で 30 MB を超える。結果はキャッシュする
 function compressAudio(file) {
   if (!/\.wav$/i.test(file)) return file;
-  const out = path.join(os.tmpdir(), 'motion-slides-audio', short(fs.readFileSync(file).toString('base64')) + '.m4a');
+  const out = path.join(os.tmpdir(), 'motion-slides-audio', short(readRegular(file).toString('base64')) + '.m4a');
   if (fs.existsSync(out)) return out;
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-c:a', 'aac', '-b:a', '64k', '-ac', '1', out]);
@@ -84,14 +84,36 @@ function within(p, dir) {
     return rp === rd || rp.startsWith(rd + path.sep);
   } catch { return false; }
 }
+// 通常のファイルでない（FIFO・デバイス・ソケット）。開けば止まるものもあるので、読まずに断る
+export class NotRegularFileError extends Error {
+  constructor(p) { super(`build: ${p} is not a regular file (FIFO, device or socket); refusing to read it`); this.name = 'NotRegularFileError'; this.code = 'build-not-a-file'; }
+}
+// 通常のファイルか（リンクなら指す先が）
+function regularStat(p) {
+  const ls = fs.lstatSync(p);
+  const st = ls.isSymbolicLink() ? fs.statSync(p) : ls;
+  if (!st.isFile()) throw new NotRegularFileError(p);
+  return st;
+}
+// p を読む：通常のファイルであることを確かめてから、止まらないように開き（O_NONBLOCK）、開いた fd でも通常のファイルで、確かめたものと
+// 同じ（dev・ino）であることを確かめ、その fd から読む（readFileSync は使わない。FIFO を取り込み・tokens.css に置かれても止まらない）
+export function readRegular(p) {
+  const st = regularStat(p);
+  const fd = fs.openSync(p, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+  try {
+    const fst = fs.fstatSync(fd);
+    if (!fst.isFile() || fst.dev !== st.dev || fst.ino !== st.ino) throw new NotRegularFileError(p);
+    return fs.readFileSync(fd);
+  } finally { fs.closeSync(fd); }
+}
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex,
   katexDir: path.dirname(require.resolve('katex')),
   fontDir: (pkg) => path.dirname(require.resolve(`${pkg}/package.json`)),
   exists: (p) => fs.existsSync(p),
   isFile: (p) => fs.statSync(p).isFile(),
-  readText: (p) => fs.readFileSync(p, 'utf8'),
-  readBase64: (p) => fs.readFileSync(p).toString('base64'),
+  readText: (p) => readRegular(p).toString('utf8'),
+  readBase64: (p) => readRegular(p).toString('base64'),
   within,
   subset: subsetCss,
   compressAudio,
@@ -125,7 +147,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   if (!src) { console.error('usage: node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio]'); process.exit(1); }
   const out = opts.out || defaultOut(src);
-  const r = build(src, { ...opts, out });
+  let r;
+  try { r = build(src, { ...opts, out }); } catch (e) { if (e.code !== 'build-not-a-file') throw e; console.error(e.message); process.exit(1); }
   try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   const s = r.stats;
   console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
