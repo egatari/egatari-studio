@@ -58,3 +58,18 @@ svg text:not([fill]):not([style*="fill"]){fill:var(--fg)}
 svg .mi{font-family:KaTeX_Math,"Times New Roman",serif;font-style:italic}
 .smath{overflow:visible}
 .readout .num{font-family:KaTeX_Main,serif;font-variant-numeric:tabular-nums;display:inline-block;min-width:4.2em}
+
+/* 国語：縦書き・ルビ・明朝（kokugo テーマと m-kanbun・m-kobun・m-gendai が使う。どのデッキでも使える）
+   --font-mincho は BIZ UDP明朝。build は、デッキが明朝を使うとき（var(--font-mincho)・class="mincho"・<html data-font="mincho">）だけ字を埋め込む。
+   :where(:root) にして、テーマの :root が --font-mincho を上書きできるようにする */
+:where(:root){--font-mincho:"BIZ UDPMincho","Hiragino Mincho ProN","Yu Mincho",serif}
+html[data-font="mincho"]{--font-sans:var(--font-mincho)}
+.mincho{font-family:var(--font-mincho)}
+/* 縦書きの塊：.body の高さいっぱいに、右から左へ列を並べる。段落の間は左へ空ける */
+.tate{writing-mode:vertical-rl;text-orientation:mixed;height:100%;margin-left:auto;line-height:1.8;line-break:strict}
+.tate p{margin:0 0 0 .5em}
+.tate p.indent{text-indent:1em}
+/* 縦中横（縦書きの中の 2 桁の数字など） */
+.tcy{text-combine-upright:all}
+/* ルビ：振り仮名は 0.5em（検査器は rt の字の大きさを数えない）。縦書きでは右に付く */
+rt{font-size:.5em;line-height:1}

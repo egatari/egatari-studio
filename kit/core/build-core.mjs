@@ -12,7 +12,7 @@
 //   env.katexDir                   katex の dist（katex.min.css・katex.min.js・fonts/）
 //   env.fontDir(pkg)               @fontsource の包みの場所（{w}.css と files/）
 //   env.version                    デッキに入れる版（DECK.VERSION）
-//   env.subset(text)               任意。使っている字だけに絞った BIZ UDPゴシック（{css, n, bytes} か null）
+//   env.subset(text, font)         任意。使っている字だけに絞った BIZ UDPゴシック（font が 'mincho' なら BIZ UDP明朝）（{css, n, bytes} か null）
 //   env.compressAudio(file)        任意。埋め込む音声を小さくしたファイル（できなければ元のまま）。env.audioFailed() で失敗を知る
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
@@ -159,10 +159,20 @@ export function readMacros(text) {
 // ---------------------------------------------------------------- 字：使っている字を含む部分だけを埋め込む
 // 日本語のデッキ（<html lang> が ja か、lang が無い）は BIZ UDPゴシックだけ。
 // それ以外の言語（英語など）は本文を Source Sans 3 にし、BIZ UDPゴシックは和文などラテン文字以外の予備にする
+// 明朝（BIZ UDP明朝）は、デッキが明朝を使うとき（usesMincho）だけ、ゴシックと同じ字を足して埋め込む
 export const FONTS = {
   biz: { family: 'BIZ UDPGothic', pkg: '@fontsource/biz-udpgothic' },
   sans3: { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3' },
+  mincho: { family: 'BIZ UDPMincho', pkg: '@fontsource/biz-udpmincho' },
 };
+// デッキが明朝を使うか：原稿（取り込みの後）・テーマの CSS・使っている部品の JS のどれかが var(--font-mincho) か "BIZ UDPMincho" を書いている、
+// <html data-font="mincho">、class に mincho がある。kit の CSS（--font-mincho の定義と .mincho の規則）は数えない
+export function usesMincho(html, themeCss = '', compJs = '') {
+  const h = String(html).replace(/data:[^"')\s]+/g, '');
+  const ref = /var\(\s*--font-mincho\s*\)|BIZ UDPMincho/;
+  return ref.test(h) || ref.test(themeCss) || ref.test(compJs) || /<html\b[^>]*\sdata-font\s*=\s*["']?mincho\b/i.test(h) ||
+    /\sclass\s*=\s*["'][^"']*\bmincho\b/i.test(h);
+}
 export const isJapanese = (lang) => !lang || /^ja\b/i.test(lang);
 // 英語などのデッキで、BIZ UDPゴシックに任せる字（Source Sans 3 が持つラテン文字・記号の大部分より後ろ）
 export const LATIN_MAX = 0x24f;
@@ -250,7 +260,20 @@ export function rangesOf(chars) {
   for (const c of cps) { const last = out[out.length - 1]; if (last && c === last[1] + 1) last[1] = c; else out.push([c, c]); }
   return out;
 }
-function fontCss(env, text, subset, lang) {
+// 字の包みが env にあるか（編集アプリの 1 ファイル版は明朝を持たない）
+const hasFont = (env, font) => { try { return env.exists(env.path.join(env.fontDir(font.pkg), '400.css')); } catch { return false; } };
+// mincho：明朝も埋め込む（usesMincho）。warn：明朝の字がないときに知らせる
+function fontCss(env, text, subset, lang, mincho = false, warn = []) {
+  const g = fontCssGothic(env, text, subset, lang);
+  if (!mincho) return g;
+  // 明朝は和文（ラテン文字より後ろ）のための字。英語などのデッキでは Source Sans 3 が持たない字だけ
+  const t = isJapanese(lang) ? text : [...new Set(text)].filter((c) => c.codePointAt(0) > LATIN_MAX).join('');
+  if (!t) return g;
+  const m = (subset && env.subset ? env.subset(t, 'mincho') : null) || (hasFont(env, FONTS.mincho) ? rangeCss(env, [FONTS.mincho], t) : null);
+  if (!m) { warn.push('明朝（BIZ UDP明朝）の字がないので埋め込まない（見る人の機械の明朝で出る）。node tools/get-fonts.mjs か npm ci'); return g; }
+  return { css: g.css + m.css, n: g.n + m.n, bytes: g.bytes + m.bytes };
+}
+function fontCssGothic(env, text, subset, lang) {
   const sub = (t) => (subset && env.subset ? env.subset(t) : null);
   if (isJapanese(lang)) {
     const r = sub(text); if (r) return r;
@@ -517,7 +540,7 @@ export function chargedEnv(env, bud) {
     return typeof r === 'string' ? { v: r, len: 0 } : { v: r.path, len: r.read };
   });
   // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
-  if (typeof env.subset === 'function') w.subset = (t) => { const r = env.subset(t); if (r && typeof r.css === 'string') bud.read(utf8Length(r.css)); return r; };
+  if (typeof env.subset === 'function') w.subset = (t, font) => { const r = env.subset(t, font); if (r && typeof r.css === 'string') bud.read(utf8Length(r.css)); return r; };
   return w;
 }
 
@@ -687,7 +710,7 @@ export function build(env0, srcPath, opts = {}) {
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
   const textForFont = glyphText(html, narration, compJs, lang);
-  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang);
+  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn);
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
   const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');

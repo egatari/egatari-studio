@@ -4,7 +4,7 @@
 // どのパスも相対なので、サイトの根（https://editor.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
 //   node tools/build-app.mjs [--out dist] [--no-single]
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
-// server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）。
+// server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
 import path from 'node:path';
@@ -54,8 +54,11 @@ const kdir = path.dirname(require.resolve('katex'));
 add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css'));
 add('/repo/katex/katex.min.js', path.join(kdir, 'katex.min.js'));
 for (const f of fs.readdirSync(path.join(kdir, 'fonts'))) if (f.endsWith('.woff2')) add('/repo/katex/fonts/' + f, path.join(kdir, 'fonts', f));
-// 字：@fontsource の 400・700 の CSS と、そこから参照される woff2（あとで読む）
-for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3']) {
+// 字：@fontsource の 400・700 の CSS と、そこから参照される woff2（あとで読む）。
+// BIZ UDP明朝（明朝を使うデッキだけが読む）は配信版にだけ入れる。1 ファイル版に埋め込むと約 11 MB 増えるので、1 ファイル版の
+// アプリは明朝を知らずに組む（明朝を使うデッキは、見る人の機械の明朝で出ると知らせる。kit/core/build-core.mjs の fontCss）
+const MINCHO = '@fontsource/biz-udpmincho';
+for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3', MINCHO]) {
   const dir = path.dirname(require.resolve(`${pkg}/package.json`));
   for (const w of [400, 700]) {
     const css = fs.readFileSync(path.join(dir, `${w}.css`), 'utf8');
@@ -73,6 +76,8 @@ for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.re
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }
 const resources = { version, text, b64, lazy, hints, themes, components };
+const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
+const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
@@ -88,26 +93,27 @@ const BW = await esbuild.build({
   target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
 });
 const buildWorkerJs = BW.outputFiles[0].text;
-const plugin = {
+// res：アプリに入れる資源（配信版は resources、1 ファイル版は明朝を除いた resourcesSingle）
+const plugin = (res) => ({
   name: 'app',
   setup(b) {
     b.onResolve({ filter: /^virtual:resources$/ }, () => ({ path: 'resources', namespace: 'virtual' }));
     b.onResolve({ filter: /^virtual:portable-worker$/ }, () => ({ path: 'portable-worker', namespace: 'virtual' }));
     b.onResolve({ filter: /^virtual:build-worker$/ }, () => ({ path: 'build-worker', namespace: 'virtual' }));
-    b.onLoad({ filter: /.*/, namespace: 'virtual' }, (a) => ({ contents: 'export default ' + JSON.stringify(a.path === 'portable-worker' ? workerJs : a.path === 'build-worker' ? buildWorkerJs : resources), loader: 'js' }));
+    b.onLoad({ filter: /.*/, namespace: 'virtual' }, (a) => ({ contents: 'export default ' + JSON.stringify(a.path === 'portable-worker' ? workerJs : a.path === 'build-worker' ? buildWorkerJs : res), loader: 'js' }));
     b.onResolve({ filter: /\?text$/ }, (a) => ({ path: path.resolve(a.resolveDir, a.path.replace(/\?text$/, '')), namespace: 'text' }));
     b.onLoad({ filter: /.*/, namespace: 'text' }, (a) => ({ contents: fs.readFileSync(a.path, 'utf8').trim(), loader: 'text' }));
   },
-};
-const r = await esbuild.build({
-  entryPoints: [rel('app', 'main.js')], bundle: true, write: false, format: 'iife', platform: 'browser',
-  target: ['chrome110', 'edge110'], plugins: [plugin], legalComments: 'none', charset: 'utf8', logLevel: 'warning',
-  conditions: ['import', 'browser', 'default'],
 });
-let js = r.outputFiles[0].text;
+const bundleMain = async (res) => (await esbuild.build({
+  entryPoints: [rel('app', 'main.js')], bundle: true, write: false, format: 'iife', platform: 'browser',
+  target: ['chrome110', 'edge110'], plugins: [plugin(res)], legalComments: 'none', charset: 'utf8', logLevel: 'warning',
+  conditions: ['import', 'browser', 'default'],
+})).outputFiles[0].text;
+let js = await bundleMain(resources);
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic and Source Sans 3 (SIL OFL 1.1). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
@@ -146,14 +152,15 @@ fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
-// 1 ファイル版：dist/editor.html（字を全部埋め込む）
+// 1 ファイル版：dist/editor.html（字を全部埋め込む。明朝は入れない）
 if (SINGLE) {
   const inline = (s) => s.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
   const pack = {};
-  for (const [v, f] of Object.entries(lazyFiles)) pack[v] = fs.readFileSync(f).toString('base64');
+  for (const [v, f] of Object.entries(lazyFiles)) if (!isMincho(v)) pack[v] = fs.readFileSync(f).toString('base64');
+  const jsSingle = await bundleMain(resourcesSingle);
   const one = html
     .replace('<!--APP_CSS-->', () => `<style>\n${css}</style>`)
-    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script>${inline(NOTICE + js)}</script>`);
+    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
   fs.writeFileSync(path.join(OUT, 'editor.html'), one);
   console.log(`dist/editor.html: ${kb(one.length)} (fonts embedded)`);
 }
