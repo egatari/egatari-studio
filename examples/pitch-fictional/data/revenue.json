@@ -1,0 +1,1 @@
+{"groups": [{"label": "1 年目", "value": 0.2, "step": 1}, {"label": "2 年目", "value": 0.9, "step": 1}, {"label": "3 年目", "value": 2.6, "step": 1}, {"label": "4 年目", "value": 7.4, "step": 2}, {"label": "5 年目", "value": 24.0, "step": 3, "tone": "emph"}], "scale": [{"step": 3, "max": 27, "at": 0.4}]}

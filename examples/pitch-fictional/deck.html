@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="business">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>株式会社レポミル（架空）事業紹介</title>
+<!--
+  架空の会社のピッチの見本。社名・製品・顧客・数字はすべて作り物で、実在のものとは関係がない。
+  組む：node kit/build.mjs examples/pitch-fictional/deck.html  → examples/pitch-fictional/out/deck.html
+  数字：uv run examples/pitch-fictional/scripts/make_data.py が data/*.json を書く（決めた値を書き出して、つじつまを確かめるだけ）
+  使っている部品：m-kpi（掴みの数字）、m-flow（今の流れ・解決・お金の流れ）、m-bars（聞き取り・売上の計画）、m-quad（位置づけ）、m-market（市場規模）
+  テーマ：business
+-->
+<style>
+/* このデッキだけの体裁 */
+.cover h1 .tag{display:block;font-size:32px;font-weight:400;color:var(--fg);margin-top:8px}
+.fictional{position:absolute;left:48px;right:48px;top:560px;text-align:center;font-size:24px;color:var(--muted)}
+.ask li{margin-bottom:14px}
+.ask .num{font-weight:700;color:var(--emph)}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-doxnb4">
+  <div class="venue">事業紹介（見本）</div>
+  <h1>株式会社レポミル<span class="tag">社内のデータから，報告書の下書きを</span></h1>
+  <div class="au">代表取締役（架空の人物）</div>
+  <div class="fictional">この資料の社名・製品・数字はすべて架空</div>
+</section>
+
+<section class="slide" id="s-rmdf6l">
+  <h2>月報に消えている時間</h2>
+  <div class="body">
+    <p class="note muted">社員 40 人への聞き取り（架空）</p>
+    <m-kpi aria-label="月報 1 本に 3.5 時間、書き直し 2.4 回、確認待ち 4 日" style="height:330px">
+      <script type="application/json">{{JSON:hook.json}}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>→ 書く時間より，集めて直す時間が長い</span></div>
+</section>
+
+<section class="slide" id="s-2yclbv">
+  <h2>今の書き方：転記と差し戻しの往復</h2>
+  <div class="body">
+    <m-flow aria-label="今の書き方の流れ：データを手で表に写し、文章を書き、上司の確認と差し戻しを経て提出" style="height:420px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "src", "label": "社内のデータ\n（売上・勤怠・案件）", "x": 90,   "y": 30,  "w": 280, "h": 100, "step": 1, "tone": "muted"},
+          {"id": "tab", "label": "表に貼る",       "x": 490, "y": 40,  "w": 220, "h": 80,  "step": 1},
+          {"id": "txt", "label": "文章を書く",     "x": 830, "y": 40,  "w": 220, "h": 80,  "step": 2},
+          {"id": "chk", "label": "上司の確認",     "x": 830, "y": 280, "w": 220, "h": 80,  "step": 3},
+          {"id": "out", "label": "提出",           "x": 490, "y": 280, "w": 220, "h": 80,  "step": 4}
+        ],
+        "edges": [
+          {"from": "src", "to": "tab", "step": 1, "label": "手で転記", "tone": "emph"},
+          {"from": "tab", "to": "txt", "step": 2},
+          {"from": "txt", "to": "chk", "step": 3, "shift": -40},
+          {"from": "chk", "to": "txt", "step": 3, "shift": -40, "label": "差し戻し", "tone": "emph", "dash": true, "at": 0.9},
+          {"from": "chk", "to": "out", "step": 4}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 転記の誤りが差し戻しを生む</span></div>
+</section>
+
+<section class="slide" id="s-23dlkk">
+  <h2>聞き取りで多かった不満</h2>
+  <div class="body">
+    <p class="note muted">いちばん困っていること（40 人，1 人 1 つ，架空）</p>
+    <m-bars aria-label="不満の多い順：書く時間が足りない 15 人、転記の誤り 11 人、書式 8 人、何を書くか 6 人" orient="h" unit="人" per-step="0" ticks="false" style="height:360px">
+      <script type="application/json">{{JSON:hearing.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>→ 不満の 6 割は時間と転記</span></div>
+</section>
+
+<section class="slide" id="s-gb2ley">
+  <h2>レポミルの書き方</h2>
+  <div class="body">
+    <m-flow aria-label="レポミルの流れ：データを自動で集め、5 分で下書き、人が直す" style="height:420px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "src", "label": "社内のデータ",   "x": 0,    "y": 150, "w": 200, "h": 90, "step": 1, "tone": "muted"},
+          {"id": "rm",  "label": "レポミル",       "x": 370,  "y": 150, "w": 210, "h": 90, "step": 1, "tone": "emph"},
+          {"id": "drf", "label": "下書き\n（数字と根拠つき）", "x": 700, "y": 140, "w": 260, "h": 110, "step": 2},
+          {"id": "you", "label": "人が直す",       "x": 1034, "y": 150, "w": 150, "h": 90, "step": 3}
+        ],
+        "edges": [
+          {"from": "src", "to": "rm",  "step": 1, "label": "自動で集める", "kind": "data", "pulse": true},
+          {"from": "rm",  "to": "drf", "step": 2, "label": "5 分", "tone": "emph"},
+          {"from": "drf", "to": "you", "step": 3}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 人は集めずに，直すことに時間を使う</span></div>
+</section>
+
+<section class="slide" id="s-eqhnfm">
+  <h2>ほかの道具との位置づけ</h2>
+  <div class="body">
+    <m-quad aria-label="横軸は自動の度合い、縦軸は使い始めの手軽さ。レポミルは右上" style="height:430px">
+      <script type="application/json">{
+        "x": {"lo": "人が書く", "hi": "下書きまで自動"},
+        "y": {"lo": "導入に数か月", "hi": "その日に使える"},
+        "quads": {"tr": "空いている場所", "fill": "tr"},
+        "items": [
+          {"label": "表計算の雛形",     "x": 0.16, "y": 0.78, "step": 1},
+          {"label": "汎用の文章 AI",    "x": 0.6,  "y": 0.36, "step": 1, "at": 0.6, "anchor": "left"},
+          {"label": "大型の業務システム", "x": 0.66, "y": 0.16, "step": 1, "at": 1.2},
+          {"label": "レポミル",         "x": 0.7,  "y": 0.64, "step": 2, "self": true,
+           "to": {"x": 0.8, "y": 0.74, "label": "2 年後"}}
+        ]
+      }</script>
+    </m-quad>
+  </div>
+  <div class="concl"><span>→ その日に使えて，下書きまで自動</span></div>
+</section>
+
+<section class="slide" id="s-7bfnel">
+  <h2>市場の大きさ（年間）</h2>
+  <div class="body">
+    <m-market aria-label="TAM 2,400 億円、SAM 480 億円、SOM 24 億円" unit="億円" style="height:420px">
+      <script type="application/json">{{JSON:market.json}}</script>
+    </m-market>
+  </div>
+  <div class="concl"><span>→ 定型の報告書から入り，5 年で 24 億円</span></div>
+</section>
+
+<section class="slide" id="s-5u7vc2">
+  <h2>お金とサービスの流れ</h2>
+  <div class="body">
+    <m-flow aria-label="お金とサービスの流れ：顧客の会社が 1 人月 1,500 円を払い、社員の直した跡が戻る" style="height:420px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "rm", "label": "レポミル",     "x": 470, "y": 10,  "w": 240, "h": 80, "step": 1, "tone": "emph"},
+          {"id": "cu", "label": "顧客の会社",   "x": 40,  "y": 300, "w": 260, "h": 80, "step": 1},
+          {"id": "us", "label": "社員（書く人）", "x": 880, "y": 300, "w": 280, "h": 80, "step": 3},
+          {"id": "cl", "label": "クラウドの事業者", "x": 880, "y": 10, "w": 280, "h": 80, "step": 4, "tone": "muted"}
+        ],
+        "edges": [
+          {"from": "rm", "to": "cu", "kind": "service", "label": "使う権利", "shift": 14, "step": 1},
+          {"from": "cu", "to": "rm", "kind": "money", "amount": "1 人あたり月 1,500 円", "shift": 14, "step": 2, "pulse": [2, 5]},
+          {"from": "cu", "to": "us", "kind": "service", "label": "配る", "step": 3},
+          {"from": "us", "to": "rm", "kind": "data", "label": "直した跡", "step": 3, "pulse": true},
+          {"from": "rm", "to": "cl", "kind": "money", "amount": "売上の 15 %", "step": 4, "pulse": true}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 会社が払い，直した跡で下書きが育つ</span></div>
+</section>
+
+<section class="slide" id="s-gzr76c">
+  <h2>売上の計画</h2>
+  <div class="body">
+    <m-bars aria-label="売上の計画：1 年目 0.2 億円から 5 年目 24 億円" unit="億円" digits="1" al="売上" style="height:420px">
+      <script type="application/json">{{JSON:revenue.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>→ 5 年目に 24 億円（SAM の 5 %）</span></div>
+</section>
+
+<section class="slide noconcl" id="s-a57mdw">
+  <h2>お願いしたいこと</h2>
+  <div class="body ask">
+    <ul>
+      <li data-step="1">試験導入の会社：<span class="num">10 社</span>（月報を書く部署がある中堅企業）</li>
+      <li data-step="2">資金：<span class="num">8,000 万円</span>（開発 5 割・導入の支援 3 割・営業 2 割）</li>
+      <li data-step="3">紹介：<span class="term b">人事・経理の部門</span>につないでくれる方</li>
+    </ul>
+    <p class="note muted" data-step="3">この資料の社名・製品・数字はすべて架空</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
