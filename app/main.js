@@ -128,10 +128,18 @@ function resetDeck(ws, portable) {
 function blankPreview() {
   const f = $('preview'), g = document.createElement('iframe');
   for (const a of f.attributes) if (a.name !== 'srcdoc' && a.name !== 'src') g.setAttribute(a.name, a.value);
-  g.addEventListener('load', focusPreview);
+  g.addEventListener('load', onPreviewLoad);
   f.replaceWith(g);
 }
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
+// 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
+// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る
+function onPreviewLoad(e) {
+  if (e.target.hasAttribute('srcdoc')) S.frameLoaded = S.loads;   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
+  const a = document.activeElement;
+  if (a && a.closest && a.closest('.menu')) return;
+  focusPreview();
+}
 function showDeck(label, title) {
   $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
   $('top').classList.add('has-deck');
@@ -248,7 +256,7 @@ function loadFrame() {
   S.loads++; S.fresh = false;
   f.srcdoc = previewHtml(S.base);
 }
-$('preview').addEventListener('load', focusPreview);
+$('preview').addEventListener('load', onPreviewLoad);
 function showError(err) {
   $('errbox').hidden = !err;
   $('errtext').textContent = err || '';
@@ -893,7 +901,7 @@ window.__APP_TEST = {
   saveHandle: null,
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
-    allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0,
+    allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
     portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
@@ -906,6 +914,7 @@ window.__APP_TEST = {
   buildTimeout: 0,
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
+  reloadPreview: () => loadFrame(),
   ui: () => ui.state(),
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);

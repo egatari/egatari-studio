@@ -50,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Dev server: idle keep-alive connections are no longer closed by the server after Node's default 5 s (6 s from Node 24); `server.keepAliveTimeout` is 10 minutes, longer than browsers keep them, so the client always closes first. A client that reuses pooled connections without reading the `Keep-Alive: timeout=` hint (Playwright's `request`, an `http.Agent` without `timeout`) could send a request just as the server closed the connection and get `socket hang up` (`ECONNRESET`); this made `tools/test-dev-server.mjs` fail now and then on CI (a GET 6.0 s after the previous one). The test checks the advertised timeout
+- Editor app: a preview that finishes loading while a toolbar menu (Open / Save / Export ▾) is open no longer moves the focus from the menu to the preview. Before, ↑↓ and Esc then went to the deck and the menu stayed open (on slow machines the load can finish after the menu opens; `tools/test-app.mjs` failed now and then on Windows). The test waits until the preview has loaded before opening the menu and checks that a load while the menu is open keeps the focus in it
 
 ## [0.3.1] - 2026-10-18
 
