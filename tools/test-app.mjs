@@ -341,7 +341,6 @@ try {
   await page.waitForTimeout(300);
   ok(JSON.parse(await opfs.read('comments.json'))[0].status === 'resolved', 'comment: resolved from the panel');
   await page.click('#b-comments');
-
   // ---------------------------------------------------------------- 6. 外での変更（Claude Code など）
   await f.evaluate(() => DECK.go(4, 1, false));
   n = await loads();

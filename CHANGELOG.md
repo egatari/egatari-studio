@@ -99,6 +99,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Editor app: when a folder or file with its own code asked before starting the preview, the previous deck stayed visible (and running) behind the question; the preview is now emptied first (the iframe is replaced), so nothing of either deck is shown or runs until you choose
 - Runtime key list: the check for the dev server no longer looks for the removed `server/client.js` script or the badge that moved out of the deck; it uses `DECK_DEV`, set by the hints script
 
+## [0.2.4] - 2026-10-18
+
+### Fixed
+
+- Captions dropped the text before a `.` that is not followed by a space or the end of the text, such as a decimal point (`0.5`, `lr=0.01`), an abbreviation (`e.g.`) or `a.b.c`, and a text that was only `...` showed no caption at all. A `.` now ends a sentence only when a space or the end follows it (reported by @MnKoba in #1)
+
+### Security
+
+- Low: the build could hang when a file it reads in the deck folder (an include, a theme's `tokens.css`, an embedded audio file) was a FIFO. It now reads only regular files and refuses anything else with an error
+- Low: the dev server watched `audio/`, `data/`, `figs/` and `components/` even when they were symbolic links to folders outside the deck folder, so changes there caused repeated rebuilds (nothing outside was read into the output). Such links are no longer watched, with one warning
+- Low: the dev server and the editor app read `comments.json`, `narration.md` and the deck file without a size limit, so a huge file could exhaust memory. They now refuse files over 8 MiB (`comments.json`, `narration.md`) or 32 MiB (the deck file) with HTTP 413 and write nothing
+
 ## [0.2.3] - 2026-10-18
 
 ### Fixed
@@ -196,7 +208,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/moiku/motion-academic-slides/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/moiku/motion-academic-slides/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/moiku/motion-academic-slides/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/moiku/motion-academic-slides/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/moiku/motion-academic-slides/compare/v0.2.0...v0.2.1

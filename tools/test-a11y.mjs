@@ -240,6 +240,35 @@ await vc.setViewportSize({ width: 1280, height: 720 });
 await vc.goto(url + '?mode=video&captions=1'); await ready(vc);
 const vt = await vc.evaluate(() => { DECK.seek(1, 1, 0.5); const a = DECK.caption(); DECK.seek(3, 0, 1); DECK.seek(1, 1, 0.5); return [a, DECK.caption(), DECK.captions()]; });
 ok(vt[2] && vt[0] && vt[0] === vt[1], `?mode=video&captions=1 では字幕が出て、(i, k, t) だけで決まる（${(vt[0] || '').slice(0, 20)}…）`);
+// 字幕の文の区切り（#1）：後ろが空白でない「.」（0.5・e.g.・lr=0.01・a.b.c）の前の字を落とさない
+// 音声のない段階なので、動画では区切ったまとまりが全部並ぶ。並んだまとまりを見る
+const capOf = (t) => vc.evaluate((t) => { const s = DECK.slides[1]; DECK.NARRATION[s._key][DECK.stepKey(1, 1).slice(s._key.length + 1)] = [{ role: 'expert', text: t }]; s._cap = null;
+  DECK.seek(3, 0, 1); DECK.seek(1, 1, 0.5); return [...document.querySelectorAll('#deck-cap .cap-line')].map((x) => x.textContent); }, t);
+const ns = (x) => x.replace(/\s/g, '');
+for (const [t, want] of [
+  ['T を 0.5 に下げると、損失が減る。次に e.g. の例を見る。', ['T を 0.5 に下げると、損失が減る。次に e.g. の例を見る。']],
+  ['We set lr=0.01. Then it converges! Done.', ['We set lr=0.01. Then it converges! Done.']],
+  ['終わり。', ['終わり。']],
+  ['a.b.c', ['a.b.c']],
+  ['...', ['...']],
+  ['For example, e.g. a small lr=0.01. works. Then we stop.', ['For example, e.g. a small lr=0.01. works. Then we stop.']],
+]) {
+  const got = await capOf(t);
+  ok(JSON.stringify(got) === JSON.stringify(want) && ns(got.join('')) === ns(t), `字幕は「.」の前の字を落とさない：${JSON.stringify(t)} → ${JSON.stringify(got)}`);
+}
+// 文の区切りそのもの（つなぐ前）：kit/deck.js の capChunks の正規表現を取り出して、報告の 3 例と足した例を見る
+const capRe = (() => { const src = fs.readFileSync(path.join(ROOT, 'kit/deck.js'), 'utf8'), m = src.match(/function capChunks[\s\S]*?\.match\((\/[^\n]*?\/g)\)/); return m ? new Function('return ' + m[1])() : null; })();
+for (const [t, want] of [
+  ['T を 0.5 に下げると、損失が減る。次に e.g. の例を見る。', ['T を 0.5 に下げると、損失が減る。', '次に e.g. ', 'の例を見る。']],
+  ['We set lr=0.01. Then it converges! Done.', ['We set lr=0.01. ', 'Then it converges! ', 'Done.']],
+  ['終わり。', ['終わり。']],
+  ['a.b.c', ['a.b.c']],
+  ['...', ['...']],
+  ['This works, e.g. with lr=0.01. Then it stops.', ['This works, e.g. ', 'with lr=0.01. ', 'Then it stops.']],
+]) {
+  const got = capRe ? t.match(capRe) || [] : null;
+  ok(got && JSON.stringify(got) === JSON.stringify(want), `文の区切り：${JSON.stringify(t)} → ${JSON.stringify(got)}`);
+}
 await vc.keyboard.press('Shift+S');
 ok(await vc.evaluate(() => DECK.captionSize() === null && !document.getElementById('deck-toast') && parseFloat(getComputedStyle(document.getElementById('deck-cap')).fontSize) === 27), '動画では Shift+s も覚えた大きさも効かない（27px のまま）');
 await vc.close();

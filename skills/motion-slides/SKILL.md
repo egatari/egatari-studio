@@ -173,7 +173,7 @@ Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタ�
    ### What you did
    ### What happened (and what you expected)
    ### Version
-   0.2.3                   ← <repo>/package.json の version と git rev-parse --short HEAD
+   0.2.4                   ← <repo>/package.json の version と git rev-parse --short HEAD
    ### Browser
    ### OS
    ### Context

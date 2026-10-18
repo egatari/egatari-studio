@@ -824,14 +824,14 @@ function capSplit(p, max, lim){
   if (buf) out.push(buf);
   return out;
 }
-// 文に分けて、短い文は次とつなぐ（1 まとまりがおよそ 2 行に収まるように）。長すぎる文は分ける（--cap-max-lines 行まで）
+// 文に分けて（「.」は後ろが空白か末尾のときだけ文末。0.5・e.g.・a.b.c は文の中）、短い文は次とつなぐ（1 まとまりがおよそ 2 行に収まるように）。長すぎる文は分ける（--cap-max-lines 行まで）
 function capChunks(i, k){
   var s = slides[i], m = capMax(), ck = k + ":" + m.max + ":" + m.lim;
   s._cap = s._cap || {};
   if (s._cap[ck]) return s._cap[ck];
   var out = [];
   capTurns(i, k).forEach(function(t){
-    var parts = String(t.text || "").match(/[^。！？!?.]+(?:[。！？!?]+|\.(?=\s|$)|$)\s*/g) || [];
+    var parts = String(t.text || "").match(/(?:[^。！？!?.]|\.(?!\s|$))+(?:[。！？!?]+|\.(?=\s|$)|$)\s*/g) || [];
     var buf = "";
     [].concat.apply([], parts.map(function(p){ return capSplit(p, m.max, m.lim); })).forEach(function(p){
       if (buf && (buf + p).length > m.max){ out.push({text: buf.trim(), role: t.role}); buf = ""; }
