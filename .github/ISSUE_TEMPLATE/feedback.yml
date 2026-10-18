@@ -43,7 +43,7 @@ body:
     attributes:
       label: Version
       description: "版（デッキの ? の一覧から送ると自動で入ります。または package.json の version / git の commit）"
-      placeholder: "0.3.0"
+      placeholder: "0.3.1"
   - type: input
     id: browser
     attributes:

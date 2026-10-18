@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-18
+
+### Changed
+
+- New home and name: the repository moved from `moiku/motion-academic-slides` to [egatari/egatari-studio](https://github.com/egatari/egatari-studio), and the project is now called **Egatari Studio** (formerly motion-academic-slides). The npm package name, the skill names and the commands stay the same. Links in the README, docs, issue templates, `package.json` (`repository`, `homepage`, `bugs`), the skills' feedback and proposal steps (`gh … -R egatari/egatari-studio`) and the default feedback link of decks (`?` help and presenter view) point to the new repository; the editor app is titled Egatari Studio
+- Editor URL: the hosted editor is at <https://editor.egatari.org/> (until that domain is live, at <https://egatari.github.io/egatari-studio/>). `tools/build-app.mjs` now puts the hosted editor at the root of its output (`dist/index.html`; it was `dist/editor/`), next to `editor.html` (single file) and `lab/`; `editor/index.html` redirects old links to the root keeping the query and `#`. All paths are relative, so the site works at a domain root and under a path. The Pages workflow deploys only from `main` (on another branch it builds the artifact without deploying)
+
+### Fixed
+
+- Editor app, saving without rebuilding: a font supplement no longer depends on where the fonts came from (`fonts/*.ttf` subsets or the `@fontsource` files). Without a font source, characters that were already in the original narration but that the document's fonts lack (e.g. “θ”, which the `@fontsource` BIZ UDPGothic does not have) no longer make the save fail with “no font source”; only characters new in the edit are refused (`kit/core/tier-a.mjs`)
+- Editor app, saving without rebuilding: the file names of a font supplement reported in `changes.supplement.files` are cut at both `/` and `\` (on Windows the full `C:\…\x.woff2` path was reported)
+- `node tools/katex-ranges.mjs --check` ignores line endings, so a CRLF checkout (Windows git) no longer reports `kit/core/katex-ranges.mjs` as stale
+- Tests run on Windows and on CI without uv: child processes import modules through `file://` URLs and paths come from `fileURLToPath` (Windows), the fake ffmpeg reads folder permissions with GNU `stat -c` before BSD `stat -f` (Linux), the audio record's `recipeDigest` is compared with the manifest's digest only when there is one (no uv), the dev-server test waits for the reload after a save to settle before evaluating in the preview, and the tier-A tests use a new character that is not already in the document. No product code changed for these
+
 ## [0.3.0] - 2026-10-18
 
 A deck as one portable file you can reopen and fix, following **Egatari** (絵語り), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0): stable slide ids, `--portable` / `--play-only` export and `npm run portable -- unpack|pack`, the editor app opens and saves these files without the folder (narration and timing edits are saved without rebuilding the slides), and the editing UI now runs outside the deck so a deck cannot change your files. The security section below collects the results of seven review rounds.
@@ -215,7 +229,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/egatari/egatari-studio/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/egatari/egatari-studio/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/egatari/egatari-studio/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/egatari/egatari-studio/compare/v0.2.2...v0.2.3
