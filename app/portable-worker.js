@@ -15,6 +15,6 @@ self.onmessage = async (e) => {
     self.postMessage({ id: m.id, ok: true, indexText: JSON.stringify(r.index), deckMetaText: r.deckMeta ? JSON.stringify(r.deckMeta) : null,
       buffers, table, warnings: r.warnings, sourceMatches: r.sourceMatches, extractOnly: !!r.extractOnly }, buffers);
   } catch (err) {
-    self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } });
+    self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err), kind: (err && err.details && typeof err.details.kind === 'string') ? err.details.kind : null } });
   }
 };

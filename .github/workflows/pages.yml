@@ -3,6 +3,7 @@
 #   /editor.html  the single-file editor (all fonts embedded, ~10 MB)
 #   /lab/         test pages copied as-is from lab/ (lab/irodori.html: Irodori-TTS in the browser on WebGPU)
 #   /editor/      redirects to / keeping ?query and #hash (the editor used to live here)
+#   /examples/    the examples as portable files (<name>.ega.html), listed on the editor's first screen
 # All paths are relative: the site works at the custom domain https://editor.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
 # Only main deploys. "Run workflow" on another branch builds and uploads the artifact without deploying it.
@@ -25,6 +26,8 @@ on:
       - 'server/hints.js'
       - 'server/editor-ui.js'
       - 'tools/build-app.mjs'
+      - 'tools/examples-portable.mjs'
+      - 'examples/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'

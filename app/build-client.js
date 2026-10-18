@@ -82,6 +82,8 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     return me;
   }
   function call(msg, ws, timeout = BUILD_TIMEOUT_MS) {
+    // メモリの上の作業場所（開いたファイル・deck.html だけ・AI の出力）では、ないファイルを知らせて空のまま組む（kit/core/build-core.mjs）
+    if (ws && ws.kind === 'memory' && 'opts' in msg) msg = { ...msg, opts: { missingFiles: 'warn', ...(msg.opts || {}) } };
     let t = 0;
     return new Promise((resolve, reject) => {
       const id = ++seq;

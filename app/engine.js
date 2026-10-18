@@ -185,6 +185,7 @@ export function createEngine(res, loadLazy) {
     async build(file, opts = {}) {
       forget(listing);
       const { signal, ...o } = opts;
+      if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
       for (let i = 0; i < 40; i++) {
         missing.clear();
@@ -203,6 +204,7 @@ export function createEngine(res, loadLazy) {
       const miss = new Set();
       const xenv = mkEnv(() => full, miss);
       const { signal, ...o } = opts;
+      if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
       for (let i = 0; i < 40; i++) {
         miss.clear();

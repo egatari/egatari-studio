@@ -1009,6 +1009,16 @@ export function readDeckMeta(scan) {
   try { return parseJsonStrict(el.text); } catch { return null; }
 }
 
+// 持ち運べる 1 ファイルでない文書（索引がない）が何か（読み手の知らせを分けるため。何も実行しない）：
+//   'play-only'（再生専用の派生：deck-meta の format が形式の id）・'built'（組んだ発表の HTML：deck-meta はあるが形式の id でない）・
+//   'source'（デッキの原稿 deck.html：deck-meta がなく、<section class="slide"> がある）・'other'
+const SLIDE_SECTION = /<section\b[^>]*?\bclass\s*=\s*(?:"(?:[^"]*\s)?slide(?:\s[^"]*)?"|'(?:[^']*\s)?slide(?:\s[^']*)?'|slide(?=[\s>]))/i;
+const HTML_START = /^\uFEFF?\s*(?:<!--[\s\S]*?-->\s*)*<(?:!doctype\s+html|html)\b/i;
+export function sourceKind(text, scan, deckMeta = readDeckMeta(scan)) {
+  if (deckMeta && deckMeta.format === FID) return 'play-only';
+  if (scan.byId.has('deck-meta')) return 'built';
+  return HTML_START.test(text) && SLIDE_SECTION.test(text) ? 'source' : 'other';
+}
 // input：文字列か UTF-8 のバイト列。opts.limits で上限を変えられる（試験用）
 // opts.extract：取り出すだけ（§7.1・§3.5・§9.3）。知らない major の版や知らない必須の機能（requires）の文書でも、1.x の規則で索引と塊の検査が
 //   通れば原稿を返す（編集も書き出し（作り直し）もさせない。extractOnly: true、extractReason: 'major' | 'feature'）。取り出しは書き出しではない
@@ -1026,7 +1036,13 @@ export async function readPortable(input, opts = {}) {
   if (scan.dups.length) fail('duplicate-id', `duplicate element ids: ${scan.dups.slice(0, 5).join(', ')}`);
   const deckMeta = readDeckMeta(scan);
   const ixEl = scan.byId.get(IX_ID);
-  if (!ixEl) fail('no-source', deckMeta && deckMeta.format === FID ? `play-only ${FORMAT.DISPLAY_NAME} file: it carries no source to edit` : `not a portable ${FORMAT.DISPLAY_NAME} file (no ${IX_ID})`);
+  if (!ixEl) {
+    const kind = sourceKind(text, scan, deckMeta);
+    fail('no-source', kind === 'play-only' ? `play-only ${FORMAT.DISPLAY_NAME} file: it carries no source to edit`
+      : kind === 'built' ? `a built presentation (deck-meta without ${IX_ID}): it carries no source to edit`
+        : kind === 'source' ? `a deck source file (slides without the built runtime): open its folder, or open the file alone`
+          : `not a portable ${FORMAT.DISPLAY_NAME} file (no ${IX_ID})`, { kind });
+  }
   if (!isScript(ixEl, FORMAT.MIME)) fail('bad-index', `${IX_ID} is not a <script type="${FORMAT.MIME}">`);
   // 2. 索引の大きさ（JSON.parse の前）とハッシュ
   if (utf8Length(ixEl.text) > L.indexBytes) fail('index-too-large', `index is larger than ${L.indexBytes} bytes`);

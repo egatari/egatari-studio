@@ -24,6 +24,7 @@ import { makeFixtures, silentWav } from './portable-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
+import { EXAMPLES } from './examples-portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -1257,6 +1258,142 @@ try {
     await pt.close();
   }
 
+  // ---------------------------------------------------------------- 10c. 原稿の deck.html・組んだ HTML・見本の教材（はじめの画面）
+  // 「ファイルを開く」で原稿の deck.html：断らずに、フォルダを開くか、このファイルだけを開くかを聞く。組んだ発表の HTML・再生専用の
+  // 1 ファイル・ほかの HTML は、それぞれの言葉で断る。見本（dist/examples/）は一覧から、ほかのファイルと同じ道で開く
+  {
+    const po = await browser.newPage({ locale: 'ja-JP', viewport: { width: 1280, height: 800 } });
+    watch(po, 'openfile');
+    await po.goto(BASE);
+    await po.waitForSelector('#drop');
+    const pst = () => po.evaluate(() => window.__APP_TEST.state());
+    const pframe = () => po.frames().find((x) => x.parentFrame() === po.mainFrame());
+    // 開くのを待つ（独自のコードの確かめが出たら「始める」）。返すもの：openFile の答え
+    const settle = async (p) => {
+      const asked = await Promise.race([p.then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
+      if (asked) await po.click('#dlg-run');
+      const r = await p;
+      if (r) await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      return r;
+    };
+    const slidesNow = async () => { for (let i = 0; i < 100; i++) { try { const f = pframe(); const n = f && await f.evaluate(() => (window.DECK && DECK.ready ? DECK.slides.length : 0)); if (n) return n; } catch { /* 読み込み中 */ } await po.waitForTimeout(100); } return 0; };
+    // 開く（保存していない変更を捨ててよいかを聞かれたら「捨てる」）
+    const openBytes = (text, name) => {
+      const p = po.evaluate(([t, n]) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(t), name: n }), [text, name]);
+      return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await po.click('#dlg-discard'); } return p; })();
+    };
+    // 簡易チェックのエラーの数
+    const quickErrors = async () => {
+      await po.click('#b-check');
+      await po.waitForSelector('#panel-body .sum', { timeout: 20000 });
+      const t = await po.textContent('#panel-body .sum');
+      await po.click('#panel-close');
+      return { n: Number((t.match(/エラー (\d+)/) || [])[1]), t };
+    };
+
+    // 見本の一覧：配信版の dist/examples/ と同じもの（tools/examples-portable.mjs の順）
+    const exNames = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
+    ok(await po.isVisible('#examples') && exNames.join(',') === EXAMPLES.join(','), `examples: the first screen lists the examples (${exNames.join(', ')})`);
+    if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'examples-list.png') });
+    for (const name of EXAMPLES) {
+      const file = path.join(DIST, 'examples', name + FORMAT.FILE_EXT);
+      const want = await readPortable(new Uint8Array(fs.readFileSync(file)));
+      await po.goto(BASE);
+      await po.waitForSelector(`#examples-list li[data-example="${name}"] button`);
+      await po.click(`#examples-list li[data-example="${name}"] button`);
+      // 開いた後の状態を待つ（独自のコードの確かめは「始める」）
+      const asked = await Promise.race([po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: 30000 }).then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
+      if (asked) { await po.click('#dlg-run'); await po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: 30000 }); }
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      const s = await pst();
+      ok(s.portable.docId === want.docId && !s.error && !s.portable.readOnly, `examples: ${name} opens from the list (docId ${s.portable.docId.slice(0, 8)}…, ${want.index.profile}${asked ? ', asked before its own code ran' : ''}, no build error)`);
+      ok(asked === (want.index.profile === 'extended'), `examples: ${name} → the code notice ${want.index.profile === 'extended' ? 'is' : 'is not'} shown (same import checks as any file)`);
+      ok((await slidesNow()) > 0 && !s.portable.tierAOnly, `examples: ${name} renders and can be rebuilt (registry matches this editor)`);
+    }
+
+    // 原稿の deck.html（examples/kokugo-kanbun）
+    await po.goto(BASE);
+    await po.waitForSelector('#drop');
+    const ksrc = fs.readFileSync(path.join(ROOT, 'examples/kokugo-kanbun/deck.html'), 'utf8');
+    let p = openBytes(ksrc, 'deck.html');
+    await po.waitForSelector('#dlg[open] #dlg-only');
+    ok((await po.textContent('#dlg-title')).includes('deck.html') && (await po.textContent('#source-lead')).includes('narration.md') && !!(await po.$('#dlg-folder')) && !(await po.$('#refuse-reason')),
+      'source: opening a deck source file asks (open the folder / this file only / cancel) instead of refusing');
+    if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'source-dialog.png') });
+    await po.click('#dlg-cancel');
+    ok(await p === false && !(await pst()).open, 'source: Cancel → nothing opened');
+    // フォルダを開く：フォルダを選ぶ画面（ここでは OPFS のフォルダ）→ ふつうのフォルダの作業場所
+    await po.evaluate(async (files) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry('src-folder', { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle('src-folder', { create: true });
+      for (const [k, v] of Object.entries(files)) { const w = await (await d.getFileHandle(k, { create: true })).createWritable(); await w.write(v); await w.close(); }
+      window.__srcPick = window.showDirectoryPicker; window.showDirectoryPicker = async () => d;
+    }, { 'deck.html': ksrc, 'narration.md': fs.readFileSync(path.join(ROOT, 'examples/kokugo-kanbun/narration.md'), 'utf8') });
+    p = openBytes(ksrc, 'deck.html');
+    await po.waitForSelector('#dlg[open] #dlg-folder');
+    await po.click('#dlg-folder');
+    ok(await settle(p) === true && (await pst()).kind === 'folder' && (await pst()).deckFile === 'deck.html', 'source: "Open the folder…" opens the picked folder as a folder workspace');
+    const folderCheck = await quickErrors();
+    await po.evaluate(() => { window.showDirectoryPicker = window.__srcPick; });
+    // このファイルだけ：メモリの上（deck.html だけ）で開き、簡易チェックが通る
+    p = openBytes(ksrc, 'deck.html');
+    await po.waitForSelector('#dlg[open] #dlg-only');
+    await po.click('#dlg-only');
+    ok(await settle(p) === true, 'source: "Open this file only" opens');
+    let s = await pst();
+    ok(s.kind === 'memory' && s.portable.sourceOnly && s.portable.name === 'deck' + FORMAT.FILE_EXT && s.portable.dirty && !s.error && (await slidesNow()) === 11,
+      `source only: an in-memory workspace with only deck.html (${s.portable.name}, unsaved, 11 slides, no build error)`);
+    const sfiles = await po.evaluate(() => Object.keys(window.__APP_TEST.files()).filter((k) => !k.startsWith('.')).sort());
+    ok(sfiles.join(',') === ['deck.html', FORMAT.CONFIG_FILE].join(','), 'source only: the workspace holds deck.html (and the new docId), no narration or audio: ' + sfiles.join(', '));
+    ok(await po.isVisible('#notice-source-only') && (await po.textContent('#notice-source-only')).includes('deck.html だけ'), 'source only: the notice says only deck.html is open and not saved yet');
+    if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'source-only.png') });
+    const srcCheck = await quickErrors();
+    ok(srcCheck.n === folderCheck.n, `source only: the quick check finds no error that the folder does not have (${srcCheck.t} / folder: ${folderCheck.t})`);
+    // 保存：どこにも保存していないので、1 ファイルか空のフォルダかを選ぶ
+    await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('source-only' + '.ega.html', { create: true }); });
+    await po.click('#b-save');
+    await po.waitForSelector('#dlg[open] #save-where');
+    ok(!!(await po.$('#dlg-file')) && !!(await po.$('#dlg-folder')), 'source only: Save asks where (a single file or a folder)');
+    if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'save-where.png') });
+    await po.click('#dlg-file');
+    await po.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    const sv = await readPortable(new Uint8Array(Buffer.from(await po.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let x = ''; for (let i = 0; i < u.length; i += 0x8000) x += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(x); }), 'base64')));
+    s = await pst();
+    ok(sv.index.entry === 'deck.html' && new TextDecoder().decode(sv.files['deck.html']) === ksrc && !sv.files['narration.md'] && sv.docId === s.portable.docId && !(await po.isVisible('#notice-source-only')),
+      'source only: saved as a portable file with the same deck.html and docId; the "not saved" notice goes away');
+    // examples/minimal の deck.html だけ：簡易チェックが通る（エラー 0）
+    p = openBytes(fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8'), 'deck.html');
+    await po.waitForSelector('#dlg[open] #dlg-only');
+    await po.click('#dlg-only');
+    ok(await settle(p) === true && (await pst()).portable.sourceOnly, 'source only (minimal): opens');
+    const minCheck = await quickErrors();
+    ok(minCheck.n === 0, 'source only (minimal): the quick check passes (no errors): ' + minCheck.t);
+    // 部品とデータが原稿のフォルダにあるデッキ（examples/tmlr2026-calibration）：ないものは組み立ての知らせになり、開ける
+    p = openBytes(fs.readFileSync(path.join(ROOT, 'examples/tmlr2026-calibration/deck.html'), 'utf8'), 'deck.html');
+    await po.waitForSelector('#dlg[open] #dlg-only');
+    await po.click('#dlg-only');
+    ok(await settle(p) === true, 'source only (tmlr): opens');
+    s = await pst();
+    ok(!s.error && s.warn.some((w) => w.includes('relcurve.json')) && s.warn.some((w) => /component not found: m-relcurve/.test(w)) && s.warn.filter((w) => w.includes('「relcurve.json」')).length === 1,
+      'source only (tmlr): missing data files and deck-local components are build warnings (each once), not an error');
+
+    // 組んだ発表の HTML・再生専用の 1 ファイル・ほかの HTML：それぞれの言葉で断る
+    const built = build(path.join(ROOT, 'examples/minimal/deck.html'), { subset: false, noAudio: true }).html;
+    for (const [what, text, kind, folder] of [['built output', built, 'built-output', true], ['play-only', fs.readFileSync(fixture('minimal-play-only').file, 'utf8'), 'play-only', false], ['other HTML', '<!DOCTYPE html><title>x</title><p>hello</p>', 'no-source', false]]) {
+      p = openBytes(text, 'deck.html');
+      await po.waitForSelector('#dlg[open] #refuse-reason');
+      const k = await po.getAttribute('#refuse-reason', 'data-kind');
+      const msg = await po.textContent('#refuse-reason');
+      ok(k === kind && (await po.textContent('#dlg pre.tech')).includes('[no-source]') && !!(await po.$('#dlg-folder')) === folder && !(await po.$('#dlg-only')), `refuse: ${what} → its own message (${kind}${folder ? ', offers "Open the folder…"' : ''}): ${msg.slice(0, 60)}…`);
+      if (kind === 'built-output') { ok(/組み立てた発表用の HTML/.test(msg) && msg.includes(FORMAT.FILE_EXT), 'refuse: the built-output message says it is a presentation build and to open the source folder or a portable file'); if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'built-output.png') }); }
+      if (kind === 'play-only') ok(/再生専用版/.test(msg), 'refuse: the play-only message names the play-only portable file');
+      await po.click('#dlg-ok');
+      ok(await p === false, `refuse: ${what} is not opened`);
+    }
+    await po.close();
+  }
+
   // ---------------------------------------------------------------- 11. 英語の画面
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');
@@ -1270,6 +1407,7 @@ try {
   await p1.goto(pathToFileURL(path.join(DIST, 'editor.html')).href);
   await p1.waitForSelector('#drop');
   ok(await p1.evaluate(() => typeof window.showDirectoryPicker === 'function' && isSecureContext), 'single file: File System Access API available on file://');
+  ok(await p1.isHidden('#examples'), 'single file: no examples list on file:// (the examples are files of the site)');
   // file:// では OPFS が使えないので、メモリの上のフォルダ（同じ形のハンドル）で開く
   await p1.evaluate((files) => {
     class FileH { constructor(name, text) { this.kind = 'file'; this.name = name; this.text = text; this.m = Date.now(); }
@@ -1325,6 +1463,15 @@ try {
     const lr = await ps.goto(base + 'lab/irodori.html');
     await ps.waitForLoadState('load');
     ok(lr.status() === 200 && (await ps.title()).length > 0 && await ps.evaluate(() => document.querySelectorAll('script[type=module]').length > 0), `site (${tag}): lab/irodori.html loads`);
+    // 見本の持ち運べる 1 ファイル（dist/examples/）：配られていて、はじめの画面の一覧から開ける（相対の場所なので下のパスでも）
+    const exOk = [];
+    for (const name of EXAMPLES) { const r = await fetch(base + 'examples/' + name + FORMAT.FILE_EXT); exOk.push(r.status === 200 && (await r.text()).includes(FORMAT.INDEX_ID)); }
+    ok(exOk.every(Boolean), `site (${tag}): dist/examples/ serves ${EXAMPLES.length} portable examples`);
+    await ps.goto(base);
+    await ps.waitForSelector('#examples-list li[data-example="minimal"] button');
+    await ps.click('#examples-list li[data-example="minimal"] button');
+    await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: 30000 }).catch(() => {});
+    ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
     await ps.close();
   }
 } catch (e) {

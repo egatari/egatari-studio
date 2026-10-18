@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Editor app: **Example lessons** on the first screen of the hosted editor. `tools/build-app.mjs` now builds `examples/minimal`, `pitch-fictional`, `kokugo-kanbun` and `tmlr2026-calibration` as portable files (no audio) into `dist/examples/<name>.ega.html` (about 14 MB together; `--no-examples` skips them; shared code in `tools/examples-portable.mjs`), and **Open** fetches one from the same site and opens it through the usual import path (worker parse, checks, code question for `tmlr2026-calibration`, rights prompt). Not shown in the single file from `file://`. The files are built from temporary copies of the example folders (nothing is written into `examples/`); an example without `egatari.json` gets a `docId` derived from its name, so each build is the same document
+- `npm run release:assets` (`tools/release-assets.mjs`): builds the same example files and an `examples.json` (title, slides, size, sha256) into `out/release/` to attach to a GitHub release by hand; it uploads nothing
+
+### Changed
+
+- Editor app: **Open file…** (or drop) with a deck source `deck.html` (slides, no built runtime or format blocks) no longer says the file is play-only. A dialog explains that narration, audio and the deck's own components live next to it in a folder and offers **Open the folder…**, **Open this file only** and **Cancel**. *This file only* opens a new in-memory deck with just `deck.html` (no narration or audio; registry components and themes work), treated like any opened file (the code question applies, new `docId`, unsaved), and **Save** asks whether to save a portable file or export to an empty folder
+- Editor app: a built presentation (`out/deck.html`) is refused with its own message (open the source folder, offered in the dialog, or a portable file), a play-only portable file with a message that names it, and other HTML as “not a portable file” (ja/en). The reader reports which of these a file without an index is (`sourceKind` in `kit/core/portable.mjs`, the error's `details.kind`)
+- Build: the new option `missingFiles: 'warn'` turns a referenced file that does not exist (`{{JSON:…}}`, includes, figures) into a warning, once per file, and leaves it empty. The editor uses it for every in-memory deck (opened files, `deck.html` alone, pasted AI output); folders and the command line still fail on a missing file
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

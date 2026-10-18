@@ -566,6 +566,7 @@ export function build(env0, srcPath, opts = {}) {
   // 原稿から読むファイルは、原稿のフォルダ（と kit）の中だけ。シンボリックリンクや ../ で外に出るものは読まない
   const inDeck = (p) => env.within(p, deckDir);
 
+  const missingSeen = new Set();
   const find = (name, dirs) => {
     let outside = false;
     for (const d of dirs) {
@@ -575,6 +576,9 @@ export function build(env0, srcPath, opts = {}) {
       outside = true;
     }
     if (outside) { warn.push(`refused: 「${name}」は原稿のフォルダの外にある（読まない）`); return null; }
+    // opts.missingFiles === 'warn'：ないファイルは知らせて空のまま組む（編集アプリのメモリの上の原稿：deck.html だけを開いたときなど。
+    // 既定（コマンド・フォルダ）は今までどおり断る）
+    if (opts.missingFiles === 'warn') { if (!missingSeen.has(name)) { missingSeen.add(name); warn.push(`missing: 「${name}」が原稿のフォルダにない（空のまま組んだ）`); } return null; }
     throw new Error('not found: ' + name);
   };
   // 取り込むたびに、回数と読んだ大きさ（読む前に。env を通して）と増える大きさ（置き換える前に）を数える（同じ小さなファイルを何万回も取り込ませない）

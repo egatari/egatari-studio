@@ -67,7 +67,8 @@ function deadline({ p, g }, ms) {
 export async function readInWorker(bytes, { extract = false, timeout = READER_TIMEOUT_MS } = {}) {
   const buf = new Uint8Array(bytes).slice().buffer;   // 写しを渡す（呼び手のバイト列はそのまま）
   const m = await deadline(call({ bytes: buf, extract }, [buf]), timeout);
-  if (!m.ok) throw Object.assign(new Error(m.error.message), { code: m.error.code });
+  // kind（索引のない文書が何か：'play-only' | 'built' | 'source' | 'other'。kit/core/portable.mjs の sourceKind）
+  if (!m.ok) throw Object.assign(new Error(m.error.message), { code: m.error.code, kind: m.error.kind || null });
   return {
     index: parseJsonStrict(m.indexText),
     deckMeta: m.deckMetaText ? parseJsonStrict(m.deckMetaText) : null,

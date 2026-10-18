@@ -13,14 +13,14 @@ import { createAudioPanel } from './audio-panel.js';
 import { createTtsClient } from './tts-client.js';
 import { loadLame } from './mp3-loader.js';
 import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
-import { folderWorkspace } from './workspace.js';
+import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
 import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
-import { readFileBounded, READ_LIMITS } from './bounded-read.js';
+import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
@@ -74,6 +74,7 @@ async function showWelcome() {
   $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
   $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
+  showExamples();
   const list = await recentList();
   $('recent').hidden = !list.length;
   const ul = $('recent-list'); ul.innerHTML = '';
@@ -89,6 +90,31 @@ async function showWelcome() {
       el('button', { type: 'button', cls: 'ghost', text: '✕', title: T.forget, 'aria-label': T.forget, onclick: async () => { await recentRemove(r.id); showWelcome(); } }),
     ]));
   }
+}
+// 見本の教材（配信版の dist/examples/。tools/build-app.mjs が組んで一覧を RES.examples に入れる）：同じサイトから読み、
+// ほかのファイルと同じ道（openPortable：Worker で検査して取り出し、中身からコードを探す）で開く。file://（1 ファイル版）では出さない
+function showExamples() {
+  const list = Array.isArray(RES.examples) ? RES.examples : [];
+  const on = list.length > 0 && /^https?:$/.test(location.protocol);
+  $('examples').hidden = !on;
+  const ul = $('examples-list'); ul.innerHTML = '';
+  if (!on) return;
+  for (const x of list) {
+    ul.append(el('li', { 'data-example': x.name }, [
+      el('span', { cls: 'ex-text' }, [
+        el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
+        el('span', { cls: 'meta', text: `${x.file} · ` + T.exampleMeta(x.slides, (x.bytes / 1048576).toFixed(1), x.profile === 'extended') }),
+      ]),
+      el('button', { type: 'button', text: T.exampleOpen, 'aria-label': `${T.exampleOpen}: ${x.title}`, onclick: () => openExample(x) }),
+    ]));
+  }
+}
+async function openExample(x) {
+  let bytes;
+  // 大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）
+  try { bytes = await fetchBounded(new URL('examples/' + encodeURIComponent(x.file), document.baseURI), { max: LIMITS.fileBytes, what: x.file }); }
+  catch (e) { toast(T.exampleFailed + ': ' + (e.message || e), true); return false; }
+  return openPortable({ bytes, name: x.file });
 }
 async function pickFolder() {
   try { return await window.showDirectoryPicker({ id: 'motion-deck', mode: 'readwrite' }); }
@@ -170,6 +196,7 @@ function showNotice() {
   if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
   else if (P && P.tierAOnly) lines.push(['notice-tier-a', T.tierAOnlyNotice(P.tierAOnly)]);
   if (P && !P.readOnly && P.sourceMatches === false) lines.push(['notice-mismatch', T.mismatchNotice]);
+  if (P && P.sourceOnly && !P.handle) lines.push(['notice-source-only', T.sourceOnlyNotice]);
   const n = $('notice'); n.innerHTML = '';
   for (const [id, text] of lines) n.append(el('p', { id, text }));
   n.hidden = !lines.length;
@@ -587,9 +614,12 @@ async function leavePortable() {
   if (!S.portable || !S.ws || !S.ws.dirty) return true;
   return (await ask({ title: T.unsavedTitle, body: [el('p', { text: T.unsavedLead })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'discard', label: T.discard, pri: true }] })) === 'discard';
 }
-function refusal(code, message) {
-  return [el('p', { id: 'refuse-reason', text: T.refuse(code) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
+// key：言葉を選ぶ鍵（既定は code。索引のない文書は、何かで分ける：'play-only'・'built-output'。sourceKind）
+function refusal(code, message, key = code) {
+  return [el('p', { id: 'refuse-reason', 'data-kind': key, text: T.refuse(key) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
 }
+// 索引のない文書の、知らせの言葉の鍵（kit/core/portable.mjs の sourceKind：'play-only' | 'built' | 'source' | 'other'）
+const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-only' ? 'play-only' : e.kind === 'built' ? 'built-output' : 'no-source');
 // input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の出力を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
   if (!input) return false;
@@ -617,9 +647,14 @@ async function openPortable(input) {
     status('');
     // 知らない major の版・知らない必須の機能：編集も書き出し（作り直し）もしないが、1.x の規則で索引と塊が検査を通れば原稿をフォルダに
     // 取り出せる（§7.1・§3.5・§9.3。取り出しは書き出しではない）。通らなければ取り出しも断る
+    // デッキの原稿（deck.html）：断らずに、フォルダを開くか、このファイルだけを開くかを聞く
+    if (e.code === 'no-source' && e.kind === 'source') return openSource(name, bytes);
     const extract = (e.code === 'unsupported-version' || e.code === 'unknown-feature') && !!window.showDirectoryPicker;
-    const v = await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code, e.message),
-      buttons: [...(extract ? [{ id: 'extract', label: T.exportFolder }] : []), { id: 'ok', label: T.ok, pri: true }] });
+    // 組んだ発表の HTML（out/deck.html）：原稿のフォルダを開ける
+    const folder = e.code === 'no-source' && e.kind === 'built' && SUPPORTED;
+    const v = await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code, e.message, noSourceKey(e)),
+      buttons: [...(extract ? [{ id: 'extract', label: T.exportFolder }] : []), ...(folder ? [{ id: 'folder', label: T.sourceFolder }] : []), { id: 'ok', label: T.ok, pri: true }] });
+    if (v === 'folder') { const h = await pickFolder(); return h ? openFolder(h) : false; }
     if (v === 'extract') {
       try { const x = await readInWorker(bytes, { extract: true, timeout: readerTimeout }); await exportFolder(workspaceFromPortable(name, x)); }
       catch (err) { await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(err.code, err.message), buttons: [{ id: 'ok', label: T.ok, pri: true }] }); }
@@ -677,6 +712,36 @@ async function openPortable(input) {
   return true;
 }
 
+// ---------------------------------------------------------------- デッキの原稿（deck.html）を 1 つだけ開く
+// 「ファイルを開く」・ドロップで原稿の deck.html が来たとき：口述原稿・音声・そのデッキだけの部品は同じフォルダにあるので、
+// フォルダを開くか、このファイルだけを開くかを聞く。このファイルだけ：メモリの上の作業場所（deck.html だけ）を Worker で持ち運べる
+// 1 ファイルにし（AI の出力の貼り付けと同じ。app/llm.js）、ほかの開いたファイルと同じ道（openPortable：中身からコードを探して、あれば
+// 動かす前に確かめる）で開く。部品庫の部品とテーマは使え、そのデッキだけの部品がなければ組み立ての知らせに出る。新しい docId で、
+// どこにも保存していない（保存で、1 ファイルか空のフォルダかを選ぶ）
+async function openSource(name, bytes) {
+  const v = await ask({ title: T.sourceTitle(name), body: [el('p', { id: 'source-lead', text: T.sourceLead }), el('p', { cls: 'hint', text: T.sourceHint })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'only', label: T.sourceOnly }, ...(SUPPORTED ? [{ id: 'folder', label: T.sourceFolder, pri: true }] : [])] });
+  if (v === 'folder') { const h = await pickFolder(); return h ? openFolder(h) : false; }
+  if (v !== 'only') return false;
+  status(T.building);
+  let html;
+  try { html = (await builder.exportHtml(memoryWorkspace('deck', { 'deck.html': bytes }), 'deck.html', {}, { timeout: buildTimeout() })).html; }
+  catch (e) {
+    status('');
+    await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code || 'error', String((e && e.message) || e)), buttons: [{ id: 'ok', label: T.ok, pri: true }] });
+    return false;
+  }
+  status('');
+  // 未保存の変更は、このファイルを読む前に確かめた（openPortable）ので、ここでは聞き直さない（replacing）
+  const ok = await openPortable({ bytes: new TextEncoder().encode(html), name: name.replace(/\.html?$/i, '') + FORMAT.FILE_EXT, fresh: true, replacing: true });
+  if (!ok) return false;
+  S.portable.sourceOnly = true;
+  // 保存するまでどこにも書いていない（「保存していない変更」にする）
+  try { await S.ws.writeText('deck.html', (await S.ws.readText('deck.html', { max: READ_LIMITS.source })) || ''); } catch { /* 無視 */ }
+  updateName(); showNotice();
+  return true;
+}
+
 // ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する
 // mode：'save'（同じファイルに。docId を変えず、derivedFrom を付けも変えもしない）・'copy'（別のファイルに。docId は同じ）・
 //       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作り手はそのまま。§3.6.1・§7.3）
@@ -697,6 +762,14 @@ async function savePortableBound(mode) {
   const live = () => S.portable === P && S.ws === ws && S.gen === g;
   const cancelled = () => { status(''); toast(T.api.cancelled, true); };
   if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
+  // deck.html だけを開いて、まだどこにも保存していない：1 ファイルに保存するか、空のフォルダに書き出すかを選ぶ
+  if (P.sourceOnly && !P.handle && mode === 'save') {
+    const v = await ask({ title: T.saveWhereTitle, body: [el('p', { id: 'save-where', text: T.saveWhereLead })],
+      buttons: [{ id: 'cancel', label: T.cancel }, ...(window.showDirectoryPicker ? [{ id: 'folder', label: T.saveToFolder }] : []), { id: 'file', label: T.saveAsFile, pri: true }] });
+    if (!live()) { cancelled(); return; }
+    if (v === 'folder') { await exportFolder(ws); return; }
+    if (v !== 'file') return;
+  }
   if (S.building) await S.building;
   if (!live()) { cancelled(); return; }
   status(T.saving);
@@ -939,7 +1012,7 @@ window.__APP_TEST = {
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
     portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
-      lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
+      lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   saved: () => (S.portable ? S.portable.saved : null),
   save: (mode) => savePortable(mode || 'save'),

@@ -228,6 +228,17 @@ ok('往復：展開 → もう一度まとめると同じファイル・同じ�
   fs.symlinkSync(os.tmpdir(), path.join(L, 'audio'));
   await rejects(unpack(path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT), L, { force: true }), 'bad-path');
 });
+ok('索引のない文書の種類（sourceKind・no-source の details.kind）：原稿の deck.html・組んだ発表の HTML・再生専用の派生・ほかの HTML', async () => {
+  const kind = async (t) => (await rejects(PF.readPortable(t), 'no-source')).details.kind;
+  const src = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8');
+  assert.equal(await kind(src), 'source');
+  assert.equal(await kind(fs.readFileSync(path.join(ROOT, 'examples', 'kokugo-kanbun', 'deck.html'))), 'source');
+  assert.equal(await kind(build(path.join(ROOT, 'examples', 'minimal', 'deck.html'), { subset: false, noAudio: true }).html), 'built');
+  assert.equal(await kind(PF.playOnly(firstHtml)), 'play-only');
+  assert.equal(await kind('<!DOCTYPE html><title>x</title><p>&lt;section class="slide"&gt;</p>'), 'other');
+  assert.equal(await kind('# notes\n<section class="slide">…</section>'), 'other');     // HTML の文書でない（Markdown の中の例など）
+  assert.equal(await kind("<!-- a -->\n<html><body><section class='slide cover'><h1>t</h1></section></body></html>"), 'source');
+});
 ok('再生専用の派生：索引と原稿の塊がなく、音声の塊は残る。deck-meta は portable: false・sourceSha256 なし・docId と権利の表示は残る', async () => {
   const po = PF.playOnly(firstHtml);
   fs.writeFileSync(path.join(MIN, 'out', 'deck' + FORMAT.PLAY_EXT), po);

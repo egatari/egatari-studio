@@ -45,7 +45,12 @@ main{flex:1;min-height:0;display:flex}
 .card label span{min-width:9em;color:var(--muted)}
 .card input,.card select{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
 .card .hint{color:var(--muted);font-size:13px}
-#recent-list{list-style:none;margin:0;padding:0}
+#recent-list,#examples-list{list-style:none;margin:0;padding:0}
+#examples-list li{display:flex;align-items:center;gap:10px;padding:7px 4px;border-top:1px solid var(--line)}
+#examples-list li:first-child{border-top:0}
+#examples-list .ex-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#examples-list .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#examples-list .meta{color:var(--muted);font-size:12.5px}
 #recent-list li{display:flex;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid var(--line)}
 #recent-list li:first-child{border-top:0}
 #recent-list .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis}
