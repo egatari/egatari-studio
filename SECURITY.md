@@ -22,6 +22,17 @@ Treat a deck folder like a source-code repository, not like a document. Build, c
 
 `comments.json`, `.cache/`, `.env*` and `*.local.json` are gitignored so that review notes, edit history and local settings are not published by accident.
 
+## Residual risks (accepted)
+
+After seven independent review rounds of this version line, no high-severity issue is known. The following are known limits that we accept for now; they concern resource use and local trust, not reading or writing outside a deck. Reports that show one of them leading to disclosure or to writing outside the deck are still welcome.
+
+- **Shared temporary caches assume a trusted local machine.** Audio compression works in a private folder (mode 0700, inputs created exclusively with mode 0600, removed afterwards; ffmpeg is started without a shell), but the shared caches for compressed audio and subset fonts in the system temp folder are not checked for ownership or links, and cached entries are reused without re-checking their content. Another local user could plant entries there.
+- **The raw-read check is a maintenance guard, not enforcement.** `tools/test-raw-reads.mjs` looks for direct reads outside the bounded readers by text. It can miss unusual spellings (for example extra spaces, computed property access, `FileHandle.read()`), and it does not scan tests, `vendor/` or non-JS code (the Python TTS tools read without these limits).
+- **Network reads in the TTS test page are not size-limited before buffering.** `lab/irodori.js` checks model and voice sizes after download, and cached responses and preset voices have no cap. (`tools/get-fonts.mjs` downloads from a fixed commit with a size limit and a SHA-256 check.)
+- **Budgets limit what a deck can make the tools read and produce, not total process memory or time.** Several copies of the same data can exist at once during a build or export, some escaping is allocated before the exact size check, and ffmpeg has no timeout or output limit.
+- **Refused writes are not always free of side effects.** A dev-server save can create and prune a backup before the save itself is refused for size; `npm run ids` writes its files one after another, not as one transaction.
+- **Another local process changing the deck folder while a tool runs** (for example swapping a folder for a link between a check and its use) is out of scope.
+
 ## Reporting a vulnerability
 
 Please report security issues privately through GitHub's **Report a vulnerability** button (Security → Advisories) on <https://github.com/moiku/motion-academic-slides>, rather than in a public issue. Include the affected file or command, a minimal deck that reproduces it, and the impact. You should get a reply within two weeks. There is no bug bounty.
