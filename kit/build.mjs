@@ -74,16 +74,24 @@ function subsetCss(text) {
 
 // ---------------------------------------------------------------- 音声の圧縮
 // 埋め込む音声は AAC（64 kbps・モノラル）にする。WAV のままだと 5 分で 30 MB を超える。結果はキャッシュする
-function compressAudio(file) {
-  if (!/\.wav$/i.test(file)) return file;
-  // 元のファイルは読む前に組み立ての上限に数えてある（chargedEnv の precharge）。読むのは通常のファイルだけ（FIFO で止まらない）
-  const out = path.join(os.tmpdir(), 'motion-slides-audio', short(readRegular(file).toString('base64')) + '.m4a');
-  if (fs.existsSync(out)) return out;
+// max：読んでよいバイト数（chargedEnv が読む前に数えた大きさ）。元のファイルは上限つきで 1 回だけ読み（通常のファイルだけ。FIFO で止まらない）、
+// そのバイトの hash を鍵にし、ffmpeg には元のパスを開き直させず、読んだバイトを自分だけが読める一時フォルダの写しから渡す（確かめた後に
+// 差し替えられたファイル・大きくなったファイルを ffmpeg が読まない）。返すもの：{path, read}（read は読んだバイト数）
+function compressAudio(file, max) {
+  if (!/\.wav$/i.test(file)) return { path: file, read: 0 };
+  const bytes = readRegular(file, max === undefined ? undefined : { max });
+  const out = path.join(os.tmpdir(), 'motion-slides-audio', crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 32) + '.m4a');
+  if (fs.existsSync(out)) return { path: out, read: bytes.length };
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-c:a', 'aac', '-b:a', '64k', '-ac', '1', out]);
-  if (r.status === 0) return out;
+  const priv = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-slides-wav-'));   // 0700
+  try {
+    const src = path.join(priv, 'in.wav'), tmpOut = path.join(priv, 'out.m4a');
+    fs.writeFileSync(src, bytes, { mode: 0o600, flag: 'wx' });
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:a', 'aac', '-b:a', '64k', '-ac', '1', tmpOut]);
+    if (r.status === 0) { fs.renameSync(tmpOut, out); return { path: out, read: bytes.length }; }
+  } finally { fs.rmSync(priv, { recursive: true, force: true }); }
   compressAudio.failed = true;   // ffmpeg がない：WAV のまま埋め込む（大きくなる）
-  return file;
+  return { path: file, read: bytes.length };
 }
 
 // ---------------------------------------------------------------- Node の読み書き（kit/core/build-core.mjs の env）
