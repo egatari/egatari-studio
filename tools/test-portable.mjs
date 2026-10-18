@@ -154,9 +154,12 @@ ok('書き出し：Schema に合う・外すもの・伏せ字・docId を残す
   // 音声の記録：3 つの hash・出どころ・recipe（声は公開の名前）
   const recs = Object.entries(first.index.audio);
   assert.ok(recs.length > 10);
+  // recipeDigest は音声の記録の digest（tts/synth.py が書く）から。uv がなく JS の無音で作った manifest には digest がないので、なし
+  const manifest = JSON.parse(fs.readFileSync(path.join(MIN, 'audio', 'manifest.json'), 'utf8'));
   for (const [k, a] of recs) {
     assert.ok(first.index.files[a.file], `${k}: ${a.file} in files`);
-    assert.equal(a.kind, 'tts'); assert.match(a.inputHash, PF.RE.sha256); assert.equal(typeof a.recipeDigest, 'string');
+    const dg = manifest.segments[k] && manifest.segments[k].digest;
+    assert.equal(a.kind, 'tts'); assert.match(a.inputHash, PF.RE.sha256); assert.equal(a.recipeDigest, dg ? String(dg) : undefined, `${k}: recipeDigest from the manifest's digest`);
     assert.equal(first.index.blobs[first.index.files[a.file]].sha256.length, 64);
     for (const v of Object.values(a.recipe.voice)) assert.match(v, PF.RE.voice);
   }
