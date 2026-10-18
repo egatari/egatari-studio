@@ -1,7 +1,7 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
 //   node tools/test-all.mjs [--only 名前,名前] [--keep]
 // 1. examples/minimal と examples/tmlr2026-calibration を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-ids・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-app（編集アプリ）
+// 2. 単体の検査（test-narration・test-ids・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）、あれば）・check（両方、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-dev-server・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 import fs from 'node:fs';
@@ -21,7 +21,7 @@ const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
 
 // 単体の検査（ブラウザのいらないもの）。あるものだけ走らせる
-const unit = ['test-narration', 'test-ids', 'test-deck-timing', 'test-workspace', 'test-bounded-read'].filter((n) => fs.existsSync(rel('tools', n + '.mjs'))).map((n) => [n, ['tools/' + n + '.mjs']]);
+const unit = ['test-narration', 'test-ids', 'test-deck-timing', 'test-workspace', 'test-bounded-read', 'test-raw-reads'].filter((n) => fs.existsSync(rel('tools', n + '.mjs'))).map((n) => [n, ['tools/' + n + '.mjs']]);
 const steps = [
   ...unit,
   ['build minimal', ['kit/build.mjs', 'examples/minimal/deck.html']],
