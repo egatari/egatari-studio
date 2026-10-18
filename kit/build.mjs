@@ -1,6 +1,6 @@
 // 原稿（deck.html）を、外部の読み込みなしで表示できる 1 つの HTML にする
 //
-//   node kit/build.mjs <deck.html> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]
+//   node kit/build.mjs <deck.html | デッキのフォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]
 //
 //   --portable   持ち運べる 1 ファイル（format spec。out/<名前><FORMAT.FILE_EXT>）：再生できる HTML に原稿と音声を入れたもの（kit/core/portable.mjs）。
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
@@ -152,6 +152,19 @@ export function defaultPortableOut(srcPath, playOnlyOut = false) {
   return path.join(p.dir, 'out', p.name + (playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT));
 }
 
+// コマンドの引数の原稿：フォルダなら <フォルダ>/deck.html にする。フォルダに deck.html がなければ、何が要るかを言って断る
+// （ほかは今までどおり。フォルダをそのまま組み立てに渡すと「通常のファイルでない（FIFO など）」と紛らわしく断られていた）
+export function resolveDeckArg(src) {
+  let st = null;
+  try { st = fs.statSync(src); } catch { return src; }
+  if (!st.isDirectory()) return src;
+  const f = path.join(src, 'deck.html');
+  if (fs.existsSync(f) && fs.statSync(f).isFile()) return f;
+  const e = new Error(`${src} is a folder without deck.html: expected a deck.html file or a folder containing one`);
+  e.code = 'build-no-deck';
+  throw e;
+}
+
 // ---------------------------------------------------------------- CLI
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = process.argv.slice(2);
@@ -165,7 +178,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | deck folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
+  try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   if (opts.portable) {
     if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }
     const out = opts.out || defaultPortableOut(src, opts.playOnly);

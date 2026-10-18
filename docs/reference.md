@@ -299,7 +299,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ## Build
 
-`node kit/build.mjs <deck.html> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]` (or `npm run build -- …`).
+`node kit/build.mjs <deck.html | deck folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]` (or `npm run build -- …`). Given a folder, it builds the `deck.html` inside it (without one it says what it expected and exits with 1).
 
 | Option | Meaning |
 |---|---|

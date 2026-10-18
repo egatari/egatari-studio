@@ -21,7 +21,7 @@ const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
 
 // 単体の検査（ブラウザのいらないもの）。あるものだけ走らせる
-const unit = ['test-narration', 'test-ids', 'test-deck-timing', 'test-workspace', 'test-bounded-read', 'test-raw-reads'].filter((n) => fs.existsSync(rel('tools', n + '.mjs'))).map((n) => [n, ['tools/' + n + '.mjs']]);
+const unit = ['test-narration', 'test-ids', 'test-build-args', 'test-deck-timing', 'test-workspace', 'test-bounded-read', 'test-raw-reads'].filter((n) => fs.existsSync(rel('tools', n + '.mjs'))).map((n) => [n, ['tools/' + n + '.mjs']]);
 const steps = [
   ...unit,
   ['build minimal', ['kit/build.mjs', 'examples/minimal/deck.html']],
