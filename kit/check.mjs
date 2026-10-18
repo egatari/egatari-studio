@@ -22,6 +22,7 @@ import path from 'node:path';
 import { launch } from './browser.mjs';
 import { build, isJapanese, analyzeSlideIds } from './build.mjs';
 import { normalizeKey } from './narration.mjs';
+import { readRegular, READ_LIMITS } from './bounded-read.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -103,7 +104,7 @@ for (const w of built.stats.warn) {
 
 // ================================================================ I. スライドの id と鍵
 {
-  const ids = analyzeSlideIds(fs.readFileSync(src, 'utf8'));
+  const ids = analyzeSlideIds(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'));   // 原稿：通常のファイルだけ、上限つきで（kit/bounded-read.mjs）
   for (const p of ids.problems) report(p.slide, p.sev, p.msg);
   // 旧来の鍵（format spec §8.1）：手書きの data-key と s<n>（見出しも id もない）。鍵は変えずに知らせるだけ
   for (const s of ids.slides) {

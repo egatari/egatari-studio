@@ -19,6 +19,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { readNarration } from '../kit/narration.mjs';
+import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;   // canon src/server/assets.ts
 const MAX_STILL_BYTES = 8 * 1024 * 1024;
@@ -45,7 +46,7 @@ const sha = (...bufs) => { const h = crypto.createHash('sha256'); for (const b o
 export function staleClips(renderDir, tl) {
   const out = new Set(tl.stale || []);
   let cache = null;
-  try { cache = JSON.parse(fs.readFileSync(path.join(renderDir, '.render-cache.json'), 'utf8')); } catch {}
+  try { cache = JSON.parse(readRegular(path.join(renderDir, '.render-cache.json'), { max: READ_LIMITS.json }).toString('utf8')); } catch {}
   for (const s of tl.segments) {
     const c = cache && cache.clips && cache.clips[s.clip.replace(/\.mp4$/, '')];
     if (!s.input || !c || c.input !== s.input || c.key !== s.key || !fs.existsSync(path.join(renderDir, s.clip))) out.add(s.key);
@@ -71,7 +72,7 @@ function main() {
   const deck = locateDeck(o.src);
   const renderDir = path.resolve(o.render);
   const outDir = path.resolve(o.out);
-  const tl = JSON.parse(fs.readFileSync(path.join(renderDir, 'timeline.out.json'), 'utf8'));
+  const tl = JSON.parse(readRegular(path.join(renderDir, 'timeline.out.json'), { max: READ_LIMITS.json }).toString('utf8'));
   const segs = tl.segments;
   const mdName = o.md || `${deck.name}_with_narration.md`;
   const warn = [], err = [];
@@ -80,7 +81,7 @@ function main() {
   const stale = staleClips(renderDir, tl);
   const fatal = [];
   if (stale.length) fatal.push(`今の入力と合わない・無いクリップが ${stale.length} 本: ${stale.join(', ')}\n    → node render/render.mjs ${tl.source || '<built.html>'} --out ${o.render}（--only なし）で書き出し直すこと`);
-  if (tl.source && tl.sourceHash && fs.existsSync(tl.source) && sha(fs.readFileSync(tl.source, 'utf8')) !== tl.sourceHash)
+  if (tl.source && tl.sourceHash && fs.existsSync(tl.source) && sha(readRegular(tl.source, { max: READ_LIMITS.built }).toString('utf8')) !== tl.sourceHash)
     fatal.push(`render のあとに ${tl.source} が変わった（build し直した）。render をやり直すこと`);
   if (fatal.length) {
     for (const f of fatal) console.error('  ✗ ' + f);
@@ -103,7 +104,7 @@ function main() {
 
   // dry-run（無音の仮の音声）のまま出していないか
   try {
-    const man = JSON.parse(fs.readFileSync(path.join(deck.dir, 'audio', 'manifest.json'), 'utf8'));
+    const man = JSON.parse(readRegular(path.join(deck.dir, 'audio', 'manifest.json'), { max: READ_LIMITS.json }).toString('utf8'));
     const dry = Object.entries(man.segments || {}).filter(([, v]) => v.engine === 'dry-run').map(([k]) => k);
     if (dry.length) warn.push(`audio/manifest.json に dry-run（無音）の段階が ${dry.length} 個ある（${dry.slice(0, 3).join(', ')}…）。本番の前に tts/synth.py を --dry-run なしで`);
   } catch {}

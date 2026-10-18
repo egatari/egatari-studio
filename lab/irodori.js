@@ -364,6 +364,8 @@ async function decodeVoice(ab, name) {
   const info = { name, sourceRate: w.sr, channels: w.channels, bits: w.bits, seconds: +(pcm.length / SR).toFixed(2), conversion: how, sha1_48k: await sha1(pcm) };
   return { pcm, info };
 }
+// 選んだ声のファイルの上限（バイト）。参照音声は数十秒の WAV（48 kHz・モノラルで 1 分 6 MB 足らず）
+const MAX_VOICE_BYTES = 64 * 1048576;
 // 既定の声（voices/<名前>.wav）は 1 度だけ読む
 const presetVoices = {};
 async function presetVoice(which) {
@@ -382,7 +384,11 @@ async function loadVoice() {
   if (which === 'file') {
     const f = $('voice-file').files[0];
     if (!f) { $('voice-status').textContent = '声：ファイルを選んでください'; voice = null; return null; }
+    // 選んだファイルは信頼しない：File.size を読む前に、読んだ後も実際のバイト数を上限と比べる（app/bounded-read.js と同じ確かめ方。
+    // lab/ はそのまま配るので app/ を読み込めない）
+    if (!(f.size <= MAX_VOICE_BYTES)) { $('voice-status').textContent = `声：ファイルが大きすぎる（${f.size} バイト。${MAX_VOICE_BYTES} まで）`; voice = null; return null; }
     const ab = await f.arrayBuffer();
+    if (ab.byteLength > MAX_VOICE_BYTES) { $('voice-status').textContent = '声：ファイルが大きすぎる'; voice = null; return null; }
     v = { ...(await decodeVoice(ab, f.name)), url: URL.createObjectURL(f) };
   } else v = await presetVoice(which);
   voice = v; state.voice = v.info;

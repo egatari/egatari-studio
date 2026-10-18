@@ -21,6 +21,7 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
+import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 
 const RENDER_VERSION = 4;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
 const CACHE_FILE = '.render-cache.json';   // render/export-canon.mjs も読む
@@ -131,11 +132,11 @@ async function main() {
   const cachePath = path.join(outDir, CACHE_FILE);
   let cache = { version: RENDER_VERSION, clips: {} };
   try {
-    const c = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+    const c = JSON.parse(readRegular(cachePath, { max: READ_LIMITS.json }).toString('utf8'));
     if (c && c.version === RENDER_VERSION && c.clips) cache = c;   // 古い形式のキャッシュは捨てる
   } catch {}
   const saveCache = () => fs.writeFileSync(cachePath, JSON.stringify(cache, null, 1));
-  const htmlText = fs.readFileSync(src, 'utf8');
+  const htmlText = readRegular(src, { max: READ_LIMITS.built }).toString('utf8');   // 組んだデッキ：通常のファイルだけ、上限つきで（kit/bounded-read.mjs）
 
   const W = 1280, H = 720;
   const browser = await launch();
@@ -216,7 +217,7 @@ async function main() {
       const nA = Math.min(Math.ceil(motion * o.fps - 1e-6), N);
       const tmp = fs.mkdtempSync(path.join(tmpRoot, `${clip}-`));
       const audio = audioFile(s.audio, htmlUrl, tmp, n);
-      const audioHash = audio ? sha(fs.readFileSync(audio)) : 'none';
+      const audioHash = audio ? sha(readRegular(audio, { max: READ_LIMITS.audio })) : 'none';
       const per = inputs.per[n];
       const input = sha(globalHash, audioHash, JSON.stringify({
         slides: inputs.ok ? per.deps.map((j) => slideHash[j]) : null, data: per.data, key: s.key, i: s.i, k: s.k,
