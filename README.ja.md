@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=ac2f65e6236671eb -->
+<!-- i18n: pair=README.md sha256=0607c4a9fb348860 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -240,7 +240,7 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-テーマはデッキの隣（`<デッキ>/themes/<名前>/`）にも置ける。自分のテーマのフォルダにも置ける：`EGATARI_THEMES` にフォルダの並び（区切りは `:`、Windows は `;`）を書くか、`~/.egatari/themes`（シンボリックリンクでもよい）を使う。探す順は 原稿のフォルダ → その `themes/` → 自分のテーマのフォルダ → 同梱の `themes/`（[リファレンス](docs/reference.ja.md#テーマ)）。編集アプリは自分のテーマのフォルダを読めない：テーマを原稿の `themes/` に置く。置かなければ、見つからないテーマの名前を言う警告を出して `default` で組む。持ち運べる 1 ファイルは、そのテーマを中に持つ。同梱：`default`（中立）、`business`（中立。ビジネス・ピッチ向けの紺と橙、ロゴなし）、`kokugo`（明朝。国語向け）。機関のテーマとロゴは同梱しない。
+テーマはデッキの隣（`<デッキ>/themes/<名前>/`）にも置ける。自分のテーマのフォルダにも置ける：`EGATARI_THEMES` にフォルダの並び（区切りは `:`、Windows は `;`）を書くか、`~/.egatari/themes`（シンボリックリンクでもよい）を使う。探す順は 原稿のフォルダ → その `themes/` → 自分のテーマのフォルダ → 同梱の `themes/`（[リファレンス](docs/reference.ja.md#テーマ)）。編集アプリでは、自分のテーマのフォルダを 1 回だけ選ぶ（「テーマのフォルダを選ぶ…」。読むだけ。[編集アプリ](docs/editor.ja.md)）か、テーマを原稿の `themes/` に置く。どちらもなければ、見つからないテーマの名前を言う警告を出して `default` で組む。持ち運べる 1 ファイルは、そのテーマを中に持つ。同梱：`default`（中立）、`business`（中立。ビジネス・ピッチ向けの紺と橙、ロゴなし）、`kokugo`（明朝。国語向け）。機関のテーマとロゴは同梱しない。
 
 ## 見本
 

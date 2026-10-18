@@ -7,6 +7,7 @@
 // 4. 持ち運べる 1 ファイル（examples/minimal ＋ dry-run の音声、tools/portable-fixtures.mjs）：フォルダなしで開く・権利の確認・
 //    編集・保存（OPFS のファイルのハンドルに上書き）・開き直し・フォルダへの書き出し・フォルダからの書き出し・改変を認めないライセンス・
 //    独自のコードの知らせ・印のスクリプトが取り出しで動かない（アプリのページと Worker）・壊れた・新しい版のファイルを断る・ダウンロード
+// 5. 利用者のテーマのフォルダ（OPFS のフォルダを選ぶ）：見つからないテーマの知らせ・選ぶ・探す順・根の決まり・1 ファイルへの書き出し・残す・許可の求め直し・忘れる
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -1335,6 +1336,8 @@ try {
     await po.click('#dlg-folder');
     ok(await settle(p) === true && (await pst()).kind === 'folder' && (await pst()).deckFile === 'deck.html', 'source: "Open the folder…" opens the picked folder as a folder workspace');
     const folderCheck = await quickErrors();
+    // ルビの振り仮名（rt）は本文の半分の大きさが決まり：簡易チェックも kit/check.mjs と同じく字の大きさに数えない
+    ok(folderCheck.n === 0, 'quick check (kokugo-kanbun): ruby rt is not counted as small text, as in kit/check.mjs (errors 0): ' + folderCheck.t);
     await po.evaluate(() => { window.showDirectoryPicker = window.__srcPick; });
     // このファイルだけ：メモリの上（deck.html だけ）で開き、簡易チェックが通る
     p = openBytes(ksrc, 'deck.html');
@@ -1390,6 +1393,139 @@ try {
       if (kind === 'play-only') ok(/再生専用版/.test(msg), 'refuse: the play-only message names the play-only portable file');
       await po.click('#dlg-ok');
       ok(await p === false, `refuse: ${what} is not opened`);
+    }
+
+    // ---------------------------------------------------------------- 利用者のテーマのフォルダ（app/theme-folder.js）
+    // OPFS のフォルダを「テーマのフォルダ」として選ぶ（tml に似たテスト用のテーマ：色とロゴ）。探す順・根の決まり・残す・許可の求め直し・忘れる・1 ファイルへの書き出し
+    {
+      const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const minDeck = fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8');
+      const deckWith = (t) => minDeck.replace('data-theme="default"', `data-theme="${t}"`);
+      const themeFiles = {
+        'mytml/tokens.css': ':root{--accent:#1a2b3c;--theme-probe:#1a2b3c}\n',
+        'mytml/theme.json': JSON.stringify({ logos: ['logos/mark.png'] }),
+        'mytml/logos/mark.png': { b64: PNG },
+        // ロゴがそのテーマのフォルダの外（同じテーマのフォルダの中でも）：読まない
+        'evil/tokens.css': ':root{--theme-probe:#0e0e0e}\n',
+        'evil/theme.json': JSON.stringify({ logos: ['../mytml/logos/mark.png'] }),
+      };
+      await po.goto(BASE);
+      await po.waitForSelector('#drop');
+      await po.evaluate(async ([deck, narr, tf]) => {
+        await new Promise((r) => { const q = indexedDB.deleteDatabase('egatari-theme-folder'); q.onsuccess = q.onerror = q.onblocked = () => r(); });
+        const root = await navigator.storage.getDirectory();
+        for (const n of ['thm-deck', 'thm-user']) await root.removeEntry(n, { recursive: true }).catch(() => {});
+        const put = async (d, rel, v) => {
+          const parts = rel.split('/'), name = parts.pop();
+          for (const x of parts) d = await d.getDirectoryHandle(x, { create: true });
+          const w = await (await d.getFileHandle(name, { create: true })).createWritable();
+          await w.write(typeof v === 'string' ? v : Uint8Array.from(atob(v.b64), (c) => c.charCodeAt(0))); await w.close();
+        };
+        const d = await root.getDirectoryHandle('thm-deck', { create: true });
+        await put(d, 'deck.html', deck); await put(d, 'narration.md', narr);
+        const u = await root.getDirectoryHandle('thm-user', { create: true });
+        for (const [k, v] of Object.entries(tf)) await put(u, k, v);
+        window.__thmDeck = d; window.__thmUser = u;
+        window.__putDeck = (rel, v) => put(d, rel, v);
+        await window.__APP_TEST.initThemeFolder();
+      }, [deckWith('mytml'), fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8'), themeFiles]);
+      const tst = () => po.evaluate(() => window.__APP_TEST.themeFolder());
+      const builds = () => po.evaluate(() => window.__APP_TEST.state().builds);
+      const afterBuild = (n0) => po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.builds > n && !window.__APP_TEST.state().error; }, n0, { timeout: 30000 });
+      const themeWarn = (s, n = 'mytml') => s.warn.find((w) => w.startsWith(`theme not found: "${n}"`));
+      const appHtml = () => po.evaluate(() => window.__APP_TEST.build({}));
+      ok((await tst()).name === null && (await tst()).state === 'none', 'theme folder: none chosen at first');
+      ok(await po.evaluate(() => window.__APP_TEST_OPEN(window.__thmDeck)) === true, 'theme folder: a folder deck whose theme (mytml) is not bundled opens');
+      let s = await pst();
+      ok(!s.error && /「テーマのフォルダを選ぶ…」/.test(themeWarn(s) || ''), 'theme folder: the build warns theme not found and names "Choose theme folder…": ' + (themeWarn(s) || '').slice(0, 90));
+      ok(await po.isVisible('#notice-theme') && await po.isVisible('#notice-theme #b-theme-choose') && (await po.textContent('#notice-theme')).includes('mytml'), 'theme folder: the notice names the missing theme and offers "Choose theme folder…"');
+      if (SHOTS) { await slidesNow(); await po.waitForTimeout(300); await po.screenshot({ path: path.join(SHOTS, 'theme-folder-prompt.png') }); }
+      // 警告の一覧にも同じボタン
+      await po.click('#b-warn');
+      ok(await po.isVisible('#panel-body .theme-warn #b-theme-choose'), 'theme folder: the theme warning in the warnings panel has the button too');
+      await po.click('#panel-close');
+      // 選ぶ（選ぶ画面の代わりに OPFS のフォルダ）→ 組み直して、そのテーマ（色とロゴ）で組む
+      await po.evaluate(() => { window.__APP_TEST.themePicker = async (o) => { window.__pickOpts = o; return window.__thmUser; }; });
+      let n0 = await builds();
+      await po.click('#notice-theme #b-theme-choose');
+      await afterBuild(n0);
+      s = await pst();
+      let html = await appHtml();
+      ok(!themeWarn(s) && (await tst()).inBuild && (await tst()).name === 'thm-user' && !(await po.isVisible('#notice-theme')), 'theme folder: after choosing, the deck builds with the theme from the folder (no warning, notice gone)');
+      ok((await po.evaluate(() => window.__pickOpts.mode)) === 'read', 'theme folder: the picker asks for read access only');
+      ok(html.includes('--theme-probe:#1a2b3c') && html.includes('data:image/png;base64,' + PNG.slice(0, 20)), 'theme folder: tokens.css and the logo of the user theme are in the build (main-thread engine)');
+      const fr = pframe();
+      ok(!!fr && (await fr.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--theme-probe').trim())) === '#1a2b3c', 'theme folder: the preview (worker build) uses the user theme');
+      // 探す順：原稿のフォルダの themes/ が先
+      n0 = await builds();
+      await po.evaluate(() => window.__putDeck('themes/mytml/tokens.css', ':root{--theme-probe:#654321}\n'));
+      await po.evaluate(() => window.__APP_TEST.rebuild());
+      html = await appHtml();
+      ok(html.includes('--theme-probe:#654321') && !html.includes('--theme-probe:#1a2b3c'), 'theme folder: the deck\'s own themes/mytml wins over the user theme folder (same order as the CLI)');
+      await po.evaluate(async () => { await window.__thmDeck.removeEntry('themes', { recursive: true }); });
+      // 根の決まり：テーマのロゴがそのテーマのフォルダの外なら読まない
+      await po.evaluate(([t]) => window.__putDeck('deck.html', t), [deckWith('evil')]);
+      await po.evaluate(() => window.__APP_TEST.rebuild());
+      s = await pst();
+      html = await appHtml();
+      ok(s.warn.some((w) => /refused: テーマのロゴ「\.\.\/mytml\/logos\/mark\.png」/.test(w)) && html.includes('--theme-probe:#0e0e0e') && !html.includes('data:image/png;base64,' + PNG.slice(0, 20)), 'theme folder: a logo outside its theme directory is refused (containment as in the CLI)');
+      await po.evaluate(([t]) => window.__putDeck('deck.html', t), [deckWith('mytml')]);
+      await po.evaluate(() => window.__APP_TEST.rebuild());
+      // 持ち運べる 1 ファイル：使ったテーマは原稿の themes/mytml/ として入る（ほかの機械でも同じテーマで組める）
+      await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('thm-export.ega.html', { create: true }); });
+      await po.evaluate(() => document.getElementById('b-export-portable').click());
+      for (let i = 0; i < 150 && !(await po.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 1000)); i++) await po.waitForTimeout(200);
+      const xp = await readPortable(new Uint8Array(Buffer.from(await po.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let x = ''; for (let i = 0; i < u.length; i += 0x8000) x += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(x); }), 'base64')));
+      await po.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+      ok(!!xp.files['themes/mytml/tokens.css'] && !!xp.files['themes/mytml/theme.json'] && !!xp.files['themes/mytml/logos/mark.png'] && !xp.files['themes/evil/tokens.css'], 'theme folder: the portable export stores the user theme as themes/mytml/ (only the theme it used)');
+      // 残す：読み込み直しても同じフォルダ（IndexedDB）
+      await po.goto(BASE);
+      await po.waitForSelector('#drop');
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 10000 });
+      ok((await tst()).state === 'granted' && (await po.textContent('#w-themes-state')).includes('thm-user'), 'theme folder: remembered after a reload (handle in IndexedDB), shown on the first screen');
+      // 許可の求め直し：次の訪問では許可が切れている（prompt）。知らせの「「thm-user」を使う」で求め直し、許せば組み直す
+      await po.evaluate(async () => {
+        const H = window.FileSystemHandle.prototype;
+        window.__perm = { q: H.queryPermission, r: H.requestPermission, granted: false, asked: 0 };
+        H.queryPermission = async function () { return window.__perm.granted ? 'granted' : 'prompt'; };
+        H.requestPermission = async function (o) { window.__perm.asked++; window.__perm.mode = o && o.mode; window.__perm.granted = true; return 'granted'; };
+        await window.__APP_TEST.initThemeFolder();
+        window.__thmDeck = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-deck');
+      });
+      ok((await tst()).state === 'prompt' && !(await tst()).inBuild, 'theme folder: a remembered folder without permission is not read until asked');
+      await po.evaluate(() => { window.__perm.granted = true; });   // デッキのフォルダを開く許可（このテストでは同じ prototype）
+      await po.evaluate(() => window.__APP_TEST_OPEN(window.__thmDeck));
+      await po.evaluate(() => { window.__perm.granted = false; window.__perm.asked = 0; });
+      s = await pst();
+      ok(!!themeWarn(s) && await po.isVisible('#notice-theme #b-theme-allow') && (await po.textContent('#notice-theme #b-theme-allow')).includes('thm-user') && /もう一度許可/.test(await po.textContent('#notice-theme')), 'theme folder: the notice offers to use the remembered folder (asks for permission again)');
+      if (SHOTS) { await slidesNow(); await po.waitForTimeout(300); await po.screenshot({ path: path.join(SHOTS, 'theme-folder-allow.png') }); }
+      n0 = await builds();
+      await po.click('#notice-theme #b-theme-allow');
+      await afterBuild(n0);
+      s = await pst();
+      ok((await po.evaluate(() => window.__perm.asked)) === 1 && (await po.evaluate(() => window.__perm.mode)) === 'read' && !themeWarn(s) && (await tst()).inBuild, 'theme folder: permission is requested again (read) and the deck builds with the theme');
+      await po.evaluate(() => { const H = window.FileSystemHandle.prototype; H.queryPermission = window.__perm.q; H.requestPermission = window.__perm.r; });
+      // 設定の窓（「開く ▾」の「テーマのフォルダ…」）：今のフォルダとテーマの名前。忘れる → 知らせが戻り、読み込み直しても選んでいない
+      await po.evaluate(() => document.getElementById('b-themes').click());
+      await po.waitForSelector('#dlg[open] #dlg-forget');
+      ok((await po.textContent('#theme-now')).includes('thm-user') && (await po.textContent('#theme-names')).includes('evil, mytml') && !!(await po.$('#dlg-choose')), 'theme folder: the settings dialog shows the folder and its themes, with Change and Forget');
+      if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'theme-folder-dialog.png') });
+      n0 = await builds();
+      await po.click('#dlg-forget');
+      await afterBuild(n0);
+      s = await pst();
+      ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-choose'), 'theme folder: Forget → the deck builds without it again and the notice is back');
+      await po.goto(BASE);
+      await po.waitForSelector('#drop');
+      await po.waitForTimeout(300);
+      ok((await tst()).name === null, 'theme folder: forgotten after a reload too (removed from IndexedDB)');
+      // 空のフォルダ（テーマがない）は選ばない
+      await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); const e = await root.getDirectoryHandle('thm-empty', { create: true }); window.__APP_TEST.themePicker = async () => e; document.getElementById('w-themes').click(); });
+      await po.waitForSelector('#dlg[open] #dlg-choose');
+      await po.click('#dlg-choose');
+      await po.waitForTimeout(300);
+      ok((await tst()).name === null && /テーマ（<名前>\/tokens\.css）が見つかりません/.test(await po.textContent('#toast')), 'theme folder: a folder without themes is not taken (says so)');
+      await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
     }
     await po.close();
   }

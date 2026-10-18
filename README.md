@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=0fc80ab9431049a0 -->
+<!-- i18n: pair=README.ja.md sha256=9a78a9bedaa79fd0 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -240,7 +240,7 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-A theme can also sit next to a deck (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the deck folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). The editor app cannot read your theme folders: put the theme in the deck's `themes/`, or it builds with `default` and a warning naming the missing theme. A portable file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
+A theme can also sit next to a deck (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the deck folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). In the editor app, choose your theme folder once (**Choose theme folder…**, read only; [editor](docs/editor.md)), or put the theme in the deck's `themes/`; otherwise it builds with `default` and a warning naming the missing theme. A portable file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
 
 ## Examples
 

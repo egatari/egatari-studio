@@ -10,10 +10,11 @@
 //         {id, op: 'probe', name}                               試験：Worker の大域変数
 // 作業場所のファイルは親に問い合わせて読む（{rpc, gen, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, gen, ok, value}）。
 // read・list の arg には、その読み出しを要る要求の番号（req）を付ける（親はその要求の作業場所だけを読む）。代（gen）の違う答えは捨てる
+// 利用者のテーマのフォルダ（要求の themes：親が選んだフォルダの番号か null。app/theme-folder.js）も同じく親に問い合わせて読む（'tlist' | 'tread'。読むだけ）
 import { createEngine } from './engine.js';
 import { documentReasons, codeReasons } from '../kit/core/code-scan.mjs';
 
-let engine = null, wsId = null, seq = 0, gen = 0, proxy = null;
+let engine = null, wsId = null, seq = 0, gen = 0, proxy = null, themesId = null, tproxy = null;
 const pend = new Map();
 const rpc = (op, arg) => new Promise((resolve, reject) => {
   const id = ++seq;
@@ -22,6 +23,8 @@ const rpc = (op, arg) => new Promise((resolve, reject) => {
 });
 // 作業場所の代わり。req は今の要求の番号（要求のたびに替える。読んだ中身の覚えは作業場所が同じなら残す）
 const proxyWs = (id) => { const w = { kind: 'proxy', req: null, readBytes: (rel, o) => rpc('read', { ws: id, req: w.req, rel, max: o && Number.isFinite(o.max) ? o.max : null }), list: (o) => rpc('list', { ws: id, req: w.req, o: o || {} }) }; return w; };
+
+const proxyThemes = (id) => { const w = { kind: 'proxy-themes', req: null, readBytes: (rel, o) => rpc('tread', { ws: id, req: w.req, rel, max: o && Number.isFinite(o.max) ? o.max : null }), list: () => rpc('tlist', { ws: id, req: w.req }) }; return w; };
 
 // 表示する文書（信頼する先頭部分 + 組んだデッキ）から決める（main.js の renderedReasons と同じ）
 function rendered(r, pre) {
@@ -48,6 +51,9 @@ self.onmessage = async (e) => {
     else {
       if (m.ws !== wsId) { proxy = proxyWs(m.ws); engine.setWorkspace(proxy); wsId = m.ws; }
       proxy.req = m.id;
+      const tid = m.themes == null ? null : m.themes;
+      if (tid !== themesId) { tproxy = tid === null ? null : proxyThemes(tid); engine.setThemeWorkspace(tproxy); themesId = tid; }
+      if (tproxy) tproxy.req = m.id;
       if (m.op === 'build') {
         engine.setListing(m.listing);
         const r = await engine.build(m.file, m.opts || {});

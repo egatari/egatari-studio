@@ -6,6 +6,7 @@
 //   await b.exportHtml(ws, file, opts, {timeout})               → {html}（持ち運べる 1 ファイル。AI の出力の貼り付け）
 //   await b.scan(files, entry, {timeout})                       → 理由の配列
 //   b.probe(name)                                               試験：Worker の大域変数
+//   b.setThemes(tws)                                            利用者のテーマのフォルダ（app/theme-folder.js の themeFolderWorkspace。null で使わない）
 // 作業場所（ws）の読み出しは Worker からの問い合わせに答える（ws.readBytes・ws.list）。Worker は作業場所に書けない
 import WORKER_SRC from 'virtual:build-worker';
 
@@ -19,7 +20,7 @@ const plain = (L) => ({ files: new Map([...L.files].map(([k, f]) => [k, { m: f.m
 // Worker を止めたら、まだ始めていない読み出しは始めない
 export const READ_CONCURRENCY = 8;
 export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null) } = {}) {
-  let worker = null, gen = 0, seq = 0, wsSeq = 0;
+  let worker = null, gen = 0, seq = 0, wsSeq = 0, themeWs = null;
   const waiting = new Map();          // 要求の番号 → {resolve, reject, gen, ws}
   const wsIds = new WeakMap();
   const idOf = (ws) => { if (!wsIds.has(ws)) wsIds.set(ws, ++wsSeq); return wsIds.get(ws); };
@@ -50,6 +51,13 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     if (!alive()) return;
     try {
       if (m.op === 'lazy') return reply(true, await loadLazy(m.arg));
+      // 利用者のテーマのフォルダ：今選んでいるフォルダで、この Worker にまだ終わっていない要求があるときだけ（読むだけ）
+      if (m.op === 'tlist' || m.op === 'tread') {
+        const tw = themeWs;
+        if (!tw || idOf(tw) !== (m.arg && m.arg.ws) || ![...waiting.values()].some((w) => w.gen === g)) throw Object.assign(new Error('no theme folder for this build'), { code: 'ENOENT' });
+        if (m.op === 'tlist') return reply(true, plain(await lim(() => tw.list())));
+        return reply(true, await lim(() => tw.readBytes(m.arg.rel, Number.isFinite(m.arg.max) ? { max: m.arg.max } : {})));
+      }
       if (m.op !== 'read' && m.op !== 'list') throw new Error('unknown request ' + m.op);
       // その Worker に出した、まだ終わっていない要求の作業場所だけ（要求の番号の要求か、同じ Worker に出した同じ作業場所の要求。
       // Worker の中で 2 つの要求が重なると、番号は後のものになる）
@@ -84,6 +92,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
   function call(msg, ws, timeout = BUILD_TIMEOUT_MS) {
     // メモリの上の作業場所（開いたファイル・deck.html だけ・AI の出力）では、ないファイルを知らせて空のまま組む（kit/core/build-core.mjs）
     if (ws && ws.kind === 'memory' && 'opts' in msg) msg = { ...msg, opts: { missingFiles: 'warn', ...(msg.opts || {}) } };
+    if (ws) msg = { ...msg, themes: themeWs ? idOf(themeWs) : null };
     let t = 0;
     return new Promise((resolve, reject) => {
       const id = ++seq;
@@ -101,6 +110,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     exportHtml: (ws, file, opts, o = {}) => call({ op: 'exportHtml', ws: idOf(ws), file, opts }, ws, o.timeout),
     scan: (files, entry, o = {}) => call({ op: 'scan', files, entry }, null, o.timeout),
     probe: (name) => call({ op: 'probe', name }, null),
+    setThemes: (tws) => { themeWs = tws || null; },
     terminate: () => fail('cancelled', 'cancelled'),
     get generation() { return gen; },
   };

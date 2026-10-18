@@ -1,0 +1,57 @@
+// 利用者のテーマのフォルダ（たとえば ~/.egatari/themes）：コマンドの EGATARI_THEMES・~/.egatari/themes の代わりに、編集アプリでは
+// 1 回だけフォルダを選んでもらい、そのハンドルを IndexedDB に残す（中身は残さない）。読むだけ（mode: 'read'。書かない）
+// 組み立ては、このフォルダを /user-themes として、コマンドと同じ順（原稿のフォルダ → その themes/ → このフォルダ → 同梱の themes/）と
+// 同じ根の決まりで探す（kit/core/build-core.mjs の resolveTheme。app/engine.js）。中身は原稿のファイルと同じく信頼しない
+//   themeFolderWorkspace(handle)  組み立てに渡す作業場所（list・readBytes だけ。書く口はない）
+//   loadThemeFolder() → handle | null、saveThemeFolder(handle)、forgetThemeFolder()   IndexedDB（使えなければ null・何もしない）
+//   permissionOf(handle) → 'granted' | 'prompt' | 'denied'、requestRead(handle) → bool（人の操作の中で呼ぶ）
+import { walk, readBytes } from './fsx.js';
+
+// テーマは themes/<名前>/{tokens.css, theme.json, ロゴ}。深いフォルダ（間違えて大きなフォルダを選んだとき）は歩かない
+const THEME_DEPTH = 3;
+export function themeFolderWorkspace(handle) {
+  return {
+    kind: 'themes', name: handle.name, handle,
+    list: () => walk(handle, { maxDepth: THEME_DEPTH }),
+    readBytes: (rel, o) => readBytes(handle, rel, o),
+  };
+}
+// フォルダの中のテーマの名前（<名前>/tokens.css があるもの）
+export async function themeNames(handle) {
+  const out = [];
+  for await (const [name, h] of handle.entries()) {
+    if (h.kind !== 'directory' || name.startsWith('.')) continue;
+    try { await h.getFileHandle('tokens.css'); out.push(name); } catch { /* テーマでない */ }
+  }
+  return out.sort();
+}
+export async function permissionOf(h) {
+  try { return h.queryPermission ? await h.queryPermission({ mode: 'read' }) : 'granted'; } catch { return 'denied'; }
+}
+export async function requestRead(h) {
+  try { return h.requestPermission ? (await h.requestPermission({ mode: 'read' })) === 'granted' : true; } catch { return false; }
+}
+
+// ---------------------------------------------------------------- IndexedDB（ハンドルだけ。最近開いたフォルダとは別のデータベース）
+const DB = 'egatari-theme-folder', STORE = 'kv', KEY = 'themeFolder';
+function tx(mode, fn) {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const d = r.result, t = d.transaction(STORE, mode), q = fn(t.objectStore(STORE));
+      t.oncomplete = () => { d.close(); res(q && 'result' in q ? q.result : undefined); };
+      t.onerror = () => { d.close(); rej(t.error); };
+    };
+  });
+}
+export async function loadThemeFolder() {
+  try { const v = await tx('readonly', (s) => s.get(KEY)); return v && v.handle && v.handle.kind === 'directory' ? v.handle : null; } catch { return null; }
+}
+export async function saveThemeFolder(handle) {
+  try { await tx('readwrite', (s) => s.put({ handle, saved: Date.now() }, KEY)); return true; } catch { return false; }
+}
+export async function forgetThemeFolder() {
+  try { await tx('readwrite', (s) => s.delete(KEY)); return true; } catch { return false; }
+}

@@ -93,6 +93,8 @@ main{flex:1;min-height:0;display:flex}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
 #notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
 #notice p{margin:2px 0}
+#notice-theme button,#panel-body .theme-warn button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
+#panel-body .theme-warn{margin-top:6px}
 #dlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);padding:18px 22px;width:min(560px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.35)}
 #dlg::backdrop{background:rgba(10,12,16,.45)}
 #dlg.warn{border-color:var(--bad-fg)}

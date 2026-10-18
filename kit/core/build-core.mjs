@@ -316,9 +316,12 @@ function resolveTheme(env, name, baseDir, root, warn, ud = [], missing = null) {
   if (missing) { missing.push(name); return null; }
   throw new Error(`theme not found: ${name}`);
 }
-// 見つからないテーマの知らせ（原稿の data-theme・extends）：既定のテーマで組む。編集アプリ（env.themeDirs がない）は利用者のテーマのフォルダを読めない
+// 見つからないテーマの知らせ（原稿の data-theme・extends）：既定のテーマで組む。env.themeDirs がなければ利用者のテーマのフォルダを読めない。
+// 編集アプリ（env.app）は、選んだテーマのフォルダ（env.themeDirs が空でない）か、まだ選んでいない（空。「テーマのフォルダを選ぶ…」で選べる）かで言い分ける
 function missingThemeWarning(env, name, used) {
-  const where = env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
+  const ud = Array.isArray(env.themeDirs) && env.themeDirs.length > 0;
+  const where = env.app ? (ud ? `選んだテーマのフォルダに ${name}/ を置くか、` : '編集アプリでは「テーマのフォルダを選ぶ…」で自分のテーマのフォルダ（~/.egatari/themes など）を選ぶか、')
+    : env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
   return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：原稿のフォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}原稿のフォルダの themes/${name}/ に置く`;
 }
 function themeAssets(env, t, warn, depth = 0, ud = []) {

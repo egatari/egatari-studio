@@ -1,6 +1,9 @@
 // ブラウザで組む：kit/core/build-core.mjs に渡す env（読み書きの口）を、作業場所（workspace.js）と同梱の資源から作る
 //   /deck/…   作業場所：選んだフォルダか、持ち運べる 1 ファイルから取り出したメモリの上のフォルダ（一覧は ws.list、中身は読んだものを覚えておく）
 //   /repo/…   アプリに同梱した kit/ components/ themes/ katex/ fonts/（tools/build-app.mjs が集める）
+//   /user-themes/…  利用者のテーマのフォルダ（選んだときだけ。app/theme-folder.js。読むだけ）。env.themeDirs に入れるので、探す順と根の決まりは
+//             コマンドと同じ（原稿のフォルダ → その themes/ → ここ → 同梱の themes/。kit/core/build-core.mjs の resolveTheme）。持ち運べる 1 ファイルに
+//             書き出すと、ここのテーマは原稿の themes/<名前>/ に入る（kit/core/portable.mjs）。一覧は組み立てごとに読み直す
 // build は同期で動くので、まだ読んでいないファイルは「足りない」と記録して空を返し、読んでから組み直す。
 // 作業場所から読むのは、組み立てが実際に参照したファイルだけ（一覧のほかのファイルは読まない）。同時に読むのは READ_CONCURRENCY まで、
 // 組み立て 1 回に読む大きさの合計は上限（BUILD_LIMITS.readChars）まで（読む前に一覧の大きさで数えて取っておき、1 つの読み取りはその大きさまで）。opts.signal が止まれば
@@ -12,7 +15,7 @@ import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError, FileC
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
 import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
 
-export const DECK = '/deck', ROOT = '/repo';
+export const DECK = '/deck', ROOT = '/repo', USER_THEMES = '/user-themes';
 
 export function bytesToBase64(bytes) {
   let s = '';
@@ -39,6 +42,22 @@ export function createEngine(res, loadLazy) {
   }
   let ws = null, listing = { files: new Map(), dirs: new Set() };
   const cache = new Map();       // rel → {sig, bytes}
+  // 利用者のテーマのフォルダ（themeFolderWorkspace か Worker の代わり。list・readBytes だけ）とその一覧・読んだ中身
+  const EMPTY = () => ({ files: new Map(), dirs: new Set() });
+  let tws = null, tlisting = EMPTY();
+  const tcache = new Map();      // rel → {sig, bytes}
+  const inThemes = (p) => p === USER_THEMES || p.startsWith(USER_THEMES + '/');
+  const relT = (p) => P.relative(USER_THEMES, p);
+  // 組み立ての前に一覧を読み直す（読めなければ（許可が切れた・消えた）、ないものとして組む：テーマが見つからない知らせになる）
+  async function refreshThemes() {
+    if (!tws) { tlisting = EMPTY(); return; }
+    const w = tws;
+    let L;
+    try { L = await w.list(); } catch { L = EMPTY(); }
+    if (tws !== w) return;
+    tlisting = L;
+    for (const rel of [...tcache.keys()]) if (!L.files.has(rel)) tcache.delete(rel);
+  }
   const sig = (f) => f.m + ':' + f.s;
   const relOf = (p) => P.relative(DECK, p);
   const inDeck = (p) => p === DECK || p.startsWith(DECK + '/');
@@ -57,18 +76,31 @@ export function createEngine(res, loadLazy) {
       missing.add(p);
       return null;
     }
+    function themeBytes(p, max = Infinity) {
+      const rel = relT(p), f = tlisting.files.get(rel);
+      if (!f) throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
+      const c = tcache.get(rel);
+      if (c && c.sig === sig(f)) { if (c.bytes.length > max) throw new ReadOverError(c.bytes.length, max); return c.bytes; }
+      missing.add(p);
+      return null;
+    }
     return {
       path: P, KIT: ROOT + '/kit', ROOT, katexDir: ROOT + '/katex', katex, version: res.version || '',
       fontDir: (pkg) => ROOT + '/fonts/' + pkg,
+      // 編集アプリ：テーマが見つからない知らせの言葉（kit/core/build-core.mjs）。themeDirs：選んだテーマのフォルダ（なければ空）
+      app: true,
+      get themeDirs() { return tws ? [USER_THEMES] : []; },
       exists(p) {
         p = P.resolve(p);
         if (inDeck(p)) { const r = relOf(p), L = getL(); return p === DECK || L.files.has(r) || L.dirs.has(r); }
+        if (inThemes(p)) { if (!tws) return false; const r = relT(p); return p === USER_THEMES || tlisting.files.has(r) || tlisting.dirs.has(r); }
         if (inRepo(p)) return p === ROOT || p in res.text || p in res.b64 || lazySet.has(p) || repoDirs.has(p);
         return false;
       },
       isFile(p) {
         p = P.resolve(p);
         if (inDeck(p)) return getL().files.has(relOf(p));
+        if (inThemes(p)) return !!tws && tlisting.files.has(relT(p));
         return p in res.text || p in res.b64 || lazySet.has(p);
       },
       readText(p, max) { return this.readTextBytes(p, max).text; },
@@ -76,6 +108,7 @@ export function createEngine(res, loadLazy) {
       readTextBytes(p, max) {
         p = P.resolve(p);
         if (inDeck(p)) { const b = deckBytes(p, max); return b ? { text: dec.decode(b), bytes: b.length } : { text: '', bytes: 0 }; }
+        if (inThemes(p)) { const b = themeBytes(p, max); return b ? { text: dec.decode(b), bytes: b.length } : { text: '', bytes: 0 }; }
         if (p in res.text) return { text: res.text[p], bytes: utf8Size(p) };
         if (p in res.b64) { const t = base64ToText(res.b64[p]); return { text: t, bytes: Math.floor(res.b64[p].length / 4) * 3 }; }
         throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
@@ -83,6 +116,7 @@ export function createEngine(res, loadLazy) {
       readBase64(p, max) {
         p = P.resolve(p);
         if (inDeck(p)) { const b = deckBytes(p, max); return b ? bytesToBase64(b) : ''; }
+        if (inThemes(p)) { const b = themeBytes(p, max); return b ? bytesToBase64(b) : ''; }
         if (p in res.b64) return res.b64[p];
         if (p in res.text) return btoa(unescape(encodeURIComponent(res.text[p])));
         if (lazySet.has(p)) { if (lazyCache.has(p)) return lazyCache.get(p); missing.add(p); return ''; }
@@ -92,6 +126,7 @@ export function createEngine(res, loadLazy) {
       readBytes(p, max) {
         p = P.resolve(p);
         if (inDeck(p)) return deckBytes(p, max) || new Uint8Array(0);
+        if (inThemes(p)) return themeBytes(p, max) || new Uint8Array(0);
         const b = atob(this.readBase64(p)), u = new Uint8Array(b.length);
         for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
         return u;
@@ -105,6 +140,12 @@ export function createEngine(res, loadLazy) {
           const rel = relOf(p), f = getL().files.get(rel);
           if (!f) return null;
           const c = cache.get(rel);
+          return c && c.sig === sig(f) ? c.bytes.length : f.s;
+        }
+        if (inThemes(p)) {
+          const rel = relT(p), f = tlisting.files.get(rel);
+          if (!f) return null;
+          const c = tcache.get(rel);
           return c && c.sig === sig(f) ? c.bytes.length : f.s;
         }
         if (p in res.text) return utf8Size(p);   // バイト数（readBytes が返す UTF-8 の大きさ。字数ではない）
@@ -121,8 +162,7 @@ export function createEngine(res, loadLazy) {
     const list = [...miss];
     miss.clear();
     for (const p of list) {
-      if (!inDeck(p)) continue;
-      const f = L.files.get(relOf(p));
+      const f = inDeck(p) ? L.files.get(relOf(p)) : inThemes(p) ? tlisting.files.get(relT(p)) : null;
       if (!f) continue;
       tally.n += f.s;
       if (tally.n > tally.max) throw new BuildLimitError('files read from the workspace', tally.n, tally.max);
@@ -145,6 +185,17 @@ export function createEngine(res, loadLazy) {
           }
           if (bytes.length > f.s) throw new FileChangedError(rel, f.s, bytes.length);
           cache.set(rel, { sig: sig(f), bytes });
+        } else if (inThemes(p)) {
+          // 利用者のテーマのフォルダ：作業場所と同じく一覧の大きさまで（読むだけ）
+          const rel = relT(p), f = tlisting.files.get(rel), w = tws;
+          if (!f || !w) continue;
+          let bytes;
+          try { bytes = await w.readBytes(rel, { max: f.s }); } catch (e) {
+            if (e && e.code === 'read-over') throw new FileChangedError(USER_THEMES + '/' + rel, f.s, e.n);
+            throw e;
+          }
+          if (bytes.length > f.s) throw new FileChangedError(USER_THEMES + '/' + rel, f.s, bytes.length);
+          if (tws === w) tcache.set(rel, { sig: sig(f), bytes });
         } else if (lazySet.has(p)) lazyCache.set(p, await loadLazy(p));
       }
     };
@@ -175,6 +226,9 @@ export function createEngine(res, loadLazy) {
     get workspace() { return ws; },
     setListing(l) { listing = l; },
     get listing() { return listing; },
+    // 利用者のテーマのフォルダ（themeFolderWorkspace。null で使わない）
+    setThemeWorkspace(w) { if (w !== tws) { tws = w; tcache.clear(); tlisting = EMPTY(); } },
+    get themeWorkspace() { return tws; },
     // フォルダの最上位の .html（deck.html を優先）
     deckFile() {
       if (listing.files.has('deck.html')) return 'deck.html';
@@ -184,6 +238,7 @@ export function createEngine(res, loadLazy) {
     // 1 回ごとに 1 つ以上増える）。一覧のほかのファイルは読まない。組み立ての上限で断るなら（build-too-large）、読む前に断る
     async build(file, opts = {}) {
       forget(listing);
+      await refreshThemes();
       const { signal, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
@@ -201,6 +256,7 @@ export function createEngine(res, loadLazy) {
     // 書き出しが参照したもの（組み立ての依存・音声・字の分割ファイルなど）だけを読んでから作り直す。opts.carry：読み取った文書の索引
     async exportPortable(file, opts = {}) {
       const full = await ws.list({ audio: true });
+      await refreshThemes();
       const miss = new Set();
       const xenv = mkEnv(() => full, miss);
       const { signal, ...o } = opts;

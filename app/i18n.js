@@ -114,6 +114,17 @@ const ja = {
   unpackedAt: (t, n, d) => `${t} ${d} に ${n} 個のファイルを書き出しました`, unpackedToast: (n, d) => `「${d}」に ${n} 個のファイルを書き出しました。フォルダとして開けます`,
   notEmpty: (d) => `「${d}」は空ではありません。空のフォルダを選んでください`,
   portableExportedToast: '持ち運べる 1 ファイルに書き出しました。このエディタで「ファイルを開く…」から開き直せます',
+  // 利用者のテーマのフォルダ（app/theme-folder.js）
+  themeFolderItem: 'テーマのフォルダ…', themeChoose: 'テーマのフォルダを選ぶ…', themeChange: 'ほかのフォルダを選ぶ…', themeForget: 'このフォルダを忘れる', close: '閉じる',
+  themeUse: (n) => `テーマのフォルダ「${n}」を使う`,
+  themeMissing: (names, st, n) => `テーマ「${names.join('」「')}」が見つからないので default で組んでいます。` + (st === 'prompt' ? `前に選んだテーマのフォルダ「${n}」を読むには、もう一度許可が要ります` : st === 'granted' ? `選んだテーマのフォルダ「${n}」にもありません` : '自分のテーマのフォルダ（~/.egatari/themes など）を選ぶと、そこから読みます（読むだけ）'),
+  themeFolderTitle: 'テーマのフォルダ',
+  themeFolderLead: 'デッキのフォルダにないテーマ（機関のテーマなど）を、ここで選んだフォルダ（たとえば ~/.egatari/themes）から読みます。探す順はコマンドと同じで、デッキのフォルダ → その themes/ → このフォルダ → 同梱のテーマ。読むだけで、書き込みません',
+  themeFolderKeep: '選んだフォルダはこのブラウザに覚えておき（中身は覚えません）、次に使うときに読む許可を求めます。持ち運べる 1 ファイルに保存すると、使ったテーマはその中の themes/<名前>/ に入ります',
+  themeFolderNone: 'まだ選んでいません', themeFolderNow: (n, ok) => `今のフォルダ：${n}（${ok ? '読めます' : '次に使うときに読む許可を求めます'}）`,
+  themeFolderNames: (list) => (list.length ? `テーマ：${list.join(', ')}` : 'このフォルダにテーマ（<名前>/tokens.css）が見つかりません'),
+  themeChosen: (n, k) => `テーマのフォルダ「${n}」を使います（テーマ ${k} 個）`, themeForgot: 'テーマのフォルダを忘れました',
+  themeNoPermission: 'テーマのフォルダを読む許可がありません', themeEmpty: (n) => `「${n}」にテーマ（<名前>/tokens.css）が見つかりません。テーマの入ったフォルダを選んでください`,
 
   helpTitle: '使い方',
   help: [
@@ -135,6 +146,7 @@ const ja = {
     ['できないこと', ['動画の書き出し、完全な検査（npm run check）、自分の参照音声での TTS はコマンドで',
       '書き出す HTML は字を絞り込まない（fonttools がない）ので、コマンドで組んだものより大きくなります',
       'Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません）']],
+    ['テーマのフォルダ', ['デッキのテーマがデッキのフォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
   api: {
     cancelled: '別のデッキ（作業場所）を開いたので、この保存を取り消しました。何も書いていません', busySave: '保存しています。終わってからもう一度押してください',
@@ -241,6 +253,17 @@ const en = {
   unpackedAt: (t, n, d) => `${t} wrote ${n} files to ${d}`, unpackedToast: (n, d) => `Wrote ${n} files to “${d}”. You can open it as a folder.`,
   notEmpty: (d) => `“${d}” is not empty. Please choose an empty folder.`,
   portableExportedToast: 'Exported as a portable file. Reopen it here with “Open file…”.',
+  // your own theme folder (app/theme-folder.js)
+  themeFolderItem: 'Theme folder…', themeChoose: 'Choose theme folder…', themeChange: 'Choose another folder…', themeForget: 'Forget this folder', close: 'Close',
+  themeUse: (n) => `Use theme folder “${n}”`,
+  themeMissing: (names, st, n) => `Theme ${names.map((x) => `“${x}”`).join(', ')} not found, so the deck is built with default. ` + (st === 'prompt' ? `Reading the theme folder you chose before (“${n}”) needs your permission again.` : st === 'granted' ? `It is not in your theme folder “${n}” either.` : 'Choose your own theme folder (for example ~/.egatari/themes) to read themes from it (read only).'),
+  themeFolderTitle: 'Theme folder',
+  themeFolderLead: 'Themes that are not in the deck folder (an institution’s theme, for example) are read from the folder you choose here (for example ~/.egatari/themes). The search order is the same as on the command line: the deck folder, its themes/, this folder, the bundled themes. The editor only reads it and never writes there.',
+  themeFolderKeep: 'This browser remembers the folder (not its contents) and asks for permission to read it the next time it is needed. When you save a portable file, the theme it uses goes into the file as themes/<name>/.',
+  themeFolderNone: 'No folder chosen yet', themeFolderNow: (n, ok) => `Current folder: ${n} (${ok ? 'readable' : 'asks for permission when next needed'})`,
+  themeFolderNames: (list) => (list.length ? `Themes: ${list.join(', ')}` : 'No theme (<name>/tokens.css) in this folder'),
+  themeChosen: (n, k) => `Using theme folder “${n}” (${k} theme${k === 1 ? '' : 's'})`, themeForgot: 'Theme folder forgotten',
+  themeNoPermission: 'No permission to read the theme folder', themeEmpty: (n) => `No theme (<name>/tokens.css) in “${n}”. Choose a folder that contains themes.`,
 
   helpTitle: 'Help',
   help: [
@@ -262,6 +285,7 @@ const en = {
     ['Not here', ['Video export, the full check (npm run check) and TTS with your own reference voices stay on the command line.',
       'Exported HTML is not font-subset (no fonttools in the browser), so it is larger than a command-line build.',
       'Chrome / Edge only (Safari and Firefox cannot open folders).']],
+    ['Theme folder', ['When the deck’s theme is neither in the deck folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
   api: {
     cancelled: 'Another deck (workspace) was opened, so this save was cancelled. Nothing was written.', busySave: 'Saving. Press again when it has finished.',

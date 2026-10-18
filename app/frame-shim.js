@@ -89,7 +89,7 @@ function quickCheck(){
         while ((n = tw.nextNode())) {
           if (!n.textContent.trim()) continue;
           var e = n.parentElement;
-          if (e.closest("svg") || e.closest(".katex") || e.closest(".cite") || e.closest(".pn") || e.closest(".figcap")) continue;
+          if (e.closest("svg") || e.closest(".katex") || e.closest(".cite") || e.closest(".pn") || e.closest(".figcap") || e.closest("rt")) continue; // ルビ（rt）は本文の半分の大きさが決まり（kit/check.mjs と同じ）
           var f = parseFloat(getComputedStyle(e).fontSize), lim2 = e.closest("table,.plot") ? 23.9 : 26.6;
           if (f < lim2) { add(i, "error", "smallText", f + "px「" + n.textContent.trim().slice(0, 12) + "」"); break; }
         }

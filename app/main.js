@@ -24,6 +24,7 @@ import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
+import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
@@ -199,7 +200,10 @@ function showNotice() {
   if (P && P.sourceOnly && !P.handle) lines.push(['notice-source-only', T.sourceOnlyNotice]);
   const n = $('notice'); n.innerHTML = '';
   for (const [id, text] of lines) n.append(el('p', { id, text }));
-  n.hidden = !lines.length;
+  // 見つからないテーマ（組み立ての知らせ）：テーマのフォルダを選ぶ・前に選んだものを読む許可を求める
+  const missing = missingThemes(S.warn);
+  if (missing.length && S.ws) n.append(el('p', { id: 'notice-theme', text: T.themeMissing(missing, TF.handle ? TF.state : 'none', TF.handle ? TF.handle.name : '') + ' ' }, themeButtons()));
+  n.hidden = !n.childNodes.length;
 }
 function signature(listing) {
   return [...listing.files].filter(([rel]) => rel !== 'comments.json').map(([rel, f]) => rel + ':' + f.m + ':' + f.s).sort().join('\n');
@@ -299,6 +303,89 @@ function showWarn() {
   const b = $('b-warn');
   b.hidden = !S.warn.length;
   b.textContent = T.warnings(S.warn.length);
+  showNotice();
+}
+
+// ---------------------------------------------------------------- 利用者のテーマのフォルダ（app/theme-folder.js。読むだけ）
+// TF.handle：選んだフォルダ（IndexedDB に残したもの）。TF.state：'granted'（組み立てに渡している）| 'prompt'（次に使うときに許可を求める）| 'denied'
+const TF = { handle: null, state: 'none' };
+const THEME_MISSING = /^theme not found: "([^"]+)"/;
+const missingThemes = (warn) => [...new Set((warn || []).map((w) => (THEME_MISSING.exec(w) || [])[1]).filter(Boolean))];
+// 知らせのボタン：前に選んだフォルダがあって許可がまだなら「「名前」を使う」と「ほかのフォルダを選ぶ…」、なければ「テーマのフォルダを選ぶ…」
+function themeButtons() {
+  if (!SUPPORTED) return [];
+  if (TF.handle && TF.state !== 'granted') return [
+    el('button', { type: 'button', id: 'b-theme-allow', cls: 'pri', text: T.themeUse(TF.handle.name), onclick: () => allowThemeFolder() }), ' ',
+    el('button', { type: 'button', id: 'b-theme-choose', text: T.themeChange, onclick: () => chooseThemeFolder() })];
+  return [el('button', { type: 'button', id: 'b-theme-choose', cls: TF.handle ? '' : 'pri', text: TF.handle ? T.themeChange : T.themeChoose, onclick: () => chooseThemeFolder() })];
+}
+// 組み立てに渡す（null で使わない）。開いているデッキがあれば組み直す
+async function useThemeFolder(h, again = true) {
+  const w = h ? themeFolderWorkspace(h) : null;
+  engine.setThemeWorkspace(w); builder.setThemes(w);
+  if (h) TF.state = 'granted'; else if (!TF.handle) TF.state = 'none';
+  showThemeState();
+  if (again && S.ws) await rebuild('themes');
+}
+async function chooseThemeFolder() {
+  if (!SUPPORTED) { toast(T.unsupported, true); return false; }
+  let h;
+  try { h = await ((window.__APP_TEST && window.__APP_TEST.themePicker) || ((o) => window.showDirectoryPicker(o)))({ id: 'egatari-themes', mode: 'read' }); }
+  catch (e) { if (e && e.name !== 'AbortError') toast(String(e.message || e), true); return false; }
+  if (!h || h.kind !== 'directory') return false;
+  if ((await permissionOf(h)) !== 'granted' && !(await requestRead(h))) { toast(T.themeNoPermission, true); return false; }
+  let names = [];
+  try { names = await themeNames(h); } catch { /* 読めない */ }
+  if (!names.length) { toast(T.themeEmpty(h.name), true); return false; }
+  TF.handle = h; TF.state = 'granted';
+  await saveThemeFolder(h);
+  toast(T.themeChosen(h.name, names.length));
+  await useThemeFolder(h);
+  return true;
+}
+// 前に選んだフォルダ：読む許可をもう一度求める（人の操作の中で）
+async function allowThemeFolder() {
+  if (!TF.handle) return chooseThemeFolder();
+  if (!(await requestRead(TF.handle))) { TF.state = await permissionOf(TF.handle); toast(T.themeNoPermission, true); showNotice(); return false; }
+  TF.state = 'granted';
+  await useThemeFolder(TF.handle);
+  return true;
+}
+async function forgetTheme() {
+  await forgetThemeFolder();
+  TF.handle = null; TF.state = 'none';
+  toast(T.themeForgot);
+  await useThemeFolder(null);
+}
+function showThemeState() {
+  const st = $('w-themes-state');
+  if (st) st.textContent = TF.handle ? T.themeFolderNow(TF.handle.name, TF.state === 'granted') : '';
+  if (!$('welcome').hidden || !S.ws) return;
+  showNotice();
+}
+// 設定の窓（「開く ▾」の「テーマのフォルダ…」・はじめの画面）：今のフォルダとテーマの名前、替える・忘れる
+async function themeDialog() {
+  let names = null;
+  if (TF.handle && TF.state === 'granted') { try { names = await themeNames(TF.handle); } catch { names = null; } }
+  const v = await ask({ title: T.themeFolderTitle, body: [
+    el('p', { text: T.themeFolderLead }),
+    el('p', { id: 'theme-now', cls: 'note', text: TF.handle ? T.themeFolderNow(TF.handle.name, TF.state === 'granted') : T.themeFolderNone }),
+    names ? el('p', { id: 'theme-names', cls: 'hint', text: T.themeFolderNames(names) }) : null,
+    el('p', { cls: 'hint', text: T.themeFolderKeep })],
+  buttons: [...(TF.handle ? [{ id: 'forget', label: T.themeForget }] : []),
+    ...(TF.handle && TF.state !== 'granted' ? [{ id: 'allow', label: T.themeUse(TF.handle.name) }] : []),
+    ...(SUPPORTED ? [{ id: 'choose', label: TF.handle ? T.themeChange : T.themeChoose }] : []),
+    { id: 'close', label: T.close, pri: true }] });
+  if (v === 'forget') await forgetTheme();
+  else if (v === 'allow') await allowThemeFolder();
+  else if (v === 'choose') await chooseThemeFolder();
+}
+// 起動時：前に選んだフォルダを IndexedDB から。許可が残っていれば（同じページの間など）すぐ使い、なければ次に使うときに求める
+async function initThemeFolder() {
+  const h = await loadThemeFolder();
+  TF.handle = h;
+  TF.state = h ? await permissionOf(h) : 'none';
+  await useThemeFolder(TF.state === 'granted' ? h : null, false);
 }
 
 // ---------------------------------------------------------------- 外での変更（Claude Code など）を見張る
@@ -447,7 +534,8 @@ async function quickCheck() {
   ]);
 }
 function showWarnings() {
-  openPanel(T.warnTitle, [el('ul', {}, S.warn.map((w) => el('li', { text: w })))]);
+  // 見つからないテーマの知らせには「テーマのフォルダを選ぶ…」（前に選んだものがあれば「使う」）
+  openPanel(T.warnTitle, [el('ul', {}, S.warn.map((w) => el('li', { text: w }, THEME_MISSING.test(w) ? [el('div', { cls: 'row theme-warn' }, themeButtons())] : [])))]);
 }
 function showHelp() {
   const h = T.help;
@@ -985,6 +1073,8 @@ for (const M of MENUS) {
 }
 document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) closeMenus(); });
 $('b-help').onclick = showHelp;
+$('b-themes').onclick = themeDialog;
+$('w-themes').onclick = themeDialog;
 const drop = $('drop');
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('over'));
@@ -1021,6 +1111,9 @@ window.__APP_TEST = {
   workerProbe: (name) => probeWorker(name),
   buildWorkerProbe: (name) => builder.probe(name),
   buildTimeout: 0,
+  themePicker: null,  // 試験：テーマのフォルダを選ぶ画面の代わり（(opts) → ハンドル）
+  themeFolder: () => ({ name: TF.handle ? TF.handle.name : null, state: TF.state, inBuild: !!engine.themeWorkspace }),
+  initThemeFolder: () => initThemeFolder(),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
   reloadPreview: () => loadFrame(),
@@ -1048,6 +1141,7 @@ langBtn.onclick = () => {
 };
 window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws.dirty) || audio.unsaved() || audio.isBusy()) { e.preventDefault(); e.returnValue = ''; } });
 (async () => {
+  await initThemeFolder().catch(() => {});
   let reopen = false;
   try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }
   if (reopen) {

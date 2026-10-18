@@ -8,11 +8,11 @@ const SKIP = new Set(['node_modules', 'out', 'audio', 'video', 'bundle', '__pyca
 const MAX_FILES = 3000, MAX_DEPTH = 10;
 
 // フォルダの中を歩く → {files: Map(rel → {h, m, s}), dirs: Set(rel)}。m = lastModified、s = size。
-// {audio: true} なら audio/ も入れる（持ち運べる 1 ファイルへの書き出しで、音声も読むため）
-export async function walk(root, { audio = false } = {}) {
+// {audio: true} なら audio/ も入れる（持ち運べる 1 ファイルへの書き出しで、音声も読むため）。maxDepth：降りるフォルダの深さ（既定 MAX_DEPTH）
+export async function walk(root, { audio = false, maxDepth = MAX_DEPTH } = {}) {
   const files = new Map(), dirs = new Set();
   async function go(dir, prefix, depth) {
-    if (depth > MAX_DEPTH) return;
+    if (depth > Math.min(maxDepth, MAX_DEPTH)) return;
     for await (const [name, h] of dir.entries()) {
       if (name.startsWith('.') || (SKIP.has(name) && !(audio && name === 'audio'))) continue;
       const rel = prefix + name;
