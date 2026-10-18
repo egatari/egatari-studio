@@ -1,3 +1,4 @@
+<!-- i18n: pair=reference.md sha256=41c3cef8bc57b260 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -36,7 +37,7 @@
 | `class="… static"` | 段階なし：全部見せる。`.concl` も別の段階にしない |
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
 | `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える |
-| section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける |
+| section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける。[スライドの鍵](#スライドの鍵) |
 | `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `data-chapter="名前"` | ここから章を始める（`sec` と同じ扱い。章の名前を指定） |
 | `data-steps="n"` | 段階の数の下限（旧形式の `data-anim` 用） |
