@@ -188,22 +188,28 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     const k = sr.width / 1280 || 1;
     const issues = [], warns = [];
     const h2 = s.querySelector('h2'), c = s.querySelector('.concl'), body = s.querySelector('.body');
+    const tate = s.classList.contains('layout-tate');
     if (h2) {
       const t = vis(h2).trim();
       if (JA && units(t) > 26) issues.push(`タイトル ${units(t)} 字（26 字まで）`);
       if (!JA && t.length > 60) warns.push(`タイトル ${t.length} 文字（英語は 60 文字まで）`);
       if (/[：:]$/.test(t)) issues.push('タイトルがコロンで終わる');
+      // 縦組み（layout-tate）の見出しは 1 列（天 48px から地 664px まで、43px の字でおよそ 14 字）。折り返さないので、収まらなければ切れる
+      if (tate && h2.scrollHeight > h2.clientHeight + 1) issues.push(`縦組みのタイトルが列に収まらない（${Math.round(h2.scrollHeight)}px > ${h2.clientHeight}px）`);
     }
     if (c) {
       const t = vis(c).trim();
       if (JA && units(t) > 35) issues.push(`結論の行 ${units(t)} 字（35 字まで）`);
       if (!JA && t.length > 70) warns.push(`結論の行 ${t.length} 文字（英語は 70 文字まで）`);
-      if (c.scrollWidth > c.clientWidth + 1) issues.push('結論の行が枠からはみ出す');
+      // 縦組み（layout-tate）の結論は縦の列なので、高さではみ出す
+      if (c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1) issues.push('結論の行が枠からはみ出す');
     }
     if (body) {
-      // 結論の行があるときは上端 571px の手前（元キットの余裕を見た値 565px）、ないときは 680px
-      const lim = s.classList.contains('noconcl') ? 680 : 565;
-      let maxB = 0, maxR = 0;
+      // 結論の行があるときは上端 571px の手前（元キットの余裕を見た値 565px）、ないときは 680px。
+      // 縦組み（layout-tate）は、地 680px・右は見出しの罫（1166px）の手前 1162px・左は結論の列（右端 120px）の外 124px（結論がなければ 44px）
+      const lim = tate || s.classList.contains('noconcl') ? 680 : 565;
+      const limR = tate ? 1162 : 1236, limL = tate ? (c ? 124 : 44) : -Infinity;
+      let maxB = 0, maxR = 0, minL = Infinity;
       body.querySelectorAll('*').forEach((el) => {
         if (el.closest('svg') && el.tagName !== 'svg') return;
         if (el.closest('.katex') && !el.classList.contains('katex')) return;
@@ -211,9 +217,11 @@ const aOut = await page.evaluate(([metaList, JA]) => {
         if (!r.width && !r.height) return;
         maxB = Math.max(maxB, (r.bottom - sr.top) / k);
         maxR = Math.max(maxR, (r.right - sr.left) / k);
+        minL = Math.min(minL, (r.left - sr.left) / k);
       });
-      if (maxB > lim) issues.push(`本文が下にはみ出す（${Math.round(maxB)}px > ${lim}、結論の行の上端は 571px）`);
-      if (maxR > 1236) issues.push(`本文が右にはみ出す（${Math.round(maxR)}px）`);
+      if (maxB > lim) issues.push(`本文が下にはみ出す（${Math.round(maxB)}px > ${lim}${tate ? '' : '、結論の行の上端は 571px'}）`);
+      if (maxR > limR) issues.push(tate ? `本文が見出しの列に重なる（${Math.round(maxR)}px > ${limR}）` : `本文が右にはみ出す（${Math.round(maxR)}px）`);
+      if (minL < limL) issues.push(c ? `本文が結論の列に重なる（${Math.round(minL)}px < ${limL}）` : `本文が左にはみ出す（${Math.round(minL)}px < ${limL}）`);
       // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
       if (!/文献/.test(h2 ? h2.textContent : '')) {
         const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);

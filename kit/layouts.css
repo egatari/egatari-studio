@@ -73,3 +73,19 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 .tcy{text-combine-upright:all}
 /* ルビ：振り仮名は 0.5em（検査器は rt の字の大きさを数えない）。縦書きでは右に付く */
 rt{font-size:.5em;line-height:1}
+
+/* 縦組みのスライド（class="slide layout-tate"）：見出しは右端の列に縦書きで天付き、見出しの下線は列の左の縦の罫になる。
+   本文（.body）は縦書き（右から左へ列が進む）で、見出しの左に組む。結論の行は左端の縦の列。ページ番号は右下のまま（見出しの列の下）。
+   寸法：見出しの列 1166〜1232px（字 43px、罫は 1166px）、本文 148（結論がなければ 48）〜1138px・天 48px・地 664px、結論の列 48〜120px。
+   部品・図・表など（p・ul・ol・.tate などの文章の塊でないもの）は横組みのまま本文の幅いっぱいに置く（部品は自分の幅を測って描くので） */
+.slide.layout-tate h2{left:auto;right:48px;top:48px;bottom:56px;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;
+  padding:0 0 0 10px;border-bottom:0;border-left:2px solid var(--rule);overflow:hidden}
+.slide.layout-tate .body{left:148px;right:142px;top:48px;bottom:56px;writing-mode:vertical-rl;text-orientation:mixed;line-height:1.8;line-break:strict}
+.slide.layout-tate.noconcl .body{left:48px;bottom:56px}
+.slide.layout-tate .body p{margin:0 0 0 .5em}
+.slide.layout-tate .body :is(ul,ol){margin:0 0 0 8px;padding:1.2em 0 0}
+.slide.layout-tate .body li{margin:0 0 0 4px}
+.slide.layout-tate .body .sub{margin:0 0 0 8px}
+.slide.layout-tate .body > :not(p,ul,ol,.sub,.note,.arrow,.tate,.box,.thm,h3,blockquote){writing-mode:horizontal-tb;width:100%}
+.slide.layout-tate .body > .tate{height:100%;margin:0}
+.slide.layout-tate .concl{left:48px;right:auto;top:48px;bottom:56px;width:72px;height:auto;writing-mode:vertical-rl;text-orientation:mixed}

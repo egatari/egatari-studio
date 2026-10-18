@@ -41,6 +41,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 | `<section class="slide">` | 1 枚。`<h2>` に章の見出し、`<div class="body">` に本文、`<div class="concl"><span>…</span></div>` に結論の行 |
 | `class="cover"` / `class="sec"` | 表紙 / 章・付録の扉（付録は `class="sec appendix"`。以降のページ番号は「付録」） |
 | `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / 段階なし（表紙・付録）/ 箇条書きも初めから全部 |
+| `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。部品は縦書きの指定（`m-gendai tate` など）で |
 | `<p class="sub">` `<div class="big">` `<p class="note">` `<div class="thm">` `<div class="cols">` | 小見出し / 主要な式 / 補足 / 定理の枠 / 横並び |
 | `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字（旧名 `blue` `red` `gray` も使える） |
 | `\( … \)` `\[ … \]` | 数式（KaTeX でビルド時に組む）。式の一部の色は `\hlE{…}`（結論・問題）`\hlT{…}`（用語）`\hlM{…}`（既知）で付ける（`\color{#D00000}` のように色を直接書かない） |

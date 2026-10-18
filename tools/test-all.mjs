@@ -64,6 +64,8 @@ steps.push(
   ['build kokugo', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html']],
   ['build kokugo portable', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html', '--portable', '-o', path.join(tmp, 'kokugo.html')]],
   ['check kokugo', ['kit/check.mjs', 'examples/kokugo-kanbun/deck.html']],
+  // 縦組みのスライド（layout-tate）：見出しの列・本文・結論の列・ページ番号の位置と重なり、決定性、検査器、鍵と読める層
+  ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 

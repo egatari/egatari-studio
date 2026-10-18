@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4b08c95707f0289a -->
+<!-- i18n: pair=reference.ja.md sha256=27473ae488969699 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -37,6 +37,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
 | `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px |
+| `class="… layout-tate"` | fully vertical slide: the heading in a vertical column at the right edge, the body in vertical writing to its left, the conclusion as a vertical column at the left edge ([Japanese language arts](#japanese-language-arts-kokugo)) |
 | `id="…"` on a section | slide key (overrides the heading). Use when two headings are the same. See [Slide keys](#slide-keys) |
 | `data-morph` / `data-morph="key"` | morph in from the previous slide / from the slide with that key ([contract §8](contract.md#8-morphs-data-morph)) |
 | `data-chapter="name"` | start a chapter here with this name (like a `sec` slide) |
@@ -188,6 +189,7 @@ Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors 
 For 国語 lessons (kanbun, classical and modern Japanese). The example is [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) (theme `kokugo`).
 
 - **Vertical writing**: `<div class="tate">…</div>` inside `.body` sets the text in `writing-mode: vertical-rl`, filling the height of the body, columns from right to left (paragraphs are separated to the left; `p.indent` indents the first line). `.tcy` sets two-digit numbers upright
+- **Vertical slides**: `<section class="slide layout-tate">` sets the whole slide vertically. The `<h2>` is one vertical column at the right edge (1166–1232px, from 48px down, top-aligned); the theme's heading rule becomes a vertical rule on the left of that column, and the column does not wrap (about 14 full-width characters; the checker reports a longer one). The `.body` (148–1138px, 48–664px; from 48px with `noconcl`) is in `writing-mode: vertical-rl`: paragraphs and lists run in columns from right to left, and a `.tate` block fills it. Components, figures and tables in it (direct children other than `p`, `ul`, `ol`, `.sub`, `.note`, `.arrow`, `.tate`, `.box`, `.thm`, `h3`, `blockquote`) stay horizontal at the full body width, since they measure their own box; use their vertical option (`m-kobun tate`, `m-gendai tate`; `m-kanbun` is always vertical). The `.concl` is a vertical column at the left edge (48–120px; about 19 characters). The page number stays at the bottom right, below the heading column. Only the CSS changes: slide keys, captions and the readable layer of a portable file take the heading text as before. Example: the 現代文 slide of [`examples/kokugo-kanbun`](../examples/kokugo-kanbun); tests: `tools/test-layout-tate.mjs`
 - **Ruby**: `<ruby>漢<rt>かん</rt></ruby>`; `rt` is 0.5em and the checker does not count its size. In vertical text the reading is on the right
 - **Mincho**: `.mincho` or `<html data-font="mincho">`, or a theme that sets `--font-sans: var(--font-mincho)` (theme `kokugo`)
 - **`m-kanbun`**: kanbun in vertical writing. One line per column; after a character: `(送り仮名)`, `[返り点]` (`レ`, `一二三四五`, `上中下`, `甲乙丙丁`, `天地人`, `一レ`, `上レ`, …; a bare `レ` also works), `{振り仮名}`, `{=かな}` (written in hiragana in the 書き下し文, e.g. `不{=ず}`), `{-}` (置き字, not read), `(右|二度目)` (再読文字, e.g. `未(ダ|ず)`), `-` (竪点), `、` `。`. Steps: 白文 → `kunten` (返り点 lower left, 送り仮名 lower right) → `order` (characters highlighted in kundoku order, an arc where the eye jumps back; `cues(k)` at the start of each column) → `kaki` (書き下し文 on the left). Rules and details: [components/kanbun/README.md](../components/kanbun/README.md)
@@ -299,8 +301,9 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | text visible at step 0 | info |
 | title > 26 full-width units (Japanese) / > 60 characters (English) | error / warn |
 | title ends with a colon | error |
-| conclusion > 35 units (Japanese) / > 70 characters (English); conclusion overflows its box | error / warn; error |
-| body below 565px (680px with `noconcl`) or right of 1236px | error |
+| `layout-tate`: the vertical title does not fit its column | error |
+| conclusion > 35 units (Japanese) / > 70 characters (English); conclusion overflows its box (also the vertical column of `layout-tate`) | error / warn; error |
+| body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one) | error |
 | body text < 27px, table/plot text < 24px, SVG text < 24px (skipped on slides whose heading contains 文献; ruby readings in `rt` are not counted) | error |
 | です・ます in the body (Japanese) | error |
 | unrendered math or KaTeX errors | error |
@@ -422,6 +425,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download the BIZ UDPGothic and BIZ UDPMincho TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/test-kokugo.mjs` | kanbun reading order and 書き下し文 on known poems, and the parsers of `m-kobun` and `m-gendai` (no browser) |
+| `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, checker rules, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
 | `node tools/catalog.mjs` | regenerate `components/CATALOG.md` |
