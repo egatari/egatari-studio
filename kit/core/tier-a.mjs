@@ -15,7 +15,7 @@
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
 //   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
 //     ごとに、その字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
-//   添付（attachments/ の下のファイルと index.attachments。§9C.3・§7.2 の「archive entries」）：足す・消す・名前を替える・役割と題（設定のファイル）。
+//   添付（attachments/ の下のファイルと index.attachments。§3.8・§7.2 の「archive entries」）：足す・消す・名前を替える・役割と題（設定のファイル）。
 //     スライドの原稿（テキストのファイル）がその添付のパスを書いていれば（組み立てが読んだかもしれない）断る（段 B へ）
 //   段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して warnings に知らせる（直しただけの段階の音声は残す。古いと分かる）
 //   どのスライドにも当たらない鍵の口述原稿は読める層に入れず、warnings に知らせる
@@ -344,7 +344,7 @@ async function run(original, filesIn, opts) {
   let cfgNew = null;
   try { const cb = NEW.get(CFG) || (own(old, CFG) ? old[CFG] : null); cfgNew = cb ? parseJsonStrict(dec.decode(cb)) : null; } catch { cfgNew = null; }
   const oldAttach = Array.isArray(ix[FORMAT.ATTACH_KEY]) ? ix[FORMAT.ATTACH_KEY] : null;
-  const aFiles = Object.keys(finalFiles).filter(isAttachPath).map((p) => ({ path: p, size: finalFiles[p].length }));
+  const aFiles = Object.keys(finalFiles).filter(isAttachPath).map((p) => ({ path: p, size: finalFiles[p].length, head: finalFiles[p].subarray(0, 64) }));   // head：音声・動画を中身で見分ける
   const aPlan = planAttachments(aFiles, cfgNew, { carry: oldAttach });
   const aDropped = aFiles.filter((f) => !aPlan.include.includes(f.path));
   if (aDropped.length) refuse('attachments', aPlan.problems.filter((x) => aDropped.some((f) => f.path === x.path)).map(problemText).join('; ') || 'attachments over the limits', aDropped.map((f) => f.path));

@@ -218,7 +218,7 @@ function build(){
   if (!FOLLOW){ buildBar(); loadAttachments(); }
 }
 
-// ---------------------------------------------------------------- 添付（format spec §9C.3）：ダウンロードだけ
+// ---------------------------------------------------------------- 添付（format spec §3.8）：ダウンロードだけ
 // 1 ファイル（.ega.html）の索引（DECK.FORMAT.indexId。data-sha256 を確かめる）の attachments を読み、キーの一覧（?）の下と帯のボタンに出す。
 // ダウンロードは塊を復号し、大きさと sha256 を確かめてから、中身によらない型（application/octet-stream）の Blob を <a download> で渡す：
 // このページでも新しいタブでも開かない（HTML・SVG・PDF も描かない・実行しない）。再生専用の派生と組んだ HTML には索引がないので出ない

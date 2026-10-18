@@ -1,4 +1,4 @@
-// 添付（format spec §9C.3。kit/core/attachments.mjs）の試験
+// 添付（format spec §3.8。kit/core/attachments.mjs）の試験
 //   node tools/test-attachments.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // 1. コマンド：attachments/ と egatari.json の役割・題 → 1 ファイル（--portable）。index.attachments・files・profile（添付の .html はコードに数えない）
 // 2. 展開して同じ（unpack の各ファイルが元の作業フォルダと同じバイト）、もう一度まとめても同じ sourceSha256 と一覧
@@ -21,7 +21,7 @@ import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable, playOnly, scanDocument } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
-import { attachmentsOf, ATTACH_LIMITS, planAttachments } from '../kit/core/attachments.mjs';
+import { attachmentsOf, attachmentIndexWarnings, sniffMedia, ATTACH_LIMITS, planAttachments } from '../kit/core/attachments.mjs';
 import { unpack } from './portable.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 
@@ -57,7 +57,7 @@ const CONF = {
   [KEY]: [
     { path: 'attachments/paper.pdf', role: 'pdf', title: 'Paper (PDF)' },
     { path: 'attachments/evil.html', role: 'supplement', title: 'Handout (HTML)' },
-    { path: 'attachments/data.csv', role: 'data', note: 'kept unknown member' },
+    { path: 'attachments/data.csv', role: 'data', title: 'Data', note: 'kept unknown member' },
   ],
 };
 const DECK = makeDeck(path.join(work, 'deck'), CONF);
@@ -71,7 +71,7 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   const html = fs.readFileSync(OUT, 'utf8');
   const p = await readPortable(html);
   const list = p.index[KEY];
-  ok(Array.isArray(list) && list.map((e) => e.path).join() === 'attachments/paper.pdf,attachments/evil.html,attachments/data.csv' && list[0].title === 'Paper (PDF)' && list[2].note === 'kept unknown member' && !('title' in list[2]),
+  ok(Array.isArray(list) && list.map((e) => e.path).join() === 'attachments/paper.pdf,attachments/evil.html,attachments/data.csv' && list[0].title === 'Paper (PDF)' && list[2].note === 'kept unknown member' && list[2].title === 'Data',
     'cli: index.attachments lists the entries with a role, in the order of egatari.json, with title and unknown members: ' + JSON.stringify(list));
   ok(['attachments/paper.pdf', 'attachments/evil.html', 'attachments/data.csv', 'attachments/code/run.py'].every((f) => f in p.files) && Buffer.from(p.files['attachments/paper.pdf']).equals(PDF), 'cli: every attachment is in files, bytes unchanged');
   ok(p.index.profile === 'core' && !p.index.requires.some((f) => /article/.test(f)), `cli: an .html attachment is not code (profile ${p.index.profile}); attachments are ignorable, so nothing is added to requires (${p.index.requires})`);
@@ -111,7 +111,39 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   ok(Object.keys(r2.files).filter((f) => f.startsWith('attachments/')).length === 3 && r2.warnings.some((w) => /together, over the limit of 3100/.test(w)), 'limits: attachments over the total limit are left out (in order) and reported');
   const r3 = await buildPortable(DECK, { out: path.join(work, 'l3.html'), attachLimits: { count: 2 } });
   ok(Object.keys(r3.files).filter((f) => f.startsWith('attachments/')).length === 2 && r3.warnings.some((w) => /more than 2 attachments/.test(w)), 'limits: more than the maximum number is reported');
-  ok(ATTACH_LIMITS.fileBytes === 20 * 1048576 && ATTACH_LIMITS.totalBytes === 50 * 1048576 && ATTACH_LIMITS.count === 100, 'limits: defaults 20 MiB each, 50 MiB together, 100 files');
+  ok(ATTACH_LIMITS.fileBytes === 10 * 1048576 && ATTACH_LIMITS.totalBytes === 20 * 1048576 && ATTACH_LIMITS.count === 100, 'limits: defaults 10 MiB each, 20 MiB together, 100 files (spec §3.8 draft)');
+  // 題は要る：役割があっても題のないものは入れるが一覧に出さない（知らせる）
+  {
+    const d = path.join(work, 'deck-notitle');
+    const dk = makeDeck(d, { ...CONF, [KEY]: [CONF[KEY][0], { path: 'attachments/data.csv', role: 'data' }, { path: 'attachments/code/run.py', role: 'code', title: '  ' }] });
+    const r = await buildPortable(dk, { out: path.join(work, 'nt.html') });
+    ok(r.index[KEY].map((e) => e.path).join() === 'attachments/paper.pdf' && 'attachments/data.csv' in r.files && 'attachments/code/run.py' in r.files && r.warnings.some((w) => /data\.csv" has no title/.test(w)) && r.warnings.some((w) => /run\.py" has no title/.test(w)),
+      'title: an attachment with a role but no (or a blank) title is packed but not listed, with a warning');
+    const ix = { [KEY]: [{ path: 'attachments/a.pdf', role: 'pdf' }, { path: 'attachments/b.pdf', role: 'pdf', title: 'B' }], files: { 'attachments/a.pdf': 'x', 'attachments/b.pdf': 'y' }, blobs: { x: { bytes: 1, sha256: '0' }, y: { bytes: 1, sha256: '0' } } };
+    ok(attachmentsOf(ix).map((e) => e.path).join() === 'attachments/b.pdf' && attachmentIndexWarnings(ix).some((w) => /no title \(required\)/.test(w)), 'title: a reader does not offer an index entry without a title (warns)');
+  }
+  // 音声と動画：拡張子でも中身でも入れない（知らせる）。似た先頭の画像・文字（WebP・HEIF・UTF-16 の BOM・PNG・PDF）は見逃す
+  {
+    const d = path.join(work, 'deck-media');
+    const dk = makeDeck(d, CONF);
+    const A = path.join(d, 'attachments');
+    fs.writeFileSync(path.join(A, 'song.mp3'), Buffer.from('ID3\x03\x00\x00\x00\x00\x00\x00'));
+    fs.writeFileSync(path.join(A, 'clip.MOV'), Buffer.alloc(32));
+    fs.writeFileSync(path.join(A, 'hidden-audio.bin'), Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]));
+    fs.writeFileSync(path.join(A, 'movie.dat'), Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(20)]));
+    const r = await buildPortable(dk, { out: path.join(work, 'media.html') });
+    ok(!['song.mp3', 'clip.MOV', 'hidden-audio.bin', 'movie.dat'].some((f) => 'attachments/' + f in r.files) && r.warnings.some((w) => /song\.mp3" is audio \(by its name\)/.test(w)) && r.warnings.some((w) => /clip\.MOV" is a video \(by its name\)/.test(w)) && r.warnings.some((w) => /hidden-audio\.bin" is audio \(by its content\)/.test(w)) && r.warnings.some((w) => /movie\.dat" is a video \(by its content\)/.test(w)) && 'attachments/paper.pdf' in r.files,
+      'media: audio and video files are left out by name and by content, with a warning: ' + r.warnings.filter((w) => /audio|video/.test(w)).join(' | '));
+    const B = (...x) => new Uint8Array(x.flatMap((v) => (typeof v === 'string' ? [...v].map((c) => c.charCodeAt(0)) : [v])));
+    const yes = { mp3frame: B(0xff, 0xfb, 0x90, 0x44), adts: B(0xff, 0xf1, 0x50, 0x80), ogg: B('OggS', 0, 2), opus: B('OggS', 0, 2, ...new Array(20).fill(0), 'OpusHead'), flac: B('fLaC', 0), webm: B(0x1a, 0x45, 0xdf, 0xa3, 0), m4a: B(0, 0, 0, 0x20, 'ftypM4A ', 0), mov: B(0, 0, 0, 0x14, 'ftypqt  ', 0), mdat: B(0, 0, 0, 8, 'mdat'), aiff: B('FORM', 0, 0, 0, 0, 'AIFF') };
+    const no = { webp: B('RIFF', 0, 0, 0, 0, 'WEBPVP8 '), heic: B(0, 0, 0, 0x18, 'ftypheic', 0), avif: B(0, 0, 0, 0x1c, 'ftypavif', 0), utf16: B(0xff, 0xfe, 0x41, 0), png: B(0x89, 'PNG\r\n', 0x1a, 0x0a), pdf: B('%PDF-1.7'), jpeg: B(0xff, 0xd8, 0xff, 0xe0), csv: B('x,y\n1,2\n'), empty: B() };
+    const wrongYes = Object.entries(yes).filter(([, b]) => !sniffMedia(b)).map(([k]) => k), wrongNo = Object.entries(no).filter(([, b]) => sniffMedia(b)).map(([k]) => k);
+    ok(!wrongYes.length && !wrongNo.length, `media: sniffing finds MP3, AAC, Ogg/Opus, FLAC, WebM, M4A, MOV, AIFF and not WebP, HEIF/AVIF, UTF-16 text, PNG, PDF, JPEG, CSV (missed: ${wrongYes}; false: ${wrongNo})`);
+    const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), dk, '--json'], { encoding: 'utf8' });
+    const jc = JSON.parse(rc.stdout);
+    const mc = jc.results.filter((x) => x.code === 'attachMedia' && x.sev === 'warn').map((x) => x.data.path).sort().join();
+    ok(mc === 'attachments/clip.MOV,attachments/hidden-audio.bin,attachments/movie.dat,attachments/song.mp3', 'checker: audio and video attachments (by name and content) are warnings: ' + mc);
+  }
   const plan = planAttachments([{ path: 'attachments/.secret', size: 1 }, { path: 'attachments/a.bak', size: 1 }, { path: 'attachments/CON.txt', size: 1 }, { path: 'attachments/ok.txt', size: 1 }],
     { [KEY]: [{ path: 'attachments/../deck.html', role: 'pdf' }, { path: 'deck.html', role: 'pdf' }, { path: 'attachments/ok.txt', role: 'slides' }, { path: 'attachments/OK.txt', role: 'data' }] });
   const codes = plan.problems.map((x) => x.code + ':' + (x.path || ''));
@@ -128,14 +160,15 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
 // ---------------------------------------------------------------- 5. 検査器
 {
   const d = path.join(work, 'deck-check');
-  const deck = makeDeck(d, { ...CONF, [KEY]: [...CONF[KEY], { path: 'attachments/missing.zip', role: 'code' }, { path: 'attachments/../x', role: 'pdf' }, { path: 'attachments/code/run.py', role: 'slides' }] });
+  const deck = makeDeck(d, { ...CONF, [KEY]: [...CONF[KEY], { path: 'attachments/missing.zip', role: 'code' }, { path: 'attachments/../x', role: 'pdf' }, { path: 'attachments/code/run.py', role: 'slides' }, { path: 'attachments/notitle.txt', role: 'supplement' }] });
   fs.writeFileSync(path.join(d, 'attachments', '.hidden'), 'x');
   fs.writeFileSync(path.join(d, 'attachments', 'norole.txt'), 'x');
+  fs.writeFileSync(path.join(d, 'attachments', 'notitle.txt'), 'x');
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), deck, '--json'], { encoding: 'utf8' });
   let j = null; try { j = JSON.parse(r.stdout); } catch { /* 下で落ちる */ }
   const codes = j ? j.results.filter((x) => /^attach/.test(x.code)).map((x) => `${x.sev}:${x.code}:${x.data.path || ''}`) : [];
-  const want = ['warn:attachMissing:attachments/missing.zip', 'warn:attachBadName:attachments/../x', 'warn:attachBadRole:attachments/code/run.py', 'warn:attachExcluded:attachments/.hidden', 'warn:attachNoRole:attachments/norole.txt', 'info:attachList:'];
-  ok(!!j && want.every((w) => codes.includes(w)), 'checker: missing file, bad name, bad role, hidden file and missing role are warnings; a summary is info: ' + codes.join(' '));
+  const want = ['warn:attachNoTitle:attachments/notitle.txt', 'warn:attachMissing:attachments/missing.zip', 'warn:attachBadName:attachments/../x', 'warn:attachBadRole:attachments/code/run.py', 'warn:attachExcluded:attachments/.hidden', 'warn:attachNoRole:attachments/norole.txt', 'info:attachList:'];
+  ok(!!j && want.every((w) => codes.includes(w)), 'checker: missing file, bad name, bad role, hidden file, missing role and missing title are warnings; a summary is info: ' + codes.join(' '));
   const big = path.join(work, 'deck-big');
   const deckB = makeDeck(big, CONF);
   fs.writeFileSync(path.join(big, 'attachments', 'huge.bin'), Buffer.alloc(ATTACH_LIMITS.fileBytes + 1));
@@ -152,7 +185,7 @@ const HTML = fs.readFileSync(OUT, 'utf8');
   files.delete('attachments/evil.html');
   files.set('attachments/notes.md', enc.encode('# notes\n'));
   const conf = JSON.parse(dec.decode(files.get(CFG)));
-  conf[KEY] = [{ path: 'attachments/paper.pdf', role: 'pdf', title: 'The paper' }, { path: 'attachments/data.csv', role: 'data', note: 'kept unknown member' }, { path: 'attachments/notes.md', role: 'source' }];
+  conf[KEY] = [{ path: 'attachments/paper.pdf', role: 'pdf', title: 'The paper' }, { path: 'attachments/data.csv', role: 'data', title: 'Data', note: 'kept unknown member' }, { path: 'attachments/notes.md', role: 'source', title: 'Notes' }];
   files.set(CFG, enc.encode(JSON.stringify(conf, null, 2) + '\n'));
   const a = await tierA(HTML, files);
   ok(a.ok, 'tier A: adding, removing and retitling attachments is a tier A edit' + (a.ok ? '' : ` (${a.code}: ${a.reason})`));
@@ -160,7 +193,7 @@ const HTML = fs.readFileSync(OUT, 'utf8');
     let diffOk = true; try { regionDiff(HTML, a.html); } catch (e) { diffOk = false; console.log('    ' + e.message); }
     ok(diffOk, 'tier A: only the index, the chunks and deck-meta.sourceSha256 change (region-aware diff)');
     const b = await readPortable(a.html);
-    ok(b.sourceMatches && !('attachments/evil.html' in b.files) && dec.decode(b.files['attachments/notes.md']) === '# notes\n' && b.index[KEY].map((e) => e.path + '=' + e.role + (e.title ? '/' + e.title : '')).join() === 'attachments/paper.pdf=pdf/The paper,attachments/data.csv=data,attachments/notes.md=source' && b.index[KEY][1].note === 'kept unknown member',
+    ok(b.sourceMatches && !('attachments/evil.html' in b.files) && dec.decode(b.files['attachments/notes.md']) === '# notes\n' && b.index[KEY].map((e) => e.path + '=' + e.role + (e.title ? '/' + e.title : '')).join() === 'attachments/paper.pdf=pdf/The paper,attachments/data.csv=data/Data,attachments/notes.md=source/Notes' && b.index[KEY][1].note === 'kept unknown member',
       'tier A: the saved file reads back with the new files and list (unknown members kept)');
   }
   // スライドの原稿が書いている添付を替えたら組み直す
@@ -175,6 +208,9 @@ const HTML = fs.readFileSync(OUT, 'utf8');
   const m3 = new Map(p2files); m3.set('attachments/big.bin', new Uint8Array(ATTACH_LIMITS.fileBytes + 1));
   const a3 = await tierA(HTML, m3);
   ok(!a3.ok && a3.code === 'attachments', 'tier A: an attachment over the limit is refused');
+  const m4 = new Map(p2files); m4.set('attachments/voice.bin', new Uint8Array([0x49, 0x44, 0x33, 3, 0, 0, 0, 0, 0, 0]));
+  const a4 = await tierA(HTML, m4);
+  ok(!a4.ok && a4.code === 'attachments' && /audio/.test(a4.reason), 'tier A: an audio attachment (by content) is refused: ' + a4.reason);
 }
 
 // ---------------------------------------------------------------- 7. 再生器
@@ -272,11 +308,32 @@ const browser = await launch();
     'editor: role and title come from egatari.json (no role: empty)');
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-attachments.png') });
   // 足す（最初の書き込みの前に権利の確認）
+  // 音声・動画は断る（拡張子なら題を尋ねる前、中身なら読んだ後・書く前）
+  await page.setInputFiles('#attach-file', { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3\x03\x00') });
+  await page.waitForTimeout(400);
+  ok(/音声/.test(await toastText()) && !(await page.$('#dlg[open]')) && !(await rowsOf()).includes('attachments/song.mp3'), 'editor: an audio file is refused by its name (before the title prompt)');
+  // 題（要る）：ファイル名から埋めておき、直せる。そのあと権利の確認
   await page.setInputFiles('#attach-file', { name: 'slides.tex', mimeType: 'text/x-tex', buffer: Buffer.from('\\documentclass{article}\n') });
-  await page.waitForSelector('#dlg[open] #dlg-ok');
+  await page.waitForSelector('#dlg[open] #attach-new-title-0');
+  const prefill = await page.inputValue('#attach-new-title-0');
+  await page.fill('#attach-new-title-0', 'Slides (TeX)');
+  await page.click('#dlg-ok');
+  await page.waitForFunction(() => document.querySelector('#dlg[open]') && !document.getElementById('attach-new-title-0'), null, { timeout: 15000 });
   await page.click('#dlg-ok');
   await waitIdle();
-  ok((await rowsOf()).includes('attachments/slides.tex') && (await page.$eval('[data-attach-role="attachments/slides.tex"]', (x) => x.value)) === 'source' && (await st()).portable.dirty, 'editor: adding a file (after the rights prompt) writes attachments/slides.tex with the role guessed as source; the file is unsaved');
+  ok(prefill === 'slides', 'editor: adding asks for a title, prefilled from the file name: ' + prefill);
+  ok((await rowsOf()).includes('attachments/slides.tex') && (await page.$eval('[data-attach-role="attachments/slides.tex"]', (x) => x.value)) === 'source' && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)' && (await st()).portable.dirty, 'editor: adding a file (after the rights prompt) writes attachments/slides.tex with the role guessed as source; the file is unsaved');
+  // 中身が音声（名前では分からない）：読んだ後、書く前に断る
+  await page.setInputFiles('#attach-file', { name: 'rec.bin', mimeType: 'application/octet-stream', buffer: Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]) });
+  await page.waitForSelector('#dlg[open] #attach-new-title-0');
+  await page.click('#dlg-ok');
+  await waitIdle();
+  ok(/音声/.test(await toastText()) && !(await rowsOf()).includes('attachments/rec.bin'), 'editor: an audio file is refused by its content');
+  // 題は消せない
+  await page.fill('[data-attach-title="attachments/slides.tex"]', '');
+  await page.press('[data-attach-title="attachments/slides.tex"]', 'Tab');
+  await waitIdle();
+  ok(/題は要ります/.test(await toastText()) && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)', 'editor: a title cannot be cleared');
   // 役割と題
   await page.selectOption('[data-attach-role="attachments/code/run.py"]', 'code');
   await waitIdle();
@@ -313,7 +370,7 @@ const browser = await launch();
   let diffOk = true; try { regionDiff(HTML, saved); } catch (e) { diffOk = false; console.log('    ' + e.message); }
   ok(diffOk, 'editor: the saved file differs from the original only in the tier A regions (region-aware diff)');
   const b = await readPortable(saved);
-  ok(b.index[KEY].map((e) => `${e.path}=${e.role}${e.title ? '/' + e.title : ''}`).join() === 'attachments/paper.pdf=pdf/Paper (PDF),attachments/table.csv=data,attachments/slides.tex=source,attachments/code/run.py=code/Script' && !('attachments/evil.html' in b.files) && b.index[KEY][1].note === 'kept unknown member',
+  ok(b.index[KEY].map((e) => `${e.path}=${e.role}${e.title ? '/' + e.title : ''}`).join() === 'attachments/paper.pdf=pdf/Paper (PDF),attachments/table.csv=data/Data,attachments/slides.tex=source/Slides (TeX),attachments/code/run.py=code/Script' && !('attachments/evil.html' in b.files) && b.index[KEY][1].note === 'kept unknown member',
     'editor: the saved index lists the new attachments (rename keeps role and unknown members): ' + JSON.stringify(b.index[KEY]));
   // 作業フォルダ（OPFS）
   const SRC = path.dirname(DECK);
@@ -331,10 +388,12 @@ const browser = await launch();
   await page.click('#b-attach');
   await page.waitForSelector('#attach-list');
   await page.setInputFiles('#attach-file', { name: 'paper.pdf', mimeType: 'application/pdf', buffer: PDF });
+  await page.waitForSelector('#dlg[open] #attach-new-title-0');
+  await page.click('#dlg-ok');
   await waitIdle();
   const fread = (rel) => page.evaluate(async (rel) => { try { const parts = rel.split('/'); const n = parts.pop(); let d = window.__fd; for (const x of parts) d = await d.getDirectoryHandle(x); return await (await (await d.getFileHandle(n)).getFile()).text(); } catch { return null; } }, rel);
   const conf1 = JSON.parse(await fread(CFG));
-  ok((await fread('attachments/paper.pdf')) !== null && conf1[KEY].some((e) => e.path === 'attachments/paper.pdf' && e.role === 'pdf') && conf1.docId === CONF.docId && conf1.metadata.license === 'CC-BY-4.0', 'editor (folder): adding writes attachments/paper.pdf and its entry into egatari.json (other members kept)');
+  ok((await fread('attachments/paper.pdf')) !== null && conf1[KEY].some((e) => e.path === 'attachments/paper.pdf' && e.role === 'pdf' && e.title === 'paper') && conf1.docId === CONF.docId && conf1.metadata.license === 'CC-BY-4.0', 'editor (folder): adding writes attachments/paper.pdf and its entry into egatari.json (other members kept)');
   await page.click('[data-attach-remove="attachments/paper.pdf"]');
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
   await page.click('#dlg-ok');

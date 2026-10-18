@@ -18,7 +18,7 @@
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
 // K. 音声が古い段階（format spec §5.4）：audio/manifest.json の記録の inputHash が今の口述原稿と違うか null（警告）。inputHash の無い
 //    記録（前の tts/synth.py）は TTS の控えの digest で比べる。音声は消さない
-// L. 添付（format spec §9C.3）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）
+// L. 添付（format spec §3.8）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
@@ -32,7 +32,7 @@ import { normalizeKey } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { MESSAGES, message, where } from './check-messages.mjs';
-import { readRegular, READ_LIMITS } from './bounded-read.mjs';
+import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 
 // ---------------------------------------------------------------- 引数
@@ -159,7 +159,7 @@ for (const w of built.stats.warn) {
   }
 }
 
-// ================================================================ L. 添付（attachments/。format spec §9C.3）
+// ================================================================ L. 添付（attachments/。format spec §3.8）
 // 1 ファイル（.ega.html）への書き出しと同じ規則（kit/core/attachments.mjs）：役割のないもの・名前の使えないもの・大きすぎるもの・ないもの
 {
   const deckDir = fs.realpathSync(path.dirname(path.resolve(src)));
@@ -172,7 +172,12 @@ for (const w of built.stats.warn) {
   try { isLink = fs.lstatSync(aDir).isSymbolicLink(); } catch { /* ない */ }
   if (isLink) report(null, 'warn', 'attachBadName', { path: FORMAT.ATTACH_DIR + '/', why: 'a symbolic link (not followed)' });
   else if (fs.existsSync(aDir)) {
-    for (const abs of listFiles(aDir)) found.push({ path: path.relative(deckDir, abs).split(path.sep).join('/'), size: fs.statSync(abs).size });
+    for (const abs of listFiles(aDir)) {
+      // 先頭の 64 バイト（音声・動画を中身で見分ける。kit/core/attachments.mjs の sniffMedia）
+      let head = null;
+      try { head = readHead(abs, 64); } catch { head = null; }
+      found.push({ path: path.relative(deckDir, abs).split(path.sep).join('/'), size: fs.statSync(abs).size, head });
+    }
     // ドットで始まる名前・リンクは一覧に入らない（書き出しも入れない）：知らせる
     const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n), st = fs.lstatSync(p), rel = path.relative(deckDir, p).split(path.sep).join('/');
       if (st.isSymbolicLink()) report(null, 'warn', 'attachBadName', { path: rel, why: 'a symbolic link (not followed)' });

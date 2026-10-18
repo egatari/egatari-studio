@@ -7,6 +7,7 @@
 //                                確かめたものと同じ（dev・ino）であることを確かめ、fd の大きさが max を超えるなら読まずに、その fd から
 //                                max バイトまでだけ読む。開いたときの大きさより多く読める（読む間に大きくなった）なら ReadOverError → Buffer
 //   readRegularText(p, {max})    同じものを UTF-8 で読む → {text, bytes}（bytes は読んだバイト数。字数ではない）
+//   readHead(p, n)               通常のファイルの先頭の n バイトだけ（形式の印を見る。添付の音声・動画）
 //   regularStat(p)               通常のファイルの stat（リンクなら指す先の）。でなければ NotRegularFileError
 //
 // max を渡さなければ READ_LIMITS.default（32 MiB）。数を渡してもよい（readRegular(p, 1000)）。限りなしは {max: Infinity} と書いたときだけ
@@ -37,6 +38,18 @@ export function readRegular(p, opts) {
     const extra = fs.readSync(fd, Buffer.alloc(1), 0, 1, null);
     if (extra > 0) throw new ReadOverError(Math.max(fst.size, got) + extra, Math.min(max, fst.size));
     return got === fst.size ? buf : buf.subarray(0, got);
+  } finally { fs.closeSync(fd); }
+}
+
+// 通常のファイルの先頭の n バイトだけ（n まで。形式の印を見る：添付の音声・動画、kit/core/attachments.mjs の sniffMedia）
+export function readHead(p, n = 64) {
+  const st = regularStat(p);
+  const fd = fs.openSync(p, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
+  try {
+    const fst = fs.fstatSync(fd);
+    if (!fst.isFile() || fst.dev !== st.dev || fst.ino !== st.ino) throw new NotRegularFileError(p);
+    const buf = Buffer.alloc(n);
+    return buf.subarray(0, fs.readSync(fd, buf, 0, n, 0));
   } finally { fs.closeSync(fd); }
 }
 

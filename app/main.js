@@ -466,7 +466,7 @@ const audio = createAudioPanel({
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
 });
-// 添付の板（app/attachments-panel.js。§9C.3）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
+// 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
   lang: EN ? 'en' : 'ja', el, ask, toast, ws: () => S.ws, generation: () => S.gen,
   openPanel: (title, body) => openPanel(title, body), isOpen: () => !$('panel').hidden && !!$('attach-panel'),

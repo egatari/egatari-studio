@@ -15,7 +15,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
-import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath } from './attachments.mjs';
+import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem } from './attachments.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -556,7 +556,7 @@ const ATTACH_KNOWN = new Set(['path', 'role', 'title']);
 //   originalNarration      carry の文書の narration.md（あれば。行から作られた拡張を、行を消したら残さないため）
 //   identity               {docId, derivedFrom}：新しい教材として保存する（新しい docId・derivedFrom。§3.6.1・§7.3）。FORMAT.CONFIG_FILE を書き直し writes に
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
-// 添付（§9C.3）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
+// 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
 export async function exportPortable(env0, srcPath, opts = {}) {
@@ -659,7 +659,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   files[CFG] = writes[CFG] ? utf8(writes[CFG]) : readBytesVia(env, ePath);
   const docId = econf.docId;
 
-  // 添付（§9C.3）：attachments/ の下の通常のファイル（リンクはたどらない）。上限（ATTACH_LIMITS）を超えるものは読まずに外して知らせる
+  // 添付（§3.8）：attachments/ の下の通常のファイル（リンクはたどらない）。上限（ATTACH_LIMITS）を超えるものは読まずに外して知らせる
   const attachList = [];
   {
     const aDir = P.join(deckDir, FORMAT.ATTACH_DIR);
@@ -687,6 +687,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const got = new Set();
     for (const p of plan.include) {
       const b = files[p] || readBytesVia(env, P.join(deckDir, ...p.split('/')));
+      // 中身が音声・動画（名前では分からないもの）：入れない
+      const media = attachMediaProblem(p, b.subarray(0, 64));
+      if (media) { warnings.push(`${LOG}: ${problemText(media)}`); continue; }
       // 一覧の後で大きくなったもの：読んだ大きさで確かめ直す
       if (b.length > L.fileBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTooLarge', path: p, n: b.length, max: L.fileBytes })}`); continue; }
       if (total + b.length > L.totalBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTotal', path: p, n: total + b.length, max: L.totalBytes })}`); continue; }
@@ -1175,7 +1178,7 @@ export async function readPortable(input, opts = {}) {
     const b = blobBytes.get(id);
     let n = 0;
     for (let i = 0, e = b.length - 1; i < e; i++) if (b[i] === 0x3c) { const c = b[i + 1] | 0x20; if ((c >= 0x61 && c <= 0x7a) || b[i + 1] === 0x2f || b[i + 1] === 0x21) n++; }
-    tags += n * paths.filter((p) => ix.files[p] === id && !isAttachPath(p)).length;   // 添付は組み立ても解析もしない（§9C.3）
+    tags += n * paths.filter((p) => ix.files[p] === id && !isAttachPath(p)).length;   // 添付は組み立ても解析もしない（§3.8）
     if (tags > L.sourceTags) fail('too-complex', `the source files contain more than ${L.sourceTags} tags`);
   }
   const files = dict();

@@ -18,7 +18,7 @@ export const FORMAT = Object.freeze({
   FILE_EXT: '.ega.html',                              // 書き出すファイルの拡張子
   PLAY_EXT: '.play.ega.html',                         // 再生専用の派生の拡張子
   CONFIG_FILE: `${NAME}.json`,                        // 作業フォルダに残す docId と metadata（と添付の一覧 ATTACH_KEY）
-  // 添付（§9C.3）：読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。組み立てには使わず、再生器はダウンロードだけ（実行しない）
+  // 添付（§3.8）：読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。組み立てには使わず、再生器はダウンロードだけ（実行しない）
   ATTACH_DIR: 'attachments',                          // 置き場所（archive path は 'attachments/…'）
   ATTACH_KEY: 'attachments',                          // index.attachments（[{path, role, title?}]）。作業フォルダでは CONFIG_FILE の同じ名前の項目
   ATTACH_ROLES: Object.freeze(['source', 'pdf', 'code', 'data', 'supplement']),
