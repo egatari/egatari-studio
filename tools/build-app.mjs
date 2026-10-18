@@ -125,15 +125,34 @@ const bundleMain = async (res) => (await esbuild.build({
 let js = await bundleMain(resources);
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
+// ロゴ（assets/logo/。MIT の対象外：NOTICE）：ファビコン（16 px は括弧なしの字、32・48 px は括弧付き。暗い画面は favicon-dark.ico）・
+// apple-touch-icon（180 px）・ウェブアプリの manifest の 192・512 px。配信版はファイルとして根に置き、1 ファイル版は data: で埋め込む
+// （manifest は file:// では使えないので入れない）。.ega.html の実行系・再生にはロゴを入れない
+const LOGO = (f) => rel('assets', 'logo', f);
+const ICON_FILES = ['favicon.ico', 'favicon-dark.ico', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
+const iconLinks = (href) => [
+  `<link rel="icon" href="${href('favicon.ico')}" sizes="16x16 32x32 48x48">`,
+  `<link rel="icon" href="${href('favicon-dark.ico')}" sizes="16x16 32x32 48x48" media="(prefers-color-scheme: dark)">`,
+  `<link rel="apple-touch-icon" href="${href('apple-touch-icon.png')}">`,
+].join('\n');
+const dataUri = (f) => `data:${f.endsWith('.png') ? 'image/png' : 'image/x-icon'};base64,` + fs.readFileSync(LOGO(f)).toString('base64');
+const MANIFEST = {
+  name: 'Egatari Studio', short_name: 'Egatari', start_url: './', scope: './', display: 'standalone',
+  background_color: '#f4f5f8', theme_color: '#ffffff',
+  icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
+};
 const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
-for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll']) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
-fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
+fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', () => iconLinks((f) => f) + '\n<link rel="manifest" href="manifest.webmanifest">')
+  .replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
+for (const f of ICON_FILES) fs.copyFileSync(LOGO(f), path.join(ED, f));
+fs.writeFileSync(path.join(ED, 'manifest.webmanifest'), JSON.stringify(MANIFEST, null, 2) + '\n');
 fs.writeFileSync(path.join(ED, '.nojekyll'), '');
 let fontBytes = 0;
 for (const [v, f] of Object.entries(lazyFiles)) {
@@ -160,6 +179,7 @@ fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="referrer" content="no-referrer">
 <title>Egatari Studio</title>
+<link rel="icon" href="../favicon.ico">
 <script>try { var u = new URL('../', location.href); u.search = location.search; u.hash = location.hash; location.replace(u.href); } catch (e) {}</script>
 <meta http-equiv="refresh" content="0; url=../">
 <link rel="canonical" href="../">
@@ -178,6 +198,7 @@ if (SINGLE) {
   for (const [v, f] of Object.entries(lazyFiles)) if (!isMincho(v)) pack[v] = fs.readFileSync(f).toString('base64');
   const jsSingle = await bundleMain(resourcesSingle);
   const one = html
+    .replace('<!--APP_ICONS-->', () => iconLinks((f) => dataUri(f)))
     .replace('<!--APP_CSS-->', () => `<style>\n${css}</style>`)
     .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
   fs.writeFileSync(path.join(OUT, 'editor.html'), one);

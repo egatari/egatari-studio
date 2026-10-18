@@ -187,7 +187,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html | deck folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   if (opts.portable) {
     if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }

@@ -24,11 +24,14 @@ import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
+import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
 const SUPPORTED = typeof window.showDirectoryPicker === 'function';
+// 約 1 秒を超える待ち（見本・ファイルを開く）にだけ、はじめの画面の上にロゴを描く（app/wait-logo.js）
+const wait = createWaitOverlay($('wait'));
 
 // ---------------------------------------------------------------- 状態
 const loadLazy = async (p) => {
@@ -111,6 +114,10 @@ function showExamples() {
   }
 }
 async function openExample(x) {
+  const end = wait.begin();
+  try { return await openExampleNow(x); } finally { end(); }
+}
+async function openExampleNow(x) {
   let bytes;
   // 大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）
   try { bytes = await fetchBounded(new URL('examples/' + encodeURIComponent(x.file), document.baseURI), { max: LIMITS.fileBytes, what: x.file }); }
@@ -173,6 +180,7 @@ function onPreviewLoad(e) {
   focusPreview();
 }
 function showDeck(label, title) {
+  wait.pause();
   $('welcome').hidden = true; $('deck').hidden = false; $('tools').hidden = false;
   $('top').classList.add('has-deck');
   for (const e of document.querySelectorAll('.only-folder')) e.hidden = !!S.portable;
@@ -230,6 +238,8 @@ async function rebuild(reason) {
       S.again = false;
       const t0 = performance.now();
       $('viewer').classList.add('busy');
+      // 組み立てが約 1 秒を超えたらロゴを描く（舞台は暗いので dark）
+      const stopWait = slowWait($('loading'), { tone: 'dark' });
       try {
         const ws0 = S.ws, g0 = S.gen;
         const listing = await S.ws.list();
@@ -278,7 +288,7 @@ async function rebuild(reason) {
         showError(S.error);
         status(T.buildFailedAt(time()));
         console.warn('[editor] build failed', e);
-      } finally { $('viewer').classList.remove('busy'); }
+      } finally { stopWait(); $('viewer').classList.remove('busy'); }
     } while (S.again);
     S.building = null;
     return failed;
@@ -451,6 +461,8 @@ const audio = createAudioPanel({
     return (await ensureRights()) ? null : T.rightsDeclined;   // 音声は段 A の場所（段 A の編集だけの文書でも直せる）
   },
   afterWrite: async () => { await rebuild('save'); updateName(); },
+  // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
+  wait: () => slowWait($('wait-badge')),
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
@@ -592,6 +604,7 @@ async function saveWithPicker(name, html, startIn, live = () => true) {
 let askPending = null;
 function ask({ title, body, buttons, confirmText = null, kind = '' }) {
   if (askPending) { const r = askPending; askPending = null; r('cancel'); }
+  wait.pause();
   return new Promise((resolve) => {
     askPending = resolve;
     const d = $('dlg');
@@ -711,6 +724,10 @@ const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-o
 // input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の出力を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
   if (!input) return false;
+  const end = wait.begin();
+  try { return await openPortableNow(input); } finally { end(); }
+}
+async function openPortableNow(input) {
   let bytes, name;
   const handle = input.handle || null;
   try {

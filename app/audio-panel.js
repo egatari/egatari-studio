@@ -9,7 +9,7 @@
 // 取り直し（take）は段階ごとにメモリの上に置き、「この音声を使う」で作業場所に書くまで（または別のデッキを開くまで）残す。
 // 持ち運べる 1 ファイルでは作業場所はメモリの上なので、「この音声を使う」の後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる
 //
-//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?()})
+//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop()})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
@@ -396,6 +396,7 @@ export function createAudioPanel(o) {
     if (!info.ok) { say(L.ttsNo + info.reason, true); return; }
     setBusy(L.processing);
     const prog = () => card && card.querySelector('#dev-audio-prog');
+    const stopWait = o.wait ? o.wait() : () => {};
     try {
       const { seg, hash } = await currentHash(key);
       if (!seg) throw new Error(L.noSeg);
@@ -428,6 +429,7 @@ export function createAudioPanel(o) {
       await addTake(key, { kind: 'tts', pcm: joined.pcm, sr: 44100, dur: joined.dur, cues: joined.cues, recipe: rc, inputHash: hash, gainDb: 0, at: Date.now() });
       busyMsg = null; if (view) draw(view);
     } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
+    finally { stopWait(); }
   }
 
   // ---------------------------------------------------------------- この音声を使う：MP3 にして audio/ と audio/manifest.json に書く

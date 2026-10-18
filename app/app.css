@@ -1,12 +1,14 @@
 :root{
   --bg:#f4f5f8; --panel:#fff; --fg:#1d2330; --muted:#5b6475; --line:#d9dde6; --accent:#2563eb; --accent-fg:#fff;
   --warn-bg:#fff7e6; --warn-fg:#7a4b00; --bad-bg:#fde8e8; --bad-fg:#9b1c1c; --stage:#2a2d33;
+  --logo-ink:#3B3F8F; --logo-sun:#A64B17;   /* ロゴの色（assets/logo/README.md：light） */
   font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","BIZ UDPGothic","Yu Gothic UI",Meiryo,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#16181d; --panel:#20232a; --fg:#e8eaf0; --muted:#a3abbb; --line:#363a44; --accent:#5b8cff; --accent-fg:#fff;
-    --warn-bg:#3b2d10; --warn-fg:#f5d38a; --bad-bg:#3a1d1d; --bad-fg:#fcc; --stage:#0f1013; color-scheme:dark; }
+    --warn-bg:#3b2d10; --warn-fg:#f5d38a; --bad-bg:#3a1d1d; --bad-fg:#fcc; --stage:#0f1013; color-scheme:dark;
+    --logo-ink:#A9AFF5; --logo-sun:#E8833A; }
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -23,8 +25,11 @@ button.warn{background:var(--warn-bg);color:var(--warn-fg);border-color:transpar
 button:disabled{opacity:.5;cursor:default}
 
 #top{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:8px;font-weight:700}
-.logo{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;font-size:12px}
+.brand{display:flex;align-items:center;gap:6px;font-weight:700}
+/* ロゴ（形・色は assets/logo/ のまま。色はテーマの明暗で light / dark を選ぶ） */
+.logo{display:block;flex:none}
+.logo .ink{stroke:var(--logo-ink)}
+.logo .sun{fill:var(--logo-sun)}
 .deckname{color:var(--muted);font-size:13px;max-width:20vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #tools{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap}
 #tools .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
@@ -35,9 +40,20 @@ main{flex:1;min-height:0;display:flex}
 #welcome .intro{max-width:720px;text-align:center}
 #welcome h1{font-size:26px;margin:0 0 6px}
 #welcome .intro p{color:var(--muted);margin:0}
-.drop{width:min(720px,100%);border:2px dashed var(--line);border-radius:14px;padding:30px 20px;text-align:center;background:var(--panel)}
+.drop{width:min(720px,100%);border:2px dashed var(--line);border-radius:14px;padding:22px 20px;text-align:center;background:var(--panel)}
 .drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
-.drop-icon{font-size:34px}
+.drop-icon{display:flex;justify-content:center;margin-bottom:4px}
+.drop .secondary{margin:12px 0 0;color:var(--muted);font-size:13px}
+.drop .secondary button{padding:3px 8px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.drop .secondary button:disabled{color:var(--muted)}
+/* 作業フォルダ・1 ファイル・再生専用・組み立てた HTML の違い（はじめの画面） */
+.kinds{padding:10px 18px}
+.kinds summary{cursor:pointer;font-weight:600;font-size:14px}
+.kinds table{border-collapse:collapse;margin-top:8px;font-size:13px;width:100%}
+.kinds th{text-align:left;white-space:nowrap;padding:5px 14px 5px 0;vertical-align:top;font-weight:600}
+.kinds td{padding:5px 0;color:var(--muted);vertical-align:top}
+.kinds tr+tr th,.kinds tr+tr td{border-top:1px solid var(--line)}
+@media (max-width:560px){ .kinds th{white-space:normal} }
 .row{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .card{width:min(720px,100%);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .card h2{font-size:16px;margin:0 0 10px}
@@ -61,8 +77,14 @@ main{flex:1;min-height:0;display:flex}
 #deck{flex:1;min-height:0;display:flex}
 #viewer{flex:1;min-width:0;position:relative;background:var(--stage)}
 #preview{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--stage)}
-#loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#ccd;display:none}
-#viewer.busy #loading{display:block}
+#loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#ccd;display:none;flex-direction:column;align-items:center;gap:10px}
+#viewer.busy #loading{display:flex}
+/* 約 1 秒を超える待ちのロゴ（app/wait-logo.js） */
+.wait-logo{display:block;width:96px;height:96px}
+#wait{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:color-mix(in srgb,var(--bg) 94%,transparent);color:var(--muted)}
+#wait[hidden]{display:none}
+#wait-badge{position:fixed;right:16px;bottom:34px;z-index:9;pointer-events:none}
+#wait-badge .wait-logo{width:56px;height:56px}
 #errbox{position:absolute;inset:0;background:rgba(20,8,8,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px}
 #errbox[hidden]{display:none}
 .errcard{max-width:900px;width:100%;background:#3a2222;color:#fdd;border:1px solid #a44;border-radius:10px;padding:20px 24px}

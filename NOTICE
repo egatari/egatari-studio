@@ -25,3 +25,11 @@ from Hugging Face (Irodori-TTS and Semantic-DACVAE: MIT; Kokoro-82M: Apache-2.0)
 not part of this repository.
 This repository contains no institutional logos. A theme added by a user (in a deck's
 themes/ or a folder in EGATARI_THEMES) is under its own terms.
+
+Egatari logo
+============
+
+The Egatari logo (assets/logo/, and the favicon, touch icon and app icons the editor app is
+built with) is not covered by the MIT license in LICENSE. You may use it unmodified to refer to
+Egatari or to software that reads or writes Egatari files (Egatari-compatible software). Do not
+alter it or use it in a way that suggests endorsement. See assets/logo/README.md.

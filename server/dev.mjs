@@ -180,7 +180,7 @@ function deckWatchDir(rel) {
   let real = null;
   try { real = fs.realpathSync(dir); } catch { /* 下で断る */ }
   if (!st.isDirectory() || st.isSymbolicLink() || real !== dir) {
-    console.warn(`  ⚠ not watching ${rel || '.'}: it is ${st.isSymbolicLink() ? 'a symbolic link' : 'not a folder inside the deck folder'} (changes there do not rebuild)`);
+    console.warn(`  ⚠ not watching ${rel || '.'}: it is ${st.isSymbolicLink() ? 'a symbolic link' : 'not a folder inside the working folder'} (changes there do not rebuild)`);
     return null;
   }
   return dir;

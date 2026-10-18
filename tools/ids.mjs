@@ -19,7 +19,7 @@ import { planIds, rewriteDeckIds, rewriteNarrationIds } from '../kit/core/slide-
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
 
-const USAGE = 'usage: npm run ids -- <deck folder | deck.html> [--dry-run]';
+const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run]';
 const KEEP_EDITS = 30;
 const fail = (msg) => { console.error(`ids: ${msg}`); process.exit(1); };
 const shown = (p) => { const r = path.relative(process.env.INIT_CWD || process.cwd(), p); return !r || r.startsWith('..') || path.isAbsolute(r) ? p : r; };

@@ -1,6 +1,6 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の持ち運べる 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
 ---
 
 # motion-slides：動きのある HTML スライドを作る
@@ -50,7 +50,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 
 - **id は書かない**（R-noids）：§3 の下の項目のとおり、書き終えてから `npm run ids`
 - **読みの指定 `{x|y}` は 1 つの記号か 1 つの用語だけ**（R-reading）：`{θ|シータ}`・`{N₀|エヌゼロ}`。`{1-η|…}` や `{θとη|…}` のように式や記号の組を 1 つの読みにしない（検査器が警告する）
-- **教材の情報**：題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（`license`（SPDX の id）・`copyright`・`creators`・`attribution`）に書く（`docs/reference.ja.md`「持ち運べる 1 ファイル」）。分からなければユーザーに聞き、作らない
+- **教材の情報**：題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（`license`（SPDX の id）・`copyright`・`creators`・`attribution`）に書く（`docs/reference.ja.md`「1 ファイル」）。分からなければユーザーに聞き、作らない
 - **学ぶ人のデータを入れない**：生徒・受講者の名前・成績・回答・顔写真・提出物などは、見本でも原稿・口述原稿・データ・コメントに入れない（要るなら架空のものにして、架空と書く）
 
 
@@ -71,7 +71,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 - 文字は既定の大きさのまま。入りきらなければ文字を縮めずにスライドを分ける
 - 記号は最初に使う所で定義する（「\(d_n\)：観測データ」）
 - スライドの id（`s-` と base32 の小文字 6 字、乱数）は**自分で書かない**。新しいスライドは `<section class="slide">`（id なし）、口述原稿の見出しは `## <見出し>`（`{#…}` なし）で書き、書き終えたら `node <repo>/tools/ids.mjs <deck>`（`npm run ids -- <deck>`）で付ける（deck.html の id と narration.md の `{#id}` を一緒に付ける。2 回目は何も変えない）。今ある id は消さない・書き換えない。見出しは全部違うものにする（id のないスライドは見出しで口述原稿と対応する）
-- 英語のデッキは `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。検査はです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は原稿のフォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
+- 英語のデッキは `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。検査はです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は作業フォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
 
 ## 4. 段階表示（説明の順）
 

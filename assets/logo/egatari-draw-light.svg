@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Egatari / stroke drawing / light</title><desc id="desc">2.5秒で太陽、え、かぎ括弧の順に一度だけ描画。動きを減らす設定では完成形。</desc>
+<style>
+.sun{animation:sun-in .30s ease-out both;transform-box:fill-box;transform-origin:center}
+.glyph{stroke-dasharray:1;animation:glyph-in 1.50s .35s ease-in-out both}
+.bracket{stroke-dasharray:1;animation:bracket-in .60s 1.90s ease-out both}
+@keyframes sun-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes glyph-in{0%{opacity:0;stroke-dashoffset:1}1%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
+@keyframes bracket-in{0%{opacity:0;stroke-dashoffset:1}1%{opacity:1}100%{opacity:1;stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.sun,.glyph,.bracket{animation:none;opacity:1;transform:none;stroke-dasharray:none;stroke-dashoffset:0}}
+</style><circle cx="112" cy="66" r="12.5" fill="#A64B17" class="sun"/><path d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke="#3B3F8F" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" class="glyph" pathLength="1" transform="translate(-1 2)"/><path d="M84 40H40V152" fill="none" stroke="#3B3F8F" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" class="bracket" pathLength="1"/><path d="M172 216H216V104" fill="none" stroke="#3B3F8F" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" class="bracket" pathLength="1"/>
+</svg>

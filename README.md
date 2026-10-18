@@ -1,4 +1,11 @@
-<!-- i18n: pair=README.ja.md sha256=9a78a9bedaa79fd0 -->
+<!-- i18n: pair=README.ja.md sha256=f5156ee281c72169 -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
+    <img src="assets/logo/egatari-light.svg" width="128" height="128" alt="Egatari logo: the hiragana え (e, picture) in Japanese corner brackets, its first stroke drawn as a sun">
+  </picture>
+</p>
+
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -7,7 +14,7 @@ English | [日本語](README.ja.md)
 
 *Egatari Studio (formerly motion-academic-slides). The npm package, the skills and the commands keep their names.*
 
-Academic slides as a single HTML file, with step-by-step reveals and animated figures that follow the order of your explanation. One source (`deck.html` + `narration.md`) gives you a live talk, a lecture view, a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
+Academic slides as one self-contained HTML file, with step-by-step reveals and animated figures that follow the order of your explanation. One source (`deck.html` + `narration.md`) gives you a live talk, a lecture view, a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
 
 ![A slide from the TMLR 2026 example](docs/images/hero.png)
 
@@ -16,7 +23,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
 - **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
 - **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch decks `m-bars`, `m-quad`, `m-market`, `m-kpi`, and for coding lectures `m-codetree` (decoding a bit string with a code tree); `m-flow` also draws money and service flows). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
-- **Links to slides**: an ordinary `<a href="#<slide id>">` (or `#<slide id>:<step>`) jumps to that slide or step and offers **Back** (button, Backspace, Alt+←, browser back); `m-menu` lays such links out as a grid of cards for a contents or choice slide. Plain anchors, no script, so a portable file stays Core. See [contract §9](docs/contract.md#9-links-to-slides)
+- **Links to slides**: an ordinary `<a href="#<slide id>">` (or `#<slide id>:<step>`) jumps to that slide or step and offers **Back** (button, Backspace, Alt+←, browser back); `m-menu` lays such links out as a grid of cards for a contents or choice slide. Plain anchors, no script, so a single file (`.ega.html`) stays Core. See [contract §9](docs/contract.md#9-links-to-slides)
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
@@ -25,7 +32,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
 - **Dev server**: edit text and narration in the browser, leave comments for Claude Code
-- **Portable file**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a deck folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#portable-file---portable)
+- **Single file (`.ega.html`)**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
 **Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
@@ -131,19 +138,26 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 
 ## Editor app (no install)
 
-The same editing as the dev server, as a web page that opens a deck folder directly. Nothing to install: no Node, no terminal. It needs **Google Chrome or Microsoft Edge on a computer** (it uses the File System Access API, which Safari and Firefox do not have).
+The same editing as the dev server, as a web page that opens a single file (`.ega.html`) or a working folder directly. Nothing to install: no Node, no terminal. A single file opens and edits in any current browser; working folders need **Google Chrome or Microsoft Edge on a computer** (the File System Access API, which Safari and Firefox do not have).
+
+| Form | What it is | Here |
+|---|---|---|
+| Working folder | A folder with `deck.html`, `narration.md`, `audio/` …; the commands and Claude Code read and write it | Edit it with “Open working folder…” (Chrome / Edge) |
+| Single file (`.ega.html`) | One HTML file that carries its source and audio (`--portable`); open it in a browser to play | Edit it with “Open single file…” (any browser) |
+| Play-only (`--play-only`) | A single file without the source | Cannot be edited (open the original single file or the working folder) |
+| Built HTML (`out/deck.html`) | The presentation output (“Export built HTML” writes this too) | Cannot be edited (open the working folder) |
 
 - **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
-- **Open a deck:** drop the deck folder (the one with `deck.html`) on the page, or press 「フォルダを開く」 / "Open folder", and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent folders are listed on the first screen.
+- **Open a single file, no folder needed:** “Open single file…” on the first screen (or dropping the file) opens a [single file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export single file” writes one. Works in any current browser (saving downloads where there is no file picker)
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
-- **Open a portable file, no folder needed:** “Open file…” (or drop the file) opens a [portable file](docs/reference.md#portable-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export portable file” writes one. Works in any current browser (saving downloads where there is no file picker)
-- **Draft with a chat AI, no Claude Code needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new portable file (scripts in a reply ask before running, like any opened file) and runs the quick check. “Copy fix request for your AI” in the quick check panel writes the problems, the rules they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
-- **Narration audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the narration changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with browser TTS (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#narration-audio-audio-panel)). In a portable file this is saved without rebuilding
+- **Open a working folder:** drop the working folder (the one with `deck.html`) on the page, or press “Open working folder…”, and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent working folders are listed on the first screen.
+- **Draft with a chat AI, no Claude Code needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quick check. “Copy fix request for your AI” in the quick check panel writes the problems, the rules they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
+- **Narration audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the narration changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with browser TTS (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#narration-audio-audio-panel)). In a single file this is saved without rebuilding
 - **Work with Claude Code:** when anything else changes the files (Claude Code, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
-- **Toolbar:** quick check, export as a single HTML file, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
+- **Toolbar:** quick check, export the built HTML, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
 
-Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the full check) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The quick check is a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository components and themes are the ones bundled when the editor was built; components and themes inside the deck folder are read from the folder.
+Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the full check) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The quick check is a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository components and themes are the ones bundled when the editor was built; components and themes inside the working folder are read from the folder.
 
 ![editor app](docs/images/editor-app.png)
 
@@ -240,7 +254,7 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-A theme can also sit next to a deck (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the deck folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). In the editor app, choose your theme folder once (**Choose theme folder…**, read only; [editor](docs/editor.md)), or put the theme in the deck's `themes/`; otherwise it builds with `default` and a warning naming the missing theme. A portable file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
+A theme can also sit next to a deck (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the working folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). In the editor app, choose your theme folder once (**Choose theme folder…**, read only; [editor](docs/editor.md)), or put the theme in the deck's `themes/`; otherwise it builds with `default` and a warning naming the missing theme. A single file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
 
 ## Examples
 
@@ -306,10 +320,11 @@ node tools/test-app.mjs                                            # editor app 
 
 ## Security
 
-A deck is code: its scripts and components run in your browser and in the headless Chrome used by the checker and renderer, and the build reads local files inside the deck folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
+A deck is code: its scripts and components run in your browser and in the headless Chrome used by the checker and renderer, and the build reads local files inside the working folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
 
 ## License
 
 - Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts and KaTeX fonts: see [NOTICE](NOTICE)
 - Fonts: BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic, [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt) for BIZ UDPMincho; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
+- Logo: the Egatari logo ([assets/logo/](assets/logo/), and the editor's favicon and app icons) is not covered by the MIT license. You may use it unmodified to refer to Egatari or to Egatari-compatible software (software that reads or writes Egatari files). See [NOTICE](NOTICE)
 - No university or other institutional logos are included (the institutional themes were removed after 0.4.0; see [CHANGELOG.md](CHANGELOG.md)). A theme you add yourself, with its logos, is under its own terms
