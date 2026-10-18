@@ -97,6 +97,17 @@ const trustedLayout = (p, frameId) => p.evaluate((fid) => {
 }, frameId);
 const loads = (p = page) => p.evaluate(() => window.__DEV_LOADS);
 async function reloaded(n, p = page) { await p.waitForFunction((n) => window.__DEV_LOADS > n, n, { timeout: 15000 }); return ready(p); }
+// 読み込み直しが止むまで待つ（Windows の fs.watch は 1 回の書き込みで変更を何度も知らせ、組み直しが 2 回続くことがある。
+// 2 回目の読み込み直しが次の evaluate の途中に来ると「Execution context was destroyed」になる）
+async function settled(n, p = page, quiet = 1000) {
+  await reloaded(n, p);
+  for (let last = await loads(p), t = Date.now(); Date.now() - t < quiet;) {
+    await p.waitForTimeout(100);
+    const now = await loads(p);
+    if (now !== last) { last = now; t = Date.now(); }
+  }
+  return ready(p);
+}
 const deckKey = async (k, p = page) => { await deckOf(p).locator('body').press(k); await p.waitForTimeout(120); };
 
 try {
@@ -627,8 +638,11 @@ try {
   await hf.evaluate(() => window.__hint('edit'));
   await hp.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
   await hp.locator('#dev-editor textarea').fill('信頼する画面で直した見出し');
+  const nSave = await loads(hp);
   await hp.click('#dev-editor button.dv-pri');
   await hp.waitForFunction(() => !document.getElementById('dev-editor'));
+  // 保存で組み直したデッキの読み込み直しが済むまで待つ（次の試験はデッキの中で evaluate する）
+  await settled(nSave, hp);
   const after = fs.readFileSync(path.join(hostileDir, 'deck.html'), 'utf8');
   ok(after.includes('信頼する画面で直した見出し') && !after.includes(PWNED + '-HINT'), 'hostile: the write happens only on Save in the shell editor');
 
