@@ -3,7 +3,7 @@
   "version": "0.3.1",
   "private": true,
   "license": "MIT",
-  "homepage": "https://github.com/egatari/egatari-studio#readme",
+  "homepage": "https://editor.egatari.org/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/egatari/egatari-studio.git"

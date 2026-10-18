@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=42363070122706b1 -->
+<!-- i18n: pair=README.ja.md sha256=cf8900f90feba18b -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -132,7 +132,7 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 
 The same editing as the dev server, as a web page that opens a deck folder directly. Nothing to install: no Node, no terminal. It needs **Google Chrome or Microsoft Edge on a computer** (it uses the File System Access API, which Safari and Firefox do not have).
 
-- **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install; until that domain is live, the same app is at <https://egatari.github.io/egatari-studio/>), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
+- **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
 - **Open a deck:** drop the deck folder (the one with `deck.html`) on the page, or press 「フォルダを開く」 / "Open folder", and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent folders are listed on the first screen.
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a portable file, no folder needed:** “Open file…” (or drop the file) opens a [portable file](docs/reference.md#portable-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export portable file” writes one. Works in any current browser (saving downloads where there is no file picker)

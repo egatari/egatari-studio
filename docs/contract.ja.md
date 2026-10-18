@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=d9d94331a9883a8b -->
+<!-- i18n: pair=contract.md sha256=57b388068f0c854e -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語

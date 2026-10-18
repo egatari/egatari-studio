@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=170a5e435236785d -->
+<!-- i18n: pair=README.md sha256=0b48453c7306cbc0 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -132,7 +132,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 開発サーバーと同じ編集を、デッキのフォルダを直接開くウェブページでできる。Node もターミナルも要らない。**パソコンの Google Chrome か Microsoft Edge** が要る（File System Access API を使う。Safari と Firefox にはない）。
 
-- **開く：** Chrome か Edge で **<https://editor.egatari.org/>** を開く（インストール不要。このドメインが使えるようになるまでは、同じアプリが <https://egatari.github.io/egatari-studio/> にある）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
+- **開く：** Chrome か Edge で **<https://editor.egatari.org/>** を開く（インストール不要）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
 - **デッキを開く：** デッキのフォルダ（`deck.html` の入ったもの）を画面に落とすか「フォルダを開く」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いたフォルダは最初の画面に並ぶ
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで Claude への指示（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **持ち運べる 1 ファイルをフォルダなしで：** 「ファイルを開く…」（またはファイルを落とす）で[持ち運べる 1 ファイル](docs/reference.ja.md#持ち運べる-1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「新しい教材として保存…」で元の教材を記録した新しい識別子の教材に、「フォルダに書き出す…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。口述原稿・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「1 ファイル（持ち運べる形）を書き出す」。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
