@@ -1,0 +1,1 @@
+{"cards": [{"label": "月報 1 本を書く時間", "value": 3.5, "digits": 1, "unit": "時間", "note": "集計・転記・文章の合計"}, {"label": "提出までの書き直し", "value": 2.4, "digits": 1, "unit": "回", "note": "上司の差し戻しによる"}, {"label": "確認を待つ日数", "value": 4, "unit": "日", "tone": "emph", "note": "提出から承認まで"}]}
