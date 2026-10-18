@@ -55,6 +55,7 @@ const ALLOW = [
   ['lab/tts-engine.mjs', 'await hit.arrayBuffer()', 'TTS の窓と試験ページ：Cache Storage に自分で入れた重み（固定の Hugging Face の版）。読んだ後に期待の大きさと比べる'],
   ['lab/tts-engine.mjs', 'await res.arrayBuffer()', 'TTS の窓と試験ページ：固定の Hugging Face の版の重み・同梱の既定の声（自分の配信元）を fetch する'],
   ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
+  ['tools/release-assets.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
 ];
 
 const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT }).toString().split('\0')

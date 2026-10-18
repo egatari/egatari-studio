@@ -7,6 +7,9 @@
 //                                              → Uint8Array
 //   readFileBoundedText(fileOrHandle, {max})   同じものを UTF-8 で読む → {text, bytes}（bytes は読んだバイト数。字数ではない）
 //
+//   fetchBounded(url, {max, what})             同じ配信元からの fetch（見本の教材）：Content-Length があれば読む前に、読みながら数えた
+//                                              バイト数も max と比べ、超えればその場で読むのをやめて ReadOverError → Uint8Array
+//
 // max を渡さなければ READ_LIMITS.default（32 MiB）。限りなしは {max: Infinity} と書いたときだけ
 import { ReadOverError, READ_LIMITS, maxOf, checkBefore, checkAfter } from '../kit/core/bounded-read-core.mjs';
 
@@ -34,4 +37,24 @@ export async function readFileBounded(fileOrHandle, opts) {
 export async function readFileBoundedText(fileOrHandle, opts) {
   const bytes = await readFileBounded(fileOrHandle, opts);
   return { text: dec.decode(bytes), bytes: bytes.byteLength };
+}
+
+export async function fetchBounded(url, opts) {
+  const max = maxOf(opts), what = opts && opts.what;
+  const r = await fetch(url, { credentials: 'same-origin', cache: 'no-cache' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const len = Number(r.headers.get('content-length'));
+  if (Number.isFinite(len) && len > 0) checkBefore(len, max, what);
+  const reader = r.body.getReader(), parts = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) { reader.cancel().catch(() => {}); checkAfter(n, max, what); }
+    parts.push(value);
+  }
+  const out = new Uint8Array(n);
+  let o = 0; for (const p of parts) { out.set(p, o); o += p.byteLength; }
+  return out;
 }

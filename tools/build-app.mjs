@@ -2,7 +2,9 @@
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 // dist/editor/index.html は、前の場所（/editor/）からの古いリンクを根へ送る（問い合わせと # はそのまま）。
 // どのパスも相対なので、サイトの根（https://editor.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
-//   node tools/build-app.mjs [--out dist] [--no-single]
+//   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
+// 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
+// その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
@@ -13,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
+import { buildExamples } from './examples-portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -20,6 +23,7 @@ const args = process.argv.slice(2);
 const oi = args.indexOf('--out');
 const OUT = path.resolve(oi >= 0 ? args[oi + 1] : path.join(ROOT, 'dist'));
 const SINGLE = !args.includes('--no-single');
+const EXAMPLES = !args.includes('--no-examples');
 const rel = (...p) => path.join(ROOT, ...p);
 
 // ---------------------------------------------------------------- 資源を集める（場所はアプリの中の仮の場所 /repo/…）
@@ -80,7 +84,10 @@ for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.re
 // 読み辞書（tts/yomi.yaml の terms と、その sha256。音声の板のブラウザの TTS が、tts/yomi.py と同じ規則で使う。kit/core/yomi.mjs）
 const yomiText = fs.readFileSync(rel('tts', 'yomi.yaml'), 'utf8');
 const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha256').update(fs.readFileSync(rel('tts', 'yomi.yaml'))).digest('hex') };
-const resources = { version, text, b64, lazy, hints, themes, components, yomi };
+// 見本の持ち運べる 1 ファイル（dist/examples/。前の組み立ての残りは消してから書く）
+fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
+const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
+const resources = { version, text, b64, lazy, hints, themes, components, yomi, examples };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 
@@ -161,6 +168,7 @@ fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
 </html>
 `);
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
+if (examples.length) console.log(`dist/examples/: ${examples.map((x) => `${x.file} ${kb(x.bytes)}`).join(', ')}`);
 console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
 // 1 ファイル版：dist/editor.html（字を全部埋め込む。明朝は入れない）
