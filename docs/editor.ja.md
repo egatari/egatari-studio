@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=f70aaddb00982a4f -->
+<!-- i18n: pair=editor.md sha256=1c74432291778fbe -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -12,7 +12,7 @@
 
 | 形 | 開き方 | 備考 |
 |---|---|---|
-| 配信 | <https://editor.egatari.org/>（このドメインが使えるようになるまでは <https://egatari.github.io/egatari-studio/>） | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む。前の場所 `…/editor/` からはここへ移る |
+| 配信 | <https://editor.egatari.org/> | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む。前の場所 `…/editor/` からはここへ移る |
 | 1 ファイル | `npm run build:app` のあと `dist/editor.html` をダブルクリック | 約 10 MB（字を全部入れてある）。Chrome・Edge なら `file://` で動く。このファイルを人に渡してもよい |
 | 自分のサーバー | `npm run build:app` のあと `dist/` を静的に配る | どこでもよい（https か `http://localhost`）。サイトの根でも、下のパスでもよい |
 
@@ -110,7 +110,7 @@
 
 ## GitHub Pages で配る
 
-`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/> でも動く。置く（deploy）のは `main` だけで、ほかのブランチで走らせると組んで artifact を上げるところまでする。Pages を設定するまでは何もしない
+`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のは `main` だけで、ほかのブランチで走らせると組んで artifact を上げるところまでする。Pages を設定するまでは何もしない
 
 1. Settings → Pages → Build and deployment → Source を **GitHub Actions** にする
 2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ push で置く手順を飛ばすので、Pages を有効にする前に失敗しない）

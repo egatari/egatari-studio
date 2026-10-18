@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=a6881007fdd39dc7 -->
+<!-- i18n: pair=editor.ja.md sha256=cd63eeb56205de7a -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -12,7 +12,7 @@ A web page that opens a deck folder directly and does what the [dev server](dev-
 
 | Form | How | Notes |
 |---|---|---|
-| Hosted | <https://editor.egatari.org/> (until that domain is live: <https://egatari.github.io/egatari-studio/>) | Published from `main` by `.github/workflows/pages.yml`. Loads only the font files a deck needs. The old address `…/editor/` redirects there |
+| Hosted | <https://editor.egatari.org/> | Published from `main` by `.github/workflows/pages.yml`. Loads only the font files a deck needs. The old address `…/editor/` redirects there |
 | One file | `npm run build:app`, then double-click `dist/editor.html` | About 10 MB: all font files are inside. Works from `file://` in Chrome and Edge; you can copy the file to anyone |
 | Your own server | `npm run build:app`, then serve `dist/` as static files | Any static host (https, or `http://localhost`), at the root or under a path |
 
@@ -110,7 +110,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 ## Publishing on GitHub Pages
 
-`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://editor.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/>. Only `main` deploys; running the workflow on another branch builds and uploads the artifact without deploying it. It does nothing until Pages is set up:
+`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://editor.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only `main` deploys; running the workflow on another branch builds and uploads the artifact without deploying it. It does nothing until Pages is set up:
 
 1. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 2. Settings → Secrets and variables → Actions → Variables: add `EDITOR_PAGES` = `true` (without it, pushes skip the deploy, so the workflow does not fail before Pages is enabled).
