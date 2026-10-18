@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=e18839e1604e95d5 -->
+<!-- i18n: pair=reference.md sha256=eb4cf75d87f64c5c -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -17,7 +17,7 @@
 | `narration.md` | build・TTS・書き出し | 段階ごとの口述原稿 |
 | `timeline.json` | build | 段階の長さの例外 |
 | `macros.tex` | build | KaTeX のマクロ（`\newcommand`、`\renewcommand`、`\def`。既定のマクロに足す） |
-| `audio/manifest.json` | build | `tts/synth.py` が書く |
+| `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（段階ごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
 | `components/<名前>/index.js` | build | デッキ専用の部品（リポジトリより先に探す） |
@@ -338,6 +338,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | 組まれていない式、KaTeX のエラー | エラー |
 | デッキの中で「、。」と「，．」が混ざる（日本語） | 警告 |
 | 口述原稿のない段階 | 警告 |
+| 古い音声：段階の音声がほかの口述原稿から作られている（`inputHash` が違うか `null`。`inputHash` がなければ TTS の控え `audio/seg_<digest>.json` で比べる）— `audio: stale` | 警告 |
 | 式を読み上げている口述原稿 | 警告 |
 | 1 ターンが 200 字 / 60 語を超える | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
@@ -406,6 +407,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--only 鍵,…` | この段階（`スライドの鍵:段階`）だけ |
 | `--dry-run` | TTS を呼ばず、推定の長さの無音（日本語 7.5 字/秒、英語 2.5 語/秒）。キャッシュは別 |
 | `--force` | 音声のキャッシュを無視する |
+| `--replace-recorded` | 録音と取り込みの音声（manifest の `kind` が `recorded`・`imported`。編集アプリの音声の板が書く）も TTS で作り直す。付けなければ残す |
 
 | `voice.json` の項目 | 意味 |
 |---|---|
@@ -413,7 +415,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `lang` | 言語（既定はデッキの HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
 | `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
 
-`audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（原稿から消えた段階は manifest から外す。wav は残す）。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスを手元で確かめない。終わったら build し直す。
+`audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（原稿から消えた段階は manifest から外す。wav は残す）。manifest の各段階には `kind: "tts"` と、その段階の口述原稿の hash `inputHash`（format spec §5.4）も書くので、後で口述原稿が変わったことを編集アプリと検査器が見分けられる。録音と取り込みの音声は残す（`--replace-recorded` を参照）。編集アプリでも、ブラウザで 1 段階ずつ録音・取り込み・作り直しができる（[編集アプリ](editor.ja.md#口述原稿の音声音声の板)）。その後処理は `tts/core.py` と同じ数を使う。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスを手元で確かめない。終わったら build し直す。
 
 ## 書き出し
 
@@ -429,7 +431,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--force` | `.render-cache.json` を無視する |
 | `--captions` | 口述原稿の字幕を映像に焼き込む（`?captions=1`）。キャッシュの鍵に入る |
 
-出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
+出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
 
 `node render/export-canon.mjs <deckdir | 組んだ.html> --render <フォルダ> --out <バンドル> [--md 名前.md] [--canon フォルダ]`
 

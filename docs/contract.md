@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=07a31fd1c806b81d -->
+<!-- i18n: pair=contract.ja.md sha256=8da0aa873ef9c54b -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -91,6 +91,7 @@ dur = override.dur
 
 - anim: the length of the step's motion (the maximum of the built-in effects and the components' `duration(k)`). Step 0 includes the slide transition (0.35 s), or 0.9 s for a morph from the previous slide (§8)
 - audio: the TTS length (`audio/manifest.json`). Defaults: lead = 0.25 s, pad_after = 0.6 s, hold for a step without audio = 1.2 s
+- Audio with `startOffset` (seconds of encoder delay, e.g. 0.025057 for the editor app's MP3; format spec §5.2) is played from that media time, which counts as time 0 of `dur` and the cue times (autoplay and `render/render.mjs` alike)
 - Write only the exceptions in `timeline.json`: `{"更新の式:2": {"pad_after": 1.0}, "更新の式:concl": {"hold": 2}}`
 - When both the component's `cues(k)` and the audio cue times (only the `{cue}` boundaries) exist and their counts match, the component's time is stretched piecewise linearly to follow the audio
 - Attention marks (§7): in a step without audio, `max(hold, marksEnd + pad_after)` is used instead of `hold`. In a step with audio the marks fall within the audio, so dur does not change. `anim` does not include the marks. The end of the motion including the marks is `motion = max(anim, marksEnd)` (video export captures frames up to this point)

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 編集アプリの「TTS で作り直す」が開く窓。モデルとライブラリだけを取りに行く（jsDelivr と Hugging Face、版は固定）。
+     編集アプリのページ（ネットワークに繋がらない）とは別のページで、受け取るのは読む文と声の名前だけ、返すのは音（PCM）だけ -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' 'unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Egatari Studio — TTS</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #fbfbfa; --fg: #1d1d1f; --muted: #6a6a70; --line: #d9d9de; --accent: #2457c5; --bad: #b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151517; --fg: #ececf0; --muted: #a0a0a8; --line: #34343a; --accent: #7aa2ff; --bad: #ff8a80; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.6 "BIZ UDPGothic", "Hiragino Sans", system-ui, sans-serif; }
+  main { padding: 16px; max-width: 520px; }
+  h1 { font-size: 1.1rem; margin: 0 0 .5rem; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .bad { color: var(--bad); font-weight: 700; }
+  pre { white-space: pre-wrap; font-size: .8rem; color: var(--muted); max-height: 200px; overflow: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Egatari Studio — TTS</h1>
+  <p id="lead" class="muted"></p>
+  <div class="bar"><div id="bar"></div></div>
+  <p id="status"></p>
+  <pre id="log"></pre>
+</main>
+<script type="module" src="./tts-helper.js"></script>
+</body>
+</html>

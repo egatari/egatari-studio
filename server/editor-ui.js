@@ -14,6 +14,9 @@
 //     store?: {get(k), set(k, v)},                 画面の状態と位置を覚える（開発サーバーの外枠は sessionStorage）
 //     warnings?: () => string[],                   編集モードの札に出す組み立ての警告
 //     markLabel?: string,                          信頼する板の印の言葉（既定は「編集中 — アプリ」／「Editing — app」）
+//     extra?: {open?(), editing?()},               ほかの信頼する欄（編集アプリの音声の板 app/audio-panel.js）：開いているか（板を出す）、
+//                                                  編集している最中か（録音している間など。プレビューを inert にする）
+//     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
 // drawerHost の中で iframe の隣）に出す。スライドの場所に重ねる欄はない。板の上には、デッキが自分の枠の外に描けない印（色の帯）を付ける。
@@ -29,6 +32,7 @@
 //   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
 //   ui.reset()  別のデッキを開いた（入力は捨てる）
 //   ui.toggleEdit(on?) / ui.toggleNarr(on?) / ui.toggleComments(on?) / ui.state()
+//   ui.side（信頼する横の板。ほかの欄はここに入れる）・ui.h（要素を作る）・ui.pos()・ui.slide(i)（{key, heading…}）・ui.refresh()（板と鍵を出し直す）
 const STR = {
   en: {
     mark: 'Editing — app', editMode: 'Edit mode', where: (n, t) => 'Slide ' + n + (t ? ': ' + t : ''), locked: 'The slides do not take clicks while this editor is open', warn: 'Warnings ', editTip: (alt) => 'Double-click to edit · ' + alt + '+click to leave a note · e to exit',
@@ -89,7 +93,7 @@ const CSS = [
   '.dev-lock{color:#7a4b00;font-size:12px;margin-top:6px}',
   '#dev-narr .dev-lock{display:none;margin:0;padding:6px 14px;background:#fff;border-top:1px solid #e3e6ee}#dev-side.dv-locked #dev-narr .dev-lock{display:block}',
   'iframe.dev-locked{opacity:.55;filter:grayscale(.3)}',
-  '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-narr{order:5}',
+  '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-audio{order:5}#dev-narr{order:6}',
   '#dev-editor{padding:12px 14px}',
   '.dev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dev-head .dv-t{font-weight:700}.dev-head .dv-m{color:#6b7385;font-size:12px;font-family:ui-monospace,Menlo,monospace}.dev-head .dv-sp{flex:1}',
   '#dev-editor textarea{width:100%;min-height:96px;max-height:50vh;padding:8px 10px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre-wrap}',
@@ -209,10 +213,11 @@ export function createEditorUI(o) {
   // 点の印：一覧の未対応のコメントのうち点のあるもの（{id, n, key, pin}）、書いている途中の指示の点（{key, pin}）、光らせる印
   let pinList = [], pending = null, flash = null;
   // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
-  const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)));
+  const extra = o.extra || {};
+  const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
   // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
   function updateSide() {
-    side.hidden = !(editOn || editor || cbox || cpanel || drawer);
+    side.hidden = !(editOn || editor || cbox || cpanel || drawer || (extra.open && extra.open()));
     const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
@@ -633,6 +638,7 @@ export function createEditorUI(o) {
       store.set('dev-pos', { i: pos.i, k: pos.k });
       if (narrOpen) narrFollow();
       drawPins();
+      if (o.onPos) o.onPos({ ...pos });
       return true;
     }
     if (m.type !== 'edit-hint') return false;
@@ -677,6 +683,7 @@ export function createEditorUI(o) {
   }
   return {
     message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast,
+    side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
       comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
   };

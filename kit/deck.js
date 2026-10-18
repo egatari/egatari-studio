@@ -715,6 +715,8 @@ function timing(i, k){
   return {key: key, audio: a || null, lead: o.lead !== undefined ? o.lead : (a ? T.lead : 0),
           pad: o.pad_after !== undefined ? o.pad_after : T.padAfter, hold: o.hold !== undefined ? o.hold : T.hold, dur: o.dur};
 }
+// 音声の符号化の遅れ（format spec §5.2 startOffset。秒、0〜1）：その時刻から鳴らし、そこを音声の 0 秒（dur と cues の 0）とみなす
+function audioOffset(a){ var x = a && a.startOffset; return typeof x === "number" && isFinite(x) && x > 0 && x <= 1 ? x : 0; }
 DECK.timeline = function(){
   var out = [], start = 0;
   slides.forEach(function(s, i){
@@ -723,7 +725,7 @@ DECK.timeline = function(){
       // 音声のない段階では、注目の演出が出そろうまで（+ pad_after）止まる
       var dur = tm.dur !== undefined ? tm.dur : Math.max(anim, tm.audio ? tm.lead + tm.audio.dur + tm.pad : Math.max(tm.hold, me ? me + tm.pad : 0));
       out.push({i: i, k: k, key: tm.key, slideKey: s._key, title: titleOf(s), anim: anim, motion: Math.max(anim, me), lead: tm.lead,
-                audio: tm.audio ? tm.audio.src : null, audioDur: tm.audio ? tm.audio.dur : 0, dur: dur, start: start,
+                audio: tm.audio ? tm.audio.src : null, audioDur: tm.audio ? tm.audio.dur : 0, audioOffset: audioOffset(tm.audio), dur: dur, start: start,
                 chapter: chapterOf(i)});
       start += dur;
     }
@@ -874,7 +876,7 @@ function capIndex(i, k, t){
   if (ch.length < 2) return -1;
   var tm = timing(i, k), a = tm.audio, tt;
   if (DECK.mode === "video"){ if (!a || !a.dur) return -1; if (t === Infinity) return ch.length - 1; tt = t - tm.lead; }
-  else if (a && a.dur && auto && audioEl && auto.tl[auto.idx] && auto.tl[auto.idx].i === i && auto.tl[auto.idx].k === k) tt = auto.playing === tm.key ? audioEl.currentTime || 0 : 0;
+  else if (a && a.dur && auto && audioEl && auto.tl[auto.idx] && auto.tl[auto.idx].i === i && auto.tl[auto.idx].k === k) tt = auto.playing === tm.key ? Math.max(0, (audioEl.currentTime || 0) - audioOffset(a)) : 0;
   else return CAP.lv && CAP.lv.i === i && CAP.lv.k === k ? Math.min(CAP.lv.j, ch.length - 1) : 0;
   var total = ch.reduce(function(n, c){ return n + c.text.length; }, 0), acc = 0, x = Math.max(0, tt) / a.dur * total;
   for (var j = 0; j < ch.length; j++){ acc += ch[j].text.length; if (x < acc) return j; }
@@ -1031,7 +1033,7 @@ function runSeg(){
       audioEl = new Audio();
       audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(cur, step, Infinity); });
     }
-    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
+    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
   }
   auto.timer = setTimeout(function(){ if (!auto) return; auto.idx++; runSeg(); }, g.dur * 1000);
 }

@@ -9,6 +9,9 @@ import { createEngine, bytesToBase64 } from './engine.js';
 import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
+import { createAudioPanel } from './audio-panel.js';
+import { createTtsClient } from './tts-client.js';
+import { loadLame } from './mp3-loader.js';
 import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
@@ -120,6 +123,7 @@ function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   engine.setWorkspace(ws);
+  audio.reset();
   ui.reset();
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
   blankPreview();
@@ -218,11 +222,13 @@ async function rebuild(reason) {
           S.warn.push(...S.portable.warnings);
           // 前の保存（段 A）の知らせ：段階ごと消した口述原稿の音声を消した・行き先のない口述原稿など
           S.warn.push(...(S.portable.saveWarnings || []));
-          const stale = await staleSteps(S.ws);
-          S.stale = stale;
-          for (const k of stale) S.warn.push(T.staleStep(k));
           updateName();
         }
+        // 音声が古い段階（フォルダも。音声の板で録り直すか TTS で作り直す）
+        const stale = await staleSteps(S.ws).catch(() => []);
+        if (S.ws !== ws0 || S.gen !== g0) continue;
+        S.stale = stale;
+        for (const k of stale) S.warn.push(T.staleStep(k));
         const changed = r.html !== S.base;
         S.base = r.html;
         S.ranges = new Set([...r.html.matchAll(/ data-src="(\d+-\d+)" data-src-h="[0-9a-f]{8}"/g)].map((m) => m[1]));
@@ -308,6 +314,29 @@ const ui = createEditorUI({
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
+  extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() },
+  onPos: () => audio.onPos(),
+});
+// 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない
+const tts = createTtsClient({
+  lang: EN ? 'en' : 'ja', test: () => window.__APP_TEST && window.__APP_TEST.tts,
+  helperUrl: () => (window.__APP_TEST && window.__APP_TEST.ttsHelper) || 'lab/tts-helper.html',
+  // 初めて TTS の窓を開く前に：何を取得するか（大きさ）と、窓に渡すもの（読む文と声の名前だけ）を見せて確かめる
+  confirm: async (label) => (await ask({ title: T.ttsTitle, body: [el('p', { id: 'tts-what', text: label }), el('p', { cls: 'hint', text: T.ttsPrivacy })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: T.ttsGo, pri: true }] })) === 'ok',
+});
+const audio = createAudioPanel({
+  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
+  loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
+  ws: () => S.ws, generation: () => S.gen,
+  deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
+  beforeOpen: () => beforeEditing('audio'),
+  beforeWrite: async () => {
+    if (!S.portable) return null;
+    if (S.portable.readOnly) return T.readOnlyNoEdit;
+    return (await ensureRights()) ? null : T.rightsDeclined;   // 音声は段 A の場所（段 A の編集だけの文書でも直せる）
+  },
+  afterWrite: async () => { await rebuild('save'); updateName(); },
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
@@ -375,6 +404,8 @@ async function quickCheck() {
   const results = await new Promise((res) => { S.checks.set(id, res); f.postMessage({ type: 'app-check', id }, '*'); setTimeout(() => { if (S.checks.has(id)) { S.checks.delete(id); res(null); } }, 20000); });
   if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
+  // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
+  for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
@@ -850,6 +881,7 @@ $('b-saveas').onclick = () => savePortable('copy');
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-comments').onclick = () => ui.toggleComments();
+$('b-audio').onclick = () => audio.toggle();
 $('b-check').onclick = quickCheck;
 $('b-export').onclick = exportHtml;
 $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };
@@ -920,6 +952,10 @@ window.__APP_TEST = {
   rebuild: () => rebuild('test'),
   reloadPreview: () => loadFrame(),
   ui: () => ui.state(),
+  audio: () => audio.state(),
+  audioPanel: audio,
+  mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
+  tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);
 
@@ -937,7 +973,7 @@ langBtn.onclick = () => {
   try { if (S.ws && !S.portable) sessionStorage.setItem('motion-editor-reopen', '1'); } catch { /* 使えない環境 */ }
   const u = new URL(location.href); u.searchParams.set('lang', to); location.href = u.href;
 };
-window.addEventListener('beforeunload', (e) => { if (S.portable && S.ws && S.ws.dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws.dirty) || audio.unsaved() || audio.isBusy()) { e.preventDefault(); e.returnValue = ''; } });
 (async () => {
   let reopen = false;
   try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }

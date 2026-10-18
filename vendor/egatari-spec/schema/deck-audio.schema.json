@@ -40,6 +40,11 @@
       "mime": {
         "type": "string",
         "pattern": "^audio/[a-z0-9.+-]+$"
+      },
+      "startOffset": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
       }
     },
     "if": {

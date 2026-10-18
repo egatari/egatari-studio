@@ -77,6 +77,12 @@ steps.push(
   ['llm guide', ['tools/make-llm-guide.mjs', '--check']],
   ['test-llm', ['tools/test-llm.mjs', path.join(tmp, 'llm')]],
 );
+// 段階の音声（編集アプリの音声の板）：後処理を tts/core.py と比べる・MP3・読み辞書・記録と古さ・段 A（ブラウザなし）と、
+// 偽のマイクと差し替えの TTS で音声の板（録音・使う・古い・作り直し・段 A の保存・TTS の窓）
+steps.push(
+  ['test-audio-core', ['tools/test-audio-core.mjs', path.join(tmp, 'audio-core')]],
+  ['test-audio', ['tools/test-audio.mjs', path.join(tmp, 'audio')]],
+);
 
 function run(name, argv) {
   return new Promise((resolve) => {
