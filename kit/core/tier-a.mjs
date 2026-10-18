@@ -451,7 +451,10 @@ async function run(original, filesIn, opts) {
       for (const { w, style } of want) {
         if (covered(c, families[key], w, style)) continue;
         const list = facesOf(key);
-        if (!list) { missing.push(c); continue; }
+        // 字のソースがないとき：元の口述原稿にもあった字で、文書の字が持たないものは、組み立てのときの字のソースにもなかった字
+        // （@fontsource の分割ファイルにない「θ」など。組み立ては口述原稿の字を持つ分割ファイルをみな埋め込む）。補えないのは前と同じなので断らない
+        // （ソースがあっても見つからずに補わない。字のソースの有無で結果を変えない）。断るのは新しい字だけ
+        if (!list) { if (!known.has(c)) missing.push(c); continue; }
         const f = source(list, w, c);
         const id = f && `${f.file}|${w}|${style}`;
         if (f && !seen.has(id)) { seen.add(id); add.push({ f: { ...f, w, style }, key }); }
@@ -549,7 +552,7 @@ async function run(original, filesIn, opts) {
     changes: {
       files: changed, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
       extensions: exChanged, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
-      supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split('/').pop()), faces: supplement.faces, chars: supplement.chars } : null,
+      supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split(/[\\/]/).pop()), faces: supplement.faces, chars: supplement.chars } : null,
       identity: !!identity, unchanged: html === original,
     },
   };

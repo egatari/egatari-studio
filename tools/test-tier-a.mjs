@@ -83,8 +83,17 @@ const segOf = (narr, key) => parseNarration(narr).find((x) => `${x.slideKey}:${x
 // ---------------------------------------------------------------- 見本の 2 つ
 const decks = {};
 const results = {};
-// 新しい字（どちらの教材の原稿にも、組み立ての字にもない漢字）
-const NEW_GLYPHS = '鬱蒼';
+// 新しい字（どちらの教材の原稿にも、組み立ての字にもない漢字）。字の出どころで「組み立ての字にない」が変わることに気をつける：
+// fonts/*.ttf があれば使った字だけに絞り込む（範囲は原稿の字だけ）が、ない（CI・新しく取ってきたリポジトリ）なら @fontsource の
+// 分割ファイルを丸ごと埋め込み、その範囲の字はみな文書にある（たとえば「鬱」は minimal が使う字と同じ分割ファイルに入る）。
+// どちらの見本の分割ファイルにも入らない字を選び、試験の前提として下（uncovered）で確かめる
+const NEW_GLYPHS = '蒼穹';
+const parseRange = (r) => r.split(',').map((x) => { const [a, b] = x.trim().replace(/^U\+/i, '').split('-').map((y) => parseInt(y, 16)); return [a, b ?? a]; });
+// 文書の BIZ UDPGothic の @font-face が範囲に持たない字（範囲のない face は原稿の字だけを持つとみなす）
+const uncovered = (html, chars) => {
+  const faces = [...html.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]).filter((b) => /font-family\s*:\s*"?BIZ UDPGothic/.test(b));
+  return [...chars].filter((ch) => !faces.some((b) => { const r = /unicode-range\s*:\s*([^;]+)/.exec(b); return r && parseRange(r[1]).some(([a, z]) => ch.codePointAt(0) >= a && ch.codePointAt(0) <= z); }));
+};
 for (const name of ['minimal', 'tmlr2026-calibration']) {
   ok(`${name}：口述原稿の 1 つの発言（新しい字の漢字）と timeline.json の pad_after を変えて段 A で保存する`, async () => {
     const d = decks[name] = await prepare(name);
@@ -92,6 +101,8 @@ for (const name of ['minimal', 'tmlr2026-calibration']) {
     const ws = workspace(r);
     const narr = getText(ws, 'narration.md');
     const segs = parseNarration(narr);
+    assert.deepEqual(uncovered(d.html, NEW_GLYPHS), [...NEW_GLYPHS], `test precondition: ${NEW_GLYPHS} must not be in the fonts the document already embeds (pick other glyphs)`);
+    assert.ok(![...NEW_GLYPHS].some((c) => narr.includes(c)), 'test precondition: the new glyphs are not in the narration');
     // 音声のある段階を 1 つ（その音声は古くなる）
     const key = Object.keys(r.audio)[1];
     assert.ok(key && segOf(narr, key), 'a step with audio');
@@ -107,6 +118,12 @@ for (const name of ['minimal', 'tmlr2026-calibration']) {
     assert.deepEqual(a.changes.timing, [tkey]);
     assert.deepEqual(a.changes.audio, [], 'audio records unchanged (the edited step becomes stale)');
     assert.ok(a.changes.supplement && [...NEW_GLYPHS].every((c) => a.changes.supplement.chars.includes(c)), `font supplement for the new glyphs: ${JSON.stringify(a.changes.supplement)}`);
+    // 知らせる字のファイルは名前だけ。Windows の Node は字のファイルを C:\...\x.woff2 で渡すので、その形の出どころでも確かめる
+    const real = new Map();
+    const winFonts = { faces: (k) => FONTS_SRC.faces(k).map((f) => { const w = 'C:\\fonts\\' + path.basename(f.file); real.set(w, f.file); return { ...f, file: w }; }), load: (f) => FONTS_SRC.load(real.get(f)) };
+    const aw = await tierA(d.html, ws, { fonts: winFonts });
+    for (const x of [a, aw]) assert.ok(x.changes.supplement.files.length && x.changes.supplement.files.every((f) => /^[\w.-]+\.woff2$/.test(f)), JSON.stringify(x.changes.supplement.files));
+    assert.equal(aw.html, a.html, 'the same document whatever the path style of the font files');
     const diff = regionDiff(d.html, a.html, { narration: [key], timing: [tkey] });
     assert.deepEqual(diff.supplements, [FORMAT.FONT_SUPPLEMENT_PREFIX + '0']);
     // 読める層と JSON
@@ -150,7 +167,7 @@ for (const name of ['minimal', 'tmlr2026-calibration']) {
     assert.deepEqual(diff.supplements, []);
     // 字のソースがなくても、要らなければ段 A はできる
     const c = await tierA(a.html, ws2);
-    assert.ok(c.ok && c.html === b.html);
+    assert.ok(c.ok && c.html === b.html, JSON.stringify({ ok: c.ok, code: c.code, reason: c.reason, same: c.html === b.html, w: c.warnings, bw: b.warnings }));
   });
   ok(`${name}：ヘッドレス Chrome（file://）で再生でき、コンソールのエラーがなく、新しい字は補いの字で出る`, async () => {
     const file = path.join(decks[name].dir, 'out', 'tier-a' + FORMAT.FILE_EXT);

@@ -541,7 +541,7 @@ try {
     await f.evaluate(() => DECK.go(1, 0, false));
     await page.click('#b-narr');
     await page.waitForSelector('#dev-narr .dev-turn textarea');
-    await page.locator('#dev-narr .dev-turn textarea').first().fill('まず、何を最小化するのかを確かめます。鬱蒼とした森で考えます。');
+    await page.locator('#dev-narr .dev-turn textarea').first().fill('まず、何を最小化するのかを確かめます。蒼穹の下で考えます。');   // 「蒼」「穹」は minimal が埋め込む字にない（fonts/*.ttf がなく @fontsource の分割ファイルを丸ごと埋め込んでも。「鬱」は入ってしまう。test-tier-a と同じ）
     n = await loads();
     await page.click('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
@@ -554,7 +554,7 @@ try {
     ok(ps0.portable.lastTier === 'A' && ps0.portable.lastTierA && ps0.portable.lastTierA.narration.join() === '何を最小化するか:0', 'tier A: saved without rebuilding (only the edited step)');
     try { regionDiff(pmin.html, aBuf.toString(), { narration: ['何を最小化するか:0'] }); ok(true, 'tier A: every byte outside the §7.2 regions is unchanged (region-aware diff)'); }
     catch (e) { ok(false, 'tier A: region-aware diff: ' + e.message.slice(0, 300)); }
-    ok(aBuf.toString().includes(`id="${FORMAT.FONT_SUPPLEMENT_PREFIX}0"`) && ps0.portable.lastTierA.supplement && ps0.portable.lastTierA.supplement.chars.includes('鬱'), 'tier A: a font supplement for the new glyphs (fetched from the app\'s own font files)');
+    ok(aBuf.toString().includes(`id="${FORMAT.FONT_SUPPLEMENT_PREFIX}0"`) && ps0.portable.lastTierA.supplement && [...'蒼穹'].every((c) => ps0.portable.lastTierA.supplement.chars.includes(c)), 'tier A: a font supplement for the new glyphs (fetched from the app\'s own font files)');
     const aRead = await readPortable(new Uint8Array(aBuf));
     ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
     ok(ps0.portable.stale.includes('何を最小化するか:0') && JSON.stringify(aRead.index.audio['何を最小化するか:0']) === JSON.stringify(pmin.index.audio['何を最小化するか:0']), 'tier A: the edited step\'s audio is kept as is and shown as stale');
