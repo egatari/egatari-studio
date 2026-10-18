@@ -221,7 +221,8 @@ const aOut = await page.evaluate(([metaList, JA]) => {
         while ((n = tw.nextNode())) {
           if (!n.textContent.trim()) continue;
           const e = n.parentElement;
-          if (e.closest('svg') || e.closest('.katex') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap')) continue;
+          // ルビ（rt）の振り仮名は本文の半分の大きさが決まり（docs/reference.md「Japanese language arts」）
+          if (e.closest('svg') || e.closest('.katex') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
           const f = parseFloat(getComputedStyle(e).fontSize);
           const lim2 = e.closest('table,.plot') ? 23.9 : 26.6;
           if (f < lim2) { issues.push(`文字が小さい ${f}px：「${n.textContent.trim().slice(0, 12)}」`); break; }

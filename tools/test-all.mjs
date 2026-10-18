@@ -55,6 +55,15 @@ const steps = [
 // 組めなかったデッキに依るテストは飛ばす
 const needs = { 'check minimal': 'build minimal', smoke: 'build minimal', 'test-tools': 'build minimal', 'test-controls': 'build minimal', 'test-autoplay': 'build minimal', 'test-a11y': 'build minimal', 'check tmlr2026': 'build tmlr2026', 'check pitch': 'build pitch',
   'build new ja': 'new ja', 'check new ja': 'build new ja', 'build new en': 'new en', 'check new en': 'build new en' };
+// 国語の部品（m-kanbun・m-kobun・m-gendai）：読み取り・訓読の順・書き下し文の試験と、見本のデッキ（examples/kokugo-kanbun）を
+// 普通と持ち運べる 1 ファイルに組み、検査でエラー 0。部品の描画と決定性は test-components（各部品の demo.html）
+steps.push(
+  ['test-kokugo', ['tools/test-kokugo.mjs']],
+  ['build kokugo', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html']],
+  ['build kokugo portable', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html', '--portable', '-o', path.join(tmp, 'kokugo.html')]],
+  ['check kokugo', ['kit/check.mjs', 'examples/kokugo-kanbun/deck.html']],
+);
+Object.assign(needs, { 'check kokugo': 'build kokugo' });
 
 function run(name, argv) {
   return new Promise((resolve) => {

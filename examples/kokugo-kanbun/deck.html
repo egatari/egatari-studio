@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kokugo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>漢文を読む――返り点から書き下し文へ</title>
+<!--
+  国語（漢文・古文・現代文）の部品の見本。組む：node kit/build.mjs examples/kokugo-kanbun/deck.html
+  使っている部品：m-kanbun（白文 → 訓点 → 読む順 → 書き下し文）、m-kobun（品詞分解と現代語訳）、m-gendai（傍線・指示語・段落の役割）
+  テーマ kokugo（明朝・藍・朱）。漢詩と古文は著作権の切れた古典（孟浩然「春暁」、杜甫「春望」、『史記』、『論語』、『枕草子』）。
+  現代文の本文はこの見本のために書いたもの
+-->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-6ctkxm">
+  <div class="venue">国語の動く教材（見本）</div>
+  <h1>漢文を読む<br>――返り点から書き下し文へ</h1>
+  <div class="au">漢文・古文・現代文</div>
+</section>
+
+<section class="slide" id="s-dpt6u5">
+  <h2>返り点は読む順を示す</h2>
+  <!-- 縦書き（.tate）とルビの見本：段落は右から左へ並ぶ -->
+  <div class="body">
+    <div class="tate" style="font-size:34px;margin-right:24px">
+      <p><ruby>返<rt>かえ</rt></ruby>り<ruby>点<rt>てん</rt></ruby>は、漢字の左下に付けて、読む順を示す。</p>
+      <p data-step="1"><b class="term">レ点</b>　すぐ下の一字を読んでから、一字上へ戻る。</p>
+      <p data-step="2"><b class="term">一二点</b>　二字以上へだてて戻る。「一」を読んだら「二」へ。</p>
+      <p data-step="3"><b class="term">上下点</b>　一二点をはさんで、さらに上へ戻る。</p>
+    </div>
+  </div>
+  <div class="concl"><span>返り点のない字は上から順に読む</span></div>
+</section>
+
+<section class="slide" id="s-pbmhan">
+  <h2>レ点・一二点・一レ点（『史記』）</h2>
+  <div class="body">
+    <m-kanbun style="height:440px" size="54">
+      先(ンズレバ)即(チ)制(シ)[レ]人(ヲ)、
+      後(ルレバ)則(チ)為(ル)[二]人(ノ)所(ト)[一レ]制(スル)
+    </m-kanbun>
+  </div>
+  <div class="concl"><span>一レ点は、レ点で戻ってから二へ戻る</span></div>
+</section>
+
+<section class="slide" id="s-njd4kp">
+  <h2>孟浩然「春暁」</h2>
+  <div class="body">
+    <m-kanbun style="height:440px">
+      春眠不{=ず}レ覚(エ)レ暁(ヲ)
+      処処聞(ク)[二]啼鳥(ヲ)[一]
+      夜来風雨(ノ)声
+      花落(ツルコト)知(ル)多少
+    </m-kanbun>
+  </div>
+  <div class="concl"><span>レ点が続くときは、下から順に戻る</span></div>
+</section>
+
+<section class="slide" id="s-uhqygr">
+  <h2>杜甫「春望」（前半）</h2>
+  <div class="body">
+    <m-kanbun style="height:440px" kaki="32">
+      国破(レテ)山河在(リ)
+      城春(ニシテ)草木深(シ)
+      感(ジテハ)[レ]時(ニ)花(ニモ)濺{そそ}(ギ)[レ]涙(ヲ)
+      恨(ンデハ)[レ]別(レヲ)鳥(ニモ)驚(カス)[レ]心(ヲ)
+    </m-kanbun>
+  </div>
+  <div class="concl"><span>一句に二つのレ点：句の中で二度戻る</span></div>
+</section>
+
+<section class="slide" id="s-pu5ge5">
+  <h2>杜甫「春望」（後半）</h2>
+  <div class="body">
+    <m-kanbun style="height:440px" kaki="32">
+      烽火連(ナリ)[二]三月(ニ)[一]
+      家書抵{あ}(タル)[二]万金(ニ)[一]
+      白頭搔{か}(ケバ)更(ニ)短(ク)
+      渾{す}(ベテ)欲(ス)[レ]不{=ざ}(ラント)[レ]勝{た}(ヘ)[レ]簪{しん}(ニ)
+    </m-kanbun>
+  </div>
+  <div class="concl"><span>結句は三つのレ点で、下から一字ずつ戻る</span></div>
+</section>
+
+<section class="slide" id="s-4kq6xi">
+  <h2>再読文字と置き字（『論語』）</h2>
+  <div class="body">
+    <m-kanbun style="height:440px">
+      未(ダ|ず)[レ]知(ラ)[レ]生(ヲ)、
+      焉{いづく}(ンゾ)知(ラン)[レ]死(ヲ)
+      学(ビテ)而{-}時(ニ)習(フ)[レ]之(ヲ)
+    </m-kanbun>
+  </div>
+  <div class="concl"><span>再読文字は二度読み、置き字は読まない</span></div>
+</section>
+
+<section class="slide noconcl" id="s-wicpxn">
+  <h2>古文の品詞分解（『枕草子』）</h2>
+  <div class="body">
+    <m-kobun style="height:540px" size="32">
+      春[名]/は[係助]/あけぼの[名]。
+      = 春は明け方（がよい）。
+      やうやう[副]/白く[形・ク・連用]/なりゆく[動・カ四・連体]/山ぎは[名]、
+      = だんだん白くなっていく山ぎわ（の空）が、
+      少し[副]/明かり[動・ラ四・連用]/て[接助]、
+      = 少し明るくなって、
+      紫だち[動・タ四・連用]/たる[助動・たり・存続・連体]/雲[名]/の[格助]/細く[形・ク・連用]/たなびき[動・カ四・連用]/たる[助動・たり・存続・連体]。
+      = 紫がかった雲が細くたなびいている（のがよい）。
+    </m-kobun>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-hlzu7m">
+  <h2>現代文：段落の役割と指示語</h2>
+  <div class="body">
+    <m-gendai tate style="height:550px">
+      @具体例#p1>p3
+      駅までの道を、私は{地図アプリ|#app}に頼って歩く。画面の矢印に従えば迷うことはない。だが、{それ|>app}を閉じると、さっき通った角さえ思い出せない。
+
+      @対比#p2~p1
+      かつての旅人は、{山の形や川の流れを目印にして|#mark}道を覚えた。{そう|>mark}して得た知識は、歩いた体に刻まれていた。
+
+      @主張#p3
+      便利な道具は、私たちから==迷う機会を奪う==。だが、{迷うことこそが、土地を自分のものにする営みなのである|_A}。
+    </m-gendai>
+  </div>
+</section>
+
+<section class="slide" id="s-3lshdj">
+  <h2>まとめ</h2>
+  <div class="body">
+    <ul>
+      <li>返り点は、読む順を下から上へ戻す印</li>
+      <li>送り仮名を平仮名にして、読む順に並べると書き下し文</li>
+      <li>古文は語に切り、助動詞の意味と活用形を確かめる</li>
+      <li>現代文は指示語の指す内容と、段落の役割をつかむ</li>
+    </ul>
+  </div>
+  <div class="concl"><span>読む順を目で追えば、文の形が見えてくる</span></div>
+</section>
+
+</div>
+</body>
+</html>

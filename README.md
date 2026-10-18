@@ -15,6 +15,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
 - **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
 - **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch decks `m-bars`, `m-quad`, `m-market`, `m-kpi`; `m-flow` also draws money and service flows). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
+- **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
 - **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, the current step highlighted), video (`?mode=video`)
@@ -51,7 +52,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 
 - [Node.js](https://nodejs.org/) 22 or newer
 - Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
-- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic (and BIZ UDPMincho) TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
 
 **Windows**
 
@@ -235,7 +236,7 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo) and the institutional themes `tml`, `tcue`, `wsd` and `ohte`, which include university logos (see License).
+A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `default` (neutral), `business` (neutral, for business and pitch decks: navy with orange emphasis, no logo), `kokugo` (Mincho, for Japanese language arts) and the institutional themes `tml`, `tcue`, `wsd` and `ohte`, which include university logos (see License).
 
 ## Examples
 
@@ -244,6 +245,7 @@ A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `defaul
 | [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. A fuller example to learn from (`npm run new` makes a clean template) |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | Japanese, 10 slides: a pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports). `m-kpi`, `m-flow` (money flows and `pulse`), `m-bars` (with an axis rescale), `m-quad`, `m-market`, theme `business`, data written by a script (`scripts/`, `data/`). The company, product and every number are made up |
+| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 10 slides for a 国語 lesson: kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
 
 The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default voice. The published video of this example was narrated with the author's own reference voice, which is not included in the repository.
 
@@ -254,6 +256,10 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 `examples/tmlr2026-calibration`:
 
 ![tmlr2026-calibration example](docs/images/tmlr-sheet.png)
+
+`examples/kokugo-kanbun` (「春暁」: the reading order, the eye jumping back from 鳥 to 聞 at the 一二点):
+
+![kokugo-kanbun example](docs/images/kokugo-kanbun.png)
 
 ## Repository layout
 
@@ -299,5 +305,5 @@ A deck is code: its scripts and components run in your browser and in the headle
 ## License
 
 - Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts, KaTeX fonts and logos: see [NOTICE](NOTICE)
-- Fonts: BIZ UDPGothic and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
+- Fonts: BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic, [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt) for BIZ UDPMincho; the `@fontsource` packages ship their own license files). Built decks embed subsets of them. KaTeX and its fonts are MIT
 - The university logos in `themes/tml`, `themes/tcue`, `themes/wsd` and `themes/ohte` belong to their institutions and are not covered by the MIT license

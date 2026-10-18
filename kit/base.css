@@ -34,7 +34,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   font-size:var(--cap-size,27px)}
 #deck-cap.empty,#deck-cap[hidden]{display:none}
 #deck-cap .cap-line{max-width:100%;padding:5px 16px 6px;border-radius:8px;background:color-mix(in srgb,var(--fg) 94%,transparent);color:var(--bg);
-  font-family:var(--font-sans);font-size:1em;line-height:1.4;font-weight:var(--weight-body,400);text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.18);
+  font-family:var(--font-cap,var(--font-sans));font-size:1em;line-height:1.4;font-weight:var(--weight-body,400);text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.18);
   max-height:calc(var(--cap-max-lines,3) * 1.4em + 11px);overflow:hidden}
 .printing #deck-cap{display:none}
 /* 短い知らせ（Shift+s の字幕の大きさ、ペンの色など）。発表のときだけ。印刷と動画には出ない */

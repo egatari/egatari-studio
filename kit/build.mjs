@@ -46,10 +46,16 @@ const FONTTOOLS = '4.67.0', BROTLI = '1.2.0';
 const _hash = new Map();
 function fileHash(f) { if (!_hash.has(f)) _hash.set(f, crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex').slice(0, 16)); return _hash.get(f); }
 // fonts/ に TTF があれば、使っている字だけに絞った woff2 を作る（uv で fonttools を動かす。結果はキャッシュする）
-function subsetCss(text) {
+// font：'gothic'（既定。BIZ UDPゴシック）か 'mincho'（BIZ UDP明朝。デッキが明朝を使うときだけ build-core が頼む）
+const SUBSET_FONTS = {
+  gothic: { family: 'BIZ UDPGothic', files: [[400, 'BIZUDPGothic-Regular.ttf'], [700, 'BIZUDPGothic-Bold.ttf']] },
+  mincho: { family: 'BIZ UDPMincho', files: [[400, 'BIZUDPMincho-Regular.ttf'], [700, 'BIZUDPMincho-Bold.ttf']] },
+};
+function subsetCss(text, font = 'gothic') {
+  const F = SUBSET_FONTS[font] || SUBSET_FONTS.gothic;
   const chars = [...new Set(text)].filter((c) => c.codePointAt(0) >= 0x20).sort().join('');
   const out = [];
-  for (const [w, f] of [[400, 'BIZUDPGothic-Regular.ttf'], [700, 'BIZUDPGothic-Bold.ttf']]) {
+  for (const [w, f] of F.files) {
     const ttf = path.join(ROOT, 'fonts', f);
     if (!fs.existsSync(ttf)) return null;
     const cache = path.join(os.tmpdir(), 'motion-slides-fonts');
@@ -68,7 +74,7 @@ function subsetCss(text) {
     }
     // 絞り込んだ woff2 はキャッシュ（一時フォルダ）から上限つきで読む（通常のファイルだけ、32 MiB まで。kit/bounded-read.mjs）
     // unicode-range：絞り込んだ字（format spec §7.2。段 A の編集が、どの字を持つかを範囲から知れるように）
-    out.push(`@font-face{font-family:"BIZ UDPGothic";font-style:normal;font-display:block;font-weight:${w};src:url(data:font/woff2;base64,${readRegular(woff).toString('base64')}) format("woff2");unicode-range:${core.unicodeRange(core.rangesOf(chars))}}`);
+    out.push(`@font-face{font-family:"${F.family}";font-style:normal;font-display:block;font-weight:${w};src:url(data:font/woff2;base64,${readRegular(woff).toString('base64')}) format("woff2");unicode-range:${core.unicodeRange(core.rangesOf(chars))}}`);
   }
   return { css: out.join('\n') + '\n', n: out.length, bytes: 0 };
 }
