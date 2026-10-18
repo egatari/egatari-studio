@@ -28,6 +28,7 @@ import * as core from './core/build-core.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
+import { readRegular, readRegularText, regularStat } from './bounded-read.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -93,33 +94,9 @@ function within(p, dir) {
     return rp === rd || rp.startsWith(rd + path.sep);
   } catch { return false; }
 }
-// 通常のファイルか（リンクなら指す先が）。FIFO・デバイス・ソケットは NotRegularFileError（読まずに断る。開けば止まるものもある）
-function regularStat(p) {
-  const ls = fs.lstatSync(p);
-  const st = ls.isSymbolicLink() ? fs.statSync(p) : ls;
-  if (!st.isFile()) throw new core.NotRegularFileError(p);
-  return st;
-}
-// p を読む：通常のファイルであることを確かめてから、止まらないように開き（O_NONBLOCK）、開いた fd でも通常のファイルで、確かめたものと同じ
-// （dev・ino）であることを確かめ、その fd から max バイトまでだけ読む（readFileSync は使わない）。max より大きい・読む途中で max を超える・
-// 開いたときの大きさより多く読める（大きくなった）なら ReadOverError
-export function readRegular(p, max = Infinity) {
-  const st = regularStat(p);
-  const fd = fs.openSync(p, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0));
-  try {
-    const fst = fs.fstatSync(fd);
-    if (!fst.isFile() || fst.dev !== st.dev || fst.ino !== st.ino) throw new core.NotRegularFileError(p);
-    if (fst.size > max) throw new core.ReadOverError(fst.size, max);
-    const buf = Buffer.allocUnsafe(fst.size);
-    let got = 0;
-    while (got < fst.size) { const k = fs.readSync(fd, buf, got, fst.size - got, null); if (k === 0) break; got += k; }
-    // 開いたときの大きさの先にまだあれば（読む間に大きくなった）断る
-    const extra = fs.readSync(fd, Buffer.alloc(1), 0, 1, null);
-    if (extra > 0) throw new core.ReadOverError(Math.max(fst.size, got) + extra, Math.min(max, fst.size));
-    return got === fst.size ? buf : buf.subarray(0, got);
-  } finally { fs.closeSync(fd); }
-}
-// max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ限りなし）
+// 読み取りは上限つきの読み取りの口（kit/bounded-read.mjs）だけを通す：通常のファイルだけを、渡された大きさまで
+export { readRegular };
+// max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex,
   katexDir: path.dirname(require.resolve('katex')),
@@ -127,6 +104,7 @@ export const nodeEnv = {
   exists: (p) => fs.existsSync(p),
   isFile: (p) => fs.statSync(p).isFile(),
   readText: (p, max) => readRegular(p, max).toString('utf8'),
+  readTextBytes: (p, max) => readRegularText(p, max),   // {text, bytes}：読んだバイト数で数える（chargedEnv）
   readBase64: (p, max) => readRegular(p, max).toString('base64'),
   readBytes: (p, max) => new Uint8Array(readRegular(p, max)),
   // 読む前に組み立ての上限に数える大きさ（kit/core/build-core.mjs の chargedEnv）。通常のファイルでなければ NotRegularFileError

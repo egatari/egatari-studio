@@ -71,11 +71,13 @@ export function createEngine(res, loadLazy) {
         if (inDeck(p)) return getL().files.has(relOf(p));
         return p in res.text || p in res.b64 || lazySet.has(p);
       },
-      readText(p, max) {
+      readText(p, max) { return this.readTextBytes(p, max).text; },
+      // {text, bytes}：bytes は読んだバイト数（字数ではない。kit/core/build-core.mjs の chargedEnv がこれで数える）
+      readTextBytes(p, max) {
         p = P.resolve(p);
-        if (inDeck(p)) { const b = deckBytes(p, max); return b ? dec.decode(b) : ''; }
-        if (p in res.text) return res.text[p];
-        if (p in res.b64) return base64ToText(res.b64[p]);
+        if (inDeck(p)) { const b = deckBytes(p, max); return b ? { text: dec.decode(b), bytes: b.length } : { text: '', bytes: 0 }; }
+        if (p in res.text) return { text: res.text[p], bytes: utf8Size(p) };
+        if (p in res.b64) { const t = base64ToText(res.b64[p]); return { text: t, bytes: Math.floor(res.b64[p].length / 4) * 3 }; }
         throw Object.assign(new Error('ENOENT: ' + p), { code: 'ENOENT' });
       },
       readBase64(p, max) {

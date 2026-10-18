@@ -14,6 +14,7 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
+import { utf8Length } from './bounded-read-core.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -48,15 +49,7 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 // ---------------------------------------------------------------- 文字・バイト・ハッシュ
 const enc = new TextEncoder();
 export const utf8 = (s) => enc.encode(s);
-export function utf8Length(s) {
-  let n = 0;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    if (c < 0x80) n += 1; else if (c < 0x800) n += 2;
-    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) { n += 4; i++; } else n += 3;
-  }
-  return n;
-}
+export { utf8Length };   // UTF-8 のバイト数（kit/core/bounded-read-core.mjs）
 const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 export async function sha256Hex(data) {
   const bytes = typeof data === 'string' ? utf8(data) : data;
@@ -567,6 +560,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const reads = new Set();
   const rec = { ...env0,
     readText(p, max) { reads.add(P.resolve(p)); return env0.readText(p, max); },
+    ...(typeof env0.readTextBytes === 'function' ? { readTextBytes(p, max) { reads.add(P.resolve(p)); return env0.readTextBytes(p, max); } } : {}),
     readBase64(p, max) { reads.add(P.resolve(p)); return env0.readBase64(p, max); },
   };
   // 組み立てと書き出しで 1 つの数え方（kit/core/build-core.mjs の buildBudget・chargedEnv）：書き出しが読むもの（口述原稿・原稿のファイルの写し・
@@ -668,8 +662,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const { key, file, v } of pend) {
     let apath = fileOfSrc.get(file);
     if (!apath) {
-      // 圧縮は env の外で元のファイルを読む：読む前に数える（通常のファイルでなければ断る）。圧縮したものは env を通して読む（数える）
-      if (env.compressAudio) env.precharge(file);
+      // 圧縮は env の外で元のファイルを読む：chargedEnv の compressAudio が読む前に数え、数えた大きさまでだけ読ませる（通常のファイルでなければ断る）。
+      // 圧縮したものは env を通して読む（数える）
       const packed = env.compressAudio ? env.compressAudio(file) : file;
       const bytes = readBytesVia(env, packed);
       const ext = P.extname(packed).toLowerCase();

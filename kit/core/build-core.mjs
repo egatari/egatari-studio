@@ -20,6 +20,7 @@ import { short } from './sha1.mjs';
 import { RUNTIME_FORMAT } from './format.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
+import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
@@ -460,14 +461,9 @@ export function buildBudget(limits = {}, start = 0) {
     reset(n) { used = n; },
   };
 }
-// 通常のファイルでないもの（FIFO・デバイス・ソケット）を読もうとした（env.size か読み取りが投げる。読まずに断る。format spec §11）
-export class NotRegularFileError extends Error {
-  constructor(p) { super(`build: ${p} is not a regular file (FIFO, device or socket); refusing to read it`); this.name = 'NotRegularFileError'; this.code = 'build-not-a-file'; }
-}
-// 読み取りが、許された大きさ（max バイト）を超えた（env の読み取りが投げる。n は超えたと分かった大きさ）。chargedEnv が上限か「変わった」の知らせに替える
-export class ReadOverError extends Error {
-  constructor(n, max) { super(`read over ${max} bytes`); this.name = 'ReadOverError'; this.code = 'read-over'; this.n = n; this.max = max; }
-}
+// 通常のファイルでないもの（NotRegularFileError）・許された大きさを超えた読み取り（ReadOverError。env の読み取りが投げる。n は超えたと分かった
+// 大きさ。chargedEnv が上限か「変わった」の知らせに替える）は、上限つきの読み取りの共通の部分（kit/core/bounded-read-core.mjs）のもの
+export { NotRegularFileError, ReadOverError };
 // 大きさを読んだ後に、ファイルが大きくなった（読む前の大きさより多く読めた）
 export class FileChangedError extends Error {
   constructor(p, was, now) { super(`build: ${p} changed while reading (${was} bytes before, ${now} read); refusing to build`); this.name = 'FileChangedError'; this.code = 'build-too-large'; this.what = 'changed file'; }
@@ -476,7 +472,11 @@ export class FileChangedError extends Error {
 // 読んだ後にも実際の大きさで数え直す（数えるのは max(読む前の大きさ, 実際の大きさ)。env.size は見積もりで、嘘をつくことも、読むまでに
 // ファイルが大きくなることもある）。読む前の大きさより多く読めたら、上限の内でも断る（FileChangedError）。
 // 読み取りには、読んでよい大きさ（バイト。大きさが分かればそれ、分からなければ残りの上限）を 2 つ目の引数で渡す：Node の env はそれを超えて
-// 読まない（ReadOverError）。env.size が NotRegularFileError を投げたら（FIFO など）読まずに断る。同じ bud で包んだ env はそのまま返す
+// 読まない（ReadOverError）。env.size が NotRegularFileError を投げたら（FIFO など）読まずに断る。同じ bud で包んだ env はそのまま返す。
+// 大きさはいつもバイト数：文字で読むものは、env.readTextBytes(p, max) → {text, bytes}（読んだバイト数を返す。Node と編集アプリ）があればそれ、
+// なければ readText の文字列の UTF-8 のバイト数で数える（UTF-16 の字数を大きさにしない）。
+// env.compressAudio(p, max)（Node：env の外で元のファイルを読んで圧縮する）は、読む前に数え、数えた大きさを max として渡す（それを超えて
+// 読まない。返す {path, read} の read（実際に読んだバイト）でも数え直す）
 const CHARGED = Symbol('charged');
 export function chargedEnv(env, bud) {
   if (env[CHARGED] === bud) return env;
@@ -486,32 +486,38 @@ export function chargedEnv(env, bud) {
     return Number.isFinite(n) && n >= 0 ? n : null;
   };
   const room = () => Math.max(0, bud.L.readChars - bud.input);
-  // kind：'text'（実際の大きさは字数。字数はバイト数より大きくならない：バイト数で読まない env を数え直すための下限。Node と編集アプリの env は
-  // max をバイトで守る）・'b64'（base64 の字数）・'bytes'
+  // kind：'text'（実際の大きさは UTF-8 のバイト数）・'b64'（base64 の字数）・'bytes'。fn(p, max) → {v, len}（len は実際の大きさ）
   const read = (p, kind, fn) => {
     const n = sizeOf(p), b64 = kind === 'b64';
     const est = n === null ? 0 : b64 ? Math.ceil(n / 3) * 4 : n;
     bud.read(est);
     const max = n !== null ? n : b64 ? Math.floor(room() / 4) * 3 : room();
-    let v;
-    try { v = fn(p, max); } catch (e) {
+    let r;
+    try { r = fn(p, max); } catch (e) {
       if (!e || e.code !== 'read-over') throw e;
       if (n !== null) throw new FileChangedError(p, n, e.n);
       throw new BuildLimitError('files read', bud.input + (b64 ? Math.ceil(e.n / 3) * 4 : e.n), bud.L.readChars);
     }
-    const len = v.length;
+    const len = r.len;
     if (len > est) { bud.charge(len - est); if (n !== null) throw new FileChangedError(p, n, b64 ? Math.floor(len / 4) * 3 : len); }
-    return v;
+    return r.v;
   };
+  const text = typeof env.readTextBytes === 'function'
+    ? (q, m) => { const r = env.readTextBytes(q, m); return { v: r.text, len: r.bytes }; }
+    : (q, m) => { const v = env.readText(q, m); return { v, len: utf8Length(v) }; };
   const w = Object.create(env);
   Object.defineProperty(w, CHARGED, { value: bud });
-  w.readText = (p) => read(p, 'text', (q, m) => env.readText(q, m));
-  w.readBase64 = (p) => read(p, 'b64', (q, m) => env.readBase64(q, m));
-  if (typeof env.readBytes === 'function') w.readBytes = (p) => read(p, 'bytes', (q, m) => env.readBytes(q, m));
-  // 読む前に数えるだけ（env.compressAudio のように、env の外で読むもの）。通常のファイルでなければ断る
-  w.precharge = (p) => { const n = sizeOf(p); bud.read(n === null ? 0 : n); };
+  w.readText = (p) => read(p, 'text', text);
+  w.readTextBytes = (p) => { const t = w.readText(p); return { text: t, bytes: utf8Length(t) }; };
+  w.readBase64 = (p) => read(p, 'b64', (q, m) => { const v = env.readBase64(q, m); return { v, len: v.length }; });
+  if (typeof env.readBytes === 'function') w.readBytes = (p) => read(p, 'bytes', (q, m) => { const v = env.readBytes(q, m); return { v, len: v.length }; });
+  // 圧縮（env の外で元のファイルを読む）：読む前に数え、数えた大きさまでだけ読ませる。通常のファイルでなければ断る
+  if (typeof env.compressAudio === 'function') w.compressAudio = (p) => read(p, 'bytes', (q, m) => {
+    const r = env.compressAudio(q, m);
+    return typeof r === 'string' ? { v: r, len: 0 } : { v: r.path, len: r.read };
+  });
   // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
-  if (typeof env.subset === 'function') w.subset = (t) => { const r = env.subset(t); if (r && typeof r.css === 'string') bud.read(r.css.length); return r; };
+  if (typeof env.subset === 'function') w.subset = (t) => { const r = env.subset(t); if (r && typeof r.css === 'string') bud.read(utf8Length(r.css)); return r; };
   return w;
 }
 
@@ -667,7 +673,6 @@ export function build(env0, srcPath, opts = {}) {
         if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
         continue;
       }
-      if (opts.embedAudio && env.compressAudio) env.precharge(file);   // 圧縮は env の外で元のファイルを読む：読む前に数える
       audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.cues || [] };
     }
   }
@@ -677,7 +682,7 @@ export function build(env0, srcPath, opts = {}) {
   // CSS と JS を組み込む
   // KaTeX の CSS は env ごとに 1 回だけ作る（元の env で覚える）。読んだ回と同じ大きさを毎回数える
   const kcss = katexCss(env0);
-  budget.read(kcss.length);
+  budget.read(utf8Length(kcss));
   const read = (dir, f) => env.readText(P.join(dir, f));
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
