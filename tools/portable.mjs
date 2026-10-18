@@ -9,7 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { readPortable, manifestFromAudio, FormatError, RE } from '../kit/core/portable.mjs';
+import { readPortable, manifestFromAudio, FormatError, RE, LIMITS } from '../kit/core/portable.mjs';
+import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
 
@@ -17,7 +18,15 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // 展開する。返すもの：{written: [rel…], warnings}
 export async function unpack(file, dir, { force = false } = {}) {
-  const r = await readPortable(new Uint8Array(fs.readFileSync(file)));
+  // 読む前に開いた fd の大きさを形式の上限（LIMITS.fileBytes）と比べ、超えるなら読まずに断る。通常のファイルだけ（FIFO で止まらない）、
+  // 写さずに（Buffer の上の Uint8Array のまま）読み取りに渡す（kit/bounded-read.mjs）
+  let buf;
+  try { buf = readRegular(file, { max: LIMITS.fileBytes }); } catch (e) {
+    if (e && e.code === 'read-over') throw new FormatError('file-too-large', `file is larger than ${LIMITS.fileBytes} bytes (${e.n})`);
+    if (e && e.code === 'build-not-a-file') throw new FormatError('not-a-file', `${file} is not a regular file`);
+    throw e;
+  }
+  const r = await readPortable(new Uint8Array(buf.buffer, buf.byteOffset, buf.length));
   const out = path.resolve(dir);
   if (fs.existsSync(out)) {
     if (!fs.lstatSync(out).isDirectory()) throw new FormatError('bad-target', `${dir} is not a directory`);
@@ -59,7 +68,7 @@ export function registryWarnings(index, root = ROOT) {
     if (c.source !== 'registry') continue;
     if (typeof c.name !== 'string' || !RE.registryName.test(c.name)) { warnings.push(`component ${c.tag}: "${String(c.name).slice(0, 80)}" is not a registry name; not checked`); continue; }
     let bytes = null;
-    try { bytes = readContained(regDir, path.join(regDir, c.name, 'index.js')); } catch { bytes = null; }
+    try { bytes = readContained(regDir, path.join(regDir, c.name, 'index.js'), null, { max: READ_LIMITS.component }); } catch { bytes = null; }
     if (bytes === null) warnings.push(`component ${c.tag} (${c.name} ${c.version}) is not in this registry`);
     else if (crypto.createHash('sha256').update(bytes).digest('hex') !== c.sha256) warnings.push(`component ${c.tag}: this registry has a different version (hash differs from ${c.version})`);
   }
