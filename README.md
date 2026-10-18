@@ -1,3 +1,4 @@
+<!-- i18n: pair=README.ja.md sha256=42363070122706b1 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)

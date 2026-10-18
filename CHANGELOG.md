@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `m-gendai`: modern Japanese with side lines and double side lines (labels A, B…), arrows from demonstratives to what they refer to, and paragraphs boxed by role (主張・具体例・対比) and joined by lines; horizontal or vertical
 - Theme `kokugo` (Mincho body text, indigo base, vermilion emphasis, off-white background, captions in BIZ UDPGothic)
 - Example `examples/kokugo-kanbun` (10 slides, narration for every step): 『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』, 『枕草子』 and an original modern text. `npm test` runs `test-kokugo`, builds the example normally and as a portable file, and checks it (0 errors)
+- Stale translation check for English/Japanese document pairs (`X.md` + `X.ja.md`): each file's first line is an invisible comment recording a hash of its counterpart at the last sync. `npm run i18n -- --check` warns when one side changed after that (e.g. “README.ja.md is older than README.md”) or the comment is missing; `--stamp <file>` records a pair as in sync after a person has compared it, `--stamp-all` stamps every pair. It runs in `npm test` and in CI (GitHub warning annotations) and only warns; `--strict` exits 1. How to update a translation is in CONTRIBUTING (`tools/i18n-pairs.mjs`, test `tools/test-i18n-pairs.mjs`)
 
 ## [0.3.1] - 2026-10-18
 

@@ -1,3 +1,4 @@
+<!-- i18n: pair=dev-server.ja.md sha256=b70e92fa7762f48b -->
 # Dev server (fix the deck in the browser)
 
 English | [日本語](dev-server.ja.md)

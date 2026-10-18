@@ -1,3 +1,4 @@
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=ddf2361bab068cda -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -57,6 +58,25 @@ CI runs `npm test` on Node 22 and 24 for every push and pull request.
 - `kit/` and `server/` never import `tts/` or `render/`; slides work without audio
 - figure text is 24px or larger, labels go next to the lines rather than in a legend
 - no personal paths or addresses in the repository; configure through environment variables
+
+## Translations (English and Japanese)
+
+Documents come in pairs: `X.md` (English, the source) and `X.ja.md` (Japanese), for example `README.md` / `README.ja.md` and `docs/*.md`. The first line of each file is an invisible comment recording a hash of its counterpart at the last sync:
+
+```html
+<!-- i18n: pair=README.ja.md sha256=0123456789abcdef -->
+```
+
+`npm run i18n -- --check` (also run by `npm test` and CI) warns when a file is older than its counterpart, that is, when the counterpart changed after the recorded hash, or when the comment is missing. It only warns and does not fail the build; `--strict` makes it exit 1. The hash ignores this comment line, line endings (CRLF / LF) and trailing whitespace.
+
+When you change one side:
+
+1. Edit `X.md` (or `X.ja.md`) as usual. Changing only one language is fine; the check will remind whoever updates the other
+2. Bring the other file up to date, section by section
+3. After checking that both say the same thing, record it: `npm run i18n -- --stamp X.ja.md` (either file of the pair works; both first lines are rewritten). Do not stamp a pair you have not compared
+4. Commit both files
+
+`npm run i18n -- --stamp-all` stamps every pair at once; use it only when setting up a new set of documents that you know are in sync.
 
 ## License
 

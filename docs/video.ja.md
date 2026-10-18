@@ -1,3 +1,4 @@
+<!-- i18n: pair=video.md sha256=3a140b707f10420d -->
 # 動画にする（TTS → 書き出し → canon）
 
 [English](video.md) | 日本語
