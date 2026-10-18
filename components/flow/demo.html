@@ -38,6 +38,28 @@
   <div class="concl"><span>→ 予測と損失から期待損失 <i>r</i> を作り，それを最小にする <i>a</i> を選ぶ</span></div>
 </section>
 
+<section class="slide">
+  <h2>お金とサービスの流れ（架空）</h2>
+  <div class="body">
+    <m-flow style="height:420px">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "co",  "label": "自社",         "x": 470, "y": 20,  "w": 240, "h": 80, "step": 1, "tone": "emph"},
+          {"id": "cu",  "label": "顧客の会社",   "x": 60,  "y": 300, "w": 260, "h": 80, "step": 1},
+          {"id": "us",  "label": "社員（使う人）", "x": 860, "y": 300, "w": 300, "h": 80, "step": 2}
+        ],
+        "edges": [
+          {"from": "co", "to": "cu", "kind": "service", "label": "使う権利", "shift": 14, "step": 1},
+          {"from": "cu", "to": "co", "kind": "money", "amount": "月 3 万円", "shift": 14, "step": 2, "pulse": [2, 3]},
+          {"from": "cu", "to": "us", "kind": "service", "label": "配る", "step": 2},
+          {"from": "us", "to": "co", "kind": "data", "label": "使い方の記録", "step": 3, "pulse": true}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 会社が払い，社員が使い，記録が戻る</span></div>
+</section>
+
 </div>
 </body>
 </html>

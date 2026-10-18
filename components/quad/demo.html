@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-quad の見本</title>
+<!-- 組み方：node kit/build.mjs components/quad/demo.html -o components/quad/out/demo.html（社名と位置はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<script>
+// build は本文の最初の <script> の前に実行系を入れる。部品の中の JSON より前に置くための空の script
+</script>
+<div id="stage">
+
+<section class="slide">
+  <h2>報告書づくりの道具の位置づけ（架空）</h2>
+  <div class="body">
+    <m-quad quads-step="1" style="height:430px">
+      <script type="application/json">{
+        "x": {"lo": "手で書く", "hi": "自動で下書き"},
+        "y": {"lo": "導入が重い", "hi": "すぐ使える"},
+        "quads": {"tr": "空いている場所", "tl": "", "bl": "", "br": "", "fill": "tr"},
+        "items": [
+          {"label": "表計算の雛形", "x": 0.14, "y": 0.78},
+          {"label": "汎用の文章 AI", "x": 0.6, "y": 0.4, "anchor": "left"},
+          {"label": "大型の業務システム", "x": 0.7, "y": 0.18},
+          {"label": "自社の製品", "x": 0.68, "y": 0.66, "self": true, "to": {"x": 0.78, "y": 0.74, "label": "次の版"}}
+        ]
+      }</script>
+    </m-quad>
+  </div>
+  <div class="concl"><span>→ すぐ使えて自動で書く場所が空いている</span></div>
+</section>
+
+<section class="slide">
+  <h2>SWOT 風に使う（同じ段階に 2 つ）</h2>
+  <div class="body">
+    <m-quad style="height:430px">
+      <script type="application/json">{
+        "x": {"lo": "マイナス", "hi": "プラス"},
+        "y": {"lo": "内部の要因", "hi": "外部の環境"},
+        "quads": {"tr": "機会", "tl": "脅威", "bl": "弱み", "br": "強み"},
+        "items": [
+          {"label": "伸びる需要", "x": 0.72, "y": 0.8, "step": 1},
+          {"label": "人手不足", "x": 0.3, "y": 0.72, "step": 1, "at": 1.2},
+          {"label": "少ない人数", "x": 0.25, "y": 0.25, "step": 2, "tone": "term"},
+          {"label": "現場の知見", "x": 0.75, "y": 0.3, "step": 2, "at": 1.2, "self": true}
+        ]
+      }</script>
+    </m-quad>
+  </div>
+  <div class="concl"><span>→ 現場の知見を伸びる需要に向ける</span></div>
+</section>
+
+</div>
+</body>
+</html>
