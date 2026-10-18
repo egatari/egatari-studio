@@ -7,7 +7,8 @@
 //                                      （O_EXCL、名前は乱数）に書いて fsync し、rename で入れ替える（途中で止まっても半分のファイルが残らない。
 //                                      Windows でも既にあるファイルの上に rename できる）
 //   checkWritable(base, file)         safeWriteFile が断るものを、何も作らずに先に断る
-//   readContained(base, file, enc)     読む。実体のパスが base の実体の中にあるときだけ（中を指すリンクはよい）。なければ null
+//   readContained(base, file, enc, {max}) 読む。実体のパスが base の実体の中にある通常のファイルだけ（中を指すリンクはよい）、max バイトまで
+//                                      （kit/bounded-read.mjs）。なければ null
 //   backupFile(base, file, editsRel)   file の控えを base/<editsRel>/<時刻>-<名前> に書く（safeWriteFile で）
 //   pruneBackups(base, editsRel, keep) 控えのフォルダ（途中も含めてリンクでなく、base の中にあること）の中の、控えの名前の形をした
 //                                      普通のファイルだけを、古いものから消して keep 個にする（ほかのものには触れない）
@@ -17,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { readRegular, READ_LIMITS } from './bounded-read.mjs';
 
 export class UnsafePathError extends Error {
   constructor(msg) { super(msg); this.name = 'UnsafePathError'; this.code = 'unsafe-path'; }
@@ -121,21 +123,25 @@ function renameOver(from, to) {
   }
 }
 
-// 実体のパスが base の実体の中にあるファイルだけを読む。ないなら null。外を指すなら UnsafePathError
-export function readContained(base, file, enc = null) {
+// 実体のパスが base の実体の中にあるファイルだけを読む。ないなら null。外を指すなら UnsafePathError。通常のファイルだけを、上限つきで
+// （kit/bounded-read.mjs の readRegular：開いた fd の大きさが opts.max バイトを超えるなら読まずに、読む間に大きくなっても ReadOverError、
+// code 'read-over'）。max を渡さなければ READ_LIMITS.default（32 MiB）
+export function readContained(base, file, enc = null, opts = {}) {
   const real = baseReal(base);
   segments(base, file, real);
   let rp;
   try { rp = fs.realpathSync(path.resolve(file)); } catch (e) { if (e.code === 'ENOENT' || e.code === 'ENOTDIR') return null; throw e; }
   if (!inside(rp, real) || rp === real) throw new UnsafePathError(`refusing to read outside ${base}: ${file}`);
-  if (!fs.statSync(rp).isFile()) throw new UnsafePathError(`not a regular file: ${file}`);
-  return fs.readFileSync(rp, enc || undefined);
+  let bytes;
+  try { bytes = readRegular(rp, { max: opts.max === undefined ? READ_LIMITS.default : opts.max }); }
+  catch (e) { if (e && e.code === 'build-not-a-file') throw new UnsafePathError(`not a regular file: ${file}`); throw e; }
+  return enc ? bytes.toString(enc) : bytes;
 }
 export const existsContained = (base, file) => { try { return readContained(base, file) !== null; } catch { return false; } };
 
-// 控え：base/<editsRel>/<時刻>-<名前>。元のファイルは base の中にあるもの（readContained）だけ。ないなら何もしない
-export function backupFile(base, file, editsRel = path.join('.cache', 'edits')) {
-  const bytes = readContained(base, file);
+// 控え：base/<editsRel>/<時刻>-<名前>。元のファイルは base の中にあるもの（readContained。opts.max バイトまで）だけ。ないなら何もしない
+export function backupFile(base, file, editsRel = path.join('.cache', 'edits'), opts = {}) {
+  const bytes = readContained(base, file, null, opts);
   if (bytes === null) return null;
   return safeWriteFile(base, path.join(path.resolve(base), editsRel, `${backupStamp()}-${path.basename(file)}`), bytes);
 }

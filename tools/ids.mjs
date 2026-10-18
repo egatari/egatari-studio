@@ -17,6 +17,7 @@ import { analyzeSlideIds } from '../kit/build.mjs';
 import { parseHeading, newSlideId, splitKey, isSlideId } from '../kit/narration.mjs';
 import { parse } from 'parse5';
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
+import { READ_LIMITS } from '../kit/bounded-read.mjs';
 
 const USAGE = 'usage: npm run ids -- <deck folder | deck.html> [--dry-run]';
 const KEEP_EDITS = 30;
@@ -35,7 +36,9 @@ if (fs.existsSync(SRC) && fs.statSync(SRC).isDirectory()) SRC = path.join(SRC, '
 if (!fs.existsSync(SRC)) fail(`not found: ${SRC}`);
 const DIR = path.dirname(SRC);
 // 読み書きは原稿のフォルダの中だけ（kit/safe-fs.mjs：外を指すリンクは読まない、リンクを通しては書かない。format spec §11）
-const rd = (file) => { try { return readContained(DIR, file, 'utf8'); } catch (e) { fail(e.message); } };
+// 上限（バイト。kit/core/bounded-read-core.mjs の READ_LIMITS）：原稿・口述原稿・コメント・小さな JSON（manifest・timeline）ごとに。超えれば読まずに断る
+const limitOf = (file) => { const b = path.basename(file); return b === 'narration.md' ? READ_LIMITS.narration : b === 'comments.json' ? READ_LIMITS.comments : /\.json$/i.test(b) ? READ_LIMITS.json : READ_LIMITS.source; };
+const rd = (file) => { try { return readContained(DIR, file, 'utf8', { max: limitOf(file) }); } catch (e) { fail(e.message); } };
 const has = (file) => rd(file) !== null;
 const FILES = { narration: path.join(DIR, 'narration.md'), manifest: path.join(DIR, 'audio', 'manifest.json'),
   timeline: path.join(DIR, 'timeline.json'), comments: path.join(DIR, 'comments.json') };
@@ -203,7 +206,7 @@ if (!dry) {
   try {
     for (const [file] of writes) { checkWritable(DIR, file); checkWritable(DIR, path.join(EDITS, `2000-01-01T00-00-00-000Z-${path.basename(file)}`)); }
   } catch (e) { fail(`${e.message}（何も書いていない / nothing written）`); }
-  for (const [file, text] of writes) { backupFile(DIR, file, EDITS_REL); safeWriteFile(DIR, file, text); }
+  for (const [file, text] of writes) { backupFile(DIR, file, EDITS_REL, { max: limitOf(file) }); safeWriteFile(DIR, file, text); }
   pruneBackups(DIR, EDITS_REL, KEEP_EDITS);
 }
 console.log((dry ? '[dry-run] ' : '') + summary.join('\n'));

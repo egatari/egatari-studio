@@ -206,7 +206,7 @@ ok('控えの掃除は控えの名前の形のファイルだけを消す（フ�
     async *entries() { for (const [n, e] of entries) yield [n, e]; },
     removeEntry: async (n) => { removed.push(n); entries.delete(n); },
   };
-  const deckH = { kind: 'file', getFile: async () => ({ text: async () => 'deck' }) };
+  const deckH = { kind: 'file', getFile: async () => ({ size: 4, arrayBuffer: async () => new TextEncoder().encode('deck').buffer }) };
   const root = { getFileHandle: async (n) => { if (n === 'deck.html') return deckH; throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); },
     getDirectoryHandle: async (n) => { if (n === '.cache') return { getDirectoryHandle: async () => edits }; throw Object.assign(new Error('nf'), { name: 'NotFoundError' }); } };
   await folderBackup(root, 'deck.html', () => stamp0 + 100000);

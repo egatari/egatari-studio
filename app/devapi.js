@@ -2,6 +2,7 @@
 // 呼ぶのはアプリ自身の編集の画面（server/editor-ui.js）だけ。プレビュー（デッキの iframe）からは呼べない（プレビューは知らせを送るだけ）。
 // 読み書きするのは原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
+import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 
 function parseRange(s) {
@@ -29,12 +30,16 @@ export function createDevApi(ctx) {
   const gen = () => (ctx.generation ? ctx.generation() : 0);
   let chain = Promise.resolve();
   const serial = (fn) => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
+  // 読み書きする 3 つのファイルの上限（バイト。READ_LIMITS。開発サーバーと同じ）：File.size を読む前に、読んだ後も実際のバイトで（app/bounded-read.js）。
+  // 超えるものは読まずに 413。書くものも上限を超えるなら書かずに 413（次に読めなくなるものを書かない）
+  const SRC = { max: READ_LIMITS.source }, NARR = { max: READ_LIMITS.narration }, COMM = { max: READ_LIMITS.comments };
+  const fits = (text, o, what) => { const n = utf8Length(text); if (n > o.max) throw new ReadOverError(n, o.max, what); return text; };
   async function readComments(ws) {
-    const t = await ws.readText('comments.json');
+    const t = await ws.readText('comments.json', COMM);
     if (t === null) return [];
     try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
   }
-  const writeComments = (ws, list, live) => ws.writeText('comments.json', JSON.stringify(list, null, 2) + '\n', { live });
+  const writeComments = (ws, list, live) => ws.writeText('comments.json', fits(JSON.stringify(list, null, 2) + '\n', COMM, 'comments.json'), { live });
 
   return async function handle(method, url, body) {
     let u;
@@ -49,7 +54,7 @@ export function createDevApi(ctx) {
     try {
       if (method === 'GET' && p === '/__dev/source') {
         const r = parseRange(u.searchParams.get('range'));
-        const src = await ws.readText(ctx.deckFile());
+        const src = await ws.readText(ctx.deckFile(), SRC);
         if (!live()) return CANCEL();
         if (src === null) return err(404, M.notFound);
         if (!r || r[1] > src.length) return err(400, M.badRange);
@@ -63,19 +68,20 @@ export function createDevApi(ctx) {
           if (!live()) return CANCEL();
           const r = parseRange(body.range);
           if (!r || typeof body.text !== 'string') return err(400, M.badRange);
-          const src = await ws.readText(file);
+          const src = await ws.readText(file, SRC);
           if (!live()) return CANCEL();
           if (src === null) return err(404, M.notFound);
           if ((ctx.editable && !ctx.editable(`${r[0]}-${r[1]}`)) || r[1] > src.length || short(src.slice(r[0], r[1])) !== body.h) return err(409, M.conflict);
           const no = ctx.beforeWrite && await ctx.beforeWrite('source');
           if (!live()) return CANCEL();
           if (no) return err(403, no);
-          await ws.backup(file);
+          const next = fits(src.slice(0, r[0]) + body.text + src.slice(r[1]), SRC, file);
+          await ws.backup(file, SRC);
           // 書く直前に：作業場所が同じで、原稿が確かめたときのままか（控えの間に外で変わっていれば上書きしない）
           if (!live()) return CANCEL();
-          if ((await ws.readText(file)) !== src) return err(409, M.conflict);
+          if ((await ws.readText(file, SRC)) !== src) return err(409, M.conflict);
           if (!live()) return CANCEL();
-          await ws.writeText(file, src.slice(0, r[0]) + body.text + src.slice(r[1]), { live });
+          await ws.writeText(file, next, { live });
           const failed = live() ? await ctx.afterWrite() : false;
           return ok({ ok: true, error: failed ? M.savedButFailed : null });
         });
@@ -83,7 +89,7 @@ export function createDevApi(ctx) {
       if (method === 'GET' && p === '/__dev/info') return ok({ slides: ctx.slideOrder(), warn: [] });
       if (method === 'GET' && p === '/__dev/narration') {
         const [sk, st] = splitKey(u.searchParams.get('key') || '');
-        const text = await ws.readText('narration.md');
+        const text = await ws.readText('narration.md', NARR);
         if (!live()) return CANCEL();
         return ok({ key: `${sk}:${st}`, slideKey: sk, stepKey: st, rev: narrationRev(text ?? '', sk, st), ...rawTurns(text, sk, st) });
       }
@@ -95,7 +101,7 @@ export function createDevApi(ctx) {
           if (typeof body.rev !== 'string') return err(400, M.noRev);
           const sk = String(body.slideKey), st = String(body.stepKey);
           if (!order.some((x) => x.key === sk)) return err(400, M.badNarr);
-          const cur = await ws.readText('narration.md');
+          const cur = await ws.readText('narration.md', NARR);
           if (!live()) return CANCEL();
           const text = cur ?? M.narrHead;
           if (narrationRev(text, sk, st) !== body.rev) return err(409, M.narrConflict);
@@ -105,9 +111,10 @@ export function createDevApi(ctx) {
             const no = ctx.beforeWrite && await ctx.beforeWrite('narration');
             if (!live()) return CANCEL();
             if (no) return err(403, no);
-            if (cur !== null) await ws.backup('narration.md');
+            fits(out, NARR, 'narration.md');
+            if (cur !== null) await ws.backup('narration.md', NARR);
             if (!live()) return CANCEL();
-            if ((await ws.readText('narration.md')) !== cur) return err(409, M.narrConflict);
+            if ((await ws.readText('narration.md', NARR)) !== cur) return err(409, M.narrConflict);
             if (!live()) return CANCEL();
             await ws.writeText('narration.md', out, { live });
             if (live()) await ctx.afterWrite();
@@ -148,6 +155,8 @@ export function createDevApi(ctx) {
     } catch (e) {
       // 書いている途中で作業場所が替わった（書き込みを入れ替えずに取り消した）
       if (e && e.name === 'Cancelled') return CANCEL();
+      // 上限を超えるファイル：読まずに・書かずに 413
+      if (e && e.code === 'read-over') return err(413, String(e.message));
       console.error(e);
       return err(500, String((e && e.message) || e));
     }

@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
+import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -216,12 +217,19 @@ for (const d of ['kit', 'components', 'themes']) {
 // ---------------------------------------------------------------- 原稿の書き換え
 // 控えは .cache/edits の中に、掃除はそこの控えの名前のファイルだけ（フォルダがリンクなら控えを書かず、何も消さずに断る）
 function backup(file) {
-  if (backupFile(DIR_REAL, file, EDITS_REL) === null) return;
+  if (backupFile(DIR_REAL, file, EDITS_REL, { max: limitOf(file) }) === null) return;
   pruneBackups(DIR_REAL, EDITS_REL, KEEP_EDITS);
 }
 // 書く（原稿・口述原稿・コメント）。リンクを通るなら UnsafePathError（応答は 403）
-const writeIn = (file, text) => safeWriteFile(DIR_REAL, file, text);
-const readIn = (file) => readContained(DIR_REAL, file, 'utf8');
+// 読み書きする 3 つのファイルの上限（バイト。kit/core/bounded-read-core.mjs の READ_LIMITS）：読む前に開いた fd の大きさで、読んだ後も実際のバイトで
+// 確かめる（kit/bounded-read.mjs）。超えるものは読まずに 413。書くものも上限を超えるなら書かずに 413（次に読めなくなるものを書かない）
+const limitOf = (file) => (file === NARR ? READ_LIMITS.narration : file === COMMENTS ? READ_LIMITS.comments : READ_LIMITS.source);
+const writeIn = (file, text) => {
+  const n = utf8Length(text), max = limitOf(file);
+  if (n > max) throw new ReadOverError(n, max, path.basename(file));
+  return safeWriteFile(DIR_REAL, file, text);
+};
+const readIn = (file) => readContained(DIR_REAL, file, 'utf8', { max: limitOf(file) });
 function parseRange(s) {
   const m = /^(\d+)-(\d+)$/.exec(String(s || ''));
   if (!m) return null;
@@ -300,7 +308,9 @@ function serveDeckFile(res, file) {
       'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': FILE_CSP, 'referrer-policy': 'no-referrer' };
     if (!media) h['content-disposition'] = 'attachment';
     res.writeHead(200, h);
-    fs.createReadStream(file).pipe(res);
+    // 流すのは stat で見た大きさまで（content-length と同じ。大きくなるファイルを流し続けない。中身をメモリに貯めない）
+    if (!st.size) return res.end();
+    fs.createReadStream(file, { start: 0, end: st.size - 1 }).pipe(res);
   });
 }
 async function afterWrite() { await rebuild(); clearTimeout(timer); broadcast(); }
@@ -416,6 +426,8 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     // 原稿のフォルダの外を指すリンクを通る読み書き（kit/safe-fs.mjs）：書かずに 403
     if (e && e.code === 'unsafe-path') { console.error('  refused: ' + e.message); return send(res, 403, { error: 'リンク（symlink）を通る読み書きは断りました / refused a read or write through a symbolic link: ' + e.message }); }
+    // 上限を超えるファイル（kit/bounded-read.mjs）：読まずに・書かずに 413
+    if (e && e.code === 'read-over') { console.error('  refused: ' + e.message); return send(res, 413, { error: 'ファイルが大きすぎます / the file is too large: ' + e.message }); }
     console.error(e);
     send(res, 500, { error: String(e.message || e) });
   }

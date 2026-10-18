@@ -3,6 +3,7 @@ import { parseJsonStrict, manifestFromAudio, excludedReason, isStale } from '../
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { memoryWorkspace, badRel } from './memfs.js';
+import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 
 const enc = new TextEncoder(), dec = new TextDecoder();
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -84,11 +85,11 @@ export function registryProblems(orig, fresh) {
   return out;
 }
 export async function staleSteps(ws) {
-  const man = await ws.readText('audio/manifest.json');
+  const man = await ws.readText('audio/manifest.json', { max: READ_LIMITS.json });
   if (!man) return [];
   let segments;
   try { segments = JSON.parse(man).segments || {}; } catch { return []; }
-  const narr = await ws.readText('narration.md');
+  const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
   const segs = new Map(parseNarration(narr || '').map((s) => [`${s.slideKey}:${s.stepKey}`, s]));
   const out = [];
   for (const k of Object.keys(segments)) if (await isStale(segments[k], segs.get(k))) out.push(k);

@@ -1,6 +1,7 @@
 // フォルダの読み書き（File System Access API）。編集アプリはここを通してだけ、選ばれたデッキのフォルダに触る
 // 場所はフォルダからの相対パス（"/" 区切り、先頭に / を付けない）
 import { backupStamp, isBackupName } from '../kit/core/backup-name.mjs';
+import { readFileBounded, readFileBoundedText } from './bounded-read.js';
 
 // 一覧に入れないもの：ドットで始まる名前（.cache の控え・.git・.env など）、組んだ出力・音声・動画・依存
 const SKIP = new Set(['node_modules', 'out', 'audio', 'video', 'bundle', '__pycache__']);
@@ -39,20 +40,22 @@ export async function fileHandle(root, rel, create = false) {
   const { d, name } = await dirOf(root, rel, create);
   return d.getFileHandle(name, { create });
 }
-// ファイルの中身。なければ null
-export async function readText(root, rel) {
-  try { return await (await (await fileHandle(root, rel)).getFile()).text(); }
+// ファイルの中身（文字）。なければ null。opts.max：読んでよいバイト数（既定は READ_LIMITS.default）。File.size を読む前に、読んだ後も実際の
+// バイト数を確かめ、超えれば読まずに（読んだ後なら捨てて）ReadOverError（code 'read-over'。app/bounded-read.js）
+export async function readText(root, rel, opts = {}) {
+  let h;
+  try { h = await fileHandle(root, rel); }
   catch (e) { if (e && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError')) return null; throw e; }
+  let file;
+  try { file = await h.getFile(); }
+  catch (e) { if (e && e.name === 'NotFoundError') return null; throw e; }
+  return (await readFileBoundedText(file, { max: opts.max, what: rel })).text;
 }
-// opts.max：読んでよいバイト数。arrayBuffer() の直前に File.size を確かめ直し、超えるなら読まずに、読んだ後も超えていれば断る
-// （code 'read-over'、n は超えた大きさ。編集アプリの組み立てが上限の知らせに替える）
+// opts.max：読んでよいバイト数。arrayBuffer() の直前に File.size を確かめ、超えるなら読まずに、読んだ後も超えていれば断る
+// （code 'read-over'、n は超えた大きさ。編集アプリの組み立てが上限の知らせに替える。app/bounded-read.js）
 export async function readBytes(root, rel, { max = Infinity } = {}) {
   const file = await (await fileHandle(root, rel)).getFile();
-  const over = (n) => Object.assign(new Error(`${rel}: ${n} bytes is over ${max}`), { code: 'read-over', n, max });
-  if (file.size > max) throw over(file.size);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes.length > max) throw over(bytes.length);
-  return bytes;
+  return readFileBounded(file, { max, what: rel });
 }
 // 書き込みの取り消し：live() が false（始めたときの作業場所・保存がもう今のものでない）なら書かない
 export function cancelledError() { return Object.assign(new Error('cancelled: the workspace changed'), { name: 'Cancelled', code: 'cancelled' }); }
@@ -82,8 +85,8 @@ export async function exists(root, rel) {
 // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ残す。開発サーバーと同じ）。
 // 掃除で消すのは控えの名前の形（kit/core/backup-name.mjs。開発サーバーの pruneBackups と同じ）のファイルだけ。ほかのファイルとフォルダには触れない
 export const KEEP_EDITS = 30;
-export async function backup(root, rel, now = Date.now) {
-  const text = await readText(root, rel);
+export async function backup(root, rel, now = Date.now, opts = {}) {
+  const text = await readText(root, rel, opts);
   if (text === null) return;
   const edits = await (await root.getDirectoryHandle('.cache', { create: true })).getDirectoryHandle('edits', { create: true });
   const h = await edits.getFileHandle(`${backupStamp(now())}-${rel.split('/').pop()}`, { create: true });

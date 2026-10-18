@@ -17,6 +17,7 @@ import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
+import { readFileBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 
@@ -561,7 +562,8 @@ async function openPortable(input) {
       await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal('file-too-large', `file is larger than ${LIMITS.fileBytes} bytes (${size})`), buttons: [{ id: 'ok', label: T.ok, pri: true }] });
       return false;
     }
-    bytes = input.bytes ? new Uint8Array(input.bytes) : new Uint8Array(await file.arrayBuffer());
+    // File は app/bounded-read.js で：File.size を読む前に、読んだ後も実際のバイト数を上限と比べる（大きさは見積もり）
+    bytes = input.bytes ? new Uint8Array(input.bytes) : await readFileBounded(file, { max: LIMITS.fileBytes, what: name });
   } catch (e) { toast(T.cannotReadFile + ': ' + (e.message || e), true); return false; }
   if (!(await leavePortable())) return false;
   status(T.reading(name));
@@ -686,7 +688,7 @@ async function savePortableBound(mode) {
       if (!live()) { cancelled(); return; }
       // 段 B は今の作業場所から組む：組み始めの版を保存するものの版にし、組んでいる間に編集があれば（混ざりうるので）「保存した」にしない
       rev = ws.revision;
-      narrB = await ws.readText('narration.md');
+      narrB = await ws.readText('narration.md', { max: READ_LIMITS.narration });
       if (ws.revision !== rev || !live()) { if (!live()) { cancelled(); return; } rev = null; }
       const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
       if (ws.revision !== rev) rev = null;

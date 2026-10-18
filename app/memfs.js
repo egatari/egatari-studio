@@ -5,6 +5,7 @@
 // 場所は "/" 区切りの相対パス（先頭に / を付けない）。一覧（list）はフォルダの walk と同じものを外す：
 // ドットで始まる名前（.cache の控えなど）と、node_modules・out・audio・video・bundle・__pycache__（audio は {audio: true} のときだけ入れる）
 import { backupStamp, isBackupName } from '../kit/core/backup-name.mjs';
+import { ReadOverError, maxOf } from '../kit/core/bounded-read-core.mjs';
 
 const SKIP = new Set(['node_modules', 'out', 'audio', 'video', 'bundle', '__pycache__']);
 export const KEEP_EDITS = 30;
@@ -62,17 +63,24 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
     },
     async readBytes(rel, { max = Infinity } = {}) {
       const e = store.get(rel); if (!e) throw notFound(rel);
-      if (e.bytes.length > max) throw Object.assign(new Error(`${rel}: ${e.bytes.length} bytes is over ${max}`), { code: 'read-over', n: e.bytes.length, max });
+      if (e.bytes.length > max) throw new ReadOverError(e.bytes.length, max, rel);
       return e.bytes.slice();
     },
-    async readText(rel) { const e = store.get(rel); return e ? dec.decode(e.bytes) : null; },
+    // opts.max：読んでよいバイト数（既定は READ_LIMITS.default。フォルダの作業場所と同じ）
+    async readText(rel, opts = {}) {
+      const e = store.get(rel); if (!e) return null;
+      const max = maxOf(opts);
+      if (e.bytes.length > max) throw new ReadOverError(e.bytes.length, max, rel);
+      return dec.decode(e.bytes);
+    },
     async writeBytes(rel, bytes, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, bytes); if (content(rel)) { dirty = true; revision++; } },
     async writeText(rel, text, o) { if (o && o.live && !o.live()) throw cancelled(); put(rel, String(text)); if (content(rel)) { dirty = true; revision++; } },
     async exists(rel) { if (store.has(rel)) return true; for (const k of store.keys()) if (k.startsWith(rel + '/')) return true; return false; },
     // 書き換える前の控え：.cache/edits/<時刻>-<名前>（新しい 30 個だけ。フォルダと同じ）。控えは保存するファイルには入らない
-    async backup(rel) {
+    async backup(rel, opts = {}) {
       const e = store.get(rel);
       if (!e) return;
+      if (e.bytes.length > maxOf(opts)) throw new ReadOverError(e.bytes.length, maxOf(opts), rel);
       const stamp = backupStamp(now());
       let key = `.cache/edits/${stamp}-${rel.split('/').pop()}`, n = 2;
       while (store.has(key)) key = `.cache/edits/${stamp}-${n++}-${rel.split('/').pop()}`;
