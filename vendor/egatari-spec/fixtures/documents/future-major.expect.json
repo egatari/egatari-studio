@@ -1,0 +1,7 @@
+{
+  "read": {
+    "error": "unsupported-version"
+  },
+  "extract": "ok",
+  "play": true
+}

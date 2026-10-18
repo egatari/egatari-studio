@@ -1,0 +1,6 @@
+{
+  "generator": "egatari-studio v0.3.1",
+  "repository": "https://github.com/egatari/egatari-studio",
+  "commit": "e131d041bf16d58a4b801773edfd90949a28d136",
+  "command": "node tools/portable-fixtures.mjs <dir>"
+}

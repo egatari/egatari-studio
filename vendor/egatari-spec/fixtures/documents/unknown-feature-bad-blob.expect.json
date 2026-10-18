@@ -1,0 +1,8 @@
+{
+  "read": {
+    "error": "unknown-feature"
+  },
+  "extract": {
+    "error": "bad-blob"
+  }
+}

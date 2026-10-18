@@ -138,6 +138,33 @@
     },
     "attribution": {
       "type": "string"
+    },
+    "importedFrom": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mime",
+          "sha256"
+        ],
+        "properties": {
+          "mime": {
+            "type": "string",
+            "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "attachment": {
+            "type": "string",
+            "pattern": "^attachments/"
+          }
+        }
+      }
     }
   },
   "not": {
