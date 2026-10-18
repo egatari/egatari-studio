@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Japanese language arts (国語), kanbun first. Shared base in `kit/layouts.css`: vertical writing (`.tate`, `.tcy`), ruby (`rt` at 0.5em, not counted by the checker's text-size rule), a Mincho family (`--font-mincho`, `.mincho`, `<html data-font="mincho">`), and `--font-cap` for the caption font
+- BIZ UDPMincho (OFL): `tools/get-fonts.mjs` also downloads `BIZUDPMincho-Regular.ttf` and `-Bold.ttf` from the same pinned google/fonts commit, with size limits and SHA-256; `@fontsource/biz-udpmincho` 5.3.0 is the fallback without the TTF files. The build embeds Mincho only when the deck uses it (`var(--font-mincho)` in the deck, its theme or a used component, `class="mincho"`, or `data-font="mincho"`), subset with uv like BIZ UDPGothic. The hosted editor bundles it; the single-file `dist/editor.html` does not (it would grow by about 11 MB) and warns that Mincho is not embedded
+- `m-kanbun`: kanbun in vertical writing from an author-friendly text syntax (`春眠不{=ず}レ覚(エ)レ暁(ヲ)`: `(送り仮名)`, `[返り点]` including 一レ・上レ, `{振り仮名}`, `{=かな}`, `{-}` 置き字, `(右|二度目)` 再読文字, `-` 竪点). Steps: 白文 → 訓点 (返り点 lower left, 送り仮名 lower right) → reading order (characters highlighted in kundoku order with an arc where the eye jumps back; cues at the start of each column) → 書き下し文. The kundoku order (レ点, 一二点, 上中下点, 甲乙点, 天地人点, 一レ点, 再読文字, 置き字) and the 書き下し文 are tested on known texts (`tools/test-kokugo.mjs`)
+- `m-kobun`: classical Japanese split into words and colored by part of speech, one sentence per step, then the modern translation. Clicking an auxiliary verb shows its conjugation table and meanings from a table inside the component (28 classical auxiliary verbs; no network, text only); the card closes when the step changes and never opens in video mode
+- `m-gendai`: modern Japanese with side lines and double side lines (labels A, B…), arrows from demonstratives to what they refer to, and paragraphs boxed by role (主張・具体例・対比) and joined by lines; horizontal or vertical
+- Theme `kokugo` (Mincho body text, indigo base, vermilion emphasis, off-white background, captions in BIZ UDPGothic)
+- Example `examples/kokugo-kanbun` (10 slides, narration for every step): 『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』, 『枕草子』 and an original modern text. `npm test` runs `test-kokugo`, builds the example normally and as a portable file, and checks it (0 errors)
+
 ## [0.3.1] - 2026-10-18
 
 ### Changed

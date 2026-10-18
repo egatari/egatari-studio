@@ -46,6 +46,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - 部品の段階はスライドの段階 `data-from`（既定 1）から始まる。スライドの段階 K のとき、部品の段階は `k = clamp(K - from + 1, 0, steps)`。部品の段階の範囲の外では t = Infinity で呼ばれる
 - `render` は**同じ (k, t) なら必ず同じ画面**にする。前回の呼び出しの状態に頼らない（戻る・飛ぶ・動画の書き出しで順番が変わるため）
 - `ctx = {mode, slide, instant, deck}`。`ctx.mode === "lecture"` のときは最終状態を見せて今の段階を強調する、などを部品が選べる
+- 部品は、押したときに札を重ねて出してよい（`m-kobun` の活用表）。これはペンと同じ発表の操作で、(i, k, t) の決まりの外にある：段階が動いたら閉じ、`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにする
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、デッキは自前のコードを持つものとして扱う）
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `summary` `steps` `props` を書く
