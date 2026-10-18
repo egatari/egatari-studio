@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Business and pitch components** (`components/`, in the catalog, each with a demo; the screen depends only on `DECK.seek(i, k, t)`):
+  - `m-bars`: bars that grow from 0 step by step, vertical or horizontal (rankings), one or more series (series named on the first group, no legend), values with thousands separators and a unit written at the bar end once a bar has grown (`count="true"` counts up instead), a group `tone` to highlight one. `scale` widens the value axis at a step (log-interpolated, the previous range kept as a faint band, tick sets swapped), so a bar can push through the top of the axis. It generalizes the deck-local bars of `examples/tmlr2026-calibration`, which keeps its own choreographed component (a deck's `components/` is looked up first)
+  - `m-quad`: a 2×2 positioning map (or SWOT-style grid) with labelled poles and quadrant names; items are placed one per step, the `self` item is emphasized with a ring, and `to` slides an item to a target with a dashed trail
+  - `m-market`: TAM / SAM / SOM as nested circles, each shrinking out of the previous one, with key, value and basis written to the right; fixed ratios (default) or area proportional to the value, bottom-aligned or concentric
+  - `m-kpi`: KPI cards with a big number and unit, an optional prefix, a ▲ / ▼ delta (coloured by whether the direction is good) and a note; the number counts up from 0 (or `from`) with an ease-out that is a function of (k, t) only
+- `m-flow`: money and value flows, backward compatible (edges without the new fields draw as before). `kind` (`money` / `service` / `data`) sets colour, width and dash; `amount` adds a bold amount on the other side of the label; `shift` offsets an edge so that the two directions between the same boxes run side by side; `pulse` sends a train of dots along an edge in its own step or in the listed steps (`pulse-dur`, `pulse-n`), and `cues(k)` returns the pulse start times so a narration `{cue}` can time them (still `null` for figures without `pulse`)
+- `themes/business`: a neutral theme for business and pitch decks (navy base, orange emphasis and heading rule, teal third series, darker text and lines for reading at a distance, a light orange conclusion line, no logo); it uses the same BIZ UDPGothic setup as `default`
+- `examples/pitch-fictional`: a 10-slide Japanese pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports from company data) using all five components and the `business` theme, with narration for every step, stable slide ids and data written by `scripts/make_data.py` (fixed made-up values plus consistency checks). The company, product, people and numbers are all fictional. It exports as a `core` portable file (no own code)
+- `npm test` builds and checks `examples/pitch-fictional` (no errors); `tools/test-components.mjs` covers the new components through their demos (render, text size and overlap, seek determinism)
+
 ## [0.3.1] - 2026-10-18
 
 ### Changed
