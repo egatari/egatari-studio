@@ -1231,10 +1231,19 @@ try {
         if (SHOTS && w === 1440) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-${w}.png`), clip: { x: 0, y: 0, width: w, height: 120 } });
       }
       await pt.setViewportSize({ width: 1440, height: 860 });
+      // プレビューを表示し終えてから（loads は srcdoc を渡した数。iframe の load はその後で、プレビューに focus を移す）
+      const shown = () => pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+      await shown();
       await pt.click('#b-exportmenu');
       await pt.waitForSelector('#m-export:not([hidden])');
       if (SHOTS) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-menu.png`), clip: { x: 640, y: 0, width: 800, height: 300 } });
       ok(await pt.evaluate(() => document.activeElement && document.activeElement.closest('#m-export') !== null), `menu (${lang}, ${kind}): opening focuses the first item`);
+      // 一覧を開いている間にプレビューの読み込みが終わっても、focus は一覧に残る（Windows でここが時々落ちた：load の focus が一覧から奪い、
+      // Esc がデッキへ行って一覧が開いたまま残り、次に押した「書き出す ▾」が一覧を閉じた）
+      await pt.evaluate(() => window.__APP_TEST.reloadPreview());
+      await shown();
+      ok(await pt.evaluate(() => document.activeElement && document.activeElement.closest('#m-export') !== null) && await pt.isVisible('#m-export'),
+        `menu (${lang}, ${kind}): a preview load that finishes while the menu is open does not take the focus`);
       await pt.keyboard.press('ArrowDown');
       await pt.keyboard.press('Escape');
       ok(await pt.isHidden('#m-export') && await pt.evaluate(() => document.activeElement.id === 'b-exportmenu'), `menu (${lang}, ${kind}): Esc closes it and returns focus`);

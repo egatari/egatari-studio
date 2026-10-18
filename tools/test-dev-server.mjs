@@ -401,6 +401,10 @@ try {
   ok(/^text\/plain/.test(nh['content-type']) && nh['content-disposition'] === 'attachment' && nh['x-content-type-options'] === 'nosniff' && /^sandbox;/.test(nh['content-security-policy'] || ''),
     '/deck/ text files: text/plain, attachment, nosniff, CSP sandbox ' + JSON.stringify([nh['content-type'], nh['content-disposition'], nh['content-security-policy']]));
   ok(ah['content-type'] === 'audio/wav' && !ah['content-disposition'] && ah['x-content-type-options'] === 'nosniff' && /^sandbox;/.test(ah['content-security-policy'] || ''), '/deck/ media: own type, nosniff, CSP sandbox');
+  // 使っていない接続をサーバーから先に閉じない（Node の既定の 5〜6 秒では、page.request が使い直す接続を閉じるのと重なり、上の GET が
+  // ECONNRESET で落ちることがあった。閉じるのは繋いだ側に任せる）
+  const ka = /^timeout=(\d+)$/.exec(nh['keep-alive'] || '');
+  ok(ka && +ka[1] >= 300, 'idle keep-alive connections are left for the client to close (Keep-Alive: ' + nh['keep-alive'] + ')');
   await page.goto(base + '?mode=lecture#3'); await ready();
   ok((await dk().evaluate(() => DECK.mode)) === 'lecture' && (await dk().evaluate(() => DECK.state().slide)) === 3, '?mode=lecture#3 is passed to the deck');
   // 発表者ビュー：デッキの p → 外枠が窓を開く（その中のデッキも sandbox）。→ で本体が進む

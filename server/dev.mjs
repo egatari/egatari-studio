@@ -435,6 +435,12 @@ const server = http.createServer(async (req, res) => {
     send(res, 500, { error: String(e.message || e) });
   }
 });
+// 使っていない接続（keep-alive）をサーバーの側から先に閉じない。Node の既定では応答から 5 秒（Node 24 からは 6 秒）で閉じるが、
+// 繋ぎっぱなしにする側（Playwright の request、timeout のない http.Agent）は Keep-Alive: timeout= を見ずに同じ接続を使い直すので、
+// 閉じるのと次の問い合わせがちょうど重なると「socket hang up（ECONNRESET）」になる（試験で応答から 6.0 秒後の GET が落ちた）。
+// ブラウザ（Chrome は使った接続を 5 分）より長く開けておき、閉じるのはいつも繋いだ側にする。127.0.0.1 だけなので開けておく数は小さい。
+// 問い合わせの途中の時間切れ（headersTimeout・requestTimeout）はそのまま効く
+server.keepAliveTimeout = 10 * 60 * 1000;
 
 await rebuild();
 // 使われているポートなら次の番号を試す（--port で 0 を渡すと空いている番号を OS が選ぶ）

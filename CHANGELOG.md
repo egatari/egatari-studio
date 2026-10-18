@@ -47,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `m-kanbun`: a long 送り仮名 (`落(ツルコト)`, `先(ンズレバ)`) no longer pushes the next character down. As in print it starts at the lower right of its character, may run into the upper half of the next character's right column, and is compressed (tighter letter spacing, then vertically scaled; the font size stays, down to 0.78 of its natural length); the next character's 送り仮名 may move down by up to 0.36 of a character to make room when it still fits. The next character moves down only when it has 振り仮名 or the 送り仮名 does not fit even compressed. `tools/test-components.mjs` checks that right-column annotations do not overlap and that a 送り仮名 of 3 or more kana does not push the next character. The README image `docs/images/kokugo-kanbun.png` is re-shot
 - `package.json` `homepage` and the editor link in the README (en, ja) point to <https://editor.egatari.org/>
 
+### Fixed
+
+- Dev server: idle keep-alive connections are no longer closed by the server after Node's default 5 s (6 s from Node 24); `server.keepAliveTimeout` is 10 minutes, longer than browsers keep them, so the client always closes first. A client that reuses pooled connections without reading the `Keep-Alive: timeout=` hint (Playwright's `request`, an `http.Agent` without `timeout`) could send a request just as the server closed the connection and get `socket hang up` (`ECONNRESET`); this made `tools/test-dev-server.mjs` fail now and then on CI (a GET 6.0 s after the previous one). The test checks the advertised timeout
+- Editor app: a preview that finishes loading while a toolbar menu (Open / Save / Export ▾) is open no longer moves the focus from the menu to the preview. Before, ↑↓ and Esc then went to the deck and the menu stayed open (on slow machines the load can finish after the menu opens; `tools/test-app.mjs` failed now and then on Windows). The test waits until the preview has loaded before opening the menu and checks that a load while the menu is open keeps the focus in it
+
 ## [0.3.1] - 2026-10-18
 
 ### Changed
