@@ -21,4 +21,5 @@ props: fade, move, size, quads-step
 
 注意
 
-- 名前は丸の右に書くので、右上の象限の名前（tr）や移動先の名前と重なりやすい。重なるときは `anchor` を変えるか、座標をずらす（`tools/test-components.mjs` が重なりを知らせる）
+- 名前が軸の線を横切るときは、丸の反対の側 → 上 → 下の順に置き直す（点の始めの位置と `to` の位置の両方で。幅は字数からの見積もり）。`anchor` を書いても、横切るならこの順で置き直す。軸の線には `class="axis"` が付き、`tools/test-components.mjs` は軸を横切る字を知らせる
+- 象限の名前（tr など）や移動先の名前との重なりは置き直さない。重なるときは `anchor` を変えるか、座標をずらす（`tools/test-components.mjs` が重なりを知らせる）

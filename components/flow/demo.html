@@ -46,13 +46,15 @@
         "nodes": [
           {"id": "co",  "label": "自社",         "x": 470, "y": 20,  "w": 240, "h": 80, "step": 1, "tone": "emph"},
           {"id": "cu",  "label": "顧客の会社",   "x": 60,  "y": 300, "w": 260, "h": 80, "step": 1},
-          {"id": "us",  "label": "社員（使う人）", "x": 860, "y": 300, "w": 300, "h": 80, "step": 2}
+          {"id": "us",  "label": "社員（使う人）", "x": 860, "y": 300, "w": 300, "h": 80, "step": 2},
+          {"id": "cl",  "label": "クラウド",     "x": 950, "y": 20,  "w": 220, "h": 80, "step": 3, "tone": "muted"}
         ],
         "edges": [
           {"from": "co", "to": "cu", "kind": "service", "label": "使う権利", "shift": 14, "step": 1},
           {"from": "cu", "to": "co", "kind": "money", "amount": "月 3 万円", "shift": 14, "step": 2, "pulse": [2, 3]},
           {"from": "cu", "to": "us", "kind": "service", "label": "配る", "step": 2},
-          {"from": "us", "to": "co", "kind": "data", "label": "使い方の記録", "step": 3, "pulse": true}
+          {"from": "us", "to": "co", "kind": "data", "label": "使い方の記録", "step": 3, "pulse": true},
+          {"from": "co", "to": "cl", "kind": "money", "amount": "売上の 15 %", "step": 3}
         ]
       }</script>
     </m-flow>

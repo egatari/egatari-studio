@@ -15,6 +15,7 @@ DECK.define("m-flow", class extends DECK.MotionElement {
     size: {type: "number", default: 26, doc: "箱の字の大きさ（px）"},
     "pulse-dur": {type: "number", default: 1.2, doc: "pulse の点が始点から終点まで流れる秒数"},
     "pulse-n":   {type: "number", default: 3, doc: "pulse で流れる点の数"},
+    "label-gap": {type: "number", default: 12, doc: "辺の名前・金額と箱との最小の間（px）。近ければ線から離す"},
   };
   get steps(){
     if (this.getAttribute("steps") !== null) return +this.getAttribute("steps");
@@ -37,7 +38,7 @@ DECK.define("m-flow", class extends DECK.MotionElement {
     this.nodes = (data.nodes || []).map(function(n){
       var c = tone[n.tone || "term"] || tone.term, cx = n.x + n.w / 2, cy = n.y + n.h / 2;
       var g = D.el("g", {opacity: 0}, gN);
-      D.el("rect", {x: n.x, y: n.y, width: n.w, height: n.h, rx: 10, fill: c[1], stroke: c[0], "stroke-width": n.tone === "emph" ? 3 : 2.2}, g);
+      D.el("rect", {class: "box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 10, fill: c[1], stroke: c[0], "stroke-width": n.tone === "emph" ? 3 : 2.2}, g);
       // svgMath の div は行の中の inline-block なので、上端にそろえないと親の行の高さの分だけ下へずれる
       if (n.tex) D.svgMath(g, cx, cy + P.size * 0.36, n.tex, {size: P.size, anchor: "middle", color: c[2], w: n.w, h: n.h}).firstChild.style.verticalAlign = "top";
       else {
@@ -72,15 +73,32 @@ DECK.define("m-flow", class extends DECK.MotionElement {
       // 線の中点から、線に垂直な向き（上か右）へずらして置く。amount は反対の側（label がなければ同じ側）に太字で
       var nx = -dy / L, ny = dx / L;
       if (ny > 0 || (ny === 0 && nx < 0)){ nx = -nx; ny = -ny; }
-      var side = function(sg, text, attrs){
-        var off = (e.offset !== undefined ? e.offset : 18) * sg, mx = (p0[0] + p1[0]) / 2 + nx * off, my = (p0[1] + p1[1]) / 2 + ny * off;
-        var anc = Math.abs(nx) < 0.3 ? "middle" : nx * sg > 0 ? "start" : "end";
-        return D.mtext(g, mx, my + (ny * sg < -0.3 ? 0 : ny * sg > 0.3 ? 20 : 8), text, Object.assign({"text-anchor": anc, "font-size": 24, opacity: 0}, attrs));
+      // 字の箱が箱（node）に label-gap px より近いか図の外に出るなら、線から離していく（6 px ずつ、60 px まで）。
+      // それでも離れなければ線の反対の側で同じように試す（label と amount が両側にあるときは自分の側だけ）。
+      // 幅は字数から見積もる（和文 1 字 = 1 字幅、ほかは 0.6 字幅）ので、字の読み込みによらず同じ位置になる
+      var side = function(sg, text, attrs, both){
+        var fs = attrs["font-size"] || 24, base = e.offset !== undefined ? e.offset : 18, pos = null, anc0 = null;
+        var w = [...text].reduce(function(a, ch){ return a + (/[\u0000-\u024f]/.test(ch) ? 0.6 : 1); }, 0) * fs;
+        var sides = both ? [sg, -sg] : [sg];
+        search: for (var si = 0; si < sides.length; si++){
+          var sgn = sides[si], anc = Math.abs(nx) < 0.3 ? "middle" : nx * sgn > 0 ? "start" : "end";
+          for (var extra = 0; extra <= 60; extra += 6){
+            var off = (base + extra) * sgn, mx = (p0[0] + p1[0]) / 2 + nx * off, my = (p0[1] + p1[1]) / 2 + ny * off;
+            var y = my + (ny * sgn < -0.3 ? 0 : ny * sgn > 0.3 ? 20 : 8);
+            var x0 = anc === "start" ? mx : anc === "end" ? mx - w : mx - w / 2, gp = P["label-gap"];
+            var hit = x0 < 0 || x0 + w > W || y - fs * 0.88 < 0 || y + fs * 0.22 > H || self.nodes.some(function(o){ var n = o.n;
+              return x0 < n.x + n.w + gp && x0 + w > n.x - gp && y - fs * 0.88 < n.y + n.h + gp && y + fs * 0.22 > n.y - gp; });
+            if (!pos){ pos = [mx, y]; anc0 = anc; }
+            if (!hit){ pos = [mx, y]; anc0 = anc; break search; }
+          }
+        }
+        return D.mtext(g, pos[0], pos[1], text, Object.assign({"text-anchor": anc0, "font-size": 24, opacity: 0}, attrs));
       };
       // shift でずらした辺は、ずらした側に書く（行きと帰りの字が同じ側に重ならない）
       var sg = e.shift && (-dy * nx + dx * ny) * e.shift < 0 ? -1 : 1;
-      if (e.label) lab = side(sg, e.label, {fill: tn ? col : "var(--muted)"});
-      if (e.amount !== undefined && e.amount !== "") amt = side(e.label ? -sg : sg, String(e.amount), {fill: col, "font-weight": 700, "font-size": 26});
+      var hasAmt = e.amount !== undefined && e.amount !== "";
+      if (e.label) lab = side(sg, e.label, {fill: tn ? col : "var(--muted)"}, !hasAmt);
+      if (hasAmt) amt = side(e.label ? -sg : sg, String(e.amount), {fill: col, "font-weight": 700, "font-size": 26}, !e.label);
       var step = e.step || Math.max(a.step, b.step);
       // 同じ段階で出る箱があれば、その箱が出てから引く
       var after = Math.max(a.step === step ? a.at + P.fade * 0.6 : 0, b.step === step ? b.at + P.fade * 0.6 : 0);

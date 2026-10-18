@@ -54,8 +54,8 @@ DECK.define("m-quad", class extends DECK.MotionElement {
     });
     // 軸（両向きの矢印）と両端の言葉。横軸の言葉は軸の下、縦軸の言葉は軸の上端・下端の外
     var ax = D.el("g", {}, svg), K = "var(--fg)";
-    D.el("line", {x1: x0, y1: cy, x2: x1, y2: cy, stroke: K, "stroke-width": 2}, ax);
-    D.el("line", {x1: cx, y1: y0, x2: cx, y2: y1, stroke: K, "stroke-width": 2}, ax);
+    D.el("line", {x1: x0, y1: cy, x2: x1, y2: cy, stroke: K, "stroke-width": 2, class: "axis"}, ax);
+    D.el("line", {x1: cx, y1: y0, x2: cx, y2: y1, stroke: K, "stroke-width": 2, class: "axis"}, ax);
     [[x1, cy, 0], [x0, cy, 180], [cx, y0, -90], [cx, y1, 90]].forEach(function(a){
       D.el("path", {d: "M0,0L-14,-7L-14,7Z", fill: K, transform: "translate(" + a[0] + " " + a[1] + ") rotate(" + a[2] + ")"}, ax);
     });
@@ -73,8 +73,20 @@ DECK.define("m-quad", class extends DECK.MotionElement {
       var ring = me ? D.el("circle", {r: r, fill: "none", stroke: col, "stroke-width": 3, opacity: 0}, gP) : null;
       var g = D.el("g", {opacity: 0}, gP);
       D.el("circle", {cx: 0, cy: 0, r: r, fill: col, stroke: "var(--bg)", "stroke-width": 2.5}, g);
-      var an = it.anchor || "right", off = r + 10;
-      var lp = an === "left" ? [-off, 9, "end"] : an === "above" ? [0, -off - 4, "middle"] : an === "below" ? [0, off + 22, "middle"] : [off, 9, "start"];
+      var off = r + 10;
+      var place = function(an){ return an === "left" ? [-off, 9, "end"] : an === "above" ? [0, -off - 4, "middle"] : an === "below" ? [0, off + 22, "middle"] : [off, 9, "start"]; };
+      // 名前が軸の線を横切るなら、丸の反対の側 → 上 → 下の順に置き直す（点の始めの位置と to の位置の両方で確かめる）。
+      // 幅は字数から見積もる（和文 1 字 = 1 字幅、ほかは 0.58 字幅）
+      var w = [...String(it.label || "")].reduce(function(a, ch){ return a + (/[\u0000-\u024f]/.test(ch) ? 0.58 : 1); }, 0) * P.size;
+      var crosses = function(an, px, py){
+        var lp = place(an), lx = px + lp[0], ly = py + lp[1], a0 = lp[2] === "start" ? lx : lp[2] === "end" ? lx - w : lx - w / 2;
+        return (a0 - 6 < cx && a0 + w + 6 > cx && ly - P.size * 0.88 < y1 && ly + P.size * 0.22 > y0) ||
+               (ly - P.size * 0.88 - 6 < cy && ly + P.size * 0.22 + 6 > cy && a0 < x1 && a0 + w > x0);
+      };
+      var pts = [[self.X(it.x), self.Y(it.y)]].concat(o.to ? [[self.X(o.to.x), self.Y(o.to.y)]] : []);
+      var pref = it.anchor || "right", order = [pref, pref === "left" ? "right" : pref === "right" ? "left" : pref === "above" ? "below" : "above", "above", "below", "left", "right"];
+      var an = order.filter(function(a){ return !pts.some(function(q){ return crosses(a, q[0], q[1]); }); })[0] || pref;
+      var lp = place(an);
       D.mtext(g, lp[0], lp[1], it.label || "", {"text-anchor": lp[2], "font-size": P.size, "font-weight": me ? 700 : 400, fill: me ? col : "var(--fg)"});
       var lab2 = o.to && o.to.label ? D.mtext(gP, 0, 0, o.to.label, {"text-anchor": "middle", "font-size": 24, fill: col, opacity: 0}) : null;
       return {o: o, g: g, ring: ring, r: r, trail: trail, lab2: lab2};

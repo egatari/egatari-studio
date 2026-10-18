@@ -1,7 +1,7 @@
 // 部品の見本（components/<名前>/demo.html）を組んで、ブラウザで動かして確かめる
 //   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
 // 確かめること：コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
-// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し
+// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -86,6 +86,18 @@ for (const name of names) {
           const p = boxes[a].r, q = boxes[b].r, ox = Math.min(p.right, q.right) - Math.max(p.left, q.left), oy = Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top);
           const same = boxes[a].s === boxes[b].s && Math.abs(p.left - q.left) < 1 && Math.abs(p.top - q.top) < 1;
           if (!same && ox > 2 && oy > 4) out.push(`overlap: "${boxes[a].s}" / "${boxes[b].s}"`);
+        }
+        // 部品が印を付けた線と箱：軸の線（line.axis）を横切る字、ほかの箱（rect.box）に 4px より近い字（その箱の中の字は除く）
+        const vis2 = (e) => { for (let x = e; x && x !== sl; x = x.parentElement) { const o = +(x.getAttribute && x.getAttribute('opacity') || getComputedStyle(x).opacity); if (o < 0.5) return false; } return true; };
+        const axes = sl._comps.flatMap((c) => [...c.querySelectorAll('line.axis')]).filter(vis2).map((e) => e.getBoundingClientRect());
+        const rects = sl._comps.flatMap((c) => [...c.querySelectorAll('rect.box')]).filter(vis2);
+        for (const { e, r, s } of boxes) {
+          for (const a of axes) if (r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top) out.push(`text crosses an axis: ${s}`);
+          for (const b of rects) {
+            if (b.parentNode.contains(e)) continue;
+            const q = b.getBoundingClientRect(), gap = 4;
+            if (r.left < q.right + gap && r.right > q.left - gap && r.top < q.bottom + gap && r.bottom > q.top - gap) out.push(`text touches a box: ${s}`);
+          }
         }
         return out;
       }, s.i);
