@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=99522faa4892e1f2 -->
+<!-- i18n: pair=reference.md sha256=cd2cb912c5746364 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -379,7 +379,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 - **教材の id**：初めての書き出しで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。デッキと一緒に残す（次の書き出しも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **スクリプトなしで読める口述原稿**：全段階の表示用の文字を、ふつうの HTML としても入れる（デッキが動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）は段階ごとにファイルの索引に集める。
-- **添付**（形式の §9C.3）：組み立てには使わない、読み手のためのファイル。`attachments/` の下（下のフォルダもよい）に置く：元の原稿（TeX・Word）、組んだ PDF、コード、データ、補足。役割と題は `egatari.json` に、ファイルの `index.attachments` と同じ形で書く：`"attachments": [{"path": "attachments/paper.pdf", "role": "pdf", "title": "論文（PDF）"}]`。`role` は `source`・`pdf`・`code`・`data`・`supplement` のどれか、`title` は任意（200 字まで。ほかの項目は残す）。`attachments/` の下の通常のファイルはみな入れる（シンボリックリンクはたどらない。隠しファイル・控え・認証の情報は上と同じく外す）。`index.attachments` に載るのは正しい役割のあるものだけで、ほかは知らせて入れるだけ。上限は 1 つ 20 MiB・合わせて 50 MiB・100 個（base64 なので 1 ファイルではおよそ 4/3 倍）。超えるものは知らせて外す（`kit/core/attachments.mjs` の `ATTACH_LIMITS`）。添付はコードに数えない（`.html` の添付があっても Extended にならない）。`requires` にも入れない（読み手は無視してよい）。読むのは組み立てと同じ大きさの数え方の内。1 ファイルの再生器は **?** の一覧と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：索引の hash と、添付ごとの大きさと SHA-256 を確かめ、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。HTML・SVG・PDF も、ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。検査器は、役割がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものを警告する
+- **添付**（形式の §9C.3。試行：入れてよい中身は後の版で狭まることがある。§3.8 の案）：組み立てには使わない、読み手のためのファイル。`attachments/` の下（下のフォルダもよい）に置く：元の原稿（TeX・Word）、組んだ PDF、コード、データ、補足。役割と題は `egatari.json` に、ファイルの `index.attachments` と同じ形で書く：`"attachments": [{"path": "attachments/paper.pdf", "role": "pdf", "title": "論文（PDF）"}]`。`role` は `source`・`pdf`・`code`・`data`・`supplement` のどれか、`title` は任意（200 字まで。ほかの項目は残す）。`attachments/` の下の通常のファイルを入れる（シンボリックリンクはたどらない。隠しファイル・控え・認証の情報は上と同じく外す）。`index.attachments` に載るのは正しい役割のあるものだけで、ほかは知らせて入れるだけ。上限は 1 つ 20 MiB・合わせて 50 MiB・100 個（base64 なので 1 ファイルではおよそ 4/3 倍）。超えるものは知らせて外す（`kit/core/attachments.mjs` の `ATTACH_LIMITS`）。添付はコードに数えない（`.html` の添付があっても Extended にならない）。`requires` にも入れない（読み手は無視してよい）。読むのは組み立てと同じ大きさの数え方の内。1 ファイルの再生器は **?** の一覧と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：索引の hash と、添付ごとの大きさと SHA-256 を確かめ、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。HTML・SVG・PDF も、ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。検査器は、役割がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものを警告する
 - **音声の記録**：段階の音声ごとに、作ったときの口述原稿の hash を残す。TTS の控えから、音声を作った後に口述原稿が変わったと分かるときは、その hash を `null`（分からない＝古い）にする。展開してまとめ直しても `null` のまま。実行系の音声の項目には音声のメディアタイプも書くので、再生器が推し量らずに済む。
 - 30 MiB を超えると警告する（長い教材は章に分ける）。
 

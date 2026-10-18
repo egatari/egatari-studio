@@ -16,7 +16,7 @@ const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
 const MB = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB' : (n / 1048576).toFixed(1) + ' MB');
 const STR = {
   ja: {
-    title: '添付', lead: `読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。${ATTACH_PREFIX} に置き、役割と題は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
+    title: '添付（試行）', lead: `試行：入れてよい中身は後の版で狭まることがあります（形式の §3.8 の案）。読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。${ATTACH_PREFIX} に置き、役割と題は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
     limits: `1 つ ${MB(ATTACH_LIMITS.fileBytes)}・合わせて ${MB(ATTACH_LIMITS.totalBytes)}・${ATTACH_LIMITS.count} 個まで`,
     none: 'まだありません', add: 'ファイルを足す…', role: '役割', noRole: '（役割なし：一覧に出ない）', titleL: '題', rename: '名前を替える…', remove: '消す',
     roles: { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' },
@@ -28,7 +28,7 @@ const STR = {
     problems: '気をつけること',
   },
   en: {
-    title: 'Attachments', lead: `Files for readers (original source, PDF, code, data, supplements). They live in ${ATTACH_PREFIX}; roles and titles are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
+    title: 'Attachments (experimental)', lead: `Experimental: the allowed contents may be narrowed in a later version (spec §3.8 draft). Files for readers (original source, PDF, code, data, supplements). They live in ${ATTACH_PREFIX}; roles and titles are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
     limits: `up to ${MB(ATTACH_LIMITS.fileBytes)} each, ${MB(ATTACH_LIMITS.totalBytes)} together, ${ATTACH_LIMITS.count} files`,
     none: 'None yet', add: 'Add files…', role: 'Role', noRole: '(no role: not listed)', titleL: 'Title', rename: 'Rename…', remove: 'Remove',
     roles: { source: 'Source', pdf: 'PDF', code: 'Code', data: 'Data', supplement: 'Supplement' },

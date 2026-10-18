@@ -15,7 +15,7 @@ document.documentElement.lang = EN ? 'en' : 'ja';
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
-  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', attach: '添付', attachTip: '添付ファイル（attachments/）',
+  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', attach: '添付', attachTip: '添付ファイル（attachments/。試行：入れてよい中身は後の版で狭まることがある）',
   check: '簡易チェック', export: '組み立てた HTML を書き出す', print: '印刷 / PDF', presenter: '発表者ビュー', full: '全画面', helpBtn: '使い方',
   welcomeTitle: `1 ファイル（${FX}）を開いて、見る・直す`, welcomeLead: `インストールは要りません。1 ファイル（${FX}）を開くか、新しいデッキを作るか、AI の出力を貼り付けると、ここで表示・編集できます`,
   unsupported: 'このブラウザでは作業フォルダを開けません（1 ファイルは開けます）。作業フォルダを使うには Google Chrome か Microsoft Edge（パソコン版）で開いてください',
@@ -165,7 +165,7 @@ const ja = {
   },
 };
 const en = {
-  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', attach: 'Attach', attachTip: 'Attachments (attachments/)',
+  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', attach: 'Attach', attachTip: 'Attachments (attachments/; experimental: the allowed contents may be narrowed in a later version)',
   check: 'Quick check', export: 'Export built HTML', print: 'Print / PDF', presenter: 'Presenter view', full: 'Fullscreen', helpBtn: 'Help',
   welcomeTitle: `Open a single file (${FX}) to view and edit`, welcomeLead: `Nothing to install. Open a single file (${FX}), start a new deck or paste AI output to view and edit it here.`,
   unsupported: 'This browser cannot open working folders (single files open fine). For working folders, please use Google Chrome or Microsoft Edge (desktop).',

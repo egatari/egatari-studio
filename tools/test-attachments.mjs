@@ -266,6 +266,7 @@ const browser = await launch();
   ok(!!(await page.$('#b-attach')) && (await page.textContent('#b-attach')) === '添付', 'editor: the toolbar has “添付”');
   await page.click('#b-attach');
   await page.waitForSelector('#attach-list');
+  ok(/試行/.test(await page.textContent('#panel-title')) && /試行/.test(await page.getAttribute('#b-attach', 'aria-label') || await page.getAttribute('#b-attach', 'title') || ''), 'editor: the panel header and the tooltip mark attachments as experimental (試行)');
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/evil.html,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
   ok((await page.$eval('[data-attach-role="attachments/paper.pdf"]', (x) => x.value)) === 'pdf' && (await page.$eval('[data-attach-title="attachments/paper.pdf"]', (x) => x.value)) === 'Paper (PDF)' && (await page.$eval('[data-attach-role="attachments/code/run.py"]', (x) => x.value)) === '',
     'editor: role and title come from egatari.json (no role: empty)');
