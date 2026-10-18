@@ -54,7 +54,7 @@ export-canon が最後に表示するコマンドで、まず `--dry-run` を付
 
 ## 4. 音声入りの 1 ファイル（Egatari 形式）も作る
 
-canon のバンドルとは別に、TTS の音声を入れた持ち運べる 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://editor.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
+canon のバンドルとは別に、TTS の音声を入れた 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://editor.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
 
 ```bash
 node $R/kit/build.mjs $D --portable      # → $D/out/<名前>.ega.html（原稿・音声入り。docId は $D/egatari.json）

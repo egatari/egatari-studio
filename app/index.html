@@ -9,19 +9,20 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Egatari Studio</title>
-<link rel="icon" href="data:,">
+<!--APP_ICONS-->
 <!--APP_CSS-->
 </head>
 <body>
 <header id="top">
-  <div class="brand"><span class="logo" aria-hidden="true">▶</span><span data-t="brand"></span></div>
+  <!-- ロゴ：assets/logo/egatari-32-*.svg（24〜32 px の専用版）と同じ形。色はテーマ（明るい・暗い）で app.css の --logo-ink / --logo-sun -->
+  <div class="brand"><svg class="logo" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false"><path class="ink" d="M10 5H5V18.5 M22 27H27V13.5" fill="none" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="14" cy="8.25" r="1.75"/><path class="ink" d="M10 13.5Q15.125 13 19.875 11.875Q21.125 11.625 20.25 12.875L9.75 23.25L13.75 19Q16 16.625 16.875 19.875L17.375 22Q18.25 24.5 20.75 23Q22.625 21.875 22 20.25" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="brand"></span></div>
   <div id="deckname" class="deckname"></div>
   <nav id="tools" hidden>
     <div class="menu">
       <button type="button" id="b-openmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-open" data-t="openMenu"></button>
       <div id="m-open" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
         <button type="button" id="b-openfile" role="menuitem" data-t="openFile"></button>
+        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
         <button type="button" id="b-paste" role="menuitem"></button>
         <button type="button" id="b-themes" role="menuitem" data-t="themeFolderItem"></button>
       </div>
@@ -68,15 +69,25 @@
     </div>
     <div id="unsupported" class="note bad" hidden data-t="unsupported"></div>
     <div id="drop" class="drop" tabindex="0">
-      <div class="drop-icon" aria-hidden="true">📁</div>
+      <!-- assets/logo/egatari-*.svg（48 px 以上は master）と同じ形 -->
+      <div class="drop-icon"><svg class="logo" viewBox="0 0 256 256" width="72" height="72" aria-hidden="true" focusable="false"><path class="ink" d="M84 40H40V152 M172 216H216V104" fill="none" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="112" cy="66" r="12.5"/><path class="ink" d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/></svg></div>
       <div data-t="dropHere"></div>
       <div class="row">
-        <button type="button" id="w-open" class="pri" data-t="openFolder"></button>
-        <button type="button" id="w-openfile" data-t="openFile"></button>
+        <button type="button" id="w-openfile" class="pri" data-t="openFile"></button>
         <button type="button" id="w-new" data-t="newDeck"></button>
         <button type="button" id="w-paste"></button>
       </div>
+      <p class="secondary"><span data-t="folderFor"></span> <button type="button" id="w-open" class="ghost" data-t="openFolder"></button></p>
     </div>
+    <details id="kinds" class="card kinds" open>
+      <summary data-t="kindsTitle"></summary>
+      <table>
+        <tr><th scope="row" data-t="kindFolder"></th><td data-t="kindFolderText"></td></tr>
+        <tr><th scope="row" data-t="kindFile"></th><td data-t="kindFileText"></td></tr>
+        <tr><th scope="row" data-t="kindPlay"></th><td data-t="kindPlayText"></td></tr>
+        <tr><th scope="row" data-t="kindBuilt"></th><td data-t="kindBuiltText"></td></tr>
+      </table>
+    </details>
     <div id="newform" class="card" hidden>
       <h2 data-t="newDeck"></h2>
       <label><span data-t="newTitle"></span><input id="n-title" type="text"></label>
@@ -112,6 +123,9 @@
 </main>
 <footer id="status"><span id="st-msg"></span><span class="sp"></span><span id="st-info"></span></footer>
 <div id="toast" role="status" aria-live="polite"></div>
+<!-- 約 1 秒を超える待ちにだけ出す（app/wait-logo.js：assets/logo/egatari-draw-*.svg） -->
+<div id="wait" hidden><div class="wait-art"></div><div class="wait-text" data-t="waiting"></div></div>
+<div id="wait-badge" aria-hidden="true"></div>
 <dialog id="dlg" aria-labelledby="dlg-title"><h2 id="dlg-title"></h2><div id="dlg-body"></div><div class="row" id="dlg-buttons"></div></dialog>
 <!--APP_JS-->
 </body>

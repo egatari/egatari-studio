@@ -312,7 +312,7 @@ function resolveTheme(env, name, baseDir, root, warn, ud = [], missing = null) {
     if (!r) { refused = true; continue; }
     return { dir: d, root: r };
   }
-  if (refused) { warn.push(`refused: テーマ「${name}」は許した場所（原稿のフォルダ・利用者のテーマのフォルダ・themes/）の外にある（シンボリックリンクなど。読まない）`); return null; }
+  if (refused) { warn.push(`refused: テーマ「${name}」は許した場所（作業フォルダ・利用者のテーマのフォルダ・themes/）の外にある（シンボリックリンクなど。読まない）`); return null; }
   if (missing) { missing.push(name); return null; }
   throw new Error(`theme not found: ${name}`);
 }
@@ -322,7 +322,7 @@ function missingThemeWarning(env, name, used) {
   const ud = Array.isArray(env.themeDirs) && env.themeDirs.length > 0;
   const where = env.app ? (ud ? `選んだテーマのフォルダに ${name}/ を置くか、` : '編集アプリでは「テーマのフォルダを選ぶ…」で自分のテーマのフォルダ（~/.egatari/themes など）を選ぶか、')
     : env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
-  return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：原稿のフォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}原稿のフォルダの themes/${name}/ に置く`;
+  return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：作業フォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}作業フォルダの themes/${name}/ に置く`;
 }
 function themeAssets(env, t, warn, depth = 0, ud = []) {
   const P = env.path, { dir, root } = t;
@@ -385,7 +385,7 @@ export function bundleAssets(env, html, deckDir, warn = [], budget = null) {
     try { rel = decodeURIComponent(rel); } catch { /* そのまま */ }
     const file = P.resolve(baseDir, rel);
     if (!env.exists(file) || !env.isFile(file)) { once(`missing: ${what} の「${r}」が見つからない`); return null; }
-    if (!env.within(file, deckDir)) { once(`refused: ${what} の「${r}」は原稿のフォルダの外にある（埋め込まない）`); return null; }
+    if (!env.within(file, deckDir)) { once(`refused: ${what} の「${r}」は作業フォルダの外にある（埋め込まない）`); return null; }
     return file;
   };
   const uri = (ref, baseDir, what) => { const f = local(ref, baseDir, what); return f ? grow(dataUri(env, f)) : null; };
@@ -589,10 +589,10 @@ export function build(env0, srcPath, opts = {}) {
       if (env.within(p, d === KIT ? KIT : deckDir)) return p;
       outside = true;
     }
-    if (outside) { warn.push(`refused: 「${name}」は原稿のフォルダの外にある（読まない）`); return null; }
+    if (outside) { warn.push(`refused: 「${name}」は作業フォルダの外にある（読まない）`); return null; }
     // opts.missingFiles === 'warn'：ないファイルは知らせて空のまま組む（編集アプリのメモリの上の原稿：deck.html だけを開いたときなど。
     // 既定（コマンド・フォルダ）は今までどおり断る）
-    if (opts.missingFiles === 'warn') { if (!missingSeen.has(name)) { missingSeen.add(name); warn.push(`missing: 「${name}」が原稿のフォルダにない（空のまま組んだ）`); } return null; }
+    if (opts.missingFiles === 'warn') { if (!missingSeen.has(name)) { missingSeen.add(name); warn.push(`missing: 「${name}」が作業フォルダにない（空のまま組んだ）`); } return null; }
     throw new Error('not found: ' + name);
   };
   // 取り込むたびに、回数と読んだ大きさ（読む前に。env を通して）と増える大きさ（置き換える前に）を数える（同じ小さなファイルを何万回も取り込ませない）
@@ -675,7 +675,7 @@ export function build(env0, srcPath, opts = {}) {
     let file = null;
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
-      else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が原稿のフォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
+      else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
     } else if (env.exists(lib)) {
       if (env.within(lib, compRoot)) file = lib;
       else { warn.push(`refused: 部品庫の部品 ${tag} が components/ の外を指している（読まない）`); continue; }
@@ -691,7 +691,7 @@ export function build(env0, srcPath, opts = {}) {
 
   // 口述原稿・音声・秒数の調整
   const narrPath = P.join(deckDir, 'narration.md');
-  if (env.exists(narrPath) && !inDeck(narrPath)) warn.push('refused: narration.md が原稿のフォルダの外を指している（読まない）');
+  if (env.exists(narrPath) && !inDeck(narrPath)) warn.push('refused: narration.md が作業フォルダの外を指している（読まない）');
   const segs = env.exists(narrPath) && !inDeck(narrPath) ? [] : (env.exists(narrPath) ? parseNarration(env.readText(narrPath)) : Object.assign([], { warnings: [] }));
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
@@ -711,7 +711,7 @@ export function build(env0, srcPath, opts = {}) {
     for (const [k, v] of Object.entries(man.segments || man)) {
       const file = P.resolve(deckDir, 'audio', v.file);
       if (!env.exists(file)) continue;
-      if (!inDeck(file)) { warn.push(`refused: audio/manifest.json の「${v.file}」は原稿のフォルダの外にある（使わない）`); continue; }
+      if (!inDeck(file)) { warn.push(`refused: audio/manifest.json の「${v.file}」は作業フォルダの外にある（使わない）`); continue; }
       // opts.audioRef(key, file, entry)：持ち運べる形式の書き出し（kit/core/portable.mjs）が音声の参照（<scheme><blob>）を決める。null なら入れない
       if (opts.audioRef) {
         const src = opts.audioRef(k, file, v);

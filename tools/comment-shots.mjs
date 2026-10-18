@@ -109,7 +109,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   const a = process.argv.slice(2), ids = [];
   let arg = null, all = false;
   for (const x of a) { if (x === '--all') all = true; else if (arg === null) arg = x; else ids.push(x); }
-  if (!arg) { console.error('usage: node tools/comment-shots.mjs <deck folder | deck.html> [id …] [--all]'); process.exit(1); }
+  if (!arg) { console.error('usage: node tools/comment-shots.mjs <working folder | deck.html> [id …] [--all]'); process.exit(1); }
   const rel = (f) => { const r = path.relative(process.cwd(), f); return !r ? '.' : r.startsWith('..') ? f : r; };
   let res;
   try { res = await commentShots(arg, { ids, all }); } catch (e) { console.error('comment-shots: ' + e.message); process.exit(1); }

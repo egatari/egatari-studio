@@ -162,8 +162,8 @@ try {
   // ---------------------------------------------------------------- 2. はじめの画面
   await page.goto(BASE);
   await page.waitForSelector('#drop');
-  ok(await page.isVisible('#w-open'), 'welcome: open-folder button visible');
-  ok((await page.textContent('#welcome h1')).includes('フォルダ'), 'welcome: Japanese UI for ja locale');
+  ok(await page.isVisible('#w-open') && await page.evaluate(() => document.getElementById('w-openfile').classList.contains('pri') && !document.getElementById('w-open').classList.contains('pri')), 'welcome: open-folder button visible (secondary)');
+  ok((await page.textContent('#welcome h1')).includes('1 ファイル（.ega.html）'), 'welcome: Japanese UI for ja locale');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
@@ -1534,7 +1534,7 @@ try {
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');
   await pe.goto(BASE);
-  ok((await pe.textContent('#welcome h1')) === 'Open a deck folder', 'i18n: English UI for en locale');
+  ok((await pe.textContent('#welcome h1')) === 'Open a single file (.ega.html) to view and edit', 'i18n: English UI for en locale');
   await pe.close();
 
   // ---------------------------------------------------------------- 12. 1 ファイル版（file://）
@@ -1543,6 +1543,7 @@ try {
   await p1.goto(pathToFileURL(path.join(DIST, 'editor.html')).href);
   await p1.waitForSelector('#drop');
   ok(await p1.evaluate(() => typeof window.showDirectoryPicker === 'function' && isSecureContext), 'single file: File System Access API available on file://');
+  ok(await p1.evaluate(() => [...document.querySelectorAll('link[rel=icon]')].map((l) => l.getAttribute('href').slice(0, 23)).join() === 'data:image/x-icon;base6,data:image/x-icon;base6' && /^data:image\/png;base64,/.test(document.querySelector('link[rel=apple-touch-icon]').getAttribute('href')) && !document.querySelector('link[rel=manifest]')), 'single file: icons embedded as data: URIs, no manifest');
   ok(await p1.isHidden('#examples'), 'single file: no examples list on file:// (the examples are files of the site)');
   // file:// では OPFS が使えないので、メモリの上のフォルダ（同じ形のハンドル）で開く
   await p1.evaluate((files) => {
@@ -1589,7 +1590,7 @@ try {
     await ps.goto(base + 'editor/?lang=en#x');
     await ps.waitForURL(base + '?lang=en#x', { timeout: 10000 }).catch(() => {});
     await ps.waitForSelector('#drop');
-    ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#welcome h1')) === 'Open a deck folder', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
+    ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#welcome h1')) === 'Open a single file (.ega.html) to view and edit', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
     // スクリプトが動かなくても行ける：meta refresh とリンク（ページを開くと移ってしまうので、HTML を読んで確かめる）
     const stub = await (await fetch(base + 'editor/')).text();
     ok(/<meta http-equiv="refresh" content="0; url=\.\.\/">/.test(stub) && /<a href="\.\.\/">/.test(stub) && /location\.replace/.test(stub), `site (${tag}): editor/ also has a meta refresh and a link to ../`);
@@ -1599,10 +1600,33 @@ try {
     const lr = await ps.goto(base + 'lab/irodori.html');
     await ps.waitForLoadState('load');
     ok(lr.status() === 200 && (await ps.title()).length > 0 && await ps.evaluate(() => document.querySelectorAll('script[type=module]').length > 0), `site (${tag}): lab/irodori.html loads`);
+    // ロゴ（assets/logo/）：ファビコン（明るい・暗い）・apple-touch-icon・manifest（192・512）。見出しのロゴ。.ega.html の再生には入れない
+    const ico = new Uint8Array(await (await fetch(base + 'favicon.ico')).arrayBuffer());
+    const icoDark = await fetch(base + 'favicon-dark.ico');
+    ok(ico.length > 100 && ico[0] === 0 && ico[2] === 1 && ico[4] === 3 && icoDark.status === 200, `site (${tag}): favicon.ico (3 sizes) and favicon-dark.ico are served`);
+    const man = await (await fetch(base + 'manifest.webmanifest')).json().catch(() => null);
+    const manIcons = man && Array.isArray(man.icons) ? await Promise.all(man.icons.map(async (x) => (await fetch(new URL(x.src, base + 'manifest.webmanifest'))).status)) : [];
+    ok(!!man && man.name === 'Egatari Studio' && man.icons.map((x) => x.sizes).join() === '192x192,512x512' && manIcons.every((x) => x === 200) && (await fetch(base + 'apple-touch-icon.png')).status === 200, `site (${tag}): manifest with 192/512 icons and apple-touch-icon`);
+    await ps.goto(base);
+    await ps.waitForSelector('#drop');
+    ok(await ps.evaluate(() => !!document.querySelector('link[rel=icon][href="favicon.ico"]') && !!document.querySelector('link[rel=icon][media="(prefers-color-scheme: dark)"][href="favicon-dark.ico"]') && !!document.querySelector('link[rel=manifest]') && !!document.querySelector('#top .brand svg.logo circle.sun')), `site (${tag}): icon links and the header logo`);
+    if (tag === 'root') {
+      // 約 1 秒を超える待ち（見本を開く）：はじめの画面の上にロゴを描く。すぐ終わるときは出さない
+      await ps.route('**/examples/minimal' + FORMAT.FILE_EXT, async (route) => { await new Promise((r) => setTimeout(r, 1800)); await route.continue(); });
+      await ps.click('#examples-list li[data-example="minimal"] button');
+      ok(await ps.waitForSelector('#wait:not([hidden]) img.wait-logo', { timeout: 4000 }).then(() => true).catch(() => false), 'wait: a slow open draws the logo after about 1 s');
+      await ps.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
+      ok(await ps.evaluate(() => document.getElementById('wait').hidden && !document.querySelector('.wait-logo')), 'wait: the logo is gone once the deck is shown');
+      await ps.unroute('**/examples/minimal' + FORMAT.FILE_EXT);
+    }
     // 見本の持ち運べる 1 ファイル（dist/examples/）：配られていて、はじめの画面の一覧から開ける（相対の場所なので下のパスでも）
     const exOk = [];
     for (const name of EXAMPLES) { const r = await fetch(base + 'examples/' + name + FORMAT.FILE_EXT); exOk.push(r.status === 200 && (await r.text()).includes(FORMAT.INDEX_ID)); }
     ok(exOk.every(Boolean), `site (${tag}): dist/examples/ serves ${EXAMPLES.length} portable examples`);
+    if (tag === 'root') {
+      const ex = await (await fetch(base + 'examples/minimal' + FORMAT.FILE_EXT)).text();
+      ok(!ex.includes('M84 40H40V152') && !ex.includes('egatari-draw'), 'logo: the .ega.html player does not contain the logo');
+    }
     await ps.goto(base);
     await ps.waitForSelector('#examples-list li[data-example="minimal"] button');
     await ps.click('#examples-list li[data-example="minimal"] button');

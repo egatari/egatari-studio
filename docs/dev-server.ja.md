@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=5f09b364fbddc02f -->
+<!-- i18n: pair=dev-server.md sha256=87a50e007ff957bf -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -15,8 +15,8 @@ node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:873
 npm run dev -- path/to/deck.html --port 5174 --theme business
 ```
 
-原稿のフォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
-リポジトリの kit/、components/、themes/、自分のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を見張り（原稿のフォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
+作業フォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
+リポジトリの kit/、components/、themes/、自分のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を見張り（作業フォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
 組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
 `?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
 
@@ -54,7 +54,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme business
 - デッキの文書（`/preview`）は `<iframe sandbox="allow-scripts allow-modals">`（`allow-same-origin` なし）の中で開くので、origin を持たない。外枠のページ・その保存領域・合言葉を読めず、出せる要求はどれも `Origin: null` になる。
 - デッキの文書には別の Content-Security-Policy を付ける：`connect-src 'none'`（`fetch`・XHR・beacon・イベントの流れを使えない）、画像・字・スタイルは `data:` / `blob:` だけ（組み立てが埋め込む）、音声は `/deck/audio/` だけ、iframe は決まった 1 つの口 `/preview` だけ（発表者ビューの中の画面）、フォームと `<base>` は使えない。決まりには `sandbox` も入れる。
 - デッキの文書は外枠の iframe の中にだけ出す。外枠のページ（と発表者ビューの窓）は、そのページと一緒に作った印を付けて `/preview?cap=…` を読み込み、サーバーはブラウザが付ける `Sec-Fetch-Dest: iframe`（ページのスクリプトからは付けられない）も求める。タブで直接開いたとき（外枠の `frame-src` が効かず、移動の URL がデータを外へ運べる）は、印があっても `/preview` はデッキを出さず、何も動かない短い文字のページを返す（403、`Content-Security-Policy: sandbox; default-src 'none'`）。
-- 原稿のフォルダのファイル（`/deck/…`）は文書として動かない：どの応答にも `Content-Security-Policy: sandbox; default-src 'none'` と `X-Content-Type-Options: nosniff` を付ける。音声・動画・画像・字は型のまま、それ以外（HTML・SVG・XML・スクリプト・テキスト）は `text/plain` か `application/octet-stream` にして `Content-Disposition: attachment` で返す。デッキも外枠も、`/preview` のほかは iframe に入れられない。
+- 作業フォルダのファイル（`/deck/…`）は文書として動かない：どの応答にも `Content-Security-Policy: sandbox; default-src 'none'` と `X-Content-Type-Options: nosniff` を付ける。音声・動画・画像・字は型のまま、それ以外（HTML・SVG・XML・スクリプト・テキスト）は `text/plain` か `application/octet-stream` にして `Content-Disposition: attachment` で返す。デッキも外枠も、`/preview` のほかは iframe に入れられない。
 - デッキが外枠に送るのは**知らせ**だけ：「この `data-src` の範囲と hash の要素を直したい」「この要素にコメントしたい」、鍵の `e`・`n`・`c`・Esc、今の位置。知らせは書き込む本文を持たない。外枠は知らせの形を確かめ、今の原稿を自分で読み、範囲と hash を確かめて、自分の欄や引き出しを見せる。書くのは、その欄や引き出しで「保存」（か ⌘/Ctrl+Enter）を押したときだけ。偽の本文を付けた知らせは無視する。知らせにできるのは、本当の原稿を見せる欄を開くことまで。指示の知らせの点もほかと同じく確かめる：数だけ（ほかは点なし）、スライドの外は端に寄せ、0.1 に丸め、ほかの項目は捨て、近くの字は 60 字まで。サーバーでももう一度確かめる（`kit/core/comment-core.mjs`）。デッキは点を偽れるが、変わるのは印の位置だけ：指示の本文は外枠で入力し、「残す」を押したときだけ書く。スライドの上の印は外枠が（クリックを受けずに）描き、場所は iframe の大きさから外枠が自分で求める。デッキは印の場所について何も知らせない。
 - 合言葉は外枠のページにだけあり、デッキの文書には入れない。
 - 編集の道具はスライドの場所の外、外枠の横の板（橙の印の帯付き）にだけ描く。デッキは自分の枠の外に描けない。信頼する欄で編集している間（原稿の欄・指示の欄を開いている、口述原稿の引き出しで入力している・未保存の変更がある）はデッキの iframe を `inert` にし、欄へのクリックや入力をデッキが横取りできないようにする。その間も外枠はデッキの位置を受け取るが、デッキからの知らせで板の欄を開け閉め・切り替えせず、編集している口述原稿の段階も替えない。未保存の変更なしに口述原稿の欄から離れれば、引き出しはまたスライドに付いていく。それでもデッキはスライドの場所に偽の欄を描ける（保存はできない）。信じるのは横の板だけ。
@@ -69,9 +69,9 @@ npm run dev -- path/to/deck.html --port 5174 --theme business
 - 書き込み（POST）は `Content-Type: application/json` でなければ 415、Origin が付いていて同じ番号の 127.0.0.1・localhost でなければ 403
 - 文言の編集は、今の組み立てが直せると印を付けた要素（`data-src`）で、原稿の hash が変わっていないものだけ。口述原稿の編集は、デッキにあるスライドで、その段階の今の版だけ。そうでなければ 409（か 400）
 - 外枠のページはほかのページの iframe に入れられない（`frame-ancestors 'none'`）
-- `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で原稿のフォルダの外を指すものも 403
+- `/deck/…` はドットで始まる名前（`.cache/edits/` の写し、`.env` など）を出さない。symlink で作業フォルダの外を指すものも 403
 - 壊れた URL（`/%ZZ` など）は 400
-- 書き込みと控えは、シンボリックリンクを一切通らない：`deck.html`・`narration.md`・`comments.json`・`.cache`・`.cache/edits` のどれかがリンクなら（フォルダの中を指すもの・壊れたものも）、保存を 403 で断り、何も書かず何も消さない。書くときは同じフォルダの一時ファイルに書いてから rename で入れ替え、控えの掃除は控えの名前の普通のファイルだけを消す。`narration.md`・`comments.json` は実体が原稿のフォルダの中にあるときだけ、通常のファイルだけを、決まった上限（`deck.html` 32 MiB・`narration.md` 16 MiB・`comments.json` 4 MiB。開いたファイルの大きさで読む前に、読んだバイトでも確かめる）の内で読む（[format spec](https://github.com/egatari/egatari-spec) §11）。大きいファイルは読まずに 413、上限を超えるものになる保存は書かずに 413（控えも作らない）。`/deck/…` のファイルは `stat` で見た大きさまでだけ流す
+- 書き込みと控えは、シンボリックリンクを一切通らない：`deck.html`・`narration.md`・`comments.json`・`.cache`・`.cache/edits` のどれかがリンクなら（フォルダの中を指すもの・壊れたものも）、保存を 403 で断り、何も書かず何も消さない。書くときは同じフォルダの一時ファイルに書いてから rename で入れ替え、控えの掃除は控えの名前の普通のファイルだけを消す。`narration.md`・`comments.json` は実体が作業フォルダの中にあるときだけ、通常のファイルだけを、決まった上限（`deck.html` 32 MiB・`narration.md` 16 MiB・`comments.json` 4 MiB。開いたファイルの大きさで読む前に、読んだバイトでも確かめる）の内で読む（[format spec](https://github.com/egatari/egatari-spec) §11）。大きいファイルは読まずに 413、上限を超えるものになる保存は書かずに 413（控えも作らない）。`/deck/…` のファイルは `stat` で見た大きさまでだけ流す
 - 口述原稿の引き出しで「保存」を押した後、応答の前にまた入力すると、もう一度保存するまで未保存のまま（新しい入力は残り、引き出しはデッキに付いていかず、プレビューは inert のまま）
 
 `tools/test-dev-server.mjs` は、書き込みを試みるデッキ（`tools/hostile-deck.mjs`：古い書き込みの知らせを偽の本文で送り、合言葉を読み、外枠のページに触り、書き込みの口に合言葉なし・当て推量の合言葉で `fetch`・XHR・beacon する部品とインラインのスクリプト）で、外枠で「保存」を押すまでフォルダの中が何も変わらないことを確かめる。
@@ -85,7 +85,7 @@ range は指示を残した時点の位置なので、ずれていれば quote �
 指示が何を指しているかを見るために、Claude Code はまず次を動かす。
 
 ```bash
-npm run comment-shots -- <デッキのフォルダ>      # node tools/comment-shots.mjs <デッキのフォルダ> [id …] [--all]
+npm run comment-shots -- <作業フォルダ>      # node tools/comment-shots.mjs <作業フォルダ> [id …] [--all]
 ```
 
 デッキを組み、未対応の指示ごとにその段階を画面なしのブラウザで描き（`DECK.seek(i, k, Infinity)`。毎回同じ絵になる）、点の印を描いて `<デッキ>/.cache/comment-shots/`（git に入らない）に書く：`<id>.png`（点の周りのスライドの 480×300 を 2 倍で。点がなければスライド全体）、`<id>-full.png`（スライド全体、1280×720）、`index.json`。プレビューからは画像を受け取らない。

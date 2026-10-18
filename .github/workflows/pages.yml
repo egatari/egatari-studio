@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'assets/logo/**'
       - 'lab/**'
       - 'kit/**'
       - 'components/**'
