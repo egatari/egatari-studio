@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import os from 'node:os';
 import { previewDocument, PREVIEW_CSP } from '../app/preview-doc.js';
@@ -399,7 +399,7 @@ try {
       fs.writeFileSync(path.join(a, 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file: 'big.mp3', dur: 1, cues: [] } } }));
       CASES2.push(['embedded audio 1 GiB', f, /files read/, { embedAudio: true }]); }
     for (const [name, file, re, extra] of CASES2) {
-      const code = `import { build } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+      const code = `import { build } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
       const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
       let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
       const maxRss = extra || /GiB|x10001/.test(name) ? 300 * 1024 : 1024 * 1024;   // 読まずに断るもの：大きなファイルの中身を確保しない
@@ -417,7 +417,7 @@ try {
         const f = deckOf(name, ''); const d = path.dirname(f);
         fs.writeFileSync(path.join(d, 'narration.md'), '# n\n\n## x\n[0] hello\n');
         prep(d);
-        const code = `import { buildPortable } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+        const code = `import { buildPortable } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
         const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
         let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
         ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < 300 * 1024 && !fs.existsSync(path.join(d, 'out')), `portable limits: ${name} -> refused before allocating (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
@@ -450,7 +450,7 @@ try {
       const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout });
       try { return JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { return { m: rr.error && rr.error.code === 'ETIMEDOUT' ? 'hung (timeout)' : 'no result: ' + String(rr.stderr).slice(0, 200) }; }
     };
-    const buildIn = (file, extra = {}, fn = 'build') => `import { ${fn} } from ${JSON.stringify(path.join(ROOT, 'kit/build.mjs'))}; const t0 = Date.now(); let m = 'built'; try { await ${fn}(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+    const buildIn = (file, extra = {}, fn = 'build') => `import { ${fn} } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(); let m = 'built'; try { await ${fn}(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
     if (process.platform !== 'win32' && spawnSync('mkfifo', ['--help']).error?.code !== 'ENOENT') {
       const fifo = (f) => { fs.mkdirSync(path.dirname(f), { recursive: true }); spawnSync('mkfifo', [f]); return fs.statSync(f).isFIFO(); };
       { const f = deckOf('fifo-inc', '/*INCLUDE:pipe.txt*/'); const made = fifo(path.join(path.dirname(f), 'pipe.txt'));

@@ -8,7 +8,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
 import http from 'node:http';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MiB = 1048576;
@@ -29,7 +29,8 @@ const child = (code, timeout = 60000, env = process.env) => {
   const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout, env });
   try { return JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { return { m: rr.error && rr.error.code === 'ETIMEDOUT' ? 'hung (timeout)' : 'no result: ' + String(rr.stderr).slice(0, 300) }; }
 };
-const mod = (p) => JSON.stringify(path.join(ROOT, p));
+// 子の process の import に渡す指定子：file:// の URL（Windows の絶対パス C:\... は ESM の指定子にならない）
+const mod = (p) => JSON.stringify(pathToFileURL(path.join(ROOT, p)).href);
 
 // ---------------------------------------------------------------- 上限つきの読み取りの口そのもの
 const hasFifo = process.platform !== 'win32' && spawnSync('mkfifo', ['--help']).error?.code !== 'ENOENT';

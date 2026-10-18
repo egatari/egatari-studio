@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import Ajv from 'ajv/dist/2020.js';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -414,7 +414,7 @@ ok('解析の上限：上限の大きさより小さいが小さな要素が何�
   // 子の process で測る（最大の RSS は process ごと）：90 MiB の文書の <body> の直後に詰める
   const script = `
     import fs from 'node:fs';
-    import { readPortable } from ${JSON.stringify(path.join(ROOT, 'kit/core/portable.mjs'))};
+    import { readPortable } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/core/portable.mjs')).href)};
     const html = fs.readFileSync(process.argv[2], 'utf8'), filler = process.argv[3];
     const j = html.indexOf('>', html.indexOf('<body')) + 1;
     const bytes = new TextEncoder().encode(html.slice(0, j) + filler.repeat(Math.floor((90 * 1048576 - html.length) / filler.length)) + html.slice(j));

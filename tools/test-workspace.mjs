@@ -25,7 +25,7 @@ import { makeDeck } from './portable-fixtures.mjs';
 import * as esbuild from 'esbuild';
 import { createRequire } from 'node:module';
 import { createEngine, READ_CONCURRENCY as ENGINE_READS } from '../app/engine.js';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -247,7 +247,7 @@ class FakeWorker {
   emit(data) { this.onmessage && this.onmessage({ data }); }     // 止めた後に届いたメッセージも渡す（まねる）
 }
 async function bundleApp(file) {
-  const r = await esbuild.build({ entryPoints: [path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), 'app', file)], bundle: true, format: 'esm', platform: 'node', write: false,
+  const r = await esbuild.build({ entryPoints: [path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'app', file)], bundle: true, format: 'esm', platform: 'node', write: false,
     plugins: [{ name: 'virt', setup(b) { b.onResolve({ filter: /^virtual:/ }, (a) => ({ path: a.path, namespace: 'virt' })); b.onLoad({ filter: /.*/, namespace: 'virt' }, () => ({ contents: 'export default ""', loader: 'js' })); } }] });
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-')), file.replace(/\.js$/, '.mjs'));
   fs.writeFileSync(f, r.outputFiles[0].text);
@@ -347,7 +347,7 @@ ok('持ち運べる 1 ファイルを読む Worker の口：期限で止めた W
 
 // 編集アプリの組み立て（app/engine.js）に渡す同梱の資源（tools/build-app.mjs と同じ集め方の小さな写し）
 function appResources() {
-  const R = path.dirname(path.dirname(new URL(import.meta.url).pathname)), req = createRequire(import.meta.url);
+  const R = path.dirname(path.dirname(fileURLToPath(import.meta.url))), req = createRequire(import.meta.url);
   const text = {}, b64 = {}, lazy = [], lazyFiles = {};
   const add = (v, f) => { if (/\.(css|js|json|svg|txt|md|tex)$/i.test(f)) text[v] = fs.readFileSync(f, 'utf8'); else b64[v] = fs.readFileSync(f).toString('base64'); };
   const tree = (v, d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.name.startsWith('.')) continue; const f = path.join(d, e.name); if (e.isDirectory()) tree(v + '/' + e.name, f); else add(v + '/' + e.name, f); } };
