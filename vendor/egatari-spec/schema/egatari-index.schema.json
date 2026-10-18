@@ -208,6 +208,39 @@
           }
         ]
       }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "role",
+          "title"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^attachments/"
+          },
+          "role": {
+            "enum": [
+              "source",
+              "pdf",
+              "code",
+              "data",
+              "supplement"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Files carried for readers rather than for rendering (§3.8)."
     }
   },
   "$defs": {
