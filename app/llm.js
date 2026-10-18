@@ -1,14 +1,12 @@
 // チャットの AI との行き来（docs/authoring-with-llms.md）：
+//   「AI への指示を写す」：共通の本体と、選んだ系列（既定は今のデッキの部品・テーマから推したもの。なければ academic）を組み立てて写す（kit/core/llm-pack.mjs）
 //   「AI の出力を貼り付ける」：返事の全体から deck.html と narration.md を取り出し（kit/core/llm-import.mjs）、スライドに id を付け
 //   （kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で持ち運べる 1 ファイルにして（app/build-worker.js の
 //   exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、簡易チェックをかける。
 //   「今のデッキを置き換える」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
 //   「AI への直しの依頼を写す」：簡易チェックの結果・組み立ての知らせ・その決まりの文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import GUIDE_EN from '../docs/authoring-with-llms.md?text';
-import GUIDE_JA from '../docs/authoring-with-llms.ja.md?text';
-import CORE_EN from '../docs/authoring-with-llms.core.md?text';
-import CORE_JA from '../docs/authoring-with-llms.core.ja.md?text';
+import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize } from '../kit/core/llm-pack.mjs';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
@@ -20,16 +18,16 @@ import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { memoryWorkspace } from './workspace.js';
 
-// 指示の本文（使う人への前書きを除いた「AI への指示」から後ろ）
-const forAi = (g) => { const s = String(g).replace(/^<!--[^\n]*-->\n/gm, ''); const i = s.search(/^# (Instructions for the AI|AI への指示)\s*$/m); return i >= 0 ? s.slice(i) : s; };
-
 const TX = {
   ja: {
     paste: 'AI の出力を貼り付ける…', pasteWelcome: 'AI の出力を貼り付ける',
     title: 'AI の出力を貼り付ける',
     lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）の返事の全体を、写すボタンで写して貼り付けます。```deck.html と ```narration.md の 2 つの囲みを取り出し、スライドに id を付け、検査して開きます',
-    guide: 'AI への指示（docs/authoring-with-llms.ja.md）をチャットに貼ってから、作りたいものを頼みます：',
-    copyGuide: 'AI への指示を写す', copyCore: '短い版（部品の説明なし）を写す',
+    guide: 'AI への指示をチャットに貼ってから、作りたいものを頼みます。教材に合う系列を選ぶと、その部品の説明が加わります：',
+    seriesLegend: (kb) => `系列（共通の本体 ${kb} KB に加える）`,
+    seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
+    plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
+    copyGuide: 'AI への指示を写す',
     copied: (kb) => `写しました（${kb} KB）。チャットに貼り付けてください`,
     placeholder: 'ここに AI の返事の全体を貼り付ける',
     modeNew: '新しいデッキとして開く', modeReplace: '今のデッキを置き換える（docId・音声はそのまま。直したスライドだけの返事なら、その id のスライドだけ）',
@@ -72,8 +70,11 @@ const TX = {
     paste: 'Paste AI output…', pasteWelcome: 'Paste AI output',
     title: 'Paste AI output',
     lead: 'Paste the whole reply of a chat AI (claude.ai, Gemini, ChatGPT, …), copied with the chat’s copy button. The editor takes out the two blocks ```deck.html and ```narration.md, gives the slides ids, checks the deck and opens it.',
-    guide: 'First paste the instructions for the AI (docs/authoring-with-llms.md) into the chat, then ask for what you want:',
-    copyGuide: 'Copy instructions for your AI', copyCore: 'Copy the short version (no component details)',
+    guide: 'First paste the instructions for the AI into the chat, then ask for what you want. Tick the series that fit your lesson to add their components:',
+    seriesLegend: (kb) => `Series (added to the common body, ${kb} KB)`,
+    seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
+    plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
+    copyGuide: 'Copy instructions for your AI',
     copied: (kb) => `Copied (${kb} KB). Paste it into the chat.`,
     placeholder: 'Paste the whole reply of the AI here',
     modeNew: 'Open as a new deck', modeReplace: 'Replace the current deck (docId and audio stay; a reply with only some slides replaces just those, by id)',
@@ -117,7 +118,7 @@ const TX = {
 export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
   const X = EN ? TX.en : TX.ja;
-  const GUIDE = EN ? GUIDE_EN : GUIDE_JA, CORE = EN ? CORE_EN : CORE_JA;
+  const LANG = EN ? 'en' : 'ja';
   // 簡易チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
   T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : base(c, a));
@@ -129,7 +130,44 @@ export function setupLlm(app) {
       try { if (area) { area.focus(); area.select(); } return document.execCommand('copy'); } catch { return false; }
     }
   }
-  const kb = (s) => Math.ceil(new TextEncoder().encode(s).length / 1024);
+  const kb = (s) => Math.ceil(packSize(s) / 1024);
+
+  // ---------------------------------------------------------------- AI への指示を写す（共通の本体 + 選んだ系列）
+  // 既定の選び方：今のデッキの部品・テーマから推した系列（kit/core/llm-pack.mjs の seriesForDeck）。なければ academic
+  async function defaultSeries() {
+    let deck = '';
+    if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
+    const s = seriesForDeck(deck);
+    return s.length ? s : ['academic'];
+  }
+  async function packChooser(copyMsg) {
+    const base = buildPack({ series: [], lang: LANG });
+    const initial = await defaultSeries();
+    const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
+    const boxes = SERIES.map((s) => {
+      const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s });
+      cb.checked = initial.includes(s);
+      return cb;
+    });
+    const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
+    const update = () => { total.textContent = X.packTotal(kb(buildPack({ series: chosen(), lang: LANG }))); };
+    for (const b of boxes) b.addEventListener('change', update);
+    update();
+    const copy = el('button', { type: 'button', id: 'paste-copy-guide', text: X.copyGuide, onclick: async () => {
+      const text = buildPack({ series: chosen(), lang: LANG });
+      const ok = await copyText(text);
+      copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(text)) : X.fixCopyFailed;
+    } });
+    return el('div', { cls: 'paste-guide' }, [
+      el('span', { cls: 'hint', text: X.guide }),
+      el('fieldset', { id: 'paste-series', cls: 'paste-series' }, [
+        el('legend', { text: X.seriesLegend(kb(base)) }),
+        ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
+          el('span', { cls: 'hint', text: X.plusKb(kb(buildPack({ series: [s], lang: LANG })) - kb(base)) })])),
+      ]),
+      copy, total,
+    ]);
+  }
 
   // ---------------------------------------------------------------- 貼り付けの窓
   // mode：'new' | 'replace'（デッキを開いているときだけ選べる）。戻り値：開いたか
@@ -140,7 +178,7 @@ export function setupLlm(app) {
     // 返事が切れていたとき：AI に送り直しを頼む文を写すボタン
     const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, EN ? 'en' : 'ja'); const ok = await copyText(t); copyMsg.hidden = false; copyMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', hidden: '' });
-    const mk = (id, label, text) => el('button', { type: 'button', id, text: label, onclick: async () => { const ok = await copyText(forAi(text)); copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(forAi(text))) : X.fixCopyFailed; } });
+    const chooser = await packChooser(copyMsg);
     const radios = canReplace ? el('div', { cls: 'paste-mode' }, [
       el('label', {}, [el('input', { type: 'radio', name: 'paste-mode', value: 'new', id: 'paste-new' }), el('span', { text: X.modeNew })]),
       el('label', {}, [el('input', { type: 'radio', name: 'paste-mode', value: 'replace', id: 'paste-replace' }), el('span', { text: X.modeReplace })]),
@@ -149,7 +187,7 @@ export function setupLlm(app) {
     for (;;) {
       const v = await ask({ title: X.title, kind: 'paste', body: [
         el('p', { text: X.lead }),
-        el('div', { cls: 'paste-guide' }, [el('span', { cls: 'hint', text: X.guide }), mk('paste-copy-guide', X.copyGuide, GUIDE), mk('paste-copy-core', X.copyCore, CORE)]),
+        chooser,
         copyMsg, area, radios, msg, cut, el('p', { cls: 'hint', text: X.untrusted })],
         buttons: [{ id: 'cancel', label: T.cancel }, { id: 'import', label: X.go, pri: true }] });
       if (v !== 'import') return false;
@@ -298,7 +336,7 @@ export function setupLlm(app) {
     if (!probs.length) { toast(X.fixNone); return; }
     const deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || '';
     const narration = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }) || '';
-    const req = buildFixRequest({ problems: probs, deck, narration, guide: GUIDE, lang: EN ? 'en' : 'ja' });
+    const req = buildFixRequest({ problems: probs, deck, narration, lang: LANG });
     const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false' });
     area.value = req.text;
     const ok = await copyText(req.text, area);

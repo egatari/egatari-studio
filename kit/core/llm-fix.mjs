@@ -1,16 +1,19 @@
 // 「AI への直しの依頼」の文章を作る（編集アプリの簡易チェックの板。app/llm.js）。Node にもブラウザにも依存しない（純粋な ESM）
-// 決まりの文章は、作った指示（docs/authoring-with-llms.md・.ja.md。tools/make-llm-guide.mjs）の「- **R-名前** …」の行から取る。
+// 決まりの文章は、AI への指示の共通の本体（kit/core/llm-pack.mjs の commonBody。docs/authoring-with-llms.md と同じ）の「- **R-名前** …」の行から、
+// 部品の説明は、デッキで使っている部品のもの（componentNotes。指示に入っているものと同じ文章）を載せる。
 // 依頼の形は指示の §5（直しの依頼）に合わせる：問題（決まりの名前付き）、その決まりの文章、今のファイル。返事は 2 つの囲み
 //
 //   guideRules(guide) → Map(R-名前 → 文章)
 //   rulesFor(problem) → ['R-…']           問題（{code} か {msg}）に効く決まり
 //   amountOf(problem, lang)  はみ出し・小さい字の量の目安（「本文を 18 px（およそ 1 行）減らす」）
 //   cutOffRequest(err, lang)  返事が切れたときの依頼（閉じていない囲みだけを送り直す／短くして送り直す）
-//   buildFixRequest({problems, deck, narration, guide, lang, limit}) → {text, partial, slides: [id…]}
+//   buildFixRequest({problems, deck, narration, lang, limit}) → {text, partial, slides: [id…], rules: [R-…], components: [m-…]}
+//     （前の guide の引数は使わない。渡されても console に知らせて無視する）
 //     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は簡易チェックの arg でもよい）
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
+import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
 
 export function guideRules(guide) {
   const out = new Map();
@@ -56,7 +59,7 @@ const L = {
     head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the rules are quoted below.',
     ask: 'Fix only the problems listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Reply with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
     askPartial: (n) => `The deck is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
-    problems: 'Problems', rules: 'Rules', files: 'Current files', partialFiles: 'Current slides with problems',
+    problems: 'Problems', rules: 'Rules', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
     where: (p) => (p.i === null || p.i === undefined ? 'Whole deck' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
     sev: { error: 'error', warn: 'warning' },
   },
@@ -64,7 +67,7 @@ const L = {
     head: 'Egatari の教材（deck.html と narration.md）の直しの依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、決まりの文章は下に引いています。',
     ask: '挙げた問題だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。返事はちょうど 2 つのコードの囲み ```deck.html と ```narration.md にしてください（R-output）。',
     askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
-    problems: '問題', rules: '決まり', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
+    problems: '問題', rules: '決まり', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
     where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? `「${p.title}」` : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
@@ -116,9 +119,11 @@ export function cutOffRequest(err, lang = 'en') {
 
 const fence = (name, body) => '````' + name + '\n' + String(body).replace(/\s+$/, '') + '\n````';
 
-export function buildFixRequest({ problems, deck, narration = '', guide, lang = 'en', limit = 40000 }) {
+let warnedGuide = false;
+export function buildFixRequest({ problems, deck, narration = '', lang = 'en', limit = 40000, ...rest }) {
+  if ('guide' in rest && !warnedGuide) { warnedGuide = true; console.warn('buildFixRequest: the guide argument is no longer used (the rules come from kit/core/llm-pack.mjs); it is ignored'); }
   const M = L[lang] || L.en;
-  const rules = guideRules(guide);
+  const rules = guideRules(commonBody(lang === 'ja' ? 'ja' : 'en'));
   const secs = sectionsOf(deck);
   // 言葉からスタックの行とファイルの場所（一時フォルダ・file://・手元のサーバー）を除く（kit/core/error-text.mjs）
   const list = problems.map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
@@ -133,14 +138,17 @@ export function buildFixRequest({ problems, deck, narration = '', guide, lang = 
     out.push('', `## ${M.rules}`, '');
     for (const r of used) out.push(`- **${r}** ${rules.get(r)}`);
   }
+  const want = new Set(slideIds);
+  const deckPart = partial ? secs.filter((s) => want.has(s.id)).map((s) => deck.slice(s.start, s.end)).join('\n\n') : '';
+  // 載せるデッキ（長ければ問題のスライドだけ）で使っている部品の説明
+  const comps = componentsIn(partial ? deckPart : deck);
+  if (comps.length) out.push('', `## ${M.components}`, '', componentNotes(comps, lang === 'ja' ? 'ja' : 'en'));
   if (partial) {
-    const want = new Set(slideIds);
-    const deckPart = secs.filter((s) => want.has(s.id)).map((s) => deck.slice(s.start, s.end)).join('\n\n');
     const N = narrSections(String(narration).replace(/\r\n?/g, '\n'));
     const narrPart = N.out.filter((s) => want.has(s.id)).map((s) => N.lines.slice(s.start, s.end).join('\n').replace(/\s+$/, '')).join('\n\n');
     out.push('', `## ${M.partialFiles}`, '', fence('deck.html', deckPart), '', fence('narration.md', narrPart));
   } else {
     out.push('', `## ${M.files}`, '', fence('deck.html', deck), '', fence('narration.md', narration));
   }
-  return { text: out.join('\n') + '\n', partial, slides: slideIds, rules: used };
+  return { text: out.join('\n') + '\n', partial, slides: slideIds, rules: used, components: comps };
 }

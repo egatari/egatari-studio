@@ -71,7 +71,7 @@ steps.push(
   ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
-// チャットの AI との行き来：指示（docs/authoring-with-llms*.md）が材料と同じか、取り出し・id・直しの依頼・読みの検査・見本の取り込みと検査器の穴
+// チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・直しの依頼・読みの検査・見本の取り込みと検査器の穴
 // （編集アプリの貼り付けと直しの依頼は test-app の中の tools/test-app-llm.mjs）
 steps.push(
   ['llm guide', ['tools/make-llm-guide.mjs', '--check']],

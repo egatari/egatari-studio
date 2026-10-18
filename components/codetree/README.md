@@ -1,5 +1,6 @@
 ---
 name: m-codetree
+series: info
 summary: 符号の木で 2 値の系列を 1 語ずつ復号する（MH 符号）。ランは画素の升目に伸びる
 steps: 符号語の数 ＋ まとめの 1
 props: bits, depth, bit

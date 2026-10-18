@@ -1,5 +1,6 @@
 ---
 name: m-bars
+series: common
 summary: 棒を段階ごとに 0 から伸ばす（縦棒・横棒・組の棒）。値の軸の上限を段階で広げて「軸を突き抜ける伸び」も見せられる
 steps: 組の step と scale の step の最大（既定は組 1 つ = 1 段階。per-step で n 組ずつ）
 props: orient, max, unit, digits, per-step, dur, stagger, count, ticks, zoom, al
@@ -13,9 +14,13 @@ props: orient, max, unit, digits, per-step, dur, stagger, count, ticks, zoom, al
 - group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`step`（既定は per-step から）、`at`（段階の中の開始秒。既定は同じ段階の中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
 - series：`label`（最初の組の棒の上に直接書く。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
 - scale：`[{"step": 3, "max": 27, "at": 0.4}]`。その段階の at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い帯で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
+<!-- llm: omit -->
 - 軸の上限は `max` か JSON の `max`、なければ値（scale があれば、最初の scale より前に出る組の値）の 1.12 倍を切りのよい数にしたもの
+<!-- llm: end -->
 - 横棒（`orient="h"`）は組の名前を左に、値を棒の右に書く。順位を見せるなら `ticks="false"` で目盛りを消してよい
+<!-- llm: omit -->
 - 値の数字は `digits` 桁で 3 桁ごとにカンマを入れ、`unit` を後ろに付ける
+<!-- llm: end -->
 
 見本は `demo.html`（年ごとの売上と軸の広がり、聞き取りの順位、2 系列）。数値はすべて架空。
 

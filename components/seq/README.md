@@ -1,5 +1,6 @@
 ---
 name: m-seq
+series: academic
 summary: 観測を 1 つずつ加え、分布と数値が更新されていく様子を見せる（前の分布は薄く残す）
 steps: ceil((steps の数 − 1) / per-step)
 props: per-step, slot, xr, yr, xt, yt, xf, yf, xl, yl, digits, panel, ghosts

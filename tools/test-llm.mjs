@@ -1,6 +1,7 @@
 // チャットの AI との行き来の試験（ブラウザは検査器（kit/check.mjs）の中だけ）
 //   node tools/test-llm.mjs [作業用のフォルダ]
-// 1. 指示（docs/authoring-with-llms*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・決まりの名前
+// 1. 指示（共通の本体 docs/authoring-with-llms*.md と系列 docs/llm-parts/*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・
+//    決まりの名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所
 // 2. 返事から 2 つの囲みを取り出す（kit/core/llm-import.mjs）：名前の付け方・CRLF・前後の文章・閉じていない囲み・囲みなし・重なり
 // 3. id を付ける（kit/core/slide-ids.mjs）：見出しが同じスライド・今ある id・直したスライドだけの返事を戻す
 // 4. 直しの依頼（kit/core/llm-fix.mjs）：エラーの言葉・決まりの名前と文章・今のファイル。長いデッキは問題のスライドだけ
@@ -16,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
+import { buildPack, commonBody, seriesPart, SERIES, seriesOf, seriesForDeck, componentsIn, packSize } from '../kit/core/llm-pack.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -29,25 +31,82 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
 const worked = (name, f) => read('tools', 'llm-guide', 'worked', name, f);
 const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8' });
 const GUIDE_EN = read('docs', 'authoring-with-llms.md'), GUIDE_JA = read('docs', 'authoring-with-llms.ja.md');
+const ALL_EN = buildPack({ series: 'all', lang: 'en' }), ALL_JA = buildPack({ series: 'all', lang: 'ja' });
 
 // ---------------------------------------------------------------- 1. 指示
 ok('make-llm-guide --check：指示は材料から作り直したものと同じ', () => {
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-ok('指示の大きさ：全体版 < 60 KB、core 版 < 30 KB', () => {
-  for (const f of ['authoring-with-llms.md', 'authoring-with-llms.ja.md']) assert.ok(Buffer.byteLength(read('docs', f)) < 60 * 1024, f);
-  for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(Buffer.byteLength(read('docs', f)) < 30 * 1024, f);
+ok('指示の大きさ：共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、全部 ≤ 64 KB。前の全体版・core 版はない', () => {
+  for (const lang of ['en', 'ja']) {
+    for (const s of SERIES) assert.ok(packSize(buildPack({ series: [s], lang })) <= 40 * 1024, `${lang} common+${s}`);
+    assert.ok(packSize(buildPack({ series: 'all', lang })) <= 64 * 1024, `${lang} all`);
+  }
+  for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
 });
-ok('決まりの名前は英語と日本語で同じ・見本は 3 つとも入っている・部品はすべて一覧にある', () => {
+ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all・[]・重ね・順）・知らない系列は失敗', () => {
+  for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
+    const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
+    assert.equal(file.slice(i), buildPack({ series: [], lang }));
+    assert.equal(commonBody(lang), buildPack({ series: [], lang }));
+    for (const s of SERIES) {
+      const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
+      assert.equal(doc, seriesPart(s, lang), `${lang} ${s}`);
+      assert.equal(buildPack({ series: [s], lang }), commonBody(lang) + '\n' + seriesPart(s, lang));
+    }
+    assert.equal(buildPack({ series: ['info', 'academic', 'info'], lang }), buildPack({ series: 'academic,info', lang }));
+    assert.equal(buildPack({ series: 'all', lang }), buildPack({ series: SERIES, lang }));
+  }
+  assert.throws(() => buildPack({ series: ['math'], lang: 'en' }), /unknown series "math"/);
+  const cli = node('kit/llm-pack.mjs', '--series', 'kokugo,academic', '--lang', 'ja');
+  assert.equal(cli.status, 0, cli.stderr); assert.equal(cli.stdout, buildPack({ series: ['academic', 'kokugo'], lang: 'ja' }));
+  const list = node('kit/llm-pack.mjs', '--list');
+  assert.ok(list.status === 0 && /^common\t[\d.]+ KB\tm-bars, m-flow, m-menu$/m.test(list.stdout) && /^kokugo\t[\d.]+ KB\tm-gendai, m-kanbun, m-kobun$/m.test(list.stdout) && /^all\t/m.test(list.stdout), list.stdout);
+});
+ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つの系列）。共通の部品は系列に重ねない・README に series がなければ作れない', () => {
+  const dirs = fs.readdirSync(path.join(ROOT, 'components')).filter((x) => fs.existsSync(path.join(ROOT, 'components', x, 'README.md')));
+  for (const lang of ['en', 'ja']) {
+    const common = commonBody(lang), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang)]));
+    for (const c of dirs) {
+      const head = `### \`<m-${c}>\``, where = seriesOf('m-' + c);
+      assert.ok(where === 'common' || SERIES.includes(where), c);
+      const places = [['common', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([n]) => n);
+      assert.deepEqual(places, [where], `${lang} m-${c}: ${places}`);
+    }
+    // m-flow のお金の流れは business の拡張（共通の本体には入らない）
+    assert.ok(parts.business.includes('`<m-flow>`') && /kind/.test(parts.business) && !/`money`/.test(common), 'm-flow money flows in business');
+  }
+  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'business'], ['m-quad', 'business'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
+  // README に series のない部品があれば、作り直しは失敗する（写しの部品フォルダで確かめる）
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
+  for (const d of ['tools', 'docs', 'components', 'themes', 'kit']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  const rd = path.join(tmp, 'components', 'kpi', 'README.md');
+  fs.writeFileSync(rd, fs.readFileSync(rd, 'utf8').replace(/^series: .*\n/m, ''));
+  const r = spawnSync(process.execPath, ['tools/make-llm-guide.mjs', '--check'], { cwd: tmp, encoding: 'utf8' });
+  assert.ok(r.status !== 0 && /components\/kpi\/README\.md has no frontmatter series/.test(r.stderr), r.stderr);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+ok('デッキから系列を推す：部品・テーマ・layout-tate', () => {
+  assert.deepEqual(seriesForDeck(worked('business', 'deck.html')), ['business']);
+  assert.deepEqual(seriesForDeck(worked('academic', 'deck.html')), ['academic']);
+  assert.deepEqual(seriesForDeck(worked('kokugo', 'deck.html')), ['kokugo']);
+  assert.deepEqual(seriesForDeck(worked('common', 'deck.html')), []);
+  assert.deepEqual(seriesForDeck('<html data-theme="default"><section class="slide layout-tate"><m-codetree></m-codetree><m-sweep></m-sweep></section>'), ['academic', 'kokugo', 'info']);
+  assert.deepEqual(componentsIn('<m-kpi a="1"><m-kpi><m-foo></m-foo><m-bars>'), ['m-bars', 'm-kpi']);
+});
+ok('決まりの名前は英語と日本語で同じ・決まりは共通の本体だけにある・見本は 4 つとも入っている・部品はすべて一覧にある', () => {
   const en = [...guideRules(GUIDE_EN).keys()], ja = [...guideRules(GUIDE_JA).keys()];
   assert.deepEqual(en, ja);
+  assert.deepEqual([...guideRules(ALL_EN).keys()], en);
+  for (const s of SERIES) assert.equal(guideRules(seriesPart(s, 'en')).size, 0, s);
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
-  for (const g of [GUIDE_EN, GUIDE_JA]) {
-    for (const t of ['m-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
+  for (const g of [ALL_EN, ALL_JA]) {
+    for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
     for (const c of fs.readdirSync(path.join(ROOT, 'components')).filter((x) => fs.existsSync(path.join(ROOT, 'components', x, 'README.md')))) assert.ok(g.includes(`\`<m-${c}>\``), c);
+    assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
-  assert.ok(!/demo\.html/.test(GUIDE_EN), 'no repository-only pointers');
+  assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');
 });
 
 // ---------------------------------------------------------------- 2. 取り出し
@@ -137,22 +196,34 @@ ok('直しの依頼：エラーの言葉・決まりの名前と指示の文章�
     { sev: 'error', i: 2, title: 'x', code: 'orphanNarration', text: 'Narration for a step the slide does not have [5]' },
     { sev: 'warn', i: null, title: '', msg: 'narration: スライドが見つからない「## Foo」', text: 'narration: スライドが見つからない「## Foo」' },
   ];
-  const r = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, guide: GUIDE_EN, lang: 'en' });
+  const r = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, lang: 'en' });
   const rules = guideRules(GUIDE_EN);
   assert.ok(r.text.includes('title is 72 characters (max 60) — R-title'));
   assert.ok(r.text.includes(`- **R-title** ${rules.get('R-title')}`) && r.text.includes(`- **R-narr-steps** ${rules.get('R-narr-steps')}`) && r.text.includes('**R-headings**'));
   assert.ok(r.text.includes(`(id ${a.added[1].id})`));
   assert.ok(r.text.includes('````deck.html\n' + a.deck.trim()) && r.text.includes('````narration.md\n' + a.narration.trim()));
   assert.ok(/exactly two fenced code blocks/.test(r.text) && r.partial === false);
-  const ja = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, guide: GUIDE_JA, lang: 'ja' });
-  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み'));
+  // 使っている部品の説明（指示と同じ文章）
+  assert.deepEqual(r.components, ['m-sweep']);
+  assert.ok(r.text.includes('## Components used in this deck') && r.text.includes(seriesPart('academic', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
+  // 前の guide の引数：知らせて無視する（決まりは指示の共通の本体から）
+  const warned = [], cw = console.warn;
+  console.warn = (...x) => warned.push(x.join(' '));
+  try {
+    const g = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, guide: '- **R-title** something else', lang: 'en' });
+    assert.equal(g.text, r.text);
+  } finally { console.warn = cw; }
+  assert.ok(warned.length === 1 && /guide argument is no longer used/.test(warned[0]), warned.join('|'));
+  const ja = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, lang: 'ja' });
+  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み') && ja.text.includes('## この教材で使っている部品'));
   assert.deepEqual(rulesFor({ code: 'readingExpr' }), ['R-reading', 'R-formula']);
 });
 ok('長いデッキの直しの依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
   const a = assignIds(worked('business', 'deck.html'), worked('business', 'narration.md'), { byOrder: true });
   const id = a.added[2].id;
-  const r = buildFixRequest({ problems: [{ sev: 'error', i: 2, title: 't', code: 'overflowBottom', text: 'body overflows at the bottom (600px)' }], deck: a.deck, narration: a.narration, guide: GUIDE_EN, lang: 'en', limit: 1000 });
+  const r = buildFixRequest({ problems: [{ sev: 'error', i: 2, title: 't', code: 'overflowBottom', text: 'body overflows at the bottom (600px)' }], deck: a.deck, narration: a.narration, lang: 'en', limit: 1000 });
   assert.ok(r.partial && r.slides.length === 1 && r.slides[0] === id);
+  assert.deepEqual(r.components, ['m-bars'], 'only the components of the included slide');
   const deckPart = r.text.match(/````deck\.html\n([\s\S]*?)\n````/)[1];
   assert.ok(deckPart.startsWith(`<section class="slide" id="${id}">`) && !deckPart.includes('<html') && !deckPart.includes(a.added[1].id));
   const narrPart = r.text.match(/````narration\.md\n([\s\S]*?)\n````/)[1];
@@ -167,7 +238,7 @@ ok('直しの依頼の量の目安：はみ出しは「何 px・およそ何行�
   assert.match(amountOf({ code: 'smallText', data: '20px「注」' }, 'ja'), /^字を 20px から 27px 以上に上げる/);
   assert.equal(amountOf({ code: 'titleLong', data: { n: 30 } }, 'en'), '');
   const a = assignIds(worked('business', 'deck.html'), worked('business', 'narration.md'), { byOrder: true });
-  const r = buildFixRequest({ problems: [{ sev: 'error', i: 1, title: 't', code: 'bodyBottom', rule: 'R-fit', data: { px: 662, lim: 565 }, text: 'x' }], deck: a.deck, narration: a.narration, guide: GUIDE_EN, lang: 'en' });
+  const r = buildFixRequest({ problems: [{ sev: 'error', i: 1, title: 't', code: 'bodyBottom', rule: 'R-fit', data: { px: 662, lim: 565 }, text: 'x' }], deck: a.deck, narration: a.narration, lang: 'en' });
   assert.ok(r.text.includes('x → cut 97 px from the body (about 3 lines of 46 px)') && r.text.includes('— R-fit'));
   assert.match(cutOffRequest({ kind: 'narration', line: 40 }, 'en'), /cut off \(the narration\.md block is not closed\)\. Send only the narration\.md block again/);
   assert.match(cutOffRequest({ kind: 'deck', line: 3 }, 'ja'), /枚数を減らした短い形で/);
@@ -192,7 +263,7 @@ ok('スライドにない段階（orphanSteps）', () => {
 });
 
 // ---------------------------------------------------------------- 6. 見本の返事を取り込んで組み、検査
-for (const name of ['academic', 'business', 'kokugo']) {
+for (const name of ['common', 'academic', 'business', 'kokugo']) {
   ok(`取り込み → 検査（${name}）：エラー 0、どのスライドにも id`, () => {
     const r = extractBlocks(replyOf(worked(name, 'deck.html'), worked(name, 'narration.md'), { crlf: name === 'kokugo' }));
     assert.equal(r.error, null);

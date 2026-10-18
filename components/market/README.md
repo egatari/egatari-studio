@@ -1,5 +1,6 @@
 ---
 name: m-market
+series: business
 summary: 市場規模の入れ子の円（TAM / SAM / SOM）。外の円から 1 つずつ、前の円の大きさから縮んで現れる
 steps: rings の数
 props: unit, digits, scale, layout, dur, count

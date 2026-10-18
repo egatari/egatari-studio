@@ -1,6 +1,7 @@
 // 編集アプリの「AI の出力を貼り付ける」と「AI への直しの依頼を写す」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
 //   testLlm({browser, BASE, ok, watch, shotDir})
-// 1. 貼り付けの窓：開く・指示を写す・誤り（囲みなし・閉じていない囲み）を窓の中に出す
+// 1. 貼り付けの窓：開く・指示を写す（系列を選ぶ：新しいデッキなら academic、開いているデッキならその部品・テーマから推したもの）・
+//    誤り（囲みなし・閉じていない囲み）を窓の中に出す
 // 2. 見本の返事（tools/llm-guide/worked/business：前置きの文章・```html と ```markdown・CRLF）を取り込む → 新しい 1 ファイルとして開き、
 //    スライドに id が付き、口述原稿の見出しが {#id} になり、簡易チェックのエラーが 0
 // 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）
@@ -39,10 +40,24 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok((await page.textContent('#w-paste')) === 'Paste AI output', 'llm: the welcome screen has “Paste AI output”');
   await page.click('#w-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
+  const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
+  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).map((b) => b[0]).join() === 'academic' && boxes.every((b) => /\+\d+ KB$/.test(b[2])),
+    'llm: the instructions have series checkboxes with sizes; with no deck open, academic is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
+  ok(/^Series \(added to the common body, \d+ KB\)$/.test(await page.textContent('#paste-series legend')) && /^\d+ KB in all$/.test(await page.textContent('#paste-pack-size')), 'llm: the legend gives the common body size and the total is shown');
   await page.click('#paste-copy-guide');
   await page.waitForSelector('#paste-copied:not([hidden])');
   const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-  ok(clip.startsWith('# Instructions for the AI') && clip.includes('**R-output**') && !clip.includes('For people.'), `llm: “Copy instructions for your AI” copies the guide from “Instructions for the AI” (${Math.round(clip.length / 1024)} KB)`);
+  ok(clip.startsWith('# Instructions for the AI') && clip.includes('**R-output**') && !clip.includes('For people.') && clip.includes('## Series pack: academic') && clip.includes('`<m-sweep>`') && !clip.includes('## Series pack: business') && !clip.includes('`<m-kpi>`'),
+    `llm: “Copy instructions for your AI” copies the common body from “Instructions for the AI” and the academic pack (${Math.round(clip.length / 1024)} KB)`);
+  const total0 = await page.textContent('#paste-pack-size');
+  await page.click('#paste-series-academic');
+  await page.click('#paste-series-business');
+  await page.click('#paste-series-info');
+  await page.click('#paste-copy-guide');
+  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t !== c).catch(() => false), clip);
+  const clipB = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  ok(clipB.includes('## Series pack: business') && clipB.includes('`<m-kpi>`') && clipB.includes('## Series pack: info') && !clipB.includes('## Series pack: academic') && clipB.indexOf('Series pack: business') < clipB.indexOf('Series pack: info') && (await page.textContent('#paste-pack-size')) !== total0,
+    'llm: ticking business and info (and unticking academic) copies those packs, in order, and updates the total');
   const bdeck = worked('business', 'deck.html'), bnarr = worked('business', 'narration.md');
   await page.fill('#paste-text', replyOf(bdeck, bnarr, { crlf: true }));
   await shot('paste-dialog.png');
@@ -95,6 +110,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#b-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
   ok(await page.isChecked('#paste-new'), 'llm: “Paste AI output…” from the menu defaults to a new deck');
+  ok(await page.isChecked('#paste-series-business') && !(await page.isChecked('#paste-series-academic')), 'llm: with the business deck open, the instructions default to the business series (from its components and theme)');
   await page.fill('#paste-text', replyOf(evil, bnarr));
   await page.click('#dlg-import');
   await discard();
@@ -130,6 +146,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const clip2 = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
   ok(req.includes('R-title') && /\*\*R-title\*\* Heading: Japanese at most 26 units/.test(req) && req.includes('R-narr-steps') && req.includes('R-reading') && /title is \d+(\.\d+)? units/.test(req) && req.includes('````deck.html') && req.includes('{#s-'),
     'llm: the fix request names the errors, quotes their rules from the guide and includes the current files');
+  ok(req.includes('## Components used in this deck') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses (m-kpi, m-bars)');
   ok(clip2.replace(/\r\n/g, '\n') === req, 'llm: the fix request is on the clipboard');
   ok(/narration \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req) && /previous step \[\d\]/.test(req), 'llm: the fix request quotes the orphan narration lines and the step to merge into');
   await shot('fix-request.png');

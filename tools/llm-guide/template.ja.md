@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=a1155500065683b8 -->
+<!-- i18n: pair=template.md sha256=daa7722750eb01ca -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 
@@ -6,11 +6,11 @@
 
 **使う人へ。**チャットの AI（claude.ai・Gemini・ChatGPT など）に、[Egatari](https://github.com/egatari/egatari-spec) の教材（Egatari はオープンなファイル形式、Egatari Studio はその編集アプリ）の初めの下書きを書かせるための指示のまとめです。段階ごとに出る HTML のスライドと、その口述原稿ができます。インストールも Claude Code も要りません。
 
-1. 新しいチャットを開き、**「AI への指示」から最後までをすべて**貼り付け（またはこのファイルを添付し）、作りたいもの（題目・聞き手・長さ・言語・話者）を書きます。編集アプリでも写せます（**AI の出力を貼り付ける → AI への指示を写す**）
+1. 新しいチャットを開き、**「AI への指示」から最後までをすべて**貼り付け、続けて教材に要る系列の指示（下）を貼り付けてから、作りたいもの（題目・聞き手・長さ・言語・話者）を書きます。編集アプリが組み合わせて写します（**AI の出力を貼り付ける → 系列を選ぶ → AI への指示を写す**）
 2. AI の**返事の全体**を（チャットの写すボタンで）写し、Egatari Studio の **開く ▾ → AI の出力を貼り付ける…** に貼り付けます。エディタが 2 つのファイルを取り出し、どのスライドにも変わらない id を付け、検査して開きます
 3. 簡易チェックの知らせを直すか、簡易チェックの板の **AI への直しの依頼を写す** を押して同じチャットに貼り付け、返事をまた貼り付けます（「今のデッキを置き換える」を選ぶ）
 
-大きさ：この全体版はおよそ {{SIZE_FULL}} KB。部品ごとの詳しい説明を除いた [authoring-with-llms.core.ja.md](authoring-with-llms.core.ja.md)（{{SIZE_CORE}} KB）は、入力の上限が小さいチャット向け。どちらも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・部品の README・`tools/llm-guide/` から作るので、手で直さない。
+このファイルは**共通の本体**（およそ {{SIZE_COMMON}} KB）：決まり・出力の形と、どの教材でも使える部品。**系列の指示**はそれぞれ、ある種類の教材の部品を足す：{{SERIES_LIST}}。`node kit/llm-pack.mjs --series academic,info --lang ja` は編集アプリが写すのと同じ文章を出す。どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・部品の README・`tools/llm-guide/` から作るので、手で直さない。
 
 ---
 
@@ -22,7 +22,7 @@
 
 - **2 つの囲みはどちらも最後まで書いて閉じる。**返事が長くなりそうなら枚数を減らし（5〜7 枚で足りる）、囲みの途中で終わらない（R-output）
 - **1280×720 のスライドの大きさ**（検査器が測る。R-fit）：本文の場所は 1184 × 443 px（565 px まで。`noconcl` なら 1184 × 558）。本文の字は 32 px で 1 行 46 px なので、入るのは**およそ 8 行**。はみ出す 46 px ごとに 1 行を削る。**図や部品の中も含め、字はすべて 24 px 以上**
-- **グラフと図：**部品は大きさによらず字を 24〜28 px で描く（SVG を自分の画素で描く）ので、字ではなく部品の大きさを決める。軸のある図（`m-sweep`・`m-curves`・`m-seq`）は目盛りと名前に左 86 px、上下合わせて 80 px を使うので、高さ **300〜380 px**、幅 **560 px 以上**にする（`<div class="cols">` なら図の列を 55% 以上に）。380 px の部品の下に入るのは短い 1 行、2 行なら 330 px に
+- **グラフと図：**部品は大きさによらず字を 24〜28 px で描く（SVG を自分の画素で描く）ので、字ではなく部品の大きさを決める。380 px の部品の下に入るのは短い 1 行、2 行なら 330 px に
 - **その場で書く `<svg>`：**字は「表示の幅 ÷ viewBox の幅」で縮むので、viewBox を表示する画素で書く（`<svg viewBox="0 0 560 320" width="560" height="320">`）。`font-size` は 24 以上。`width:100%` と違う viewBox の幅を組み合わせない（幅 600 の viewBox を 580 px で出すと 24 が 23.2 px になる）。合う部品があれば部品を使う
 
 ## 1. 出力の形
@@ -58,7 +58,7 @@
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
-- `<section>` の class：`noconcl`（結論の行なし）、`static`（段階なし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書きのスライド）、属性 `data-morph`（§2.5）
+- `<section>` の class：`noconcl`（結論の行なし）、`static`（段階なし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書きのスライド。説明のある kokugo の系列の指示があるときだけ）、属性 `data-morph`（§2.5）
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
 - 字の強調（字に色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
 - **R-headings** スライドの見出し（表紙は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じになるなら語を足す）。そのスライドの口述原稿の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
@@ -94,11 +94,9 @@
 
 ## 3. 部品の一覧
 
-部品の README から作ったもの。「steps」は部品が使うスライドの段階の数（`data-from` から。既定 1）。型が json の属性は、属性の値に JSON を書く（`values="[0.1,0.5]"`）。
+ここの部品はどの教材でも使える。§6 の後に系列の指示があれば、その分野の部品が加わる。渡された文章に説明のある部品だけを使う。部品の README から作ったもの。「steps」は部品が使うスライドの段階の数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せていない（既定のままで口述原稿に合う）。型が json の属性は、属性の値に JSON を書く（`values="[0.1,0.5]"`）。
 
-{{CATALOG_TABLE}}
-
-{{CATALOG_DETAILS}}
+{{CATALOG}}
 
 ## 4. narration.md
 
@@ -128,10 +126,6 @@
 
 ## 6. 見本
 
-小さな教材 3 つ（どれも架空。形を見るためのもので、中身を写さない）。段階の数え方：「The decay law」は段階 1〜3 と `[concl]`、値が 3 つの `m-sweep` は段階 1〜2、札が 3 枚の `m-kpi` と組が 3 つの `m-bars` は段階 1〜3、`m-kanbun` は段階 1〜3（訓点・読む順・書き下し文）。static の表紙は `[0]` だけ。
+小さな教材 1 つ（架空。形を見るためのもので、中身を写さない）。段階の数え方：2 項目の箇条書きは段階 1〜2 と `[concl]`、箱が 4 つの `m-flow` は段階 1〜4。static の表紙は `[0]` だけ。系列の指示は、それぞれの最後に自分の見本を持つ。
 
-{{WORKED academic "学術（英語・default テーマ・数式・注目の演出・m-sweep）"}}
-
-{{WORKED business "ビジネス（日本語・business テーマ・m-kpi・m-bars）"}}
-
-{{WORKED kokugo "国語（kokugo テーマ・m-kanbun）"}}
+{{WORKED common "共通（英語・default テーマ・注目の演出・m-flow）"}}

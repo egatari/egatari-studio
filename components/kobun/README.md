@@ -1,5 +1,6 @@
 ---
 name: m-kobun
+series: kokugo
 summary: 古文を語に切り（スラッシュ）、品詞で色を分けて 1 文ずつ見せ、最後に現代語訳と並べる。助動詞を押すと活用表と意味
 steps: 文の数（現代語訳があれば ＋1）
 props: size, tate, yaku, fade, detail
