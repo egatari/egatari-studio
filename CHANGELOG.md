@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `m-codetree` (`components/codetree/`, in the catalog, with a demo): decoding a bit string with a code tree, for a data-compression lecture (Modified Huffman, ITU-T T.4). The tree is built from the code table (`[{run, white, black}]` or `{white: {code: run}, black: {…}}`; prefix conflicts are reported): the root's left is the white tree, its right the black tree, branch 0 left. Decoding starts white; a terminating code (run < 64) switches the colour, a make-up code (run ≥ 64) keeps it, `EOL` returns to white; a code not in the table, a string that ends inside a code and a make-up code without its terminating code are reported. One step per codeword, with one cue per bit read (a narration with as many `{cue}` as bits keeps the read pointer on the words; one step per bit would split the narration into one line per bit), and a last summary step with both trees and every decoded path (the print and still state). In each step the tree is laid out again around the codeword (only the current colour's tree is expanded to `depth`, deeper and other subtrees are folded into small triangles, nodes slide between layouts), a read pointer moves along the bit string in step with a dot travelling down the tree, the leaf gives the run, and the run is filled into a scan line of white and black pixel cells, where a make-up and its terminating code combine into one run (`白 64 ＋ 2 ＝ 66`). Nodes, leaves, bits, codewords and runs carry `data-mark` names (`ct-w-1101`, `ct-w64`, `ct-bit-3`, `ct-cw-2`, `ct-run-1`) for `{mark:…}`. The demo decodes `11011011111` (white 64 + white 2, black 2) with the T.4 tables and shows an invalid code with a small table. New `tools/test-codetree.mjs` in `npm test` (tree building, colour alternation, make-up + terminating, EOL, invalid and incomplete codes); `tools/test-shape.mjs` covers its data shape
+
 ## [0.4.0] - 2026-10-19
 
 ### Added
