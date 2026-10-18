@@ -151,6 +151,11 @@ main{flex:1;min-height:0;display:flex}
 #dlg textarea{width:100%;box-sizing:border-box;font:12.5px/1.45 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:180px;max-height:50vh}
 #dlg .paste-guide{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin:4px 0 8px}
 #dlg .paste-guide .hint{flex-basis:100%;margin:0}
+#dlg .paste-series{flex-basis:100%;display:flex;flex-direction:column;gap:3px;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13.5px}
+#dlg .paste-series legend{padding:0 4px}
+#dlg .paste-series label{display:flex;gap:8px;align-items:center}
+#dlg .paste-series label .hint{flex-basis:auto;margin-left:auto}
+#dlg #paste-pack-size{flex-basis:auto}
 #dlg .paste-mode{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13.5px}
 #dlg .paste-mode label{display:flex;gap:8px;align-items:flex-start}
 #panel-body .fixreq{width:100%;margin:2px 0 8px}

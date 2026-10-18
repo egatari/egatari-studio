@@ -55,7 +55,7 @@ const SH = ctx.DECK.shape;
   ok(JSON.stringify(componentError(raw)) === JSON.stringify({ tag: 'm-curves', msg: 'TypeError: S.map is not a function' }), 'error text: old-style component error recognised');
   ok(cleanErrorText('Failed to load resource: http://localhost:5173/a/b.png (404) at /tmp/macs-check-1/deck.html:12:3') === 'Failed to load resource: b.png (404) at deck.html', 'error text: local server origin and temp dir reduced to file names');
   ok(cleanErrorText('see https://example.org/x') === 'see https://example.org/x', 'error text: other URLs are kept');
-  const req = buildFixRequest({ problems: [{ sev: 'error', i: null, title: '', code: 'consoleError', text: raw }], deck: '<section class="slide" id="s-a"><h2>a</h2></section>', narration: '', guide: '- **R-components** x', lang: 'en' });
+  const req = buildFixRequest({ problems: [{ sev: 'error', i: null, title: '', code: 'consoleError', text: raw }], deck: '<section class="slide" id="s-a"><h2>a</h2></section>', narration: '', lang: 'en' });
   ok(clean(req.text) && req.text.includes('S.map is not a function') && req.text.includes('R-components'), 'fix request: no stack or path, rule R-components');
 }
 {

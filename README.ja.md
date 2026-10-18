@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=bca467baac98dcfd -->
+<!-- i18n: pair=README.md sha256=e2a71d6368674350 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -285,7 +285,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 |---|---|
 | `docs/contract.ja.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
 | `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)） |
-| `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。`tools/make-llm-guide.mjs` が作る。短い `.core.ja.md` もある（[English](docs/authoring-with-llms.md)） |
+| `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体。系列の指示（academic・business・kokugo・info）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |

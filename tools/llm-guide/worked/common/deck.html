@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a web page arrives</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static">
+  <div class="venue">Computing basics, lesson 1 (a fictional course)</div>
+  <h1>How a web page arrives</h1>
+</section>
+
+<section class="slide">
+  <h2>Two programs take part</h2>
+  <div class="body">
+    <p>Opening a page is a conversation between two programs.</p>
+    <ul>
+      <li id="browser">The <span class="term">browser</span> asks for the page and draws it</li>
+      <li id="server">The <span class="term">server</span> keeps the page and sends it back</li>
+    </ul>
+  </div>
+  <div class="concl"><span>Every page load is a request and a reply</span></div>
+</section>
+
+<section class="slide">
+  <h2>From the address to the screen</h2>
+  <div class="body">
+    <m-flow style="height:300px" aria-label="Four stages: type the address, send a request, send the page back, draw the page">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "Type the\naddress", "x": 10, "y": 100, "w": 250, "h": 110, "step": 1},
+        {"id": "b", "label": "Send a\nrequest", "x": 315, "y": 100, "w": 250, "h": 110, "step": 2},
+        {"id": "c", "label": "Send the\npage back", "x": 620, "y": 100, "w": 250, "h": 110, "step": 3, "tone": "term"},
+        {"id": "d", "label": "Draw the\npage", "x": 925, "y": 100, "w": 250, "h": 110, "step": 4, "tone": "emph"}
+      ], "edges": [
+        {"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "c", "to": "d"}
+      ]}</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>A slow page is slow in one of these four stages</span></div>
+</section>
+
+</div>
+</body>
+</html>
