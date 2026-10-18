@@ -29,6 +29,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` を雛形から作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` の雛形ができる。空でないフォルダには書かない）、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
+   - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
 5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/components/CATALOG.md`）から選び、なければ新しく書く（motion-components スキル）
 6. **検査して直す**：`node <repo>/kit/check.mjs <deck>/deck.html` が error 0 になるまで。段階 0 で見えている本文の一覧は必ず読む
 7. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で指示を残す。「コメントを反映して」と言われたら：
@@ -55,7 +56,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 - 色は直接書かない（`#D00000` など）。テーマの変数とクラスだけを使う。テーマを替えると全部が連動する
 - 文字は既定の大きさのまま。入りきらなければ文字を縮めずにスライドを分ける
 - 記号は最初に使う所で定義する（「\(d_n\)：観測データ」）
-- どのスライドにも `<section class="slide" id="s-xxxxxx">`（`s-` と base32 の小文字 6 字、乱数。見出しから作らない）を付ける。ほかの id（目印・`\htmlId`）と重ねない。今あるデッキは `npm run ids -- <デッキ>`
+- スライドの id（`s-` と base32 の小文字 6 字、乱数）は**自分で書かない**。新しいスライドは `<section class="slide">`（id なし）、口述原稿の見出しは `## <見出し>`（`{#…}` なし）で書き、書き終えたら `node <repo>/tools/ids.mjs <deck>`（`npm run ids -- <deck>`）で付ける（deck.html の id と narration.md の `{#id}` を一緒に付ける。2 回目は何も変えない）。今ある id は消さない・書き換えない。見出しは全部違うものにする（id のないスライドは見出しで口述原稿と対応する）
 - 英語のデッキは `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。検査はです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は原稿のフォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
 
 ## 4. 段階表示（説明の順）

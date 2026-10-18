@@ -23,6 +23,7 @@ import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav } from './portable-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
+import { testLlm } from './test-app-llm.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -1289,6 +1290,9 @@ try {
   const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
   await p1.close();
+
+  // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・直しの依頼（tools/test-app-llm.mjs）
+  await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
 
   // ---------------------------------------------------------------- 13. サイトの形（GitHub Pages）：根と下のパスの両方
   // 根 = 配信版の編集アプリ、/editor/ = 前の場所（根へ移す。問い合わせと # を残す）、/editor.html = 1 ファイル版、/lab/irodori.html = 試験ページ

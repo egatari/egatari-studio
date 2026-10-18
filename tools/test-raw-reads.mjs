@@ -47,6 +47,8 @@ const ALLOW = [
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],
   ['tools/build-app.mjs', 'fs.readFileSync(', '編集アプリを組む：リポジトリの kit/・components/・themes/・app/・KaTeX・字を集める'],
   ['tools/catalog.mjs', "fs.readFileSync(file, 'utf8')", '部品庫の一覧を作る：リポジトリの components/ の README を読む'],
+  ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(...p), 'utf8')", 'AI への指示を作る：リポジトリの tools/llm-guide/・docs/contract・components/ の README と index.js を読む（開発者の道具）'],
+  ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(file), 'utf8')", 'AI への指示を作る：リポジトリの docs/authoring-with-llms*.md（作ったもの）を読んで比べる'],
   ['tools/get-fonts.mjs', 'sha(fs.readFileSync(out))', '字：リポジトリの fonts/ の、決まった大きさのファイルのハッシュを確かめる（取ってくる側は決まったコミット・大きさの上限・SHA-256 で確かめる）'],
   ['tools/hostile-deck.mjs', 'fs.readFileSync(path.join(min,', '試験の材料：リポジトリの examples/minimal を読む'],
   ['tools/katex-ranges.mjs', 'fs.readFileSync(', 'node_modules の KaTeX（package.json と字）と、このツールが書く表を読む'],

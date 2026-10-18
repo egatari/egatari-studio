@@ -20,6 +20,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { readFileBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
+import { setupLlm } from './llm.js';
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;
@@ -365,6 +366,7 @@ async function quickCheck() {
   const id = 'q' + Date.now();
   const results = await new Promise((res) => { S.checks.set(id, res); f.postMessage({ type: 'app-check', id }, '*'); setTimeout(() => { if (S.checks.has(id)) { S.checks.delete(id); res(null); } }, 20000); });
   if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
+  results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
@@ -374,6 +376,7 @@ async function quickCheck() {
   openPanel(T.checkTitle, [
     el('div', { cls: 'sum', text: T.checkSummary(errs, warns) }),
     el('p', { cls: 'hint', text: T.checkNote }),
+    ...(results.length ? [llm.fixButton(results)] : []),
     ...items,
   ]);
 }
@@ -548,7 +551,7 @@ async function leavePortable() {
 function refusal(code, message) {
   return [el('p', { id: 'refuse-reason', text: T.refuse(code) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
 }
-// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?}
+// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の出力を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
   if (!input) return false;
   let bytes, name;
@@ -565,7 +568,8 @@ async function openPortable(input) {
     // File は app/bounded-read.js で：File.size を読む前に、読んだ後も実際のバイト数を上限と比べる（大きさは見積もり）
     bytes = input.bytes ? new Uint8Array(input.bytes) : await readFileBounded(file, { max: LIMITS.fileBytes, what: name });
   } catch (e) { toast(T.cannotReadFile + ': ' + (e.message || e), true); return false; }
-  if (!(await leavePortable())) return false;
+  // replacing：AI の返事で今の文書を置き換える（今の作業場所の中身から作ったので、保存していない変更も入っている。app/llm.js）
+  if (!input.replacing && !(await leavePortable())) return false;
   status(T.reading(name));
   let r;
   const readerTimeout = (window.__APP_TEST && window.__APP_TEST.readerTimeout) || undefined;
@@ -613,7 +617,7 @@ async function openPortable(input) {
   stopPoll();
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: false, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
@@ -934,3 +938,8 @@ window.addEventListener('beforeunload', (e) => { if (S.portable && S.ws && S.ws.
   }
   showWelcome();
 })();
+
+// ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・直しの依頼。app/llm.js）
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, updateName });
+window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
+window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

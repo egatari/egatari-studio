@@ -24,6 +24,7 @@ import path from 'node:path';
 import { launch } from './browser.mjs';
 import { build, isJapanese, analyzeSlideIds } from './build.mjs';
 import { normalizeKey } from './narration.mjs';
+import { readingProblems, orphanSteps } from './core/narration-lint.mjs';
 import { readRegular, READ_LIMITS } from './bounded-read.mjs';
 
 // ---------------------------------------------------------------- 引数
@@ -146,6 +147,7 @@ const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
   i,
   key: s._key,
   max: s._max,
+  cstep: s._cstep,
   static: s.classList.contains('static'),
   comps: s._comps.length,
   title: (s.querySelector('h2, h1')?.innerText || s._key).replace(/\s+/g, ' ').trim(),
@@ -309,10 +311,10 @@ for (const { i, issues } of aOut.soft) for (const msg of issues) report(i, 'warn
 phase = 'B 口述原稿';
 const narrInfo = await page.evaluate((metaList) => {
   const out = [];
+  // static のスライド（表紙など。段階は 0 だけ）も段階 0 の口述原稿を見る
   metaList.forEach((m) => {
-    if (m.static) return;
     const s = DECK.slides[m.i];
-    for (let k = 0; k <= m.max; k++) {
+    for (let k = 0; k <= (m.static ? 0 : m.max); k++) {
       const full = DECK.stepKey(m.i, k);
       const sk = full.slice(s._key.length + 1);
       const turns = (DECK.NARRATION[s._key] || {})[sk] || [];
@@ -330,6 +332,24 @@ for (const { i, stepKey, turns } of narrInfo) {
     if (JA && t.text.length > 200) report(i, 'info', `1 ターンが長い（${t.text.length} 字、${stepLabel(stepKey)}）`);
     const words = t.text.trim().split(/\s+/).length;
     if (!JA && words > 60) report(i, 'info', `1 ターンが長い（${words} 語、${stepLabel(stepKey)}）`);
+  }
+}
+
+// スライドにない段階の口述原稿（[k] が段階の数を超える・結論のないスライドの [concl]・結論の段階を番号で書いた）：読まれないのでエラー
+for (const o of orphanSteps(built.segs, meta)) {
+  const i = meta.findIndex((m) => m.key === o.slideKey);
+  const max = meta[i].static ? 0 : meta[i].max, hasConcl = !meta[i].static && meta[i].cstep >= 0;
+  const range = hasConcl ? (max > 1 ? `0〜${max - 1} と concl` : '0 と concl') : max ? `0〜${max}` : '0 だけ';
+  report(i, 'error', `口述原稿の段階 [${o.stepKey}] がスライドにない（narration.md ${o.line} 行目。このスライドの段階は ${range}${meta[i].static ? '（static）' : ''}）：段階を足すか、その行を前の段階に移す`);
+}
+// 読みの指定 {x|y} は 1 つの記号か用語だけ（式や記号の組を 1 つの読みにしない）
+for (const seg of built.segs) {
+  const i = meta.findIndex((m) => m.key === seg.slideKey);
+  if (i < 0) continue;
+  for (const t of seg.turns) for (const p of readingProblems(t.raw)) {
+    report(i, 'warn', p.why === 'operator'
+      ? `読みの指定 ${p.text} が式を読んでいる（${stepLabel(seg.stepKey)}、narration.md ${seg.line} 行目）：読みは 1 つの記号か用語だけに付け（{θ|シータ}）、式は意味を言葉で言う`
+      : `読みの指定 ${p.text} に記号が 2 つ以上ある（${stepLabel(seg.stepKey)}、narration.md ${seg.line} 行目）：記号ごとに分ける（{θ|シータ} と {η|イータ}）`);
   }
 }
 

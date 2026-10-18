@@ -86,14 +86,15 @@ function quickCheck(){
       }
       if (body.querySelector(".katex-error")) add(i, "error", "katexError");
     }
-    // 口述原稿：static でないスライドの段階ごと
-    if (!s.classList.contains("static")) {
-      for (var kk = 0; kk <= s._max; kk++) {
-        var full = DECK.stepKey(i, kk), sk = full.slice(s._key.length + 1);
-        var turns = (DECK.NARRATION[s._key] || {})[sk] || [];
-        if (!turns.length) add(i, "warn", "noNarration", sk);
-      }
+    // 口述原稿：段階ごと（static のスライドは段階 0 だけ）。スライドにない段階の口述原稿（[k] が段階を超える・結論のない [concl]）はエラー
+    var valid = {}, isStatic = s.classList.contains("static");
+    for (var kk = 0; kk <= (isStatic ? 0 : s._max); kk++) {
+      var full = DECK.stepKey(i, kk), sk = full.slice(s._key.length + 1);
+      valid[sk] = true;
+      var turns = (DECK.NARRATION[s._key] || {})[sk] || [];
+      if (!turns.length) add(i, "warn", "noNarration", sk);
     }
+    Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", sk); });
   });
   // コントラスト（WCAG）：canvas に塗って実際の色を読む
   try {
