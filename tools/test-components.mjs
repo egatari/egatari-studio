@@ -1,7 +1,7 @@
 // 部品の見本（components/<名前>/demo.html）を組んで、ブラウザで動かして確かめる
 //   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
 // 確かめること：コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
-// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字
+// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -98,6 +98,19 @@ for (const name of names) {
             const q = b.getBoundingClientRect(), gap = 4;
             if (r.left < q.right + gap && r.right > q.left - gap && r.top < q.bottom + gap && r.bottom > q.top - gap) out.push(`text touches a box: ${s}`);
           }
+        }
+        // m-kanbun：右の欄の振り仮名・送り仮名が互いに重ならない。長い送り仮名（3 字以上）の次の字は、振り仮名がなければ下がらない（字の送りが 1.2 字のまま）
+        for (const c of sl._comps.filter((x) => x.localName === 'm-kanbun' && x.cells)) {
+          const S = c.geom.S, ann = [...c.querySelectorAll('.kb-ok:not(.kb-left), .kb-ruby')].filter(vis).map((e) => ({ s: e.textContent, r: e.getBoundingClientRect() }));
+          for (let a = 0; a < ann.length; a++) for (let b = a + 1; b < ann.length; b++) {
+            const p = ann[a].r, q = ann[b].r;
+            if (Math.min(p.right, q.right) - Math.max(p.left, q.left) > 2 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 0) out.push(`kanbun: annotations overlap: ${ann[a].s} / ${ann[b].s}`);
+          }
+          c.cells.forEach((e, n) => {
+            const d = c.cells[n + 1];
+            if (!d || d.c.col !== e.c.col || Array.from(e.c.okuri).length < 3 || d.c.ruby || e.c.punct || e.c.join || e.c.mark || e.c.re || e.c.second !== null) return;
+            if (Math.abs(d.y - e.y - S * 1.2) > 0.5) out.push(`kanbun: long okuri ${e.c.ch}(${e.c.okuri}) pushed ${d.c.ch} by ${(d.y - e.y - S * 1.2).toFixed(1)}px`);
+          });
         }
         return out;
       }, s.i);

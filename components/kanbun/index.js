@@ -171,6 +171,14 @@ if (!D.MotionElement) return;   // 試験（Node）では読み取りと順だ�
 
 // ---------------------------------------------------------------- 部品
 var PH = ["kunten", "order", "kaki"];
+// 長い送り仮名を詰める：fit は自然の長さ（字数 × 字の大きさ）に対する割合。まず字間を詰め（1 字につき字の大きさの 0.12 まで）、
+// 残りを縦に縮める（transform。字の大きさ・字の幅は変えない）。OK_MIN より詰めない（それより長ければ次の字を下げる）
+var OK_MIN = 0.78, OK_TRACK = 0.12, GAP_OK = 8, OK_DELAY = 0.36;
+function okSquash(n, F, fit){
+  if (!(fit < 0.999) || !n) return "";
+  var ls = Math.max(-OK_TRACK * F, (fit - 1) * F), sy = fit * F / (F + ls);
+  return ";letter-spacing:" + ls.toFixed(2) + "px" + (sy < 0.999 ? ";transform:scaleY(" + sy.toFixed(3) + ");transform-origin:50% 0" : "");
+}
 D.define("m-kanbun", class extends D.MotionElement {
   static props = {
     size:   {type: "number", default: 60, doc: "漢字の大きさ（px）。送り仮名・返り点はその 0.42 倍（24px より小さくしない）"},
@@ -201,16 +209,28 @@ D.define("m-kanbun", class extends D.MotionElement {
     var L = Math.round(S * 0.5), R = Math.round(S * 0.5), G = Math.round(S * 0.3), PITCH = L + S + R + G;
     var cols = [], H = 0;
     p.chars.forEach(function(c, n){
-      var col = cols[c.col] = cols[c.col] || {y: 0, rEnd: 0, lEnd: 0, list: []};
+      var col = cols[c.col] = cols[c.col] || {y: 0, rEnd: 0, lEnd: 0, list: [], prevOk: null};
       // 前の字の右と左の欄の終わりにぶつからないところまで下げる
       var rStart = c.ruby ? 0 : S * 0.52, lStart = S * 0.5;
       // 番号（左上）を出すときは、前の字の左の欄（一レ点・再読文字の左の送り仮名）の下から始める
-      // 振り仮名は前の字の送り仮名から少し離す（続けて読まないように）
-      var y = Math.max(col.y, col.rEnd - rStart + (c.ruby ? 10 : 6), col.lEnd - (P.nums ? 0 : lStart) + 2);
+      var y = Math.max(col.y, col.lEnd - (P.nums ? 0 : lStart) + 2);
+      // 右の欄：前の字の送り仮名は、この字を下げずに収まるように詰める（印刷の組み方：字間を詰め、それでも長ければ縦に縮める。
+      // 字の大きさは変えない）。この字に振り仮名も送り仮名もなければ、この字の右の欄の 0.8 まではみ出してよい。
+      // 振り仮名は前の字の送り仮名から少し離す（続けて読まないように）。縮めきっても入らないときだけ下げる
+      var pk = col.prevOk;
+      if (pk){
+        // 次の字の送り仮名は下で OK_DELAY まで下げうるので、ここではそれを見込む（足りなければ下で後ろの字をまとめて下げる）
+        var room = c.ruby ? -10 : c.okuri ? rStart - GAP_OK + S * OK_DELAY : S * 0.8;
+        var need = pk.len * OK_MIN;
+        y = Math.max(y, pk.top + need - room);
+        pk.c.okFit = Math.min(1, (y + room - pk.top) / pk.len);
+      } else y = Math.max(y, col.rEnd - rStart + (c.ruby ? 10 : 6));
       c.y = y; c.n = n;
       var rr = y + (c.ruby ? 0 : S * 0.52);
       if (c.ruby){ c.rubyY = y + Math.max(0, (S * 0.52 - Array.from(c.ruby).length * F) / 2); rr = Math.max(y + S * 0.52, c.rubyY + Array.from(c.ruby).length * F); }
-      c.okY = rr; col.rEnd = rr + Array.from(c.okuri).length * F;
+      c.okY = rr; c.okFit = 1;
+      var okLen = Array.from(c.okuri).length * F;
+      col.rEnd = rr + okLen; col.prevOk = okLen ? {c: c, top: rr, len: okLen} : null;
       var ll = y + S * 0.5, leftKana = c.second ? (c.second.match(/[ァ-ヶー]/g) || []).join("") : "";
       c.leftKana = leftKana; c.lkY = ll; ll += Array.from(leftKana).length * F;
       // 返り点は左下：字の下端をまたぐところ（天を字の 0.72 の高さに）
@@ -219,6 +239,37 @@ D.define("m-kanbun", class extends D.MotionElement {
       col.y = y + S * 1.2 + (c.punct ? S * 0.42 : 0) + (c.join ? S * 0.22 : 0);
       col.list.push(n);
       H = Math.max(H, col.y, col.rEnd, col.lEnd);
+    });
+    // 右の欄の送り仮名を列ごとに置き直す（字の位置は上で決まったまま）。送り仮名は字の下半分から始め、長ければ詰める。
+    // 次の字の送り仮名がその次の字までに楽に収まるなら、次の字の送り仮名を字の 0.36（OK_DELAY）まで下げて、前の長い送り仮名に場所を譲る
+    var okLen = function(c){ return Array.from(c.okuri).length * F; };
+    cols.forEach(function(col){
+      var L2 = col.list.map(function(n){ return p.chars[n]; }), prevEnd = -Infinity;
+      // 字 i の送り仮名の終わりの上限（次の字の振り仮名・送り仮名・字そのもの）。delay：次の字の送り仮名を下げる量
+      var limitOf = function(i, delay){
+        var d = L2[i + 1];
+        if (!d) return Infinity;
+        return d.ruby ? d.rubyY - 10 : d.okuri ? d.okY + delay - GAP_OK : d.y + S * 0.8;
+      };
+      L2.forEach(function(c, i){
+        if (!c.okuri) return;
+        var top = Math.max(c.okY, prevEnd + GAP_OK), len = okLen(c), d = L2[i + 1], delay = 0;
+        if (d && d.okuri && !d.ruby){
+          var slack = limitOf(i + 1, 0) - (d.okY + okLen(d));
+          delay = Math.max(0, Math.min(S * OK_DELAY, slack, top + len + GAP_OK - d.okY));
+        }
+        var lim = limitOf(i, delay);
+        // 縮めきっても入らなければ、この列の後ろの字をまとめて下げる（字どうしの間は変えない）
+        var short = top + len * OK_MIN - lim;
+        if (short > 0) L2.slice(i + 1).forEach(function(e){
+          e.y += short; e.okY += short; e.lkY += short; e.kaeriY += short; if (e.ruby) e.rubyY += short;
+          H = Math.max(H, e.y + S * 1.2 + (e.punct ? S * 0.42 : 0), e.kaeriY + e.kaeriN * F * 0.92, e.lkY + Array.from(e.leftKana).length * F);
+        });
+        if (short > 0) lim += short;
+        c.okY = top; c.okFit = Math.max(OK_MIN, Math.min(1, (lim - top) / len));
+        prevEnd = top + len * c.okFit;
+        H = Math.max(H, prevEnd);
+      });
     });
     var nc = cols.length, WK = nc * PITCH - G;
     // 書き下し文：部品の高さで折り返す。列の数は字数から見積もる（振り仮名は数えない）
@@ -241,7 +292,7 @@ D.define("m-kanbun", class extends D.MotionElement {
       e.ann = [];
       // 右の欄：振り仮名（上）と送り仮名（下半分から）。左の欄：再読文字の二度目の片仮名、その下に返り点
       if (c.ruby) e.ann.push(box("span", "kb-ruby", vt + "left:" + (x + S + 1) + "px;top:" + c.rubyY + "px;color:var(--muted)", kb, c.ruby));
-      if (c.okuri) e.ann.push(box("span", "kb-ok", vt + "left:" + (x + S + 1) + "px;top:" + c.okY + "px;color:var(--term)", kb, c.okuri));
+      if (c.okuri) e.ann.push(box("span", "kb-ok", vt + "left:" + (x + S + 1) + "px;top:" + c.okY + "px;color:var(--term)" + okSquash(Array.from(c.okuri).length, F, c.okFit), kb, c.okuri));
       if (c.leftKana) e.ann.push(box("span", "kb-ok kb-left", vt + "left:" + (x - F - 1) + "px;top:" + c.lkY + "px;color:var(--term)", kb, c.leftKana));
       e.kaeri = [];
       var ky = c.kaeriY, kx = x - F - 2;
