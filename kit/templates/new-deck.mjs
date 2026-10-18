@@ -26,7 +26,7 @@ const T = EN ? {
     h: 'Show things in the order you speak',
     li: ['Elements without <code>data-step</code> are visible from the start', 'An element with <code>data-step="1"</code> appears at step 1', 'An element with <code>data-step="2"</code> appears at step 2'],
     concl: '⇒ The conclusion line always comes last',
-    n: ['This slide shows how steps work.', 'Anything without a step number is on the slide from the start.', 'This line appears at the first step.', 'And this one at the second step.'],
+    n: ['This slide shows how steps work. Anything without a step number is on the slide from the start.', 'This line appears at the first step.', 'And this one at the second step.'],
     nc: 'The conclusion line always comes last, after every step.',
   },
   s2: {
@@ -60,7 +60,7 @@ const T = EN ? {
     h: '話す順に見せる',
     li: ['<code>data-step</code> のない要素は、初めから見えている', '<code>data-step="1"</code> の要素は、1 段階目で現れる', '<code>data-step="2"</code> の要素は、2 段階目で現れる'],
     concl: '⇒ 結論の行は、いつも最後に出る',
-    n: ['このスライドでは、段階の使い方を見ます。', '段階の番号がないものは、初めから見えています。', 'この行は、1 段階目で現れます。', 'この行は、2 段階目で現れます。'],
+    n: ['このスライドでは、段階の使い方を見ます。段階の番号がないものは、初めから見えています。', 'この行は、1 段階目で現れます。', 'この行は、2 段階目で現れます。'],
     nc: '結論の行は、すべての段階のあと、最後に出ます。',
   },
   s2: {

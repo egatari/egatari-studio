@@ -117,3 +117,11 @@ main{flex:1;min-height:0;display:flex}
 #top.has-deck .deckname{flex:1 1 auto;min-width:60px;max-width:none}
 #top.has-deck .brand{flex:none;white-space:nowrap}
 @media (min-width:1280px){ #top.has-deck, #top.has-deck #tools{flex-wrap:nowrap} }
+/* チャットの AI との行き来（app/llm.js）：貼り付けの窓・直しの依頼 */
+#dlg.paste{width:min(760px,94vw)}
+#dlg textarea{width:100%;box-sizing:border-box;font:12.5px/1.45 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical;min-height:180px;max-height:50vh}
+#dlg .paste-guide{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin:4px 0 8px}
+#dlg .paste-guide .hint{flex-basis:100%;margin:0}
+#dlg .paste-mode{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13.5px}
+#dlg .paste-mode label{display:flex;gap:8px;align-items:flex-start}
+#panel-body .fixreq{width:100%;margin:2px 0 8px}

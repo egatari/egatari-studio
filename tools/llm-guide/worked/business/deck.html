@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="business">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>配送センターの改善報告（架空）</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static">
+  <div class="venue">社内報告会（架空の会社の見本）</div>
+  <h1>配送センターの改善報告</h1>
+  <div class="au">株式会社ミドリ便（架空）</div>
+</section>
+
+<section class="slide">
+  <h2>導入から 3 か月の結果</h2>
+  <div class="body">
+    <p class="note muted">新しい仕分けの手順を入れた 3 拠点の合計（数字は架空）</p>
+    <m-kpi style="height:330px" aria-label="1 日の出荷 1,240 件、誤配率 0.8%、残業 32% 減">
+      <script type="application/json">{"cards": [
+        {"label": "1 日の出荷", "value": 1240, "unit": "件", "from": 980, "delta": {"dir": "up", "text": "導入前から 260 件"}},
+        {"label": "誤配率", "value": 0.8, "digits": 1, "unit": "%", "from": 2.1, "tone": "emph", "delta": {"dir": "down", "text": "導入前は 2.1%", "good": true}},
+        {"label": "残業時間", "value": 32, "unit": "%", "prefix": "−", "tone": "accent2", "note": "1 人あたり、月の平均"}
+      ]}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>→ 件数が増えても、誤りと残業は減った</span></div>
+</section>
+
+<section class="slide">
+  <h2>拠点ごとの 1 日の出荷</h2>
+  <div class="body">
+    <m-bars orient="h" unit=" 件" style="height:360px" aria-label="1 日の出荷：東 520 件、西 430 件、南 290 件（合計 1,240 件）">
+      <script type="application/json">{"groups": [
+        {"label": "東センター", "value": 520},
+        {"label": "西センター", "value": 430},
+        {"label": "南センター", "value": 290, "tone": "emph"}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>→ 次は、伸びの小さい南センターに広げる</span></div>
+</section>
+
+</div>
+</body>
+</html>

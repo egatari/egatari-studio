@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=643d7ee489f2fabc -->
+<!-- i18n: pair=README.md sha256=b845f7d463132fc1 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -137,6 +137,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 - **デッキを開く：** デッキのフォルダ（`deck.html` の入ったもの）を画面に落とすか「フォルダを開く」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いたフォルダは最初の画面に並ぶ
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで Claude への指示（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **持ち運べる 1 ファイルをフォルダなしで：** 「ファイルを開く…」（またはファイルを落とす）で[持ち運べる 1 ファイル](docs/reference.ja.md#持ち運べる-1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「新しい教材として保存…」で元の教材を記録した新しい識別子の教材に、「フォルダに書き出す…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。口述原稿・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「1 ファイル（持ち運べる形）を書き出す」。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
+- **チャットの AI で下書き（Claude Code なし）：** [AI への指示](docs/authoring-with-llms.ja.md) を claude.ai・Gemini・ChatGPT に貼り、返事の全体を「AI の出力を貼り付ける…」に貼り付ける。エディタが `deck.html` と `narration.md` を取り出し、スライドに id を付け、新しい持ち運べる 1 ファイルとして開き（返事にスクリプトがあれば、開いたファイルと同じく動かす前に聞く）、簡易チェックをかける。簡易チェックの板の「AI への直しの依頼を写す」は、問題・破った決まり・今のファイルを同じチャット向けに写し、その返事で今のデッキを置き換える（識別子と音声は残す）
 - **Claude Code と一緒に：** ほかのもの（Claude Code・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・段階のまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
 - **言語：** ふだんはブラウザの言語に合わせる。右上の **English / 日本語** のボタン（または `?lang=en`・`?lang=ja`）で切り替える
 - **道具の列：** 簡易チェック、1 つの HTML に書き出す、印刷 / PDF、発表者ビュー（口述原稿と次の段階が出る窓）、全画面
@@ -269,6 +270,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 |---|---|
 | `docs/contract.ja.md` | 約束事（位置と時刻、部品、口述原稿、タイムライン、注目の演出、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
 | `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)） |
+| `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。`tools/make-llm-guide.mjs` が作る。短い `.core.ja.md` もある（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |

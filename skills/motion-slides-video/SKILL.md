@@ -1,6 +1,6 @@
 ---
 name: motion-slides-video
-description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.html＋narration.md）を TTS（Irodori）で読み上げ、段階ごとの動画と canon 向けの教材バンドル（Marp 形式の md＋コマごとの mp4/png）にする。「HTMLスライドを動画にして」「TTS動画を作って」「canonに入れる形にして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。
+description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.html＋narration.md）を TTS（Irodori）で読み上げ、段階ごとの動画と canon 向けの教材バンドル（Marp 形式の md＋コマごとの mp4/png）にし、音声入りの Egatari 形式の 1 ファイル（.ega.html）も作る。「HTMLスライドを動画にして」「TTS動画を作って」「canonに入れる形にして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。
 ---
 
 # motion-slides-video：デッキを TTS 動画と canon のバンドルにする
@@ -52,7 +52,18 @@ export-canon が最後に表示するコマンドで、まず `--dry-run` を付
 - 話者は `Expert:` / `Novice:` だけが canon に入る（export-canon が検査する）
 - `timeline.out.json` は将来の録画モード（`transcript_segment`）にそのまま使える
 
-## 4. よくある問題
+## 4. 音声入りの 1 ファイル（Egatari 形式）も作る
+
+canon のバンドルとは別に、TTS の音声を入れた持ち運べる 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://editor.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
+
+```bash
+node $R/kit/build.mjs $D --portable      # → $D/out/<名前>.ega.html（原稿・音声入り。docId は $D/egatari.json）
+node $R/kit/build.mjs $D --play-only     # → $D/out/<名前>.play.ega.html（原稿なしの再生専用。学ぶ人に配るもの）
+```
+
+- TTS と build の後に作る（音声の長さが入ったタイムラインで）。ライセンス・著作権・作り手は `$D/egatari.json` の `metadata` に（motion-slides §3「教材の情報」）
+
+## 5. よくある問題
 
 | 症状 | 対策 |
 |---|---|
@@ -62,6 +73,6 @@ export-canon が最後に表示するコマンドで、まず `--dry-run` を付
 | 音声が段階に収まらず切れる | timeline.json で `dur` を固定している。`pad_after` か `hold` にする |
 | dry-run の無音が残っている | export-canon の警告。本番の TTS をやり直す |
 
-## 5. 使い終わりの感想
+## 6. 使い終わりの感想
 
 「感想を送って」「フィードバックして」と言われたら（または、送ってよいと前もって言われていて長い作業が終わったら）、motion-slides スキルの §9 と同じ手順で feedback の issue の下書きを作り、見せて、明示の確認の後にだけ `gh issue create -R egatari/egatari-studio --label feedback --body-file <下書き>` で作る。TTS まわり（読み間違い・音量・接続）の困りごとは Context に `via motion-slides-video` と書く。原稿の文・音声・参照音声の名前・`IRODORI_URL` などの個人の設定は入れない。

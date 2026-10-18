@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exponential decay</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static">
+  <div class="venue">Physics primer, week 2 (a fictional course)</div>
+  <h1>Exponential decay</h1>
+</section>
+
+<section class="slide">
+  <h2>The decay law</h2>
+  <div class="body">
+    <p>Let \(N(t)\) be the number of atoms left at time \(t\).</p>
+    <div class="big" data-step="1">\[ N(t)=\htmlId{n0}{N_0}\,e^{-\htmlId{lam}{\lambda} t} \]</div>
+    <ul>
+      <li data-step="2">\(N_0\): the number at the start</li>
+      <li data-step="3">\(\lambda>0\): the decay constant (fraction lost per second)</li>
+    </ul>
+  </div>
+  <div class="concl"><span>The half-life \(\ln 2/\lambda\) does not depend on \(N_0\)</span></div>
+</section>
+
+<section class="slide">
+  <h2>A larger λ decays faster</h2>
+  <div class="body">
+    <div class="cols" style="gap:24px">
+      <div style="flex:0 0 36%">
+        <div class="big">\[ \frac{N(t)}{N_0}=e^{-\lambda t} \]</div>
+        <ul class="nostep"><li>Grey: the previous \(\lambda\)</li></ul>
+      </div>
+      <m-sweep f="Math.exp(-c*u)" values="[0.2,0.5,1.0]" param="λ" xr="[0,6]" yr="[0,1]" xt="[0,2,4,6]" yt="[0,0.5,1]"
+               xl="*t*" yl="share left" digits="1" style="height:380px" aria-label="Share of atoms left over time for three decay constants"></m-sweep>
+    </div>
+  </div>
+  <div class="concl"><span>Raising λ shortens the half-life</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -14,8 +14,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { analyzeSlideIds } from '../kit/build.mjs';
-import { parseHeading, newSlideId, splitKey, isSlideId } from '../kit/narration.mjs';
-import { parse } from 'parse5';
+import { splitKey, isSlideId } from '../kit/narration.mjs';
+import { planIds, rewriteDeckIds, rewriteNarrationIds } from '../kit/core/slide-ids.mjs';
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
 
@@ -43,79 +43,21 @@ const has = (file) => rd(file) !== null;
 const FILES = { narration: path.join(DIR, 'narration.md'), manifest: path.join(DIR, 'audio', 'manifest.json'),
   timeline: path.join(DIR, 'timeline.json'), comments: path.join(DIR, 'comments.json') };
 
-// ---------------------------------------------------------------- 1. 原稿を調べる
+// ---------------------------------------------------------------- 1. 原稿を調べる（本体は kit/core/slide-ids.mjs。編集アプリの貼り付けと共有）
 const src = rd(SRC);
 if (src === null) fail(`not found: ${SRC}`);
-const { slides, docIds, problems } = analyzeSlideIds(src);
+const plan = planIds(src);
+const { slides, problems, rename, newIds } = plan;
 if (problems.length) {
   console.error('ids: このデッキには id を付けられない（先に直すこと）');
   for (const p of problems) console.error('  ' + p.msg);
   process.exit(1);
 }
-const taken = new Set([...docIds.keys(), ...slides.map((s) => s.key)]);
-const rename = new Map();   // 旧い鍵 → 新しい id
-const newIds = new Map();   // スライドの番号 → 新しい id
-for (const s of slides) {
-  if (s.id !== null) continue;
-  const id = newSlideId(taken);
-  taken.add(id); rename.set(s.key, id); newIds.set(s.index, id);
-}
 if (!rename.size) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do`); process.exit(0); }
 
-// ---------------------------------------------------------------- 2. deck.html：id を足し、data-morph の参照を付け替える
-function rewriteDeck(text) {
-  const doc = parse(text, { sourceCodeLocationInfo: true });
-  const ins = [];   // [位置, 消す長さ, 入れる文字列]
-  let n = 0, morphs = 0;
-  const walk = (node) => {
-    if (node.tagName && node.sourceCodeLocation) {
-      const loc = node.sourceCodeLocation.startTag;
-      const has = (a) => (node.attrs || []).find((x) => x.name === a);
-      if (node.tagName === 'section' && (has('class')?.value || '').split(/\s+/).includes('slide')) {
-        const id = newIds.get(n++);
-        if (id) {
-          // 開始タグの「>」（自己終了なら「/>」）の手前。class などの後ろに足す
-          let at = loc.endOffset - 1;
-          if (text[at - 1] === '/') at--;
-          while (at > loc.startOffset && /\s/.test(text[at - 1])) at--;
-          ins.push([at, 0, ` id="${id}"`]);
-        }
-      }
-      const dm = has('data-morph');
-      if (dm && rename.has(dm.value) && loc.attrs && loc.attrs['data-morph']) {
-        const a = loc.attrs['data-morph'];
-        ins.push([a.startOffset, a.endOffset - a.startOffset, `data-morph="${rename.get(dm.value)}"`]);
-        morphs++;
-      }
-    }
-    for (const c of node.childNodes || []) walk(c);
-    if (node.content) walk(node.content);
-  };
-  walk(doc);
-  ins.sort((x, y) => y[0] - x[0]);
-  let out = text;
-  for (const [at, del, t] of ins) out = out.slice(0, at) + t + out.slice(at + del);
-  return { out, morphs };
-}
-
-// ---------------------------------------------------------------- 3. narration.md：見出しを「## 見出し {#id}」に
-// 行の区切り（CRLF / LF）は行ごとにそのまま残す。注釈（<!-- … -->）の中は parseNarration と同じく見ない
-function rewriteNarration(text) {
-  const parts = text.split(/(\r?\n)/);
-  let inComment = false, n = 0;
-  for (let j = 0; j < parts.length; j += 2) {
-    const ln = parts[j];
-    if (inComment) { if (ln.includes('-->')) inComment = false; continue; }
-    if (/^\s*<!--/.test(ln) && !ln.includes('-->')) { inComment = true; continue; }
-    const h = ln.match(/^##\s+(.+?)\s*$/);
-    if (!h) continue;
-    const p = parseHeading(h[1]);
-    if (p.id !== null || !rename.has(p.key)) continue;
-    parts[j] = `## ${p.heading} {#${rename.get(p.key)}}`;
-    n++;
-  }
-  return { out: parts.join(''), n };
-}
+// ---------------------------------------------------------------- 2・3. deck.html（id を足し、data-morph の参照を付け替える）と narration.md（「## 見出し {#id}」に）
+const rewriteDeck = (text) => rewriteDeckIds(text, plan);
+const rewriteNarration = (text) => rewriteNarrationIds(text, plan);
 
 // ---------------------------------------------------------------- 4. JSON の鍵：書き方（字下げ・改行・末尾の改行）を元に合わせて書き直す
 const renameKey = (k) => {

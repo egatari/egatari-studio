@@ -3,6 +3,7 @@
 //   const b = createBuildClient(RES, loadLazy)
 //   await b.build(ws, listing, file, opts, prefix, {timeout})   → {html, trusted, stats, slides, reasons}
 //   await b.exportIndex(ws, file, opts, {timeout})              → {index}
+//   await b.exportHtml(ws, file, opts, {timeout})               → {html}（持ち運べる 1 ファイル。AI の出力の貼り付け）
 //   await b.scan(files, entry, {timeout})                       → 理由の配列
 //   b.probe(name)                                               試験：Worker の大域変数
 // 作業場所（ws）の読み出しは Worker からの問い合わせに答える（ws.readBytes・ws.list）。Worker は作業場所に書けない
@@ -95,6 +96,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
   return {
     build: (ws, listing, file, opts, prefix, o = {}) => call({ op: 'build', ws: idOf(ws), listing: plain(listing), file, opts, prefix }, ws, o.timeout),
     exportIndex: (ws, file, opts, o = {}) => call({ op: 'exportIndex', ws: idOf(ws), file, opts }, ws, o.timeout),
+    exportHtml: (ws, file, opts, o = {}) => call({ op: 'exportHtml', ws: idOf(ws), file, opts }, ws, o.timeout),
     scan: (files, entry, o = {}) => call({ op: 'scan', files, entry }, null, o.timeout),
     probe: (name) => call({ op: 'probe', name }, null),
     terminate: () => fail('cancelled', 'cancelled'),

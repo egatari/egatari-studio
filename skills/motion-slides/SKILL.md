@@ -1,9 +1,11 @@
 ---
 name: motion-slides
-description: 動きのある HTML の学術スライドを、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作る（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表・授業・動画の 3 モード。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の持ち運べる 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp で作る場合は marp-academic-slides、作ったデッキを動画にするのは motion-slides-video。
 ---
 
 # motion-slides：動きのある HTML スライドを作る
+
+作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）のデッキ。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://editor.egatari.org/>）。
 
 リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
@@ -29,6 +31,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` を雛形から作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` の雛形ができる。空でないフォルダには書かない）、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
+   - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
 5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/components/CATALOG.md`）から選び、なければ新しく書く（motion-components スキル）
 6. **検査して直す**：`node <repo>/kit/check.mjs <deck>/deck.html` が error 0 になるまで。段階 0 で見えている本文の一覧は必ず読む
 7. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で指示を残す。「コメントを反映して」と言われたら：
@@ -36,8 +39,20 @@ description: 動きのある HTML の学術スライドを、構成案から「�
    - **先に `node <repo>/tools/comment-shots.mjs <deck>` を動かし、画像を見る**（Read で開く）。`<deck>/.cache/comment-shots/<id>.png` が点の周りの切り抜き（2 倍）、`<id>-full.png` がスライド全体で、どちらにも赤い輪で点を描いてある。図・部品へのコメントは、輪の所にある線・札・語が対象。言葉だけで決めない
    - 直したら、その段階を撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
 8. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
+9. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
+   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/out/<名前>.ega.html`：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://editor.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
+   - `node <repo>/kit/build.mjs <deck> --play-only` → `<名前>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
+   - 書き出す前に教材の情報を確かめる（§3「教材の情報」）
 
 ## 3. 原稿の書き方（deck.html）
+
+決まりの正本は `<repo>/docs/authoring-with-llms.ja.md`（チャットの AI 向けの指示と同じもの。決まりに R-title・R-fit・R-narr-steps などの名前がある。検査器の知らせもこの名前を添える）。ここでは要点だけを書く。特に：
+
+- **id は書かない**（R-noids）：§3 の下の項目のとおり、書き終えてから `npm run ids`
+- **読みの指定 `{x|y}` は 1 つの記号か 1 つの用語だけ**（R-reading）：`{θ|シータ}`・`{N₀|エヌゼロ}`。`{1-η|…}` や `{θとη|…}` のように式や記号の組を 1 つの読みにしない（検査器が警告する）
+- **教材の情報**：題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（`license`（SPDX の id）・`copyright`・`creators`・`attribution`）に書く（`docs/reference.ja.md`「持ち運べる 1 ファイル」）。分からなければユーザーに聞き、作らない
+- **学ぶ人のデータを入れない**：生徒・受講者の名前・成績・回答・顔写真・提出物などは、見本でも原稿・口述原稿・データ・コメントに入れない（要るなら架空のものにして、架空と書く）
+
 
 | 書き方 | 意味 |
 |---|---|
@@ -55,7 +70,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 - 色は直接書かない（`#D00000` など）。テーマの変数とクラスだけを使う。テーマを替えると全部が連動する
 - 文字は既定の大きさのまま。入りきらなければ文字を縮めずにスライドを分ける
 - 記号は最初に使う所で定義する（「\(d_n\)：観測データ」）
-- どのスライドにも `<section class="slide" id="s-xxxxxx">`（`s-` と base32 の小文字 6 字、乱数。見出しから作らない）を付ける。ほかの id（目印・`\htmlId`）と重ねない。今あるデッキは `npm run ids -- <デッキ>`
+- スライドの id（`s-` と base32 の小文字 6 字、乱数）は**自分で書かない**。新しいスライドは `<section class="slide">`（id なし）、口述原稿の見出しは `## <見出し>`（`{#…}` なし）で書き、書き終えたら `node <repo>/tools/ids.mjs <deck>`（`npm run ids -- <deck>`）で付ける（deck.html の id と narration.md の `{#id}` を一緒に付ける。2 回目は何も変えない）。今ある id は消さない・書き換えない。見出しは全部違うものにする（id のないスライドは見出しで口述原稿と対応する）
 - 英語のデッキは `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。検査はです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は原稿のフォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
 
 ## 4. 段階表示（説明の順）
@@ -73,7 +88,8 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 - 式とそれを導く一文は同じ段階。`<div data-step="k">` で一緒に囲む
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
 - 1 枚の段階は 5 前後まで
-- 授業モード（`?mode=lecture`、キー `l`）では同じ `data-step` が「全部見せて今の所を強調」になる。授業用に別の原稿は作らない
+- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。授業の表示（`?mode=lecture`、キー `l`）では同じ `data-step` が「先の段階も薄く見せて、今の所を強調」になる。授業用に別の原稿は作らない
+- （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
 ## 5. 口述原稿（narration.md）
 
@@ -88,10 +104,10 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 [concl] つまり、勾配の逆向きに、学習率に比例した幅だけ進みます。
 ```
 
-- 見出しは `## <スライドの見出し> {#<id>}`（id が鍵。見出しの文字列は読む人のため）。id のないスライドだけ `## <見出しの文字列>`（タグと空白を除いて比べる）。合わないと build が警告し、検査器はエラーにする
+- 見出しは、書くときは `## <スライドの見出し>`（スライドの見出しと同じ字。R-headings）。`npm run ids` が `## <スライドの見出し> {#<id>}` にする（id が鍵。見出しの文字列は読む人のため）。今ある `{#id}` は消さない。合わないと build が警告し、検査器はエラーにする
 - 段階 0 から結論の行まで、すべての段階に書く。段階の中で言うことは、その段階で現れる材料のことだけ
 - 話者は 1 人モード（話者名なし）か Expert×Novice（`Expert:` / `Novice:`）。Novice は聞き手の疑問を代弁する短い発言にする（詳しい書き方は marp-tts-animation スキルの Step 7 と同じ）
-- 記号は記号のまま書く（θ, L）。読みは読み辞書が付ける。例外は `{φ|ファイ}`。**式全体は読まない**（「次の点は、今の点から勾配に比例した分だけ引いて作る」のように言葉で）
+- 記号は記号のまま書く（θ, L）。読みは読み辞書が付ける。例外は `{φ|ファイ}`（1 つの記号か用語だけ。R-reading）。**式全体は読まない**（「次の点は、今の点から勾配に比例した分だけ引いて作る」のように言葉で）
 - 図の動きに合わせて話すときは `{cue}` を入れる（部品の同期点と順に対応）
 - 尺の目安：1 秒 ≒ 5 字（話者で 4.7〜5.3 字）。発表時間から逆算して字数を配る
 
