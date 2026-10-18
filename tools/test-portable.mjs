@@ -428,6 +428,25 @@ ok('空の <script>（§6）：src のない、中身が空か空白だけの <s
   assert.equal(await profileOf('comment-script', '<script>\n// placeholder\n</script>'), 'extended');
 });
 
+ok('スライドへのリンク（§9.1A）と m-menu：リンクはふつうの <a href="#<id>"> のまま書き出され、部品庫の m-menu だけなら core。読める層はそのまま', async () => {
+  const D = makeDeck(path.join(work, 'links'));
+  const f = path.join(D, 'deck.html');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('<p class="sub">試験用</p>',
+    '<p class="sub">試験用</p><m-menu><a href="#s-step22" data-sub="段階 0 へ">一歩ずつ</a><a href="#s-step22:1">次の段階へ</a></m-menu><p><a href="#s-intro1">表紙</a></p>'));
+  const p = await buildPortable(f, { out: path.join(D, 'out', 'p' + FORMAT.FILE_EXT) });
+  const sc = PF.scanDocument(p.html), index = JSON.parse(sc.byId.get(FORMAT.INDEX_ID).text);
+  assert.equal(index.profile, 'core');
+  assert.deepEqual(index.components.map((c) => [c.tag, c.source]), [['m-menu', 'registry']]);
+  for (const h of ['#s-step22', '#s-step22:1', '#s-intro1']) assert.ok(p.html.includes(`href="${h}"`), `compiled slides keep ${h}`);
+  const r = await PF.readPortable(p.html);
+  const raw = r.files instanceof Map ? r.files.get('deck.html') : r.files['deck.html'];
+  const src = typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
+  assert.ok(src.includes('<a href="#s-step22:1">'), 'archived source keeps the link');
+  assert.deepEqual(codeReasons(r.files, { entry: r.index.entry }), [], 'links are not code');
+  const layer = p.html.slice(p.html.indexOf(`<section id="${FORMAT.READABLE_ID}"`));
+  assert.ok(layer.includes('<article data-slide-key="s-intro1">') && layer.includes('data-step-key="s-step22:1"'), 'readable layer');
+});
+
 // ---------------------------------------------------------------- 解析の上限（§11）：小さな要素を何百万も並べた文書を、全部の木を作る前に速く断る
 ok('解析の上限：上限の大きさより小さいが小さな要素が何百万もある文書は、要素・属性・入れ子の数で解析の途中に断る（速く、メモリは入力の大きさの程度）', async () => {
   const base = (await buildPortable(path.join(makeDeck(path.join(work, 'bounded-deck')), 'deck.html'), { out: path.join(work, 'bounded-out.html') })).html;

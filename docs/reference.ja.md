@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=03c4d696edb5dfec -->
+<!-- i18n: pair=reference.md sha256=a3af995f80cdf857 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -184,6 +184,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 部品が使える `DECK` の道具：`el(tag, attrs, parent)`（SVG。`var()` の色は `style` に回す）、`mtext(parent, x, y, "*x*_0", attrs)`、`svgMath(parent, x, y, tex, {size, anchor, color, w, h})`、`Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})`（`.x() .y() .d(f, a, b, n) .poly(pts) .clip`）、`prog(t, start, dur)`、`lerp`、`ease`、`clamp01`、`color(名前)`。
 
+**スライドへのリンクと目次。** `<a href="#<スライドの id>">` と `<a href="#<スライドの id>:<段階の鍵>">` は、スライドかその段階へのふつうのリンク（スクリプトなし。Core の文書に入れてよい）。実行系は文書の中でたどり、「戻る」を出す（[contract §9](contract.ja.md#9-スライドへのリンク)）。id は `npm run ids` が付けたものを使う。**`m-menu`** はそのリンクを札の格子に並べる（題・副題 `data-sub`・丸の字 `data-icon`・このセッションで見たスライドの「見た」の印・`per-step` で段階ごとに出す）：[components/menu/README.md](../components/menu/README.md)。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の 2 枚目。スライドの中のリンクは `--term` の色で下線を引く。
+
 ### 国語（kokugo）
 
 国語（漢文・古文・現代文）の授業のためのもの。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun)（テーマ `kokugo`）。
@@ -210,6 +212,9 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `?presenter=1` | 発表者ビュー（`p` で開く） |
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
+| `#<スライドの id>` / `#<スライドの id>:<段階の鍵>` | そのスライド（段階 0）か段階（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
+| `?embed=1` | iframe の中で：段階が変わるたびに親へ `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く |
+| `?links=0` | `?embed=1` と一緒に：スライドへのリンクで動かず、代わりに `{egatari:"linkRefused", slideKey, stepKey}` を送る |
 
 ### キー
 
@@ -233,6 +238,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | v | 消えるペン（書き終えて 0.7 秒後から 0.5 秒で消える） |
 | Shift+d | ペンの色：`--emph` → `--term` → `--fg`（赤・青・黒）。上に「ペンの色：青」と短く知らせる |
 | Backspace / Shift+Backspace | ペンか消えるペンを使っている間：このスライド / 全スライドの書き込みを消す |
+| Backspace / Alt+← | それ以外で、スライドへのリンクで来た後：リンクを押した位置へ戻る（左上の **戻る** ボタンとブラウザの戻るも同じ） |
 | Tab / Shift+Tab | 操作の帯のボタンを選ぶ（Enter / Space で押す。Esc でスライドに戻る） |
 | Esc | 道具を解除、キーの一覧を閉じる |
 | ? | キーの一覧（`server/dev.mjs` で開いたときは開発サーバーのキーも） |
@@ -266,7 +272,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 実行時の API（スクリプトと検査用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto}`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
 
 ## 開発サーバー
 
@@ -297,6 +303,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合わないスライドの id（`slide id: …`）。鍵が同じスライドが 2 枚（`slide key: …`）。デッキのほかの id や `\htmlId{…}` と同じスライドの id（`slide id: …`） | エラー |
 | `## 見出し {#id}` の見出しの文字列が、そのスライドの見出しと違う（id が勝つ） | 情報 |
 | 旧来の規則で鍵が決まるスライド：手で書いた `data-key`、または `s<番号>`（id も見出しもない）—`slide key: legacy` | 警告 |
+| スライドへのリンク（`#<id>`・`#<id>:<段階の鍵>`・`#N`）で、行き先のスライドがない・段階が範囲の外・結論のないスライドへの `:concl`。`#N` のリンクと id のないスライドへのリンク。ない相手のファイルへの相対リンク（[contract §9](contract.ja.md#9-スライドへのリンク)） | エラー。警告。警告 |
 | コンソールのエラー | エラー |
 | 段階 0 で見えている本文 | 情報 |
 | タイトルが 26 字（全角）を超える（日本語）/ 60 文字を超える（英語） | エラー / 警告 |
@@ -435,6 +442,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `node tools/test-tools.mjs <組んだ.html> [フォルダ]` | 一覧・ペン・レーザー・印刷・発表者ビューからの書き込み |
 | `node tools/test-controls.mjs <組んだ.html> [フォルダ]` | 操作の帯・キーの一覧・発表者ビューのボタン |
 | `node tools/test-autoplay.mjs <組んだ.html>` | 自動再生と発表者ビューのボタン |
+| `node tools/test-links.mjs [フォルダ]` | スライドへのリンク：開いたときの #・モードごとのクリック・戻る（ボタン・キー・ブラウザの履歴）・自動再生を保つこと・埋め込み（`cause: "link"` の `position`、`linkRefused`）・発表者ビュー・`m-menu`・検査器のエラー |
 | `node tools/test-dev-server.mjs [作業用のフォルダ]` | `examples/minimal` の写しで開発サーバーを確かめる |
 | `node tools/flake.mjs <組んだ.html> <i> <k> <フォルダ>` | 「呼び出し順に依存」の誤検出を調べる |
 

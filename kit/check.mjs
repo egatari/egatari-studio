@@ -14,6 +14,8 @@
 // H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
 // I. スライドの id と鍵（format spec §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
 //    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
+// J. スライドへのリンク（format spec §9.1A）：<a href="#<id>"> と #<id>:<段階の鍵> の行き先がないか段階が範囲の外ならエラー。
+//    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
@@ -149,6 +151,39 @@ const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
   title: (s.querySelector('h2, h1')?.innerText || s._key).replace(/\s+/g, ' ').trim(),
 })));
 const titleOf = (i) => meta[i] ? meta[i].title : String(i);
+
+// ================================================================ J. スライドへのリンク
+phase = 'J リンク';
+{
+  const links = await page.evaluate(() => DECK.slides.flatMap((s, i) => [...s.querySelectorAll('a[href]')].map((a) => {
+    const href = a.getAttribute('href'), f = DECK.linkFragment(a);
+    const text = (a.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (f === null) return { i, href, text, other: true };
+    const r = f ? DECK.resolveFragment(f) : { error: 'empty' };
+    return { i, href, text, f, r: r.error ? r : { i: r.i, k: r.k, legacy: !!r.legacy, id: r.id, key: r.key } };
+  })));
+  const deckDir = path.dirname(path.resolve(src));
+  for (const l of links) {
+    const where = `リンク「${l.text || l.href}」（href="${l.href}"）`;
+    if (l.other) {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(l.href) || l.href.startsWith('//')) continue;   // http: mailto: など
+      const file = decodeURIComponent(l.href.replace(/[?#].*$/, ''));
+      if (file && !fs.existsSync(path.resolve(deckDir, file))) report(l.i, 'warn', `${where}：ほかのファイル ${file} がデッキのフォルダから見つからない（ふつうのリンクとして開く。持ち運べる 1 ファイルには入らない）`);
+      continue;
+    }
+    const r = l.r;
+    if (r.error === 'empty') report(l.i, 'warn', `${where}：行き先がない（# だけ）`);
+    else if (r.error === 'unknown slide') report(l.i, 'error', `${where}：スライド「${r.slide}」がない（行き先はスライドの id。npm run ids で付けた id を書く）`);
+    else if (r.error === 'slide number out of range') report(l.i, 'error', `${where}：スライド ${r.slide} がない（${meta.length} 枚）`);
+    else if (r.error === 'no concl step') report(l.i, 'error', `${where}：スライド「${r.slide}」に結論（.concl）の段階がない`);
+    else if (r.error === 'step out of range') report(l.i, 'error', `${where}：スライド「${r.slide}」に段階 ${r.step} がない（段階は 0〜${r.max}${meta[r.i] && meta[r.i].max > r.max ? '、結論は concl' : ''}）`);
+    else if (r.error) report(l.i, 'error', `${where}：段階の鍵「${r.step}」が読めない（0・1・… か concl）`);
+    else if (r.legacy) report(l.i, 'warn', `${where}：番号のリンクはスライドを足すとずれる（スライドの id で #<id> と書く）`);
+    else if (!r.id) report(l.i, 'warn', `${where}：行き先のスライドに id がない（鍵「${r.key}」で動くが、見出しを直すと切れる。npm run ids で id を付けて #<id> と書く）`);
+  }
+  const ok = links.filter((l) => !l.other && l.r && !l.r.error).length;
+  if (links.length) report(null, 'info', `スライドへのリンク：${ok} 本（ほかのファイルへ ${links.filter((l) => l.other).length} 本）`);
+}
 
 // ================================================================ A. 体裁の検査
 phase = 'A 体裁';

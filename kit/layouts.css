@@ -22,6 +22,9 @@
 .term,.blue{color:var(--term)} .emph,.red{color:var(--emph)} .b{font-weight:700}
 .gray,.gray .katex,.muted{color:var(--muted)}
 .note{font-size:27px;margin:2px 0 10px}
+/* スライドの中のリンク（スライドへの #<id> も、ほかのファイルへも）。:where で詳細度を 0 にし、部品（m-menu の札）が自分の見た目で上書きできるように */
+:where(.slide) :where(a[href]){color:var(--term);text-decoration:underline;text-decoration-thickness:.06em;text-underline-offset:.16em}
+:where(.slide) :where(a[href]):focus-visible{outline:3px solid var(--term);outline-offset:2px;border-radius:3px}
 .cite{font-size:20px;color:var(--muted)}
 .arrow{text-align:center;font-size:32px;line-height:1.1;margin:2px 0;color:var(--term)}
 .cols{display:flex;gap:32px;align-items:flex-start}

@@ -6,7 +6,7 @@
 <title>漢文を読む――返り点から書き下し文へ</title>
 <!--
   国語（漢文・古文・現代文）の部品の見本。組む：node kit/build.mjs examples/kokugo-kanbun/deck.html
-  使っている部品：m-kanbun（白文 → 訓点 → 読む順 → 書き下し文）、m-kobun（品詞分解と現代語訳）、m-gendai（傍線・指示語・段落の役割）
+  使っている部品：m-menu（目次。スライドへのリンク）、m-kanbun（白文 → 訓点 → 読む順 → 書き下し文）、m-kobun（品詞分解と現代語訳）、m-gendai（傍線・指示語・段落の役割）
   テーマ kokugo（明朝・藍・朱）。漢詩と古文は著作権の切れた古典（孟浩然「春暁」、杜甫「春望」、『史記』、『論語』、『枕草子』）。
   現代文の本文はこの見本のために書いたもの
 -->
@@ -18,6 +18,21 @@
   <div class="venue">国語の動く教材（見本）</div>
   <h1>漢文を読む<br>――返り点から書き下し文へ</h1>
   <div class="au">漢文・古文・現代文</div>
+</section>
+
+<section class="slide noconcl" id="s-wyhfla">
+  <h2>今日の内容</h2>
+  <!-- 目次（m-menu）：札はふつうのリンク <a href="#<スライドの id>">。押すとそのスライドへ、左上の「戻る」か Backspace でここへ戻る -->
+  <div class="body">
+    <m-menu cols="3" aria-label="今日の内容" style="height:100%;align-content:center;--mm-h:150px;--mm-gap:26px">
+      <a href="#s-dpt6u5" data-icon="一" data-sub="レ点・一二点・『史記』">返り点</a>
+      <a href="#s-njd4kp" data-icon="二" data-sub="孟浩然">春暁</a>
+      <a href="#s-uhqygr" data-icon="三" data-sub="杜甫（前半・後半）">春望</a>
+      <a href="#s-4kq6xi" data-icon="四" data-sub="再読文字と置き字">論語</a>
+      <a href="#s-wicpxn" data-icon="五" data-sub="古文の品詞分解">枕草子</a>
+      <a href="#s-hlzu7m" data-icon="六" data-sub="段落の役割と指示語">現代文</a>
+    </m-menu>
+  </div>
 </section>
 
 <section class="slide" id="s-dpt6u5">
@@ -133,11 +148,13 @@
   <h2>まとめ</h2>
   <div class="body">
     <ul>
-      <li>返り点は、読む順を下から上へ戻す印</li>
-      <li>送り仮名を平仮名にして、読む順に並べると書き下し文</li>
-      <li>古文は語に切り、助動詞の意味と活用形を確かめる</li>
-      <li>現代文は指示語の指す内容と、段落の役割をつかむ</li>
+      <li data-step="1">返り点は、読む順を下から上へ戻す印</li>
+      <li data-step="2">送り仮名を平仮名にして、読む順に並べると書き下し文</li>
+      <li data-step="3">古文は語に切り、助動詞の意味と活用形を確かめる</li>
+      <li data-step="4">現代文は指示語の指す内容と、段落の役割をつかむ</li>
     </ul>
+    <!-- スライドへのリンクはふつうの文の中にも書ける -->
+    <p data-step="4" style="margin-top:28px">見直したいところは <a href="#s-wyhfla">今日の内容</a> から選ぶ</p>
   </div>
   <div class="concl"><span>読む順を目で追えば、文の形が見えてくる</span></div>
 </section>

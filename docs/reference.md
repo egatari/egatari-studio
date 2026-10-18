@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=27473ae488969699 -->
+<!-- i18n: pair=reference.ja.md sha256=4715e3d5a230534e -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -184,6 +184,8 @@ The list of components and their props is [components/CATALOG.md](../components/
 
 Helpers on `DECK` for components: `el(tag, attrs, parent)` (SVG; `var()` colors moved to `style`), `mtext(parent, x, y, "*x*_0", attrs)`, `svgMath(parent, x, y, tex, {size, anchor, color, w, h})`, `Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})` with `.x() .y() .d(f, a, b, n) .poly(pts) .clip`, `prog(t, start, dur)`, `lerp`, `ease`, `clamp01`, `color(name)`.
 
+**Links to slides and menus.** `<a href="#<slide id>">` and `<a href="#<slide id>:<stepKey>">` are ordinary links to a slide or a step (no script; allowed in Core documents); the runtime follows them inside the document and offers Back ([contract §9](contract.md#9-links-to-slides)). Use the ids that `npm run ids` assigns. **`m-menu`** lays such links out as a grid of cards (title, `data-sub` subtitle, `data-icon` badge, an optional "visited" check for slides shown in this session, cards appearing by step with `per-step`): [components/menu/README.md](../components/menu/README.md); example: slide 2 of [`examples/kokugo-kanbun`](../examples/kokugo-kanbun). Links inside slides take `--term` with an underline.
+
 ### Japanese language arts (kokugo)
 
 For 国語 lessons (kanbun, classical and modern Japanese). The example is [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) (theme `kokugo`).
@@ -210,6 +212,9 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | `?presenter=1` | presenter view (opened by `p`) |
 | `?view=follow` / `?view=next` | internal: the iframes inside the presenter view |
 | `#N` | open at slide N (1-based); updated while navigating |
+| `#<slide id>` / `#<slide id>:<stepKey>` | open at that slide (step 0) or step (`0`, `1`, … or `concl`), in its final state ([contract §9](contract.md#9-links-to-slides)) |
+| `?embed=1` | in a frame: post `{egatari:"position", slideKey, stepKey, t, cause}` to the parent on every step change and accept `{egatari:"links", follow}` from it |
+| `?links=0` | with `?embed=1`: links to slides do not move the player; it posts `{egatari:"linkRefused", slideKey, stepKey}` instead |
 
 ### Keys
 
@@ -233,6 +238,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | v | fading pen (fades 0.7 s after you stop, over 0.5 s) |
 | Shift+d | pen color: `--emph` → `--term` → `--fg` (Red, Blue, Black), with a brief notice "Pen color: Blue" |
 | Backspace / Shift+Backspace | while the pen or fading pen is active: clear this slide / all slides |
+| Backspace / Alt+← | otherwise, after following a link to a slide: back to where the link was clicked (also the **Back** button at the top left and the browser's back button) |
 | Tab / Shift+Tab | focus the control-bar buttons (Enter / Space presses; Esc returns to the slide) |
 | Esc | leave the tool, close help |
 | ? | key list (with dev-server keys when served by `server/dev.mjs`) |
@@ -266,7 +272,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ### Run-time API (for scripts and tests)
 
-`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview, color}` (`color()` is the pen color index 0–2, `color(n)` sets it), `captions(on)` (no argument: is it on), `captionSize(z)` (`"s"` / `"m"` / `"l"`; no argument: the current size; `null` in video), `captionRate` (characters/s), `toast(msg)` (brief notice), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto}`).
+`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready`, `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview, color}` (`color()` is the pen color index 0–2, `color(n)` sets it), `captions(on)` (no argument: is it on), `captionSize(z)` (`"s"` / `"m"` / `"l"`; no argument: the current size; `null` in video), `captionRate` (characters/s), `toast(msg)` (brief notice), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text), `resolveFragment(f)` (→ `{i, k, key, id}` or `{error}`), `fragment(i, k)`, `follow(f)`, `back()`, `links()` (→ `{depth, follow, back}`), `visited(i | key)` ([contract §9](contract.md#9-links-to-slides)). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto, cause, back}`; `cause` is `control`, `link`, `seek` or `play`, `back` the title of the slide Back returns to or `null`).
 
 ## Dev server
 
@@ -297,6 +303,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | slide id not matching `^[A-Za-z][A-Za-z0-9_-]{0,63}$` (`slide id: …`); two slides with the same key (`slide key: …`); a slide id equal to another id or `\htmlId{…}` in the deck (`slide id: …`) | error |
 | the heading text of a `## heading {#id}` differs from that slide's heading (the id wins) | info |
 | a slide keyed by a legacy rule: a hand-written `data-key`, or `s<n>` (no id and no heading) — `slide key: legacy` | warn |
+| a link to a slide (`#<id>`, `#<id>:<stepKey>`, `#N`) whose slide does not exist, whose step is out of range, or `:concl` on a slide without a conclusion; a link `#N` or to a slide without an id; a relative link to a file that does not exist ([contract §9](contract.md#9-links-to-slides)) | error; warn; warn |
 | console errors | error |
 | text visible at step 0 | info |
 | title > 26 full-width units (Japanese) / > 60 characters (English) | error / warn |
@@ -435,6 +442,7 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `node tools/test-tools.mjs <built.html> [outdir]` | overview, pens, laser, print, presenter ink |
 | `node tools/test-controls.mjs <built.html> [outdir]` | control bar, help, presenter buttons |
 | `node tools/test-autoplay.mjs <built.html>` | autoplay and its presenter-view button |
+| `node tools/test-links.mjs [dir]` | links to slides: fragments at load, clicks in each mode, Back (button, keys, browser history), autoplay kept, embedding (`position` with `cause: "link"`, `linkRefused`), presenter view, `m-menu`, checker errors |
 | `node tools/test-dev-server.mjs [workdir]` | dev server on a copy of `examples/minimal` |
 | `node tools/flake.mjs <built.html> <i> <k> <outdir>` | investigate a false "depends on call order" report |
 

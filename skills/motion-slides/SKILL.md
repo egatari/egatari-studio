@@ -138,6 +138,7 @@ description: 動きのある HTML の学術スライドを、構成案から「�
 | 漢文を読む | `m-kanbun` | 白文に訓点を付け、読む順を 1 字ずつたどり（返り点で上へ戻る弧）、書き下し文にする（`examples/kokugo-kanbun`） |
 | 古文の品詞分解 | `m-kobun` | 1 文ずつ語に切って品詞で色を分け、助動詞を押すと活用表、最後に現代語訳 |
 | 現代文の構造 | `m-gendai` | 傍線・指示語の矢印・段落の役割（主張・具体例・対比）の枠と線 |
+| 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
 
 - 一覧と属性は `<repo>/components/CATALOG.md`、見本は各部品の `demo.html`
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、部品の子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない

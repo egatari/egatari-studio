@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=cf8900f90feba18b -->
+<!-- i18n: pair=README.ja.md sha256=6c6b0834523672e5 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -16,6 +16,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 - **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
 - **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
 - **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch decks `m-bars`, `m-quad`, `m-market`, `m-kpi`; `m-flow` also draws money and service flows). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
+- **Links to slides**: an ordinary `<a href="#<slide id>">` (or `#<slide id>:<step>`) jumps to that slide or step and offers **Back** (button, Backspace, Alt+←, browser back); `m-menu` lays such links out as a grid of cards for a contents or choice slide. Plain anchors, no script, so a portable file stays Core. See [contract §9](docs/contract.md#9-links-to-slides)
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
@@ -246,7 +247,7 @@ A theme can also sit next to a deck (`<deck>/themes/<name>/`). Included: `defaul
 | [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, narration for every step. A fuller example to learn from (`npm run new` makes a clean template) |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: deck-local components (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `tml` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | Japanese, 10 slides: a pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports). `m-kpi`, `m-flow` (money flows and `pulse`), `m-bars` (with an axis rescale), `m-quad`, `m-market`, theme `business`, data written by a script (`scripts/`, `data/`). The company, product and every number are made up |
-| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 10 slides for a 国語 lesson: kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
+| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 11 slides for a 国語 lesson: a contents slide with `m-menu` (links to each part, Back to return), kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
 
 The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default voice. The published video of this example was narrated with the author's own reference voice, which is not included in the repository.
 
@@ -287,6 +288,7 @@ node tools/smoke.mjs examples/minimal/out/deck.html /tmp/smoke     # timeline + 
 node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
+node tools/test-links.mjs                                          # links to slides, Back, embedding, m-menu, checker
 node tools/test-dev-server.mjs
 node tools/test-app.mjs                                            # editor app (builds dist/ in a temp folder)
 ```

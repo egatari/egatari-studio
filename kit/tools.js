@@ -82,10 +82,15 @@ if (Q.get("presenter")){
     }
     if (!f || e.source !== f.contentWindow) return;
     if (m.type === "deck-tool" && m.cmd === "pt"){ try { window.opener && window.opener.postMessage(m, "*"); } catch (err) {} }
-    else if (m.type === "deck-tool-key" && !key(m.key, m.shift)){
-      // 「今の画面」にフォーカスがあるときの送り操作
-      var nx = /^(ArrowRight|ArrowDown|PageDown| )$/.test(m.key), pv = /^(ArrowLeft|ArrowUp|PageUp)$/.test(m.key);
-      if ((nx || pv) && window.opener) window.opener.postMessage({type: "deck-cmd", cmd: nx ? "next" : "prev"}, "*");
+    else if (m.type === "deck-link" && typeof m.frag === "string"){
+      // 「今の画面」で押したスライドへのリンク：本体でたどる（本体の位置が変われば、この画面もついてくる）
+      if (window.opener) window.opener.postMessage({type: "deck-cmd", cmd: "link", frag: m.frag}, "*");
+    }
+    else if (m.type === "deck-tool-key" && (m.alt || !key(m.key, m.shift))){
+      // 「今の画面」にフォーカスがあるときの送り操作。Backspace・Alt+← はリンクの前の位置へ戻る
+      var bk = (m.key === "Backspace" && !m.alt && !m.shift) || (m.key === "ArrowLeft" && m.alt);
+      var nx = !m.alt && /^(ArrowRight|ArrowDown|PageDown| )$/.test(m.key), pv = !m.alt && /^(ArrowLeft|ArrowUp|PageUp)$/.test(m.key);
+      if ((nx || pv || bk) && window.opener) window.opener.postMessage({type: "deck-cmd", cmd: bk ? "back" : nx ? "next" : "prev"}, "*");
     }
   });
   return;
@@ -537,7 +542,8 @@ function helpHtml(){
     sec(j ? "移動" : "Navigate", [
       row(K("→", "Space"), j ? "次の段階" : "Next step"), row(K("←"), j ? "前の段階" : "Previous step"),
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
-      row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Overview")]),
+      row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Overview"),
+      row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
     sec(j ? "表示" : "View", [
       row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "授業モード" : "Lecture mode"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
@@ -545,7 +551,7 @@ function helpHtml(){
       row(K("?"), j ? "このキーの一覧" : "This help")]),
     sec(j ? "道具" : "Tools", [
       row(K("x"), j ? "レーザー" : "Laser"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
-      row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "書き込みを消す（Shift で全部）" : "Clear ink (Shift: all slides)"),
+      row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
       row(K("Esc"), j ? "道具を解除" : "Exit tool")])
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
@@ -583,7 +589,7 @@ function toggleHelp(on){
 window.addEventListener("keydown", function(e){
   if (FOLLOW){
     // 「今の画面」にフォーカスがあるときは、キーを発表者ビューに渡す
-    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey}, "*");
+    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey}, "*");
     return;
   }
   if (!layer || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;

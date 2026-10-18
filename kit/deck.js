@@ -266,6 +266,8 @@ DECK.feedbackUrl = function(){
 
 // ---------------------------------------------------------------- 段階表示
 var slides = [], cur = 0, step = 0, fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
+// 位置が変わったわけ（埋め込みの position の cause：control・link・seek・play）と、その段階の t（最終状態なら null）
+var CAUSE = null, POS_T = null;
 
 function setupSlide(s, i, mainEnd){
   var autoList = !s.classList.contains("static") && !s.classList.contains("nostep") && !s.querySelector("[data-step]") && !s.querySelector("[data-from]");
@@ -968,6 +970,7 @@ function play(i, k, animate, from){
   stopLoop();
   announce(i, k);
   if (CAP.on && CAP_LIVE) capRestart(i, k);
+  POS_T = !animate || REDUCE ? null : 0;
   if (!animate || REDUCE){ seek(i, k, Infinity); broadcast(); return; }
   if (i !== cur){ slides[cur]._tok++; slides[cur]._legacyAt = undefined; }
   legacy(slides[i], k, false);
@@ -984,8 +987,16 @@ function play(i, k, animate, from){
 function go(i, k, animate){
   var from = cur;
   i = Math.max(0, Math.min(slides.length - 1, i));
+  LINKS.seen[i] = true;
   play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1);
-  try { if (!DECK.view) history.replaceState(null, "", location.pathname + location.search + "#" + (i + 1)); } catch (e) {}
+  // 履歴の項目の state（リンクの深さ）は残し、その項目の中の今の位置（at：ブラウザの「進む」で戻る先）を書く（format spec §9.1A の「戻る」）
+  try {
+    if (!DECK.view){
+      var hs = history.state;
+      if (hs && typeof hs.egatariLink === "number") hs = Object.assign({}, hs, {at: {i: i, k: Math.max(0, Math.min(slides[i]._max, k))}});
+      history.replaceState(hs, "", location.pathname + location.search + "#" + (i + 1));
+    }
+  } catch (e) {}
 }
 function next(){ if (step < slides[cur]._max) go(cur, step + 1, true); else if (cur < slides.length - 1) go(cur + 1, 0, true); }
 function prev(){ if (step > 0) go(cur, step - 1, false); else if (cur > 0) go(cur - 1, slides[cur - 1]._max, false); }
@@ -1013,7 +1024,7 @@ function runSeg(){
   if (!auto) return;
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
-  if (!(g.i === cur && g.k === step && auto.started)) go(g.i, g.k, true);
+  if (!(g.i === cur && g.k === step && auto.started)){ var c0 = CAUSE; CAUSE = c0 || "play"; go(g.i, g.k, true); CAUSE = c0; }
   auto.started = true;
   if (g.audio){
     if (!audioEl){
@@ -1031,9 +1042,12 @@ var presenter = null;
 function broadcast(){
   var ni = step < slides[cur]._max ? cur : cur + 1, nk = step < slides[cur]._max ? step + 1 : 0;
   var msg = {type: "deck-pos", i: cur, k: step, max: slides[cur]._max, n: slides.length, key: DECK.stepKey(cur, step),
-             nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: !!auto};
+             nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: !!auto, cause: CAUSE || "control",
+             back: LINKS.trail.length ? titleOf(slides[LINKS.trail[LINKS.trail.length - 1].i]) : null};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   if (window.parent !== window) window.parent.postMessage(msg, "*");
+  // 埋め込み（format spec §9.4）：段階が変わるたびに位置を知らせる
+  if (EMBED) post({egatari: "position", slideKey: slides[cur]._key, stepKey: stepKey(slides[cur], step), t: POS_T, cause: CAUSE || "control"});
   document.dispatchEvent(new CustomEvent("deck:pos", {detail: msg}));
 }
 // 発表者ビューに送る（tools.js がペンの色を知らせるのに使う）
@@ -1050,13 +1064,163 @@ window.addEventListener("message", function(e){
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
-    else if (m.cmd === "goto") go(m.i, m.k, !!m.animate);
+    else if (m.cmd === "goto"){ CAUSE = "seek"; go(m.i, m.k, !!m.animate); CAUSE = null; }
+    else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
+    else if (m.cmd === "back") back();
     else if (m.cmd === "auto") DECK.autoplay();
     else if (m.cmd === "hello"){ presenter = e.source; broadcast(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length){
     go(m.i, m.k, !!m.animate);
+  } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
+    // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
+    LINKS.follow = m.follow;
+    post({egatari: "links", id: m.id, follow: LINKS.follow});
   }
 });
+
+// ---------------------------------------------------------------- スライドへのリンク（format spec §9.1A。docs/contract.md §9）
+// <a href="#<スライドの id>"> はそのスライドの段階 0、<a href="#<id>:<段階の鍵>"> はその段階（段階の鍵は 0・1・… か concl）。
+// 段階の鍵は最後の : で切る（旧来の鍵は : を含みうる）。数字だけの #N（1 から）はこれまでどおりスライドの番号。
+// 同じ書き方の URL の # は開いたときの位置。リンクを押すと：自動再生していなければその段階の最終状態へ、自動再生中ならそこから
+// 再生を続ける。直前のリンクの前の位置へ「戻る」（Backspace・Alt+←・左上の戻るボタン・ブラウザの戻る）。
+// 上の窓（top-level）は動かさない：リンクは文書の中で動き、ほかのファイルへのリンク（other.ega.html#…）だけがふつうに開く。
+// 埋め込み（?embed=1、親の窓あり）では位置の知らせ {egatari:"position", …, cause:"link"} を送り、親が ?links=0 か
+// {egatari:"links", follow:false} で止めていれば動かずに {egatari:"linkRefused", slideKey, stepKey} を送る
+var TOP = window.parent === window && !DECK.view;
+var EMBED = !TOP && !DECK.view && Q.get("embed") === "1";
+var LINKS = {follow: !(EMBED && /^(0|false|no|off)$/i.test(Q.get("links") || "")), trail: [], seen: Object.create(null), btn: null};
+function slideIndexOf(key){
+  for (var j = 0; j < slides.length; j++) if (slides[j].id === key) return j;
+  for (j = 0; j < slides.length; j++) if (slides[j]._key === key) return j;
+  return -1;
+}
+// 位置の書き方（# の後ろ）を {i, k} にする。読めなければ {error}（検査器も使う）
+function resolveFragment(f){
+  f = String(f == null ? "" : f).replace(/^#/, "");
+  if (!f) return {error: "empty"};
+  try { f = decodeURIComponent(f); } catch (e) {}
+  if (/^[0-9]+$/.test(f)){
+    var n = +f;
+    return n >= 1 && n <= slides.length ? {i: n - 1, k: 0, legacy: true} : {error: "slide number out of range", slide: f};
+  }
+  var i = slideIndexOf(f), sk = null;
+  if (i < 0){ var p = f.lastIndexOf(":"); if (p > 0){ i = slideIndexOf(f.slice(0, p)); if (i >= 0) sk = f.slice(p + 1); } }
+  if (i < 0) return {error: "unknown slide", slide: f.lastIndexOf(":") > 0 ? f.slice(0, f.lastIndexOf(":")) : f};
+  var s = slides[i], out = {i: i, k: 0, key: s._key, id: s.id || null};
+  if (sk === null) return out;
+  if (sk === "concl"){ if (s._cstep < 0) return {error: "no concl step", slide: s._key, step: sk, i: i}; out.k = s._cstep; return out; }
+  if (!/^(0|[1-9][0-9]{0,2})$/.test(sk)) return {error: "not a step key", slide: s._key, step: sk, i: i};
+  var k = +sk;
+  // 結論の段階の鍵は concl（数字では指さない）
+  if (k > s._max || k === s._cstep) return {error: "step out of range", slide: s._key, step: sk, i: i, max: s._cstep >= 0 ? s._cstep - 1 : s._max};
+  out.k = k;
+  return out;
+}
+DECK.resolveFragment = resolveFragment;
+// 位置の書き方（id があれば <id>[:<段階の鍵>]。id のない旧来のスライドは段階 0 なら <番号>、ほかは <鍵>:<段階の鍵>）
+function fragmentOf(i, k){
+  var s = slides[i];
+  if (!s.id) return k ? s._key + ":" + stepKey(s, k) : String(i + 1);
+  return k ? s.id + ":" + stepKey(s, k) : s.id;
+}
+DECK.fragment = fragmentOf;
+// 同じ文書の中を指すリンクなら # の後ろ、ほかのファイルなら null
+function inDocFragment(a){
+  var h = a.getAttribute("href");
+  if (h == null) return null;
+  if (h.charAt(0) === "#") return h.slice(1);
+  try {
+    var u = new URL(h, location.href), here = new URL(location.href);
+    if (u.hash && u.origin === here.origin && u.pathname === here.pathname && u.search === here.search) return u.hash.slice(1);
+  } catch (e) {}
+  return null;
+}
+DECK.linkFragment = inDocFragment;
+function post(msg){ try { window.parent.postMessage(msg, "*"); } catch (e) {} }
+// 見たスライド（m-menu の「見た」の印。セッションの中だけ、保存しない）
+DECK.visited = function(i){ return typeof i === "number" ? !!LINKS.seen[i] : !!LINKS.seen[slideIndexOf(String(i))]; };
+// リンクで (i, k) へ。opts = {el, keyboard}
+function followLink(pos, opts){
+  opts = opts || {};
+  if (DECK.view){ post({type: "deck-link", frag: fragmentOf(pos.i, pos.k)}); return false; }   // 発表者ビューの中の画面：本体に任せる
+  var target = {slideKey: slides[pos.i]._key, stepKey: stepKey(slides[pos.i], pos.k)};
+  if (!LINKS.follow){ post(Object.assign({egatari: "linkRefused"}, target)); return false; }
+  LINKS.trail.push({i: cur, k: step, el: opts.keyboard ? opts.el : null});
+  if (TOP) try { history.pushState({egatariLink: LINKS.trail.length, to: {i: pos.i, k: pos.k}}, "", "#" + (pos.i + 1)); } catch (e) {}
+  moveTo(pos.i, pos.k, "link");
+  return true;
+}
+// 再生の状態を保ったまま (i, k) へ：自動再生中なら段階の初めから続け、そうでなければ最終状態
+function moveTo(i, k, cause){
+  var playing = !!auto;
+  CAUSE = cause;
+  if (playing){ stopAuto(); go(i, k, false); startAuto(); }
+  else go(i, k, false);
+  CAUSE = null;
+  syncBack();
+}
+function back(){
+  if (!LINKS.trail.length) return false;
+  // 上の窓では履歴で戻る（ブラウザの戻ると同じ。popstate で動く）
+  if (TOP && history.state && history.state.egatariLink === LINKS.trail.length){ history.back(); return true; }
+  backTo(LINKS.trail.length - 1);
+  return true;
+}
+function backTo(depth){
+  var e = null;
+  while (LINKS.trail.length > depth) e = LINKS.trail.pop();
+  if (!e) return;
+  moveTo(e.i, e.k, "link");
+  if (e.el && e.el.isConnected) try { e.el.focus({preventScroll: true}); } catch (err) {}
+}
+DECK.back = back;
+DECK.links = function(){ return {depth: LINKS.trail.length, follow: LINKS.follow, back: LINKS.trail.length ? Object.assign({}, LINKS.trail[LINKS.trail.length - 1], {el: undefined}) : null}; };
+DECK.follow = function(frag){ var r = resolveFragment(frag); if (r.error){ console.warn("deck.js: link #" + frag + ": " + r.error); return false; } return followLink(r); };
+window.addEventListener("popstate", function(e){
+  if (!slides.length) return;
+  var st = e.state || {}, d = typeof st.egatariLink === "number" ? st.egatariLink : 0;
+  if (d < LINKS.trail.length) backTo(d);
+  else if (d > LINKS.trail.length && (st.at || st.to) && slides[(st.at || st.to).i]){   // 進む：もう一度そのリンクをたどり、その先で最後にいた位置へ
+    var at = st.at || st.to;
+    LINKS.trail.push({i: cur, k: step, el: null});
+    moveTo(at.i, at.k, "link");
+  }
+});
+document.addEventListener("click", function(e){
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !slides.length) return;
+  var a = e.target && e.target.closest && e.target.closest("a[href]");
+  if (!a) return;
+  var f = inDocFragment(a);
+  if (f === null) return;                 // ほかのファイル：ふつうのリンク
+  e.preventDefault();                     // # で要素の位置へ動かさない（舞台がずれる）
+  if (DECK.mode === "video" || !f) return;
+  var r = resolveFragment(f);
+  if (r.error){ console.warn("deck.js: link #" + f + ": " + r.error); return; }
+  // マウスで押したリンクにはフォーカスを残さない（戻ったときにフォーカスの枠が出ない）。キーボード（detail = 0）なら戻るときに戻す
+  if (e.detail !== 0) try { a.blur(); } catch (err) {}
+  followLink(r, {el: a, keyboard: e.detail === 0});
+});
+// 戻るボタン：リンクで来たときだけ、左上に小さく出す（動画・印刷・発表者ビューの中の画面では作らない）
+function syncBack(){
+  if (DECK.mode === "video" || DECK.view) return;
+  var t = LINKS.trail[LINKS.trail.length - 1];
+  if (!t){ if (LINKS.btn) LINKS.btn.hidden = true; return; }
+  if (!LINKS.btn){
+    var b = LINKS.btn = document.createElement("button");
+    b.type = "button"; b.id = "deck-back";
+    b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.5L5 8l4.5 4.5M5.4 8H13"/></svg><span class="lab"></span><span class="to"></span><kbd aria-hidden="true">⌫</kbd>';
+    b.addEventListener("click", function(ev){ ev.preventDefault(); ev.stopPropagation(); back(); if (ev.detail !== 0) b.blur(); });
+    ["pointerdown", "mousedown"].forEach(function(n){ b.addEventListener(n, function(ev){ ev.stopPropagation(); }); });
+    document.body.appendChild(b);
+  }
+  var to = titleOf(slides[t.i]);
+  LINKS.btn.querySelector(".lab").textContent = L10N("戻る", "Back");
+  LINKS.btn.querySelector(".to").textContent = to;
+  LINKS.btn.title = L10N("戻る：", "Back to ") + to + L10N("（Backspace / Alt+←）", " (Backspace / Alt+←)");
+  LINKS.btn.setAttribute("aria-label", L10N("戻る：", "Back to ") + to);
+  LINKS.btn.setAttribute("aria-keyshortcuts", "Backspace Alt+ArrowLeft");
+  LINKS.btn.hidden = false;
+}
 
 // ---------------------------------------------------------------- 起動
 function fit(){
@@ -1085,8 +1249,10 @@ function init(){
   if (CAP.on) setCaptions(true);
   fit();
   if (DECK.view) document.documentElement.classList.add("embedded");
-  var h = parseInt((location.hash || "#1").slice(1), 10);
-  go(isNaN(h) ? 0 : h - 1, 0, false);
+  // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
+  var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
+  if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
+  CAUSE = "seek"; go(h0.i, h0.k, false); CAUSE = null;
   DECK.ready = true;
   document.dispatchEvent(new CustomEvent("deck:ready"));
 }
@@ -1095,6 +1261,11 @@ var buf = "";
 document.addEventListener("keydown", function(e){
   if (DECK.view || !slides.length) return;
   if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
+  // 戻る（リンクの前の位置へ）：Backspace（ペンのときは tools.js が書き込みを消すのに使う）か Alt+←
+  if (!e.metaKey && !e.ctrlKey && !e.shiftKey && ((e.key === "Backspace" && !e.altKey) || (e.key === "ArrowLeft" && e.altKey))){
+    if (back()) e.preventDefault();
+    return;
+  }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   var k = e.key, j = document.getElementById("jump");
   // フォーカスのあるボタンやリンクは、Enter と Space でそれ自身を押す（送りに使わない）
@@ -1133,7 +1304,13 @@ window.addEventListener("afterprint", function(){
 });
 window.addEventListener("resize", function(){ fit(); morphCache = {}; });
 if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; });
-window.addEventListener("hashchange", function(){ var h = parseInt(location.hash.slice(1), 10); if (!isNaN(h) && h - 1 !== cur) go(h - 1, 0, false); });
+// 手で書き換えた #（番号・スライドの id・id:段階）へ。リンクの「戻る」の履歴とは別（popstate が先に位置を戻すので、ここでは動かない）
+window.addEventListener("hashchange", function(){
+  if (!slides.length) return;
+  var hs = location.hash.slice(1), r = /^[0-9]+$/.test(hs) ? {i: +hs - 1, k: 0, legacy: true} : resolveFragment(hs);
+  if (r.error || r.i < 0) return;
+  if (r.i !== cur || (!r.legacy && r.k !== step)) go(r.i, r.k, false);
+});
 // 部品のスクリプトは deck.js の後に読まれるので、load まで待つ
 if (document.readyState === "complete") setTimeout(init, 0); else window.addEventListener("load", init);
 })();

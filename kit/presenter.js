@@ -9,10 +9,10 @@ var DECK = window.DECK;
 var L = DECK.ja === false
   ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
      laser: "Laser (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
-     feedback: "Send feedback", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
+     feedback: "Send feedback", back: "Back", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
   : {cur: "今の画面", nextFrame: "次の段階の画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
      laser: "レーザー（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
-     feedback: "フィードバックを送る", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
+     feedback: "フィードバックを送る", back: "戻る", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
@@ -40,6 +40,7 @@ DECK.presenterView = function(){
   document.body.innerHTML =
     '<div id="pv">' +
     ' <header><span id="pv-pos"></span><span id="pv-step"></span><span class="sp"></span>' +
+    '  <button type="button" id="pv-back" aria-label="' + L.back + '" hidden>← ' + L.back + '</button>' +
     '  <button type="button" id="pv-auto" title="' + L.autoKey + '" aria-pressed="false">▶ ' + L.auto + '</button>' + tools +
     '<button type="button" id="pv-reset" title="' + L.reset + '" aria-label="' + L.reset + '">⟲</button>' +
     '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span></header>' +
@@ -64,7 +65,7 @@ DECK.presenterView = function(){
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
     "#pv-text p{margin:0 0 10px;font-size:22px;line-height:1.6}#pv-text .role{color:#9cf;font-size:14px;margin-right:6px}" +
     "#pv-text .next{color:#888}#pv-text .next p{font-size:18px}" +
-    "#pv header button{height:34px}" +
+    "#pv header button{height:34px}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
     "#pv .pv-tools{display:flex;gap:4px}" +
     "#pv .pv-tools button{display:flex;align-items:center;gap:5px;padding:0 9px;user-select:none}" +
     "#pv .pv-tools button:hover{background:#3d3d3d}#pv .pv-tools button.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
@@ -98,6 +99,10 @@ DECK.presenterView = function(){
     ab.textContent = (pos.auto ? "■ " : "▶ ") + (pos.auto ? L.stop : L.auto); ab.classList.toggle("on", !!pos.auto);
     ab.setAttribute("aria-pressed", pos.auto ? "true" : "false");
     document.getElementById("pv-step").textContent = L.step + pos.k + " / " + pos.max;
+    // リンクで来たとき：本体と同じ「戻る」
+    var bb = document.getElementById("pv-back");
+    bb.hidden = !pos.back;
+    if (pos.back){ var c = DECK.ja === false ? ": " : "："; bb.textContent = "← " + L.back + c + pos.back; bb.title = L.back + c + pos.back + (DECK.ja === false ? " (Backspace / Alt+←)" : "（Backspace / Alt+←）"); bb.setAttribute("aria-label", L.back + c + pos.back); }
     fc.contentWindow && fc.contentWindow.postMessage({type: "deck-goto", i: pos.i, k: pos.k, animate: true}, "*");
     var ni = pos.k < pos.max ? pos.i : pos.i + 1, nk = pos.k < pos.max ? pos.k + 1 : 0;
     fn.contentWindow && fn.contentWindow.postMessage({type: "deck-goto", i: ni, k: nk, animate: false}, "*");
@@ -116,12 +121,16 @@ DECK.presenterView = function(){
     var k = e.key;
     // フォーカスのあるボタンは Enter / Space でそれ自身を押す
     if ((k === " " || k === "Enter") && e.target && e.target.closest && e.target.closest("button, a[href]")) return;
+    // 戻る（リンクの前の位置へ）。ペンのときの Backspace は tools.js が書き込みを消すのに使う（defaultPrevented）
+    if (!e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.shiftKey && ((k === "Backspace" && !e.altKey) || (k === "ArrowLeft" && e.altKey))){ e.preventDefault(); send("back"); return; }
+    if (e.altKey) return;
     if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "ArrowDown"){ e.preventDefault(); send("next"); }
     else if (k === "ArrowLeft" || k === "PageUp" || k === "ArrowUp"){ e.preventDefault(); send("prev"); }
     else if (k === "a") send("auto");
   });
   // マウスで押したらフォーカスを残さない（キーボードで押したとき、detail = 0、は残す）
   document.getElementById("pv-auto").onclick = function(e){ send("auto"); if (e.detail !== 0) this.blur(); };
+  document.getElementById("pv-back").onclick = function(e){ send("back"); if (e.detail !== 0) this.blur(); };
   // 道具のボタン：キーと同じ（tools.js の DECK.ptools.key）。フォーカスを奪わないので、押した後も矢印で送れる
   [].forEach.call(document.querySelectorAll("#pv button"), function(b){ b.addEventListener("mousedown", function(e){ e.preventDefault(); }); });
   [].forEach.call(document.querySelectorAll("#pv .pv-tools button"), function(b){

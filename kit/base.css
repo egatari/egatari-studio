@@ -42,6 +42,18 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   font:14px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s}
 #deck-toast.show{opacity:1;transform:translate(-50%,0)}
 .printing #deck-toast{display:none}
+/* 戻る（リンクで来たときだけ。kit/deck.js）：左上の小さな札。押す・Backspace・Alt+← で、リンクを押す前の位置へ。印刷と動画には出ない */
+#deck-back{all:unset;position:fixed;left:10px;top:7px;z-index:36;box-sizing:border-box;display:flex;align-items:center;gap:6px;max-width:min(46vw,420px);height:28px;padding:0 9px 0 7px;
+  border-radius:999px;background:rgba(20,20,20,.74);color:#fff;font:13px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;cursor:pointer;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);opacity:.88;transition:opacity .15s,background .15s}
+#deck-back:hover{opacity:1;background:rgba(20,20,20,.9)}
+#deck-back:focus-visible{outline:2px solid #9cf;outline-offset:2px;opacity:1}
+#deck-back[hidden]{display:none}
+#deck-back svg{flex:none;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#deck-back .lab{flex:none;font-weight:600}
+#deck-back .to{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.78}
+#deck-back kbd{flex:none;font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:2px 4px;border:1px solid rgba(255,255,255,.35);border-radius:4px;opacity:.7}
+.printing #deck-back,.blackout #deck-back{display:none}
 
 @media print{
   @page{size:1280px 720px;margin:0}
@@ -50,5 +62,5 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   .slide{position:relative!important;visibility:visible!important;opacity:1!important;page-break-after:always;break-after:page}
   [data-step]{opacity:1!important;transform:none!important}
   .draw{stroke-dashoffset:0!important}
-  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast{display:none!important}
+  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back{display:none!important}
 }

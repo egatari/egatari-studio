@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=0b48453c7306cbc0 -->
+<!-- i18n: pair=README.md sha256=643d7ee489f2fabc -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -16,6 +16,7 @@
 - **段階表示**：`data-step="k"` で話す順に出す。結論の行（`.concl`）は自動で最後
 - **数式**：KaTeX でビルド時に組む。`\hlE{…}` `\hlT{…}` `\hlM{…}` で式の一部にテーマの色を付ける
 - **動く図**：Web Components の部品（`components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, 段階, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
+- **スライドへのリンク**：ふつうの `<a href="#<スライドの id>">`（か `#<スライドの id>:<段階>`）でそのスライドか段階へ飛び、**戻る**（ボタン・Backspace・Alt+←・ブラウザの戻る）で戻れる。`m-menu` はそのリンクを札の格子に並べる（目次・選ぶ 1 枚）。スクリプトのないふつうのリンクなので、持ち運べる 1 ファイルは Core のまま。[contract §9](docs/contract.ja.md#9-スライドへのリンク)
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **注目の演出**：口述原稿に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーの点が出る
 - **モーフ**：`data-morph` のスライドでは、前のスライドの式や要素が今の位置へ滑ってくる（Keynote のマジックムーブ）
@@ -246,7 +247,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | [`examples/minimal`](examples/minimal) | 日本語・6 枚（勾配降下法）。段階、KaTeX と `\hlE`、`{mark}`、`data-morph`、`m-sweep`、全段階の口述原稿。作り込んだ見本（新しいデッキの雛形は `npm run new` で作る） |
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。デッキ専用の部品（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `tml` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | 日本語・10 枚（架空の会社「株式会社レポミル」（報告書の下書きを作る SaaS）のピッチ）。`m-kpi`、`m-flow`（お金の流れと `pulse`）、`m-bars`（軸の広がり）、`m-quad`、`m-market`、テーマ `business`、スクリプトで書いたデータ（`scripts/` `data/`）。社名・製品・数字はすべて架空 |
-| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | 日本語・10 枚（国語の授業）。`m-kanbun` の漢文（『史記』、孟浩然「春暁」、杜甫「春望」、『論語』）、`m-kobun` の『枕草子』、`m-gendai` の現代文（見本のために書いた文章、縦書き）、テーマ `kokugo` |
+| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | 日本語・11 枚（国語の授業）。`m-menu` の目次（各部へのリンクと「戻る」）、`m-kanbun` の漢文（『史記』、孟浩然「春暁」、杜甫「春望」、『論語』）、`m-kobun` の『枕草子』、`m-gendai` の現代文（見本のために書いた文章、縦書き）、テーマ `kokugo` |
 
 `examples/tmlr2026-calibration` の `voice.json` は TTS の既定の声を使う。公開しているこの見本の動画は、著者本人の参照音声で読み上げたもの（参照音声はリポジトリに含めていない）。
 
@@ -287,6 +288,7 @@ node tools/smoke.mjs examples/minimal/out/deck.html /tmp/smoke     # タイム�
 node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
+node tools/test-links.mjs                                          # スライドへのリンク・戻る・埋め込み・m-menu・検査器
 node tools/test-dev-server.mjs
 node tools/test-app.mjs                                            # 編集アプリ（一時フォルダに dist/ を組む）
 ```
