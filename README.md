@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=aacb0b30c415be0f -->
+<!-- i18n: pair=README.ja.md sha256=0fc80ab9431049a0 -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -15,7 +15,7 @@ Academic slides as a single HTML file, with step-by-step reveals and animated fi
 
 - **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
 - **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
-- **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch decks `m-bars`, `m-quad`, `m-market`, `m-kpi`; `m-flow` also draws money and service flows). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
+- **Animated figures**: Web Components (`components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch decks `m-bars`, `m-quad`, `m-market`, `m-kpi`, and for coding lectures `m-codetree` (decoding a bit string with a code tree); `m-flow` also draws money and service flows). The screen depends only on (slide, step, time), so the same deck can be exported frame by frame to video
 - **Links to slides**: an ordinary `<a href="#<slide id>">` (or `#<slide id>:<step>`) jumps to that slide or step and offers **Back** (button, Backspace, Alt+←, browser back); `m-menu` lays such links out as a grid of cards for a contents or choice slide. Plain anchors, no script, so a portable file stays Core. See [contract §9](docs/contract.md#9-links-to-slides)
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word

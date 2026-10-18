@@ -5,6 +5,7 @@
 | 部品 | 内容 | 段階の数 | 受け取る値 | 見本 |
 |---|---|---|---|---|
 | [`<m-bars>`](bars/README.md) | 棒を段階ごとに 0 から伸ばす（縦棒・横棒・組の棒）。値の軸の上限を段階で広げて「軸を突き抜ける伸び」も見せられる | 組の step と scale の step の最大（既定は組 1 つ = 1 段階。per-step で n 組ずつ） | orient, max, unit, digits, per-step, dur, stagger, count, ticks, zoom, al | [demo](bars/demo.html) |
+| [`<m-codetree>`](codetree/README.md) | 符号の木で 2 値の系列を 1 語ずつ復号する（MH 符号）。ランは画素の升目に伸びる | 符号語の数 ＋ まとめの 1 | bits, depth, bit | [demo](codetree/demo.html) |
 | [`<m-collect>`](collect/README.md) | 並んだ札（回答など）が動いて縮み、少数の箱（要約）にまとまる | 1 | move, stagger, shrink, chip-w, chip-h, box-w, box-h | [demo](collect/demo.html) |
 | [`<m-curves>`](curves/README.md) | 同じ座標軸に線を 1 本ずつ引く（線の名前は凡例でなく線の端に直接書く） | 系列の数 | xr, yr, xt, yt, xf, yf, xl, yl, n, dur, lw | [demo](curves/demo.html) |
 | [`<m-flow>`](flow/README.md) | 流れ図の箱と矢印を段階ごとに出して、図を組み立てる | nodes と edges の step の最大 | fade, draw, size, pulse-dur, pulse-n, label-gap | [demo](flow/demo.html) |

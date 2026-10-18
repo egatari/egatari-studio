@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=5f7a713c5299cbc6 -->
+<!-- i18n: pair=README.md sha256=ac2f65e6236671eb -->
 # Egatari Studio
 
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
@@ -15,7 +15,7 @@
 
 - **段階表示**：`data-step="k"` で話す順に出す。結論の行（`.concl`）は自動で最後
 - **数式**：KaTeX でビルド時に組む。`\hlE{…}` `\hlT{…}` `\hlM{…}` で式の一部にテーマの色を付ける
-- **動く図**：Web Components の部品（`components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, 段階, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
+- **動く図**：Web Components の部品（`components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, 段階, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
 - **スライドへのリンク**：ふつうの `<a href="#<スライドの id>">`（か `#<スライドの id>:<段階>`）でそのスライドか段階へ飛び、**戻る**（ボタン・Backspace・Alt+←・ブラウザの戻る）で戻れる。`m-menu` はそのリンクを札の格子に並べる（目次・選ぶ 1 枚）。スクリプトのないふつうのリンクなので、持ち運べる 1 ファイルは Core のまま。[contract §9](docs/contract.ja.md#9-スライドへのリンク)
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **注目の演出**：口述原稿に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーの点が出る

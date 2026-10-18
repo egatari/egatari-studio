@@ -97,6 +97,7 @@ const SH = ctx.DECK.shape;
 // ---------------------------------------------------------------- 2. ブラウザ：どの部品にも形の違うデータ
 const WRONG = {
   'm-bars': '<script type="application/json">{"group": [{"label": "1 年目", "value": 1}]}</script>',
+  'm-codetree': '<script type="application/json">{"codes": [{"run": 2, "white": "0111"}], "bits": "0111"}</script>',
   'm-collect': '<script type="application/json">{"chips": [{"label": "表"}], "targets": [{"label": "表の数"}]}</script>',
   'm-curves': '<script type="application/json">{"xr": [0, 10], "series": [{"label": "需要", "fn": "10 - u"}]}</script>',
   'm-flow': '<script type="application/json">{"nodes": [{"id": "a", "label": "観測"}]}</script>',

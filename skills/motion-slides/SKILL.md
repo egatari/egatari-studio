@@ -158,6 +158,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 | 古文の品詞分解 | `m-kobun` | 1 文ずつ語に切って品詞で色を分け、助動詞を押すと活用表、最後に現代語訳 |
 | 現代文の構造 | `m-gendai` | 傍線・指示語の矢印・段落の役割（主張・具体例・対比）の枠と線 |
 | 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
+| 符号の木で復号する | `m-codetree` | 符号表から木を作り、系列を 1 語ずつたどって、白・黒のランを画素の升目に並べる（MH 符号） |
 
 - 一覧と属性は `<repo>/components/CATALOG.md`、見本は各部品の `demo.html`
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、部品の子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
