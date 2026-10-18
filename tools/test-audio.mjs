@@ -17,7 +17,7 @@ import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
-import { encodeWav } from '../kit/core/audio-core.mjs';
+import { encodeWav, MP3 } from '../kit/core/audio-core.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 
@@ -65,6 +65,12 @@ const pmin = await buildPortable(path.join(PDIR, 'deck.html'), { out: path.join(
 
 // ---------------------------------------------------------------- 組んで配る
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single'], { stdio: 'inherit' });
+// MP3 のエンコーダ（LGPL の LAME）は app.js に入れず、npm のファイルを手を加えずに vendor/lame-wasm/ に置く（LICENSE も）
+{
+  const v = path.join(DIST, 'vendor', 'lame-wasm'), src = path.join(ROOT, 'node_modules', 'lame-wasm');
+  ok(['index.js', 'LICENSE', 'package.json', 'README.md'].every((f) => fs.existsSync(path.join(v, f))) && fs.readFileSync(path.join(v, 'index.js')).equals(fs.readFileSync(path.join(src, 'dist', 'index.js'))), 'dist: vendor/lame-wasm/ holds the unmodified npm file and its LICENSE');
+  ok(!/LAME encoding library|Failed to initialize LAME/.test(fs.readFileSync(path.join(DIST, 'app.js'), 'utf8')), 'dist: app.js does not contain LAME');
+}
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.wav': 'audio/wav' };
 const srv = http.createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -185,6 +191,18 @@ try {
   const seg0 = parseNarration(narr0).find((s) => `${s.slideKey}:${s.stepKey}` === key);
   ok(e1 && e1.kind === 'recorded' && e1.sync === 'none' && Array.isArray(e1.cues) && !e1.cues.length && e1.inputHash === await PF.inputHash(seg0), 'use: manifest entry is kind recorded, sync none, inputHash of the narration');
   ok(/^rec_[0-9a-f]{16}\.mp3$/.test(e1.file) && Math.abs(e1.dur - t1.dur) < 0.002, `use: audio/${e1.file} (${e1.dur} s)`);
+  ok(e1.processing === 'trim-45-loud-20-cap-v1' && e1.startOffset === MP3.startOffset, `use: processing profile and the MP3 encoder delay as startOffset (${e1.startOffset} s)`);
+  ok(JSON.stringify(Object.keys(e1)) === JSON.stringify(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'processing', 'startOffset']), 'use: no capture metadata (device, file name) in the record: ' + Object.keys(e1).join(','));
+  // Chrome で戻すと、音の始まりは「残した無音（0.05 秒）＋ startOffset」：startOffset から鳴らせば音声の 0 秒（cues の 0）と合う
+  const onset = await page.evaluate(async (rel) => {
+    const parts = rel.split('/'); const name = parts.pop(); let d = window.__testDir; for (const x of parts) d = await d.getDirectoryHandle(x);
+    const ab = await (await (await d.getFileHandle(name)).getFile()).arrayBuffer();
+    const buf = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab), x = buf.getChannelData(0);
+    let i = 0; while (i < x.length && Math.abs(x[i]) < 0.02) i++;
+    return i / buf.sampleRate;
+  }, 'audio/' + e1.file);
+  ok(Math.abs(onset - (0.05 + MP3.startOffset)) < 0.012, `use: in Chrome the voice starts at ${onset.toFixed(4)} s = 0.05 s kept + startOffset ${MP3.startOffset} s`);
+  ok(await page.evaluate(() => performance.getEntriesByType('resource').some((r) => /\/vendor\/lame-wasm\/index\.js$/.test(r.name))), 'use: the MP3 encoder was loaded on demand from vendor/lame-wasm/index.js');
   const head = await opfsRead('audio/' + e1.file, true);
   ok(head && (head[0] === 0xff && (head[1] & 0xe0) === 0xe0 || String.fromCharCode(...head.slice(0, 3)) === 'ID3'), 'use: the file is MP3');
   ok((await opfsList('.cache/edits')) === null, 'use: no backup for a new manifest (nothing to back up)');
@@ -216,7 +234,7 @@ try {
   st = await audioState();
   const tt = st.takes[key][0];
   const calls = await page.evaluate(() => window.__ttsCalls);
-  ok(tt.kind === 'tts' && tt.recipe && tt.recipe.processing === 'trim-45-loud-20-v1' && /^[0-9a-f]{64}$/.test(tt.recipe.dictionary || ''), 'tts: a TTS take with recipe (processing profile, reading dictionary hash)');
+  ok(tt.kind === 'tts' && tt.recipe && tt.recipe.processing === 'trim-45-loud-20-cap-v1' && /^[0-9a-f]{64}$/.test(tt.recipe.dictionary || ''), 'tts: a TTS take with recipe (processing profile, reading dictionary hash)');
   ok(calls.length === 1 && calls[0].text.includes('イータ') && !calls[0].text.includes('{'), `tts: the reading of {η|イータ} is passed, without markup (${calls[0] && calls[0].text})`);
   ok(Array.isArray(tt.cues) && tt.cues.length === 1 && tt.cues[0] === 0, 'tts: one cue per {mark} boundary (synth.py rule)');
   await shot(page, 'audio-tts-take.png');
@@ -230,7 +248,15 @@ try {
   ok((await opfsList('audio')).filter((n) => n.endsWith('.mp3')).length === 2, 'tts: the earlier recording stays in audio/ (not deleted)');
   await page.waitForFunction((k) => !window.__APP_TEST.state().warn.some((w) => w.includes(k) && w.includes('古い')), key, { timeout: 15000 });
   ok(true, 'tts: the stale warning is gone');
-  // Node の build が、録音の sync none を持ち運ぶ（フォルダを写して組む）
+  // MP3 のエンコーダを読み込めない（1 ファイル版と同じ）：WAV で保存し、startOffset は書かない
+  await page.evaluate(() => { window.__APP_TEST.mp3 = 'off'; });
+  await page.click('#dev-audio-tts');
+  await waitTakes(1);
+  await page.click('#dev-audio-takes .dv-take .dv-use');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && /\.wav$/.test(s.entry.file); }, null, { timeout: 30000 });
+  const e3 = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
+  ok(/^tts_[0-9a-f]{16}\.wav$/.test(e3.file) && !('startOffset' in e3) && String.fromCharCode(...(await opfsRead('audio/' + e3.file, true))) === 'RIFF', 'no MP3 encoder: the take is saved as WAV without startOffset');
+  await page.evaluate(() => { window.__APP_TEST.mp3 = undefined; });
   await page.click('#dev-audio .dv-ghost');
   ok(!(await page.isVisible('#dev-audio')), 'panel: closes');
 
@@ -270,6 +296,21 @@ try {
   const back = await PF.readPortable(saved);
   const rec = back.index.audio[pkey];
   ok(rec.kind === 'recorded' && rec.sync === 'none' && back.index.blobs[back.index.files[rec.file]].mime === 'audio/mpeg', 'portable: read back: recorded record, MP3 blob');
+  ok(rec.startOffset === MP3.startOffset && rec.processing === 'trim-45-loud-20-cap-v1', 'portable: read back: startOffset and processing on the record');
+  // 実行系：自動再生はその段階の音声を startOffset から鳴らす（currentTime）、タイムラインにも出る
+  const pp = await ctx.newPage();
+  await pp.setContent(saved);
+  await pp.waitForFunction(() => window.DECK && DECK.ready);
+  const rt = await pp.evaluate(async (k) => {
+    window.__plays = []; HTMLMediaElement.prototype.play = function(){ window.__plays.push(this.currentTime); return Promise.resolve(); };
+    const g = DECK.timeline().find((x) => x.key === k);
+    DECK.go(g.i, g.k, true); DECK.autoplay(true);
+    await new Promise((r) => setTimeout(r, (g.lead + 0.4) * 1000));
+    DECK.autoplay(false);
+    return { offset: g.audioOffset, plays: window.__plays, entry: DECK.AUDIO[k] && DECK.AUDIO[k].startOffset };
+  }, pkey);
+  ok(rt.offset === MP3.startOffset && rt.entry === MP3.startOffset && rt.plays.length && Math.abs(rt.plays[0] - MP3.startOffset) < 1e-6, `runtime: autoplay starts the step's audio at startOffset (${JSON.stringify(rt.plays)})`);
+  await pp.close();
   ok(!(await PF.isStale(rec, parseNarration(back.files['narration.md'] ? new TextDecoder().decode(back.files['narration.md']) : '').find((s) => `${s.slideKey}:${s.stepKey}` === pkey))), 'portable: read back: the take is up to date (inputHash)');
 
   // ---------------------------------------------------------------- 3. TTS の窓（lab/tts-helper.html。?stub=1 でモデルを取らない）

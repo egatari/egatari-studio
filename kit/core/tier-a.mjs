@@ -23,7 +23,7 @@ import { parse as parseHtml } from 'parse5';
 import { FORMAT } from './format.mjs';
 import {
   readPortable, sha256Hex, sourceSha256, cmpCodePoint, mimeOf, htmlSafeJson, toBase64, parseJsonStrict, manifestFromAudio, inputHash,
-  readableStep, readableStepOrder, extensionsFrom, excludedReason, LIMITS, RE, KNOWN, copyUnknown, validateDeckMeta,
+  readableStep, readableStepOrder, extensionsFrom, excludedReason, LIMITS, RE, KNOWN, copyUnknown, validateDeckMeta, isOffset,
 } from './portable.mjs';
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
 import { isJapanese, LATIN_MAX, parseRange, fontFaceCss } from './build-core.mjs';
@@ -306,6 +306,8 @@ async function run(original, filesIn, opts) {
     else rcd.inputHash = await inputHash(segByKey.get(k));
     if (rcd.kind === 'tts') rcd.recipe = isObj(v.recipe) ? v.recipe : { engine: String(v.engine || 'unknown'), model: 'unknown', voice: {}, seed: null, dictionary: null, processing: 'unknown' };
     if (v.digest) rcd.recipeDigest = String(v.digest);
+    if (typeof v.processing === 'string') rcd.processing = v.processing;
+    if (isOffset(v.startOffset) && v.startOffset > 0) rcd.startOffset = v.startOffset;
     copyUnknown(rcd, o, KNOWN.audio);
     newAudio[k] = rcd;
     audioChanged.push(k);
@@ -415,7 +417,7 @@ async function run(original, filesIn, opts) {
   });
   for (const k of marksChanged) edit('deck-marks', (t) => jsonSet(t, [k], newMarks[k], Object.keys(newMarks)));
   for (const k of timingChanged) edit('deck-timing', (t) => jsonSet(t, [k], newT[k], Object.keys(newT)));
-  const deckAudio = (a) => { const id = fileMap[a.file]; return { src: SCHEME + id, mime: blobs[id].mime, dur: a.dur, cues: a.sync === 'none' ? [] : a.cues, ...(a.sync && a.sync !== 'auto' ? { sync: a.sync } : {}) }; };
+  const deckAudio = (a) => { const id = fileMap[a.file]; return { src: SCHEME + id, mime: blobs[id].mime, dur: a.dur, cues: a.sync === 'none' ? [] : a.cues, ...(a.sync && a.sync !== 'auto' ? { sync: a.sync } : {}), ...(isOffset(a.startOffset) && a.startOffset > 0 ? { startOffset: a.startOffset } : {}) }; };
   for (const k of audioChanged) edit('deck-audio', (t) => jsonSet(t, [k], own(newAudio, k) ? deckAudio(newAudio[k]) : undefined, Object.keys(newAudio)));
   if (srcSha !== ix.sourceSha256) edit('deck-meta', (t) => jsonSet(t, ['sourceSha256'], srcSha));
   if (identity) edit('deck-meta', (t) => jsonSet(t, ['docId'], identity.docId));

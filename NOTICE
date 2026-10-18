@@ -10,9 +10,16 @@ KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
 The default reference voices (tts/voices/bob*.wav, alice*.wav) are synthetic voices
 made with Qwen3-TTS (Apache-2.0), Irodori-TTS (MIT) and VoxCPM2 (Apache-2.0); see
 tts/voices/README.md. They may be redistributed with this project.
-The editor app bundles lame-wasm 0.3.0 (MIT, https://github.com/dairyisscary/lame-wasm),
-which contains object code of the LAME MP3 encoder (LGPL-2.0, https://lame.sourceforge.io/;
-lame-wasm contains no modifications of LAME). Its browser TTS window loads onnxruntime-web
+The MP3 encoder of the editor app is not part of this repository's code. The hosted editor
+ships the unmodified file dist/index.js of the npm package lame-wasm 0.3.0 (MIT,
+https://www.npmjs.com/package/lame-wasm, source https://github.com/dairyisscary/lame-wasm)
+as vendor/lame-wasm/index.js, with its LICENSE, package.json and README next to it. That file
+contains object code of the LAME MP3 encoder 3.100 as packaged by nixpkgs (LGPL-2.0,
+https://lame.sourceforge.io/, source https://sourceforge.net/projects/lame/files/lame/3.100/).
+The editor loads it only when a take is encoded, through the module interface init() of
+lame-wasm; you may replace vendor/lame-wasm/index.js with another build of lame-wasm or of LAME
+that offers the same interface. The single-file editor (editor.html) does not contain it
+and saves WAV instead. Its browser TTS window loads onnxruntime-web
 (MIT), transformers.js (Apache-2.0) and kokoro-js (Apache-2.0) from jsDelivr, and model weights
 from Hugging Face (Irodori-TTS and Semantic-DACVAE: MIT; Kokoro-82M: Apache-2.0); these are
 not part of this repository.

@@ -9,10 +9,11 @@
 // 取り直し（take）は段階ごとにメモリの上に置き、「この音声を使う」で作業場所に書くまで（または別のデッキを開くまで）残す。
 // 持ち運べる 1 ファイルでは作業場所はメモリの上なので、「この音声を使う」の後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる
 //
-//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}})
+//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?()})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
+import { MP3 } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -35,6 +36,7 @@ const STR = {
     made: (kind, d) => kind + ' · ' + d, gain: (g) => '音量の調整 ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: '録音・合成している間、スライドはクリックを受けません',
     following: (k) => '録音が終わるまで、表示中の段階（' + k + '）には切り替えません',
     other: (k) => 'スライドで表示中の段階（' + k + '）とは別の段階です。スライドを動かすと切り替わります',
+    wavNote: '（MP3 のエンコーダを読み込めないので WAV で保存しました。1 ファイル版には MP3 のエンコーダが入っていません）',
   },
   en: {
     title: 'Audio', close: 'Close', step: 'Step ', slide: (n, t) => 'Slide ' + n + ': ' + t, none: 'No audio for this step yet',
@@ -51,6 +53,7 @@ const STR = {
     made: (kind, d) => kind + ' · ' + d, gain: (g) => 'level adjusted ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: 'The slides do not take clicks while recording or generating',
     following: (k) => 'Stays on this step until recording ends (showing ' + k + ')',
     other: (k) => 'This is not the step shown on the slide (' + k + '). Move the slides to switch',
+    wavNote: ' (saved as WAV: the MP3 encoder could not be loaded; the single-file editor has no MP3 encoder)',
   },
 };
 
@@ -438,18 +441,21 @@ export function createAudioPanel(o) {
     if (!live()) return;
     setBusy(L.using);
     try {
-      const mp3 = await encodeMp3(t.pcm);
-      const file = takeFileName(t.kind, await sha256Hex(mp3));
+      // MP3 のエンコーダ（LAME）は別のファイルを使うときだけ読み込む（o.loadMp3。app/mp3-loader.js）。読み込めない（1 ファイル版など）なら WAV
+      const init = o.loadMp3 ? await o.loadMp3() : null;
+      if (!live()) return;
+      const bytes = init ? await encodeMp3(t.pcm, { init }) : encodeWav(t.pcm, t.sr);
+      const file = takeFileName(t.kind, await sha256Hex(bytes), init ? 'mp3' : 'wav');
       const man = await readJson(ws, 'audio/manifest.json');
       if (man.bad) throw new Error('audio/manifest.json is not JSON');
       const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
       const order = parseNarration(narr || '').map((s) => `${s.slideKey}:${s.stepKey}`);
-      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe });
+      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: PROCESSING, startOffset: init ? MP3.startOffset : 0 });
       const next = setManifestEntry(man.text, key, entry, order);
       if (!live()) return;
       if (man.text !== null) await ws.backup('audio/manifest.json', { max: READ_LIMITS.json });
       if (!live()) return;
-      if (!(await ws.exists('audio/' + file))) await ws.writeBytes('audio/' + file, mp3, { live });
+      if (!(await ws.exists('audio/' + file))) await ws.writeBytes('audio/' + file, bytes, { live });
       // 書く直前に：manifest が読んだときのままか（ほかの道具が書いていれば上書きしない）
       if ((await ws.readText('audio/manifest.json', { max: READ_LIMITS.json })) !== man.text) throw new Error('audio/manifest.json changed while saving (reload)');
       if (!live()) return;
@@ -461,7 +467,7 @@ export function createAudioPanel(o) {
       if (o.afterWrite) await o.afterWrite();
       if (!live()) return;
       if (view && view.key === key) show(key, view.i); else follow(true);
-      ui.toast(portable ? L.usedPortable : L.used(file));
+      ui.toast((portable ? L.usedPortable : L.used(file)) + (init ? '' : L.wavNote), init ? '' : 'warn');
     } catch (e) {
       busyMsg = null; if (view) draw(view);
       say(L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e)), true);

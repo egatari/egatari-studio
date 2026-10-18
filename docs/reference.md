@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=c0825dbf26c83404 -->
+<!-- i18n: pair=reference.ja.md sha256=b978b2cbf4454602 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -17,7 +17,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `narration.md` | build, TTS, export | narration per step |
 | `timeline.json` | build | per-step timing overrides |
 | `macros.tex` | build | KaTeX macros (`\newcommand`, `\renewcommand`, `\def`; added to the default macros) |
-| `audio/manifest.json` | build | written by `tts/synth.py` and the editor app's Audio panel (each step: `file`, `dur`, `cues`, `sync`, `kind`, `inputHash`, for TTS `recipe`) |
+| `audio/manifest.json` | build | written by `tts/synth.py` and the editor app's Audio panel (each step: `file`, `dur`, `cues`, `sync`, `kind`, `inputHash`, for TTS `recipe`; optional `processing` and `startOffset`, the encoder delay at which playback starts) |
 | `voice.json` | TTS | voices, language, engine |
 | `figs/*.svg`, `data/*.json` | build | for `{{FIG:…}}` / `{{JSON:…}}` |
 | `components/<name>/index.js` | build | deck-local components (found before the repository's) |
@@ -409,7 +409,7 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--force` | ignore `.render-cache.json` |
 | `--captions` | burn the narration captions into the video (`?captions=1`); part of the cache key |
 
-Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
+Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
 
 `node render/export-canon.mjs <deckdir | built.html> --render <dir> --out <bundle> [--md name.md] [--canon dir]`
 

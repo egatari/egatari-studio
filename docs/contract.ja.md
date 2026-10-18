@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=cb79e28b7007a4ea -->
+<!-- i18n: pair=contract.md sha256=20d3cf7107cf5de7 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -91,6 +91,7 @@ dur = override.dur
 
 - anim：その段階の動きの長さ（組み込みの効果と部品の `duration(k)` の最大）。段階 0 はスライドの切り替え（0.35 s）、前のスライドからのモーフ（§8）なら 0.9 s を含む
 - audio：TTS の長さ（`audio/manifest.json`）。既定 lead = 0.25 s、pad_after = 0.6 s、音声のない段階の hold = 1.2 s
+- `startOffset`（符号化の遅れの秒数。編集アプリの MP3 なら 0.025057。format spec §5.2）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と区切りの時刻の 0 とする（自動再生も `render/render.mjs` も）
 - 調整は `timeline.json` に例外だけを書く：`{"更新の式:2": {"pad_after": 1.0}, "更新の式:concl": {"hold": 2}}`
 - 部品の `cues(k)` と音声の cue 時刻（`{cue}` の区切りの分だけ）が両方あり、数が合うとき、部品の時刻は区分線形に伸縮して音声に合わせる
 - 注目の演出（§7）：音声のない段階では `hold` の代わりに `max(hold, 印の終わり + pad_after)` を使う。音声のある段階では印は音声の中に収まるので dur は変わらない。`anim` は印を含まない。印を含めた動きの終わりは `motion = max(anim, 印の終わり)`（動画の書き出しはここまでをコマで撮る）

@@ -1,12 +1,14 @@
-// MP3 にする（LAME を WebAssembly にしたもの：npm の lame-wasm。版は package.json で固定。LAME は LGPL、包みは MIT。NOTICE）
-// 編集アプリ（app/audio-panel.js）と試験（tools/test-audio-core.mjs）が使う。Node とブラウザのどちらでも動き、ネットワークも fs も使わない
-//   encodeMp3(pcm, {sr, kbps}) → Promise<Uint8Array>   モノラルの Float32（-1〜1）→ CBR の MP3（設定は kit/core/audio-core.mjs の MP3）
-import { init } from 'lame-wasm';
+// MP3 にする（LAME を WebAssembly にしたもの：npm の lame-wasm。版は package.json で固定。LAME は LGPL、包みは MIT。NOTICE）。
+// LAME はこのリポジトリ（MIT）のコードに組み込まない：呼び手が lame-wasm の init を渡す。編集アプリは配信版の別のファイル
+// （dist/vendor/lame-wasm/index.js。手を加えない npm のもの）を、MP3 にするときだけ読み込む（app/mp3-loader.js）。
+// 試験（tools/test-audio-core.mjs）は node_modules の lame-wasm を渡す。Node とブラウザのどちらでも動き、ネットワークも fs も使わない
+//   encodeMp3(pcm, {init, sr, kbps}) → Promise<Uint8Array>   モノラルの Float32（-1〜1）→ CBR の MP3（設定は kit/core/audio-core.mjs の MP3）
 import { MP3 } from './audio-core.mjs';
 
 const CHUNK = 1152 * 64;   // 一度に渡す標本数（LAME の出力の場所が大きくなりすぎない）
 
-export async function encodeMp3(pcm, { sr = MP3.sr, kbps = MP3.kbps } = {}) {
+export async function encodeMp3(pcm, { init, sr = MP3.sr, kbps = MP3.kbps } = {}) {
+  if (typeof init !== 'function') throw new TypeError('encodeMp3: pass the init function of lame-wasm');
   const lame = await init({ channels: 1, sampleRate: sr, kilobitRate: kbps });
   const parts = [];
   try {

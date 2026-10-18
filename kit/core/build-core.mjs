@@ -680,6 +680,7 @@ export function build(env0, srcPath, opts = {}) {
   const timingPath = P.join(deckDir, 'timeline.json');
   const timing = env.exists(timingPath) && inDeck(timingPath) ? JSON.parse(env.readText(timingPath)) : {};
   const manPath = P.join(deckDir, 'audio', 'manifest.json');
+  const offsetOk = (x) => typeof x === 'number' && Number.isFinite(x) && x > 0 && x <= 1;
   const audio = {};
   if (!opts.noAudio && env.exists(manPath) && inDeck(manPath)) {
     const man = JSON.parse(env.readText(manPath));
@@ -694,11 +695,14 @@ export function build(env0, srcPath, opts = {}) {
         if (src == null) continue;
         audio[k] = { src, dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
         if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
+        if (offsetOk(v.startOffset)) audio[k].startOffset = v.startOffset;
         continue;
       }
       audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
       // 区切りをまだ置いていない録音（sync: "none"。編集アプリの音声の板）は同期しない（持ち運べる形式と同じ。format spec §5）
       if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
+      // 符号化の遅れ（MP3 の先頭。format spec §5.2 startOffset）：実行系はこの時刻から鳴らし、そこを 0 秒とみなす
+      if (offsetOk(v.startOffset)) audio[k].startOffset = v.startOffset;
     }
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');

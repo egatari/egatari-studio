@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ac68e306c989ee0b -->
+<!-- i18n: pair=reference.md sha256=b93aad5d5bd5ccd6 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -17,7 +17,7 @@
 | `narration.md` | build・TTS・書き出し | 段階ごとの口述原稿 |
 | `timeline.json` | build | 段階の長さの例外 |
 | `macros.tex` | build | KaTeX のマクロ（`\newcommand`、`\renewcommand`、`\def`。既定のマクロに足す） |
-| `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（段階ごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`） |
+| `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（段階ごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
 | `components/<名前>/index.js` | build | デッキ専用の部品（リポジトリより先に探す） |
@@ -409,7 +409,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `--force` | `.render-cache.json` を無視する |
 | `--captions` | 口述原稿の字幕を映像に焼き込む（`?captions=1`）。キャッシュの鍵に入る |
 
-出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
+出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
 
 `node render/export-canon.mjs <deckdir | 組んだ.html> --render <フォルダ> --out <バンドル> [--md 名前.md] [--canon フォルダ]`
 

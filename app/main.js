@@ -11,6 +11,7 @@ import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
 import { createAudioPanel } from './audio-panel.js';
 import { createTtsClient } from './tts-client.js';
+import { loadLame } from './mp3-loader.js';
 import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
@@ -317,6 +318,7 @@ const tts = createTtsClient({
 });
 const audio = createAudioPanel({
   ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
+  loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
@@ -939,6 +941,7 @@ window.__APP_TEST = {
   ui: () => ui.state(),
   audio: () => audio.state(),
   audioPanel: audio,
+  mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
   tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);

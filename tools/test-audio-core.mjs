@@ -13,7 +13,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as A from '../kit/core/audio-core.mjs';
-import { encodeMp3 } from '../kit/core/mp3.mjs';
+import { encodeMp3 as encodeMp3With } from '../kit/core/mp3.mjs';
+import { init as lameInit } from 'lame-wasm';
 import { parseYomiTerms, applyYomi } from '../kit/core/yomi.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { tierA, scanLayout } from '../kit/core/tier-a.mjs';
@@ -28,6 +29,8 @@ const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(pa
 fs.rmSync(work, { recursive: true, force: true });
 fs.mkdirSync(work, { recursive: true });
 const tests = [];
+// MP3：node_modules の lame-wasm を渡す（編集アプリは別のファイルとして読み込む。app/mp3-loader.js）
+const encodeMp3 = (pcm) => encodeMp3With(pcm, { init: lameInit });
 const ok = (name, fn) => tests.push([name, fn]);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const has = (cmd, args) => { const r = spawnSync(cmd, args, { encoding: 'utf8' }); return r.status === 0; };
@@ -150,7 +153,13 @@ ok('MP3：LAME（64 kbps・44.1 kHz・モノラル）で作り、戻した長さ
     const back = A.decodeWav(fs.readFileSync(out));
     const extra = back.channels[0].length / back.sr - take.dur;
     assert.ok(extra >= 0 && extra < 0.08, `decoded length ${(back.channels[0].length / back.sr).toFixed(3)} s vs ${take.dur} s (encoder delay and padding)`);
-    console.log(`    ${mp3.length} bytes, decoded +${(extra * 1000).toFixed(0)} ms`);
+    // 先頭の遅れ：元の音と戻した音のずれ（相互相関）が MP3.delaySamples（576 + 529）。これを startOffset にする
+    const x = take.pcm, y = back.channels[0];
+    let best = -1, bv = -Infinity;
+    for (let lag = 0; lag < 3000; lag++) { let c = 0; for (let j = 2205; j < Math.min(x.length, 2205 + 22050); j += 2) c += x[j] * (y[j + lag] || 0); if (c > bv) { bv = c; best = lag; } }
+    assert.ok(Math.abs(best - A.MP3.delaySamples) <= 1, `decoder output starts ${best} samples late (expected ${A.MP3.delaySamples})`);
+    assert.equal(A.MP3.startOffset, Math.round((A.MP3.delaySamples / 44100) * 1e6) / 1e6);
+    console.log(`    ${mp3.length} bytes, decoded +${(extra * 1000).toFixed(0)} ms, start delay ${best} samples = startOffset ${A.MP3.startOffset} s`);
   }
 });
 
@@ -193,10 +202,13 @@ ok('記録：takeEntry・setManifestEntry・audioState（最新・古い・分�
   const k0 = 's-k3f9q2:0', k1 = 's-k3f9q2:1';
   const h0 = await PF.inputHash(s0);
   const rec = A.takeEntry({ file: 'rec_0123456789abcdef.mp3', dur: 2.3456, kind: 'recorded', inputHash: h0 });
-  assert.deepEqual(rec, { file: 'rec_0123456789abcdef.mp3', dur: 2.346, cues: [], sync: 'none', kind: 'recorded', inputHash: h0 });
+  assert.deepEqual(rec, { file: 'rec_0123456789abcdef.mp3', dur: 2.346, cues: [], sync: 'none', kind: 'recorded', inputHash: h0, processing: 'trim-45-loud-20-cap-v1' });
+  // 人を特定しうる記録（機器の名前・元のファイル名）は書かない（§3.6）：決まった項目だけ
+  const imp = A.takeEntry({ file: 'imp_0123456789abcdef.mp3', dur: 1, kind: 'imported', inputHash: h0, startOffset: A.MP3.startOffset, device: 'Built-in Microphone', name: 'my-voice.wav' });
+  assert.deepEqual(Object.keys(imp), ['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'processing', 'startOffset']);
   const recipe = { engine: 'irodori-web', model: 'm', voice: { expert: 'bob' }, seed: 42, dictionary: 'x'.repeat(64), processing: A.PROCESSING };
   const tts = A.takeEntry({ file: 'tts_a.mp3', dur: 3, cues: [0.5, 1.2], kind: 'tts', inputHash: await PF.inputHash(s1), recipe });
-  assert.equal(tts.sync, 'auto'); assert.deepEqual(tts.cues, [0.5, 1.2]); assert.equal(tts.recipe.processing, 'trim-45-loud-20-v1');
+  assert.equal(tts.sync, 'auto'); assert.deepEqual(tts.cues, [0.5, 1.2]); assert.equal(tts.recipe.processing, 'trim-45-loud-20-cap-v1'); assert.equal(tts.processing, 'trim-45-loud-20-cap-v1');
   assert.throws(() => A.takeEntry({ file: 'x.mp3', dur: 1, kind: 'tts', inputHash: null }), /recipe/);
   assert.throws(() => A.takeEntry({ file: 'x.mp3', dur: 0, kind: 'recorded', inputHash: null }), /empty/);
   // 索引の記録の Schema の規則（kit/core/portable.mjs の validateIndex の audio の部分と同じ）を満たす
@@ -227,6 +239,9 @@ ok('記録：takeEntry・setManifestEntry・audioState（最新・古い・分�
   assert.equal(await A.audioState(synth, edited[0], { voice }), 'stale');
   assert.equal(await A.audioState(synth, s0, null), 'unknown', 'no TTS record: not reported');
   assert.equal(A.takeFileName('recorded', 'ab'.repeat(32)), 'rec_abababababababab.mp3');
+  // ブラウザの Irodori のシードは 0（手元の mlx のサーバーと同じ）。recipe に書く
+  const { IRODORI_DEFAULTS } = await import('../lab/tts-engine.mjs');
+  assert.equal(IRODORI_DEFAULTS.seed, 0);
 });
 
 // ---------------------------------------------------------------- 5. 段 A で音声を替える
@@ -247,7 +262,7 @@ ok('段 A：持ち運べる 1 ファイルの 1 つの段階の音声を録音�
   const mp3 = await encodeMp3(take.pcm);
   const file = A.takeFileName('recorded', await PF.sha256Hex(mp3));
   ws.set('audio/' + file, mp3);
-  const entry = A.takeEntry({ file, dur: take.dur, kind: 'recorded', inputHash: await PF.inputHash(seg) });
+  const entry = A.takeEntry({ file, dur: take.dur, kind: 'recorded', inputHash: await PF.inputHash(seg), startOffset: A.MP3.startOffset });
   ws.set('audio/manifest.json', enc.encode(A.setManifestEntry(dec.decode(ws.get('audio/manifest.json')), key, entry, segs.map((s) => `${s.slideKey}:${s.stepKey}`))));
   const a = await tierA(p.html, ws);
   assert.ok(a.ok, `[${a.code}] ${a.reason}`);
@@ -264,6 +279,10 @@ ok('段 A：持ち運べる 1 ファイルの 1 つの段階の音声を録音�
   for (const k of Object.keys(r.index.audio)) if (k !== key) assert.deepEqual(back.index.audio[k], r.index.audio[k], k);
   const L = scanLayout(a.html), da = JSON.parse(a.html.slice(L.blocks.get('deck-audio').cStart, L.blocks.get('deck-audio').cEnd));
   assert.equal(da[key].mime, 'audio/mpeg'); assert.equal(da[key].sync, 'none'); assert.equal(da[key].dur, take.dur);
+  assert.equal(da[key].startOffset, A.MP3.startOffset, 'deck-audio carries startOffset'); assert.equal(rec.startOffset, A.MP3.startOffset); assert.equal(rec.processing, A.PROCESSING);
+  assert.deepEqual(PF.validateDeckAudio(da), []);
+  // 展開した manifest にも残り、もう一度保存しても同じ記録（変わっていない記録として扱う）
+  assert.equal(JSON.parse(PF.manifestFromAudio(back.index.audio)).segments[key].startOffset, A.MP3.startOffset);
   // 口述原稿を直すと古い（音声は残る）
   const narr2 = dec.decode(ws.get('narration.md')).replace(seg.turns[0].raw, seg.turns[0].raw + '（直した）');
   ws.set('narration.md', enc.encode(narr2));

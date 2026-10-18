@@ -23,9 +23,14 @@ export const SR = 44100;                 // tts/core.py の normalize_level・co
 export const PAUSE_MS = 350;             // tts/core.py の PAUSE_MS
 export const TRIM = Object.freeze({ thresholdDb: -45, keepS: 0.05, windowS: 0.02 });   // TRIM_THRESHOLD・TRIM_KEEP_S（窓は silenceremove の既定）
 export const TARGET = Object.freeze({ lufs: -20, tpDb: -1.5, lra: 11 });               // TARGET_LUFS・TARGET_TP_DB・TARGET_LRA
-export const MP3 = Object.freeze({ kbps: 64, sr: SR, channels: 1 });                   // 組み立ての AAC（64 kbps・モノラル）と同じ大きさの見当
+// MP3：組み立ての AAC（64 kbps・モノラル）と同じ大きさの見当。delaySamples：LAME の符号化の遅れ 576 と、復号の遅れ 529（LAME の
+// 情報フレームを書かないので、ブラウザと ffmpeg の復号器は先頭のこれだけを余分に出す。tools/test-audio-core.mjs と test-audio.mjs が測る）。
+// その秒数を記録の startOffset（format spec §5.2）に書き、実行系はそこから鳴らす
+export const MP3 = Object.freeze({ kbps: 64, sr: SR, channels: 1, delaySamples: 576 + 529, startOffset: Math.round(((576 + 529) / SR) * 1e6) / 1e6 });
 // 後処理の版（記録の recipe.processing。数を変えたら名前も変える。format spec §5.2 の例と同じ形）
-export const PROCESSING = 'trim-45-loud-20-v1';
+// tts/core.py と同じ数だが、トゥルーピークが -1.5 dBTP を超えるところで ffmpeg の loudnorm は動的な処理に切り替え、ここは一律のゲインを
+// 止める（cap）。振る舞いが違うので、tts/core.py の音とは別の名前にする
+export const PROCESSING = 'trim-45-loud-20-cap-v1';
 // 1 つの音声の上限：長さ（秒）と、読む・書くバイト数（取り込む音声のファイル・作業場所の音声）
 export const AUDIO_LIMITS = Object.freeze({ maxSeconds: 600, fileBytes: 64 * 1048576 });
 
@@ -242,7 +247,9 @@ export function decodeWav(bytes) {
 // ---------------------------------------------------------------- 記録（audio/manifest.json の段階。format spec §5：kind・inputHash・recipe・sync）
 // source：{kind: 'recorded' | 'tts' | 'imported', recipe?（tts のとき。engine・model・voice・seed・dictionary・processing）}
 // cues：{cue} の区切りの時刻（TTS で部分ごとに作ったとき）。録音・取り込みは区切りを置いていないので sync "none"（cues は空）
-export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = null }) {
+// processing：後処理の版（すべての種類。§5.2）。startOffset：符号化の遅れ（MP3 のとき。0 なら書かない）。
+// 機器の名前・元のファイル名など人を特定しうる記録は書かない（§3.6。ここに渡す項目はこれだけ）
+export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = null, processing = PROCESSING, startOffset = 0 }) {
   if (!['recorded', 'tts', 'imported'].includes(kind)) throw new Error('bad take kind: ' + kind);
   if (!(typeof dur === 'number' && dur > 0)) throw Object.assign(new Error('the take is empty (no sound after trimming silence)'), { code: 'audio-empty' });
   const e = { file, dur: round3(dur), cues: Array.isArray(cues) ? cues.slice() : [] };
@@ -251,6 +258,8 @@ export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = nu
   e.kind = kind;
   e.inputHash = typeof inputHash === 'string' ? inputHash : null;
   if (kind === 'tts') e.recipe = recipe;
+  if (typeof processing === 'string') e.processing = processing;
+  if (typeof startOffset === 'number' && startOffset > 0 && startOffset <= 1) e.startOffset = startOffset;
   return e;
 }
 // manifest の文字列（なければ null）に、段階 key の記録を入れる（ほかの段階の記録はそのまま。並びは order（口述原稿の段階の順）に）。
@@ -273,7 +282,7 @@ export function setManifestEntry(text, key, entry, order = []) {
   return JSON.stringify(man, null, 1) + '\n';
 }
 // 音声のファイルの名前：中身の sha256 の先頭 16 字（同じ中身は同じ名前。前の取り直しのファイルは消さない：tts/synth.py と同じ）
-export const takeFileName = (kind, sha256) => `${kind === 'tts' ? 'tts' : kind === 'imported' ? 'imp' : 'rec'}_${String(sha256).slice(0, 16)}.mp3`;
+export const takeFileName = (kind, sha256, ext = 'mp3') => `${kind === 'tts' ? 'tts' : kind === 'imported' ? 'imp' : 'rec'}_${String(sha256).slice(0, 16)}.${ext}`;
 
 // tts/synth.py の音声の digest（kit/narration.mjs の segDigest と同じ値。ブラウザでも作れるように Web Crypto で）
 export const segDigest = async (seg, voice = {}) => (await sha256Hex(JSON.stringify({ turns: seg.turns.map((t) => [t.role, t.ttsParts]), voice }))).slice(0, 12);

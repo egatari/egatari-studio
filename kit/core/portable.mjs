@@ -350,6 +350,8 @@ function generatorCheck(g, w, e) {
   for (const k of ['name', 'version']) if (!(typeof g[k] === 'string' && g[k].length)) e.push(`${w}.${k}: not a non-empty string`);
 }
 const numArr = (a) => Array.isArray(a) && a.every((x) => typeof x === 'number' && Number.isFinite(x) && x >= 0);
+// 符号化の遅れ（§5.2 startOffset：秒、0〜1）
+export const isOffset = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
 function audioRecordCheck(r, w, e) {
   if (!isObj(r)) { e.push(`${w}: not an object`); return; }
   for (const k of ['file', 'dur', 'cues', 'kind', 'inputHash']) if (!own(r, k)) e.push(`${w}: missing "${k}"`);
@@ -383,6 +385,8 @@ function audioRecordCheck(r, w, e) {
     }
   }
   if (own(r, 'recipeDigest') && typeof r.recipeDigest !== 'string') e.push(`${w}.recipeDigest: not a string`);
+  if (own(r, 'processing') && typeof r.processing !== 'string') e.push(`${w}.processing: not a string`);
+  if (own(r, 'startOffset') && !isOffset(r.startOffset)) e.push(`${w}.startOffset: not a number from 0 to 1`);
   if (own(r, 'alternatives')) {
     if (!Array.isArray(r.alternatives)) e.push(`${w}.alternatives: not an array`);
     else r.alternatives.forEach((a, j) => {
@@ -472,6 +476,7 @@ export function validateDeckAudio(a) {
     if (own(r, 'sync') && !['auto', 'manual', 'none'].includes(r.sync)) e.push(`${w}.sync: not auto, manual or none`);
     if (r.sync === 'none' && Array.isArray(r.cues) && r.cues.length) e.push(`${w}: sync "none" with cues`);
     if (own(r, 'mime') && !(typeof r.mime === 'string' && /^audio\/[a-z0-9.+-]+$/.test(r.mime))) e.push(`${w}.mime: not an audio media type`);
+    if (own(r, 'startOffset') && !isOffset(r.startOffset)) e.push(`${w}.startOffset: not a number from 0 to 1`);
   }
   return e;
 }
@@ -691,6 +696,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     }
     if (rcd.kind === 'tts') rcd.recipe = isObj(v.recipe) ? v.recipe : recipeOf(sj, v);
     if (v.digest) rcd.recipeDigest = String(v.digest);
+    if (typeof v.processing === 'string') rcd.processing = v.processing;
+    if (isOffset(v.startOffset) && v.startOffset > 0) rcd.startOffset = v.startOffset;
     audio[key] = rcd;
   }
   if (env.audioFailed && env.audioFailed()) warnings.push(`${LOG}: could not compress audio to AAC (no ffmpeg?); WAV is embedded and the file is large`);
@@ -833,7 +840,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
 export const KNOWN = Object.freeze({
   index: KNOWN_INDEX,
   metadata: new Set(['title', 'lang', ...META_KEYS]),
-  audio: new Set(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'recipe', 'recipeDigest', 'alternatives']),
+  audio: new Set(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'recipe', 'recipeDigest', 'alternatives', 'processing', 'startOffset']),
   component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path']),
   theme: new Set(['name', 'version', 'sha256', 'source', 'path']),
   blob: new Set(['mime', 'bytes', 'sha256', 'chunks']),
@@ -1190,6 +1197,8 @@ export function manifestFromAudio(audio) {
     e.kind = a.kind; e.inputHash = a.inputHash;
     if (a.sync && a.sync !== 'auto') e.sync = a.sync;
     if (a.recipe) e.recipe = a.recipe;
+    if (typeof a.processing === 'string') e.processing = a.processing;
+    if (isOffset(a.startOffset) && a.startOffset > 0) e.startOffset = a.startOffset;
     segments[k] = e;
   }
   return JSON.stringify({ segments }, null, 1) + '\n';

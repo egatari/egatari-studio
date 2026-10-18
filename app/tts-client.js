@@ -7,7 +7,7 @@
 // connect-src 'self'）のままにし、モデルとライブラリ（jsDelivr・Hugging Face、版は固定）を取るのはその窓だけにする。
 // 窓に渡すのは読む文（読み辞書の後）と声の名前だけ、受け取るのは音（PCM）だけ。答えは、開いた窓（e.source）・同じ origin・
 // 送った番号のものだけを受け、大きさ（長さ・標本化周波数）を確かめる。初めて開く前に、取得する大きさを見せて確かめる（confirm）。
-// 日本語のデッキは Irodori-TTS 500M-v3（声は voice.json の bob・alice、シード 42）、ほかは Kokoro-82M。WebGPU が要る。
+// 日本語のデッキは Irodori-TTS 500M-v3（声は voice.json の bob・alice、シード 0）、ほかは Kokoro-82M。WebGPU が要る。
 // 1 ファイル版（file://）では使えない（窓のページがない）
 // test() が差し替え（{info, synth}）を返せば、それを使う（試験：モデルを取りに行かない）
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
@@ -23,8 +23,8 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
   const waiting = new Map();
   const engineOf = (deckLang) => (/^ja\b/i.test(deckLang || '') ? 'irodori' : 'kokoro');
   const label = (engine) => engine === 'irodori'
-    ? (EN ? `Irodori-TTS 500M-v3 (Japanese, with the reading dictionary, seed 42). First use downloads about ${GB(IRODORI_BYTES.fp16)} GB (fp32 GPUs: ${GB(IRODORI_BYTES.fp32)} GB), later from the browser cache. Runs on this computer's GPU in a separate window`
-      : `Irodori-TTS 500M-v3（日本語・読み辞書つき・シード 42）。初回に約 ${GB(IRODORI_BYTES.fp16)} GB を取得（fp16 の使えない GPU は ${GB(IRODORI_BYTES.fp32)} GB）、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`)
+    ? (EN ? `Irodori-TTS 500M-v3 (Japanese, with the reading dictionary, seed 0). First use downloads about ${GB(IRODORI_BYTES.fp16)} GB (fp32 GPUs: ${GB(IRODORI_BYTES.fp32)} GB), later from the browser cache. Runs on this computer's GPU in a separate window`
+      : `Irodori-TTS 500M-v3（日本語・読み辞書つき・シード 0）。初回に約 ${GB(IRODORI_BYTES.fp16)} GB を取得（fp16 の使えない GPU は ${GB(IRODORI_BYTES.fp32)} GB）、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`)
     : (EN ? `Kokoro-82M (English). First use downloads about ${(KOKORO_BYTES / 1e6).toFixed(0)} MB, later from the browser cache. Runs on this computer's GPU in a separate window`
       : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`);
   const noGpu = EN ? 'WebGPU is not available (use a recent Chrome or Edge on a computer). Without it, record the narration here, or make the audio with tts/synth.py on the command line'

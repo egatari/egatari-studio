@@ -118,12 +118,12 @@ const bundleMain = async (res) => (await esbuild.build({
 let js = await bundleMain(resources);
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), lame-wasm (MIT) with LAME (LGPL-2.0, https://lame.sourceforge.io/), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
-for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll']) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll']) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
@@ -136,6 +136,12 @@ for (const [v, f] of Object.entries(lazyFiles)) {
   fontBytes += fs.statSync(f).size;
 }
 for (const f of ['LICENSE', 'NOTICE']) if (fs.existsSync(rel(f))) fs.copyFileSync(rel(f), path.join(ED, f + '.txt'));
+// MP3 のエンコーダ（npm の lame-wasm。LAME（LGPL）のオブジェクトコードを含む）：app.js には組み込まず、npm のファイルを手を加えずに
+// vendor/lame-wasm/ に写す（LICENSE・package.json・README も）。編集アプリは MP3 にするときだけ読み込み（app/mp3-loader.js）、使う人が
+// 同じ名前の別のファイルに置き換えてもよい（NOTICE）。1 ファイル版には入れない（WAV で保存する）
+const LAME_DIR = path.join(path.dirname(require.resolve('lame-wasm')), '..');   // dist/index.umd.cjs の上（exports が package.json を出さない）
+fs.mkdirSync(path.join(ED, 'vendor', 'lame-wasm'), { recursive: true });
+for (const [from, to] of [['dist/index.js', 'index.js'], ['LICENSE', 'LICENSE'], ['package.json', 'package.json'], ['README.md', 'README.md']]) fs.copyFileSync(path.join(LAME_DIR, from), path.join(ED, 'vendor', 'lame-wasm', to));
 // 試験ページ（lab/）：そのまま写す（静的なファイルだけ。重みは実行時に Hugging Face から取る）
 const LAB = path.join(OUT, 'lab');
 if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, filter: (f) => !path.basename(f).startsWith('.') });
