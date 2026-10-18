@@ -15,7 +15,8 @@
 //   （葉の数字）、ct-bit-3（系列の 3 桁目）、ct-cw-2（2 つ目の符号語の括弧と結果）、ct-run-1（1 つ目の画素のラン）、ct-scan（画素の並び）、ct-bad（表にない枝）、
 //   ct-crumb（窓の上の「ここまで」）
 // 深い木（黒の符号は 13 ビットまで）：入らなければ window 段の窓だけを見せ、たどる点を追って木を下から上へ流す（窓の位置も (k, t) だけで決まる）。
-//   窓の上に「黒の木：ここまで 0000 0110」。window="auto"（既定）は段の間が 44 px より狭くなるときだけ流す。まとめの段階はいちばん深い道の窓
+//   窓では木をたどる道を背骨にして並べ直し（道から分かれた枝は反対の側に三角で畳む）、窓を横にも動かして道を真ん中に置く。
+//   親が窓の上にある枝は描かない（入ってくる道だけを上の縁から描く）。窓の上に「黒の木：ここまで 0000 0110」。window="auto"（既定）は段の間が 44 px より狭くなるときだけ流す。まとめの段階はいちばん深い道の窓
 // JSON の labels で文言を変える：white black start read makeup term eol invalid incomplete dangling done scan crumb（{c} は色、{n} は桁）
 // 復号の規則は DECK.codetree（試験は tools/test-codetree.mjs）
 (function(){
@@ -186,13 +187,39 @@ D.define("m-codetree", class extends D.MotionElement {
       if (dec.error && dec.error.kind !== "dangling") paths[dec.error.color].push(dec.error.code);
     }
     var W = this.W, G = this.G, self = this;
+    var spine = function(sp, a){
+      var nodes = {}, ghosts = {}, maxLv = 1;
+      var put = function(o){ nodes[o.id] = o; maxLv = Math.max(maxLv, o.lv); return o; };
+      var r = put({id: "r", lv: 0, kind: "int", kids: [], c: null, code: "", x: 0});
+      var pc = sp ? sp.color : "white";
+      COLORS.forEach(function(c){
+        var n = m.trees[c], d = c === "white" ? -1 : 1;
+        r.kids.push(put({id: LETTER[c], c: c, code: "", lv: 1, parent: "r", leaf: null, kids: [], kind: c === pc ? "int" : "fan", x: d * a}));
+      });
+      var node = m.trees[pc], o = nodes[LETTER[pc]], code = sp ? sp.code : "";
+      for (var i = 0; i < code.length && node && !node.leaf; i++){
+        var b = +code[i], dir = b ? 1 : -1, nx = null;
+        o.kind = "int";
+        [b, 1 - b].forEach(function(bb){
+          var kid = node.kids[bb], id = o.id + bb, x = o.x + (bb === b ? dir : -dir) * a;
+          if (!kid){ var g = {id: id, lv: o.lv + 1, ghost: true, kids: [], x: x}; ghosts[id] = g; return; }
+          var k2 = put({id: id, c: pc, code: kid.code, lv: o.lv + 1, parent: o.id, leaf: kid.leaf, kids: [], kind: kid.leaf ? "leaf" : "fan", x: x});
+          o.kids.push(k2);
+          if (bb === b) nx = k2;
+        });
+        node = node.kids[b]; o = nx;
+        if (!o) break;
+      }
+      return {nodes: nodes, slots: [], maxLv: maxLv, ghosts: ghosts};
+    };
     var make = function(depth){
       var nodes = {}, slots = [], maxLv = 1, ghosts = {};
       var open = function(c, n){
         if (n.leaf) return false;
         if (!both && c !== focus) return false;
-        if (n.code.length < depth) return true;
-        return paths[c].some(function(q){ return q.length > n.code.length && q.slice(0, n.code.length) === n.code; });
+        var onPath = paths[c].some(function(q){ return q.length > n.code.length && q.slice(0, n.code.length) === n.code; });
+        if (onPath) return true;
+        return n.code.length < depth;
       };
       var visit = function(c, n, id, lv, parent){
         var o = {id: id, c: c, code: n.code, lv: lv, parent: parent, leaf: n.leaf, kids: []};
@@ -214,15 +241,25 @@ D.define("m-codetree", class extends D.MotionElement {
     };
     var d = Math.max(1, this.props.depth), L = make(d);
     while (d > 1 && W / L.slots.length < 64){ d--; L = make(d); }
+    var avail = G.treeBottom - G.treeTop - 44, wp = String(this.props.window || "auto").trim(), nwin = /^\d+$/.test(wp) ? Math.max(2, +wp) : 0;
+    var follow = nwin ? L.maxLv > nwin : avail / L.maxLv < 44;
+    // 窓で追うときは、木の幅を部品に合わせず、枠の幅を決めて並べ、窓を横にも動かす（render が今の節を真ん中に置く）
+    // 窓で追うときは、たどる道を背骨にして並べ直す：道の子は 0 なら左・1 なら右へ a px、道から分かれた枝は反対の側に畳んで置く。
+    // 窓を横にも動かし（render が今の節を真ん中に置く）、窓の中を今の道のまわりに使う
     var sw = W / L.slots.length;
-    L.slots.forEach(function(o, i){ o.x = (i + 0.5) * sw; });
-    var px = function(o){ if (o.x === undefined){ o.kids.forEach(px); o.x = (o.kids[0].x + o.kids[o.kids.length - 1].x) / 2; } return o.x; };
-    px(L.nodes.r);
+    if (follow){
+      var sp = cur ? {color: cur.color, code: cur.bad || cur.code} : null;
+      if (!sp){ COLORS.forEach(function(c){ paths[c].forEach(function(q){ if (!sp || q.length > sp.code.length) sp = {color: c, code: q}; }); }); }
+      L = spine(sp, Math.min(150, W / 7.5));
+    } else {
+      L.slots.forEach(function(o, i){ o.x = (i + 0.5) * sw; });
+      var px = function(o){ if (o.x === undefined){ o.kids.forEach(px); o.x = (o.kids[0].x + o.kids[o.kids.length - 1].x) / 2; } return o.x; };
+      px(L.nodes.r);
+    }
     // 段の間：葉の数字と畳んだ節の三角の分を下に空ける
     // 木が入らなければ（段の間が 44 px より狭くなる、または段の数が属性 window より多い）、win 段の窓だけを見せ、
     // たどる点を追って窓を下へ流す（窓の上は「ここまで」の行）。段の位置は y0 + (lv − cam) × gap（cam は render が (k, t) から決める）
-    var avail = G.treeBottom - G.treeTop - 44, wp = String(this.props.window || "auto").trim(), nwin = /^\d+$/.test(wp) ? Math.max(2, +wp) : 0;
-    L.follow = nwin ? L.maxLv > nwin : avail / L.maxLv < 44;
+    L.follow = follow;
     if (!L.follow){ L.y0 = G.treeTop; L.win = L.maxLv; L.gap = Math.min(78, avail / L.maxLv); }
     else { L.y0 = G.treeTop + 44; var av2 = G.treeBottom - 44 - L.y0; L.win = nwin || Math.max(3, Math.floor(av2 / 56)); L.gap = av2 / L.win; }
     L.camMax = Math.max(0, L.maxLv - L.win);
@@ -240,16 +277,30 @@ D.define("m-codetree", class extends D.MotionElement {
     return L;
   }
   // 窓の位置（段の数で。0 は根が窓の上の段）：たどる点の段 λ の 1 段下までが窓に入るように、λ から滑らかに決める
+  // 横は、たどる点（まとめはいちばん深い道の葉）を真ん中に置く：{lv: 窓の上の段, x: 左へずらす px}
   camAt(k, t){
     var L = this.lay[k];
-    if (!L.follow) return 0;
-    var p = k ? this.model().plan[k - 1] : null, lam = 0;
+    if (!L.follow) return {lv: 0, x: 0};
+    var p = k ? this.model().plan[k - 1] : null, lam = 0, path = null;
     if (p && (p.type === "tok" || p.type === "err")){
       var T = this.times(k), P = this.props, n = L.cur.code.length + 1;
       for (var i = 0; i < n; i++) lam += D.prog(t, T.s(i), 0.7 * P.bit);
-      if (L.cur.bad) lam += 0.6 * D.prog(t, T.s(T.nb), 0.3);
-    } else if (p && L.deep) lam = L.deep.code.length + 1;
-    return Math.max(0, Math.min(L.camMax, lam + 1 - L.win));
+      path = L.cur;
+      var lv = Math.max(0, Math.min(L.camMax, lam + 1 - L.win));
+      if (L.cur.bad) lv = Math.max(0, Math.min(L.camMax, lam + 0.6 * D.prog(t, T.s(T.nb), 0.3) + 1 - L.win));
+    } else if (p && L.deep){ lam = L.deep.code.length + 1; path = L.deep; lv = Math.max(0, Math.min(L.camMax, lam + 1 - L.win)); }
+    else lv = 0;
+    // 道の節の x を λ で補う
+    var ids = ["r"];
+    if (path){ ids.push(LETTER[path.color]); for (var j = 1; j <= path.code.length; j++) ids.push(LETTER[path.color] + path.code.slice(0, j)); }
+    var xAt = function(u){
+      u = Math.max(0, u);
+      var i0 = Math.min(ids.length - 1, Math.floor(u)), i1 = Math.min(ids.length - 1, i0 + 1), f = Math.min(1, u - i0);
+      return D.lerp(L.nodes[ids[i0]].x, L.nodes[ids[i1]].x, f);
+    };
+    // 真ん中に置くのは、たどる点と、窓の上の段の道の節の中ほど（道が片側へ寄っても、窓の中の道が真ん中に来る）
+    var x = (xAt(lam) + xAt(Math.max(lv, lam - L.win + 1))) / 2;
+    return {lv: lv, x: x - this.W / 2};
   }
   mount(){
     var D2 = D, P = this.props, self = this, m = this.model(), dec = m.dec, Lb = m.L, MK = P.mark;
@@ -371,12 +422,14 @@ D.define("m-codetree", class extends D.MotionElement {
     var mv = k ? D2.prog(t, 0, P.move) : 1;
     // ---- 節の位置：両方にあれば滑らせ、片方だけなら近い祖先から伸びる／祖先へ縮む
     var anc = function(L, id){ var o = L.nodes[id]; if (o) return o; var e = self.els[id]; while (e && !L.nodes[e.id]) e = self.els[e.parent]; return e ? L.nodes[e.id] : L.nodes.r; };
-    var camA = k ? this.camAt(k - 1, Infinity) : 0, camB = this.camAt(k, t), G = this.G;
+    var cA = k ? this.camAt(k - 1, Infinity) : {lv: 0, x: 0}, cB = this.camAt(k, t), camA = cA.lv, camB = cB.lv, G = this.G, Wd = this.W;
     var yOf = function(L, o, cam){ return L.y0 + (o.lv - cam) * L.gap; };
     // 窓の上下（木が入るときは広く）。外へ出る節は 26 px で薄れる
     var bnd = function(L){ return L.follow ? [L.y0 - 8, L.y0 + L.win * L.gap + 8] : [G.treeTop - 40, G.treeBottom + 40]; };
     var bA = bnd(A), bB = bnd(B), wTop = D2.lerp(bA[0], bB[0], mv), wBot = D2.lerp(bA[1], bB[1], mv);
     var wf = function(y){ return D2.clamp01((y - (wTop - 26)) / 26) * D2.clamp01((wBot + 26 - y) / 26); };
+    // 横の縁でも薄れる（窓で追うときだけ、部品の左右の外へ出る節）
+    var wfx = function(x){ return D2.clamp01((x + 20) / 30) * D2.clamp01((Wd + 20 - x) / 30); };
     var lim = wTop - 10;
     // 線の始め（親）が窓の上にあれば、窓の上の縁で切る（線は上から流れ込む）
     var clip = function(a, b){ if (a.y >= lim || b.y <= lim) return a; var f = (lim - a.y) / (b.y - a.y); return {x: D2.lerp(a.x, b.x, f), y: lim}; };
@@ -387,9 +440,16 @@ D.define("m-codetree", class extends D.MotionElement {
       var op = (a ? Math.max(0, 1 - 2 * mv) : 0) + (b ? Math.max(0, 2 * mv - 1) : 0);
       if (a && b) op = 1;
       var fan = ((a && a.kind === "fan" ? 1 - mv : 0) + (b && b.kind === "fan" ? mv : 0));
-      var y = D2.lerp(yOf(A, pa, camA), yOf(B, pb, camB), mv);
-      pos[id] = {x: D2.lerp(pa.x, pb.x, mv), y: y, op: op * wf(y), fan: fan,
+      var y = D2.lerp(yOf(A, pa, camA), yOf(B, pb, camB), mv), x = D2.lerp(pa.x - cA.x, pb.x - cB.x, mv);
+      pos[id] = {x: x, y: y, op: op * wf(y) * wfx(x), fan: fan,
         lab: (A.lab[id] && a ? (b ? 1 - mv : 1) : 0) + (B.lab[id] && b ? (a ? mv : 1) : 0)};
+    });
+    // 窓の上の縁：親が窓の外にある節は（今の道の節のほかは）出さない。縁に枝のない節が浮かないように
+    var keep = {r: 1}, kp = B.cur || B.deep;
+    if (kp){ keep[LETTER[kp.color]] = 1; for (var j0 = 1; j0 <= kp.code.length; j0++) keep[LETTER[kp.color] + kp.code.slice(0, j0)] = 1; }
+    Object.keys(pos).forEach(function(id){
+      var par = self.els[id].parent;
+      if (par && !keep[id]) pos[id].op *= D2.clamp01((pos[par].y - (lim - 30)) / 30);
     });
     // ---- 今の道・前の道
     var segP = function(i){ return T ? D2.prog(t, T.s(i), 0.7 * P.bit) : 0; };
@@ -422,7 +482,8 @@ D.define("m-codetree", class extends D.MotionElement {
         var a = pos[e.parent], a1 = clip(a, q);
         e.edge.setAttribute("x1", a1.x.toFixed(2)); e.edge.setAttribute("y1", a1.y.toFixed(2));
         e.edge.setAttribute("x2", q.x.toFixed(2)); e.edge.setAttribute("y2", q.y.toFixed(2));
-        e.edge.setAttribute("opacity", q.op.toFixed(3));
+        // 親が窓の上にある枝は描かない（入ってくる道は道の線が描く）
+        e.edge.setAttribute("opacity", a.y < lim ? 0 : Math.min(q.op, 1.6 * a.op).toFixed(3));
         // 枝の字：根からの枝は線の中ほどの上、0 と 1 は親に近いところの外側
         // 線に垂直に、外側（0 は左上、1 は右上）へ離す
         var top = e.parent === "r", lp = labelAt(a, q, top ? 0.5 : 0.42, top ? 20 : 17);
@@ -457,7 +518,7 @@ D.define("m-codetree", class extends D.MotionElement {
     if (p && dec.error && dec.error.kind === "invalid" && (p.type === "err" || p.type === "sum")){
       var er = dec.error, last = pos[LETTER[er.color] + errPath(er)], gh = this.lay[k].ghosts[LETTER[er.color] + er.code];
       if (gh){
-        gh = {x: gh.x, y: yOf(this.lay[k], gh, camB)};
+        gh = {x: gh.x - cB.x, y: yOf(this.lay[k], gh, camB)};
         this.stubLine.setAttribute("x1", last.x.toFixed(2)); this.stubLine.setAttribute("y1", last.y.toFixed(2));
         this.stubLine.setAttribute("x2", gh.x.toFixed(2)); this.stubLine.setAttribute("y2", (gh.y - 14).toFixed(2));
         this.cross.setAttribute("x", gh.x.toFixed(2)); this.cross.setAttribute("y", (gh.y + 12).toFixed(2));
