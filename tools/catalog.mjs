@@ -10,7 +10,7 @@ const DIR = path.join(ROOT, 'components');
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
 function front(file) {
-  const m = fs.readFileSync(file, 'utf8').match(/^---\n([\s\S]*?)\n---/);
+  const m = fs.readFileSync(file, 'utf8').replace(/\r\n?/g, '\n').match(/^---\n([\s\S]*?)\n---/);
   if (!m) return null;
   const o = {};
   for (const line of m[1].split('\n')) {
