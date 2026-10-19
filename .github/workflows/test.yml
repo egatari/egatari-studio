@@ -125,6 +125,36 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Clean environment (backlog #50): an empty HOME (and USERPROFILE), no TTS server (IRODORI_URL points at a closed port), no user theme
+  # folder, the system browser only. tools/clean-env.mjs builds, checks and exports (--portable, --play-only) copies of every example,
+  # runs tts/synth.py --dry-run and builds with its audio, and builds and checks decks made by npm run new. Also in RELEASING.md.
+  clean:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v10.3.0
+      - name: Empty home
+        run: |
+          H="$RUNNER_TEMP/empty-home"
+          mkdir -p "$H"
+          echo "HOME=$H" >> "$GITHUB_ENV"
+          echo "USERPROFILE=$H" >> "$GITHUB_ENV"
+          echo "IRODORI_URL=http://127.0.0.1:9" >> "$GITHUB_ENV"
+      - run: npm ci
+      - name: Build, check, export, TTS dry-run and new deck (tools/clean-env.mjs)
+        run: node tools/clean-env.mjs
+
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
   # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.
   tier2:

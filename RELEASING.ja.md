@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=74ad61cfb62feee1 -->
+<!-- i18n: pair=RELEASING.md sha256=0d59ce0f9d232e2e -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -15,6 +15,10 @@
 
 2. **評価。** 管理者の夜ごとの評価（形式の仕様の実験の道具で回すもの。候補の commit の要約を管理者に頼む）で、段 A（保存した返答の採点し直し）の差分が **0**（0 でなければ、差分がどれも意図した変更か確かめる）、段 B（新しく作らせたもの）の直し後の通過率が、直近の晩より大きく下がっていないこと。そうでなければ `main` で直して、新しい候補を作る
 3. **`main` の CI が緑。** 候補のコミットで `test` と `pages`（組むだけ）の workflow が通っている：`gh run list --branch main --limit 5`
+   `test` の workflow には自己完結の確認（backlog #50）が入っている。どれも緑であること：
+   - `npm test` を Linux（Node 22 と 24）・Windows・**macOS** で（`test`・`windows`・`macos` のジョブ）
+   - `tools/test-selfcontained.mjs`（`npm test` に入っている）：追跡しているファイルに個人のパス・私的な網の番地・秘密の置き場所・個人の声の名前がない。`localhost:8882` は `IRODORI_URL` の既定としてだけ書く。`skills/` が挙げるのは同梱のスキルだけ。文書が挙げるパス・リンク・`npm run` の script が実在する。`kit/` と `server/` が `tts/` と `render/` を import しない
+   - `clean` のジョブを Linux・Windows・macOS で：空の `HOME`・TTS のサーバーなしで `node tools/clean-env.mjs` が、見本ごとに組む・検査する・書き出す（`--portable`・`--play-only`）、`tts/synth.py --dry-run` の音声で組む、`npm run new` のデッキを組む。手元でも走らせる：`node tools/clean-env.mjs`
 4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` の版も変え、`changes/*.md` を消す）：
 
    ```bash
@@ -31,11 +35,10 @@
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # 0 でなければならない
    ```
 
-   **個人の環境に頼らない。** 版のどこも、保守する人の機械を前提にしない：個人のパス・アドレス・秘密・声、`skills/` にないスキル。出てよいのは、そうした漏れを確かめる試験だけ：
+   **個人の環境に頼らない。** 版のどこも、保守する人の機械を前提にしない：個人のパス・アドレス・秘密・声、`skills/` にないスキル。`tools/test-selfcontained.mjs` がこれを確かめる（`npm test` と CI に入っている。3 を見る）。リリースのコミットでもう一度走らせる：
 
    ```bash
-   git grep -nE '/Users/|~/Projects|100\.64\.|\.secrets|api_keys' -- ':!vendor' ':!CHANGELOG.md'
-   git grep -ohE '[a-z]+(-[a-z]+)+ ?(skill|スキル)' -- skills docs README*.md | sort -u   # skills/ にあるスキルの名前だけ
+   node tools/test-selfcontained.mjs
    ```
 
    `main` を push し、CI がまた通るのを待つ

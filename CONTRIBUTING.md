@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=1d9ab8e4d2be3e86 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=817582a0a9c06592 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -48,7 +48,7 @@ npm test                 # all tests (needs Chrome, or Playwright's Chromium)
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-CI runs `npm test` on Node 22 and 24 for every push and pull request. `node tools/test-all.mjs --list` prints every step and its arguments.
+CI runs `npm test` on Node 22 and 24 (Linux), on Windows and on macOS for every push and pull request, and `node tools/clean-env.mjs` (an empty `HOME`, no TTS server) on all three. `node tools/test-all.mjs --list` prints every step and its arguments.
 
 Unit tests are found, not listed: a `tools/test-*.mjs` with the line `// test-all: unit` near the top runs with no arguments (it must not need a browser). Tests that need arguments, a built deck or a fixed place in the order are steps written out in `tools/test-all.mjs`. A test that another test imports says `// test-all: part of <step>`. `npm test` fails before running anything if a `tools/test-*.mjs` is none of these, so a new test is not forgotten.
 
@@ -88,7 +88,7 @@ The sections are `Added`, `Changed (API)` (a change to the shapes in [Interface 
 - no hard-coded colors; institution-specific things (colors, logos) live only in `themes/<name>/`
 - `kit/` and `server/` never import `tts/` or `render/`; slides work without audio
 - figure text is 24px or larger, labels go next to the lines rather than in a legend
-- no personal paths or addresses in the repository; configure through environment variables
+- no personal paths or addresses in the repository; configure through environment variables (`tools/test-selfcontained.mjs` checks this, the skill names in `skills/`, the paths documents name and the `kit/`/`server/` imports)
 
 ## Translations (English and Japanese)
 

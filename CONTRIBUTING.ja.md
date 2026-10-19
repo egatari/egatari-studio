@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=bbeec291dd3d431d -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=c5558c7cc4eb45f5 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -48,7 +48,7 @@ npm test                 # 全部（Chrome か Playwright の Chromium が要る
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-CI は push と PR ごとに Node 22 と 24 で `npm test` を回す。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
+CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `npm test` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
 
 単体の試験は一覧に書かずに見つける：先頭の近くに `// test-all: unit` の行がある `tools/test-*.mjs` を引数なしで走らせる（ブラウザが要らないものに限る）。引数・組んだデッキ・決まった順番が要る試験は `tools/test-all.mjs` に段として書く。ほかの試験が読み込む試験には `// test-all: part of <段>` と書く。`tools/test-*.mjs` がどれにも当たらなければ、`npm test` は何も走らせずに失敗する（新しい試験を入れ忘れないように）。
 
@@ -88,7 +88,7 @@ CI は push と PR ごとに Node 22 と 24 で `npm test` を回す。`node too
 - 色を直接書かない。機関に依存するもの（基調色・ロゴ）は `themes/<名前>/` の中だけ
 - `kit/` `server/` から `tts/` `render/` を読み込まない。音声がなくてもスライドは動く
 - 図の文字は 24px 以上。凡例ではなく線の近くに直接書く
-- 個人のパスやアドレスをリポジトリに書かない。設定は環境変数で
+- 個人のパスやアドレスをリポジトリに書かない。設定は環境変数で（`tools/test-selfcontained.mjs` がこれと、`skills/` の中のスキルの名前・文書が挙げるパス・`kit/` と `server/` の import を確かめる）
 
 ## 訳（英語と日本語）
 

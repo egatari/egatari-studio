@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=8bc0726722e517da -->
+<!-- i18n: pair=RELEASING.ja.md sha256=d8761f9fe9679f15 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -15,6 +15,10 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 2. **Evaluation.** Check the maintainers' nightly evaluation (run with the format spec's experiment tools; ask the maintainer for the summary of the candidate commit): tier A (re-scoring saved replies) shows **0 changed** — if not 0, confirm every difference is an intended change — and tier B (new generation) shows no large drop in the pass rate after fixes compared with recent nights. Otherwise fix on `main` and make a new candidate.
 3. **CI green on `main`.** The `test` and `pages` (build only) workflows pass for the candidate's commit: `gh run list --branch main --limit 5`.
+   The `test` workflow includes the self-containment checks (backlog #50); all must be green:
+   - `npm test` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs)
+   - `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses, secrets locations or personal voice names in tracked files; `localhost:8882` only as the default of `IRODORI_URL`; `skills/` names only the bundled skills; the paths, links and `npm run` scripts that documents name exist; `kit/` and `server/` do not import `tts/` or `render/`
+   - the `clean` job on Linux, Windows and macOS: `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
 4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json` and deletes `changes/*.md`):
 
    ```bash
@@ -31,11 +35,10 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # must print 0
    ```
 
-   **No personal environment.** Nothing in the release may need the maintainer's machine: personal paths, addresses, secrets or voices, or a skill that is not in `skills/`. The only hits allowed are the tests that check for such leaks:
+   **No personal environment.** Nothing in the release may need the maintainer's machine: personal paths, addresses, secrets or voices, or a skill that is not in `skills/`. `tools/test-selfcontained.mjs` checks this (it is in `npm test` and CI; see step 3); run it once more on the release commit:
 
    ```bash
-   git grep -nE '/Users/|~/Projects|100\.64\.|\.secrets|api_keys' -- ':!vendor' ':!CHANGELOG.md'
-   git grep -ohE '[a-z]+(-[a-z]+)+ ?(skill|スキル)' -- skills docs README*.md | sort -u   # only the skills in skills/
+   node tools/test-selfcontained.mjs
    ```
 
    Push `main` and wait for CI to pass again.
