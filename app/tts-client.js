@@ -30,6 +30,9 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
   // WebGPU がないとき：まず録音を勧める（コマンドの案内は出さない。端末で使う人向けの言葉だけ）
   const noGpu = EN ? 'Record the narration with “● Record” above: that works in any browser. Browser TTS needs WebGPU, which this browser does not have (use a recent Chrome or Edge on a computer)'
     : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。ブラウザの TTS には WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
+  // 1 ファイル版（file://）：TTS の窓のページがない。録音を先に、TTS は配信版で
+  const noFileHint = EN ? '“Regenerate with TTS” is not available in this single-file editor (file://). Record the narration with “● Record” above, or open the hosted editor (or a served dist/) for browser TTS'
+    : '「TTS で作り直す」は、この 1 ファイル版のエディタ（file://）では使えません。上の「● 録音」で録音できます。ブラウザの TTS は配信版のエディタ（か、dist/ を配ったもの）で使えます';
   const noFile = EN ? 'not in the single-file editor (open the hosted editor, or serve dist/)' : '1 ファイル版のエディタでは使えません（配信版か、dist/ を配って開いてください）';
 
   window.addEventListener('message', (e) => {
@@ -65,7 +68,7 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
     info(deckLang) {
       const t = test();
       if (t) return t.info(deckLang);
-      if (location.protocol === 'file:') return { ok: false, reason: noFile, label: '' };
+      if (location.protocol === 'file:') return { ok: false, reason: noFile, hint: noFileHint, label: '' };
       if (!navigator.gpu) return { ok: false, reason: EN ? 'no WebGPU in this browser' : 'このブラウザには WebGPU がありません', hint: noGpu, label: label(engineOf(deckLang)) };
       return { ok: true, reason: '', label: label(engineOf(deckLang)) };
     },

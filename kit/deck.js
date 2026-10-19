@@ -334,7 +334,7 @@ DECK.hasAiVoice = function(){ for (var k in DECK.AUDIO) if (DECK.aiVoice(k)) ret
     var ix; try { ix = JSON.parse(t); } catch (e) { return; }
     var au = ix && typeof ix.audio === "object" && ix.audio ? ix.audio : null, n = 0;
     if (!au) return;
-    for (var k in au) if (Object.prototype.hasOwnProperty.call(au, k) && DECK.AUDIO[k] && au[k] && au[k].kind === "tts"){ DECK.AI_AUDIO[k] = true; n++; }
+    for (var k in au) if (Object.prototype.hasOwnProperty.call(au, k) && DECK.AUDIO[k] && au[k] && au[k].kind === "tts" && !(au[k].recipe && au[k].recipe.engine === "dry-run")){ DECK.AI_AUDIO[k] = true; n++; }
     if (n) document.dispatchEvent(new CustomEvent("deck:aiaudio", {detail: {n: n}}));
   }
   // 確かめられない環境（安全でない http: など。crypto.subtle がない）では確かめずに読む：印は多めに出る方へ倒す（出し忘れるより良い）

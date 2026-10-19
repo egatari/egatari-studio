@@ -19,6 +19,7 @@ import { encodeMp3 } from '../kit/core/mp3.mjs';
 import { MP3 } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
+import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
@@ -258,7 +259,7 @@ export function createAudioPanel(o) {
     const list = takes.get(v.key) || [];
     const recBtn = h('button', { cls: 'dv-rec' + (rec ? ' dv-on' : ''), id: 'dev-audio-rec', text: rec ? L.stop : v.entry && v.entry.kind === 'recorded' ? L.reRec : L.rec, on: { click: () => (rec ? stopRecording() : startRecording()) } });
     const impBtn = h('button', { id: 'dev-audio-import', text: L.importBtn, on: { click: importFile } });
-    const ttsInfo = o.tts ? o.tts.info(o.deckLang()) : null;
+    const ttsInfo = o.tts ? o.tts.info(ttsLang(v)) : null;
     const ttsBtn = h('button', { id: 'dev-audio-tts', text: L.tts, title: ttsInfo ? ttsInfo.label : '', on: { click: regenerate } });
     if (!v.seg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (busyMsg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
@@ -296,11 +297,19 @@ export function createAudioPanel(o) {
     card.appendChild(h('div', { cls: 'dev-lock', text: L.locked }));
     mount(old);
   }
+  // ---------------------------------------------------------------- 口述原稿の言語（TTS のエンジンと読み辞書はこれで決める）
+  // voice.json の "lang" ＞ 発言の文字（kit/core/narration-lint.mjs の narrationLang）＞ デッキの <html lang>。
+  // 日本語のスライドに英語の口述原稿なら Kokoro（英語）で読む（<html lang> だけで決めると英語の文を Irodori に渡してしまう）
+  function ttsLang(v) {
+    const texts = [];
+    for (const x of (v && v.segs) || []) for (const t of x.turns) texts.push(plain(t.display || t.raw));
+    return narrationLang({ voiceLang: v && v.voice ? v.voice.lang : undefined, deckLang: o.deckLang(), texts }).lang;
+  }
   // ---------------------------------------------------------------- 声を選ぶ欄（1 人なら 1 つ、掛け合いなら役ごと）
-  const engineOf = () => (/^ja\b/i.test(o.deckLang() || '') ? 'irodori' : 'kokoro');
+  const engineOf = (v = view) => (/^ja\b/i.test(ttsLang(v)) ? 'irodori' : 'kokoro');
   // 役の声：1 ファイルの選択 > voice.json（ブラウザの TTS に入っている名前なら）> 既定。unknown：voice.json の入っていない名前
   function voiceOf(v, role) {
-    const eng = engineOf(), def = DEFAULT_VOICES[eng][role];
+    const eng = engineOf(v), def = DEFAULT_VOICES[eng][role];
     if (own(voiceMem, role) && bundledVoice(eng, voiceMem[role])) return { name: bundledVoice(eng, voiceMem[role]), unknown: null };
     const raw = v && v.voice && typeof v.voice[role] === 'string' ? v.voice[role] : null;
     if (raw === null) return { name: def, unknown: null };
@@ -308,7 +317,7 @@ export function createAudioPanel(o) {
     return b ? { name: b, unknown: null } : { name: def, unknown: raw };
   }
   function drawVoices(v) {
-    const eng = engineOf(), roles = [...(v.roles || new Set(['expert']))].filter((r) => r === 'expert' || r === 'novice');
+    const eng = engineOf(v), roles = [...(v.roles || new Set(['expert']))].filter((r) => r === 'expert' || r === 'novice');
     const grid = h('div', { cls: 'dv-voices', id: 'dev-audio-voices' });
     const warns = [];
     for (const role of roles) {
@@ -502,7 +511,7 @@ export function createAudioPanel(o) {
   async function regenerate() {
     if (busyMsg || !view || !view.seg || !o.tts) return;
     const key = view.key, ws = o.ws(), g = o.generation();
-    const lang = o.deckLang();
+    const lang = ttsLang(view);
     const info = o.tts.info(lang);
     if (!info.ok) { say(L.ttsNo + info.reason, true); return; }
     setBusy(L.processing);

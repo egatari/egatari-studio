@@ -732,7 +732,8 @@ export function build(env0, srcPath, opts = {}) {
     }
     // 合成した声（kind tts。kind のない tts/synth.py の記録は engine があれば。dry-run の無音は除く）：再生器が「AI の音声」と小さく示す。
     // 1 ファイル（opts.audioRef）には書かない：再生器は索引の音声の記録（format spec §5.2 の kind）から読む
-    if (!opts.audioRef) for (const [k, v] of Object.entries(man.segments || man)) if (audio[k] && v && (v.kind === 'tts' || (!v.kind && typeof v.engine === 'string' && v.engine !== 'dry-run'))) audio[k].kind = 'tts';
+    const dry = (v) => v.engine === 'dry-run' || !!(v.recipe && v.recipe.engine === 'dry-run');
+    if (!opts.audioRef) for (const [k, v] of Object.entries(man.segments || man)) if (audio[k] && v && (v.kind === 'tts' || (!v.kind && typeof v.engine === 'string')) && !dry(v)) audio[k].kind = 'tts';
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');
   const j = jsonScript;

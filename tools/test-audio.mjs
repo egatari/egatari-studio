@@ -59,7 +59,7 @@ fs.cpSync(path.join(ROOT, 'examples', 'minimal'), PDIR, { recursive: true, filte
 fs.mkdirSync(path.join(PDIR, 'audio'), { recursive: true });
 {
   const segments = {};
-  parseNarration(fs.readFileSync(path.join(PDIR, 'narration.md'), 'utf8')).forEach((x, j) => { fs.writeFileSync(path.join(PDIR, 'audio', `seg_js${j}.wav`), silentWav(0.5)); segments[`${x.slideKey}:${x.stepKey}`] = { file: `seg_js${j}.wav`, dur: 0.5, cues: [], engine: 'dry-run' }; });
+  parseNarration(fs.readFileSync(path.join(PDIR, 'narration.md'), 'utf8')).forEach((x, j) => { fs.writeFileSync(path.join(PDIR, 'audio', `seg_js${j}.wav`), silentWav(0.5)); segments[`${x.slideKey}:${x.stepKey}`] = { file: `seg_js${j}.wav`, dur: 0.5, cues: [], engine: 'stub-tts' }; });
   fs.writeFileSync(path.join(PDIR, 'audio', 'manifest.json'), JSON.stringify({ segments }, null, 1));
   fs.writeFileSync(path.join(PDIR, 'egatari.json'), JSON.stringify({ metadata: { license: 'CC-BY-4.0', copyright: '© 2026 Test Author', creators: ['Test Author'] } }, null, 2) + '\n');
 }
@@ -71,12 +71,14 @@ const pmin = await buildPortable(path.join(PDIR, 'deck.html'), { out: path.join(
   man.segments[ks[0]] = { ...man.segments[ks[0]], kind: 'tts' };
   man.segments[ks[1]] = { ...man.segments[ks[1]], engine: 'irodori' };
   man.segments[ks[2]] = { ...man.segments[ks[2]], kind: 'recorded', sync: 'none' };
+  man.segments[ks[3]] = { ...man.segments[ks[3]], engine: 'dry-run' };
+  man.segments[ks[4]] = { ...man.segments[ks[4]], kind: 'tts', recipe: { engine: 'dry-run' } };
   const BD = path.join(work, 'bmin');
   fs.rmSync(BD, { recursive: true, force: true });
   fs.cpSync(PDIR, BD, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(PDIR, x)) });
   fs.writeFileSync(path.join(BD, 'audio', 'manifest.json'), JSON.stringify(man));
   const da = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(build(path.join(BD, 'deck.html'), { out: path.join(BD, 'out', 'deck.html') }).html)[1]);
-  ok(da[ks[0]].kind === 'tts' && da[ks[1]].kind === 'tts' && !('kind' in da[ks[2]]) && !('kind' in da[ks[3]]), 'build: deck-audio marks TTS steps kind tts (not recorded or dry-run audio)');
+  ok(da[ks[0]].kind === 'tts' && da[ks[1]].kind === 'tts' && !('kind' in da[ks[2]]) && !('kind' in da[ks[3]]) && !('kind' in da[ks[4]]), 'build: deck-audio marks TTS steps kind tts (not recorded or dry-run audio)');
   const pa = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(pmin.html)[1]);
   ok(Object.values(pa).every((x) => !('kind' in x)), 'build: a single file has no kind in deck-audio (the player reads the index records)');
 }
@@ -294,6 +296,16 @@ try {
   await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.kind === 'tts' && window.__ttsCalls.length > 0; }, null, { timeout: 30000 });
   ok((await page.evaluate(() => window.__ttsCalls[0].voices.expert)) === 'bob' && (await audioState()).entry.recipe.voice.expert === 'bob', 'unknown voice: TTS falls back to bob and records it');
   await shot(page, 'audio-voice.png');
+  // 口述原稿の言語で TTS のエンジンを選ぶ：voice.json の "lang" ＞ 発言の文字 ＞ <html lang>（日本語のスライドに英語の口述原稿）
+  await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{"lang": "en"}'); await w.close(); });
+  await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+  await page.waitForFunction(() => /\(en\)/.test((document.getElementById('dev-audio-ttsinfo') || {}).textContent || ''));
+  ok(await page.evaluate(() => { const o = [...document.querySelectorAll('#dev-audio-voices select option')].map((x) => x.value); return o.includes('am_michael') && !o.includes('bob') && document.querySelector('#dev-audio-voices select').value === 'am_michael'; }), 'narration language: voice.json "lang": "en" picks Kokoro voices for a Japanese deck');
+  await page.evaluate(() => { window.__ttsCalls.length = 0; });
+  await page.click('#dev-audio-tts');
+  await waitUsed('tts', 5);
+  ok(await page.evaluate(() => window.__ttsCalls.length > 0 && window.__ttsCalls.every((c) => c.lang === 'en' && c.voices.expert === 'am_michael')), 'narration language: TTS is asked for English with a Kokoro voice');
+  await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{}'); await w.close(); });
   // 掛け合いにすると、読む原稿の各ターンに Expert / Novice の印、声の欄は役ごと
   const nr2 = await page.evaluate(([k]) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), [key]);
   await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: [...nr.turns, { role: 'novice', text: 'それは、どのくらい小さくすればよいのですか？ 小さすぎると進まない気がします。' }, { role: 'expert', text: '良い質問です。まず大きめに始めて、損失が落ち着かなければ半分にします。何度か試すと、ちょうどよいところが分かってきます。' }] }), [key, nr2]);
@@ -307,7 +319,7 @@ try {
   await page.waitForTimeout(400);
   await shot(page, 'audio-recording-dialogue.png');
   await page.click('#dev-audio-rec');
-  await waitUsed('recorded', 5);
+  await waitUsed('recorded', 6);
   // Esc（#48）：後に開いた窓から 1 つずつ。Shift+Esc で全部
   await page.click('#b-narr');
   await page.waitForSelector('#dev-narr');
