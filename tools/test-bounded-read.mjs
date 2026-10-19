@@ -25,7 +25,9 @@ const deckDir = (files = {}) => {
   for (const [f, t] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(d, f)), { recursive: true }); fs.writeFileSync(path.join(d, f), t); }
   return d;
 };
-// 子の process で動かし、最後の行の JSON を返す（{m, ms, rss（KiB）}）
+// 子の process で動かし、最後の行の JSON を返す（{m, ms, rss（KiB）}）。rss は読み込みの後からの最大 RSS の増え（KiB）：Node の版や
+// 機械で変わる起動と読み込みの分（Node 24 の CI で 200 MiB を超えた）を数えず、読んでしまったか（1 GiB 以上増える）だけを見る
+const RSS_GROWTH = 64 * 1024;
 const child = (code, timeout = 60000, env = process.env) => {
   const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout, env });
   try { return JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { return { m: rr.error && rr.error.code === 'ETIMEDOUT' ? 'hung (timeout)' : 'no result: ' + String(rr.stderr).slice(0, 300) }; }
@@ -38,13 +40,13 @@ const hasFifo = process.platform !== 'win32' && spawnSync('mkfifo', ['--help']).
 const fifo = (f) => { fs.mkdirSync(path.dirname(f), { recursive: true }); spawnSync('mkfifo', [f]); return f; };
 ok('Node の readRegular：max を超える大きさは読まずに断る（1 GiB の疎なファイルでも最大 RSS は小さい）・既定は 32 MiB・FIFO は開かずに断る', async () => {
   const big = sparse(path.join(tmp, 'big.bin'), 1024 * MiB);
-  const o = child(`import { readRegular } from ${mod('kit/bounded-read.mjs')}; const t0 = Date.now(); let m = 'read';
+  const o = child(`import { readRegular } from ${mod('kit/bounded-read.mjs')}; const t0 = Date.now(), rss0 = process.resourceUsage().maxRSS; let m = 'read';
     try { readRegular(${JSON.stringify(big)}, { max: 1000 }); } catch (e) { m = e.code + ' ' + e.n; }
     let d = 'read'; try { readRegular(${JSON.stringify(big)}); } catch (e) { d = e.code + ' ' + e.max; }
-    console.log(JSON.stringify({ m, d, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`);
+    console.log(JSON.stringify({ m, d, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS - rss0 }));`);
   assert.equal(o.m, `read-over ${1024 * MiB}`, JSON.stringify(o));
   assert.equal(o.d, `read-over ${32 * MiB}`, 'default max is READ_LIMITS.default');
-  assert.ok(o.ms < 5000 && o.rss < 200 * 1024, JSON.stringify(o));
+  assert.ok(o.ms < 5000 && o.rss < RSS_GROWTH, JSON.stringify(o));
   const { readRegular, readRegularText } = await import('../kit/bounded-read.mjs');
   const t = path.join(tmp, 'mb.txt'); fs.writeFileSync(t, 'あいう');
   assert.deepEqual(readRegularText(t, { max: 9 }), { text: 'あいう', bytes: 9 });
@@ -100,10 +102,10 @@ ok('組み立ての数え方：大きさを返さない env の文字の読み�
 // ---------------------------------------------------------------- 2. 音声の圧縮
 ok('音声の圧縮：数えた大きさ（max）までだけ読む（1 GiB の .wav は読まずに断る）・数えた後に大きくなった .wav は断る（指摘 2）', async () => {
   const big = sparse(path.join(tmp, 'aud', 'big.wav'), 1024 * MiB);
-  const o = child(`import { nodeEnv } from ${mod('kit/build.mjs')}; const t0 = Date.now(); let m = 'compressed';
+  const o = child(`import { nodeEnv } from ${mod('kit/build.mjs')}; const t0 = Date.now(), rss0 = process.resourceUsage().maxRSS; let m = 'compressed';
     try { nodeEnv.compressAudio(${JSON.stringify(big)}, 4096); } catch (e) { m = e.code; }
-    console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`);
-  assert.ok(o.m === 'read-over' && o.ms < 5000 && o.rss < 200 * 1024, JSON.stringify(o));
+    console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS - rss0 }));`);
+  assert.ok(o.m === 'read-over' && o.ms < 5000 && o.rss < RSS_GROWTH, JSON.stringify(o));
   // chargedEnv が数えた大きさ（size）を max として渡す：size の後に大きくなったものは、上限の内でも断る
   const core = await import('../kit/core/build-core.mjs');
   const { nodeEnv } = await import('../kit/build.mjs');
@@ -142,11 +144,11 @@ printf m4a > "$OUT"
 // ---------------------------------------------------------------- 4. npm run portable -- unpack
 ok('npm run portable -- unpack：入力は形式の上限（fileBytes）で読む前に断る（2 GiB の疎なファイル）・FIFO は止まらずに断る（指摘 4）', async () => {
   const big = sparse(path.join(tmp, 'big' + '.html'), 2048 * MiB);
-  const code = (f, out) => `import { unpack } from ${mod('tools/portable.mjs')}; const t0 = Date.now(); let m = 'unpacked';
+  const code = (f, out) => `import { unpack } from ${mod('tools/portable.mjs')}; const t0 = Date.now(), rss0 = process.resourceUsage().maxRSS; let m = 'unpacked';
     try { await unpack(${JSON.stringify(f)}, ${JSON.stringify(out)}); } catch (e) { m = e.code; }
-    console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+    console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS - rss0 }));`;
   const o = child(code(big, path.join(tmp, 'unp1')));
-  assert.ok(o.m === 'file-too-large' && o.ms < 5000 && o.rss < 200 * 1024 && !fs.existsSync(path.join(tmp, 'unp1')), JSON.stringify(o));
+  assert.ok(o.m === 'file-too-large' && o.ms < 5000 && o.rss < RSS_GROWTH && !fs.existsSync(path.join(tmp, 'unp1')), JSON.stringify(o));
   if (hasFifo) {
     const p = fifo(path.join(tmp, 'pipe.html'));
     const r = child(code(p, path.join(tmp, 'unp2')), 10000);
@@ -199,11 +201,11 @@ ok('編集アプリのフォルダの読み取り（fsx.readText）：File.size 
 });
 ok('kit/safe-fs.mjs の readContained・backupFile：上限つきで読む（1 GiB の疎なファイルは読まずに断る）（指摘 5）', async () => {
   const d = deckDir(); sparse(path.join(d, 'comments.json'), 1024 * MiB);
-  const o = child(`import { readContained, backupFile } from ${mod('kit/safe-fs.mjs')}; const t0 = Date.now(); let m = 'read', b = 'backed up';
+  const o = child(`import { readContained, backupFile } from ${mod('kit/safe-fs.mjs')}; const t0 = Date.now(), rss0 = process.resourceUsage().maxRSS; let m = 'read', b = 'backed up';
     try { readContained(${JSON.stringify(d)}, ${JSON.stringify(path.join(d, 'comments.json'))}, 'utf8', { max: 4 << 20 }); } catch (e) { m = e.code; }
     try { backupFile(${JSON.stringify(d)}, ${JSON.stringify(path.join(d, 'comments.json'))}); } catch (e) { b = e.code; }
-    console.log(JSON.stringify({ m, b, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`);
-  assert.ok(o.m === 'read-over' && o.b === 'read-over' && o.ms < 5000 && o.rss < 200 * 1024, JSON.stringify(o));
+    console.log(JSON.stringify({ m, b, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS - rss0 }));`);
+  assert.ok(o.m === 'read-over' && o.b === 'read-over' && o.ms < 5000 && o.rss < RSS_GROWTH, JSON.stringify(o));
   assert.ok(!fs.existsSync(path.join(d, '.cache')), 'no backup');
   const { readContained } = await import('../kit/safe-fs.mjs');
   fs.writeFileSync(path.join(d, 'small.txt'), 'abc');
@@ -229,6 +231,8 @@ ok('開発サーバー：1 GiB の comments.json・narration.md は読まずに 
     const token = JSON.parse(/<script type="application\/json" id="dev-cfg">([^<]*)<\/script>/.exec(shell.body)[1]).token;
     const H = { 'x-deck-token': token };
     sparse(path.join(d, 'comments.json'), 1024 * MiB);
+    const rssOf = () => +spawnSync('ps', ['-o', 'rss=', '-p', String(srv.pid)], { encoding: 'utf8' }).stdout.trim();
+    const rss0 = rssOf();
     const t0 = Date.now();
     const c1 = await req('GET', '/__dev/comments', H);
     const c2 = await req('POST', '/__dev/comment', { ...H, 'content-type': 'application/json' }, JSON.stringify({ comment: 'hi' }));
@@ -238,8 +242,8 @@ ok('開発サーバー：1 GiB の comments.json・narration.md は読まずに 
     const n1 = await req('GET', '/__dev/narration?key=x:0', H);
     assert.equal(n1.status, 413, n1.body);
     assert.ok(Date.now() - t0 < 5000);
-    const rss = +spawnSync('ps', ['-o', 'rss=', '-p', String(srv.pid)], { encoding: 'utf8' }).stdout.trim();
-    assert.ok(!rss || rss < 300 * 1024, `server RSS ${rss} KiB`);
+    const rss = rssOf();
+    assert.ok(!rss || !rss0 || rss - rss0 < RSS_GROWTH, `server RSS grew from ${rss0} to ${rss} KiB`);
   } finally { srv.kill('SIGKILL'); await new Promise((r) => (srv.exitCode !== null || srv.signalCode ? r() : srv.on('exit', r))); }
 });
 

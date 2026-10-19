@@ -329,9 +329,18 @@ try {
 
   // ---------------------------------------------------------------- 5. コメント（Alt+クリック）
   const target = f.locator('#stage .slide.active h2');
+  // 直前に口述原稿の板を閉じたので、枠が広がり、デッキが舞台を合わせ直す。合わせ直しが終わる前に測ると、押す点（Playwright は見出しが
+  // 止まってから押す）と測った点がずれる（遅い CI で起きた）。舞台が枠に合った大きさで、2 コマ続けて動かなくなるまで待つ
+  await f.waitForFunction(() => new Promise((res) => {
+    const s0 = document.getElementById('stage').getBoundingClientRect();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const s = document.getElementById('stage').getBoundingClientRect(), k = Math.min(innerWidth / 1280, innerHeight / 720);
+      res(Math.abs(s.width - 1280 * k) < 0.5 && s.left === s0.left && s.top === s0.top && s.width === s0.width);
+    }));
+  }), null, { timeout: 10000 });
   const cwant = await target.evaluate((el) => {
     const r = el.getBoundingClientRect(), s = document.getElementById('stage').getBoundingClientRect();
-    return { x: (r.left + 20 - s.left) * 1280 / s.width, y: (r.top + r.height / 2 - s.top) * 720 / s.height, h: r.height };
+    return { x: (r.left + 20 - s.left) * 1280 / s.width, y: (r.top + r.height / 2 - s.top) * 720 / s.height, h: r.height, unit: 1280 / s.width };
   });
   await target.click({ modifiers: ['Alt'], position: { x: 20, y: cwant.h / 2 } });
   await page.waitForSelector('#dev-comment textarea');
@@ -344,7 +353,9 @@ try {
   ok((await trustedLayout(page, 'preview')).inert === false, 'comment: the preview takes clicks again after the note box closes');
   const comments = JSON.parse(await opfs.read('comments.json') || '[]');
   ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === '何を最小化するか:0', 'comment: comments.json written');
-  ok(comments[0].pin && Math.abs(comments[0].pin.x - cwant.x) < 1 && Math.abs(comments[0].pin.y - cwant.y) < 1, 'comment: the clicked point is kept in slide coordinates ' + JSON.stringify({ pin: comments[0].pin, cwant }));
+  // 許す差：画面の 1 px（押す点は画面の px に丸められる。枠が小さいとスライドの座標で 1 を超える）と、点の 0.1 への丸め
+  const ctol = cwant.unit + 0.1;
+  ok(comments[0].pin && Math.abs(comments[0].pin.x - cwant.x) < ctol && Math.abs(comments[0].pin.y - cwant.y) < ctol, 'comment: the clicked point is kept in slide coordinates ' + JSON.stringify({ pin: comments[0].pin, cwant }));
   // 点の形が違う・範囲の外（アプリの devapi.js も開発サーバーと同じ規則）
   const appPins = [];
   for (const pin of [{ x: '1', y: 2 }, { x: -50, y: 9999 }, { x: 3.21, y: 4, z: 1 }]) appPins.push((await page.evaluate((pin) => window.__APP_TEST.api('POST', '/__dev/comment', { key: '何を最小化するか:0', comment: 'pin test', pin }), pin)).pin ?? null);
@@ -356,7 +367,10 @@ try {
   ok((await page.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
-  await page.waitForTimeout(300);
+  // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
+  await f.waitForFunction(() => DECK.state().key === '何を最小化するか:0', null, { timeout: 10000 });
+  await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: 10000 });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // 枠の大きさの変化（ResizeObserver）で描き直した後
   const appPin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash') }; });
   const appWant = await page.evaluate(() => { const r = document.getElementById('preview').getBoundingClientRect(); return { l: r.left, t: r.top }; });
   const hAt = await f.evaluate((p) => { const s = document.getElementById('stage').getBoundingClientRect(); return { x: s.left + p.x * s.width / 1280, y: s.top + p.y * s.height / 720 }; }, comments[0].pin);
