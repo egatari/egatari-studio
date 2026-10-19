@@ -471,7 +471,9 @@ async function run(original, filesIn, opts) {
   });
   for (const k of marksChanged) edit('deck-marks', (t) => jsonSet(t, [k], newMarks[k], Object.keys(newMarks)));
   for (const k of timingChanged) edit('deck-timing', (t) => jsonSet(t, [k], newT[k], Object.keys(newT)));
-  const deckAudio = (a) => { const id = fileMap[a.file]; return { src: SCHEME + id, mime: blobs[id].mime, dur: a.dur, cues: a.sync === 'none' ? [] : a.cues, ...(a.sync && a.sync !== 'auto' ? { sync: a.sync } : {}), ...(isOffset(a.startOffset) && a.startOffset > 0 ? { startOffset: a.startOffset } : {}) }; };
+  const deckAudio = (a) => { const id = fileMap[a.file]; return { src: SCHEME + id, mime: blobs[id].mime, dur: a.dur, cues: a.sync === 'none' ? [] : a.cues, ...(a.sync && a.sync !== 'auto' ? { sync: a.sync } : {}), ...(isOffset(a.startOffset) && a.startOffset > 0 ? { startOffset: a.startOffset } : {}),
+    // 記録の kind を写す（組み立てと同じ。dry-run の無音には付けない。format spec §7.3）
+    ...(['tts', 'recorded', 'imported'].includes(a.kind) && !(a.recipe && a.recipe.engine === 'dry-run') ? { kind: a.kind } : {}) }; };
   for (const k of audioChanged) edit('deck-audio', (t) => jsonSet(t, [k], own(newAudio, k) ? deckAudio(newAudio[k]) : undefined, Object.keys(newAudio)));
   if (srcSha !== ix.sourceSha256) edit('deck-meta', (t) => jsonSet(t, ['sourceSha256'], srcSha));
   if (identity) edit('deck-meta', (t) => jsonSet(t, ['docId'], identity.docId));

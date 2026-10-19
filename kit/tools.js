@@ -304,10 +304,12 @@ function addAttachButton(){
   DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, description: a.description, bytes: a.bytes}; });
   document.dispatchEvent(new CustomEvent("deck:attachments", {detail: {n: ATT.length}}));
 }
-// 合成した声（DECK.aiVoice）の段階があれば、教材の情報として 1 行（字幕と自動再生の札にも出る）
+// 合成した声・由来の分からない音声の段階があれば、教材の情報として 1 行ずつ（字幕と自動再生の札にも出る。format spec §7.3）
 function aiHtml(){
-  if (!DECK.hasAiVoice || !DECK.hasAiVoice()) return "";
-  return '<p class="dt-ai">' + (JA ? "この教材の音声には、AI で合成した声が含まれます（その段階では字幕と自動再生に「AI 合成音声」と出ます）" : "This lesson's audio includes AI-generated voices (marked “AI-generated voice” with the captions and during autoplay)") + "</p>";
+  var out = "";
+  if (DECK.hasAiVoice && DECK.hasAiVoice()) out += '<p class="dt-ai">' + (JA ? "この語りは AI で合成しています（その段階では字幕と自動再生にも出ます）" : "This narration is AI-generated (also shown with the captions and during autoplay on those steps)") + "</p>";
+  if (DECK.hasUnknownVoice && DECK.hasUnknownVoice()) out += '<p class="dt-ai">' + (JA ? "この教材には由来の分からない音声が含まれます（録音か合成かは記録されていません）" : "This lesson includes audio of unknown origin (whether it was recorded or synthesized is not recorded)") + "</p>";
+  return out;
 }
 function attHtml(){
   if (!ATT.length) return "";

@@ -478,6 +478,7 @@ export function validateDeckAudio(a) {
     if (r.sync === 'none' && Array.isArray(r.cues) && r.cues.length) e.push(`${w}: sync "none" with cues`);
     if (own(r, 'mime') && !(typeof r.mime === 'string' && /^audio\/[a-z0-9.+-]+$/.test(r.mime))) e.push(`${w}.mime: not an audio media type`);
     if (own(r, 'startOffset') && !isOffset(r.startOffset)) e.push(`${w}.startOffset: not a number from 0 to 1`);
+    if (own(r, 'kind') && !['tts', 'recorded', 'imported'].includes(r.kind)) e.push(`${w}.kind: not tts, recorded or imported`);
   }
   return e;
 }

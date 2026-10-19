@@ -320,11 +320,22 @@ for (var audioKey in DECK.AUDIO){
   var au = DECK.AUDIO[audioKey], am = FMT && au && typeof au.src === "string" && au.src.indexOf(FMT.uriScheme) === 0 && au.src.slice(FMT.uriScheme.length);
   if (am && /^[A-Za-z0-9_]{1,32}$/.test(am)){ var uri = null; try { uri = blobUri(am, au.mime); } catch (e) { console.warn("audio blob is not base64: " + am); } if (uri) au.src = uri; else { console.warn("audio blob not found: " + am); delete DECK.AUDIO[audioKey]; } }
 }
-// AI の声（合成した音声）か：組んだ HTML は deck-audio の kind（build が tts の段階に付ける）、1 ファイルは索引の音声の記録の kind（format spec §5.2。
-// 索引の data-sha256 を確かめてから読み、DECK.AI_AUDIO に入れて deck:aiaudio を知らせる）。字幕・自動再生の札・キーの一覧・発表者ビューが小さく示す
+// 音声の作り方（format spec §5.2 の kind：tts・recorded・imported）。まず deck-audio の kind（build がどの出力にも写す。再生専用の派生は索引を持たない）、
+// なければ索引の音声の記録の kind（古い 1 ファイル。索引の data-sha256 を確かめてから読み、DECK.AUDIO_KIND に入れて deck:aiaudio を知らせる）。
+// dry-run の無音は何も示さない。合成した声（tts）と由来の分からない音声（imported）を、字幕・自動再生の札・キーの一覧・発表者ビューが小さく示す（§7.3）
+var KINDS = {tts: 1, recorded: 1, imported: 1};
+DECK.AUDIO_KIND = dict(null);
 DECK.AI_AUDIO = dict(null);
-DECK.aiVoice = function(key){ var a = DECK.AUDIO[key]; return !!(a && (a.kind === "tts" || DECK.AI_AUDIO[key] === true)); };
+DECK.audioKind = function(key){
+  var a = DECK.AUDIO[key];
+  if (!a) return null;
+  if (typeof a.kind === "string" && KINDS[a.kind] === 1) return a.kind;
+  return DECK.AUDIO_KIND[key] || null;
+};
+DECK.aiVoice = function(key){ return DECK.audioKind(key) === "tts"; };
+DECK.unknownVoice = function(key){ return DECK.audioKind(key) === "imported"; };
 DECK.hasAiVoice = function(){ for (var k in DECK.AUDIO) if (DECK.aiVoice(k)) return true; return false; };
+DECK.hasUnknownVoice = function(){ for (var k in DECK.AUDIO) if (DECK.unknownVoice(k)) return true; return false; };
 (function(){
   var el = FMT && FMT.indexId && document.getElementById(FMT.indexId);
   if (!el || el.tagName !== "SCRIPT") return;
@@ -334,7 +345,13 @@ DECK.hasAiVoice = function(){ for (var k in DECK.AUDIO) if (DECK.aiVoice(k)) ret
     var ix; try { ix = JSON.parse(t); } catch (e) { return; }
     var au = ix && typeof ix.audio === "object" && ix.audio ? ix.audio : null, n = 0;
     if (!au) return;
-    for (var k in au) if (Object.prototype.hasOwnProperty.call(au, k) && DECK.AUDIO[k] && au[k] && au[k].kind === "tts" && !(au[k].recipe && au[k].recipe.engine === "dry-run")){ DECK.AI_AUDIO[k] = true; n++; }
+    for (var k in au){
+      if (!Object.prototype.hasOwnProperty.call(au, k) || !DECK.AUDIO[k] || !au[k] || KINDS[au[k].kind] !== 1) continue;
+      if (au[k].recipe && au[k].recipe.engine === "dry-run") continue;
+      DECK.AUDIO_KIND[k] = au[k].kind;
+      if (DECK.audioKind(k) === "tts") DECK.AI_AUDIO[k] = true;
+      if (DECK.audioKind(k) !== "recorded") n++;
+    }
     if (n) document.dispatchEvent(new CustomEvent("deck:aiaudio", {detail: {n: n}}));
   }
   // 確かめられない環境（安全でない http: など。crypto.subtle がない）では確かめずに読む：印は多めに出る方へ倒す（出し忘れるより良い）
@@ -863,6 +880,13 @@ function chapterOf(i){ for (var j = i; j >= 0; j--) if (slides[j].classList.cont
 var A11Y = DECK.mode !== "video" && !DECK.view;
 var live = null, lastSaid = null;
 function L10N(ja, en){ return DECK.ja ? ja : en; }
+// その段階の音声について示すこと（format spec §7.3）：合成した声・由来の分からない音声。録音と音声のない段階は ""
+function voiceNote(key){
+  var kd = DECK.audioKind(key);
+  return kd === "tts" ? L10N("この語りは AI で合成しています", "This narration is AI-generated")
+    : kd === "imported" ? L10N("由来の分からない音声", "Audio of unknown origin") : "";
+}
+DECK.voiceNote = voiceNote;
 // 読み上げる文字：aria-hidden と TeX の原文（annotation）は除く。式は MathML があればその字、
 // なければ（build は KaTeX の html だけを出す）見た目の部分の字（f(θ) など）を使う
 function speakText(e){
@@ -1010,7 +1034,7 @@ function drawCaption(i, k, t){
   if (!e) return;
   var ch = capChunks(i, k), j = capIndex(i, k, t);
   var shown = j < 0 ? ch : [ch[j]];
-  var ai = shown.length > 0 && DECK.aiVoice(DECK.stepKey(i, k));
+  var ai = shown.length > 0 && voiceNote(DECK.stepKey(i, k));
   var key = i + ":" + k + ":" + j + ":" + (CAP.size || "") + (ai ? ":ai" : "");
   if (CAP.key === key) return;
   CAP.key = key;
@@ -1021,8 +1045,8 @@ function drawCaption(i, k, t){
     p.textContent = c.text;
     e.appendChild(p);
   });
-  // 合成した声の段階：字幕の上に小さく「AI 合成音声」（下端は操作の帯と重なるので上に）
-  if (ai){ var b = document.createElement("span"); b.className = "cap-ai"; b.textContent = L10N("AI 合成音声", "AI-generated voice"); e.insertBefore(b, e.firstChild); }
+  // 合成した声の段階：字幕の上に小さく「この語りは AI で合成しています」・「由来の分からない音声」（下端は操作の帯と重なるので上に）
+  if (ai){ var b = document.createElement("span"); b.className = "cap-ai"; b.textContent = ai; e.insertBefore(b, e.firstChild); }
   e.classList.toggle("empty", !shown.length);
   // --cap-max-lines 行を超えたら、後ろの行を見せる
   [].forEach.call(e.children, function(p){ if (p.scrollHeight > p.clientHeight + 1) p.scrollTop = p.scrollHeight; });
@@ -1141,16 +1165,15 @@ function stopAuto(){
   aiBadge(null);
   broadcast();
 }
-// 自動再生で合成した声が鳴っている間、舞台の右上に小さく「AI 合成音声」（字幕を出しているときは字幕の方に出す。印刷・動画には出ない）
+// 自動再生で合成した声（または由来の分からない音声）が鳴っている間、舞台の右上に小さく示す（字幕を出しているときは字幕の方に出す。印刷・動画には出ない）
 var aiEl = null;
 function aiBadge(key){
-  var on = !!(key && DECK.aiVoice(key));
-  if (on && !aiEl){
-    aiEl = document.createElement("div"); aiEl.id = "deck-ai"; aiEl.setAttribute("aria-hidden", "true");
-    aiEl.textContent = L10N("AI 合成音声", "AI-generated voice");
-    (document.getElementById("stage") || document.body).appendChild(aiEl);
+  var note = key ? voiceNote(key) : "";
+  if (note){
+    if (!aiEl){ aiEl = document.createElement("div"); aiEl.id = "deck-ai"; aiEl.setAttribute("aria-hidden", "true"); (document.getElementById("stage") || document.body).appendChild(aiEl); }
+    aiEl.textContent = note;
   }
-  document.documentElement.classList.toggle("ai-voice", on);
+  document.documentElement.classList.toggle("ai-voice", !!note);
 }
 document.addEventListener("deck:aiaudio", function(){
   CAP.key = null;

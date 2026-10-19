@@ -706,6 +706,10 @@ export function build(env0, srcPath, opts = {}) {
   const timingPath = P.join(deckDir, 'timeline.json');
   const timing = env.exists(timingPath) && inDeck(timingPath) ? JSON.parse(env.readText(timingPath)) : {};
   const manPath = P.join(deckDir, 'audio', 'manifest.json');
+  // 音声の作り方（format spec §5.2 の kind を deck-audio にも写す。§7.3：再生器が合成した声・由来の分からない音声を示す）。
+  // kind のない tts/synth.py の記録は engine があれば tts。dry-run の無音には付けない
+  const audioKind = (v, def) => (v.engine === 'dry-run' || (v.recipe && v.recipe.engine === 'dry-run')) ? undefined
+    : ['tts', 'recorded', 'imported'].includes(v.kind) ? v.kind : !v.kind && typeof v.engine === 'string' ? 'tts' : v.kind ? undefined : def;
   const offsetOk = (x) => typeof x === 'number' && Number.isFinite(x) && x > 0 && x <= 1;
   const audio = {};
   if (!opts.noAudio && env.exists(manPath) && inDeck(manPath)) {
@@ -722,6 +726,8 @@ export function build(env0, srcPath, opts = {}) {
         audio[k] = { src, dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
         if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
         if (offsetOk(v.startOffset)) audio[k].startOffset = v.startOffset;
+        const kd = audioKind(v, 'tts');   // 索引の記録と同じ（kind がなければ tts。portable.mjs）
+        if (kd) audio[k].kind = kd;
         continue;
       }
       audio[k] = { src: opts.embedAudio ? dataUri(env, env.compressAudio ? env.compressAudio(file) : file) : (opts.audioBase ? opts.audioBase + v.file : P.relative(outDir, file).split(P.sep).join('/')), dur: v.dur, cues: v.sync === 'none' ? [] : v.cues || [] };
@@ -729,11 +735,9 @@ export function build(env0, srcPath, opts = {}) {
       if (v.sync && v.sync !== 'auto') audio[k].sync = v.sync;
       // 符号化の遅れ（MP3 の先頭。format spec §5.2 startOffset）：実行系はこの時刻から鳴らし、そこを 0 秒とみなす
       if (offsetOk(v.startOffset)) audio[k].startOffset = v.startOffset;
+      const kd = audioKind(v);
+      if (kd) audio[k].kind = kd;
     }
-    // 合成した声（kind tts。kind のない tts/synth.py の記録は engine があれば。dry-run の無音は除く）：再生器が「AI の音声」と小さく示す。
-    // 1 ファイル（opts.audioRef）には書かない：再生器は索引の音声の記録（format spec §5.2 の kind）から読む
-    const dry = (v) => v.engine === 'dry-run' || !!(v.recipe && v.recipe.engine === 'dry-run');
-    if (!opts.audioRef) for (const [k, v] of Object.entries(man.segments || man)) if (audio[k] && v && (v.kind === 'tts' || (!v.kind && typeof v.engine === 'string')) && !dry(v)) audio[k].kind = 'tts';
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');
   const j = jsonScript;

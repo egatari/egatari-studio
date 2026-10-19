@@ -6,7 +6,7 @@
 //     （audio/rec_<hash>.mp3 と audio/manifest.json（kind recorded・sync none・inputHash）と控え・最新の印）・録り直し・「前に戻す」→
 //     口述原稿を直すと「古い」の印と警告 → TTS（差し替え）で作り直す：読み辞書を通した文・{mark} の区切りの cues・recipe（processing・dictionary）・最新に戻る →
 //     声の欄（見本・voice.json・知らない声は知らせて既定の声）・掛け合いの読む原稿の印・Esc で窓を閉じる（上から 1 つずつ・Shift で全部）
-//   組み立て：TTS の段階の deck-audio に kind tts（dry-run は付けない）
+//   組み立て：deck-audio に音声の kind（tts・recorded。dry-run は付けない。1 ファイルにも）
 //   持ち運べる 1 ファイル：権利の確認のあと録音して使い、「保存」が段 A（音声の段階だけが変わる）で、読み戻すと録音の記録と MP3 の塊
 //   プレビューからの知らせでは録音を始められない（板の中身も変わらない）。コンソールのエラーがない
 import fs from 'node:fs';
@@ -64,7 +64,7 @@ fs.mkdirSync(path.join(PDIR, 'audio'), { recursive: true });
   fs.writeFileSync(path.join(PDIR, 'egatari.json'), JSON.stringify({ metadata: { license: 'CC-BY-4.0', copyright: '© 2026 Test Author', creators: ['Test Author'] } }, null, 2) + '\n');
 }
 const pmin = await buildPortable(path.join(PDIR, 'deck.html'), { out: path.join(PDIR, 'out', 'deck.ega.html') });
-// ふつうの build：TTS の段階（kind tts・kind のない tts/synth.py の記録）の deck-audio に kind tts。dry-run の無音と録音には付けない
+// ふつうの build：TTS の段階（kind tts・kind のない tts/synth.py の記録）の deck-audio に kind tts、録音は recorded。dry-run の無音には付けない
 {
   const man = JSON.parse(fs.readFileSync(path.join(PDIR, 'audio', 'manifest.json'), 'utf8'));
   const ks = Object.keys(man.segments);
@@ -78,9 +78,9 @@ const pmin = await buildPortable(path.join(PDIR, 'deck.html'), { out: path.join(
   fs.cpSync(PDIR, BD, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(PDIR, x)) });
   fs.writeFileSync(path.join(BD, 'audio', 'manifest.json'), JSON.stringify(man));
   const da = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(build(path.join(BD, 'deck.html'), { out: path.join(BD, 'out', 'deck.html') }).html)[1]);
-  ok(da[ks[0]].kind === 'tts' && da[ks[1]].kind === 'tts' && !('kind' in da[ks[2]]) && !('kind' in da[ks[3]]) && !('kind' in da[ks[4]]), 'build: deck-audio marks TTS steps kind tts (not recorded or dry-run audio)');
+  ok(da[ks[0]].kind === 'tts' && da[ks[1]].kind === 'tts' && da[ks[2]].kind === 'recorded' && !('kind' in da[ks[3]]) && !('kind' in da[ks[4]]), 'build: deck-audio copies kind (tts, recorded; none for dry-run audio)');
   const pa = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(pmin.html)[1]);
-  ok(Object.values(pa).every((x) => !('kind' in x)), 'build: a single file has no kind in deck-audio (the player reads the index records)');
+  ok(Object.values(pa).every((x) => x.kind === 'tts'), 'build: a single file copies kind into deck-audio too (play-only derivatives keep it)');
 }
 
 // ---------------------------------------------------------------- 組んで配る
@@ -411,7 +411,7 @@ try {
     r.recLabel = !!document.querySelector('#deck-cap .cap-ai');
     return r;
   }, pkey);
-  ok(!ai.rec && ai.tts && ai.label === 'AI 合成音声' && !ai.recLabel && ai.badge && !ai.after, `runtime: TTS steps are marked "AI 合成音声" with the captions, the recorded step is not (${JSON.stringify(ai)})`);
+  ok(!ai.rec && ai.tts && ai.label === 'この語りは AI で合成しています' && !ai.recLabel && ai.badge && !ai.after, `runtime: TTS steps are marked "この語りは AI で合成しています" with the captions, the recorded step is not (${JSON.stringify(ai)})`);
   if (SHOTS) { await pp.evaluate(() => { const g = DECK.timeline().find((x) => x.audio && DECK.aiVoice(x.key)); DECK.go(g.i, g.k, false); }); await pp.setViewportSize({ width: 1280, height: 720 }); await pp.screenshot({ path: path.join(SHOTS, 'runtime-ai-caption.png') }); }
   await pp.close();
   ok(!(await PF.isStale(rec, parseNarration(back.files['narration.md'] ? new TextDecoder().decode(back.files['narration.md']) : '').find((s) => `${s.slideKey}:${s.stepKey}` === pkey))), 'portable: read back: the take is up to date (inputHash)');

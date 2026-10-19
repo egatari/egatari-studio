@@ -37,7 +37,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   font-family:var(--font-cap,var(--font-sans));font-size:1em;line-height:1.4;font-weight:var(--weight-body,400);text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.18);
   max-height:calc(var(--cap-max-lines,3) * 1.4em + 11px);overflow:hidden}
 .printing #deck-cap{display:none}
-/* 合成した声の段階（DECK.aiVoice）：字幕の上と、自動再生で鳴っている間の舞台の右上に、小さく控えめに「AI 合成音声」 */
+/* 合成した声の段階（DECK.aiVoice）：字幕の上と、自動再生で鳴っている間の舞台の右上に、小さく控えめに「この語りは AI で合成しています」（取り込んだ音声は「由来の分からない音声」） */
 #deck-cap .cap-ai{font-family:var(--font-cap,var(--font-sans));font-size:.56em;line-height:1.35;padding:1px 9px;border-radius:999px;background:color-mix(in srgb,var(--bg) 88%,transparent);color:var(--muted);border:1px solid var(--line)}
 #deck-ai{display:none;position:absolute;top:14px;right:18px;z-index:15;pointer-events:none;font-family:var(--font-sans);font-size:16px;line-height:1.4;padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--bg) 88%,transparent);color:var(--muted);border:1px solid var(--line)}
 html.autoplay.ai-voice #deck-ai{display:block}

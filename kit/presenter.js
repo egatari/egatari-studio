@@ -108,8 +108,9 @@ DECK.presenterView = function(){
     var ni = pos.k < pos.max ? pos.i : pos.i + 1, nk = pos.k < pos.max ? pos.k + 1 : 0;
     fn.contentWindow && fn.contentWindow.postMessage({type: "deck-goto", i: ni, k: nk, animate: false}, "*");
     var cur = notes(pos.key), nxt = pos.nextKey ? notes(pos.nextKey) : [];
-    // 合成した声の段階：口述原稿の上に小さく
-    var ai = DECK.aiVoice && DECK.aiVoice(pos.key) ? '<div class="ai">' + (DECK.ja === false ? "AI-generated voice" : "AI 合成音声") + "</div>" : "";
+    // 合成した声・由来の分からない音声の段階：口述原稿の上に小さく（format spec §7.3）
+    var vn = DECK.voiceNote ? DECK.voiceNote(pos.key) : "";
+    var ai = vn ? '<div class="ai">' + vn + "</div>" : "";
     document.getElementById("pv-text").innerHTML = ai + (html(cur) || '<p style="color:#777">' + L.none + '</p>') +
       (nxt.length ? '<div class="next"><div class="lab">' + L.nextStep + '</div>' + html(nxt) + "</div>" : "");
   }

@@ -577,6 +577,51 @@ ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生
   } finally { await browser.close(); }
 });
 
+ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Schema に合う）。再生専用の派生（索引なし）でも、TTS は「AI で合成」、録音は印なし、由来の分からない音声はそう示す。dry-run は印なし', async () => {
+  const dir = path.join(work, 'kinds');
+  prepareMinimal(dir);
+  const mp = path.join(dir, 'audio', 'manifest.json'), man = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  const ks = Object.keys(man.segments);
+  assert.ok(ks.length >= 4, 'enough steps');
+  const set = (k, o) => { const v = { ...man.segments[k] }; delete v.engine; delete v.recipe; delete v.kind; man.segments[k] = { ...v, ...o }; };
+  set(ks[0], { kind: 'tts', engine: 'stub-tts' });
+  set(ks[1], { kind: 'recorded', sync: 'none', cues: [] });
+  set(ks[2], { kind: 'imported' });
+  set(ks[3], { engine: 'dry-run' });
+  fs.writeFileSync(mp, JSON.stringify(man, null, 1));
+  const r = await buildPortable(path.join(dir, 'deck.html'), { out: path.join(dir, 'out', 'deck' + FORMAT.FILE_EXT) });
+  const da = JSON.parse(PF.scanDocument(r.html).byId.get('deck-audio').text);
+  schemaOk(vAudio, da, 'deck-audio with kind');
+  assert.deepEqual(PF.validateDeckAudio(da), []);
+  assert.deepEqual([da[ks[0]].kind, da[ks[1]].kind, da[ks[2]].kind, 'kind' in da[ks[3]]], ['tts', 'recorded', 'imported', false], 'deck-audio kinds');
+  assert.equal(r.index.audio[ks[0]].kind, 'tts');
+  assert.equal(vAudio(plainJson({ 'a:0': { ...da[ks[0]], kind: 'synth' } })), false, 'schema rejects an unknown kind');
+  assert.equal(PF.validateDeckAudio({ 'a:0': { ...da[ks[0]], kind: 'synth' } }).length, 1);
+  // ふつうの build も同じ kind を書く
+  const plain = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(build(path.join(dir, 'deck.html'), { out: path.join(dir, 'out', 'deck.html') }).html)[1]);
+  assert.deepEqual([plain[ks[0]].kind, plain[ks[1]].kind, plain[ks[2]].kind, 'kind' in plain[ks[3]]], ['tts', 'recorded', 'imported', false], 'plain build kinds');
+  const po = path.join(dir, 'out', 'deck' + FORMAT.PLAY_EXT);
+  fs.writeFileSync(po, PF.playOnly(r.html));
+  assert.ok(!PF.scanDocument(fs.readFileSync(po, 'utf8')).byId.has(FORMAT.INDEX_ID), 'play-only has no index');
+  const browser = await launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(fileUrl(po));
+    await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+    const got = await page.evaluate((ks) => {
+      DECK.captions(true);
+      const lab = (k) => { const g = DECK.timeline().find((x) => x.key === k); DECK.go(g.i, g.k, false); const e = document.querySelector('#deck-cap .cap-ai'); return e ? e.textContent : null; };
+      return { kinds: ks.map((k) => DECK.audioKind(k)), labels: ks.map(lab), ai: DECK.hasAiVoice(), unknown: DECK.hasUnknownVoice() };
+    }, ks.slice(0, 4));
+    assert.deepEqual(errors, []);
+    assert.deepEqual(got.kinds, ['tts', 'recorded', 'imported', null]);
+    assert.deepEqual(got.labels, ['この語りは AI で合成しています', null, '由来の分からない音声', null]);
+    assert.ok(got.ai && got.unknown);
+  } finally { await browser.close(); }
+});
+
 ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対パス・\\・. の名前を断り、components/ の外を読まない（検査器・展開・npm run portable の照合）', async () => {
   const BAD = ['../../private', '../x', '/etc/passwd', 'C:/x', 'a\\b', '..\\..\\x', '.', '..', '.hidden', 'a/b', 'Upper', '1abc', '-x', 'a'.repeat(65), '', 'a b'];
   const base = JSON.parse(fs.readFileSync(path.join(SPEC, 'fixtures', 'index', 'invalid', 'registry-name-traversal.json'), 'utf8'));
