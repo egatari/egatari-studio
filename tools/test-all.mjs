@@ -2,7 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -32,6 +32,11 @@ const steps = [
   ...unit,
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
+  // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
+  ['catalog', ['tools/catalog.mjs', '--check']],
+  ['katex ranges', ['tools/katex-ranges.mjs', '--check']],
+  // CHANGELOG の断片（changes/*.md）の書き方
+  ['changelog', ['tools/changelog.mjs', '--check']],
   ['build minimal', ['kit/build.mjs', 'examples/minimal/deck.html']],
   ['build tmlr2026', ['kit/build.mjs', 'examples/tmlr2026-calibration/deck.html']],
   ['check minimal', ['kit/check.mjs', 'examples/minimal/deck.html']],
@@ -83,6 +88,8 @@ Object.assign(needs, { 'check kokugo': 'build kokugo' });
 steps.push(
   ['llm guide', ['tools/make-llm-guide.mjs', '--check']],
   ['test-llm', ['tools/test-llm.mjs', path.join(tmp, 'llm')]],
+  // 外から使われる口の形（check --json・buildFixRequest・buildPack・llm-import）を写し（tools/fixtures/api-shapes.json）と比べる
+  ['test-api-shapes', ['tools/test-api-shapes.mjs', path.join(tmp, 'api-shapes')]],
   ['test-shape', ['tools/test-shape.mjs', path.join(tmp, 'shape')]],
 );
 // 段階の音声（編集アプリの音声の板）：後処理を tts/core.py と比べる・MP3・読み辞書・記録と古さ・段 A（ブラウザなし）と、

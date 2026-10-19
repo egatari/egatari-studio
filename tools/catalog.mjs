@@ -1,5 +1,6 @@
 // 部品の一覧（components/CATALOG.md）を、各部品の README.md の先頭（frontmatter）から作る
-//   node tools/catalog.mjs
+//   node tools/catalog.mjs           書き直す
+//   node tools/catalog.mjs --check   今の CATALOG.md が作り直したものと同じかだけを確かめる（違えば終了コード 1。npm test と CI）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,5 +37,12 @@ const md = `# 部品の一覧
 |---|---|---|---|---|
 ${rows.join('\n')}
 `;
-fs.writeFileSync(path.join(DIR, 'CATALOG.md'), md);
+const OUT = path.join(DIR, 'CATALOG.md');
+if (process.argv.includes('--check')) {
+  // 改行は比べない（Windows の git は CRLF で取り出すことがある）
+  const same = fs.existsSync(OUT) && fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') === md;
+  console.log(same ? `components/CATALOG.md is up to date (${rows.length} components)` : 'components/CATALOG.md is out of date: run node tools/catalog.mjs (or npm run gen)');
+  process.exit(same ? 0 : 1);
+}
+fs.writeFileSync(OUT, md);
 console.log(`components/CATALOG.md: ${rows.length} components`);

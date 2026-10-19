@@ -48,6 +48,7 @@ const ALLOW = [
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],
   ['tools/build-app.mjs', 'fs.readFileSync(', '編集アプリを組む：リポジトリの kit/・components/・themes/・app/・KaTeX・字を集める'],
   ['tools/catalog.mjs', "fs.readFileSync(file, 'utf8')", '部品庫の一覧を作る：リポジトリの components/ の README を読む'],
+  ['tools/catalog.mjs', "fs.readFileSync(OUT, 'utf8')", '部品庫の一覧：作り直したものと比べるために、このツールが書く components/CATALOG.md を読む（--check）'],
   ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(...p), 'utf8')", 'AI への指示を作る：リポジトリの tools/llm-guide/・docs/contract・components/ の README と index.js を読む（開発者の道具）'],
   ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(file), 'utf8')", 'AI への指示を作る：リポジトリの docs/authoring-with-llms*.md（作ったもの）を読んで比べる'],
   ['tools/get-fonts.mjs', 'sha(fs.readFileSync(out))', '字：リポジトリの fonts/ の、決まった大きさのファイルのハッシュを確かめる（取ってくる側は決まったコミット・大きさの上限・SHA-256 で確かめる）'],
@@ -56,6 +57,7 @@ const ALLOW = [
   ['lab/tts-engine.mjs', 'await hit.arrayBuffer()', 'TTS の窓と試験ページ：Cache Storage に自分で入れた重み（固定の Hugging Face の版）。読んだ後に期待の大きさと比べる'],
   ['lab/tts-engine.mjs', 'await res.arrayBuffer()', 'TTS の窓と試験ページ：固定の Hugging Face の版の重み・同梱の既定の声（自分の配信元）を fetch する'],
   ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
+  ['tools/changelog.mjs', "const read = (f) => fs.readFileSync(f, 'utf8')", 'CHANGELOG の道具：リポジトリの changes/*.md・CHANGELOG.md・package.json・package-lock.json を読む（開発者の道具）'],
   ['tools/release-assets.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
 ];
 

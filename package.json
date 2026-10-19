@@ -23,7 +23,10 @@
     "test": "node tools/test-all.mjs",
     "portable": "node tools/portable.mjs",
     "comment-shots": "node tools/comment-shots.mjs",
-    "release:assets": "node tools/release-assets.mjs"
+    "release:assets": "node tools/release-assets.mjs",
+    "gen": "node tools/catalog.mjs && node tools/make-llm-guide.mjs && node tools/katex-ranges.mjs",
+    "gen:check": "node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check",
+    "changelog": "node tools/changelog.mjs"
   },
   "engines": {
     "node": ">=22"

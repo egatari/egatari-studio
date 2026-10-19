@@ -2,7 +2,7 @@
 //   node tools/release-assets.mjs [--out out/release]
 // 作るもの：見本の持ち運べる 1 ファイル（examples/<名前> を --portable で。tools/examples-portable.mjs。編集アプリの dist/examples/ と同じもの）と、
 // その一覧 examples.json（名前・題名・言語・枚数・大きさ・sha256）。
-// リリースの手順（docs/editor.md の「見本」も）：版を上げて CHANGELOG をまとめた後に
+// リリースの手順（RELEASING.md。docs/editor.md の「見本」も）：node tools/changelog.mjs --release で版を上げて CHANGELOG をまとめた後に
 //   1. node tools/release-assets.mjs
 //   2. gh release create v<版> out/release/*.ega.html --notes-file <その版の CHANGELOG>   （または GitHub の画面で out/release/ のファイルを添える）
 import fs from 'node:fs';

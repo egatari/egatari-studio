@@ -1,0 +1,105 @@
+{
+  "check-json": {
+    "counts": {
+      "error": "number",
+      "info": "number",
+      "warn": "number"
+    },
+    "lang": "string",
+    "ok": "boolean",
+    "results": [
+      {
+        "code": "string",
+        "data": "*",
+        "id": "null|string",
+        "key": "null|string",
+        "msg": "string",
+        "rule": "null|string",
+        "sev": "string",
+        "slide": "null|number",
+        "step": "null|string",
+        "title": "null|string"
+      }
+    ]
+  },
+  "buildFixRequest": {
+    "params": "{ problems, deck, narration = '', lang = 'en', limit = 40000, ...rest }",
+    "returns": {
+      "components": [
+        "string"
+      ],
+      "partial": "boolean",
+      "rules": [
+        "string"
+      ],
+      "slides": [
+        "string"
+      ],
+      "text": "string"
+    }
+  },
+  "buildPack": {
+    "params": "opts",
+    "assembleParams": "data, { series = [], lang = 'en' } = {}",
+    "returns": "string"
+  },
+  "llm-import.extractBlocks": {
+    "params": "text",
+    "ok": {
+      "deck": "string",
+      "error": "null",
+      "narration": "null|string",
+      "warnings": [
+        {
+          "code": "string",
+          "n": "number"
+        }
+      ]
+    },
+    "unclosed": {
+      "deck": "null|string",
+      "error": {
+        "code": "string",
+        "kind": "null|string",
+        "line": "number",
+        "message": "string"
+      },
+      "narration": "null|string",
+      "warnings": []
+    },
+    "noBlocks": {
+      "deck": "null|string",
+      "error": {
+        "code": "string",
+        "message": "string"
+      },
+      "narration": "null|string",
+      "warnings": []
+    }
+  },
+  "llm-import.mergeSlides": {
+    "params": "deck, patch",
+    "returns": {
+      "deck": "string",
+      "missing": [
+        "string"
+      ],
+      "replaced": [
+        "string"
+      ],
+      "unnamed": "number"
+    }
+  },
+  "llm-import.mergeNarration": {
+    "params": "narration, patch",
+    "returns": {
+      "added": [
+        "string"
+      ],
+      "narration": "string",
+      "replaced": [
+        "string"
+      ]
+    }
+  }
+}

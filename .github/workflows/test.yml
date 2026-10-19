@@ -15,6 +15,27 @@ permissions:
   contents: read
 
 jobs:
+  # Generated files (committed: Pages and users need them) must match their sources, and changes/*.md fragments must be well formed.
+  # Also in npm test; this job fails fast with a clear message. Fix with: npm run gen
+  # A pull request (or a run on another branch) that changes code without adding a changes/*.md fragment gets a warning, not a failure.
+  generated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generated files and changelog fragments (npm run gen:check)
+        run: npm run gen:check
+      - name: Changelog fragment for code changes (warning only)
+        if: github.ref != 'refs/heads/main'
+        run: node tools/changelog.mjs --check --base "origin/${{ github.base_ref || 'main' }}"
+
   # Tier 1: build, check, and browser tests. No TTS, no ffmpeg.
   # Fonts: fonts/*.ttf are not in the repo, so build embeds BIZ UDPGothic from @fontsource (no system CJK fonts needed).
   # Browser: kit/browser.mjs tries CHROME_PATH, then Google Chrome, then Playwright's Chromium (installed below).
