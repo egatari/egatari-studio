@@ -21,6 +21,7 @@ import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
+import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -593,13 +594,16 @@ function showHelp() {
 }
 
 // ---------------------------------------------------------------- 書き出し・印刷
+const deckBase = () => (S.deckFile || 'deck').split('/').pop().replace(/\.html?$/i, '');
 async function exportHtml() {
   if (!S.ws) return;
   status(T.exporting);
   let r;
   try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false }, null, { timeout: buildTimeout() }); }
   catch (e) { toast(T.exportFailed + ': ' + (e.message || e), true); return; }
-  const name = S.deckFile.replace(/\.html?$/i, '') + '.html';
+  // 既定の名前は教材の題名（kit/core/export-name.mjs。なければデッキの名前）
+  const name = exportName(titleOf(r.html), deckBase(), '.html');
+  if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
   try {
     let h = window.__APP_TEST && window.__APP_TEST.saveHandle;
     if (!h && window.showSaveFilePicker) {
@@ -1028,7 +1032,8 @@ async function exportPortableFile() {
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   try {
-    const name = S.deckFile.replace(/\.html?$/i, '') + FORMAT.FILE_EXT;
+    const name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT);   // 教材の題名（egatari.json の題 ＞ <title>）、なければデッキの名前
+    if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
     const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
     const h = th ? (await writeHandle(th, r.html, live), th) : await saveWithPicker(name, r.html, ws0.handle, live);
     if (!live()) throw cancelledError();

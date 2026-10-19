@@ -16,6 +16,7 @@ import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
 
 const TX = {
@@ -223,11 +224,7 @@ export function setupLlm(app) {
     const a = assignIds(deck, narration || '', { byOrder: true });
     return { deck: a.deck, narration: a.narration, added: a.added.length, problems: a.problems };
   }
-  const nameOf = (deck) => {
-    const t = (deck.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '';
-    const n = t.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, ' ').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
-    return (n || 'ai-draft') + FORMAT.FILE_EXT;
-  };
+  const nameOf = (deck) => exportName(titleOf(deck), 'ai-draft', FORMAT.FILE_EXT);   // 題名から（kit/core/export-name.mjs）
   // メモリの上の原稿 → Worker で1 ファイル（.ega.html）（組み立てと同じ期限）→ 開く（中身からコードを探し、あれば確かめる）
   async function openFiles(files, name, extra) {
     const ws = memoryWorkspace('pasted', files);

@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { launch } from '../kit/browser.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { readPortable, isStale, scanDocument, replaceIndexText } from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { unpack } from './portable.mjs';
@@ -421,6 +422,8 @@ try {
   await ep.setContent(exp, { waitUntil: 'load' });
   await ep.waitForFunction(() => window.DECK && DECK.ready);
   ok(await ep.evaluate(() => DECK.slides.length) === 6, 'export: exported HTML runs on its own');
+  const expName = await page.evaluate(() => window.__APP_TEST.lastSaveName);
+  ok(titleOf(exp) && expName === exportName(titleOf(exp), 'deck', '.html') && expName !== 'deck.html', `export: the default file name is the deck title (${expName})`);
   await ep.close();
 
   // ---------------------------------------------------------------- 9. 発表者ビュー
@@ -709,6 +712,8 @@ try {
     let rx = '';
     for (let i = 0; i < 300 && rx.length < 1000; i++) { await page.waitForTimeout(100); rx = Buffer.from((await dirFiles('unpacked'))['re-exported.html'] || '', 'base64').toString(); }
     const rxr = await readPortable(rx);
+    const rxName = await page.evaluate(() => window.__APP_TEST.lastSaveName);
+    ok(rxName === exportName(rxr.index.metadata.title, 'deck', FORMAT.FILE_EXT) && rxName !== 'deck' + FORMAT.FILE_EXT, `export portable (folder): the default file name is the deck title (${rxName})`);
     ok(rxr.docId === pmin.index.docId && rxr.index.sourceSha256 === saved.index.sourceSha256, 'export portable (folder): same docId and sourceSha256 as the saved file');
     ok(rx === savedBuf.toString(), 'export portable (folder): byte-identical to the file saved from memory (same editor build)');
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
