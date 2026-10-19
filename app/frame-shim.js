@@ -46,6 +46,7 @@ window.addEventListener("message", function(e){
   if (m.type === "app-print") window.print();
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
   else if (m.type === "app-check") whenReady(function(){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck()}, "*"); });
+  else if (m.type === "app-audio") whenReady(function(){ previewAudio(m.items); });
 });
 // 簡易な検査は、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
 // 10 秒たっても組み上がらなければ、そのまま検査する（実行系が止まったデッキ：スクリプトのエラーを返す）
@@ -54,6 +55,28 @@ function whenReady(fn){
   var done = false, go = function(){ if (!done) { done = true; fn(); } };
   document.addEventListener("deck:ready", go);
   setTimeout(go, 10000);
+}
+
+// プレビューの音声（backlog #49）：組み立ては deck-audio の src を置き場所の印（egatari-preview:…）にし、編集アプリが読み込みの後で
+// その音声のバイトを送る。この文書の blob: にして DECK.AUDIO の src を替える（sandbox の枠は親の blob: も相対のパスも読めない。
+// 決まりの media-src は data: blob: だけ）。この文書の blob: は読み込み直す（文書を捨てる）と消える。同じ文書で送り直されたら前のものを消す
+var audioUrls = [], audioPh = Object.create(null);   // audioPh：段階の鍵 → 組み立てが置いた印
+function previewAudio(items){
+  var A = window.DECK && window.DECK.AUDIO;
+  if (!A || !Array.isArray(items)) return;
+  audioUrls.forEach(function(u){ URL.revokeObjectURL(u); }); audioUrls = [];
+  var map = {};
+  items.forEach(function(it){
+    if (!it || typeof it.src !== "string" || !/^egatari-preview:[0-9.]+$/.test(it.src) || !(it.bytes instanceof ArrayBuffer)) return;
+    var mime = /^audio\/[a-z0-9.+-]+$/.test(it.mime || "") ? it.mime : "";
+    var u = URL.createObjectURL(new Blob([it.bytes], mime ? {type: mime} : {}));
+    audioUrls.push(u); map[it.src] = u;
+  });
+  for (var k in A) {
+    if (!A[k]) continue;
+    if (!(k in audioPh)) audioPh[k] = typeof A[k].src === "string" && A[k].src.indexOf("egatari-preview:") === 0 ? A[k].src : null;
+    if (audioPh[k] && map[audioPh[k]]) A[k].src = map[audioPh[k]];
+  }
 }
 
 // ---------------------------------------------------------------- 簡易な検査（kit/check.mjs の一部：はみ出し・文字の大きさ・字数・口述原稿・コントラスト）

@@ -154,6 +154,27 @@ async function previewBlank(p = page) {
   try { inner = fr ? await fr.evaluate(() => ({ deck: typeof window.DECK !== 'undefined', kids: document.body ? document.body.childElementCount : 0, url: location.href })) : null; } catch { inner = null; }
   return !attr.srcdoc && !attr.src && (!inner || (!inner.deck && inner.kids === 0));
 }
+// プレビューで音声が鳴る（backlog #49）：deck-audio の src がプレビューの文書の blob: になり、自動再生で鳴って時刻が進む
+// （キーの操作のない再生はブラウザが止めるので、試験では音を消して鳴らす）
+async function previewAudioPlays(fr, tag) {
+  let srcs = [];
+  for (let i = 0; i < 100; i++) {
+    srcs = await fr.evaluate(() => Object.values(DECK.AUDIO).map((a) => a.src));
+    if (srcs.length && srcs.every((s) => s.startsWith('blob:'))) break;
+    await page.waitForTimeout(100);
+  }
+  ok(srcs.length > 0 && srcs.every((s) => s.startsWith('blob:')), `${tag}: every deck-audio src is a blob: URL of the preview document (${srcs.length})`);
+  await fr.evaluate(() => { const pl = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__au = this; this.muted = true; return pl.call(this); }; DECK.go(0, 0, false); });
+  await fr.evaluate(() => DECK.autoplay(true));
+  let st = null;
+  for (let i = 0; i < 60; i++) {
+    st = await fr.evaluate(() => (window.__au ? { src: window.__au.src, t: window.__au.currentTime, err: window.__au.error && window.__au.error.code } : { auto: document.documentElement.classList.contains('autoplay') }));
+    if (st && st.t > 0) break;   // st.auto：まだ鳴らしていない（自動再生の状態だけ）
+    await page.waitForTimeout(100);
+  }
+  ok(!!st && !!st.src && st.src.startsWith('blob:') && st.t > 0 && !st.err, `${tag}: autoplay plays the audio (currentTime advances) ${JSON.stringify(st)}`);
+  await fr.evaluate(() => { DECK.autoplay(false); DECK.go(0, 0, false); });
+}
 async function waitLoads(n, timeout = 15000) {
   await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout });
   return frameReady();
@@ -555,6 +576,7 @@ try {
     let ps = await pstate();
     ok(ps.kind === 'memory' && ps.portable.docId === pmin.index.docId && !ps.error, `portable: in-memory workspace, docId ${ps.portable.docId}`);
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
+    await previewAudioPlays(f, 'preview audio (single file in memory)');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice'), 'portable: core profile → no code notice');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-savemenu') && await page.isHidden('#m-save'), 'portable: toolbar shows Save and its menu button');
     await page.click('#b-savemenu');
@@ -703,7 +725,7 @@ try {
     // 書き出したフォルダを開き、持ち運べる 1 ファイルに書き出す（フォルダの「1 ファイルを書き出す」）→ 同じ文書
     n = await loads();
     ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dirs.unpacked)) === true, 'export folder: the exported folder opens as a folder');
-    await waitLoads(n);
+    await previewAudioPlays(await waitLoads(n), 'preview audio (folder)');
     await page.click('#b-exportmenu');
     ok(await page.isVisible('#b-export-portable') && await page.isHidden('#b-save') && await page.isHidden('#b-savenew'), 'folder: the Export menu has Export portable file; Save is hidden');
     await page.keyboard.press('Escape');

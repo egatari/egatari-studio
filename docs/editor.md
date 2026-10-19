@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=3b9ed831212383e7 -->
+<!-- i18n: pair=editor.ja.md sha256=3ddf1eddd9bb04a2 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -139,7 +139,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 - **Chrome / Edge only.** Mobile browsers cannot open folders either.
 - **Browser TTS models.** The model is stored in the browser's cache for the editor's site (Irodori-TTS about 1.26 GB, Kokoro about 330 MB). **Help** shows how much storage the site uses (`navigator.storage.estimate`) and which models are stored, and **Delete models** removes them (audio you made stays; the next use downloads again). When the TTS window loads a model it deletes the caches of older model versions and asks the browser to keep the storage (`navigator.storage.persist`); otherwise the browser may delete the models when the disk is nearly full, and Safari after about a week without a visit.
-- **Command line only:** TTS with your own reference voices or the server engines (`tts/synth.py`), video (`tts/`, `render/`), the full check (`npm run check`), `tools/pdf.mjs`. The preview does not play the folder's audio (`audio/`): autoplay uses the default timing, as without audio; the Audio panel plays each step's audio in the editor page.
+- **Command line only:** TTS with your own reference voices or the server engines (`tts/synth.py`), video (`tts/`, `render/`), the full check (`npm run check`), `tools/pdf.mjs`. The preview plays the audio in `audio/manifest.json` (folder or single file) when you autoplay (`a`): the editor reads each file and hands its bytes to the preview, which plays them from `blob:` URLs of its own document (the sandboxed preview cannot read the folder or the editor's `blob:` URLs).
 - **Audio panel in the editor app only.** The dev server has no Audio panel (open the folder in the editor app, or use `tts/synth.py`). Browser TTS needs WebGPU and the hosted or served editor.
 - **Bigger exports.** The command-line build can subset the Japanese font with fonttools (`node tools/get-fonts.mjs`); the browser cannot, so the editor embeds the matching font files whole (as the command line does without the TTF files). `examples/minimal` is about 2.0 MB from the editor and 0.7 MB from `npm run build` with subsetting. The deck looks the same.
 - **No Mincho in the single file.** The hosted editor includes BIZ UDPMincho (loaded only for decks that use it, such as theme `kokugo`); the single file `dist/editor.html` does not, to stay small. There a Mincho deck builds with a warning and shows the viewer's own Mincho font.

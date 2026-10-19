@@ -23,6 +23,7 @@ import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
+import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
@@ -185,10 +186,43 @@ function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
 // 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る
 function onPreviewLoad(e) {
-  if (e.target.hasAttribute('srcdoc')) S.frameLoaded = S.loads;   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
+  if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   const a = document.activeElement;
   if (a && a.closest && a.closest('.menu')) return;
   focusPreview();
+}
+// プレビューの音声（backlog #49）：組み立てが置いた印（refs：[{src, rel, size}]、app/engine.js の previewAudio）の音声を作業場所から読み、
+// 読み込み終わったプレビューに送る（中の仲立ち app/frame-shim.js がその文書の blob: にする。親の blob: は sandbox の枠から読めない）。
+// 読んだバイトは印の大きさと時刻が同じ間は覚えておく（作業場所が替われば捨てる）。1 つは音声の板と同じ上限（AUDIO_LIMITS.fileBytes）、合わせて PREVIEW_AUDIO_MAX バイトまで
+const PREVIEW_AUDIO_MAX = 512 * 1048576;
+const PA = { ws: null, cache: new Map() };   // rel → {sig, bytes}
+const AUDIO_MIME = { wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', flac: 'audio/flac' };
+async function sendPreviewAudio(frame, refs, load) {
+  const ws = S.ws;
+  if (PA.ws !== ws) { PA.ws = ws; PA.cache.clear(); }
+  if (!ws || !refs || !refs.length) return;
+  const items = [], used = new Set();
+  let total = 0;
+  try {
+    for (const x of refs) {
+      const sig = x.src.slice(x.src.indexOf('.') + 1);
+      if (x.size > AUDIO_LIMITS.fileBytes) { console.warn('[editor] preview audio: ' + x.rel + ' is over the audio file limit; not played'); continue; }
+      total += x.size;
+      if (total > PREVIEW_AUDIO_MAX) { console.warn('[editor] preview audio: over the limit; the rest is not played'); break; }
+      let c = PA.cache.get(x.rel);
+      if (!c || c.sig !== sig) {
+        const bytes = await ws.readBytes(x.rel, { max: x.size });
+        c = { sig, bytes };
+        PA.cache.set(x.rel, c);
+      }
+      used.add(x.rel);
+      const ext = (/\.([a-z0-9]+)$/i.exec(x.rel) || [])[1];
+      items.push({ src: x.src, mime: AUDIO_MIME[(ext || '').toLowerCase()] || '', bytes: c.bytes.slice().buffer });
+    }
+  } catch (e) { console.warn('[editor] preview audio: could not read', e); return; }
+  for (const rel of [...PA.cache.keys()]) if (!used.has(rel)) PA.cache.delete(rel);
+  if (S.ws !== ws || S.loads !== load || !frame.contentWindow) return;   // 読む間に別の読み込みになった（その読み込みが送る）
+  frame.contentWindow.postMessage({ type: 'app-audio', items }, '*');
 }
 function showDeck(label, title) {
   wait.pause();
@@ -274,7 +308,7 @@ async function rebuild(reason) {
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         // 組み立てと判定は Worker で（期限を過ぎれば止めて失敗にする）。理由は Worker が組んだ文書（表示するバイト）から決める
-        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true }, reasonsPrefix(), { timeout: buildTimeout() });
+        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
@@ -299,7 +333,7 @@ async function rebuild(reason) {
         S.stale = stale;
         for (const k of stale) S.warn.push(T.staleStep(k));
         const changed = r.html !== S.base;
-        S.base = r.html;
+        S.base = r.html; S.baseAudio = r.previewAudio || [];
         S.ranges = new Set([...r.html.matchAll(/ data-src="(\d+-\d+)" data-src-h="[0-9a-f]{8}"/g)].map((m) => m[1]));
         S.preview = true;
         showError(null);

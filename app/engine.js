@@ -16,6 +16,8 @@ import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
 import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
 
 export const DECK = '/deck', ROOT = '/repo', USER_THEMES = '/user-themes';
+// プレビューの音声の置き場所の印（deck-audio の src。app/frame-shim.js が blob: に替える）
+export const PREVIEW_AUDIO = 'egatari-preview:';
 
 export function bytesToBase64(bytes) {
   let s = '';
@@ -243,19 +245,35 @@ export function createEngine(res, loadLazy) {
     },
     // 組む。組み立てが参照したのにまだ読んでいないファイルを読んで、足りるまで組み直す（読み込めなかったものは空のまま進むので、
     // 1 回ごとに 1 つ以上増える）。一覧のほかのファイルは読まない。組み立ての上限で断るなら（build-too-large）、読む前に断る
+    // opts.previewAudio：プレビューで音声を鳴らす（backlog #49）。audio/ も含めた一覧で組み、deck-audio の src は置き場所の印
+    // （PREVIEW_AUDIO + 番号.大きさ.時刻）にして、r.previewAudio = [{src, rel, size}] を返す。音声のバイトは読まない：
+    // 編集アプリが読み、プレビューの中の仲立ち（app/frame-shim.js）がその文書の blob: にする（sandbox の枠は親の blob: を読めない）
     async build(file, opts = {}) {
       forget(listing);
       await refreshThemes();
-      const { signal, ...o } = opts;
+      const { signal, previewAudio, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
+      let L = listing, benv = env, miss = missing, refs = [];
+      if (previewAudio) {
+        L = await ws.list({ audio: true });
+        miss = new Set();
+        benv = mkEnv(() => L, miss);
+        o.audioRef = (k, p, v) => {
+          const rel = relOf(p), f = L.files.get(rel);
+          if (!f || !(typeof v.dur === 'number' && v.dur > 0)) return null;
+          const src = `${PREVIEW_AUDIO}${refs.length}.${f.s}.${Math.max(0, Math.round(f.m) || 0)}`;
+          refs.push({ src, rel, size: f.s });
+          return src;
+        };
+      }
       for (let i = 0; i < 40; i++) {
-        missing.clear();
+        miss.clear(); refs = [];
         let r = null, err = null;
-        try { r = coreBuild(env, DECK + '/' + file, { noAudio: true, subset: false, ...o }); } catch (e) { err = e; }
+        try { r = coreBuild(benv, DECK + '/' + file, { noAudio: !previewAudio, subset: false, ...o }); } catch (e) { err = e; }
         if (err && err.code === 'build-too-large') throw err;
-        if (!missing.size) { if (err) throw err; return r; }
-        await loadMissing(missing, listing, tally, live);
+        if (!miss.size) { if (err) throw err; if (previewAudio) r.previewAudio = refs; return r; }
+        await loadMissing(miss, L, tally, live);
       }
       throw new Error('could not read all files');
     },
