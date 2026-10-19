@@ -1,6 +1,6 @@
 // まっさらな環境で、使う人の道を一通り動かす（backlog #50。CI の clean ジョブと、版の前の確認）
 //   node tools/clean-env.mjs [--skip-tts]
-// 子のプロセスは、空の HOME（USERPROFILE も）と、つながらない TTS のサーバー（IRODORI_URL=http://127.0.0.1:9）で動かす：
+// 子のプロセスは、空の HOME（Windows 以外は USERPROFILE も）と、つながらない TTS のサーバー（IRODORI_URL=http://127.0.0.1:9）で動かす：
 // 作った人の ~ の設定・声・テーマ・キャッシュや、動いている TTS のサーバーに頼っていれば、ここで落ちる。
 // 見本（examples/*）ごとに、一時フォルダへの写しで build・check・--portable・--play-only。tts/synth.py --dry-run（uv が要る。--skip-tts で飛ばす）
 // の後で組む。npm run new で作ったデッキを組んで検査する。リポジトリの中には何も書かない
@@ -15,7 +15,9 @@ const skipTts = process.argv.includes('--skip-tts');
 const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-clean-')));
 const HOME = path.join(tmp, 'home');
 fs.mkdirSync(HOME);
-const env = { ...process.env, HOME, USERPROFILE: HOME, IRODORI_URL: 'http://127.0.0.1:9' };
+// Windows では USERPROFILE は替えない（空のフォルダにすると Chrome が起動しない）。Node の os.homedir() は HOME ではなく USERPROFILE を見るので、
+// Windows で確かめるのは HOME（Git Bash・uv など）だけ
+const env = { ...process.env, HOME, ...(process.platform === 'win32' ? {} : { USERPROFILE: HOME }), IRODORI_URL: 'http://127.0.0.1:9' };
 delete env.EGATARI_THEMES;   // 利用者のテーマのフォルダも使わない
 
 let fails = 0;
