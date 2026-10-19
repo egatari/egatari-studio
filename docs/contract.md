@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=7a81bd82b18137d7 -->
+<!-- i18n: pair=contract.ja.md sha256=5ae922b685238a1a -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -97,9 +97,9 @@ dur = override.dur
 - When both the component's `cues(k)` and the audio cue times (only the `{cue}` boundaries) exist and their counts match, the component's time is stretched piecewise linearly to follow the audio
 - Attention marks (§7): in a step without audio, `max(hold, marksEnd + pad_after)` is used instead of `hold`. In a step with audio the marks fall within the audio, so dur does not change. `anim` does not include the marks. The end of the motion including the marks is `motion = max(anim, marksEnd)` (video export captures frames up to this point)
 
-## 6. Output for canon
+## 6. (Removed)
 
-1 step = 1 frame (page) = 1 chapter. `clip_NNNN.mp4` (80 MB or less), `clip_NNNN.png` (final state), and a Marp-style md (each page has `# heading`, from the second step on `<!-- _paginate: hold -->`, and `Expert:` / `Novice:` lines in the narration comment).
+The export for canon (a Marp-style lesson bundle) was removed in 0.4.2. The number is kept so that references to §7 and later stay valid. Video export (`render/render.mjs`) is unchanged: 1 step = 1 clip.
 
 ## 7. Attention marks (`{mark}`)
 

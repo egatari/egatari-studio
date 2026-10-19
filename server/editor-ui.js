@@ -39,8 +39,8 @@ const STR = {
     save: 'Save', cancel: 'Cancel', editSrc: 'Edit source', closeEsc: 'Close (Esc)', editHint: '⌘/Ctrl+Enter to save · Esc to cancel · write math as \\( … \\)',
     loading: 'Loading…', loadFail: 'Could not load', stale: 'The source has changed. Please reload (this view was built from an older source)',
     saving: 'Saving…', saved: 'Saved', conflict: 'The source has changed. Please reload (copy what you typed first)', saveFail: 'Could not save', offline: 'Cannot reach the editor',
-    reload: 'Reload', cPlace: 'e.g. make this line shorter / match the figure colors / add one example', cSave: 'Leave', cTitle: 'Note for Claude', cHint: '⌘/Ctrl+Enter to leave · written to comments.json',
-    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for Claude (open)', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
+    reload: 'Reload', cPlace: 'e.g. make this line shorter / match the figure colors / add one example', cSave: 'Leave', cTitle: 'Note for the AI', cHint: '⌘/Ctrl+Enter to leave · written to comments.json',
+    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for the AI (open)', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
     toSlide: 'Click to go to the slide', nStale: (k) => 'You are editing a different step than the one shown (' + k + '). It will switch after you save or cancel',
     nLine: (n) => 'narration.md line ' + n, nNone: 'No narration yet', revertT: 'Revert to before editing', nTitle: 'Narration', step: 'Step ', closeN: 'Close (n)',
     discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No narration for this step yet. Start with “Add a turn”',
@@ -56,8 +56,8 @@ const STR = {
     save: '保存', cancel: '取消', editSrc: '原稿を編集', closeEsc: '閉じる（Esc）', editHint: '⌘/Ctrl+Enter で保存 · Esc で取消 · 数式は \\( … \\) のまま書けます',
     loading: '読み込み中…', loadFail: '読み込めませんでした', stale: '原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）',
     saving: '保存中…', saved: '保存しました', conflict: '原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
-    reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'Claudeへの指示', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
-    cFail: '残せませんでした', cDone: '指示を残しました（comments.json）', cList: 'Claudeへの指示（未対応）', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
+    reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'AI へのメモ', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
+    cFail: '残せませんでした', cDone: 'メモを残しました（comments.json）', cList: 'AI へのメモ（未対応）', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
     toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中の段階（' + k + '）とは別の段階を編集中です。保存か取消のあとで切り替わります',
     nLine: (n) => 'narration.md ' + n + ' 行目', nNone: 'まだ口述原稿がありません', revertT: '編集前に戻す', nTitle: '口述原稿', step: '段階 ', closeN: '閉じる（n）',
     discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'この段階の口述原稿はまだありません。「発言を足す」で書き始めます',
@@ -362,7 +362,7 @@ export function createEditorUI(o) {
     });
   }
 
-  // ---------------------------------------------------------------- Claude への指示（デッキの comment の知らせ）
+  // ---------------------------------------------------------------- AI へのメモ（デッキの comment の知らせ）
   function closeComment(force) {
     if (!cbox) return;
     if (!force && cbox.ta.value.trim()) return;

@@ -6,14 +6,13 @@
 // - 動きのある区間 [0, motion)（motion = max(anim, 注目の演出の終わり)）だけを fps で撮り、残り（dur - anim）は最終状態（t = Infinity）の 1 枚を伸ばす
 // - 音声は lead 秒の無音のあとに置き、dur まで無音で埋める（音声が dur を超えたら切って警告）
 // - 出力：clip_NNNN.mp4（H.264 yuv420p・固定フレームレート・faststart、AAC）、clip_NNNN.png、
-//   timeline.out.json（各段階の開始・長さ・題名・章・原稿。canon の録画モードの transcript_segment に使える）
+//   timeline.out.json（各段階の開始・長さ・題名・章・原稿。字幕・チャプターの印に使える）
 // - --full：全体を 1 本（full.mp4）に。章（timeline の chapter）が 2 つ以上あれば章ごとの mp4 も作る
 // - キャッシュ（<out>/.render-cache.json）：段階ごとの「入力」のハッシュ（スライドの HTML・部品のコード・テーマなど
 //   スライド以外の HTML 全体・その段階の音声と注目の演出と時間・dur/lead/anim/motion・fps・scale・音声ファイル）と、
 //   最終状態と動きの途中の 1 コマの画素とが前回と同じ段階は作らない
 // - 鮮度：キャッシュにはクリップごとの入力のハッシュ（clips.<clip>.input）を残す。今の入力と合わないクリップ・
 //   無いクリップがあれば（--only のあとなど）timeline.out.json に stale として書き、--full は断り、終了コード 2 で終える。
-//   render/export-canon.mjs も同じ情報で古いクリップを断る
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -24,7 +23,7 @@ import { launch } from '../kit/browser.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 
 const RENDER_VERSION = 4;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
-const CACHE_FILE = '.render-cache.json';   // render/export-canon.mjs も読む
+const CACHE_FILE = '.render-cache.json';
 
 function parseArgs(argv) {
   const o = { fps: 30, scale: 1.5, only: null, full: false, force: false, captions: false, out: null, src: null };
@@ -256,7 +255,7 @@ async function main() {
       made++;
       console.log(`  [${n + 1}/${tl.length}] ${s.key}: ${s.dur.toFixed(2)} s（動き ${nA} コマ${audio ? '、音声あり' : ''}）→ ${clip}.mp4`);
     }
-    // 段階の数が減ったときの古いクリップは消す（canon の連番がずれないように）
+    // 段階の数が減ったときの古いクリップは消す（連番がずれないように）
     for (const f of fs.readdirSync(outDir)) {
       const m = f.match(/^clip_(\d{4})\.(mp4|png)$/);
       if (m && +m[1] >= tl.length) { fs.rmSync(path.join(outDir, f)); delete cache.clips[`clip_${m[1]}`]; }

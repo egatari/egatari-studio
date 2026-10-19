@@ -40,8 +40,6 @@ const ALLOW = [
   ['render/render.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）'],
   ['tools/smoke.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）'],
   ['examples/tmlr2026-calibration/scripts/shots_figs.mjs', 'm.text()', 'ブラウザの console の記録（Playwright の ConsoleMessage）'],
-  ['render/export-canon.mjs', 'import { readFileSync } from "node:fs";', 'bun に渡すコードの文字列（canon の parser に、このツールが書いたばかりの md を読ませる）'],
-  ['render/export-canon.mjs', 'parseMarp(readFileSync(', 'bun に渡すコードの文字列（このツールが書いたばかりの md）'],
   ['lab/irodori.js', 'await hit.arrayBuffer()', '試験ページ：Cache Storage に自分で入れた重み（固定の Hugging Face の版）。読んだ後に期待の大きさと比べる'],
   ['lab/irodori.js', 'await res.arrayBuffer()', '試験ページ：固定の Hugging Face の版の重み・同梱の既定の声（自分の配信元）を fetch する'],
   ['kit/core/attach-content.mjs', 'ds.readable.getReader()', '添付の中身の検査：既に上限の内で読んだバイトを展開する DecompressionStream の出力（展開した大きさを数えて上限で止める）'],

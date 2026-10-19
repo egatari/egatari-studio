@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -50,11 +50,12 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
     assert.equal(file.slice(i), buildPack({ series: [], lang }));
-    assert.equal(commonBody(lang), buildPack({ series: [], lang }));
+    assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
+    assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
     for (const s of SERIES) {
       const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
       assert.equal(doc, seriesPart(s, lang), `${lang} ${s}`);
-      assert.equal(buildPack({ series: [s], lang }), commonBody(lang) + '\n' + seriesPart(s, lang));
+      assert.equal(buildPack({ series: [s], lang }), commonBody(lang) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
     }
     assert.equal(buildPack({ series: ['info', 'academic', 'info'], lang }), buildPack({ series: 'academic,info', lang }));
     assert.equal(buildPack({ series: 'all', lang }), buildPack({ series: SERIES, lang }));

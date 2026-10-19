@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=6c10d90c0743a531 -->
+<!-- i18n: pair=reference.md sha256=de3b821ca097986d -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -288,7 +288,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `e` | 編集モード。`h1 h2 p li td th`、`.big .note .sub .venue .au .thm .box .lead`、`.concl` の中の `span` をダブルクリック。⌘/Ctrl+Enter で保存、Esc で取消。build の警告の数を札に出す |
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
 | `c` | 指示の一覧。クリックでそのスライドへ、「解決」で閉じる |
-| Alt+クリック（Mac は ⌥ option+クリック） | Claude Code への指示を残す |
+| Alt+クリック（Mac は ⌥ option+クリック） | AI へのメモを残す（`comments.json`） |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
@@ -446,18 +446,6 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各段階は `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。段階の数より後ろのクリップは消す。
 
-`node render/export-canon.mjs <deckdir | 組んだ.html> --render <フォルダ> --out <バンドル> [--md 名前.md] [--canon フォルダ]`
-
-| 選択肢 | 意味 |
-|---|---|
-| `<deckdir \| 組んだ.html>` | 組んだファイルなら、そのフォルダか 1 つ上の `narration.md` を使う |
-| `--render フォルダ` | `render.mjs` の出力 |
-| `--out フォルダ` | バンドル：`<md>`、`clips_per_page/`、`stills/`、`timeline.out.json` |
-| `--md 名前` | md のファイル名（既定 `<デッキの名前>_with_narration.md`） |
-| `--canon フォルダ` | canon のリポジトリ。bun で canon の parser の検査をする（`CANON_DIR` より優先）。なければ飛ばす |
-
-エラー（80 MB を超えるクリップ、話者のない行）なら終了コード 1。口述原稿・静止画がない、dry-run の音声が残っていれば警告。canon への投入のコマンドを出す。
-
 ## 道具
 
 | コマンド | 用途 |
@@ -492,5 +480,4 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
-| `CANON_DIR` | export-canon | canon のリポジトリ（`--canon` が優先） | なし（検査を飛ばす） |
 | `EGATARI_THEMES` | 組み立て・検査・開発サーバー・1 ファイル | 自分のテーマのフォルダ。作業フォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |

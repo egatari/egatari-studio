@@ -1,4 +1,4 @@
-// 開発サーバー：ブラウザの上で原稿・口述原稿を直し、Claude への指示（コメント）を残す
+// 開発サーバー：ブラウザの上で原稿・口述原稿を直し、AI へのメモ（コメント）を残す
 //   /          外枠（server/shell.js・server/editor-ui.js）。デッキは sandbox の iframe に入れ、編集の画面と合言葉は外枠にだけ置く
 //   /preview   デッキの文書（知らせだけを送る server/hints.js 入り。合言葉なし、外へ繋がらない CSP と CSP の sandbox）。iframe に入れてよいのはここだけ。
 //              外枠が読み込むたびに渡す印（?cap=…）と、ブラウザが付ける Sec-Fetch-Dest: iframe がそろったときだけ出す
@@ -247,7 +247,7 @@ export { rewriteNarration, narrationRev };
 function readNarr() { return readIn(NARR) ?? ''; }
 function rawTurns(slideKey, stepKey) { return narrRawTurns(readIn(NARR), slideKey, stepKey); }
 
-// ---------------------------------------------------------------- コメント（Claude への指示）
+// ---------------------------------------------------------------- コメント（AI へのメモ）
 function readComments() {
   const t = readIn(COMMENTS);
   if (t === null) return [];

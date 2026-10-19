@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=6ade13f042d8276b -->
+<!-- i18n: pair=README.ja.md sha256=6d917ca962af0888 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -31,7 +31,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
-- **Dev server**: edit text and narration in the browser, leave comments for Claude Code
+- **Dev server**: edit text and narration in the browser, leave notes for your AI coding tool
 - **Single file (`.ega.html`)**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
@@ -49,7 +49,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 
 | | Tier 1: slides (core) | Tier 2: narrated video (optional) |
 |---|---|---|
-| You get | HTML deck, presenter view, lecture mode, PDF | per-step MP4 clips, a full video, a lesson bundle |
+| You get | HTML deck, presenter view, lecture mode, PDF | per-step MP4 clips, a full video, a single file with audio |
 | Needs | Node ≥ 22; Google Chrome only for checking, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
 | Optional | uv (font subsetting) | |
 
@@ -72,7 +72,7 @@ winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
 winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
 ```
 
-Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon.
+Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon. On Windows, use another OpenAI-compatible TTS server, or make or record each step's audio in the editor app ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)).
 
 **Browsers**
 
@@ -83,7 +83,7 @@ Edge is already there, so the checker and PDF work without Chrome. Run the comma
 
 - ffmpeg and ffprobe on `PATH`
 - uv (runs the small Python project in `tts/`)
-- A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`)
+- A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`). mlx-audio runs only on a Mac with Apple silicon; on Windows and Linux, see [other TTS servers](docs/video.md#tts-server-mac-windows-linux)
 - Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
 
 ## Quick start (tier 1: slides)
@@ -127,10 +127,10 @@ The page shows the deck (arrow keys, `p`, `a`, … all work), with the editing t
 
 1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
 2. **Fix the narration: `n`.** A drawer shows the narration of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
-3. **Ask Claude Code: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then tell Claude Code "Apply the comments" and it edits the deck; the page updates as soon as it saves.
+3. **Leave a note for the AI: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Notes go to `comments.json`; `c` lists them. Then ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the notes in comments.json" and it edits the deck; the page updates as soon as it saves.
 4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
 
-| `e` + double-click: edit the source | `n`: edit the narration | Alt / ⌥ Option + click: comment for Claude Code |
+| `e` + double-click: edit the source | `n`: edit the narration | Alt / ⌥ Option + click: note for the AI |
 |---|---|---|
 | ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
 
@@ -142,18 +142,18 @@ The same editing as the dev server, as a web page that opens a single file (`.eg
 
 | Form | What it is | Here |
 |---|---|---|
-| Working folder | A folder with `deck.html`, `narration.md`, `audio/` …; the commands and Claude Code read and write it | Edit it with “Open working folder…” (Chrome / Edge) |
+| Working folder | A folder with `deck.html`, `narration.md`, `audio/` …; the commands, AI coding tools (Claude Code, Codex, Gemini CLI …) and other editors read and write it | Edit it with “Open working folder…” (Chrome / Edge) |
 | Single file (`.ega.html`) | One HTML file that carries its source and audio (`--portable`); open it in a browser to play | Edit it with “Open single file…” (any browser) |
 | Play-only (`--play-only`) | A single file without the source | Cannot be edited (open the original single file or the working folder) |
 | Built HTML (`out/deck.html`) | The presentation output (“Export built HTML” writes this too) | Cannot be edited (open the working folder) |
 
 - **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
 - **Open a single file, no folder needed:** “Open single file…” on the first screen (or dropping the file) opens a [single file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export single file” writes one. Works in any current browser (saving downloads where there is no file picker)
-- **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a comment to Claude (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
+- **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a note for the AI (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a working folder:** drop the working folder (the one with `deck.html`) on the page, or press “Open working folder…”, and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent working folders are listed on the first screen.
-- **Draft with a chat AI, no Claude Code needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quick check. “Copy fix request for your AI” in the quick check panel writes the problems, the rules they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
+- **Draft with a chat AI, no coding tool needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quick check. “Copy fix request for your AI” in the quick check panel writes the problems, the rules they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
 - **Narration audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the narration changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with browser TTS (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#narration-audio-audio-panel)). In a single file this is saved without rebuilding
-- **Work with Claude Code:** when anything else changes the files (Claude Code, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
+- **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
 - **Toolbar:** quick check, export the built HTML, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
 
@@ -193,7 +193,7 @@ Example prompts:
 
 - "Use motion-slides to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
 - "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
-- "Apply the comments." (after leaving Alt / ⌥ Option+click comments in the dev server; Claude reads `comments.json`)
+- "Apply the comments." (after leaving Alt / ⌥ Option+click notes in the dev server; the skill reads `comments.json`)
 - "Turn `talks/intro` into a narrated video with motion-slides-video."
 
 The skill first shows you an outline and writes HTML only after you approve it.
@@ -206,12 +206,11 @@ uv run --project tts python tts/synth.py $D --dry-run    # silent placeholder au
 uv run --project tts python tts/synth.py $D              # real TTS (needs the server and the voices)
 node kit/build.mjs $D/deck.html                          # rebuild so the audio lengths enter the timeline
 node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step, --full for one file
-node render/export-canon.mjs $D --render $D/video --out $D/bundle
 ```
 
 - Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English deck `<name>_en.wav` is used when it exists
 - If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
-- `export-canon.mjs` writes a lesson bundle (Marp-style markdown plus one MP4 and one PNG per step) for canon, our lab's lecture delivery system; other systems that accept the same format can use it too. With `CANON_DIR` set, it also validates the bundle with canon's own parser. Without it, that check is skipped
+- No Mac? `synth.py` works with any OpenAI-compatible TTS server that takes the same request ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)); the editor app can also make or record each step's audio
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the narration inside the HTML, so the single file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
 - Details (caching, timing overrides in `timeline.json`, the reading dictionary): [docs/video.md](docs/video.md) ([日本語](docs/video.ja.md))
 
@@ -284,7 +283,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | Path | Contents |
 |---|---|
 | `docs/contract.md` | the contract: position and time, components, narration, timeline, marks, morphs. **Read this first** ([日本語](docs/contract.ja.md)) |
-| `docs/dev-server.md`, `docs/editor.md`, `docs/video.md` | guides: the dev server, the editor app, and making a video ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md)) |
+| `docs/dev-server.md`, `docs/editor.md`, `docs/video.md`, `docs/distributing.md` | guides: the dev server, the editor app, making a video, and handing a lesson to learners ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md), [日本語](docs/distributing.ja.md)) |
 | `docs/authoring-with-llms.md` | instructions for chat AIs (claude.ai, Gemini, ChatGPT) to write a first draft; the common body; the series packs (academic, business, kokugo, info) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
 | `docs/reference.md` | reference: deck syntax, narration, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
 | `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-deck template |
@@ -292,7 +291,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `themes/` | themes |
 | `server/` | dev server and in-browser editor |
 | `app/` | editor app (no install): sources; `npm run build:app` makes the hosted editor in `dist/` (`dist/index.html`) and the single file `dist/editor.html` |
-| `tts/`, `render/` | tier 2: TTS (a uv project), video rendering, bundle export |
+| `tts/`, `render/` | tier 2: TTS (a uv project), video rendering |
 | `skills/` | Claude Code skills |
 | `tools/` | new-deck template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |

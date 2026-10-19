@@ -1,5 +1,5 @@
 // 口述原稿（narration.md）の解析と書き換え。Node にもブラウザにも依存しない（fs・crypto を使わない）
-// kit/narration.mjs（build・TTS・canon）、server/dev.mjs（開発サーバー）、app/（編集アプリ）が共有する
+// kit/narration.mjs（build・TTS）、server/dev.mjs（開発サーバー）、app/（編集アプリ）が共有する
 // 書式は docs/contract.md §4
 import { short } from './sha1.mjs';
 
@@ -82,7 +82,7 @@ export function parseBound(tok) {
   return b;
 }
 
-// 表示用（字幕・発表者ノート・canon）と TTS 用の文字列を作る
+// 表示用（字幕・発表者ノート）と TTS 用の文字列を作る
 //   {φ|ファイ} → 表示 φ / TTS ファイ、{cue} {mark:…} → 表示なし / TTS では区切り（bounds に順に記録）
 export function renderText(raw) {
   const display = raw.replace(BOUND, '').replace(READING, '$1').replace(/\s{2,}/g, ' ').trim();

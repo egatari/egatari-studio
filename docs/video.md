@@ -1,12 +1,10 @@
-<!-- i18n: pair=video.ja.md sha256=af6f91e398cf456b -->
-# Making a video (TTS → render → canon)
+<!-- i18n: pair=video.ja.md sha256=11e07048ce5de1da -->
+# Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
 
-From a deck (`deck.html` + `narration.md`), this makes per-step videos and a lesson bundle for canon. The rules are in [contract.md](contract.md) §4–6.
+From a deck (`deck.html` + `narration.md`), this makes per-step videos and a full video. The rules are in [contract.md](contract.md) §4–5.
 The list of TTS and render options and environment variables is in [reference.md](reference.md#tts).
-
-canon is the TML lab's lecture delivery system. The output is a Marp-style md plus an mp4/png per frame (page), so other systems that accept the same format can use it too.
 
 ## Requirements
 
@@ -17,14 +15,20 @@ canon is the TML lab's lecture delivery system. The output is a Marp-style md pl
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<sentence>", "ref_audio": "<path to the reference wav>", "response_format": "wav"}`.
     `ref_audio` is a path that the server reads (if the server is on another machine, a path on that machine)
 - The default reference voices `bob` and `alice` (and `alice_en`, `bob_en`) are synthetic voices included in `tts/voices/` ([where they come from](../tts/voices/README.md)). For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
-- To check the bundle with canon's parser, the canon repository and bun (without them, only that check is skipped)
 
 | Environment variable | Meaning | Default |
 |---|---|---|
 | `IRODORI_URL` | the Irodori-TTS server | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | the reference voice folder (`--ref-dir` takes precedence) | `tts/voices/` |
 | `MOTION_YOMI` | the reading dictionary (`--yomi` takes precedence) | `tts/yomi.yaml` |
-| `CANON_DIR` | the canon repository (`--canon` takes precedence). Used for export-canon's parser check | none (the check is skipped) |
+
+## TTS server (Mac, Windows, Linux)
+
+`tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
+
+- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU machine on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
+- **No server**: in the editor app, the Audio panel makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#narration-audio-audio-panel))
+- **Google Colab**: a notebook that makes the audio on Colab, and an editor import for what it returns, are coming. Until then, use one of the ways above
 
 ## Steps
 
@@ -44,9 +48,8 @@ node kit/build.mjs $D/deck.html
 # 4. render (1280x720 × scale; 1.5 gives 1920x1080)
 node render/render.mjs $D/out/deck.html --out $D/video [--fps 30] [--scale 1.5] [--full]
 
-# 5. canon bundle
-CANON_DIR=<canon repository> node render/export-canon.mjs $D --render $D/video --out $D/bundle
-#    → upload with the command it prints (check first with bun tools/upload-lesson.ts … --dry-run in the canon repository)
+# 5. (optional) a single file with the audio, to hand out or to open again in the editor
+node kit/build.mjs $D --portable      # or --play-only for a play-only copy for learners
 ```
 
 ## What each step produces
@@ -55,12 +58,9 @@ CANON_DIR=<canon repository> node render/export-canon.mjs $D --render $D/video -
 |---|---|
 | tts/synth.py | `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` (length, cues, the text passed to TTS), `audio/manifest.json` `{segments:{"key:step":{file,dur,cues,digest,engine}}}` |
 | render.mjs | `clip_NNNN.mp4` (H.264 yuv420p, constant frame rate, faststart, AAC 44.1 kHz), `clip_NNNN.png` (final state), `timeline.out.json`. With `--full`, `full.mp4`; if there are two or more chapters (`sec` slides), `chapter_NN.mp4` |
-| export-canon.mjs | `<name>_with_narration.md`, `clips_per_page/clip_NNNN.mp4`, `stills/clip_NNNN.png`, `timeline.out.json` |
 
-- NNNN is the serial number in the timeline (starting at 0) = the seq of the canon chapter. 1 step = 1 page = 1 chapter
-- In the md, step 0 is a new slide and steps 1 and later are `<!-- _paginate: hold -->`. The narration is `Expert:` / `Novice:` lines inside `<!-- 口述原稿（コマN）：` (lines without a speaker are Expert), using the display text (`{cue}` removed, `{φ|ファイ}` as φ)
-- export-canon checks the number of pages and the speaker lines with its own rules. If `CANON_DIR` (`--canon`) is set, it also runs canon's own parser (`src/server/marp.ts`) with bun and checks that the numbers of chapters, slides and frames, the titles and the number of narration lines match (without it, it says so in one line and skips the check). A video over 80 MB or a line without a speaker is an error. A page without narration, or leftover dry-run audio, is a warning
-- `start_ms` / `end_ms` / `text` in `timeline.out.json` are times on the joined video (the cumulative lengths rounded to whole frames). They can be used as they are for `transcript_segment` in recording mode
+- NNNN is the serial number in the timeline (starting at 0). 1 step = 1 clip
+- `start_ms` / `end_ms` / `text` in `timeline.out.json` are times on the joined video (the cumulative lengths rounded to whole frames), usable for subtitles or chapter marks
 
 ## Voices
 
@@ -81,14 +81,14 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 `--engine` > `"engine"` in `voice.json` > the deck's `<html lang>` (`irodori` for `ja`, `voxcpm2` otherwise). Both run on the same mlx-audio server; only the model name differs (`ENGINES` in `tts/core.py`). The reading dictionary is not used for languages other than Japanese.
 
 ```json
-{"lang": "en", "engine": "voxcpm2", "expert": "gendo"}
+{"lang": "en", "engine": "voxcpm2", "expert": "me"}
 ```
 
 ## Caching
 
 - **Audio**: if `seg_<digest>.wav` exists, it is not synthesized again. The digest is `segDigest` (kit/narration.mjs), a hash of the speaker, the text for TTS, the voice, the model, the loudness target, the gap between lines, the silence-trimming settings, and the reading dictionary and its rules (the dictionary actually used and `tts/yomi.py`). If any of these changes, it is rebuilt (fixing the dictionary rebuilds every step). Dry-run uses a different digest, so it never mixes with real audio. `--force` rebuilds
 - **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the contents of the audio file, dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, components or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
-- When the number of steps decreases, the leftover `clip_NNNN.*` files are deleted (so that canon's serial numbers do not shift)
+- When the number of steps decreases, the leftover `clip_NNNN.*` files are deleted (so that the serial numbers do not shift)
 
 ## Adjusting lengths (timeline.json)
 

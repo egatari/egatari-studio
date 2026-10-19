@@ -1,4 +1,4 @@
-# Narration: TMLR 2026 introduction video (single speaker, voice: gendo)
+# Narration: TMLR 2026 introduction video (single speaker)
 
 ## cover
 [0] This video introduces our paper, A Theoretical Analysis of Bayes-Optimal Calibration under the Logit-Noise Model, published in Transactions on Machine Learning Research.

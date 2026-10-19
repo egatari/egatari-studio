@@ -40,7 +40,7 @@ export function workspaceFromPortable(name, r) {
   const CFG = FORMAT.CONFIG_FILE;
   const text = folderConfig(r.index, files.has(CFG) ? parseJsonStrict(dec.decode(files.get(CFG))) : null);
   if (text !== null) files.set(CFG, enc.encode(text));
-  // コメント（Claude への指示）・控えなど、保存するファイルに入らないものは「保存していない変更」にしない
+  // コメント（AI へのメモ）・控えなど、保存するファイルに入らないものは「保存していない変更」にしない
   return memoryWorkspace(name, files, { content: (rel) => rel === 'audio/manifest.json' || !excludedReason(rel) });
 }
 export function archiveFiles(ws) {

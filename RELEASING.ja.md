@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=955c9b8961b3a1b4 -->
+<!-- i18n: pair=RELEASING.md sha256=2b1e92fb88e2d173 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -29,6 +29,13 @@
 
    ```bash
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # 0 でなければならない
+   ```
+
+   **個人の環境に頼らない。** 版のどこも、保守する人の機械を前提にしない：個人のパス・アドレス・秘密・声、`skills/` にないスキル。出てよいのは、そうした漏れを確かめる試験だけ：
+
+   ```bash
+   git grep -nE '/Users/|~/Projects|100\.64\.|\.secrets|api_keys' -- ':!vendor' ':!CHANGELOG.md'
+   git grep -ohE '[a-z]+(-[a-z]+)+ ?(skill|スキル)' -- skills docs README*.md | sort -u   # skills/ にあるスキルの名前だけ
    ```
 
    `main` を push し、CI がまた通るのを待つ

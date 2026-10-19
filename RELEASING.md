@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=1e07c949dcc67b19 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=d5f132844fdf7a61 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -29,6 +29,13 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
    ```bash
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # must print 0
+   ```
+
+   **No personal environment.** Nothing in the release may need the maintainer's machine: personal paths, addresses, secrets or voices, or a skill that is not in `skills/`. The only hits allowed are the tests that check for such leaks:
+
+   ```bash
+   git grep -nE '/Users/|~/Projects|100\.64\.|\.secrets|api_keys' -- ':!vendor' ':!CHANGELOG.md'
+   git grep -ohE '[a-z]+(-[a-z]+)+ ?(skill|スキル)' -- skills docs README*.md | sort -u   # only the skills in skills/
    ```
 
    Push `main` and wait for CI to pass again.

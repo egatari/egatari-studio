@@ -14,7 +14,7 @@
 - ブラウザは `kit/browser.mjs` の `launch()` で起動する（`CHROME_PATH` → Chrome → Playwright の Chromium の順）
 - TTS は `tts/` の中で完結させる（`uv run --project tts python tts/synth.py`）。外のリポジトリに依存しない。設定は環境変数（`IRODORI_URL` `IRODORI_REF_DIR` `MOTION_YOMI`）と CLI で、個人のパスやアドレスをリポジトリに書かない
 - `tts/core.py`（合成・無音除去・音量・結合）と `tts/yomi.py`（読み辞書の規則）を変えると音声が変わる。yomi.py は digest に入るので、変えると全段階が作り直しになる
-- canon（TML 研究室の講義配信システム。`CANON_DIR` で場所を渡す）への出力は 1 段階 = 1 コマ = 1 チャプター。話者は `Expert:` / `Novice:` だけ（ほかは黙って捨てられる）
+- 口述原稿の話者は既定で 1 人。掛け合い（`Expert:` / `Novice:`）は頼まれたときだけ（書き方は skills/motion-slides の「掛け合いの書き方」と AI への指示の R-dialogue）
 - 変更の記録は `CHANGELOG.md` を直さず `changes/<短い名前>.md` の断片に書く（節の見出し `### Added` など＋1〜2 行の項目、英語。CONTRIBUTING.md「Changelog」）。リリースは RELEASING.md の手順（Pages はリリースのタグからだけ置く）
 - 生成物（`components/CATALOG.md`・AI への指示・`kit/core/katex-ranges.mjs`）は手で直さず `npm run gen`。外から使われる口の形を変えたら `node tools/test-api-shapes.mjs --update` と `### Changed (API)` の断片
 

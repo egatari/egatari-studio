@@ -1,4 +1,4 @@
-// 口述原稿（narration.md）の読み書き。build・TTS・canon への出力・開発サーバーが共有する
+// 口述原稿（narration.md）の読み書き。build・TTS・開発サーバーが共有する
 // 書式は docs/contract.md §4。解析と書き換えの本体は kit/core/narration-core.mjs（ブラウザの編集アプリと共有）
 import fs from 'node:fs';
 import crypto from 'node:crypto';

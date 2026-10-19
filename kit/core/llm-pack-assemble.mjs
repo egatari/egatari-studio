@@ -1,6 +1,6 @@
 // AI への指示（kit/core/llm-pack.mjs）の組み立ての本体。材料（kit/core/llm-pack-data.mjs の PACK と同じ形）を引数で受け取る。
 // tools/make-llm-guide.mjs は作りたての材料で、kit/core/llm-pack.mjs は書き出した材料で同じ関数を使う。Node にもブラウザにも依存しない
-//   材料：{series: [名前…], en|ja: {common, series: {名前: 文章}, components: {タグ: {series, row, entry, sup?, ext?: {系列: 文章}}}, tableHead, supNote, extHead}}
+//   材料：{series: [名前…], en|ja: {common, request?, series: {名前: 文章}, components: {タグ: {series, row, entry, sup?, ext?: {系列: 文章}}}, tableHead, supNote, extHead}}
 //   common・series の文章の {{CATALOG}} にその場所の部品の一覧と説明、{{EXTENSIONS}} にほかの部品のその系列向けの節が入る
 export function normalizeSeries(series, data) {
   if (series === undefined || series === null) return [];
@@ -36,7 +36,10 @@ export function partOf(data, name, lang) {
   return tidy(D.series[name].replace('{{CATALOG}}', () => catalog(D, membersOf(D, name))).replace('{{EXTENSIONS}}', () => extensions(D, name)));
 }
 
+// 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／ここまでの議論の内容で）。いちばん最後に付く
+export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
+
 export function assemble(data, { series = [], lang = 'en' } = {}) {
-  const parts = [commonOf(data, lang), ...normalizeSeries(series, data).map((s) => partOf(data, s, lang))];
+  const parts = [commonOf(data, lang), ...normalizeSeries(series, data).map((s) => partOf(data, s, lang)), requestOf(data, lang)].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }

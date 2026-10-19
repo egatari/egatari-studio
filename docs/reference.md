@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=000d6a9e15a6c90a -->
+<!-- i18n: pair=reference.ja.md sha256=a9df01a1ea4b2b8c -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -288,7 +288,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `e` | edit mode; double-click an `h1 h2 p li td th`, `.big .note .sub .venue .au .thm .box .lead` or a `span` in `.concl`; ⌘/Ctrl+Enter save, Esc cancel. A badge shows build warnings |
 | `n` | narration drawer for the current step (and preview of the next) |
 | `c` | open comments; click to jump, "resolve" to close |
-| Alt+click (on a Mac: ⌥ Option+click) | leave a comment for Claude Code |
+| Alt+click (on a Mac: ⌥ Option+click) | leave a note for the AI (`comments.json`) |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
 | endpoints | `GET /` (frame page; `?presenter=1`: presenter window), `GET /preview` (the deck document, sandboxed; the only framable endpoint; served only with the frame page's `cap` and `Sec-Fetch-Dest: iframe`, otherwise a 403 text page), `/deck/<file>` (inert: CSP `sandbox`, non-media as `text/plain` attachments), `/__dev/shell.js`, `/__dev/editor-ui.js`, `/__dev/presenter.js`, `/__dev/events` (SSE), `GET /__dev/info`, `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |
@@ -446,18 +446,6 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 
 Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
 
-`node render/export-canon.mjs <deckdir | built.html> --render <dir> --out <bundle> [--md name.md] [--canon dir]`
-
-| Option | Meaning |
-|---|---|
-| `<deckdir \| built.html>` | for a built file, `narration.md` is looked up in its folder or the parent |
-| `--render dir` | output of `render.mjs` |
-| `--out dir` | bundle: `<md>`, `clips_per_page/`, `stills/`, `timeline.out.json` |
-| `--md name` | Markdown file name (default `<deck name>_with_narration.md`) |
-| `--canon dir` | canon repository for the parser check with bun (over `CANON_DIR`); skipped if absent |
-
-Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing narration or stills and leftover dry-run audio. Prints the canon upload command.
-
 ## Tools
 
 | Command | Purpose |
@@ -492,5 +480,4 @@ Exits with 1 on errors (clip > 80 MB, turn without speaker); warns about missing
 | `IRODORI_URL` | TTS | OpenAI-compatible speech server | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | reference voice folder (`--ref-dir` wins) | `tts/voices/` |
 | `MOTION_YOMI` | TTS | reading dictionary (`--yomi` wins) | `tts/yomi.yaml` |
-| `CANON_DIR` | export-canon | canon repository (`--canon` wins) | none (check skipped) |
 | `EGATARI_THEMES` | build, check, dev server, portable | your theme folders, searched after the working folder and before the bundled `themes/` ([Themes](#themes)); separated by `:` (`;` on Windows) | none; `~/.egatari/themes` is searched after them when it exists |
