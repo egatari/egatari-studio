@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=1ede90d4e775311a -->
+<!-- i18n: pair=editor.ja.md sha256=caff8eb19277449c -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -12,7 +12,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 | Play-only (`--play-only`) | A single file without the source | Cannot be edited (open the original single file or the working folder) |
 | Built HTML (`out/deck.html`) | The presentation output (“Export built HTML” writes this too) | Cannot be edited (open the working folder) |
 
-- **Browsers:** Google Chrome or Microsoft Edge on a computer (Windows, macOS, Linux, ChromeOS). Folders use the File System Access API (`showDirectoryPicker`), which Safari and Firefox do not have; on other browsers the first screen says so. A single file can be opened and edited in any current browser; without the file pickers, saving downloads the file.
+- **Browsers:** Google Chrome or Microsoft Edge on a computer (Windows, macOS, Linux, ChromeOS). Folders use the File System Access API (`showDirectoryPicker`), which Safari and Firefox do not have; on other browsers the first screen says so, together with the way to make a new lesson there: **Paste AI output** (New deck needs a folder). A single file can be opened and edited in any current browser; without the file pickers, saving downloads the file, and each save makes a new file in the downloads (the first screen and the save notice say so: open the newest one next time).
 - **Network:** none, apart from loading the editor itself. The working folder or file is read and written in the browser and is never uploaded. Only if you use browser TTS (in the [Audio panel](#narration-audio-audio-panel)), a separate TTS window of the editor's site downloads the model; the editor page itself still connects nowhere.
 
 ## Getting the editor
@@ -29,7 +29,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 
 1. **Open a deck.** A single file opens with “Open single file…” ([below](#single-files-no-folder)). For a working folder (the folder with `deck.html`; if there is no `deck.html`, the first `.html` file at the top of the folder), drop it onto the page or press “Open working folder…”. The browser asks once whether the page may edit that folder.
    - **New deck** makes `deck.html` and `narration.md` from the same template as `npm run new` (title, language, theme). Choose an empty folder to use it as is; if the folder is not empty, a new folder named after the title is made inside it.
-   - **Recent working folders** are listed on the first screen (the browser keeps the folder handles in IndexedDB; the contents are not stored). When you reopen one, the browser asks for permission again.
+   - **Recently opened** working folders and single files are listed on the first screen (the browser keeps the handles in IndexedDB; the contents are not stored). When you reopen one, the browser asks for permission again (for a single file only to read; Save asks to write). A single file is listed only when the browser gave a file handle (Open single file… or drag and drop in Chrome / Edge), not in Safari or Firefox.
    - **Example lessons** (hosted editor only): the first screen lists the examples of this repository as single files (`examples/minimal`, `pitch-fictional`, `kokugo-kanbun`, `tmlr2026-calibration`, without audio). **Open** fetches the file from the same site (`examples/<name>.ega.html`) and opens it exactly like a file you chose: the same import checks, the code question for `tmlr2026-calibration` (it has its own components) and the rights prompt before the first edit. The single file (`editor.html` from `file://`) does not show the list.
 2. **Edit.** The keys are the same as the dev server (and the toolbar has buttons for them):
 
@@ -52,6 +52,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Quick check:** a subset of `npm run check` that runs in the preview (overflow, font size, title / conclusion length, missing narration, palette contrast). Click a result to go to the slide. It is a hint, not the full check: there are no component determinism, timeline, morph or accessibility checks, and the numbers can differ slightly from the command-line check because the window differs.
    - **Export ▾ → Export built HTML:** builds the deck without the editing hooks and saves it as a built HTML file (play only, without the source; asks where to save; the suggested name is the deck title, see below). Double-click the file to present it anywhere.
    - **Export ▾ → Export single file (.ega.html) to hand out** (working folder): writes the deck with its source and audio as one file to give to others; the working folder stays as it is.
+   - **Export ▾ → Export play-only copy for students (.play.ega.html):** a single file without the source (format §3.7, the same as `--play-only`): it plays in any browser and cannot be edited. For a single file it is made from the saved file (Save first if there are unsaved changes); for a working folder from the folder.
    - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF” and turn on “Background graphics”).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window.
    - **Fullscreen:** the preview fills the screen (for the projector).
@@ -137,6 +138,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 ## Limits
 
 - **Chrome / Edge only.** Mobile browsers cannot open folders either.
+- **Browser TTS models.** The model is stored in the browser's cache for the editor's site (Irodori-TTS about 1.26 GB, Kokoro about 330 MB). **Help** shows how much storage the site uses (`navigator.storage.estimate`) and which models are stored, and **Delete models** removes them (audio you made stays; the next use downloads again). When the TTS window loads a model it deletes the caches of older model versions and asks the browser to keep the storage (`navigator.storage.persist`); otherwise the browser may delete the models when the disk is nearly full, and Safari after about a week without a visit.
 - **Command line only:** TTS with your own reference voices or the server engines (`tts/synth.py`), video (`tts/`, `render/`), the full check (`npm run check`), `tools/pdf.mjs`. The preview does not play the folder's audio (`audio/`): autoplay uses the default timing, as without audio; the Audio panel plays each step's audio in the editor page.
 - **Audio panel in the editor app only.** The dev server has no Audio panel (open the folder in the editor app, or use `tts/synth.py`). Browser TTS needs WebGPU and the hosted or served editor.
 - **Bigger exports.** The command-line build can subset the Japanese font with fonttools (`node tools/get-fonts.mjs`); the browser cannot, so the editor embeds the matching font files whole (as the command line does without the TTF files). `examples/minimal` is about 2.0 MB from the editor and 0.7 MB from `npm run build` with subsetting. The deck looks the same.

@@ -109,16 +109,16 @@ export async function backup(root, rel, now = Date.now, opts = {}) {
 }
 
 // 読み書きの許可（開き直したフォルダは、もう一度ユーザーに許可を求める）
-export async function hasPermission(h) {
+export async function hasPermission(h, mode = 'readwrite') {
   if (!h.queryPermission) return true;
-  return (await h.queryPermission({ mode: 'readwrite' })) === 'granted';
+  return (await h.queryPermission({ mode })) === 'granted';
 }
-export async function askPermission(h) {
+export async function askPermission(h, mode = 'readwrite') {
   if (!h.requestPermission) return true;
-  return (await h.requestPermission({ mode: 'readwrite' })) === 'granted';
+  return (await h.requestPermission({ mode })) === 'granted';
 }
 
-// ---------------------------------------------------------------- 最近開いたフォルダ（IndexedDB にハンドルを残す。中身は残さない）
+// ---------------------------------------------------------------- 最近開いたもの（作業フォルダと 1 ファイル。IndexedDB にハンドルを残す。中身は残さない）
 const DB = 'motion-slides-editor', STORE = 'recent', MAX_RECENT = 8;
 function db() {
   return new Promise((res, rej) => {

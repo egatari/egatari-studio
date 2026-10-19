@@ -1549,6 +1549,93 @@ try {
     await po.close();
   }
 
+  // ---------------------------------------------------------------- 10c. 再生専用の書き出し・最近開いたもの（1 ファイル）・Safari の注意・TTS のモデルのキャッシュ
+  {
+    const pq = await browser.newPage({ locale: 'ja-JP' });
+    watch(pq, 'play-recent');
+    await pq.goto(BASE);
+    await pq.waitForSelector('#drop');
+    ok(await pq.isHidden('#save-note'), 'welcome: no download-save note when the save picker exists');
+    // OPFS の pq/ に 1 ファイル（開く）と、書き出し先のファイル
+    await pq.evaluate(async ([b64, ext, files]) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry('pq', { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle('pq', { create: true });
+      const h = await d.getFileHandle('lesson' + ext, { create: true });
+      const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const w = await h.createWritable(); await w.write(u); await w.close();
+      const deck = await d.getDirectoryHandle('deck', { create: true });
+      for (const [k, v] of Object.entries(files)) { const fh = await deck.getFileHandle(k, { create: true }); const fw = await fh.createWritable(); await fw.write(v); await fw.close(); }
+      window.__pq = { d, h, deck };
+    }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT, files]);
+    const readOut = async (name) => {
+      let x = '';
+      for (let i = 0; i < 300 && x.length < 1000; i++) {
+        await pq.waitForTimeout(100);
+        x = await pq.evaluate(async (name) => { try { return await (await (await window.__pq.d.getFileHandle(name)).getFile()).text(); } catch { return ''; } }, name);
+      }
+      return x;
+    };
+    const kindOf = async (html) => { try { await readPortable(html); return 'source'; } catch (e) { return (e.details && e.details.kind) || e.code; } };
+    const exportPlay = async (name) => {
+      await pq.evaluate(async (name) => { window.__APP_TEST.saveHandle = await window.__pq.d.getFileHandle(name, { create: true }); }, name);
+      await pq.click('#b-exportmenu');
+      ok(await pq.isVisible('#b-export-play'), `play-only (${name}): the Export menu has Export play-only copy`);
+      await pq.click('#b-export-play');
+      const x = await readOut(name);
+      await pq.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+      return x;
+    };
+    // 1 ファイル：開いて、再生専用を書き出す → 原稿（索引）のない再生専用。同じ docId
+    const n0 = await pq.evaluate(() => window.__APP_TEST.state().loads);
+    ok(await pq.evaluate(() => window.__APP_TEST.openFile({ handle: window.__pq.h })) === true, 'play-only: opened a single file');
+    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n0, { timeout: 20000 });
+    let po = await exportPlay('lesson.play.html');
+    ok(await kindOf(po) === 'play-only' && po.includes(pmin.index.docId) && !scanDocument(po).byId.has(FORMAT.INDEX_ID), `play-only (single file): exported a play-only file (${(po.length / 1024).toFixed(0)} KB, same docId, no index)`);
+    // 最近開いたもの：1 ファイルも並び、そこから開き直せる
+    await pq.reload();
+    await pq.waitForSelector('#recent:not([hidden])');
+    ok(await pq.isVisible('#recent-list li[data-kind=file]') && (await pq.textContent('#recent-list li[data-kind=file] .nm')) === 'lesson' + FORMAT.FILE_EXT && (await pq.textContent('#recent-list li[data-kind=file] .kind')) === '1 ファイル', 'recent: the opened single file is listed (marked as a single file)');
+    await pq.click('#recent-list li[data-kind=file] button:not(.ghost)');
+    await pq.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 20000 });
+    ok((await pq.evaluate(() => window.__APP_TEST.state().portable.name)) === 'lesson' + FORMAT.FILE_EXT, 'recent: reopened the single file from the list');
+    await pq.evaluate(async () => { const d = await (await navigator.storage.getDirectory()).getDirectoryHandle('pq'); window.__pq = { d, deck: await d.getDirectoryHandle('deck') }; });   // 読み直しで消えたハンドル
+    // 作業フォルダ：再生専用も書き出せる
+    const n1 = await pq.evaluate(() => window.__APP_TEST.state().loads);
+    ok(await pq.evaluate(() => window.__APP_TEST_OPEN(window.__pq.deck)) === true, 'play-only: opened a working folder');
+    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n1, { timeout: 20000 });
+    po = await exportPlay('deck.play.html');
+    ok(await kindOf(po) === 'play-only', 'play-only (working folder): exported a play-only file');
+    // TTS のモデルのキャッシュ：「使い方」に使用量と入っているモデル。「モデルを消す」で消える（ほかのキャッシュは残る）
+    await pq.evaluate(async () => {
+      const c = await caches.open('irodori-lab-000000000000');
+      await c.put('https://huggingface.co/x/dit.onnx', new Response(new Uint8Array(1000), { headers: { 'content-length': '1000' } }));
+      await (await caches.open('other-cache')).put('https://example.org/a', new Response('a'));
+    });
+    await pq.click('#b-help');
+    await pq.waitForFunction(() => /Irodori-TTS/.test((document.getElementById('model-cache-info') || {}).textContent || ''));
+    const info = await pq.textContent('#model-cache-info');
+    await shot(pq, 'help-model-cache.png');
+    ok(/保存領域を [\d.]+ [MG]B 使っています/.test(info) && info.includes('版 000000000000') && !(await pq.isDisabled('#b-model-delete')), 'model cache: Help shows storage use and the stored model');
+    await pq.click('#b-model-delete');
+    await pq.waitForSelector('#dlg[open] #dlg-delete');
+    await pq.click('#dlg-delete');
+    await pq.waitForFunction(() => /入っていません/.test(document.getElementById('model-cache-info').textContent));
+    ok(JSON.stringify(await pq.evaluate(() => caches.keys())) === '["other-cache"]' && await pq.isDisabled('#b-model-delete'), 'model cache: Delete models removes the model caches only');
+    await pq.evaluate(() => caches.delete('other-cache'));
+    await pq.close();
+    // Safari・iPad の形（フォルダとファイルを選ぶ画面がない）：新しく作る道（貼り付け）と、保存がダウンロードになる注意
+    const ps = await browser.newPage({ locale: 'ja-JP' });
+    watch(ps, 'safari');
+    await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
+    await ps.goto(BASE);
+    await ps.waitForSelector('#drop');
+    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「AI の出力を貼り付ける」') && await ps.isDisabled('#w-new') && !(await ps.isDisabled('#w-paste')), 'safari: the note says how to make a new lesson (Paste AI output); New deck is off, paste is on');
+    ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
+    await shot(ps, 'welcome-safari.png');
+    await ps.close();
+  }
+
   // ---------------------------------------------------------------- 11. 英語の画面
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');

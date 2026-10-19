@@ -6,6 +6,7 @@
 //
 //   buildPack({series, lang}) → 文字列         series：系列の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'
 //   SERIES                                      系列の名前（決まった順）
+//   PACK_VERSION                                指示の版（材料の SHA-256 の先頭 8 字。指示のはじめの行に出る）
 //   commonBody(lang)・seriesPart(name, lang)    共通の本体・1 つの系列の部分（docs/authoring-with-llms*.md・docs/llm-parts/*.md と同じ中身）
 //   requestBody(lang)                            最後に付く「頼みたいこと」（記入欄の付いた頼み方。docs/authoring-with-llms*.md の最後と同じ）
 //   seriesOf(tag)                                部品（'m-kpi'）の居場所：'common' か系列の名前（部品庫にない部品は null）
@@ -22,6 +23,7 @@ export { assemble };
 export const normalizeSeries = (series) => norm(series, PACK);
 
 export const SERIES = PACK.series;
+export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 
 export const buildPack = (opts) => assemble(PACK, opts);
 export const commonBody = (lang = 'en') => commonOf(PACK, lang) + '\n';

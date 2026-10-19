@@ -17,7 +17,8 @@ import { writeText, writeFile, cancelledError, readText, hasPermission, askPermi
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, LIMITS, newDocId } from '../kit/core/portable.mjs';
+import { CONTRACTS, LIMITS, newDocId, playOnly } from '../kit/core/portable.mjs';
+import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -83,15 +84,22 @@ async function showWelcome() {
   showExamples();
   const list = await recentList();
   $('recent').hidden = !list.length;
+  // ファイルを選ぶ画面がない（Safari・iPad など）：保存はダウンロードになり、保存のたびに新しいファイルができる
+  $('save-note').hidden = !!window.showSaveFilePicker;
   const ul = $('recent-list'); ul.innerHTML = '';
   for (const r of list) {
-    ul.append(el('li', {}, [
+    const file = r.handle && r.handle.kind === 'file';
+    ul.append(el('li', { 'data-kind': file ? 'file' : 'folder' }, [
       el('span', { cls: 'nm', text: r.name }),
+      el('span', { cls: 'kind', text: file ? T.recentFile : T.recentFolder }),
       el('span', { cls: 'when', text: new Date(r.opened).toLocaleString(EN ? 'en-US' : 'ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }),
       el('button', { type: 'button', text: T.reopen, onclick: async () => {
-        try { if (!(await hasPermission(r.handle)) && !(await askPermission(r.handle))) { toast(T.noPermission, true); return; } }
-        catch { toast(T.cannotOpen, true); return; }
-        openFolder(r.handle);
+        // 1 ファイルは読む許可だけを求める（上書きの許可は「保存」のときに求める）
+        const mode = file ? 'read' : 'readwrite';
+        try { if (!(await hasPermission(r.handle, mode)) && !(await askPermission(r.handle, mode))) { toast(T.noPermission, true); return; } }
+        catch { toast(file ? T.cannotOpenRecentFile : T.cannotOpen, true); return; }
+        if (file) { if (!(await openPortable({ handle: r.handle })) && !$('welcome').hidden) showWelcome(); }
+        else openFolder(r.handle);
       } }),
       el('button', { type: 'button', cls: 'ghost', text: '✕', title: T.forget, 'aria-label': T.forget, onclick: async () => { await recentRemove(r.id); showWelcome(); } }),
     ]));
@@ -611,6 +619,7 @@ function showHelp() {
   const h = T.help;
   openPanel(T.helpTitle, [
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
+    modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
   ]);
 }
 
@@ -874,6 +883,7 @@ async function openPortableNow(input) {
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
+  if (handle) recentAdd(handle);   // ファイルのハンドルがあれば「最近開いたもの」に（Safari などで <input> から開いたものにはない）
   showDeck(name, name);
   await rebuild('open');
   return true;
@@ -994,7 +1004,7 @@ async function savePortableBound(mode) {
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
       h = th ? (await writeFile(th, html, live), th) : await saveWithPicker(name, html, null, live);
       if (!live()) throw cancelledError();
-      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Egatari Studio'; }
+      if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Egatari Studio'; recentAdd(h); }
       else P.name = name;
     }
     // ここまでで書いた。この後の作業場所の書き込みと「保存した」は、今も同じ作業場所のときだけ（最後の確かめの後）
@@ -1069,6 +1079,34 @@ async function exportPortableFile() {
   }
 }
 
+// ---------------------------------------------------------------- 再生専用（学生に配る形）を書き出す（kit/core/portable.mjs の playOnly、§3.7）
+// 1 ファイル：保存したもの（P.original）から。保存していない変更があれば、先に保存を求める。作業フォルダ：1 ファイルに組んでから
+async function exportPlayOnlyFile() {
+  if (!S.ws) return;
+  const ws0 = S.ws, g0 = S.gen, P = S.portable;
+  const live = () => S.ws === ws0 && S.gen === g0;
+  if (P && ws0.dirty) { toast(T.playOnlyUnsaved, true); return; }
+  status(T.exporting);
+  let html, name, writes = {};
+  try {
+    if (P) { html = playOnly(P.original); name = P.name; }
+    else { const r = await engine.exportPortable(S.deckFile); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+  } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+  name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + FORMAT.PLAY_EXT;
+  try {
+    const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
+    const h = th ? (await writeHandle(th, html, live), th) : await saveWithPicker(name, html, P ? null : ws0.handle, live);
+    if (!live()) throw cancelledError();
+    for (const [rel, text] of Object.entries(writes)) await ws0.writeText(rel, text, { live });   // 作業フォルダ：初めて作った docId を残す
+    status(T.exported(time(), (html.length / 1048576).toFixed(1)));
+    toast(h ? T.playOnlyToast : T.downloadedToast(name));
+  } catch (e) {
+    if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
+    if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
+  }
+}
+
 // ---------------------------------------------------------------- 新しいデッキ
 function showNewForm(on) {
   $('newform').hidden = !on;
@@ -1121,6 +1159,7 @@ $('b-savenew').onclick = () => savePortable('new');
 $('b-saveas').onclick = () => savePortable('copy');
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
+$('b-export-play').onclick = exportPlayOnlyFile;
 $('b-comments').onclick = () => ui.toggleComments();
 $('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-attach').onclick = async () => { if (!$('panel').hidden && $('attach-panel')) { closePanel(); return; } if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; } await attach.open(); };
@@ -1228,7 +1267,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
   try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }
   if (reopen) {
     const r = (await recentList())[0];
-    if (r && (await hasPermission(r.handle).catch(() => false))) { openFolder(r.handle); return; }
+    if (r && r.handle.kind === 'directory' && (await hasPermission(r.handle).catch(() => false))) { openFolder(r.handle); return; }
   }
   showWelcome();
 })();

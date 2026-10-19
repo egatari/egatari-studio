@@ -70,7 +70,7 @@ main{flex:1;min-height:0;display:flex}
 #recent-list li{display:flex;align-items:center;gap:8px;padding:6px 4px;border-top:1px solid var(--line)}
 #recent-list li:first-child{border-top:0}
 #recent-list .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis}
-#recent-list .when{color:var(--muted);font-size:12px}
+#recent-list .when,#recent-list .kind{color:var(--muted);font-size:12px}
 .note{width:min(720px,100%);color:var(--muted);font-size:12.5px;margin:0}
 .note.bad{background:var(--bad-bg);color:var(--bad-fg);padding:10px 14px;border-radius:10px;font-size:14px}
 

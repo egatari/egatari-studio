@@ -4,6 +4,7 @@
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
 // 版・場所・大きさ・WAV の読み取り・再標本化は、編集アプリの TTS の窓（lab/tts-helper.html）と共有する（lab/tts-engine.mjs）
 import { ORT_VERSION, TRANSFORMERS_VERSION, ORT_URL, ORT_WASM, TRANSFORMERS_URL, HF_REPO, HF_REV, HF_BASE, CACHE_NAME, SR, MODELS, SIZES, TOKENIZER_BYTES, folderOf, parseWav, resample } from './tts-engine.mjs';
+import { deleteModelCaches } from './model-cache.mjs';
 
 // 試験 B の組。左 raw は原稿（{θ|シータ} などの指定を解いた後）、右 yomi は読み辞書を通した後。
 // examples/minimal の写しに文を足し、`uv run --project tts python tts/synth.py <写し> --dry-run` が
@@ -244,7 +245,7 @@ async function loadModel() {
 }
 
 async function clearCache() {
-  if ('caches' in globalThis) for (const n of await caches.keys()) if (n.startsWith('irodori-lab-') || n === 'transformers-cache') await caches.delete(n);
+  await deleteModelCaches();
   $('load-status').textContent = 'キャッシュを消しました（次の読み込みは取得し直します）';
   try { const est = await navigator.storage?.estimate?.(); if (est) { state.env.storage = { usageMB: +mb(est.usage), quotaMB: +mb(est.quota) }; renderEnv(); } } catch { /* なくてよい */ }
 }

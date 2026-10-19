@@ -50,7 +50,7 @@ async function getKokoro(id) {
   const label = (EN ? 'Loading Kokoro-82M (' : 'Kokoro-82M を読み込み中（') + mb(KOKORO_BYTES) + ' MB)';
   status(label);
   const files = new Map();
-  kokoro = await loadKokoro({ onProgress: (p) => {
+  kokoro = await loadKokoro({ onLog: log, onProgress: (p) => {
     if (p && p.status === 'progress' && p.total) { files.set(p.file, p.loaded); const n = [...files.values()].reduce((a, b) => a + b, 0); bar(n / KOKORO_BYTES); send({ kind: 'progress', id, f: 0.9 * n / KOKORO_BYTES, label: label + ' ' + mb(n) + ' MB' }); }
   } });
   return kokoro;

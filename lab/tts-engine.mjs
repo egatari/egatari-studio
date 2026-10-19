@@ -5,6 +5,7 @@
 // Irodori の重みは Cache Storage に置き（2 回目は取りに行かない）、Kokoro は transformers.js のキャッシュに置く
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
 import { bundledVoice, DEFAULT_VOICES, IRODORI_VOICES, KOKORO_VOICES } from './tts-voices.mjs';
+import { IRODORI_PREFIX, pruneOldModels, requestPersist } from './model-cache.mjs';
 
 export const ORT_VERSION = '1.23.0';            // 上流（web/app.mjs・space/app.mjs）と同じ版
 export const TRANSFORMERS_VERSION = '3.7.6';    // 同上（トークナイザだけに使う）
@@ -14,7 +15,7 @@ export const TRANSFORMERS_URL = `https://cdn.jsdelivr.net/npm/@huggingface/trans
 export const HF_REPO = 'noguchis/irodori-tts-onnx';
 export const HF_REV = 'b75a9bbf2c10e12682d37e91e0efaf6d4e54bd29'; // 版を固定（重みが差し替わっても結果が変わらない）
 export const HF_BASE = `https://huggingface.co/${HF_REPO}/resolve/${HF_REV}`;
-export const CACHE_NAME = `irodori-lab-${HF_REV.slice(0, 12)}`;
+export const CACHE_NAME = `${IRODORI_PREFIX}${HF_REV.slice(0, 12)}`;
 export const SR = 48000;
 // 編集アプリの TTS で使う決まった設定：シード 0（手元の mlx のサーバーが固定するシードと同じ番号。ただし雑音は pipeline.mjs の mulberry32 で作るので、
 // 同じシードでも手元の合成と波形は同じにならない）、
@@ -103,9 +104,19 @@ export async function fetchCached(url, expected, { cacheName = CACHE_NAME, onByt
   return { bytes: buf, cached: false };
 }
 
+// 取る前の手入れ：古い版のキャッシュ（版を替えると残る。1 GB を超える）を消し、空きが足りないときや Safari がしばらく開かないサイトの
+// データを消すときに、このキャッシュを残すよう求める（navigator.storage.persist。断られても読み込める）
+async function tidyCaches(onLog) {
+  const n = await pruneOldModels(CACHE_NAME, { kokoro: { repo: KOKORO_REPO, rev: KOKORO_REV } }).catch(() => 0);
+  if (n) onLog(`removed ${n} cache(s) of older model versions`);
+  const p = await requestPersist();
+  if (p !== null) onLog(`persistent storage: ${p ? 'granted' : 'not granted'}`);
+}
+
 // ---------------------------------------------------------------- Irodori を読み込む → IrodoriTTS
 let ort = null, tokenizer = null;
 export async function loadIrodori({ prec = 'fp16', adapter = null, onBytes = () => {}, onLog = () => {}, onCacheError = () => {} } = {}) {
+  await tidyCaches(onLog);
   if (!ort) {
     ort = await import(ORT_URL);
     ort.env.wasm.wasmPaths = ORT_WASM;
@@ -142,7 +153,8 @@ export async function loadIrodori({ prec = 'fp16', adapter = null, onBytes = () 
 export async function releaseIrodori(tts) { if (tts) for (const s of Object.values(tts.s)) await s.release?.().catch(() => {}); }
 
 // ---------------------------------------------------------------- Kokoro を読み込む
-export async function loadKokoro({ onProgress = () => {} } = {}) {
+export async function loadKokoro({ onProgress = () => {}, onLog = () => {} } = {}) {
+  await tidyCaches(onLog);
   const K = await import(KOKORO_URL);
   return K.KokoroTTS.from_pretrained(KOKORO_REPO, { dtype: 'fp32', device: 'webgpu', revision: KOKORO_REV, progress_callback: onProgress });
 }
