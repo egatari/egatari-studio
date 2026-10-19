@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=6d89a04e21cef47c -->
+<!-- i18n: pair=editor.md sha256=d78b59c49c4a06d6 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -156,11 +156,12 @@
 
 ## GitHub Pages で配る
 
-`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のは `main` だけで、ほかのブランチで走らせると組んで artifact を上げるところまでする。Pages を設定するまでは何もしない
+`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のはリリースのタグだけ：タグ `vX.Y.Z`（数 3 つ。`v0.5.0-rc.1` などの rc のタグは置かない）を push したときと、そのタグで workflow を走らせたとき（その版を置き直す）。`main` への push と pull request は組むだけで（リリースの前に組み立ての壊れに気づくため）、ブランチで走らせると組むだけの試し。リリースの手順は [RELEASING.ja.md](../RELEASING.ja.md)。Pages を設定するまでは何も置かない
 
 1. Settings → Pages → Build and deployment → Source を **GitHub Actions** にする
-2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ push で置く手順を飛ばすので、Pages を有効にする前に失敗しない）
-3. 1 回走らせる（Actions → pages → Run workflow）か、`main` に push する
+2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ組むだけで、何も置かない）
+3. Settings → Environments → `github-pages` → Deployment branches and tags にタグの決まり `v*.*.*` を足す（この environment はふだん `main` だけを許すので、足さないとタグからの deploy は断られる）
+4. リリースのタグを push するか、タグを選んで workflow を走らせる（Actions → pages → Run workflow）
 
 組み立ては見本も 1 ファイルにして `examples/<名前>.ega.html` に置き（`tools/examples-portable.mjs`。合わせて約 14 MB。`--no-examples` で入れない）、編集アプリの最初の画面に並べる。組むのは見本のフォルダの一時的な写しから（`examples/` には何も書かない）。`egatari.json` のない見本（雛形として写してよい `minimal` など）には名前から決めた `docId` を与えるので、組むたびに同じ文書になる
 

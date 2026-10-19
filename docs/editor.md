@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=75ca66300101b486 -->
+<!-- i18n: pair=editor.ja.md sha256=1d19d4b4bef32c93 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -156,11 +156,12 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 ## Publishing on GitHub Pages
 
-`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://editor.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only `main` deploys; running the workflow on another branch builds and uploads the artifact without deploying it. It does nothing until Pages is set up:
+`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://editor.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only release tags deploy: pushing a tag `vX.Y.Z` (three numbers; `v0.5.0-rc.1` and other rc tags do not), or running the workflow on such a tag to deploy that release again. Pushes to `main` and pull requests only build (so a broken build shows up before a release), and running the workflow on a branch is a dry build. The release steps are in [RELEASING.md](../RELEASING.md). It deploys nothing until Pages is set up:
 
 1. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
-2. Settings → Secrets and variables → Actions → Variables: add `EDITOR_PAGES` = `true` (without it, pushes skip the deploy, so the workflow does not fail before Pages is enabled).
-3. Run the workflow once (Actions → pages → Run workflow), or push to `main`.
+2. Settings → Secrets and variables → Actions → Variables: add `EDITOR_PAGES` = `true` (without it, builds still run but nothing deploys).
+3. Settings → Environments → `github-pages` → Deployment branches and tags: add the tag rule `v*.*.*` (the environment allows only `main` by default, and a deploy from a tag is refused without it).
+4. Push a release tag, or run the workflow on one (Actions → pages → Run workflow, choose the tag).
 
 The build also writes the examples as single files to `examples/<name>.ega.html` (`tools/examples-portable.mjs`, about 14 MB together; `--no-examples` leaves them out), and the editor's first screen lists them. They are built from a temporary copy of each example folder (nothing is written into `examples/`); an example without `egatari.json` (such as `minimal`, which may be copied as a template) gets a `docId` derived from its name, so every build is the same document.
 

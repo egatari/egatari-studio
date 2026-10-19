@@ -6,16 +6,35 @@
 #   /examples/    the examples as portable files (<name>.ega.html), listed on the editor's first screen
 # All paths are relative: the site works at the custom domain https://editor.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
-# Only main deploys. "Run workflow" on another branch builds and uploads the artifact without deploying it.
-# DRAFT: this only works once Pages is enabled for the repository:
-#   1. Settings -> Pages -> Build and deployment -> Source: GitHub Actions
-#   2. Settings -> Secrets and variables -> Actions -> Variables: EDITOR_PAGES = true
-# Until EDITOR_PAGES is true, pushes skip the job (so the workflow does not fail); "Run workflow" always runs it.
+# Only release tags deploy: a push of vX.Y.Z (three numbers; v0.5.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
+# (to deploy that release again). Pushes to main and pull requests only build (so a broken build is caught before a release);
+# "Run workflow" on a branch is a dry build. See RELEASING.md.
+# Needs: Settings -> Pages -> Source: GitHub Actions; the variable EDITOR_PAGES = true (until then nothing deploys);
+# and the github-pages environment must allow tags v*.*.* (Settings -> Environments -> github-pages -> Deployment branches and tags).
 # See docs/editor.md#publishing-on-github-pages
 name: pages
 
 on:
   push:
+    branches: [main]
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    # paths do not apply to tag pushes: every release tag builds and deploys
+    paths:
+      - 'app/**'
+      - 'assets/logo/**'
+      - 'lab/**'
+      - 'kit/**'
+      - 'components/**'
+      - 'themes/**'
+      - 'server/hints.js'
+      - 'server/editor-ui.js'
+      - 'tools/build-app.mjs'
+      - 'tools/examples-portable.mjs'
+      - 'examples/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  pull_request:
     branches: [main]
     paths:
       - 'app/**'
@@ -36,19 +55,25 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || vars.EDITOR_PAGES == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      deploy: ${{ steps.release.outputs.deploy }}
     steps:
+      - name: Release tag?
+        id: release
+        # deploy only for vX.Y.Z tags (the push filter above also lets nothing else through, but "Run workflow" can pick any ref)
+        run: |
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "${{ vars.EDITOR_PAGES }}" = "true" ]; then d=true; else d=false; fi
+          echo "deploy=$d" >> "$GITHUB_OUTPUT"
+          echo "ref $GITHUB_REF: deploy=$d"
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
@@ -57,15 +82,25 @@ jobs:
       - run: npm ci
       - name: Build the editor
         run: node tools/build-app.mjs --out _site
+      - name: Check the build
+        run: test -s _site/index.html && test -s _site/editor.html && ls -la _site
       - uses: actions/configure-pages@v5
+        if: steps.release.outputs.deploy == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.release.outputs.deploy == 'true'
         with:
           path: _site
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
