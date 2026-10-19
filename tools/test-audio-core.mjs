@@ -170,15 +170,22 @@ ok('読み辞書：kit/core/yomi.mjs と tts/yomi.py が同じ文を返す', () 
   assert.ok(terms.findIndex(([t]) => t === '対数尤度') < terms.findIndex(([t]) => t === '尤度'), 'longest first');
   const texts = ['尤度を最大にするパラメータを求めるのが、最尤推定です。', '対数尤度は、尤度関数の対数をとったものです。', '対数尤度比を使う。',
     '行列の固有値が負になると、その点は鞍点になります。', '双対問題を解いてから、閾値を決定木で調べます。', 'AIの応用とAI応用、AIMは違う。', 'Machine learning is fun.',
-    'Man と Management、Part 1 の話。', '最尤推定量と最尤推定法', '𠮷野家の尤度'];
+    'Man と Management、Part 1 の話。', '最尤推定量と最尤推定法', '𠮷野家の尤度',
+    '温度は −1 度、x − y です。', 'y = −2x', 'L殻とM殻、L殻電子', '送り仮名と濃い側、濃い側面'];
   const js = texts.map((t) => applyYomi(t, terms).text);
+  // マイナス記号（U+2212）はブラウザの TTS の正規化が消すので、辞書の前に「マイナス」に（日本語の字のない文も）。辞書の語の数え方も同じ
+  assert.equal(applyYomi('温度は −1 度、x − y です。', []).text, '温度は マイナス1 度、x マイナス y です。');
+  assert.deepEqual(applyYomi('y = −2x − 1', []), { text: 'y = マイナス2x マイナス 1', used: ['−→マイナス', '−→マイナス'] });
+  assert.equal(applyYomi('L殻とM殻、送り仮名、濃い側。', terms).text, 'エルかくとエムかく、おくりがな、こいがわ。');
   if (!UV) { console.log('    skip comparison: uv not found'); return; }
   const r = PY(`import sys, json, yomi
 from pathlib import Path
 terms, _ = yomi.load_yomi(Path('yomi.yaml'))
-print(json.dumps([yomi.apply_yomi(t, terms)[0] for t in json.loads(sys.argv[1])], ensure_ascii=False))`, JSON.stringify(texts));
+print(json.dumps([yomi.apply_yomi(t, terms)[:2] for t in json.loads(sys.argv[1])], ensure_ascii=False))`, JSON.stringify(texts));
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(js, JSON.parse(r.stdout));
+  const py = JSON.parse(r.stdout);
+  assert.deepEqual(js, py.map((x) => x[0]));
+  assert.deepEqual(texts.map((t) => applyYomi(t, terms).used.slice().sort()), py.map((x) => x[1].slice().sort()), 'same replacements counted');
   const pyTerms = PY(`import json, yomi
 from pathlib import Path
 print(json.dumps(yomi.load_yomi(Path('yomi.yaml'))[0], ensure_ascii=False))`);

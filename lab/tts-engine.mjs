@@ -15,7 +15,8 @@ export const HF_REV = 'b75a9bbf2c10e12682d37e91e0efaf6d4e54bd29'; // 版を固�
 export const HF_BASE = `https://huggingface.co/${HF_REPO}/resolve/${HF_REV}`;
 export const CACHE_NAME = `irodori-lab-${HF_REV.slice(0, 12)}`;
 export const SR = 48000;
-// 編集アプリの TTS で使う決まった設定：シード 0（手元の mlx のサーバーが固定するシードと同じ。作り直した音を手元の合成と同じシードにする）、
+// 編集アプリの TTS で使う決まった設定：シード 0（手元の mlx のサーバーが固定するシードと同じ番号。ただし雑音は pipeline.mjs の mulberry32 で作るので、
+// 同じシードでも手元の合成と波形は同じにならない）、
 // ステップ 40（Irodori-TTS の既定）
 export const IRODORI_DEFAULTS = Object.freeze({ seed: 0, steps: 40 });
 

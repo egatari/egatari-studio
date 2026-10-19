@@ -1,10 +1,11 @@
 // 読み辞書（tts/yomi.yaml）の適用：tts/yomi.py の apply_yomi と同じ規則（同じ辞書なら TTS に渡す文字列が同じになる。
 // tools/test-audio-core.mjs が Python の結果と比べる）。編集アプリのブラウザの TTS（app/audio-panel.js）が使う。node: を使わない
 //   parseYomiTerms(yamlText) → [[語, 読み]…]（長い語から。yomi.yaml の terms だけを読む：「語: 読み」の行。# からは注）
-//   applyYomi(text, terms) → {text, used: [...]}（日本語の字がない文には掛けない。より長い語の一部なら置き換えない）
+//   applyYomi(text, terms) → {text, used: [...]}（マイナス記号 − は先に「マイナス」に。辞書は日本語の字がない文には掛けない。より長い語の一部なら置き換えない）
 
 const KANJI = /[一-鿿]/;            // yomi.py の _KANJI（[一-鿿]）
 const JA_CHARS = /[ぁ-んァ-ヶ一-龥]/; // yomi.py の _JA_CHARS（[ぁ-んァ-ヶ一-龥]）
+const MINUS = '\u2212';          // マイナス記号（−）。yomi.py の _MINUS
 const asciiAlnum = (ch) => !!ch && /^[A-Za-z0-9]$/.test(ch);
 
 // yomi.yaml の terms：「terms:」の後の、字下げした「語: 読み」の行（次の字下げしない行で終わる）。値の後ろの # は注
@@ -34,8 +35,14 @@ function inLongerWord(term, before, after) {
 }
 
 export function applyYomi(text, terms) {
-  if (!JA_CHARS.test(text)) return { text, used: [] };
   const used = [];
+  // 辞書の前の決まった置き換え：マイナス記号（U+2212）はブラウザの TTS の正規化（lab/vendor/irodori-tts-webgpu/pipeline.mjs の normalizeText）が
+  // ダッシュの仲間として消す（「−1」が「1」と読まれる）ので「マイナス」にする（yomi.py と同じ。日本語の字のない文も）
+  if (text.includes(MINUS)) {
+    for (let k = text.split(MINUS).length - 1; k > 0; k--) used.push(`${MINUS}→マイナス`);
+    text = text.split(MINUS).join('マイナス');
+  }
+  if (!JA_CHARS.test(text)) return { text, used };
   for (const [term, yomi] of terms) {
     if (!text.includes(term)) continue;
     const out = [];

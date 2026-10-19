@@ -20,6 +20,7 @@ import yaml
 _KANJI = re.compile(r"[一-鿿]")
 _JA_CHARS = re.compile(r"[ぁ-んァ-ヶ一-龥]")
 _KANJI_RUN = re.compile(r"[一-龥]{2,}")  # 未登録語の切り出し（形態素解析なしの近似）
+_MINUS = "\u2212"  # マイナス記号（−）。kit/core/yomi.mjs の MINUS と同じ
 
 
 def _read(path: Path) -> dict:
@@ -114,14 +115,20 @@ def apply_yomi(text: str, terms: list[tuple[str, str]],
                watch_kanji: dict[str, list[str]] | None = None) -> tuple[str, list[str], list[str]]:
     """辞書を適用する。(置換後, 置換した語, 警告)。
 
+    辞書の前に、マイナス記号（U+2212）を「マイナス」にする（TTS の正規化が消すため。kit/core/yomi.mjs と同じ）。
     警告は 2 種類：登録語がより長い語の一部に現れた（置換しない）、
     未登録語が誤読の原因になった字を含む（watch_kanji を渡したとき）。
     """
-    # 英語の発話には掛けない（Machine→マシン のように英文が壊れる）
-    if not _JA_CHARS.search(text):
-        return text, [], []
-
     used, warns = [], []
+    # 辞書の前の決まった置き換え：マイナス記号（U+2212）は TTS の正規化（Irodori-TTS の normalize_text）が
+    # ダッシュの仲間として消す（「−1」が「1」と読まれる）ので「マイナス」にする。日本語の字のない文も（Irodori が読むので）
+    if _MINUS in text:
+        used.extend([f"{_MINUS}→マイナス"] * text.count(_MINUS))
+        text = text.replace(_MINUS, "マイナス")
+    # 英語の発話には辞書を掛けない（Machine→マシン のように英文が壊れる）
+    if not _JA_CHARS.search(text):
+        return text, used, []
+
     for term, yomi in terms:
         if term not in text:
             continue

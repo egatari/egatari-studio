@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=299344cfd81970d1 -->
+<!-- i18n: pair=video.ja.md sha256=af6f91e398cf456b -->
 # Making a video (TTS → render → canon)
 
 English | [日本語](video.ja.md)
@@ -70,7 +70,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 
 ## Reading dictionary
 
-`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody).
+`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody). Before the dictionary, the minus sign `−` (U+2212) is always replaced with マイナス, also in your own dictionary and in utterances without Japanese: the Irodori-TTS text normalisation removes it with the dashes, so `−1` would be read as 1 (the editor's browser TTS uses the same rules, `kit/core/yomi.mjs`).
 
 ## HTML with audio
 
