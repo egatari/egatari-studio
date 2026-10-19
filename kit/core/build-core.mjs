@@ -706,7 +706,7 @@ export function build(env0, srcPath, opts = {}) {
   const timingPath = P.join(deckDir, 'timeline.json');
   const timing = env.exists(timingPath) && inDeck(timingPath) ? JSON.parse(env.readText(timingPath)) : {};
   const manPath = P.join(deckDir, 'audio', 'manifest.json');
-  // 音声の作り方（format spec §5.2 の kind を deck-audio にも写す。§7.3：再生器が合成した声・由来の分からない音声を示す）。
+  // 音声の作り方（format spec §5.2 の kind を deck-audio にも写す。§7.3：再生器が合成した声・作り方の記録がない音声を示す）。
   // kind のない tts/synth.py の記録は engine があれば tts。dry-run の無音には付けない
   const audioKind = (v, def) => (v.engine === 'dry-run' || (v.recipe && v.recipe.engine === 'dry-run')) ? undefined
     : ['tts', 'recorded', 'imported'].includes(v.kind) ? v.kind : !v.kind && typeof v.engine === 'string' ? 'tts' : v.kind ? undefined : def;

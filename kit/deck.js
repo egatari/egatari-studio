@@ -322,7 +322,8 @@ for (var audioKey in DECK.AUDIO){
 }
 // 音声の作り方（format spec §5.2 の kind：tts・recorded・imported）。まず deck-audio の kind（build がどの出力にも写す。再生専用の派生は索引を持たない）、
 // なければ索引の音声の記録の kind（古い 1 ファイル。索引の data-sha256 を確かめてから読み、DECK.AUDIO_KIND に入れて deck:aiaudio を知らせる）。
-// dry-run の無音は何も示さない。合成した声（tts）と由来の分からない音声（imported）を、字幕・自動再生の札・キーの一覧・発表者ビューが小さく示す（§7.3）
+// dry-run の無音は何も示さない。§7.3：合成した声（tts）は操作の帯の小さな札「AI 音声」・キーの一覧・発表者ビューで、
+// 作り方の記録がない音声（imported）はキーの一覧と発表者ビューだけで示す（舞台と字幕には何も出さない）
 var KINDS = {tts: 1, recorded: 1, imported: 1};
 DECK.AUDIO_KIND = dict(null);
 DECK.AI_AUDIO = dict(null);
@@ -880,12 +881,10 @@ function chapterOf(i){ for (var j = i; j >= 0; j--) if (slides[j].classList.cont
 var A11Y = DECK.mode !== "video" && !DECK.view;
 var live = null, lastSaid = null;
 function L10N(ja, en){ return DECK.ja ? ja : en; }
-// その段階の音声について示すこと（format spec §7.3）：合成した声・由来の分からない音声。録音と音声のない段階は ""
-function voiceNote(key){
-  var kd = DECK.audioKind(key);
-  return kd === "tts" ? L10N("この語りは AI で合成しています", "This narration is AI-generated")
-    : kd === "imported" ? L10N("由来の分からない音声", "Audio of unknown origin") : "";
-}
+// 音声について示す文（format spec §7.3。キーの一覧・操作の帯の札の説明・発表者ビューで共通）。録音と音声のない段階は ""
+DECK.VOICE_NOTE = {tts: L10N("音声は AI で合成したものです", "The narration audio is AI-generated"),
+  imported: L10N("音声の作り方は記録されていません", "How the audio was made is not recorded")};
+function voiceNote(key){ return DECK.VOICE_NOTE[DECK.audioKind(key)] || ""; }
 DECK.voiceNote = voiceNote;
 // 読み上げる文字：aria-hidden と TeX の原文（annotation）は除く。式は MathML があればその字、
 // なければ（build は KaTeX の html だけを出す）見た目の部分の字（f(θ) など）を使う
@@ -1034,8 +1033,7 @@ function drawCaption(i, k, t){
   if (!e) return;
   var ch = capChunks(i, k), j = capIndex(i, k, t);
   var shown = j < 0 ? ch : [ch[j]];
-  var ai = shown.length > 0 && voiceNote(DECK.stepKey(i, k));
-  var key = i + ":" + k + ":" + j + ":" + (CAP.size || "") + (ai ? ":ai" : "");
+  var key = i + ":" + k + ":" + j + ":" + (CAP.size || "");
   if (CAP.key === key) return;
   CAP.key = key;
   e.textContent = "";
@@ -1045,8 +1043,6 @@ function drawCaption(i, k, t){
     p.textContent = c.text;
     e.appendChild(p);
   });
-  // 合成した声の段階：字幕の上に小さく「この語りは AI で合成しています」・「由来の分からない音声」（下端は操作の帯と重なるので上に）
-  if (ai){ var b = document.createElement("span"); b.className = "cap-ai"; b.textContent = ai; e.insertBefore(b, e.firstChild); }
   e.classList.toggle("empty", !shown.length);
   // --cap-max-lines 行を超えたら、後ろの行を見せる
   [].forEach.call(e.children, function(p){ if (p.scrollHeight > p.clientHeight + 1) p.scrollTop = p.scrollHeight; });
@@ -1162,24 +1158,8 @@ function stopAuto(){
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
   auto = null; document.documentElement.classList.remove("autoplay");
-  aiBadge(null);
   broadcast();
 }
-// 自動再生で合成した声（または由来の分からない音声）が鳴っている間、舞台の右上に小さく示す（字幕を出しているときは字幕の方に出す。印刷・動画には出ない）
-var aiEl = null;
-function aiBadge(key){
-  var note = key ? voiceNote(key) : "";
-  if (note){
-    if (!aiEl){ aiEl = document.createElement("div"); aiEl.id = "deck-ai"; aiEl.setAttribute("aria-hidden", "true"); (document.getElementById("stage") || document.body).appendChild(aiEl); }
-    aiEl.textContent = note;
-  }
-  document.documentElement.classList.toggle("ai-voice", !!note);
-}
-document.addEventListener("deck:aiaudio", function(){
-  CAP.key = null;
-  if (CAP.on && slides.length) drawCaption(cur, step, Infinity);
-  if (auto && auto.playing) aiBadge(auto.playing);
-});
 function startAuto(){
   stopAuto();
   var tl = DECK.timeline(), idx = tl.findIndex(function(x){ return x.i === cur && x.k === step; });
@@ -1199,8 +1179,8 @@ function runSeg(){
       audioEl = new Audio();
       audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(cur, step, Infinity); });
     }
-    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; aiBadge(g.key); audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
-  } else aiBadge(null);
+    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
+  }
   auto.timer = setTimeout(function(){ if (!auto) return; auto.idx++; runSeg(); }, g.dur * 1000);
 }
 DECK.autoplay = function(on){ if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };

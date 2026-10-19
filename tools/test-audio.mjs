@@ -394,25 +394,23 @@ try {
     return { offset: g.audioOffset, plays: window.__plays, entry: DECK.AUDIO[k] && DECK.AUDIO[k].startOffset };
   }, pkey);
   ok(rt.offset === MP3.startOffset && rt.entry === MP3.startOffset && rt.plays.length && Math.abs(rt.plays[0] - MP3.startOffset) < 1e-6, `runtime: autoplay starts the step's audio at startOffset (${JSON.stringify(rt.plays)})`);
-  // AI の声（#33）：索引の記録が kind tts の段階だけ（録音は違う）。字幕の上に小さく
+  // AI の声（#33・format spec §7.3）：索引の記録が kind tts の段階だけ（録音は違う）。舞台と字幕には何も出さず、操作の帯に札「AI 音声」
   await pp.waitForFunction(() => Object.keys(DECK.AI_AUDIO).length > 0, null, { timeout: 5000 });
   const ai = await pp.evaluate(async (k) => {
     const tts = DECK.timeline().find((x) => x.audio && x.key !== k);
-    // 自動再生で鳴っている間は舞台の右上に札（字幕を出していないとき）
     DECK.go(tts.i, tts.k, false); DECK.autoplay(true);
     await new Promise((r) => setTimeout(r, (tts.lead + 0.15) * 1000));
-    const badge = !!document.getElementById('deck-ai') && getComputedStyle(document.getElementById('deck-ai')).display !== 'none';
+    const stage = !!document.getElementById('deck-ai') || document.documentElement.classList.contains('ai-voice');
     DECK.autoplay(false);
-    const after = document.documentElement.classList.contains('ai-voice');
     DECK.captions(true); DECK.go(tts.i, tts.k, false);
-    const lab = document.querySelector('#deck-cap .cap-ai');
-    const r = { rec: DECK.aiVoice(k), tts: DECK.aiVoice(tts.key), label: lab && lab.textContent, badge, after };
-    const g = DECK.timeline().find((x) => x.key === k); DECK.go(g.i, g.k, false);
-    r.recLabel = !!document.querySelector('#deck-cap .cap-ai');
+    const cap = !!document.querySelector('#deck-cap .cap-ai') || /AI で合成|AI-generated|AI 音声/.test(document.getElementById('deck-cap').textContent);
+    const b = document.querySelector('#dt-cb .dt-aib');
+    const r = { rec: DECK.aiVoice(k), tts: DECK.aiVoice(tts.key), stage, cap, badge: b && b.textContent, tip: b && b.title, aria: b && b.getAttribute('aria-label'), note: DECK.voiceNote(tts.key), recNote: DECK.voiceNote(k) };
+    DECK.captions(false);
     return r;
   }, pkey);
-  ok(!ai.rec && ai.tts && ai.label === 'この語りは AI で合成しています' && !ai.recLabel && ai.badge && !ai.after, `runtime: TTS steps are marked "この語りは AI で合成しています" with the captions, the recorded step is not (${JSON.stringify(ai)})`);
-  if (SHOTS) { await pp.evaluate(() => { const g = DECK.timeline().find((x) => x.audio && DECK.aiVoice(x.key)); DECK.go(g.i, g.k, false); }); await pp.setViewportSize({ width: 1280, height: 720 }); await pp.screenshot({ path: path.join(SHOTS, 'runtime-ai-caption.png') }); }
+  ok(!ai.rec && ai.tts && !ai.stage && !ai.cap && ai.badge === 'AI 音声' && ai.tip === '音声は AI で合成したものです' && ai.aria === ai.tip && ai.note === ai.tip && ai.recNote === '',
+    `runtime: TTS steps: a badge "AI 音声" in the control bar, nothing on the stage or with the captions; the recorded step has no note (${JSON.stringify(ai)})`);
   await pp.close();
   ok(!(await PF.isStale(rec, parseNarration(back.files['narration.md'] ? new TextDecoder().decode(back.files['narration.md']) : '').find((s) => `${s.slideKey}:${s.stepKey}` === pkey))), 'portable: read back: the take is up to date (inputHash)');
 

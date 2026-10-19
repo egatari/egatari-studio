@@ -577,7 +577,7 @@ ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生
   } finally { await browser.close(); }
 });
 
-ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Schema に合う）。再生専用の派生（索引なし）でも、TTS は「AI で合成」、録音は印なし、由来の分からない音声はそう示す。dry-run は印なし', async () => {
+ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Schema に合う）。再生専用の派生（索引なし）でも、TTS は操作の帯の札「AI 音声」とキーの一覧、録音は印なし、取り込んだ音声はキーの一覧だけ。舞台と字幕には出さない。dry-run は印なし', async () => {
   const dir = path.join(work, 'kinds');
   prepareMinimal(dir);
   const mp = path.join(dir, 'audio', 'manifest.json'), man = JSON.parse(fs.readFileSync(mp, 'utf8'));
@@ -610,14 +610,24 @@ ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Sc
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(fileUrl(po));
     await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+    await page.waitForSelector('#dt-cb', { state: 'attached', timeout: 10000 });
     const got = await page.evaluate((ks) => {
       DECK.captions(true);
-      const lab = (k) => { const g = DECK.timeline().find((x) => x.key === k); DECK.go(g.i, g.k, false); const e = document.querySelector('#deck-cap .cap-ai'); return e ? e.textContent : null; };
-      return { kinds: ks.map((k) => DECK.audioKind(k)), labels: ks.map(lab), ai: DECK.hasAiVoice(), unknown: DECK.hasUnknownVoice() };
+      const cap = (k) => { const g = DECK.timeline().find((x) => x.key === k); DECK.go(g.i, g.k, false); return !!document.querySelector('#deck-cap .cap-ai') || !!document.getElementById('deck-ai'); };
+      const b = document.querySelector('#dt-cb .dt-aib');
+      DECK.tools.help(true);
+      const info = [...document.querySelectorAll('#dt-help .dt-ai')].map((e) => e.textContent);
+      DECK.tools.help(false);
+      return { kinds: ks.map((k) => DECK.audioKind(k)), notes: ks.map((k) => DECK.voiceNote(k)), onStage: ks.map(cap), badge: b && b.textContent, tip: b && b.title,
+        ai: DECK.hasAiVoice(), unknown: DECK.hasUnknownVoice(), info };
     }, ks.slice(0, 4));
     assert.deepEqual(errors, []);
     assert.deepEqual(got.kinds, ['tts', 'recorded', 'imported', null]);
-    assert.deepEqual(got.labels, ['この語りは AI で合成しています', null, '由来の分からない音声', null]);
+    assert.deepEqual(got.notes, ['音声は AI で合成したものです', '', '音声の作り方は記録されていません', '']);
+    assert.deepEqual(got.onStage, [false, false, false, false], 'nothing on the stage or with the captions');
+    assert.equal(got.badge, 'AI 音声', 'play-only: the control bar badge for TTS');
+    assert.equal(got.tip, '音声は AI で合成したものです');
+    assert.deepEqual(got.info, ['音声は AI で合成したものです', '音声の作り方は記録されていません'], '? info lines');
     assert.ok(got.ai && got.unknown);
   } finally { await browser.close(); }
 });

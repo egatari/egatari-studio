@@ -139,6 +139,11 @@ css(
   "#dt-cb svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
+  // 合成した声の札（format spec §7.3）：帯と一緒に出て、一緒に隠れる
+  "#dt-cb .dt-aib{margin:0 3px 0 1px;padding:3px 7px;border:1px solid rgba(255,255,255,.3);border-radius:999px;color:rgba(255,255,255,.78);" +
+  " font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;letter-spacing:.02em;white-space:nowrap;cursor:default}" +
+  // 帯が字幕の上に重なるときは、帯が出ている間だけ字幕を帯の上へ（--dt-cb-lift は舞台の座標。隠れると戻る）
+  "#deck-cap{transition:transform .25s}html.dt-cb-lift #deck-cap{transform:translateY(calc(-1 * var(--dt-cb-lift,0px)))}" +
   // ペンのボタンの今の色（右上の点）と、ペンの間だけ出る色のボタン（赤・青・黒）
   "#dt-cb .dt-dot{position:absolute;right:4px;top:4px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px #fff}" +
   "#dt-cb .dt-sw{display:flex;align-items:center;gap:1px;margin:0 2px}#dt-cb .dt-sw[hidden]{display:none}" +
@@ -304,12 +309,22 @@ function addAttachButton(){
   DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, description: a.description, bytes: a.bytes}; });
   document.dispatchEvent(new CustomEvent("deck:attachments", {detail: {n: ATT.length}}));
 }
-// 合成した声・由来の分からない音声の段階があれば、教材の情報として 1 行ずつ（字幕と自動再生の札にも出る。format spec §7.3）
+// 合成した声・作り方の記録がない音声の段階があれば、教材の情報として 1 行ずつ（format spec §7.3。文は DECK.VOICE_NOTE）
 function aiHtml(){
-  var out = "";
-  if (DECK.hasAiVoice && DECK.hasAiVoice()) out += '<p class="dt-ai">' + (JA ? "この語りは AI で合成しています（その段階では字幕と自動再生にも出ます）" : "This narration is AI-generated (also shown with the captions and during autoplay on those steps)") + "</p>";
-  if (DECK.hasUnknownVoice && DECK.hasUnknownVoice()) out += '<p class="dt-ai">' + (JA ? "この教材には由来の分からない音声が含まれます（録音か合成かは記録されていません）" : "This lesson includes audio of unknown origin (whether it was recorded or synthesized is not recorded)") + "</p>";
+  var out = "", N = DECK.VOICE_NOTE || {};
+  if (DECK.hasAiVoice && DECK.hasAiVoice() && N.tts) out += '<p class="dt-ai">' + esc(N.tts) + "</p>";
+  if (DECK.hasUnknownVoice && DECK.hasUnknownVoice() && N.imported) out += '<p class="dt-ai">' + esc(N.imported) + "</p>";
   return out;
+}
+// 操作の帯の小さな札「AI 音声」：どこかの段階が合成した声（kind: tts）のときだけ。索引から遅れて分かったとき（deck:aiaudio）にも足す
+function addAiBadge(){
+  if (!cb || cb.querySelector(".dt-aib") || !(DECK.hasAiVoice && DECK.hasAiVoice())) return;
+  var t = (DECK.VOICE_NOTE && DECK.VOICE_NOTE.tts) || "";
+  var e = document.createElement("span"); e.className = "dt-aib";
+  e.setAttribute("role", "img"); e.title = t; e.setAttribute("aria-label", t);
+  e.textContent = JA ? "AI 音声" : "AI voice";
+  var s = document.createElement("i"); s.className = "sep"; s.setAttribute("aria-hidden", "true");
+  cb.appendChild(s); cb.appendChild(e);
 }
 function attHtml(){
   if (!ATT.length) return "";
@@ -606,6 +621,8 @@ function buildBar(){
     }
   });
   document.body.appendChild(cb);
+  addAiBadge();
+  document.addEventListener("deck:aiaudio", addAiBadge);
   // 押してもフォーカスを奪わず（矢印キーがそのまま効く）、下の舞台にも届かない（ペンで描かない・クリックで送らない）
   ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick"].forEach(function(t){
     cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); });
@@ -624,7 +641,7 @@ function buildBar(){
   });
   // Tab で帯に入ったら見せておく
   cb.addEventListener("focusin", function(){ wake(); });
-  document.addEventListener("deck:captions", syncBar);
+  document.addEventListener("deck:captions", function(){ syncBar(); liftCaptions(); });
   window.addEventListener("pointermove", function(e){ if (!e.buttons) wake(e); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
@@ -639,16 +656,31 @@ function placeBar(){
   var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
   cb._over = m < 44;
   cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - 38) / 2))) + "px";
+  liftCaptions();
+}
+// 帯が出ていて字幕の下端に重なるなら、重なる分（＋6px）だけ字幕を上げる。帯が余白にあるとき・隠れたときは 0（上げた分は戻る）
+function liftCaptions(){
+  var cap = document.getElementById("deck-cap"), lift = 0;
+  if (cb && cb.classList.contains("show") && cap && !cap.hidden){
+    var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
+    var need = (parseFloat(cb.style.bottom) || 0) + cb.offsetHeight + 6 - (m + (parseFloat(getComputedStyle(cap).bottom) || 0) * k);
+    if (need > 0) lift = Math.ceil(need / k);
+  }
+  var de = document.documentElement;
+  if (lift) de.style.setProperty("--dt-cb-lift", lift + "px");
+  de.classList.toggle("dt-cb-lift", lift > 0);
 }
 function wake(e){
   if (!cb) return;
   // 舞台に重ねるときは、下のほうにマウスが来たときだけ出す（レーザーやペンの邪魔をしない）
   if (e && cb._over && e.clientY < innerHeight - OVER_ZONE && !cb.classList.contains("show")) return;
   cb.classList.add("show");
+  liftCaptions();
   clearTimeout(hideT);
   hideT = setTimeout(function hide(){
     if (cb.matches(":hover") || cb.contains(document.activeElement)){ hideT = setTimeout(hide, 800); return; }
     cb.classList.remove("show");
+    liftCaptions();
   }, SHOW_MS);
 }
 function syncBar(){

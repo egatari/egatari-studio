@@ -63,7 +63,7 @@ DECK.presenterView = function(){
     "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85}" +
     "#pv .lab{font-size:13px;color:#999;margin-bottom:4px}" +
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
-    "#pv-text .ai{display:inline-block;font-size:11.5px;color:#bbb;border:1px solid #555;border-radius:999px;padding:0 8px;margin:0 0 6px}" +
+    "#pv-text .ai{font-size:12px;color:#aaa;margin:0 0 6px}" +
     "#pv-text p{margin:0 0 10px;font-size:22px;line-height:1.6}#pv-text .role{color:#9cf;font-size:14px;margin-right:6px}" +
     "#pv-text .next{color:#888}#pv-text .next p{font-size:18px}" +
     "#pv header button{height:34px}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
@@ -108,7 +108,7 @@ DECK.presenterView = function(){
     var ni = pos.k < pos.max ? pos.i : pos.i + 1, nk = pos.k < pos.max ? pos.k + 1 : 0;
     fn.contentWindow && fn.contentWindow.postMessage({type: "deck-goto", i: ni, k: nk, animate: false}, "*");
     var cur = notes(pos.key), nxt = pos.nextKey ? notes(pos.nextKey) : [];
-    // 合成した声・由来の分からない音声の段階：口述原稿の上に小さく（format spec §7.3）
+    // 合成した声・作り方の記録がない音声の段階：口述原稿の上に 1 行（format spec §7.3。キーの一覧と同じ文）
     var vn = DECK.voiceNote ? DECK.voiceNote(pos.key) : "";
     var ai = vn ? '<div class="ai">' + vn + "</div>" : "";
     document.getElementById("pv-text").innerHTML = ai + (html(cur) || '<p style="color:#777">' + L.none + '</p>') +
