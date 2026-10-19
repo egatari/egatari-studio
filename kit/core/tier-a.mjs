@@ -1,7 +1,8 @@
 // 段 A の編集（format spec §7.2）：組み直さずに、持ち運べる 1 ファイル（名前と識別子は kit/core/format.mjs）の決まった場所だけを書き換える。
 // Node にもブラウザにも依存しない（kit/core/portable.mjs と同じ）。何も実行しない（parse5 で文字列として読むだけ）
 //
-//   tierA(original, files, opts) → {ok: true, html, index, deckMeta, changes, warnings} | {ok: false, code, reason, details}
+//   tierA(original, files, opts) → {ok: true, html, index, deckMeta, changes, warnings, config?} | {ok: false, code, reason, details}
+//     config：設定のファイルを書き直したとき（添付の一覧を index.attachments に揃えた。§3.3）、その文字。呼び手は作業場所にも書く
 //     original  開いている（または前に保存した）1 ファイルの文字列
 //     files     作業場所の今のファイル：{path: Uint8Array} か Map（audio/manifest.json を含む。控え・コメントなど保存しないものは無視する）
 //     opts.identity  {docId, derivedFrom}：新しい教材として保存する（docId と derivedFrom も書き換える。§7.3）
@@ -29,7 +30,7 @@ import {
 } from './portable.mjs';
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
 import { isJapanese, LATIN_MAX, parseRange, fontFaceCss } from './build-core.mjs';
-import { planAttachments, problemText, isAttachPath } from './attachments.mjs';
+import { planAttachments, problemText, isAttachPath, inspectAttachment, blocking, nameProblem, roleProblem, attachmentMime, ATTACH_ROLES } from './attachments.mjs';
 
 const IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, RD_ID = FORMAT.READABLE_ID, CFG = FORMAT.CONFIG_FILE;
 const SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
@@ -38,7 +39,7 @@ const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'de
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // 索引の項目の並び（足すときの位置。書き出し（exportPortable）と同じ順）
 const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY];
-const ATTACH_KNOWN = new Set(['path', 'role', 'title']);
+const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
 
 const dict = () => Object.create(null);
@@ -344,14 +345,41 @@ async function run(original, filesIn, opts) {
   let cfgNew = null;
   try { const cb = NEW.get(CFG) || (own(old, CFG) ? old[CFG] : null); cfgNew = cb ? parseJsonStrict(dec.decode(cb)) : null; } catch { cfgNew = null; }
   const oldAttach = Array.isArray(ix[FORMAT.ATTACH_KEY]) ? ix[FORMAT.ATTACH_KEY] : null;
-  const aFiles = Object.keys(finalFiles).filter(isAttachPath).map((p) => ({ path: p, size: finalFiles[p].length, head: finalFiles[p].subarray(0, 64) }));   // head：音声・動画を中身で見分ける
-  const aPlan = planAttachments(aFiles, cfgNew, { carry: oldAttach });
+  // 中身の検査（§3.8。kit/core/attach-content.mjs）：足した・中身の変わった・記録（役割・題など）の変わった添付だけを、書き出しと同じく入れない（断る）。
+  // 前からあって中身も記録も変わらないもの（keep）は、口述原稿だけの保存などで落とさずにそのまま残し、条件に合わなければ知らせる
+  const oldRec = new Map((oldAttach || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
+  const cfgList = isObj(cfgNew) && Array.isArray(cfgNew[FORMAT.ATTACH_KEY]) ? cfgNew[FORMAT.ATTACH_KEY].filter((c) => isObj(c) && typeof c.path === 'string') : null;
+  const recOf = (p) => (cfgList ? cfgList.find((c) => c.path === p) || null : oldRec.get(p) || null);
+  const keep = new Set(), aFiles = [];
+  for (const p of Object.keys(finalFiles).filter(isAttachPath)) {
+    const b = finalFiles[p], f = { path: p, size: b.length, head: b.subarray(0, 64) };   // head：音声・動画を中身で見分ける
+    const same = own(old, p) && eqBytes(b, old[p]) && deepEqual(recOf(p), oldRec.get(p) || null);
+    const insp = await inspectAttachment(p, b);
+    if (same) {
+      keep.add(p);
+      const role = (oldRec.get(p) || {}).role;
+      for (const x of [nameProblem(p), ATTACH_ROLES.includes(role) ? roleProblem(p, role) : null, ...insp.problems].filter(Boolean)) {
+        if (blocking(x)) warnings.push(`${problemText(x).replace(/; not included$/, '')}; kept unchanged from the opened file (remove it or replace it)`);
+      }
+    } else f.problems = insp.problems;
+    aFiles.push(f);
+  }
+  const aPlan = planAttachments(aFiles, cfgNew, { carry: oldAttach, keep });
   const aDropped = aFiles.filter((f) => !aPlan.include.includes(f.path));
   if (aDropped.length) refuse('attachments', aPlan.problems.filter((x) => aDropped.some((f) => f.path === x.path)).map(problemText).join('; ') || 'attachments over the limits', aDropped.map((f) => f.path));
   for (const x of aPlan.problems) if (x.code !== 'attachMissing' || attachChanged.length || changed.includes(CFG)) warnings.push(problemText(x));
   const carryBy = new Map((oldAttach || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
   const attachList = aPlan.list.map((e) => copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));
   const attachDiff = !deepEqual(attachList, oldAttach || []) && !(attachList.length === 0 && !own(ix, FORMAT.ATTACH_KEY));
+  // §3.3：設定のファイルの attachments は index.attachments と同じに（段 A の場所：attachment records。§7.2）。一覧に出ないもの（役割・題のないもの）の
+  // 項目は 1 ファイルの設定のファイルには残さない（作業場所のものは呼び手が config で書き直せる）
+  let configText = null;
+  if (isObj(cfgNew) && own(finalFiles, CFG) && ((own(cfgNew, FORMAT.ATTACH_KEY) && !deepEqual(cfgNew[FORMAT.ATTACH_KEY], attachList)) || (attachDiff && !own(cfgNew, FORMAT.ATTACH_KEY)))) {
+    const c = { ...cfgNew };
+    if (attachList.length) c[FORMAT.ATTACH_KEY] = attachList; else delete c[FORMAT.ATTACH_KEY];
+    configText = JSON.stringify(c, null, 2) + '\n';
+    finalFiles[CFG] = new TextEncoder().encode(configText);
+  }
 
   const paths = Object.keys(finalFiles).sort(cmpCodePoint);
   const oldSha = (p) => (own(ix.files, p) && eqBytes(finalFiles[p], old[p]) ? ix.blobs[ix.files[p]].sha256 : null);
@@ -375,7 +403,7 @@ async function run(original, filesIn, opts) {
       ids.push(`${BP}${id}-${j}`);
       newChunks.push(`<script type="application/octet-stream" id="${BP}${id}-${j}">${toBase64(b.subarray(j * LIMITS.chunkBytes, (j + 1) * LIMITS.chunkBytes))}</script>`);
     }
-    blobs[id] = { mime: p.startsWith('audio/') ? (mimeOf(p) === 'application/octet-stream' ? 'audio/mpeg' : mimeOf(p)) : mimeOf(p), bytes: b.length, sha256: shas[p], chunks: ids };
+    blobs[id] = { mime: p.startsWith('audio/') ? (mimeOf(p) === 'application/octet-stream' ? 'audio/mpeg' : mimeOf(p)) : isAttachPath(p) ? attachmentMime(p) : mimeOf(p), bytes: b.length, sha256: shas[p], chunks: ids };
     idBySha.set(shas[p], id);
   }
   // 参照されなくなった塊。実行系が別の場所から <scheme><id> で参照していれば残す（ほかの書き手の文書）
@@ -576,7 +604,7 @@ async function run(original, filesIn, opts) {
   if (me.length) refuse('verify', me.join('; '));
   if (back.index.docId !== docId || back.deckMeta.docId !== docId) refuse('verify', 'docId was not kept');
   return {
-    ok: true, html, index: newIndex, deckMeta: back.deckMeta, warnings: [...warnings],
+    ok: true, html, index: newIndex, deckMeta: back.deckMeta, warnings: [...warnings], ...(configText !== null ? { config: configText } : {}),
     changes: {
       files: changed, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
       extensions: exChanged, attachments: attachDiff || attachChanged.length > 0, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],

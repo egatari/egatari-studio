@@ -15,7 +15,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
-import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem } from './attachments.mjs';
+import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -547,7 +547,38 @@ const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creato
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
 const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY]);
-const ATTACH_KNOWN = new Set(['path', 'role', 'title']);
+const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
+// JSON の値が同じか（object の項目の順は問わない）
+export function sameJson(a, b) {
+  if (a === b) return true;
+  if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) return a.length === b.length && a.every((x, i) => sameJson(x, b[i]));
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => own(b, k) && sameJson(a[k], b[k]));
+}
+// 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の添付の一覧が、索引の index.attachments と同じか（§3.3：ないときは比べない。索引にないのは []）
+export function configAttachmentsMatch(conf, index) {
+  if (!isObj(conf) || !own(conf, FORMAT.ATTACH_KEY)) return true;
+  const want = isObj(index) && Array.isArray(index[FORMAT.ATTACH_KEY]) ? index[FORMAT.ATTACH_KEY] : [];
+  return sameJson(conf[FORMAT.ATTACH_KEY], want);
+}
+// 1 ファイルを作業フォルダに出すときの設定のファイル（§3.3・§3.8）：docId を残し、索引の権利の表示を写し、index.attachments を書く
+// （書き直す要がなければ null）。conf：今の設定のファイル（parse したもの。なければ null）
+const RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
+export function folderConfig(index, conf) {
+  const meta = isObj(index.metadata) ? index.metadata : {};
+  const list = Array.isArray(index[FORMAT.ATTACH_KEY]) ? index[FORMAT.ATTACH_KEY] : null;
+  let c = conf, changed = false;
+  if (!isObj(c)) { c = { docId: index.docId, metadata: { ...meta } }; changed = true; }
+  else {
+    const cm = isObj(c.metadata) ? { ...c.metadata } : {};
+    let mc = false;
+    for (const k of RIGHTS) if (own(meta, k) && !own(cm, k)) { cm[k] = meta[k]; mc = true; }
+    if (mc) { c = { ...c, metadata: cm }; changed = true; }
+  }
+  if (list && list.length && !own(c, FORMAT.ATTACH_KEY)) { c = { ...c, [FORMAT.ATTACH_KEY]: list }; changed = true; }
+  return changed ? JSON.stringify(c, null, 2) + '\n' : null;
+}
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
 //   build(env, src, opts)  組み立ての関数（既定は build-core の build。編集アプリは自分の組み立てを渡せる）
@@ -693,11 +724,24 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       // 一覧の後で大きくなったもの：読んだ大きさで確かめ直す
       if (b.length > L.fileBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTooLarge', path: p, n: b.length, max: L.fileBytes })}`); continue; }
       if (total + b.length > L.totalBytes) { warnings.push(`${LOG}: ${problemText({ code: 'attachTotal', path: p, n: total + b.length, max: L.totalBytes })}`); continue; }
+      // 中身（§3.8 の役割ごとの型と条件。kit/core/attach-content.mjs）：入れない問題（must・should）があれば外して知らせる。気をつけるだけのものは知らせて入れる
+      const insp = await inspectAttachment(p, b);
+      for (const x of insp.problems) warnings.push(`${LOG}: ${problemText(x)}`);
+      if (insp.problems.some(blocking)) continue;
       total += b.length;
       files[p] = b; got.add(p);
     }
     const carryBy = new Map((carryList || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
     for (const e of plan.list) if (got.has(e.path)) attachList.push(copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));
+    // §3.3：1 ファイルの設定のファイルの attachments は index.attachments と同じにする（展開したフォルダから組み直しても同じ一覧）。
+    // 作業フォルダの設定のファイルは書き換えない（一覧に出ないものの項目も残す）
+    const have = own(econf, FORMAT.ATTACH_KEY) ? econf[FORMAT.ATTACH_KEY] : undefined;
+    if (!(have === undefined && !attachList.length) && !sameJson(have, attachList)) {
+      const c = { ...econf };
+      if (attachList.length) c[FORMAT.ATTACH_KEY] = attachList; else delete c[FORMAT.ATTACH_KEY];
+      files[CFG] = utf8(JSON.stringify(c, null, 2) + '\n');
+      if (have !== undefined) warnings.push(`${LOG}: ${CFG}: the copy in the single file lists only the attachments listed for readers (${attachList.length} of ${Array.isArray(have) ? have.length : 0}); the working folder's ${CFG} is unchanged`);
+    }
   }
 
   // 外したもの・パスの規則
@@ -783,7 +827,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (n - 1 > LIMITS.chunkMax) fail('too-large', `${p}: more than ${LIMITS.chunkMax + 1} chunks`);
     for (let j = 0; j < n; j++) ids.push(`${BP}${id}-${j}`);
     chunkJobs.push({ id, b, n });
-    blobs[id] = { mime: p.startsWith('audio/') ? (mimeOf(p) === 'application/octet-stream' ? 'audio/mpeg' : mimeOf(p)) : mimeOf(p), bytes: b.length, sha256: shaOf[p], chunks: ids };
+    blobs[id] = { mime: p.startsWith('audio/') ? (mimeOf(p) === 'application/octet-stream' ? 'audio/mpeg' : mimeOf(p)) : isAttachPath(p) ? attachmentMime(p) : mimeOf(p), bytes: b.length, sha256: shaOf[p], chunks: ids };
   }
 
   // 部品とテーマ
@@ -1189,6 +1233,8 @@ export async function readPortable(input, opts = {}) {
     try { c = parseJsonStrict(new TextDecoder('utf-8', { fatal: true }).decode(files[CFG]), { maxMembers: L.members, maxDepth: L.jsonDepth }); }
     catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
     if (!isObj(c) || c.docId !== ix.docId) fail('docid-mismatch', `${CFG}: docId ${isObj(c) && typeof c.docId === 'string' ? `"${c.docId.slice(0, 40)}"` : '(missing)'} differs from the index docId ${ix.docId}`);
+    // §3.3：attachments があれば index.attachments と同じであること（展開して組み直すと一覧が変わるので断る）
+    if (!configAttachmentsMatch(c, ix)) fail('attachments-mismatch', `${CFG}: attachments differ from the index attachments (they must be equal, §3.3)`);
   }
   const audio = dict();
   if (ix.audio) for (const k of Object.keys(ix.audio)) audio[k] = ix.audio[k];

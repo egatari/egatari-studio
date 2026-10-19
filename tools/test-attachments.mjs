@@ -1,27 +1,35 @@
-// 添付（format spec §3.8。kit/core/attachments.mjs）の試験
+// 添付（format spec §3.8。kit/core/attachments.mjs・kit/core/attach-content.mjs）の試験。入力はその場で作る（tools/attach-fixtures.mjs）
 //   node tools/test-attachments.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
-// 1. コマンド：attachments/ と egatari.json の役割・題 → 1 ファイル（--portable）。index.attachments・files・profile（添付の .html はコードに数えない）
-// 2. 展開して同じ（unpack の各ファイルが元の作業フォルダと同じバイト）、もう一度まとめても同じ sourceSha256 と一覧
+// 1. コマンド：attachments/ と egatari.json の役割・題・説明 → 1 ファイル（--portable）。index.attachments・files・塊の媒体型。.html は入れない。
+//    1 ファイルの egatari.json の attachments は index.attachments と同じ（作業フォルダのものは変えない）
+// 2. 展開して同じ（unpack は index.attachments を egatari.json に書く）、もう一度まとめても同じ sourceSha256 と一覧。egatari.json のない文書の展開。
+//    egatari.json と index.attachments が違う文書は読まない
 // 3. 再生専用（--play-only）には添付が入らない（索引も添付の塊もない）
-// 4. 上限（1 つ・合わせて・数）：外して知らせる。名前の規則（.. ・隠しファイル・リンク）
+// 4. 上限（1 つ・合わせて・数）・題・説明：外して知らせる。名前の規則（.. ・隠しファイル・リンク）。音声と動画（名前と中身）
+// 4A. 役割ごとの型と中身（§3.8）：PDF（JavaScript・自動の動作・Launch・埋め込み・object stream・爆弾）、xlsx・docx（マクロ・外部リンク・DDE・
+//    WEBSERVICE・ActiveX・OLE・フィールド・テンプレート）、CSV（数式として読まれる値は警告だけ）、重ねたファイル、名前を替えた実行ファイル、ZIP の爆弾、
+//    役割と型の組。書き出しは外して規則の名前を添えて知らせ、検査器は MUST NOT をエラー、SHOULD を警告にする
 // 5. 検査器（kit/check.mjs --json）：役割がない・役割が正しくない・ない・名前が使えない・大きすぎる
-// 6. 段 A（kit/core/tier-a.mjs）：足す・消す・名前と題を替える → 添付の場所と索引だけが変わる（tools/tier-a-diff.mjs）。原稿が書いている添付・上限を超えるものは断る
-// 7. 再生器（ヘッドレス Chrome、file://）：帯のボタンと ? の一覧、ダウンロード（.html の添付も開かずに保存。ページは動かず、新しいタブもなく、スクリプトは動かない）。
-//    壊れた添付は保存しない。再生専用・組んだ HTML には出ない
-// 8. 編集アプリ：1 ファイル（OPFS のハンドル）の添付の板で足す・役割と題・名前を替える・消す → 保存は段 A（場所を見分ける差分）。
-//    作業フォルダ（OPFS）でも足す・消す（.cache/edits/ に控え）。画像（--shots）：player-attachments.png・editor-attachments.png（1280×800）
+// 6. 段 A（kit/core/tier-a.mjs）：足す・消す・名前・題・説明を替える → 添付の場所と索引だけが変わる（tools/tier-a-diff.mjs）。egatari.json も一覧を揃える。
+//    原稿が書いている添付・上限を超えるもの・§3.8 に合わないもの（HTML・JavaScript のある PDF・役割に合わない型）は断る
+// 7. 再生器（ヘッドレス Chrome、file://）：帯のボタンと ? の一覧（説明つき）、ダウンロード（開かずに保存。ページは動かず、新しいタブもない）。
+//    索引に書いてあっても §3.8 の型でないもの・役割に合わないものは出さず、中身が型と合わないもの・壊れた添付は保存しない。再生専用には出ない
+// 8. 編集アプリ：1 ファイル（OPFS のハンドル）の添付の板で足す（§3.8 に合わないものは規則を言って断る）・役割・題・説明・名前を替える・消す →
+//    保存は段 A（場所を見分ける差分）。作業フォルダ（OPFS）でも足す・消す（.cache/edits/ に控え）。画像（--shots）：player-attachments.png・editor-attachments.png（1280×800）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
-import { readPortable, playOnly, scanDocument } from '../kit/core/portable.mjs';
+import { readPortable, playOnly, scanDocument, replaceIndexText } from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
-import { attachmentsOf, attachmentIndexWarnings, sniffMedia, ATTACH_LIMITS, planAttachments } from '../kit/core/attachments.mjs';
+import { attachmentsOf, attachmentIndexWarnings, sniffMedia, ATTACH_LIMITS, planAttachments, inspectAttachment, roleProblem } from '../kit/core/attachments.mjs';
+import * as F from './attach-fixtures.mjs';
 import { unpack } from './portable.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 
@@ -39,13 +47,14 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
 
 // ---------------------------------------------------------------- 作業フォルダ
-const PDF = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(3000, 7), Buffer.from('\n%%EOF\n')]);
+const PDF = F.PDF_OK(3000);
 const EVIL = '<!doctype html><title>evil</title><script>try{window.top.__PWNED=1;parent.__PWNED=1;localStorage.setItem("pwned","1")}catch(e){}</script><h1>attachment</h1>';
 function makeDeck(dir, conf) {
   fs.cpSync(path.join(ROOT, 'examples', 'minimal'), dir, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(ROOT, x)) });
   fs.mkdirSync(path.join(dir, 'attachments', 'code'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'attachments', 'paper.pdf'), PDF);
   fs.writeFileSync(path.join(dir, 'attachments', 'evil.html'), EVIL);
+  fs.writeFileSync(path.join(dir, 'attachments', 'notes.txt'), 'plain notes\n');
   fs.writeFileSync(path.join(dir, 'attachments', 'data.csv'), 'x,y\n1,2\n3,4\n');
   fs.writeFileSync(path.join(dir, 'attachments', 'code', 'run.py'), 'print("hi")\n');
   fs.writeFileSync(path.join(dir, CFG), JSON.stringify(conf, null, 2) + '\n');
@@ -57,9 +66,11 @@ const CONF = {
   [KEY]: [
     { path: 'attachments/paper.pdf', role: 'pdf', title: 'Paper (PDF)' },
     { path: 'attachments/evil.html', role: 'supplement', title: 'Handout (HTML)' },
+    { path: 'attachments/notes.txt', role: 'supplement', title: 'Notes', description: 'Read this first.' },
     { path: 'attachments/data.csv', role: 'data', title: 'Data', note: 'kept unknown member' },
   ],
 };
+const LISTED = 'attachments/paper.pdf,attachments/notes.txt,attachments/data.csv';
 const DECK = makeDeck(path.join(work, 'deck'), CONF);
 const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
 
@@ -68,28 +79,54 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.dirname(DECK), '--portable', '-o', OUT], { encoding: 'utf8' });
   ok(r.status === 0, 'cli: build --portable with attachments succeeds' + (r.status ? ': ' + r.stderr : ''));
   ok(/attachments\/code\/run\.py" has no role/.test(r.stderr), 'cli: a file without a role is reported (packed, not listed)');
+  ok(/attachments\/evil\.html" is HTML \(by its name\), which must not be attached \(§3\.8\); not included/.test(r.stderr), 'cli: an .html attachment is skipped with a warning naming the rule (§3.8)');
   const html = fs.readFileSync(OUT, 'utf8');
   const p = await readPortable(html);
   const list = p.index[KEY];
-  ok(Array.isArray(list) && list.map((e) => e.path).join() === 'attachments/paper.pdf,attachments/evil.html,attachments/data.csv' && list[0].title === 'Paper (PDF)' && list[2].note === 'kept unknown member' && list[2].title === 'Data',
-    'cli: index.attachments lists the entries with a role, in the order of egatari.json, with title and unknown members: ' + JSON.stringify(list));
-  ok(['attachments/paper.pdf', 'attachments/evil.html', 'attachments/data.csv', 'attachments/code/run.py'].every((f) => f in p.files) && Buffer.from(p.files['attachments/paper.pdf']).equals(PDF), 'cli: every attachment is in files, bytes unchanged');
-  ok(p.index.profile === 'core' && !p.index.requires.some((f) => /article/.test(f)), `cli: an .html attachment is not code (profile ${p.index.profile}); attachments are ignorable, so nothing is added to requires (${p.index.requires})`);
-  ok(attachmentsOf(p.index).length === 3 && p.warnings.length === 0, 'cli: attachmentsOf lists the 3 attachments, no read warnings');
+  ok(Array.isArray(list) && list.map((e) => e.path).join() === LISTED && list[0].title === 'Paper (PDF)' && list[1].description === 'Read this first.' && list[2].note === 'kept unknown member' && list[2].title === 'Data',
+    'cli: index.attachments lists the allowed entries with a role, in the order of egatari.json, with title, description and unknown members: ' + JSON.stringify(list));
+  ok(['attachments/paper.pdf', 'attachments/notes.txt', 'attachments/data.csv', 'attachments/code/run.py'].every((f) => f in p.files) && !('attachments/evil.html' in p.files) && Buffer.from(p.files['attachments/paper.pdf']).equals(PDF), 'cli: allowed attachments are in files (bytes unchanged), the .html one is not');
+  ok(p.index.blobs[p.index.files['attachments/paper.pdf']].mime === 'application/pdf' && p.index.blobs[p.index.files['attachments/data.csv']].mime === 'text/csv' && p.index.blobs[p.index.files['attachments/code/run.py']].mime === 'text/plain',
+    'cli: attachment blobs carry the media type of their §3.8 type (application/pdf, text/csv, text/plain)');
+  ok(p.index.profile === 'core' && !p.index.requires.some((f) => /article/.test(f)), `cli: attachments are ignorable, so nothing is added to requires (${p.index.requires})`);
+  const cfg = JSON.parse(dec.decode(p.files[CFG]));
+  ok(JSON.stringify(cfg[KEY]) === JSON.stringify(list) && /the copy in the single file lists only the attachments listed for readers \(3 of 4\)/.test(r.stderr) && JSON.parse(fs.readFileSync(path.join(path.dirname(DECK), CFG), 'utf8'))[KEY].length === 4,
+    `cli: the ${CFG} in the file has attachments equal to index.attachments (§3.3); the working folder's ${CFG} is unchanged`);
+  ok(attachmentsOf(p.index).length === 3 && attachmentsOf(p.index)[1].description === 'Read this first.' && p.warnings.length === 0, 'cli: attachmentsOf lists the 3 attachments (with the description), no read warnings');
 }
 
-// ---------------------------------------------------------------- 2. 展開して同じ・まとめ直しても同じ
+// ---------------------------------------------------------------- 2. 展開して同じ・まとめ直しても同じ・設定のファイルの添付の一覧（§3.3・§3.8）
 {
   const dir = path.join(work, 'unpacked');
   await unpack(OUT, dir);
   const src = path.dirname(DECK);
   const walk = (d, pre = '') => fs.readdirSync(d).flatMap((n) => { const p = path.join(d, n); return fs.statSync(p).isDirectory() ? walk(p, pre + n + '/') : [pre + n]; });
   const got = walk(dir).sort();
-  const same = got.every((f) => fs.readFileSync(path.join(dir, f)).equals(fs.readFileSync(path.join(src, f))));
-  ok(got.includes('attachments/evil.html') && got.includes('attachments/code/run.py') && same, 'roundtrip: unpack writes attachments/ and egatari.json byte for byte as in the working folder');
   const a = await readPortable(fs.readFileSync(OUT, 'utf8'));
+  const same = got.filter((f) => f !== CFG).every((f) => fs.readFileSync(path.join(dir, f)).equals(fs.readFileSync(path.join(src, f))));
+  const ucfg = JSON.parse(fs.readFileSync(path.join(dir, CFG), 'utf8'));
+  ok(got.includes('attachments/notes.txt') && got.includes('attachments/code/run.py') && !got.includes('attachments/evil.html') && same && JSON.stringify(ucfg[KEY]) === JSON.stringify(a.index[KEY]) && ucfg.docId === CONF.docId,
+    `roundtrip: unpack writes attachments/ byte for byte and ${CFG} with index.attachments`);
   const r2 = await buildPortable(path.join(dir, 'deck.html'), { out: path.join(work, 'b' + FORMAT.FILE_EXT) });
-  ok(r2.index.sourceSha256 === a.index.sourceSha256 && JSON.stringify(r2.index[KEY]) === JSON.stringify(a.index[KEY]), 'roundtrip: packing the unpacked folder gives the same sourceSha256 and attachment list');
+  ok(r2.index.sourceSha256 === a.index.sourceSha256 && JSON.stringify(r2.index[KEY]) === JSON.stringify(a.index[KEY]) && !r2.warnings.some((w) => /lists only/.test(w)), 'roundtrip: packing the unpacked folder (reading the list from egatari.json) gives the same sourceSha256 and attachment list');
+  // 設定のファイルのない 1 ファイル（ほかの書き手）：展開は index.attachments（と docId）を設定のファイルに書く
+  const html = fs.readFileSync(OUT, 'utf8');
+  const ix = JSON.parse(scanDocument(html).byId.get(FORMAT.INDEX_ID).text);
+  delete ix.files[CFG];
+  const noCfg = path.join(work, 'nocfg' + FORMAT.FILE_EXT);
+  fs.writeFileSync(noCfg, await replaceIndexText(html, JSON.stringify(ix)));
+  const dir2 = path.join(work, 'unpacked-nocfg');
+  await unpack(noCfg, dir2);
+  const c2 = JSON.parse(fs.readFileSync(path.join(dir2, CFG), 'utf8'));
+  ok(c2.docId === ix.docId && JSON.stringify(c2[KEY]) === JSON.stringify(ix[KEY]) && c2.metadata.license === 'CC-BY-4.0', `unpack: a file without ${CFG} unpacks into a folder whose ${CFG} has the docId, the rights and index.attachments`);
+  const r3 = await buildPortable(path.join(dir2, 'deck.html'), { out: path.join(work, 'c' + FORMAT.FILE_EXT) });
+  ok(JSON.stringify(r3.index[KEY]) === JSON.stringify(ix[KEY]) && r3.index.docId === ix.docId, 'unpack: packing that folder keeps the attachment list and the docId');
+  // 両方あって違う：断る（§3.3 の MUST）
+  const ix2 = JSON.parse(scanDocument(html).byId.get(FORMAT.INDEX_ID).text);
+  ix2[KEY][0].title = 'Changed only in the index';
+  let err = null;
+  try { await readPortable(await replaceIndexText(html, JSON.stringify(ix2))); } catch (e) { err = e; }
+  ok(err && err.code === 'attachments-mismatch', `read: ${CFG} attachments that differ from index.attachments are refused (attachments-mismatch): ${err && err.message}`);
 }
 
 // ---------------------------------------------------------------- 3. 再生専用
@@ -100,7 +137,8 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   const ids = Object.keys(a.index.files).filter((f) => f.startsWith('attachments/')).map((f) => a.index.files[f]);
   ok(!scanDocument(po).byId.has(FORMAT.INDEX_ID) && ids.every((id) => !po.includes(FORMAT.BLOB_PREFIX + id)), 'play-only: neither the index nor any attachment blob is in the play-only file (also role source)');
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.dirname(DECK), '--play-only', '-o', path.join(work, 'p' + FORMAT.PLAY_EXT)], { encoding: 'utf8' });
-  ok(r.status === 0 && !fs.readFileSync(path.join(work, 'p' + FORMAT.PLAY_EXT), 'utf8').includes('%PDF'), 'play-only: build --play-only leaves the attachments out');
+  const poText = fs.readFileSync(path.join(work, 'p' + FORMAT.PLAY_EXT), 'utf8');
+  ok(r.status === 0 && !scanDocument(poText).byId.has(FORMAT.INDEX_ID) && ids.every((id) => !poText.includes(FORMAT.BLOB_PREFIX + id)), 'play-only: build --play-only leaves the attachments out');
 }
 
 // ---------------------------------------------------------------- 4. 上限・名前
@@ -111,16 +149,21 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   ok(Object.keys(r2.files).filter((f) => f.startsWith('attachments/')).length === 3 && r2.warnings.some((w) => /together, over the limit of 3100/.test(w)), 'limits: attachments over the total limit are left out (in order) and reported');
   const r3 = await buildPortable(DECK, { out: path.join(work, 'l3.html'), attachLimits: { count: 2 } });
   ok(Object.keys(r3.files).filter((f) => f.startsWith('attachments/')).length === 2 && r3.warnings.some((w) => /more than 2 attachments/.test(w)), 'limits: more than the maximum number is reported');
-  ok(ATTACH_LIMITS.fileBytes === 10 * 1048576 && ATTACH_LIMITS.totalBytes === 20 * 1048576 && ATTACH_LIMITS.count === 100, 'limits: defaults 10 MiB each, 20 MiB together, 100 files (spec §3.8 draft)');
-  // 題は要る：役割があっても題のないものは入れるが一覧に出さない（知らせる）
+  ok(ATTACH_LIMITS.fileBytes === 10 * 1048576 && ATTACH_LIMITS.totalBytes === 20 * 1048576 && ATTACH_LIMITS.count === 100 && ATTACH_LIMITS.descriptionChars === 300, 'limits: defaults 10 MiB each, 20 MiB together, 100 files, descriptions up to 300 characters (spec §3.8 draft)');
+  // 題は要る：役割があっても題のないものは入れるが一覧に出さない（知らせる）。説明は 1〜2 文（改行なし・上限まで）。違えば説明なしで一覧に出す
   {
     const d = path.join(work, 'deck-notitle');
-    const dk = makeDeck(d, { ...CONF, [KEY]: [CONF[KEY][0], { path: 'attachments/data.csv', role: 'data' }, { path: 'attachments/code/run.py', role: 'code', title: '  ' }] });
+    const dk = makeDeck(d, { ...CONF, [KEY]: [{ ...CONF[KEY][0], description: 'Line one.\nLine two.' }, { path: 'attachments/data.csv', role: 'data' }, { path: 'attachments/code/run.py', role: 'code', title: '  ' }] });
     const r = await buildPortable(dk, { out: path.join(work, 'nt.html') });
     ok(r.index[KEY].map((e) => e.path).join() === 'attachments/paper.pdf' && 'attachments/data.csv' in r.files && 'attachments/code/run.py' in r.files && r.warnings.some((w) => /data\.csv" has no title/.test(w)) && r.warnings.some((w) => /run\.py" has no title/.test(w)),
       'title: an attachment with a role but no (or a blank) title is packed but not listed, with a warning');
-    const ix = { [KEY]: [{ path: 'attachments/a.pdf', role: 'pdf' }, { path: 'attachments/b.pdf', role: 'pdf', title: 'B' }], files: { 'attachments/a.pdf': 'x', 'attachments/b.pdf': 'y' }, blobs: { x: { bytes: 1, sha256: '0' }, y: { bytes: 1, sha256: '0' } } };
+    ok(!('description' in r.index[KEY][0]) && r.warnings.some((w) => /paper\.pdf": the description contains a line break/.test(w)), 'description: a description with a line break is left out with a warning (the entry is still listed)');
+    const ix = { [KEY]: [{ path: 'attachments/a.pdf', role: 'pdf' }, { path: 'attachments/b.pdf', role: 'pdf', title: 'B' }], files: { 'attachments/a.pdf': 'x', 'attachments/b.pdf': 'y' }, blobs: { x: { bytes: 1, sha256: '0', mime: 'application/pdf' }, y: { bytes: 1, sha256: '0', mime: 'application/pdf' } } };
     ok(attachmentsOf(ix).map((e) => e.path).join() === 'attachments/b.pdf' && attachmentIndexWarnings(ix).some((w) => /no title \(required\)/.test(w)), 'title: a reader does not offer an index entry without a title (warns)');
+    const ix2 = { [KEY]: [{ path: 'attachments/a.html', role: 'supplement', title: 'A' }, { path: 'attachments/b.csv', role: 'pdf', title: 'B' }, { path: 'attachments/c.pdf', role: 'pdf', title: 'C' }], files: { 'attachments/a.html': 'x', 'attachments/b.csv': 'x', 'attachments/c.pdf': 'x' }, blobs: { x: { bytes: 1, sha256: '0', mime: 'text/html' } } };
+    const w2 = attachmentIndexWarnings(ix2);
+    ok(w2.some((w) => /a\.html" is not a type that may be attached \(html\)/.test(w)) && w2.some((w) => /b\.csv" \(csv\) is not allowed for the role pdf/.test(w)) && w2.some((w) => /c\.pdf" has the media type text\/html, expected application\/pdf/.test(w)),
+      'read: index entries of a forbidden type, of a type the role does not take, or with a media type that does not match are reported: ' + w2.join(' | '));
   }
   // 音声と動画：拡張子でも中身でも入れない（知らせる）。似た先頭の画像・文字（WebP・HEIF・UTF-16 の BOM・PNG・PDF）は見逃す
   {
@@ -129,10 +172,10 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
     const A = path.join(d, 'attachments');
     fs.writeFileSync(path.join(A, 'song.mp3'), Buffer.from('ID3\x03\x00\x00\x00\x00\x00\x00'));
     fs.writeFileSync(path.join(A, 'clip.MOV'), Buffer.alloc(32));
-    fs.writeFileSync(path.join(A, 'hidden-audio.bin'), Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]));
-    fs.writeFileSync(path.join(A, 'movie.dat'), Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(20)]));
+    fs.writeFileSync(path.join(A, 'hidden-audio.txt'), Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]));
+    fs.writeFileSync(path.join(A, 'movie.png'), Buffer.concat([Buffer.from([0, 0, 0, 0x20]), Buffer.from('ftypisom'), Buffer.alloc(20)]));
     const r = await buildPortable(dk, { out: path.join(work, 'media.html') });
-    ok(!['song.mp3', 'clip.MOV', 'hidden-audio.bin', 'movie.dat'].some((f) => 'attachments/' + f in r.files) && r.warnings.some((w) => /song\.mp3" is audio \(by its name\)/.test(w)) && r.warnings.some((w) => /clip\.MOV" is a video \(by its name\)/.test(w)) && r.warnings.some((w) => /hidden-audio\.bin" is audio \(by its content\)/.test(w)) && r.warnings.some((w) => /movie\.dat" is a video \(by its content\)/.test(w)) && 'attachments/paper.pdf' in r.files,
+    ok(!['song.mp3', 'clip.MOV', 'hidden-audio.txt', 'movie.png'].some((f) => 'attachments/' + f in r.files) && r.warnings.some((w) => /song\.mp3" is audio \(by its name\)/.test(w)) && r.warnings.some((w) => /clip\.MOV" is a video \(by its name\)/.test(w)) && r.warnings.some((w) => /hidden-audio\.txt" is audio \(by its content\)/.test(w)) && r.warnings.some((w) => /movie\.png" is a video \(by its content\)/.test(w)) && 'attachments/paper.pdf' in r.files,
       'media: audio and video files are left out by name and by content, with a warning: ' + r.warnings.filter((w) => /audio|video/.test(w)).join(' | '));
     const B = (...x) => new Uint8Array(x.flatMap((v) => (typeof v === 'string' ? [...v].map((c) => c.charCodeAt(0)) : [v])));
     const yes = { mp3frame: B(0xff, 0xfb, 0x90, 0x44), adts: B(0xff, 0xf1, 0x50, 0x80), ogg: B('OggS', 0, 2), opus: B('OggS', 0, 2, ...new Array(20).fill(0), 'OpusHead'), flac: B('fLaC', 0), webm: B(0x1a, 0x45, 0xdf, 0xa3, 0), m4a: B(0, 0, 0, 0x20, 'ftypM4A ', 0), mov: B(0, 0, 0, 0x14, 'ftypqt  ', 0), mdat: B(0, 0, 0, 8, 'mdat'), aiff: B('FORM', 0, 0, 0, 0, 'AIFF') };
@@ -141,8 +184,8 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
     ok(!wrongYes.length && !wrongNo.length, `media: sniffing finds MP3, AAC, Ogg/Opus, FLAC, WebM, M4A, MOV, AIFF and not WebP, HEIF/AVIF, UTF-16 text, PNG, PDF, JPEG, CSV (missed: ${wrongYes}; false: ${wrongNo})`);
     const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), dk, '--json'], { encoding: 'utf8' });
     const jc = JSON.parse(rc.stdout);
-    const mc = jc.results.filter((x) => x.code === 'attachMedia' && x.sev === 'warn').map((x) => x.data.path).sort().join();
-    ok(mc === 'attachments/clip.MOV,attachments/hidden-audio.bin,attachments/movie.dat,attachments/song.mp3', 'checker: audio and video attachments (by name and content) are warnings: ' + mc);
+    const mc = jc.results.filter((x) => x.code === 'attachMedia' && x.sev === 'error').map((x) => x.data.path).sort().join();
+    ok(mc === 'attachments/clip.MOV,attachments/hidden-audio.txt,attachments/movie.png,attachments/song.mp3', 'checker: audio and video attachments (by name and content) are errors (§3.8 MUST NOT): ' + mc);
   }
   const plan = planAttachments([{ path: 'attachments/.secret', size: 1 }, { path: 'attachments/a.bak', size: 1 }, { path: 'attachments/CON.txt', size: 1 }, { path: 'attachments/ok.txt', size: 1 }],
     { [KEY]: [{ path: 'attachments/../deck.html', role: 'pdf' }, { path: 'deck.html', role: 'pdf' }, { path: 'attachments/ok.txt', role: 'slides' }, { path: 'attachments/OK.txt', role: 'data' }] });
@@ -155,6 +198,126 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   let linked = false;
   try { fs.symlinkSync(path.join(ROOT, 'package.json'), path.join(d2, 'attachments', 'leak.json')); linked = true; } catch { /* Windows など */ }
   if (linked) { const r = await buildPortable(deck2, { out: path.join(work, 'link.html') }); ok(!('attachments/leak.json' in r.files), 'names: a symbolic link in attachments/ is not followed'); }
+}
+
+// ---------------------------------------------------------------- 4A. 役割ごとの型と中身（§3.8。kit/core/attach-content.mjs）：その場で作った入力で
+{
+  const rows = [];
+  const lv = async (name, bytes) => (await inspectAttachment('attachments/' + name, Buffer.from(bytes))).problems;
+  const sig = (ps) => ps.map((x) => `${x.level}:${x.code}${x.what ? ':' + x.what : x.kind ? ':' + x.kind : x.also ? ':' + x.also : ''}`).sort().join(' ');
+  const expect = async (label, name, bytes, want) => { const got = sig(await lv(name, bytes)); rows.push([label, got === want, got, want]); };
+  // pdf・supplement の PDF
+  await expect('pdf: plain PDF (destination OpenAction, /JS and /AA only inside strings and streams)', 'paper.pdf', F.PDF_OK(), '');
+  await expect('pdf: OpenAction that only goes to a page (/S /GoTo, as hyperref writes it)', 'a.pdf', F.PDF_OPENACTION_GOTO(), '');
+  await expect('pdf: OpenAction to a destination object', 'a.pdf', F.PDF_OPENACTION_DEST_REF(), '');
+  await expect('pdf: GoTo OpenAction inside a compressed object stream', 'a.pdf', F.PDF_OBJSTM_GOTO(), '');
+  await expect('pdf: JavaScript action', 'a.pdf', F.PDF_JS(), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: JavaScript with #xx-escaped names (/J#61vaScript)', 'a.pdf', F.PDF_JS_HEX(), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: JavaScript hidden in a compressed object stream', 'a.pdf', F.PDF_OBJSTM_JS(), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: OpenAction that opens a URL', 'a.pdf', F.PDF_OPENACTION_URI(), 'should:attachUnsafe:auto-action');
+  await expect('pdf: additional actions (/AA)', 'a.pdf', F.PDF_AA(), 'should:attachUnsafe:auto-action');
+  await expect('pdf: Launch action', 'a.pdf', F.PDF_LAUNCH(), 'should:attachUnsafe:launch');
+  await expect('pdf: embedded files', 'a.pdf', F.PDF_EMBEDDED(), 'should:attachUnsafe:embedded-file');
+  await expect('pdf: object stream that decompresses past the limit (decompression bomb)', 'a.pdf', F.PDF_OBJSTM_BOMB(), 'should:attachUnchecked');
+  await expect('pdf: encrypted (R 4, AES-128) with an empty user password: object streams are decrypted and checked', 'a.pdf', F.PDF_ENCRYPTED(), '');
+  await expect('pdf: encrypted (R 4, AES-128), JavaScript in an encrypted object stream', 'a.pdf', F.PDF_ENCRYPTED({ js: true }), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: encrypted (R 4, RC4), JavaScript in an encrypted object stream', 'a.pdf', F.PDF_ENCRYPTED({ js: true, aes: false }), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: encrypted (R 6, AES-256) with an empty user password', 'a.pdf', F.PDF_ENCRYPTED_R6(), '');
+  await expect('pdf: encrypted (R 6, AES-256), JavaScript in an encrypted object stream', 'a.pdf', F.PDF_ENCRYPTED_R6({ js: true }), 'must:attachUnsafe:javascript should:attachUnsafe:auto-action');
+  await expect('pdf: encrypted with a user password (cannot be checked)', 'a.pdf', F.PDF_ENCRYPTED({ password: 'secret' }), 'should:attachUnchecked');
+  await expect('polyglot: PDF with a ZIP appended', 'a.pdf', Buffer.concat([F.PDF_OK(), F.zip([['a.txt', 'hi']])]), 'must:attachPolyglot:ZIP');
+  await expect('renamed executable: a Windows PE named .pdf', 'a.pdf', F.EXE(), 'must:attachForbidden:executable');
+  await expect('mismatch: text named .pdf', 'a.pdf', 'hello', 'should:attachMismatch:pdf');
+  // data
+  await expect('data: CSV', 'd.csv', 'x,y\n1,-2\n-3.5,+4\n', '');
+  await expect('data: CSV in Shift_JIS', 'd.csv', Buffer.from([0x82, 0xa0, 0x2c, 0x31, 0x0a]), '');
+  await expect('data: CSV with formula injection (= + - @, a tab) is a warning only', 'd.csv', 'x,y\n"=cmd|\' /C calc\'!A0",3\n@SUM(1),-x\n', 'advice:attachInjection');
+  await expect('data: TSV with formula injection', 'd.tsv', 'a\t=1+1\n', 'advice:attachInjection');
+  await expect('data: JSON', 'd.json', '{"a": [1, 2]}', '');
+  await expect('data: broken JSON', 'd.json', '{"a": ', 'should:attachMismatch:json');
+  await expect('data: xlsx', 'd.xlsx', F.xlsx(), '');
+  await expect('data: xlsx with macros (vbaProject.bin, macro-enabled type)', 'd.xlsx', F.xlsx({ macro: true }), 'must:attachUnsafe:macro');
+  await expect('data: xlsx with an external link', 'd.xlsx', F.xlsx({ externalLink: true }), 'should:attachUnsafe:external-link');
+  await expect('data: xlsx with a DDE formula', 'd.xlsx', F.xlsx({ dde: true }), 'should:attachUnsafe:dde');
+  await expect('data: xlsx with WEBSERVICE()', 'd.xlsx', F.xlsx({ webservice: true }), 'should:attachUnsafe:external-data');
+  await expect('data: xlsx with ActiveX', 'd.xlsx', F.xlsx({ activeX: true }), 'should:attachUnsafe:activex');
+  await expect('data: xlsx with an embedded OLE object', 'd.xlsx', F.xlsx({ ole: true }), 'should:attachUnsafe:embedded-object');
+  await expect('data: xlsx with a string that starts with = (formula injection) is a warning only', 'd.xlsx', F.xlsx({ injection: true }), 'advice:attachInjection');
+  await expect('zip bomb: an entry declared over the limit', 'd.xlsx', F.ZIP_BOMB_DECLARED(), 'should:attachUnchecked');
+  await expect('zip bomb: an entry compressed more than 200 times', 'd.xlsx', F.ZIP_BOMB_RATIO(), 'should:attachUnchecked');
+  await expect('zip bomb: an entry that decompresses past its declared size', 'd.xlsx', F.ZIP_BOMB_LIE(), 'should:attachMismatch:xlsx');
+  await expect('zip bomb: entries that overlap', 'd.xlsx', F.ZIP_OVERLAP(), 'should:attachMismatch:xlsx');
+  await expect('legacy Office: an OLE document named .xlsx', 'd.xlsx', F.OLE(), 'must:attachForbidden:office-legacy');
+  await expect('container: a ZIP named .csv', 'd.csv', F.zip([['a', 'b']]), 'must:attachForbidden:archive');
+  // code
+  await expect('code: Python source', 'run.py', 'print(1)\n', '');
+  await expect('code: notebook', 'n.ipynb', '{"cells": [], "nbformat": 4, "nbformat_minor": 5, "metadata": {}}', '');
+  await expect('code: a notebook that is not one', 'n.ipynb', '{}', 'should:attachMismatch:ipynb');
+  await expect('code: environment definitions (pyproject.toml, Dockerfile)', 'pyproject.toml', '[project]\nname = "x"\n', '');
+  await expect('code: a credential in the source is a warning only', 'k.py', 'KEY = "sk-ant-abcdefghijklmnopqrstuvwxyz0123"\n', 'advice:attachPrivate:access key');
+  await expect('renamed executable: an ELF named .py', 'run.py', F.ELF(), 'must:attachForbidden:executable');
+  await expect('renamed executable: a Mach-O named .txt', 'a.txt', F.MACHO(), 'must:attachForbidden:executable');
+  await expect('WebAssembly named .txt', 'a.txt', F.WASM(), 'must:attachForbidden:wasm');
+  // source
+  await expect('source: TeX', 'paper.tex', '\\documentclass{article}\n', '');
+  await expect('source: Markdown', 'notes.md', '# Notes\n', '');
+  await expect('source: docx (with a hyperlink field and an external hyperlink)', 'paper.docx', F.docx({ hyperlinkField: true }), '');
+  await expect('source: docx with macros', 'paper.docx', F.docx({ macro: true }), 'must:attachUnsafe:macro');
+  await expect('source: docx with a DDEAUTO field', 'paper.docx', F.docx({ dde: true }), 'should:attachUnsafe:field-code');
+  await expect('source: docx with an INCLUDETEXT field', 'paper.docx', F.docx({ includeText: true }), 'should:attachUnsafe:field-code');
+  await expect('source: docx whose field name comes from a nested field', 'paper.docx', F.docx({ nested: true }), 'should:attachUnsafe:field-code');
+  await expect('source: docx with a remote template', 'paper.docx', F.docx({ template: true }), 'should:attachUnsafe:remote-template');
+  await expect('polyglot: docx with HTML after the ZIP', 'paper.docx', F.docx({ zip: { suffix: Buffer.from('<html><script>x</script>') } }), 'must:attachPolyglot:data after the ZIP end record');
+  await expect('polyglot: docx with data before the ZIP', 'paper.docx', F.docx({ zip: { prefix: Buffer.from('%PDF-1.7\n') } }), 'should:attachMismatch:docx');
+  await expect('HTML in a .txt', 'note.txt', EVIL, 'must:attachForbidden:html');
+  await expect('SVG in a .md', 'note.md', '<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>', 'must:attachForbidden:svg');
+  // supplement
+  await expect('supplement: PNG, JPEG, WebP', 'a.png', F.PNG(), '');
+  await expect('supplement: JPEG', 'a.jpg', F.JPEG(), '');
+  await expect('supplement: WebP', 'a.webp', F.WEBP(), '');
+  await expect('polyglot: PNG with a PDF header in its first KiB', 'a.png', Buffer.concat([F.PNG(), Buffer.from('%PDF-1.4')]), 'must:attachPolyglot:PDF');
+  await expect('mismatch: a JPEG named .png', 'a.png', F.JPEG(), 'should:attachMismatch:png');
+  await expect('renamed executable: a Windows PE named .png', 'a.png', F.EXE(), 'must:attachForbidden:executable');
+  // 名前から許されないもの
+  for (const [n, k] of [['run.exe', 'executable'], ['run.js', 'executable'], ['run.bat', 'executable'], ['a.html', 'html'], ['a.svg', 'svg'], ['a.zip', 'archive'], ['a.7z', 'archive'], ['a.xlsm', 'office-macro'], ['a.docm', 'office-macro'], ['a.doc', 'office-legacy'], ['a.xls', 'office-legacy'], ['a.ppt', 'office-legacy'], ['b.ega.html', 'egatari'], ['a.wasm', 'wasm']])
+    await expect(`forbidden by name: .${n.split('.').slice(1).join('.')}`, n, 'x', `must:attachForbidden:${k}`);
+  await expect('not a §3.8 type: .gif', 'a.gif', 'GIF89a', 'must:attachType');
+  await expect('not a §3.8 type: .pptx', 'a.pptx', F.zip([['a', 'b']]), 'must:attachType');
+  const bad = rows.filter((r) => !r[1]);
+  for (const r of bad) console.log(`    ${r[0]}: got "${r[2]}", want "${r[3]}"`);
+  ok(!bad.length, `content: ${rows.length - bad.length}/${rows.length} fixtures classified as expected (allowed, warning, refused per role)`);
+  // 役割と型の組
+  const rp = [['pdf', 'a.csv'], ['data', 'a.pdf'], ['code', 'a.docx'], ['source', 'a.png'], ['supplement', 'a.xlsx'], ['pdf', 'a.pdf'], ['data', 'a.xlsx'], ['code', 'Dockerfile'], ['source', 'a.bib'], ['supplement', 'a.webp']].map(([r, n]) => !!roleProblem('attachments/' + n, r));
+  ok(rp.join() === 'true,true,true,true,true,false,false,false,false,false', 'roles: a type is refused for a role that does not take it (csv as pdf, pdf as data, docx as code, png as source, xlsx as supplement) and accepted otherwise');
+  // 書き出し：役割に合わない・中身が条件に合わないものは外して、規則の名前を添えて知らせる
+  const d = path.join(work, 'deck-roles');
+  const dk = makeDeck(d, { ...CONF, [KEY]: [...CONF[KEY], { path: 'attachments/js.pdf', role: 'pdf', title: 'JS' }, { path: 'attachments/table.csv', role: 'pdf', title: 'CSV as PDF' }, { path: 'attachments/macro.xlsx', role: 'data', title: 'Macro' }, { path: 'attachments/inject.csv', role: 'data', title: 'Inject' }] });
+  fs.writeFileSync(path.join(d, 'attachments', 'js.pdf'), F.PDF_JS());
+  fs.writeFileSync(path.join(d, 'attachments', 'table.csv'), 'a,b\n');
+  fs.writeFileSync(path.join(d, 'attachments', 'macro.xlsx'), F.xlsx({ macro: true }));
+  fs.writeFileSync(path.join(d, 'attachments', 'inject.csv'), 'a\n=1+1\n');
+  fs.writeFileSync(path.join(d, 'attachments', 'tool.exe'), F.EXE());
+  const r = await buildPortable(dk, { out: path.join(work, 'roles.html') });
+  const inFiles = (n) => 'attachments/' + n in r.files;
+  ok(!inFiles('js.pdf') && !inFiles('table.csv') && !inFiles('macro.xlsx') && !inFiles('tool.exe') && inFiles('inject.csv') && r.index[KEY].some((e) => e.path === 'attachments/inject.csv') &&
+    r.warnings.some((w) => /js\.pdf": the PDF contains JavaScript, not allowed for attachments \(§3\.8\); not included/.test(w)) && r.warnings.some((w) => /table\.csv": a \.csv file is not allowed for the role pdf/.test(w)) &&
+    r.warnings.some((w) => /macro\.xlsx": the document contains macros/.test(w)) && r.warnings.some((w) => /tool\.exe" is an executable \(by its name\)/.test(w)) && r.warnings.some((w) => /inject\.csv": 1 value\(s\) start with/.test(w)),
+    'cli: a PDF with JavaScript, a CSV in the pdf role, an xlsx with macros and an .exe are skipped with a warning naming the rule; a CSV with formula injection is packed with a warning');
+  const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), dk, '--json', '--lang', 'en'], { encoding: 'utf8' });
+  const jc = JSON.parse(rc.stdout);
+  const sev = (c, p) => (jc.results.find((x) => x.code === c && x.data.path === 'attachments/' + p) || {}).sev;
+  ok(sev('attachUnsafe', 'js.pdf') === 'error' && sev('attachType', 'table.csv') === 'error' && sev('attachUnsafe', 'macro.xlsx') === 'error' && sev('attachForbidden', 'tool.exe') === 'error' && sev('attachInjection', 'inject.csv') === 'warn' && sev('attachForbidden', 'evil.html') === 'error' &&
+    jc.results.some((x) => x.code === 'attachUnsafe' && /§3\.8 does not allow/.test(x.msg)) && !jc.results.some((x) => x.code === 'attachMissing'),
+    'checker: MUST NOT (JavaScript in a PDF, a type the role does not take, macros, executables, HTML) are errors; formula injection is a warning');
+  const d3 = path.join(work, 'deck-should');
+  const dk3 = makeDeck(d3, { ...CONF, [KEY]: [CONF[KEY][0], { path: 'attachments/link.xlsx', role: 'data', title: 'Linked' }, { path: 'attachments/aa.pdf', role: 'pdf', title: 'AA' }] });
+  fs.rmSync(path.join(d3, 'attachments', 'evil.html'));
+  fs.writeFileSync(path.join(d3, 'attachments', 'link.xlsx'), F.xlsx({ externalLink: true }));
+  fs.writeFileSync(path.join(d3, 'attachments', 'aa.pdf'), F.PDF_AA());
+  const j3 = JSON.parse(spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), dk3, '--json'], { encoding: 'utf8' }).stdout);
+  const s3 = (p) => (j3.results.find((x) => x.code === 'attachUnsafe' && x.data.path === 'attachments/' + p) || {}).sev;
+  const e3 = j3.results.filter((x) => x.sev === 'error' && /^attach/.test(x.code)).map((x) => x.code);
+  ok(s3('link.xlsx') === 'warn' && s3('aa.pdf') === 'warn' && !e3.length, 'checker: SHOULD conditions (an external link in xlsx, /AA in a PDF) are warnings: ' + JSON.stringify({ link: s3('link.xlsx'), aa: s3('aa.pdf'), errors: e3 }));
 }
 
 // ---------------------------------------------------------------- 5. 検査器
@@ -171,7 +334,7 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   ok(!!j && want.every((w) => codes.includes(w)), 'checker: missing file, bad name, bad role, hidden file, missing role and missing title are warnings; a summary is info: ' + codes.join(' '));
   const big = path.join(work, 'deck-big');
   const deckB = makeDeck(big, CONF);
-  fs.writeFileSync(path.join(big, 'attachments', 'huge.bin'), Buffer.alloc(ATTACH_LIMITS.fileBytes + 1));
+  fs.writeFileSync(path.join(big, 'attachments', 'huge.txt'), Buffer.alloc(ATTACH_LIMITS.fileBytes + 1, 0x41));
   const rb = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), deckB, '--json', '--lang', 'en'], { encoding: 'utf8' });
   const jb = JSON.parse(rb.stdout);
   ok(jb.results.some((x) => x.code === 'attachTooLarge' && x.sev === 'warn' && /too large/.test(x.msg)), 'checker: an oversize attachment is a warning (English message)');
@@ -182,19 +345,21 @@ const HTML = fs.readFileSync(OUT, 'utf8');
 {
   const p = await readPortable(HTML);
   const files = new Map(Object.entries(p.files));
-  files.delete('attachments/evil.html');
-  files.set('attachments/notes.md', enc.encode('# notes\n'));
+  files.delete('attachments/notes.txt');
+  files.set('attachments/slides.md', enc.encode('# notes\n'));
   const conf = JSON.parse(dec.decode(files.get(CFG)));
-  conf[KEY] = [{ path: 'attachments/paper.pdf', role: 'pdf', title: 'The paper' }, { path: 'attachments/data.csv', role: 'data', title: 'Data', note: 'kept unknown member' }, { path: 'attachments/notes.md', role: 'source', title: 'Notes' }];
+  conf[KEY] = [{ path: 'attachments/paper.pdf', role: 'pdf', title: 'The paper', description: 'The journal version.' }, { path: 'attachments/data.csv', role: 'data', title: 'Data', note: 'kept unknown member' }, { path: 'attachments/slides.md', role: 'source', title: 'Notes' }, { path: 'attachments/code/run.py', role: 'code' }];
   files.set(CFG, enc.encode(JSON.stringify(conf, null, 2) + '\n'));
   const a = await tierA(HTML, files);
-  ok(a.ok, 'tier A: adding, removing and retitling attachments is a tier A edit' + (a.ok ? '' : ` (${a.code}: ${a.reason})`));
+  ok(a.ok, 'tier A: adding, removing, retitling and describing attachments is a tier A edit' + (a.ok ? '' : ` (${a.code}: ${a.reason})`));
   if (a.ok) {
     let diffOk = true; try { regionDiff(HTML, a.html); } catch (e) { diffOk = false; console.log('    ' + e.message); }
     ok(diffOk, 'tier A: only the index, the chunks and deck-meta.sourceSha256 change (region-aware diff)');
     const b = await readPortable(a.html);
-    ok(b.sourceMatches && !('attachments/evil.html' in b.files) && dec.decode(b.files['attachments/notes.md']) === '# notes\n' && b.index[KEY].map((e) => e.path + '=' + e.role + (e.title ? '/' + e.title : '')).join() === 'attachments/paper.pdf=pdf/The paper,attachments/data.csv=data/Data,attachments/notes.md=source/Notes' && b.index[KEY][1].note === 'kept unknown member',
-      'tier A: the saved file reads back with the new files and list (unknown members kept)');
+    ok(b.sourceMatches && !('attachments/notes.txt' in b.files) && dec.decode(b.files['attachments/slides.md']) === '# notes\n' && b.index[KEY].map((e) => e.path + '=' + e.role + (e.title ? '/' + e.title : '')).join() === 'attachments/paper.pdf=pdf/The paper,attachments/data.csv=data/Data,attachments/slides.md=source/Notes' && b.index[KEY][1].note === 'kept unknown member' && b.index[KEY][0].description === 'The journal version.',
+      'tier A: the saved file reads back with the new files and list (description, unknown members kept)');
+    const sc = JSON.parse(dec.decode(b.files[CFG]));
+    ok(typeof a.config === 'string' && JSON.stringify(sc[KEY]) === JSON.stringify(b.index[KEY]) && JSON.parse(a.config)[KEY].length === 3, `tier A: the saved ${CFG} lists exactly index.attachments (the entry without a role is left out) and the result carries it (config) for the workspace`);
   }
   // スライドの原稿が書いている添付を替えたら組み直す
   const p2files = new Map(Object.entries(p.files));
@@ -205,15 +370,42 @@ const HTML = fs.readFileSync(OUT, 'utf8');
   const m = new Map(Object.entries(rf.files)); m.set('attachments/data.csv', enc.encode('changed\n'));
   const a2 = await tierA(ref.html, m);
   ok(!a2.ok && a2.code === 'source-changed' && /refers to the changed attachment/.test(a2.reason), 'tier A: changing an attachment the slide source mentions needs a rebuild');
-  const m3 = new Map(p2files); m3.set('attachments/big.bin', new Uint8Array(ATTACH_LIMITS.fileBytes + 1));
+  const m3 = new Map(p2files); m3.set('attachments/big.txt', new Uint8Array(ATTACH_LIMITS.fileBytes + 1).fill(0x41));
   const a3 = await tierA(HTML, m3);
   ok(!a3.ok && a3.code === 'attachments', 'tier A: an attachment over the limit is refused');
-  const m4 = new Map(p2files); m4.set('attachments/voice.bin', new Uint8Array([0x49, 0x44, 0x33, 3, 0, 0, 0, 0, 0, 0]));
+  const m4 = new Map(p2files); m4.set('attachments/voice.txt', new Uint8Array([0x49, 0x44, 0x33, 3, 0, 0, 0, 0, 0, 0]));
   const a4 = await tierA(HTML, m4);
   ok(!a4.ok && a4.code === 'attachments' && /audio/.test(a4.reason), 'tier A: an audio attachment (by content) is refused: ' + a4.reason);
+  // §3.8 の型と条件：書き出しと同じく断る（足した HTML・JavaScript のある PDF・役割に合わない型に替えた役割）
+  const m5 = new Map(p2files); m5.set('attachments/handout.html', enc.encode(EVIL));
+  const a5 = await tierA(HTML, m5);
+  ok(!a5.ok && a5.code === 'attachments' && /HTML \(by its name\), which must not be attached \(§3\.8\)/.test(a5.reason), 'tier A: adding an .html attachment is refused, naming the rule: ' + a5.reason);
+  const m6 = new Map(p2files); m6.set('attachments/js.pdf', F.PDF_JS());
+  const a6 = await tierA(HTML, m6);
+  ok(!a6.ok && a6.code === 'attachments' && /JavaScript/.test(a6.reason), 'tier A: adding a PDF with JavaScript is refused: ' + a6.reason);
+  const m7 = new Map(p2files);
+  const c7 = JSON.parse(dec.decode(m7.get(CFG))); c7[KEY] = c7[KEY].map((e) => (e.path === 'attachments/data.csv' ? { ...e, role: 'pdf' } : e));
+  m7.set(CFG, enc.encode(JSON.stringify(c7, null, 2) + '\n'));
+  const a7 = await tierA(HTML, m7);
+  ok(!a7.ok && a7.code === 'attachments' && /not allowed for the role pdf/.test(a7.reason), 'tier A: changing the role to one that does not take the type is refused: ' + a7.reason);
 }
 
 // ---------------------------------------------------------------- 7. 再生器
+// 1 ファイルに、書き出しを通さずに添付を足す（ほかの書き手・手で作った文書）：塊を索引の前に足し、索引を書き換える（data-sha256 も）
+async function craft(html, adds) {
+  const ix = JSON.parse(scanDocument(html).byId.get(FORMAT.INDEX_ID).text);
+  let chunks = '';
+  adds.forEach((a, i) => {
+    const id = 'craft' + i, b = Buffer.from(a.bytes);
+    ix.files[a.path] = id;
+    ix.blobs[id] = { mime: a.mime, bytes: b.length, sha256: crypto.createHash('sha256').update(b).digest('hex'), chunks: [`${FORMAT.BLOB_PREFIX}${id}-0`] };
+    ix[KEY].push({ path: a.path, role: a.role, title: a.title });
+    chunks += `<script type="application/octet-stream" id="${FORMAT.BLOB_PREFIX}${id}-0">${b.toString('base64')}</script>\n`;
+  });
+  const out = await replaceIndexText(html, JSON.stringify(ix));
+  const at = out.indexOf(`<script type="${FORMAT.MIME}" id="${FORMAT.INDEX_ID}"`);
+  return out.slice(0, at) + chunks + out.slice(at);
+}
 const browser = await launch();
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, locale: 'ja-JP' });
@@ -227,19 +419,38 @@ const browser = await launch();
   await pg.click('#dt-cb [data-b="attach"]');
   await pg.waitForSelector('#dt-help.show [data-att]');
   const rows = await pg.$$eval('#dt-help .dt-att li', (xs) => xs.map((x) => x.textContent));
-  ok(rows.length === 3 && /Paper \(PDF\)/.test(rows[0]) && /paper\.pdf · PDF/.test(rows[0]) && /補足資料/.test(rows[1]) && /data\.csv/.test(rows[2]) && /データ/.test(rows[2]), 'player: ? lists the attachments (title, file name, role, size): ' + JSON.stringify(rows));
+  ok(rows.length === 3 && /Paper \(PDF\)/.test(rows[0]) && /paper\.pdf · PDF/.test(rows[0]) && /Notes/.test(rows[1]) && /補足資料/.test(rows[1]) && /data\.csv/.test(rows[2]) && /データ/.test(rows[2]), 'player: ? lists the attachments (title, file name, role, size): ' + JSON.stringify(rows));
+  ok((await pg.$$eval('#dt-help .dt-att .dt-att-d', (xs) => xs.map((x) => x.textContent))).join() === 'Read this first.', 'player: the description is shown under the title');
   if (SHOTS) await pg.screenshot({ path: path.join(SHOTS, 'player-attachments.png') });
   const url0 = pg.url(), n0 = ctx.pages().length;
   const [dl] = await Promise.all([pg.waitForEvent('download'), pg.click('#dt-help [data-att="1"]')]);
-  const got = fs.readFileSync(await dl.path(), 'utf8');
-  await pg.waitForTimeout(800);
-  ok(dl.suggestedFilename() === 'evil.html' && got === EVIL, 'player: the .html attachment is saved as a file with its exact bytes');
-  ok(pg.url() === url0 && ctx.pages().length === n0 && !(await pg.evaluate(() => window.__PWNED || null)) && (await pg.evaluate(() => { try { return localStorage.getItem('pwned'); } catch { return null; } })) === null && (await pg.title()) !== 'evil',
-    'player: downloading does not navigate, open a tab or run the attachment');
+  ok(dl.suggestedFilename() === 'notes.txt' && fs.readFileSync(await dl.path(), 'utf8') === 'plain notes\n', 'player: the text attachment is saved as a file with its exact bytes');
   const [dl2] = await Promise.all([pg.waitForEvent('download'), pg.click('#dt-help [data-att="0"]')]);
-  ok(Buffer.from(fs.readFileSync(await dl2.path())).equals(PDF) && pg.url() === url0, 'player: the PDF is saved, not opened in the page');
+  ok(Buffer.from(fs.readFileSync(await dl2.path())).equals(PDF) && pg.url() === url0 && ctx.pages().length === n0, 'player: the PDF is saved, not opened in the page or a new tab');
   ok(errs.length === 0, 'player: no console errors ' + JSON.stringify(errs));
   await ctx.close();
+  // 書き出しを通さずに索引に書いた添付：§3.8 の型でないもの（.html）・役割が受けない型（CSV を pdf に）は出さない。
+  // 型は合うが中身が HTML の .txt は出すが、保存の前に中身の印で断る（ページは動かず、新しいタブもなく、スクリプトは動かない）
+  const crafted = await craft(HTML, [
+    { path: 'attachments/evil.html', bytes: EVIL, mime: 'text/html', role: 'supplement', title: 'Evil (HTML)' },
+    { path: 'attachments/table.csv', bytes: 'a,b\n', mime: 'text/csv', role: 'pdf', title: 'CSV as PDF' },
+    { path: 'attachments/fake.txt', bytes: EVIL, mime: 'text/plain', role: 'supplement', title: 'Fake text' },
+  ]);
+  fs.writeFileSync(path.join(work, 'crafted.html'), crafted);
+  const c1 = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, locale: 'en-US' });
+  const p1 = await c1.newPage();
+  let dls = 0; p1.on('download', () => dls++);
+  await p1.goto(fileUrl(path.join(work, 'crafted.html')));
+  await p1.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: 15000 });
+  await p1.evaluate(() => DECK.tools.help(true));
+  const crows = await p1.$$eval('#dt-help .dt-att li', (xs) => xs.map((x) => x.textContent));
+  ok(crows.length === 4 && !crows.some((r) => /evil\.html|CSV as PDF/.test(r)) && /fake\.txt/.test(crows[3]), 'player: an .html attachment and a CSV listed as pdf are not offered, even when the index lists them: ' + JSON.stringify(crows));
+  const u1 = p1.url(), np1 = c1.pages().length;
+  await p1.click('#dt-help [data-att="3"]');
+  await p1.waitForTimeout(800);
+  ok(dls === 0 && /does not match its type|中身が形式と合わない/.test(await p1.textContent('#dt-help .dt-att-note')) && p1.url() === u1 && c1.pages().length === np1 && !(await p1.evaluate(() => window.__PWNED || null)) && (await p1.evaluate(() => { try { return localStorage.getItem('pwned'); } catch { return null; } })) === null,
+    'player: a .txt whose content is HTML is not saved (content check); nothing navigates, opens or runs');
+  await c1.close();
   // 壊れた添付（塊の中身を替えた）は保存しない。索引の hash は合っている
   const p = await readPortable(HTML);
   const id = p.index.files['attachments/data.csv'];
@@ -303,7 +514,7 @@ const browser = await launch();
   await page.click('#b-attach');
   await page.waitForSelector('#attach-list');
   ok(/試行/.test(await page.textContent('#panel-title')) && /試行/.test(await page.getAttribute('#b-attach', 'aria-label') || await page.getAttribute('#b-attach', 'title') || ''), 'editor: the panel header and the tooltip mark attachments as experimental (試行)');
-  ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/evil.html,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
+  ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/notes.txt,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
   ok((await page.$eval('[data-attach-role="attachments/paper.pdf"]', (x) => x.value)) === 'pdf' && (await page.$eval('[data-attach-title="attachments/paper.pdf"]', (x) => x.value)) === 'Paper (PDF)' && (await page.$eval('[data-attach-role="attachments/code/run.py"]', (x) => x.value)) === '',
     'editor: role and title come from egatari.json (no role: empty)');
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-attachments.png') });
@@ -324,11 +535,30 @@ const browser = await launch();
   ok(prefill === 'slides', 'editor: adding asks for a title, prefilled from the file name: ' + prefill);
   ok((await rowsOf()).includes('attachments/slides.tex') && (await page.$eval('[data-attach-role="attachments/slides.tex"]', (x) => x.value)) === 'source' && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)' && (await st()).portable.dirty, 'editor: adding a file (after the rights prompt) writes attachments/slides.tex with the role guessed as source; the file is unsaved');
   // 中身が音声（名前では分からない）：読んだ後、書く前に断る
-  await page.setInputFiles('#attach-file', { name: 'rec.bin', mimeType: 'application/octet-stream', buffer: Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]) });
+  await page.setInputFiles('#attach-file', { name: 'rec.txt', mimeType: 'text/plain', buffer: Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]) });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
   await page.click('#dlg-ok');
   await waitIdle();
-  ok(/音声/.test(await toastText()) && !(await rowsOf()).includes('attachments/rec.bin'), 'editor: an audio file is refused by its content');
+  ok(/音声/.test(await toastText()) && !(await rowsOf()).includes('attachments/rec.txt'), 'editor: an audio file is refused by its content');
+  // §3.8 の型：名前から許されないもの（.js）は題を尋ねる前に、中身が条件に合わないもの（JavaScript のある PDF）は読んだ後・書く前に、規則を言って断る
+  await page.setInputFiles('#attach-file', { name: 'tool.js', mimeType: 'text/javascript', buffer: Buffer.from('alert(1)\n') });
+  await page.waitForTimeout(400);
+  ok(/断りました/.test(await toastText()) && /§3\.8/.test(await toastText()) && /実行できる/.test(await toastText()) && !(await page.$('#dlg[open]')) && !(await rowsOf()).includes('attachments/tool.js'), 'editor: a .js file is refused by its name before the title prompt, naming the rule: ' + await toastText());
+  await page.setInputFiles('#attach-file', { name: 'bad.pdf', mimeType: 'application/pdf', buffer: F.PDF_JS() });
+  await page.waitForSelector('#dlg[open] #attach-new-title-0');
+  await page.click('#dlg-ok');
+  await waitIdle();
+  ok(/断りました/.test(await toastText()) && /JavaScript/.test(await toastText()) && /§3\.8/.test(await toastText()) && !(await rowsOf()).includes('attachments/bad.pdf'), 'editor: a PDF with JavaScript is refused after reading, naming the rule: ' + await toastText());
+  // 役割と型の組：CSV を pdf にはできない
+  await page.selectOption('[data-attach-role="attachments/data.csv"]', 'pdf');
+  await page.waitForTimeout(400);
+  await waitIdle();
+  ok(/断りました/.test(await toastText()) && /役割「PDF」/.test(await toastText()) && (await page.$eval('[data-attach-role="attachments/data.csv"]', (x) => x.value)) === 'data', 'editor: a role that does not take the type is refused (the role stays): ' + await toastText());
+  // 説明（description）
+  await page.fill('[data-attach-desc="attachments/paper.pdf"]', 'The journal version.');
+  await page.press('[data-attach-desc="attachments/paper.pdf"]', 'Tab');
+  await waitIdle();
+  ok((await page.$eval('[data-attach-desc="attachments/paper.pdf"]', (x) => x.value)) === 'The journal version.', 'editor: a description can be written in the panel');
   // 題は消せない
   await page.fill('[data-attach-title="attachments/slides.tex"]', '');
   await page.press('[data-attach-title="attachments/slides.tex"]', 'Tab');
@@ -346,7 +576,7 @@ const browser = await launch();
   await page.fill('#attach-rename-input', 'table.csv');
   await page.click('#dlg-ok');
   await waitIdle();
-  await page.click('[data-attach-remove="attachments/evil.html"]');
+  await page.click('[data-attach-remove="attachments/notes.txt"]');
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
   await page.click('#dlg-ok');
   await waitIdle();
@@ -358,9 +588,16 @@ const browser = await launch();
   await page.click('#dlg-ok');
   await page.waitForTimeout(400);
   ok(/使えない名前/.test(await toastText()) && (await rowsOf()).includes('attachments/table.csv'), 'editor: a path-traversal name is refused');
-  await page.setInputFiles('#attach-file', { name: 'huge.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(ATTACH_LIMITS.fileBytes + 1) });
+  await page.setInputFiles('#attach-file', { name: 'huge.txt', mimeType: 'text/plain', buffer: Buffer.alloc(ATTACH_LIMITS.fileBytes + 1, 0x41) });
   await page.waitForTimeout(800);
-  ok(/大きすぎ/.test(await toastText()) && !(await rowsOf()).includes('attachments/huge.bin'), 'editor: a file over the limit is refused before it is read');
+  ok(/大きすぎ/.test(await toastText()) && !(await rowsOf()).includes('attachments/huge.txt'), 'editor: a file over the limit is refused before it is read');
+  // 名前を替えて許されない型にする（.html）：断る
+  await page.click('[data-attach-rename="attachments/table.csv"]');
+  await page.waitForSelector('#dlg[open] #attach-rename-input');
+  await page.fill('#attach-rename-input', 'table.html');
+  await page.click('#dlg-ok');
+  await page.waitForTimeout(400);
+  ok(/断りました/.test(await toastText()) && (await rowsOf()).includes('attachments/table.csv'), 'editor: renaming to a forbidden type (.html) is refused');
   // 保存：段 A
   await page.evaluate(() => window.__APP_TEST.save('save'));
   await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
@@ -370,8 +607,9 @@ const browser = await launch();
   let diffOk = true; try { regionDiff(HTML, saved); } catch (e) { diffOk = false; console.log('    ' + e.message); }
   ok(diffOk, 'editor: the saved file differs from the original only in the tier A regions (region-aware diff)');
   const b = await readPortable(saved);
-  ok(b.index[KEY].map((e) => `${e.path}=${e.role}${e.title ? '/' + e.title : ''}`).join() === 'attachments/paper.pdf=pdf/Paper (PDF),attachments/table.csv=data/Data,attachments/slides.tex=source/Slides (TeX),attachments/code/run.py=code/Script' && !('attachments/evil.html' in b.files) && b.index[KEY][1].note === 'kept unknown member',
-    'editor: the saved index lists the new attachments (rename keeps role and unknown members): ' + JSON.stringify(b.index[KEY]));
+  ok(b.index[KEY].map((e) => `${e.path}=${e.role}${e.title ? '/' + e.title : ''}`).join() === 'attachments/paper.pdf=pdf/Paper (PDF),attachments/table.csv=data/Data,attachments/slides.tex=source/Slides (TeX),attachments/code/run.py=code/Script' && !('attachments/notes.txt' in b.files) && b.index[KEY][1].note === 'kept unknown member' && b.index[KEY][0].description === 'The journal version.',
+    'editor: the saved index lists the new attachments (rename keeps role and unknown members; the description is kept): ' + JSON.stringify(b.index[KEY]));
+  ok(JSON.stringify(JSON.parse(dec.decode(b.files[CFG]))[KEY]) === JSON.stringify(b.index[KEY]), `editor: the saved ${CFG} lists exactly index.attachments (§3.3)`);
   // 作業フォルダ（OPFS）
   const SRC = path.dirname(DECK);
   const ff = {};

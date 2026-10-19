@@ -163,6 +163,6 @@ main{flex:1;min-height:0;display:flex}
 #panel-body ul.attach-list{list-style:none;padding:0;margin:8px 0}
 #panel-body .attach-row{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-bottom:7px}
 #panel-body .attach-name{overflow-wrap:anywhere;margin-bottom:4px}
-#panel-body .attach-meta{display:flex;gap:6px;margin-bottom:5px}#panel-body .attach-meta input{flex:1;min-width:0}
+#panel-body .attach-meta{display:flex;gap:6px;margin-bottom:5px}#panel-body .attach-meta input{flex:1;min-width:0}#panel-body .attach-desc{display:flex;margin-bottom:5px}#panel-body .attach-desc input{flex:1;min-width:0}
 #panel-body .attach-row .row button{padding:2px 10px;font-size:12.5px}
 #attach-problems{margin-top:8px;font-size:12.5px}

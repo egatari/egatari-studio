@@ -165,7 +165,8 @@ css(
   "#dt-help .dt-att .dt-att-t{display:block;color:#fff;overflow-wrap:anywhere}#dt-help .dt-att .dt-att-m{display:block;color:#9a9a9a;font-size:11.5px;overflow-wrap:anywhere}" +
   "#dt-help .dt-att button{font:inherit;font-size:12px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:3px 10px;cursor:pointer}" +
   "#dt-help .dt-att button:hover{background:rgba(255,255,255,.18)}#dt-help .dt-att button:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
-  "#dt-help .dt-att .dt-att-note{margin:4px 0 0;color:#888;font-size:11.5px}#dt-help .dt-att .dt-att-err{color:#fca5a5}"
+  "#dt-help .dt-att .dt-att-note{margin:4px 0 0;color:#888;font-size:11.5px}#dt-help .dt-att .dt-att-err{color:#fca5a5}" +
+  "#dt-help .dt-att .dt-att-d{display:block;color:#d4d4d4;font-size:12px;overflow-wrap:anywhere}"
 );
 
 // ---------------------------------------------------------------- 状態
@@ -220,7 +221,7 @@ function build(){
 
 // ---------------------------------------------------------------- 添付（format spec §3.8）：ダウンロードだけ
 // 1 ファイル（.ega.html）の索引（DECK.FORMAT.indexId。data-sha256 を確かめる）の attachments を読み、キーの一覧（?）の下と帯のボタンに出す。
-// ダウンロードは塊を復号し、大きさと sha256 を確かめてから、中身によらない型（application/octet-stream）の Blob を <a download> で渡す：
+// 出すのは §3.8 の役割と型に合うものだけ（attType）。ダウンロードは塊を復号し、大きさと sha256 と先頭の印（attContentOk）を確かめてから、中身によらない型（application/octet-stream）の Blob を <a download> で渡す：
 // このページでも新しいタブでも開かない（HTML・SVG・PDF も描かない・実行しない）。再生専用の派生と組んだ HTML には索引がないので出ない
 var FMT = DECK.FORMAT || null, ATT = [];
 function roleName(r){ return (JA ? {source: "元の原稿", pdf: "PDF", code: "コード", data: "データ", supplement: "補足資料"} : {source: "Source", pdf: "PDF", code: "Code", data: "Data", supplement: "Supplement"})[r] || r; }
@@ -228,6 +229,31 @@ var HAS = function(o, k){ return o !== null && typeof o === "object" && Object.p
 function hexOf(buf){ var u = new Uint8Array(buf), s = ""; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? "0" : "") + u[i].toString(16); return s; }
 function esc(t){ return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function attName(p){ var n = String(p).split("/").pop().replace(/[\u0000-\u001f\u007f-\u009f\\/:*?"<>|]/g, "_").trim(); return n || "attachment"; }
+// §3.8 の型（DECK.FORMAT.attachTypes。kit/core/attach-content.mjs の runtimeAttachTypes）：役割が受ける拡張子（code は決まった名前も）で、
+// 塊の媒体型がその型のものだけを出す。ほかの型（実行できるもの・HTML・SVG・入れ物など）は、索引に書いてあっても出さない
+function attType(path, role, mime){
+  var T = FMT.attachTypes;
+  if (!T || !T.roles || typeof T.roles[role] !== "string") return null;
+  var name = attName(path).toLowerCase(), m = name.match(/\.([^.]+)$/), ext = m ? m[1] : "";
+  if (/\.ega(?:\.html?)?$/.test(name)) return null;
+  var byName = role === "code" && (" " + T.names + " ").indexOf(" " + name + " ") >= 0;
+  if (!byName && (!ext || (" " + T.roles[role] + " ").indexOf(" " + ext + " ") < 0)) return null;
+  var want = byName ? (ext === "json" ? T.mime.json : T.text) : (HAS(T.mime, ext) ? T.mime[ext] : T.text);
+  return mime === want ? want : null;
+}
+// 保存する前に、中身の先頭がその型か（PDF・PNG・JPEG・WebP・ZIP の印。文字のファイルは NUL がなく、HTML・SVG で始まらない）
+function attContentOk(type, u){
+  var asc = function(i, n){ var t = ""; for (var j = i; j < i + n && j < u.length; j++) t += String.fromCharCode(u[j]); return t; };
+  if (type === "application/pdf") return asc(0, 5) === "%PDF-";
+  if (type === "image/png") return asc(0, 8) === "\x89PNG\r\n\x1a\n";
+  if (type === "image/jpeg") return u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff;
+  if (type === "image/webp") return asc(0, 4) === "RIFF" && asc(8, 4) === "WEBP";
+  if (/officedocument/.test(type)) return asc(0, 4) === "PK\x03\x04";
+  var bom16 = (u[0] === 0xff && u[1] === 0xfe) || (u[0] === 0xfe && u[1] === 0xff);
+  if (!bom16) for (var k = 0; k < u.length; k++) if (u[k] === 0) return false;
+  var head = asc(0, 2048).replace(/^\xef\xbb\xbf/, "").replace(/^\s+/, "").toLowerCase();
+  return !/^(?:<!doctype\s+html|<html[\s>]|<head[\s>]|<body[\s>]|<script[\s>]|<iframe[\s>]|<svg[\s>]|<\?xml[^>]*>\s*<(?:svg|html|!doctype)[\s>])/.test(head);
+}
 function attSize(n){ return n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
 function loadAttachments(){
   if (!FMT || !FMT.indexId || !FMT.attachKey || !window.crypto || !crypto.subtle || typeof TextEncoder === "undefined") return;
@@ -249,8 +275,12 @@ function loadAttachments(){
       var id = files[e.path], b = blobs[id];
       if (!b || !Array.isArray(b.chunks) || !b.chunks.length || typeof b.sha256 !== "string" || typeof b.bytes !== "number") return;
       if (!b.chunks.every(function(c, j){ return c === FMT.blobPrefix + id + "-" + j; })) return;
+      if (typeof e.title !== "string" || !e.title.trim()) return;   // 題は要る（§3.8）
+      var type = attType(e.path, e.role, b.mime);
+      if (!type) return;
       seen[e.path] = 1;
-      ATT.push({path: e.path, role: e.role, title: typeof e.title === "string" && e.title ? e.title : null, bytes: b.bytes, sha256: b.sha256, chunks: b.chunks.slice()});
+      var desc = typeof e.description === "string" && e.description.length <= (FMT.attachTypes.descriptionChars || 300) && !/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(e.description) ? e.description.trim() : "";
+      ATT.push({path: e.path, role: e.role, title: e.title, description: desc || null, type: type, bytes: b.bytes, sha256: b.sha256, chunks: b.chunks.slice()});
     });
     if (ATT.length) addAttachButton();
   }).catch(function(){});
@@ -264,14 +294,14 @@ function addAttachButton(){
   e._act = function(){ toggleHelp(true); var f = helpBox && helpBox.querySelector("[data-att]"); if (f) f.focus({preventScroll: false}); };
   var h = cb.querySelector('[data-b="help"]');
   cb.insertBefore(e, h);
-  DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, bytes: a.bytes}; });
+  DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, description: a.description, bytes: a.bytes}; });
   document.dispatchEvent(new CustomEvent("deck:attachments", {detail: {n: ATT.length}}));
 }
 function attHtml(){
   if (!ATT.length) return "";
   var rows = ATT.map(function(a, i){
     var n = attName(a.path);
-    return '<li><span class="dt-att-n"><span class="dt-att-t">' + esc(a.title || n) + '</span><span class="dt-att-m">' + esc((a.title ? n + " · " : "") + roleName(a.role) + " · " + attSize(a.bytes)) +
+    return '<li><span class="dt-att-n"><span class="dt-att-t">' + esc(a.title || n) + '</span>' + (a.description ? '<span class="dt-att-d">' + esc(a.description) + '</span>' : '') + '<span class="dt-att-m">' + esc((a.title ? n + " · " : "") + roleName(a.role) + " · " + attSize(a.bytes)) +
       '</span></span><button type="button" data-att="' + i + '">' + (JA ? "ダウンロード" : "Download") + "</button></li>";
   }).join("");
   return '<div class="dt-att"><h3>' + (JA ? "添付ファイル" : "Attachments") + "</h3><ul>" + rows + '</ul><p class="dt-att-note" aria-live="polite">' +
@@ -297,6 +327,7 @@ function downloadAttachment(i, btn){
   parts.forEach(function(x){ all.set(x, o); o += x.length; });
   crypto.subtle.digest("SHA-256", all).then(function(d){
     if (hexOf(d) !== a.sha256) return fail();
+    if (!attContentOk(a.type, all)){ if (note){ note.textContent = (JA ? "中身が形式と合わないので保存しません：" : "Not saved, the content does not match its type: ") + attName(a.path); note.classList.add("dt-att-err"); } return; }
     var url = URL.createObjectURL(new Blob([all], {type: "application/octet-stream"}));
     var l = document.createElement("a");
     l.href = url; l.download = attName(a.path); l.rel = "noopener"; l.style.display = "none";

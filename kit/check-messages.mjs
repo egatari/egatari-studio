@@ -3,6 +3,24 @@
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
+// 添付（§3.8）の型と条件の言葉
+const ROLE_JA = { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' };
+const ROLE_ALLOWED = {
+  ja: { pdf: 'PDF', data: 'CSV・TSV・JSON・テキスト・xlsx', code: 'プログラムの原稿・テキスト・ipynb・環境の定義（requirements.txt・pyproject.toml・environment.yml など）', source: 'TeX・Markdown・テキスト（BibTeX など）・docx', supplement: 'PNG・JPEG・WebP・PDF・テキスト' },
+  en: { pdf: 'PDF', data: 'CSV, TSV, JSON, text, xlsx', code: 'program source, text, ipynb, environment definitions (requirements.txt, pyproject.toml, environment.yml, …)', source: 'TeX, Markdown, text (e.g. BibTeX), docx', supplement: 'PNG, JPEG, WebP, PDF, text' },
+};
+const FORBID = {
+  ja: { executable: '実行できるファイル', wasm: 'WebAssembly', 'office-legacy': '古い形式の Office（doc・xls・ppt）か RTF', 'office-macro': 'マクロを入れられる Office（docm・xlsm など）', html: 'HTML', svg: 'SVG', egatari: 'ほかの 1 ファイル（.ega.html）', archive: 'アーカイブ・入れ物（ZIP など）' },
+  en: { executable: 'an executable', wasm: 'WebAssembly', 'office-legacy': 'a legacy Office document (doc, xls, ppt) or RTF', 'office-macro': 'a macro-enabled Office document (docm, xlsm, …)', html: 'HTML', svg: 'SVG', egatari: 'another single file (.ega.html)', archive: 'an archive or container (ZIP, …)' },
+};
+const UNSAFE = {
+  ja: { javascript: 'PDF に JavaScript がある', 'auto-action': 'PDF に開いたときに動く動作（OpenAction・AA）がある', launch: 'PDF にほかのプログラムを起こす動作（Launch）がある', 'embedded-file': 'PDF にファイルが埋め込まれている',
+    'active-content': 'PDF に動く中身（XFA・RichMedia）がある', macro: 'マクロ（vbaProject）がある', activex: 'ActiveX の部品がある', 'embedded-object': '埋め込んだ object（OLE など）がある',
+    'external-link': '外のファイル・データへの参照（外部リンク）がある', 'external-data': '外のデータを取りにいく（接続・Web クエリ・WEBSERVICE などの関数）', dde: 'DDE を使う数式がある', 'field-code': '実行する・取りにいくフィールド（DDEAUTO・INCLUDETEXT など）がある', 'remote-template': '外のテンプレートを使う' },
+  en: { javascript: 'the PDF contains JavaScript', 'auto-action': 'the PDF runs an action when opened (OpenAction, AA)', launch: 'the PDF can launch programs (Launch)', 'embedded-file': 'the PDF carries embedded files',
+    'active-content': 'the PDF has active content (XFA, RichMedia)', macro: 'the document contains macros (vbaProject)', activex: 'the document contains ActiveX controls', 'embedded-object': 'the document contains embedded objects (OLE, …)',
+    'external-link': 'the document refers to external files or data (external links)', 'external-data': 'the document fetches external data (connections, web queries, functions such as WEBSERVICE)', dde: 'a formula uses DDE', 'field-code': 'a field code runs or fetches something (DDEAUTO, INCLUDETEXT, …)', 'remote-template': 'the document uses a remote template' },
+};
 const stepJa = (s) => (s === 'concl' ? '結論の段階' : `段階 ${s}`);
 const stepEn = (s) => (s === 'concl' ? 'conclusion step' : `step ${s}`);
 
@@ -44,6 +62,24 @@ export const MESSAGES = {
   attachNoRole: { ja: (a) => `添付「${a.path}」に役割がない：egatari.json の attachments に {"path": "${a.path}", "role": "pdf"}（source・pdf・code・data・supplement）を書く（1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no role: add {"path": "${a.path}", "role": "pdf"} (source, pdf, code, data or supplement) to attachments in egatari.json (it is packed but not listed for readers)` },
   attachNoTitle: { ja: (a) => `添付「${a.path}」に題（title）がない：egatari.json の attachments の項目に "title": "…"（ダウンロードの一覧に出す短い名前）を書く（題は要る。1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no title: add "title": "…" (a short name for the download list) to its entry in egatari.json (a title is required; it is packed but not listed for readers)` },
   attachMedia: { ja: (a) => `添付「${a.path}」は${a.kind === 'video' ? '動画' : '音声'}（${a.by === 'content' ? '中身' : '名前'}から）：音声と動画は添付にできない（1 ファイルに入らない）。教材で鳴らすなら原稿から参照する`, en: (a) => `the attachment “${a.path}” is ${a.kind === 'video' ? 'a video' : 'audio'} (by its ${a.by === 'content' ? 'content' : 'name'}): audio and video cannot be attached (it is not packed); reference it from the slides if the lesson plays it` },
+  attachType: { ja: (a) => a.role ? `添付「${a.path}」（.${a.ext}）は役割「${ROLE_JA[a.role] || a.role}」に入れられない（§3.8。この役割は ${ROLE_ALLOWED.ja[a.role] || '?'}）：役割を替えるか、許される形式にする（1 ファイルに入らない）` : `添付「${a.path}」（.${a.ext}）は添付にできない形式（§3.8 の役割ごとの形式のどれでもない）：PDF・CSV・テキスト・画像（PNG・JPEG・WebP）などにする（1 ファイルに入らない）`,
+    en: (a) => a.role ? `the attachment “${a.path}” (.${a.ext}) is not allowed for the role ${a.role} (§3.8; this role takes ${ROLE_ALLOWED.en[a.role] || '?'}): change the role or the format (it is not packed)` : `the attachment “${a.path}” (.${a.ext}) is not a format that may be attached (none of the formats of §3.8): use PDF, CSV, text, images (PNG, JPEG, WebP) and so on (it is not packed)` },
+  attachForbidden: { ja: (a) => `添付「${a.path}」は${FORBID.ja[a.kind] || a.kind}（${a.by === 'content' ? '中身' : '名前'}から）：§3.8 では添付にできない（開くと動くもの・入れ物は入れない。1 ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” is ${FORBID.en[a.kind] || a.kind} (by its ${a.by === 'content' ? 'content' : 'name'}): §3.8 does not allow it (nothing that runs when opened, no containers; it is not packed)` },
+  attachMismatch: { ja: (a) => `添付「${a.path}」の中身が名前の形式（${a.kind}）と合わない${a.actual ? `（中身は ${a.actual}）` : ''}${a.why ? `（${a.why}）` : ''}：§3.8 では中身と形式が合うものだけを入れる。正しいファイルにする（1 ファイルに入らない）`,
+    en: (a) => `the content of the attachment “${a.path}” does not match its format (${a.kind})${a.actual ? ` (it looks like ${a.actual})` : ''}${a.why ? ` (${a.why})` : ''}: §3.8 takes only files whose content matches their type; use the right file (it is not packed)` },
+  attachPolyglot: { ja: (a) => `添付「${a.path}」はほかの形式（${a.also}）を重ねたファイル：§3.8 では添付にできない。元のファイルを書き出し直す（1 ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” is also ${a.also} (a file of two types): §3.8 does not allow it; export the original again (it is not packed)` },
+  attachUnsafe: { ja: (a) => `添付「${a.path}」：${UNSAFE.ja[a.what] || a.what}${a.detail ? `（${a.detail}）` : ''}。§3.8 の条件に合わない：それを除いて保存し直す（PDF は印刷し直す・Office はマクロや外の参照を外す）（1 ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}”: ${UNSAFE.en[a.what] || a.what}${a.detail ? ` (${a.detail})` : ''}, which §3.8 does not allow: save it again without that (print the PDF again; remove macros or external references in Office) (it is not packed)` },
+  attachUnchecked: { ja: (a) => `添付「${a.path}」は中身を確かめられない（${a.why}）：§3.8 では確かめられないものは入れない。暗号化や特別な圧縮を外して保存し直す（1 ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” cannot be checked (${a.why}): §3.8 attachments are checked before packing; save it again without encryption or unusual compression (it is not packed)` },
+  attachInjection: { ja: (a) => `添付「${a.path}」の ${a.n} 個の値が = + - @ やタブで始まり、表計算のソフトで数式として読まれうる${a.row ? `（最初は ${a.row} 行 ${a.col} 列）` : a.where ? `（${a.where}）` : ''}：意図したものか確かめる（入れる）`,
+    en: (a) => `${a.n} value(s) in the attachment “${a.path}” start with = + - @ or a tab and may be read as formulas by a spreadsheet${a.row ? ` (first at row ${a.row}, column ${a.col})` : a.where ? ` (in ${a.where})` : ''}: check that this is intended (it is packed)` },
+  attachPrivate: { ja: (a) => `添付「${a.path}」に${({ 'private key': '秘密鍵', 'access key': 'アクセスの鍵', 'password or token': 'パスワードかトークン', 'machine-specific path': 'この機械のパス' })[a.what] || a.what}らしい文字がある：配る前に確かめて消す（入れる）`,
+    en: (a) => `the attachment “${a.path}” seems to contain a ${a.what}: check and remove it before sharing (it is packed)` },
+  attachBadDescription: { ja: (a) => `添付「${a.path}」の説明（description）が使えない（${a.why}）：${a.max} 字までの 1〜2 文（改行なし）にする（説明なしで一覧に出す）`,
+    en: (a) => `the description of the attachment “${a.path}” cannot be used (${a.why}): write one or two sentences, at most ${a.max} characters, without line breaks (listed without it)` },
   attachTooLarge: { ja: (a) => `添付「${a.path}」が大きすぎる（${mibOf(a.n)}。1 つ ${mibOf(a.max)} まで）：小さくするか、別の場所で配る（1 ファイルに入らない）`, en: (a) => `the attachment “${a.path}” is too large (${mibOf(a.n)}; at most ${mibOf(a.max)} each): make it smaller or share it elsewhere (it is not packed)` },
   attachTotal: { ja: (a) => `添付を合わせると大きすぎる（「${a.path}」で ${mibOf(a.n)}。合わせて ${mibOf(a.max)} まで）：減らす（この添付から後は 1 ファイルに入らない）`, en: (a) => `the attachments are too large together (${mibOf(a.n)} with “${a.path}”; at most ${mibOf(a.max)}): remove some (this one and later ones are not packed)` },
   attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は 1 ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed` },

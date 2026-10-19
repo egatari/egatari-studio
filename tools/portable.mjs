@@ -4,12 +4,14 @@
 //   npm run portable -- pack <dir> [-o out] [--play-only]      フォルダを 1 ファイルにする（= node kit/build.mjs <dir>/deck.html --portable）
 //
 // unpack は <dir> の外に書かない。<dir> が空でなければ断る（--force で上書き。シンボリックリンクを通る書き込みは断る）。
-// 音声の記録（index.audio）から audio/manifest.json を作るので、展開したフォルダはそのまま build・pack できる
+// 音声の記録（index.audio）から audio/manifest.json を作り、設定のファイル（FORMAT.CONFIG_FILE）に docId・権利の表示・添付の一覧（index.attachments）を
+// 書くので、展開したフォルダはそのまま build・pack できる（pack は添付の一覧を設定のファイルから読む）
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { readPortable, manifestFromAudio, FormatError, RE, LIMITS } from '../kit/core/portable.mjs';
+import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict } from '../kit/core/portable.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
@@ -39,6 +41,11 @@ export async function unpack(file, dir, { force = false } = {}) {
     if (files['audio/manifest.json']) throw new FormatError('bad-path', 'audio/manifest.json is reserved');
     files['audio/manifest.json'] = new TextEncoder().encode(manifestFromAudio(r.audio));
   }
+  // 設定のファイル（§3.3・§3.8）：docId・索引の権利の表示・添付の一覧（index.attachments）を残す（展開したフォルダを組み直しても同じ文書と一覧。
+  // 編集アプリの作業場所と同じ。kit/core/portable.mjs の folderConfig）
+  const CFG = FORMAT.CONFIG_FILE;
+  const cfgText = folderConfig(r.index, files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : null);
+  if (cfgText !== null) files[CFG] = new TextEncoder().encode(cfgText);
   const written = [];
   // 書く先は <dir> の中だけで、途中のフォルダも書く先もシンボリックリンクでないこと（壊れたリンクも。kit/safe-fs.mjs）。
   // どれか 1 つでも断るなら、何も書かないうちに断る

@@ -1,13 +1,15 @@
 // 添付の板（編集アプリの横の板 #panel。format spec §3.8）：作業フォルダ・1 ファイル（.ega.html）の attachments/ の一覧、足す・消す・名前を替える、
-// 役割（source・pdf・code・data・supplement）と題。役割と題は設定のファイル（FORMAT.CONFIG_FILE）の FORMAT.ATTACH_KEY に書く（kit/core/attachments.mjs）。
+// 役割（source・pdf・code・data・supplement）・題・説明。役割・題・説明は設定のファイル（FORMAT.CONFIG_FILE）の FORMAT.ATTACH_KEY に書く（kit/core/attachments.mjs）。
 // 添付はこの画面では開かない・プレビューにも渡さない（読むのは大きさを確かめて作業場所に書くときだけ）。
 // 1 ファイルでは作業場所はメモリの上なので、「保存」で段 A（kit/core/tier-a.mjs：添付の場所と索引だけ）の保存になる
 //
 //   const panel = createAttachPanel({ws(), generation(), lang, el, openPanel, isOpen(), toast, ask, beforeWrite() → null | 断る理由, afterWrite()})
+//   足す・名前を替える・役割を替えるときは、§3.8 の役割ごとの型と中身の条件（kit/core/attach-content.mjs）で確かめ、合わなければ理由を言って断る
 //   知らせの言葉は検査器と同じ（kit/check-messages.mjs の attach…）
 //   panel.open() / panel.refresh()
 import { FORMAT } from '../kit/core/format.mjs';
-import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath } from '../kit/core/attachments.mjs';
+import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
+  inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem } from '../kit/core/attachments.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
@@ -16,7 +18,7 @@ const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
 const MB = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB' : (n / 1048576).toFixed(1) + ' MB');
 const STR = {
   ja: {
-    title: '添付（下書き・試行）', lead: `下書き・試行：入れてよい中身は、後の版で役割ごとに狭めます（形式の §3.8 の案）。音声と動画は入れられません。読み手のためのファイル（元の原稿・PDF・コード・データ・補足）。${ATTACH_PREFIX} に置き、役割と題は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
+    title: '添付（下書き・試行）', lead: `下書き・試行（形式の §3.8 の案）。読み手のためのファイル：PDF は PDF、データは CSV・TSV・JSON・テキスト・xlsx、コードはプログラムの原稿・ipynb・環境の定義、元の原稿は TeX・Markdown・テキスト・docx、補足は PNG・JPEG・WebP・PDF・テキスト。足すときに中身を確かめ、JavaScript のある PDF・マクロや外への参照のある Office・実行できるもの・HTML・SVG・ZIP・音声と動画は断ります。${ATTACH_PREFIX} に置き、役割・題・説明は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
     limits: `1 つ ${MB(ATTACH_LIMITS.fileBytes)}・合わせて ${MB(ATTACH_LIMITS.totalBytes)}・${ATTACH_LIMITS.count} 個まで`,
     none: 'まだありません', add: 'ファイルを足す…', role: '役割', noRole: '（役割なし：一覧に出ない）', titleL: '題', rename: '名前を替える…', remove: '消す',
     roles: { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' },
@@ -27,9 +29,10 @@ const STR = {
     saved: '役割と題を書きました', portableNote: '1 ファイルに残すには「保存」を押してください（添付の場所だけを書き換えます）', fail: 'できませんでした：', cancel: '取消', ok: 'OK',
     problems: '気をつけること',
     media: (p, k) => `「${p}」は${k === 'video' ? '動画' : '音声'}です。音声と動画は添付にできません`, titles: '題（ダウンロードの一覧に出す短い名前。要ります）', needTitle: '題は要ります', add1: '足す',
+    descL: '説明', descPh: '説明（1〜2 文）', refused: '断りました：', checking: '中身を確かめています…'
   },
   en: {
-    title: 'Attachments (draft, experimental)', lead: `Draft, experimental: the allowed contents will be narrowed per role in a later version (spec §3.8 draft). Audio and video cannot be attached. Files for readers (original source, PDF, code, data, supplements). They live in ${ATTACH_PREFIX}; roles and titles are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
+    title: 'Attachments (draft, experimental)', lead: `Draft, experimental (spec §3.8 draft). Files for readers: pdf takes PDF; data takes CSV, TSV, JSON, text and xlsx; code takes program source, ipynb and environment definitions; source takes TeX, Markdown, text and docx; supplement takes PNG, JPEG, WebP, PDF and text. Files are checked when added: PDFs with JavaScript, Office files with macros or external references, executables, HTML, SVG, ZIP, audio and video are refused. They live in ${ATTACH_PREFIX}; roles, titles and descriptions are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
     limits: `up to ${MB(ATTACH_LIMITS.fileBytes)} each, ${MB(ATTACH_LIMITS.totalBytes)} together, ${ATTACH_LIMITS.count} files`,
     none: 'None yet', add: 'Add files…', role: 'Role', noRole: '(no role: not listed)', titleL: 'Title', rename: 'Rename…', remove: 'Remove',
     roles: { source: 'Source', pdf: 'PDF', code: 'Code', data: 'Data', supplement: 'Supplement' },
@@ -40,16 +43,17 @@ const STR = {
     saved: 'Role and title written', portableNote: 'Press Save to keep it in the file (only the attachment regions are rewritten)', fail: 'Failed: ', cancel: 'Cancel', ok: 'OK',
     problems: 'Notes',
     media: (p, k) => `“${p}” is ${k === 'video' ? 'a video' : 'audio'}: audio and video cannot be attached`, titles: 'Titles (short names for the download list; required)', needTitle: 'A title is required', add1: 'Add',
+    descL: 'Description', descPh: 'Description (one or two sentences)', refused: 'Refused: ', checking: 'Checking the contents…'
   },
 };
-// 足したファイルの役割の案（拡張子から。書くのは選んだ役割）
+// 足したファイルの役割の案（名前の型から、その型を受ける役割。書くのは選んだ役割）。どの役割にもない型は null（足せない）
 export function guessRole(name) {
-  const ext = (String(name).match(/\.([^./]+)$/)?.[1] || '').toLowerCase();
-  if (ext === 'pdf') return 'pdf';
-  if (['tex', 'bib', 'doc', 'docx', 'odt', 'md', 'rtf', 'pptx', 'key'].includes(ext)) return 'source';
-  if (['py', 'ipynb', 'js', 'mjs', 'ts', 'r', 'jl', 'm', 'c', 'h', 'cpp', 'rs', 'go', 'java', 'sh', 'zip', 'tar', 'gz'].includes(ext)) return 'code';
-  if (['csv', 'tsv', 'json', 'xlsx', 'xls', 'parquet', 'h5', 'hdf5', 'npz', 'npy', 'sqlite', 'db', 'xml'].includes(ext)) return 'data';
-  return 'supplement';
+  const k = kindOfName(ATTACH_PREFIX + String(name));
+  if (!k || !k.kind) return null;
+  if (/\.bib$/i.test(String(name))) return 'source';
+  const order = { pdf: 'pdf', png: 'supplement', jpeg: 'supplement', webp: 'supplement', text: 'supplement', csv: 'data', tsv: 'data', json: 'data', xlsx: 'data',
+    code: 'code', env: 'code', ipynb: 'code', tex: 'source', markdown: 'source', docx: 'source' };
+  return order[k.kind] || ATTACH_ROLES.find((r) => roleAllows(r, k.kind)) || null;
 }
 // ファイル名を添付のパスに（危ない字は _ に。名前の規則は kit/core/attachments.mjs）
 export const attachPathOf = (name) => ATTACH_PREFIX + String(name).normalize('NFC').replace(/[\u0000-\u001f\u007f-\u009f\\/:*?"<>|]/g, '_').replace(/[. ]+$/, '_').trim();
@@ -58,6 +62,17 @@ export function createAttachPanel(o) {
   const X = STR[o.lang === 'en' ? 'en' : 'ja'];
   const el = o.el;
   let busy = false;
+  const msgOf = (x) => message(o.lang === 'en' ? 'en' : 'ja', x.code, x);
+  // 中身の検査（§3.8）の結果：パスと大きさごとに覚える（板を描き直すたびに読み直さない。書き込みで消す）
+  const content = new Map();
+  async function contentOf(ws, f) {
+    const c = content.get(f.path);
+    if (c && c.size === f.size) return c.problems;
+    let problems = [];
+    if (f.size <= ATTACH_LIMITS.fileBytes) { try { problems = (await inspectAttachment(f.path, await ws.readBytes(f.path, { max: ATTACH_LIMITS.fileBytes }))).problems; } catch { problems = []; } }
+    content.set(f.path, { size: f.size, problems });
+    return problems;
+  }
 
   async function readConfig(ws) {
     let text = null;
@@ -69,6 +84,7 @@ export function createAttachPanel(o) {
     const ws = o.ws();
     const L = await ws.list();
     const files = [...L.files].filter(([rel]) => isAttachPath(rel)).map(([rel, f]) => ({ path: rel, size: f.s }));
+    for (const f of files) f.problems = await contentOf(ws, f);
     const { conf, bad } = await readConfig(ws);
     const plan = planAttachments(files, conf);
     const { entries } = configEntries(conf);
@@ -96,6 +112,7 @@ export function createAttachPanel(o) {
     return queue;
   }
   async function writeNow(fn, done) {
+    content.clear();
     const why = await o.beforeWrite();
     if (why) { o.toast(why, true); return; }
     const ws = o.ws(), g = o.generation();
@@ -122,6 +139,9 @@ export function createAttachPanel(o) {
       if (why) { o.toast(X.bad(p, why), true); return; }
       const media = attachMediaProblem(p);
       if (media) { o.toast(X.media(p, media.kind), true); return; }
+      // 形式（§3.8）：名前から許されない型・どの役割にもない型は、題を尋ねる前に断る
+      const np = nameProblem(p);
+      if (np) { o.toast(X.refused + msgOf(np), true); return; }
       if (f.size > ATTACH_LIMITS.fileBytes) { o.toast(X.tooLarge(p, f.size), true); return; }
     }
     // 題（要る）：ファイル名から埋めておき、直せる
@@ -146,20 +166,25 @@ export function createAttachPanel(o) {
         total += f.size;
         adds.push({ p, f });
       }
-      // 中身で音声・動画を見分ける（全部読んでから、どれも書く前に）
-      const read = [];
+      // 中身で音声・動画を見分け、§3.8 の役割ごとの型と条件で確かめる（全部読んでから、どれも書く前に。断る理由は検査器と同じ言葉）
+      const read = [], notes = [];
       for (const { p, f } of adds) {
         const bytes = await readFileBounded(f, { max: ATTACH_LIMITS.fileBytes, what: f.name });
         const media = attachMediaProblem(p, bytes.subarray(0, 64));
         if (media) { o.toast(X.media(p, media.kind), true); return null; }
-        read.push({ p, f, bytes, title: titles[list.indexOf(f)] });
+        const role = guessRole(f.name);
+        const probs = [...(await inspectAttachment(p, bytes)).problems, roleProblem(p, role)].filter(Boolean);
+        const bad = probs.find(blocking);
+        if (bad) { o.toast(X.refused + msgOf(bad), true); return null; }
+        for (const x of probs) notes.push(msgOf(x));
+        read.push({ p, f, bytes, role, title: titles[list.indexOf(f)] });
       }
-      for (const { p, f, bytes, title } of read) {
+      for (const { p, bytes, role, title } of read) {
         await st.ws.writeBytes(p, bytes);
-        entries.push({ path: p, role: guessRole(f.name), title });
+        entries.push({ path: p, role, title });
       }
       await writeConfig(st.ws, st.conf, entries);
-      return X.added(adds.length);
+      return X.added(adds.length) + (notes.length ? ' · ' + notes.join(' · ') : '');
     });
   });
   const remove = held(async (p) => {
@@ -181,9 +206,16 @@ export function createAttachPanel(o) {
     if (why) { o.toast(X.bad(q, why), true); return; }
     const media = attachMediaProblem(q);
     if (media) { o.toast(X.media(q, media.kind), true); return; }
+    const np = nameProblem(q);
+    if (np) { o.toast(X.refused + msgOf(np), true); return; }
     await write(async (st) => {
       if (st.files.some((f) => f.path.toLowerCase() === q.toLowerCase())) { o.toast(X.exists(q), true); return null; }
       const bytes = await st.ws.readBytes(p, { max: ATTACH_LIMITS.fileBytes });
+      // 新しい名前の型で、中身と役割を確かめ直す（拡張子を替えると型が変わる）
+      const cur = st.entries.get(p);
+      const probs = [...(await inspectAttachment(q, bytes)).problems, roleProblem(q, cur && ATTACH_ROLES.includes(cur.role) ? cur.role : guessRole(q))].filter(Boolean);
+      const bad = probs.find(blocking);
+      if (bad) { o.toast(X.refused + msgOf(bad), true); return null; }
       await st.ws.writeBytes(q, bytes);
       await st.ws.remove(p, { max: ATTACH_LIMITS.fileBytes });
       const entries = listOf(st);
@@ -193,13 +225,19 @@ export function createAttachPanel(o) {
       return X.renamed(p, q);
     });
   });
-  async function setMeta(p, role, title) {
+  async function setMeta(p, role, title, description) {
+    // 役割と型の組（§3.8）・説明の形：書く前に断る
+    const rp = role ? roleProblem(p, role) : null;
+    if (rp) { o.toast(X.refused + msgOf(rp), true); if (o.isOpen()) await render(); return; }
+    const dp = description ? descriptionProblem(description) : null;
+    if (dp) { o.toast(X.refused + msgOf({ code: 'attachBadDescription', path: p, why: dp, max: ATTACH_LIMITS.descriptionChars }), true); if (o.isOpen()) await render(); return; }
     await write(async (st) => {
       const entries = listOf(st);
       let e = entries.find((x) => x.path === p);
       if (!e) { e = { path: p }; entries.push(e); }
       if (role) e.role = role; else delete e.role;
       if (title) e.title = title.slice(0, ATTACH_LIMITS.titleChars); else delete e.title;
+      if (description) e.description = description; else delete e.description;
       await writeConfig(st.ws, st.conf, entries);
       return X.saved;
     });
@@ -218,11 +256,19 @@ export function createAttachPanel(o) {
       sel.value = ATTACH_ROLES.includes(e.role) ? e.role : '';
       const title = el('input', { type: 'text', 'data-attach-title': f.path, 'aria-label': X.titleL + ' ' + f.path, placeholder: X.titleL, maxlength: String(ATTACH_LIMITS.titleChars) });
       title.value = typeof e.title === 'string' ? e.title : '';
-      const commit = () => { const t = title.value.trim(); if (!t && typeof e.title === 'string' && e.title.trim()) { o.toast(X.needTitle, true); title.value = e.title; return; } if (sel.value !== (ATTACH_ROLES.includes(e.role) ? e.role : '') || t !== (typeof e.title === 'string' ? e.title : '')) setMeta(f.path, sel.value, t); };
-      sel.addEventListener('change', commit); title.addEventListener('change', commit);
+      // 説明（description。1〜2 文。ダウンロードの一覧の題の下に出る）
+      const desc = el('input', { type: 'text', 'data-attach-desc': f.path, 'aria-label': X.descL + ' ' + f.path, placeholder: X.descPh, maxlength: String(ATTACH_LIMITS.descriptionChars) });
+      desc.value = typeof e.description === 'string' ? e.description : '';
+      const commit = () => {
+        const t = title.value.trim(), d = desc.value.trim();
+        if (!t && typeof e.title === 'string' && e.title.trim()) { o.toast(X.needTitle, true); title.value = e.title; return; }
+        if (sel.value !== (ATTACH_ROLES.includes(e.role) ? e.role : '') || t !== (typeof e.title === 'string' ? e.title : '') || d !== (typeof e.description === 'string' ? e.description : '')) setMeta(f.path, sel.value, t, d);
+      };
+      sel.addEventListener('change', commit); title.addEventListener('change', commit); desc.addEventListener('change', commit);
       return el('li', { cls: 'attach-row', 'data-attach': f.path }, [
         el('div', { cls: 'attach-name' }, [el('b', { text: f.path.slice(ATTACH_PREFIX.length) }), el('span', { cls: 'hint', text: ' · ' + MB(f.size) })]),
         el('div', { cls: 'attach-meta' }, [sel, title]),
+        el('div', { cls: 'attach-desc' }, [desc]),
         el('div', { cls: 'row' }, [el('button', { type: 'button', 'data-attach-rename': f.path, text: X.rename, onclick: () => rename(f.path) }), el('button', { type: 'button', 'data-attach-remove': f.path, text: X.remove, onclick: () => remove(f.path) })]),
       ]);
     }) : [el('li', { cls: 'hint', text: X.none })];

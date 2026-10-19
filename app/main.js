@@ -911,7 +911,7 @@ async function savePortableBound(mode) {
   try {
     const a = await tierA(P.original, files, { identity, fonts: engine.fonts });
     if (!live()) { cancelled(); return; }
-    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; }
+    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; if (typeof a.config === 'string') cfgText = a.config; }
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
@@ -950,8 +950,8 @@ async function savePortableBound(mode) {
     }
     // ここまでで書いた。この後の作業場所の書き込みと「保存した」は、今も同じ作業場所のときだけ（最後の確かめの後）
     if (!live()) throw cancelledError();
-    // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）。保存したものに入っているので、
-    // 保存の途中で編集がなかったときは、この書き込みの後の版を保存した版とする
+    // 新しい教材：作業場所の設定のファイルも新しい docId に（この後の保存も新しい教材に）。段 A が添付の一覧を揃えた設定のファイル（§3.3）も同じ。
+    // 保存したものに入っているので、保存の途中で編集がなかったときは、この書き込みの後の版を保存した版とする
     if (cfgText) {
       const before = ws.revision;
       const wp = ws.writeText(CFG, cfgText, { live });

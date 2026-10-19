@@ -18,7 +18,9 @@
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
 // K. 音声が古い段階（format spec §5.4）：audio/manifest.json の記録の inputHash が今の口述原稿と違うか null（警告）。inputHash の無い
 //    記録（前の tts/synth.py）は TTS の控えの digest で比べる。音声は消さない
-// L. 添付（format spec §3.8）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）
+// L. 添付（format spec §3.8）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）。
+//    役割ごとの型と中身（kit/core/attach-content.mjs）：仕様が MUST NOT とするもの（許されない型・実行できるもの・入れ物・音声と動画・マクロ・JavaScript の
+//    ある PDF など）はエラー、断るべきもの（SHOULD：役割の条件・中身が型と違う・確かめられない）と気をつけるもの（数式として読まれる値など）は警告
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 import fs from 'node:fs';
@@ -27,7 +29,7 @@ import path from 'node:path';
 import { launch } from './browser.mjs';
 import { build, isJapanese, analyzeSlideIds, listFiles } from './build.mjs';
 import { FORMAT } from './core/format.mjs';
-import { planAttachments } from './core/attachments.mjs';
+import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
 import { normalizeKey } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
@@ -176,7 +178,11 @@ for (const w of built.stats.warn) {
       // 先頭の 64 バイト（音声・動画を中身で見分ける。kit/core/attachments.mjs の sniffMedia）
       let head = null;
       try { head = readHead(abs, 64); } catch { head = null; }
-      found.push({ path: path.relative(deckDir, abs).split(path.sep).join('/'), size: fs.statSync(abs).size, head });
+      const rel = path.relative(deckDir, abs).split(path.sep).join('/'), size = fs.statSync(abs).size;
+      // 中身（上限の内のものだけを読む。大きすぎるものは planAttachments が知らせる）
+      let problems = [];
+      if (size <= ATTACH_LIMITS.fileBytes) { try { problems = (await inspectAttachment(rel, readRegular(abs, { max: ATTACH_LIMITS.fileBytes }))).problems; } catch { problems = []; } }
+      found.push({ path: rel, size, head, problems });
     }
     // ドットで始まる名前・リンクは一覧に入らない（書き出しも入れない）：知らせる
     const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n), st = fs.lstatSync(p), rel = path.relative(deckDir, p).split(path.sep).join('/');
@@ -187,7 +193,7 @@ for (const w of built.stats.warn) {
   }
   if (found.length || (conf && conf[FORMAT.ATTACH_KEY] !== undefined)) {
     const plan = planAttachments(found, conf);
-    for (const x of plan.problems) report(null, 'warn', x.code, x);
+    for (const x of plan.problems) report(null, x.level === 'must' ? 'error' : 'warn', x.code, x);
     if (plan.include.length) report(null, 'info', 'attachList', { n: plan.include.length, listed: plan.list.length, size: plan.total < 1048576 ? `${(plan.total / 1024).toFixed(0)} KB` : `${(plan.total / 1048576).toFixed(1)} MiB` });
   }
 }
