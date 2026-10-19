@@ -1570,7 +1570,7 @@ try {
     }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT, files]);
     const readOut = async (name) => {
       let x = '';
-      for (let i = 0; i < 300 && x.length < 1000; i++) {
+      for (let i = 0; i < 900 && x.length < 1000; i++) {   // 作業フォルダは組んでから書く（npm test の負荷の下では 30 秒を超えることがある）
         await pq.waitForTimeout(100);
         x = await pq.evaluate(async (name) => { try { return await (await (await window.__pq.d.getFileHandle(name)).getFile()).text(); } catch { return ''; } }, name);
       }
@@ -1581,8 +1581,9 @@ try {
       await pq.evaluate(async (name) => { window.__APP_TEST.saveHandle = await window.__pq.d.getFileHandle(name, { create: true }); }, name);
       await pq.click('#b-exportmenu');
       ok(await pq.isVisible('#b-export-play'), `play-only (${name}): the Export menu has Export play-only copy`);
-      await pq.click('#b-export-play');
+      await pq.evaluate(() => document.getElementById('b-export-play').click());
       const x = await readOut(name);
+      if (!x) console.log('       (toast: ' + await pq.textContent('#toast') + ' / status: ' + await pq.textContent('#st-msg') + ' / state: ' + JSON.stringify(await pq.evaluate(() => { const s = window.__APP_TEST.state(); return { dirty: s.portable && s.portable.dirty, loads: s.loads, error: s.error }; })) + ')');
       await pq.evaluate(() => { window.__APP_TEST.saveHandle = null; });
       return x;
     };
@@ -1605,7 +1606,7 @@ try {
     ok(await pq.evaluate(() => window.__APP_TEST_OPEN(window.__pq.deck)) === true, 'play-only: opened a working folder');
     await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n1, { timeout: 20000 });
     po = await exportPlay('deck.play.html');
-    ok(await kindOf(po) === 'play-only', 'play-only (working folder): exported a play-only file');
+    ok(await kindOf(po) === 'play-only', 'play-only (working folder): exported a play-only file' + (po ? '' : ': ' + await pq.textContent('#toast')));
     // TTS のモデルのキャッシュ：「使い方」に使用量と入っているモデル。「モデルを消す」で消える（ほかのキャッシュは残る）
     await pq.evaluate(async () => {
       const c = await caches.open('irodori-lab-000000000000');
