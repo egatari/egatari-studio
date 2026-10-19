@@ -157,6 +157,7 @@ css(
   "#dt-help kbd{display:inline-block;min-width:20px;margin:0 1px;padding:1px 5px;border:1px solid rgba(255,255,255,.22);border-bottom-width:2px;border-radius:5px;" +
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
   "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +
+  "#dt-help .dt-ai{margin:10px 0 0;text-align:center;font-size:12px;color:#c9ced8}" +
   "#dt-help .dt-fb{margin-top:8px;text-align:center;font-size:12px}#dt-help .dt-fb a{color:#9cc8ff;text-decoration:none}#dt-help .dt-fb a:hover{text-decoration:underline}" +
   "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
   // 添付（ダウンロードだけ）
@@ -302,6 +303,11 @@ function addAttachButton(){
   cb.insertBefore(e, h);
   DECK.attachments = ATT.map(function(a){ return {path: a.path, role: a.role, title: a.title, description: a.description, bytes: a.bytes}; });
   document.dispatchEvent(new CustomEvent("deck:attachments", {detail: {n: ATT.length}}));
+}
+// 合成した声（DECK.aiVoice）の段階があれば、教材の情報として 1 行（字幕と自動再生の札にも出る）
+function aiHtml(){
+  if (!DECK.hasAiVoice || !DECK.hasAiVoice()) return "";
+  return '<p class="dt-ai">' + (JA ? "この教材の音声には、AI で合成した声が含まれます（その段階では字幕と自動再生に「AI 合成音声」と出ます）" : "This lesson's audio includes AI-generated voices (marked “AI-generated voice” with the captions and during autoplay)") + "</p>";
 }
 function attHtml(){
   if (!ATT.length) return "";
@@ -698,7 +704,7 @@ function helpHtml(){
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
     (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + attHtml() + fbHtml + "</div>";
+    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){

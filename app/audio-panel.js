@@ -1,15 +1,18 @@
 // 音声の板（編集アプリの信頼する横の板 #dev-side の中。プレビューの外）：段階ごとに、今の音声を聞く・録音する・ファイルから取り込む・
-// ブラウザの TTS で作り直す・取り直しの一覧から選んで「この音声を使う」
+// ブラウザの TTS で作り直す。作った音声（録音・取り込み・TTS）はすぐにその段階の音声にし、前の音声は「前に戻す」で戻せる（#45）。
+// 声を選ぶ欄（voice.json。見本の短い音声を鳴らせる）、読む原稿の欄（原稿の長さに合わせて伸び、大きさを変えられる）
 //
 // 守ること（SECURITY.md）：マイクと TTS はこのページ（信頼する編集の画面）だけで使う。プレビュー（sandbox の iframe）からは音声も
 // 頼みも受け取らない（どの段階を見せるかは編集の画面の位置 ui.pos() から決め、デッキの知らせで板の中身を替えるのは録音していないときだけ）。
 // 読み書きは作業場所（workspace.js）だけ：audio/<file>.mp3 と audio/manifest.json（書き換える前に .cache/edits/ に控え）。
 // 読む大きさには上限がある（manifest・口述原稿は READ_LIMITS、音声は AUDIO_LIMITS.fileBytes）。
 // 後処理（モノラル・44.1 kHz・無音を削る・-20 LUFS）は kit/core/audio-core.mjs（tts/core.py と同じ数）、MP3 は kit/core/mp3.mjs（LAME）。
-// 取り直し（take）は段階ごとにメモリの上に置き、「この音声を使う」で作業場所に書くまで（または別のデッキを開くまで）残す。
-// 持ち運べる 1 ファイルでは作業場所はメモリの上なので、「この音声を使う」の後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる
+// 作った音声はすぐに作業場所に書く（前の記録は段階ごとにメモリの上に積み、「前に戻す」でその記録を manifest に戻す。音声のファイルは消さない）。
+// 書けなかったとき（読むだけ・権利の確認を断った）だけ、取り直し（take）として残し「この音声を使う」で書ける。
+// 持ち運べる 1 ファイルでは作業場所はメモリの上なので、書いた後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる。
+// 声の選択は作業フォルダでは voice.json に書き、1 ファイルではこの画面の間だけ覚える（voice.json を変えると組み直しの保存になるため）
 //
-//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop()})
+//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
@@ -19,6 +22,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
+import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
 const STR = {
   ja: {
@@ -27,10 +31,15 @@ const STR = {
     kind: { recorded: '録音', tts: 'TTS', imported: '取り込み' }, sec: (s) => s.toFixed(2) + ' 秒',
     rec: '● 録音', stop: '■ 止める', reRec: '● 録り直す', recording: '録音中', processing: '整えています…', micNo: 'マイクを使えません：', micHint: 'ブラウザのアドレス欄の左でマイクを許可してください',
     importBtn: 'ファイルから取り込む…', tts: 'TTS で作り直す', ttsNo: 'この環境ではブラウザの TTS を使えません：',
-    takes: '取り直し（保存していない）', noTakes: 'まだありません。録音・取り込み・TTS で作ると、ここに並びます', use: 'この音声を使う', del: '捨てる',
-    using: '書き込んでいます…', used: (f) => '使いました（audio/' + f + '）', usedPortable: '使いました。ファイルに残すには「保存」を押してください',
-    noSeg: 'この段階の口述原稿がありません（先に口述原稿を書いてください）', script: '読む原稿', cueNote: '録音と取り込みには {cue} の区切りの時刻がないので、区切りに合わせた動きは時間で進みます（sync: none）',
-    durOverride: (d) => 'timeline.json の dur（' + d + ' 秒）がこの段階の長さを決めています。長い音声は途中で切れます', unsavedTakes: (n) => '保存していない取り直しが ' + n + ' 個あります',
+    takes: 'まだ使っていない音声', use: 'この音声を使う', del: '捨てる', notUsed: '書き込めなかったので、まだこの段階には使っていません。下の「この音声を使う」で使えます',
+    using: '書き込んでいます…', used: (f) => 'この段階の音声にしました（audio/' + f + '）。前の音声には「前に戻す」で戻せます', usedPortable: 'この段階の音声にしました。ファイルに残すには「保存」を押してください（前の音声には「前に戻す」で戻せます）',
+    revert: '↶ 前に戻す', revertT: (n) => '一つ前の音声に戻します（音声のファイルは消していません。あと ' + n + ' 回戻せます）', reverted: '前の音声に戻しました', revertedNone: '前は音声がなかったので、この段階の音声を外しました',
+    revertGone: (f) => '前の音声のファイル（audio/' + f + '）が見つからないので戻せません',
+    voice: '声', role: { expert: 'Expert', novice: 'Novice' }, one: '話す人', sample: '▶ 見本', sampleStop: '■ 止める', sampleT: (n) => '「' + n + '」の短い見本を鳴らす（事前に作った音声。モデルは読み込みません）', noSample: 'この声には見本がありません', sampleFail: '見本を鳴らせません（配信版のエディタで開いてください）',
+    more: 'ほかの声', voiceSaved: (r, n) => r + ' の声を「' + n + '」にしました（voice.json）。次に TTS で作るときから使います', voiceMem: (r, n) => r + ' の声を「' + n + '」にしました。1 ファイルでは、この画面を開いている間だけ覚えます（作った音声の記録には声の名前が残ります）',
+    voiceUnknown: (r, n, fb) => 'voice.json の ' + r + ' の声「' + n + '」は、ブラウザの TTS に入っていません。TTS で作るときは既定の声「' + fb + '」を使います（上の欄で選び直せます）',
+    noSeg: 'この段階の口述原稿がありません（先に口述原稿を書いてください）', script: '読む原稿', scriptT: '右下の角を引くと大きさを変えられます', cueNote: '録音と取り込みには {cue} の区切りの時刻がないので、区切りに合わせた動きは時間で進みます（sync: none）',
+    durOverride: (d) => 'timeline.json の dur（' + d + ' 秒）がこの段階の長さを決めています。長い音声は途中で切れます',
     level: '入力の大きさ', tooLong: (s) => s + ' 秒を超えたので止めました', empty: '音がありません（無音を削ると何も残りませんでした）', fail: 'できませんでした：',
     prov: { recorded: '録音', imported: '取り込み', tts: (r) => 'TTS ' + r.engine + ' · ' + r.model + (r.voice && Object.keys(r.voice).length ? ' · 声 ' + Object.values(r.voice).join('/') : '') + (r.seed != null ? ' · seed ' + r.seed : '') },
     made: (kind, d) => kind + ' · ' + d, gain: (g) => '音量の調整 ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: '録音・合成している間、スライドはクリックを受けません',
@@ -44,10 +53,15 @@ const STR = {
     kind: { recorded: 'recorded', tts: 'TTS', imported: 'imported' }, sec: (s) => s.toFixed(2) + ' s',
     rec: '● Record', stop: '■ Stop', reRec: '● Record again', recording: 'Recording', processing: 'Processing…', micNo: 'Cannot use the microphone: ', micHint: 'Allow the microphone from the left of the address bar',
     importBtn: 'Import a file…', tts: 'Regenerate with TTS', ttsNo: 'Browser TTS is not available here: ',
-    takes: 'Takes (not saved)', noTakes: 'None yet. Record, import or regenerate to add one', use: 'Use this take', del: 'Discard',
-    using: 'Writing…', used: (f) => 'Using it (audio/' + f + ')', usedPortable: 'Using it. Press Save to keep it in the file',
-    noSeg: 'This step has no narration (write the narration first)', script: 'Script', cueNote: 'Recorded and imported audio have no {cue} times, so cue-driven motion advances by time (sync: none)',
-    durOverride: (d) => 'timeline.json fixes this step to ' + d + ' s (dur): longer audio is cut', unsavedTakes: (n) => n + ' unsaved take' + (n === 1 ? '' : 's'),
+    takes: 'Audio not used yet', use: 'Use this take', del: 'Discard', notUsed: 'It could not be written, so this step does not use it yet. Use it with “Use this take” below',
+    using: 'Writing…', used: (f) => 'This step now uses it (audio/' + f + '). “Revert to previous” brings back the previous audio', usedPortable: 'This step now uses it. Press Save to keep it in the file (“Revert to previous” brings back the previous audio)',
+    revert: '↶ Revert to previous', revertT: (n) => 'Go back to the previous audio (no audio file was deleted; ' + n + ' step' + (n === 1 ? '' : 's') + ' back available)', reverted: 'Reverted to the previous audio', revertedNone: 'There was no audio before, so the step has no audio now',
+    revertGone: (f) => 'Cannot revert: the previous audio file (audio/' + f + ') is missing',
+    voice: 'Voice', role: { expert: 'Expert', novice: 'Novice' }, one: 'Speaker', sample: '▶ Sample', sampleStop: '■ Stop', sampleT: (n) => 'Play a short sample of “' + n + '” (pre-made audio; no model is loaded)', noSample: 'No sample for this voice', sampleFail: 'Cannot play the sample (open the hosted editor)',
+    more: 'More voices', voiceSaved: (r, n) => r + ' voice set to “' + n + '” (voice.json). Used the next time you make TTS', voiceMem: (r, n) => r + ' voice set to “' + n + '”. In a single file this is kept only while this page is open (the audio records keep the voice name)',
+    voiceUnknown: (r, n, fb) => 'The ' + r + ' voice “' + n + '” in voice.json is not part of the browser TTS. TTS uses the default voice “' + fb + '” instead (choose another above)',
+    noSeg: 'This step has no narration (write the narration first)', script: 'Script', scriptT: 'Drag the bottom-right corner to resize', cueNote: 'Recorded and imported audio have no {cue} times, so cue-driven motion advances by time (sync: none)',
+    durOverride: (d) => 'timeline.json fixes this step to ' + d + ' s (dur): longer audio is cut',
     level: 'Input level', tooLong: (s) => 'Stopped after ' + s + ' s', empty: 'No sound (nothing is left after trimming silence)', fail: 'Failed: ',
     prov: { recorded: 'recorded', imported: 'imported', tts: (r) => 'TTS ' + r.engine + ' · ' + r.model + (r.voice && Object.keys(r.voice).length ? ' · voice ' + Object.values(r.voice).join('/') : '') + (r.seed != null ? ' · seed ' + r.seed : '') },
     made: (kind, d) => kind + ' · ' + d, gain: (g) => 'level adjusted ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: 'The slides do not take clicks while recording or generating',
@@ -67,8 +81,14 @@ const CSS = [
   '#dev-audio .dv-badge.dv-stale{background:#f59e0b;color:#231400}#dev-audio .dv-badge.dv-fresh{background:#dcfce7;color:#14532d}',
   '#dev-audio .dv-badge.dv-kind{background:#e0e7ff;color:#1e3a8a}',
   '#dev-audio .dv-prov{font-size:11.5px;color:#6b7385;margin-top:2px;word-break:break-word}',
-  '#dev-audio .dv-script{font-size:12.5px;color:#374151;background:#fff;border:1px dashed #cfd4de;border-radius:6px;padding:6px 8px;margin:0 0 10px;max-height:7.5em;overflow:auto}',
-  '#dev-audio .dv-script p{margin:0 0 3px}#dev-audio .dv-script .dv-role{font-size:11px;color:#b7791f;margin-right:4px}',
+  // 読む原稿：録音しながら読めるように、原稿の長さに合わせて伸びる（板の高さの半分ほどまで）。右下の角で大きさを変えられる
+  '#dev-audio .dv-script{font-size:14.5px;line-height:1.65;color:#1f2937;background:#fff;border:1px dashed #cfd4de;border-radius:6px;padding:8px 10px;margin:0 0 10px;min-height:3.5em;max-height:min(46vh,30em);overflow:auto;resize:vertical}',
+  '#dev-audio.dv-recording .dv-script{max-height:min(62vh,40em);border-style:solid;border-color:#dc2626}',
+  '#dev-audio .dv-script p{margin:0 0 6px}#dev-audio .dv-script .dv-role{display:inline-block;font-size:11px;font-weight:700;line-height:16px;border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px;background:#e0e7ff;color:#1e3a8a}',
+  '#dev-audio .dv-script .dv-role.dv-novice{background:#fef3c7;color:#7a4b00}',
+  '#dev-audio .dv-voices{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;margin:2px 0 8px;font-size:12.5px}',
+  '#dev-audio .dv-voices select{min-width:0;font:inherit;padding:2px 4px}#dev-audio .dv-voices .dv-vr{color:#4b5363}',
+  '#dev-audio .dv-cur .dv-revert{margin-left:auto}',
   '#dev-audio .dv-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}',
   '#dev-audio button.dv-rec{border-color:#dc2626;color:#b91c1c}#dev-audio button.dv-rec.dv-on{background:#dc2626;color:#fff}',
   '#dev-audio .dv-meter{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font-size:12px;color:#4b5363}',
@@ -100,8 +120,14 @@ export function createAudioPanel(o) {
   const L = o.lang === 'en' ? STR.en : STR.ja;
   if (!doc.getElementById('dev-audio-style')) { const st = doc.createElement('style'); st.id = 'dev-audio-style'; st.textContent = CSS; doc.head.appendChild(st); }
   let open = false, card = null, view = null, rec = null, busyMsg = null, seq = 0;
-  // 段階ごとの取り直し（メモリの上）：key → [{id, kind, pcm, sr, dur, cues, recipe, inputHash, url, gainDb, at}]
+  // 段階ごとの、まだ使っていない取り直し（書けなかったときだけ。メモリの上）：key → [{id, kind, pcm, sr, dur, cues, recipe, inputHash, url, gainDb, at}]
   const takes = new Map();
+  // 段階ごとの前の記録（「前に戻す」。新しいものが後ろ）：key → [manifest の記録 | null（音声がなかった）]。作業場所を替えると捨てる
+  const history = new Map();
+  // 1 ファイルの声の選択（この画面の間だけ）：role → 名前
+  const voiceMem = {};
+  // 見本を鳴らす <audio>（1 つ）
+  let sample = null;
   let nextId = 1;
   const urls = new Set();
   const blobUrl = (bytes, type) => { const u = URL.createObjectURL(new Blob([bytes], { type })); urls.add(u); return u; };
@@ -141,12 +167,16 @@ export function createAudioPanel(o) {
     let voice = {};
     const vj = (await readJson(ws, 'voice.json')).value;
     if (isObj(vj)) voice = vj;
-    return { key, g, seg, segs, entry, state, url, err, override, voice, manText: man.text };
+    // デッキで話す役（掛け合いなら Expert と Novice）
+    const roles = new Set(['expert']);
+    for (const x of segs) for (const t of x.turns) if (t.role === 'novice') roles.add('novice');
+    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, manText: man.text };
   }
 
   // ---------------------------------------------------------------- 描く
   function close() {
     stopRecording(true);
+    stopSample();
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);
     flushUrls();
@@ -187,7 +217,7 @@ export function createAudioPanel(o) {
   }
   function draw(v) {
     const old = card;
-    card = h('div', { id: 'dev-audio', cls: 'edit-ui dev-card', role: 'region', 'aria-label': L.title });
+    card = h('div', { id: 'dev-audio', cls: 'edit-ui dev-card' + (rec ? ' dv-recording' : ''), role: 'region', 'aria-label': L.title });
     const sk = v ? v.key.slice(v.key.lastIndexOf(':') + 1) : '';
     card.appendChild(h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.title }), v ? h('span', { cls: 'dv-m', text: L.step + sk }) : null, h('span', { cls: 'dv-sp' }),
       h('button', { cls: 'dv-ghost', text: '✕', title: L.close, 'aria-label': L.close, on: { click: () => toggle(false) } })]));
@@ -200,29 +230,33 @@ export function createAudioPanel(o) {
     if (v && at && at.key !== v.key) { follow.hidden = false; follow.textContent = rec || busyMsg ? L.following(at.key) : L.other(at.key); }
     if (!v || v.loading) { card.appendChild(h('div', { cls: 'dv-empty', text: '…' })); return mount(old); }
     if (v.error) { card.appendChild(h('div', { cls: 'dev-msg dv-err', text: v.error })); return mount(old); }
-    // 今の音声
+    // 今の音声（前の記録があれば「前に戻す」）
+    const back = history.get(v.key) || [];
+    const revertBtn = back.length ? h('button', { cls: 'dv-revert', id: 'dev-audio-revert', text: L.revert, title: L.revertT(back.length), on: { click: () => revert(v.key) } }) : null;
+    if (revertBtn && (busyMsg || rec)) revertBtn.disabled = true;
     const cur = h('div', { cls: 'dv-cur', id: 'dev-audio-cur' });
     if (v.entry) {
       const kind = ['recorded', 'tts', 'imported'].includes(v.entry.kind) ? v.entry.kind : 'tts';
       cur.appendChild(h('div', { cls: 'dv-row' }, [h('b', { text: L.cur }), h('span', { cls: 'dv-badge dv-kind', text: L.kind[kind] }),
         typeof v.entry.dur === 'number' ? h('span', { text: L.sec(v.entry.dur) }) : null,
-        v.state === 'stale' ? h('span', { cls: 'dv-badge dv-stale', id: 'dev-audio-stale', text: L.stale, title: L.staleT }) : v.state === 'fresh' ? h('span', { cls: 'dv-badge dv-fresh', text: L.fresh }) : null]));
+        v.state === 'stale' ? h('span', { cls: 'dv-badge dv-stale', id: 'dev-audio-stale', text: L.stale, title: L.staleT }) : v.state === 'fresh' ? h('span', { cls: 'dv-badge dv-fresh', text: L.fresh }) : null, revertBtn]));
       const r = isObj(v.entry.recipe) ? v.entry.recipe : null;
       cur.appendChild(h('div', { cls: 'dv-prov', text: kind === 'tts' ? (r ? L.prov.tts(r) : 'TTS ' + (v.entry.engine || '')) : L.prov[kind] }));
       if (v.state === 'stale') cur.appendChild(h('div', { cls: 'dv-note', text: L.staleT }));
       if (v.url) { const a = h('audio', { controls: '', preload: 'metadata', src: v.url, id: 'dev-audio-player' }); cur.appendChild(a); }
       else if (v.err) cur.appendChild(h('div', { cls: 'dev-msg dv-err', text: v.err }));
-    } else cur.appendChild(h('div', { cls: 'dv-empty', text: L.none }));
+    } else cur.appendChild(h('div', { cls: 'dv-row' }, [h('span', { cls: 'dv-empty', text: L.none }), revertBtn]));
     card.appendChild(cur);
     if (v.override !== null) card.appendChild(h('div', { cls: 'dv-warn', text: L.durOverride(v.override) }));
-    // 読む原稿
+    // 読む原稿（掛け合いなら両方の役に印）
     if (v.seg) {
+      const two = v.roles && v.roles.has('novice');
       card.appendChild(h('div', { cls: 'dv-h', text: L.script }));
-      card.appendChild(h('div', { cls: 'dv-script' }, v.seg.turns.map((t) => h('p', {}, [t.role === 'novice' ? h('span', { cls: 'dv-role', text: 'Novice' }) : null, plain(t.display || t.raw)]))));
+      card.appendChild(h('div', { cls: 'dv-script', id: 'dev-audio-script', title: L.scriptT }, v.seg.turns.map((t) => h('p', {}, [two ? h('span', { cls: 'dv-role' + (t.role === 'novice' ? ' dv-novice' : ''), text: L.role[t.role === 'novice' ? 'novice' : 'expert'] }) : null, plain(t.display || t.raw)]))));
     } else card.appendChild(h('div', { cls: 'dv-warn', text: L.noSeg }));
     // 道具
     const list = takes.get(v.key) || [];
-    const recBtn = h('button', { cls: 'dv-rec' + (rec ? ' dv-on' : ''), id: 'dev-audio-rec', text: rec ? L.stop : list.some((t) => t.kind === 'recorded') ? L.reRec : L.rec, on: { click: () => (rec ? stopRecording() : startRecording()) } });
+    const recBtn = h('button', { cls: 'dv-rec' + (rec ? ' dv-on' : ''), id: 'dev-audio-rec', text: rec ? L.stop : v.entry && v.entry.kind === 'recorded' ? L.reRec : L.rec, on: { click: () => (rec ? stopRecording() : startRecording()) } });
     const impBtn = h('button', { id: 'dev-audio-import', text: L.importBtn, on: { click: importFile } });
     const ttsInfo = o.tts ? o.tts.info(o.deckLang()) : null;
     const ttsBtn = h('button', { id: 'dev-audio-tts', text: L.tts, title: ttsInfo ? ttsInfo.label : '', on: { click: regenerate } });
@@ -230,7 +264,9 @@ export function createAudioPanel(o) {
     if (busyMsg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
     card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
-    if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : L.ttsNo + ttsInfo.reason }));
+    if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
+    // 声を選ぶ欄
+    drawVoices(v);
     // 録音の大きさ
     const meter = h('div', { cls: 'dv-meter', id: 'dev-audio-meter', hidden: rec ? null : '' }, [h('span', { text: L.level }), h('span', { cls: 'dv-bar' }, [h('i')]), h('span', { cls: 'dv-t', text: '0.0 s' })]);
     if (!rec) meter.setAttribute('hidden', ''); else meter.removeAttribute('hidden');
@@ -240,24 +276,97 @@ export function createAudioPanel(o) {
     const msg = h('div', { cls: 'dev-msg', id: 'dev-audio-msg' });
     if (busyMsg) { msg.className = 'dev-msg dv-ok'; msg.textContent = busyMsg; }
     card.appendChild(msg);
-    // 取り直し
-    card.appendChild(h('div', { cls: 'dv-h', text: L.takes }));
-    const box = h('div', { id: 'dev-audio-takes' });
-    if (!list.length) box.appendChild(h('div', { cls: 'dv-empty', text: L.noTakes }));
-    list.forEach((t, j) => {
-      const row = h('div', { cls: 'dv-take', 'data-id': String(t.id), 'data-kind': t.kind }, [
-        h('div', { cls: 'dv-row' }, [h('span', { cls: 'dv-n', text: '#' + (j + 1) }), h('span', { cls: 'dv-badge dv-kind', text: L.kind[t.kind] }), h('span', { text: L.sec(t.dur) }),
-          h('span', { cls: 'dv-sp' }), h('button', { cls: 'dv-ghost', text: L.del, on: { click: () => discard(v.key, t.id) } })]),
-        h('div', { cls: 'dv-prov', text: t.kind === 'tts' && t.recipe ? L.prov.tts(t.recipe) : L.gain(t.gainDb) }),
-        h('div', { cls: 'dv-play' }, [h('audio', { controls: '', preload: 'metadata', src: t.url }), h('button', { cls: 'dv-pri dv-use', text: L.use, on: { click: () => useTake(v.key, t.id) } })]),
-      ]);
-      if (busyMsg) for (const b of row.querySelectorAll('button')) b.disabled = true;
-      box.appendChild(row);
-    });
-    card.appendChild(box);
-    if (list.some((t) => t.kind !== 'tts') || (v.seg && v.seg.turns.some((t) => t.ttsParts.length > 1))) card.appendChild(h('div', { cls: 'dv-note', text: L.cueNote }));
+    // まだ使っていない取り直し（書けなかったときだけ）
+    if (list.length) {
+      card.appendChild(h('div', { cls: 'dv-h', text: L.takes }));
+      const box = h('div', { id: 'dev-audio-takes' });
+      list.forEach((t, j) => {
+        const row = h('div', { cls: 'dv-take', 'data-id': String(t.id), 'data-kind': t.kind }, [
+          h('div', { cls: 'dv-row' }, [h('span', { cls: 'dv-n', text: '#' + (j + 1) }), h('span', { cls: 'dv-badge dv-kind', text: L.kind[t.kind] }), h('span', { text: L.sec(t.dur) }),
+            h('span', { cls: 'dv-sp' }), h('button', { cls: 'dv-ghost', text: L.del, on: { click: () => discard(v.key, t.id) } })]),
+          h('div', { cls: 'dv-prov', text: t.kind === 'tts' && t.recipe ? L.prov.tts(t.recipe) : L.gain(t.gainDb) }),
+          h('div', { cls: 'dv-play' }, [h('audio', { controls: '', preload: 'metadata', src: t.url }), h('button', { cls: 'dv-pri dv-use', text: L.use, on: { click: () => useTake(v.key, t.id) } })]),
+        ]);
+        if (busyMsg) for (const b of row.querySelectorAll('button')) b.disabled = true;
+        box.appendChild(row);
+      });
+      card.appendChild(box);
+    }
+    if ((v.entry && v.entry.kind && v.entry.kind !== 'tts') || list.some((t) => t.kind !== 'tts') || (v.seg && v.seg.turns.some((t) => t.ttsParts.length > 1))) card.appendChild(h('div', { cls: 'dv-note', text: L.cueNote }));
     card.appendChild(h('div', { cls: 'dev-lock', text: L.locked }));
     mount(old);
+  }
+  // ---------------------------------------------------------------- 声を選ぶ欄（1 人なら 1 つ、掛け合いなら役ごと）
+  const engineOf = () => (/^ja\b/i.test(o.deckLang() || '') ? 'irodori' : 'kokoro');
+  // 役の声：1 ファイルの選択 > voice.json（ブラウザの TTS に入っている名前なら）> 既定。unknown：voice.json の入っていない名前
+  function voiceOf(v, role) {
+    const eng = engineOf(), def = DEFAULT_VOICES[eng][role];
+    if (own(voiceMem, role) && bundledVoice(eng, voiceMem[role])) return { name: bundledVoice(eng, voiceMem[role]), unknown: null };
+    const raw = v && v.voice && typeof v.voice[role] === 'string' ? v.voice[role] : null;
+    if (raw === null) return { name: def, unknown: null };
+    const b = bundledVoice(eng, raw);
+    return b ? { name: b, unknown: null } : { name: def, unknown: raw };
+  }
+  function drawVoices(v) {
+    const eng = engineOf(), roles = [...(v.roles || new Set(['expert']))].filter((r) => r === 'expert' || r === 'novice');
+    const grid = h('div', { cls: 'dv-voices', id: 'dev-audio-voices' });
+    const warns = [];
+    for (const role of roles) {
+      const cur = voiceOf(v, role);
+      if (cur.unknown) warns.push(L.voiceUnknown(L.role[role], cur.unknown, cur.name));
+      const sel = h('select', { 'data-role': role, 'aria-label': L.voice + ' (' + L.role[role] + ')' });
+      const opt = (n) => { const e = h('option', { value: n, text: n }); if (n === cur.name) e.selected = true; return e; };
+      if (eng === 'irodori') for (const n of IRODORI_VOICES) sel.appendChild(opt(n));
+      else {
+        for (const n of KOKORO_MAIN) sel.appendChild(opt(n));
+        const g = h('optgroup', { label: L.more });
+        for (const n of KOKORO_VOICES) if (!KOKORO_MAIN.includes(n)) g.appendChild(opt(n));
+        sel.appendChild(g);
+      }
+      sel.addEventListener('change', () => setVoice(role, sel.value));
+      const has = VOICE_SAMPLES.includes(cur.name);
+      const playing = sample && sample.dataset.name === cur.name && sample.dataset.role === role && !sample.paused;
+      const btn = h('button', { cls: 'dv-sample', 'data-role': role, text: playing ? L.sampleStop : L.sample, title: has ? L.sampleT(cur.name) : L.noSample, on: { click: () => playSample(role, sel.value) } });
+      if (!has) btn.disabled = true;
+      if (rec || busyMsg) sel.disabled = true;
+      grid.append(h('span', { cls: 'dv-vr', text: roles.length > 1 ? L.role[role] : L.one }), sel, btn);
+    }
+    card.appendChild(h('div', { cls: 'dv-h', text: L.voice }));
+    card.appendChild(grid);
+    for (const w of warns) card.appendChild(h('div', { cls: 'dv-warn dv-voice-warn', text: w }));
+  }
+  function stopSample() { if (sample) { sample.pause(); sample.removeAttribute('src'); sample = null; } }
+  function playSample(role, name) {
+    const was = sample && sample.dataset.name === name && sample.dataset.role === role && !sample.paused;
+    stopSample();
+    if (was || !VOICE_SAMPLES.includes(name)) { if (view) draw(view); return; }
+    const a = new win.Audio();
+    a.dataset.name = name; a.dataset.role = role;
+    a.src = new URL((typeof o.sampleBase === 'function' ? o.sampleBase() : o.sampleBase || 'lab/voices/samples/') + name + '.mp3', doc.baseURI).href;
+    sample = a;
+    const redraw = () => { if (sample === a && a.paused) sample = null; if (view) draw(view); };
+    a.addEventListener('ended', redraw);
+    a.addEventListener('error', () => { if (sample === a) sample = null; if (view) draw(view); say(L.sampleFail, true); });
+    a.play().then(() => { if (view) draw(view); }, () => {});
+  }
+  async function setVoice(role, name) {
+    if (!view || !bundledVoice(engineOf(), name)) return;
+    const ws = o.ws(), g = o.generation(), key = view.key;
+    const live = () => o.ws() === ws && o.generation() === g;
+    stopSample();
+    if (ws.kind === 'memory') { voiceMem[role] = name; draw(view); say(L.voiceMem(L.role[role], name)); return; }
+    try {
+      const vj = await readJson(ws, 'voice.json');
+      if (vj.bad) throw new Error('voice.json is not JSON');
+      const next = { ...(isObj(vj.value) ? vj.value : {}), [role]: name };
+      if (!live()) return;
+      if (vj.text !== null) await ws.backup('voice.json', { max: READ_LIMITS.json });
+      if (!live()) return;
+      await ws.writeText('voice.json', JSON.stringify(next, null, 2) + '\n', { live });
+      if (view && view.key === key) view.voice = next;
+      if (view) draw(view);
+      say(L.voiceSaved(L.role[role], name));
+    } catch (e) { say(L.fail + (e.message || e), true); }
   }
   function mount(old) {
     if (old && old.isConnected) old.replaceWith(card); else ui.side.appendChild(card);
@@ -276,6 +385,7 @@ export function createAudioPanel(o) {
     take.url = blobUrl(encodeWav(take.pcm, take.sr), 'audio/wav');   // 聞くための WAV（使うときに MP3 にする）
     list.push(take);
     takes.set(key, list);
+    return take;
   }
   function discard(key, id) {
     const list = (takes.get(key) || []).filter((t) => { if (t.id === id) { freeUrl(t.url); return false; } return true; });
@@ -344,9 +454,9 @@ export function createAudioPanel(o) {
           if (!(p.dur > 0)) throw Object.assign(new Error(L.empty), { code: 'audio-empty' });
           const { hash } = await currentHash(r.key);
           if (o.ws() !== r.ws || o.generation() !== r.g) return;
-          await addTake(r.key, { kind: 'recorded', pcm: p.pcm, sr: p.sr, dur: p.dur, cues: null, recipe: null, inputHash: hash, gainDb: p.gainDb, at: Date.now() });
+          const take = await addTake(r.key, { kind: 'recorded', pcm: p.pcm, sr: p.sr, dur: p.dur, cues: null, recipe: null, inputHash: hash, gainDb: p.gainDb, at: Date.now() });
           busyMsg = null;
-          if (view) draw(view);
+          await useTake(r.key, take.id, true);   // 録ったらすぐ使う（前の音声は「前に戻す」で）
         } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
         finally { r.ac.close().catch(() => {}); resolve(); }
       };
@@ -378,8 +488,9 @@ export function createAudioPanel(o) {
         if (!(p.dur > 0)) throw Object.assign(new Error(L.empty), { code: 'audio-empty' });
         const { hash } = await currentHash(key);
         if (o.ws() !== ws || o.generation() !== g) return;
-        await addTake(key, { kind: 'imported', pcm: p.pcm, sr: p.sr, dur: p.dur, cues: null, recipe: null, inputHash: hash, gainDb: p.gainDb, at: Date.now() });
-        busyMsg = null; if (view) draw(view);
+        const take = await addTake(key, { kind: 'imported', pcm: p.pcm, sr: p.sr, dur: p.dur, cues: null, recipe: null, inputHash: hash, gainDb: p.gainDb, at: Date.now() });
+        busyMsg = null;
+        await useTake(key, take.id, true);
       } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
     });
     doc.body.appendChild(i); i.click();
@@ -401,7 +512,8 @@ export function createAudioPanel(o) {
       const { seg, hash } = await currentHash(key);
       if (!seg) throw new Error(L.noSeg);
       const ja = /^ja\b/i.test(lang);
-      const voices = { expert: typeof view.voice.expert === 'string' ? view.voice.expert : 'bob', novice: typeof view.voice.novice === 'string' ? view.voice.novice : 'alice' };
+      // 声：選んだ声か voice.json の声。ブラウザの TTS に入っていない名前は、板で知らせたとおり既定の声にする（日本語も英語も同じ。#19）
+      const voices = { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name };
       const jobs = [];
       const terms = (o.yomi && o.yomi.terms) || [];
       seg.turns.forEach((t, ti) => t.ttsParts.forEach((p, pi) => jobs.push({ ti, pi, role: t.role, text: ja ? applyYomi(p, terms).text : p })));
@@ -426,20 +538,23 @@ export function createAudioPanel(o) {
       // recipe（format spec §5.2）：エンジン・モデル・声（話す役の公開の名前だけ）・シード・読み辞書の hash・後処理の版
       const rc = { engine: String(recipe.engine), model: String(recipe.model), voice: {}, seed: Number.isInteger(recipe.seed) ? recipe.seed : null, dictionary: ja && o.yomi ? o.yomi.sha256 : null, processing: PROCESSING };
       for (const [role, name] of Object.entries(voiceMap)) if ((role === 'expert' || role === 'novice') && seg.turns.some((t) => t.role === role) && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(name))) rc.voice[role] = String(name);
-      await addTake(key, { kind: 'tts', pcm: joined.pcm, sr: 44100, dur: joined.dur, cues: joined.cues, recipe: rc, inputHash: hash, gainDb: 0, at: Date.now() });
-      busyMsg = null; if (view) draw(view);
+      const take = await addTake(key, { kind: 'tts', pcm: joined.pcm, sr: 44100, dur: joined.dur, cues: joined.cues, recipe: rc, inputHash: hash, gainDb: 0, at: Date.now() });
+      busyMsg = null;
+      stopWait();
+      await useTake(key, take.id, true);
     } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
     finally { stopWait(); }
   }
 
   // ---------------------------------------------------------------- この音声を使う：MP3 にして audio/ と audio/manifest.json に書く
-  async function useTake(key, id) {
+  // auto：作った直後（書けなければ取り直しとして残す）。前の記録は history に積む（「前に戻す」）
+  async function useTake(key, id, auto = false) {
     const t = (takes.get(key) || []).find((x) => x.id === id);
     if (!t || busyMsg) return;
     const ws = o.ws(), g = o.generation();
     const live = () => o.ws() === ws && o.generation() === g;
     const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
-    if (no) { say(no, true); return; }
+    if (no) { if (view) draw(view); say((auto ? L.notUsed + ' — ' : '') + no, true); return; }
     if (!live()) return;
     setBusy(L.using);
     try {
@@ -448,38 +563,75 @@ export function createAudioPanel(o) {
       if (!live()) return;
       const bytes = init ? await encodeMp3(t.pcm, { init }) : encodeWav(t.pcm, t.sr);
       const file = takeFileName(t.kind, await sha256Hex(bytes), init ? 'mp3' : 'wav');
-      const man = await readJson(ws, 'audio/manifest.json');
-      if (man.bad) throw new Error('audio/manifest.json is not JSON');
-      const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
-      const order = parseNarration(narr || '').map((s) => `${s.slideKey}:${s.stepKey}`);
       const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: PROCESSING, startOffset: init ? MP3.startOffset : 0 });
-      const next = setManifestEntry(man.text, key, entry, order);
-      if (!live()) return;
-      if (man.text !== null) await ws.backup('audio/manifest.json', { max: READ_LIMITS.json });
-      if (!live()) return;
-      if (!(await ws.exists('audio/' + file))) await ws.writeBytes('audio/' + file, bytes, { live });
-      // 書く直前に：manifest が読んだときのままか（ほかの道具が書いていれば上書きしない）
-      if ((await ws.readText('audio/manifest.json', { max: READ_LIMITS.json })) !== man.text) throw new Error('audio/manifest.json changed while saving (reload)');
-      if (!live()) return;
-      await ws.writeText('audio/manifest.json', next, { live });
+      const prev = await writeEntry(ws, live, key, entry, { file, bytes });
+      if (prev === undefined) return;
+      const back = history.get(key) || [];
+      back.push(prev);
+      history.set(key, back.slice(-20));
       for (const x of takes.get(key) || []) freeUrl(x.url);
       takes.delete(key);
-      busyMsg = null;
       const portable = ws.kind === 'memory';
       if (o.afterWrite) await o.afterWrite();
       if (!live()) return;
+      busyMsg = null;
       if (view && view.key === key) show(key, view.i); else follow(true);
       ui.toast((portable ? L.usedPortable : L.used(file)) + (init ? '' : L.wavNote), init ? '' : 'warn');
     } catch (e) {
       busyMsg = null; if (view) draw(view);
-      say(L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e)), true);
+      say((auto ? L.notUsed + ' — ' : '') + L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e)), true);
     }
+  }
+  // 段階の記録を manifest に書く（entry が null なら外す）。add：新しい音声のファイル。戻り値：書く前の記録（なければ null）、取り消したら undefined
+  async function writeEntry(ws, live, key, entry, add = null) {
+    const man = await readJson(ws, 'audio/manifest.json');
+    if (man.bad) throw new Error('audio/manifest.json is not JSON');
+    const segs = man.value && isObj(man.value.segments) ? man.value.segments : {};
+    const prev = own(segs, key) && isObj(segs[key]) ? JSON.parse(JSON.stringify(segs[key])) : null;
+    const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
+    const order = parseNarration(narr || '').map((s) => `${s.slideKey}:${s.stepKey}`);
+    const next = setManifestEntry(man.text, key, entry, order);
+    if (!live()) return undefined;
+    if (man.text !== null) await ws.backup('audio/manifest.json', { max: READ_LIMITS.json });
+    if (!live()) return undefined;
+    if (add && !(await ws.exists('audio/' + add.file))) await ws.writeBytes('audio/' + add.file, add.bytes, { live });
+    // 書く直前に：manifest が読んだときのままか（ほかの道具が書いていれば上書きしない）
+    if ((await ws.readText('audio/manifest.json', { max: READ_LIMITS.json })) !== man.text) throw new Error('audio/manifest.json changed while saving (reload)');
+    if (!live()) return undefined;
+    await ws.writeText('audio/manifest.json', next, { live });
+    return prev;
+  }
+  // 前に戻す：積んだ前の記録を manifest に戻す（音声のファイルは消していないので、そのファイルを指す記録に戻すだけ）
+  async function revert(key) {
+    const back = history.get(key) || [];
+    if (!back.length || busyMsg || rec) return;
+    const ws = o.ws(), g = o.generation();
+    const live = () => o.ws() === ws && o.generation() === g;
+    const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
+    if (no) { say(no, true); return; }
+    const prev = back[back.length - 1];
+    if (prev && !(safeFile(prev.file) && (await ws.exists('audio/' + prev.file)))) { say(L.revertGone(String(prev.file)), true); return; }
+    if (!live()) return;
+    setBusy(L.using);
+    try {
+      const was = await writeEntry(ws, live, key, prev);
+      if (was === undefined) return;
+      back.pop();
+      if (back.length) history.set(key, back); else history.delete(key);
+      if (o.afterWrite) await o.afterWrite();
+      if (!live()) return;
+      busyMsg = null;
+      if (view && view.key === key) show(key, view.i); else follow(true);
+      ui.toast(prev ? L.reverted : L.revertedNone);
+    } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
   }
 
   function reset() {
     stopRecording(true);
+    stopSample();
     for (const list of takes.values()) for (const t of list) freeUrl(t.url);
-    takes.clear(); busyMsg = null;
+    takes.clear(); history.clear(); busyMsg = null;
+    for (const k of Object.keys(voiceMem)) delete voiceMem[k];
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);
     flushUrls();
@@ -491,7 +643,9 @@ export function createAudioPanel(o) {
     onPos: () => { if (open) follow(false); },
     reload: () => { if (!open) return; if (view && !rec && !busyMsg) show(view.key, view.i); else follow(true); },
     unsaved: () => [...takes.values()].reduce((n, l) => n + l.length, 0),
-    state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
+    state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
+      history: Object.fromEntries([...history].map(([k, l]) => [k, l.map((e) => (e ? e.file : null))])), voices: view && view.voice !== undefined ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : null,
+      sample: sample ? sample.dataset.name : null,
       takes: Object.fromEntries([...takes].map(([k, l]) => [k, l.map((t) => ({ id: t.id, kind: t.kind, dur: t.dur, cues: t.cues, recipe: t.recipe, inputHash: t.inputHash, gainDb: t.gainDb }))])) }),
     // 試験：録音を止める（MediaRecorder の終わりを待つ）
     stop: () => stopRecording(),

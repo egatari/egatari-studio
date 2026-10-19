@@ -145,6 +145,10 @@ main{flex:1;min-height:0;display:flex}
 @media (max-width:1439px){ #top.has-deck .brand [data-t="brand"]{display:none} }
 #top.has-deck .deckname{flex:1 1 auto;min-width:60px;max-width:none}
 #top.has-deck .brand{flex:none;white-space:nowrap}
+/* 今どこに保存されているか（下の帯の左）：作業フォルダ（その場で書く）・1 ファイル（保存済み / 保存していない変更 / まだ保存していない） */
+.saveloc{flex:0 1 auto;min-width:0;max-width:45vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:16px;padding:0 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--bg);cursor:default}
+.saveloc.ok::before{content:"✓ ";color:#15803d}
+.saveloc.dirty,.saveloc.never{background:var(--warn-bg);color:var(--warn-fg);border-color:transparent;font-weight:600}
 @media (min-width:1280px){ #top.has-deck, #top.has-deck #tools{flex-wrap:nowrap} }
 /* チャットの AI との行き来（app/llm.js）：貼り付けの窓・直しの依頼 */
 #dlg.paste{width:min(760px,94vw)}

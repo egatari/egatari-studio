@@ -730,6 +730,9 @@ export function build(env0, srcPath, opts = {}) {
       // 符号化の遅れ（MP3 の先頭。format spec §5.2 startOffset）：実行系はこの時刻から鳴らし、そこを 0 秒とみなす
       if (offsetOk(v.startOffset)) audio[k].startOffset = v.startOffset;
     }
+    // 合成した声（kind tts。kind のない tts/synth.py の記録は engine があれば。dry-run の無音は除く）：再生器が「AI の音声」と小さく示す。
+    // 1 ファイル（opts.audioRef）には書かない：再生器は索引の音声の記録（format spec §5.2 の kind）から読む
+    if (!opts.audioRef) for (const [k, v] of Object.entries(man.segments || man)) if (audio[k] && v && (v.kind === 'tts' || (!v.kind && typeof v.engine === 'string' && v.engine !== 'dry-run'))) audio[k].kind = 'tts';
   }
   if (env.audioFailed && env.audioFailed()) warn.push('音声を AAC に圧縮できなかった（ffmpeg がない？）ので WAV のまま埋め込んだ。ファイルが大きくなる');
   const j = jsonScript;

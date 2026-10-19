@@ -421,7 +421,7 @@ export function createEditorUI(o) {
   function toggleComments(on) {
     on = on === undefined ? !commentsOpen : !!on;
     if (on && !enabled()) return;
-    commentsOpen = on;
+    commentsOpen = on; mark('comments', on);
     if (cpanel) { cpanel.remove(); cpanel = null; }
     if (commentsOpen) {
       cpanel = h('div', { id: 'dev-comments', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cList }, [
@@ -478,7 +478,7 @@ export function createEditorUI(o) {
     if (!on && narr && narr.dirty && !win.confirm(L.discard)) return false;
     if (on && !enabled()) return false;
     if (on && o.beforeEdit && !(await o.beforeEdit('narr'))) return false;
-    narrOpen = on;
+    narrOpen = on; mark('narr', on);
     if (drawer) { drawer.remove(); drawer = null; narr = null; narrFocus = false; }
     if (narrOpen) {
       drawer = h('aside', { id: 'dev-narr', cls: 'edit-ui', 'aria-label': L.nTitle });
@@ -609,20 +609,41 @@ export function createEditorUI(o) {
     });
   }
 
+  // ---------------------------------------------------------------- Esc：開いている窓を閉じる（#48）
+  // 上のもの（後に開いたもの）から 1 つずつ。all（Shift+Esc）なら全部。書いている途中の原稿の欄・コメントの欄がいちばん上。
+  // o.panels：この板の外の窓（音声・横の板など）[{name, isOpen(), close()}]。開いた順は mark(name, on) で覚える（知らなければいちばん下）
+  const opened = new Map();
+  let openSeq = 0;
+  function mark(name, on) { if (on) opened.set(name, ++openSeq); else opened.delete(name); }
+  function escape(all, fromDeck) {
+    const list = [
+      { name: 'editor', isOpen: () => !!editor, close: () => closeEditor(!fromDeck), top: true },
+      { name: 'comment', isOpen: () => !!cbox, close: () => closeComment(!fromDeck), top: true },
+      { name: 'narr', isOpen: () => narrOpen, close: () => toggleNarr(false) },
+      { name: 'comments', isOpen: () => commentsOpen, close: () => toggleComments(false) },
+      ...(typeof o.panels === 'function' ? o.panels() : o.panels || []),
+    ].filter((p) => p.isOpen());
+    const rank = (p) => (p.top ? Infinity : opened.get(p.name) || 0);
+    list.sort((a, b) => rank(b) - rank(a));
+    for (const p of all ? list : list.slice(0, 1)) { p.close(); if (!p.top) mark(p.name, false); }
+    return list.length > 0;
+  }
   // ---------------------------------------------------------------- 鍵盤（このページで押したものと、デッキから知らされたもの）
-  function key(k, fromDeck) {
+  function key(k, fromDeck, shift = false) {
     if (!enabled()) return;
     if (k === 'e') toggleEdit();
     else if (k === 'n') { if (fromDeck && narr && narr.dirty) toast(L.busy, 'warn'); else toggleNarr(); }
     else if (k === 'c') toggleComments();
-    else if (k === 'Escape') { closeEditor(!fromDeck); closeComment(!fromDeck); }
+    else if (k === 'Escape') escape(shift, fromDeck);
   }
   doc.addEventListener('keydown', (e) => {
     const t = e.target;
     if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
     if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
     if (doc.querySelector('dialog[open]')) return;
-    if (['e', 'n', 'c', 'Escape'].includes(e.key)) key(e.key, false);
+    if (e.key === 'Escape') { key('Escape', false, e.shiftKey); return; }
+    if (e.shiftKey) return;
+    if (['e', 'n', 'c'].includes(e.key)) key(e.key, false);
   });
 
   // ---------------------------------------------------------------- プレビューからの知らせ
@@ -682,7 +703,7 @@ export function createEditorUI(o) {
     if (ui.comments) toggleComments(true);
   }
   return {
-    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast,
+    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast, mark, escape,
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
       comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),

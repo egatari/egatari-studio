@@ -4,7 +4,7 @@
 // 返すもの：{kind: 'ready'}（読み込んだ）・{kind: 'progress', id, f, label}・{kind: 'result', id, pcm, sr, recipe}・{kind: 'error', id, message, code}
 // 文（読み辞書を通した後）と声の名前のほかは受け取らず、音（48 kHz か 24 kHz の Float32）のほかは返さない。原稿のフォルダには触らない。
 // ?stub=1：モデルを取りに行かず、文の長さに比例した長さの音を返す（試験で窓とのやり取りを確かめる）
-import { webgpuAdapter, loadIrodori, loadKokoro, presetVoice, irodoriBytes, irodoriModel, kokoroModel, kokoroVoice, KOKORO_BYTES, IRODORI_DEFAULTS, SR, IRODORI_VOICES } from './tts-engine.mjs';
+import { webgpuAdapter, loadIrodori, loadKokoro, presetVoice, irodoriBytes, irodoriModel, kokoroModel, kokoroVoice, KOKORO_BYTES, IRODORI_DEFAULTS, SR, IRODORI_VOICES, KOKORO_VOICES } from './tts-engine.mjs';
 
 const TYPE = 'studio-tts';
 const EN = new URLSearchParams(location.search).get('lang') === 'en';
@@ -64,13 +64,15 @@ async function synth(m) {
     return { pcm, sr, recipe: { engine: 'stub', model: 'stub', voice: { [role]: String(m.voice || 'bob') }, seed: null } };
   }
   if (m.engine === 'kokoro') {
-    const k = await getKokoro(m.id), voice = kokoroVoice(m.voice, role);
+    const voice = kokoroVoice(m.voice, role);
+    if (!voice) throw Object.assign(new Error(EN ? `voice "${m.voice}" is not bundled with the browser TTS (Kokoro voices such as ${KOKORO_VOICES.slice(0, 3).join(', ')})` : `声「${m.voice}」はブラウザの TTS に入っていません（Kokoro の声。${KOKORO_VOICES.slice(0, 3).join('・')} など）`), { code: 'no-voice' });
+    const k = await getKokoro(m.id);
     status((EN ? 'Synthesizing: ' : '合成中：') + text.slice(0, 40));
     const a = await k.generate(text, { voice });
     return { pcm: Float32Array.from(a.audio), sr: a.sampling_rate, recipe: { engine: 'kokoro-web', model: kokoroModel(), voice: { [role]: voice }, seed: null } };
   }
   const voice = IRODORI_VOICES.includes(m.voice) ? m.voice : null;
-  if (!voice) throw Object.assign(new Error(EN ? `voice "${m.voice}" is not bundled with the browser TTS (${IRODORI_VOICES.join(', ')}); use tts/synth.py for other voices` : `声「${m.voice}」はブラウザの TTS に入っていません（${IRODORI_VOICES.join('・')}）。ほかの声は tts/synth.py で`), { code: 'no-voice' });
+  if (!voice) throw Object.assign(new Error(EN ? `voice "${m.voice}" is not bundled with the browser TTS (${IRODORI_VOICES.join(', ')})` : `声「${m.voice}」はブラウザの TTS に入っていません（${IRODORI_VOICES.join('・')}）`), { code: 'no-voice' });
   const tts = await getIrodori(m.id);
   const ref = await presetVoice(voice);
   status((EN ? 'Synthesizing: ' : '合成中：') + text.slice(0, 40));

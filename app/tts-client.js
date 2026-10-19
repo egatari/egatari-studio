@@ -1,6 +1,6 @@
 // ブラウザの TTS（音声の板 app/audio-panel.js の「TTS で作り直す」）。
 //   const tts = createTtsClient({lang, test, confirm})
-//   tts.info(deckLang) → {ok, reason, label}    使えるか・何を使うか（モデルの取得の大きさ）
+//   tts.info(deckLang) → {ok, reason, hint?, label}    使えるか・何を使うか（モデルの取得の大きさ）。hint：使えないときに板に出す案内（録音を先に）
 //   tts.synth({lang, text, role, voices, onProgress(f, label)}) → {pcm: Float32Array, sr, recipe: {engine, model, voice, seed}}
 //
 // 合成は別の窓（lab/tts-helper.html。編集アプリと同じサイトのページ）で動かす：編集アプリのページは外へ繋がらない決まり（CSP の
@@ -27,8 +27,9 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
       : `Irodori-TTS 500M-v3（日本語・読み辞書つき・シード 0）。初回に約 ${GB(IRODORI_BYTES.fp16)} GB を取得（fp16 の使えない GPU は ${GB(IRODORI_BYTES.fp32)} GB）、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`)
     : (EN ? `Kokoro-82M (English). First use downloads about ${(KOKORO_BYTES / 1e6).toFixed(0)} MB, later from the browser cache. Runs on this computer's GPU in a separate window`
       : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`);
-  const noGpu = EN ? 'WebGPU is not available (use a recent Chrome or Edge on a computer). Without it, record the narration here, or make the audio with tts/synth.py on the command line'
-    : 'WebGPU が使えません（パソコンの新しい Chrome か Edge で開いてください）。使えないときは、ここで録音するか、コマンドの tts/synth.py で作ってください';
+  // WebGPU がないとき：まず録音を勧める（コマンドの案内は出さない。端末で使う人向けの言葉だけ）
+  const noGpu = EN ? 'Record the narration with “● Record” above: that works in any browser. Browser TTS needs WebGPU, which this browser does not have (use a recent Chrome or Edge on a computer)'
+    : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。ブラウザの TTS には WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
   const noFile = EN ? 'not in the single-file editor (open the hosted editor, or serve dist/)' : '1 ファイル版のエディタでは使えません（配信版か、dist/ を配って開いてください）';
 
   window.addEventListener('message', (e) => {
@@ -65,7 +66,7 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
       const t = test();
       if (t) return t.info(deckLang);
       if (location.protocol === 'file:') return { ok: false, reason: noFile, label: '' };
-      if (!navigator.gpu) return { ok: false, reason: noGpu, label: label(engineOf(deckLang)) };
+      if (!navigator.gpu) return { ok: false, reason: EN ? 'no WebGPU in this browser' : 'このブラウザには WebGPU がありません', hint: noGpu, label: label(engineOf(deckLang)) };
       return { ok: true, reason: '', label: label(engineOf(deckLang)) };
     },
     async synth({ lang: deckLang, text, role, voices, onProgress }) {

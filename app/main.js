@@ -76,7 +76,7 @@ const time = () => new Date().toLocaleTimeString(EN ? 'en-US' : 'ja-JP', { hour:
 
 // ---------------------------------------------------------------- はじめの画面
 async function showWelcome() {
-  $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true;
+  $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true; $('saveloc').hidden = true;
   $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
   $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
@@ -199,6 +199,23 @@ function updateName() {
   $('deckname').textContent = (dirty ? '● ' : '') + (S.label || '');
   $('deckname').title = (S.label || '') + (dirty ? ' — ' + T.unsaved : '');
   if (S.portable) $('b-save').classList.toggle('pri', !!dirty);
+  updateSaveLoc();
+}
+// 今どこに保存されているか（#46）：作業フォルダ（その場で書く。保存のボタンはなく、配るときは書き出す）・1 ファイル（上書き / ダウンロード）・
+// 保存していない変更・まだファイルにしていない（メモリの上だけ）
+function updateSaveLoc() {
+  const e = $('saveloc');
+  if (!S.ws || $('deck').hidden) { e.hidden = true; return; }
+  const P = S.portable;
+  let text, tip, cls;
+  // 下の帯の左に出す（道具の列は 1280 px で 1 行に収める）。説明は title に
+  const where = P ? P.name : (S.ws.name || '');
+  if (!P) { text = T.locFolder(where); tip = T.locFolderTip; cls = 'ok'; }
+  else if ((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved) { text = T.locNever; tip = T.locNeverTip; cls = 'never'; }
+  else if (S.ws.dirty) { text = T.locDirty; tip = T.locDirtyTip; cls = 'dirty'; }
+  else if (P.handle) { text = T.locFile(where); tip = T.locFileTip; cls = 'ok'; }
+  else { text = T.locFileDl(where); tip = T.locFileDlTip; cls = ''; }
+  e.textContent = text; e.title = text + ' — ' + tip; e.className = 'saveloc ' + cls; e.hidden = false;
 }
 // 持ち運べる 1 ファイルの知らせ（その文書のコード・読むだけ）。プレビューの外（エディタの画面）に出す
 function showNotice() {
@@ -442,6 +459,9 @@ const ui = createEditorUI({
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
   extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() },
+  // Esc で閉じる窓（#48）：音声の板と横の板（簡易チェック・警告・添付・使い方）。開いた順は ui.mark で
+  panels: () => [{ name: 'audio', isOpen: () => audio.isOpen() && !audio.isBusy(), close: () => audio.toggle(false) },
+    { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
 });
 // 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない
@@ -534,6 +554,7 @@ function loadPresenter() {
 // ---------------------------------------------------------------- 横の板（検査・警告・使い方）
 function openPanel(title, body) {
   $('panel').hidden = false; $('panel-title').textContent = title;
+  ui.mark('panel', true);
   const b = $('panel-body'); b.innerHTML = ''; b.append(...[].concat(body));
 }
 function closePanel() { $('panel').hidden = true; }
@@ -837,6 +858,7 @@ async function openPortableNow(input) {
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
   const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
+    neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の出力を貼り付けて作った：まだどのファイルにもない
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
@@ -1100,7 +1122,7 @@ $('b-saveas').onclick = () => savePortable('copy');
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-comments').onclick = () => ui.toggleComments();
-$('b-audio').onclick = () => audio.toggle();
+$('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-attach').onclick = async () => { if (!$('panel').hidden && $('attach-panel')) { closePanel(); return; } if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; } await attach.open(); };
 $('b-check').onclick = quickCheck;
 $('b-export').onclick = exportHtml;

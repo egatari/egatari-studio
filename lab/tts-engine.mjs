@@ -4,6 +4,7 @@
 // ライブラリは jsDelivr、重みとトークナイザは Hugging Face から、どれも版を固定して実行時に取る（このリポジトリには入れない）。
 // Irodori の重みは Cache Storage に置き（2 回目は取りに行かない）、Kokoro は transformers.js のキャッシュに置く
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
+import { bundledVoice, DEFAULT_VOICES, IRODORI_VOICES, KOKORO_VOICES } from './tts-voices.mjs';
 
 export const ORT_VERSION = '1.23.0';            // 上流（web/app.mjs・space/app.mjs）と同じ版
 export const TRANSFORMERS_VERSION = '3.7.6';    // 同上（トークナイザだけに使う）
@@ -48,11 +49,11 @@ export const KOKORO_REPO = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const KOKORO_REV = '1939ad2a8e416c0acfeecc08a694d14ef25f2231';
 export const KOKORO_BYTES = 325532232 + 3497 + 113 + 44 + 2 * 522240;   // model.onnx・tokenizer・config と声 2 つ（kokoro-js は声を main から取る）
 export const kokoroModel = () => `Kokoro-82M-v1.0 onnx fp32 (${KOKORO_REPO}@${KOKORO_REV.slice(0, 12)})`;
-// 声の名前 → Kokoro の声：Kokoro の声の名前（af_heart など）ならそのまま、既定の bob・alice は近い声に
-const KOKORO_VOICE = /^[abefhijpz][fm]_[a-z]+$/;
-export const kokoroVoice = (name, role) => (KOKORO_VOICE.test(String(name || '')) ? name : name === 'alice' || (!name && role === 'novice') ? 'af_heart' : 'am_michael');
-// Irodori の参照音声（voices/ に入っているもの）
-export const IRODORI_VOICES = ['bob', 'alice'];
+// 声の名前 → Kokoro の声：Kokoro の声の名前（af_heart など）ならそのまま、既定の bob・alice は近い声に、名前がなければ役の既定の声。
+// 入っていない名前は null（日本語と同じく断る。黙って別の声にしない。編集アプリは合成の前に知らせて既定の声に替える）
+export const kokoroVoice = (name, role) => (name ? bundledVoice('kokoro', name) : DEFAULT_VOICES.kokoro[role === 'novice' ? 'novice' : 'expert']);
+// Irodori の参照音声（voices/ に入っているもの）と Kokoro の声の一覧（lab/tts-voices.mjs）
+export { IRODORI_VOICES, KOKORO_VOICES };
 
 // ---------------------------------------------------------------- WebGPU
 export async function webgpuAdapter() {
