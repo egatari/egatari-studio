@@ -1,4 +1,5 @@
 // tools/i18n-pairs.mjs の試験（一時フォルダの中で）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-i18n-pairs.mjs
 // 揃っている組・片方だけ直した組・印の行がない組・CRLF の違い・--stamp・--strict・GitHub の注記の形
 import fs from 'node:fs';

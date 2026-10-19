@@ -1,4 +1,5 @@
 // deck.js のタイムラインの単体の検査：音声の cue で伸縮した部品の終わり（実時間）、数値の入力の検査
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-deck-timing.mjs
 import fs from 'node:fs';
 import os from 'node:os';

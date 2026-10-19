@@ -1,9 +1,12 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
-//   node tools/test-all.mjs [--only 名前,名前] [--keep]
+//   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
+//   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査（test-narration・test-ids・test-build-args・test-deck-timing・test-workspace（編集アプリの作業場所）・test-bounded-read（上限つきの読み取り）・test-raw-reads（その口を通さない生の読み取りの見張り）・test-i18n-pairs（英語と日本語の文書の組）・test-theme-dirs（利用者のテーマのフォルダ）・test-codetree（m-codetree の木と MH の復号）、あれば）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-links（スライドへのリンク）・test-dev-server・test-comment-shots（コメントの画像）・test-security（守り）・test-a11y・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
+// tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
+// どれかでなければならない（どれでもなければ、走らせずに終了コード 1。新しい試験を忘れないように）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,8 +23,11 @@ const rel = (...p) => path.join(ROOT, ...p);
 const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
 
-// 単体の検査（ブラウザのいらないもの）。あるものだけ走らせる
-const unit = ['test-narration', 'test-ids', 'test-build-args', 'test-deck-timing', 'test-workspace', 'test-bounded-read', 'test-raw-reads', 'test-i18n-pairs', 'test-theme-dirs', 'test-codetree'].filter((n) => fs.existsSync(rel('tools', n + '.mjs'))).map((n) => [n, ['tools/' + n + '.mjs']]);
+// 単体の検査（ブラウザのいらないもの）：先頭に「// test-all: unit」の行がある tools/test-*.mjs を見つける
+const MARK = /^\/\/ test-all: (unit|part of [\w-]+)/m;
+const markOf = (f) => { const m = fs.readFileSync(rel('tools', f), 'utf8').split('\n').slice(0, 40).join('\n').match(MARK); return m ? m[1] : null; };
+const testFiles = fs.readdirSync(rel('tools')).filter((f) => /^test-.+\.mjs$/.test(f) && f !== 'test-all.mjs').sort();
+const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace(/\.mjs$/, ''), ['tools/' + f]]);
 const steps = [
   ...unit,
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
@@ -85,6 +91,20 @@ steps.push(
   ['test-audio-core', ['tools/test-audio-core.mjs', path.join(tmp, 'audio-core')]],
   ['test-audio', ['tools/test-audio.mjs', path.join(tmp, 'audio')]],
 );
+
+// 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する
+const listed = new Set(steps.flatMap(([, argv]) => argv).filter((a) => /^tools\/test-.+\.mjs$/.test(a)).map((a) => a.slice('tools/'.length)));
+const orphans = testFiles.filter((f) => !markOf(f) && !listed.has(f));
+if (orphans.length) {
+  console.error(`test-all: these tests are not run: ${orphans.join(', ')}\n  add "// test-all: unit" near the top (no arguments, no browser), a step in tools/test-all.mjs, or "// test-all: part of <step>" when another test imports it`);
+  fs.rmSync(tmp, { recursive: true, force: true });
+  process.exit(1);
+}
+if (args.includes('--list')) {
+  for (const [name, argv] of steps) console.log(`${name}\tnode ${argv.map((a) => a.split(tmp).join('<tmp>')).join(' ')}`);
+  fs.rmSync(tmp, { recursive: true, force: true });
+  process.exit(0);
+}
 
 function run(name, argv) {
   return new Promise((resolve) => {

@@ -1,4 +1,5 @@
 // 利用者のテーマのフォルダ（npm test の単体の検査）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-theme-dirs.mjs
 // 確かめること：探す順（原稿のフォルダ → その themes/ → 利用者のテーマのフォルダ（EGATARI_THEMES の並びの順 → ~/.egatari/themes）→ 同梱の themes/）／
 // EGATARI_THEMES（OS の区切り・見つからないフォルダの知らせ）と ~/.egatari/themes（シンボリックリンクのフォルダでもよい）／見つからないテーマは

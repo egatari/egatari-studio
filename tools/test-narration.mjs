@@ -1,4 +1,5 @@
 // 口述原稿の parser の単体の検査（kit/narration.mjs）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-narration.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

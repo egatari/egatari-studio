@@ -1,4 +1,5 @@
 // npm run ids（tools/ids.mjs）の検査：id を付ける・鍵の付け替え・2 回目は何も変えない・CRLF・衝突なら断る
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-ids.mjs [workdir]
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

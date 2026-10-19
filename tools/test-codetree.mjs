@@ -1,4 +1,5 @@
 // m-codetree の試験（ブラウザなし）：符号表から木を作ること、MH の復号（白から始めて交互、メイクアップ符号の後は同じ色、EOL の後は白）、誤り
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-codetree.mjs
 // 部品の index.js を Node の vm で読み（DECK.MotionElement がないので部品は定義せず、DECK.codetree だけを出す）。
 // 表は見本（components/codetree/demo.html）の ITU-T T.4 の MH 符号をそのまま使う。描画・決定性は tools/test-components.mjs

@@ -1,4 +1,5 @@
 // 生の読み取りの見張り（npm test の単体の検査）：リポジトリのコードから、上限つきの読み取りの口（kit/bounded-read.mjs・app/bounded-read.js）を
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 // 通さない読み取り（readFileSync・fs.readFile・readSync・createReadStream・File/Response の text()・arrayBuffer()・bytes()・blob()・json()・
 // FileReader・getReader() など）を探し、下の許し（ALLOW）にないものが 1 つでもあれば失敗する
 //   node tools/test-raw-reads.mjs

@@ -1,4 +1,5 @@
 // 編集アプリの「AI の出力を貼り付ける」と「AI への直しの依頼を写す」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
+// test-all: part of test-app（tools/test-app.mjs が読み込む。単独では走らせない）
 //   testLlm({browser, BASE, ok, watch, shotDir})
 // 1. 貼り付けの窓：開く・指示を写す（系列を選ぶ：新しいデッキなら academic、開いているデッキならその部品・テーマから推したもの）・
 //    誤り（囲みなし・閉じていない囲み）を窓の中に出す

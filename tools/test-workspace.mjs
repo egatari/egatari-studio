@@ -1,4 +1,5 @@
 // 編集アプリの作業場所の単体の試験（ブラウザなし）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-workspace.mjs
 // 1. メモリの上の作業場所（app/memfs.js）：一覧はフォルダの walk と同じものを外す・読み書き・控え（30 個）・更新時刻・dirty・書き込みの守り
 // 2. 権利の表示（app/rights.js）：改変を認めないライセンス（CC の -ND・All rights reserved）とライセンスのない著作権の表示

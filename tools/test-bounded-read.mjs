@@ -1,4 +1,5 @@
 // 上限つきの読み取り（kit/bounded-read.mjs・app/bounded-read.js・kit/core/bounded-read-core.mjs）と、それを通す読み取りの単体の試験（ブラウザなし）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-bounded-read.mjs
 // Codex の 6 回目の指摘（2026-10-18）の 2〜6 を確かめる（1 は test-workspace）。大きなファイルは中身が 0 の疎なファイル（ftruncate。ディスクを
 // 使わない）にし、読まずに断ること（子の process の最大 RSS が小さいまま）を見る

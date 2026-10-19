@@ -1,4 +1,5 @@
 // kit/build.mjs の原稿の引数（npm test の単体の検査）
+// test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-build-args.mjs
 // 確かめること：デッキのフォルダを渡すと <フォルダ>/deck.html を組む（ふつうの build と --portable）／deck.html のないフォルダは
 // 「deck.html かそれを含むフォルダが要る」と言って終了コード 1 で、何も書かない（紛らわしい build-not-a-file の知らせを出さない）／
