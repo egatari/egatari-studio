@@ -180,9 +180,12 @@ try {
   ok(meter.inert, 'record: the preview is inert while recording');
   await shot(page, 'audio-recording.png');
   // 録音している間は、デッキからの位置の知らせで段階を替えない
+  const recPos = await f.evaluate(() => DECK.state());
   await f.evaluate(() => DECK.go(2, 3, false));
   await page.waitForTimeout(300);
   ok((await audioState()).key === key, 'record: stays on the recorded step when the deck moves');
+  // 戻しておく（使った音声で組み直すとプレビューが読み込み直し、その位置を知らせる。録音が終われば板はその段階に移る）
+  await f.evaluate((b) => DECK.go(b.slide - 1, b.step, false), recPos);
   await page.waitForTimeout(1700);
   await page.click('#dev-audio-rec');
   await waitUsed('recorded', 1);
