@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-19
+
 ### Added
 
 - **Attachments** (format spec §3.8; draft, experimental; the allowed contents may be narrowed in a later version (spec §3.8 draft), per role): files for readers rather than for rendering (original source, typeset PDF, code, data, supplements). In a working folder they live in `attachments/`, with roles (`source`, `pdf`, `code`, `data`, `supplement`) and titles (required) in `egatari.json` under `attachments` (the same shape as the file's `index.attachments`; unknown members are kept). `--portable` packs the regular files under `attachments/` (links not followed, hidden files and backups left out) within the build's read budget and the attachment limits, 10 MiB each, 20 MiB together and 100 files (over a limit: left out with a warning); audio and video files (by extension or content) are left out with a warning; only files with a valid role and a title are listed in `index.attachments`. Attachments are not code (an `.html` attachment does not make the file Extended) and add nothing to `requires`. **Player:** a single file lists its attachments under **?** and with a paperclip button in the control bar, download only: the index hash, each attachment's size and SHA-256 are checked, and the bytes are saved as `application/octet-stream` through a `download` link, so HTML, SVG or PDF attachments are never opened or run (a corrupt one is not saved). Play-only copies and the normal build carry none. **Editor:** **Attach** in the toolbar opens a side panel for working folders and single files: add files (role guessed from the extension; a title is asked for, prefilled from the file name; audio and video refused), role, title (required), rename and remove (a folder keeps a backup in `.cache/edits/`); names outside `attachments/`, with `..` or colliding, and files over the limits are refused before they are read. In a single file, saving is tier A: only the index's attachment entries, their chunks and the source hash change (a change to an attachment that the slide source mentions needs a rebuild). **Checker:** warns about missing or unknown roles, missing titles, audio and video files, listed files that do not exist, names that are not allowed and files over the limits. Code: `kit/core/attachments.mjs`, identifiers in `kit/core/format.mjs` (`ATTACH_DIR`, `ATTACH_KEY`, `ATTACH_ROLES`), `app/attachments-panel.js`, workspace `remove()`. Tests: `tools/test-attachments.mjs` (in `npm test`: CLI build, unpack roundtrip, play-only, limits and names, checker, tier A with the region-aware diff, player download without navigation or execution, editor panel for a single file and a folder). Docs: reference, editor (ja/en), SECURITY
@@ -331,7 +333,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/egatari/egatari-studio/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/egatari/egatari-studio/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/egatari/egatari-studio/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/egatari/egatari-studio/compare/v0.2.4...v0.3.0
