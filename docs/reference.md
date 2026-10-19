@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=c770433bce263e04 -->
+<!-- i18n: pair=reference.ja.md sha256=000d6a9e15a6c90a -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -340,14 +340,17 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | mixed punctuation 、。 vs ，． across the deck (Japanese) | warn |
 | a step without narration | warn |
 | stale audio: a step's audio was made from other narration (`inputHash` differs or is `null`; without `inputHash`, the TTS cache record `audio/seg_<digest>.json` is compared) — `audio: stale` | warn |
-| narration that reads a formula | warn |
-| turn > 200 characters / > 60 words | info |
+| narration that reads a formula (each turn by the rules of its language, see below; a Japanese sentence that only names things in Latin letters, such as “Markdown と HTML”, is not a formula) | warn |
+| turn > 200 characters (Japanese) / > 60 words (other languages) | info |
+| the narration language differs from the slide language (`narrLang`) | info |
 | contrast of `--fg --term --emph --title --accent2` vs `--bg` < 4.5:1; `--muted` < 3:1 | error; warn |
 | component drawing depends on call order | error |
 | mark target not found; list of marks per step | warn; info |
 | morph: source slide missing, no shared `data-id`, duplicate ids; pairs | warn; info |
 | `<img>` without `alt`; SVG figure without `aria-label`/`<title>`; component without a name | warn; warn; info |
 | timeline total and per slide | info |
+
+The slides and the narration may be in different languages (for example Japanese slides with English narration for subtitles). The narration language is `"lang"` in `voice.json` (as for the TTS), otherwise the language of the text when nearly all turns are in another script than the deck (no Japanese characters in a Japanese deck, or Japanese in most turns of another deck), otherwise the deck's `<html lang>`. The narration checks then take each turn by its own language: a turn with Japanese characters by the Japanese rules, an English sentence by the English rules (only `\` `^` `_` and dense operators count as a formula).
 
 ## Build
 

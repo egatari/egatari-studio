@@ -81,3 +81,64 @@ export function orphanDetail(o, s, text) {
   for (let i = o.line; i <= (o.end || o.line) && i <= src.length; i++) if (src[i - 1].trim()) lines.push({ n: i, text: src[i - 1] });
   return { keys, n, concl, static: !!s.static, target, lines };
 }
+
+// ---------------------------------------------------------------- 口述原稿の言語と、式の読み上げらしさ（R-formula）
+// スライドの言語（<html lang>）と口述原稿の言語は別のことがある（日本語のスライドに英語の口述原稿・字幕だけ別の言語）。
+//   narrationLang({voiceLang, deckLang, texts}) → {lang: 'ja' | <その言語>, source: 'voice.json' | 'text' | 'deck'}
+//     voice.json の "lang"（TTS の tts/synth.py と同じ。あればそれ）＞ 発言の文字（日本語の字がほとんどない・ほとんどの発言にある）＞ デッキの <html lang>
+//   textLang(text, narrLang) → 'ja' | 'en'：1 つの発言にどちらの規則を当てるか。日本語の字（かな・漢字）があれば日本語、
+//     なければ英語の文らしければ（3 字以上の英単語が 3 つ以上）英語。日本語の口述原稿の中の「sin x cos y」は日本語の規則のまま
+//   formulaLike(text, lang) → bool：式を読み上げているらしい（kit/check.mjs の narrFormula）
+const JA_CHAR = /[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]/;
+// 式の中の関数の名前（3 字以上でも記号として数える）
+const MATH_WORDS = new Set(['sin', 'cos', 'tan', 'sec', 'csc', 'cot', 'sinh', 'cosh', 'tanh', 'log', 'exp', 'lim', 'max', 'min', 'arg', 'argmax', 'argmin', 'det', 'mod', 'sup', 'inf', 'gcd', 'lcm', 'var', 'cov', 'erf']);
+const isJaLang = (l) => !l || /^ja\b/i.test(l);
+export const hasJapanese = (s) => JA_CHAR.test(String(s));
+function englishLike(s) {
+  const words = String(s).match(/[A-Za-z][A-Za-z']*/g) || [];
+  return words.filter((w) => w.length >= 3 && !MATH_WORDS.has(w.toLowerCase())).length >= 3;
+}
+export function narrationLang({ voiceLang, deckLang, texts = [] } = {}) {
+  if (typeof voiceLang === 'string' && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(voiceLang.trim())) return { lang: voiceLang.trim().toLowerCase(), source: 'voice.json' };
+  const ts = texts.map(String).filter((t) => t.trim());
+  if (ts.length >= 3) {
+    const ja = ts.filter(hasJapanese).length, en = ts.filter((t) => !hasJapanese(t) && englishLike(t)).length;
+    if (isJaLang(deckLang) && ja <= ts.length * 0.1 && en >= ts.length * 0.5) return { lang: 'en', source: 'text' };
+    if (!isJaLang(deckLang) && ja >= ts.length * 0.5) return { lang: 'ja', source: 'text' };
+  }
+  return { lang: isJaLang(deckLang) ? 'ja' : String(deckLang).toLowerCase(), source: 'deck' };
+}
+export function textLang(text, narrLang) {
+  if (hasJapanese(text)) return 'ja';
+  if (!isJaLang(narrLang)) return 'en';
+  return englishLike(text) ? 'en' : 'ja';
+}
+// 15 字の区間に ops の字が n 個以上
+function denseOps(s, ops, n) {
+  for (let i = 0; i < s.length; i++) {
+    let c = 0;
+    for (let j = i; j < Math.min(s.length, i + 15); j++) if (ops.includes(s[j])) c++;
+    if (c >= n) return true;
+  }
+  return false;
+}
+// 日本語の発言：バックスラッシュ・^・_、15 字に = + − × * が 4 つ以上、記号らしい英字が密（英字の名前・語は数えない）
+//   名前・語とみなす英字の並び：3 字以上（sin・log などの関数の名前を除く）か、2 字以上の大文字（AI・HTML）。
+//   残る英字（x・ax・dx・f など）が 4 つ以上で、名前・語を除いた後の字（空白を除く）の半分を超えれば式。
+//   前の規則（英字をすべて数える）より警告が増えることはない
+function formulaLikeJa(s) {
+  if (/\\|\^|_/.test(s)) return true;
+  if (denseOps(s, '=+−×*', 4)) return true;
+  const rest = s.replace(/[A-Za-z]+/g, (w) => (w.length >= 3 && !MATH_WORDS.has(w.toLowerCase())) || /^[A-Z]{2,}$/.test(w) ? '' : w);
+  const letters = (rest.match(/[A-Za-z]/g) || []).length;
+  const total = rest.replace(/\s/g, '').length;
+  return total > 0 && letters >= 4 && letters / total > 0.5;
+}
+// 英語の発言：ラテン文字が多いのは当たり前なので、バックスラッシュ・^・_ と、15 字に演算子 3 つ以上だけを見る
+function formulaLikeEn(s) {
+  if (/\\|\^|_/.test(s)) return true;
+  return denseOps(s, '=+−×*<>≤≥/', 3);
+}
+export function formulaLike(text, lang) {
+  return isJaLang(lang) ? formulaLikeJa(String(text)) : formulaLikeEn(String(text));
+}

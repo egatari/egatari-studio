@@ -23,6 +23,7 @@
 //    ある PDF など）はエラー、断るべきもの（SHOULD：役割の条件・中身が型と違う・確かめられない）と気をつけるもの（数式として読まれる値など）は警告
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
+//       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,7 +32,7 @@ import { build, isJapanese, analyzeSlideIds, listFiles } from './build.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
 import { normalizeKey } from './narration.mjs';
-import { readingProblems, orphanSteps, orphanDetail } from './core/narration-lint.mjs';
+import { readingProblems, orphanSteps, orphanDetail, formulaLike, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { MESSAGES, message, where } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
@@ -60,35 +61,7 @@ function units(s) {
   return [...s].reduce((a, ch) => a + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1), 0);
 }
 
-// ---------------------------------------------------------------- 式らしさ（読み上げ原稿としての警告用）
-// バックスラッシュ・^・_、短い区間に = + − × が 4 つ以上、ラテン文字が密な文字列
-function denseOps(s) {
-  const ops = '=+−×*'; // = + − ×
-  for (let i = 0; i < s.length; i++) {
-    let c = 0;
-    for (let j = i; j < Math.min(s.length, i + 15); j++) if (ops.includes(s[j])) c++;
-    if (c > 3) return true;
-  }
-  return false;
-}
-function formulaLike(s) {
-  if (/\\|\^|_/.test(s)) return true;
-  if (denseOps(s)) return true;
-  const letters = (s.match(/[A-Za-z]/g) || []).length;
-  const total = s.replace(/\s/g, '').length;
-  return total > 0 && letters >= 4 && letters / total > 0.5;
-}
-// 英語の原稿：ラテン文字が多いのは当たり前なので、バックスラッシュ・^・_ と、15 字に演算子 3 つ以上だけを見る
-function formulaLikeEn(s) {
-  if (/\\|\^|_/.test(s)) return true;
-  const ops = '=+−×*<>≤≥/';
-  for (let i = 0; i < s.length; i++) {
-    let c = 0;
-    for (let j = i; j < Math.min(s.length, i + 15); j++) if (ops.includes(s[j])) c++;
-    if (c >= 3) return true;
-  }
-  return false;
-}
+// 式らしさ（読み上げ原稿としての警告用）と口述原稿の言語は kit/core/narration-lint.mjs（formulaLike・narrationLang・textLang）
 
 // ---------------------------------------------------------------- WCAG コントラスト
 function luminance([r, g, b]) {
@@ -421,13 +394,19 @@ const narrInfo = await page.evaluate((metaList) => {
   return out;
 }, meta);
 
+// 口述原稿の言語はスライドの言語と別に決める（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）。規則は発言ごとにその言語で選ぶ
+let voiceLang;
+try { voiceLang = JSON.parse(readRegular(path.join(path.dirname(path.resolve(src)), 'voice.json'), { max: READ_LIMITS.json }).toString('utf8'))?.lang; } catch { /* なし・読めない */ }
+const NL = narrationLang({ voiceLang, deckLang: lang, texts: narrInfo.flatMap((n) => n.turns.map((t) => t.text)) });
+if (isJapanese(NL.lang) !== JA) report(null, 'info', 'narrLang', { lang: NL.lang, deck: lang || 'ja', source: NL.source });
 for (const { i, stepKey, turns } of narrInfo) {
   if (turns.length === 0) { report(i, 'warn', 'narrMissing', { step: stepKey }, stepKey); continue; }
   for (const t of turns) {
-    if ((JA ? formulaLike : formulaLikeEn)(t.text)) report(i, 'warn', 'narrFormula', { t: t.text.slice(0, 40) }, stepKey);
-    if (JA && t.text.length > 200) report(i, 'info', 'turnLong', { n: t.text.length, unit: '字' }, stepKey);
+    const tl = textLang(t.text, NL.lang);
+    if (formulaLike(t.text, tl)) report(i, 'warn', 'narrFormula', { t: t.text.slice(0, 40) }, stepKey);
+    if (tl === 'ja' && t.text.length > 200) report(i, 'info', 'turnLong', { n: t.text.length, unit: '字' }, stepKey);
     const words = t.text.trim().split(/\s+/).length;
-    if (!JA && words > 60) report(i, 'info', 'turnLong', { n: words, unit: '語' }, stepKey);
+    if (tl !== 'ja' && words > 60) report(i, 'info', 'turnLong', { n: words, unit: '語' }, stepKey);
   }
 }
 

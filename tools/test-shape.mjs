@@ -4,6 +4,7 @@
 //    スライドにない段階の手がかり（orphanDetail）、閉じる行のない narration.md の受け取り、囲みのない返事の送り直しの依頼
 // 2. ブラウザ：どの部品にも形の違うデータを渡したデッキを開き、例外を出さず、その場に札（.m-error）を出し、DECK.componentErrors に載ること
 // 3. 検査器：形の知らせ（スタック・一時フォルダの場所なし）と、部品が描けなくても data-step と .concl を数えること（tools/fixtures/bad-curves）
+// 4. 検査器：口述原稿の言語をスライドと別に決め、発言ごとにその言語の規則で式の読み上げを見ること（examples/minimal の写し）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -181,6 +182,34 @@ try {
     const o = j.results.find((x) => x.code === 'narrOrphan');
     ok(o && /\[0\] \[1\] \[2\] \[concl\]/.test(o.msg) && o.msg.includes('[3] Expert: この行はスライドにない段階です。') && o.msg.includes('[2]'), 'check: the orphan message lists the keys, the lines and the target');
   }
+}
+
+// ---------------------------------------------------------------- 4. 検査器：口述原稿の言語はスライドと別（日本語のスライドに英語の口述原稿。#37・#38）
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-narr-lang-'));
+  try {
+    fs.copyFileSync(path.join(ROOT, 'examples/minimal/deck.html'), path.join(dir, 'deck.html'));
+    const ja = fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8');
+    const run = () => {
+      const c = spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8' });
+      try { return JSON.parse(c.stdout); } catch { return null; }
+    };
+    const formulas = (j) => j.results.filter((x) => x.code === 'narrFormula').map((x) => x.data.t);
+    // 英語の口述原稿（英字が多い文）：voice.json がなくても、文字から英語と分かって警告しない
+    fs.writeFileSync(path.join(dir, 'narration.md'), ja.replace(/^(\[[^\]]+\]) .*$/gm, '$1 Markdown and HTML are what an AI writes easily, so we compare them here.'));
+    let j = run();
+    ok(j && formulas(j).length === 0, 'check: English narration on a Japanese deck gives no R-formula — ' + JSON.stringify(j && formulas(j)));
+    ok(j && j.results.some((x) => x.code === 'narrLang' && x.data.lang === 'en' && x.data.source === 'text'), 'check: says the narration language (en, from the text)');
+    fs.writeFileSync(path.join(dir, 'voice.json'), '{"lang": "en"}');
+    j = run();
+    ok(j && formulas(j).length === 0 && j.results.some((x) => x.code === 'narrLang' && x.data.source === 'voice.json'), 'check: lang in voice.json is used');
+    fs.rmSync(path.join(dir, 'voice.json'));
+    // 日本語の口述原稿：英字の名前が並ぶだけの文は式ではない。式は今までどおり警告する
+    let k = 0;
+    fs.writeFileSync(path.join(dir, 'narration.md'), ja.replace(/^(\[[^\]]+\]) .*$/gm, (m, key) => `${key} ${k++ === 1 ? 'ax + by = c' : 'AI が書きやすいのは、Markdown と HTML です。'}`));
+    j = run();
+    ok(j && JSON.stringify(formulas(j)) === '["ax + by = c"]' && !j.results.some((x) => x.code === 'narrLang'), 'check: names in a Japanese sentence are not a formula, ax + by = c still is — ' + JSON.stringify(j && formulas(j)));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
 console.log(fails ? `\n${fails} failed` : '\nall ok');
