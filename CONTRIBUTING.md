@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=ddf2361bab068cda -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=1d9ab8e4d2be3e86 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -36,7 +36,8 @@ Open a PR (or a [component submission](https://github.com/egatari/egatari-studio
 - [ ] `node tools/test-components.mjs <name>` passes, and you looked at the screenshots (mid-step and final)
 - [ ] colors only through theme variables: `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)`
 - [ ] deterministic `render(k, t)`: no `setTimeout`, `requestAnimationFrame`, `Date` or unseeded random; `t = Infinity` is the final state of step `k`
-- [ ] `node tools/catalog.mjs` re-run (CATALOG.md is generated; do not edit it by hand)
+- [ ] `npm run gen` re-run (CATALOG.md and the AI instruction pack are generated; do not edit them by hand)
+- [ ] a `changes/<name>.md` fragment (see [Changelog](#changelog))
 - [ ] `npm test` passes
 
 ## Running the tests
@@ -47,7 +48,37 @@ npm test                 # all tests (needs Chrome, or Playwright's Chromium)
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-CI runs `npm test` on Node 22 and 24 for every push and pull request.
+CI runs `npm test` on Node 22 and 24 for every push and pull request. `node tools/test-all.mjs --list` prints every step and its arguments.
+
+Unit tests are found, not listed: a `tools/test-*.mjs` with the line `// test-all: unit` near the top runs with no arguments (it must not need a browser). Tests that need arguments, a built deck or a fixed place in the order are steps written out in `tools/test-all.mjs`. A test that another test imports says `// test-all: part of <step>`. `npm test` fails before running anything if a `tools/test-*.mjs` is none of these, so a new test is not forgotten.
+
+### Interface shapes
+
+`tools/test-api-shapes.mjs` (in `npm test`) compares the structure (keys and types, not text) of the interfaces other code and tools rely on with the snapshot `tools/fixtures/api-shapes.json`: the output of `kit/check.mjs --json`, the parameters and result of `buildFixRequest` (`kit/core/llm-fix.mjs`), of `buildPack` (`kit/core/llm-pack.mjs`) and the `assemble` it calls, and the results of `extractBlocks`, `mergeSlides` and `mergeNarration` (`kit/core/llm-import.mjs`). To change one of them on purpose, run `node tools/test-api-shapes.mjs --update` (it widens the snapshot; narrow it by hand), and add a fragment under `### Changed (API)`.
+
+## Generated files
+
+These files are generated and committed (GitHub Pages, the editor and users read them as they are). Do not edit them by hand; change their sources and run `npm run gen`:
+
+| File | Generator | Sources |
+|---|---|---|
+| `components/CATALOG.md` | `tools/catalog.mjs` | the frontmatter of `components/*/README.md` |
+| `docs/authoring-with-llms(.ja).md`, `docs/llm-parts/*.md`, `kit/core/llm-pack-data.mjs` | `tools/make-llm-guide.mjs` | `tools/llm-guide/`, `docs/contract*.md`, the component READMEs and `index.js` |
+| `kit/core/katex-ranges.mjs` | `tools/katex-ranges.mjs` | the KaTeX fonts in `node_modules` (after a KaTeX update) |
+
+`npm run gen:check` runs each generator with `--check` (fails when a file differs from what its sources give) and checks the changelog fragments; `npm test` runs the same checks, and CI runs them in a separate quick job. The i18n stamps are not generated: they record that a person compared both languages (see [Translations](#translations-english-and-japanese)).
+
+## Changelog
+
+Each change that users or callers will notice adds a fragment instead of editing `CHANGELOG.md`: a file `changes/<short-name>.md` (lowercase letters, digits, `.`, `_`, `-`) with a section header line and short entries (1–2 lines each; continuation lines are indented):
+
+```markdown
+### Fixed
+
+- Editor app: **Export single file** keeps the attachments of the opened file
+```
+
+The sections are `Added`, `Changed (API)` (a change to the shapes in [Interface shapes](#interface-shapes) or another interface callers use), `Changed`, `Removed`, `Fixed` and `Security`; one fragment may have several. Entries are in English, like the rest of `CHANGELOG.md`. `## [Unreleased]` in `CHANGELOG.md` stays empty. At a release, `node tools/changelog.mjs --release X.Y.Z` puts the fragments (in that section order, by file name within a section) under `## [X.Y.Z] - <date>`, updates the compare links, sets the version in `package.json` and `package-lock.json` and deletes the fragments; `--preview` prints the section without writing anything, and `--check` (in `npm test`) checks the fragments. In CI, a pull request that changes code (`app/`, `kit/`, `components/`, `server/`, `render/`, `tts/`, `themes/`, `lab/`, `skills/`, `package.json`) without adding a fragment gets a warning; it does not fail. Releasing is described in [RELEASING.md](RELEASING.md).
 
 ## Coding rules
 
