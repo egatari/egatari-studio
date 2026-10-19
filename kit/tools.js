@@ -166,7 +166,7 @@ css(
   "#dt-help .dt-att button{font:inherit;font-size:12px;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);border-radius:7px;padding:3px 10px;cursor:pointer}" +
   "#dt-help .dt-att button:hover{background:rgba(255,255,255,.18)}#dt-help .dt-att button:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
   "#dt-help .dt-att .dt-att-note{margin:4px 0 0;color:#888;font-size:11.5px}#dt-help .dt-att .dt-att-err{color:#fca5a5}" +
-  "#dt-help .dt-att .dt-att-d{display:block;color:#d4d4d4;font-size:12px;overflow-wrap:anywhere}"
+  "#dt-help .dt-att .dt-att-d{display:block;color:#d4d4d4;font-size:12px;overflow-wrap:anywhere}#dt-help .dt-att .dt-att-w{display:block;color:#fcd34d;font-size:11.5px}"
 );
 
 // ---------------------------------------------------------------- 状態
@@ -228,7 +228,12 @@ function roleName(r){ return (JA ? {source: "元の原稿", pdf: "PDF", code: "�
 var HAS = function(o, k){ return o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k); };
 function hexOf(buf){ var u = new Uint8Array(buf), s = ""; for (var i = 0; i < u.length; i++) s += (u[i] < 16 ? "0" : "") + u[i].toString(16); return s; }
 function esc(t){ return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-function attName(p){ var n = String(p).split("/").pop().replace(/[\u0000-\u001f\u007f-\u009f\\/:*?"<>|]/g, "_").trim(); return n || "attachment"; }
+// 保存する名前は path の最後の部分そのもの（§3.8）。OS が受けない字・末尾の点や空白のある名前は、替えずに一覧から外す（attNameOk）
+function attName(p){ return String(p).split("/").pop(); }
+function attNameOk(n){ return !!n && !/[\u0000-\u001f\u007f-\u009f\\:*?"<>|]/.test(n) && !/^\s|[. \s]$/.test(n); }
+// 題・説明（§3.8・Schema）：字（符号位置）の数が上限まで・改行なし。題は空白だけでない
+function attChars(s){ var n = 0; for (var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length){ var d = s.charCodeAt(i + 1); if (d >= 0xdc00 && d <= 0xdfff) i++; } n++; } return n; }
+function attText(s, max){ return typeof s === "string" && attChars(s) <= max && !/[\r\n]/.test(s); }
 // §3.8 の型（DECK.FORMAT.attachTypes。kit/core/attach-content.mjs の runtimeAttachTypes）：役割が受ける拡張子（code は決まった名前も）で、
 // 塊の媒体型がその型のものだけを出す。ほかの型（実行できるもの・HTML・SVG・入れ物など）は、索引に書いてあっても出さない
 function attType(path, role, mime){
@@ -275,11 +280,12 @@ function loadAttachments(){
       var id = files[e.path], b = blobs[id];
       if (!b || !Array.isArray(b.chunks) || !b.chunks.length || typeof b.sha256 !== "string" || typeof b.bytes !== "number") return;
       if (!b.chunks.every(function(c, j){ return c === FMT.blobPrefix + id + "-" + j; })) return;
-      if (typeof e.title !== "string" || !e.title.trim()) return;   // 題は要る（§3.8）
+      if (!attText(e.title, FMT.attachTypes.titleChars || 120) || !e.title.trim()) return;   // 題は要る（§3.8。120 字まで・1 行）
+      if (!attNameOk(attName(e.path))) return;
       var type = attType(e.path, e.role, b.mime);
       if (!type) return;
       seen[e.path] = 1;
-      var desc = typeof e.description === "string" && e.description.length <= (FMT.attachTypes.descriptionChars || 300) && !/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(e.description) ? e.description.trim() : "";
+      var desc = attText(e.description, FMT.attachTypes.descriptionChars || 300) ? e.description.trim() : "";   // 正しくない説明は出さない
       ATT.push({path: e.path, role: e.role, title: e.title, description: desc || null, type: type, bytes: b.bytes, sha256: b.sha256, chunks: b.chunks.slice()});
     });
     if (ATT.length) addAttachButton();
@@ -301,8 +307,10 @@ function attHtml(){
   if (!ATT.length) return "";
   var rows = ATT.map(function(a, i){
     var n = attName(a.path);
+    // コード：信頼できる出どころのものだけを動かすよう添える（§3.8 の SHOULD）
+    var warn = a.role === "code" ? '<span class="dt-att-w">' + (JA ? "出どころを信頼できるときだけ、コードを実行してください" : "Run code only if you trust its source") + '</span>' : '';
     return '<li><span class="dt-att-n"><span class="dt-att-t">' + esc(a.title || n) + '</span>' + (a.description ? '<span class="dt-att-d">' + esc(a.description) + '</span>' : '') + '<span class="dt-att-m">' + esc((a.title ? n + " · " : "") + roleName(a.role) + " · " + attSize(a.bytes)) +
-      '</span></span><button type="button" data-att="' + i + '">' + (JA ? "ダウンロード" : "Download") + "</button></li>";
+      '</span>' + warn + '</span><button type="button" data-att="' + i + '">' + (JA ? "ダウンロード" : "Download") + "</button></li>";
   }).join("");
   return '<div class="dt-att"><h3>' + (JA ? "添付ファイル" : "Attachments") + "</h3><ul>" + rows + '</ul><p class="dt-att-note" aria-live="polite">' +
     (JA ? "保存するだけで、このページでは開きません" : "Saved as files only; nothing is opened in this page") + "</p></div>";

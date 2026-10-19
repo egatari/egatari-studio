@@ -9,7 +9,7 @@
 //   panel.open() / panel.refresh()
 import { FORMAT } from '../kit/core/format.mjs';
 import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
-  inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem } from '../kit/core/attachments.mjs';
+  inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem, titleProblem, clipChars } from '../kit/core/attachments.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
@@ -18,7 +18,7 @@ const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
 const MB = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB' : (n / 1048576).toFixed(1) + ' MB');
 const STR = {
   ja: {
-    title: '添付（下書き・試行）', lead: `下書き・試行（形式の §3.8 の案）。読み手のためのファイル：PDF は PDF、データは CSV・TSV・JSON・テキスト・xlsx、コードはプログラムの原稿・ipynb・環境の定義、元の原稿は TeX・Markdown・テキスト・docx、補足は PNG・JPEG・WebP・PDF・テキスト。足すときに中身を確かめ、JavaScript のある PDF・マクロや外への参照のある Office・実行できるもの・HTML・SVG・ZIP・音声と動画は断ります。${ATTACH_PREFIX} に置き、役割・題・説明は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
+    title: '添付（下書き・試行）', lead: `下書き・試行（形式の §3.8 の案）。読み手のためのファイル：PDF は PDF、データは CSV・TSV・JSON・テキスト・xlsx、コードはプログラムの原稿・ipynb・環境の定義、元の原稿は TeX・Markdown・テキスト・docx、補足は PNG・JPEG・WebP・PDF・テキスト。足すときに中身を確かめ、JavaScript や文書の外へ出る動作のある PDF・マクロや外への参照のある Office・実行できるもの・OS がスクリプトとして開く拡張子（.js・.bat など。JavaScript の原稿は .mjs・.cjs・.ts）・HTML・SVG・ZIP・音声と動画は断ります。${ATTACH_PREFIX} に置き、役割・題・説明は ${CFG} に書きます。1 ファイル（${FORMAT.FILE_EXT}）の再生ではダウンロードだけで（開かない・実行しない）、再生専用には入りません`,
     limits: `1 つ ${MB(ATTACH_LIMITS.fileBytes)}・合わせて ${MB(ATTACH_LIMITS.totalBytes)}・${ATTACH_LIMITS.count} 個まで`,
     none: 'まだありません', add: 'ファイルを足す…', role: '役割', noRole: '（役割なし：一覧に出ない）', titleL: '題', rename: '名前を替える…', remove: '消す',
     roles: { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' },
@@ -32,7 +32,7 @@ const STR = {
     descL: '説明', descPh: '説明（1〜2 文）', refused: '断りました：', checking: '中身を確かめています…'
   },
   en: {
-    title: 'Attachments (draft, experimental)', lead: `Draft, experimental (spec §3.8 draft). Files for readers: pdf takes PDF; data takes CSV, TSV, JSON, text and xlsx; code takes program source, ipynb and environment definitions; source takes TeX, Markdown, text and docx; supplement takes PNG, JPEG, WebP, PDF and text. Files are checked when added: PDFs with JavaScript, Office files with macros or external references, executables, HTML, SVG, ZIP, audio and video are refused. They live in ${ATTACH_PREFIX}; roles, titles and descriptions are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
+    title: 'Attachments (draft, experimental)', lead: `Draft, experimental (spec §3.8 draft). Files for readers: pdf takes PDF; data takes CSV, TSV, JSON, text and xlsx; code takes program source, ipynb and environment definitions; source takes TeX, Markdown, text and docx; supplement takes PNG, JPEG, WebP, PDF and text. Files are checked when added: PDFs with JavaScript or actions that leave the document, Office files with macros or external references, executables, extensions that operating systems run as scripts (.js, .bat, …; attach JavaScript source as .mjs, .cjs or .ts), HTML, SVG, ZIP, audio and video are refused. They live in ${ATTACH_PREFIX}; roles, titles and descriptions are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
     limits: `up to ${MB(ATTACH_LIMITS.fileBytes)} each, ${MB(ATTACH_LIMITS.totalBytes)} together, ${ATTACH_LIMITS.count} files`,
     none: 'None yet', add: 'Add files…', role: 'Role', noRole: '(no role: not listed)', titleL: 'Title', rename: 'Rename…', remove: 'Remove',
     roles: { source: 'Source', pdf: 'PDF', code: 'Code', data: 'Data', supplement: 'Supplement' },
@@ -130,7 +130,7 @@ export function createAttachPanel(o) {
   }
 
   // 題の案：ファイル名から拡張子を除いたもの（なければファイル名）
-  const titleOf = (name) => { const n = String(name).normalize('NFC').trim(); const t = n.replace(/\.[^.]+$/, '').trim(); return (t || n).slice(0, ATTACH_LIMITS.titleChars); };
+  const titleOf = (name) => { const n = String(name).normalize('NFC').trim(); const t = n.replace(/\.[^.]+$/, '').trim(); return clipChars(t || n, ATTACH_LIMITS.titleChars); };
   const addFiles = held(async (list) => {
     // 読む前に断れるもの：名前・音声と動画（拡張子）・1 つの大きさ
     for (const f of list) {
@@ -148,7 +148,7 @@ export function createAttachPanel(o) {
     const inputs = list.map((f, i) => el('input', { type: 'text', id: 'attach-new-title-' + i, value: titleOf(f.name), maxlength: String(ATTACH_LIMITS.titleChars), 'aria-label': X.titleL + ' ' + f.name }));
     const v = await o.ask({ title: X.title, body: [el('p', { id: 'attach-titles', text: X.titles }), ...list.map((f, i) => el('label', {}, [el('span', { text: f.name }), inputs[i]]))], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.add1, pri: true }] });
     if (v !== 'ok') return;
-    const titles = inputs.map((x) => x.value.trim().slice(0, ATTACH_LIMITS.titleChars));
+    const titles = inputs.map((x) => clipChars(x.value.trim(), ATTACH_LIMITS.titleChars));
     if (titles.some((t) => !t)) { o.toast(X.needTitle, true); return; }
     await write(async (st) => {
       const have = new Map(st.files.map((f) => [f.path.toLowerCase(), f]));
@@ -226,9 +226,11 @@ export function createAttachPanel(o) {
     });
   });
   async function setMeta(p, role, title, description) {
-    // 役割と型の組（§3.8）・説明の形：書く前に断る
+    // 役割と型の組（§3.8）・題と説明の形（120 字・300 字まで、1 行）：書く前に断る
     const rp = role ? roleProblem(p, role) : null;
     if (rp) { o.toast(X.refused + msgOf(rp), true); if (o.isOpen()) await render(); return; }
+    const tp = title ? titleProblem(title) : null;
+    if (tp) { o.toast(X.refused + msgOf({ code: 'attachBadTitle', path: p, why: tp, max: ATTACH_LIMITS.titleChars }), true); if (o.isOpen()) await render(); return; }
     const dp = description ? descriptionProblem(description) : null;
     if (dp) { o.toast(X.refused + msgOf({ code: 'attachBadDescription', path: p, why: dp, max: ATTACH_LIMITS.descriptionChars }), true); if (o.isOpen()) await render(); return; }
     await write(async (st) => {
@@ -236,7 +238,7 @@ export function createAttachPanel(o) {
       let e = entries.find((x) => x.path === p);
       if (!e) { e = { path: p }; entries.push(e); }
       if (role) e.role = role; else delete e.role;
-      if (title) e.title = title.slice(0, ATTACH_LIMITS.titleChars); else delete e.title;
+      if (title) e.title = title; else delete e.title;
       if (description) e.description = description; else delete e.description;
       await writeConfig(st.ws, st.conf, entries);
       return X.saved;

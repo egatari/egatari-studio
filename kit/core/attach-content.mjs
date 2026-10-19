@@ -14,8 +14,29 @@
 // 書き出し・編集器・段 A の保存は must と should を入れない（断る）。検査器は must をエラー、ほかを警告にする
 
 const MiB = 1048576;
-// 説明（description）の字数の上限（kit/core/attachments.mjs の ATTACH_LIMITS・再生器 kit/tools.js が同じ数を使う）
+// 題（title）と説明（description）の字数の上限（§3.8・Schema の maxLength。字は Unicode の符号位置で数える）。
+// kit/core/attachments.mjs の ATTACH_LIMITS・再生器 kit/tools.js が同じ数を使う
+export const TITLE_CHARS = 120;
 export const DESCRIPTION_CHARS = 300;
+const LINE_BREAK = /[\r\n]/;   // Schema の pattern ^[^\r\n]*$
+export const charCount = (s) => { let n = 0; for (const _ of String(s)) n++; return n; };
+// 題の問題（なければ null）：文字列・空でない・空白だけでない・TITLE_CHARS 字まで・1 行
+export function titleProblem(t) {
+  if (typeof t !== 'string') return 'not a string';
+  if (!t.trim()) return 'empty';
+  if (charCount(t) > TITLE_CHARS) return `longer than ${TITLE_CHARS} characters`;
+  if (LINE_BREAK.test(t)) return 'contains a line break';
+  return null;
+}
+// 説明の問題（なければ null）：文字列・DESCRIPTION_CHARS 字まで・1 行
+export function descriptionProblem(d) {
+  if (typeof d !== 'string') return 'not a string';
+  if (charCount(d) > DESCRIPTION_CHARS) return `longer than ${DESCRIPTION_CHARS} characters`;
+  if (LINE_BREAK.test(d)) return 'contains a line break';
+  return null;
+}
+// 符号位置で n 字までに切る（サロゲートの対を割らない）
+export const clipChars = (s, n) => { const a = [...String(s)]; return a.length > n ? a.slice(0, n).join('') : String(s); };
 // 調べるときの上限（展開の爆弾。宣言の大きさは偽れるので、展開しながら数えて止める）
 export const INSPECT_LIMITS = Object.freeze({
   zipEntries: 2000,          // OOXML の項目の数
@@ -52,7 +73,7 @@ const EXT_KIND = {
   // 環境の定義（§3.8 code）
   toml: 'env', yml: 'env', yaml: 'env', lock: 'env', cfg: 'env', ini: 'env',
 };
-// プログラムの原稿（開いても動かないもの。Windows・macOS が開くと実行する拡張子（.js .vbs .bat .cmd .command など）は含めない）
+// プログラムの原稿（開いても動かないもの。OS が開くと実行する拡張子（FORBIDDEN_EXT.script）は含めない。JavaScript は .mjs .cjs .ts）
 const CODE_EXT = ('py pyi r rmd qmd jl m c h cc cpp cxx hpp hh hxx cu cuh rs go java kt kts scala swift mjs cjs ts mts cts rb pl pm php lua hs lhs ' +
   'ml mli fs clj cljs ex exs erl hrl dart nim zig v sv vh vhd vhdl f f90 f95 f03 f08 for sql sh bash zsh fish do ado sas stan nix cmake mk ' +
   'groovy gradle cs lisp lsp scm rkt el asm s proto ipy rst').split(' ');
@@ -62,7 +83,10 @@ const ENV_NAMES = new Set(['dockerfile', 'containerfile', 'makefile', 'pipfile',
   'requirements.txt', 'package.json', 'package-lock.json', 'pyproject.toml', 'environment.yml', 'environment.yaml', 'renv.lock', 'postbuild', 'apt.txt', 'runtime.txt', 'install.r']);
 // 許されないもの（名前から）：分類 → 拡張子
 const FORBIDDEN_EXT = {
-  executable: 'exe dll so dylib msi msp msix appx com scr pif bat cmd vbs vbe js jse wsf wsh wsc hta jar apk app command lnk reg cpl sys drv ocx class pyc pyo ps1 psm1 deb rpm appimage run elf',
+  // §3.8 の code の条件の表のとおり：よくある OS が既定で実行する・スクリプトとして開く拡張子（どの役割でも入れない）
+  script: 'js jse vbs vbe wsf wsh hta bat cmd com scr ps1 command app jar reg lnk',
+  // 実行できるもの（§3.8 の「executables」：機械語・バイトコード・入れ方の包み）
+  executable: 'exe dll so dylib msi msp msix appx pif cpl sys drv ocx class pyc pyo apk deb rpm appimage run elf',
   wasm: 'wasm wat',
   'office-legacy': 'doc dot xls xlt xla ppt pot pps rtf',
   'office-macro': 'docm dotm xlsm xltm xlam xlsb pptm potm ppsm ppam sldm',
@@ -394,11 +418,18 @@ function privateProblem(text) { for (const [what, re] of PRIVATE) if (re.test(te
 
 // ---------------------------------------------------------------- PDF
 // 字句だけを読む（オブジェクトを組み立てない）：コメント・文字列・16 進の文字列・stream の中身を飛ばし、名前（#xx を戻す）を集める。
-// /OpenAction の値（行き先の配列なら動作でない。参照なら、その object が配列か）と、object stream（/Type /ObjStm）の中身の場所も
+// /OpenAction と /AA の値の場所、動作の種類（/S の後の名前のうち、動作の名前のもの）、object stream（/Type /ObjStm）の中身の場所も
 const DELIM = new Set([0x28, 0x29, 0x3c, 0x3e, 0x5b, 0x5d, 0x7b, 0x7d, 0x2f, 0x25]);
 const WS = new Set([0x00, 0x09, 0x0a, 0x0c, 0x0d, 0x20]);
+// 動作の種類（ISO 32000-2 の表 201）。/S の値のうちこれだけを動作として数える（ページ番号の /S /D・構造の /S /P などは数えない）
+const ACTION_TYPES = new Set(['GoTo', 'GoToR', 'GoToE', 'GoToDp', 'Launch', 'Thread', 'URI', 'Sound', 'Movie', 'Hide', 'Named', 'SubmitForm', 'ResetForm',
+  'ImportData', 'SetOCGState', 'Rendition', 'Trans', 'GoTo3DView', 'JavaScript', 'RichMediaExecute']);
+// §3.8：リンクに許す動作は GoTo（文書の中）と URI（読み手が押したときだけ）。開いたときの動作（OpenAction・AA）は GoTo だけ
+const LINK_ACTIONS = new Set(['GoTo', 'URI']);
+// §3.8 が名指しで断るもの（/S の値でなく名前として現れても）
+const NAMED_REFUSED = ['SubmitForm', 'ImportData', 'GoToR', 'GoToE', 'Rendition'];
 function lexPdf(b, onStreams = true) {
-  const names = new Set(), openActions = [], objStreams = [], objAt = new Map();
+  const names = new Set(), openActions = [], aas = [], actions = new Set(), objStreams = [], objAt = new Map();
   let i = 0;
   const L = b.length;
   // 直前の字句（参照「n g R」と「n g obj」を見る）
@@ -430,8 +461,10 @@ function lexPdf(b, onStreams = true) {
       }
       names.add(s);
       if (curObj !== null) dictNames.push(s);
+      if (t1 === '/S' && ACTION_TYPES.has(s)) actions.add(s);
       push('/' + s);
       if (s === 'OpenAction') openActions.push({ buf: b, at: i });
+      if (s === 'AA') aas.push({ buf: b, at: i });
       continue;
     }
     // 語（数・キーワード）
@@ -451,7 +484,7 @@ function lexPdf(b, onStreams = true) {
     if (s === 'endobj') { curObj = null; dictNames = []; }
     push(s);
   }
-  return { names, openActions, objStreams, objAt };
+  return { names, openActions, aas, actions, objStreams, objAt };
 }
 function findEndstream(b, from) {
   const sig = [0x65, 0x6e, 0x64, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6d];   // endstream
@@ -620,20 +653,49 @@ async function pdfDecryptor(b) {
   };
 }
 
-// 値の始まりの字（#xx を戻した 1 KiB）。参照「n g R」はその object へ 1 度だけたどる
-const textAt = (o) => asc(o.buf, o.at, 1024).replace(/#([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
-function harmlessOpenAction(oa, objAt, depth = 0) {
-  const t = textAt(oa).replace(/^[\x00\x09\x0a\x0c\x0d\x20]+/, '');
-  if (t[0] === '[') return true;
+// 値の始まりの字（#xx を戻した 4 KiB）。参照「n g R」は hops 回までその object へたどる
+const textAt = (o) => asc(o.buf, o.at, 4096).replace(/#([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+function valueAt(o, objAt, hops) {
+  const t = textAt(o).replace(/^[\x00\x09\x0a\x0c\x0d\x20]+/, '');
   const ref = t.match(/^(\d+)\s+(\d+)\s+R\b/);
-  if (ref) { const o = objAt.get(+ref[1]); return !!o && depth === 0 && harmlessOpenAction(o, objAt, 1); }
-  if (!t.startsWith('<<')) return false;
-  // 辞書の終わり（入れ子を数える）までの文字
-  let d = 0, end = -1;
-  for (let k = 0; k < t.length - 1; k++) { if (t[k] === '<' && t[k + 1] === '<') { d++; k++; } else if (t[k] === '>' && t[k + 1] === '>') { d--; k++; if (!d) { end = k + 1; break; } } }
-  if (end < 0) return false;
-  const dict = t.slice(0, end);
-  return /\/S\s*\/GoTo(?![A-Za-z])/.test(dict) && !/\/(?:Next|JS|JavaScript|Launch|URI|GoToR|GoToE|SubmitForm|ImportData|F)(?![A-Za-z])/.test(dict);
+  if (!ref) return t;
+  const x = objAt.get(+ref[1]);
+  return x && hops > 0 ? valueAt(x, objAt, hops - 1) : null;
+}
+// t の先頭の辞書（<< … >>。入れ子を数える）の文字。閉じていなければ null
+function dictSlice(t) {
+  if (!t || !t.startsWith('<<')) return null;
+  let d = 0;
+  for (let k = 0; k < t.length - 1; k++) { if (t[k] === '<' && t[k + 1] === '<') { d++; k++; } else if (t[k] === '>' && t[k + 1] === '>') { d--; k++; if (!d) return t.slice(0, k + 1); } }
+  return null;
+}
+// 文書の中の行き先へ移るだけの動作（/S /GoTo。続き /Next やほかのファイル /F なし）
+const goToOnly = (dict) => !!dict && /\/S\s*\/GoTo(?![A-Za-z])/.test(dict) && !/\/(?:Next|JS|JavaScript|Launch|URI|GoToR|GoToE|SubmitForm|ImportData|Rendition|F)(?![A-Za-z])/.test(dict);
+// /OpenAction：行き先（配列）か、GoTo の動作
+function harmlessOpenAction(oa, objAt) {
+  const t = valueAt(oa, objAt, 1);
+  if (t === null) return false;
+  if (t[0] === '[') return true;
+  return goToOnly(dictSlice(t));
+}
+// /AA（きっかけ → 動作の辞書）：どの動作も GoTo
+function harmlessAA(aa, objAt) {
+  const d = dictSlice(valueAt(aa, objAt, 1));
+  if (!d) return false;
+  let k = 2;
+  const ws = () => { while (k < d.length && /[\x00\x09\x0a\x0c\x0d\x20]/.test(d[k])) k++; };
+  for (;;) {
+    ws();
+    if (d.startsWith('>>', k)) return true;
+    const key = d.slice(k).match(/^\/[^\s/<>\[\]()%]+/);
+    if (!key) return false;
+    k += key[0].length; ws();
+    let act;
+    const ref = d.slice(k).match(/^(\d+)\s+(\d+)\s+R\b/);
+    if (ref) { const x = objAt.get(+ref[1]); act = x ? dictSlice(valueAt(x, objAt, 1)) : null; k += ref[0].length; }
+    else { act = dictSlice(d.slice(k)); if (act) k += act.length; }
+    if (!goToOnly(act)) return false;
+  }
 }
 async function inspectPdf(p, b, add) {
   const lx = lexPdf(b);
@@ -641,11 +703,11 @@ async function inspectPdf(p, b, add) {
   const objAt = new Map(lx.objAt);
   const encrypted = names.has('Encrypt');
   if (lx.objStreams.length > INSPECT_LIMITS.pdfObjStreams) { add('should', 'attachUnchecked', { why: `more than ${INSPECT_LIMITS.pdfObjStreams} object streams` }); return; }
-  // 暗号化（標準の暗号、空の利用者パスワード。権利の制限だけの PDF）：object stream を復号して読む。読めなければ確かめられない
+  // 暗号化：空の利用者パスワードで開けるもの（権利の制限だけ。標準の暗号）だけ（§3.8）。object stream は復号して読む
   let crypt = null;
-  if (encrypted && lx.objStreams.length) {
+  if (encrypted) {
     crypt = await pdfDecryptor(b);
-    if (!crypt) { add('should', 'attachUnchecked', { why: 'encrypted with a password or a method this checker cannot open, with object streams it cannot read' }); return; }
+    if (!crypt) { add('should', 'attachUnchecked', { why: 'encrypted: it does not open with the empty user password, or with a method this checker cannot open' }); return; }
   }
   {
     const budget = new Budget(INSPECT_LIMITS.inflateTotal);
@@ -663,7 +725,9 @@ async function inspectPdf(p, b, add) {
       } else { add('should', 'attachUnchecked', { why: `an object stream with the filter ${info.filters.join(' ') || '?'}${info.parms ? ' and parameters' : ''}` }); return; }
       const inner = lexPdf(data, false);
       for (const n of inner.names) names.add(n);
+      for (const a of inner.actions) lx.actions.add(a);
       lx.openActions.push(...inner.openActions);
+      lx.aas.push(...inner.aas);
       // object stream の中の object の最初の字句（参照の先が配列か）：先頭の「番号 位置 …」の組
       const hdr = asc(data, 0, Number.isFinite(info.first) ? Math.min(info.first, 65536) : 0).trim().split(/\s+/).map(Number);
       for (let k = 0; k + 1 < hdr.length; k += 2) {
@@ -675,10 +739,12 @@ async function inspectPdf(p, b, add) {
   if (names.has('JavaScript') || names.has('JS')) add('must', 'attachUnsafe', { what: 'javascript' });
   if (names.has('XFA') || names.has('RichMedia')) add('should', 'attachUnsafe', { what: 'active-content', detail: names.has('XFA') ? 'XFA' : 'RichMedia' });
   if (names.has('Launch')) add('should', 'attachUnsafe', { what: 'launch' });
-  if (names.has('AA')) add('should', 'attachUnsafe', { what: 'auto-action', detail: 'AA' });
-  // /OpenAction：行き先（配列）と、文書の中の行き先へ移るだけの動作（/S /GoTo。LaTeX の hyperref が書く）は開いたときに何も実行しない。
-  // ほかの動作（URI・JavaScript・Launch・ほかのファイルへの GoToR など・続きの /Next）は自動の動作
-  for (const oa of lx.openActions) if (!harmlessOpenAction(oa, objAt)) { add('should', 'attachUnsafe', { what: 'auto-action', detail: 'OpenAction' }); break; }
+  // ほかの動作（§3.8：リンクは GoTo と URI だけ。SubmitForm・ImportData・GoToR・GoToE・Rendition は名指しで断る）
+  const other = [...new Set([...[...lx.actions].filter((a) => !LINK_ACTIONS.has(a) && a !== 'JavaScript' && a !== 'Launch'), ...NAMED_REFUSED.filter((n) => names.has(n))])].sort();
+  if (other.length) add('should', 'attachUnsafe', { what: 'action', detail: other.join(', ') });
+  // 開いたときの動作（/OpenAction・/AA）：行き先（配列）と、文書の中の行き先へ移るだけの動作（/S /GoTo。LaTeX の hyperref が書く）だけ
+  if (lx.aas.some((x) => !harmlessAA(x, objAt))) add('should', 'attachUnsafe', { what: 'auto-action', detail: 'AA' });
+  if (lx.openActions.some((oa) => !harmlessOpenAction(oa, objAt))) add('should', 'attachUnsafe', { what: 'auto-action', detail: 'OpenAction' });
   if (names.has('EmbeddedFile') || names.has('EmbeddedFiles') || names.has('FileAttachment')) add('should', 'attachUnsafe', { what: 'embedded-file' });
 }
 
@@ -748,5 +814,5 @@ export function runtimeAttachTypes() {
   for (const [role, kinds] of Object.entries(ROLE_KINDS)) roles[role] = Object.keys(EXT_KIND).filter((e) => kinds.includes(EXT_KIND[e])).join(' ');
   const mime = {};
   for (const [e, k] of Object.entries(EXT_KIND)) if (KINDS[k] !== T) mime[e] = KINDS[k];
-  return { roles, names: [...ENV_NAMES].join(' '), mime, text: T, descriptionChars: DESCRIPTION_CHARS };
+  return { roles, names: [...ENV_NAMES].join(' '), mime, text: T, titleChars: TITLE_CHARS, descriptionChars: DESCRIPTION_CHARS };
 }

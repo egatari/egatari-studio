@@ -102,6 +102,19 @@ export function PDF_OBJSTM_GOTO() {
   return pdf(['<< /Type /Catalog /Pages 2 0 R /OpenAction 4 0 R >>', '<< /Type /Pages /Kids [] /Count 0 >>', '<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode >>'],
     { streams: { 3: zlib.deflateSync(body) } });
 }
+// /AA（ページを開いたとき）が文書の中へ移るだけ・参照をたどって GoTo・GoTo と Named が混じる
+export const PDF_AA_GOTO = () => pdf(['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /AA << /O << /S /GoTo /D [3 0 R /Fit] >> /C << /S /GoTo /D (sec.1) >> >> >>']);
+export const PDF_AA_GOTO_REF = () => pdf(['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /AA 4 0 R >>', '<< /O 5 0 R >>', '<< /Type /Action /S /GoTo /D [3 0 R /Fit] >>']);
+export const PDF_AA_MIXED = () => pdf(['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /AA << /O << /S /GoTo /D [3 0 R /Fit] >> /C << /S /Named /N /Print >> >> >>']);
+export const PDF_OPENACTION_NEXT = () => pdf(['<< /Type /Catalog /Pages 2 0 R /OpenAction << /S /GoTo /D [2 0 R /Fit] /Next 3 0 R >> >>', '<< /Type /Pages /Kids [] /Count 0 >>', '<< /S /GoTo /D [2 0 R /Fit] >>']);
+// リンク：文書の中（GoTo・/Dest）と URI（hyperref が書く形）。ほかの動作のリンク
+export const PDF_LINKS_OK = () => pdf(['<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [0 << /S /D >>] >> >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [<< /Subtype /Link /A << /S /GoTo /D (cite.x) >> >> << /Subtype /Link /Dest [3 0 R /XYZ 0 0 null] >> << /Subtype /Link /A << /S /URI /URI (https://doi.org/10.1/x) >> >>] >>']);
+export const PDF_LINK_ACTION = (t) => pdf(['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+  `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [<< /Subtype /Link /A << /S /${t} /F (other.pdf) /D [0 /Fit] >> >>] >>`]);
+// /S のほかの使い方（ページ番号の形・構造の型・枠線の形）
+export const PDF_S_NOT_ACTION = () => pdf(['<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [0 << /S /r >> 2 << /S /D >>] >> /StructTreeRoot 4 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+  '<< /Type /Page /Parent 2 0 R /Annots [<< /Subtype /Link /BS << /S /S /W 1 >> /A << /S /URI /URI (https://example.com/) >> >>] >>', '<< /Type /StructTreeRoot /K << /S /P >> >>']);
 // 開いたときに URL を開く /OpenAction
 export const PDF_OPENACTION_URI = () => pdf(['<< /Type /Catalog /Pages 2 0 R /OpenAction << /S /URI /URI (http://example.com/) >> >>', '<< /Type /Pages /Kids [] /Count 0 >>']);
 // 展開の爆弾の object stream
@@ -139,7 +152,7 @@ function rc4(key, data) {
   for (let k = 0, i = 0, j = 0; k < data.length; k++) { i = (i + 1) & 255; j = (j + S[i]) & 255; [S[i], S[j]] = [S[j], S[i]]; out[k] = data[k] ^ S[(S[i] + S[j]) & 255]; }
   return out;
 }
-export function PDF_ENCRYPTED({ js = false, password = '', aes = true } = {}) {
+export function PDF_ENCRYPTED({ js = false, password = '', aes = true, objStm = true } = {}) {
   const ID0 = Buffer.from('0123456789abcdef0123456789abcdef', 'hex'), O = Buffer.alloc(32, 7), P = -1324;
   const pw = Buffer.concat([Buffer.from(password, 'latin1'), PDF_PAD]).subarray(0, 32);
   const p = Buffer.alloc(4); p.writeInt32LE(P);
@@ -155,9 +168,10 @@ export function PDF_ENCRYPTED({ js = false, password = '', aes = true } = {}) {
   if (aes) { const iv = Buffer.alloc(16, 9); const c = crypto.createCipheriv('aes-128-cbc', ok, iv); enc = Buffer.concat([iv, c.update(plain), c.final()]); }
   else enc = rc4(ok, plain);
   const hex = (b) => '<' + b.toString('hex') + '>';
-  return pdf(['<< /Type /Catalog /Pages 2 0 R /OpenAction 6 0 R >>', '<< /Type /Pages /Kids [] /Count 0 >>', '<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode >>',
+  // objStm が false：object stream なし（名前は暗号化されないので読めるが、§3.8 は空の利用者パスワードで開けるものだけ）
+  return pdf(['<< /Type /Catalog /Pages 2 0 R ' + (objStm ? '/OpenAction 6 0 R ' : '') + '>>', '<< /Type /Pages /Kids [] /Count 0 >>', objStm ? '<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode >>' : '<< >>',
     `<< /Filter /Standard /V 4 /R 4 /Length 128 /CF << /StdCF << /CFM /${aes ? 'AESV2' : 'V2'} /Length 16 >> >> /StmF /StdCF /StrF /StdCF /O ${hex(O)} /U ${hex(U)} /P ${P} >>`],
-  { streams: { 3: enc }, trailer: `/Encrypt 4 0 R /ID [${hex(ID0)} ${hex(ID0)}] ` });
+  { streams: objStm ? { 3: enc } : {}, trailer: `/Encrypt 4 0 R /ID [${hex(ID0)} ${hex(ID0)}] ` });
 }
 // 暗号化した PDF（R 6・AES-256。利用者のパスワードは空）：ISO 32000-2 の Algorithm 2.B で U・UE を作る
 function hash2B(pw, salt, u) {

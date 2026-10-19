@@ -149,7 +149,7 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   ok(Object.keys(r2.files).filter((f) => f.startsWith('attachments/')).length === 3 && r2.warnings.some((w) => /together, over the limit of 3100/.test(w)), 'limits: attachments over the total limit are left out (in order) and reported');
   const r3 = await buildPortable(DECK, { out: path.join(work, 'l3.html'), attachLimits: { count: 2 } });
   ok(Object.keys(r3.files).filter((f) => f.startsWith('attachments/')).length === 2 && r3.warnings.some((w) => /more than 2 attachments/.test(w)), 'limits: more than the maximum number is reported');
-  ok(ATTACH_LIMITS.fileBytes === 10 * 1048576 && ATTACH_LIMITS.totalBytes === 20 * 1048576 && ATTACH_LIMITS.count === 100 && ATTACH_LIMITS.descriptionChars === 300, 'limits: defaults 10 MiB each, 20 MiB together, 100 files, descriptions up to 300 characters (spec §3.8 draft)');
+  ok(ATTACH_LIMITS.fileBytes === 10 * 1048576 && ATTACH_LIMITS.totalBytes === 20 * 1048576 && ATTACH_LIMITS.count === 100 && ATTACH_LIMITS.titleChars === 120 && ATTACH_LIMITS.descriptionChars === 300, 'limits: defaults 10 MiB each, 20 MiB together, 100 files, titles up to 120 and descriptions up to 300 characters (spec §3.8 draft)');
   // 題は要る：役割があっても題のないものは入れるが一覧に出さない（知らせる）。説明は 1〜2 文（改行なし・上限まで）。違えば説明なしで一覧に出す
   {
     const d = path.join(work, 'deck-notitle');
@@ -158,6 +158,18 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
     ok(r.index[KEY].map((e) => e.path).join() === 'attachments/paper.pdf' && 'attachments/data.csv' in r.files && 'attachments/code/run.py' in r.files && r.warnings.some((w) => /data\.csv" has no title/.test(w)) && r.warnings.some((w) => /run\.py" has no title/.test(w)),
       'title: an attachment with a role but no (or a blank) title is packed but not listed, with a warning');
     ok(!('description' in r.index[KEY][0]) && r.warnings.some((w) => /paper\.pdf": the description contains a line break/.test(w)), 'description: a description with a line break is left out with a warning (the entry is still listed)');
+    // 題：120 字（符号位置）まで・1 行。説明：300 字まで。Schema（vendor/egatari-spec）の maxLength・pattern と同じ
+    const d2 = path.join(work, 'deck-titlelen');
+    const dk2 = makeDeck(d2, { ...CONF, [KEY]: [{ ...CONF[KEY][0], title: '\u{1F600}'.repeat(120), description: 'x'.repeat(301) }, { path: 'attachments/data.csv', role: 'data', title: 'T'.repeat(121) }, { path: 'attachments/code/run.py', role: 'code', title: 'Run\r\nme' }] });
+    const r2 = await buildPortable(dk2, { out: path.join(work, 'tl.html') });
+    ok(r2.index[KEY].map((e) => e.path).join() === 'attachments/paper.pdf' && !('description' in r2.index[KEY][0]) && 'attachments/data.csv' in r2.files && 'attachments/code/run.py' in r2.files &&
+      r2.warnings.some((w) => /data\.csv": the title longer than 120 characters/.test(w)) && r2.warnings.some((w) => /run\.py": the title contains a line break/.test(w)) && r2.warnings.some((w) => /paper\.pdf": the description longer than 300 characters/.test(w)),
+      'title: a title over 120 characters or with a line break is packed but not listed (warns); 120 emoji count as 120; a description over 300 characters is dropped (warns): ' + r2.warnings.filter((w) => /title|description/.test(w)).join(' | '));
+    const sch = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'egatari-spec', 'schema', 'egatari-index.schema.json'), 'utf8'));
+    const findProp = (o, k) => { if (!o || typeof o !== 'object') return null; if (o.properties && o.properties[k] && o.properties.role && o.properties.path) return o.properties[k]; for (const v of Object.values(o)) { const x = findProp(v, k); if (x) return x; } return null; };
+    const st = findProp(sch, 'title'), sd = findProp(sch, 'description');
+    ok(st && sd && st.maxLength === ATTACH_LIMITS.titleChars && st.minLength === 1 && sd.maxLength === ATTACH_LIMITS.descriptionChars && st.pattern === '^[^\\r\\n]*$' && sd.pattern === st.pattern,
+      'limits: title and description limits match the schema (maxLength, minLength, pattern): ' + JSON.stringify({ st, sd }));
     const ix = { [KEY]: [{ path: 'attachments/a.pdf', role: 'pdf' }, { path: 'attachments/b.pdf', role: 'pdf', title: 'B' }], files: { 'attachments/a.pdf': 'x', 'attachments/b.pdf': 'y' }, blobs: { x: { bytes: 1, sha256: '0', mime: 'application/pdf' }, y: { bytes: 1, sha256: '0', mime: 'application/pdf' } } };
     ok(attachmentsOf(ix).map((e) => e.path).join() === 'attachments/b.pdf' && attachmentIndexWarnings(ix).some((w) => /no title \(required\)/.test(w)), 'title: a reader does not offer an index entry without a title (warns)');
     const ix2 = { [KEY]: [{ path: 'attachments/a.html', role: 'supplement', title: 'A' }, { path: 'attachments/b.csv', role: 'pdf', title: 'B' }, { path: 'attachments/c.pdf', role: 'pdf', title: 'C' }], files: { 'attachments/a.html': 'x', 'attachments/b.csv': 'x', 'attachments/c.pdf': 'x' }, blobs: { x: { bytes: 1, sha256: '0', mime: 'text/html' } } };
@@ -217,6 +229,17 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   await expect('pdf: OpenAction that opens a URL', 'a.pdf', F.PDF_OPENACTION_URI(), 'should:attachUnsafe:auto-action');
   await expect('pdf: additional actions (/AA)', 'a.pdf', F.PDF_AA(), 'should:attachUnsafe:auto-action');
   await expect('pdf: Launch action', 'a.pdf', F.PDF_LAUNCH(), 'should:attachUnsafe:launch');
+  await expect('pdf: /AA that only goes to a destination (/S /GoTo)', 'a.pdf', F.PDF_AA_GOTO(), '');
+  await expect('pdf: /AA through references to a GoTo action', 'a.pdf', F.PDF_AA_GOTO_REF(), '');
+  await expect('pdf: /AA with a GoTo and a Named action', 'a.pdf', F.PDF_AA_MIXED(), 'should:attachUnsafe:action should:attachUnsafe:auto-action');
+  await expect('pdf: OpenAction GoTo with /Next', 'a.pdf', F.PDF_OPENACTION_NEXT(), 'should:attachUnsafe:auto-action');
+  await expect('pdf: link annotations GoTo and URI (hyperref)', 'a.pdf', F.PDF_LINKS_OK(), '');
+  for (const t of ['GoToR', 'GoToE', 'SubmitForm', 'ImportData', 'Rendition', 'Named', 'ResetForm'])
+    await expect(`pdf: link annotation with a ${t} action`, 'a.pdf', F.PDF_LINK_ACTION(t), 'should:attachUnsafe:action');
+  await expect('pdf: a GoToR action with an #xx-escaped name (/G#6FToR)', 'a.pdf', F.PDF_LINK_ACTION('G#6FToR'), 'should:attachUnsafe:action');
+  await expect('pdf: page labels and structure /S values are not actions', 'a.pdf', F.PDF_S_NOT_ACTION(), '');
+  await expect('pdf: encrypted with a user password, no object streams (cannot be checked)', 'a.pdf', F.PDF_ENCRYPTED({ password: 'secret', objStm: false }), 'should:attachUnchecked');
+  await expect('pdf: encrypted with an empty user password, no object streams', 'a.pdf', F.PDF_ENCRYPTED({ objStm: false }), '');
   await expect('pdf: embedded files', 'a.pdf', F.PDF_EMBEDDED(), 'should:attachUnsafe:embedded-file');
   await expect('pdf: object stream that decompresses past the limit (decompression bomb)', 'a.pdf', F.PDF_OBJSTM_BOMB(), 'should:attachUnchecked');
   await expect('pdf: encrypted (R 4, AES-128) with an empty user password: object streams are decrypted and checked', 'a.pdf', F.PDF_ENCRYPTED(), '');
@@ -279,7 +302,10 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   await expect('mismatch: a JPEG named .png', 'a.png', F.JPEG(), 'should:attachMismatch:png');
   await expect('renamed executable: a Windows PE named .png', 'a.png', F.EXE(), 'must:attachForbidden:executable');
   // 名前から許されないもの
-  for (const [n, k] of [['run.exe', 'executable'], ['run.js', 'executable'], ['run.bat', 'executable'], ['a.html', 'html'], ['a.svg', 'svg'], ['a.zip', 'archive'], ['a.7z', 'archive'], ['a.xlsm', 'office-macro'], ['a.docm', 'office-macro'], ['a.doc', 'office-legacy'], ['a.xls', 'office-legacy'], ['a.ppt', 'office-legacy'], ['b.ega.html', 'egatari'], ['a.wasm', 'wasm']])
+  // §3.8 の code の条件の拡張子（OS が既定で実行する・スクリプトとして開く）はちょうどこの一覧
+  for (const e of 'js jse vbs vbe wsf wsh hta bat cmd com scr ps1 command app jar reg lnk'.split(' ')) await expect(`forbidden by name (script): .${e}`, 'run.' + e.toUpperCase(), 'x', 'must:attachForbidden:script');
+  for (const e of ['mjs', 'cjs', 'ts', 'py']) await expect(`code: JavaScript and other source as .${e}`, 'run.' + e, 'export const x = 1;\n', '');
+  for (const [n, k] of [['run.exe', 'executable'], ['run.dll', 'executable'], ['run.class', 'executable'], ['a.html', 'html'], ['a.svg', 'svg'], ['a.zip', 'archive'], ['a.7z', 'archive'], ['a.xlsm', 'office-macro'], ['a.docm', 'office-macro'], ['a.doc', 'office-legacy'], ['a.xls', 'office-legacy'], ['a.ppt', 'office-legacy'], ['b.ega.html', 'egatari'], ['a.wasm', 'wasm']])
     await expect(`forbidden by name: .${n.split('.').slice(1).join('.')}`, n, 'x', `must:attachForbidden:${k}`);
   await expect('not a §3.8 type: .gif', 'a.gif', 'GIF89a', 'must:attachType');
   await expect('not a §3.8 type: .pptx', 'a.pptx', F.zip([['a', 'b']]), 'must:attachType');
@@ -399,7 +425,7 @@ async function craft(html, adds) {
     const id = 'craft' + i, b = Buffer.from(a.bytes);
     ix.files[a.path] = id;
     ix.blobs[id] = { mime: a.mime, bytes: b.length, sha256: crypto.createHash('sha256').update(b).digest('hex'), chunks: [`${FORMAT.BLOB_PREFIX}${id}-0`] };
-    ix[KEY].push({ path: a.path, role: a.role, title: a.title });
+    ix[KEY].push({ path: a.path, role: a.role, title: a.title, ...(a.description !== undefined ? { description: a.description } : {}) });
     chunks += `<script type="application/octet-stream" id="${FORMAT.BLOB_PREFIX}${id}-0">${b.toString('base64')}</script>\n`;
   });
   const out = await replaceIndexText(html, JSON.stringify(ix));
@@ -435,6 +461,12 @@ const browser = await launch();
     { path: 'attachments/evil.html', bytes: EVIL, mime: 'text/html', role: 'supplement', title: 'Evil (HTML)' },
     { path: 'attachments/table.csv', bytes: 'a,b\n', mime: 'text/csv', role: 'pdf', title: 'CSV as PDF' },
     { path: 'attachments/fake.txt', bytes: EVIL, mime: 'text/plain', role: 'supplement', title: 'Fake text' },
+    // §3.8：題は 120 字まで・1 行（Schema）。拡張子と媒体型が合わない・OS が実行する拡張子は出さない。題の字は符号位置で数え、説明が長ければ説明だけ落とす
+    { path: 'attachments/long.txt', bytes: 'x\n', mime: 'text/plain', role: 'supplement', title: 'L'.repeat(121) },
+    { path: 'attachments/nl.txt', bytes: 'x\n', mime: 'text/plain', role: 'supplement', title: 'Two\nlines' },
+    { path: 'attachments/run.js', bytes: 'alert(1)\n', mime: 'text/plain', role: 'code', title: 'Script' },
+    { path: 'attachments/mime.csv', bytes: 'a,b\n', mime: 'text/plain', role: 'data', title: 'CSV as text/plain' },
+    { path: 'attachments/tool.mjs', bytes: 'export const x = 1;\n', mime: 'text/plain', role: 'code', title: '\u{1F600}'.repeat(120), description: 'd'.repeat(301) },
   ]);
   fs.writeFileSync(path.join(work, 'crafted.html'), crafted);
   const c1 = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, locale: 'en-US' });
@@ -444,7 +476,11 @@ const browser = await launch();
   await p1.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: 15000 });
   await p1.evaluate(() => DECK.tools.help(true));
   const crows = await p1.$$eval('#dt-help .dt-att li', (xs) => xs.map((x) => x.textContent));
-  ok(crows.length === 4 && !crows.some((r) => /evil\.html|CSV as PDF/.test(r)) && /fake\.txt/.test(crows[3]), 'player: an .html attachment and a CSV listed as pdf are not offered, even when the index lists them: ' + JSON.stringify(crows));
+  ok(crows.length === 5 && !crows.some((r) => /evil\.html|CSV as PDF|long\.txt|nl\.txt|run\.js|mime\.csv/.test(r)) && /fake\.txt/.test(crows[3]) && /tool\.mjs/.test(crows[4]),
+    'player: an .html attachment, a CSV listed as pdf, a title over 120 characters or with a line break, a .js file and a .csv with the media type text/plain are not offered, even when the index lists them: ' + JSON.stringify(crows));
+  const notes = await p1.$$eval('#dt-help .dt-att li', (xs) => xs.map((x) => (x.querySelector('.dt-att-w') || {}).textContent || ''));
+  ok(/^(?:Run code only if you trust its source|出どころを信頼できるときだけ、コードを実行してください)$/.test(notes[4]) && notes.slice(0, 4).every((t) => !t) && !(await p1.$$eval('#dt-help .dt-att li', (xs) => xs[4].querySelector('.dt-att-d'))),
+    'player: a code attachment carries the note to run code only from a trusted source (others do not); a 120-character title of emoji is offered, a 301-character description is not shown: ' + JSON.stringify(notes));
   const u1 = p1.url(), np1 = c1.pages().length;
   await p1.click('#dt-help [data-att="3"]');
   await p1.waitForTimeout(800);
@@ -543,7 +579,7 @@ const browser = await launch();
   // §3.8 の型：名前から許されないもの（.js）は題を尋ねる前に、中身が条件に合わないもの（JavaScript のある PDF）は読んだ後・書く前に、規則を言って断る
   await page.setInputFiles('#attach-file', { name: 'tool.js', mimeType: 'text/javascript', buffer: Buffer.from('alert(1)\n') });
   await page.waitForTimeout(400);
-  ok(/断りました/.test(await toastText()) && /§3\.8/.test(await toastText()) && /実行できる/.test(await toastText()) && !(await page.$('#dlg[open]')) && !(await rowsOf()).includes('attachments/tool.js'), 'editor: a .js file is refused by its name before the title prompt, naming the rule: ' + await toastText());
+  ok(/断りました/.test(await toastText()) && /§3\.8/.test(await toastText()) && /スクリプトとして開く/.test(await toastText()) && !(await page.$('#dlg[open]')) && !(await rowsOf()).includes('attachments/tool.js'), 'editor: a .js file is refused by its name before the title prompt, naming the rule: ' + await toastText());
   await page.setInputFiles('#attach-file', { name: 'bad.pdf', mimeType: 'application/pdf', buffer: F.PDF_JS() });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
   await page.click('#dlg-ok');

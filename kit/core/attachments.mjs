@@ -12,13 +12,13 @@
 // problems：{code, path?, …}。code は kit/check-messages.mjs の attach…（検査器と書き出しの知らせが同じ言葉を使う）
 import { FORMAT } from './format.mjs';
 import { pathProblem, excludedReason, foldPath } from './portable.mjs';
-import { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, DESCRIPTION_CHARS } from './attach-content.mjs';
-export { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS };
+import { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, TITLE_CHARS, DESCRIPTION_CHARS, titleProblem, descriptionProblem, clipChars } from './attach-content.mjs';
+export { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, titleProblem, descriptionProblem, clipChars };
 
 const MiB = 1024 * 1024;
 // 添付の上限：1 つ 10 MiB、合わせて 20 MiB（形式の §3.8 の案の推奨と同じ。超えるものは断る）、100 個まで。書き出した 1 ファイルは base64 で 4/3 倍になる
-// （20 MiB → 約 27 MiB。形式の上限は §11）。題は要る（§3.8 の案）・200 字まで。説明（description。1〜2 文の文字だけ）は 300 字まで
-export const ATTACH_LIMITS = Object.freeze({ fileBytes: 10 * MiB, totalBytes: 20 * MiB, count: 100, titleChars: 200, descriptionChars: DESCRIPTION_CHARS });
+// （20 MiB → 約 27 MiB。形式の上限は §11）。題は要る（§3.8 の案）・120 字まで・1 行。説明（description。1〜2 文の文字だけ）は 300 字まで・1 行
+export const ATTACH_LIMITS = Object.freeze({ fileBytes: 10 * MiB, totalBytes: 20 * MiB, count: 100, titleChars: TITLE_CHARS, descriptionChars: DESCRIPTION_CHARS });
 
 // 音声と動画は添付にしない（§3.8 の案：教材が鳴らさないものは添付しない）。拡張子と、先頭のバイト（よくある形式の印）で見分ける
 const MEDIA_EXT = {
@@ -64,14 +64,9 @@ export function attachMediaProblem(p, bytes) {
   const byContent = bytes ? sniffMedia(bytes) : null;
   return byContent ? { code: 'attachMedia', path: p, level: 'must', kind: byContent, by: 'content' } : null;
 }
-const hasTitle = (e) => typeof e.title === 'string' && e.title.trim() !== '' && e.title.length <= ATTACH_LIMITS.titleChars;
-// 説明（description）：文字列・ATTACH_LIMITS.descriptionChars 字まで・制御文字（改行を含む）なし。正しければ前後の空白を除いたもの、なければ null
-export function descriptionProblem(d) {
-  if (typeof d !== 'string') return 'not a string';
-  if (d.length > ATTACH_LIMITS.descriptionChars) return `longer than ${ATTACH_LIMITS.descriptionChars} characters`;
-  if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(d)) return 'contains a line break or a control character';
-  return null;
-}
+// 題（title。§3.8・Schema：1〜120 字・1 行・空白だけでない）と説明（description。300 字まで・1 行）の検査は attach-content.mjs の titleProblem・descriptionProblem
+const hasTitle = (e) => !titleProblem(e.title);
+const blankTitle = (e) => !own(e, 'title') || (typeof e.title === 'string' && !e.title.trim());
 export const ATTACH_ROLES = FORMAT.ATTACH_ROLES;
 const PREFIX = FORMAT.ATTACH_DIR + '/';
 export const ATTACH_PREFIX = PREFIX;
@@ -105,7 +100,6 @@ export function configEntries(conf) {
     if (seen.has(f)) { problems.push({ code: 'attachDuplicate', path: e.path, other: seen.get(f) }); return; }
     seen.set(f, e.path);
     if (own(e, 'role') && !ATTACH_ROLES.includes(e.role)) problems.push({ code: 'attachBadRole', path: e.path, role: String(e.role).slice(0, 40) });
-    if (own(e, 'title') && (typeof e.title !== 'string' || e.title.length > ATTACH_LIMITS.titleChars)) problems.push({ code: 'attachBadTitle', path: e.path, max: ATTACH_LIMITS.titleChars });
     entries.set(e.path, e);
   });
   return { entries, problems };
@@ -167,14 +161,15 @@ export function planAttachments(files, conf, opts = {}) {
     include.push(p);
     const e = entries.get(p) || carry.get(p) || null;
     if (!e || !ATTACH_ROLES.includes(e.role)) { if (!e || !own(e, 'role')) problems.push({ code: 'attachNoRole', path: p }); continue; }
-    if (!hasTitle(e)) { if (!own(e, 'title') || (typeof e.title === 'string' && e.title.trim() === '')) problems.push({ code: 'attachNoTitle', path: p }); continue; }
+    // 題が正しくない：入れるが一覧に出さない（知らせる）。説明が正しくない：説明を落として一覧に出す（知らせる）
+    if (!hasTitle(e)) { problems.push(blankTitle(e) ? { code: 'attachNoTitle', path: p } : { code: 'attachBadTitle', path: p, why: titleProblem(e.title), max: ATTACH_LIMITS.titleChars }); continue; }
     if (own(e, 'description')) { const why = descriptionProblem(e.description); if (why) problems.push({ code: 'attachBadDescription', path: p, why, max: ATTACH_LIMITS.descriptionChars }); }
     list.push(indexEntry({ ...e, path: p }));
   }
   return { include, list, problems, total, limits: L };
 }
 
-// 文書の索引の添付：files にあり、役割が正しく、パスが添付の場所のもの。題・役割・大きさ・塊を添える（読み手は塊を復号して hash を確かめてから渡す）
+// 文書の索引の添付：files にあり、役割と題が正しく、パスが添付の場所で、型が役割に許され拡張子と媒体型が合うもの。題・役割・大きさ・塊を添える（読み手は塊を復号して hash を確かめてから渡す）
 export function attachmentsOf(index) {
   const out = [];
   if (!isObj(index) || !Array.isArray(index[FORMAT.ATTACH_KEY]) || !isObj(index.files) || !isObj(index.blobs)) return out;
@@ -184,6 +179,9 @@ export function attachmentsOf(index) {
     if (!own(index.files, e.path)) continue;
     const b = index.blobs[index.files[e.path]];
     if (!isObj(b)) continue;
+    // §3.8：役割に許されない型、拡張子と媒体型の合わないものは出さない
+    const k = kindOfName(e.path);
+    if (!k || !k.kind || !roleAllows(e.role, k.kind) || b.mime !== k.mime) continue;
     seen.add(e.path);
     out.push({ path: e.path, role: e.role, title: e.title, ...(typeof e.description === 'string' && !descriptionProblem(e.description) ? { description: e.description } : {}), mime: b.mime, bytes: b.bytes, sha256: b.sha256, blob: index.files[e.path] });
   }
@@ -200,7 +198,7 @@ export function attachmentIndexWarnings(index) {
     if (!isObj(e) || typeof e.path !== 'string') { w.push(`${at}: no path; ignored`); return; }
     if (!isAttachPath(e.path) || pathProblem(e.path)) { w.push(`${at}: "${e.path.slice(0, 80)}" is not a path under ${PREFIX}; ignored`); return; }
     if (!ATTACH_ROLES.includes(e.role)) w.push(`${at}: role "${String(e.role).slice(0, 40)}" is not one of ${ATTACH_ROLES.join(', ')}; ignored`);
-    else if (!hasTitle(e)) w.push(`${at}: "${e.path.slice(0, 80)}" has no title (required); ignored`);
+    else if (!hasTitle(e)) w.push(blankTitle(e) ? `${at}: "${e.path.slice(0, 80)}" has no title (required); ignored` : `${at}: "${e.path.slice(0, 80)}": the title ${titleProblem(e.title)} (at most ${ATTACH_LIMITS.titleChars} characters, one line); ignored`);
     else if (!isObj(index.files) || !own(index.files, e.path)) w.push(`${at}: "${e.path.slice(0, 80)}" is not in files; ignored`);
     else {
       // 型（§3.8）：名前の型が役割に許されないか、塊の媒体型が名前の型と違う（再生器はダウンロードに出さない）
@@ -220,10 +218,10 @@ export function attachmentName(p) {
   return n || 'attachment';
 }
 
-const FORBIDDEN_TEXT = { executable: 'an executable', wasm: 'WebAssembly', 'office-legacy': 'a legacy binary Office or RTF document', 'office-macro': 'a macro-enabled Office document',
+const FORBIDDEN_TEXT = { script: 'a file type that operating systems run or open as a script', executable: 'an executable', wasm: 'WebAssembly', 'office-legacy': 'a legacy binary Office or RTF document', 'office-macro': 'a macro-enabled Office document',
   html: 'HTML', svg: 'SVG', egatari: `another ${FORMAT.DISPLAY_NAME} file`, archive: 'an archive or container' };
 const UNSAFE_TEXT = { javascript: 'the PDF contains JavaScript', 'auto-action': 'the PDF runs an action when opened', launch: 'the PDF can launch programs', 'embedded-file': 'the PDF carries embedded files',
-  'active-content': 'the PDF has active content', macro: 'the document contains macros', activex: 'the document contains ActiveX controls', 'embedded-object': 'the document contains embedded objects',
+  action: 'the PDF has actions other than going to a place in the document or opening a link', 'active-content': 'the PDF has active content', macro: 'the document contains macros', activex: 'the document contains ActiveX controls', 'embedded-object': 'the document contains embedded objects',
   'external-link': 'the document refers to external files or data', 'external-data': 'the document fetches external data', dde: 'the spreadsheet uses DDE', 'field-code': 'the document has a field code that runs or fetches',
   'remote-template': 'the document uses a remote template' };
 // 書き出しの知らせ（英語、'portable: …'）
@@ -235,7 +233,7 @@ export function problemText(x) {
     case 'attachExcluded': return `attachment ${p}: ${x.why}; not included`;
     case 'attachDuplicate': return `attachment ${p} is listed twice (also as "${x.other}"); the second entry is ignored`;
     case 'attachBadRole': return `attachment ${p}: role "${x.role}" is not one of ${ATTACH_ROLES.join(', ')}; it is included but not listed for readers`;
-    case 'attachBadTitle': return `attachment ${p}: the title is not a string of at most ${x.max} characters; it is included but not listed for readers`;
+    case 'attachBadTitle': return `attachment ${p}: the title ${x.why || 'is not valid'} (at most ${x.max} characters, one line); it is included but not listed for readers`;
     case 'attachMissing': return `attachment ${p} is listed in ${FORMAT.CONFIG_FILE} but the file does not exist`;
     case 'attachTooLarge': return `attachment ${p} is ${x.n} bytes, over the limit of ${x.max}; not included`;
     case 'attachTotal': return `attachment ${p}: the attachments would be ${x.n} bytes together, over the limit of ${x.max}; not included`;
