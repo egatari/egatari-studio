@@ -45,6 +45,14 @@
         "type": "number",
         "minimum": 0,
         "maximum": 1
+      },
+      "kind": {
+        "enum": [
+          "tts",
+          "recorded",
+          "imported"
+        ],
+        "description": "How the audio was made, copied from the audio record (§5.2); lets players mark synthesized narration (§7.3)."
       }
     },
     "if": {

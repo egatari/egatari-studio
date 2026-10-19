@@ -63,6 +63,53 @@
     },
     "attribution": {
       "type": "string"
+    },
+    "offer": {
+      "type": "object",
+      "properties": {
+        "modes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "talk",
+              "learn",
+              "video"
+            ]
+          }
+        },
+        "faces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "talk",
+              "read"
+            ]
+          }
+        },
+        "open": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "talk",
+                "learn",
+                "video"
+              ]
+            },
+            "face": {
+              "enum": [
+                "talk",
+                "read"
+              ]
+            }
+          }
+        }
+      },
+      "description": "Modes and faces the author offers, and where the lesson opens (§1.2). The author's intent, not access control."
     }
   },
   "if": {
