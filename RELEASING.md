@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=53eea27c395a3ea1 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=1e07c949dcc67b19 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -13,7 +13,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
    ```
 
-2. **Evaluation.** Wait for the nightly evaluation page (run by the format spec sessions, [egatari-spec](https://github.com/egatari/egatari-spec)) to include the candidate: tier A diff **0**, and a tier B row for the candidate. Anything else: fix on `main` and make a new candidate.
+2. **Evaluation.** Check the maintainers' nightly evaluation (run with the format spec's experiment tools; ask the maintainer for the summary of the candidate commit): tier A (re-scoring saved replies) shows **0 changed** — if not 0, confirm every difference is an intended change — and tier B (new generation) shows no large drop in the pass rate after fixes compared with recent nights. Otherwise fix on `main` and make a new candidate.
 3. **CI green on `main`.** The `test` and `pages` (build only) workflows pass for the candidate's commit: `gh run list --branch main --limit 5`.
 4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json` and deletes `changes/*.md`):
 

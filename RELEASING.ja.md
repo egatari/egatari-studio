@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=73a7d3140a1a604b -->
+<!-- i18n: pair=RELEASING.md sha256=955c9b8961b3a1b4 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -13,7 +13,7 @@
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
    ```
 
-2. **評価。** 夜ごとの評価のページ（形式の仕様の作業（[egatari-spec](https://github.com/egatari/egatari-spec)）が回すもの）に候補が載るのを待つ：段 A の差分が **0**、候補の段 B の行がある。そうでなければ `main` で直して、新しい候補を作る
+2. **評価。** 管理者の夜ごとの評価（形式の仕様の実験の道具で回すもの。候補の commit の要約を管理者に頼む）で、段 A（保存した返答の採点し直し）の差分が **0**（0 でなければ、差分がどれも意図した変更か確かめる）、段 B（新しく作らせたもの）の直し後の通過率が、直近の晩より大きく下がっていないこと。そうでなければ `main` で直して、新しい候補を作る
 3. **`main` の CI が緑。** 候補のコミットで `test` と `pages`（組むだけ）の workflow が通っている：`gh run list --branch main --limit 5`
 4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` の版も変え、`changes/*.md` を消す）：
 
