@@ -26,6 +26,8 @@ const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!
 const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
 const live = (p) => p.evaluate(() => { const e = document.getElementById('deck-live'); return e ? e.textContent : null; });
 const settle = (p) => p.waitForTimeout(120);
+// 領域はいったん空にしてから少し後に入る（kit/deck.js の announce）。遅い機械（CI の macOS など）でも決まった時間で読まず、前と違う文が入るまで待つ
+const liveNew = async (p, prev) => { let t = null; for (let i = 0; i < 60; i++) { t = await live(p); if (t && t !== prev) return t; await p.waitForTimeout(50); } return t; };
 const frame = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 const act = (p) => p.evaluate(() => { const a = document.activeElement; return a ? { tag: a.tagName, id: a.id, b: a.getAttribute('data-b'), cls: a.className, label: a.getAttribute('aria-label') } : null; });
 
@@ -39,19 +41,19 @@ const lr = await p.evaluate(() => { const e = document.getElementById('deck-live
 ok(lr && lr.live === 'polite' && lr.atomic === 'true' && lr.w <= 1, 'aria-live="polite" の領域があり、画面には出ない');
 await p.keyboard.press('ArrowRight'); await settle(p);
 const titles = await p.evaluate(() => DECK.slides.map((s) => (s.querySelector('h2, h1') || {}).textContent || ''));
-let t = await live(p);
+let t = await liveNew(p, null);
 ok(/スライド 2 \/ \d+：/.test(t) && t.includes(titles[1].trim()), `スライドが変わると「スライド n / N：タイトル」（${t}）`);
 const sl = await p.evaluate(() => DECK.slides.map((s) => ({ ah: s.getAttribute('aria-hidden'), inert: s.inert, role: s.getAttribute('role'), rd: s.getAttribute('aria-roledescription'), label: s.getAttribute('aria-label'), active: s.classList.contains('active') })));
 ok(sl.every((s) => s.active ? s.ah === null && !s.inert : s.ah === 'true' && s.inert), '隠れたスライドは aria-hidden="true" と inert、今のスライドは外れる');
 ok(sl.every((s) => s.role === 'group' && s.rd === 'スライド' && /^スライド \d+ \/ \d+/.test(s.label)), 'スライドは role="group"・aria-roledescription・aria-label を持つ');
 ok(await p.evaluate(() => { const s = DECK.slides[1]; return s._items.every((e) => (e.getAttribute('aria-hidden') === 'true') === !e.classList.contains('on')); }), 'まだ出ていない段階は aria-hidden（発表）');
 await p.keyboard.press('ArrowRight'); await settle(p);
-t = await live(p);
+t = await liveNew(p, t);
 const want1 = await p.evaluate(() => DECK.slides[1]._items.filter((e) => +e.getAttribute('data-step') === 1)[0].textContent.slice(0, 6));
 ok(t.includes(want1), `次の段階で、新しく出た段階の文字を読む（${t.slice(0, 40)}…）`);
 ok(!/\\theta|annotation/.test(t), '式は TeX の原文を読ませない');
 await p.keyboard.press('ArrowLeft'); await settle(p);
-t = await live(p);
+t = await liveNew(p, t);
 ok(/^段階 0 \/ \d+$/.test(t), `前へ戻ると「段階 k / K」（${t}）`);
 await p.keyboard.press('l'); await settle(p);
 ok(await p.evaluate(() => DECK.slides[1]._items.every((e) => e.getAttribute('aria-hidden') !== 'true')), '授業モードでは後の段階も読める（薄く見えているので）');
