@@ -486,7 +486,10 @@ window.addEventListener('message', (e) => {
   if (e.source === frame) {
     ui.message(e);
     if (m.type === 'app-open-presenter') openPresenter();
-    else if (m.type === 'app-check-result' && S.checks.has(m.id)) { S.checks.get(m.id)(m.results || []); S.checks.delete(m.id); }
+    else if (m.type === 'app-check-result' && S.checks.has(m.id)) {
+      const w = S.checks.get(m.id);
+      if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
+    }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
       if (m.type === 'deck-pos') S.pos = m;
       if (S.presWin && !S.presWin.closed) S.presWin.postMessage({ type: 'app-pres-down', m }, '*');
@@ -535,12 +538,32 @@ function openPanel(title, body) {
 function closePanel() { $('panel').hidden = true; }
 $('panel-close').onclick = closePanel;
 
+// 今の読み込み（S.loads）のプレビューに頼む。組み直し・読み込み直しの途中（置き換えの直後など）は、その読み込みが終わるのを待ってから送る。
+// 読み込み中の iframe に送った頼みは前の文書に届いて消えるので、答えの来ないうちに読み込みが替わったら、新しい文書に送り直す
+// （答えは頼んだ読み込みのものだけを受け取る。期限は全体で 20 秒）
+const CHECK_MS = 20000;
+async function askCheck() {
+  const t0 = Date.now(), tick = () => new Promise((r) => setTimeout(r, 50));
+  while (Date.now() - t0 < CHECK_MS) {
+    if (S.building || !S.allowed || !S.loads || S.frameLoaded !== S.loads) { await tick(); continue; }
+    const f = $('preview').contentWindow, load = S.loads, id = 'q' + Date.now() + '-' + load;
+    if (!f) { await tick(); continue; }
+    const got = new Promise((res) => S.checks.set(id, { res, load }));
+    f.postMessage({ type: 'app-check', id }, '*');
+    for (;;) {
+      const r = await Promise.race([got, tick().then(() => undefined)]);
+      if (r !== undefined) return r;
+      if (S.loads !== load || Date.now() - t0 >= CHECK_MS) break;   // 読み込みが替わった（新しい文書に送り直す）・期限
+    }
+    S.checks.delete(id);
+  }
+  return null;
+}
 async function quickCheck() {
-  const f = $('preview').contentWindow;
-  if (!f || !S.base) return;
+  if (!$('preview').contentWindow || !S.base) return;
   openPanel(T.checkTitle, [el('p', { text: T.checking })]);
-  const id = 'q' + Date.now();
-  const results = await new Promise((res) => { S.checks.set(id, res); f.postMessage({ type: 'app-check', id }, '*'); setTimeout(() => { if (S.checks.has(id)) { S.checks.delete(id); res(null); } }, 20000); });
+  const results = await askCheck();
+  const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
@@ -553,7 +576,7 @@ async function quickCheck() {
   ]));
   openPanel(T.checkTitle, [
     el('div', { cls: 'sum', text: T.checkSummary(errs, warns) }),
-    el('p', { cls: 'hint', text: T.checkNote }),
+    el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, results.length > 0) }),
     ...(results.length ? [llm.fixButton(results)] : []),
     ...items,
   ]);

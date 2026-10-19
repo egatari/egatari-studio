@@ -8,6 +8,9 @@
 // 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）
 // 4. 決まりを破った返事 → 簡易チェックのエラー → 直しの依頼の文章に、エラーの言葉・決まりの名前と文章・今のファイルが入る →
 //    直したスライドだけの返事を「今のデッキを置き換える」で取り込む → docId はそのまま、そのスライドだけが替わり、エラー 0
+// 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）を開いていて、別のデッキの返事を「今のデッキを置き換える」で取り込む →
+//    簡易チェックが新しいプレビューに答える（前の読み込みに頼んで「応答しません」にならない）・プレビューが新しいデッキ・保存できる・
+//    直したスライドだけの置き換えも同じ。結果が 0 件の簡易チェックの説明の文
 // 画像（shotDir があれば）：paste-dialog(-ja).png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・fix-replaced.png（1280×800）
 import fs from 'node:fs';
 import path from 'node:path';
@@ -141,6 +144,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
   ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /narration \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
     'llm: quick check reports the long title, the orphan [4] and the expression reading: ' + sum2);
+  const note2 = await page.textContent('#panel-body .hint');
+  ok(/^Checks that run in the browser/.test(note2) && /If there are errors, press “Copy fix request for your AI” below/.test(note2), 'llm: with errors, the quick check note points to the fix request button below: ' + note2);
   await shot('fix-check.png');
   const docId2 = (await state()).portable.docId;
   await page.click('#b-fixreq');
@@ -174,6 +179,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(/^0 errors/.test(sum3), 'llm: after the fix the quick check reports no errors: ' + sum3);
   await shot('fix-replaced.png');
 
+  // ---------------------------------------------------------------- 5. ほかのデッキを開いていて、別のデッキの返事で「今のデッキを置き換える」
+  // （1 ファイルの見本と作業フォルダ。置き換えの直後の簡易チェックが、前の読み込みのプレビューに頼んで「デッキが応答しません」にならない）
+  await testReplace({ ctx, BASE, ok, watch, bdeck, bnarr });
+
   // 日本語の画面：大きさは日本語の指示のもの（英語の大きさではない）。node kit/llm-pack.mjs --list --lang ja と同じ計算
   {
     const pj = await ctx.newPage();
@@ -202,4 +211,103 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pj.close();
   }
   await ctx.close();
+}
+
+// 貼り付けの窓から「今のデッキを置き換える」で取り込み、簡易チェックの板の結果（.sum か、確かめられなかった言葉）を返す
+async function pasteReplace(p, text) {
+  await p.evaluate(() => { document.getElementById('panel').hidden = true; });
+  await p.click('#b-openmenu');
+  await p.click('#b-paste');
+  await p.waitForSelector('#dlg[open] #paste-text');
+  await p.fill('#paste-text', text);
+  await p.check('#paste-replace');
+  const t0 = Date.now();
+  await p.click('#dlg-import');
+  await p.waitForFunction(() => { const b = document.getElementById('panel-body'); return !document.getElementById('panel').hidden && b && (b.querySelector('.sum') || /did not answer/.test(b.textContent)); }, null, { timeout: 40000 });
+  return { sum: await p.evaluate(() => { const s = document.querySelector('#panel-body .sum'); return s ? s.textContent : document.getElementById('panel-body').textContent; }), ms: Date.now() - t0 };
+}
+// プレビューに今出ている見出し（want が出るまで待つ）
+async function previewHeadings(p, want) {
+  // プレビューは sandbox（origin を持たない）なので、ページからは中を読めない。Playwright の frame で読む
+  const read = async () => {
+    const f = p.frames().find((x) => x.parentFrame() === p.mainFrame());
+    return f ? f.evaluate(() => [...document.querySelectorAll('section.slide h2')].map((h) => h.textContent.trim())).catch(() => null) : null;
+  };
+  for (let t0 = Date.now(); Date.now() - t0 < 20000; await p.waitForTimeout(100)) {
+    const h = await read();
+    if (h && h.includes(want)) return h;
+  }
+  return read();
+}
+const sectionOf = (deck, heading) => {
+  const id = deck.match(new RegExp(`<section class="slide" id="(s-[a-z2-7]{6})">\\s*<h2>${heading}`))[1];
+  return deck.match(new RegExp(`<section class="slide" id="${id}">[\\s\\S]*?</section>`))[0];
+};
+
+async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
+  const ex = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8');
+  const exN = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8');
+  const reply = replyOf(bdeck, bnarr);
+  // 5a. 1 ファイル（見本の minimal.ega.html）
+  {
+    const p = await ctx.newPage();
+    watch(p, 'llm-replace-portable');
+    await p.goto(BASE + '?lang=en');
+    await p.waitForSelector('#drop');
+    ok(await p.evaluate(async () => { const u = new Uint8Array(await (await fetch('examples/minimal.ega.html')).arrayBuffer()); return window.__APP_TEST.openFile({ bytes: u, name: 'minimal.ega.html' }); }) === true, 'llm replace: opened the minimal example as a single file');
+    await p.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
+    const docId = (await p.evaluate(() => window.__APP_TEST.state())).portable.docId;
+    const r = await pasteReplace(p, reply);
+    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (single file): replacing with another deck runs the quick check on the new preview (${r.ms} ms): ${r.sum}`);
+    const st = await p.evaluate(() => window.__APP_TEST.state());
+    const h = await previewHeadings(p, '導入から 3 か月の結果');
+    ok(st.portable.docId === docId && st.portable.dirty && h && h.includes('導入から 3 か月の結果') && !h.includes('更新の式'), 'llm replace (single file): the docId stays, the file is unsaved and the preview shows the new deck: ' + JSON.stringify(h));
+    // 直したスライドだけの返事（id で戻す）
+    const F = await p.evaluate(() => new TextDecoder().decode(Uint8Array.from(atob(window.__APP_TEST.files()['deck.html']), (c) => c.charCodeAt(0))));
+    const r2 = await pasteReplace(p, '```deck.html\n' + sectionOf(F, '拠点ごとの').replace('拠点ごとの 1 日の出荷', '拠点ごとの出荷') + '\n```\n');
+    const h2 = await previewHeadings(p, '拠点ごとの出荷');
+    ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && h2.includes('導入から 3 か月の結果'), `llm replace (single file): a reply with one slide replaces just that slide and the quick check answers (${r2.ms} ms): ${r2.sum}`);
+    // 保存：置き換えた中身が 1 ファイルに入り、保存していない印が消える
+    await p.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('replaced-' + Date.now() + '.ega.html', { create: true }); });
+    const sv = p.evaluate(() => window.__APP_TEST.save('save'));
+    const which = await Promise.race([sv.then(() => 'saved'), p.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 }).then(() => 'tierB')]);
+    if (which === 'tierB') await p.click('#dlg-rebuild');
+    await sv;
+    const saved = await p.evaluate(async () => (await (await window.__APP_TEST.saveHandle.getFile()).text()));
+    const st2 = await p.evaluate(() => window.__APP_TEST.state());
+    ok(!st2.portable.dirty && saved.includes('拠点ごとの出荷') && saved.includes('導入から 3 か月の結果') && !saved.includes('<h2>更新の式</h2>'), `llm replace (single file): Save writes the replaced deck and clears the unsaved mark (tier ${st2.portable.lastTier})`);
+    await p.close();
+  }
+  // 5b. 作業フォルダ（OPFS に examples/minimal を写す）：置き換えは deck.html・narration.md に書いて組み直す（書いたものがそのまま保存）
+  {
+    const p = await ctx.newPage();
+    watch(p, 'llm-replace-folder');
+    await p.goto(BASE + '?lang=en');
+    await p.waitForSelector('#drop');
+    await p.evaluate(async ([d, n]) => {
+      const root = await navigator.storage.getDirectory();
+      const top = await root.getDirectoryHandle('replace-' + Date.now(), { create: true });
+      for (const [k, v] of [['deck.html', d], ['narration.md', n]]) { const w = await (await top.getFileHandle(k, { create: true })).createWritable(); await w.write(v); await w.close(); }
+      window.__rdir = top;
+      window.__APP_TEST.open(top);
+    }, [ex, exN]);
+    await p.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
+    const read = (rel) => p.evaluate(async (rel) => (await (await window.__rdir.getFileHandle(rel)).getFile()).text(), rel);
+    const r = await pasteReplace(p, reply);
+    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (working folder): replacing with another deck runs the quick check on the rebuilt preview (${r.ms} ms): ${r.sum}`);
+    const h = await previewHeadings(p, '導入から 3 か月の結果');
+    const D = await read('deck.html'), N = await read('narration.md');
+    ok(h && h.includes('導入から 3 か月の結果') && !h.includes('更新の式') && D.includes('<h2>導入から 3 か月の結果</h2>') && !D.includes('更新の式') && /## 導入から 3 か月の結果 \{#s-[a-z2-7]{6}\}/.test(N),
+      'llm replace (working folder): deck.html and narration.md are written and the preview shows the new deck: ' + JSON.stringify(h));
+    const r2 = await pasteReplace(p, '```deck.html\n' + sectionOf(D, '拠点ごとの').replace('拠点ごとの 1 日の出荷', '拠点ごとの出荷') + '\n```\n');
+    const h2 = await previewHeadings(p, '拠点ごとの出荷');
+    const D2 = await read('deck.html');
+    ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && D2.includes('<h2>拠点ごとの出荷</h2>') && D2.includes('<h2>導入から 3 か月の結果</h2>'),
+      `llm replace (working folder): a reply with one slide replaces just that slide in deck.html and the quick check answers (${r2.ms} ms): ${r2.sum}`);
+    // 結果が 0 件でも、説明の文は途中で切れず、エラーがあれば直しの依頼のボタンが出ることを言う
+    const note0 = await p.textContent('#panel-body .hint');
+    ok(/^Checks that run in the browser \(size, length, missing narration, color contrast\)\.( |$)/.test(note0) && /“Copy fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
+      'llm quick check: with no results, the note says the fix request button appears when there are errors: ' + note0);
+    await p.close();
+  }
 }

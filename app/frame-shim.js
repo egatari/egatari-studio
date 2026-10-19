@@ -45,14 +45,22 @@ window.addEventListener("message", function(e){
   var m = e.data || {};
   if (m.type === "app-print") window.print();
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
-  else if (m.type === "app-check") parentWin.postMessage({type: "app-check-result", id: m.id, results: quickCheck()}, "*");
+  else if (m.type === "app-check") whenReady(function(){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck()}, "*"); });
 });
+// 簡易な検査は、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
+// 10 秒たっても組み上がらなければ、そのまま検査する（実行系が止まったデッキ：スクリプトのエラーを返す）
+function whenReady(fn){
+  if (window.DECK && window.DECK.ready) return fn();
+  var done = false, go = function(){ if (!done) { done = true; fn(); } };
+  document.addEventListener("deck:ready", go);
+  setTimeout(go, 10000);
+}
 
 // ---------------------------------------------------------------- 簡易な検査（kit/check.mjs の一部：はみ出し・文字の大きさ・字数・口述原稿・コントラスト）
 // 部品の再現性・タイムライン・モーフ・読み上げの検査はしない（全部の検査は CLI の npm run check）
 function quickCheck(){
   var DECK = window.DECK;
-  if (!DECK || !DECK.slides) return [];
+  if (!DECK || !DECK.slides) return jsErrors.map(function(t){ return {i: null, title: "", sev: "error", code: "consoleError", arg: t}; });
   var JA = DECK.ja !== false, S = DECK.slides, out = [];
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
   var units = function(s){ return Array.from(s).reduce(function(a, ch){ return a + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1); }, 0); };

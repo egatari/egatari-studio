@@ -36,7 +36,7 @@ const ja = {
   slidesN: (n) => `${n} 枚`, rebuilt: (t, why) => `${t} ${why === 'poll' ? '外での変更を読み込みました' : why === 'save' ? '保存して組み直しました' : '組み立てました'}`,
   buildFailedAt: (t) => `${t} 組み立てに失敗しました`, warnings: (n) => `警告 ${n}`, warnTitle: '組み立ての警告',
   checkTitle: '簡易チェック', checking: '確かめています…', checkFailed: '確かめられませんでした（デッキが応答しません）',
-  checkSummary: (e, w) => `エラー ${e} · 警告 ${w}`, checkNote: 'ブラウザの中でできる一部の検査です（はみ出し・文字の大きさ・字数・口述原稿の抜け・コントラスト）。部品の再現性などを含む完全な検査は npm run check で',
+  checkSummary: (e, w) => `エラー ${e} · 警告 ${w}`, checkNote: (fix, any) => `ブラウザの中でできる検査です（大きさ・長さ・口述原稿の抜け・色の差）。${any ? `エラーがあれば、下の「${fix}」で AI に直してもらえます。` : `エラーがあると、ここに「${fix}」のボタンが出て、AI に直してもらえます。`}`,
   sevError: 'エラー', sevWarn: '警告', wholeDeck: 'デッキ全体', slideN: (n, t) => `スライド ${n}${t ? '：' + t : ''}`,
   checkMsg: (c, a) => ({
     titleLong: `タイトル ${a} 字（26 字まで）`, titleLongEn: `タイトル ${a} 文字（60 文字まで）`, conclLong: `結論の行 ${a} 字（35 字まで）`, conclLongEn: `結論の行 ${a} 文字（70 文字まで）`,
@@ -186,7 +186,7 @@ const en = {
   slidesN: (n) => `${n} slides`, rebuilt: (t, why) => `${t} ${why === 'poll' ? 'reloaded outside changes' : why === 'save' ? 'saved and rebuilt' : 'built'}`,
   buildFailedAt: (t) => `${t} build failed`, warnings: (n) => `${n} warning${n === 1 ? '' : 's'}`, warnTitle: 'Build warnings',
   checkTitle: 'Quick check', checking: 'Checking…', checkFailed: 'Could not check (the deck did not answer)',
-  checkSummary: (e, w) => `${e} errors · ${w} warnings`, checkNote: 'A subset of the checks that runs in the browser (overflow, font size, length, missing narration, contrast). The full check, including component determinism, is npm run check.',
+  checkSummary: (e, w) => `${e} errors · ${w} warnings`, checkNote: (fix, any) => `Checks that run in the browser (size, length, missing narration, color contrast). ${any ? `If there are errors, press “${fix}” below to have your AI fix them.` : `If there are errors, a “${fix}” button appears here, so your AI can fix them.`}`,
   sevError: 'error', sevWarn: 'warning', wholeDeck: 'whole deck', slideN: (n, t) => `slide ${n}${t ? ': ' + t : ''}`,
   checkMsg: (c, a) => ({
     titleLong: `title is ${a} units (max 26)`, titleLongEn: `title is ${a} characters (max 60)`, conclLong: `conclusion is ${a} units (max 35)`, conclLongEn: `conclusion is ${a} characters (max 70)`,

@@ -293,11 +293,12 @@ export function setupLlm(app) {
     await afterOpen();
     return null;
   }
-  // プレビューが組み上がるのを待って簡易チェック
+  // 組み直しが終わり、プレビューの今の読み込みが表示し終わるのを待って簡易チェック。S.pos では待たない（フォルダの置き換えでは、
+  // 前の読み込みの位置が残っていて、読み込み中のプレビューに頼みを送ってしまう。頼みは app.quickCheck が今の読み込みに結び付ける）
   async function afterOpen() {
-    const t0 = Date.now();
-    while (Date.now() - t0 < 20000 && !(S.pos && S.allowed)) await new Promise((r) => setTimeout(r, 100));
-    if (S.pos && S.allowed) await app.quickCheck();
+    const t0 = Date.now(), ready = () => S.allowed && !S.building && S.loads > 0 && S.frameLoaded === S.loads;
+    while (Date.now() - t0 < 20000 && !ready()) await new Promise((r) => setTimeout(r, 100));
+    if (ready()) await app.quickCheck();
   }
 
   // ---------------------------------------------------------------- 簡易チェックに足すもの（このページで、narration.md の元の文字列から）
