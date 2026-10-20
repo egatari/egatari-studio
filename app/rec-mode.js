@@ -11,7 +11,7 @@
 //   Enter  録音中なら停止して採用し次の段階へ。録った後（または音声のある段階）なら次の段階へ。次の段階は待機（自動では録り始めない）
 //   Backspace  取り直し：録音中は今のテイクを捨てる。録った後はそのテイクを「前に戻す」で外す（前の音声に戻る）
 //   ← →    前・次の段階（録音中なら先に停止して採用）
-//   C      録音中に、口述原稿の {cue}・{mark} の区切りごとに押す（時刻をそのまま cue に：sync manual。数が合わなければ sync none）
+//   C      録音中に、口述原稿の {cue}・{mark:…} の区切り（どちらも数える。kit の cue と同じ並び）ごとに押す（時刻をそのまま cue に：sync manual。数が合わなければ sync none）
 //   Esc    閉じる（録音中なら今のテイクを捨てる。Shift+Esc は開いている窓を全部）
 //
 //   const rec = createRecMode({ui, panel, T, host, top?, ws(), generation(), slideIndex?(slideKey), enabled(), beforeOpen?(), onChange?()})
@@ -50,7 +50,7 @@ export function createRecMode(o) {
     root = mkEl('aside', { id: 'rec-mode', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rec-title', tabindex: '-1' });
     root.appendChild(mkEl('div', { cls: 'rm-head' }, [
       mkEl('h2', { id: 'rec-title', text: L.title }), mkEl('span', { id: 'rec-pos', cls: 'rm-pos' }),
-      mkEl('span', { id: 'rec-state', cls: 'rm-state', 'data-phase': 'idle' }), mkEl('span', { cls: 'sp' }),
+      mkEl('span', { id: 'rec-count', cls: 'rm-pos' }), mkEl('span', { id: 'rec-state', cls: 'rm-state', 'data-phase': 'idle' }), mkEl('span', { cls: 'sp' }),
       mkEl('button', { type: 'button', id: 'rec-close', cls: 'rm-btn ghost', 'aria-keyshortcuts': 'Escape', on: { click: () => { requestClose(false); } } }, [mkEl('kbd', { text: 'Esc' }), mkEl('span', { text: L.close })]),
     ]));
     root.appendChild(mkEl('div', { id: 'rec-slide', cls: 'rm-slide' }));
@@ -114,6 +114,9 @@ export function createRecMode(o) {
       c.classList.toggle('next', !!take && j === taps);
       c.textContent = (j < taps ? '✓' : '') + chipMark(j);
     });
+    // 押した数 / 区切りの数（{cue} も {mark} も数える。kit の cue と同じ並び）
+    const cnt = $('rec-count');
+    if (cnt) cnt.textContent = chips.length && (take || taps) ? L.count(taps, chips.length) : '';
     const nx = take && chips[taps];
     if (nx) { try { nx.scrollIntoView({ block: 'center', behavior: reduce() ? 'auto' : 'smooth' }); } catch { /* 無視 */ } }
   }

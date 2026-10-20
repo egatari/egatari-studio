@@ -56,14 +56,20 @@ const SRC = path.join(ROOT, 'examples/minimal');
 const CUE_LINE = '次の点は、今の点から勾配に比例した分だけ引いて作ります。';
 let narr = fs.readFileSync(path.join(SRC, 'narration.md'), 'utf8');
 if (!narr.includes(CUE_LINE)) throw new Error('fixture changed: ' + CUE_LINE);
+// {mark:…} も区切り：{mark:grad} の段階に {cue} を足して、mark と cue が混じった 2 つの区切りの段階にする
+const MIX_LINE = '{mark:grad}勾配は、損失が最も急に増える向きです。';
+if (!narr.includes(MIX_LINE)) throw new Error('fixture changed: ' + MIX_LINE);
+narr = narr.replace(MIX_LINE, '{mark:grad}勾配は、損失が{cue}最も急に増える向きです。');
 narr = narr.replace(CUE_LINE, '次の点は、{cue}今の点から{cue}勾配に比例した分だけ引いて作ります。');
 const segs = parseNarration(narr);
 const keyOf = (s) => `${s.slideKey}:${s.stepKey}`;
 const keys = segs.map(keyOf);
 const CUE2 = keys[segs.findIndex((s) => s.bounds.length === 2)];       // 区切りが 2 個の段階
 const MARK1 = keys[segs.findIndex((s) => s.bounds.length === 1)];      // 区切りが 1 個の段階
+const MIXI = segs.findIndex((s) => s.turns.some((t) => t.raw.includes('{mark:grad}')));
 const NONE0 = keys.findIndex((k, j) => segs[j].bounds.length === 0);   // 区切りのない段階（先頭付近）
 const iCue = keys.indexOf(CUE2);
+ok(MIXI > iCue && segs[MIXI].bounds.length === 2 && segs[MIXI].bounds[0].type === 'mark' && segs[MIXI].bounds[1].type === 'cue', 'fixture: a step with a mark and a cue');
 ok(iCue > 1 && NONE0 >= 0 && keys.indexOf(MARK1) >= 0, `fixture: ${keys.length} steps; cue step ${CUE2} (#${iCue}), mark step ${MARK1}`);
 
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single'], { stdio: 'inherit' });
@@ -296,6 +302,56 @@ try {
   for (const [rel, b64] of Object.entries(dump)) { const fp = path.join(BD, rel); fs.mkdirSync(path.dirname(fp), { recursive: true }); fs.writeFileSync(fp, Buffer.from(b64, 'base64')); }
   const da = JSON.parse(/<script type="application\/json" id="deck-audio">([\s\S]*?)<\/script>/.exec(build(path.join(BD, 'deck.html'), { out: path.join(BD, 'out', 'deck.html') }).html)[1]);
   ok(da[CUE2] && da[CUE2].kind === 'recorded' && da[CUE2].sync === 'manual' && da[CUE2].cues.length === 2 && da[keys[0]] && da[keys[0]].kind === 'recorded' && da[keys[0]].sync === 'none', 'build: deck-audio carries kind recorded, and sync manual with the two cues for the cued step ' + JSON.stringify(da[CUE2] && { k: da[CUE2].kind, s: da[CUE2].sync, c: da[CUE2].cues }));
+
+  // ---------------------------------------------------------------- {mark} も区切り：mark と cue が混じった段階（チップ・数・sync manual）
+  await page.keyboard.press('ArrowRight'); await waitIdx(iCue + 1);   // 更新の式:2（{mark} 1 個）
+  const mk = keys[iCue + 1];
+  ok(MARK1 === mk && await page.evaluate(() => document.querySelectorAll('.rm-chip').length) === 1, 'mark: a {mark} boundary is a chip too');
+  await record(3500, [1200], 'Space');
+  const em = await waitWritten(mk, null);
+  ok(em.sync === 'manual' && em.cues.length === 1, `mark: one press for one {mark} → sync manual (${JSON.stringify(em.cues)})`);
+  await page.keyboard.press('ArrowRight'); await waitIdx(MIXI);
+  const mx = await page.evaluate(() => [...document.querySelectorAll('.rm-chip')].map((c) => c.getAttribute('aria-label')));
+  ok(mx.length === 2 && /印/.test(mx[0]) && !/印/.test(mx[1]), 'mix: a mark and a cue are both chips, labelled by kind ' + JSON.stringify(mx));
+  await page.keyboard.press('Space'); await waitPhase('recording');
+  const cnt0 = await page.textContent('#rec-count');
+  await page.waitForTimeout(900); await page.keyboard.press('c');
+  const cs1 = await page.evaluate(() => ({ c: document.getElementById('rec-count').textContent, k: [...document.querySelectorAll('.rm-chip')].map((x) => x.className.replace('rm-chip', '').trim()) }));
+  ok(/0 \/ 2/.test(cnt0) && /1 \/ 2/.test(cs1.c) && cs1.k[0] === 'done' && cs1.k[1] === 'next', `count: "0 / 2" then "1 / 2", the pressed chip is done and the next one is outlined (${cnt0} → ${cs1.c} ${JSON.stringify(cs1.k)})`);
+  await page.waitForTimeout(800); await page.keyboard.press('c');
+  await page.waitForTimeout(1900); await page.keyboard.press('Space');
+  const e1m = await waitWritten(MIXI === -1 ? mk : keys[MIXI], null);
+  ok(e1m.sync === 'manual' && e1m.cues.length === 2, 'mix: mark + cue, two presses → sync manual with 2 cues');
+  // 取り直し：前のテイクの cue を決して使わない（§5.3）。1 回目の間隔は約 0.8 秒 → Backspace → 2 回目の間隔は 0.4 秒 → Enter：manifest の cue は 2 回目だけから
+  const firstCues = e1m.cues.slice();
+  await page.keyboard.press('Backspace');
+  for (let i = 0; i < 100 && (await manifest())[keys[MIXI]]; i++) await page.waitForTimeout(100);
+  await waitPhase('idle');
+  await page.keyboard.press('Space'); await waitPhase('recording');
+  await page.waitForTimeout(1500); await page.keyboard.press('c');
+  await page.waitForTimeout(400); await page.keyboard.press('c');
+  await page.waitForTimeout(1700);
+  await page.keyboard.press('Enter');
+  const e2m = await waitWritten(keys[MIXI], null);
+  ok(e2m.sync === 'manual' && e2m.cues.length === 2 && Math.abs((e2m.cues[1] - e2m.cues[0]) - 0.4) < 0.3 && Math.abs((e2m.cues[1] - e2m.cues[0]) - (firstCues[1] - firstCues[0])) > 0.2,
+    `retake: after Backspace and a second take the manifest cues come only from the second take (${JSON.stringify(firstCues)} → ${JSON.stringify(e2m.cues)})`);
+  await waitIdx(MIXI + 1);
+  // もう一度：2 回押して Backspace → 1 回だけ押して Enter：cue は引き継がれず sync none
+  await page.keyboard.press('ArrowLeft'); await waitIdx(MIXI);
+  await record(3500, [1000, 1800], 'Space');
+  const e3m = await waitWritten(keys[MIXI], e2m);
+  ok(e3m.sync === 'manual', 'retake: (setup) a third take with two presses is manual');
+  await page.keyboard.press('Backspace');
+  for (let i = 0; i < 100 && (await manifest())[keys[MIXI]].file === e3m.file; i++) await page.waitForTimeout(100);
+  await waitPhase('idle');
+  await page.keyboard.press('Space'); await waitPhase('recording');
+  await page.waitForTimeout(1000); await page.keyboard.press('c');
+  await page.waitForTimeout(2600);
+  await page.keyboard.press('Enter');
+  const e4m = await waitWritten(keys[MIXI], e3m);
+  ok(e4m.file !== e3m.file && e4m.sync === 'none' && e4m.cues.length === 0, `retake: a different number of presses on the second take → sync none, none of the first take's cues survive (${JSON.stringify(e3m.cues)} → ${JSON.stringify(e4m.cues)})`);
+  await waitIdx(MIXI + 1);
+  for (let j = MIXI + 1; j > iCue; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
 
   // ---------------------------------------------------------------- 録音中の Enter（停止＋採用＋次へ）・← →（先に停止して採用）
   await page.keyboard.press('Space'); await waitPhase('recording');

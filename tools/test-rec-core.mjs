@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { cuesFromTaps, takeEntry } from '../kit/core/audio-core.mjs';
+import { parseNarration } from '../kit/core/narration-core.mjs';
 
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
@@ -36,6 +37,14 @@ e = takeEntry({ ...base, cues: [1], sync: null });
 ok(e.sync === 'auto', 'takeEntry: cues without sync stay auto (TTS)');
 e = takeEntry({ ...base, cues: null, sync: 'manual' });
 ok(e.sync === 'none', 'takeEntry: manual without cues falls back to none');
+
+// 区切りの数：{cue} も {mark:…}（{mark:clear} も）も数え、kit の cue（deck.js の compCues・markPlan が cues の数と比べる bounds）と同じ並び
+{
+  const seg = parseNarration('## s\n[0] 前{cue}中{mark:a|circle}後{mark:clear}終わり。\n')[0];
+  ok(seg.bounds.length === 3 && seg.bounds.map((b) => b.type).join() === 'cue,mark,clear', 'bounds: cue, mark and clear all count, in order ' + seg.bounds.map((b) => b.type));
+  const r = cuesFromTaps([1, 2, 3], seg.bounds.length, { head: 0, dur: 4 });
+  ok(r.sync === 'manual' && r.cues.length === seg.bounds.length, 'taps for cue + mark + clear → manual');
+}
 
 // 画面の言葉（app/i18n.js の rec）：日本語と英語で同じ項目があること
 {
