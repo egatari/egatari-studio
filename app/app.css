@@ -170,3 +170,43 @@ main{flex:1;min-height:0;display:flex}
 #panel-body .attach-meta{display:flex;gap:6px;margin-bottom:5px}#panel-body .attach-meta input{flex:1;min-width:0}#panel-body .attach-desc{display:flex;margin-bottom:5px}#panel-body .attach-desc input{flex:1;min-width:0}
 #panel-body .attach-row .row button{padding:2px 10px;font-size:12.5px}
 #attach-problems{margin-top:8px;font-size:12.5px}
+
+/* 録音モード（app/rec-mode.js）：#deck の中の幅広い板。プレビュー（その段階の舞台）は横に細くする。横の板・口述原稿などは隠す */
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#deck.rec-on #dev-side,#deck.rec-on #panel{display:none}
+#deck.rec-on #viewer{flex:0 0 34%;max-width:34%}
+#rec-mode{flex:1 1 66%;min-width:0;display:flex;flex-direction:column;gap:10px;padding:14px 22px 16px;background:var(--panel);border-right:1px solid var(--line);overflow:auto}
+#rec-mode:focus{outline:none}
+#rec-mode:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#rec-mode .rm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#rec-mode .rm-head h2{margin:0;font-size:18px}
+#rec-mode .sp{flex:1}
+#rec-mode .rm-pos{color:var(--muted);font-variant-numeric:tabular-nums}
+#rec-mode .rm-state{font-weight:700;padding:1px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+#rec-mode .rm-state[data-phase="recording"]{background:#dc2626;border-color:#dc2626;color:#fff}
+#rec-mode .rm-state[data-phase="processing"],#rec-mode .rm-state[data-phase="starting"]{background:var(--warn-bg);color:var(--warn-fg);border-color:transparent}
+#rec-mode .rm-slide{color:var(--muted);font-size:15px}
+#rec-mode .rm-note{font-size:14px;padding:4px 10px;border-radius:7px;background:var(--bg);color:var(--muted);margin:2px 0}
+#rec-mode .rm-note.warn{background:var(--warn-bg);color:var(--warn-fg)}
+#rec-mode .rm-note.bad{background:var(--bad-bg);color:var(--bad-fg)}
+#rec-mode .rm-note.ok{color:var(--fg)}
+/* 読む口述原稿：大きく（録音中に離れて読める）。長ければ中でスクロール */
+#rec-mode .rm-script{flex:1 1 auto;min-height:9em;overflow:auto;font-size:clamp(26px,3.2vw,44px);line-height:1.7;padding:12px 4px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#rec-mode .rm-script p{margin:0 0 .5em}
+#rec-mode.rm-recording .rm-script{border-color:#dc2626}
+#rec-mode .rm-role{display:inline-block;font-size:.4em;font-weight:700;line-height:1.6;border-radius:5px;padding:0 .5em;margin-right:.6em;vertical-align:.3em;background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--fg)}
+#rec-mode .rm-role.novice{background:var(--warn-bg);color:var(--warn-fg)}
+/* 区切りのチップ：色だけに頼らず、次の区切りは太い枠、押した区切りは ✓ */
+#rec-mode .rm-chip{display:inline-block;font-size:.55em;line-height:1.5;min-width:1.5em;text-align:center;margin:0 .25em;padding:0 .3em;border:2px solid var(--line);border-radius:999px;color:var(--muted);vertical-align:.15em}
+#rec-mode .rm-chip.next{border-color:var(--accent);color:var(--fg);font-weight:700;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+#rec-mode .rm-chip.done{border-style:dashed;color:var(--fg)}
+#rec-mode .rm-meter{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+#rec-mode .rm-meter .bar{flex:1;height:12px;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;position:relative}
+#rec-mode .rm-meter .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#16a34a 0%,#16a34a 70%,#f59e0b 85%,#dc2626 100%)}
+#rec-mode .rm-meter .t{font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+#rec-mode .rm-keys{display:flex;flex-wrap:wrap;gap:8px}
+#rec-mode .rm-btn{display:inline-flex;align-items:center;gap:8px;font-size:14px}
+#rec-mode .rm-btn kbd{display:inline-block;padding:0 6px;border:1px solid var(--line);border-radius:4px;font:600 12px/1.6 ui-monospace,Menlo,monospace;background:var(--bg)}
+#rec-mode .rm-btn.on{background:#dc2626;border-color:#dc2626;color:#fff}
+#rec-mode .rm-btn.on kbd{color:var(--fg)}
+@media (max-width:720px){ #rec-mode{position:fixed;inset:0;z-index:1001} #deck.rec-on #viewer{display:none} }

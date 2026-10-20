@@ -84,6 +84,8 @@ steps.push(
   ['check kokugo', ['kit/check.mjs', 'examples/kokugo-kanbun/deck.html']],
   // 縦組みのスライド（layout-tate）：見出しの列・本文・結論の列・ページ番号の位置と重なり、決定性、品質チェック、鍵と読める層
   ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
+  // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
+  ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 // チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
@@ -102,6 +104,8 @@ steps.push(
   ['test-audio', ['tools/test-audio.mjs', path.join(tmp, 'audio')]],
   // Colab 往復 TTS（WebGPU のない PC）：tts-job.json の書き出し・zip の取り込み（一致・印付き・別の教材・敵対の zip）・段 A の保存（単体の検査は test-colab）
   ['test-colab-app', ['tools/test-colab-app.mjs', path.join(tmp, 'colab-app')]],
+  // 録音モード（app/rec-mode.js）：偽のマイクで、キーボードだけの録音・C の cue・取り直し・読み上げの知らせ（cue の計算は単体の test-rec-core）
+  ['test-recording', ['tools/test-recording.mjs', path.join(tmp, 'recording')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する

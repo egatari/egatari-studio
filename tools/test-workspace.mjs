@@ -28,6 +28,7 @@ import { createRequire } from 'node:module';
 import { createEngine, READ_CONCURRENCY as ENGINE_READS } from '../app/engine.js';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { appComponentFiles } from './vendor-components.mjs';
+import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -354,6 +355,7 @@ function appResources() {
   const add = (v, f) => { if (/\.(css|js|json|svg|txt|md|tex)$/i.test(f)) text[v] = fs.readFileSync(f, 'utf8'); else b64[v] = fs.readFileSync(f).toString('base64'); };
   const tree = (v, d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.name.startsWith('.')) continue; const f = path.join(d, e.name); if (e.isDirectory()) tree(v + '/' + e.name, f); else add(v + '/' + e.name, f); } };
   for (const f of fs.readdirSync(path.join(R, 'kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, path.join(R, 'kit', f));
+  for (const f of Object.keys(RUNTIME_MODULES)) text['/repo/kit/' + f] = fs.readFileSync(path.join(R, 'kit', ...f.split('/')), 'utf8');
   for (const [v, f] of appComponentFiles(R)) add(v, f);
   tree('/repo/themes', path.join(R, 'themes'));
   const kdir = path.dirname(req.resolve('katex'));

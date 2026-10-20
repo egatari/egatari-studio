@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
+import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
 
@@ -44,6 +45,8 @@ function addTree(virtDir, dir, filter = () => true) {
 }
 // kit の実行系（.js .css。Node の .mjs は入れない）
 for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, rel('kit', f));
+// 実行系に入れる kit/core の ES モジュール（build-core の RUNTIME_MODULES。classicModule が DECK.PositionStore などにする。組み立てが字として読む）
+for (const f of Object.keys(RUNTIME_MODULES)) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
 // 部品：部品庫の写し vendor/components/<名前>/<版>/index.js（取り込んだすべての版）と components.lock.json（tools/vendor-components.mjs）
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
@@ -76,8 +79,8 @@ for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3', MIN
 }
 const hints = fs.readFileSync(rel('server', 'hints.js'), 'utf8');
 const version = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version || '';
-for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')]]) {
-  // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない
+for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')], ['kit/core/layout-scan.mjs', fs.readFileSync(rel('kit', 'core', 'layout-scan.mjs'), 'utf8')]]) {
+  // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない（layout-scan は仲立ちに包んで入れる）
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }
 // 読み辞書（tts/yomi.yaml の terms と、その sha256。音声の板のブラウザの TTS が、tts/yomi.py と同じ規則で使う。kit/core/yomi.mjs）

@@ -565,6 +565,20 @@ export function chargedEnv(env, bud) {
 // ---------------------------------------------------------------- 本体
 // KaTeX で許す HTML 拡張：\htmlClass（色）、\htmlId と \htmlData（注目の演出の目印 §7、モーフの対応 §8。docs/contract.md）
 const TRUSTED = new Set(['\\htmlClass', '\\htmlId', '\\htmlData']);
+// 実行系の <script> に入れる kit/core の ES モジュール（依存なし・export function 1 つ。いまは position.mjs の PositionStore）を、
+// 即時関数の中で読み、その関数を DECK.<name> に入れる形にする（窓のグローバルを増やさない）。形が違えば組み立てを止める
+// 実行系に入れる kit/core の ES モジュール（kit/ から見た場所 → DECK の名前）。編集アプリ（tools/build-app.mjs）はこれを字として同梱する
+export const RUNTIME_MODULES = Object.freeze({ 'core/position.mjs': 'PositionStore' });
+export function classicModule(src, name) {
+  const s = String(src);
+  const ex = s.match(/^export\s+function\s+([A-Za-z_$][\w$]*)\s*\(/gm) || [];
+  if (/^\s*import\b/m.test(s) || ex.length !== 1 || (s.match(/^\s*export\b/gm) || []).length !== 1) {
+    throw new Error(`runtime module for DECK.${name}: needs exactly one "export function" and no import`);
+  }
+  const fn = ex[0].replace(/^export\s+function\s+/, '').replace(/\s*\($/, '');
+  return `(function(){\n"use strict";\n${s.replace(/^export\s+function\s+/m, 'function ')}\nDECK.${name} = ${fn};\n})();`;
+}
+
 export function build(env0, srcPath, opts = {}) {
   const P = env0.path, KIT = env0.KIT, ROOT = env0.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
@@ -783,7 +797,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',

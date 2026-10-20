@@ -2,6 +2,11 @@
 // （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、段階）は check.mjs が前に付ける
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
+import { CLIP_ATTR } from './core/layout-scan.mjs';
+
+// 同じスライドのほかの箇所の数（n は箇所の数。1 つなら何も足さない）
+const moreJa = (a) => (a.n > 1 ? ` ほか ${a.n - 1} か所` : '');
+const moreEn = (a) => (a.n > 1 ? ` and ${a.n - 1} more` : '');
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 // 添付（§3.8）の型と条件の言葉
 const ROLE_JA = { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' };
@@ -101,6 +106,15 @@ export const MESSAGES = {
   bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
   smallText: { rule: 'R-fit', ja: (a) => `字が小さい（${a.px}px：「${a.t}」。本文は 27px、表・図は 24px から）：font-size を書かず既定の大きさに戻し、入らなければスライドを分ける`, en: (a) => `text is too small (${a.px}px: “${a.t}”; body text needs 27px, tables and figures 24px): remove the font-size and split the slide if it does not fit` },
   smallSvgText: { rule: 'R-fit', ja: (a) => `図の中の字が小さい（${a.px}px、24px から）：字を 24px 以上に上げる。その場の <svg> なら viewBox を表示する画素で書く（viewBox の幅 = 表示の幅）か、font-size を 24 × viewBox の幅 ÷ 表示の幅 以上にする`, en: (a) => `text inside a figure is too small (${a.px}px, at least 24px): raise it to 24px or more; for an inline <svg>, write the viewBox in the pixels it is shown at (viewBox width = displayed width) or use font-size ≥ 24 × viewBox width ÷ displayed width` },
+  // 切れる字・外に出る字（kit/core/layout-scan.mjs。警告）。わざと切るところは要素に印（CLIP_ATTR）を付けると見ない
+  textClipped: { rule: 'R-fit', ja: (a) => `字が箱で切れている（「${a.t}」${moreJa(a)}、${a.px}px）：箱（overflow が hidden など）を大きくするか、字を減らすか、スライドを分ける。わざと切って見せるなら、その要素に ${CLIP_ATTR} を付ける`, en: (a) => `text is cut off by its box (“${a.t}”${moreEn(a)}, ${a.px}px): make the box (overflow hidden or similar) larger, cut the text or split the slide; if the clipping is intended, add ${CLIP_ATTR} to that element` },
+  svgTextOut: { rule: 'R-fit',
+    ja: (a) => (a.edge === 'viewBox' ? `図の字が SVG の枠（viewBox）で切れている（「${a.t}」${moreJa(a)}、${a.px}px）：viewBox を広げるか、字を枠の内に置く` : `図の字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：部品や図を小さくするか位置を直すか、ラベルを短くする`),
+    en: (a) => (a.edge === 'viewBox' ? `text in a figure is cut off by its SVG viewport (viewBox) (“${a.t}”${moreEn(a)}, ${a.px}px): widen the viewBox or move the text inside it` : `text in a figure goes off the slide (“${a.t}”${moreEn(a)}, ${a.px}px): make the component or figure smaller, move it, or shorten the label`) },
+  svgTextBox: { rule: 'R-fit', ja: (a) => `図の字が囲みの箱からはみ出す（「${a.t}」${moreJa(a)}、${a.px}px）：ラベルを短くするか改行するか、箱を広げる（m-flow なら w を大きくする）`, en: (a) => `text in a figure overflows the box drawn around it (“${a.t}”${moreEn(a)}, ${a.px}px): shorten the label, break it into lines, or widen the box (in m-flow, a larger w)` },
+  outsideBody: { rule: 'R-fit',
+    ja: (a) => `本文（.body）の外に置いた字が${{ slide: `スライドの外に出る（${a.px}px）`, title: '見出しに重なる', concl: '結論の行に重なる', pn: 'ページ番号に重なる' }[a.why] || 'はみ出す'}（「${a.t}」${moreJa(a)}）：本文の中に置くか、位置を直す`,
+    en: (a) => `text placed outside the body (.body) ${{ slide: `goes off the slide (${a.px}px)`, title: 'overlaps the heading', concl: 'overlaps the conclusion line', pn: 'overlaps the page number' }[a.why] || 'overflows'} (“${a.t}”${moreEn(a)}): put it inside the body or fix its position` },
   desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は口述原稿だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the narration` },
   rawMath: { rule: 'R-math', ja: (a) => `数式が KaTeX で組まれずに残っている（「${a.t}」）：\\( … \\) か \\[ … \\] で囲み、$ … $ は使わない`, en: (a) => `math was left unrendered (“${a.t}”): wrap it in \\( … \\) or \\[ … \\], not $ … $` },
   katexError: { rule: 'R-math', ja: (a) => `KaTeX が式を組めない（「${a.t}」）：式の書き方を直す（< は \\lt、使えるマクロは \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph）`, en: (a) => `KaTeX cannot render an equation (“${a.t}”): fix its syntax (write < as \\lt; allowed macros are \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph)` },

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=6d3938b18db28bef -->
+<!-- i18n: pair=reference.ja.md sha256=bfdc19d54675f21f -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -338,6 +338,7 @@ Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps
 | conclusion > 35 units (Japanese) / > 70 characters (English); conclusion overflows its box (also the vertical column of `layout-tate`) | error / warn; error |
 | body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one) | error |
 | body text < 27px, table/plot text < 24px, SVG text < 24px (skipped on slides whose heading contains 文献; ruby readings in `rt` are not counted) | error |
+| text cut off by a box with `overflow` other than `visible` (`textClipped`); SVG text cut off by its viewport (viewBox) or going off the slide (`svgTextOut`); SVG text overflowing the `<rect>` around it (`svgTextBox`); text outside `.body` going off the slide or overlapping the heading, conclusion line or page number (`outsideBody`). Text inside an element with `data-clip` is not checked by these ([contract §10](contract.md#10-quality-check-intended-clipping)); on a slide with `bodyBottom`, text in `.body` going off the slide is not reported again | warn |
 | です・ます in the body (Japanese) | error |
 | unrendered math or KaTeX errors | error |
 | mixed punctuation 、。 vs ，． across the deck (Japanese) | warn |

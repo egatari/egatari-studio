@@ -17,6 +17,7 @@
 //     extra?: {open?(), editing?()},               ほかの信頼する欄（編集アプリの音声の板 app/audio-panel.js）：開いているか（板を出す）、
 //                                                  編集している最中か（録音している間など。プレビューを inert にする）
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
+//     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
 // drawerHost の中で iframe の隣）に出す。スライドの場所に重ねる欄はない。板の上には、デッキが自分の枠の外に描けない印（色の帯）を付ける。
@@ -32,6 +33,7 @@
 //   ui.frameLoading(keepPos)  プレビューを読み込み直す前に呼ぶ（keepPos なら読み込んだ後に同じ位置へ戻す）
 //   ui.reset()  別のデッキを開いた（入力は捨てる）
 //   ui.toggleEdit(on?) / ui.toggleNarr(on?) / ui.toggleComments(on?) / ui.state()
+//   ui.goStep(slideKey, stepKey)  プレビューをその段階へ動かす（録音モード。読み込み直している間は、読み込んだ後の位置を替える）
 //   ui.side（信頼する横の板。ほかの欄はここに入れる）・ui.h（要素を作る）・ui.pos()・ui.slide(i)（{key, heading…}）・ui.refresh()（板と鍵を出し直す）
 const STR = {
   en: {
@@ -628,12 +630,23 @@ export function createEditorUI(o) {
     for (const p of all ? list : list.slice(0, 1)) { p.close(); if (!p.top) mark(p.name, false); }
     return list.length > 0;
   }
+  // 段階（スライドの鍵・段階の鍵）へプレビューを動かす（録音モード）。読み込み直している間は、読み込み後に戻す位置を替える。
+  // concl は k に大きな数を送る（実行系が段階の最大に収める）
+  async function goStep(slideKey, stepKey) {
+    if (!info) await loadInfo();
+    const i = info ? info.slides.findIndex((s) => s.key === slideKey) : -1;
+    if (i < 0) return false;
+    const k = stepKey === 'concl' ? 9999 : /^\d+$/.test(String(stepKey)) ? +stepKey : 0;
+    if (restorePos) restorePos = { i, k }; else post({ type: 'deck-cmd', cmd: 'goto', i, k });
+    return true;
+  }
   // ---------------------------------------------------------------- 鍵盤（このページで押したものと、デッキから知らされたもの）
   function key(k, fromDeck, shift = false) {
     if (!enabled()) return;
     if (k === 'e') toggleEdit();
     else if (k === 'n') { if (fromDeck && narr && narr.dirty) toast(L.busy, 'warn'); else toggleNarr(); }
     else if (k === 'c') toggleComments();
+    else if (k === 'r') { if (o.onRecord) o.onRecord(); }   // 録音モードを開く（開くだけ。録音はこのページのキーでしか始まらない）
     else if (k === 'Escape') escape(shift, fromDeck);
   }
   doc.addEventListener('keydown', (e) => {
@@ -643,7 +656,7 @@ export function createEditorUI(o) {
     if (doc.querySelector('dialog[open]')) return;
     if (e.key === 'Escape') { key('Escape', false, e.shiftKey); return; }
     if (e.shiftKey) return;
-    if (['e', 'n', 'c'].includes(e.key)) key(e.key, false);
+    if (['e', 'n', 'c', 'r'].includes(e.key)) key(e.key, false);
   });
 
   // ---------------------------------------------------------------- プレビューからの知らせ
@@ -703,7 +716,7 @@ export function createEditorUI(o) {
     if (ui.comments) toggleComments(true);
   }
   return {
-    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast, mark, escape,
+    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast, mark, escape, goStep,
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
       comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
