@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="402" height="96" viewBox="0 0 402 96" role="img" aria-labelledby="title desc">
 <title id="title">Egatari Studio / horizontal lockup / light</title><desc id="desc">システムフォント600の編集可能な文字。フォントの埋め込み・輪郭化は行わない。</desc>
-<g transform="scale(.375)"><path d="M84 40H40V152 M172 216H216V104" fill="none" stroke="#3B3F8F" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" /><circle cx="112" cy="66" r="12.5" fill="#A64B17" /><path d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke="#3B3F8F" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/></g>
-<text x="108" y="63" fill="#3B3F8F" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="44" font-weight="600">Egatari Studio</text>
+<g transform="scale(.375)"><path d="M84 40H40V152 M172 216H216V104" fill="none" stroke="#4A488E" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" /><circle cx="112" cy="66" r="12.5" fill="#D3381C" /><path d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke="#4A488E" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/></g>
+<text x="108" y="63" fill="#4A488E" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="44" font-weight="600">Egatari Studio</text>
 </svg>
