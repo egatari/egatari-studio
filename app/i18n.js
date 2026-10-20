@@ -53,6 +53,7 @@ const ja = {
   exportFolder: '作業フォルダに書き出す…', exportPortable: `配るための 1 ファイル（${FX}）を書き出す`,
   exportPlayOnly: `学生に配る再生専用（${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
+  exportLive: '授業の部屋を付けて配る…', playOnlyLiveToast: (room) => `授業の部屋（${room}）を付けた再生専用の 1 ファイルに書き出しました。部屋の時間のあいだ、開いた人が「参加する」を押すとつながります`,
   portableType: `1 ファイル（${FX}）`, unsaved: '保存していない変更があります', ok: 'OK', discard: '変更を捨てる',
   // 今どこに保存されているか（下の帯の左。#46）
   locFolder: (n) => `作業フォルダ「${n}」に保存済み`,
@@ -253,6 +254,7 @@ const en = {
   exportFolder: 'Export working folder…', exportPortable: `Export single file (${FX}) to hand out`,
   exportPlayOnly: `Export play-only copy for students (${FORMAT.PLAY_EXT})`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
+  exportLive: 'Distribute with a live room…', playOnlyLiveToast: (room) => `Exported a play-only single file with the live room ${room}. During the room's window, learners who open it and press Join are connected.`,
   portableType: `Single file (${FX})`, unsaved: 'unsaved changes', ok: 'OK', discard: 'Discard changes',
   // where the deck is saved (left of the status bar; #46)
   locFolder: (n) => `Saved in working folder “${n}”`,

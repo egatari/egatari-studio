@@ -1,10 +1,12 @@
 // 原稿（deck.html）を、外部の読み込みなしで表示できる 1 つの HTML にする
 //
-//   node kit/build.mjs <deck.html | デッキのフォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]
+//   node kit/build.mjs <deck.html | デッキのフォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only [--live 部屋.json]]
 //
 //   --portable   持ち運べる 1 ファイル（format spec。out/<名前><FORMAT.FILE_EXT>）：再生できる HTML に原稿と音声を入れたもの（kit/core/portable.mjs）。
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
 //   --play-only  その再生専用の派生（out/<名前><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   --live 部屋.json  派生に授業の部屋を付ける（拡張 live。教員のページの「コピー」の JSON：endpoint・room・key・window。活動は FORMAT.CONFIG_FILE の
+//                extensions.live にあればそれ、なければ部屋の JSON の activities）。CSP の <meta> と再生器（kit/live.js）が入る。鍵は教材に残さない
 //   形式の名前・拡張子は kit/core/format.mjs
 //
 // 原稿の中で使える記法
@@ -26,6 +28,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
+import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs';
 import { FORMAT } from './core/format.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat } from './bounded-read.mjs';
@@ -167,7 +170,16 @@ export async function buildPortable(srcPath, opts = {}) {
   // 原稿のフォルダに残すもの（FORMAT.CONFIG_FILE）：リンクを通しては書かない（kit/safe-fs.mjs）
   for (const [rel, text] of Object.entries(r.writes)) safeWriteFile(deckDir, path.join(deckDir, ...rel.split('/')), text);
   if (opts.playOnly) r.html = playOnly(r.html);
+  // 授業の部屋（opts.live：部屋の JSON。parseRoomBlock の形）：再生専用の派生にだけ
+  if (opts.live) {
+    if (!opts.playOnly) throw Object.assign(new Error('--live needs --play-only (a live room is added only to a play-only file)'), { code: 'live-needs-play-only' });
+    r.html = addLive(r.html, mergeLive(r.index.extensions && r.index.extensions.live, opts.live), liveRuntimeText());
+  }
   return r;
+}
+// 再生器（kit/core/live-policy.mjs と kit/live.js）の <script>
+export function liveRuntimeText() {
+  return liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'));
 }
 // 組んだものを書く。原稿のフォルダの中（既定の out/）なら、途中のフォルダも書く先もリンクでないこと（原稿のフォルダに置かれたリンクで
 // 外のファイルを上書きしない。format spec §11）。外（-o で選んだ場所）なら、そのフォルダを作り、書く先がリンクでないこと。どちらも一時ファイル + rename
@@ -207,10 +219,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--embed-audio') opts.embedAudio = true;
     else if (a[i] === '--portable') opts.portable = true;
     else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
+    else if (a[i] === '--live') opts.liveFile = a[++i];
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only [--live room.json]]'); process.exit(1); }
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
+  if (opts.liveFile) {
+    if (!opts.playOnly) { console.error('--live needs --play-only'); process.exit(1); }
+    try { opts.live = parseRoomBlock(fs.readFileSync(opts.liveFile, 'utf8')); }
+    catch (e) { console.error(`live: ${opts.liveFile}: ${e.message === 'admin' ? 'this is the teacher link (it has the teacher key); paste the room block instead' : e.details ? e.details.join('; ') : 'not the room JSON from the teacher page'}`); process.exit(1); }
+  }
   if (opts.portable) {
     if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }
     const out = opts.out || defaultPortableOut(src, opts.playOnly);
@@ -219,7 +237,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
     if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
-    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB -> ${out}`);
+    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live room ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
   } else {
     const out = opts.out || defaultOut(src);

@@ -26,6 +26,7 @@ import { makeFixtures, silentWav } from './portable-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
+import { testAppLive } from './test-app-live.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
 
@@ -491,6 +492,9 @@ try {
   const expName = await page.evaluate(() => window.__APP_TEST.lastSaveName);
   ok(titleOf(exp) && expName === exportName(titleOf(exp), 'deck', '.html') && expName !== 'deck.html', `export: the default file name is the deck title (${expName})`);
   await ep.close();
+
+  // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
+  await testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame: f, shot });
 
   // ---------------------------------------------------------------- 9. 発表者ビュー
   await f.evaluate(() => DECK.go(1, 0, false));

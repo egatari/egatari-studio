@@ -1,0 +1,162 @@
+// 授業の部屋（拡張 live。format spec の extensions/live.md と egatari/live の PROTOCOL.md）の決まりごとの純ロジック。
+// 再生器（kit/live.js。build が DECK.LivePolicy にする）・編集アプリ（app/live-panel.js）・Node（kit/core/live.mjs・試験）が共有する
+// - DOM・時計・node: に触れない（今の時刻は呼ぶ側が渡す）。export function 1 つで import なし（kit/core/build-core.mjs の classicModule）
+// - 識別子の形と切断の番号は、写し（FORMAT.LIVE_VENDOR_DIR の schema.json・close-codes.json）と同じ（tools/test-live.mjs が比べる）
+//
+//   const LP = LivePolicy();
+//   LP.validate(live, {key: true|false})   → エラーの配列（[] なら正しい）。key: true は書き出す派生（鍵が要る）、false は教材に残す設定（鍵があってはいけない）
+//   LP.inWindow(live.window, nowMs)         窓の中か（両端に SKEW_MS のゆとり）
+//   LP.closeInfo(code)                      {code, name, retry, kind}（kind：'retry' | 'stop'）
+//   LP.plan(code, attempt, nowMs, window, rand) → {retry: true, delayMs} | {retry: false, reason}（つなぎ直すか、いつ）
+//   LP.socketUrl(live, pid)                 学ぶ人の WebSocket の URL（endpoint と同じ origin。違えば null）
+//   LP.sameEndpoint(url, endpoint)          URL の origin が endpoint の origin と同じか（http(s) と ws(s) を対応させる）
+//   LP.activitiesFor(live, stepKey)         その段階で出す活動（"*" の後にその段階のもの）
+export function LivePolicy() {
+  var RE = {
+    room: /^r-[a-z2-7]{8}$/,
+    key: /^[A-Za-z0-9_-]{22,64}$/,
+    pid: /^[A-Za-z0-9_-]{16,43}$/,
+    activity: /^[A-Za-z0-9_-]{1,32}$/,
+    ref: /^[A-Za-z0-9_-]{1,32}$/,
+    step: /^(\*|[^\u0000-\u001f\u007f:]{1,80}:[^\u0000-\u001f\u007f:]{1,16})$/,
+    datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
+  };
+  var LIMITS = { prompt: 300, choice: 100, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000 };
+  // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
+  var SKEW_MS = 2 * 60 * 1000;
+  // 切断の番号（egatari/live の protocol/close-codes.json）。retry はサーバーの表の値。この再生器のふるまいは plan が決める
+  var CODES = {
+    4400: ['bad_message', false], 4401: ['unauthorized', false], 4403: ['bad_key', false], 4404: ['room_not_found', false],
+    4409: ['superseded', false], 4410: ['room_expired', false], 4423: ['room_closed', true], 4425: ['too_early', true],
+    4429: ['rate_limited', true], 4430: ['room_full', true], 4440: ['key_replaced', false], 4441: ['not_approved', false],
+  };
+  // この再生器が自分からつなぎ直す番号（ほかの 44xx は止めて、わけを見せる。学ぶ人が「参加する」を押せば試し直せるものもある）：
+  //   4429（送りすぎ）は 60 秒より後に。4423（閉じた）・4425（まだ早い）・4430（満員）・4441（断られた）は止める
+  var RETRY_MIN_MS = { 4429: 60000 };
+  var BACKOFF = [1000, 2000, 4000, 8000, 16000, 30000];
+  var own = function (o, k) { return o != null && Object.prototype.hasOwnProperty.call(o, k); };
+  var isObj = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
+  var str = function (v) { return typeof v === 'string'; };
+  function parseEndpoint(s) {
+    if (!str(s)) return null;
+    var u;
+    try { u = new URL(s); } catch (e) { return null; }
+    if (u.username || u.password || u.search || u.hash || (u.pathname !== '/' && u.pathname !== '')) return null;
+    if (u.protocol === 'https:') return u;
+    // 試験と手元のサーバーだけ：ループバックの http（ws）
+    if (u.protocol === 'http:' && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u;
+    return null;
+  }
+  function timeOf(s) { return str(s) && RE.datetime.test(s) ? Date.parse(s) : NaN; }
+  function validate(live, opts) {
+    var wantKey = !!(opts && opts.key), e = [];
+    if (!isObj(live)) return ['live: not an object'];
+    var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1 };
+    for (var k in live) if (own(live, k) && !own(known, k)) e.push('live.' + k + ': unknown member');
+    if (live.v !== 1) e.push('live.v: must be 1');
+    if (!parseEndpoint(live.endpoint)) e.push('live.endpoint: not an https origin (e.g. https://live.example.org)');
+    if (!str(live.room) || !RE.room.test(live.room)) e.push('live.room: not a room id (r- and 8 characters a-z, 2-7)');
+    if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) e.push('live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
+    else if (own(live, 'key')) e.push('live.key: the key must not be stored in the lesson (it goes only into the exported file)');
+    var w = live.window;
+    if (!isObj(w)) e.push('live.window: missing');
+    else {
+      var f = timeOf(w.from), t = timeOf(w.to);
+      if (isNaN(f)) e.push('live.window.from: not an RFC 3339 time with an offset');
+      if (isNaN(t)) e.push('live.window.to: not an RFC 3339 time with an offset');
+      if (!isNaN(f) && !isNaN(t) && !(t > f)) e.push('live.window: "to" must be after "from"');
+      if (!isNaN(f) && !isNaN(t) && t - f > LIMITS.windowMs) e.push('live.window: at most 7 days');
+      for (var wk in w) if (own(w, wk) && wk !== 'from' && wk !== 'to') e.push('live.window.' + wk + ': unknown member');
+    }
+    var a = live.activities;
+    if (!isObj(a)) { e.push('live.activities: missing'); return e; }
+    var ids = {}, n = 0;
+    for (var sk in a) {
+      if (!own(a, sk)) continue;
+      if (!RE.step.test(sk)) { e.push('live.activities["' + sk + '"]: not a step key or "*"'); continue; }
+      if (!Array.isArray(a[sk])) { e.push('live.activities["' + sk + '"]: not a list'); continue; }
+      for (var i = 0; i < a[sk].length; i++) {
+        var x = a[sk][i], at = 'live.activities["' + sk + '"][' + i + ']';
+        n++;
+        if (!isObj(x)) { e.push(at + ': not an object'); continue; }
+        if (!str(x.id) || !RE.activity.test(x.id)) e.push(at + '.id: 1-32 characters A-Z a-z 0-9 _ -');
+        else if (own(ids, x.id)) e.push(at + '.id: "' + x.id + '" is used twice');
+        else ids[x.id] = 1;
+        if (x.kind === 'qa') {
+          if (own(x, 'choices')) e.push(at + ': a qa has no choices');
+          if (own(x, 'prompt') && (!str(x.prompt) || x.prompt.length > LIMITS.prompt)) e.push(at + '.prompt: at most ' + LIMITS.prompt + ' characters');
+        } else if (x.kind === 'poll') {
+          if (!str(x.prompt) || !x.prompt.trim() || x.prompt.length > LIMITS.prompt) e.push(at + '.prompt: 1-' + LIMITS.prompt + ' characters');
+          if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) e.push(at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
+          else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) e.push(at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
+        } else e.push(at + '.kind: "qa" or "poll"');
+        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1 }, xk)) e.push(at + '.' + xk + ': unknown member');
+      }
+    }
+    if (n > LIMITS.activities) e.push('live.activities: at most ' + LIMITS.activities + ' activities');
+    return e;
+  }
+  function inWindow(w, now) {
+    if (!isObj(w)) return false;
+    var f = timeOf(w.from), t = timeOf(w.to);
+    if (isNaN(f) || isNaN(t) || !isFinite(now)) return false;
+    return now >= f - SKEW_MS && now <= t + SKEW_MS;
+  }
+  function windowEnd(w) { var t = isObj(w) ? timeOf(w.to) : NaN; return isNaN(t) ? NaN : t + SKEW_MS; }
+  function windowStart(w) { var f = isObj(w) ? timeOf(w.from) : NaN; return isNaN(f) ? NaN : f - SKEW_MS; }
+  function closeInfo(code) {
+    var c = CODES[code];
+    if (c) return { code: code, name: c[0], retry: c[1], kind: own(RETRY_MIN_MS, code) ? 'retry' : 'stop' };
+    // 44xx の知らない番号は止める。ほか（1000 番台：通信が切れた・サーバーの再起動など）はつなぎ直す
+    if (code >= 4000 && code <= 4999) return { code: code, name: 'unknown', retry: false, kind: 'stop' };
+    return { code: code, name: 'network', retry: true, kind: 'retry' };
+  }
+  function plan(code, attempt, now, w, rand) {
+    var info = closeInfo(code);
+    if (info.kind !== 'retry') return { retry: false, reason: info.name };
+    var r = typeof rand === 'number' ? rand : 0.5;
+    var base = BACKOFF[Math.min(Math.max(attempt | 0, 0), BACKOFF.length - 1)];
+    var d = Math.max(base, RETRY_MIN_MS[code] || 0);
+    d = Math.round(d * (0.8 + 0.4 * r));   // ゆらぎ ±20%（大勢が同時につなぎ直さないように）
+    if (own(RETRY_MIN_MS, code)) d = Math.max(d, RETRY_MIN_MS[code]);
+    var end = windowEnd(w);
+    if (!inWindow(w, now) || !(now + d <= end)) return { retry: false, reason: 'window_over' };
+    return { retry: true, delayMs: d };
+  }
+  function wsBase(endpoint) {
+    var u = parseEndpoint(endpoint);
+    if (!u) return null;
+    return (u.protocol === 'https:' ? 'wss://' : 'ws://') + u.host;
+  }
+  function socketUrl(live, pid) {
+    if (!isObj(live) || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key) || !str(pid) || !RE.pid.test(pid)) return null;
+    var b = wsBase(live.endpoint);
+    if (!b) return null;
+    var url = b + '/ws?room=' + encodeURIComponent(live.room) + '&key=' + encodeURIComponent(live.key) + '&pid=' + encodeURIComponent(pid);
+    return sameEndpoint(url, live.endpoint) ? url : null;
+  }
+  function sameEndpoint(url, endpoint) {
+    var e = parseEndpoint(endpoint), u;
+    if (!e) return false;
+    try { u = new URL(url); } catch (x) { return false; }
+    var scheme = { 'wss:': 'https:', 'ws:': 'http:', 'https:': 'https:', 'http:': 'http:' }[u.protocol];
+    return scheme === e.protocol && u.host === e.host && !u.username && !u.password;
+  }
+  function hostOf(endpoint) { var u = parseEndpoint(endpoint); return u ? u.host : ''; }
+  // CSP の connect-src：endpoint の両方の形（https: の源を wss: に効かせないブラウザがある）
+  function connectSrc(endpoint) {
+    var u = parseEndpoint(endpoint);
+    if (!u) return null;
+    return u.protocol === 'https:' ? 'https://' + u.host + ' wss://' + u.host : 'http://' + u.host + ' ws://' + u.host;
+  }
+  function activitiesFor(live, stepKey) {
+    var a = isObj(live) && isObj(live.activities) ? live.activities : {}, out = [];
+    var add = function (sk) { if (own(a, sk) && Array.isArray(a[sk])) for (var i = 0; i < a[sk].length; i++) if (isObj(a[sk][i])) out.push({ step: sk, a: a[sk][i] }); };
+    add('*');
+    if (stepKey && stepKey !== '*') add(stepKey);
+    return out;
+  }
+  return { RE: RE, LIMITS: LIMITS, SKEW_MS: SKEW_MS, CODES: CODES, BACKOFF: BACKOFF, RETRY_MIN_MS: RETRY_MIN_MS,
+    validate: validate, inWindow: inWindow, windowStart: windowStart, windowEnd: windowEnd, closeInfo: closeInfo, plan: plan,
+    socketUrl: socketUrl, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor };
+}

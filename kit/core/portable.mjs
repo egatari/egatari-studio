@@ -681,6 +681,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (!isObj(econf)) fail('bad-config', `${CFG}: not an object`);
   }
   if (own(econf, 'docId') && !(typeof econf.docId === 'string' && RE.docId.test(econf.docId))) fail('bad-config', `${CFG}: docId "${econf.docId}" is not a lowercase UUID`);
+  // 授業の部屋の設定（extensions.live。format spec の extensions/live.md）：教材には鍵を残さない（鍵は書き出す再生専用の派生にだけ入る。kit/core/live.mjs）
+  if (isObj(econf.extensions) && own(econf.extensions, 'live')) {
+    if (!isObj(econf.extensions.live)) fail('bad-config', `${CFG}: extensions.live is not an object`);
+    if (own(econf.extensions.live, 'key')) fail('bad-config', `${CFG}: extensions.live.key must not be stored in the lesson (the key goes only into the exported play-only file); remove it`);
+  }
   // 新しい教材として保存（§7.3）：新しい docId と derivedFrom（§3.6.1）。原稿のフォルダの設定のファイルも書き換える（writes）
   if (opts.identity) {
     const id = opts.identity;
@@ -880,6 +885,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
 
   // 拡張の行 → extensions.<名前>[<段階の鍵>].<欄>（同じ欄が繰り返せば配列）
   const extensions = extensionsFrom(segs);
+  // 設定のファイルの extensions.live（編集アプリの「授業の部屋を付けて配る」が書く。鍵なし）→ 索引の extensions.live
+  const confLive = isObj(econf.extensions) && isObj(econf.extensions.live) ? econf.extensions.live : null;
+  if (confLive) extensions.live = { ...confLive, v: Number.isInteger(confLive.v) ? confLive.v : 1 };
 
   // metadata と deck-meta
   const lang = (deckSrc.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
@@ -904,6 +912,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
   // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
   if (isObj(opts.carry)) carryUnknown(index, opts.carry, { identity: !!opts.identity, lineExtensions: opts.originalNarration != null ? new Set(Object.keys(extensionsFrom(parseNarration(String(opts.originalNarration))))) : null });
+  // 設定のファイルが extensions を持てば、live はそれが決める（編集アプリで部屋を外したら、読み取った文書の索引から戻さない）
+  if (isObj(econf.extensions) && isObj(index.extensions)) {
+    if (confLive) index.extensions.live = extensions.live; else delete index.extensions.live;
+    if (!Object.keys(index.extensions).length) delete index.extensions;
+  }
   const ie = validateIndex(index);
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {

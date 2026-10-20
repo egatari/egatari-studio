@@ -13,6 +13,11 @@ import { createEditorUI } from '../server/editor-ui.js';
 import { createAudioPanel } from './audio-panel.js';
 import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
+import { createLivePanel } from './live-panel.js';
+import { addLive, liveRuntime } from '../kit/core/live.mjs';
+import { parseNarration } from '../kit/core/narration-core.mjs';
+import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
+import LIVE_JS from '../kit/live.js?text';
 import { createTtsClient } from './tts-client.js';
 import { loadLame } from './mp3-loader.js';
 import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
@@ -601,6 +606,25 @@ const attach = createAttachPanel({
   },
   afterWrite: async () => { await rebuild('save'); updateName(); },
 });
+// 授業の部屋を付けて配る（app/live-panel.js。拡張 live）：横の板に、部屋・鍵・窓・活動。この画面はつながらない。教材に残すのは鍵のない設定だけ
+const livePanel = createLivePanel({
+  lang: EN ? 'en' : 'ja', el, toast, ws: () => S.ws, generation: () => S.gen,
+  openPanel: (title, body) => openPanel(title, body), isOpen: () => !$('panel').hidden && !!$('live-panel'),
+  portable: () => !!S.portable,
+  beforeWrite: async () => {
+    if (!S.portable) return null;
+    if (S.portable.readOnly) return T.readOnlyNoEdit;
+    return (await ensureRights()) ? null : T.rightsDeclined;
+  },
+  afterWrite: async () => { await rebuild('save'); updateName(); },
+  currentStep: () => (S.pos && typeof S.pos.key === 'string' ? S.pos.key : null),
+  stepKeys: async () => {
+    const keys = (S.slides || []).map((x) => x.key + ':0');
+    try { for (const g of parseNarration(await S.ws.readText('narration.md', { max: READ_LIMITS.json }))) keys.push(`${g.slideKey}:${g.stepKey}`); } catch { /* 口述原稿なし */ }
+    return [...new Set(keys)];
+  },
+  exportLive: (live) => exportPlayOnlyFile(live),
+});
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
 { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }
@@ -1177,7 +1201,8 @@ async function exportPortableFile() {
 
 // ---------------------------------------------------------------- 再生専用（学生に配る形）を書き出す（kit/core/portable.mjs の playOnly、§3.7）
 // 1 ファイル：保存したもの（P.original）から。保存していない変更があれば、先に保存を求める。作業フォルダ：1 ファイルに組んでから
-async function exportPlayOnlyFile() {
+// room：授業の部屋（拡張 live。app/live-panel.js が作る、鍵を含む完全なもの）。あれば派生に CSP の <meta> と再生器を足す（kit/core/live.mjs）
+async function exportPlayOnlyFile(room = null) {
   if (!S.ws) return;
   const ws0 = S.ws, g0 = S.gen, P = S.portable;
   const live = () => S.ws === ws0 && S.gen === g0;
@@ -1187,6 +1212,7 @@ async function exportPlayOnlyFile() {
   try {
     if (P) { html = playOnly(P.original); name = P.name; }
     else { const r = await engine.exportPortable(S.deckFile); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + FORMAT.PLAY_EXT;
@@ -1196,7 +1222,7 @@ async function exportPlayOnlyFile() {
     if (!live()) throw cancelledError();
     for (const [rel, text] of Object.entries(writes)) await ws0.writeText(rel, text, { live });   // 作業フォルダ：初めて作った docId を残す
     status(T.exported(time(), (html.length / 1048576).toFixed(1)));
-    toast(h ? T.playOnlyToast : T.downloadedToast(name));
+    toast(h ? (room ? T.playOnlyLiveToast(room.room) : T.playOnlyToast) : T.downloadedToast(name));
   } catch (e) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
     if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
@@ -1257,7 +1283,8 @@ $('b-savenew').onclick = () => savePortable('new');
 $('b-saveas').onclick = () => savePortable('copy');
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
-$('b-export-play').onclick = exportPlayOnlyFile;
+$('b-export-play').onclick = () => exportPlayOnlyFile();
+$('b-export-live').onclick = async () => { if (!$('panel').hidden && $('live-panel')) { closePanel(); return; } await livePanel.open(); };
 $('b-comments').onclick = () => ui.toggleComments();
 $('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-attach').onclick = async () => { if (!$('panel').hidden && $('attach-panel')) { closePanel(); return; } if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; } await attach.open(); };
