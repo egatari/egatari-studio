@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=a97a7444d5340f36 -->
+<!-- i18n: pair=reference.md sha256=088eb345319d6b1e -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -308,6 +308,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
               "sev": "error", "code": "narrOrphan", "rule": "R-narr-steps", "data": {…},
               "msg": "スライド 2「減衰の式」（s-k3f9q2）、段階 3：口述原稿の [3] に当たる段階がスライドにない……（R-narr-steps）"}]}
 ```
+
+`status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。ふつうの結果に `status` の欄はない。スクリプトは終了コード 2 と `status: "crashed"` を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。
 
 | 欄 | 意味 |
 |---|---|

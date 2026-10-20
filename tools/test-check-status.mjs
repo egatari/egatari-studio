@@ -4,6 +4,7 @@
 //    スライドが見つからない節（build の「narration: スライドが見つからない」）は R-headings（JSON の rule・修正依頼の規格）。id の書式の知らせは名前なし
 // 2. ブラウザが起動できない（CHROME_PATH が存在しない実行ファイル）：終了コード 2（指摘ありの 1 と別）、JSON は status: "crashed"・ok: false・指摘なし。
 //    落ちた理由は stderr だけで、指摘の言葉（msg）にも JSON にも入らない
+// 3. 結果を読む側（kit/core/check-result.mjs の parseCheck）が crashed・終了コード 2 を拒む
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ruleOf, message } from '../kit/check-messages.mjs';
 import { rulesFor } from '../kit/core/llm-fix.mjs';
+import { parseCheck, checkFinished } from '../kit/core/check-result.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-check-status-'));
@@ -94,6 +96,22 @@ t('ブラウザが起動できない（--json なし）：終了コード 2・�
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(ROOT, 'examples/minimal/deck.html')], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, CHROME_PATH: missing } });
   assert.equal(r.status, 2);
   assert.equal(r.stdout.trim(), '');
+});
+
+// ---- 3. 結果を読む側（kit/core/check-result.mjs）：crashed・終了コード 2 は失敗で、指摘 0 ではない
+t('parseCheck：終わった結果は通し、crashed と終了コード 2 は例外', () => {
+  const ok0 = JSON.stringify({ ok: true, lang: 'ja', counts: { error: 0, warn: 0, info: 0 }, results: [] });
+  assert.equal(parseCheck(ok0, 0).ok, true);
+  assert.equal(parseCheck(ok0, 1).ok, true);
+  assert.throws(() => parseCheck(ok0, 2), /did not finish/);
+  assert.throws(() => parseCheck(JSON.stringify({ ok: false, status: 'crashed', counts: { error: 0, warn: 0, info: 0 }, results: [] }), 2), /invalid/);
+  assert.throws(() => parseCheck(JSON.stringify({ ok: false, status: 'crashed', counts: { error: 0, warn: 0, info: 0 }, results: [] })), /did not finish/);
+  assert.throws(() => parseCheck('', 1), /did not finish/);
+  assert.equal(checkFinished({ results: [] }), true);
+});
+t('実際の crashed の出力を parseCheck が拒む', () => {
+  const r = check(path.join(ROOT, 'examples/minimal/deck.html'), [], { CHROME_PATH: missing });
+  assert.throws(() => parseCheck(r.stdout, r.status), /did not finish/);
 });
 
 console.log(`\n${n - fail}/${n} passed`);

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=b41fb72370d49d29 -->
+<!-- i18n: pair=reference.ja.md sha256=5ceac4d5e1b88e3e -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -308,6 +308,8 @@ Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps
               "sev": "error", "code": "narrOrphan", "rule": "R-narr-steps", "data": {…},
               "msg": "Slide 2 “The decay law” (s-k3f9q2), step 3: narration [3] has no matching step … (R-narr-steps)"}]}
 ```
+
+If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A normal result has no `status` field. Scripts should treat exit code 2 and `status: "crashed"` as a failure; `kit/core/check-result.mjs` (`parseCheck`) does this.
 
 | Field | Meaning |
 |---|---|

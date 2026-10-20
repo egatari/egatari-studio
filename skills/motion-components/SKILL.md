@@ -49,7 +49,7 @@ DECK.define("m-名前", class extends DECK.MotionElement {
 デッキを組んで品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
 
 ```bash
-node <repo>/kit/build.mjs <deck>/deck.html && node <repo>/kit/check.mjs <deck>/deck.html
+node <repo>/kit/build.mjs <deck>/deck.html && node <repo>/kit/check.mjs <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は検査が終わっていない：エラー 0 ではない
 node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
 ```
 
