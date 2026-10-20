@@ -11,6 +11,7 @@
 //   readColabZip(bytes)                                          → readZip を、この取り込みの上限で
 import { inputHash } from './portable.mjs';
 import { applyYomi } from './yomi.mjs';
+import { TEXT_NORMALIZE } from './tts-normalize.mjs';
 import { PROCESSING, AUDIO_LIMITS, SR, decodeWav, toMono, resample } from './audio-core.mjs';
 import { readZip, ZipError } from './zip-read.mjs';
 
@@ -70,7 +71,7 @@ export async function buildJob({ segs, docId = null, lang, voices, yomi = null, 
   return {
     egatari: JOB.tag, v: JOB.v, docId,
     generator: { name: 'egatari-studio', version: String(version) },
-    recipe: { engine, model: COLAB.models[engine], seed: 0, dictionary: ja && yomi ? yomi.sha256 : null, processing: PROCESSING },
+    recipe: { engine, model: COLAB.models[engine], seed: 0, dictionary: ja && yomi ? yomi.sha256 : null, processing: PROCESSING, textNormalize: TEXT_NORMALIZE },   // 文は前処理しない（ノートブックが合成の直前に textNormalize の規則をかける）
     steps,
   };
 }
@@ -103,7 +104,7 @@ export function parseRecords(text) {
     if (voice.bad) continue;
     records.set(key, {
       file: r.file, dur: r.dur, cues: r.cues.map(round3), inputHash: r.inputHash,
-      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80) },
+      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}) },
     });
   }
   return { records, docId, generator, problems };

@@ -28,12 +28,22 @@ SR = 44100
 PAUSE_S = 0.35
 PROCESSING = "trim-45-loud-20-cap-v1"          # kit/core/audio-core.mjs の PROCESSING と同じ
 NOTEBOOK_VERSION = 1
+TEXT_NORMALIZE = "join-num-counter@1"          # kit/core/tts-normalize.mjs の TEXT_NORMALIZE と同じ
 TRIM_DB, TRIM_KEEP_S, TRIM_WIN_S = -45.0, 0.05, 0.02
 TARGET_LUFS, TARGET_TP_DB = -20.0, -1.5
 MAX_SECONDS = 600
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 KEY = re.compile(r"^[^\s:]{1,120}:[^\s:]{1,120}$")
 VOICE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+# 算用数字（0-9・全角）の直後の空白（ASCII・全角）を、後ろが日本語の文字のときだけ取る（「1 歩」→「1歩」）。
+# kit/core/tts-normalize.mjs と同じ規則（共有の例 tools/fixtures/tts-normalize.json で突き合わせる）。文字の範囲も同じ
+_NUM_SPACE = re.compile("([0-9\uff10-\uff19])[ \u3000]+(?=[\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3005\u3006\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff])")
+
+
+def normalize_tts_text(text: str) -> str:
+    return _NUM_SPACE.sub(r"\1", text)
 
 
 class JobError(ValueError):
@@ -170,6 +180,7 @@ def process_line(x: np.ndarray, sr: int) -> np.ndarray:
 def synthesize_step(step: dict, synth, recipe: dict):
     """synth(text, voice, role, lang) → (samples, sr)。戻り値：(音声 float64 44.1 kHz, cues（秒）)。"""
     pause = round(PAUSE_S * SR)
+    norm = recipe.get("textNormalize") == TEXT_NORMALIZE   # 知らない版の名前は適用しない（記録にも書かない）
     pieces: list[np.ndarray] = []
     cues: list[float] = []
     n = 0
@@ -182,6 +193,8 @@ def synthesize_step(step: dict, synth, recipe: dict):
                 cues.append(round(n / SR, 3))
             if not text.strip():
                 continue
+            if norm:
+                text = normalize_tts_text(text)
             x, sr = synth(text, turn["voice"], turn.get("role", "expert"), step.get("lang", "ja"))
             line = process_line(np.asarray(x), int(sr))
             pieces.append(line)
@@ -226,6 +239,8 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
                        "seed": info.get("seed", jr.get("seed", 0)), "dictionary": jr.get("dictionary"),
                        "processing": f"{PROCESSING}+colab{NOTEBOOK_VERSION}"},
         }
+        if jr.get("textNormalize") == TEXT_NORMALIZE:
+            steps_rec[step["key"]]["recipe"]["textNormalize"] = TEXT_NORMALIZE
         if progress:
             progress(i + 1, len(job["steps"]), step["key"])
     records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),

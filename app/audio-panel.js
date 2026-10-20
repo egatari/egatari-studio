@@ -16,6 +16,7 @@
 //   取り込みは、inputHash が今の口述原稿と合う段階だけ cue つき（sync auto）で使い、合わない段階は「印付き」に出す（自動では使わない）
 //
 //   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?,
+//     oldNorm?: {title, note, go(n), done(n)}（app/i18n.js の T.oldNorm。前処理の版が古い TTS の段階の一覧）,
 //     colab?: {t（app/i18n.js の T.colab）, docId() → 文字列 | null, version, confirm(題, 本文, 実行の名前) → boolean, open(url)?}})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
@@ -27,6 +28,7 @@ import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
+import { TEXT_NORMALIZE, normalizeTtsText, textNormalizeOutdated } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
@@ -111,6 +113,7 @@ const CSS = [
   '#dev-audio .dv-empty{color:#8a91a1;font-size:12.5px;padding:4px 0}',
   '#dev-audio .dv-colab{border:1px solid #e0e4ec;border-radius:8px;padding:6px 8px;margin:8px 0;background:#fafbfe}#dev-audio .dv-colab summary{cursor:pointer;font-weight:700;font-size:12.5px}',
   '#dev-audio .dv-colab .dv-link{font-size:13px}#dev-audio .dv-marked{border-color:#f5d38a}',
+  '#dev-audio .dv-old{border:1px solid #f5d38a;border-radius:8px;padding:6px 8px;margin:8px 0;background:#fffaf0}#dev-audio .dv-oldrow{display:flex;gap:6px;align-items:center;font-size:12.5px;margin:2px 0}',
   '#dev-audio .dv-play{display:flex;align-items:center;gap:8px;margin-top:4px}#dev-audio .dv-play audio{flex:1;min-width:0;margin:0}#dev-audio .dv-play button{flex:none}',
   // 録音している間だけ（プレビューが inert のとき）知らせる
   '#dev-audio .dev-lock{display:none}#dev-side.dv-locked #dev-audio .dev-lock{display:block}',
@@ -184,7 +187,13 @@ export function createAudioPanel(o) {
       const k = `${x.slideKey}:${x.stepKey}`, e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
       if (!e || (await audioState(e, x, null)) === 'stale') need.push(k);
     }
-    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, need, manText: man.text };
+    // 前処理の版が古い（または無い）TTS の段階（stale ではない。音声は鳴らし続け、作り直しは利用者が選ぶ。format spec §5.4）。録音・取り込みは入れない
+    const oldNorm = [];
+    for (const x of segs) {
+      const k = `${x.slideKey}:${x.stepKey}`, e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
+      if (e && (e.kind === 'tts' || (e.kind === undefined && (isObj(e.recipe) || typeof e.engine === 'string'))) && !(isObj(e.recipe) && e.recipe.engine === 'dry-run') && textNormalizeOutdated(e.recipe)) oldNorm.push(k);
+    }
+    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, need, oldNorm, manText: man.text };
   }
 
   // ---------------------------------------------------------------- 描く
@@ -273,12 +282,13 @@ export function createAudioPanel(o) {
     const recBtn = h('button', { cls: 'dv-rec' + (rec ? ' dv-on' : ''), id: 'dev-audio-rec', text: rec ? L.stop : v.entry && v.entry.kind === 'recorded' ? L.reRec : L.rec, on: { click: () => (rec ? stopRecording() : startRecording()) } });
     const impBtn = h('button', { id: 'dev-audio-import', text: L.importBtn, on: { click: importFile } });
     const ttsInfo = o.tts ? o.tts.info(ttsLang(v)) : null;
-    const ttsBtn = h('button', { id: 'dev-audio-tts', text: L.tts, title: ttsInfo ? ttsInfo.label : '', on: { click: regenerate } });
+    const ttsBtn = h('button', { id: 'dev-audio-tts', text: L.tts, title: ttsInfo ? ttsInfo.label : '', on: { click: () => regenerate() } });
     if (!v.seg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (busyMsg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
     card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
     if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
+    drawOldNorm(v, !!(o.tts && ttsInfo && ttsInfo.ok));
     if (o.colab) drawColab(v, !!(o.tts && ttsInfo && !ttsInfo.ok));
     // 声を選ぶ欄
     drawVoices(v);
@@ -522,12 +532,21 @@ export function createAudioPanel(o) {
   // ---------------------------------------------------------------- ブラウザの TTS で作り直す（o.tts：app/tts-client.js。試験では差し替える）
   // 1 行（{cue} の部分）ずつ作り、行ごとに後処理（無音を削る・音量）をしてから、ターンの間に無音を入れてつなぐ（tts/synth.py と同じ）。
   // 日本語は読み辞書（tts/yomi.yaml。tts/yomi.py と同じ規則の app/yomi-data.js）を通した文を渡す
-  async function regenerate() {
-    if (busyMsg || !view || !view.seg || !o.tts) return;
-    const key = view.key, ws = o.ws(), g = o.generation();
-    const lang = ttsLang(view);
+  // key を渡すとその段階を作り直す（前処理の版が古い段階の一覧から。選んだ段階だけ）。渡さなければ今の段階。戻り値：できたら true
+  async function regenerate(arg) {
+    const fromList = typeof arg === 'string';
+    if (busyMsg || !view || !o.tts) return false;
+    if (!fromList && !view.seg) return false;
+    const key = fromList ? arg : view.key, ws = o.ws(), g = o.generation();
+    let vw = view;
+    if (key !== view.key) {
+      try { vw = await loadStep(key); } catch (e) { say(L.fail + (e.message || e), true); return false; }
+      if (vw.url) { freeUrl(vw.url); flushUrls(); }
+      if (o.ws() !== ws || o.generation() !== g || !vw.seg) { if (vw.seg === null) say(L.noSeg, true); return false; }
+    }
+    const lang = ttsLang(vw);
     const info = o.tts.info(lang);
-    if (!info.ok) { say(L.ttsNo + info.reason, true); return; }
+    if (!info.ok) { say(L.ttsNo + info.reason, true); return false; }
     setBusy(L.processing);
     const prog = () => card && card.querySelector('#dev-audio-prog');
     const stopWait = o.wait ? o.wait() : () => {};
@@ -536,10 +555,11 @@ export function createAudioPanel(o) {
       if (!seg) throw new Error(L.noSeg);
       const ja = /^ja\b/i.test(lang);
       // 声：選んだ声か voice.json の声。ブラウザの TTS に入っていない名前は、板で知らせたとおり既定の声にする（日本語も英語も同じ。#19）
-      const voices = { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name };
+      const voices = { expert: voiceOf(vw, 'expert').name, novice: voiceOf(vw, 'novice').name };
       const jobs = [];
       const terms = (o.yomi && o.yomi.terms) || [];
-      seg.turns.forEach((t, ti) => t.ttsParts.forEach((p, pi) => jobs.push({ ti, pi, role: t.role, text: ja ? applyYomi(p, terms).text : p })));
+      // 合成の直前だけ前処理する（normalizeTtsText。ttsParts と inputHash は変えない。format spec §5.4）
+      seg.turns.forEach((t, ti) => t.ttsParts.forEach((p, pi) => jobs.push({ ti, pi, role: t.role, text: normalizeTtsText(ja ? applyYomi(p, terms).text : p) })));
       const out = seg.turns.map((t) => t.ttsParts.map(() => null));
       let done = 0, recipe = null, voiceMap = {};
       for (const j of jobs) {
@@ -548,7 +568,7 @@ export function createAudioPanel(o) {
           const p = prog(); if (p) { p.hidden = false; p.firstChild.style.width = (100 * Math.max(0, Math.min(1, (done + f) / jobs.length))).toFixed(1) + '%'; }
           if (label) { busyMsg = label; const m = msgEl(); if (m) { m.className = 'dev-msg dv-ok'; m.textContent = label; } }
         } });
-        if (o.ws() !== ws || o.generation() !== g) return;
+        if (o.ws() !== ws || o.generation() !== g) return false;
         const line = processTake([r.pcm], r.sr);
         out[j.ti][j.pi] = line.pcm;
         recipe = recipe || r.recipe;
@@ -559,14 +579,51 @@ export function createAudioPanel(o) {
       if (!(joined.dur > 0)) throw Object.assign(new Error(L.empty), { code: 'audio-empty' });
       if (!recipe) throw Object.assign(new Error(L.empty), { code: 'audio-empty' });
       // recipe（format spec §5.2）：エンジン・モデル・声（話す役の公開の名前だけ）・シード・読み辞書の hash・後処理の版
-      const rc = { engine: String(recipe.engine), model: String(recipe.model), voice: {}, seed: Number.isInteger(recipe.seed) ? recipe.seed : null, dictionary: ja && o.yomi ? o.yomi.sha256 : null, processing: PROCESSING };
+      const rc = { engine: String(recipe.engine), model: String(recipe.model), voice: {}, seed: Number.isInteger(recipe.seed) ? recipe.seed : null, dictionary: ja && o.yomi ? o.yomi.sha256 : null, processing: PROCESSING, textNormalize: TEXT_NORMALIZE };
       for (const [role, name] of Object.entries(voiceMap)) if ((role === 'expert' || role === 'novice') && seg.turns.some((t) => t.role === role) && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(name))) rc.voice[role] = String(name);
       const take = await addTake(key, { kind: 'tts', pcm: joined.pcm, sr: 44100, dur: joined.dur, cues: joined.cues, recipe: rc, inputHash: hash, gainDb: 0, at: Date.now() });
       busyMsg = null;
       stopWait();
       await useTake(key, take.id, true);
-    } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
+      return !(takes.get(key) || []).some((x) => x.id === take.id);   // 書けたら取り直しは残らない
+    } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); return false; }
     finally { stopWait(); }
+  }
+
+  // ---------------------------------------------------------------- 前処理の版が古い TTS の段階（選んだものだけ、いつもの作り直しで作る。勝手には作り直さない）
+  const picked = new Set();
+  function drawOldNorm(v, canRun) {
+    const N = o.oldNorm;
+    const list = N ? v.oldNorm || [] : [];
+    for (const k of [...picked]) if (!list.includes(k)) picked.delete(k);
+    if (!list.length) return;
+    const box = h('div', { cls: 'dv-old', id: 'dev-audio-oldnorm' });
+    box.appendChild(h('div', { cls: 'dv-h', text: N.title }));
+    box.appendChild(h('div', { cls: 'dv-note', text: N.note }));
+    const busy = !!(busyMsg || rec);
+    const go = h('button', { id: 'dev-audio-oldnorm-go', cls: 'dv-pri', text: N.go(picked.size), on: { click: () => regenerateOld(v) } });
+    for (const k of list) {
+      const cb = h('input', { type: 'checkbox', 'data-key': k, id: 'dev-audio-old-' + k.replace(/[^A-Za-z0-9_-]/g, '_') });
+      if (picked.has(k)) cb.checked = true;
+      cb.addEventListener('change', () => { if (cb.checked) picked.add(k); else picked.delete(k); go.textContent = N.go(picked.size); go.disabled = busy || !canRun || !picked.size; });
+      if (busy) cb.disabled = true;
+      box.appendChild(h('label', { cls: 'dv-oldrow' }, [cb, h('span', { text: L.step + k.slice(k.lastIndexOf(':') + 1) + ' (' + k + ')' })]));
+    }
+    go.disabled = busy || !canRun || !picked.size;
+    box.appendChild(h('div', { cls: 'dv-tools' }, [go]));
+    card.appendChild(box);
+  }
+  // 選んだ段階を 1 つずつ、いつもの作り直し（regenerate）で作る。失敗したらそこで止める
+  async function regenerateOld(v) {
+    if (busyMsg || rec) return;
+    const N = o.oldNorm, keys = (v.oldNorm || []).filter((k) => picked.has(k));
+    let n = 0;
+    for (const k of keys) {
+      if (!(await regenerate(k))) break;
+      picked.delete(k); n++;
+    }
+    if (view) show(view.key, view.i);
+    if (n) ui.toast(N.done(n));
   }
 
   // ---------------------------------------------------------------- Colab で音声を作る（tts-job.json を書き出す → ノートブック → zip を取り込む）

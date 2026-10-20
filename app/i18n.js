@@ -181,6 +181,10 @@ const ja = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
+  oldNorm: {
+    title: '前処理の版が古い TTS の段階', note: 'この音声は、数字と助数詞の間の空白（「1 歩」）を取る前処理の前に作られています。「いちぽ」のように読まれていることがあります。音声は今のまま使えます。作り直す段階を選んでください（自動では作り直しません）',
+    go: (n) => '選んだ ' + n + ' 段階を作り直す', done: (n) => n + ' 段階の音声を作り直しました',
+  },
   colab: {
     title: 'Colab で音声を作る（WebGPU がないとき）', unverified: unv('ja'),
     lead: 'WebGPU のない PC（学校の PC・Safari・iPad）でも、無料の Colab で同じ声の音声を作って取り込めます。① 必要な段階の原稿を書き出す → Colab のノートブックで合成 → ② 返ってきた zip を取り込む、の順です。取り込むのは、書き出したときと原稿が同じ段階だけです。',
@@ -367,6 +371,10 @@ const en = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
+  oldNorm: {
+    title: 'TTS steps made with an older text pre-processing', note: 'This audio was made before the pre-processing that removes the space between a number and its counter (“1 歩”), so it may be read like “ichi po”. The audio is still used as it is. Choose the steps to regenerate (nothing is regenerated automatically)',
+    go: (n) => 'Regenerate the ' + n + ' selected step' + (n === 1 ? '' : 's'), done: (n) => n + ' step' + (n === 1 ? '' : 's') + ' regenerated',
+  },
   colab: {
     title: 'Make the audio in Colab (when there is no WebGPU)', unverified: unv('en'),
     lead: 'On a computer without WebGPU (a school PC, Safari, an iPad) you can still make the same voices in free Colab and import them. ① Export the narration of the steps that need audio → synthesize in the Colab notebook → ② import the zip it returns. Only the steps whose narration is unchanged since the export are imported.',

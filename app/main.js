@@ -563,7 +563,7 @@ async function colabDocId() {
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
 }
 const audio = createAudioPanel({
-  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
+  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null, oldNorm: T.oldNorm,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
