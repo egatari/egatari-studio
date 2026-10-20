@@ -145,7 +145,7 @@ ok('import: audio that is not a real WAV, silent, or the wrong length is refused
 
 // ---------------------------------------------------------------- ノートブックと「未検証」の印
 ok('notebook: colab/egatari-tts.ipynb is what tools/make-colab-notebook.mjs makes (npm run gen); the Colab URL points at it', () => {
-  assert.equal(fs.readFileSync(path.join(ROOT, 'colab/egatari-tts.ipynb'), 'utf8'), notebook());
+  assert.equal(fs.readFileSync(path.join(ROOT, 'colab/egatari-tts.ipynb'), 'utf8').replace(/\r\n/g, '\n'), notebook());   // Windows の checkout は CRLF のことがある
   const nb = JSON.parse(notebook());
   assert.equal(nb.nbformat, 4);
   assert.ok(colabUrl('v0.5.0').endsWith('/blob/v0.5.0/colab/egatari-tts.ipynb'));
