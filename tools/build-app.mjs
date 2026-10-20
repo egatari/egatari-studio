@@ -146,7 +146,7 @@ const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egat
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
-for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', () => iconLinks((f) => f) + '\n<link rel="manifest" href="manifest.webmanifest">')
@@ -168,6 +168,14 @@ for (const f of ['LICENSE', 'NOTICE']) if (fs.existsSync(rel(f))) fs.copyFileSyn
 const LAME_DIR = path.join(path.dirname(require.resolve('lame-wasm')), '..');   // dist/index.umd.cjs の上（exports が package.json を出さない）
 fs.mkdirSync(path.join(ED, 'vendor', 'lame-wasm'), { recursive: true });
 for (const [from, to] of [['dist/index.js', 'index.js'], ['LICENSE', 'LICENSE'], ['package.json', 'package.json'], ['README.md', 'README.md']]) fs.copyFileSync(path.join(LAME_DIR, from), path.join(ED, 'vendor', 'lame-wasm', to));
+// 版の案内だけを組んだもの（app/version-notice.js）：サイトの組み立て（tools/site-versions.mjs）が、案内を持たない古い凍結した写し（/vX.Y.Z/）に
+// ../version-notice.js として読み込ませる（この版の編集アプリは app.js に同じものを持つ）
+fs.writeFileSync(path.join(ED, 'version-notice.js'), (await esbuild.build({
+  entryPoints: [rel('app', 'version-notice.js')], bundle: true, write: false, format: 'iife', platform: 'browser',
+  target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning',
+})).outputFiles[0].text);
+// 版の一覧（app/version-ui.js が読む）：ここでは凍結した写しなし。公開のときに tools/site-versions.mjs assemble が書き直す
+fs.writeFileSync(path.join(ED, 'versions.json'), JSON.stringify({ root: version, versions: [] }, null, 1) + '\n');
 // 試験ページ（lab/）：そのまま写す（静的なファイルだけ。重みは実行時に Hugging Face から取る）
 const LAB = path.join(OUT, 'lab');
 if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, filter: (f) => !path.basename(f).startsWith('.') });

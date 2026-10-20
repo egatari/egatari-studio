@@ -5,7 +5,7 @@
 // Irodori の重みは Cache Storage に置き（2 回目は取りに行かない）、Kokoro は transformers.js のキャッシュに置く
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
 import { bundledVoice, DEFAULT_VOICES, IRODORI_VOICES, KOKORO_VOICES } from './tts-voices.mjs';
-import { IRODORI_PREFIX, pruneOldModels, requestPersist } from './model-cache.mjs';
+import { IRODORI_PREFIX, pruneOldModels, requestPersist, inFrozenCopy } from './model-cache.mjs';
 
 export const ORT_VERSION = '1.23.0';            // 上流（web/app.mjs・space/app.mjs）と同じ版
 export const TRANSFORMERS_VERSION = '3.7.6';    // 同上（トークナイザだけに使う）
@@ -107,7 +107,8 @@ export async function fetchCached(url, expected, { cacheName = CACHE_NAME, onByt
 // 取る前の手入れ：古い版のキャッシュ（版を替えると残る。1 GB を超える）を消し、空きが足りないときや Safari がしばらく開かないサイトの
 // データを消すときに、このキャッシュを残すよう求める（navigator.storage.persist。断られても読み込める）
 async function tidyCaches(onLog) {
-  const n = await pruneOldModels(CACHE_NAME, { kokoro: { repo: KOKORO_REPO, rev: KOKORO_REV } }).catch(() => 0);
+  const frozen = typeof location !== 'undefined' && inFrozenCopy(location.pathname);   // 凍結した写し（/vX.Y.Z/）は片付けない
+  const n = frozen ? 0 : await pruneOldModels(CACHE_NAME, { kokoro: { repo: KOKORO_REPO, rev: KOKORO_REV } }).catch(() => 0);
   if (n) onLog(`removed ${n} cache(s) of older model versions`);
   const p = await requestPersist();
   if (p !== null) onLog(`persistent storage: ${p ? 'granted' : 'not granted'}`);

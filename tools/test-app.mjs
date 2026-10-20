@@ -27,6 +27,7 @@ import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
+import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -80,11 +81,14 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 let fontFetches = 0;
 // dist/ をサイトの根（https://studio.egatari.org/ の形）と下のパス /egatari-studio/（https://egatari.github.io/egatari-studio/ の形）の両方で配る
 const SUB = 'egatari-studio/';
+// 版を並べたサイト（tools/site-versions.mjs assemble：根に今の版、/v<今の版>/ にその写し、/v0.0.1/ に版の案内を持たない古い版の代わり）を /site/ で配る（13b）
+const SITE = path.join(work, 'site'), SITEP = 'site/';
 const srv = http.createServer((req, res) => {
-  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname), dir = DIST;
   if (p.startsWith('/' + SUB)) p = p.slice(SUB.length);
-  const file = path.join(DIST, p.endsWith('/') ? p + 'index.html' : p);
-  if (!file.startsWith(DIST + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('not found'); }
+  else if (p.startsWith('/' + SITEP)) { p = p.slice(SITEP.length); dir = SITE; }
+  const file = path.join(dir, p.endsWith('/') ? p + 'index.html' : p);
+  if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('not found'); }
   if (file.endsWith('.woff2')) fontFetches++;
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
   fs.createReadStream(file).pipe(res);
@@ -174,6 +178,47 @@ async function previewAudioPlays(fr, tag) {
   }
   ok(!!st && !!st.src && st.src.startsWith('blob:') && st.t > 0 && !st.err, `${tag}: autoplay plays the audio (currentTime advances) ${JSON.stringify(st)}`);
   await fr.evaluate(() => { DECK.autoplay(false); DECK.go(0, 0, false); });
+}
+// 発表者ビューから自動再生を始めると、プレビュー（本体）の音声が鳴る（音は消さない：キーを押したのは発表者ビューの窓なので、
+// プレビューの枠に allow="autoplay" がないとブラウザが NotAllowedError で止める）。発表者ビューの中のデッキ（発表者の画面・今と次の画面）は
+// 何も鳴らさない（二重に鳴らない）。Playwright の evaluate はその枠をユーザーが操作したことにする（以後は再生を許す）ので、新しい context で、
+// 鳴らす前にはプレビューの枠で evaluate しない：再生の見張りは addInitScript で入れ、結果は鳴らした後で読む
+async function presenterAudioPlays(html, tag) {
+  const cx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
+  await cx.addInitScript(() => {
+    const pl = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () { window.__plays = (window.__plays || 0) + 1; window.__au = this; const r = pl.call(this); r.then(() => { window.__auRes = 'ok'; }, (e) => { window.__auRes = e.name; }); return r; };
+  });
+  const pg = await cx.newPage();
+  watch(pg, tag);
+  try {
+    await pg.goto(BASE);
+    await pg.waitForSelector('#drop');
+    const l0 = await pg.evaluate(() => window.__APP_TEST.state().loads);
+    await pg.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'min' + ext }); }, [Buffer.from(html).toString('base64'), FORMAT.FILE_EXT]);
+    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
+    await pg.waitForTimeout(2500);   // 音声のバイトがプレビューに届き、blob: になるまで
+    const [pop] = await Promise.all([cx.waitForEvent('page'), pg.click('#b-presenter')]);
+    watch(pop, tag + ' presenter');
+    let pv = null;
+    for (let i = 0; i < 200 && !pv; i++) { const x = pop.frames().find((y) => y.parentFrame() === pop.mainFrame()); try { if (x && await x.evaluate(() => !!document.getElementById('pv'))) pv = x; } catch { /* 読み込み中 */ } if (!pv) await pop.waitForTimeout(100); }
+    if (!pv) { ok(false, `${tag}: presenter view did not load`); return; }
+    await pop.waitForTimeout(800);
+    await pv.click('#pv-notes');
+    await pop.keyboard.press('a');
+    const fr = pg.frames().find((y) => y.parentFrame() === pg.mainFrame());
+    let st = null;
+    for (let i = 0; i < 80; i++) {
+      await pg.waitForTimeout(100);
+      st = await fr.evaluate(() => ({ res: window.__auRes || null, src: window.__au ? window.__au.src : null, t: window.__au ? window.__au.currentTime : 0, muted: window.__au ? window.__au.muted : null, plays: window.__plays || 0 }));
+      if ((st.res && st.res !== 'ok') || (st.res === 'ok' && st.t > 0)) break;
+    }
+    ok(st.res === 'ok' && st.t > 0 && st.muted === false && /^blob:/.test(st.src || ''), `${tag}: autoplay started in the presenter view plays the preview's audio (not muted) ${JSON.stringify(st)}`);
+    const plays = [];
+    for (const x of [pv, ...pv.childFrames()]) plays.push(await x.evaluate(() => window.__plays || 0).catch(() => -1));
+    ok(plays.length === 3 && plays.every((n) => n === 0), `${tag}: the presenter view itself plays nothing (no double playback) ${JSON.stringify(plays)}`);
+    await pop.keyboard.press('a');
+  } finally { await cx.close(); }
 }
 async function waitLoads(n, timeout = 15000) {
   await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout });
@@ -577,6 +622,7 @@ try {
     ok(ps.kind === 'memory' && ps.portable.docId === pmin.index.docId && !ps.error, `portable: in-memory workspace, docId ${ps.portable.docId}`);
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
     await previewAudioPlays(f, 'preview audio (single file in memory)');
+    await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice'), 'portable: core profile → no code notice');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-savemenu') && await page.isHidden('#m-save'), 'portable: toolbar shows Save and its menu button');
     await page.click('#b-savemenu');
@@ -1767,6 +1813,60 @@ try {
     await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: 30000 }).catch(() => {});
     ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
     await ps.close();
+  }
+
+  // ---------------------------------------------------------------- 13b. 版ごとの URL（#32）：根 = 最新版、/vX.Y.Z/ = 凍結した写し
+  {
+    const cur = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+    fs.rmSync(SITE, { recursive: true, force: true });
+    fs.cpSync(DIST, SITE, { recursive: true });
+    const OLD = path.join(work, 'old-site');   // 版の案内を持たない古い版の代わり（決まりの <meta> のあるページだけ）
+    fs.rmSync(OLD, { recursive: true, force: true });
+    fs.mkdirSync(OLD);
+    fs.writeFileSync(path.join(OLD, 'index.html'), fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8').replace(/<body>[\s\S]*<\/body>/, '<body><h1>old</h1></body>').replace(/<!--APP_\w+-->/g, ''));
+    const gz = packSite(OLD);
+    const r = assemble({ site: SITE, current: cur, releases: [{ version: '0.0.1', buf: gz, body: shaLine('0.0.1', sha256(gz)) }], log: () => {} });
+    ok(r.versions.join() === `${cur},0.0.1` && r.injected['0.0.1'], `versions: assembled the site (root v${cur}, /v${cur}/, /v0.0.1/ with the notice script added)`);
+    const SB = BASE + SITEP;
+    for (const lang of ['ja', 'en']) {
+      const pv = await browser.newPage({ locale: lang === 'en' ? 'en-US' : 'ja-JP' });
+      watch(pv, 'versions-' + lang);
+      const reqs = [];
+      pv.on('request', (q) => reqs.push(q.url()));
+      // 根：はじめの画面の下に版の一覧。凍結の知らせはない
+      await pv.goto(SB + '?lang=' + lang);
+      await pv.waitForSelector('#version-line select', { timeout: 10000 }).catch(() => {});
+      const root = await pv.evaluate(() => ({ line: document.getElementById('version-line')?.textContent || '', opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')), note: !!document.getElementById('version-note') }));
+      ok(root.line.includes('v' + cur) && root.opts.join() === `${cur}*,0.0.1` && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
+      // 根で古い版を選ぶ → /v0.0.1/（?lang は残す）
+      await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: 10000 }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
+      await pv.waitForSelector('#version-note', { timeout: 10000 }).catch(() => {});
+      const old = await pv.evaluate(() => ({ url: location.href, text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '' }));
+      ok(old.url === SB + 'v0.0.1/?lang=' + lang && old.text.includes('v0.0.1') && old.href === SB + '?lang=' + lang, `versions (${lang}): choosing v0.0.1 opens the old copy; its added notice says v0.0.1 and links to the latest ${JSON.stringify(old)}`);
+      // 今の版の写し：編集アプリそのもの（資源はその下から読む）。知らせは「これが最新」
+      reqs.length = 0;
+      await pv.goto(SB + `v${cur}/?lang=` + lang);
+      await pv.waitForSelector('#drop');
+      await pv.waitForSelector('#version-note', { timeout: 10000 }).catch(() => {});
+      const fz = await pv.evaluate(() => ({ text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '', line: !!document.getElementById('version-line'), opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')) }));
+      const own = reqs.filter((u) => /\/(app\.js|app\.css)$/.test(u));
+      ok(fz.text.includes('v' + cur) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${cur}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${cur}/`)),
+        `versions (${lang}): /v${cur}/ is the editor itself (its own app.js and app.css), with the frozen notice, a link to the latest and the version list ${JSON.stringify({ ...fz, own })}`);
+      ok(lang === 'en' ? /frozen copy/.test(fz.text) : /凍結/.test(fz.text), `versions (${lang}): the notice is in the UI language`);
+      if (lang === 'ja') {
+        await shot(pv, 'version-frozen.png');
+        // 写しでも見本を開ける（相対の場所）
+        await pv.click('#examples-list li[data-example="minimal"] button');
+        await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
+        ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${cur}/`);
+        // 写しの TTS の窓・試験ページ（lab/）も、その写しの下にある
+        ok((await fetch(SB + `v${cur}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
+        // 知らせを隠す
+        await pv.click('#version-note button');
+        ok(!(await pv.$('#version-note')), 'versions: the notice can be hidden');
+      }
+      await pv.close();
+    }
   }
 } catch (e) {
   console.error(e);

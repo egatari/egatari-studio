@@ -4,6 +4,10 @@
 #   /lab/         test pages copied as-is from lab/ (lab/irodori.html: Irodori-TTS in the browser on WebGPU)
 #   /editor/      redirects to / keeping ?query and #hash (the editor used to live here)
 #   /examples/    the examples as portable files (<name>.ega.html), listed on the editor's first screen
+#   /vX.Y.Z/      a frozen copy of each release (the same layout under its own path; #32). The new build is copied to /v<its version>/,
+#                 and every earlier release's editor-site-vX.Y.Z.tar.gz (a release asset, RELEASING.md) is downloaded, checked against
+#                 the sha256 line in its release notes (and GitHub's digest) and unpacked (tools/site-versions.mjs assemble)
+#   /versions.json  the root version and the frozen copies (the editor shows a version list and, in a copy, a notice)
 # All paths are relative: the site works at the custom domain https://studio.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
 # Only release tags deploy: a push of vX.Y.Z (three numbers; v0.5.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
@@ -30,6 +34,7 @@ on:
       - 'server/editor-ui.js'
       - 'tools/build-app.mjs'
       - 'tools/examples-portable.mjs'
+      - 'tools/site-versions.mjs'
       - 'examples/**'
       - 'package.json'
       - 'package-lock.json'
@@ -47,6 +52,7 @@ on:
       - 'server/editor-ui.js'
       - 'tools/build-app.mjs'
       - 'tools/examples-portable.mjs'
+      - 'tools/site-versions.mjs'
       - 'examples/**'
       - 'package.json'
       - 'package-lock.json'
@@ -63,7 +69,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
       deploy: ${{ steps.release.outputs.deploy }}
     steps:
@@ -84,6 +90,15 @@ jobs:
         run: node tools/build-app.mjs --out _site
       - name: Check the build
         run: test -s _site/index.html && test -s _site/editor.html && ls -la _site
+      - name: Add the frozen copies (/vX.Y.Z/)
+        # on a release tag the tag must equal package.json's version; other refs use package.json's version (the same steps as a dry run).
+        # A release without the asset is skipped (v0.4.0 and earlier); a wrong sha256 or a missing sha256 line fails the build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" =~ ^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then cur=(--current "${BASH_REMATCH[1]}"); else cur=(); fi
+          node tools/site-versions.mjs assemble --site _site "${cur[@]}" --repo "$GITHUB_REPOSITORY"
+          cat _site/versions.json
       - uses: actions/configure-pages@v5
         if: steps.release.outputs.deploy == 'true'
       - uses: actions/upload-pages-artifact@v3

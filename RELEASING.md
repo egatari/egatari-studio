@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=f251819d22bcefe2 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=157792a8c1b39556 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -48,13 +48,16 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **Release notes** from the CHANGELOG section, with the example files attached:
+7. **Release notes** from the CHANGELOG section, with the example files and the editor site attached. The editor site `editor-site-vX.Y.Z.tar.gz` is this release's `dist/`, built from the tag in a temporary git worktree; later deploys serve it at `/vX.Y.Z/` and check it against the sha256 line in the notes ([docs/editor.md](docs/editor.md#versions-frozen-copies)):
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md
    npm run release:assets
-   gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/*
+   node tools/site-versions.mjs asset vX.Y.Z          # out/site/editor-site-vX.Y.Z.tar.gz and its sha256 line
+   printf '\n' >> /tmp/notes.md && cat out/site/editor-site-vX.Y.Z.sha256.txt >> /tmp/notes.md
+   gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/* out/site/editor-site-vX.Y.Z.tar.gz
+   node tools/site-versions.mjs verify vX.Y.Z         # downloads the asset and checks it against the notes and GitHub's digest
    ```
 
-8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>. To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
+8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/> and the previous release's `/v…/` (its log lists the frozen copies it added). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
    Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).

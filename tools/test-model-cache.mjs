@@ -2,7 +2,7 @@
 // test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-model-cache.mjs
 import assert from 'node:assert/strict';
-import { modelCaches, deleteModelCaches, pruneOldModels, storageUsage, requestPersist, modelCacheSizes, isModelCache } from '../lab/model-cache.mjs';
+import { modelCaches, deleteModelCaches, pruneOldModels, storageUsage, requestPersist, modelCacheSizes, isModelCache, inFrozenCopy } from '../lab/model-cache.mjs';
 
 // 偽の Cache Storage：{名前: {url: バイト数}}
 function fakeCaches(init) {
@@ -58,6 +58,10 @@ await t('pruneOldModels: deletes other Irodori versions and old Kokoro revisions
   assert.ok(c.m.get('transformers-cache').has(`${HF}other/model/resolve/${OLD}/x.onnx`), 'another repo is not touched');
   assert.equal(await pruneOldModels('irodori-lab-b75a9bbf2c10', { kokoro: { repo: 'onnx-community/Kokoro', rev: REV }, caches: c }), 0, 'nothing left to prune');
   assert.equal(await pruneOldModels('x', { caches: null }), 0);
+});
+await t('inFrozenCopy: lab pages under /vX.Y.Z/ of the site do not prune (only the root copy does)', async () => {
+  for (const p of ['/v0.4.2/lab/tts-helper.html', '/egatari-studio/v0.4.2/lab/irodori.html']) assert.equal(inFrozenCopy(p), true, p);
+  for (const p of ['/lab/tts-helper.html', '/egatari-studio/lab/irodori.html', '/v0.4.2/', '/v0.4/lab/x.html', '/lab/v0.4.2/x.html', '']) assert.equal(inFrozenCopy(p), false, p);
 });
 await t('deleteModelCaches: deletes every model cache, nothing else', async () => {
   const c = mk();

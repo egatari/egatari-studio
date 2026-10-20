@@ -22,6 +22,9 @@ export async function deleteModelCaches(cs) {
   for (const n of await modelCaches(c)) if (await c.delete(n).catch(() => false)) out.push(n);
   return out;
 }
+// 公開のサイトの凍結した写し（/vX.Y.Z/lab/…。tools/site-versions.mjs）か。キャッシュはサイト全体で共有なので、写しは古い版を片付けない
+// （片付けるのは根の最新版だけ。写しが根の新しいモデルを消して、行き来するたびに取り直すことのないように）
+export const inFrozenCopy = (pathname) => /\/v\d+\.\d+\.\d+\/lab\/[^/]*$/.test(String(pathname || ''));
 // 今の版のほかの Irodori のキャッシュと、transformers-cache の中の repo の古い版（40 字の版のうち rev でないもの）を消す → 消した数
 //   current：今の Irodori のキャッシュの名前（CACHE_NAME）。kokoro：{repo, rev}（省けば transformers-cache に触らない）
 export async function pruneOldModels(current, { kokoro = null, caches: cs } = {}) {

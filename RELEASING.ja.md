@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=375c892fa04c9f7b -->
+<!-- i18n: pair=RELEASING.md sha256=d4218f29823338a2 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -48,13 +48,16 @@
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **リリースの説明**を CHANGELOG の節から作り、見本のファイルを添える：
+7. **リリースの説明**を CHANGELOG の節から作り、見本のファイルと編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）：
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md
    npm run release:assets
-   gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/*
+   node tools/site-versions.mjs asset vX.Y.Z          # out/site/editor-site-vX.Y.Z.tar.gz とその sha256 の行
+   printf '\n' >> /tmp/notes.md && cat out/site/editor-site-vX.Y.Z.sha256.txt >> /tmp/notes.md
+   gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/* out/site/editor-site-vX.Y.Z.tar.gz
+   node tools/site-versions.mjs verify vX.Y.Z         # 添えたファイルを取り、説明と GitHub の digest に合うか確かめる
    ```
 
-8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/> を開く。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
+8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/` を開く（その記録に、置いた凍結した写しが並ぶ）。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
    ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）

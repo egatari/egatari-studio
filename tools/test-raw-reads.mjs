@@ -58,6 +58,7 @@ const ALLOW = [
   ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['tools/changelog.mjs', "const read = (f) => fs.readFileSync(f, 'utf8')", 'CHANGELOG の道具：リポジトリの changes/*.md・CHANGELOG.md・package.json・package-lock.json を読む（開発者の道具）'],
   ['tools/release-assets.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
+  ['tools/site-versions.mjs', 'fs.readFileSync(', '版ごとのサイト：自分で組んだ dist・package.json と、gh で取ったリリースの tar.gz（sha256 を確かめ、展開は上限つき）・それを広げた写しの index.html を読む（開発者とワークフローの道具）'],
 ];
 
 const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT }).toString().split('\0')

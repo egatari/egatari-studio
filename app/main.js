@@ -29,6 +29,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
+import { mountVersionUi } from './version-ui.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 
 const $ = (id) => document.getElementById(id);
@@ -1179,6 +1180,8 @@ async function createDeck() {
 // ---------------------------------------------------------------- つなぎ
 applyTexts();
 document.querySelector('#top .brand').title = T.brand;
+// 版の案内（凍結した写し /vX.Y.Z/ の知らせ・根の前の版の一覧。サイトの versions.json があるときだけ）
+mountVersionUi({ version: RES.version, lang: EN ? 'en' : 'ja' });
 $('w-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('w-new').onclick = () => showNewForm(true);

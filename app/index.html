@@ -114,7 +114,9 @@
 
   <section id="deck" hidden>
     <div id="viewer">
-      <iframe id="preview" title="slides" sandbox="allow-scripts allow-modals"></iframe>
+      <!-- allow="autoplay"：発表者ビュー（別の窓）で自動再生を始めても、プレビューの音声が鳴るように（キーを押したのはその窓で、この枠ではない。
+           音声を鳴らすのはプレビューだけで、発表者ビューは位置と操作を送るだけ） -->
+      <iframe id="preview" title="slides" sandbox="allow-scripts allow-modals" allow="autoplay"></iframe>
       <div id="errbox" hidden><div class="errcard"><h2 data-t="buildFailed"></h2><p data-t="buildFailedHint"></p><pre id="errtext"></pre></div></div>
       <div id="loading" data-t="building"></div>
     </div>

@@ -119,6 +119,7 @@ export async function askPermission(h, mode = 'readwrite') {
 }
 
 // ---------------------------------------------------------------- 最近開いたもの（作業フォルダと 1 ファイル。IndexedDB にハンドルを残す。中身は残さない）
+// 公開のサイトの凍結した写し（/vX.Y.Z/）とも同じ DB を使う（同じ origin）。古い版も開くので、形を変えるときは DB の名前を替える
 const DB = 'motion-slides-editor', STORE = 'recent', MAX_RECENT = 8;
 function db() {
   return new Promise((res, rej) => {
