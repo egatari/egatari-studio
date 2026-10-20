@@ -5,6 +5,7 @@
 //   dev     プレビュー：印刷・位置・品質チェックの頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
 //   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列、
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
+// layoutScan・LAYOUT_CLIP：体裁の検査の関数とわざと切る印の名前（kit/core/layout-scan.mjs）。app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
 var parentWin = window.parent;
@@ -79,54 +80,28 @@ function previewAudio(items){
   }
 }
 
-// ---------------------------------------------------------------- 品質チェック（kit/check.mjs の一部：はみ出し・文字の大きさ・字数・口述原稿・コントラスト）
-// 部品の再現性・タイムライン・モーフ・読み上げの検査はしない（全部の検査は CLI の npm run check）
+// ---------------------------------------------------------------- 品質チェック（kit/check.mjs の一部：はみ出し・切れ・文字の大きさ・字数・口述原稿・コントラスト）
+// はみ出し・切れ・文字の大きさ・字数は kit/core/layout-scan.mjs（コマンド版と同じ）。縦組みの限り・結論の行の高さ・図の中の字の大きさ・
+// 箱で切れる字・スライドの外に出る図の字・図の箱からはみ出す字・本文の外の字も見る（backlog #51・#52）
+// 部品の再現性・タイムライン・モーフ・読み上げ・です・ます・句読点の検査はしない（全部の検査は CLI の npm run check）
+// コマンド版の code → ブラウザ版の前からの code（app/i18n.js の checkMsg と kit/core/llm-fix.mjs の BY_CODE が知っているもの）
+var LEGACY = {titleLong: "titleLong", titleLongEn: "titleLongEn", conclLong: "conclLong", conclLongEn: "conclLongEn", conclOverflow: "conclOverflow", bodyBottom: "overflowBottom", bodyRight: "overflowRight", smallText: "smallText"};
 function quickCheck(){
   var DECK = window.DECK;
   if (!DECK || !DECK.slides) return jsErrors.map(function(t){ return {i: null, title: "", sev: "error", code: "consoleError", arg: t}; });
   var JA = DECK.ja !== false, S = DECK.slides, out = [];
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
-  var units = function(s){ return Array.from(s).reduce(function(a, ch){ return a + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1); }, 0); };
-  var vis = function(el){ if (!el) return ""; var c = el.cloneNode(true); c.querySelectorAll(".katex-mathml").forEach(function(x){ x.remove(); }); return c.textContent; };
   var add = function(i, sev, code, arg){ out.push({i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}); };
   S.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
-    var sr = s.getBoundingClientRect(), k = sr.width / 1280 || 1;
-    var h2 = s.querySelector("h2"), c = s.querySelector(".concl"), body = s.querySelector(".body");
-    if (h2) {
-      var t = vis(h2).trim();
-      if (JA && units(t) > 26) add(i, "error", "titleLong", units(t));
-      if (!JA && t.length > 60) add(i, "warn", "titleLongEn", t.length);
-    }
-    if (c) {
-      var ct = vis(c).trim();
-      if (JA && units(ct) > 35) add(i, "error", "conclLong", units(ct));
-      if (!JA && ct.length > 70) add(i, "warn", "conclLongEn", ct.length);
-      if (c.scrollWidth > c.clientWidth + 1) add(i, "error", "conclOverflow");
-    }
-    if (body) {
-      var lim = s.classList.contains("noconcl") ? 680 : 565, maxB = 0, maxR = 0;
-      body.querySelectorAll("*").forEach(function(el){
-        if (el.closest("svg") && el.tagName !== "svg") return;
-        if (el.closest(".katex") && !el.classList.contains("katex")) return;
-        var r = el.getBoundingClientRect();
-        if (!r.width && !r.height) return;
-        maxB = Math.max(maxB, (r.bottom - sr.top) / k); maxR = Math.max(maxR, (r.right - sr.left) / k);
-      });
-      if (maxB > lim) add(i, "error", "overflowBottom", Math.round(maxB) + " > " + lim);
-      if (maxR > 1236) add(i, "error", "overflowRight", Math.round(maxR));
-      if (!/文献|References/.test(h2 ? h2.textContent : "")) {
-        var tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT), n;
-        while ((n = tw.nextNode())) {
-          if (!n.textContent.trim()) continue;
-          var e = n.parentElement;
-          if (e.closest("svg") || e.closest(".katex") || e.closest(".cite") || e.closest(".pn") || e.closest(".figcap") || e.closest("rt")) continue; // ルビ（rt）は本文の半分の大きさが決まり（kit/check.mjs と同じ）
-          var f = parseFloat(getComputedStyle(e).fontSize), lim2 = e.closest("table,.plot") ? 23.9 : 26.6;
-          if (f < lim2) { add(i, "error", "smallText", f + "px「" + n.textContent.trim().slice(0, 12) + "」"); break; }
-        }
-      }
-      if (body.querySelector(".katex-error")) add(i, "error", "katexError");
-    }
+    // はみ出し・切れ・字の大きさ・字数：コマンド版と同じ関数（kit/core/layout-scan.mjs。app/main.js がこの仲立ちに渡す）。
+    // 前からある知らせはブラウザ版の code と短い値のまま（overflowBottom・overflowRight・smallText と字数）、ほかはコマンド版の code と値
+    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP}).forEach(function(f){
+      var a = f.a, code = LEGACY[f.code];
+      if (!code) return add(i, f.sev, f.code, a);
+      add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? a.px : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
+    });
+    if (s.querySelector(".body .katex-error")) add(i, "error", "katexError");
     // 口述原稿：段階ごと（static のスライドは段階 0 だけ）。スライドにない段階の口述原稿（[k] が段階を超える・結論のない [concl]）はエラー
     var valid = {}, isStatic = s.classList.contains("static");
     for (var kk = 0; kk <= (isStatic ? 0 : s._max); kk++) {

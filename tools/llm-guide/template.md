@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=0c3c9a33bf9704cd -->
+<!-- i18n: pair=template.ja.md sha256=090adab7381a4895 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -101,7 +101,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
-- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px.
+- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px. Put `data-clip` on an element that is clipped on purpose.
 - **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole deck (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Component catalog

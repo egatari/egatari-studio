@@ -4,7 +4,8 @@
 // 読み書きはすべて作業場所（workspace.js：フォルダ／メモリの上のフォルダ）を通す。編集の画面（server/editor-ui.js）はこのページにあり、
 // プレビュー（sandbox の iframe）は「どこを直したいか」を知らせる（server/hints.js）だけで、書き込みを頼む口を持たない
 import RES from 'virtual:resources';
-import SHIM from './frame-shim.js?text';
+import SHIM_SRC from './frame-shim.js?text';
+import { withLayoutScan } from '../kit/core/layout-scan.mjs';
 import { createEngine, bytesToBase64 } from './engine.js';
 import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
@@ -31,6 +32,8 @@ import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
+// プレビューの中の仲立ち：品質チェックの体裁の検査（kit/core/layout-scan.mjs。コマンド版と同じ関数）を渡す形に包む
+const SHIM = withLayoutScan(SHIM_SRC);
 
 const $ = (id) => document.getElementById(id);
 const POLL_MS = 1500;

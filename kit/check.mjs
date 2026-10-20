@@ -5,6 +5,8 @@
 //
 // A. 体裁の検査（はみ出し・文字の大きさ・字数・表記・段階 0 の一覧）
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
+//    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
+//    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
 // B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
@@ -37,6 +39,7 @@ import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { MESSAGES, message, where } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
+import { layoutScan, CLIP_ATTR } from './core/layout-scan.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -256,11 +259,12 @@ phase = 'J リンク';
 
 // ================================================================ A. 体裁の検査
 phase = 'A 体裁';
-const aOut = await page.evaluate(([metaList, JA]) => {
+// 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
+await page.evaluate(`window.__layoutScan = ${layoutScan}`);
+const aOut = await page.evaluate(([metaList, JA, CLIP]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
   const style = [], soft = [];
-  const units = (s) => [...s].reduce((a, ch) => a + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1), 0);
 
   // 1. 段階 0 で見えている本文（static でないスライドだけ）
   metaList.forEach((m) => {
@@ -282,72 +286,15 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     step0.push({ i: m.i, text: t.replace(/\s+/g, '').slice(0, 80) });
   });
 
-  // 見える文字だけ（KaTeX の読み上げ用の MathML は数えない）
-  const vis = (el) => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); return c.textContent; };
   // 2. 各スライドを最終段階まで出した状態で体裁を調べる
   metaList.forEach((m) => {
     DECK.seek(m.i, m.max, Infinity);
     const s = S[m.i];
-    const sr = s.getBoundingClientRect();
-    const k = sr.width / 1280 || 1;
     const issues = [], warns = [];
-    const h2 = s.querySelector('h2'), c = s.querySelector('.concl'), body = s.querySelector('.body');
-    const tate = s.classList.contains('layout-tate');
-    if (h2) {
-      const t = vis(h2).trim();
-      if (JA && units(t) > 26) issues.push(['titleLong', { n: units(t), t }]);
-      if (!JA && t.length > 60) warns.push(['titleLongEn', { n: t.length, t }]);
-      if (/[：:]$/.test(t)) issues.push(['titleColon', { t }]);
-      // 縦組み（layout-tate）の見出しは 1 列（天 48px から地 664px まで、43px の字でおよそ 14 字）。折り返さないので、収まらなければ切れる
-      if (tate && h2.scrollHeight > h2.clientHeight + 1) issues.push(['tateTitle', { h: Math.round(h2.scrollHeight), max: h2.clientHeight }]);
-    }
-    if (c) {
-      const t = vis(c).trim();
-      if (JA && units(t) > 35) issues.push(['conclLong', { n: units(t), t }]);
-      if (!JA && t.length > 70) warns.push(['conclLongEn', { n: t.length, t }]);
-      // 縦組み（layout-tate）の結論は縦の列なので、高さではみ出す
-      if (c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1) issues.push(['conclOverflow', {}]);
-    }
+    const body = s.querySelector('.body');
+    // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
+    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
     if (body) {
-      // 結論の行があるときは上端 571px の手前（元キットの余裕を見た値 565px）、ないときは 680px。
-      // 縦組み（layout-tate）は、地 680px・右は見出しの罫（1166px）の手前 1162px・左は結論の列（右端 120px）の外 124px（結論がなければ 44px）
-      const lim = tate || s.classList.contains('noconcl') ? 680 : 565;
-      const limR = tate ? 1162 : 1236, limL = tate ? (c ? 124 : 44) : -Infinity;
-      let maxB = 0, maxR = 0, minL = Infinity;
-      body.querySelectorAll('*').forEach((el) => {
-        if (el.closest('svg') && el.tagName !== 'svg') return;
-        if (el.closest('.katex') && !el.classList.contains('katex')) return;
-        const r = el.getBoundingClientRect();
-        if (!r.width && !r.height) return;
-        maxB = Math.max(maxB, (r.bottom - sr.top) / k);
-        maxR = Math.max(maxR, (r.right - sr.left) / k);
-        minL = Math.min(minL, (r.left - sr.left) / k);
-      });
-      if (maxB > lim) issues.push(['bodyBottom', { px: Math.round(maxB), lim, concl: !tate && lim === 565 }]);
-      if (maxR > limR) issues.push(tate ? ['tateBodyHead', { px: Math.round(maxR), lim: limR }] : ['bodyRight', { px: Math.round(maxR) }]);
-      if (minL < limL) issues.push(c ? ['bodyConclCol', { px: Math.round(minL), lim: limL }] : ['bodyLeft', { px: Math.round(minL), lim: limL }]);
-      // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
-      if (!/文献/.test(h2 ? h2.textContent : '')) {
-        const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
-        let n;
-        while ((n = tw.nextNode())) {
-          if (!n.textContent.trim()) continue;
-          const e = n.parentElement;
-          // ルビ（rt）の振り仮名は本文の半分の大きさが決まり（docs/reference.md「Japanese language arts」）
-          if (e.closest('svg') || e.closest('.katex') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
-          const f = parseFloat(getComputedStyle(e).fontSize);
-          const lim2 = e.closest('table,.plot') ? 23.9 : 26.6;
-          if (f < lim2) { issues.push(['smallText', { px: f, t: n.textContent.trim().slice(0, 12) }]); break; }
-        }
-        // 図中の文字（SVG）
-        body.querySelectorAll('svg').forEach((g) => {
-          const vb = g.viewBox && g.viewBox.baseVal;
-          if (!vb || !vb.width) return;
-          const sc = g.getBoundingClientRect().width / k / vb.width;
-          const fs = [...g.querySelectorAll('text')].map((t) => parseFloat(t.getAttribute('font-size') || getComputedStyle(t).fontSize) || 24);
-          if (fs.length && Math.min(...fs) * sc < 23.9) issues.push(['smallSvgText', { px: (Math.min(...fs) * sc).toFixed(1) }]);
-        });
-      }
       const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
       // 句読点とです・ますは日本語のデッキだけ
@@ -363,7 +310,7 @@ const aOut = await page.evaluate(([metaList, JA]) => {
     if (warns.length) soft.push({ i: m.i, issues: warns });
   });
   return { step0, style, soft, punct };
-}, [meta, JA]);
+}, [meta, JA, CLIP_ATTR]);
 
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
