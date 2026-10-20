@@ -1,14 +1,14 @@
 :root{
   --bg:#f4f5f8; --panel:#fff; --fg:#1d2330; --muted:#5b6475; --line:#d9dde6; --accent:#2563eb; --accent-fg:#fff;
   --warn-bg:#fff7e6; --warn-fg:#7a4b00; --bad-bg:#fde8e8; --bad-fg:#9b1c1c; --stage:#2a2d33;
-  --logo-ink:#3B3F8F; --logo-sun:#A64B17;   /* ロゴの色（assets/logo/README.md：light） */
+  --logo-ink:#4A488E; --logo-sun:#D3381C;   /* ロゴの色（assets/logo/README.md：light） */
   font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","BIZ UDPGothic","Yu Gothic UI",Meiryo,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#16181d; --panel:#20232a; --fg:#e8eaf0; --muted:#a3abbb; --line:#363a44; --accent:#5b8cff; --accent-fg:#fff;
     --warn-bg:#3b2d10; --warn-fg:#f5d38a; --bad-bg:#3a1d1d; --bad-fg:#fcc; --stage:#0f1013; color-scheme:dark;
-    --logo-ink:#A9AFF5; --logo-sun:#E8833A; }
+    --logo-ink:#A9ABFA; --logo-sun:#F2573B; }
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}

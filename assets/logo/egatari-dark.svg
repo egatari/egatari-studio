@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
 <title id="title">Egatari / master / dark</title><desc id="desc">Egatari：太陽を第一画にした前傾のえ。G05の返り筆とA1のかぎ括弧。</desc>
-<path d="M84 40H40V152 M172 216H216V104" fill="none" stroke="#A9AFF5" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" /><circle cx="112" cy="66" r="12.5" fill="#E8833A" /><path d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke="#A9AFF5" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/>
+<path d="M84 40H40V152 M172 216H216V104" fill="none" stroke="#A9ABFA" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter" /><circle cx="112" cy="66" r="12.5" fill="#F2573B" /><path d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke="#A9ABFA" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/>
 </svg>
