@@ -166,7 +166,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   engine.setWorkspace(ws);
   audio.reset();
@@ -271,10 +271,52 @@ function showNotice() {
   if (P && P.sourceOnly && !P.handle) lines.push(['notice-source-only', T.sourceOnlyNotice]);
   const n = $('notice'); n.innerHTML = '';
   for (const [id, text] of lines) n.append(el('p', { id, text }));
+  // 部品庫が取り下げた版（format spec §6）：知らせて、置き換え先の版で組み直すボタンを出す。黙って置き換えない
+  const yk = yankedNow();
+  if (yk.length) {
+    const reps = [...new Set(yk.filter((y) => y.replacementAvailable).map((y) => y.replacement))];
+    n.append(el('p', { id: 'notice-yanked', text: T.yankedNotice(yk.map((y) => `${y.tag} ${y.version}`).join(' · '), reps.join(' / ') || yk[0].replacement) + ' ' },
+      reps.length === 1 && S.ws && !(S.portable && S.portable.readOnly) ? [el('button', { type: 'button', id: 'b-yanked-rebuild', cls: 'pri', text: T.yankedRebuild(reps[0]), onclick: () => rebuildYanked(reps[0]) })] : []));
+  }
+  if (S.yankedDone) n.append(el('p', { id: 'notice-yanked-done', text: S.yankedDone }));
   // 見つからないテーマ（組み立ての知らせ）：テーマのフォルダを選ぶ・前に選んだものを読む許可を求める
   const missing = missingThemes(S.warn);
   if (missing.length && S.ws) n.append(el('p', { id: 'notice-theme', text: T.themeMissing(missing, TF.handle ? TF.state : 'none', TF.handle ? TF.handle.name : '') + ' ' }, themeButtons()));
   n.hidden = !n.childNodes.length;
+}
+// 取り下げた版を記録している部品庫の部品：プレビューの組み立てと、開いた 1 ファイルの索引で組んだ（記録の版で）もの。タグで重ねる
+function yankedNow() {
+  const m = new Map();
+  for (const y of [...((S.portable && S.portable.yankedRecorded) || []), ...(S.yanked || [])]) m.set(y.tag, y);
+  return [...m.values()];
+}
+// 「{版} で組み直す」：egatari.json の components をその版にし（利用者が押したときだけ）、開いた 1 ファイルなら記録（carry）の部品も新しい組み立てのものに替える。
+// 同一性の hash が変わる部品は、知らせに書く（format spec §6：黙って置き換えない）
+async function rebuildYanked(version) {
+  const ws = S.ws, P = S.portable;
+  const todo = yankedNow().filter((y) => y.replacement === version && y.replacementAvailable);
+  if (!ws || !todo.length) return;
+  try {
+    const CFG = FORMAT.CONFIG_FILE;
+    let conf = {};
+    try { const t = await ws.readText(CFG, { max: READ_LIMITS.json }); if (t) conf = JSON.parse(t); } catch { conf = {}; }
+    if (!conf || typeof conf !== 'object' || Array.isArray(conf)) conf = {};
+    conf.components = { ...(conf.components && typeof conf.components === 'object' ? conf.components : {}), ...Object.fromEntries(todo.map((y) => [y.name, y.replacement])) };
+    if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
+    await ws.writeText(CFG, JSON.stringify(conf, null, 2) + '\n');
+    if (P) {
+      const tags = new Set(todo.map((y) => y.tag));
+      const carry = { ...P.index, components: (P.index.components || []).filter((c) => !tags.has(c.tag)) };
+      const dry = await builder.exportIndex(ws, S.deckFile, { carry }, { timeout: buildTimeout() });
+      const fresh = (dry.index.components || []).filter((c) => tags.has(c.tag));
+      P.index = { ...P.index, components: [...carry.components, ...fresh] };
+      P.yankedRecorded = (P.yankedRecorded || []).filter((y) => !tags.has(y.tag));
+      const probs = registryProblems(P.index, dry.index, dry.registryEquivalent);
+      if (P.tierAReg) { P.tierAOnly = probs.length ? T.roRegistry(probs.join('; ')) : null; P.tierAReg = !!probs.length; }
+    }
+    S.yanked = []; S.yankedDone = T.yankedDone(version, todo.filter((y) => y.sha256Changes).map((y) => y.tag), todo.filter((y) => !y.sha256Changes).map((y) => y.tag));
+    await rebuild('components');
+  } catch (e) { toast(T.yankedFailed(String((e && e.message) || e)), true); }
 }
 function signature(listing) {
   return [...listing.files].filter(([rel]) => rel !== 'comments.json').map(([rel, f]) => rel + ':' + f.m + ':' + f.s).sort().join('\n');
@@ -320,7 +362,7 @@ async function rebuild(reason) {
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn.slice();
+        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || [];
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);
@@ -914,7 +956,8 @@ async function openPortableNow(input) {
     try {
       const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
       const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);
-      if (probs.length) P.tierAOnly = T.roRegistry(probs.join('; '));
+      if (probs.length) { P.tierAOnly = T.roRegistry(probs.join('; ')); P.tierAReg = true; }
+      P.yankedRecorded = dry.yanked || [];
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
@@ -1258,7 +1301,7 @@ window.__APP_TEST = {
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
-    portable: S.portable ? { docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
+    portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   attachBusy: () => attach.isBusy(),

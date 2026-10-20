@@ -56,6 +56,8 @@ const steps = [
   ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
   // 守り：プレビューの決まり（CSP）が、デッキの文書のどの細工よりも先に効くこと（編集アプリと同じ決まりのページで）
   ['test-security', ['tools/test-security.mjs']],
+  // 部品庫が取り下げた版（format spec §6）：警告（CLI）・編集アプリのページに eval の許可がないこと・取り下げた版を記録した文書の知らせと「組み直す」・sandbox の枠
+  ['test-yanked', ['tools/test-yanked.mjs', path.join(tmp, 'yanked')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 持ち運べる 1 ファイル（format spec）：Schema・往復・文書の試験用ファイル・file:// での再生
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],

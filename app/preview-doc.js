@@ -5,6 +5,11 @@
 // 続くデッキの doctype と <head> は HTML の解析の規則で無視され、<html> の属性（lang など）は先頭の <html> に移る。
 // ブラウザの API を使わない（Node の試験からも読み込める）
 //
+// 'unsafe-eval'：部品庫が取り下げた版（v1.0.0・1.0.1 の m-sweep・m-curves は式を new Function で動かす）の部品のためだけに、この枠の決まりには残す
+// （format spec §6：取り下げた版の再生は、エディタの origin から離した sandbox の枠の中でだけ。枠は allow-same-origin なしの sandbox で、
+// 枠の中の eval はエディタのページ・保存先に届かない）。編集アプリのページ自身の決まり（app/index.html）は 'unsafe-eval' を持たない。
+// srcdoc の枠は親のページの決まりを受け継ぎ、両方を満たす必要があるので、編集アプリの中ではこの許可は効かず、取り下げた版の式は eval できない
+// （図の代わりの表示になる）。効くのは、親の決まりに eval を置かない枠のない文書（server/dev.mjs の /preview）
 // プレビューの文書の決まり（アプリのページの決まりに重ねる）：外へ繋がらない（connect-src 'none'）。読み込めるのは data: と blob: だけ
 // （デッキの組み立ては画像・字・CSS を data: で埋め込む）。iframe・フォーム・<base> も使えない
 export const PREVIEW_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'";
