@@ -12,7 +12,11 @@
 // 持ち運べる 1 ファイルでは作業場所はメモリの上なので、書いた後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる。
 // 声の選択は作業フォルダでは voice.json に書き、1 ファイルではこの画面の間だけ覚える（voice.json を変えると組み直しの保存になるため）
 //
-//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?})
+// WebGPU のないとき：Colab で作る（o.colab。tts-job.json を書き出し、公式のノートブックが返す zip を取り込む。kit/core/colab-core.mjs・docs/editor.md）。
+//   取り込みは、inputHash が今の口述原稿と合う段階だけ cue つき（sync auto）で使い、合わない段階は「印付き」に出す（自動では使わない）
+//
+//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?,
+//     colab?: {t（app/i18n.js の T.colab）, docId() → 文字列 | null, version, confirm(題, 本文, 実行の名前) → boolean, open(url)?}})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
@@ -23,6 +27,7 @@ import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
+import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
 const STR = {
@@ -104,6 +109,8 @@ const CSS = [
   '#dev-audio .dv-warn{font-size:12px;color:#7a4b00;background:#fff7e6;border:1px solid #f5d38a;border-radius:6px;padding:4px 8px;margin:6px 0}',
   '#dev-audio .dv-prog{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin:4px 0}#dev-audio .dv-prog i{display:block;height:100%;width:0;background:#2563eb}',
   '#dev-audio .dv-empty{color:#8a91a1;font-size:12.5px;padding:4px 0}',
+  '#dev-audio .dv-colab{border:1px solid #e0e4ec;border-radius:8px;padding:6px 8px;margin:8px 0;background:#fafbfe}#dev-audio .dv-colab summary{cursor:pointer;font-weight:700;font-size:12.5px}',
+  '#dev-audio .dv-colab .dv-link{font-size:13px}#dev-audio .dv-marked{border-color:#f5d38a}',
   '#dev-audio .dv-play{display:flex;align-items:center;gap:8px;margin-top:4px}#dev-audio .dv-play audio{flex:1;min-width:0;margin:0}#dev-audio .dv-play button{flex:none}',
   // 録音している間だけ（プレビューが inert のとき）知らせる
   '#dev-audio .dev-lock{display:none}#dev-side.dv-locked #dev-audio .dev-lock{display:block}',
@@ -171,7 +178,13 @@ export function createAudioPanel(o) {
     // デッキで話す役（掛け合いなら Expert と Novice）
     const roles = new Set(['expert']);
     for (const x of segs) for (const t of x.turns) if (t.role === 'novice') roles.add('novice');
-    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, manText: man.text };
+    // Colab に書き出す段階（音声のない段階と古い段階）。inputHash のない前の記録は、古いかどうか分からないので数えない
+    const need = [];
+    if (o.colab) for (const x of segs) {
+      const k = `${x.slideKey}:${x.stepKey}`, e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
+      if (!e || (await audioState(e, x, null)) === 'stale') need.push(k);
+    }
+    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, need, manText: man.text };
   }
 
   // ---------------------------------------------------------------- 描く
@@ -266,6 +279,7 @@ export function createAudioPanel(o) {
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
     card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
     if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
+    if (o.colab) drawColab(v, !!(o.tts && ttsInfo && !ttsInfo.ok));
     // 声を選ぶ欄
     drawVoices(v);
     // 録音の大きさ
@@ -555,24 +569,150 @@ export function createAudioPanel(o) {
     finally { stopWait(); }
   }
 
+  // ---------------------------------------------------------------- Colab で音声を作る（tts-job.json を書き出す → ノートブック → zip を取り込む）
+  // 印付き（書き出した後に原稿が変わった段階）：key → {rec, bytes（WAV）, cuesOk}。作業場所を替えると捨てる
+  const marked = new Map();
+  let colabNote = null;   // 取り込みの結果の知らせ（板を描き直しても残す）：{lines: [{text, bad}]}
+  function drawColab(v, open) {
+    const C = o.colab.t, need = v.need || [];
+    const det = h('details', { cls: 'dv-colab', id: 'dev-audio-colab' });
+    if (open || colabNote || marked.size) det.setAttribute('open', '');
+    det.appendChild(h('summary', { text: C.title }));
+    if (C.unverified) det.appendChild(h('div', { cls: 'dv-warn dv-unverified', id: 'dev-audio-colab-unverified', text: C.unverified }));
+    det.appendChild(h('div', { cls: 'dv-note', text: C.lead }));
+    const all = (v.segs || []).length;
+    const sel = h('select', { id: 'dev-audio-colab-scope', 'aria-label': C.scope }, [h('option', { value: 'need', text: C.scopeNeed(need.length) }), h('option', { value: 'all', text: C.scopeAll(all) })]);
+    const exp = h('button', { id: 'dev-audio-colab-export', cls: 'dv-pri', text: C.export, on: { click: () => exportJob(sel.value) } });
+    const opn = h('a', { id: 'dev-audio-colab-open', cls: 'dv-link', href: colabUrl(), target: '_blank', rel: 'noopener', title: C.openColabT, text: C.openColab });
+    const imp = h('button', { id: 'dev-audio-colab-import', text: C.import, on: { click: importZip } });
+    if (busyMsg || rec || !v.seg) { exp.disabled = true; imp.disabled = true; }
+    det.appendChild(h('div', { cls: 'dv-tools' }, [h('span', { text: C.scope + '：' }), sel]));
+    det.appendChild(h('div', { cls: 'dv-tools' }, [exp, opn, imp]));
+    if (colabNote) for (const l of colabNote.lines) det.appendChild(h('div', { cls: 'dev-msg ' + (l.bad ? 'dv-err' : 'dv-ok') + ' dv-colab-msg', text: l.text }));
+    if (marked.size) {
+      det.appendChild(h('div', { cls: 'dv-h', text: C.marked }));
+      det.appendChild(h('div', { cls: 'dv-note', text: C.markedNote }));
+      for (const [key, m] of marked) {
+        const row = h('div', { cls: 'dv-take dv-marked', 'data-key': key }, [h('div', { cls: 'dv-row' }, [h('span', { cls: 'dv-n', text: key }), h('span', { text: L.sec(m.rec.dur) }), h('span', { cls: 'dv-sp' }),
+          h('button', { cls: 'dv-use-old', text: C.useOld, on: { click: () => useMarked(key) } }), h('button', { cls: 'dv-ghost dv-drop', text: C.discard, on: { click: () => { marked.delete(key); if (view) draw(view); } } })])]);
+        if (busyMsg) for (const b of row.querySelectorAll('button')) b.disabled = true;
+        det.appendChild(row);
+      }
+    }
+    card.appendChild(det);
+  }
+  function download(name, bytes, type) {
+    const u = blobUrl(bytes, type);
+    const a = h('a', { href: u, download: name, hidden: '' });
+    doc.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { if (urls.has(u)) { URL.revokeObjectURL(u); urls.delete(u); } }, 60000);
+  }
+  async function exportJob(scope) {
+    if (busyMsg || !view || !view.seg || !o.colab) return;
+    const C = o.colab.t, ws = o.ws(), g = o.generation(), v = view;
+    const keys = scope === 'all' ? null : (v.need || []);
+    if (keys && !keys.length) { say(C.noSteps, true); return; }
+    if (!(await o.colab.confirm(C.privacyTitle, C.privacyBody, C.privacyGo))) return;
+    if (o.ws() !== ws || o.generation() !== g) return;
+    try {
+      const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
+      const segs = parseNarration(narr || '');
+      const voices = { expert: voiceOf(v, 'expert').name, novice: voiceOf(v, 'novice').name };
+      const job = await buildJob({ segs, docId: await o.colab.docId(), lang: ttsLang(v), voices, yomi: o.yomi || null, version: o.colab.version || '0', keys });
+      if (o.ws() !== ws || o.generation() !== g) return;
+      if (!job.steps.length) { say(C.noSteps, true); return; }
+      download('tts-job.json', enc.encode(JSON.stringify(job, null, 1) + '\n'), 'application/json');
+      colabNote = { lines: [{ text: C.exported(job.steps.length) }] };
+      if (view) draw(view);
+    } catch (e) { say(L.fail + (e.message || e), true); }
+  }
+  const enc = new TextEncoder();
+  function importZip() {
+    if (busyMsg || !view || !view.seg || !o.colab) return;
+    const i = h('input', { type: 'file', accept: '.zip,application/zip', hidden: '' });
+    i.addEventListener('change', async () => {
+      const f = i.files && i.files[0]; i.remove();
+      if (f) await importZipFile(f);
+    });
+    doc.body.appendChild(i); i.click();
+  }
+  // zip を読んで取り込む。zip はダウンロード物（信頼しない）：大きさを読む前に確かめ、中身は kit/core/zip-read.mjs が上限つきで読み、コードは実行しない
+  async function importZipFile(f) {
+    const C = o.colab.t, ws = o.ws(), g = o.generation();
+    const live = () => o.ws() === ws && o.generation() === g;
+    colabNote = null;
+    setBusy(C.importing);
+    const lines = [];
+    try {
+      const bytes = await readFileBounded(f, { max: COLAB_LIMITS.zipBytes, what: 'zip' });
+      const zip = await readColabZip(bytes);
+      const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
+      const segs = parseNarration(narr || '');
+      const plan = await planImport({ zip, segs, docId: await o.colab.docId(), yomi: o.yomi || null });
+      if (!live()) return;
+      if (plan.reject) { lines.push({ text: plan.reject.code === 'doc-id' ? C.rejectDoc : C.rejectRecords(plan.reject.why), bad: true }); return; }
+      let applied = 0;
+      const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
+      if (no && plan.applied.length) lines.push({ text: no, bad: true });
+      else {
+        for (const it of plan.applied) {
+          if (!live()) return;
+          try {
+            const d = decodeStepAudio(zip.files.get(it.file), it.rec);
+            const take = await addTake(it.key, { kind: 'tts', pcm: d.pcm, sr: d.sr, dur: d.dur, cues: d.cues, recipe: it.rec.recipe, inputHash: it.rec.inputHash, gainDb: 0, at: Date.now() });
+            await useTake(it.key, take.id, true, true);
+            applied++;
+          } catch (e) {
+            for (const t of takes.get(it.key) || []) freeUrl(t.url);
+            takes.delete(it.key);
+            lines.push({ text: C.applyFail(it.key, e.message || e), bad: true });
+          }
+        }
+      }
+      for (const it of plan.marked) marked.set(it.key, { rec: it.rec, bytes: zip.files.get(it.file), cuesOk: it.cuesOk });
+      const skipped = plan.skipped.filter((x) => x.key !== undefined);
+      lines.unshift({ text: C.summary(applied, plan.marked.length, skipped.length) });
+      for (const x of skipped) lines.push({ text: C.skipped(x.key || '?', C.skipWhy[x.why] || x.why), bad: true });
+      if (plan.warnings.includes('dictionary')) lines.push({ text: C.warnDict, bad: true });
+      if (plan.warnings.includes('processing')) lines.push({ text: C.warnProc, bad: true });
+      if (applied && o.afterWrite) await o.afterWrite();
+    } catch (e) { lines.push({ text: C.zipFail(e.message || e), bad: true }); }
+    finally {
+      if (live()) { busyMsg = null; colabNote = { lines }; if (view) show(view.key, view.i); }
+    }
+  }
+  // 印付きの段階を、古い印のまま使う（inputHash は書き出したときのまま＝「古い」の印が付く。区切りの数が合わなければ区切りなし）
+  async function useMarked(key) {
+    const m = marked.get(key);
+    if (!m || busyMsg) return;
+    const C = o.colab.t;
+    try {
+      const d = decodeStepAudio(m.bytes, m.rec);
+      const take = await addTake(key, { kind: 'tts', pcm: d.pcm, sr: d.sr, dur: d.dur, cues: m.cuesOk ? d.cues : null, recipe: m.rec.recipe, inputHash: m.rec.inputHash, gainDb: 0, at: Date.now() });
+      marked.delete(key);
+      await useTake(key, take.id, true);
+    } catch (e) { say(C.applyFail(key, e.message || e), true); }
+  }
+
   // ---------------------------------------------------------------- この音声を使う：MP3 にして audio/ と audio/manifest.json に書く
   // auto：作った直後（書けなければ取り直しとして残す）。前の記録は history に積む（「前に戻す」）
-  async function useTake(key, id, auto = false) {
+  // batch：Colab の取り込みのように何段階かを続けて使うとき（呼び手が busy を持ち、組み直し・知らせは最後に 1 度。失敗は投げる）
+  async function useTake(key, id, auto = false, batch = false) {
     const t = (takes.get(key) || []).find((x) => x.id === id);
-    if (!t || busyMsg) return;
+    if (!t || (busyMsg && !batch)) return;
     const ws = o.ws(), g = o.generation();
     const live = () => o.ws() === ws && o.generation() === g;
     const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
-    if (no) { if (view) draw(view); say((auto ? L.notUsed + ' — ' : '') + no, true); return; }
+    if (no) { if (batch) throw new Error(no); if (view) draw(view); say((auto ? L.notUsed + ' — ' : '') + no, true); return; }
     if (!live()) return;
-    setBusy(L.using);
+    if (!batch) setBusy(L.using);
     try {
       // MP3 のエンコーダ（LAME）は別のファイルを使うときだけ読み込む（o.loadMp3。app/mp3-loader.js）。読み込めない（1 ファイル版など）なら WAV
       const init = o.loadMp3 ? await o.loadMp3() : null;
       if (!live()) return;
       const bytes = init ? await encodeMp3(t.pcm, { init }) : encodeWav(t.pcm, t.sr);
       const file = takeFileName(t.kind, await sha256Hex(bytes), init ? 'mp3' : 'wav');
-      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: PROCESSING, startOffset: init ? MP3.startOffset : 0 });
+      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: (t.recipe && t.recipe.processing) || PROCESSING, startOffset: init ? MP3.startOffset : 0 });
       const prev = await writeEntry(ws, live, key, entry, { file, bytes });
       if (prev === undefined) return;
       const back = history.get(key) || [];
@@ -580,6 +720,7 @@ export function createAudioPanel(o) {
       history.set(key, back.slice(-20));
       for (const x of takes.get(key) || []) freeUrl(x.url);
       takes.delete(key);
+      if (batch) return true;
       const portable = ws.kind === 'memory';
       if (o.afterWrite) await o.afterWrite();
       if (!live()) return;
@@ -587,6 +728,7 @@ export function createAudioPanel(o) {
       if (view && view.key === key) show(key, view.i); else follow(true);
       ui.toast((portable ? L.usedPortable : L.used(file)) + (init ? '' : L.wavNote), init ? '' : 'warn');
     } catch (e) {
+      if (batch) throw e;
       busyMsg = null; if (view) draw(view);
       say((auto ? L.notUsed + ' — ' : '') + L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e)), true);
     }
@@ -639,7 +781,7 @@ export function createAudioPanel(o) {
     stopRecording(true);
     stopSample();
     for (const list of takes.values()) for (const t of list) freeUrl(t.url);
-    takes.clear(); history.clear(); busyMsg = null;
+    takes.clear(); history.clear(); marked.clear(); colabNote = null; busyMsg = null;
     for (const k of Object.keys(voiceMem)) delete voiceMem[k];
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);

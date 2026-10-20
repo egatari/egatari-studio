@@ -100,6 +100,8 @@ steps.push(
 steps.push(
   ['test-audio-core', ['tools/test-audio-core.mjs', path.join(tmp, 'audio-core')]],
   ['test-audio', ['tools/test-audio.mjs', path.join(tmp, 'audio')]],
+  // Colab 往復 TTS（WebGPU のない PC）：tts-job.json の書き出し・zip の取り込み（一致・印付き・別の教材・敵対の zip）・段 A の保存（単体の検査は test-colab）
+  ['test-colab-app', ['tools/test-colab-app.mjs', path.join(tmp, 'colab-app')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する

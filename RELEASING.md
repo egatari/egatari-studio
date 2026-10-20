@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=157792a8c1b39556 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=0925ff84dfeb6669 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -7,7 +7,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 ## Checklist
 
-1. **Release candidate.** On the `main` commit to release, tag and push a candidate:
+1. **Release candidate.** First set `COLAB.ref` in `kit/core/colab-core.mjs` to the release tag `vX.Y.Z` (the Colab link of the editor and the notebook's clone use it), run `npm run gen` and commit. Then, on the `main` commit to release, tag and push a candidate:
 
    ```bash
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N

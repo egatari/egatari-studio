@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=f64db2c98977e847 -->
+<!-- i18n: pair=editor.md sha256=191e963b52c60bc2 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -70,6 +70,20 @@
 - **音声を書く**（録音・取り込み・TTS の直後）ときは、取り直しを MP3（LAME、64 kbps の CBR、モノラル、44.1 kHz）にして、`audio/<rec|tts|imp>_<hash>.mp3` と `audio/manifest.json` の段階の記録を書く。MP3 のエンコーダは編集アプリのコードに入れない：編集アプリのサイトの `vendor/lame-wasm/` にある手を加えない `lame-wasm` のファイルで（LAME は LGPL。NOTICE を参照）、取り直しを MP3 にするときだけ読み込む。1 ファイル版は MP3 のエンコーダを持たず、WAV（16 bit。ファイルは大きい）で保存する。配信版でもエンコーダを読み込めなければ WAV。MP3 は 1105 標本（符号化の遅れ 576 と復号の遅れ 529、0.025057 秒）遅れて始まるので、それを `startOffset` に書き、実行系はその時刻から鳴らす（`dur` と区切りの時刻がずれない）（前の manifest は `.cache/edits/` に控え、前の音声のファイルは残す。`tts/synth.py` が古い wav を残すのと同じ）。記録には出どころを書く：`kind`（`recorded`・`tts`・`imported`）、`inputHash`（その取り直しを作ったときの口述原稿）、TTS なら `recipe`（`engine`・`model`・`voice`・`seed`・`dictionary` = 読み辞書の SHA-256）、どの種類にも `processing`（`trim-45-loud-20-cap-v1`）、MP3 なら `startOffset`。機器の名前・元のファイル名など録った状況の記録は書かない。録音と取り込みには区切りの時刻がない（`sync: "none"`、cues は空）ので、区切りに合わせた動きと注目の演出は時間で進む。段階の長さは新しい音声に合わせて決まる（manifest の `dur`。実行系がそこからタイムラインを計算する）。`timeline.json` の `dur` の上書きがあればそちらが勝ち、板がそれを知らせる。書けなかった取り直し（読むだけのファイル・権利の確認を断った）は **まだ使っていない音声** に「この音声を使う」と一緒に残り、使うか別のデッキを開くまでメモリの上にある。「前に戻す」のための前の記録もメモリの上だけに置く（段階ごとに 20 まで。別のデッキを開くまで）。`tts/synth.py` は録音と取り込みを残す（`--replace-recorded` で替える）。
 - **1 ファイル：** 新しい音声でメモリの上のフォルダが変わり、**保存** で組み直さずに書く（段 A：その段階の音声の記録・実行系の音声の項目・中の音声だけが変わる）。
 - **AI 合成音声。** どこかの段階の音声を TTS で作った（`kind: "tts"`）ときは、再生器の操作の帯に小さな札「AI 音声」（説明は「音声は AI で合成したものです」）、キーの一覧（<kbd>?</kbd>）に同じ文、その段階の発表者ビューに 1 行が出る。スライドの上や字幕には出さない。取り込んだ音声（`kind: "imported"`）は、キーの一覧と発表者ビューに「音声の作り方は記録されていません」と出し、録音には印を付けない。1 ファイル・再生専用の派生を含むどの出力も、種類を `deck-audio` の `kind` に入れる（format spec §5.2・§7.3）。
+
+### Colab で音声を作る（WebGPU がないとき）
+
+<!-- colab-unverified --> **未検証：このノートブックはまだ実際の Colab で通していません**
+
+WebGPU のない PC（学校の PC・Safari・iPad）のために、音声の板に **Colab で音声を作る** の群がある（ブラウザに WebGPU がなければ最初から開く）。無料の Colab（自分の Google アカウント）で同じ声の音声を作り、区切り（cue）の時刻つきで取り込む。ブラウザの TTS のほうは変わらない。
+
+1. **① 必要な段階を書き出す（tts-job.json）。** 範囲（既定は音声のない段階と古い段階。すべての段階も選べる）を選ぶ。先に 1 度確かめる：**Colab では原稿の文が Google の環境で処理される**（モデルは Hugging Face から取る）。ダウンロードする `tts-job.json` には、読み上げる文（読み辞書を通した後で、`{cue}` / `{mark}` で区切ったもの）・声の名前・各段階の `inputHash`・`docId`・目標の recipe だけが入る。
+2. **Colab を開く** で公式のノートブック [`colab/egatari-tts.ipynb`](../colab/egatari-tts.ipynb) を開く（リンクは版のタグに固定）。上のセルから順に実行し、聞かれたら `tts-job.json` をアップロードして、返ってくる zip をダウンロードする。日本語は Irodori-TTS 500M-v3（ONNX、版を固定）、ほかの言語は Kokoro-82M。T4 の GPU があると速く、なければ CPU（遅い）。区切りごとに合成し、エディタと同じ後処理（`trim-45-loud-20-cap-v1`）を区切りごとにかけ、ターンの間に 0.35 秒の無音を入れ、cue の時刻は実際の音から測る。核は [`colab/egatari_tts.py`](../colab/egatari_tts.py) で、モデルなしでローカルの dry-run ができる（`uv run --no-project --with numpy --with scipy python colab/egatari_tts.py tts-job.json out.zip --dry-run`）。ノートブックは `tools/make-colab-notebook.mjs` が作る（`npm run gen`）。
+3. **② できた zip を取り込む…** で zip（`records.json` と `audio/*.wav`）を読む。エディタは各段階の `inputHash` を**今の**口述原稿から計算し直して照合する（ノートブックの値は信用しない）。合う段階は、ほかの音声と同じように書く（MP3・`kind: "tts"`・`sync: "auto"` と測った `cues`・`recipe`・`inputHash`・`startOffset`。仕様 §5.3 の引き取りの規則）。作業フォルダはその場で、1 ファイルはメモリの上に書いて「保存」（段 A）。書き出した後に原稿が変わった段階は **印付き** に出し、自動では使わない：**古い印のまま使う** は古い `inputHash` で書き（「古い」と出る）、**捨てる** は捨てる。今の原稿にない段階・記録が不備なもの（パス・cue の数が合わない）・音声がないものは、理由を出してスキップする。別の教材のための zip（`docId` が違う）は拒否する。読み辞書や後処理の版が違うときは知らせるだけ。
+
+zip はダウンロード物なので信頼しない。バイトとして読み、割り当てる前に上限を課す（zip 512 MiB・音声 1 つ 64 MiB・`records.json` 4 MiB・段階は 400 まで。zip64・暗号化・知らない圧縮は断り、CRC-32 を確かめる）。読むのは `records.json` と `audio/<名前>.wav` だけ（名前を確かめる）。音声は本物の WAV として復号でき、長さが記録と合うこと。zip の中身を HTML やコードとして扱うことはない（仕様 §11）。
+
+`tts-job.json` と `records.json`（`egatari: "tts-job"` / `"tts-records"`、`v: 1`）はエディタとノートブックの間のこの製品の取り決めで、形式の仕様の物ではない。`records.json` の各段階の記録は仕様 §5.2 の音声の記録の形（`file`・`dur`・`cues`・`kind`・`sync`・`inputHash`・`recipe`）。試験は `tools/test-colab.mjs`（zip の読み取り・job・取り込みの計画・敵対の zip・ノートブック、`uv` があれば Python の核の dry-run）と `tools/test-colab-app.mjs`（`tools/colab-fixture.mjs` で作った zip での編集アプリの往復。フォルダと 1 ファイル）。
 
 ## 添付（下書き・試行）
 

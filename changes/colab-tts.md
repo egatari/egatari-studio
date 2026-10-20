@@ -1,0 +1,5 @@
+### Added
+
+- Editor app: **Make the audio in Colab** (Audio panel, for computers without WebGPU): export the steps that need audio as `tts-job.json` (after a privacy question: the narration text is processed in Google's environment), run the official notebook `colab/egatari-tts.ipynb` (Irodori-TTS 500M-v3 ONNX or Kokoro-82M; CPU fallback without a T4), and import the zip it returns. Only steps whose `inputHash` matches the current narration are applied (kind tts, measured cue times, sync auto); changed steps are listed as marked, a zip for another lesson is refused. The notebook is marked unverified until it has been run in a real Colab
+- `colab/egatari_tts.py`: the notebook's core (per-segment synthesis, the editor's post-processing, cue measurement, zip packaging) with a model-free dry-run; `tools/make-colab-notebook.mjs` generates the notebook (`npm run gen`)
+- `kit/core/zip-read.mjs`, `kit/core/colab-core.mjs`: bounded, validating zip reader and the job/records/import-plan logic (no code is run, nothing is interpreted as HTML)

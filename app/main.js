@@ -557,6 +557,11 @@ const tts = createTtsClient({
   confirm: async (label) => (await ask({ title: T.ttsTitle, body: [el('p', { id: 'tts-what', text: label }), el('p', { cls: 'hint', text: T.ttsPrivacy })],
     buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: T.ttsGo, pri: true }] })) === 'ok',
 });
+// 教材の識別子（docId）：1 ファイルは索引、作業フォルダは設定のファイル（まだなければ null）。Colab の往復で別の教材の zip を取り違えないために使う
+async function colabDocId() {
+  if (S.portable) return typeof S.portable.index.docId === 'string' ? S.portable.index.docId : null;
+  try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
+}
 const audio = createAudioPanel({
   ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
@@ -571,6 +576,12 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
+  // Colab で音声を作る（WebGPU のない PC）：原稿の文が Google の環境で処理されるので、書き出す前に 1 度確かめる
+  colab: {
+    t: T.colab, version: RES.version,
+    docId: colabDocId,
+    confirm: async (title, body, go) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
+  },
 });
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
