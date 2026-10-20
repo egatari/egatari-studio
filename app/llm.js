@@ -11,7 +11,7 @@ import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
-import { message } from '../kit/check-messages.mjs';
+import { message, MESSAGES } from '../kit/check-messages.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -122,7 +122,8 @@ export function setupLlm(app) {
   const LANG = EN ? 'en' : 'ja';
   // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
-  T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : base(c, a));
+  // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
+  T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : a && typeof a === 'object' && MESSAGES[c] ? message(LANG, c, a) : base(c, a));
   for (const id of ['b-paste', 'w-paste']) { const b = $(id); if (b) b.textContent = id === 'b-paste' ? X.paste : X.pasteWelcome; }
 
   async function copyText(text, area) {

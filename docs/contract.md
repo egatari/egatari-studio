@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=cf736e630133a188 -->
+<!-- i18n: pair=contract.ja.md sha256=e437d7bcd1b2e38c -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -165,3 +165,15 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 - Captions and the live region follow the new step like any other navigation
 - Run-time API: `DECK.resolveFragment(f)` → `{i, k, key, id}` or `{error}`, `DECK.fragment(i, k)`, `DECK.follow(f)`, `DECK.back()`, `DECK.links()` → `{depth, follow, back}`, `DECK.visited(i | key)` (the slide has been shown in this session; used by `m-menu`)
 - Quality check: the quality checker reports a link to an unknown slide, to a step out of range, to `concl` on a slide without a conclusion, or to a slide number beyond the last as **errors**; it warns about `#N` links, links to slides without an id, and relative links to files that do not exist
+
+## 10. Quality check: intended clipping (proposal)
+
+This section is a proposal. The name `data-clip` and its exact meaning will be settled in the format spec; Studio keeps the name in one place (`CLIP_ATTR` in `kit/core/layout-scan.mjs`), so a rename touches only that constant.
+
+```html
+<div class="code wall" data-clip>…a long XML listing, cut on purpose by the box…</div>
+```
+
+- The quality checker (command and browser, one implementation in `kit/core/layout-scan.mjs`) warns about text that is cut off by a box with `overflow` other than `visible` (`textClipped`), SVG text cut off by its SVG viewport (viewBox) or going off the slide (`svgTextOut`), SVG text that overflows the `<rect>` drawn around it (`svgTextBox`), and text placed outside `.body` that goes off the slide or overlaps the heading, the conclusion line or the page number (`outsideBody`). All are warnings under R-fit
+- `data-clip` on an element marks clipping there as intended: text in that element, including all its descendants and SVG text, is not checked by those four. It applies to both directions (horizontal and vertical). It does not change any other check (`bodyBottom`, `smallText`, …) and has no effect on rendering
+- Use it only where the cut is part of the message (for example a "wall" of code faded out at the bottom), never to hide an overflow

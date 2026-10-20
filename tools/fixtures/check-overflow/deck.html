@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>切れる字・外に出る字の検査の試験（backlog #51・#52）</title>
+<style>
+/* 紹介のデッキ（intro/ja）の 4 枚目で使った CSS（そのまま） */
+.code{font:27px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--base-wash);border:1px solid var(--rule);border-radius:10px;padding:12px 16px;white-space:pre;overflow:hidden;color:var(--fg)}
+.code .k{color:var(--term)}
+.wall{position:relative;height:330px;color:var(--muted)}
+.wall::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(transparent,var(--bg))}
+.cap{font-size:27px;color:var(--muted);margin:6px 0 0}
+/* 本文の外に置いた札（s-outside） */
+.over-title{position:absolute;left:600px;top:50px;font-size:30px}
+.off-right{position:absolute;left:1180px;top:300px;font-size:30px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- backlog #52 の例（~/…/fixtures-52 の deck.html。紹介のデッキの 6 枚目と 4 枚目）。
+     s-fix52a：m-flow の箱から「deck.html・narration.md」がはみ出す（svgTextBox を出す）。
+     s-fix52b：「XML の壁」はわざと切る（.wall に data-clip。何も出さない） -->
+<section class="slide" id="s-fix52a">
+  <h2>だからコンパイラにした</h2>
+  <div class="body">
+    <m-flow style="height:400px">
+      <script type="application/json">{"nodes":[
+        {"id":"src","label":"原稿\ndeck.html・narration.md","x":0,"y":150,"w":300,"h":100,"step":0,"tone":"term"},
+        {"id":"build","label":"組み立て\n（コンパイル）","x":440,"y":150,"w":260,"h":100,"step":1},
+        {"id":"ega","label":"ega ファイル\n（1 つの HTML）","x":860,"y":150,"w":300,"h":100,"step":3,"tone":"emph"},
+        {"id":"rt","label":"再生器","x":340,"y":0,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"cmp","label":"部品","x":630,"y":0,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"font","label":"フォント","x":340,"y":330,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"aud","label":"音声","x":630,"y":330,"w":170,"h":70,"step":2,"tone":"muted"}],
+       "edges":[
+        {"from":"src","to":"build","step":1},
+        {"from":"rt","to":"build","step":2},
+        {"from":"cmp","to":"build","step":2},
+        {"from":"font","to":"build","step":2},
+        {"from":"aud","to":"build","step":2},
+        {"from":"build","to":"ega","step":3},
+        {"from":"ega","to":"src","step":4,"dash":true,"label":"開けば原稿に戻る","shift":-150}]}</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>⇒ 原稿をコンパイルし、再生器を同梱した 1 つのファイルにする</span></div>
+</section>
+
+<section class="slide" id="s-fix52b">
+  <h2>AI が書くのは数行の原稿</h2>
+  <div class="body">
+    <div class="cols" style="gap:28px">
+      <div style="flex:0 0 52%">
+        <div class="code wall" data-clip>&lt;m:oMath&gt;&lt;m:r&gt;&lt;a:rPr kumimoji="1"
+ lang="en-US" altLang="ja-JP" sz="1800"
+ b="0" i="1" u="none" strike="noStrike"
+ kern="1200" cap="none" spc="0"
+ normalizeH="0" baseline="0" noProof="0"&gt;
+ &lt;a:ln&gt;&lt;a:noFill/&gt;&lt;/a:ln&gt;
+ &lt;a:solidFill&gt;&lt;a:srgbClr val="C00000"/&gt;
+ &lt;/a:solidFill&gt;&lt;a:effectLst/&gt;&lt;a:uLnTx/&gt;
+ &lt;a:latin typeface="Cambria Math" …/&gt;</div>
+        <p class="cap">pptx：斜体の <i>x</i> 1 文字に 531 字の XML</p>
+      </div>
+      <div style="flex:1">
+        <div class="code"><span class="k">&lt;h2&gt;</span>回帰直線<span class="k">&lt;/h2&gt;</span>
+<span class="k">&lt;div class="big"&gt;</span>
+  &#92;&#8288;[ y = a + bx &#92;&#8288;]
+<span class="k">&lt;/div&gt;</span></div>
+        <p class="cap">Egatari：スライド 1 枚の原稿</p>
+      </div>
+    </div>
+  </div>
+  <div class="concl"><span>⇒ AI は短い原稿を書くだけで、あとはフォーマットに基づいて表示される</span></div>
+</section>
+
+<!-- 同じ壁で、印がないもの：textClipped を出す -->
+<section class="slide" id="s-clipnomark">
+  <h2>印のない切れた箱</h2>
+  <div class="body">
+    <div class="cols" style="gap:28px">
+      <div style="flex:0 0 52%">
+        <div class="code wall">&lt;m:oMath&gt;&lt;m:r&gt;&lt;a:rPr kumimoji="1"
+ lang="en-US" altLang="ja-JP" sz="1800"
+ b="0" i="1" u="none" strike="noStrike"
+ kern="1200" cap="none" spc="0"
+ normalizeH="0" baseline="0" noProof="0"&gt;
+ &lt;a:ln&gt;&lt;a:noFill/&gt;&lt;/a:ln&gt;
+ &lt;a:solidFill&gt;&lt;a:srgbClr val="C00000"/&gt;
+ &lt;/a:solidFill&gt;&lt;a:effectLst/&gt;&lt;a:uLnTx/&gt;
+ &lt;a:latin typeface="Cambria Math" …/&gt;</div>
+        <p class="cap">pptx：斜体の <i>x</i> 1 文字に 531 字の XML</p>
+      </div>
+      <div style="flex:1">
+        <div class="code"><span class="k">&lt;h2&gt;</span>回帰直線<span class="k">&lt;/h2&gt;</span>
+<span class="k">&lt;div class="big"&gt;</span>
+  &#92;&#8288;[ y = a + bx &#92;&#8288;]
+<span class="k">&lt;/div&gt;</span></div>
+        <p class="cap">Egatari：スライド 1 枚の原稿</p>
+      </div>
+    </div>
+  </div>
+  <div class="concl"><span>⇒ AI は短い原稿を書くだけで、あとはフォーマットに基づいて表示される</span></div>
+</section>
+
+<!-- 同じ m-flow で、部品に印を付けたもの：何も出さない -->
+<section class="slide" id="s-flowclip">
+  <h2>印を付けた図</h2>
+  <div class="body">
+    <m-flow style="height:400px" data-clip>
+      <script type="application/json">{"nodes":[
+        {"id":"src","label":"原稿\ndeck.html・narration.md","x":0,"y":150,"w":300,"h":100,"step":0,"tone":"term"},
+        {"id":"build","label":"組み立て\n（コンパイル）","x":440,"y":150,"w":260,"h":100,"step":1},
+        {"id":"ega","label":"ega ファイル\n（1 つの HTML）","x":860,"y":150,"w":300,"h":100,"step":3,"tone":"emph"},
+        {"id":"rt","label":"再生器","x":340,"y":0,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"cmp","label":"部品","x":630,"y":0,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"font","label":"フォント","x":340,"y":330,"w":170,"h":70,"step":2,"tone":"muted"},
+        {"id":"aud","label":"音声","x":630,"y":330,"w":170,"h":70,"step":2,"tone":"muted"}],
+       "edges":[
+        {"from":"src","to":"build","step":1},
+        {"from":"rt","to":"build","step":2},
+        {"from":"cmp","to":"build","step":2},
+        {"from":"font","to":"build","step":2},
+        {"from":"aud","to":"build","step":2},
+        {"from":"build","to":"ega","step":3},
+        {"from":"ega","to":"src","step":4,"dash":true,"label":"開けば原稿に戻る","shift":-150}]}</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>⇒ 原稿をコンパイルし、再生器を同梱した 1 つのファイルにする</span></div>
+</section>
+
+<!-- m-kpi の札の名前が長く、左端と右端の札ではスライドの外へ、間の札では札の箱からはみ出す -->
+<section class="slide" id="s-kpi">
+  <h2>札の名前が長すぎる</h2>
+  <div class="body">
+    <m-kpi aria-label="長い名前の札 4 枚" style="height:300px">
+      <script type="application/json">{"cards":[
+        {"label":"とても長い名前の札のラベルの例","value":12},
+        {"label":"とても長い名前の札のラベルの例","value":34},
+        {"label":"とても長い名前の札のラベルの例","value":56},
+        {"label":"とても長い名前の札のラベルの例","value":78}]}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>⇒ 札の名前は短くする</span></div>
+</section>
+
+<!-- その場の SVG の viewBox の外に字がある（SVG は既定で枠で切る） -->
+<section class="slide" id="s-viewbox">
+  <h2>枠で切れる図の字</h2>
+  <div class="body">
+    <svg viewBox="0 0 400 100" width="400" height="100" aria-label="枠で切れる字">
+      <rect x="0" y="0" width="400" height="100" style="fill:none;stroke:var(--fg)"/>
+      <text x="300" y="60" font-size="28" style="fill:var(--fg)">枠の外まで続く長いラベル</text>
+    </svg>
+  </div>
+  <div class="concl"><span>⇒ viewBox を広げる</span></div>
+</section>
+
+<!-- 本文の外に置いた字：見出しに重なるもの、スライドの右端の外に出るもの -->
+<section class="slide" id="s-outside">
+  <h2>本文の外の札</h2>
+  <div class="body"><p>本文は短い。</p></div>
+  <div class="over-title">見出しに重なる札</div>
+  <div class="off-right">右の外に出る札</div>
+  <div class="concl"><span>⇒ 札は本文の中に置く</span></div>
+</section>
+
+<!-- 図の中の字が小さい（viewBox の幅 1000 を 500px で見せるので 30 → 15px）：smallSvgText（ブラウザ版にも出る。#51） -->
+<section class="slide" id="s-smallsvg">
+  <h2>小さい図の字</h2>
+  <div class="body">
+    <svg viewBox="0 0 1000 200" width="500" height="100" aria-label="小さい字の図">
+      <text x="20" y="100" font-size="30" style="fill:var(--fg)">小さい字</text>
+    </svg>
+  </div>
+  <div class="concl"><span>⇒ 図の字は 24px から</span></div>
+</section>
+
+<!-- 縦組みの限り（#51）：見出しが列に収まらない（tateTitle）、結論の列が高さではみ出す（conclOverflow） -->
+<section class="slide layout-tate" id="s-tate">
+  <h2>縦組みの見出しがとても長くて一列には収まりきらない例</h2>
+  <div class="body"><p>本文は短い。</p></div>
+  <div class="concl"><span>結論の列も長すぎて縦の枠に収まらない一文を置いてみる例</span></div>
+</section>
+
+</div>
+</body>
+</html>

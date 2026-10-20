@@ -76,8 +76,8 @@ for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3', MIN
 }
 const hints = fs.readFileSync(rel('server', 'hints.js'), 'utf8');
 const version = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version || '';
-for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')]]) {
-  // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない
+for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')], ['kit/core/layout-scan.mjs', fs.readFileSync(rel('kit', 'core', 'layout-scan.mjs'), 'utf8')]]) {
+  // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない（layout-scan は仲立ちに包んで入れる）
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }
 // 読み辞書（tts/yomi.yaml の terms と、その sha256。音声の板のブラウザの TTS が、tts/yomi.py と同じ規則で使う。kit/core/yomi.mjs）

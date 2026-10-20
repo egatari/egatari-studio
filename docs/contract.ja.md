@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=fbf1a6aac1af2672 -->
+<!-- i18n: pair=contract.md sha256=dd6e8a3f74974b1b -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -165,3 +165,15 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 - 字幕と読み上げの領域は、ほかの送りと同じく行き先の段階についてくる
 - 実行時の API：`DECK.resolveFragment(f)` → `{i, k, key, id}` か `{error}`、`DECK.fragment(i, k)`、`DECK.follow(f)`、`DECK.back()`、`DECK.links()` → `{depth, follow, back}`、`DECK.visited(i | key)`（このセッションでそのスライドを見せたか。`m-menu` が使う）
 - 品質チェック：行き先のスライドがない・段階が範囲の外・結論のないスライドへの `concl`・最後のスライドを超える番号のリンクは**エラー**。`#N` のリンク、id のないスライドへのリンク、ない相手のファイルへの相対リンクは警告
+
+## 10. 品質チェック：わざと切る（提案）
+
+この節は提案。`data-clip` という名前と正確な意味は format spec で決める。Studio は名前を 1 か所（`kit/core/layout-scan.mjs` の `CLIP_ATTR`）にだけ置くので、名前が変わっても直すのはその定数だけ。
+
+```html
+<div class="code wall" data-clip>…箱でわざと切る長い XML…</div>
+```
+
+- 品質チェック（コマンド版・ブラウザ版。`kit/core/layout-scan.mjs` の 1 つの実装）は、`overflow` が `visible` でない箱で切れる字（`textClipped`）、SVG の枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりに描いた `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）を警告する。どれも R-fit の警告
+- 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）は、この 4 つの検査で見ない。縦横どちらの向きにも効く。ほかの検査（`bodyBottom`・`smallText` など）は変えず、表示も変えない
+- 切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
