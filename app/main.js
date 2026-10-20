@@ -11,6 +11,7 @@ import { previewDocument, trustedPrefix } from './preview-doc.js';
 import { createDevApi } from './devapi.js';
 import { createEditorUI } from '../server/editor-ui.js';
 import { createAudioPanel } from './audio-panel.js';
+import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createTtsClient } from './tts-client.js';
 import { loadLame } from './mp3-loader.js';
@@ -172,6 +173,7 @@ function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   engine.setWorkspace(ws);
+  rec.reset();
   audio.reset();
   ui.reset();
   if ($('attach-panel')) closePanel();
@@ -546,11 +548,13 @@ const ui = createEditorUI({
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
-  extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() },
+  extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() || rec.isOpen() },
   // Esc で閉じる窓（#48）：音声の板と横の板（品質チェック・警告・添付・使い方）。開いた順は ui.mark で
   panels: () => [{ name: 'audio', isOpen: () => audio.isOpen() && !audio.isBusy(), close: () => audio.toggle(false) },
+    { name: 'rec', isOpen: () => rec.isOpen(), close: () => rec.close() },
     { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
+  onRecord: () => { rec.open().then((on) => { if (on) ui.mark('rec', true); }); },
 });
 // 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない
 const tts = createTtsClient({
@@ -566,6 +570,8 @@ const audio = createAudioPanel({
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
+  // 音声の板の「録音モード (r)」のボタン（ツールバーには置かない：1 行に収まらなくなる）
+  recMode: { label: T.recBtn, title: T.recTip, open: () => rec.open().then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
@@ -574,6 +580,15 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
+});
+// 録音モード（app/rec-mode.js）：キーボードだけで段階ごとに録る。信頼する編集の画面の中の幅広い板（プレビューは横に細くして、その段階の舞台を見せる）。
+// 音声の板（audio）の peek / commit / revert を通すので、書き方（audio/manifest.json・権利の確認・前に戻す）は音声の板と同じ
+const rec = createRecMode({
+  ui, panel: audio, T: T.rec, host: $('deck'), top: $('top'),
+  ws: () => S.ws, generation: () => S.gen,
+  slideIndex: (key) => { const i = (S.slides || []).findIndex((x) => x.key === key); return i < 0 ? null : i; },
+  enabled: () => !!(S.ws && S.base && !$('deck').hidden),
+  beforeOpen: () => beforeEditing('audio'),
 });
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
@@ -1324,6 +1339,7 @@ window.__APP_TEST = {
   ui: () => ui.state(),
   audio: () => audio.state(),
   audioPanel: audio,
+  rec: () => rec.state(),
   mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
   tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
 };
@@ -1343,7 +1359,7 @@ langBtn.onclick = () => {
   try { if (S.ws && !S.portable) sessionStorage.setItem('motion-editor-reopen', '1'); } catch { /* 使えない環境 */ }
   const u = new URL(location.href); u.searchParams.set('lang', to); location.href = u.href;
 };
-window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws.dirty) || audio.unsaved() || audio.isBusy()) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws.dirty) || audio.unsaved() || audio.isBusy() || rec.isBusy()) { e.preventDefault(); e.returnValue = ''; } });
 (async () => {
   await initThemeFolder().catch(() => {});
   let reopen = false;

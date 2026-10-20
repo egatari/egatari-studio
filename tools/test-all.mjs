@@ -102,6 +102,8 @@ steps.push(
 steps.push(
   ['test-audio-core', ['tools/test-audio-core.mjs', path.join(tmp, 'audio-core')]],
   ['test-audio', ['tools/test-audio.mjs', path.join(tmp, 'audio')]],
+  // 録音モード（app/rec-mode.js）：偽のマイクで、キーボードだけの録音・C の cue・取り直し・読み上げの知らせ（cue の計算は単体の test-rec-core）
+  ['test-recording', ['tools/test-recording.mjs', path.join(tmp, 'recording')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する
