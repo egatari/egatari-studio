@@ -23,6 +23,7 @@
 // L. 添付（format spec §3.8）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）。
 //    役割ごとの型と中身（kit/core/attach-content.mjs）：仕様が MUST NOT とするもの（許されない型・実行できるもの・入れ物・音声と動画・マクロ・JavaScript の
 //    ある PDF など）はエラー、断るべきもの（SHOULD：役割の条件・中身が型と違う・確かめられない）と気をつけるもの（数式として読まれる値など）は警告
+// 終了コード：0 = エラーなし、1 = エラーの指摘あり（または引数・組み立ての失敗）、2 = 検査が終わっていない（ブラウザが起動できない・落ちた。JSON は status: "crashed"）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 //       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
@@ -36,7 +37,7 @@ import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attach
 import { normalizeKey } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail, formulaLike, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
-import { MESSAGES, message, where } from './check-messages.mjs';
+import { message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { layoutScan, CLIP_ATTR } from './core/layout-scan.mjs';
@@ -180,6 +181,20 @@ const tmpFile = path.join(tmpDir, 'deck.html');
 fs.writeFileSync(tmpFile, built.html);
 const url = 'file://' + tmpFile;
 
+// ブラウザが起動できない・検査の途中で落ちた（ブラウザの例外）ときは、検査が終わっていない。「エラー 0」と見分けがつくように、
+// 終了コード 2（指摘があるときの 1 とは別）・JSON は status: "crashed"（指摘なし。ok は false）にする。
+// 落ちた理由は stderr だけに出す（指摘の言葉にしない：修正依頼に混ざらない）
+let browserPhase = false;
+const crashed = (e) => {
+  if (!browserPhase) { console.error(e && e.stack ? e.stack : String(e)); process.exit(1); }   // ブラウザの前の例外は今までどおり（終了コード 1）
+  try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* 消せなくてよい */ }
+  console.error((ML === 'en' ? 'check did not finish: the headless browser failed to launch or crashed (this is not "0 errors").\n' : '検査が終わっていない：ヘッドレスのブラウザが起動できないか、途中で落ちた（「エラー 0」ではない）。\n') + String(e && e.message ? e.message : e));
+  if (asJson) console.log(JSON.stringify({ ok: false, status: 'crashed', lang: ML, counts: { error: 0, warn: 0, info: 0 }, results: [] }, null, 2));
+  process.exit(2);
+};
+process.on('uncaughtException', crashed);
+process.on('unhandledRejection', crashed);
+browserPhase = true;
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 // コンソールのエラーとページの例外は、読み込み直後だけでなく検査の全体（後の seek・再現性の確認・開き直し）を通して集め、最後にまとめて報告する
@@ -534,6 +549,7 @@ for (const [i, dur] of perSlide) report(i, 'info', 'slideLength', { s: dur.toFix
 // 遅れて届くエラーも拾うため、閉じる前に少し待つ
 await page.waitForTimeout(100);
 await browser.close();
+browserPhase = false;   // ここから先は検査の結果を作るだけ（ブラウザは使わない）
 fs.rmSync(tmpDir, { recursive: true, force: true });
 // スタックの行とファイルの場所は除き、言葉だけにする。部品の例外（古い形の「M-CURVES TypeError: …」）は部品のデータの知らせにする
 const compTags = new Set(compErrors.map((r) => r.tag));
@@ -564,7 +580,7 @@ if (asJson) {
     step: r.step,
     sev: r.sev,
     code: r.code,
-    rule: (MESSAGES[r.code] && MESSAGES[r.code].rule) || null,
+    rule: ruleOf(r.code, r.a),
     data: r.a,
     msg: r.msg,
   }));

@@ -34,7 +34,7 @@ const BY_CODE = {
   overflowBottom: ['R-fit'], overflowRight: ['R-fit'], smallText: ['R-fit'], katexError: ['R-math'],
   noNarration: ['R-narr-steps'], orphanNarration: ['R-narr-steps'], readingExpr: ['R-reading', 'R-formula'], readingSeveral: ['R-reading'],
 compData: ['R-components'], consoleError: ['R-components'],
-    contrast: ['R-colors'], formula: ['R-formula'], missingSection: ['R-headings'], markTarget: ['R-marks'],
+    contrast: ['R-colors'], formula: ['R-formula'], missingSection: ['R-headings'], narrHeadingDiffers: ['R-headings'], markTarget: ['R-marks'],
   // 体裁の検査（kit/core/layout-scan.mjs）がブラウザ版にも出すコマンド版の code
   titleColon: ['R-title'], tateTitle: ['R-title'], tateBodyHead: ['R-fit'], bodyConclCol: ['R-fit'], bodyLeft: ['R-fit'], smallSvgText: ['R-fit'],
   textClipped: ['R-fit'], svgTextOut: ['R-fit'], svgTextBox: ['R-fit'], outsideBody: ['R-fit'],

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=bfdc19d54675f21f -->
+<!-- i18n: pair=reference.ja.md sha256=b41fb72370d49d29 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -298,7 +298,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps`, … in the [authoring guide](authoring-with-llms.md)), the **quality check** that reports **findings** against them, and the **fix request** that hands the findings to an AI. The quality checker comes as a command (`npm run check`, below, with every check) and in the browser ([editor app](editor.md), a subset).
 
-`node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 1 if there is any error. `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the deck's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
+`node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the deck's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
 
 `--json` prints:
 

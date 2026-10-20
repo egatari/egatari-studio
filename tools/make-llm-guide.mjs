@@ -85,10 +85,43 @@ const AXIS = {
 };
 // 見本のファイル・リポジトリの中の場所・スキルへの参照は、チャットの AI には開けないので除く
 function stripRepoRefs(body) {
-  return body.split('\n').filter((ln) => !/demo\.html|examples\/|tools\/|motion-components スキル/.test(ln)).join('\n')
+  return cleanReadme(body).split('\n').filter((ln) => !/demo\.html|examples\/|tools\/|motion-components スキル/.test(ln)).join('\n')
     .replace(/\n?（motion-slides スキル §\d+「[^」]*」）/g, '').replace(/\n{3,}/g, '\n\n').trim()
     // 中身を除いて空になった「注意」の見出しも除く
     .replace(/\n+(?:#{1,6} )?注意\s*$/, '').replace(/\n(?:#{1,6} )?注意\n+(?=#{1,6} )/g, '\n');
+}
+// 部品庫の README の本文を、チャットの AI に渡す形にする（どの部品にも同じ規則。vendor/ は書き換えない）
+//  - 相対リンク [字](../../SECURITY.md) は字だけにする（AI には開けない。http(s):・mailto:・# で始まるものは残す）。括弧の中に残ったファイル名だけの言及
+//    （「（…。SECURITY.md）」）と、中が空になった括弧は除く
+//  - 版の経緯（「v1.0.2 から」「since v1.0.2」）は除く（AI に要るのは今の決まりだけ）
+function cleanReadme(body) {
+  return body
+    .replace(/\[([^\]]+)\]\((?![a-z][a-z0-9+.-]*:|#)[^)\s]*\)/gi, '$1')
+    .replace(/[（(]\s*(?:since\s+)?v\d+(?:\.\d+)+\s*(?:から|onwards?)?[。.、,]?\s*/gi, (m) => m.slice(0, 1))
+    .replace(/\b(?:since|from)\s+v\d+(?:\.\d+)+[,;]?\s*/gi, '')
+    .replace(/v\d+(?:\.\d+)+\s*から[。、]?/g, '')
+    .replace(/[。.、,]\s*[\w./-]+\.md(?=[）)])/g, '')
+    .replace(/[（(]\s*[\w./-]+\.md\s*[）)]/g, '')
+    .replace(/[（(]\s*[）)]/g, '');
+}
+// 部品の README の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫の README は変えない）。
+// find が README にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
+const PACK_EDITS = {
+  'm-menu': [
+    // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
+    { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: 'Used for a contents page or a "where to start" page. Add the menu after import; in the first draft use a plain list.' },
+    { find: 'id は `npm run ids` が付けたもの。', ja: 'id は取り込みのときに付く。', en: 'The id is given at import.' },
+    // 初稿に外部のファイルを参照しない
+    { find: '  <a href="lesson2.ega.html" data-sub="次の課">返り点の練習</a>\n', ja: '', en: '' },
+  ],
+};
+function applyPackEdits(name, body, lang) {
+  let out = body;
+  for (const e of PACK_EDITS[name] || []) {
+    if (!out.includes(e.find)) throw new Error(`PACK_EDITS ${name}: ${JSON.stringify(e.find)} is not in the README any more (review tools/make-llm-guide.mjs)`);
+    out = out.replace(e.find, () => e[lang]);
+  }
+  return out;
 }
 // 部品のデータの形（static shape。kit/shape.js）：index.js を vm で読み、DECK.define に渡されたクラスから取る
 function shapeApi() {
@@ -176,7 +209,7 @@ function entryOf(c, lang) {
     return `| \`${p}\` | ${d.type} | ${d.dflt ? '`' + cell(d.dflt) + '`' : ''} | ${cell(doc)} |`;
   });
   const ex = shapeExample(c, lang);
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(c.body));
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, c.body, lang)));
   return { entry: entry.trim(), sup };
 }
 

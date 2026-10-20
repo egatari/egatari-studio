@@ -1,6 +1,6 @@
 // 品質チェック（kit/check.mjs）の指摘の言葉（日本語・英語）。どの指摘も「何が違うか」と「どう直すか」を言い、規格があればその名前
 // （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、段階）は check.mjs が前に付ける
-//   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値
+//   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値。rule は規格の名前の文字列か、a から決める関数（ruleOf）
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
 
@@ -39,12 +39,13 @@ export function where(lang, { n, id, title, step }) {
 
 export const MESSAGES = {
   // ---------------------------------------------------------------- 組み立て・id・鍵
-  build: { ja: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? '：narration.md の「## 見出し」をスライドの見出しと同じ文字にするか、見出しの後ろに {#スライドの id} を書く（R-headings）' : ''),
+  build: { rule: (a) => (/^narration: スライドが見つからない/.test(a.w) ? 'R-headings' : null), ja: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? '：narration.md の「## 見出し」をスライドの見出しと同じ文字にするか、見出しの後ろに {#スライドの id} を書く（R-headings）' : ''),
     en: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? ': make the “## heading” in narration.md the same text as the slide heading, or end it with {#slide id} (R-headings)' : '') },
-  slideId: { ja: (a) => a.msg, en: (a) => a.msg },
+  // 鍵（見出し）の重なり（slide key: …）は R-headings。id の書式・id の重なりは規格の名前なし
+  slideId: { rule: (a) => (/^slide key: /.test(a.msg) ? 'R-headings' : null), ja: (a) => a.msg, en: (a) => a.msg },
   legacyDataKey: { ja: (a) => `鍵「${a.key}」が手書きの data-key で決まっている（${a.line} 行目）：<section> に id を付ける（npm run ids）`, en: (a) => `the slide key “${a.key}” comes from a hand-written data-key (line ${a.line}): give the <section> an id (npm run ids)` },
   legacyIndex: { ja: (a) => `見出しも id もないので、鍵が位置の「${a.key}」になり、スライドを足すと変わる（${a.line} 行目）：<section> に id を付ける（npm run ids）`, en: (a) => `no heading and no id, so the key is the position “${a.key}” and changes when slides are added (line ${a.line}): give the <section> an id (npm run ids)` },
-  narrHeadingDiffers: { ja: (a) => `narration.md ${a.line} 行目の見出し「${a.heading}」がスライドの見出し「${a.slide}」と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
+  narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し「${a.heading}」がスライドの見出し「${a.slide}」と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
   // ---------------------------------------------------------------- リンク
   linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（1 ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the single file (.ega.html))` },
   linkEmpty: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）に行き先がない（# だけ）：href="#<スライドの id>" にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has no target (only #): use href="#<slide id>"` },
@@ -219,10 +220,18 @@ function compName(a, ja) {
   return ja ? `部品 <${a.tag}>${n}${a.label ? `「${a.label}」` : ''}` : `the component <${a.tag}>${n}${a.label ? ` “${a.label}”` : ''}`;
 }
 
+// 知らせの規格の名前（なければ null）。rule は文字列か、値 a から決める関数
+export function ruleOf(code, a = {}) {
+  const m = MESSAGES[code];
+  const r = m && (typeof m.rule === 'function' ? m.rule(a) : m.rule);
+  return r || null;
+}
+
 export function message(lang, code, a = {}) {
   const m = MESSAGES[code];
   if (!m) return code;
   const t = (lang === 'en' ? m.en : m.ja)(a);
+  const rule = ruleOf(code, a);
   // 規格の名前は、言葉の中に書いていなければ最後に添える
-  return m.rule && !t.includes(m.rule) ? t + (lang === 'en' ? ` (${m.rule})` : `（${m.rule}）`) : t;
+  return rule && !t.includes(rule) ? t + (lang === 'en' ? ` (${rule})` : `（${rule}）`) : t;
 }

@@ -1,0 +1,6 @@
+### Fixed
+
+- Authoring guide: the `data-clip` sentence added to R-fit is removed again (the rule stays in contract §10 and in the `textClipped` fix request); R-components no longer calls function formulas "JavaScript" (they are arithmetic expressions that are never run as code)
+- Authoring guide (pack builder): component README text is cleaned when it is copied into the pack: relative markdown links become plain text and version-history phrases ("v1.0.2 から", "since v1.0.2") are dropped; the `m-menu` lines no longer say ids come from `npm run ids` or show a link to another file (menus are added after import, the first draft uses a plain list). `vendor/` is not edited
+- Quality check: findings about duplicate slide keys (headings), narration headings that differ from the slide heading (`narrHeadingDiffers`) and narration sections without a slide now carry the rule `R-headings` in `--json` (`rule` was null)
+- Quality check: when the headless browser fails to launch or crashes, `npm run check` exits with code 2 (findings still exit 1) and `--json` prints `"status": "crashed"` with `"ok": false` and no findings; the reason goes to stderr only
