@@ -109,8 +109,8 @@ function cleanReadme(body) {
 const PACK_EDITS = {
   'm-menu': [
     // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
-    { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: 'Used for a contents page or a "where to start" page. Add the menu after import; in the first draft use a plain list.' },
-    { find: 'id は `npm run ids` が付けたもの。', ja: 'id は取り込みのときに付く。', en: 'The id is given at import.' },
+    { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。（Add the menu after import; in the first draft use a plain list.）' },
+    { find: 'id は `npm run ids` が付けたもの。', ja: 'id は取り込みのときに付く。', en: 'id は取り込みのときに付く。' },
     // 初稿に外部のファイルを参照しない
     { find: '  <a href="lesson2.ega.html" data-sub="次の課">返り点の練習</a>\n', ja: '', en: '' },
   ],
