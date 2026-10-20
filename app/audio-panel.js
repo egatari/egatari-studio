@@ -12,8 +12,9 @@
 // 持ち運べる 1 ファイルでは作業場所はメモリの上なので、書いた後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる。
 // 声の選択は作業フォルダでは voice.json に書き、1 ファイルではこの画面の間だけ覚える（voice.json を変えると組み直しの保存になるため）
 //
-//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?})
+//   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?, recMode?: {label, title, open()}})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
+//   録音モード（app/rec-mode.js）が使う口（板を開かずに）：panel.peek(key) / panel.commit(key, take) / panel.revert(key) / panel.canRevert(key)
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
 import { MP3 } from '../kit/core/audio-core.mjs';
@@ -143,7 +144,7 @@ export function createAudioPanel(o) {
     if (t === null) return { text: null, value: null };
     try { return { text: t, value: JSON.parse(t) }; } catch { return { text: t, value: null, bad: true }; }
   }
-  async function loadStep(key) {
+  async function loadStep(key, withAudio = true) {
     const ws = o.ws(), g = o.generation();
     const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
     const segs = parseNarration(narr || '');
@@ -156,7 +157,7 @@ export function createAudioPanel(o) {
       let sj = null;
       if (!own(entry, 'inputHash') && typeof entry.digest === 'string' && /^[0-9a-f]{1,64}$/.test(entry.digest)) sj = (await readJson(ws, `audio/seg_${entry.digest}.json`)).value;
       state = await audioState(entry, seg, sj);
-      if (safeFile(entry.file)) {
+      if (withAudio && safeFile(entry.file)) {
         try {
           const bytes = await ws.readBytes('audio/' + entry.file, { max: AUDIO_LIMITS.fileBytes });
           url = blobUrl(bytes, MIME_OF[(entry.file.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase()] || 'audio/mpeg');
@@ -264,7 +265,9 @@ export function createAudioPanel(o) {
     if (!v.seg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (busyMsg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
-    card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
+    const modeBtn = o.recMode ? h('button', { id: 'dev-audio-recmode', text: o.recMode.label, title: o.recMode.title, 'aria-keyshortcuts': 'r', on: { click: () => o.recMode.open() } }) : null;
+    if (modeBtn && (rec || busyMsg)) modeBtn.disabled = true;
+    card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn, modeBtn]));
     if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
     // 声を選ぶ欄
     drawVoices(v);
@@ -557,24 +560,27 @@ export function createAudioPanel(o) {
 
   // ---------------------------------------------------------------- この音声を使う：MP3 にして audio/ と audio/manifest.json に書く
   // auto：作った直後（書けなければ取り直しとして残す）。前の記録は history に積む（「前に戻す」）
+  // 戻り値：書けたか（録音モードが使う。書けなかった理由は useError）。書けなかった取り直しは「まだ使っていない音声」に残る
+  let useError = null;
   async function useTake(key, id, auto = false) {
+    useError = null;
     const t = (takes.get(key) || []).find((x) => x.id === id);
-    if (!t || busyMsg) return;
+    if (!t || busyMsg) { useError = 'busy'; return false; }
     const ws = o.ws(), g = o.generation();
     const live = () => o.ws() === ws && o.generation() === g;
     const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
-    if (no) { if (view) draw(view); say((auto ? L.notUsed + ' — ' : '') + no, true); return; }
-    if (!live()) return;
+    if (no) { useError = no; if (view) draw(view); say((auto ? L.notUsed + ' — ' : '') + no, true); return false; }
+    if (!live()) { useError = 'cancelled'; return false; }
     setBusy(L.using);
     try {
       // MP3 のエンコーダ（LAME）は別のファイルを使うときだけ読み込む（o.loadMp3。app/mp3-loader.js）。読み込めない（1 ファイル版など）なら WAV
       const init = o.loadMp3 ? await o.loadMp3() : null;
-      if (!live()) return;
+      if (!live()) { busyMsg = null; useError = 'cancelled'; return false; }
       const bytes = init ? await encodeMp3(t.pcm, { init }) : encodeWav(t.pcm, t.sr);
       const file = takeFileName(t.kind, await sha256Hex(bytes), init ? 'mp3' : 'wav');
-      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' ? t.cues : null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: PROCESSING, startOffset: init ? MP3.startOffset : 0 });
+      const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' || t.sync === 'manual' ? t.cues : null, sync: t.sync || null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: PROCESSING, startOffset: init ? MP3.startOffset : 0 });
       const prev = await writeEntry(ws, live, key, entry, { file, bytes });
-      if (prev === undefined) return;
+      if (prev === undefined) { busyMsg = null; useError = 'cancelled'; return false; }
       const back = history.get(key) || [];
       back.push(prev);
       history.set(key, back.slice(-20));
@@ -582,14 +588,28 @@ export function createAudioPanel(o) {
       takes.delete(key);
       const portable = ws.kind === 'memory';
       if (o.afterWrite) await o.afterWrite();
-      if (!live()) return;
+      if (!live()) { busyMsg = null; useError = 'cancelled'; return false; }
       busyMsg = null;
       if (view && view.key === key) show(key, view.i); else follow(true);
       ui.toast((portable ? L.usedPortable : L.used(file)) + (init ? '' : L.wavNote), init ? '' : 'warn');
+      return true;
     } catch (e) {
       busyMsg = null; if (view) draw(view);
-      say((auto ? L.notUsed + ' — ' : '') + L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e)), true);
+      useError = L.fail + (e && e.name === 'Cancelled' ? 'cancelled' : (e.message || e));
+      say((auto ? L.notUsed + ' — ' : '') + useError, true);
+      return false;
     }
+  }
+  // 録音モードの口：録った音声（processTake の結果＋ cue）を板を開かずにその段階の音声にする。{ok, error?}
+  async function commit(key, t) {
+    const take = await addTake(key, { kind: 'recorded', pcm: t.pcm, sr: t.sr, dur: t.dur, cues: t.cues || null, sync: t.sync || null, recipe: null, inputHash: (await currentHash(key)).hash, gainDb: t.gainDb, at: Date.now() });
+    const ok = await useTake(key, take.id, true);
+    return ok ? { ok: true } : { ok: false, error: useError || 'failed' };
+  }
+  // 段階の今の記録と古さ・口述原稿の段階（音声のファイルは読まない）
+  async function peek(key) {
+    const v = await loadStep(key, false);
+    return { seg: v.seg, segs: v.segs, entry: v.entry, state: v.state, roles: v.roles, override: v.override };
   }
   // 段階の記録を manifest に書く（entry が null なら外す）。add：新しい音声のファイル。戻り値：書く前の記録（なければ null）、取り消したら undefined
   async function writeEntry(ws, live, key, entry, add = null) {
@@ -613,26 +633,27 @@ export function createAudioPanel(o) {
   // 前に戻す：積んだ前の記録を manifest に戻す（音声のファイルは消していないので、そのファイルを指す記録に戻すだけ）
   async function revert(key) {
     const back = history.get(key) || [];
-    if (!back.length || busyMsg || rec) return;
+    if (!back.length || busyMsg || rec) return false;
     const ws = o.ws(), g = o.generation();
     const live = () => o.ws() === ws && o.generation() === g;
     const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
-    if (no) { say(no, true); return; }
+    if (no) { say(no, true); return false; }
     const prev = back[back.length - 1];
-    if (prev && !(safeFile(prev.file) && (await ws.exists('audio/' + prev.file)))) { say(L.revertGone(String(prev.file)), true); return; }
-    if (!live()) return;
+    if (prev && !(safeFile(prev.file) && (await ws.exists('audio/' + prev.file)))) { say(L.revertGone(String(prev.file)), true); return false; }
+    if (!live()) return false;
     setBusy(L.using);
     try {
       const was = await writeEntry(ws, live, key, prev);
-      if (was === undefined) return;
+      if (was === undefined) { busyMsg = null; return false; }
       back.pop();
       if (back.length) history.set(key, back); else history.delete(key);
       if (o.afterWrite) await o.afterWrite();
-      if (!live()) return;
+      if (!live()) { busyMsg = null; return false; }
       busyMsg = null;
       if (view && view.key === key) show(key, view.i); else follow(true);
       ui.toast(prev ? L.reverted : L.revertedNone);
-    } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
+      return true;
+    } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); return false; }
   }
 
   function reset() {
@@ -651,6 +672,7 @@ export function createAudioPanel(o) {
     toggle, reset, isOpen: () => open, isBusy: () => !!(rec || busyMsg),
     onPos: () => { if (open) follow(false); },
     reload: () => { if (!open) return; if (view && !rec && !busyMsg) show(view.key, view.i); else follow(true); },
+    peek, commit, revert, canRevert: (key) => (history.get(key) || []).length > 0,
     unsaved: () => [...takes.values()].reduce((n, l) => n + l.length, 0),
     state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
       history: Object.fromEntries([...history].map(([k, l]) => [k, l.map((e) => (e ? e.file : null))])), voices: view && view.voice !== undefined ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : null,

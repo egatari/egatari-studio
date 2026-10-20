@@ -164,7 +164,7 @@ document.addEventListener("click", function(e){
 }, true);
 document.addEventListener("keydown", function(e){
   if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.key === "e" || e.key === "n" || e.key === "c" || e.key === "Escape") send({kind: "key", key: e.key});
+  if (e.key === "e" || e.key === "n" || e.key === "c" || e.key === "r" || e.key === "Escape") send({kind: "key", key: e.key});
 });
 function ready(){ send({kind: "ready"}); }
 if (window.DECK && window.DECK.ready) ready(); else document.addEventListener("deck:ready", ready);

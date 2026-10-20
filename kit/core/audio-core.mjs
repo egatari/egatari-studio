@@ -15,6 +15,7 @@
 //   integratedLoudness(pcm, sr)             LUFS（測れなければ null）
 //   truePeakDb(pcm)                         4 倍の補間で見たピーク（dBTP）
 //   encodeWav(pcm, sr) / decodeWav(bytes)   16 bit の WAV
+//   cuesFromTaps(taps, n, {head, dur})      録音中に C で置いた時刻 → 音声の cue（数が n と違えば sync none）
 //   takeEntry({...})                        audio/manifest.json の段階の記録（kind・inputHash・recipe・sync。format spec §5）
 //   setManifestEntry(text, key, entry, order)   manifest の文字列に段階の記録を入れる（ほかの段階の記録はそのまま）
 //   audioState(entry, seg, segJson)         'fresh' | 'stale' | 'unknown'（§5.4。inputHash の無い manifest は TTS の控えの digest で）
@@ -198,6 +199,17 @@ export function joinParts(turns, sr = SR) {
   return { pcm: out, cues, dur: round3(n / sr) };
 }
 
+// 録音中に C を押した時刻（録音の始めからの秒。生の時刻）を、後処理した音声の cue にする（録音モード。#47・#24）。
+// head：後処理で前から削った秒（processTake の trimmed.head）、dur：後処理した音声の長さ。時刻は head を引いて [0, dur] に収める。
+// 押した数が区切りの数 n と違う・時刻が前後する・n が 0 なら sync none（cues なし）：間違った同期は作らない（format spec §5.3）。
+// 戻り値：{sync: 'manual', cues} か {sync: 'none', cues: null, taps（押した数）}
+export function cuesFromTaps(taps, n, { head = 0, dur = Infinity } = {}) {
+  const t = Array.isArray(taps) ? taps.filter((x) => typeof x === 'number' && Number.isFinite(x)) : [];
+  if (!(n > 0) || t.length !== n || t.some((x, j) => j > 0 && x < t[j - 1])) return { sync: 'none', cues: null, taps: t.length };
+  const hi = Number.isFinite(dur) ? dur : Infinity;
+  return { sync: 'manual', cues: t.map((x) => round3(Math.max(0, Math.min(hi, x - head)))) };
+}
+
 // ---------------------------------------------------------------- WAV（16 bit・モノラル）
 export function encodeWav(pcm, sr) {
   const n = pcm.length, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
@@ -249,11 +261,12 @@ export function decodeWav(bytes) {
 // cues：{cue} の区切りの時刻（TTS で部分ごとに作ったとき）。録音・取り込みは区切りを置いていないので sync "none"（cues は空）
 // processing：後処理の版（すべての種類。§5.2）。startOffset：符号化の遅れ（MP3 のとき。0 なら書かない）。
 // 機器の名前・元のファイル名など人を特定しうる記録は書かない（§3.6。ここに渡す項目はこれだけ）
-export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = null, processing = PROCESSING, startOffset = 0 }) {
+// sync：'manual'（録音中に C で置いた cue。cues が配列のときだけ）を渡せる。渡さなければ cues があれば auto、なければ none
+export function takeEntry({ file, dur, cues = null, kind, inputHash, recipe = null, processing = PROCESSING, startOffset = 0, sync = null }) {
   if (!['recorded', 'tts', 'imported'].includes(kind)) throw new Error('bad take kind: ' + kind);
   if (!(typeof dur === 'number' && dur > 0)) throw Object.assign(new Error('the take is empty (no sound after trimming silence)'), { code: 'audio-empty' });
   const e = { file, dur: round3(dur), cues: Array.isArray(cues) ? cues.slice() : [] };
-  e.sync = Array.isArray(cues) ? 'auto' : 'none';
+  e.sync = sync === 'manual' && Array.isArray(cues) ? 'manual' : Array.isArray(cues) ? 'auto' : 'none';
   if (kind === 'tts') { if (!isObj(recipe)) throw new Error('tts take without recipe'); e.engine = String(recipe.engine); }
   e.kind = kind;
   e.inputHash = typeof inputHash === 'string' ? inputHash : null;
