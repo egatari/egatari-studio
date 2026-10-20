@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=d8761f9fe9679f15 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=680cf2b2176096b6 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -57,3 +57,4 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    ```
 
 8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>. To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
+   Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).

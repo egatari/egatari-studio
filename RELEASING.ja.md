@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=0d59ce0f9d232e2e -->
+<!-- i18n: pair=RELEASING.md sha256=9033ccc0f0452159 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -57,3 +57,4 @@
    ```
 
 8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/> を開く。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
+   ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）
