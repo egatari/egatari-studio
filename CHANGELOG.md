@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.3] - 2026-10-20
+
+### Added
+
+- Editor site: every release from v0.4.1 on stays at its own URL, `/vX.Y.Z/` (e.g. https://studio.egatari.org/v0.4.2/), and the root
+  serves the latest. A frozen copy shows which version it is with a link to the latest; the root lists the versions (#32)
+- `tools/site-versions.mjs`: builds the release asset `editor-site-vX.Y.Z.tar.gz` from a tag, verifies it against the sha256 line
+  in the release notes, and assembles the Pages site from the new build and the earlier releases' assets
+
+### Changed
+
+- One set of quality-control terms everywhere (editor, docs, AI instruction pack, skills): **standards** (R-fit, …),
+  **quality check** / **quality checker** (command `npm run check`, browser in the editor), **finding**, **fix request**;
+  Japanese 規格・品質チェック（コマンド版・ブラウザ版）・指摘・修正依頼. Rule ids, severities, `check --json` fields and commands are unchanged
+- Editor: the toolbar button and panel are **Quality check** (was Quick check); the fix request lists **Findings** and **Standards**
+  (Japanese 指摘・規格; was Problems / Rules, 問題・決まり)
+- AI instruction pack (Japanese): shorter wording, so common + business and common + kokugo are under 35 KB again; no rule dropped
+- Browser TTS: only the latest editor (the site root) removes caches of other model revisions; frozen copies keep them
+
+### Fixed
+
+- Editor app: autoplay started in the presenter view plays the narration audio (in the editor window's preview, once); the
+  browser used to block it because the key was pressed in the other window
+
 ## [0.4.2] - 2026-10-20
 
 ### Added
@@ -446,7 +470,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/egatari/egatari-studio/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/egatari/egatari-studio/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/egatari/egatari-studio/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/egatari/egatari-studio/compare/v0.3.1...v0.4.0
