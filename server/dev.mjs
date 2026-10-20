@@ -210,8 +210,9 @@ function watchDir(dir, filter) {
 watchDir(deckWatchDir(''), deckRelevant);
 watchDir(deckWatchDir('audio'), deckRelevant);
 for (const d of ['data', 'figs', 'components']) watch(deckWatchDir(d), (name) => deckRelevant(path.join(d, String(name || ''))));
-for (const d of ['kit', 'components', 'themes']) {
-  const abs = path.join(ROOT, d);
+// 部品庫の写し（vendor/components/<名前>/<版>/。npm run components:update で変わる）
+for (const d of ['kit', 'vendor/components', 'themes']) {
+  const abs = path.join(ROOT, ...d.split('/'));
   if (abs === DIR || DIR.startsWith(abs + path.sep)) continue;
   watch(abs, null, d === 'kit');
 }

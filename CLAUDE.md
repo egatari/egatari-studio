@@ -16,7 +16,8 @@
 - `tts/core.py`（合成・無音除去・音量・結合）と `tts/yomi.py`（読み辞書の規則）を変えると音声が変わる。yomi.py は digest に入るので、変えると全段階が作り直しになる
 - 口述原稿の話者は既定で 1 人。掛け合い（`Expert:` / `Novice:`）は頼まれたときだけ（書き方は skills/motion-slides の「掛け合いの書き方」と AI への指示の R-dialogue）
 - 変更の記録は `CHANGELOG.md` を直さず `changes/<短い名前>.md` の断片に書く（節の見出し `### Added` など＋1〜2 行の項目、英語。CONTRIBUTING.md「Changelog」）。リリースは RELEASING.md の手順（Pages はリリースのタグからだけ置く）
-- 生成物（`components/CATALOG.md`・AI への指示・`kit/core/katex-ranges.mjs`）は手で直さず `npm run gen`。外から使われる口の形を変えたら `node tools/test-api-shapes.mjs --update` と `### Changed (API)` の断片
+- 生成物（`vendor/components/CATALOG.md`・AI への指示・`kit/core/katex-ranges.mjs`）は手で直さず `npm run gen`。
+- 部品庫の部品は別のリポジトリ egatari/components のもの。`vendor/components/<名前>/<版>/` はリリースの写しで手で直さない（`npm run components:update -- vX.Y.Z` で取り込み、`components.lock.json` が既定の版を固定する。出した版は消さない）。部品を直す・足すのは egatari/components で（提案はその Issue）。動きの素（印・モーフ・カメラ）は Studio の実行系外から使われる口の形を変えたら `node tools/test-api-shapes.mjs --update` と `### Changed (API)` の断片
 
 ## 確かめ方
 

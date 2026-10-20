@@ -14,6 +14,7 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
+import { readLock, vendorDir, pinsForIndex } from './components-lock.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 
@@ -104,7 +105,7 @@ export const RE = Object.freeze({
   voice: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
   tag: /^[a-z][a-z0-9]*-[a-z0-9-]+$/,
   extName: /^[a-z][a-z0-9]{0,31}$/,
-  // 部品庫・テーマ庫の名前（source: registry）：1 つの識別子。読み手が components/<名前>/・themes/<名前>/ に結ぶので、パスを書かせない
+  // 部品庫・テーマ庫の名前（source: registry）：1 つの識別子。読み手が vendor/components/<名前>/<版>/・themes/<名前>/ に結ぶので、パスを書かせない
   registryName: /^[a-z][a-z0-9-]{0,63}$/,
   // 仕様の写しの schema の metadata の lang と同じ（BCP 47 の近似）
   lang: /^(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-[Xx](?:-[A-Za-z0-9]{1,8})+)?|[Xx](?:-[A-Za-z0-9]{1,8})+|[Ii]-[A-Za-z]+)$/,
@@ -623,14 +624,20 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   };
   const metaPh = { format: FID, placeholder: tag };
   const prefixPh = `<!--archive-${tag}-->`;
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
+  // 組み直す文書（carry）が記録した部品庫の部品は、index.js の sha256 が合う版で組む（format spec §6。kit/core/components-lock.mjs）
+  let componentVersions = opts.componentVersions;
+  if (!componentVersions && isObj(opts.carry) && Array.isArray(opts.carry.components) && opts.carry.components.length) {
+    const lock = readLock(env0, env0.ROOT);
+    if (lock) componentVersions = pinsForIndex(lock, opts.carry.components).pins;
+  }
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
 
   // 原稿のファイル（依存の閉包）と、部品庫・テーマ庫の参照
   const files = dict();
-  const compDir = P.join(env.ROOT, 'components'), themeDir = P.join(env.ROOT, 'themes');
+  const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes');
   const regComp = new Map(), regTheme = new Map();
   for (const p of [...reads].sort()) {
     if (inDeck(p)) {
@@ -640,9 +647,10 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (why) { warnings.push(`${LOG}: "${rp}" was read by the build but is excluded (${why}); the archive cannot rebuild it`); continue; }
       files[rp] = readBytesVia(env, p);
     } else if (env.within(p, compDir)) {
-      const name = P.relative(compDir, p).split(P.sep)[0];
-      if (!regComp.has(name)) regComp.set(name, new Map());
-      regComp.get(name).set(P.relative(P.join(compDir, name), p).split(P.sep).join('/'), readBytesVia(env, p));
+      // vendor/components/<名前>/<版>/…：組み立てが選んだ版（1 つの部品は 1 つの版だけ読む）
+      const [name, version] = P.relative(compDir, p).split(P.sep);
+      if (!regComp.has(name)) regComp.set(name, { version, files: new Map() });
+      regComp.get(name).files.set(P.relative(P.join(compDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
     } else if (env.within(p, themeDir)) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
       if (!regTheme.has(name)) regTheme.set(name, new Map());
@@ -837,9 +845,10 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const t of r.stats.components) {
     const name = t.slice(2), local = `components/${name}/index.js`;
     if (files[local]) { components.push({ tag: t, name, version: 'local', sha256: await sha256Hex(files[local]), source: 'embedded', path: local }); embeddedCode = true; }
-    else if (regComp.has(name) && regComp.get(name).has('index.js')) {
+    else if (regComp.has(name) && regComp.get(name).files.has('index.js')) {
       if (!RE.registryName.test(name)) { warnings.push(`${LOG}: component ${t} is not a registry name (${RE.registryName}); not recorded`); continue; }
-      components.push({ tag: t, name, version: env.version || '0', sha256: await sha256Hex(regComp.get(name).get('index.js')), source: 'registry' });
+      // version：部品庫（egatari/components）のリリースの版（format spec §6）
+      components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(regComp.get(name).files.get('index.js')), source: 'registry' });
     }
   }
   const themes = [];

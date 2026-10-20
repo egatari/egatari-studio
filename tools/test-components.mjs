@@ -1,26 +1,32 @@
-// 部品の見本（components/<名前>/demo.html）を組んで、ブラウザで動かして確かめる
+// 部品庫の部品（egatari/components のリリースの写し vendor/components/<名前>/<版>/。既定の版は components.lock.json）の見本（demo.html）を、
+// この Studio で組んで、ブラウザで動かして確かめる（部品を変えたときの試験の本体は egatari/components の npm test。これは Studio との結合の試験）
 //   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
-// 確かめること：コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
+// 確かめること：見本が組めて、品質チェック（kit/check.mjs）のエラーが 0（KNOWN に書いたものを除く）／コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
 // 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること／m-gendai の線（つなぐ線・指示語の矢印・傍線）が自分の端のほかで札に入らず、段落の枠の辺を横切らないこと
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { launch } from '../kit/browser.mjs';
+import { launch, fileUrl } from '../kit/browser.mjs';
+import { ROOT, vendorComponents } from './vendor-components.mjs';
 
-const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+// 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 …]}
+const KNOWN = { kanbun: ['R-fit'] };
+
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');
 const shotsRoot = si >= 0 ? path.resolve(args.splice(si, 2)[1]) : null;
-const names = args.length ? args : fs.readdirSync(path.join(ROOT, 'components'))
-  .filter((n) => fs.existsSync(path.join(ROOT, 'components', n, 'demo.html')));
+const outRoot = shotsRoot || fs.mkdtempSync(path.join(os.tmpdir(), 'test-components-'));
+const all = vendorComponents().filter((c) => fs.existsSync(path.join(c.dir, 'demo.html')));
+for (const n of args) if (!all.some((c) => c.name === n)) { console.error(`no demo for ${n} in vendor/components (default version)`); process.exit(2); }
+const comps = args.length ? all.filter((c) => args.includes(c.name)) : all;
+const names = comps.map((c) => c.name);
 
 const b = await launch();
 let fail = 0;
 const failed = [];   // [名前, 理由]
-for (const name of names) {
-  const dir = path.join(ROOT, 'components', name);
-  const out = path.join(dir, 'out', 'demo.html');
+for (const { name, version, dir } of comps) {
+  const out = path.join(outRoot, name, 'demo.html');
   try {
     execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'demo.html'), '-o', out], { stdio: 'pipe' });
   } catch (e) {
@@ -28,14 +34,23 @@ for (const name of names) {
     console.log(`== ${name}: BUILD FAILED\n${String(e.stderr || e.message).trim()}`);
     continue;
   }
-  const shots = shotsRoot ? path.join(shotsRoot, name) : path.join(dir, 'out', 'shots');
+  // 品質チェック（見本の原稿を検査器にかける。エラーは KNOWN のほか 0）
+  let qc = null;
+  try {
+    qc = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(dir, 'demo.html'), '--json'], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }).toString());
+  } catch (e) {
+    try { qc = JSON.parse(String(e.stdout || '')); } catch { qc = null; }
+  }
+  const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
+  const qBad = qErrs ? qErrs.filter((x) => !(KNOWN[name] || []).includes(x.rule)) : null;
+  const shots = path.join(outRoot, name, 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = [];
   p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); });
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   const load = async () => {
-    await p.goto('file://' + out);
+    await p.goto(fileUrl(out));
     await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
     await p.evaluate(() => document.fonts.ready);
   };
@@ -164,11 +179,14 @@ for (const name of names) {
     }
   }
   const why = [];
+  if (!qBad) why.push('quality check did not run');
+  else if (qBad.length) why.push(`${qBad.length} quality check error(s): ${qBad.map((x) => x.msg).join(' / ')}`);
   if (errs.length) why.push(`${errs.length} console/page error(s)`);
   if (issues.length) why.push(`${new Set(issues).size} layout issue(s) (text size / outside slide / overlap)`);
   const nd = det.filter((x) => x.endsWith('DIFF')).length;
   if (nd) why.push(`${nd} determinism failure(s)`);
   if (why.length) { fail++; failed.push([name, why.join(', ')]); }
+  console.log(`== ${name} ${version}: quality check ${qErrs ? `${qErrs.length} error(s)${qErrs.length > (qBad || []).length ? ` (known: ${qErrs.filter((x) => !qBad.includes(x)).map((x) => x.rule).join(', ')})` : ''}` : 'failed'}`);
   console.log(`== ${name}: slides ${plan.map((s) => `${s.i}(max ${s.max}, anim ${s.anim.map((x) => x.toFixed(2)).join('/')})`).join(' ')}`);
   plan.forEach((s) => s.cues.forEach((c, j) => { if (c.some(Boolean)) console.log(`   cues s${s.i} comp${j}: ${JSON.stringify(c)}`); }));
   console.log(`   determinism: ${det.join(' ')}`);

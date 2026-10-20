@@ -21,6 +21,7 @@ import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, serie
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
+import { vendorComponents } from './vendor-components.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-'));
@@ -80,7 +81,7 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   assert.ok(badOpt.status === 2 && /unknown option --sereis/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
 });
 ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つの系列）。共通の部品は系列に重ねない・README に series がなければ作れない', () => {
-  const dirs = fs.readdirSync(path.join(ROOT, 'components')).filter((x) => fs.existsSync(path.join(ROOT, 'components', x, 'README.md')));
+  const dirs = vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map((c) => c.name);
   for (const lang of ['en', 'ja']) {
     const common = commonBody(lang), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang)]));
     for (const c of dirs) {
@@ -95,11 +96,12 @@ ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つ�
   for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'business'], ['m-quad', 'business'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
   // README に series のない部品があれば、作り直しは失敗する（写しの部品フォルダで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
-  for (const d of ['tools', 'docs', 'components', 'themes', 'kit']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
-  const rd = path.join(tmp, 'components', 'kpi', 'README.md');
+  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'components.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  const kpi = vendorComponents(tmp).find((c) => c.name === 'kpi');
+  const rd = path.join(kpi.dir, 'README.md');
   fs.writeFileSync(rd, fs.readFileSync(rd, 'utf8').replace(/^series: .*\r?\n/m, ''));
   const r = spawnSync(process.execPath, ['tools/make-llm-guide.mjs', '--check'], { cwd: tmp, encoding: 'utf8' });
-  assert.ok(r.status !== 0 && /components\/kpi\/README\.md has no frontmatter series/.test(r.stderr), r.stderr);
+  assert.ok(r.status !== 0 && /vendor\/components\/kpi\/[^/]+\/README\.md has no frontmatter series/.test(r.stderr), r.stderr);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 ok('デッキから系列を推す：部品・テーマ・layout-tate', () => {
@@ -118,7 +120,7 @@ ok('規格の名前は英語と日本語で同じ・規格は共通の本体だ�
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    for (const c of fs.readdirSync(path.join(ROOT, 'components')).filter((x) => fs.existsSync(path.join(ROOT, 'components', x, 'README.md')))) assert.ok(g.includes(`\`<m-${c}>\``), c);
+    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``), c);
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
   assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');

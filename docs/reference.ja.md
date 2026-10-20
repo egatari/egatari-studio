@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ca62ee8a7305443b -->
+<!-- i18n: pair=reference.md sha256=1c3242893533d33e -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -20,7 +20,8 @@
 | `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（段階ごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
-| `components/<名前>/index.js` | build | デッキ専用の部品（リポジトリより先に探す） |
+| `components/<名前>/index.js` | build | デッキ専用の部品（部品庫より先に探す） |
+| `egatari.json` | build・1 ファイル | `docId`・metadata・添付の一覧。`components` は部品庫の部品の版の固定（`{"bars": "1.0.0"}`。展開は、ファイルが既定でない版を要るときだけ書く） |
 | `themes/<名前>/` | build | デッキ専用のテーマ |
 | `comments.json`、`.cache/edits/` | 開発サーバー | 開発サーバーが書く |
 | `out/<名前>.html` | — | build の既定の出力 |
@@ -90,7 +91,7 @@
 | `/*INCLUDE:ファイル*/` | ファイルの中身をそのまま入れる（作業フォルダ → `kit/` の順に探す）。そのフォルダの外を指すもの（`../`、絶対パス、シンボリックリンク）は警告して読まず、空にする |
 | `{{FIG:名前}}` | `figs/名前.svg`（なければ作業フォルダの `名前.svg`）を埋め込む。id に `名前-` を前置し、width・height を外す |
 | `{{JSON:ファイル}}` | `data/`（なければ作業フォルダ）の JSON を詰めて入れる。部品の子の `<script type="application/json">` に置くと `this.data` で読める |
-| `<m-名前 …>` | 部品。`components/名前/index.js` を自動で読み込む |
+| `<m-名前 …>` | 部品。デッキの `components/名前/index.js`、なければ部品庫の写し `vendor/components/名前/<版>/index.js` を自動で読み込む |
 
 `{{FIG:…}}`・`{{JSON:…}}`・`narration.md`・`timeline.json`・`macros.tex`・`audio/manifest.json` の中のファイルも、（シンボリックリンクをたどった先が）作業フォルダの中にあるときだけ読む。外なら警告（`refused: …`）して飛ばす。
 
@@ -180,11 +181,11 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 ## 部品
 
-部品の一覧と受け取る値は [components/CATALOG.md](../components/CATALOG.md)（各 README の frontmatter から `node tools/catalog.mjs` が作る）。部品の書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.ja.md#3-部品web-components) と [skills/motion-components](../skills/motion-components/SKILL.md)。
+部品の一覧と受け取る値は [vendor/components/CATALOG.md](../vendor/components/CATALOG.md)（既定の版の各 README の frontmatter から `node tools/catalog.mjs` が作る）。部品は [egatari/components](https://github.com/egatari/components) のもの：Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、`components.lock.json` で固定する。`npm run components:update -- vX.Y.Z` でリリースを取り込み（ネットワークを使うのはこれだけ。tarball をリリースの `manifest.json` と照らし、取り込んだ版はすべて残す）、`npm run components:check` で写しと固定を照らす（npm test に入っている）。新しい部品の提案は [egatari/components の Issue](https://github.com/egatari/components/issues/new?template=proposal.yml) へ。部品の書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.ja.md#3-部品web-components) と [skills/motion-components](../skills/motion-components/SKILL.md)。
 
 部品が使える `DECK` の道具：`el(tag, attrs, parent)`（SVG。`var()` の色は `style` に回す）、`mtext(parent, x, y, "*x*_0", attrs)`、`svgMath(parent, x, y, tex, {size, anchor, color, w, h})`、`Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})`（`.x() .y() .d(f, a, b, n) .poly(pts) .clip`）、`prog(t, start, dur)`、`lerp`、`ease`、`clamp01`、`color(名前)`。
 
-**スライドへのリンクと目次。** `<a href="#<スライドの id>">` と `<a href="#<スライドの id>:<段階の鍵>">` は、スライドかその段階へのふつうのリンク（スクリプトなし。Core の文書に入れてよい）。実行系は文書の中でたどり、「戻る」を出す（[contract §9](contract.ja.md#9-スライドへのリンク)）。id は `npm run ids` が付けたものを使う。**`m-menu`** はそのリンクを札の格子に並べる（題・副題 `data-sub`・丸の字 `data-icon`・このセッションで見たスライドの「見た」の印・`per-step` で段階ごとに出す）：[components/menu/README.md](../components/menu/README.md)。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の 2 枚目。スライドの中のリンクは `--term` の色で下線を引く。
+**スライドへのリンクと目次。** `<a href="#<スライドの id>">` と `<a href="#<スライドの id>:<段階の鍵>">` は、スライドかその段階へのふつうのリンク（スクリプトなし。Core の文書に入れてよい）。実行系は文書の中でたどり、「戻る」を出す（[contract §9](contract.ja.md#9-スライドへのリンク)）。id は `npm run ids` が付けたものを使う。**`m-menu`** はそのリンクを札の格子に並べる（題・副題 `data-sub`・丸の字 `data-icon`・このセッションで見たスライドの「見た」の印・`per-step` で段階ごとに出す）：[vendor/components/menu/1.0.0/README.md](../vendor/components/menu/1.0.0/README.md)。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の 2 枚目。スライドの中のリンクは `--term` の色で下線を引く。
 
 ### 国語（kokugo）
 
@@ -194,9 +195,9 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 - **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中の部品・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きは部品の指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの鍵・字幕・1 ファイルの読める層は、これまでどおり見出しの字から作る。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
 - **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、品質チェックは字の大きさを数えない。縦書きでは右に付く
 - **明朝**：`.mincho`、`<html data-font="mincho">`、または `--font-sans: var(--font-mincho)` にするテーマ（`kokugo`）
-- **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。段階：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。`cues(k)` は各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [components/kanbun/README.md](../components/kanbun/README.md)
-- **`m-kobun`**：古文を語に切り（`春[名]/は[係助]/…`）、品詞で色を分けて 1 文ずつ出し、最後の段階で現代語訳（`= …` の行）を並べる。助動詞 `[助動・基本形・意味・活用形]` を押す（または Enter）と、部品の中の表から活用表と意味の札を出す（ネットワークを使わない。中身は文字だけ）。札は発表の操作で `DECK.seek(i, k, t)` の外：段階が動くと閉じ、動画のモードでは開かず、印刷に出ない。[components/kobun/README.md](../components/kobun/README.md)
-- **`m-gendai`**：現代文。`__傍線__`、`==二重傍線==`、`{語句|_A,#名前}` と `{これ|>名前}`（指示語から指す先への矢印）、段落の `@主張#p3`・`@具体例#p1>p3`・`@対比#p2~p1` を役割の枠で囲み線でつなぐ。横書きか `tate`。[components/gendai/README.md](../components/gendai/README.md)
+- **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。段階：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。`cues(k)` は各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [vendor/components/kanbun/1.0.0/README.md](../vendor/components/kanbun/1.0.0/README.md)
+- **`m-kobun`**：古文を語に切り（`春[名]/は[係助]/…`）、品詞で色を分けて 1 文ずつ出し、最後の段階で現代語訳（`= …` の行）を並べる。助動詞 `[助動・基本形・意味・活用形]` を押す（または Enter）と、部品の中の表から活用表と意味の札を出す（ネットワークを使わない。中身は文字だけ）。札は発表の操作で `DECK.seek(i, k, t)` の外：段階が動くと閉じ、動画のモードでは開かず、印刷に出ない。[vendor/components/kobun/1.0.0/README.md](../vendor/components/kobun/1.0.0/README.md)
+- **`m-gendai`**：現代文。`__傍線__`、`==二重傍線==`、`{語句|_A,#名前}` と `{これ|>名前}`（指示語から指す先への矢印）、段落の `@主張#p3`・`@具体例#p1>p3`・`@対比#p2~p1` を役割の枠で囲み線でつなぐ。横書きか `tate`。[vendor/components/gendai/1.0.0/README.md](../vendor/components/gendai/1.0.0/README.md)
 
 ## 発表
 
@@ -283,7 +284,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `--port n` | 既定 8730。使われていれば次の番号を順に試す（20 回まで）。`--port 0` は空いている番号 |
 | `--theme 名前` | build と同じ |
 | 待ち受け | 127.0.0.1 だけ |
-| 組み直すきっかけ | 原稿、`narration.md`、`timeline.json`、`macros.tex`、`audio/manifest.json`、`data/`、`figs/`、`components/`、リポジトリの `kit/`、`components/`、`themes/`、自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）。同じスライド・段階のまま読み込み直す |
+| 組み直すきっかけ | 原稿、`narration.md`、`timeline.json`、`macros.tex`、`audio/manifest.json`、`data/`、`figs/`、`components/`、リポジトリの `kit/`、`vendor/components/`、`themes/`、自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）。同じスライド・段階のまま読み込み直す |
 | 開発用の build | 字を絞らない（速い）、直せる要素に `data-src`、音声は `/deck/audio/…`、組み立ての失敗は画面に出す |
 | `e` | 編集モード。`h1 h2 p li td th`、`.big .note .sub .venue .au .thm .box .lead`、`.concl` の中の `span` をダブルクリック。⌘/Ctrl+Enter で保存、Esc で取消。build の警告の数を札に出す |
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
@@ -369,7 +370,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 最後の行に、スライド・式・部品・字のファイル・口述原稿の段階・音声の段階・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と口述原稿の文字列、使う部品の JS の文字列（日本語以外のデッキでは和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語のデッキではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
 
-作業フォルダの部品（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、部品庫の部品は `components/` の中にあるときだけ読む。作業フォルダの部品が外を指していれば、警告して読まず、部品庫のものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。
+作業フォルダの部品（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、部品庫の部品は `vendor/components/` の中にあるときだけ読む。作業フォルダの部品が外を指していれば、警告して読まず、部品庫のものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。
 
 ### 組み立ての上限
 
@@ -458,12 +459,14 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `npm run build:app` | 編集アプリを作る：`dist/` の配信版（GitHub Pages 用。`dist/index.html`）と 1 ファイルの `dist/editor.html`。[editor.ja.md](editor.ja.md) |
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
-| `node tools/test-kokugo.mjs` | 漢文の訓読の順と書き下し文（よく知られた詩文で）、`m-kobun`・`m-gendai` の読み取りの試験（ブラウザなし） |
+| `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文が部品庫の `m-kanbun` で知らせなしに読めるか（ブラウザなし。部品そのものの試験は egatari/components） |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
 | `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピンを描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
-| `node tools/catalog.mjs` | `components/CATALOG.md` を作り直す |
+| `node tools/catalog.mjs` | `vendor/components/CATALOG.md` を作り直す |
+| `npm run components:update -- vX.Y.Z [--from <フォルダ>]` | egatari/components のリリースを `vendor/components/` と `components.lock.json` に取り込む（`manifest.json` の sha256 で確かめる。版は置き換えない） |
+| `npm run components:check` | `vendor/components` が `components.lock.json` と合うか（ネットワークなし） |
 | `node tools/narration-json.mjs <narration.md> [--voice json]` | 口述原稿を解析した JSON（`synth.py` が使う） |
 | `node tools/smoke.mjs <組んだ.html> <フォルダ>` | タイムラインといくつかの画面 |
 | `node tools/test-components.mjs [名前 …] [--shots フォルダ]` | 部品の見本を組んで確かめる |

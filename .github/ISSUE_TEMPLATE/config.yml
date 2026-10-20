@@ -6,3 +6,6 @@ contact_links:
   - name: "Show and tell / 作ったものを見せる"
     url: https://github.com/egatari/egatari-studio/discussions/categories/show-and-tell
     about: "Share a deck or video you made. / 作ったデッキや動画を見せてください"
+  - name: "New component / 新しい部品"
+    url: https://github.com/egatari/components/issues/new?template=proposal.yml
+    about: "Components live in egatari/components: propose a new animated figure there. / 部品は egatari/components にあります。新しい動く図はそちらで提案してください"

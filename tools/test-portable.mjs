@@ -632,7 +632,7 @@ ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Sc
   } finally { await browser.close(); }
 });
 
-ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対パス・\\・. の名前を断り、components/ の外を読まない（検査器・展開・npm run portable の照合）', async () => {
+ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対パス・\\・. の名前を断り、vendor/components/ の外を読まない（検査器・展開・npm run portable の照合。固定の components.lock.json のほか）', async () => {
   const BAD = ['../../private', '../x', '/etc/passwd', 'C:/x', 'a\\b', '..\\..\\x', '.', '..', '.hidden', 'a/b', 'Upper', '1abc', '-x', 'a'.repeat(65), '', 'a b'];
   const base = JSON.parse(fs.readFileSync(path.join(SPEC, 'fixtures', 'index', 'invalid', 'registry-name-traversal.json'), 'utf8'));
   for (const name of BAD) {
@@ -650,12 +650,15 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
   emb.files['components/hello/index.js'] = 's0';
   assert.ok(!PF.validateIndex(emb).some((x) => /components\[0\]\.name/.test(x)));
 
-  // fs の読み取りを数える（展開・照合の間に components/ の外のパスに触れないこと）
+  // fs の読み取りを数える（展開・照合の間に vendor/components/ の外のパスに触れないこと。固定のファイルは読む）
   const R = path.join(work, 'regroot'), OUTSIDE = path.join(work, 'private');
-  fs.mkdirSync(path.join(R, 'components', 'sweep'), { recursive: true });
-  fs.writeFileSync(path.join(R, 'components', 'sweep', 'index.js'), 'ok');
-  fs.mkdirSync(OUTSIDE, { recursive: true }); fs.writeFileSync(path.join(OUTSIDE, 'index.js'), 'secret');
-  fs.symlinkSync(OUTSIDE, path.join(R, 'components', 'evil'));
+  fs.mkdirSync(path.join(R, 'vendor', 'components', 'sweep', '1.0.0'), { recursive: true });
+  fs.writeFileSync(path.join(R, 'vendor', 'components', 'sweep', '1.0.0', 'index.js'), 'ok');
+  fs.mkdirSync(path.join(OUTSIDE, '1.0.0'), { recursive: true }); fs.writeFileSync(path.join(OUTSIDE, '1.0.0', 'index.js'), 'ok');
+  fs.symlinkSync(OUTSIDE, path.join(R, 'vendor', 'components', 'evil'));
+  const okSha = await PF.sha256Hex(new TextEncoder().encode('ok'));
+  const lockEntry = { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': okSha } };
+  fs.writeFileSync(path.join(R, 'components.lock.json'), JSON.stringify({ components: { evil: lockEntry, sweep: lockEntry } }));
   const seen = [];
   const SPY = ['readFileSync', 'openSync', 'existsSync', 'statSync', 'lstatSync', 'realpathSync'];
   const orig = Object.fromEntries(SPY.map((k) => [k, fs[k]]));
@@ -667,14 +670,14 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
   themes: BAD.map((name) => ({ name, version: '0', sha256: sha, source: 'registry' })) };
   spy();
   let w; try { w = registryWarnings(ix, R); } finally { unspy(); }
-  const regDir = path.join(R, 'components'), regReal = fs.realpathSync(regDir);
+  const regDir = path.join(R, 'vendor', 'components'), regReal = fs.realpathSync(regDir), lockPath = path.join(R, 'components.lock.json');
   const under = (p, d) => p === d || p.startsWith(d + path.sep);
-  const outside = seen.filter(([, p]) => !under(p, regDir) && !under(p, regReal));
-  assert.deepEqual(outside, [], 'nothing outside components/ is touched');
-  assert.ok(!seen.some(([k, p]) => k === 'readFileSync' && !under(p, path.join(regDir, 'sweep')) && !under(p, path.join(regReal, 'sweep'))), 'only components/sweep/index.js is read');
+  const outside = seen.filter(([, p]) => !under(p, regDir) && !under(p, regReal) && p !== lockPath);
+  assert.deepEqual(outside, [], 'nothing outside vendor/components/ (and the lock) is touched');
+  assert.ok(!seen.some(([k, p]) => k === 'readFileSync' && p !== lockPath && !under(p, path.join(regDir, 'sweep')) && !under(p, path.join(regReal, 'sweep'))), 'only the lock and vendor/components/sweep/1.0.0/index.js are read');
   assert.ok(!seen.some(([k, p]) => k === 'readFileSync' && fs.realpathSync(p).startsWith(OUTSIDE)), 'the link to the outside is not read');
   assert.equal(w.filter((x) => /is not a registry name/.test(x)).length, BAD.length * 2, w.join('\n'));
-  assert.ok(w.some((x) => /m-evil .*not in this registry/.test(x)), 'a link out of components/ is treated as missing');
+  assert.ok(w.some((x) => /m-evil .*not in vendor\/components/.test(x)), 'a link out of vendor/components/ is treated as missing');
   assert.ok(!w.some((x) => /m-sweep/.test(x)), 'the real registry component matches');
 
   // 展開：名前が ../../private の文書は、検査器が断り（invalid-index）、何も書かず、components/ の外を読まない
@@ -688,7 +691,7 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
   seen.length = 0; spy();
   try { await rejects(unpack(f, U), 'invalid-index'); } finally { unspy(); }
   assert.ok(!fs.existsSync(U) || fs.readdirSync(U).length === 0, 'nothing written');
-  assert.ok(!seen.some(([, p]) => p.endsWith(path.sep + 'index.js') || p.startsWith(path.join(ROOT, 'components'))), 'no registry file is read: ' + JSON.stringify(seen.slice(0, 5)));
+  assert.ok(!seen.some(([, p]) => p.endsWith(path.sep + 'index.js') || p.startsWith(path.join(ROOT, 'vendor', 'components'))), 'no registry file is read: ' + JSON.stringify(seen.slice(0, 5)));
 });
 
 ok('品質チェック：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {

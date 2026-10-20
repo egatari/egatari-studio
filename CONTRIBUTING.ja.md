@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=c5558c7cc4eb45f5 -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=3b27f404a7739af4 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -14,31 +14,13 @@
 
 ## 部品
 
-### 1. まず頼むか、デッキの中で書く
+部品は別のリポジトリ **[egatari/components](https://github.com/egatari/components)** にある。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち（手で直さない）、部品ごとの既定の版を `components.lock.json` で固定する。
 
-- [components/CATALOG.md](components/CATALOG.md) を見る。既存の部品に属性を足すだけで済むことが多い
-- 案だけなら [部品の依頼](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml) を出す：何を動かすか、どの論文・図か、スケッチ、段階ごとに何が出るか
-- 自分で書くなら、まず**デッキ専用**に `<deck>/components/<名前>/index.js` に置く（build はデッキ → リポジトリの順に探す）。手順は `motion-components` スキル
-
-### 2. 部品庫に入れる条件
-
-次のどちらかを満たしたら `components/<名前>/` に移す。
-
-- 2 つ目のデッキで使われた
-- デッキに依存しない形に書けた（文言と数値をすべて属性（`props`）か子の JSON で渡せる）
-
-### 3. PR のチェックリスト
-
-PR（または、コードを貼った [部品の提案](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) の issue）に次をそろえる。
-
-- [ ] `components/<名前>/README.md`：frontmatter に `name` `summary` `steps` `props`、本文に「いつ使うか」
-- [ ] `components/<名前>/demo.html`：1〜2 枚の見本のデッキ
-- [ ] `node tools/test-components.mjs <名前>` が通り、スクリーンショット（動きの途中と最終状態）を目で見た
-- [ ] 色はテーマの変数だけ：`var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)`
-- [ ] `render(k, t)` が決定的：`setTimeout`・`requestAnimationFrame`・`Date`・シードのない乱数を使わない。`t = Infinity` は段階 `k` の最終状態
-- [ ] `npm run gen` を走らせた（CATALOG.md と AI への指示は生成物。手で直さない）
-- [ ] `changes/<名前>.md` の断片（[CHANGELOG](#changelog) を見る）
-- [ ] `npm test` が通る
+- [vendor/components/CATALOG.md](vendor/components/CATALOG.md) を見る。既存の部品に属性を足すだけで済むことが多い
+- たいていの図は部品にしなくて済む：インライン SVG と `data-step`・印・モーフ・カメラ（Studio の動きの素。[約束事](docs/contract.ja.md)）。1 つのデッキでそれ以上が要るなら、**デッキ専用**の部品を `<deck>/components/<名前>/index.js` に書く（build はデッキを先に探す）。手順は `motion-components` スキル
+- 部品庫に入れたいときは [egatari/components に提案](https://github.com/egatari/components/issues/new?template=proposal.yml)する（例・使った授業・データの形・最終状態・インライン SVG では足りない理由・権利・静止したときに読めるべきもの・ほかの使い道）。名前はそこで管理者が決める。コード・試験・リリースはそのリポジトリの [CONTRIBUTING.ja.md](https://github.com/egatari/components/blob/main/CONTRIBUTING.ja.md) に従う
+- リリースを Studio に取り込む（管理者）：`npm run components:update -- vX.Y.Z`（リリースの tarball と `manifest.json` を取り、SHA-256 をすべて確かめ、`vendor/components/<名前>/X.Y.Z/` と固定を書く。古い版は残す。その版で組んだ教材を組み直せるように）、続けて `npm run gen`・`npm test`・`changes/<名前>.md` の断片。`npm run components:check`（npm test と CI）はネットワークなしで写しと固定を照らす
+- Studio の部品の試験は結合の試験：`tools/test-components.mjs` は写しの見本をすべて組み、品質チェックをかけ、描画と決定性を確かめる。`tools/test-shape.mjs` はどの部品にも形の違うデータを渡す
 
 ## テストの走らせ方
 
@@ -62,7 +44,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `np
 
 | ファイル | 作る道具 | 材料 |
 |---|---|---|
-| `components/CATALOG.md` | `tools/catalog.mjs` | `components/*/README.md` の frontmatter |
+| `vendor/components/CATALOG.md` | `tools/catalog.mjs` | `vendor/components/` の既定の版の `README.md` の frontmatter |
 | `docs/authoring-with-llms(.ja).md`・`docs/llm-parts/*.md`・`kit/core/llm-pack-data.mjs` | `tools/make-llm-guide.mjs` | `tools/llm-guide/`・`docs/contract*.md`・部品の README と `index.js` |
 | `kit/core/katex-ranges.mjs` | `tools/katex-ranges.mjs` | `node_modules` の KaTeX の字（KaTeX の版を上げたとき） |
 
@@ -78,7 +60,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `np
 - Editor app: **Export single file** keeps the attachments of the opened file
 ```
 
-節は `Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`components/`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
+節は `Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`vendor/components/`・`components.lock.json`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
 
 ## 書き方の決まり
 

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=15c2be779575103e -->
+<!-- i18n: pair=README.md sha256=29c2a3a88df2e9d6 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -22,7 +22,7 @@
 
 - **段階表示**：`data-step="k"` で話す順に出す。結論の行（`.concl`）は自動で最後
 - **数式**：KaTeX でビルド時に組む。`\hlE{…}` `\hlT{…}` `\hlM{…}` で式の一部にテーマの色を付ける
-- **動く図**：Web Components の部品（`components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, 段階, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
+- **動く図**：[egatari/components](https://github.com/egatari/components) の Web Components の部品（写しは `vendor/components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, 段階, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
 - **スライドへのリンク**：ふつうの `<a href="#<スライドの id>">`（か `#<スライドの id>:<段階>`）でそのスライドか段階へ飛び、**戻る**（ボタン・Backspace・Alt+←・ブラウザの戻る）で戻れる。`m-menu` はそのリンクを札の格子に並べる（目次・選ぶ 1 枚）。スクリプトのないふつうのリンクなので、1 ファイル（`.ega.html`）は Core のまま。[contract §9](docs/contract.ja.md#9-スライドへのリンク)
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **注目の演出**：口述原稿に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーの点が出る
@@ -287,7 +287,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体。系列の指示（academic・business・kokugo・info）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、品質チェック、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
-| `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
+| `vendor/components/` | [egatari/components](https://github.com/egatari/components) のリリース（動く図の部品）の写し。取り込んだ版をすべて残し、既定の版は `components.lock.json` で固定。一覧は `vendor/components/CATALOG.md`。取り込みは `npm run components:update -- vX.Y.Z` |
 | `themes/` | テーマ |
 | `server/` | 開発サーバーとブラウザ上の編集 |
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/` に配信版（`dist/index.html`）と 1 ファイルの `dist/editor.html` を作る |
@@ -313,7 +313,7 @@ node tools/test-app.mjs                                            # 編集ア�
 
 - デッキで `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。版・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
 - Claude Code では「感想を送って」と言う。スキルが作業中に困ったことを issue の下書きにまとめ、確認を取ってから作る
-- 新しい図が欲しいときは [部品の依頼](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml)。デッキの中で書いた部品は [部品の提案](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) から
+- 新しい図が欲しいときは、まずデッキの中で書く（インライン SVG か、デッキ専用の部品）。部品庫に入れたいときは [egatari/components に提案](https://github.com/egatari/components/issues/new?template=proposal.yml)
 - 質問は [Discussions](https://github.com/egatari/egatari-studio/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
 - 版ごとの変更は [CHANGELOG.md](CHANGELOG.md)（英語）
 

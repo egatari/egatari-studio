@@ -30,7 +30,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Generated files and changelog fragments (npm run gen:check)
+      - name: Generated files, vendored components and changelog fragments (npm run gen:check)
+        # gen:check starts with npm run components:check: vendor/components (copies of egatari/components releases) matches
+        # components.lock.json (every version present, every index.js hash). No network: Studio builds only from the vendored copies.
         run: npm run gen:check
       - name: Changelog fragment for code changes (warning only)
         if: github.ref != 'refs/heads/main'
@@ -69,7 +71,6 @@ jobs:
           name: test-artifacts-node${{ matrix.node }}
           path: |
             /tmp/motion-test-*
-            components/*/out/shots/det_fail_*
           if-no-files-found: ignore
           retention-days: 7
 
@@ -96,7 +97,6 @@ jobs:
           name: test-artifacts-windows
           path: |
             ${{ runner.temp }}/motion-test-*
-            components/*/out/shots/det_fail_*
           if-no-files-found: ignore
           retention-days: 7
 
@@ -121,7 +121,6 @@ jobs:
           path: |
             ${{ runner.temp }}/motion-test-*
             /var/folders/*/*/T/motion-test-*
-            components/*/out/shots/det_fail_*
           if-no-files-found: ignore
           retention-days: 7
 

@@ -17,11 +17,12 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
-import { RUNTIME_FORMAT } from './format.mjs';
+import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
 import { runtimeAttachTypes } from './attach-content.mjs';
 // 実行系に渡す形式の識別子と、再生器が添付を出すか決める §3.8 の型の表（役割 → 拡張子。kit/tools.js）
 const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runtimeAttachTypes() });
 import { KATEX_RANGES } from './katex-ranges.mjs';
+import { readLock, vendorDir, pickVersion, configPins } from './components-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
@@ -669,19 +670,31 @@ export function build(env0, srcPath, opts = {}) {
   const used = [...new Set([...html.matchAll(/<(m-[a-z0-9-]+)[\s>]/g)].map((m) => m[1]))];
   let compJs = '';
   const localComps = [];
-  const compRoot = P.join(ROOT, 'components');
+  // 部品庫の部品は egatari/components のリリースの写し（vendor/components/<名前>/<版>/。kit/core/components-lock.mjs）。
+  // 版は opts.componentVersions（組み直す文書の記録から）→ 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の components → components.lock.json の既定の版
+  const compRoot = vendorDir(P, ROOT);
+  const lock = used.length ? readLock(env, ROOT) : null;
+  let pins = {};
+  if (used.length) {
+    const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
+    if (env.exists(cfg) && inDeck(cfg)) { try { pins = configPins(JSON.parse(env.readText(cfg))); } catch { pins = {}; } }
+    if (opts.componentVersions && typeof opts.componentVersions === 'object') pins = { ...pins, ...opts.componentVersions };
+  }
   for (const tag of used) {
     const name = tag.slice(2);
-    // 読む前に、原稿のフォルダの部品は原稿のフォルダの中に、部品庫の部品は components/ の中にあること（実体のパスで。外を指すリンクは読まない。
+    // 読む前に、原稿のフォルダの部品は原稿のフォルダの中に、部品庫の部品は vendor/components/ の中にあること（実体のパスで。外を指すリンクは読まない。
     // 原稿のフォルダにあって外を指すものは、部品庫のものに替えずに使わない）
-    const local = P.join(deckDir, 'components', name, 'index.js'), lib = P.join(compRoot, name, 'index.js');
+    const local = P.join(deckDir, 'components', name, 'index.js');
+    const pick = pickVersion(lock, name, Object.prototype.hasOwnProperty.call(pins, name) ? pins[name] : undefined);
+    const lib = pick.version ? P.join(compRoot, name, pick.version, 'index.js') : null;
     let file = null;
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
       else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
-    } else if (env.exists(lib)) {
+    } else if (lib && env.exists(lib)) {
+      if (pick.note) warn.push(pick.note);
       if (env.within(lib, compRoot)) file = lib;
-      else { warn.push(`refused: 部品庫の部品 ${tag} が components/ の外を指している（読まない）`); continue; }
+      else { warn.push(`refused: 部品庫の部品 ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
     // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（機械ごとのパスを出力に書かない）

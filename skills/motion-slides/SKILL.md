@@ -32,7 +32,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 3. **静的な版を書く**：`deck.html` を雛形から作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` の雛形ができる。空でないフォルダには書かない）、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
-5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/components/CATALOG.md`）から選び、なければ新しく書く（motion-components スキル）
+5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで。段階 0 で見えている本文の一覧は必ず読む
 7. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で AI へのメモを残す。「コメントを反映して」と言われたら：
    - `<deck>/comments.json` の open を読む（`key` は `スライドの鍵:段階`、`range` は deck.html の位置、`quote` は要素の字の頭（点の近くの字があれば「近くの字 ｜ 要素の字」）、`pin` は押した点 `{x, y}`（スライドの座標 1280×720。ないものもある））
@@ -177,7 +177,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 | 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
 | 符号の木で復号する | `m-codetree` | 符号表から木を作り、系列を 1 語ずつたどって、白・黒のランを画素の升目に並べる（MH 符号） |
 
-- 一覧と属性は `<repo>/components/CATALOG.md`、見本は各部品の `demo.html`
+- 一覧と属性は `<repo>/vendor/components/CATALOG.md`、見本は各部品の `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、部品の子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
 - 動きは注意の誘導に限る。飾りの動きは付けない
 - 静的な図は matplotlib の SVG（図の幅[in] = 表示幅[px] / 100、文字 18pt）を `{{FIG:名前}}` で

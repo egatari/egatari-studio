@@ -5,7 +5,7 @@
 //   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
-// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・components/*/index.js・themes/*・
+// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { buildExamples } from './examples-portable.mjs';
+import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -43,11 +44,9 @@ function addTree(virtDir, dir, filter = () => true) {
 }
 // kit の実行系（.js .css。Node の .mjs は入れない）
 for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, rel('kit', f));
-// 部品：components/<名前>/index.js
-const components = [];
-for (const d of fs.readdirSync(rel('components'), { withFileTypes: true })) {
-  if (d.isDirectory() && fs.existsSync(rel('components', d.name, 'index.js'))) { add(`/repo/components/${d.name}/index.js`, rel('components', d.name, 'index.js')); components.push(d.name); }
-}
+// 部品：部品庫の写し vendor/components/<名前>/<版>/index.js（取り込んだすべての版）と components.lock.json（tools/vendor-components.mjs）
+const components = vendorComponents(ROOT).map((c) => c.name);
+for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 // テーマ（ロゴも）
 const themes = [];
 for (const d of fs.readdirSync(rel('themes'), { withFileTypes: true })) {

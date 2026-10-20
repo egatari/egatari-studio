@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const SECTIONS = ['Added', 'Changed (API)', 'Changed', 'Removed', 'Fixed', 'Security'];
 // コードが変わったと見なす場所（--check --base）。文書・試験・CI だけの変更には断片は要らない
-const CODE = /^(app|kit|components|server|render|tts|themes|lab|skills)\/|^package\.json$/;
+const CODE = /^(app|kit|vendor\/components|server|render|tts|themes|lab|skills)\/|^(package|components\.lock)\.json$/;
 const FRAG = /^[a-z0-9][a-z0-9._-]*\.md$/;
 
 const args = process.argv.slice(2);

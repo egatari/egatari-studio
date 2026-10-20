@@ -18,6 +18,7 @@ import { readingProblems, orphanSteps, orphanDetail } from '../kit/core/narratio
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { extractBlocks } from '../kit/core/llm-import.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
+import { vendorComponents } from './vendor-components.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-shape-')));
@@ -111,7 +112,7 @@ const WRONG = {
   'm-kobun': '<script type="application/json">{"text": "春はあけぼの"}</script>',
   'm-menu': '<script type="application/json">[{"href": "#s-x", "label": "目次"}]</script>',
 };
-const comps = fs.readdirSync(path.join(ROOT, 'components')).filter((n) => fs.existsSync(path.join(ROOT, 'components', n, 'index.js'))).map((n) => 'm-' + n);
+const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');
 const deckDir = path.join(work, 'deck');
 fs.mkdirSync(deckDir, { recursive: true });

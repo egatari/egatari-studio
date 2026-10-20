@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=8c0c43a2df345d4b -->
+<!-- i18n: pair=contract.ja.md sha256=3b9ce441176670d2 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -51,7 +51,8 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
 - Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the deck is treated as having code of its own)
 - Declare the data's shape in `static shape` (`kit/shape.js`: a small subset of JSON Schema, `{schema, example, note?}`; `{text: true, example}` for components written as text, `{links: true, example}` for child `<a href>`; a json attribute may have `shape` in `static props`). The runtime checks it before counting steps: on a mismatch, or when `mount`/`render` throws, the component is not drawn, an inline placeholder (`.m-error`) says what is wrong, its steps are the `steps` attribute (else 0), and the problem goes to `DECK.componentErrors` (read by the quality checker, command and browser; never a stack trace). The guide's component list shows the shape and example
-- Location: `components/<name>/{index.js, demo.html, README.md}`. Write `name` `summary` `steps` `props` at the top of the README (frontmatter)
+- Location: `components/<name>/{index.js, demo.html, README.md}`, with `name` `series` `summary` `steps` `props` at the top of the README (frontmatter). Library components live in their own repository, [egatari/components](https://github.com/egatari/components) (proposals go to its issues); Studio carries copies of its releases in `vendor/components/<name>/<version>/` and pins the default version of each in `components.lock.json` (`npm run components:update -- vX.Y.Z` brings in a release; every version brought in is kept). A deck's own components go in `<deck>/components/<name>/` and are found first
+- Versions: the build uses, for each library component, the version pinned for the deck (when rebuilding a single file, the version whose `index.js` matches the SHA-256 the file recorded; in a working folder, `components` in `egatari.json`, which unpacking writes only when that version is not the default), else the default in `components.lock.json`. A single file records `{name, version, sha256}` with the components release as `version` (format spec §6). The motion primitives (marks §7, morphs §8, the camera) belong to Studio's runtime, not to components
 
 ## 4. Narration (narration.md)
 

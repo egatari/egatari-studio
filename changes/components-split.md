@@ -1,0 +1,7 @@
+### Changed (API)
+- Components moved to their own repository, [egatari/components](https://github.com/egatari/components) (v1.0.0, byte-identical to the former `components/`). Studio carries copies of its releases in `vendor/components/<name>/<version>/`, pinned in `components.lock.json`; `npm run components:update -- vX.Y.Z` brings in a release (checks the tarball and every file against the release's `manifest.json`, keeps every version), `npm run components:check` checks the copies offline (in `npm test` and CI).
+- A single file now records a registry component's `version` as the components release (`1.0.0`) instead of Studio's version. Rebuilding a single file uses the vendored version whose `index.js` matches the recorded SHA-256; a working folder may pin versions in `egatari.json` (`components`), which unpacking writes only when a file needs a non-default version.
+
+### Changed
+- `vendor/components/CATALOG.md` replaces `components/CATALOG.md`. Component proposals go to egatari/components issues (Studio's component issue templates are removed); the `motion-components` skill targets that repository.
+- The components' own tests (rendering, determinism, text size, overlap, shapes, `m-codetree` / `m-kanbun` / `m-kobun` / `m-gendai` parsing) moved with them; Studio keeps integration tests (`tools/test-components.mjs` builds and quality-checks every vendored demo, `tools/test-shape.mjs`, `tools/test-kokugo-example.mjs`), and `tools/clean-env.mjs` builds the demos in a clean environment.

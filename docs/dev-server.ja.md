@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=1f05f4f49a15d8f1 -->
+<!-- i18n: pair=dev-server.md sha256=76a0caa6908c7e29 -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -16,7 +16,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme business
 ```
 
 作業フォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、
-リポジトリの kit/、components/、themes/、自分のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を見張り（作業フォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
+リポジトリの kit/、vendor/components/、themes/、自分のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を見張り（作業フォルダのうちシンボリックリンクのフォルダは見張らず、一度だけ知らせる）、変われば組み直して画面を読み込み直す（スライドと段階はそのまま）。
 組み立てに失敗したときは、失敗の内容を画面に出す。直して保存すれば戻る。
 `?presenter=1`、`?mode=lecture` などはそのまま使える。音声は `/deck/audio/…` から読む。
 

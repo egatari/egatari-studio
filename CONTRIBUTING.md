@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=817582a0a9c06592 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=473ee612d99168ec -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -14,31 +14,13 @@ Feedback and new components are both welcome. Small reports help as much as pull
 
 ## Components
 
-### 1. Ask first, or write it in your deck
+Components live in their own repository, **[egatari/components](https://github.com/egatari/components)**. Studio carries copies of its releases in `vendor/components/<name>/<version>/` (do not edit them) and pins the default version of each component in `components.lock.json`.
 
-- Check [components/CATALOG.md](components/CATALOG.md). Often a new attribute on an existing component is enough
-- If you only have an idea, open a [component request](https://github.com/egatari/egatari-studio/issues/new?template=component-request.yml): what to animate, the paper or figure, a sketch, and what each step shows
-- To write it yourself, start **deck-local**: `<deck>/components/<name>/index.js`. The build looks in the deck first, then in the repository. The `motion-components` skill walks through this
-
-### 2. When a component is ready for the library
-
-Move it to `components/<name>/` when either holds:
-
-- a second deck uses it, or
-- it no longer depends on its deck: all text and numbers come in through attributes (`props`) or the child JSON
-
-### 3. Pull request checklist
-
-Open a PR (or a [component submission](https://github.com/egatari/egatari-studio/issues/new?template=component-submission.yml) issue with the code pasted) with:
-
-- [ ] `components/<name>/README.md` with frontmatter `name`, `summary`, `steps`, `props`, and a body saying when to use it
-- [ ] `components/<name>/demo.html`: a 1–2 slide sample deck
-- [ ] `node tools/test-components.mjs <name>` passes, and you looked at the screenshots (mid-step and final)
-- [ ] colors only through theme variables: `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)`
-- [ ] deterministic `render(k, t)`: no `setTimeout`, `requestAnimationFrame`, `Date` or unseeded random; `t = Infinity` is the final state of step `k`
-- [ ] `npm run gen` re-run (CATALOG.md and the AI instruction pack are generated; do not edit them by hand)
-- [ ] a `changes/<name>.md` fragment (see [Changelog](#changelog))
-- [ ] `npm test` passes
+- Check [vendor/components/CATALOG.md](vendor/components/CATALOG.md). Often a new attribute on an existing component is enough
+- Most figures need no component: inline SVG with `data-step`, marks, morphs and the camera (Studio's motion primitives, [contract](docs/contract.md)). If one deck needs more, write a **deck-local** component in `<deck>/components/<name>/index.js`; the build looks in the deck first. The `motion-components` skill walks through this
+- To put a component in the library, open a [proposal in egatari/components](https://github.com/egatari/components/issues/new?template=proposal.yml) (example, lesson, data shape, final state, why inline SVG is not enough, rights, what must be readable when static, other uses). The maintainer decides the name there; code, tests and releases follow that repository's [CONTRIBUTING.md](https://github.com/egatari/components/blob/main/CONTRIBUTING.md)
+- Bringing a release into Studio (maintainers): `npm run components:update -- vX.Y.Z` (downloads the release tarball and `manifest.json`, checks every SHA-256, writes `vendor/components/<name>/X.Y.Z/` and the lock; old versions are kept so that lessons built with them still rebuild), then `npm run gen`, `npm test`, and a `changes/<name>.md` fragment. `npm run components:check` (in `npm test` and CI) checks the copies against the lock without network
+- Studio's own tests of components are integration tests: `tools/test-components.mjs` builds every vendored demo, runs the quality check and checks rendering and determinism; `tools/test-shape.mjs` feeds each component wrong-shaped data
 
 ## Running the tests
 
@@ -62,7 +44,7 @@ These files are generated and committed (GitHub Pages, the editor and users read
 
 | File | Generator | Sources |
 |---|---|---|
-| `components/CATALOG.md` | `tools/catalog.mjs` | the frontmatter of `components/*/README.md` |
+| `vendor/components/CATALOG.md` | `tools/catalog.mjs` | the frontmatter of the default versions' `README.md` in `vendor/components/` |
 | `docs/authoring-with-llms(.ja).md`, `docs/llm-parts/*.md`, `kit/core/llm-pack-data.mjs` | `tools/make-llm-guide.mjs` | `tools/llm-guide/`, `docs/contract*.md`, the component READMEs and `index.js` |
 | `kit/core/katex-ranges.mjs` | `tools/katex-ranges.mjs` | the KaTeX fonts in `node_modules` (after a KaTeX update) |
 
@@ -78,7 +60,7 @@ Each change that users or callers will notice adds a fragment instead of editing
 - Editor app: **Export single file** keeps the attachments of the opened file
 ```
 
-The sections are `Added`, `Changed (API)` (a change to the shapes in [Interface shapes](#interface-shapes) or another interface callers use), `Changed`, `Removed`, `Fixed` and `Security`; one fragment may have several. Entries are in English, like the rest of `CHANGELOG.md`. `## [Unreleased]` in `CHANGELOG.md` stays empty. At a release, `node tools/changelog.mjs --release X.Y.Z` puts the fragments (in that section order, by file name within a section) under `## [X.Y.Z] - <date>`, updates the compare links, sets the version in `package.json` and `package-lock.json` and deletes the fragments; `--preview` prints the section without writing anything, and `--check` (in `npm test`) checks the fragments. In CI, a pull request that changes code (`app/`, `kit/`, `components/`, `server/`, `render/`, `tts/`, `themes/`, `lab/`, `skills/`, `package.json`) without adding a fragment gets a warning; it does not fail. Releasing is described in [RELEASING.md](RELEASING.md).
+The sections are `Added`, `Changed (API)` (a change to the shapes in [Interface shapes](#interface-shapes) or another interface callers use), `Changed`, `Removed`, `Fixed` and `Security`; one fragment may have several. Entries are in English, like the rest of `CHANGELOG.md`. `## [Unreleased]` in `CHANGELOG.md` stays empty. At a release, `node tools/changelog.mjs --release X.Y.Z` puts the fragments (in that section order, by file name within a section) under `## [X.Y.Z] - <date>`, updates the compare links, sets the version in `package.json` and `package-lock.json` and deletes the fragments; `--preview` prints the section without writing anything, and `--check` (in `npm test`) checks the fragments. In CI, a pull request that changes code (`app/`, `kit/`, `vendor/components/`, `components.lock.json`, `server/`, `render/`, `tts/`, `themes/`, `lab/`, `skills/`, `package.json`) without adding a fragment gets a warning; it does not fail. Releasing is described in [RELEASING.md](RELEASING.md).
 
 ## Coding rules
 

@@ -1,6 +1,6 @@
 // ブラウザで組む：kit/core/build-core.mjs に渡す env（読み書きの口）を、作業場所（workspace.js）と同梱の資源から作る
 //   /deck/…   作業場所：選んだフォルダか、持ち運べる 1 ファイルから取り出したメモリの上のフォルダ（一覧は ws.list、中身は読んだものを覚えておく）
-//   /repo/…   アプリに同梱した kit/ components/ themes/ katex/ fonts/（tools/build-app.mjs が集める）
+//   /repo/…   アプリに同梱した kit/ vendor/components/ components.lock.json themes/ katex/ fonts/（tools/build-app.mjs が集める）
 //   /user-themes/…  利用者のテーマのフォルダ（選んだときだけ。app/theme-folder.js。読むだけ）。env.themeDirs に入れるので、探す順と根の決まりは
 //             コマンドと同じ（原稿のフォルダ → その themes/ → ここ → 同梱の themes/。kit/core/build-core.mjs の resolveTheme）。持ち運べる 1 ファイルに
 //             書き出すと、ここのテーマは原稿の themes/<名前>/ に入る（kit/core/portable.mjs）。一覧は組み立てごとに読み直す
