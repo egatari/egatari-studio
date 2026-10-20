@@ -1,0 +1,413 @@
+"""Egatari Studio の Colab 往復 TTS：tts-job.json を読み、段階ごとに合成して、音声（WAV）と記録（records.json）の zip を返す。
+
+ノートブック（colab/egatari-tts.ipynb）の核。合成エンジン（Irodori・Kokoro）は差し替えられる関数にしてあり、重いモデルなしで
+dry-run（偽の合成）でも同じ道を通せる（`uv run --with numpy --with scipy python colab/egatari_tts.py job.json out.zip --dry-run`）。
+
+決まり事（docs/editor.md「Make the audio in Colab」、kit/core/colab-core.mjs と対）：
+- segments は読みを適用済みの文（エディタが辞書を適用する。ここでは辞書を当てない）。段階の中の {cue}/{mark} の区切りごとに合成する
+- 1 つの区切りごとに後処理（モノラル・44.1 kHz・前後の無音を削る -45 dB・-20 LUFS で一律のゲイン。ピークは -1.5 dBTP で止める）を
+  kit/core/audio-core.mjs と同じ数で行い、ターンの間に 0.35 秒の無音を入れて結ぶ。cue は 2 つ目からの区切りの始まり（秒）
+- inputHash は job から記録へ素通し（照合はエディタが今の原稿からやり直す）
+- 返す zip：audio/tts_<sha256 の先頭 16 字>.wav ＋ records.json（egatari: tts-records）
+"""
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import math
+import re
+import sys
+import wave
+import zipfile
+from fractions import Fraction
+
+import numpy as np
+
+SR = 44100
+PAUSE_S = 0.35
+PROCESSING = "trim-45-loud-20-cap-v1"          # kit/core/audio-core.mjs の PROCESSING と同じ
+NOTEBOOK_VERSION = 1
+TEXT_NORMALIZE = "join-num-counter@1"          # kit/core/tts-normalize.mjs の TEXT_NORMALIZE と同じ
+TRIM_DB, TRIM_KEEP_S, TRIM_WIN_S = -45.0, 0.05, 0.02
+TARGET_LUFS, TARGET_TP_DB = -20.0, -1.5
+MAX_SECONDS = 600
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+KEY = re.compile(r"^[^\s:]{1,120}:[^\s:]{1,120}$")
+VOICE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+
+
+# 算用数字（0-9・全角）の直後の空白（ASCII・全角）を、後ろが日本語の文字のときだけ取る（「1 歩」→「1歩」）。
+# kit/core/tts-normalize.mjs と同じ規則（共有の例 tools/fixtures/tts-normalize.json で突き合わせる）。文字の範囲も同じ
+_NUM_SPACE = re.compile("([0-9\uff10-\uff19])[ \u3000]+(?=[\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3005\u3006\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff])")
+
+
+def normalize_tts_text(text: str) -> str:
+    return _NUM_SPACE.sub(r"\1", text)
+
+
+class JobError(ValueError):
+    pass
+
+
+# ---------------------------------------------------------------- job の検証
+def validate_job(job) -> dict:
+    """tts-job.json を検証して返す（形が違えば JobError）。未知の項目は無視する。"""
+    if not isinstance(job, dict) or job.get("egatari") != "tts-job" or job.get("v") != 1:
+        raise JobError("tts-job.json ではありません（egatari: tts-job, v: 1 が要ります）")
+    steps = job.get("steps")
+    if not isinstance(steps, list) or not steps:
+        raise JobError("steps が空です")
+    if len(steps) > 400:
+        raise JobError("段階が多すぎます（400 まで）")
+    for s in steps:
+        if not isinstance(s, dict) or not KEY.match(str(s.get("key", ""))):
+            raise JobError(f"段階の key が正しくありません: {s.get('key') if isinstance(s, dict) else s!r}")
+        if not HEX64.match(str(s.get("inputHash", ""))):
+            raise JobError(f"{s['key']}: inputHash が正しくありません")
+        turns = s.get("turns")
+        if not isinstance(turns, list) or not turns:
+            raise JobError(f"{s['key']}: turns が空です")
+        for t in turns:
+            if not isinstance(t, dict) or not isinstance(t.get("segments"), list) or not all(isinstance(x, str) for x in t["segments"]):
+                raise JobError(f"{s['key']}: segments が文字列の並びではありません")
+            if not VOICE.match(str(t.get("voice", ""))):
+                raise JobError(f"{s['key']}: voice の名前が正しくありません")
+    rc = job.get("recipe")
+    if not isinstance(rc, dict) or rc.get("engine") not in ("irodori", "kokoro"):
+        raise JobError("recipe.engine は irodori か kokoro です")
+    return job
+
+
+# ---------------------------------------------------------------- 後処理（kit/core/audio-core.mjs と同じ数）
+def to_sr(x: np.ndarray, sr: int) -> np.ndarray:
+    if sr == SR:
+        return x.astype(np.float64)
+    from scipy.signal import resample_poly
+    f = Fraction(SR, sr).limit_denominator(1000)
+    return resample_poly(x.astype(np.float64), f.numerator, f.denominator)
+
+
+def _onset(x: np.ndarray, win: int, thr2: float) -> int:
+    """音のある最初の標本の位置（なければ -1）。直前 win 標本の二乗和がしきい値を超えた所。"""
+    cs = np.concatenate([[0.0], np.cumsum(x * x)])
+    j = np.arange(len(x))
+    s = cs[j + 1] - cs[np.maximum(0, j - win + 1)]
+    hit = np.nonzero(s > thr2)[0]
+    return int(hit[0]) if len(hit) else -1
+
+
+def trim_silence(x: np.ndarray) -> np.ndarray:
+    win = max(1, round(TRIM_WIN_S * SR))
+    thr = 10 ** (TRIM_DB / 20)
+    thr2 = thr * thr * win
+    keep = round(TRIM_KEEP_S * SR)
+    a = _onset(x, win, thr2)
+    if a < 0:
+        return x[:0]
+    b = _onset(x[::-1], win, thr2)
+    return x[max(0, a - keep): min(len(x), len(x) - b + keep)]
+
+
+def _k_weight(sr: int):
+    f0, G, Q = 1681.974450955533, 3.999843853973347, 0.7071752369554196
+    K = math.tan(math.pi * f0 / sr)
+    Vh = 10 ** (G / 20)
+    Vb = Vh ** 0.4996667741545416
+    a0 = 1 + K / Q + K * K
+    pre = ([(Vh + Vb * K / Q + K * K) / a0, 2 * (K * K - Vh) / a0, (Vh - Vb * K / Q + K * K) / a0], [1, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0])
+    f0, Q = 38.13547087602444, 0.5003270373238773
+    K = math.tan(math.pi * f0 / sr)
+    a0 = 1 + K / Q + K * K
+    rlb = ([1, -2, 1], [1, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0])
+    return [pre, rlb]
+
+
+def integrated_loudness(x: np.ndarray, sr: int = SR):
+    """ITU-R BS.1770-4 の積分ラウドネス（LUFS）。測れなければ None。"""
+    from scipy.signal import lfilter
+    d = x.astype(np.float64)
+    for b, a in _k_weight(sr):
+        d = lfilter(b, a, d)
+    block, hop = round(0.4 * sr), round(0.1 * sr)
+    if len(d) < block:
+        return None
+    cs = np.concatenate([[0.0], np.cumsum(d * d)])
+    starts = np.arange(0, len(d) - block + 1, hop)
+    z = (cs[starts + block] - cs[starts]) / block
+    L = lambda e: -0.691 + 10 * np.log10(e)  # noqa: E731
+    z = z[z > 0]
+    z = z[L(z) > -70] if len(z) else z
+    if not len(z):
+        return None
+    rel = L(z.mean()) - 10
+    keep = z[L(z) > rel]
+    if not len(keep):
+        return None
+    return float(L(keep.mean()))
+
+
+def true_peak_db(x: np.ndarray) -> float:
+    from scipy.signal import resample_poly
+    if not len(x):
+        return -math.inf
+    p = float(np.max(np.abs(resample_poly(x, 4, 1))))
+    p = max(p, float(np.max(np.abs(x))))
+    return 20 * math.log10(p) if p > 0 else -math.inf
+
+
+def normalize_level(x: np.ndarray) -> np.ndarray:
+    loud = integrated_loudness(x)
+    if loud is None or not math.isfinite(loud):
+        return x                                # 測れないもの（短すぎる・無音）はそのまま
+    gain_db = TARGET_LUFS - loud
+    tp = true_peak_db(x)
+    if math.isfinite(tp) and tp + gain_db > TARGET_TP_DB:
+        gain_db = TARGET_TP_DB - tp
+    return x * (10 ** (gain_db / 20))
+
+
+def process_line(x: np.ndarray, sr: int) -> np.ndarray:
+    """1 つの区切りの音声を整える（モノラル・44.1 kHz・無音を削る・音量）。"""
+    if x.ndim > 1:
+        x = x.mean(axis=1)
+    if len(x) > MAX_SECONDS * sr:
+        raise JobError("1 つの区切りの音声が長すぎます")
+    return normalize_level(trim_silence(to_sr(np.asarray(x, dtype=np.float64), sr)))
+
+
+# ---------------------------------------------------------------- 段階の合成
+def synthesize_step(step: dict, synth, recipe: dict):
+    """synth(text, voice, role, lang) → (samples, sr)。戻り値：(音声 float64 44.1 kHz, cues（秒）)。"""
+    pause = round(PAUSE_S * SR)
+    norm = recipe.get("textNormalize") == TEXT_NORMALIZE   # 知らない版の名前は適用しない（記録にも書かない）
+    pieces: list[np.ndarray] = []
+    cues: list[float] = []
+    n = 0
+    for ti, turn in enumerate(step["turns"]):
+        if ti > 0 and pause:
+            pieces.append(np.zeros(pause))
+            n += pause
+        for pi, text in enumerate(turn["segments"]):
+            if pi > 0:
+                cues.append(round(n / SR, 3))
+            if not text.strip():
+                continue
+            if norm:
+                text = normalize_tts_text(text)
+            x, sr = synth(text, turn["voice"], turn.get("role", "expert"), step.get("lang", "ja"))
+            line = process_line(np.asarray(x), int(sr))
+            pieces.append(line)
+            n += len(line)
+    pcm = np.concatenate(pieces) if pieces else np.zeros(0)
+    return pcm, cues
+
+
+def wav_bytes(pcm: np.ndarray) -> bytes:
+    pcm16 = np.round(np.clip(pcm, -1, 1) * 32767).astype("<i2")
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        w.writeframes(pcm16.tobytes())
+    return buf.getvalue()
+
+
+def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) -> bytes:
+    """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。"""
+    job = validate_job(job)
+    jr = job["recipe"]
+    steps_rec: dict = {}
+    members: list[tuple[str, bytes]] = []
+    for i, step in enumerate(job["steps"]):
+        pcm, cues = synthesize_step(step, synth, jr)
+        if not len(pcm):
+            raise JobError(f"{step['key']}: 音が出ませんでした（読む文が空か、すべて無音です）")
+        wav = wav_bytes(pcm)
+        name = "audio/tts_" + hashlib.sha256(wav).hexdigest()[:16] + ".wav"
+        if all(n != name for n, _ in members):
+            members.append((name, wav))
+        voice = {}
+        for t in step["turns"]:
+            voice.setdefault("novice" if t.get("role") == "novice" else "expert", t["voice"])
+        info = engine_info or {}
+        steps_rec[step["key"]] = {
+            "file": name, "dur": round(len(pcm) / SR, 3), "cues": cues, "kind": "tts", "sync": "auto",
+            "inputHash": step["inputHash"],
+            "recipe": {"engine": info.get("engine", jr["engine"]), "model": info.get("model", jr.get("model", "")), "voice": voice,
+                       "seed": info.get("seed", jr.get("seed", 0)), "dictionary": jr.get("dictionary"),
+                       "processing": f"{PROCESSING}+colab{NOTEBOOK_VERSION}"},
+        }
+        if jr.get("textNormalize") == TEXT_NORMALIZE:
+            steps_rec[step["key"]]["recipe"]["textNormalize"] = TEXT_NORMALIZE
+        if progress:
+            progress(i + 1, len(job["steps"]), step["key"])
+    records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),
+               "generator": {"name": "irodori-tts-colab", "version": str(NOTEBOOK_VERSION)}, "steps": steps_rec}
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as z:
+        z.writestr("records.json", json.dumps(records, ensure_ascii=False, indent=1) + "\n")
+        for n, b in members:
+            z.writestr(n, b)
+    return out.getvalue()
+
+
+# ---------------------------------------------------------------- 合成エンジン（synth 関数を返す）
+def dry_run_synth(text: str, voice: str, role: str, lang: str):
+    """モデルなしの偽の合成（文の長さに比例した長さの音）。往復と後処理の試験用。"""
+    sr = 24000
+    n = round((0.3 + 0.05 * len(text)) * sr)
+    t = np.arange(n) / sr
+    f = 260.0 if role == "novice" else 170.0
+    body = 0.2 * np.sin(2 * np.pi * f * t) * (0.6 + 0.4 * np.sin(2 * np.pi * 3 * t) ** 2)
+    lead = np.zeros(round(0.2 * sr))
+    return np.concatenate([lead, body, lead]), sr
+
+
+def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None):
+    """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。"""
+    from kokoro_onnx import Kokoro
+    k = Kokoro(model_path, voices_path)
+    al = {"bob": "am_michael", "alice": "af_heart", **(aliases or {})}
+
+    def synth(text, voice, role, lang):
+        samples, sr = k.create(text, voice=al.get(voice, voice), speed=1.0, lang="en-us")
+        return samples, sr
+    return synth
+
+
+class WorkerError(RuntimeError):
+    pass
+
+
+def tail_text(path: str, n: int = 30) -> str:
+    """ファイルの最後の n 行（なければ空）。Node の標準エラーを見せるため。"""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return "".join(f.readlines()[-n:]).rstrip()
+    except OSError:
+        return ""
+
+
+class IrodoriWorker:
+    """常駐の Node ワーカー（colab/irodori_node.mjs）。起動は 1 度で、モデルは 1 度だけ読み込む。依頼は JSON の行（colab/worker-protocol.mjs）。
+    cmd はワーカーを起動するコマンド（試験では偽のワーカーを渡す）。呼ぶと synth(text, voice, role, lang) → (samples, sr)。close() か with で終わらせる。
+    Node の標準エラーはファイルに受け、失敗したときは最後の 30 行を例外に入れる。"""
+
+    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0):
+        import os
+        import subprocess
+        import tempfile
+        self.voices_dir, self.steps, self.seed = voices_dir, steps, seed
+        os.makedirs(work_dir, exist_ok=True)
+        self._dir = tempfile.mkdtemp(dir=work_dir)
+        self._errpath = os.path.join(self._dir, "node-stderr.log")
+        self._err = open(self._errpath, "wb")
+        self._next = 0
+        self._closed = False
+        self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, text=True, encoding="utf-8", env=env)
+        try:
+            msg = self._read(ready_timeout)
+            if not msg.get("ready"):
+                raise WorkerError(f"ワーカーの最初の返事が ready ではありません: {msg!r}")
+        except BaseException:
+            self.close()
+            raise
+
+    def _fail(self, what: str) -> WorkerError:
+        rc = self._proc.poll()
+        return WorkerError(f"{what}（Node の終了コード: {rc}）\n--- Node の標準エラー（最後の 30 行）---\n{tail_text(self._errpath) or '(なし)'}")
+
+    def _read(self, timeout: float | None = None) -> dict:
+        import select
+        while True:
+            if timeout is not None and not select.select([self._proc.stdout], [], [], timeout)[0]:
+                raise self._fail("ワーカーが時間内に答えませんでした")
+            line = self._proc.stdout.readline()
+            if not line:
+                raise self._fail("Node のワーカーが終了しました")
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                return json.loads(line)
+            except ValueError:
+                continue                        # プロトコルの行でない出力は読み飛ばす
+
+    def __call__(self, text, voice, role="expert", lang="ja"):
+        import os
+        from scipy.io import wavfile
+        if self._closed:
+            raise WorkerError("ワーカーはもう終了しています（セル 3 からやり直してください）")
+        self._next += 1
+        out = os.path.join(self._dir, f"out{self._next}.wav")
+        req = {"id": self._next, "text": text, "voice": os.path.join(self.voices_dir, voice + ".wav"), "out": out, "steps": self.steps, "seed": self.seed}
+        try:
+            self._proc.stdin.write(json.dumps(req, ensure_ascii=False) + "\n")
+            self._proc.stdin.flush()
+        except (BrokenPipeError, OSError):
+            raise self._fail("Node のワーカーに送れません")
+        r = self._read()
+        if not r.get("ok"):
+            raise WorkerError(f"合成に失敗しました（{text[:30]!r}）：{r.get('error')}\n--- Node の標準エラー（最後の 30 行）---\n{tail_text(self._errpath) or '(なし)'}")
+        sr, data = wavfile.read(out)
+        os.remove(out)
+        return data.astype(np.float64) / (32768.0 if data.dtype == np.int16 else 1.0), sr
+
+    def close(self) -> None:
+        import shutil
+        import subprocess
+        p = self._proc
+        self._closed = True
+        try:
+            if p.poll() is None:
+                try:
+                    p.stdin.write('{"cmd": "quit"}\n')
+                    p.stdin.flush()
+                    p.stdin.close()
+                except (BrokenPipeError, OSError, ValueError):
+                    pass
+                try:
+                    p.wait(timeout=20)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    p.wait()
+        finally:
+            for f in (p.stdout, self._err):
+                try:
+                    f.close()
+                except Exception:
+                    pass
+            shutil.rmtree(self._dir, ignore_errors=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, node: str = "node"):
+    """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
+    colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。ワーカーを 1 度だけ起動して使い回す
+    （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。"""
+    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed)
+
+
+# ---------------------------------------------------------------- コマンド（試験用。ノートブックはこれらの関数を直接呼ぶ）
+def main(argv: list[str]) -> int:
+    if len(argv) < 3 or "--dry-run" not in argv:
+        print("usage: egatari_tts.py <tts-job.json> <out.zip> --dry-run   （本物の合成はノートブックから）", file=sys.stderr)
+        return 2
+    with open(argv[1], encoding="utf-8") as f:
+        job = json.load(f)
+    data = run_job(job, dry_run_synth, engine_info={"engine": "dry-run", "model": "dry-run", "seed": None})
+    with open(argv[2], "wb") as f:
+        f.write(data)
+    print(f"wrote {argv[2]} ({len(data)} bytes)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

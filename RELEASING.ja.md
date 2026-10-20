@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=d4218f29823338a2 -->
+<!-- i18n: pair=RELEASING.md sha256=49f56fcee62ea241 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -7,7 +7,7 @@
 
 ## 手順
 
-1. **候補。** リリースする `main` のコミットに候補のタグを付けて push する：
+1. **候補。** 先に `kit/core/colab-core.mjs` の `COLAB.ref` をリリースのタグ `vX.Y.Z` にし（エディタの Colab へのリンクとノートブックの clone が使う）、`npm run gen` してコミットする。そのうえで、リリースする `main` のコミットに候補のタグを付けて push する：
 
    ```bash
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N

@@ -1,5 +1,6 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
+import { COLAB_VERIFIED } from '../kit/core/colab-core.mjs';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
 // 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
 const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
@@ -12,6 +13,8 @@ function pickLang() {
 }
 export const EN = pickLang() === 'en';
 document.documentElement.lang = EN ? 'en' : 'ja';
+// Colab で音声を作る（音声の板の「WebGPU がないとき」の群）。確認した範囲の記しは kit/core/colab-core.mjs の COLAB_VERIFIED（1 か所）
+const ver = (l) => COLAB_VERIFIED[l];
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
@@ -169,6 +172,7 @@ const ja = {
     ['音声', ['「音声」で、画面の段階の音声を聞く・自分の声で録音する・ファイルから取り込む・ブラウザの TTS で作り直す（WebGPU が要ります。初回にモデルを取得）。作った音声はすぐにその段階の音声になり（audio/ に MP3 と記録。1 ファイルは「保存」で）、前の音声には「前に戻す」で戻せます',
       '「声」の欄で TTS の声を選べます（▶ で短い見本。作業フォルダでは voice.json に書きます）。読む原稿の欄は原稿の長さに合わせて伸び、右下の角で大きさを変えられます',
       '口述原稿を直した後の音声には「古い」の印が付きます。音声は消しません。TTS で作った音声があると、再生器の操作の帯に小さく「AI 音声」と出ます']],
+    ['Colab で音声を作る', [`WebGPU のない PC では、「音声」の「Colab で音声を作る」から、必要な段階の原稿を tts-job.json に書き出し（Colab では原稿の文が Google の環境で処理されます。書き出す前に確かめます）、公式のノートブックを開いて実行し、返ってきた zip を取り込めます。取り込むのは、書き出したときと原稿が同じ段階だけで、区切り（cue）の時刻が付き、同期は自動のままです。原稿が変わった段階は「印付き」に出て、自動では使いません`, ver('ja')]],
     ['録音モード', ['<kbd>r</kbd> か、音声の板の「録音モード」で、口述原稿を大きく出し、その段階の舞台を横に見せる録音の画面を開きます。キーボードだけで録れます：<kbd>Space</kbd> で録音の開始と停止（前後の無音を削って、すぐその段階の音声にします）、<kbd>Enter</kbd> で採用して次の段階へ（次の段階は待機。自動では録り始めません）、<kbd>Backspace</kbd> で取り直し、<kbd>←</kbd> <kbd>→</kbd> で段階の移動、<kbd>Esc</kbd> で閉じます',
       '口述原稿に {cue} や {mark} の区切りがあれば、録音しながら区切りごとに <kbd>C</kbd> を押すと、その時刻が区切りになります（sync: manual）。押した数が区切りの数と違うときは区切りを置かず、図は時間で進みます']],
     ['保存の場所と窓', [`下の帯の左に、今どこに保存されているかが出ます。作業フォルダは編集するたびにその場で書くので「保存」のボタンはなく、配るときは「書き出す ▾」から 1 ファイル（${FX}）にします。1 ファイルは「保存」で上書きします`,
@@ -180,6 +184,27 @@ const ja = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
+  oldNorm: {
+    title: '前処理の版が古い TTS の段階', note: 'この音声は、数字と助数詞の間の空白（「1 歩」）を取る前処理の前に作られています。「いちぽ」のように読まれていることがあります。音声は今のまま使えます。作り直す段階を選んでください（自動では作り直しません）',
+    go: (n) => '選んだ ' + n + ' 段階を作り直す', done: (n) => n + ' 段階の音声を作り直しました',
+  },
+  colab: {
+    title: 'Colab で音声を作る（WebGPU がないとき）', verified: ver('ja'),
+    lead: 'WebGPU のない PC（学校の PC・Safari・iPad）でも、無料の Colab で同じ声の音声を作って取り込めます。① 必要な段階の原稿を書き出す → Colab のノートブックで合成 → ② 返ってきた zip を取り込む、の順です。取り込むのは、書き出したときと原稿が同じ段階だけです。',
+    scope: '書き出す段階', scopeNeed: (n) => `音声のない段階と古い段階（${n}）`, scopeAll: (n) => `すべての段階（${n}）`,
+    export: '① 必要な段階を書き出す（tts-job.json）', openColab: 'Colab を開く', openColabT: '公式のノートブック（egatari-tts.ipynb）を Colab で開きます（新しいタブ）', import: '② できた zip を取り込む…',
+    privacyTitle: 'Colab に原稿を渡す', privacyBody: 'Colab では原稿の文が Google の環境で処理されます。tts-job.json には、書き出す段階の読み上げ文（読み辞書を通した後）と声の名前だけが入ります。スライドや音声・作業フォルダのほかのものは入りません。共有してよい文だけを渡してください。', privacyGo: '書き出す',
+    noSteps: '書き出す段階がありません（どの段階も音声が最新です。「すべての段階」を選べば作り直せます）',
+    exported: (n) => `tts-job.json を書き出しました（${n} 段階）。「Colab を開く」でノートブックを開き、上から順に実行して、聞かれたらこのファイルをアップロードしてください。できた zip を「② 取り込む」で読み込みます`,
+    importing: 'zip を読んでいます…', zipFail: (m) => 'zip を取り込めません：' + m,
+    rejectDoc: 'この zip は別の教材のために作られたもの（docId が違う）なので、取り込みませんでした',
+    rejectRecords: (w) => 'この zip は取り込めません（' + w + '）',
+    summary: (a, m, k) => `取り込み：適用 ${a} 件（同期は自動）／印付き ${m} 件（書き出した後に原稿が変わった）／スキップ ${k} 件`,
+    skipWhy: { 'no-step': '今の原稿にない段階', 'no-audio': '音声が zip にない', cues: '区切りの数が今の原稿と合わない' },
+    skipped: (k, w) => `スキップ：${k}（${w}）`, warnDict: '音声を作ったときの読み辞書が、今のものと違います（読みが少し違うかもしれません）', warnProc: '音声の後処理の版が、このエディタのものと違います',
+    marked: '印付き（書き出した後に原稿が変わった段階）', markedNote: '自動では使いません。使うと「古い」の印が付いたままの音声になります',
+    useOld: '古い印のまま使う', discard: '捨てる', applyFail: (k, m) => `${k}：使えませんでした（${m}）`,
+  },
   api: {
     cancelled: '別のデッキ（作業場所）を開いたので、この保存を取り消しました。何も書いていません', busySave: '保存しています。終わってからもう一度押してください',
     notFound: '原稿が見つかりません', badRange: '範囲または本文が正しくありません', conflict: '原稿が変わっています。再読み込みしてください',
@@ -368,6 +393,7 @@ const en = {
     ['Audio', ['“Audio” plays the step’s audio, records your own voice, imports a file or regenerates it with browser TTS (needs WebGPU; downloads the model the first time). New audio is used for the step right away (an MP3 and its record in audio/; for a single file, then Save), and “Revert to previous” brings back the previous audio.',
       '“Voice” picks the TTS voice (▶ plays a short sample; in a working folder it is written to voice.json). The script field grows with the narration and can be resized from its bottom-right corner.',
       'Audio made before the narration changed is marked stale. It is never deleted. When there is audio made with TTS, the player’s control bar shows a small “AI voice” badge.']],
+    ['Make the audio in Colab', [`Without WebGPU, “Make the audio in Colab” in “Audio” exports the narration of the steps that need audio to tts-job.json (in Colab the narration text is processed in Google’s environment; the editor asks first), opens the official notebook, and imports the zip it returns. Only steps whose narration is unchanged since the export are imported, with their cue times and sync auto; steps whose narration changed are listed as marked and not used automatically`, ver('en')]],
     ['Recording mode', ['<kbd>r</kbd> or “Recording mode” in the Audio panel opens a recording screen: the narration in large type, with the stage of that step beside it. It works from the keyboard alone: <kbd>Space</kbd> starts and stops recording (leading and trailing silence is trimmed and the take becomes the step’s audio right away), <kbd>Enter</kbd> keeps it and moves to the next step (which waits; recording never starts by itself), <kbd>Backspace</kbd> retakes, <kbd>←</kbd> <kbd>→</kbd> move between steps, <kbd>Esc</kbd> closes it.',
       'If the narration has {cue} or {mark} boundaries, press <kbd>C</kbd> at each one while recording and its time becomes the cue (sync: manual). If you press it a different number of times than there are boundaries, no cues are placed and figures advance by time.']],
     ['Where it is saved, and closing cards', [`The left end of the status bar shows where the deck is saved. A working folder is written as you edit, so it has no Save button; to hand it out, make a single file (${FX}) from “Export ▾”. A single file is overwritten with Save.`,
@@ -379,6 +405,27 @@ const en = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
+  oldNorm: {
+    title: 'TTS steps made with an older text pre-processing', note: 'This audio was made before the pre-processing that removes the space between a number and its counter (“1 歩”), so it may be read like “ichi po”. The audio is still used as it is. Choose the steps to regenerate (nothing is regenerated automatically)',
+    go: (n) => 'Regenerate the ' + n + ' selected step' + (n === 1 ? '' : 's'), done: (n) => n + ' step' + (n === 1 ? '' : 's') + ' regenerated',
+  },
+  colab: {
+    title: 'Make the audio in Colab (when there is no WebGPU)', verified: ver('en'),
+    lead: 'On a computer without WebGPU (a school PC, Safari, an iPad) you can still make the same voices in free Colab and import them. ① Export the narration of the steps that need audio → synthesize in the Colab notebook → ② import the zip it returns. Only the steps whose narration is unchanged since the export are imported.',
+    scope: 'Steps to export', scopeNeed: (n) => `steps without audio and stale steps (${n})`, scopeAll: (n) => `all steps (${n})`,
+    export: '① Export the steps that need audio (tts-job.json)', openColab: 'Open Colab', openColabT: 'Opens the official notebook (egatari-tts.ipynb) in Colab (new tab)', import: '② Import the zip…',
+    privacyTitle: 'Handing the narration to Colab', privacyBody: 'In Colab the narration text is processed in Google’s environment. tts-job.json holds only the text to read for the exported steps (after the reading dictionary) and the voice names: no slides, audio or other files of the working folder. Hand over only text you may share.', privacyGo: 'Export',
+    noSteps: 'No step to export (every step has up-to-date audio; choose “all steps” to make them again)',
+    exported: (n) => `Wrote tts-job.json (${n} step${n === 1 ? '' : 's'}). Open the notebook with “Open Colab”, run it from the top and upload this file when asked, then load the zip it returns with “② Import”`,
+    importing: 'Reading the zip…', zipFail: (m) => 'Cannot import the zip: ' + m,
+    rejectDoc: 'This zip was made for another lesson (the docId differs), so nothing was imported',
+    rejectRecords: (w) => 'This zip cannot be imported (' + w + ')',
+    summary: (a, m, k) => `Imported: ${a} applied (sync auto) / ${m} marked (the narration changed after the export) / ${k} skipped`,
+    skipWhy: { 'no-step': 'no such step in the narration now', 'no-audio': 'the audio is not in the zip', cues: 'the number of cue points differs from the narration' },
+    skipped: (k, w) => `Skipped: ${k} (${w})`, warnDict: 'The reading dictionary used for the audio differs from the current one (readings may differ slightly)', warnProc: 'The post-processing version of the audio differs from this editor’s',
+    marked: 'Marked (steps whose narration changed after the export)', markedNote: 'Not used automatically. If you use one, it stays marked stale',
+    useOld: 'Use it, still marked stale', discard: 'Discard', applyFail: (k, m) => `${k}: could not be used (${m})`,
+  },
   api: {
     cancelled: 'Another deck (workspace) was opened, so this save was cancelled. Nothing was written.', busySave: 'Saving. Press again when it has finished.',
     notFound: 'Source not found', badRange: 'Bad range or text', conflict: 'The source has changed. Please reload',

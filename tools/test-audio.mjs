@@ -268,7 +268,7 @@ try {
   await shot(page, 'audio-tts-take.png');
   const man2 = JSON.parse(await opfsRead('audio/manifest.json'));
   const e2 = man2.segments[key];
-  ok(e2.kind === 'tts' && e2.sync === 'auto' && e2.recipe.engine === 'stub' && e2.recipe.seed === 42 && e2.recipe.voice.expert === 'bob' && !('novice' in e2.recipe.voice), 'tts: manifest entry kind tts with recipe (voices of the roles that speak)');
+  ok(e2.kind === 'tts' && e2.sync === 'auto' && e2.recipe.engine === 'stub' && e2.recipe.seed === 42 && e2.recipe.voice.expert === 'bob' && !('novice' in e2.recipe.voice) && e2.recipe.textNormalize === 'join-num-counter@1', 'tts: manifest entry kind tts with recipe (voices of the roles that speak, textNormalize)');
   ok((await audioState()).state === 'fresh', 'tts: up to date again');
   ok((await opfsList('.cache/edits') || []).some((n) => n.endsWith('-manifest.json')), 'tts: the previous manifest was backed up to .cache/edits/');
   ok((await opfsList('audio')).filter((n) => n.endsWith('.mp3')).length === 3, 'tts: the earlier recordings stay in audio/ (not deleted)');
@@ -281,6 +281,59 @@ try {
   const e3 = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
   ok(/^tts_[0-9a-f]{16}\.wav$/.test(e3.file) && !('startOffset' in e3) && String.fromCharCode(...(await opfsRead('audio/' + e3.file, true))) === 'RIFF', 'no MP3 encoder: the take is saved as WAV without startOffset');
   await page.evaluate(() => { window.__APP_TEST.mp3 = undefined; });
+  // 前処理の版（format spec §5.4）：「1 歩」は合成の直前だけ「1歩」にする（ttsParts・inputHash は変えない）。recipe.textNormalize のない古い TTS は
+  // stale ではなく（鳴らし続ける）、一覧に挙げ、利用者が選んだものだけ作り直す。録音・取り込みは挙げない
+  {
+    const nrN = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), key);
+    const rN = await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + '1 歩進みます。' })) }), [key, nrN]);
+    ok(rN._status === 200 && rN.changed, 'textNormalize: narration with "1 歩" written');
+    await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+    await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: 15000 });
+    const nCalls = (await page.evaluate(() => window.__ttsCalls)).length;
+    await page.click('#dev-audio-tts');
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.state === 'fresh'; }, null, { timeout: 30000 });
+    const callsN = (await page.evaluate(() => window.__ttsCalls)).slice(nCalls);
+    ok(callsN.some((c) => c.text.includes('1歩進みます')) && !callsN.some((c) => /1\s+歩/.test(c.text)), `textNormalize: the engine gets "1歩" (${callsN.map((c) => c.text).join(' / ')})`);
+    const eN = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
+    ok(eN.recipe.textNormalize === 'join-num-counter@1', 'textNormalize: a new TTS take records recipe.textNormalize');
+    const segN = parseNarration(await opfsRead('narration.md')).find((x) => `${x.slideKey}:${x.stepKey}` === key);
+    ok(eN.inputHash === await PF.inputHash(segN) && segN.turns[0].ttsParts.join('').includes('1 歩'), 'textNormalize: inputHash is still of the text with the space (ttsParts unchanged)');
+    ok(!(await page.isVisible('#dev-audio-oldnorm')), 'textNormalize: a take with the current version is not listed');
+    // 古い版：field を外し、別の段階に（録音・取り込み・もう 1 つの古い TTS）を足す
+    const others = parseNarration(files['narration.md']).map((x) => `${x.slideKey}:${x.stepKey}`).filter((k) => k !== key);
+    const manN = JSON.parse(await opfsRead('audio/manifest.json'));
+    const { textNormalize: _drop, ...oldRecipe } = manN.segments[key].recipe;
+    manN.segments[key] = { ...manN.segments[key], recipe: oldRecipe };
+    manN.segments[others[0]] = { ...manN.segments[key], inputHash: null };
+    manN.segments[others[1]] = { file: eN.file, dur: eN.dur, kind: 'recorded', sync: 'none', cues: [], inputHash: null };
+    manN.segments[others[2]] = { file: eN.file, dur: eN.dur, kind: 'imported', sync: 'none', cues: [], inputHash: null };
+    await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manN, null, 1));
+    const before = JSON.stringify(manN.segments[key]);
+    await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+    await page.waitForSelector('#dev-audio-oldnorm');
+    ok((await audioState()).state === 'fresh' && !(await page.isVisible('#dev-audio-stale')), 'textNormalize: an old take without the field is not stale (keeps playing)');
+    const listed = await page.evaluate(() => [...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].map((c) => c.dataset.key));
+    ok(listed.length === 2 && listed.includes(key) && listed.includes(others[0]) && !listed.includes(others[1]) && !listed.includes(others[2]), 'textNormalize: listed (TTS only; recorded and imported are never listed) ' + JSON.stringify(listed));
+    ok((await page.textContent('#dev-audio-oldnorm')).includes('前処理の版が古い TTS の段階') && await page.isDisabled('#dev-audio-oldnorm-go'), 'textNormalize: the list has its heading and the button is disabled until something is chosen');
+    const nIdle = (await page.evaluate(() => window.__ttsCalls)).length;
+    await page.waitForTimeout(800);
+    ok((await page.evaluate(() => window.__ttsCalls)).length === nIdle && JSON.stringify(JSON.parse(await opfsRead('audio/manifest.json')).segments[key]) === before, 'textNormalize: nothing is regenerated by itself');
+    // 選んだ 1 つ（key）だけ作り直す
+    await page.check(`#dev-audio-oldnorm input[data-key="${key}"]`);
+    await page.click('#dev-audio-oldnorm-go');
+    await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.key === k && s.entry && s.entry.recipe && s.entry.recipe.textNormalize; }, key, { timeout: 30000 });
+    const after = JSON.parse(await opfsRead('audio/manifest.json')).segments;
+    ok(after[key].recipe.textNormalize === 'join-num-counter@1' && !('textNormalize' in (after[others[0]].recipe || {})), 'textNormalize: only the chosen step was regenerated; the unchosen old take is untouched');
+    await page.waitForSelector('#dev-audio-oldnorm');
+    ok(await page.evaluate((k) => [...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].map((c) => c.dataset.key).join() !== '' && ![...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].some((c) => c.dataset.key === k), key), 'textNormalize: the regenerated step leaves the list');
+    await shot(page, 'audio-oldnorm.png');
+    // 後始末：足した段階の記録を外す
+    const manC = JSON.parse(await opfsRead('audio/manifest.json'));
+    for (const k of others.slice(0, 3)) delete manC.segments[k];
+    await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manC, null, 1));
+    await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+    await page.waitForFunction(() => !window.__APP_TEST.audio().loading && document.getElementById('dev-audio-voices') && !document.getElementById('dev-audio-oldnorm'), null, { timeout: 15000 });
+  }
   // 声の欄（#18・#19）：1 人の語りなら欄は 1 つ。見本を鳴らす（モデルは読み込まない）。選ぶと voice.json に書く
   ok(await page.evaluate(() => { const s = [...document.querySelectorAll('#dev-audio-voices select')]; return s.length === 1 && [...s[0].options].map((x) => x.value).join() === 'bob,alice' && s[0].value === 'bob'; }), 'voice: one picker for a one-speaker deck, bob and alice for Japanese');
   await page.click('#dev-audio-voices .dv-sample');
@@ -306,7 +359,7 @@ try {
   ok(await page.evaluate(() => { const o = [...document.querySelectorAll('#dev-audio-voices select option')].map((x) => x.value); return o.includes('am_michael') && !o.includes('bob') && document.querySelector('#dev-audio-voices select').value === 'am_michael'; }), 'narration language: voice.json "lang": "en" picks Kokoro voices for a Japanese deck');
   await page.evaluate(() => { window.__ttsCalls.length = 0; });
   await page.click('#dev-audio-tts');
-  await waitUsed('tts', 5);
+  await waitUsed('tts', 7);
   ok(await page.evaluate(() => window.__ttsCalls.length > 0 && window.__ttsCalls.every((c) => c.lang === 'en' && c.voices.expert === 'am_michael')), 'narration language: TTS is asked for English with a Kokoro voice');
   await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{}'); await w.close(); });
   // 掛け合いにすると、読む原稿の各ターンに Expert / Novice の印、声の欄は役ごと
@@ -322,7 +375,7 @@ try {
   await page.waitForTimeout(400);
   await shot(page, 'audio-recording-dialogue.png');
   await page.click('#dev-audio-rec');
-  await waitUsed('recorded', 6);
+  await waitUsed('recorded', 8);
   // Esc（#48）：後に開いた窓から 1 つずつ。Shift+Esc で全部
   await page.click('#b-narr');
   await page.waitForSelector('#dev-narr');

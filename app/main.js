@@ -569,8 +569,13 @@ const tts = createTtsClient({
   confirm: async (label) => (await ask({ title: T.ttsTitle, body: [el('p', { id: 'tts-what', text: label }), el('p', { cls: 'hint', text: T.ttsPrivacy })],
     buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: T.ttsGo, pri: true }] })) === 'ok',
 });
+// 教材の識別子（docId）：1 ファイルは索引、作業フォルダは設定のファイル（まだなければ null）。Colab の往復で別の教材の zip を取り違えないために使う
+async function colabDocId() {
+  if (S.portable) return typeof S.portable.index.docId === 'string' ? S.portable.index.docId : null;
+  try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
+}
 const audio = createAudioPanel({
-  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
+  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null, oldNorm: T.oldNorm,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
@@ -585,6 +590,12 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
+  // Colab で音声を作る（WebGPU のない PC）：原稿の文が Google の環境で処理されるので、書き出す前に 1 度確かめる
+  colab: {
+    t: T.colab, version: RES.version,
+    docId: colabDocId,
+    confirm: async (title, body, go) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
+  },
 });
 // 録音モード（app/rec-mode.js）：キーボードだけで段階ごとに録る。信頼する編集の画面の中の幅広い板（プレビューは横に細くして、その段階の舞台を見せる）。
 // 音声の板（audio）の peek / commit / revert を通すので、書き方（audio/manifest.json・権利の確認・前に戻す）は音声の板と同じ

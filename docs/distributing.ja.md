@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.md sha256=074ca10868a9c8d3 -->
+<!-- i18n: pair=distributing.md sha256=6ee0e6ac6b5abaf4 -->
 # 学ぶ人に教材を配る
 
 [English](distributing.md) | 日本語
@@ -15,6 +15,7 @@
 - **スマートフォン・タブレット：** ファイルのアプリの簡易表示（iPhone の「ファイル」App など）では動かないことがある。ブラウザで開くか、URL を渡す。すべての機械と経路はまだ確かめていない。動いた・動かなかった経路を教えてほしい（[感想を送る](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml)）
 - **授業の前に確かめる：** 配るファイルを、自分のでない計算機で、学ぶ人と同じやり方（ダウンロードしてから開く）で開き、音声付きで 1 枚再生してみる
 - **直せるファイルは手元に：** 配るのは再生専用の写しにし、あとで直すための 1 ファイルか作業フォルダは手元に残す（再生専用の写しは直せない）
+- **WebGPU のない PC での音声：** WebGPU のない PC でも、エディタから Colab で音声を作れる（[Colab で音声を作る](editor.ja.md#colab-で音声を作るwebgpu-がないとき)）。<!-- colab-verified --> 確認済み：2026-10-21、Irodori、Colab の T4 GPU（作者の環境で 1 回）。Kokoro と CPU はまだ。**プライバシー：** Colab では原稿の文が Google の環境で処理されるので、共有してよい文だけに使う。書き出す `tts-job.json` には読み上げる文と声の名前だけが入り、教材のほかのものは入らない
 
 ## 授業の部屋（授業中の質問と投票。下書き）
 
