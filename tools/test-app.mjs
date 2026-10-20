@@ -27,6 +27,7 @@ import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
+import { clickUntil } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
 
@@ -1372,7 +1373,7 @@ try {
     // 開く（保存していない変更を捨ててよいかを聞かれたら「捨てる」）
     const openBytes = (text, name) => {
       const p = po.evaluate(([t, n]) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(t), name: n }), [text, name]);
-      return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await po.click('#dlg-discard'); } return p; })();
+      return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await clickUntil(po, '#dlg-discard', () => po.waitForSelector('#dlg[open] #dlg-discard', { state: 'detached', timeout: 2500 })); } return p; })();
     };
     // 品質チェックのエラーの数
     const quickErrors = async () => {

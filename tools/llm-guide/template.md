@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=090adab7381a4895 -->
+<!-- i18n: pair=template.ja.md sha256=f2aad6b797a1cde1 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -95,13 +95,13 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ### 2.6 Components
 
-- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Function expressions are JavaScript (`Math.exp(x)`, `x**2`). Use components only where motion explains something; most slides need none.
+- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Function formulas are arithmetic expressions only (`Math.exp(x)`, `x**2`); they are never run as code. Use components only where motion explains something; most slides need none.
 
 ### 2.7 Fitting the slide (1280×720; the quality checker reports errors)
 
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
-- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px. Put `data-clip` on an element that is clipped on purpose.
+- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a component of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px.
 - **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole deck (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Component catalog

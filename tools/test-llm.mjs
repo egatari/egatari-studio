@@ -15,6 +15,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
@@ -289,7 +290,7 @@ for (const name of ['common', 'academic', 'business', 'kokugo']) {
     fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true });
     fs.writeFileSync(path.join(d, 'deck.html'), a.deck); fs.writeFileSync(path.join(d, 'narration.md'), a.narration);
     const c = node('kit/check.mjs', path.join(d, 'deck.html'), '--json');
-    const j = JSON.parse(c.stdout);
+    const j = parseCheck(c.stdout, c.status);   // 検査が終わっていない（終了コード 2）ときは例外（エラー 0 と取り違えない）
     assert.equal(j.counts.error, 0, JSON.stringify(j.results.filter((x) => x.sev === 'error')));
     assert.equal(j.counts.warn, 0, JSON.stringify(j.results.filter((x) => x.sev === 'warn')));
     assert.ok(!j.results.some((x) => /legacy/.test(x.msg)));

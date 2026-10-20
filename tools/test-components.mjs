@@ -41,6 +41,7 @@ for (const { name, version, dir } of comps) {
   } catch (e) {
     try { qc = JSON.parse(String(e.stdout || '')); } catch { qc = null; }
   }
+  if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
   const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
   const qBad = qErrs ? qErrs.filter((x) => !(KNOWN[name] || []).includes(x.rule)) : null;
   const shots = path.join(outRoot, name, 'shots');
