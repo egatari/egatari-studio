@@ -438,23 +438,31 @@ async function pixelDiff(a, b) {
 // 埋め込みの字はスライドが見えたときに初めて読まれるので、先に全部読んでおく
 const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f) => f.load().catch(() => {})))
   .then(() => document.fonts.ready).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+// 1 つの段階について、(A) 開き直して 1 回だけ seek した絵と、(B) 別の段階へ飛び回ってから seek した絵が違うか
+async function orderDiffers(m, k) {
+  await page.goto(url);
+  await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await settle();
+  await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
+  await settle();
+  const bufA = await page.screenshot({ clip: CLIP });
+  await page.evaluate(([i, max]) => DECK.seek(i, max, Infinity), [m.i, m.max]);
+  await page.evaluate(([i]) => DECK.seek(i, 0, Infinity), [m.i]);
+  await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
+  await settle();
+  let bufB = await page.screenshot({ clip: CLIP });
+  if (!bufA.equals(bufB)) { await settle(); bufB = await page.screenshot({ clip: CLIP }); }   // 描画の遅れによる誤検出を避ける
+  // アンチエイリアスの揺らぎ（数ピクセル・数階調）は許す。はっきり違う画素が 40 を超えたら依存とみなす
+  return !bufA.equals(bufB) && (await pixelDiff(bufA, bufB)) > 40;
+}
 for (const m of meta) {
   if (!m.comps) continue;
   for (let k = 1; k <= m.max; k++) {
-    await page.goto(url);
-    await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
-    await settle();
-    await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
-    await settle();
-    const bufA = await page.screenshot({ clip: CLIP });
-    await page.evaluate(([i, max]) => DECK.seek(i, max, Infinity), [m.i, m.max]);
-    await page.evaluate(([i]) => DECK.seek(i, 0, Infinity), [m.i]);
-    await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
-    await settle();
-    let bufB = await page.screenshot({ clip: CLIP });
-    if (!bufA.equals(bufB)) { await settle(); bufB = await page.screenshot({ clip: CLIP }); }   // 描画の遅れによる誤検出を避ける
-    // アンチエイリアスの揺らぎ（数ピクセル・数階調）は許す。はっきり違う画素が 40 を超えたら依存とみなす
-    if (!bufA.equals(bufB) && (await pixelDiff(bufA, bufB)) > 40) report(m.i, 'error', 'compOrder', { k }, String(k));
+    // 呼び出し順への依存は、何度やっても同じ絵の違いになる。最初の 1 回だけ違い、開き直すと揃うのは、遅い機械（CI の macOS の最初の 1 回）で
+    // 字などの読み込みが終わる前に A を撮った誤報なので、3 回続けて違ったときだけ報告する
+    let differs = true;
+    for (let n = 0; n < 3 && differs; n++) differs = await orderDiffers(m, k);
+    if (differs) report(m.i, 'error', 'compOrder', { k }, String(k));
   }
 }
 // 検査のために何度も飛び回ったので、最後にもう一度最初から開き直しておく（念のため）
