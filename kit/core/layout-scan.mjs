@@ -10,8 +10,8 @@
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 //
-// わざと切る印（CLIP_ATTR、提案。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
-// 図の箱からはみ出す、の 3 つ（textClipped・svgTextOut・svgTextBox・outsideBody）を見ない。縦横どちらにも効く。前からの検査（bodyBottom など）には効かない
+// わざと切る印（CLIP_ATTR。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
+// 図の箱からはみ出す、の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）を見ない。縦横どちらにも効く。前からの検査（bodyBottom など）には効かない
 export const CLIP_ATTR = 'data-clip';
 
 export function layoutScan(s, o) {
@@ -27,6 +27,7 @@ export function layoutScan(s, o) {
   const box = (r) => ({ l: (r.left - sr.left) / k, t: (r.top - sr.top) / k, r: (r.right - sr.left) / k, b: (r.bottom - sr.top) / k });
   const h2 = s.querySelector('h2'), c = s.querySelector('.concl'), body = s.querySelector('.body');
   const tate = s.classList.contains('layout-tate');
+  let bodyOver = false;   // 本文が下にはみ出す（bodyBottom）。そのスライドでは、本文の中の字がスライドの外に出ることを別に数えない
 
   // ---------------------------------------------------------------- 見出しと結論の行
   if (h2) {
@@ -61,7 +62,7 @@ export function layoutScan(s, o) {
       maxR = Math.max(maxR, (r.right - sr.left) / k);
       minL = Math.min(minL, (r.left - sr.left) / k);
     });
-    if (maxB > lim) add('error', 'bodyBottom', { px: Math.round(maxB), lim, concl: !tate && lim === 565 });
+    if (maxB > lim) { bodyOver = true; add('error', 'bodyBottom', { px: Math.round(maxB), lim, concl: !tate && lim === 565 }); }
     if (maxR > limR) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: Math.round(maxR), lim: limR } : { px: Math.round(maxR) });
     if (minL < limL) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: Math.round(minL), lim: limL });
     // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
@@ -149,7 +150,9 @@ export function layoutScan(s, o) {
     }
     const inBody = !!(body && body.contains(p.el));
     // 2. SVG の字がスライドの外に出る（部品の SVG は overflow:visible なので、枠では切れずにスライドの端で切れる）
+    //    本文が下にはみ出すスライド（bodyBottom のエラー）では、本文の中の字がスライドの外に出るのは同じ原因なので数えない（本文を減らせばどちらも消える）
     const d = over(p.b, { l: 0, t: 0, r: 1280, b: 720 }, true, true);
+    if (d > TOL && inBody && bodyOver) continue;
     if (p.svg && d > TOL) { note('svgTextOut', { t: p.t, px: Math.round(d), edge: 'slide' }); continue; }
     // 3. 本文の外（見出し・結論の行・ページ番号のほか）に置いた字：スライドの外に出る・見出し・結論の行・ページ番号に重なる
     if (!inBody && !frame.some((f) => f.contains(p.el))) {

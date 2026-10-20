@@ -3,7 +3,7 @@
 // 1. 試験用のデッキ（tools/fixtures/check-overflow/deck.html。#52 の例 2 つ（s-fix52a・s-fix52b）を含む）を kit/check.mjs --json で検査し、
 //    スライドごとに出る体裁の知らせが決めたとおり：m-flow の箱からはみ出す字（svgTextBox）、印のない切れた箱（textClipped）、
 //    スライドの外に出る m-kpi の札の名前（svgTextOut の slide）と札の箱からはみ出す名前（svgTextBox）、viewBox で切れる字（svgTextOut の viewBox）、
-//    本文の外の字（outsideBody）、図の中の小さい字（smallSvgText）、縦組みの見出しと結論の列（tateTitle・conclOverflow）。
+//    本文の外の字（outsideBody）、本文が下にはみ出すスライドでは本文の中の図の字がスライドの外に出ても bodyBottom だけ、図の中の小さい字（smallSvgText）、縦組みの見出しと結論の列（tateTitle・conclOverflow）。
 //    わざと切る印（data-clip。kit/core/layout-scan.mjs の CLIP_ATTR）を付けたもの（s-fix52b・s-flowclip）は何も出さない。新しい知らせは警告
 // 2. 知らせの言葉（kit/check-messages.mjs）：新しい code は日本語と英語があり、規格は R-fit、textClipped は印の名前を言う
 // 3. ブラウザ版の品質チェック（app/frame-shim.js を app/main.js と同じく withLayoutScan で包み、プレビューと同じ文書で動かす）：
@@ -35,7 +35,7 @@ const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'ut
 const DECK = path.join(ROOT, 'tools', 'fixtures', 'check-overflow', 'deck.html');
 // 見る知らせ：#52 の新しいもの（警告）と、#51 でブラウザ版にも出るようになったもの
 const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody'];
-const WATCH = [...NEW, 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
+const WATCH = [...NEW, 'bodyBottom', 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
 const EXPECT = {
   's-fix52a': ['svgTextBox'],
   's-fix52b': [],
@@ -46,11 +46,13 @@ const EXPECT = {
   's-outside': ['outsideBody'],
   's-smallsvg': ['smallSvgText'],
   's-tate': ['conclOverflow', 'tateTitle'],
+  's-bodyover': ['bodyBottom'],
 };
 const codesBy = (list, idOf) => {
   const m = {};
   for (const id of Object.keys(EXPECT)) m[id] = [];
-  for (const r of list) { const id = idOf(r); if (id in m && WATCH.includes(r.code) && !m[id].includes(r.code)) m[id].push(r.code); }
+  // ブラウザ版の前からの code（overflowBottom）はコマンド版の名前にそろえて比べる
+  for (const r of list) { const id = idOf(r), code = r.code === 'overflowBottom' ? 'bodyBottom' : r.code; if (id in m && WATCH.includes(code) && !m[id].includes(code)) m[id].push(code); }
   for (const id of Object.keys(m)) m[id].sort();
   return m;
 };
@@ -73,6 +75,10 @@ await t('check: s-fix52a names the label that overflows its m-flow box', () => {
 await t(`check: ${CLIP_ATTR} keeps the intended clip (s-fix52b) and a marked component (s-flowclip) quiet`, () => {
   const xs = J.results.filter((x) => (x.id === 's-fix52b' || x.id === 's-flowclip') && x.sev !== 'info' && x.code !== 'narrMissing');
   assert.deepEqual(xs.map((x) => x.code), []);
+});
+await t('check: a body that overflows at the bottom is one error, not also a warning for each figure label it pushes off the slide', () => {
+  const xs = J.results.filter((x) => x.id === 's-bodyover' && x.sev !== 'info' && x.code !== 'narrMissing');
+  assert.deepEqual(xs.map((x) => x.sev + ' ' + x.code), ['error bodyBottom']);
 });
 await t('check: viewBox and slide edges are told apart; text outside the body says what it hits', () => {
   assert.equal(J.results.find((x) => x.id === 's-viewbox' && x.code === 'svgTextOut').data.edge, 'viewBox');

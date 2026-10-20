@@ -177,6 +177,18 @@
   <div class="concl"><span>⇒ 図の字は 24px から</span></div>
 </section>
 
+<!-- 本文が下にはみ出し、その中の図の字もスライドの下へ出る：本文のエラー（bodyBottom）だけを出し、図の字（svgTextOut）は数えない（同じ原因） -->
+<section class="slide" id="s-bodyover">
+  <h2>本文ごと下に出る図</h2>
+  <div class="body">
+    <div style="height:300px"></div>
+    <svg viewBox="0 0 400 400" width="400" height="400" style="overflow:visible" aria-label="下に出る図">
+      <text x="10" y="390" font-size="28" style="fill:var(--fg)">下に出る字</text>
+    </svg>
+  </div>
+  <div class="concl"><span>⇒ 本文を減らす</span></div>
+</section>
+
 <!-- 縦組みの限り（#51）：見出しが列に収まらない（tateTitle）、結論の列が高さではみ出す（conclOverflow） -->
 <section class="slide layout-tate" id="s-tate">
   <h2>縦組みの見出しがとても長くて一列には収まりきらない例</h2>

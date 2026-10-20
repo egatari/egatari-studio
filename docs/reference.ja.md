@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=1ce5c6138195d64d -->
+<!-- i18n: pair=reference.md sha256=e682fbb4cd759688 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -338,7 +338,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 結論の行が 35 字を超える（日本語）/ 70 文字を超える（英語）。結論が枠からはみ出す（`layout-tate` の縦の列でも） | エラー / 警告。エラー |
 | 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px） | エラー |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない） | エラー |
-| `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る提案)、提案） | 警告 |
+| `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
 | 本文の「です・ます」（日本語） | エラー |
 | 組まれていない式、KaTeX のエラー | エラー |
 | デッキの中で「、。」と「，．」が混ざる（日本語） | 警告 |
