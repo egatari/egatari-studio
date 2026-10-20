@@ -8,6 +8,117 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.2] - 2026-10-20
+
+### Added
+
+- Player: when any step's audio was made with TTS, the control bar shows a small "AI voice" / 「AI 音声」 badge (tooltip "The narration
+  audio is AI-generated"), with the same line in the key list and the presenter view. Every output carries the audio `kind` in `deck-audio`
+- Attachments: an optional `description` (one or two plain-text sentences, at most 300 characters), editable in the editor's
+  Attach panel and shown under the title in the player's download list
+- Docs: `docs/distributing.md` (ja/en), how to hand a lesson to learners (Google Drive: download before opening,
+  email, LMS, own web space), linked from the editor help
+- Docs: TTS on Windows and Linux (any OpenAI-compatible TTS server, the editor's Audio panel; a Colab route is coming),
+  and a release check for dependencies on the maintainer's environment (RELEASING.md)
+- Editor app: **Export ▾ → Export play-only copy for students** (`.play.ega.html`) for single files and working folders
+  (a single file is exported from its saved state)
+- AI instruction pack: a **Pack version** line (a hash of the pack's material, set by `npm run gen`), and
+  how to register the pack in claude.ai, ChatGPT and Gemini (pasting each time stays the default)
+- AI instructions: the copied pack ends with “What I want”, a request with fields to fill in (A: a new lesson,
+  B: from the discussion so far); fields left empty may be deleted
+- Editor app: the status bar always shows where the deck is saved (working folder, saved file, unsaved changes, not saved yet);
+  in a working folder **Export ▾** names the single file as the one "to hand out"
+- Editor app: **Esc** closes the open cards one at a time, topmost first; **Shift+Esc** closes them all
+- CI: `npm test` on macOS, and a `clean` job on Linux, Windows and macOS (`tools/clean-env.mjs`: an empty `HOME`, no TTS
+  server; builds, checks and exports every example, `tts/synth.py --dry-run`, `npm run new`)
+- `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses or secrets locations in tracked files,
+  only bundled skills named in `skills/`, the paths and npm scripts documents name exist, `kit/` and `server/` do not import
+  `tts/` or `render/`
+- Editor app: **Help** shows the storage the site uses and the stored browser TTS models, with **Delete models**
+- Browser TTS: loading a model deletes the caches of older model versions and asks for persistent storage
+  (`navigator.storage.persist`)
+- Editor app, Audio panel: a voice picker per speaking role (bob / alice for Japanese, Kokoro voices for English) with
+  short pre-made samples (`lab/voices/samples/`); the choice goes to `voice.json` (kept in memory for single files)
+
+### Changed
+
+- Editor app, dev server and docs: Alt+click comments are “Notes for the AI” (「AI へのメモ」) instead of
+  “Notes for Claude”, and the help names AI coding tools in general; `comments.json` is unchanged
+- Editor app (Japanese): the copy buttons say 「コピー」 instead of 「写す」 (「AI への指示をコピー」 and others)
+- Attachments (spec §3.8, still draft): each role takes only its formats (pdf: PDF; data: CSV, TSV, JSON, text, xlsx; code: source,
+  ipynb, environment files; source: TeX, Markdown, text, docx; supplement: PNG, JPEG, WebP, PDF, text), checked by name and content
+- Attachments: executables (also `.js`, `.bat`), HTML, SVG, archives, macro or legacy Office, audio, video and files of two types
+  are never attached, nor PDFs with JavaScript, automatic actions or embedded files, nor Office files with macros or external links
+- Attachments: `--portable` leaves such files out and a tier A save refuses them, naming the rule; the editor refuses them on add,
+  rename or role change; the checker reports MUST NOT cases (audio and video too) as errors and SHOULD cases as warnings
+- Attachments: formula injection in CSV, TSV and xlsx and credential-like text are warnings only; encrypted PDFs that open
+  without a user password are decrypted and checked; decompression is bounded
+- Attachments: the player offers only the formats each role takes and checks the first bytes before saving
+- Attachments: the `egatari.json` inside a single file lists exactly `index.attachments` (spec §3.3); unpacking writes
+  `index.attachments` into `egatari.json`, packing reads it, and a file whose two lists differ is refused (`attachments-mismatch`)
+- Attachments (spec §3.8 at 9242080): `title` is required, one line of at most 120 characters (was 200), `description` one line
+  of at most 300, counted in code points as in the schema; a bad title keeps it off the list, a bad description is dropped (warns)
+- Attachments: the script extensions refused in every role are exactly the spec's list (`.js` … `.lnk`; JavaScript source as
+  `.mjs`, `.cjs` or `.ts`), reported as their own category; binary executables stay refused as executables
+- Player: offers an attachment only with a valid title, an extension its role takes and the matching media type, saves it under
+  its path's file name, and adds "Run code only if you trust its source" to code attachments
+- Editor app, Audio panel: a recorded, imported or TTS take is used for the step right away;
+  **↶ Revert to previous** brings back the step's earlier audio (no audio file is deleted). "Use this take" remains only when writing failed
+- Editor app, Audio panel: the script field grows with the narration, can be resized, and labels every turn (Expert too) in a dialogue
+- Editor app, Audio panel: without WebGPU the panel suggests recording first and no longer points to `tts/synth.py`
+- Build: every output (plain build, dev and preview, single file, play-only) copies the audio record's `kind` (`tts`, `recorded`,
+  `imported`) into `deck-audio` (format spec 05c577f); the player reads it first and falls back to the index records
+- Player: for imported audio the key list and the presenter view say "How the audio was made is not recorded" /
+  「音声の作り方は記録されていません」 (format spec §7.3); nothing about the audio is shown on the slide or with the captions
+- Development: GitHub Pages deploys only from release tags `vX.Y.Z` (pushes to `main` and pull requests only build); changes are recorded as `changes/*.md` fragments that `node tools/changelog.mjs --release X.Y.Z` assembles; `npm run gen` / `npm run gen:check` for the generated files; `npm test` finds unit tests by a `// test-all: unit` line and compares interface shapes with a snapshot (`tools/test-api-shapes.mjs`). See CONTRIBUTING.md and RELEASING.md
+- AI instructions and `motion-slides` skill: one narrator by default; R-dialogue writes an Expert/Novice dialogue only
+  when asked, with Novice voicing a learner's question or paraphrasing, at most one 2–3 turn exchange per slide
+  (cognitive apprenticeship, arXiv:2607.12235). The worked examples are single-narrator; the skill no longer refers
+  to a skill outside the repository
+- Editor app: **Recently opened** lists single files too (when the browser gave a file handle) and reopens them
+- Editor app: in Safari and on iPad the first screen says to use **Paste AI output** to make a new lesson, and that
+  each save of a single file downloads a new file (also in the save notice)
+- Editor app: **Export single file** and **Export built HTML** suggest the lesson title as the file name (made safe for every
+  OS), not `deck.ega.html`; without a title, the deck file name
+- Checker: the narration language is decided apart from the slide language (`"lang"` in `voice.json`, otherwise the script of
+  the turns, otherwise `<html lang>`), and R-formula and long turns use each turn's own language; a new info `narrLang` says so
+- The hosted Egatari Studio moved to https://studio.egatari.org/ (editor.egatari.org forwards there)
+- Browser TTS: a voice name it does not have is handled alike in Japanese and English: the Audio panel says so and uses
+  the role's default voice; the TTS window refuses unknown names instead of silently using `am_michael`
+
+### Removed
+
+- Video: the canon export (`render/export-canon.mjs`, the Marp-style lesson bundle, `CANON_DIR`) and its section in
+  the contract (§6, number kept), docs and the `motion-slides-video` skill. Video export (`render/render.mjs`) is unchanged
+
+### Fixed
+
+- Player: captions no longer sit under the control bar; while the bar is shown over the bottom edge they move up above it
+- Tests: `test-bounded-read` measures memory growth after loading instead of the absolute peak (Node 24 starts larger);
+  `test-app` waits for the stage to refit before measuring a comment point and compares within one screen pixel
+- Checker: English narration on a Japanese deck no longer gives an R-formula warning for every English sentence
+- Checker: a Japanese sentence that only names things in Latin letters (“Markdown と HTML”) is no longer taken for a formula;
+  formulas such as `ax + by = c` or `sin x cos y` still are
+- Editor app: the preview plays the deck's audio (folder and single file): the editor reads the files that
+  `audio/manifest.json` lists and the preview plays them from `blob:` URLs of its own document
+- Editor app: after **Paste AI output** → **Replace the current deck** in a working folder, the quick check no longer stops with
+  “Could not check (the deck did not answer)”: it waits for the rebuilt preview and asks that one (and asks again if the preview reloads)
+- Editor app: the quick check waits until the deck is ready instead of answering with no results
+- Editor app: the quick check note no longer ends with “… is npm run check” as if cut off; it says what is checked and that
+  **Copy fix request for your AI** (shown when there are results) has the AI fix the errors
+- TTS (`tts/yomi.py` and the editor's browser TTS): the minus sign `−` (U+2212) is read as マイナス; Irodori-TTS's text
+  normalisation dropped it, so `−1` was read as 1. This changes the dictionary digest, so local TTS remakes every step once
+- Reading dictionary: L殻, M殻, 送り仮名 and 濃い側, misread in a trial
+- Docs (editor): the browser TTS uses seed 0 like the local mlx server, but its waveform is not the same
+- Editor app, browser TTS: the engine (Irodori or Kokoro), the voices and the reading dictionary follow the narration language
+  (`voice.json` `"lang"`, then the narration text, then `<html lang>`), so English narration in a Japanese deck is no longer sent to Irodori
+- Editor app, single-file editor (`file://`): the Audio panel says that “Regenerate with TTS” is not available there and suggests recording
+
+### Security
+
+- PDF attachments: `/OpenAction` and `/AA` may only go to a place in the document (`GoTo`), links only `GoTo` or `URI`; other actions
+  (`SubmitForm`, `ImportData`, `GoToR`, `GoToE`, `Rendition`, `Named`, …) and PDFs that need a user password are refused
+
 ## [0.4.1] - 2026-10-19
 
 ### Added
@@ -335,7 +446,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/egatari/egatari-studio/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/egatari/egatari-studio/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/egatari/egatari-studio/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/egatari/egatari-studio/compare/v0.3.0...v0.3.1
