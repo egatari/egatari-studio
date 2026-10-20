@@ -254,7 +254,7 @@ try {
   await shot(page, 'audio-stale.png');
   await page.click('#b-check');
   await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声が古い')), null, { timeout: 30000 });
-  ok(true, 'stale: the quick check lists the stale step');
+  ok(true, 'stale: the quality check lists the stale step');
   await page.click('#panel-close');
   // TTS（差し替え）で作り直す
   await page.click('#dev-audio-tts');

@@ -1,10 +1,10 @@
-// 部品のデータの形（static shape、kit/shape.js）と、検査器・直しの依頼に載せる言葉の試験
+// 部品のデータの形（static shape、kit/shape.js）と、品質チェック・修正依頼に載せる言葉の試験
 //   node tools/test-shape.mjs [作業フォルダ]
 // 1. 単体：形の検査器（kit/shape.js）、スタックと場所の除去（kit/core/error-text.mjs）、読みの指定（飾りの付いた 1 つの記号）、
 //    スライドにない段階の手がかり（orphanDetail）、閉じる行のない narration.md の受け取り、囲みのない返事の送り直しの依頼
 // 2. ブラウザ：どの部品にも形の違うデータを渡したデッキを開き、例外を出さず、その場に札（.m-error）を出し、DECK.componentErrors に載ること
-// 3. 検査器：形の知らせ（スタック・一時フォルダの場所なし）と、部品が描けなくても data-step と .concl を数えること（tools/fixtures/bad-curves）
-// 4. 検査器：口述原稿の言語をスライドと別に決め、発言ごとにその言語の規則で式の読み上げを見ること（examples/minimal の写し）
+// 3. 品質チェック：形の知らせ（スタック・一時フォルダの場所なし）と、部品が描けなくても data-step と .concl を数えること（tools/fixtures/bad-curves）
+// 4. 品質チェック：口述原稿の言語をスライドと別に決め、発言ごとにその言語の規則で式の読み上げを見ること（examples/minimal の写し）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -167,7 +167,7 @@ try {
   ok(/“series” is not a field/.test(mcu) && /xr are attributes of <m-curves>/.test(mcu) && /no field “fn” \(write f\)/.test(mcu), 'm-curves: says series is not a field, xr is an attribute, fn → f');
 } finally { await browser.close(); }
 
-// ---------------------------------------------------------------- 3. 検査器（tools/fixtures/bad-curves：配列でない m-curves と data-step の 2 つ・結論）
+// ---------------------------------------------------------------- 3. 品質チェック（tools/fixtures/bad-curves：配列でない m-curves と data-step の 2 つ・結論）
 {
   const c = spawnSync(process.execPath, ['kit/check.mjs', 'tools/fixtures/bad-curves/deck.html', '--json'], { cwd: ROOT, encoding: 'utf8' });
   let j = null;
@@ -184,7 +184,7 @@ try {
   }
 }
 
-// ---------------------------------------------------------------- 4. 検査器：口述原稿の言語はスライドと別（日本語のスライドに英語の口述原稿。#37・#38）
+// ---------------------------------------------------------------- 4. 品質チェック：口述原稿の言語はスライドと別（日本語のスライドに英語の口述原稿。#37・#38）
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-narr-lang-'));
   try {

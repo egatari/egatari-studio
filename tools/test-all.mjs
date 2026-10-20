@@ -48,7 +48,7 @@ const steps = [
   ['test-tools', ['tools/test-tools.mjs', MIN, path.join(tmp, 'tools')]],
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
-  // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・検査器
+  // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・品質チェック
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
   ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
@@ -79,12 +79,12 @@ steps.push(
   ['build kokugo', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html']],
   ['build kokugo portable', ['kit/build.mjs', 'examples/kokugo-kanbun/deck.html', '--portable', '-o', path.join(tmp, 'kokugo.html')]],
   ['check kokugo', ['kit/check.mjs', 'examples/kokugo-kanbun/deck.html']],
-  // 縦組みのスライド（layout-tate）：見出しの列・本文・結論の列・ページ番号の位置と重なり、決定性、検査器、鍵と読める層
+  // 縦組みのスライド（layout-tate）：見出しの列・本文・結論の列・ページ番号の位置と重なり、決定性、品質チェック、鍵と読める層
   ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
-// チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・直しの依頼・読みの検査・見本の取り込みと検査器の穴
-// （編集アプリの貼り付けと直しの依頼は test-app の中の tools/test-app-llm.mjs）
+// チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
+// （編集アプリの貼り付けと修正依頼は test-app の中の tools/test-app-llm.mjs）
 steps.push(
   ['llm guide', ['tools/make-llm-guide.mjs', '--check']],
   ['test-llm', ['tools/test-llm.mjs', path.join(tmp, 'llm')]],

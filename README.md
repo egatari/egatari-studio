@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=5822c20999b18f5e -->
+<!-- i18n: pair=README.ja.md sha256=68e8798d80769d26 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -30,7 +30,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 - **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, the current step highlighted), video (`?mode=video`)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
-- **Checker**: `kit/check.mjs` reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
+- **Quality control**: the standards (R-fit, R-steps, …) say what a deck must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
 - **Dev server**: edit text and narration in the browser, leave notes for your AI coding tool
 - **Single file (`.ega.html`)**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
@@ -50,7 +50,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 | | Tier 1: slides (core) | Tier 2: narrated video (optional) |
 |---|---|---|
 | You get | HTML deck, presenter view, lecture mode, PDF | per-step MP4 clips, a full video, a single file with audio |
-| Needs | Node ≥ 22; Google Chrome only for checking, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
+| Needs | Node ≥ 22; Google Chrome only for the quality checker, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
 | Optional | uv (font subsetting) | |
 
 **Slides are fully usable without TTS.** No tier-1 command imports anything from `tts/` or `render/`, and `build`, `check` and the dev server work when `audio/` and `voice.json` are absent. Without audio, autoplay (`a`) uses the default timing for each step, and the narration still shows in the presenter view as speaker notes.
@@ -72,7 +72,7 @@ winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
 winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
 ```
 
-Edge is already there, so the checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon. On Windows, use another OpenAI-compatible TTS server, or make or record each step's audio in the editor app ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)).
+Edge is already there, so the quality checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the narration audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon. On Windows, use another OpenAI-compatible TTS server, or make or record each step's audio in the editor app ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)).
 
 **Browsers**
 
@@ -97,7 +97,7 @@ node tools/get-fonts.mjs                            # optional: smaller font emb
 node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
 
-node kit/check.mjs examples/minimal/deck.html       # checker; the last line should read "エラー 0" (0 errors)
+node kit/check.mjs examples/minimal/deck.html       # quality check; the last line should read "エラー 0" (0 errors)
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF, one page per slide
 node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
 ```
@@ -111,7 +111,7 @@ npm run dev -- talks/mytalk/deck.html      # edit in the browser
 npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
 ```
 
-`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the checker uses English rules. For a fuller example, see `examples/minimal/`.
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, an attention mark and a component, with narration for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
 
 Every slide of a new deck has a stable id (`<section class="slide" id="s-k3f9q2">`), and its narration heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking narration, audio or timing. For a deck made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
 
@@ -151,13 +151,13 @@ The same editing as the dev server, as a web page that opens a single file (`.eg
 - **Open a single file, no folder needed:** “Open single file…” on the first screen (or dropping the file) opens a [single file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export single file” writes one. Works in any current browser (saving downloads where there is no file picker)
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a note for the AI (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a working folder:** drop the working folder (the one with `deck.html`) on the page, or press “Open working folder…”, and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent working folders are listed on the first screen.
-- **Draft with a chat AI, no coding tool needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quick check. “Copy fix request for your AI” in the quick check panel writes the problems, the rules they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
+- **Draft with a chat AI, no coding tool needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quality check. “Copy fix request for your AI” in the quality check panel writes the findings, the standards they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
 - **Narration audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the narration changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with browser TTS (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#narration-audio-audio-panel)). In a single file this is saved without rebuilding
 - **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
-- **Toolbar:** quick check, export the built HTML, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
+- **Toolbar:** quality check, export the built HTML, print / PDF, presenter view (a window with the narration and the next step), fullscreen.
 
-Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the full check) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The quick check is a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository components and themes are the ones bundled when the editor was built; components and themes inside the working folder are read from the folder.
+Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the command quality checker) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The browser quality checker covers a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full quality check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository components and themes are the ones bundled when the editor was built; components and themes inside the working folder are read from the folder.
 
 ![editor app](docs/images/editor-app.png)
 
@@ -185,7 +185,7 @@ foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
 
 | Skill | Use it for |
 |---|---|
-| `motion-slides` | plan, write, step, narrate, check and build a deck (tier 1) |
+| `motion-slides` | plan, write, step, narrate, quality-check and build a deck (tier 1) |
 | `motion-slides-video` | TTS, render and export a deck as video (tier 2) |
 | `motion-components` | write a new animated figure component, or move one into the library |
 
@@ -286,7 +286,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `docs/dev-server.md`, `docs/editor.md`, `docs/video.md`, `docs/distributing.md` | guides: the dev server, the editor app, making a video, and handing a lesson to learners ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md), [日本語](docs/distributing.ja.md)) |
 | `docs/authoring-with-llms.md` | instructions for chat AIs (claude.ai, Gemini, ChatGPT) to write a first draft; the common body; the series packs (academic, business, kokugo, info) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
 | `docs/reference.md` | reference: deck syntax, narration, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
-| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-deck template |
+| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, narration parser, quality checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-deck template |
 | `components/` | animated figure components; catalog in `components/CATALOG.md` |
 | `themes/` | themes |
 | `server/` | dev server and in-browser editor |
@@ -304,7 +304,7 @@ node tools/smoke.mjs examples/minimal/out/deck.html /tmp/smoke     # timeline + 
 node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
-node tools/test-links.mjs                                          # links to slides, Back, embedding, m-menu, checker
+node tools/test-links.mjs                                          # links to slides, Back, embedding, m-menu, quality checker
 node tools/test-dev-server.mjs
 node tools/test-app.mjs                                            # editor app (builds dist/ in a temp folder)
 ```
@@ -319,7 +319,7 @@ node tools/test-app.mjs                                            # editor app 
 
 ## Security
 
-A deck is code: its scripts and components run in your browser and in the headless Chrome used by the checker and renderer, and the build reads local files inside the working folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
+A deck is code: its scripts and components run in your browser and in the headless Chrome used by the quality checker and renderer, and the build reads local files inside the working folder. Build and serve only decks you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
 
 ## License
 

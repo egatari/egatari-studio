@@ -1,7 +1,7 @@
 // 国語の部品の試験（ブラウザなし）：m-kanbun の読み取り・訓読の順・書き下し文を、よく知られた詩文で確かめる
 //   node tools/test-kokugo.mjs
 // 部品の index.js を Node の vm で読み（DECK.MotionElement がないので部品は定義せず、DECK.kanbun だけを出す）、順と書き下し文を比べる。
-// 描画・決定性・検査器は tools/test-components.mjs（demo.html）と examples/kokugo-kanbun の check（npm test）
+// 描画・決定性・品質チェックは tools/test-components.mjs（demo.html）と examples/kokugo-kanbun の check（npm test）
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';

@@ -2,9 +2,9 @@
 //   「AI への指示を写す」：共通の本体と、選んだ系列（既定は今のデッキの部品・テーマから推したもの。なければ academic）を組み立てて写す（kit/core/llm-pack.mjs）
 //   「AI の出力を貼り付ける」：返事の全体から deck.html と narration.md を取り出し（kit/core/llm-import.mjs）、スライドに id を付け
 //   （kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で1 ファイル（.ega.html）にして（app/build-worker.js の
-//   exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、簡易チェックをかける。
+//   exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
 //   「今のデッキを置き換える」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
-//   「AI への直しの依頼を写す」：簡易チェックの結果・組み立ての知らせ・その決まりの文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
+//   「AI への修正依頼を写す」：品質チェックの結果・組み立ての知らせ・その規格の文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
@@ -23,7 +23,7 @@ const TX = {
   ja: {
     paste: 'AI の出力を貼り付ける…', pasteWelcome: 'AI の出力を貼り付ける',
     title: 'AI の出力を貼り付ける',
-    lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）の返事の全体を、チャットのコピーのボタンでコピーして貼り付けます。```deck.html と ```narration.md の 2 つの囲みを取り出し、スライドに id を付け、検査して開きます',
+    lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）の返事の全体を、チャットのコピーのボタンでコピーして貼り付けます。```deck.html と ```narration.md の 2 つの囲みを取り出し、スライドに id を付け、品質チェックをかけて開きます',
     guide: 'AI への指示をチャットに貼り、最後の「頼みたいこと」の記入欄を埋めて送ります。教材に合う系列を選ぶと、その部品の説明が加わります：',
     seriesLegend: (kb) => `系列（共通の本体 ${kb} KB に加える）`,
     seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
@@ -52,10 +52,10 @@ const TX = {
     building: '取り込んでいます…', buildFailed: '取り込んだ原稿を組み立てられませんでした',
     imported: (n, ids) => `取り込みました：${n} 枚${ids ? `、id を ${ids} 枚に付けました` : ''}`,
     replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`,
-    idProblems: 'id を付けられないスライドがあります（検査の結果を見てください）',
+    idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
-    fix: 'AI への直しの依頼をコピー', fixTitle: 'AI への直しの依頼',
-    fixLead: (n, partial) => `問題 ${n} 件と、その決まり、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付け、返事を「AI の出力を貼り付ける」で取り込みます（今のデッキを置き換える）`,
+    fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
+    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付け、返事を「AI の出力を貼り付ける」で取り込みます（今のデッキを置き換える）`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
     copyCutOff: 'AI に送り直しを頼む文をコピー', cutOffCopied: 'コピーしました。チャットに貼り付け、返事をここに貼り付けてください',
     fixNone: '直す問題はありません', pasteReply: '返事を貼り付ける…', close: '閉じる',
@@ -70,7 +70,7 @@ const TX = {
   en: {
     paste: 'Paste AI output…', pasteWelcome: 'Paste AI output',
     title: 'Paste AI output',
-    lead: 'Paste the whole reply of a chat AI (claude.ai, Gemini, ChatGPT, …), copied with the chat’s copy button. The editor takes out the two blocks ```deck.html and ```narration.md, gives the slides ids, checks the deck and opens it.',
+    lead: 'Paste the whole reply of a chat AI (claude.ai, Gemini, ChatGPT, …), copied with the chat’s copy button. The editor takes out the two blocks ```deck.html and ```narration.md, gives the slides ids, runs the quality check and opens it.',
     guide: 'Paste the instructions for the AI into the chat, fill in “What I want” at the end, and send. Tick the series that fit your lesson to add their components:',
     seriesLegend: (kb) => `Series (added to the common body, ${kb} KB)`,
     seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
@@ -99,10 +99,10 @@ const TX = {
     building: 'Importing…', buildFailed: 'Could not build the imported deck',
     imported: (n, ids) => `Imported ${n} slides${ids ? `; added ids to ${ids}` : ''}`,
     replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`,
-    idProblems: 'Some slides could not get an id (see the check results).',
+    idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} problem(s), their rules and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then import the reply with “Paste AI output” (replace the current deck).`,
+    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then import the reply with “Paste AI output” (replace the current deck).`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the reply…', close: 'Close',
@@ -120,7 +120,7 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
-  // 簡易チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
+  // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
   T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : base(c, a));
   for (const id of ['b-paste', 'w-paste']) { const b = $(id); if (b) b.textContent = id === 'b-paste' ? X.paste : X.pasteWelcome; }
@@ -290,7 +290,7 @@ export function setupLlm(app) {
     await afterOpen();
     return null;
   }
-  // 組み直しが終わり、プレビューの今の読み込みが表示し終わるのを待って簡易チェック。S.pos では待たない（フォルダの置き換えでは、
+  // 組み直しが終わり、プレビューの今の読み込みが表示し終わるのを待って品質チェック。S.pos では待たない（フォルダの置き換えでは、
   // 前の読み込みの位置が残っていて、読み込み中のプレビューに頼みを送ってしまう。頼みは app.quickCheck が今の読み込みに結び付ける）
   async function afterOpen() {
     const t0 = Date.now(), ready = () => S.allowed && !S.building && S.loads > 0 && S.frameLoaded === S.loads;
@@ -298,7 +298,7 @@ export function setupLlm(app) {
     if (ready()) await app.quickCheck();
   }
 
-  // ---------------------------------------------------------------- 簡易チェックに足すもの（このページで、narration.md の元の文字列から）
+  // ---------------------------------------------------------------- 品質チェックに足すもの（このページで、narration.md の元の文字列から）
   async function extraChecks() {
     if (!S.ws) return [];
     let text;
@@ -315,7 +315,7 @@ export function setupLlm(app) {
     return out;
   }
 
-  // ---------------------------------------------------------------- 直しの依頼
+  // ---------------------------------------------------------------- 修正依頼
   async function fixRequest(results) {
     // スライドにない段階の口述原稿：narration.md の行（そのまま）と、合わせる先の段階を足す（kit/core/narration-lint.mjs の orphanDetail）
     let narrText = '';

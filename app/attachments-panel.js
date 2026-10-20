@@ -5,7 +5,7 @@
 //
 //   const panel = createAttachPanel({ws(), generation(), lang, el, openPanel, isOpen(), toast, ask, beforeWrite() → null | 断る理由, afterWrite()})
 //   足す・名前を替える・役割を替えるときは、§3.8 の役割ごとの型と中身の条件（kit/core/attach-content.mjs）で確かめ、合わなければ理由を言って断る
-//   知らせの言葉は検査器と同じ（kit/check-messages.mjs の attach…）
+//   知らせの言葉は品質チェックと同じ（kit/check-messages.mjs の attach…）
 //   panel.open() / panel.refresh()
 import { FORMAT } from '../kit/core/format.mjs';
 import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
@@ -166,7 +166,7 @@ export function createAttachPanel(o) {
         total += f.size;
         adds.push({ p, f });
       }
-      // 中身で音声・動画を見分け、§3.8 の役割ごとの型と条件で確かめる（全部読んでから、どれも書く前に。断る理由は検査器と同じ言葉）
+      // 中身で音声・動画を見分け、§3.8 の役割ごとの型と条件で確かめる（全部読んでから、どれも書く前に。断る理由は品質チェックと同じ言葉）
       const read = [], notes = [];
       for (const { p, f } of adds) {
         const bytes = await readFileBounded(f, { max: ATTACH_LIMITS.fileBytes, what: f.name });

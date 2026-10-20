@@ -501,7 +501,7 @@ const ui = createEditorUI({
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
   extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() },
-  // Esc で閉じる窓（#48）：音声の板と横の板（簡易チェック・警告・添付・使い方）。開いた順は ui.mark で
+  // Esc で閉じる窓（#48）：音声の板と横の板（品質チェック・警告・添付・使い方）。開いた順は ui.mark で
   panels: () => [{ name: 'audio', isOpen: () => audio.isOpen() && !audio.isBusy(), close: () => audio.toggle(false) },
     { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
@@ -1306,7 +1306,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
   showWelcome();
 })();
 
-// ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・直しの依頼。app/llm.js）
+// ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
 const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, updateName });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

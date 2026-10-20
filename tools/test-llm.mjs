@@ -1,13 +1,13 @@
-// チャットの AI との行き来の試験（ブラウザは検査器（kit/check.mjs）の中だけ）
+// チャットの AI との行き来の試験（ブラウザは品質チェック（kit/check.mjs）の中だけ）
 //   node tools/test-llm.mjs [作業用のフォルダ]
 // 1. 指示（共通の本体 docs/authoring-with-llms*.md と系列 docs/llm-parts/*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・
-//    決まりの名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所
+//    規格の名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所
 // 2. 返事から 2 つの囲みを取り出す（kit/core/llm-import.mjs）：名前の付け方・CRLF・前後の文章・閉じていない囲み・囲みなし・重なり
 // 3. id を付ける（kit/core/slide-ids.mjs）：見出しが同じスライド・今ある id・直したスライドだけの返事を戻す
-// 4. 直しの依頼（kit/core/llm-fix.mjs）：エラーの言葉・決まりの名前と文章・今のファイル。長いデッキは問題のスライドだけ
+// 4. 修正依頼（kit/core/llm-fix.mjs）：エラーの言葉・規格の名前と文章・今のファイル。長いデッキは問題のスライドだけ
 // 5. 読みの指定の検査（kit/core/narration-lint.mjs）
-// 6. 見本の返事を取り込んで（取り出し → id）組み、検査器でエラー 0
-// 7. 検査器の穴：static のスライドの口述原稿・スライドにない段階の口述原稿（エラー）・読みの指定（警告）
+// 6. 見本の返事を取り込んで（取り出し → id）組み、品質チェックでエラー 0
+// 7. 品質チェックの穴：static のスライドの口述原稿・スライドにない段階の口述原稿（エラー）・読みの指定（警告）
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -110,7 +110,7 @@ ok('デッキから系列を推す：部品・テーマ・layout-tate', () => {
   assert.deepEqual(seriesForDeck('<html data-theme="default"><section class="slide layout-tate"><m-codetree></m-codetree><m-sweep></m-sweep></section>'), ['academic', 'kokugo', 'info']);
   assert.deepEqual(componentsIn('<m-kpi a="1"><m-kpi><m-foo></m-foo><m-bars>'), ['m-bars', 'm-kpi']);
 });
-ok('決まりの名前は英語と日本語で同じ・決まりは共通の本体だけにある・見本は 4 つとも入っている・部品はすべて一覧にある', () => {
+ok('規格の名前は英語と日本語で同じ・規格は共通の本体だけにある・見本は 4 つとも入っている・部品はすべて一覧にある', () => {
   const en = [...guideRules(GUIDE_EN).keys()], ja = [...guideRules(GUIDE_JA).keys()];
   assert.deepEqual(en, ja);
   assert.deepEqual([...guideRules(ALL_EN).keys()], en);
@@ -202,8 +202,8 @@ ok('直したスライドだけの返事：id で元の場所に戻す（ほか�
   assert.deepEqual(mergeSlides(deck, '<section class="slide" id="s-zzzzzz"><h2>x</h2></section>').replaced, []);
 });
 
-// ---------------------------------------------------------------- 4. 直しの依頼
-ok('直しの依頼：エラーの言葉・決まりの名前と指示の文章・今のファイル・2 つの囲みで返す頼み', () => {
+// ---------------------------------------------------------------- 4. 修正依頼
+ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今のファイル・2 つの囲みで返す頼み', () => {
   const deck = worked('academic', 'deck.html'), narration = worked('academic', 'narration.md');
   const a = assignIds(deck, narration, { byOrder: true });
   const probs = [
@@ -221,7 +221,7 @@ ok('直しの依頼：エラーの言葉・決まりの名前と指示の文章�
   // 使っている部品の説明（指示と同じ文章）
   assert.deepEqual(r.components, ['m-sweep']);
   assert.ok(r.text.includes('## Components used in this deck') && r.text.includes(seriesPart('academic', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
-  // 前の guide の引数：知らせて無視する（決まりは指示の共通の本体から）
+  // 前の guide の引数：知らせて無視する（規格は指示の共通の本体から）
   const warned = [], cw = console.warn;
   console.warn = (...x) => warned.push(x.join(' '));
   try {
@@ -233,7 +233,7 @@ ok('直しの依頼：エラーの言葉・決まりの名前と指示の文章�
   assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み') && ja.text.includes('## この教材で使っている部品'));
   assert.deepEqual(rulesFor({ code: 'readingExpr' }), ['R-reading', 'R-formula']);
 });
-ok('長いデッキの直しの依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
+ok('長いデッキの修正依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
   const a = assignIds(worked('business', 'deck.html'), worked('business', 'narration.md'), { byOrder: true });
   const id = a.added[2].id;
   const r = buildFixRequest({ problems: [{ sev: 'error', i: 2, title: 't', code: 'overflowBottom', text: 'body overflows at the bottom (600px)' }], deck: a.deck, narration: a.narration, lang: 'en', limit: 1000 });
@@ -246,7 +246,7 @@ ok('長いデッキの直しの依頼：問題のあるスライドとその節�
   assert.ok(/only those <section> elements/.test(r.text));
 });
 
-ok('直しの依頼の量の目安：はみ出しは「何 px・およそ何行」、小さい字は「何 px から 24px 以上へ」。切れた返事は送り直しを頼む', () => {
+ok('修正依頼の量の目安：はみ出しは「何 px・およそ何行」、小さい字は「何 px から 24px 以上へ」。切れた返事は送り直しを頼む', () => {
   assert.match(amountOf({ code: 'bodyBottom', data: { px: 583, lim: 565 } }, 'en'), /^cut 18 px from the body \(about 1 line of 46 px\)/);
   assert.match(amountOf({ code: 'overflowBottom', data: '662 > 565' }, 'ja'), /^本文を 97 px（46 px の行でおよそ 3 行）減らす/);
   assert.match(amountOf({ code: 'smallSvgText', data: { px: '23.2' } }, 'en'), /^raise the text from 23\.2px to at least 24px \(for an inline <svg>, make the viewBox width equal to the displayed width/);
@@ -294,8 +294,8 @@ for (const name of ['common', 'academic', 'business', 'kokugo']) {
   });
 }
 
-// ---------------------------------------------------------------- 7. 検査器の穴
-ok('検査器：static の表紙の口述原稿がない → 警告。スライドにない段階 [k]・結論のないスライドの [concl] → エラー。読みの指定 → 警告', () => {
+// ---------------------------------------------------------------- 7. 品質チェックの穴
+ok('品質チェック：static の表紙の口述原稿がない → 警告。スライドにない段階 [k]・結論のないスライドの [concl] → エラー。読みの指定 → 警告', () => {
   const d = path.join(work, 'gaps');
   fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'deck.html'), `<!DOCTYPE html>
@@ -328,7 +328,7 @@ ok('検査器：static の表紙の口述原稿がない → 警告。スライ�
   assert.ok(has('error', 3, /口述原稿の \[concl\] に当たる段階がスライドにない.*使える鍵は \[0\]。.*前の段階 \[0\].*結論の行/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');
-  // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「検査器」）
+  // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「品質チェック」）
   const o = j.results.find((x) => x.code === 'narrOrphan' && x.slide === 2);
   assert.deepEqual({ slide: o.slide, id: o.id, key: o.key, title: o.title, step: o.step, sev: o.sev, code: o.code, rule: o.rule },
     { slide: 2, id: 's-steps1', key: 's-steps1', title: '段階のスライド', step: '3', sev: 'error', code: 'narrOrphan', rule: 'R-narr-steps' });
@@ -342,7 +342,7 @@ ok('検査器：static の表紙の口述原稿がない → 警告。スライ�
   assert.equal(c.status, 1);
 });
 
-ok('検査器：です・ます の知らせは、どこ（id・見出し）・何が違うか・どう直すか・決まりの名前を言う', () => {
+ok('品質チェック：です・ます の指摘は、どこ（id・見出し）・何が違うか・どう直すか・規格の名前を言う', () => {
   const d = path.join(work, 'desu');
   fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'deck.html'), `<!DOCTYPE html>

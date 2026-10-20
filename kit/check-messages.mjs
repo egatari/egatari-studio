@@ -1,4 +1,4 @@
-// 検査器（kit/check.mjs）の知らせの言葉（日本語・英語）。どの知らせも「何が違うか」と「どう直すか」を言い、決まりがあればその名前
+// 品質チェック（kit/check.mjs）の指摘の言葉（日本語・英語）。どの指摘も「何が違うか」と「どう直すか」を言い、規格があればその名前
 // （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、段階）は check.mjs が前に付ける
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
@@ -209,6 +209,6 @@ export function message(lang, code, a = {}) {
   const m = MESSAGES[code];
   if (!m) return code;
   const t = (lang === 'en' ? m.en : m.ja)(a);
-  // 決まりの名前は、言葉の中に書いていなければ最後に添える
+  // 規格の名前は、言葉の中に書いていなければ最後に添える
   return m.rule && !t.includes(m.rule) ? t + (lang === 'en' ? ` (${m.rule})` : `（${m.rule}）`) : t;
 }

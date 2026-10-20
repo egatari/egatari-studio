@@ -1,8 +1,8 @@
 // チャットの AI への指示（AI instruction pack）を組み立てる。Node にもブラウザにも依存しない（純粋な ESM）
-// 指示は「共通の本体」（決まり R-…・大きさ・出力の形・どの教材でも使う部品）と、系列ごとの部品の指示（academic・business・kokugo・info）からなる。
+// 指示は「共通の本体」（規格 R-…・大きさ・出力の形・どの教材でも使う部品）と、系列ごとの部品の指示（academic・business・kokugo・info）からなる。
 // 材料（kit/core/llm-pack-data.mjs）は tools/make-llm-guide.mjs が tools/llm-guide/・docs/contract・components/*/README.md から作る（手で直さない）。
 // 同じ関数を、編集アプリの「AI への指示をコピー」（app/llm.js）・コマンド（kit/llm-pack.mjs）・docs の書き出し（tools/make-llm-guide.mjs）・
-// 直しの依頼（kit/core/llm-fix.mjs）が使う
+// 修正依頼（kit/core/llm-fix.mjs）が使う
 //
 //   buildPack({series, lang}) → 文字列         series：系列の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'
 //   SERIES                                      系列の名前（決まった順）
@@ -12,7 +12,7 @@
 //   seriesOf(tag)                                部品（'m-kpi'）の居場所：'common' か系列の名前（部品庫にない部品は null）
 //   componentsIn(html)                           デッキで使っている部品庫の部品（名前の並び）
 //   seriesForDeck(html)                          デッキの部品・テーマから推した系列（編集アプリの既定の選び方）
-//   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。直しの依頼が使う
+//   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）

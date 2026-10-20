@@ -11,7 +11,7 @@
 //   must    仕様が MUST NOT とするもの（許されない型・実行できるもの・入れ物・HTML/SVG・マクロ・JavaScript のある PDF・ほかの型と重ねたファイル）
 //   should  仕様が「断るべき」（SHOULD reject）とするもの：役割の条件（自動の動作・埋め込み・外への参照・DDE・フィールド）と、中身が型と違う・調べられない
 //   advice  気をつけるだけのもの：数式として読まれる値（formula injection）・資格情報や機械のパスらしい文字
-// 書き出し・編集器・段 A の保存は must と should を入れない（断る）。検査器は must をエラー、ほかを警告にする
+// 書き出し・編集器・段 A の保存は must と should を入れない（断る）。品質チェックは must をエラー、ほかを警告にする
 
 const MiB = 1048576;
 // 題（title）と説明（description）の字数の上限（§3.8・Schema の maxLength。字は Unicode の符号位置で数える）。

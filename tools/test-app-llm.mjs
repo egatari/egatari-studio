@@ -1,16 +1,16 @@
-// 編集アプリの「AI の出力を貼り付ける」と「AI への直しの依頼を写す」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
+// 編集アプリの「AI の出力を貼り付ける」と「AI への修正依頼を写す」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
 // test-all: part of test-app（tools/test-app.mjs が読み込む。単独では走らせない）
 //   testLlm({browser, BASE, ok, watch, shotDir})
 // 1. 貼り付けの窓：開く・指示を写す（系列を選ぶ：新しいデッキなら academic、開いているデッキならその部品・テーマから推したもの）・
 //    誤り（囲みなし・閉じていない囲み）を窓の中に出す
 // 2. 見本の返事（tools/llm-guide/worked/business：前置きの文章・```html と ```markdown・CRLF）を取り込む → 新しい 1 ファイルとして開き、
-//    スライドに id が付き、口述原稿の見出しが {#id} になり、簡易チェックのエラーが 0
+//    スライドに id が付き、口述原稿の見出しが {#id} になり、品質チェックのエラーが 0
 // 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）
-// 4. 決まりを破った返事 → 簡易チェックのエラー → 直しの依頼の文章に、エラーの言葉・決まりの名前と文章・今のファイルが入る →
+// 4. 規格を破った返事 → 品質チェックのエラー → 修正依頼の文章に、エラーの言葉・規格の名前と文章・今のファイルが入る →
 //    直したスライドだけの返事を「今のデッキを置き換える」で取り込む → docId はそのまま、そのスライドだけが替わり、エラー 0
 // 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）を開いていて、別のデッキの返事を「今のデッキを置き換える」で取り込む →
-//    簡易チェックが新しいプレビューに答える（前の読み込みに頼んで「応答しません」にならない）・プレビューが新しいデッキ・保存できる・
-//    直したスライドだけの置き換えも同じ。結果が 0 件の簡易チェックの説明の文
+//    品質チェックが新しいプレビューに答える（前の読み込みに頼んで「応答しません」にならない）・プレビューが新しいデッキ・保存できる・
+//    直したスライドだけの置き換えも同じ。結果が 0 件の品質チェックの説明の文
 // 画像（shotDir があれば）：paste-dialog(-ja).png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・fix-replaced.png（1280×800）
 import fs from 'node:fs';
 import path from 'node:path';
@@ -106,7 +106,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(st.portable && st.portable.name === '配送センターの改善報告（架空）.ega.html' && st.portable.dirty && st.portable.rightsOk, `llm: the pasted reply opens as a new unsaved portable file (${st.portable && st.portable.name}, no rights prompt)`);
   ok(ids.length === 3 && ids.every((id) => F['narration.md'].includes(`{#${id}}`)) && !F['deck.html'].includes('\r'), `llm: ids added to all 3 slides and the narration headings (${ids.join(', ')})`);
   const sum1 = await page.textContent('#panel-body .sum');
-  ok(/^0 errors/.test(sum1), 'llm: the quick check runs after import and reports no errors: ' + sum1);
+  ok(/^0 errors/.test(sum1), 'llm: the quality check runs after import and reports no errors: ' + sum1);
   const docId1 = st.portable.docId;
   await shot('paste-opened.png');
 
@@ -127,11 +127,11 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const st3 = await state();
   ok(st3.portable && st3.portable.docId === docId1, 'llm: cancelling the code prompt keeps the previous deck open');
 
-  // ---------------------------------------------------------------- 4. 決まりを破った返事 → 直しの依頼 → 置き換え
+  // ---------------------------------------------------------------- 4. 規格を破った返事 → 修正依頼 → 置き換え
   const bad = bdeck.replace('<h2>導入から 3 か月の結果</h2>', '<h2>新しい仕分けの手順を入れてから 3 か月がたった今の結果のまとめ</h2>');
   const badN = bnarr.replace('## 導入から 3 か月の結果', '## 新しい仕分けの手順を入れてから 3 か月がたった今の結果のまとめ')
     .replace('[concl] 件数が増えても', '[4] {1-η|いちマイナスイータ} は使わない例です。\n[concl] 件数が増えても');
-  await page.click('#panel-close');   // 前の結果の板を閉じておく（新しい簡易チェックの板を待つため）
+  await page.click('#panel-close');   // 前の結果の板を閉じておく（新しい品質チェックの板を待つため）
   await page.click('#b-openmenu');
   await page.click('#b-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
@@ -143,9 +143,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const sum2 = await page.textContent('#panel-body .sum');
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
   ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /narration \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
-    'llm: quick check reports the long title, the orphan [4] and the expression reading: ' + sum2);
+    'llm: quality check reports the long title, the orphan [4] and the expression reading: ' + sum2);
   const note2 = await page.textContent('#panel-body .hint');
-  ok(/^Checks that run in the browser/.test(note2) && /If there are errors, press “Copy fix request for your AI” below/.test(note2), 'llm: with errors, the quick check note points to the fix request button below: ' + note2);
+  ok(/^The browser quality checker/.test(note2) && /If there are errors, press “Copy fix request for your AI” below/.test(note2), 'llm: with errors, the quality check note points to the fix request button below: ' + note2);
   await shot('fix-check.png');
   const docId2 = (await state()).portable.docId;
   await page.click('#b-fixreq');
@@ -176,11 +176,11 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const sum3 = await page.textContent('#panel-body .sum').catch(() => '');
   ok(st4.portable.docId === docId2 && F['deck.html'].includes(`id="${sid}">\n  <h2>導入から 3 か月の結果`) && !F['narration.md'].includes('[4]') && F['narration.md'].includes(`## 導入から 3 か月の結果 {#${sid}}`) && st4.portable.dirty,
     `llm: replacing with the fixed slide keeps the docId (${docId2}), replaces only that slide and its narration, and leaves the file unsaved`);
-  ok(/^0 errors/.test(sum3), 'llm: after the fix the quick check reports no errors: ' + sum3);
+  ok(/^0 errors/.test(sum3), 'llm: after the fix the quality check reports no errors: ' + sum3);
   await shot('fix-replaced.png');
 
   // ---------------------------------------------------------------- 5. ほかのデッキを開いていて、別のデッキの返事で「今のデッキを置き換える」
-  // （1 ファイルの見本と作業フォルダ。置き換えの直後の簡易チェックが、前の読み込みのプレビューに頼んで「デッキが応答しません」にならない）
+  // （1 ファイルの見本と作業フォルダ。置き換えの直後の品質チェックが、前の読み込みのプレビューに頼んで「デッキが応答しません」にならない）
   await testReplace({ ctx, BASE, ok, watch, bdeck, bnarr });
 
   // 日本語の画面：大きさは日本語の指示のもの（英語の大きさではない）。node kit/llm-pack.mjs --list --lang ja と同じ計算
@@ -213,7 +213,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await ctx.close();
 }
 
-// 貼り付けの窓から「今のデッキを置き換える」で取り込み、簡易チェックの板の結果（.sum か、確かめられなかった言葉）を返す
+// 貼り付けの窓から「今のデッキを置き換える」で取り込み、品質チェックの板の結果（.sum か、確かめられなかった言葉）を返す
 async function pasteReplace(p, text) {
   await p.evaluate(() => { document.getElementById('panel').hidden = true; });
   await p.click('#b-openmenu');
@@ -258,7 +258,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     await p.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
     const docId = (await p.evaluate(() => window.__APP_TEST.state())).portable.docId;
     const r = await pasteReplace(p, reply);
-    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (single file): replacing with another deck runs the quick check on the new preview (${r.ms} ms): ${r.sum}`);
+    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (single file): replacing with another deck runs the quality check on the new preview (${r.ms} ms): ${r.sum}`);
     const st = await p.evaluate(() => window.__APP_TEST.state());
     const h = await previewHeadings(p, '導入から 3 か月の結果');
     ok(st.portable.docId === docId && st.portable.dirty && h && h.includes('導入から 3 か月の結果') && !h.includes('更新の式'), 'llm replace (single file): the docId stays, the file is unsaved and the preview shows the new deck: ' + JSON.stringify(h));
@@ -266,7 +266,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     const F = await p.evaluate(() => new TextDecoder().decode(Uint8Array.from(atob(window.__APP_TEST.files()['deck.html']), (c) => c.charCodeAt(0))));
     const r2 = await pasteReplace(p, '```deck.html\n' + sectionOf(F, '拠点ごとの').replace('拠点ごとの 1 日の出荷', '拠点ごとの出荷') + '\n```\n');
     const h2 = await previewHeadings(p, '拠点ごとの出荷');
-    ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && h2.includes('導入から 3 か月の結果'), `llm replace (single file): a reply with one slide replaces just that slide and the quick check answers (${r2.ms} ms): ${r2.sum}`);
+    ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && h2.includes('導入から 3 か月の結果'), `llm replace (single file): a reply with one slide replaces just that slide and the quality check answers (${r2.ms} ms): ${r2.sum}`);
     // 保存：置き換えた中身が 1 ファイルに入り、保存していない印が消える
     await p.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('replaced-' + Date.now() + '.ega.html', { create: true }); });
     const sv = p.evaluate(() => window.__APP_TEST.save('save'));
@@ -294,7 +294,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     await p.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
     const read = (rel) => p.evaluate(async (rel) => (await (await window.__rdir.getFileHandle(rel)).getFile()).text(), rel);
     const r = await pasteReplace(p, reply);
-    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (working folder): replacing with another deck runs the quick check on the rebuilt preview (${r.ms} ms): ${r.sum}`);
+    ok(/^0 errors/.test(r.sum) && r.ms < 15000, `llm replace (working folder): replacing with another deck runs the quality check on the rebuilt preview (${r.ms} ms): ${r.sum}`);
     const h = await previewHeadings(p, '導入から 3 か月の結果');
     const D = await read('deck.html'), N = await read('narration.md');
     ok(h && h.includes('導入から 3 か月の結果') && !h.includes('更新の式') && D.includes('<h2>導入から 3 か月の結果</h2>') && !D.includes('更新の式') && /## 導入から 3 か月の結果 \{#s-[a-z2-7]{6}\}/.test(N),
@@ -303,11 +303,11 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     const h2 = await previewHeadings(p, '拠点ごとの出荷');
     const D2 = await read('deck.html');
     ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && D2.includes('<h2>拠点ごとの出荷</h2>') && D2.includes('<h2>導入から 3 か月の結果</h2>'),
-      `llm replace (working folder): a reply with one slide replaces just that slide in deck.html and the quick check answers (${r2.ms} ms): ${r2.sum}`);
-    // 結果が 0 件でも、説明の文は途中で切れず、エラーがあれば直しの依頼のボタンが出ることを言う
+      `llm replace (working folder): a reply with one slide replaces just that slide in deck.html and the quality check answers (${r2.ms} ms): ${r2.sum}`);
+    // 結果が 0 件でも、説明の文は途中で切れず、エラーがあれば修正依頼のボタンが出ることを言う
     const note0 = await p.textContent('#panel-body .hint');
-    ok(/^Checks that run in the browser \(size, length, missing narration, color contrast\)\.( |$)/.test(note0) && /“Copy fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
-      'llm quick check: with no results, the note says the fix request button appears when there are errors: ' + note0);
+    ok(/^The browser quality checker \(size, length, missing narration, color contrast\)\.( |$)/.test(note0) && /“Copy fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
+      'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
     await p.close();
   }
 }

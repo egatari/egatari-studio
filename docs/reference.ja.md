@@ -1,11 +1,11 @@
-<!-- i18n: pair=reference.md sha256=90ad22ccc559f9b9 -->
+<!-- i18n: pair=reference.md sha256=ca62ee8a7305443b -->
 # リファレンス
 
 [English](reference.md) | 日本語
 
 使える選択肢・記法・キーを、コードから拾って 1 行ずつ並べたもの。理由と厳密な規則（位置と時刻、タイムラインの式、注目の演出、モーフ）は [contract.ja.md](contract.ja.md)。手順の説明は [README](../README.ja.md)、[dev-server.ja.md](dev-server.ja.md)、[video.ja.md](video.ja.md)。
 
-目次：[原稿の記法](#原稿の記法) · [口述原稿](#口述原稿narrationmd) · [長さ](#長さtimelinejson) · [テーマ](#テーマ) · [部品](#部品) · [発表](#発表) · [開発サーバー](#開発サーバー) · [検査器](#検査器) · [build](#build) · [TTS](#tts) · [書き出し](#書き出し) · [道具](#道具) · [環境変数](#環境変数)
+目次：[原稿の記法](#原稿の記法) · [口述原稿](#口述原稿narrationmd) · [長さ](#長さtimelinejson) · [テーマ](#テーマ) · [部品](#部品) · [発表](#発表) · [開発サーバー](#開発サーバー) · [品質チェック](#品質チェック) · [build](#build) · [TTS](#tts) · [書き出し](#書き出し) · [道具](#道具) · [環境変数](#環境変数)
 
 ## 原稿の記法
 
@@ -44,7 +44,7 @@
 | `data-steps="n"` | 段階の数の下限（旧形式の `data-anim` 用） |
 | `data-anim="名前"` | 旧形式の動き：`DECK.ANIM[名前](slide, k, instant)` を呼ぶ。動画では各段階の最終状態だけになる。新しく書くなら部品にする |
 | 直下の子に `<div class="pn">` | ページ番号を自分で書く（なければ 2 枚目から `i/N` が入る） |
-| `<html lang="en">` | 英語のデッキ：本文は Source Sans 3、画面の言葉は英語、検査は英語の規則、TTS は `voxcpm2` |
+| `<html lang="en">` | 英語のデッキ：本文は Source Sans 3、画面の言葉は英語、品質チェックは英語の規格、TTS は `voxcpm2` |
 | `<html data-theme="名前">` | テーマ（`--theme` が優先） |
 | `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
 | `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/egatari/egatari-studio/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
@@ -67,7 +67,7 @@
 | `steps="n"`（部品） | 部品の段階の数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.ja.md#7-注目の演出mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。`id` のない section に手で `data-key` を書けば、それを鍵に使う（旧来の書き方。検査器が警告する）。[スライドの鍵](#スライドの鍵) |
+| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。`id` のない section に手で `data-key` を書けば、それを鍵に使う（旧来の書き方。品質チェックが警告する）。[スライドの鍵](#スライドの鍵) |
 
 ### 数式
 
@@ -80,7 +80,7 @@
 | `\htmlClass{名前}{…}` | 式の中に CSS のクラス。`\html…` はこの 3 つだけ許す |
 | `macros.tex` | `\newcommand{\R}{\mathbb{R}}`、`\newcommand{\v}[1]{…}`、`\def\x{…}`。波括弧の入れ子は 3 段まで |
 | `<script type="text/x-tex-macros">…</script>` | 同じ書き方のマクロを `deck.html` の中に |
-| KaTeX のエラー | build が警告し、元の式を赤で出す（`.katex-error`）。検査器はエラーにする |
+| KaTeX のエラー | build が警告し、元の式を赤で出す（`.katex-error`）。品質チェックはエラーにする |
 | 部品や原稿のスクリプトで `DECK.svgMath(…)` | 実行時にも KaTeX を埋め込む（マクロも同じ） |
 
 ### 埋め込み
@@ -107,7 +107,7 @@
 
 ### スライドの鍵
 
-スライドごとに鍵を 1 つ付ける（[約束事 §4](contract.ja.md#4-口述原稿narrationmd)）：section の `id`、なければ手で書いた `data-key`、なければ見出しの正規化（タグを除き、`&nbsp;` を空白とみなし、空白をすべて除く）、なければ `s<番号>`。どのスライドにも id を付ける（`npm run new` は付ける。今あるデッキには `npm run ids -- <デッキ>`）。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、デッキのほかのどの id（目印・`\htmlId{…}` も）とも重ねない。鍵が重なるデッキは正しくない（検査器のエラー）。それでも組めるように、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く。
+スライドごとに鍵を 1 つ付ける（[約束事 §4](contract.ja.md#4-口述原稿narrationmd)）：section の `id`、なければ手で書いた `data-key`、なければ見出しの正規化（タグを除き、`&nbsp;` を空白とみなし、空白をすべて除く）、なければ `s<番号>`。どのスライドにも id を付ける（`npm run new` は付ける。今あるデッキには `npm run ids -- <デッキ>`）。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、デッキのほかのどの id（目印・`\htmlId{…}` も）とも重ねない。鍵が重なるデッキは正しくない（品質チェックのエラー）。それでも組めるように、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く。
 
 ## 口述原稿（narration.md）
 
@@ -129,7 +129,7 @@
 | `<!-- … -->` | 行全体のコメント（複数行も可）。無視する |
 | 同じ段階を 2 回書く | 後のものが効く |
 
-build は、どのスライドにも合わない `##`（検査器ではエラー）、決まった書き方でない段階の番号、規則に合わない `{#id}`、無い効果の名前、原稿に無い目印を警告する。
+build は、どのスライドにも合わない `##`（品質チェックではエラー）、決まった書き方でない段階の番号、規則に合わない `{#id}`、無い効果の名前、原稿に無い目印を警告する。
 
 ## 長さ（timeline.json）
 
@@ -191,8 +191,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 国語（漢文・古文・現代文）の授業のためのもの。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun)（テーマ `kokugo`）。
 
 - **縦書き**：`.body` の中の `<div class="tate">…</div>` は `writing-mode: vertical-rl` で、本文の高さいっぱいに右から左へ列を並べる（段落の間は左に空ける。`p.indent` で字下げ）。`.tcy` は 2 桁の数字などを縦中横にする
-- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと検査器が知らせる）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中の部品・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きは部品の指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの鍵・字幕・1 ファイルの読める層は、これまでどおり見出しの字から作る。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
-- **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、検査器は字の大きさを数えない。縦書きでは右に付く
+- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中の部品・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きは部品の指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの鍵・字幕・1 ファイルの読める層は、これまでどおり見出しの字から作る。見本は [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
+- **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、品質チェックは字の大きさを数えない。縦書きでは右に付く
 - **明朝**：`.mincho`、`<html data-font="mincho">`、または `--font-sans: var(--font-mincho)` にするテーマ（`kokugo`）
 - **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。段階：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。`cues(k)` は各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [components/kanbun/README.md](../components/kanbun/README.md)
 - **`m-kobun`**：古文を語に切り（`春[名]/は[係助]/…`）、品詞で色を分けて 1 文ずつ出し、最後の段階で現代語訳（`= …` の行）を並べる。助動詞 `[助動・基本形・意味・活用形]` を押す（または Enter）と、部品の中の表から活用表と意味の札を出す（ネットワークを使わない。中身は文字だけ）。札は発表の操作で `DECK.seek(i, k, t)` の外：段階が動くと閉じ、動画のモードでは開かず、印刷に出ない。[components/kobun/README.md](../components/kobun/README.md)
@@ -251,7 +251,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 ### 字幕
 
-`s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（検査器がこの 2 色のコントラスト 4.5:1 以上を見ている）。段階を文のまとまり（2 行ほど。字が大きいほど短い。長すぎる文は読点や語の切れ目で分ける）に分け、1 つずつ出す。1 まとまりは `--cap-max-lines` 行（3）までで、超えたら後ろの行を見せる。手で送っている間（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。`--cap-rate` か `DECK.captionRate`）で次のまとまりに進め、段階が変わると最初から、最後のまとまりはそのまま残す。音声つきの自動再生と `?mode=video&captions=1` では、字数に比例して音声の時間を割り振って順に出す（動画で音声がなければ全部を出す）。大きさは `Shift+s`・`?capsize=`・テーマの `--cap-size` で変える。動画では `(i, k, t)` だけで決まる。操作の帯をスライドの下端に重ねるときは、帯が出ている間だけ字幕を帯の上へ上げ、隠れると戻す。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
+`s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（品質チェックがこの 2 色のコントラスト 4.5:1 以上を見ている）。段階を文のまとまり（2 行ほど。字が大きいほど短い。長すぎる文は読点や語の切れ目で分ける）に分け、1 つずつ出す。1 まとまりは `--cap-max-lines` 行（3）までで、超えたら後ろの行を見せる。手で送っている間（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。`--cap-rate` か `DECK.captionRate`）で次のまとまりに進め、段階が変わると最初から、最後のまとまりはそのまま残す。音声つきの自動再生と `?mode=video&captions=1` では、字数に比例して音声の時間を割り振って順に出す（動画で音声がなければ全部を出す）。大きさは `Shift+s`・`?capsize=`・テーマの `--cap-size` で変える。動画では `(i, k, t)` だけで決まる。操作の帯をスライドの下端に重ねるときは、帯が出ている間だけ字幕を帯の上へ上げ、隠れると戻す。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
 
 ### 読み上げとキーボード（アクセシビリティ）
 
@@ -260,7 +260,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 - 読み上げソフト：画面に出ない `aria-live="polite"` の領域（`#deck-live`）が、スライドが変わると「スライド n / N：タイトル」、次の段階では新しく出た段階の文字（式は KaTeX の字から）、戻ったときや文字の無い段階では「段階 k / K」を知らせる。スライドは `role="group"`・`aria-roledescription="スライド"`・`aria-label` を持ち、隠れたスライドは `aria-hidden="true"` と `inert`。発表ではまだ出ていない段階も `aria-hidden`（授業モードでは読める）。
 - キーボード：操作の帯と発表者ビューのボタンは `aria-label`（`<html lang>` に従って日本語か英語）、切り替えのボタンは `aria-pressed` を持ち、フォーカスの枠は `:focus-visible` のときだけ出す。一覧は `dialog` で、縮図は名前つきのボタン。矢印で選ぶとフォーカスも動き、Esc で閉じると元のフォーカスに戻る。キーの一覧（`?`）も `dialog` で、開くとフォーカスが入り、閉じると戻る。書き込みの面は `aria-hidden` でフォーカスを取らないので、描いている間も Tab と Esc が効く。
 - `prefers-reduced-motion` では各段階を最終状態で見せる（動画を除く）。
-- 検査器は `alt` の無い `<img>`（飾りなら `alt=""`）と、`aria-label` / `aria-labelledby` / `<title>` の無い SVG の図を警告し、名前の無い部品を情報として挙げる。
+- 品質チェックは `alt` の無い `<img>`（飾りなら `alt=""`）と、`aria-label` / `aria-labelledby` / `<title>` の無い SVG の図を警告し、名前の無い部品を情報として挙げる。
 
 ### 発表者ビュー
 
@@ -270,7 +270,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 印刷（`tools/pdf.mjs` かブラウザ）では、各スライドを最終状態で 1 ページ（1280×720）ずつ出す。印・書き込み・道具・進み具合の帯は出さない。
 
-### 実行時の API（スクリプトと検査用）
+### 実行時の API（スクリプトと品質チェック用）
 
 `DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
 
@@ -293,9 +293,11 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
 
-## 検査器
+## 品質チェック
 
-`node kit/check.mjs <deck.html> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告は、どこか（スライドの番号・見出し・id・段階）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の決まりがあればその名前（`（R-title）` など）を添える。そのまま直しの依頼に貼れる。`--lang` は言葉の言語（既定はデッキの `<html lang>`。`ja` かなければ日本語、ほかは英語）。
+Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-llms.ja.md)の `R-fit`・`R-steps` など）、それに照らして**指摘**を出す**品質チェック**、指摘を AI に渡す**修正依頼**からなる。品質チェックにはコマンド版（`npm run check`。下。すべての項目）とブラウザ版（[編集アプリ](editor.ja.md)。一部の項目）がある。
+
+`node kit/check.mjs <deck.html> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーが 1 つでもあれば終了コード 1。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告の指摘は、どこか（スライドの番号・見出し・id・段階）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の規格があればその名前（`（R-title）` など）を添える。そのまま修正依頼に貼れる。`--lang` は指摘の言語（既定はデッキの `<html lang>`。`ja` かなければ日本語、ほかは英語）。
 
 `--json` の形：
 
@@ -315,18 +317,18 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `step` | その結果の段階：`"0"`・`"1"`・… か `"concl"`。スライド全体のことなら `null` |
 | `sev` | `error`・`warn`・`info` |
 | `code` | 結果の種類（変えない名前。一覧は `kit/check-messages.mjs`） |
-| `rule` | 書き方の指示の決まりの名前（`R-title`・`R-fit` など）。なければ `null` |
-| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など）。直しの依頼が削る量を言うのに使う |
-| `msg` | `lang` の言葉の全体：どこか・何が違うか・どう直すか |
+| `rule` | 書き方の指示の規格の名前（`R-title`・`R-fit` など）。なければ `null` |
+| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など）。修正依頼が削る量を言うのに使う |
+| `msg` | `lang` の指摘の全体：どこか・何が違うか・どう直すか |
 
-| 検査 | 重さ |
+| 品質チェック | 重さ |
 |---|---|
 | build の警告。どのスライドにも合わない口述原稿の `##`、決まった書き方でない段階の番号（`[01]`）、規則に合わない `{#id}` | 警告。エラー |
 | `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合わないスライドの id（`slide id: …`）。鍵が同じスライドが 2 枚（`slide key: …`）。デッキのほかの id や `\htmlId{…}` と同じスライドの id（`slide id: …`） | エラー |
 | `## 見出し {#id}` の見出しの文字列が、そのスライドの見出しと違う（id が勝つ） | 情報 |
 | 旧来の規則で鍵が決まるスライド：手で書いた `data-key`、または `s<番号>`（id も見出しもない）—`slide key: legacy` | 警告 |
 | スライドへのリンク（`#<id>`・`#<id>:<段階の鍵>`・`#N`）で、行き先のスライドがない・段階が範囲の外・結論のないスライドへの `:concl`。`#N` のリンクと id のないスライドへのリンク。ない相手のファイルへの相対リンク（[contract §9](contract.ja.md#9-スライドへのリンク)） | エラー。警告。警告 |
-| 部品のデータが宣言した形（`static shape`）と合わない、または部品が描くときに例外を出した（`compData`：どの部品の、どこが（場所・期待・実際）違うか、形と見本。決まり R-components）。スライドの段階は `data-step` の要素と `.concl` からも数えるので、部品が描けなくても口述原稿が「スライドにない段階」にならない | エラー |
+| 部品のデータが宣言した形（`static shape`）と合わない、または部品が描くときに例外を出した（`compData`：どの部品の、どこが（場所・期待・実際）違うか、形と見本。規格 R-components）。スライドの段階は `data-step` の要素と `.concl` からも数えるので、部品が描けなくても口述原稿が「スライドにない段階」にならない | エラー |
 | コンソールのエラー（言葉だけ。スタックの行とファイルの場所・一時フォルダ・手元のサーバーの URL は除く） | エラー |
 | 段階 0 で見えている本文 | 情報 |
 | タイトルが 26 字（全角）を超える（日本語）/ 60 文字を超える（英語） | エラー / 警告 |
@@ -350,7 +352,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `alt` の無い `<img>`、`aria-label`・`<title>` の無い SVG の図、名前の無い部品 | 警告、警告、情報 |
 | タイムラインの合計と 1 枚ごとの長さ | 情報 |
 
-スライドと口述原稿の言語は違ってもよい（字幕だけ別の言語にする、日本語のスライドに英語の口述原稿を付けるなど）。口述原稿の言語は `voice.json` の `"lang"`（TTS と同じ）、なければ、ほとんどの発言がデッキと別の字で書かれているときはその言語（日本語のデッキで日本語の字がない、ほかの言語のデッキでほとんどの発言に日本語の字がある）、それもなければデッキの `<html lang>`。口述原稿の検査は発言ごとにその言語で見る：日本語の字のある発言は日本語の規則、英語の文は英語の規則（式とみなすのは `\` `^` `_` と密な演算子だけ）。
+スライドと口述原稿の言語は違ってもよい（字幕だけ別の言語にする、日本語のスライドに英語の口述原稿を付けるなど）。口述原稿の言語は `voice.json` の `"lang"`（TTS と同じ）、なければ、ほとんどの発言がデッキと別の字で書かれているときはその言語（日本語のデッキで日本語の字がない、ほかの言語のデッキでほとんどの発言に日本語の字がある）、それもなければデッキの `<html lang>`。口述原稿の品質チェックは発言ごとにその言語で見る：日本語の字のある発言は日本語の規則、英語の文は英語の規則（式とみなすのは `\` `^` `_` と密な演算子だけ）。
 
 ## build
 
@@ -385,10 +387,10 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 - **添付**（形式の §3.8。下書き・試行。§3.8 の案）：組み立てには使わない、読み手のためのファイル。`attachments/` の下（下のフォルダもよい）に置く：元の原稿（TeX・Word）、組んだ PDF、コード、データ、補足。役割・題・説明は `egatari.json` に、ファイルの `index.attachments` と同じ形で書く：`"attachments": [{"path": "attachments/paper.pdf", "role": "pdf", "title": "論文（PDF）", "description": "雑誌に載った版。"}]`。`role` は `source`・`pdf`・`code`・`data`・`supplement` のどれか、`title` は要る（ダウンロードの一覧に出す短い名前。1 行で 120 字まで。字は Schema と同じく Unicode の符号位置で数える）、`description` は任意（1〜2 文の文字だけ、1 行で 300 字まで。ダウンロードの一覧の題の下に出る。ほかの項目は残す）。`attachments/` の下の通常のファイルを入れる（シンボリックリンクはたどらない。隠しファイル・控え・認証の情報は上と同じく外す）。`index.attachments` に載るのは正しい役割と正しい題のあるものだけで、ほかは知らせて入れるだけ。正しくない説明は知らせて落とし、項目は一覧に載せる。
   - **役割ごとの形式**（§3.8。`kit/core/attach-content.mjs`）：`pdf` は PDF、`data` は CSV・TSV・JSON・テキスト・xlsx、`code` はプログラムの原稿（`.py`・`.r`・`.jl`・`.c`・`.mjs`・`.ts`・`.sh` など）・ノートブック（`.ipynb`）・環境の定義（`requirements.txt`・`pyproject.toml`・`uv.lock`・`environment.yml`・`Dockerfile` など）、`source` は TeX・Markdown・テキスト（BibTeX など）・docx、`supplement` は PNG・JPEG・WebP・PDF・テキスト。添付にしないもの：実行できるファイル、どの役割でも、よくある OS が実行する・スクリプトとして開く拡張子（仕様の一覧のとおり：`.js`・`.jse`・`.vbs`・`.vbe`・`.wsf`・`.wsh`・`.hta`・`.bat`・`.cmd`・`.com`・`.scr`・`.ps1`・`.command`・`.app`・`.jar`・`.reg`・`.lnk`。JavaScript の原稿は `.mjs`・`.cjs`・`.ts` で添付する）、WebAssembly、マクロを入れられる Office と古い形式の Office（`.xlsm`・`.docm`・`.doc`・`.xls`・`.ppt`・RTF）、HTML、SVG、ほかの `.ega.html`、アーカイブ・入れ物（ZIP・TAR・7z など）、音声と動画、ほかのどの形式も。形式は拡張子から決め、中身（先頭の印と構造）と照らすので、名前を替えた実行ファイル・`.txt` という名前の HTML・2 つの形式を重ねたファイル（ZIP を後ろに付けた PDF、先頭に PDF の印のある画像）は断る。添付の塊には、その形式の媒体型を書く（`application/pdf`・`text/csv`、プログラムの原稿は `text/plain` など）。
   - **中身の条件**（何も実行せず、上限の内で確かめる。展開して読むのは 64 MiB まで、ZIP の項目の数と宣言の大きさにも上限があり、項目が重なるもの・宣言より大きく展開されるものは断る）：PDF は JavaScript・埋め込んだファイル・XFA がないこと。開いたときの動作（`/OpenAction`・`/AA`）は行き先か文書の中へ移る `GoTo`（LaTeX の hyperref が書く形）だけ、リンクは `GoTo` と `URI` だけで、ほかの動作（`Launch`・`SubmitForm`・`ImportData`・`GoToR`・`GoToE`・`Rendition`・`Named` など）はないこと。圧縮した object stream の中も見る。暗号化した PDF は、空の利用者パスワードで開けるもの（RC4・AES-128・AES-256）だけを復号して確かめ、ほかは断る。xlsx と docx（ZIP としてメモリの上で読み、ディスクに展開しない）：マクロ（`vbaProject.bin`・マクロを入れられる形式）・ActiveX・埋め込んだ object・外部リンクやほかの外への関係・データの接続や Web クエリ・DDE・外のデータを取りにいく関数（`WEBSERVICE`・`RTD`・`IMAGE`・`STOCKHISTORY`・`CALL` など）・実行する・取りにいくフィールド（`DDEAUTO`・`INCLUDETEXT`・`INCLUDEPICTURE`・`LINK` など。入れ子のフィールドで名前を作るものも）・外のテンプレートがないこと。テキストはテキストであること（NUL がない。BOM のある UTF-16 はよい）、JSON とノートブックは読めること。
-  - **どうなるか**：組み立て（`--portable`）は、添付にできない形式や条件に合わない添付を、規則の名前を添えて知らせて外す。CSV・TSV・xlsx の、表計算のソフトが数式として読みうる値（`=`・`+`・`-`・`@`・タブで始まるもの。数は除く）と、資格情報や機械のパスらしい文字は、知らせて入れる。検査器は、仕様が禁じるもの（MUST NOT：許されない形式・役割が受けない形式・音声と動画・JavaScript のある PDF・マクロ・2 つの形式を重ねたファイル）をエラー、ほか（SHOULD：ほかの条件・中身が形式と合わない・確かめられない。数式として読まれる値・資格情報）を警告にする。
+  - **どうなるか**：組み立て（`--portable`）は、添付にできない形式や条件に合わない添付を、規則の名前を添えて知らせて外す。CSV・TSV・xlsx の、表計算のソフトが数式として読みうる値（`=`・`+`・`-`・`@`・タブで始まるもの。数は除く）と、資格情報や機械のパスらしい文字は、知らせて入れる。品質チェックは、仕様が禁じるもの（MUST NOT：許されない形式・役割が受けない形式・音声と動画・JavaScript のある PDF・マクロ・2 つの形式を重ねたファイル）をエラー、ほか（SHOULD：ほかの条件・中身が形式と合わない・確かめられない。数式として読まれる値・資格情報）を警告にする。
   - 上限は 1 つ 10 MiB・合わせて 20 MiB・100 個（base64 なので 1 ファイルではおよそ 4/3 倍）。超えるものは知らせて外す（`kit/core/attachments.mjs` の `ATTACH_LIMITS`）。添付はコードに数えない（Extended にならない）。`requires` にも入れない（読み手は無視してよい）。読むのは組み立てと同じ大きさの数え方の内。
   - **1 ファイルの中の `egatari.json`** には、`index.attachments` とちょうど同じ一覧を書く（§3.3）：読み手の一覧に出ない項目は 1 ファイルの写しから除き、知らせる。作業フォルダの `egatari.json` は変えない。展開は `index.attachments` を `egatari.json` に書き（`egatari.json` のない文書でも）、フォルダをまとめるときは一覧を `egatari.json` から読むので、展開してまとめ直しても記録は変わらない。`egatari.json` の一覧が索引と違う文書は読まない（`attachments-mismatch`）。
-  - 1 ファイルの再生器は **?** の一覧（題・説明・ファイル名・役割・大きさ）と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：出すのは、題が正しく、役割が受ける拡張子で、塊の媒体型がそれに合うものだけ（索引に書いてあっても、`.html`・`.js` や `pdf` として書いた CSV は出さない）。保存する名前はパスのファイル名そのもの（OS が受けない名前は、替えずに出さない）。コードの添付には「出どころを信頼できるときだけ、コードを実行してください」と添える。索引の hash と、添付ごとの大きさと SHA-256 を確かめ、先頭のバイトを形式と照らし（HTML で始まる `.txt` は保存しない）、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。検査器は、役割や題がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものも警告する
+  - 1 ファイルの再生器は **?** の一覧（題・説明・ファイル名・役割・大きさ）と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：出すのは、題が正しく、役割が受ける拡張子で、塊の媒体型がそれに合うものだけ（索引に書いてあっても、`.html`・`.js` や `pdf` として書いた CSV は出さない）。保存する名前はパスのファイル名そのもの（OS が受けない名前は、替えずに出さない）。コードの添付には「出どころを信頼できるときだけ、コードを実行してください」と添える。索引の hash と、添付ごとの大きさと SHA-256 を確かめ、先頭のバイトを形式と照らし（HTML で始まる `.txt` は保存しない）、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。品質チェックは、役割や題がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものも警告する
 - **音声の記録**：段階の音声ごとに、作ったときの口述原稿の hash を残す。TTS の控えから、音声を作った後に口述原稿が変わったと分かるときは、その hash を `null`（分からない＝古い）にする。展開してまとめ直しても `null` のまま。実行系の音声の項目には音声のメディアタイプも書くので、再生器が推し量らずに済む。
 - 30 MiB を超えると警告する（長い教材は章に分ける）。
 
@@ -428,7 +430,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `lang` | 言語（既定はデッキの HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
 | `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
 
-`audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（原稿から消えた段階は manifest から外す。wav は残す）。manifest の各段階には `kind: "tts"` と、その段階の口述原稿の hash `inputHash`（format spec §5.4）も書くので、後で口述原稿が変わったことを編集アプリと検査器が見分けられる。録音と取り込みの音声は残す（`--replace-recorded` を参照）。編集アプリでも、ブラウザで 1 段階ずつ録音・取り込み・作り直しができる（[編集アプリ](editor.ja.md#口述原稿の音声音声の板)）。その後処理は `tts/core.py` と同じ数を使う。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスを手元で確かめない。終わったら build し直す。
+`audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（原稿から消えた段階は manifest から外す。wav は残す）。manifest の各段階には `kind: "tts"` と、その段階の口述原稿の hash `inputHash`（format spec §5.4）も書くので、後で口述原稿が変わったことを編集アプリと品質チェックが見分けられる。録音と取り込みの音声は残す（`--replace-recorded` を参照）。編集アプリでも、ブラウザで 1 段階ずつ録音・取り込み・作り直しができる（[編集アプリ](editor.ja.md#口述原稿の音声音声の板)）。その後処理は `tts/core.py` と同じ数を使う。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスを手元で確かめない。終わったら build し直す。
 
 ## 書き出し
 
@@ -457,7 +459,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/test-kokugo.mjs` | 漢文の訓読の順と書き下し文（よく知られた詩文で）、`m-kobun`・`m-gendai` の読み取りの試験（ブラウザなし） |
-| `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、検査器の規則、スライドの鍵と読める層が変わらない |
+| `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
 | `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピンを描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
@@ -468,7 +470,7 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 | `node tools/test-tools.mjs <組んだ.html> [フォルダ]` | 一覧・ペン・レーザー・印刷・発表者ビューからの書き込み |
 | `node tools/test-controls.mjs <組んだ.html> [フォルダ]` | 操作の帯・キーの一覧・発表者ビューのボタン |
 | `node tools/test-autoplay.mjs <組んだ.html>` | 自動再生と発表者ビューのボタン |
-| `node tools/test-links.mjs [フォルダ]` | スライドへのリンク：開いたときの #・モードごとのクリック・戻る（ボタン・キー・ブラウザの履歴）・自動再生を保つこと・埋め込み（`cause: "link"` の `position`、`linkRefused`）・発表者ビュー・`m-menu`・検査器のエラー |
+| `node tools/test-links.mjs [フォルダ]` | スライドへのリンク：開いたときの #・モードごとのクリック・戻る（ボタン・キー・ブラウザの履歴）・自動再生を保つこと・埋め込み（`cause: "link"` の `position`、`linkRefused`）・発表者ビュー・`m-menu`・品質チェックのエラー |
 | `node tools/test-dev-server.mjs [作業用のフォルダ]` | `examples/minimal` の写しで開発サーバーを確かめる |
 | `node tools/flake.mjs <組んだ.html> <i> <k> <フォルダ>` | 「呼び出し順に依存」の誤検出を調べる |
 
@@ -476,8 +478,8 @@ build は、どのスライドにも合わない `##`（検査器ではエラー
 
 | 変数 | 使うもの | 意味 | 既定 |
 |---|---|---|---|
-| `CHROME_PATH` | 検査・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
+| `CHROME_PATH` | 品質チェック・PDF・shot・書き出し・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
 | `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882` |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
-| `EGATARI_THEMES` | 組み立て・検査・開発サーバー・1 ファイル | 自分のテーマのフォルダ。作業フォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |
+| `EGATARI_THEMES` | 組み立て・品質チェック・開発サーバー・1 ファイル | 自分のテーマのフォルダ。作業フォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |

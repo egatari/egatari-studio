@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=11b09e5642820ad0 -->
+<!-- i18n: pair=contract.ja.md sha256=8c0c43a2df345d4b -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -16,7 +16,7 @@ The "position" during a talk is given by three values: (slide i, step k, seconds
 - The runtime draws the screen in one place (`DECK.seek(i, k, t)`). A live talk passes real time; video export passes virtual time
 
 - While the slide is changing at step 0 (`seek(i, 0, t, from)`), the previous slide `from` is drawn underneath in its final state. When a `data-morph` slide is entered from its source slide, a morph (§8) is used instead of the cross-fade
-- Whatever captures the screen (video export, the checker) waits for two `requestAnimationFrame`s after `seek` before capturing (so that it never captures a screen before the drawing has been applied)
+- Whatever captures the screen (video export, the quality checker) waits for two `requestAnimationFrame`s after `seek` before capturing (so that it never captures a screen before the drawing has been applied)
 - Theme colors are written with `oklch()` and `color-mix()`, so the value from `getComputedStyle` may not be rgb. When you need numbers, paint the color on a canvas and read it back
 
 ## 2. Display modes
@@ -50,7 +50,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - A component may open an overlay on a click (the conjugation card of `m-kobun`). This is a presenting control, like the pen, outside the (i, k, t) rule: it must close when the step changes, never open in `?mode=video`, not print, take nothing from the network, and show text only
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
 - Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the deck is treated as having code of its own)
-- Declare the data's shape in `static shape` (`kit/shape.js`: a small subset of JSON Schema, `{schema, example, note?}`; `{text: true, example}` for components written as text, `{links: true, example}` for child `<a href>`; a json attribute may have `shape` in `static props`). The runtime checks it before counting steps: on a mismatch, or when `mount`/`render` throws, the component is not drawn, an inline placeholder (`.m-error`) says what is wrong, its steps are the `steps` attribute (else 0), and the problem goes to `DECK.componentErrors` (read by the checker and the editor's quick check; never a stack trace). The guide's component list shows the shape and example
+- Declare the data's shape in `static shape` (`kit/shape.js`: a small subset of JSON Schema, `{schema, example, note?}`; `{text: true, example}` for components written as text, `{links: true, example}` for child `<a href>`; a json attribute may have `shape` in `static props`). The runtime checks it before counting steps: on a mismatch, or when `mount`/`render` throws, the component is not drawn, an inline placeholder (`.m-error`) says what is wrong, its steps are the `steps` attribute (else 0), and the problem goes to `DECK.componentErrors` (read by the quality checker, command and browser; never a stack trace). The guide's component list shows the shape and example
 - Location: `components/<name>/{index.js, demo.html, README.md}`. Write `name` `summary` `steps` `props` at the top of the README (frontmatter)
 
 ## 4. Narration (narration.md)
@@ -70,16 +70,16 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - `{mark:ID}` `{mark:ID|effect|hold=seconds}` `{mark:clear}` insert attention marks (§7). They are removed from the displayed text, and in TTS they act as boundaries, like `{cue}`
 - The step's boundaries (`{cue}` and `{mark:…}`), listed in order across turns (`bounds`), correspond one to one with the TTS `cues` (the array of boundary times). Component time-stretching uses only the `{cue}` ones
 - `{φ|ファイ}` is an inline reading (displayed as φ, read by TTS as "ファイ"). Other symbols are read with the reading dictionary
-- Do not read whole equations aloud (the checker warns)
+- Do not read whole equations aloud (the quality checker warns)
 - Extension lines `@x-<name>-<field> <value>` (`<name>` without hyphens) inside a step carry extension data for that step. They are not part of any turn: never shown, never spoken, not in `bounds` nor in any hash, so editing them never makes audio stale. Editors (dev server, editor app, `npm run ids`) keep them as they are
 
 **Slide keys** ([format spec](https://github.com/egatari/egatari-spec) §8.1). Every slide should have a stable id: `<section class="slide" id="s-k3f9q2">`. Ids match `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and share the document's id namespace with attention-mark targets (`id="…"`, `\htmlId{…}`), so they must not equal any other id in `deck.html`. New ids are `s-` plus 6 random base32 characters (`[a-z2-7]`), never derived from the heading, so that renaming a heading changes nothing. `npm run new` gives every slide an id; `npm run ids -- <deck>` adds ids to an existing deck.
 
 - In `deck.html` the slide key (`data-key`, added by the build) is the section's `id`; a slide without id (legacy) is keyed by the **normalized** text of its first heading: tags removed, `&nbsp;` read as a space, and **all** whitespace removed
-- In `narration.md` a slide is addressed as `## <heading> {#<id>}` (recommended), `## <id>`, or `## <heading>` (legacy, only for slides without id). When `{#id}` is present it wins over the heading text; if the heading text differs from the slide's, the checker only reports it (info)
+- In `narration.md` a slide is addressed as `## <heading> {#<id>}` (recommended), `## <id>`, or `## <heading>` (legacy, only for slides without id). When `{#id}` is present it wins over the heading text; if the heading text differs from the slide's, the quality checker only reports a finding (info)
 - A deck may mix slides with and without ids; each slide is keyed independently
-- Two slides with the same key make the deck invalid (the checker reports an error); give one of them an id
-- Step keys are `<slideKey>:<step>`, split at the **last** `:` (slide keys may contain `:`). Steps are written in canonical decimal, `0`–`999` without leading zeros, or `concl`; `[01]` and `[1000]` are not steps (build warns, the checker reports an error)
+- Two slides with the same key make the deck invalid (the quality checker reports an error); give one of them an id
+- Step keys are `<slideKey>:<step>`, split at the **last** `:` (slide keys may contain `:`). Steps are written in canonical decimal, `0`–`999` without leading zeros, or `concl`; `[01]` and `[1000]` are not steps (build warns, the quality checker reports an error)
 
 ## 5. Timeline
 
@@ -121,8 +121,8 @@ Marks part of a slide in time with the speaker's words. Marks are also determine
 - Drawing: on an SVG overlaid on the slide (`svg.marks`, 1280×720 coordinates), the shape is built from the outline of the target's text (the union of the glyph boxes) and drawn over 0.5 s. Colors are `var(--emph)` and `var(--bg)`. The hand-drawn wobble is made with random numbers determined by the ID and the step
 - t = Infinity is the final state of the step (marks that have disappeared through hold or clear are not shown). Lecture mode always shows the final state. When you move on to the next step, the marks of the previous step disappear (each step is independent)
 - Marks are not printed (PDF)
-- Embedding: the build puts `{"slideKey:stepKey": bounds}` (only for steps that contain `{mark}`) into `<script id="deck-marks">`. `DECK.MARKS`, and for checking `DECK.marks(i, k)` (`[{id, effect, start, end, found}]`)
-- Checking: the build warns when a target is not in the source text (it cannot see elements created by components). check looks for the targets on the actual screen, warns if they are missing, and lists the marks of each step as info
+- Embedding: the build puts `{"slideKey:stepKey": bounds}` (only for steps that contain `{mark}`) into `<script id="deck-marks">`. `DECK.MARKS`, and for the quality checker `DECK.marks(i, k)` (`[{id, effect, start, end, found}]`)
+- Quality check: the build warns when a target is not in the source text (it cannot see elements created by components). The quality checker looks for the targets on the actual screen, warns if they are missing, and lists the marks of each step as info
 
 ## 8. Morphs (`data-morph`)
 
@@ -141,7 +141,7 @@ A transition in which the same elements as on the previous slide slide from thei
 - Positions are measured in stage coordinates (1280×720) from the source's final state and the destination's step-0 layout, and remembered for each (from, i). The screen is the same whatever the order of calls. They are measured again when the window size or the text changes
 - Timeline: when `data-morph` has the previous slide as its source, `anim(i, 0)` is at least 0.9 s (autoplay and video export enter from i−1)
 - Limits: elements inside an SVG are not supported. Frames or backgrounds surrounding paired elements (such as `.thm`) are swapped at the end of the transition. Pairing elements with different text stretches them to match sizes (use it for elements with the same text)
-- Checking: check warns when the source slide is missing, when there is no matching `data-id` at all, and about duplicate IDs, and lists the pairs as info. `DECK.morph(i)` = `{src, ids, later, dupSrc, dupDst}`
+- Quality check: warns when the source slide is missing, when there is no matching `data-id` at all, and about duplicate IDs, and lists the pairs as info. `DECK.morph(i)` = `{src, ids, later, dupSrc, dupDst}`
 
 ## 9. Links to slides
 
@@ -153,7 +153,7 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 <a href="lesson2.ega.html">次の課</a>    <!-- another file: an ordinary link -->
 ```
 
-- Grammar: `#<slide id>` or `#<slide id>:<stepKey>`, split at the **last** `:`. The step key is canonical decimal (`0`, `1`, …, at most 999) or `concl`; the conclusion step is addressed only as `concl`. A fragment that matches no slide id is matched against slide keys (legacy decks without ids); the checker warns about such links. A purely numeric `#N` is the slide number (1-based), as before
+- Grammar: `#<slide id>` or `#<slide id>:<stepKey>`, split at the **last** `:`. The step key is canonical decimal (`0`, `1`, …, at most 999) or `concl`; the conclusion step is addressed only as `concl`. A fragment that matches no slide id is matched against slide keys (legacy decks without ids); the quality checker warns about such links. A purely numeric `#N` is the slide number (1-based), as before
 - Start position: the same fragments in the file's URL select the position at load (final state of that step). An unreadable fragment opens slide 1 with a console warning; `#N` beyond the last slide opens the last one. While navigating, the address shows `#N` (unchanged)
 - Following a link: in talk and lecture mode the player goes to that step in its final state (t = ∞) and stays paused; during autoplay it seeks there and keeps playing from the start of that step. In video mode links do nothing (the screen is a function of (i, k, t) only). With a pen or the laser active, a click draws and does not follow
 - Back: the player keeps the positions before each link (a stack). **Back** returns to the position before the most recent link, keeping the playing state: the small button at the top left (shown only after arriving by a link; it names the slide it returns to), Backspace (when no pen is active), Alt+←, or the browser's back button. In a top-level window each link adds one history entry (`pushState`), so the browser's back and forward work too; forward returns to the last position reached after that link. Ordinary navigation (arrows, numbers, overview) adds no entries. In a frame the stack is kept in memory only
@@ -163,4 +163,4 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 - Presenter view: the presenter window follows the main window (as for any navigation), shows its own Back button and forwards Backspace / Alt+←. A link clicked on the "current screen" iframe is followed by the main window
 - Captions and the live region follow the new step like any other navigation
 - Run-time API: `DECK.resolveFragment(f)` → `{i, k, key, id}` or `{error}`, `DECK.fragment(i, k)`, `DECK.follow(f)`, `DECK.back()`, `DECK.links()` → `{depth, follow, back}`, `DECK.visited(i | key)` (the slide has been shown in this session; used by `m-menu`)
-- Checking: the checker reports a link to an unknown slide, to a step out of range, to `concl` on a slide without a conclusion, or to a slide number beyond the last as **errors**; it warns about `#N` links, links to slides without an id, and relative links to files that do not exist
+- Quality check: the quality checker reports a link to an unknown slide, to a step out of range, to `concl` on a slide without a conclusion, or to a slide number beyond the last as **errors**; it warns about `#N` links, links to slides without an id, and relative links to files that do not exist

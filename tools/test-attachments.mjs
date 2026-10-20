@@ -8,8 +8,8 @@
 // 4. 上限（1 つ・合わせて・数）・題・説明：外して知らせる。名前の規則（.. ・隠しファイル・リンク）。音声と動画（名前と中身）
 // 4A. 役割ごとの型と中身（§3.8）：PDF（JavaScript・自動の動作・Launch・埋め込み・object stream・爆弾）、xlsx・docx（マクロ・外部リンク・DDE・
 //    WEBSERVICE・ActiveX・OLE・フィールド・テンプレート）、CSV（数式として読まれる値は警告だけ）、重ねたファイル、名前を替えた実行ファイル、ZIP の爆弾、
-//    役割と型の組。書き出しは外して規則の名前を添えて知らせ、検査器は MUST NOT をエラー、SHOULD を警告にする
-// 5. 検査器（kit/check.mjs --json）：役割がない・役割が正しくない・ない・名前が使えない・大きすぎる
+//    役割と型の組。書き出しは外して規則の名前を添えて知らせ、品質チェックは MUST NOT をエラー、SHOULD を警告にする
+// 5. 品質チェック（kit/check.mjs --json）：役割がない・役割が正しくない・ない・名前が使えない・大きすぎる
 // 6. 段 A（kit/core/tier-a.mjs）：足す・消す・名前・題・説明を替える → 添付の場所と索引だけが変わる（tools/tier-a-diff.mjs）。egatari.json も一覧を揃える。
 //    原稿が書いている添付・上限を超えるもの・§3.8 に合わないもの（HTML・JavaScript のある PDF・役割に合わない型）は断る
 // 7. 再生器（ヘッドレス Chrome、file://）：帯のボタンと ? の一覧（説明つき）、ダウンロード（開かずに保存。ページは動かず、新しいタブもない）。
@@ -346,7 +346,7 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   ok(s3('link.xlsx') === 'warn' && s3('aa.pdf') === 'warn' && !e3.length, 'checker: SHOULD conditions (an external link in xlsx, /AA in a PDF) are warnings: ' + JSON.stringify({ link: s3('link.xlsx'), aa: s3('aa.pdf'), errors: e3 }));
 }
 
-// ---------------------------------------------------------------- 5. 検査器
+// ---------------------------------------------------------------- 5. 品質チェック
 {
   const d = path.join(work, 'deck-check');
   const deck = makeDeck(d, { ...CONF, [KEY]: [...CONF[KEY], { path: 'attachments/missing.zip', role: 'code' }, { path: 'attachments/../x', role: 'pdf' }, { path: 'attachments/code/run.py', role: 'slides' }, { path: 'attachments/notitle.txt', role: 'supplement' }] });

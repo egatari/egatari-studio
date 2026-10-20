@@ -2,7 +2,7 @@
 //   node tools/test-links.mjs [作業フォルダ]
 // 開いたときの #（#<id>・#<id>:<段階>・#N）、発表・授業・動画・ペンでのクリック、戻る（ボタン・Backspace・Alt+←・ブラウザの戻る/進む）、
 // 自動再生の状態を保つこと、キーボードで押したリンクへフォーカスが戻ること、字幕・発表者ビューがついてくること、
-// 埋め込み（?embed=1）の position（cause: "link"）と、親が止めたときの linkRefused、m-menu の「見た」の印と段階、検査器のエラー
+// 埋め込み（?embed=1）の position（cause: "link"）と、親が止めたときの linkRefused、m-menu の「見た」の印と段階、品質チェックのエラー
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -256,7 +256,7 @@ f.src = 'deck.html' + location.search + location.hash;
   await pv.close(); await p.close();
 }
 
-// ---- 検査器：行き先のないリンク・範囲の外の段階はエラー
+// ---- 品質チェック：行き先のないリンク・範囲の外の段階はエラー
 {
   const bad = path.join(work, 'bad');
   fs.mkdirSync(bad, { recursive: true });
@@ -265,18 +265,18 @@ f.src = 'deck.html' + location.search + location.hash;
   fs.writeFileSync(path.join(bad, 'narration.md'), narr.join('\n'));
   const run = (f) => { const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), f, '--json'], { encoding: 'utf8' }); return { code: r.status, j: JSON.parse(r.stdout) }; };
   const g = run(path.join(deckDir, 'deck.html'));
-  ok(g.code === 0 && g.j.counts.error === 0, `検査器：正しいリンクはエラー 0（${g.j.counts.error}）`);
+  ok(g.code === 0 && g.j.counts.error === 0, `品質チェック：正しいリンクはエラー 0（${g.j.counts.error}）`);
   const r = run(path.join(bad, 'deck.html'));
   const errsJ = r.j.results.filter((x) => x.sev === 'error' && /リンク/.test(x.msg)).map((x) => x.msg);
   const warnsJ = r.j.results.filter((x) => x.sev === 'warn' && /リンク/.test(x.msg)).map((x) => x.msg);
-  ok(r.code === 1, '検査器：行き先のないリンクで終了コード 1');
+  ok(r.code === 1, '品質チェック：行き先のないリンクで終了コード 1');
   for (const [h, re] of [['#s-nope', /スライド「s-nope」がない/], ['#s-three:7', /段階 7 がない/], ['#s-two:concl', /結論.*の段階がない/], ['#s-three:3', /段階 3 がない.*concl/], ['#9', /スライド 9 がない/]]) {
-    ok(errsJ.some((m) => m.includes(`href="${h}"`) && re.test(m)), `検査器のエラー：${h}`);
+    ok(errsJ.some((m) => m.includes(`href="${h}"`) && re.test(m)), `品質チェックのエラー：${h}`);
   }
-  ok(warnsJ.some((m) => m.includes('href="#2"') && /番号/.test(m)), '検査器の警告：番号のリンク #2');
-  ok(warnsJ.some((m) => m.includes('other.ega.html') && /見つからない/.test(m)), '検査器の警告：ほかのファイルが見つからない');
-  ok(!r.j.results.some((x) => x.msg.includes('example.org')), '検査器：http のリンクは見ない');
-  ok(errsJ.length === 5, `検査器のリンクのエラーは 5 つ（${errsJ.length}）`);
+  ok(warnsJ.some((m) => m.includes('href="#2"') && /番号/.test(m)), '品質チェックの警告：番号のリンク #2');
+  ok(warnsJ.some((m) => m.includes('other.ega.html') && /見つからない/.test(m)), '品質チェックの警告：ほかのファイルが見つからない');
+  ok(!r.j.results.some((x) => x.msg.includes('example.org')), '品質チェック：http のリンクは見ない');
+  ok(errsJ.length === 5, `品質チェックのリンクのエラーは 5 つ（${errsJ.length}）`);
 }
 
 await b.close();

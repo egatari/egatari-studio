@@ -1,4 +1,4 @@
-// 検査器の「呼び出し順に依存」の誤検出を調べる：node tools/flake.mjs <built.html> <i> <k> <outdir>
+// 品質チェックの「呼び出し順に依存」の誤検出を調べる：node tools/flake.mjs <built.html> <i> <k> <outdir>
 import { launch, fileUrl } from '../kit/browser.mjs';
 import fs from 'node:fs';
 const [file, i, k, out] = process.argv.slice(2);

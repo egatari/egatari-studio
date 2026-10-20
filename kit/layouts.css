@@ -76,7 +76,7 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 .tate p.indent{text-indent:1em}
 /* 縦中横（縦書きの中の 2 桁の数字など） */
 .tcy{text-combine-upright:all}
-/* ルビ：振り仮名は 0.5em（検査器は rt の字の大きさを数えない）。縦書きでは右に付く */
+/* ルビ：振り仮名は 0.5em（品質チェックは rt の字の大きさを数えない）。縦書きでは右に付く */
 rt{font-size:.5em;line-height:1}
 
 /* 縦組みのスライド（class="slide layout-tate"）：見出しは右端の列に縦書きで天付き、見出しの下線は列の左の縦の罫になる。

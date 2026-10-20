@@ -3,7 +3,7 @@
 // 1. tools/build-app.mjs で作業用のフォルダに組み、dist/ を 127.0.0.1 で配る（根と /egatari-studio/ の両方。13 でサイトの形を確かめる）
 // 2. OPFS（navigator.storage.getDirectory()）に examples/minimal を写したフォルダを作り、window.__APP_TEST_OPEN(handle) で開く
 // 3. ブラウザで組んだ HTML が Node の build（字を絞り込まない）と同じか・原稿の編集・口述原稿・コメント・外での変更・
-//    組み立ての失敗・書き出し・簡易チェック・発表者ビュー・1 ファイル版（file://）を確かめる。コンソールのエラーが無いこと
+//    組み立ての失敗・書き出し・品質チェック・発表者ビュー・1 ファイル版（file://）を確かめる。コンソールのエラーが無いこと
 // 4. 持ち運べる 1 ファイル（examples/minimal ＋ dry-run の音声、tools/portable-fixtures.mjs）：フォルダなしで開く・権利の確認・
 //    編集・保存（OPFS のファイルのハンドルに上書き）・開き直し・フォルダへの書き出し・フォルダからの書き出し・改変を認めないライセンス・
 //    独自のコードの知らせ・印のスクリプトが取り出しで動かない（アプリのページと Worker）・壊れた・新しい版のファイルを断る・ダウンロード
@@ -424,11 +424,11 @@ try {
   await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 10000 });
   ok(await page.isHidden('#errbox'), 'error: overlay disappears after the fix');
 
-  // ---------------------------------------------------------------- 7. 簡易チェック
+  // ---------------------------------------------------------------- 7. 品質チェック
   await page.click('#b-check');
   await page.waitForSelector('#panel-body .sum', { timeout: 20000 });
   const sum = await page.textContent('#panel-body .sum');
-  ok(/エラー \d+ · 警告 \d+/.test(sum), 'check: quick check summary shown: ' + sum);
+  ok(/エラー \d+ · 警告 \d+/.test(sum), 'check: quality check summary shown: ' + sum);
   await shot(page, 'check.png');
   await page.click('#panel-close');
 
@@ -1324,7 +1324,7 @@ try {
       const p = po.evaluate(([t, n]) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(t), name: n }), [text, name]);
       return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await po.click('#dlg-discard'); } return p; })();
     };
-    // 簡易チェックのエラーの数
+    // 品質チェックのエラーの数
     const quickErrors = async () => {
       await po.click('#b-check');
       await po.waitForSelector('#panel-body .sum', { timeout: 20000 });
@@ -1377,10 +1377,10 @@ try {
     await po.click('#dlg-folder');
     ok(await settle(p) === true && (await pst()).kind === 'folder' && (await pst()).deckFile === 'deck.html', 'source: "Open the folder…" opens the picked folder as a folder workspace');
     const folderCheck = await quickErrors();
-    // ルビの振り仮名（rt）は本文の半分の大きさが決まり：簡易チェックも kit/check.mjs と同じく字の大きさに数えない
-    ok(folderCheck.n === 0, 'quick check (kokugo-kanbun): ruby rt is not counted as small text, as in kit/check.mjs (errors 0): ' + folderCheck.t);
+    // ルビの振り仮名（rt）は本文の半分の大きさが決まり：品質チェックも kit/check.mjs と同じく字の大きさに数えない
+    ok(folderCheck.n === 0, 'quality check (kokugo-kanbun): ruby rt is not counted as small text, as in kit/check.mjs (errors 0): ' + folderCheck.t);
     await po.evaluate(() => { window.showDirectoryPicker = window.__srcPick; });
-    // このファイルだけ：メモリの上（deck.html だけ）で開き、簡易チェックが通る
+    // このファイルだけ：メモリの上（deck.html だけ）で開き、品質チェックが通る
     p = openBytes(ksrc, 'deck.html');
     await po.waitForSelector('#dlg[open] #dlg-only');
     await po.click('#dlg-only');
@@ -1393,7 +1393,7 @@ try {
     ok(await po.isVisible('#notice-source-only') && (await po.textContent('#notice-source-only')).includes('deck.html だけ'), 'source only: the notice says only deck.html is open and not saved yet');
     if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'source-only.png') });
     const srcCheck = await quickErrors();
-    ok(srcCheck.n === folderCheck.n, `source only: the quick check finds no error that the folder does not have (${srcCheck.t} / folder: ${folderCheck.t})`);
+    ok(srcCheck.n === folderCheck.n, `source only: the quality check finds no error that the folder does not have (${srcCheck.t} / folder: ${folderCheck.t})`);
     // 保存：どこにも保存していないので、1 ファイルか空のフォルダかを選ぶ
     await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('source-only' + '.ega.html', { create: true }); });
     await po.click('#b-save');
@@ -1406,13 +1406,13 @@ try {
     s = await pst();
     ok(sv.index.entry === 'deck.html' && new TextDecoder().decode(sv.files['deck.html']) === ksrc && !sv.files['narration.md'] && sv.docId === s.portable.docId && !(await po.isVisible('#notice-source-only')),
       'source only: saved as a portable file with the same deck.html and docId; the "not saved" notice goes away');
-    // examples/minimal の deck.html だけ：簡易チェックが通る（エラー 0）
+    // examples/minimal の deck.html だけ：品質チェックが通る（エラー 0）
     p = openBytes(fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8'), 'deck.html');
     await po.waitForSelector('#dlg[open] #dlg-only');
     await po.click('#dlg-only');
     ok(await settle(p) === true && (await pst()).portable.sourceOnly, 'source only (minimal): opens');
     const minCheck = await quickErrors();
-    ok(minCheck.n === 0, 'source only (minimal): the quick check passes (no errors): ' + minCheck.t);
+    ok(minCheck.n === 0, 'source only (minimal): the quality check passes (no errors): ' + minCheck.t);
     // 部品とデータが原稿のフォルダにあるデッキ（examples/tmlr2026-calibration）：ないものは組み立ての知らせになり、開ける
     p = openBytes(fs.readFileSync(path.join(ROOT, 'examples/tmlr2026-calibration/deck.html'), 'utf8'), 'deck.html');
     await po.waitForSelector('#dlg[open] #dlg-only');
@@ -1709,7 +1709,7 @@ try {
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
   await p1.close();
 
-  // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・直しの依頼（tools/test-app-llm.mjs）
+  // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
   await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
 
   // ---------------------------------------------------------------- 13. サイトの形（GitHub Pages）：根と下のパスの両方

@@ -2,7 +2,7 @@
 // cfg = {query, opener, dev, load, html, shim, prefix}
 //   query   location.search にする文字列（"?presenter=1" など。srcdoc の文書は URL を持たないので history で付ける）
 //   opener  発表者ビュー：window.opener を親（アプリが開いた窓）にする。本体とのやり取りはアプリが中継する
-//   dev     プレビュー：印刷・位置・簡易な検査の頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
+//   dev     プレビュー：印刷・位置・品質チェックの頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
 //   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列、
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
 (function frameShim(cfg){
@@ -28,7 +28,7 @@ if (cfg.html && cfg.shim && cfg.prefix) {
 }
 if (!cfg.dev) return;
 window.__APP_LOAD = cfg.load;   // 何回目の読み込みか（確かめ方が使う）
-// デッキのスクリプトのエラー（コンソールのエラーと捕まらなかった例外）を簡易チェックに出す。言葉だけ（スタックは持たない。場所は app/llm.js が除く）
+// デッキのスクリプトのエラー（コンソールのエラーと捕まらなかった例外）を品質チェックに出す。言葉だけ（スタックは持たない。場所は app/llm.js が除く）
 var jsErrors = [];
 var noteError = function(t){ t = String(t || "").split("\n")[0].slice(0, 300); if (t && jsErrors.indexOf(t) < 0 && jsErrors.length < 20) jsErrors.push(t); };
 window.addEventListener("error", function(e){ noteError((e.error && e.error.name ? e.error.name + ": " : "") + (e.message || "")); });
@@ -39,7 +39,7 @@ console.error = function(){
   return cerr.apply(console, arguments);
 };
 
-// 親（編集アプリ）からの、書き込みのない頼みごと：印刷・その位置へ・簡易な検査。編集の知らせは server/hints.js が送る
+// 親（編集アプリ）からの、書き込みのない頼みごと：印刷・その位置へ・品質チェック。編集の知らせは server/hints.js が送る
 window.addEventListener("message", function(e){
   if (e.source !== parentWin) return;
   var m = e.data || {};
@@ -48,7 +48,7 @@ window.addEventListener("message", function(e){
   else if (m.type === "app-check") whenReady(function(){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck()}, "*"); });
   else if (m.type === "app-audio") whenReady(function(){ previewAudio(m.items); });
 });
-// 簡易な検査は、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
+// 品質チェックは、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
 // 10 秒たっても組み上がらなければ、そのまま検査する（実行系が止まったデッキ：スクリプトのエラーを返す）
 function whenReady(fn){
   if (window.DECK && window.DECK.ready) return fn();
@@ -79,7 +79,7 @@ function previewAudio(items){
   }
 }
 
-// ---------------------------------------------------------------- 簡易な検査（kit/check.mjs の一部：はみ出し・文字の大きさ・字数・口述原稿・コントラスト）
+// ---------------------------------------------------------------- 品質チェック（kit/check.mjs の一部：はみ出し・文字の大きさ・字数・口述原稿・コントラスト）
 // 部品の再現性・タイムライン・モーフ・読み上げの検査はしない（全部の検査は CLI の npm run check）
 function quickCheck(){
   var DECK = window.DECK;

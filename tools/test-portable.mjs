@@ -691,7 +691,7 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
   assert.ok(!seen.some(([, p]) => p.endsWith(path.sep + 'index.js') || p.startsWith(path.join(ROOT, 'components'))), 'no registry file is read: ' + JSON.stringify(seen.slice(0, 5)));
 });
 
-ok('検査器：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {
+ok('品質チェック：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {
   const d = path.join(work, 'legacy-check'); fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'deck.html'), '<!doctype html><html lang="ja" data-theme="default"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage">\n' +
     '<section class="slide" data-key="hand"><h2>手書き</h2></section>\n<section class="slide"><div class="body">見出しなし</div></section>\n<section class="slide" id="s-abcdef"><h2>id</h2></section>\n<section class="slide"><h2>見出し</h2></section>\n</div></body></html>\n');

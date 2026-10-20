@@ -2,7 +2,7 @@
 //   node tools/make-llm-guide.mjs            書く：kit/core/llm-pack-data.mjs（組み立ての材料）と、
 //                                            docs/authoring-with-llms(.ja).md（共通の本体）・docs/llm-parts/<系列>(.ja).md（系列ごとの部分）
 //   node tools/make-llm-guide.mjs --check    今のファイルが作り直したものと同じか・大きさ（npm test。違えば・大きすぎれば終了コード 1）
-// 組み立ては kit/core/llm-pack-assemble.mjs の assemble（編集アプリ・kit/llm-pack.mjs・直しの依頼と同じ関数）。docs はその出力そのもの
+// 組み立ては kit/core/llm-pack-assemble.mjs の assemble（編集アプリ・kit/llm-pack.mjs・修正依頼と同じ関数）。docs はその出力そのもの
 //
 // 材料（どれかを直したら作り直す）：
 //   tools/llm-guide/template.md・template.ja.md   共通の本体（英語が正本）。{{…}} を下の中身で置き換える

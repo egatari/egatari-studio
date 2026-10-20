@@ -170,7 +170,7 @@ DECK.MotionElement = MotionElement;
 
 // ---------------------------------------------------------------- 部品のデータの形（static shape。確かめるのは kit/shape.js の DECK.shape）
 // 段階を数える前に確かめ、違えば（または mount・render が例外を出したら）部品を描かず、その場に知らせの札を出す（ほかのスライドは動く）。
-// 知らせは DECK.componentErrors に積む（検査器と編集アプリの簡易チェックが読む）：
+// 知らせは DECK.componentErrors に積む（品質チェック（コマンド版・ブラウザ版）が読む）：
 //   {slide, key, id, tag, label, index, phase: data | steps | mount | render, kind, …}
 //   kind：shape（path・why・expected・got）、missing（JSON がない）、json（JSON が読めない。msg）、attr・attrJson（属性 attr の値）、
 //         notText・empty（字で書く部品）、notLinks・noLinks（<a href> で書く部品）、exception（msg、dataLike：データの形が違うときによく出る言葉か）
@@ -232,7 +232,7 @@ function compFail(c, s, i, p, phase){
   c.mount = function(){ compPlaceholder(c, rec); };
   c.render = function(){}; c.duration = function(){ return 0; }; c.cues = function(){ return null; };
 }
-// 札の 1 行（実行系の言葉。くわしい知らせは検査器の言葉 kit/check-messages.mjs の compData）
+// 札の 1 行（実行系の言葉。くわしい知らせは品質チェックの言葉 kit/check-messages.mjs の compData）
 function compSummary(r, ja){
   var at = r.path ? r.path : (ja ? "データ" : "data");
   switch (r.kind){
@@ -1242,7 +1242,7 @@ function slideIndexOf(key){
   for (j = 0; j < slides.length; j++) if (slides[j]._key === key) return j;
   return -1;
 }
-// 位置の書き方（# の後ろ）を {i, k} にする。読めなければ {error}（検査器も使う）
+// 位置の書き方（# の後ろ）を {i, k} にする。読めなければ {error}（品質チェックも使う）
 function resolveFragment(f){
   f = String(f == null ? "" : f).replace(/^#/, "");
   if (!f) return {error: "empty"};

@@ -1,4 +1,4 @@
-// 口述原稿（narration.md）の書き方の検査で、検査器（kit/check.mjs）と編集アプリの簡易チェック（app/llm.js）が共有するもの。
+// 口述原稿（narration.md）の書き方の品質チェックで、コマンド版（kit/check.mjs）とブラウザ版（編集アプリ、app/llm.js）が共有するもの。
 // Node にもブラウザにも依存しない（純粋な ESM）。書式は docs/contract.md §4
 //
 //   readingProblems(raw)          段階の発言の元の文字列（{…} を含む）→ [{display, reading, why: 'operator' | 'several', text}]

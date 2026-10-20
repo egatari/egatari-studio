@@ -9,7 +9,7 @@
 //   planAttachments(files, conf, opts)  作業フォルダの attachments/ のファイル（[{path, size}]）と設定 → {include, list, problems}
 //   attachmentsOf(index)                文書の索引から、再生器・編集器が出す添付（files にあり、役割が正しいもの）
 //   attachmentName(path)                ダウンロードの名前（パスの最後。危ない字を _ に）
-// problems：{code, path?, …}。code は kit/check-messages.mjs の attach…（検査器と書き出しの知らせが同じ言葉を使う）
+// problems：{code, path?, …}。code は kit/check-messages.mjs の attach…（品質チェックと書き出しの知らせが同じ言葉を使う）
 import { FORMAT } from './format.mjs';
 import { pathProblem, excludedReason, foldPath } from './portable.mjs';
 import { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, TITLE_CHARS, DESCRIPTION_CHARS, titleProblem, descriptionProblem, clipChars } from './attach-content.mjs';

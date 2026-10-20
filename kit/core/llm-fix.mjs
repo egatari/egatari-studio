@@ -1,15 +1,15 @@
-// 「AI への直しの依頼」の文章を作る（編集アプリの簡易チェックの板。app/llm.js）。Node にもブラウザにも依存しない（純粋な ESM）
-// 決まりの文章は、AI への指示の共通の本体（kit/core/llm-pack.mjs の commonBody。docs/authoring-with-llms.md と同じ）の「- **R-名前** …」の行から、
+// 「AI への修正依頼」の文章を作る（編集アプリの品質チェックの板。app/llm.js）。Node にもブラウザにも依存しない（純粋な ESM）
+// 規格の文章は、AI への指示の共通の本体（kit/core/llm-pack.mjs の commonBody。docs/authoring-with-llms.md と同じ）の「- **R-名前** …」の行から、
 // 部品の説明は、デッキで使っている部品のもの（componentNotes。指示に入っているものと同じ文章）を載せる。
-// 依頼の形は指示の §5（直しの依頼）に合わせる：問題（決まりの名前付き）、その決まりの文章、今のファイル。返事は 2 つの囲み
+// 依頼の形は指示の §5（修正依頼）に合わせる：指摘（規格の名前付き）、その規格の文章、今のファイル。返事は 2 つの囲み
 //
 //   guideRules(guide) → Map(R-名前 → 文章)
-//   rulesFor(problem) → ['R-…']           問題（{code} か {msg}）に効く決まり
+//   rulesFor(problem) → ['R-…']           問題（{code} か {msg}）に効く規格
 //   amountOf(problem, lang)  はみ出し・小さい字の量の目安（「本文を 18 px（およそ 1 行）減らす」）
 //   cutOffRequest(err, lang)  返事が切れたときの依頼（閉じていない囲みだけを送り直す／短くして送り直す）
 //   buildFixRequest({problems, deck, narration, lang, limit}) → {text, partial, slides: [id…], rules: [R-…], components: [m-…]}
 //     （前の guide の引数は使わない。渡されても console に知らせて無視する）
-//     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は簡易チェックの arg でもよい）
+//     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は品質チェックの arg でもよい）
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
@@ -28,7 +28,7 @@ export function guideRules(guide) {
   return out;
 }
 
-// 簡易チェックの code（app/frame-shim.js・app/llm.js）と、組み立ての知らせ・検査器の言葉から
+// ブラウザ版の品質チェックの code（app/frame-shim.js・app/llm.js）と、組み立ての知らせ・コマンド版の指摘の言葉から
 const BY_CODE = {
   titleLong: ['R-title'], titleLongEn: ['R-title'], conclLong: ['R-concl'], conclLongEn: ['R-concl'], conclOverflow: ['R-concl', 'R-fit'],
   overflowBottom: ['R-fit'], overflowRight: ['R-fit'], smallText: ['R-fit'], katexError: ['R-math'],
@@ -47,7 +47,7 @@ const BY_TEXT = [
   [/句読点/, ['R-style']],
 ];
 export function rulesFor(p) {
-  if (p.rule) return [p.rule];   // 検査器の JSON（kit/check.mjs --json）の rule
+  if (p.rule) return [p.rule];   // 品質チェックの JSON（kit/check.mjs --json）の rule
   if (p.code && BY_CODE[p.code]) return BY_CODE[p.code];
   const s = p.msg || p.text || '';
   for (const [re, r] of BY_TEXT) if (re.test(s)) return r;
@@ -56,23 +56,23 @@ export function rulesFor(p) {
 
 const L = {
   en: {
-    head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the rules are quoted below.',
-    ask: 'Fix only the problems listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Reply with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
+    head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
+    ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Reply with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
     askPartial: (n) => `The deck is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
-    problems: 'Problems', rules: 'Rules', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
+    problems: 'Findings', rules: 'Standards', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
     where: (p) => (p.i === null || p.i === undefined ? 'Whole deck' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
     sev: { error: 'error', warn: 'warning' },
   },
   ja: {
-    head: 'Egatari の教材（deck.html と narration.md）の直しの依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、決まりの文章は下に引いています。',
-    ask: '挙げた問題だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。返事はちょうど 2 つのコードの囲み ```deck.html と ```narration.md にしてください（R-output）。',
+    head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
+    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。返事はちょうど 2 つのコードの囲み ```deck.html と ```narration.md にしてください（R-output）。',
     askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
-    problems: '問題', rules: '決まり', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
+    problems: '指摘', rules: '規格', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
     where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? `「${p.title}」` : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
 };
-// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は検査器の JSON の data（{px, lim}）か、簡易チェックの arg（"583 > 565"・"23.2px「…」"）
+// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は品質チェックのコマンド版の JSON の data（{px, lim}）か、ブラウザ版の arg（"583 > 565"・"23.2px「…」"）
 const LINE = 46;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
 const num = (x) => { const m = String(x ?? '').match(/-?\d+(?:\.\d+)?/g); return m ? m.map(Number) : []; };
 export function amountOf(p, lang = 'en') {

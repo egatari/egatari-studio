@@ -40,7 +40,7 @@ const hasClass = (n, c) => (attr(n, 'class') || '').split(/\s+/).includes(c);
 
 // 原稿に data-key（常に）と data-src（開発時）を書き足す。挿入は後ろから行い、位置をずらさない
 // スライドの鍵（format spec §8.1）：section の id、なければ手書きの data-key、なければ最初の見出しの正規化、なければ s<n>
-// 鍵が重なる原稿は正しくない（検査器がエラーにする。analyzeSlideIds）が、組めるように、明示の id / data-key が重なれば警告して「#n」を付け、
+// 鍵が重なる原稿は正しくない（品質チェックがエラーにする。analyzeSlideIds）が、組めるように、明示の id / data-key が重なれば警告して「#n」を付け、
 // 見出しや番号から作る鍵は、明示の鍵とも「#n」付きの鍵とも重ならないようにする。書き換えた鍵は data-key に書く
 export function annotate(src, dev, warn = []) {
   const doc = parse(src, { sourceCodeLocationInfo: true });
@@ -104,7 +104,7 @@ function inner(src, n) { const l = n.sourceCodeLocation; return l.startTag && l.
 function plainTitle(s) { return s.replace(/<br\s*\/?>/g, ' ').replace(/<[^>]*>/g, '').replace(/\\\(|\\\)/g, '').replace(/\s+/g, ' ').trim(); }
 function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
-// ---------------------------------------------------------------- スライドの id と鍵の検査（検査器・npm run ids が使う）
+// ---------------------------------------------------------------- スライドの id と鍵の検査（品質チェック・npm run ids が使う）
 // 原稿（deck.html の元の文字列）→ {slides:[{index, id, key, rule, heading, line}], docIds: Map<id, 何か>, problems:[{sev, slide, msg}]}
 //   slides[].key は build と同じ規則の鍵（重なっても「#n」を付けない元の鍵）
 //   docIds：スライドの section 以外の要素の id 属性と、式の \htmlId{…}（注目の演出の目印）。スライドの id と同じ名前空間
@@ -120,7 +120,7 @@ export function analyzeSlideIds(src) {
       const h = findFirst(n, (x) => x.tagName === 'h2' || x.tagName === 'h1');
       const id = attr(n, 'id');
       const off = n.sourceCodeLocation ? n.sourceCodeLocation.startOffset : 0;
-      // rule：鍵をどの規則で決めたか（id / data-key / heading / index）。data-key と index（s<n>）は旧来の規則（検査器が警告する）
+      // rule：鍵をどの規則で決めたか（id / data-key / heading / index）。data-key と index（s<n>）は旧来の規則（品質チェックが警告する）
       const dk = attr(n, 'data-key'), hk = h ? normalizeKey(inner(src, h)) : '';
       const rule = id ? 'id' : dk ? 'data-key' : hk ? 'heading' : 'index';
       slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,

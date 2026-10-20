@@ -28,7 +28,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 .printing svg.marks{display:none}
 /* 読み上げソフトだけに届く文字（#deck-live）。画面の画素には効かない */
 .sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
-/* 字幕（s / ?captions=1）：舞台の下端に、テーマの文字色を地に、地の色で書く（--fg と --bg のコントラストは検査器が見ている） */
+/* 字幕（s / ?captions=1）：舞台の下端に、テーマの文字色を地に、地の色で書く（--fg と --bg のコントラストは品質チェックが見ている） */
 /* 大きさと位置はテーマの --cap-size（字の大きさ）・--cap-bottom（下端からの距離）・--cap-side（左右の余白）・--cap-max-lines（1 まとまりの行数の上限） */
 #deck-cap{position:absolute;left:var(--cap-side,96px);right:var(--cap-side,96px);bottom:var(--cap-bottom,18px);z-index:15;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;
   font-size:var(--cap-size,27px)}

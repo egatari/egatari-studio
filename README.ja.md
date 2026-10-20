@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=5f6fcecaf404708f -->
+<!-- i18n: pair=README.md sha256=15c2be779575103e -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -30,7 +30,7 @@
 - **1 つの原稿で 3 つのモード**：発表（`?mode=talk`）、授業（`?mode=lecture`：全部見せて今の段階を強調）、動画（`?mode=video`）
 - **発表の道具**：発表者ビュー（口述原稿がカンペになる・タイマー）、スライド一覧、レーザー、ペン、消えるペン、操作の帯
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。部品はテーマの変数だけを使う
-- **検査**：`kit/check.mjs` がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる
+- **品質管理**：規格（R-fit・R-steps など）がデッキの満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と口述原稿を直し、AI のコーディング道具へのメモを残せる
 - **1 ファイル（`.ega.html`）**：`--portable` で、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は原稿を入れない写し。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
 - **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
@@ -50,7 +50,7 @@
 | | 段階 1：スライド（中心） | 段階 2：読み上げ付きの動画（任意） |
 |---|---|---|
 | できるもの | HTML のデッキ、発表者ビュー、授業モード、PDF | 段階ごとの MP4、全体の動画、音声入りの 1 ファイル |
-| 要るもの | Node 22 以上。Google Chrome は検査・PDF・テストにだけ使う | 段階 1 のもの＋ffmpeg・uv・TTS のサーバー・参照音声 |
+| 要るもの | Node 22 以上。Google Chrome は品質チェック・PDF・テストにだけ使う | 段階 1 のもの＋ffmpeg・uv・TTS のサーバー・参照音声 |
 | あると良いもの | uv（字の絞り込み） | |
 
 **スライドは TTS なしで全部使える。** 段階 1 のコマンドは `tts/` と `render/` から何も読み込まない。`audio/` や `voice.json` がなくても build・check・開発サーバーは動く。音声がなければ、自動再生（`a`）は各段階の既定の長さで進み、口述原稿は発表者ビューにカンペとして出る。
@@ -72,7 +72,7 @@ winget install OpenJS.NodeJS.LTS Git.Git     # 入れたら端末を開き直す
 winget install astral-sh.uv Gyan.FFmpeg      # 任意：uv（字を小さくする）・ffmpeg（動画）
 ```
 
-Edge は最初からあるので、Chrome がなくても検査と PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。読み上げ音声を作る（段階 2）には TTS のサーバーが要る。確かめている mlx-audio は Apple silicon の Mac でしか動かない。Windows では、ほかの OpenAI 互換の TTS サーバーを使うか、編集アプリで段階ごとに音声を作る・録音する（[docs/video.ja.md](docs/video.ja.md#tts-のサーバーmacwindowslinux)）。
+Edge は最初からあるので、Chrome がなくても品質チェックと PDF は動く。下のコマンドは PowerShell か Git Bash で打つ（`open` は `start` に読み替える）。Git がなければ GitHub から ZIP を落とす（Code → Download ZIP）。読み上げ音声を作る（段階 2）には TTS のサーバーが要る。確かめている mlx-audio は Apple silicon の Mac でしか動かない。Windows では、ほかの OpenAI 互換の TTS サーバーを使うか、編集アプリで段階ごとに音声を作る・録音する（[docs/video.ja.md](docs/video.ja.md#tts-のサーバーmacwindowslinux)）。
 
 **ブラウザ**
 
@@ -97,7 +97,7 @@ node tools/get-fonts.mjs                            # 任意：埋め込む字�
 node kit/build.mjs examples/minimal/deck.html       # → examples/minimal/out/deck.html
 open examples/minimal/out/deck.html                 # macOS。ほかの OS ではファイルをブラウザで開く
 
-node kit/check.mjs examples/minimal/deck.html       # 検査。最後の行が「エラー 0」になる
+node kit/check.mjs examples/minimal/deck.html       # 品質チェック。最後の行が「エラー 0」になる
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF（1 スライド 1 ページ）
 node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
@@ -111,7 +111,7 @@ npm run dev -- talks/mytalk/deck.html      # ブラウザで直す
 npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」になればよい
 ```
 
-`npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、検査も英語の規則になる。もっと作り込んだ見本は `examples/minimal/`。
+`npm run new -- <フォルダ>` は、きれいな雛形から `deck.html` と `narration.md` を作る（表紙と、段階・数式・注目の演出・部品の見本のスライド。口述原稿は全段階ぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` のデッキは本文の字が Source Sans 3 になり、品質チェックも英語の規格になる。もっと作り込んだ見本は `examples/minimal/`。
 
 新しいデッキのスライドにはどれも変わらない id（`<section class="slide" id="s-k3f9q2">`）があり、口述原稿の見出しがそれを指す（`## 見出し {#s-k3f9q2}`）。見出しを直しても、口述原稿・音声・秒数の対応は崩れない。id のない頃に作ったデッキは、一度 `npm run ids -- talks/mytalk` を打つ：id を付け、`narration.md`・`audio/manifest.json`・`timeline.json`・`comments.json` の鍵を付け替える（控えは `.cache/edits/`）。
 
@@ -151,13 +151,13 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 - **1 ファイルを開く（フォルダなしで）：** 最初の画面の「1 ファイルを開く…」（またはファイルを落とす）で[1 ファイル（`.ega.html`）](docs/reference.ja.md#1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「新しい教材として保存…」で元の教材を記録した新しい識別子の教材に、「作業フォルダに書き出す…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。口述原稿・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「1 ファイル（.ega.html）を書き出す」。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで AI へのメモ（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **作業フォルダを開く：** 作業フォルダ（`deck.html` の入ったもの）を画面に落とすか「作業フォルダを開く…」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いた作業フォルダは最初の画面に並ぶ
-- **チャットの AI で下書き（コーディング道具なし）：** [AI への指示](docs/authoring-with-llms.ja.md) を claude.ai・Gemini・ChatGPT に貼り、返事の全体を「AI の出力を貼り付ける…」に貼り付ける。エディタが `deck.html` と `narration.md` を取り出し、スライドに id を付け、新しい 1 ファイルとして開き（返事にスクリプトがあれば、開いたファイルと同じく動かす前に聞く）、簡易チェックをかける。簡易チェックの板の「AI への直しの依頼をコピー」は、問題・破った決まり・今のファイルを同じチャット向けにコピーし、その返事で今のデッキを置き換える（識別子と音声は残す）
+- **チャットの AI で下書き（コーディング道具なし）：** [AI への指示](docs/authoring-with-llms.ja.md) を claude.ai・Gemini・ChatGPT に貼り、返事の全体を「AI の出力を貼り付ける…」に貼り付ける。エディタが `deck.html` と `narration.md` を取り出し、スライドに id を付け、新しい 1 ファイルとして開き（返事にスクリプトがあれば、開いたファイルと同じく動かす前に聞く）、品質チェックをかける。品質チェックの板の「AI への修正依頼をコピー」は、指摘・破った規格・今のファイルを同じチャット向けにコピーし、その返事で今のデッキを置き換える（識別子と音声は残す）
 - **口述原稿の音声を 1 段階ずつ：** 「音声」で段階の音声を聞き、作った後に口述原稿が変わっていれば「古い」と示す。マイクから録る（入力の大きさの表示つき）、ファイルから取り込む、ブラウザの TTS（日本語は読み辞書つきの Irodori-TTS、英語は Kokoro。WebGPU が要り、モデルは初回だけ取得）で作り直すのどれかをして、「この音声を使う」。取り直しは `tts/core.py` と同じく整え（無音を削り −20 LUFS）、出どころと一緒に MP3 で残す（[詳しく](docs/editor.ja.md#口述原稿の音声音声の板)）。1 ファイルでは組み直さずに保存する
 - **AI のコーディング道具と一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・段階のまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
 - **言語：** ふだんはブラウザの言語に合わせる。右上の **English / 日本語** のボタン（または `?lang=en`・`?lang=ja`）で切り替える
-- **道具の列：** 簡易チェック、組み立てた HTML を書き出す、印刷 / PDF、発表者ビュー（口述原稿と次の段階が出る窓）、全画面
+- **道具の列：** 品質チェック、組み立てた HTML を書き出す、印刷 / PDF、発表者ビュー（口述原稿と次の段階が出る窓）、全画面
 
-できないこと：自分の参照音声での TTS（`tts/synth.py`）・動画・`npm run check`（全部の検査）・`tools/pdf.mjs` はコマンドで行い、プレビューはフォルダの音声を鳴らさない（鳴らすのは音声の板）。簡易チェックは一部の検査（はみ出し・文字の大きさ・字数・口述原稿の抜け・コントラスト）で、目安にとどまる（全部は `npm run check`）。書き出す HTML は字を絞り込まず分割ファイルごと埋め込む（ブラウザに fonttools がない）ので、コマンドで組んだものより大きい（`examples/minimal` で 0.7 MB に対して約 2 MB）。リポジトリの部品とテーマはアプリを組んだときのもの。作業フォルダの中の部品・テーマはフォルダから読む。
+できないこと：自分の参照音声での TTS（`tts/synth.py`）・動画・`npm run check`（品質チェックのコマンド版）・`tools/pdf.mjs` はコマンドで行い、プレビューはフォルダの音声を鳴らさない（鳴らすのは音声の板）。ブラウザ版の品質チェックは一部の項目（はみ出し・文字の大きさ・字数・口述原稿の抜け・コントラスト）だけで、目安にとどまる（全部は `npm run check`）。書き出す HTML は字を絞り込まず分割ファイルごと埋め込む（ブラウザに fonttools がない）ので、コマンドで組んだものより大きい（`examples/minimal` で 0.7 MB に対して約 2 MB）。リポジトリの部品とテーマはアプリを組んだときのもの。作業フォルダの中の部品・テーマはフォルダから読む。
 
 ![編集アプリ](docs/images/editor-app.png)
 
@@ -185,7 +185,7 @@ foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
 
 | スキル | 使いどころ |
 |---|---|
-| `motion-slides` | 構成案・原稿・段階・口述原稿・検査・build（段階 1） |
+| `motion-slides` | 構成案・原稿・段階・口述原稿・品質チェック・build（段階 1） |
 | `motion-slides-video` | TTS・動画の書き出し・バンドル（段階 2） |
 | `motion-components` | 動く図の部品を新しく書く、部品庫に移す |
 
@@ -286,7 +286,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md`、`docs/distributing.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする、学ぶ人に配る（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)、[English](docs/distributing.md)） |
 | `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体。系列の指示（academic・business・kokugo・info）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、口述原稿、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
-| `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、検査、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
+| `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、口述原稿の解析、品質チェック、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しいデッキの雛形 |
 | `components/` | 動く図の部品。一覧は `components/CATALOG.md` |
 | `themes/` | テーマ |
 | `server/` | 開発サーバーとブラウザ上の編集 |
@@ -304,7 +304,7 @@ node tools/smoke.mjs examples/minimal/out/deck.html /tmp/smoke     # タイム�
 node tools/test-components.mjs
 node tools/test-tools.mjs examples/minimal/out/deck.html
 node tools/test-controls.mjs examples/minimal/out/deck.html
-node tools/test-links.mjs                                          # スライドへのリンク・戻る・埋め込み・m-menu・検査器
+node tools/test-links.mjs                                          # スライドへのリンク・戻る・埋め込み・m-menu・品質チェック
 node tools/test-dev-server.mjs
 node tools/test-app.mjs                                            # 編集アプリ（一時フォルダに dist/ を組む）
 ```
@@ -319,7 +319,7 @@ node tools/test-app.mjs                                            # 編集ア�
 
 ## セキュリティ
 
-デッキはコードとして扱う：原稿のスクリプトと部品は、ブラウザと、検査器・書き出しが使う headless Chrome の中で動き、build は作業フォルダの中のローカルのファイルを読む。信頼できるデッキだけを組み、開発サーバーで開くこと。信頼の前提と脆弱性の報告のしかた：[SECURITY.md](SECURITY.md)。
+デッキはコードとして扱う：原稿のスクリプトと部品は、ブラウザと、品質チェック・書き出しが使う headless Chrome の中で動き、build は作業フォルダの中のローカルのファイルを読む。信頼できるデッキだけを組み、開発サーバーで開くこと。信頼の前提と脆弱性の報告のしかた：[SECURITY.md](SECURITY.md)。
 
 ## ライセンス
 

@@ -607,8 +607,8 @@ const sep = ML === 'en' ? ': ' : '：';
 const placeOf = (r) => ({ n: r.slide === null ? null : r.slide + 1, id: r.slide === null ? null : (meta[r.slide] && meta[r.slide].id) || null, title: r.slide === null ? null : titleOf(r.slide), step: r.step });
 for (const r of results) { r.what = message(ML, r.code, r.a); r.msg = where(ML, placeOf(r)) + sep + r.what; }
 if (asJson) {
-  // 形は docs/reference.md「検査器」：slide は 1 から（デッキ全体は null）、id はスライドの id（なければ null）、key はスライドの鍵、
-  // title は見出しの字、step は段階の鍵（0・1・…・concl、なければ null）、code は知らせの種類、rule は決まりの名前（なければ null）、data はその知らせの値（はみ出しの px など）
+  // 形は docs/reference.md「品質チェック」：slide は 1 から（デッキ全体は null）、id はスライドの id（なければ null）、key はスライドの鍵、
+  // title は見出しの字、step は段階の鍵（0・1・…・concl、なければ null）、code は指摘の種類、rule は規格の名前（なければ null）、data はその指摘の値（はみ出しの px など）
   const out = results.map((r) => ({
     slide: r.slide === null ? null : r.slide + 1,
     id: r.slide === null ? null : (meta[r.slide] && meta[r.slide].id) || null,

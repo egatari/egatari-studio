@@ -28,7 +28,7 @@ export const isStepKey = (s) => STEP_KEY.test(String(s));
 
 // 見出しの行（## の後ろ）→ {key, id, heading}。末尾の {#id} があればその id が鍵（見出しの文字列より強い）。
 // なければ見出しの正規化（id と同じ文字列の見出し「## s-k3f9q2」は、正規化してもそのまま id になる）
-// id が規則に合わないときも鍵には使い、badId を立てる（検査器が知らせる）
+// id が規則に合わないときも鍵には使い、badId を立てる（品質チェックが知らせる）
 const HEAD_ID = /^(.*?)\s*\{#([^{}\s]+)\}$/;
 export function parseHeading(text) {
   const t = String(text).trim();

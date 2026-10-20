@@ -1,4 +1,4 @@
-// コンソールのエラー・例外の言葉を、検査器の知らせと AI への直しの依頼に載せる形にする。Node にもブラウザにも依存しない（純粋な ESM）
+// コンソールのエラー・例外の言葉を、品質チェックの知らせと AI への修正依頼に載せる形にする。Node にもブラウザにも依存しない（純粋な ESM）
 //   cleanErrorText(text) → 1 行の言葉：スタックの行（"    at …"）を除き、ファイルの場所（file://…、一時フォルダ、手元のサーバーの
 //     http(s)://localhost:… など）をファイルの名前だけにし、行と桁（:2582:20）を除く。中身の言葉は残す
 //   componentError(text) → {tag, msg} | null：実行系の古い形の部品の例外（"M-CURVES TypeError: S.map is not a function"）
