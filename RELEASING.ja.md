@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=2b1e92fb88e2d173 -->
+<!-- i18n: pair=RELEASING.md sha256=74ad61cfb62feee1 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -53,4 +53,4 @@
    gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/*
    ```
 
-8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://editor.egatari.org/> を開く。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
+8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/> を開く。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）

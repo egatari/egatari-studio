@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=15e0110ad728df34 -->
+<!-- i18n: pair=editor.ja.md sha256=3b9ed831212383e7 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -19,7 +19,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 
 | Form | How | Notes |
 |---|---|---|
-| Hosted | <https://editor.egatari.org/> | Published from `main` by `.github/workflows/pages.yml`. Loads only the font files a deck needs. The old address `…/editor/` redirects there |
+| Hosted | <https://studio.egatari.org/> | Published from `main` by `.github/workflows/pages.yml`. Loads only the font files a deck needs. The old address `…/editor/` redirects there |
 | Single-file editor (`editor.html`) | `npm run build:app`, then double-click `dist/editor.html` | About 10 MB: all font files are inside. Works from `file://` in Chrome and Edge; you can copy the file to anyone |
 | Your own server | `npm run build:app`, then serve `dist/` as static files | Any static host (https, or `http://localhost`), at the root or under a path |
 
@@ -165,7 +165,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 ## Publishing on GitHub Pages
 
-`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://editor.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only release tags deploy: pushing a tag `vX.Y.Z` (three numbers; `v0.5.0-rc.1` and other rc tags do not), or running the workflow on such a tag to deploy that release again. Pushes to `main` and pull requests only build (so a broken build shows up before a release), and running the workflow on a branch is a dry build. The release steps are in [RELEASING.md](../RELEASING.md). It deploys nothing until Pages is set up:
+`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the single file at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://studio.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only release tags deploy: pushing a tag `vX.Y.Z` (three numbers; `v0.5.0-rc.1` and other rc tags do not), or running the workflow on such a tag to deploy that release again. Pushes to `main` and pull requests only build (so a broken build shows up before a release), and running the workflow on a branch is a dry build. The release steps are in [RELEASING.md](../RELEASING.md). It deploys nothing until Pages is set up:
 
 1. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 2. Settings → Secrets and variables → Actions → Variables: add `EDITOR_PAGES` = `true` (without it, builds still run but nothing deploys).

@@ -7,7 +7,7 @@ description: Egatari Studio（旧 motion-academic-slides）の動く図の部品
 
 リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/components/CATALOG.md`。
 
-Egatari（オープンなファイル形式。拡張子 `.ega.html`）の 1 ファイル（`node <repo>/kit/build.mjs <deck> --portable`）では、部品庫（`<repo>/components/`）の部品は版と hash の付いた部品庫の部品として入り、編集アプリ（Egatari Studio、<https://editor.egatari.org/>）は同じ hash の部品で組み直せる。作業フォルダの `components/` の部品はそのデッキ独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。広く使う部品は部品庫に入れる（§4）。
+Egatari（オープンなファイル形式。拡張子 `.ega.html`）の 1 ファイル（`node <repo>/kit/build.mjs <deck> --portable`）では、部品庫（`<repo>/components/`）の部品は版と hash の付いた部品庫の部品として入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の部品で組み直せる。作業フォルダの `components/` の部品はそのデッキ独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。広く使う部品は部品庫に入れる（§4）。
 
 ## 1. まず既存の部品で足りないか確かめる
 

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=6d917ca962af0888 -->
+<!-- i18n: pair=README.ja.md sha256=5822c20999b18f5e -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -147,7 +147,7 @@ The same editing as the dev server, as a web page that opens a single file (`.eg
 | Play-only (`--play-only`) | A single file without the source | Cannot be edited (open the original single file or the working folder) |
 | Built HTML (`out/deck.html`) | The presentation output (“Export built HTML” writes this too) | Cannot be edited (open the working folder) |
 
-- **Open the editor:** **<https://editor.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
+- **Open the editor:** **<https://studio.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (one file, about 10 MB) by double-clicking it.
 - **Open a single file, no folder needed:** “Open single file…” on the first screen (or dropping the file) opens a [single file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export single file” writes one. Works in any current browser (saving downloads where there is no file picker)
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a note for the AI (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a working folder:** drop the working folder (the one with `deck.html`) on the page, or press “Open working folder…”, and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent working folders are listed on the first screen.

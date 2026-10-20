@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=d5f132844fdf7a61 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=8bc0726722e517da -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -53,4 +53,4 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    gh release create vX.Y.Z --title vX.Y.Z --notes-file /tmp/notes.md out/release/*
    ```
 
-8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://editor.egatari.org/>. To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
+8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>. To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).

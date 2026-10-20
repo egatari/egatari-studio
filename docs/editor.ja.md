@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=fbf0a77aa0f8a715 -->
+<!-- i18n: pair=editor.md sha256=56bc7fc01a785427 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -19,7 +19,7 @@
 
 | 形 | 開き方 | 備考 |
 |---|---|---|
-| 配信 | <https://editor.egatari.org/> | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む。前の場所 `…/editor/` からはここへ移る |
+| 配信 | <https://studio.egatari.org/> | `main` から `.github/workflows/pages.yml` で公開する。字はデッキが使う分だけ読む。前の場所 `…/editor/` からはここへ移る |
 | 1 ファイル版（`editor.html`） | `npm run build:app` のあと `dist/editor.html` をダブルクリック | 約 10 MB（字を全部入れてある）。Chrome・Edge なら `file://` で動く。このファイルを人に渡してもよい |
 | 自分のサーバー | `npm run build:app` のあと `dist/` を静的に配る | どこでもよい（https か `http://localhost`）。サイトの根でも、下のパスでもよい |
 
@@ -165,7 +165,7 @@
 
 ## GitHub Pages で配る
 
-`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://editor.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のはリリースのタグだけ：タグ `vX.Y.Z`（数 3 つ。`v0.5.0-rc.1` などの rc のタグは置かない）を push したときと、そのタグで workflow を走らせたとき（その版を置き直す）。`main` への push と pull request は組むだけで（リリースの前に組み立ての壊れに気づくため）、ブランチで走らせると組むだけの試し。リリースの手順は [RELEASING.ja.md](../RELEASING.ja.md)。Pages を設定するまでは何も置かない
+`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、1 ファイル版は `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://studio.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のはリリースのタグだけ：タグ `vX.Y.Z`（数 3 つ。`v0.5.0-rc.1` などの rc のタグは置かない）を push したときと、そのタグで workflow を走らせたとき（その版を置き直す）。`main` への push と pull request は組むだけで（リリースの前に組み立ての壊れに気づくため）、ブランチで走らせると組むだけの試し。リリースの手順は [RELEASING.ja.md](../RELEASING.ja.md)。Pages を設定するまでは何も置かない
 
 1. Settings → Pages → Build and deployment → Source を **GitHub Actions** にする
 2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ組むだけで、何も置かない）

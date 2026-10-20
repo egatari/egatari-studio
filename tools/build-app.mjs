@@ -1,7 +1,7 @@
 // 編集アプリ（app/）を組む：dist/ の根に配信版（GitHub Pages などで配る形。dist/index.html）と dist/editor.html（1 ファイル版）。説明は docs/editor.md
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 // dist/editor/index.html は、前の場所（/editor/）からの古いリンクを根へ送る（問い合わせと # はそのまま）。
-// どのパスも相対なので、サイトの根（https://editor.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
+// どのパスも相対なので、サイトの根（https://studio.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
 //   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）

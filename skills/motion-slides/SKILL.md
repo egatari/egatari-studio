@@ -5,7 +5,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 
 # motion-slides：動きのある HTML スライドを作る
 
-作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）のデッキ。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://editor.egatari.org/>）。
+作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）のデッキ。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://studio.egatari.org/>）。
 
 リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
@@ -40,7 +40,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
    - 直したら、その段階を撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
 8. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
 9. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
-   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/out/<名前>.ega.html`：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://editor.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
+   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/out/<名前>.ega.html`：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
    - `node <repo>/kit/build.mjs <deck> --play-only` → `<名前>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
    - 書き出す前に教材の情報を確かめる（§3「教材の情報」）
 

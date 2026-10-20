@@ -46,7 +46,7 @@ node "$R\render\render.mjs" "$D\out\deck.html" --out "$D\video" --full
 
 ## 3. 音声入りの 1 ファイル（Egatari 形式）も作る
 
-動画とは別に、TTS の音声を入れた 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://editor.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
+動画とは別に、TTS の音声を入れた 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://studio.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
 
 ```bash
 node $R/kit/build.mjs $D --portable      # → $D/out/<名前>.ega.html（原稿・音声入り。docId は $D/egatari.json）

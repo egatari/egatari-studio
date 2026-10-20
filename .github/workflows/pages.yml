@@ -4,7 +4,7 @@
 #   /lab/         test pages copied as-is from lab/ (lab/irodori.html: Irodori-TTS in the browser on WebGPU)
 #   /editor/      redirects to / keeping ?query and #hash (the editor used to live here)
 #   /examples/    the examples as portable files (<name>.ega.html), listed on the editor's first screen
-# All paths are relative: the site works at the custom domain https://editor.egatari.org/ (whole site)
+# All paths are relative: the site works at the custom domain https://studio.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
 # Only release tags deploy: a push of vX.Y.Z (three numbers; v0.5.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
 # (to deploy that release again). Pushes to main and pull requests only build (so a broken build is caught before a release);

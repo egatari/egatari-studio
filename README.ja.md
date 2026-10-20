@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=b94d28f00835e82b -->
+<!-- i18n: pair=README.md sha256=5f6fcecaf404708f -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -147,7 +147,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 | 再生専用（`--play-only`） | 原稿を持たない 1 ファイル | 直せない（元の 1 ファイルか作業フォルダを開く） |
 | 組み立てた HTML（`out/deck.html`） | 発表用の出力（「組み立てた HTML を書き出す」もこれ） | 直せない（作業フォルダを開く） |
 
-- **開く：** Chrome か Edge で **<https://editor.egatari.org/>** を開く（インストール不要）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
+- **開く：** Chrome か Edge で **<https://studio.egatari.org/>** を開く（インストール不要）。または `npm run build:app` で組み、`dist/editor.html`（1 ファイル、約 10 MB）をダブルクリックで開く
 - **1 ファイルを開く（フォルダなしで）：** 最初の画面の「1 ファイルを開く…」（またはファイルを落とす）で[1 ファイル（`.ega.html`）](docs/reference.ja.md#1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「新しい教材として保存…」で元の教材を記録した新しい識別子の教材に、「作業フォルダに書き出す…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。口述原稿・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「1 ファイル（.ega.html）を書き出す」。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で口述原稿、Alt / ⌥ option＋クリックで AI へのメモ（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **作業フォルダを開く：** 作業フォルダ（`deck.html` の入ったもの）を画面に落とすか「作業フォルダを開く…」を押し、そのフォルダの編集を許可する。「新しいデッキ」は `npm run new` と同じ雛形から `deck.html` と `narration.md` を作る。最近開いた作業フォルダは最初の画面に並ぶ

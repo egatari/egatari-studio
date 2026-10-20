@@ -78,7 +78,7 @@ const fixture = (name) => fixtures.find((f) => f.name === name);
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain', '.md': 'text/plain', '.wav': 'audio/wav', '.m4a': 'audio/mp4' };
 let fontFetches = 0;
-// dist/ をサイトの根（https://editor.egatari.org/ の形）と下のパス /egatari-studio/（https://egatari.github.io/egatari-studio/ の形）の両方で配る
+// dist/ をサイトの根（https://studio.egatari.org/ の形）と下のパス /egatari-studio/（https://egatari.github.io/egatari-studio/ の形）の両方で配る
 const SUB = 'egatari-studio/';
 const srv = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
