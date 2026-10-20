@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COLAB, COLAB_UNVERIFIED, colabUrl } from '../kit/core/colab-core.mjs';
+import { COLAB, COLAB_VERIFIED, colabUrl } from '../kit/core/colab-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'colab', 'egatari-tts.ipynb');
@@ -18,7 +18,7 @@ export function notebook() {
     md([
       '# Egatari Studio: make the audio in Colab / Colab で音声を作る',
       '',
-      ...(COLAB_UNVERIFIED ? [`> **${COLAB_UNVERIFIED.en}**`, `> **${COLAB_UNVERIFIED.ja}**`, ''] : []),
+      ...(COLAB_VERIFIED ? [`> **${COLAB_VERIFIED.en}**`, `> **${COLAB_VERIFIED.ja}**`, ''] : []),
       '**English.** Use this notebook when your computer has no WebGPU (many school PCs, Safari, iPad). In the editor, press “Audio → Make the audio in Colab → ① Export the steps”, run all the cells below, upload `tts-job.json` when asked, then import the zip it returns with “② Import the zip…”. Japanese uses Irodori-TTS 500M-v3 (ONNX), other languages use Kokoro-82M. A T4 GPU is faster; without one it falls back to the CPU (slow).',
       '',
       '**Privacy.** The narration text in `tts-job.json` is processed in Google’s Colab environment, and the model files come from Hugging Face. Nothing else from your lesson is sent. Use it only for text you are allowed to share.',

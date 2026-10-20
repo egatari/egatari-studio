@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=dfe89ae06276dd81 -->
+<!-- i18n: pair=distributing.ja.md sha256=dfebe355e074e36b -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -15,4 +15,4 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 - **Phones and tablets.** The quick preview of a file app (for example the iPhone Files app) may not run the lesson. Open the file in the browser, or give a URL. We have not yet checked every device and route; please tell us what worked for you ([feedback](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml))
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the single file or the working folder to edit later; a play-only copy cannot be edited
-- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-unverified --> Unverified: this notebook has not yet been run in a real Colab environment. **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-verified --> Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet. **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.

@@ -1,7 +1,7 @@
 // 編集アプリの「Colab で音声を作る」の往復の確かめ（app/audio-panel.js の Colab の群。ブラウザ。モデルも Colab も使わない）
 //   node tools/test-colab-app.mjs [作業用のフォルダ]
 // 書き出した tts-job.json から、tools/colab-fixture.mjs（ノートブックの dry-run と同じ形の zip を JS で作る）で zip を作って取り込む：
-//   フォルダ：群が出る（WebGPU がなければ開く）・未検証の印・プライバシーの確認（取り消せる）・tts-job.json（docId・段階・inputHash・読みを適用した文）・
+//   フォルダ：群が出る（WebGPU がなければ開く）・確認した範囲の記し・プライバシーの確認（取り消せる）・tts-job.json（docId・段階・inputHash・読みを適用した文）・
 //     取り込みで inputHash が合う段階だけ cue つきの MP3（kind tts・sync auto・recipe）・原稿が変わった段階は印付き（使わない。「古い印のまま使う」で古いまま）・
 //     別の教材の zip は拒否・敵対の zip（偽の WAV・展開爆弾）は何も書かない・コンソールのエラーがない
 //   持ち運べる 1 ファイル：取り込み → 「保存」が段 A（音声の段階だけが変わる）・読み戻して cue と sync auto
@@ -19,7 +19,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { MP3, PROCESSING } from '../kit/core/audio-core.mjs';
 import { writeZip } from '../kit/core/zip-read.mjs';
-import { expectedCues, COLAB_UNVERIFIED } from '../kit/core/colab-core.mjs';
+import { expectedCues, COLAB_VERIFIED } from '../kit/core/colab-core.mjs';
 import { colabZip } from './colab-fixture.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
@@ -111,8 +111,8 @@ try {
   await idle();
   ok(await page.evaluate(() => document.getElementById('dev-audio-colab').open), 'panel: the Colab group is open when the browser has no WebGPU');
   ok(await page.evaluate(() => document.getElementById('dev-audio-tts').disabled), 'panel: browser TTS is off without WebGPU');
-  const un = await page.$('#dev-audio-colab-unverified');
-  ok(COLAB_UNVERIFIED ? !!un && (await un.textContent()) === COLAB_UNVERIFIED.ja : !un, 'panel: the "unverified" note is shown exactly while COLAB_UNVERIFIED is set');
+  const un = await page.$('#dev-audio-colab-verified');
+  ok(!!un && (await un.textContent()) === COLAB_VERIFIED.ja, 'panel: the "verified" note (what was and was not verified) is shown');
   const href = await page.getAttribute('#dev-audio-colab-open', 'href');
   ok(/^https:\/\/colab\.research\.google\.com\/github\/egatari\/egatari-studio\/blob\/[^/]+\/colab\/egatari-tts\.ipynb$/.test(href) && (await page.getAttribute('#dev-audio-colab-open', 'rel')) === 'noopener', 'panel: "Open Colab" links to the official notebook (new tab, noopener)');
   ok((await page.textContent('#dev-audio-colab-scope option[value=need]')).includes(`（${keys.length}）`), `panel: the default scope counts the steps without audio (${keys.length})`);

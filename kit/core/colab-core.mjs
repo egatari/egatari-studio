@@ -15,14 +15,14 @@ import { TEXT_NORMALIZE } from './tts-normalize.mjs';
 import { PROCESSING, AUDIO_LIMITS, SR, decodeWav, toMono, resample } from './audio-core.mjs';
 import { readZip, ZipError } from './zip-read.mjs';
 
-// 検証していない間の印（ノートブックの最初のセル・それを案内する docs・エディタの「Colab で音声を作る」の説明に出す）。
-// 実際の Colab で 1 度通したら、ここを null にして `node tools/make-colab-notebook.mjs` と docs の <!-- colab-unverified --> の行を消す
-// （tools/test-colab.mjs が、印のある所とない所が揃っているかを確かめる）
-export const COLAB_UNVERIFIED = Object.freeze({
-  ja: '未検証：このノートブックはまだ実際の Colab で通していません',
-  en: 'Unverified: this notebook has not yet been run in a real Colab environment.',
+// 確かめた範囲の記し（ノートブックの最初のセル・それを案内する docs・エディタの「Colab で音声を作る」の説明に出す）。1 か所だけに書く。
+// 確かめる範囲が変わったら（Kokoro・CPU を通したなど）ここの文を直し、`npm run gen` と docs の <!-- colab-verified --> の行を揃える
+// （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）
+export const COLAB_VERIFIED = Object.freeze({
+  ja: '確認済み：2026-10-21、Irodori、Colab の T4 GPU（作者の環境で 1 回）。Kokoro と CPU はまだ',
+  en: "Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet.",
 });
-export const COLAB_NOTE_MARK = 'colab-unverified';   // docs では <!-- colab-unverified --> を付けた行にする
+export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-verified --> を付けた行にする
 
 export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v: 1 });
 export const COLAB = Object.freeze({

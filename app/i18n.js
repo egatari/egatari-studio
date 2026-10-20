@@ -1,6 +1,6 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
-import { COLAB_UNVERIFIED } from '../kit/core/colab-core.mjs';
+import { COLAB_VERIFIED } from '../kit/core/colab-core.mjs';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
 // 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
 const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
@@ -13,8 +13,8 @@ function pickLang() {
 }
 export const EN = pickLang() === 'en';
 document.documentElement.lang = EN ? 'en' : 'ja';
-// Colab で音声を作る（音声の板の「WebGPU がないとき」の群）。未検証の印は kit/core/colab-core.mjs の COLAB_UNVERIFIED（1 か所。外すときはそこを null に）
-const unv = (l) => (COLAB_UNVERIFIED ? COLAB_UNVERIFIED[l] : '');
+// Colab で音声を作る（音声の板の「WebGPU がないとき」の群）。確認した範囲の記しは kit/core/colab-core.mjs の COLAB_VERIFIED（1 か所）
+const ver = (l) => COLAB_VERIFIED[l];
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
@@ -171,7 +171,7 @@ const ja = {
     ['音声', ['「音声」で、画面の段階の音声を聞く・自分の声で録音する・ファイルから取り込む・ブラウザの TTS で作り直す（WebGPU が要ります。初回にモデルを取得）。作った音声はすぐにその段階の音声になり（audio/ に MP3 と記録。1 ファイルは「保存」で）、前の音声には「前に戻す」で戻せます',
       '「声」の欄で TTS の声を選べます（▶ で短い見本。作業フォルダでは voice.json に書きます）。読む原稿の欄は原稿の長さに合わせて伸び、右下の角で大きさを変えられます',
       '口述原稿を直した後の音声には「古い」の印が付きます。音声は消しません。TTS で作った音声があると、再生器の操作の帯に小さく「AI 音声」と出ます']],
-    ['Colab で音声を作る', [`WebGPU のない PC では、「音声」の「Colab で音声を作る」から、必要な段階の原稿を tts-job.json に書き出し（Colab では原稿の文が Google の環境で処理されます。書き出す前に確かめます）、公式のノートブックを開いて実行し、返ってきた zip を取り込めます。取り込むのは、書き出したときと原稿が同じ段階だけで、区切り（cue）の時刻が付き、同期は自動のままです。原稿が変わった段階は「印付き」に出て、自動では使いません`, ...(unv('ja') ? [unv('ja')] : [])]],
+    ['Colab で音声を作る', [`WebGPU のない PC では、「音声」の「Colab で音声を作る」から、必要な段階の原稿を tts-job.json に書き出し（Colab では原稿の文が Google の環境で処理されます。書き出す前に確かめます）、公式のノートブックを開いて実行し、返ってきた zip を取り込めます。取り込むのは、書き出したときと原稿が同じ段階だけで、区切り（cue）の時刻が付き、同期は自動のままです。原稿が変わった段階は「印付き」に出て、自動では使いません`, ver('ja')]],
     ['保存の場所と窓', [`下の帯の左に、今どこに保存されているかが出ます。作業フォルダは編集するたびにその場で書くので「保存」のボタンはなく、配るときは「書き出す ▾」から 1 ファイル（${FX}）にします。1 ファイルは「保存」で上書きします`,
       '<kbd>Esc</kbd> で、開いている窓（原稿の欄・音声・口述原稿・コメント・横の板）を上のものから 1 つずつ閉じます。<kbd>Shift</kbd>+<kbd>Esc</kbd> で全部を閉じます']],
     ['できないこと', ['動画の書き出し、品質チェックのコマンド版（npm run check）、自分の参照音声での TTS はコマンドで',
@@ -186,7 +186,7 @@ const ja = {
     go: (n) => '選んだ ' + n + ' 段階を作り直す', done: (n) => n + ' 段階の音声を作り直しました',
   },
   colab: {
-    title: 'Colab で音声を作る（WebGPU がないとき）', unverified: unv('ja'),
+    title: 'Colab で音声を作る（WebGPU がないとき）', verified: ver('ja'),
     lead: 'WebGPU のない PC（学校の PC・Safari・iPad）でも、無料の Colab で同じ声の音声を作って取り込めます。① 必要な段階の原稿を書き出す → Colab のノートブックで合成 → ② 返ってきた zip を取り込む、の順です。取り込むのは、書き出したときと原稿が同じ段階だけです。',
     scope: '書き出す段階', scopeNeed: (n) => `音声のない段階と古い段階（${n}）`, scopeAll: (n) => `すべての段階（${n}）`,
     export: '① 必要な段階を書き出す（tts-job.json）', openColab: 'Colab を開く', openColabT: '公式のノートブック（egatari-tts.ipynb）を Colab で開きます（新しいタブ）', import: '② できた zip を取り込む…',
@@ -361,7 +361,7 @@ const en = {
     ['Audio', ['“Audio” plays the step’s audio, records your own voice, imports a file or regenerates it with browser TTS (needs WebGPU; downloads the model the first time). New audio is used for the step right away (an MP3 and its record in audio/; for a single file, then Save), and “Revert to previous” brings back the previous audio.',
       '“Voice” picks the TTS voice (▶ plays a short sample; in a working folder it is written to voice.json). The script field grows with the narration and can be resized from its bottom-right corner.',
       'Audio made before the narration changed is marked stale. It is never deleted. When there is audio made with TTS, the player’s control bar shows a small “AI voice” badge.']],
-    ['Make the audio in Colab', [`Without WebGPU, “Make the audio in Colab” in “Audio” exports the narration of the steps that need audio to tts-job.json (in Colab the narration text is processed in Google’s environment; the editor asks first), opens the official notebook, and imports the zip it returns. Only steps whose narration is unchanged since the export are imported, with their cue times and sync auto; steps whose narration changed are listed as marked and not used automatically`, ...(unv('en') ? [unv('en')] : [])]],
+    ['Make the audio in Colab', [`Without WebGPU, “Make the audio in Colab” in “Audio” exports the narration of the steps that need audio to tts-job.json (in Colab the narration text is processed in Google’s environment; the editor asks first), opens the official notebook, and imports the zip it returns. Only steps whose narration is unchanged since the export are imported, with their cue times and sync auto; steps whose narration changed are listed as marked and not used automatically`, ver('en')]],
     ['Where it is saved, and closing cards', [`The left end of the status bar shows where the deck is saved. A working folder is written as you edit, so it has no Save button; to hand it out, make a single file (${FX}) from “Export ▾”. A single file is overwritten with Save.`,
       '<kbd>Esc</kbd> closes the open cards (source, Audio, Narration, Comments, the side panel) one at a time, topmost first. <kbd>Shift</kbd>+<kbd>Esc</kbd> closes them all.']],
     ['Not here', ['Video export, the command quality checker (npm run check) and TTS with your own reference voices stay on the command line.',
@@ -376,7 +376,7 @@ const en = {
     go: (n) => 'Regenerate the ' + n + ' selected step' + (n === 1 ? '' : 's'), done: (n) => n + ' step' + (n === 1 ? '' : 's') + ' regenerated',
   },
   colab: {
-    title: 'Make the audio in Colab (when there is no WebGPU)', unverified: unv('en'),
+    title: 'Make the audio in Colab (when there is no WebGPU)', verified: ver('en'),
     lead: 'On a computer without WebGPU (a school PC, Safari, an iPad) you can still make the same voices in free Colab and import them. ① Export the narration of the steps that need audio → synthesize in the Colab notebook → ② import the zip it returns. Only the steps whose narration is unchanged since the export are imported.',
     scope: 'Steps to export', scopeNeed: (n) => `steps without audio and stale steps (${n})`, scopeAll: (n) => `all steps (${n})`,
     export: '① Export the steps that need audio (tts-job.json)', openColab: 'Open Colab', openColabT: 'Opens the official notebook (egatari-tts.ipynb) in Colab (new tab)', import: '② Import the zip…',

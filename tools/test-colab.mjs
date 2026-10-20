@@ -12,7 +12,7 @@ import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serve } from '../colab/worker-protocol.mjs';
 import { readZip, writeZip, ZipError } from '../kit/core/zip-read.mjs';
-import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_UNVERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, colabUrl } from '../kit/core/colab-core.mjs';
+import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, colabUrl } from '../kit/core/colab-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { integratedLoudness, encodeWav, PROCESSING } from '../kit/core/audio-core.mjs';
@@ -145,7 +145,7 @@ ok('import: audio that is not a real WAV, silent, or the wrong length is refused
   assert.equal(decodeStepAudio(encodeWav(tone, 44100), rec).dur, 1);
 });
 
-// ---------------------------------------------------------------- ノートブックと「未検証」の印
+// ---------------------------------------------------------------- ノートブックと「確認済み」の記し
 ok('notebook: colab/egatari-tts.ipynb is what tools/make-colab-notebook.mjs makes (npm run gen); the Colab URL points at it', () => {
   assert.equal(fs.readFileSync(path.join(ROOT, 'colab/egatari-tts.ipynb'), 'utf8').replace(/\r\n/g, '\n'), notebook());   // Windows の checkout は CRLF のことがある
   const nb = JSON.parse(notebook());
@@ -154,19 +154,16 @@ ok('notebook: colab/egatari-tts.ipynb is what tools/make-colab-notebook.mjs make
   const text = nb.cells.map((c) => c.source.join('')).join('\n');
   assert.ok(/Google/.test(text) && /プライバシー/.test(text), 'the privacy note is in the notebook (en and ja)');
 });
-ok('unverified mark: kept in one constant (kit/core/colab-core.mjs); the notebook, the docs and the editor help carry it exactly while the constant is set', () => {
+ok('verified note: kept in one constant (kit/core/colab-core.mjs); the notebook, the docs and the editor help carry it, and it says what was not verified', () => {
   const nb = JSON.parse(notebook()), first = nb.cells[0].source.join('');
   const docs = ['docs/editor.md', 'docs/editor.ja.md'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8'));
   const i18n = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
-  if (COLAB_UNVERIFIED) {
-    assert.ok(first.includes(COLAB_UNVERIFIED.en) && first.includes(COLAB_UNVERIFIED.ja), 'first markdown cell of the notebook');
-    docs.forEach((d, k) => { const lines = d.split('\n').filter((l) => l.includes(`<!-- ${COLAB_NOTE_MARK} -->`)); assert.ok(lines.length >= 1 && lines.every((l) => l.includes(COLAB_UNVERIFIED[k ? 'ja' : 'en'])), `docs/editor${k ? '.ja' : ''}.md`); });
-    assert.ok(/COLAB_UNVERIFIED/.test(i18n), 'app/i18n.js reads the constant');
-  } else {
-    assert.ok(!/Unverified|未検証/.test(first));
-    docs.forEach((d) => assert.ok(!d.includes(COLAB_NOTE_MARK)));
-    assert.ok(!/COLAB_UNVERIFIED/.test(i18n));
-  }
+  assert.match(COLAB_VERIFIED.ja, /^確認済み：\d{4}-\d{2}-\d{2}/); assert.match(COLAB_VERIFIED.en, /^Verified: \d{4}-\d{2}-\d{2}/);
+  assert.ok(/Kokoro/.test(COLAB_VERIFIED.ja) && /CPU/.test(COLAB_VERIFIED.ja) && /Kokoro/.test(COLAB_VERIFIED.en) && /CPU/.test(COLAB_VERIFIED.en), 'it names what is not verified yet');
+  assert.ok(first.includes(COLAB_VERIFIED.en) && first.includes(COLAB_VERIFIED.ja), 'first markdown cell of the notebook');
+  docs.forEach((d, k) => { const lines = d.split('\n').filter((l) => l.includes(`<!-- ${COLAB_NOTE_MARK} -->`)); assert.ok(lines.length >= 1 && lines.every((l) => l.includes(COLAB_VERIFIED[k ? 'ja' : 'en'])), `docs/editor${k ? '.ja' : ''}.md`); });
+  assert.ok(/COLAB_VERIFIED/.test(i18n), 'app/i18n.js reads the constant');
+  assert.ok(!/Unverified|未検証/.test(first) && !docs.some((d) => /Unverified|未検証/.test(d)));
 });
 
 // ---------------------------------------------------------------- 常駐ワーカーの通信（モデルなし）

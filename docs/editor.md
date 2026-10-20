@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=e0449958df934c8f -->
+<!-- i18n: pair=editor.ja.md sha256=75c77338b872d431 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -74,7 +74,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 
 ### Make the audio in Colab (when there is no WebGPU)
 
-<!-- colab-unverified --> **Unverified: this notebook has not yet been run in a real Colab environment.**
+<!-- colab-verified --> **Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet.**
 
 For computers without WebGPU (many school PCs, Safari, iPad), the Audio panel has a **Make the audio in Colab** group (open by default when the browser has no WebGPU). Free Colab (your own Google account) makes the same voices, and the editor imports the result with cue times. Browser TTS itself does not change.
 

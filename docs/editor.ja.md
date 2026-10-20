@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=9b8a44b73016a6a3 -->
+<!-- i18n: pair=editor.md sha256=110ef7be2050a1d2 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -74,7 +74,7 @@
 
 ### Colab で音声を作る（WebGPU がないとき）
 
-<!-- colab-unverified --> **未検証：このノートブックはまだ実際の Colab で通していません**
+<!-- colab-verified --> **確認済み：2026-10-21、Irodori、Colab の T4 GPU（作者の環境で 1 回）。Kokoro と CPU はまだ**
 
 WebGPU のない PC（学校の PC・Safari・iPad）のために、音声の板に **Colab で音声を作る** の群がある（ブラウザに WebGPU がなければ最初から開く）。無料の Colab（自分の Google アカウント）で同じ声の音声を作り、区切り（cue）の時刻つきで取り込む。ブラウザの TTS のほうは変わらない。
 

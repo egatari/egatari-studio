@@ -635,7 +635,7 @@ export function createAudioPanel(o) {
     const det = h('details', { cls: 'dv-colab', id: 'dev-audio-colab' });
     if (open || colabNote || marked.size) det.setAttribute('open', '');
     det.appendChild(h('summary', { text: C.title }));
-    if (C.unverified) det.appendChild(h('div', { cls: 'dv-warn dv-unverified', id: 'dev-audio-colab-unverified', text: C.unverified }));
+    if (C.verified) det.appendChild(h('div', { cls: 'dv-note dv-verified', id: 'dev-audio-colab-verified', text: C.verified }));
     det.appendChild(h('div', { cls: 'dv-note', text: C.lead }));
     const all = (v.segs || []).length;
     const sel = h('select', { id: 'dev-audio-colab-scope', 'aria-label': C.scope }, [h('option', { value: 'need', text: C.scopeNeed(need.length) }), h('option', { value: 'all', text: C.scopeAll(all) })]);
