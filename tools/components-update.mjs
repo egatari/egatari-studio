@@ -9,19 +9,23 @@
 // を確かめてから、部品を vendor/components/<名前>/<版>/ に、LICENSE を vendor/components/LICENSE に書く。取り込んだ版はすべて残す
 // （古い版で組んだ教材を組み直すため。消さない）。同じ版がもうあれば、中身が同じことを確かめて書かない（違えば断る：タグは付け替えない約束）。
 // components.lock.json に、出どころ（source・tag・tarballSha256）、取り込んだリリースの一覧（releases）、部品ごとの既定の版（今の版）・手元の版の一覧・
-// 版ごとの index.js の sha256 を書く。そのあと `npm run gen`（部品の一覧と AI への指示）と `npm test`。
+// 版ごとの index.js の同一性の sha256（改行をそろえる。kit/core/identity-hash.mjs）と、前の CRLF の記録を引くための crlfSha256 を書く。そのあと `npm run gen`（部品の一覧と AI への指示）と `npm test`。
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readTarGz, safePath } from './components-tar.mjs';
 import { LOCK_FILE, VENDOR_COMPONENTS, NAME_RE, lockProblems } from '../kit/core/components-lock.mjs';
+import { identityBytes, normalizeEol, toCrlf } from '../kit/core/identity-hash.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const SOURCE = 'https://github.com/egatari/components';
 const PACKAGE = 'egatari-components';
 const MAX = 64 * 1024 * 1024;
 const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+// 同一性の hash（format spec §6：改行をそろえる。字のファイルだけ）。manifest.json の各ファイルの sha256 と、固定の index.js の sha256 はこれ。
+// tarball そのものはバイトのまま（tarball.sha256）
+const idSha = (p, b) => sha(identityBytes(p, b));
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 const cmpVer = (a, b) => {
   const pa = a.split('-')[0].split('.').map(Number), pb = b.split('-')[0].split('.').map(Number);
@@ -56,15 +60,15 @@ export function verifyRelease(tag, manifestBytes, tarball) {
   for (const p of listed) if (!files.has(p)) throw new Error(`tarball: ${p} is in manifest.json but not in the tarball`);
   for (const [p, b] of files) {
     if (!Object.prototype.hasOwnProperty.call(m.files, p)) throw new Error(`tarball: ${p} is not in manifest.json`);
-    if (sha(b) !== m.files[p]) throw new Error(`tarball: ${p} does not match its sha256 in manifest.json`);
+    if (idSha(p, b) !== m.files[p]) throw new Error(`tarball: ${p} does not match its sha256 in manifest.json`);
   }
   const components = {};
   for (const [name, c] of Object.entries(m.components)) {
     if (!NAME_RE.test(name)) throw new Error(`manifest.json: component "${name}" is not a registry name`);
     const idx = files.get(`${name}/index.js`);
     if (!idx) throw new Error(`tarball: ${name}/index.js is missing`);
-    if (!isObj(c) || sha(idx) !== c.sha256) throw new Error(`manifest.json: components.${name}.sha256 does not match ${name}/index.js`);
-    components[name] = { sha256: c.sha256, files: new Map() };
+    if (!isObj(c) || sha(normalizeEol(idx)) !== c.sha256) throw new Error(`manifest.json: components.${name}.sha256 does not match ${name}/index.js`);
+    components[name] = { sha256: c.sha256, crlfSha256: sha(toCrlf(normalizeEol(idx))), files: new Map() };
   }
   let license = null;
   for (const [p, b] of files) {
@@ -121,9 +125,10 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
     if (!e.versions.includes(rel.version)) e.versions.push(rel.version);
     e.versions.sort(cmpVer);
     e.sha256 = Object.fromEntries(e.versions.map((v) => [v, v === rel.version ? c.sha256 : e.sha256[v]]));
+    e.crlfSha256 = Object.fromEntries(e.versions.filter((v) => v === rel.version || (e.crlfSha256 && e.crlfSha256[v])).map((v) => [v, v === rel.version ? c.crlfSha256 : e.crlfSha256[v]]));
     e.default = rel.version;
   }
-  lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, versions: e.versions, sha256: e.sha256 }]));
+  lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, versions: e.versions, sha256: e.sha256, ...(e.crlfSha256 ? { crlfSha256: e.crlfSha256 } : {}) }]));
   const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, releases: lock.releases, components: lock.components };
   const problems = lockProblems(ordered);
   if (problems.length) throw new Error(`${LOCK_FILE}: ${problems.join('; ')}`);
@@ -159,7 +164,9 @@ export function checkVendor(root = ROOT) {
       const f = path.join(base, name, v, 'index.js');
       if (!fs.existsSync(f)) { e.push(`vendor/components/${name}/${v}/index.js is missing`); continue; }
       if (fs.lstatSync(f).isSymbolicLink()) { e.push(`vendor/components/${name}/${v}/index.js is a symbolic link`); continue; }
-      if (sha(fs.readFileSync(f)) !== c.sha256[v]) e.push(`vendor/components/${name}/${v}/index.js does not match ${LOCK_FILE}`);
+      const code = normalizeEol(fs.readFileSync(f));
+      if (sha(code) !== c.sha256[v]) e.push(`vendor/components/${name}/${v}/index.js does not match ${LOCK_FILE}`);
+      else if (c.crlfSha256 && c.crlfSha256[v] && sha(toCrlf(code)) !== c.crlfSha256[v]) e.push(`vendor/components/${name}/${v}/index.js does not match ${LOCK_FILE}`);
       try { listFiles(path.join(base, name, v)); } catch (err) { e.push(err.message); }
     }
   }

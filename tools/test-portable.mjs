@@ -207,7 +207,10 @@ ok('往復：展開 → もう一度まとめると同じファイル・同じ�
   assert.equal(r.sourceMatches, true);
   assert.deepEqual(r.warnings, []);
   assert.equal(Object.getPrototypeOf(r.files), null);
-  for (const p of ['deck.html', 'narration.md', FORMAT.CONFIG_FILE]) assert.deepEqual(Buffer.from(r.files[p]), fs.readFileSync(path.join(MIN, p)), p);
+  for (const p of ['deck.html', 'narration.md']) assert.deepEqual(Buffer.from(r.files[p]), fs.readFileSync(path.join(MIN, p)), p);
+  // 1 ファイルの中の設定のファイル＝作業フォルダのもの＋使った部品庫の部品の版（components。format spec §3.3）
+  const cfgIn = JSON.parse(new TextDecoder().decode(r.files[FORMAT.CONFIG_FILE])), cfgDir = JSON.parse(fs.readFileSync(path.join(MIN, FORMAT.CONFIG_FILE), 'utf8'));
+  assert.deepEqual(cfgIn, { ...cfgDir, components: { sweep: first.index.components.find((c) => c.name === 'sweep').version } }, FORMAT.CONFIG_FILE);
   for (const [p, b] of Object.entries(first.files)) assert.deepEqual(Buffer.from(r.files[p]), Buffer.from(b), p);
   const U = path.join(work, 'unpacked');
   const u = await unpack(path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT), U);

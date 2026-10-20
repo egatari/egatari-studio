@@ -60,7 +60,7 @@ self.onmessage = async (e) => {
         value = { html: r.html, trusted: r.trusted, stats: r.stats, slides: r.slides, previewAudio: r.previewAudio || null, reasons: typeof m.prefix === 'string' ? rendered(r, m.prefix) : null };
       } else if (m.op === 'exportIndex') {
         const r = await engine.exportPortable(m.file, m.opts || {});
-        value = { index: r.index };
+        value = { index: r.index, registryEquivalent: r.registryEquivalent || [] };
       } else if (m.op === 'exportHtml') {
         // 持ち運べる 1 ファイルそのもの（AI の出力の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）
         const r = await engine.exportPortable(m.file, m.opts || {});

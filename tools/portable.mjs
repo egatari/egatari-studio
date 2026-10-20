@@ -12,7 +12,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
-import { LOCK_FILE, VENDOR_COMPONENTS, parseLock, versionForSha, pinsForIndex } from '../kit/core/components-lock.mjs';
+import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
+import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
@@ -47,9 +48,9 @@ export async function unpack(file, dir, { force = false } = {}) {
   const CFG = FORMAT.CONFIG_FILE;
   const cfgText = folderConfig(r.index, files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : null);
   if (cfgText !== null) files[CFG] = new TextEncoder().encode(cfgText);
-  // 部品庫の部品が既定でない版（index.js の sha256 が合う版）なら、設定のファイルの components に固定する（展開したフォルダを組み直しても同じ部品。
-  // kit/core/components-lock.mjs。既定の版なら書かない）
-  const pinned = nonDefaultPins(r.index);
+  // 部品庫の部品の版を、設定のファイルの components に固定する（format spec §3.3：展開したフォルダを組み直しても版が黙って変わらないように。
+  // 版は index.js の hash が合う手元の版、なければ記録の版。設定のファイルに components がもうあれば変えない。kit/core/components-lock.mjs）
+  const pinned = unpackPins(r.index);
   if (Object.keys(pinned).length) {
     const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
     if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, components: pinned }, null, 2) + '\n');
@@ -77,16 +78,21 @@ export async function unpack(file, dir, { force = false } = {}) {
 function lockAt(root) {
   try { return parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8')); } catch { return null; }
 }
-// 文書の部品庫の部品のうち、合う版が既定の版でないもの：{名前: 版}
-export function nonDefaultPins(index, root = ROOT) {
+// 展開で設定のファイルに書く版：{名前: 版}。文書の部品庫の部品ごとに、記録の hash が合う手元の版（components.lock.json）、なければ記録の版
+export function unpackPins(index, root = ROOT) {
   const lock = lockAt(root);
-  if (!lock) return {};
-  const { pins } = pinsForIndex(lock, index.components);
-  return Object.fromEntries(Object.entries(pins).filter(([n, v]) => lock.components[n].default !== v));
+  const out = {};
+  for (const c of Array.isArray(index.components) ? index.components : []) {
+    if (!c || c.source !== 'registry' || typeof c.name !== 'string' || !RE.registryName.test(c.name)) continue;
+    const v = lock ? versionForSha(lock, c.name, c.sha256, c.version) : null;
+    if (v) out[c.name] = v; else if (typeof c.version === 'string' && VERSION_RE.test(c.version)) out[c.name] = c.version;
+  }
+  return out;
 }
 
 // 部品庫・テーマ庫の部品が、このリポジトリの写しにあるか（なければ段 B・C の編集はできない）。返すもの：知らせの配列。
-// 部品は index.js の sha256 で版を探し（components.lock.json）、その版の写し vendor/components/<名前>/<版>/index.js の中身でも確かめる。
+// 部品は index.js の sha256 で版を探し（components.lock.json。改行をそろえる前の CRLF の hash も）、その版の写し vendor/components/<名前>/<版>/index.js の
+// 同一性の hash（改行をそろえる。kit/core/identity-hash.mjs）が固定のものかでも確かめる。
 // 名前は文書が書いたもの（信頼しない）：1 つの識別子（RE.registryName。readPortable の検査器も断るが、ここでも確かめる）だけを
 // 写しのフォルダに結び、実体が vendor/components/ の中にある普通のファイルだけを読む（readContained。外を指すリンクは読まない）
 export function registryWarnings(index, root = ROOT) {
@@ -97,13 +103,13 @@ export function registryWarnings(index, root = ROOT) {
     if (c.source !== 'registry') continue;
     if (typeof c.name !== 'string' || !RE.registryName.test(c.name)) { warnings.push(`component ${c.tag}: "${String(c.name).slice(0, 80)}" is not a registry name; not checked`); continue; }
     const known = !!lock && Object.prototype.hasOwnProperty.call(lock.components, c.name);
-    const v = known ? versionForSha(lock, c.name, c.sha256) : null;
+    const v = known ? versionForSha(lock, c.name, c.sha256, c.version) : null;
     let bytes = null;
     if (v) { try { bytes = readContained(regDir, path.join(regDir, c.name, v, 'index.js'), null, { max: READ_LIMITS.component }); } catch { bytes = null; } }
     if (!known) warnings.push(`component ${c.tag} (${c.name} ${c.version}) is not in this registry`);
     else if (!v) warnings.push(`component ${c.tag}: this registry has a different version (hash differs from ${c.version})`);
     else if (bytes === null) warnings.push(`component ${c.tag} (${c.name} ${v}) is in ${LOCK_FILE} but not in vendor/components`);
-    else if (crypto.createHash('sha256').update(bytes).digest('hex') !== c.sha256) warnings.push(`component ${c.tag}: vendor/components/${c.name}/${v}/index.js does not match ${LOCK_FILE}`);
+    else if (crypto.createHash('sha256').update(normalizeEol(bytes)).digest('hex') !== lock.components[c.name].sha256[v]) warnings.push(`component ${c.tag}: vendor/components/${c.name}/${v}/index.js does not match ${LOCK_FILE}`);
   }
   for (const t of index.themes || []) {
     if (t.source === 'registry' && !(typeof t.name === 'string' && RE.registryName.test(t.name))) warnings.push(`theme "${String(t.name).slice(0, 80)}" is not a registry name`);

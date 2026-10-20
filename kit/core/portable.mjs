@@ -14,7 +14,8 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
-import { readLock, vendorDir, pinsForIndex } from './components-lock.mjs';
+import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
+import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 
@@ -626,10 +627,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const prefixPh = `<!--archive-${tag}-->`;
   // 組み直す文書（carry）が記録した部品庫の部品は、index.js の sha256 が合う版で組む（format spec §6。kit/core/components-lock.mjs）
   let componentVersions = opts.componentVersions;
-  if (!componentVersions && isObj(opts.carry) && Array.isArray(opts.carry.components) && opts.carry.components.length) {
-    const lock = readLock(env0, env0.ROOT);
-    if (lock) componentVersions = pinsForIndex(lock, opts.carry.components).pins;
-  }
+  const carryLock = isObj(opts.carry) && Array.isArray(opts.carry.components) && opts.carry.components.length ? readLock(env0, env0.ROOT) : null;
+  if (!componentVersions && carryLock) componentVersions = pinsForIndex(carryLock, opts.carry.components).pins;
   const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
@@ -752,6 +751,20 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (have !== undefined) warnings.push(`${LOG}: ${CFG}: the copy in the single file lists only the attachments listed for readers (${attachList.length} of ${Array.isArray(have) ? have.length : 0}); the working folder's ${CFG} is unchanged`);
     }
   }
+  // 1 ファイルの中の設定のファイルには、使った部品庫の部品の版（components）を書く（format spec §3.3：展開したフォルダを組み直しても版が変わらない。
+  // 展開して、もう一度まとめても同じバイト）。作業フォルダの設定のファイルは変えない（作業フォルダは固定がなければ既定の版に付いていく）。
+  // 作業フォルダに components があれば、それをそのまま使う（組み立てもそれで版を選んだ）
+  if (!own(econf, 'components')) {
+    const used = {};
+    for (const t of r.stats.components) {
+      const name = t.slice(2);
+      if (!files[`components/${name}/index.js`] && regComp.has(name) && regComp.get(name).files.has('index.js') && RE.registryName.test(name)) used[name] = regComp.get(name).version;
+    }
+    if (Object.keys(used).length) {
+      const base = parseJsonStrict(new TextDecoder().decode(files[CFG]));
+      files[CFG] = utf8(JSON.stringify({ ...base, components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }, null, 2) + '\n');
+    }
+  }
 
   // 外したもの・パスの規則
   const pathErr = checkArchivePaths(Object.keys(files));
@@ -844,18 +857,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   let embeddedCode = false;
   for (const t of r.stats.components) {
     const name = t.slice(2), local = `components/${name}/index.js`;
-    if (files[local]) { components.push({ tag: t, name, version: 'local', sha256: await sha256Hex(files[local]), source: 'embedded', path: local }); embeddedCode = true; }
+    // sha256：同一性の hash（改行をそろえる。format spec §6、kit/core/identity-hash.mjs）
+    if (files[local]) { components.push({ tag: t, name, version: 'local', sha256: await sha256Hex(normalizeEol(files[local])), source: 'embedded', path: local }); embeddedCode = true; }
     else if (regComp.has(name) && regComp.get(name).files.has('index.js')) {
       if (!RE.registryName.test(name)) { warnings.push(`${LOG}: component ${t} is not a registry name (${RE.registryName}); not recorded`); continue; }
       // version：部品庫（egatari/components）のリリースの版（format spec §6）
-      components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(regComp.get(name).files.get('index.js')), source: 'registry' });
+      components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(normalizeEol(regComp.get(name).files.get('index.js'))), source: 'registry' });
     }
   }
   const themes = [];
   for (const [name, m] of regTheme) {
     if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
     const lines = [];
-    for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(m.get(k))}\n`);
+    for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`);
     themes.push({ name, version: env.version || '0', sha256: await sha256Hex(lines.join('')), source: 'registry' });
   }
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
@@ -940,7 +954,17 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const size = utf8Length(html);
   if (size > WARN_BYTES) warnings.push(`${LOG}: the file is ${(size / MiB).toFixed(1)} MiB (over ${WARN_BYTES / MiB} MiB): consider splitting the lesson into chapters`);
   if (size > LIMITS.fileBytes) warnings.push(`${LOG}: the file is over ${LIMITS.fileBytes / MiB} MiB; editors may refuse it`);
-  return { html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length } };
+  // 組み直した文書（carry）の部品庫の部品のうち、記録の hash（改行をそろえる前の CRLF の hash も）が、組み直しに使った版と同じ中身を指すもの（tag の配列）。
+  // 前の Windows の checkout で書き出した文書は記録の hash が今の同一性の hash と違うが、同じ部品（app の registryProblems が使う）
+  const registryEquivalent = [];
+  if (carryLock) {
+    for (const c of opts.carry.components) {
+      if (!isObj(c) || c.source !== 'registry') continue;
+      const v = versionForSha(carryLock, c.name, c.sha256, c.version), f = components.find((x) => x.tag === c.tag && x.source === 'registry');
+      if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag);
+    }
+  }
+  return { registryEquivalent, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）

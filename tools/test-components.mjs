@@ -11,7 +11,7 @@ import { launch, fileUrl } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 …]}
-const KNOWN = { kanbun: ['R-fit'] };
+const KNOWN = {};
 
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');

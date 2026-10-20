@@ -65,15 +65,16 @@ export async function writeToDirectory(dir, files) {
 }
 
 // ---------------------------------------------------------------- 確かめ
-export function registryProblems(orig, fresh) {
-  const out = [];
+// equivalent：記録の hash が違っても同じ部品と分かった tag（改行をそろえる前に CRLF のまま hash した記録。kit/core/portable.mjs の registryEquivalent）
+export function registryProblems(orig, fresh, equivalent = []) {
+  const out = [], same = new Set(Array.isArray(equivalent) ? equivalent : []);
   const reg = (list, key) => new Map((Array.isArray(list) ? list : []).filter((c) => isObj(c) && c.source === 'registry').map((c) => [c[key], c]));
   for (const [kind, key] of [['component', 'tag'], ['theme', 'name']]) {
     const mine = reg(fresh[kind + 's'], key);
     for (const [k, c] of reg(orig[kind + 's'], key)) {
       const f = mine.get(k);
       if (!f) out.push(`${kind} ${k} (${c.name} ${c.version}) is not in this editor`);
-      else if (f.sha256 !== c.sha256) out.push(`${kind} ${k}: this editor has a different version (the hash of ${c.name} ${c.version} differs)`);
+      else if (f.sha256 !== c.sha256 && !(kind === 'component' && same.has(k))) out.push(`${kind} ${k}: this editor has a different version (the hash of ${c.name} ${c.version} differs)`);
     }
   }
   return out;

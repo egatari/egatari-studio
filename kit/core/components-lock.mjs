@@ -3,7 +3,10 @@
 //   固定：components.lock.json（npm run components:update -- vX.Y.Z が書く。手で直さない）
 //     { "source": "https://github.com/egatari/components", "tag": "v1.0.0", "tarballSha256": "…",
 //       "releases": { "v1.0.0": { "tarballSha256": "…" } },
-//       "components": { "<名前>": { "default": "1.0.0", "versions": ["1.0.0"], "sha256": { "1.0.0": "<index.js の sha256>" } } } }
+//       "components": { "<名前>": { "default": "1.0.0", "versions": ["1.0.0"], "sha256": { "1.0.0": "<index.js の同一性の sha256>" },
+//                                   "crlfSha256": { "1.0.0": "<改行を CRLF にした index.js の sha256>" } } } }
+//     sha256 は改行をそろえた同一性の hash（format spec §6、kit/core/identity-hash.mjs）。crlfSha256 は、改行をそろえる前に Windows の checkout で
+//     書き出した文書（CRLF のまま hash した）を同じ版に結ぶためだけに使う
 // 組み立て（build-core）・持ち運べる 1 ファイル（portable）・編集アプリが共有する。node: の読み込み・fs・process を使わない（読み書きは env を通す）。
 // 文書が記録した部品（format spec §6：{name, version, sha256}。sha256 は index.js だけ）は、sha256 の合う版に結ぶ（versionForSha）。
 export const LOCK_FILE = 'components.lock.json';
@@ -31,6 +34,10 @@ export function lockProblems(lock) {
     if (!isObj(c.sha256)) { e.push(`${w}.sha256: not an object`); continue; }
     for (const v of c.versions) if (!(own(c.sha256, v) && SHA_RE.test(c.sha256[v]))) e.push(`${w}.sha256.${v}: not a sha256`);
     for (const v of Object.keys(c.sha256)) if (!c.versions.includes(v)) e.push(`${w}.sha256.${v}: not in versions`);
+    if (own(c, 'crlfSha256')) {
+      if (!isObj(c.crlfSha256)) e.push(`${w}.crlfSha256: not an object`);
+      else for (const [v, h] of Object.entries(c.crlfSha256)) if (!c.versions.includes(v) || !SHA_RE.test(h)) e.push(`${w}.crlfSha256.${v}: not a version with a sha256`);
+    }
   }
   return e;
 }
@@ -63,12 +70,18 @@ export function pickVersion(lock, name, want) {
   return { version: c.default, note: `component m-${name}: version "${String(want).slice(0, 40)}" is not in ${LOCK_FILE}; using ${c.default}` };
 }
 
-// 文書が記録した index.js の sha256 に合う版（なければ null）。同じ中身の版が複数あれば、既定の版、次に新しく取り込んだ版
-export function versionForSha(lock, name, sha) {
+// 文書が記録した index.js の sha256 に合う版（なければ null）。同じ中身の版が複数あれば、既定の版、次に新しく取り込んだ版。
+// 同一性の hash（sha256）に合わなければ、改行をそろえる前に CRLF のまま hash した記録（crlfSha256）とも比べる
+// prefer：文書が記録した版。手元にあって hash が合えば、それを選ぶ（同じ中身の新しい版に黙って移らない。format spec §3.3）
+export function versionForSha(lock, name, sha, prefer) {
   const c = lock && isObj(lock.components) && own(lock.components, name) ? lock.components[name] : null;
   if (!c || typeof sha !== 'string') return null;
-  if (c.sha256[c.default] === sha) return c.default;
-  for (const v of [...c.versions].reverse()) if (c.sha256[v] === sha) return v;
+  for (const key of ['sha256', 'crlfSha256']) {
+    const m = isObj(c[key]) ? c[key] : {};
+    if (typeof prefer === 'string' && c.versions.includes(prefer) && m[prefer] === sha) return prefer;
+    if (m[c.default] === sha) return c.default;
+    for (const v of [...c.versions].reverse()) if (m[v] === sha) return v;
+  }
   return null;
 }
 
@@ -78,7 +91,7 @@ export function pinsForIndex(lock, components) {
   const pins = {}, missing = [];
   for (const c of Array.isArray(components) ? components : []) {
     if (!isObj(c) || c.source !== 'registry' || typeof c.name !== 'string' || !NAME_RE.test(c.name)) continue;
-    const v = versionForSha(lock, c.name, c.sha256);
+    const v = versionForSha(lock, c.name, c.sha256, c.version);
     if (v) pins[c.name] = v; else missing.push(c);
   }
   return { pins, missing };

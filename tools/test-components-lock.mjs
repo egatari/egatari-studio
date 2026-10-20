@@ -19,7 +19,9 @@ import { nodeEnv } from '../kit/build.mjs';
 import * as core from '../kit/core/build-core.mjs';
 import { exportPortable, readPortable } from '../kit/core/portable.mjs';
 import { ROOT } from './vendor-components.mjs';
-import { nonDefaultPins, registryWarnings } from './portable.mjs';
+import { unpackPins, registryWarnings } from './portable.mjs';
+import { normalizeEol, toCrlf, identityBytes } from '../kit/core/identity-hash.mjs';
+import { registryProblems } from '../app/portable-ws.js';
 
 let n = 0, fail = 0;
 const t = async (name, fn) => {
@@ -85,7 +87,7 @@ await t('update: a release is checked, written to vendor/components/<name>/<vers
   assert.equal(fs.readFileSync(path.join(R, 'vendor/components/LICENSE'), 'utf8'), 'MIT License\n');
   const lock = JSON.parse(fs.readFileSync(path.join(R, 'components.lock.json'), 'utf8'));
   assert.equal(lock.tag, 'v1.0.0'); assert.equal(lock.tarballSha256, r1.m.tarball.sha256);
-  assert.deepEqual(lock.components.bars, { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': sha(enc(V1.bars['index.js'])) } });
+  assert.deepEqual(lock.components.bars, { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': sha(enc(V1.bars['index.js'])) }, crlfSha256: { '1.0.0': sha(toCrlf(enc(V1.bars['index.js']))) } });
   assert.deepEqual(checkVendor(R).filter((x) => !/source is/.test(x)), []);
 });
 await t('update: a newer release keeps the old version; components not in it keep their default; re-importing is a no-op', () => {
@@ -173,12 +175,49 @@ await t('single file: records the components release as version; rebuilding with
   assert.equal(c.index.components.find((x) => x.tag === 'm-bars').version, '9.9.9');
   const rd = await readPortable(a.html);
   assert.equal(rd.index.components[0].version, barsV);
-  // 展開（npm run portable -- unpack）：既定でない版は egatari.json に固定し、照合は知らせを出さない
-  assert.deepEqual(nonDefaultPins(a.index, RB), { bars: barsV });
-  assert.deepEqual(nonDefaultPins(c.index, RB), {});
+  // 展開（npm run portable -- unpack）：記録の版を egatari.json に固定する（既定の版でも。format spec §3.3）。照合は知らせを出さない
+  assert.deepEqual(unpackPins(a.index, RB), { bars: barsV });
+  assert.deepEqual(unpackPins(c.index, RB), { bars: '9.9.9' });
   assert.deepEqual(registryWarnings(a.index, RB), []);
   const other = { components: [{ ...ca, sha256: 'c'.repeat(64) }] };
   assert.ok(registryWarnings(other, RB).some((w) => /different version/.test(w)));
+});
+
+// ---------------------------------------------------------------- 3b 同一性の hash（format spec §6：改行をそろえる）
+await t('identity hash: CRLF, lone CR and a leading BOM hash like LF; binary files are not changed', () => {
+  const lf = enc('a\nb\n'), crlf = enc('a\r\nb\r\n'), cr = enc('a\rb\r'), bom = new Uint8Array([0xef, 0xbb, 0xbf, ...lf]);
+  for (const x of [crlf, cr, bom]) assert.equal(sha(normalizeEol(x)), sha(lf));
+  assert.equal(normalizeEol(lf), lf, 'unchanged input is returned as is');
+  assert.equal(sha(toCrlf(lf)), sha(crlf));
+  const png = new Uint8Array([0x89, 0x0d, 0x0a, 0x1a]);
+  assert.equal(identityBytes('logo.png', png), png);
+  assert.equal(sha(identityBytes('tokens.css', crlf)), sha(lf));
+});
+await t('identity hash: a CRLF or BOM checkout of a component records the same sha256 in a single file as LF', async () => {
+  const lfHash = sha(normalizeEol(newJs));
+  for (const variant of [toCrlf(normalizeEol(newJs)), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), newJs])]) {
+    fs.writeFileSync(path.join(RB, 'vendor/components/bars/9.9.9/index.js'), variant);
+    const r = await exportPortable(env, src, {});
+    assert.equal(r.index.components.find((x) => x.tag === 'm-bars').sha256, lfHash);
+  }
+  fs.writeFileSync(path.join(RB, 'vendor/components/bars/9.9.9/index.js'), newJs);
+});
+await t('identity hash: an old single file whose component hash was taken on CRLF bytes (Windows checkout) rebuilds with the same component', async () => {
+  // 前の Studio が Windows の checkout で書き出した文書：記録の hash は CRLF のバイトの hash、版は Studio の版
+  const lock = JSON.parse(fs.readFileSync(path.join(RB, 'components.lock.json'), 'utf8'));
+  lock.components.bars.crlfSha256 = { [barsV]: sha(toCrlf(normalizeEol(barsJs))), '9.9.9': sha(toCrlf(normalizeEol(newJs))) };
+  fs.writeFileSync(path.join(RB, 'components.lock.json'), JSON.stringify(lock));
+  const a = await exportPortable(env, src, { componentVersions: { bars: barsV } });
+  const old = structuredClone(a.index);
+  Object.assign(old.components.find((x) => x.tag === 'm-bars'), { version: '0.4.3', sha256: sha(toCrlf(normalizeEol(barsJs))) });
+  const b = await exportPortable(env, src, { carry: old });
+  const cb = b.index.components.find((x) => x.tag === 'm-bars');
+  assert.deepEqual([cb.version, cb.sha256], [barsV, sha(normalizeEol(barsJs))], 'rebuilt with the version the CRLF hash names');
+  assert.deepEqual(b.registryEquivalent, ['m-bars']);
+  assert.deepEqual(registryProblems(old, b.index, b.registryEquivalent), [], 'the editor allows tier B/C');
+  assert.equal(registryProblems(old, b.index).length, 1, 'without the equivalence it would be a different component');
+  assert.deepEqual(registryWarnings(old, RB), [], 'npm run portable -- unpack finds it');
+  assert.deepEqual(unpackPins(old, RB), { bars: barsV });
 });
 
 // ---------------------------------------------------------------- 4

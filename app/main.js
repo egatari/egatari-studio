@@ -913,7 +913,7 @@ async function openPortableNow(input) {
   else {
     try {
       const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
-      const probs = registryProblems(r.index, dry.index);
+      const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);
       if (probs.length) P.tierAOnly = T.roRegistry(probs.join('; '));
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
