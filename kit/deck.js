@@ -398,9 +398,11 @@ DECK.feedbackUrl = function(){
 };
 
 // ---------------------------------------------------------------- 段階表示
-var slides = [], cur = 0, step = 0, fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
-// 位置が変わったわけ（埋め込みの position の cause：control・link・seek・play）と、その段階の t（最終状態なら null）
-var CAUSE = null, POS_T = null;
+// 位置と再生の状態（i, k、知らせる t、再生中か、位置が変わったわけ cause：control・link・seek・play、リンクの「戻る」の跡）は
+// PositionStore（kit/core/position.mjs。build が DECK.PositionStore として前に入れる）が持つ。舞台は描いた位置を書き、知らせは購読者が送る
+if (typeof DECK.PositionStore !== "function") throw new Error("deck.js: DECK.PositionStore がない（kit/core/position.mjs を先に読み込む） / missing DECK.PositionStore (load kit/core/position.mjs first)");
+var POS = DECK.PositionStore();
+var slides = [], fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
 
 function setupSlide(s, i, mainEnd){
   var autoList = !s.classList.contains("static") && !s.classList.contains("nostep") && !s.querySelector("[data-step]") && !s.querySelector("[data-from]");
@@ -552,7 +554,7 @@ function seek(i, k, t, from){
   drawMarks(s, i, k, lecture ? Infinity : t);
   if (morph) applyMorph(morphPlan(from, i), t);
   s._final = k === s._max && t === Infinity;
-  cur = i; step = k;
+  POS.at(i, k);
   if (CAP.on) drawCaption(i, k, t);
   var bar = document.getElementById("bar");
   if (bar) bar.style.width = ((i + 1) / slides.length * 100) + "%";
@@ -1012,7 +1014,7 @@ function capSchedule(){
   CAP.timer = setTimeout(function(){
     if (CAP.lv !== lv) return;
     lv.j++;
-    if (cur === lv.i && step === lv.k) drawCaption(cur, step, Infinity);
+    if (POS.i === lv.i && POS.k === lv.k) drawCaption(POS.i, POS.k, Infinity);
     capSchedule();
   }, Math.max(1.2, ch[lv.j].text.length / capRate()) * 1000);
 }
@@ -1064,9 +1066,9 @@ function setCaptions(on){
   if (CAP.el) CAP.el.hidden = !CAP.on;
   document.documentElement.classList.toggle("captions", CAP.on);
   CAP.key = null;
-  if (CAP.on && CAP_LIVE && slides.length) capRestart(cur, step);
+  if (CAP.on && CAP_LIVE && slides.length) capRestart(POS.i, POS.k);
   if (!CAP.on) clearTimeout(CAP.timer);
-  if (CAP.on && slides.length) drawCaption(cur, step, Infinity);
+  if (CAP.on && slides.length) drawCaption(POS.i, POS.k, Infinity);
   document.dispatchEvent(new CustomEvent("deck:captions", {detail: {on: CAP.on}}));
   return CAP.on;
 }
@@ -1078,16 +1080,16 @@ function capSize(z){
   if (!CAP_SIZES[z]) return CAP.size;
   // 今読んでいる字の位置を保ったまま区切りを変える
   var off = 0, lv = CAP.lv;
-  if (CAP.on && lv && lv.i === cur && lv.k === step){ var ch0 = capChunks(cur, step); for (var a = 0; a < Math.min(lv.j, ch0.length); a++) off += ch0[a].text.length; }
+  if (CAP.on && lv && lv.i === POS.i && lv.k === POS.k){ var ch0 = capChunks(POS.i, POS.k); for (var a = 0; a < Math.min(lv.j, ch0.length); a++) off += ch0[a].text.length; }
   CAP.size = z;
   try { localStorage.setItem("deck-capsize", z); } catch (e) {}
   if (!CAP.on) setCaptions(true);
   capApplySize();
   if (CAP.on && slides.length){
-    var ch = capChunks(cur, step), j = 0, acc = 0;
+    var ch = capChunks(POS.i, POS.k), j = 0, acc = 0;
     while (j < ch.length - 1 && acc + ch[j].text.length <= off){ acc += ch[j].text.length; j++; }
-    capRestart(cur, step, j);
-    CAP.key = null; drawCaption(cur, step, Infinity);
+    capRestart(POS.i, POS.k, j);
+    CAP.key = null; drawCaption(POS.i, POS.k, Infinity);
   }
   DECK.toast(L10N("字幕の大きさ：", "Caption size: ") + z.toUpperCase());
   document.dispatchEvent(new CustomEvent("deck:captions", {detail: {on: CAP.on, size: z}}));
@@ -1118,9 +1120,9 @@ function play(i, k, animate, from){
   stopLoop();
   announce(i, k);
   if (CAP.on && CAP_LIVE) capRestart(i, k);
-  POS_T = !animate || REDUCE ? null : 0;
-  if (!animate || REDUCE){ seek(i, k, Infinity); broadcast(); return; }
-  if (i !== cur){ slides[cur]._tok++; slides[cur]._legacyAt = undefined; }
+  POS.setT(!animate || REDUCE ? null : 0);
+  if (!animate || REDUCE){ seek(i, k, Infinity); POS.publish(); return; }
+  if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
   legacy(slides[i], k, false);
   var d = Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
   t0 = performance.now();
@@ -1130,10 +1132,10 @@ function play(i, k, animate, from){
     seek(i, k, t, from);
     raf = requestAnimationFrame(loop);
   })();
-  broadcast();
+  POS.publish();
 }
 function go(i, k, animate){
-  var from = cur;
+  var from = POS.i;
   i = Math.max(0, Math.min(slides.length - 1, i));
   LINKS.seen[i] = true;
   play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1);
@@ -1146,10 +1148,10 @@ function go(i, k, animate){
     }
   } catch (e) {}
 }
-function next(){ if (step < slides[cur]._max) go(cur, step + 1, true); else if (cur < slides.length - 1) go(cur + 1, 0, true); }
-function prev(){ if (step > 0) go(cur, step - 1, false); else if (cur > 0) go(cur - 1, slides[cur - 1]._max, false); }
+function next(){ var i = POS.i, k = POS.k; if (k < slides[i]._max) go(i, k + 1, true); else if (i < slides.length - 1) go(i + 1, 0, true); }
+function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false); else if (i > 0) go(i - 1, slides[i - 1]._max, false); }
 DECK.go = go; DECK.next = next; DECK.prev = prev;
-DECK.state = function(){ return {slide: cur + 1, step: step, max: slides[cur]._max, key: DECK.stepKey(cur, step), mode: DECK.mode}; };
+DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode}; };
 
 // ---------------------------------------------------------------- 自動再生（音声があれば流し、タイムラインで進む）
 var audioEl = null;
@@ -1157,14 +1159,14 @@ function stopAuto(){
   if (!auto) return;
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
-  auto = null; document.documentElement.classList.remove("autoplay");
-  broadcast();
+  auto = null; POS.setPlaying(false); document.documentElement.classList.remove("autoplay");
+  POS.publish();
 }
 function startAuto(){
   stopAuto();
-  var tl = DECK.timeline(), idx = tl.findIndex(function(x){ return x.i === cur && x.k === step; });
+  var tl = DECK.timeline(), idx = tl.findIndex(function(x){ return x.i === POS.i && x.k === POS.k; });
   if (idx < 0) idx = 0;
-  auto = {tl: tl, idx: idx};
+  auto = {tl: tl, idx: idx}; POS.setPlaying(true);
   document.documentElement.classList.add("autoplay");
   runSeg();
 }
@@ -1172,12 +1174,12 @@ function runSeg(){
   if (!auto) return;
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
-  if (!(g.i === cur && g.k === step && auto.started)){ var c0 = CAUSE; CAUSE = c0 || "play"; go(g.i, g.k, true); CAUSE = c0; }
+  if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true); POS.setCause(c0); }
   auto.started = true;
   if (g.audio){
     if (!audioEl){
       audioEl = new Audio();
-      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(cur, step, Infinity); });
+      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); });
     }
     auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
   }
@@ -1187,23 +1189,26 @@ DECK.autoplay = function(on){ if (on === false || (on === undefined && auto)) st
 
 // ---------------------------------------------------------------- 発表者ビューとの連携（postMessage。file:// でも動く）
 var presenter = null;
-function broadcast(){
+// PositionStore の購読者：位置を知らせるたびに（POS.publish）発表者ビュー・埋め込みの親・deck:pos へ送る
+function broadcast(p){
+  var cur = p.i, step = p.k;
   var ni = step < slides[cur]._max ? cur : cur + 1, nk = step < slides[cur]._max ? step + 1 : 0;
   var msg = {type: "deck-pos", i: cur, k: step, max: slides[cur]._max, n: slides.length, key: DECK.stepKey(cur, step),
-             nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: !!auto, cause: CAUSE || "control",
-             back: LINKS.trail.length ? titleOf(slides[LINKS.trail[LINKS.trail.length - 1].i]) : null};
+             nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: p.playing, cause: p.cause || "control",
+             back: p.top ? titleOf(slides[p.top.i]) : null};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   if (window.parent !== window) window.parent.postMessage(msg, "*");
   // 埋め込み（format spec §9.4）：段階が変わるたびに位置を知らせる
-  if (EMBED) post({egatari: "position", slideKey: slides[cur]._key, stepKey: stepKey(slides[cur], step), t: POS_T, cause: CAUSE || "control"});
+  if (EMBED) post({egatari: "position", slideKey: slides[cur]._key, stepKey: stepKey(slides[cur], step), t: p.t, cause: p.cause || "control"});
   document.dispatchEvent(new CustomEvent("deck:pos", {detail: msg}));
 }
+POS.subscribe(broadcast);
 // 発表者ビューに送る（tools.js がペンの色を知らせるのに使う）
 DECK.toPresenter = function(msg){ if (presenter && !presenter.closed) presenter.postMessage(msg, "*"); };
 function openPresenter(){
   var u = new URL(location.href); u.searchParams.set("presenter", "1"); u.hash = "";
   presenter = window.open(u.href, "deck-presenter", "width=1400,height=820");
-  setTimeout(broadcast, 800);
+  setTimeout(POS.publish, 800);
 }
 window.addEventListener("message", function(e){
   var m = e.data || {};
@@ -1212,11 +1217,11 @@ window.addEventListener("message", function(e){
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
-    else if (m.cmd === "goto"){ CAUSE = "seek"; go(m.i, m.k, !!m.animate); CAUSE = null; }
+    else if (m.cmd === "goto"){ POS.setCause("seek"); go(m.i, m.k, !!m.animate); POS.setCause(null); }
     else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
     else if (m.cmd === "back") back();
     else if (m.cmd === "auto") DECK.autoplay();
-    else if (m.cmd === "hello"){ presenter = e.source; broadcast(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
+    else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length){
     go(m.i, m.k, !!m.animate);
   } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
@@ -1236,7 +1241,7 @@ window.addEventListener("message", function(e){
 // {egatari:"links", follow:false} で止めていれば動かずに {egatari:"linkRefused", slideKey, stepKey} を送る
 var TOP = window.parent === window && !DECK.view;
 var EMBED = !TOP && !DECK.view && Q.get("embed") === "1";
-var LINKS = {follow: !(EMBED && /^(0|false|no|off)$/i.test(Q.get("links") || "")), trail: [], seen: Object.create(null), btn: null};
+var LINKS = {follow: !(EMBED && /^(0|false|no|off)$/i.test(Q.get("links") || "")), seen: Object.create(null), btn: null};   // 戻るの跡は POS（PositionStore）
 function slideIndexOf(key){
   for (var j = 0; j < slides.length; j++) if (slides[j].id === key) return j;
   for (j = 0; j < slides.length; j++) if (slides[j]._key === key) return j;
@@ -1293,44 +1298,44 @@ function followLink(pos, opts){
   if (DECK.view){ post({type: "deck-link", frag: fragmentOf(pos.i, pos.k)}); return false; }   // 発表者ビューの中の画面：本体に任せる
   var target = {slideKey: slides[pos.i]._key, stepKey: stepKey(slides[pos.i], pos.k)};
   if (!LINKS.follow){ post(Object.assign({egatari: "linkRefused"}, target)); return false; }
-  LINKS.trail.push({i: cur, k: step, el: opts.keyboard ? opts.el : null});
-  if (TOP) try { history.pushState({egatariLink: LINKS.trail.length, to: {i: pos.i, k: pos.k}}, "", "#" + (pos.i + 1)); } catch (e) {}
+  var depth = POS.push({i: POS.i, k: POS.k, el: opts.keyboard ? opts.el : null});
+  if (TOP) try { history.pushState({egatariLink: depth, to: {i: pos.i, k: pos.k}}, "", "#" + (pos.i + 1)); } catch (e) {}
   moveTo(pos.i, pos.k, "link");
   return true;
 }
 // 再生の状態を保ったまま (i, k) へ：自動再生中なら段階の初めから続け、そうでなければ最終状態
 function moveTo(i, k, cause){
-  var playing = !!auto;
-  CAUSE = cause;
+  var playing = POS.playing;
+  POS.setCause(cause);
   if (playing){ stopAuto(); go(i, k, false); startAuto(); }
   else go(i, k, false);
-  CAUSE = null;
+  POS.setCause(null);
   syncBack();
 }
 function back(){
-  if (!LINKS.trail.length) return false;
+  if (!POS.depth) return false;
   // 上の窓では履歴で戻る（ブラウザの戻ると同じ。popstate で動く）
-  if (TOP && history.state && history.state.egatariLink === LINKS.trail.length){ history.back(); return true; }
-  backTo(LINKS.trail.length - 1);
+  if (TOP && history.state && history.state.egatariLink === POS.depth){ history.back(); return true; }
+  backTo(POS.depth - 1);
   return true;
 }
 function backTo(depth){
   var e = null;
-  while (LINKS.trail.length > depth) e = LINKS.trail.pop();
+  while (POS.depth > depth) e = POS.pop();
   if (!e) return;
   moveTo(e.i, e.k, "link");
   if (e.el && e.el.isConnected) try { e.el.focus({preventScroll: true}); } catch (err) {}
 }
 DECK.back = back;
-DECK.links = function(){ return {depth: LINKS.trail.length, follow: LINKS.follow, back: LINKS.trail.length ? Object.assign({}, LINKS.trail[LINKS.trail.length - 1], {el: undefined}) : null}; };
+DECK.links = function(){ return {depth: POS.depth, follow: LINKS.follow, back: POS.depth ? Object.assign({}, POS.top(), {el: undefined}) : null}; };
 DECK.follow = function(frag){ var r = resolveFragment(frag); if (r.error){ console.warn("deck.js: link #" + frag + ": " + r.error); return false; } return followLink(r); };
 window.addEventListener("popstate", function(e){
   if (!slides.length) return;
   var st = e.state || {}, d = typeof st.egatariLink === "number" ? st.egatariLink : 0;
-  if (d < LINKS.trail.length) backTo(d);
-  else if (d > LINKS.trail.length && (st.at || st.to) && slides[(st.at || st.to).i]){   // 進む：もう一度そのリンクをたどり、その先で最後にいた位置へ
+  if (d < POS.depth) backTo(d);
+  else if (d > POS.depth && (st.at || st.to) && slides[(st.at || st.to).i]){   // 進む：もう一度そのリンクをたどり、その先で最後にいた位置へ
     var at = st.at || st.to;
-    LINKS.trail.push({i: cur, k: step, el: null});
+    POS.push({i: POS.i, k: POS.k, el: null});
     moveTo(at.i, at.k, "link");
   }
 });
@@ -1351,7 +1356,7 @@ document.addEventListener("click", function(e){
 // 戻るボタン：リンクで来たときだけ、左上に小さく出す（動画・印刷・発表者ビューの中の画面では作らない）
 function syncBack(){
   if (DECK.mode === "video" || DECK.view) return;
-  var t = LINKS.trail[LINKS.trail.length - 1];
+  var t = POS.top();
   if (!t){ if (LINKS.btn) LINKS.btn.hidden = true; return; }
   if (!LINKS.btn){
     var b = LINKS.btn = document.createElement("button");
@@ -1403,7 +1408,7 @@ function init(){
   // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
   var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
-  CAUSE = "seek"; go(h0.i, h0.k, false); CAUSE = null;
+  POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
   DECK.ready = true;
   document.dispatchEvent(new CustomEvent("deck:ready"));
 }
@@ -1425,8 +1430,8 @@ document.addEventListener("keydown", function(e){
   if (k === "Enter" && buf){ stopAuto(); go(parseInt(buf, 10) - 1, 0, false); buf = ""; if (j) j.textContent = ""; return; }
   buf = ""; if (j) j.textContent = "";
   var nav = true;
-  if ((k === "ArrowRight" || k === "ArrowDown") && e.shiftKey) go(cur + 1, 0, false);
-  else if ((k === "ArrowLeft" || k === "ArrowUp") && e.shiftKey) go(cur - 1, 0, false);
+  if ((k === "ArrowRight" || k === "ArrowDown") && e.shiftKey) go(POS.i + 1, 0, false);
+  else if ((k === "ArrowLeft" || k === "ArrowUp") && e.shiftKey) go(POS.i - 1, 0, false);
   else if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "ArrowDown") next();
   else if (k === "ArrowLeft" || k === "PageUp" || k === "ArrowUp") prev();
   else if (k === "Home") go(0, 0, false);
@@ -1436,7 +1441,7 @@ document.addEventListener("keydown", function(e){
   if (k === "f"){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
   else if (k === "p") openPresenter();
   else if (k === "a") DECK.autoplay();
-  else if (k === "l"){ DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); seek(cur, step, Infinity); }
+  else if (k === "l"){ DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); seek(POS.i, POS.k, Infinity); }
   else if (k === "b") document.documentElement.classList.toggle("blackout");
   else if (k === "s") setCaptions();
   else if (k === "S") capSize();
@@ -1445,7 +1450,7 @@ document.addEventListener("keydown", function(e){
 // 印刷（PDF 化）では、すべての段階を出した最終状態にする
 var printPos = null;
 window.addEventListener("beforeprint", function(){
-  stopLoop(); printPos = {i: cur, k: step};
+  stopLoop(); printPos = {i: POS.i, k: POS.k};
   slides.forEach(function(s, i){ seek(i, s._max, Infinity); });
   document.documentElement.classList.add("printing");
 });
@@ -1460,7 +1465,7 @@ window.addEventListener("hashchange", function(){
   if (!slides.length) return;
   var hs = location.hash.slice(1), r = /^[0-9]+$/.test(hs) ? {i: +hs - 1, k: 0, legacy: true} : resolveFragment(hs);
   if (r.error || r.i < 0) return;
-  if (r.i !== cur || (!r.legacy && r.k !== step)) go(r.i, r.k, false);
+  if (r.i !== POS.i || (!r.legacy && r.k !== POS.k)) go(r.i, r.k, false);
 });
 // 部品のスクリプトは deck.js の後に読まれるので、load まで待つ
 if (document.readyState === "complete") setTimeout(init, 0); else window.addEventListener("load", init);
