@@ -147,6 +147,23 @@
     },
     "processing": {
       "type": "string"
+    },
+    "watermark": {
+      "type": "object",
+      "required": [
+        "scheme"
+      ],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,32}$"
+        },
+        "embeddedBy": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "description": "An audio watermark the producer knows the take carries (§5.2, draft)."
     }
   },
   "allOf": [
