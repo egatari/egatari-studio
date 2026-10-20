@@ -1,224 +1,269 @@
 {
   "source": "https://github.com/egatari/components",
-  "tag": "v1.0.1",
-  "tarballSha256": "47bacfce35064dcb5e271fe9b5731af4f9c0b911bab923690cd68c6e088a91df",
+  "tag": "v1.0.2",
+  "tarballSha256": "96b25d79c0901e7cbbc65451cdcfe1a0ef7debec3cea02819b8db7fed459bc1e",
   "releases": {
     "v1.0.0": {
       "tarballSha256": "ce4f0e7729578ea72377e6e46733b1b80647ec199d3628fb87bd83f772ff4d2d"
     },
     "v1.0.1": {
       "tarballSha256": "47bacfce35064dcb5e271fe9b5731af4f9c0b911bab923690cd68c6e088a91df"
+    },
+    "v1.0.2": {
+      "tarballSha256": "96b25d79c0901e7cbbc65451cdcfe1a0ef7debec3cea02819b8db7fed459bc1e"
     }
   },
   "components": {
     "bars": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09",
-        "1.0.1": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09"
+        "1.0.1": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09",
+        "1.0.2": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09"
       },
       "crlfSha256": {
         "1.0.0": "bb4a4fcc01c79ecadabc59e210741f5d9fba0a5e891057dda4104b2029a16b92",
-        "1.0.1": "bb4a4fcc01c79ecadabc59e210741f5d9fba0a5e891057dda4104b2029a16b92"
+        "1.0.1": "bb4a4fcc01c79ecadabc59e210741f5d9fba0a5e891057dda4104b2029a16b92",
+        "1.0.2": "bb4a4fcc01c79ecadabc59e210741f5d9fba0a5e891057dda4104b2029a16b92"
       }
     },
     "codetree": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "c7ecdd90392998347e6ca55bef70d0eef6a240150030424f29654fcca753dcb6",
-        "1.0.1": "c7ecdd90392998347e6ca55bef70d0eef6a240150030424f29654fcca753dcb6"
+        "1.0.1": "c7ecdd90392998347e6ca55bef70d0eef6a240150030424f29654fcca753dcb6",
+        "1.0.2": "c7ecdd90392998347e6ca55bef70d0eef6a240150030424f29654fcca753dcb6"
       },
       "crlfSha256": {
         "1.0.0": "8bb622c9c20ac3dfff1847284aaa8896b74d26e0daf9e73d64404dc1b23a920c",
-        "1.0.1": "8bb622c9c20ac3dfff1847284aaa8896b74d26e0daf9e73d64404dc1b23a920c"
+        "1.0.1": "8bb622c9c20ac3dfff1847284aaa8896b74d26e0daf9e73d64404dc1b23a920c",
+        "1.0.2": "8bb622c9c20ac3dfff1847284aaa8896b74d26e0daf9e73d64404dc1b23a920c"
       }
     },
     "collect": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217",
-        "1.0.1": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217"
+        "1.0.1": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217",
+        "1.0.2": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217"
       },
       "crlfSha256": {
         "1.0.0": "40e626384cebdfc14dedb27a276e474cee4c5b4386ed3e2796662e9cb016775a",
-        "1.0.1": "40e626384cebdfc14dedb27a276e474cee4c5b4386ed3e2796662e9cb016775a"
+        "1.0.1": "40e626384cebdfc14dedb27a276e474cee4c5b4386ed3e2796662e9cb016775a",
+        "1.0.2": "40e626384cebdfc14dedb27a276e474cee4c5b4386ed3e2796662e9cb016775a"
       }
     },
     "curves": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "87140b4461fe1595514c712cf1a0c87b0e7fe4607138702df4d950dd6984144c",
-        "1.0.1": "87140b4461fe1595514c712cf1a0c87b0e7fe4607138702df4d950dd6984144c"
+        "1.0.1": "87140b4461fe1595514c712cf1a0c87b0e7fe4607138702df4d950dd6984144c",
+        "1.0.2": "1dc04df70819b0316ed1f74f522f006207c5f15ced5aa9e3e42d02e787030b7a"
       },
       "crlfSha256": {
         "1.0.0": "39e1b134ad1c6a99cb3b108953e05c29b703473babc575bf09e201fcf17eaac9",
-        "1.0.1": "39e1b134ad1c6a99cb3b108953e05c29b703473babc575bf09e201fcf17eaac9"
+        "1.0.1": "39e1b134ad1c6a99cb3b108953e05c29b703473babc575bf09e201fcf17eaac9",
+        "1.0.2": "f97fba5a8a4b73d07dc9ed76a1c17dc5b65e93c480735b0f78155e320f1a9588"
       }
     },
     "flow": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1",
-        "1.0.1": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1"
+        "1.0.1": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1",
+        "1.0.2": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1"
       },
       "crlfSha256": {
         "1.0.0": "b7329ff977d28502ea6bf6d478383f422fd138d956b3910a6edf4129f69e1642",
-        "1.0.1": "b7329ff977d28502ea6bf6d478383f422fd138d956b3910a6edf4129f69e1642"
+        "1.0.1": "b7329ff977d28502ea6bf6d478383f422fd138d956b3910a6edf4129f69e1642",
+        "1.0.2": "b7329ff977d28502ea6bf6d478383f422fd138d956b3910a6edf4129f69e1642"
       }
     },
     "gendai": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097",
-        "1.0.1": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097"
+        "1.0.1": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097",
+        "1.0.2": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097"
       },
       "crlfSha256": {
         "1.0.0": "b54769d8714812b66a365bf6498a185c2e8f75fc1c755d1b6413d2aad5fed219",
-        "1.0.1": "b54769d8714812b66a365bf6498a185c2e8f75fc1c755d1b6413d2aad5fed219"
+        "1.0.1": "b54769d8714812b66a365bf6498a185c2e8f75fc1c755d1b6413d2aad5fed219",
+        "1.0.2": "b54769d8714812b66a365bf6498a185c2e8f75fc1c755d1b6413d2aad5fed219"
       }
     },
     "kanbun": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "f17423f2169d2c8644c63209cd135d6e4ee46df6b2f4e7f627dfe7544dcb0384",
-        "1.0.1": "f17423f2169d2c8644c63209cd135d6e4ee46df6b2f4e7f627dfe7544dcb0384"
+        "1.0.1": "f17423f2169d2c8644c63209cd135d6e4ee46df6b2f4e7f627dfe7544dcb0384",
+        "1.0.2": "f17423f2169d2c8644c63209cd135d6e4ee46df6b2f4e7f627dfe7544dcb0384"
       },
       "crlfSha256": {
         "1.0.0": "c5d6990be8546f361e53f78cb53c3641a0d7597fd2d11604dab5d7b188b7dbea",
-        "1.0.1": "c5d6990be8546f361e53f78cb53c3641a0d7597fd2d11604dab5d7b188b7dbea"
+        "1.0.1": "c5d6990be8546f361e53f78cb53c3641a0d7597fd2d11604dab5d7b188b7dbea",
+        "1.0.2": "c5d6990be8546f361e53f78cb53c3641a0d7597fd2d11604dab5d7b188b7dbea"
       }
     },
     "kobun": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "bc1ecee855369e34f535801aaca74135a34234b451d0b7c51d370fdb04ce53d4",
-        "1.0.1": "bc1ecee855369e34f535801aaca74135a34234b451d0b7c51d370fdb04ce53d4"
+        "1.0.1": "bc1ecee855369e34f535801aaca74135a34234b451d0b7c51d370fdb04ce53d4",
+        "1.0.2": "bc1ecee855369e34f535801aaca74135a34234b451d0b7c51d370fdb04ce53d4"
       },
       "crlfSha256": {
         "1.0.0": "491334ed80c43663e201d0cc80c806a70fcbbe9a7afc4b911aec674997d601fb",
-        "1.0.1": "491334ed80c43663e201d0cc80c806a70fcbbe9a7afc4b911aec674997d601fb"
+        "1.0.1": "491334ed80c43663e201d0cc80c806a70fcbbe9a7afc4b911aec674997d601fb",
+        "1.0.2": "491334ed80c43663e201d0cc80c806a70fcbbe9a7afc4b911aec674997d601fb"
       }
     },
     "kpi": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e",
-        "1.0.1": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e"
+        "1.0.1": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e",
+        "1.0.2": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e"
       },
       "crlfSha256": {
         "1.0.0": "f1b86f6a27a663f4e114394b5926f69a5e708e2dbf09a9cffd59f5def90e6b2c",
-        "1.0.1": "f1b86f6a27a663f4e114394b5926f69a5e708e2dbf09a9cffd59f5def90e6b2c"
+        "1.0.1": "f1b86f6a27a663f4e114394b5926f69a5e708e2dbf09a9cffd59f5def90e6b2c",
+        "1.0.2": "f1b86f6a27a663f4e114394b5926f69a5e708e2dbf09a9cffd59f5def90e6b2c"
       }
     },
     "market": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",
-        "1.0.1": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283"
+        "1.0.1": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",
+        "1.0.2": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283"
       },
       "crlfSha256": {
         "1.0.0": "67c1461b51ff5d16b8a94ba49b935ea825923774789b7f64f99d4a8c0d64c786",
-        "1.0.1": "67c1461b51ff5d16b8a94ba49b935ea825923774789b7f64f99d4a8c0d64c786"
+        "1.0.1": "67c1461b51ff5d16b8a94ba49b935ea825923774789b7f64f99d4a8c0d64c786",
+        "1.0.2": "67c1461b51ff5d16b8a94ba49b935ea825923774789b7f64f99d4a8c0d64c786"
       }
     },
     "menu": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
-        "1.0.1": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b"
+        "1.0.1": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
+        "1.0.2": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b"
       },
       "crlfSha256": {
         "1.0.0": "161dfe97be603cf020b32667e3997bad8487bbfa67bc5500f1bef4d36a5b25bc",
-        "1.0.1": "161dfe97be603cf020b32667e3997bad8487bbfa67bc5500f1bef4d36a5b25bc"
+        "1.0.1": "161dfe97be603cf020b32667e3997bad8487bbfa67bc5500f1bef4d36a5b25bc",
+        "1.0.2": "161dfe97be603cf020b32667e3997bad8487bbfa67bc5500f1bef4d36a5b25bc"
       }
     },
     "quad": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998",
-        "1.0.1": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998"
+        "1.0.1": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998",
+        "1.0.2": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998"
       },
       "crlfSha256": {
         "1.0.0": "d840710b8391eff6f48c7159f2fc63772332a0cbe860794078d6168a003291b1",
-        "1.0.1": "d840710b8391eff6f48c7159f2fc63772332a0cbe860794078d6168a003291b1"
+        "1.0.1": "d840710b8391eff6f48c7159f2fc63772332a0cbe860794078d6168a003291b1",
+        "1.0.2": "d840710b8391eff6f48c7159f2fc63772332a0cbe860794078d6168a003291b1"
       }
     },
     "seq": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9",
-        "1.0.1": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9"
+        "1.0.1": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9",
+        "1.0.2": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9"
       },
       "crlfSha256": {
         "1.0.0": "8ffbd898f9440a2dac67335fa87d88ebc07221c4509e391f20df91aa47d6d935",
-        "1.0.1": "8ffbd898f9440a2dac67335fa87d88ebc07221c4509e391f20df91aa47d6d935"
+        "1.0.1": "8ffbd898f9440a2dac67335fa87d88ebc07221c4509e391f20df91aa47d6d935",
+        "1.0.2": "8ffbd898f9440a2dac67335fa87d88ebc07221c4509e391f20df91aa47d6d935"
       }
     },
     "sweep": {
-      "default": "1.0.1",
+      "default": "1.0.2",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.0.2"
       ],
       "sha256": {
         "1.0.0": "a4965185e744c00d66bf1c58263c86fcca5b643a7070acefc803f5798645ea8c",
-        "1.0.1": "a4965185e744c00d66bf1c58263c86fcca5b643a7070acefc803f5798645ea8c"
+        "1.0.1": "a4965185e744c00d66bf1c58263c86fcca5b643a7070acefc803f5798645ea8c",
+        "1.0.2": "281587eba26eeeee3aef8eb84969ffd565b9f0519ed494bab6d04ba3e1a42400"
       },
       "crlfSha256": {
         "1.0.0": "0d4b30a7894609a24eea924d96ae2f081af67914eec0f62c6daaa17a660a4865",
-        "1.0.1": "0d4b30a7894609a24eea924d96ae2f081af67914eec0f62c6daaa17a660a4865"
+        "1.0.1": "0d4b30a7894609a24eea924d96ae2f081af67914eec0f62c6daaa17a660a4865",
+        "1.0.2": "02f356f6bda7b44b02507750a644fd02d08f23b8a711c36bf42d901653a008f2"
       }
     }
   }

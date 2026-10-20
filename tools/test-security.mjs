@@ -148,6 +148,8 @@ try {
     if (name === 'plain') ok(!flagged && !ran, 'formula plain: plain formulas are not code');
     else ok(flagged, `formula ${name}: flagged as code (ask) — the decoy cannot hide the selected block`);
     if (name.startsWith('decoy')) ok(!ran, `formula ${name}: the runtime refuses an ambiguous data block (two candidates)`);
+    // 部品庫 v1.0.2 から m-sweep・m-curves は式を算術の構文解析器で計算する（new Function にしない）：既定の版では、どの式も動かない
+    ok(!ran, `formula ${name}: the default registry version (components v1.0.2 and later) does not run the formula as code`);
   }
   // 解析の規則の食い違い（format spec §6）：判定はスクリプトを動かすブラウザと同じ規則で読む。<noscript> などの中の「属性の文字」に見える
   // スクリプトがブラウザで動いたなら、判定は必ずコードとしている（プレビューを始める前の判定。組んだ文書と原稿のどちらでも）

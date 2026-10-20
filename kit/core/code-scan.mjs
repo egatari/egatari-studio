@@ -15,7 +15,8 @@
 //   - on で始まる属性（onerror・onload などのイベントの処理）
 //   - javascript: / vbscript: の URL を値に持つ属性（SVG の <animate values="…; javascript:…"> も）
 //   - srcdoc 属性、文書を入れる要素（iframe・frame・frameset・object・embed・portal）
-//   - 部品庫の部品で式を new Function で作るもの（m-sweep の f・m-curves の系列の f）の、決まった数式の形に入らない式
+//   - 部品庫の部品で式を new Function で作るもの（m-sweep の f・m-curves の系列の f。部品庫 v1.0.1 まで。v1.0.2 からは算術の構文解析器で計算し、
+//     コードとしては動かさないが、古い版で組む文書があるので判定は続ける）の、決まった数式の形に入らない式
 // 中身を読めないもの（大きすぎるテキスト・解けない {{JSON:…}}）も、確かめられないのでコードと見なす（少しでも疑わしければ聞く側に倒す）
 import { parse } from 'parse5';
 import { FORMAT } from './format.mjs';

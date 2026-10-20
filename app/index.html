@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- 読み込めるのはアプリ自身だけ。デッキ（sandbox の iframe）もこの決まりを受け継ぎ、外へは繋がらない。frame-src 'none'：プレビューは srcdoc だけで、
      デッキが自分の iframe をアプリの origin（の URL に何かを載せて）や data: に移すことも止める。
-     'unsafe-eval' は部品（m-sweep の f="…" など）が式を new Function で作るため。worker-src blob: は持ち運べる 1 ファイルを読む Worker（アプリに同梱） -->
+     'unsafe-eval' は部品庫 v1.0.1 までの部品（m-sweep の f="…" など）が式を new Function で作るため（v1.0.2 からは使わない。古い版で組んだ文書のために残す）。worker-src blob: は持ち運べる 1 ファイルを読む Worker（アプリに同梱） -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Egatari Studio</title>
