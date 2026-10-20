@@ -40,7 +40,7 @@ ok(e.sync === 'none', 'takeEntry: manual without cues falls back to none');
 // 画面の言葉（app/i18n.js の rec）：日本語と英語で同じ項目があること
 {
   const src = fs.readFileSync(fileURLToPath(new URL('../app/i18n.js', import.meta.url)), 'utf8');
-  const blocks = [...src.matchAll(/\n  rec: \{\n([\s\S]*?)\n  \},/g)].map((m) => m[1]);
+  const blocks = [...src.matchAll(/\r?\n  rec: \{\r?\n([\s\S]*?)\r?\n  \},/g)].map((m) => m[1]);
   const strip = (b) => b.replace(/'(?:[^'\\\\]|\\\\.)*'/g, "''").replace(/`[^`]*`/g, '``');
   const keys = (b) => [...strip(b).matchAll(/(?:^|[\s,{])(\w+): /gm)].map((m) => m[1]).sort().join(',');
   ok(blocks.length === 2, 'i18n: the rec strings exist in ja and en');

@@ -205,7 +205,7 @@ try {
   ok((await page.textContent('#dev-audio-rec')).includes('録り直す'), 'record: the button says "record again" once the step has a recording');
   await shot(page, 'audio-recorded.png');
   // プレビューからの知らせ（鍵）で板は替わらない・録音も始まらない（r は録音モードの画面を開くだけで、それも tools/test-recording.mjs が確かめる）
-  await f.evaluate(() => { for (const k of ['a', 'x', ' ']) window.parent.postMessage({ type: 'edit-hint', kind: 'key', key: k }, '*'); });
+  await (await frameReady()).evaluate(() => { for (const k of ['a', 'x', ' ']) window.parent.postMessage({ type: 'edit-hint', kind: 'key', key: k }, '*'); });
   await page.waitForTimeout(200);
   ok(!(await audioState()).recording, 'security: hints from the preview cannot start a recording');
   // 前に戻す：1 つ目の録音に戻る（音声のファイルは消さない）
