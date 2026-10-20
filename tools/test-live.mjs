@@ -40,8 +40,11 @@ const src = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, '..', path.basena
 ok(/^[0-9a-f]{40}$/.test(src.commit) && src.repository === FORMAT.LIVE_REPO, 'vendored protocol: SOURCE.json names the egatari/live commit');
 const T0 = Date.parse('2026-10-30T09:00:00+09:00'), W = { from: '2026-10-30T09:00:00+09:00', to: '2026-10-30T11:00:00+09:00' };
 const plan = (code, att = 0, now = T0 + 3600e3) => LP.plan(code, att, now, W, 0.5);
-for (const c of [4400, 4401, 4403, 4404, 4409, 4410, 4423, 4425, 4430, 4440, 4441]) ok(plan(c).retry === false, `plan: no reconnect after ${c} (${LP.CODES[c][0]})`);
-ok(plan(4429).retry && plan(4429).delayMs >= 60000, 'plan: 4429 reconnects after at least 60 s');
+for (const c of [4400, 4401, 4403, 4404, 4409, 4410, 4440, 4441]) ok(plan(c).retry === false, `plan: no reconnect after ${c} (${LP.CODES[c][0]})`);
+ok(codes.every((c) => (plan(c.code).retry === true) === c.retry), 'plan: reconnects exactly for the codes the vendored close-codes.json marks retry');
+ok([0, 0.5, 0.999].every((r) => LP.plan(4423, 0, T0 + 3600e3, W, r).delayMs >= 30000) && LP.plan(4423, 0, T0 + 3600e3, W, 0.999).delayMs > LP.plan(4423, 0, T0 + 3600e3, W, 0).delayMs, 'plan: 4423 (room closed) reconnects slowly: at least 30 s, with jitter');
+ok(plan(4429).retry && plan(4429).delayMs >= 60000 && plan(4430).retry && plan(4430).delayMs >= 60000, 'plan: 4429 and 4430 reconnect after at least 60 s');
+{ const p = LP.plan(4425, 0, T0 - 100e3, W, 0); ok(p.retry && p.delayMs === 100e3, `plan: 4425 (too early) reconnects at window.from (${p.delayMs} ms)`); }
 ok(plan(1006).retry && plan(1006).delayMs === 1000 && plan(1006, 1).delayMs === 2000 && plan(1006, 2).delayMs === 4000 && plan(1006, 9).delayMs === 30000, 'plan: network closes back off 1, 2, 4 … 30 s');
 ok(LP.plan(1006, 0, T0 + 1000, W, 0).delayMs === 800 && LP.plan(1006, 0, T0 + 1000, W, 0.999).delayMs <= 1200, 'plan: jitter ±20 %');
 ok(plan(1006, 0, Date.parse(W.to) + 2 * 60e3 - 500).retry === false && plan(1006, 0, T0 - 3 * 60e3).retry === false, 'plan: no reconnect outside the window (or past its end)');
@@ -185,7 +188,7 @@ const sent = () => fake.messages.slice();
     `file:// connects with Origin null and only room, key and pid in the address (origin ${c && c.origin})`);
   ok(o.net.ws.length === 1 && o.net.ws[0].startsWith(fake.endpoint.replace('http', 'ws') + '/ws?'), 'the WebSocket goes to the declared endpoint');
   ok(await until(() => fake.messages.some((m) => m.t === 'name' && m.name === 'Aiko')), 'the typed name is sent (only because it was typed)');
-  ok(await o.p.$eval('#live-pane-status', (e) => e.textContent) === 'つながっています' && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Disconnect is shown with the indicator');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'つながっています') && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Disconnect is shown with the indicator');
   ok(await o.p.$eval('#live-pane', (e) => e.getAttribute('data-state')) === 'connected', 'connected: the persistent indicator');
   const before = sent().length;
   for (let n = 0; n < 3; n++) await o.p.keyboard.press('ArrowRight');
@@ -220,7 +223,7 @@ const sent = () => fake.messages.slice();
   // つなぎ直し：再試行してよい切断（1011）
   const n0 = fake.connections.length;
   fake.drop(1011);
-  ok(await until(async () => (await st(o.p)).state === 'retrying', 2000), 'after a retryable close (1011): retrying');
+  ok(await until(async () => (await st(o.p)).state === 'retrying', 2000), 'after a network close (1011): retrying');
   ok(await until(() => fake.connections.length === n0 + 1, 4000) && await until(async () => (await st(o.p)).state === 'connected'), 'reconnects with backoff after 1011');
   ok(fake.connections[fake.connections.length - 1].query.pid === c.query.pid, 'reconnect: the same pid (kept on the device)');
   // 切断する
@@ -232,7 +235,7 @@ const sent = () => fake.messages.slice();
   ok(o.net.csp.length === 0, `the player needs nothing its CSP forbids (${o.net.csp.slice(0, 2).join('; ')})`);
   await o.close(); }
 // 止める切断の番号
-for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4423, 'room_closed', true], [4410, 'room_expired', false], [4441, 'not_approved', false], [4403, 'bad_key', false]]) {
+for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'room_expired', false], [4441, 'not_approved', true], [4403, 'bad_key', false]]) {
   fake.reset(); const o = await open(fileUrl(files['live.html']));
   await o.p.click('#live-pane .lv-join');
   await until(async () => (await st(o.p)).state === 'connected');
@@ -243,8 +246,18 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4423, 'roo
   const s = await st(o.p), msg = await o.p.$eval('#live-pane .lv-msg', (e) => e.textContent);
   ok(fake.connections.length === 1 && s.reason === reason && msg.length > 4, `${code} (${reason}): no reconnect, with a message ("${msg}")`);
   ok((await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && !b.closest('[hidden]'))) === rejoin, `${code}: Join again is ${rejoin ? '' : 'not '}offered`);
+  if (code === 4441) ok(msg === '先生が参加を認めませんでした' && await o.p.$eval('#live-pane .lv-join', (b) => b.textContent) === 'もう一度試す', '4441: "the teacher did not admit you" with a manual Try again');
   await o.close();
 }
+// 先生が閉じた（4423）：ゆっくり（30 秒より後）つなぎ直す
+{ fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await o.p.click('#live-pane .lv-join');
+  await until(async () => (await st(o.p)).state === 'connected');
+  fake.drop(4423);
+  ok(await until(async () => (await st(o.p)).state === 'retrying'), '4423 (room closed): waits to reconnect');
+  const s = await st(o.p);
+  ok(s.retryIn >= 29000 && s.retryIn <= 37000 && fake.connections.length === 1, `4423: the next try is at least 30 s later (${s.retryIn} ms)`);
+  await o.close(); }
 // 承認待ち
 { fake.reset(); fake.setApproval(true); const o = await open(fileUrl(files['live.html']));
   await o.p.click('#live-pane .lv-join');
@@ -277,7 +290,7 @@ console.log('stage rendering');
   const positions = [[0, 0, null], [1, 0, 0.3], [1, 1, null], [2, 0, 0.2], [3, 1, null], [5, 0, null]];
   const shot = async (o, [i, k, t]) => {
     await o.p.evaluate(([i, k, t]) => DECK.seek(i, Math.min(k, DECK.slides[i]._max || 0), t === null ? Infinity : t), [i, k, t]);
-    await o.p.evaluate(() => document.fonts.ready);
+    await o.p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
     const b = await o.p.$eval('#stage', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
     return { b, h: crypto.createHash('sha256').update(await o.p.screenshot({ clip: b })).digest('hex') };
   };

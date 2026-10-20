@@ -226,7 +226,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   if (opts.liveFile) {
     if (!opts.playOnly) { console.error('--live needs --play-only'); process.exit(1); }
-    try { opts.live = parseRoomBlock(fs.readFileSync(opts.liveFile, 'utf8')); }
+    try { opts.live = parseRoomBlock(readRegularText(opts.liveFile, { max: 65536 }).text); }
     catch (e) { console.error(`live: ${opts.liveFile}: ${e.message === 'admin' ? 'this is the teacher link (it has the teacher key); paste the room block instead' : e.details ? e.details.join('; ') : 'not the room JSON from the teacher page'}`); process.exit(1); }
   }
   if (opts.portable) {

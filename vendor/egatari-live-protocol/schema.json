@@ -263,7 +263,12 @@
     "not_found",
     "bad_request",
     "unauthorized",
-    "forbidden"
+    "forbidden",
+    "window_too_long",
+    "room_too_large",
+    "turnstile_required",
+    "turnstile_failed",
+    "unavailable"
    ]
   },
   "limits": {
@@ -1022,7 +1027,8 @@
      "const": 1
     },
     "window": {
-     "$ref": "#/$defs/window"
+     "$ref": "#/$defs/window",
+     "description": "at most 3 hours long (window_too_long)"
     },
     "graceHours": {
      "type": "number",
@@ -1034,10 +1040,23 @@
     },
     "activities": {
      "$ref": "#/$defs/activities"
+    },
+    "size": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 60,
+     "description": "expected learners; larger rooms are refused with room_too_large"
+    },
+    "turnstile": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 2048,
+     "description": "Cloudflare Turnstile token from the create page (required by the reference service)"
     }
    },
    "required": [
-    "window"
+    "window",
+    "turnstile"
    ],
    "additionalProperties": false
   },
@@ -1074,7 +1093,7 @@
     },
     "teacherUrl": {
      "type": "string",
-     "pattern": "#room=r-[a-z2-7]{8}&admin="
+     "pattern": "/room#room=r-[a-z2-7]{8}&admin="
     }
    },
    "required": [

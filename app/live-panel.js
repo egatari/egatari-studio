@@ -24,7 +24,7 @@ const STR = {
     addChoice: '選択肢を足す', delChoice: '消す', delPoll: 'この投票を消す', copy: '活動の JSON（教員のページの「活動」に貼る）', copyBtn: '活動の JSON をコピー', copied: '活動の JSON をコピーしました。教員のページの「活動」に貼って保存してください',
     save: '設定を教材に残す（鍵なし）', saved: `設定を ${CFG} に書きました（鍵は書きません）`, portableNote: '1 ファイルに残すには「保存」を押してください', exp: '部屋を付けて書き出す…',
     problems: '直すこと', none: 'ありません', needKey: '参加の鍵がありません（教員のページの字を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
-    fail: 'できませんでした：',
+    fail: 'できませんでした：', tooLong: '時間の窓が長すぎます。部屋のサービスで作れるのは 3 時間までです（開く時刻と閉じる時刻を直してください）',
   },
   en: {
     title: 'Distribute with a live room',
@@ -35,7 +35,7 @@ const STR = {
     addChoice: 'Add choice', delChoice: 'Remove', delPoll: 'Remove this poll', copy: 'Activities JSON (paste it into the teacher page\'s Activities)', copyBtn: 'Copy activities JSON', copied: 'Copied the activities JSON. Paste it into Activities on the teacher page and save',
     save: 'Keep settings in the lesson (no key)', saved: `Wrote the settings to ${CFG} (without the key)`, portableNote: 'Press Save to keep them in the single file', exp: 'Export with the live room…',
     problems: 'To fix', none: 'None', needKey: 'No learner key (paste the text from the teacher page)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
-    fail: 'Could not: ',
+    fail: 'Could not: ', tooLong: 'The window is too long: the room service makes rooms of at most 3 hours (change the opening and closing times)',
   },
 };
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -83,6 +83,8 @@ export function createLivePanel(o) {
   const fullOf = () => ({ v: 1, endpoint: M.endpoint.trim(), room: M.room.trim(), key: M.key.trim(), window: { from: M.from, to: M.to }, activities: activities() });
   function problems() {
     const e = LP.validate(fullOf(), { key: true });
+    const f = Date.parse(M.from), t = Date.parse(M.to);
+    if (f && t && t - f > LP.LIMITS.windowRoomMs) e.unshift(X.tooLong);
     if (!M.key.trim()) e.unshift(X.needKey);
     return e.filter((x, i, l) => l.indexOf(x) === i);
   }

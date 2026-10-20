@@ -1,17 +1,77 @@
 {
  "v": 1,
  "codes": [
-  {"code": 4400, "name": "bad_message", "retry": false, "meaning": "malformed, oversize, unknown type or wrong version"},
-  {"code": 4401, "name": "unauthorized", "retry": false, "meaning": "teacher socket: missing or wrong adminKey, or no auth within 10 s"},
-  {"code": 4403, "name": "bad_key", "retry": false, "meaning": "learner key does not match this room (or bad pid)"},
-  {"code": 4404, "name": "room_not_found", "retry": false, "meaning": "no such room, or it was deleted"},
-  {"code": 4409, "name": "superseded", "retry": false, "meaning": "a newer connection with the same pid took over"},
-  {"code": 4410, "name": "room_expired", "retry": false, "meaning": "the window is over"},
-  {"code": 4423, "name": "room_closed", "retry": true, "meaning": "the teacher closed the room; it may reopen within the window"},
-  {"code": 4425, "name": "too_early", "retry": true, "meaning": "the window has not started"},
-  {"code": 4429, "name": "rate_limited", "retry": true, "meaning": "too many messages; wait before reconnecting"},
-  {"code": 4430, "name": "room_full", "retry": true, "meaning": "room size limit reached"},
-  {"code": 4440, "name": "key_replaced", "retry": false, "meaning": "the teacher replaced the learner key; this file's key no longer works"},
-  {"code": 4441, "name": "not_approved", "retry": false, "meaning": "the teacher declined this participant"}
+  {
+   "code": 4400,
+   "name": "bad_message",
+   "retry": false,
+   "meaning": "malformed, oversize, unknown type or wrong version"
+  },
+  {
+   "code": 4401,
+   "name": "unauthorized",
+   "retry": false,
+   "meaning": "teacher socket: missing or wrong adminKey, or no auth within 10 s"
+  },
+  {
+   "code": 4403,
+   "name": "bad_key",
+   "retry": false,
+   "meaning": "learner key does not match this room (or bad pid)"
+  },
+  {
+   "code": 4404,
+   "name": "room_not_found",
+   "retry": false,
+   "meaning": "no such room, or it was deleted"
+  },
+  {
+   "code": 4409,
+   "name": "superseded",
+   "retry": false,
+   "meaning": "a newer connection with the same pid took over"
+  },
+  {
+   "code": 4410,
+   "name": "room_expired",
+   "retry": false,
+   "meaning": "the window is over"
+  },
+  {
+   "code": 4423,
+   "name": "room_closed",
+   "retry": true,
+   "meaning": "the teacher closed the room; it may reopen within the window"
+  },
+  {
+   "code": 4425,
+   "name": "too_early",
+   "retry": true,
+   "meaning": "the window has not started"
+  },
+  {
+   "code": 4429,
+   "name": "rate_limited",
+   "retry": true,
+   "meaning": "too many messages; wait before reconnecting"
+  },
+  {
+   "code": 4430,
+   "name": "room_full",
+   "retry": true,
+   "meaning": "room size limit reached (60 connected, 200 participants, or 60 waiting)"
+  },
+  {
+   "code": 4440,
+   "name": "key_replaced",
+   "retry": false,
+   "meaning": "the teacher replaced the learner key; this file's key no longer works"
+  },
+  {
+   "code": 4441,
+   "name": "not_approved",
+   "retry": false,
+   "meaning": "definite decline: the teacher declined this pid (a learner still pending gets welcome status \"waiting\" instead and stays connected)"
+  }
  ]
 }

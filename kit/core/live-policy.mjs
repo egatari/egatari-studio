@@ -21,7 +21,8 @@ export function LivePolicy() {
     step: /^(\*|[^\u0000-\u001f\u007f:]{1,80}:[^\u0000-\u001f\u007f:]{1,16})$/,
     datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
   };
-  var LIMITS = { prompt: 300, choice: 100, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000 };
+  // windowRoomMs：部屋のサービス（egatari/live v1）が作れる窓の長さの上限（3 時間）。再生器は長い窓も読む（windowMs）
+  var LIMITS = { prompt: 300, choice: 100, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
   // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
   var SKEW_MS = 2 * 60 * 1000;
   // 切断の番号（egatari/live の protocol/close-codes.json）。retry はサーバーの表の値。この再生器のふるまいは plan が決める
@@ -30,9 +31,9 @@ export function LivePolicy() {
     4409: ['superseded', false], 4410: ['room_expired', false], 4423: ['room_closed', true], 4425: ['too_early', true],
     4429: ['rate_limited', true], 4430: ['room_full', true], 4440: ['key_replaced', false], 4441: ['not_approved', false],
   };
-  // この再生器が自分からつなぎ直す番号（ほかの 44xx は止めて、わけを見せる。学ぶ人が「参加する」を押せば試し直せるものもある）：
-  //   4429（送りすぎ）は 60 秒より後に。4423（閉じた）・4425（まだ早い）・4430（満員）・4441（断られた）は止める
-  var RETRY_MIN_MS = { 4429: 60000 };
+  // 自分からつなぎ直す番号と、その最短の待ち（egatari/live の PROTOCOL.md §5 の表と同じ）：4423（閉じた）は 30 秒、4429（送りすぎ）・4430（満員）は 60 秒より後。
+  // 4425（まだ早い）は window.from に。ほかの 44xx は止めて、わけを見せる（4441 は先生がはっきり断ったもの。学ぶ人が押せば試し直せる）
+  var RETRY_MIN_MS = { 4423: 30000, 4429: 60000, 4430: 60000, 4425: 0 };
   var BACKOFF = [1000, 2000, 4000, 8000, 16000, 30000];
   var own = function (o, k) { return o != null && Object.prototype.hasOwnProperty.call(o, k); };
   var isObj = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
@@ -48,8 +49,9 @@ export function LivePolicy() {
     return null;
   }
   function timeOf(s) { return str(s) && RE.datetime.test(s) ? Date.parse(s) : NaN; }
+  // opts.key：鍵が要る（書き出す派生）か、あってはいけない（教材）か。opts.maxWindowMs：窓の長さの上限（編集アプリは部屋のサービスの上限 3 時間。既定 7 日）
   function validate(live, opts) {
-    var wantKey = !!(opts && opts.key), e = [];
+    var wantKey = !!(opts && opts.key), maxW = opts && opts.maxWindowMs > 0 ? opts.maxWindowMs : LIMITS.windowMs, e = [];
     if (!isObj(live)) return ['live: not an object'];
     var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1 };
     for (var k in live) if (own(live, k) && !own(known, k)) e.push('live.' + k + ': unknown member');
@@ -65,7 +67,7 @@ export function LivePolicy() {
       if (isNaN(f)) e.push('live.window.from: not an RFC 3339 time with an offset');
       if (isNaN(t)) e.push('live.window.to: not an RFC 3339 time with an offset');
       if (!isNaN(f) && !isNaN(t) && !(t > f)) e.push('live.window: "to" must be after "from"');
-      if (!isNaN(f) && !isNaN(t) && t - f > LIMITS.windowMs) e.push('live.window: at most 7 days');
+      if (!isNaN(f) && !isNaN(t) && t - f > maxW) e.push('live.window: at most ' + (maxW % 86400000 ? Math.round(maxW / 3600000) + ' hours' : maxW / 86400000 + ' days') + ' long');
       for (var wk in w) if (own(w, wk) && wk !== 'from' && wk !== 'to') e.push('live.window.' + wk + ': unknown member');
     }
     var a = live.activities;
@@ -119,6 +121,8 @@ export function LivePolicy() {
     var d = Math.max(base, RETRY_MIN_MS[code] || 0);
     d = Math.round(d * (0.8 + 0.4 * r));   // ゆらぎ ±20%（大勢が同時につなぎ直さないように）
     if (own(RETRY_MIN_MS, code)) d = Math.max(d, RETRY_MIN_MS[code]);
+    // まだ早い：窓の始まり（サーバーの時計で from − 2 分）に、ゆらぎ 0〜5 秒。もう過ぎているなら（時計のずれ）30 秒より後
+    if (code === 4425) { var f = timeOf(w && w.from); d = (isNaN(f) || f - now < 5000 ? 30000 : f - now) + Math.round(5000 * r); }
     var end = windowEnd(w);
     if (!inWindow(w, now) || !(now + d <= end)) return { retry: false, reason: 'window_over' };
     return { retry: true, delayMs: d };

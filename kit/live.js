@@ -30,7 +30,7 @@ if (bad.length){ console.warn("live: ignored (" + bad.join("; ") + ")"); return;
 var JA = /^ja\b/i.test(document.documentElement.lang || "ja");
 var HOST = LP.hostOf(live.endpoint);
 var S = JA ? {
-  title: "授業の部屋", notice: "この教材は " + HOST + " の授業の部屋につながります", join: "参加する", leave: "切断する", fold: "たたむ", unfold: "ひらく",
+  title: "授業の部屋", again: "もう一度試す", notice: "この教材は " + HOST + " の授業の部屋につながります", join: "参加する", leave: "切断する", fold: "たたむ", unfold: "ひらく",
   off: "つないでいません", connecting: "つないでいます…", connected: "つながっています", waiting: "先生の承認を待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "部屋は " + t + " に開きます"; }, after: "授業の部屋の時間は終わりました", noNet: "ここからはつなげません。この教材のファイルをブラウザで直接開くと参加できます。部屋：",
   name: "名前（任意）", nameNote: "入れたときだけ先生に見えます", ask: "質問", send: "送る", sent: "質問を送りました", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
@@ -38,12 +38,12 @@ var S = JA ? {
   stop: {bad_key: "この教材の鍵では部屋に入れません（鍵が違います）", room_not_found: "部屋が見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
     room_expired: "部屋の時間が終わりました", room_closed: "先生が部屋を閉じました。開いたら、もう一度参加できます", too_early: "部屋はまだ開いていません（この端末の時計も確かめてください）",
     room_full: "部屋が満員です。少し待ってから、もう一度参加してください", key_replaced: "先生が参加の鍵を替えました。このファイルでは入れません。新しいファイルをもらってください",
-    not_approved: "先生が参加を断りました", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "授業の部屋の時間は終わりました", unknown: "部屋から切断されました",
+    not_approved: "先生が参加を認めませんでした", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "授業の部屋の時間は終わりました", unknown: "部屋から切断されました",
     bad_endpoint: "つなぐ先が教材の宣言と違うので、つなぎません", network: "つなげませんでした"},
   err: {unknown_activity: "この活動は部屋にありません", wrong_kind: "活動の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
     rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる質問の数を超えました", room_limit: "部屋がいっぱいです", not_admitted: "先生の承認を待っています", other: "送れませんでした"}
 } : {
-  title: "Live room", notice: "This lesson connects to a live room at " + HOST, join: "Join", leave: "Disconnect", fold: "Fold", unfold: "Unfold",
+  title: "Live room", again: "Try again", notice: "This lesson connects to a live room at " + HOST, join: "Join", leave: "Disconnect", fold: "Fold", unfold: "Unfold",
   off: "Not connected", connecting: "Connecting…", connected: "Connected", waiting: "Waiting for the teacher to admit you", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The room opens at " + t; }, after: "The live room has ended", noNet: "Cannot connect from here. Open this lesson file directly in a browser to join. Room: ",
   name: "Name (optional)", nameNote: "The teacher sees it only if you type one", ask: "Question", send: "Send", sent: "Question sent", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
@@ -51,13 +51,13 @@ var S = JA ? {
   stop: {bad_key: "This lesson's key does not open the room (wrong key)", room_not_found: "The room does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
     room_expired: "The room's time is over", room_closed: "The teacher closed the room. You can join again when it reopens", too_early: "The room is not open yet (also check this device's clock)",
     room_full: "The room is full. Wait a little and join again", key_replaced: "The teacher replaced the key: this file can no longer join. Ask for a new file",
-    not_approved: "The teacher declined your request to join", bad_message: "Protocol mismatch (a bug in the lesson or the server)", window_over: "The live room has ended", unknown: "Disconnected by the room",
+    not_approved: "The teacher did not admit you", bad_message: "Protocol mismatch (a bug in the lesson or the server)", window_over: "The live room has ended", unknown: "Disconnected by the room",
     bad_endpoint: "The address does not match the one the lesson declares; not connecting", network: "Could not connect"},
   err: {unknown_activity: "This activity is not in the room", wrong_kind: "Wrong kind of activity", bad_choice: "No such choice", text_too_long: "The question is too long", empty_text: "The question is empty",
     rate_limited: "Sending too fast. Wait a moment", quota_exceeded: "You have sent the maximum number of questions", room_limit: "The room is full", not_admitted: "Waiting for the teacher to admit you", other: "Could not send"}
 };
 // 手動で「参加する」から試し直せる止まり方（ほかは、このファイルでは入れない）
-var REJOIN = {room_closed: 1, too_early: 1, room_full: 1, superseded: 1, network: 1, unknown: 1, window_over: 0};
+var REJOIN = {room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0};
 
 // ---------------------------------------------------------------- つないでよい場所か（迷ったら否）
 function context(){
@@ -193,6 +193,7 @@ function render(){
   var canJoin = !CTX && ph === "open" && (ST === "off" || (ST === "stopped" && REJOIN[stopReason] === 1));
   joinRow.hidden = !!CTX || ph !== "open" || conn || ST === "connecting" || ST === "retrying" || (ST === "stopped" && REJOIN[stopReason] !== 1);
   bJoin.disabled = !canJoin;
+  bJoin.textContent = ST === "stopped" ? S.again : S.join;
   pNotice.hidden = !!CTX;
   pAddr.hidden = !CTX;
   if (CTX && !pAddr.firstChild){ pAddr.textContent = S.noNet; addr.textContent = live.endpoint + " · " + live.room; pAddr.appendChild(addr); }
@@ -371,6 +372,6 @@ function start(){
   // このタブで参加したことがあれば（読み直しなど）、窓の中なら押さずにつなぐ
   if (!CTX && phase() === "open" && getItem("sessionStorage", JOINED_KEY) === "1") join();
 }
-DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, context: CTX, admitted: admitted, step: stepKey, attempt: attempt}; }};
+DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, admitted: admitted, step: stepKey, attempt: attempt}; }};
 if (DECK.ready) start(); else document.addEventListener("deck:ready", start, {once: true});
 })();

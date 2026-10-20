@@ -53,6 +53,11 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     ok(await page.$eval('#live-problem-box', (e) => !e.querySelector('#live-problems')), 'live panel: nothing to fix');
     const acts = JSON.parse(await page.inputValue('#live-json'));
     ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] }), 'live panel: the activities JSON for the teacher page');
+    // 窓が 3 時間より長い（部屋のサービス v1 の上限）
+    const to0 = await page.inputValue('#live-to');
+    await page.$eval('#live-to', (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, await page.evaluate((f) => { const d = new Date(new Date(f).getTime() + 4 * 3600e3); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }, await page.inputValue('#live-from')));
+    ok(await page.$eval('#live-export', (b) => b.disabled) && /3 時間まで/.test(await page.textContent('#live-problems')), 'live panel: a window over 3 hours is refused with a clear message');
+    await page.$eval('#live-to', (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, to0);
     // 形の誤り：選択肢が空
     await page.fill('#live-poll-0-c2', '');
     ok(await page.$eval('#live-export', (b) => b.disabled) && !!(await page.$('#live-problems')), 'live panel: an empty choice is a problem; export is disabled');
