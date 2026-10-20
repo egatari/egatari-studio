@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=c4e9cab33e2acb10 -->
+<!-- i18n: pair=contract.md sha256=fbf1a6aac1af2672 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -52,7 +52,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、デッキは自前のコードを持つものとして扱う）
 - データの形は `static shape` に書く（`kit/shape.js`：JSON Schema の小さな部分集合で `{schema, example, note?}`。字で書く部品は `{text: true, example}`、子の `<a href>` で書く部品は `{links: true, example}`。json の属性は `static props` の `shape`）。実行系は段階を数える前に確かめ、違うとき・`mount` や `render` が例外を出したときは部品を描かず、その場に札（`.m-error`）で何が違うかを出し、部品の段階は属性 `steps`（なければ 0）にし、知らせを `DECK.componentErrors` に積む（品質チェック（コマンド版・ブラウザ版）が読む。スタックは載せない）。指示の部品の一覧に形と見本が出る
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。部品庫の部品は別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、部品ごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。デッキ専用の部品は `<デッキ>/components/<名前>/` に置き、先に探される
-- 版：組み立ては部品庫の部品ごとに、デッキに固定した版（1 ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。1 ファイルの中の写しには書き出しが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。1 ファイルは `{name, version, sha256}` を記録し、`version` は部品庫のリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8・カメラ）は Studio の実行系にあり、部品ではない
+- 版：組み立ては部品庫の部品ごとに、デッキに固定した版（1 ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。1 ファイルの中の写しには書き出しが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。部品庫が取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録したデッキは、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。1 ファイルは `{name, version, sha256}` を記録し、`version` は部品庫のリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8・カメラ）は Studio の実行系にあり、部品ではない
 
 ## 4. 口述原稿（narration.md）
 
