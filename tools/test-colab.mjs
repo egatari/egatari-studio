@@ -8,7 +8,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
+import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { serve } from '../colab/worker-protocol.mjs';
 import { readZip, writeZip, ZipError } from '../kit/core/zip-read.mjs';
 import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_UNVERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, colabUrl } from '../kit/core/colab-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
@@ -165,6 +167,73 @@ ok('unverified mark: kept in one constant (kit/core/colab-core.mjs); the noteboo
     docs.forEach((d) => assert.ok(!d.includes(COLAB_NOTE_MARK)));
     assert.ok(!/COLAB_UNVERIFIED/.test(i18n));
   }
+});
+
+// ---------------------------------------------------------------- 常駐ワーカーの通信（モデルなし）
+ok('worker protocol: requests are answered in order, one failure does not stop the worker, quit ends it', async () => {
+  const input = new PassThrough(), output = new PassThrough(), lines = [];
+  output.on('data', (d) => lines.push(...String(d).split('\n').filter(Boolean)));
+  const seen = [];
+  const done = serve({ input, output, handler: async (r) => { await new Promise((res) => setTimeout(res, r.id === 1 ? 20 : 0)); if (r.text === 'bad') throw new Error('nope'); seen.push(r.id); } });
+  input.write('{"id":1,"text":"a"}\n{"id":2,"text":"bad"}\nnot json\n\n{"id":3,"text":"c"}\n{"cmd":"quit"}\n{"id":4,"text":"after quit"}\n');
+  await done; await new Promise((res) => setImmediate(res));
+  const r = lines.map((l) => JSON.parse(l));
+  assert.deepEqual(r.map((x) => [x.id, x.ok]), [[1, true], [2, false], [null, false], [3, true]]);
+  assert.ok(r[1].error.includes('nope') && r[2].error.includes('bad request'));
+  assert.deepEqual(seen, [1, 3]);
+});
+ok('irodori_node.mjs imports no module that reaches parse5 (audio-core, portable, bounded-html) and uses no Node 22-only API', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8');   // 試験：リポジトリ自身のファイル
+  assert.ok(!/audio-core|portable\.mjs|bounded-html|parse5/.test(src.replace(/\/\/.*$/gm, '')), 'no parse5 chain');
+  assert.ok(!/import\.meta\.(dirname|filename)|Array\.fromAsync|\.toSorted\(|Promise\.withResolvers|\bwith \{/.test(src.replace(/\/\/.*$/gm, '')), 'no newer-only API');
+});
+ok('worker protocol: closing the input ends the worker', async () => {
+  const input = new PassThrough(), output = new PassThrough();
+  const done = serve({ input, output, handler: async () => {} });
+  input.end('{"id":1}\n');
+  await done;
+});
+ok('python: IrodoriWorker talks to a long-lived worker (started once, errors carry the stderr tail, clean shutdown)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-worker-'));
+  fs.mkdirSync(path.join(dir, 'voices'));
+  const py = `
+import sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+w = E.IrodoriWorker(["node", ${JSON.stringify(path.join(ROOT, 'tools/colab-fake-worker.mjs'))}], ${JSON.stringify(path.join(dir, 'voices'))}, ${JSON.stringify(dir)}, steps=5, seed=1)
+pid = w._proc.pid
+x1, sr1 = w("hello", "bob")
+x2, sr2 = w("hello", "bob")
+assert w._proc.pid == pid and sr1 == 24000 and len(x1) == round(24000 * 0.55) and (x1 == x2).all(), "same request, same audio, same process"
+try:
+    w("boom", "bob"); raise SystemExit("boom did not raise")
+except E.WorkerError as e:
+    assert "boom!" in str(e) and "fake worker: loaded once" in str(e), str(e)
+x3, _ = w("again", "bob")
+assert len(x3) > 0, "the worker survives a failed request"
+try:
+    w("die", "bob"); raise SystemExit("die did not raise")
+except E.WorkerError as e:
+    assert "out of memory (fake)" in str(e) and "3" in str(e), str(e)
+w.close()
+w.close()
+try:
+    w("x", "bob"); raise SystemExit("closed worker answered")
+except E.WorkerError:
+    pass
+w2 = E.IrodoriWorker(["node", ${JSON.stringify(path.join(ROOT, 'tools/colab-fake-worker.mjs'))}], ${JSON.stringify(path.join(dir, 'voices'))}, ${JSON.stringify(dir)})
+p = w2._proc
+w2.close()
+assert p.poll() == 0, p.poll()
+try:
+    E.IrodoriWorker(["node", "-e", "console.error('startup crash'); process.exit(7)"], "v", ${JSON.stringify(dir)}); raise SystemExit("no raise")
+except E.WorkerError as e:
+    assert "startup crash" in str(e) and "7" in str(e), str(e)
+print("ok")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8', cwd: dir });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
 });
 
 // ---------------------------------------------------------------- 核の dry-run（Python。uv があれば）

@@ -262,25 +262,122 @@ def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None)
     return synth
 
 
-def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0):
-    """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
-    colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。1 区切りずつ呼ぶ。"""
-    import os
-    import subprocess
-    import tempfile
-    from scipy.io import wavfile
+class WorkerError(RuntimeError):
+    pass
 
-    def synth(text, voice, role, lang):
-        with tempfile.TemporaryDirectory(dir=work_dir) as d:
-            req = os.path.join(d, "req.json")
-            out = os.path.join(d, "out.wav")
-            with open(req, "w", encoding="utf-8") as f:
-                json.dump({"text": text, "voice": os.path.join(voices_dir, voice + ".wav"), "out": out, "modelDir": model_dir, "steps": steps, "seed": seed}, f, ensure_ascii=False)
-            subprocess.run(["node", node_script, req], check=True)
-            sr, data = wavfile.read(out)
-            x = data.astype(np.float64) / (32768.0 if data.dtype == np.int16 else 1.0)
-            return x, sr
-    return synth
+
+def tail_text(path: str, n: int = 30) -> str:
+    """ファイルの最後の n 行（なければ空）。Node の標準エラーを見せるため。"""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return "".join(f.readlines()[-n:]).rstrip()
+    except OSError:
+        return ""
+
+
+class IrodoriWorker:
+    """常駐の Node ワーカー（colab/irodori_node.mjs）。起動は 1 度で、モデルは 1 度だけ読み込む。依頼は JSON の行（colab/worker-protocol.mjs）。
+    cmd はワーカーを起動するコマンド（試験では偽のワーカーを渡す）。呼ぶと synth(text, voice, role, lang) → (samples, sr)。close() か with で終わらせる。
+    Node の標準エラーはファイルに受け、失敗したときは最後の 30 行を例外に入れる。"""
+
+    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0):
+        import os
+        import subprocess
+        import tempfile
+        self.voices_dir, self.steps, self.seed = voices_dir, steps, seed
+        os.makedirs(work_dir, exist_ok=True)
+        self._dir = tempfile.mkdtemp(dir=work_dir)
+        self._errpath = os.path.join(self._dir, "node-stderr.log")
+        self._err = open(self._errpath, "wb")
+        self._next = 0
+        self._closed = False
+        self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, text=True, encoding="utf-8", env=env)
+        try:
+            msg = self._read(ready_timeout)
+            if not msg.get("ready"):
+                raise WorkerError(f"ワーカーの最初の返事が ready ではありません: {msg!r}")
+        except BaseException:
+            self.close()
+            raise
+
+    def _fail(self, what: str) -> WorkerError:
+        rc = self._proc.poll()
+        return WorkerError(f"{what}（Node の終了コード: {rc}）\n--- Node の標準エラー（最後の 30 行）---\n{tail_text(self._errpath) or '(なし)'}")
+
+    def _read(self, timeout: float | None = None) -> dict:
+        import select
+        while True:
+            if timeout is not None and not select.select([self._proc.stdout], [], [], timeout)[0]:
+                raise self._fail("ワーカーが時間内に答えませんでした")
+            line = self._proc.stdout.readline()
+            if not line:
+                raise self._fail("Node のワーカーが終了しました")
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                return json.loads(line)
+            except ValueError:
+                continue                        # プロトコルの行でない出力は読み飛ばす
+
+    def __call__(self, text, voice, role="expert", lang="ja"):
+        import os
+        from scipy.io import wavfile
+        if self._closed:
+            raise WorkerError("ワーカーはもう終了しています（セル 3 からやり直してください）")
+        self._next += 1
+        out = os.path.join(self._dir, f"out{self._next}.wav")
+        req = {"id": self._next, "text": text, "voice": os.path.join(self.voices_dir, voice + ".wav"), "out": out, "steps": self.steps, "seed": self.seed}
+        try:
+            self._proc.stdin.write(json.dumps(req, ensure_ascii=False) + "\n")
+            self._proc.stdin.flush()
+        except (BrokenPipeError, OSError):
+            raise self._fail("Node のワーカーに送れません")
+        r = self._read()
+        if not r.get("ok"):
+            raise WorkerError(f"合成に失敗しました（{text[:30]!r}）：{r.get('error')}\n--- Node の標準エラー（最後の 30 行）---\n{tail_text(self._errpath) or '(なし)'}")
+        sr, data = wavfile.read(out)
+        os.remove(out)
+        return data.astype(np.float64) / (32768.0 if data.dtype == np.int16 else 1.0), sr
+
+    def close(self) -> None:
+        import shutil
+        import subprocess
+        p = self._proc
+        self._closed = True
+        try:
+            if p.poll() is None:
+                try:
+                    p.stdin.write('{"cmd": "quit"}\n')
+                    p.stdin.flush()
+                    p.stdin.close()
+                except (BrokenPipeError, OSError, ValueError):
+                    pass
+                try:
+                    p.wait(timeout=20)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    p.wait()
+        finally:
+            for f in (p.stdout, self._err):
+                try:
+                    f.close()
+                except Exception:
+                    pass
+            shutil.rmtree(self._dir, ignore_errors=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, node: str = "node"):
+    """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
+    colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。ワーカーを 1 度だけ起動して使い回す
+    （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。"""
+    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed)
 
 
 # ---------------------------------------------------------------- コマンド（試験用。ノートブックはこれらの関数を直接呼ぶ）
