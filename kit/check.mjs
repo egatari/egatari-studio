@@ -454,9 +454,14 @@ async function pixelDiff(a, b) {
 const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f) => f.load().catch(() => {})))
   .then(() => document.fonts.ready).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
 // 1 つの段階について、(A) 開き直して 1 回だけ seek した絵と、(B) 別の段階へ飛び回ってから seek した絵が違うか
+// 操作の帯（kit/tools.js の #dt-cb）は開いたときに一度出て SHOW_MS（2.5 秒）で消えるので、撮る時刻で写ったり写らなかったりする。
+// 遅い機械では A（開いてすぐ）にだけ写り、B（飛び回った後）では消えていて、部品と関係なく「呼び出し順に依存」になっていた。部品の絵だけを比べるため、
+// 舞台の上に重なる時刻依存の飾り（操作の帯・短い知らせ）は撮る前に消しておく
+const HIDE_CHROME = '#dt-cb,#deck-toast{display:none!important}';
 async function orderDiffers(m, k) {
   await page.goto(url);
   await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await page.addStyleTag({ content: HIDE_CHROME });
   await settle();
   await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
   await settle();
@@ -473,8 +478,8 @@ async function orderDiffers(m, k) {
 for (const m of meta) {
   if (!m.comps) continue;
   for (let k = 1; k <= m.max; k++) {
-    // 呼び出し順への依存は、何度やっても同じ絵の違いになる。最初の 1 回だけ違い、開き直すと揃うのは、遅い機械（CI の macOS の最初の 1 回）で
-    // 字などの読み込みが終わる前に A を撮った誤報なので、3 回続けて違ったときだけ報告する
+    // 呼び出し順への依存は、何度やっても同じ絵の違いになる。最初の 1 回だけ違い、開き直すと揃うのは、遅い機械で A と B の間に時刻で変わるもの
+    // （操作の帯が消えるなど。上の HIDE_CHROME）が挟まった誤報なので、念のため 3 回続けて違ったときだけ報告する
     let differs = true;
     for (let n = 0; n < 3 && differs; n++) differs = await orderDiffers(m, k);
     if (differs) report(m.i, 'error', 'compOrder', { k }, String(k));
