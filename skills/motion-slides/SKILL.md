@@ -33,7 +33,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
 5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
-6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで。段階 0 で見えている本文の一覧は必ず読む
+6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。段階 0 で見えている本文の一覧は必ず読む
 7. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で AI へのメモを残す。「コメントを反映して」と言われたら：
    - `<deck>/comments.json` の open を読む（`key` は `スライドの鍵:段階`、`range` は deck.html の位置、`quote` は要素の字の頭（点の近くの字があれば「近くの字 ｜ 要素の字」）、`pin` は押した点 `{x, y}`（スライドの座標 1280×720。ないものもある））
    - **先に `node <repo>/tools/comment-shots.mjs <deck>` を動かし、画像を見る**（Read で開く）。`<deck>/.cache/comment-shots/<id>.png` が点の周りの切り抜き（2 倍）、`<id>-full.png` がスライド全体で、どちらにも赤い輪で点を描いてある。図・部品へのコメントは、輪の所にある線・札・語が対象。言葉だけで決めない

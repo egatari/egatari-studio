@@ -10,4 +10,3 @@
 
 - Editor app: the browser quality check now runs the same layout code as `npm run check` (`kit/core/layout-scan.mjs`), so it also
   reports the `layout-tate` limits, a conclusion that overflows in height, small text inside SVG and a heading ending with a colon
-- Authoring guide (R-fit): one sentence on putting `data-clip` on an element that is clipped on purpose

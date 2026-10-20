@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { parseCheck } from '../kit/core/check-result.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-layout-tate-'));
@@ -218,7 +219,7 @@ for (const theme of ['default', 'kokugo']) {
   await p.close();
   await t(`${theme}: checker reports no errors`, () => {
     const r = node('kit/check.mjs', good, '--theme', theme, '--json');
-    const j = JSON.parse(r.stdout);
+    const j = parseCheck(r.stdout, r.status);   // 検査が終わっていない（終了コード 2）ときは例外（エラー 0 と取り違えない）
     const e = j.results.filter((x) => x.sev === 'error');
     assert.deepEqual(e, []);
   });
@@ -227,7 +228,7 @@ await b.close();
 
 await t('checker: vertical heading, conclusion and body overlaps are errors', () => {
   const r = node('kit/check.mjs', bad, '--json');
-  const j = JSON.parse(r.stdout);
+  const j = parseCheck(r.stdout, r.status);
   const e = (key) => j.results.filter((x) => x.sev === 'error' && x.id === key).map((x) => x.msg);
   const has = (title, re) => assert.ok(e(title).some((m) => re.test(m)), `${title}: ${JSON.stringify(e(title))} lacks ${re}`);
   has('longtitle', /縦組みの見出しが列に収まらない/);
