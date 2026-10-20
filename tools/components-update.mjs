@@ -2,6 +2,7 @@
 //   npm run components:update -- vX.Y.Z [--from <フォルダ>]   リリースを取り込む（ネットワークを使うのはこれだけ）
 //   npm run components:check                                写しと components.lock.json が合っているか（ネットワークなし。npm test と CI）
 //
+// 取り下げ：manifest.json の yanked（取り下げた版と置き換え先の版。format spec §6）を components.lock.json の yanked に足す
 // 取り込み：リリースの manifest.json と tarball を取り（--from なら、そのフォルダの manifest.json と tarball）、
 //   1. manifest の name・version・tag が頼んだ版か、tarball の sha256 が manifest のものか
 //   2. tarball の中身が manifest の files とちょうど同じか（ファイルの集まりと各 sha256）。普通のファイルだけ、安全な相対パスだけ（tools/components-tar.mjs）
@@ -15,7 +16,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readTarGz, safePath } from './components-tar.mjs';
-import { LOCK_FILE, VENDOR_COMPONENTS, NAME_RE, lockProblems } from '../kit/core/components-lock.mjs';
+import { LOCK_FILE, VENDOR_COMPONENTS, NAME_RE, lockProblems, yankedProblems } from '../kit/core/components-lock.mjs';
 import { identityBytes, normalizeEol, toCrlf } from '../kit/core/identity-hash.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -62,6 +63,12 @@ export function verifyRelease(tag, manifestBytes, tarball) {
     if (!Object.prototype.hasOwnProperty.call(m.files, p)) throw new Error(`tarball: ${p} is not in manifest.json`);
     if (idSha(p, b) !== m.files[p]) throw new Error(`tarball: ${p} does not match its sha256 in manifest.json`);
   }
+  // 取り下げ（format spec §6）：この版が自分を取り下げることはない。置き換え先は、この版以前の版
+  const yanked = m.yanked === undefined ? {} : m.yanked;
+  const yp = yankedProblems(yanked);
+  if (yp.length) throw new Error(`manifest.json: ${yp.join('; ')}`);
+  if (Object.prototype.hasOwnProperty.call(yanked, version)) throw new Error(`manifest.json: ${version} lists itself as yanked`);
+  for (const [v, x] of Object.entries(yanked)) if (cmpVer(x.replacement, version) > 0) throw new Error(`manifest.json: yanked.${v}.replacement ${x.replacement} is newer than ${version}`);
   const components = {};
   for (const [name, c] of Object.entries(m.components)) {
     if (!NAME_RE.test(name)) throw new Error(`manifest.json: component "${name}" is not a registry name`);
@@ -77,7 +84,7 @@ export function verifyRelease(tag, manifestBytes, tarball) {
     if (!components[name]) throw new Error(`tarball: ${p} is not in a component of manifest.json`);
     components[name].files.set(p.slice(name.length + 1), b);
   }
-  return { version, tarballSha256: tsha, license, components };
+  return { version, tarballSha256: tsha, license, components, yanked };
 }
 
 // 写しを書き、components.lock.json を直す。root：リポジトリの根（試験は一時フォルダ）
@@ -118,6 +125,9 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
   lock.tag = tag;
   lock.tarballSha256 = rel.tarballSha256;
   lock.releases[tag] = { tarballSha256: rel.tarballSha256 };
+  // 取り下げた版：manifest の yanked を足す（前に記録したものは消さない。新しい manifest が同じ版を書き直したときは新しい方）
+  const yanked = { ...(lock.yanked || {}), ...(rel.yanked || {}) };
+  lock.yanked = Object.fromEntries(Object.entries(yanked).sort(([a], [b]) => cmpVer(a, b)));
   lock.releases = Object.fromEntries(Object.entries(lock.releases).sort(([a], [b]) => cmpVer(a.slice(1), b.slice(1))));
   lock.components ||= {};
   for (const [name, c] of Object.entries(rel.components)) {
@@ -129,7 +139,7 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
     e.default = rel.version;
   }
   lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, versions: e.versions, sha256: e.sha256, ...(e.crlfSha256 ? { crlfSha256: e.crlfSha256 } : {}) }]));
-  const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, releases: lock.releases, components: lock.components };
+  const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, releases: lock.releases, ...(Object.keys(lock.yanked).length ? { yanked: lock.yanked } : {}), components: lock.components };
   const problems = lockProblems(ordered);
   if (problems.length) throw new Error(`${LOCK_FILE}: ${problems.join('; ')}`);
   fs.writeFileSync(lockFile, JSON.stringify(ordered, null, 2) + '\n');
@@ -159,6 +169,11 @@ export function checkVendor(root = ROOT) {
   if (lock.source !== SOURCE) e.push(`${LOCK_FILE}: source is ${lock.source}, expected ${SOURCE}`);
   if (!isObj(lock.releases) || !isObj(lock.releases[lock.tag]) || lock.releases[lock.tag].tarballSha256 !== lock.tarballSha256) e.push(`${LOCK_FILE}: releases.${lock.tag} does not match tag and tarballSha256`);
   const base = path.join(root, ...VENDOR_COMPONENTS);
+  // 取り下げの置き換え先は、取り込み済みの版（編集アプリが組み直せる）
+  for (const [v, x] of Object.entries(lock.yanked || {})) {
+    if (!lock.releases[`v${x.replacement}`]) e.push(`${LOCK_FILE}: yanked.${v}.replacement ${x.replacement} is not an imported release`);
+    if (!lock.releases[`v${v}`]) e.push(`${LOCK_FILE}: yanked.${v} is not an imported release`);
+  }
   for (const [name, c] of Object.entries(lock.components)) {
     for (const v of c.versions) {
       const f = path.join(base, name, v, 'index.js');

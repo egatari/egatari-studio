@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
-import { parseLock, lockProblems, pickVersion, versionForSha, pinsForIndex, configPins } from '../kit/core/components-lock.mjs';
+import { parseLock, lockProblems, yankedInfo, replacementPlan, pickVersion, versionForSha, pinsForIndex, configPins } from '../kit/core/components-lock.mjs';
 import { verifyRelease, applyRelease, checkVendor } from './components-update.mjs';
 import { writeTarGz } from './components-tar.mjs';
 import { nodeEnv } from '../kit/build.mjs';
@@ -59,7 +59,7 @@ await t('lock: version choice (pin, default, unknown pin) and hash lookup', () =
 });
 
 // ---------------------------------------------------------------- 2
-function makeRelease(version, comps, { extra = null, license = 'MIT License\n' } = {}) {
+function makeRelease(version, comps, { extra = null, license = 'MIT License\n', yanked } = {}) {
   const entries = [['LICENSE', enc(license)]];
   const components = {};
   for (const [name, files] of Object.entries(comps)) {
@@ -71,6 +71,7 @@ function makeRelease(version, comps, { extra = null, license = 'MIT License\n' }
   entries.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const gz = writeTarGz(entries);
   const manifest = { name: 'egatari-components', version, tag: `v${version}`, tarball: { file: `egatari-components-v${version}.tar.gz`, sha256: sha(gz) }, components,
+    ...(yanked ? { yanked } : {}),
     files: Object.fromEntries(entries.filter(([p]) => !extra || p !== extra[0]).map(([p, b]) => [p, sha(b)])) };
   return { gz, manifest: enc(JSON.stringify(manifest)), m: manifest };
 }
@@ -124,6 +125,40 @@ await t('update: refuses a tampered tarball, a file not in the manifest, a wrong
 });
 await t('update: unsafe paths in the tarball are refused', () => {
   assert.throws(() => writeTarGz([['../x', enc('1')]]), /unsafe path/);
+});
+
+// ---------------------------------------------------------------- 2b 取り下げた版（format spec §6）
+const Y = path.join(tmp, 'yroot');
+fs.mkdirSync(Y, { recursive: true });
+const YK = { '1.0.0': { replacement: '1.1.0', reason: 'security fix', date: '2026-10-20' } };
+await t('yanked: the lock records the manifest\'s yanked versions and replacement; older versions stay; a later manifest only adds', () => {
+  const V2K = { ...V2, kpi: { 'index.js': '// kpi 1.1.0\n' } };   // 取り下げる版が既定のままの部品は残せない（lockProblems）ので、置き換えの版に全部の部品を入れる
+  const a = makeRelease('1.0.0', V1), b = makeRelease('1.1.0', V2K, { yanked: YK });
+  applyRelease('v1.0.0', verifyRelease('v1.0.0', a.manifest, a.gz), { root: Y });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(Y, 'components.lock.json'), 'utf8')).yanked, undefined);
+  applyRelease('v1.1.0', verifyRelease('v1.1.0', b.manifest, b.gz), { root: Y });
+  const lock = JSON.parse(fs.readFileSync(path.join(Y, 'components.lock.json'), 'utf8'));
+  assert.deepEqual(lock.yanked, YK);
+  assert.ok(fs.existsSync(path.join(Y, 'vendor/components/bars/1.0.0/index.js')), 'the yanked version is kept, not deleted');
+  assert.deepEqual(lockProblems(lock), []); assert.deepEqual(checkVendor(Y).filter((x) => !/source is/.test(x)), []);
+  assert.deepEqual(yankedInfo(lock, '1.0.0'), YK['1.0.0']); assert.equal(yankedInfo(lock, '1.1.0'), null);
+  const c = makeRelease('1.2.0', V2K, { yanked: {} });
+  applyRelease('v1.2.0', verifyRelease('v1.2.0', c.manifest, c.gz), { root: Y });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(Y, 'components.lock.json'), 'utf8')).yanked, YK, 'a yank is never forgotten');
+  // 組み直しの案：bars・kpi とも index.js が変わる。部品庫にない部品は案に入らない
+  const plan = replacementPlan(lock, [{ name: 'bars', version: '1.0.0' }, { name: 'nope', version: '1.0.0' }, { name: 'bars', version: '1.1.0' }]);
+  assert.equal(plan.length, 1); assert.deepEqual([plan[0].name, plan[0].to, plan[0].sha256Changes], ['bars', '1.1.0', true]);
+});
+await t('yanked: malformed yanked in a manifest or lock is refused', () => {
+  const bad = (y, re) => { const r = makeRelease('2.0.0', V2, { yanked: y }); assert.throws(() => verifyRelease('v2.0.0', r.manifest, r.gz), re); };
+  bad({ '1.0.0': { replacement: '1.0.0', reason: 'x', date: '2026-10-20' } }, /later version/);
+  bad({ '1.0.0': { replacement: '3.0.0', reason: 'x', date: '2026-10-20' } }, /newer than 2\.0\.0/);
+  bad({ '2.0.0': { replacement: '2.0.1', reason: 'x', date: '2026-10-20' } }, /itself|newer|lists itself/);
+  bad({ '1.0.0': { replacement: '1.1.0', reason: 'x', date: '2026-10-20' }, '1.1.0': { replacement: '1.2.0', reason: 'x', date: '2026-10-20' } }, /itself yanked/);
+  bad({ '1.0.0': { replacement: '1.1.0', reason: '', date: 'today' } }, /reason|date/);
+  bad([], /not an object/);
+  // 既定の版は取り下げられない
+  assert.ok(lockProblems({ yanked: YK, components: { bars: { default: '1.0.0', versions: ['1.0.0', '1.1.0'], sha256: { '1.0.0': A, '1.1.0': B } } } }).some((x) => /is yanked/.test(x)));
 });
 
 // ---------------------------------------------------------------- 3

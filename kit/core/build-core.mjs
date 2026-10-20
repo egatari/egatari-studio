@@ -22,7 +22,7 @@ import { runtimeAttachTypes } from './attach-content.mjs';
 // 実行系に渡す形式の識別子と、再生器が添付を出すか決める §3.8 の型の表（役割 → 拡張子。kit/tools.js）
 const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runtimeAttachTypes() });
 import { KATEX_RANGES } from './katex-ranges.mjs';
-import { readLock, vendorDir, pickVersion, configPins } from './components-lock.mjs';
+import { readLock, vendorDir, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
@@ -675,6 +675,7 @@ export function build(env0, srcPath, opts = {}) {
   const compRoot = vendorDir(P, ROOT);
   const lock = used.length ? readLock(env, ROOT) : null;
   let pins = {};
+  const yankedUsed = [];   // 取り下げた版で組んだ部品庫の部品（format spec §6：知らせる。黙って置き換えない）
   if (used.length) {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (env.exists(cfg) && inDeck(cfg)) { try { pins = configPins(JSON.parse(env.readText(cfg))); } catch { pins = {}; } }
@@ -693,6 +694,13 @@ export function build(env0, srcPath, opts = {}) {
       else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
     } else if (lib && env.exists(lib)) {
       if (pick.note) warn.push(pick.note);
+      const y = yankedInfo(lock, pick.version);
+      if (y) {
+        // 置き換え先の版が手元にあるか・index.js の同一性の hash が変わるか（編集アプリが組み直しの知らせに使う）
+        const lc = lock.components[name], ok = !!lc && lc.versions.includes(y.replacement);
+        yankedUsed.push({ tag, name, version: pick.version, replacement: y.replacement, reason: y.reason, date: y.date, replacementAvailable: ok, sha256Changes: ok ? lc.sha256[pick.version] !== lc.sha256[y.replacement] : null });
+        warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / 部品庫が取り下げた版：記録のまま組む。黙って置き換えない`);
+      }
       if (env.within(lib, compRoot)) file = lib;
       else { warn.push(`refused: 部品庫の部品 ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
@@ -823,7 +831,7 @@ export function build(env0, srcPath, opts = {}) {
   const codeReasons = documentReasons(html, trusted);
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs };
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
 export function jsonScript(id, o) {

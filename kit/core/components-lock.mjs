@@ -3,8 +3,11 @@
 //   固定：components.lock.json（npm run components:update -- vX.Y.Z が書く。手で直さない）
 //     { "source": "https://github.com/egatari/components", "tag": "v1.0.0", "tarballSha256": "…",
 //       "releases": { "v1.0.0": { "tarballSha256": "…" } },
+//       "yanked": { "1.0.0": { "replacement": "1.0.2", "reason": "…", "date": "2026-10-20" } },
 //       "components": { "<名前>": { "default": "1.0.0", "versions": ["1.0.0"], "sha256": { "1.0.0": "<index.js の同一性の sha256>" },
 //                                   "crlfSha256": { "1.0.0": "<改行を CRLF にした index.js の sha256>" } } } }
+//     yanked は部品庫が取り下げた版（format spec §6：版は手に入るまま、manifest.json の yanked が取り下げと置き換え先の版を示す）。取り込むたびに manifest の
+//     yanked を足す（消さない）。編集アプリは、取り下げた版を記録した教材に組み直しを勧めるが、黙って置き換えない
 //     sha256 は改行をそろえた同一性の hash（format spec §6、kit/core/identity-hash.mjs）。crlfSha256 は、改行をそろえる前に Windows の checkout で
 //     書き出した文書（CRLF のまま hash した）を同じ版に結ぶためだけに使う
 // 組み立て（build-core）・持ち運べる 1 ファイル（portable）・編集アプリが共有する。node: の読み込み・fs・process を使わない（読み書きは env を通す）。
@@ -23,6 +26,8 @@ export function lockProblems(lock) {
   const e = [];
   if (!isObj(lock)) return ['not an object'];
   if (!isObj(lock.components)) return ['components: not an object'];
+  if (own(lock, 'yanked')) e.push(...yankedProblems(lock.yanked));
+  if (isObj(lock.yanked)) for (const [name, c] of Object.entries(lock.components)) if (isObj(c) && typeof c.default === 'string' && own(lock.yanked, c.default)) e.push(`components.${name}.default: "${c.default}" is yanked`);
   for (const [name, c] of Object.entries(lock.components)) {
     const w = `components.${name}`;
     if (!NAME_RE.test(name)) e.push(`${w}: not a registry name`);
@@ -40,6 +45,42 @@ export function lockProblems(lock) {
     }
   }
   return e;
+}
+
+// yanked（{版: {replacement, reason, date}}）の形：置き換え先は、より新しい、取り下げていない版
+export function yankedProblems(y) {
+  if (!isObj(y)) return ['yanked: not an object'];
+  const e = [];
+  for (const [v, x] of Object.entries(y)) {
+    const w = `yanked.${v}`;
+    if (!VERSION_RE.test(v) || v.includes('-')) { e.push(`${w}: not a version`); continue; }
+    if (!isObj(x)) { e.push(`${w}: not an object`); continue; }
+    if (typeof x.replacement !== 'string' || !VERSION_RE.test(x.replacement) || x.replacement.includes('-') || cmpPlain(x.replacement, v) <= 0) e.push(`${w}.replacement: not a later version`);
+    else if (own(y, x.replacement)) e.push(`${w}.replacement: "${x.replacement}" is itself yanked`);
+    if (typeof x.reason !== 'string' || !x.reason || x.reason.length > 500) e.push(`${w}.reason: not a short text`);
+    if (typeof x.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(x.date)) e.push(`${w}.date: not YYYY-MM-DD`);
+  }
+  return e;
+}
+const cmpPlain = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+
+// その版が取り下げられていれば {replacement, reason, date}、なければ null
+export function yankedInfo(lock, version) {
+  return lock && isObj(lock.yanked) && own(lock.yanked, version) && isObj(lock.yanked[version]) ? lock.yanked[version] : null;
+}
+
+// 取り下げた版（版を記録した教材が使うもの）に、置き換えの版で組み直したときの変わり方：部品ごとに {name, from, to, sha256Changes}
+// （sha256Changes：index.js の同一性の hash が変わるか。同じなら、組み直しても部品のコードは同じ）
+export function replacementPlan(lock, used) {
+  const out = [];
+  for (const u of used) {
+    const y = yankedInfo(lock, u.version);
+    const c = lock && isObj(lock.components) && own(lock.components, u.name) ? lock.components[u.name] : null;
+    if (!y || !c) continue;
+    const to = c.versions.includes(y.replacement) ? y.replacement : null;
+    out.push({ name: u.name, from: u.version, to, reason: y.reason, date: y.date, sha256Changes: to ? c.sha256[u.version] !== c.sha256[to] : null });
+  }
+  return out;
 }
 
 export function parseLock(text) {
