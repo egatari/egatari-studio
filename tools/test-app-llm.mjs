@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPack, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { clickUntil } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // Windows の checkout では CRLF になることがあるので LF にそろえる（試験の正規表現と、textarea が CRLF を LF にすることに合わせる）
@@ -216,11 +217,12 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
 // 貼り付けの窓から「今のデッキを置き換える」で取り込み、品質チェックの板の結果（.sum か、確かめられなかった言葉）を返す
 async function pasteReplace(p, text) {
   await p.evaluate(() => { document.getElementById('panel').hidden = true; });
-  await p.click('#b-openmenu');
-  await p.click('#b-paste');
-  await p.waitForSelector('#dlg[open] #paste-text');
+  // 一覧もそのあとの窓も、プレビューの iframe の上に出る。押したものが iframe に行ってしまっても（tools/click-retry.mjs）、もう一度押す
+  await clickUntil(p, '#b-openmenu', () => p.waitForSelector('#m-open', { state: 'visible', timeout: 2500 }));
+  await clickUntil(p, '#b-paste', () => p.waitForSelector('#dlg[open] #paste-text', { timeout: 2500 }));
   await p.fill('#paste-text', text);
-  await p.check('#paste-replace');
+  // 窓も iframe の上にあるので、ラジオを押したものが iframe に行くと状態が変わらない（p.check は変わらなかったと言って落ちる）。入るまで押し直す
+  await clickUntil(p, '#paste-replace', () => p.waitForFunction(() => document.getElementById('paste-replace').checked, null, { timeout: 2500 }));
   const t0 = Date.now();
   await p.click('#dlg-import');
   await p.waitForFunction(() => { const b = document.getElementById('panel-body'); return !document.getElementById('panel').hidden && b && (b.querySelector('.sum') || /did not answer/.test(b.textContent)); }, null, { timeout: 40000 });
