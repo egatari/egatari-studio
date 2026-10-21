@@ -7,6 +7,15 @@ import { CLIP_ATTR } from './core/layout-scan.mjs';
 // 同じスライドのほかの箇所の数（n は箇所の数。1 つなら何も足さない）
 const moreJa = (a) => (a.n > 1 ? ` ほか ${a.n - 1} か所` : '');
 const moreEn = (a) => (a.n > 1 ? ` and ${a.n - 1} more` : '');
+// 表紙と章の扉に置ける子要素（kit/layouts.css の .cover・.sec。docs/reference.md「Sections and classes」）。textOffSlide・textOverlap が添える
+const PLACE_JA = {
+  cover: '。表紙に置けるのは .venue（会場）・h1（題名）・.au（著者・所属）で、ロゴはテーマが入れる。副題は h1 の 2 行目（<br> のあと）か .venue に書く。ほかの字を足すなら、デッキの <style> で position:absolute と top を決めて空いた場所に置く',
+  sec: '。章の扉に置けるのは h1（章の名前）と .lead（一言）。ほかの字を足すなら、デッキの <style> で position:absolute と top を決めて空いた場所に置く',
+};
+const PLACE_EN = {
+  cover: '; a cover holds .venue (venue), h1 (title) and .au (authors, affiliation), and the theme adds the logos: put a subtitle on a second line of the h1 (after <br>) or in .venue, and place any other text in free space with position:absolute and top in the deck\'s <style>',
+  sec: '; a section divider holds h1 (chapter name) and .lead (one line): place any other text in free space with position:absolute and top in the deck\'s <style>',
+};
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 // 添付（§3.8）の型と条件の言葉
 const ROLE_JA = { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' };
@@ -116,6 +125,16 @@ export const MESSAGES = {
   outsideBody: { rule: 'R-fit',
     ja: (a) => `本文（.body）の外に置いた字が${{ slide: `スライドの外に出る（${a.px}px）`, title: '見出しに重なる', concl: '結論の行に重なる', pn: 'ページ番号に重なる' }[a.why] || 'はみ出す'}（「${a.t}」${moreJa(a)}）：本文の中に置くか、位置を直す`,
     en: (a) => `text placed outside the body (.body) ${{ slide: `goes off the slide (${a.px}px)`, title: 'overlaps the heading', concl: 'overlaps the conclusion line', pn: 'overlaps the page number' }[a.why] || 'overflows'} (“${a.t}”${moreEn(a)}): put it inside the body or fix its position` },
+  // 字の箱がスライドの外に出る・重なる（どのスライドでも。#64）と、表の短いセルの語が割れる（#65）。警告。表紙と章の扉では置ける子要素を添える
+  textOffSlide: { rule: 'R-fit',
+    ja: (a) => `字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：字を短くするか、位置を直して 1280×720 の内に収める${PLACE_JA[a.kind] || ''}`,
+    en: (a) => `text goes off the slide (“${a.t}”${moreEn(a)}, ${a.px}px): shorten it or move it inside the 1280×720 slide${PLACE_EN[a.kind] || ''}` },
+  textOverlap: { rule: 'R-fit',
+    ja: (a) => `${a.with === 'band' ? `字がスライドの帯（飾り）に重なる（「${a.t}」${moreJa(a)}）` : `字の箱がほかの字に重なる（「${a.t}」と「${a.u}」${moreJa(a)}）`}：重ならない位置に置き直すか、字を減らす${PLACE_JA[a.kind] || ''}`,
+    en: (a) => `${a.with === 'band' ? `text overlaps the slide's decorative band (“${a.t}”${moreEn(a)})` : `a text box overlaps other text (“${a.t}” and “${a.u}”${moreEn(a)})`}: move it to free space or cut the text${PLACE_EN[a.kind] || ''}` },
+  cellWordBreak: { rule: 'R-fit',
+    ja: (a) => `表のセルの短い語が途中で折り返している（「${a.t}」が ${a.lines} 行：${a.split}${moreJa(a)}）：表の列を減らすか、語を短くするか、その列を広げる（ほかの列の字を減らす）`,
+    en: (a) => `a short word in a table cell breaks across lines (“${a.t}” on ${a.lines} lines: ${a.split}${moreEn(a)}): use fewer columns, shorten the word, or widen that column (cut text in the other columns)` },
   desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は口述原稿だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the narration` },
   rawMath: { rule: 'R-math', ja: (a) => `数式が KaTeX で組まれずに残っている（「${a.t}」）：\\( … \\) か \\[ … \\] で囲み、$ … $ は使わない`, en: (a) => `math was left unrendered (“${a.t}”): wrap it in \\( … \\) or \\[ … \\], not $ … $` },
   katexError: { rule: 'R-math', ja: (a) => `KaTeX が式を組めない（「${a.t}」）：式の書き方を直す（< は \\lt、使えるマクロは \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph）`, en: (a) => `KaTeX cannot render an equation (“${a.t}”): fix its syntax (write < as \\lt; allowed macros are \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph)` },

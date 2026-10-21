@@ -8,6 +8,9 @@
 // 2. 知らせの言葉（kit/check-messages.mjs）：新しい code は日本語と英語があり、規格は R-fit、textClipped は印の名前を言う
 // 3. ブラウザ版の品質チェック（app/frame-shim.js を app/main.js と同じく withLayoutScan で包み、プレビューと同じ文書で動かす）：
 //    同じデッキで同じ知らせを出す。見本のデッキ（examples/）では新しい知らせを出さない
+// 4. 表紙の字の箱と表の短いセル（backlog #64・#65。tools/fixtures/check-cover-table/deck.html）：どのスライドでもスライドの外に出る字（textOffSlide）・
+//    重なる字の箱と帯（textOverlap）・表の短いセルの語が割れる（cellWordBreak）。ふつうの表紙・data-clip の副題・自分で置いた札・
+//    長いセルの折り返し・1 行の短いセル・割れない英語の語は何も出さない。コマンド版とブラウザ版で同じ知らせ。表紙と章の扉では置ける子要素を言う
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -34,7 +37,7 @@ const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'ut
 
 const DECK = path.join(ROOT, 'tools', 'fixtures', 'check-overflow', 'deck.html');
 // 見る知らせ：#52 の新しいもの（警告）と、#51 でブラウザ版にも出るようになったもの
-const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody'];
+const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak'];
 const WATCH = [...NEW, 'bodyBottom', 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
 const EXPECT = {
   's-fix52a': ['svgTextBox'],
@@ -143,6 +146,69 @@ await t('quick check: no new findings on the examples', async () => {
     for (const x of r.results) if (WATCH.includes(x.code)) found.push(`${d} ${x.i + 1} ${x.code} ${JSON.stringify(x.arg)}`);
   }
   assert.deepEqual(found, []);
+});
+
+// ---------------------------------------------------------------- 4. 表紙の字の箱と表の短いセル（#64・#65）
+const DECK2 = path.join(ROOT, 'tools', 'fixtures', 'check-cover-table', 'deck.html');
+const NEW2 = ['textOffSlide', 'textOverlap', 'cellWordBreak'];
+const EXPECT2 = {
+  's-cov64': ['textOverlap'], 's-covok': [], 's-covclip': [], 's-absok': [], 's-covlong': ['textOverlap'], 's-absover': ['textOverlap'],
+  's-secoff': ['textOffSlide'], 's-tbl65': ['cellWordBreak'], 's-tblok': [], 's-latinbreak': ['cellWordBreak'],
+};
+const codes2 = (list, idOf) => {
+  const m = {};
+  for (const id of Object.keys(EXPECT2)) m[id] = [];
+  for (const r of list) { const id = idOf(r), code = r.code === 'overflowBottom' ? 'bodyBottom' : r.code; if (id in m && r.sev !== 'info' && !['narrMissing', 'noNarration'].includes(code) && !m[id].includes(code)) m[id].push(code); }
+  for (const id of Object.keys(m)) m[id].sort();
+  return m;
+};
+let J2 = null;
+await t('check --json runs on the cover/table fixture', () => { J2 = JSON.parse(node('kit/check.mjs', DECK2, '--json').stdout); assert.ok(Array.isArray(J2.results)); });
+await t('check: covers, section dividers and tables get the expected findings (and nothing else)', () => assert.deepEqual(codes2(J2.results, (r) => r.id), EXPECT2));
+await t('check: the #64/#65 findings are warnings with rule R-fit', () => {
+  const xs = J2.results.filter((r) => NEW2.includes(r.code));
+  assert.equal(xs.length, 6);
+  for (const r of xs) { assert.equal(r.sev, 'warn', r.msg); assert.equal(r.rule, 'R-fit', r.msg); }
+});
+await t('check: #64 the stray subtitle on the cover overlaps the band, and the finding names the cover children', () => {
+  const r = J2.results.find((x) => x.id === 's-cov64' && x.code === 'textOverlap');
+  assert.equal(r.data.with, 'band'); assert.equal(r.data.kind, 'cover'); assert.equal(r.data.t, '欠損値と外れ値の扱い');
+  assert.match(r.msg, /\.venue（会場）・h1（題名）・\.au（著者・所属）/);
+  assert.match(r.msg, /副題は h1 の 2 行目/);
+  const o = J2.results.find((x) => x.id === 's-covlong' && x.code === 'textOverlap');
+  assert.equal(o.data.with, 'text'); assert.equal(o.data.u, 'データ基盤チーム');
+  const sec = J2.results.find((x) => x.id === 's-secoff' && x.code === 'textOffSlide');
+  assert.equal(sec.data.kind, 'sec'); assert.ok(sec.data.px > 2); assert.match(sec.msg, /章の扉に置けるのは h1/);
+});
+await t('check: #65 the short cell 除外中 breaks as 除外/中; a Latin word broken by overflow-wrap is found too', () => {
+  const r = J2.results.find((x) => x.id === 's-tbl65' && x.code === 'cellWordBreak');
+  assert.deepEqual([r.data.t, r.data.lines, r.data.split, r.data.n], ['除外中', 2, '除外/中', 1]);
+  const l = J2.results.find((x) => x.id === 's-latinbreak' && x.code === 'cellWordBreak');
+  assert.match(l.data.split, /\w\/\w/);
+});
+await t('check --lang en: cover advice and cell advice in English', () => {
+  const je = JSON.parse(node('kit/check.mjs', DECK2, '--json', '--lang', 'en').stdout);
+  assert.match(je.results.find((x) => x.id === 's-cov64' && x.code === 'textOverlap').msg, /a cover holds \.venue \(venue\), h1 \(title\) and \.au .*second line of the h1.*\(R-fit\)$/);
+  assert.match(je.results.find((x) => x.id === 's-tbl65' && x.code === 'cellWordBreak').msg, /use fewer columns, shorten the word, or widen that column/);
+});
+await t('messages: the #64/#65 codes have Japanese and English text, mapped in llm-fix', async () => {
+  const { rulesFor } = await import('../kit/core/llm-fix.mjs');
+  const a = { t: 'x', u: 'y', px: 9, n: 3, lines: 2, split: 'x/y' };
+  for (const [code, d] of [['textOffSlide', a], ['textOffSlide', { ...a, kind: 'cover' }], ['textOverlap', { ...a, with: 'band' }], ['textOverlap', { ...a, with: 'text', kind: 'sec' }], ['cellWordBreak', a]]) {
+    assert.equal(MESSAGES[code].rule, 'R-fit');
+    const ja = message('ja', code, d), en = message('en', code, d);
+    assert.ok(ja.includes('「x」') && ja.includes('ほか 2 か所'), ja);
+    assert.ok(en.includes('“x”') && en.includes('and 2 more'), en);
+    assert.deepEqual(rulesFor({ code }), ['R-fit']);
+  }
+});
+let Q2 = null;
+await t('quick check: the same findings on the cover/table fixture', async () => {
+  Q2 = await quick(DECK2, 'fixture2');
+  assert.deepEqual(codes2(Q2.results, (r) => (r.i === null ? null : Q2.ids[r.i])), EXPECT2);
+  const r = Q2.results.find((x) => Q2.ids[x.i] === 's-tbl65' && x.code === 'cellWordBreak');
+  assert.equal(r.arg.split, '除外/中');
+  for (const x of Q2.results.filter((y) => NEW2.includes(y.code))) assert.equal(x.sev, 'warn');
 });
 await b.close();
 
