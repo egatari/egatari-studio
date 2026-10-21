@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=a3fe1ce9b7acd99f -->
+<!-- i18n: pair=editor.ja.md sha256=ae20fbe023629be7 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -53,7 +53,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Export ▾ → Export built HTML:** builds the deck without the editing hooks and saves it as a built HTML file (play only, without the source; asks where to save; the suggested name is the deck title, see below). Double-click the file to present it anywhere.
    - **Export ▾ → Export single file (.ega.html) to hand out** (working folder): writes the deck with its source and audio as one file to give to others; the working folder stays as it is.
    - **Export ▾ → Export play-only copy for students (.play.ega.html):** a single file without the source (format §3.7, the same as `--play-only`): it plays in any browser and cannot be edited. For a single file it is made from the saved file (Save first if there are unsaved changes); for a working folder from the folder.
-   - **Export ▾ → Distribute with a live room…:** the play-only copy with a live room (questions and polls in class, format extension `live`, draft): paste the room details from the teacher page, set Q&A and per-step polls, copy the activities JSON for the teacher page, and export. The editor itself connects nowhere; the lesson keeps the settings without the key. See [Live room](distributing.md#live-room-questions-and-polls-in-class-draft).
+   - **Export ▾ → Distribute with a live room…:** the play-only copy with a live room (questions and polls in class, format extension `live`, draft): paste the room details from the teacher page, set Q&A and per-step polls (each shown by a label such as “Slide 4 'XML の壁', step 1”, with the step key in the tooltip), copy the activities JSON (with the labels) for the teacher page, and export. The editor itself connects nowhere; the lesson keeps the settings without the key. See [Live room](distributing.md#live-room-questions-and-polls-in-class-draft).
    - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF” and turn on “Background graphics”).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window, which also plays the audio: autoplay started in the presenter view (<kbd>a</kbd> or its button) plays the narration once, in the editor window.
    - **Fullscreen:** the preview fills the screen (for the projector).
