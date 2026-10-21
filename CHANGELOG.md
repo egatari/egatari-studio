@@ -8,6 +8,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.4] - 2026-10-21
+
+### Added
+
+- Editor app: **recording mode** (`r`, or **Recording mode** in the Audio panel): the step's narration in large type with the stage beside it, and keyboard-only recording: Space starts/stops (silence trimmed, used for the step right away), Enter keeps the take and goes to the next step, Backspace retakes, ← / → move, `C` places the `{cue}` / `{mark}` times while you read (`sync: "manual"`; a wrong number of presses writes no cues), with a level meter, live-region announcements and a button for every key
+- Editor app: **Make the audio in Colab** (Audio panel, for computers without WebGPU, such as many school PCs, Safari and iPad): export the steps that need audio as `tts-job.json` (after a privacy question: the narration text is processed in Google's environment), run the official notebook `colab/egatari-tts.ipynb` in a free Colab (Irodori-TTS 500M-v3 for Japanese, Kokoro-82M for other languages; a T4 GPU is faster), and import the zip it returns. Only steps whose `inputHash` matches the current narration are applied, with the cue times measured from the audio (kind tts, sync auto); changed steps are listed for you to use or discard, and a zip made for another lesson is refused. Verified on 2026-10-21 with Irodori on a Colab T4 GPU; Kokoro and the CPU path are not verified yet
+- `colab/egatari_tts.py` (the notebook's core, with a model-free `--dry-run`), `colab/irodori_node.mjs` (a long-lived Irodori worker: the models load once) and `tools/make-colab-notebook.mjs` (generates the notebook, `npm run gen`); `kit/core/zip-read.mjs` (a bounded zip reader that refuses zip bombs, zip64, encryption and CRC mismatches), `kit/core/colab-core.mjs` and `kit/core/wav-core.mjs`
+- Quality check: warnings (R-fit) for text cut off by an `overflow` box (`textClipped`), SVG text cut off by its viewBox or going off
+  the slide (`svgTextOut`), SVG text overflowing the box drawn around it (`svgTextBox`, e.g. an `m-flow` label) and text outside
+  `.body` going off the slide or overlapping the heading, conclusion or page number (`outsideBody`); a slide that already has
+  `bodyBottom` does not also get `svgTextOut` for text inside `.body`
+- `data-clip` on an element marks intended clipping; the four checks above skip text inside it (contract §10)
+
+### Changed (API)
+
+- Components moved to their own repository, [egatari/components](https://github.com/egatari/components) (v1.0.0 is byte-identical to the former `components/`; v1.0.1 adds an `m-sweep` demo and fits the `m-kanbun` demo; see Security for v1.0.2 and v1.0.3, the default). Studio carries copies of its releases in `vendor/components/<name>/<version>/`, pinned in `components.lock.json`; `npm run components:update -- vX.Y.Z` brings in a release (checks the tarball and every file against the release's `manifest.json`, keeps every version), `npm run components:check` checks the copies offline (in `npm test` and CI).
+- A single file now records a registry component's `version` as the components release (`1.0.0`) instead of Studio's version. Rebuilding a single file uses the vendored version whose `index.js` matches the recorded SHA-256; a working folder may pin versions in `egatari.json` (`components`, format spec §3.3), which the single file's copy carries (the export writes the versions it used there; the working folder's `egatari.json` is unchanged) and `npm run portable -- unpack` writes from the recorded versions when a file has none.
+- Component and theme identity hashes (`index.components[].sha256`, `index.themes[].sha256`, `components.lock.json`) are taken after normalizing line endings (CRLF and lone CR to LF, leading BOM removed; format spec §6, `kit/core/identity-hash.mjs`). Files written earlier from a Windows checkout (hashes of CRLF bytes) still resolve through `crlfSha256` in the lock, and the editor allows rebuilding them. Release tarballs stay byte-exact.
+
+### Changed
+
+- Editor app: the browser quality check now runs the same layout code as `npm run check` (`kit/core/layout-scan.mjs`), so it also
+  reports the `layout-tate` limits, a conclusion that overflows in height, small text inside SVG and a heading ending with a colon
+- The Egatari logo and icons use the new colours (紺藍 and 緋色)
+- `vendor/components/CATALOG.md` replaces `components/CATALOG.md`. Component proposals go to egatari/components issues (Studio's component issue templates are removed); the `motion-components` skill targets that repository.
+- The components' own tests (rendering, determinism, text size, overlap, shapes, `m-codetree` / `m-kanbun` / `m-kobun` / `m-gendai` parsing) moved with them; Studio keeps integration tests (`tools/test-components.mjs` builds and quality-checks every vendored demo, `tools/test-shape.mjs`, `tools/test-kokugo-example.mjs`), and `tools/clean-env.mjs` builds the demos in a clean environment.
+
+### Fixed
+
+- TTS reads “1 歩” correctly: the space between an Arabic numeral and a following Japanese character is removed just before synthesis (rule `join-num-counter@1`, in the browser TTS and the Colab notebook), recorded as `recipe.textNormalize`. `ttsParts` and `inputHash` are unchanged, and existing audio is not stale. The Audio panel lists TTS steps made with an older (or no) pre-processing and regenerates only the ones you choose
+- Authoring guide: the `data-clip` sentence added to R-fit is removed again (the rule stays in contract §10 and in the `textClipped` fix request); R-components no longer calls function formulas "JavaScript" (they are arithmetic expressions that are never run as code)
+- Authoring guide (pack builder): component README text is cleaned when it is copied into the pack: relative markdown links become plain text and version-history phrases ("v1.0.2 から", "since v1.0.2") are dropped; the `m-menu` lines no longer say ids come from `npm run ids` or show a link to another file (menus are added after import, the first draft uses a plain list). `vendor/` is not edited
+- Quality check: findings about duplicate slide keys (headings), narration headings that differ from the slide heading (`narrHeadingDiffers`) and narration sections without a slide now carry the rule `R-headings` in `--json` (`rule` was null)
+- Quality check: when the headless browser fails to launch or crashes, `npm run check` exits with code 2 (findings still exit 1) and `--json` prints `"status": "crashed"` with `"ok": false` and no findings; the reason goes to stderr only
+- Quality check: `kit/core/check-result.mjs` (`parseCheck`) reads `check --json` and rejects `status: "crashed"` and exit code 2; the tests that assert "0 errors" use it (test-layout-tate, test-llm, test-components), and the skills and `docs/reference` say exit code 2 is not "0 errors"
+
+### Security
+
+- Components v1.0.2 is the default version (1.0.0 and 1.0.1 are kept for lessons that recorded them). Its `m-sweep` (`f`) and `m-curves` (each series' `f`) no longer run formulas as JavaScript (`new Function`): they evaluate them with a small arithmetic parser (numbers, the component's variables, the listed `Math` functions and constants, `+ - * / % **`, comparisons, `&& || !`, `? :`, parentheses) and show the inline placeholder for anything else. Values of every formula in the examples and docs are unchanged. Grammar and audit: [egatari/components SECURITY.md](https://github.com/egatari/components/blob/v1.0.2/SECURITY.md). The code scan (`kit/core/code-scan.mjs`) still treats formulas outside plain arithmetic as code, since a document may pin an older version, and the preview's CSP keeps `'unsafe-eval'` for those versions. `tools/test-security.mjs` checks that no formula runs with the default version.
+- Components v1.0.0 and v1.0.1 are yanked in favour of v1.0.2 (Egatari spec §6): components v1.0.3 lists them under `yanked` in `manifest.json`, and `npm run components:update -- v1.0.3` records the yanked versions and the replacement in `components.lock.json`. v1.0.3 is the default (its code is that of v1.0.2). A deck that pins or records a yanked version builds as recorded and warns (`yanked: m-sweep 1.0.0 …`, also from `kit/check.mjs`); the old versions are kept
+- Editor app: a lesson that records a yanked version gets a notice and a button **Rebuild with 1.0.2**; the version is never replaced silently, and after the rebuild a note lists which identity hashes changed. The lesson still plays meanwhile, only inside the sandboxed preview frame (no `allow-same-origin`)
+- Editor app: the page's own Content-Security-Policy no longer has `'unsafe-eval'` (only `'wasm-unsafe-eval'` remains, for the MP3 encoder's WebAssembly; hosted editor and single-file `editor.html`). The preview frame inherits it, so a yanked `m-sweep` / `m-curves` shows its inline placeholder instead of evaluating its formula there. `PREVIEW_CSP` and the dev server's deck document keep `'unsafe-eval'` for yanked versions
+
 ## [0.4.3] - 2026-10-20
 
 ### Added
@@ -470,7 +513,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/egatari/egatari-studio/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/egatari/egatari-studio/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/egatari/egatari-studio/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/egatari/egatari-studio/compare/v0.4.0...v0.4.1
