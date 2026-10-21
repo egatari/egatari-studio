@@ -62,16 +62,17 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright-core install --with-deps chromium
       - name: npm test
-        # CI=true makes tools/test-all.mjs stream every test's output
+        # CI=true makes tools/test-all.mjs stream every test's output; MOTION_TEST_ARTIFACTS: screenshots go to a fixed folder that the upload step reads
+        env:
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-node${{ matrix.node }}
-          path: |
-            /tmp/motion-test-*
-          if-no-files-found: ignore
+          path: ${{ runner.temp }}/motion-test-artifacts
+          if-no-files-found: warn
           retention-days: 7
 
   # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
@@ -89,15 +90,15 @@ jobs:
         env:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-windows
-          path: |
-            ${{ runner.temp }}/motion-test-*
-          if-no-files-found: ignore
+          path: ${{ runner.temp }}/motion-test-artifacts
+          if-no-files-found: warn
           retention-days: 7
 
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
@@ -112,16 +113,16 @@ jobs:
           cache: npm
       - run: npm ci
       - name: npm test
+        env:
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-macos
-          path: |
-            ${{ runner.temp }}/motion-test-*
-            /var/folders/*/*/T/motion-test-*
-          if-no-files-found: ignore
+          path: ${{ runner.temp }}/motion-test-artifacts
+          if-no-files-found: warn
           retention-days: 7
 
   # Clean environment (backlog #50): an empty HOME (not USERPROFILE: Chrome does not start on Windows with an empty one), no TTS server (IRODORI_URL points at a closed port), no user theme
