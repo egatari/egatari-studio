@@ -246,6 +246,24 @@
         }
       },
       "description": "Files carried for readers rather than for rendering (§3.8)."
+    },
+    "exportedFrom": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sourceSha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "folder"
+        },
+        "sourceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "description": "A copy exported from an authoring folder that remains the master (§3.1)."
     }
   },
   "$defs": {

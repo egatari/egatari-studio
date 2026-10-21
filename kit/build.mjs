@@ -164,9 +164,10 @@ export function build(srcPath, opts = {}) { return core.build(nodeEnv, srcPath, 
 export function bundleAssets(html, deckDir, warn = []) { return core.bundleAssets(nodeEnv, html, deckDir, warn); }
 export function defaultOut(srcPath) { return core.defaultOut(path, srcPath); }
 
-// 持ち運べる 1 ファイル（kit/core/portable.mjs）。設定のファイル（docId）を初めて作ったときは原稿のフォルダに書く
+// 持ち運べる 1 ファイル（kit/core/portable.mjs）。設定のファイル（docId）を初めて作ったときは原稿のフォルダに書く。
+// 作業フォルダからの書き出しなので、索引に書き出しの印（exportedFrom、format spec §3.1）を書く（opts.fromFolder: false で書かない）
 export async function buildPortable(srcPath, opts = {}) {
-  const r = await exportPortable(nodeEnv, srcPath, opts);
+  const r = await exportPortable(nodeEnv, srcPath, { fromFolder: true, ...opts });
   const deckDir = path.dirname(path.resolve(srcPath));
   // 原稿のフォルダに残すもの（FORMAT.CONFIG_FILE）：リンクを通しては書かない（kit/safe-fs.mjs）
   for (const [rel, text] of Object.entries(r.writes)) safeWriteFile(deckDir, path.join(deckDir, ...rel.split('/')), text);
