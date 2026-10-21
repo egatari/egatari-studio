@@ -1220,7 +1220,7 @@ window.addEventListener("message", function(e){
     else if (m.cmd === "goto"){ POS.setCause("seek"); go(m.i, m.k, !!m.animate); POS.setCause(null); }
     else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
     else if (m.cmd === "back") back();
-    else if (m.cmd === "auto") DECK.autoplay();
+    else if (m.cmd === "auto"){ if (!EDIT) DECK.autoplay(); else POS.publish(); }   // 編集中は始めない（発表者ビューのボタンは今の状態に戻す）
     else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length){
     go(m.i, m.k, !!m.animate);
@@ -1414,9 +1414,27 @@ function init(){
 }
 
 var buf = "";
+// 入力中か：フォーカスのある要素（影の木の中の欄も composedPath の先頭で見る）が文字を受けるもの。そのキーは送りにも道具にも使わない
+function typingIn(e){
+  var t = e.composedPath ? e.composedPath()[0] : e.target;
+  if (!t || t.nodeType !== 1) t = e.target;
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+}
+// 編集モード（開発サーバー・編集アプリのプレビュー。server/hints.js が document に deck:edit {on} を送る）：
+// 入るときに自動再生と音声・暗転・全画面・打ちかけのページ番号をやめ、編集している間は a・b・f と発表者ビューからの自動再生を受けない。
+// 出るときは何も戻さない。ふつうのデッキ（hints.js のない書き出し・再生専用の 1 ファイル・発表者ビュー）では起きない
+var EDIT = false;
+document.addEventListener("deck:edit", function(e){
+  EDIT = !!(e.detail && e.detail.on);
+  if (!EDIT) return;
+  stopAuto(); if (audioEl) audioEl.pause();
+  buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
+  document.documentElement.classList.remove("blackout");
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+});
 document.addEventListener("keydown", function(e){
   if (DECK.view || !slides.length) return;
-  if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
+  if (typingIn(e)) return;
   // 戻る（リンクの前の位置へ）：Backspace（ペンのときは tools.js が書き込みを消すのに使う）か Alt+←
   if (!e.metaKey && !e.ctrlKey && !e.shiftKey && ((e.key === "Backspace" && !e.altKey) || (e.key === "ArrowLeft" && e.altKey))){
     if (back()) e.preventDefault();
@@ -1438,6 +1456,7 @@ document.addEventListener("keydown", function(e){
   else if (k === "End") go(slides.length - 1, 0, false);
   else nav = false;
   if (nav){ e.preventDefault(); stopAuto(); return; }
+  if (EDIT && (k === "a" || k === "b" || k === "f")) return;
   if (k === "f"){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
   else if (k === "p") openPresenter();
   else if (k === "a") DECK.autoplay();

@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=82a8a1119e3b3dd9 -->
+<!-- i18n: pair=dev-server.ja.md sha256=1487a0e38043e200 -->
 # Dev server (fix the deck in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -34,6 +34,7 @@ The page at `/` is a frame around the deck: the deck itself runs in a sandboxed 
 The keys work whether the focus is on the slide or on the frame page; the box or drawer that opens takes the focus, and closing it gives the focus back to the slide.
 
 All editing tools (the edit-mode bar, the source box, the note box and list, the narration drawer) live in one side panel next to the slides, under an orange bar **編集中 — 開発サーバー** (“Editing — dev server”). **Anything inside the slide area can be drawn by the deck; trust only controls in the side panel under that bar.**
+**Edit mode and the presenting tools do not mix.** Entering edit mode turns off the laser, pen and fading pen (ink already drawn stays visible but cannot be drawn on), stops autoplay and its audio, and closes the slide overview, blackout, the key list (?), fullscreen and a half-typed slide number. Lecture mode and captions stay as they are. While editing, the tool buttons (autoplay, laser, pens, colors, clear, overview, fullscreen) are hidden from the control bar and their keys (`x` `d` `v` Shift+`d` Backspace `o` `a` `b` `f`) do nothing; a tool chosen in the presenter view is turned off again. Leaving edit mode brings none of them back. Keys typed into a text field (the source box, or an input inside the deck) are always text, never tool or slide keys. The current mode (**編集中** / **Editing**, **発表の道具：ペン** / **Presenter tool: Pen**, **表示** / **Viewing**) is shown in a thin bar below the slides, never over them, and announced to screen readers.
 The presenting keys (arrows, Space, p, a, l, …) work as usual outside input fields. `p` opens the presenter view in a window of its own (the deck runs sandboxed there too).
 Your input stays when the deck reloads (after a save or an outside change), so you can keep typing; if the same element or step changed in the meantime, the save is refused.
 If the source has changed elsewhere by the time you save (the hash does not match), it does not save and shows 「原稿が変わっています。再読み込みしてください」 ("The source has changed. Please reload.")

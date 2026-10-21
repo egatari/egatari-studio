@@ -284,9 +284,19 @@ try {
 
   // ---------------------------------------------------------------- 3. 原稿の編集（プレビューは知らせるだけ。欄はアプリのページに出る）
   await f.evaluate(() => DECK.go(2, 3, false));
+  // 発表の道具（ペン）を選んでから編集モードに入る（#69）：道具は切れ、ダブルクリックは編集になり、線は描かれない。画面の端に今のモード
+  await f.evaluate(() => window.focus());   // プレビューの文書にフォーカスを（別のプロセスの iframe なので、本体を押すだけでは届かないことがある）
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode') && document.getElementById('dev-mode').textContent === '発表の道具：ペン');
+  ok(await f.evaluate(() => DECK.tools.mode()) === 'pen' && await page.evaluate(() => !!document.querySelector('#status #st-mode #dev-mode[aria-live=polite]')), 'tools vs edit: the pen is on and the footer shows 発表の道具：ペン (aria-live)');
   await page.click('#b-edit');
   await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
   ok(true, 'edit: toolbar button turns on edit mode');
+  ok(await f.evaluate(() => DECK.tools.mode() === null && !document.querySelector('#dt-layer.on') && getComputedStyle(document.querySelector('#dt-cb [data-b=pen]')).display === 'none'), 'tools vs edit: entering edit mode turns the pen off and hides the tool buttons');
+  ok(await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中', 'tools vs edit: the footer shows 編集中');
+  await f.evaluate(() => window.focus());
+  for (const k of ['d', 'x', 'v']) await f.locator('body').press(k);
+  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: d / x / v do nothing while editing');
   const li = f.locator('#stage .slide.active li[data-step="2"]');
   await li.dblclick();
   await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
@@ -332,6 +342,7 @@ try {
   await f.locator('body').press('e');   // 編集モードを切る（デッキで押した e は知らせとしてアプリに届く）
   await page.waitForFunction(() => !window.__APP_TEST.ui().edit);
   ok(!(await f.evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'edit: e pressed in the preview turns edit mode off (forwarded hint)');
+  ok(await f.evaluate(() => DECK.tools.mode()) === null && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '表示', 'tools vs edit: leaving edit mode does not bring the pen back (footer: 表示)');
   await f.evaluate(() => DECK.go(1, 0, false));
   await page.click('#b-narr');
   await page.waitForSelector('#dev-narr .dev-turn textarea');

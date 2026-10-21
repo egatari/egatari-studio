@@ -19,6 +19,7 @@ const store = {
 };
 const ui = createEditorUI({
   frame: () => frame, api, lang: cfg.lang, drawerHost: document.getElementById('wrap'), store,
+  modeHost: document.getElementById('dev-bar'),   // 今のモード（編集中・発表の道具）は下の帯に出す（舞台に重ねない）
   markLabel: cfg.lang === 'en' ? 'Editing — dev server' : '編集中 — 開発サーバー',
   warnings: () => info.warn, reload: () => load(true),
 });

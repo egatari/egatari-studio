@@ -6,13 +6,15 @@
 // デッキ → 親：{type: "edit-hint", kind, …}
 //   ready                           実行系の準備ができた（親は位置を戻し、編集モードの状態を送り返す）
 //   key      {key}                  e・n・c・Escape が押された（入力中でないとき）
+//   tool     {mode}                 発表の道具が変わった（"laser"・"pen"・"vpen" か null。kit/tools.js の deck:tool。親は画面の端に今のモードを出す）
 //   edit     {src, h, tag, rect}     編集モードでダブルクリックした要素（data-src の範囲と data-src-h）
 //   comment  {key, src, quote, near, pin, rect} Alt/⌥+クリックした所（段階の鍵・要素の範囲・80 字までの引用、
 //            near：押した所の近くの字（部品の中の札・語など。60 字まで）、pin：押した点のスライドの座標 {x, y}（1280×720、表示の倍率によらない））
 //            段階の途中（動いている間）に押しても、点は鍵の段階の最後の状態（DECK.seek(i, k, Infinity)）を指すものとして残す
 //   位置は実行系の deck-pos（kit/deck.js）をそのまま使う
 // 親 → デッキ：
-//   {type: "edit-state", edit, target}  編集モードの枠を出す・消す、target の要素（data-src の範囲か "#comment"）に印
+//   {type: "edit-state", edit, target}  編集モードの枠を出す・消す、target の要素（data-src の範囲か "#comment"）に印。
+//                                       編集モードが変わったら document に deck:edit {on} を送る（kit/deck.js・kit/tools.js が発表の道具と自動再生・暗転・一覧などを切る）
 //   {type: "edit-go-key", key}          その段階へ移る（コメントの一覧から）
 // 部品はすべて class="edit-ui"（印刷では base.css が隠す）
 (function(){
@@ -33,7 +35,8 @@ function send(m){ m.type = "edit-hint"; try { P.postMessage(m, "*"); } catch (e)
 var css = [
   "html.dev-edit #stage .slide.active [data-src]{outline:1px dashed rgba(37,99,235,.28);outline-offset:2px}",
   "html.dev-edit #stage [data-src].dev-hover{outline:2px solid #2563eb!important;outline-offset:3px;background:rgba(37,99,235,.06);cursor:text}",
-  "#stage .dev-target{outline:2px solid #f59e0b!important;outline-offset:3px}"
+  "#stage .dev-target{outline:2px solid #f59e0b!important;outline-offset:3px}",
+  "html.dev-edit #dt-layer{pointer-events:none!important}"
 ].join("\n");
 var st = document.createElement("style"); st.className = "edit-ui"; st.textContent = css; (document.head || document.documentElement).appendChild(st);
 
@@ -100,7 +103,12 @@ function nearText(e, el){
   if (!best) best = nearest(scope);
   return best ? clip(best.textContent, 60) : "";
 }
-function typing(e){ var t = e.target; return t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName)); }
+// 入力中か（影の木の中の欄も composedPath の先頭で見る）
+function typing(e){
+  var t = e.composedPath ? e.composedPath()[0] : e.target;
+  if (!t || t.nodeType !== 1) t = e.target;
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+}
 
 var editOn = false, hoverEl = null, lastComment = null;
 function setTarget(t){
@@ -122,8 +130,10 @@ window.addEventListener("message", function(e){
   if (e.source !== P) return;
   var m = e.data || {};
   if (m.type === "edit-state"){
+    var was = editOn;
     editOn = !!m.edit;
     document.documentElement.classList.toggle("dev-edit", editOn);
+    if (editOn !== was) document.dispatchEvent(new CustomEvent("deck:edit", {detail: {on: editOn}}));
     if (!editOn && hoverEl){ hoverEl.classList.remove("dev-hover"); hoverEl = null; }
     setTarget(m.target);
   } else if (m.type === "edit-go-key" && typeof m.key === "string"){
@@ -166,6 +176,11 @@ document.addEventListener("keydown", function(e){
   if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === "e" || e.key === "n" || e.key === "c" || e.key === "r" || e.key === "Escape") send({kind: "key", key: e.key});
 });
-function ready(){ send({kind: "ready"}); }
+document.addEventListener("deck:tool", function(e){ send({kind: "tool", mode: e.detail ? e.detail.mode : null}); });
+function ready(){
+  send({kind: "ready"});
+  var T = window.DECK && window.DECK.tools;
+  send({kind: "tool", mode: T && T.mode ? T.mode() : null});
+}
 if (window.DECK && window.DECK.ready) ready(); else document.addEventListener("deck:ready", ready);
 })();

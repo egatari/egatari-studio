@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=0d7543554f46df4a -->
+<!-- i18n: pair=editor.ja.md sha256=c26f4bb784958b13 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -41,6 +41,8 @@ A web page that opens a working folder directly and does what the [dev server](d
    | `c` | list of open comments, numbered; while it is open, the pins of the step on screen are marked on the slide. Click one to go to its slide and step (its pin flashes), “Resolve” to mark it done |
 
    The edit-mode bar, the source box, the narration drawer, the note box and the note list sit in one side panel on the right (the preview shrinks beside it), under an orange bar **編集中 — アプリ** / **Editing — app**. They are part of the editor page, not of the deck; **anything inside the slide area can be drawn by the deck, so trust only controls in the editor's own panels.** While the source or note box is open, the preview does not take clicks. The preview only points at what you double-clicked or Alt+clicked, and the editor reads the source, shows it and writes it when you press Save (or ⌘/Ctrl+Enter). The keys work with the focus on the preview or on the editor.
+
+   **Edit mode and the presenting tools do not mix.** Entering edit mode turns off the laser, pen and fading pen (ink already drawn stays visible but cannot be drawn on), stops autoplay and its audio, and closes the slide overview, blackout, the key list (?), fullscreen and a half-typed slide number. Lecture mode and captions stay as they are. While editing, the tool buttons (autoplay, laser, pens, colors, clear, overview, fullscreen) are hidden from the control bar and their keys (`x` `d` `v` Shift+`d` Backspace `o` `a` `b` `f`) do nothing; a tool chosen in the presenter view is turned off again. Leaving edit mode brings none of them back. Keys typed into a text field (the source box, or an input inside the deck) are always text, never tool or slide keys. The current mode is shown at the right end of the status bar (**Editing**, **Presenter tool: Pen**, or **Viewing**) and announced to screen readers; it never covers the slide.
 
    As with the dev server, a save is refused if the file changed since the preview was built (the source hash or the narration revision does not match); reload and try again.
 

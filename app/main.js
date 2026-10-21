@@ -550,6 +550,7 @@ const ui = createEditorUI({
   api: (method, url, body) => (S.ws ? api(method, url, body) : { _status: 404 }),
   lang: EN ? 'en' : 'ja',
   drawerHost: $('deck'),
+  modeHost: $('st-mode'),   // 今のモード（編集中・発表の道具）は下の帯の端に出す（舞台に重ねない）
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },

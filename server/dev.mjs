@@ -107,9 +107,10 @@ function shellPage() {
   const cfg = { token: TOKEN, cap: issueCap(), lang: page?.lang || 'ja', warn: page?.warn || [] };
   return `<!DOCTYPE html><html lang="${cfg.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer"><title>${escHtml(deckBase)} — dev</title><link rel="icon" href="data:,">
-<style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}#wrap{display:flex;height:100%}#deck{flex:1;min-width:0;height:100%;border:0;display:block;background:#1b1b1b}</style>
+<style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}body{display:flex;flex-direction:column}#wrap{display:flex;flex:1;min-height:0}#deck{flex:1;min-width:0;height:100%;border:0;display:block;background:#1b1b1b}
+#dev-bar{flex:none;display:flex;align-items:center;height:22px;padding:0 12px;background:#111;color:#c9ced8;border-top:1px solid #2a2a2a}</style>
 <script type="application/json" id="dev-cfg">${jsonInHtml(cfg)}</script>
-</head><body><div id="wrap"><iframe id="deck" title="slides" sandbox="allow-scripts allow-modals" allow="fullscreen; autoplay"></iframe></div>
+</head><body><div id="wrap"><iframe id="deck" title="slides" sandbox="allow-scripts allow-modals" allow="fullscreen; autoplay"></iframe></div><div id="dev-bar"></div>
 <script type="module" src="/__dev/shell.js"></script></body></html>`;
 }
 // 発表者ビューの窓（外枠が開く）：中のデッキも sandbox の iframe。外枠（opener）との間の知らせを中継するだけで、合言葉は持たない

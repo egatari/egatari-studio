@@ -17,6 +17,7 @@
 //     extra?: {open?(), editing?()},               ほかの信頼する欄（編集アプリの音声の板 app/audio-panel.js）：開いているか（板を出す）、
 //                                                  編集している最中か（録音している間など。プレビューを inert にする）
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
+//     modeHost?: 要素,                             今のモード（「編集中」「発表の道具：ペン」「表示」。aria-live で知らせる）を入れる画面の端の帯（プレビューの外）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
@@ -52,6 +53,7 @@ const STR = {
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
     dateLocale: 'en-US',
+    modeEdit: 'Editing', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
   },
   ja: {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
@@ -69,6 +71,7 @@ const STR = {
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
     dateLocale: 'ja-JP',
+    modeEdit: '編集中', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザー', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
 };
 
@@ -143,6 +146,10 @@ const CSS = [
   '.dev-pin.dv-flash{animation:dv-flash .45s ease-in-out 4}',
   '@keyframes dv-flash{50%{transform:scale(1.9);box-shadow:0 0 0 6px rgba(225,29,72,.35),0 1px 6px rgba(0,0,0,.45)}}',
   '@media (prefers-reduced-motion:reduce){.dev-pin.dv-flash{animation:none;outline:4px solid #e11d48;outline-offset:4px}}',
+  // 今のモード（編集中・発表の道具・表示）。画面の端の帯（modeHost：編集アプリの下の帯・開発サーバーの外枠の下の帯）に置き、舞台に重ねない
+  '#dev-mode{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:1.4;color:inherit;opacity:.85;white-space:nowrap}',
+  '#dev-mode::before{content:"";width:8px;height:8px;border-radius:50%;background:#9aa3b2;flex:none}',
+  '#dev-mode[data-mode=edit]::before{background:#2563eb}#dev-mode[data-mode=tool]::before{background:#e11d48}',
   '#dev-toast{position:fixed;z-index:1002;right:16px;bottom:22px;max-width:388px;background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}',
   '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
   '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
@@ -268,6 +275,19 @@ export function createEditorUI(o) {
   }
   const slideOf = (key) => (info ? info.slides.find((s) => s.key === key) : null);
 
+  // ---------------------------------------------------------------- 今のモード（画面の端。編集モードと発表の道具は同時には使わない：#69）
+  // 道具はデッキからの知らせ（tool）で知るだけ。編集モードに入ると、デッキ（kit/tools.js）が自分で道具を切って null を知らせてくる
+  let toolMode = null;
+  const modeEl = h('span', { id: 'dev-mode', cls: 'edit-ui', role: 'status', 'aria-live': 'polite', 'aria-label': L.modeLabel });
+  if (o.modeHost) o.modeHost.appendChild(modeEl);
+  function drawMode() {
+    const kind = editOn ? 'edit' : toolMode ? 'tool' : 'view';
+    const text = kind === 'edit' ? L.modeEdit : kind === 'tool' ? L.modeTool(L.tools[toolMode]) : L.modeView;
+    modeEl.hidden = !enabled() && kind === 'view';
+    if (modeEl.textContent !== text) modeEl.textContent = text;
+    modeEl.setAttribute('data-mode', kind);
+  }
+  drawMode();
   // ---------------------------------------------------------------- 編集モードの札
   const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) })]);
   side.appendChild(badge);
@@ -284,7 +304,9 @@ export function createEditorUI(o) {
     if (on && o.beforeEdit && !(await o.beforeEdit('edit'))) return false;
     editOn = on;
     if (!on) closeEditor();
-    drawBadge(); sendState(); saveUi();
+    // 全画面（編集アプリの「全画面」はプレビューの枠を全画面にする）のままだと、横の板が見えない：編集に入るときは全画面をやめる
+    if (on && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+    drawBadge(); sendState(); saveUi(); drawMode();
     return true;
   }
 
@@ -676,10 +698,15 @@ export function createEditorUI(o) {
       return true;
     }
     if (m.type !== 'edit-hint') return false;
+    if (m.kind === 'tool') {
+      toolMode = ['laser', 'pen', 'vpen'].includes(m.mode) ? m.mode : null;
+      drawMode();
+      return true;
+    }
     if (m.kind === 'ready') {
       const r = restorePos; restorePos = null;
       if (r) post({ type: 'deck-cmd', cmd: 'goto', i: r.i, k: r.k });
-      sendState(); drawBadge();
+      sendState(); drawBadge(); drawMode();
       loadInfo().then(() => { if (narrOpen && (!narr || !(narr.dirty || narrFocus))) narrFollow(true); });
       if (commentsOpen) loadComments();
       return true;
@@ -702,9 +729,9 @@ export function createEditorUI(o) {
     if (narr) narr.dirty = false;
     pos = null; restorePos = null; info = null; target = null; pinList = []; pending = null; flash = null;
     if (drawer) { drawer.remove(); drawer = null; narr = null; }
-    narrOpen = false; editOn = false;
+    narrOpen = false; editOn = false; toolMode = null;
     if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
-    drawBadge();
+    drawBadge(); drawMode();
     updateSide();
   }
   // 外枠のページを読み込み直したとき（開発サーバー）：覚えていた状態と位置に戻す
@@ -719,6 +746,7 @@ export function createEditorUI(o) {
     message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast, mark, escape, goStep,
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
+      mode: modeEl.getAttribute('data-mode'), modeText: modeEl.textContent, tool: toolMode,
       comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
   };
 }

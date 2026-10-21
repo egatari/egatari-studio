@@ -42,7 +42,12 @@ var ICON = {
   attach: SVG('<path d="M10.6 4.6L5.4 9.8a1.4 1.4 0 0 0 2 2l5.4-5.4a2.6 2.6 0 0 0-3.7-3.7L3.7 8.1a3.8 3.8 0 0 0 5.4 5.4l4.2-4.2"/>'),
   cap: SVG('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M7 6.6a1.7 1.7 0 1 0 0 2.8M11.6 6.6a1.7 1.7 0 1 0 0 2.8"/>')
 };
-function typing(t){ return t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName)); }
+// 入力中か：キーを受けた要素（影の木の中の欄も composedPath の先頭で見る）が文字を受けるもの。そのキーは道具に使わない
+function typing(e){
+  var t = e.composedPath ? e.composedPath()[0] : e.target;
+  if (!t || t.nodeType !== 1) t = e.target;
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+}
 function css(text){ var s = document.createElement("style"); s.className = "deck-tools"; s.textContent = text; document.head.appendChild(s); }
 
 // ---------------------------------------------------------------- 発表者ビュー：キーを本体と「今の画面」に中継する
@@ -71,7 +76,7 @@ if (Q.get("presenter")){
   DECK.ptools = {key: key, mode: function(){ return pmode; }, icons: ICON, colors: COLORS, names: CNAME, label: CLAB,
     color: function(c){ if (c === undefined) return pcolor; setPColor(c); }};
   document.addEventListener("keydown", function(e){
-    if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (key(e.key, e.shiftKey)) e.preventDefault();
   });
   window.addEventListener("message", function(e){
@@ -79,6 +84,8 @@ if (Q.get("presenter")){
     // 本体でペンの色が変わった：覚えて「今の画面」にも渡す
     if (m.type === "deck-tool-state" && e.source === window.opener && typeof m.color === "number"){
       if (m.color !== pcolor){ pcolor = m.color; if (f && f.contentWindow) f.contentWindow.postMessage({type: "deck-tool", cmd: "color", c: pcolor}, "*"); document.dispatchEvent(new CustomEvent("deck:ptool", {detail: {mode: pmode}})); }
+      // 本体が道具を切った（編集モードに入った・編集中に頼まれた道具を断った）：こちらの道具も切る
+      if (m.mode === null && pmode){ pmode = null; if (f && f.contentWindow) f.contentWindow.postMessage({type: "deck-tool", cmd: "mode", mode: null}, "*"); document.dispatchEvent(new CustomEvent("deck:ptool", {detail: {mode: pmode}})); }
       return;
     }
     if (!f || e.source !== f.contentWindow) return;
@@ -139,6 +146,9 @@ css(
   "#dt-cb svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
+  // 編集モードの間は、発表の道具（自動再生・レーザー・ペン・消えるペン・色・消す・一覧・全画面）のボタンを隠す
+  "#dt-cb.dt-edit [data-b=auto],#dt-cb.dt-edit [data-b=laser],#dt-cb.dt-edit [data-b=pen],#dt-cb.dt-edit [data-b=vpen],#dt-cb.dt-edit .dt-sw," +
+  "#dt-cb.dt-edit [data-b=clear],#dt-cb.dt-edit [data-b=over],#dt-cb.dt-edit [data-b=full],#dt-cb.dt-edit .dt-tsep{display:none!important}" +
   // 合成した声の札（format spec §7.3）：帯と一緒に出て、一緒に隠れる
   "#dt-cb .dt-aib{margin:0 3px 0 1px;padding:3px 7px;border:1px solid rgba(255,255,255,.3);border-radius:999px;color:rgba(255,255,255,.78);" +
   " font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;letter-spacing:.02em;white-space:nowrap;cursor:default}" +
@@ -455,12 +465,28 @@ function loop(){
 
 // ---------------------------------------------------------------- 道具の切り替え
 function setMode(m){
+  if (EDIT && m){ sendState(null); return; }   // 編集中は道具を使わない（発表者ビューから頼まれても断り、向こうの道具も切る）
+  var was = mode;
   mode = m || null; drawing = null;
   if (!layer) return;
   layer.className = "deck-tools" + (mode ? " on " + mode : "");
   if (mode !== "laser"){ dot.classList.remove("show"); clearTimeout(idleT); }
   showInd(); syncBar();
+  if (!FOLLOW && mode !== was) document.dispatchEvent(new CustomEvent("deck:tool", {detail: {mode: mode}}));
 }
+// 編集モード（開発サーバー・編集アプリのプレビュー。server/hints.js が deck:edit {on} を送る）：入るときに道具を切り（描く面は押せなくなる。
+// 書いた線は見えたまま残す）、一覧とキーの一覧を閉じる。編集している間は道具のボタンを隠し、道具・一覧のキーを使わない。出ても前の道具には戻さない
+var EDIT = false;
+document.addEventListener("deck:edit", function(e){
+  EDIT = !!(e.detail && e.detail.on);
+  if (cb) cb.classList.toggle("dt-edit", EDIT);
+  if (!EDIT) return;
+  closeOverview();
+  if (helpBox && helpBox.classList.contains("show")) toggleHelp(false);
+  if (mode) setMode(null);
+  drawing = null;
+  sendState(null);
+});
 function showInd(){
   ind.className = "deck-tools" + (mode ? " on" : "");
   if (!mode) return;
@@ -478,8 +504,13 @@ function setColor(c, quiet){
   sendState();
 }
 function nextColor(){ setColor(color + 1); }
-function sendState(){ if (!FOLLOW && DECK.toPresenter) DECK.toPresenter({type: "deck-tool-state", color: color}); }
-document.addEventListener("deck:presenter", sendState);
+function sendState(m){
+  if (FOLLOW || !DECK.toPresenter) return;
+  var s = {type: "deck-tool-state", color: color};
+  if (m === null) s.mode = null;   // 発表者ビューの道具も切る
+  DECK.toPresenter(s);
+}
+document.addEventListener("deck:presenter", function(){ sendState(EDIT ? null : undefined); });
 
 // 発表者ビューから（または発表者ビューが「今の画面」へ）送る操作
 window.addEventListener("message", function(e){
@@ -495,7 +526,7 @@ window.addEventListener("message", function(e){
     if (!FOLLOW) press("l");
     else { DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); var s = DECK.state(); DECK.seek(s.slide - 1, s.step, Infinity); }
   }
-  else if (m.cmd === "key" && m.key === "o" && !FOLLOW){ if (ov) closeOverview(); else openOverview(); }
+  else if (m.cmd === "key" && m.key === "o" && !FOLLOW && !EDIT){ if (ov) closeOverview(); else openOverview(); }
 });
 
 // ---------------------------------------------------------------- 一覧（o）
@@ -596,7 +627,7 @@ function buildBar(){
   cb.setAttribute("role", "toolbar");
   cb.setAttribute("aria-label", JA ? "スライドの操作" : "Slide controls");
   BTNS.forEach(function(b){
-    if (!b){ var s = document.createElement("i"); s.className = "sep"; s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
+    if (!b){ var s = document.createElement("i"); s.className = "sep" + (cb.querySelector('[data-b="clear"]') && !cb.querySelector(".dt-tsep") ? " dt-tsep" : ""); s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
     e.title = TIP[b[0]] + kk(b[1]);
@@ -620,6 +651,7 @@ function buildBar(){
       cb.appendChild(sw);
     }
   });
+  if (EDIT) cb.classList.add("dt-edit");
   document.body.appendChild(cb);
   addAiBadge();
   document.addEventListener("deck:aiaudio", addAiBadge);
@@ -768,10 +800,10 @@ function toggleHelp(on){
 window.addEventListener("keydown", function(e){
   if (FOLLOW){
     // 「今の画面」にフォーカスがあるときは、キーを発表者ビューに渡す
-    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey}, "*");
+    if (!typing(e)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey}, "*");
     return;
   }
-  if (!layer || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!layer || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
   var k = e.key, done = true;
   if (ov){
     if (k === "ArrowRight") select(ov.sel + 1);
@@ -784,6 +816,7 @@ window.addEventListener("keydown", function(e){
     else if (k === "Escape" || k === "o") closeOverview();
     // それ以外のキーも一覧の間は止める
   }
+  else if (EDIT && (k === "x" || k === "d" || k === "v" || k === "D" || k === "o" || k === "Backspace")) done = false;   // 編集中は道具と一覧のキーを使わない
   else if (k === "?") toggleHelp();
   else if (k === "Escape" && helpBox && helpBox.classList.contains("show")) toggleHelp(false);
   else if (k === "o") openOverview();
