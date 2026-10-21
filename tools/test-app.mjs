@@ -628,7 +628,12 @@ try {
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
     await previewAudioPlays(f, 'preview audio (single file in memory)');
     await presenterAudioPlays(pmin.html, 'presenter audio');
-    ok(ps.portable.profile === 'core' && await page.isHidden('#notice'), 'portable: core profile → no code notice');
+    ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
+    // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、フォルダに展開するボタンを出す（編集は断らない。下で編集して保存する）
+    ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『フォルダに展開』を使ってください。')
+      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack'), 'exportedFrom: opening the exported copy shows the notice (ja) with "Unpack to folder"; not edited since export');
+    await shot(page, 'portable-exported-notice.png');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-savemenu') && await page.isHidden('#m-save'), 'portable: toolbar shows Save and its menu button');
     await clickMenuOpen(page, '#b-savemenu');
     ok(await page.isVisible('#b-savenew') && await page.isVisible('#b-saveas'), 'portable: the Save menu has Save as new lesson / Save a copy');
@@ -673,6 +678,9 @@ try {
     ok(aBuf.toString().includes(`id="${FORMAT.FONT_SUPPLEMENT_PREFIX}0"`) && ps0.portable.lastTierA.supplement && [...'蒼穹'].every((c) => ps0.portable.lastTierA.supplement.chars.includes(c)), 'tier A: a font supplement for the new glyphs (fetched from the app\'s own font files)');
     const aRead = await readPortable(new Uint8Array(aBuf));
     ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
+    ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('書き出したあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+    fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
     ok(ps0.portable.stale.includes('何を最小化するか:0') && JSON.stringify(aRead.index.audio['何を最小化するか:0']) === JSON.stringify(pmin.index.audio['何を最小化するか:0']), 'tier A: the edited step\'s audio is kept as is and shown as stale');
     await shot(page, 'portable-tier-a-saved.png');
     await f.evaluate(() => DECK.go(2, 3, false));
@@ -735,6 +743,7 @@ try {
     ok(saved.index.audio[mk].inputHash === pmin.index.audio[mk].inputHash && await isStale(saved.index.audio[mk], parseNarration(new TextDecoder().decode(saved.files['narration.md'])).find((x) => `${x.slideKey}:${x.stepKey}` === mk)), 'save: the edited step keeps its old inputHash (stale, audio not deleted)');
     ok(['license', 'copyright', 'attribution', 'creators'].every((k) => JSON.stringify(saved.index.metadata[k]) === JSON.stringify(pmin.index.metadata[k])), 'save: license, copyright, attribution and creators kept');
     ok(!saved.index.metadata.derivedFrom, 'save: same docId → no derivedFrom');
+    ok(JSON.stringify(saved.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom), 'exportedFrom: the tier B save (rebuild) keeps the marker unchanged');
     ok(!Object.keys(saved.files).some((k) => /^\.cache|comments\.json/.test(k)), 'save: backups and notes are not in the file');
     // 展開したフォルダ（npm run portable -- unpack）がメモリの作業場所と同じ
     fs.writeFileSync(path.join(PW, 'saved' + FORMAT.FILE_EXT), savedBuf);
@@ -788,7 +797,12 @@ try {
     const rxName = await page.evaluate(() => window.__APP_TEST.lastSaveName);
     ok(rxName === exportName(rxr.index.metadata.title, 'deck', FORMAT.FILE_EXT) && rxName !== 'deck' + FORMAT.FILE_EXT, `export portable (folder): the default file name is the deck title (${rxName})`);
     ok(rxr.docId === pmin.index.docId && rxr.index.sourceSha256 === saved.index.sourceSha256, 'export portable (folder): same docId and sourceSha256 as the saved file');
-    ok(rx === savedBuf.toString(), 'export portable (folder): byte-identical to the file saved from memory (same editor build)');
+    // 作業フォルダからの書き出しは新しい印（そのフォルダの sourceSha256）。保存した写しは書き出したときの印のまま。違いは索引だけ
+    const noIx = (h) => h.replace(new RegExp(`<script type="[^"]*" id="${FORMAT.INDEX_ID}"[\\s\\S]*?</script>`), '');
+    ok(JSON.stringify(rxr.index.exportedFrom) === JSON.stringify({ kind: 'folder', sourceSha256: rxr.index.sourceSha256 }) && JSON.stringify(saved.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom), 'exportedFrom: the editor\'s folder export writes a fresh marker (the unpacked folder is the master now)');
+    { const { exportedFrom: _a, ...ra } = rxr.index, { exportedFrom: _b, ...sa } = saved.index;
+      ok(noIx(rx) !== rx && noIx(rx) === noIx(savedBuf.toString()) && JSON.stringify(ra) === JSON.stringify(sa), 'export portable (folder): byte-identical to the file saved from memory (same editor build) except for the index member exportedFrom'); }
+    ok(!Object.keys(out1).some((k) => Buffer.from(out1[k], 'base64').toString().includes('exportedFrom')), 'exportedFrom: the unpacked folder (Export folder) carries no marker');
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
 
     // 改変を認めないライセンス：はっきり確認するまで編集できない。編集の口（プレビューからの書き込み）でも同じ
@@ -1717,6 +1731,19 @@ try {
   watch(pe, 'en');
   await pe.goto(BASE);
   ok((await pe.textContent('#welcome h1')) === 'Open a single file (.ega.html) to view and edit', 'i18n: English UI for en locale');
+  // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
+  await pe.evaluate(async (b64) => {
+    const root = await navigator.storage.getDirectory();
+    const h = await root.getFileHandle('exported-edited.ega.html', { create: true });
+    const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    const w = await h.createWritable(); await w.write(u); await w.close();
+    await window.__APP_TEST.openFile({ handle: h });
+  }, fs.readFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT)).toString('base64'));
+  await pe.waitForSelector('#notice-exported', { timeout: 30000 });
+  { const t = await pe.textContent('#notice-exported');
+    ok(t.startsWith("This is a copy exported from a lesson folder. Changes made here do not go back into the folder. To bring them back, use 'Unpack to folder'.") && t.includes('This copy has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Unpack to folder', 'exportedFrom: the notice in English (both sentences) and the "Unpack to folder" button');
+    const st = await pe.evaluate(() => window.__APP_TEST.state().portable);
+    ok(st && st.readOnly === null && !st.tierAOnly, 'exportedFrom: the exported copy stays editable (not read-only)'); }
   await pe.close();
 
   // ---------------------------------------------------------------- 12. 1 ファイル版（file://）

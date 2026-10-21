@@ -38,7 +38,7 @@ const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'de
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // 索引の項目の並び（足すときの位置。書き出し（exportPortable）と同じ順）
-const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY];
+const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom'];
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
 

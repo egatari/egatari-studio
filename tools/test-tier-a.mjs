@@ -231,7 +231,11 @@ for (const name of ['minimal', 'tmlr2026-calibration']) {
     };
     assert.ok(rest(re.html) === rest(a.html), 'outside fonts, index and chunks the rebuild is byte-identical: ' + firstDiff(rest(re.html), rest(a.html)));
     const ix = (h) => plain(PF.parseJsonStrict(PF.scanDocument(h).byId.get(FORMAT.INDEX_ID).text));
-    assert.ok(deepEqual(ix(re.html), ix(a.html)), 'same index (as JSON values)');
+    // 書き出しの印（exportedFrom、§3.1）：段 A の保存は書き出したときの値のまま、展開したフォルダからのまとめ直しは新しい値（そのフォルダの sourceSha256）
+    const noMark = (x) => { const { exportedFrom, ...o } = x; return o; };
+    assert.deepEqual(ix(a.html).exportedFrom, plain(decks[name].r.index.exportedFrom), 'tier A keeps exportedFrom');
+    assert.deepEqual(ix(re.html).exportedFrom, { kind: 'folder', sourceSha256: ix(re.html).sourceSha256 }, 'packing the unpacked folder writes a fresh exportedFrom');
+    assert.ok(deepEqual(noMark(ix(re.html)), noMark(ix(a.html))), 'same index (as JSON values) except exportedFrom');
     const ixSame = PF.scanDocument(re.html).byId.get(FORMAT.INDEX_ID).text === PF.scanDocument(a.html).byId.get(FORMAT.INDEX_ID).text;
     const chunks = (h) => scanLayout(h).chunks.map((c) => h.slice(c.start, c.end));
     const chSame = JSON.stringify(chunks(re.html)) === JSON.stringify(chunks(a.html)), chSet = JSON.stringify(chunks(re.html).sort()) === JSON.stringify(chunks(a.html).sort());

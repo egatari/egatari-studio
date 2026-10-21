@@ -4,6 +4,7 @@
 //   exportPortable(env, deck.html, opts)  組み立て（build-core）の読み込みを記録して依存の閉包を取り、持ち運べる 1 ファイルの文字列を作る
 //   readPortable(text | bytes, opts)    文字列として読む（何も実行しない）。索引・ハッシュ・塊・上限・パスを検査し、メモリ上のフォルダを返す
 //   playOnly(text)                     再生専用の派生（§3.7）：索引と、実行系が参照しない塊を除く
+//   exportedState(index, folderSha)    書き出しの印（exportedFrom、§3.1）から、書き出しの後に写し・フォルダのどちらを直したか
 //   validateIndex(index)               索引の形（仕様の写し（FORMAT.VENDOR_DIR）の schema と同じ規則。依存なし）→ エラーの配列
 //   checkArchivePaths(paths)           パスの規則（§3.3）→ エラーの配列
 //   parseJsonStrict(text, opts)        同じ名前の重複を断る JSON の解析（原型のない object を作る）
@@ -325,6 +326,16 @@ export function validateIndex(ix) {
     });
   }
   if (own(ix, 'metadata')) metadataCheck(ix.metadata, 'metadata', e);
+  if (own(ix, 'exportedFrom')) {
+    const x = ix.exportedFrom;
+    if (!isObj(x)) e.push('exportedFrom: not an object');
+    else {
+      need(x, ['kind', 'sourceSha256'], 'exportedFrom');
+      for (const k of Object.keys(x)) if (k !== 'kind' && k !== 'sourceSha256') e.push(`exportedFrom: unknown member "${k}"`);
+      if (own(x, 'kind') && x.kind !== 'folder') e.push('exportedFrom.kind: not "folder"');
+      if (own(x, 'sourceSha256')) str(x.sourceSha256, 'exportedFrom.sourceSha256', RE.sha256);
+    }
+  }
   if (own(ix, 'excluded') && !(Array.isArray(ix.excluded) && ix.excluded.every((x) => typeof x === 'string'))) e.push('excluded: not an array of strings');
   if (own(ix, 'extensions')) {
     if (!isObj(ix.extensions)) e.push('extensions: not an object');
@@ -501,6 +512,17 @@ export function sourceSha256(fileShas) {
   return sha256Hex(paths.map((p) => `${p}\t${fileShas[p]}\n`).join(''));
 }
 
+// 書き出しの印（index.exportedFrom、§3.1）から、写しとフォルダのどちらが書き出しの後に直されたか。印がなければ null。
+// 比べるのは hash だけ（時刻は持たない）：写しの今の sourceSha256 と印の値が違えば写しを直した。folderSha（同じ docId の作業フォルダの
+// 今の sourceSha256。写しとフォルダの両方があるときだけ分かる）が印の値と違えばフォルダを直した。分からなければ folderEdited は null
+export function exportedState(index, folderSha = null) {
+  const x = isObj(index) ? index.exportedFrom : null;
+  if (!isObj(x) || x.kind !== 'folder' || typeof x.sourceSha256 !== 'string' || !RE.sha256.test(x.sourceSha256)) return null;
+  const copyEdited = index.sourceSha256 !== x.sourceSha256;
+  const folderEdited = typeof folderSha === 'string' ? folderSha !== x.sourceSha256 : null;
+  return { exportedSha256: x.sourceSha256, copyEdited, folderEdited, both: copyEdited && folderEdited === true };
+}
+
 // ---------------------------------------------------------------- 書き出しから外すもの（§3.3）
 // [正規表現, 分類]。分類は index.excluded に入る（決まった一覧。原稿から何が外れたかには依らない）
 const EXCLUDE = [
@@ -549,7 +571,7 @@ const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
-const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY]);
+const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom']);
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 // JSON の値が同じか（object の項目の順は問わない）
 export function sameJson(a, b) {
@@ -589,6 +611,9 @@ export function folderConfig(index, conf) {
 //                          identity がなければ derivedFrom は carry のまま（docId を変えない保存は derivedFrom を付けも変えもしない。§7.3）
 //   originalNarration      carry の文書の narration.md（あれば。行から作られた拡張を、行を消したら残さないため）
 //   identity               {docId, derivedFrom}：新しい教材として保存する（新しい docId・derivedFrom。§3.6.1・§7.3）。FORMAT.CONFIG_FILE を書き直し writes に
+//   fromFolder             作業フォルダからの書き出し（CLI の --portable・編集アプリの「1 ファイルを書き出す」）：index.exportedFrom（§3.1）に
+//                          {kind: "folder", sourceSha256: この書き出しの sourceSha256} を書く（前の値は置き換える）。時刻・パス・名前は入れない。
+//                          ないとき（1 ファイルの保存・貼り付け・deck.html だけ）は書かず、carry に exportedFrom があればそのまま残す
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
@@ -912,6 +937,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
   // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
   if (isObj(opts.carry)) carryUnknown(index, opts.carry, { identity: !!opts.identity, lineExtensions: opts.originalNarration != null ? new Set(Object.keys(extensionsFrom(parseNarration(String(opts.originalNarration))))) : null });
+  // 書き出しの印（§3.1）：作業フォルダからの書き出しは新しい値に置き換え、1 ファイルの保存（carry）は元のまま（carryUnknown は知っている項目を写さない）
+  if (opts.fromFolder) index.exportedFrom = { kind: 'folder', sourceSha256: srcSha };
+  else if (isObj(opts.carry) && own(opts.carry, 'exportedFrom')) index.exportedFrom = opts.carry.exportedFrom;
   // 設定のファイルが extensions を持てば、live はそれが決める（編集アプリで部屋を外したら、読み取った文書の索引から戻さない）
   if (isObj(econf.extensions) && isObj(index.extensions)) {
     if (confLive) index.extensions.live = extensions.live; else delete index.extensions.live;
