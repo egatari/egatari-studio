@@ -186,7 +186,8 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 ```
 
 - `data-annot` on an element marks text in it as an annotation set beside the text it explains (return marks, reading-order numbers of `m-kanbun`): the quality checker MUST NOT report that element's text, including all its descendants and SVG text, as too small (`smallText`, `smallSvgText`; the 24 px / 27 px minimum of R-fit). It MUST NOT change any other check (`textClipped`, `bodyBottom`, …) nor the rendering
-- Components and authors use `data-annot` only for a short mark (a number or a few characters) that points into the text, never for content: a sentence, a label of a figure or a table cell is not an annotation. Where the minimum can be met, meet it instead; the mark is a last resort
+- `data-annot` takes effect only on elements a component creates when it mounts, and has no effect in the author's source: the player removes every `data-annot` that is in the deck's own markup (including a hand-written child inside an `m-*` element) before components mount, so small text cannot be exempted by marking it. A component sets it in `mount`
+- Components use `data-annot` only for a short mark (a number or a few characters) that points into the text, never for content: a sentence, a label of a figure or a table cell is not an annotation. Where the minimum can be met, meet it instead; the mark is a last resort
 
 ## 11. Live room pane (extension `live`, draft)
 

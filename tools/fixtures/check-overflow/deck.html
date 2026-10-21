@@ -183,13 +183,21 @@
   <div class="body"><p>ふつうの本文。<span style="font-size:18px">小さい字</span></p></div>
 </section>
 <section class="slide" id="s-annot">
-  <h2>小さい注記</h2>
-  <div class="body"><p>ふつうの本文。<span data-annot style="font-size:18px">注記</span></p>
-    <svg viewBox="0 0 1000 200" width="500" height="100" aria-label="注記の図">
+  <h2>部品が付けた小さい注記</h2>
+  <div class="body"><p>ふつうの本文。</p><m-annotfix style="height:200px"></m-annotfix></div>
+</section>
+<!-- data-annot は部品が作った要素にだけ効く。書き手が deck.html に書いたものは、本文でも SVG でも、部品の中に手で書いた子でも効かない -->
+<section class="slide" id="s-annotauthor">
+  <h2>書き手の data-annot</h2>
+  <div class="body"><p>ふつうの本文。<span data-annot style="font-size:18px">書き手の注記</span></p>
+    <svg viewBox="0 0 1000 200" width="500" height="100" aria-label="書き手の注記の図">
       <g data-annot><text x="20" y="100" font-size="30" style="fill:var(--fg)">小さい注記</text></g>
-      <text x="400" y="100" font-size="60" style="fill:var(--fg)">ふつうの字</text>
     </svg>
   </div>
+</section>
+<section class="slide" id="s-annotlight">
+  <h2>部品の中の書き手の子</h2>
+  <div class="body"><m-annotfix style="height:200px"><span data-annot style="font-size:18px">手書きの子</span></m-annotfix></div>
 </section>
 <section class="slide" id="s-annotsvg">
   <h2>印のない小さい図の字</h2>

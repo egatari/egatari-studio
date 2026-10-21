@@ -405,6 +405,9 @@ var POS = DECK.PositionStore();
 var slides = [], fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
 
 function setupSlide(s, i, mainEnd){
+  // 小さい注記の印は部品が mount で付けたものにだけ効く：書き手がデッキに書いたものは、部品の中に手で書いた子も含め、部品が作る前にここで外す
+  // （名前は kit/core/layout-scan.mjs の ANNOT_ATTR と同じ。tools/test-check-overflow.mjs が合っているか確かめる）
+  [].forEach.call(s.querySelectorAll("[data-annot]"), function(e){ e.removeAttribute("data-annot"); });
   var autoList = !s.classList.contains("static") && !s.classList.contains("nostep") && !s.querySelector("[data-step]") && !s.querySelector("[data-from]");
   if (autoList) [].slice.call(s.querySelectorAll(".body > ul > li, .body > ol > li")).forEach(function(li, k){ li.setAttribute("data-step", k + 1); });
   var items = [].slice.call(s.querySelectorAll("[data-step]")).filter(function(e){

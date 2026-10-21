@@ -50,6 +50,8 @@ const EXPECT = {
   's-smallsvg': ['smallSvgText'],
   's-smallhtml': ['smallText'],
   's-annot': [],
+  's-annotauthor': ['smallSvgText', 'smallText'],
+  's-annotlight': ['smallText'],
   's-annotsvg': ['smallSvgText'],
   's-tate': ['conclOverflow', 'tateTitle'],
   's-bodyover': ['bodyBottom'],
@@ -82,12 +84,15 @@ await t(`check: ${CLIP_ATTR} keeps the intended clip (s-fix52b) and a marked com
   const xs = J.results.filter((x) => (x.id === 's-fix52b' || x.id === 's-flowclip') && x.sev !== 'info' && x.code !== 'narrMissing');
   assert.deepEqual(xs.map((x) => x.code), []);
 });
-await t(`check: ${ANNOT_ATTR} exempts only the minimum text size (smallText, smallSvgText), HTML and SVG text alike`, () => {
-  const xs = (id) => J.results.filter((x) => x.id === id && x.sev !== 'info' && x.code !== 'narrMissing').map((x) => x.code);
-  assert.deepEqual(xs('s-annot'), []);
+await t(`check: ${ANNOT_ATTR} exempts only what a component makes, and only the minimum text size (smallText, smallSvgText)`, () => {
+  const xs = (id) => J.results.filter((x) => x.id === id && x.sev !== 'info' && x.code !== 'narrMissing').map((x) => x.code).sort();
+  assert.deepEqual(xs('s-annot'), []);                                          // made by the component (light DOM span and SVG text): exempt
+  assert.deepEqual(xs('s-annotauthor'), ['smallSvgText', 'smallText']);         // written in deck.html: still flagged
+  assert.deepEqual(xs('s-annotlight'), ['smallText']);                          // written by hand inside an m-* tag: still flagged (the component's own span is exempt)
   assert.deepEqual(xs('s-smallhtml'), ['smallText']);
   assert.deepEqual(xs('s-annotsvg'), ['smallSvgText']);
   assert.equal(ANNOT_ATTR, 'data-annot');
+  assert.ok(fs.readFileSync(path.join(ROOT, 'kit', 'deck.js'), 'utf8').includes(`querySelectorAll("[${ANNOT_ATTR}]")`), 'kit/deck.js uses the same attribute name as ANNOT_ATTR');
 });
 await t('check: a body that overflows at the bottom is one error, not also a warning for each figure label it pushes off the slide', () => {
   const xs = J.results.filter((x) => x.id === 's-bodyover' && x.sev !== 'info' && x.code !== 'narrMissing');
