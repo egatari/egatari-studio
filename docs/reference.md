@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=80843c3d0002e404 -->
+<!-- i18n: pair=reference.ja.md sha256=d3fd021efb1b330b -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -381,7 +381,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 
 ### Single file (`--portable`)
 
-`node kit/build.mjs <deck.html> --portable` writes `out/<name>.ega.html`: one HTML file that plays like the normal build and also carries the deck's source, so it can be unpacked into a folder (or reopened by an editor) without the original folder. It follows **Egatari**, the open [portable deck format](https://github.com/egatari/egatari-spec) (draft 1.0); the file name extension, block ids and media type come from that spec.
+`node kit/build.mjs <deck.html> --portable` writes `<working folder>/<lesson title>.ega.html` (the title as the editor names its export: `metadata.title`, otherwise the deck's `<title>`, made safe for every OS; without a title, `<deck name>.ega.html`) and prints its full path: one HTML file that plays like the normal build and also carries the deck's source, so it can be unpacked into a folder (or reopened by an editor) without the original folder. It follows **Egatari**, the open [portable deck format](https://github.com/egatari/egatari-spec) (draft 1.0); the file name extension, block ids and media type come from that spec.
 
 - **What goes in**: every file the build reads from the working folder (`deck.html`, `narration.md`, `macros.tex`, `timeline.json`, data, figures, images, styles, deck-local components and themes), `voice.json` with local paths reduced to voice names, and the audio listed in `audio/manifest.json` for steps that exist in the narration (compressed to AAC as with `--embed-audio`; WAV with a warning if ffmpeg is missing). Each audio clip is stored once and the runtime plays it from there.
 - **What stays out**: `comments.json`, hidden files and folders (`.cache/`, `.git/`, `.env`, …), `out/`, `video/`, `bundle/`, `node_modules/`, backups, `*.local.json`, credentials, unused audio and the TTS cache files. A file the build read but that is excluded is reported. Components and themes from this repository are referenced by name, version and SHA-256 instead of being copied (a theme from your theme folders, `EGATARI_THEMES` or `~/.egatari/themes`, is copied in as the deck's `themes/<name>/`); a registry name is a single identifier (`^[a-z][a-z0-9-]{0,63}$`), and the reader refuses a file whose registry names are anything else (a path, `..`, uppercase).
@@ -400,8 +400,8 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 
 | Option | Meaning |
 |---|---|
-| `--portable` | write the single file (default `out/<name>.ega.html`; `-o` sets the path) |
-| `--play-only` | write a play-only copy (default `out/<name>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
+| `--portable` | write the single file (default `<working folder>/<lesson title>.ega.html`, at the top of the folder; `-o` sets the path) |
+| `--play-only` | write a play-only copy (default `<working folder>/<lesson title>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
 
 `npm run portable -- unpack <file> <dir> [--force]` extracts the source and audio into `<dir>` (and writes `audio/manifest.json` from the audio records, so the folder builds and packs again). It reads the file as text and never runs its scripts; it checks the index and every hash, the size limits and the path rules of the spec, refuses to write outside `<dir>` or through symbolic links, and refuses a non-empty `<dir>` unless `--force`. `npm run portable -- pack <dir> [-o file] [--play-only]` is `build --portable` on that folder: packing an unpacked folder gives the same file again.
 

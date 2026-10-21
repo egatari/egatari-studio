@@ -2,9 +2,9 @@
 //
 //   node kit/build.mjs <deck.html | デッキのフォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only [--live 部屋.json]]
 //
-//   --portable   持ち運べる 1 ファイル（format spec。out/<名前><FORMAT.FILE_EXT>）：再生できる HTML に原稿と音声を入れたもの（kit/core/portable.mjs）。
+//   --portable   持ち運べる 1 ファイル（format spec。<デッキのフォルダ>/<題名><FORMAT.FILE_EXT>。題名がなければデッキの名前）：再生できる HTML に原稿と音声を入れたもの（kit/core/portable.mjs）。
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
-//   --play-only  その再生専用の派生（out/<名前><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   --play-only  その再生専用の派生（<デッキのフォルダ>/<題名><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
 //   --live 部屋.json  派生に授業の部屋を付ける（拡張 live。教員のページの「コピー」の JSON：endpoint・room・key・window。活動は FORMAT.CONFIG_FILE の
 //                extensions.live にあればそれ、なければ部屋の JSON の activities）。CSP の <meta> と再生器（kit/live.js）が入る。鍵は教材に残さない
 //   形式の名前・拡張子は kit/core/format.mjs
@@ -30,6 +30,7 @@ import * as core from './core/build-core.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
 import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs';
 import { FORMAT } from './core/format.mjs';
+import { exportName, titleOf } from './core/export-name.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
@@ -192,9 +193,16 @@ export function writeOutput(srcPath, out, data) {
   fs.mkdirSync(path.dirname(o), { recursive: true });
   return safeWriteFile(path.dirname(o), o, data);
 }
-export function defaultPortableOut(srcPath, playOnlyOut = false) {
+// 1 ファイルの既定の書き出し先：原稿のフォルダの最上位に、教材の題名から作った名前（kit/core/export-name.mjs。編集アプリと同じ）で置く。
+// 題名がなければデッキの名前。その名前に今あるものが普通のファイルでなければ（フォルダ・リンクなど）デッキの名前に替える。
+// 名前は必ず .ega.html / .play.ega.html で終わるので、deck.html・narration.md など原稿のファイルには当たらない
+export function defaultPortableOut(srcPath, playOnlyOut = false, title = '') {
   const p = path.parse(path.resolve(srcPath));
-  return path.join(p.dir, 'out', p.name + (playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT));
+  const ext = playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT;
+  const byTitle = path.join(p.dir, exportName(title, p.name, ext));
+  let st = null;
+  try { st = fs.lstatSync(byTitle); } catch { /* まだない */ }
+  return !st || (st.isFile() && !st.isSymbolicLink()) ? byTitle : path.join(p.dir, exportName('', p.name, ext));
 }
 
 // コマンドの引数の原稿：フォルダなら <フォルダ>/deck.html にする。フォルダに deck.html がなければ、何が要るかを言って断る
@@ -233,13 +241,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   if (opts.portable) {
     if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }
-    const out = opts.out || defaultPortableOut(src, opts.playOnly);
     let r;
-    try { r = await buildPortable(src, { ...opts, out }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
+    try { r = await buildPortable(src, { ...opts }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
+    const out = path.resolve(opts.out || defaultPortableOut(src, opts.playOnly, r.index?.metadata?.title || titleOf(r.html)));
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
     if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
-    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live room ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB -> ${out}`);
+    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live room ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
   } else {
     const out = opts.out || defaultOut(src);

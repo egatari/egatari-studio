@@ -50,8 +50,8 @@ node "$R\render\render.mjs" "$D\out\deck.html" --out "$D\video" --full
 動画とは別に、TTS の音声を入れた 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://studio.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
 
 ```bash
-node $R/kit/build.mjs $D --portable      # → $D/out/<名前>.ega.html（原稿・音声入り。docId は $D/egatari.json）
-node $R/kit/build.mjs $D --play-only     # → $D/out/<名前>.play.ega.html（原稿なしの再生専用。学ぶ人に配るもの）
+node $R/kit/build.mjs $D --portable      # → $D/<教材の題名>.ega.html（原稿・音声入り。docId は $D/egatari.json）
+node $R/kit/build.mjs $D --play-only     # → $D/<教材の題名>.play.ega.html（原稿なしの再生専用。学ぶ人に配るもの）
 ```
 
 - TTS と build の後に作る（音声の長さが入ったタイムラインで）。ライセンス・著作権・作り手は `$D/egatari.json` の `metadata` に（motion-slides §3「教材の情報」）

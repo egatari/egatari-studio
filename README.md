@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=2e8a98065f2f4b82 -->
+<!-- i18n: pair=README.ja.md sha256=4bd2de0656b984fe -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -32,7 +32,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Quality control**: the standards (R-fit, R-steps, …) say what a deck must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
 - **Dev server**: edit text and narration in the browser, leave notes for your AI coding tool
-- **Single file (`.ega.html`)**: `--portable` writes one HTML file that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
+- **Single file (`.ega.html`)**: `--portable` writes one HTML file (at the top of the lesson folder, named from the lesson title; the path is printed) that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the source. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for portable decks](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the deck embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
 **Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
