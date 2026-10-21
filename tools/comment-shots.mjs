@@ -5,10 +5,10 @@
 //
 // 画面は DECK.seek(i, k, Infinity)（段階 k の最後の状態）だけで決まるので、プレビューから画像を受け取らずに、ここで組み立てて撮り直す。
 // <デッキ>/.cache/comment-shots/ に書く（.cache は git に入れない）：
-//   <id>-full.png  スライド全体（1280×720）。点（pin）があれば印を描く。手書きメモの線（stroke）があれば、その線も同じ色で描く
-//   <id>.png       点の周り（スライドの 480×300 の範囲を 2 倍で）。線があれば、線の外接矩形に余白 STROKE_MARGIN を足した範囲も含める
+//   <id>-full.png  スライド全体（1280×720）。点（pin）があれば印を描く。手書きメモの線（strokes。前の形の stroke も）があれば、全部の線を同じ色で描く
+//   <id>.png       点の周り（スライドの 480×300 の範囲を 2 倍で）。線があれば、全部の線の外接矩形に余白 STROKE_MARGIN を足した範囲も含める
 //                  （480×300 より小さくはしない。スライドの外には出さない）。点がなければスライド全体と同じ
-//   index.json     [{id, key, slide, step, pin, stroke, quote, comment, full, crop, clip}]（撮れなかったものは error）
+//   index.json     [{id, key, slide, step, pin, strokes, quote, comment, full, crop, clip}]（撮れなかったものは error）
 // 既定は status が open のものだけ。id を並べればそれだけ、--all なら解決済みも
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,14 +16,15 @@ import { build, resolveDeckArg } from '../kit/build.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { safeWriteFile, readContained } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
-import { normPin, normStroke, SLIDE_W, SLIDE_H } from '../kit/core/comment-core.mjs';
+import { normPin, entryStrokes, SLIDE_W, SLIDE_H } from '../kit/core/comment-core.mjs';
 
 const CROP_W = 480, CROP_H = 300, CROP_SCALE = 2, STROKE_MARGIN = 48;
-// 切り抜く範囲（スライドの座標）：点を真ん中にした 480×300。線があれば、線（と点）の外接矩形＋余白を真ん中にして、480×300 より小さくしない
-export function cropOf(pin, stroke) {
+// 切り抜く範囲（スライドの座標）：点を真ん中にした 480×300。線（strokes、何本でも）があれば、全部の線（と点）の外接矩形＋余白を真ん中にして、480×300 より小さくしない
+export function cropOf(pin, strokes) {
   let cx = pin.x, cy = pin.y, w = CROP_W, hh = CROP_H;
-  if (stroke) {
-    const xs = [pin.x, ...stroke.map((q) => q[0])], ys = [pin.y, ...stroke.map((q) => q[1])];
+  if (strokes && strokes.length) {
+    const all = strokes.flat();
+    const xs = [pin.x, ...all.map((q) => q[0])], ys = [pin.y, ...all.map((q) => q[1])];
     const x0 = Math.min(...xs) - STROKE_MARGIN, x1 = Math.max(...xs) + STROKE_MARGIN, y0 = Math.min(...ys) - STROKE_MARGIN, y1 = Math.max(...ys) + STROKE_MARGIN;
     cx = (x0 + x1) / 2; cy = (y0 + y1) / 2;
     w = Math.min(SLIDE_W, Math.max(CROP_W, x1 - x0)); hh = Math.min(SLIDE_H, Math.max(CROP_H, y1 - y0));
@@ -69,8 +70,8 @@ export async function commentShots(arg, o = {}) {
     };
     const p1 = await open(ctx1), p2 = await open(ctx2);
     for (const c of pick) {
-      const key = String(c.key || ''), pin = normPin(c.pin), stroke = pin ? normStroke(c.stroke) : null;
-      const e = { id: c.id, key, pin, ...(stroke ? { stroke } : {}), quote: String(c.quote || ''), comment: String(c.comment || ''), status: c.status };
+      const key = String(c.key || ''), pin = normPin(c.pin), strokes = pin ? entryStrokes(c) : null;
+      const e = { id: c.id, key, pin, ...(strokes ? { strokes } : {}), quote: String(c.quote || ''), comment: String(c.comment || ''), status: c.status };
       const at = await p1.evaluate((key) => {
         const j = key.lastIndexOf(':'), sk = key.slice(0, j), st = key.slice(j + 1);
         const i = DECK.slides.findIndex((s) => s._key === sk);
@@ -82,13 +83,14 @@ export async function commentShots(arg, o = {}) {
       if (!at) { e.error = 'the step ' + JSON.stringify(key) + ' is not in the deck'; shots.push(e); continue; }
       e.slide = at.i + 1; e.step = at.k;
       for (const p of [p1, p2]) {
-        await p.evaluate(({ i, k, pin, stroke, color }) => {
+        await p.evaluate(({ i, k, pin, strokes, color }) => {
           DECK.seek(i, k, Infinity);
           for (const id of ['comment-shot-pin', 'comment-shot-ink']) { const o = document.getElementById(id); if (o) o.remove(); }
           if (!pin) return;
           // 手書きメモの線：編集の画面の重ね（server/editor-ui.js の .dev-ink）と同じく、白い縁取りの上に印の色の線
-          if (stroke) {
-            const NS = 'http://www.w3.org/2000/svg', d = 'M' + stroke.map((q) => q[0] + ' ' + q[1]).join('L');
+          if (strokes) {
+            // 線ごとに M から始める（線どうしを繋がない）
+            const NS = 'http://www.w3.org/2000/svg', d = strokes.map((s) => 'M' + s.map((q) => q[0] + ' ' + q[1]).join('L')).join('');
             const svg = document.createElementNS(NS, 'svg');
             svg.id = 'comment-shot-ink';
             svg.setAttribute('viewBox', '0 0 1280 720'); svg.setAttribute('width', '1280'); svg.setAttribute('height', '720');
@@ -114,14 +116,14 @@ export async function commentShots(arg, o = {}) {
             m.appendChild(d);
           }
           document.body.appendChild(m);
-        }, { ...at, pin, stroke, color: PIN_COLOR });
+        }, { ...at, pin, strokes, color: PIN_COLOR });
         await p.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
       }
       const full = path.join(out, c.id + '-full.png'), crop = path.join(out, c.id + '.png');
       const fullPng = await p1.screenshot();
       safeWriteFile(dir, full, fullPng);
       if (pin) {
-        const cl = cropOf(pin, stroke);
+        const cl = cropOf(pin, strokes);
         e.clip = { ...cl, scale: CROP_SCALE };
         safeWriteFile(dir, crop, await p2.screenshot({ clip: cl }));
       } else safeWriteFile(dir, crop, fullPng);
@@ -146,7 +148,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   if (!res.shots.length) { console.log('comment-shots: no ' + (all ? '' : 'open ') + 'comments'); process.exit(0); }
   for (const s of res.shots) {
     if (s.error) { console.log(`  ${s.id}  ${s.key}  ⚠ ${s.error}`); continue; }
-    console.log(`  ${s.id}  ${s.key}（slide ${s.slide}, step ${s.step}）${s.pin ? ` pin ${Math.round(s.pin.x)},${Math.round(s.pin.y)}` : ''}${s.stroke ? ` stroke ${s.stroke.length} points` : ''}`);
+    console.log(`  ${s.id}  ${s.key}（slide ${s.slide}, step ${s.step}）${s.pin ? ` pin ${Math.round(s.pin.x)},${Math.round(s.pin.y)}` : ''}${s.strokes ? ` ${s.strokes.length} stroke(s), ${s.strokes.reduce((n, x) => n + x.length, 0)} points` : ''}`);
     console.log(`    ${s.comment.replace(/\s+/g, ' ').slice(0, 80)}`);
     console.log(`    -> ${rel(s.crop)}  ${rel(s.full)}`);
   }

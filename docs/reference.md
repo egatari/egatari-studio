@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=7d55d2ffbeb43215 -->
+<!-- i18n: pair=reference.ja.md sha256=c65e270b7f67ca2c -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -290,7 +290,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `n` | narration drawer for the current step (and preview of the next) |
 | `c` | open comments; click to jump, "resolve" to close |
 | Alt+click (on a Mac: ⌥ Option+click) | leave a note for the AI (`comments.json`) |
-| `m` / `d` (edit mode; the slide controls' pen button reads “Ink note” there) | ink note: draw a circle or an arrow, then write the note; the mark is kept as `stroke` ([contract §12](contract.md#12-review-notes-the-ink-stroke)) |
+| `m` / `d` (edit mode; the slide controls' pen button reads “Ink note” there) | ink note: draw circles or arrows (several marks for one note while its box is open), then write the note; the marks are kept as `strokes` ([contract §12](contract.md#12-review-notes-the-ink-stroke)) |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
 | endpoints | `GET /` (frame page; `?presenter=1`: presenter window), `GET /preview` (the deck document, sandboxed; the only framable endpoint; served only with the frame page's `cap` and `Sec-Fetch-Dest: iframe`, otherwise a 403 text page), `/deck/<file>` (inert: CSP `sandbox`, non-media as `text/plain` attachments), `/__dev/shell.js`, `/__dev/editor-ui.js`, `/__dev/presenter.js`, `/__dev/events` (SSE), `GET /__dev/info`, `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |
@@ -471,7 +471,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
 | `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. Prints the path and the slide count |
-| `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin (and ink stroke) drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, at least the stroke's bounding box plus 48 px, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
+| `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin (and ink strokes) drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, at least the bounding box of its strokes plus 48 px, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
 | `node tools/catalog.mjs` | regenerate `vendor/components/CATALOG.md` |
 | `npm run components:update -- vX.Y.Z [--from <folder>]` | bring in a release of egatari/components into `vendor/components/` and `components.lock.json` (checks sha256 against `manifest.json`; never replaces a version) |
 | `npm run components:check` | `vendor/components` matches `components.lock.json` (no network) |

@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=f09d6bc87b49f38c -->
+<!-- i18n: pair=dev-server.ja.md sha256=0f1ac0240ac08f8b -->
 # Dev server (fix the deck in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -30,7 +30,7 @@ The page at `/` is a frame around the deck: the deck itself runs in a sandboxed 
 | `n` | Narration drawer (right; the slide shrinks beside it). Edit the turns of the current step (speaker Expert / Novice; add, delete and reorder turns). Write `{cue}` and `{φ\|ファイ}` as they are. The next step is shown below |
 | `c` | List of notes for the AI (open ones), numbered. Click one to go to its slide and step; its point flashes on the slide. 「解決」 ("Resolve") marks it as done |
 | Alt+click (on a Mac, hold the ⌥ Option key and click) | Leave a note for the AI about that element. The point you clicked is kept too (a *pin*): while the list is open, each note of the step on screen is marked with a numbered ring at that spot, at any size of the slide |
-| `m` or `d` (in edit mode, when not typing in a text field; also the 「手書きメモ（m）」 / "Ink note (m)" button in the edit-mode bar of the side panel, and the pen button of the slide controls, which reads 「手書きメモ」 / "Ink note" while editing) | Ink note: draw a circle or an arrow on the slide. When you let go, the same note box as Alt+click opens for the mark; the mark is kept with the note (`stroke`) and drawn over the slide (never into the deck) in the pin colour. The indicator says 「編集中：手書きメモ」 / "Editing: ink note". `m` or `d` again, or Esc, turns it off, and so does leaving edit mode. While typing in a text field `d` and `m` are text. Outside edit mode `m` does nothing and `d` is the presenter pen; the presenter view cannot choose the ink note and its tools stay refused while editing |
+| `m` or `d` (in edit mode, when not typing in a text field; also the 「手書きメモ（m）」 / "Ink note (m)" button in the edit-mode bar of the side panel, and the pen button of the slide controls, which reads 「手書きメモ」 / "Ink note" while editing) | Ink note: draw a circle or an arrow on the slide. When you let go, the same note box as Alt+click opens for the mark in the side panel; while it is open, further strokes join the same note (up to 20; the preview stays drawable), Leave keeps all the marks with the note (`strokes`), Cancel discards them all. The marks are drawn over the slide (never into the deck) in the pin colour. The indicator says 「編集中：手書きメモ」 / "Editing: ink note". `m` or `d` again, or Esc, turns it off, and so does leaving edit mode. While typing in a text field `d` and `m` are text. Outside edit mode `m` does nothing and `d` is the presenter pen; the presenter view cannot choose the ink note and its tools stay refused while editing |
 
 The keys work whether the focus is on the slide or on the frame page; the box or drawer that opens takes the focus, and closing it gives the focus back to the slide.
 
@@ -46,7 +46,7 @@ The same goes for the narration: if the lines of that step have changed elsewher
 - `deck.html`: replaces only the contents of the element edited by double-click
 - `narration.md`: replaces only the lines of that step (`[k] …` and its continuation lines). If there are none, they are added at the position given by the order of slides and steps.
   All other lines (including comments) stay as they were. Deleting all turns removes the lines of that step
-- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html, pin is the clicked point `{x, y}` in slide coordinates, 1280×720, independent of the zoom; older entries without `pin` still work; an ink note adds `stroke`, the drawn mark as points `[[x, y], …]` in the same coordinates, and its `pin` is the mark's centroid: [contract §12](contract.md#12-review-notes-the-ink-stroke)). The point refers to the final state of the step (`DECK.seek(i, k, Infinity)`), also when you clicked during its animation. quote begins with the text near the point when there is any (a label or word inside a figure or component, at most 60 characters), followed by the first 80 characters of the element
+- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html, pin is the clicked point `{x, y}` in slide coordinates, 1280×720, independent of the zoom; older entries without `pin` still work; an ink note adds `strokes`, the drawn marks as lists of points `[[[x, y], …], …]` in the same coordinates (older notes may have a single `stroke`, read as one mark), and its `pin` is the centroid of all marks: [contract §12](contract.md#12-review-notes-the-ink-stroke)). The point refers to the final state of the step (`DECK.seek(i, k, Infinity)`), also when you clicked during its animation. quote begins with the text near the point when there is any (a label or word inside a figure or component, at most 60 characters), followed by the first 80 characters of the element
 - `.cache/edits/`: copies of deck.html and narration.md from before each rewrite (the latest 30)
 
 ## Protection
@@ -82,7 +82,7 @@ So that a browser that has another site open cannot rewrite your source, the fol
 
 Ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the notes in comments.json" (with the motion-slides skill installed in Claude Code, "Apply the comments" is enough). The tool reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
 to edit deck.html (or narration.md, or a component), and sets the finished ones to `"status": "resolved"`.
-range is the position at the time the note was left, so if it has shifted, the tool searches for quote. For an ink note (`stroke`), the drawn mark is what the note refers to (inside the circle, at the arrow's head); `npm run comment-shots` draws it on the images. If the server is running, the result appears on the page as soon as it is saved.
+range is the position at the time the note was left, so if it has shifted, the tool searches for quote. For an ink note (`strokes`), the drawn marks are what the note refers to (inside the circle, at the arrow's head); `npm run comment-shots` draws it on the images. If the server is running, the result appears on the page as soon as it is saved.
 
 To see what a note points at, the tool should first run
 
@@ -90,4 +90,4 @@ To see what a note points at, the tool should first run
 npm run comment-shots -- <working folder>      # node tools/comment-shots.mjs <working folder> [id …] [--all]
 ```
 
-It builds the deck, renders each open note's step headlessly (`DECK.seek(i, k, Infinity)`, the same picture every time), draws the pin (and an ink note's stroke, in the same colour) and writes into `<deck>/.cache/comment-shots/` (ignored by git): `<id>.png` (480×300 of the slide around the pin at 2×, widened to the stroke's bounding box plus 48 px when there is a stroke; the whole slide when there is no pin), `<id>-full.png` (the whole slide, 1280×720) and `index.json`. No image comes from the preview.
+It builds the deck, renders each open note's step headlessly (`DECK.seek(i, k, Infinity)`, the same picture every time), draws the pin (and an ink note's strokes, in the same colour) and writes into `<deck>/.cache/comment-shots/` (ignored by git): `<id>.png` (480×300 of the slide around the pin at 2×, widened to the bounding box of all strokes plus 48 px when there are strokes; the whole slide when there is no pin), `<id>-full.png` (the whole slide, 1280×720) and `index.json`. No image comes from the preview.

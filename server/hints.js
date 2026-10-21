@@ -11,15 +11,17 @@
 //   comment  {key, src, quote, near, pin, rect} Alt/⌥+クリックした所（段階の鍵・要素の範囲・80 字までの引用、
 //            near：押した所の近くの字（部品の中の札・語など。60 字まで）、pin：押した点のスライドの座標 {x, y}（1280×720、表示の倍率によらない））
 //            段階の途中（動いている間）に押しても、点は鍵の段階の最後の状態（DECK.seek(i, k, Infinity)）を指すものとして残す
-//   comment  {…, stroke}            手書きメモ（編集中の道具 ink、m）で描き終えた線（kit/tools.js の deck:ink）。stroke は線の点 [[x, y], …]（スライドの座標）。
-//            pin は線の重心（長さで重みを付けた区間の中点の平均）、key・src・quote・near は Alt+クリックと同じく、重心の下の要素から
-//            （重心が舞台の外・描く面の外なら 1 点目の下）。線を丸め・間引き・確かめるのは親の画面と書き込む側（kit/core/comment-core.mjs の normStroke）
+//   comment  {…, strokes}           手書きメモ（編集中の道具 ink、m）で線を描き終えるたび（kit/tools.js の deck:ink）。strokes は書きかけのメモの線の全部
+//            [[[x, y], …], …]（スライドの座標。親が edit-ink-reset を送るか段階が変わるまで足していく。20 本まで）。
+//            pin は全部の線の重心（長さで重みを付けた区間の中点の平均）、key・src・quote・near は Alt+クリックと同じく、重心の下の要素から
+//            （重心が舞台の外・描く面の外なら 1 本目の 1 点目の下）。線を丸め・間引き・確かめるのは親の画面と書き込む側（kit/core/comment-core.mjs の normStrokes）
 //   位置は実行系の deck-pos（kit/deck.js）をそのまま使う
 // 親 → デッキ：
 //   {type: "edit-state", edit, target}  編集モードの枠を出す・消す、target の要素（data-src の範囲か "#comment"）に印。
 //                                       編集モードが変わったら document に deck:edit {on} を送る（kit/deck.js・kit/tools.js が発表の道具と自動再生・暗転・一覧などを切る）
 //   {type: "edit-go-key", key}          その段階へ移る（コメントの一覧から）
 //   {type: "edit-ink", on}              手書きメモの道具（kit/tools.js の ink）を出す・切る（編集モードの間だけ）
+//   {type: "edit-ink-reset"}            書きかけの手書きメモの線を捨てる（親がメモを残した・取り消した）
 // 部品はすべて class="edit-ui"（印刷では base.css が隠す）
 (function(){
 "use strict";
@@ -139,10 +141,13 @@ window.addEventListener("message", function(e){
     document.documentElement.classList.toggle("dev-edit", editOn);
     if (editOn !== was) document.dispatchEvent(new CustomEvent("deck:edit", {detail: {on: editOn}}));
     if (!editOn && hoverEl){ hoverEl.classList.remove("dev-hover"); hoverEl = null; }
+    if (!editOn){ inkPend = []; inkKey = null; }
     setTarget(m.target);
   } else if (m.type === "edit-ink"){
     var T = window.DECK && window.DECK.tools;
     if (T && editOn) T.setMode(m.on ? "ink" : null);
+  } else if (m.type === "edit-ink-reset"){
+    inkPend = []; inkKey = null;
   } else if (m.type === "edit-go-key" && typeof m.key === "string"){
     var p = posOfKey(m.key);
     if (p && window.DECK) window.DECK.go(p.i, p.k, false);
@@ -182,15 +187,19 @@ document.addEventListener("click", function(e){
   e.preventDefault(); e.stopPropagation();
   send(commentHint(e, e.target));
 }, true);
-// 手書きメモ：線の重心（なければ 1 点目）の下の要素を、描く面（#dt-layer）を除いて探す。影の木（shadow DOM）の中へも降りる
-function centroid(P){
+// 手書きメモ：全部の線の重心（なければ 1 本目の 1 点目）の下の要素を、描く面（#dt-layer）を除いて探す。影の木（shadow DOM）の中へも降りる
+function centroid(S){
   var sx = 0, sy = 0, sl = 0;
-  for (var i = 1; i < P.length; i++){
-    var l = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
-    sx += l * (P[i][0] + P[i - 1][0]) / 2; sy += l * (P[i][1] + P[i - 1][1]) / 2; sl += l;
-  }
-  return sl > 0 ? [sx / sl, sy / sl] : P[0];
+  S.forEach(function(P){
+    for (var i = 1; i < P.length; i++){
+      var l = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+      sx += l * (P[i][0] + P[i - 1][0]) / 2; sy += l * (P[i][1] + P[i - 1][1]) / 2; sl += l;
+    }
+  });
+  return sl > 0 ? [sx / sl, sy / sl] : S[0][0];
 }
+// 書きかけのメモの線（親が edit-ink-reset を送るまで。段階が変われば新しいメモ）
+var INK_MAX = 20, inkPend = [], inkKey = null;
 function pointAt(sx, sy){
   var s = stage(); if (!s) return null;
   var r = s.getBoundingClientRect(), cx = r.left + sx * r.width / 1280, cy = r.top + sy * r.height / 720;
@@ -210,11 +219,15 @@ function pointAt(sx, sy){
 document.addEventListener("deck:ink", function(e){
   var P = e.detail && e.detail.pts;
   if (!editOn || !window.DECK || !Array.isArray(P) || P.length < 2) return;
-  var c = centroid(P), at = pointAt(c[0], c[1]) || pointAt(P[0][0], P[0][1]);
+  var key = window.DECK.state().key;
+  if (key !== inkKey){ inkPend = []; inkKey = key; }
+  if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A note holds at most 20 marks" : "1 つのメモの印は 20 本まで"); return; }
+  var S = inkPend.concat([P]), c = centroid(S), at = pointAt(c[0], c[1]) || pointAt(S[0][0][0], S[0][0][1]);
   if (!at) return;
+  inkPend = S;
   var m = commentHint(at.ev, at.target);
   m.pin = {x: Math.round(c[0] * 10) / 10, y: Math.round(c[1] * 10) / 10};
-  m.stroke = P;
+  m.strokes = S.slice();
   send(m);
 });
 document.addEventListener("keydown", function(e){

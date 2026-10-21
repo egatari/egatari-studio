@@ -18,7 +18,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
-import { normPin, normStroke } from '../kit/core/comment-core.mjs';
+import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
 import { userThemeDirs } from '../kit/theme-dirs.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -416,10 +416,13 @@ const server = http.createServer(async (req, res) => {
       if (!b.comment || !String(b.comment).trim()) return send(res, 400, { error: '指示が空です' });
       const list = readComments();
       // pin（押した点のスライドの座標）は確かめて丸める（kit/core/comment-core.mjs）。なければ・形が違えば付けない（古いコメントと同じ形）
-      // stroke（手書きメモの線）も同じく確かめて丸め・間引く。なければ・点（pin）がなければ付けない（docs/contract.md §12）
-      const pin = normPin(b.pin), stroke = pin ? normStroke(b.stroke) : null;
+      // strokes（手書きメモの線。前の形の stroke も 1 本として読む）も同じく確かめて丸め・間引く。なければ・点（pin）がなければ付けない。
+      // 線があれば pin は線の重心にする（docs/contract.md §12）。書くのは strokes だけ
+      let pin = normPin(b.pin);
+      const strokes = pin ? entryStrokes(b) : null;
+      if (strokes) pin = strokesCentroid(strokes);
       const c = { id: 'c' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'), created: new Date().toISOString(),
-        key: String(b.key || ''), range: b.range || null, ...(pin ? { pin } : {}), ...(stroke ? { stroke } : {}), quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
+        key: String(b.key || ''), range: b.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
       list.push(c); writeComments(list);
       console.log(`comment ${c.key}: ${c.comment.slice(0, 40)}`);
       return send(res, 200, c);

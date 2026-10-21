@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=0ee230f1e62d06ab -->
+<!-- i18n: pair=reference.md sha256=01cd7e44b3ed4784 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -290,7 +290,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
 | `c` | 指示の一覧。クリックでそのスライドへ、「解決」で閉じる |
 | Alt+クリック（Mac は ⌥ option+クリック） | AI へのメモを残す（`comments.json`） |
-| `m` / `d`（編集モード。スライドの操作の帯のペンのボタンは「手書きメモ」になる） | 手書きメモ：丸や矢印を描いてからメモを書く。印は `stroke` として残る（[約束事 §12](contract.ja.md#12-レビューのメモ手書きの印)） |
+| `m` / `d`（編集モード。スライドの操作の帯のペンのボタンは「手書きメモ」になる） | 手書きメモ：丸や矢印を描いてからメモを書く（欄が開いている間に描いた線も同じメモの印になる）。印は `strokes` として残る（[約束事 §12](contract.ja.md#12-レビューのメモ手書きの印)） |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
@@ -471,7 +471,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
 | `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | コンタクトシート：全スライドの最終段階を 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<デッキ>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。出力の場所と枚数を印字する |
-| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピン（と手書きの線）を描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。線があれば少なくとも線の外接矩形＋48 px。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
+| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピン（と手書きの線を全部）を描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。線があれば少なくとも全部の線の外接矩形＋48 px。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
 | `node tools/catalog.mjs` | `vendor/components/CATALOG.md` を作り直す |
 | `npm run components:update -- vX.Y.Z [--from <フォルダ>]` | egatari/components のリリースを `vendor/components/` と `components.lock.json` に取り込む（`manifest.json` の sha256 で確かめる。版は置き換えない） |
 | `npm run components:check` | `vendor/components` が `components.lock.json` と合うか（ネットワークなし） |

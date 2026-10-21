@@ -52,7 +52,7 @@ const STR = {
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
-    inkMark: 'Drawn mark', inkT: 'The mark you drew (in comments.json as stroke)', ink: 'Ink note (m)', inkTip: 'Draw a circle or an arrow on the slide, then write the note (also d, or the pen button of the slide controls, while editing)',
+    inkMark: 'Drawn mark', inkMarks: (n) => n + ' drawn marks', inkT: 'The marks you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add marks to this note (up to 20)', inkFull: 'A note holds at most 20 marks', ink: 'Ink note (m)', inkTip: 'Draw circles or arrows on the slide (several marks for one note), then write the note (also d, or the pen button of the slide controls, while editing)',
     dateLocale: 'en-US',
     modeEdit: 'Editing', modeInk: 'Editing: ink note', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
   },
@@ -71,7 +71,7 @@ const STR = {
     noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
-    inkMark: '手書きの印', inkT: '描いた印（comments.json の stroke）', ink: '手書きメモ（m）', inkTip: 'スライドに丸や矢印を描いてから、メモを書きます（編集中は d・スライドの操作の帯のペンのボタンでも）',
+    inkMark: '手書きの印', inkMarks: (n) => '手書きの印 ' + n + ' 本', inkT: '描いた印（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このメモの印に足せます（20 本まで）', inkFull: '1 つのメモの印は 20 本まで', ink: '手書きメモ（m）', inkTip: 'スライドに丸や矢印を描いてから（1 つのメモに何本でも）、メモを書きます（編集中は d・スライドの操作の帯のペンのボタンでも）',
     dateLocale: 'ja-JP',
     modeEdit: '編集中', modeInk: '編集中：手書きメモ', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザー', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
@@ -158,7 +158,8 @@ const CSS = [
   '#dev-mode[data-ink]::before{background:#f59e0b}#dev-mode[data-mode=edit]:not([data-ink])::before{background:#2563eb}#dev-mode[data-mode=tool]::before{background:#e11d48}',
   '#dev-toast{position:fixed;z-index:1002;right:16px;bottom:22px;max-width:388px;background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}',
   '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
-  '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
+  '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}#dev-side.dv-inking{top:auto;height:42vh}}',
+  '#dev-comment .dv-more{color:#7a4b00;font-size:12px;margin:-2px 0 8px}#dev-side.dv-inking #dev-comment .dev-lock{display:none}',
 ].join('\n');
 
 // 知らせの中身を確かめる（形が違えば捨てる）
@@ -174,9 +175,10 @@ const pinOf = (p) => {
   const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
   return { x: c(p.x, W), y: c(p.y, H) };
 };
-// 手書きメモの線（[[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStroke と同じ規則の写し（tools/test-ink-comments.mjs が同じ答えか確かめる）。
-// 2 点に満たなければ線なし、端に寄せて 0.1 に丸め、続けて同じ点は 1 つ、500 点を超えれば Ramer–Douglas–Peucker で間引く
-const STROKE_MAX = 500, STROKE_IN = 5000;
+// 手書きメモの線（strokes：線の並び、線は [[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid と
+// 同じ規則の写し（tools/test-ink-comments.mjs が同じ答えか確かめる）。線ごとに 2 点に満たなければ捨て、端に寄せて 0.1 に丸め、続けて同じ点は 1 つ、
+// 500 点を超えれば Ramer–Douglas–Peucker で間引く。初めの 20 本を使い、点の合計が 2000 を超えれば全部を同じ誤差でさらに間引く。前の形の stroke は 1 本として読む
+const STROKE_MAX = 500, STROKE_IN = 5000, STROKES_MAX = 20, STROKES_POINTS = 2000, STROKES_IN = 200, STROKES_IN_POINTS = 20000;
 function strokeRdp(P, eps) {
   const keep = new Uint8Array(P.length); keep[0] = keep[P.length - 1] = 1;
   const st = [[0, P.length - 1]];
@@ -192,18 +194,54 @@ function strokeRdp(P, eps) {
   }
   return P.filter((_, i) => keep[i]);
 }
-export function strokeOf(s) {
+const strokeC = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
+function strokeClean(s) {
   if (!Array.isArray(s) || s.length > STROKE_IN) return null;
-  const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10, out = [];
+  const out = [];
   for (const q of s) {
     if (!Array.isArray(q) || q.length < 2 || typeof q[0] !== 'number' || typeof q[1] !== 'number' || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) continue;
-    const p = [c(q[0], W), c(q[1], H)], l = out[out.length - 1];
+    const p = [strokeC(q[0], W), strokeC(q[1], H)], l = out[out.length - 1];
     if (!l || l[0] !== p[0] || l[1] !== p[1]) out.push(p);
   }
-  if (out.length < 2) return null;
-  let r = out;
-  for (let eps = 0.25; r.length > STROKE_MAX; eps *= 2) r = strokeRdp(out, eps);
+  return out.length < 2 ? null : out;
+}
+function strokeSimplify(P, max) {
+  let r = P;
+  for (let eps = 0.25; r.length > max; eps *= 2) r = strokeRdp(P, eps);
   return r;
+}
+export function strokesOf(v) {
+  if (!Array.isArray(v) || v.length > STROKES_IN) return null;
+  let seen = 0;
+  for (const s of v) if (Array.isArray(s)) seen += s.length;
+  if (seen > STROKES_IN_POINTS) return null;
+  const raw = [];
+  for (const s of v) {
+    const c = strokeClean(s);
+    if (c) raw.push(strokeSimplify(c, STROKE_MAX));
+    if (raw.length === STROKES_MAX) break;
+  }
+  if (!raw.length) return null;
+  let r = raw;
+  const total = (a) => a.reduce((n, P) => n + P.length, 0);
+  for (let eps = 0.25; total(r) > STROKES_POINTS; eps *= 2) r = raw.map((P) => (P.length > 2 ? strokeRdp(P, eps) : P));
+  return r;
+}
+export function entryStrokesOf(c) {
+  if (!c || typeof c !== 'object') return null;
+  if (c.strokes !== undefined) return strokesOf(c.strokes);
+  if (c.stroke !== undefined) return strokesOf([c.stroke]);
+  return null;
+}
+export function strokesCentroidOf(S) {
+  let sx = 0, sy = 0, sl = 0;
+  for (const s of S) {
+    for (let i = 1; i < s.length; i++) {
+      const l = Math.hypot(s[i][0] - s[i - 1][0], s[i][1] - s[i - 1][1]);
+      sx += l * (s[i][0] + s[i - 1][0]) / 2; sy += l * (s[i][1] + s[i - 1][1]) / 2; sl += l;
+    }
+  }
+  return sl > 0 ? { x: strokeC(sx / sl, W), y: strokeC(sy / sl, H) } : { x: S[0][0][0], y: S[0][0][1] };
 }
 const splitKey = (key) => { const p = key.lastIndexOf(':'); return [key.slice(0, p), key.slice(p + 1)]; };
 // 口述原稿の書き方（{cue}・{φ|ファイ}・{mark:…}）を外して読める文にする（次の段階の見せ方だけ）
@@ -260,13 +298,16 @@ export function createEditorUI(o) {
   let pinList = [], pending = null, flash = null;
   // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
   const extra = o.extra || {};
-  const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
+  // 手書きメモの欄が開いていて、手書きメモの道具が入っている間は、プレビューに続けて線を描ける（欄は横の板にあり、描く所に重ならない）
+  const inkDrawing = () => !!(cbox && cbox.ink && editOn && toolMode === 'ink');
+  const editing = () => !!(editor || (cbox && !inkDrawing()) || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
   // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
   function updateSide() {
     side.hidden = !(editOn || editor || cbox || cpanel || drawer || (extra.open && extra.open()));
     const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
+    side.classList.toggle('dv-inking', inkDrawing());
     drawPins();
   }
   // ---------------------------------------------------------------- 点の印（プレビューの上に重ねる。クリックは通す）
@@ -295,8 +336,9 @@ export function createEditorUI(o) {
     if (!b) return;
     for (const c of show) {
       // 手書きの印：スライドの大きさの svg（viewBox 1280×720）を同じ位置と倍率で重ねる。プレビューの中（舞台の DOM）には描かない
-      if (c.stroke) {
-        const NS = 'http://www.w3.org/2000/svg', d = 'M' + c.stroke.map((q) => q[0] + ' ' + q[1]).join('L');
+      if (c.strokes) {
+        // 線ごとに M から（線どうしを繋がない）
+        const NS = 'http://www.w3.org/2000/svg', d = c.strokes.map((s) => 'M' + s.map((q) => q[0] + ' ' + q[1]).join('L')).join('');
         const svg = doc.createElementNS(NS, 'svg');
         svg.setAttribute('class', 'dev-ink' + (c.isNew ? ' dv-new' : '')); svg.setAttribute('data-id', c.id || 'new');
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', (W * b.k).toFixed(1)); svg.setAttribute('height', (H * b.k).toFixed(1));
@@ -448,44 +490,75 @@ export function createEditorUI(o) {
     if (!cbox) return;
     if (!force && cbox.ta.value.trim()) return;
     cbox.card.remove(); cbox = null; pending = null;
+    post({ type: 'edit-ink-reset' });   // 書きかけの手書きメモの線を捨てる（server/hints.js）
     if (target && !editor) setTarget(null);
     updateSide();
     focusFrame();
   }
-  function openComment(hint) {
+  // 知らせ（Alt+クリックか手書きメモ）から、メモの場所：段階の鍵・要素の範囲・引用・点・線（手書きメモは何本でも。点は全部の線の重心）
+  function placeOf(hint) {
     const key = str(hint.key, 400), range = hint.src == null ? null : str(hint.src, 40);
-    if (!enabled() || !key || (range !== null && !RANGE.test(range))) return;
-    if (busy()) { toast(L.busy, 'warn'); return; }
-    closeEditor(true); closeComment(true);
+    if (!key || (range !== null && !RANGE.test(range))) return null;
     // 引用：要素の字の頭（80 字）。押した所の近くの字（部品の中の札・語など）があれば前に付ける
     const q80 = (str(hint.quote, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
     const near = (str(hint.near, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
     const quote = (near && near !== q80 ? near + ' ｜ ' + q80 : q80).slice(0, 160);
-    const pin = pinOf(hint.pin), stroke = pin ? strokeOf(hint.stroke) : null;
+    let pin = pinOf(hint.pin);
+    const strokes = pin ? entryStrokesOf(hint) : null;
+    if (strokes) pin = strokesCentroidOf(strokes);
+    return { key, range, quote, pin, strokes };
+  }
+  function openComment(hint) {
+    const at0 = placeOf(hint);
+    if (!enabled() || !at0) return;
+    if (busy()) { toast(L.busy, 'warn'); if (at0.strokes) post({ type: 'edit-ink-reset' }); return; }
+    closeEditor(true); closeComment(true);
+    let at = at0;
     const ta = h('textarea', { placeholder: L.cPlace });
     const msg = h('div', { cls: 'dev-msg' });
     const save = h('button', { cls: 'dv-pri', text: L.cSave });
+    const pinRow = h('div', { cls: 'dev-where' });
+    const qEl = h('div', { cls: 'dv-q' });
+    const more = at.strokes ? h('div', { cls: 'dv-more', text: L.inkMore }) : null;
+    function drawPlace() {
+      pinRow.textContent = '';
+      pinRow.hidden = !at.pin;
+      if (at.pin) {
+        pinRow.appendChild(h('span', { cls: 'dv-n', text: '●' }));
+        if (at.strokes) pinRow.appendChild(h('span', { cls: 'dv-p dv-s', text: at.strokes.length > 1 ? L.inkMarks(at.strokes.length) : L.inkMark, title: L.inkT }));
+        pinRow.appendChild(h('span', { cls: 'dv-p', text: L.pinAt(Math.round(at.pin.x), Math.round(at.pin.y)), title: L.pinT }));
+      }
+      qEl.textContent = at.quote; qEl.hidden = !at.quote;
+      if (more) more.textContent = at.strokes && at.strokes.length >= 20 ? L.inkFull : L.inkMore;
+      pending = at.pin ? { key: at.key, pin: at.pin, strokes: at.strokes } : null;
+    }
     const card = h('div', { id: 'dev-comment', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cTitle }, [
-      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: key }), h('span', { cls: 'dv-sp' }),
+      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: at.key }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeComment(true) } })]),
       whereLine(),
-      pin ? h('div', { cls: 'dev-where' }, [h('span', { cls: 'dv-n', text: '●' }), stroke ? h('span', { cls: 'dv-p dv-s', text: L.inkMark, title: L.inkT }) : null,
-        h('span', { cls: 'dv-p', text: L.pinAt(Math.round(pin.x), Math.round(pin.y)), title: L.pinT })]) : null,
-      quote ? h('div', { cls: 'dv-q', text: quote }) : null,
+      pinRow, more, qEl,
       ta, msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.cHint }), h('button', { text: L.cancel, on: { click: () => closeComment(true) } }), save]),
       h('div', { cls: 'dev-lock', text: L.locked }),
     ]);
     side.appendChild(card);
-    const box = cbox = { card, ta };
-    pending = pin ? { key, pin, stroke } : null;
+    // 手書きメモ：欄が開いている間も描いた線は、同じメモに足す（同じ段階の知らせだけ。引用・範囲・点は全部の線の重心の下から取り直す）
+    const box = cbox = { card, ta, ink: !!at.strokes, addInk(h2) {
+      if (cbox !== box) return false;
+      const a2 = placeOf(h2);
+      if (!a2 || !a2.strokes || a2.key !== at.key) return false;
+      at = a2; drawPlace(); drawPins();
+      return true;
+    } };
+    drawPlace();
     updateSide();
     setTarget('#comment');
     ta.focus();
     function doSave() {
       if (!ta.value.trim() || cbox !== box) return;
       save.disabled = true;
-      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), ...(stroke ? { stroke } : {}), comment: ta.value }).then((j) => {
+      const { key, range, quote, pin, strokes } = at;
+      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), comment: ta.value }).then((j) => {
         if (j._status !== 200) { save.disabled = false; showErr(msg, j._offline ? L.offline : (j.error || L.cFail)); return; }
         ta.value = ''; closeComment(true); toast(L.cDone);
         if (commentsOpen) loadComments();
@@ -524,7 +597,7 @@ export function createEditorUI(o) {
       const open = (Array.isArray(list) ? list : []).filter((c) => c && c.status === 'open');
       // comments.json は手でも直せるので、読んだ点もここで確かめ直す
       pinList = [];
-      open.forEach((c, i) => { const p = pinOf(c.pin); if (p) pinList.push({ id: String(c.id), n: i + 1, key: String(c.key), pin: p, stroke: strokeOf(c.stroke) }); });
+      open.forEach((c, i) => { const p = pinOf(c.pin); if (p) pinList.push({ id: String(c.id), n: i + 1, key: String(c.key), pin: p, strokes: entryStrokesOf(c) }); });
       drawPins();
       if (!open.length) { box.appendChild(h('div', { cls: 'dev-empty', text: L.noOpen(ALT) })); return; }
       open.forEach((c, i) => {
@@ -532,7 +605,7 @@ export function createEditorUI(o) {
         const item = h('div', { cls: 'dev-c', title: L.toSlide, 'data-id': String(c.id) }, [
           h('div', { cls: 'dv-k' }, [p ? h('span', { cls: 'dv-n', text: String(i + 1) }) : null,
             String(c.key) + (isNaN(when) ? '' : ' · ' + when.toLocaleString(L.dateLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })),
-            p && strokeOf(c.stroke) ? h('span', { cls: 'dv-p dv-s', text: L.inkMark, title: L.inkT }) : null,
+            p && entryStrokesOf(c) ? h('span', { cls: 'dv-p dv-s', text: entryStrokesOf(c).length > 1 ? L.inkMarks(entryStrokesOf(c).length) : L.inkMark, title: L.inkT }) : null,
             p ? h('span', { cls: 'dv-p', text: L.pinAt(Math.round(p.x), Math.round(p.y)), title: L.pinT }) : null]),
           c.quote ? h('div', { cls: 'dv-q', text: String(c.quote) }) : null,
           h('div', { cls: 'dv-c', text: String(c.comment) }),
@@ -760,7 +833,7 @@ export function createEditorUI(o) {
     if (m.type !== 'edit-hint') return false;
     if (m.kind === 'tool') {
       toolMode = ['laser', 'pen', 'vpen'].includes(m.mode) || (m.mode === 'ink' && editOn) ? m.mode : null;
-      drawMode();
+      drawMode(); updateSide();
       return true;
     }
     if (m.kind === 'ready') {
@@ -773,7 +846,10 @@ export function createEditorUI(o) {
     }
     // 信頼する欄で編集している間は、デッキからの知らせで板の欄を開け閉め・切り替えしない（頼んでいない切り替えで編集から離されない。
     // 本当にキーを押したのなら、プレビューは inert なのでデッキには届かない：知らせはデッキが自分で送ったもの）
-    if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; return true; }
+    // 手書きメモの欄が開いている間に描いた線は、そのメモに足す。ほかの欄を開く知らせ（Alt+クリック・ダブルクリック）は受けない
+    if (m.kind === 'comment' && cbox && cbox.ink && cbox.addInk(m)) return true;
+    if (cbox && (m.kind === 'comment' || m.kind === 'edit')) { ignored++; if (m.strokes) post({ type: 'edit-ink-reset' }); return true; }
+    if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; if (m.kind === 'comment' && m.strokes) post({ type: 'edit-ink-reset' }); return true; }
     if (m.kind === 'key' && typeof m.key === 'string') key(m.key, true);
     else if (m.kind === 'edit') openEditor(m);
     else if (m.kind === 'comment') openComment(m);

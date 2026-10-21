@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=558310bd7da773bd -->
+<!-- i18n: pair=editor.ja.md sha256=a4357c566b487e05 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -38,7 +38,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    | `e` | edit mode; **double-click** an outlined element to open its source (HTML, with math as `\( … \)`), ⌘/Ctrl+Enter to save |
    | `n` | narration drawer for the step on screen (speaker, add / delete / reorder turns) |
    | Alt+click (Mac: ⌥ Option+click) | leave a note for the AI about that element (`comments.json`); the point you clicked is kept as a pin |
-   | `m` or `d` (or the “Ink note (m)” button in the edit-mode bar, or the pen button of the slide controls, which reads “Ink note” while editing) | ink note, in edit mode only: draw a circle or an arrow on the slide; when you let go the note box opens for that mark, and the mark is kept with the note (`stroke`) |
+   | `m` or `d` (or the “Ink note (m)” button in the edit-mode bar, or the pen button of the slide controls, which reads “Ink note” while editing) | ink note, in edit mode only: draw a circle or an arrow on the slide; when you let go the note box opens for that mark in the side panel. While it is open you can keep drawing (an arrow plus a circle, several marks, up to 20): each stroke joins the same note. Leave keeps all the marks with the note (`strokes`); Cancel discards them all |
    | `c` | list of open comments, numbered; while it is open, the pins of the step on screen are marked on the slide. Click one to go to its slide and step (its pin flashes), “Resolve” to mark it done |
 
    The edit-mode bar, the source box, the narration drawer, the note box and the note list sit in one side panel on the right (the preview shrinks beside it), under an orange bar **編集中 — アプリ** / **Editing — app**. They are part of the editor page, not of the deck; **anything inside the slide area can be drawn by the deck, so trust only controls in the editor's own panels.** While the source or note box is open, the preview does not take clicks. The preview only points at what you double-clicked or Alt+clicked, and the editor reads the source, shows it and writes it when you press Save (or ⌘/Ctrl+Enter). The keys work with the focus on the preview or on the editor.
@@ -166,7 +166,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 - `deck.html`: only the contents of the element you edited
 - `narration.md`: only the lines of the step you edited (comments and other lines stay)
-- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (`pin` is the clicked point `{x, y}` in slide coordinates, 1280×720; an ink note adds `stroke`, the drawn points, see [contract §12](contract.md#12-review-notes-the-ink-stroke); see the [dev server](dev-server.md#files-it-rewrites). To look at what the comments point at, run `npm run comment-shots -- <working folder>` on the folder: it renders each open comment's step with its pin into `.cache/comment-shots/`)
+- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (`pin` is the clicked point `{x, y}` in slide coordinates, 1280×720; an ink note adds `strokes`, the drawn marks (older notes may have a single `stroke`), see [contract §12](contract.md#12-review-notes-the-ink-stroke); see the [dev server](dev-server.md#files-it-rewrites). To look at what the comments point at, run `npm run comment-shots -- <working folder>` on the folder: it renders each open comment's step with its pin into `.cache/comment-shots/`)
 - `audio/<rec|tts|imp>_<hash>.mp3` and `audio/manifest.json`: with **Use this take** in the Audio panel (only the step's record changes; the previous manifest is backed up)
 - `.cache/edits/`: the previous `deck.html` / `narration.md` / `audio/manifest.json` before each change (the newest 30; cleanup deletes only files named like these backups, `<time>-<name>`, and leaves anything else in the folder)
 - with “New deck”: `deck.html` and `narration.md`; with “Export built HTML” and “Export single file (.ega.html)”: the file you chose (and, the first time, the lesson id in the settings file of the folder)

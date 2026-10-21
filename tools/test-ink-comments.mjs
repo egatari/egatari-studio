@@ -1,14 +1,17 @@
 // 手書きメモ（#70：編集モードの間のコメントのペン）の確認：node tools/test-ink-comments.mjs <作業用のフォルダ>
 // examples/minimal を作業用のフォルダに写して開発サーバーで開き、次を確かめる：
-//   1. 単体：線の決まり（kit/core/comment-core.mjs の normStroke）と、編集の画面の写し（server/editor-ui.js の strokeOf）が同じ答え。
-//      編集アプリの書き込み（app/devapi.js）も stroke を確かめて残し、stroke のない古いコメントもそのまま読める
+//   1. 単体：線の決まり（kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid）と、編集の画面の写し（server/editor-ui.js の
+//      strokesOf・entryStrokesOf・strokesCentroidOf）が同じ答え。上限（20 本・1 本 500 点・合わせて 2000 点）、前の形の stroke を 1 本として読む。
+//      編集アプリの書き込み（app/devapi.js）も strokes を確かめて残し（前の形の stroke の知らせも strokes で書く）、pin は線の重心、線のない古いコメントもそのまま読める
 //   2. 編集モードでないとき m は何もしない。編集モードで m（と編集の板のボタン）で手書きメモになり、画面の端が「編集中：手書きメモ」。
 //      スライドの操作の帯のペンのボタンは「手書きメモ」になる（d とこのボタンは test-edit-modes の表でも確かめる）
-//   3. 要素の周りに丸を描く → コメントの欄が開き（引用はその要素）、書きかけの線が重ね（#dev-pins）に出て、舞台（デッキの DOM・描く面）には残らない
-//   4. 残す → comments.json に stroke（期待した外接矩形・0.1 に丸め・500 点まで）、pin は線の重心、src は重心の下の要素
+//   3. 要素の周りに丸を描く → コメントの欄が開き（引用はその要素）、書きかけの線が重ね（#dev-pins）に出て、舞台（デッキの DOM・描く面）には残らない。
+//      欄が開いている間もプレビューは inert にならず、続けて 2 本（矢印・下線）描くと同じメモの線になる（欄は 1 つのまま、重ねに 3 本）
+//   4. 残す → comments.json に strokes（3 本。1 本目は期待した外接矩形・0.1 に丸め・500 点まで）、pin は全部の線の重心、src は重心の下の要素。
+//      取り消すと描いた線は全部捨てる（次の線は 1 本目から）。前の形（stroke 1 本）のコメントも一覧と重ねに出る
 //   5. 一覧を開くと、重ねに印の色の線が出る。Esc で手書きメモを切り、編集モードを出ると道具は残らない
 //   6. 編集モードでないときの発表のペンはこれまでどおり描ける
-//   7. comment-shots の全体と切り抜きの画像に、線の上の画素が印の色で描かれる
+//   7. comment-shots の全体と切り抜きの画像に、全部の線の上の画素が印の色で描かれ、切り抜きが全部の線を含む
 //   8. 書き出した 1 ファイル（再生専用も、そうでないものも）にコメントは入らない
 import os from 'node:os';
 import fs from 'node:fs';
@@ -16,8 +19,8 @@ import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
-import { normStroke, strokeCentroid, STROKE_MAX } from '../kit/core/comment-core.mjs';
-import { strokeOf } from '../server/editor-ui.js';
+import { normStroke, normStrokes, entryStrokes, strokesCentroid, strokeCentroid, STROKE_MAX, STROKES_MAX, STROKES_POINTS } from '../kit/core/comment-core.mjs';
+import { strokesOf, entryStrokesOf, strokesCentroidOf } from '../server/editor-ui.js';
 import { createDevApi } from '../app/devapi.js';
 import { commentShots, PIN_COLOR } from './comment-shots.mjs';
 import { clickUntil } from './click-retry.mjs';
@@ -46,7 +49,32 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
   cases.push(Array.from({ length: 1200 }, (_, i) => [i, i % 2 ? 100 : 110]));
   cases.push(Array.from({ length: 800 }, () => [rnd() * 1400 - 60, rnd() * 800 - 40]));
   const outs = cases.map(normStroke);
-  ok(cases.every((c, i) => JSON.stringify(strokeOf(c)) === JSON.stringify(outs[i])), 'normStroke (comment-core) and strokeOf (editor-ui copy) agree on every case');
+  // 写しの答え：1 本の線は [線] として渡す
+  const one = (c) => { const r = strokesOf([c]); return r ? r[0] : null; };
+  ok(cases.every((c, i) => JSON.stringify(one(c)) === JSON.stringify(outs[i]) && JSON.stringify(normStrokes([c])) === JSON.stringify(outs[i] ? [outs[i]] : null)),
+    'per stroke: normStrokes (comment-core) and strokesOf (editor-ui copy) agree with the one-stroke rule on every case');
+  // 何本もの線：形の違う並び・上限
+  const many = [
+    null, 'x', [], [null, 'x', [[1, 2]]], [[[1, 2], [3, 4]], 'bad', [[5, 6], [7, 8], [7, 8]]],
+    Array.from({ length: 25 }, (_, j) => [[j * 10, 5], [j * 10 + 5, 40]]),
+    Array.from({ length: 6 }, (_, j) => Array.from({ length: 900 }, (_, i) => [100 + j * 150 + 60 * Math.cos(i / 25), 360 + (i / 9) * Math.sin(i / 25)])),
+    Array.from({ length: 201 }, () => [[1, 2], [3, 4]]),
+    Array.from({ length: 5 }, () => Array.from({ length: 4500 }, (_, i) => [i % 1280, 7])),
+    [Array.from({ length: 5001 }, (_, i) => [i % 1280, 1]), [[9, 9], [19, 19]]],
+  ];
+  const mo = many.map(normStrokes);
+  ok(many.every((c, i) => JSON.stringify(strokesOf(c)) === JSON.stringify(mo[i])), 'normStrokes (comment-core) and strokesOf (editor-ui copy) agree on every list of strokes');
+  ok(mo.slice(0, 4).every((o) => o === null) && JSON.stringify(mo[4]) === '[[[1,2],[3,4]],[[5,6],[7,8]]]', 'bad strokes are dropped, no valid stroke gives no strokes ' + JSON.stringify(mo[4]));
+  const tot = (S) => S.reduce((n, x) => n + x.length, 0);
+  ok(mo[5].length === STROKES_MAX && JSON.stringify(mo[5][19]) === '[[190,5],[195,40]]', 'at most 20 strokes (the first 20 are kept) ' + mo[5].length);
+  ok(mo[6].length === 6 && mo[6].every((x) => x.length <= STROKE_MAX && x.length >= 2) && tot(mo[6]) <= STROKES_POINTS, 'at most 500 points a stroke and 2000 in total after simplifying ' + mo[6].map((x) => x.length).join(','));
+  ok(mo[7] === null && mo[8] === null && JSON.stringify(mo[9]) === '[[[9,9],[19,19]]]', 'more than 200 strokes or 20000 input points: no strokes; a stroke over 5000 points is dropped');
+  const legacy = { stroke: [[10.04, 20], [30, 40.06]] }, both = { stroke: [[1, 1], [2, 2]], strokes: [[[3, 3], [4, 4]]] };
+  ok(JSON.stringify(entryStrokes(legacy)) === '[[[10,20],[30,40.1]]]' && JSON.stringify(entryStrokes(both)) === '[[[3,3],[4,4]]]' && entryStrokes({}) === null
+    && [legacy, both, {}, { strokes: 'x' }, { stroke: 5 }].every((c) => JSON.stringify(entryStrokesOf(c)) === JSON.stringify(entryStrokes(c))),
+    'an old entry with one stroke reads as strokes: [stroke]; strokes wins over stroke; the editor copy agrees');
+  const S2 = [[[0, 0], [100, 0]], [[0, 100], [300, 100]]], c2 = strokesCentroid(S2);
+  ok(c2.x === 125 && c2.y === 75 && JSON.stringify(strokesCentroidOf(S2)) === JSON.stringify(c2), 'centroid over all strokes, weighted by length ' + JSON.stringify(c2));
   ok(outs.slice(0, 5).every((o) => o === null) && JSON.stringify(outs[5]) === '[[1,2],[3,4]]', 'fewer than two distinct points, or not an array: no stroke');
   ok(JSON.stringify(outs[6]) === '[[0,720],[1280,0],[7.3,8.4]]' && JSON.stringify(outs[7]) === '[[1,2.1],[1,2],[5,5]]', 'clamped to the slide, rounded to 0.1, bad points and repeats dropped ' + JSON.stringify([outs[6], outs[7]]));
   ok(outs[8] === null && outs[9] === null, 'not an array, or more than 5000 input points: no stroke');
@@ -60,13 +88,17 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
   const files = { 'comments.json': JSON.stringify([{ id: 'old', created: '2026-01-01T00:00:00Z', key: 'a:0', range: null, quote: '', comment: '古い', status: 'open' }]) };
   const ws = { readText: async (n) => (n in files ? files[n] : null), writeText: async (n, t) => { files[n] = t; }, backup: async () => {} };
   const api = createDevApi({ ws, deckFile: () => 'deck.html', slideOrder: () => [], editable: () => true, afterWrite: async () => false, msg: {} });
-  const r1 = await api('POST', '/__dev/comment', { key: 'a:0', comment: '丸', pin: { x: 10, y: 20 }, stroke: [[10.04, 20], [30, 40.06], [30, 40.06], [-3, 50]] });
-  const r2 = await api('POST', '/__dev/comment', { key: 'a:0', comment: '偽', pin: { x: 10, y: 20 }, stroke: 'nope' });
-  await api('POST', '/__dev/comment', { key: 'a:0', comment: '点なし', stroke: [[1, 2], [3, 4]] });
+  const r1 = await api('POST', '/__dev/comment', { key: 'a:0', comment: '丸', pin: { x: 10, y: 20 }, strokes: [[[10.04, 20], [30, 40.06], [30, 40.06], [-3, 50]], [[100, 100], [200, 100]]] });
+  const r2 = await api('POST', '/__dev/comment', { key: 'a:0', comment: '偽', pin: { x: 10, y: 20 }, strokes: 'nope' });
+  await api('POST', '/__dev/comment', { key: 'a:0', comment: '点なし', strokes: [[[1, 2], [3, 4]]] });
+  await api('POST', '/__dev/comment', { key: 'a:0', comment: '前の形', pin: { x: 1, y: 1 }, stroke: [[0, 0], [10, 0]] });
   const saved = JSON.parse(files['comments.json']);
-  ok(saved[3] && !('stroke' in saved[3]) && !('pin' in saved[3]), 'a stroke without a pin is not kept (contract §12)');
-  ok(r1._status === 200 && JSON.stringify(saved[1].stroke) === '[[10,20],[30,40.1],[0,50]]' && !('stroke' in saved[2]) && saved[0].comment === '古い' && !('stroke' in saved[0]),
-    'editor app (app/devapi.js): stroke is normalized and kept, a bad one dropped, an old entry without stroke stays as it was ' + JSON.stringify(saved.map((c) => c.stroke ?? null)) + r2._status);
+  ok(saved[3] && !('strokes' in saved[3]) && !('pin' in saved[3]), 'strokes without a pin are not kept (contract §12)');
+  const want1 = [[[10, 20], [30, 40.1], [0, 50]], [[100, 100], [200, 100]]];
+  ok(r1._status === 200 && JSON.stringify(saved[1].strokes) === JSON.stringify(want1) && JSON.stringify(saved[1].pin) === JSON.stringify(strokesCentroid(want1))
+    && !('strokes' in saved[2]) && saved[2].pin && saved[0].comment === '古い' && !('strokes' in saved[0]),
+    'editor app (app/devapi.js): strokes are normalized and kept, the pin is their centroid, bad ones dropped, an old entry without strokes stays as it was ' + JSON.stringify(saved.map((c) => c.strokes ?? null)) + r2._status);
+  ok(JSON.stringify(saved[4].strokes) === '[[[0,0],[10,0]]]' && !('stroke' in saved[4]) && saved.every((c) => !('stroke' in c)), 'a legacy stroke in the request is written as strokes (writers write only strokes)');
 }
 
 // ---------------------------------------------------------------- 2〜6. 開発サーバー
@@ -155,13 +187,28 @@ try {
   await page.screenshot({ path: path.join(work, 'ink-pending.png') });   // 目で見る用（作業用のフォルダ）
   const inDeck = await dk().evaluate(() => document.querySelectorAll('#stage svg.dev-ink, #stage .dev-pin').length);
   ok((await deckInk()) === 0 && inDeck === 0, 'nothing of the stroke stays on the stage (the tool canvas is cleared, no overlay element in the deck)');
+  // 欄が開いている間も描ける：プレビューは inert にならず、欄は横の板（プレビューの外）
+  const lockState = await page.evaluate(() => { const f = document.getElementById('deck'), c = document.getElementById('dev-comment').getBoundingClientRect(), r = f.getBoundingClientRect();
+    return { inert: f.inert, locked: f.classList.contains('dev-locked'), overlap: !(c.right <= r.left || c.left >= r.right || c.bottom <= r.top || c.top >= r.bottom) }; });
+  ok(!lockState.inert && !lockState.locked && !lockState.overlap && (await UI()).editing === false, 'while the ink note box is open the preview stays drawable and the box does not cover it ' + JSON.stringify(lockState));
+  // 2 本目（右から指す矢印）と 3 本目（下線）：同じメモの線になる
+  const arrow = [[target.cx + RX + 120, target.cy], [target.cx + RX + 10, target.cy], [target.cx + RX + 28, target.cy - 14], [target.cx + RX + 10, target.cy], [target.cx + RX + 28, target.cy + 14]];
+  const under = Array.from({ length: 11 }, (_, j) => [target.cx - RX / 2 + j * RX / 10, target.cy + RY + 8]);
+  await drawOnStage(arrow);
+  await drawOnStage(under);
+  await until(async () => (await page.textContent('#dev-comment')).includes('3 本'));
+  const card3 = await page.evaluate(() => ({ n: document.querySelectorAll('#dev-comment').length, text: document.getElementById('dev-comment').textContent,
+    m: (document.querySelector('#dev-pins svg.dev-ink.dv-new .dv-line') || { getAttribute: () => '' }).getAttribute('d').split('M').length - 1, ink: document.querySelectorAll('#dev-pins svg.dev-ink').length }));
+  ok(card3.n === 1 && card3.text.includes('手書きの印 3 本') && card3.m === 3 && card3.ink === 1, 'two more strokes join the same pending note: one box, three strokes in the overlay ' + JSON.stringify({ n: card3.n, m: card3.m, ink: card3.ink }));
+  await page.screenshot({ path: path.join(work, 'ink-pending-3.png') });
 
   // 4. 残す
   await page.fill('#dev-comment textarea', 'この式を丸で囲んだ所を短く');
   await clickUntil(page, '#dev-comment .dv-pri', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
   await until(() => fs.existsSync(COMMENTS));
   saved = JSON.parse(fs.readFileSync(COMMENTS, 'utf8'));
-  const c = saved[0] || {}, s = c.stroke || [];
+  const c = saved[0] || {}, S = c.strokes || [], s = S[0] || [];
+  ok(S.length === 3 && !('stroke' in c), 'comments.json has the three strokes of the note (strokes, no stroke) ' + S.length);
   const xs = s.map((p) => p[0]), ys = s.map((p) => p[1]);
   const bb = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
   const want = { x0: target.cx - RX, x1: target.cx + RX, y0: target.cy - RY, y1: target.cy + RY };
@@ -169,19 +216,38 @@ try {
   ok(saved.length === 1 && s.length >= 20 && s.length <= 500 && close(bb.x0, want.x0) && close(bb.x1, want.x1) && close(bb.y0, want.y0) && close(bb.y1, want.y1),
     'comments.json has the stroke with the expected bounds ' + JSON.stringify({ n: s.length, bb, want }));
   ok(s.every((p) => p.length === 2 && p.every((v) => Math.round(v * 10) / 10 === v)), 'stroke points are [x, y] rounded to 0.1');
-  const cen = strokeCentroid(s);
-  ok(c.pin && close(c.pin.x, cen.x) && close(c.pin.y, cen.y) && close(c.pin.x, target.cx) && close(c.pin.y, target.cy), 'pin is the stroke centroid ' + JSON.stringify({ pin: c.pin, cen }));
+  const cen = strokesCentroid(S);
+  ok(c.pin && c.pin.x === cen.x && c.pin.y === cen.y && Math.abs(c.pin.x - target.cx) < RX && Math.abs(c.pin.y - target.cy) < target.h / 2, 'pin is the centroid over all strokes ' + JSON.stringify({ pin: c.pin, cen, one: strokeCentroid(s) }));
   ok(c.range === target.src && c.key === '何を最小化するか:0' && c.comment === 'この式を丸で囲んだ所を短く', 'key and src come from the element under the centroid ' + JSON.stringify({ key: c.key, range: c.range, want: target.src }));
   ok((await tool()) === 'ink', 'the ink note stays on for the next mark');
+  // 取り消すと描いた線は全部捨てる：次のメモは 1 本目から
+  await drawOnStage(Array.from({ length: 12 }, (_, j) => [200 + j * 20, 560]));
+  await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
+  await drawOnStage(Array.from({ length: 12 }, (_, j) => [200 + j * 20, 600]));
+  await until(async () => (await page.textContent('#dev-comment')).includes('2 本'));
+  const two = (await page.textContent('#dev-comment')).includes('手書きの印 2 本');
+  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
+  await drawOnStage(Array.from({ length: 12 }, (_, j) => [700 + j * 20, 600]));
+  await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
+  const after = await page.evaluate(() => ({ text: document.querySelector('#dev-comment .dev-where .dv-s').textContent, m: document.querySelector('#dev-pins svg.dev-ink.dv-new .dv-line').getAttribute('d').split('M').length - 1 }));
+  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
+  const after2 = JSON.parse(fs.readFileSync(COMMENTS, 'utf8'));
+  ok(two && after.m === 1 && after.text === '手書きの印' && after2.length === 1, 'cancel discards all the pending strokes (the next note starts from one stroke, nothing written) ' + JSON.stringify({ two, m: after.m, n: after2.length }));
+  // 前の形（stroke 1 本）のコメント：一覧と重ねに出る
+  after2.push({ id: 'legacy1', created: '2026-01-01T00:00:00Z', key: '何を最小化するか:0', range: null, pin: { x: 900, y: 500 }, stroke: [[860, 470], [940, 470], [940, 530], [860, 530]], quote: '', comment: '前の形の線', status: 'open' });
+  fs.writeFileSync(COMMENTS, JSON.stringify(after2, null, 2));
 
   // 5. 一覧を開くと、重ねに線
   await page.evaluate(() => window.__DEV_UI.toggleComments(true));
-  await until(async () => (await UI()).strokes === 1);
+  await until(async () => (await UI()).strokes === 2);
   const listed = await page.evaluate(() => {
     const s = document.querySelector('#dev-pins svg.dev-ink:not(.dv-new)'); if (!s) return null;
     const f = document.getElementById('deck').getBoundingClientRect(), r = s.getBoundingClientRect();
-    return { stroke: getComputedStyle(s.querySelector('.dv-line')).stroke, w: r.width, l: r.left - f.left, mark: !!document.querySelector('#dev-comments .dv-s') };
+    const old = document.querySelector('#dev-pins svg.dev-ink[data-id="legacy1"] .dv-line');
+    return { stroke: getComputedStyle(s.querySelector('.dv-line')).stroke, w: r.width, l: r.left - f.left, mark: document.querySelectorAll('#dev-comments .dv-s').length,
+      three: document.querySelector('#dev-comments .dev-c .dv-s').textContent, legacy: old ? old.getAttribute('d') : null };
   });
+  ok(listed && listed.mark === 2 && listed.three === '手書きの印 3 本' && listed.legacy === 'M860 470L940 470L940 530L860 530', 'the list shows both notes with their marks; an old single-stroke note still renders ' + JSON.stringify(listed));
   const box = await dk().evaluate(() => { const b = document.getElementById('stage').getBoundingClientRect(); return { l: b.left, w: b.width }; });
   await page.screenshot({ path: path.join(work, 'ink-listed.png') });
   ok(listed && /225, 29, 72/.test(listed.stroke) && Math.abs(listed.w - box.w) < 2 && Math.abs(listed.l - box.l) < 2 && listed.mark, 'a listed comment draws its stroke in the overlay in the pin colour, over the slide ' + JSON.stringify({ listed, box }));
@@ -206,8 +272,9 @@ try {
 // ---------------------------------------------------------------- 7. comment-shots
 try {
   const res = await commentShots(deckDir);
-  const sh = res.shots[0];
-  const s = sh.stroke, pick = [s[0], s[Math.floor(s.length / 4)], s[Math.floor(s.length / 2)]];
+  const sh = res.shots.find((x) => x.strokes && x.strokes.length === 3), old = res.shots.find((x) => x.id === 'legacy1');
+  ok(sh && old && old.strokes && old.strokes.length === 1, 'comment-shots lists the three-stroke note and the old single-stroke note (as strokes) ' + JSON.stringify(res.shots.map((x) => x.strokes ? x.strokes.length : 0)));
+  const s0 = sh.strokes[0], pick = [s0[0], s0[Math.floor(s0.length / 4)], s0[Math.floor(s0.length / 2)], sh.strokes[1][0], sh.strokes[2][Math.floor(sh.strokes[2].length / 2)]];
   const pg = await browser.newPage();
   const px = (file, pts) => pg.evaluate(async ({ data, pts }) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + data; await img.decode();
@@ -219,8 +286,8 @@ try {
   const near = (a) => a.every((v, i) => Math.abs(v - RED[i]) <= 40);
   const full = await px(sh.full, pick), cl = sh.clip;
   const crop = await px(sh.crop, pick.map(([x, y]) => [(x - cl.x) * 2, (y - cl.y) * 2]));
-  ok(full.every(near) && crop.every(near), 'comment-shots: the stroke pixels are in the pin colour on the full image and the crop ' + JSON.stringify({ full, crop }));
-  ok(pick.every(([x, y]) => x >= cl.x && x <= cl.x + cl.width && y >= cl.y && y <= cl.y + cl.height), 'comment-shots: the crop covers the stroke ' + JSON.stringify(cl));
+  ok(full.every(near) && crop.every(near), 'comment-shots: the pixels of all three strokes are in the pin colour on the full image and the crop ' + JSON.stringify({ full, crop }));
+  ok(sh.strokes.flat().every(([x, y]) => x >= cl.x && x <= cl.x + cl.width && y >= cl.y && y <= cl.y + cl.height), 'comment-shots: the crop covers all strokes ' + JSON.stringify(cl));
   await pg.close();
 } catch (e) { fails++; console.error(e); }
 
@@ -234,7 +301,7 @@ try {
     const un = path.join(work, 'unpacked-' + path.basename(out, '.ega.html'));
     fs.rmSync(un, { recursive: true, force: true });
     if (!flag.length) execFileSync(process.execPath, [path.join(ROOT, 'tools/portable.mjs'), 'unpack', out, un], { stdio: 'pipe' });   // 再生専用は原稿を持たないので展開できない
-    ok(!t.includes('この式を丸で囲んだ所を短く') && !/"stroke"\s*:\s*\[\[/.test(t) && !fs.existsSync(path.join(un, 'comments.json')), `${flag[0] || 'portable'} export contains no comments (nor after unpacking)`);
+    ok(!t.includes('この式を丸で囲んだ所を短く') && !/"strokes?"\s*:\s*\[\[/.test(t) && !fs.existsSync(path.join(un, 'comments.json')), `${flag[0] || 'portable'} export contains no comments (nor after unpacking)`);
   }
 } catch (e) { fails++; console.error(e); }
 
