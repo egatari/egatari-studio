@@ -67,13 +67,18 @@ jobs:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-node${{ matrix.node }}
-          path: ${{ runner.temp }}/motion-test-artifacts
+          path: |
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 3
 
   # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
   windows:
@@ -93,13 +98,18 @@ jobs:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-windows
-          path: ${{ runner.temp }}/motion-test-artifacts
+          path: |
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 3
 
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
   macos:
@@ -118,13 +128,18 @@ jobs:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-macos
-          path: ${{ runner.temp }}/motion-test-artifacts
+          path: |
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 3
 
   # Clean environment (backlog #50): an empty HOME (not USERPROFILE: Chrome does not start on Windows with an empty one), no TTS server (IRODORI_URL points at a closed port), no user theme
   # folder, the system browser only. tools/clean-env.mjs builds, checks and exports (--portable, --play-only) copies of every example,
