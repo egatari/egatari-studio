@@ -415,6 +415,26 @@
    ],
    "additionalProperties": false
   },
+  "l.activities": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "activities"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false,
+   "description": "ask for the room's activities (used by the join page, which has no lesson file); answered with s.activities. Only from admitted learners."
+  },
   "s.welcome": {
    "type": "object",
    "properties": {
@@ -574,6 +594,35 @@
     "t"
    ],
    "additionalProperties": false
+  },
+  "s.activities": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "activities"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    },
+    "declared": {
+     "type": "boolean",
+     "description": "true if the teacher set the activities; false if they are inferred from what was received (polls then have no choices)"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activities",
+    "declared"
+   ],
+   "additionalProperties": false,
+   "description": "the room's activities: the reply to l.activities, and sent again to the learners who asked when the teacher changes them"
   },
   "t.auth": {
    "type": "object",
@@ -1276,6 +1325,9 @@
     },
     {
      "$ref": "#/$defs/l.ping"
+    },
+    {
+     "$ref": "#/$defs/l.activities"
     }
    ]
   },
@@ -1298,6 +1350,9 @@
     },
     {
      "$ref": "#/$defs/s.pong"
+    },
+    {
+     "$ref": "#/$defs/s.activities"
     }
    ]
   },

@@ -141,6 +141,8 @@ const ja = {
   noFolderPicker: 'このブラウザではフォルダに書き出せません（Chrome / Edge で開いてください）',
   unpackedAt: (t, n, d) => `${t} ${d} に ${n} 個のファイルを書き出しました`, unpackedToast: (n, d) => `「${d}」に ${n} 個のファイルを書き出しました。作業フォルダとして開けます`,
   notEmpty: (d) => `「${d}」は空ではありません。空のフォルダを選んでください`,
+  liveResultsTitle: '授業の部屋の結果が入っています', liveResultsWarn: 'Live の結果が入っています。人に渡すなら外してください（学ぶ人の質問と答え。名前を書いた人はその名前も）。作業フォルダの添付はそのまま残ります',
+  liveResultsWith: '入れたまま書き出す', liveResultsWithout: '結果を外して書き出す',
   portableExportedToast: `1 ファイル（${FX}）に書き出しました。このエディタで「1 ファイルを開く…」から開き直せます`,
   // 利用者のテーマのフォルダ（app/theme-folder.js）
   themeFolderItem: 'テーマのフォルダ…', themeChoose: 'テーマのフォルダを選ぶ…', themeChange: 'ほかのフォルダを選ぶ…', themeForget: 'このフォルダを忘れる', close: '閉じる',
@@ -364,6 +366,8 @@ const en = {
   noFolderPicker: 'This browser cannot write folders (use Chrome or Edge)',
   unpackedAt: (t, n, d) => `${t} wrote ${n} files to ${d}`, unpackedToast: (n, d) => `Wrote ${n} files to “${d}”. You can open it as a working folder.`,
   notEmpty: (d) => `“${d}” is not empty. Please choose an empty folder.`,
+  liveResultsTitle: 'This file contains live room results', liveResultsWarn: 'This file contains live room results. Remove them before giving it to others (learners\' questions and answers, and names if they gave one). The attachment stays in the working folder.',
+  liveResultsWith: 'Export with them', liveResultsWithout: 'Export without the results',
   portableExportedToast: `Exported as a single file (${FX}). Reopen it here with “Open single file…”.`,
   // your own theme folder (app/theme-folder.js)
   themeFolderItem: 'Theme folder…', themeChoose: 'Choose theme folder…', themeChange: 'Choose another folder…', themeForget: 'Forget this folder', close: 'Close',

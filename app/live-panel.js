@@ -4,7 +4,8 @@
 // - 教材に残すのは鍵のない設定（設定のファイル FORMAT.CONFIG_FILE の extensions.live。書き出すと索引の extensions.live）。鍵は書き出す派生にだけ入り、この板が覚えるのは開いているあいだだけ
 //
 //   const panel = createLivePanel({lang, el, ws(), generation(), openPanel(title, body), isOpen(), toast, beforeWrite() → null | 理由, afterWrite(),
-//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, exportLive(live) → Promise, portable() → bool})
+//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, exportLive(live) → Promise, portable() → bool,
+//     importResults(file) → Promise（授業の部屋の結果の JSON を添付にする。app/attachments-panel.js の importLive）})
 //   panel.open()
 import { FORMAT } from '../kit/core/format.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
@@ -24,6 +25,8 @@ const STR = {
     addChoice: '選択肢を足す', delChoice: '消す', delPoll: 'この投票を消す', copy: '活動の JSON（教員のページの「活動」に貼る）', copyBtn: '活動の JSON をコピー', copied: '活動の JSON をコピーしました。教員のページの「活動」に貼って保存してください',
     save: '設定を教材に残す（鍵なし）', saved: `設定を ${CFG} に書きました（鍵は書きません）`, portableNote: '1 ファイルに残すには「保存」を押してください', exp: '部屋を付けて書き出す…',
     problems: '直すこと', none: 'ありません', needKey: '参加の鍵がありません（教員のページの字を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
+    results: '授業が終わったら：部屋のサービスの教員のページで結果（JSON）をダウンロードし、ここから教材の添付（役割：データ）にできます。結果は教材のファイルにだけ残り、学ぶ人に配る再生専用には入りません',
+    importResults: '授業の部屋の結果を取り込む…',
     fail: 'できませんでした：', tooLong: '時間の窓が長すぎます。部屋のサービスで作れるのは 3 時間までです（開く時刻と閉じる時刻を直してください）',
   },
   en: {
@@ -35,6 +38,8 @@ const STR = {
     addChoice: 'Add choice', delChoice: 'Remove', delPoll: 'Remove this poll', copy: 'Activities JSON (paste it into the teacher page\'s Activities)', copyBtn: 'Copy activities JSON', copied: 'Copied the activities JSON. Paste it into Activities on the teacher page and save',
     save: 'Keep settings in the lesson (no key)', saved: `Wrote the settings to ${CFG} (without the key)`, portableNote: 'Press Save to keep them in the single file', exp: 'Export with the live room…',
     problems: 'To fix', none: 'None', needKey: 'No learner key (paste the text from the teacher page)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
+    results: 'After the lesson: download the results (JSON) on the room service\'s teacher page and add them here as an attachment of the lesson (role: data). They stay in the lesson file and never go into the play-only copy for learners',
+    importResults: 'Import live room results…',
     fail: 'Could not: ', tooLong: 'The window is too long: the room service makes rooms of at most 3 hours (change the opening and closing times)',
   },
 };
@@ -155,6 +160,8 @@ export function createLivePanel(o) {
         ]),
       ]);
     });
+    const resultsInput = el('input', { type: 'file', id: 'live-results-file', accept: '.json,application/json', hidden: 'hidden' });
+    resultsInput.addEventListener('change', () => { const f = (resultsInput.files || [])[0]; resultsInput.value = ''; if (f && o.importResults) o.importResults(f).catch((e) => o.toast(X.fail + (e.message || e), true)); });
     jsonBox = el('textarea', { id: 'live-json', rows: '6', readonly: 'readonly', spellcheck: 'false', 'aria-label': X.copy });
     probBox = el('div', { id: 'live-problem-box' });
     const body = [
@@ -178,6 +185,9 @@ export function createLivePanel(o) {
           el('button', { type: 'button', id: 'live-save', text: X.save, onclick: () => save().catch((e) => o.toast(X.fail + (e.message || e), true)) }),
           el('button', { type: 'button', id: 'live-export', cls: 'pri', text: X.exp, onclick: exportNow }),
         ]),
+        o.importResults ? el('h3', { text: X.importResults.replace(/…$/, '') }) : null,
+        o.importResults ? el('p', { cls: 'note', text: X.results }) : null,
+        o.importResults ? el('div', { cls: 'row' }, [resultsInput, el('button', { type: 'button', id: 'live-import-results', text: X.importResults, onclick: () => resultsInput.click() })]) : null,
       ]),
     ];
     o.openPanel(X.title, body);

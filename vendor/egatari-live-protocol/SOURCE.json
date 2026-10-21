@@ -1,8 +1,8 @@
 {
   "repository": "https://github.com/egatari/live",
   "path": "protocol/",
-  "commit": "e2c364d56f873edf9165bb3f81feffce02cf549c",
+  "commit": "8e1e55779eeee55d0b2c37a69edaa931bf836399",
   "license": "MIT (protocol/LICENSE)",
-  "files": 17,
+  "files": 20,
   "note": "Copied from the egatari/live repository: the schema, the close codes and the fixtures the player is tested against. Do not edit; change egatari/live and copy again."
 }

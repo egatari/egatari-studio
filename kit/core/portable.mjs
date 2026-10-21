@@ -19,6 +19,7 @@ import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-l
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
+import { isLiveResults } from './live-results.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -616,6 +617,8 @@ export function folderConfig(index, conf) {
 //                          ないとき（1 ファイルの保存・貼り付け・deck.html だけ）は書かず、carry に exportedFrom があればそのまま残す
 //                          （identity：新しい docId の教材として保存するときは外す。§3.1）
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
+//   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
+//                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
@@ -730,7 +733,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const docId = econf.docId;
 
   // 添付（§3.8）：attachments/ の下の通常のファイル（リンクはたどらない）。上限（ATTACH_LIMITS）を超えるものは読まずに外して知らせる
-  const attachList = [];
+  const attachList = [], liveResults = [], liveLeft = [];
   {
     const aDir = P.join(deckDir, FORMAT.ATTACH_DIR);
     const found = [];
@@ -767,9 +770,16 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       const insp = await inspectAttachment(p, b);
       for (const x of insp.problems) warnings.push(`${LOG}: ${problemText(x)}`);
       if (insp.problems.some(blocking)) continue;
+      // 授業の部屋の結果（拡張 live §3）：学ぶ人の字が入っている。外す指定なら入れない。入れるときは知らせる（人に渡すなら外す）
+      if (isLiveResults(b)) {
+        if (opts.withoutLiveResults) { liveLeft.push(p); continue; }
+        liveResults.push(p);
+      }
       total += b.length;
       files[p] = b; got.add(p);
     }
+    if (liveLeft.length) warnings.push(`${LOG}: live room results left out (${liveLeft.map((x) => `"${x}"`).join(', ')}); the working folder keeps them`);
+    // 入れたときの知らせは呼び手が出す（再生専用の派生には入らないので。kit/core/live-results.mjs の liveResultsWarning）
     const carryBy = new Map((carryList || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
     for (const e of plan.list) if (got.has(e.path)) attachList.push(copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));
     // §3.3：1 ファイルの設定のファイルの attachments は index.attachments と同じにする（展開したフォルダから組み直しても同じ一覧）。
@@ -1007,7 +1017,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag);
     }
   }
-  return { registryEquivalent, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length } };
+  return { registryEquivalent, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）
