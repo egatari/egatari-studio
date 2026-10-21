@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=cc5e69f3cb573fa5 -->
+<!-- i18n: pair=contract.md sha256=eaadf85e13771d99 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -45,6 +45,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 ```
 
 - 部品の段階はスライドの段階 `data-from`（既定 1）から始まる。スライドの段階 K のとき、部品の段階は `k = clamp(K - from + 1, 0, steps)`。部品の段階の範囲の外では t = Infinity で呼ばれる
+- 実行系は、舞台が並べ終わってから `mount` を呼ぶ。部品は `mount` で自分の大きさ（`clientWidth`・`getBoundingClientRect`）を読んでよい。並んでいないうちに起動したとき（`display:none` の iframe の中、後で出すタブの中）は、舞台に大きさが付くまで待ってから mount し、開いたときの位置（と、待つ間に頼まれた `DECK.seek`）を描く。`DECK.ready` と `deck:ready` はその後。起動のときに並んでいるデッキは、これまでどおりすぐに mount する
 - `render` は**同じ (k, t) なら必ず同じ画面**にする。前回の呼び出しの状態に頼らない（戻る・飛ぶ・動画の書き出しで順番が変わるため）
 - `ctx = {mode, slide, instant, deck}`。`ctx.mode === "lecture"` のときは最終状態を見せて今の段階を強調する、などを部品が選べる
 - 部品は、押したときに札を重ねて出してよい（`m-kobun` の活用表）。これはペンと同じ発表の操作で、(i, k, t) の決まりの外にある：段階が動いたら閉じ、`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにする

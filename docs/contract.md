@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=1eadba5ea9ff208a -->
+<!-- i18n: pair=contract.ja.md sha256=05a0d86019cd6cc6 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -45,6 +45,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 ```
 
 - The component's steps start at the slide step `data-from` (default 1). When the slide is at step K, the component's step is `k = clamp(K - from + 1, 0, steps)`. Outside the component's range of steps it is called with t = Infinity
+- The runtime calls `mount` only after the stage is laid out, so a component may read its own size (`clientWidth`, `getBoundingClientRect`) in `mount`. When the deck starts while it is not laid out (inside a `display:none` iframe, or a tab shown later), the runtime waits until the stage has a size, then mounts and draws the opening position (and any `DECK.seek` asked for meanwhile); `DECK.ready` and `deck:ready` come only after that. A deck that is laid out at start mounts at once, as before
 - `render` must give **the same screen for the same (k, t)**. Do not rely on state from the previous call (going back, jumping and video export change the order of calls)
 - `ctx = {mode, slide, instant, deck}`. The component can choose, for example, to show the final state and highlight the current step when `ctx.mode === "lecture"`
 - A component may open an overlay on a click (the conjugation card of `m-kobun`). This is a presenting control, like the pen, outside the (i, k, t) rule: it must close when the step changes, never open in `?mode=video`, not print, take nothing from the network, and show text only
