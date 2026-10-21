@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.5] - 2026-10-22
+
+### Added
+
+- Quality check (command and editor): on every slide, warn when text goes off a slide without `.body` (`textOffSlide`), when text boxes overlap each other or the cover's top band (`textOverlap`; on a cover or section divider the finding names the allowed children and where a subtitle goes), and when a short word in a table cell breaks across lines (`cellWordBreak`). All are R-fit warnings (backlog #64, #65).
+- `npm run sheet -- <deck folder | deck.html | built.html | .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` (`tools/sheet.mjs`): a contact sheet of every slide at its final step in one PNG (numbered, with the slide key when short), for looking at what the quality check cannot see (a legend with the wrong meaning, points cut at an axis edge). `--tiles` also writes the 1280×720 PNG of each slide. No new dependency. `skills/motion-slides` gets a step for it, and a line on leaving a margin beyond the data range when embedding plots
+- Exported copies (format spec §3.1, `exportedFrom`): an export from a working folder (`--portable`, `npm run portable -- pack`, the editor's Export single file) records the folder's source hash in the index (no time, path or name; exports stay byte-reproducible). Editor saves keep it, except Save as new lesson (new `docId`), which drops it; the editor's notice on opening such a file says edits do not reach the folder, offers **Export working folder…** and says when the copy was edited since export. Unpacked folders carry no marker
+- `npm run portable -- compare <file> <dir>`: says by source hash whether the exported copy, the folder or both were edited since the export (nothing is merged)
+- Live room (draft, format extension `live`): Export ▾ → **Distribute with a live room…** adds a room of [egatari/live](https://github.com/egatari/live) (Q&A for the whole lesson, polls per step) to the play-only copy; `node kit/build.mjs <deck> --play-only --live room.json` does the same. The copy gets a CSP `<meta>` whose `connect-src` is exactly the room service, an `extensions` block and the live player (`kit/live.js`); copies without a room are byte-identical to before. The lesson keeps the settings without the key (`extensions.live` in `egatari.json` and the index); the editor connects nowhere. The endpoint must be `https:` (only the development player used by the tests accepts a loopback `http:` endpoint)
+- Live player: a pane outside the stage (the stage is fitted into the rest), a notice and one tap on Join before the first connection, a persistent indicator with Disconnect, polls when their step is reached, reconnects inside the window following egatari/live's close-code table (backoff for network closes, ≥ 30 s after 4423, ≥ 60 s after 4429 and 4430, at the opening time after 4425; a manual Try again after 4441), a window of at most 3 hours in the editor, and no network at all outside the window, before Join, in previews and frames, in video mode, in print and in the presenter view. `tools/test-live.mjs` tests it against a local server speaking the vendored protocol (`vendor/egatari-live-protocol/`)
+
+### Changed
+
+- The CLI writes `.ega.html` exports at the top of the lesson folder, named from the lesson title, and prints the path (before: `out/deck.ega.html`)
+
 ## [0.4.4] - 2026-10-21
 
 ### Added
@@ -513,7 +528,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/egatari/egatari-studio/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/egatari/egatari-studio/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/egatari/egatari-studio/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/egatari/egatari-studio/compare/v0.4.1...v0.4.2
