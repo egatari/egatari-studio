@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=1df40bfa868eb02d -->
+<!-- i18n: pair=reference.md sha256=de2f92703fb5ed03 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -31,9 +31,9 @@
 | 書き方 | 意味 |
 |---|---|
 | `<div id="stage">` の中の `<section class="slide">` | 1 枚（1280×720）。`<h2>` 見出し、`<div class="body">` 本文、`<div class="concl"><span>…</span></div>` 結論の行 |
-| `class="slide cover"` | 表紙：`.venue`、`<h1>`、`.au`。テーマのロゴが左下に入る |
+| `class="slide cover"` | 表紙。子要素は `.venue`（会場・授業の名前。top 120px）、`<h1>`（題名。top 200px。副題は `<br>` のあとの 2 行目に書くか（`<h1>題名<br>副題</h1>`）、`.venue` に入れる）、`.au`（著者・所属。top 450px。`<br>` で何行でも）で、テーマのロゴが左下に入る（`.logos`）。どれも絶対位置で、表紙には `.body` がない。ほかの要素（`<p class="sub">` など）は置き場所が決まらず、スライドの上端の帯に重なる。ほかの字は、デッキの `<style>` で `position:absolute` と `top` を決めて空いた場所に置く。字がスライドの外に出る・ほかの字や帯に重なると品質チェックが警告する（`textOffSlide`・`textOverlap`） |
 | 表紙に `data-nologos` | この表紙にはロゴを入れない（表紙に `.logos` の要素が既にあるときも入れない） |
-| `class="slide sec"` | 章の扉（`<h1>`、`.lead`）。動画の `--full` の章の始まり |
+| `class="slide sec"` | 章の扉（`<h1>` は top 300px、`.lead` は top 390px。ほかの字は表紙と同じく自分で置く）。動画の `--full` の章の始まり |
 | `class="slide sec appendix"` | 付録の扉。以降のページ番号は「付録」/ Appendix。`appendix` がなくても、文字に「付録」か Appendix を含む `sec` は付録の扉とみなす |
 | `class="… static"` | 段階なし：全部見せる。`.concl` も別の段階にしない |
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
@@ -341,6 +341,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px） | エラー |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない） | エラー |
 | `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
+| どのスライドでも（表紙・章の扉・`layout-tate`・絶対位置の配置）：`.body` のないスライドで 1280×720 の外に出る字（`textOffSlide`。`.body` のあるスライドでは `outsideBody`）、ほかの字の箱やスライドの帯（飾り。表紙の上の帯など）に重なる字の箱（`textOverlap`：2 つの箱の行の矩形が縦横とも 2px を超えて重なる。KaTeX の式は式の見た目の箱 1 つで比べる。親と子、同じ部品の中の字どうし、SVG の字は比べない。本文の場所のエラーのあるスライドでは、本文の字と見出し・結論の行の重なりを重ねて知らせない）。表紙と章の扉では、置ける子要素と副題の置き場所を添える。`data-clip` の中の字、見えない字、KaTeX の MathML、`.sr-only` は見ない | 警告 |
+| 表のセル（`td`・`th`）の語が途中で折り返す（`cellWordBreak`）：日本語・中国語の字を含み、空白を除いて 6 字までのセルが 2 行以上になる、または日本語・中国語の字のない語（`Intl.Segmenter` の語）の途中で行が変わる（ブラウザは英語の語を空白やハイフンでしか折らない。`overflow-wrap`・`word-break` で割れる）。長い日本語のセルがふつうに折り返すのは知らせない。直し方は、列を減らす・語を短くする・その列を広げる | 警告 |
 | 本文の「です・ます」（日本語） | エラー |
 | 組まれていない式、KaTeX のエラー | エラー |
 | デッキの中で「、。」と「，．」が混ざる（日本語） | 警告 |
@@ -381,7 +383,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 ### 1 ファイル（`--portable`）
 
-`node kit/build.mjs <deck.html> --portable` は `out/<名前>.ega.html` を書く。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
+`node kit/build.mjs <deck.html> --portable` は `<作業フォルダ>/<教材の題名>.ega.html` を書き（名前は編集アプリの書き出しと同じ規則：`metadata.title`、なければデッキの `<title>`。どの OS でも使える名前にする。題名がなければ `<デッキの名前>.ega.html`）、書いたファイルの絶対パスを表示する。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
 
 - **入るもの**：build が作業フォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・作業フォルダの部品とテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち口述原稿にある段階のもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
 - **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、原稿の `themes/<名前>/` として写す）。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
@@ -395,21 +397,22 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
   - 上限は 1 つ 10 MiB・合わせて 20 MiB・100 個（base64 なので 1 ファイルではおよそ 4/3 倍）。超えるものは知らせて外す（`kit/core/attachments.mjs` の `ATTACH_LIMITS`）。添付はコードに数えない（Extended にならない）。`requires` にも入れない（読み手は無視してよい）。読むのは組み立てと同じ大きさの数え方の内。
   - **1 ファイルの中の `egatari.json`** には、`index.attachments` とちょうど同じ一覧を書く（§3.3）：読み手の一覧に出ない項目は 1 ファイルの写しから除き、知らせる。作業フォルダの `egatari.json` は変えない。展開は `index.attachments` を `egatari.json` に書き（`egatari.json` のない文書でも）、フォルダをまとめるときは一覧を `egatari.json` から読むので、展開してまとめ直しても記録は変わらない。`egatari.json` の一覧が索引と違う文書は読まない（`attachments-mismatch`）。
   - 1 ファイルの再生器は **?** の一覧（題・説明・ファイル名・役割・大きさ）と、帯のクリップのボタンに出し、**ダウンロードだけ**にする：出すのは、題が正しく、役割が受ける拡張子で、塊の媒体型がそれに合うものだけ（索引に書いてあっても、`.html`・`.js` や `pdf` として書いた CSV は出さない）。保存する名前はパスのファイル名そのもの（OS が受けない名前は、替えずに出さない）。コードの添付には「出どころを信頼できるときだけ、コードを実行してください」と添える。索引の hash と、添付ごとの大きさと SHA-256 を確かめ、先頭のバイトを形式と照らし（HTML で始まる `.txt` は保存しない）、中身を `application/octet-stream` としてダウンロードのリンクで保存させる。ページでも新しいタブでも開かない・実行しない。再生専用（`--play-only`）とふつうの組み立てには添付は入らない（形式が保存の層を除く）。品質チェックは、役割や題がない・知らない役割・書いたのにないファイル・使えない名前（`attachments/` の外・`..`・予約名・大文字小文字の重なり・隠しファイル・リンク）・上限を超えるものも警告する
+- **書き出した写し**（`exportedFrom`、仕様 §3.1）：作業フォルダからの書き出し（`--portable`・`npm run portable -- pack`・編集アプリの「1 ファイルを書き出す」）は、索引に `{"kind": "folder", "sourceSha256": …}`（書き出したときの原稿の hash）を書く。時刻・パス・利用者の名前は入れないので、書き出しはバイトまで同じに作り直せ、展開してまとめると同じファイルに戻る。編集アプリで 1 ファイルを保存しても（組み直さない保存も）印は変えないので、原稿の hash が印の値と違えば、書き出しの後に写しを直したと分かる。新しい教材として保存する（新しい `docId`）と印を外す。フォルダから書き出し直すと置き換わる。1 ファイルが原本の教材（フォルダなしで編集アプリが保存したもの・貼り付けたもの・`deck.html` だけから開いたもの）には印がなく、再生専用の派生には索引がない。展開すると新しいフォルダが原本になる：`egatari.json` は印を持たず、次の書き出しが新しい印を書く。
 - **音声の記録**：段階の音声ごとに、作ったときの口述原稿の hash を残す。TTS の控えから、音声を作った後に口述原稿が変わったと分かるときは、その hash を `null`（分からない＝古い）にする。展開してまとめ直しても `null` のまま。実行系の音声の項目には音声のメディアタイプも書くので、再生器が推し量らずに済む。
 - 30 MiB を超えると警告する（長い教材は章に分ける）。
 
 | 選択肢 | 意味 |
 |---|---|
-| `--portable` | 1 ファイルを書く（既定 `out/<名前>.ega.html`。`-o` で場所） |
-| `--play-only` | 再生専用の写しを書く（既定 `out/<名前>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
+| `--portable` | 1 ファイルを書く（既定 `<作業フォルダ>/<教材の題名>.ega.html`。作業フォルダの最上位。`-o` で場所） |
+| `--play-only` | 再生専用の写しを書く（既定 `<作業フォルダ>/<教材の題名>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
 
-`npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。
+`npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。`npm run portable -- compare <ファイル> <フォルダ>` は、作業フォルダから書き出した写しとそのフォルダ（`egatari.json` の `docId` が同じ）を受け取り、書き出しの後にどちらを直したかを原稿の hash で言う：`same`（どちらも直していない）・`copy`（写しを直した。写しを展開すればフォルダに戻せる）・`folder`（フォルダを直した。書き出し直す）・`both`（両方。どちらを残すかを選ぶ。混ぜない）。何も書かない。`exportedFrom` のないファイルと、ほかの教材のフォルダは断る。
 
 1 ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#1-ファイルフォルダなし)）は、ほかに、中に入った `audio/manifest.json`（いつも音声の記録から作るもの）と、`docId` が索引と違う設定のファイルも断り、原稿の hash を files から計算し直す。索引や実行系のメタデータの値と違えば、組んだ教材と原稿が食い違うと知らせる。新しい major の版のファイルと、読み手の実装していない機能を必須とするファイルは、索引と塊が 1.x の規則で確かめられたときだけ原稿を取り出せる（`readPortable(text, {extract: true})` と編集アプリの「作業フォルダに書き出す…」）。編集も書き出し（作り直し）もしない。
 
 #### 組み直さない編集（段 A）
 
-`kit/core/tier-a.mjs`（`tierA(original, files, {identity?, fonts?})`。Node にもブラウザにも依存せず、何も実行しない）は、口述原稿・音声・秒数の上書きの編集を、形式の段 A（§7.2）として、組み直さずに 1 ファイルに入れる。`files` は直した作業フォルダ（展開した形。`audio/manifest.json` を含む）。書き換えるのは次の所だけ：`deck-narration`・`deck-marks`・`deck-timing`・`deck-audio` の変わった項目（ほかの項目は書き方ごとバイトのまま）、読める層の変わった `<div data-step-key>`、`deck-meta` の `sourceSha256`（`identity` があれば `docId` も）、索引の変わった項目（`files`・`blobs`・変わった音声の記録・`requires`・`sourceSha256`・拡張の行から作る拡張のうち変わった行から作られる項目、`identity` があれば `docId` と `metadata.derivedFrom`）とその `data-sha256`、塊（新しい中身を足し、参照されなくなったものを除く）、そして変わった口述原稿に、ファイルの `@font-face` がまかなわない字があるときだけ、その字を含む `@fontsource` の分割ファイルを入れた新しい `<style id="…font-supplement-<n>">`（`fonts`：`{faces(key), load(file)}`）。`<n>` は今ある補いの番号のいちばん大きいものの次（0 から）で、`@font-face` を持つ最後の style 要素の後に置き、埋め込んである字（family・weight・style）のうちその字を持たないものごとに 1 つの `@font-face` を書く（400 だけを埋め込んだファイルには 400 だけ。ファイルが埋め込まない family には書かず、知らせる）。ほかのバイトはそのまま。知らない項目はどの深さでも残す。口述原稿が変わった段階の音声の記録はそのまま（`inputHash` が合わなくなるので古い）。段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して知らせる。どのスライドにも当たらない鍵の口述原稿は読める層に入れず、知らせる。返すのは `{ok: true, html, index, deckMeta, changes, warnings}` か、組み直しが要るとき（`source-changed`：`narration.md`・`timeline.json`・設定のファイルのほかが変わった）、組んだ教材と原稿が食い違うとき（`source-mismatch`）、`timeline.json` が JSON の object でないとき（`timeline`）、場所が見つからないとき（`layout`）の `{ok: false, code, reason}`。結果を展開してまとめ直すと、原稿のファイル・音声の記録・実行系の JSON・読める層・索引は同じで、字（組み直しは `deck-base` に字を選び直し、補いは足さない）と、塊の並びが違うことがある。`tools/test-tier-a.mjs` が場所を見分ける差分（`tools/tier-a-diff.mjs`）で確かめる。
+`kit/core/tier-a.mjs`（`tierA(original, files, {identity?, fonts?})`。Node にもブラウザにも依存せず、何も実行しない）は、口述原稿・音声・秒数の上書きの編集を、形式の段 A（§7.2）として、組み直さずに 1 ファイルに入れる。`files` は直した作業フォルダ（展開した形。`audio/manifest.json` を含む）。書き換えるのは次の所だけ：`deck-narration`・`deck-marks`・`deck-timing`・`deck-audio` の変わった項目（ほかの項目は書き方ごとバイトのまま）、読める層の変わった `<div data-step-key>`、`deck-meta` の `sourceSha256`（`identity` があれば `docId` も）、索引の変わった項目（`files`・`blobs`・変わった音声の記録・`requires`・`sourceSha256`・拡張の行から作る拡張のうち変わった行から作られる項目、`identity` があれば `docId` と `metadata.derivedFrom`。そのときは `exportedFrom` を外す）とその `data-sha256`、塊（新しい中身を足し、参照されなくなったものを除く）、そして変わった口述原稿に、ファイルの `@font-face` がまかなわない字があるときだけ、その字を含む `@fontsource` の分割ファイルを入れた新しい `<style id="…font-supplement-<n>">`（`fonts`：`{faces(key), load(file)}`）。`<n>` は今ある補いの番号のいちばん大きいものの次（0 から）で、`@font-face` を持つ最後の style 要素の後に置き、埋め込んである字（family・weight・style）のうちその字を持たないものごとに 1 つの `@font-face` を書く（400 だけを埋め込んだファイルには 400 だけ。ファイルが埋め込まない family には書かず、知らせる）。ほかのバイトはそのまま。知らない項目はどの深さでも残す。口述原稿が変わった段階の音声の記録はそのまま（`inputHash` が合わなくなるので古い）。段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して知らせる。どのスライドにも当たらない鍵の口述原稿は読める層に入れず、知らせる。返すのは `{ok: true, html, index, deckMeta, changes, warnings}` か、組み直しが要るとき（`source-changed`：`narration.md`・`timeline.json`・設定のファイルのほかが変わった）、組んだ教材と原稿が食い違うとき（`source-mismatch`）、`timeline.json` が JSON の object でないとき（`timeline`）、場所が見つからないとき（`layout`）の `{ok: false, code, reason}`。結果を展開してまとめ直すと、原稿のファイル・音声の記録・実行系の JSON・読める層・索引は同じで、字（組み直しは `deck-base` に字を選び直し、補いは足さない）と、塊の並びが違うことがある。`tools/test-tier-a.mjs` が場所を見分ける差分（`tools/tier-a-diff.mjs`）で確かめる。
 
 添付は保存の層の項目なので、`attachments/` の下のファイルを足す・消す・名前を替えること、`egatari.json` の役割と題を替えることも段 A で済む：変わるのは索引（`files`・`blobs`・`sourceSha256`・`attachments`）・塊・`deck-meta.sourceSha256` だけ。スライドの原稿がその添付のパスを書いているとき（組み立てが読んだかもしれない）は `source-changed`、足した・中身を替えた・役割を替えた添付が上限・名前の規則・上の §3.8 の形式と条件に合わないときは `attachments` で断る。前から 1 ファイルにあって変わっていない添付はそのまま残し、合わなければ知らせる。`egatari.json` が `index.attachments` にない項目（役割や題のないもの）を書いているときは、保存する写しを `index.attachments` とちょうど同じ一覧にし、結果の `config` にその文字を入れる（エディタは作業場所にも書く）。
 
@@ -458,7 +461,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 |---|---|
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいな雛形から新しい作業フォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <作業フォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のあるデッキでは何もしない |
-| `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` | 1 ファイル ↔ フォルダ。[1 ファイル](#1-ファイル--portable) |
+| `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]`・`npm run portable -- compare <ファイル> <フォルダ>` | 1 ファイル ↔ フォルダ。[1 ファイル](#1-ファイル--portable) |
 | `npm run build:app` | 編集アプリを作る：`dist/` の配信版（GitHub Pages 用。`dist/index.html`）と 1 ファイルの `dist/editor.html`。[editor.ja.md](editor.ja.md) |
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
@@ -466,6 +469,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
+| `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | コンタクトシート：全スライドの最終段階を 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<デッキ>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。出力の場所と枚数を印字する |
 | `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピンを描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
 | `node tools/catalog.mjs` | `vendor/components/CATALOG.md` を作り直す |
 | `npm run components:update -- vX.Y.Z [--from <フォルダ>]` | egatari/components のリリースを `vendor/components/` と `components.lock.json` に取り込む（`manifest.json` の sha256 で確かめる。版は置き換えない） |

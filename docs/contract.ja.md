@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=ec834dc5e72e2c21 -->
+<!-- i18n: pair=contract.md sha256=cc5e69f3cb573fa5 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -174,8 +174,8 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 <div class="code wall" data-clip>…箱でわざと切る長い XML…</div>
 ```
 
-- 品質チェック（コマンド版・ブラウザ版。`kit/core/layout-scan.mjs` の 1 つの実装）は、`overflow` が `visible` でない箱で切れる字（`textClipped`）、SVG の枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりに描いた `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）を警告しなければならない。どれも R-fit の警告
-- 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）を、この 4 つの検査で知らせてはならない。縦横どちらの向きにも効く。ほかの検査（`bodyBottom`・`smallText` など）も表示も変えてはならない
+- 品質チェック（コマンド版・ブラウザ版。`kit/core/layout-scan.mjs` の 1 つの実装）は、`overflow` が `visible` でない箱で切れる字（`textClipped`）、SVG の枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりに描いた `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）を警告しなければならない。どのスライドでも、`.body` のないスライドでスライドの外に出る字（`textOffSlide`）、ほかの字の箱やスライドの帯（飾り）に重なる字の箱（`textOverlap`）、表のセルで途中で折り返す短い語（`cellWordBreak`）も警告しなければならない。どれも R-fit の警告
+- 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）を、これらの検査で知らせてはならない。縦横どちらの向きにも効く。ほかの検査（`bodyBottom`・`smallText` など）も表示も変えてはならない
 - 本文が下にはみ出すスライド（`bodyBottom`）では、`.body` の中の字がスライドの外に出ることを重ねて知らせない（スライドの端の `svgTextOut`）。本文を減らせばどちらも直る
 - 書き手は `data-clip` を、切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
 

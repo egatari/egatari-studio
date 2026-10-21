@@ -5,14 +5,14 @@
 //     config：設定のファイルを書き直したとき（添付の一覧を index.attachments に揃えた。§3.3）、その文字。呼び手は作業場所にも書く
 //     original  開いている（または前に保存した）1 ファイルの文字列
 //     files     作業場所の今のファイル：{path: Uint8Array} か Map（audio/manifest.json を含む。控え・コメントなど保存しないものは無視する）
-//     opts.identity  {docId, derivedFrom}：新しい教材として保存する（docId と derivedFrom も書き換える。§7.3）
+//     opts.identity  {docId, derivedFrom}：新しい教材として保存する（docId と derivedFrom も書き換え、書き出しの印 exportedFrom を外す。§3.1・§7.3）
 //     opts.fonts     {faces(key) → [{w, family, file, range}], load(file) → Promise<base64>}：字の分割ファイル（@fontsource）。key は 'biz' | 'sans3'
 //
 // 書き換えるのは §7.2 が挙げる場所だけ：
 //   実行系の JSON（deck-narration・deck-marks・deck-timing・deck-audio）の、変わった段階の項目だけ（ほかの項目のバイトはそのまま）
 //   読める層（§2.1）の、変わった段階の <div data-step-key> だけ
 //   deck-meta の sourceSha256（新しい教材として保存するときは docId も）
-//   索引（files・blobs・audio の変わった記録・requires・sourceSha256・拡張・新しい教材の docId と derivedFrom）と data-sha256
+//   索引（files・blobs・audio の変わった記録・requires・sourceSha256・拡張・新しい教材の docId と derivedFrom、新しい教材で外す exportedFrom）と data-sha256
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
 //   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
 //     ごとに、その字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
@@ -38,7 +38,7 @@ const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'de
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // 索引の項目の並び（足すときの位置。書き出し（exportPortable）と同じ順）
-const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY];
+const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom'];
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
 
@@ -439,6 +439,8 @@ async function run(original, filesIn, opts) {
     setIx(['docId'], identity.docId);
     if (identity.derivedFrom) setIx(['metadata', 'derivedFrom'], identity.derivedFrom, [...KNOWN.metadata]);
     else if (isObj(ix.metadata) && own(ix.metadata, 'derivedFrom')) setIx(['metadata', 'derivedFrom'], undefined);
+    // 新しい docId の教材は写しではない（§3.1）：書き出しの印を外す
+    if (own(ix, 'exportedFrom')) setIx(['exportedFrom'], undefined);
   }
   // 拡張の行から作る拡張（§9A）：変わった行から作られる項目（段階の鍵の項目）だけを書き換える。ほかの項目（v・段階の鍵でない項目・
   // 行から作られていない段階の項目・ほかの拡張）はバイトのまま。行がすべてなくなり v のほかに何も残らない拡張は消す（書き出しと同じ）

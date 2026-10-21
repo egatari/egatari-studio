@@ -2,6 +2,7 @@
 //
 //   npm run portable -- unpack <file> <dir> [--force]          原稿と音声をフォルダに出す（スクリプトは実行しない）
 //   npm run portable -- pack <dir> [-o out] [--play-only]      フォルダを 1 ファイルにする（= node kit/build.mjs <dir>/deck.html --portable）
+//   npm run portable -- compare <file> <dir>                   作業フォルダから書き出した写しとそのフォルダの、書き出しの後に直した側（写し・フォルダ・両方）を言う
 //
 // unpack は <dir> の外に書かない。<dir> が空でなければ断る（--force で上書き。シンボリックリンクを通る書き込みは断る）。
 // 音声の記録（index.audio）から audio/manifest.json を作り、設定のファイル（FORMAT.CONFIG_FILE）に docId・権利の表示・添付の一覧（index.attachments）を
@@ -10,27 +11,33 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict } from '../kit/core/portable.mjs';
+import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict, exportPortable, exportedState } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
-import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
+import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
+import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-// 展開する。返すもの：{written: [rel…], warnings}
-export async function unpack(file, dir, { force = false } = {}) {
-  // 読む前に開いた fd の大きさを形式の上限（LIMITS.fileBytes）と比べ、超えるなら読まずに断る。通常のファイルだけ（FIFO で止まらない）、
-  // 写さずに（Buffer の上の Uint8Array のまま）読み取りに渡す（kit/bounded-read.mjs）
+// 読む前に開いた fd の大きさを形式の上限（LIMITS.fileBytes）と比べ、超えるなら読まずに断る。通常のファイルだけ（FIFO で止まらない）、
+// 写さずに（Buffer の上の Uint8Array のまま）読み取りに渡す（kit/bounded-read.mjs）
+async function readSingleFile(file) {
   let buf;
   try { buf = readRegular(file, { max: LIMITS.fileBytes }); } catch (e) {
     if (e && e.code === 'read-over') throw new FormatError('file-too-large', `file is larger than ${LIMITS.fileBytes} bytes (${e.n})`);
     if (e && e.code === 'build-not-a-file') throw new FormatError('not-a-file', `${file} is not a regular file`);
     throw e;
   }
-  const r = await readPortable(new Uint8Array(buf.buffer, buf.byteOffset, buf.length));
+  return readPortable(new Uint8Array(buf.buffer, buf.byteOffset, buf.length));
+}
+
+// 展開する。返すもの：{written: [rel…], warnings}。展開したフォルダが原本になる：設定のファイルに書き出しの印（index.exportedFrom、§3.1）は
+// 入れない（folderConfig は写さない）ので、次の書き出しが新しい印を書く
+export async function unpack(file, dir, { force = false } = {}) {
+  const r = await readSingleFile(file);
   const out = path.resolve(dir);
   if (fs.existsSync(out)) {
     if (!fs.lstatSync(out).isDirectory()) throw new FormatError('bad-target', `${dir} is not a directory`);
@@ -73,6 +80,30 @@ export async function unpack(file, dir, { force = false } = {}) {
   warnings.push(...registryWarnings(r.index));
   return { written, warnings, index: r.index };
 }
+
+// 書き出した写し（1 ファイル）と、同じ docId の作業フォルダを、書き出しの印（index.exportedFrom、§3.1）で比べる。何も書かない。
+// フォルダの今の sourceSha256 は、書き出しと同じ数え方で求める（組み立てる。設定のファイルは書かない）。
+// 返すもの：{state: 'same' | 'copy' | 'folder' | 'both', docId, exportedSha256, copySha256, folderSha256}
+export async function compare(file, dir) {
+  const r = await readSingleFile(file);
+  const st = exportedState(r.index);
+  if (!st) throw new FormatError('not-exported', `${file} has no exportedFrom: it was not exported from a working folder`);
+  const src = entryOf(dir);
+  const CFG = FORMAT.CONFIG_FILE, cp = path.join(path.dirname(src), CFG);
+  let conf = null;
+  try { conf = parseJsonStrict(readRegular(cp, { max: READ_LIMITS.json }).toString('utf8')); } catch { conf = null; }
+  if (!conf || conf.docId !== r.index.docId) throw new FormatError('other-lesson', `${dir}: ${CFG} does not have the docId ${r.index.docId}: not the folder this copy was exported from`);
+  const f = await exportPortable(nodeEnv, src, {});
+  const s = exportedState(r.index, f.index.sourceSha256);
+  const state = s.both ? 'both' : s.copyEdited ? 'copy' : s.folderEdited ? 'folder' : 'same';
+  return { state, docId: r.index.docId, exportedSha256: s.exportedSha256, copySha256: r.index.sourceSha256, folderSha256: f.index.sourceSha256 };
+}
+const COMPARE_TEXT = {
+  same: 'neither was edited since the export',
+  copy: 'the copy was edited since the export; the folder was not (unpack the copy to bring the edits back)',
+  folder: 'the folder was edited since the export; the copy was not (export again to replace the copy)',
+  both: 'both the copy and the folder were edited since the export: choose which to keep (they are not merged)',
+};
 
 // 部品庫の固定（components.lock.json）。読めなければ null
 function lockAt(root) {
@@ -135,16 +166,19 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const r = await unpack(pos[0], pos[1], { force: flags.has('--force') });
       console.log(`unpacked ${r.written.length} files (docId ${r.index.docId}) -> ${pos[1]}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
+    } else if (cmd === 'compare' && pos.length === 2) {
+      const r = await compare(pos[0], pos[1]);
+      console.log(`${r.state}: ${COMPARE_TEXT[r.state]} (docId ${r.docId}; exported ${r.exportedSha256.slice(0, 12)}…, copy ${r.copySha256.slice(0, 12)}…, folder ${r.folderSha256.slice(0, 12)}…)`);
     } else if (cmd === 'pack' && pos.length === 1) {
       const src = entryOf(pos[0]);
       const playOnly = flags.has('--play-only');
-      const out = oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly);
-      const r = await buildPortable(src, { out, playOnly });
+      const r = await buildPortable(src, { playOnly });
+      const out = path.resolve(oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly, r.index?.metadata?.title || titleOf(r.html)));
       writeOutput(src, out, r.html);
       console.log(`packed ${r.stats.files} source files, ${r.stats.audio} audio (docId ${r.index.docId}, sourceSha256 ${r.index.sourceSha256.slice(0, 12)}…) -> ${out}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
     } else {
-      console.error('usage: npm run portable -- unpack <file> <dir> [--force]\n       npm run portable -- pack <dir> [-o out] [--play-only]');
+      console.error('usage: npm run portable -- unpack <file> <dir> [--force]\n       npm run portable -- pack <dir> [-o out] [--play-only]\n       npm run portable -- compare <file> <dir>');
       process.exit(2);
     }
   } catch (e) {

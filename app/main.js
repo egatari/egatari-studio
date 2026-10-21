@@ -24,7 +24,7 @@ import { writeText, writeFile, cancelledError, readText, hasPermission, askPermi
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, LIMITS, newDocId, playOnly } from '../kit/core/portable.mjs';
+import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState } from '../kit/core/portable.mjs';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
@@ -281,6 +281,11 @@ function showNotice() {
   if (P && P.sourceOnly && !P.handle) lines.push(['notice-source-only', T.sourceOnlyNotice]);
   const n = $('notice'); n.innerHTML = '';
   for (const [id, text] of lines) n.append(el('p', { id, text }));
+  // 作業フォルダから書き出した写し（index.exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、作業フォルダに書き出すボタン（メニューと同じ名前）を出す。
+  // 編集は断らない。写しの今の sourceSha256 が書き出したときの値と違えば、書き出しの後にこの写しで直した（hash で比べる。時刻は持たない）
+  const xs = P ? exportedState(P.index) : null;
+  if (xs) n.append(el('p', { id: 'notice-exported', text: T.exportedNotice + (xs.copyEdited ? ' ' + T.exportedEdited : '') + ' ' },
+    [el('button', { type: 'button', id: 'b-exported-unpack', text: T.exportFolder, onclick: () => exportFolder() })]));
   // 部品庫が取り下げた版（format spec §6）：知らせて、置き換え先の版で組み直すボタンを出す。黙って置き換えない
   const yk = yankedNow();
   if (yk.length) {
@@ -1191,7 +1196,7 @@ async function exportPortableFile() {
   const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
   let r;
-  try { r = await engine.exportPortable(S.deckFile); }
+  try { r = await engine.exportPortable(S.deckFile, { fromFolder: true }); }   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
   catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }

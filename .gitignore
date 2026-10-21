@@ -20,3 +20,5 @@ comments.json
 *.local.json
 # editor app build (npm run build:app)
 dist/
+# single-file exports written by the CLI at the top of an example folder
+/examples/*/*.ega.html

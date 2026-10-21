@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=29c2a3a88df2e9d6 -->
+<!-- i18n: pair=README.md sha256=9ab83d7d70609e9e -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -32,7 +32,7 @@
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。部品はテーマの変数だけを使う
 - **品質管理**：規格（R-fit・R-steps など）がデッキの満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と口述原稿を直し、AI のコーディング道具へのメモを残せる
-- **1 ファイル（`.ega.html`）**：`--portable` で、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は原稿を入れない写し。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
+- **1 ファイル（`.ega.html`）**：`--portable` で（教材のフォルダの最上位に、題名から作った名前で。書いた場所は表示される）、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は原稿を入れない写し。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
 - **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
 **リファレンス**：選択肢・記法・キー・環境変数をすべて 1 ページに：[docs/reference.ja.md](docs/reference.ja.md)
@@ -99,6 +99,7 @@ open examples/minimal/out/deck.html                 # macOS。ほかの OS で�
 
 node kit/check.mjs examples/minimal/deck.html       # 品質チェック。最後の行が「エラー 0」になる
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF（1 スライド 1 ページ）
+npm run sheet -- examples/minimal                        # 全スライドの最終段階を 1 枚の PNG に（品質チェックで見えないものを目で見る）
 node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
 

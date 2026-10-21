@@ -34,14 +34,15 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
 5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。段階 0 で見えている本文の一覧は必ず読む
-7. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で AI へのメモを残す。「コメントを反映して」と言われたら：
+7. **全スライドの最終段階を 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す
+8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で AI へのメモを残す。「コメントを反映して」と言われたら：
    - `<deck>/comments.json` の open を読む（`key` は `スライドの鍵:段階`、`range` は deck.html の位置、`quote` は要素の字の頭（点の近くの字があれば「近くの字 ｜ 要素の字」）、`pin` は押した点 `{x, y}`（スライドの座標 1280×720。ないものもある））
    - **先に `node <repo>/tools/comment-shots.mjs <deck>` を動かし、画像を見る**（Read で開く）。`<deck>/.cache/comment-shots/<id>.png` が点の周りの切り抜き（2 倍）、`<id>-full.png` がスライド全体で、どちらにも赤い輪で点を描いてある。図・部品へのコメントは、輪の所にある線・札・語が対象。言葉だけで決めない
    - 直したら、その段階を撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
-8. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
-9. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
-   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/out/<名前>.ega.html`：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
-   - `node <repo>/kit/build.mjs <deck> --play-only` → `<名前>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
+9. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
+10. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
+   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/<教材の題名>.ega.html`（デッキのフォルダの最上位。書いた場所は表示される）：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
+   - `node <repo>/kit/build.mjs <deck> --play-only` → `<deck>/<教材の題名>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
    - 書き出す前に教材の情報を確かめる（§3「教材の情報」）
 
 ## 3. 原稿の書き方（deck.html）
@@ -179,6 +180,7 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
 
 - 一覧と属性は `<repo>/vendor/components/CATALOG.md`、見本は各部品の `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、部品の子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
+- 図に matplotlib などのグラフを入れるときは、各軸にデータの範囲より余白を取る（`ax.margins(0.05)` など）。端の点がプロット領域で切れないようにする
 - 動きは注意の誘導に限る。飾りの動きは付けない
 - 静的な図は matplotlib の SVG（図の幅[in] = 表示幅[px] / 100、文字 18pt）を `{{FIG:名前}}` で
 

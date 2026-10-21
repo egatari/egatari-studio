@@ -39,5 +39,38 @@ for (const extra of [[], ['--portable']]) {
   assert.doesNotMatch(r.stderr, /FIFO|build-not-a-file/);
   assert.ok(!fs.existsSync(path.join(tmp, 'c.html')));
 }
+// 4. 既定の書き出し先：原稿のフォルダの最上位に、題名から作った名前（なければデッキの名前）。絶対パスを知らせる。out/ には書かない
+const d4 = path.join(tmp, 'd4');
+fs.cpSync(path.join(ROOT, 'examples/minimal'), d4, { recursive: true, filter: (s) => !/[\\/](out|\.cache)$/.test(s) });
+const before = fs.readFileSync(path.join(d4, 'deck.html'), 'utf8'), narr = fs.readFileSync(path.join(d4, 'narration.md'), 'utf8');
+r = run(d4, '--portable');
+assert.equal(r.status, 0, r.stderr);
+const title = (before.match(/<title>([^<]*)<\/title>/) || [])[1];
+const f1 = path.join(d4, `${title}.ega.html`);
+assert.ok(fs.statSync(f1).size > 0, 'default: <deck>/<title>.ega.html');
+assert.ok(r.stdout.includes(path.resolve(f1)), 'default: the full path is printed');
+r = run(d4, '--play-only');
+assert.equal(r.status, 0, r.stderr);
+assert.ok(fs.statSync(path.join(d4, `${title}.play.ega.html`)).size > 0, 'default: <deck>/<title>.play.ega.html');
+assert.ok(!fs.existsSync(path.join(d4, 'out')), 'default: nothing in out/');
+// 4b. 題名の名前に普通のファイルでないものがあれば、デッキの名前に替える。原稿のファイルは変わらない
+fs.rmSync(f1);
+fs.mkdirSync(f1);
+r = run(d4, '--portable');
+assert.equal(r.status, 0, r.stderr);
+assert.ok(fs.statSync(path.join(d4, 'deck.ega.html')).isFile(), 'collision with a folder: falls back to the deck name');
+assert.ok(fs.statSync(f1).isDirectory(), 'collision: the folder is untouched');
+assert.equal(fs.readFileSync(path.join(d4, 'deck.html'), 'utf8'), before);
+assert.equal(fs.readFileSync(path.join(d4, 'narration.md'), 'utf8'), narr);
+// 4c. 題名の名前に今ある .ega.html は上書きする（書き出し直し）
+fs.rmSync(f1, { recursive: true });
+fs.writeFileSync(f1, 'old');
+r = run(d4, '--portable');
+assert.equal(r.status, 0, r.stderr);
+assert.ok(fs.statSync(f1).size > 100, 'an existing .ega.html is replaced');
+// 4d. -o は今までどおり
+r = run(d4, '--portable', '-o', path.join(tmp, 'o.ega.html'));
+assert.equal(r.status, 0, r.stderr);
+assert.ok(fs.existsSync(path.join(tmp, 'o.ega.html')));
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('test-build-args: ok');

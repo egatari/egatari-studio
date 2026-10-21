@@ -10,6 +10,7 @@ description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.h
 ## 1. 前提を確かめる
 
 - 品質チェック `node <repo>/kit/check.mjs <deck>/deck.html` が error 0（終了コード 2 は検査が終わっていない印で、error 0 ではない。口述原稿のない段階は警告で出る。動画にするなら埋める）
+- 全スライドの最終段階を 1 枚で見たか（`node <repo>/tools/sheet.mjs <deck>/deck.html`。品質チェックでは見えない凡例・軸の端の切れなどを、画像を読めるなら Read で、読めないなら利用者に）
 - 口述原稿はユーザーが確認済みか。まだなら、先に開発サーバー（`node <repo>/server/dev.mjs <deck>/deck.html`、キー `n`）で見てもらう
 - 話者：既定は 1 人モードが bob、掛け合いが bob（Expert）× alice（Novice）。変えるときは `<deck>/voice.json` か `--voices`。参照音声は `<名前>.wav` を `IRODORI_REF_DIR`（既定 `<repo>/tts/voices/`）に置く
 - TTS のサーバーが動いているか：`curl -s ${IRODORI_URL:-http://localhost:8882}/v1/models`（Windows の PowerShell では `curl` が別のコマンドになるので `curl.exe -s http://localhost:8882/v1/models`）。試しているのは Apple シリコンの Mac の mlx-audio。Windows・Linux では、同じ要求（`/v1/models` と `/v1/audio/speech`）に答えるほかの OpenAI 互換のサーバーを `IRODORI_URL` に向ける（`<repo>/docs/video.ja.md`「TTS のサーバー」）。サーバーがなければ、編集アプリの音声の板で段階ごとに作る・録音する道を案内する（Colab で作る道は準備中で、時期は約束しない）
@@ -49,8 +50,8 @@ node "$R\render\render.mjs" "$D\out\deck.html" --out "$D\video" --full
 動画とは別に、TTS の音声を入れた 1 ファイル（`.ega.html`）も作っておく。動画を使わない場で配れ、編集アプリ <https://studio.egatari.org/> で開き直して口述原稿を直せる（音声は古い段階として印が付く）。
 
 ```bash
-node $R/kit/build.mjs $D --portable      # → $D/out/<名前>.ega.html（原稿・音声入り。docId は $D/egatari.json）
-node $R/kit/build.mjs $D --play-only     # → $D/out/<名前>.play.ega.html（原稿なしの再生専用。学ぶ人に配るもの）
+node $R/kit/build.mjs $D --portable      # → $D/<教材の題名>.ega.html（原稿・音声入り。docId は $D/egatari.json）
+node $R/kit/build.mjs $D --play-only     # → $D/<教材の題名>.play.ega.html（原稿なしの再生専用。学ぶ人に配るもの）
 ```
 
 - TTS と build の後に作る（音声の長さが入ったタイムラインで）。ライセンス・著作権・作り手は `$D/egatari.json` の `metadata` に（motion-slides §3「教材の情報」）
