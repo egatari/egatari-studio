@@ -33,7 +33,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 教員のリンク（教員の鍵入り）は断る
     await page.fill('#live-paste', cr.teacherUrl);
     await page.click('#live-read');
-    ok(await page.inputValue('#live-key') === '' && /教員のリンク/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
+    ok(await page.inputValue('#live-key') === '' && /これは教員用リンクです/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
     await page.fill('#live-paste', 'コピー：\n' + block);
     await page.click('#live-read');
     ok(await page.inputValue('#live-room') === cr.room && await page.inputValue('#live-key') === cr.key && (await page.inputValue('#live-from')).length === 16, 'live panel: the teacher page\'s copy block fills room, key and window');
@@ -56,7 +56,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] }), 'live panel: the activities JSON for the teacher page');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
     await page.fill('#live-endpoint', 'http://127.0.0.1:8787');
-    ok(await page.$eval('#live-export', (b) => b.disabled) && /endpoint/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused');
+    ok(await page.$eval('#live-export', (b) => b.disabled) && /接続先が正しくありません/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused (in Japanese)');
     await page.fill('#live-paste', block); await page.click('#live-read');
     { const pi = await page.$('#live-paste'); if (pi) await page.fill('#live-paste', ''); }
     // 窓が 3 時間より長い（部屋のサービス v1 の上限）
@@ -67,6 +67,9 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 形の誤り：選択肢が空
     await page.fill('#live-poll-0-c2', '');
     ok(await page.$eval('#live-export', (b) => b.disabled) && !!(await page.$('#live-problems')), 'live panel: an empty choice is a problem; export is disabled');
+    // 直すことは画面の言葉で（validate の code から。英語の開発者向けの文を出さない）
+    { const t = await page.textContent('#live-problems'); ok(/投票 p1：選択肢 3 を入れてください（100 字まで）/.test(t) && !/live\.activities|characters/.test(t), `live panel: the problem is in plain Japanese ("${t}")`); }
+    await page.$eval('#live-problem-box', (e) => e.scrollIntoView({ block: 'center' })); await shot(page, 'live-panel-problems.png');
     await page.fill('#live-poll-0-c2', '変わらない');
     // 教材に残す（鍵なし）
     await page.click('#live-save');

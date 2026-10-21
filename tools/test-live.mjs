@@ -166,7 +166,7 @@ console.log('no network');
   quiet(o.net, 'after the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html'])); await sleep(1500);
   const t = await o.p.$eval('#live-pane .lv-notice', (e) => e.textContent);
-  ok(t.includes(host) && /授業の部屋につながります/.test(t), `before Join: the notice names the endpoint ("${t}")`);
+  ok(t.includes(host) && /のライブで先生に質問や投票を送れます/.test(t), `before Join: the notice names the endpoint ("${t}")`);
   ok(await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && b.textContent === '参加する'), 'before Join: the Join button is there');
   quiet(o.net, 'before Join is clicked'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html']) + '?mode=video'); await sleep(800);
@@ -206,7 +206,7 @@ const sent = () => fake.messages.slice();
     `file:// connects with Origin null and only room, key and pid in the address (origin ${c && c.origin})`);
   ok(o.net.ws.length === 1 && o.net.ws[0].startsWith(fake.endpoint.replace('http', 'ws') + '/ws?'), 'the WebSocket goes to the declared endpoint');
   ok(await until(() => fake.messages.some((m) => m.t === 'name' && m.name === 'Aiko')), 'the typed name is sent (only because it was typed)');
-  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'つながっています') && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Disconnect is shown with the indicator');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '参加中') && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Leave is shown with the indicator');
   ok(await o.p.$eval('#live-pane', (e) => e.getAttribute('data-state')) === 'connected', 'connected: the persistent indicator');
   const before = sent().length;
   for (let n = 0; n < 3; n++) await o.p.keyboard.press('ArrowRight');

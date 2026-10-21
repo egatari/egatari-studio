@@ -53,10 +53,41 @@ const ja = {
   // 1 ファイル（.ega.html。フォルダなしで開く・保存する）
   openFile: '1 ファイルを開く…', openMenu: '開く ▾', openFolderItem: '作業フォルダを開く…', save: '保存', saveMore: 'ほかの保存の方法',
   saveNew: '新しい教材として保存…', saveAs: '別のファイルに保存…', exportMenu: '書き出す ▾',
-  exportFolder: '作業フォルダに書き出す…', exportPortable: `配るための 1 ファイル（${FX}）を書き出す`,
-  exportPlayOnly: `学生に配る再生専用（${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
+  exportFolder: '作業フォルダに書き出す…', exportPortable: `配るための Egatari ファイル（編集可・${FX}）を書き出す`,
+  exportPlayOnly: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
-  exportLive: '授業の部屋を付けて配る…', playOnlyLiveToast: (room) => `授業の部屋（${room}）を付けた再生専用の 1 ファイルに書き出しました。部屋の時間のあいだ、開いた人が「参加する」を押すとつながります`,
+  exportLive: 'ライブ（質問・投票）を付けて配る…', playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
+  // 「ライブ（質問・投票）を付けて配る」の「書き出す前に直すこと」：kit/core/live-policy.mjs の validate の誤り {code, …引数} → 文（app/live-panel.js）
+  liveProblem: (p) => {
+    const poll = p.id ? `投票 ${p.id}：` : '';
+    switch (p.code) {
+      case 'room': return 'ライブ ID が正しくありません（教員用ページでコピーした設定を貼ってください）';
+      case 'key': return '参加コードが正しくありません（教員用ページでコピーした設定を貼ってください）';
+      case 'keyStored': return '参加コードは教材に保存できません（書き出すファイルにだけ入ります）';
+      case 'endpoint': return '接続先が正しくありません（https:// で始まるアドレスにしてください。例：https://live.egatari.org）';
+      case 'version': return 'ライブの設定の版が違います（v は 1 です）';
+      case 'windowMissing': return 'ライブの開始と終了を入れてください';
+      case 'windowFrom': return 'ライブの開始を入れてください';
+      case 'windowTo': return 'ライブの終了を入れてください';
+      case 'windowOrder': return 'ライブの終了は、開始より後にしてください';
+      case 'windowTooLong': return p.hours ? `ライブの時間は ${p.hours} 時間までです（ライブの開始と終了を直してください）` : `ライブの時間は ${p.days} 日までです（ライブの開始と終了を直してください）`;
+      case 'activitiesMissing': return '質問・投票の設定がありません';
+      case 'step': return `${poll}投票を出すステップが正しくありません（「今プレビューに出ているステップにする」で選び直してください）`;
+      case 'stepNotList': case 'activityNotObject': return `質問・投票の設定の形が正しくありません（${p.path}）`;
+      case 'activityId': return `${poll}投票の ID が正しくありません（英数字と _ - で 32 字まで）`;
+      case 'activityIdTwice': return `投票の ID「${p.id}」が 2 回使われています`;
+      case 'qaChoices': return '質問には選択肢を付けられません';
+      case 'qaPrompt': return `質問の説明は ${p.n} 字までです`;
+      case 'pollPrompt': return `${poll}設問を入れてください（${p.n} 字まで）`;
+      case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
+      case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
+      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
+      case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
+      case 'notObject': return 'ライブの設定がありません';
+      default: return String(p);
+    }
+  },
   portableType: `1 ファイル（${FX}）`, unsaved: '保存していない変更があります', ok: 'OK', discard: '変更を捨てる',
   // 今どこに保存されているか（下の帯の左。#46）
   locFolder: (n) => `作業フォルダ「${n}」に保存済み`,
@@ -278,10 +309,41 @@ const en = {
   // single file (.ega.html; open and save without a folder)
   openFile: 'Open single file…', openMenu: 'Open ▾', openFolderItem: 'Open working folder…', save: 'Save', saveMore: 'More ways to save',
   saveNew: 'Save as new lesson…', saveAs: 'Save a copy…', exportMenu: 'Export ▾',
-  exportFolder: 'Export working folder…', exportPortable: `Export single file (${FX}) to hand out`,
-  exportPlayOnly: `Export play-only copy for students (${FORMAT.PLAY_EXT})`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
+  exportFolder: 'Export working folder…', exportPortable: `Export Egatari file (editable, ${FX}) to hand out`,
+  exportPlayOnly: `Export Egatari file (play only, ${FORMAT.PLAY_EXT}) for participants`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
-  exportLive: 'Distribute with a live room…', playOnlyLiveToast: (room) => `Exported a play-only single file with the live room ${room}. During the room's window, learners who open it and press Join are connected.`,
+  exportLive: 'Distribute with Live (questions and polls)…', playOnlyLiveToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
+  // "To fix before exporting" in Distribute with Live: a problem {code, …params} from kit/core/live-policy.mjs's validate → text (app/live-panel.js)
+  liveProblem: (p) => {
+    const poll = p.id ? `Poll ${p.id}: ` : '';
+    switch (p.code) {
+      case 'room': return 'The Live ID is not valid (paste the settings copied on the teacher page)';
+      case 'key': return 'The join code is not valid (paste the settings copied on the teacher page)';
+      case 'keyStored': return 'The join code cannot be stored in the lesson (it goes only into the exported file)';
+      case 'endpoint': return 'The server is not valid (use an address starting with https://, e.g. https://live.egatari.org)';
+      case 'version': return 'Wrong version of the Live settings (v must be 1)';
+      case 'windowMissing': return 'Enter when the Live starts and ends';
+      case 'windowFrom': return 'Enter when the Live starts';
+      case 'windowTo': return 'Enter when the Live ends';
+      case 'windowOrder': return 'The Live must end after it starts';
+      case 'windowTooLong': return p.hours ? `The live time is at most ${p.hours} hours (change the start and end)` : `The live time is at most ${p.days} days (change the start and end)`;
+      case 'activitiesMissing': return 'There are no question or poll settings';
+      case 'step': return `${poll}the step to show the poll at is not valid (choose it again with Use the step in the preview)`;
+      case 'stepNotList': case 'activityNotObject': return `The question and poll settings are malformed (${p.path})`;
+      case 'activityId': return `${poll}the poll ID is not valid (up to 32 letters, digits, _ and -)`;
+      case 'activityIdTwice': return `The poll ID "${p.id}" is used twice`;
+      case 'qaChoices': return 'Questions cannot have choices';
+      case 'qaPrompt': return `The question description is at most ${p.n} characters`;
+      case 'pollPrompt': return `${poll}enter the question (at most ${p.n} characters)`;
+      case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
+      case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
+      case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
+      case 'tooManyActivities': return `At most ${p.n} questions and polls`;
+      case 'notObject': return 'There are no Live settings';
+      default: return String(p);
+    }
+  },
   portableType: `Single file (${FX})`, unsaved: 'unsaved changes', ok: 'OK', discard: 'Discard changes',
   // where the deck is saved (left of the status bar; #46)
   locFolder: (n) => `Saved in working folder “${n}”`,

@@ -4,7 +4,7 @@
 // - 識別子の形と切断の番号は、写し（FORMAT.LIVE_VENDOR_DIR の schema.json・close-codes.json）と同じ（tools/test-live.mjs が比べる）
 //
 //   const LP = LivePolicy();
-//   LP.validate(live, {key: true|false})   → エラーの配列（[] なら正しい）。key: true は書き出す派生（鍵が要る）、false は教材に残す設定（鍵があってはいけない）
+//   LP.validate(live, {key: true|false})   → 誤りの配列（[] なら正しい。1 つずつ {code, path, …引数, text}、toString() は英語の text）。key: true は書き出す派生（鍵が要る）、false は教材に残す設定（鍵があってはいけない）
 //   LP.inWindow(live.window, nowMs)         窓の中か（両端に SKEW_MS のゆとり）
 //   LP.closeInfo(code)                      {code, name, retry, kind}（kind：'retry' | 'stop'）
 //   LP.plan(code, attempt, nowMs, window, rand) → {retry: true, delayMs} | {retry: false, reason}（つなぎ直すか、いつ）
@@ -54,52 +54,65 @@ export function LivePolicy(opts) {
   }
   function timeOf(s) { return str(s) && RE.datetime.test(s) ? Date.parse(s) : NaN; }
   // opts.key：鍵が要る（書き出す派生）か、あってはいけない（教材）か。opts.maxWindowMs：窓の長さの上限（編集アプリは部屋のサービスの上限 3 時間。既定 7 日）
+  // 誤りは {code, path, …引数, text} の形（text は今までの英語の文。toString() も text なので、文字列として join・正規表現にかけられる）。
+  // 画面の言葉への写しは呼ぶ側（編集アプリは app/i18n.js の liveProblem）が code と引数から作る
+  function problem(code, path, params, text) {
+    var o = { code: code, path: path, text: text, toString: function () { return this.text; } };
+    for (var k in params) if (own(params, k)) o[k] = params[k];
+    return o;
+  }
   function validate(live, opts) {
     var wantKey = !!(opts && opts.key), maxW = opts && opts.maxWindowMs > 0 ? opts.maxWindowMs : LIMITS.windowMs, e = [];
-    if (!isObj(live)) return ['live: not an object'];
+    var add = function (code, path, params, text) { e.push(problem(code, path, params, text)); };
+    if (!isObj(live)) return [problem('notObject', 'live', {}, 'live: not an object')];
     var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1 };
-    for (var k in live) if (own(live, k) && !own(known, k)) e.push('live.' + k + ': unknown member');
-    if (live.v !== 1) e.push('live.v: must be 1');
-    if (!parseEndpoint(live.endpoint)) e.push('live.endpoint: not an https origin (e.g. https://live.example.org)');
-    if (!str(live.room) || !RE.room.test(live.room)) e.push('live.room: not a room id (r- and 8 characters a-z, 2-7)');
-    if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) e.push('live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
-    else if (own(live, 'key')) e.push('live.key: the key must not be stored in the lesson (it goes only into the exported file)');
+    for (var k in live) if (own(live, k) && !own(known, k)) add('unknownMember', 'live.' + k, { member: k }, 'live.' + k + ': unknown member');
+    if (live.v !== 1) add('version', 'live.v', {}, 'live.v: must be 1');
+    if (!parseEndpoint(live.endpoint)) add('endpoint', 'live.endpoint', {}, 'live.endpoint: not an https origin (e.g. https://live.example.org)');
+    if (!str(live.room) || !RE.room.test(live.room)) add('room', 'live.room', {}, 'live.room: not a room id (r- and 8 characters a-z, 2-7)');
+    if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) add('key', 'live.key', {}, 'live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
+    else if (own(live, 'key')) add('keyStored', 'live.key', {}, 'live.key: the key must not be stored in the lesson (it goes only into the exported file)');
     var w = live.window;
-    if (!isObj(w)) e.push('live.window: missing');
+    if (!isObj(w)) add('windowMissing', 'live.window', {}, 'live.window: missing');
     else {
       var f = timeOf(w.from), t = timeOf(w.to);
-      if (isNaN(f)) e.push('live.window.from: not an RFC 3339 time with an offset');
-      if (isNaN(t)) e.push('live.window.to: not an RFC 3339 time with an offset');
-      if (!isNaN(f) && !isNaN(t) && !(t > f)) e.push('live.window: "to" must be after "from"');
-      if (!isNaN(f) && !isNaN(t) && t - f > maxW) e.push('live.window: at most ' + (maxW % 86400000 ? Math.round(maxW / 3600000) + ' hours' : maxW / 86400000 + ' days') + ' long');
-      for (var wk in w) if (own(w, wk) && wk !== 'from' && wk !== 'to') e.push('live.window.' + wk + ': unknown member');
+      if (isNaN(f)) add('windowFrom', 'live.window.from', {}, 'live.window.from: not an RFC 3339 time with an offset');
+      if (isNaN(t)) add('windowTo', 'live.window.to', {}, 'live.window.to: not an RFC 3339 time with an offset');
+      if (!isNaN(f) && !isNaN(t) && !(t > f)) add('windowOrder', 'live.window', {}, 'live.window: "to" must be after "from"');
+      if (!isNaN(f) && !isNaN(t) && t - f > maxW) {
+        var hours = maxW % 86400000 ? Math.round(maxW / 3600000) : 0, days = hours ? 0 : maxW / 86400000;
+        add('windowTooLong', 'live.window', { hours: hours, days: days }, 'live.window: at most ' + (hours ? hours + ' hours' : days + ' days') + ' long');
+      }
+      for (var wk in w) if (own(w, wk) && wk !== 'from' && wk !== 'to') add('unknownMember', 'live.window.' + wk, { member: wk }, 'live.window.' + wk + ': unknown member');
     }
     var a = live.activities;
-    if (!isObj(a)) { e.push('live.activities: missing'); return e; }
+    if (!isObj(a)) { add('activitiesMissing', 'live.activities', {}, 'live.activities: missing'); return e; }
     var ids = {}, n = 0;
     for (var sk in a) {
       if (!own(a, sk)) continue;
-      if (!RE.step.test(sk)) { e.push('live.activities["' + sk + '"]: not a step key or "*"'); continue; }
-      if (!Array.isArray(a[sk])) { e.push('live.activities["' + sk + '"]: not a list'); continue; }
+      var sp = 'live.activities["' + sk + '"]';
+      if (!RE.step.test(sk)) { add('step', sp, { step: sk }, sp + ': not a step key or "*"'); continue; }
+      if (!Array.isArray(a[sk])) { add('stepNotList', sp, { step: sk }, sp + ': not a list'); continue; }
       for (var i = 0; i < a[sk].length; i++) {
-        var x = a[sk][i], at = 'live.activities["' + sk + '"][' + i + ']';
+        var x = a[sk][i], at = sp + '[' + i + ']', P = { step: sk, index: i };
         n++;
-        if (!isObj(x)) { e.push(at + ': not an object'); continue; }
-        if (!str(x.id) || !RE.activity.test(x.id)) e.push(at + '.id: 1-32 characters A-Z a-z 0-9 _ -');
-        else if (own(ids, x.id)) e.push(at + '.id: "' + x.id + '" is used twice');
+        if (!isObj(x)) { add('activityNotObject', at, P, at + ': not an object'); continue; }
+        if (str(x.id)) P.id = x.id;
+        if (!str(x.id) || !RE.activity.test(x.id)) add('activityId', at + '.id', P, at + '.id: 1-32 characters A-Z a-z 0-9 _ -');
+        else if (own(ids, x.id)) add('activityIdTwice', at + '.id', P, at + '.id: "' + x.id + '" is used twice');
         else ids[x.id] = 1;
         if (x.kind === 'qa') {
-          if (own(x, 'choices')) e.push(at + ': a qa has no choices');
-          if (own(x, 'prompt') && (!str(x.prompt) || x.prompt.length > LIMITS.prompt)) e.push(at + '.prompt: at most ' + LIMITS.prompt + ' characters');
+          if (own(x, 'choices')) add('qaChoices', at, P, at + ': a qa has no choices');
+          if (own(x, 'prompt') && (!str(x.prompt) || x.prompt.length > LIMITS.prompt)) add('qaPrompt', at + '.prompt', { step: sk, index: i, id: P.id, n: LIMITS.prompt }, at + '.prompt: at most ' + LIMITS.prompt + ' characters');
         } else if (x.kind === 'poll') {
-          if (!str(x.prompt) || !x.prompt.trim() || x.prompt.length > LIMITS.prompt) e.push(at + '.prompt: 1-' + LIMITS.prompt + ' characters');
-          if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) e.push(at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
-          else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) e.push(at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
-        } else e.push(at + '.kind: "qa" or "poll"');
-        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1 }, xk)) e.push(at + '.' + xk + ': unknown member');
+          if (!str(x.prompt) || !x.prompt.trim() || x.prompt.length > LIMITS.prompt) add('pollPrompt', at + '.prompt', { step: sk, index: i, id: P.id, n: LIMITS.prompt }, at + '.prompt: 1-' + LIMITS.prompt + ' characters');
+          if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) add('pollChoices', at + '.choices', { step: sk, index: i, id: P.id, min: LIMITS.choicesMin, max: LIMITS.choicesMax }, at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
+          else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) add('pollChoice', at + '.choices[' + c + ']', { step: sk, index: i, id: P.id, c: c, n: LIMITS.choice }, at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
+        } else add('activityKind', at + '.kind', P, at + '.kind: "qa" or "poll"');
+        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1 }, xk)) add('unknownMember', at + '.' + xk, { step: sk, index: i, id: P.id, member: xk }, at + '.' + xk + ': unknown member');
       }
     }
-    if (n > LIMITS.activities) e.push('live.activities: at most ' + LIMITS.activities + ' activities');
+    if (n > LIMITS.activities) add('tooManyActivities', 'live.activities', { n: LIMITS.activities }, 'live.activities: at most ' + LIMITS.activities + ' activities');
     return e;
   }
   function inWindow(w, now) {

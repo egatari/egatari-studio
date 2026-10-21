@@ -640,6 +640,7 @@ const livePanel = createLivePanel({
     return [...new Set(keys)];
   },
   exportLive: (live) => exportPlayOnlyFile(live),
+  problemText: T.liveProblem,
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
