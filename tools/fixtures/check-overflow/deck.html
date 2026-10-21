@@ -177,6 +177,30 @@
   <div class="concl"><span>⇒ 図の字は 24px から</span></div>
 </section>
 
+<!-- 小さい字：HTML の字は smallText、小さい注記の印（data-annot。kit/core/layout-scan.mjs の ANNOT_ATTR）の中は見ない（HTML も SVG の字も）。印のない図の字は smallSvgText のまま -->
+<section class="slide" id="s-smallhtml">
+  <h2>小さい本文の字</h2>
+  <div class="body"><p>ふつうの本文。<span style="font-size:18px">小さい字</span></p></div>
+</section>
+<section class="slide" id="s-annot">
+  <h2>小さい注記</h2>
+  <div class="body"><p>ふつうの本文。<span data-annot style="font-size:18px">注記</span></p>
+    <svg viewBox="0 0 1000 200" width="500" height="100" aria-label="注記の図">
+      <g data-annot><text x="20" y="100" font-size="30" style="fill:var(--fg)">小さい注記</text></g>
+      <text x="400" y="100" font-size="60" style="fill:var(--fg)">ふつうの字</text>
+    </svg>
+  </div>
+</section>
+<section class="slide" id="s-annotsvg">
+  <h2>印のない小さい図の字</h2>
+  <div class="body">
+    <svg viewBox="0 0 1000 200" width="500" height="100" aria-label="小さい字の図">
+      <g><text x="20" y="100" font-size="30" style="fill:var(--fg)">小さい字</text></g>
+      <text x="400" y="100" font-size="60" style="fill:var(--fg)">ふつうの字</text>
+    </svg>
+  </div>
+</section>
+
 <!-- 本文が下にはみ出し、その中の図の字もスライドの下へ出る：本文のエラー（bodyBottom）だけを出し、図の字（svgTextOut）は数えない（同じ原因） -->
 <section class="slide" id="s-bodyover">
   <h2>本文ごと下に出る図</h2>

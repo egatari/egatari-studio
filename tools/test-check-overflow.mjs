@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { build } from '../kit/build.mjs';
 import { previewDocument } from '../app/preview-doc.js';
-import { withLayoutScan, CLIP_ATTR } from '../kit/core/layout-scan.mjs';
+import { withLayoutScan, CLIP_ATTR, ANNOT_ATTR } from '../kit/core/layout-scan.mjs';
 import { MESSAGES, message } from '../kit/check-messages.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -38,7 +38,7 @@ const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'ut
 const DECK = path.join(ROOT, 'tools', 'fixtures', 'check-overflow', 'deck.html');
 // 見る知らせ：#52 の新しいもの（警告）と、#51 でブラウザ版にも出るようになったもの
 const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak'];
-const WATCH = [...NEW, 'bodyBottom', 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
+const WATCH = [...NEW, 'bodyBottom', 'smallText', 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
 const EXPECT = {
   's-fix52a': ['svgTextBox'],
   's-fix52b': [],
@@ -48,6 +48,9 @@ const EXPECT = {
   's-viewbox': ['svgTextOut'],
   's-outside': ['outsideBody'],
   's-smallsvg': ['smallSvgText'],
+  's-smallhtml': ['smallText'],
+  's-annot': [],
+  's-annotsvg': ['smallSvgText'],
   's-tate': ['conclOverflow', 'tateTitle'],
   's-bodyover': ['bodyBottom'],
 };
@@ -78,6 +81,13 @@ await t('check: s-fix52a names the label that overflows its m-flow box', () => {
 await t(`check: ${CLIP_ATTR} keeps the intended clip (s-fix52b) and a marked component (s-flowclip) quiet`, () => {
   const xs = J.results.filter((x) => (x.id === 's-fix52b' || x.id === 's-flowclip') && x.sev !== 'info' && x.code !== 'narrMissing');
   assert.deepEqual(xs.map((x) => x.code), []);
+});
+await t(`check: ${ANNOT_ATTR} exempts only the minimum text size (smallText, smallSvgText), HTML and SVG text alike`, () => {
+  const xs = (id) => J.results.filter((x) => x.id === id && x.sev !== 'info' && x.code !== 'narrMissing').map((x) => x.code);
+  assert.deepEqual(xs('s-annot'), []);
+  assert.deepEqual(xs('s-smallhtml'), ['smallText']);
+  assert.deepEqual(xs('s-annotsvg'), ['smallSvgText']);
+  assert.equal(ANNOT_ATTR, 'data-annot');
 });
 await t('check: a body that overflows at the bottom is one error, not also a warning for each figure label it pushes off the slide', () => {
   const xs = J.results.filter((x) => x.id === 's-bodyover' && x.sev !== 'info' && x.code !== 'narrMissing');
