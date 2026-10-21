@@ -104,7 +104,8 @@ jobs:
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
   macos:
     runs-on: macos-latest
-    timeout-minutes: 30
+    # macOS runners are slow: npm test takes 24-26 min here and new tests add about 2 min, so 30 min was too tight (clean on macOS takes under 2 min; its 25 min is enough)
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
