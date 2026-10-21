@@ -1414,7 +1414,12 @@ function whenLaidOut(fn){
     done = true;
     if (ro) ro.disconnect();
     window.removeEventListener("resize", check);
-    fn();
+    fonts();
+  }
+  // 隠れていた文書はまだ字（Web フォント）を読んでいない（並べて初めて読み始める）。読み終えてから mount する（ふつうの起動の load と同じく、測る字が揃ってから）
+  function fonts(){
+    if (document.fonts && document.fonts.status === "loading") document.fonts.ready.then(fonts, fn);
+    else fn();
   }
   if (typeof ResizeObserver === "function"){ ro = new ResizeObserver(check); ro.observe(st); }
   window.addEventListener("resize", check);   // ResizeObserver のない環境と、窓の大きさが 0 から付いたとき
