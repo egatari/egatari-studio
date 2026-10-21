@@ -62,6 +62,24 @@ ok(!LP.sameEndpoint('wss://evil.example.org/ws', L0.endpoint) && !LP.sameEndpoin
 ok(LP0.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).some((e) => /endpoint/.test(e)) && LP0.socketUrl({ ...L0, endpoint: 'http://127.0.0.1:8787' }, 'p7Hk2mQx9LwR4tZa') === null && LP0.connectSrc('http://localhost:1') === null, 'default policy: loopback http endpoints are refused (validate, socketUrl, CSP)');
 ok(LP.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).length === 0 && LP.validate({ ...L0, endpoint: 'http://10.0.0.5:8787' }, { key: true }).length > 0, 'development policy: only loopback http is added');
 ok(liveCsp(L0.endpoint).includes('connect-src https://live.example.org wss://live.example.org;'), 'CSP: connect-src lists the endpoint for https and wss');
+// つないでよい文書か（docContext）：file: と content:（Android のファイルのアプリ。Origin は null）は学ぶ人が開いたファイル。ほかの条件は同じ
+{ const CSP0 = liveCsp(L0.endpoint);
+  const doc = (o = {}) => ({ framed: false, protocol: 'file:', origin: 'null', pathname: '/x/a.play.ega.html', csp: [CSP0], ...o });
+  const dc = (o) => LP0.docContext(doc(o), L0.endpoint);
+  ok(dc() === '' && dc({ protocol: 'https:', origin: 'https://lms.example.org' }) === '', 'docContext: file: and https: documents with the derivative\'s CSP may connect');
+  ok(dc({ protocol: 'content:', pathname: '//com.google.android.apps.nbu.files.provider/2/123' }) === '', 'docContext: an Android content: document (Origin null) is a local file the learner opened: it may connect');
+  ok(dc({ protocol: 'content:', framed: true }) === 'framed' && dc({ protocol: 'content:', csp: [] }) === 'policy' && dc({ protocol: 'content:', csp: [CSP0, CSP0] }) === 'policy'
+    && dc({ protocol: 'content:', csp: [liveCsp('https://evil.example.org')] }) === 'policy', 'docContext: content: still needs no frame and exactly one CSP meta whose connect-src is the endpoint');
+  ok(LP0.docContext({ ...doc({ protocol: 'content:' }), framed: undefined }, L0.endpoint) === 'framed' && LP0.docContext(null, L0.endpoint) === 'framed', 'docContext: unknown framing counts as framed');
+  ok(['data:', 'blob:', 'about:', 'chrome-extension:', 'filesystem:', 'javascript:', 'contents:', 'CONTENT:'].every((p) => dc({ protocol: p }) === 'scheme'), 'docContext: other schemes do not connect (data:, blob:, about:, …)');
+  ok(dc({ protocol: 'https:', origin: 'null' }) === 'sandboxed' && dc({ protocol: 'http:', origin: 'http://127.0.0.1:1', pathname: '/preview/x' }) === 'preview', 'docContext: sandboxed https documents and the dev server preview do not connect');
+  ok(LP0.cspOk([CSP0], L0.endpoint) && !LP0.cspOk(['default-src \'none\''], L0.endpoint) && !LP0.cspOk([CSP0.replace(' wss://live.example.org', '')], L0.endpoint), 'cspOk: exactly the endpoint in both forms');
+  // つなげない文書の「ブラウザで参加する」：参加用のページ、鍵は # の後ろ
+  ok(LP0.joinUrl(L0) === 'https://live.example.org/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD', 'joinUrl: https://<endpoint host>/join#room=…&key=… (the key only in the fragment)');
+  ok(LP0.joinUrl({ ...L0, key: undefined }) === null && LP0.joinUrl({ ...L0, endpoint: 'javascript:alert(1)' }) === null && LP0.joinUrl({ ...L0, room: 'r-x"><b>' }) === null, 'joinUrl: none without a valid key, room or https endpoint');
+  const PREV = "default-src 'none'; connect-src 'none'; frame-src 'none'";
+  ok(LP0.offerJoinLink('framed', doc({ framed: true })) && LP0.offerJoinLink('scheme', doc({ protocol: 'data:' })) && LP0.offerJoinLink('sandboxed', doc()), 'offerJoinLink: offered when framed (LMS, chat app), another scheme or sandboxed');
+  ok(!LP0.offerJoinLink('framed', doc({ framed: true, csp: [PREV, CSP0] })) && !LP0.offerJoinLink('preview', doc()) && !LP0.offerJoinLink('policy', doc()) && !LP0.offerJoinLink('', doc()), 'offerJoinLink: not in the editor preview (connect-src \'none\'), the dev preview, a document with another policy, or where it can connect'); }
 ok(localToRfc3339('2026-10-30T09:00', 540) === '2026-10-30T09:00:00+09:00' && localToRfc3339('2026-10-30T09:00', -300) === '2026-10-30T09:00:00-05:00', 'localToRfc3339: local time with its offset');
 { let e1 = null; try { parseRoomBlock('https://live.example.org/#room=r-7k2q6xw4&admin=VGVhY2hlclNlY3JldEtleUZvckZpeHR1cmVzT25seTA'); } catch (e) { e1 = e.message; }
   ok(e1 === 'admin', 'parseRoomBlock: refuses the teacher link (it carries the teacher key)');
@@ -203,7 +221,29 @@ console.log('no network');
   const a = await fr.evaluate(() => { const e = document.querySelector('#live-pane .lv-addr'); return e ? e.textContent : ''; });
   ok(s && s.context === 'framed' && a.includes('r-7k2q6xw4') && a.includes(host), `editor preview (sandboxed srcdoc): no connection; the room's address is shown as text ("${a}")`);
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'editor preview: no Join button');
+  ok(s && !s.joinLink && !(await fr.$('#live-pane .lv-join-link')), 'editor preview: no "Join in the browser" link (the current text only)');
   quiet(o.net, 'editor preview'); await o.close(); }
+
+// 枠の中（LMS など。編集アプリのプレビューではない）：つながないが、参加用のページを新しいタブで開く「ブラウザで参加する」を出す。押すまで通信はない
+{ fake.reset(); const o = await open(fileUrl(put('lms.html', '<!doctype html><html><body><iframe id="f" src="live.html" style="width:1600px;height:700px"></iframe></body></html>')), { ready: false });
+  const fr = await (await o.p.waitForSelector('#f')).contentFrame();
+  await until(async () => fr.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false), 8000);
+  await sleep(500);
+  const s = await fr.evaluate(() => DECK.live && DECK.live.state());
+  const a = await fr.evaluate(() => { const e = document.querySelector('#live-pane .lv-join-link'); return e ? { href: e.href, target: e.target, rel: e.rel, text: e.textContent, shown: !e.closest('[hidden]') } : null; });
+  const addrT = await fr.evaluate(() => document.querySelector('#live-pane .lv-addr').parentNode.textContent);
+  const want = LP.joinUrl(JSON.parse(new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(L)[1]).live);
+  ok(s && s.context === 'framed' && s.joinLink && a && a.shown && a.href === want && a.target === '_blank' && a.rel === 'noopener noreferrer' && a.text === 'ブラウザで参加する',
+    `framed (LMS): "Join in the browser" opens the join page in a new tab (${a && a.href})`);
+  ok(addrT.includes('r-7k2q6xw4') && /新しいタブ/.test(addrT), `framed (LMS): a short explanation and the room stay as text ("${addrT}")`);
+  ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'framed (LMS): no Join button in the frame');
+  quiet(o.net, 'framed (LMS) before the link is clicked');
+  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);
+  await until(() => o.net.req.length > 0, 3000);
+  ok(tab && o.net.req.length === 1 && o.net.req[0] === want.split('#')[0] && !o.net.req[0].includes('Q2xhc3Nyb29tS2V5MDAwMD'),
+    `click: a new tab loads the join page; the key stays in the fragment and is not sent (${o.net.req.join(', ')})`);
+  ok(o.net.ws.length === 0 && (await fr.evaluate(() => DECK.live.state().state)) === 'off', 'click: the framed player itself still opens no WebSocket');
+  await o.close(); }
 
 { fake.reset(); const o = await open(fileUrl(files['default-loopback.html'])); await sleep(1000);
   await o.p.click('#live-pane .lv-join', { timeout: 500 }).catch(() => {}); await sleep(500);

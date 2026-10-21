@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=cb7a64ad093008b7 -->
+<!-- i18n: pair=distributing.ja.md sha256=a68cfae095fa20c1 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -28,7 +28,8 @@ A play-only copy can carry a **live room** ([format extension `live`](https://gi
 
 What the learner's copy does:
 
-- **Nothing on the network unless** the file has a room, the time is inside the window (2 minutes of leeway at both ends) and the file is opened directly in a browser (from a file or a web address). In the editor's preview, inside another page (an LMS or an embed), in video mode (`?mode=video`), in print and in the presenter view it never connects; in previews and frames it shows the room's address as text instead.
+- **Nothing on the network unless** the file has a room, the time is inside the window (2 minutes of leeway at both ends) and the file is opened directly in a browser (from a file or a web address). In the editor's preview, inside another page (an LMS or an embed), in video mode (`?mode=video`), in print and in the presenter view it never connects; in the editor's preview it shows the room's address as text instead. Inside another page, or when the file is shown in a way that cannot connect (a chat app's or file app's viewer, another kind of address), it offers **Join in the browser**: a link that opens the room's join page (`https://<service>/join#room=…&key=…`, the key only after `#`) in a new tab. Nothing is loaded before it is tapped.
+- **Which devices connect from the file.** A computer's browser (Chrome, Edge, Firefox, Safari) opening the downloaded file connects. On Android, Chrome opening the downloaded file from the Files app (a `content://` address) connects too: it counts as a local file the learner opened, with the same conditions (not inside a frame, inside the window, the copy's own policy, one tap on Join). On iPhone and iPad a downloaded HTML file cannot run in the browser (the Files app shows it without scripts), so learners use the **join link** from the teacher page instead; the join link works on every device. Chat apps such as Slack may not preview a large copy (one with audio): learners download it.
 - **One tap before joining.** The pane says which service the lesson connects to and offers **Join**. While connected it shows a persistent indicator and **Disconnect**. The choice is remembered for the browser tab only; a new tab asks again.
 - **Sends only** questions and votes the learner chooses to send, a name if they type one, a random id made on the device (kept in the browser's storage, or in memory when storage is not allowed) and keep-alive pings. It never sends the viewing position or timing. For a Q&A for the whole lesson, the step key on screen when the learner presses Send is attached to that question.
 - **Outside the stage.** Activities appear in a pane at the right (at the bottom on tall screens); the slides are fitted into the rest, so slides, captions, marks, video frames and print are unchanged. A poll appears when its step is reached. Everything from the server is shown as text.
@@ -38,4 +39,4 @@ What the learner's copy does:
 
 The lesson itself keeps the settings without the key (`extensions.live` in `egatari.json`, and in the single file's index); the learner key goes only into the exported copy. Anyone holding the copy can join while the room is open; replace the key on the teacher page to lock out copies that leaked (they then show a clear message). From the command line: `node kit/build.mjs <deck> --play-only --live room.json` (`room.json` is the text from the teacher page's Copy button; polls come from `egatari.json`'s `extensions.live`, otherwise from `room.json`).
 
-**Rehearse before class:** create a room whose window starts now, export, open the copy on two devices, join, send a question and vote, and check the teacher page shows them.
+**Rehearse before class:** create a room whose window starts now, export, open the copy on two devices, join, send a question and vote, and check the teacher page shows them. When handing out, also share the join link for phones and tablets: the teacher page's **Text to share** has a ready-to-paste message.
