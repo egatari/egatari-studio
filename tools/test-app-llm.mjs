@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPack, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
-import { clickUntil } from './click-retry.mjs';
+import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // Windows の checkout では CRLF になることがあるので LF にそろえる（試験の正規表現と、textarea が CRLF を LF にすることに合わせる）
@@ -37,7 +37,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const state = () => page.evaluate(() => window.__APP_TEST.state());
   const files = () => page.evaluate(() => { const f = window.__APP_TEST.files(); if (!f) return null; const d = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, d(v)])); });
   // 開いている 1 ファイルに保存していない変更があれば、開く前に「変更を捨てる」かを聞かれる（取り込んだデッキは保存していない）
-  const discard = async () => { await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 30000 }); await page.click('#dlg-discard'); };
+  const discard = async () => { await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 30000 }); await clickDlg(page, '#dlg-discard'); };
   const waitPanel = () => page.waitForSelector('#panel:not([hidden]) #panel-body .sum', { timeout: 30000 });
   await page.goto(BASE + '?lang=en');
   await page.waitForSelector('#drop');
@@ -69,13 +69,13 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.fill('#paste-text', replyOf(bdeck, bnarr, { crlf: true }));
   await shot('paste-dialog.png');
   await page.fill('#paste-text', 'Sure! Here is the deck:\n\n```deck.html\n<!DOCTYPE html>\n<html lang="en"><body><div id="stage">\n<section class="slide"><h2>Cut</h2>');
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await page.waitForSelector('#dlg[open] #paste-msg:not([hidden])');
   const emsg = await page.textContent('#paste-msg');
   ok(/not closed/.test(emsg) && /cut off/.test(emsg) && !(await state()).open, 'llm: a reply with an unclosed block shows a clear error in the dialog and opens nothing: ' + emsg);
   await shot('paste-error.png');
   await page.fill('#paste-text', 'I could not do it, sorry.');
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await page.waitForFunction(() => /No code blocks/.test(document.getElementById('paste-msg').textContent));
   ok(true, 'llm: a reply without code blocks shows “No code blocks …”');
   await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
@@ -89,7 +89,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // 送り直しを頼む文を写す → narration.md の囲みだけの返事で、前の deck.html と合わせて開く
   const cutReply = replyOf(bdeck, bnarr, { crlf: true }).replace(/\r\n```\r\n\r\nLet me know[\s\S]*$/, '').replace(/\[concl\] 次は[^\r]*$/, '[concl] 次は、伸びの');
   await page.fill('#paste-text', cutReply);
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
   ok(/narration\.md/.test(await page.textContent('#paste-msg')), 'llm: a reply cut off inside narration.md says so and offers “Copy a resend request for your AI”');
   await page.click('#paste-copy-cutoff');
@@ -98,7 +98,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(/cut off/.test(resend) && /Send only the narration\.md block again/.test(resend) && /R-output/.test(resend), 'llm: the resend request asks for only the missing narration.md block: ' + JSON.stringify(resend.slice(0, 90)));
   await shot('paste-cutoff.png');
   await page.fill('#paste-text', 'Here is the narration again:\n\n```narration.md\n' + bnarr.trim() + '\n```\n');
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
   await waitPanel();
   const st = await state();
@@ -113,17 +113,17 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
 
   // ---------------------------------------------------------------- 3. スクリプトの入った返事 → コードの確かめ
   const evil = bdeck.replace('</body>', '<script>window.__pastedRan = true;</script>\n</body>');
-  await page.click('#b-openmenu');
-  await page.click('#b-paste');
+  await clickMenuOpen(page, '#b-openmenu');
+  await clickMenuItem(page, '#b-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
   ok(await page.isChecked('#paste-new'), 'llm: “Paste AI output…” from the menu defaults to a new deck');
   ok(await page.isChecked('#paste-series-business') && !(await page.isChecked('#paste-series-academic')), 'llm: with the business deck open, the instructions default to the business series (from its components and theme)');
   await page.fill('#paste-text', replyOf(evil, bnarr));
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await discard();
   await page.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 });
   ok(/script/i.test(await page.textContent('#dlg-body')), 'llm: a pasted reply with a script asks before running the code (like an opened file)');
-  await page.click('#dlg-cancel');
+  await clickDlg(page, '#dlg-cancel');
   await page.waitForTimeout(400);
   const st3 = await state();
   ok(st3.portable && st3.portable.docId === docId1, 'llm: cancelling the code prompt keeps the previous deck open');
@@ -132,12 +132,12 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const bad = bdeck.replace('<h2>導入から 3 か月の結果</h2>', '<h2>新しい仕分けの手順を入れてから 3 か月がたった今の結果のまとめ</h2>');
   const badN = bnarr.replace('## 導入から 3 か月の結果', '## 新しい仕分けの手順を入れてから 3 か月がたった今の結果のまとめ')
     .replace('[concl] 件数が増えても', '[4] {1-η|いちマイナスイータ} は使わない例です。\n[concl] 件数が増えても');
-  await page.click('#panel-close');   // 前の結果の板を閉じておく（新しい品質チェックの板を待つため）
-  await page.click('#b-openmenu');
-  await page.click('#b-paste');
+  await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));   // 前の結果の板を閉じておく（新しい品質チェックの板を待つため）
+  await clickMenuOpen(page, '#b-openmenu');
+  await clickMenuItem(page, '#b-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
   await page.fill('#paste-text', replyOf(bad, badN, { labels: ['html title="deck.html"', 'md'] }));
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await discard();
   await page.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d; }, docId1, { timeout: 30000 });
   await waitPanel();
@@ -164,13 +164,13 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const sid = F['deck.html'].match(/<section class="slide" id="(s-[a-z2-7]{6})">\s*<h2>新しい仕分け/)[1];
   const fixedSec = bdeck.match(/<section class="slide">\s*<h2>導入から 3 か月の結果<\/h2>[\s\S]*?<\/section>/)[0].replace('<section class="slide">', `<section class="slide" id="${sid}">`);
   const fixedNarr = bnarr.match(/## 導入から 3 か月の結果\n[\s\S]*?(?=\n## |\s*$)/)[0].replace('## 導入から 3 か月の結果', `## 導入から 3 か月の結果 {#${sid}}`);
-  await page.click('#dlg-paste');
+  await clickDlg(page, '#dlg-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
   ok(await page.isChecked('#paste-replace'), 'llm: “Paste the reply…” opens the paste dialog with “Replace the current deck” selected');
   await page.fill('#paste-text', 'Fixed:\n\n```deck.html\n' + fixedSec + '\n```\n\n```narration.md\n' + fixedNarr + '\n```\n');
   await shot('paste-replace.png');
   await page.evaluate(() => { document.getElementById('panel').hidden = true; });
-  await page.click('#dlg-import');
+  await clickDlg(page, '#dlg-import');
   await waitPanel();
   const st4 = await state();
   F = await files();
@@ -224,7 +224,7 @@ async function pasteReplace(p, text) {
   // 窓も iframe の上にあるので、ラジオを押したものが iframe に行くと状態が変わらない（p.check は変わらなかったと言って落ちる）。入るまで押し直す
   await clickUntil(p, '#paste-replace', () => p.waitForFunction(() => document.getElementById('paste-replace').checked, null, { timeout: 2500 }));
   const t0 = Date.now();
-  await p.click('#dlg-import');
+  await clickDlg(p, '#dlg-import');
   await p.waitForFunction(() => { const b = document.getElementById('panel-body'); return !document.getElementById('panel').hidden && b && (b.querySelector('.sum') || /did not answer/.test(b.textContent)); }, null, { timeout: 40000 });
   return { sum: await p.evaluate(() => { const s = document.querySelector('#panel-body .sum'); return s ? s.textContent : document.getElementById('panel-body').textContent; }), ms: Date.now() - t0 };
 }
@@ -273,7 +273,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     await p.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('replaced-' + Date.now() + '.ega.html', { create: true }); });
     const sv = p.evaluate(() => window.__APP_TEST.save('save'));
     const which = await Promise.race([sv.then(() => 'saved'), p.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 }).then(() => 'tierB')]);
-    if (which === 'tierB') await p.click('#dlg-rebuild');
+    if (which === 'tierB') await clickDlg(p, '#dlg-rebuild');
     await sv;
     const saved = await p.evaluate(async () => (await (await window.__APP_TEST.saveHandle.getFile()).text()));
     const st2 = await p.evaluate(() => window.__APP_TEST.state());

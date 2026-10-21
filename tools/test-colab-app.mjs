@@ -23,6 +23,7 @@ import { expectedCues, COLAB_VERIFIED } from '../kit/core/colab-core.mjs';
 import { colabZip } from './colab-fixture.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
+import { clickUntil, clickDlg } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-colab-')));
@@ -69,10 +70,10 @@ const msgs = () => page.$$eval('#dev-audio .dv-colab-msg', (e) => e.map((x) => x
 // 書き出す（確かめの窓 → 取り消すか進む）→ ダウンロードした tts-job.json
 async function exportJob(scope = 'need') {
   await page.selectOption('#dev-audio-colab-scope', scope);
-  await page.click('#dev-audio-colab-export');
+  await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
   const dl = page.waitForEvent('download');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   const d = await dl;
   ok(d.suggestedFilename() === 'tts-job.json', 'export: downloads tts-job.json');
   return JSON.parse(fs.readFileSync(await d.path(), 'utf8'));
@@ -117,11 +118,11 @@ try {
   ok(/^https:\/\/colab\.research\.google\.com\/github\/egatari\/egatari-studio\/blob\/[^/]+\/colab\/egatari-tts\.ipynb$/.test(href) && (await page.getAttribute('#dev-audio-colab-open', 'rel')) === 'noopener', 'panel: "Open Colab" links to the official notebook (new tab, noopener)');
   ok((await page.textContent('#dev-audio-colab-scope option[value=need]')).includes(`（${keys.length}）`), `panel: the default scope counts the steps without audio (${keys.length})`);
   // プライバシーの確認：取り消せば書き出さない
-  await page.click('#dev-audio-colab-export');
+  await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
   ok((await page.textContent('#colab-privacy')).includes('Google'), 'export: the privacy note says the narration is processed in Google’s environment');
   let downloaded = false; page.once('download', () => { downloaded = true; });
-  await page.click('#dlg-cancel');
+  await clickDlg(page, '#dlg-cancel');
   await page.waitForTimeout(300);
   ok(!downloaded, 'export: cancelling the privacy question writes nothing');
   // 書き出す
@@ -201,7 +202,7 @@ try {
   await frameReady();
   await page.click('#b-audio');
   await page.waitForSelector('#dlg[open]');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await page.waitForSelector('#dev-audio #dev-audio-colab');
   await idle();
   const pjob = await exportJob('all');

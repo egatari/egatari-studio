@@ -22,6 +22,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { encodeWav, MP3 } from '../kit/core/audio-core.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
+import { clickUntil, clickDlg } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -172,7 +173,7 @@ try {
   ok((await page.textContent('#dev-audio .dv-script')).includes('学習率'), 'panel: shows the step script to read');
   ok((await page.textContent('#saveloc')) === '作業フォルダ「audio-deck」に保存済み' && (await page.getAttribute('#saveloc', 'title')).includes('書き出す'), 'save location: a working folder says it is saved there and how to hand it out');
   // 録音
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await page.waitForFunction(() => window.__APP_TEST.audio().recording);
   await page.waitForTimeout(1500);
   const meter = await page.evaluate(() => ({ shown: !document.getElementById('dev-audio-meter').hidden, w: parseFloat(document.querySelector('#dev-audio-meter i').style.width) || 0, inert: document.getElementById('preview').inert }));
@@ -187,7 +188,7 @@ try {
   // 戻しておく（使った音声で組み直すとプレビューが読み込み直し、その位置を知らせる。録音が終われば板はその段階に移る）
   await f.evaluate((b) => DECK.go(b.slide - 1, b.step, false), recPos);
   await page.waitForTimeout(1700);
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await waitUsed('recorded', 1);
   let st = await audioState();
   const t1 = st.entry;
@@ -195,10 +196,10 @@ try {
   ok(JSON.stringify(st.history[key]) === '[null]' && !(st.takes[key] || []).length && await page.isVisible('#dev-audio-revert'), 'record: no take left to "use"; Revert to previous goes back to no audio');
   ok(!(await page.evaluate(() => document.getElementById('preview').inert)), 'record: the preview takes clicks again after recording');
   // 2 つ目（録り直し）：これもすぐ使い、前の録音は「前に戻す」で
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await page.waitForFunction(() => window.__APP_TEST.audio().recording);
   await page.waitForTimeout(1200);
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await waitUsed('recorded', 2);
   st = await audioState();
   ok(st.entry.file !== t1.file && st.history[key][1] === t1.file, 'record again: the new take replaces the first, which stays in the revert history ' + JSON.stringify([st.entry.file, t1.file, st.history[key]]));
@@ -370,11 +371,11 @@ try {
   ok(await page.evaluate(() => [...document.querySelectorAll('#dev-audio .dv-script .dv-role')].map((e) => e.textContent).join() === 'Expert,Novice,Expert'), 'dialogue: every turn of the script is labelled, Expert too');
   const sh = await page.evaluate(() => { const e = document.getElementById('dev-audio-script'); return { h: e.clientHeight, sh: e.scrollHeight, resize: getComputedStyle(e).resize }; });
   ok(sh.h >= sh.sh - 1 && sh.resize === 'vertical', `script: the field grows with the narration (${sh.h}/${sh.sh} px) and can be resized`);
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await page.waitForFunction(() => window.__APP_TEST.audio().recording);
   await page.waitForTimeout(400);
   await shot(page, 'audio-recording-dialogue.png');
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await waitUsed('recorded', 8);
   // Esc（#48）：後に開いた窓から 1 つずつ。Shift+Esc で全部
   await page.click('#b-narr');
@@ -408,14 +409,14 @@ try {
   const pkey = (await page.evaluate(() => window.__APP_TEST.ui().pos)).key;
   await page.click('#b-audio');
   await page.waitForSelector('#dlg[open]');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await page.waitForSelector('#dev-audio #dev-audio-rec');
   await page.waitForFunction((k) => window.__APP_TEST.audio().key === k && window.__APP_TEST.audio().entry, pkey);
   ok((await audioState()).entry.kind === 'tts', 'portable: the current (dry-run) audio is shown');
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await page.waitForFunction(() => window.__APP_TEST.audio().recording);
   await page.waitForTimeout(1200);
-  await page.click('#dev-audio-rec');
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
   await waitUsed('recorded', 1);
   ok((await page.evaluate(() => window.__APP_TEST.state().portable.dirty)), 'portable: the new take marks the file unsaved');
   ok((await page.textContent('#saveloc')).includes('保存していない変更') && (await page.getAttribute('#saveloc', 'class')).includes('dirty'), 'save location: unsaved changes are shown');
@@ -478,12 +479,12 @@ try {
   await page.waitForFunction(() => { const b = document.getElementById('dev-audio-tts'); return b && !b.disabled; });
   ok((await page.textContent('#dev-audio-ttsinfo')).includes('Irodori-TTS 500M-v3'), 'tts window: the panel names the engine for a Japanese deck');
   const back0 = ((await audioState()).history[pkey] || []).length;
-  await page.click('#dev-audio-tts');
+  await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #tts-what', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #tts-what');
   ok(/1\.26 GB/.test(await page.textContent('#tts-what')), 'tts window: asks before the first download and shows its size');
   await shot(page, 'audio-tts-confirm.png');
   const popupP = ctx.waitForEvent('page');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   const popup = await popupP;
   await waitUsed('tts', back0 + 1, 60000);
   ok(new URL(popup.url()).pathname.endsWith('/lab/tts-helper.html'), 'tts window: synthesis runs in the separate TTS page');

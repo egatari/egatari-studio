@@ -20,6 +20,7 @@ import { launch } from '../kit/browser.mjs';
 import { build } from '../kit/build.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { encodeWav } from '../kit/core/audio-core.mjs';
+import { clickUntil } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -375,7 +376,7 @@ try {
   await page.click('#b-audio');
   await page.waitForSelector('#dev-audio-recmode');
   ok((await page.textContent('#dev-audio-recmode')).includes('(r)'), 'entry: the Audio panel has a Recording mode (r) button');
-  await page.click('#dev-audio-recmode');
+  await clickUntil(page, '#dev-audio-recmode', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
   await page.waitForSelector('#rec-mode');
   await waitRec('idle');
   ok((await recState()).key === (await page.evaluate(() => window.__APP_TEST.ui().pos.key)), 'reopen: the button opens it at the step on the screen');

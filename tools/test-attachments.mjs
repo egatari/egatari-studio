@@ -32,6 +32,7 @@ import { attachmentsOf, attachmentIndexWarnings, sniffMedia, ATTACH_LIMITS, plan
 import * as F from './attach-fixtures.mjs';
 import { unpack } from './portable.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
+import { clickUntil, clickDlg } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -564,16 +565,16 @@ const browser = await launch();
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
   const prefill = await page.inputValue('#attach-new-title-0');
   await page.fill('#attach-new-title-0', 'Slides (TeX)');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await page.waitForFunction(() => document.querySelector('#dlg[open]') && !document.getElementById('attach-new-title-0'), null, { timeout: 15000 });
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok(prefill === 'slides', 'editor: adding asks for a title, prefilled from the file name: ' + prefill);
   ok((await rowsOf()).includes('attachments/slides.tex') && (await page.$eval('[data-attach-role="attachments/slides.tex"]', (x) => x.value)) === 'source' && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)' && (await st()).portable.dirty, 'editor: adding a file (after the rights prompt) writes attachments/slides.tex with the role guessed as source; the file is unsaved');
   // 中身が音声（名前では分からない）：読んだ後、書く前に断る
   await page.setInputFiles('#attach-file', { name: 'rec.txt', mimeType: 'text/plain', buffer: Buffer.concat([Buffer.from('RIFF\x24\x00\x00\x00WAVEfmt '), Buffer.alloc(16)]) });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok(/音声/.test(await toastText()) && !(await rowsOf()).includes('attachments/rec.txt'), 'editor: an audio file is refused by its content');
   // §3.8 の型：名前から許されないもの（.js）は題を尋ねる前に、中身が条件に合わないもの（JavaScript のある PDF）は読んだ後・書く前に、規則を言って断る
@@ -582,7 +583,7 @@ const browser = await launch();
   ok(/断りました/.test(await toastText()) && /§3\.8/.test(await toastText()) && /スクリプトとして開く/.test(await toastText()) && !(await page.$('#dlg[open]')) && !(await rowsOf()).includes('attachments/tool.js'), 'editor: a .js file is refused by its name before the title prompt, naming the rule: ' + await toastText());
   await page.setInputFiles('#attach-file', { name: 'bad.pdf', mimeType: 'application/pdf', buffer: F.PDF_JS() });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok(/断りました/.test(await toastText()) && /JavaScript/.test(await toastText()) && /§3\.8/.test(await toastText()) && !(await rowsOf()).includes('attachments/bad.pdf'), 'editor: a PDF with JavaScript is refused after reading, naming the rule: ' + await toastText());
   // 役割と型の組：CSV を pdf にはできない
@@ -607,31 +608,31 @@ const browser = await launch();
   await page.press('[data-attach-title="attachments/code/run.py"]', 'Tab');
   await waitIdle();
   // 名前を替える・消す
-  await page.click('[data-attach-rename="attachments/data.csv"]');
+  await clickUntil(page, '[data-attach-rename="attachments/data.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', 'table.csv');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
-  await page.click('[data-attach-remove="attachments/notes.txt"]');
+  await clickUntil(page, '[data-attach-remove="attachments/notes.txt"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/paper.pdf,attachments/slides.tex,attachments/table.csv', 'editor: rename and remove update the list: ' + (await rowsOf()).join());
   // 不正な名前・大きすぎるもの
-  await page.click('[data-attach-rename="attachments/table.csv"]');
+  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', '../deck.html');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await page.waitForTimeout(400);
   ok(/使えない名前/.test(await toastText()) && (await rowsOf()).includes('attachments/table.csv'), 'editor: a path-traversal name is refused');
   await page.setInputFiles('#attach-file', { name: 'huge.txt', mimeType: 'text/plain', buffer: Buffer.alloc(ATTACH_LIMITS.fileBytes + 1, 0x41) });
   await page.waitForTimeout(800);
   ok(/大きすぎ/.test(await toastText()) && !(await rowsOf()).includes('attachments/huge.txt'), 'editor: a file over the limit is refused before it is read');
   // 名前を替えて許されない型にする（.html）：断る
-  await page.click('[data-attach-rename="attachments/table.csv"]');
+  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', 'table.html');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await page.waitForTimeout(400);
   ok(/断りました/.test(await toastText()) && (await rowsOf()).includes('attachments/table.csv'), 'editor: renaming to a forbidden type (.html) is refused');
   // 保存：段 A
@@ -663,14 +664,14 @@ const browser = await launch();
   await page.waitForSelector('#attach-list');
   await page.setInputFiles('#attach-file', { name: 'paper.pdf', mimeType: 'application/pdf', buffer: PDF });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   const fread = (rel) => page.evaluate(async (rel) => { try { const parts = rel.split('/'); const n = parts.pop(); let d = window.__fd; for (const x of parts) d = await d.getDirectoryHandle(x); return await (await (await d.getFileHandle(n)).getFile()).text(); } catch { return null; } }, rel);
   const conf1 = JSON.parse(await fread(CFG));
   ok((await fread('attachments/paper.pdf')) !== null && conf1[KEY].some((e) => e.path === 'attachments/paper.pdf' && e.role === 'pdf' && e.title === 'paper') && conf1.docId === CONF.docId && conf1.metadata.license === 'CC-BY-4.0', 'editor (folder): adding writes attachments/paper.pdf and its entry into egatari.json (other members kept)');
-  await page.click('[data-attach-remove="attachments/paper.pdf"]');
+  await clickUntil(page, '[data-attach-remove="attachments/paper.pdf"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
-  await page.click('#dlg-ok');
+  await clickDlg(page, '#dlg-ok');
   await waitIdle();
   const backups = await page.evaluate(async () => { const out = []; try { const e = await (await window.__fd.getDirectoryHandle('.cache')).getDirectoryHandle('edits'); for await (const k of e.keys()) out.push(k); } catch { /* なし */ } return out; });
   ok((await fread('attachments/paper.pdf')) === null && backups.some((n) => n.endsWith('-paper.pdf')) && !JSON.parse(await fread(CFG))[KEY].some((e) => e.path === 'attachments/paper.pdf'), 'editor (folder): removing deletes the file (backup in .cache/edits/) and its entry');
