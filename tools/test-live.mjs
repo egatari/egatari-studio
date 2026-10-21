@@ -8,6 +8,8 @@
 // 4. file://（Origin null）から試験の部屋（tools/live-fake-server.mjs）へ：参加 → 質問 → ack、段階に来ると投票が出る → 投票 → ack。送ったものはすべて写しの Schema に合い、
 //    見ている位置は送らない。承認待ち → 承認。つなぎ直し（1011 の後）と、4440・4423・4410・4441 の後はつながない。切断する
 // 5. 舞台の描画は変わらない：部屋を付けた派生と付けない派生で、いくつかの (i, k, t) の舞台だけの画像が同じ
+// 6. たたんだ印（#live-mark）：初めはたたんで舞台は窓いっぱい。投票の段階で開き、離れるとたたむ。「開いたままにする」・印から質問・たたんでもつながった印・Esc・キーボード・動きを減らす
+//    LIVE_SHOTS=<フォルダ> を付けると、たたんだ・投票で開いた・質問を開いた画面を pane-*.png に残す
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,7 +18,7 @@ import Ajv from 'ajv/dist/2020.js';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { buildPortable, liveRuntimeText } from '../kit/build.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339 } from '../kit/core/live.mjs';
+import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339, stepLabel, stepFallback, stepText } from '../kit/core/live.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
@@ -62,6 +64,24 @@ ok(!LP.sameEndpoint('wss://evil.example.org/ws', L0.endpoint) && !LP.sameEndpoin
 ok(LP0.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).some((e) => /endpoint/.test(e)) && LP0.socketUrl({ ...L0, endpoint: 'http://127.0.0.1:8787' }, 'p7Hk2mQx9LwR4tZa') === null && LP0.connectSrc('http://localhost:1') === null, 'default policy: loopback http endpoints are refused (validate, socketUrl, CSP)');
 ok(LP.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).length === 0 && LP.validate({ ...L0, endpoint: 'http://10.0.0.5:8787' }, { key: true }).length > 0, 'development policy: only loopback http is added');
 ok(liveCsp(L0.endpoint).includes('connect-src https://live.example.org wss://live.example.org;'), 'CSP: connect-src lists the endpoint for https and wss');
+// つないでよい文書か（docContext）：file: と content:（Android のファイルのアプリ。Origin は null）は学ぶ人が開いたファイル。ほかの条件は同じ
+{ const CSP0 = liveCsp(L0.endpoint);
+  const doc = (o = {}) => ({ framed: false, protocol: 'file:', origin: 'null', pathname: '/x/a.play.ega.html', csp: [CSP0], ...o });
+  const dc = (o) => LP0.docContext(doc(o), L0.endpoint);
+  ok(dc() === '' && dc({ protocol: 'https:', origin: 'https://lms.example.org' }) === '', 'docContext: file: and https: documents with the derivative\'s CSP may connect');
+  ok(dc({ protocol: 'content:', pathname: '//com.google.android.apps.nbu.files.provider/2/123' }) === '', 'docContext: an Android content: document (Origin null) is a local file the learner opened: it may connect');
+  ok(dc({ protocol: 'content:', framed: true }) === 'framed' && dc({ protocol: 'content:', csp: [] }) === 'policy' && dc({ protocol: 'content:', csp: [CSP0, CSP0] }) === 'policy'
+    && dc({ protocol: 'content:', csp: [liveCsp('https://evil.example.org')] }) === 'policy', 'docContext: content: still needs no frame and exactly one CSP meta whose connect-src is the endpoint');
+  ok(LP0.docContext({ ...doc({ protocol: 'content:' }), framed: undefined }, L0.endpoint) === 'framed' && LP0.docContext(null, L0.endpoint) === 'framed', 'docContext: unknown framing counts as framed');
+  ok(['data:', 'blob:', 'about:', 'chrome-extension:', 'filesystem:', 'javascript:', 'contents:', 'CONTENT:'].every((p) => dc({ protocol: p }) === 'scheme'), 'docContext: other schemes do not connect (data:, blob:, about:, …)');
+  ok(dc({ protocol: 'https:', origin: 'null' }) === 'sandboxed' && dc({ protocol: 'http:', origin: 'http://127.0.0.1:1', pathname: '/preview/x' }) === 'preview', 'docContext: sandboxed https documents and the dev server preview do not connect');
+  ok(LP0.cspOk([CSP0], L0.endpoint) && !LP0.cspOk(['default-src \'none\''], L0.endpoint) && !LP0.cspOk([CSP0.replace(' wss://live.example.org', '')], L0.endpoint), 'cspOk: exactly the endpoint in both forms');
+  // つなげない文書の「ブラウザで参加する」：参加用のページ、鍵は # の後ろ
+  ok(LP0.joinUrl(L0) === 'https://live.example.org/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD', 'joinUrl: https://<endpoint host>/join#room=…&key=… (the key only in the fragment)');
+  ok(LP0.joinUrl({ ...L0, key: undefined }) === null && LP0.joinUrl({ ...L0, endpoint: 'javascript:alert(1)' }) === null && LP0.joinUrl({ ...L0, room: 'r-x"><b>' }) === null, 'joinUrl: none without a valid key, room or https endpoint');
+  const PREV = "default-src 'none'; connect-src 'none'; frame-src 'none'";
+  ok(LP0.offerJoinLink('framed', doc({ framed: true })) && LP0.offerJoinLink('scheme', doc({ protocol: 'data:' })) && LP0.offerJoinLink('sandboxed', doc()), 'offerJoinLink: offered when framed (LMS, chat app), another scheme or sandboxed');
+  ok(!LP0.offerJoinLink('framed', doc({ framed: true, csp: [PREV, CSP0] })) && !LP0.offerJoinLink('preview', doc()) && !LP0.offerJoinLink('policy', doc()) && !LP0.offerJoinLink('', doc()), 'offerJoinLink: not in the editor preview (connect-src \'none\'), the dev preview, a document with another policy, or where it can connect'); }
 ok(localToRfc3339('2026-10-30T09:00', 540) === '2026-10-30T09:00:00+09:00' && localToRfc3339('2026-10-30T09:00', -300) === '2026-10-30T09:00:00-05:00', 'localToRfc3339: local time with its offset');
 { let e1 = null; try { parseRoomBlock('https://live.example.org/#room=r-7k2q6xw4&admin=VGVhY2hlclNlY3JldEtleUZvckZpeHR1cmVzT25seTA'); } catch (e) { e1 = e.message; }
   ok(e1 === 'admin', 'parseRoomBlock: refuses the teacher link (it carries the teacher key)');
@@ -77,6 +97,19 @@ ajv.addSchema(SCHEMA);
 const sv = (def) => ajv.getSchema(SCHEMA.$id + '#/$defs/' + def);
 for (const f of ['ask', 'vote', 'name', 'ping']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
 ok(sv('activities')(L0.activities), 'schema: the activities shape is the protocol\'s activities');
+// 活動の表示名（label）：スライドの番号（1 から）・見出し（約 24 字）・段階の番号（1 から）
+{ const slides = [{ key: 'cover', heading: '表紙' }, { key: 's-a', heading: '' }, { key: 's-b', heading: 'B' }, { key: 's-cjatth', heading: 'XML の壁' }, { key: 's-long', heading: 'とても長い見出しがここに続いていて二十四字をこえてしまう' }];
+  ok(stepLabel('s-cjatth:0', slides, 'ja') === '4 枚目『XML の壁』・ステップ 1' && stepLabel('s-cjatth:0', slides, 'en') === "Slide 4 'XML の壁', step 1", 'label: slide number, heading and step number, 1-based (ja and en)');
+  ok(stepLabel('s-cjatth:2', slides, 'ja') === '4 枚目『XML の壁』・ステップ 3' && stepLabel('s-cjatth:concl', slides, 'en') === "Slide 4 'XML の壁', conclusion", 'label: later steps and the conclusion step');
+  ok(stepLabel('s-a:0', slides, 'ja') === '2 枚目『s-a』・ステップ 1', 'label: a slide without a heading uses its key');
+  { const l = stepLabel('s-long:1', slides, 'ja'), h = /『(.*)』/.exec(l)[1]; ok([...h].length === 24 && h.endsWith('…') && l.endsWith('・ステップ 2'), `label: a long heading is cut to about 24 characters (${l})`); }
+  ok(stepLabel('*', slides, 'ja') === '教材全体' && stepLabel('*', slides, 'en') === 'whole lesson', 'label: * is the whole lesson');
+  ok(stepLabel('s-gone:1', slides, 'ja') === 's-gone · ステップ 2' && stepFallback('s-cjatth:0', 'en') === 's-cjatth · step 1', 'label: an unknown slide falls back to the key, "s-xxx · ステップ 1"');
+  ok(stepText('s-cjatth:0', '', 'ja') === 's-cjatth · ステップ 1' && stepText('s-cjatth:0', 'X', 'ja') === 'X', 'stepText: the label, or the formatted key for older activities');
+  const withLabel = (label) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa', label: '教材全体' }], 's-cjatth:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'], label }] } });
+  ok(LP.validate(withLabel('x'.repeat(80)), { key: true }).length === 0 && sv('activities')(withLabel('x'.repeat(80)).activities), 'validate: a label of up to 80 characters is allowed (policy and vendored schema)');
+  ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
+  ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
 
 // ---------------------------------------------------------------- 2. 書き出し
 console.log('export');
@@ -86,7 +119,8 @@ const deck = path.join(deckDir, 'deck.html');
 const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const POLL_STEP = '何を最小化するか:0';
-const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] };
+const POLL_LABEL = '2 枚目『何を最小化するか』・段階 1';
+const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
 const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
 // 教材の設定（鍵なし）：作業フォルダの設定のファイルの extensions.live
 const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
@@ -153,16 +187,19 @@ async function open(url, { viewport = { width: 1640, height: 720 }, media, ready
   return { ctx, p, net, close: () => ctx.close() };
 }
 const st = (p) => p.evaluate(() => (window.DECK && DECK.live ? DECK.live.state() : null));
+// 印から板を開く（開いていれば何もしない）。「参加する」は板の中
+const openMark = async (p) => { if (!(await p.evaluate(() => DECK.live.state().open))) await p.click('#live-mark'); await p.waitForSelector('#live-pane', { state: 'visible' }); };
+const joinNow = async (p) => { await openMark(p); await p.click('#live-pane .lv-join'); };
 const quiet = (net, what) => ok(net.req.length === 0 && net.ws.length === 0 && fake.connections.length === 0 && fake.http.length === 0,
   `${what}: no request and no WebSocket (page ${net.req.length}/${net.ws.length}, server ${fake.connections.length}/${fake.http.length})`);
 
 console.log('no network');
 { fake.reset(); const o = await open(fileUrl(files['early.html'])); await sleep(800);
   const s = await st(o.p), dis = await o.p.$eval('#live-pane .lv-join', (b) => b.disabled || b.closest('[hidden]') !== null);
-  await o.p.click('#live-pane .lv-join', { force: true, timeout: 1000 }).catch(() => {}); await sleep(300);
+  await o.p.click('#live-mark'); await o.p.click('#live-pane .lv-join', { force: true, timeout: 1000 }).catch(() => {}); await sleep(300);
   ok(s && s.state === 'off' && dis, 'before the window: the pane says when the room opens; Join is not offered'); quiet(o.net, 'before the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['late.html'])); await sleep(600);
-  ok(await o.p.$eval('#live-pane', (e) => document.documentElement.classList.contains('lv-folded') && e.querySelector('.lv-state').textContent.length > 0), 'after the window: the pane is folded and says the room has ended');
+  ok(await o.p.$eval('#live-mark', (m) => document.documentElement.classList.contains('lv-collapsed') && m.title.includes('ライブの時間は終わりました') && m.textContent.includes('終わりました')), 'after the window: collapsed; the marker says the live time is over');
   quiet(o.net, 'after the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html'])); await sleep(1500);
   const t = await o.p.$eval('#live-pane .lv-notice', (e) => e.textContent);
@@ -189,7 +226,33 @@ console.log('no network');
   const a = await fr.evaluate(() => { const e = document.querySelector('#live-pane .lv-addr'); return e ? e.textContent : ''; });
   ok(s && s.context === 'framed' && a.includes('r-7k2q6xw4') && a.includes(host), `editor preview (sandboxed srcdoc): no connection; the room's address is shown as text ("${a}")`);
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'editor preview: no Join button');
+  ok(s && !s.joinLink && !(await fr.$('#live-pane .lv-join-link')), 'editor preview: no "Join in the browser" link (the current text only)');
+  ok(s && !s.open && await fr.$eval('#live-mark', (m) => m.tagName === 'BUTTON' && m.getAttribute('aria-expanded') === 'false'), 'editor preview: the marker is shown, collapsed');
+  await fr.click('#live-mark');
+  ok(await fr.evaluate(() => DECK.live.state().open && getComputedStyle(document.getElementById('live-pane')).display !== 'none' && document.querySelector('#live-pane .lv-addr').offsetParent !== null), 'editor preview: opening the marker shows the room\'s address (the fallback)');
   quiet(o.net, 'editor preview'); await o.close(); }
+
+// 枠の中（LMS など。編集アプリのプレビューではない）：つながないが、参加用のページを新しいタブで開く「ブラウザで参加する」を出す。押すまで通信はない
+{ fake.reset(); const o = await open(fileUrl(put('lms.html', '<!doctype html><html><body><iframe id="f" src="live.html" style="width:1600px;height:700px"></iframe></body></html>')), { ready: false });
+  const fr = await (await o.p.waitForSelector('#f')).contentFrame();
+  await until(async () => fr.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false), 8000);
+  await sleep(500);
+  const s = await fr.evaluate(() => DECK.live && DECK.live.state());
+  const a = await fr.evaluate(() => { const e = document.querySelector('#live-pane .lv-join-link'); return e ? { href: e.href, target: e.target, rel: e.rel, text: e.textContent, shown: !e.closest('[hidden]') } : null; });
+  const addrT = await fr.evaluate(() => document.querySelector('#live-pane .lv-addr').parentNode.textContent);
+  const want = LP.joinUrl(JSON.parse(new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(L)[1]).live);
+  ok(s && s.context === 'framed' && s.joinLink && a && a.shown && a.href === want && a.target === '_blank' && a.rel === 'noopener noreferrer' && a.text === 'ブラウザで参加する',
+    `framed (LMS): "Join in the browser" opens the join page in a new tab (${a && a.href})`);
+  ok(addrT.includes('r-7k2q6xw4') && /新しいタブ/.test(addrT), `framed (LMS): a short explanation and the room stay as text ("${addrT}")`);
+  ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'framed (LMS): no Join button in the frame');
+  await fr.click('#live-mark');
+  quiet(o.net, 'framed (LMS) before the link is clicked (marker opened)');
+  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);
+  await until(() => o.net.req.length > 0, 3000);
+  ok(tab && o.net.req.length === 1 && o.net.req[0] === want.split('#')[0] && !o.net.req[0].includes('Q2xhc3Nyb29tS2V5MDAwMD'),
+    `click: a new tab loads the join page; the key stays in the fragment and is not sent (${o.net.req.join(', ')})`);
+  ok(o.net.ws.length === 0 && (await fr.evaluate(() => DECK.live.state().state)) === 'off', 'click: the framed player itself still opens no WebSocket');
+  await o.close(); }
 
 { fake.reset(); const o = await open(fileUrl(files['default-loopback.html'])); await sleep(1000);
   await o.p.click('#live-pane .lv-join', { timeout: 500 }).catch(() => {}); await sleep(500);
@@ -198,8 +261,9 @@ console.log('no network');
 console.log('connect from file://');
 const sent = () => fake.messages.slice();
 { fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await openMark(o.p);
   await o.p.fill('#live-pane .lv-name', 'Aiko');
-  await o.p.click('#live-pane .lv-join');
+  await joinNow(o.p);
   ok(await until(async () => (await st(o.p)).state === 'connected'), 'Join: connected');
   const c = fake.connections[0];
   ok(fake.connections.length === 1 && c.origin === 'null' && c.query.room === 'r-7k2q6xw4' && c.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && LP.RE.pid.test(c.query.pid) && Object.keys(c.query).length === 3,
@@ -226,6 +290,7 @@ const sent = () => fake.messages.slice();
   await o.p.evaluate((k) => { for (let i = 0; i < DECK.slides.length; i++) for (let j = 0; j <= 9; j++) { try { if (DECK.stepKey(i, j) === k) { DECK.go(i, j, false); return; } } catch (e) {} } }, POLL_STEP);
   ok(await until(async () => !!(await o.p.$('#live-pane fieldset[data-poll="p1"]'))), 'poll: appears when its step is reached (deck:pos)');
   ok(await o.p.$eval('#live-pane fieldset[data-poll="p1"] legend', (e) => e.textContent) === '学習率を大きくすると？', 'poll: the prompt is shown as text');
+  { const pane = await o.p.$eval('#live-pane', (e) => e.textContent); ok(!pane.includes(POLL_STEP), 'poll: the pane never shows the raw step key (it shows the poll of the step on screen; a label is display text only)'); }
   await o.p.check('#live-pane fieldset[data-poll="p1"] input[value="1"]');
   await o.p.click('#live-pane fieldset[data-poll="p1"] .lv-vote');
   ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '投票しました'), 'vote → ack: "vote recorded" in the live region');
@@ -255,7 +320,7 @@ const sent = () => fake.messages.slice();
 // 止める切断の番号
 for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'room_expired', false], [4441, 'not_approved', true], [4403, 'bad_key', false]]) {
   fake.reset(); const o = await open(fileUrl(files['live.html']));
-  await o.p.click('#live-pane .lv-join');
+  await joinNow(o.p);
   await until(async () => (await st(o.p)).state === 'connected');
   fake.drop(code);
   const stopped = await until(async () => (await st(o.p)).state === 'stopped');
@@ -269,7 +334,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
 }
 // 先生が閉じた（4423）：ゆっくり（30 秒より後）つなぎ直す
 { fake.reset(); const o = await open(fileUrl(files['live.html']));
-  await o.p.click('#live-pane .lv-join');
+  await joinNow(o.p);
   await until(async () => (await st(o.p)).state === 'connected');
   fake.drop(4423);
   ok(await until(async () => (await st(o.p)).state === 'retrying'), '4423 (room closed): waits to reconnect');
@@ -278,7 +343,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
   await o.close(); }
 // 承認待ち
 { fake.reset(); fake.setApproval(true); const o = await open(fileUrl(files['live.html']));
-  await o.p.click('#live-pane .lv-join');
+  await joinNow(o.p);
   ok(await until(async () => (await st(o.p)).state === 'waiting'), 'waiting welcome: a waiting state (not an error)');
   ok(await o.p.$eval('#live-pane .lv-qa', (e) => e.hidden), 'waiting: no question box yet');
   fake.admitAll();
@@ -286,7 +351,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
   fake.setApproval(false); await o.close(); }
 // このタブのあいだだけ覚える：読み直すと押さずにつながる。新しいタブ（別の文脈）では押すまでつながない
 { fake.reset(); const o = await open(fileUrl(files['live.html']));
-  await o.p.click('#live-pane .lv-join'); await until(async () => (await st(o.p)).state === 'connected');
+  await joinNow(o.p); await until(async () => (await st(o.p)).state === 'connected');
   await o.p.reload(); await o.p.waitForFunction(() => window.DECK && DECK.ready);
   ok(await until(async () => (await st(o.p)).state === 'connected') && fake.connections.length === 2, 'reload in the same tab: rejoins (the choice is kept for the session)');
   await o.close();
@@ -296,7 +361,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
 { fake.reset(); const o = await open(null);
   await o.p.addInitScript(() => { const bad = { get() { throw new Error('denied'); } }; Object.defineProperty(window, 'localStorage', bad); Object.defineProperty(window, 'sessionStorage', bad); });
   await o.p.goto(fileUrl(files['live.html'])); await o.p.waitForFunction(() => window.DECK && DECK.ready);
-  await o.p.click('#live-pane .lv-join');
+  await joinNow(o.p);
   ok(await until(async () => (await st(o.p)).state === 'connected') && LP.RE.pid.test(fake.connections[0].query.pid), 'storage denied: joins with an in-memory pid');
   ok(o.net.errors.length === 0, `storage denied: no page error (${o.net.errors.join('; ')})`);
   await o.close(); }
@@ -315,19 +380,99 @@ console.log('stage rendering');
   let same = 0;
   for (const pos of positions) { const a = await shot(A, pos), b = await shot(B, pos); if (a.h === b.h && a.b.width === b.b.width) same++; else console.log('    differs at', pos, a.b, b.b); }
   ok(same === positions.length, `stage-only frames are identical with and without the live room at ${positions.length} (i, k, t)`);
+  ok(!(await st(B.p)).open && await B.p.$eval('#stage', (e) => Math.abs(e.getBoundingClientRect().height - 720) < 0.5), 'collapsed: the stage uses the full window (720 px high in a 1640 × 720 window)');
+  await openMark(B.p);
   const pr = await B.p.$eval('#live-pane', (e) => e.getBoundingClientRect().left), sr = await B.p.$eval('#stage', (e) => e.getBoundingClientRect().right);
   ok(sr <= pr + 0.5, `the pane is outside the stage (stage right ${sr}, pane left ${pr})`);
   // 縦長の画面：下の板、舞台は上に収める
   await B.p.setViewportSize({ width: 600, height: 900 }); await sleep(200);
   const pb = await B.p.$eval('#live-pane', (e) => e.getBoundingClientRect().top), sb = await B.p.$eval('#stage', (e) => e.getBoundingClientRect().bottom);
   ok(sb <= pb + 0.5 && await B.p.evaluate(() => document.documentElement.classList.contains('lv-bottom')), `portrait: the pane is below the stage (stage bottom ${sb}, pane top ${pb})`);
-  // キーボード：板のボタンに Tab で届く
+  // キーボード：印に Tab で届き、Enter で開くと「参加する」に移る
   await B.p.setViewportSize({ width: 1640, height: 720 });
+  await B.p.click('#live-pane .lv-fold'); await B.p.evaluate(() => document.activeElement && document.activeElement.blur());
   let reached = false;
-  for (let n = 0; n < 40 && !reached; n++) { await B.p.keyboard.press('Tab'); reached = await B.p.evaluate(() => !!(document.activeElement && document.activeElement.closest('#live-pane .lv-join'))); }
-  ok(reached, 'keyboard: Join is reachable with Tab');
+  for (let n = 0; n < 40 && !reached; n++) { await B.p.keyboard.press('Tab'); reached = await B.p.evaluate(() => document.activeElement && document.activeElement.id === 'live-mark'); }
+  await B.p.keyboard.press('Enter');
+  ok(reached && await until(async () => B.p.evaluate(() => DECK.live.state().open && !!document.activeElement.closest('#live-pane .lv-join'))), 'keyboard: the marker is reachable with Tab; Enter opens it and moves to Join');
+  await B.p.keyboard.press('Escape');
+  ok(await until(async () => B.p.evaluate(() => !DECK.live.state().open && document.activeElement.id === 'live-mark')), 'keyboard: Esc in the pane collapses it and returns to the marker');
   ok(B.net.csp.length === 0 && B.net.errors.length === 0, `stage test: no CSP violation and no page error in the live derivative (${B.net.csp.concat(B.net.errors).slice(0, 2).join('; ')})`);
   await A.close(); await B.close(); }
+// ---------------------------------------------------------------- 6. たたんだ印
+console.log('collapsed marker');
+const SHOTS = process.env.LIVE_SHOTS || '';
+const goStep = (p, k) => p.evaluate((k) => { for (let i = 0; i < DECK.slides.length; i++) for (let j = 0; j <= 9; j++) { try { if (DECK.stepKey(i, j) === k) { DECK.go(i, j, false); return true; } } catch (e) {} } return false; }, k);
+const stageW = (p) => p.$eval('#stage', (e) => e.getBoundingClientRect().width);
+const markOf = (p) => p.$eval('#live-mark', (m) => ({ tag: m.tagName, exp: m.getAttribute('aria-expanded'), state: m.getAttribute('data-state'), text: m.textContent,
+  vis: getComputedStyle(m).display !== 'none' && m.getBoundingClientRect().width > 0, dot: getComputedStyle(m.querySelector('.lv-dot')).backgroundColor }));
+const paneShown = (p) => p.$eval('#live-pane', (e) => getComputedStyle(e).display !== 'none');
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { viewport: { width: 1280, height: 800 } }); await sleep(300);
+  let m = await markOf(o.p), s = await st(o.p);
+  ok(!s.open && !(await paneShown(o.p)) && m.tag === 'BUTTON' && m.exp === 'false' && m.vis && m.text.startsWith('ライブ'), `starts collapsed: only the marker ("${m.text}"), aria-expanded=false, the pane is not shown`);
+  ok(Math.abs((await stageW(o.p)) - 1280) < 0.5 && await o.p.evaluate(() => document.documentElement.classList.contains('lv-collapsed') && !document.documentElement.classList.contains('lv-side')), 'collapsed: the stage is the full window width (1280 of 1280)');
+  quiet(o.net, 'collapsed, before Join');
+  if (SHOTS) { await sleep(500); await o.p.screenshot({ path: path.join(SHOTS, 'pane-collapsed.png') }); }
+  // 参加：印から開いて 1 回押す
+  await openMark(o.p);
+  ok((await st(o.p)).pinned && (await markOf(o.p)).exp === 'true' && await o.p.$eval('#live-pane .lv-notice', (e) => e.offsetParent !== null), 'the marker opens the notice and Join (aria-expanded=true)');
+  ok(fake.connections.length === 0, 'opening the marker does not connect (Join is still one tap)');
+  await o.p.click('#live-pane .lv-join');
+  ok(await until(async () => (await st(o.p)).state === 'connected'), 'Join from the opened pane: connected');
+  await o.p.click('#live-mark');
+  await until(async () => (await markOf(o.p)).dot === 'rgb(63, 191, 111)', 2000);   // 点の色は 0.2 秒で変わる
+  m = await markOf(o.p);
+  ok(!(await st(o.p)).open && m.state === 'connected' && /参加中/.test(m.text) && m.dot === 'rgb(63, 191, 111)', `connected while collapsed: a green dot and text for screen readers on the marker ("${m.text}")`);
+  ok(Math.abs((await stageW(o.p)) - 1280) < 0.5, 'collapsed while connected: the stage is the full window width');
+  // 投票の段階で開き、離れるとたたむ
+  await o.p.keyboard.press('Home'); await sleep(200);
+  await o.p.evaluate(() => { document.getElementById('live-pane-status').textContent = ''; });
+  await goStep(o.p, POLL_STEP);
+  ok(await until(async () => { const x = await st(o.p); return x.open && x.auto && !x.pinned; }) && await paneShown(o.p) && !!(await o.p.$('#live-pane fieldset[data-poll="p1"]')), 'a poll step opens the pane by itself, with the poll');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'このステップに投票があります。ライブの板を開きました'), 'auto-open is announced in the live region');
+  ok((await markOf(o.p)).exp === 'true' && (await stageW(o.p)) < 1280 - 100, 'poll open: aria-expanded=true; the stage is fitted beside the pane');
+  ok(await o.p.evaluate(() => !document.activeElement || !document.activeElement.closest('#live-pane')), 'auto-open does not take the focus (the keys still move the lesson)');
+  if (SHOTS) { await sleep(500); await o.p.screenshot({ path: path.join(SHOTS, 'pane-poll-open.png') }); }
+  await o.p.keyboard.press('ArrowRight');
+  ok(await until(async () => !(await st(o.p)).open) && !(await paneShown(o.p)) && Math.abs((await stageW(o.p)) - 1280) < 0.5, 'leaving the poll step collapses it again (full width)');
+  // 投票の段階でたたむと、その段階のあいだは開かない
+  await goStep(o.p, POLL_STEP); await until(async () => (await st(o.p)).open);
+  await o.p.click('#live-pane .lv-fold'); await sleep(200);
+  ok(!(await st(o.p)).open, 'closing it on the poll step keeps it collapsed on that step');
+  // 開いたままにする
+  await o.p.keyboard.press('ArrowRight'); await sleep(200); await goStep(o.p, POLL_STEP); await until(async () => (await st(o.p)).open);
+  await o.p.click('#live-pane .lv-pin');
+  ok(await o.p.$eval('#live-pane .lv-pin', (b) => b.getAttribute('aria-pressed') === 'true') && (await st(o.p)).pinned, '"Keep open" pins the pane (aria-pressed=true)');
+  await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
+  await o.p.keyboard.press('ArrowRight'); await sleep(300);
+  ok((await st(o.p)).open && await paneShown(o.p) && (await st(o.p)).step !== POLL_STEP, 'pinned: stays open after leaving the poll step');
+  await o.p.click('#live-pane .lv-pin'); await sleep(200);
+  ok(!(await st(o.p)).open, 'unpinned off the poll step: collapses');
+  // 印から質問（"*" の Q&A はどのスライドでも）
+  await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
+  await o.p.keyboard.press('End'); await sleep(200);
+  await o.p.click('#live-mark');
+  ok(await until(async () => o.p.evaluate(() => document.activeElement && document.activeElement.matches('#live-pane textarea'))) && await o.p.$eval('#live-pane .lv-qa', (e) => !e.hidden && e.offsetParent !== null), 'the marker opens the question box (focused) on any slide');
+  await o.p.fill('#live-pane textarea', '最後のスライドの質問です');
+  if (SHOTS) { await sleep(500); await o.p.screenshot({ path: path.join(SHOTS, 'pane-question-open.png') }); }
+  await o.p.click('#live-pane .lv-send');
+  ok(await until(() => fake.messages.some((x) => x.t === 'ask' && x.text === '最後のスライドの質問です')), 'a question sent from the marker reaches the room');
+  ok(await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden && b.offsetParent !== null), 'Disconnect is reachable in the opened pane');
+  ok(o.net.errors.length === 0 && o.net.csp.length === 0, `collapsed marker: no page error and no CSP violation (${o.net.errors.concat(o.net.csp).slice(0, 2).join('; ')})`);
+  await o.close(); }
+// 縦長（スマートフォンの幅）：たたむと窓いっぱい、開くと下の板
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { viewport: { width: 400, height: 800 } }); await sleep(300);
+  ok(Math.abs((await stageW(o.p)) - 400) < 0.5, 'phone width collapsed: the stage is the full width (400 px)');
+  await openMark(o.p);
+  ok(await o.p.evaluate(() => document.documentElement.classList.contains('lv-bottom')) && (await o.p.$eval('#live-mark', (m) => m.getBoundingClientRect().right)) <= 400, 'phone width: the pane opens at the bottom; the marker stays inside the window');
+  quiet(o.net, 'phone width, before Join'); await o.close(); }
+// 動きを減らす：板は動かさずに出す
+{ const o = await open(null);
+  await o.p.emulateMedia({ reducedMotion: 'reduce' });
+  await o.p.goto(fileUrl(files['live.html'])); await o.p.waitForFunction(() => window.DECK && DECK.ready);
+  await openMark(o.p);
+  ok(await o.p.$eval('#live-pane', (e) => getComputedStyle(e).animationName === 'none'), 'reduced motion: the pane opens without animation');
+  await o.close(); }
 // 発表者ビュー：部屋の CSP（frame-src）の下でも、中の 2 つの画面が動く
 { const o = await open(fileUrl(files['live.html']) + '?presenter=1', { ready: false });
   const okFrames = await until(async () => { let n = 0; for (const f of o.p.frames()) { try { if (/[?&]view=(follow|next)/.test(f.url()) && await f.evaluate(() => !!(window.DECK && DECK.ready))) n++; } catch { /* 読み込み中 */ } } return n === 2; }, 8000);

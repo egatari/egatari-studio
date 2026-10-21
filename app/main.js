@@ -639,6 +639,7 @@ const livePanel = createLivePanel({
     try { for (const g of parseNarration(await S.ws.readText('narration.md', { max: READ_LIMITS.json }))) keys.push(`${g.slideKey}:${g.stepKey}`); } catch { /* 口述原稿なし */ }
     return [...new Set(keys)];
   },
+  slides: () => (S.slides || []).map((x) => ({ key: x.key, heading: x.heading || '' })),
   exportLive: (live) => exportPlayOnlyFile(live),
   problemText: T.liveProblem,
 });

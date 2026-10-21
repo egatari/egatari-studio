@@ -4,11 +4,13 @@
 // - 教材に残すのは鍵のない設定（設定のファイル FORMAT.CONFIG_FILE の extensions.live。書き出すと索引の extensions.live）。鍵は書き出す派生にだけ入り、この板が覚えるのは開いているあいだだけ
 //
 //   const panel = createLivePanel({lang, el, ws(), generation(), openPanel(title, body), isOpen(), toast, beforeWrite() → null | 理由, afterWrite(),
-//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, exportLive(live) → Promise, portable() → bool, problemText(p) → 文})
+//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, slides() → [{key, heading}], exportLive(live) → Promise, portable() → bool, problemText(p) → 文})
+// - 投票には表示名（label。「4 枚目『XML の壁』・段階 1」）を付ける：作るとき・段階を変えたとき・label のない古い投票を開いたとき（スライドが見つかれば）。
+//   段階の鍵を出していたところ（段階の候補・投票の一覧）には label を出し、鍵は title の吹き出しに。鍵そのものは変えない
 //   panel.open()
 import { FORMAT } from '../kit/core/format.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339 } from '../kit/core/live.mjs';
+import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText } from '../kit/core/live.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 
 const LP = LivePolicy();
@@ -24,6 +26,7 @@ const STR = {
     addChoice: '選択肢を足す', delChoice: '消す', delPoll: 'この投票を消す', copy: '投票の設定（JSON。ホストのページの「投票の設定」に貼る）', copyBtn: '投票の設定をコピー', copied: '投票の設定をコピーしました。ホストのページの「投票の設定」に貼って「投票の設定を保存」を押してください',
     save: '設定を教材に保存（参加コードは保存しません）', saved: `設定を ${CFG} に書きました（鍵は書きません）`, portableNote: '1 ファイルに残すには「保存」を押してください', exp: 'ライブを付けて書き出す…',
     problems: '書き出す前に直すこと', none: 'ありません', needKey: '参加コードがありません（ホストのページでコピーした設定を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
+    keyTip: (k) => `ステップの鍵：${k}`,
     fail: 'できませんでした：', tooLong: 'ライブの時間が長すぎます。ライブは 3 時間までです（ライブの開始と終了を直してください）',
   },
   en: {
@@ -35,6 +38,7 @@ const STR = {
     addChoice: 'Add choice', delChoice: 'Remove', delPoll: 'Remove this poll', copy: 'Poll settings (JSON; paste into Poll settings on the host page)', copyBtn: 'Copy poll settings', copied: 'Copied the poll settings. Paste them into Poll settings on the host page and press Save poll settings',
     save: 'Save settings in the lesson (without the join code)', saved: `Wrote the settings to ${CFG} (without the key)`, portableNote: 'Press Save to keep them in the single file', exp: 'Export with Live…',
     problems: 'To fix before exporting', none: 'None', needKey: 'No join code (paste the settings copied on the host page)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
+    keyTip: (k) => `Step key: ${k}`,
     fail: 'Could not: ', tooLong: 'The live time is too long: a Live lasts at most 3 hours (change the start and end)',
   },
 };
@@ -55,7 +59,8 @@ function fromLocalInput(v) {
 }
 
 export function createLivePanel(o) {
-  const X = STR[o.lang === 'en' ? 'en' : 'ja'];
+  const LANG = o.lang === 'en' ? 'en' : 'ja';
+  const X = STR[LANG];
   // validate の誤り {code, …引数} → 画面の言葉（app/i18n.js の liveProblem）。渡されなければ英語の文のまま
   const say = (p) => (typeof p === 'string' ? p : o.problemText ? o.problemText(p) : String(p));
   const el = o.el;
@@ -70,7 +75,7 @@ export function createLivePanel(o) {
   function fromLesson(l) {
     const a = isObj(l && l.activities) ? l.activities : {};
     const polls = [];
-    for (const [sk, list] of Object.entries(a)) for (const x of Array.isArray(list) ? list : []) if (isObj(x) && x.kind === 'poll') polls.push({ id: String(x.id || ''), step: sk, prompt: String(x.prompt || ''), choices: Array.isArray(x.choices) ? x.choices.map(String) : ['', ''] });
+    for (const [sk, list] of Object.entries(a)) for (const x of Array.isArray(list) ? list : []) if (isObj(x) && x.kind === 'poll') polls.push({ id: String(x.id || ''), step: sk, prompt: String(x.prompt || ''), choices: Array.isArray(x.choices) ? x.choices.map(String) : ['', ''], label: typeof x.label === 'string' ? x.label : '' });
     const qa = Object.values(a).some((list) => Array.isArray(list) && list.some((x) => isObj(x) && x.kind === 'qa'));
     const qaId = (Object.values(a).flat().find((x) => isObj(x) && x.kind === 'qa') || {}).id || 'qa';
     return { endpoint: (l && l.endpoint) || FORMAT.LIVE_ENDPOINT, room: (l && l.room) || '', key: M ? M.key : '', from: l && l.window ? l.window.from : '', to: l && l.window ? l.window.to : '', qa: l ? qa : true, qaId, polls };
@@ -78,7 +83,7 @@ export function createLivePanel(o) {
   function activities() {
     const a = {};
     if (M.qa) a['*'] = [{ id: M.qaId || 'qa', kind: 'qa' }];
-    for (const p of M.polls) (a[p.step] ||= []).push({ id: p.id, kind: 'poll', prompt: p.prompt.trim(), choices: p.choices.map((c) => c.trim()) });
+    for (const p of M.polls) (a[p.step] ||= []).push({ id: p.id, kind: 'poll', prompt: p.prompt.trim(), choices: p.choices.map((c) => c.trim()), ...(p.label && p.label.trim() ? { label: p.label.trim() } : {}) });
     return a;
   }
   const lessonOf = () => ({ v: 1, endpoint: M.endpoint.trim(), ...(M.room.trim() ? { room: M.room.trim() } : {}), ...(M.from && M.to ? { window: { from: M.from, to: M.to } } : {}), activities: activities() });
@@ -90,6 +95,13 @@ export function createLivePanel(o) {
     if (!M.key.trim()) e.unshift(X.needKey);
     return e.filter((x, i, l) => l.indexOf(x) === i);
   }
+  // 表示名：スライドが見つかる段階（と *）だけ。見つからなければ ''（表示は鍵からの代わり。stepText）
+  const slideList = () => { try { return (o.slides && o.slides()) || []; } catch { return []; } };
+  function autoLabel(step) {
+    if (step === '*') return stepLabel(step, [], LANG);
+    const i = String(step || '').lastIndexOf(':');
+    return i > 0 && slideList().some((x) => x && x.key === step.slice(0, i)) ? stepLabel(step, slideList(), LANG) : '';
+  }
   const nextId = () => { let n = 1; const used = new Set(M.polls.map((p) => p.id)); while (used.has('p' + n)) n++; return 'p' + n; };
 
   async function open() {
@@ -99,6 +111,7 @@ export function createLivePanel(o) {
     const l = isObj(conf.extensions) && isObj(conf.extensions.live) ? lessonLive(conf.extensions.live) : null;
     M = { ...fromLesson(l), key: M && M.room === (l && l.room) ? M.key : '' };
     steps = (o.stepKeys ? await o.stepKeys().catch(() => []) : []) || [];
+    for (const p of M.polls) if (!p.label) p.label = autoLabel(p.step);   // label のない古い投票
     render();
   }
   function input(id, value, onchange, attrs = {}) {
@@ -119,7 +132,7 @@ export function createLivePanel(o) {
     const b = document.getElementById('live-export'); if (b) b.disabled = e.length > 0;
   }
   function render() {
-    const dl = el('datalist', { id: 'live-steps' }, steps.map((k) => el('option', { value: k })));
+    const dl = el('datalist', { id: 'live-steps' }, steps.map((k) => el('option', { value: k, label: stepText(k, autoLabel(k), LANG) })));
     const paste = el('textarea', { id: 'live-paste', rows: '5', 'aria-label': X.paste, spellcheck: 'false' });
     const readBtn = el('button', { type: 'button', id: 'live-read', text: X.read, onclick: () => {
       try {
@@ -139,16 +152,25 @@ export function createLivePanel(o) {
     const qa = el('input', { type: 'checkbox', id: 'live-qa' }); qa.checked = !!M.qa;
     qa.addEventListener('change', () => { M.qa = qa.checked; refreshProblems(); });
     const pollEls = M.polls.map((p, pi) => {
-      const step = input(`live-poll-${pi}-step`, p.step, (v) => { p.step = v.trim(); }, { list: 'live-steps', 'aria-label': X.step, spellcheck: 'false' });
-      const here = el('button', { type: 'button', cls: 'live-here', text: X.here, onclick: () => { const k = o.currentStep && o.currentStep(); if (k) { p.step = k; step.value = k; refreshProblems(); } } });
+      const legend = el('legend', {}), shown = el('span', { cls: 'live-step-label', id: `live-poll-${pi}-label` });
+      // 段階が変わったら表示名も作り直す（鍵はそのまま）
+      const showStep = () => {
+        const t = stepText(p.step, p.label, LANG), tip = X.keyTip(p.step);
+        legend.textContent = `${p.id} · ${t}`; legend.title = tip;
+        shown.textContent = t; shown.title = tip;
+      };
+      const setStep = (k) => { p.step = k; p.label = autoLabel(k); showStep(); };
+      const step = input(`live-poll-${pi}-step`, p.step, (v) => setStep(v.trim()), { list: 'live-steps', 'aria-label': X.step, spellcheck: 'false' });
+      const here = el('button', { type: 'button', cls: 'live-here', text: X.here, onclick: () => { const k = o.currentStep && o.currentStep(); if (k) { setStep(k); step.value = k; refreshProblems(); } } });
+      showStep();
       const prompt = input(`live-poll-${pi}-prompt`, p.prompt, (v) => { p.prompt = v; }, { maxlength: String(LP.LIMITS.prompt), 'aria-label': X.prompt });
       const choices = p.choices.map((c, ci) => el('div', { cls: 'live-choice' }, [
         input(`live-poll-${pi}-c${ci}`, c, (v) => { p.choices[ci] = v; }, { maxlength: String(LP.LIMITS.choice), 'aria-label': X.choice(ci + 1) }),
         p.choices.length > 2 ? el('button', { type: 'button', text: X.delChoice, 'aria-label': X.delChoice + ' ' + X.choice(ci + 1), onclick: () => { p.choices.splice(ci, 1); render(); } }) : null,
       ]));
       return el('fieldset', { cls: 'live-poll', 'data-id': p.id }, [
-        el('legend', { text: `${p.id}` }),
-        el('label', {}, [el('span', { text: X.step }), step]), here,
+        legend,
+        el('label', {}, [el('span', { text: X.step }), step]), shown, here,
         el('label', {}, [el('span', { text: X.prompt }), prompt]),
         ...choices,
         el('div', { cls: 'row' }, [
@@ -170,7 +192,7 @@ export function createLivePanel(o) {
         el('p', { cls: 'note', text: X.windowNote }),
         el('label', { cls: 'check' }, [qa, el('span', { text: X.qa })]),
         el('h3', { text: X.polls }), dl, ...pollEls,
-        el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-addpoll', text: X.addPoll, onclick: () => { M.polls.push({ id: nextId(), step: (o.currentStep && o.currentStep()) || '', prompt: '', choices: ['', ''] }); render(); } })]),
+        el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-addpoll', text: X.addPoll, onclick: () => { const k = (o.currentStep && o.currentStep()) || ''; M.polls.push({ id: nextId(), step: k, prompt: '', choices: ['', ''], label: autoLabel(k) }); render(); } })]),
         probBox,
         el('h3', { text: X.copy }), jsonBox,
         el('div', { cls: 'row' }, [

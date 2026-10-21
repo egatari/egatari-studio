@@ -82,6 +82,7 @@ const ja = {
       case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
       case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
       case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
       case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
       case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
       case 'notObject': return 'ライブの設定がありません';
@@ -338,6 +339,7 @@ const en = {
       case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
       case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
       case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'activityLabel': return `${poll}the label is at most ${p.n} characters`;
       case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
       case 'tooManyActivities': return `At most ${p.n} questions and polls`;
       case 'notObject': return 'There are no Live settings';

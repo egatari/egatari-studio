@@ -10,6 +10,10 @@
 //   mergeLive(lesson, room)                教材の設定と部屋の字を合わせる（部屋・鍵・窓・endpoint は部屋の字、活動は教材にあれば教材）
 //   activitiesText(live)                   教員のページに渡す活動の JSON（部屋は同じ活動を知っている必要がある）
 //   localToRfc3339(value, offsetMin)       <input type="datetime-local"> の値と、その時の時差（Date#getTimezoneOffset の符号を反転したもの）→ RFC 3339
+//   stepLabel(stepKey, slides, lang)       活動の表示名（label）：「4 枚目『XML の壁』・段階 1」/ "Slide 4 'XML の壁', step 1"。slides は [{key, heading}]
+//                                          （スライドの順）。番号は 1 から。見出しは約 24 字で切り、なければ鍵。* は「教材全体」。スライドが見つからなければ stepFallback
+//   stepFallback(stepKey, lang)            label のない活動の表示：「s-xxx · 段階 1」（<slide>:<k> の k が数なら k + 1）。* は「教材全体」
+//   stepText(stepKey, label, lang)         表示する字：label があればそれ、なければ stepFallback
 //
 // 部屋を付けない派生には、どれも触れない（今と同じバイト）
 import { parse } from 'parse5';
@@ -114,4 +118,38 @@ export function localToRfc3339(value, offsetMin) {
   if (!m || !Number.isInteger(offsetMin)) return '';
   const sign = offsetMin >= 0 ? '+' : '-', a = Math.abs(offsetMin);
   return `${m[1]}T${m[2]}:${m[3] || '00'}${sign}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
+}
+
+// 活動の表示名（label。egatari/live の PROTOCOL.md §1：80 字まで、表示だけの字）。鍵はそのまま
+const LABEL_MAX = LP.LIMITS.label;
+const HEADING_MAX = 24;
+const WORDS = {
+  ja: { whole: '教材全体', step: (k) => `ステップ ${k}`, concl: '結論', slide: (n, h, st) => `${n} 枚目『${h}』・${st}`, fb: (s, st) => `${s} · ${st}` },
+  en: { whole: 'whole lesson', step: (k) => `step ${k}`, concl: 'conclusion', slide: (n, h, st) => `Slide ${n} '${h}', ${st}`, fb: (s, st) => `${s} · ${st}` },
+};
+const words = (lang) => WORDS[lang === 'en' ? 'en' : 'ja'];
+const cut = (t, n) => { const c = [...t]; return c.length <= n ? t : c.slice(0, n - 1).join('').trimEnd() + '…'; };
+function splitStep(stepKey) {
+  const s = String(stepKey || ''), i = s.lastIndexOf(':');
+  return i > 0 ? { slide: s.slice(0, i), k: s.slice(i + 1) } : null;
+}
+function stepPart(W, k) { return /^\d+$/.test(k) ? W.step(Number(k) + 1) : k === 'concl' ? W.concl : W.step(k); }
+export function stepFallback(stepKey, lang) {
+  const W = words(lang);
+  if (stepKey === '*') return W.whole;
+  const p = splitStep(stepKey);
+  return p ? W.fb(p.slide, stepPart(W, p.k)) : String(stepKey || '');
+}
+export function stepLabel(stepKey, slides, lang) {
+  const W = words(lang);
+  if (stepKey === '*') return W.whole;
+  const p = splitStep(stepKey);
+  const list = Array.isArray(slides) ? slides : [];
+  const i = p ? list.findIndex((x) => x && x.key === p.slide) : -1;
+  if (i < 0) return cut(stepFallback(stepKey, lang), LABEL_MAX);
+  const h = cut(String(list[i].heading || '').replace(/\s+/g, ' ').trim() || p.slide, HEADING_MAX);
+  return cut(W.slide(i + 1, h, stepPart(W, p.k)), LABEL_MAX);
+}
+export function stepText(stepKey, label, lang) {
+  return typeof label === 'string' && label.trim() ? label.trim() : stepFallback(stepKey, lang);
 }

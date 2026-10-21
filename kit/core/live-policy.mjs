@@ -11,6 +11,10 @@
 //   LP.socketUrl(live, pid)                 学ぶ人の WebSocket の URL（endpoint と同じ origin。違えば null）
 //   LP.sameEndpoint(url, endpoint)          URL の origin が endpoint の origin と同じか（http(s) と ws(s) を対応させる）
 //   LP.activitiesFor(live, stepKey)         その段階で出す活動（"*" の後にその段階のもの）
+//   LP.docContext(doc, endpoint)            この文書からつないでよいか：'' | 'framed' | 'scheme' | 'sandboxed' | 'preview' | 'policy'（迷ったら否）
+//                                          doc：{framed, protocol, origin, pathname, csp: [CSP の <meta> の content…]}（再生器が location と DOM から集める）
+//   LP.joinUrl(live)                        参加用のページ（egatari/live の /join#room=…&key=…）。鍵は # の後ろだけ（アドレスとしてサーバーに送られない）
+//   LP.offerJoinLink(ctx, doc)              つなげない文書で「ブラウザで参加する」を出すか（編集アプリのプレビュー・この派生の決まりでない文書では出さない）
 // opts.allowLoopback：ループバックの http: の endpoint を許す（Node の試験と開発版の書き出しだけ。kit/core/live.mjs）
 export function LivePolicy(opts) {
   // 開発版の再生器だけ true（kit/core/live.mjs の liveRuntime(…, {devLoopback: true}) が書き換える）。配る写しの再生器では常に false
@@ -26,7 +30,7 @@ export function LivePolicy(opts) {
     datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
   };
   // windowRoomMs：部屋のサービス（egatari/live v1）が作れる窓の長さの上限（3 時間）。再生器は長い窓も読む（windowMs）
-  var LIMITS = { prompt: 300, choice: 100, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
+  var LIMITS = { prompt: 300, choice: 100, label: 80, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
   // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
   var SKEW_MS = 2 * 60 * 1000;
   // 切断の番号（egatari/live の protocol/close-codes.json）。retry はサーバーの表の値。この再生器のふるまいは plan が決める
@@ -109,7 +113,9 @@ export function LivePolicy(opts) {
           if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) add('pollChoices', at + '.choices', { step: sk, index: i, id: P.id, min: LIMITS.choicesMin, max: LIMITS.choicesMax }, at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
           else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) add('pollChoice', at + '.choices[' + c + ']', { step: sk, index: i, id: P.id, c: c, n: LIMITS.choice }, at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
         } else add('activityKind', at + '.kind', P, at + '.kind: "qa" or "poll"');
-        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1 }, xk)) add('unknownMember', at + '.' + xk, { step: sk, index: i, id: P.id, member: xk }, at + '.' + xk + ': unknown member');
+        // label：ステップの表示名（任意。「4 枚目『…』・ステップ 1」。表示だけの字で、鍵ではない）
+        if (own(x, 'label') && (!str(x.label) || x.label.length > LIMITS.label)) add('activityLabel', at + '.label', { step: sk, index: i, id: P.id, n: LIMITS.label }, at + '.label: at most ' + LIMITS.label + ' characters');
+        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1, label: 1 }, xk)) add('unknownMember', at + '.' + xk, { step: sk, index: i, id: P.id, member: xk }, at + '.' + xk + ': unknown member');
       }
     }
     if (n > LIMITS.activities) add('tooManyActivities', 'live.activities', { n: LIMITS.activities }, 'live.activities: at most ' + LIMITS.activities + ' activities');
@@ -177,7 +183,38 @@ export function LivePolicy(opts) {
     if (stepKey && stepKey !== '*') add(stepKey);
     return out;
   }
+  // 学ぶ人が自分で開いたファイル：file: と、Android のファイルのアプリが渡す content:（Origin は null）。ほかの条件（枠でない・CSP・窓・「参加する」）は同じ
+  var LOCAL = { 'file:': 1, 'content:': 1 };
+  function cspOk(csp, endpoint) {
+    if (!Array.isArray(csp) || csp.length !== 1 || !str(csp[0])) return false;
+    var want = connectSrc(endpoint), cs = /(?:^|;)\s*connect-src\s+([^;]*)/i.exec(csp[0]);
+    return !!want && !!cs && cs[1].trim().split(/\s+/).sort().join(' ') === want.split(' ').sort().join(' ');
+  }
+  function docContext(doc, endpoint) {
+    if (!isObj(doc) || doc.framed !== false) return 'framed';
+    var p = doc.protocol;
+    if (!own(LOCAL, p) && p !== 'https:' && p !== 'http:') return 'scheme';
+    if (!own(LOCAL, p) && doc.origin === 'null') return 'sandboxed';
+    if (p === 'http:' && /^\/(preview|deck)(\/|$)/.test(str(doc.pathname) ? doc.pathname : '')) return 'preview';
+    // この派生の決まり：CSP の <meta> がちょうど 1 つで、connect-src が endpoint だけ
+    if (!cspOk(doc.csp, endpoint)) return 'policy';
+    return '';
+  }
+  function joinUrl(live) {
+    if (!isObj(live) || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key)) return null;
+    var u = parseEndpoint(live.endpoint);
+    if (!u) return null;
+    return u.protocol + '//' + u.host + '/join#room=' + encodeURIComponent(live.room) + '&key=' + encodeURIComponent(live.key);
+  }
+  // 編集アプリのプレビュー（信頼する先頭部分の CSP は connect-src 'none'）・開発用のプレビュー・決まりの違う文書では出さない
+  function offerJoinLink(ctx, doc) {
+    if (ctx !== 'framed' && ctx !== 'scheme' && ctx !== 'sandboxed') return false;
+    var csp = isObj(doc) && Array.isArray(doc.csp) ? doc.csp : [];
+    for (var i = 0; i < csp.length; i++) if (/(?:^|;)\s*connect-src\s+'none'\s*(;|$)/i.test(str(csp[i]) ? csp[i] : '')) return false;
+    return true;
+  }
   return { RE: RE, LIMITS: LIMITS, SKEW_MS: SKEW_MS, CODES: CODES, BACKOFF: BACKOFF, RETRY_MIN_MS: RETRY_MIN_MS,
     validate: validate, inWindow: inWindow, windowStart: windowStart, windowEnd: windowEnd, closeInfo: closeInfo, plan: plan,
-    socketUrl: socketUrl, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor };
+    socketUrl: socketUrl, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor,
+    docContext: docContext, cspOk: cspOk, joinUrl: joinUrl, offerJoinLink: offerJoinLink };
 }
