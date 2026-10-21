@@ -16,6 +16,7 @@ import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } fr
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput } from '../kit/build.mjs';
+import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -138,8 +139,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     } else if (cmd === 'pack' && pos.length === 1) {
       const src = entryOf(pos[0]);
       const playOnly = flags.has('--play-only');
-      const out = oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly);
-      const r = await buildPortable(src, { out, playOnly });
+      const r = await buildPortable(src, { playOnly });
+      const out = path.resolve(oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly, r.index?.metadata?.title || titleOf(r.html)));
       writeOutput(src, out, r.html);
       console.log(`packed ${r.stats.files} source files, ${r.stats.audio} audio (docId ${r.index.docId}, sourceSha256 ${r.index.sourceSha256.slice(0, 12)}…) -> ${out}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);

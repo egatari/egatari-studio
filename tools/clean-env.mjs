@@ -47,8 +47,14 @@ for (const name of fs.readdirSync(path.join(ROOT, 'examples')).sort()) {
   const deck = path.join(d, 'deck.html');
   node(`${name}: build`, 'kit/build.mjs', [deck]);
   node(`${name}: check`, 'kit/check.mjs', [deck]);
-  node(`${name}: --portable`, 'kit/build.mjs', [deck, '--portable', '-o', path.join(tmp, `${name}.ega.html`)]);
-  node(`${name}: --play-only`, 'kit/build.mjs', [deck, '--play-only', '-o', path.join(tmp, `${name}.play.html`)]);
+  // 既定の書き出し先（原稿のフォルダの最上位。題名から作った名前）に、1 ファイルと再生専用ができること
+  const exported = () => fs.readdirSync(d).filter((f) => f.endsWith('.ega.html'));
+  node(`${name}: --portable`, 'kit/build.mjs', [deck, '--portable']);
+  node(`${name}: --play-only`, 'kit/build.mjs', [deck, '--play-only']);
+  const got = exported();
+  const okTop = got.length === 2 && got.some((f) => f.endsWith('.play.ega.html')) && got.some((f) => !f.endsWith('.play.ega.html'));
+  console.log(`${okTop ? 'ok  ' : 'FAIL'} ${name}: exports are at the top of the deck folder (${got.join(', ') || 'none'})`);
+  if (!okTop) fails++;
 }
 
 // TTS の dry-run（サーバーにつながらない。無音の音声と manifest を作る）→ 音声入りで組む

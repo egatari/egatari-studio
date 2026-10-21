@@ -40,8 +40,8 @@ description: 動きのある HTML の授業・発表・説明の資料（学術�
    - 直したら、その段階を撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
 8. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
 9. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
-   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/out/<名前>.ega.html`：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
-   - `node <repo>/kit/build.mjs <deck> --play-only` → `<名前>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
+   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/<教材の題名>.ega.html`（デッキのフォルダの最上位。書いた場所は表示される）：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
+   - `node <repo>/kit/build.mjs <deck> --play-only` → `<deck>/<教材の題名>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
    - 書き出す前に教材の情報を確かめる（§3「教材の情報」）
 
 ## 3. 原稿の書き方（deck.html）

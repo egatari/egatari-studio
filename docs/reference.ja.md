@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=088eb345319d6b1e -->
+<!-- i18n: pair=reference.md sha256=0cad2b09f96981d3 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -381,7 +381,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 ### 1 ファイル（`--portable`）
 
-`node kit/build.mjs <deck.html> --portable` は `out/<名前>.ega.html` を書く。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
+`node kit/build.mjs <deck.html> --portable` は `<作業フォルダ>/<教材の題名>.ega.html` を書き（名前は編集アプリの書き出しと同じ規則：`metadata.title`、なければデッキの `<title>`。どの OS でも使える名前にする。題名がなければ `<デッキの名前>.ega.html`）、書いたファイルの絶対パスを表示する。ふつうの build と同じように再生でき、さらにデッキの原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。持ち運べるデッキの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
 
 - **入るもの**：build が作業フォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・作業フォルダの部品とテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち口述原稿にある段階のもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
 - **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリの部品とテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、原稿の `themes/<名前>/` として写す）。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
@@ -400,8 +400,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 | 選択肢 | 意味 |
 |---|---|
-| `--portable` | 1 ファイルを書く（既定 `out/<名前>.ega.html`。`-o` で場所） |
-| `--play-only` | 再生専用の写しを書く（既定 `out/<名前>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
+| `--portable` | 1 ファイルを書く（既定 `<作業フォルダ>/<教材の題名>.ega.html`。作業フォルダの最上位。`-o` で場所） |
+| `--play-only` | 再生専用の写しを書く（既定 `<作業フォルダ>/<教材の題名>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
 
 `npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。
 
