@@ -54,7 +54,12 @@ export async function sheet(arg, o = {}) {
     await p.waitForFunction(() => window.DECK && DECK.ready);
     await p.evaluate(() => document.fonts.ready);
     await p.addStyleTag({ content: HIDE });
-    const meta = await p.evaluate(() => DECK.slides.map((s) => ({ key: s._key || '', max: s._max })));
+    const meta = await p.evaluate(() => DECK.slides.map((s) => {
+      const h = s.querySelector('h1') || s.querySelector('h2');
+      const t = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+      const cs = [...t];
+      return { key: s._key || '', max: s._max, head: cs.length > 12 ? cs.slice(0, 12).join('') + '…' : t };
+    }));
     const shots = [];
     for (let i = 0; i < meta.length; i++) {
       await p.evaluate(([i, k]) => DECK.seek(i, k, Infinity), [i, meta[i].max]);
@@ -68,22 +73,27 @@ export async function sheet(arg, o = {}) {
       shots.forEach((s, i) => fs.writeFileSync(path.join(tilesDir, String(i + 1).padStart(2, '0') + '.png'), s));
     }
     const fs_ = Math.max(12, Math.round(tileW / 32));
+    const labels = [];
     const tiles = shots.map((s, i) => {
       const key = meta[i].key, show = key && [...key].length <= 12 && !/^s\d+$/.test(key);
-      return `<figure><figcaption>${i + 1}${show ? ' · ' + esc(key) : ''}</figcaption><img src="data:image/png;base64,${s.toString('base64')}" width="${g.tileW}" height="${g.slideH}"></figure>`;
+      const fixed = i + 1 + (show ? ' · ' + key : ''), head = show && key === meta[i].head ? '' : meta[i].head;   // 鍵が見出しそのもの（id のないデッキ）なら 1 回だけ
+      labels.push(fixed + (head ? ' · ' + head : ''));
+      return `<figure><figcaption><span class="n">${esc(fixed)}</span>${head ? `<span class="h"> · ${esc(head)}</span>` : ''}</figcaption><img src="data:image/png;base64,${s.toString('base64')}" width="${g.tileW}" height="${g.slideH}"></figure>`;
     }).join('');
     const html = `<!doctype html><meta charset="utf-8"><style>
 html,body{margin:0;background:#e5e7eb}
 body{box-sizing:border-box;width:${g.width}px;height:${g.height}px;padding:${PAD}px;display:grid;grid-template-columns:repeat(${g.cols},${g.tileW}px);grid-auto-rows:${g.tileH}px;gap:${GAP}px;font-family:system-ui,"Hiragino Sans","Noto Sans CJK JP","Yu Gothic",sans-serif}
 figure{margin:0;position:relative;width:${g.tileW}px;height:${g.tileH}px;box-shadow:0 0 0 1px #9ca3af;background:#fff;overflow:hidden}
 img{display:block}
-figcaption{box-sizing:border-box;height:${g.labelH}px;background:#374151;color:#fff;font-weight:700;font-size:${fs_}px;line-height:${g.labelH}px;padding:0 ${Math.round(fs_ * .7)}px;white-space:nowrap;overflow:hidden}
+figcaption{box-sizing:border-box;height:${g.labelH}px;background:#374151;color:#fff;font-weight:700;font-size:${fs_}px;line-height:${g.labelH}px;padding:0 ${Math.round(fs_ * .7)}px;white-space:nowrap;display:flex}
+figcaption .n{flex:none}
+figcaption .h{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:pre}
 </style>${tiles}`;
     const cp = await b.newPage({ viewport: { width: g.width, height: g.height } });
     await cp.setContent(html);
     await cp.evaluate(() => Promise.all([...document.images].map((im) => im.decode())));
     await cp.screenshot({ path: out });
-    return { out, count: meta.length, tilesDir, ...g };
+    return { out, count: meta.length, tilesDir, labels, ...g };
   } finally { await b.close(); if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 

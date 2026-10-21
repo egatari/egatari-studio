@@ -32,6 +32,10 @@ const r2 = await sheet(built, { out: path.join(work, 'b.png') });
 const g2 = gridSize(N, 4, 640), d2 = dims(r2.out);
 ok(r2.count === N && d2 && d2.w === g2.width && d2.h === g2.height, `built.html: ${r2.count} slides, ${d2 && d2.w}×${d2 && d2.h} = ${g2.width}×${g2.height}`);
 
+ok(r.labels[1].startsWith('2 · ') && r.labels[1].includes('何を最小化するか'), `label has number and heading: ${r.labels[1]}`);
+ok(r.labels.every((l, i) => l.startsWith(`${i + 1} · `) && l.length > 4 && !/\n/.test(l)), 'every label is "n · … heading" on one line');
+ok(r.labels.every((l) => !/ · [^·]{14,}$/.test(l) || /…$/.test(l)), 'long headings are cut at 12 characters with …');
+
 // CLI：出力の場所と枚数を印字する
 const o = execFileSync('node', [path.join(ROOT, 'tools/sheet.mjs'), built, path.join(work, 'c.png'), '--cols', '2', '--width', '400'], { encoding: 'utf8' });
 ok(o.includes(path.join(work, 'c.png')) && o.includes(`${N} slides`), 'CLI prints the path and the count');
