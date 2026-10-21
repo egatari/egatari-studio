@@ -38,6 +38,7 @@ compData: ['R-components'], consoleError: ['R-components'],
   // 体裁の検査（kit/core/layout-scan.mjs）がブラウザ版にも出すコマンド版の code
   titleColon: ['R-title'], tateTitle: ['R-title'], tateBodyHead: ['R-fit'], bodyConclCol: ['R-fit'], bodyLeft: ['R-fit'], smallSvgText: ['R-fit'],
   textClipped: ['R-fit'], svgTextOut: ['R-fit'], svgTextBox: ['R-fit'], outsideBody: ['R-fit'],
+  textOffSlide: ['R-fit'], textOverlap: ['R-fit'], cellWordBreak: ['R-fit'],
 };
 const BY_TEXT = [
   [/スライドが見つからない|slide not found|no slide/i, ['R-headings']],

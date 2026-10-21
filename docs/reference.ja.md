@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d4ab31da7cd68b95 -->
+<!-- i18n: pair=reference.md sha256=d34ded86948ce0fa -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -31,9 +31,9 @@
 | 書き方 | 意味 |
 |---|---|
 | `<div id="stage">` の中の `<section class="slide">` | 1 枚（1280×720）。`<h2>` 見出し、`<div class="body">` 本文、`<div class="concl"><span>…</span></div>` 結論の行 |
-| `class="slide cover"` | 表紙：`.venue`、`<h1>`、`.au`。テーマのロゴが左下に入る |
+| `class="slide cover"` | 表紙。子要素は `.venue`（会場・授業の名前。top 120px）、`<h1>`（題名。top 200px。副題は `<br>` のあとの 2 行目に書くか（`<h1>題名<br>副題</h1>`）、`.venue` に入れる）、`.au`（著者・所属。top 450px。`<br>` で何行でも）で、テーマのロゴが左下に入る（`.logos`）。どれも絶対位置で、表紙には `.body` がない。ほかの要素（`<p class="sub">` など）は置き場所が決まらず、スライドの上端の帯に重なる。ほかの字は、デッキの `<style>` で `position:absolute` と `top` を決めて空いた場所に置く。字がスライドの外に出る・ほかの字や帯に重なると品質チェックが警告する（`textOffSlide`・`textOverlap`） |
 | 表紙に `data-nologos` | この表紙にはロゴを入れない（表紙に `.logos` の要素が既にあるときも入れない） |
-| `class="slide sec"` | 章の扉（`<h1>`、`.lead`）。動画の `--full` の章の始まり |
+| `class="slide sec"` | 章の扉（`<h1>` は top 300px、`.lead` は top 390px。ほかの字は表紙と同じく自分で置く）。動画の `--full` の章の始まり |
 | `class="slide sec appendix"` | 付録の扉。以降のページ番号は「付録」/ Appendix。`appendix` がなくても、文字に「付録」か Appendix を含む `sec` は付録の扉とみなす |
 | `class="… static"` | 段階なし：全部見せる。`.concl` も別の段階にしない |
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
@@ -341,6 +341,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px） | エラー |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない） | エラー |
 | `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
+| どのスライドでも（表紙・章の扉・`layout-tate`・絶対位置の配置）：`.body` のないスライドで 1280×720 の外に出る字（`textOffSlide`。`.body` のあるスライドでは `outsideBody`）、ほかの字の箱やスライドの帯（飾り。表紙の上の帯など）に重なる字の箱（`textOverlap`：2 つの箱の行の矩形が縦横とも 2px を超えて重なる。KaTeX の式は式の見た目の箱 1 つで比べる。親と子、同じ部品の中の字どうし、SVG の字は比べない。本文の場所のエラーのあるスライドでは、本文の字と見出し・結論の行の重なりを重ねて知らせない）。表紙と章の扉では、置ける子要素と副題の置き場所を添える。`data-clip` の中の字、見えない字、KaTeX の MathML、`.sr-only` は見ない | 警告 |
+| 表のセル（`td`・`th`）の語が途中で折り返す（`cellWordBreak`）：日本語・中国語の字を含み、空白を除いて 6 字までのセルが 2 行以上になる、または日本語・中国語の字のない語（`Intl.Segmenter` の語）の途中で行が変わる（ブラウザは英語の語を空白やハイフンでしか折らない。`overflow-wrap`・`word-break` で割れる）。長い日本語のセルがふつうに折り返すのは知らせない。直し方は、列を減らす・語を短くする・その列を広げる | 警告 |
 | 本文の「です・ます」（日本語） | エラー |
 | 組まれていない式、KaTeX のエラー | エラー |
 | デッキの中で「、。」と「，．」が混ざる（日本語） | 警告 |

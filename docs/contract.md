@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=994874bb2a303755 -->
+<!-- i18n: pair=contract.ja.md sha256=1eadba5ea9ff208a -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -174,8 +174,8 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 <div class="code wall" data-clip>…a long XML listing, cut on purpose by the box…</div>
 ```
 
-- The quality checker (command and browser, one implementation in `kit/core/layout-scan.mjs`) MUST warn about text that is cut off by a box with `overflow` other than `visible` (`textClipped`), SVG text cut off by its SVG viewport (viewBox) or going off the slide (`svgTextOut`), SVG text that overflows the `<rect>` drawn around it (`svgTextBox`), and text placed outside `.body` that goes off the slide or overlaps the heading, the conclusion line or the page number (`outsideBody`). All are warnings under R-fit
-- `data-clip` on an element marks clipping there as intended: text in that element, including all its descendants and SVG text, MUST NOT be reported by those four checks. It applies to both directions (horizontal and vertical). It MUST NOT change any other check (`bodyBottom`, `smallText`, …) nor the rendering
+- The quality checker (command and browser, one implementation in `kit/core/layout-scan.mjs`) MUST warn about text that is cut off by a box with `overflow` other than `visible` (`textClipped`), SVG text cut off by its SVG viewport (viewBox) or going off the slide (`svgTextOut`), SVG text that overflows the `<rect>` drawn around it (`svgTextBox`), and text placed outside `.body` that goes off the slide or overlaps the heading, the conclusion line or the page number (`outsideBody`). On every slide it MUST also warn about text going off a slide that has no `.body` (`textOffSlide`), text boxes that overlap each other or the slide's decorative band (`textOverlap`), and a short word in a table cell that breaks across lines (`cellWordBreak`). All are warnings under R-fit
+- `data-clip` on an element marks clipping there as intended: text in that element, including all its descendants and SVG text, MUST NOT be reported by those checks. It applies to both directions (horizontal and vertical). It MUST NOT change any other check (`bodyBottom`, `smallText`, …) nor the rendering
 - On a slide whose body overflows at the bottom (`bodyBottom`), text inside `.body` that goes off the slide is not reported again (`svgTextOut` with the slide edge): cutting the body fixes both
 - Authors use `data-clip` only where the cut is part of the message (for example a "wall" of code faded out at the bottom), never to hide an overflow
 

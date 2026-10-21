@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="business">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>表紙の字の箱と表の短いセルの検査の試験（backlog #64・#65）</title>
+<style>
+/* 自分で置いた札（s-absok：表紙の下に置く。s-absover：所属に重ねる） */
+.date{position:absolute;left:48px;right:48px;top:600px;text-align:center;font-size:24px;color:var(--muted)}
+.over-au{position:absolute;left:48px;right:48px;top:455px;text-align:center;font-size:28px}
+/* 式に重ねる札（s-mathover） */
+.over-math{position:absolute;left:500px;top:30px;font-size:28px}
+/* 章の扉の副題を右へ出す（s-secoff） */
+.lead.far{left:900px;right:auto;white-space:nowrap}
+/* 状態の列を 2 字の幅にする（s-tbl65。元の例と同じく「除外中」が 2 行に割れる） */
+.w2{width:3.2em}
+/* 短い語の列を広げる（s-tblok） */
+.w5{width:5em}
+/* 英語の語を割る設定（s-latinbreak） */
+.anywhere td{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- #64 の例：会場・題名・所属のあとに <p class="sub"> を 1 つ足す。副題だけが流れに入り、スライドの上端（top 0、高さ 32px）に出て上の帯と重なる：textOverlap（帯） -->
+<section class="slide cover noconcl static" id="s-cov64">
+  <div class="venue">社内勉強会（見本）</div>
+  <h1>データの前処理の手引き</h1>
+  <div class="au">データ基盤チーム</div>
+  <p class="sub">欠損値と外れ値の扱い</p>
+</section>
+
+<!-- ふつうの表紙（副題は題名の 2 行目）：何も出さない -->
+<section class="slide cover noconcl static" id="s-covok">
+  <div class="venue">社内勉強会（見本）　第 2 回</div>
+  <h1>データの検証の手引き<br>――欠損値と外れ値の扱い</h1>
+  <div class="au">データ基盤チーム<br>分析グループ</div>
+</section>
+
+<!-- 同じ副題に data-clip（わざと）：何も出さない -->
+<section class="slide cover noconcl static" id="s-covclip">
+  <div class="venue">社内勉強会（見本）　第 3 回</div>
+  <h1>データの可視化の手引き</h1>
+  <div class="au">データ基盤チーム</div>
+  <p class="sub" data-clip>帯に重ねて見せる副題</p>
+</section>
+
+<!-- デッキの CSS で絶対位置に置いた札（表紙の下）：何も出さない -->
+<section class="slide cover noconcl static" id="s-absok">
+  <div class="venue">社内勉強会（見本）　第 4 回</div>
+  <h1>データの共有の手引き</h1>
+  <div class="au">データ基盤チーム</div>
+  <div class="date">2026 年 10 月</div>
+</section>
+
+<!-- 題名が長く 4 行に折り返し、所属（top 450px）に重なる：textOverlap -->
+<section class="slide cover noconcl static" id="s-covlong">
+  <div class="venue">社内勉強会（見本）　第 5 回</div>
+  <h1>とても長い題名を付けたので、表紙の題名が何行にも折り返して、下にある所属の行まで届いてしまう例を見る。題名は 2 行までに収めて、残りは口述原稿で話すか、本文のスライドに分けて書くのがよい</h1>
+  <div class="au">データ基盤チーム</div>
+</section>
+
+<!-- デッキの CSS で絶対位置に置いた札が所属に重なる：textOverlap -->
+<section class="slide cover noconcl static" id="s-absover">
+  <div class="venue">社内勉強会（見本）　第 6 回</div>
+  <h1>データの保管の手引き</h1>
+  <div class="au">データ基盤チーム</div>
+  <div class="over-au">所属に重ねた札</div>
+</section>
+
+<!-- 章の扉の副題（.lead）が右の外に出る：textOffSlide -->
+<section class="slide sec noconcl static" id="s-secoff">
+  <h1>第 2 章　検証</h1>
+  <div class="lead far">欠損値・外れ値・重複の三つを順に見ていく</div>
+</section>
+
+<!-- #65 の例：8 列の表で、短いセル「除外中」が 2 行に割れる：cellWordBreak -->
+<section class="slide noconcl static" id="s-tbl65">
+  <h2>前処理の対象の一覧</h2>
+  <div class="body">
+    <table>
+      <tr><th>列</th><th>出典の表</th><th>欠損</th><th>外れ値</th><th class="w2">状態</th><th>担当</th><th>更新</th><th>備考</th></tr>
+      <tr><td>売上金額の月次の合計（税込み）</td><td>販売管理の月次の集計表</td><td>3 件の欠損を前月の値で補う</td><td>上位 1% を上限で切り詰める</td><td>除外中</td><td>分析グループの担当者</td><td>毎月の第一営業日</td><td>集計の定義を見直す予定がある</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 長いセルがふつうに折り返す・短いセルが 1 行（その列を .w5 で広げた）・英語の短い語（割れない）：何も出さない -->
+<section class="slide noconcl static" id="s-tblok">
+  <h2>折り返してよいセル</h2>
+  <div class="body">
+    <table>
+      <tr><th class="w5">状態</th><th>説明</th><th>Code</th></tr>
+      <tr><td>除外中</td><td>前月の値で補うか、その行を除外するかを、列ごとに決めて記録しておく。補った値には印を付け、集計のときに区別できるようにする</td><td>Excluded</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 英語の語が割れる（overflow-wrap:anywhere の列）：cellWordBreak -->
+<section class="slide noconcl static" id="s-latinbreak">
+  <h2>英語の語が割れるセル</h2>
+  <div class="body">
+    <table class="anywhere">
+      <tr><th>Column</th><th>Type</th><th>Missing</th><th>Outliers</th><th>State</th><th>Owner</th><th>Updated</th><th>Note</th></tr>
+      <tr><td>Monthly total of sales including tax</td><td>number</td><td>three missing values filled from the previous month</td><td>top one percent capped at the limit</td><td>Excluded</td><td>the analysis group owner on duty</td><td>first business day of every month</td><td>the definition will be reviewed soon</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 式を縦に並べる（.big の display の式。標準のセッションの例 bayes-theorem の 4 枚目と同じ形）。KaTeX の字の矩形は字体の高さで広く、
+     vlist・strut は負の余白で重ねるので、字ごとの矩形では「=」と「P」が重なって見えたが、式の見た目の箱（9px 離れている）は重ならない：何も出さない -->
+<section class="slide noconcl static" id="s-mathstack">
+  <h2>ベイズの定理で事後確率を求める</h2>
+  <div class="body">
+    <p>数を入れる。</p>
+    <div class="big">\[ P(D|+)=\frac{P(+|D)\,P(D)}{P(+|D)\,P(D)+P(+|\neg D)\,P(\neg D)} \]</div>
+    <div class="big">\[ =\frac{0.99\times 0.01}{0.99\times 0.01+0.05\times 0.99}\approx 16.7\% \]</div>
+    <div class="big">\[ P(D\mid +)=\dfrac{0.0099}{0.0594}\approx16.7\% \]</div>
+    <div class="big">\[ =\dfrac{\tfrac{1}{2}}{3}\approx16.7\% \]</div>
+  </div>
+</section>
+
+<!-- 絶対位置に置いた札が式に重なる：textOverlap -->
+<section class="slide noconcl static" id="s-mathover">
+  <h2>式に重ねた札</h2>
+  <div class="body">
+    <div class="big">\[ P(D\mid +)=\frac{P(+\mid D)\,P(D)}{P(+)} \]</div>
+    <div class="over-math">式に重ねた札</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

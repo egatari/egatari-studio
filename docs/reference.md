@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=d3fd021efb1b330b -->
+<!-- i18n: pair=reference.ja.md sha256=ce6ef356f5278beb -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -31,9 +31,9 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | Markup | Meaning |
 |---|---|
 | `<section class="slide">` inside `<div id="stage">` | one slide (1280×720). `<h2>` heading, `<div class="body">` body, `<div class="concl"><span>…</span></div>` conclusion line |
-| `class="slide cover"` | cover: `.venue`, `<h1>`, `.au`; theme logos are added at the bottom left |
+| `class="slide cover"` | cover. Its children are `.venue` (venue or course, top 120px), `<h1>` (title, top 200px; a subtitle goes on a second line after `<br>`, as in `<h1>Title<br>Subtitle</h1>`, or into `.venue`) and `.au` (authors and affiliation, top 450px; several lines with `<br>`); theme logos are added at the bottom left (`.logos`). These are absolutely positioned, and the cover has no `.body`: any other element (such as `<p class="sub">`) is not placed and lands at the top edge over the band. Place other text yourself with `position:absolute` and `top` in the deck's `<style>`, in free space. The quality check warns when text goes off the slide or overlaps other text or the band (`textOffSlide`, `textOverlap`) |
 | `data-nologos` on the cover | no theme logos on this cover (also skipped when the cover already has a `.logos` element) |
-| `class="slide sec"` | chapter divider (`<h1>`, `.lead`). Starts a chapter for `--full` video export |
+| `class="slide sec"` | chapter divider (`<h1>` at top 300px, `.lead` at top 390px; other text is placed as on the cover). Starts a chapter for `--full` video export |
 | `class="slide sec appendix"` | appendix divider. Page numbers after it read 付録 / Appendix. Without `appendix`, a `sec` slide whose text contains 付録 or Appendix also counts |
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
@@ -341,6 +341,8 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one) | error |
 | body text < 27px, table/plot text < 24px, SVG text < 24px (skipped on slides whose heading contains 文献; ruby readings in `rt` are not counted) | error |
 | text cut off by a box with `overflow` other than `visible` (`textClipped`); SVG text cut off by its viewport (viewBox) or going off the slide (`svgTextOut`); SVG text overflowing the `<rect>` around it (`svgTextBox`); text outside `.body` going off the slide or overlapping the heading, conclusion line or page number (`outsideBody`). Text inside an element with `data-clip` is not checked by these ([contract §10](contract.md#10-quality-check-intended-clipping)); on a slide with `bodyBottom`, text in `.body` going off the slide is not reported again | warn |
+| on any slide (cover, section divider, `layout-tate`, absolutely positioned layouts): on a slide without `.body`, text going off the 1280×720 slide (`textOffSlide`; with `.body` this is `outsideBody`); a text box overlapping another text box or the slide's decorative band, such as the band at the top of the cover (`textOverlap`: line rectangles of the two boxes intersect by more than 2px in both directions; a KaTeX formula counts as one box, its visual box; a parent and its child, text inside the same component, and SVG text are not compared; on a slide with a body-position error, body text against the heading or conclusion line is not reported again). On a cover or section divider the finding names the allowed children and where a subtitle goes. Text inside `data-clip`, hidden text, KaTeX's MathML and `.sr-only` are not checked | warn |
+| a word in a table cell (`td`, `th`) breaks across lines (`cellWordBreak`): a cell with Japanese or Chinese characters and at most 6 characters (spaces not counted) rendered on 2 or more lines, or a break inside a word without Japanese or Chinese characters (words from `Intl.Segmenter`; browsers break Latin words only at spaces or hyphens unless `overflow-wrap` or `word-break` allows more). Long Japanese cells that wrap are not reported. Fix it with fewer columns, a shorter word or a wider column | warn |
 | です・ます in the body (Japanese) | error |
 | unrendered math or KaTeX errors | error |
 | mixed punctuation 、。 vs ，． across the deck (Japanese) | warn |
