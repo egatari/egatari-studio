@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4f05cebeb6ad2014 -->
+<!-- i18n: pair=reference.ja.md sha256=56480dd857ef3e3d -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -157,6 +157,8 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
 
+CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit/base.css`, `kit/layouts.css`, the theme's `tokens.css` (parent themes first) and, for decks whose `lang` is not Japanese, `kit/latin.css`. The theme comes after the layout CSS, so a theme rule with the same specificity overrides a layout rule (for example `.cover h1{top:260px}` or `.body{left:96px;right:96px}`); no `html` prefix is needed. The meaning of the color tokens ([contract](contract.md) §12) and the quality checker's color checks still apply to such a theme. This is the same in every build path (CLI, `--dev` and the dev server, `--portable`, `--play-only`, the editor app).
+
 | Token | Meaning |
 |---|---|
 | `--base` | base color; the others derive from it in `themes/default/tokens.css` |
@@ -168,6 +170,8 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
 | `--concl-bg` | conclusion line background (transparent) |
+| `--marker` | list markers in `.body` (`--term`) |
+| `--bar`, `--bar-h` | progress bar color (`--emph`; `--term` during autoplay) and height (3px) |
 | `--stage-bg` | area around the slide and blackout (#2f2f2f) |
 | `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines` | caption font size (27px), distance from the bottom (18px), side margins (96px), max lines per caption chunk (3) |
 | `--cap-rate` | caption reading speed when presenting by hand (characters/s; default ja 7, en 15; also `DECK.captionRate`) |

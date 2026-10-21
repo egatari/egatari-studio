@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=2d02c0b6271b9c8a -->
+<!-- i18n: pair=reference.md sha256=b47dd11a70ae79a5 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -157,6 +157,8 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
 
+CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.css`・`kit/layouts.css`・テーマの `tokens.css`（親のテーマから順に）・`kit/latin.css`（`lang` が日本語でないデッキだけ）の順に書く。テーマは体裁の CSS の後なので、同じ詳細度のテーマの規則は体裁の規則に勝つ（例：`.cover h1{top:260px}`、`.body{left:96px;right:96px}`）。`html` を前に付けなくてよい。そうしたテーマにも、色の変数の意味（[契約](contract.ja.md) §12）と品質チェックの色の検査はそのまま効く。組み立ての口（コマンド、`--dev` と開発サーバー、`--portable`、`--play-only`、編集アプリ）はどれも同じ。
+
 | 変数 | 意味 |
 |---|---|
 | `--base` | 基調色。ほかの色は `themes/default/tokens.css` でここから導く |
@@ -168,6 +170,8 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
 | `--concl-bg` | 結論の行の背景（透明） |
+| `--marker` | `.body` の箇条書きの印（`--term`） |
+| `--bar`、`--bar-h` | 進み具合の帯の色（`--emph`。自動再生のときは `--term`）と高さ（3px） |
 | `--stage-bg` | スライドのまわりと暗転の色（#2f2f2f） |
 | `--cap-size`、`--cap-bottom`、`--cap-side`、`--cap-max-lines` | 字幕の字の大きさ（27px）、下端からの距離（18px）、左右の余白（96px）、1 まとまりの行数の上限（3） |
 | `--cap-rate` | 手で送るときの字幕の読む速さ（字/秒。既定 ja 7、en 15。`DECK.captionRate` でも変えられる） |

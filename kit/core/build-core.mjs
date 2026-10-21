@@ -789,7 +789,10 @@ export function build(env0, srcPath, opts = {}) {
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
   const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
-  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${theme.css}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
+  // 読む順：字 → KaTeX → 実行系（base.css）→ 体裁（layouts.css）→ テーマ（tokens.css。extends の親から順に）→ 英語など（latin.css）。
+  // テーマは体裁の後に読むので、同じ詳細度の規則ならテーマが勝つ（表紙の題名の位置や本文の欄の余白などをテーマが替えられる。html を前に付けて詳細度で勝たなくてよい）。
+  // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
+  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scriptList = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),

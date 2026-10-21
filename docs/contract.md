@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=1eadba5ea9ff208a -->
+<!-- i18n: pair=contract.ja.md sha256=d0245963cb923a14 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -187,3 +187,11 @@ Only a play-only copy exported with a live room carries the live player (`kit/li
 - It listens to `deck:pos` (`detail.key`) only to choose which polls to show; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
 - The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
 - It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text
+
+## 12. Themes and the layout CSS
+
+A theme (`tokens.css`) is loaded after `kit/base.css` and `kit/layouts.css` (and before `kit/latin.css`), in every build path. It may therefore override layout rules as well as tokens: the cover, section dividers, heading, `.body` inset, conclusion line, page number, list markers and progress bar. It does not need an `html` prefix or other specificity tricks.
+
+- The color tokens keep their meaning whatever the theme changes: `--emph` conclusions and problems, `--term` terms and side notes, `--muted` known results, `--fg` body text, `--line` decoration only. Components still use only these variables (§3), and the quality checker's color rules (contrast against `--bg`) apply to every theme
+- A theme that moves layout boxes is still subject to the quality checker. It measures what is rendered, but some checks assume the default positions (for example the conclusion line at 571px), so a theme that moves them may get findings until themes can declare their dimensions (backlog #76)
+- The bundled themes set tokens only, so the order does not change how they render

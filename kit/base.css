@@ -17,7 +17,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 [data-mode="lecture"] tr.cur td{background:var(--emph-tint)}
 
 /* 操作の表示 */
-#bar{position:fixed;left:0;bottom:0;height:3px;background:var(--emph);z-index:10}
+#bar{position:fixed;left:0;bottom:0;height:var(--bar-h,3px);background:var(--bar,var(--emph));z-index:10}
 #jump{position:fixed;right:12px;bottom:10px;color:#fff;font:14px sans-serif;opacity:.7;z-index:10}
 .embedded #bar,.embedded #jump{display:none}
 .embedded body,.embedded{background:var(--bg)}
