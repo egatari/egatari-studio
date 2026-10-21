@@ -11,7 +11,11 @@
 //   LP.socketUrl(live, pid)                 学ぶ人の WebSocket の URL（endpoint と同じ origin。違えば null）
 //   LP.sameEndpoint(url, endpoint)          URL の origin が endpoint の origin と同じか（http(s) と ws(s) を対応させる）
 //   LP.activitiesFor(live, stepKey)         その段階で出す活動（"*" の後にその段階のもの）
-export function LivePolicy() {
+// opts.allowLoopback：ループバックの http: の endpoint を許す（Node の試験と開発版の書き出しだけ。kit/core/live.mjs）
+export function LivePolicy(opts) {
+  // 開発版の再生器だけ true（kit/core/live.mjs の liveRuntime(…, {devLoopback: true}) が書き換える）。配る写しの再生器では常に false
+  var LOOPBACK = false;
+  var allowLoopback = LOOPBACK || !!(opts && opts.allowLoopback === true);
   var RE = {
     room: /^r-[a-z2-7]{8}$/,
     key: /^[A-Za-z0-9_-]{22,64}$/,
@@ -44,8 +48,8 @@ export function LivePolicy() {
     try { u = new URL(s); } catch (e) { return null; }
     if (u.username || u.password || u.search || u.hash || (u.pathname !== '/' && u.pathname !== '')) return null;
     if (u.protocol === 'https:') return u;
-    // 試験と手元のサーバーだけ：ループバックの http（ws）
-    if (u.protocol === 'http:' && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u;
+    // 開発版だけ：ループバックの http（ws）。配る写し・既定の書き出し・編集アプリでは断る（format spec の extensions/live.md：endpoint は https: でなければならない）
+    if (allowLoopback && u.protocol === 'http:' && /^(127\.0\.0\.1|localhost|\[::1\])$/.test(u.hostname)) return u;
     return null;
   }
   function timeOf(s) { return str(s) && RE.datetime.test(s) ? Date.parse(s) : NaN; }

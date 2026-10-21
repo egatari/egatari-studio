@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=a4acfa35b9244500 -->
+<!-- i18n: pair=contract.md sha256=ec834dc5e72e2c21 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -185,4 +185,5 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 
 - 板は舞台の外：`#live-pane` は右（縦長の窓では下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）では板を作らず、印刷では隠す
 - `deck:pos`（`detail.key`）は、どの投票を出すかを決めるためだけに聞く。位置や時間は送らない。時計（つなぎ直し・つながりを保つ ping・窓の終わり）を使うが、舞台に何も描かないので許される
+- endpoint は `https:` でなければならない。ループバックの `http:` を許すのは、試験が `buildPortable(…, {liveDevLoopback: true})`（コマンドの引数にはしない）で組む開発版の再生器だけ。切り替えは `kit/core/live-policy.mjs` の定数で、その組み立てだけが入れる。配る教材の再生器・編集アプリの書き出し・`kit/build.mjs --live` は `http:` を断る
 - つなぐのは「参加する」の後、窓の中（2 分のゆとり）で、枠の中でない `file:`・`http(s):` の文書のうち、CSP の `<meta>` がちょうど 1 つでその `connect-src` が endpoint と同じものだけ。ほか（枠・`srcdoc`・sandbox やプレビューの文書）では部屋の場所を字で見せる

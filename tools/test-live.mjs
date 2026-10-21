@@ -32,7 +32,9 @@ const until = async (f, ms = 5000) => { const t = Date.now(); while (Date.now() 
 
 // ---------------------------------------------------------------- 1. 決まりごと
 console.log('policy');
-const LP = LivePolicy();
+const LP = LivePolicy({ allowLoopback: true });
+const LP0 = LivePolicy();
+const DEV = { devLoopback: true };
 const codes = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'close-codes.json'), 'utf8')).codes;
 ok(codes.length === Object.keys(LP.CODES).length && codes.every((c) => LP.CODES[c.code] && LP.CODES[c.code][0] === c.name && LP.CODES[c.code][1] === c.retry),
   'close codes: the table equals the vendored close-codes.json (names and the server\'s retry flags)');
@@ -57,6 +59,8 @@ ok(LP.validate({ ...L0, room: 'r-ABCDEFGH' }, { key: true }).length > 0 && LP.va
 ok(LP.validate({ ...L0, activities: { 'x:1': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['only one'] }] } }, { key: true }).length > 0, 'validate: a poll needs 2 or more choices');
 ok(LP.socketUrl(L0, 'p7Hk2mQx9LwR4tZa') === 'wss://live.example.org/ws?room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD&pid=p7Hk2mQx9LwR4tZa', 'socketUrl: wss on the endpoint host');
 ok(!LP.sameEndpoint('wss://evil.example.org/ws', L0.endpoint) && !LP.sameEndpoint('ws://live.example.org/ws', L0.endpoint) && LP.sameEndpoint('wss://live.example.org/ws?x', L0.endpoint), 'sameEndpoint: origin must equal the declared endpoint (scheme and host)');
+ok(LP0.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).some((e) => /endpoint/.test(e)) && LP0.socketUrl({ ...L0, endpoint: 'http://127.0.0.1:8787' }, 'p7Hk2mQx9LwR4tZa') === null && LP0.connectSrc('http://localhost:1') === null, 'default policy: loopback http endpoints are refused (validate, socketUrl, CSP)');
+ok(LP.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).length === 0 && LP.validate({ ...L0, endpoint: 'http://10.0.0.5:8787' }, { key: true }).length > 0, 'development policy: only loopback http is added');
 ok(liveCsp(L0.endpoint).includes('connect-src https://live.example.org wss://live.example.org;'), 'CSP: connect-src lists the endpoint for https and wss');
 ok(localToRfc3339('2026-10-30T09:00', 540) === '2026-10-30T09:00:00+09:00' && localToRfc3339('2026-10-30T09:00', -300) === '2026-10-30T09:00:00-05:00', 'localToRfc3339: local time with its offset');
 { let e1 = null; try { parseRoomBlock('https://live.example.org/#room=r-7k2q6xw4&admin=VGVhY2hlclNlY3JldEtleUZvckZpeHR1cmVzT25seTA'); } catch (e) { e1 = e.message; }
@@ -91,7 +95,7 @@ const cfg0 = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 const plain = (await buildPortable(deck, { playOnly: true })).html;
 fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n');
 const now = Date.now();
-const live = await buildPortable(deck, { playOnly: true, live: room(now - 60e3, now + 2 * 3600e3) });
+const live = await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) });
 const portable = await buildPortable(deck, {});
 ok(portable.index.extensions && portable.index.extensions.live && !('key' in portable.index.extensions.live) && JSON.stringify(portable.index.extensions.live.activities) === JSON.stringify(ACTS), 'portable: the lesson keeps extensions.live (from the config file) without the key');
 ok(!portable.html.includes('Q2xhc3Nyb29tS2V5MDAwMD') && !portable.html.includes('Content-Security-Policy'), 'portable: the key is nowhere in the teacher\'s own single file, and it has no CSP');
@@ -110,18 +114,28 @@ const host = new URL(fake.endpoint).host;
 ok(/(?:^|; )connect-src ([^;]*)/.exec(csp)[1] === `http://${host} ws://${host}`, `live derivative: connect-src is exactly the endpoint (${host}) for both schemes`);
 ok(!/https?:\/\/(?!127\.0\.0\.1)/.test(csp) && !/'unsafe-eval'/.test(csp) && /default-src 'none'/.test(csp), 'live derivative: CSP loads nothing from the network except the endpoint connection, no eval');
 ok(!L.includes(`src="${fake.endpoint}`) && !L.includes(`href="${fake.endpoint}`), 'live derivative: no script, style or image is loaded from the endpoint');
-{ let e1 = null; try { addLive(L, { ...room(now, now + 3600e3), activities: ACTS }, liveRuntimeText()); } catch (e) { e1 = e.message; } ok(/already/.test(e1 || ''), 'addLive: refuses to add a second room'); }
-{ let e1 = null; try { addLive(portable.html, mergeLive({ activities: ACTS }, room(now, now + 3600e3)), liveRuntimeText()); } catch (e) { e1 = e.message; } ok(/play-only/.test(e1 || ''), 'addLive: only to a play-only derivative (not the teacher\'s own file)'); }
+{ let e1 = null; try { addLive(L, { ...room(now, now + 3600e3), activities: ACTS }, liveRuntimeText(DEV), DEV); } catch (e) { e1 = e.message; } ok(/already/.test(e1 || ''), 'addLive: refuses to add a second room'); }
+{ let e1 = null; try { addLive(portable.html, mergeLive({ activities: ACTS }, room(now, now + 3600e3)), liveRuntimeText(DEV), DEV); } catch (e) { e1 = e.message; } ok(/play-only/.test(e1 || ''), 'addLive: only to a play-only derivative (not the teacher\'s own file)'); }
 { fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, key: 'Q2xhc3Nyb29tS2V5MDAwMD' } } }, null, 2) + '\n');
   let e1 = null; try { await buildPortable(deck, {}); } catch (e) { e1 = e.code; }
   ok(e1 === 'bad-config', 'export: a key written into the config file is refused (never stored in the lesson)');
   fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n'); }
+// 開発版だけがループバックの http: の部屋を許す。既定の書き出し（編集アプリ・kit/build.mjs --live）と配る再生器は https: だけ
+{ let e1 = null; try { await buildPortable(deck, { playOnly: true, live: room(now - 60e3, now + 3600e3) }); } catch (e) { e1 = e.message; }
+  ok(/endpoint/.test(e1 || ''), `default export: an http://127.0.0.1 endpoint is refused (${e1})`);
+  let e2 = null; try { parseRoomBlock(JSON.stringify(room(now - 60e3, now + 3600e3))); } catch (e) { e2 = e.details ? e.details.join('; ') : e.message; }
+  ok(/endpoint/.test(e2 || ''), 'default export: the room block with an http endpoint is refused');
+  const rt = liveRuntimeText(), rtDev = liveRuntimeText(DEV);
+  ok(rt.includes('var LOOPBACK = false;') && !rt.includes('var LOOPBACK = true;') && rtDev.includes('var LOOPBACK = true;'), 'the shipped player has the loopback switch off as a constant; only the development player has it on');
+  ok(!L.includes('var LOOPBACK = false;') && L.includes('var LOOPBACK = true;'), 'this test\'s live derivative is a development build'); }
 const files = {};
 const put = (name, html) => { const f = path.join(work, name); fs.writeFileSync(f, html); files[name] = f; return f; };
 put('plain.html', plain);
 put('live.html', L);
-put('early.html', (await buildPortable(deck, { playOnly: true, live: room(now + 3600e3, now + 7200e3) })).html);
-put('late.html', (await buildPortable(deck, { playOnly: true, live: room(now - 7200e3, now - 3600e3) })).html);
+put('early.html', (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now + 3600e3, now + 7200e3) })).html);
+put('late.html', (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 7200e3, now - 3600e3) })).html);
+// 既定の再生器（配る写しのもの）に、ループバックの http: の部屋を入れた文書：再生器は部屋を読まない（つながない・板も出さない）
+put('default-loopback.html', addLive(plain, mergeLive({ activities: ACTS }, room(now - 60e3, now + 2 * 3600e3)), liveRuntimeText(), DEV));
 
 // ---------------------------------------------------------------- 3〜5. ブラウザ
 const browser = await launch();
@@ -177,6 +191,10 @@ console.log('no network');
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'editor preview: no Join button');
   quiet(o.net, 'editor preview'); await o.close(); }
 
+{ fake.reset(); const o = await open(fileUrl(files['default-loopback.html'])); await sleep(1000);
+  await o.p.click('#live-pane .lv-join', { timeout: 500 }).catch(() => {}); await sleep(500);
+  ok(!(await o.p.$('#live-pane')), 'shipped player with an http://127.0.0.1 endpoint: the room is ignored (no pane, no Join)');
+  quiet(o.net, 'shipped player with an http://127.0.0.1 endpoint'); await o.close(); }
 console.log('connect from file://');
 const sent = () => fake.messages.slice();
 { fake.reset(); const o = await open(fileUrl(files['live.html']));

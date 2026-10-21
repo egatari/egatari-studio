@@ -29,7 +29,7 @@ const SKIP = [
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
   ['kit/build.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
-  ['kit/build.mjs', "liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'))", 'リポジトリの授業の部屋の再生器（kit/live.js と kit/core/live-policy.mjs）を読む'],
+  ['kit/build.mjs', "liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'), opts)", 'リポジトリの授業の部屋の再生器（kit/live.js と kit/core/live-policy.mjs）を読む'],
   ['tools/live-fake-server.mjs', "JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'fixtures',", '試験の部屋のサーバー：リポジトリの通信の約束の写し（vendor/）の試験用のデータを読む'],
   ['kit/build.mjs', 'update(fs.readFileSync(f))', 'リポジトリの fonts/ の TTF（字の絞り込みの鍵の hash）を読む'],
   ['server/dev.mjs', "fs.readFileSync(path.join(HERE, 'hints.js')", 'リポジトリの server/hints.js を読む'],

@@ -53,6 +53,11 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     ok(await page.$eval('#live-problem-box', (e) => !e.querySelector('#live-problems')), 'live panel: nothing to fix');
     const acts = JSON.parse(await page.inputValue('#live-json'));
     ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] }), 'live panel: the activities JSON for the teacher page');
+    // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
+    await page.fill('#live-endpoint', 'http://127.0.0.1:8787');
+    ok(await page.$eval('#live-export', (b) => b.disabled) && /endpoint/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused');
+    await page.fill('#live-paste', block); await page.click('#live-read');
+    { const pi = await page.$('#live-paste'); if (pi) await page.fill('#live-paste', ''); }
     // 窓が 3 時間より長い（部屋のサービス v1 の上限）
     const to0 = await page.inputValue('#live-to');
     await page.$eval('#live-to', (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, await page.evaluate((f) => { const d = new Date(new Date(f).getTime() + 4 * 3600e3); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }, await page.inputValue('#live-from')));

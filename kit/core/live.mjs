@@ -19,13 +19,15 @@ import { FORMAT } from './format.mjs';
 import { SCRIPTING } from './code-scan.mjs';
 
 const LP = LivePolicy();
+const LP_DEV = LivePolicy({ allowLoopback: true });
+const LOOPBACK_LINE = 'var LOOPBACK = false;';
 export const LIVE_BLOCK_ID = 'deck-extensions';   // 再生専用の派生で、再生器が読む拡張のブロック（{live: …}。索引は派生にないので）
 export const LIVE_EXT = 'live';
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 
-export function liveCsp(endpoint) {
-  const cs = LP.connectSrc(endpoint);
+export function liveCsp(endpoint, opts = {}) {
+  const cs = (opts.devLoopback ? LP_DEV : LP).connectSrc(endpoint);
   if (!cs) throw new Error(`live: endpoint "${endpoint}" is not an https origin`);
   // 再生器が要るもの：埋め込んだスクリプトと CSS（inline）、data: と blob: の画像・字・音声と動画（音声の塊は blob: か data:）、
   // 発表者ビューの枠（同じファイルを ?view= で開く。file:// では file: ）。外へ出るのは endpoint だけ。eval・フォーム・<base>・object は使わない
@@ -36,7 +38,12 @@ export function liveCsp(endpoint) {
 }
 
 const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
-export function liveRuntime(policySrc, clientSrc) {
+// opts.devLoopback：開発版の再生器（ループバックの http: の部屋につなげる）。試験だけが使う。既定の再生器は https: だけ
+export function liveRuntime(policySrc, clientSrc, opts = {}) {
+  let src = String(policySrc);
+  if (src.split(LOOPBACK_LINE).length !== 2) throw new Error('live: the player policy has no single LOOPBACK switch');
+  if (opts.devLoopback) src = src.replace(LOOPBACK_LINE, 'var LOOPBACK = true;');
+  policySrc = src;
   const cfg = JSON.stringify({ storePrefix: FORMAT.LIVE_STORE_PREFIX, blockId: LIVE_BLOCK_ID });
   return `<script>\nwindow.DECK = window.DECK || {}; DECK.LIVE_CFG = ${cfg};\n${scriptSafe(classicModule(policySrc, 'LivePolicy'))}\n${scriptSafe(clientSrc)}\n</script>`;
 }
@@ -50,8 +57,9 @@ function headEnd(html) {
   return st ? st.endOffset : -1;
 }
 
-export function addLive(html, live, runtime) {
-  const errs = LP.validate(live, { key: true });
+// opts.devLoopback：ループバックの http: の endpoint を許す（開発版。runtime も liveRuntime(…, {devLoopback: true}) のもの）
+export function addLive(html, live, runtime, opts = {}) {
+  const errs = (opts.devLoopback ? LP_DEV : LP).validate(live, { key: true });
   if (errs.length) throw new Error('live: ' + errs.join('; '));
   if (typeof runtime !== 'string' || !runtime.startsWith('<script>')) throw new Error('live: no player runtime');
   const text = String(html);
@@ -61,7 +69,7 @@ export function addLive(html, live, runtime) {
   const at = headEnd(text);
   if (at < 0) throw new Error('live: no <head>');
   if (/<script/i.test(text.slice(0, at))) throw new Error('live: a script comes before <head>; the policy must come first');
-  const meta = `\n<meta http-equiv="Content-Security-Policy" content="${liveCsp(live.endpoint).replace(/"/g, '&quot;')}">`;
+  const meta = `\n<meta http-equiv="Content-Security-Policy" content="${liveCsp(live.endpoint, opts).replace(/"/g, '&quot;')}">`;
   // 拡張のブロックと再生器：deck-meta の直後（実行系の前。再生器は deck:ready を待つ）
   const m = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
   if (!m || m.index < at) throw new Error('live: no deck-meta');
@@ -71,7 +79,7 @@ export function addLive(html, live, runtime) {
   return text.slice(0, at) + meta + text.slice(at, ix) + block + text.slice(ix);
 }
 
-export function parseRoomBlock(input) {
+export function parseRoomBlock(input, opts = {}) {
   const s = String(input || '').trim();
   if (/[#&?]admin=|"adminKey"/.test(s)) throw new Error('admin');   // 教員の鍵（教員のリンク）は貼らない
   let o;
@@ -79,7 +87,7 @@ export function parseRoomBlock(input) {
   if (!isObj(o)) throw new Error('json');
   const out = { v: 1, endpoint: o.endpoint, room: o.room, key: o.key, window: o.window };
   if (isObj(o.activities)) out.activities = o.activities;
-  const errs = LP.validate({ ...out, activities: out.activities || {} }, { key: true });
+  const errs = (opts.devLoopback ? LP_DEV : LP).validate({ ...out, activities: out.activities || {} }, { key: true });
   if (errs.length) { const e = new Error('invalid'); e.details = errs; throw e; }
   return out;
 }

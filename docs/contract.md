@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=21c26efd4d781da1 -->
+<!-- i18n: pair=contract.ja.md sha256=994874bb2a303755 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -185,4 +185,5 @@ Only a play-only copy exported with a live room carries the live player (`kit/li
 
 - The pane is outside the stage: `#live-pane` is docked at the right (at the bottom when the window is tall) and `#stage` is fitted into the rest with the same formula as `fit()`. It MUST NOT change what `DECK.seek(i, k, t)` draws, captions, marks or print; in video mode (`?mode=video`), the presenter view and its frames (`?presenter`, `?view`) it is not created at all, and print hides it
 - It listens to `deck:pos` (`detail.key`) only to choose which polls to show; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
+- The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
 - It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text

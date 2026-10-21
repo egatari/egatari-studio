@@ -173,13 +173,15 @@ export async function buildPortable(srcPath, opts = {}) {
   // 授業の部屋（opts.live：部屋の JSON。parseRoomBlock の形）：再生専用の派生にだけ
   if (opts.live) {
     if (!opts.playOnly) throw Object.assign(new Error('--live needs --play-only (a live room is added only to a play-only file)'), { code: 'live-needs-play-only' });
-    r.html = addLive(r.html, mergeLive(r.index.extensions && r.index.extensions.live, opts.live), liveRuntimeText());
+    // opts.liveDevLoopback：ループバックの http: の部屋（試験だけ。コマンドの引数にはしない）
+    const dev = { devLoopback: opts.liveDevLoopback === true };
+    r.html = addLive(r.html, mergeLive(r.index.extensions && r.index.extensions.live, opts.live), liveRuntimeText(dev), dev);
   }
   return r;
 }
 // 再生器（kit/core/live-policy.mjs と kit/live.js）の <script>
-export function liveRuntimeText() {
-  return liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'));
+export function liveRuntimeText(opts = {}) {
+  return liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'), opts);
 }
 // 組んだものを書く。原稿のフォルダの中（既定の out/）なら、途中のフォルダも書く先もリンクでないこと（原稿のフォルダに置かれたリンクで
 // 外のファイルを上書きしない。format spec §11）。外（-o で選んだ場所）なら、そのフォルダを作り、書く先がリンクでないこと。どちらも一時ファイル + rename
