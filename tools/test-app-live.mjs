@@ -33,7 +33,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 教員のリンク（教員の鍵入り）は断る
     await page.fill('#live-paste', cr.teacherUrl);
     await page.click('#live-read');
-    ok(await page.inputValue('#live-key') === '' && /これは教員用リンクです/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
+    ok(await page.inputValue('#live-key') === '' && /これはホスト用リンクです/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
     await page.fill('#live-paste', 'コピー：\n' + block);
     await page.click('#live-read');
     ok(await page.inputValue('#live-room') === cr.room && await page.inputValue('#live-key') === cr.key && (await page.inputValue('#live-from')).length === 16, 'live panel: the teacher page\'s copy block fills room, key and window');

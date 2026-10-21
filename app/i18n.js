@@ -61,8 +61,8 @@ const ja = {
   liveProblem: (p) => {
     const poll = p.id ? `投票 ${p.id}：` : '';
     switch (p.code) {
-      case 'room': return 'ライブ ID が正しくありません（教員用ページでコピーした設定を貼ってください）';
-      case 'key': return '参加コードが正しくありません（教員用ページでコピーした設定を貼ってください）';
+      case 'room': return 'ライブ ID が正しくありません（ホストのページでコピーした設定を貼ってください）';
+      case 'key': return '参加コードが正しくありません（ホストのページでコピーした設定を貼ってください）';
       case 'keyStored': return '参加コードは教材に保存できません（書き出すファイルにだけ入ります）';
       case 'endpoint': return '接続先が正しくありません（https:// で始まるアドレスにしてください。例：https://live.egatari.org）';
       case 'version': return 'ライブの設定の版が違います（v は 1 です）';
@@ -317,8 +317,8 @@ const en = {
   liveProblem: (p) => {
     const poll = p.id ? `Poll ${p.id}: ` : '';
     switch (p.code) {
-      case 'room': return 'The Live ID is not valid (paste the settings copied on the teacher page)';
-      case 'key': return 'The join code is not valid (paste the settings copied on the teacher page)';
+      case 'room': return 'The Live ID is not valid (paste the settings copied on the host page)';
+      case 'key': return 'The join code is not valid (paste the settings copied on the host page)';
       case 'keyStored': return 'The join code cannot be stored in the lesson (it goes only into the exported file)';
       case 'endpoint': return 'The server is not valid (use an address starting with https://, e.g. https://live.egatari.org)';
       case 'version': return 'Wrong version of the Live settings (v must be 1)';
