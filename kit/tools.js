@@ -835,6 +835,8 @@ window.addEventListener("keydown", function(e){
     return;
   }
   if (!layer || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+  // 暗転の間（kit/deck.js の b）：道具のキーは使わない（b・Esc・クリックで戻すのは deck.js）
+  if (document.documentElement.classList.contains("blackout")) return;
   var k = e.key, done = true;
   if (ov){
     if (k === "ArrowRight") select(ov.sel + 1);

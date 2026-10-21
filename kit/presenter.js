@@ -9,10 +9,10 @@ var DECK = window.DECK;
 var L = DECK.ja === false
   ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
      laser: "Laser (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
-     feedback: "Send feedback", back: "Back", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
+     feedback: "Send feedback", back: "Back", black: "Blacked out", blackT: "The audience screen is black (b, or click it, to return)", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "blackout"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
   : {cur: "今の画面", nextFrame: "次の段階の画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
      laser: "レーザー（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
-     feedback: "フィードバックを送る", back: "戻る", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
+     feedback: "フィードバックを送る", back: "戻る", black: "暗転中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "暗転"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
@@ -39,7 +39,7 @@ DECK.presenterView = function(){
     (DECK.VERSION ? " · v" + DECK.VERSION : "") + "</a>";
   document.body.innerHTML =
     '<div id="pv">' +
-    ' <header><span id="pv-pos"></span><span id="pv-step"></span><span class="sp"></span>' +
+    ' <header><span id="pv-pos"></span><span id="pv-step"></span><span id="pv-black" role="status" title="' + L.blackT + '" hidden>■ ' + L.black + '</span><span class="sp"></span>' +
     '  <button type="button" id="pv-back" aria-label="' + L.back + '" hidden>← ' + L.back + '</button>' +
     '  <button type="button" id="pv-auto" title="' + L.autoKey + '" aria-pressed="false">▶ ' + L.auto + '</button>' + tools +
     '<button type="button" id="pv-reset" title="' + L.reset + '" aria-label="' + L.reset + '">⟲</button>' +
@@ -77,6 +77,9 @@ DECK.presenterView = function(){
     "#pv .pv-sw button[aria-pressed=true] i{box-shadow:0 0 0 2px #fff}" +
     "#pv .pv-tools kbd{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv-auto.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
+    // 暗転中（本体の画面が真っ黒）：見落とさないように、地を反転した札
+    "#pv-black{padding:2px 12px;border-radius:6px;background:#fff;color:#000;font-weight:700;letter-spacing:.04em;box-shadow:0 0 0 2px #e11d48}#pv-black[hidden]{display:none}" +
+    "#pv.pv-black #pv-cur iframe{opacity:.35}" +
     "#pv-keys{display:flex;flex-wrap:wrap;gap:4px 18px;padding:5px 16px 7px;background:#111;color:#999;font-size:13px}" +
     "#pv-keys #pv-fb{margin-left:auto;color:#8ab4e8;text-decoration:none}#pv-keys #pv-fb:hover{text-decoration:underline}@media print{#pv-fb{display:none}}" +
     "#pv-keys kbd{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:4px;background:#222;color:#ddd;font:600 11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}";
@@ -84,6 +87,12 @@ DECK.presenterView = function(){
   var fc = document.getElementById("f-cur"), fn = document.getElementById("f-next");
   fc.src = base + q + sep + "view=follow"; fn.src = base + q + sep + "view=next";
   var pos = null, started = Date.now();
+  // 暗転（本体の b）：札を出し、今の画面を薄くする（発表者には中身を見せたまま）
+  function setBlack(on){
+    on = !!on;
+    document.getElementById("pv-black").hidden = !on;
+    document.getElementById("pv").classList.toggle("pv-black", on);
+  }
   function send(cmd, extra){ if (opener && !opener.closed) opener.postMessage(Object.assign({type: "deck-cmd", cmd: cmd}, extra || {}), "*"); }
   function notes(key){
     var p = key.lastIndexOf(":"), sk = key.slice(0, p), stp = key.slice(p + 1);
@@ -116,7 +125,8 @@ DECK.presenterView = function(){
   }
   window.addEventListener("message", function(e){
     var m = e.data || {};
-    if (m.type === "deck-pos" && e.source === opener){ pos = m; update(); }
+    if (m.type === "deck-pos" && e.source === opener){ pos = m; update(); if (typeof m.black === "boolean") setBlack(m.black); }
+    if (m.type === "deck-black" && e.source === opener) setBlack(m.on);
     if (m.type === "deck-pos" && (e.source === fc.contentWindow || e.source === fn.contentWindow) && !pos){ /* iframe の起動 */ }
   });
   fc.addEventListener("load", function(){ setTimeout(update, 300); });
@@ -130,7 +140,9 @@ DECK.presenterView = function(){
     if (e.altKey) return;
     if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "ArrowDown"){ e.preventDefault(); send("next"); }
     else if (k === "ArrowLeft" || k === "PageUp" || k === "ArrowUp"){ e.preventDefault(); send("prev"); }
+    else if (e.metaKey || e.ctrlKey) return;
     else if (k === "a") send("auto");
+    else if (k === "b"){ e.preventDefault(); send("blackout"); }
   });
   // マウスで押したらフォーカスを残さない（キーボードで押したとき、detail = 0、は残す）
   document.getElementById("pv-auto").onclick = function(e){ send("auto"); if (e.detail !== 0) this.blur(); };

@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=c2f5536656c4c8c4 -->
+<!-- i18n: pair=editor.ja.md sha256=558310bd7da773bd -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -59,7 +59,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Export ▾ → Distribute with a live room…:** the play-only copy with a live room (questions and polls in class, format extension `live`, draft): paste the room details from the teacher page, set Q&A and per-step polls, copy the activities JSON for the teacher page, and export. The editor itself connects nowhere; the lesson keeps the settings without the key. See [Live room](distributing.md#live-room-questions-and-polls-in-class-draft).
    - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF” and turn on “Background graphics”).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window, which also plays the audio: autoplay started in the presenter view (<kbd>a</kbd> or its button) plays the narration once, in the editor window.
-   - **Fullscreen:** the preview fills the screen (for the projector).
+   - **b: blackout** (turns the screen black; b again or a click brings it back). The presenter view shows "Blacked out", and b there also toggles it on the main window.
 
 ## Narration audio (Audio panel)
 
