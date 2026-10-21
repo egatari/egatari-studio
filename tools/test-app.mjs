@@ -629,10 +629,10 @@ try {
     await previewAudioPlays(f, 'preview audio (single file in memory)');
     await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
-    // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、フォルダに展開するボタンを出す（編集は断らない。下で編集して保存する）
+    // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『フォルダに展開』を使ってください。')
-      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack'), 'exportedFrom: opening the exported copy shows the notice (ja) with "Unpack to folder"; not edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダに書き出す』を使ってください。')
+      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダに書き出す…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
     await shot(page, 'portable-exported-notice.png');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-savemenu') && await page.isHidden('#m-save'), 'portable: toolbar shows Save and its menu button');
     await clickMenuOpen(page, '#b-savemenu');
@@ -762,7 +762,13 @@ try {
     ok(JSON.stringify(nl.index.metadata.derivedFrom) === JSON.stringify({ docId: pmin.index.docId, sourceSha256: saved.index.sourceSha256 }), 'save as new lesson: derivedFrom = the original docId and sourceSha256');
     ok(['license', 'copyright', 'attribution', 'creators'].every((k) => JSON.stringify(nl.index.metadata[k]) === JSON.stringify(pmin.index.metadata[k])), 'save as new lesson: copyright, attribution and creators kept');
     ok((await pstate()).portable.lastTier === 'A' && nl.sourceMatches, 'save as new lesson: no other change → saved without rebuilding');
+    // 新しい docId の教材は写しではない（exportedFrom、§3.1）：印を外し、知らせも消える。開き直しても知らせなし
+    ok(saved.index.exportedFrom && nl.index.exportedFrom === undefined && !(await page.isVisible('#notice-exported')), 'exportedFrom: Save as new lesson (tier A, new docId) drops the marker and the notice');
+    await putFile('new-lesson' + FORMAT.FILE_EXT, Buffer.from(await page.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }), 'base64'));
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+    o = await openFile('new-lesson' + FORMAT.FILE_EXT);
+    await waitLoads(o.n0);
+    ok(o.r === true && (await pstate()).portable.docId === nl.docId && !(await page.isVisible('#notice-exported')), 'exportedFrom: reopening the new lesson shows no exported-copy notice');
 
     // 開き直す
     o = await openFile(MINF);
@@ -1741,7 +1747,7 @@ try {
   }, fs.readFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT)).toString('base64'));
   await pe.waitForSelector('#notice-exported', { timeout: 30000 });
   { const t = await pe.textContent('#notice-exported');
-    ok(t.startsWith("This is a copy exported from a lesson folder. Changes made here do not go back into the folder. To bring them back, use 'Unpack to folder'.") && t.includes('This copy has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Unpack to folder', 'exportedFrom: the notice in English (both sentences) and the "Unpack to folder" button');
+    ok(t.startsWith("This is a copy exported from a lesson folder. Changes made here do not go back into the folder. To bring them back, use 'Export working folder'.") && t.includes('This copy has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
     const st = await pe.evaluate(() => window.__APP_TEST.state().portable);
     ok(st && st.readOnly === null && !st.tierAOnly, 'exportedFrom: the exported copy stays editable (not read-only)'); }
   await pe.close();

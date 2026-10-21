@@ -2,7 +2,7 @@
 //   node tools/test-exported-from.mjs [作業フォルダ]
 // test-all: unit
 // 作業フォルダからの書き出し（CLI の --portable・npm run portable -- pack）は {kind: "folder", sourceSha256} を書き、値はその書き出しの sourceSha256。
-// 1 ファイルの保存（段 A・段 B の作り直し）は印を変えずに残し、写しの sourceSha256 が印の値と違うことで書き出しの後の編集が分かる。
+// 1 ファイルの保存（段 A・段 B の作り直し）は印を変えずに残し（新しい docId の教材として保存するときは外す）、写しの sourceSha256 が印の値と違うことで書き出しの後の編集が分かる。
 // 展開したフォルダ（設定のファイル）は印を持たず、pack(unpack(x)) は x と同じバイト。再生専用の派生と、1 ファイルが原本の教材（carry なしの書き出し）は印なし。
 // npm run portable -- compare：写しとフォルダの両方があるとき、どちらを直したか（写し・フォルダ・両方）を言う
 import fs from 'node:fs';
@@ -103,7 +103,7 @@ ok('1 ファイルの保存（段 A）：口述原稿を直して保存しても
   assert.ok(same.ok && same.html === x);
 });
 
-ok('1 ファイルの保存（段 B：作り直し、carry）：exportedFrom は元のまま（書き出しの印を新しくしない）。新しい教材として保存（新しい docId）でも変えない', async () => {
+ok('1 ファイルの保存（段 B：作り直し、carry）：exportedFrom は元のまま（書き出しの印を新しくしない）。新しい教材として保存（新しい docId）は外す', async () => {
   const U = path.join(work, 'tier-b');
   writeTree(U, workspace(xr));
   fs.writeFileSync(path.join(U, 'deck.html'), fs.readFileSync(path.join(U, 'deck.html'), 'utf8').replace('次の段階</p>', '次の段階（直した）</p>'));
@@ -114,7 +114,29 @@ ok('1 ファイルの保存（段 B：作り直し、carry）：exportedFrom は
   const docId = PF.newDocId();
   const n = await PF.exportPortable(nodeEnv, path.join(U, 'deck.html'), { carry: xr.index, identity: { docId, derivedFrom: { docId: xr.index.docId, sourceSha256: xr.index.sourceSha256 } } });
   assert.equal(n.index.docId, docId);
-  assert.deepEqual(plainJson(n.index.exportedFrom), plainJson(xr.index.exportedFrom));
+  assert.equal(n.index.exportedFrom, undefined, 'a new lesson (new docId) is not a copy');
+});
+
+ok('新しい教材として保存（段 A、新しい docId）：exportedFrom を外す（ほかは段 A の場所だけ）。開き直しても印なし。同じ docId の段 A の保存は残す', async () => {
+  const ws = workspace(xr);
+  const docId = PF.newDocId(), derivedFrom = { docId: xr.index.docId, sourceSha256: xr.index.sourceSha256 };
+  const cfg = JSON.parse(dec.decode(ws.get(CFG)));
+  ws.set(CFG, enc.encode(JSON.stringify({ ...cfg, docId, metadata: { ...cfg.metadata, derivedFrom } }, null, 2) + '\n'));
+  const a = await tierA(x, ws, { identity: { docId, derivedFrom } });
+  assert.ok(a.ok, `tier A refused: [${a.code}] ${a.reason}`);
+  const ar = await PF.readPortable(a.html);
+  assert.ok(ar.sourceMatches);
+  assert.equal(ar.docId, docId);
+  assert.equal(ar.index.exportedFrom, undefined);
+  assert.ok(!a.html.includes('"exportedFrom"'));
+  assert.equal(PF.exportedState(ar.index), null);
+  assert.deepEqual(PF.validateIndex(ar.index), []);
+  // 同じ docId の保存（口述原稿だけ直す）は残す
+  const ws2 = workspace(xr);
+  ws2.set('narration.md', enc.encode(dec.decode(ws2.get('narration.md')).replace('次の段階です。', '次です。')));
+  const k = await tierA(x, ws2, {});
+  assert.ok(k.ok);
+  assert.deepEqual(plainJson((await PF.readPortable(k.html)).index.exportedFrom), plainJson(xr.index.exportedFrom));
 });
 
 ok('1 ファイルが原本の教材（carry なし・印のない carry の書き出し：編集アプリの保存・貼り付け・deck.html だけ）には exportedFrom がない', async () => {

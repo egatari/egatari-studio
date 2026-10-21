@@ -614,6 +614,7 @@ export function folderConfig(index, conf) {
 //   fromFolder             作業フォルダからの書き出し（CLI の --portable・編集アプリの「1 ファイルを書き出す」）：index.exportedFrom（§3.1）に
 //                          {kind: "folder", sourceSha256: この書き出しの sourceSha256} を書く（前の値は置き換える）。時刻・パス・名前は入れない。
 //                          ないとき（1 ファイルの保存・貼り付け・deck.html だけ）は書かず、carry に exportedFrom があればそのまま残す
+//                          （identity：新しい docId の教材として保存するときは外す。§3.1）
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
@@ -937,9 +938,10 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
   // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
   if (isObj(opts.carry)) carryUnknown(index, opts.carry, { identity: !!opts.identity, lineExtensions: opts.originalNarration != null ? new Set(Object.keys(extensionsFrom(parseNarration(String(opts.originalNarration))))) : null });
-  // 書き出しの印（§3.1）：作業フォルダからの書き出しは新しい値に置き換え、1 ファイルの保存（carry）は元のまま（carryUnknown は知っている項目を写さない）
+  // 書き出しの印（§3.1）：作業フォルダからの書き出しは新しい値に置き換え、1 ファイルの保存（carry）は元のまま（carryUnknown は知っている項目を写さない）。
+  // 新しい docId の教材として保存するとき（identity）は外す
   if (opts.fromFolder) index.exportedFrom = { kind: 'folder', sourceSha256: srcSha };
-  else if (isObj(opts.carry) && own(opts.carry, 'exportedFrom')) index.exportedFrom = opts.carry.exportedFrom;
+  else if (isObj(opts.carry) && own(opts.carry, 'exportedFrom') && !opts.identity) index.exportedFrom = opts.carry.exportedFrom;
   // 設定のファイルが extensions を持てば、live はそれが決める（編集アプリで部屋を外したら、読み取った文書の索引から戻さない）
   if (isObj(econf.extensions) && isObj(index.extensions)) {
     if (confLive) index.extensions.live = extensions.live; else delete index.extensions.live;
