@@ -1,6 +1,8 @@
 // 授業の部屋の再生器（拡張 live。format spec の extensions/live.md、通信は egatari/live の PROTOCOL.md）
 // 部屋を付けた再生専用の派生にだけ入る（kit/core/live.mjs の addLive が、deck-meta の直後に DECK.LivePolicy と一緒に入れる）。ほかの出力には入らない
-// - 舞台の外の板（#live-pane）に出す：横長の画面では右、縦長では下。舞台（#stage）は板を除いた場所に収める（中の (i, k, t) の描画・字幕・印・動画・印刷は変えない）
+// - 初めはたたんだ印（#live-mark。右上の小さなボタン）だけ。舞台（#stage）は窓いっぱい。印を押すか、投票のある段階に来ると板（#live-pane）を開く：
+//   横長の画面では右、縦長では下。開いている間、舞台は板を除いた場所に収める（中の (i, k, t) の描画・字幕・印・動画・印刷は変えない）。
+//   投票で開いた板は、その段階を離れるとたたむ（板の「開いたままにする」か、印から開いたときはたたまない）
 // - 何も送らない・つながない：動画（?mode=video）・印刷・発表者ビューとその中の画面（?presenter・?view）・枠の中（編集アプリのプレビュー・srcdoc・LMS）・
 //   http(s)・file:・content:（Android）でない文書・この派生の決まり（CSP）でない文書・窓（window）の外。迷ったらつながず、部屋の場所を字で見せる
 // - 初めてつなぐ前に、つながる先を見せて「参加する」を 1 回押してもらう（覚えるのはこのタブのあいだだけ。sessionStorage）
@@ -30,7 +32,7 @@ if (bad.length){ console.warn("live: ignored (" + bad.join("; ") + ")"); return;
 var JA = /^ja\b/i.test(document.documentElement.lang || "ja");
 var HOST = LP.hostOf(live.endpoint);
 var S = JA ? {
-  title: "授業の部屋", again: "もう一度試す", notice: "この教材は " + HOST + " の授業の部屋につながります", join: "参加する", leave: "切断する", fold: "たたむ", unfold: "ひらく",
+  title: "授業の部屋", again: "もう一度試す", notice: "この教材は " + HOST + " の授業の部屋につながります", join: "参加する", leave: "切断する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "この段階に投票があります。授業の部屋の板を開きました",
   off: "つないでいません", connecting: "つないでいます…", connected: "つながっています", waiting: "先生の承認を待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "部屋は " + t + " に開きます"; }, after: "授業の部屋の時間は終わりました", noNet: "ここからはつなげません。この教材のファイルをブラウザで直接開くと参加できます。部屋：",
   noNetLink: "ここからはつなげません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", roomLabel: "部屋：",
@@ -44,7 +46,7 @@ var S = JA ? {
   err: {unknown_activity: "この活動は部屋にありません", wrong_kind: "活動の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
     rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる質問の数を超えました", room_limit: "部屋がいっぱいです", not_admitted: "先生の承認を待っています", other: "送れませんでした"}
 } : {
-  title: "Live room", again: "Try again", notice: "This lesson connects to a live room at " + HOST, join: "Join", leave: "Disconnect", fold: "Fold", unfold: "Unfold",
+  title: "Live room", again: "Try again", notice: "This lesson connects to a live room at " + HOST, join: "Join", leave: "Disconnect", fold: "Fold", unfold: "Unfold", badge: "Live", pin: "Keep open", pollOpen: "This step has a poll. The live room pane is open",
   off: "Not connected", connecting: "Connecting…", connected: "Connected", waiting: "Waiting for the teacher to admit you", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The room opens at " + t; }, after: "The live room has ended", noNet: "Cannot connect from here. Open this lesson file directly in a browser to join. Room: ",
   noNetLink: "Cannot connect from here. You can join in a new browser tab.", openJoin: "Join in the browser", roomLabel: "Room: ",
@@ -100,11 +102,15 @@ css.textContent =
   "html.lv-side #live-pane{top:0;right:0;bottom:0;width:var(--lv-w);border-left:1px solid #3a3d42}" +
   "html.lv-bottom #live-pane{left:0;right:0;bottom:0;height:var(--lv-h);border-top:1px solid #3a3d42}" +
   "#live-pane .lv-head{display:flex;align-items:center;gap:8px;padding:8px 10px;flex:none;border-bottom:1px solid #33363a;min-height:44px;box-sizing:border-box}" +
-  "html.lv-side.lv-folded #live-pane .lv-head{flex-direction:column;padding:8px 4px;border-bottom:0}" +
-  "html.lv-folded #live-pane .lv-body,html.lv-folded #live-pane .lv-title,html.lv-folded #live-pane .lv-state{display:none}" +
-  "#live-pane .lv-dot{width:10px;height:10px;border-radius:50%;background:#7a7f86;flex:none}" +
-  "#live-pane[data-state=connected] .lv-dot{background:#3fbf6f}#live-pane[data-state=waiting] .lv-dot,#live-pane[data-state=connecting] .lv-dot,#live-pane[data-state=retrying] .lv-dot{background:#e0b341}" +
-  "#live-pane[data-state=stopped] .lv-dot{background:#e0605a}" +
+  "html.lv-collapsed #live-pane{display:none}" +
+  "#live-mark{all:unset;position:fixed;right:10px;top:7px;z-index:38;box-sizing:border-box;display:flex;align-items:center;gap:6px;height:30px;padding:0 11px 0 9px;border-radius:999px;" +
+  "background:rgba(20,20,20,.78);color:#fff;font:600 12.5px/1 system-ui,-apple-system,'Segoe UI',sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}" +
+  "#live-mark:hover{background:rgba(20,20,20,.92)}#live-mark:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}#live-mark[aria-expanded=true]{background:#24436e}" +
+  "html.lv-side #live-mark{right:calc(var(--lv-w) + 10px)}" +
+  ".lv-dot{width:10px;height:10px;border-radius:50%;background:#7a7f86;flex:none}" +
+  "[data-state=connected]>.lv-dot,[data-state=connected]>.lv-head>.lv-dot{background:#3fbf6f}" +
+  "[data-state=waiting]>.lv-dot,[data-state=connecting]>.lv-dot,[data-state=retrying]>.lv-dot,[data-state=waiting]>.lv-head>.lv-dot,[data-state=connecting]>.lv-head>.lv-dot,[data-state=retrying]>.lv-head>.lv-dot{background:#e0b341}" +
+  "[data-state=stopped]>.lv-dot,[data-state=stopped]>.lv-head>.lv-dot{background:#e0605a}" +
   "#live-pane .lv-title{font-weight:700}#live-pane .lv-state{flex:1;min-width:0;color:#b9bec5;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
   "#live-pane .lv-body{flex:1;overflow:auto;padding:10px 12px 14px}" +
   "#live-pane p{margin:0 0 8px}#live-pane .lv-small{font-size:12px;color:#a3a9b0}#live-pane .lv-msg:empty{display:none}#live-pane .lv-msg{color:#ffd28a}" +
@@ -114,6 +120,9 @@ css.textContent =
   "#live-pane a.lv-join-link:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
   "#live-pane button.lv-pri{background:#4d8dff;border-color:#4d8dff;color:#fff;font-weight:600}#live-pane button:disabled{opacity:.5;cursor:default}" +
   "#live-pane .lv-head button{padding:2px 8px;font-size:12.5px}" +
+  "#live-pane .lv-head button.lv-pin{display:flex;align-items:center;padding:2px 5px;background:transparent;border-color:#5a5f66;color:#c4c9cf}" +
+  "#live-pane .lv-head button.lv-pin[aria-pressed=true]{background:#4d8dff;border-color:#4d8dff;color:#fff}" +
+  "#live-pane .lv-pin svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}" +
   "#live-pane button:focus-visible,#live-pane input:focus-visible,#live-pane textarea:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
   "#live-pane label{display:block;font-size:12.5px;color:#c4c9cf;margin:8px 0 3px}" +
   "#live-pane input[type=text],#live-pane textarea{box-sizing:border-box;width:100%;font:inherit;color:#111;background:#fff;border:1px solid #9aa1a9;border-radius:6px;padding:4px 6px}" +
@@ -124,14 +133,22 @@ css.textContent =
   "#live-pane .lv-sec[hidden],#live-pane [hidden]{display:none!important}" +
   "html.lv-side #dt-cb{left:calc((100% - var(--lv-w)) / 2)}html.lv-side #deck-toast{left:calc((100% - var(--lv-w)) / 2)}html.lv-side #jump{right:calc(var(--lv-w) + 12px)}html.lv-side #bar{max-width:calc(100% - var(--lv-w))}" +
   "html.lv-bottom #dt-cb{bottom:calc(var(--lv-h) + 10px)}html.lv-bottom #bar{bottom:var(--lv-h)}html.lv-bottom #jump,html.lv-bottom #dt-ind{bottom:calc(var(--lv-h) + 10px)}" +
-  "@media (prefers-reduced-motion:no-preference){#live-pane .lv-dot{transition:background-color .2s}}" +
-  ".printing #live-pane{display:none!important}@media print{#live-pane{display:none!important}}";
+  "@keyframes lv-in{from{opacity:0}to{opacity:1}}" +
+  "@media (prefers-reduced-motion:no-preference){.lv-dot{transition:background-color .2s}#live-pane{animation:lv-in .16s ease-out}}" +
+  ".printing #live-pane,.printing #live-mark{display:none!important}@media print{#live-pane,#live-mark{display:none!important}}";
 var pane = h("aside"); pane.id = "live-pane"; pane.setAttribute("aria-label", S.title); pane.setAttribute("data-state", "off");
 var head = h("div", "lv-head"), dot = h("span", "lv-dot"), title = h("span", "lv-title", S.title), state = h("span", "lv-state", S.off);
 dot.setAttribute("aria-hidden", "true");
 var bLeave = h("button", "lv-leave", S.leave); bLeave.type = "button"; bLeave.hidden = true;
-var bFold = h("button", "lv-fold", "≡"); bFold.type = "button";
-head.appendChild(dot); head.appendChild(title); head.appendChild(state); head.appendChild(bLeave); head.appendChild(bFold);
+var bPin = h("button", "lv-pin"); bPin.type = "button"; bPin.setAttribute("aria-label", S.pin); bPin.title = S.pin; bPin.setAttribute("aria-pressed", "false");
+bPin.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5h4l-.6 4 2.3 2.3H4.3L6.6 6.5zM8 8.8v4.7"/></svg>';
+var bFold = h("button", "lv-fold", "×"); bFold.type = "button"; bFold.setAttribute("aria-label", S.fold); bFold.title = S.fold;
+head.appendChild(dot); head.appendChild(title); head.appendChild(state); head.appendChild(bLeave); head.appendChild(bPin); head.appendChild(bFold);
+// たたんだ印：本物のボタン（aria-expanded）。つながっている間も印の点と読み上げ用の字で状態を見せる
+var mark = h("button"); mark.id = "live-mark"; mark.type = "button"; mark.setAttribute("aria-expanded", "false"); mark.setAttribute("aria-controls", "live-pane"); mark.setAttribute("data-state", "off");
+var mDot = h("span", "lv-dot"), mBadge = h("span", "lv-badge", S.badge), mState = h("span", "sr-only");
+mDot.setAttribute("aria-hidden", "true");
+mark.appendChild(mDot); mark.appendChild(mBadge); mark.appendChild(mState);
 var body = h("div", "lv-body");
 var pNotice = h("p", "lv-notice", S.notice);
 var pWin = h("p", "lv-small");
@@ -153,31 +170,67 @@ qa.appendChild(qaL); qa.appendChild(qaT); qa.appendChild(qaRow);
 var shownSec = h("div", "lv-sec lv-shown"), shownH = h("h3", "", S.shown), shownUl = h("ul");
 shownSec.appendChild(shownH); shownSec.appendChild(shownUl);
 var pPriv = h("p", "lv-small", S.privacy);
+// 知らせる場所は板の外（たたんでいる間も読み上げる）
 var sr = h("div", "sr-only"); sr.setAttribute("role", "status"); sr.setAttribute("aria-live", "polite"); sr.id = "live-pane-status";
 [pNotice, pWin, pMsg, pAddr, linkRow, joinRow, nameL, nameI, nameNote, polls, qa, shownSec, pPriv].forEach(function(e){ body.appendChild(e); });
-pane.appendChild(head); pane.appendChild(body); pane.appendChild(sr);
+pane.appendChild(head); pane.appendChild(body);
 
 var fmt = function(s){ try { return new Date(s).toLocaleString(JA ? "ja-JP" : "en-US", {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}); } catch (e) { return s; } };
 pWin.textContent = S.window(fmt(live.window.from), fmt(live.window.to));
 function announce(t){ sr.textContent = ""; setTimeout(function(){ sr.textContent = t; }, 30); }
 
-// ---------------------------------------------------------------- 舞台を板の外に収める（deck.js の fit と同じ式で、板を除いた広さに）
-var folded = false, docked = null;
+// ---------------------------------------------------------------- 開く・たたむ
+// pinned：印から開いたか「開いたままにする」。auto：投票のある段階で開いた（その段階を離れるとたたむ）。dismissed：その段階で学ぶ人がたたんだ
+var pinned = false, auto = false, dismissed = null;
+function isOpen(){ return pinned || auto; }
+// 投票で開くのは、窓の中で、ここからつなげるか「ブラウザで参加する」を出せるときだけ（編集アプリのプレビューでは開かない）。"*" の投票では開かない
+function pollHere(){ return LP.activitiesFor(live, stepKey).some(function(x){ return x.step !== "*" && x.a.kind === "poll"; }); }
+function autoWanted(){ return phase() === "open" && (!CTX || !!JOIN_URL) && pollHere() && dismissed !== stepKey; }
+function focusIn(){ var a = document.activeElement; return !!(a && pane.contains(a)); }
+function apply(wasOpen, how){
+  var o = isOpen();
+  if (o === wasOpen) { render(); return; }
+  var back = !o && focusIn();
+  layout(); render();
+  if (back) mark.focus();
+  if (o && how === "poll") announce(S.pollOpen);
+  if (o && how === "mark"){
+    var to = !qa.hidden ? qaT : !joinRow.hidden && !bJoin.disabled ? bJoin : JOIN_URL && !linkRow.hidden ? aJoin : bFold;
+    try { to.focus({preventScroll: true}); } catch (e) {}
+  }
+}
+function syncAuto(){ var was = isOpen(); auto = autoWanted(); apply(was, "poll"); }
+function openPane(how){ var was = isOpen(); pinned = true; apply(was, how); }
+function collapse(){ var was = isOpen(); pinned = false; auto = false; dismissed = stepKey; apply(was); }
+mark.addEventListener("click", function(){ if (isOpen()) collapse(); else openPane("mark"); });
+bFold.addEventListener("click", collapse);
+bPin.addEventListener("click", function(){ var was = isOpen(); pinned = !pinned; if (!pinned) auto = autoWanted(); apply(was); });
+pane.addEventListener("keydown", function(e){ if (e.key === "Escape" && !e.metaKey && !e.ctrlKey && !e.altKey){ e.preventDefault(); e.stopPropagation(); collapse(); mark.focus(); } });
+
+// ---------------------------------------------------------------- 舞台を板の外に収める（deck.js の fit と同じ式で、板を除いた広さに）。たたんでいる間は窓いっぱい（deck.js の fit と同じ）
+var docked = null;
 function layout(){
   var root = document.documentElement, W = window.innerWidth, H = window.innerHeight;
+  var st = document.getElementById("stage"), open = isOpen();
+  root.classList.toggle("lv-collapsed", !open);
+  if (!open){
+    root.classList.remove("lv-side", "lv-bottom");
+    root.style.setProperty("--lv-w", "0px"); root.style.setProperty("--lv-h", "0px");
+    docked = null;
+    if (st){ st.style.left = st.style.top = ""; st.style.transform = "translate(-50%,-50%) scale(" + Math.min(W / 1280, H / 720) + ")"; }
+    return;
+  }
   var side = W / Math.max(1, H) >= 1.25 && W >= 760;
-  var size = folded ? 44 : side ? Math.round(Math.min(360, Math.max(260, W * 0.26))) : Math.round(Math.min(320, Math.max(160, H * 0.4)));
-  root.classList.toggle("lv-side", side); root.classList.toggle("lv-bottom", !side); root.classList.toggle("lv-folded", folded);
+  var size = side ? Math.round(Math.min(360, Math.max(260, W * 0.26))) : Math.round(Math.min(320, Math.max(160, H * 0.4)));
+  root.classList.toggle("lv-side", side); root.classList.toggle("lv-bottom", !side);
   root.style.setProperty("--lv-w", (side ? size : 0) + "px"); root.style.setProperty("--lv-h", (side ? 0 : size) + "px");
   docked = {side: side, size: size};
   var aw = side ? W - size : W, ah = side ? H : H - size;
-  var st = document.getElementById("stage");
   if (!st) return;
   var k = Math.min(aw / 1280, ah / 720);
   st.style.left = (aw / 2) + "px"; st.style.top = (ah / 2) + "px";
   st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
 }
-bFold.addEventListener("click", function(){ folded = !folded; render(); layout(); });
 
 // ---------------------------------------------------------------- 状態
 var ST = "off", ws = null, attempt = 0, retryTimer = null, retryAt = 0, tickTimer = null, pingTimer = null, endTimer = null, startTimer = null;
@@ -192,7 +245,9 @@ function render(){
     : ST === "retrying" ? S.retrying(Math.max(1, Math.ceil((retryAt - now()) / 1000))) : ST === "stopped" ? (S.stop[stopReason] || S.stop.unknown)
     : ph === "before" ? S.before(fmt(live.window.from)) : ph === "after" ? S.after : S.off;
   state.textContent = label; state.title = label;
-  bFold.textContent = folded ? "»" : "≡"; bFold.setAttribute("aria-label", folded ? S.unfold : S.fold); bFold.setAttribute("aria-expanded", folded ? "false" : "true");
+  mark.setAttribute("data-state", ST); mark.setAttribute("aria-expanded", isOpen() ? "true" : "false");
+  mState.textContent = (JA ? "：" : ": ") + label; mark.title = S.title + (JA ? "：" : ": ") + label;
+  bPin.setAttribute("aria-pressed", pinned ? "true" : "false");
   bLeave.hidden = !(conn || ST === "connecting" || ST === "retrying");
   var canJoin = !CTX && ph === "open" && (ST === "off" || (ST === "stopped" && REJOIN[stopReason] === 1));
   joinRow.hidden = !!CTX || ph !== "open" || conn || ST === "connecting" || ST === "retrying" || (ST === "stopped" && REJOIN[stopReason] !== 1);
@@ -365,22 +420,23 @@ nameI.addEventListener("change", sendName);
 // ---------------------------------------------------------------- 起動（deck.js が舞台を作った後）
 document.addEventListener("deck:pos", function(e){
   var k = e.detail && e.detail.key;
-  if (typeof k === "string" && k !== stepKey){ stepKey = k; render(); }
+  if (typeof k === "string" && k !== stepKey){ stepKey = k; dismissed = null; if (pane.parentNode) syncAuto(); else render(); }
 });
 function start(){
   document.head.appendChild(css);
+  document.body.appendChild(mark);
   document.body.appendChild(pane);
-  folded = phase() === "after";
+  document.body.appendChild(sr);
   layout();
   window.addEventListener("resize", layout);
-  render();
+  syncAuto();
   // 窓が開く時刻に、もう一度描く（通信はしない）
   var ms = LP.windowStart(live.window) - now();
-  if (ms > 0) startTimer = setTimeout(function(){ render(); scheduleEnd(); }, Math.min(ms + 200, 2147483000));
+  if (ms > 0) startTimer = setTimeout(function(){ syncAuto(); render(); scheduleEnd(); }, Math.min(ms + 200, 2147483000));
   scheduleEnd();
   // このタブで参加したことがあれば（読み直しなど）、窓の中なら押さずにつなぐ
   if (!CTX && phase() === "open" && getItem("sessionStorage", JOINED_KEY) === "1") join();
 }
-DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt}; }};
+DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt, open: isOpen(), pinned: pinned, auto: auto}; }};
 if (DECK.ready) start(); else document.addEventListener("deck:ready", start, {once: true});
 })();

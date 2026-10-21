@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=cc5e69f3cb573fa5 -->
+<!-- i18n: pair=contract.md sha256=24e9d5b774986f82 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -183,7 +183,8 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 
 授業の部屋を付けて書き出した再生専用の写しにだけ、部屋の再生器（`kit/live.js` と `kit/core/live-policy.mjs`。`kit/core/live.mjs` が入れる）が入る。ほかの出力は変わらない。ふるまいの正本は形式の[拡張 `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md)、通信は [egatari/live](https://github.com/egatari/live)。ここに書くのは Studio の実行系の約束。
 
-- 板は舞台の外：`#live-pane` は右（縦長の窓では下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）では板を作らず、印刷では隠す
-- `deck:pos`（`detail.key`）は、どの投票を出すかを決めるためだけに聞く。位置や時間は送らない。時計（つなぎ直し・つながりを保つ ping・窓の終わり）を使うが、舞台に何も描かないので許される
+- 板は初めたたんでいる：出すのは印 `#live-mark`（`aria-expanded` を持つ `<button>`。右上）だけで、`#stage` は窓いっぱい（`fit()` の置き方のまま）。印は、つながりの状態（`data-state`・色の点・読み上げ用の字）を見せる。板は、印を押すと開き（たたむまで開いたまま）、投票（`*` でないもの）のある段階では、窓の中で、つなげるか「ブラウザで参加する」を出せる文書なら自分で開く。その段階を離れると、学ぶ人が **開いたままにする** を押していなければたたむ。開いたことは板の外の polite な live region で知らせ、フォーカスは動かさない
+- 開いた板は舞台の外：`#live-pane` は右（縦長の窓では下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）では板を作らず、印刷では（印も）隠す
+- `deck:pos`（`detail.key`）は、どの投票を出すか・板を開くかを決めるためだけに聞く。位置や時間は送らない。時計（つなぎ直し・つながりを保つ ping・窓の終わり）を使うが、舞台に何も描かないので許される
 - endpoint は `https:` でなければならない。ループバックの `http:` を許すのは、試験が `buildPortable(…, {liveDevLoopback: true})`（コマンドの引数にはしない）で組む開発版の再生器だけ。切り替えは `kit/core/live-policy.mjs` の定数で、その組み立てだけが入れる。配る教材の再生器・編集アプリの書き出し・`kit/build.mjs --live` は `http:` を断る
 - つなぐのは「参加する」の後、窓の中（2 分のゆとり）で、枠の中でない `file:`・`http(s):` の文書のうち、CSP の `<meta>` がちょうど 1 つでその `connect-src` が endpoint と同じものだけ。ほか（枠・`srcdoc`・sandbox やプレビューの文書）では部屋の場所を字で見せる
