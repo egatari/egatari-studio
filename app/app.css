@@ -169,6 +169,15 @@ main{flex:1;min-height:0;display:flex}
 #panel-body .attach-name{overflow-wrap:anywhere;margin-bottom:4px}
 #panel-body .attach-meta{display:flex;gap:6px;margin-bottom:5px}#panel-body .attach-meta input{flex:1;min-width:0}#panel-body .attach-desc{display:flex;margin-bottom:5px}#panel-body .attach-desc input{flex:1;min-width:0}
 #panel-body .attach-row .row button{padding:2px 10px;font-size:12.5px}
+/* 授業の部屋を付けて配る（app/live-panel.js） */
+#live-panel label{display:block;margin:8px 0 2px}#live-panel label>span{display:block;font-size:12.5px;color:var(--muted,#666);margin-bottom:2px}
+#live-panel input[type=text],#live-panel input[type=datetime-local],#live-panel textarea{width:100%;box-sizing:border-box;font:inherit}
+#live-panel textarea{font:12px/1.4 ui-monospace,Menlo,monospace}
+#live-panel label.check{display:flex;gap:6px;align-items:flex-start;margin:10px 0}#live-panel label.check>span{display:inline;color:inherit;font-size:inherit}
+#live-panel fieldset.live-poll{border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:4px 9px 8px}
+#live-panel .live-choice{display:flex;gap:6px;margin:4px 0}#live-panel .live-choice input{flex:1;min-width:0}
+#live-panel .row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}#live-panel .note{font-size:12px;color:var(--muted,#666);margin:2px 0}
+#live-panel #live-problems{color:var(--bad,#b00020)}#live-panel .lead{margin-top:0}
 #attach-problems{margin-top:8px;font-size:12.5px}
 
 /* 録音モード（app/rec-mode.js）：#deck の中の幅広い板。プレビュー（その段階の舞台）は横に細くする。横の板・口述原稿などは隠す */

@@ -1,0 +1,340 @@
+// 授業の部屋（拡張 live。format spec の extensions/live.md、通信は FORMAT.LIVE_VENDOR_DIR の写し）の試験（npm test の test-live）
+//   node tools/test-live.mjs <作業用のフォルダ>
+// 1. 決まりごと（kit/core/live-policy.mjs）：切断の番号の表が写しの close-codes.json と同じ・つなぎ直しの表・窓とゆとり・URL の origin・形の検査
+// 2. 書き出し：部屋を付けない派生は今までと同じ（付けた派生から、足した部分を除くと同じバイト）。付けた派生だけに CSP の <meta>（<head> の直後、どのスクリプトより前、
+//    connect-src は endpoint の 2 つの形だけ）・拡張のブロック・再生器。教材（索引と FORMAT.CONFIG_FILE）に鍵がない。鍵を設定のファイルに書くと書き出しを断る
+// 3. 通信なし（要求も WebSocket も 0。この試験の部屋のサーバーにも何も届かない）：窓の外・「参加する」を押す前・編集アプリのプレビュー（srcdoc の sandbox の枠）・
+//    動画（?mode=video）・印刷・発表者ビュー・部屋のない派生
+// 4. file://（Origin null）から試験の部屋（tools/live-fake-server.mjs）へ：参加 → 質問 → ack、段階に来ると投票が出る → 投票 → ack。送ったものはすべて写しの Schema に合い、
+//    見ている位置は送らない。承認待ち → 承認。つなぎ直し（1011 の後）と、4440・4423・4410・4441 の後はつながない。切断する
+// 5. 舞台の描画は変わらない：部屋を付けた派生と付けない派生で、いくつかの (i, k, t) の舞台だけの画像が同じ
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import Ajv from 'ajv/dist/2020.js';
+import { launch, fileUrl } from '../kit/browser.mjs';
+import { buildPortable, liveRuntimeText } from '../kit/build.mjs';
+import { LivePolicy } from '../kit/core/live-policy.mjs';
+import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339 } from '../kit/core/live.mjs';
+import { previewDocument } from '../app/preview-doc.js';
+import { FORMAT } from '../kit/core/format.mjs';
+import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
+
+const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(ROOT, '.tmp-live-')));
+fs.rmSync(work, { recursive: true, force: true });
+fs.mkdirSync(work, { recursive: true });
+let fails = 0;
+const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const until = async (f, ms = 5000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return true; await sleep(50); } return !!(await f()); };
+
+// ---------------------------------------------------------------- 1. 決まりごと
+console.log('policy');
+const LP = LivePolicy({ allowLoopback: true });
+const LP0 = LivePolicy();
+const DEV = { devLoopback: true };
+const codes = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'close-codes.json'), 'utf8')).codes;
+ok(codes.length === Object.keys(LP.CODES).length && codes.every((c) => LP.CODES[c.code] && LP.CODES[c.code][0] === c.name && LP.CODES[c.code][1] === c.retry),
+  'close codes: the table equals the vendored close-codes.json (names and the server\'s retry flags)');
+const src = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, '..', path.basename(PROTOCOL_DIR), 'SOURCE.json'), 'utf8'));
+ok(/^[0-9a-f]{40}$/.test(src.commit) && src.repository === FORMAT.LIVE_REPO, 'vendored protocol: SOURCE.json names the egatari/live commit');
+const T0 = Date.parse('2026-10-30T09:00:00+09:00'), W = { from: '2026-10-30T09:00:00+09:00', to: '2026-10-30T11:00:00+09:00' };
+const plan = (code, att = 0, now = T0 + 3600e3) => LP.plan(code, att, now, W, 0.5);
+for (const c of [4400, 4401, 4403, 4404, 4409, 4410, 4440, 4441]) ok(plan(c).retry === false, `plan: no reconnect after ${c} (${LP.CODES[c][0]})`);
+ok(codes.every((c) => (plan(c.code).retry === true) === c.retry), 'plan: reconnects exactly for the codes the vendored close-codes.json marks retry');
+ok([0, 0.5, 0.999].every((r) => LP.plan(4423, 0, T0 + 3600e3, W, r).delayMs >= 30000) && LP.plan(4423, 0, T0 + 3600e3, W, 0.999).delayMs > LP.plan(4423, 0, T0 + 3600e3, W, 0).delayMs, 'plan: 4423 (room closed) reconnects slowly: at least 30 s, with jitter');
+ok(plan(4429).retry && plan(4429).delayMs >= 60000 && plan(4430).retry && plan(4430).delayMs >= 60000, 'plan: 4429 and 4430 reconnect after at least 60 s');
+{ const p = LP.plan(4425, 0, T0 - 100e3, W, 0); ok(p.retry && p.delayMs === 100e3, `plan: 4425 (too early) reconnects at window.from (${p.delayMs} ms)`); }
+ok(plan(1006).retry && plan(1006).delayMs === 1000 && plan(1006, 1).delayMs === 2000 && plan(1006, 2).delayMs === 4000 && plan(1006, 9).delayMs === 30000, 'plan: network closes back off 1, 2, 4 … 30 s');
+ok(LP.plan(1006, 0, T0 + 1000, W, 0).delayMs === 800 && LP.plan(1006, 0, T0 + 1000, W, 0.999).delayMs <= 1200, 'plan: jitter ±20 %');
+ok(plan(1006, 0, Date.parse(W.to) + 2 * 60e3 - 500).retry === false && plan(1006, 0, T0 - 3 * 60e3).retry === false, 'plan: no reconnect outside the window (or past its end)');
+ok(LP.inWindow(W, T0 - 119e3) && !LP.inWindow(W, T0 - 121e3) && LP.inWindow(W, Date.parse(W.to) + 119e3) && !LP.inWindow(W, Date.parse(W.to) + 121e3), 'window: 2 minutes of skew at both ends');
+const L0 = { v: 1, endpoint: 'https://live.example.org', room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: W, activities: fixture('teacher/activities.json').activities };
+ok(LP.validate(L0, { key: true }).length === 0, 'validate: the spec example (with the fixture activities) is valid');
+ok(LP.validate(L0, { key: false }).some((e) => /key/.test(e)), 'validate: a lesson must not store the key');
+ok(LP.validate({ ...L0, endpoint: 'http://live.example.org' }, { key: true }).length > 0 && LP.validate({ ...L0, endpoint: 'https://live.example.org/x' }, { key: true }).length > 0, 'validate: endpoint must be an https origin (no path)');
+ok(LP.validate({ ...L0, room: 'r-ABCDEFGH' }, { key: true }).length > 0 && LP.validate({ ...L0, key: 'short' }, { key: true }).length > 0, 'validate: room and key formats from the protocol');
+ok(LP.validate({ ...L0, activities: { 'x:1': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['only one'] }] } }, { key: true }).length > 0, 'validate: a poll needs 2 or more choices');
+ok(LP.socketUrl(L0, 'p7Hk2mQx9LwR4tZa') === 'wss://live.example.org/ws?room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD&pid=p7Hk2mQx9LwR4tZa', 'socketUrl: wss on the endpoint host');
+ok(!LP.sameEndpoint('wss://evil.example.org/ws', L0.endpoint) && !LP.sameEndpoint('ws://live.example.org/ws', L0.endpoint) && LP.sameEndpoint('wss://live.example.org/ws?x', L0.endpoint), 'sameEndpoint: origin must equal the declared endpoint (scheme and host)');
+ok(LP0.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).some((e) => /endpoint/.test(e)) && LP0.socketUrl({ ...L0, endpoint: 'http://127.0.0.1:8787' }, 'p7Hk2mQx9LwR4tZa') === null && LP0.connectSrc('http://localhost:1') === null, 'default policy: loopback http endpoints are refused (validate, socketUrl, CSP)');
+ok(LP.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).length === 0 && LP.validate({ ...L0, endpoint: 'http://10.0.0.5:8787' }, { key: true }).length > 0, 'development policy: only loopback http is added');
+ok(liveCsp(L0.endpoint).includes('connect-src https://live.example.org wss://live.example.org;'), 'CSP: connect-src lists the endpoint for https and wss');
+ok(localToRfc3339('2026-10-30T09:00', 540) === '2026-10-30T09:00:00+09:00' && localToRfc3339('2026-10-30T09:00', -300) === '2026-10-30T09:00:00-05:00', 'localToRfc3339: local time with its offset');
+{ let e1 = null; try { parseRoomBlock('https://live.example.org/#room=r-7k2q6xw4&admin=VGVhY2hlclNlY3JldEtleUZvckZpeHR1cmVzT25seTA'); } catch (e) { e1 = e.message; }
+  ok(e1 === 'admin', 'parseRoomBlock: refuses the teacher link (it carries the teacher key)');
+  const cr = fixture('http/create-response.json');
+  const block = JSON.stringify({ v: 1, endpoint: cr.endpoint, room: cr.room, key: cr.key, window: cr.window }, null, 2);
+  const r = parseRoomBlock('copy:\n' + block + '\n');
+  ok(r.room === cr.room && r.key === cr.key && r.window.from === cr.window.from && !('adminKey' in r), 'parseRoomBlock: reads the teacher page\'s copy block');
+  ok(!('key' in lessonLive(mergeLive({ activities: L0.activities }, r))) && mergeLive({ activities: L0.activities }, r).activities === L0.activities, 'lessonLive drops the key; mergeLive keeps the lesson\'s activities'); }
+// 写しの Schema（ネットワークは使わない）
+const ajv = new Ajv({ allErrors: true, strict: false, loadSchema: () => { throw new Error('no network'); } });
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'schema.json'), 'utf8'));
+ajv.addSchema(SCHEMA);
+const sv = (def) => ajv.getSchema(SCHEMA.$id + '#/$defs/' + def);
+for (const f of ['ask', 'vote', 'name', 'ping']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
+ok(sv('activities')(L0.activities), 'schema: the activities shape is the protocol\'s activities');
+
+// ---------------------------------------------------------------- 2. 書き出し
+console.log('export');
+const deckDir = path.join(work, 'deck');
+fs.cpSync(path.join(ROOT, 'examples', 'minimal'), deckDir, { recursive: true });
+const deck = path.join(deckDir, 'deck.html');
+const fake = await startFakeLive();
+const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+const POLL_STEP = '何を最小化するか:0';
+const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] };
+const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
+// 教材の設定（鍵なし）：作業フォルダの設定のファイルの extensions.live
+const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
+await buildPortable(deck, {});   // docId を作る
+const cfg0 = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+const plain = (await buildPortable(deck, { playOnly: true })).html;
+fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n');
+const now = Date.now();
+const live = await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) });
+const portable = await buildPortable(deck, {});
+ok(portable.index.extensions && portable.index.extensions.live && !('key' in portable.index.extensions.live) && JSON.stringify(portable.index.extensions.live.activities) === JSON.stringify(ACTS), 'portable: the lesson keeps extensions.live (from the config file) without the key');
+ok(!portable.html.includes('Q2xhc3Nyb29tS2V5MDAwMD') && !portable.html.includes('Content-Security-Policy'), 'portable: the key is nowhere in the teacher\'s own single file, and it has no CSP');
+const plain2 = (await buildPortable(deck, { playOnly: true })).html;
+ok(plain2 === plain, 'play-only without --live: the same bytes whether or not the lesson has live settings (the derivative carries no live room)');
+const L = live.html;
+const metaRe = /\n<meta http-equiv="Content-Security-Policy" content="[^"]*">/;
+const blockRe = new RegExp(`\\n<script type="application/json" id="${LIVE_BLOCK_ID}">[^<]*</script>\\n<script>\\n[\\s\\S]*?\\n</script>`);
+ok(L.replace(metaRe, '').replace(blockRe, '') === plain, 'live derivative = the play-only derivative + the CSP meta + the extension block and player (nothing else changes)');
+ok(!plain.includes('Content-Security-Policy') && !plain.includes(`id="${LIVE_BLOCK_ID}"`) && !plain.includes('live-pane'), 'play-only without live: no CSP meta, no extension block, no player');
+const cspAt = L.indexOf('<meta http-equiv="Content-Security-Policy"');
+ok(cspAt > 0 && cspAt < L.search(/<script/i) && cspAt === L.indexOf('<head>') + '<head>'.length + 1, 'live derivative: the CSP meta comes right after <head>, before any script');
+ok((L.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1, 'live derivative: exactly one CSP meta');
+const csp = /http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(L)[1];
+const host = new URL(fake.endpoint).host;
+ok(/(?:^|; )connect-src ([^;]*)/.exec(csp)[1] === `http://${host} ws://${host}`, `live derivative: connect-src is exactly the endpoint (${host}) for both schemes`);
+ok(!/https?:\/\/(?!127\.0\.0\.1)/.test(csp) && !/'unsafe-eval'/.test(csp) && /default-src 'none'/.test(csp), 'live derivative: CSP loads nothing from the network except the endpoint connection, no eval');
+ok(!L.includes(`src="${fake.endpoint}`) && !L.includes(`href="${fake.endpoint}`), 'live derivative: no script, style or image is loaded from the endpoint');
+{ let e1 = null; try { addLive(L, { ...room(now, now + 3600e3), activities: ACTS }, liveRuntimeText(DEV), DEV); } catch (e) { e1 = e.message; } ok(/already/.test(e1 || ''), 'addLive: refuses to add a second room'); }
+{ let e1 = null; try { addLive(portable.html, mergeLive({ activities: ACTS }, room(now, now + 3600e3)), liveRuntimeText(DEV), DEV); } catch (e) { e1 = e.message; } ok(/play-only/.test(e1 || ''), 'addLive: only to a play-only derivative (not the teacher\'s own file)'); }
+{ fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, key: 'Q2xhc3Nyb29tS2V5MDAwMD' } } }, null, 2) + '\n');
+  let e1 = null; try { await buildPortable(deck, {}); } catch (e) { e1 = e.code; }
+  ok(e1 === 'bad-config', 'export: a key written into the config file is refused (never stored in the lesson)');
+  fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n'); }
+// 開発版だけがループバックの http: の部屋を許す。既定の書き出し（編集アプリ・kit/build.mjs --live）と配る再生器は https: だけ
+{ let e1 = null; try { await buildPortable(deck, { playOnly: true, live: room(now - 60e3, now + 3600e3) }); } catch (e) { e1 = e.message; }
+  ok(/endpoint/.test(e1 || ''), `default export: an http://127.0.0.1 endpoint is refused (${e1})`);
+  let e2 = null; try { parseRoomBlock(JSON.stringify(room(now - 60e3, now + 3600e3))); } catch (e) { e2 = e.details ? e.details.join('; ') : e.message; }
+  ok(/endpoint/.test(e2 || ''), 'default export: the room block with an http endpoint is refused');
+  const rt = liveRuntimeText(), rtDev = liveRuntimeText(DEV);
+  ok(rt.includes('var LOOPBACK = false;') && !rt.includes('var LOOPBACK = true;') && rtDev.includes('var LOOPBACK = true;'), 'the shipped player has the loopback switch off as a constant; only the development player has it on');
+  ok(!L.includes('var LOOPBACK = false;') && L.includes('var LOOPBACK = true;'), 'this test\'s live derivative is a development build'); }
+const files = {};
+const put = (name, html) => { const f = path.join(work, name); fs.writeFileSync(f, html); files[name] = f; return f; };
+put('plain.html', plain);
+put('live.html', L);
+put('early.html', (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now + 3600e3, now + 7200e3) })).html);
+put('late.html', (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 7200e3, now - 3600e3) })).html);
+// 既定の再生器（配る写しのもの）に、ループバックの http: の部屋を入れた文書：再生器は部屋を読まない（つながない・板も出さない）
+put('default-loopback.html', addLive(plain, mergeLive({ activities: ACTS }, room(now - 60e3, now + 2 * 3600e3)), liveRuntimeText(), DEV));
+
+// ---------------------------------------------------------------- 3〜5. ブラウザ
+const browser = await launch();
+// 要求（file: と data: と blob: のほか）と WebSocket を数える
+async function open(url, { viewport = { width: 1640, height: 720 }, media, ready = true } = {}) {
+  const ctx = await browser.newContext({ viewport });
+  const p = await ctx.newPage();
+  const net = { req: [], ws: [], errors: [], csp: [] };
+  p.on('console', (m) => { if (/Content Security Policy|Refused to/.test(m.text())) net.csp.push(m.text()); });
+  ctx.on('request', (r) => { if (!/^(file|data|blob|about):/.test(r.url())) net.req.push(r.url()); });
+  p.on('websocket', (w) => net.ws.push(w.url()));
+  p.on('pageerror', (e) => net.errors.push(e.message));
+  if (media) await p.emulateMedia({ media });
+  if (url) { await p.goto(url); if (ready) await p.waitForFunction(() => window.DECK && DECK.ready); else await p.waitForLoadState('load'); }
+  return { ctx, p, net, close: () => ctx.close() };
+}
+const st = (p) => p.evaluate(() => (window.DECK && DECK.live ? DECK.live.state() : null));
+const quiet = (net, what) => ok(net.req.length === 0 && net.ws.length === 0 && fake.connections.length === 0 && fake.http.length === 0,
+  `${what}: no request and no WebSocket (page ${net.req.length}/${net.ws.length}, server ${fake.connections.length}/${fake.http.length})`);
+
+console.log('no network');
+{ fake.reset(); const o = await open(fileUrl(files['early.html'])); await sleep(800);
+  const s = await st(o.p), dis = await o.p.$eval('#live-pane .lv-join', (b) => b.disabled || b.closest('[hidden]') !== null);
+  await o.p.click('#live-pane .lv-join', { force: true, timeout: 1000 }).catch(() => {}); await sleep(300);
+  ok(s && s.state === 'off' && dis, 'before the window: the pane says when the room opens; Join is not offered'); quiet(o.net, 'before the window'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['late.html'])); await sleep(600);
+  ok(await o.p.$eval('#live-pane', (e) => document.documentElement.classList.contains('lv-folded') && e.querySelector('.lv-state').textContent.length > 0), 'after the window: the pane is folded and says the room has ended');
+  quiet(o.net, 'after the window'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['live.html'])); await sleep(1500);
+  const t = await o.p.$eval('#live-pane .lv-notice', (e) => e.textContent);
+  ok(t.includes(host) && /授業の部屋につながります/.test(t), `before Join: the notice names the endpoint ("${t}")`);
+  ok(await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && b.textContent === '参加する'), 'before Join: the Join button is there');
+  quiet(o.net, 'before Join is clicked'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['live.html']) + '?mode=video'); await sleep(800);
+  ok(!(await o.p.$('#live-pane')) && (await st(o.p)) === null, 'video mode: no pane at all'); quiet(o.net, 'video mode'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['live.html']) + '?presenter=1', { ready: false }); await sleep(1200);
+  ok(!(await o.p.$('#live-pane')), 'presenter view: no pane (nor in its frames)'); quiet(o.net, 'presenter view'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { media: 'print' }); await sleep(500);
+  await o.p.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  ok(await o.p.$eval('#live-pane', (e) => getComputedStyle(e).display === 'none'), 'print: the pane is hidden'); quiet(o.net, 'print'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['plain.html'])); await sleep(800);
+  ok(!(await o.p.$('#live-pane')), 'a lesson without extensions.live: no pane'); quiet(o.net, 'a lesson without extensions.live'); await o.close(); }
+// 編集アプリのプレビュー：信頼する先頭部分（CSP connect-src 'none'）+ 文書を、sandbox の srcdoc の枠に
+{ fake.reset(); const o = await open(null);
+  await o.p.setContent('<!doctype html><html><body><iframe id="f" sandbox="allow-scripts allow-modals" style="width:1600px;height:700px"></iframe></body></html>');
+  await o.p.$eval('#f', (f, d) => { f.srcdoc = d; }, previewDocument(L));
+  const fr = await (await o.p.$('#f')).contentFrame();
+  await until(async () => fr.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false), 8000);
+  await sleep(500);
+  const s = await fr.evaluate(() => DECK.live && DECK.live.state());
+  const a = await fr.evaluate(() => { const e = document.querySelector('#live-pane .lv-addr'); return e ? e.textContent : ''; });
+  ok(s && s.context === 'framed' && a.includes('r-7k2q6xw4') && a.includes(host), `editor preview (sandboxed srcdoc): no connection; the room's address is shown as text ("${a}")`);
+  ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'editor preview: no Join button');
+  quiet(o.net, 'editor preview'); await o.close(); }
+
+{ fake.reset(); const o = await open(fileUrl(files['default-loopback.html'])); await sleep(1000);
+  await o.p.click('#live-pane .lv-join', { timeout: 500 }).catch(() => {}); await sleep(500);
+  ok(!(await o.p.$('#live-pane')), 'shipped player with an http://127.0.0.1 endpoint: the room is ignored (no pane, no Join)');
+  quiet(o.net, 'shipped player with an http://127.0.0.1 endpoint'); await o.close(); }
+console.log('connect from file://');
+const sent = () => fake.messages.slice();
+{ fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await o.p.fill('#live-pane .lv-name', 'Aiko');
+  await o.p.click('#live-pane .lv-join');
+  ok(await until(async () => (await st(o.p)).state === 'connected'), 'Join: connected');
+  const c = fake.connections[0];
+  ok(fake.connections.length === 1 && c.origin === 'null' && c.query.room === 'r-7k2q6xw4' && c.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && LP.RE.pid.test(c.query.pid) && Object.keys(c.query).length === 3,
+    `file:// connects with Origin null and only room, key and pid in the address (origin ${c && c.origin})`);
+  ok(o.net.ws.length === 1 && o.net.ws[0].startsWith(fake.endpoint.replace('http', 'ws') + '/ws?'), 'the WebSocket goes to the declared endpoint');
+  ok(await until(() => fake.messages.some((m) => m.t === 'name' && m.name === 'Aiko')), 'the typed name is sent (only because it was typed)');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'つながっています') && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Disconnect is shown with the indicator');
+  ok(await o.p.$eval('#live-pane', (e) => e.getAttribute('data-state')) === 'connected', 'connected: the persistent indicator');
+  const before = sent().length;
+  for (let n = 0; n < 3; n++) await o.p.keyboard.press('ArrowRight');
+  await sleep(400);
+  ok(sent().length === before, 'moving through the lesson sends nothing (no position, no timing)');
+  // 質問（"*" の Q&A：送るときの段階）
+  const key = (await st(o.p)).step;
+  await o.p.fill('#live-pane textarea', '勾配が消えるのはなぜですか？');
+  await o.p.click('#live-pane .lv-send');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '質問を送りました'), 'ask → ack: "question sent" in the live region');
+  const askM = fake.messages.find((m) => m.t === 'ask');
+  ok(askM && askM.activity === 'qa' && askM.step === key && askM.text === '勾配が消えるのはなぜですか？', `ask: the step key is the one on screen when sent (${askM && askM.step})`);
+  ok(await o.p.$eval('#live-pane textarea', (e) => e.value === ''), 'ask: the box is cleared after the ack');
+  // 投票：その段階に来たときだけ
+  await o.p.keyboard.press('Home'); await sleep(300);
+  ok(!(await o.p.$('#live-pane fieldset[data-poll="p1"]')), 'poll: not shown before its step');
+  await o.p.evaluate((k) => { for (let i = 0; i < DECK.slides.length; i++) for (let j = 0; j <= 9; j++) { try { if (DECK.stepKey(i, j) === k) { DECK.go(i, j, false); return; } } catch (e) {} } }, POLL_STEP);
+  ok(await until(async () => !!(await o.p.$('#live-pane fieldset[data-poll="p1"]'))), 'poll: appears when its step is reached (deck:pos)');
+  ok(await o.p.$eval('#live-pane fieldset[data-poll="p1"] legend', (e) => e.textContent) === '学習率を大きくすると？', 'poll: the prompt is shown as text');
+  await o.p.check('#live-pane fieldset[data-poll="p1"] input[value="1"]');
+  await o.p.click('#live-pane fieldset[data-poll="p1"] .lv-vote');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '投票しました'), 'vote → ack: "vote recorded" in the live region');
+  const voteM = fake.messages.find((m) => m.t === 'vote');
+  ok(voteM && voteM.activity === 'p1' && voteM.step === POLL_STEP && voteM.choice === 1, 'vote: activity, step and the 0-based choice');
+  const all = sent();
+  ok(all.length > 0 && all.every((m) => sv('learnerToServer')(m)), `every message the player sent is a learnerToServer message in the vendored schema (${all.map((m) => m.t).join(',')})`);
+  ok(all.every((m) => ['ask', 'vote', 'name', 'ping'].includes(m.t)), 'only ask, vote, name and ping are sent');
+  // サーバーの字は HTML にしない
+  fake.send({ v: 1, t: 'shown', items: [{ id: 'q-abcdefghij', activity: 'qa', step: '*', text: '<img src=x onerror="window.__pwn=1"><b>x</b>' }] });
+  ok(await until(async () => (await o.p.$$eval('#live-pane .lv-shown li', (l) => l.map((x) => x.textContent))).includes('<img src=x onerror="window.__pwn=1"><b>x</b>')), 'shown questions are text (textContent)');
+  ok(!(await o.p.evaluate(() => window.__pwn)) && !(await o.p.$('#live-pane img, #live-pane b')), 'no markup from the server reaches the page');
+  // つなぎ直し：再試行してよい切断（1011）
+  const n0 = fake.connections.length;
+  fake.drop(1011);
+  ok(await until(async () => (await st(o.p)).state === 'retrying', 2000), 'after a network close (1011): retrying');
+  ok(await until(() => fake.connections.length === n0 + 1, 4000) && await until(async () => (await st(o.p)).state === 'connected'), 'reconnects with backoff after 1011');
+  ok(fake.connections[fake.connections.length - 1].query.pid === c.query.pid, 'reconnect: the same pid (kept on the device)');
+  // 切断する
+  await o.p.click('#live-pane .lv-leave');
+  ok(await until(() => fake.open === 0) && (await st(o.p)).state === 'off', 'Disconnect: closes the socket');
+  const n1 = fake.connections.length; await sleep(1800);
+  ok(fake.connections.length === n1, 'Disconnect: no reconnect');
+  ok(o.net.req.length === 0 && o.net.errors.length === 0, `no HTTP request and no page error (${o.net.errors.join('; ')})`);
+  ok(o.net.csp.length === 0, `the player needs nothing its CSP forbids (${o.net.csp.slice(0, 2).join('; ')})`);
+  await o.close(); }
+// 止める切断の番号
+for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'room_expired', false], [4441, 'not_approved', true], [4403, 'bad_key', false]]) {
+  fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await o.p.click('#live-pane .lv-join');
+  await until(async () => (await st(o.p)).state === 'connected');
+  fake.drop(code);
+  const stopped = await until(async () => (await st(o.p)).state === 'stopped');
+  ok(stopped, `${code}: stopped${stopped ? '' : ' ' + JSON.stringify(await st(o.p)) + ' ' + JSON.stringify(fake.connections)}`);
+  await sleep(2500);
+  const s = await st(o.p), msg = await o.p.$eval('#live-pane .lv-msg', (e) => e.textContent);
+  ok(fake.connections.length === 1 && s.reason === reason && msg.length > 4, `${code} (${reason}): no reconnect, with a message ("${msg}")`);
+  ok((await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && !b.closest('[hidden]'))) === rejoin, `${code}: Join again is ${rejoin ? '' : 'not '}offered`);
+  if (code === 4441) ok(msg === '先生が参加を認めませんでした' && await o.p.$eval('#live-pane .lv-join', (b) => b.textContent) === 'もう一度試す', '4441: "the teacher did not admit you" with a manual Try again');
+  await o.close();
+}
+// 先生が閉じた（4423）：ゆっくり（30 秒より後）つなぎ直す
+{ fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await o.p.click('#live-pane .lv-join');
+  await until(async () => (await st(o.p)).state === 'connected');
+  fake.drop(4423);
+  ok(await until(async () => (await st(o.p)).state === 'retrying'), '4423 (room closed): waits to reconnect');
+  const s = await st(o.p);
+  ok(s.retryIn >= 29000 && s.retryIn <= 37000 && fake.connections.length === 1, `4423: the next try is at least 30 s later (${s.retryIn} ms)`);
+  await o.close(); }
+// 承認待ち
+{ fake.reset(); fake.setApproval(true); const o = await open(fileUrl(files['live.html']));
+  await o.p.click('#live-pane .lv-join');
+  ok(await until(async () => (await st(o.p)).state === 'waiting'), 'waiting welcome: a waiting state (not an error)');
+  ok(await o.p.$eval('#live-pane .lv-qa', (e) => e.hidden), 'waiting: no question box yet');
+  fake.admitAll();
+  ok(await until(async () => (await st(o.p)).state === 'connected') && await o.p.$eval('#live-pane .lv-qa', (e) => !e.hidden), 'admitted: connected, the question box appears');
+  fake.setApproval(false); await o.close(); }
+// このタブのあいだだけ覚える：読み直すと押さずにつながる。新しいタブ（別の文脈）では押すまでつながない
+{ fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await o.p.click('#live-pane .lv-join'); await until(async () => (await st(o.p)).state === 'connected');
+  await o.p.reload(); await o.p.waitForFunction(() => window.DECK && DECK.ready);
+  ok(await until(async () => (await st(o.p)).state === 'connected') && fake.connections.length === 2, 'reload in the same tab: rejoins (the choice is kept for the session)');
+  await o.close();
+  fake.reset(); const o2 = await open(fileUrl(files['live.html'])); await sleep(1200);
+  quiet(o2.net, 'a new session'); await o2.close(); }
+// localStorage が使えなくても（メモリの pid）
+{ fake.reset(); const o = await open(null);
+  await o.p.addInitScript(() => { const bad = { get() { throw new Error('denied'); } }; Object.defineProperty(window, 'localStorage', bad); Object.defineProperty(window, 'sessionStorage', bad); });
+  await o.p.goto(fileUrl(files['live.html'])); await o.p.waitForFunction(() => window.DECK && DECK.ready);
+  await o.p.click('#live-pane .lv-join');
+  ok(await until(async () => (await st(o.p)).state === 'connected') && LP.RE.pid.test(fake.connections[0].query.pid), 'storage denied: joins with an in-memory pid');
+  ok(o.net.errors.length === 0, `storage denied: no page error (${o.net.errors.join('; ')})`);
+  await o.close(); }
+
+console.log('stage rendering');
+{ const A = await open(fileUrl(files['plain.html'])), B = await open(fileUrl(files['live.html']));
+  // 舞台だけ：画面の端に付く操作の表示（進み具合の線・操作の帯・知らせ）は舞台の外のもの（窓の座標で置かれる）なので、両方で隠して比べる
+  for (const o of [A, B]) await o.p.addStyleTag({ content: '#bar,#jump,#dt-cb,#dt-ind,#deck-toast,#deck-back{visibility:hidden!important}' });
+  const positions = [[0, 0, null], [1, 0, 0.3], [1, 1, null], [2, 0, 0.2], [3, 1, null], [5, 0, null]];
+  const shot = async (o, [i, k, t]) => {
+    await o.p.evaluate(([i, k, t]) => DECK.seek(i, Math.min(k, DECK.slides[i]._max || 0), t === null ? Infinity : t), [i, k, t]);
+    await o.p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+    const b = await o.p.$eval('#stage', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; });
+    return { b, h: crypto.createHash('sha256').update(await o.p.screenshot({ clip: b })).digest('hex') };
+  };
+  let same = 0;
+  for (const pos of positions) { const a = await shot(A, pos), b = await shot(B, pos); if (a.h === b.h && a.b.width === b.b.width) same++; else console.log('    differs at', pos, a.b, b.b); }
+  ok(same === positions.length, `stage-only frames are identical with and without the live room at ${positions.length} (i, k, t)`);
+  const pr = await B.p.$eval('#live-pane', (e) => e.getBoundingClientRect().left), sr = await B.p.$eval('#stage', (e) => e.getBoundingClientRect().right);
+  ok(sr <= pr + 0.5, `the pane is outside the stage (stage right ${sr}, pane left ${pr})`);
+  // 縦長の画面：下の板、舞台は上に収める
+  await B.p.setViewportSize({ width: 600, height: 900 }); await sleep(200);
+  const pb = await B.p.$eval('#live-pane', (e) => e.getBoundingClientRect().top), sb = await B.p.$eval('#stage', (e) => e.getBoundingClientRect().bottom);
+  ok(sb <= pb + 0.5 && await B.p.evaluate(() => document.documentElement.classList.contains('lv-bottom')), `portrait: the pane is below the stage (stage bottom ${sb}, pane top ${pb})`);
+  // キーボード：板のボタンに Tab で届く
+  await B.p.setViewportSize({ width: 1640, height: 720 });
+  let reached = false;
+  for (let n = 0; n < 40 && !reached; n++) { await B.p.keyboard.press('Tab'); reached = await B.p.evaluate(() => !!(document.activeElement && document.activeElement.closest('#live-pane .lv-join'))); }
+  ok(reached, 'keyboard: Join is reachable with Tab');
+  ok(B.net.csp.length === 0 && B.net.errors.length === 0, `stage test: no CSP violation and no page error in the live derivative (${B.net.csp.concat(B.net.errors).slice(0, 2).join('; ')})`);
+  await A.close(); await B.close(); }
+// 発表者ビュー：部屋の CSP（frame-src）の下でも、中の 2 つの画面が動く
+{ const o = await open(fileUrl(files['live.html']) + '?presenter=1', { ready: false });
+  const okFrames = await until(async () => { let n = 0; for (const f of o.p.frames()) { try { if (/[?&]view=(follow|next)/.test(f.url()) && await f.evaluate(() => !!(window.DECK && DECK.ready))) n++; } catch { /* 読み込み中 */ } } return n === 2; }, 8000);
+  ok(okFrames && o.net.csp.length === 0, `presenter view of a live derivative: both frames run under its CSP (${o.net.csp.slice(0, 1).join('')})`);
+  await o.close(); }
+
+await browser.close();
+await fake.close();
+console.log(fails ? `\ntest-live: ${fails} FAILED` : '\ntest-live: all ok');
+process.exit(fails ? 1 : 0);

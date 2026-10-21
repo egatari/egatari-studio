@@ -26,6 +26,11 @@ export const FORMAT = Object.freeze({
   SCHEMA_BASE: 'https://egatari.org/schema/',         // Schema の $id の前置（試験は写しを $id で引く。ネットワークは使わない）
   SPEC_URL: 'https://github.com/egatari/egatari-spec',
   VENDOR_DIR: `vendor/${NAME}-spec`,                  // 仕様の Schema と試験用の入力の写し（リポジトリの根から）
+  // 授業の部屋（拡張 live。仕様の extensions/live.md）：既定の部屋のサービス・通信の約束（egatari/live の protocol/）の写し・再生器の記憶の鍵の前置
+  LIVE_ENDPOINT: `https://live.${NAME}.org`,
+  LIVE_REPO: `https://github.com/${NAME}/live`,
+  LIVE_VENDOR_DIR: `vendor/${NAME}-live-protocol`,
+  LIVE_STORE_PREFIX: `${NAME}-live-`,                 // 再生器の localStorage（pid）と sessionStorage（参加した）の鍵の前置（<prefix>pid:<room> など）
 });
 // 実行系（kit/deck.js）に渡す分（build-core が DECK.FORMAT として埋め込む）
 export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID,

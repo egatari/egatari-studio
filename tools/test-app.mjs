@@ -26,6 +26,7 @@ import { makeFixtures, silentWav } from './portable-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
+import { testAppLive } from './test-app-live.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
@@ -492,6 +493,9 @@ try {
   const expName = await page.evaluate(() => window.__APP_TEST.lastSaveName);
   ok(titleOf(exp) && expName === exportName(titleOf(exp), 'deck', '.html') && expName !== 'deck.html', `export: the default file name is the deck title (${expName})`);
   await ep.close();
+
+  // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
+  await testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame: f, shot });
 
   // ---------------------------------------------------------------- 9. 発表者ビュー
   await f.evaluate(() => DECK.go(1, 0, false));
@@ -1528,7 +1532,9 @@ try {
       ok(!s.error && /「テーマのフォルダを選ぶ…」/.test(themeWarn(s) || ''), 'theme folder: the build warns theme not found and names "Choose theme folder…": ' + (themeWarn(s) || '').slice(0, 90));
       ok(await po.isVisible('#notice-theme') && await po.isVisible('#notice-theme #b-theme-choose') && (await po.textContent('#notice-theme')).includes('mytml'), 'theme folder: the notice names the missing theme and offers "Choose theme folder…"');
       if (SHOTS) { await slidesNow(); await po.waitForTimeout(300); await po.screenshot({ path: path.join(SHOTS, 'theme-folder-prompt.png') }); }
-      // 警告の一覧にも同じボタン
+      // 警告の一覧にも同じボタン。プレビューの読み込みが終わるのを待ってから板を開く：読み込み中に開くと、閉じる押下が
+      // 読み直し中の iframe に届いてしまう（測定済み。試験の競合で、アプリの不具合ではない）
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
       await po.click('#b-warn');
       ok(await po.isVisible('#panel-body .theme-warn #b-theme-choose'), 'theme folder: the theme warning in the warnings panel has the button too');
       await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));

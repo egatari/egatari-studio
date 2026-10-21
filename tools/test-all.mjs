@@ -64,6 +64,8 @@ const steps = [
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
   ['test-attachments', ['tools/test-attachments.mjs', path.join(tmp, 'attachments'), '--shots', path.join(tmp, 'attachments-shots')]],
+  // 授業の部屋（拡張 live）：決まりごと・部屋を付けた派生だけの CSP・通信なしの場面・file:// から試験の部屋へ・つなぎ直し・舞台の描画が変わらない
+  ['test-live', ['tools/test-live.mjs', path.join(tmp, 'live')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）

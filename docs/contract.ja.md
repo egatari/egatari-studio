@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=347134a8d0931b0c -->
+<!-- i18n: pair=contract.md sha256=ec834dc5e72e2c21 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -178,3 +178,12 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 - 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）を、この 4 つの検査で知らせてはならない。縦横どちらの向きにも効く。ほかの検査（`bodyBottom`・`smallText` など）も表示も変えてはならない
 - 本文が下にはみ出すスライド（`bodyBottom`）では、`.body` の中の字がスライドの外に出ることを重ねて知らせない（スライドの端の `svgTextOut`）。本文を減らせばどちらも直る
 - 書き手は `data-clip` を、切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
+
+## 11. 授業の部屋の板（拡張 live。下書き）
+
+授業の部屋を付けて書き出した再生専用の写しにだけ、部屋の再生器（`kit/live.js` と `kit/core/live-policy.mjs`。`kit/core/live.mjs` が入れる）が入る。ほかの出力は変わらない。ふるまいの正本は形式の[拡張 `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md)、通信は [egatari/live](https://github.com/egatari/live)。ここに書くのは Studio の実行系の約束。
+
+- 板は舞台の外：`#live-pane` は右（縦長の窓では下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）では板を作らず、印刷では隠す
+- `deck:pos`（`detail.key`）は、どの投票を出すかを決めるためだけに聞く。位置や時間は送らない。時計（つなぎ直し・つながりを保つ ping・窓の終わり）を使うが、舞台に何も描かないので許される
+- endpoint は `https:` でなければならない。ループバックの `http:` を許すのは、試験が `buildPortable(…, {liveDevLoopback: true})`（コマンドの引数にはしない）で組む開発版の再生器だけ。切り替えは `kit/core/live-policy.mjs` の定数で、その組み立てだけが入れる。配る教材の再生器・編集アプリの書き出し・`kit/build.mjs --live` は `http:` を断る
+- つなぐのは「参加する」の後、窓の中（2 分のゆとり）で、枠の中でない `file:`・`http(s):` の文書のうち、CSP の `<meta>` がちょうど 1 つでその `connect-src` が endpoint と同じものだけ。ほか（枠・`srcdoc`・sandbox やプレビューの文書）では部屋の場所を字で見せる

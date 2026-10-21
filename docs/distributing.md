@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=dfebe355e074e36b -->
+<!-- i18n: pair=distributing.ja.md sha256=05d2cbafbebf9284 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -16,3 +16,26 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the single file or the working folder to edit later; a play-only copy cannot be edited
 - **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-verified --> Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet. **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+
+## Live room (questions and polls in class, draft)
+
+A play-only copy can carry a **live room** ([format extension `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md), draft): during a time window you choose, learners who open the file can send questions and answer polls from the lesson itself, without an app or an account. It is the only part of a lesson that uses the network, and only after the learner presses **Join**.
+
+1. **Create a room** on the teacher page of the room service (default `https://live.egatari.org`; the service and its protocol are [egatari/live](https://github.com/egatari/live)). Choose the window. Bookmark the teacher link it shows once (it carries the teacher key; there is no recovery).
+2. In the editor, **Export ▾ → Distribute with a live room…**. Paste the text from the teacher page's **Copy** button (room, learner key, window). Turn Q&A on or off for the whole lesson and add polls per step (a question and 2–6 choices; **Step in the preview** takes the step on screen).
+3. **Copy activities JSON** and paste it into **Activities** on the teacher page, so the room knows the same polls (it refuses votes for activities or choices it does not know).
+4. **Export with the live room…** writes the play-only copy. Hand it out as usual (download, then open in a browser).
+
+What the learner's copy does:
+
+- **Nothing on the network unless** the file has a room, the time is inside the window (2 minutes of leeway at both ends) and the file is opened directly in a browser (from a file or a web address). In the editor's preview, inside another page (an LMS or an embed), in video mode (`?mode=video`), in print and in the presenter view it never connects; in previews and frames it shows the room's address as text instead.
+- **One tap before joining.** The pane says which service the lesson connects to and offers **Join**. While connected it shows a persistent indicator and **Disconnect**. The choice is remembered for the browser tab only; a new tab asks again.
+- **Sends only** questions and votes the learner chooses to send, a name if they type one, a random id made on the device (kept in the browser's storage, or in memory when storage is not allowed) and keep-alive pings. It never sends the viewing position or timing. For a Q&A for the whole lesson, the step key on screen when the learner presses Send is attached to that question.
+- **Outside the stage.** Activities appear in a pane at the right (at the bottom on tall screens); the slides are fitted into the rest, so slides, captions, marks, video frames and print are unchanged. A poll appears when its step is reached. Everything from the server is shown as text.
+- **Reconnects** only inside the window, following the room service's table: after network failures with increasing delays (1, 2, 4 … 30 s, ±20 %); when the teacher closed the room (4423) slowly, after at least 30 s; when the room is full (4430) or after “too many messages” (4429) after at least 60 s; when it is too early (4425) at the opening time. It stops with a message, and does not reconnect by itself, when the key was replaced (4440), the window is over or the room is gone (4410, 4404), the key is wrong (4403), the same learner joined elsewhere (4409) or the teacher did not admit the learner (4441; **Try again** is offered). While the teacher has not yet admitted a learner (approval required) the pane shows a waiting state.
+- **Room size.** A room of the reference service takes up to 60 learners at once and a window of at most 3 hours; the editor refuses a longer window.
+- **Restricted connections.** The copy has a content security policy whose `connect-src` is exactly the room service (`https://` and `wss://` of its host); the player also checks that the WebSocket address has the declared origin. Nothing (scripts, styles, images) is loaded from the service.
+
+The lesson itself keeps the settings without the key (`extensions.live` in `egatari.json`, and in the single file's index); the learner key goes only into the exported copy. Anyone holding the copy can join while the room is open; replace the key on the teacher page to lock out copies that leaked (they then show a clear message). From the command line: `node kit/build.mjs <deck> --play-only --live room.json` (`room.json` is the text from the teacher page's Copy button; polls come from `egatari.json`'s `extensions.live`, otherwise from `room.json`).
+
+**Rehearse before class:** create a room whose window starts now, export, open the copy on two devices, join, send a question and vote, and check the teacher page shows them.

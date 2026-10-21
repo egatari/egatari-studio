@@ -1,0 +1,1370 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://live.egatari.org/protocol/v1/schema.json",
+ "title": "Egatari Live protocol v1",
+ "description": "Messages and HTTP bodies of Egatari Live v1. Use #/$defs/learnerToServer, serverToLearner, teacherToServer, serverToTeacher, createRequest, createResponse, results, httpError. See PROTOCOL.md.",
+ "$defs": {
+  "ref": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{1,32}$",
+   "description": "client-chosen correlation id, echoed in ack/error"
+  },
+  "room": {
+   "type": "string",
+   "pattern": "^r-[a-z2-7]{8}$"
+  },
+  "key": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{22,64}$",
+   "description": "learner capability (base64url)"
+  },
+  "adminKey": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{43,64}$",
+   "description": "teacher secret (base64url); never in a file"
+  },
+  "pid": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{16,43}$",
+   "description": "random participant id generated on the device"
+  },
+  "activityId": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{1,32}$"
+  },
+  "stepKey": {
+   "type": "string",
+   "pattern": "^(\\*|[^\\u0000-\\u001f\\u007f:]{1,80}:[^\\u0000-\\u001f\\u007f:]{1,16})$",
+   "description": "slideKey:stepKey, or * for the whole lesson"
+  },
+  "itemId": {
+   "type": "string",
+   "pattern": "^q-[a-z2-7]{10}$"
+  },
+  "datetime": {
+   "type": "string",
+   "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,9})?)?(Z|[+-]\\d{2}:\\d{2})$",
+   "description": "RFC 3339 with offset"
+  },
+  "window": {
+   "type": "object",
+   "properties": {
+    "from": {
+     "$ref": "#/$defs/datetime"
+    },
+    "to": {
+     "$ref": "#/$defs/datetime"
+    }
+   },
+   "required": [
+    "from",
+    "to"
+   ],
+   "additionalProperties": false
+  },
+  "activity": {
+   "oneOf": [
+    {
+     "type": "object",
+     "properties": {
+      "id": {
+       "$ref": "#/$defs/activityId"
+      },
+      "kind": {
+       "const": "qa"
+      }
+     },
+     "required": [
+      "id",
+      "kind"
+     ],
+     "additionalProperties": false
+    },
+    {
+     "type": "object",
+     "properties": {
+      "id": {
+       "$ref": "#/$defs/activityId"
+      },
+      "kind": {
+       "const": "poll"
+      },
+      "prompt": {
+       "type": "string",
+       "maxLength": 300
+      },
+      "choices": {
+       "type": "array",
+       "items": {
+        "type": "string",
+        "maxLength": 100
+       },
+       "maxItems": 12
+      }
+     },
+     "required": [
+      "id",
+      "kind"
+     ],
+     "additionalProperties": false
+    }
+   ]
+  },
+  "activities": {
+   "type": "object",
+   "propertyNames": {
+    "$ref": "#/$defs/stepKey"
+   },
+   "additionalProperties": {
+    "type": "array",
+    "items": {
+     "$ref": "#/$defs/activity"
+    }
+   },
+   "description": "extensions.live.activities"
+  },
+  "shownItem": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "$ref": "#/$defs/itemId"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "text": {
+     "type": "string",
+     "maxLength": 500
+    }
+   },
+   "required": [
+    "id",
+    "activity",
+    "step",
+    "text"
+   ],
+   "additionalProperties": false
+  },
+  "item": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "$ref": "#/$defs/itemId"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "text": {
+     "type": "string",
+     "maxLength": 500
+    },
+    "pid": {
+     "$ref": "#/$defs/pid"
+    },
+    "name": {
+     "type": "string",
+     "maxLength": 40
+    },
+    "at": {
+     "$ref": "#/$defs/datetime"
+    },
+    "read": {
+     "type": "boolean"
+    },
+    "answered": {
+     "type": "boolean"
+    },
+    "shown": {
+     "type": "boolean"
+    },
+    "hidden": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "id",
+    "activity",
+    "step",
+    "text",
+    "pid",
+    "name",
+    "at",
+    "read",
+    "answered",
+    "shown",
+    "hidden"
+   ],
+   "additionalProperties": false
+  },
+  "waiting": {
+   "type": "object",
+   "properties": {
+    "pid": {
+     "$ref": "#/$defs/pid"
+    },
+    "name": {
+     "type": "string",
+     "maxLength": 40
+    },
+    "since": {
+     "$ref": "#/$defs/datetime"
+    }
+   },
+   "required": [
+    "pid",
+    "name",
+    "since"
+   ],
+   "additionalProperties": false
+  },
+  "tally": {
+   "type": "object",
+   "properties": {
+    "counts": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "maxItems": 12
+    },
+    "total": {
+     "type": "integer",
+     "minimum": 0
+    }
+   },
+   "required": [
+    "counts",
+    "total"
+   ],
+   "additionalProperties": false
+  },
+  "errorCode": {
+   "enum": [
+    "bad_message",
+    "too_large",
+    "unsupported_version",
+    "unknown_type",
+    "unknown_activity",
+    "wrong_kind",
+    "bad_choice",
+    "text_too_long",
+    "empty_text",
+    "rate_limited",
+    "quota_exceeded",
+    "room_limit",
+    "not_admitted",
+    "not_found",
+    "bad_request",
+    "unauthorized",
+    "forbidden",
+    "window_too_long",
+    "room_too_large",
+    "turnstile_required",
+    "turnstile_failed",
+    "unavailable"
+   ]
+  },
+  "limits": {
+   "type": "object",
+   "properties": {
+    "messageBytes": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "questionChars": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "nameChars": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "questionsPerParticipant": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "burst": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "refillMs": {
+     "type": "integer",
+     "minimum": 0
+    }
+   },
+   "required": [
+    "messageBytes",
+    "questionChars",
+    "nameChars",
+    "questionsPerParticipant",
+    "burst",
+    "refillMs"
+   ],
+   "additionalProperties": false
+  },
+  "l.ask": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "ask"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 500
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activity",
+    "step",
+    "text"
+   ],
+   "additionalProperties": false
+  },
+  "l.vote": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "vote"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "choice": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 11
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activity",
+    "step",
+    "choice"
+   ],
+   "additionalProperties": false
+  },
+  "l.name": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "name"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "name": {
+     "type": "string",
+     "maxLength": 40
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "name"
+   ],
+   "additionalProperties": false
+  },
+  "l.ping": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "ping"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "s.welcome": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "welcome"
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "pid": {
+     "$ref": "#/$defs/pid"
+    },
+    "status": {
+     "enum": [
+      "admitted",
+      "waiting"
+     ]
+    },
+    "window": {
+     "$ref": "#/$defs/window"
+    },
+    "shown": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/shownItem"
+     },
+     "maxItems": 50
+    },
+    "limits": {
+     "$ref": "#/$defs/limits"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "room",
+    "pid",
+    "status",
+    "window",
+    "shown",
+    "limits"
+   ],
+   "additionalProperties": false
+  },
+  "s.admitted": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "admitted"
+    },
+    "shown": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/shownItem"
+     },
+     "maxItems": 50
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "shown"
+   ],
+   "additionalProperties": false
+  },
+  "s.shown": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "shown"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/shownItem"
+     },
+     "maxItems": 50
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "items"
+   ],
+   "additionalProperties": false
+  },
+  "s.ack": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "ack"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "item": {
+     "$ref": "#/$defs/itemId"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "s.error": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "error"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "code": {
+     "$ref": "#/$defs/errorCode"
+    },
+    "message": {
+     "type": "string",
+     "maxLength": 200
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "code"
+   ],
+   "additionalProperties": false
+  },
+  "s.pong": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "pong"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.auth": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "auth"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "adminKey": {
+     "$ref": "#/$defs/adminKey"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "adminKey"
+   ],
+   "additionalProperties": false
+  },
+  "t.state": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "state"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.open": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "open"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.close": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "close"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.rekey": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "rekey"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.admitAll": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "admitAll"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    }
+   },
+   "required": [
+    "v",
+    "t"
+   ],
+   "additionalProperties": false
+  },
+  "t.approval": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "approval"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "required": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "required"
+   ],
+   "additionalProperties": false
+  },
+  "t.admit": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "admit"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "pid": {
+     "$ref": "#/$defs/pid"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "pid"
+   ],
+   "additionalProperties": false
+  },
+  "t.deny": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "deny"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "pid": {
+     "$ref": "#/$defs/pid"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "pid"
+   ],
+   "additionalProperties": false
+  },
+  "t.mark": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "mark"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "item": {
+     "$ref": "#/$defs/itemId"
+    },
+    "read": {
+     "type": "boolean"
+    },
+    "answered": {
+     "type": "boolean"
+    },
+    "shown": {
+     "type": "boolean"
+    },
+    "hidden": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "item"
+   ],
+   "additionalProperties": false
+  },
+  "t.activities": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "activities"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activities"
+   ],
+   "additionalProperties": false
+  },
+  "people": {
+   "type": "object",
+   "properties": {
+    "connected": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "waiting": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/waiting"
+     }
+    }
+   },
+   "required": [
+    "connected",
+    "waiting"
+   ],
+   "additionalProperties": false
+  },
+  "st.state": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "state"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "key": {
+     "$ref": "#/$defs/key"
+    },
+    "window": {
+     "$ref": "#/$defs/window"
+    },
+    "graceHours": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 168
+    },
+    "expiresAt": {
+     "$ref": "#/$defs/datetime"
+    },
+    "open": {
+     "type": "boolean"
+    },
+    "requireApproval": {
+     "type": "boolean"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    },
+    "people": {
+     "$ref": "#/$defs/people"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/item"
+     },
+     "maxItems": 1000
+    },
+    "tallies": {
+     "type": "object",
+     "propertyNames": {
+      "$ref": "#/$defs/activityId"
+     },
+     "additionalProperties": {
+      "$ref": "#/$defs/tally"
+     }
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "room",
+    "key",
+    "window",
+    "graceHours",
+    "expiresAt",
+    "open",
+    "requireApproval",
+    "activities",
+    "people",
+    "items",
+    "tallies"
+   ],
+   "additionalProperties": false
+  },
+  "st.people": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "people"
+    },
+    "connected": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "waiting": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/waiting"
+     }
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "connected",
+    "waiting"
+   ],
+   "additionalProperties": false
+  },
+  "st.item": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "item"
+    },
+    "item": {
+     "$ref": "#/$defs/item"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "item"
+   ],
+   "additionalProperties": false
+  },
+  "st.tally": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "tally"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "counts": {
+     "type": "array",
+     "items": {
+      "type": "integer",
+      "minimum": 0
+     }
+    },
+    "total": {
+     "type": "integer",
+     "minimum": 0
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activity",
+    "counts",
+    "total"
+   ],
+   "additionalProperties": false
+  },
+  "st.rekeyed": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "rekeyed"
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "key": {
+     "$ref": "#/$defs/key"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "room",
+    "key"
+   ],
+   "additionalProperties": false
+  },
+  "createRequest": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "window": {
+     "$ref": "#/$defs/window",
+     "description": "at most 3 hours long (window_too_long)"
+    },
+    "graceHours": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 168
+    },
+    "requireApproval": {
+     "type": "boolean"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    },
+    "size": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 60,
+     "description": "expected learners; larger rooms are refused with room_too_large"
+    },
+    "turnstile": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 2048,
+     "description": "Cloudflare Turnstile token from the create page (required by the reference service)"
+    }
+   },
+   "required": [
+    "window",
+    "turnstile"
+   ],
+   "additionalProperties": false
+  },
+  "createResponse": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "endpoint": {
+     "type": "string",
+     "pattern": "^https?://"
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "key": {
+     "$ref": "#/$defs/key"
+    },
+    "adminKey": {
+     "$ref": "#/$defs/adminKey"
+    },
+    "window": {
+     "$ref": "#/$defs/window"
+    },
+    "graceHours": {
+     "type": "number"
+    },
+    "expiresAt": {
+     "$ref": "#/$defs/datetime"
+    },
+    "requireApproval": {
+     "type": "boolean"
+    },
+    "teacherUrl": {
+     "type": "string",
+     "pattern": "/room#room=r-[a-z2-7]{8}&admin="
+    }
+   },
+   "required": [
+    "v",
+    "endpoint",
+    "room",
+    "key",
+    "adminKey",
+    "window",
+    "graceHours",
+    "expiresAt",
+    "requireApproval",
+    "teacherUrl"
+   ],
+   "additionalProperties": false
+  },
+  "response": {
+   "oneOf": [
+    {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "const": "qa"
+      },
+      "activity": {
+       "$ref": "#/$defs/activityId"
+      },
+      "step": {
+       "$ref": "#/$defs/stepKey"
+      },
+      "pid": {
+       "$ref": "#/$defs/pid"
+      },
+      "name": {
+       "type": "string",
+       "maxLength": 40
+      },
+      "at": {
+       "$ref": "#/$defs/datetime"
+      },
+      "id": {
+       "$ref": "#/$defs/itemId"
+      },
+      "text": {
+       "type": "string",
+       "maxLength": 500
+      },
+      "read": {
+       "type": "boolean"
+      },
+      "answered": {
+       "type": "boolean"
+      },
+      "shown": {
+       "type": "boolean"
+      },
+      "hidden": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "kind",
+      "activity",
+      "step",
+      "pid",
+      "at",
+      "id",
+      "text",
+      "read",
+      "answered",
+      "shown",
+      "hidden"
+     ],
+     "additionalProperties": false
+    },
+    {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "const": "poll"
+      },
+      "activity": {
+       "$ref": "#/$defs/activityId"
+      },
+      "step": {
+       "$ref": "#/$defs/stepKey"
+      },
+      "pid": {
+       "$ref": "#/$defs/pid"
+      },
+      "name": {
+       "type": "string",
+       "maxLength": 40
+      },
+      "at": {
+       "$ref": "#/$defs/datetime"
+      },
+      "choice": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 11
+      }
+     },
+     "required": [
+      "kind",
+      "activity",
+      "step",
+      "pid",
+      "at",
+      "choice"
+     ],
+     "additionalProperties": false
+    }
+   ]
+  },
+  "results": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "window": {
+     "$ref": "#/$defs/window"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    },
+    "responses": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/response"
+     }
+    },
+    "exportedAt": {
+     "$ref": "#/$defs/datetime"
+    }
+   },
+   "required": [
+    "v",
+    "room",
+    "window",
+    "activities",
+    "responses",
+    "exportedAt"
+   ],
+   "additionalProperties": false
+  },
+  "httpError": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "error": {
+     "$ref": "#/$defs/errorCode"
+    },
+    "message": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "v",
+    "error"
+   ],
+   "additionalProperties": false
+  },
+  "learnerToServer": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/l.ask"
+    },
+    {
+     "$ref": "#/$defs/l.vote"
+    },
+    {
+     "$ref": "#/$defs/l.name"
+    },
+    {
+     "$ref": "#/$defs/l.ping"
+    }
+   ]
+  },
+  "serverToLearner": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/s.welcome"
+    },
+    {
+     "$ref": "#/$defs/s.admitted"
+    },
+    {
+     "$ref": "#/$defs/s.shown"
+    },
+    {
+     "$ref": "#/$defs/s.ack"
+    },
+    {
+     "$ref": "#/$defs/s.error"
+    },
+    {
+     "$ref": "#/$defs/s.pong"
+    }
+   ]
+  },
+  "teacherToServer": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/t.auth"
+    },
+    {
+     "$ref": "#/$defs/t.state"
+    },
+    {
+     "$ref": "#/$defs/t.open"
+    },
+    {
+     "$ref": "#/$defs/t.close"
+    },
+    {
+     "$ref": "#/$defs/t.rekey"
+    },
+    {
+     "$ref": "#/$defs/t.admitAll"
+    },
+    {
+     "$ref": "#/$defs/t.approval"
+    },
+    {
+     "$ref": "#/$defs/t.admit"
+    },
+    {
+     "$ref": "#/$defs/t.deny"
+    },
+    {
+     "$ref": "#/$defs/t.mark"
+    },
+    {
+     "$ref": "#/$defs/t.activities"
+    }
+   ]
+  },
+  "serverToTeacher": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/st.state"
+    },
+    {
+     "$ref": "#/$defs/st.people"
+    },
+    {
+     "$ref": "#/$defs/st.item"
+    },
+    {
+     "$ref": "#/$defs/st.tally"
+    },
+    {
+     "$ref": "#/$defs/st.rekeyed"
+    },
+    {
+     "$ref": "#/$defs/s.ack"
+    },
+    {
+     "$ref": "#/$defs/s.error"
+    },
+    {
+     "$ref": "#/$defs/s.pong"
+    }
+   ]
+  }
+ }
+}

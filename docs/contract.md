@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=d6bc298f47c0db9e -->
+<!-- i18n: pair=contract.ja.md sha256=994874bb2a303755 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -178,3 +178,12 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 - `data-clip` on an element marks clipping there as intended: text in that element, including all its descendants and SVG text, MUST NOT be reported by those four checks. It applies to both directions (horizontal and vertical). It MUST NOT change any other check (`bodyBottom`, `smallText`, …) nor the rendering
 - On a slide whose body overflows at the bottom (`bodyBottom`), text inside `.body` that goes off the slide is not reported again (`svgTextOut` with the slide edge): cutting the body fixes both
 - Authors use `data-clip` only where the cut is part of the message (for example a "wall" of code faded out at the bottom), never to hide an overflow
+
+## 11. Live room pane (extension `live`, draft)
+
+Only a play-only copy exported with a live room carries the live player (`kit/live.js` with `kit/core/live-policy.mjs`, added by `kit/core/live.mjs`); every other output is unchanged. Its normative behaviour is in the format's [`live` extension](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md) and the protocol in [egatari/live](https://github.com/egatari/live); this section is what Studio's runtime promises.
+
+- The pane is outside the stage: `#live-pane` is docked at the right (at the bottom when the window is tall) and `#stage` is fitted into the rest with the same formula as `fit()`. It MUST NOT change what `DECK.seek(i, k, t)` draws, captions, marks or print; in video mode (`?mode=video`), the presenter view and its frames (`?presenter`, `?view`) it is not created at all, and print hides it
+- It listens to `deck:pos` (`detail.key`) only to choose which polls to show; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
+- The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
+- It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text
