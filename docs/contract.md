@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=1eadba5ea9ff208a -->
+<!-- i18n: pair=contract.ja.md sha256=dc4fa964b8647525 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -187,3 +187,17 @@ Only a play-only copy exported with a live room carries the live player (`kit/li
 - It listens to `deck:pos` (`detail.key`) only to choose which polls to show; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
 - The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
 - It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text
+
+## 12. Review notes: the ink stroke
+
+Review notes are the entries of `comments.json` in the working folder ([format spec](https://github.com/egatari/egatari-spec) §3.3). They are never put into a distributed file: a single file (.ega.html), play-only or not, leaves `comments.json` out. An entry is `{id, created, key, range, pin?, stroke?, quote, comment, status, resolved?}`; this section fixes the shape of the two places on the slide, so that another reader (a future review mode of Egatari Live that imports notes into the working folder) can use the same shape.
+
+- Coordinates: slide coordinates, 1280×720, origin at the top left of the slide, independent of the zoom and the window. A point names the final state of the step `key` (`DECK.seek(i, k, Infinity)`)
+- `pin` (optional): `{x, y}`, numbers with 0 ≤ x ≤ 1280 and 0 ≤ y ≤ 720, rounded to 0.1. An Alt+click note's pin is the clicked point; an ink note's pin is its stroke's centroid
+- `stroke` (optional, only with `pin`): the mark drawn with the ink note (`m` in edit mode), as a polyline `[[x, y], …]`:
+  - at least 2 and at most 500 points, each a pair of numbers clamped to the slide and rounded to 0.1, no two consecutive points equal; nothing else in a point (no pressure, no time)
+  - one stroke per note (a circle, an arrow, an underline); a reader draws it as one open polyline
+  - centroid (the ink note's `pin`): the mean of the segment midpoints weighted by segment length, Σ ℓᵢ·mᵢ / Σ ℓᵢ
+- Normalizing (`normStroke` in `kit/core/comment-core.mjs`, the one rule for both writers, the dev server and the editor app): a value that is not an array, has more than 5000 points, or has fewer than 2 valid distinct points gives no stroke (the note is kept without it); invalid points are dropped, the rest clamped, rounded and de-duplicated; above 500 points it is simplified with Ramer–Douglas–Peucker, keeping both ends, with a tolerance that starts at 0.25 and doubles until at most 500 points remain
+- Older entries without `pin` or `stroke` stay valid; readers MUST ignore a `stroke` they cannot read and still show the note
+- Display: the editor draws a stroke in its own overlay over the preview (`#dev-pins`), in the pin colour (red for listed notes, amber while the note is being written), never into the deck's DOM; `npm run comment-shots` draws it on both images and widens the crop to the stroke's bounding box plus 48 px
