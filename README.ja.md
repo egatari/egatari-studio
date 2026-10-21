@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=29c2a3a88df2e9d6 -->
+<!-- i18n: pair=README.md sha256=5f15c18b34cffc7e -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -99,6 +99,7 @@ open examples/minimal/out/deck.html                 # macOS。ほかの OS で�
 
 node kit/check.mjs examples/minimal/deck.html       # 品質チェック。最後の行が「エラー 0」になる
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF（1 スライド 1 ページ）
+npm run sheet -- examples/minimal                        # 全スライドの最終段階を 1 枚の PNG に（品質チェックで見えないものを目で見る）
 node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
 

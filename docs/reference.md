@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=5ceac4d5e1b88e3e -->
+<!-- i18n: pair=reference.ja.md sha256=80843c3d0002e404 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -466,6 +466,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
+| `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. Prints the path and the slide count |
 | `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
 | `node tools/catalog.mjs` | regenerate `vendor/components/CATALOG.md` |
 | `npm run components:update -- vX.Y.Z [--from <folder>]` | bring in a release of egatari/components into `vendor/components/` and `components.lock.json` (checks sha256 against `manifest.json`; never replaces a version) |
