@@ -2,7 +2,7 @@
 // 部屋を付けた再生専用の派生にだけ入る（kit/core/live.mjs の addLive が、deck-meta の直後に DECK.LivePolicy と一緒に入れる）。ほかの出力には入らない
 // - 舞台の外の板（#live-pane）に出す：横長の画面では右、縦長では下。舞台（#stage）は板を除いた場所に収める（中の (i, k, t) の描画・字幕・印・動画・印刷は変えない）
 // - 何も送らない・つながない：動画（?mode=video）・印刷・発表者ビューとその中の画面（?presenter・?view）・枠の中（編集アプリのプレビュー・srcdoc・LMS）・
-//   http(s) と file: でない文書・この派生の決まり（CSP）でない文書・窓（window）の外。迷ったらつながず、部屋の場所を字で見せる
+//   http(s)・file:・content:（Android）でない文書・この派生の決まり（CSP）でない文書・窓（window）の外。迷ったらつながず、部屋の場所を字で見せる
 // - 初めてつなぐ前に、つながる先を見せて「参加する」を 1 回押してもらう（覚えるのはこのタブのあいだだけ。sessionStorage）
 // - 送るのは、学ぶ人が送ると決めたもの（質問・投票）と、端末で作った乱数の pid（localStorage。使えなければメモリ）と、入れたときだけ名前、ping だけ。
 //   見ている位置や時間は送らない。"*" の Q&A の段階の鍵は、送るときに画面にある段階（学ぶ人が送ると決めたものに付けるだけ）
@@ -33,6 +33,7 @@ var S = JA ? {
   title: "授業の部屋", again: "もう一度試す", notice: "この教材は " + HOST + " の授業の部屋につながります", join: "参加する", leave: "切断する", fold: "たたむ", unfold: "ひらく",
   off: "つないでいません", connecting: "つないでいます…", connected: "つながっています", waiting: "先生の承認を待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "部屋は " + t + " に開きます"; }, after: "授業の部屋の時間は終わりました", noNet: "ここからはつなげません。この教材のファイルをブラウザで直接開くと参加できます。部屋：",
+  noNetLink: "ここからはつなげません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", roomLabel: "部屋：",
   name: "名前（任意）", nameNote: "入れたときだけ先生に見えます", ask: "質問", send: "送る", sent: "質問を送りました", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
   shown: "画面に映された質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
   stop: {bad_key: "この教材の鍵では部屋に入れません（鍵が違います）", room_not_found: "部屋が見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
@@ -46,6 +47,7 @@ var S = JA ? {
   title: "Live room", again: "Try again", notice: "This lesson connects to a live room at " + HOST, join: "Join", leave: "Disconnect", fold: "Fold", unfold: "Unfold",
   off: "Not connected", connecting: "Connecting…", connected: "Connected", waiting: "Waiting for the teacher to admit you", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The room opens at " + t; }, after: "The live room has ended", noNet: "Cannot connect from here. Open this lesson file directly in a browser to join. Room: ",
+  noNetLink: "Cannot connect from here. You can join in a new browser tab.", openJoin: "Join in the browser", roomLabel: "Room: ",
   name: "Name (optional)", nameNote: "The teacher sees it only if you type one", ask: "Question", send: "Send", sent: "Question sent", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
   shown: "Questions on screen", leftMsg: "Disconnected. You can join again", window: function(a, b){ return a + " – " + b; }, privacy: "Only what you choose to send (questions, votes, and a name if you type one) and a random id made on this device are sent. Your viewing position and timing are not",
   stop: {bad_key: "This lesson's key does not open the room (wrong key)", room_not_found: "The room does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
@@ -60,19 +62,15 @@ var S = JA ? {
 var REJOIN = {room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0};
 
 // ---------------------------------------------------------------- つないでよい場所か（迷ったら否）
-function context(){
-  try { if (window.top !== window) return "framed"; } catch (e) { return "framed"; }
-  var p = location.protocol;
-  if (p !== "file:" && p !== "https:" && p !== "http:") return "scheme";
-  if (p !== "file:" && location.origin === "null") return "sandboxed";
-  if (/^\/(preview|deck)(\/|$)/.test(location.pathname) && p === "http:") return "preview";
-  // この派生の決まり：CSP の <meta> がちょうど 1 つで、connect-src が endpoint だけ
+function docInfo(){
+  var framed = true;
+  try { framed = window.top !== window; } catch (e) { framed = true; }
   var metas = [].filter.call(document.querySelectorAll("meta[http-equiv]"), function(m){ return /^content-security-policy$/i.test(m.getAttribute("http-equiv") || ""); });
-  if (metas.length !== 1) return "policy";
-  var cs = /(?:^|;)\s*connect-src\s+([^;]*)/i.exec(metas[0].getAttribute("content") || "");
-  if (!cs || cs[1].trim().split(/\s+/).sort().join(" ") !== LP.connectSrc(live.endpoint).split(" ").sort().join(" ")) return "policy";
-  return "";
+  return {framed: framed, protocol: location.protocol, origin: location.origin, pathname: location.pathname, csp: metas.map(function(m){ return m.getAttribute("content") || ""; })};
 }
+// file: と content:（Android のファイルのアプリ）は学ぶ人が自分で開いたファイル。決まりは kit/core/live-policy.mjs の docContext
+var DOC = docInfo();
+function context(){ return LP.docContext(DOC, live.endpoint); }
 var CTX = context();
 
 // ---------------------------------------------------------------- 記憶（どれも使えなければメモリだけ）
@@ -112,6 +110,8 @@ css.textContent =
   "#live-pane p{margin:0 0 8px}#live-pane .lv-small{font-size:12px;color:#a3a9b0}#live-pane .lv-msg:empty{display:none}#live-pane .lv-msg{color:#ffd28a}" +
   "#live-pane .lv-addr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;user-select:all}" +
   "#live-pane button{font:inherit;color:#111;background:#e9ecef;border:1px solid #c9ced4;border-radius:6px;padding:4px 12px;cursor:pointer}" +
+  "#live-pane a.lv-join-link{display:inline-block;background:#4d8dff;border:1px solid #4d8dff;border-radius:6px;padding:4px 12px;color:#fff;font-weight:600;text-decoration:none}" +
+  "#live-pane a.lv-join-link:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
   "#live-pane button.lv-pri{background:#4d8dff;border-color:#4d8dff;color:#fff;font-weight:600}#live-pane button:disabled{opacity:.5;cursor:default}" +
   "#live-pane .lv-head button{padding:2px 8px;font-size:12.5px}" +
   "#live-pane button:focus-visible,#live-pane input:focus-visible,#live-pane textarea:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px}" +
@@ -137,6 +137,10 @@ var pNotice = h("p", "lv-notice", S.notice);
 var pWin = h("p", "lv-small");
 var pMsg = h("p", "lv-msg"); pMsg.setAttribute("role", "alert");
 var pAddr = h("p", "lv-small"), addr = h("span", "lv-addr");
+// つなげない文書：参加用のページ（新しいタブ。押すまで何も読み込まない。鍵は # の後ろ）。編集アプリのプレビューでは出さない
+var JOIN_URL = CTX && LP.offerJoinLink(CTX, DOC) ? LP.joinUrl(live) : null;
+var linkRow = h("div", "lv-row"), aJoin = h("a", "lv-join-link lv-pri", S.openJoin); linkRow.hidden = true;
+if (JOIN_URL){ aJoin.href = JOIN_URL; aJoin.target = "_blank"; aJoin.rel = "noopener noreferrer"; linkRow.appendChild(aJoin); }
 var bJoin = h("button", "lv-join lv-pri", S.join); bJoin.type = "button";
 var joinRow = h("div", "lv-row"); joinRow.appendChild(bJoin);
 var nameL = h("label", "", S.name), nameI = h("input"); nameI.type = "text"; nameI.className = "lv-name"; nameI.maxLength = LP.LIMITS.name; nameI.autocomplete = "off"; nameI.id = "live-pane-name"; nameL.htmlFor = nameI.id;
@@ -150,7 +154,7 @@ var shownSec = h("div", "lv-sec lv-shown"), shownH = h("h3", "", S.shown), shown
 shownSec.appendChild(shownH); shownSec.appendChild(shownUl);
 var pPriv = h("p", "lv-small", S.privacy);
 var sr = h("div", "sr-only"); sr.setAttribute("role", "status"); sr.setAttribute("aria-live", "polite"); sr.id = "live-pane-status";
-[pNotice, pWin, pMsg, pAddr, joinRow, nameL, nameI, nameNote, polls, qa, shownSec, pPriv].forEach(function(e){ body.appendChild(e); });
+[pNotice, pWin, pMsg, pAddr, linkRow, joinRow, nameL, nameI, nameNote, polls, qa, shownSec, pPriv].forEach(function(e){ body.appendChild(e); });
 pane.appendChild(head); pane.appendChild(body); pane.appendChild(sr);
 
 var fmt = function(s){ try { return new Date(s).toLocaleString(JA ? "ja-JP" : "en-US", {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}); } catch (e) { return s; } };
@@ -196,7 +200,12 @@ function render(){
   bJoin.textContent = ST === "stopped" ? S.again : S.join;
   pNotice.hidden = !!CTX;
   pAddr.hidden = !CTX;
-  if (CTX && !pAddr.firstChild){ pAddr.textContent = S.noNet; addr.textContent = live.endpoint + " · " + live.room; pAddr.appendChild(addr); }
+  linkRow.hidden = !JOIN_URL;
+  if (CTX && !pAddr.firstChild){
+    if (JOIN_URL){ pAddr.textContent = S.noNetLink + " " + S.roomLabel; addr.textContent = live.room; }
+    else { pAddr.textContent = S.noNet; addr.textContent = live.endpoint + " · " + live.room; }
+    pAddr.appendChild(addr);
+  }
   pMsg.textContent = ST === "stopped" ? (S.stop[stopReason] || S.stop.unknown) : info;
   nameL.hidden = nameI.hidden = nameNote.hidden = !!CTX || ph !== "open";
   renderActivities(conn && admitted);
@@ -372,6 +381,6 @@ function start(){
   // このタブで参加したことがあれば（読み直しなど）、窓の中なら押さずにつなぐ
   if (!CTX && phase() === "open" && getItem("sessionStorage", JOINED_KEY) === "1") join();
 }
-DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, admitted: admitted, step: stepKey, attempt: attempt}; }};
+DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt}; }};
 if (DECK.ready) start(); else document.addEventListener("deck:ready", start, {once: true});
 })();
