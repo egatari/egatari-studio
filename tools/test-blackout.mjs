@@ -130,13 +130,23 @@ try {
     await q.emulateMedia({ media: 'print' });
     await q.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
     await q.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    const png = await q.screenshot({ fullPage: true });
-    const black = await q.evaluate(() => document.documentElement.classList.contains('blackout'));
+    await q.evaluate(() => document.fonts.ready);
+    await q.waitForTimeout(300);
+    const png = await q.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
+    const black = await q.evaluate(() => { const c = document.getElementById('deck-black'); return document.documentElement.classList.contains('blackout') && !!c && getComputedStyle(c).display === 'none'; });
     await q.close();
     return { png, black };
   };
   const pr0 = await printShot(false), pr1 = await printShot(true);
-  ok(pr1.black && Buffer.compare(pr0.png, pr1.png) === 0, 'print output is the same with and without blackout');
+  // 画素で比べる（字の描き方のわずかな揺れは許す。暗転の覆いが出ていれば窓の大半が黒くなって大きく違う）
+  const diff = await p.evaluate(async ([a, b]) => {
+    const load = async (x) => { const i = new Image(); i.src = 'data:image/png;base64,' + x; await i.decode(); const c = document.createElement('canvas'); c.width = i.width; c.height = i.height; const g = c.getContext('2d'); g.drawImage(i, 0, 0); return { w: i.width, h: i.height, d: g.getImageData(0, 0, i.width, i.height).data }; };
+    const A = await load(a), B = await load(b);
+    if (A.w !== B.w || A.h !== B.h) return { size: [A.w, A.h, B.w, B.h], n: -1, total: 0 };
+    let n = 0; for (let i = 0; i < A.d.length; i += 4) if (Math.abs(A.d[i] - B.d[i]) + Math.abs(A.d[i + 1] - B.d[i + 1]) + Math.abs(A.d[i + 2] - B.d[i + 2]) > 48) n++;
+    return { n, total: A.d.length / 4 };
+  }, [pr0.png.toString('base64'), pr1.png.toString('base64')]);
+  ok(pr1.black && diff.n >= 0 && diff.n <= diff.total * 0.002, 'print output is the same with and without blackout (the cover is not printed) ' + JSON.stringify({ ...diff, identical: Buffer.compare(pr0.png, pr1.png) === 0 }));
 
   // 動画：b で暗転しない
   const v = await ctx.newPage();
