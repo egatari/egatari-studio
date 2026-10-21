@@ -30,8 +30,13 @@ for (const [name, given] of CASES) {
   fs.writeFileSync(host, `<!doctype html><html><body style="margin:0"><iframe id="f" src="${fileUrl(deck)}" style="display:none;border:0;width:1280px;height:720px"></iframe></body></html>`);
   const settle = (f) => f.evaluate(() => Promise.all([...document.fonts].map((x) => x.load().catch(() => {})))
     .then(() => document.fonts.ready).then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+  // 起動の知らせのときの字の読み込み（違ったときの手がかり）
+  const atReady = () => document.addEventListener('deck:ready', () => { const f = [...document.fonts]; window.__atReady = { loaded: f.filter((x) => x.status === 'loaded').length, loading: f.filter((x) => x.status === 'loading').length }; });
+  // 違ったときの手がかり：スライドの中の要素の箱（レイアウトが違うのか、塗りだけが違うのか）
+  const boxes = (f, i) => f.evaluate((i) => [...DECK.slides[i].querySelectorAll('*')].map((e) => { const r = e.getBoundingClientRect(); return (e.getAttribute('class') || e.tagName) + ' ' + [r.x, r.y, r.width, r.height].map((v) => v.toFixed(1)).join(','); }), i);
   // ふつうの起動
   const pn = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  await pn.addInitScript(atReady);
   const errs = [];
   pn.on('pageerror', (e) => errs.push(e.message));
   await pn.goto(fileUrl(deck));
@@ -40,6 +45,7 @@ for (const [name, given] of CASES) {
   // 隠れた iframe の中で起動する
   const ph = await b.newPage({ viewport: { width: 1280, height: 720 } });
   ph.on('pageerror', (e) => errs.push(e.message));
+  await ph.addInitScript(atReady);
   await ph.goto(fileUrl(host));
   const fr = await (await ph.$('#f')).contentFrame();
   await fr.waitForFunction(() => document.readyState === 'complete' && window.DECK && typeof DECK.seek === 'function', null, { timeout: 15000 });
@@ -55,6 +61,8 @@ for (const [name, given] of CASES) {
   await fr.waitForFunction(() => DECK.ready, null, { timeout: 15000 });
   const st = await fr.evaluate(() => DECK.state());
   ok(st.slide === i0 + 1 && st.step === k0, `${name}: the ${how} asked for while hidden is drawn after showing (slide ${st.slide}, step ${st.step})`);
+  // 操作のバー（tools.js。起動の後しばらく出て消える）と知らせは、起動の時刻で出ているかどうかが変わるので隠して比べる
+  for (const f of [pn, fr]) await f.addStyleTag({ content: '#dt-cb,#deck-toast{display:none!important}' });
   for (const [i, k] of pos) {
     for (const f of [pn, fr]) { await f.evaluate(([i, k]) => DECK.seek(i, k, Infinity), [i, k]); await settle(f); }
     let A = await pn.screenshot({ clip: CLIP }), B = await ph.screenshot({ clip: CLIP });
@@ -69,7 +77,11 @@ for (const [name, given] of CASES) {
       for (let j = 0; j < da.length; j++) if (da[j] !== db[j]) return false;
       return true;
     }, [A.toString('base64'), B.toString('base64')]);
-    if (!same) { fs.writeFileSync(path.join(out, `${name}-s${i + 1}-k${k}-normal.png`), A); fs.writeFileSync(path.join(out, `${name}-s${i + 1}-k${k}-hidden.png`), B); }
+    if (!same) {
+      const [ba, bb] = [await boxes(pn, i), await boxes(fr, i)];
+      const j = ba.findIndex((x, n) => x !== bb[n]);
+      console.log(`     layout ${j < 0 ? 'identical (' + ba.length + ' boxes)' : 'differs at box ' + j + ': normal ' + ba[j] + ' / hidden ' + bb[j]}; fonts at ready: normal ${JSON.stringify(await pn.evaluate(() => window.__atReady))}, hidden ${JSON.stringify(await fr.evaluate(() => window.__atReady))}`);
+      fs.writeFileSync(path.join(out, `${name}-s${i + 1}-k${k}-normal.png`), A); fs.writeFileSync(path.join(out, `${name}-s${i + 1}-k${k}-hidden.png`), B); }
     ok(same, `${name}: slide ${i + 1} step ${k}: hidden start, shown later = normal start (pixel-equal)`);
   }
   ok(!errs.length, `${name}: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
