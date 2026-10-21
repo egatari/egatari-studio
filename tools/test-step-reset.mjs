@@ -1,7 +1,7 @@
 // 見ている人が手で変えた部品の状態（m-kobun の活用表の札など）は (i, k, t) の外：段階に入るたび（同じ段階に入り直すときも）
 // render(k, t) の画面に戻る（docs/contract.md §3、format spec §8.4）
 //   node tools/test-step-reset.mjs [出力先] [--only 名前,名前]
-// 部品庫の部品の見本（vendor/components の既定の版の demo.html）を組み、部品のあるスライドの各段階で：
+// 部品庫の部品の見本（vendor/components の既定の版の demo.html）を組み、部品のあるスライドの各段階（押すと状態が変わる m-kobun・m-menu。ほかの部品は最後の段階）で：
 //   画面を撮る（A）→ 部品を操作する（m-kobun：助動詞の語を押して札を開く。ほかの部品：部品の真ん中を押す。m-menu の札は押すとリンクで動く）→
 //   次の段階へ進んでから戻る（スライドの最後の段階では次のスライドへ行って戻る）／DECK.go(i, k) で同じ段階に入り直す／DECK.seek(i, k, Infinity) で入り直す
 //   → 撮った画面が A と画素まで同じ
@@ -26,6 +26,8 @@ const failed = new Set();
 const ok = (c, m, name) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) { fail++; if (name) failed.add(name); } };
 
 const comps = vendorComponents().filter((c) => fs.existsSync(path.join(c.dir, 'demo.html')) && (!only || only.includes(c.name)));
+// 押すと状態が変わる部品（部品の中で押す・キーを打つ口を持つもの）。ほかの部品は真ん中を押しても何も変わらないはずなので、軽く確かめる
+const FULL = ['kobun', 'menu'];
 const CLIP = { x: 0, y: 0, width: 1280, height: 720 };
 // 実行系の操作の部品（操作のバー・知らせ・リンクで来たときの「戻る」ボタン）は部品の外なので隠して比べる
 const HIDE = '#dt-cb,#deck-toast,#deck-back{display:none!important}';
@@ -101,7 +103,8 @@ for (const { name, dir } of comps) {
     for (let i = 0; i < n; i++) await goTo(p, i, 0);
   };
   await open();
-  const pos = await p.evaluate(() => DECK.slides.flatMap((s, i) => (s._comps.length ? Array.from({ length: s._max + 1 }, (_, k) => [i, k]) : [])));
+  // 押すと状態が変わる部品（FULL）はすべての段階、ほかの部品はスライドの最後の段階だけ（CI の macOS で時間に収めるため）
+  const pos = await p.evaluate((full) => DECK.slides.flatMap((s, i) => (!s._comps.length ? [] : full ? Array.from({ length: s._max + 1 }, (_, k) => [i, k]) : [[i, s._max]])), FULL.includes(name));
   let tried = 0;
   for (const [i, k] of pos) {
     const max = await p.evaluate((i) => DECK.slides[i]._max, i);
@@ -113,8 +116,8 @@ for (const { name, dir } of comps) {
     const hows = name === 'kobun' ? ['mouse', 'key'] : ['mouse'];
     for (const how of hows) {
       for (const [label, enter] of ways) {
-        // 基準の画面：同じ段階に何度か入り直してから撮る（Chrome は同じ値を書き直しただけでも塗り直し、初めの 1〜2 回だけ字や線の縁の画素が揺れることがある）
-        for (let r = 0; r < 3; r++) { await goTo(p, i, k); await settle(p); }
+        // 基準の画面：同じ段階に 2 回入り直してから撮る（Chrome は同じ値を書き直しただけでも塗り直し、初めの 1〜2 回だけ字や線の縁の画素が揺れることがある）
+        for (let r = 0; r < 2; r++) { await goTo(p, i, k); await settle(p); }
         const A = await shot(p), DA = await domOf(p, i);
         const it = await interact(p, i, how);
         if (!it.n) break;
