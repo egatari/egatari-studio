@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=dc4fa964b8647525 -->
+<!-- i18n: pair=contract.ja.md sha256=d52aa634645cdd3f -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -194,7 +194,7 @@ Review notes are the entries of `comments.json` in the working folder ([format s
 
 - Coordinates: slide coordinates, 1280×720, origin at the top left of the slide, independent of the zoom and the window. A point names the final state of the step `key` (`DECK.seek(i, k, Infinity)`)
 - `pin` (optional): `{x, y}`, numbers with 0 ≤ x ≤ 1280 and 0 ≤ y ≤ 720, rounded to 0.1. An Alt+click note's pin is the clicked point; an ink note's pin is its stroke's centroid
-- `stroke` (optional, only with `pin`): the mark drawn with the ink note (`m` in edit mode), as a polyline `[[x, y], …]`:
+- `stroke` (optional, only with `pin`): the mark drawn with the ink note (`m` or `d` in edit mode), as a polyline `[[x, y], …]`:
   - at least 2 and at most 500 points, each a pair of numbers clamped to the slide and rounded to 0.1, no two consecutive points equal; nothing else in a point (no pressure, no time)
   - one stroke per note (a circle, an arrow, an underline); a reader draws it as one open polyline
   - centroid (the ink note's `pin`): the mean of the segment midpoints weighted by segment length, Σ ℓᵢ·mᵢ / Σ ℓᵢ

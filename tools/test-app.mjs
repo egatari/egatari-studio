@@ -292,11 +292,19 @@ try {
   await page.click('#b-edit');
   await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
   ok(true, 'edit: toolbar button turns on edit mode');
-  ok(await f.evaluate(() => DECK.tools.mode() === null && !document.querySelector('#dt-layer.on') && getComputedStyle(document.querySelector('#dt-cb [data-b=pen]')).display === 'none'), 'tools vs edit: entering edit mode turns the pen off and hides the tool buttons');
+  ok(await f.evaluate(() => DECK.tools.mode() === null && !document.querySelector('#dt-layer.on') && getComputedStyle(document.querySelector('#dt-cb [data-b=laser]')).display === 'none'
+    && document.querySelector('#dt-cb [data-b=pen]').getAttribute('aria-label') === '手書きメモ'), 'tools vs edit: entering edit mode turns the pen off, hides the tool buttons and turns the pen button into 手書きメモ (#70)');
   ok(await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中', 'tools vs edit: the footer shows 編集中');
   await f.evaluate(() => window.focus());
-  for (const k of ['d', 'x', 'v']) await f.locator('body').press(k);
-  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: d / x / v do nothing while editing');
+  for (const k of ['x', 'v']) await f.locator('body').press(k);
+  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: x / v do nothing while editing');
+  // ペンのキー d は手書きメモ（#70）：画面の端は「編集中：手書きメモ」、もう一度 d で切れる
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中：手書きメモ', null, { timeout: 5000 }).catch(() => {});
+  ok(await f.evaluate(() => DECK.tools.mode()) === 'ink' && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中：手書きメモ', 'tools vs edit: d enters the ink note while editing (footer: 編集中：手書きメモ)');
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中', null, { timeout: 5000 }).catch(() => {});
+  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: d again leaves the ink note');
   const li = f.locator('#stage .slide.active li[data-step="2"]');
   await li.dblclick();
   await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });

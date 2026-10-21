@@ -5,12 +5,13 @@
 // 全画面（f）・発表者ビュー（p、そこでペン）・打ちかけのページ番号（3）・キーの一覧（?）。切り離した窓の機能はない（発表者ビューだけ）
 // 各行で同じことを確かめる（列）：
 //   enter    編集モードに入ると道具が切れ、一覧・暗転・キーの一覧・全画面が閉じ、自動再生と音声が止まり、打ちかけの番号が消える。
-//            授業モードと字幕はそのまま。道具のボタンは隠れる
+//            授業モードと字幕はそのまま。道具のボタンは隠れ、ペンのボタンだけが「手書きメモ」として残る（#70）
+//   ink      入力欄の外の d で手書きメモになり（画面の端は「編集中：手書きメモ」）、もう一度 d で切れる。帯のペンのボタンも同じ
 //   mode     画面の端（外枠の下の帯）の表示が「編集中」（aria-live）
 //   click    文字をダブルクリックすると原稿の欄が開き、線は描かれない
 //   type     原稿の欄に a–z・0–9・Space・← →・Backspace・Enter が入り、Esc で取り消す。デッキの位置・道具・表示は変わらない
-//   deck-ce  プレビューの中の入力欄（contenteditable）でも d・v・x・Backspace などは字として入り、道具も位置も変わらない
-//   leave    編集モードを出ても前の道具・状態は戻らず、位置 (i, k) は入ったときのまま、表示は「表示」
+//   deck-ce  プレビューの中の入力欄（contenteditable）でも d・v・x・Backspace などは字として入り、道具（手書きメモも）も位置も変わらない
+//   leave    編集モードを出ても前の道具・状態は戻らず、位置 (i, k) は入ったときのまま、表示は「表示」、ペンのボタンは「ペン」に戻る
 //   sync     発表者ビューの道具も切れ、位置が本体と同じ（発表者ビューを開いた行だけ。ほかは -）
 // 最後に、編集モードでないときは発表者ビューと再生専用の 1 ファイルの道具がこれまでどおり使えることを確かめる
 import os from 'node:os';
@@ -90,7 +91,8 @@ const S = () => dk().evaluate(() => {
     auto: de.classList.contains('autoplay'), audio: (window.__media || []).some((m) => !m.paused), lecture: DECK.mode === 'lecture',
     cap: !!DECK.captions(), fs: !!document.fullscreenElement, jump: (document.getElementById('jump') || {}).textContent || '',
     layerOn: !!document.querySelector('#dt-layer.on'), layerPE: (() => { const l = document.getElementById('dt-layer'); return l ? getComputedStyle(l).pointerEvents : null; })(),
-    toolBtnsHidden: ['laser', 'pen', 'vpen', 'clear', 'auto', 'over', 'full'].every(hidden), toolBtnsShown: !['laser', 'pen', 'vpen', 'clear'].some(hidden), ink,
+    toolBtnsHidden: ['laser', 'vpen', 'clear', 'auto', 'over', 'full'].every(hidden), toolBtnsShown: !['laser', 'pen', 'vpen', 'clear'].some(hidden), ink,
+    penBtn: (() => { const b = cb && cb.querySelector('[data-b="pen"]'); return b ? { shown: !hidden('pen'), label: b.getAttribute('aria-label'), title: b.title, pressed: b.getAttribute('aria-pressed') } : null; })(),
   };
 });
 const UI = () => page.evaluate(() => ({ ...window.__DEV_UI.state(), live: document.getElementById('dev-mode') && document.getElementById('dev-mode').getAttribute('aria-live') }));
@@ -155,7 +157,7 @@ try {
   }
   ok((await UI()).modeText === '表示', 'mode indicator: 表示 when neither editing nor using a tool');
   for (const [name, setup, how] of ROWS) {
-    const row = { state: name, enter: '', mode: '', click: '', type: '', 'deck-ce': '', leave: '', sync: '-' };
+    const row = { state: name, enter: '', mode: '', ink: '', click: '', type: '', 'deck-ce': '', leave: '', sync: '-' };
     const fail = (col, why) => { row[col] = 'FAIL'; ok(false, `[${name}] ${col}: ${why}`); };
     try {
       // 毎回同じところから：編集モードを出て、本文のあるスライドへ
@@ -188,6 +190,7 @@ try {
       if (e1.auto) bad.push('autoplay on'); if (e1.audio) bad.push('audio playing'); if (e1.fs) bad.push('fullscreen'); if (e1.jump) bad.push('typed number kept');
       if (e1.lecture !== pre.lecture || e1.cap !== pre.cap) bad.push('lecture/captions changed');
       if (!e1.toolBtnsHidden) bad.push('tool buttons visible');
+      if (!e1.penBtn || !e1.penBtn.shown || e1.penBtn.label !== '手書きメモ' || !/^手書きメモ（d）$/.test(e1.penBtn.title)) bad.push('pen button is not the ink note ' + JSON.stringify(e1.penBtn));
       if (name === 'pen' && !(e1.ink > 0)) bad.push('the ink drawn before editing is gone');   // 書いた線は見えたまま（板が開いて枠が狭まるので画素の数は変わる）
       row.enter = bad.length ? 'FAIL' : 'ok'; if (bad.length) fail('enter', bad.join(', '));
       // ---- 画面の端の表示
@@ -196,9 +199,27 @@ try {
       if (row.mode !== 'ok') fail('mode', JSON.stringify(u1));
       const at = { i: e1.i, k: e1.k };
       // 進む・暗転などのキーを押しても、道具と一覧のキーは効かない（入力欄の外で押したとき）
-      for (const k of ['d', 'v', 'x', 'o', 'a', 'b', 'f']) await deckKey(k);
+      for (const k of ['v', 'x', 'o', 'a', 'b', 'f']) await deckKey(k);
       const e2 = await S();
       if (e2.tool || e2.ov || e2.auto || e2.black || e2.fs) fail('enter', 'a tool/view key worked in edit mode: ' + JSON.stringify(e2));
+      // ---- ペンのキー d・帯のペンのボタン → 手書きメモ（#70）
+      {
+        const ib = [];
+        await deckKey('d');
+        const i1 = await S(), iu = await UI();
+        if (i1.tool !== 'ink' || i1.penBtn.pressed !== 'true' || i1.layerPE !== 'auto' || iu.modeText !== '編集中：手書きメモ') ib.push('d did not enter the ink note ' + JSON.stringify({ tool: i1.tool, pen: i1.penBtn, pe: i1.layerPE, mode: iu.modeText }));
+        await deckKey('d');
+        const i2 = await S();
+        if (i2.tool !== null || (await UI()).modeText !== '編集中') ib.push('d again did not leave it ' + i2.tool);
+        await dk().evaluate(() => document.querySelector('#dt-cb [data-b="pen"]').click());
+        await sleep(120);
+        const i3 = await S();
+        if (i3.tool !== 'ink') ib.push('the pen button did not enter the ink note ' + i3.tool);
+        await dk().evaluate(() => document.querySelector('#dt-cb [data-b="pen"]').click());
+        await sleep(120);
+        if ((await S()).tool !== null) ib.push('the pen button did not leave it');
+        row.ink = ib.length ? 'FAIL' : 'ok'; if (ib.length) fail('ink', ib.join(', '));
+      }
       // ---- 文字をダブルクリック → 原稿の欄。線は描かれない
       const tgt = await dk().evaluate(() => {
         const el = [...document.querySelectorAll('#stage .slide.active [data-src]')].find((x) => { const r = x.getBoundingClientRect(); return r.width > 30 && r.height > 8 && /\S/.test(x.textContent); });
@@ -243,6 +264,7 @@ try {
       if (s4.tool !== null || s4.ov || s4.help || s4.black || s4.auto || s4.audio || s4.fs || s4.jump) lb.push('a state came back ' + JSON.stringify(s4));
       if (s4.i !== at.i || s4.k !== at.k) lb.push(`position ${at.i},${at.k} → ${s4.i},${s4.k}`);
       if (!s4.toolBtnsShown) lb.push('tool buttons still hidden');
+      if (!s4.penBtn || s4.penBtn.label !== 'ペン') lb.push('pen button still the ink note ' + JSON.stringify(s4.penBtn));
       if (u4.modeText !== '表示') lb.push('indicator ' + u4.modeText);
       row.leave = lb.length ? 'FAIL' : 'ok'; if (lb.length) fail('leave', lb.join(', '));
       if (pv) {
@@ -278,7 +300,7 @@ try {
     await dk().evaluate(() => { if (DECK.mode === 'lecture') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true })); if (DECK.captions()) DECK.captions(false); }).catch(() => {});
   }
   // 表
-  const cols = ['state', 'enter', 'mode', 'click', 'type', 'deck-ce', 'leave', 'sync'];
+  const cols = ['state', 'enter', 'mode', 'ink', 'click', 'type', 'deck-ce', 'leave', 'sync'];
   const w = cols.map((c) => Math.max(c.length, ...table.map((r) => String(r[c]).length)));
   const line = (r) => '  | ' + cols.map((c, j) => String(r[c]).padEnd(w[j])).join(' | ') + ' |';
   console.log('\n' + line(Object.fromEntries(cols.map((c) => [c, c]))));

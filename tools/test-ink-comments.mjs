@@ -2,7 +2,8 @@
 // examples/minimal を作業用のフォルダに写して開発サーバーで開き、次を確かめる：
 //   1. 単体：線の決まり（kit/core/comment-core.mjs の normStroke）と、編集の画面の写し（server/editor-ui.js の strokeOf）が同じ答え。
 //      編集アプリの書き込み（app/devapi.js）も stroke を確かめて残し、stroke のない古いコメントもそのまま読める
-//   2. 編集モードでないとき m は何もしない。編集モードで m（と編集の板のボタン）で手書きメモになり、画面の端が「編集中：手書きメモ」
+//   2. 編集モードでないとき m は何もしない。編集モードで m（と編集の板のボタン）で手書きメモになり、画面の端が「編集中：手書きメモ」。
+//      スライドの操作の帯のペンのボタンは「手書きメモ」になる（d とこのボタンは test-edit-modes の表でも確かめる）
 //   3. 要素の周りに丸を描く → コメントの欄が開き（引用はその要素）、書きかけの線が重ね（#dev-pins）に出て、舞台（デッキの DOM・描く面）には残らない
 //   4. 残す → comments.json に stroke（期待した外接矩形・0.1 に丸め・500 点まで）、pin は線の重心、src は重心の下の要素
 //   5. 一覧を開くと、重ねに印の色の線が出る。Esc で手書きメモを切り、編集モードを出ると道具は残らない
@@ -129,8 +130,11 @@ try {
   ok((await tool()) === null && (await UI()).modeText === '編集中', 'the edit toolbar button turns it off (indicator back to 編集中)');
   await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === 'ink', null, { timeout: 2500 }));
   ok((await tool()) === 'ink', 'and on again');
-  // 道具の帯には出さない
-  ok(await dk().evaluate(() => !document.querySelector('#dt-cb [data-b="ink"]')), 'the deck control bar has no ink button');
+  // スライドの操作の帯：編集中はペンのボタンだけが「手書きメモ」として残り、押している状態を見せる
+  await page.mouse.move(...await stagePt(640, 700)); await sleep(200);
+  const pb = await dk().evaluate(() => { const b = document.querySelector('#dt-cb [data-b="pen"]'); return { label: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed'), shown: getComputedStyle(b).display !== 'none', laser: getComputedStyle(document.querySelector('#dt-cb [data-b="laser"]')).display }; });
+  await page.screenshot({ path: path.join(work, 'ink-bar.png') });
+  ok(pb.label === '手書きメモ' && pb.pressed === 'true' && pb.shown && pb.laser === 'none', 'the slide controls show the pen button as 手書きメモ (pressed), the other tools stay hidden ' + JSON.stringify(pb));
 
   // 3. 文字のある要素の周りに丸を描く
   target = await dk().evaluate(() => {

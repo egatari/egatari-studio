@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=2f45bf3a6a438d9b -->
+<!-- i18n: pair=reference.md sha256=d5e811c621ceb082 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -290,7 +290,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
 | `c` | 指示の一覧。クリックでそのスライドへ、「解決」で閉じる |
 | Alt+クリック（Mac は ⌥ option+クリック） | AI へのメモを残す（`comments.json`） |
-| `m`（編集モード） | 手書きメモ：丸や矢印を描いてからメモを書く。印は `stroke` として残る（[約束事 §12](contract.ja.md#12-レビューのメモ手書きの印)） |
+| `m` / `d`（編集モード。スライドの操作の帯のペンのボタンは「手書きメモ」になる） | 手書きメモ：丸や矢印を描いてからメモを書く。印は `stroke` として残る（[約束事 §12](contract.ja.md#12-レビューのメモ手書きの印)） |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
