@@ -10,7 +10,7 @@
 //    同じデッキで同じ知らせを出す。見本のデッキ（examples/）では新しい知らせを出さない
 // 4. 表紙の字の箱と表の短いセル（backlog #64・#65。tools/fixtures/check-cover-table/deck.html）：どのスライドでもスライドの外に出る字（textOffSlide）・
 //    重なる字の箱と帯（textOverlap）・表の短いセルの語が割れる（cellWordBreak）。ふつうの表紙・data-clip の副題・自分で置いた札・
-//    長いセルの折り返し・1 行の短いセル・割れない英語の語は何も出さない。コマンド版とブラウザ版で同じ知らせ。表紙と章の扉では置ける子要素を言う
+//    長いセルの折り返し・1 行の短いセル・割れない英語の語・縦に並べた式（式は見た目の箱で比べる）は何も出さない。式に重ねた札は textOverlap。コマンド版とブラウザ版で同じ知らせ。表紙と章の扉では置ける子要素を言う
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -154,6 +154,7 @@ const NEW2 = ['textOffSlide', 'textOverlap', 'cellWordBreak'];
 const EXPECT2 = {
   's-cov64': ['textOverlap'], 's-covok': [], 's-covclip': [], 's-absok': [], 's-covlong': ['textOverlap'], 's-absover': ['textOverlap'],
   's-secoff': ['textOffSlide'], 's-tbl65': ['cellWordBreak'], 's-tblok': [], 's-latinbreak': ['cellWordBreak'],
+  's-mathstack': [], 's-mathover': ['textOverlap'],
 };
 const codes2 = (list, idOf) => {
   const m = {};
@@ -167,7 +168,7 @@ await t('check --json runs on the cover/table fixture', () => { J2 = JSON.parse(
 await t('check: covers, section dividers and tables get the expected findings (and nothing else)', () => assert.deepEqual(codes2(J2.results, (r) => r.id), EXPECT2));
 await t('check: the #64/#65 findings are warnings with rule R-fit', () => {
   const xs = J2.results.filter((r) => NEW2.includes(r.code));
-  assert.equal(xs.length, 6);
+  assert.equal(xs.length, 7);
   for (const r of xs) { assert.equal(r.sev, 'warn', r.msg); assert.equal(r.rule, 'R-fit', r.msg); }
 });
 await t('check: #64 the stray subtitle on the cover overlaps the band, and the finding names the cover children', () => {
@@ -185,6 +186,10 @@ await t('check: #65 the short cell 除外中 breaks as 除外/中; a Latin word 
   assert.deepEqual([r.data.t, r.data.lines, r.data.split, r.data.n], ['除外中', 2, '除外/中', 1]);
   const l = J2.results.find((x) => x.id === 's-latinbreak' && x.code === 'cellWordBreak');
   assert.match(l.data.split, /\w\/\w/);
+});
+await t('check: stacked display formulas are compared by their visual boxes (no overlap); a label placed on a formula overlaps it', () => {
+  const r = J2.results.find((x) => x.id === 's-mathover' && x.code === 'textOverlap');
+  assert.deepEqual([r.data.with, r.data.u], ['text', '式に重ねた札']);
 });
 await t('check --lang en: cover advice and cell advice in English', () => {
   const je = JSON.parse(node('kit/check.mjs', DECK2, '--json', '--lang', 'en').stdout);

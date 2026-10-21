@@ -8,6 +8,8 @@
 /* 自分で置いた札（s-absok：表紙の下に置く。s-absover：所属に重ねる） */
 .date{position:absolute;left:48px;right:48px;top:600px;text-align:center;font-size:24px;color:var(--muted)}
 .over-au{position:absolute;left:48px;right:48px;top:455px;text-align:center;font-size:28px}
+/* 式に重ねる札（s-mathover） */
+.over-math{position:absolute;left:500px;top:30px;font-size:28px}
 /* 章の扉の副題を右へ出す（s-secoff） */
 .lead.far{left:900px;right:auto;white-space:nowrap}
 /* 状態の列を 2 字の幅にする（s-tbl65。元の例と同じく「除外中」が 2 行に割れる） */
@@ -103,6 +105,28 @@
       <tr><th>Column</th><th>Type</th><th>Missing</th><th>Outliers</th><th>State</th><th>Owner</th><th>Updated</th><th>Note</th></tr>
       <tr><td>Monthly total of sales including tax</td><td>number</td><td>three missing values filled from the previous month</td><td>top one percent capped at the limit</td><td>Excluded</td><td>the analysis group owner on duty</td><td>first business day of every month</td><td>the definition will be reviewed soon</td></tr>
     </table>
+  </div>
+</section>
+
+<!-- 式を縦に並べる（.big の display の式。標準のセッションの例 bayes-theorem の 4 枚目と同じ形）。KaTeX の字の矩形は字体の高さで広く、
+     vlist・strut は負の余白で重ねるので、字ごとの矩形では「=」と「P」が重なって見えたが、式の見た目の箱（9px 離れている）は重ならない：何も出さない -->
+<section class="slide noconcl static" id="s-mathstack">
+  <h2>ベイズの定理で事後確率を求める</h2>
+  <div class="body">
+    <p>数を入れる。</p>
+    <div class="big">\[ P(D|+)=\frac{P(+|D)\,P(D)}{P(+|D)\,P(D)+P(+|\neg D)\,P(\neg D)} \]</div>
+    <div class="big">\[ =\frac{0.99\times 0.01}{0.99\times 0.01+0.05\times 0.99}\approx 16.7\% \]</div>
+    <div class="big">\[ P(D\mid +)=\dfrac{0.0099}{0.0594}\approx16.7\% \]</div>
+    <div class="big">\[ =\dfrac{\tfrac{1}{2}}{3}\approx16.7\% \]</div>
+  </div>
+</section>
+
+<!-- 絶対位置に置いた札が式に重なる：textOverlap -->
+<section class="slide noconcl static" id="s-mathover">
+  <h2>式に重ねた札</h2>
+  <div class="body">
+    <div class="big">\[ P(D\mid +)=\frac{P(+\mid D)\,P(D)}{P(+)} \]</div>
+    <div class="over-math">式に重ねた札</div>
   </div>
 </section>
 

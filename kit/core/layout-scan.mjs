@@ -195,7 +195,7 @@ export function layoutScan(s, o) {
     return s;
   };
   const meet = (a, b) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > TOL && Math.min(a.b, b.b) - Math.max(a.t, b.t) > TOL;
-  const blocks = new Map();
+  const blocks = new Map(), mathSeen = new Set();
   for (const p of pieces) {
     if (p.svg || done.has(p)) continue;
     const bl = blockOf(p.el);
@@ -205,9 +205,31 @@ export function layoutScan(s, o) {
       for (let e = bl; e && e !== s; e = e.parentElement) if (e.tagName.includes('-')) comp = e;
       blocks.set(bl, (g = { el: bl, rs: [], t: '', inBody: !!(body && body.contains(bl)), comp }));
     }
+    g.t = g.t ? g.t : p.t;
+    // KaTeX の式は字ごとの行の矩形を使わない（KaTeX の字の矩形は字体の高さで広く、vlist・strut は負の余白で上下に重ねるので、
+    // 縦に並べた式どうしが重なって見える）。式の見た目の箱（.katex-html の .base を合わせた箱を、.katex-display か .katex の箱で切ったもの）を 1 つ使う
+    const kx = p.el.closest('.katex');
+    if (kx) {
+      const F = p.el.closest('.katex-display') || kx;
+      if (mathSeen.has(F)) continue;
+      mathSeen.add(F);
+      const fr = box(F.getBoundingClientRect());
+      const html = F.querySelector('.katex-html');
+      let u = null;
+      if (html) for (const e of html.children) {
+        const r = e.getBoundingClientRect();
+        if (!r.width || !r.height) continue;
+        const q = box(r);
+        u = u ? { l: Math.min(u.l, q.l), t: Math.min(u.t, q.t), r: Math.max(u.r, q.r), b: Math.max(u.b, q.b) } : q;
+      }
+      if (!u && html) u = box(html.getBoundingClientRect());
+      if (!u) u = fr;
+      const q = { l: Math.max(u.l, fr.l), t: Math.max(u.t, fr.t), r: Math.min(u.r, fr.r), b: Math.min(u.b, fr.b) };
+      if (q.r > q.l && q.b > q.t) g.rs.push(q);
+      continue;
+    }
     const rg = document.createRange(); rg.selectNodeContents(p.n);
     for (const r of rg.getClientRects()) if (r.width > 0 && r.height > 0) g.rs.push(box(r));
-    g.t = g.t ? g.t : p.t;
   }
   const bodyErr = out.some((f) => /^(bodyBottom|bodyRight|tateBodyHead|bodyConclCol|bodyLeft)$/.test(f.code));
   // 見出し・結論の行に字数・はみ出しの知らせがあれば、その字の重なりは重ねて知らせない（見出し・結論を短くすれば消える）
