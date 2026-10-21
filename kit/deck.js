@@ -497,8 +497,8 @@ function animDur(i, k){
   return d;
 }
 
-// (i, k, t) の画面を描く。唯一の描画の入口
-function seek(i, k, t, from){
+// (i, k, t) の画面を描く。唯一の描画の入口。cont：実時間の再生の 2 コマ目から（同じ段階の続き。段階に入るのではない）
+function seek(i, k, t, from, cont){
   i = Math.max(0, Math.min(slides.length - 1, i));
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
@@ -546,7 +546,12 @@ function seek(i, k, t, from){
   var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
     var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
-    try { c.render(p.k, p.t, {mode: mode, slide: s, instant: p.t === Infinity, deck: DECK}); }
+    var ctx = {mode: mode, slide: s, instant: p.t === Infinity, deck: DECK};
+    try {
+      // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
+      if (c._touched && !cont){ c._touched = false; untouch(c, p.k, ctx); }
+      c.render(p.k, p.t, ctx);
+    }
     catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(); }
   });
   if (lastPos && lastPos.i !== i){ var ls = slides[lastPos.i]; ls._tok++; ls._legacyAt = undefined; }
@@ -559,6 +564,20 @@ function seek(i, k, t, from){
   var bar = document.getElementById("bar");
   if (bar) bar.style.width = ((i + 1) / slides.length * 100) + "%";
   lastPos = {i: i, k: k};
+}
+// 見ている人が部品を手で変えた状態（m-kobun の札を開く、回す、値をずらす）は (i, k, t) の外（format spec §8.4）。
+// 部品の中で押す・触る・キーを打つ・ホイールを回すと印を付け、次に段階に入るとき（seek。実時間の再生の続きのコマは除く）に
+// 別の段階を描いてから（段階が動いたら手で変えた状態を捨てる、の決まりで捨てさせる）、ctx.reset を付けてその段階を描く。
+// 触っていない部品は今までどおり 1 回だけ描く（動画の書き出しと送りの手間は変わらない）
+var TOUCH_EVENTS = ["pointerdown", "keydown", "wheel", "input", "change"];
+function watchTouch(c){
+  var mark = function(){ c._touched = true; };
+  TOUCH_EVENTS.forEach(function(n){ c.addEventListener(n, mark, {capture: true, passive: true}); });
+}
+function untouch(c, k, ctx){
+  ctx.reset = true;
+  var n = c.steps, other = k > 0 ? 0 : n > 0 ? 1 : -1;
+  if (other >= 0) c.render(other, Infinity, {mode: ctx.mode, slide: ctx.slide, instant: true, deck: ctx.deck, reset: true});
 }
 // 起動の前（部品の mount の前）に頼まれた seek は覚えておき、mount の後に描く（最後の 1 つ）
 var started = false, pendingSeek = null, pendingGo = null;   // started：start() に入った（mount を始めた）
@@ -1128,10 +1147,12 @@ function play(i, k, animate, from){
   legacy(slides[i], k, false);
   var d = Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
   t0 = performance.now();
+  var first = true;
   (function loop(){
-    var t = (performance.now() - t0) / 1000;
-    if (t >= d){ seek(i, k, Infinity); raf = 0; return; }
-    seek(i, k, t, from);
+    var t = (performance.now() - t0) / 1000, cont = !first;
+    first = false;
+    if (t >= d){ seek(i, k, Infinity, undefined, cont); raf = 0; return; }
+    seek(i, k, t, from, cont);
     raf = requestAnimationFrame(loop);
   })();
   POS.publish();
@@ -1429,7 +1450,7 @@ function start(){
   started = true;
   slides.forEach(function(s, i){
     s._comps.forEach(function(c){
-      try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); }
+      try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); watchTouch(c); }
       catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(); }
     });
   });
