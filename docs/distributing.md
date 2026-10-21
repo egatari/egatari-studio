@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=05d2cbafbebf9284 -->
+<!-- i18n: pair=distributing.ja.md sha256=cb7a64ad093008b7 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -22,8 +22,8 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 A play-only copy can carry a **live room** ([format extension `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md), draft): during a time window you choose, learners who open the file can send questions and answer polls from the lesson itself, without an app or an account. It is the only part of a lesson that uses the network, and only after the learner presses **Join**.
 
 1. **Create a room** on the teacher page of the room service (default `https://live.egatari.org`; the service and its protocol are [egatari/live](https://github.com/egatari/live)). Choose the window. Bookmark the teacher link it shows once (it carries the teacher key; there is no recovery).
-2. In the editor, **Export ▾ → Distribute with a live room…**. Paste the text from the teacher page's **Copy** button (room, learner key, window). Turn Q&A on or off for the whole lesson and add polls per step (a question and 2–6 choices; **Step in the preview** takes the step on screen).
-3. **Copy activities JSON** and paste it into **Activities** on the teacher page, so the room knows the same polls (it refuses votes for activities or choices it does not know).
+2. In the editor, **Export ▾ → Distribute with a live room…**. Paste the text from the teacher page's **Copy** button (room, learner key, window). Turn Q&A on or off for the whole lesson and add polls per step (a question and 2–6 choices; **Step in the preview** takes the step on screen). Each poll gets a label that says where it is, such as “Slide 4 'XML の壁', step 1” (slide number, slide heading cut to about 24 characters, step number, all counted from 1); the label is shown in the step suggestions and the poll list, and the step key (for example `s-cjatth:0`) stays in the tooltip. The label follows the step when you change it. Polls saved before labels existed get one when the panel opens, if their slide is still in the deck; otherwise they are shown by the key, as `s-cjatth · step 1`.
+3. **Copy activities JSON** and paste it into **Activities** on the teacher page, so the room knows the same polls (it refuses votes for activities or choices it does not know). The JSON carries the labels (`label`, display text only; the keys are unchanged), so the teacher page and the join page show “Slide 4 'XML の壁', step 1” instead of the step key, and the results JSON keeps them. A room whose activities have no labels shows each poll by its step key (`s-cjatth · step 1`, “whole lesson” for `*`).
 4. **Export with the live room…** writes the play-only copy. Hand it out as usual (download, then open in a browser).
 
 What the learner's copy does:

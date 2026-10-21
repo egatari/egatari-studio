@@ -1,1 +1,1 @@
-{"v":1,"t":"activities","activities":{"*":[{"id":"qa","kind":"qa"}],"s-k3f9q2:2":[{"id":"p1","kind":"poll","prompt":"学習率を大きくすると？","choices":["速く収束","発散しうる","変わらない"]}]}}
+{"v":1,"t":"activities","activities":{"*":[{"id":"qa","kind":"qa"}],"s-k3f9q2:2":[{"id":"p1","kind":"poll","prompt":"学習率を大きくすると？","choices":["速く収束","発散しうる","変わらない"],"label":"3 枚目『学習率』・段階 3"}]}}

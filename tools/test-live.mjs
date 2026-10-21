@@ -16,7 +16,7 @@ import Ajv from 'ajv/dist/2020.js';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { buildPortable, liveRuntimeText } from '../kit/build.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339 } from '../kit/core/live.mjs';
+import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339, stepLabel, stepFallback, stepText } from '../kit/core/live.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
@@ -77,6 +77,19 @@ ajv.addSchema(SCHEMA);
 const sv = (def) => ajv.getSchema(SCHEMA.$id + '#/$defs/' + def);
 for (const f of ['ask', 'vote', 'name', 'ping']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
 ok(sv('activities')(L0.activities), 'schema: the activities shape is the protocol\'s activities');
+// 活動の表示名（label）：スライドの番号（1 から）・見出し（約 24 字）・段階の番号（1 から）
+{ const slides = [{ key: 'cover', heading: '表紙' }, { key: 's-a', heading: '' }, { key: 's-b', heading: 'B' }, { key: 's-cjatth', heading: 'XML の壁' }, { key: 's-long', heading: 'とても長い見出しがここに続いていて二十四字をこえてしまう' }];
+  ok(stepLabel('s-cjatth:0', slides, 'ja') === '4 枚目『XML の壁』・段階 1' && stepLabel('s-cjatth:0', slides, 'en') === "Slide 4 'XML の壁', step 1", 'label: slide number, heading and step number, 1-based (ja and en)');
+  ok(stepLabel('s-cjatth:2', slides, 'ja') === '4 枚目『XML の壁』・段階 3' && stepLabel('s-cjatth:concl', slides, 'en') === "Slide 4 'XML の壁', conclusion", 'label: later steps and the conclusion step');
+  ok(stepLabel('s-a:0', slides, 'ja') === '2 枚目『s-a』・段階 1', 'label: a slide without a heading uses its key');
+  { const l = stepLabel('s-long:1', slides, 'ja'), h = /『(.*)』/.exec(l)[1]; ok([...h].length === 24 && h.endsWith('…') && l.endsWith('・段階 2'), `label: a long heading is cut to about 24 characters (${l})`); }
+  ok(stepLabel('*', slides, 'ja') === '教材全体' && stepLabel('*', slides, 'en') === 'whole lesson', 'label: * is the whole lesson');
+  ok(stepLabel('s-gone:1', slides, 'ja') === 's-gone · 段階 2' && stepFallback('s-cjatth:0', 'en') === 's-cjatth · step 1', 'label: an unknown slide falls back to the key, "s-xxx · 段階 1"');
+  ok(stepText('s-cjatth:0', '', 'ja') === 's-cjatth · 段階 1' && stepText('s-cjatth:0', 'X', 'ja') === 'X', 'stepText: the label, or the formatted key for older activities');
+  const withLabel = (label) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa', label: '教材全体' }], 's-cjatth:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'], label }] } });
+  ok(LP.validate(withLabel('x'.repeat(80)), { key: true }).length === 0 && sv('activities')(withLabel('x'.repeat(80)).activities), 'validate: a label of up to 80 characters is allowed (policy and vendored schema)');
+  ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
+  ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
 
 // ---------------------------------------------------------------- 2. 書き出し
 console.log('export');
@@ -86,7 +99,8 @@ const deck = path.join(deckDir, 'deck.html');
 const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const POLL_STEP = '何を最小化するか:0';
-const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] };
+const POLL_LABEL = '2 枚目『何を最小化するか』・段階 1';
+const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
 const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
 // 教材の設定（鍵なし）：作業フォルダの設定のファイルの extensions.live
 const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
@@ -226,6 +240,7 @@ const sent = () => fake.messages.slice();
   await o.p.evaluate((k) => { for (let i = 0; i < DECK.slides.length; i++) for (let j = 0; j <= 9; j++) { try { if (DECK.stepKey(i, j) === k) { DECK.go(i, j, false); return; } } catch (e) {} } }, POLL_STEP);
   ok(await until(async () => !!(await o.p.$('#live-pane fieldset[data-poll="p1"]'))), 'poll: appears when its step is reached (deck:pos)');
   ok(await o.p.$eval('#live-pane fieldset[data-poll="p1"] legend', (e) => e.textContent) === '学習率を大きくすると？', 'poll: the prompt is shown as text');
+  { const pane = await o.p.$eval('#live-pane', (e) => e.textContent); ok(!pane.includes(POLL_STEP), 'poll: the pane never shows the raw step key (it shows the poll of the step on screen; a label is display text only)'); }
   await o.p.check('#live-pane fieldset[data-poll="p1"] input[value="1"]');
   await o.p.click('#live-pane fieldset[data-poll="p1"] .lv-vote');
   ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '投票しました'), 'vote → ack: "vote recorded" in the live region');

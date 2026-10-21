@@ -26,7 +26,7 @@ export function LivePolicy(opts) {
     datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
   };
   // windowRoomMs：部屋のサービス（egatari/live v1）が作れる窓の長さの上限（3 時間）。再生器は長い窓も読む（windowMs）
-  var LIMITS = { prompt: 300, choice: 100, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
+  var LIMITS = { prompt: 300, choice: 100, label: 80, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
   // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
   var SKEW_MS = 2 * 60 * 1000;
   // 切断の番号（egatari/live の protocol/close-codes.json）。retry はサーバーの表の値。この再生器のふるまいは plan が決める
@@ -96,7 +96,9 @@ export function LivePolicy(opts) {
           if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) e.push(at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
           else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) e.push(at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
         } else e.push(at + '.kind: "qa" or "poll"');
-        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1 }, xk)) e.push(at + '.' + xk + ': unknown member');
+        // label：段階の表示名（任意。「4 枚目『…』・段階 1」。表示だけの字で、鍵ではない）
+        if (own(x, 'label') && (!str(x.label) || x.label.length > LIMITS.label)) e.push(at + '.label: at most ' + LIMITS.label + ' characters');
+        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1, label: 1 }, xk)) e.push(at + '.' + xk + ': unknown member');
       }
     }
     if (n > LIMITS.activities) e.push('live.activities: at most ' + LIMITS.activities + ' activities');
