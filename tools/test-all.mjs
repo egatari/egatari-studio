@@ -103,6 +103,8 @@ steps.push(
   // テーマの寸法の宣言（theme.json の metrics、backlog #76）：検証と継承、同一性の hash、同梱のテーマの描いた箱が宣言どおり（厳しく）、
   // 宣言した限りで本文の場所を見ること、themeMetricsDrift・themeMetricsInvalid（コマンド版とブラウザ版）、tools/theme-metrics.mjs measure
   ['test-theme-metrics', ['tools/test-theme-metrics.mjs', path.join(tmp, 'theme-metrics')]],
+  // 印刷でも章の扉（sec）の背景が落ちない（backlog #57）：print の媒体の print-color-adjust・背景色、背景のグラフィックなしの pdf の画素
+  ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
