@@ -254,4 +254,5 @@ main{flex:1;min-height:0;display:flex}
 #rec-mode .rm-btn kbd{display:inline-block;padding:0 6px;border:1px solid var(--line);border-radius:4px;font:600 12px/1.6 ui-monospace,Menlo,monospace;background:var(--bg)}
 #rec-mode .rm-btn.on{background:#dc2626;border-color:#dc2626;color:#fff}
 #rec-mode .rm-btn.on kbd{color:var(--fg)}
+#rec-mode .rm-btn.wait{opacity:.7;cursor:progress}
 @media (max-width:720px){ #rec-mode{position:fixed;inset:0;z-index:1001} #deck.rec-on #viewer{display:none} }
