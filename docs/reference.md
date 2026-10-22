@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=befe9d4aa9681a88 -->
+<!-- i18n: pair=reference.ja.md sha256=91472fb4de92dbdd -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -196,7 +196,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 - **Ruby**: `<ruby>漢<rt>かん</rt></ruby>`; `rt` is 0.5em and the quality checker does not count its size. In vertical text the reading is on the right
 - **Mincho**: `.mincho` or `<html data-font="mincho">`, or a theme that sets `--font-sans: var(--font-mincho)` (theme `kokugo`)
 - **`m-kanbun`**: kanbun in vertical writing. One line per column; after a character: `(送り仮名)`, `[返り点]` (`レ`, `一二三四五`, `上中下`, `甲乙丙丁`, `天地人`, `一レ`, `上レ`, …; a bare `レ` also works), `{振り仮名}`, `{=かな}` (written in hiragana in the 書き下し文, e.g. `不{=ず}`), `{-}` (置き字, not read), `(右|二度目)` (再読文字, e.g. `未(ダ|ず)`), `-` (竪点), `、` `。`. Steps: 白文 → `kunten` (返り点 lower left, 送り仮名 lower right) → `order` (characters highlighted in kundoku order, an arc where the eye jumps back; `cues(k)` at the start of each column) → `kaki` (書き下し文 on the left). Rules and details: [vendor/components/kanbun/1.0.2/README.md](../vendor/components/kanbun/1.0.2/README.md)
-- **`m-kobun`**: classical Japanese split into words (`春[名]/は[係助]/…`), colored by part of speech, one sentence per step, and a modern translation (`= …` lines) in the last step. Clicking (or Enter on) an auxiliary verb `[助動・基本形・意味・活用形]` opens a card with its conjugation table and meanings, taken from a table inside the component (no network, text only). The card is a presenting control outside `DECK.seek(i, k, t)`: it closes when the step changes, never opens in video mode and is not printed. [vendor/components/kobun/1.0.2/README.md](../vendor/components/kobun/1.0.2/README.md)
+- **`m-kobun`**: classical Japanese split into words (`春[名]/は[係助]/…`), colored by part of speech, one sentence per step, and a modern translation (`= …` lines) in the last step. Clicking (or Enter on) an auxiliary verb `[助動・基本形・意味・活用形]` opens a card with its conjugation table and meanings, taken from a table inside the component (no network, text only). The card is a presenting control outside `DECK.seek(i, k, t)`: it closes whenever a step is entered (also the same step again), never opens in video mode and is not printed. [vendor/components/kobun/1.0.2/README.md](../vendor/components/kobun/1.0.2/README.md)
 - **`m-gendai`**: modern Japanese: `__傍線__`, `==二重傍線==`, `{語句|_A,#id}` / `{これ|>id}` (an arrow from a demonstrative to what it refers to), paragraphs `@主張#p3`, `@具体例#p1>p3`, `@対比#p2~p1` boxed by role and joined by lines. Horizontal or `tate`. [vendor/components/gendai/1.0.2/README.md](../vendor/components/gendai/1.0.2/README.md)
 
 ## Presenting

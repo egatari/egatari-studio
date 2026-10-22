@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=4d35dc55a03a2b57 -->
+<!-- i18n: pair=contract.md sha256=18a968a6e6ace2e0 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -47,8 +47,8 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - 部品の段階はスライドの段階 `data-from`（既定 1）から始まる。スライドの段階 K のとき、部品の段階は `k = clamp(K - from + 1, 0, steps)`。部品の段階の範囲の外では t = Infinity で呼ばれる
 - 実行系は、舞台が並べ終わってから `mount` を呼ぶ。部品は `mount` で自分の大きさ（`clientWidth`・`getBoundingClientRect`）を読んでよい。並んでいないうちに起動したとき（`display:none` の iframe の中、後で出すタブの中）は、舞台に大きさが付き、並べたことで読み始めた字（Web フォント）を読み終えるまで待ってから mount し、開いたときの位置（と、待つ間に頼まれた `DECK.seek`）を描く。`DECK.ready` と `deck:ready` はその後。起動のときに並んでいるデッキは、これまでどおりすぐに mount する
 - `render` は**同じ (k, t) なら必ず同じ画面**にする。前回の呼び出しの状態に頼らない（戻る・飛ぶ・動画の書き出しで順番が変わるため）
-- `ctx = {mode, slide, instant, deck}`。`ctx.mode === "lecture"` のときは最終状態を見せて今の段階を強調する、などを部品が選べる
-- 部品は、押したときに札を重ねて出してよい（`m-kobun` の活用表）。これはペンと同じ発表の操作で、(i, k, t) の決まりの外にある：段階が動いたら閉じ、`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにする
+- `ctx = {mode, slide, instant, deck, reset?}`（`reset` は次の項目）。`ctx.mode === "lecture"` のときは最終状態を見せて今の段階を強調する、などを部品が選べる
+- 部品は、段階の間に見ている人が手で変えられるようにしてよい：押したときに札を重ねて出す（`m-kobun` の活用表）、模型を回す、値をずらす。その状態は (i, k, t) に入らない（format spec §8.4）：`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにし、**段階に入るたび（同じ段階に入り直すときも）、部品は `render(k, t)` の描く画面に戻る**。部品は、変えたときと違う k で `render` が呼ばれたとき、または `ctx.reset === true` で呼ばれたときに、その状態を捨てる。実行系は、部品の中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると触った印を付け、次に段階に入るとき（`DECK.seek`・`DECK.go`・リンク・発表者ビューからの操作・印刷。その段階の実時間の再生の 2 コマ目からは除く）に、別の段階（t = Infinity）を描いてから、`ctx.reset = true` を付けて (k, t) を描く。触っていない部品はこれまでどおり 1 回だけ描くので、動画のコマも送りの手間も変わらない。こうして動画・印刷・発表者ビューはいつも宣言どおりの画面になる（発表者ビューは位置だけを受け取る別の文書）
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` を部品の子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、デッキは自前のコードを持つものとして扱う）
 - データの形は `static shape` に書く（`kit/shape.js`：JSON Schema の小さな部分集合で `{schema, example, note?}`。字で書く部品は `{text: true, example}`、子の `<a href>` で書く部品は `{links: true, example}`。json の属性は `static props` の `shape`）。実行系は段階を数える前に確かめ、違うとき・`mount` や `render` が例外を出したときは部品を描かず、その場に札（`.m-error`）で何が違うかを出し、部品の段階は属性 `steps`（なければ 0）にし、知らせを `DECK.componentErrors` に積む（品質チェック（コマンド版・ブラウザ版）が読む。スタックは載せない）。指示の部品の一覧に形と見本が出る
