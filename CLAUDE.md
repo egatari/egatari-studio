@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`).
+
 動きのある HTML の学術スライド（Marp スキルシリーズに並ぶ html 版）。概要は README.md（英語）と README.ja.md。
 
 ## 守ること
