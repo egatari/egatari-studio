@@ -210,7 +210,8 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 教材に残す（鍵なし）
     await page.click('#live-save');
     let cfg = null;
-    for (let i = 0; i < 50 && !(cfg && cfg.includes('"live"')); i++) { await page.waitForTimeout(100); cfg = await opfs.read(FORMAT.CONFIG_FILE); }
+    // 一方向の設定で先に残した設定があるので、この部屋の id が入るまで待つ
+    for (let i = 0; i < 50 && !(cfg && cfg.includes(`"room": "${cr.room}"`)); i++) { await page.waitForTimeout(100); cfg = await opfs.read(FORMAT.CONFIG_FILE); }
     const c = JSON.parse(cfg || '{}');
     ok(c.extensions && c.extensions.live && c.extensions.live.room === cr.room && !('key' in c.extensions.live) && !cfg.includes(cr.key), `save: ${FORMAT.CONFIG_FILE} keeps extensions.live without the key`);
     await shot(page, 'live-panel.png');
