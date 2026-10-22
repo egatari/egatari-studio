@@ -18,7 +18,7 @@ const ver = (l) => COLAB_VERIFIED[l];
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
-  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', recBtn: '録音モード (r)', recTip: '録音モード：口述原稿を大きく出して、キーボードだけで段階ごとに録る（r）', attach: '添付', attachTip: '添付ファイル（attachments/。下書き・試行：役割ごとに入れてよい形式を確かめる）',
+  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', recTip: 'この段階で録音モードを開く：口述原稿を大きく出して録る。Space で録音と停止、Esc でこの板に戻る（r）', attach: '添付', attachTip: '添付ファイル（attachments/。下書き・試行：役割ごとに入れてよい形式を確かめる）',
   check: '品質チェック', export: '組み立てた HTML を書き出す', print: '印刷 / PDF', presenter: '発表者ビュー', full: '全画面', helpBtn: '使い方',
   welcomeTitle: `1 ファイル（${FX}）を開いて、見る・直す`, welcomeLead: `インストールは要りません。1 ファイル（${FX}）を開くか、新しいデッキを作るか、AI の出力を貼り付けると、ここで表示・編集できます`,
   unsupported: 'このブラウザ（Safari・iPad など）では作業フォルダを開けず、「新しいデッキ」も使えません。新しく作るには「AI の出力を貼り付ける」から（チャットの AI に書かせた教材を貼ると、ここで 1 ファイルとして開きます）。1 ファイルを開く・直す・保存することはできます。作業フォルダを使うには、パソコンの Google Chrome か Microsoft Edge で開いてください',
@@ -224,10 +224,6 @@ const ja = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
-  oldNorm: {
-    title: '前処理の版が古い TTS の段階', note: 'この音声は、数字と助数詞の間の空白（「1 歩」）を取る前処理の前に作られています。「いちぽ」のように読まれていることがあります。音声は今のまま使えます。作り直す段階を選んでください（自動では作り直しません）',
-    go: (n) => '選んだ ' + n + ' 段階を作り直す', done: (n) => n + ' 段階の音声を作り直しました',
-  },
   colab: {
     title: 'Colab で音声を作る（WebGPU がないとき）', verified: ver('ja'),
     lead: 'WebGPU のない PC（学校の PC・Safari・iPad）でも、無料の Colab で同じ声の音声を作って取り込めます。① 必要な段階の原稿を書き出す → Colab のノートブックで合成 → ② 返ってきた zip を取り込む、の順です。取り込むのは、書き出したときと原稿が同じ段階だけです。',
@@ -269,7 +265,7 @@ const ja = {
     mismatch: (t, b) => b === 0 ? `この段階には区切りがないので、C を ${t} 回押した分は使っていません` : `C を ${t} 回押しましたが、区切りは ${b} 個です。区切りは置かずに保存しました（sync: none。図は時間で進みます）`,
     notWritten: (e) => `書き込めませんでした（${e}）。音声の板の「この音声を使う」で使えます`,
     micNo: 'マイクを使えません：', micHint: 'ブラウザのアドレス欄の左でマイクを許可してください', tooLong: (s) => `${s} 秒を超えたので止めました`, empty: '音がありません（無音を削ると何も残りませんでした）',
-    fail: 'できませんでした：', busy: '音声の板が録音・書き込みの最中です。終わってから開いてください',
+    fail: 'できませんでした：', busy: '音声の板が音声を作って書き込んでいる最中です。終わってから開いてください',
     noSeg: 'この段階の口述原稿がありません', noSegs: '口述原稿がありません。先に口述原稿を書いてください',
     chipLabel: (n, N, b) => `区切り ${n} / ${N}${b && b.type === 'mark' ? '（印：' + b.id + '）' : b && b.type === 'clear' ? '（印を消す）' : ''}`,
     opened: (N) => `録音モード。${N} 段階。Space で録音の開始と停止、Enter で採用して次の段階へ、Backspace で取り直し、左右の矢印で段階の移動、C で区切りを置く、Esc で閉じます`,
@@ -316,7 +312,7 @@ const ja = {
   },
 };
 const en = {
-  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', recBtn: 'Recording mode (r)', recTip: 'Recording mode: the narration in large type; record each step with the keyboard alone (r)', attach: 'Attach', attachTip: 'Attachments (attachments/; draft, experimental: checked against the formats each role allows)',
+  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', recTip: 'Open recording mode at this step: the narration in large type. Space starts and stops, Esc comes back here (r)', attach: 'Attach', attachTip: 'Attachments (attachments/; draft, experimental: checked against the formats each role allows)',
   check: 'Quality check', export: 'Export built HTML', print: 'Print / PDF', presenter: 'Presenter view', full: 'Fullscreen', helpBtn: 'Help',
   welcomeTitle: `Open a single file (${FX}) to view and edit`, welcomeLead: `Nothing to install. Open a single file (${FX}), start a new deck or paste AI output to view and edit it here.`,
   unsupported: 'This browser (Safari, iPad, …) cannot open working folders, so New deck is not available either. To make a new lesson, use Paste AI output (paste a lesson a chat AI wrote; it opens here as a single file). Opening, editing and saving single files works. For working folders, please use Google Chrome or Microsoft Edge on a computer.',
@@ -520,10 +516,6 @@ const en = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
-  oldNorm: {
-    title: 'TTS steps made with an older text pre-processing', note: 'This audio was made before the pre-processing that removes the space between a number and its counter (“1 歩”), so it may be read like “ichi po”. The audio is still used as it is. Choose the steps to regenerate (nothing is regenerated automatically)',
-    go: (n) => 'Regenerate the ' + n + ' selected step' + (n === 1 ? '' : 's'), done: (n) => n + ' step' + (n === 1 ? '' : 's') + ' regenerated',
-  },
   colab: {
     title: 'Make the audio in Colab (when there is no WebGPU)', verified: ver('en'),
     lead: 'On a computer without WebGPU (a school PC, Safari, an iPad) you can still make the same voices in free Colab and import them. ① Export the narration of the steps that need audio → synthesize in the Colab notebook → ② import the zip it returns. Only the steps whose narration is unchanged since the export are imported.',
@@ -565,7 +557,7 @@ const en = {
     mismatch: (t, b) => b === 0 ? `This step has no cues, so the ${t} press${t === 1 ? '' : 'es'} of C were not used` : `You pressed C ${t} time${t === 1 ? '' : 's'} but the step has ${b} cue${b === 1 ? '' : 's'}. Saved without cues (sync: none; figures advance by time)`,
     notWritten: (e) => `Could not write it (${e}). Use it with “Use this take” in the Audio panel`,
     micNo: 'Cannot use the microphone: ', micHint: 'Allow the microphone from the left of the address bar', tooLong: (s) => `Stopped after ${s} s`, empty: 'No sound (nothing is left after trimming silence)',
-    fail: 'Failed: ', busy: 'The Audio panel is recording or writing. Open this when it is done',
+    fail: 'Failed: ', busy: 'The Audio panel is making or writing audio. Open this when it is done',
     noSeg: 'This step has no narration', noSegs: 'There is no narration. Write the narration first',
     chipLabel: (n, N, b) => `cue ${n} / ${N}${b && b.type === 'mark' ? ' (mark: ' + b.id + ')' : b && b.type === 'clear' ? ' (clear marks)' : ''}`,
     opened: (N) => `Recording mode. ${N} steps. Space starts and stops recording, Enter keeps the take and goes to the next step, Backspace retakes, the left and right arrows move between steps, C places a cue, Escape closes`,
