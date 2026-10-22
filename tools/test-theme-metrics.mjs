@@ -190,6 +190,30 @@ for (const dir of [...bundled, ...library]) {
   }
 }
 
+await t('drift compares the rendered values, not measure\'s rounded block: the default rule is at 1166.25 (0.25px from 1166); a sub-pixel shift is within 1px, a larger one is drift', async () => {
+  const m = await measureTheme('default', { browser: b, work: path.join(work, 'measure-raw-default') });
+  assert.equal(m.measured.tate.rule, 1166.25);
+  assert.equal(m.block.tate.rule, 1167, 'measure rounds outward for authors');
+  assert.equal(DEFAULT_METRICS.tate.rule, 1166);
+  assert.deepEqual(m.items, []);
+  const shifted = async (name, pad) => {
+    const dir = path.join(work, 'theme-' + name);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'theme.json'), JSON.stringify({ extends: 'default' }));
+    fs.writeFileSync(path.join(dir, 'tokens.css'), `.slide.layout-tate h2{padding-left:${pad}px}`);
+    return measureTheme(dir, { browser: b, work: path.join(work, 'measure-' + name) });
+  };
+  // 罫を 0.5px 左へ（1165.75。宣言 1166 から 0.25px）：丸めた値（1166 か 1167）で比べればずれうるが、描いた値で比べるので通る
+  const a = await shifted('tate-sub', 10.5);
+  assert.equal(a.measured.tate.rule, 1165.75);
+  assert.deepEqual(a.items, []);
+  // 罫を 1.5px 左へ（1164.75。1.25px）：ずれ
+  const c = await shifted('tate-over', 11.5);
+  assert.equal(c.measured.tate.rule, 1164.75);
+  assert.deepEqual(c.items.map((x) => [x.field, x.declared, x.measured, x.by]), [['tate.rule', 1166, 1164.75, 'theme']]);
+});
+
 // ---------------------------------------------------------------- 4. 品質チェック
 // 本文の高さと幅を決めた箱（px）で作るスライド
 const slide = (id, inner, cls = '') => `<section class="slide${cls ? ' ' + cls : ''}" id="${id}"><h2>${id}</h2><div class="body">${inner}</div><div class="concl">結論</div></section>`;

@@ -18,6 +18,10 @@ export const DEFAULT_METRICS = Object.freeze({
   v: 1,
   body: Object.freeze({ left: 48, right: 48, top: 122, floor: 680, line: 46 }),
   concl: Object.freeze({ top: 571, height: 72 }),
+  // tate.rule：layouts.css の縦の見出しの罫は 1166.25px に描かれる（右 48px、43px × 1.25 の列 + padding 10px + 罫 2px）。既定は 1166 のまま
+  // （1167 にすると縦組みの右の限りが 1px 動き、既定のテーマの結果が変わる）。ずれの確かめ（layout-scan.mjs の metricsProbe）は、描いた値そのもの
+  // （0.01px に丸めただけ）を宣言の値と比べるので、既定のテーマの余裕は 1px の許しに対して 0.25px（1px まるごとではない）。
+  // tools/theme-metrics.mjs measure は、塊を写す書き手のために限りが緩くなる側へ外向きに丸めるので、既定のテーマでも 1167 と出す
   tate: Object.freeze({ rule: 1166, conclRight: 120, left: 48, floor: 680 }),
 });
 
