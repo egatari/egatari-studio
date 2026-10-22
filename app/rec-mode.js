@@ -36,7 +36,7 @@ export function createRecMode(o) {
   let take = null;           // 録音中 {key, mr, chunks, t0, taps, bounds, timer}
   let after = null;          // 整えている間に押された「次へ・移動」
   let mine = new Set();      // このモードで録って、まだ「前に戻して」いない段階
-  let result = null;         // 直前のテイクの結果（表示用）{key, dur, gainDb, clip, sync, taps, bounds}
+  let result = null;         // 直前のテイクの結果（表示用）{key, dur, gainDb, clip, sync, taps, bounds}。raw・head・tail・loudness・peakDb・tapTimes はテスト用（state() から読む）
   const mkEl = (t, p, kids) => h(t, p, kids);
 
   // ---------------------------------------------------------------- 読み上げソフトへの知らせ（段階・状態が変わるたびに）
@@ -278,7 +278,7 @@ export function createRecMode(o) {
       const cu = cuesFromTaps(t.taps, t.bounds, { head: p.trimmed.head, dur: p.dur });
       if (o.ws() !== ws || o.generation() !== g || !openState) return false;
       const clip = mic ? mic.peak >= 0.98 : false;
-      result = { key, dur: p.dur, gainDb: p.gainDb, clip, sync: cu.sync, taps: t.taps.length, bounds: t.bounds, mismatch: t.bounds > 0 && cu.sync === 'none' && t.taps.length !== t.bounds ? true : (t.bounds === 0 && t.taps.length > 0) };
+      result = { key, dur: p.dur, gainDb: p.gainDb, clip, sync: cu.sync, raw: Math.round(ab.length / ab.sampleRate * 1000) / 1000, head: p.trimmed.head, tail: p.trimmed.tail, loudness: p.loudness, peakDb: p.peakDb, tapTimes: t.taps.slice(), taps: t.taps.length, bounds: t.bounds, mismatch: t.bounds > 0 && cu.sync === 'none' && t.taps.length !== t.bounds ? true : (t.bounds === 0 && t.taps.length > 0) };
       const res = await o.panel.commit(key, { pcm: p.pcm, sr: p.sr, dur: p.dur, gainDb: p.gainDb, cues: cu.cues, sync: cu.sync });
       if (!openState) return false;
       if (res.ok) { mine.add(key); ok = true; }
