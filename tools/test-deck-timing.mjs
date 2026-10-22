@@ -11,6 +11,7 @@ import { classicModule } from '../kit/core/build-core.mjs';
 const deckJs = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'kit', 'deck.js');
 // deck.js の前に、build と同じ形で PositionStore を入れる（kit/core/position.mjs → DECK.PositionStore）
 const storeJs = classicModule(fs.readFileSync(path.join(path.dirname(deckJs), 'core', 'position.mjs'), 'utf8'), 'PositionStore');
+const linkJs = classicModule(fs.readFileSync(path.join(path.dirname(deckJs), 'core', 'link-policy.mjs'), 'utf8'), 'LinkPolicy');   // 外へのリンクの決まり（deck.js が使う）
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mas-timing-'));
 const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><div id="stage">
 <section class="slide" id="a"><h2>A</h2><m-warp data-from="1"></m-warp></section>
@@ -21,7 +22,8 @@ const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head>
 <script type="application/json" id="deck-marks">{"a:1": [{"type": "cue"}]}</script>
 <script type="application/json" id="deck-timing">{"b:0": {"dur": "x", "hold": -1, "lead": 0.5}}</script>
 <script>window.DECK = window.DECK || {};
-${storeJs}</script>
+${storeJs}
+${linkJs}</script>
 <script src="${fileUrl(deckJs)}"></script>
 <script>
 class W extends DECK.MotionElement {

@@ -361,7 +361,7 @@ function downloadAttachment(i, btn){
     if (!attContentOk(a.type, all)){ if (note){ note.textContent = (JA ? "中身が形式と合わないので保存しません：" : "Not saved, the content does not match its type: ") + attName(a.path); note.classList.add("dt-att-err"); } return; }
     var url = URL.createObjectURL(new Blob([all], {type: "application/octet-stream"}));
     var l = document.createElement("a");
-    l.href = url; l.download = attName(a.path); l.rel = "noopener"; l.style.display = "none";
+    l.href = url; l.download = attName(a.path); l.rel = "noopener"; l.style.display = "none"; l.__egaOwn = true;
     document.body.appendChild(l); l.click(); l.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
     if (note){ note.classList.remove("dt-att-err"); note.textContent = (JA ? "保存しました：" : "Saved: ") + attName(a.path); }

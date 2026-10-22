@@ -1427,7 +1427,7 @@ function linkOf(e){
 document.addEventListener("click", function(e){
   if (e.defaultPrevented) return;
   var a = linkOf(e);
-  if (!a) return;
+  if (!a || a.__egaOwn) return;            // __egaOwn：再生器自身が作ったリンク（添付の保存。kit/tools.js）。授業の HTML は JS の印を付けられない
   var f = inDocFragment(a);
   if (f === null){ e.preventDefault(); extLink(a); return; }   // 授業の外：新しい窓は開かず、確かめてから（修飾キーでも同じ）
   if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !slides.length) return;
