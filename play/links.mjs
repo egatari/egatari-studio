@@ -48,7 +48,9 @@ export function linkBox({ words, dlg }) {
   // (time for the viewer to reach 「閉じる」 in the bar)
   const PAUSE_MS = 1500;
   let quietUntil = 0;
-  dlg.box.addEventListener('close', () => { quietUntil = Date.now() + PAUSE_MS; });
+  // the open attribute, not the close event: some browsers deliver close late (headless Chromium), which would pause the wrong request
+  let wasOpen = false;
+  new MutationObserver(() => { const o = dlg.box.open; if (wasOpen && !o) quietUntil = Date.now() + PAUSE_MS; wasOpen = o; }).observe(dlg.box, { attributes: true, attributeFilter: ['open'] });
   function request(link) {
     if (dlg.box.open || Date.now() < quietUntil) return { shown: false, verdict: 'busy' };
     const S = W();
