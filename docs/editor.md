@@ -108,7 +108,7 @@ The zip is a download, so it is untrusted. It is read as bytes with limits appli
 
 | Key | What it does |
 |---|---|
-| **Space** | Start / stop recording. On stop the take is post-processed (the same as the Audio panel: leading and trailing silence trimmed, −20 LUFS, mono 44.1 kHz) and **used for the step right away** (kind `recorded`, with “Revert to previous” as before). You stay on the step |
+| **Space** | Start / stop recording. On stop the take is post-processed (the same as the Audio panel: leading and trailing silence trimmed, −20 LUFS, mono 44.1 kHz) and **used for the step right away** (kind `recorded`, with “Revert to previous” as before). You stay on the step. Right after the screen opens (or moves to a step) the Space button reads **Getting ready…** until the step is loaded; a Space pressed then is kept and starts the take as soon as it is ready (once, even if pressed twice) |
 | **Enter** | While recording: stop, keep and go to the next step. After a take (or on a step that already has audio): go to the next step. The next step **waits**: recording never starts by itself (so the room noise of playback is not recorded). A step with no audio says so and does not advance |
 | **Backspace** | Retake. While recording it throws the take away (nothing is written). After a take it reverts that take with “Revert to previous”, back to the previous audio, ready for a new Space. Only audio recorded in this mode is reverted |
 | **←** / **→** | Previous / next step (a take being recorded is stopped and kept first) |
