@@ -4,6 +4,8 @@
 // 1. 板を開く・教員のページの字を貼る（教員のリンクは断る）・Q&A・投票を足す（段階はプレビューの段階）・直すことが 0
 // 2. 活動の JSON（教員のページに渡す）・設定を教材に残す（FORMAT.CONFIG_FILE の extensions.live に鍵がない）
 // 3. 部屋を付けて書き出す：CSP の <meta> が <head> の直後、拡張のブロックに鍵と活動。部屋を付けない書き出しには何も入らない
+// 5. 投票の表示名（label）：作るときにスライドの番号・見出し・段階の番号から作り、段階の候補・投票の一覧に出す（鍵は title）。活動の JSON に入る。
+//    label のない古い投票は、開いたときにスライドが見つかれば付け、見つからなければ鍵から「s-xxx · 段階 1」で出す
 // 4. この間、編集アプリはどこにも要求を出さない（同じ origin のほか 0、WebSocket 0）。編集アプリのページの CSP は変わらない
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,7 +35,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 教員のリンク（教員の鍵入り）は断る
     await page.fill('#live-paste', cr.teacherUrl);
     await page.click('#live-read');
-    ok(await page.inputValue('#live-key') === '' && /教員のリンク/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
+    ok(await page.inputValue('#live-key') === '' && /これはホスト用リンクです/.test(await page.textContent('#toast')), 'live panel: the teacher link (with the teacher key) is refused');
     await page.fill('#live-paste', 'コピー：\n' + block);
     await page.click('#live-read');
     ok(await page.inputValue('#live-room') === cr.room && await page.inputValue('#live-key') === cr.key && (await page.inputValue('#live-from')).length === 16, 'live panel: the teacher page\'s copy block fills room, key and window');
@@ -46,6 +48,12 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     const step = await page.inputValue('#live-poll-0-step');
     ok(/^[^:]+:1$/.test(step), `live panel: a new poll takes the step shown in the preview (${step})`);
     ok((await page.$$('#live-steps option')).length >= 6, 'live panel: step keys are offered (slides and narration)');
+    // 表示名：「2 枚目『見出し』・段階 2」（スライドも段階も 1 から）。段階の鍵は吹き出しに
+    const h2 = await frame.evaluate(() => document.querySelectorAll('section.slide')[1].querySelector('h1, h2').textContent.replace(/\s+/g, ' ').trim());
+    const label = `2 枚目『${h2}』・ステップ 2`;
+    ok(await page.textContent('#live-poll-0-label') === label && (await page.getAttribute('#live-poll-0-label', 'title')).includes(step), `live panel: the new poll is shown by its label (${label}), the key in the tooltip`);
+    ok(await page.$eval('#live-panel fieldset.live-poll legend', (e) => [e.textContent, e.title]).then(([t, ti]) => t === `p1 · ${label}` && ti.includes(step)), 'live panel: the poll list shows the label (legend), the key in the tooltip');
+    ok(await page.$eval(`#live-steps option[value="${step}"]`, (e) => e.getAttribute('label')) === label && await page.$eval('#live-steps option[value$=":0"]', (e) => /^\d+ 枚目『.+』・ステップ 1$/.test(e.getAttribute('label'))), 'live panel: the step suggestions carry the labels');
     await page.fill('#live-poll-0-prompt', '学習率を大きくすると？');
     await page.fill('#live-poll-0-c0', '速く収束');
     await page.fill('#live-poll-0-c1', '発散しうる');
@@ -53,10 +61,16 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.fill('#live-poll-0-c2', '変わらない');
     ok(await page.$eval('#live-problem-box', (e) => !e.querySelector('#live-problems')), 'live panel: nothing to fix');
     const acts = JSON.parse(await page.inputValue('#live-json'));
-    ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] }), 'live panel: the activities JSON for the teacher page');
+    ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label }] }), 'live panel: the activities JSON for the teacher page (with the label; the key unchanged)');
+    // 「活動の JSON をコピー」：コピーする字にも label
+    await page.evaluate(() => { window.__copied = null; try { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; } } }); } catch { /* なし */ } });
+    await page.click('#live-copy');
+    await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 }).catch(() => {});
+    { const c = JSON.parse((await page.evaluate(() => window.__copied)) || '{}'); ok(c[step] && c[step][0].label === label && c[step][0].id === 'p1', 'copy activities JSON: the copied text carries the labels'); }
+    await shot(page, 'live-poll-labels.png');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
     await page.fill('#live-endpoint', 'http://127.0.0.1:8787');
-    ok(await page.$eval('#live-export', (b) => b.disabled) && /endpoint/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused');
+    ok(await page.$eval('#live-export', (b) => b.disabled) && /接続先が正しくありません/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused (in Japanese)');
     await page.fill('#live-paste', block); await page.click('#live-read');
     { const pi = await page.$('#live-paste'); if (pi) await page.fill('#live-paste', ''); }
     // 窓が 3 時間より長い（部屋のサービス v1 の上限）
@@ -67,6 +81,9 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 形の誤り：選択肢が空
     await page.fill('#live-poll-0-c2', '');
     ok(await page.$eval('#live-export', (b) => b.disabled) && !!(await page.$('#live-problems')), 'live panel: an empty choice is a problem; export is disabled');
+    // 直すことは画面の言葉で（validate の code から。英語の開発者向けの文を出さない）
+    { const t = await page.textContent('#live-problems'); ok(/投票 p1：選択肢 3 を入れてください（100 字まで）/.test(t) && !/live\.activities|characters/.test(t), `live panel: the problem is in plain Japanese ("${t}")`); }
+    await page.$eval('#live-problem-box', (e) => e.scrollIntoView({ block: 'center' })); await shot(page, 'live-panel-problems.png');
     await page.fill('#live-poll-0-c2', '変わらない');
     // 教材に残す（鍵なし）
     await page.click('#live-save');
@@ -100,6 +117,20 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     const appCsp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]').content);
     const srcCsp = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8')) || [])[1];
     ok(appCsp === srcCsp && /connect-src 'self';/.test(appCsp), 'the editor page\'s CSP is unchanged (connect-src \'self\')');
+    // label のない古い投票：開き直すと、スライドが見つかるものには付け、見つからないものは鍵から「s-xxx · 段階 2」で出す
+    {
+      const cfgNow = JSON.parse((await opfs.read(FORMAT.CONFIG_FILE)) || '{}');
+      const old = { '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: 'old', choices: ['a', 'b'] }], 's-gone:1': [{ id: 'p2', kind: 'poll', prompt: 'gone', choices: ['a', 'b'] }] };
+      cfgNow.extensions.live.activities = old;
+      await opfs.write(FORMAT.CONFIG_FILE, JSON.stringify(cfgNow, null, 2) + '\n');
+      await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+      await menuClick('#b-export-live');
+      await page.waitForSelector('#live-poll-1-label');
+      ok(await page.textContent('#live-poll-0-label') === label, 'older poll without a label: the label is filled from the slide when the panel opens');
+      ok(await page.textContent('#live-poll-1-label') === 's-gone · ステップ 2' && await page.getAttribute('#live-poll-1-label', 'title') === 'ステップの鍵：s-gone:1', 'older poll on an unknown slide: shown as "s-gone · 段階 2", the key in the tooltip');
+      const a2 = JSON.parse(await page.inputValue('#live-json'));
+      ok(a2[step][0].label === label && !('label' in a2['s-gone:1'][0]), 'older polls: the JSON gets a label only where one could be made');
+    }
     // 板を閉じる（設定を消す：Q&A を切って投票を消して残すと、部屋の設定は残るが活動は空）
     await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
   } finally {

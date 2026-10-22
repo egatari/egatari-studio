@@ -72,6 +72,11 @@
       },
       "kind": {
        "const": "qa"
+      },
+      "label": {
+       "type": "string",
+       "maxLength": 80,
+       "description": "display text for the step, e.g. \"Slide 4 'XML', step 1\" (optional; text only; the step key stays the key)"
       }
      },
      "required": [
@@ -100,6 +105,11 @@
         "maxLength": 100
        },
        "maxItems": 12
+      },
+      "label": {
+       "type": "string",
+       "maxLength": 80,
+       "description": "display text for the step, e.g. \"Slide 4 'XML', step 1\" (optional; text only; the step key stays the key)"
       }
      },
      "required": [

@@ -228,7 +228,9 @@ ok('往復：展開 → もう一度まとめると同じファイル・同じ�
   // 展開の断り：空でないフォルダ、シンボリックリンクを通る書き込み
   await rejects(unpack(path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT), U), 'not-empty');
   const L = path.join(work, 'linked'); fs.mkdirSync(L);
-  fs.symlinkSync(os.tmpdir(), path.join(L, 'audio'));
+  // 行き先は一時フォルダの中の空のフォルダ（システムの一時フォルダそのものにすると、CI の画面の保存が辿って権限のない所を走査して失敗する）
+  const elsewhere = path.join(work, 'elsewhere'); fs.mkdirSync(elsewhere);
+  fs.symlinkSync(elsewhere, path.join(L, 'audio'));
   await rejects(unpack(path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT), L, { force: true }), 'bad-path');
 });
 ok('索引のない文書の種類（sourceKind・no-source の details.kind）：原稿の deck.html・組んだ発表の HTML・再生専用の派生・ほかの HTML', async () => {

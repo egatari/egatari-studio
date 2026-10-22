@@ -18,7 +18,10 @@ const args = process.argv.slice(2);
 const oi = args.indexOf('--only');
 const only = oi >= 0 ? new Set(args[oi + 1].split(',')) : null;
 const verbose = args.includes('--verbose') || !!process.env.CI;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-test-'));
+// 環境変数 MOTION_TEST_ARTIFACTS があれば、一時フォルダの代わりにそのフォルダを使う（CI が失敗時の画面を決まった場所から拾うため）。なければ従来どおり
+const tmp = process.env.MOTION_TEST_ARTIFACTS
+  ? (fs.mkdirSync(process.env.MOTION_TEST_ARTIFACTS, { recursive: true }), path.resolve(process.env.MOTION_TEST_ARTIFACTS))
+  : fs.mkdtempSync(path.join(os.tmpdir(), 'motion-test-'));
 const rel = (...p) => path.join(ROOT, ...p);
 const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');

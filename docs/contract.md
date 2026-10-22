@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=1eadba5ea9ff208a -->
+<!-- i18n: pair=contract.ja.md sha256=8fc97b52ca5d6e5a -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -183,7 +183,8 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 
 Only a play-only copy exported with a live room carries the live player (`kit/live.js` with `kit/core/live-policy.mjs`, added by `kit/core/live.mjs`); every other output is unchanged. Its normative behaviour is in the format's [`live` extension](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md) and the protocol in [egatari/live](https://github.com/egatari/live); this section is what Studio's runtime promises.
 
-- The pane is outside the stage: `#live-pane` is docked at the right (at the bottom when the window is tall) and `#stage` is fitted into the rest with the same formula as `fit()`. It MUST NOT change what `DECK.seek(i, k, t)` draws, captions, marks or print; in video mode (`?mode=video`), the presenter view and its frames (`?presenter`, `?view`) it is not created at all, and print hides it
-- It listens to `deck:pos` (`detail.key`) only to choose which polls to show; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
+- The pane starts collapsed: only the marker `#live-mark` (a `<button>` with `aria-expanded`, top right) is shown and `#stage` keeps the full window, as `fit()` places it. The marker shows the connection state (`data-state`, a coloured dot and screen-reader text). The pane opens when the marker is pressed (it then stays open until closed) or by itself on a step that has a poll (not `*`), inside the window, where the document can connect or offers **Join in the browser**; it collapses when that step is left unless the learner pinned it (**Keep open**). Opening is announced in a polite live region outside the pane; it does not move the focus
+- The opened pane is outside the stage: `#live-pane` is docked at the right (at the bottom when the window is tall) and `#stage` is fitted into the rest with the same formula as `fit()`. It MUST NOT change what `DECK.seek(i, k, t)` draws, captions, marks or print; in video mode (`?mode=video`), the presenter view and its frames (`?presenter`, `?view`) it is not created at all, and print hides it (and the marker)
+- It listens to `deck:pos` (`detail.key`) only to choose which polls to show and whether to open the pane; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
 - The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
 - It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text
