@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<script src="./guard.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#4A488E">
+<meta name="description" content="Egatari ファイル（.ega.html）をこの端末で開いて再生します。ファイルはどこにも送りません。 / Open and play Egatari files (.ega.html) on this device. Files are never uploaded.">
+<title>Egatari Play</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="stylesheet" href="./play.css">
+<script type="module" src="./play.js"></script>
+</head>
+<body>
+<div id="framed" hidden>
+  <p lang="ja">このページはほかのページの枠の中では動きません。<a href="./" target="_top" rel="noopener noreferrer">Egatari Play</a> を直接開いてください。</p>
+  <p lang="en">This page does not run inside another page's frame. Open <a href="./" target="_top" rel="noopener noreferrer">Egatari Play</a> directly.</p>
+</div>
+<a class="skip" href="#main" data-i18n="skip">本文へ</a>
+<header id="bar">
+  <a id="home" href="./" aria-label="Egatari Play">
+    <img src="./icons/egatari-32-light.svg" alt="" width="28" height="28" class="logo-light">
+    <img src="./icons/egatari-32-dark.svg" alt="" width="28" height="28" class="logo-dark">
+    <span class="name">Egatari Play</span>
+  </a>
+  <div id="lesson-info" hidden>
+    <span id="lesson-title"></span>
+    <span id="lesson-kind" class="badge"></span>
+  </div>
+  <div class="bar-buttons">
+    <button type="button" id="b-live" class="live-btn" hidden aria-expanded="false" aria-controls="live"><span class="dot" aria-hidden="true"></span><span data-i18n="live">ライブ</span><span class="sr-only" id="b-live-state"></span></button>
+    <button type="button" id="b-close" hidden data-i18n="close">閉じる</button>
+    <button type="button" id="b-lang" lang="en">English</button>
+  </div>
+</header>
+<div id="update" role="status" hidden>
+  <span data-i18n="updateReady">新しい版があります。</span>
+  <button type="button" id="b-update" data-i18n="updateNow">更新する</button>
+</div>
+<main id="main" tabindex="-1">
+  <section id="start" aria-labelledby="start-h">
+    <h1 id="start-h" data-i18n="startTitle">Egatari ファイルを再生する</h1>
+    <p data-i18n="startLead">Egatari ファイル（.ega.html）を選ぶと、この画面で再生します。ファイルはこの端末の中で読み、どこにも送りません。</p>
+    <div id="drop">
+      <label class="pick" for="file"><span data-i18n="pick">ファイルを開く</span></label>
+      <input type="file" id="file" accept=".html,.htm,text/html">
+      <p class="hint" data-i18n="dropHint">ここにファイルをドロップしても開けます。</p>
+    </div>
+    <p id="msg" role="alert"></p>
+    <section id="recent" aria-labelledby="recent-h">
+      <h2 id="recent-h" data-i18n="recentTitle">最近のファイル</h2>
+      <p class="notice"><strong data-i18n="deviceOnly">この端末にだけ保存されます</strong><span data-i18n="deviceOnlyMore">。最近開いたファイルは、このブラウザの中にだけ残り、どこにも送られません。いつでも削除できます。</span></p>
+      <label class="keep"><input type="checkbox" id="keep" checked> <span data-i18n="keep">開いたファイルを最近の一覧に残す</span></label>
+      <p id="recent-store" class="small"></p>
+      <ul id="recent-list"></ul>
+      <p id="recent-empty" class="small" data-i18n="recentEmpty">まだありません。</p>
+      <button type="button" id="b-clear" hidden data-i18n="clearAll">すべて削除</button>
+    </section>
+    <section id="about" aria-labelledby="about-h">
+      <h2 id="about-h" data-i18n="aboutTitle">このページについて</h2>
+      <ul>
+        <li data-i18n="about1">iPhone・iPad など、ファイルのアプリから HTML のファイルを直接開けない端末のための再生ページです。</li>
+        <li data-i18n="about2">教材は、このページとは切り離された枠（sandbox）の中で動きます。教材からは、このページの保存場所にも、ネットワークにも届きません。</li>
+        <li data-i18n="about3">ライブ（質問・投票）のある教材では、「参加する」を押したときだけ、このページが教材に書かれた部屋につなぎます。</li>
+        <li data-i18n="about4">教材を作る・直すのは Egatari Studio です。</li>
+      </ul>
+      <p class="small"><a href="https://github.com/egatari/egatari-spec" rel="noopener noreferrer" target="_blank" data-i18n="specLink">Egatari の仕様</a> · <span data-i18n="version">版</span> <span id="version"></span></p>
+    </section>
+  </section>
+  <section id="player" hidden aria-label="教材">
+    <div id="stage-wrap"></div>
+    <aside id="live" hidden aria-labelledby="live-h">
+      <div class="live-head">
+        <span class="dot" aria-hidden="true"></span>
+        <h2 id="live-h" data-i18n="liveTitle">ライブ（質問・投票）</h2>
+        <span id="live-state" class="state"></span>
+        <button type="button" id="b-live-fold" data-i18n-label="fold" aria-label="たたむ">×</button>
+      </div>
+      <div class="live-body">
+        <p id="live-notice"></p>
+        <p id="live-window" class="small"></p>
+        <p id="live-msg" class="msg" role="alert"></p>
+        <div id="live-join-row" class="row"><button type="button" id="b-join" class="pri" data-i18n="join">参加する</button><span id="live-dest" class="small"></span></div>
+        <div id="live-link-row" class="row" hidden><a id="a-join" class="pri" target="_blank" rel="noopener noreferrer" data-i18n="openJoin">ブラウザで参加する</a><span id="live-link-dest" class="small"></span></div>
+        <div id="live-name-row" hidden>
+          <label for="live-name" data-i18n="name">名前（任意）</label>
+          <input type="text" id="live-name" autocomplete="off">
+          <p class="small" data-i18n="nameNote">名前はホストだけに見えます（入れなければ名前なしで送られます）</p>
+        </div>
+        <div id="live-polls"></div>
+        <div id="live-qa" hidden>
+          <label for="live-q" data-i18n="ask">先生への質問</label>
+          <textarea id="live-q"></textarea>
+          <div class="row"><button type="button" id="b-send" class="pri" data-i18n="send">送る</button></div>
+        </div>
+        <div id="live-shown" hidden><h3 data-i18n="shown">ホストが全員に表示した質問</h3><ul id="live-shown-list"></ul></div>
+        <div class="row"><button type="button" id="b-leave" hidden data-i18n="leave">退出する</button></div>
+        <p class="small" data-i18n="privacy">送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません。</p>
+      </div>
+    </aside>
+  </section>
+</main>
+<div id="sr" class="sr-only" role="status" aria-live="polite"></div>
+<dialog id="link-box" aria-labelledby="link-t" aria-describedby="link-n">
+  <h2 id="link-t"></h2>
+  <p id="link-host" class="host"></p>
+  <p id="link-url" class="url"></p>
+  <ul id="link-n"></ul>
+  <div class="row">
+    <button type="button" id="b-link-cancel"></button>
+    <a id="a-link-open" class="pri" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"></a>
+  </div>
+</dialog>
+</body>
+</html>

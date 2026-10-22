@@ -22,3 +22,6 @@ comments.json
 dist/
 # single-file exports written by the CLI at the top of an example folder
 /examples/*/*.ega.html
+# Egatari Play build (node tools/build-play.mjs)
+_play/
+.wrangler/
