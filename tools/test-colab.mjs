@@ -233,6 +233,89 @@ print("ok")
   assert.equal(r.status, 0, r.stderr + r.stdout);
 });
 
+ok('python: prepare_reference_voice validates (3-30 s, decodable, not silent) and writes 48 kHz mono; IrodoriWorker uses it as the reference', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-ref-'));
+  const py = `
+import os, shutil, subprocess, sys, wave
+import numpy as np
+from scipy.io import wavfile
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+d = ${JSON.stringify(dir)}
+def tone(sec, sr, ch=1, amp=0.3):
+    t = np.arange(round(sec * sr)) / sr
+    x = (amp * np.sin(2 * np.pi * 220 * t) * 32767).astype("<i2")
+    return x if ch == 1 else np.stack([x, x // 2], axis=1)
+def bad(name, data, sr, needle):
+    p = os.path.join(d, name); wavfile.write(p, sr, data)
+    try:
+        E.prepare_reference_voice(p, os.path.join(d, "o.wav")); raise SystemExit(name + " did not raise")
+    except E.RefVoiceError as e:
+        assert needle in str(e), str(e)
+# ok: 44.1 kHz stereo 5 s -> 48 kHz mono 16 bit, about 5 s
+src = os.path.join(d, "a.wav"); wavfile.write(src, 44100, tone(5, 44100, 2))
+out = os.path.join(d, "sub", "ref.wav")
+info = E.prepare_reference_voice(src, out)
+with wave.open(out) as w:
+    assert (w.getframerate(), w.getnchannels(), w.getsampwidth()) == (48000, 1, 2)
+    assert abs(w.getnframes() / 48000 - 5) < 0.01, w.getnframes()
+assert info["channels"] == 2 and info["src_sr"] == 44100 and abs(info["seconds"] - 5) < 0.01
+# the edges (3 s and 30 s) are accepted
+E.prepare_reference_voice(src, out); wavfile.write(src, 16000, tone(3, 16000)); E.prepare_reference_voice(src, out)
+wavfile.write(src, 8000, tone(30, 8000)); E.prepare_reference_voice(src, out)
+# errors
+bad("short.wav", tone(1, 24000), 24000, "短すぎ")
+bad("long.wav", tone(31, 8000), 8000, "長すぎ")
+bad("silent.wav", tone(5, 16000, amp=0.0), 16000, "無音")
+try:
+    E.prepare_reference_voice(os.path.join(d, "none.wav"), out); raise SystemExit("missing file")
+except E.RefVoiceError as e:
+    assert "ファイルがありません" in str(e)
+junk = os.path.join(d, "junk.wav"); open(junk, "wb").write(b"this is not audio at all" * 50)
+for ff in ("ffmpeg", None):
+    try:
+        E.prepare_reference_voice(junk, out, ffmpeg=ff); raise SystemExit("junk accepted")
+    except E.RefVoiceError as e:
+        assert "読" in str(e), str(e)
+# MP3 through ffmpeg (only where ffmpeg exists)
+if shutil.which("ffmpeg"):
+    mp3 = os.path.join(d, "a.mp3")
+    wavfile.write(src, 44100, tone(4, 44100))
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, mp3], check=True)
+    info = E.prepare_reference_voice(mp3, out)
+    assert 3.9 < info["seconds"] < 4.2, info
+    with wave.open(out) as w: assert (w.getframerate(), w.getnchannels()) == (48000, 1)
+# the worker passes the reference voice, and the default is unchanged
+w = E.IrodoriWorker(["node", ${JSON.stringify(path.join(ROOT, 'tools/colab-fake-worker.mjs'))}], os.path.join(d, "voices"), d, ref_voice=out)
+sent = []
+orig = w._proc.stdin.write
+class Tap:
+    def __init__(s, f): s.f = f
+    def write(s, x): sent.append(x); return s.f.write(x)
+    def flush(s): return s.f.flush()
+    def close(s): return s.f.close()
+w._proc.stdin = Tap(w._proc.stdin)
+w("hello", "bob"); w.close()
+assert out in sent[0] and "bob.wav" not in sent[0], sent[0]
+w = E.IrodoriWorker(["node", ${JSON.stringify(path.join(ROOT, 'tools/colab-fake-worker.mjs'))}], os.path.join(d, "voices"), d)
+w._proc.stdin = Tap(w._proc.stdin); sent.clear()
+w("hello", "bob"); w.close()
+assert os.path.join(d, "voices", "bob.wav") in sent[0], sent[0]
+print("ok")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8', cwd: dir });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+ok('notebook: the optional reference-voice cell is there, off by default, passes ref_voice to Irodori only, and says the voice must be one you may use', () => {
+  const nb = JSON.parse(notebook()), text = nb.cells.map((c) => c.source.join('')).join('\n');
+  assert.ok(/UPLOAD = False/.test(text) && /DRIVE_PATH = ""/.test(text) && /ref_voice=globals\(\)\.get\("REF_VOICE_PATH"\)/.test(text));
+  const load = nb.cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('irodori_synth')).source.join('');
+  assert.ok(!/REF_VOICE_PATH/.test(load.replace(/globals\(\)\.get\("REF_VOICE_PATH"\)/g, '')), 'cell 3 does not reference REF_VOICE_PATH bare (the optional cell may be skipped)');
+  assert.ok(/right to use/.test(text) && /使ってよい声/.test(text) && /not uploaded anywhere else/.test(text));
+  assert.ok(nb.cells.every((c) => c.cell_type !== 'code' || (c.execution_count === null && c.outputs.length === 0)), 'no outputs or execution counts');
+});
+
 // ---------------------------------------------------------------- 核の dry-run（Python。uv があれば）
 ok('python core: the dry-run of colab/egatari_tts.py makes a zip the editor side imports, with the same processing as audio-core', async () => {
   const uv = spawnSync('uv', ['--version'], { encoding: 'utf8' });
