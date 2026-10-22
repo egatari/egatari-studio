@@ -1,11 +1,12 @@
 // Egatari Play: links the lesson asks the page to open (format spec §11: "Hosts that play lessons apply the same rule to links
 // the lesson asks them to open"). The rule is the player's own, kit/core/link-policy.mjs (DECK.LinkPolicy on main).
 // The box is in the page's chrome, outside the lesson's frame, so the lesson cannot draw over it or press it.
-// Opening uses an ordinary <a target="_blank" rel="noopener noreferrer"> that the viewer taps (Safari blocks window.open
-// without a tap in this page). A host already agreed to (plain https:, in memory for this viewing session, (f)) opens at once
-// when the browser still counts the viewer's tap in the frame as an activation of this page; otherwise the box asks once more.
+// Opening is always an ordinary <a target="_blank" rel="noopener noreferrer"> that the viewer taps in this page: the page never
+// opens anything on a message alone (spec §9.4 openLink), and Safari would not open a tab without a fresh tap here anyway.
+// A host already agreed to (plain https:, in memory for this viewing session, §11 (f)) gets a plain box: the host name and an
+// 「開く」 button, without the warning (on such platforms, one tap without the warning counts as not asking again).
 //
-//   const LB = linkBox({policy, words, dialog elements})  → {request({href, text, download}), hosts}
+//   const LB = linkBox({words, dialog elements})  → {request({href, text}), hosts}
 import { LinkPolicy } from '../kit/core/link-policy.mjs';
 
 export const LP = LinkPolicy();
@@ -17,7 +18,7 @@ export function decideLink(link, hosts) {
   const raw = String(link.href == null ? '' : link.href).trim();
   if (raw && !ABS.test(raw) && !raw.startsWith('//')) return { verdict: 'refuse', reason: 'relative' };
   const href = raw.startsWith('//') ? 'https:' + raw : raw;
-  return LP.decide({ href, text: link.text, download: link.download }, { hosts });
+  return LP.decide({ href, text: link.text, download: false }, { hosts });
 }
 
 export function linkBox({ words, dlg }) {
@@ -30,7 +31,7 @@ export function linkBox({ words, dlg }) {
   dlg.box.addEventListener('click', (e) => { if (e.target === dlg.box) close(); });
   let current = null;
   dlg.open.addEventListener('click', () => { if (current) LP.remember(hosts, current); setTimeout(close, 0); });
-  function show(title, host, url, notes, open) {
+  function show(title, host, url, notes, open, openLabel) {
     const S = W();
     dlg.title.textContent = title;
     dlg.host.textContent = host; dlg.host.hidden = !host;
@@ -39,7 +40,7 @@ export function linkBox({ words, dlg }) {
     for (const n of notes) { const li = document.createElement('li'); li.textContent = n; dlg.notes.appendChild(li); }
     dlg.cancel.textContent = open ? S.linkCancel : S.linkClose;
     dlg.open.hidden = !open;
-    if (open) { dlg.open.href = open; dlg.open.textContent = S.linkOpen; } else dlg.open.removeAttribute('href');
+    if (open) { dlg.open.href = open; dlg.open.textContent = openLabel || S.linkOpen; } else dlg.open.removeAttribute('href');
     from = document.activeElement;
     dlg.box.showModal();
     dlg.cancel.focus();   // the default is Cancel (Enter or Space pressed once too often does not open)
@@ -61,13 +62,12 @@ export function linkBox({ words, dlg }) {
       show(S.linkCannot, '', String(link.href || '').slice(0, 300), [note], null);
       return { shown: true, verdict: 'refuse', reason: d.reason };
     }
-    if (d.verdict === 'open' && navigator.userActivation && navigator.userActivation.isActive) {
-      window.open(d.url, '_blank', LP.OPEN_FEATURES);
-      return { shown: false, verdict: 'open', url: d.url };
+    if (d.verdict === 'open') {   // remembered: the host and 「開く」 only
+      show(d.host, '', '', [], d.url, S.linkOpenPlain);
+      return { shown: true, verdict: 'open', url: d.url };
     }
-    current = d.verdict === 'confirm' ? d : null;
-    const title = d.verdict === 'open' || !d.must ? S.linkLeave : S.linkCheck;
-    show(title, d.host || d.scheme + ':', d.url, (d.reasons || []).map((r) => S.why[r] || r), d.url);
+    current = d;
+    show(d.must ? S.linkCheck : S.linkLeave, d.host || d.scheme + ':', d.url, (d.reasons || []).map((r) => S.why[r] || r), d.url);
     return { shown: true, verdict: d.verdict, url: d.url, must: !!d.must };
   }
   return { request, hosts, close, quietMs: () => Math.max(0, quietUntil - Date.now()) };

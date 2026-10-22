@@ -1,6 +1,6 @@
 # Egatari Play (play.egatari.org): production config.
 # Deploy (by the maintainer, after approval; docs/play.md "Deploying"):
-#   node tools/build-play.mjs && CLOUDFLARE_ACCOUNT_ID=<account id> npx wrangler deploy -c play/wrangler.production.toml
+#   node tools/build-play.mjs && CLOUDFLARE_ACCOUNT_ID=<account id> npx wrangler@4.124.0 deploy -c play/wrangler.production.toml
 # Keep it in step with wrangler.toml (the development and test config).
 name = "egatari-play"
 main = "worker.js"

@@ -4,15 +4,21 @@
 //   1. ?embed=1: a srcdoc document has no address of its own, so the embedding mode (spec §9.4: position events) is set
 //      through history, as the editor's preview does (app/frame-shim.js). Players that ignore it still send their legacy
 //      deck-pos messages, which the page also reads.
-//   2. Links that leave the lesson: the frame cannot open windows (no allow-popups). A click on such a link is handed to
-//      the page as {egaPlay: "openLink", href, text, download}; the page applies the link rule (kit/core/link-policy.mjs)
-//      in its own chrome. Links inside the lesson (#…, spec §9.1A) stay with the player.
+//   2. Links that leave the lesson: the frame cannot open windows (no allow-popups). On the viewer's own activation (a trusted
+//      click while the frame has a transient activation) such a link is handed to the page as the spec's embedding event
+//      {egatari: "openLink", href, text} (spec §9.4; text at most 200 characters). The page treats it as untrusted, applies the
+//      link rule (spec §11, kit/core/link-policy.mjs) itself and opens nothing without a tap in its own interface.
+//      Links inside the lesson (#…, spec §9.1A) stay with the player.
 (function lessonShim() {
   "use strict";
   try { history.replaceState(null, "", "about:srcdoc?embed=1"); } catch (e) { /* the page falls back to deck-pos */ }
   var parentWin = window.parent;
-  function send(href, text, download) {
-    try { parentWin.postMessage({ egaPlay: "openLink", v: 1, href: String(href == null ? "" : href).slice(0, 4096), text: String(text || "").slice(0, 1000), download: !!download }, "*"); } catch (e) { /* gone */ }
+  function activated() {
+    var u = navigator.userActivation;
+    return !u || u.isActive === true;   // without the API (older browsers) the trusted click below is the evidence
+  }
+  function send(href, text) {
+    try { parentWin.postMessage({ egatari: "openLink", href: String(href == null ? "" : href).slice(0, 4096), text: String(text || "").replace(/\s+/g, " ").trim().slice(0, 200) }, "*"); } catch (e) { /* gone */ }
   }
   function linkOf(e) {
     var p = e.composedPath ? e.composedPath() : [];
@@ -38,10 +44,11 @@
     if (!a || a.__egaOwn || inDoc(a)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    send(a.getAttribute("href"), (a.textContent || "") + " " + (a.getAttribute("aria-label") || a.getAttribute("alt") || ""), a.hasAttribute("download"));
+    if (!e.isTrusted || !activated()) return;   // only the viewer's own activation: script-made clicks open nothing
+    send(a.getAttribute("href"), (a.textContent || "") + " " + (a.getAttribute("aria-label") || a.getAttribute("alt") || ""));
   }
   window.addEventListener("click", onClick, true);
   window.addEventListener("auxclick", onClick, true);
   // The player's own window.open (after its confirmation box, presenter view): no popups here; ask the page instead
-  window.open = function (u) { if (u != null && !/[?&]presenter=1/.test(String(u))) send(u, "", false); return null; };
+  window.open = function (u) { if (u != null && !/[?&]presenter=1/.test(String(u)) && navigator.userActivation && navigator.userActivation.isActive) send(u, ""); return null; };
 })();

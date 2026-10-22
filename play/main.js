@@ -17,6 +17,9 @@ const VERSION = __PLAY_VERSION__;
 const LIVE_ALLOWED = new Set(__PLAY_LIVE__);
 const LP = LivePolicy({ allowLoopback: __PLAY_DEV__ === true });
 const MAX_BYTES = 100 * 1024 * 1024;   // spec §11's recommended file limit
+// 「共有の端末」 (Shared device) when the viewer has not chosen: false keeps recent files (up to 10, play/recents.mjs MAX).
+// The owner has not decided the default yet; flip this one constant to make shared-device mode the default.
+const SHARED_DEVICE_DEFAULT = false;
 
 const $ = (id) => document.getElementById(id);
 const framed = document.documentElement.hasAttribute('data-framed');
@@ -61,7 +64,7 @@ async function openFile(blob, name, opts = {}) {
   if (!r || !r.ok) { showMsg(r && r.error === 'not-egatari' ? W().errNotEgatari : W().errParse); return false; }
   const info = { name: String(name || 'lesson.ega.html').slice(0, 300), title: r.meta.title, kind: r.kind, docId: r.meta.docId };
   if (opts.recentId) { try { await S.recents.touch(opts.recentId); } catch { /* keep playing */ } }
-  else if ($('keep').checked && S.recents && S.recents.kind !== 'none') { try { await S.recents.add(blob, info); } catch { /* storage full or blocked: still play */ } }
+  else if ($('keep').checked && !$('shared').checked && S.recents && S.recents.kind !== 'none') { try { await S.recents.add(blob, info); } catch { /* storage full or blocked: still play */ } }
   play(text, r, info);
   return true;
 }
@@ -126,7 +129,8 @@ window.addEventListener('message', (e) => {
   if (!f || e.source !== f.contentWindow || e.origin !== 'null') return;
   const m = e.data;
   if (!m || typeof m !== 'object') return;
-  if (m.egaPlay === 'openLink' && m.v === 1 && isStr(m.href, 4096) && isStr(m.text, 1000) && typeof m.download === 'boolean') links.request(m);
+  // spec §9.4 openLink: exactly {egatari, href, text}; text at most 200 characters. Untrusted: links.request applies §11 and asks for a tap
+  if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && Object.keys(m).length === 3) links.request({ href: m.href, text: m.text });
   else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) { if (S.live) S.live.setStep(m.key); }
 });
@@ -156,11 +160,26 @@ async function renderRecents() {
   $('recent-empty').hidden = list.length > 0;
   $('b-clear').hidden = list.length === 0;
 }
-const KEEP_KEY = 'egatari-play-keep';
-function initKeep() {
-  try { const v = localStorage.getItem(KEEP_KEY); if (v === '0') $('keep').checked = false; } catch { /* default on */ }
-  $('keep').addEventListener('change', () => { try { localStorage.setItem(KEEP_KEY, $('keep').checked ? '1' : '0'); } catch { /* memory only */ } });
+const KEEP_KEY = 'egatari-play-keep', SHARED_KEY = 'egatari-play-shared';
+const getPref = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* memory only */ } };
+function isShared() { const v = getPref(SHARED_KEY); return v === '1' ? true : v === '0' ? false : SHARED_DEVICE_DEFAULT; }
+function syncKeep() {
+  const shared = $('shared').checked;
+  $('keep').disabled = shared;
+  $('keep').checked = !shared && getPref(KEEP_KEY) !== '0';
 }
+function initKeep() {
+  $('shared').checked = isShared();
+  syncKeep();
+  $('keep').addEventListener('change', () => setPref(KEEP_KEY, $('keep').checked ? '1' : '0'));
+  $('shared').addEventListener('change', async () => {
+    setPref(SHARED_KEY, $('shared').checked ? '1' : '0');
+    syncKeep();
+    if ($('shared').checked) { await clearRecents(); announce(W().sharedOn); }
+  });
+}
+async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }
 
 // ---------------------------------------------------------------- service worker: only this page's own files; versioned update
 async function initSW() {
@@ -224,7 +243,7 @@ async function main() {
   // the "home" link: back to the start without reloading while a lesson plays
   $('home').addEventListener('click', (e) => { if (S.playing) { e.preventDefault(); $('b-close').click(); } });
   try { S.recents = await openRecents({ prefer: new URLSearchParams(location.search).get('store') === 'idb' ? 'idb' : '' }); } catch { S.recents = null; }
-  await renderRecents();
+  if ($('shared').checked) await clearRecents(); else await renderRecents();
   initShare();
   let reg = null;
   initSW().then((r) => { reg = r; });

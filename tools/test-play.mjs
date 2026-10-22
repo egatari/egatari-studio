@@ -23,7 +23,8 @@ import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
-import { buildPlay } from './build-play.mjs';
+import { buildPlay, pageCsp } from './build-play.mjs';
+import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { scanLesson } from '../play/scan.mjs';
 import { decideLink } from '../play/links.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
@@ -75,6 +76,10 @@ ok(/frame-ancestors 'none'/.test(headersText) && /X-Frame-Options: DENY/.test(he
 const host = new URL(fake.endpoint).host;
 ok(new RegExp(`connect-src 'self' http://${host.replace('.', '\\.')} ws://${host.replace('.', '\\.')};`).test(headersText) && /frame-src 'none'/.test(headersText) && !/unsafe-eval/.test(headersText),
   '_headers: connect-src is this page and the allowed Live endpoint only; frame-src \'none\'; no eval');
+// the page's policy, exactly: srcdoc lessons inherit it, so it allows inline scripts and styles and nothing else
+const CSP_FOR = (connect) => `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src data: blob:; connect-src ${connect}; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+ok(built.csp === CSP_FOR(`'self' http://${host} ws://${host}`) && headersText.includes(`  Content-Security-Policy: ${built.csp}\n`), `CSP: exactly the expected policy (${built.csp})`);
+ok(pageCsp(['https://live.egatari.org'], LivePolicy()) === CSP_FOR("'self' https://live.egatari.org wss://live.egatari.org"), 'CSP: the production build connects only to itself (the service worker\'s install) and the built-in Live endpoint');
 const manifest = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.webmanifest'), 'utf8'));
 ok(manifest.icons.map((i) => i.sizes).join() === '192x192,512x512' && manifest.icons.every((i) => fs.existsSync(path.join(OUT, i.src))), 'manifest: the 192 and 512 px logo icons, present in the build');
 ok(fs.readFileSync(path.join(OUT, 'icons', 'icon-512.png')).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'icon-512.png'))), 'manifest: icon-512.png is assets/logo/icon-512.png unchanged');
@@ -128,6 +133,8 @@ function serve(dir, { headers = true } = {}) {
 const site = await serve(OUT);
 const bare = await serve(OUT, { headers: false });   // a host that sends no headers (the JS check must refuse framing)
 const framer = await serve(work, { headers: false });
+{ const h = await new Promise((r) => http.get(site.url, (res) => { res.resume(); r(res.headers); }));
+  ok(h['content-security-policy'] === built.csp && h['x-frame-options'] === 'DENY', 'served: the page carries exactly that policy and X-Frame-Options: DENY'); }
 const browser = await launch();
 async function page(url = site.url, opts = {}) {
   const ctx = await browser.newContext({ locale: 'ja-JP', viewport: opts.viewport || { width: 1280, height: 800 }, serviceWorkers: opts.sw === false ? 'block' : 'allow' });
@@ -281,6 +288,26 @@ for (const store of ['opfs', 'idb']) {
   await o.close();
 }
 
+// 「共有の端末」: no recent files kept, and the ones kept are deleted; the choice is remembered
+console.log('shared device');
+{ const o = await page();
+  ok(!(await o.p.isChecked('#shared')) && await o.p.isChecked('#keep'), 'shared device: off by default; keeping recent files on');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  ok(await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 1)), 'shared device off: the file is kept');
+  await o.p.check('#shared');
+  ok(await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 0)), 'shared device on: the kept files are deleted');
+  ok(await o.p.evaluate(async () => { const d = await (await navigator.storage.getDirectory()).getDirectoryHandle('recent'); let n = 0; for await (const [k] of d.entries()) if (k.endsWith('.html')) n++; return n; }) === 0, 'shared device on: nothing left in OPFS');
+  ok(await o.p.isDisabled('#keep') && !(await o.p.isChecked('#keep')), 'shared device on: keeping is off and cannot be turned on');
+  ok(/何人かで使う端末/.test(await o.p.textContent('#shared-note')) && await o.p.getAttribute('#shared', 'aria-describedby') === 'shared-note', 'shared device: a short explanation, tied to the switch');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  await sleep(300);
+  ok(await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 0, 'shared device on: an opened file is not kept');
+  await o.p.reload(); await o.p.waitForSelector('html[data-ready]');
+  ok(await o.p.isChecked('#shared') && await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 0, 'shared device: remembered after a reload');
+  await o.p.uncheck('#shared');
+  ok(!(await o.p.isDisabled('#keep')) && await o.p.isChecked('#keep'), 'shared device off again: keeping comes back');
+  await o.close(); }
+
 // ---------------------------------------------------------------- 7. share_target
 console.log('share target');
 const shareForm = `<!doctype html><meta charset="utf-8"><form id="f" method="post" action="/share" enctype="multipart/form-data"><input type="file" name="lesson" id="i"><input type="text" name="title" value="x"></form>`;
@@ -309,26 +336,36 @@ console.log('links');
 { const o = await page();
   await openFixture(o.p, 'lesson.play.ega.html');
   const f = await lessonFrame(o.p);
-  const click = (href, text, extra = '') => f.evaluate(([h, t, x]) => { const a = document.createElement('a'); a.href = h; a.textContent = t; if (x) a.setAttribute('download', ''); a.style.cssText = 'position:fixed;left:10px;top:10px;z-index:99999'; document.body.appendChild(a); a.click(); a.remove(); }, [href, text, extra]);
+  // a link in the lesson, clicked by the viewer (a trusted click in the frame)
+  const click = async (href, text) => {
+    await f.evaluate(([h, t]) => { const a = document.createElement('a'); a.id = 'tl'; a.href = h; a.textContent = t; a.style.cssText = 'position:fixed;left:20px;top:20px;z-index:99999;font-size:24px;background:#fff'; document.body.appendChild(a); }, [href, text]);
+    await f.click('#tl');
+    await f.evaluate(() => { const a = document.getElementById('tl'); if (a) a.remove(); });
+  };
+  const sent = [];
+  await o.p.exposeFunction('__sawMessage', (m) => sent.push(m));
+  await o.p.evaluate(() => window.addEventListener('message', (e) => { if (e.data && e.data.egatari === 'openLink') window.__sawMessage(e.data); }));
   const shut = async (how = 'cancel') => { if (how === 'esc') await o.p.keyboard.press('Escape'); else await o.p.click('#b-link-cancel'); await sleep(1600); };
-  const box = () => o.p.evaluate(() => { const d = document.getElementById('link-box'); return { open: d.open, title: document.getElementById('link-t').textContent, host: document.getElementById('link-host').textContent, url: document.getElementById('link-url').textContent, notes: [...document.querySelectorAll('#link-n li')].map((l) => l.textContent), openHidden: document.getElementById('a-link-open').hidden, href: document.getElementById('a-link-open').getAttribute('href'), rel: document.getElementById('a-link-open').rel, focus: document.activeElement && document.activeElement.id }; });
+  const box = () => o.p.evaluate(() => { const d = document.getElementById('link-box'); const vis = (id) => !document.getElementById(id).hidden; return { open: d.open, title: document.getElementById('link-t').textContent, host: vis('link-host') ? document.getElementById('link-host').textContent : '', url: vis('link-url') ? document.getElementById('link-url').textContent : '', notes: [...document.querySelectorAll('#link-n li')].map((l) => l.textContent), openHidden: document.getElementById('a-link-open').hidden, openText: document.getElementById('a-link-open').textContent, href: document.getElementById('a-link-open').getAttribute('href'), rel: document.getElementById('a-link-open').rel, focus: document.activeElement && document.activeElement.id }; });
   await click('https://example.org/page', '参考');
   let b = null; await until(async () => (b = await box()).open);
+  ok(sent.length === 1 && JSON.stringify(Object.keys(sent[0]).sort()) === '["egatari","href","text"]' && sent[0].href === 'https://example.org/page' && sent[0].text === '参考',
+    `the viewer's click sends the spec's {egatari: "openLink", href, text} (${JSON.stringify(sent[0])})`);
   ok(b.open && b.host === 'example.org' && b.url === 'https://example.org/page' && b.href === 'https://example.org/page' && !b.openHidden, 'a link out of the lesson: the page shows the destination host and address in its own box');
   ok(b.rel.includes('noopener') && b.rel.includes('noreferrer') && b.focus === 'b-link-cancel', 'the box: opens with noopener noreferrer; the focus starts on Cancel');
   ok(await f.evaluate(() => document.getElementById('deck-extlink') === null), 'the player\'s own box does not appear (the page handles it)');
   const [popup] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), o.p.click('#a-link-open')]);
-  ok(!!popup, 'Open: a new tab');
+  ok(!!popup, 'Open: a new tab, only after the tap in the page\'s box');
   if (popup) await popup.close();
   await until(async () => !(await box()).open);
   await sleep(1600);
-  // the same host again: no box (agreed this session) when the tap counts; else one tap more. Either way it goes to example.org
-  await f.click('body').catch(() => {});
+  // §11 (f): the same https host again: a plain 「開く」 with the host name, no warning; still a tap in the page
+  const pages0 = o.ctx.pages().length;
   await click('https://example.org/other', 'また');
-  await sleep(300);
-  b = await box();
-  ok(!b.open || b.host === 'example.org', 'the same https host a second time: opens at once, or asks with one tap');
-  if (b.open) await shut();
+  await until(async () => (b = await box()).open);
+  ok(b.open && b.title === 'example.org' && b.openText === '開く' && b.notes.length === 0 && !b.url && !b.host, `the same host again: a plain 「開く」 with the host name, no warning (${b.title} / ${b.openText})`);
+  ok(o.ctx.pages().length === pages0, 'the same host again: nothing opens before the tap');
+  await shut();
   await click('https://evil.example/', 'https://bank.example/login');
   await until(async () => (b = await box()).open);
   ok(b.open && b.notes.some((n) => /別のサイト/.test(n)) && /確かめて/.test(b.title), 'text naming another host: confirmed, with the reason');
@@ -339,7 +376,7 @@ console.log('links');
   await click('https://example.com/', 'again');
   await sleep(300);
   const again = await box();
-  ok(!again.open, `right after a box closes, a new request is ignored for a moment (a lesson cannot keep the box up) (pause left ${quiet} ms${again.open ? ', box: ' + again.host : ''})`);
+  ok(!again.open, `right after a box closes, a new request is ignored for a moment (a lesson cannot keep the box up) (pause left ${quiet} ms${again.open ? ', box: ' + again.title : ''})`);
   if (again.open) await shut(); else await sleep(1600);
   await click('javascript:alert(1)', 'x');
   await until(async () => (b = await box()).open);
@@ -349,20 +386,30 @@ console.log('links');
   await until(async () => (b = await box()).open);
   ok(b.open && b.openHidden && b.notes.some((n) => /隣にあるファイル/.test(n)), 'a relative link (a file next to the lesson) is refused with a reason');
   await shut();
+  const n0 = sent.length;
+  await f.evaluate(() => { const a = document.createElement('a'); a.href = 'https://example.net/'; a.textContent = 'x'; document.body.appendChild(a); a.click(); a.remove(); });
+  await sleep(400);
+  ok(sent.length === n0 && !(await box()).open, 'a click made by lesson script (not the viewer) sends nothing');
   await click('#' + (await f.evaluate(() => DECK.slides[1].id || '2')), 'in-lesson');
   await sleep(300);
-  ok(!(await box()).open, 'a link inside the lesson stays with the player (no box)');
-  // forged requests: from the page's own window (not the frame) are ignored; from the frame they are only requests
-  await o.p.evaluate(() => window.postMessage({ egaPlay: 'openLink', v: 1, href: 'https://example.net/', text: '', download: false }, '*'));
+  ok(sent.length === n0 && !(await box()).open, 'a link inside the lesson stays with the player (no message, no box)');
+  await click('https://example.org/' + 'x', 'y'.repeat(400));
+  await until(async () => sent.length > n0);
+  ok(sent[sent.length - 1].text.length === 200, 'the text is cut to 200 characters');
+  await until(async () => (await box()).open); await shut();
+  // forged requests: from the page's own window are ignored; from the frame they are untrusted and still go through the rule
+  await o.p.evaluate(() => window.postMessage({ egatari: 'openLink', href: 'https://example.net/', text: '' }, '*'));
   await sleep(300);
   ok(!(await box()).open, 'a request that does not come from the lesson\'s frame is ignored');
-  await f.evaluate(() => window.parent.postMessage({ egaPlay: 'openLink', v: 1, href: 'data:text/html,<b>x</b>', text: '', download: false }, '*'));
+  await f.evaluate(() => window.parent.postMessage({ egatari: 'openLink', href: 'data:text/html,<b>x</b>', text: '' }, '*'));
   await until(async () => (b = await box()).open);
-  ok(b.open && b.openHidden, 'a request posted by lesson code is still judged by the rule (data: refused)');
+  ok(b.open && b.openHidden, 'a request posted by lesson code is still judged by the rule (data: refused, no Open)');
   await shut();
-  await f.evaluate(() => window.parent.postMessage({ egaPlay: 'openLink', v: 1, href: 'https://x.example/' + 'a'.repeat(5000), text: '', download: false }, '*'));
-  await sleep(300);
-  ok(!(await box()).open, 'a malformed request (too long) is ignored');
+  for (const [m, what] of [[{ egatari: 'openLink', href: 'https://x.example/', text: 'z'.repeat(201) }, 'text over 200 characters'], [{ egatari: 'openLink', href: 'https://x.example/', text: '', download: true }, 'an extra member'], [{ egatari: 'openLink', href: 7, text: '' }, 'a non-string href']]) {
+    await f.evaluate((mm) => window.parent.postMessage(mm, '*'), m);
+    await sleep(300);
+    ok(!(await box()).open, `a malformed request (${what}) is ignored`);
+  }
   await o.close(); }
 
 // ---------------------------------------------------------------- 9. zero network for a lesson without live

@@ -1,4 +1,4 @@
-<!-- i18n: pair=play.md sha256=b3aced1f96a13894 -->
+<!-- i18n: pair=play.md sha256=67a28d498a130d9c -->
 # Egatari Play（再生ページ）
 
 [English](play.md) | 日本語
@@ -16,7 +16,7 @@ Egatari Play は、[Egatari](https://github.com/egatari/egatari-spec) の 1 フ�
 ## 使い方
 
 - **ファイルを開く**：「ファイルを開く」を押すか、ページにファイルをドロップします。再生するのは Egatari のファイルだけで、`deck-meta` が Egatari のものでないページは断ります。上の帯に教材の題と、「Egatari ファイル（編集可）」（原稿の層のある持ち運べる 1 ファイル）か「Egatari ファイル（再生のみ）」かを出します。どちらも同じように再生します。直すのは Egatari Studio です。
-- **最近のファイル**：開いたファイルは「この端末にだけ保存されます」の知らせのもとで、ブラウザの中の OPFS（origin ごとの非公開のファイル領域）に残ります。ページから OPFS に書けないブラウザ（古い Safari）では IndexedDB に残します。10 個まで。1 つずつでも、すべてでも消せます。「開いたファイルを最近の一覧に残す」を外すと残しません。どこにも送りません。
+- **最近のファイル**：開いたファイルは「この端末にだけ保存されます」の知らせのもとで、ブラウザの中の OPFS（origin ごとの非公開のファイル領域）に残ります。ページから OPFS に書けないブラウザ（古い Safari）では IndexedDB に残します。10 個まで。1 つずつでも、すべてでも消せます。「開いたファイルを最近の一覧に残す」を外すと残しません。**「共有の端末」**は、学校の iPad のように何人かで使う端末のためのもので、オンにすると最近のファイルを残さず、いま残っているものも消します（選んだことはこの端末に覚えます）。既定はオフです（`play/main.js` の `SHARED_DEVICE_DEFAULT`。定数 1 つで替えられます）。どこにも送りません。
 - **入れる**：ページは Web アプリ（manifest と service worker）です。Android とパソコンの Chrome ではブラウザのメニューから入れ、iPhone・iPad では 共有 → ホーム画面に追加。入れた後はオフラインでも開けます。
 - **共有で開く（Android）**：入れたアプリは共有の受け先になります。ファイルのアプリやチャットから .ega.html を共有し、Egatari Play を選びます。
 - **言葉**：日本語が先で、「English」のボタンで英語に替えます（この端末に覚えます）。
@@ -27,13 +27,13 @@ Egatari Play は、[Egatari](https://github.com/egatari/egatari-spec) の 1 フ�
 
 - 教材は `<iframe sandbox="allow-scripts">` の中で、文書は `srcdoc` です。`allow-same-origin`・`allow-popups`・`allow-forms`・`allow-modals`・`allow-downloads`・`allow-top-navigation` はありません。origin を持たないので、このページの OPFS・IndexedDB・localStorage・cookie を読めず、DOM にも届きません。窓を開くことも、ページを移すこともできません。
 - 文書は、ページの**信頼する先頭部分**のあとに、ファイルのバイトをそのまま続けたものです（`app/preview-doc.js`。Studio のプレビューと同じ）。先頭部分がプレビューの決まり（`connect-src 'none'`・`frame-src 'none'`・読めるのは `data:` と `blob:` だけ）を持つので、教材のバイトを 1 つでも解析する前に決まりが効いています。教材の中を探して何かを入れることはしません。先頭部分には、ページの小さな仲立ち（`play/lesson-shim.js`）も入ります。`?embed=1`（仕様 §9.4）にし、授業の外へ出るリンクをページに渡します。
-- `srcdoc` の文書は、ページ自身の決まりも受け継ぎ、両方が効きます。そのため、ページの決まりはインラインのスクリプトとスタイルを許します（教材が使うため）。ページ自身はインラインを使わず、スクリプトはすべてファイルです。ページの `connect-src` にはライブの部屋の endpoint がありますが、教材の先頭部分がそれを `'none'` に絞るので、部屋につなげるのはページだけです。
+- `srcdoc` の文書は、ページ自身の決まりも受け継ぎ、両方が効きます。そのため、ページの決まりはインラインのスクリプトとスタイルを許します（教材が使うため）。ページ自身はインラインを使わず、スクリプトはすべてファイルで、ファイルやサービスから来た字（題・ファイル名・ライブの字・リンクのアドレス）はどれも字として入れ、マークアップにはしません。ほかはできるだけ狭くし、`tools/test-play.mjs` がそのまま確かめます：`default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src data: blob:; connect-src 'self' https://live.egatari.org wss://live.egatari.org; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`（`connect-src 'self'` は service worker が入るときのため。Android の共有はシステムからの POST で、ページのフォームではないので `form-action 'none'`）。**次の案：**教材の枠を専用のパス（例 `/frame`）から見出しの CSP つきで配り、`srcdoc` でなく知らせで中身を渡せば、ページの決まりが教材に受け継がれなくなり、`'unsafe-inline'` を外せます。ページの `connect-src` にはライブの部屋の endpoint がありますが、教材の先頭部分がそれを `'none'` に絞るので、部屋につなげるのはページだけです。
 - **再生のみのファイル自身の CSP の `<meta>`**（ライブの部屋を付けたファイルに入るもの。live §2.4）は、先頭部分の後の教材の `<head>` の中に入り、これも効きます。ブラウザはすべての決まりを満たすことを求めるので、教材には 3 つのうちいちばん狭いものが効きます。その `connect-src`（ライブの endpoint）は枠の中では意味を持ちません。**`deck-extensions` のブロック**はデータで、ページが何も実行しない解析（`play/scan.mjs`。上限つきの parse5）で自分で読みます。教材の中のライブの部分（`kit/live.js`）は、枠の中にいるのでつなぎません（live §2.1）。ライブはページの側に出すので、教材の中のライブの印と板は、先頭部分の規則で隠します（「ここからは参加できません」としか言えないため）。
-- 枠からの知らせは信頼しない頼みです。その枠（`event.source`）から、origin が `"null"` のものだけを、3 つの形だけ受けます：位置の知らせ（仕様 §9.4 の `position`、または再生器の前からの `deck-pos`）と、仲立ちのリンクの頼み。ほかは無視します。
+- 枠からの知らせは信頼しない頼みです。その枠（`event.source`）から、origin が `"null"` のものだけを、次の形だけ受けます：位置の知らせ（仕様 §9.4 の `position`、または再生器の前からの `deck-pos`）と、リンクの頼み `{egatari: "openLink", href, text}`（仕様 §9.4。この 3 つの項目だけ、`text` は 200 字まで）。ほかは無視します。仲立ちが `openLink` を送るのは、見る人自身の操作（枠に一時的な操作の印がある本物のクリック）のときだけで、教材のスクリプトが作ったクリックでは何も送りません。教材のコードが自分でこの知らせを送ることはできるので、ページは信頼せず、§11 を自分で当て、自分の箱で押されるまで何も開きません。（Studio の編集のプレビューにはこの知らせはなく、再生器が行き先を見せるだけで開く手段は出しません。§11 (g)）
 
 ## リンク
 
-教材が開くように頼んだリンクは、再生器と同じ決まり `kit/core/link-policy.mjs`（仕様 §11）を通します。確かめる箱はページの側（枠の外）にあるので、教材がその上に描くことはできません。行き先の host とアドレスを見せ、`https:`・`http:`・`mailto:`・`tel:` のほかは開きません。字が別の host を名指す・ふつうの `https:` でない・ダウンロードする・アドレスにユーザー名やパスワードがある・host が punycode のときは、毎回確かめます。教材の隣のファイル（相対のリンク）はこのページからは届かないので、わけを書いて断ります。開くのは、見る人が押す `noopener noreferrer` のふつうのリンクです。一度同意したふつうの `https:` の host は、この閲覧のあいだメモリに覚え、ブラウザが枠の中で押したことをまだこのページの操作と数えていればすぐに開き、そうでなければ 1 回押すだけの箱を出します（Safari は、ページの中で押さないとタブを開かせないため）。箱は一度に 1 つで、閉じてから 1.5 秒は新しい頼みを無視するので、教材が箱を出し続けることはできません。
+教材が開くように頼んだリンクは、再生器と同じ決まり `kit/core/link-policy.mjs`（仕様 §11）を通します。確かめる箱はページの側（枠の外）にあるので、教材がその上に描くことはできません。行き先の host とアドレスを見せ、`https:`・`http:`・`mailto:`・`tel:` のほかは開きません。字が別の host を名指す・ふつうの `https:` でない・ダウンロードする・アドレスにユーザー名やパスワードがある・host が punycode のときは、毎回確かめます。教材の隣のファイル（相対のリンク）はこのページからは届かないので、わけを書いて断ります。開くのは、見る人が押す `noopener noreferrer` のふつうのリンクです。一度同意したふつうの `https:` の host は、この閲覧のあいだメモリに覚え（§11 (f)）、次からは host の名前と「開く」だけの、注意書きのない箱を出します。1 回押すことは要ります。ページは知らせだけでリンクを開かず、Safari はページの中で押さないとタブを開かせないためです。箱は一度に 1 つで、閉じてから 1.5 秒は新しい頼みを無視するので、教材が箱を出し続けることはできません。
 
 ## ライブ
 
@@ -59,7 +59,7 @@ node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.or
 
 試験：`node tools/test-play.mjs <作業フォルダ>`（`npm test` の一部）。作業フォルダに組み、Cloudflare と同じように `_headers` を付ける小さなサーバーで配り、ライブの部屋には `tools/live-fake-server.mjs` を使います。
 
-手元で試すには：`node tools/build-play.mjs && npx wrangler dev -c play/wrangler.toml`（wrangler はこのリポジトリの依存にないので `npx` が取ってきます）。
+手元で試すには：`node tools/build-play.mjs && npx wrangler@4.124.0 dev -c play/wrangler.toml`（wrangler はこのリポジトリの依存にないので、`npx` がこの版（egatari/live が固定しているもの）を取ってきます）。
 
 ## 置き場所：Cloudflare Workers の静的なファイル
 
@@ -78,8 +78,8 @@ node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.or
 
 1. 公開するコミットで `npm ci && npm test`（少なくとも `node tools/test-play.mjs`）。
 2. `node tools/build-play.mjs`（本番：`--dev-loopback` なし。ライブの endpoint は既定の `https://live.egatari.org`）。
-3. 必要なら `npx wrangler login`。`egatari.org` のゾーンが同じ Cloudflare のアカウントにあること。
-4. `CLOUDFLARE_ACCOUNT_ID=<アカウントの ID> npx wrangler deploy -c play/wrangler.production.toml`。`custom_domain = true` なので、`play.egatari.org` の DNS の記録と証明書が作られます。アカウントの ID は公開のときに渡し、リポジトリには入れません。
+3. 必要なら `npx wrangler@4.124.0 login`。`egatari.org` のゾーンが同じ Cloudflare のアカウントにあること。
+4. `CLOUDFLARE_ACCOUNT_ID=<アカウントの ID> npx wrangler@4.124.0 deploy -c play/wrangler.production.toml`。`custom_domain = true` なので、`play.egatari.org` の DNS の記録と証明書が作られます。アカウントの ID は公開のときに渡し、リポジトリには入れません。
 5. 確かめる：`curl -sI https://play.egatari.org/` に、`frame-ancestors 'none'` を含む `Content-Security-Policy` と `X-Frame-Options: DENY` があること。ページを開き、教材を開き、電話に入れてみる。
 
 ## 自分で置く
