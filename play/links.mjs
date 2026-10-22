@@ -68,5 +68,5 @@ export function linkBox({ words, dlg }) {
     show(title, d.host || d.scheme + ':', d.url, (d.reasons || []).map((r) => S.why[r] || r), d.url);
     return { shown: true, verdict: d.verdict, url: d.url, must: !!d.must };
   }
-  return { request, hosts, close };
+  return { request, hosts, close, quietMs: () => Math.max(0, quietUntil - Date.now()) };
 }
