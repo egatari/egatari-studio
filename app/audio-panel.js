@@ -25,7 +25,7 @@ import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audi
 import { encodeMp3 } from '../kit/core/mp3.mjs';
 import { MP3 } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
-import { parseNarration } from '../kit/core/narration-core.mjs';
+import { parseNarration, splitKey } from '../kit/core/narration-core.mjs';
 import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
@@ -537,7 +537,8 @@ export function createAudioPanel(o) {
   // 1 行（{cue} の部分）ずつ作り、行ごとに後処理（無音を削る・音量）をしてから、ターンの間に無音を入れてつなぐ（tts/synth.py と同じ）。
   // 日本語は読み辞書（tts/yomi.yaml。tts/yomi.py と同じ規則の app/yomi-data.js）を通した文を渡す
   // key を渡すとその段階を作り直す（前処理の版が古い段階の一覧から。選んだ段階だけ）。渡さなければ今の段階。戻り値：できたら true
-  async function regenerate(arg) {
+  // gated：呼び手が雛形の仮の行の確かめ（o.beforeTts）を済ませた（まとめて作り直すとき）
+  async function regenerate(arg, gated = false) {
     const fromList = typeof arg === 'string';
     if (busyMsg || !view || !o.tts) return false;
     if (!fromList && !view.seg) return false;
@@ -551,6 +552,9 @@ export function createAudioPanel(o) {
     const lang = ttsLang(vw);
     const info = o.tts.info(lang);
     if (!info.ok) { say(L.ttsNo + info.reason, true); return false; }
+    // 雛形の仮の行（✎）のままの口述原稿は、合成の前に知らせる（続けてもよい。kit/core/template-text.mjs）
+    if (!gated && o.beforeTts && !(await o.beforeTts([key]))) return false;
+    if (busyMsg || o.ws() !== ws || o.generation() !== g) return false;
     setBusy(L.processing);
     const prog = () => card && card.querySelector('#dev-audio-prog');
     const stopWait = o.wait ? o.wait() : () => {};
@@ -621,9 +625,10 @@ export function createAudioPanel(o) {
   async function regenerateOld(v) {
     if (busyMsg || rec) return;
     const N = o.oldNorm, keys = (v.oldNorm || []).filter((k) => picked.has(k));
+    if (keys.length && o.beforeTts && !(await o.beforeTts(keys))) return;
     let n = 0;
     for (const k of keys) {
-      if (!(await regenerate(k))) break;
+      if (!(await regenerate(k, true))) break;
       picked.delete(k); n++;
     }
     if (view) show(view.key, view.i);
@@ -673,6 +678,7 @@ export function createAudioPanel(o) {
     const C = o.colab.t, ws = o.ws(), g = o.generation(), v = view;
     const keys = scope === 'all' ? null : (v.need || []);
     if (keys && !keys.length) { say(C.noSteps, true); return; }
+    if (o.beforeTts && !(await o.beforeTts(keys))) return;   // 雛形の仮の行（✎）のまま（keys が null ならすべての段階）
     if (!(await o.colab.confirm(C.privacyTitle, C.privacyBody, C.privacyGo))) return;
     if (o.ws() !== ws || o.generation() !== g) return;
     try {
@@ -874,6 +880,20 @@ export function createAudioPanel(o) {
     onPos: () => { if (open) follow(false); },
     reload: () => { if (!open) return; if (view && !rec && !busyMsg) show(view.key, view.i); else follow(true); },
     peek, commit, revert, canRevert: (key) => (history.get(key) || []).length > 0,
+    // スライド一覧（app/slides-panel.js）：消したスライドの段階の、使っていない取り直しと前の記録を外す（元に戻すで putBack）。数だけを知るのは pendingFor
+    pendingFor: (slideKey) => [...takes].filter(([k]) => splitKey(k)[0] === slideKey).reduce((n, [, l]) => n + l.length, 0),
+    takeOut: (slideKey) => {
+      const out = { takes: [], history: [] };
+      for (const [k, l] of [...takes]) if (splitKey(k)[0] === slideKey) { out.takes.push([k, l]); takes.delete(k); }
+      for (const [k, l] of [...history]) if (splitKey(k)[0] === slideKey) { out.history.push([k, l]); history.delete(k); }
+      if (view && splitKey(view.key)[0] === slideKey && open) follow(true);
+      return out;
+    },
+    putBack: (x) => {
+      for (const [k, l] of (x && x.takes) || []) takes.set(k, [...(takes.get(k) || []), ...l]);
+      for (const [k, l] of (x && x.history) || []) history.set(k, [...l, ...(history.get(k) || [])]);
+      if (open) follow(true);
+    },
     unsaved: () => [...takes.values()].reduce((n, l) => n + l.length, 0),
     state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
       history: Object.fromEntries([...history].map(([k, l]) => [k, l.map((e) => (e ? e.file : null))])), voices: view && view.voice !== undefined ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : null,

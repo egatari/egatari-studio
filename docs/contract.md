@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=a2a7c383baa90e61 -->
+<!-- i18n: pair=contract.ja.md sha256=65d232748123dad7 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -73,6 +73,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - The step's boundaries (`{cue}` and `{mark:…}`), listed in order across turns (`bounds`), correspond one to one with the TTS `cues` (the array of boundary times). Component time-stretching uses only the `{cue}` ones
 - `{φ|ファイ}` is an inline reading (displayed as φ, read by TTS as "ファイ"). Other symbols are read with the reading dictionary
 - Do not read whole equations aloud (the quality checker warns)
+- A line starting with `✎ ` is a placeholder the editor put in a new slide (Studio convention, not part of the file format). It is ordinary narration text, so it is read aloud if left; the quality checker warns (`narrPlaceholder`, and `templateText` for template text left on the slide), and the editor shows the warning before TTS and export
 - Extension lines `@x-<name>-<field> <value>` (`<name>` without hyphens) inside a step carry extension data for that step. They are not part of any turn: never shown, never spoken, not in `bounds` nor in any hash, so editing them never makes audio stale. Editors (dev server, editor app, `npm run ids`) keep them as they are
 
 **Slide keys** ([format spec](https://github.com/egatari/egatari-spec) §8.1). Every slide should have a stable id: `<section class="slide" id="s-k3f9q2">`. Ids match `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and share the document's id namespace with attention-mark targets (`id="…"`, `\htmlId{…}`), so they must not equal any other id in `deck.html`. New ids are `s-` plus 6 random base32 characters (`[a-z2-7]`), never derived from the heading, so that renaming a heading changes nothing. `npm run new` gives every slide an id; `npm run ids -- <deck>` adds ids to an existing deck.

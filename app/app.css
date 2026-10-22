@@ -91,6 +91,40 @@ main{flex:1;min-height:0;display:flex}
 .errcard h2{margin:0 0 8px;color:#fff;font-size:19px}
 .errcard p{color:#dbb;margin:0 0 10px}
 .errcard pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#fcc;margin:0}
+/* スライド一覧（app/slides-panel.js）：左の板。縮図の枠（#sl-thumbs）は一覧の後ろに置き、一覧の行を重ねる */
+#slides{width:300px;max-width:40vw;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#slides .sl-tools{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+#slides .sl-tools button{padding:3px 8px;font-size:12.5px}
+#slides .menu{position:relative}
+#slides .menu-list{left:0;right:auto;min-width:180px}
+#slides .sl-undo{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--warn-bg);color:var(--warn-fg);font-size:12.5px}
+#slides .sl-undo span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#slides .sl-undo button{padding:2px 9px;font-size:12.5px}
+#sl-scroll{flex:1;overflow:auto;min-height:0}
+#sl-wrap{position:relative}
+#sl-thumbs{position:absolute;left:0;top:0;width:144px;border:0;pointer-events:none;background:var(--panel)}
+#sl-list{list-style:none;margin:0;padding:0;position:relative}
+#sl-list:focus{outline:none}
+#sl-list:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+#sl-list [role=option]{height:84px;display:flex;align-items:center;padding:0 8px 0 146px;border-bottom:1px solid var(--line);cursor:pointer;position:relative;user-select:none}
+#sl-list [role=option]:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+#sl-list [role=option].sel{background:color-mix(in srgb,var(--accent) 14%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+#sl-list:focus-visible [role=option].sel{outline:2px solid var(--accent);outline-offset:-2px}
+#sl-list [role=option].dragging{opacity:.45}
+#sl-list [role=option].drop-before::before,#sl-list [role=option].drop-after::after{content:"";position:absolute;left:0;right:0;height:3px;background:var(--accent);z-index:1}
+#sl-list [role=option].drop-before::before{top:-2px}#sl-list [role=option].drop-after::after{bottom:-2px}
+#sl-list .sl-thumb{position:absolute;left:6px;top:0;width:128px;height:84px}
+#sl-list .sl-text{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12.5px;line-height:1.35}
+#sl-list .sl-n{color:var(--muted);font-size:11.5px;font-weight:700}
+#sl-list .sl-h{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+#sl-list .sl-badges{display:flex;flex-wrap:wrap;gap:3px}
+#sl-list .sl-badge{font-size:10.5px;border-radius:999px;padding:0 6px;background:var(--warn-bg);color:var(--warn-fg)}
+#slides #sl-keys{margin:0;padding:6px 10px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
+/* 一覧を開くつまみ（閉じているときだけ。道具の列は 1280 px で 1 行に収めるので、そこには置かない） */
+#b-slides{flex:none;width:30px;padding:12px 0;border:0;border-right:1px solid var(--line);border-radius:0;background:var(--panel);color:var(--fg);font-size:13px;font-weight:600;writing-mode:vertical-rl;display:flex;align-items:center;gap:6px;letter-spacing:.08em}
+#b-slides::before{content:"▸";color:var(--accent)}
+#b-slides:hover{background:var(--bg)}
+#b-slides[aria-expanded=true],#deck.rec-on #b-slides{display:none}
 #panel{width:380px;max-width:45vw;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 #panel[hidden]{display:none}
 .panel-head{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -110,7 +144,7 @@ main{flex:1;min-height:0;display:flex}
 #toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none;max-width:80vw;z-index:10}
 #toast.show{display:block}
 #toast.bad{background:#9b1c1c}
-@media (max-width:720px){ #panel{position:absolute;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:5} #deck{position:relative} }
+@media (max-width:720px){ #panel{position:absolute;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:5} #deck{position:relative} #slides{position:absolute;left:0;top:0;bottom:0;max-width:100vw;width:300px;z-index:4} }
 #b-lang{margin-left:auto;border:1px solid var(--line);font-size:13px;padding:4px 10px}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
 #notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
@@ -184,7 +218,7 @@ main{flex:1;min-height:0;display:flex}
 
 /* 録音モード（app/rec-mode.js）：#deck の中の幅広い板。プレビュー（その段階の舞台）は横に細くする。横の板・口述原稿などは隠す */
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-#deck.rec-on #dev-side,#deck.rec-on #panel{display:none}
+#deck.rec-on #dev-side,#deck.rec-on #panel,#deck.rec-on #slides{display:none}
 #deck.rec-on #viewer{flex:0 0 34%;max-width:34%}
 #rec-mode{flex:1 1 66%;min-width:0;display:flex;flex-direction:column;gap:10px;padding:14px 22px 16px;background:var(--panel);border-right:1px solid var(--line);overflow:auto}
 #rec-mode:focus{outline:none}

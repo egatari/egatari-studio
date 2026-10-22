@@ -115,6 +115,9 @@
   </section>
 
   <section id="deck" hidden>
+    <!-- スライド一覧（app/slides-panel.js）：信頼する一覧とボタン。縮図はデッキが描く sandbox の枠（一覧の後ろ） -->
+    <button type="button" id="b-slides" class="rail" aria-expanded="false" aria-controls="slides"><span data-t="slidesBtn"></span></button>
+    <aside id="slides" aria-labelledby="sl-title" hidden></aside>
     <div id="viewer">
       <!-- allow="autoplay"：発表者ビュー（別の窓）で自動再生を始めても、プレビューの音声が鳴るように（キーを押したのはその窓で、この枠ではない。
            音声を鳴らすのはプレビューだけで、発表者ビューは位置と操作を送るだけ） -->
