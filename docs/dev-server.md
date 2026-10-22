@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=0f1ac0240ac08f8b -->
+<!-- i18n: pair=dev-server.ja.md sha256=7eba8fd0a0c57b7d -->
 # Dev server (fix the deck in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -46,7 +46,7 @@ The same goes for the narration: if the lines of that step have changed elsewher
 - `deck.html`: replaces only the contents of the element edited by double-click
 - `narration.md`: replaces only the lines of that step (`[k] …` and its continuation lines). If there are none, they are added at the position given by the order of slides and steps.
   All other lines (including comments) stay as they were. Deleting all turns removes the lines of that step
-- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html, pin is the clicked point `{x, y}` in slide coordinates, 1280×720, independent of the zoom; older entries without `pin` still work; an ink note adds `strokes`, the drawn marks as lists of points `[[[x, y], …], …]` in the same coordinates (older notes may have a single `stroke`, read as one mark), and its `pin` is the centroid of all marks: [contract §12](contract.md#12-review-notes-the-ink-stroke)). The point refers to the final state of the step (`DECK.seek(i, k, Infinity)`), also when you clicked during its animation. quote begins with the text near the point when there is any (a label or word inside a figure or component, at most 60 characters), followed by the first 80 characters of the element
+- `comments.json`: notes for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html, pin is the clicked point `{x, y}` in slide coordinates, 1280×720, independent of the zoom; older entries without `pin` still work; an ink note adds `strokes`, the drawn marks as lists of points `[[[x, y], …], …]` in the same coordinates (older notes may have a single `stroke`, read as one mark), and its `pin` is the centroid of all marks: [contract §13](contract.md#13-review-notes-the-ink-stroke)). The point refers to the final state of the step (`DECK.seek(i, k, Infinity)`), also when you clicked during its animation. quote begins with the text near the point when there is any (a label or word inside a figure or component, at most 60 characters), followed by the first 80 characters of the element
 - `.cache/edits/`: copies of deck.html and narration.md from before each rewrite (the latest 30)
 
 ## Protection

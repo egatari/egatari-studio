@@ -417,7 +417,7 @@ const server = http.createServer(async (req, res) => {
       const list = readComments();
       // pin（押した点のスライドの座標）は確かめて丸める（kit/core/comment-core.mjs）。なければ・形が違えば付けない（古いコメントと同じ形）
       // strokes（手書きメモの線。前の形の stroke も 1 本として読む）も同じく確かめて丸め・間引く。なければ・点（pin）がなければ付けない。
-      // 線があれば pin は線の重心にする（docs/contract.md §12）。書くのは strokes だけ
+      // 線があれば pin は線の重心にする（docs/contract.md §13）。書くのは strokes だけ
       let pin = normPin(b.pin);
       const strokes = pin ? entryStrokes(b) : null;
       if (strokes) pin = strokesCentroid(strokes);

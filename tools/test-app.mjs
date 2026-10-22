@@ -7,6 +7,7 @@
 // 4. 持ち運べる 1 ファイル（examples/minimal ＋ dry-run の音声、tools/portable-fixtures.mjs）：フォルダなしで開く・権利の確認・
 //    編集・保存（OPFS のファイルのハンドルに上書き）・開き直し・フォルダへの書き出し・フォルダからの書き出し・改変を認めないライセンス・
 //    独自のコードの知らせ・印のスクリプトが取り出しで動かない（アプリのページと Worker）・壊れた・新しい版のファイルを断る・ダウンロード
+// 6. スライド一覧（tools/test-app-slides.mjs）：足す・複製・削除と元に戻す・並べ替え（作業フォルダと 1 ファイル）
 // 5. 利用者のテーマのフォルダ（OPFS のフォルダを選ぶ）：見つからないテーマの知らせ・選ぶ・探す順・根の決まり・1 ファイルへの書き出し・残す・許可の求め直し・忘れる
 import fs from 'node:fs';
 import os from 'node:os';
@@ -27,6 +28,7 @@ import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
+import { testAppSlides } from './test-app-slides.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
@@ -128,7 +130,8 @@ const opfs = {
     const out = []; for await (const k of d.keys()) out.push(k); return out.sort();
   }, rel),
 };
-const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
+// プレビューの枠（スライド一覧の縮図の枠 sl-thumbs は除く）
+const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame() && f.name() !== 'sl-thumbs');
 async function frameReady(timeout = 20000) {
   const t0 = Date.now();
   for (;;) {
@@ -1816,6 +1819,9 @@ try {
 
   // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
   await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
+
+  // ---------------------------------------------------------------- 12c. スライド一覧：足す・複製・削除（元に戻す）・並べ替え（tools/test-app-slides.mjs）
+  await testAppSlides({ browser, BASE, ok, watch, work, shotDir: SHOTS });
 
   // ---------------------------------------------------------------- 13. サイトの形（GitHub Pages）：根と下のパスの両方
   // 根 = 配信版の編集アプリ、/editor/ = 前の場所（根へ移す。問い合わせと # を残す）、/editor.html = 1 ファイル版、/lab/irodori.html = 試験ページ

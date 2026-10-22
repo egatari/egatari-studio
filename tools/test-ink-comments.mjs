@@ -93,7 +93,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
   await api('POST', '/__dev/comment', { key: 'a:0', comment: '点なし', strokes: [[[1, 2], [3, 4]]] });
   await api('POST', '/__dev/comment', { key: 'a:0', comment: '前の形', pin: { x: 1, y: 1 }, stroke: [[0, 0], [10, 0]] });
   const saved = JSON.parse(files['comments.json']);
-  ok(saved[3] && !('strokes' in saved[3]) && !('pin' in saved[3]), 'strokes without a pin are not kept (contract §12)');
+  ok(saved[3] && !('strokes' in saved[3]) && !('pin' in saved[3]), 'strokes without a pin are not kept (contract §13)');
   const want1 = [[[10, 20], [30, 40.1], [0, 50]], [[100, 100], [200, 100]]];
   ok(r1._status === 200 && JSON.stringify(saved[1].strokes) === JSON.stringify(want1) && JSON.stringify(saved[1].pin) === JSON.stringify(strokesCentroid(want1))
     && !('strokes' in saved[2]) && saved[2].pin && saved[0].comment === '古い' && !('strokes' in saved[0]),

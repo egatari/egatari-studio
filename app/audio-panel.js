@@ -1,14 +1,14 @@
-// 音声の板（編集アプリの信頼する横の板 #dev-side の中。プレビューの外）：段階ごとに、今の音声を聞く・録音する・ファイルから取り込む・
-// ブラウザの TTS で作り直す。作った音声（録音・取り込み・TTS）はすぐにその段階の音声にし、前の音声は「前に戻す」で戻せる（#45）。
+// 音声の板（編集アプリの信頼する横の板 #dev-side の中。プレビューの外）：段階ごとに、今の音声を聞く・ファイルから取り込む・
+// ブラウザの TTS で作り直す。録音は録音モード（app/rec-mode.js）だけ：板の「● 録音 (r)」はその段階で録音モードを開く（#82。録り方は 1 つ）。作った音声（録音・取り込み・TTS）はすぐにその段階の音声にし、前の音声は「前に戻す」で戻せる（#45）。
 // 声を選ぶ欄（voice.json。見本の短い音声を鳴らせる）、読む原稿の欄（原稿の長さに合わせて伸び、大きさを変えられる）
 //
-// 守ること（SECURITY.md）：マイクと TTS はこのページ（信頼する編集の画面）だけで使う。プレビュー（sandbox の iframe）からは音声も
-// 頼みも受け取らない（どの段階を見せるかは編集の画面の位置 ui.pos() から決め、デッキの知らせで板の中身を替えるのは録音していないときだけ）。
+// 守ること（SECURITY.md）：TTS はこのページ（信頼する編集の画面）だけで使う。プレビュー（sandbox の iframe）からは音声も
+// 頼みも受け取らない（どの段階を見せるかは編集の画面の位置 ui.pos() から決め、デッキの知らせで板の中身を替えるのは作っていないときだけ）。
 // 読み書きは作業場所（workspace.js）だけ：audio/<file>.mp3 と audio/manifest.json（書き換える前に .cache/edits/ に控え）。
 // 読む大きさには上限がある（manifest・口述原稿は READ_LIMITS、音声は AUDIO_LIMITS.fileBytes）。
 // 後処理（モノラル・44.1 kHz・無音を削る・-20 LUFS）は kit/core/audio-core.mjs（tts/core.py と同じ数）、MP3 は kit/core/mp3.mjs（LAME）。
 // 作った音声はすぐに作業場所に書く（前の記録は段階ごとにメモリの上に積み、「前に戻す」でその記録を manifest に戻す。音声のファイルは消さない）。
-// 書けなかったとき（読むだけ・権利の確認を断った）だけ、取り直し（take）として残し「この音声を使う」で書ける。
+// 書けなかったとき（読むだけ・権利の確認を断った）だけ、取り直し（take）として残し「この音声を使う」で書ける（録音モードで録ったものも）。
 // 持ち運べる 1 ファイルでは作業場所はメモリの上なので、書いた後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる。
 // 声の選択は作業フォルダでは voice.json に書き、1 ファイルではこの画面の間だけ覚える（voice.json を変えると組み直しの保存になるため）
 //
@@ -16,21 +16,21 @@
 //   取り込みは、inputHash が今の口述原稿と合う段階だけ cue つき（sync auto）で使い、合わない段階は「印付き」に出す（自動では使わない）
 //
 //   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?,
-//     oldNorm?: {title, note, go(n), done(n)}（app/i18n.js の T.oldNorm。前処理の版が古い TTS の段階の一覧）,
 //     colab?: {t（app/i18n.js の T.colab）, docId() → 文字列 | null, version, confirm(題, 本文, 実行の名前) → boolean, open(url)?},
-//     recMode?: {label, title, open()}（録音モード。app/rec-mode.js）})
+//     recMode?: {title, open({key, returnFocus()})}（録音モード。app/rec-mode.js。板の「● 録音 (r)」がその段階で開く）})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state()
-//   録音モード（app/rec-mode.js）が使う口（板を開かずに）：panel.peek(key) / panel.commit(key, take) / panel.revert(key) / panel.canRevert(key)
+//   録音モード（app/rec-mode.js）が使う口：panel.peek(key) / panel.commit(key, take) / panel.revert(key) / panel.canRevert(key)
+//   （録音モードの間、板は開いたまま隠れ（#deck.rec-on）、閉じると録った段階の新しい音声を見せる）
 import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audioState, decodeWav, encodeWav, AUDIO_LIMITS, PROCESSING } from '../kit/core/audio-core.mjs';
 import { encodeMp3 } from '../kit/core/mp3.mjs';
 import { MP3 } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
-import { parseNarration } from '../kit/core/narration-core.mjs';
+import { parseNarration, splitKey } from '../kit/core/narration-core.mjs';
 import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
-import { TEXT_NORMALIZE, normalizeTtsText, textNormalizeOutdated } from '../kit/core/tts-normalize.mjs';
+import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
@@ -39,7 +39,7 @@ const STR = {
     title: '音声', close: '閉じる', step: '段階 ', slide: (n, t) => 'スライド ' + n + '：' + t, none: 'この段階の音声はまだありません',
     cur: '今の音声', fresh: '最新', stale: '古い', staleT: '口述原稿が、この音声を作った後に変わっています（または、どの原稿から作ったか分かりません）。音声は消さずに残します',
     kind: { recorded: '録音', tts: 'TTS', imported: '取り込み' }, sec: (s) => s.toFixed(2) + ' 秒',
-    rec: '● 録音', stop: '■ 止める', reRec: '● 録り直す', recording: '録音中', processing: '整えています…', micNo: 'マイクを使えません：', micHint: 'ブラウザのアドレス欄の左でマイクを許可してください',
+    rec: '● 録音 (r)', processing: '整えています…',
     importBtn: 'ファイルから取り込む…', tts: 'TTS で作り直す', ttsNo: 'この環境ではブラウザの TTS を使えません：',
     takes: 'まだ使っていない音声', use: 'この音声を使う', del: '捨てる', notUsed: '書き込めなかったので、まだこの段階には使っていません。下の「この音声を使う」で使えます',
     using: '書き込んでいます…', used: (f) => 'この段階の音声にしました（audio/' + f + '）。前の音声には「前に戻す」で戻せます', usedPortable: 'この段階の音声にしました。ファイルに残すには「保存」を押してください（前の音声には「前に戻す」で戻せます）',
@@ -50,10 +50,10 @@ const STR = {
     voiceUnknown: (r, n, fb) => 'voice.json の ' + r + ' の声「' + n + '」は、ブラウザの TTS に入っていません。TTS で作るときは既定の声「' + fb + '」を使います（上の欄で選び直せます）',
     noSeg: 'この段階の口述原稿がありません（先に口述原稿を書いてください）', script: '読む原稿', scriptT: '右下の角を引くと大きさを変えられます', cueNote: '録音と取り込みには {cue} の区切りの時刻がないので、区切りに合わせた動きは時間で進みます（sync: none）',
     durOverride: (d) => 'timeline.json の dur（' + d + ' 秒）がこの段階の長さを決めています。長い音声は途中で切れます',
-    level: '入力の大きさ', tooLong: (s) => s + ' 秒を超えたので止めました', empty: '音がありません（無音を削ると何も残りませんでした）', fail: 'できませんでした：',
+    empty: '音がありません（無音を削ると何も残りませんでした）', fail: 'できませんでした：',
     prov: { recorded: '録音', imported: '取り込み', tts: (r) => 'TTS ' + r.engine + ' · ' + r.model + (r.voice && Object.keys(r.voice).length ? ' · 声 ' + Object.values(r.voice).join('/') : '') + (r.seed != null ? ' · seed ' + r.seed : '') },
-    made: (kind, d) => kind + ' · ' + d, gain: (g) => '音量の調整 ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: '録音・合成している間、スライドはクリックを受けません',
-    following: (k) => '録音が終わるまで、表示中の段階（' + k + '）には切り替えません',
+    made: (kind, d) => kind + ' · ' + d, gain: (g) => '音量の調整 ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: '音声を作って書き込んでいる間、スライドはクリックを受けません',
+    following: (k) => '音声を作り終えるまで、表示中の段階（' + k + '）には切り替えません',
     other: (k) => 'スライドで表示中の段階（' + k + '）とは別の段階です。スライドを動かすと切り替わります',
     wavNote: '（MP3 のエンコーダを読み込めないので WAV で保存しました。1 ファイル版には MP3 のエンコーダが入っていません）',
   },
@@ -61,7 +61,7 @@ const STR = {
     title: 'Audio', close: 'Close', step: 'Step ', slide: (n, t) => 'Slide ' + n + ': ' + t, none: 'No audio for this step yet',
     cur: 'Current audio', fresh: 'up to date', stale: 'stale', staleT: 'The narration changed after this audio was made (or it is unknown which narration it was made from). The audio is kept',
     kind: { recorded: 'recorded', tts: 'TTS', imported: 'imported' }, sec: (s) => s.toFixed(2) + ' s',
-    rec: '● Record', stop: '■ Stop', reRec: '● Record again', recording: 'Recording', processing: 'Processing…', micNo: 'Cannot use the microphone: ', micHint: 'Allow the microphone from the left of the address bar',
+    rec: '● Record (r)', processing: 'Processing…',
     importBtn: 'Import a file…', tts: 'Regenerate with TTS', ttsNo: 'Browser TTS is not available here: ',
     takes: 'Audio not used yet', use: 'Use this take', del: 'Discard', notUsed: 'It could not be written, so this step does not use it yet. Use it with “Use this take” below',
     using: 'Writing…', used: (f) => 'This step now uses it (audio/' + f + '). “Revert to previous” brings back the previous audio', usedPortable: 'This step now uses it. Press Save to keep it in the file (“Revert to previous” brings back the previous audio)',
@@ -72,10 +72,10 @@ const STR = {
     voiceUnknown: (r, n, fb) => 'The ' + r + ' voice “' + n + '” in voice.json is not part of the browser TTS. TTS uses the default voice “' + fb + '” instead (choose another above)',
     noSeg: 'This step has no narration (write the narration first)', script: 'Script', scriptT: 'Drag the bottom-right corner to resize', cueNote: 'Recorded and imported audio have no {cue} times, so cue-driven motion advances by time (sync: none)',
     durOverride: (d) => 'timeline.json fixes this step to ' + d + ' s (dur): longer audio is cut',
-    level: 'Input level', tooLong: (s) => 'Stopped after ' + s + ' s', empty: 'No sound (nothing is left after trimming silence)', fail: 'Failed: ',
+    empty: 'No sound (nothing is left after trimming silence)', fail: 'Failed: ',
     prov: { recorded: 'recorded', imported: 'imported', tts: (r) => 'TTS ' + r.engine + ' · ' + r.model + (r.voice && Object.keys(r.voice).length ? ' · voice ' + Object.values(r.voice).join('/') : '') + (r.seed != null ? ' · seed ' + r.seed : '') },
-    made: (kind, d) => kind + ' · ' + d, gain: (g) => 'level adjusted ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: 'The slides do not take clicks while recording or generating',
-    following: (k) => 'Stays on this step until recording ends (showing ' + k + ')',
+    made: (kind, d) => kind + ' · ' + d, gain: (g) => 'level adjusted ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: 'The slides do not take clicks while audio is being made and written',
+    following: (k) => 'Stays on this step until the audio is done (showing ' + k + ')',
     other: (k) => 'This is not the step shown on the slide (' + k + '). Move the slides to switch',
     wavNote: ' (saved as WAV: the MP3 encoder could not be loaded; the single-file editor has no MP3 encoder)',
   },
@@ -93,18 +93,13 @@ const CSS = [
   '#dev-audio .dv-prov{font-size:11.5px;color:#6b7385;margin-top:2px;word-break:break-word}',
   // 読む原稿：録音しながら読めるように、原稿の長さに合わせて伸びる（板の高さの半分ほどまで）。右下の角で大きさを変えられる
   '#dev-audio .dv-script{font-size:14.5px;line-height:1.65;color:#1f2937;background:#fff;border:1px dashed #cfd4de;border-radius:6px;padding:8px 10px;margin:0 0 10px;min-height:3.5em;max-height:min(46vh,30em);overflow:auto;resize:vertical}',
-  '#dev-audio.dv-recording .dv-script{max-height:min(62vh,40em);border-style:solid;border-color:#dc2626}',
   '#dev-audio .dv-script p{margin:0 0 6px}#dev-audio .dv-script .dv-role{display:inline-block;font-size:11px;font-weight:700;line-height:16px;border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px;background:#e0e7ff;color:#1e3a8a}',
   '#dev-audio .dv-script .dv-role.dv-novice{background:#fef3c7;color:#7a4b00}',
   '#dev-audio .dv-voices{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;margin:2px 0 8px;font-size:12.5px}',
   '#dev-audio .dv-voices select{min-width:0;font:inherit;padding:2px 4px}#dev-audio .dv-voices .dv-vr{color:#4b5363}',
   '#dev-audio .dv-cur .dv-revert{margin-left:auto}',
   '#dev-audio .dv-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}',
-  '#dev-audio button.dv-rec{border-color:#dc2626;color:#b91c1c}#dev-audio button.dv-rec.dv-on{background:#dc2626;color:#fff}',
-  '#dev-audio .dv-meter{display:flex;align-items:center;gap:8px;margin:2px 0 8px;font-size:12px;color:#4b5363}',
-  '#dev-audio .dv-meter .dv-bar{flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;position:relative}',
-  '#dev-audio .dv-meter .dv-bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#16a34a 0%,#16a34a 70%,#f59e0b 85%,#dc2626 100%)}',
-  '#dev-audio .dv-meter .dv-t{font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}',
+  '#dev-audio button.dv-rec{border-color:#dc2626;color:#b91c1c}',
   '#dev-audio .dv-h{font-weight:700;font-size:12.5px;margin:10px 0 4px}',
   '#dev-audio .dv-take{border:1px solid #e0e4ec;border-radius:8px;padding:6px 8px;margin-bottom:6px;background:#fff}',
   '#dev-audio .dv-take.dv-sel{border-color:#2563eb;box-shadow:0 0 0 1px #2563eb}',
@@ -115,9 +110,8 @@ const CSS = [
   '#dev-audio .dv-empty{color:#8a91a1;font-size:12.5px;padding:4px 0}',
   '#dev-audio .dv-colab{border:1px solid #e0e4ec;border-radius:8px;padding:6px 8px;margin:8px 0;background:#fafbfe}#dev-audio .dv-colab summary{cursor:pointer;font-weight:700;font-size:12.5px}',
   '#dev-audio .dv-colab .dv-link{font-size:13px}#dev-audio .dv-marked{border-color:#f5d38a}',
-  '#dev-audio .dv-old{border:1px solid #f5d38a;border-radius:8px;padding:6px 8px;margin:8px 0;background:#fffaf0}#dev-audio .dv-oldrow{display:flex;gap:6px;align-items:center;font-size:12.5px;margin:2px 0}',
   '#dev-audio .dv-play{display:flex;align-items:center;gap:8px;margin-top:4px}#dev-audio .dv-play audio{flex:1;min-width:0;margin:0}#dev-audio .dv-play button{flex:none}',
-  // 録音している間だけ（プレビューが inert のとき）知らせる
+  // 音声を作っている間だけ（プレビューが inert のとき）知らせる
   '#dev-audio .dev-lock{display:none}#dev-side.dv-locked #dev-audio .dev-lock{display:block}',
 ].join('\n');
 
@@ -132,7 +126,8 @@ export function createAudioPanel(o) {
   const ui = o.ui, h = ui.h, doc = ui.side.ownerDocument, win = doc.defaultView;
   const L = o.lang === 'en' ? STR.en : STR.ja;
   if (!doc.getElementById('dev-audio-style')) { const st = doc.createElement('style'); st.id = 'dev-audio-style'; st.textContent = CSS; doc.head.appendChild(st); }
-  let open = false, card = null, view = null, rec = null, busyMsg = null, seq = 0;
+  let open = false, card = null, view = null, busyMsg = null, seq = 0;
+  let focusRec = false;   // 録音モードを閉じた後：次に描いたとき「● 録音」にフォーカスを戻す
   // 段階ごとの、まだ使っていない取り直し（書けなかったときだけ。メモリの上）：key → [{id, kind, pcm, sr, dur, cues, recipe, inputHash, url, gainDb, at}]
   const takes = new Map();
   // 段階ごとの前の記録（「前に戻す」。新しいものが後ろ）：key → [manifest の記録 | null（音声がなかった）]。作業場所を替えると捨てる
@@ -189,18 +184,11 @@ export function createAudioPanel(o) {
       const k = `${x.slideKey}:${x.stepKey}`, e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
       if (!e || (await audioState(e, x, null)) === 'stale') need.push(k);
     }
-    // 前処理の版が古い（または無い）TTS の段階（stale ではない。音声は鳴らし続け、作り直しは利用者が選ぶ。format spec §5.4）。録音・取り込みは入れない
-    const oldNorm = [];
-    for (const x of segs) {
-      const k = `${x.slideKey}:${x.stepKey}`, e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
-      if (e && (e.kind === 'tts' || (e.kind === undefined && (isObj(e.recipe) || typeof e.engine === 'string'))) && !(isObj(e.recipe) && e.recipe.engine === 'dry-run') && textNormalizeOutdated(e.recipe)) oldNorm.push(k);
-    }
-    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, need, oldNorm, manText: man.text };
+    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, need, manText: man.text };
   }
 
   // ---------------------------------------------------------------- 描く
   function close() {
-    stopRecording(true);
     stopSample();
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);
@@ -221,7 +209,7 @@ export function createAudioPanel(o) {
     if (!open) return;
     const p = ui.pos();
     if (!p) { draw(null); return; }
-    if (rec || busyMsg) {   // 録音・整えている間は段階を替えない
+    if (busyMsg) {   // 作って書いている間は段階を替えない
       if (view && p.key !== view.key) { const w = card && card.querySelector('.dv-follow'); if (w) { w.hidden = false; w.textContent = L.following(p.key); } }
       return;
     }
@@ -242,7 +230,7 @@ export function createAudioPanel(o) {
   }
   function draw(v) {
     const old = card;
-    card = h('div', { id: 'dev-audio', cls: 'edit-ui dev-card' + (rec ? ' dv-recording' : ''), role: 'region', 'aria-label': L.title });
+    card = h('div', { id: 'dev-audio', cls: 'edit-ui dev-card', role: 'region', 'aria-label': L.title });
     const sk = v ? v.key.slice(v.key.lastIndexOf(':') + 1) : '';
     card.appendChild(h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.title }), v ? h('span', { cls: 'dv-m', text: L.step + sk }) : null, h('span', { cls: 'dv-sp' }),
       h('button', { cls: 'dv-ghost', text: '✕', title: L.close, 'aria-label': L.close, on: { click: () => toggle(false) } })]));
@@ -252,13 +240,13 @@ export function createAudioPanel(o) {
     }
     const follow = h('div', { cls: 'dv-warn dv-follow', hidden: '' }); card.appendChild(follow);
     const at = ui.pos();
-    if (v && at && at.key !== v.key) { follow.hidden = false; follow.textContent = rec || busyMsg ? L.following(at.key) : L.other(at.key); }
+    if (v && at && at.key !== v.key) { follow.hidden = false; follow.textContent = busyMsg ? L.following(at.key) : L.other(at.key); }
     if (!v || v.loading) { card.appendChild(h('div', { cls: 'dv-empty', text: '…' })); return mount(old); }
     if (v.error) { card.appendChild(h('div', { cls: 'dev-msg dv-err', text: v.error })); return mount(old); }
     // 今の音声（前の記録があれば「前に戻す」）
     const back = history.get(v.key) || [];
     const revertBtn = back.length ? h('button', { cls: 'dv-revert', id: 'dev-audio-revert', text: L.revert, title: L.revertT(back.length), on: { click: () => revert(v.key) } }) : null;
-    if (revertBtn && (busyMsg || rec)) revertBtn.disabled = true;
+    if (revertBtn && busyMsg) revertBtn.disabled = true;
     const cur = h('div', { cls: 'dv-cur', id: 'dev-audio-cur' });
     if (v.entry) {
       const kind = ['recorded', 'tts', 'imported'].includes(v.entry.kind) ? v.entry.kind : 'tts';
@@ -281,25 +269,19 @@ export function createAudioPanel(o) {
     } else card.appendChild(h('div', { cls: 'dv-warn', text: L.noSeg }));
     // 道具
     const list = takes.get(v.key) || [];
-    const recBtn = h('button', { cls: 'dv-rec' + (rec ? ' dv-on' : ''), id: 'dev-audio-rec', text: rec ? L.stop : v.entry && v.entry.kind === 'recorded' ? L.reRec : L.rec, on: { click: () => (rec ? stopRecording() : startRecording()) } });
+    // 録音：この段階で録音モードを開く（録り方は 1 つ。#82）。録音モードを閉じると、この板がその段階の新しい音声を見せる
+    const recBtn = h('button', { cls: 'dv-rec', id: 'dev-audio-rec', text: L.rec, title: o.recMode ? o.recMode.title : '', 'aria-keyshortcuts': 'r', 'aria-haspopup': 'dialog', on: { click: () => openRecMode(v.key) } });
     const impBtn = h('button', { id: 'dev-audio-import', text: L.importBtn, on: { click: importFile } });
     const ttsInfo = o.tts ? o.tts.info(ttsLang(v)) : null;
     const ttsBtn = h('button', { id: 'dev-audio-tts', text: L.tts, title: ttsInfo ? ttsInfo.label : '', on: { click: () => regenerate() } });
-    if (!v.seg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
-    if (busyMsg) { recBtn.disabled = !rec; impBtn.disabled = true; ttsBtn.disabled = true; }
+    if (!v.seg || busyMsg || !o.recMode) recBtn.disabled = true;
+    if (!v.seg || busyMsg) { impBtn.disabled = true; ttsBtn.disabled = true; }
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
-    const modeBtn = o.recMode ? h('button', { id: 'dev-audio-recmode', text: o.recMode.label, title: o.recMode.title, 'aria-keyshortcuts': 'r', on: { click: () => o.recMode.open() } }) : null;
-    if (modeBtn && (rec || busyMsg)) modeBtn.disabled = true;
-    card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn, modeBtn]));
+    card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
     if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
-    drawOldNorm(v, !!(o.tts && ttsInfo && ttsInfo.ok));
     if (o.colab) drawColab(v, !!(o.tts && ttsInfo && !ttsInfo.ok));
     // 声を選ぶ欄
     drawVoices(v);
-    // 録音の大きさ
-    const meter = h('div', { cls: 'dv-meter', id: 'dev-audio-meter', hidden: rec ? null : '' }, [h('span', { text: L.level }), h('span', { cls: 'dv-bar' }, [h('i')]), h('span', { cls: 'dv-t', text: '0.0 s' })]);
-    if (!rec) meter.setAttribute('hidden', ''); else meter.removeAttribute('hidden');
-    card.appendChild(meter);
     const prog = h('div', { cls: 'dv-prog', id: 'dev-audio-prog', hidden: '' }, [h('i')]);
     card.appendChild(prog);
     const msg = h('div', { cls: 'dev-msg', id: 'dev-audio-msg' });
@@ -365,7 +347,7 @@ export function createAudioPanel(o) {
       const playing = sample && sample.dataset.name === cur.name && sample.dataset.role === role && !sample.paused;
       const btn = h('button', { cls: 'dv-sample', 'data-role': role, text: playing ? L.sampleStop : L.sample, title: has ? L.sampleT(cur.name) : L.noSample, on: { click: () => playSample(role, sel.value) } });
       if (!has) btn.disabled = true;
-      if (rec || busyMsg) sel.disabled = true;
+      if (busyMsg) sel.disabled = true;
       grid.append(h('span', { cls: 'dv-vr', text: roles.length > 1 ? L.role[role] : L.one }), sel, btn);
     }
     card.appendChild(h('div', { cls: 'dv-h', text: L.voice }));
@@ -406,7 +388,11 @@ export function createAudioPanel(o) {
     } catch (e) { say(L.fail + (e.message || e), true); }
   }
   function mount(old) {
+    // 描き直す前にフォーカスのあったボタン（id のあるもの）は、新しい板の同じボタンに戻す
+    const had = old && old.isConnected && old.contains(doc.activeElement) && doc.activeElement.id ? doc.activeElement.id : null;
     if (old && old.isConnected) old.replaceWith(card); else ui.side.appendChild(card);
+    const back = focusRec && !card.closest('.rec-on') ? card.querySelector('#dev-audio-rec') : had ? card.querySelector('#' + had) : null;
+    if (back && !back.disabled) { if (focusRec) focusRec = false; try { back.focus({ preventScroll: true }); } catch { /* 無視 */ } }
     const live = new Set([...card.querySelectorAll('audio')].map((a) => a.getAttribute('src')));
     retired = retired.filter((u) => { if (live.has(u)) return true; if (urls.has(u)) { URL.revokeObjectURL(u); urls.delete(u); } return false; });
     ui.refresh();
@@ -436,70 +422,10 @@ export function createAudioPanel(o) {
     return seg ? { seg, hash: await inputHash(seg) } : { seg: null, hash: null };
   }
 
-  // ---------------------------------------------------------------- 録音（MediaRecorder。マイクはこのページだけで開く）
-  async function startRecording() {
-    if (rec || busyMsg || !view || !view.seg) return;
-    const key = view.key, ws = o.ws(), g = o.generation();
-    let stream;
-    try {
-      stream = await win.navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
-    } catch (e) { say(L.micNo + (e.message || e.name || e) + ' — ' + L.micHint, true); return; }
-    if (o.ws() !== ws || o.generation() !== g || !open) { stream.getTracks().forEach((t) => t.stop()); return; }
-    const ac = new win.AudioContext();
-    const src = ac.createMediaStreamSource(stream), an = ac.createAnalyser();
-    an.fftSize = 2048; src.connect(an);
-    const mr = new win.MediaRecorder(stream);
-    const chunks = [];
-    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-    const r = rec = { key, ws, g, stream, ac, an, mr, chunks, t0: performance.now(), raf: 0, peak: 0 };
-    mr.start(250);
-    const buf = new Float32Array(an.fftSize);
-    const tick = () => {
-      if (rec !== r) return;
-      an.getFloatTimeDomainData(buf);
-      let pk = 0; for (let i = 0; i < buf.length; i++) pk = Math.max(pk, Math.abs(buf[i]));
-      r.peak = Math.max(r.peak, pk);
-      const db = pk > 0 ? 20 * Math.log10(pk) : -90;
-      const m = card && card.querySelector('#dev-audio-meter');
-      if (m) {
-        m.querySelector('i').style.width = Math.max(0, Math.min(100, ((db + 60) / 60) * 100)).toFixed(1) + '%';
-        const sec = (performance.now() - r.t0) / 1000;
-        m.querySelector('.dv-t').textContent = sec.toFixed(1) + ' s';
-        if (sec > AUDIO_LIMITS.maxSeconds) { say(L.tooLong(AUDIO_LIMITS.maxSeconds), true); stopRecording(); return; }
-      }
-      r.raf = win.requestAnimationFrame(tick);
-    };
-    if (view) draw(view);
-    r.raf = win.requestAnimationFrame(tick);
-  }
-  function stopRecording(discardIt = false) {
-    const r = rec;
-    if (!r) return Promise.resolve();
-    rec = null;
-    win.cancelAnimationFrame(r.raf);
-    return new Promise((resolve) => {
-      r.mr.onstop = async () => {
-        r.stream.getTracks().forEach((t) => t.stop());
-        if (discardIt || o.ws() !== r.ws || o.generation() !== r.g) { r.ac.close().catch(() => {}); resolve(); return; }
-        setBusy(L.processing);
-        try {
-          const blob = new Blob(r.chunks, { type: r.mr.mimeType || 'audio/webm' });
-          const bytes = await readFileBounded(blob, { max: AUDIO_LIMITS.fileBytes, what: 'recording' });
-          const ab = await r.ac.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-          const chans = Array.from({ length: ab.numberOfChannels }, (_, c) => ab.getChannelData(c));
-          const p = processTake(chans, ab.sampleRate);
-          if (!(p.dur > 0)) throw Object.assign(new Error(L.empty), { code: 'audio-empty' });
-          const { hash } = await currentHash(r.key);
-          if (o.ws() !== r.ws || o.generation() !== r.g) return;
-          const take = await addTake(r.key, { kind: 'recorded', pcm: p.pcm, sr: p.sr, dur: p.dur, cues: null, recipe: null, inputHash: hash, gainDb: p.gainDb, at: Date.now() });
-          busyMsg = null;
-          await useTake(r.key, take.id, true);   // 録ったらすぐ使う（前の音声は「前に戻す」で）
-        } catch (e) { busyMsg = null; if (view) draw(view); say(L.fail + (e.message || e), true); }
-        finally { r.ac.close().catch(() => {}); resolve(); }
-      };
-      try { r.mr.stop(); } catch { r.mr.onstop(); }
-      if (view) draw(view);
-    });
+  // ---------------------------------------------------------------- 録音：この段階で録音モード（app/rec-mode.js）を開く。板は開いたまま（録音モードの間は隠れる）
+  function openRecMode(key) {
+    if (!o.recMode || busyMsg) return;
+    o.recMode.open({ key, returnFocus: () => { focusRec = true; if (card && open) { const b = card.querySelector('#dev-audio-rec'); if (b && !b.disabled) { focusRec = false; try { b.focus({ preventScroll: true }); } catch { /* 無視 */ } } } } });
   }
 
   // ---------------------------------------------------------------- ファイルから取り込む（読む前に大きさを確かめる）
@@ -536,21 +462,17 @@ export function createAudioPanel(o) {
   // ---------------------------------------------------------------- ブラウザの TTS で作り直す（o.tts：app/tts-client.js。試験では差し替える）
   // 1 行（{cue} の部分）ずつ作り、行ごとに後処理（無音を削る・音量）をしてから、ターンの間に無音を入れてつなぐ（tts/synth.py と同じ）。
   // 日本語は読み辞書（tts/yomi.yaml。tts/yomi.py と同じ規則の app/yomi-data.js）を通した文を渡す
-  // key を渡すとその段階を作り直す（前処理の版が古い段階の一覧から。選んだ段階だけ）。渡さなければ今の段階。戻り値：できたら true
-  async function regenerate(arg) {
-    const fromList = typeof arg === 'string';
-    if (busyMsg || !view || !o.tts) return false;
-    if (!fromList && !view.seg) return false;
-    const key = fromList ? arg : view.key, ws = o.ws(), g = o.generation();
-    let vw = view;
-    if (key !== view.key) {
-      try { vw = await loadStep(key); } catch (e) { say(L.fail + (e.message || e), true); return false; }
-      if (vw.url) { freeUrl(vw.url); flushUrls(); }
-      if (o.ws() !== ws || o.generation() !== g || !vw.seg) { if (vw.seg === null) say(L.noSeg, true); return false; }
-    }
+  // 今の段階を作り直す。戻り値：できたら true
+  async function regenerate() {
+    if (busyMsg || !view || !o.tts || !view.seg) return false;
+    const key = view.key, ws = o.ws(), g = o.generation();
+    const vw = view;
     const lang = ttsLang(vw);
     const info = o.tts.info(lang);
     if (!info.ok) { say(L.ttsNo + info.reason, true); return false; }
+    // 雛形の仮の行（✎）のままの口述原稿は、合成の前に知らせる（続けてもよい。kit/core/template-text.mjs）
+    if (o.beforeTts && !(await o.beforeTts([key]))) return false;
+    if (busyMsg || o.ws() !== ws || o.generation() !== g) return false;
     setBusy(L.processing);
     const prog = () => card && card.querySelector('#dev-audio-prog');
     const stopWait = o.wait ? o.wait() : () => {};
@@ -594,42 +516,6 @@ export function createAudioPanel(o) {
     finally { stopWait(); }
   }
 
-  // ---------------------------------------------------------------- 前処理の版が古い TTS の段階（選んだものだけ、いつもの作り直しで作る。勝手には作り直さない）
-  const picked = new Set();
-  function drawOldNorm(v, canRun) {
-    const N = o.oldNorm;
-    const list = N ? v.oldNorm || [] : [];
-    for (const k of [...picked]) if (!list.includes(k)) picked.delete(k);
-    if (!list.length) return;
-    const box = h('div', { cls: 'dv-old', id: 'dev-audio-oldnorm' });
-    box.appendChild(h('div', { cls: 'dv-h', text: N.title }));
-    box.appendChild(h('div', { cls: 'dv-note', text: N.note }));
-    const busy = !!(busyMsg || rec);
-    const go = h('button', { id: 'dev-audio-oldnorm-go', cls: 'dv-pri', text: N.go(picked.size), on: { click: () => regenerateOld(v) } });
-    for (const k of list) {
-      const cb = h('input', { type: 'checkbox', 'data-key': k, id: 'dev-audio-old-' + k.replace(/[^A-Za-z0-9_-]/g, '_') });
-      if (picked.has(k)) cb.checked = true;
-      cb.addEventListener('change', () => { if (cb.checked) picked.add(k); else picked.delete(k); go.textContent = N.go(picked.size); go.disabled = busy || !canRun || !picked.size; });
-      if (busy) cb.disabled = true;
-      box.appendChild(h('label', { cls: 'dv-oldrow' }, [cb, h('span', { text: L.step + k.slice(k.lastIndexOf(':') + 1) + ' (' + k + ')' })]));
-    }
-    go.disabled = busy || !canRun || !picked.size;
-    box.appendChild(h('div', { cls: 'dv-tools' }, [go]));
-    card.appendChild(box);
-  }
-  // 選んだ段階を 1 つずつ、いつもの作り直し（regenerate）で作る。失敗したらそこで止める
-  async function regenerateOld(v) {
-    if (busyMsg || rec) return;
-    const N = o.oldNorm, keys = (v.oldNorm || []).filter((k) => picked.has(k));
-    let n = 0;
-    for (const k of keys) {
-      if (!(await regenerate(k))) break;
-      picked.delete(k); n++;
-    }
-    if (view) show(view.key, view.i);
-    if (n) ui.toast(N.done(n));
-  }
-
   // ---------------------------------------------------------------- Colab で音声を作る（tts-job.json を書き出す → ノートブック → zip を取り込む）
   // 印付き（書き出した後に原稿が変わった段階）：key → {rec, bytes（WAV）, cuesOk}。作業場所を替えると捨てる
   const marked = new Map();
@@ -646,7 +532,7 @@ export function createAudioPanel(o) {
     const exp = h('button', { id: 'dev-audio-colab-export', cls: 'dv-pri', text: C.export, on: { click: () => exportJob(sel.value) } });
     const opn = h('a', { id: 'dev-audio-colab-open', cls: 'dv-link', href: colabUrl(), target: '_blank', rel: 'noopener', title: C.openColabT, text: C.openColab });
     const imp = h('button', { id: 'dev-audio-colab-import', text: C.import, on: { click: importZip } });
-    if (busyMsg || rec || !v.seg) { exp.disabled = true; imp.disabled = true; }
+    if (busyMsg || !v.seg) { exp.disabled = true; imp.disabled = true; }
     det.appendChild(h('div', { cls: 'dv-tools' }, [h('span', { text: C.scope + '：' }), sel]));
     det.appendChild(h('div', { cls: 'dv-tools' }, [exp, opn, imp]));
     if (colabNote) for (const l of colabNote.lines) det.appendChild(h('div', { cls: 'dev-msg ' + (l.bad ? 'dv-err' : 'dv-ok') + ' dv-colab-msg', text: l.text }));
@@ -673,6 +559,7 @@ export function createAudioPanel(o) {
     const C = o.colab.t, ws = o.ws(), g = o.generation(), v = view;
     const keys = scope === 'all' ? null : (v.need || []);
     if (keys && !keys.length) { say(C.noSteps, true); return; }
+    if (o.beforeTts && !(await o.beforeTts(keys))) return;   // 雛形の仮の行（✎）のまま（keys が null ならすべての段階）
     if (!(await o.colab.confirm(C.privacyTitle, C.privacyBody, C.privacyGo))) return;
     if (o.ws() !== ws || o.generation() !== g) return;
     try {
@@ -834,7 +721,7 @@ export function createAudioPanel(o) {
   // 前に戻す：積んだ前の記録を manifest に戻す（音声のファイルは消していないので、そのファイルを指す記録に戻すだけ）
   async function revert(key) {
     const back = history.get(key) || [];
-    if (!back.length || busyMsg || rec) return false;
+    if (!back.length || busyMsg) return false;
     const ws = o.ws(), g = o.generation();
     const live = () => o.ws() === ws && o.generation() === g;
     const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
@@ -858,10 +745,9 @@ export function createAudioPanel(o) {
   }
 
   function reset() {
-    stopRecording(true);
     stopSample();
     for (const list of takes.values()) for (const t of list) freeUrl(t.url);
-    takes.clear(); history.clear(); marked.clear(); colabNote = null; busyMsg = null;
+    takes.clear(); history.clear(); marked.clear(); colabNote = null; busyMsg = null; focusRec = false;
     for (const k of Object.keys(voiceMem)) delete voiceMem[k];
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);
@@ -870,16 +756,28 @@ export function createAudioPanel(o) {
     ui.refresh();
   }
   return {
-    toggle, reset, isOpen: () => open, isBusy: () => !!(rec || busyMsg),
+    toggle, reset, isOpen: () => open, isBusy: () => !!busyMsg,
     onPos: () => { if (open) follow(false); },
-    reload: () => { if (!open) return; if (view && !rec && !busyMsg) show(view.key, view.i); else follow(true); },
+    reload: () => { if (!open) return; if (view && !busyMsg) show(view.key, view.i); else follow(true); },
     peek, commit, revert, canRevert: (key) => (history.get(key) || []).length > 0,
+    // スライド一覧（app/slides-panel.js）：消したスライドの段階の、使っていない取り直しと前の記録を外す（元に戻すで putBack）。数だけを知るのは pendingFor
+    pendingFor: (slideKey) => [...takes].filter(([k]) => splitKey(k)[0] === slideKey).reduce((n, [, l]) => n + l.length, 0),
+    takeOut: (slideKey) => {
+      const out = { takes: [], history: [] };
+      for (const [k, l] of [...takes]) if (splitKey(k)[0] === slideKey) { out.takes.push([k, l]); takes.delete(k); }
+      for (const [k, l] of [...history]) if (splitKey(k)[0] === slideKey) { out.history.push([k, l]); history.delete(k); }
+      if (view && splitKey(view.key)[0] === slideKey && open) follow(true);
+      return out;
+    },
+    putBack: (x) => {
+      for (const [k, l] of (x && x.takes) || []) takes.set(k, [...(takes.get(k) || []), ...l]);
+      for (const [k, l] of (x && x.history) || []) history.set(k, [...l, ...(history.get(k) || [])]);
+      if (open) follow(true);
+    },
     unsaved: () => [...takes.values()].reduce((n, l) => n + l.length, 0),
-    state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
+    state: () => ({ open, key: view ? view.key : null, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
       history: Object.fromEntries([...history].map(([k, l]) => [k, l.map((e) => (e ? e.file : null))])), voices: view && view.voice !== undefined ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : null,
       sample: sample ? sample.dataset.name : null,
       takes: Object.fromEntries([...takes].map(([k, l]) => [k, l.map((t) => ({ id: t.id, kind: t.kind, dur: t.dur, cues: t.cues, recipe: t.recipe, inputHash: t.inputHash, gainDb: t.gainDb }))])) }),
-    // 試験：録音を止める（MediaRecorder の終わりを待つ）
-    stop: () => stopRecording(),
   };
 }

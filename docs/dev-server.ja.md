@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=e748eef961e11b67 -->
+<!-- i18n: pair=dev-server.md sha256=6eec6cf7f9fff902 -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -46,7 +46,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme business
 - `deck.html`：ダブルクリックで直した要素の中身だけを置き換える
 - `narration.md`：その段階の行（`[k] …` とその続きの行）だけを置き換える。なければスライドの順・段階の順の位置に足す。
   ほかの行（コメントを含む）は元のまま。発言を全部消すとその段階の行を消す
-- `comments.json`：AI へのメモ `[{id, created, key, range, pin, quote, comment, status}]`（key は `スライドの鍵:段階`、range は deck.html の位置、pin は押した点 `{x, y}` のスライドの座標（1280×720。表示の倍率によらない）。`pin` のない前のメモもそのまま使える。手書きメモは `strokes`（描いた印、同じ座標の点の並びの並び `[[[x, y], …], …]`。前のメモは 1 本の `stroke` のこともあり、1 本の印として読む）を足し、その `pin` は全部の印の重心：[約束事 §12](contract.ja.md#12-レビューのメモ手書きの印)）。点は段階の最後の状態（`DECK.seek(i, k, Infinity)`）を指す（動いている途中に押しても）。quote は、点の近くに字があればそれ（図や部品の中の札・語。60 字まで）から始まり、その後に要素の字の頭 80 字が続く
+- `comments.json`：AI へのメモ `[{id, created, key, range, pin, quote, comment, status}]`（key は `スライドの鍵:段階`、range は deck.html の位置、pin は押した点 `{x, y}` のスライドの座標（1280×720。表示の倍率によらない）。`pin` のない前のメモもそのまま使える。手書きメモは `strokes`（描いた印、同じ座標の点の並びの並び `[[[x, y], …], …]`。前のメモは 1 本の `stroke` のこともあり、1 本の印として読む）を足し、その `pin` は全部の印の重心：[約束事 §13](contract.ja.md#13-レビューのメモ手書きの印)）。点は段階の最後の状態（`DECK.seek(i, k, Infinity)`）を指す（動いている途中に押しても）。quote は、点の近くに字があればそれ（図や部品の中の札・語。60 字まで）から始まり、その後に要素の字の頭 80 字が続く
 - `.cache/edits/`：書き換える前の deck.html・narration.md の写し（新しい 30 個）
 
 ## 守り

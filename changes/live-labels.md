@@ -1,0 +1,3 @@
+### Changed
+
+- Live room: polls are shown by a label such as “Slide 4 'XML の壁', step 1” (「4 枚目『XML の壁』・段階 1」) instead of the raw step key (`s-cjatth:0`) in the editor's step suggestions and poll list, with the key in the tooltip. The editor writes it as the optional `label` of each poll (display text, at most 80 characters; keys unchanged), and **Copy activities JSON** includes it, so egatari/live's teacher and join pages show it too. Older polls get a label when the panel opens if their slide is still in the deck; otherwise, and in rooms without labels, the key is shown as `s-cjatth · step 1` (`*` as “whole lesson”). The vendored protocol is updated to egatari/live a630478

@@ -568,7 +568,7 @@ const TRUSTED = new Set(['\\htmlClass', '\\htmlId', '\\htmlData']);
 // 実行系の <script> に入れる kit/core の ES モジュール（依存なし・export function 1 つ。いまは position.mjs の PositionStore）を、
 // 即時関数の中で読み、その関数を DECK.<name> に入れる形にする（窓のグローバルを増やさない）。形が違えば組み立てを止める
 // 実行系に入れる kit/core の ES モジュール（kit/ から見た場所 → DECK の名前）。編集アプリ（tools/build-app.mjs）はこれを字として同梱する
-export const RUNTIME_MODULES = Object.freeze({ 'core/position.mjs': 'PositionStore' });
+export const RUNTIME_MODULES = Object.freeze({ 'core/position.mjs': 'PositionStore', 'core/link-policy.mjs': 'LinkPolicy' });
 export function classicModule(src, name) {
   const s = String(src);
   const ex = s.match(/^export\s+function\s+([A-Za-z_$][\w$]*)\s*\(/gm) || [];
@@ -789,7 +789,10 @@ export function build(env0, srcPath, opts = {}) {
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
   const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
-  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${theme.css}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
+  // 読む順：字 → KaTeX → 実行系（base.css）→ 体裁（layouts.css）→ テーマ（tokens.css。extends の親から順に）→ 英語など（latin.css）。
+  // テーマは体裁の後に読むので、同じ詳細度の規則ならテーマが勝つ（表紙の題名の位置や本文の欄の余白などをテーマが替えられる。html を前に付けて詳細度で勝たなくてよい）。
+  // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
+  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scriptList = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),

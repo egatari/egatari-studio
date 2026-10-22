@@ -9,6 +9,7 @@
 //   Backspace：録音中は今のテイクを捨てる（書かない）・録った後は「前に戻す」で前の音声へ
 //   ← → で段階の移動・端の知らせ・Esc で閉じてフォーカスが戻る・録音中の Esc は今のテイクを捨てる
 //   記録の kind は recorded（印は付けない）・e n r のキーはこの板の間は何もしない・プレビューからの知らせでは録音が始まらない
+//   音声の板の「● 録音 (r)」：その段階で開く・1 段録って Esc で板に戻ると、板がその段階の新しい音声を見せる（録り方は 1 つ。#82）
 //   読み上げソフトへ：live region（段階・録音中・できた）・alert・ボタンの名前と aria-pressed・dialog の属性・reduced-motion・English
 import fs from 'node:fs';
 import os from 'node:os';
@@ -199,7 +200,15 @@ try {
   const e0 = await waitWritten(keys[0], null);
   await waitIdx(1);
   ok(e0.kind === 'recorded' && e0.sync === 'none' && e0.cues.length === 0 && typeof e0.inputHash === 'string', `one step: Space, speak, Enter → kind recorded, sync none, inputHash (${e0.dur} s)`);
-  ok(e0.dur > 1.9 && e0.dur <= 3.7, `post-processing: the take is trimmed and levelled (${e0.dur} s from a 3.6 s take; the trimming itself is checked in test-audio-core)`);
+  // 偽のマイクは遅れて始まることがあり、録音の長さも実行環境で揺れる。実測の raw・head・tail（アプリが報告する）に対して性質を確かめる
+  const r0 = (await recState()).result;
+  const TOL = 0.05;
+  ok(r0 && r0.key === keys[0] && r0.raw > 0, `post-processing: the app reports the raw take (${r0 && r0.raw} s, head ${r0 && r0.head} s, tail ${r0 && r0.tail} s)`);
+  ok(e0.dur > 1.9 && e0.dur <= r0.raw + TOL, `post-processing: the take is trimmed, not longer than the raw take (${e0.dur} s from ${r0.raw} s raw; the trimming itself is checked in test-audio-core)`);
+  ok(Math.abs(e0.dur - (r0.raw - r0.head - r0.tail)) <= TOL, `post-processing: dur = raw - head - tail (${e0.dur} vs ${(r0.raw - r0.head - r0.tail).toFixed(3)})`);
+  const lev0 = r0.loudness + r0.gainDb;
+  ok(Math.abs(lev0 - (-20)) < 1.0 || Math.abs(r0.peakDb - (-1.5)) < 0.1, `post-processing: the take is levelled (${lev0.toFixed(1)} LUFS for the -20 target, true peak ${r0.peakDb.toFixed(1)} dB)`);
+  ok(r0.peakDb <= -1.5 + 0.1, `post-processing: the true peak stays under the limit (${r0.peakDb.toFixed(2)} dB)`);
   ok(!(await opfsRead('audio/' + e0.file) === null), 'write: the audio file is in audio/');
   st = await recState();
   ok(st.phase === 'idle' && st.key === keys[1] && st.mine.includes(keys[0]), 'Enter: moved to the next step, which waits (recording never starts by itself)');
@@ -263,8 +272,18 @@ try {
   await page.waitForTimeout(1500);
   await page.keyboard.press('Space');
   const ec = await waitWritten(CUE2, null);
-  ok(ec.kind === 'recorded' && ec.sync === 'manual' && ec.cues.length === 2 && ec.cues[0] > 0.3 && ec.cues[1] > ec.cues[0] && ec.cues[1] < ec.dur, `cue: two presses → sync manual, cues ${JSON.stringify(ec.cues)} inside the ${ec.dur} s audio (raw time minus the trimmed head)`);
-  ok(Math.abs((ec.cues[1] - ec.cues[0]) - 1.0) < 0.35, `cue: the spacing of the cues follows the presses (${(ec.cues[1] - ec.cues[0]).toFixed(2)} s for 1.0 s)`);
+  const rc = (await recState()).result;
+  const tp = rc.tapTimes;
+  ok(ec.kind === 'recorded' && ec.sync === 'manual' && ec.cues.length === 2 && rc.key === CUE2 && tp.length === 2, `cue: two presses → sync manual, cues ${JSON.stringify(ec.cues)} inside the ${ec.dur} s audio (raw ${rc.raw} s, head trimmed ${rc.head} s)`);
+  ok(ec.cues[0] >= 0 && ec.cues[1] > ec.cues[0] && ec.cues[1] <= ec.dur, `cue: increasing and inside [0, ${ec.dur}] (${JSON.stringify(ec.cues)})`);
+  // 各 cue は「押した時刻 − 実測の head」（[0, dur] に収めた値）：head がどれだけ削れても成り立つ
+  const wantCue = tp.map((x) => Math.max(0, Math.min(ec.dur, x - rc.head)));
+  ok(ec.cues.every((c, i) => Math.abs(c - wantCue[i]) <= 0.01), `cue: each cue is the press time minus the measured head (${JSON.stringify(tp.map((x) => +x.toFixed(3)))} - ${rc.head} → ${JSON.stringify(ec.cues)})`);
+  // 間隔：押した間隔に等しい（端で [0, dur] に切られていなければ）。押した間隔そのものは待ち時間の約 1.0 秒
+  const pressGap = tp[1] - tp[0], cueGap = ec.cues[1] - ec.cues[0];
+  const clamped = tp[0] - rc.head < 0 || tp[1] - rc.head > ec.dur;
+  ok(Math.abs(pressGap - 1.0) < 0.35, `cue: the presses were about 1.0 s apart (${pressGap.toFixed(2)} s)`);
+  ok(clamped ? cueGap <= pressGap + 0.01 : Math.abs(cueGap - pressGap) <= 0.01, `cue: the spacing of the cues follows the presses (${cueGap.toFixed(3)} s for ${pressGap.toFixed(3)} s${clamped ? ', one end clamped' : ''})`);
   // 取り直し：前の cue は使わない（C を押さなければ sync none）
   await waitPhase('idle');
   await page.keyboard.press('Backspace');
@@ -372,17 +391,31 @@ try {
   const after = await page.evaluate(() => ({ topInert: document.getElementById('top').inert, prevInert: document.getElementById('preview').inert, on: document.getElementById('deck').classList.contains('rec-on'), mic: window.__APP_TEST.rec().mic, focusBody: document.activeElement === document.body || document.activeElement.id === 'preview' }));
   ok(!after.topInert && !after.prevInert && !after.on && !after.mic, 'close: the toolbar and the preview are usable again and the microphone is released');
   ok(after.focusBody, 'close: focus goes back to where it was ' + await page.evaluate(() => document.activeElement.tagName + '#' + document.activeElement.id));
-  // もう一度開く：ボタンで・段階は画面の位置から・Shift+Esc
+  // 音声の板の「● 録音 (r)」：録り方は録音モードだけ（#82）。その段階で開き、1 段だけ録って Esc で板に戻ると、板が新しい音声を見せる
   await page.click('#b-audio');
-  await page.waitForSelector('#dev-audio-recmode');
-  ok((await page.textContent('#dev-audio-recmode')).includes('(r)'), 'entry: the Audio panel has a Recording mode (r) button');
-  await clickUntil(page, '#dev-audio-recmode', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await page.waitForSelector('#dev-audio #dev-audio-rec');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.key; });
+  const pkey = (await page.evaluate(() => window.__APP_TEST.audio())).key;
+  ok((await page.textContent('#dev-audio-rec')).includes('(r)') && !(await page.$('#dev-audio-recmode')), 'entry: the Audio panel has one record button, “● 録音 (r)”, and no second way to record');
+  const prevE = (await manifest())[pkey];
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await waitRec('idle');
+  ok((await recState()).key === pkey, 'panel: the button opens recording mode at the panel\'s step (' + pkey + ')');
+  await record(3500, [], 'Space');
+  const eP = await waitWritten(pkey, prevE);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key === k && s.entry && s.entry.file === f; }, [pkey, eP.file], { timeout: 15000 });
+  ok(await page.isVisible('#dev-audio-player') && await page.isVisible('#dev-audio-revert'), 'panel: after Esc the panel shows the new take for that step, with Revert to previous');
+  // r で開いても、開いていた板は閉じない（録音モードの間は隠れるだけ）
+  await page.evaluate(() => document.body.focus());
+  await page.keyboard.press('r');
   await page.waitForSelector('#rec-mode');
   await waitRec('idle');
-  ok((await recState()).key === (await page.evaluate(() => window.__APP_TEST.ui().pos.key)), 'reopen: the button opens it at the step on the screen');
+  ok((await page.evaluate(() => window.__APP_TEST.audio().open)), 'r: the Audio panel stays open behind recording mode');
   await page.keyboard.press('Shift+Escape');
   await page.waitForSelector('#rec-mode', { state: 'detached' });
-  ok(true, 'close: Shift+Esc closes it too');
+  ok(!(await page.evaluate(() => window.__APP_TEST.audio().open)), 'close: Shift+Esc closes recording mode and the panel');
 
   // ---------------------------------------------------------------- English
   await page.goto(BASE + '?lang=en');

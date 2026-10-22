@@ -292,6 +292,7 @@ export function createEditorUI(o) {
   }
 
   // ---------------------------------------------------------------- 状態
+  let frameReloading = false;
   let editOn = false, pos = null, restorePos = null, info = null, target = null, ignored = 0;
   let editor = null, cbox = null, cpanel = null, commentsOpen = false, narrOpen = false, drawer = null, narr = null, narrFocus = false;
   // 点の印：一覧の未対応のコメントのうち点のあるもの（{id, n, key, pin}）、書いている途中の指示の点（{key, pin}）、光らせる印
@@ -794,6 +795,10 @@ export function createEditorUI(o) {
     if (restorePos) restorePos = { i, k }; else post({ type: 'deck-cmd', cmd: 'goto', i, k });
     return true;
   }
+  // 番号でその枚へ（スライド一覧の足す・削除・並べ替えの後）。読み込み直している間（frameLoading の後、ready の前）は、読み込んだ後の位置にする
+  function goIndex(i, k = 0) {
+    if (frameReloading) restorePos = { i, k }; else post({ type: 'deck-cmd', cmd: 'goto', i, k });
+  }
   // ---------------------------------------------------------------- 鍵盤（このページで押したものと、デッキから知らされたもの）
   function key(k, fromDeck, shift = false) {
     if (!enabled()) return;
@@ -837,7 +842,7 @@ export function createEditorUI(o) {
       return true;
     }
     if (m.kind === 'ready') {
-      const r = restorePos; restorePos = null;
+      const r = restorePos; restorePos = null; frameReloading = false;
       if (r) post({ type: 'deck-cmd', cmd: 'goto', i: r.i, k: r.k });
       sendState(); drawBadge(); drawMode();
       loadInfo().then(() => { if (narrOpen && (!narr || !(narr.dirty || narrFocus))) narrFollow(true); });
@@ -858,12 +863,13 @@ export function createEditorUI(o) {
   // 読み込み直す前に：位置を覚えておき、読み込んだ後の ready で戻す。開いたままの欄で未保存でないものは閉じる（場所が変わるので）
   function frameLoading(keepPos) {
     restorePos = keepPos && pos ? { i: pos.i, k: pos.k } : null;
+    frameReloading = true;
     closeEditor(false);
   }
   function reset() {
     closeEditor(true); closeComment(true);
     if (narr) narr.dirty = false;
-    pos = null; restorePos = null; info = null; target = null; pinList = []; pending = null; flash = null;
+    pos = null; restorePos = null; frameReloading = false; info = null; target = null; pinList = []; pending = null; flash = null;
     if (drawer) { drawer.remove(); drawer = null; narr = null; }
     narrOpen = false; editOn = false; toolMode = null;
     if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
@@ -879,7 +885,7 @@ export function createEditorUI(o) {
     if (ui.comments) toggleComments(true);
   }
   return {
-    message, frameLoading, reset, restoreSaved, toggleEdit, toggleInk, toggleNarr, toggleComments, toast, mark, escape, goStep,
+    message, frameLoading, reset, restoreSaved, toggleEdit, toggleInk, toggleNarr, toggleComments, toast, mark, escape, goStep, goIndex, busy: () => editing(),
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
       mode: modeEl.getAttribute('data-mode'), modeText: modeEl.textContent, tool: toolMode,

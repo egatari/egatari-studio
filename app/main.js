@@ -14,6 +14,7 @@ import { createAudioPanel } from './audio-panel.js';
 import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
+import { createSlidesPanel } from './slides-panel.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
@@ -27,6 +28,7 @@ import { rightsOf } from './rights.js';
 import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState } from '../kit/core/portable.mjs';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
+import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
@@ -177,6 +179,7 @@ async function openFolder(handle) {
 function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
+  slidesPanel.reset();
   engine.setWorkspace(ws);
   rec.reset();
   audio.reset();
@@ -195,11 +198,12 @@ function blankPreview() {
 }
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
-// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る
+// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
+// 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   const a = document.activeElement;
-  if (a && a.closest && a.closest('.menu')) return;
+  if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
   focusPreview();
 }
 // プレビューの音声（backlog #49）：組み立てが置いた印（refs：[{src, rel, size}]、app/engine.js の previewAudio）の音声を作業場所から読み、
@@ -246,6 +250,8 @@ function showDeck(label, title) {
   document.title = title + ' — Egatari Studio';
   showNotice();
   closePanel();
+  // スライド一覧：前に開いていたら（この画面の覚え。localStorage）開く。キーボードの位置はプレビューのまま
+  if (slidesPanel.wantOpen() && !slidesPanel.isOpen()) slidesPanel.toggle(true, false);
 }
 function updateName() {
   const dirty = S.portable && S.ws && S.ws.dirty;
@@ -396,6 +402,7 @@ async function rebuild(reason) {
         S.preview = true;
         showError(null);
         showWarn();
+        slidesPanel.refresh();
         $('st-info').textContent = `${T.slidesN(r.stats.slides)} · ${(r.html.length / 1048576).toFixed(1)} MB · ${S.lastBuildMs} ms`;
         if (reason !== 'poll' || changed || wasError) status(T.rebuilt(time(), reason));
         // プレビューも発表者ビューも、コードの確かめ（codeConsent）を通ったときだけ読み込む
@@ -581,13 +588,14 @@ async function colabDocId() {
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
 }
 const audio = createAudioPanel({
-  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null, oldNorm: T.oldNorm,
+  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
-  // 音声の板の「録音モード (r)」のボタン（ツールバーには置かない：1 行に収まらなくなる）
-  recMode: { label: T.recBtn, title: T.recTip, open: () => rec.open().then((on) => { if (on) ui.mark('rec', true); }) },
+  beforeTts: (keys) => leftoverGate('tts', keys),   // 雛形の仮の行（✎）のままの段階を、TTS の前に見せる
+  // 音声の板の「● 録音 (r)」：その段階で録音モードを開く（録り方は録音モードだけ。#82。ツールバーには置かない：1 行に収まらなくなる）
+  recMode: { title: T.recTip, open: (opts) => rec.open(opts).then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
@@ -611,6 +619,8 @@ const rec = createRecMode({
   slideIndex: (key) => { const i = (S.slides || []).findIndex((x) => x.key === key); return i < 0 ? null : i; },
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeOpen: () => beforeEditing('audio'),
+  // 1 つのテイクの上限（既定 600 秒）。試験だけ短くできる
+  maxSeconds: () => (window.__APP_TEST && window.__APP_TEST.recMaxSeconds) || null,
 });
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
@@ -635,12 +645,40 @@ const livePanel = createLivePanel({
   },
   afterWrite: async () => { await rebuild('save'); updateName(); },
   currentStep: () => (S.pos && typeof S.pos.key === 'string' ? S.pos.key : null),
+  // 授業の部屋の結果を取り込む：添付の板を開いて、そこで確かめて足す（一覧に要約が出る）
+  importResults: async (file) => { await attach.open(); await attach.importLive(file); },
   stepKeys: async () => {
     const keys = (S.slides || []).map((x) => x.key + ':0');
     try { for (const g of parseNarration(await S.ws.readText('narration.md', { max: READ_LIMITS.json }))) keys.push(`${g.slideKey}:${g.stepKey}`); } catch { /* 口述原稿なし */ }
     return [...new Set(keys)];
   },
+  slides: () => (S.slides || []).map((x) => ({ key: x.key, heading: x.heading || '' })),
   exportLive: (live) => exportPlayOnlyFile(live),
+  problemText: T.liveProblem,
+});
+// スライド一覧（app/slides-panel.js。backlog #79）：左の板。足す・複製・削除・並べ替えは原稿・口述原稿・音声の記録を書き、組み直す（段 B）
+// 1 ファイルの段 A の保存はスライドの原稿の変更を断る（kit/core/tier-a.mjs の source-changed）ので、次の「保存」は組み直しになる
+async function slideGuard() {
+  if (!S.ws || !S.base) return T.sl.notReady;
+  if (S.portable && S.portable.readOnly) return T.readOnlyNoEdit;
+  if (S.portable && S.portable.tierAOnly) return T.tierAOnlyNoSlides;
+  if (ui.busy() || audio.isBusy() || rec.isOpen()) return T.sl.editing;
+  if (S.portable && !(await ensureRights())) return T.rightsDeclined;
+  return null;
+}
+const slidesPanel = createSlidesPanel({
+  T: T.sl, el, host: $('slides'),
+  lang: (src) => { const m = /<html\b[^>]*\slang\s*=\s*["']?([A-Za-z-]+)/i.exec(src || ''); return m && !/^ja\b/i.test(m[1]) ? 'en' : 'ja'; },
+  ws: () => S.ws, generation: () => S.gen, deckFile: () => S.deckFile,
+  slides: () => S.slides || [], pos: () => S.pos,
+  go: (i) => { const f = $('preview').contentWindow; if (f && S.allowed) f.postMessage({ type: 'app-go', i, k: 0 }, '*'); },
+  goAfter: (i) => ui.goIndex(i, 0),
+  // 縮図の文書：プレビューと同じ決まり（CSP）の先頭部分＋縮図の仲立ち＋組んだデッキ。デッキのコードを動かしてよいとき（S.allowed）だけ
+  thumbsDoc: (cfg) => (S.allowed && S.base ? previewDocument(S.base, `${SHIM}(${enc({ strip: cfg })});`) : null),
+  guard: slideGuard, building: () => S.building,
+  rebuild: async () => { const failed = await rebuild('save'); updateName(); return failed; },
+  check: () => quickCheck(), ask, toast, audio, stale: () => S.stale || [],
+  onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
@@ -656,7 +694,7 @@ window.addEventListener('message', (e) => {
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
     }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
-      if (m.type === 'deck-pos') S.pos = m;
+      if (m.type === 'deck-pos') { S.pos = m; slidesPanel.onPos(); }
       if (S.presWin && !S.presWin.closed) S.presWin.postMessage({ type: 'app-pres-down', m }, '*');
     }
   } else if (S.presWin && e.source === S.presWin && m.type === 'app-pres-up' && m.m && typeof m.m.type === 'string' && /^deck-/.test(m.m.type)) {
@@ -732,6 +770,13 @@ async function quickCheck() {
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
+  // 雛形のまま（スライド一覧の雛形の字・仮の口述原稿「✎ 」。kit/core/template-text.mjs。kit/check.mjs と同じ）：作業場所の原稿から
+  {
+    const left = await leftovers();
+    const title = (i) => (i === null || !S.slides[i] ? '' : S.slides[i].heading || '');
+    for (const x of left.slides) results.push({ sev: 'warn', code: 'templateText', arg: x.texts.join('」「'), i: x.index, title: title(x.index) });
+    for (const p of left.steps) { const i = (S.slides || []).findIndex((x) => x.key === p.slideKey); results.push({ sev: 'warn', code: 'narrPlaceholder', arg: p.stepKey, i: i < 0 ? null : i, title: title(i < 0 ? null : i) }); }
+  }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
@@ -746,6 +791,36 @@ async function quickCheck() {
     ...(results.length ? [llm.fixButton(results)] : []),
     ...items,
   ]);
+}
+// ---------------------------------------------------------------- 雛形のまま（kit/core/template-text.mjs）：品質チェック・TTS の前・書き出しの前
+// 作業場所の原稿（deck.html）と口述原稿から、スライド一覧の雛形の字と仮の口述原稿の行（「✎ 」）を探す。読めなければ何もないことにする
+async function leftovers() {
+  if (!S.ws) return { steps: [], slides: [] };
+  let deck = null, narr = null;
+  try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }); } catch { deck = null; }
+  try { narr = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }); } catch { narr = null; }
+  try { return draftLeftovers(deck, narr); } catch { return { steps: [], slides: [] }; }
+}
+// 見せて、続けるかを聞く（kind：'tts' | 'export'。keys：TTS で作る段階の鍵（null ならすべて））。何もなければ聞かずに true
+async function leftoverGate(kind, keys = null) {
+  const L = await leftovers();
+  const want = keys ? new Set(keys) : null;
+  const steps = L.steps.filter((p) => !want || want.has(`${p.slideKey}:${p.stepKey}`));
+  const slides = kind === 'export' ? L.slides : [];
+  if (!steps.length && !slides.length) return true;
+  const idx = (key) => (S.slides || []).findIndex((x) => x.key === key);
+  const head = (i) => (i >= 0 && S.slides[i] ? S.slides[i].heading || '' : '');
+  const lines = [
+    ...slides.map((x) => T.leftSlide(x.index + 1, head(x.index), x.texts)),
+    ...steps.map((p) => { const i = idx(p.slideKey); return T.leftStep(i + 1, head(i), p.stepKey, p.text); }),
+  ];
+  const MAX = 8;
+  const v = await ask({ title: kind === 'tts' ? T.leftTitleTts : T.leftTitleExport, kind: 'warn', body: [
+    el('p', { id: 'left-lead', text: kind === 'tts' ? T.leftLeadTts : T.leftLeadExport }),
+    el('ul', { id: 'left-list' }, [...lines.slice(0, MAX).map((t) => el('li', { text: t })), ...(lines.length > MAX ? [el('li', { text: T.leftMore(lines.length - MAX) })] : [])]),
+    el('p', { cls: 'hint', text: T.leftHint })],
+  buttons: [{ id: 'cancel', label: T.cancel, pri: true }, { id: 'go', label: kind === 'tts' ? T.leftGoTts : T.leftGoExport }] });
+  return v === 'go';
 }
 function showWarnings() {
   // 見つからないテーマの知らせには「テーマのフォルダを選ぶ…」（前に選んだものがあれば「使う」）
@@ -1157,6 +1232,7 @@ async function savePortableBound(mode) {
     }
     const clean = rev !== null && ws.markClean(rev);
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
+    slidesPanel.saved();   // スライド一覧の「元に戻す」は保存まで
     P.saveWarnings = saveWarnings;
     // 段 A の元の口述原稿：保存したもの（保存の途中の編集は入れない）。段 B は組み始めの作業場所から組んだので、そのときのもの
     const nb = files.get('narration.md');
@@ -1193,6 +1269,7 @@ async function exportFolder(ws = S.ws) {
 // ---------------------------------------------------------------- フォルダのデッキを持ち運べる 1 ファイルに書き出す
 async function exportPortableFile() {
   if (!S.ws || S.portable) return;
+  if (!(await leftoverGate('export'))) return;
   const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
   let r;
@@ -1200,6 +1277,18 @@ async function exportPortableFile() {
   catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+  // 授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）が入る：人に渡すなら外す。外して書き出すのを 1 回で選べる
+  if (r.stats && Array.isArray(r.stats.liveResults) && r.stats.liveResults.length) {
+    const v = await ask({ title: T.liveResultsTitle, kind: 'warn',
+      body: [el('p', { id: 'live-results-export-warn', text: T.liveResultsWarn }), el('ul', {}, r.stats.liveResults.map((p) => el('li', { text: p })))],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'with', label: T.liveResultsWith }, { id: 'without', label: T.liveResultsWithout, pri: true }] });
+    if (v === 'cancel' || !live()) { status(''); return; }
+    if (v === 'without') {
+      try { r = await engine.exportPortable(S.deckFile, { fromFolder: true, withoutLiveResults: true }); }
+      catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+      if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+    }
+  }
   try {
     const name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT);   // 教材の題名（egatari.json の題 ＞ <title>）、なければデッキの名前
     if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
@@ -1224,11 +1313,13 @@ async function exportPlayOnlyFile(room = null) {
   const ws0 = S.ws, g0 = S.gen, P = S.portable;
   const live = () => S.ws === ws0 && S.gen === g0;
   if (P && ws0.dirty) { toast(T.playOnlyUnsaved, true); return; }
+  if (!(await leftoverGate('export'))) return;
+  if (!live()) return;
   status(T.exporting);
   let html, name, writes = {};
   try {
     if (P) { html = playOnly(P.original); name = P.name; }
-    else { const r = await engine.exportPortable(S.deckFile); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
     if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
@@ -1291,6 +1382,8 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => showNewForm(true);
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
+$('b-slides').onclick = () => slidesPanel.toggle();
+$('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
 $('b-narr').onclick = () => ui.toggleNarr();
 $('w-openfile').onclick = async () => openPortable(await pickPortable());
@@ -1361,7 +1454,7 @@ window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
-  state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
+  state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
@@ -1379,6 +1472,7 @@ window.__APP_TEST = {
   initThemeFolder: () => initThemeFolder(),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
+  slides: () => slidesPanel.state(),
   reloadPreview: () => loadFrame(),
   ui: () => ui.state(),
   audio: () => audio.state(),

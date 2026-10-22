@@ -62,17 +62,23 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright-core install --with-deps chromium
       - name: npm test
-        # CI=true makes tools/test-all.mjs stream every test's output
+        # CI=true makes tools/test-all.mjs stream every test's output; MOTION_TEST_ARTIFACTS: screenshots go to a fixed folder that the upload step reads
+        env:
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-node${{ matrix.node }}
           path: |
-            /tmp/motion-test-*
-          if-no-files-found: ignore
-          retention-days: 7
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
+          if-no-files-found: warn
+          retention-days: 3
 
   # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
   windows:
@@ -89,21 +95,27 @@ jobs:
         env:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-windows
           path: |
-            ${{ runner.temp }}/motion-test-*
-          if-no-files-found: ignore
-          retention-days: 7
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
+          if-no-files-found: warn
+          retention-days: 3
 
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
   macos:
     runs-on: macos-latest
-    timeout-minutes: 30
+    # macOS runners are slow: npm test takes 24-26 min here and new tests add about 2 min, so 30 min was too tight (clean on macOS takes under 2 min; its 25 min is enough)
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -112,17 +124,22 @@ jobs:
           cache: npm
       - run: npm ci
       - name: npm test
+        env:
+          MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
         run: npm test
       - name: Upload screenshots on failure
+        # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-artifacts-macos
           path: |
-            ${{ runner.temp }}/motion-test-*
-            /var/folders/*/*/T/motion-test-*
-          if-no-files-found: ignore
-          retention-days: 7
+            ${{ runner.temp }}/motion-test-artifacts/**/*.png
+            ${{ runner.temp }}/motion-test-artifacts/**/*.json
+            ${{ runner.temp }}/motion-test-artifacts/**/*.txt
+            ${{ runner.temp }}/motion-test-artifacts/**/*.log
+          if-no-files-found: warn
+          retention-days: 3
 
   # Clean environment (backlog #50): an empty HOME (not USERPROFILE: Chrome does not start on Windows with an empty one), no TTS server (IRODORI_URL points at a closed port), no user theme
   # folder, the system browser only. tools/clean-env.mjs builds, checks and exports (--portable, --play-only) copies of every example,

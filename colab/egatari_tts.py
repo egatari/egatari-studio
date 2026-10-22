@@ -176,6 +176,85 @@ def process_line(x: np.ndarray, sr: int) -> np.ndarray:
     return normalize_level(trim_silence(to_sr(np.asarray(x, dtype=np.float64), sr)))
 
 
+# ---------------------------------------------------------------- 自分の参照音声（Irodori。省略可）
+REF_SR = 48000                                  # 参照音声は 48 kHz・モノラル（lab/tts-engine.mjs の SR、colab/irodori_node.mjs と同じ）
+REF_MIN_S, REF_MAX_S = 3.0, 30.0
+REF_MAX_BYTES = 100 * 1048576
+
+
+class RefVoiceError(ValueError):
+    pass
+
+
+def _decode_ref(path: str, ffmpeg: str | None):
+    """WAV は scipy で、それ以外（MP3 など）や WAV で読めないものは ffmpeg で、(samples, sr) に。"""
+    import os
+    import subprocess
+    import tempfile
+    from scipy.io import wavfile
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".wav":
+        try:
+            sr, d = wavfile.read(path)
+            if d.dtype == np.uint8:
+                d = (d.astype(np.float64) - 128) / 128
+            elif d.dtype.kind == "i":
+                d = d.astype(np.float64) / float(2 ** (8 * d.dtype.itemsize - 1))
+            elif d.dtype.kind == "f":
+                d = d.astype(np.float64)
+            else:
+                raise ValueError("unsupported sample type")
+            return d, int(sr)
+        except Exception:
+            pass                                # 読めない WAV（ADPCM など）は ffmpeg に任せる
+    if not ffmpeg:
+        raise RefVoiceError(f"{os.path.basename(path)} を読めません。PCM の WAV にするか、ffmpeg のある環境で使ってください / cannot decode it without ffmpeg: use a PCM WAV file")
+    with tempfile.TemporaryDirectory() as td:
+        out = os.path.join(td, "ref.wav")
+        r = subprocess.run([ffmpeg, "-v", "error", "-nostdin", "-y", "-i", path, "-vn", "-ac", "1", "-ar", str(REF_SR), "-c:a", "pcm_s16le", out], capture_output=True, text=True)
+        if r.returncode or not os.path.exists(out):
+            raise RefVoiceError(f"{os.path.basename(path)} を音声として読めません（WAV か MP3 のファイルにしてください）/ not a readable audio file: {(r.stderr or '').strip()[-200:]}")
+        sr, d = wavfile.read(out)
+    return d.astype(np.float64) / 32768.0, int(sr)
+
+
+def prepare_reference_voice(src: str, dst: str, ffmpeg: str | None = "ffmpeg") -> dict:
+    """自分の参照音声（WAV / MP3）を確かめ、48 kHz・モノラル・16 bit の WAV にして dst に書く（Irodori の参照音声として使う）。
+    長さは REF_MIN_S〜REF_MAX_S 秒、読めること、無音でないこと。だめなら RefVoiceError（何が悪いかを日本語と英語で）。戻り値：{seconds, src_sr, channels}。"""
+    import os
+    import shutil
+    if not os.path.isfile(src):
+        raise RefVoiceError(f"ファイルがありません: {src} / file not found")
+    if os.path.getsize(src) > REF_MAX_BYTES:
+        raise RefVoiceError("ファイルが大きすぎます（100 MiB まで。3〜30 秒の短い音声で足ります）/ file too large")
+    exe = shutil.which(ffmpeg) if ffmpeg else None
+    x, sr = _decode_ref(src, exe)
+    ch = 1 if x.ndim == 1 else x.shape[1]
+    if x.ndim > 1:
+        x = x.mean(axis=1)
+    if sr <= 0 or not len(x):
+        raise RefVoiceError("音声が空です / the audio is empty")
+    seconds = len(x) / sr
+    if seconds < REF_MIN_S:
+        raise RefVoiceError(f"短すぎます（{seconds:.1f} 秒。{REF_MIN_S:g}〜{REF_MAX_S:g} 秒にしてください）/ too short ({seconds:.1f} s; use {REF_MIN_S:g}-{REF_MAX_S:g} s)")
+    if seconds > REF_MAX_S:
+        raise RefVoiceError(f"長すぎます（{seconds:.1f} 秒。{REF_MIN_S:g}〜{REF_MAX_S:g} 秒の一部を切り出してください）/ too long ({seconds:.1f} s; cut it to {REF_MIN_S:g}-{REF_MAX_S:g} s)")
+    if not np.all(np.isfinite(x)) or float(np.max(np.abs(x))) < 1e-4:
+        raise RefVoiceError("ほぼ無音です / the audio is silent")
+    if sr != REF_SR:
+        from scipy.signal import resample_poly
+        f = Fraction(REF_SR, sr).limit_denominator(1000)
+        x = resample_poly(x, f.numerator, f.denominator)
+    pcm16 = np.round(np.clip(x, -1, 1) * 32767).astype("<i2")
+    os.makedirs(os.path.dirname(os.path.abspath(dst)), exist_ok=True)
+    with wave.open(dst, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(REF_SR)
+        w.writeframes(pcm16.tobytes())
+    return {"seconds": round(seconds, 2), "src_sr": sr, "channels": ch}
+
+
 # ---------------------------------------------------------------- 段階の合成
 def synthesize_step(step: dict, synth, recipe: dict):
     """synth(text, voice, role, lang) → (samples, sr)。戻り値：(音声 float64 44.1 kHz, cues（秒）)。"""
@@ -295,11 +374,12 @@ class IrodoriWorker:
     cmd はワーカーを起動するコマンド（試験では偽のワーカーを渡す）。呼ぶと synth(text, voice, role, lang) → (samples, sr)。close() か with で終わらせる。
     Node の標準エラーはファイルに受け、失敗したときは最後の 30 行を例外に入れる。"""
 
-    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0):
+    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0, ref_voice: str | None = None):
         import os
         import subprocess
         import tempfile
         self.voices_dir, self.steps, self.seed = voices_dir, steps, seed
+        self.ref_voice = ref_voice              # 自分の参照音声（prepare_reference_voice の出力）。あれば、どの声の名前でもこれを使う
         os.makedirs(work_dir, exist_ok=True)
         self._dir = tempfile.mkdtemp(dir=work_dir)
         self._errpath = os.path.join(self._dir, "node-stderr.log")
@@ -342,7 +422,7 @@ class IrodoriWorker:
             raise WorkerError("ワーカーはもう終了しています（セル 3 からやり直してください）")
         self._next += 1
         out = os.path.join(self._dir, f"out{self._next}.wav")
-        req = {"id": self._next, "text": text, "voice": os.path.join(self.voices_dir, voice + ".wav"), "out": out, "steps": self.steps, "seed": self.seed}
+        req = {"id": self._next, "text": text, "voice": self.ref_voice or os.path.join(self.voices_dir, voice + ".wav"), "out": out, "steps": self.steps, "seed": self.seed}
         try:
             self._proc.stdin.write(json.dumps(req, ensure_ascii=False) + "\n")
             self._proc.stdin.flush()
@@ -388,11 +468,12 @@ class IrodoriWorker:
         self.close()
 
 
-def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, node: str = "node"):
+def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, node: str = "node", ref_voice: str | None = None):
     """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
     colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。ワーカーを 1 度だけ起動して使い回す
-    （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。"""
-    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed)
+    （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。
+    ref_voice を渡すと、job の声の名前にかかわらずその WAV を参照音声にする（省略すれば lab/voices/<名前>.wav で、これまでと同じ）。"""
+    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed, ref_voice=ref_voice)
 
 
 # ---------------------------------------------------------------- コマンド（試験用。ノートブックはこれらの関数を直接呼ぶ）

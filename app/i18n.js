@@ -18,7 +18,7 @@ const ver = (l) => COLAB_VERIFIED[l];
 const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
 
 const ja = {
-  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', recBtn: '録音モード (r)', recTip: '録音モード：口述原稿を大きく出して、キーボードだけで段階ごとに録る（r）', attach: '添付', attachTip: '添付ファイル（attachments/。下書き・試行：役割ごとに入れてよい形式を確かめる）',
+  brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', recTip: 'この段階で録音モードを開く：口述原稿を大きく出して録る。Space で録音と停止、Esc でこの板に戻る（r）', attach: '添付', attachTip: '添付ファイル（attachments/。下書き・試行：役割ごとに入れてよい形式を確かめる）',
   check: '品質チェック', export: '組み立てた HTML を書き出す', print: '印刷 / PDF', presenter: '発表者ビュー', full: '全画面', helpBtn: '使い方',
   welcomeTitle: `1 ファイル（${FX}）を開いて、見る・直す`, welcomeLead: `インストールは要りません。1 ファイル（${FX}）を開くか、新しいデッキを作るか、AI の出力を貼り付けると、ここで表示・編集できます`,
   unsupported: 'このブラウザ（Safari・iPad など）では作業フォルダを開けず、「新しいデッキ」も使えません。新しく作るには「AI の出力を貼り付ける」から（チャットの AI に書かせた教材を貼ると、ここで 1 ファイルとして開きます）。1 ファイルを開く・直す・保存することはできます。作業フォルダを使うには、パソコンの Google Chrome か Microsoft Edge で開いてください',
@@ -46,6 +46,7 @@ const ja = {
   checkMsg: (c, a) => ({
     titleLong: `タイトル ${a} 字（26 字まで）`, titleLongEn: `タイトル ${a} 文字（60 文字まで）`, conclLong: `結論の行 ${a} 字（35 字まで）`, conclLongEn: `結論の行 ${a} 文字（70 文字まで）`,
     conclOverflow: '結論の行が枠からはみ出す', overflowBottom: `本文が下にはみ出す（${a}px）`, overflowRight: `本文が右にはみ出す（${a}px）`, smallText: `文字が小さい ${a}`,
+    narrPlaceholder: `口述原稿が雛形の仮の行（✎）のまま（ステップ ${a}。TTS はこのまま読み、字幕にも出る）`, templateText: `雛形の字のまま：「${a}」`,
     katexError: 'KaTeX エラーが残っている', noNarration: `口述原稿が無い（段階 ${a}）`, contrast: `コントラストが低い：${a}`, audioStale: `音声が古い（段階 ${a}。「音声」で録り直すか作り直す）`,
   }[c] || c),
   exporting: '書き出し中…', exportFailed: '書き出せませんでした', exported: (t, mb) => `${t} 書き出しました（${mb} MB）`, exportedToast: '組み立てた HTML に書き出しました（再生だけ。原稿は入りません）。ダブルクリックで開けます',
@@ -53,10 +54,42 @@ const ja = {
   // 1 ファイル（.ega.html。フォルダなしで開く・保存する）
   openFile: '1 ファイルを開く…', openMenu: '開く ▾', openFolderItem: '作業フォルダを開く…', save: '保存', saveMore: 'ほかの保存の方法',
   saveNew: '新しい教材として保存…', saveAs: '別のファイルに保存…', exportMenu: '書き出す ▾',
-  exportFolder: '作業フォルダに書き出す…', exportPortable: `配るための 1 ファイル（${FX}）を書き出す`,
-  exportPlayOnly: `学生に配る再生専用（${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
+  exportFolder: '作業フォルダに書き出す…', exportPortable: `配るための Egatari ファイル（編集可・${FX}）を書き出す`,
+  exportPlayOnly: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
-  exportLive: '授業の部屋を付けて配る…', playOnlyLiveToast: (room) => `授業の部屋（${room}）を付けた再生専用の 1 ファイルに書き出しました。部屋の時間のあいだ、開いた人が「参加する」を押すとつながります`,
+  exportLive: 'ライブ（質問・投票）を付けて配る…', playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
+  // 「ライブ（質問・投票）を付けて配る」の「書き出す前に直すこと」：kit/core/live-policy.mjs の validate の誤り {code, …引数} → 文（app/live-panel.js）
+  liveProblem: (p) => {
+    const poll = p.id ? `投票 ${p.id}：` : '';
+    switch (p.code) {
+      case 'room': return 'ライブ ID が正しくありません（ホストのページでコピーした設定を貼ってください）';
+      case 'key': return '参加コードが正しくありません（ホストのページでコピーした設定を貼ってください）';
+      case 'keyStored': return '参加コードは教材に保存できません（書き出すファイルにだけ入ります）';
+      case 'endpoint': return '接続先が正しくありません（https:// で始まるアドレスにしてください。例：https://live.egatari.org）';
+      case 'version': return 'ライブの設定の版が違います（v は 1 です）';
+      case 'windowMissing': return 'ライブの開始と終了を入れてください';
+      case 'windowFrom': return 'ライブの開始を入れてください';
+      case 'windowTo': return 'ライブの終了を入れてください';
+      case 'windowOrder': return 'ライブの終了は、開始より後にしてください';
+      case 'windowTooLong': return p.hours ? `ライブの時間は ${p.hours} 時間までです（ライブの開始と終了を直してください）` : `ライブの時間は ${p.days} 日までです（ライブの開始と終了を直してください）`;
+      case 'activitiesMissing': return '質問・投票の設定がありません';
+      case 'step': return `${poll}投票を出すステップが正しくありません（「今プレビューに出ているステップにする」で選び直してください）`;
+      case 'stepNotList': case 'activityNotObject': return `質問・投票の設定の形が正しくありません（${p.path}）`;
+      case 'activityId': return `${poll}投票の ID が正しくありません（英数字と _ - で 32 字まで）`;
+      case 'activityIdTwice': return `投票の ID「${p.id}」が 2 回使われています`;
+      case 'qaChoices': return '質問には選択肢を付けられません';
+      case 'qaPrompt': return `質問の説明は ${p.n} 字までです`;
+      case 'pollPrompt': return `${poll}設問を入れてください（${p.n} 字まで）`;
+      case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
+      case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
+      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
+      case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
+      case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
+      case 'notObject': return 'ライブの設定がありません';
+      default: return String(p);
+    }
+  },
   portableType: `1 ファイル（${FX}）`, unsaved: '保存していない変更があります', ok: 'OK', discard: '変更を捨てる',
   // 今どこに保存されているか（下の帯の左。#46）
   locFolder: (n) => `作業フォルダ「${n}」に保存済み`,
@@ -141,6 +174,8 @@ const ja = {
   noFolderPicker: 'このブラウザではフォルダに書き出せません（Chrome / Edge で開いてください）',
   unpackedAt: (t, n, d) => `${t} ${d} に ${n} 個のファイルを書き出しました`, unpackedToast: (n, d) => `「${d}」に ${n} 個のファイルを書き出しました。作業フォルダとして開けます`,
   notEmpty: (d) => `「${d}」は空ではありません。空のフォルダを選んでください`,
+  liveResultsTitle: '授業の部屋の結果が入っています', liveResultsWarn: 'Live の結果が入っています。人に渡すなら外してください（学ぶ人の質問と答え。名前を書いた人はその名前も）。作業フォルダの添付はそのまま残ります',
+  liveResultsWith: '入れたまま書き出す', liveResultsWithout: '結果を外して書き出す',
   portableExportedToast: `1 ファイル（${FX}）に書き出しました。このエディタで「1 ファイルを開く…」から開き直せます`,
   // 利用者のテーマのフォルダ（app/theme-folder.js）
   themeFolderItem: 'テーマのフォルダ…', themeChoose: 'テーマのフォルダを選ぶ…', themeChange: 'ほかのフォルダを選ぶ…', themeForget: 'このフォルダを忘れる', close: '閉じる',
@@ -159,6 +194,9 @@ const ja = {
     ['スライドを直す', ['<kbd>e</kbd> か「編集」で編集モード。文字の上をダブルクリックすると、エディタの欄に原稿（deck.html）のその部分が出ます。⌘/Ctrl+Enter か「保存」で保存',
       'プレビュー（スライド）は「どこを直したいか」を知らせるだけで、書き込みはエディタの欄のボタンを押したときだけです',
       '保存すると、元のファイルの控えを <code>.cache/edits/</code> に残します（新しい 30 個）']],
+    ['スライド一覧', ['「スライド一覧」で、左にスライドを縮図と見出しで並べます。「＋ 追加 ▾」で選んだスライドの後ろに雛形（見出しと本文・2 列・図・章の扉・引用）を足し、「複製」「削除」、ドラッグか <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> で並べ替えます',
+      'id（s-xxxxxx）はエディタが付けます。口述原稿の節も一緒に足す・写す・消す・並べ替えます。複製は音声を写さず、消すとそのスライドの音声も消えます（確かめます）',
+      '直後なら「元に戻す」で戻せます（次のスライドの操作か、1 ファイルの保存まで）。操作の後は組み直して品質チェックを出します。1 ファイルは次の「保存」で組み直します']],
     ['口述原稿', ['<kbd>n</kbd> か「口述原稿」で、表示中の段階の原稿（narration.md）を開きます。話者・順番も変えられます']],
     ['AI へのメモ', [`スライドの上で <kbd>${MOD}</kbd>+クリックすると、直してほしいことのメモを comments.json に残します。<kbd>c</kbd> で一覧`,
       'AI のコーディング道具（Claude Code・Codex・Gemini CLI など）に「comments.json のメモに対応して」と頼むと直してくれます。外でファイルが変わると、ここで自動で組み直します']],
@@ -186,10 +224,6 @@ const ja = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
-  oldNorm: {
-    title: '前処理の版が古い TTS の段階', note: 'この音声は、数字と助数詞の間の空白（「1 歩」）を取る前処理の前に作られています。「いちぽ」のように読まれていることがあります。音声は今のまま使えます。作り直す段階を選んでください（自動では作り直しません）',
-    go: (n) => '選んだ ' + n + ' 段階を作り直す', done: (n) => n + ' 段階の音声を作り直しました',
-  },
   colab: {
     title: 'Colab で音声を作る（WebGPU がないとき）', verified: ver('ja'),
     lead: 'WebGPU のない PC（学校の PC・Safari・iPad）でも、無料の Colab で同じ声の音声を作って取り込めます。① 必要な段階の原稿を書き出す → Colab のノートブックで合成 → ② 返ってきた zip を取り込む、の順です。取り込むのは、書き出したときと原稿が同じ段階だけです。',
@@ -231,7 +265,7 @@ const ja = {
     mismatch: (t, b) => b === 0 ? `この段階には区切りがないので、C を ${t} 回押した分は使っていません` : `C を ${t} 回押しましたが、区切りは ${b} 個です。区切りは置かずに保存しました（sync: none。図は時間で進みます）`,
     notWritten: (e) => `書き込めませんでした（${e}）。音声の板の「この音声を使う」で使えます`,
     micNo: 'マイクを使えません：', micHint: 'ブラウザのアドレス欄の左でマイクを許可してください', tooLong: (s) => `${s} 秒を超えたので止めました`, empty: '音がありません（無音を削ると何も残りませんでした）',
-    fail: 'できませんでした：', busy: '音声の板が録音・書き込みの最中です。終わってから開いてください',
+    fail: 'できませんでした：', busy: '音声の板が音声を作って書き込んでいる最中です。終わってから開いてください',
     noSeg: 'この段階の口述原稿がありません', noSegs: '口述原稿がありません。先に口述原稿を書いてください',
     chipLabel: (n, N, b) => `区切り ${n} / ${N}${b && b.type === 'mark' ? '（印：' + b.id + '）' : b && b.type === 'clear' ? '（印を消す）' : ''}`,
     opened: (N) => `録音モード。${N} 段階。Space で録音の開始と停止、Enter で採用して次の段階へ、Backspace で取り直し、左右の矢印で段階の移動、C で区切りを置く、Esc で閉じます`,
@@ -241,9 +275,44 @@ const ja = {
     nothingToKeep: 'この段階にはまだ音声がありません。Space で録音するか、右の矢印で飛ばします', atFirst: '最初の段階です', atLast: '最後の段階です。すべて見終わりました',
     retakeDiscarded: '今のテイクを捨てました。Space でもう一度録音', nothingToRetake: '取り直すテイクがありません（このモードで録った音声だけ取り直せます）', retakeDone: '前の音声に戻しました。Space で録音', retakeFail: '前の音声に戻せませんでした',
   },
+  // 雛形のまま（kit/core/template-text.mjs）：TTS の前・書き出しの前に見せる窓
+  leftTitleTts: '雛形のままの口述原稿があります', leftTitleExport: '雛形のままのところがあります',
+  leftLeadTts: '次のステップの口述原稿は、スライド一覧の雛形の仮の行（✎）のままです。このまま作ると、TTS がこの文を読み上げます。',
+  leftLeadExport: '次のところは、スライド一覧の雛形のままです。このまま書き出すと、仮の文がスライド・字幕・読める層に入ります。',
+  leftSlide: (n, h, list) => `スライド ${n}「${h}」：雛形の字 ${list.map((x) => '「' + x + '」').join('')}`,
+  leftStep: (n, h, k, t) => `スライド ${n}「${h}」のステップ [${k}]：${t}`,
+  leftMore: (n) => `ほか ${n} か所`, leftHint: '直すには、品質チェックの警告からそのスライドへ行き、口述原稿（n）か編集（e）で書き換えます。続けることもできます。',
+  leftGoTts: 'このまま作る', leftGoExport: 'このまま書き出す',
+  // スライド一覧（app/slides-panel.js。backlog #79）
+  slidesBtn: 'スライド一覧', slidesTip: 'スライド一覧を開く：スライドを足す・複製する・消す・並べ替える',
+  sl: {
+    title: 'スライド', close: 'スライド一覧を閉じる', toolsLabel: 'スライドの操作', listLabel: 'スライド（順番どおり）', thumbsTitle: 'スライドの縮図',
+    add: '＋ 追加 ▾', dup: '複製', dupTip: '選んだスライドを複製します（口述原稿も写します。音声は写しません）',
+    del: '削除', delTip: '選んだスライドを消します（確かめます）', upTip: '前へ移す（Alt+↑）', downTip: '後ろへ移す（Alt+↓）', undo: '元に戻す',
+    keys: '↑↓ で選ぶ · Alt+↑↓ で移す · Delete で消す · ドラッグでも並べ替えられます',
+    tpl: { 'title-body': '見出しと本文', 'two-cols': '2 列', figure: '図', section: '章の扉', quote: '引用' },
+    untitled: '（見出しなし）', slideName: (n, h) => `スライド ${n}「${h}」`,
+    optionLabel: (n, N, h, d) => `${n} / ${N}：${h}${d ? '。' + d : ''}`,
+    needAudio: (n) => `音声が要るステップ ${n}`, staleAudio: (n) => `音声が古いステップ ${n}`,
+    notReady: 'デッキを組み終えてから操作してください', busy: 'スライドの操作の途中です。終わるまでお待ちください', editing: '開いている編集の欄（原稿・口述原稿・コメント）か音声の作業を、先に保存するか閉じてください', cancelled: '別のデッキを開いたので、取り消しました',
+    changed: 'ファイルがほかで変わったので、書き込みませんでした。もう一度やり直してください', failed: (m) => `スライドの操作ができませんでした：${m}`,
+    deckProblem: (m) => `原稿のスライドに直すところがあるので、操作できません：${m}`,
+    added: (n, k) => `${n} 枚目に「${k}」のスライドを足しました。口述原稿に節を足しました`,
+    duplicated: (a, b) => `スライド ${a} を複製して ${b} 枚目に入れました。口述原稿は写し、音声は写していません`,
+    deleted: (name) => `${name}を消しました。口述原稿の節と音声も消しました。「元に戻す」で戻せます`,
+    moved: (h, a, b, N) => `「${h}」を ${a} 枚目から ${b} 枚目へ移しました（${N} 枚中）`,
+    delTitle: (name) => `${name}を消す`, delLead: (name) => `${name}を消します。一緒に次のものも消えます：`,
+    delNarr: (n) => `口述原稿の節（ステップ ${n} 個）`, delAudio: (n, f) => n ? `音声の記録 ${n} 個（audio/ の音声のファイル ${f} 個）` : '音声はありません',
+    delTakes: (n) => `録ってまだ使っていない音声 ${n} 個`,
+    delWarn: 'このスライドの音声（録音したものも、まだ使っていないものも）は消えます。もう一度録るか作り直さないと、音声は戻りません。ほかのスライドの音声はそのままです',
+    delUndo: 'すぐ後なら「元に戻す」で、スライド・口述原稿・音声をまとめて戻せます（次のスライドの操作か、1 ファイルの保存まで）。控えは .cache/edits/ にも残ります',
+    delGo: '消す', cancel: '取消',
+    undoAdd: (h) => `「${h}」の追加`, undoDup: (name) => `${name}の複製`, undoDel: (name) => `${name}の削除`, undoMove: (name) => `${name}の移動`,
+    undone: (what) => `${what}を元に戻しました`, undoChanged: 'その後にファイルが変わったので、元に戻せません（控えは .cache/edits/ にあります）',
+  },
 };
 const en = {
-  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', recBtn: 'Recording mode (r)', recTip: 'Recording mode: the narration in large type; record each step with the keyboard alone (r)', attach: 'Attach', attachTip: 'Attachments (attachments/; draft, experimental: checked against the formats each role allows)',
+  brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', recTip: 'Open recording mode at this step: the narration in large type. Space starts and stops, Esc comes back here (r)', attach: 'Attach', attachTip: 'Attachments (attachments/; draft, experimental: checked against the formats each role allows)',
   check: 'Quality check', export: 'Export built HTML', print: 'Print / PDF', presenter: 'Presenter view', full: 'Fullscreen', helpBtn: 'Help',
   welcomeTitle: `Open a single file (${FX}) to view and edit`, welcomeLead: `Nothing to install. Open a single file (${FX}), start a new deck or paste AI output to view and edit it here.`,
   unsupported: 'This browser (Safari, iPad, …) cannot open working folders, so New deck is not available either. To make a new lesson, use Paste AI output (paste a lesson a chat AI wrote; it opens here as a single file). Opening, editing and saving single files works. For working folders, please use Google Chrome or Microsoft Edge on a computer.',
@@ -271,6 +340,7 @@ const en = {
   checkMsg: (c, a) => ({
     titleLong: `title is ${a} units (max 26)`, titleLongEn: `title is ${a} characters (max 60)`, conclLong: `conclusion is ${a} units (max 35)`, conclLongEn: `conclusion is ${a} characters (max 70)`,
     conclOverflow: 'conclusion overflows its box', overflowBottom: `body overflows at the bottom (${a}px)`, overflowRight: `body overflows to the right (${a}px)`, smallText: `text too small ${a}`,
+    narrPlaceholder: `narration is still the template placeholder (✎) (step ${a}; TTS reads it as is and it shows in the captions)`, templateText: `template text left: “${a}”`,
     katexError: 'KaTeX error left in the slide', noNarration: `no narration (step ${a})`, contrast: `low contrast: ${a}`, audioStale: `stale audio (step ${a}; record it again or regenerate it in Audio)`,
   }[c] || c),
   exporting: 'Exporting…', exportFailed: 'Could not export', exported: (t, mb) => `${t} exported (${mb} MB)`, exportedToast: 'Exported the built HTML (play only, without the source). Double-click it to open.',
@@ -278,10 +348,42 @@ const en = {
   // single file (.ega.html; open and save without a folder)
   openFile: 'Open single file…', openMenu: 'Open ▾', openFolderItem: 'Open working folder…', save: 'Save', saveMore: 'More ways to save',
   saveNew: 'Save as new lesson…', saveAs: 'Save a copy…', exportMenu: 'Export ▾',
-  exportFolder: 'Export working folder…', exportPortable: `Export single file (${FX}) to hand out`,
-  exportPlayOnly: `Export play-only copy for students (${FORMAT.PLAY_EXT})`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
+  exportFolder: 'Export working folder…', exportPortable: `Export Egatari file (editable, ${FX}) to hand out`,
+  exportPlayOnly: `Export Egatari file (play only, ${FORMAT.PLAY_EXT}) for participants`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
-  exportLive: 'Distribute with a live room…', playOnlyLiveToast: (room) => `Exported a play-only single file with the live room ${room}. During the room's window, learners who open it and press Join are connected.`,
+  exportLive: 'Distribute with Live (questions and polls)…', playOnlyLiveToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
+  // "To fix before exporting" in Distribute with Live: a problem {code, …params} from kit/core/live-policy.mjs's validate → text (app/live-panel.js)
+  liveProblem: (p) => {
+    const poll = p.id ? `Poll ${p.id}: ` : '';
+    switch (p.code) {
+      case 'room': return 'The Live ID is not valid (paste the settings copied on the host page)';
+      case 'key': return 'The join code is not valid (paste the settings copied on the host page)';
+      case 'keyStored': return 'The join code cannot be stored in the lesson (it goes only into the exported file)';
+      case 'endpoint': return 'The server is not valid (use an address starting with https://, e.g. https://live.egatari.org)';
+      case 'version': return 'Wrong version of the Live settings (v must be 1)';
+      case 'windowMissing': return 'Enter when the Live starts and ends';
+      case 'windowFrom': return 'Enter when the Live starts';
+      case 'windowTo': return 'Enter when the Live ends';
+      case 'windowOrder': return 'The Live must end after it starts';
+      case 'windowTooLong': return p.hours ? `The live time is at most ${p.hours} hours (change the start and end)` : `The live time is at most ${p.days} days (change the start and end)`;
+      case 'activitiesMissing': return 'There are no question or poll settings';
+      case 'step': return `${poll}the step to show the poll at is not valid (choose it again with Use the step in the preview)`;
+      case 'stepNotList': case 'activityNotObject': return `The question and poll settings are malformed (${p.path})`;
+      case 'activityId': return `${poll}the poll ID is not valid (up to 32 letters, digits, _ and -)`;
+      case 'activityIdTwice': return `The poll ID "${p.id}" is used twice`;
+      case 'qaChoices': return 'Questions cannot have choices';
+      case 'qaPrompt': return `The question description is at most ${p.n} characters`;
+      case 'pollPrompt': return `${poll}enter the question (at most ${p.n} characters)`;
+      case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
+      case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
+      case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'activityLabel': return `${poll}the label is at most ${p.n} characters`;
+      case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
+      case 'tooManyActivities': return `At most ${p.n} questions and polls`;
+      case 'notObject': return 'There are no Live settings';
+      default: return String(p);
+    }
+  },
   portableType: `Single file (${FX})`, unsaved: 'unsaved changes', ok: 'OK', discard: 'Discard changes',
   // where the deck is saved (left of the status bar; #46)
   locFolder: (n) => `Saved in working folder “${n}”`,
@@ -364,6 +466,8 @@ const en = {
   noFolderPicker: 'This browser cannot write folders (use Chrome or Edge)',
   unpackedAt: (t, n, d) => `${t} wrote ${n} files to ${d}`, unpackedToast: (n, d) => `Wrote ${n} files to “${d}”. You can open it as a working folder.`,
   notEmpty: (d) => `“${d}” is not empty. Please choose an empty folder.`,
+  liveResultsTitle: 'This file contains live room results', liveResultsWarn: 'This file contains live room results. Remove them before giving it to others (learners\' questions and answers, and names if they gave one). The attachment stays in the working folder.',
+  liveResultsWith: 'Export with them', liveResultsWithout: 'Export without the results',
   portableExportedToast: `Exported as a single file (${FX}). Reopen it here with “Open single file…”.`,
   // your own theme folder (app/theme-folder.js)
   themeFolderItem: 'Theme folder…', themeChoose: 'Choose theme folder…', themeChange: 'Choose another folder…', themeForget: 'Forget this folder', close: 'Close',
@@ -382,6 +486,9 @@ const en = {
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit” for edit mode. Double-click text to open that part of the source (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',
       'The preview (the slides) only points at what to edit; writes happen only when you press a button in the editor’s card.',
       'Each save keeps a backup of the previous file in <code>.cache/edits/</code> (the newest 30).']],
+    ['Slide list', ['“Slides” lists the slides on the left with thumbnails and headings. “+ Add ▾” inserts a template (title and body, two columns, figure, section divider, quote) after the selected slide; “Duplicate”, “Delete”, and drag or <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> reorder.',
+      'The editor assigns the ids (s-xxxxxx). The narration sections are added, copied, deleted and reordered with the slides. Duplicating does not copy audio; deleting removes the slide’s audio too (it asks first).',
+      'Right after, Undo brings it back (until the next slide action, or saving a single file). After each action the deck is rebuilt and the quality check is shown. A single file is rebuilt at the next Save.']],
     ['Narration', ['Press <kbd>n</kbd> or “Narration” to edit the narration (narration.md) of the step on screen, including speakers and order.']],
     ['Notes for the AI', [`<kbd>${MOD}</kbd>+click on a slide leaves a note of what to change in comments.json. <kbd>c</kbd> lists them.`,
       'Ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to “handle the notes in comments.json”. When files change outside, the editor rebuilds automatically.']],
@@ -409,10 +516,6 @@ const en = {
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
-  oldNorm: {
-    title: 'TTS steps made with an older text pre-processing', note: 'This audio was made before the pre-processing that removes the space between a number and its counter (“1 歩”), so it may be read like “ichi po”. The audio is still used as it is. Choose the steps to regenerate (nothing is regenerated automatically)',
-    go: (n) => 'Regenerate the ' + n + ' selected step' + (n === 1 ? '' : 's'), done: (n) => n + ' step' + (n === 1 ? '' : 's') + ' regenerated',
-  },
   colab: {
     title: 'Make the audio in Colab (when there is no WebGPU)', verified: ver('en'),
     lead: 'On a computer without WebGPU (a school PC, Safari, an iPad) you can still make the same voices in free Colab and import them. ① Export the narration of the steps that need audio → synthesize in the Colab notebook → ② import the zip it returns. Only the steps whose narration is unchanged since the export are imported.',
@@ -454,7 +557,7 @@ const en = {
     mismatch: (t, b) => b === 0 ? `This step has no cues, so the ${t} press${t === 1 ? '' : 'es'} of C were not used` : `You pressed C ${t} time${t === 1 ? '' : 's'} but the step has ${b} cue${b === 1 ? '' : 's'}. Saved without cues (sync: none; figures advance by time)`,
     notWritten: (e) => `Could not write it (${e}). Use it with “Use this take” in the Audio panel`,
     micNo: 'Cannot use the microphone: ', micHint: 'Allow the microphone from the left of the address bar', tooLong: (s) => `Stopped after ${s} s`, empty: 'No sound (nothing is left after trimming silence)',
-    fail: 'Failed: ', busy: 'The Audio panel is recording or writing. Open this when it is done',
+    fail: 'Failed: ', busy: 'The Audio panel is making or writing audio. Open this when it is done',
     noSeg: 'This step has no narration', noSegs: 'There is no narration. Write the narration first',
     chipLabel: (n, N, b) => `cue ${n} / ${N}${b && b.type === 'mark' ? ' (mark: ' + b.id + ')' : b && b.type === 'clear' ? ' (clear marks)' : ''}`,
     opened: (N) => `Recording mode. ${N} steps. Space starts and stops recording, Enter keeps the take and goes to the next step, Backspace retakes, the left and right arrows move between steps, C places a cue, Escape closes`,
@@ -463,6 +566,41 @@ const en = {
     processing: 'Processing', announceTaken: (d, manual, mm, clip) => `Recorded, ${d.toFixed(1)} seconds${manual ? '. Cues placed' : ''}${mm ? '. The number of cues did not match, so none were placed' : ''}${clip ? '. It may be distorted' : ''}. Enter for the next step, Backspace to retake`,
     nothingToKeep: 'This step has no audio yet. Press Space to record, or the right arrow to skip it', atFirst: 'This is the first step', atLast: 'This is the last step. All steps are done',
     retakeDiscarded: 'Discarded the take. Space to record again', nothingToRetake: 'No take to redo (only audio recorded in this mode can be redone)', retakeDone: 'Back to the previous audio. Space to record', retakeFail: 'Could not go back to the previous audio',
+  },
+  // Template leftovers (kit/core/template-text.mjs): shown before TTS and before exporting
+  leftTitleTts: 'Some narration is still the template placeholder', leftTitleExport: 'Some template text is left',
+  leftLeadTts: 'The narration of these steps is still the slide list’s template placeholder (✎). If you go on, TTS reads it aloud.',
+  leftLeadExport: 'These parts are still the slide list’s template. If you export now, the placeholder text goes into the slides, the captions and the readable layer.',
+  leftSlide: (n, h, list) => `Slide ${n} “${h}”: template text ${list.map((x) => '“' + x + '”').join(', ')}`,
+  leftStep: (n, h, k, t) => `Slide ${n} “${h}”, step [${k}]: ${t}`,
+  leftMore: (n) => `${n} more`, leftHint: 'To fix them, go to the slide from the quality-check warning and rewrite the text with Narration (n) or Edit (e). You can also go on.',
+  leftGoTts: 'Make it anyway', leftGoExport: 'Export anyway',
+  // Slide list (app/slides-panel.js, backlog #79)
+  slidesBtn: 'Slides', slidesTip: 'Open the slide list: add, duplicate, delete and reorder slides',
+  sl: {
+    title: 'Slides', close: 'Close the slide list', toolsLabel: 'Slide actions', listLabel: 'Slides (in order)', thumbsTitle: 'Slide thumbnails',
+    add: '+ Add ▾', dup: 'Duplicate', dupTip: 'Duplicate the selected slide (the narration is copied, the audio is not)',
+    del: 'Delete', delTip: 'Delete the selected slide (asks first)', upTip: 'Move up (Alt+↑)', downTip: 'Move down (Alt+↓)', undo: 'Undo',
+    keys: '↑↓ select · Alt+↑↓ move · Delete deletes · drag to reorder',
+    tpl: { 'title-body': 'Title and body', 'two-cols': 'Two columns', figure: 'Figure', section: 'Section divider', quote: 'Quote' },
+    untitled: '(no heading)', slideName: (n, h) => `slide ${n} “${h}”`,
+    optionLabel: (n, N, h, d) => `${n} of ${N}: ${h}${d ? '. ' + d : ''}`,
+    needAudio: (n) => `${n} step${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} audio`, staleAudio: (n) => `${n} step${n === 1 ? '' : 's'} with stale audio`,
+    notReady: 'Wait until the deck is built', busy: 'A slide action is still running. Please wait', editing: 'Save or close the open editor (source, narration or note) or finish the audio work first', cancelled: 'Cancelled: another deck was opened',
+    changed: 'A file changed elsewhere, so nothing was written. Please try again', failed: (m) => `The slide action failed: ${m}`,
+    deckProblem: (m) => `The slides in the source need fixing first: ${m}`,
+    added: (n, k) => `Added a “${k}” slide as slide ${n}, with a narration section`,
+    duplicated: (a, b) => `Duplicated slide ${a} as slide ${b}. The narration was copied, the audio was not`,
+    deleted: (name) => `Deleted ${name}, with its narration section and audio. Undo brings it back`,
+    moved: (h, a, b, N) => `Moved “${h}” from slide ${a} to slide ${b} (of ${N})`,
+    delTitle: (name) => `Delete ${name}`, delLead: (name) => `Delete ${name}? These go with it:`,
+    delNarr: (n) => `its narration section (${n} step${n === 1 ? '' : 's'})`, delAudio: (n, f) => n ? `${n} audio entr${n === 1 ? 'y' : 'ies'} (${f} audio file${f === 1 ? '' : 's'} in audio/)` : 'no audio',
+    delTakes: (n) => `${n} recorded take${n === 1 ? '' : 's'} not used yet`,
+    delWarn: 'This slide’s audio is removed, recorded takes included (used or not). It does not come back unless you record or make it again. Other slides keep their audio',
+    delUndo: 'Right after, Undo brings back the slide, its narration and its audio together (until the next slide action, or saving a single file). Backups also stay in .cache/edits/',
+    delGo: 'Delete', cancel: 'Cancel',
+    undoAdd: (h) => `adding “${h}”`, undoDup: (name) => `duplicating ${name}`, undoDel: (name) => `deleting ${name}`, undoMove: (name) => `moving ${name}`,
+    undone: (what) => `Undid ${what}`, undoChanged: 'Files changed since then, so it cannot be undone (backups are in .cache/edits/)',
   },
 };
 export const T = EN ? en : ja;

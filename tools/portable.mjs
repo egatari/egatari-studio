@@ -1,7 +1,10 @@
 // 持ち運べる 1 ファイル（format spec。拡張子は kit/core/format.mjs の FORMAT.FILE_EXT）とフォルダの相互変換（npm run portable -- …）
 //
 //   npm run portable -- unpack <file> <dir> [--force]          原稿と音声をフォルダに出す（スクリプトは実行しない）
-//   npm run portable -- pack <dir> [-o out] [--play-only]      フォルダを 1 ファイルにする（= node kit/build.mjs <dir>/deck.html --portable）
+//   npm run portable -- pack <dir> [-o out] [--play-only] [--without-live-results]
+//                                                              フォルダを 1 ファイルにする（= node kit/build.mjs <dir>/deck.html --portable）。
+//                                                              授業の部屋の結果が入るときは知らせる。--without-live-results で外す（人に渡す 1 ファイル）
+//   npm run portable -- attach <dir> <results.json>            授業の部屋の結果（部屋のサービスからダウンロードした JSON）を作業フォルダの添付（役割 data）にする
 //   npm run portable -- compare <file> <dir>                   作業フォルダから書き出した写しとそのフォルダの、書き出しの後に直した側（写し・フォルダ・両方）を言う
 //
 // unpack は <dir> の外に書かない。<dir> が空でなければ断る（--force で上書き。シンボリックリンクを通る書き込みは断る）。
@@ -19,6 +22,8 @@ import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
+import { parseResults, liveResultsWarning, resultsRecord, roomMatch, summarizeResults, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { inspectAttachment, blocking, problemText, ATTACH_LIMITS, isAttachPath } from '../kit/core/attachments.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -156,6 +161,50 @@ export function entryOf(dir) {
   throw new Error(`no deck.html in ${dir}`);
 }
 
+// 授業の部屋の結果を作業フォルダの添付にする（拡張 live §3・format spec §3.8）：写しの Schema の形か・10 MiB まで・§3.8 の中身の検査。
+// 教材の部屋（FORMAT.CONFIG_FILE の extensions.live.room）と違えば知らせるが足す（先生が部屋を作り直したことがある）。
+// 返すもの：{path, record, summary, warnings}。lang：題と説明の言葉（'ja' | 'en'）
+export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
+  const deckDir = fs.realpathSync(path.resolve(dir));
+  if (!fs.statSync(deckDir).isDirectory()) throw new FormatError('bad-target', `${dir} is not a working folder`);
+  let buf;
+  try { buf = readRegular(file, { max: RESULTS_MAX_BYTES }); } catch (e) {
+    if (e && e.code === 'read-over') throw new FormatError('live-results-too-large', `${file} is larger than ${RESULTS_MAX_BYTES} bytes (attachments are at most 10 MiB, §3.8)`);
+    throw e;
+  }
+  const bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
+  const r = parseResults(bytes);
+  if (!r.ok) throw new FormatError('not-live-results', `${file} is not live room results from the room service (${r.errors.slice(0, 3).join('; ')})`);
+  const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
+  const cfgPath = path.join(deckDir, CFG);
+  let conf = {};
+  if (fs.existsSync(cfgPath)) conf = parseJsonStrict(readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
+  const list = Array.isArray(conf[KEY]) ? conf[KEY] : [];
+  const warnings = [];
+  const live = conf.extensions && conf.extensions.live;
+  const m = roomMatch(r.results, live);
+  if (m === 'mismatch') warnings.push(`the results are for room ${r.results.room}, but this lesson's live settings name room ${live.room}; added anyway (the room may have been recreated)`);
+  else if (m === 'none') warnings.push(`this lesson has no live room in ${CFG}; added anyway`);
+  // 同じ中身をもう足してあれば断る
+  const abs = (p) => path.join(deckDir, ...p.split('/'));
+  for (const e of list) if (e && isAttachPath(e.path) && fs.existsSync(abs(e.path)) && fs.statSync(abs(e.path)).isFile() && fs.statSync(abs(e.path)).size === bytes.length && Buffer.from(bytes).equals(Buffer.from(readContained(deckDir, abs(e.path), null, { max: ATTACH_LIMITS.fileBytes })))) throw new FormatError('already-attached', `these results are already attached as ${e.path}`);
+  const rec = resultsRecord(r.results, lang, (p) => fs.existsSync(abs(p)) || list.some((e) => e && e.path === p));
+  const insp = await inspectAttachment(rec.path, bytes);
+  const bad = insp.problems.find(blocking);
+  if (bad) throw new FormatError('attach-refused', problemText(bad));
+  for (const x of insp.problems) warnings.push(problemText(x));
+  // 上限（§3.8）：合わせて 20 MiB・100 個まで
+  let total = bytes.length;
+  for (const e of list) if (e && isAttachPath(e.path) && fs.existsSync(abs(e.path))) total += fs.statSync(abs(e.path)).size;
+  if (total > ATTACH_LIMITS.totalBytes) throw new FormatError('attach-total', `the attachments would be ${total} bytes together, over the limit of ${ATTACH_LIMITS.totalBytes}`);
+  if (list.length + 1 > ATTACH_LIMITS.count) throw new FormatError('attach-count', `more than ${ATTACH_LIMITS.count} attachments`);
+  const target = abs(rec.path);
+  checkWritable(deckDir, target); checkWritable(deckDir, cfgPath);
+  safeWriteFile(deckDir, target, bytes);
+  safeWriteFile(deckDir, cfgPath, JSON.stringify({ ...conf, [KEY]: [...list, rec] }, null, 2) + '\n');
+  return { path: rec.path, record: rec, summary: summarizeResults(r.results), warnings };
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [cmd, ...rest] = process.argv.slice(2);
   const flags = new Set(rest.filter((a) => a.startsWith('--')));
@@ -172,13 +221,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     } else if (cmd === 'pack' && pos.length === 1) {
       const src = entryOf(pos[0]);
       const playOnly = flags.has('--play-only');
-      const r = await buildPortable(src, { playOnly });
+      const r = await buildPortable(src, { playOnly, withoutLiveResults: flags.has('--without-live-results') });
       const out = path.resolve(oi >= 0 ? rest[oi + 1] : defaultPortableOut(src, playOnly, r.index?.metadata?.title || titleOf(r.html)));
       writeOutput(src, out, r.html);
       console.log(`packed ${r.stats.files} source files, ${r.stats.audio} audio (docId ${r.index.docId}, sourceSha256 ${r.index.sourceSha256.slice(0, 12)}…) -> ${out}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
+      const lw = playOnly ? null : liveResultsWarning(r.stats.liveResults);
+      if (lw) console.warn('  ⚠ portable: ' + lw);
+    } else if (cmd === 'attach' && pos.length === 2) {
+      const r = await attachLiveResults(pos[0], pos[1], { lang: flags.has('--en') ? 'en' : 'ja' });
+      console.log(`attached live room results as ${r.path} (role data; ${r.summary.questions} questions, ${r.summary.polls.length} polls) -> ${FORMAT.CONFIG_FILE}`);
+      console.warn('  ⚠ the results contain what learners typed (questions, names if they gave one); they stay in this working folder. Export with --without-live-results before giving the single file to others');
+      for (const w of r.warnings) console.warn('  ⚠ ' + w);
     } else {
-      console.error('usage: npm run portable -- unpack <file> <dir> [--force]\n       npm run portable -- pack <dir> [-o out] [--play-only]\n       npm run portable -- compare <file> <dir>');
+      console.error('usage: npm run portable -- unpack <file> <dir> [--force]\n       npm run portable -- pack <dir> [-o out] [--play-only] [--without-live-results]\n       npm run portable -- attach <dir> <results.json> [--en]\n       npm run portable -- compare <file> <dir>');
       process.exit(2);
     }
   } catch (e) {
