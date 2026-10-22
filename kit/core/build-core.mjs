@@ -17,6 +17,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
+import { applyMetrics, DEFAULT_METRICS } from './theme-metrics.mjs';
 import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
 import { runtimeAttachTypes } from './attach-content.mjs';
 // 実行系に渡す形式の識別子と、再生器が添付を出すか決める §3.8 の型の表（役割 → 拡張子。kit/tools.js）
@@ -351,10 +352,14 @@ function themeAssets(env, t, warn, depth = 0, ud = []) {
     warn.push(`refused: テーマのロゴ「${f}」が許した場所の外にある（読まない）`);
     return false;
   }).map((f) => dataUri(env, P.join(dir, String(f)))) : (par ? par.logos : []);
+  // 寸法の宣言（metrics。kit/core/theme-metrics.mjs）：親の値に項目ごとに重ねる。読めない値は警告して親の値（誤りにしない）
+  const mr = applyMetrics(par ? par.metrics : DEFAULT_METRICS, Object.prototype.hasOwnProperty.call(cfg, 'metrics') ? cfg.metrics : undefined, P.basename(dir));
+  for (const x of mr.warnings) warn.push(x);
+  const metrics = mr.metrics, declared = mr.declared || !!(par && par.declared);
   const tok = P.join(dir, 'tokens.css');
   // resolveTheme が確かめたが、読む直前にもう一度（同じ根で）
-  if (!inRoot(tok)) { warn.push(`refused: テーマの tokens.css（${P.basename(dir)}）が許した場所の外を指している（読まない）`); return { css: par ? par.css : '', logos, cfg }; }
-  return { css: (par ? par.css + '\n' : '') + env.readText(tok), logos, cfg };
+  if (!inRoot(tok)) { warn.push(`refused: テーマの tokens.css（${P.basename(dir)}）が許した場所の外を指している（読まない）`); return { css: par ? par.css : '', logos, cfg, metrics, declared }; }
+  return { css: (par ? par.css + '\n' : '') + env.readText(tok), logos, cfg, metrics, declared };
 }
 export const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon',
   wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', opus: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
@@ -848,7 +853,9 @@ export function build(env0, srcPath, opts = {}) {
   const codeReasons = documentReasons(html, trusted);
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs };
+  // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+    theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
 export function jsonScript(id, o) {

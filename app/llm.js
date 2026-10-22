@@ -330,7 +330,8 @@ export function setupLlm(app) {
       const o = { stepKey: seg.stepKey, line: seg.line, end: seg.end };
       return { ...r.arg, line: seg.line, end: seg.end, ...orphanDetail(o, r.arg, narrText) };
     };
-    const probs = results.filter((r) => r.sev === 'error' || r.sev === 'warn').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
+    // テーマの寸法のずれ（themeMetricsDrift）はテーマの知らせで、デッキ（AI が直すもの）の中にはないので依頼に入れない
+    const probs = results.filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
     for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
     if (!probs.length) { toast(X.fixNone); return; }

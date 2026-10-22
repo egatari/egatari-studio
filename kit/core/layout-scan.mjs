@@ -1,12 +1,21 @@
 // スライドの体裁の検査（はみ出し・切れ・文字の大きさ・字数）。品質チェックのコマンド版（kit/check.mjs）とブラウザ版
 // （編集アプリのプレビューの中の app/frame-shim.js）が同じこの関数を使う（backlog #51・#52）
 //
-//   layoutScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {JA, refRe, clip}
+//   layoutScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {JA, refRe, clip, annot, metrics}
 //     JA     日本語の規則（字数を全角 1・半角 0.5 で数える）か
 //     refRe  文献のスライドの見出し（正規表現の文字列）。そのスライドは字の大きさを見ない
 //     clip   わざと切る印の属性の名前（CLIP_ATTR）
 //     annot  小さい注記の印の属性の名前（ANNOT_ATTR）。字の大きさの最小（smallText・smallSvgText）を見ない
+//     metrics テーマの寸法の宣言（kit/core/theme-metrics.mjs の解決したもの。build の戻り値の theme.metrics）。本文の場所の限りをここから導く。
+//            渡さなければ既定（今の kit/layouts.css。中に書いた既定は DEFAULT_METRICS と同じ：tools/test-theme-metrics.mjs が縛る）。
+//            余裕（結論の行の上 6px・横の 4px）・字の大きさの最小・字数は metrics で変わらない
 //   code と a は kit/check-messages.mjs の知らせ。sev は 'error' | 'warn'
+//
+//   metricsProbe(doc, M) → {measured, theme, items}   テーマの寸法の宣言（M）と、描いた箱を比べる（themeMetricsDrift。contract §12）。
+//     見えない見本のスライド 4 枚（無印・noconcl・layout-tate・layout-tate noconcl）を #stage に足して測り、すぐに外す。
+//     measured はデッキの CSS も通した箱、theme はデッキの <style> を外した（#deck-base だけの）箱。items は宣言と合わない項目
+//     [{field, declared, measured, by}]（by：'theme' テーマの CSS が違う／'deck' デッキの CSS が動かした。body.floor・tate.floor の measured は [下, 上]、
+//     --bar-h の declared はその上限 720 − body.floor）
 //
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
@@ -21,6 +30,10 @@ export const ANNOT_ATTR = 'data-annot';
 
 export function layoutScan(s, o) {
   const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, refRe = new RegExp(o.refRe);
+  // テーマの寸法（1280×720 の px）。既定は kit/core/theme-metrics.mjs の DEFAULT_METRICS と同じ値
+  const DM = { body: { left: 48, right: 48, top: 122, floor: 680, line: 46 }, concl: { top: 571, height: 72 }, tate: { rule: 1166, conclRight: 120, left: 48, floor: 680 } };
+  const om = o.metrics || {};
+  const M = { body: Object.assign({}, DM.body, om.body), concl: Object.assign({}, DM.concl, om.concl), tate: Object.assign({}, DM.tate, om.tate) };
   const out = [];
   const add = (sev, code, a) => out.push({ code, sev, a: a || {} });
   const units = (t) => [...t].reduce((n, ch) => n + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1), 0);
@@ -53,10 +66,12 @@ export function layoutScan(s, o) {
 
   // ---------------------------------------------------------------- 本文の場所
   if (body) {
-    // 結論の行があるときは上端 571px の手前（元キットの余裕を見た値 565px）、ないときは 680px。
-    // 縦組み（layout-tate）は、地 680px・右は見出しの罫（1166px）の手前 1162px・左は結論の列（右端 120px）の外 124px（結論がなければ 44px）
-    const lim = tate || s.classList.contains('noconcl') ? 680 : 565;
-    const limR = tate ? 1162 : 1236, limL = tate ? (c ? 124 : 44) : -Infinity;
+    // 限りはテーマの寸法（M）から導く。既定では：結論の行があるときは上端 571px の手前（元キットの余裕を見た値 565px）、ないときは 680px。
+    // 横の右は本文の右端（1232px）の外 1236px。縦組み（layout-tate）は、地 680px・右は見出しの罫（1166px）の手前 1162px・
+    // 左は結論の列（右端 120px）の外 124px（結論がなければ本文の左 48px の外 44px）
+    const noconcl = s.classList.contains('noconcl');
+    const lim = tate ? M.tate.floor : noconcl ? M.body.floor : M.concl.top - 6;
+    const limR = tate ? M.tate.rule - 4 : 1280 - M.body.right + 4, limL = tate ? (c ? M.tate.conclRight + 4 : M.tate.left - 4) : -Infinity;
     let maxB = 0, maxR = 0, minL = Infinity;
     body.querySelectorAll('*').forEach((el) => {
       if (el.closest('svg') && el.tagName !== 'svg') return;
@@ -67,8 +82,15 @@ export function layoutScan(s, o) {
       maxR = Math.max(maxR, (r.right - sr.left) / k);
       minL = Math.min(minL, (r.left - sr.left) / k);
     });
-    if (maxB > lim) { bodyOver = true; add('error', 'bodyBottom', { px: Math.round(maxB), lim, concl: !tate && lim === 565 }); }
-    if (maxR > limR) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: Math.round(maxR), lim: limR } : { px: Math.round(maxR) });
+    // 知らせの値：結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）は、既定と違うときだけ添える（既定のテーマの結果は前と同じ）
+    if (maxB > lim) {
+      bodyOver = true;
+      const a = { px: Math.round(maxB), lim, concl: !tate && !noconcl };
+      if (a.concl && M.concl.top !== DM.concl.top) a.conclTop = M.concl.top;
+      if (M.body.line !== DM.body.line) a.line = M.body.line;
+      add('error', 'bodyBottom', a);
+    }
+    if (maxR > limR) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: Math.round(maxR), lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: Math.round(maxR), lim: limR } : { px: Math.round(maxR) });
     if (minL < limL) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: Math.round(minL), lim: limL });
     // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
     if (!refRe.test(h2 ? h2.textContent : '')) {
@@ -318,9 +340,88 @@ export function layoutScan(s, o) {
   return out;
 }
 
-// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数と印の名前を渡す形にする。
-// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
+// テーマの寸法の宣言と描いた箱を比べる（themeMetricsDrift。docs/contract.md §12、backlog #76）。layoutScan と同じく文字列にしてページに入れるので、外の名前を使わない。
+// M：解決した metrics（なければ既定）。見本のスライドは見えない（.slide は .active でなければ visibility:hidden）。足して測ってすぐ外す
+// 比べ方：本文・結論の行・縦組みの列の位置は ±1px で等しい。body.floor は noconcl の本文の下端から .pn の上端の間、tate.floor は縦組みの本文の下端から 720 の間。
+// 進み具合の帯の高さ（--bar-h）は 720 − body.floor 以下
+export function metricsProbe(doc, M0) {
+  const DM = { body: { left: 48, right: 48, top: 122, floor: 680, line: 46 }, concl: { top: 571, height: 72 }, tate: { rule: 1166, conclRight: 120, left: 48, floor: 680 } };
+  const om = M0 || {};
+  const M = { body: Object.assign({}, DM.body, om.body), concl: Object.assign({}, DM.concl, om.concl), tate: Object.assign({}, DM.tate, om.tate) };
+  const stage = doc.getElementById('stage') || doc.body;
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const mk = (cls, concl) => {
+    const s = doc.createElement('section');
+    s.className = cls;
+    s.setAttribute('aria-hidden', 'true');
+    s.setAttribute('data-metrics-probe', '');
+    const h = doc.createElement('h2'); h.textContent = '\u3042'; s.appendChild(h);
+    s.appendChild(Object.assign(doc.createElement('div'), { className: 'body' }));
+    if (concl) { const c = doc.createElement('div'); c.className = 'concl'; c.textContent = '\u3042'; s.appendChild(c); }
+    const pn = doc.createElement('div'); pn.className = 'pn'; pn.textContent = '1'; s.appendChild(pn);
+    return s;
+  };
+  const S = [mk('slide', true), mk('slide noconcl', false), mk('slide layout-tate', true), mk('slide layout-tate noconcl', false)];
+  S.forEach((s) => stage.appendChild(s));
+  const measure = () => {
+    const box = (s, sel) => {
+      const sr = s.getBoundingClientRect(), k = sr.width / 1280 || 1, e = s.querySelector(sel);
+      const r = e.getBoundingClientRect();
+      return { l: (r.left - sr.left) / k, t: (r.top - sr.top) / k, r: (r.right - sr.left) / k, b: (r.bottom - sr.top) / k };
+    };
+    const [h, n, t, tn] = S;
+    const b = box(h, '.body'), c = box(h, '.concl'), nb = box(n, '.body'), pn = box(n, '.pn'), th = box(t, 'h2'), tc = box(t, '.concl'), tb = box(t, '.body'), tnb = box(tn, '.body');
+    const lh = parseFloat(getComputedStyle(h.querySelector('.body')).lineHeight);
+    const bar = doc.createElement('div');
+    bar.style.cssText = 'position:fixed;left:0;top:0;width:1px;visibility:hidden;height:var(--bar-h,3px)';
+    doc.body.appendChild(bar);
+    const barH = bar.getBoundingClientRect().height;
+    bar.remove();
+    return {
+      body: { left: r2(b.l), right: r2(1280 - b.r), top: r2(b.t), bottom: r2(b.b), line: isFinite(lh) ? r2(lh) : null, noconclBottom: r2(nb.b), pnTop: r2(pn.t) },
+      concl: { top: r2(c.t), height: r2(c.b - c.t) },
+      tate: { rule: r2(th.l), conclRight: r2(tc.r), left: r2(tnb.l), bottom: r2(Math.max(tb.b, tnb.b)) },
+      barH: r2(barH),
+    };
+  };
+  let measured, theme;
+  try {
+    measured = measure();
+    // デッキの CSS（#deck-base のほかの <style>・<link>）を外して、もう一度（テーマと体裁の CSS だけの箱）
+    const off = [];
+    for (const sh of [...doc.styleSheets]) { const nd = sh.ownerNode; if (nd && nd.id !== 'deck-base' && !sh.disabled) { sh.disabled = true; off.push(sh); } }
+    try { theme = measure(); } finally { off.forEach((sh) => { sh.disabled = false; }); }
+  } finally { S.forEach((s) => s.remove()); }
+  const T = 1;
+  const items = [];
+  const cmp = (field, decl, get) => {
+    const m = get(measured), th = get(theme);
+    if (Math.abs(m - decl) > T) items.push({ field, declared: decl, measured: m, by: Math.abs(th - decl) > T ? 'theme' : 'deck' });
+  };
+  cmp('body.left', M.body.left, (x) => x.body.left);
+  cmp('body.right', M.body.right, (x) => x.body.right);
+  cmp('body.top', M.body.top, (x) => x.body.top);
+  cmp('concl.top', M.concl.top, (x) => x.concl.top);
+  cmp('concl.height', M.concl.height, (x) => x.concl.height);
+  cmp('tate.rule', M.tate.rule, (x) => x.tate.rule);
+  cmp('tate.conclRight', M.tate.conclRight, (x) => x.tate.conclRight);
+  cmp('tate.left', M.tate.left, (x) => x.tate.left);
+  // 範囲の項目：measured は [下, 上]
+  const rng = (field, decl, get) => {
+    const m = get(measured), th = get(theme);
+    const out = (q) => decl < q[0] - T || decl > q[1] + T;
+    if (out(m)) items.push({ field, declared: decl, measured: m, by: out(th) ? 'theme' : 'deck' });
+  };
+  rng('body.floor', M.body.floor, (x) => [x.body.noconclBottom, x.body.pnTop]);
+  rng('tate.floor', M.tate.floor, (x) => [x.tate.bottom, 720]);
+  // 進み具合の帯（舞台の下端に重なる）は、本文の地より下に収まる
+  if (measured.barH > 720 - M.body.floor + T) items.push({ field: '--bar-h', declared: 720 - M.body.floor, measured: measured.barH, by: theme.barH > 720 - M.body.floor + T ? 'theme' : 'deck' });
+  return { measured, theme, items };
+}
+
+// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe）と印の名前を渡す形にする。
+// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, metricsProbe){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${metricsProbe})`;
 }

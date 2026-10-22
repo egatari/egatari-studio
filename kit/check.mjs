@@ -7,6 +7,8 @@
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
 //    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
+//    本文の場所の限りはテーマの寸法の宣言（theme.json の metrics、contract §12）から導き、描いた箱が宣言と違えば themeMetricsDrift（警告、デッキに 1 回）。
+//    読めない宣言は themeMetricsInvalid（警告、デッキに 1 回）
 // B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
@@ -40,7 +42,7 @@ import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
-import { layoutScan, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
+import { layoutScan, metricsProbe, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -86,14 +88,20 @@ catch (e) { console.error('ビルド失敗: ' + e.message); process.exit(1); }
 const lang = built.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
 const JA = isJapanese(lang);
 const ML = langArg === 'en' || langArg === 'ja' ? langArg : JA ? 'ja' : 'en';
+// テーマの寸法の宣言（theme.json の metrics。kit/core/theme-metrics.mjs）：本文の場所の限りに使い、描いた箱と比べる（A）
+const themeInfo = built.theme || { name: built.stats.theme, metrics: null, declared: false };
+const metricsWarn = [];
 for (const w of built.stats.warn) {
   // 目印の有無は F で、部品が作った要素も含めて実際の画面で調べる（build は原稿の文字列だけを見る）
   if (/^mark: 目印/.test(w)) continue;
+  // 読めない寸法の宣言は、デッキに 1 回の themeMetricsInvalid にまとめる
+  if (/^theme-metrics: /.test(w)) { metricsWarn.push(w.replace(/^theme-metrics: /, '')); continue; }
   // 鍵の重なりは I でエラーにする（build は「#n」を付けて組めるようにしただけ）
   if (/^slide key: /.test(w)) continue;
   // narration.md の見出しがどのスライドにも対応しない → 原稿と見出しがずれている重大な不整合
   report(null, /^narration:/.test(w) ? 'error' : 'warn', 'build', { w });
 }
+if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: themeInfo.name, list: metricsWarn });
 
 // ================================================================ I. スライドの id と鍵
 {
@@ -276,7 +284,7 @@ phase = 'J リンク';
 phase = 'A 体裁';
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
 await page.evaluate(`window.__layoutScan = ${layoutScan}`);
-const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT]) => {
+const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, METRICS]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
   const style = [], soft = [];
@@ -308,7 +316,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT]) => {
     const issues = [], warns = [];
     const body = s.querySelector('.body');
     // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
-    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
+    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
     if (body) {
       const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
@@ -325,8 +333,13 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT]) => {
     if (warns.length) soft.push({ i: m.i, issues: warns });
   });
   return { step0, style, soft, punct };
-}, [meta, JA, CLIP_ATTR, ANNOT_ATTR]);
+}, [meta, JA, CLIP_ATTR, ANNOT_ATTR, themeInfo.metrics]);
 
+// テーマの寸法の宣言と描いた箱（見えない見本のスライドで 1 回測る。宣言がなければ既定と比べる）
+// （測れない文書、たとえば体裁の CSS を消したデッキでは測らない。検査そのものは止めない）
+await page.evaluate(`window.__metricsProbe = ${metricsProbe}`);
+const probe = await page.evaluate((M) => { try { return window.__metricsProbe(document, M); } catch { return { items: [] }; } }, themeInfo.metrics);
+if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
 for (const { i, issues } of aOut.soft) for (const [code, a] of issues) report(i, 'warn', code, a);

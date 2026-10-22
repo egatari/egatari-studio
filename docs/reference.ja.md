@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=5c681ac05f855c69 -->
+<!-- i18n: pair=reference.md sha256=c7e3618be9616e34 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -37,7 +37,7 @@
 | `class="slide sec appendix"` | 付録の扉。以降のページ番号は「付録」/ Appendix。`appendix` がなくても、文字に「付録」か Appendix を含む `sec` は付録の扉とみなす |
 | `class="… static"` | 段階なし：全部見せる。`.concl` も別の段階にしない |
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
-| `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える |
+| `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える（既定の値。テーマの `metrics` で両方とも動く） |
 | `class="… layout-tate"` | 縦組みのスライド：見出しは右端の縦の列、本文はその左に縦書き、結論の行は左端の縦の列（[国語](#国語kokugo)） |
 | section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける。[スライドの鍵](#スライドの鍵) |
 | `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
@@ -156,6 +156,21 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `extends` | 親のテーマ：その `tokens.css` を先に置く（このテーマの隣 → 自分のテーマのフォルダ → `themes/` の順に探す） |
 | `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
+| `metrics` | 品質チェックと書き手の道具のための、テーマの体裁の寸法（`"v": 1`。下の表）。`extends` の親から項目ごとに引き継ぎ、書かない項目は既定。描くのには使わない（[契約](contract.ja.md) §12） |
+
+`metrics` の項目（1280×720 の舞台の px。数で、小数も可）。既定は今の `kit/layouts.css` で、そこから導く限りは今までの検査の数（565・680・1236・1162・124・44）。余裕（6・4）は検査の方針で、テーマの値ではない。CSS でこれらの箱を動かすテーマは宣言するとよい（同梱と公式のテーマ庫のテーマは宣言しなければならない）。`node tools/theme-metrics.mjs measure <テーマ>` が貼る塊を出す。
+
+| 項目 | 意味 | 既定 | 検査での使い方 |
+|---|---|---|---|
+| `body.left`・`body.right`・`body.top` | 横組みの `.body` の箱（左・右は端からの距離） | 48・48・122 | 右の限り `1280 − body.right + 4`（`bodyRight`） |
+| `body.floor` | 結論の行がないとき（`noconcl`）本文が下りてよい限り（ページ番号の上） | 680 | `noconcl` の下の限り |
+| `body.line` | 本文 1 行の高さ。知らせと修正依頼の「およそ n 行」だけに使う | 46 | 知らせ |
+| `concl.top`・`concl.height` | 横組みの結論の行の箱 | 571・72 | 下の限り `concl.top − 6`（`bodyBottom`） |
+| `tate.rule` | 縦組み（`layout-tate`）の見出しの罫の x | 1166 | 右の限り `tate.rule − 4`（`tateBodyHead`） |
+| `tate.conclRight`・`tate.left` | 縦組みの結論の列の右端・結論がないときの本文の左 | 120・48 | 左の限り `tate.conclRight + 4`（`bodyConclCol`）／`tate.left − 4`（`bodyLeft`） |
+| `tate.floor` | 縦組みの本文の地の限り | 680 | `layout-tate` の下の限り |
+
+数でない値・範囲の外（x は 0〜1280、y は 0〜720）・知らない項目・`v` が 1 でない・互いに合わない値（本文の上端が結論の行より下、本文の幅が 320px より狭い、など）は組み立ての警告（`theme-metrics: …`）で、親の（なければ既定の）値を使う。品質チェックは宣言とテーマが描く箱を比べる（下の `themeMetricsDrift`）。
 
 CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.css`・`kit/layouts.css`・テーマの `tokens.css`（親のテーマから順に）・`kit/latin.css`（`lang` が日本語でないデッキだけ）の順に書く。テーマは体裁の CSS の後なので、同じ詳細度のテーマの規則は体裁の規則に勝つ（例：`.cover h1{top:260px}`、`.body{left:96px;right:96px}`）。`html` を前に付けなくてよい。そうしたテーマにも、色の変数の意味（[契約](contract.ja.md) §12）と品質チェックの色の検査はそのまま効く。組み立ての口（コマンド、`--dev` と開発サーバー、`--portable`、`--play-only`、編集アプリ）はどれも同じ。
 
@@ -325,7 +340,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `sev` | `error`・`warn`・`info` |
 | `code` | 結果の種類（変えない名前。一覧は `kit/check-messages.mjs`） |
 | `rule` | 書き方の指示の規格の名前（`R-title`・`R-fit` など）。なければ `null` |
-| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など）。修正依頼が削る量を言うのに使う |
+| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など。`metrics` が既定と違うテーマでは `conclTop`・`line`、`bodyRight` の `lim` も）。修正依頼が削る量を言うのに使う |
 | `msg` | `lang` の指摘の全体：どこか・何が違うか・どう直すか |
 
 | 品質チェック | 重さ |
@@ -342,7 +357,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | タイトルがコロンで終わる | エラー |
 | `layout-tate`：縦組みのタイトルが列に収まらない | エラー |
 | 結論の行が 35 字を超える（日本語）/ 70 文字を超える（英語）。結論が枠からはみ出す（`layout-tate` の縦の列でも） | エラー / 警告。エラー |
-| 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px） | エラー |
+| 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px）。これらは既定の値で、限りはテーマの `metrics` から決める（[テーマ](#テーマ)） | エラー |
+| テーマが描く箱がその `metrics` と 1px を超えて違う、または `metrics` のないテーマ（かデッキ自身の `<style>`）が本文・結論の行・縦組みの列を動かす（`themeMetricsDrift`。デッキに 1 回。項目ごとに宣言の値と描いた値、動かしたのがテーマの CSS かデッキの CSS か）。使えない `metrics` の値（`themeMetricsInvalid`。デッキに 1 回） | 警告 |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない。`data-annot` を付けた要素の中の字、つまり `m-kanbun` の読む順の番号のようにわざと小さくした注記は数えない：[約束事 §10](contract.ja.md#10-品質チェックわざと切る)） | エラー |
 | `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
 | どのスライドでも（表紙・章の扉・`layout-tate`・絶対位置の配置）：`.body` のないスライドで 1280×720 の外に出る字（`textOffSlide`。`.body` のあるスライドでは `outsideBody`）、ほかの字の箱やスライドの帯（飾り。表紙の上の帯など）に重なる字の箱（`textOverlap`：2 つの箱の行の矩形が縦横とも 2px を超えて重なる。KaTeX の式は式の見た目の箱 1 つで比べる。親と子、同じ部品の中の字どうし、SVG の字は比べない。本文の場所のエラーのあるスライドでは、本文の字と見出し・結論の行の重なりを重ねて知らせない）。表紙と章の扉では、置ける子要素と副題の置き場所を添える。`data-clip` の中の字、見えない字、KaTeX の MathML、`.sr-only` は見ない | 警告 |
@@ -471,6 +487,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文が部品庫の `m-kanbun` で知らせなしに読めるか（ブラウザなし。部品そのものの試験は egatari/components） |
+| `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
+| `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |

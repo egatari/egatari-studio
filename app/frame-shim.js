@@ -1,11 +1,14 @@
 // デッキの iframe（sandbox、origin を持たない）の中で、実行系より前に動く小さな仲立ち。編集アプリが文書の信頼する先頭部分に入れる（app/preview-doc.js）
-// cfg = {query, opener, dev, load, html, shim, prefix}
+// cfg = {query, opener, dev, load, html, shim, prefix, theme}
 //   query   location.search にする文字列（"?presenter=1" など。srcdoc の文書は URL を持たないので history で付ける）
 //   opener  発表者ビュー：window.opener を親（アプリが開いた窓）にする。本体とのやり取りはアプリが中継する
 //   dev     プレビュー：印刷・位置・品質チェックの頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
 //   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列、
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
-// layoutScan・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数とわざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。app/main.js が withLayoutScan でこの文字列を包んで渡す
+//   theme   プレビュー：組み立てが返したテーマ {name, metrics, declared}（kit/core/theme-metrics.mjs）。品質チェックの本文の場所の限りと、寸法のずれ（themeMetricsDrift）に使う。
+//           なければ既定の寸法（今までと同じ限り）
+// layoutScan・metricsProbe・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数と、わざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。
+// app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
 var parentWin = window.parent;
@@ -90,16 +93,18 @@ function quickCheck(){
   var DECK = window.DECK;
   if (!DECK || !DECK.slides) return jsErrors.map(function(t){ return {i: null, title: "", sev: "error", code: "consoleError", arg: t}; });
   var JA = DECK.ja !== false, S = DECK.slides, out = [];
+  var TH = cfg.theme || null, METRICS = TH && TH.metrics || null;
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
   var add = function(i, sev, code, arg){ out.push({i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}); };
   S.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
     // はみ出し・切れ・字の大きさ・字数：コマンド版と同じ関数（kit/core/layout-scan.mjs。app/main.js がこの仲立ちに渡す）。
     // 前からある知らせはブラウザ版の code と短い値のまま（overflowBottom・overflowRight・smallText と字数）、ほかはコマンド版の code と値
-    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT}).forEach(function(f){
+    // 本文の場所の限りはテーマの寸法（cfg.theme.metrics）から。bodyRight の限りは既定と違うときだけ値にある（kit/core/llm-fix.mjs が「1240 > 1188」から読む）
+    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT, metrics: METRICS}).forEach(function(f){
       var a = f.a, code = LEGACY[f.code];
       if (!code) return add(i, f.sev, f.code, a);
-      add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? a.px : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
+      add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
     });
     if (s.querySelector(".body .katex-error")) add(i, "error", "katexError");
     // 口述原稿：段階ごと（static のスライドは段階 0 だけ）。スライドにない段階の口述原稿（[k] が段階を超える・結論のない [concl]）はエラー
@@ -122,6 +127,11 @@ function quickCheck(){
     var bad = (DECK.componentErrors || []).filter(function(r){ return r.slide === i; }).map(function(r){ return r.tag; });
     Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
   });
+  // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
+  try {
+    var pr = metricsProbe(document, METRICS);
+    if (pr.items.length) add(null, "warn", "themeMetricsDrift", {theme: TH && TH.name || "default", declared: !!(TH && TH.declared), items: pr.items});
+  } catch (e) {}
   // 部品のデータの形（kit/deck.js の DECK.componentErrors）と、スクリプトのエラー
   (DECK.componentErrors || []).forEach(function(r){ add(r.slide, "error", "compData", JSON.parse(JSON.stringify(r))); });
   var compTags = (DECK.componentErrors || []).map(function(r){ return r.tag; });

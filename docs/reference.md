@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=5e30a2d219f14355 -->
+<!-- i18n: pair=reference.ja.md sha256=506fd47181e158f7 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -37,7 +37,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `class="slide sec appendix"` | appendix divider. Page numbers after it read 付録 / Appendix. Without `appendix`, a `sec` slide whose text contains 付録 or Appendix also counts |
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
-| `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px |
+| `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px (by default; a theme's `metrics` moves both) |
 | `class="… layout-tate"` | fully vertical slide: the heading in a vertical column at the right edge, the body in vertical writing to its left, the conclusion as a vertical column at the left edge ([Japanese language arts](#japanese-language-arts-kokugo)) |
 | `id="…"` on a section | slide key (overrides the heading). Use when two headings are the same. See [Slide keys](#slide-keys) |
 | `data-morph` / `data-morph="key"` | morph in from the previous slide / from the slide with that key ([contract §8](contract.md#8-morphs-data-morph)) |
@@ -156,6 +156,21 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in your theme folders, then in `themes/`) |
 | `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
+| `metrics` | the theme's frame geometry for the quality checker and authoring tools (`"v": 1`; table below). Inherited field by field through `extends`; omitted fields take the defaults. Never used to draw ([contract](contract.md) §12) |
+
+`metrics` fields (stage pixels of 1280×720, numbers, decimals allowed). The defaults are today's `kit/layouts.css`; the limits derived from them are the checker's old constants (565, 680, 1236, 1162, 124, 44). The margins (6 and 4) are policy, not theme values. A theme that moves these boxes in its CSS should declare them (bundled and official library themes must); `node tools/theme-metrics.mjs measure <theme>` prints the block to paste.
+
+| Field | Meaning | Default | Used by the checker as |
+|---|---|---|---|
+| `body.left`, `body.right`, `body.top` | the horizontal `.body` box (left and right as distances from the edges) | 48, 48, 122 | right limit `1280 − body.right + 4` (`bodyRight`) |
+| `body.floor` | how far the body may go down without a conclusion line (`noconcl`; above the page number) | 680 | bottom limit with `noconcl` |
+| `body.line` | the height of one body line, only for the “about n lines” in findings and fix requests | 46 | messages |
+| `concl.top`, `concl.height` | the horizontal conclusion line box | 571, 72 | bottom limit `concl.top − 6` (`bodyBottom`) |
+| `tate.rule` | x of the rule of the vertical heading (`layout-tate`) | 1166 | right limit `tate.rule − 4` (`tateBodyHead`) |
+| `tate.conclRight`, `tate.left` | right edge of the vertical conclusion column; left of the body without a conclusion | 120, 48 | left limit `tate.conclRight + 4` (`bodyConclCol`) / `tate.left − 4` (`bodyLeft`) |
+| `tate.floor` | bottom limit of the vertical body | 680 | bottom limit of `layout-tate` |
+
+A value that is not a number, outside 0–1280 (x) or 0–720 (y), an unknown field, `v` other than 1, or values that do not fit together (the body top below the conclusion line, a body narrower than 320px, …) is a build warning (`theme-metrics: …`) and the parent's (or default) value is used. The checker compares the declaration with what the theme renders (`themeMetricsDrift`, below).
 
 CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit/base.css`, `kit/layouts.css`, the theme's `tokens.css` (parent themes first) and, for decks whose `lang` is not Japanese, `kit/latin.css`. The theme comes after the layout CSS, so a theme rule with the same specificity overrides a layout rule (for example `.cover h1{top:260px}` or `.body{left:96px;right:96px}`); no `html` prefix is needed. The meaning of the color tokens ([contract](contract.md) §12) and the quality checker's color checks still apply to such a theme. This is the same in every build path (CLI, `--dev` and the dev server, `--portable`, `--play-only`, the editor app).
 
@@ -325,7 +340,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | `sev` | `error`, `warn` or `info` |
 | `code` | the kind of result (stable; the list is `kit/check-messages.mjs`) |
 | `rule` | the id of the standard in the authoring guide (`R-title`, `R-fit`, …), or `null` |
-| `data` | the values of the result (e.g. `{"px": 583, "lim": 565, "concl": true}` for a body overflow), used by fix requests to give the amount to cut |
+| `data` | the values of the result (e.g. `{"px": 583, "lim": 565, "concl": true}` for a body overflow; with a theme whose `metrics` differ from the defaults also `conclTop`, `line`, and `lim` for `bodyRight`), used by fix requests to give the amount to cut |
 | `msg` | the whole finding in `lang`: where, what and how to fix |
 
 | Quality check | Severity |
@@ -342,7 +357,8 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | title ends with a colon | error |
 | `layout-tate`: the vertical title does not fit its column | error |
 | conclusion > 35 units (Japanese) / > 70 characters (English); conclusion overflows its box (also the vertical column of `layout-tate`) | error / warn; error |
-| body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one) | error |
+| body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one). These are the defaults: the limits come from the theme's `metrics` ([Themes](#themes)) | error |
+| the theme's rendered boxes differ from its `metrics` by more than 1px, or a theme without `metrics` (or the deck's own `<style>`) moves the body, conclusion line or vertical columns (`themeMetricsDrift`, once per deck: each field with the declared and rendered value and whether the theme's or the deck's CSS moved it); unusable `metrics` values (`themeMetricsInvalid`, once per deck) | warn |
 | body text < 27px, table/plot text < 24px, SVG text < 24px (skipped on slides whose heading contains 文献; ruby readings in `rt` are not counted; text inside an element with `data-annot`, a deliberately small annotation such as `m-kanbun`'s reading-order numbers, is not counted: [contract §10](contract.md#10-quality-check-intended-clipping)) | error |
 | text cut off by a box with `overflow` other than `visible` (`textClipped`); SVG text cut off by its viewport (viewBox) or going off the slide (`svgTextOut`); SVG text overflowing the `<rect>` around it (`svgTextBox`); text outside `.body` going off the slide or overlapping the heading, conclusion line or page number (`outsideBody`). Text inside an element with `data-clip` is not checked by these ([contract §10](contract.md#10-quality-check-intended-clipping)); on a slide with `bodyBottom`, text in `.body` going off the slide is not reported again | warn |
 | on any slide (cover, section divider, `layout-tate`, absolutely positioned layouts): on a slide without `.body`, text going off the 1280×720 slide (`textOffSlide`; with `.body` this is `outsideBody`); a text box overlapping another text box or the slide's decorative band, such as the band at the top of the cover (`textOverlap`: line rectangles of the two boxes intersect by more than 2px in both directions; a KaTeX formula counts as one box, its visual box; a parent and its child, text inside the same component, and SVG text are not compared; on a slide with a body-position error, body text against the heading or conclusion line is not reported again). On a cover or section divider the finding names the allowed children and where a subtitle goes. Text inside `data-clip`, hidden text, KaTeX's MathML and `.sr-only` are not checked | warn |
@@ -471,6 +487,8 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download the BIZ UDPGothic and BIZ UDPMincho TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/test-kokugo-example.mjs` | the kanbun of `examples/kokugo-kanbun` reads without warnings with the library's `m-kanbun` (no browser; the components' own tests are in egatari/components) |
+| `node tools/theme-metrics.mjs measure <theme> [--lang ja\|en]`, `node tools/theme-metrics.mjs check <theme>` | render a theme (a folder or a name, as for `--theme`) and print its `metrics` block measured from the rendered boxes, to paste into `theme.json`; `check` compares the declaration (or the defaults) with the rendered boxes and exits with 1 when they differ |
+| `node tools/test-theme-metrics.mjs [workdir]` | theme `metrics`: validation and inheritance, the theme hash, every bundled theme renders as declared (strict), the limits and `themeMetricsDrift` in the checker and the editor's quick check |
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
