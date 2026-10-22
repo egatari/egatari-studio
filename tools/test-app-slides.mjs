@@ -124,9 +124,10 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
       await page.keyboard.press('Home');
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('ArrowDown');
-      await page.waitForFunction(() => window.__APP_TEST.state().pos && window.__APP_TEST.state().pos.i === 2, null, { timeout: 5000 }).catch(() => {});
-      ok((await sl()).sel === 2 && (await state()).pos.i === 2 && await page.getAttribute('#sl-list', 'aria-activedescendant') === 'sl-o-2' && await page.getAttribute('#sl-o-2', 'aria-selected') === 'true',
-        `${tag}: arrow keys move the selection (aria-activedescendant, aria-selected) and the preview follows`);
+      await page.waitForFunction(() => { const p = window.__APP_TEST.state().pos; return p && p.i === 2 && window.__APP_TEST.slides().sel === 2; }, null, { timeout: 10000 }).catch(() => {});
+      const nav = { sel: (await sl()).sel, pos: ((await state()).pos || {}).i, active: await page.getAttribute('#sl-list', 'aria-activedescendant'), selected: await page.getAttribute('#sl-o-2', 'aria-selected'), focus: await page.evaluate(() => document.activeElement.id) };
+      ok(nav.sel === 2 && nav.pos === 2 && nav.active === 'sl-o-2' && nav.selected === 'true',
+        `${tag}: arrow keys move the selection (aria-activedescendant, aria-selected) and the preview follows ${JSON.stringify(nav)}`);
       if (mode === 'folder') await shot('slides-panel.png');
 
       // ---------------------------------------------------------------- 2. 足す（雛形ごと）

@@ -28,6 +28,7 @@ const SRC = { max: READ_LIMITS.source }, NARR = { max: READ_LIMITS.narration }, 
 
 export function createSlidesPanel(ctx) {
   const { T, el, host } = ctx;
+  let want = null;
   let open = false, sel = 0, busy = false, undo = null, lastDoc = null, info = new Map(), drag = null, infoSeq = 0;
   const frame = () => host.querySelector('#sl-thumbs');
   const list = () => host.querySelector('#sl-list');
@@ -128,7 +129,8 @@ export function createSlidesPanel(ctx) {
       if (on) { ul.setAttribute('aria-activedescendant', o.id); o.scrollIntoView({ block: 'nearest' }); }
     }
     updateButtons();
-    if (go) ctx.go(i);
+    // 一覧で選んで動かしたプレビューの位置の知らせは、その枚に着くまで選択に返さない（途中の枚の知らせで選択が戻らないように）
+    if (go) { want = { i, until: Date.now() + 2000 }; ctx.go(i); }
   }
   function updateButtons() {
     const n = (ctx.slides() || []).length, dis = busy || !n;
@@ -380,8 +382,9 @@ export function createSlidesPanel(ctx) {
     refresh: () => { if (open) { render(); loadInfo(); } },
     onPos: () => {
       const p = ctx.pos();
-      if (!open || !p || !Number.isFinite(p.i) || p.i === sel || drag) return;
-      select(p.i, false);
+      if (!open || !p || !Number.isFinite(p.i) || drag) return;
+      if (want) { if (p.i === want.i || Date.now() > want.until) want = null; else return; }
+      if (p.i !== sel) select(p.i, false);
     },
     reset: () => { undo = null; sel = 0; info = new Map(); lastDoc = null; const f = frame(); if (f) f.remove(); if (open) render(); },
     saved: () => { if (undo) { undo = null; if (open) render(); } },
