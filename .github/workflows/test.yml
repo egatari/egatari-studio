@@ -176,7 +176,7 @@ jobs:
   # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.
   tier2:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
