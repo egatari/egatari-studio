@@ -149,6 +149,9 @@ async function page(url = site.url, opts = {}) {
 const lessonFrame = async (p) => { await p.waitForSelector('#lesson'); let f = null; await until(async () => { f = (await (await p.$('#lesson')).contentFrame()); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 15000); return f; };
 const openFixture = async (p, name) => { await p.setInputFiles('#file', FIX[name]); };
 const state = (p) => p.evaluate(() => window.__play.state());
+// after the Live pane opens or closes the lesson's frame changes size. Chrome routes input to a sandboxed (out-of-process) frame
+// by hit-test data that can lag a frame behind, so a click right after the change can land in the lesson instead. Let it settle
+const settle = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 250)))));
 
 // ---------------------------------------------------------------- 2. open a play-only and an editable file
 console.log('open');
@@ -446,13 +449,14 @@ console.log('live');
   await sleep(500);
   ok(fake.connections.length === 0 && ws.length === 0, 'live: nothing connects before Join');
   await o.p.click('#b-live');
+  await settle(o.p);
   ok(await o.p.isVisible('#live') && /127\.0\.0\.1/.test(await o.p.textContent('#live-dest')), 'live: the pane shows the destination host before Join');
   await o.p.evaluate(() => { window.__clicks = []; document.addEventListener('click', (e) => window.__clicks.push(e.target.id + '/' + e.target.disabled), true); });
   const pre = await o.p.evaluate(() => ({ d: document.getElementById('b-join').disabled, h: document.getElementById('live-join-row').hidden, s: window.__play.state().live }));
   await o.p.click('#b-join');
   let joined = await until(() => o.p.evaluate(() => window.__play.state().live.state !== 'off'), 3000);
   if (!joined) {
-    // seen about once in ten local runs: the first click does not reach the button (no click event). Report it and tap again
+    // should not happen after settle(); if the first click still lands in the lesson's frame, report it and tap again
     console.log('    (diagnostics) Join: the first tap did not start ' + JSON.stringify({ pre, clicks: await o.p.evaluate(() => window.__clicks), conns: fake.connections.length }));
     await o.p.click('#b-join');
   }
@@ -473,6 +477,7 @@ console.log('live');
   await f.evaluate(() => DECK.go(1, 0));
   ok(await until(() => o.p.evaluate(() => window.__play.state().live.step === '何を最小化するか:0')), 'live: the page learns the step from the lesson\'s position events');
   ok(await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]')), 'live: a step with a poll opens the pane and shows the poll');
+  await settle(o.p);
   await o.p.check('#live fieldset[data-poll="p1"] input[value="1"]');
   await o.p.click('#live fieldset[data-poll="p1"] button.vote');
   ok(await until(() => fake.messages.some((m) => m.t === 'vote' && m.activity === 'p1' && m.choice === 1 && m.step === POLL_STEP)), 'live: a vote is sent for that step');
@@ -484,6 +489,7 @@ console.log('live');
   await sleep(200);
   ok((await state(o.p)).live.step !== POLL_STEP, 'live: a position message that does not come from the frame is ignored');
   await o.p.click('#b-live');
+  await settle(o.p);
   await o.p.click('#b-leave');
   ok(await until(() => fake.open === 0), 'live: Leave closes the connection');
   await o.p.click('#b-close');
