@@ -187,6 +187,20 @@ console.log('\n' + 'test'.padEnd(w) + '  result  time');
 console.log('-'.repeat(w) + '  ------  ------');
 for (const r of results) console.log(r.name.padEnd(w) + '  ' + (r.code === 0 ? 'PASS  ' : r.code === -1 ? 'SKIP  ' : 'FAIL  ') + '  ' + (r.sec.toFixed(1) + ' s').padStart(6));
 const bad = results.filter((r) => r.code !== 0);
+// 時間の一覧（遅い順と合計）。失敗していても出す。GITHUB_STEP_SUMMARY があれば markdown の表も足す
+const timed = results.filter((r) => r.code !== -1).sort((a, b) => b.sec - a.sec);
+const total = results.reduce((s, r) => s + r.sec, 0);
+console.log('\nduration summary (slowest first)');
+const tw = Math.max(5, ...timed.map((r) => r.name.length));
+for (const r of timed) console.log(`  ${r.name.padEnd(tw)}  ${(r.sec.toFixed(1) + ' s').padStart(8)}${r.code === 0 ? '' : '  FAIL'}`);
+console.log(`  ${'total'.padEnd(tw)}  ${(total.toFixed(1) + ' s').padStart(8)}  (${(total / 60).toFixed(1)} min)`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  try {
+    const md = [`### test-all durations (${process.platform}, node ${process.versions.node})`, '', '| test | result | seconds |', '|---|---|---:|',
+      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ''].join('\n');
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
+  } catch (e) { console.log(`(could not write GITHUB_STEP_SUMMARY: ${e.message})`); }
+}
 console.log(`\n${results.length - bad.length}/${results.length} passed` + (bad.length ? `; failed: ${bad.map((r) => r.name).join(', ')}` : ''));
 console.log(`artifacts: ${tmp}`);
 process.exit(bad.length ? 1 : 0);

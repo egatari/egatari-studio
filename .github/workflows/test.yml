@@ -43,7 +43,8 @@ jobs:
   # Browser: kit/browser.mjs tries CHROME_PATH, then Google Chrome, then Playwright's Chromium (installed below).
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Linux took up to 28 min on main (test 22), so 30 min was too tight
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -83,7 +84,8 @@ jobs:
   # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
   windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    # Windows took up to 26.5 min, so 30 min was too tight
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
