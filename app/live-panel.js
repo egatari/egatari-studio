@@ -4,7 +4,8 @@
 // - 教材に残すのは鍵のない設定（設定のファイル FORMAT.CONFIG_FILE の extensions.live。書き出すと索引の extensions.live）。鍵は書き出す派生にだけ入り、この板が覚えるのは開いているあいだだけ
 //
 //   const panel = createLivePanel({lang, el, ws(), generation(), openPanel(title, body), isOpen(), toast, beforeWrite() → null | 理由, afterWrite(),
-//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, slides() → [{key, heading}], exportLive(live) → Promise, portable() → bool, problemText(p) → 文})
+//     currentStep() → 段階の鍵 | null, stepKeys() → Promise<[段階の鍵]>, slides() → [{key, heading}], exportLive(live) → Promise, portable() → bool, problemText(p) → 文,
+//     importResults(file) → Promise（授業の部屋の結果の JSON を添付にする。app/attachments-panel.js の importLive）})
 // - 投票には表示名（label。「4 枚目『XML の壁』・段階 1」）を付ける：作るとき・段階を変えたとき・label のない古い投票を開いたとき（スライドが見つかれば）。
 //   段階の鍵を出していたところ（段階の候補・投票の一覧）には label を出し、鍵は title の吹き出しに。鍵そのものは変えない
 //   panel.open()
@@ -27,6 +28,8 @@ const STR = {
     save: '設定を教材に保存（参加コードは保存しません）', saved: `設定を ${CFG} に書きました（鍵は書きません）`, portableNote: '1 ファイルに残すには「保存」を押してください', exp: 'ライブを付けて書き出す…',
     problems: '書き出す前に直すこと', none: 'ありません', needKey: '参加コードがありません（ホストのページでコピーした設定を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
     keyTip: (k) => `ステップの鍵：${k}`,
+    results: '授業が終わったら：ホストのページで結果（JSON）をダウンロードし、ここから教材の添付（役割：データ）にできます。結果は教材のファイルにだけ残り、参加者に配る Egatari ファイル（再生のみ）には入りません',
+    importResults: '授業の部屋の結果を取り込む…',
     fail: 'できませんでした：', tooLong: 'ライブの時間が長すぎます。ライブは 3 時間までです（ライブの開始と終了を直してください）',
   },
   en: {
@@ -39,6 +42,8 @@ const STR = {
     save: 'Save settings in the lesson (without the join code)', saved: `Wrote the settings to ${CFG} (without the key)`, portableNote: 'Press Save to keep them in the single file', exp: 'Export with Live…',
     problems: 'To fix before exporting', none: 'None', needKey: 'No join code (paste the settings copied on the host page)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
     keyTip: (k) => `Step key: ${k}`,
+    results: 'After the lesson: download the results (JSON) on the host page and add them here as an attachment of the lesson (role: data). They stay in the lesson file and never go into the Egatari file (play only) you hand to participants',
+    importResults: 'Import live room results…',
     fail: 'Could not: ', tooLong: 'The live time is too long: a Live lasts at most 3 hours (change the start and end)',
   },
 };
@@ -179,6 +184,8 @@ export function createLivePanel(o) {
         ]),
       ]);
     });
+    const resultsInput = el('input', { type: 'file', id: 'live-results-file', accept: '.json,application/json', hidden: 'hidden' });
+    resultsInput.addEventListener('change', () => { const f = (resultsInput.files || [])[0]; resultsInput.value = ''; if (f && o.importResults) o.importResults(f).catch((e) => o.toast(X.fail + (e.message || e), true)); });
     jsonBox = el('textarea', { id: 'live-json', rows: '6', readonly: 'readonly', spellcheck: 'false', 'aria-label': X.copy });
     probBox = el('div', { id: 'live-problem-box' });
     const body = [
@@ -202,6 +209,9 @@ export function createLivePanel(o) {
           el('button', { type: 'button', id: 'live-save', text: X.save, onclick: () => save().catch((e) => o.toast(X.fail + (e.message || e), true)) }),
           el('button', { type: 'button', id: 'live-export', cls: 'pri', text: X.exp, onclick: exportNow }),
         ]),
+        o.importResults ? el('h3', { text: X.importResults.replace(/…$/, '') }) : null,
+        o.importResults ? el('p', { cls: 'note', text: X.results }) : null,
+        o.importResults ? el('div', { cls: 'row' }, [resultsInput, el('button', { type: 'button', id: 'live-import-results', text: X.importResults, onclick: () => resultsInput.click() })]) : null,
       ]),
     ];
     o.openPanel(X.title, body);

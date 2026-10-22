@@ -634,6 +634,8 @@ const livePanel = createLivePanel({
   },
   afterWrite: async () => { await rebuild('save'); updateName(); },
   currentStep: () => (S.pos && typeof S.pos.key === 'string' ? S.pos.key : null),
+  // 授業の部屋の結果を取り込む：添付の板を開いて、そこで確かめて足す（一覧に要約が出る）
+  importResults: async (file) => { await attach.open(); await attach.importLive(file); },
   stepKeys: async () => {
     const keys = (S.slides || []).map((x) => x.key + ':0');
     try { for (const g of parseNarration(await S.ws.readText('narration.md', { max: READ_LIMITS.json }))) keys.push(`${g.slideKey}:${g.stepKey}`); } catch { /* 口述原稿なし */ }
@@ -1201,6 +1203,18 @@ async function exportPortableFile() {
   catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+  // 授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）が入る：人に渡すなら外す。外して書き出すのを 1 回で選べる
+  if (r.stats && Array.isArray(r.stats.liveResults) && r.stats.liveResults.length) {
+    const v = await ask({ title: T.liveResultsTitle, kind: 'warn',
+      body: [el('p', { id: 'live-results-export-warn', text: T.liveResultsWarn }), el('ul', {}, r.stats.liveResults.map((p) => el('li', { text: p })))],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'with', label: T.liveResultsWith }, { id: 'without', label: T.liveResultsWithout, pri: true }] });
+    if (v === 'cancel' || !live()) { status(''); return; }
+    if (v === 'without') {
+      try { r = await engine.exportPortable(S.deckFile, { fromFolder: true, withoutLiveResults: true }); }
+      catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+      if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+    }
+  }
   try {
     const name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT);   // 教材の題名（egatari.json の題 ＞ <title>）、なければデッキの名前
     if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
@@ -1229,7 +1243,7 @@ async function exportPlayOnlyFile(room = null) {
   let html, name, writes = {};
   try {
     if (P) { html = playOnly(P.original); name = P.name; }
-    else { const r = await engine.exportPortable(S.deckFile); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
     if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }

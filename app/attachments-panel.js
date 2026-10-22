@@ -6,13 +6,23 @@
 //   const panel = createAttachPanel({ws(), generation(), lang, el, openPanel, isOpen(), toast, ask, beforeWrite() → null | 断る理由, afterWrite()})
 //   足す・名前を替える・役割を替えるときは、§3.8 の役割ごとの型と中身の条件（kit/core/attach-content.mjs）で確かめ、合わなければ理由を言って断る
 //   知らせの言葉は品質チェックと同じ（kit/check-messages.mjs の attach…）
-//   panel.open() / panel.refresh()
+//   panel.open() / panel.refresh() / panel.importLive(file?)
+//   授業の部屋の結果（拡張 live §3。kit/core/live-results.mjs）：「授業の部屋の結果を取り込む…」で、部屋のサービスからダウンロードした JSON を
+//   写しの Schema と §3.8 の条件で確かめて役割 data の添付にする。教材の部屋（extensions.live.room）と違えば知らせて、それでも足せる。
+//   はじめて取り込むときは、学ぶ人が打った字が入ること・教材のファイルにだけ残りどこにも送らないことを知らせる（一度だけ）。
+//   一覧では、その添付に「学ぶ人の回答」の印と、質問の数・投票ごとの数を出す（字はすべて textContent。学ぶ人の入力は信用しない）
 import { FORMAT } from '../kit/core/format.mjs';
 import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
   inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem, titleProblem, clipChars } from '../kit/core/attachments.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
+import { parseResults, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+
+// はじめての取り込みの知らせを見せたか（この機械のこのブラウザ。使えなければ毎回見せる）
+const NOTICE_KEY = 'egatari-studio-live-results-notice';
+const noticeSeen = () => { try { return localStorage.getItem(NOTICE_KEY) === '1'; } catch { return false; } };
+const noticeDone = () => { try { localStorage.setItem(NOTICE_KEY, '1'); } catch { /* 使えない環境 */ } };
 
 const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
 const MB = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB' : (n / 1048576).toFixed(1) + ' MB');
@@ -29,7 +39,15 @@ const STR = {
     saved: '役割と題を書きました', portableNote: '1 ファイルに残すには「保存」を押してください（添付の場所だけを書き換えます）', fail: 'できませんでした：', cancel: '取消', ok: 'OK',
     problems: '気をつけること',
     media: (p, k) => `「${p}」は${k === 'video' ? '動画' : '音声'}です。音声と動画は添付にできません`, titles: '題（ダウンロードの一覧に出す短い名前。要ります）', needTitle: '題は要ります', add1: '足す',
-    descL: '説明', descPh: '説明（1〜2 文）', refused: '断りました：', checking: '中身を確かめています…'
+    descL: '説明', descPh: '説明（1〜2 文）', refused: '断りました：', checking: '中身を確かめています…',
+    live: '授業の部屋の結果を取り込む…', liveTitle: '授業の部屋の結果を取り込む', liveGo: '取り込む', liveMark: '学ぶ人の回答',
+    liveTooLarge: (n) => `大きすぎて取り込めません（${MB(n)}。添付は 1 つ ${MB(RESULTS_MAX_BYTES)} まで）`,
+    liveBad: (why) => `授業の部屋の結果の JSON ではないので取り込めません（部屋のサービスの教員のページからダウンロードしたファイルを選んでください）：${why}`,
+    livePrivacy: '結果には学ぶ人が打った字（質問。名前を書いた人はその名前も）が入っています。結果はこの教材のファイルにだけ残り、どこにも送りません。教材のファイルを人に渡すときは、この添付を外してください',
+    liveMismatch: (a, b) => `この結果の部屋（${a}）は、この教材の授業の部屋の設定（${b}）と違います。部屋を作り直したのでなければ、別の授業の結果かもしれません`,
+    liveNoRoom: 'この教材には授業の部屋の設定がありません。別の教材の結果かもしれません',
+    liveAdded: (p) => `授業の部屋の結果を添付にしました（役割：データ）：${p}`, liveDup: (p) => `同じ結果がもう添付にあります：${p}`,
+    liveWhat: (n, q) => `回答 ${n} 件（質問 ${q} 件）`,
   },
   en: {
     title: 'Attachments (draft, experimental)', lead: `Draft, experimental (spec §3.8 draft). Files for readers: pdf takes PDF; data takes CSV, TSV, JSON, text and xlsx; code takes program source, ipynb and environment definitions; source takes TeX, Markdown, text and docx; supplement takes PNG, JPEG, WebP, PDF and text. Files are checked when added: PDFs with JavaScript or actions that leave the document, Office files with macros or external references, executables, extensions that operating systems run as scripts (.js, .bat, …; attach JavaScript source as .mjs, .cjs or .ts), HTML, SVG, ZIP, audio and video are refused. They live in ${ATTACH_PREFIX}; roles, titles and descriptions are written to ${CFG}. In a single file (${FORMAT.FILE_EXT}) the player only offers them for download (never opened or run); play-only files do not carry them`,
@@ -43,7 +61,15 @@ const STR = {
     saved: 'Role and title written', portableNote: 'Press Save to keep it in the file (only the attachment regions are rewritten)', fail: 'Failed: ', cancel: 'Cancel', ok: 'OK',
     problems: 'Notes',
     media: (p, k) => `“${p}” is ${k === 'video' ? 'a video' : 'audio'}: audio and video cannot be attached`, titles: 'Titles (short names for the download list; required)', needTitle: 'A title is required', add1: 'Add',
-    descL: 'Description', descPh: 'Description (one or two sentences)', refused: 'Refused: ', checking: 'Checking the contents…'
+    descL: 'Description', descPh: 'Description (one or two sentences)', refused: 'Refused: ', checking: 'Checking the contents…',
+    live: 'Import live room results…', liveTitle: 'Import live room results', liveGo: 'Import', liveMark: 'Learners’ responses',
+    liveTooLarge: (n) => `Too large to import (${MB(n)}; an attachment is at most ${MB(RESULTS_MAX_BYTES)})`,
+    liveBad: (why) => `Not live room results, so not imported (choose the file downloaded from the room service's teacher page): ${why}`,
+    livePrivacy: 'The results contain what learners typed (questions, and names if they gave one). They stay in this lesson file and are not sent anywhere. Remove this attachment before giving the lesson file to others',
+    liveMismatch: (a, b) => `These results are for room ${a}, but this lesson's live settings name room ${b}. Unless you recreated the room, they may be from another lesson`,
+    liveNoRoom: 'This lesson has no live room settings. The results may be from another lesson',
+    liveAdded: (p) => `Added the live room results as an attachment (role: data): ${p}`, liveDup: (p) => `The same results are already attached: ${p}`,
+    liveWhat: (n, q) => `${n} responses (${q} questions)`,
   },
 };
 // 足したファイルの役割の案（名前の型から、その型を受ける役割。書くのは選んだ役割）。どの役割にもない型は null（足せない）
@@ -65,13 +91,21 @@ export function createAttachPanel(o) {
   const msgOf = (x) => message(o.lang === 'en' ? 'en' : 'ja', x.code, x);
   // 中身の検査（§3.8）の結果：パスと大きさごとに覚える（板を描き直すたびに読み直さない。書き込みで消す）
   const content = new Map();
+  // 授業の部屋の結果（中身で見分ける）なら、その要約（summarizeResults）も覚える
   async function contentOf(ws, f) {
     const c = content.get(f.path);
-    if (c && c.size === f.size) return c.problems;
-    let problems = [];
-    if (f.size <= ATTACH_LIMITS.fileBytes) { try { problems = (await inspectAttachment(f.path, await ws.readBytes(f.path, { max: ATTACH_LIMITS.fileBytes }))).problems; } catch { problems = []; } }
-    content.set(f.path, { size: f.size, problems });
-    return problems;
+    if (c && c.size === f.size) return c;
+    let problems = [], live = null;
+    if (f.size <= ATTACH_LIMITS.fileBytes) {
+      try {
+        const b = await ws.readBytes(f.path, { max: ATTACH_LIMITS.fileBytes });
+        problems = (await inspectAttachment(f.path, b)).problems;
+        if (/\.json$/i.test(f.path)) { const r = parseResults(b); if (r.ok) live = summarizeResults(r.results); }
+      } catch { problems = []; }
+    }
+    const v = { size: f.size, problems, live };
+    content.set(f.path, v);
+    return v;
   }
 
   async function readConfig(ws) {
@@ -84,7 +118,7 @@ export function createAttachPanel(o) {
     const ws = o.ws();
     const L = await ws.list();
     const files = [...L.files].filter(([rel]) => isAttachPath(rel)).map(([rel, f]) => ({ path: rel, size: f.s }));
-    for (const f of files) f.problems = await contentOf(ws, f);
+    for (const f of files) { const c = await contentOf(ws, f); f.problems = c.problems; f.live = c.live; }
     const { conf, bad } = await readConfig(ws);
     const plan = planAttachments(files, conf);
     const { entries } = configEntries(conf);
@@ -245,6 +279,52 @@ export function createAttachPanel(o) {
     });
   }
 
+  // 授業の部屋の結果を取り込む（file：選んだ File。なければファイルを選ぶ窓）
+  const importLive = held(async (file) => {
+    if (!file) { const inp = document.getElementById('attach-live-file'); if (inp) inp.click(); return; }
+    if (file.size > RESULTS_MAX_BYTES) { o.toast(X.liveTooLarge(file.size), true); return; }
+    let bytes;
+    try { bytes = await readFileBounded(file, { max: RESULTS_MAX_BYTES, what: file.name }); } catch (e) { o.toast(X.liveTooLarge(file.size), true); return; }
+    const r = parseResults(bytes);
+    if (!r.ok) { o.toast(X.liveBad(r.errors[0] || r.code), true); return; }
+    const ws = o.ws();
+    if (!ws) return;
+    const { conf } = await readConfig(ws);
+    const live = conf && conf.extensions && typeof conf.extensions === 'object' ? conf.extensions.live : null;
+    const m = roomMatch(r.results, live);
+    const s = summarizeResults(r.results);
+    const showNotice = !noticeSeen();
+    if (showNotice || m !== 'match') {
+      const v = await o.ask({ title: X.liveTitle, kind: m === 'match' ? '' : 'warn', body: [
+        m === 'mismatch' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveMismatch(r.results.room, live.room) }) : null,
+        m === 'none' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveNoRoom }) : null,
+        el('p', { id: 'live-results-privacy', text: X.livePrivacy }),
+        el('p', { cls: 'hint', id: 'live-results-what', text: `${r.results.room} · ${r.results.window.from.slice(0, 10)} · ${X.liveWhat(s.responses, s.questions)}` }),
+      ], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.liveGo, pri: true }] });
+      if (v !== 'ok') return;
+      noticeDone();
+    }
+    await write(async (st) => {
+      // 同じ中身をもう足してあれば足さない
+      for (const f of st.files) {
+        if (f.size !== bytes.length) continue;
+        const b = await st.ws.readBytes(f.path, { max: ATTACH_LIMITS.fileBytes });
+        if (b.length === bytes.length && b.every((x, i) => x === bytes[i])) { o.toast(X.liveDup(f.path), true); return null; }
+      }
+      const have = new Set(st.files.map((f) => f.path.toLowerCase()));
+      const rec = resultsRecord(r.results, o.lang, (p) => have.has(p.toLowerCase()) || st.entries.has(p));
+      if (st.plan.total + bytes.length > ATTACH_LIMITS.totalBytes) { o.toast(X.total, true); return null; }
+      if (st.plan.include.length + 1 > ATTACH_LIMITS.count) { o.toast(X.count, true); return null; }
+      // §3.8 の型と中身（役割 data の JSON）
+      const probs = [...(await inspectAttachment(rec.path, bytes)).problems, roleProblem(rec.path, rec.role)].filter(Boolean);
+      const bad = probs.find(blocking);
+      if (bad) { o.toast(X.refused + msgOf(bad), true); return null; }
+      await st.ws.writeBytes(rec.path, bytes);
+      await writeConfig(st.ws, st.conf, [...listOf(st), rec]);
+      return X.liveAdded(rec.path) + (probs.length ? ' · ' + probs.map(msgOf).join(' · ') : '');
+    });
+  });
+
   async function render() {
     const ws = o.ws();
     if (!ws) return;
@@ -252,6 +332,8 @@ export function createAttachPanel(o) {
     try { st = await state(); } catch (e) { o.openPanel(X.title, [el('p', { text: X.fail + (e.message || e) })]); return; }
     const fileInput = el('input', { type: 'file', id: 'attach-file', multiple: 'multiple', hidden: 'hidden' });
     fileInput.addEventListener('change', () => { const fs = [...(fileInput.files || [])]; fileInput.value = ''; if (fs.length) addFiles(fs); });
+    const liveInput = el('input', { type: 'file', id: 'attach-live-file', accept: '.json,application/json', hidden: 'hidden' });
+    liveInput.addEventListener('change', () => { const f = (liveInput.files || [])[0]; liveInput.value = ''; if (f) importLive(f); });
     const rows = st.files.length ? st.files.map((f) => {
       const e = st.entries.get(f.path) || {};
       const sel = el('select', { 'data-attach-role': f.path, 'aria-label': X.role + ' ' + f.path }, [el('option', { value: '', text: X.noRole }), ...ATTACH_ROLES.map((r) => el('option', { value: r, text: X.roles[r] }))]);
@@ -267,8 +349,11 @@ export function createAttachPanel(o) {
         if (sel.value !== (ATTACH_ROLES.includes(e.role) ? e.role : '') || t !== (typeof e.title === 'string' ? e.title : '') || d !== (typeof e.description === 'string' ? e.description : '')) setMeta(f.path, sel.value, t, d);
       };
       sel.addEventListener('change', commit); title.addEventListener('change', commit); desc.addEventListener('change', commit);
-      return el('li', { cls: 'attach-row', 'data-attach': f.path }, [
-        el('div', { cls: 'attach-name' }, [el('b', { text: f.path.slice(ATTACH_PREFIX.length) }), el('span', { cls: 'hint', text: ' · ' + MB(f.size) })]),
+      // 授業の部屋の結果：印と要約（質問の数・投票ごとの数）。字は学ぶ人の入力なので textContent だけ
+      const liveBox = f.live ? el('div', { cls: 'attach-live', 'data-attach-live': f.path }, summaryLines(f.live, o.lang).map((t) => el('div', { text: t }))) : null;
+      return el('li', { cls: 'attach-row' + (f.live ? ' attach-learners' : ''), 'data-attach': f.path }, [
+        el('div', { cls: 'attach-name' }, [el('b', { text: f.path.slice(ATTACH_PREFIX.length) }), el('span', { cls: 'hint', text: ' · ' + MB(f.size) }), f.live ? el('span', { cls: 'attach-badge', text: X.liveMark }) : null]),
+        liveBox,
         el('div', { cls: 'attach-meta' }, [sel, title]),
         el('div', { cls: 'attach-desc' }, [desc]),
         el('div', { cls: 'row' }, [el('button', { type: 'button', 'data-attach-rename': f.path, text: X.rename, onclick: () => rename(f.path) }), el('button', { type: 'button', 'data-attach-remove': f.path, text: X.remove, onclick: () => remove(f.path) })]),
@@ -277,11 +362,11 @@ export function createAttachPanel(o) {
     const probs = st.plan.problems.filter((x) => x.code !== 'attachNoRole');
     o.openPanel(X.title, [el('div', { id: 'attach-panel' }, [
       el('p', { cls: 'hint', text: X.lead }),
-      el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'attach-add', cls: 'pri', text: X.add, onclick: () => fileInput.click() }), el('span', { cls: 'hint', text: X.limits })]),
-      fileInput,
+      el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'attach-add', cls: 'pri', text: X.add, onclick: () => fileInput.click() }), el('button', { type: 'button', id: 'attach-live', text: X.live, onclick: () => liveInput.click() }), el('span', { cls: 'hint', text: X.limits })]),
+      fileInput, liveInput,
       el('ul', { id: 'attach-list', cls: 'attach-list' }, rows),
       probs.length ? el('div', { id: 'attach-problems' }, [el('b', { text: X.problems }), el('ul', {}, probs.map((x) => el('li', { text: message(o.lang === 'en' ? 'en' : 'ja', x.code, x) })))]) : null,
     ])]);
   }
-  return { open: render, refresh: () => (o.isOpen() ? render() : null), isBusy: () => busy, guessRole };
+  return { open: render, refresh: () => (o.isOpen() ? render() : null), isBusy: () => busy, guessRole, importLive };
 }

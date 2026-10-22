@@ -3,6 +3,6 @@
   "path": "protocol/",
   "commit": "a6304780e5dbd8b6086baf16511520dc2214e2f2",
   "license": "MIT (protocol/LICENSE)",
-  "files": 17,
+  "files": 20,
   "note": "Copied from the egatari/live repository: the schema, the close codes and the fixtures the player is tested against. Do not edit; change egatari/live and copy again."
 }
