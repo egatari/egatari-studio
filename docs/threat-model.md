@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=8179b8ea4ba09582 -->
+<!-- i18n: pair=threat-model.ja.md sha256=4ae3dcd8dfd2808b -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)
@@ -33,7 +33,7 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 
 **Threat.** A learner opens a `.ega.html` or play-only copy (`--play-only`) received from someone else, from a `file:` URL.
 
-**What is in place.** A play-only copy has no source, only the slides and audio, and it plays offline. Local assets are embedded as data URIs. Attachments in a single file are never opened or run: the player offers only a download, after checking the index hash, size and SHA-256, as `application/octet-stream`. Packing refuses executables, scripts, HTML, SVG, archives and macro-enabled Office files (`kit/core/attach-content.mjs`).
+**What is in place.** A play-only copy has no source, only the slides and audio, and it plays offline. Local assets are embedded as data URIs. Attachments in a single file are never opened or run: the player offers only a download, after checking the index hash, size and SHA-256, as `application/octet-stream`. Packing refuses executables, scripts, HTML, SVG, archives and macro-enabled Office files (`kit/core/attach-content.mjs`). Links that leave the lesson never navigate the lesson's window: the player shows the destination host and full address and opens it only on **Open**, in a new tab with `noopener,noreferrer`; it asks every time when the link text names another host, the address is not `https:`, or the link downloads a file, and refuses `javascript:`, `data:`, `file:` and other schemes (`kit/core/link-policy.mjs`, contract §9; spec §11). A page that plays lessons in a frame applies the same rule to the lesson's `openLink` requests (spec §9.4) in its own interface.
 
 **Not covered.** A play-only file is still a page whose scripts run in your browser when you open it, and nothing in the copy shows whether its author is who you think. Open files only from people you trust, or inside a sandboxed frame. `http(s)` references that an author left in the deck are not removed; the build warns that the deck is then not fully offline. What an attachment does after you save and open it is outside Egatari.
 
