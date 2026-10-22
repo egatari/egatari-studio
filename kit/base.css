@@ -70,6 +70,8 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 @media print{
   @page{size:1280px 720px;margin:0}
   html,body{background:#fff;overflow:visible;height:auto}
+  /* 印刷では背景が落ちるのが既定（章の扉の白抜きの字が白地に消える）。スライドと扉は画面と同じ色で刷る。紙面（html・body）は白のまま */
+  .slide,.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #stage{position:static;transform:none!important;width:auto;height:auto}
   .slide{position:relative!important;visibility:visible!important;opacity:1!important;page-break-after:always;break-after:page}
   [data-step]{opacity:1!important;transform:none!important}

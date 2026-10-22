@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=f231408a69bb7cd7 -->
+<!-- i18n: pair=editor.ja.md sha256=0620d80452856ea6 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -54,7 +54,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Export ▾ → Export Egatari file (editable, .ega.html) to hand out** (working folder): writes the deck with its source and audio as one file to give to others; the working folder stays as it is.
    - **Export ▾ → Export Egatari file (play only, .play.ega.html) for participants:** a single file without the source (format §3.7, the same as `--play-only`): it plays in any browser and cannot be edited. For a single file it is made from the saved file (Save first if there are unsaved changes); for a working folder from the folder.
    - **Export ▾ → Distribute with Live (questions and polls)…:** the Egatari file (play only) with Live (questions and polls in class, format extension `live`, draft): paste the settings copied on the host page (Live ID, join code, live time), choose whether participants can send questions and add polls per step (each shown by a label such as “Slide 4 'XML の壁', step 1”, with the step key in the tooltip), copy the poll settings (with the labels) for the host page, and export. **To fix before exporting** lists what is missing in the editor's language. The editor itself connects nowhere; the lesson keeps the settings without the join code. See [Live](distributing.md#live-questions-and-polls-in-class-draft).
-   - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF” and turn on “Background graphics”).
+   - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF”; slide backgrounds, including the section dividers, print in their screen colors even with “Background graphics” off).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window, which also plays the audio: autoplay started in the presenter view (<kbd>a</kbd> or its button) plays the narration once, in the editor window.
    - **Fullscreen:** the preview fills the screen (for the projector).
 
