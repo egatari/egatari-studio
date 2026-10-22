@@ -247,7 +247,7 @@ console.log('no network');
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'framed (LMS): no Join button in the frame');
   await fr.click('#live-mark');
   quiet(o.net, 'framed (LMS) before the link is clicked (marker opened)');
-  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);
+  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link').then(() => fr.click('#deck-extlink button.go'))]);   // 授業の外へ出るリンクなので、確認の箱（format spec §11）で「開く」を押す
   await until(() => o.net.req.length > 0, 3000);
   ok(tab && o.net.req.length === 1 && o.net.req[0] === want.split('#')[0] && !o.net.req[0].includes('Q2xhc3Nyb29tS2V5MDAwMD'),
     `click: a new tab loads the join page; the key stays in the fragment and is not sent (${o.net.req.join(', ')})`);

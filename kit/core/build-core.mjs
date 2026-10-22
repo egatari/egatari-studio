@@ -568,7 +568,7 @@ const TRUSTED = new Set(['\\htmlClass', '\\htmlId', '\\htmlData']);
 // 実行系の <script> に入れる kit/core の ES モジュール（依存なし・export function 1 つ。いまは position.mjs の PositionStore）を、
 // 即時関数の中で読み、その関数を DECK.<name> に入れる形にする（窓のグローバルを増やさない）。形が違えば組み立てを止める
 // 実行系に入れる kit/core の ES モジュール（kit/ から見た場所 → DECK の名前）。編集アプリ（tools/build-app.mjs）はこれを字として同梱する
-export const RUNTIME_MODULES = Object.freeze({ 'core/position.mjs': 'PositionStore' });
+export const RUNTIME_MODULES = Object.freeze({ 'core/position.mjs': 'PositionStore', 'core/link-policy.mjs': 'LinkPolicy' });
 export function classicModule(src, name) {
   const s = String(src);
   const ex = s.match(/^export\s+function\s+([A-Za-z_$][\w$]*)\s*\(/gm) || [];

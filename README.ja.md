@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=9ab83d7d70609e9e -->
+<!-- i18n: pair=README.md sha256=caa8d5e49457f338 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -59,7 +59,7 @@
 
 **段階 1（スライド）**
 
-- [Node.js](https://nodejs.org/) 22 以上
+- [Node.js](https://nodejs.org/) 22 以上で、最新のセキュリティ修正を含む版（[SECURITY.md](SECURITY.md) 参照）
 - Google Chrome か Microsoft Edge：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` で Chrome、なければ Edge を探す）。組むことと発表には、ファイルを開くブラウザがあればよい。どちらもなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
 - あると良い：[uv](https://docs.astral.sh/uv/)。`node tools/get-fonts.mjs` で BIZ UDPゴシック（と BIZ UDP明朝）の TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
 

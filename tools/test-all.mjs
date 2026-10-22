@@ -55,6 +55,8 @@ const steps = [
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
   // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・品質チェック
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
+  // 授業の外へ出るリンク（format spec §11）：決まり（kit/core/link-policy.mjs）の単体と、確認の箱・開かない scheme・動画・sandbox の枠
+  ['test-extlinks', ['tools/test-extlinks.mjs', path.join(tmp, 'extlinks')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
   ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
   ['test-sheet', ['tools/test-sheet.mjs', path.join(tmp, 'sheet')]],
