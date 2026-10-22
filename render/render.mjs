@@ -230,6 +230,9 @@ async function main() {
       const finalBuf = await shot(s.i, s.k, Infinity, final);
       let midBuf = Buffer.alloc(0);
       if (nA > 0) midBuf = await shot(s.i, s.k, Math.floor(nA / 2) / o.fps, path.join(tmp, 'mid.png'));
+      // 注意（--only とキャッシュ）：下の画素のハッシュは、撮る順番で SVG のアンチエイリアスが数画素変わることがある（Chrome のラスタの履歴）。
+      // そのため --only で一部だけ撮ると、変わっていないクリップも作り直しになることがある。作り直しは害がない。
+      // タイムラインの順に全部書き出せば、まったく同じ絵になる（再現する）
       // 画素も念のため入れる（入力のハッシュに入らないもの、たとえばフォントの違いを拾う）
       const hash = sha(input, finalBuf, midBuf);
       const mp4 = path.join(outDir, `${clip}.mp4`), png = path.join(outDir, `${clip}.png`);

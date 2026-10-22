@@ -12,13 +12,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, resolveDeckArg } from '../kit/build.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 
 export const SLIDE_W = 1280, SLIDE_H = 720;
 export const PAD = 16, GAP = 12;
 // 番号の札はスライドの上の帯（スライドに重ねない）。高さは幅から決める
 export const labelH = (width) => Math.round(Math.max(12, Math.round(width / 32)) * 1.9);
-const HIDE = '#dt-cb,#deck-toast,.deck-tools{display:none!important}';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // 格子の大きさ：n 枚を cols 列に（枚数が列より少なければ列を詰める）
@@ -53,7 +52,6 @@ export async function sheet(arg, o = {}) {
     await p.goto(fileUrl(target) + '?mode=' + mode);
     await p.waitForFunction(() => window.DECK && DECK.ready);
     await p.evaluate(() => document.fonts.ready);
-    await p.addStyleTag({ content: HIDE });
     const meta = await p.evaluate(() => DECK.slides.map((s) => {
       const h = s.querySelector('h1') || s.querySelector('h2');
       const t = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
@@ -63,8 +61,7 @@ export async function sheet(arg, o = {}) {
     const shots = [];
     for (let i = 0; i < meta.length; i++) {
       await p.evaluate(([i, k]) => DECK.seek(i, k, Infinity), [i, meta[i].max]);
-      await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      shots.push(await p.screenshot());
+      shots.push(await stableCapture(p));
     }
     const g = gridSize(meta.length, cols, tileW);
     const tilesDir = o.tiles ? out.replace(/\.png$/i, '') + '-tiles' : null;
