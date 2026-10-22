@@ -7,8 +7,9 @@
 //   computeLayout({w, h, headerH, live, polls, variant}) → {mode, header, frame: {x, y, w, h}, live: {x, y, w, h} | null, stage: {w, h}}
 //     w, h      the viewport; headerH the page's bar when shown
 //     live      the lesson has a valid Live room; polls: it has a poll activity on any step
-//     variant   for a phone in landscape with no side slack (16:9 screens): 'strip' (the stage shrinks by STRIP_H and the indicator
-//               gets its own strip; the poll replaces the strip) or 'overlay' (the indicator and the poll sheet lie over the frame)
+//     variant   for a phone in landscape with no side slack (16:9 screens): 'overlay' (the default: the indicator, always shown, and the
+//               poll sheet lie over the frame) or 'strip' (the stage shrinks by STRIP_H and the indicator gets its own strip; the poll
+//               replaces the strip)
 //   modes: 'none' (no Live: the frame fills the player), 'side' (pane beside, wide screens with polls), 'bottom' (pane below the
 //   16:9 stage, portrait with polls), 'bar' (a slim bar below, Live without polls), 'slack' (phone landscape: the stage fills the
 //   height and the controls use the side slack), 'strip' / 'overlay' (phone landscape without slack)
@@ -18,7 +19,7 @@ const stageIn = (w, h) => (w / h > 16 / 9 ? { w: Math.round(h * 16 / 9), h: Math
 
 export function isPhoneLandscape(w, h) { return w > h && h <= 500; }
 
-export function computeLayout({ w, h, headerH, live, polls, variant = 'strip' }) {
+export function computeLayout({ w, h, headerH, live, polls, variant = 'overlay' }) {
   if (!live) { const ph = h - headerH; return { mode: 'none', header: true, frame: r(0, 0, w, ph), live: null, stage: stageIn(w, ph) }; }
   if (isPhoneLandscape(w, h)) {
     const sw = Math.round(h * 16 / 9), slack = w - sw;

@@ -46,7 +46,7 @@ async function session(c) {
   const [w, h] = SIZE[c];
   const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: w, height: h } });
   const p = await ctx.newPage();
-  await p.goto(URL0 + (c === 'poll-overlay' ? '?noslack=overlay' : '')); await p.waitForSelector('html[data-ready]');
+  await p.goto(URL0 + (c === 'poll-strip' ? '?noslack=strip' : ''));   // the overlay is the default (play/main.js NO_SLACK_VARIANT) await p.waitForSelector('html[data-ready]');
   await p.evaluate(() => { window.__clicks = []; document.addEventListener('click', (e) => window.__clicks.push(e.target.closest('[id]') ? e.target.closest('[id]').id : e.target.tagName), true); });
   await p.setInputFiles('#file', FIX);
   return { ctx, p };
@@ -94,7 +94,9 @@ for (const c of CASES) {
     if (c !== 'poll-portrait' && c !== 'poll-wide') { await p.waitForSelector('#b-poll', { state: 'visible' }); count('poll button (indicator)', await tap(p, f, '#b-poll', 'b-poll')); }
     await p.waitForSelector('#live fieldset[data-poll="p1"] input[value="1"]', { state: 'visible' });
     if (SHOTS && i === 0) await p.screenshot({ path: path.join(SHOTS, `poll-${c}.png`) });
-    count('poll choice', await tap(p, f, '#live fieldset[data-poll="p1"] input[value="1"]', 'live-polls'));
+    // the choice's whole row (its label) is the target: tap the row, away from the radio itself
+    count('poll choice', await tap(p, f, '#live fieldset[data-poll="p1"] label:has(input[value="1"]) span', 'live-polls'));
+    if (!(await p.isChecked('#live fieldset[data-poll="p1"] input[value="1"]'))) R.notChecked = (R.notChecked || 0) + 1;
     count('poll vote', await tap(p, f, '#live fieldset[data-poll="p1"] button.vote', 'live-polls'));
     if (c === 'poll-strip' || c === 'poll-overlay') { count('back', await tap(p, f, '#b-poll-back', 'b-poll-back')); count('leave', await tap(p, f, '#b-leave', 'b-leave')); }
     await ctx.close();

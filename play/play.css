@@ -112,7 +112,7 @@ body.headless #bar { display: none; }
 /* the 28 px strip above the frame (16:9 phones in landscape) and the overlay variant over the frame's top edge */
 #live[data-mode=strip], #live[data-mode=overlay] { font-size: 0.8125rem; }
 #live[data-mode=strip] .live-head, #live[data-mode=overlay] .live-head { height: 100%; min-height: 0; padding: 0 6px; gap: 6px; border: 0; position: static; }
-#live[data-mode=strip] button, #live[data-mode=overlay] button { min-height: 0; height: 24px; padding: 0 10px; font-size: 0.8125rem; }
+#live[data-mode=strip] button, #live[data-mode=overlay]:not(.poll-open) button { min-height: 24px; height: 24px; padding: 0 10px; font-size: 0.8125rem; }
 #live[data-mode=overlay] { background: rgba(28, 29, 35, 0.85); color: #fff; width: auto !important; right: auto; border-radius: 0 0 10px 0; }
 #live[data-mode=overlay] .state { color: #ddd; }
 /* the poll in the strip: one row of choices (the strip keeps its height) */
@@ -164,3 +164,11 @@ body.headless #bar { display: none; }
 #live[data-mode=side] #live-poll-view, #live[data-mode=bottom] #live-poll-view { order: 1; flex: none; }
 #live[data-mode=side] .live-body, #live[data-mode=bottom] .live-body { order: 2; }
 #live-polls:empty { display: none; }
+/* touch targets: each poll choice's whole row is the target. 44 px tall where it fits (panes, the slack column, the overlay's
+   sheet), 24 × 24 px at least in the 28 px strip (WCAG 2.2 target size); the same for 戻る, 投票する, 抜ける, 投票 and × */
+#live fieldset label { min-height: 44px; padding: 4px 8px; margin: 2px 0; border-radius: 8px; cursor: pointer; align-items: center; }
+#live fieldset label:hover { background: rgba(127, 127, 127, 0.12); }
+#live button { min-height: 44px; min-width: 44px; }
+#live[data-mode=strip] button, #live[data-mode=overlay]:not(.poll-open) button { min-height: 24px; height: 24px; min-width: 24px; }
+#live[data-mode=strip] fieldset label { min-height: 24px; height: 24px; padding: 0 8px; margin: 0; background: rgba(127, 127, 127, 0.14); }
+#live[data-mode=strip] fieldset .row { gap: 6px; }

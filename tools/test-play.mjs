@@ -59,10 +59,10 @@ const live = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true,
 const early = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now + 3600e3, now + 7200e3) })).html;
 // an endpoint this page does not allow (another loopback port): the join link only
 const other = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 3600e3, 'http://localhost:9') })).html;
-const editableLive = (await buildPortable(deck, {})).html;
+const editableLive = (await buildPortable(deck, {})).html;   // the teacher's own file: extensions.live without a key
 // Live with questions only (no poll on any step)
 fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: { '*': [{ id: 'qa', kind: 'qa' }] } } } }, null, 2) + '\n');
-const qaOnly = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) })).html;   // the teacher's own file: extensions.live without a key
+const qaOnly = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) })).html;
 fs.writeFileSync(cfgPath, JSON.stringify(cfg0, null, 2) + '\n');
 const FIX = {};
 const put = (name, html) => { FIX[name] = path.join(work, name); fs.writeFileSync(FIX[name], html); };
@@ -543,39 +543,65 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
 
 // ---------------------------------------------------------------- 10b. the layout, chosen once from the activities and the screen
 // the frame's geometry never changes while the lesson plays (only on rotation), and the controls never lie over it
-// (except the measured overlay variant, ?noslack=overlay)
+// (except the overlay for 16:9 phones in landscape, the default there: its indicator is always shown over the top edge)
 console.log('layout');
 const geo = (p) => p.evaluate(() => { const g = (id) => { const e = document.getElementById(id); if (!e || e.closest('[hidden]')) return null; const r = e.getBoundingClientRect(); if (!r.width || !r.height) return null; return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }; return { frame: g('lesson'), live: g('live'), bar: g('bar'), mode: window.__play.state().layout && window.__play.state().layout.mode }; });
 const overlap = (a, b) => !!(a && b) && !(b.x >= a.x + a.w || b.y >= a.y + a.h || b.x + b.w <= a.x || b.y + b.h <= a.y);
 const SIZES = [[375, 667], [667, 375], [844, 390], [1280, 800]];
-const WANT = { polls: { '375x667': 'bottom', '667x375': 'strip', '844x390': 'slack', '1280x800': 'side' }, nopolls: { '375x667': 'bar', '667x375': 'strip', '844x390': 'slack', '1280x800': 'bar' } };
+const WANT = { polls: { '375x667': 'bottom', '667x375': 'overlay', '844x390': 'slack', '1280x800': 'side' }, nopolls: { '375x667': 'bar', '667x375': 'overlay', '844x390': 'slack', '1280x800': 'bar' } };
 for (const [kind, fix] of [['polls', 'live.play.ega.html'], ['nopolls', 'qa.play.ega.html'], ['none', 'lesson.play.ega.html']]) {
   for (const [w, h] of SIZES) {
     const o = await page(site.url, { viewport: { width: w, height: h } });
     await openFixture(o.p, fix);
-    if (kind !== 'none') { await o.p.waitForSelector('#live-start', { state: 'visible' }); await o.p.click('#b-watch'); }
+    if (kind !== 'none') { await o.p.waitForSelector('#live-start', { state: 'visible' }); await o.p.click(kind === 'polls' ? '#b-start-join' : '#b-watch'); }
     const f = await lessonFrame(o.p);
+    if (kind === 'polls') await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
     const g0 = await geo(o.p);
     const tag = `${kind} ${w}x${h}`;
     if (kind === 'none') { ok(g0.mode === 'none' && !g0.live && g0.frame.w === w, `${tag}: no Live, the frame fills the width (${JSON.stringify(g0.frame)})`); await o.close(); continue; }
     ok(g0.mode === WANT[kind][`${w}x${h}`], `${tag}: the layout is ${WANT[kind][`${w}x${h}`]} (${g0.mode})`);
-    ok(!overlap(g0.frame, g0.live), `${tag}: the Live controls do not lie over the frame (frame ${JSON.stringify(g0.frame)}, live ${JSON.stringify(g0.live)})`);
+    if (g0.mode === 'overlay') ok(g0.frame.w === w && g0.frame.h === h && g0.live.h === 28 && g0.live.y === 0, `${tag}: overlay: the frame keeps the full screen; the indicator (28 px) lies over its top edge from the start`);
+    else ok(!overlap(g0.frame, g0.live), `${tag}: the Live controls do not lie over the frame (frame ${JSON.stringify(g0.frame)}, live ${JSON.stringify(g0.live)})`);
     if (w > h && h <= 500) ok(!g0.bar && (g0.mode !== 'slack' || g0.frame.h === h), `${tag}: phone landscape: no page bar; with slack the stage fills the height`);
     await f.evaluate(() => DECK.go(1, 0)); await sleep(300);
     if (await o.p.isVisible('#b-poll')) await o.p.click('#b-poll');
     await sleep(200);
     const g1 = await geo(o.p);
-    ok(JSON.stringify(g1.frame) === JSON.stringify(g0.frame) && !overlap(g1.frame, g1.live), `${tag}: a poll step (and opening the poll) leaves the frame as it is and uncovered`);
+    ok(JSON.stringify(g1.frame) === JSON.stringify(g0.frame) && (g0.mode === 'overlay' || !overlap(g1.frame, g1.live)), `${tag}: a poll step (and opening the poll) leaves the frame as it is${g0.mode === 'overlay' ? '' : ' and uncovered'}`);
     ok(await o.p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: no horizontal scroll`);
+    if (kind === 'polls') {
+      // touch targets: each choice's whole row, and every visible control in the Live area: 44 px tall where it fits, 24 x 24 in the 28 px strip
+      const t = await o.p.evaluate(() => [...document.querySelectorAll('#live fieldset label, #live button')].filter((e) => e.offsetParent !== null && !e.closest('[hidden]'))
+        .map((e) => { const r = e.getBoundingClientRect(); return { n: (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 10), w: Math.round(r.width), h: Math.round(r.height) }; }));
+      const minH = g0.mode === 'strip' ? 24 : 44;
+      const small = t.filter((x) => x.h < minH || x.w < 24);
+      ok(t.some((x) => /収束/.test(x.n)) && small.length === 0, `${tag}: touch targets (poll rows and controls) at least ${minH} px tall and 24 px wide (${small.map((x) => `${x.n} ${x.w}x${x.h}`).join(', ') || t.length + ' checked'})`);
+    }
     if (kind === 'polls') await o.p.screenshot({ path: path.join(work, `layout-${w}x${h}.png`) });
     await o.close();
   }
 }
-// the overlay variant for 16:9 phones in landscape (measured against the strip): the indicator and the poll sheet lie over the frame
-{ const o = await page(site.url + '?noslack=overlay', { viewport: { width: 667, height: 375 } });
-  await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-watch'); await lessonFrame(o.p);
+// the strip, the alternative for 16:9 phones in landscape (NO_SLACK_VARIANT; ?noslack=strip): the stage shrinks by 28 px and nothing lies over the frame
+{ const o = await page(site.url + '?noslack=strip', { viewport: { width: 667, height: 375 } });
+  await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-start-join'); const f = await lessonFrame(o.p);
+  await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
   const g = await geo(o.p);
-  ok(g.mode === 'overlay' && g.frame.w === 667 && g.frame.h === 375 && overlap(g.frame, g.live), `overlay variant 667x375: the frame keeps the full screen and the indicator lies over its top edge (${JSON.stringify(g)})`);
+  ok(g.mode === 'strip' && g.frame.y === 28 && g.frame.h === 347 && g.live.h === 28 && !overlap(g.frame, g.live), `strip variant 667x375: a 28 px strip above the frame, nothing over it (${JSON.stringify(g)})`);
+  await f.evaluate(() => DECK.go(1, 0)); await o.p.click('#b-poll');
+  await o.p.waitForSelector('#live fieldset[data-poll="p1"]', { state: 'visible' });
+  const t = await o.p.evaluate(() => [...document.querySelectorAll('#live fieldset label, #live button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  const g2 = await geo(o.p);
+  ok(JSON.stringify(g2.frame) === JSON.stringify(g.frame) && !overlap(g2.frame, g2.live) && t.length >= 4 && t.every(([w, h]) => w >= 24 && h >= 24), `strip variant: the poll replaces the strip (frame unchanged, uncovered), rows and buttons at least 24 x 24 (${t.map((x) => x.join('x')).join(', ')})`);
+  await o.close(); }
+// the overlay (the default for 16:9 phones in landscape): indicator controls and the poll sheet's targets
+{ const o = await page(site.url, { viewport: { width: 667, height: 375 } });
+  await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-start-join'); const f = await lessonFrame(o.p);
+  await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
+  const ind = await o.p.evaluate(() => [...document.querySelectorAll('#live button')].filter((e) => e.offsetParent !== null).map((e) => Math.round(e.getBoundingClientRect().height)));
+  await f.evaluate(() => DECK.go(1, 0)); await o.p.click('#b-poll');
+  await o.p.waitForSelector('#live fieldset[data-poll="p1"]', { state: 'visible' });
+  const t = await o.p.evaluate(() => [...document.querySelectorAll('#live fieldset label, #live button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  ok(ind.every((h) => h >= 24) && t.length >= 4 && t.every(([w, h]) => w >= 24 && h >= 44), `overlay (default): indicator controls at least 24 px (${ind.join(',')}), the poll sheet's rows and buttons at least 44 px tall (${t.map((x) => x.join('x')).join(', ')})`);
   await o.close(); }
 // rotation: laid out once more, and the controls follow; focus order in the pane
 { const o = await page(site.url, { viewport: { width: 375, height: 667 } });

@@ -121,10 +121,14 @@ function startFrame() {
   $('stage-wrap').appendChild(S.frame);
   try { S.frame.focus(); } catch { /* not focusable yet */ }
 }
-// the no-slack variant for phones in landscape on 16:9 screens (play/layout.mjs). 'strip' unless the owner chooses otherwise;
-// ?noslack=overlay switches it for measuring (docs/play.md)
-const NO_SLACK_VARIANT = 'strip';
-const variant = () => (new URLSearchParams(location.search).get('noslack') === 'overlay' ? 'overlay' : NO_SLACK_VARIANT);
+// the no-slack variant for phones in landscape on 16:9 screens (play/layout.mjs). The owner chose 'overlay' (the full screen for the
+// slide); 'strip' is the alternative. ?noslack=strip or ?noslack=overlay switches it for measuring (docs/play.md).
+// The overlay is safe only because its indicator is always shown over the frame's top edge from the moment the frame is placed,
+// and is never toggled (hidden, then shown) over the frame: taps were lost exactly when page chrome switched from hidden to shown
+// over the out-of-process frame. Any change to that (hiding the indicator, a sheet that appears where nothing was) must be
+// measured again with tools/play-tap-measure.mjs
+const NO_SLACK_VARIANT = 'overlay';
+const variant = () => { const q = new URLSearchParams(location.search).get('noslack'); return q === 'overlay' || q === 'strip' ? q : NO_SLACK_VARIANT; };
 function applyLayout() {
   const live = !!(S.playing && S.playing.live);
   const vw = window.innerWidth, vh = window.innerHeight;
