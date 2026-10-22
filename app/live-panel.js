@@ -31,7 +31,9 @@ const STR = {
     noIds: 'まだライブ ID と参加コードがありません。下のボタンで作ってください。',
     s2: '② ライブの時間と、質問・投票', s3: '③ ホストのページに 1 回だけ貼る文字列', s4: '④ 書き出す',
     setupHelp: '下の文字列をコピーし、ホストのページを開いて 1 回だけ貼り、確認を済ませて「このライブを作る」を押してください。ライブ ID・参加コード・ライブの時間・質問・投票の設定がすべて入っているので、ホストのページでほかに入れるものはなく、ここに何かを貼り戻す必要もありません。',
-    setupWarn: 'この文字列には参加コードと、ライブを作るための秘密の値が入っています。参加者には渡さないでください（参加者に配るのは、書き出すファイルです）。',
+    setupWarn: 'この文字列でライブが作られます。ホスト用リンクと同じように大事に扱い、参加者には決して渡さないでください。',
+    setupLost: 'ホストのページに貼る前にこの画面（編集アプリ）を閉じると、同じ文字列はもう出せません。そのとき配ったファイルは、誰も作れないライブを指したままになります（ファイルの参加コードからはライブを作れません）。貼り終えるまでは「設定の文字列を保存する」で残しておいてください。',
+    saveSetup: '設定の文字列を保存する', savedSetup: (n) => `設定の文字列を ${n} として保存しました。ホスト用リンクと同じように扱ってください`,
     setupAfter: 'ライブを作ったあとでライブの時間を変えるときは、ライブ ID と参加コードを作り直して、もう一度貼ってください。投票だけを変えたときは、下の「前からの方法」の「投票の設定をコピー」で、ホストのページの「投票の設定」に貼り直せます。',
     setupWait: '「書き出す前に直すこと」がなくなると、ここに文字列が出ます。', setupNone: '文字列は、① でライブ ID と参加コードをこの画面で作ると出ます。',
     copySetup: '文字列をコピー', copiedSetup: '文字列をコピーしました。ホストのページに 1 回だけ貼ってください', hostLink: 'ホストのページを開く',
@@ -58,7 +60,9 @@ const STR = {
     noIds: 'No Live ID and join code yet. Make them with the button below.',
     s2: '② Live time, questions and polls', s3: '③ The string to paste once on the host page', s4: '④ Export',
     setupHelp: 'Copy the string below, open the host page, paste it once, pass the check and press Create this Live. It holds the Live ID, the join code, the live time and the questions and polls, so there is nothing else to fill in on the host page and nothing to paste back here.',
-    setupWarn: 'This string holds the join code and the secret that creates the Live. Do not give it to participants (participants get the exported file).',
+    setupWarn: 'This string creates the Live. Keep it like the host link and never give it to participants.',
+    setupLost: 'If you close this screen (the editor) before pasting the string on the host page, the same string cannot be shown again, and files already handed out point at a Live nobody can create (the join code in the file cannot create it). Until you have pasted it, keep it with Save the setup string.',
+    saveSetup: 'Save the setup string', savedSetup: (n) => `Saved the setup string as ${n}. Keep it like the host link`,
     setupAfter: 'To change the live time after the Live was created, make a new Live ID and join code and paste again. If only the polls changed, use Copy poll settings under “The earlier way” below and paste them into Poll settings on the host page.',
     setupWait: 'The string appears here once nothing is left under “To fix before exporting”.', setupNone: 'The string appears when you make the Live ID and join code here in ①.',
     copySetup: 'Copy the string', copiedSetup: 'Copied the string. Paste it once on the host page', hostLink: 'Open the host page',
@@ -175,7 +179,7 @@ export function createLivePanel(o) {
       const t = setupText();
       setupBox.value = t;
       setupBox.hidden = !t;
-      const c = document.getElementById('live-setup-copy'); if (c) c.disabled = !t;
+      for (const id of ['live-setup-copy', 'live-setup-save']) { const c = document.getElementById(id); if (c) c.disabled = !t; }
       if (setupNote) setupNote.textContent = t ? '' : M.setup ? X.setupWait : X.setupNone;
     }
     const b = document.getElementById('live-export'); if (b) b.disabled = e.length > 0;
@@ -279,9 +283,11 @@ export function createLivePanel(o) {
           setupNote, setupBox,
           el('div', { cls: 'row' }, [
             el('button', { type: 'button', id: 'live-setup-copy', cls: 'pri', text: X.copySetup, onclick: copySetup }),
+            el('button', { type: 'button', id: 'live-setup-save', text: X.saveSetup, onclick: saveSetupFile }),
             el('a', { id: 'live-host-link', href: hostPage(), target: '_blank', rel: 'noopener noreferrer', text: LANG === 'ja' ? `${X.hostLink}（${hostPage().replace(/\/$/, '')}）` : `${X.hostLink} (${hostPage().replace(/\/$/, '')})` }),
           ]),
-          el('p', { cls: 'note live-warn', text: X.setupWarn }),
+          el('p', { cls: 'note live-warn', id: 'live-setup-warn', text: X.setupWarn }),
+          el('p', { cls: 'note', id: 'live-setup-lost', text: X.setupLost }),
           el('p', { cls: 'note', text: X.setupAfter }),
         ]),
         el('h3', { text: X.s4 }),
@@ -297,6 +303,17 @@ export function createLivePanel(o) {
     ];
     o.openPanel(X.title, body);
     refreshProblems();
+  }
+  // 設定の文字列を小さな .txt としてダウンロードする（blob: の URL。どこにも要求を出さない）。作業フォルダにも教材にも書かない
+  const setupFileName = () => `${FORMAT.NAME}-live-setup-${M.room}.txt`;
+  function saveSetupFile() {
+    const t = setupText();
+    if (!t) return;
+    const url = URL.createObjectURL(new Blob([t + '\n'], { type: 'text/plain;charset=utf-8' }));
+    const a = el('a', { href: url, download: setupFileName(), hidden: 'hidden' });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    o.toast(X.savedSetup(setupFileName()));
   }
   async function copySetup() {
     const t = setupText();

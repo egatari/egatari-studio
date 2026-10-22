@@ -10,7 +10,9 @@
 // 0. 一方向の設定（PROTOCOL.md §2.1）：「この画面で作る」でライブ ID と参加コードができ（setup から導いたもの）、窓を決めると 1 本の文字列が出る。
 //    文字列は写しの Schema の setupPayload に合い、コピーでそのまま渡り、ホストのページへのリンクがある。教材の設定にも書き出すファイルにも setup は入らない。
 //    作ってからコピーするまで、要求は 1 つも出ない（同じ origin へも。ページの fetch・XMLHttpRequest・WebSocket・sendBeacon・EventSource も呼ばれない）。
-//    前からの方法はたたんだ「前からの方法」の中にある
+//    前からの方法はたたんだ「前からの方法」の中にある。「設定の文字列を保存する」は文字列だけの .txt（egatari-live-setup-<room>.txt）をダウンロードし、
+//    近くに「ホスト用リンクのように扱い、参加者に渡さない」の一行と、貼る前に閉じると配ったファイルのライブを誰も作れなくなる、の説明がある。
+//    文字列（setup）は OPFS のどこにも（教材・egatari.json・控え）、localStorage・sessionStorage・IndexedDB にも、書き出したファイルにも残らない
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,7 +80,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       ok(pl.room === room && pl.key === key && pl.endpoint === FORMAT.LIVE_ENDPOINT && Date.parse(pl.window.from) === Math.floor(f1.getTime() / 60e3) * 60e3 && JSON.stringify(Object.keys(pl.activities)) === '["*"]', 'one-way: the string carries the room, key, endpoint, live time and activities shown in the panel');
       const ids = await liveSetupIds(pl.setup);
       ok(ids.room === room && ids.key === key, 'one-way: room and key are the ones derived from the setup secret (the service checks the same)');
-      ok(/1 回だけ貼り/.test(await page.textContent('#live-oneway')) && /参加者には渡さないでください/.test(await page.textContent('#live-oneway')), 'one-way: the panel explains the single paste and warns not to hand the string out');
+      ok(/1 回だけ貼り/.test(await page.textContent('#live-oneway')) && /参加者には決して渡さないでください/.test(await page.textContent('#live-oneway')), 'one-way: the panel explains the single paste and warns not to hand the string out');
       ok(await page.getAttribute('#live-host-link', 'href') === FORMAT.LIVE_ENDPOINT + '/' && await page.getAttribute('#live-host-link', 'target') === '_blank', `one-way: a link to the host page (${FORMAT.LIVE_ENDPOINT}/)`);
       // 窓を変えると文字列も変わる（鍵はそのまま）
       await setWindow(f1, new Date(t1.getTime() + 30 * 60e3));
@@ -87,6 +89,14 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       await page.click('#live-setup-copy');
       await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 }).catch(() => {});
       ok(await page.evaluate(() => window.__copied) === str2 && /文字列をコピーしました/.test(await page.textContent('#toast')), 'one-way: Copy puts exactly the string on the clipboard');
+      // 設定の文字列を保存する：小さな .txt のダウンロード（中身は文字列だけ）
+      ok(/この文字列でライブが作られます。ホスト用リンクと同じように大事に扱い、参加者には決して渡さないでください/.test(await page.textContent('#live-setup-warn')), 'one-way: a one-line warning next to the string (keep it like the host link, never give it to participants)');
+      ok(/貼る前に.*閉じると.*誰も作れないライブを指したままになります/.test(await page.textContent('#live-setup-lost')), 'one-way: the panel says that closing before pasting leaves handed-out files pointing at a Live nobody can create, unless the string was saved');
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), page.click('#live-setup-save')]);
+      const dlPath = await dl.path();
+      const dlText = dlPath ? fs.readFileSync(dlPath, 'utf8') : '';
+      ok(dl.suggestedFilename() === `${FORMAT.NAME}-live-setup-${room}.txt` && dlText === str2 + '\n', `one-way: Save the setup string downloads ${dl.suggestedFilename()} holding exactly the string`);
+      ok(/設定の文字列を .* として保存しました/.test(await page.textContent('#toast')), 'one-way: saving says where it went');
       await page.$eval('#live-oneway', (e) => e.scrollIntoView({ block: 'start' })); await shot(page, 'live-oneway.png');
       // 作り直す（確かめてから）：別の id
       page.once('dialog', (d) => d.accept());
@@ -112,6 +122,29 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       const d1 = m1 ? JSON.parse(m1[1]).live : null;
       ok(d1 && d1.room === room2 && d1.key === key2 && !h1.includes(setup2), 'one-way export: the file carries the derived room and key, never the setup secret');
       ok(/ホストのページにまだ文字列を貼っていなければ/.test(await page.textContent('#toast')), 'one-way export: the toast reminds the host to paste the string once');
+      // ほかの書き出し（1 ファイル・再生専用）にも、ブラウザの保存場所のどこにも、setup がない
+      await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('oneway-plain.play.ega.html', { create: true }); });
+      await menuClick('#b-export-play');
+      let h2 = '';
+      for (let i = 0; i < 300 && h2.length < 1000; i++) { await page.waitForTimeout(100); h2 = (await opfs.read('oneway-plain.play.ega.html')) || ''; }
+      await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+      ok(h2.length > 1000 && !h2.includes(setup2), 'one-way: the plain play-only export carries no setup secret');
+      const stores = await page.evaluate(async (secret) => {
+        const hits = [], files = [];
+        const walk = async (d, pre) => { for await (const [n, h] of d.entries()) { if (h.kind === 'directory') await walk(h, pre + n + '/'); else { files.push(pre + n); const t = await (await h.getFile()).text(); if (t.includes(secret)) hits.push('opfs:' + pre + n); } } };
+        await walk(await navigator.storage.getDirectory(), '');
+        for (const [nm, st] of [['localStorage', localStorage], ['sessionStorage', sessionStorage]]) for (let i = 0; i < st.length; i++) { const k = st.key(i); if ((k + st.getItem(k)).includes(secret)) hits.push(nm + ':' + k); }
+        for (const { name } of (await indexedDB.databases())) {
+          const db = await new Promise((res, rej) => { const r = indexedDB.open(name); r.onsuccess = () => res(r.result); r.onerror = rej; });
+          for (const sn of db.objectStoreNames) {
+            const all = await new Promise((res) => { const r = db.transaction(sn).objectStore(sn).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => res([]); });
+            for (const v of all) { let t = ''; try { t = JSON.stringify(v); } catch { t = String(v); } if (t && t.includes(secret)) hits.push('idb:' + name + '/' + sn); }
+          }
+          db.close();
+        }
+        return { hits, files: files.length };
+      }, setup2);
+      ok(stores.files > 3 && stores.hits.length === 0, `one-way: the setup secret is nowhere in the browser's storage (${stores.files} OPFS files incl. ${FORMAT.CONFIG_FILE} and its backups, localStorage, sessionStorage, IndexedDB) ${stores.hits.join(', ')}`);
       const calls2 = await page.evaluate(() => window.__netCalls.filter((c) => !c.includes(location.origin + '/') && !/ (blob|data):/.test(c)));
       ok(calls2.length === 0, `one-way export: no call to another origin from the page (${calls2.slice(0, 3).join(', ')})`);
     }
