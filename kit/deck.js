@@ -1367,12 +1367,98 @@ window.addEventListener("popstate", function(e){
     moveTo(at.i, at.k, "link");
   }
 });
+// ---------------------------------------------------------------- 授業の外へ出るリンク（format spec §11。決まりは kit/core/link-policy.mjs の LinkPolicy）
+// 外へ出るときは、行き先の host と全体を見せて確かめる（https: の普通のリンクは、同じ閲覧のあいだ同じ host に一度同意すれば再び聞かない）。
+// 見える字が別の host を名指す・https: でない・ダウンロード・userinfo・punycode の host は、毎回確かめる。http(s)・mailto・tel 以外は開かない。
+// 開くのは新しい閲覧文脈（noopener・noreferrer）。授業の窓そのものは移らない。動画・発表者ビューの中の画面・編集のプレビューでは開かない
+var EXT = {hosts: new Set(), dlg: null};
+var EXT_LP = DECK.LinkPolicy();
+function extText(a){ return (a.textContent || "") + " " + (a.getAttribute("aria-label") || a.getAttribute("alt") || ""); }
+function extOpen(url){ try { window.open(url, "_blank", EXT_LP.OPEN_FEATURES); } catch (e) {} }
+function extClose(el){
+  var d = EXT.dlg; if (!d) return;
+  EXT.dlg = null;
+  if (d.parentNode) d.parentNode.removeChild(d);
+  var st = document.getElementById("stage"); if (st) st.inert = d._stageWasInert === true;
+  var f = d._from;
+  if (f && f.isConnected && f.focus) try { f.focus({preventScroll: true}); } catch (e) {}
+}
+// 確認の箱。opts = {title, host, url, notes: [文], open: 開く処理 | null（なければ「閉じる」だけ）, from: 戻すフォーカス}
+function extDialog(opts){
+  extClose();
+  var d = document.createElement("div"); d.id = "deck-extlink"; d.setAttribute("role", "alertdialog"); d.setAttribute("aria-modal", "true");
+  var box = document.createElement("div"); box.className = "box"; d.appendChild(box);
+  function add(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; box.appendChild(e); return e; }
+  var h = add("h2", "t", opts.title); h.id = "deck-extlink-t"; d.setAttribute("aria-labelledby", h.id);
+  if (opts.host) add("p", "host", opts.host);
+  if (opts.url) add("p", "url", opts.url);
+  var nid = "deck-extlink-n";
+  if (opts.notes.length){ var ul = document.createElement("ul"); ul.id = nid; opts.notes.forEach(function(n){ var li = document.createElement("li"); li.textContent = n; ul.appendChild(li); }); box.appendChild(ul); d.setAttribute("aria-describedby", nid); }
+  var row = document.createElement("div"); row.className = "row"; box.appendChild(row);
+  function btn(label, cls, fn){ var b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = label; b.addEventListener("click", function(ev){ ev.preventDefault(); fn(); }); row.appendChild(b); return b; }
+  var first = btn(opts.open ? L10N("やめる", "Cancel") : L10N("閉じる", "Close"), "cancel", function(){ extClose(); });
+  if (opts.open) btn(L10N("開く（新しいタブ）", "Open (new tab)"), "go", function(){ var f = opts.open; extClose(); f(); });
+  d._from = opts.from || null;
+  var st = document.getElementById("stage"); d._stageWasInert = !!(st && st.inert); if (st) st.inert = true;
+  // 箱の中のキー・ポインターは授業に届かせない（スライドは進まない）。Tab は箱の中で回し、Esc でやめる
+  d.addEventListener("keydown", function(ev){
+    ev.stopPropagation();
+    if (ev.key === "Escape"){ ev.preventDefault(); extClose(); return; }
+    if (ev.key === "Tab"){
+      var bs = d.querySelectorAll("button"), a0 = bs[0], z = bs[bs.length - 1];
+      if (ev.shiftKey && document.activeElement === a0){ ev.preventDefault(); z.focus(); }
+      else if (!ev.shiftKey && document.activeElement === z){ ev.preventDefault(); a0.focus(); }
+    }
+  });
+  ["keyup", "keypress", "pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "touchstart", "touchend", "wheel", "contextmenu"].forEach(function(n){ d.addEventListener(n, function(ev){ ev.stopPropagation(); }); });
+  d.addEventListener("click", function(ev){ if (ev.target === d) extClose(); });   // 外側を押すと「やめる」（開くことにはならない）
+  document.body.appendChild(d);
+  EXT.dlg = d;
+  first.focus();   // 既定の焦点は「やめる」（Enter や Space の押しすぎで開かない）
+}
+var EXT_WHY = {
+  mismatch: ["リンクの字が、行き先と別のサイトを名指しています", "The link text names a different site than where it goes"],
+  insecure: ["https: ではない行き先です（通信が守られません）", "The destination is not https: (the connection is not protected)"],
+  local: ["このファイルの隣のファイルを開きます", "Opens a file next to this one on this computer"],
+  download: ["ファイルをダウンロードします", "It downloads a file"],
+  userinfo: ["行き先のアドレスに、ユーザー名やパスワードの形の部分があります", "The address contains a user name or password part"],
+  punycode: ["サイト名に、見た目の似た別の文字が使われているかもしれません", "The site name may use look-alike characters"]
+};
+function extLink(a){
+  if (DECK.mode === "video" || DECK.view) return;   // 動画・発表者ビューの中の画面：開かない
+  var d = EXT_LP.decide({href: a.getAttribute("href"), text: extText(a), download: a.hasAttribute("download")}, {base: location.href, hosts: EXT.hosts});
+  var from = a;
+  if (d.verdict === "refuse"){
+    extDialog({title: L10N("このリンクは開けません", "This link cannot be opened"), host: "", url: String(a.getAttribute("href") || "").slice(0, 300),
+      notes: [d.reason === "scheme" ? L10N("http(s)・mailto・tel 以外のリンクは開きません", "Only http(s), mailto and tel links are opened") : L10N("アドレスとして読めません", "It is not a valid address")], open: null, from: from});
+    return;
+  }
+  if (window.DECK_DEV){   // 編集のプレビュー：授業の絵は作者のコードが描ける。外へは出ず、ここでは確かめもしない（書き出したデッキで確かめる）
+    extDialog({title: L10N("プレビューでは外のページを開きません", "The preview does not open outside pages"), host: d.host, url: d.url,
+      notes: [L10N("書き出したデッキ・1 ファイルで開くと、行き先を確かめてから開きます", "In the built deck or single file, it asks before opening")], open: null, from: from});
+    return;
+  }
+  if (d.verdict === "open"){ extOpen(d.url); return; }
+  var notes = d.reasons.map(function(r){ return L10N(EXT_WHY[r][0], EXT_WHY[r][1]); });
+  var ttl = d.must ? L10N("このリンクを開いてよいか確かめてください", "Check before opening this link") : L10N("授業の外のページを開きます", "This opens a page outside the lesson");
+  extDialog({title: ttl, host: d.host || d.scheme + ":", url: d.url, notes: notes, from: from,
+    open: function(){ EXT_LP.remember(EXT.hosts, d); extOpen(d.url); }});
+}
+DECK.extLink = function(href, text, download){ var a = document.createElement("a"); a.setAttribute("href", href); a.textContent = text || ""; if (download) a.setAttribute("download", ""); extLink(a); };
+function linkOf(e){
+  var a = e.target && e.target.closest && e.target.closest("a[href],area[href]");
+  if (a) return a;
+  var p = e.composedPath ? e.composedPath() : [];   // 部品の影の木の中のリンク
+  for (var i = 0; i < p.length; i++) if (p[i] && p[i].nodeType === 1 && (p[i].localName === "a" || p[i].localName === "area") && p[i].hasAttribute("href")) return p[i];
+  return null;
+}
 document.addEventListener("click", function(e){
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !DECK.ready) return;
-  var a = e.target && e.target.closest && e.target.closest("a[href]");
-  if (!a) return;
+  if (e.defaultPrevented) return;
+  var a = linkOf(e);
+  if (!a || a.__egaOwn) return;            // __egaOwn：再生器自身が作ったリンク（添付の保存。kit/tools.js）。授業の HTML は JS の印を付けられない
   var f = inDocFragment(a);
-  if (f === null) return;                 // ほかのファイル：ふつうのリンク
+  if (f === null){ e.preventDefault(); extLink(a); return; }   // 授業の外：新しい窓は開かず、確かめてから（修飾キーでも同じ）
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !DECK.ready) return;
   e.preventDefault();                     // # で要素の位置へ動かさない（舞台がずれる）
   if (DECK.mode === "video" || !f) return;
   var r = resolveFragment(f);
@@ -1380,6 +1466,13 @@ document.addEventListener("click", function(e){
   // マウスで押したリンクにはフォーカスを残さない（戻ったときにフォーカスの枠が出ない）。キーボード（detail = 0）なら戻るときに戻す
   if (e.detail !== 0) try { a.blur(); } catch (err) {}
   followLink(r, {el: a, keyboard: e.detail === 0});
+});
+// 中ボタン：ブラウザの標準では確かめずに新しいタブが開く
+document.addEventListener("auxclick", function(e){
+  if (e.button !== 1) return;
+  var a = linkOf(e);
+  if (!a || inDocFragment(a) !== null) return;
+  e.preventDefault(); extLink(a);
 });
 // 戻るボタン：リンクで来たときだけ、左上に小さく出す（動画・印刷・発表者ビューの中の画面では作らない）
 function syncBack(){

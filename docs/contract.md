@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=e73c20aac3cc682e -->
+<!-- i18n: pair=contract.ja.md sha256=a2a7c383baa90e61 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -152,20 +152,31 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 ```html
 <a href="#s-njd4kp">春暁</a>            <!-- step 0 of the slide with id s-njd4kp -->
 <a href="#s-njd4kp:2">読む順</a>        <!-- step 2; the step key is 0, 1, … or concl -->
-<a href="lesson2.ega.html">次の課</a>    <!-- another file: an ordinary link -->
+<a href="lesson2.ega.html">次の課</a>    <!-- another file: leaves the lesson (see "Links that leave the lesson") -->
 ```
 
 - Grammar: `#<slide id>` or `#<slide id>:<stepKey>`, split at the **last** `:`. The step key is canonical decimal (`0`, `1`, …, at most 999) or `concl`; the conclusion step is addressed only as `concl`. A fragment that matches no slide id is matched against slide keys (legacy decks without ids); the quality checker warns about such links. A purely numeric `#N` is the slide number (1-based), as before
 - Start position: the same fragments in the file's URL select the position at load (final state of that step). An unreadable fragment opens slide 1 with a console warning; `#N` beyond the last slide opens the last one. While navigating, the address shows `#N` (unchanged)
 - Following a link: in talk and lecture mode the player goes to that step in its final state (t = ∞) and stays paused; during autoplay it seeks there and keeps playing from the start of that step. In video mode links do nothing (the screen is a function of (i, k, t) only). With a pen or the laser active, a click draws and does not follow
 - Back: the player keeps the positions before each link (a stack). **Back** returns to the position before the most recent link, keeping the playing state: the small button at the top left (shown only after arriving by a link; it names the slide it returns to), Backspace (when no pen is active), Alt+←, or the browser's back button. In a top-level window each link adds one history entry (`pushState`), so the browser's back and forward work too; forward returns to the last position reached after that link. Ordinary navigation (arrows, numbers, overview) adds no entries. In a frame the stack is kept in memory only
-- Never top-level: links to slides never navigate the window; the click is handled inside the document (`preventDefault`). A link to another file is an ordinary navigation of the same frame; in sandboxed previews (the editor, the dev server) the sandbox may block it
+- Never top-level: links to slides never navigate the window; the click is handled inside the document (`preventDefault`). A link to another file or site leaves the lesson and is never an in-window navigation (see "Links that leave the lesson" below)
 - Keyboard: a focused link follows on Enter; when the link was activated from the keyboard, Back returns focus to it
 - Embedded (`?embed=1`, in a frame): every step change posts `{egatari:"position", slideKey, stepKey, t, cause}` to the parent (`cause`: `link`, `seek`, `control` or `play`; `t` is `null` when the step is shown in its final state). A host that restricts navigation refuses links with `?links=0` or the command `{egatari:"links", id?, follow:false}` (answered with `{egatari:"links", id, follow}`; only messages from `window.parent` count). A refused link leaves the player where it is and posts `{egatari:"linkRefused", slideKey, stepKey}`, so the host may seek there itself. The internal `deck-pos` message (presenter view, editor) also carries `cause` and `back` (the title of the slide Back returns to, or `null`)
 - Presenter view: the presenter window follows the main window (as for any navigation), shows its own Back button and forwards Backspace / Alt+←. A link clicked on the "current screen" iframe is followed by the main window
 - Captions and the live region follow the new step like any other navigation
 - Run-time API: `DECK.resolveFragment(f)` → `{i, k, key, id}` or `{error}`, `DECK.fragment(i, k)`, `DECK.follow(f)`, `DECK.back()`, `DECK.links()` → `{depth, follow, back}`, `DECK.visited(i | key)` (the slide has been shown in this session; used by `m-menu`)
 - Quality check: the quality checker reports a link to an unknown slide, to a step out of range, to `concl` on a slide without a conclusion, or to a slide number beyond the last as **errors**; it warns about `#N` links, links to slides without an id, and relative links to files that do not exist
+
+### Links that leave the lesson
+
+Format spec §11: a link whose target is not in the lesson is a phishing surface, so the player shows where it goes before leaving. The rule is a pure module, `kit/core/link-policy.mjs` (`LinkPolicy().decide(link, {base, hosts})`, no DOM, no `node:`), which the runtime (`DECK.LinkPolicy`), the tests and a future play page share.
+
+- Every click (primary, modified or middle button, Enter on a focused link) on a link that does not point into this document is cancelled; the window never navigates. The player shows a confirmation (`#deck-extlink`, `role="alertdialog"`, `aria-modal`) with the destination's host and the full address, and opens it only on **Open**, in a new browsing context with `noopener,noreferrer`. Focus starts on **Cancel**; Tab cycles inside the box, Esc or a click outside cancels and returns focus to the link, the lesson behind is `inert`, and keys and pointer events in the box never move the slides
+- Asked every time, whatever was agreed before (the box says why): the link text names a different host than the destination (`example.org` shown, another host linked; `www.` is ignored), the destination is not `https:` (`http:`, `mailto:`, `tel:`), the link has `download`, the address has a user name or password, or the host is punycode (`xn--`). A plain `https:` link is asked once per host in a viewing session (kept in memory only)
+- Refused (a box without **Open**): any scheme other than `http`, `https`, `mailto` and `tel` (`javascript:`, `data:`, `file:`, `blob:`, `vbscript:`, `ftp:`, …) and addresses that cannot be read. The one exception is a relative link in a lesson opened from `file:` to a neighbouring file, which is asked every time
+- Video mode, the presenter view's inner screens: nothing happens. Print: the box is hidden. The editor's preview and the dev server's frame (sandboxed, no popups): the box only tells where the link goes and has no **Open**; open the built deck or single file to follow it
+- Links the player makes itself (the live room's "Join in the browser", saving an attachment) are not lesson content and skip the box (format spec §11 (h)): the player marks them with the JavaScript property `__egaOwn`, which no lesson markup can set (attributes such as `data-ega-own` do nothing; `tools/test-extlinks.mjs` checks it), and the live pane shows the join page's host next to the link
+- Run-time API: `DECK.LinkPolicy()`, `DECK.extLink(href, text?, download?)`
 
 ## 10. Quality check: intended clipping
 

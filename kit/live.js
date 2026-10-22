@@ -35,7 +35,7 @@ var S = JA ? {
   title: "ライブ（質問・投票）", again: "もう一度試す", notice: "この教材から、" + HOST + " のライブで先生に質問や投票を送れます", join: "参加する", leave: "退出する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "このステップに投票があります。ライブの板を開きました",
   off: "つないでいません", connecting: "つないでいます…", connected: "参加中", waiting: "待機室で待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "ライブは " + t + " に始まります"; }, after: "ライブの時間は終わりました", noNet: "この画面からは参加できません。教材のファイルをダウンロードして、ブラウザ（Chrome・Safari など）で直接開いてください。ライブ ID：",
-  noNetLink: "この画面からは参加できません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", roomLabel: "ライブ ID：",
+  noNetLink: "この画面からは参加できません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", joinTo: "参加先：", roomLabel: "ライブ ID：",
   name: "名前（任意）", nameNote: "名前はホストだけに見えます（入れなければ名前なしで送られます）", ask: "先生への質問", send: "送る", sent: "質問を送りました", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
   shown: "ホストが全員に表示した質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
   stop: {bad_key: "この教材の鍵では部屋に入れません（鍵が違います）", room_not_found: "部屋が見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
@@ -49,7 +49,7 @@ var S = JA ? {
   title: "Live (questions and polls)", again: "Try again", notice: "From this lesson you can send questions and votes to your teacher through Live at " + HOST, join: "Join", leave: "Leave", fold: "Fold", unfold: "Unfold", badge: "Live", pin: "Keep open", pollOpen: "This step has a poll. The Live pane is open",
   off: "Not connected", connecting: "Connecting…", connected: "Joined", waiting: "Waiting in the waiting room", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The Live starts at " + t; }, after: "The live time is over", noNet: "You cannot join from this screen. Download the lesson file and open it directly in a browser (Chrome, Safari, …). Live ID: ",
-  noNetLink: "You cannot join from this screen. You can join in a new browser tab.", openJoin: "Join in the browser", roomLabel: "Live ID: ",
+  noNetLink: "You cannot join from this screen. You can join in a new browser tab.", openJoin: "Join in the browser", joinTo: "Goes to: ", roomLabel: "Live ID: ",
   name: "Name (optional)", nameNote: "Only the host sees your name (leave it empty to send without one)", ask: "Question for the teacher", send: "Send", sent: "Question sent", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
   shown: "Questions the host showed to everyone", leftMsg: "Disconnected. You can join again", window: function(a, b){ return a + " – " + b; }, privacy: "Only what you choose to send (questions, votes, and a name if you type one) and a random id made on this device are sent. Your viewing position and timing are not",
   stop: {bad_key: "This lesson's key does not open the room (wrong key)", room_not_found: "The room does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
@@ -157,7 +157,7 @@ var pAddr = h("p", "lv-small"), addr = h("span", "lv-addr");
 // つなげない文書：参加用のページ（新しいタブ。押すまで何も読み込まない。鍵は # の後ろ）。編集アプリのプレビューでは出さない
 var JOIN_URL = CTX && LP.offerJoinLink(CTX, DOC) ? LP.joinUrl(live) : null;
 var linkRow = h("div", "lv-row"), aJoin = h("a", "lv-join-link lv-pri", S.openJoin); linkRow.hidden = true;
-if (JOIN_URL){ aJoin.href = JOIN_URL; aJoin.target = "_blank"; aJoin.rel = "noopener noreferrer"; linkRow.appendChild(aJoin); }
+if (JOIN_URL){ aJoin.href = JOIN_URL; aJoin.target = "_blank"; aJoin.rel = "noopener noreferrer"; aJoin.__egaOwn = true; linkRow.appendChild(aJoin); }
 var bJoin = h("button", "lv-join lv-pri", S.join); bJoin.type = "button";
 var joinRow = h("div", "lv-row"); joinRow.appendChild(bJoin);
 var nameL = h("label", "", S.name), nameI = h("input"); nameI.type = "text"; nameI.className = "lv-name"; nameI.maxLength = LP.LIMITS.name; nameI.autocomplete = "off"; nameI.id = "live-pane-name"; nameL.htmlFor = nameI.id;
@@ -257,7 +257,7 @@ function render(){
   pAddr.hidden = !CTX;
   linkRow.hidden = !JOIN_URL;
   if (CTX && !pAddr.firstChild){
-    if (JOIN_URL){ pAddr.textContent = S.noNetLink + " " + S.roomLabel; addr.textContent = live.room; }
+    if (JOIN_URL){ pAddr.textContent = S.noNetLink + " " + S.roomLabel; addr.textContent = live.room + " · " + S.joinTo + new URL(JOIN_URL).host; }
     else { pAddr.textContent = S.noNet; addr.textContent = live.endpoint + " · " + live.room; }
     pAddr.appendChild(addr);
   }

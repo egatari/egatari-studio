@@ -243,11 +243,12 @@ console.log('no network');
   const want = LP.joinUrl(JSON.parse(new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(L)[1]).live);
   ok(s && s.context === 'framed' && s.joinLink && a && a.shown && a.href === want && a.target === '_blank' && a.rel === 'noopener noreferrer' && a.text === 'ブラウザで参加する',
     `framed (LMS): "Join in the browser" opens the join page in a new tab (${a && a.href})`);
+  ok(addrT.includes(new URL(want).host) && !(await fr.evaluate(() => !!document.getElementById('deck-extlink'))), `framed (LMS): the join page's host is shown in the pane and no confirmation box appears (${addrT})`);
   ok(addrT.includes('r-7k2q6xw4') && /新しいタブ/.test(addrT), `framed (LMS): a short explanation and the room stay as text ("${addrT}")`);
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'framed (LMS): no Join button in the frame');
   await fr.click('#live-mark');
   quiet(o.net, 'framed (LMS) before the link is clicked (marker opened)');
-  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);
+  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);   // 再生器が作るリンク：確認の箱は出ない（format spec §11 (h)。行き先の host は板に出す）
   await until(() => o.net.req.length > 0, 3000);
   ok(tab && o.net.req.length === 1 && o.net.req[0] === want.split('#')[0] && !o.net.req[0].includes('Q2xhc3Nyb29tS2V5MDAwMD'),
     `click: a new tab loads the join page; the key stays in the fragment and is not sent (${o.net.req.join(', ')})`);

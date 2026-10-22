@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=4bd2de0656b984fe -->
+<!-- i18n: pair=README.ja.md sha256=e8e39faa10761308 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -59,7 +59,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 
 **Tier 1 (slides)**
 
-- [Node.js](https://nodejs.org/) 22 or newer
+- [Node.js](https://nodejs.org/) 22 or newer, a release with the latest security fixes (see [SECURITY.md](SECURITY.md))
 - Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
 - Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic (and BIZ UDPMincho) TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
 
