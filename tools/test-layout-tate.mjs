@@ -12,7 +12,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -193,11 +193,11 @@ for (const theme of ['default', 'kokugo']) {
     const diffs = [];
     for (const s of plan) for (let k = 1; k <= s.max; k++) {
       await load(); await p.evaluate(([i, k]) => DECK.seek(i, k, 0.5), [s.i, k]); await settle();
-      const A = await p.screenshot();
+      const A = await stableCapture(p);
       await p.evaluate(([i, k, m]) => { DECK.seek(i, m, Infinity); DECK.seek(i, 0, Infinity); DECK.seek(i, k, 1.7); DECK.seek(i, Math.min(m, k + 1), 0.3); DECK.seek(i, k, 0.5); }, [s.i, k, s.max]);
       await settle();
-      let B = await p.screenshot();
-      if (!A.equals(B)) { await settle(); B = await p.screenshot(); }
+      let B = await stableCapture(p);
+      if (!A.equals(B)) { await settle(); B = await stableCapture(p); }
       if (!A.equals(B)) {
         const nd = await p.evaluate(async ([a, b]) => {
           const ld = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });

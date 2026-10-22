@@ -4,7 +4,7 @@
 // Tab で帯に入り Esc で戻る・一覧はフォーカスが縮図に付いてくる・ペンでもフォーカスが閉じ込められない・
 // s で字幕（今の段階の口述原稿を 1 まとまりずつ、3 行まで、読む速さで送る）・Shift+s で字幕の大きさ・印刷では字幕が出ない・a11y の属性は画素を変えない・動画では何も足さない
 // （?captions=1 のときだけ字幕）・check が alt の無い画像と名前の無い SVG を警告する
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -60,17 +60,16 @@ ok(await p.evaluate(() => DECK.slides[1]._items.every((e) => e.getAttribute('ari
 await p.keyboard.press('l');
 
 // ---- a11y の属性は画素を変えない（属性を外した画面と同じ）
-await p.addStyleTag({ content: '#dt-cb{display:none!important}' });
 let same = true;
 for (const [i, k] of [[1, 0], [1, 2], [2, 1], [4, 0]]) {
   await p.evaluate(([i, k]) => DECK.seek(i, k, Infinity), [i, k]); await frame(p);
-  const a = await p.screenshot();
+  const a = await stableCapture(p);
   await p.evaluate(() => {
     window.__a11y = [...document.querySelectorAll('[aria-hidden], [inert], .slide[role]')].filter((e) => e.closest('#stage') && !e.closest('svg.marks')).map((e) => [e, e.getAttribute('aria-hidden'), e.inert, e.getAttribute('role')]);
     window.__a11y.forEach(([e]) => { e.removeAttribute('aria-hidden'); e.inert = false; e.removeAttribute('role'); });
   });
   await frame(p);
-  const c = await p.screenshot();
+  const c = await stableCapture(p);
   await p.evaluate(() => window.__a11y.forEach(([e, ah, inert, role]) => { if (ah !== null) e.setAttribute('aria-hidden', ah); e.inert = inert; if (role) e.setAttribute('role', role); }));
   if (!a.equals(c)) { same = false; console.log('  differs at', i, k); }
 }
@@ -169,7 +168,7 @@ const geo = await p.evaluate(() => { const r = document.getElementById('deck-cap
 ok(geo.inside && geo.bottom >= 0 && geo.bottom < 40, '字幕は舞台の下端に');
 ok(geo.fg !== geo.bg, `字幕はテーマの色（文字 ${geo.fg}、地 ${geo.bg}）`);
 await p.mouse.move(10, 10); await p.waitForTimeout(2800);
-await p.screenshot({ path: path.join(outdir, 'captions.png') });
+await stableCapture(p, { path: path.join(outdir, 'captions.png') });
 await p.emulateMedia({ media: 'print' });
 ok(await p.evaluate(() => getComputedStyle(document.getElementById('deck-cap')).display === 'none'), '印刷では字幕を出さない');
 await p.emulateMedia({ media: 'screen' });
@@ -187,11 +186,11 @@ const capGeo = () => p.evaluate(() => { const l = document.querySelector('#deck-
   return { n: document.querySelectorAll('#deck-cap .cap-line').length, lines: Math.round((l.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / lh), fs: parseFloat(cs.fontSize), text: l.textContent, over: l.scrollHeight > l.clientHeight + 1 }; });
 const g1 = await capGeo();
 ok(g1 && g1.n === 1 && g1.lines <= 3 && pre(g1.text, LONG) && g1.text.length < LONG.length / 2, `長い原稿でも 1 まとまりだけ、${g1 && g1.lines} 行（3 行まで）`);
-await p.screenshot({ path: path.join(outdir, 'caption-long-1.png') });
+await stableCapture(p, { path: path.join(outdir, 'caption-long-1.png') });
 await p.waitForTimeout(3200);
 const g2 = await capGeo();
 ok(g2 && g2.text !== g1.text && g2.lines <= 3 && LONG.includes(g2.text), `時間がたつと次のまとまりへ（${g2 && g2.text.slice(0, 16)}…、${g2 && g2.lines} 行）`);
-await p.screenshot({ path: path.join(outdir, 'caption-long-2.png') });
+await stableCapture(p, { path: path.join(outdir, 'caption-long-2.png') });
 const tail = LONG.slice(-20);
 await p.waitForFunction((t) => (document.querySelector('#deck-cap .cap-line') || {}).textContent?.endsWith(t), tail, { timeout: 30000 }).catch(() => {});
 await p.waitForTimeout(1500);
@@ -209,7 +208,7 @@ const gl = await capGeo();
 ok(gl.fs === 34 && await p.evaluate(() => DECK.captionSize()) === 'l' && tl === '字幕の大きさ：L', `Shift+s で L（${gl.fs}px）、「字幕の大きさ：L」と知らせる`);
 ok(gl.lines <= 3 && gl.text.length < g1.text.length, `大きいほど 1 まとまりが短い（M ${g1.text.length} 字 → L ${gl.text.length} 字、${gl.lines} 行）`);
 await p.mouse.move(10, 10); await p.waitForTimeout(400);
-await p.screenshot({ path: path.join(outdir, 'caption-size-l.png') });
+await stableCapture(p, { path: path.join(outdir, 'caption-size-l.png') });
 await p.keyboard.press('Shift+S'); await settle(p);
 ok((await capGeo()).fs === 22 && await toast() === '字幕の大きさ：S', 'もう一度で S（22px）');
 await p.keyboard.press('Shift+S'); await settle(p);

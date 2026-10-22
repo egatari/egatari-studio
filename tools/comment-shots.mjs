@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { build, resolveDeckArg } from '../kit/build.mjs';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { safeWriteFile, readContained } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
 import { normPin, SLIDE_W, SLIDE_H } from '../kit/core/comment-core.mjs';
@@ -49,8 +49,7 @@ export async function commentShots(arg, o = {}) {
       await p.goto(fileUrl(page) + '?mode=talk');
       await p.waitForFunction(() => window.DECK && DECK.ready);
       await p.evaluate(() => document.fonts.ready);
-      // 発表の道具（下の操作の帯など）は撮らない：スライドそのものだけ
-      await p.addStyleTag({ content: '.deck-tools{display:none!important}' });
+      // 発表の道具（下の操作の帯など）は撮らない：スライドそのものだけ（stableCapture が隠す）
       return p;
     };
     const p1 = await open(ctx1), p2 = await open(ctx2);
@@ -89,12 +88,12 @@ export async function commentShots(arg, o = {}) {
         await p.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))));
       }
       const full = path.join(out, c.id + '-full.png'), crop = path.join(out, c.id + '.png');
-      const fullPng = await p1.screenshot();
+      const fullPng = await stableCapture(p1);
       safeWriteFile(dir, full, fullPng);
       if (pin) {
         const x = Math.max(0, Math.min(SLIDE_W - CROP_W, pin.x - CROP_W / 2)), y = Math.max(0, Math.min(SLIDE_H - CROP_H, pin.y - CROP_H / 2));
         e.clip = { x, y, width: CROP_W, height: CROP_H, scale: CROP_SCALE };
-        safeWriteFile(dir, crop, await p2.screenshot({ clip: { x, y, width: CROP_W, height: CROP_H } }));
+        safeWriteFile(dir, crop, await stableCapture(p2, { clip: { x, y, width: CROP_W, height: CROP_H } }));
       } else safeWriteFile(dir, crop, fullPng);
       e.full = full; e.crop = crop;
       shots.push(e);
