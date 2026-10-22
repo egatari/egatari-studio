@@ -3,7 +3,7 @@ name: motion-components
 description: Egatari Studio（旧 motion-academic-slides）の動く図の部品（Web Components）を新しく書く・直す・部品庫（egatari/components）に提案する。「新しい部品を作って」「この図を部品にして」「部品庫に入れて」「部品庫に提案して」「motion-components」で使う。部品を使ってスライドを作るだけなら motion-slides。 Use for: write or fix a new component (animated figure), turn this figure into a component, propose a component to the components library.
 ---
 
-Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`).
+Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
 # motion-components：動く図の部品を書く
 
