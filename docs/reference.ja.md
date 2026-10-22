@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=8230e234bd7ccb75 -->
+<!-- i18n: pair=reference.md sha256=afa5d66c8561cd77 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -50,6 +50,7 @@
 | `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
 | `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/egatari/egatari-studio/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
 | `<html data-feedback="off">` | `?` の一覧と発表者ビューにフィードバックのリンクを出さない（`DECK.FEEDBACK_URL = null`） |
+| `<html data-favicon="off">` | タブのアイコンを入れない。既定では、組んだデッキ（ふつうの build・`--portable`・`--play-only`）の `<head>` の先頭に、Egatari のマークを `<link rel="icon">`（data: URI）として入れる（明るい画面と暗い画面の色は 1 つの SVG に入れる。外へのリクエストはない）。原稿が自分の `<link rel="icon">` を持つなら、それを使い、何も足さない |
 | `<html data-font="mincho">` | 本文を BIZ UDP明朝にする（`--font-sans: var(--font-mincho)`）。[国語](#国語kokugo) |
 
 本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`/`.blue`、`.emph`/`.red`、`.muted`/`.gray`、`.b` 色と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
