@@ -1,0 +1,3 @@
+### Added
+
+- Editor app: a slide list (the **Slides** tab at the left edge of the preview) with thumbnails of each slide's final step. Add a slide after the selected one from a template (title and body, two columns, figure, section divider, quote), duplicate it (narration copied, audio not), delete it (a dialog names the slide and warns that its narration and audio go too) and reorder by dragging, the ↑ ↓ buttons or Alt+↑ / Alt+↓. The editor assigns new ids, keeps the narration sections in slide order and the audio bound by key, rebuilds and runs the quality check; **Undo** takes back the last action until the next one or the next save of a single file. The list is a keyboard listbox with live-region announcements

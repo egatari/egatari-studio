@@ -27,6 +27,10 @@ if (cfg.html && cfg.shim && cfg.prefix) {
     this.srcdoc = cfg.prefix + tag + cfg.html;
   }});
 }
+// スライド一覧の縮図（app/slides-panel.js）：組み上がったら、どのスライドも最後のステップにして写し（kit/tools.js のスライド一覧 o と同じ）、
+// 縦に並べて文書の上に重ねる。cfg.strip = {w（縮図の幅）, row（1 行の高さ）, bg（背景の色）}。編集の画面はこの枠を aria-hidden・inert で
+// 一覧の後ろに置くだけで、ここからは何も受け取らない（知らせを 1 つ送るだけ）
+if (cfg.strip) { whenReady(function(){ strip(cfg.strip); }); return; }
 if (!cfg.dev) return;
 window.__APP_LOAD = cfg.load;   // 何回目の読み込みか（確かめ方が使う）
 // デッキのスクリプトのエラー（コンソールのエラーと捕まらなかった例外）を品質チェックに出す。言葉だけ（スタックは持たない。場所は app/llm.js が除く）
@@ -56,6 +60,48 @@ function whenReady(fn){
   var done = false, go = function(){ if (!done) { done = true; fn(); } };
   document.addEventListener("deck:ready", go);
   setTimeout(go, 10000);
+}
+
+function strip(o){
+  var D = window.DECK;
+  if (!D || !D.slides) return;
+  var W = 1280, w = +o.w || 128, h = Math.round(w * 9 / 16), row = +o.row || 84, sc = w / W;
+  var box = document.createElement("div");
+  box.id = "egatari-strip";
+  box.style.cssText = "position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;overflow:hidden;margin:0;background:" + (/^[#a-z0-9(),.\s%]+$/i.test(o.bg || "") ? o.bg : "#fff");
+  D.slides.forEach(function(s, i){
+    D.seek(i, s._max, Infinity);
+    var c = s.cloneNode(true);
+    c.classList.remove("active"); c.removeAttribute("id"); stripIds(c, "eg" + i + "-");
+    var st = c.style;
+    st.setProperty("visibility", "visible", "important"); st.setProperty("opacity", "1", "important");
+    st.setProperty("position", "absolute", "important"); st.setProperty("left", "0", "important"); st.setProperty("top", "0", "important");
+    st.setProperty("transform-origin", "0 0", "important"); st.setProperty("transform", "scale(" + sc + ")", "important");
+    st.setProperty("pointer-events", "none", "important"); st.zIndex = "auto";
+    var cell = document.createElement("div");
+    cell.style.cssText = "position:absolute;left:6px;top:" + (i * row + Math.round((row - h) / 2)) + "px;width:" + w + "px;height:" + h + "px;overflow:hidden;background:var(--bg,#fff);border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.18)";
+    cell.appendChild(c);
+    box.appendChild(cell);
+  });
+  D.seek(0, 0, 0);
+  document.body.appendChild(box);
+  parentWin.postMessage({type: "app-strip-ready", n: D.slides.length}, "*");
+}
+// 写しの中の id を付け替え、url(#…) と href="#…" も合わせる（kit/tools.js の uniqIds と同じ）
+function stripIds(root, pre){
+  var all = root.querySelectorAll("[id]");
+  if (!all.length) return;
+  var map = {};
+  [].forEach.call(all, function(e){ map[e.id] = pre + e.id; e.id = pre + e.id; });
+  var re = /url\(\s*["']?#([^"')\s]+)["']?\s*\)/g;
+  [].forEach.call(root.querySelectorAll("*"), function(e){
+    [].slice.call(e.attributes).forEach(function(a){
+      var v = a.value, nv = v;
+      if (v.indexOf("url(") >= 0) nv = v.replace(re, function(m, id){ return map[id] ? "url(#" + map[id] + ")" : m; });
+      else if ((a.name === "href" || a.name === "xlink:href") && v[0] === "#" && map[v.slice(1)]) nv = "#" + map[v.slice(1)];
+      if (nv !== v) e.setAttribute(a.name, nv);
+    });
+  });
 }
 
 // プレビューの音声（backlog #49）：組み立ては deck-audio の src を置き場所の印（egatari-preview:…）にし、編集アプリが読み込みの後で

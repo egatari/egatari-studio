@@ -14,6 +14,7 @@ import { createAudioPanel } from './audio-panel.js';
 import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
+import { createSlidesPanel } from './slides-panel.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
@@ -177,6 +178,7 @@ async function openFolder(handle) {
 function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
+  slidesPanel.reset();
   engine.setWorkspace(ws);
   rec.reset();
   audio.reset();
@@ -246,6 +248,8 @@ function showDeck(label, title) {
   document.title = title + ' — Egatari Studio';
   showNotice();
   closePanel();
+  // スライド一覧：前に開いていたら（この画面の覚え。localStorage）開く。キーボードの位置はプレビューのまま
+  if (slidesPanel.wantOpen() && !slidesPanel.isOpen()) slidesPanel.toggle(true, false);
 }
 function updateName() {
   const dirty = S.portable && S.ws && S.ws.dirty;
@@ -396,6 +400,7 @@ async function rebuild(reason) {
         S.preview = true;
         showError(null);
         showWarn();
+        slidesPanel.refresh();
         $('st-info').textContent = `${T.slidesN(r.stats.slides)} · ${(r.html.length / 1048576).toFixed(1)} MB · ${S.lastBuildMs} ms`;
         if (reason !== 'poll' || changed || wasError) status(T.rebuilt(time(), reason));
         // プレビューも発表者ビューも、コードの確かめ（codeConsent）を通ったときだけ読み込む
@@ -643,6 +648,30 @@ const livePanel = createLivePanel({
   exportLive: (live) => exportPlayOnlyFile(live),
   problemText: T.liveProblem,
 });
+// スライド一覧（app/slides-panel.js。backlog #79）：左の板。足す・複製・削除・並べ替えは原稿・口述原稿・音声の記録を書き、組み直す（段 B）
+// 1 ファイルの段 A の保存はスライドの原稿の変更を断る（kit/core/tier-a.mjs の source-changed）ので、次の「保存」は組み直しになる
+async function slideGuard() {
+  if (!S.ws || !S.base) return T.sl.notReady;
+  if (S.portable && S.portable.readOnly) return T.readOnlyNoEdit;
+  if (S.portable && S.portable.tierAOnly) return T.tierAOnlyNoSlides;
+  if (ui.busy() || audio.isBusy() || rec.isOpen()) return T.sl.editing;
+  if (S.portable && !(await ensureRights())) return T.rightsDeclined;
+  return null;
+}
+const slidesPanel = createSlidesPanel({
+  T: T.sl, el, host: $('slides'),
+  lang: (src) => { const m = /<html\b[^>]*\slang\s*=\s*["']?([A-Za-z-]+)/i.exec(src || ''); return m && !/^ja\b/i.test(m[1]) ? 'en' : 'ja'; },
+  ws: () => S.ws, generation: () => S.gen, deckFile: () => S.deckFile,
+  slides: () => S.slides || [], pos: () => S.pos,
+  go: (i) => { const f = $('preview').contentWindow; if (f && S.allowed) f.postMessage({ type: 'app-go', i, k: 0 }, '*'); },
+  goAfter: (i) => ui.goIndex(i, 0),
+  // 縮図の文書：プレビューと同じ決まり（CSP）の先頭部分＋縮図の仲立ち＋組んだデッキ。デッキのコードを動かしてよいとき（S.allowed）だけ
+  thumbsDoc: (cfg) => (S.allowed && S.base ? previewDocument(S.base, `${SHIM}(${enc({ strip: cfg })});`) : null),
+  guard: slideGuard, building: () => S.building,
+  rebuild: async () => { const failed = await rebuild('save'); updateName(); return failed; },
+  check: () => quickCheck(), ask, toast, audio, stale: () => S.stale || [],
+  onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
+});
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
 { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }
@@ -657,7 +686,7 @@ window.addEventListener('message', (e) => {
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
     }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
-      if (m.type === 'deck-pos') S.pos = m;
+      if (m.type === 'deck-pos') { S.pos = m; slidesPanel.onPos(); }
       if (S.presWin && !S.presWin.closed) S.presWin.postMessage({ type: 'app-pres-down', m }, '*');
     }
   } else if (S.presWin && e.source === S.presWin && m.type === 'app-pres-up' && m.m && typeof m.m.type === 'string' && /^deck-/.test(m.m.type)) {
@@ -1158,6 +1187,7 @@ async function savePortableBound(mode) {
     }
     const clean = rev !== null && ws.markClean(rev);
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
+    slidesPanel.saved();   // スライド一覧の「元に戻す」は保存まで
     P.saveWarnings = saveWarnings;
     // 段 A の元の口述原稿：保存したもの（保存の途中の編集は入れない）。段 B は組み始めの作業場所から組んだので、そのときのもの
     const nb = files.get('narration.md');
@@ -1292,6 +1322,8 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => showNewForm(true);
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
+$('b-slides').onclick = () => slidesPanel.toggle();
+$('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
 $('b-narr').onclick = () => ui.toggleNarr();
 $('w-openfile').onclick = async () => openPortable(await pickPortable());
@@ -1380,6 +1412,7 @@ window.__APP_TEST = {
   initThemeFolder: () => initThemeFolder(),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
+  slides: () => slidesPanel.state(),
   reloadPreview: () => loadFrame(),
   ui: () => ui.state(),
   audio: () => audio.state(),

@@ -25,7 +25,7 @@ import { processTake, joinParts, takeEntry, setManifestEntry, takeFileName, audi
 import { encodeMp3 } from '../kit/core/mp3.mjs';
 import { MP3 } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
-import { parseNarration } from '../kit/core/narration-core.mjs';
+import { parseNarration, splitKey } from '../kit/core/narration-core.mjs';
 import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
@@ -874,6 +874,20 @@ export function createAudioPanel(o) {
     onPos: () => { if (open) follow(false); },
     reload: () => { if (!open) return; if (view && !rec && !busyMsg) show(view.key, view.i); else follow(true); },
     peek, commit, revert, canRevert: (key) => (history.get(key) || []).length > 0,
+    // スライド一覧（app/slides-panel.js）：消したスライドの段階の、使っていない取り直しと前の記録を外す（元に戻すで putBack）。数だけを知るのは pendingFor
+    pendingFor: (slideKey) => [...takes].filter(([k]) => splitKey(k)[0] === slideKey).reduce((n, [, l]) => n + l.length, 0),
+    takeOut: (slideKey) => {
+      const out = { takes: [], history: [] };
+      for (const [k, l] of [...takes]) if (splitKey(k)[0] === slideKey) { out.takes.push([k, l]); takes.delete(k); }
+      for (const [k, l] of [...history]) if (splitKey(k)[0] === slideKey) { out.history.push([k, l]); history.delete(k); }
+      if (view && splitKey(view.key)[0] === slideKey && open) follow(true);
+      return out;
+    },
+    putBack: (x) => {
+      for (const [k, l] of (x && x.takes) || []) takes.set(k, [...(takes.get(k) || []), ...l]);
+      for (const [k, l] of (x && x.history) || []) history.set(k, [...l, ...(history.get(k) || [])]);
+      if (open) follow(true);
+    },
     unsaved: () => [...takes.values()].reduce((n, l) => n + l.length, 0),
     state: () => ({ open, key: view ? view.key : null, recording: !!rec, busy: busyMsg, loading: !!(view && view.loading), state: view ? view.state || null : null, entry: view && view.entry ? { ...view.entry } : null,
       history: Object.fromEntries([...history].map(([k, l]) => [k, l.map((e) => (e ? e.file : null))])), voices: view && view.voice !== undefined ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : null,
