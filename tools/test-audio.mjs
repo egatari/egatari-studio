@@ -480,6 +480,31 @@ try {
   ok(await page.waitForFunction(() => /マイクを許可/.test(document.getElementById('rec-alert').textContent), null, { timeout: 3000 }).then(() => true, () => false) && !(await recState()).mic, 'mic error: a refused microphone is reported (alert) with how to allow it, and the screen waits');
   await page.evaluate(() => { navigator.mediaDevices.getUserMedia = window.__gum; });
   await closeRec();
+  // MediaRecorder を作れない（その形式に対応しないブラウザなど）：録音モードがそう言い（alert）、待機に戻る
+  await page.evaluate(() => { window.__MR = window.MediaRecorder; window.MediaRecorder = function () { throw new DOMException('no recorder here', 'NotSupportedError'); }; });
+  await openRecFromPanel(pk);
+  const manMR = await opfsRead('audio/manifest.json');
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => /no recorder here/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'idle');
+  ok(await page.waitForFunction(() => /no recorder here/.test(document.getElementById('rec-alert').textContent), null, { timeout: 3000 }).then(() => true, () => false) && (await recState()).open && !(await recState()).taps && await opfsRead('audio/manifest.json') === manMR,
+    'recorder error: a MediaRecorder that cannot be created is reported (screen and alert), the screen waits and nothing is written');
+  await page.evaluate(() => { window.MediaRecorder = window.__MR; });
+  await closeRec();
+  // 録音中に作業場所が替わる（同じフォルダを開き直す：generation が進む）：テイクは捨て、録音モードは閉じて元に戻る
+  await openRecFromPanel(pk);
+  const manGen = await opfsRead('audio/manifest.json');
+  const filesGen = (await opfsList('audio')).join();
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: 10000 });
+  await page.waitForTimeout(1500);
+  const g0 = await page.evaluate(() => window.__APP_TEST.state().gen);
+  ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'workspace change: the same folder opened again during a take');
+  await page.waitForSelector('#rec-mode', { state: 'detached', timeout: 10000 });
+  await page.waitForTimeout(1500);
+  const gs = await page.evaluate(() => ({ rec: window.__APP_TEST.rec(), audio: window.__APP_TEST.audio(), gen: window.__APP_TEST.state().gen, rmOn: document.getElementById('deck').classList.contains('rec-on'), topInert: document.getElementById('top').inert }));
+  ok(!gs.rec.open && gs.rec.phase === 'idle' && !gs.rec.mic && !gs.rec.taps && !gs.rec.mine.length && !gs.rmOn && !gs.topInert && typeof g0 === "number" && gs.gen > g0, 'workspace change: recording mode resets (closed, idle, microphone released, toolbar usable) ' + JSON.stringify({ g0, gen: gs.gen, phase: gs.rec.phase, mic: gs.rec.mic }));
+  ok(await opfsRead('audio/manifest.json') === manGen && (await opfsList('audio')).join() === filesGen && !Object.keys(gs.audio.takes).length && !gs.audio.open, 'workspace change: the take is discarded (no file, no manifest change, no unused take)');
 
   // ---------------------------------------------------------------- 2. 持ち運べる 1 ファイル（段 A で保存）
   await page.evaluate(async () => {

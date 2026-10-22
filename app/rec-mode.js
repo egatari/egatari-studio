@@ -149,9 +149,12 @@ export function createRecMode(o) {
     box.textContent = '';
     if (!result || !step || result.key !== step.key) return;
     const r = result;
-    const rows = [L.takeDone(r.dur, r.gainDb)];
-    if (r.sync === 'manual') rows.push(L.takeCues(r.taps));
-    box.appendChild(mkEl('div', { cls: 'rm-note ok', id: 'rec-result', text: rows.join(' · ') }));
+    // 失敗だけの結果（長さがない）は、知らせだけを出す
+    if (typeof r.dur === 'number') {
+      const rows = [L.takeDone(r.dur, r.gainDb)];
+      if (r.sync === 'manual') rows.push(L.takeCues(r.taps));
+      box.appendChild(mkEl('div', { cls: 'rm-note ok', id: 'rec-result', text: rows.join(' · ') }));
+    }
     if (r.clip) box.appendChild(mkEl('div', { cls: 'rm-note warn', id: 'rec-clip', text: L.clip }));
     if (r.mismatch) box.appendChild(mkEl('div', { cls: 'rm-note warn', id: 'rec-mismatch', text: L.mismatch(r.taps, r.bounds) }));
     if (r.limit) box.appendChild(mkEl('div', { cls: 'rm-note warn', id: 'rec-limit', text: r.limit }));

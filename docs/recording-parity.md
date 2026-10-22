@@ -8,7 +8,7 @@ Before the panel recording was removed, everything it did was listed and checked
 |---|---|---|
 | Opened the microphone in the editor page only, echo cancellation, noise suppression and automatic gain off, mono | Same constraints (`openMic` in `app/rec-mode.js`); the microphone stays open until the screen closes | `tools/test-recording.mjs` |
 | Microphone refused: a message with how to allow it | Same text in the alert region and on the screen (`#rec-err`); the screen goes back to waiting | `tools/test-audio.mjs` (“mic error”) |
-| `MediaRecorder` could not be created: uncaught | **added:** reported on the screen and in the alert region, back to waiting | — |
+| `MediaRecorder` could not be created: uncaught | **added:** reported on the screen and in the alert region, back to waiting, nothing written | `tools/test-audio.mjs` (“recorder error”) |
 | Level meter and elapsed time, appended at the bottom of the panel (below TTS, Colab and the voices, out of sight) | Meter and time beside the large script; `prefers-reduced-motion` updates it a few times a second | `tools/test-audio.mjs`, `tools/test-recording.mjs` |
 | Stopped at 600 s (`AUDIO_LIMITS.maxSeconds`) and used the take | Same; **added:** a timer also stops it when the meter is not drawn (background tab), and the screen says why it stopped (`#rec-limit`, alert region) | `tools/test-audio.mjs` (“limit”, shortened through `__APP_TEST.recMaxSeconds`) |
 | Post-processing (`processTake`: trim, −20 LUFS, mono 44.1 kHz); an empty take is an error | Same function and error; a 0.15 s tail after the stop key | `tools/test-recording.mjs` |
@@ -20,7 +20,7 @@ Before the panel recording was removed, everything it did was listed and checked
 | Undo: **↶ Revert to previous** (20 per step, in memory) | Same history; Backspace reverts a take of this mode; the panel's button after Esc | `tools/test-audio.mjs`, `tools/test-recording.mjs` |
 | A take that cannot be written stays under **Audio not used yet** with **Use this take** | Same list; the screen says it was not written and where to use it; after Esc the panel shows it | `tools/test-audio.mjs` (“unused take”) |
 | Rights prompt (single file) and read-only refusal before writing | Same `beforeWrite` on every write; the rights check also runs when the screen opens | `tools/test-audio.mjs` (single file, tier A save) |
-| Cancelled when another deck is opened (workspace / generation) | Same checks; the screen resets | — |
+| Cancelled when another deck is opened (workspace / generation) | Same checks; a take in progress is discarded and the screen resets (closed, idle, microphone released) | `tools/test-audio.mjs` (“workspace change”: the folder is opened again during a take) |
 | Preview inert while recording; hints from the preview cannot start a recording | Preview and toolbar inert while the screen is open; a hint can only open it | `tools/test-audio.mjs`, `tools/test-recording.mjs` |
 | Stayed on its step while recording | The screen owns the step; the panel, hidden behind it, follows the takes | `tools/test-audio.mjs` |
 | Toast “used audio/…”; a single file becomes unsaved | Same | `tools/test-audio.mjs` |
