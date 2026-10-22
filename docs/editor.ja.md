@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=e2d8bac3aa2a2c2c -->
+<!-- i18n: pair=editor.md sha256=de42ca93bc48169d -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -81,6 +81,8 @@ WebGPU のない PC（学校の PC・Safari・iPad）のために、音声の板
 
 1. **① 必要な段階を書き出す（tts-job.json）。** 範囲（既定は音声のない段階と古い段階。すべての段階も選べる）を選ぶ。先に 1 度確かめる：**Colab では原稿の文が Google の環境で処理される**（モデルは Hugging Face から取る）。ダウンロードする `tts-job.json` には、読み上げる文（読み辞書を通した後で、`{cue}` / `{mark}` で区切ったもの）・声の名前・各段階の `inputHash`・`docId`・目標の recipe だけが入る。
 2. **Colab を開く** で公式のノートブック [`colab/egatari-tts.ipynb`](../colab/egatari-tts.ipynb) を開く（リンクは版のタグに固定）。上のセルから順に実行し、聞かれたら `tts-job.json` をアップロードして、返ってくる zip をダウンロードする。日本語は Irodori-TTS 500M-v3（ONNX、版を固定）、ほかの言語は Kokoro-82M。T4 の GPU があると速く、なければ CPU（遅い）。Node の常駐ワーカー（`colab/irodori_node.mjs`）を 1 度だけ起動し、6 つの ONNX セッションとトークナイザは 1 度だけ読み込んで、区切りごとに合成する（区切りごとに seed と steps が同じなので、各区切りの音は決まる）。モデルは `local_dir` で実ファイルとして落とし（Hugging Face のキャッシュの symlink は onnxruntime-node が断る）、clone・インストール・Node が失敗したときは、その出力の最後の 30 行を出して止まる。エディタと同じ後処理（`trim-45-loud-20-cap-v1`）を区切りごとにかけ、ターンの間に 0.35 秒の無音を入れ、cue の時刻は実際の音から測る。核は [`colab/egatari_tts.py`](../colab/egatari_tts.py) で、モデルなしでローカルの dry-run ができる（`uv run --no-project --with numpy --with scipy python colab/egatari_tts.py tts-job.json out.zip --dry-run`）。ノートブックは `tools/make-colab-notebook.mjs` が作る（`npm run gen`）。
+   **自分の参照音声（省略可・日本語の Irodori のみ）。** ノートブックの省略可のセルで `UPLOAD` にチェックを入れて 3〜30 秒の WAV か MP3（話す人は 1 人）を選ぶか、`DRIVE_PATH` に Drive のパスを書く。ノートブックは、読めること・3〜30 秒であること・無音でないことを確かめ、同梱の参照音声と同じ 48 kHz のモノラルに直して、ジョブのすべての話者の Irodori の参照音声にする。だめなファイルは理由つきのメッセージで止まる。セルに触れなければ、これまでの声をこれまでどおり使う。出力の形式と `inputHash` は変わらず、Kokoro は使わない。**使ってよい声（自分の声、または本人の許可のある声）だけ**にすること。ファイルは自分の Colab のランタイムの中にあり、ほかへは送られない（ランタイムが片づけられると消える）。
+
 3. **② できた zip を取り込む…** で zip（`records.json` と `audio/*.wav`）を読む。エディタは各段階の `inputHash` を**今の**口述原稿から計算し直して照合する（ノートブックの値は信用しない）。合う段階は、ほかの音声と同じように書く（MP3・`kind: "tts"`・`sync: "auto"` と測った `cues`・`recipe`・`inputHash`・`startOffset`。仕様 §5.3 の引き取りの規則）。作業フォルダはその場で、1 ファイルはメモリの上に書いて「保存」（段 A）。書き出した後に原稿が変わった段階は **印付き** に出し、自動では使わない：**古い印のまま使う** は古い `inputHash` で書き（「古い」と出る）、**捨てる** は捨てる。今の原稿にない段階・記録が不備なもの（パス・cue の数が合わない）・音声がないものは、理由を出してスキップする。別の教材のための zip（`docId` が違う）は拒否する。読み辞書や後処理の版が違うときは知らせるだけ。
 
 zip はダウンロード物なので信頼しない。バイトとして読み、割り当てる前に上限を課す（zip 512 MiB・音声 1 つ 64 MiB・`records.json` 4 MiB・段階は 400 まで。zip64・暗号化・知らない圧縮は断り、CRC-32 を確かめる）。読むのは `records.json` と `audio/<名前>.wav` だけ（名前を確かめる）。音声は本物の WAV として復号でき、長さが記録と合うこと。zip の中身を HTML やコードとして扱うことはない（仕様 §11）。
