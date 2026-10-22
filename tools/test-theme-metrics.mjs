@@ -10,7 +10,9 @@
 //    右の限り 1188px）。宣言と CSS がずれれば themeMetricsDrift（宣言なしで箱を動かす・宣言だけで CSS がない・--bar-h・デッキの CSS が動かす）、
 //    読めない宣言は themeMetricsInvalid（デッキに 1 回）。どれも警告
 // 5. ブラウザ版の品質チェック（app/frame-shim.js）も同じ限りと同じ themeMetricsDrift。修正依頼の量の目安（kit/core/llm-fix.mjs）は値の限りと 1 行の高さを使う
-// 6. tools/theme-metrics.mjs measure が描いた箱から宣言の塊を作る（試験用のテーマで宣言と同じ値）
+// 6. tools/theme-metrics.mjs measure が描いた箱から宣言の塊を作る（試験用のテーマで宣言と同じ値。整数の px で、限りが緩くなる側へ 1px 未満で丸め、
+//    丸めだけではずれにならない）。#75 の試験用のテーマ（tools/fixtures/theme-override）は宣言しないまま：themeMetricsDrift がちょうど 1 つ、エラーなし
+// 7. 字体：同梱の字体が読み込めない（同梱でない字体の名前・壊れた @font-face）ときは測らず metricsFontLoad（警告、デッキに 1 回）。コマンド版・ブラウザ版・measure
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,7 +29,7 @@ import { parseCheck } from '../kit/core/check-result.mjs';
 import { message } from '../kit/check-messages.mjs';
 import { amountOf } from '../kit/core/llm-fix.mjs';
 import { identityBytes } from '../kit/core/identity-hash.mjs';
-import { measureTheme } from './theme-metrics.mjs';
+import { measureTheme, blockFrom } from './theme-metrics.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-theme-metrics-'));
@@ -321,6 +323,80 @@ await t('tools/theme-metrics.mjs measure prints the declared block for the fixtu
   const u = node('tools/theme-metrics.mjs', 'check', 'tools/fixtures/theme-override');
   assert.equal(u.status, 1, 'the #75 fixture moves .body without metrics');
   assert.match(u.stdout, /body\.left: declared 48, rendered 96/);
+});
+
+await t('measure: whole px, each edge rounded outward to the more lenient limit by less than 1px', () => {
+  const m = { body: { left: 47.6, right: 48.4, top: 121.5, line: 46.4, noconclBottom: 656, pnTop: 682 }, concl: { top: 570.2, height: 72.3 }, tate: { rule: 1166.25, conclRight: 120.7, left: 48.9, bottom: 664 } };
+  const k = blockFrom(m);
+  assert.deepEqual(k, { v: 1, body: { left: 47, right: 48, top: 121, floor: 680, line: 46 }, concl: { top: 571, height: 71 }, tate: { rule: 1167, conclRight: 120, left: 48, floor: 680 } });
+  for (const g of ['body', 'concl', 'tate']) for (const [f, v] of Object.entries(k[g])) assert.ok(Number.isInteger(v), `${g}.${f}`);
+  // 限りは緩くなる側：右の限り（1280 − right + 4）は大きく、下の限り（concl.top − 6）は下へ、縦の右（rule − 4）は右へ、縦の左（conclRight + 4・left − 4）は左へ
+  assert.ok(limitsOf(k).right >= 1280 - m.body.right + 4 && limitsOf(k).conclBottom >= m.concl.top - 6 && limitsOf(k).tateRight >= m.tate.rule - 4);
+  assert.ok(limitsOf(k).tateLeftConcl <= m.tate.conclRight + 4 && limitsOf(k).tateLeft <= m.tate.left - 4);
+  // 1px 未満（ずれの許し 1px より小さい）
+  for (const [a, x] of [[k.body.left, m.body.left], [k.body.right, m.body.right], [k.body.top, m.body.top], [k.concl.top, m.concl.top], [k.concl.top + k.concl.height, m.concl.top + m.concl.height], [k.tate.rule, m.tate.rule], [k.tate.conclRight, m.tate.conclRight], [k.tate.left, m.tate.left]]) assert.ok(Math.abs(a - x) < 1, `${a} vs ${x}`);
+  assert.deepEqual(blockFrom({ body: { left: 48, right: 48, top: 122, line: 46.4, noconclBottom: 656, pnTop: 682 }, concl: { top: 571, height: 72 }, tate: { rule: 1166, conclRight: 120, left: 48, bottom: 664 } }), { ...DEFAULT_METRICS, body: { ...DEFAULT_METRICS.body }, concl: { ...DEFAULT_METRICS.concl }, tate: { ...DEFAULT_METRICS.tate } });
+});
+await t('measure: a theme that declares exactly the measured block (rounded) checks clean', async () => {
+  const blk = (await measureTheme('default', { browser: b, work: path.join(work, 'measure-round') })).block;
+  assert.equal(blk.tate.rule, 1167, 'the vertical heading rule is at 1166.25, rounded to the lenient side');
+  const dir = path.join(work, 'theme-rounded');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'theme.json'), JSON.stringify({ extends: 'default', metrics: blk }));
+  fs.writeFileSync(path.join(dir, 'tokens.css'), '');
+  const m = await measureTheme(dir, { browser: b, work: path.join(work, 'measure-rounded') });
+  assert.equal(m.declared, true);
+  assert.deepEqual(m.items, []);
+});
+await t('the #75 fixture theme-override stays undeclared: exactly one themeMetricsDrift warning and no error', () => {
+  const src = deckWith('override', 'theme-override', { 'theme-override': { json: fs.readFileSync(path.join(ROOT, 'tools/fixtures/theme-override/theme.json'), 'utf8'), css: fs.readFileSync(path.join(ROOT, 'tools/fixtures/theme-override/tokens.css'), 'utf8') } });
+  assert.ok(!('metrics' in JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/fixtures/theme-override/theme.json'), 'utf8'))));
+  const J = check(src);
+  assert.equal(J.counts.error, 0, JSON.stringify(J.results.filter((x) => x.sev === 'error')));
+  const d = drift(J);
+  assert.equal(d.length, 1);
+  assert.equal(d[0].sev, 'warn');
+  assert.equal(d[0].data.declared, false);
+  assert.deepEqual(d[0].data.items.map((x) => x.field), ['body.left', 'body.right']);
+  assert.deepEqual(J.results.filter((x) => x.code === 'metricsFontLoad'), []);
+});
+
+// ---------------------------------------------------------------- 7. 字体
+const NOFONT = { json: { extends: 'default' }, css: WIDE_CSS + ':root{--font-sans:"NoSuchFamily-Egatari"}' };
+const BROKEN = { json: { extends: 'default' }, css: WIDE_CSS + '@font-face{font-family:"BrokenFace";src:url(data:font/woff2;base64,AAAAAAAA) format("woff2")}\n:root{--font-sans:"BrokenFace"}' };
+await t('fonts: the bundled fonts load on the default themes (no metricsFontLoad)', () => {
+  for (const J of [JW, JD]) assert.deepEqual(J.results.filter((x) => x.code === 'metricsFontLoad'), []);
+});
+await t('fonts: a font that is not bundled, or a bundled face that fails to load, is one metricsFontLoad warning and nothing is measured', () => {
+  for (const [name, th, fam] of [['nofont', NOFONT, 'NoSuchFamily-Egatari'], ['broken', BROKEN, 'BrokenFace']]) {
+    const J = check(deckWith('font-' + name, name, { [name]: th }, { body: BODY }));
+    const f = J.results.filter((x) => x.code === 'metricsFontLoad');
+    assert.equal(f.length, 1, name);
+    assert.equal(f[0].sev, 'warn');
+    assert.equal(f[0].slide, null);
+    assert.deepEqual(f[0].data.fonts, [fam]);
+    assert.deepEqual(drift(J), [], `${name}: the boxes moved, but nothing was measured`);
+    assert.match(f[0].msg, /代わりの字体では測らない/);
+    assert.match(message('en', 'metricsFontLoad', f[0].data), /a fallback font is never measured/);
+  }
+});
+await t('fonts: the quick check skips the measurement the same way', async () => {
+  const Q = await quick(deckWith('q-broken', 'broken', { broken: BROKEN }, { body: BODY }), 'q-broken');
+  const f = Q.results.filter((x) => x.code === 'metricsFontLoad');
+  assert.equal(f.length, 1);
+  assert.deepEqual(f[0].arg.fonts, ['BrokenFace']);
+  assert.equal(Q.results.filter((x) => x.code === 'themeMetricsDrift').length, 0);
+});
+await t('fonts: measure refuses to measure with a fallback font', () => {
+  const dir = path.join(work, 'theme-nofont');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'theme.json'), JSON.stringify(NOFONT.json));
+  fs.writeFileSync(path.join(dir, 'tokens.css'), NOFONT.css);
+  const r = node('tools/theme-metrics.mjs', 'measure', dir);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /fonts did not load/);
 });
 
 await b.close();

@@ -7,7 +7,7 @@
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
 //   theme   プレビュー：組み立てが返したテーマ {name, metrics, declared}（kit/core/theme-metrics.mjs）。品質チェックの本文の場所の限りと、寸法のずれ（themeMetricsDrift）に使う。
 //           なければ既定の寸法（今までと同じ限り）
-// layoutScan・metricsProbe・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数と、わざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。
+// layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。
 // app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
@@ -49,7 +49,11 @@ window.addEventListener("message", function(e){
   var m = e.data || {};
   if (m.type === "app-print") window.print();
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
-  else if (m.type === "app-check") whenReady(function(){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck()}, "*"); });
+  // 品質チェックは、テーマの寸法を測る字体を確かめてから（metricsFonts。読み込めなければ測らない）
+  else if (m.type === "app-check") whenReady(function(){
+    var send = function(f){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck(f)}, "*"); };
+    metricsFonts(document).then(send, function(e){ send({ok: false, missing: [String(e && e.message || e)]}); });
+  });
   else if (m.type === "app-audio") whenReady(function(){ previewAudio(m.items); });
 });
 // 品質チェックは、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
@@ -89,7 +93,7 @@ function previewAudio(items){
 // 部品の再現性・タイムライン・モーフ・読み上げ・です・ます・句読点の検査はしない（全部の検査は CLI の npm run check）
 // コマンド版の code → ブラウザ版の前からの code（app/i18n.js の checkMsg と kit/core/llm-fix.mjs の BY_CODE が知っているもの）
 var LEGACY = {titleLong: "titleLong", titleLongEn: "titleLongEn", conclLong: "conclLong", conclLongEn: "conclLongEn", conclOverflow: "conclOverflow", bodyBottom: "overflowBottom", bodyRight: "overflowRight", smallText: "smallText"};
-function quickCheck(){
+function quickCheck(fonts){
   var DECK = window.DECK;
   if (!DECK || !DECK.slides) return jsErrors.map(function(t){ return {i: null, title: "", sev: "error", code: "consoleError", arg: t}; });
   var JA = DECK.ja !== false, S = DECK.slides, out = [];
@@ -128,7 +132,9 @@ function quickCheck(){
     Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
   });
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
-  try {
+  // 同梱の字体が読み込めていなければ測らない（代わりの字体では測らない）：metricsFontLoad
+  if (fonts && !fonts.ok) add(null, "warn", "metricsFontLoad", {theme: TH && TH.name || "default", fonts: fonts.missing});
+  else try {
     var pr = metricsProbe(document, METRICS);
     if (pr.items.length) add(null, "warn", "themeMetricsDrift", {theme: TH && TH.name || "default", declared: !!(TH && TH.declared), items: pr.items});
   } catch (e) {}

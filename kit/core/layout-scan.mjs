@@ -11,6 +11,7 @@
 //            余裕（結論の行の上 6px・横の 4px）・字の大きさの最小・字数は metrics で変わらない
 //   code と a は kit/check-messages.mjs の知らせ。sev は 'error' | 'warn'
 //
+//   metricsFonts(doc) → Promise<{ok, missing}>   測る前に、見本の字の字体が同梱の字体で読み込まれたか（代わりの字体では測らない）
 //   metricsProbe(doc, M) → {measured, theme, items}   テーマの寸法の宣言（M）と、描いた箱を比べる（themeMetricsDrift。contract §12）。
 //     見えない見本のスライド 4 枚（無印・noconcl・layout-tate・layout-tate noconcl）を #stage に足して測り、すぐに外す。
 //     measured はデッキの CSS も通した箱、theme はデッキの <style> を外した（#deck-base だけの）箱。items は宣言と合わない項目
@@ -355,9 +356,9 @@ export function metricsProbe(doc, M0) {
     s.className = cls;
     s.setAttribute('aria-hidden', 'true');
     s.setAttribute('data-metrics-probe', '');
-    const h = doc.createElement('h2'); h.textContent = '\u3042'; s.appendChild(h);
+    const h = doc.createElement('h2'); h.textContent = '1'; s.appendChild(h);
     s.appendChild(Object.assign(doc.createElement('div'), { className: 'body' }));
-    if (concl) { const c = doc.createElement('div'); c.className = 'concl'; c.textContent = '\u3042'; s.appendChild(c); }
+    if (concl) { const c = doc.createElement('div'); c.className = 'concl'; c.textContent = '1'; s.appendChild(c); }
     const pn = doc.createElement('div'); pn.className = 'pn'; pn.textContent = '1'; s.appendChild(pn);
     return s;
   };
@@ -419,9 +420,44 @@ export function metricsProbe(doc, M0) {
   return { measured, theme, items };
 }
 
-// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe）と印の名前を渡す形にする。
-// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
+// 寸法を測る前に、見本の字（見出しとページ番号の「1」。どの組み立てでも埋め込む字）の字体が同梱の字体で読み込まれていることを確かめる。
+// 代わりの字体（機械の字体）では測らない：読み込めなければ ok: false と、読み込めなかった字体の名前（missing）を返し、呼び手は測らずに
+// metricsFontLoad を知らせる。document.fonts.ready を待ってから、見出し（太字 43px）とページ番号（16px）の字体を document.fonts.load で読み、
+// 同梱の字体（document.fonts の FontFace）がその字を受け持ち（load の結果が空でない）、document.fonts.check が true のときだけ ok。layoutScan と同じく文字列でページに入れる
+export async function metricsFonts(doc, timeoutMs) {
+  const F = doc.fonts;
+  if (!F || typeof F.load !== 'function') return { ok: false, missing: ['document.fonts'] };
+  const T = '1';
+  const wait = (p) => Promise.race([p, new Promise((r) => setTimeout(() => r(undefined), timeoutMs || 10000))]);
+  await wait(F.ready);
+  const stage = doc.getElementById('stage') || doc.body;
+  const s = doc.createElement('section');
+  s.className = 'slide';
+  s.setAttribute('aria-hidden', 'true');
+  s.setAttribute('data-metrics-probe', '');
+  const h = doc.createElement('h2'); h.textContent = T; s.appendChild(h);
+  const pn = doc.createElement('div'); pn.className = 'pn'; pn.textContent = T; s.appendChild(pn);
+  stage.appendChild(s);
+  const want = [h, pn].map((e) => { const st = getComputedStyle(e); return { font: st.fontStyle + ' ' + st.fontWeight + ' ' + st.fontSize + ' ' + st.fontFamily, family: st.fontFamily }; });
+  s.remove();
+  const unq = (x) => x.trim().replace(/^["']|["']$/g, '');
+  const bundled = new Set();
+  F.forEach((f) => bundled.add(unq(f.family)));
+  const missing = [];
+  for (const w of want) {
+    const fams = w.family.split(',').map(unq).filter(Boolean);
+    const own = fams.find((x) => bundled.has(x));
+    if (!own) { missing.push(fams[0] || w.family); continue; }
+    let faces = null;
+    try { faces = await wait(F.load(w.font, T)); } catch (e) { faces = null; }
+    if (!faces || !faces.length || !F.check(w.font, T) || faces.some((f) => f.status !== 'loaded')) missing.push(own);
+  }
+  return { ok: !missing.length, missing: [...new Set(missing)] };
+}
+
+// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）と印の名前を渡す形にする。
+// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, metricsProbe){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${metricsProbe})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, metricsProbe, metricsFonts){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${metricsProbe}, ${metricsFonts})`;
 }

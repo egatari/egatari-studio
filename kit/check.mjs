@@ -8,7 +8,7 @@
 //    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
 //    本文の場所の限りはテーマの寸法の宣言（theme.json の metrics、contract §12）から導き、描いた箱が宣言と違えば themeMetricsDrift（警告、デッキに 1 回）。
-//    読めない宣言は themeMetricsInvalid（警告、デッキに 1 回）
+//    読めない宣言は themeMetricsInvalid（警告、デッキに 1 回）。同梱の字体が読み込めなければ測らずに metricsFontLoad（警告、デッキに 1 回）
 // B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
@@ -42,7 +42,7 @@ import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
-import { layoutScan, metricsProbe, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
+import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -336,9 +336,12 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, METRICS]) => {
 }, [meta, JA, CLIP_ATTR, ANNOT_ATTR, themeInfo.metrics]);
 
 // テーマの寸法の宣言と描いた箱（見えない見本のスライドで 1 回測る。宣言がなければ既定と比べる）
+// 測るのは同梱の字体が読み込まれてから（代わりの字体では測らない。読み込めなければ metricsFontLoad を知らせて測らない）
 // （測れない文書、たとえば体裁の CSS を消したデッキでは測らない。検査そのものは止めない）
-await page.evaluate(`window.__metricsProbe = ${metricsProbe}`);
-const probe = await page.evaluate((M) => { try { return window.__metricsProbe(document, M); } catch { return { items: [] }; } }, themeInfo.metrics);
+await page.evaluate(`window.__metricsProbe = ${metricsProbe}; window.__metricsFonts = ${metricsFonts}`);
+const mfonts = await page.evaluate(async () => { try { return await window.__metricsFonts(document); } catch (e) { return { ok: false, missing: [String(e && e.message || e)] }; } });
+const probe = mfonts.ok ? await page.evaluate((M) => { try { return window.__metricsProbe(document, M); } catch { return { items: [] }; } }, themeInfo.metrics) : { items: [] };
+if (!mfonts.ok) report(null, 'warn', 'metricsFontLoad', { theme: themeInfo.name, fonts: mfonts.missing });
 if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);

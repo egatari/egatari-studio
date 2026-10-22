@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=a0dfe18618475dae -->
+<!-- i18n: pair=contract.md sha256=80667f1bc4b97d4d -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -207,7 +207,7 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 - テーマが何を替えても、色の変数の意味は変わらない：`--emph` は結論・問題、`--term` は用語・補足、`--muted` は既知の結果、`--fg` は地の文字、`--line` は飾りだけ。部品はこれらの変数だけを使い（§3）、品質チェックの色の決まり（`--bg` とのコントラスト）はどのテーマにも効く
 - 体裁の箱を動かすテーマにも品質チェックは効く。テーマは箱の場所を `theme.json` の `metrics`（`"v": 1`）で宣言する。値は 1280×720 の舞台の px で、項目は `body.left`・`body.right`・`body.top`・`body.floor`・`body.line`・`concl.top`・`concl.height`・`tate.rule`・`tate.conclRight`・`tate.left`・`tate.floor`（意味と既定は[リファレンス](reference.ja.md#テーマ)）。書かない項目は `extends` の親から項目ごとに、親もなければ既定（今の `kit/layouts.css`）から取るので、`metrics` のないテーマは今までとまったく同じに検査する（[形式の仕様](https://github.com/egatari/egatari-spec) §6）
 - 品質チェックは、本文の場所の限り（`bodyBottom`・`bodyRight`・`tateBodyHead`・`bodyConclCol`・`bodyLeft`）をこの値から導く。`metrics` が動かすのは限りの場所だけで、限りそのものは変えない：余裕（結論の行の上 6px、横の 4px）、字の大きさの最小（R-fit）、見出しと結論の字数（R-title・R-concl）は `metrics` では変わらない
-- 同梱のテーマ（`themes/`）と公式のテーマ庫のテーマが本文・結論の行・縦組みの列を既定の場所から動かすなら、`metrics` を宣言しなければならない。その CSS が描く箱が宣言と 1px を超えて違えば `tools/test-theme-metrics.mjs` が失敗する。ほかのテーマ（自分のテーマ）は宣言を勧める：品質チェック（`npm run check` と編集アプリの品質チェック）は、描いた箱が宣言と 1px を超えて違うとき、または `metrics` のないテーマが箱を動かしたとき、デッキに 1 回 `themeMetricsDrift` を警告する。警告は項目ごとに宣言の値と描いた値、箱を動かしたのがテーマの CSS かデッキの `<style>` かを言う。`node tools/theme-metrics.mjs measure <テーマ>` が、描いたテーマから測った塊を出す
+- 同梱のテーマ（`themes/`）と公式のテーマ庫のテーマが本文・結論の行・縦組みの列を既定の場所から動かすなら、`metrics` を宣言しなければならない。その CSS が描く箱が宣言と 1px を超えて違えば `tools/test-theme-metrics.mjs` が失敗する。ほかのテーマ（自分のテーマ）は宣言を勧める：品質チェック（`npm run check` と編集アプリの品質チェック）は、描いた箱が宣言と 1px を超えて違うとき、または `metrics` のないテーマが箱を動かしたとき、デッキに 1 回 `themeMetricsDrift` を警告する。警告は項目ごとに宣言の値と描いた値、箱を動かしたのがテーマの CSS かデッキの `<style>` かを言う。箱を測るのは同梱の字体が読み込まれてから（`document.fonts.ready` の後、見出しとページ番号の字体が読み込み済みと答えたとき）だけで、代わりの字体では測らない：読み込めなければ比べずに、デッキに 1 回 `metricsFontLoad` を警告する。`node tools/theme-metrics.mjs measure <テーマ>` が、描いたテーマから測った塊を出す。値は整数の px で、どの端も限りが緩くなる側へ外向きに丸める（1px 未満なので、丸めだけではずれにならない）
 - デッキ（原稿）は `metrics` を持たず、変えられない：箱を動かすデッキの `<style>` には `themeMetricsDrift` が出て、限りはテーマのまま。数でない・範囲の外・ほかの値と合わない値は組み立ての警告（`theme-metrics: …`。品質チェックはデッキに 1 回の `themeMetricsInvalid` にまとめる）で、その項目は（合わない値なら、そのテーマの塊ごと）親の値を使う
 - `metrics` は検査と書き手の道具のためだけのもの。プレーヤーは描くのに使わない（描くのは CSS だけ）。テーマの同一性には入る：`theme.json` はほかのテーマのファイルと同じくテーマの `sha256` に数える
 - 同梱のテーマは変数だけを決めるので、この順で見た目は変わらない

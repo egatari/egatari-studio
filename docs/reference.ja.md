@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=c7e3618be9616e34 -->
+<!-- i18n: pair=reference.md sha256=789b1ef3f1407292 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -358,7 +358,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `layout-tate`：縦組みのタイトルが列に収まらない | エラー |
 | 結論の行が 35 字を超える（日本語）/ 70 文字を超える（英語）。結論が枠からはみ出す（`layout-tate` の縦の列でも） | エラー / 警告。エラー |
 | 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px）。これらは既定の値で、限りはテーマの `metrics` から決める（[テーマ](#テーマ)） | エラー |
-| テーマが描く箱がその `metrics` と 1px を超えて違う、または `metrics` のないテーマ（かデッキ自身の `<style>`）が本文・結論の行・縦組みの列を動かす（`themeMetricsDrift`。デッキに 1 回。項目ごとに宣言の値と描いた値、動かしたのがテーマの CSS かデッキの CSS か）。使えない `metrics` の値（`themeMetricsInvalid`。デッキに 1 回） | 警告 |
+| テーマが描く箱がその `metrics` と 1px を超えて違う、または `metrics` のないテーマ（かデッキ自身の `<style>`）が本文・結論の行・縦組みの列を動かす（`themeMetricsDrift`。デッキに 1 回。項目ごとに宣言の値と描いた値、動かしたのがテーマの CSS かデッキの CSS か）。使えない `metrics` の値（`themeMetricsInvalid`。デッキに 1 回）。同梱の字体が読み込めず、箱を測らなかった（`metricsFontLoad`。デッキに 1 回。代わりの字体では測らない） | 警告 |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない。`data-annot` を付けた要素の中の字、つまり `m-kanbun` の読む順の番号のようにわざと小さくした注記は数えない：[約束事 §10](contract.ja.md#10-品質チェックわざと切る)） | エラー |
 | `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
 | どのスライドでも（表紙・章の扉・`layout-tate`・絶対位置の配置）：`.body` のないスライドで 1280×720 の外に出る字（`textOffSlide`。`.body` のあるスライドでは `outsideBody`）、ほかの字の箱やスライドの帯（飾り。表紙の上の帯など）に重なる字の箱（`textOverlap`：2 つの箱の行の矩形が縦横とも 2px を超えて重なる。KaTeX の式は式の見た目の箱 1 つで比べる。親と子、同じ部品の中の字どうし、SVG の字は比べない。本文の場所のエラーのあるスライドでは、本文の字と見出し・結論の行の重なりを重ねて知らせない）。表紙と章の扉では、置ける子要素と副題の置き場所を添える。`data-clip` の中の字、見えない字、KaTeX の MathML、`.sr-only` は見ない | 警告 |
@@ -487,7 +487,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文が部品庫の `m-kanbun` で知らせなしに読めるか（ブラウザなし。部品そのものの試験は egatari/components） |
-| `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
+| `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |

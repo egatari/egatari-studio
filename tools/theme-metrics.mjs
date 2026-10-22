@@ -3,14 +3,15 @@
 //   node tools/theme-metrics.mjs check <テーマ> [--lang ja|en]      宣言（なければ既定）と描いた箱を比べ、違えば項目を出して終了コード 1
 // <テーマ>：テーマのフォルダ（tokens.css のあるところ）か名前（利用者のテーマのフォルダ → 同梱の themes/ の順に探す。build の --theme と同じ）
 // 測り方は品質チェックと同じ（kit/core/layout-scan.mjs の metricsProbe）：見えない見本のスライド（無印・noconcl・layout-tate・layout-tate noconcl）を
-// 組んだデッキに足して箱を測る。body.floor・tate.floor は測った範囲（本文の下端〜ページ番号の上端、縦組みの本文の下端〜720）に今の値を収めたもの
+// 組んだデッキに足して箱を測る。値は整数の px（限りが緩くなる側へ 1px 未満で丸める）。body.floor・tate.floor は測った範囲（本文の下端〜ページ番号の上端、縦組みの本文の下端〜720）に今の値を収めたもの。
+// 同梱の字体が読み込めなければ測らない（終了コード 2）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from '../kit/build.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
-import { metricsProbe } from '../kit/core/layout-scan.mjs';
+import { metricsProbe, metricsFonts } from '../kit/core/layout-scan.mjs';
 import { DEFAULT_METRICS } from '../kit/core/theme-metrics.mjs';
 
 const DECK = (lang) => `<!DOCTYPE html>
@@ -24,21 +25,24 @@ const DECK = (lang) => `<!DOCTYPE html>
 </html>
 `;
 
-const r2 = (x) => Math.round(x * 100) / 100;
 const clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);
 
-// 測った箱 → metrics の塊。floor は、今の値（宣言か既定）が測った範囲に入ればそのまま、入らなければ範囲の端（整数）
+// 測った箱 → metrics の塊（整数の px）。どの端も外へ、限りが緩くなる側へ丸める（1px 未満。ずれの許し 1px より小さいので、丸めだけでずれにはならない）：
+//   body.left・body.top・body.right は欄が広がる側（切り捨て。右の限り 1280 − right + 4 は大きくなる）、concl.top は切り上げ（下の限り concl.top − 6 が下がる）、
+//   concl.height は結論の行の下端（top + height）を保つ側で切り捨て、tate.rule は切り上げ（右の限り rule − 4 が右へ）、tate.conclRight・tate.left は切り捨て（左の限りが左へ）。
+// floor は、今の値（宣言か既定）が測った範囲に（1px の許しで）入ればそのまま、入らなければ範囲の端（整数で範囲の内）
 export function blockFrom(measured, current = DEFAULT_METRICS) {
   const m = measured;
-  // 品質チェックと同じ 1px の許し（範囲の外へ 1px までなら今の値のまま）
-  const fit = (x, lo, hi) => (x >= lo - 1 && x <= hi + 1 ? x : clamp(x, Math.ceil(lo), Math.floor(hi)));
+  const dn = (x) => Math.floor(x + 1e-6), up = (x) => Math.ceil(x - 1e-6);
+  const fit = (x, lo, hi) => (x >= lo - 1 && x <= hi + 1 ? x : clamp(x, up(lo), dn(hi)));
   const bodyFloor = fit(current.body.floor, m.body.noconclBottom, m.body.pnTop);
   const tateFloor = fit(current.tate.floor, m.tate.bottom, 720);
+  const conclTop = up(m.concl.top);
   return {
     v: 1,
-    body: { left: r2(m.body.left), right: r2(m.body.right), top: r2(m.body.top), floor: bodyFloor, line: m.body.line ? Math.round(m.body.line) : current.body.line },
-    concl: { top: r2(m.concl.top), height: r2(m.concl.height) },
-    tate: { rule: r2(m.tate.rule), conclRight: r2(m.tate.conclRight), left: r2(m.tate.left), floor: tateFloor },
+    body: { left: dn(m.body.left), right: dn(m.body.right), top: dn(m.body.top), floor: bodyFloor, line: m.body.line ? Math.round(m.body.line) : current.body.line },
+    concl: { top: conclTop, height: dn(m.concl.top + m.concl.height) - conclTop },
+    tate: { rule: up(m.tate.rule), conclRight: dn(m.tate.conclRight), left: dn(m.tate.left), floor: tateFloor },
   };
 }
 
@@ -59,7 +63,10 @@ export async function measureTheme(themeArg, { lang = 'ja', browser = null, work
     await page.goto(fileUrl(out));
     await page.waitForFunction(() => window.DECK && window.DECK.ready, null, { timeout: 30000 }).catch(() => {});
     await page.evaluate(() => document.fonts.ready);
-    await page.evaluate(`window.__metricsProbe = ${metricsProbe}`);
+    // 同梱の字体が読み込まれてから測る（代わりの字体では測らない。品質チェックと同じ metricsFonts）
+    await page.evaluate(`window.__metricsProbe = ${metricsProbe}; window.__metricsFonts = ${metricsFonts}`);
+    const f = await page.evaluate(() => window.__metricsFonts(document));
+    if (!f.ok) throw Object.assign(new Error(`the bundled fonts did not load (${f.missing.join(', ')}); a fallback font is never measured`), { code: 'metricsFontLoad' });
     const p = await page.evaluate((M) => window.__metricsProbe(document, M), r.theme.metrics);
     await page.close();
     return { theme: r.theme.name, metrics: r.theme.metrics, declared: r.theme.declared, measured: p.measured, items: p.items, block: blockFrom(p.measured, r.theme.metrics),

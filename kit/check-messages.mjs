@@ -143,6 +143,9 @@ export const MESSAGES = {
   themeMetricsDrift: {
     ja: (a) => `テーマ「${a.theme}」の${a.declared ? '寸法の宣言（theme.json の metrics）と描いた体裁の箱が違う' : '体裁の箱が既定の位置から動いているのに、寸法の宣言（theme.json の metrics）がない'}（${driftList(a.items, 'ja')}）。本文の場所の限りは${a.declared ? '宣言' : '既定'}の値で決めるので、はみ出しの指摘がずれる：${driftHow(a, 'ja')}`,
     en: (a) => `the theme “${a.theme}” ${a.declared ? 'renders its layout boxes differently from its declared geometry (metrics in theme.json)' : 'moves layout boxes from their default positions but declares no geometry (metrics in theme.json)'} (${driftList(a.items, 'en')}). The body limits come from the ${a.declared ? 'declared' : 'default'} values, so overflow findings may be off: ${driftHow(a, 'en')}` },
+  metricsFontLoad: {
+    ja: (a) => `テーマ「${a.theme}」の寸法と描いた箱を比べなかった：同梱の字体（${(a.fonts || []).join('・')}）が読み込めず、代わりの字体では測らないため（themeMetricsDrift を確かめていない）：npm ci か node tools/get-fonts.mjs で字体をそろえて組み直すか、テーマの --font-sans に同梱の字体を入れる`,
+    en: (a) => `the theme “${a.theme}” was not compared with its rendered boxes: the bundled fonts (${(a.fonts || []).join(', ')}) did not load, and a fallback font is never measured (themeMetricsDrift was not checked): restore the fonts (npm ci or node tools/get-fonts.mjs) and rebuild, or put a bundled font in the theme's --font-sans` },
   themeMetricsInvalid: {
     ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値は親のテーマ（なければ既定）の値で検査した：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
     en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. Those values were checked with the parent theme's (or the default) values: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
