@@ -32,7 +32,7 @@
     <span id="lesson-kind" class="badge"></span>
   </div>
   <div class="bar-buttons">
-    <button type="button" id="b-live" class="live-btn" hidden aria-expanded="false" aria-controls="live"><span class="dot" aria-hidden="true"></span><span data-i18n="live">ライブ</span><span class="sr-only" id="b-live-state"></span></button>
+    <button type="button" id="b-live" class="live-btn" hidden aria-controls="live"><span class="dot" aria-hidden="true"></span><span data-i18n="live">ライブ</span><span class="sr-only" id="b-live-state"></span></button>
     <button type="button" id="b-close" hidden data-i18n="close">閉じる</button>
     <button type="button" id="b-lang" lang="en">English</button>
   </div>
@@ -75,12 +75,11 @@
   </section>
   <section id="player" hidden aria-label="教材">
     <div id="stage-wrap"></div>
-    <aside id="live" hidden aria-labelledby="live-h">
+    <aside id="live" hidden aria-labelledby="live-h" tabindex="-1">
       <div class="live-head">
         <span class="dot" aria-hidden="true"></span>
         <h2 id="live-h" data-i18n="liveTitle">ライブ（質問・投票）</h2>
         <span id="live-state" class="state"></span>
-        <button type="button" id="b-live-fold" data-i18n-label="fold" aria-label="たたむ">×</button>
       </div>
       <div class="live-body">
         <p id="live-notice"></p>

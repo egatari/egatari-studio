@@ -13,7 +13,7 @@
 //     allowed   Set of endpoint origins this page may connect to (the build writes them into its CSP too)
 //     policy    a LivePolicy() instance
 //     el        the elements of #live (see play/index.html)
-//     onOpen(open, how)  the page opens or folds the Live pane (how: 'poll' when a poll step opened it)
+//     onOpen(true, 'poll')  a poll step came on screen (the pane is always shown; the page only announces it)
 import { FORMAT } from '../kit/core/format.mjs';
 
 const REJOIN = { room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0 };
@@ -201,7 +201,7 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
   function syncAuto() {
     const want = phase() === 'open' && pollHere();
     if (want && !autoOpened) { autoOpened = true; onOpen(true, 'poll'); say(S.pollOpen); }
-    else if (!want && autoOpened) { autoOpened = false; onOpen(false, 'poll'); }
+    else if (!want && autoOpened) autoOpened = false;
   }
   const ms0 = LP.windowStart(live.window) - now();
   if (ms0 > 0) startTimer = setTimeout(() => { syncAuto(); render(); scheduleEnd(); }, Math.min(ms0 + 200, 2147483000));

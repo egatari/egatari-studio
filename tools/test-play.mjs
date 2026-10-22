@@ -149,9 +149,6 @@ async function page(url = site.url, opts = {}) {
 const lessonFrame = async (p) => { await p.waitForSelector('#lesson'); let f = null; await until(async () => { f = (await (await p.$('#lesson')).contentFrame()); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 15000); return f; };
 const openFixture = async (p, name) => { await p.setInputFiles('#file', FIX[name]); };
 const state = (p) => p.evaluate(() => window.__play.state());
-// after the Live pane opens or closes the lesson's frame changes size. Chrome routes input to a sandboxed (out-of-process) frame
-// by hit-test data that can lag a frame behind, so a click right after the change can land in the lesson instead. Let it settle
-const settle = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 250)))));
 
 // ---------------------------------------------------------------- 2. open a play-only and an editable file
 console.log('open');
@@ -252,6 +249,10 @@ console.log('service worker');
   await o.p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => o.p.evaluate(() => !document.getElementById('update').hidden), 10000), 'a new version: 「新しい版があります」 with an update button');
   ok(await o.p.textContent('#version') === v1, 'a new version: the old one keeps running until the viewer updates');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p);
+  ok(await o.p.evaluate(() => document.getElementById('update').hidden), 'a new version: the notice is held back while a lesson plays (nothing appears next to the lesson\'s frame)');
+  await o.p.click('#b-close');
+  ok(await until(() => o.p.evaluate(() => !document.getElementById('update').hidden)), 'a new version: the notice comes back when the lesson is closed');
   await Promise.all([o.p.waitForNavigation({ timeout: 10000 }).catch(() => {}), o.p.click('#b-update')]);
   await o.p.waitForSelector('html[data-ready]');
   ok(await until(() => o.p.evaluate((v) => document.getElementById('version').textContent === v, b2.version)), `after updating: version ${b2.version}`);
@@ -400,6 +401,21 @@ console.log('links');
   await until(async () => sent.length > n0);
   ok(sent[sent.length - 1].text.length === 200, 'the text is cut to 200 characters');
   await until(async () => (await box()).open); await shut();
+  // a link with a download attribute: {download: true}; the page refuses it, showing the host
+  await f.evaluate(() => { const a = document.createElement('a'); a.id = 'tl'; a.href = 'https://files.example/handout.pdf'; a.textContent = '配布資料'; a.setAttribute('download', ''); a.style.cssText = 'position:fixed;left:20px;top:20px;z-index:99999;font-size:24px;background:#fff'; document.body.appendChild(a); });
+  const n1 = sent.length;
+  await f.click('#tl'); await f.evaluate(() => document.getElementById('tl').remove());
+  await until(async () => (b = await box()).open);
+  ok(sent.length === n1 + 1 && sent[n1].download === true && Object.keys(sent[n1]).length === 4, `a download link sends download: true (${JSON.stringify(sent[n1])})`);
+  ok(b.open && b.title === 'この教材からはファイルを保存できません' && b.host === 'files.example' && b.openHidden && !b.href, `a download is refused: the host and 「この教材からはファイルを保存できません」, nothing to open (${b.title} / ${b.host})`);
+  const pages1 = o.ctx.pages().length;
+  await shut();
+  ok(o.ctx.pages().length === pages1, 'a download: nothing opened');
+  for (const v of [false, 'true', 1]) {
+    await f.evaluate((d) => window.parent.postMessage({ egatari: 'openLink', href: 'https://x.example/', text: '', download: d }, '*'), v);
+    await sleep(300);
+    ok(!(await box()).open, `download must be exactly true: ${JSON.stringify(v)} is ignored`);
+  }
   // forged requests: from the page's own window are ignored; from the frame they are untrusted and still go through the rule
   await o.p.evaluate(() => window.postMessage({ egatari: 'openLink', href: 'https://example.net/', text: '' }, '*'));
   await sleep(300);
@@ -408,7 +424,7 @@ console.log('links');
   await until(async () => (b = await box()).open);
   ok(b.open && b.openHidden, 'a request posted by lesson code is still judged by the rule (data: refused, no Open)');
   await shut();
-  for (const [m, what] of [[{ egatari: 'openLink', href: 'https://x.example/', text: 'z'.repeat(201) }, 'text over 200 characters'], [{ egatari: 'openLink', href: 'https://x.example/', text: '', download: true }, 'an extra member'], [{ egatari: 'openLink', href: 7, text: '' }, 'a non-string href']]) {
+  for (const [m, what] of [[{ egatari: 'openLink', href: 'https://x.example/', text: 'z'.repeat(201) }, 'text over 200 characters'], [{ egatari: 'openLink', href: 'https://x.example/', text: '', extra: 1 }, 'an extra member'], [{ egatari: 'openLink', href: 7, text: '' }, 'a non-string href']]) {
     await f.evaluate((mm) => window.parent.postMessage(mm, '*'), m);
     await sleep(300);
     ok(!(await box()).open, `a malformed request (${what}) is ignored`);
@@ -449,35 +465,23 @@ console.log('live');
   await sleep(500);
   ok(fake.connections.length === 0 && ws.length === 0, 'live: nothing connects before Join');
   await o.p.click('#b-live');
-  await settle(o.p);
   ok(await o.p.isVisible('#live') && /127\.0\.0\.1/.test(await o.p.textContent('#live-dest')), 'live: the pane shows the destination host before Join');
-  await o.p.evaluate(() => { window.__clicks = []; document.addEventListener('click', (e) => window.__clicks.push(e.target.id + '/' + e.target.disabled), true); });
-  const pre = await o.p.evaluate(() => ({ d: document.getElementById('b-join').disabled, h: document.getElementById('live-join-row').hidden, s: window.__play.state().live }));
   await o.p.click('#b-join');
-  let joined = await until(() => o.p.evaluate(() => window.__play.state().live.state !== 'off'), 3000);
-  if (!joined) {
-    // should not happen after settle(); if the first click still lands in the lesson's frame, report it and tap again
-    console.log('    (diagnostics) Join: the first tap did not start ' + JSON.stringify({ pre, clicks: await o.p.evaluate(() => window.__clicks), conns: fake.connections.length }));
-    await o.p.click('#b-join');
-  }
-  joined = await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
+  const joined = await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
   ok(joined, 'live: Join connects (one tap)');
   const c0 = fake.connections[0] || {};
   ok(fake.connections.length === 1 && c0.query.room === 'r-7k2q6xw4' && c0.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && /^[A-Za-z0-9_-]{16,43}$/.test(c0.query.pid), 'live: one WebSocket to the declared endpoint with room, key and a random pid');
   ok(c0.origin === site.url.replace(/\/$/, ''), `live: the page holds the connection (Origin ${c0.origin}), not the lesson (Origin null)`);
   ok(frameReqs.length === 0, 'live: the lesson\'s frame made no request');
-  if (!(await until(() => o.p.isVisible('#live-q')))) console.log('    (diagnostics) ' + JSON.stringify(await o.p.evaluate(() => ({ s: window.__play.state(), live: document.getElementById('live').hidden, qa: document.getElementById('live-qa').hidden }))));
   await o.p.fill('#live-q', 'もう一度説明してください');
   await o.p.click('#b-send');
   ok(await until(() => fake.messages.some((m) => m.t === 'ask' && m.text === 'もう一度説明してください' && m.activity === 'qa')), 'live: a question is sent (ask)');
   ok(await until(() => o.p.evaluate(() => /質問を送りました/.test(document.getElementById('live-msg').textContent))), 'live: the ack is shown');
   const ask = fake.messages.find((m) => m.t === 'ask');
   ok(ask && Object.keys(ask).sort().join() === 'activity,ref,step,t,text,v', `live: only what the activity needs (${ask && Object.keys(ask).join(',')})`);
-  await o.p.click('#b-live-fold');
   await f.evaluate(() => DECK.go(1, 0));
   ok(await until(() => o.p.evaluate(() => window.__play.state().live.step === '何を最小化するか:0')), 'live: the page learns the step from the lesson\'s position events');
-  ok(await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]')), 'live: a step with a poll opens the pane and shows the poll');
-  await settle(o.p);
+  ok(await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]')), 'live: a step with a poll shows the poll in the pane');
   await o.p.check('#live fieldset[data-poll="p1"] input[value="1"]');
   await o.p.click('#live fieldset[data-poll="p1"] button.vote');
   ok(await until(() => fake.messages.some((m) => m.t === 'vote' && m.activity === 'p1' && m.choice === 1 && m.step === POLL_STEP)), 'live: a vote is sent for that step');
@@ -489,7 +493,6 @@ console.log('live');
   await sleep(200);
   ok((await state(o.p)).live.step !== POLL_STEP, 'live: a position message that does not come from the frame is ignored');
   await o.p.click('#b-live');
-  await settle(o.p);
   await o.p.click('#b-leave');
   ok(await until(() => fake.open === 0), 'live: Leave closes the connection');
   await o.p.click('#b-close');
@@ -514,6 +517,31 @@ console.log('live');
   ok(await o.p.$eval('#b-live', (b) => b.hidden), 'the teacher\'s editable file (Live settings without a key): no Live');
   await o.close(); }
 
+// ---------------------------------------------------------------- 10b. the lesson's frame keeps its size and nothing covers it
+// the Live pane is beside or below the frame from the start and never over it; nothing resizes the frame while a lesson plays
+console.log('frame size');
+for (const viewport of [{ width: 1280, height: 800 }, { width: 375, height: 740 }]) {
+  const o = await page(site.url, { viewport });
+  await openFixture(o.p, 'live.play.ega.html'); const f = await lessonFrame(o.p);
+  const rect = () => o.p.evaluate(() => { const r = document.getElementById('lesson').getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(','); });
+  const inner = () => f.evaluate(() => innerWidth + 'x' + innerHeight);
+  const r0 = await rect(), i0 = await inner();
+  await o.p.click('#b-live');
+  const r1 = await rect();
+  await f.evaluate(() => DECK.go(1, 0));
+  await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]'));
+  const r2 = await rect(), i2 = await inner();
+  ok(r0 === r1 && r1 === r2 && i0 === i2, `${viewport.width} px: the Live button and a poll step leave the frame's size and place as they are (${r0}; inside ${i0})`);
+  const ov = await o.p.evaluate(() => { const a = document.getElementById('lesson').getBoundingClientRect(), b = document.getElementById('live').getBoundingClientRect(); return { overlap: !(b.left >= a.right - 0.5 || b.top >= a.bottom - 0.5 || b.right <= a.left + 0.5 || b.bottom <= a.top + 0.5), w: b.width, h: b.height }; });
+  ok(!ov.overlap && ov.w > 200 && ov.h > 150, `${viewport.width} px: the Live pane does not lie over the frame (${JSON.stringify(ov)})`);
+  // focus order: the Live button takes the focus into the pane; Escape returns it to the button
+  await o.p.focus('#b-live'); await o.p.keyboard.press('Enter');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.closest('#live') !== null), `${viewport.width} px: the Live button moves the focus into the pane`);
+  await o.p.keyboard.press('Escape');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-live'), `${viewport.width} px: Escape returns the focus to the Live button`);
+  await o.close();
+}
+
 // ---------------------------------------------------------------- 11. phone width and names
 console.log('phone width');
 { const o = await page(site.url, { viewport: { width: 375, height: 740 } });
@@ -528,8 +556,8 @@ console.log('phone width');
   await o.p.click('#b-live');
   await sleep(300);
   ok(await noScroll(), 'phone width: playing with the Live pane open has no horizontal scroll');
-  const box = await o.p.evaluate(() => { const a = document.getElementById('lesson').getBoundingClientRect(), b = document.getElementById('live').getBoundingClientRect(); return { fh: a.height, lt: b.top, fb: a.bottom }; });
-  ok(box.fh > 150 && box.lt >= box.fb - 1, `phone width: the Live pane sits below the lesson (${JSON.stringify(box)})`);
+  const box = await o.p.evaluate(() => { const a = document.getElementById('lesson').getBoundingClientRect(), b = document.getElementById('live').getBoundingClientRect(); return { fh: a.height, fb: a.bottom, lt: b.top, lb: b.bottom, lw: b.width, w: innerWidth }; });
+  ok(box.fh > 250 && box.lt >= box.fb - 0.5 && box.lw === box.w, `phone width: the Live pane is below the lesson (${JSON.stringify(box)})`);
   await o.p.screenshot({ path: path.join(work, 'phone-live.png') });
   await o.close(); }
 

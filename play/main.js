@@ -26,7 +26,7 @@ const framed = document.documentElement.hasAttribute('data-framed');
 let lang = initialLang();
 const W = () => WORDS[lang];
 
-const S = { playing: null, frame: null, live: null, liveOpen: false, recents: null, reloading: false };
+const S = { playing: null, frame: null, live: null, recents: null, reloading: false, updateReady: false };
 const sr = $('sr');
 function announce(t) { sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 30); }
 function showMsg(t) { $('msg').textContent = t || ''; }
@@ -86,10 +86,17 @@ function play(text, r, info) {
   $('lesson-title').lang = r.meta.lang || '';
   $('lesson-kind').textContent = r.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   $('b-close').hidden = false;
+  // Everything around the frame is settled before the frame is placed, and nothing changes it while the lesson plays: the bar,
+  // the Live pane (always shown for a lesson with Live, beside or below the frame, never over it) and no update notice.
+  // The lesson's frame runs in its own process; Chrome hands a tap to it by hit-test data from the last frame shown, so an area
+  // that was the lesson's a moment ago (a pane that just appeared over it, or a frame that just shrank) can receive a tap meant
+  // for the page. An area that has always been the page's cannot.
+  $('b-live').hidden = !live;
+  $('live').hidden = !live;
+  $('update').hidden = true;
   $('stage-wrap').appendChild(f);
   if (live) {
-    $('b-live').hidden = false;
-    S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: (o, how) => setLiveOpen(o, how), el: liveEls() });
+    S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: () => {}, el: liveEls() });
   }
   if (!(history.state && history.state.egaPlay)) history.pushState({ egaPlay: 1 }, '');
   try { f.focus(); } catch { /* not focusable yet */ }
@@ -97,10 +104,11 @@ function play(text, r, info) {
 function closeLesson(quiet) {
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
-  setLiveOpen(false);
+  $('live').hidden = true;
   $('b-live').hidden = true;
   S.playing = null;
   if (quiet) return;
+  if (S.updateReady) $('update').hidden = false;   // held back while the lesson played
   document.body.classList.remove('playing');
   $('player').hidden = true;
   $('lesson-info').hidden = true;
@@ -115,22 +123,23 @@ function liveEls() {
     nameRow: $('live-name-row'), name: $('live-name'), polls: $('live-polls'), qa: $('live-qa'), q: $('live-q'), send: $('b-send'),
     shown: $('live-shown'), shownList: $('live-shown-list'), leave: $('b-leave') };
 }
-function setLiveOpen(open, how) {
-  S.liveOpen = !!open;
-  $('live').hidden = !open;
-  $('b-live').setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (open && how === 'button') { const j = $('b-join'); (j && !j.closest('[hidden]') && !j.disabled ? j : $('b-live-fold')).focus(); }
+// the Live button takes the focus into the pane (the first control that can act now)
+function focusLive() {
+  const first = [...$('live').querySelectorAll('button, a[href], input, textarea')].find((e) => !e.closest('[hidden]') && !e.disabled);
+  (first || $('live')).focus();
 }
 
 // messages from the lesson's frame: untrusted. Only from that frame (source), only from an opaque origin, only these shapes
 const isStr = (v, n) => typeof v === 'string' && v.length <= n;
+const openLinkShape = (m) => { const k = Object.keys(m); return k.every((x) => x === 'egatari' || x === 'href' || x === 'text' || (x === 'download' && m.download === true)) && k.length === (m.download === true ? 4 : 3); };
 window.addEventListener('message', (e) => {
   const f = S.frame;
   if (!f || e.source !== f.contentWindow || e.origin !== 'null') return;
   const m = e.data;
   if (!m || typeof m !== 'object') return;
-  // spec §9.4 openLink: exactly {egatari, href, text}; text at most 200 characters. Untrusted: links.request applies §11 and asks for a tap
-  if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && Object.keys(m).length === 3) links.request({ href: m.href, text: m.text });
+  // spec §9.4 openLink: {egatari, href, text, download?}; text at most 200 characters; download only as true.
+  // Untrusted: links.request applies §11 and asks for a tap; a download is refused (the frame cannot save files)
+  if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
   else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) { if (S.live) S.live.setStep(m.key); }
 });
@@ -186,7 +195,7 @@ async function initSW() {
   if (!('serviceWorker' in navigator)) return null;
   let reg;
   try { reg = await navigator.serviceWorker.register('./sw.js', { scope: './' }); } catch { return null; }
-  const show = () => { if (reg.waiting && navigator.serviceWorker.controller) $('update').hidden = false; };
+  const show = () => { if (reg.waiting && navigator.serviceWorker.controller) { S.updateReady = true; if (!S.playing) $('update').hidden = false; } };
   show();
   reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') show(); }); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
@@ -236,9 +245,8 @@ async function main() {
   drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f, f.name); });
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaPlay) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
-  $('b-live').addEventListener('click', () => { const o = !S.liveOpen; if (S.live) S.live.pinned(); setLiveOpen(o, 'button'); if (!o) $('b-live').focus(); });
-  $('b-live-fold').addEventListener('click', () => { if (S.live) S.live.pinned(); setLiveOpen(false); $('b-live').focus(); });
-  $('live').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); setLiveOpen(false); $('b-live').focus(); } });
+  $('b-live').addEventListener('click', focusLive);
+  $('live').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); $('b-live').focus(); } });
   $('b-clear').addEventListener('click', async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); });
   // the "home" link: back to the start without reloading while a lesson plays
   $('home').addEventListener('click', (e) => { if (S.playing) { e.preventDefault(); $('b-close').click(); } });
@@ -247,7 +255,7 @@ async function main() {
   initShare();
   let reg = null;
   initSW().then((r) => { reg = r; });
-  window.__play = { version: VERSION, state: () => ({ playing: S.playing, live: S.live ? S.live.state() : null, liveOpen: S.liveOpen, store: S.recents && S.recents.kind, sw: !!reg }), openFile, links };
+  window.__play = { version: VERSION, state: () => ({ playing: S.playing, live: S.live ? S.live.state() : null, store: S.recents && S.recents.kind, sw: !!reg }), openFile, links };
   document.documentElement.setAttribute('data-ready', '');
 }
 main();

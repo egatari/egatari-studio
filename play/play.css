@@ -46,7 +46,10 @@ button:disabled { opacity: 0.5; cursor: default; }
 [data-state=connecting] .dot, [data-state=waiting] .dot, [data-state=retrying] .dot { background: #e0b341; }
 [data-state=stopped] .dot { background: var(--err); }
 
-#update { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+/* the update notice: shown only while no lesson plays (play/main.js); a toast, so it moves nothing */
+#update { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); max-width: calc(100vw - 32px);
+  display: flex; gap: 12px; align-items: center; justify-content: center; padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); flex-wrap: wrap; }
 
 #main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 #main:focus { outline: none; }
@@ -71,14 +74,18 @@ button:disabled { opacity: 0.5; cursor: default; }
 #recent-list .open .m { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 #about ul { padding-left: 1.2em; }
 
-/* player: the lesson frame fills the space; Live sits beside it on wide screens and below it on narrow ones */
+/* player: the lesson's frame and the Live pane share the space without overlapping, and the split is fixed while a lesson plays
+   (play/main.js, play()): the pane is beside the frame on wide screens and below it on narrow ones, with a fixed size, and it is
+   always shown for a lesson with Live. Nothing lies over the frame or resizes it, so the page's controls never sit where the
+   lesson's frame was a moment ago (see play/main.js on how Chrome routes taps to a sandboxed frame) */
 #player { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#stage-wrap { flex: 1; min-height: 0; background: var(--stage-bg); position: relative; }
+#stage-wrap { flex: 1; min-height: 0; position: relative; background: var(--stage-bg); }
 #stage-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--stage-bg); }
-#live { flex: none; max-height: 45dvh; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
+#live { flex: 0 0 40%; min-height: 0; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
+#live:focus { outline: none; }
 @media (min-width: 760px) and (min-aspect-ratio: 5/4) {
   #player { flex-direction: row; }
-  #live { width: 340px; max-height: none; border-top: 0; border-left: 1px solid var(--line); }
+  #live { flex: 0 0 340px; border-top: 0; border-left: 1px solid var(--line); }
 }
 .live-head { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
 .live-head h2 { font-size: 1rem; margin: 0; }

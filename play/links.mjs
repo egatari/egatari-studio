@@ -17,6 +17,10 @@ const ABS = /^[a-z][a-z0-9+.-]*:/i;
 export function decideLink(link, hosts) {
   const raw = String(link.href == null ? '' : link.href).trim();
   if (raw && !ABS.test(raw) && !raw.startsWith('//')) return { verdict: 'refuse', reason: 'relative' };
+  if (link.download === true) {   // the lesson's frame has no allow-downloads: saving a file from the lesson is refused (§9.4 download)
+    const u = (() => { try { return new URL(raw.startsWith('//') ? 'https:' + raw : raw); } catch { return null; } })();
+    return { verdict: 'refuse', reason: 'download', host: u && /^https?:$/.test(u.protocol) ? u.hostname : '' };
+  }
   const href = raw.startsWith('//') ? 'https:' + raw : raw;
   return LP.decide({ href, text: link.text, download: false }, { hosts });
 }
@@ -58,6 +62,7 @@ export function linkBox({ words, dlg }) {
     const d = decideLink(link, hosts);
     current = null;
     if (d.verdict === 'refuse') {
+      if (d.reason === 'download') { show(S.linkNoSave, d.host, '', [], null); return { shown: true, verdict: 'refuse', reason: 'download' }; }
       const note = d.reason === 'relative' ? S.linkRelative : d.reason === 'scheme' ? S.linkScheme : S.linkInvalid;
       show(S.linkCannot, '', String(link.href || '').slice(0, 300), [note], null);
       return { shown: true, verdict: 'refuse', reason: d.reason };
