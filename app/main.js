@@ -198,11 +198,12 @@ function blankPreview() {
 }
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
-// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る
+// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
+// 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   const a = document.activeElement;
-  if (a && a.closest && a.closest('.menu')) return;
+  if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
   focusPreview();
 }
 // プレビューの音声（backlog #49）：組み立てが置いた印（refs：[{src, rel, size}]、app/engine.js の previewAudio）の音声を作業場所から読み、
@@ -586,14 +587,14 @@ async function colabDocId() {
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
 }
 const audio = createAudioPanel({
-  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null, oldNorm: T.oldNorm,
+  ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
   beforeTts: (keys) => leftoverGate('tts', keys),   // 雛形の仮の行（✎）のままの段階を、TTS の前に見せる
-  // 音声の板の「録音モード (r)」のボタン（ツールバーには置かない：1 行に収まらなくなる）
-  recMode: { label: T.recBtn, title: T.recTip, open: () => rec.open().then((on) => { if (on) ui.mark('rec', true); }) },
+  // 音声の板の「● 録音 (r)」：その段階で録音モードを開く（録り方は録音モードだけ。#82。ツールバーには置かない：1 行に収まらなくなる）
+  recMode: { title: T.recTip, open: (opts) => rec.open(opts).then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
@@ -617,6 +618,8 @@ const rec = createRecMode({
   slideIndex: (key) => { const i = (S.slides || []).findIndex((x) => x.key === key); return i < 0 ? null : i; },
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeOpen: () => beforeEditing('audio'),
+  // 1 つのテイクの上限（既定 600 秒）。試験だけ短くできる
+  maxSeconds: () => (window.__APP_TEST && window.__APP_TEST.recMaxSeconds) || null,
 });
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({

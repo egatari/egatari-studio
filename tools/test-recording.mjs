@@ -9,6 +9,7 @@
 //   Backspace：録音中は今のテイクを捨てる（書かない）・録った後は「前に戻す」で前の音声へ
 //   ← → で段階の移動・端の知らせ・Esc で閉じてフォーカスが戻る・録音中の Esc は今のテイクを捨てる
 //   記録の kind は recorded（印は付けない）・e n r のキーはこの板の間は何もしない・プレビューからの知らせでは録音が始まらない
+//   音声の板の「● 録音 (r)」：その段階で開く・1 段録って Esc で板に戻ると、板がその段階の新しい音声を見せる（録り方は 1 つ。#82）
 //   読み上げソフトへ：live region（段階・録音中・できた）・alert・ボタンの名前と aria-pressed・dialog の属性・reduced-motion・English
 import fs from 'node:fs';
 import os from 'node:os';
@@ -390,17 +391,31 @@ try {
   const after = await page.evaluate(() => ({ topInert: document.getElementById('top').inert, prevInert: document.getElementById('preview').inert, on: document.getElementById('deck').classList.contains('rec-on'), mic: window.__APP_TEST.rec().mic, focusBody: document.activeElement === document.body || document.activeElement.id === 'preview' }));
   ok(!after.topInert && !after.prevInert && !after.on && !after.mic, 'close: the toolbar and the preview are usable again and the microphone is released');
   ok(after.focusBody, 'close: focus goes back to where it was ' + await page.evaluate(() => document.activeElement.tagName + '#' + document.activeElement.id));
-  // もう一度開く：ボタンで・段階は画面の位置から・Shift+Esc
+  // 音声の板の「● 録音 (r)」：録り方は録音モードだけ（#82）。その段階で開き、1 段だけ録って Esc で板に戻ると、板が新しい音声を見せる
   await page.click('#b-audio');
-  await page.waitForSelector('#dev-audio-recmode');
-  ok((await page.textContent('#dev-audio-recmode')).includes('(r)'), 'entry: the Audio panel has a Recording mode (r) button');
-  await clickUntil(page, '#dev-audio-recmode', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await page.waitForSelector('#dev-audio #dev-audio-rec');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.key; });
+  const pkey = (await page.evaluate(() => window.__APP_TEST.audio())).key;
+  ok((await page.textContent('#dev-audio-rec')).includes('(r)') && !(await page.$('#dev-audio-recmode')), 'entry: the Audio panel has one record button, “● 録音 (r)”, and no second way to record');
+  const prevE = (await manifest())[pkey];
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await waitRec('idle');
+  ok((await recState()).key === pkey, 'panel: the button opens recording mode at the panel\'s step (' + pkey + ')');
+  await record(3500, [], 'Space');
+  const eP = await waitWritten(pkey, prevE);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key === k && s.entry && s.entry.file === f; }, [pkey, eP.file], { timeout: 15000 });
+  ok(await page.isVisible('#dev-audio-player') && await page.isVisible('#dev-audio-revert'), 'panel: after Esc the panel shows the new take for that step, with Revert to previous');
+  // r で開いても、開いていた板は閉じない（録音モードの間は隠れるだけ）
+  await page.evaluate(() => document.body.focus());
+  await page.keyboard.press('r');
   await page.waitForSelector('#rec-mode');
   await waitRec('idle');
-  ok((await recState()).key === (await page.evaluate(() => window.__APP_TEST.ui().pos.key)), 'reopen: the button opens it at the step on the screen');
+  ok((await page.evaluate(() => window.__APP_TEST.audio().open)), 'r: the Audio panel stays open behind recording mode');
   await page.keyboard.press('Shift+Escape');
   await page.waitForSelector('#rec-mode', { state: 'detached' });
-  ok(true, 'close: Shift+Esc closes it too');
+  ok(!(await page.evaluate(() => window.__APP_TEST.audio().open)), 'close: Shift+Esc closes recording mode and the panel');
 
   // ---------------------------------------------------------------- English
   await page.goto(BASE + '?lang=en');

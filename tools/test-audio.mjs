@@ -1,11 +1,15 @@
 // 編集アプリ（app/）の音声の板の確認（app/audio-panel.js）
 //   node tools/test-audio.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // Chromium の偽のマイク（--use-fake-device-for-media-stream と、作った音声のファイル --use-file-for-fake-audio-capture）で録音し、
-// TTS は差し替え（モデルを取りに行かない）。確かめること：
-//   フォルダ：板はプレビューの外・保存の場所の表示・録音の大きさの表示・録音している間プレビューは inert・録ったらすぐ使う
-//     （audio/rec_<hash>.mp3 と audio/manifest.json（kind recorded・sync none・inputHash）と控え・最新の印）・録り直し・「前に戻す」→
+// TTS は差し替え（モデルを取りに行かない）。録音は録音モードだけ（#82）：板の「● 録音 (r)」がその段階で録音モードを開き、
+// Space で録って Space で止め、Esc で板に戻ると、板がその段階の新しい音声を見せる。確かめること：
+//   フォルダ：板はプレビューの外・保存の場所の表示・「● 録音 (r)」で録音モード（その段階・板は隠れて開いたまま）・メーター・プレビューは inert・
+//     録ったらすぐ使う（audio/rec_<hash>.mp3 と audio/manifest.json（kind recorded・sync none・inputHash）と控え・最新の印）・
+//     Esc で板に戻る（フォーカスは「● 録音」）・音量の調整・音が割れた知らせ・600 秒の上限（試験では短く）・書けなかったテイクは
+//     「まだ使っていない音声」に残る・マイクを使えない知らせ・録り直し・「前に戻す」→
 //     口述原稿を直すと「古い」の印と警告 → TTS（差し替え）で作り直す：読み辞書を通した文・{mark} の区切りの cues・recipe（processing・dictionary）・最新に戻る →
-//     声の欄（見本・voice.json・知らない声は知らせて既定の声）・掛け合いの読む原稿の印・Esc で窓を閉じる（上から 1 つずつ・Shift で全部）
+//     前処理の版（recipe.textNormalize を書く。古い版の一覧は出さない。#83）・
+//     声の欄（見本・voice.json・知らない声は知らせて既定の声。自分の参照音声の名前の知らせはそのまま見える）・掛け合いの読む原稿の印・Esc で窓を閉じる（上から 1 つずつ・Shift で全部）
 //   組み立て：deck-audio に音声の kind（tts・recorded。dry-run は付けない。1 ファイルにも）
 //   持ち運べる 1 ファイル：権利の確認のあと録音して使い、「保存」が段 A（音声の段階だけが変わる）で、読み戻すと録音の記録と MP3 の塊
 //   プレビューからの知らせでは録音を始められない（板の中身も変わらない）。コンソールのエラーがない
@@ -127,7 +131,34 @@ const opfsRead = (rel, bin) => page.evaluate(async ([rel, bin]) => {
 }, [rel, !!bin]);
 const opfsList = (rel) => page.evaluate(async (rel) => { try { let d = window.__testDir; for (const x of rel.split('/').filter(Boolean)) d = await d.getDirectoryHandle(x); const out = []; for await (const k of d.keys()) out.push(k); return out.sort(); } catch { return null; } }, rel);
 // 作った音声がその段階の音声になるまで（すぐ使う。#45）：kind と、前に戻せる記録の数
-const waitUsed = (kind, back, timeout = 30000) => page.waitForFunction(([kind, back]) => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && !s.recording && s.entry && s.entry.kind === kind && (s.history[s.key] || []).length === back; }, [kind, back], { timeout });
+const waitUsed = (kind, back, timeout = 30000) => page.waitForFunction(([kind, back]) => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.entry && s.entry.kind === kind && (s.history[s.key] || []).length === back; }, [kind, back], { timeout });
+const recState = () => page.evaluate(() => window.__APP_TEST.rec());
+// 板の「● 録音 (r)」で録音モードを開く（その段階で）。戻り値：開いた段階
+async function openRecFromPanel(key) {
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.phase === 'idle' && s.key === k; }, key, { timeout: 15000 });
+  return (await recState()).key;
+}
+// 録音モードで 1 段：Space → ms 待つ → Space（stop が false なら止めない：上限で止まるのを待つ）→ 書き終わるまで
+async function recordOne(ms, stop = true) {
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: 10000 });
+  await page.waitForTimeout(ms);
+  if (stop) await page.keyboard.press('Space');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: 30000 });
+  return (await recState()).result;
+}
+async function closeRec() {
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+}
+// 板の「● 録音」→ 録音モードで 1 段（Space・Space）→ Esc で板に戻る
+async function recordViaPanel(key, ms = 3400) {
+  await openRecFromPanel(key);
+  const r = await recordOne(ms);
+  await closeRec();
+  return r;
+}
 const trustedOutside = () => page.evaluate(() => {
   const f = document.getElementById('preview').getBoundingClientRect(), r = document.getElementById('dev-audio').getBoundingClientRect();
   return r.right <= f.left + 0.5 || r.left >= f.right - 0.5;
@@ -172,43 +203,46 @@ try {
   ok((await page.textContent('#dev-audio-cur')).includes('まだありません'), 'panel: no audio yet for ' + key);
   ok((await page.textContent('#dev-audio .dv-script')).includes('学習率'), 'panel: shows the step script to read');
   ok((await page.textContent('#saveloc')) === '作業フォルダ「audio-deck」に保存済み' && (await page.getAttribute('#saveloc', 'title')).includes('書き出す'), 'save location: a working folder says it is saved there and how to hand it out');
-  // 録音
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
-  await page.waitForFunction(() => window.__APP_TEST.audio().recording);
-  await page.waitForTimeout(1500);
-  const meter = await page.evaluate(() => ({ shown: !document.getElementById('dev-audio-meter').hidden, w: parseFloat(document.querySelector('#dev-audio-meter i').style.width) || 0, inert: document.getElementById('preview').inert }));
-  ok(meter.shown && meter.w > 10, `record: level meter moves (${meter.w.toFixed(0)}%)`);
-  ok(meter.inert, 'record: the preview is inert while recording');
+  // 録音：板の「● 録音 (r)」は録音モードをこの段階で開く（録り方は 1 つ。#82）
+  const rb = await page.evaluate(() => { const b = document.getElementById('dev-audio-rec'); return { text: b.textContent, ks: b.getAttribute('aria-keyshortcuts'), pop: b.getAttribute('aria-haspopup'), title: b.title }; });
+  ok(rb.text.includes('録音') && rb.text.includes('(r)') && rb.ks === 'r' && rb.pop === 'dialog' && rb.title.includes('録音モード'), 'record: the panel button names its key (r) and says it opens recording mode ' + JSON.stringify(rb));
+  ok(!(await page.$('#dev-audio-recmode')) && !(await page.$('#dev-audio-meter')), 'record: no second way to record in the panel (no separate recording-mode button, no panel meter)');
+  ok(await openRecFromPanel(key) === key, 'record: the panel button opens recording mode at the panel\'s step (' + key + ')');
+  const hid = await page.evaluate(() => ({ panelOpen: window.__APP_TEST.audio().open, shown: !!document.getElementById('dev-audio') && document.getElementById('dev-audio').getClientRects().length > 0, focus: document.activeElement && document.activeElement.id }));
+  ok(hid.panelOpen && !hid.shown && hid.focus === 'rec-mode', 'record: the panel stays open but hidden while recording mode has the focus ' + JSON.stringify(hid));
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording');
+  let mw = 0;
+  for (let i = 0; i < 20; i++) { mw = Math.max(mw, await page.evaluate(() => parseFloat(document.querySelector('#rec-meter i').style.width) || 0)); await page.waitForTimeout(100); }
+  ok(mw > 10, `record: the level meter is beside the large script (${mw.toFixed(0)}%)`);
+  ok(await page.evaluate(() => document.getElementById('preview').inert), 'record: the preview is inert while recording');
   await shot(page, 'audio-recording.png');
-  // 録音している間は、デッキからの位置の知らせで段階を替えない
-  const recPos = await f.evaluate(() => DECK.state());
-  await f.evaluate(() => DECK.go(2, 3, false));
-  await page.waitForTimeout(300);
-  ok((await audioState()).key === key, 'record: stays on the recorded step when the deck moves');
-  // 戻しておく（使った音声で組み直すとプレビューが読み込み直し、その位置を知らせる。録音が終われば板はその段階に移る）
-  await f.evaluate((b) => DECK.go(b.slide - 1, b.step, false), recPos);
-  await page.waitForTimeout(1700);
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
+  await page.waitForTimeout(1400);
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: 30000 });
+  const g1 = await page.evaluate(() => (document.getElementById('rec-result') || {}).textContent || '');
+  ok(/音量を [+-]\d+\.\d dB 調整/.test(g1), 'gain: recording mode shows the gain applied to the take: ' + g1);
+  ok(!(await page.$('#rec-clip')), 'clipping: a normal take has no clipping warning');
+  await closeRec();
   await waitUsed('recorded', 1);
   let st = await audioState();
   const t1 = st.entry;
-  ok(t1 && t1.kind === 'recorded' && t1.dur > 1.9 && t1.dur < 2.6, `record: the take is used right away, silence trimmed (${t1 && t1.dur} s of 2.2 s voice + 2 × 0.05 s)`);
+  ok(t1 && t1.kind === 'recorded' && t1.dur > 1.9 && t1.dur < 2.6, `record: after Esc the panel shows the new take for the step, silence trimmed (${t1 && t1.dur} s of 2.2 s voice + 2 × 0.05 s)`);
+  ok(st.key === key && await page.isVisible('#dev-audio'), 'record: back in the panel, on the same step');
+  await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'dev-audio-rec', null, { timeout: 5000 }).catch(() => {});
+  ok(await page.evaluate(() => document.activeElement && document.activeElement.id === 'dev-audio-rec'), 'a11y: focus returns to the panel\'s record button ' + await page.evaluate(() => document.activeElement && (document.activeElement.tagName + '#' + document.activeElement.id)));
   ok(JSON.stringify(st.history[key]) === '[null]' && !(st.takes[key] || []).length && await page.isVisible('#dev-audio-revert'), 'record: no take left to "use"; Revert to previous goes back to no audio');
   ok(!(await page.evaluate(() => document.getElementById('preview').inert)), 'record: the preview takes clicks again after recording');
-  // 2 つ目（録り直し）：これもすぐ使い、前の録音は「前に戻す」で
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
-  await page.waitForFunction(() => window.__APP_TEST.audio().recording);
-  await page.waitForTimeout(1200);
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
+  // 2 つ目（録り直し）：これもすぐ使い、前の録音は「前に戻す」で（偽のマイクは開くたびに頭から鳴るので、短く録って 1 つ目と違う音にする）
+  await recordViaPanel(key, 2000);
   await waitUsed('recorded', 2);
   st = await audioState();
   ok(st.entry.file !== t1.file && st.history[key][1] === t1.file, 'record again: the new take replaces the first, which stays in the revert history ' + JSON.stringify([st.entry.file, t1.file, st.history[key]]));
-  ok((await page.textContent('#dev-audio-rec')).includes('録り直す'), 'record: the button says "record again" once the step has a recording');
   await shot(page, 'audio-recorded.png');
   // プレビューからの知らせ（鍵）で板は替わらない・録音も始まらない（r は録音モードの画面を開くだけで、それも tools/test-recording.mjs が確かめる）
   await (await frameReady()).evaluate(() => { for (const k of ['a', 'x', ' ']) window.parent.postMessage({ type: 'edit-hint', kind: 'key', key: k }, '*'); });
   await page.waitForTimeout(200);
-  ok(!(await audioState()).recording, 'security: hints from the preview cannot start a recording');
+  ok(!(await recState()).open && !(await recState()).mic, 'security: hints from the preview cannot start a recording');
   // 前に戻す：1 つ目の録音に戻る（音声のファイルは消さない）
   await page.click('#dev-audio-revert');
   await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.file === f && s.key === k && s.history[k].length === 1; }, [key, t1.file], { timeout: 30000 });
@@ -282,8 +316,8 @@ try {
   const e3 = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
   ok(/^tts_[0-9a-f]{16}\.wav$/.test(e3.file) && !('startOffset' in e3) && String.fromCharCode(...(await opfsRead('audio/' + e3.file, true))) === 'RIFF', 'no MP3 encoder: the take is saved as WAV without startOffset');
   await page.evaluate(() => { window.__APP_TEST.mp3 = undefined; });
-  // 前処理の版（format spec §5.4）：「1 歩」は合成の直前だけ「1歩」にする（ttsParts・inputHash は変えない）。recipe.textNormalize のない古い TTS は
-  // stale ではなく（鳴らし続ける）、一覧に挙げ、利用者が選んだものだけ作り直す。録音・取り込みは挙げない
+  // 前処理の版（format spec §5.4）：「1 歩」は合成の直前だけ「1歩」にする（ttsParts・inputHash は変えない）。recipe.textNormalize は書く。
+  // recipe.textNormalize のない古い TTS は stale ではなく（鳴らし続ける）、板に「前処理の版が古い」の一覧は出さない（#83）。勝手に作り直さない
   {
     const nrN = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), key);
     const rN = await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + '1 歩進みます。' })) }), [key, nrN]);
@@ -299,7 +333,7 @@ try {
     ok(eN.recipe.textNormalize === 'join-num-counter@1', 'textNormalize: a new TTS take records recipe.textNormalize');
     const segN = parseNarration(await opfsRead('narration.md')).find((x) => `${x.slideKey}:${x.stepKey}` === key);
     ok(eN.inputHash === await PF.inputHash(segN) && segN.turns[0].ttsParts.join('').includes('1 歩'), 'textNormalize: inputHash is still of the text with the space (ttsParts unchanged)');
-    ok(!(await page.isVisible('#dev-audio-oldnorm')), 'textNormalize: a take with the current version is not listed');
+    ok(!(await page.$('#dev-audio-oldnorm')), 'textNormalize: no old-pre-processing list in the panel');
     // 古い版：field を外し、別の段階に（録音・取り込み・もう 1 つの古い TTS）を足す
     const others = parseNarration(files['narration.md']).map((x) => `${x.slideKey}:${x.stepKey}`).filter((k) => k !== key);
     const manN = JSON.parse(await opfsRead('audio/manifest.json'));
@@ -311,29 +345,20 @@ try {
     await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manN, null, 1));
     const before = JSON.stringify(manN.segments[key]);
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForSelector('#dev-audio-oldnorm');
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.entry && document.getElementById('dev-audio-voices'); }, null, { timeout: 15000 });
     ok((await audioState()).state === 'fresh' && !(await page.isVisible('#dev-audio-stale')), 'textNormalize: an old take without the field is not stale (keeps playing)');
-    const listed = await page.evaluate(() => [...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].map((c) => c.dataset.key));
-    ok(listed.length === 2 && listed.includes(key) && listed.includes(others[0]) && !listed.includes(others[1]) && !listed.includes(others[2]), 'textNormalize: listed (TTS only; recorded and imported are never listed) ' + JSON.stringify(listed));
-    ok((await page.textContent('#dev-audio-oldnorm')).includes('前処理の版が古い TTS の段階') && await page.isDisabled('#dev-audio-oldnorm-go'), 'textNormalize: the list has its heading and the button is disabled until something is chosen');
+    const panelText = await page.textContent('#dev-audio');
+    ok(!(await page.$('#dev-audio-oldnorm')) && !panelText.includes('前処理の版') && !panelText.includes('いちぽ'), 'textNormalize: old TTS steps are not listed (no deck-wide pre-processing notice; #83)');
     const nIdle = (await page.evaluate(() => window.__ttsCalls)).length;
     await page.waitForTimeout(800);
     ok((await page.evaluate(() => window.__ttsCalls)).length === nIdle && JSON.stringify(JSON.parse(await opfsRead('audio/manifest.json')).segments[key]) === before, 'textNormalize: nothing is regenerated by itself');
-    // 選んだ 1 つ（key）だけ作り直す
-    await page.check(`#dev-audio-oldnorm input[data-key="${key}"]`);
-    await page.click('#dev-audio-oldnorm-go');
-    await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.key === k && s.entry && s.entry.recipe && s.entry.recipe.textNormalize; }, key, { timeout: 30000 });
-    const after = JSON.parse(await opfsRead('audio/manifest.json')).segments;
-    ok(after[key].recipe.textNormalize === 'join-num-counter@1' && !('textNormalize' in (after[others[0]].recipe || {})), 'textNormalize: only the chosen step was regenerated; the unchosen old take is untouched');
-    await page.waitForSelector('#dev-audio-oldnorm');
-    ok(await page.evaluate((k) => [...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].map((c) => c.dataset.key).join() !== '' && ![...document.querySelectorAll('#dev-audio-oldnorm input[type=checkbox]')].some((c) => c.dataset.key === k), key), 'textNormalize: the regenerated step leaves the list');
-    await shot(page, 'audio-oldnorm.png');
+    await shot(page, 'audio-old-textnormalize.png');
     // 後始末：足した段階の記録を外す
     const manC = JSON.parse(await opfsRead('audio/manifest.json'));
     for (const k of others.slice(0, 3)) delete manC.segments[k];
     await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manC, null, 1));
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForFunction(() => !window.__APP_TEST.audio().loading && document.getElementById('dev-audio-voices') && !document.getElementById('dev-audio-oldnorm'), null, { timeout: 15000 });
+    await page.waitForFunction(() => !window.__APP_TEST.audio().loading && document.getElementById('dev-audio-voices'), null, { timeout: 15000 });
   }
   // 声の欄（#18・#19）：1 人の語りなら欄は 1 つ。見本を鳴らす（モデルは読み込まない）。選ぶと voice.json に書く
   ok(await page.evaluate(() => { const s = [...document.querySelectorAll('#dev-audio-voices select')]; return s.length === 1 && [...s[0].options].map((x) => x.value).join() === 'bob,alice' && s[0].value === 'bob'; }), 'voice: one picker for a one-speaker deck, bob and alice for Japanese');
@@ -343,6 +368,15 @@ try {
   await page.selectOption('#dev-audio-voices select[data-role="expert"]', 'alice');
   await page.waitForFunction(() => /alice/.test(document.getElementById('dev-audio-msg').textContent));
   ok(JSON.parse(await opfsRead('voice.json')).expert === 'alice', 'voice: the choice is written to voice.json');
+  // voice.json の声がブラウザの TTS にない（自分の参照音声の名前。ここでは myvoice）：板の知らせはそのまま見える（#83 で消したのは前処理の一覧だけ）
+  await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{"expert": "myvoice"}'); await w.close(); });
+  await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+  await page.waitForSelector('#dev-audio .dv-voice-warn');
+  const vw48 = await page.evaluate(() => { const e = document.querySelector('#dev-audio .dv-voice-warn'); return { text: e.textContent, shown: e.getClientRects().length > 0 && !e.hidden && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' }; });
+  ok(vw48.shown && vw48.text === 'voice.json の Expert の声「myvoice」は、ブラウザの TTS に入っていません。TTS で作るときは既定の声「bob」を使います（上の欄で選び直せます）', 'voice fallback: the myvoice notice is shown, unchanged: ' + vw48.text);
+  await page.$eval('#dev-audio .dv-voice-warn', (e) => e.scrollIntoView({ block: 'nearest' }));
+  ok(await page.isVisible('#dev-audio .dv-voice-warn'), 'voice fallback: the notice is visible in the panel');
+  await shot(page, 'audio-voice-fallback.png');
   // 知らない声：日本語も英語も同じ（知らせて既定の声で作る）
   await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{"expert": "zed"}'); await w.close(); });
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
@@ -360,7 +394,7 @@ try {
   ok(await page.evaluate(() => { const o = [...document.querySelectorAll('#dev-audio-voices select option')].map((x) => x.value); return o.includes('am_michael') && !o.includes('bob') && document.querySelector('#dev-audio-voices select').value === 'am_michael'; }), 'narration language: voice.json "lang": "en" picks Kokoro voices for a Japanese deck');
   await page.evaluate(() => { window.__ttsCalls.length = 0; });
   await page.click('#dev-audio-tts');
-  await waitUsed('tts', 7);
+  await waitUsed('tts', 6);
   ok(await page.evaluate(() => window.__ttsCalls.length > 0 && window.__ttsCalls.every((c) => c.lang === 'en' && c.voices.expert === 'am_michael')), 'narration language: TTS is asked for English with a Kokoro voice');
   await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{}'); await w.close(); });
   // 掛け合いにすると、読む原稿の各ターンに Expert / Novice の印、声の欄は役ごと
@@ -371,12 +405,12 @@ try {
   ok(await page.evaluate(() => [...document.querySelectorAll('#dev-audio .dv-script .dv-role')].map((e) => e.textContent).join() === 'Expert,Novice,Expert'), 'dialogue: every turn of the script is labelled, Expert too');
   const sh = await page.evaluate(() => { const e = document.getElementById('dev-audio-script'); return { h: e.clientHeight, sh: e.scrollHeight, resize: getComputedStyle(e).resize }; });
   ok(sh.h >= sh.sh - 1 && sh.resize === 'vertical', `script: the field grows with the narration (${sh.h}/${sh.sh} px) and can be resized`);
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
-  await page.waitForFunction(() => window.__APP_TEST.audio().recording);
-  await page.waitForTimeout(400);
+  await openRecFromPanel(key);
+  ok(await page.evaluate(() => [...document.querySelectorAll('#rec-script .rm-role')].map((e) => e.textContent).join() === 'Expert,Novice,Expert'), 'dialogue: recording mode labels every turn too');
   await shot(page, 'audio-recording-dialogue.png');
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
-  await waitUsed('recorded', 8);
+  await recordOne(3400);
+  await closeRec();
+  await waitUsed('recorded', 7);
   // Esc（#48）：後に開いた窓から 1 つずつ。Shift+Esc で全部
   await page.click('#b-narr');
   await page.waitForSelector('#dev-narr');
@@ -394,6 +428,58 @@ try {
   await page.keyboard.press('Shift+Escape');
   await page.waitForTimeout(150);
   ok(!(await page.$('#dev-narr')) && !(await page.isVisible('#dev-audio')) && await page.evaluate(() => document.getElementById('panel').hidden), 'Shift+Esc: closes all the open cards ' + JSON.stringify(await page.evaluate(() => ({ narr: !!document.getElementById('dev-narr'), audio: window.__APP_TEST.audio().open, panel: !document.getElementById('panel').hidden }))));
+
+  // ---------------------------------------------------------------- 録音モードが、板の録音のしていたことをする（#82 の対応表。docs/recording-parity.md）
+  await page.click('#b-audio'); await page.waitForSelector('#dev-audio #dev-audio-rec');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key; });
+  const pk = (await audioState()).key;
+  // 音が割れた：入力の峰を 1 近くにする（AnalyserNode の読みに足す。偽のマイクの音は割れない大きさ）
+  await page.evaluate(() => { const g = AnalyserNode.prototype.getFloatTimeDomainData; window.__clip = true; AnalyserNode.prototype.getFloatTimeDomainData = function (b) { g.call(this, b); if (window.__clip) b[0] = 0.995; }; });
+  await openRecFromPanel(pk);
+  const rClip = await recordOne(3400);
+  const clipText = await page.evaluate(() => (document.getElementById('rec-clip') || {}).textContent || '');
+  ok(rClip.clip && /音が割れている/.test(clipText), 'clipping: a take that hit full scale warns that it may be distorted: ' + clipText);
+  ok(await page.waitForFunction(() => /音が割れている/.test(document.getElementById('rec-live').textContent), null, { timeout: 3000 }).then(() => true, () => false), 'clipping: the warning is announced too');
+  await page.evaluate(() => { window.__clip = false; });
+  await closeRec();
+  // 600 秒の上限（試験では 1.5 秒に縮める）：止めて、そこまでを使う
+  await page.evaluate(() => { window.__APP_TEST.recMaxSeconds = 1.5; });
+  await openRecFromPanel(pk);
+  const manL0 = JSON.parse(await opfsRead('audio/manifest.json')).segments[pk];
+  const rLim = await recordOne(3500, false);
+  const limText = await page.evaluate(() => (document.getElementById('rec-limit') || {}).textContent || '');
+  const eLim = JSON.parse(await opfsRead('audio/manifest.json')).segments[pk];
+  ok(/1\.5 秒を超えたので止めました/.test(limText) && rLim.raw < 2.2 && eLim.file !== manL0.file && eLim.dur <= 1.6, `limit: recording stops at the limit and the take up to it is used (${rLim.raw} s raw, ${eLim.dur} s; ${limText})`);
+  ok(/1\.5 秒を超えた/.test(await page.evaluate(() => document.getElementById('rec-alert').textContent) || ''), 'limit: the stop is reported in the alert region');
+  await page.evaluate(() => { window.__APP_TEST.recMaxSeconds = undefined; });
+  await closeRec();
+  // 書けなかったテイク（manifest が壊れている）：録音モードがそう言い、板の「まだ使っていない音声」に残り、そこから使える
+  const goodMan = await opfsRead('audio/manifest.json');
+  const writeMan = (txt) => page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, txt);
+  await writeMan('{ not json');
+  await openRecFromPanel(pk);
+  const rBad = await recordOne(3400);
+  const badText = await page.evaluate(() => (document.getElementById('rec-err') || {}).textContent || '');
+  ok(rBad.error && /書き込めませんでした/.test(badText) && /この音声を使う/.test(badText), 'unused take: recording mode says it was not written and where to use it: ' + badText);
+  await closeRec();
+  await page.waitForSelector('#dev-audio-takes .dv-take[data-kind="recorded"]');
+  st = await audioState();
+  ok((st.takes[pk] || []).length === 1 && st.takes[pk][0].kind === 'recorded' && typeof st.takes[pk][0].inputHash === 'string' && /dB/.test(await page.textContent('#dev-audio-takes .dv-prov')), 'unused take: the take is kept under 「まだ使っていない音声」 with its gain and inputHash');
+  ok((await page.textContent('#dev-audio')).includes('まだ使っていない音声'), 'unused take: the panel heading is shown');
+  await writeMan(goodMan);
+  await page.click('#dev-audio-takes .dv-use');
+  await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !(s.takes[k] || []).length && s.entry && s.entry.kind === 'recorded'; }, pk, { timeout: 30000 });
+  const eUse = JSON.parse(await opfsRead('audio/manifest.json')).segments[pk];
+  ok(eUse.kind === 'recorded' && eUse.file !== eLim.file && (await opfsList('.cache/edits') || []).some((n) => n.endsWith('-manifest.json')), 'unused take: “Use this take” writes it (manifest backed up first)');
+  // マイクを使えない：録音モードがそう言い（alert）、待機に戻る
+  await page.evaluate(() => { window.__gum = navigator.mediaDevices.getUserMedia; navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Permission denied', 'NotAllowedError')); });
+  await openRecFromPanel(pk);
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'idle');
+  ok(await page.waitForFunction(() => /マイクを許可/.test(document.getElementById('rec-alert').textContent), null, { timeout: 3000 }).then(() => true, () => false) && !(await recState()).mic, 'mic error: a refused microphone is reported (alert) with how to allow it, and the screen waits');
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = window.__gum; });
+  await closeRec();
 
   // ---------------------------------------------------------------- 2. 持ち運べる 1 ファイル（段 A で保存）
   await page.evaluate(async () => {
@@ -413,10 +499,7 @@ try {
   await page.waitForSelector('#dev-audio #dev-audio-rec');
   await page.waitForFunction((k) => window.__APP_TEST.audio().key === k && window.__APP_TEST.audio().entry, pkey);
   ok((await audioState()).entry.kind === 'tts', 'portable: the current (dry-run) audio is shown');
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
-  await page.waitForFunction(() => window.__APP_TEST.audio().recording);
-  await page.waitForTimeout(1200);
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForFunction(() => !window.__APP_TEST.audio().recording, null, { timeout: 2500 }));
+  await recordViaPanel(pkey);
   await waitUsed('recorded', 1);
   ok((await page.evaluate(() => window.__APP_TEST.state().portable.dirty)), 'portable: the new take marks the file unsaved');
   ok((await page.textContent('#saveloc')).includes('保存していない変更') && (await page.getAttribute('#saveloc', 'class')).includes('dirty'), 'save location: unsaved changes are shown');
