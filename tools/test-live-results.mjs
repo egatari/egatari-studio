@@ -76,10 +76,10 @@ console.log('shape');
   ok(parseResults(new Uint8Array(RESULTS_MAX_BYTES + 1)).code === 'too-large' && RESULTS_MAX_BYTES === ATTACH_LIMITS.fileBytes, 'over 10 MiB (the §3.8 attachment limit) is refused before parsing');
   ok(isLiveResults(FIX) && !isLiveResults(enc.encode('{"a":1}')) && !isLiveResults(enc.encode('x,y\n1,2\n')), 'isLiveResults: by content');
   const s = summarizeResults(R1);
-  ok(s.questions === 1 && s.responses === 4 && s.polls.length === 1 && s.polls[0].id === 'p1' && s.polls[0].counts.join() === '0,2,1' && s.polls[0].total === 3, 'summary: number of questions and the tally per poll');
+  ok(s.questions === 2 && s.responses === 6 && s.polls.length === 1 && s.polls[0].id === 'p1' && s.polls[0].counts.join() === '0,2,1' && s.polls[0].total === 3, 'summary: number of questions and the tally per poll');
   const inferred = summarizeResults({ ...R0, activities: {} });
   ok(inferred.polls.length === 1 && inferred.polls[0].counts.join() === '0,1' && summaryLines(inferred, 'en')[1] === 'Poll p1 — #1: 0 · #2: 1', 'summary: a poll without declared choices is tallied by index');
-  ok(summaryLines(s, 'ja')[0] === '質問 1 件' && summaryLines(s, 'ja')[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'summary lines (the strings are kept as text)');
+  ok(summaryLines(s, 'ja')[0] === '質問 2 件' && summaryLines(s, 'ja')[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'summary lines (the strings are kept as text)');
   for (const lang of ['ja', 'en']) {
     const rec = resultsRecord(R1, lang);
     ok(rec.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && rec.role === 'data', `record (${lang}): name live-<room>-<date>.json, role data`);
@@ -225,7 +225,7 @@ console.log('editor');
     const row = `#attach-list [data-attach="${P1}"]`;
     ok((await page.textContent(`${row} .attach-badge`)) === '学ぶ人の回答', 'editor: the row is marked 「学ぶ人の回答」');
     const lines = await page.$$eval(`${row} .attach-live div`, (xs) => xs.map((x) => x.textContent));
-    ok(lines.length === 2 && lines[0] === '質問 1 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
+    ok(lines.length === 2 && lines[0] === '質問 2 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results.png') });
     ok(await page.evaluate(() => window.__xss === undefined && !document.querySelector('#attach-list img, #xss-b')), 'editor: the learner strings render as text (no element, no script run)');
     // 授業の部屋の板から：部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）

@@ -81,7 +81,9 @@ const ja = {
       case 'pollPrompt': return `${poll}設問を入れてください（${p.n} 字まで）`;
       case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
       case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
-      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa・confused・poll のどれか）`;
+      case 'confusedMembers': return '「わからない」には設問も選択肢も付けられません';
+      case 'sourceSha256': return '教材の版（sourceSha256）の形が正しくありません';
       case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
       case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
       case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
@@ -340,7 +342,9 @@ const en = {
       case 'pollPrompt': return `${poll}enter the question (at most ${p.n} characters)`;
       case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
       case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
-      case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'activityKind': return `${poll}the kind must be qa, confused or poll`;
+      case 'confusedMembers': return '“I don\'t follow” has no question and no choices';
+      case 'sourceSha256': return 'The lesson version (sourceSha256) is malformed';
       case 'activityLabel': return `${poll}the label is at most ${p.n} characters`;
       case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
       case 'tooManyActivities': return `At most ${p.n} questions and polls`;

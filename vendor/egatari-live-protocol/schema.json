@@ -41,6 +41,108 @@
    "type": "string",
    "pattern": "^q-[a-z2-7]{10}$"
   },
+  "groupId": {
+   "type": "string",
+   "pattern": "^g-[a-z2-7]{10}$",
+   "description": "a group of similar questions the host made"
+  },
+  "sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$",
+   "description": "the lesson's sourceSha256 (format spec §3.4), lowercase hex"
+  },
+  "point": {
+   "type": "array",
+   "prefixItems": [
+    {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 1280
+    },
+    {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 720
+    }
+   ],
+   "items": false,
+   "minItems": 2,
+   "maxItems": 2,
+   "description": "[x, y] in stage coordinates (1280 x 720), rounded to 0.1"
+  },
+  "strokes": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 20,
+   "items": {
+    "type": "array",
+    "minItems": 2,
+    "maxItems": 500,
+    "items": {
+     "$ref": "#/$defs/point"
+    }
+   },
+   "description": "a circled region: polylines in stage coordinates, the shape of Egatari Studio's review notes (contract §12). At most 20 strokes, 500 points each and 2000 points in all; no two consecutive points equal (checked by the server, bad_region)"
+  },
+  "reply": {
+   "type": "object",
+   "properties": {
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    },
+    "at": {
+     "$ref": "#/$defs/datetime"
+    },
+    "public": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "text",
+    "at",
+    "public"
+   ],
+   "additionalProperties": false,
+   "description": "the host's short reply; public: also shown to everyone with the question"
+  },
+  "replyNote": {
+   "type": "object",
+   "properties": {
+    "item": {
+     "$ref": "#/$defs/itemId"
+    },
+    "question": {
+     "type": "string",
+     "maxLength": 500
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    },
+    "public": {
+     "type": "boolean"
+    },
+    "at": {
+     "$ref": "#/$defs/datetime"
+    }
+   },
+   "required": [
+    "item",
+    "question",
+    "step",
+    "text",
+    "public",
+    "at"
+   ],
+   "additionalProperties": false,
+   "description": "a reply to one of this participant's own questions (question is the participant's own text)"
+  },
   "datetime": {
    "type": "string",
    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,9})?)?(Z|[+-]\\d{2}:\\d{2})$",
@@ -117,6 +219,28 @@
       "kind"
      ],
      "additionalProperties": false
+    },
+    {
+     "type": "object",
+     "properties": {
+      "id": {
+       "$ref": "#/$defs/activityId"
+      },
+      "kind": {
+       "const": "confused"
+      },
+      "label": {
+       "type": "string",
+       "maxLength": 80,
+       "description": "display text for the step, e.g. \"Slide 4 'XML', step 1\" (optional; text only; the step key stays the key)"
+      }
+     },
+     "required": [
+      "id",
+      "kind"
+     ],
+     "additionalProperties": false,
+     "description": "a one-tap \"I don't follow\" at the current step, without text; counted per step"
     }
    ]
   },
@@ -148,6 +272,11 @@
     "text": {
      "type": "string",
      "maxLength": 500
+    },
+    "reply": {
+     "type": "string",
+     "maxLength": 200,
+     "description": "the host's reply, only if the host made it public"
     }
    },
    "required": [
@@ -195,6 +324,18 @@
     },
     "hidden": {
      "type": "boolean"
+    },
+    "strokes": {
+     "$ref": "#/$defs/strokes"
+    },
+    "sourceSha256": {
+     "$ref": "#/$defs/sha256"
+    },
+    "group": {
+     "$ref": "#/$defs/groupId"
+    },
+    "reply": {
+     "$ref": "#/$defs/reply"
     }
    },
    "required": [
@@ -270,6 +411,7 @@
     "quota_exceeded",
     "room_limit",
     "not_admitted",
+    "bad_region",
     "not_found",
     "bad_request",
     "unauthorized",
@@ -307,6 +449,22 @@
     "refillMs": {
      "type": "integer",
      "minimum": 0
+    },
+    "askBytes": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "regionStrokes": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "regionStrokePoints": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "regionPoints": {
+     "type": "integer",
+     "minimum": 0
     }
    },
    "required": [
@@ -341,6 +499,12 @@
      "type": "string",
      "minLength": 1,
      "maxLength": 500
+    },
+    "strokes": {
+     "$ref": "#/$defs/strokes"
+    },
+    "sourceSha256": {
+     "$ref": "#/$defs/sha256"
     }
    },
    "required": [
@@ -350,7 +514,39 @@
     "step",
     "text"
    ],
-   "additionalProperties": false
+   "additionalProperties": false,
+   "description": "a question. strokes (optional): the region the participant circled on the step `step` (never with step \"*\"). sourceSha256 (optional): the lesson's source hash, so that the question maps onto that version of the lesson"
+  },
+  "l.confused": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "confused"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "activity": {
+     "$ref": "#/$defs/activityId"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "on": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "activity",
+    "step"
+   ],
+   "additionalProperties": false,
+   "description": "\"I don't follow\" at a step (a `confused` activity): on (default true) marks it, on: false takes it back. One mark per participant and step"
   },
   "l.vote": {
    "type": "object",
@@ -478,6 +674,14 @@
     },
     "limits": {
      "$ref": "#/$defs/limits"
+    },
+    "replies": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/replyNote"
+     },
+     "maxItems": 400,
+     "description": "replies to this participant's own questions (only when there are some)"
     }
    },
    "required": [
@@ -507,6 +711,14 @@
       "$ref": "#/$defs/shownItem"
      },
      "maxItems": 50
+    },
+    "replies": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/replyNote"
+     },
+     "maxItems": 400,
+     "description": "replies to this participant's own questions (only when there are some)"
     }
    },
    "required": [
@@ -633,6 +845,50 @@
    ],
    "additionalProperties": false,
    "description": "the room's activities: the reply to l.activities, and sent again to the learners who asked when the teacher changes them"
+  },
+  "s.reply": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "reply"
+    },
+    "item": {
+     "$ref": "#/$defs/itemId"
+    },
+    "question": {
+     "type": "string",
+     "maxLength": 500
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    },
+    "public": {
+     "type": "boolean"
+    },
+    "at": {
+     "$ref": "#/$defs/datetime"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "item",
+    "question",
+    "step",
+    "text",
+    "public",
+    "at"
+   ],
+   "additionalProperties": false,
+   "description": "the host replied to one of this participant's questions; sent only to that participant"
   },
   "t.auth": {
    "type": "object",
@@ -879,6 +1135,91 @@
    ],
    "additionalProperties": false
   },
+  "t.reply": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "reply"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "item": {
+     "$ref": "#/$defs/itemId"
+    },
+    "text": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 200
+    },
+    "public": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "item",
+    "text"
+   ],
+   "additionalProperties": false,
+   "description": "reply to a question and every question in its group; public: also show the question and the reply to everyone"
+  },
+  "t.group": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "group"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "items": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/itemId"
+     },
+     "minItems": 2,
+     "maxItems": 50
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "items"
+   ],
+   "additionalProperties": false,
+   "description": "group similar questions (they join the first one's group)"
+  },
+  "t.ungroup": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "ungroup"
+    },
+    "ref": {
+     "$ref": "#/$defs/ref"
+    },
+    "item": {
+     "$ref": "#/$defs/itemId"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "item"
+   ],
+   "additionalProperties": false
+  },
   "people": {
    "type": "object",
    "properties": {
@@ -955,6 +1296,17 @@
      "additionalProperties": {
       "$ref": "#/$defs/tally"
      }
+    },
+    "confused": {
+     "type": "object",
+     "propertyNames": {
+      "$ref": "#/$defs/stepKey"
+     },
+     "additionalProperties": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "description": "step key -> participants who marked \"I don't follow\" there"
     }
    },
    "required": [
@@ -1052,6 +1404,31 @@
     "activity",
     "counts",
     "total"
+   ],
+   "additionalProperties": false
+  },
+  "st.confused": {
+   "type": "object",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "confused"
+    },
+    "step": {
+     "$ref": "#/$defs/stepKey"
+    },
+    "count": {
+     "type": "integer",
+     "minimum": 0
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "step",
+    "count"
    ],
    "additionalProperties": false
   },
@@ -1211,6 +1588,18 @@
       },
       "hidden": {
        "type": "boolean"
+      },
+      "strokes": {
+       "$ref": "#/$defs/strokes"
+      },
+      "sourceSha256": {
+       "$ref": "#/$defs/sha256"
+      },
+      "group": {
+       "$ref": "#/$defs/groupId"
+      },
+      "reply": {
+       "$ref": "#/$defs/reply"
       }
      },
      "required": [
@@ -1265,6 +1654,35 @@
       "choice"
      ],
      "additionalProperties": false
+    },
+    {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "const": "confused"
+      },
+      "activity": {
+       "$ref": "#/$defs/activityId"
+      },
+      "step": {
+       "$ref": "#/$defs/stepKey"
+      },
+      "pid": {
+       "$ref": "#/$defs/pid"
+      },
+      "at": {
+       "$ref": "#/$defs/datetime"
+      }
+     },
+     "required": [
+      "kind",
+      "activity",
+      "step",
+      "pid",
+      "at"
+     ],
+     "additionalProperties": false,
+     "description": "an \"I don't follow\" mark that was on at export"
     }
    ]
   },
@@ -1328,6 +1746,9 @@
      "$ref": "#/$defs/l.ask"
     },
     {
+     "$ref": "#/$defs/l.confused"
+    },
+    {
      "$ref": "#/$defs/l.vote"
     },
     {
@@ -1363,6 +1784,9 @@
     },
     {
      "$ref": "#/$defs/s.activities"
+    },
+    {
+     "$ref": "#/$defs/s.reply"
     }
    ]
   },
@@ -1400,6 +1824,15 @@
     },
     {
      "$ref": "#/$defs/t.activities"
+    },
+    {
+     "$ref": "#/$defs/t.reply"
+    },
+    {
+     "$ref": "#/$defs/t.group"
+    },
+    {
+     "$ref": "#/$defs/t.ungroup"
     }
    ]
   },
@@ -1416,6 +1849,9 @@
     },
     {
      "$ref": "#/$defs/st.tally"
+    },
+    {
+     "$ref": "#/$defs/st.confused"
     },
     {
      "$ref": "#/$defs/st.rekeyed"

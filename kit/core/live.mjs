@@ -1,7 +1,7 @@
 // 授業の部屋（拡張 live。format spec の extensions/live.md）を、再生専用の派生（§3.7）に付ける書き手の側。Node と編集アプリが共有する
 // （node: の読み込み・fs を使わない。再生器のスクリプトの字は呼ぶ側が渡す：Node は kit/build.mjs、編集アプリは tools/build-app.mjs が同梱したもの）
 //
-//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生：CSP の <meta>（<head> の開始タグの直後。どのスクリプトよりも前）・
+//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生（live.sourceSha256 があれば拡張のブロックに入れる：質問を教材の版に結び付ける）：CSP の <meta>（<head> の開始タグの直後。どのスクリプトよりも前）・
 //                                          拡張のブロック（#LIVE_BLOCK_ID）・再生器（kit/live.js）。live は鍵を含む完全なもの（validate {key:true}）
 //   liveCsp(endpoint)                      派生の CSP（connect-src は endpoint の https: と wss: だけ）
 //   liveRuntime(policySrc, clientSrc)      再生器の <script>（kit/core/live-policy.mjs を DECK.LivePolicy にして、kit/live.js を続ける）
@@ -78,7 +78,9 @@ export function addLive(html, live, runtime, opts = {}) {
   const m = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
   if (!m || m.index < at) throw new Error('live: no deck-meta');
   const ix = m.index + m[0].length;
-  const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities };
+  // sourceSha256（あれば）：教材の版。再生専用の派生の deck-meta からは消える（format spec §3.7）ので、質問を教材のその版に結び付けるためにここに入れる（拡張 live §1）
+  const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities,
+    ...(typeof live.sourceSha256 === 'string' ? { sourceSha256: live.sourceSha256 } : {}) };
   const block = '\n' + jsonScript(LIVE_BLOCK_ID, { [LIVE_EXT]: data }) + '\n' + runtime;
   return text.slice(0, at) + meta + text.slice(at, ix) + block + text.slice(ix);
 }

@@ -111,6 +111,28 @@ ok(sv('activities')(L0.activities), 'schema: the activities shape is the protoco
   ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
   ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
 
+// 質問の機能：活動の種類 confused・派生の sourceSha256・囲んだところの規則（docs/contract.md §12 の手書きメモと同じ）
+{ const withCf = (x) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused', ...x }] } });
+  ok(LP.validate(withCf({}), { key: true }).length === 0 && LP.validate(withCf({ label: 'どのステップでも' }), { key: true }).length === 0 && sv('activities')(withCf({}).activities), 'validate: a confused activity ({id, kind}, optional label) is valid (policy and vendored schema)');
+  ok(LP.validate(withCf({ choices: ['a', 'b'] }), { key: true }).some((e) => e.code === 'confusedMembers') && !sv('activities')(withCf({ prompt: 'x' }).activities), 'validate: a confused activity has no prompt or choices');
+  ok(LP.validate({ ...L0, activities: { '*': [{ id: 'x', kind: 'board' }] } }, { key: true }).some((e) => e.code === 'activityKind'), 'validate: other kinds (board is v2) are refused');
+  const SHA = 'a'.repeat(64);
+  ok(LP.validate({ ...L0, sourceSha256: SHA }, { key: true }).length === 0, 'validate: the exported file may carry sourceSha256 (the lesson version questions are tied to)');
+  ok(LP.validate({ ...L0, sourceSha256: 'A'.repeat(64) }, { key: true }).some((e) => e.code === 'sourceSha256') && LP.validate({ ...L0, sourceSha256: 'ab' }, { key: true }).length > 0, 'validate: sourceSha256 is 64 lowercase hex digits');
+  { const { key, ...lesson } = L0; ok(LP.validate({ ...lesson, sourceSha256: SHA }, { key: false }).some((e) => /sourceSha256/.test(e)), 'validate: the lesson\'s own settings never store sourceSha256 (only the exported file)'); }
+  for (const f of ['ask-region', 'confused']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
+  for (const f of ['reply', 'welcome-replies']) ok(sv('serverToLearner')(fixture(`server-learner/${f}.json`)), `schema: fixture server-learner/${f}.json is a serverToLearner message`);
+  const N = LP.normStrokes;
+  ok(JSON.stringify(N([[[0, 0], [0, 0], [10.04, 5.06], [2000, -3]]])) === '[[[0,0],[10,5.1],[1280,0]]]', 'normStrokes: clamps to the stage, rounds to 0.1, drops repeated points');
+  ok(N([[[1, 1]], [[1, 1], [1, 1]], 'x', [[NaN, 1], [2, 2]]]) === null && N('x') === null && N([]) === null, 'normStrokes: a stroke needs 2 distinct valid points; none left is null');
+  { const long = Array.from({ length: 1200 }, (_, i) => [100 + 300 * Math.cos(i / 1200 * 6.283), 360 + 300 * Math.sin(i / 1200 * 6.283)]);
+    const r = N([long]); ok(r.length === 1 && r[0].length <= 500 && r[0].length >= 10 && JSON.stringify(r[0][0]) === JSON.stringify([400, 360]), `normStrokes: a stroke of more than 500 points is simplified (RDP, keeping the ends) to ${r[0].length}`);
+    const many = N(Array.from({ length: 25 }, () => long.slice(0, 400)));
+    ok(many.length === 20 && many.reduce((n, x) => n + x.length, 0) <= 2000, 'normStrokes: at most 20 strokes and 2000 points in all');
+    ok(N(Array.from({ length: 201 }, () => [[1, 1], [2, 2]])) === null && N([Array.from({ length: 5001 }, (_, i) => [i % 1000, 1])]) === null, 'normStrokes: more than 200 strokes, or more than 5000 points in one, gives nothing (as the review notes)');
+    const msg = { v: 1, t: 'ask', activity: 'qa', step: 's-a:1', text: 'q', strokes: many, sourceSha256: SHA };
+    ok(sv('learnerToServer')(msg) && JSON.stringify(msg).length < 40960, `schema: normalised strokes fit the vendored ask (and its 40960-byte frame; ${JSON.stringify(msg).length} bytes)`); } }
+
 // ---------------------------------------------------------------- 2. 書き出し
 console.log('export');
 const deckDir = path.join(work, 'deck');
@@ -120,7 +142,7 @@ const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const POLL_STEP = '何を最小化するか:0';
 const POLL_LABEL = '2 枚目『何を最小化するか』・段階 1';
-const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
+const ACTS = { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
 const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
 // 教材の設定（鍵なし）：作業フォルダの設定のファイルの extensions.live
 const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
@@ -140,6 +162,9 @@ const metaRe = /\n<meta http-equiv="Content-Security-Policy" content="[^"]*">/;
 const blockRe = new RegExp(`\\n<script type="application/json" id="${LIVE_BLOCK_ID}">[^<]*</script>\\n<script>\\n[\\s\\S]*?\\n</script>`);
 ok(L.replace(metaRe, '').replace(blockRe, '') === plain, 'live derivative = the play-only derivative + the CSP meta + the extension block and player (nothing else changes)');
 ok(!plain.includes('Content-Security-Policy') && !plain.includes(`id="${LIVE_BLOCK_ID}"`) && !plain.includes('live-pane'), 'play-only without live: no CSP meta, no extension block, no player');
+const BLOCK = JSON.parse(new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(L)[1]).live;
+ok(BLOCK.sourceSha256 === portable.index.sourceSha256 && /^[0-9a-f]{64}$/.test(BLOCK.sourceSha256) && !('sourceSha256' in portable.index.extensions.live),
+  'live derivative: the extension block carries the lesson\'s sourceSha256 (the play-only deck-meta has none); the lesson\'s own settings do not');
 const cspAt = L.indexOf('<meta http-equiv="Content-Security-Policy"');
 ok(cspAt > 0 && cspAt < L.search(/<script/i) && cspAt === L.indexOf('<head>') + '<head>'.length + 1, 'live derivative: the CSP meta comes right after <head>, before any script');
 ok((L.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1, 'live derivative: exactly one CSP meta');
@@ -298,7 +323,7 @@ const sent = () => fake.messages.slice();
   ok(voteM && voteM.activity === 'p1' && voteM.step === POLL_STEP && voteM.choice === 1, 'vote: activity, step and the 0-based choice');
   const all = sent();
   ok(all.length > 0 && all.every((m) => sv('learnerToServer')(m)), `every message the player sent is a learnerToServer message in the vendored schema (${all.map((m) => m.t).join(',')})`);
-  ok(all.every((m) => ['ask', 'vote', 'name', 'ping'].includes(m.t)), 'only ask, vote, name and ping are sent');
+  ok(all.every((m) => ['ask', 'vote', 'name', 'ping', 'confused'].includes(m.t)), 'only ask, vote, name, ping (and confused when tapped) are sent');
   // サーバーの字は HTML にしない
   fake.send({ v: 1, t: 'shown', items: [{ id: 'q-abcdefghij', activity: 'qa', step: '*', text: '<img src=x onerror="window.__pwn=1"><b>x</b>' }] });
   ok(await until(async () => (await o.p.$$eval('#live-pane .lv-shown li', (l) => l.map((x) => x.textContent))).includes('<img src=x onerror="window.__pwn=1"><b>x</b>')), 'shown questions are text (textContent)');
@@ -478,6 +503,128 @@ const paneShown = (p) => p.$eval('#live-pane', (e) => getComputedStyle(e).displa
   const okFrames = await until(async () => { let n = 0; for (const f of o.p.frames()) { try { if (/[?&]view=(follow|next)/.test(f.url()) && await f.evaluate(() => !!(window.DECK && DECK.ready))) n++; } catch { /* 読み込み中 */ } } return n === 2; }, 8000);
   ok(okFrames && o.net.csp.length === 0, `presenter view of a live derivative: both frames run under its CSP (${o.net.csp.slice(0, 1).join('')})`);
   await o.close(); }
+
+// ---------------------------------------------------------------- 7. 質問：右下の「?」・質問に付くステップと囲んだところ・教材の版・「わからない」・返事
+console.log('questions');
+const askState = (p) => p.evaluate(() => { const b = document.getElementById('live-ask'), q = b && b.querySelector('.lv-q'), c = b && b.querySelector('.lv-cf');
+  return b ? { shown: !b.hidden && getComputedStyle(b).display !== 'none', q: !!q && !q.hidden, label: q && q.getAttribute('aria-label'), cf: !!c && !c.hidden, pressed: c && c.getAttribute('aria-pressed') } : null; });
+// 舞台の上に、中心 (cx, cy)・半径 r（舞台の座標）の円を描く
+async function drawCircle(p, cx, cy, r) {
+  const b = await p.$eval('#stage', (e) => { const x = e.getBoundingClientRect(); return { x: x.x, y: x.y, k: x.width / 1280 }; });
+  const at = (a) => [b.x + (cx + r * Math.cos(a)) * b.k, b.y + (cy + r * Math.sin(a)) * b.k];
+  await p.mouse.move(...at(0)); await p.mouse.down();
+  for (let i = 1; i <= 24; i++) await p.mouse.move(...at(i / 24 * 2 * Math.PI));
+  await p.mouse.up();
+}
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { viewport: { width: 1280, height: 800 } }); await sleep(300);
+  let a = await askState(o.p);
+  ok(a && a.shown && a.q && a.label === 'ホストに質問する' && !a.cf, `before Join: the "?" is at the bottom right (aria-label "${a && a.label}"); no "I don't follow" yet`);
+  const box = await o.p.$eval('#live-ask', (e) => { const r = e.getBoundingClientRect(); return { right: r.right, bottom: r.bottom }; });
+  ok(box.right > 1280 - 80 && box.bottom > 800 - 80, `the "?" sits at the bottom right of the window (${Math.round(box.right)}, ${Math.round(box.bottom)})`);
+  await o.p.click('#live-ask .lv-q');
+  ok(await until(async () => o.p.evaluate(() => DECK.live.state().open && !!document.activeElement && document.activeElement.matches('#live-pane .lv-join'))), '"?" before Join: opens the pane and moves to Join (it does not connect)');
+  await sleep(300);
+  quiet(o.net, 'the "?" before Join');
+  // 参加して、「?」から質問の欄へ
+  await o.p.click('#live-pane .lv-join');
+  ok(await until(async () => (await st(o.p)).state === 'connected'), 'Join: connected');
+  await o.p.click('#live-pane .lv-fold');
+  await goStep(o.p, POLL_STEP); await sleep(200); await o.p.click('#live-pane .lv-fold').catch(() => {});
+  await o.p.keyboard.press('ArrowRight'); await sleep(300);
+  const s1 = await st(o.p), key1 = s1.step;
+  a = await askState(o.p);
+  ok(a.cf && a.pressed === 'false', 'connected: "I don\'t follow" appears next to the "?" (aria-pressed=false)');
+  // キーボード：「?」に Tab で届き、Enter で質問の欄へ
+  await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
+  let reached = false;
+  for (let n = 0; n < 40 && !reached; n++) { await o.p.keyboard.press('Tab'); reached = await o.p.evaluate(() => document.activeElement && document.activeElement.matches('#live-ask .lv-q')); }
+  await o.p.keyboard.press('Enter');
+  ok(reached && await until(async () => o.p.evaluate(() => DECK.live.state().open && document.activeElement && document.activeElement.matches('#live-pane textarea'))), 'keyboard: the "?" is reachable with Tab; Enter opens the question box (focused)');
+  const where = await o.p.$eval('#live-pane .lv-where', (e) => e.textContent);
+  ok(/^質問に付く場所：スライド \d+・ステップ \d+$/.test(where) && !where.includes(key1), `the box says which step the question is tied to, in words ("${where}")`);
+  // 囲む：舞台の上に円を描く
+  await o.p.click('#live-pane .lv-circle');
+  ok(await o.p.$eval('#live-pane .lv-circle', (b) => b.getAttribute('aria-pressed') === 'true') && (await st(o.p)).drawing && await o.p.$eval('#live-ink', (e) => !e.hasAttribute('hidden') && e.classList.contains('lv-drawing')), 'Circle: drawing mode (aria-pressed=true) over the stage');
+  await drawCircle(o.p, 640, 360, 120);
+  await drawCircle(o.p, 300, 200, 40);
+  ok((await st(o.p)).strokes === 2 && /囲んだところ：2 本/.test(await o.p.$eval('#live-pane .lv-circled', (e) => e.textContent)), 'two strokes drawn; the pane counts them');
+  if (SHOTS) { await sleep(300); await o.p.screenshot({ path: path.join(SHOTS, 'pane-question-circle.png') }); }
+  await o.p.keyboard.press('Escape');
+  ok(!(await st(o.p)).drawing && (await st(o.p)).open && (await st(o.p)).strokes === 2, 'Esc ends drawing (the pane stays open; the circle stays)');
+  const before = (await st(o.p)).step;
+  await o.p.fill('#live-pane textarea', 'この矢印は何ですか？');
+  await o.p.click('#live-pane .lv-send');
+  ok(await until(() => fake.messages.some((m) => m.t === 'ask' && m.text === 'この矢印は何ですか？')), 'ask with a circle reaches the room');
+  const am = fake.messages.find((m) => m.t === 'ask' && m.text === 'この矢印は何ですか？');
+  ok(am.step === before && am.step !== '*' && am.sourceSha256 === BLOCK.sourceSha256, `ask: the step on screen and the lesson's sourceSha256 (${am.step})`);
+  ok(Array.isArray(am.strokes) && am.strokes.length === 2 && am.strokes.every((s) => s.length >= 2 && s.every(([x, y]) => x >= 0 && x <= 1280 && y >= 0 && y <= 720 && Math.round(x * 10) / 10 === x)), 'ask: two strokes in stage coordinates, rounded to 0.1');
+  { const xs = am.strokes[0].map((p) => p[0]), ys = am.strokes[0].map((p) => p[1]);
+    ok(Math.abs((Math.min(...xs) + Math.max(...xs)) / 2 - 640) < 12 && Math.abs((Math.min(...ys) + Math.max(...ys)) / 2 - 360) < 12 && Math.abs(Math.max(...xs) - Math.min(...xs) - 240) < 16, 'ask: the circle is where it was drawn on the stage (centre 640, 360; diameter 240)'); }
+  ok(sv('learnerToServer')(am) && JSON.stringify(am.strokes) === JSON.stringify(LP.normStrokes(am.strokes)), 'ask: valid in the vendored schema, already normalised (review-notes rule)');
+  ok(await until(async () => (await st(o.p)).strokes === 0) && await o.p.$eval('#live-ink', (e) => e.hasAttribute('hidden')), 'after the ack the circle is cleared');
+  // ステップが変わると、囲んだところは消える
+  await o.p.click('#live-pane .lv-circle'); await drawCircle(o.p, 640, 360, 80);
+  await o.p.keyboard.press('Escape');
+  await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
+  await o.p.keyboard.press('ArrowRight');
+  ok(await until(async () => (await st(o.p)).strokes === 0) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ステップが変わったので、囲んだところを消しました'), 'a step change clears the circle and says so');
+  // 「わからない」：押す・もう一度押すと取り消す。ステップごと
+  const n0 = fake.messages.length;
+  const key2 = (await st(o.p)).step;
+  await o.p.click('#live-ask .lv-cf');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '「わからない」をホストに伝えました') && (await askState(o.p)).pressed === 'true', '"I don\'t follow": one tap, aria-pressed=true, announced');
+  const cm = fake.messages.slice(n0).find((m) => m.t === 'confused');
+  ok(cm && cm.activity === 'cf' && cm.step === key2 && cm.on === true && !('text' in cm) && sv('learnerToServer')(cm), `confused: the activity, the step on screen and on:true, no text (${cm && cm.step})`);
+  await o.p.click('#live-ask .lv-cf');
+  ok(await until(() => fake.messages.slice(n0).some((m) => m.t === 'confused' && m.on === false && m.step === key2)) && (await askState(o.p)).pressed === 'false', 'a second tap takes it back (on:false)');
+  await o.p.click('#live-ask .lv-cf'); await sleep(200);
+  await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
+  await o.p.keyboard.press('ArrowRight'); await sleep(300);
+  ok((await askState(o.p)).pressed === 'false', 'the mark is per step: the next step starts unmarked');
+  // 返事：自分の質問への返事は板の「ホストからの返事」に、文字として。たたんでいれば印に新しい返事の点
+  await o.p.click('#live-pane .lv-fold'); await sleep(200);
+  fake.send({ v: 1, t: 'reply', item: 'q-abcdefghij', question: 'この矢印は何ですか？', step: before, text: '<b>勾配</b>の向きです', public: false, at: new Date().toISOString() });
+  ok(await until(async () => (await st(o.p)).replies === 1) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ホストから返事が届きました'), 'a reply is announced');
+  ok(await o.p.$eval('#live-mark', (m) => m.classList.contains('lv-new') && /新しい返事があります/.test(m.textContent)), 'collapsed: the marker shows a new reply (dot and text for screen readers)');
+  await o.p.click('#live-mark');
+  const rep = await o.p.$$eval('#live-pane .lv-replies li', (l) => l.map((x) => x.textContent));
+  ok(rep.length === 1 && rep[0] === 'あなたの質問：この矢印は何ですか？<b>勾配</b>の向きです' && !(await o.p.$('#live-pane .lv-replies b')), `the reply is shown with the learner's own question, as text (${rep[0]})`);
+  ok(!(await o.p.$eval('#live-mark', (m) => m.classList.contains('lv-new'))), 'opening the pane clears the new-reply mark');
+  // ホストが全員に見せた返事
+  fake.send({ v: 1, t: 'shown', items: [{ id: 'q-abcdefghij', activity: 'qa', step: before, text: 'この矢印は何ですか？', reply: '勾配の向きです' }] });
+  ok(await until(async () => (await o.p.$$eval('#live-pane .lv-shown li', (l) => l.map((x) => x.textContent))).includes('この矢印は何ですか？ホストの返事：勾配の向きです')), 'a question the host answered for everyone shows its reply');
+  if (SHOTS) { await sleep(300); await o.p.screenshot({ path: path.join(SHOTS, 'pane-reply.png') }); }
+  const all = fake.messages.slice();
+  ok(all.every((m) => sv('learnerToServer')(m)) && all.every((m) => ['ask', 'vote', 'name', 'ping', 'confused'].includes(m.t)), `questions: every message is a vendored learnerToServer message (${[...new Set(all.map((m) => m.t))].join(',')})`);
+  ok(o.net.errors.length === 0 && o.net.csp.length === 0 && o.net.req.length === 0, `questions: no page error, no CSP violation, no HTTP request (${o.net.errors.concat(o.net.csp).slice(0, 2).join('; ')})`);
+  await o.close(); }
+// つなぎ直した welcome の返事（読み直しの後も届く）
+{ fake.reset(); const o = await open(fileUrl(files['live.html']));
+  await joinNow(o.p); await until(async () => (await st(o.p)).state === 'connected');
+  fake.drop(1011);
+  await until(async () => (await st(o.p)).state === 'retrying');
+  // 次の welcome に返事を足す
+  const w = fixture('server-learner/welcome-replies.json');
+  ok(await until(async () => (await st(o.p)).state === 'connected', 5000), 'reconnected');
+  fake.send({ ...w, room: 'r-7k2q6xw4', pid: fake.connections[fake.connections.length - 1].query.pid });
+  ok(await until(async () => (await st(o.p)).replies === 1), 'replies in welcome (after a reconnect or a reload) are shown');
+  await o.close(); }
+// 「?」の出ないところ：動画・印刷・窓の外（通信もしない）
+{ fake.reset(); const o = await open(fileUrl(files['live.html']) + '?mode=video'); await sleep(500);
+  ok(!(await o.p.$('#live-ask')) && !(await o.p.$('#live-ink')), 'video mode: no "?" and no drawing layer'); quiet(o.net, 'video mode ("?")'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { media: 'print' }); await sleep(400);
+  ok(await o.p.$eval('#live-ask', (e) => getComputedStyle(e).display === 'none'), 'print: the "?" is hidden'); quiet(o.net, 'print ("?")'); await o.close(); }
+{ fake.reset(); const o = await open(fileUrl(files['late.html'])); await sleep(400);
+  ok(await o.p.$eval('#live-ask', (e) => e.hidden), 'after the window: no "?"'); quiet(o.net, 'after the window ("?")'); await o.close(); }
+// 縦長（スマートフォンの幅）：「?」は窓の中、板を開くと板の上に
+{ fake.reset(); const o = await open(fileUrl(files['live.html']), { viewport: { width: 390, height: 844 } }); await sleep(300);
+  const r0 = await o.p.$eval('#live-ask', (e) => e.getBoundingClientRect().toJSON());
+  await o.p.click('#live-ask .lv-q');
+  await until(async () => (await st(o.p)).open);
+  const r1 = await o.p.$eval('#live-ask', (e) => e.getBoundingClientRect().toJSON()), pt = await o.p.$eval('#live-pane', (e) => e.getBoundingClientRect().top);
+  ok(r0.right <= 390 && r0.bottom <= 844 && r0.width >= 44 && r0.height >= 44 && r1.bottom <= pt + 0.5, `phone: the "?" (a 44 px target) stays in the window and above the opened pane (${Math.round(r1.bottom)} ≤ ${Math.round(pt)})`);
+  if (SHOTS) { await sleep(300); await o.p.screenshot({ path: path.join(SHOTS, 'pane-phone-ask.png') }); }
+  quiet(o.net, 'phone, the "?" before Join'); await o.close(); }
 
 await browser.close();
 await fake.close();

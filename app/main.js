@@ -1240,11 +1240,12 @@ async function exportPlayOnlyFile(room = null) {
   const live = () => S.ws === ws0 && S.gen === g0;
   if (P && ws0.dirty) { toast(T.playOnlyUnsaved, true); return; }
   status(T.exporting);
-  let html, name, writes = {};
+  let html, name, writes = {}, srcSha = null;
   try {
-    if (P) { html = playOnly(P.original); name = P.name; }
-    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
-    if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
+    if (P) { html = playOnly(P.original); name = P.name; srcSha = P.index && P.index.sourceSha256; }
+    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
+    if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + FORMAT.PLAY_EXT;

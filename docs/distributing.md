@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=dca5a3b4642a90e5 -->
+<!-- i18n: pair=distributing.ja.md sha256=0720c8acf5a0061a -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -39,6 +39,8 @@ What the participant's copy does:
 - **Restricted connections.** The copy has a content security policy whose `connect-src` is exactly the Live server (`https://` and `wss://` of its host); the player also checks that the WebSocket address has the declared origin. Nothing (scripts, styles, images) is loaded from the server.
 
 The lesson itself keeps the settings without the join code (`extensions.live` in `egatari.json`, and in the single file's index); the join code goes only into the exported copy. Anyone holding the copy can join during the Live; **Change join code** on the host page locks out copies that leaked (they then show a clear message). From the command line: `node kit/build.mjs <deck> --play-only --live room.json` (`room.json` is the settings from the host page's Copy button; polls come from `egatari.json`'s `extensions.live`, otherwise from `room.json`).
+
+**Questions (draft).** A small **?** at the bottom right opens the question box from any slide. The question is tied to the step on screen (the box says which slide and step) and to this version of the lesson; **Circle** lets the participant trace around what they mean on the slide (optional; Esc stops, changing step clears it). Only the host sees questions; without a name they arrive without one. Next to **?**, **I don't follow** sends a one-tap mark for the step on screen, without text (tap again to take it back); the host sees how many people marked each step. On the host page the host can group similar questions and send a short reply, which reaches only the people who asked, or also everyone if the host ticks **Also show to all participants**. Replies appear in the pane under **Replies from the host**, also after reopening the file during the Live. **Distribute with Live** has a checkbox for **I don't follow** (on by default).
 
 **Rehearse before class:** create a Live whose live time starts now, export, open the copy on two devices, join, send a question and vote, and check the host page shows them. When handing out, also share the join link for phones and tablets: the host page's **Text to share** has a ready-to-paste message.
 

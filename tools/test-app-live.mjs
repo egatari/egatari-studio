@@ -40,6 +40,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.click('#live-read');
     ok(await page.inputValue('#live-room') === cr.room && await page.inputValue('#live-key') === cr.key && (await page.inputValue('#live-from')).length === 16, 'live panel: the teacher page\'s copy block fills room, key and window');
     ok(await page.isChecked('#live-qa'), 'live panel: Q&A for the whole lesson is on by default');
+    ok(await page.isChecked('#live-confused') && /わからない/.test(await page.textContent('label:has(#live-confused)')), 'live panel: the one-tap “I don\'t follow” (whole lesson) is on by default');
     // 投票：プレビューの段階に
     await frame.evaluate(() => DECK.go(1, 1, false));
     await page.waitForFunction(() => true);
@@ -61,7 +62,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.fill('#live-poll-0-c2', '変わらない');
     ok(await page.$eval('#live-problem-box', (e) => !e.querySelector('#live-problems')), 'live panel: nothing to fix');
     const acts = JSON.parse(await page.inputValue('#live-json'));
-    ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label }] }), 'live panel: the activities JSON for the teacher page (with the label; the key unchanged)');
+    ok(JSON.stringify(acts) === JSON.stringify({ '*': [{ id: 'qa', kind: 'qa' }, { id: 'confused', kind: 'confused' }], [step]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label }] }), 'live panel: the activities JSON for the teacher page (with the label; the key unchanged)');
     // 「活動の JSON をコピー」：コピーする字にも label
     await page.evaluate(() => { window.__copied = null; try { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; } } }); } catch { /* なし */ } });
     await page.click('#live-copy');
@@ -105,6 +106,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     const m = new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(html);
     const data = m ? JSON.parse(m[1]).live : null;
     ok(data && data.key === cr.key && data.room === cr.room && JSON.stringify(data.activities) === JSON.stringify(acts), 'export with a live room: the block carries room, key and the activities');
+    ok(data && /^[0-9a-f]{64}$/.test(data.sourceSha256 || ''), `export with a live room: the block carries the lesson's sourceSha256, so questions map onto this version (${data && data.sourceSha256})`);
     ok(!html.includes(`id="${FORMAT.INDEX_ID}"`), 'export with a live room: it is play-only (no index, no source)');
     // 部屋を付けない再生専用：何も入らない
     await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('plain.play.ega.html', { create: true }); });
