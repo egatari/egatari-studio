@@ -3,6 +3,10 @@
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値。rule は規格の名前の文字列か、a から決める関数（ruleOf）
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
+import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
+
+// 値にないときの既定（テーマの寸法の既定。kit/core/theme-metrics.mjs）：結論の行の上端・1 行の高さ・横の右の限り
+const DEF_CONCL_TOP = DEFAULT_METRICS.concl.top, DEF_LINE = DEFAULT_METRICS.body.line, DEF_RIGHT = limitsOf(DEFAULT_METRICS).right;
 
 // 同じスライドのほかの箇所の数（n は箇所の数。1 つなら何も足さない）
 const moreJa = (a) => (a.n > 1 ? ` ほか ${a.n - 1} か所` : '');
@@ -44,6 +48,26 @@ export function where(lang, { n, id, title, step }) {
   return lang === 'en'
     ? `Slide ${n}${title ? ` “${title}”` : ''}${id ? ` (${id})` : ''}${st}`
     : `スライド ${n}${title ? `「${title}」` : ''}${id ? `（${id}）` : ''}${st}`;
+}
+
+// テーマの寸法のずれ（themeMetricsDrift）の項目：{field, declared, measured, by}。measured は数か [下, 上]（body.floor・tate.floor）
+function driftList(items, lang) {
+  const ja = lang === 'ja';
+  return (items || []).map((x) => {
+    const m = Array.isArray(x.measured) ? (ja ? `本文の下端 ${x.measured[0]}〜${x.field === 'body.floor' ? `ページ番号の上端 ${x.measured[1]}` : x.measured[1]} の間のはず` : `should lie between the body bottom ${x.measured[0]} and ${x.field === 'body.floor' ? `the page number top ${x.measured[1]}` : x.measured[1]}`)
+      : x.field === '--bar-h' ? (ja ? `${x.measured}px、720 − body.floor の ${x.declared}px まで` : `${x.measured}px, at most 720 − body.floor = ${x.declared}px`)
+      : (ja ? `描いた箱は ${x.measured}` : `rendered ${x.measured}`);
+    const by = x.by === 'deck' ? (ja ? '、デッキの CSS' : ', deck CSS') : (ja ? '、テーマの CSS' : ', theme CSS');
+    return x.field === '--bar-h' ? `--bar-h ${m}${by}` : `${x.field} ${x.declared}${ja ? '：' : ': '}${m}${by}`;
+  }).join(ja ? '；' : '; ');
+}
+function driftHow(a, lang) {
+  const ja = lang === 'ja', theme = (a.items || []).some((x) => x.by !== 'deck'), deck = (a.items || []).some((x) => x.by === 'deck');
+  const t = theme ? (ja ? `テーマの CSS に合う metrics を theme.json に書く（node tools/theme-metrics.mjs measure ${a.theme} が描いた箱の値を出す）か、CSS を宣言に合わせる`
+    : `write metrics in theme.json that match the theme's CSS (node tools/theme-metrics.mjs measure ${a.theme} prints the rendered values), or make the CSS match the declaration`) : '';
+  const d = deck ? (ja ? 'デッキの <style> で体裁の箱（.body・.concl・見出し）を動かさない。動かすならテーマで動かし、テーマの metrics に宣言する（デッキの CSS では限りは変わらない）'
+    : 'do not move the layout boxes (.body, .concl, the heading) in the deck\'s <style>; move them in a theme and declare them in its metrics (deck CSS does not change the limits)') : '';
+  return [t, d].filter(Boolean).join(ja ? '。' : '; ');
 }
 
 export const MESSAGES = {
@@ -107,13 +131,24 @@ export const MESSAGES = {
   conclLong: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 字で長い（35 字まで）：「${a.t}」を 1 つの短い文にする`, en: (a) => `the conclusion line has ${a.n} units, over 35: make “${a.t}” one short sentence` },
   conclLongEn: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 文字で長い（英語は 70 文字まで）：「${a.t}」を短くする`, en: (a) => `the conclusion line has ${a.n} characters, over 70: shorten “${a.t}”` },
   conclOverflow: { rule: 'R-concl', ja: () => '結論の行が枠からはみ出す：結論の行を短くして 1 行に収める', en: () => 'the conclusion line overflows its box: shorten it to one line' },
+  // 結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）はテーマの寸法（metrics）が既定と違うときだけ値にある（なければ既定の値）
   bodyBottom: { rule: 'R-fit',
-    ja: (a) => { const o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / 46)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? '、結論の行の上端は 571px' : ''}）：本文をおよそ ${n} 行（1 行 46 px）減らすか、部品を ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
-    en: (a) => { const o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / 46)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? '; the conclusion line starts at 571px' : ''}): cut about ${n} line${n > 1 ? 's' : ''} (46 px each), make the component ${o} px lower, or split the slide in two (do not shrink text)`; } },
-  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > 1236px）：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > 1236px): break the long equation or table, or rebalance the .cols widths` },
+    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、部品を ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
+    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}): cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the component ${o} px lower, or split the slide in two (do not shrink text)`; } },
+  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px): break the long equation or table, or rebalance the .cols widths` },
   tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px): cut the vertical text or split the slide` },
   bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
   bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
+  // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12）。デッキに 1 回。テーマの知らせなので規格の名前はない
+  themeMetricsDrift: {
+    ja: (a) => `テーマ「${a.theme}」の${a.declared ? '寸法の宣言（theme.json の metrics）と描いた体裁の箱が違う' : '体裁の箱が既定の位置から動いているのに、寸法の宣言（theme.json の metrics）がない'}（${driftList(a.items, 'ja')}）。本文の場所の限りは${a.declared ? '宣言' : '既定'}の値で決めるので、はみ出しの指摘がずれる：${driftHow(a, 'ja')}`,
+    en: (a) => `the theme “${a.theme}” ${a.declared ? 'renders its layout boxes differently from its declared geometry (metrics in theme.json)' : 'moves layout boxes from their default positions but declares no geometry (metrics in theme.json)'} (${driftList(a.items, 'en')}). The body limits come from the ${a.declared ? 'declared' : 'default'} values, so overflow findings may be off: ${driftHow(a, 'en')}` },
+  metricsFontLoad: {
+    ja: (a) => `テーマ「${a.theme}」の寸法と描いた箱を比べなかった：同梱の字体（${(a.fonts || []).join('・')}）が読み込めず、代わりの字体では測らないため（themeMetricsDrift を確かめていない）：npm ci か node tools/get-fonts.mjs で字体をそろえて組み直すか、テーマの --font-sans に同梱の字体を入れる`,
+    en: (a) => `the theme “${a.theme}” was not compared with its rendered boxes: the bundled fonts (${(a.fonts || []).join(', ')}) did not load, and a fallback font is never measured (themeMetricsDrift was not checked): restore the fonts (npm ci or node tools/get-fonts.mjs) and rebuild, or put a bundled font in the theme's --font-sans` },
+  themeMetricsInvalid: {
+    ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値は親のテーマ（なければ既定）の値で検査した：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
+    en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. Those values were checked with the parent theme's (or the default) values: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
   smallText: { rule: 'R-fit', ja: (a) => `字が小さい（${a.px}px：「${a.t}」。本文は 27px、表・図は 24px から）：font-size を書かず既定の大きさに戻し、入らなければスライドを分ける`, en: (a) => `text is too small (${a.px}px: “${a.t}”; body text needs 27px, tables and figures 24px): remove the font-size and split the slide if it does not fit` },
   smallSvgText: { rule: 'R-fit', ja: (a) => `図の中の字が小さい（${a.px}px、24px から）：字を 24px 以上に上げる。その場の <svg> なら viewBox を表示する画素で書く（viewBox の幅 = 表示の幅）か、font-size を 24 × viewBox の幅 ÷ 表示の幅 以上にする`, en: (a) => `text inside a figure is too small (${a.px}px, at least 24px): raise it to 24px or more; for an inline <svg>, write the viewBox in the pixels it is shown at (viewBox width = displayed width) or use font-size ≥ 24 × viewBox width ÷ displayed width` },
   // 切れる字・外に出る字（kit/core/layout-scan.mjs。警告）。わざと切るところは要素に印（CLIP_ATTR）を付けると見ない

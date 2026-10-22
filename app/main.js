@@ -349,7 +349,8 @@ const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // デッキの文書の中を探して決まりを入れることはしない）
 // プレビューでは、知らせの部品（server/hints.js）も信頼する先頭部分に入れる（デッキの文書の中の </body> を探して入れない）
 function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
-function previewHtml(base) { return withShim(base, { dev: true, load: S.loads }, '\n' + RES.hints); }
+// theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
+function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}) }, '\n' + RES.hints); }
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
 // 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
@@ -383,7 +384,7 @@ async function rebuild(reason) {
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || [];
+        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || []; S.theme = r.theme || null;
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);

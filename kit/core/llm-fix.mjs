@@ -14,6 +14,7 @@
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
 import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
+import { DEFAULT_METRICS, limitsOf } from './theme-metrics.mjs';
 
 export function guideRules(guide) {
   const out = new Map();
@@ -76,23 +77,26 @@ const L = {
     sev: { error: 'エラー', warn: '警告' },
   },
 };
-// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は品質チェックのコマンド版の JSON の data（{px, lim}）か、ブラウザ版の arg（"583 > 565"・"23.2px「…」"）
-const LINE = 46;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
+// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は品質チェックのコマンド版の JSON の data（{px, lim}）か、ブラウザ版の arg（"583 > 565"・"1240 > 1188"・"23.2px「…」"）
+// 限り（lim）と 1 行の高さ（line）はテーマの寸法（theme.json の metrics）から。値になければ既定（kit/core/theme-metrics.mjs の DEFAULT_METRICS）
+const DM = DEFAULT_METRICS;
+const LINE = DM.body.line;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
 const num = (x) => { const m = String(x ?? '').match(/-?\d+(?:\.\d+)?/g); return m ? m.map(Number) : []; };
 export function amountOf(p, lang = 'en') {
   const d = p.data, ja = lang === 'ja';
   const pick = (k, i) => (d && typeof d === 'object' && Number.isFinite(+d[k]) ? +d[k] : num(d)[i]);
   if (p.code === 'bodyBottom' || p.code === 'overflowBottom') {
-    const px = pick('px', 0), lim = pick('lim', 1) || 565;
+    const px = pick('px', 0), lim = pick('lim', 1) || limitsOf(DM).conclBottom;
+    const line = d && typeof d === 'object' && Number.isFinite(+d.line) && +d.line > 0 ? +d.line : LINE;
     if (!Number.isFinite(px)) return '';
-    const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / LINE));
-    return ja ? `本文を ${over} px（${LINE} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
-      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${LINE} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
+    const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / line));
+    return ja ? `本文を ${over} px（${line} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
+      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${line} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
   }
   if (p.code === 'bodyRight' || p.code === 'overflowRight') {
-    const px = pick('px', 0);
+    const px = pick('px', 0), lim = pick('lim', 1) || limitsOf(DM).right;
     if (!Number.isFinite(px)) return '';
-    const over = Math.ceil(px - 1236);
+    const over = Math.ceil(px - lim);
     return ja ? `右へ ${over} px はみ出している：幅を ${over} px 減らす` : `${over} px too wide: make it ${over} px narrower`;
   }
   if (p.code === 'smallSvgText' || p.code === 'smallText') {
