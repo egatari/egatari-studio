@@ -59,12 +59,15 @@ const live = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true,
 const early = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now + 3600e3, now + 7200e3) })).html;
 // an endpoint this page does not allow (another loopback port): the join link only
 const other = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 3600e3, 'http://localhost:9') })).html;
-const editableLive = (await buildPortable(deck, {})).html;   // the teacher's own file: extensions.live without a key
+const editableLive = (await buildPortable(deck, {})).html;
+// Live with questions only (no poll on any step)
+fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: { '*': [{ id: 'qa', kind: 'qa' }] } } } }, null, 2) + '\n');
+const qaOnly = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) })).html;   // the teacher's own file: extensions.live without a key
 fs.writeFileSync(cfgPath, JSON.stringify(cfg0, null, 2) + '\n');
 const FIX = {};
 const put = (name, html) => { FIX[name] = path.join(work, name); fs.writeFileSync(FIX[name], html); };
 put('lesson.play.ega.html', playOnly); put('lesson.ega.html', editable); put('live.play.ega.html', live); put('early.play.ega.html', early);
-put('other.play.ega.html', other); put('teacher.ega.html', editableLive);
+put('other.play.ega.html', other); put('teacher.ega.html', editableLive); put('qa.play.ega.html', qaOnly);
 put('not-egatari.html', '<!doctype html><title>x</title><p>hello</p>');
 
 // ---------------------------------------------------------------- 1. the build
@@ -450,29 +453,32 @@ console.log('no network');
   ok(await o.p.$eval('#b-live', (b) => b.hidden), 'a lesson without live: no Live button');
   await o.close(); }
 
-// ---------------------------------------------------------------- 10. live
+// ---------------------------------------------------------------- 10. live: the start screen first, then the frame
 console.log('live');
+const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
 { const o = await page();
   const ws = [], frameReqs = [];
   o.p.on('websocket', (w) => ws.push(w.url()));
   o.ctx.on('request', (r) => { try { if (r.frame() && r.frame().parentFrame()) frameReqs.push(r.url()); } catch { /* detached */ } });
   fake.reset();
   await openFixture(o.p, 'live.play.ega.html');
-  const f = await lessonFrame(o.p);
-  ok(!(await o.p.$eval('#b-live', (b) => b.hidden)), 'live: the page shows its own Live button');
-  ok(await f.evaluate(() => getComputedStyle(document.getElementById('live-mark')).display) === 'none', 'live: the lesson\'s own Live mark is hidden (it cannot connect from the frame)');
-  ok(await f.evaluate(() => DECK.live.state().context) === 'framed', 'live: the lesson\'s player sees itself framed and does not connect');
-  await sleep(500);
+  await o.p.waitForSelector('#live-start', { state: 'visible' });
+  ok(!(await hasFrame(o.p)), 'live: a start screen first; the lesson\'s frame is not placed yet');
+  ok(/127\.0\.0\.1/.test(await o.p.textContent('#live-dest')) && await o.p.isEnabled('#b-start-join') && await o.p.isVisible('#b-watch') && (await o.p.textContent('#live-start-window')).length > 0,
+    'live: the start screen shows Join, the window and the destination host, and 「参加しないで見る」');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-start-join'), 'live: the focus starts on Join');
+  await sleep(300);
   ok(fake.connections.length === 0 && ws.length === 0, 'live: nothing connects before Join');
-  await o.p.click('#b-live');
-  ok(await o.p.isVisible('#live') && /127\.0\.0\.1/.test(await o.p.textContent('#live-dest')), 'live: the pane shows the destination host before Join');
-  await o.p.click('#b-join');
-  const joined = await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'));
-  ok(joined, 'live: Join connects (one tap)');
+  await o.p.click('#b-start-join');
+  const f = await lessonFrame(o.p);
+  ok(await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected')), 'live: Join connects (one tap), then the lesson plays');
+  ok(await f.evaluate(() => getComputedStyle(document.getElementById('live-mark')).display) === 'none' && await f.evaluate(() => DECK.live.state().context) === 'framed',
+    'live: the lesson\'s own Live mark is hidden and its player, framed, does not connect');
   const c0 = fake.connections[0] || {};
   ok(fake.connections.length === 1 && c0.query.room === 'r-7k2q6xw4' && c0.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && /^[A-Za-z0-9_-]{16,43}$/.test(c0.query.pid), 'live: one WebSocket to the declared endpoint with room, key and a random pid');
   ok(c0.origin === site.url.replace(/\/$/, ''), `live: the page holds the connection (Origin ${c0.origin}), not the lesson (Origin null)`);
   ok(frameReqs.length === 0, 'live: the lesson\'s frame made no request');
+  ok((await state(o.p)).layout.mode === 'side', 'live with polls at 1280 x 800: the side pane');
   await o.p.fill('#live-q', 'もう一度説明してください');
   await o.p.click('#b-send');
   ok(await until(() => fake.messages.some((m) => m.t === 'ask' && m.text === 'もう一度説明してください' && m.activity === 'qa')), 'live: a question is sent (ask)');
@@ -488,59 +494,108 @@ console.log('live');
   ok(!fake.messages.some((m) => /pos|position|time|play/i.test(m.t)), 'live: no viewing position or timing is sent');
   await f.evaluate(() => DECK.go(2, 0));
   ok(await until(() => o.p.evaluate(() => !document.querySelector('#live fieldset[data-poll="p1"]'))), 'live: leaving the step removes its poll');
-  // forged position messages from outside the frame are ignored
   await o.p.evaluate(() => window.postMessage({ egatari: 'position', slideKey: '何を最小化するか', stepKey: '0' }, '*'));
   await sleep(200);
   ok((await state(o.p)).live.step !== POLL_STEP, 'live: a position message that does not come from the frame is ignored');
-  await o.p.click('#b-live');
+  ok(await o.p.textContent('#b-leave') === '抜ける', 'live: the leave button reads 「抜ける」');
   await o.p.click('#b-leave');
-  ok(await until(() => fake.open === 0), 'live: Leave closes the connection');
+  ok(await until(() => fake.open === 0), 'live: 「抜ける」 closes the connection');
+  ok(await until(() => o.p.isVisible('#b-join')), 'live: after leaving, Join is offered again in the same place');
   await o.p.click('#b-close');
   ok(await until(() => fake.open === 0) && fake.connections.length === 1, 'live: closing the lesson leaves no connection');
   await o.close(); }
+// 「参加しないで見る」: the lesson plays and nothing reaches the network
+{ const o = await page();
+  await o.p.evaluate(() => navigator.serviceWorker.ready); await o.p.reload(); await o.p.waitForSelector('html[data-ready]'); await sleep(300);
+  const reqs = [], ws = [];
+  o.ctx.on('request', (r) => { if (!/^(data|blob|about):/.test(r.url())) reqs.push(r.url()); });
+  o.p.on('websocket', (w) => ws.push(w.url()));
+  fake.reset();
+  await openFixture(o.p, 'live.play.ega.html');
+  await o.p.click('#b-watch');
+  const f = await lessonFrame(o.p);
+  await f.evaluate(() => { DECK.go(1, 0); DECK.go(2, 0); });
+  await sleep(1200);
+  ok(reqs.length === 0 && ws.length === 0 && fake.connections.length === 0 && fake.http.length === 0, `「参加しないで見る」: the lesson plays with no request and no WebSocket (${reqs.join(', ')})`);
+  ok(await o.p.isVisible('#b-join') && (await state(o.p)).live.state === 'off', '「参加しないで見る」: Join stays available in the Live controls');
+  await o.close(); }
 { const o = await page();
   fake.reset();
-  await openFixture(o.p, 'early.play.ega.html'); await lessonFrame(o.p);
-  await o.p.click('#b-live');
-  await sleep(500);
-  ok(await o.p.$eval('#live-join-row', (e) => e.hidden) && /始まります/.test(await o.p.textContent('#live-state')) && fake.connections.length === 0, 'live before the window: says when it starts; no Join; no connection');
+  await openFixture(o.p, 'early.play.ega.html');
+  await o.p.waitForSelector('#live-start', { state: 'visible' });
+  ok(await o.p.isDisabled('#b-start-join') && /始まります/.test(await o.p.textContent('#live-start-state')) && await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-watch'),
+    'live before the window: says when it starts; Join disabled; the focus on 「参加しないで見る」');
+  await o.p.click('#b-watch'); await lessonFrame(o.p);
+  ok(fake.connections.length === 0, 'live before the window: no connection');
   await o.p.click('#b-close');
-  await openFixture(o.p, 'other.play.ega.html'); await lessonFrame(o.p);
-  await o.p.click('#b-live');
-  const href = await o.p.getAttribute('#a-join', 'href');
-  ok(await o.p.$eval('#live-join-row', (e) => e.hidden) && !(await o.p.$eval('#live-link-row', (e) => e.hidden)) && href === 'http://localhost:9/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD',
-    'live at an endpoint this page does not allow: only the join page link (the key after #), no Join');
-  ok(/localhost:9/.test(await o.p.textContent('#live-link-dest')) && await o.p.getAttribute('#a-join', 'rel') === 'noopener noreferrer', 'live: the join link shows its host and opens with noopener noreferrer');
+  await openFixture(o.p, 'other.play.ega.html');
+  await o.p.waitForSelector('#live-start', { state: 'visible' });
+  const href = await o.p.getAttribute('#a-start-join', 'href');
+  ok(await o.p.isHidden('#b-start-join') && await o.p.isVisible('#a-start-join') && href === 'http://localhost:9/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD' && await o.p.getAttribute('#a-start-join', 'rel') === 'noopener noreferrer',
+    'live at an endpoint this page does not allow: only the join page link (the key after #, noopener noreferrer), no Join');
+  ok(/localhost:9/.test(await o.p.textContent('#live-dest')), 'live: the join link shows its host');
+  await o.p.click('#b-watch'); await lessonFrame(o.p);
   ok(fake.connections.length === 0, 'live: still no connection');
   await o.p.click('#b-close');
   await openFixture(o.p, 'teacher.ega.html'); await lessonFrame(o.p);
-  ok(await o.p.$eval('#b-live', (b) => b.hidden), 'the teacher\'s editable file (Live settings without a key): no Live');
+  ok(await o.p.$eval('#b-live', (b) => b.hidden) && await o.p.isHidden('#live-start'), 'the teacher\'s editable file (Live settings without a key): no Live, no start screen');
   await o.close(); }
 
-// ---------------------------------------------------------------- 10b. the lesson's frame keeps its size and nothing covers it
-// the Live pane is beside or below the frame from the start and never over it; nothing resizes the frame while a lesson plays
-console.log('frame size');
-for (const viewport of [{ width: 1280, height: 800 }, { width: 375, height: 740 }]) {
-  const o = await page(site.url, { viewport });
-  await openFixture(o.p, 'live.play.ega.html'); const f = await lessonFrame(o.p);
-  const rect = () => o.p.evaluate(() => { const r = document.getElementById('lesson').getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(','); });
-  const inner = () => f.evaluate(() => innerWidth + 'x' + innerHeight);
-  const r0 = await rect(), i0 = await inner();
-  await o.p.click('#b-live');
-  const r1 = await rect();
-  await f.evaluate(() => DECK.go(1, 0));
-  await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]'));
-  const r2 = await rect(), i2 = await inner();
-  ok(r0 === r1 && r1 === r2 && i0 === i2, `${viewport.width} px: the Live button and a poll step leave the frame's size and place as they are (${r0}; inside ${i0})`);
-  const ov = await o.p.evaluate(() => { const a = document.getElementById('lesson').getBoundingClientRect(), b = document.getElementById('live').getBoundingClientRect(); return { overlap: !(b.left >= a.right - 0.5 || b.top >= a.bottom - 0.5 || b.right <= a.left + 0.5 || b.bottom <= a.top + 0.5), w: b.width, h: b.height }; });
-  ok(!ov.overlap && ov.w > 200 && ov.h > 150, `${viewport.width} px: the Live pane does not lie over the frame (${JSON.stringify(ov)})`);
-  // focus order: the Live button takes the focus into the pane; Escape returns it to the button
-  await o.p.focus('#b-live'); await o.p.keyboard.press('Enter');
-  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.closest('#live') !== null), `${viewport.width} px: the Live button moves the focus into the pane`);
-  await o.p.keyboard.press('Escape');
-  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-live'), `${viewport.width} px: Escape returns the focus to the Live button`);
-  await o.close();
+// ---------------------------------------------------------------- 10b. the layout, chosen once from the activities and the screen
+// the frame's geometry never changes while the lesson plays (only on rotation), and the controls never lie over it
+// (except the measured overlay variant, ?noslack=overlay)
+console.log('layout');
+const geo = (p) => p.evaluate(() => { const g = (id) => { const e = document.getElementById(id); if (!e || e.closest('[hidden]')) return null; const r = e.getBoundingClientRect(); if (!r.width || !r.height) return null; return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }; return { frame: g('lesson'), live: g('live'), bar: g('bar'), mode: window.__play.state().layout && window.__play.state().layout.mode }; });
+const overlap = (a, b) => !!(a && b) && !(b.x >= a.x + a.w || b.y >= a.y + a.h || b.x + b.w <= a.x || b.y + b.h <= a.y);
+const SIZES = [[375, 667], [667, 375], [844, 390], [1280, 800]];
+const WANT = { polls: { '375x667': 'bottom', '667x375': 'strip', '844x390': 'slack', '1280x800': 'side' }, nopolls: { '375x667': 'bar', '667x375': 'strip', '844x390': 'slack', '1280x800': 'bar' } };
+for (const [kind, fix] of [['polls', 'live.play.ega.html'], ['nopolls', 'qa.play.ega.html'], ['none', 'lesson.play.ega.html']]) {
+  for (const [w, h] of SIZES) {
+    const o = await page(site.url, { viewport: { width: w, height: h } });
+    await openFixture(o.p, fix);
+    if (kind !== 'none') { await o.p.waitForSelector('#live-start', { state: 'visible' }); await o.p.click('#b-watch'); }
+    const f = await lessonFrame(o.p);
+    const g0 = await geo(o.p);
+    const tag = `${kind} ${w}x${h}`;
+    if (kind === 'none') { ok(g0.mode === 'none' && !g0.live && g0.frame.w === w, `${tag}: no Live, the frame fills the width (${JSON.stringify(g0.frame)})`); await o.close(); continue; }
+    ok(g0.mode === WANT[kind][`${w}x${h}`], `${tag}: the layout is ${WANT[kind][`${w}x${h}`]} (${g0.mode})`);
+    ok(!overlap(g0.frame, g0.live), `${tag}: the Live controls do not lie over the frame (frame ${JSON.stringify(g0.frame)}, live ${JSON.stringify(g0.live)})`);
+    if (w > h && h <= 500) ok(!g0.bar && (g0.mode !== 'slack' || g0.frame.h === h), `${tag}: phone landscape: no page bar; with slack the stage fills the height`);
+    await f.evaluate(() => DECK.go(1, 0)); await sleep(300);
+    if (await o.p.isVisible('#b-poll')) await o.p.click('#b-poll');
+    await sleep(200);
+    const g1 = await geo(o.p);
+    ok(JSON.stringify(g1.frame) === JSON.stringify(g0.frame) && !overlap(g1.frame, g1.live), `${tag}: a poll step (and opening the poll) leaves the frame as it is and uncovered`);
+    ok(await o.p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: no horizontal scroll`);
+    if (kind === 'polls') await o.p.screenshot({ path: path.join(work, `layout-${w}x${h}.png`) });
+    await o.close();
+  }
 }
+// the overlay variant for 16:9 phones in landscape (measured against the strip): the indicator and the poll sheet lie over the frame
+{ const o = await page(site.url + '?noslack=overlay', { viewport: { width: 667, height: 375 } });
+  await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-watch'); await lessonFrame(o.p);
+  const g = await geo(o.p);
+  ok(g.mode === 'overlay' && g.frame.w === 667 && g.frame.h === 375 && overlap(g.frame, g.live), `overlay variant 667x375: the frame keeps the full screen and the indicator lies over its top edge (${JSON.stringify(g)})`);
+  await o.close(); }
+// rotation: laid out once more, and the controls follow; focus order in the pane
+{ const o = await page(site.url, { viewport: { width: 375, height: 667 } });
+  await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-start-join'); await lessonFrame(o.p);
+  ok(await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected')), 'rotation: joined in portrait');
+  const p0 = await geo(o.p);
+  await o.p.setViewportSize({ width: 844, height: 390 });
+  await until(async () => (await geo(o.p)).mode === 'slack');
+  const p1 = await geo(o.p);
+  ok(p0.mode === 'bottom' && p1.mode === 'slack' && p1.frame.h === 390 && !overlap(p1.frame, p1.live), `rotation to landscape: laid out again once (bottom → slack, ${JSON.stringify(p1.frame)})`);
+  await o.p.click('#b-leave');
+  ok(await until(() => fake.open === 0), 'rotation: 「抜ける」 works right after');
+  await o.p.setViewportSize({ width: 375, height: 667 });
+  await until(async () => (await geo(o.p)).mode === 'bottom');
+  ok(JSON.stringify((await geo(o.p)).frame) === JSON.stringify(p0.frame), 'rotation back: the portrait layout again');
+  await o.p.focus('#b-live'); await o.p.keyboard.press('Enter');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.closest('#live') !== null), 'the Live button moves the focus into the pane');
+  await o.p.keyboard.press('Escape');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-live'), 'Escape returns the focus to the Live button');
+  await o.close(); }
 
 // ---------------------------------------------------------------- 11. phone width and names
 console.log('phone width');
@@ -552,13 +607,6 @@ console.log('phone width');
   ok(unnamed.length === 0, `every visible control has a name (${unnamed.join(' | ')})`);
   ok(await o.p.evaluate(() => !!document.querySelector('label[for="file"]')) && await o.p.$eval('#file', (i) => i.accept.includes('.html')), 'the file picker has a label and accepts .html');
   await o.p.screenshot({ path: path.join(work, 'phone-start.png') });
-  await openFixture(o.p, 'live.play.ega.html'); await lessonFrame(o.p);
-  await o.p.click('#b-live');
-  await sleep(300);
-  ok(await noScroll(), 'phone width: playing with the Live pane open has no horizontal scroll');
-  const box = await o.p.evaluate(() => { const a = document.getElementById('lesson').getBoundingClientRect(), b = document.getElementById('live').getBoundingClientRect(); return { fh: a.height, fb: a.bottom, lt: b.top, lb: b.bottom, lw: b.width, w: innerWidth }; });
-  ok(box.fh > 250 && box.lt >= box.fb - 0.5 && box.lw === box.w, `phone width: the Live pane is below the lesson (${JSON.stringify(box)})`);
-  await o.p.screenshot({ path: path.join(work, 'phone-live.png') });
   await o.close(); }
 
 await browser.close();

@@ -1,4 +1,4 @@
-<!-- i18n: pair=play.ja.md sha256=162865ed5e23c4b1 -->
+<!-- i18n: pair=play.ja.md sha256=521473ba7ed06b32 -->
 # Egatari Play (the player page)
 
 English | [日本語](play.ja.md)
@@ -39,9 +39,20 @@ Links the lesson asks the page to open go through the player's own rule, `kit/co
 
 When a lesson carries a valid `extensions.live` with a key (a play-only file exported "with a live room"), the page acts for the lesson (live §2A): it shows the 「ライブ」 button and pane in its own chrome and holds the WebSocket itself.
 
-- No request before the viewer presses 「参加する」 (Join), and none outside the window. The pane shows the destination host before joining. Only what an activity needs is sent: questions, votes, a name if the viewer types one, a random id made on this device, and pings. Text from the room is shown as text. Retries follow `LivePolicy.plan` (`kit/core/live-policy.mjs`).
+- **Join first.** A lesson with Live opens on a start screen: 「参加する」 (Join) with the window and the destination host, and 「参加しないで見る」 (Watch without joining). The lesson's frame is placed only after one of them, so the Join tap can never meet the frame. Watching without joining makes no request at all; Join stays available in the Live controls. For an endpoint the page does not connect to, the start screen offers the room's join page link instead of Join.
+- No request before the viewer presses Join, and none outside the window. Only what an activity needs is sent: questions, votes, a name if the viewer types one, a random id made on this device, and pings. Text from the room is shown as text. Retries follow `LivePolicy.plan` (`kit/core/live-policy.mjs`).
 - The page learns the current step from the lesson's position events, to show that step's poll; a step with a poll is announced.
-- For a lesson with Live, the pane is shown from the start, beside the lesson on wide screens (340 px) and below it on phones (40 % of the height), and it never lies over the lesson. Nothing changes the lesson frame's size or covers it while a lesson plays; the update notice waits until the lesson is closed. The reason: the lesson's frame runs in its own process, and Chrome hands a tap to it by hit-test data from the last frame shown, so a control that has just appeared where the lesson was (a pane over the frame, or a frame that just shrank) can lose its first tap to the lesson. A pane that is always there, outside the frame, cannot. The 「ライブ」 button moves the focus into the pane; Escape returns it.
+- **Layout** (`play/layout.mjs`), chosen once when the lesson starts, from its activities and the screen, and kept while it plays (only a rotation, or a desktop window resize, lays it out again):
+
+  | Lesson | Phone portrait | Phone landscape | Wide screen |
+  |---|---|---|---|
+  | No Live | the lesson fills the page | same | same |
+  | Live without polls | a 44 px bar below the lesson: indicator, 「抜ける」 (Leave) or Join | the side slack (below) | the 44 px bar |
+  | Live with polls | the pane below the 16:9 stage (the poll first) | the side slack (below) | the 340 px side pane |
+
+  In phone landscape (height up to 500 px) the page's bar is hidden and the stage fills the height. With at least 120 px of side slack (19.5:9 phones: about 150 px) the controls take a column there: close, indicator, Leave or Join, and 「投票」 (Poll), which shows the poll in the column. Without slack (16:9 phones) the variant is one constant, `NO_SLACK_VARIANT` in `play/main.js`: **'strip'** (the default) shrinks the stage by 28 px and gives the controls a strip above it; the poll replaces the strip's content as one row. **'overlay'** keeps the full screen and lays the indicator over the frame's top edge, and the poll opens as a sheet over the frame (`?noslack=overlay` switches it for measuring).
+- **Why the layout is fixed.** The lesson's frame runs in its own process, and Chrome hands a tap to it by hit-test data from the last frame shown. A control that had just appeared where the lesson was (a pane shown over the frame, or a frame that just shrank) lost its first tap to the lesson in 12 of 45 fast taps under load. With Join before the frame, and controls placed before the frame and never moved, `tools/play-tap-measure.mjs` (3 copies at once, 15 sessions each, taps as soon as a control is visible) counted no lost tap: Join 0/45, the poll in portrait 0/90, in landscape with slack 0/135, without slack 0/225 for both the strip and the overlay variant, the first tap after a rotation 0/45, Leave 0/45. The overlay's indicator is there from the start, which seems to be what keeps its taps right; the strip remains the default because nothing of it ever lies over the frame. The slide is 375 × 211 px in portrait (375 × 667), 693 × 390 in landscape at 844 × 390, 617 × 347 (strip) or 667 × 375 (overlay) at 667 × 375, and 940 × 529 at 1280 × 800 with the side pane.
+- The 「ライブ」 button (portrait and wide screens) moves the focus into the Live controls; Escape returns it. The update notice waits until the lesson is closed.
 - The page connects only to endpoints that its own policy allows (the build's `--live-endpoint`, by default `https://live.egatari.org`). For any other endpoint it shows the room's join page link (`/join#room=…&key=…`, the key after `#`), which opens in a new tab.
 - **Nothing is relayed into the lesson.** v1 relays one thing out of it, the step on screen. Not yet: drawing a region on the slide for a question (the lesson's frame has no way to hand strokes to the page yet).
 - The teacher's own editable file has `extensions.live` without a key: it plays, without Live.

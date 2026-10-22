@@ -75,32 +75,50 @@
   </section>
   <section id="player" hidden aria-label="教材">
     <div id="stage-wrap"></div>
-    <aside id="live" hidden aria-labelledby="live-h" tabindex="-1">
+    <section id="live-start" hidden aria-labelledby="live-start-h">
+      <h2 id="live-start-h" data-i18n="startTitle2">この教材にはライブ（質問・投票）があります</h2>
+      <p id="live-start-notice"></p>
+      <p id="live-start-window" class="small"></p>
+      <p id="live-start-state" class="msg"></p>
+      <div class="row">
+        <button type="button" id="b-start-join" class="pri" data-i18n="join">参加する</button>
+        <a id="a-start-join" class="pri" target="_blank" rel="noopener noreferrer" hidden data-i18n="openJoin">ブラウザで参加する</a>
+        <span id="live-dest" class="small dest"></span>
+      </div>
+      <div class="row"><button type="button" id="b-watch" data-i18n="watch">参加しないで見る</button></div>
+      <p class="small" data-i18n="privacy">送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません。</p>
+    </section>
+    <aside id="live" hidden aria-labelledby="live-h" tabindex="-1" data-mode="">
       <div class="live-head">
+        <button type="button" id="b-strip-close" class="x" data-i18n-label="closeLesson" aria-label="教材を閉じる">×</button>
         <span class="dot" aria-hidden="true"></span>
         <h2 id="live-h" data-i18n="liveTitle">ライブ（質問・投票）</h2>
         <span id="live-state" class="state"></span>
+        <button type="button" id="b-join" class="pri" data-i18n="join">参加する</button>
+        <button type="button" id="b-leave" hidden data-i18n="leave">抜ける</button>
+        <button type="button" id="b-poll" hidden aria-controls="live-polls" aria-expanded="false" data-i18n="poll">投票</button>
       </div>
       <div class="live-body">
         <p id="live-notice"></p>
         <p id="live-window" class="small"></p>
         <p id="live-msg" class="msg" role="alert"></p>
-        <div id="live-join-row" class="row"><button type="button" id="b-join" class="pri" data-i18n="join">参加する</button><span id="live-dest" class="small"></span></div>
         <div id="live-link-row" class="row" hidden><a id="a-join" class="pri" target="_blank" rel="noopener noreferrer" data-i18n="openJoin">ブラウザで参加する</a><span id="live-link-dest" class="small"></span></div>
         <div id="live-name-row" hidden>
           <label for="live-name" data-i18n="name">名前（任意）</label>
           <input type="text" id="live-name" autocomplete="off">
           <p class="small" data-i18n="nameNote">名前はホストだけに見えます（入れなければ名前なしで送られます）</p>
         </div>
-        <div id="live-polls"></div>
         <div id="live-qa" hidden>
           <label for="live-q" data-i18n="ask">先生への質問</label>
           <textarea id="live-q"></textarea>
           <div class="row"><button type="button" id="b-send" class="pri" data-i18n="send">送る</button></div>
         </div>
         <div id="live-shown" hidden><h3 data-i18n="shown">ホストが全員に表示した質問</h3><ul id="live-shown-list"></ul></div>
-        <div class="row"><button type="button" id="b-leave" hidden data-i18n="leave">退出する</button></div>
         <p class="small" data-i18n="privacy">送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません。</p>
+      </div>
+      <div id="live-poll-view">
+        <button type="button" id="b-poll-back" data-i18n="pollBack">戻る</button>
+        <div id="live-polls"></div>
       </div>
     </aside>
   </section>

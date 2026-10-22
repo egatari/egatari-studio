@@ -8,6 +8,7 @@ import { WORDS, initialLang, saveLang, apply } from './i18n.mjs';
 import { lessonDocument, makeFrame } from './frame.mjs';
 import { openRecents } from './recents.mjs';
 import { startLive } from './live-host.mjs';
+import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { readFileBoundedText } from '../app/bounded-read.js';
@@ -26,7 +27,7 @@ const framed = document.documentElement.hasAttribute('data-framed');
 let lang = initialLang();
 const W = () => WORDS[lang];
 
-const S = { playing: null, frame: null, live: null, recents: null, reloading: false, updateReady: false };
+const S = { playing: null, frame: null, live: null, recents: null, reloading: false, updateReady: false, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
 const sr = $('sr');
 function announce(t) { sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 30); }
 function showMsg(t) { $('msg').textContent = t || ''; }
@@ -70,14 +71,16 @@ async function openFile(blob, name, opts = {}) {
 }
 
 // ---------------------------------------------------------------- playing
+// A lesson with Live starts on a start screen (Join, or 「参加しないで見る」) and the frame is placed only after that, so the Join
+// tap can never meet the lesson's frame. Then the layout is chosen once from the lesson's activities and the screen
+// (play/layout.mjs) and kept while the lesson plays; only a rotation (or a window resize) lays it out again.
 function play(text, r, info) {
   closeLesson(true);
   const live = r.live && LP.validate(r.live, { key: true }).length === 0 ? r.live : null;
-  const doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
   const title = r.meta.title || info.name;
-  const f = makeFrame(doc, title);
-  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId };
-  S.frame = f;
+  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, started: false };
+  S.doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
+  S.title = title;
   document.body.classList.add('playing');
   $('start').hidden = true;
   $('player').hidden = false;
@@ -86,26 +89,87 @@ function play(text, r, info) {
   $('lesson-title').lang = r.meta.lang || '';
   $('lesson-kind').textContent = r.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   $('b-close').hidden = false;
-  // Everything around the frame is settled before the frame is placed, and nothing changes it while the lesson plays: the bar,
-  // the Live pane (always shown for a lesson with Live, beside or below the frame, never over it) and no update notice.
-  // The lesson's frame runs in its own process; Chrome hands a tap to it by hit-test data from the last frame shown, so an area
-  // that was the lesson's a moment ago (a pane that just appeared over it, or a frame that just shrank) can receive a tap meant
-  // for the page. An area that has always been the page's cannot.
-  $('b-live').hidden = !live;
-  $('live').hidden = !live;
-  $('update').hidden = true;
-  $('stage-wrap').appendChild(f);
-  if (live) {
-    S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: () => {}, el: liveEls() });
-  }
+  $('update').hidden = true;   // held back while a lesson plays
   if (!(history.state && history.state.egaPlay)) history.pushState({ egaPlay: 1 }, '');
-  try { f.focus(); } catch { /* not focusable yet */ }
+  if (!live) { startFrame(); return; }
+  S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: onLive, el: liveEls() });
+  S.hasPolls = S.live.hasPolls;
+  showLiveStart();
+}
+function showLiveStart() {
+  const L = S.live, st = L.state();
+  $('live-start').hidden = false;
+  $('live-start-notice').textContent = st.direct ? W().notice(L.host) : W().noDirect(L.host);
+  $('live-start-window').textContent = $('live-window').textContent;
+  const ph = L.phase();
+  $('live-start-state').textContent = ph === 'before' || ph === 'after' ? $('live-state').textContent : '';
+  $('b-start-join').hidden = !st.direct;
+  $('b-start-join').disabled = !L.canJoin();
+  $('a-start-join').hidden = !L.joinUrl || ph !== 'open';
+  if (L.joinUrl) $('a-start-join').href = L.joinUrl;
+  $('live-dest').textContent = W().dest(L.joinUrl ? new URL(L.joinUrl).host : L.host);
+  const first = !$('b-start-join').hidden && !$('b-start-join').disabled ? $('b-start-join') : $('b-watch');
+  first.focus();
+}
+function startFrame() {
+  if (!S.playing || S.frame) return;
+  $('live-start').hidden = true;
+  S.playing.started = true;
+  S.frame = makeFrame(S.doc, S.title);
+  S.doc = null;
+  applyLayout();                       // everything around the frame is placed first
+  $('stage-wrap').appendChild(S.frame);
+  try { S.frame.focus(); } catch { /* not focusable yet */ }
+}
+// the no-slack variant for phones in landscape on 16:9 screens (play/layout.mjs). 'strip' unless the owner chooses otherwise;
+// ?noslack=overlay switches it for measuring (docs/play.md)
+const NO_SLACK_VARIANT = 'strip';
+const variant = () => (new URLSearchParams(location.search).get('noslack') === 'overlay' ? 'overlay' : NO_SLACK_VARIANT);
+function applyLayout() {
+  const live = !!(S.playing && S.playing.live);
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const headless = live && isPhoneLandscape(vw, vh);
+  document.body.classList.toggle('headless', headless);
+  const P = $('player').getBoundingClientRect();
+  const L = computeLayout({ w: vw, h: vh, headerH: vh - P.height, live, polls: S.hasPolls, variant: variant() });
+  S.layout = L;
+  const place = (el, q) => { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; el.style.width = q.w + 'px'; el.style.height = q.h + 'px'; };
+  place($('stage-wrap'), L.frame);
+  $('player').setAttribute('data-mode', L.mode);
+  $('b-live').hidden = !live || headless;
+  if (L.live) { place($('live'), L.live); $('live').hidden = false; } else $('live').hidden = true;
+  $('live').setAttribute('data-mode', L.mode);
+  setPollView(false);
+  S.layoutKey = layoutKey();
+}
+const layoutKey = () => `${window.innerWidth > window.innerHeight ? 'l' : 'p'}${isPhoneLandscape(window.innerWidth, window.innerHeight) ? 'h' : ''}`;
+// rotation: lay out again at once; any other resize (a desktop window): once it settles
+let resizeTimer = null;
+function onResize() {
+  if (!S.frame) return;
+  clearTimeout(resizeTimer);
+  if (layoutKey() !== S.layoutKey) applyLayout();
+  else resizeTimer = setTimeout(() => { if (S.frame) applyLayout(); }, 250);
+}
+// the poll view in the compact modes (slack, strip, overlay, bar): the strip's content changes, the frame does not
+function setPollView(open) {
+  const compact = S.layout && ['slack', 'strip', 'overlay', 'bar'].includes(S.layout.mode);
+  const o = !!open && compact;
+  $('live').classList.toggle('poll-open', o);
+  $('b-poll').setAttribute('aria-expanded', o ? 'true' : 'false');
+  if (o) { const first = $('live-polls').querySelector('input, button'); if (first) first.focus(); }
+}
+function onLive(kind, n) {
+  if (kind === 'polls' && n === 0) setPollView(false);
 }
 function closeLesson(quiet) {
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
+  S.doc = null; S.layout = null; S.hasPolls = false;
   $('live').hidden = true;
+  $('live-start').hidden = true;
   $('b-live').hidden = true;
+  document.body.classList.remove('headless');
   S.playing = null;
   if (quiet) return;
   if (S.updateReady) $('update').hidden = false;   // held back while the lesson played
@@ -119,13 +183,13 @@ function closeLesson(quiet) {
 }
 function liveEls() {
   return { root: $('live'), button: $('b-live'), buttonState: $('b-live-state'), state: $('live-state'), notice: $('live-notice'), window: $('live-window'), msg: $('live-msg'),
-    joinRow: $('live-join-row'), join: $('b-join'), dest: $('live-dest'), linkRow: $('live-link-row'), joinLink: $('a-join'), linkDest: $('live-link-dest'),
+    join: $('b-join'), dest: $('live-dest'), linkRow: $('live-link-row'), joinLink: $('a-join'), linkDest: $('live-link-dest'),
     nameRow: $('live-name-row'), name: $('live-name'), polls: $('live-polls'), qa: $('live-qa'), q: $('live-q'), send: $('b-send'),
-    shown: $('live-shown'), shownList: $('live-shown-list'), leave: $('b-leave') };
+    shown: $('live-shown'), shownList: $('live-shown-list'), leave: $('b-leave'), pollBtn: $('b-poll') };
 }
 // the Live button takes the focus into the pane (the first control that can act now)
 function focusLive() {
-  const first = [...$('live').querySelectorAll('button, a[href], input, textarea')].find((e) => !e.closest('[hidden]') && !e.disabled);
+  const first = [...$('live').querySelectorAll('button, a[href], input, textarea')].find((e) => !e.closest('[hidden]') && !e.disabled && e.offsetParent !== null);
   (first || $('live')).focus();
 }
 
@@ -246,7 +310,14 @@ async function main() {
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaPlay) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
   $('b-live').addEventListener('click', focusLive);
-  $('live').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); $('b-live').focus(); } });
+  $('b-start-join').addEventListener('click', () => { if (S.live) S.live.join(); startFrame(); });
+  $('a-start-join').addEventListener('click', () => setTimeout(startFrame, 0));
+  $('b-watch').addEventListener('click', startFrame);
+  $('b-poll').addEventListener('click', () => setPollView(!$('live').classList.contains('poll-open')));
+  $('b-poll-back').addEventListener('click', () => { setPollView(false); $('b-poll').focus(); });
+  $('b-strip-close').addEventListener('click', () => $('b-close').click());
+  window.addEventListener('resize', onResize);
+  $('live').addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; e.preventDefault(); if ($('live').classList.contains('poll-open')) { setPollView(false); $('b-poll').focus(); } else if (!$('b-live').hidden) $('b-live').focus(); });
   $('b-clear').addEventListener('click', async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); });
   // the "home" link: back to the start without reloading while a lesson plays
   $('home').addEventListener('click', (e) => { if (S.playing) { e.preventDefault(); $('b-close').click(); } });
@@ -255,7 +326,7 @@ async function main() {
   initShare();
   let reg = null;
   initSW().then((r) => { reg = r; });
-  window.__play = { version: VERSION, state: () => ({ playing: S.playing, live: S.live ? S.live.state() : null, store: S.recents && S.recents.kind, sw: !!reg }), openFile, links };
+  window.__play = { version: VERSION, state: () => ({ playing: S.playing, layout: S.layout, live: S.live ? S.live.state() : null, store: S.recents && S.recents.kind, sw: !!reg }), openFile, links };
   document.documentElement.setAttribute('data-ready', '');
 }
 main();

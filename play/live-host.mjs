@@ -13,7 +13,7 @@
 //     allowed   Set of endpoint origins this page may connect to (the build writes them into its CSP too)
 //     policy    a LivePolicy() instance
 //     el        the elements of #live (see play/index.html)
-//     onOpen(true, 'poll')  a poll step came on screen (the pane is always shown; the page only announces it)
+//     onOpen(true, 'poll')  a poll step came on screen (announced); onOpen('polls', n): the number of polls the viewer can answer now changed
 import { FORMAT } from '../kit/core/format.mjs';
 
 const REJOIN = { room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0 };
@@ -25,6 +25,7 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
   const JOIN_URL = DIRECT ? null : LP.joinUrl(live);
   const fmt = (s) => { try { return new Date(s).toLocaleString(lang === 'ja' ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return s; } };
   let ST = 'off', ws = null, attempt = 0, retryTimer = null, retryAt = 0, tickTimer = null, pingTimer = null, endTimer = null, startTimer = null;
+  let lastPolls = 0;
   let admitted = false, stepKey = '*', refN = 0, pending = {}, votes = {}, shown = [], nameSent = '', stopReason = '', left = false, info = '', stopped = false, lastCode = 0;
   const MEM = {};
   const store = () => { try { const s = window.localStorage; s.getItem('x'); return s; } catch { return null; } };
@@ -63,13 +64,16 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
     el.buttonState.textContent = (lang === 'ja' ? '：' : ': ') + label;
     el.leave.hidden = !(conn || ST === 'connecting' || ST === 'retrying');
     const canJoin = DIRECT && ph === 'open' && (ST === 'off' || (ST === 'stopped' && REJOIN[stopReason] === 1));
-    el.joinRow.hidden = !DIRECT || ph !== 'open' || conn || ST === 'connecting' || ST === 'retrying' || (ST === 'stopped' && REJOIN[stopReason] !== 1);
+    el.join.hidden = !DIRECT || ph !== 'open' || conn || ST === 'connecting' || ST === 'retrying' || (ST === 'stopped' && REJOIN[stopReason] !== 1);
     el.join.disabled = !canJoin;
     el.join.textContent = ST === 'stopped' ? S.again : S.join;
     el.linkRow.hidden = !JOIN_URL || ph !== 'open';
     el.msg.textContent = ST === 'stopped' ? (S.stop[stopReason] || S.stop.unknown) : info;
     el.nameRow.hidden = !DIRECT || ph !== 'open';
     renderActivities(conn && admitted);
+    const np = conn && admitted ? current('poll').length : 0;
+    el.pollBtn.hidden = np === 0;
+    if (np !== lastPolls) { lastPolls = np; onOpen('polls', np); }
     el.shown.hidden = !(conn && shown.length);
     el.shownList.textContent = '';
     for (const it of shown) { const li = document.createElement('li'); li.textContent = it.text; el.shownList.appendChild(li); }
@@ -210,6 +214,12 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
   return {
     setStep(key) { if (typeof key === 'string' && key !== stepKey) { stepKey = key; render(); syncAuto(); } },
     pinned() { autoOpened = false; },
+    join,
+    canJoin() { return DIRECT && phase() === 'open'; },
+    phase,
+    host: HOST,
+    joinUrl: JOIN_URL,
+    hasPolls: Object.values(live.activities || {}).some((l) => Array.isArray(l) && l.some((a) => a && a.kind === 'poll')),
     stop() {
       stopped = true; left = true; clearTimers(); clearTimeout(endTimer); clearTimeout(startTimer);
       if (ws) { const s = ws; ws = null; try { s.close(1000, 'bye'); } catch { /* gone */ } }
