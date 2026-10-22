@@ -1,7 +1,9 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作ったデッキを動画にするのは motion-slides-video。
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作ったデッキを動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, a presentation or lecture deck with step reveals, animated figures and narration, make it Egatari / .ega.html (a single portable file).
 ---
+
+Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
 # motion-slides：動きのある HTML スライドを作る
 
