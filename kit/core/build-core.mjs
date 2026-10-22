@@ -21,6 +21,7 @@ import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
 import { runtimeAttachTypes } from './attach-content.mjs';
 // 実行系に渡す形式の識別子と、再生器が添付を出すか決める §3.8 の型の表（役割 → 拡張子。kit/tools.js）
 const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runtimeAttachTypes() });
+import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
@@ -837,7 +838,14 @@ export function build(env0, srcPath, opts = {}) {
   // 組んだ出力の全体の大きさを、つなぐ前に確かめる（字・テーマ・実行系・部品・音声を入れた後）
   { const n = html.length + 1 + headCss.length + pre.length + scripts.length + 1;
     if (n > LIM.bundledChars) throw new BuildLimitError('built document', n, LIM.bundledChars); }
-  const a1 = html.slice(0, headAt) + '\n', a2 = html.slice(headAt, at) + pre;
+  // タブのアイコン（kit/core/favicon.mjs）：原稿が <link rel="icon"> を持つか <html data-favicon="off"> なら入れない。<style id="deck-base"> の前の別の行（信頼する部分の外。<link> は実行しない）
+  const hasOwnIcon = (() => {
+    const seek = (n) => (n.childNodes || []).some((c) => c.tagName === 'template' ? false
+      : (c.tagName === 'link' && (attr(c, 'rel') || '').toLowerCase().split(/\s+/).includes('icon')) || seek(c));
+    return seek(pdoc);
+  })();
+  const iconLink = wantsFavicon(attr(htmlEl, 'data-favicon'), hasOwnIcon) ? faviconLink() + '\n' : '';
+  const a1 = html.slice(0, headAt) + '\n' + iconLink, a2 = html.slice(headAt, at) + pre;
   html = a1 + headCss + a2 + scripts + '\n' + html.slice(at);
   const trusted = [
     { name: 'deck-base', start: a1.length, end: a1.length + headCss.length, tags: ['style'] },

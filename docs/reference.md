@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=1e4df7610b6ef977 -->
+<!-- i18n: pair=reference.ja.md sha256=685f2fd4bbec3114 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -50,6 +50,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `<html data-mode="lecture">` | default mode when the URL has no `?mode=` |
 | `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/egatari/egatari-studio/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
 | `<html data-feedback="off">` | no feedback link in the `?` help or the presenter view (`DECK.FEEDBACK_URL = null`) |
+| `<html data-favicon="off">` | no tab icon. By default a built deck (normal, `--portable`, `--play-only`) gets the Egatari mark as a `<link rel="icon">` data: URI at the top of `<head>` (light and dark colours in one SVG, no network request); a deck that has its own `<link rel="icon">` keeps it and gets nothing added |
 | `<html data-font="mincho">` | body text in BIZ UDPMincho (`--font-sans: var(--font-mincho)`); see [Japanese language arts](#japanese-language-arts-kokugo) |
 
 Body classes (all colors come from the theme): `.sub` subheading · `.big` main equation · `.note` note (27px) · `.thm` theorem box · `.box` tinted box · `.cols` side-by-side columns · `.arrow` centered arrow line · `.fig` / `.figcap` figure and caption · `.cite` citation (20px) · `.plot` box for `DECK.Plot` · `.readout .num` tabular number · `td.r` right-aligned cell · `.term`/`.blue`, `.emph`/`.red`, `.muted`/`.gray`, `.b` colors and bold · `.tate` vertical writing · `.mincho` Mincho · `.tcy` upright digits in vertical text · `<ruby>` readings ([Japanese language arts](#japanese-language-arts-kokugo)).
