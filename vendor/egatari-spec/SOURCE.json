@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/egatari-spec",
-  "commit": "ce997d54e1d47f17f141621f1c5a815bac87cd1c",
+  "commit": "8efc8a193996b16c08ead055dc554c5d9ea99658",
   "files": 88,
   "note": "Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again."
 }

@@ -563,7 +563,9 @@ function seek(i, k, t, from){
   if (bar) bar.style.width = ((i + 1) / slides.length * 100) + "%";
   lastPos = {i: i, k: k};
 }
-DECK.seek = seek;
+// 起動の前（部品の mount の前）に頼まれた seek は覚えておき、mount の後に描く（最後の 1 つ）
+var started = false, pendingSeek = null, pendingGo = null;   // started：start() に入った（mount を始めた）
+DECK.seek = function(i, k, t, from){ if (!started){ pendingSeek = [i, k, t, from]; return; } return seek(i, k, t, from); };
 
 // ---------------------------------------------------------------- モーフ（docs/contract.md §8）
 // data-morph のスライドに段階 0 で入るとき、元のスライドと同じ data-id の要素が元の位置から滑ってくる。
@@ -1153,7 +1155,9 @@ function go(i, k, animate){
 }
 function next(){ var i = POS.i, k = POS.k; if (k < slides[i]._max) go(i, k + 1, true); else if (i < slides.length - 1) go(i + 1, 0, true); }
 function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false); else if (i > 0) go(i - 1, slides[i - 1]._max, false); }
-DECK.go = go; DECK.next = next; DECK.prev = prev;
+// 起動の前（部品の mount の前）の go は開く位置にする（最後の 1 つ。その前に頼まれた seek は捨てる）。送り・戻しは何もしない
+DECK.go = function(i, k, animate){ if (!started){ pendingGo = [i, k]; pendingSeek = null; return; } go(i, k, animate); };
+DECK.next = function(){ if (started) next(); }; DECK.prev = function(){ if (started) prev(); };
 DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode}; };
 
 // ---------------------------------------------------------------- 自動再生（音声があれば流し、タイムラインで進む）
@@ -1188,7 +1192,7 @@ function runSeg(){
   }
   auto.timer = setTimeout(function(){ if (!auto) return; auto.idx++; runSeg(); }, g.dur * 1000);
 }
-DECK.autoplay = function(on){ if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };
+DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };
 
 // ---------------------------------------------------------------- 発表者ビューとの連携（postMessage。file:// でも動く）
 var presenter = null;
@@ -1216,7 +1220,7 @@ function openPresenter(){
 window.addEventListener("message", function(e){
   var m = e.data || {};
   // 発表者ビュー自身（スライドを持たない）や起動前の窓に届いた命令は無視する
-  if (!slides.length) return;
+  if (!DECK.ready) return;
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
@@ -1329,11 +1333,11 @@ function backTo(depth){
   moveTo(e.i, e.k, "link");
   if (e.el && e.el.isConnected) try { e.el.focus({preventScroll: true}); } catch (err) {}
 }
-DECK.back = back;
+DECK.back = function(){ return started ? back() : false; };
 DECK.links = function(){ return {depth: POS.depth, follow: LINKS.follow, back: POS.depth ? Object.assign({}, POS.top(), {el: undefined}) : null}; };
-DECK.follow = function(frag){ var r = resolveFragment(frag); if (r.error){ console.warn("deck.js: link #" + frag + ": " + r.error); return false; } return followLink(r); };
+DECK.follow = function(frag){ if (!started) return false; var r = resolveFragment(frag); if (r.error){ console.warn("deck.js: link #" + frag + ": " + r.error); return false; } return followLink(r); };
 window.addEventListener("popstate", function(e){
-  if (!slides.length) return;
+  if (!DECK.ready) return;
   var st = e.state || {}, d = typeof st.egatariLink === "number" ? st.egatariLink : 0;
   if (d < POS.depth) backTo(d);
   else if (d > POS.depth && (st.at || st.to) && slides[(st.at || st.to).i]){   // 進む：もう一度そのリンクをたどり、その先で最後にいた位置へ
@@ -1343,7 +1347,7 @@ window.addEventListener("popstate", function(e){
   }
 });
 document.addEventListener("click", function(e){
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !slides.length) return;
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !DECK.ready) return;
   var a = e.target && e.target.closest && e.target.closest("a[href]");
   if (!a) return;
   var f = inDocFragment(a);
@@ -1397,6 +1401,35 @@ function init(){
     [].forEach.call(s.querySelectorAll("[data-id]"), function(e){ if (!e.closest("svg") && getComputedStyle(e).display === "inline") e.style.display = "inline-block"; });
   });
   document.documentElement.setAttribute("data-mode", DECK.mode);
+  // 部品の mount は舞台が並べ終わってから（docs/contract.md §3）。並んでいれば今すぐ（ふつうの起動は順序もコマも変えない）、
+  // display:none の iframe・後で出すタブの中など、まだ並んでいなければ大きさが付くまで待つ
+  if (laidOut()) start(); else whenLaidOut(start);
+}
+// 舞台が並んでいるか：大きさ（transform の前の、レイアウトの幅と高さ）があり、描かれる箱がある
+function laidOut(){
+  var st = document.getElementById("stage") || document.body;
+  return !!st && st.offsetWidth > 0 && st.offsetHeight > 0 && st.getClientRects().length > 0;
+}
+function whenLaidOut(fn){
+  var st = document.getElementById("stage") || document.body, ro = null, done = false;
+  function check(){
+    if (done || !laidOut()) return;
+    done = true;
+    if (ro) ro.disconnect();
+    window.removeEventListener("resize", check);
+    fonts();
+  }
+  // 隠れていた文書はまだ字（Web フォント）を読んでいない（並べて初めて読み始める）。読み終えてから mount する（ふつうの起動の load と同じく、測る字が揃ってから）
+  function fonts(){
+    if (document.fonts && document.fonts.status === "loading") document.fonts.ready.then(fonts, fn);
+    else fn();
+  }
+  if (typeof ResizeObserver === "function"){ ro = new ResizeObserver(check); ro.observe(st); }
+  window.addEventListener("resize", check);   // ResizeObserver のない環境と、窓の大きさが 0 から付いたとき
+}
+// 起動の後半：部品の mount → 開いたときの位置 → 起動の知らせ（DECK.ready）。待っている間に頼まれた seek はその後に描く
+function start(){
+  started = true;
   slides.forEach(function(s, i){
     s._comps.forEach(function(c){
       try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); }
@@ -1411,14 +1444,16 @@ function init(){
   // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
   var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
+  if (pendingGo){ h0 = {i: pendingGo[0], k: pendingGo[1]}; pendingGo = null; }
   POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
+  if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }
   DECK.ready = true;
   document.dispatchEvent(new CustomEvent("deck:ready"));
 }
 
 var buf = "";
 document.addEventListener("keydown", function(e){
-  if (DECK.view || !slides.length) return;
+  if (DECK.view || !DECK.ready) return;
   if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
   // 戻る（リンクの前の位置へ）：Backspace（ペンのときは tools.js が書き込みを消すのに使う）か Alt+←
   if (!e.metaKey && !e.ctrlKey && !e.shiftKey && ((e.key === "Backspace" && !e.altKey) || (e.key === "ArrowLeft" && e.altKey))){
@@ -1453,19 +1488,20 @@ document.addEventListener("keydown", function(e){
 // 印刷（PDF 化）では、すべての段階を出した最終状態にする
 var printPos = null;
 window.addEventListener("beforeprint", function(){
+  if (!DECK.ready) return;
   stopLoop(); printPos = {i: POS.i, k: POS.k};
   slides.forEach(function(s, i){ seek(i, s._max, Infinity); });
   document.documentElement.classList.add("printing");
 });
 window.addEventListener("afterprint", function(){
   document.documentElement.classList.remove("printing");
-  if (printPos) seek(printPos.i, printPos.k, Infinity);
+  if (printPos && DECK.ready) seek(printPos.i, printPos.k, Infinity);
 });
 window.addEventListener("resize", function(){ fit(); morphCache = {}; });
 if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; });
 // 手で書き換えた #（番号・スライドの id・id:段階）へ。リンクの「戻る」の履歴とは別（popstate が先に位置を戻すので、ここでは動かない）
 window.addEventListener("hashchange", function(){
-  if (!slides.length) return;
+  if (!DECK.ready) return;
   var hs = location.hash.slice(1), r = /^[0-9]+$/.test(hs) ? {i: +hs - 1, k: 0, legacy: true} : resolveFragment(hs);
   if (r.error || r.i < 0) return;
   if (r.i !== POS.i || (!r.legacy && r.k !== POS.k)) go(r.i, r.k, false);
