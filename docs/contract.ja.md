@@ -179,6 +179,16 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 - 本文が下にはみ出すスライド（`bodyBottom`）では、`.body` の中の字がスライドの外に出ることを重ねて知らせない（スライドの端の `svgTextOut`）。本文を減らせばどちらも直る
 - 書き手は `data-clip` を、切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
 
+`data-annot` も同じ種類の書き方の決まり（Studio では `kit/core/layout-scan.mjs` の `ANNOT_ATTR`）で、**わざと小さくした注記**を示す。
+
+```html
+<span class="kb-num" data-annot>10</span>
+```
+
+- 要素に `data-annot` を付けると、その中の字は、説明する字の脇に添える注記（`m-kanbun` の返り点・読む順の番号など）だと示す：その要素の中の字（子孫もすべて、SVG の字も）を、字が小さい（`smallText`・`smallSvgText`。R-fit の 24px・27px の最小）として知らせてはならない。ほかの検査（`textClipped`・`bodyBottom` など）も表示も変えてはならない
+- `data-annot` が効くのは、部品が mount で作った要素だけで、書き手が書いたものには効かない：プレーヤーは、部品が mount する前に、デッキ自身の記述にある `data-annot`（`m-*` の中に手で書いた子も）をすべて外すので、印を付けて小さい字を逃れることはできない。部品は mount の中で付ける
+- 部品は `data-annot` は、字の中を指す短い印（数字や数文字）にだけ使い、内容には使わない：文・図の札・表のセルは注記ではない。最小を守れるところは守り、この印は最後の手段にする
+
 ## 11. 授業の部屋の板（拡張 live。下書き）
 
 授業の部屋を付けて書き出した再生専用の写しにだけ、部屋の再生器（`kit/live.js` と `kit/core/live-policy.mjs`。`kit/core/live.mjs` が入れる）が入る。ほかの出力は変わらない。ふるまいの正本は形式の[拡張 `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md)、通信は [egatari/live](https://github.com/egatari/live)。ここに書くのは Studio の実行系の約束。

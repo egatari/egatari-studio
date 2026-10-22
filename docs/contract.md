@@ -179,6 +179,16 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 - On a slide whose body overflows at the bottom (`bodyBottom`), text inside `.body` that goes off the slide is not reported again (`svgTextOut` with the slide edge): cutting the body fixes both
 - Authors use `data-clip` only where the cut is part of the message (for example a "wall" of code faded out at the bottom), never to hide an overflow
 
+`data-annot` is the second authoring rule of this kind (in Studio, `ANNOT_ATTR` in `kit/core/layout-scan.mjs`): it marks a **small annotation** that is meant to be small.
+
+```html
+<span class="kb-num" data-annot>10</span>
+```
+
+- `data-annot` on an element marks text in it as an annotation set beside the text it explains (return marks, reading-order numbers of `m-kanbun`): the quality checker MUST NOT report that element's text, including all its descendants and SVG text, as too small (`smallText`, `smallSvgText`; the 24 px / 27 px minimum of R-fit). It MUST NOT change any other check (`textClipped`, `bodyBottom`, …) nor the rendering
+- `data-annot` takes effect only on elements a component creates when it mounts, and has no effect in the author's source: the player removes every `data-annot` that is in the deck's own markup (including a hand-written child inside an `m-*` element) before components mount, so small text cannot be exempted by marking it. A component sets it in `mount`
+- Components use `data-annot` only for a short mark (a number or a few characters) that points into the text, never for content: a sentence, a label of a figure or a table cell is not an annotation. Where the minimum can be met, meet it instead; the mark is a last resort
+
 ## 11. Live room pane (extension `live`, draft)
 
 Only a play-only copy exported with a live room carries the live player (`kit/live.js` with `kit/core/live-policy.mjs`, added by `kit/core/live.mjs`); every other output is unchanged. Its normative behaviour is in the format's [`live` extension](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md) and the protocol in [egatari/live](https://github.com/egatari/live); this section is what Studio's runtime promises.

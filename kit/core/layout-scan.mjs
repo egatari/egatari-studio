@@ -5,6 +5,7 @@
 //     JA     日本語の規則（字数を全角 1・半角 0.5 で数える）か
 //     refRe  文献のスライドの見出し（正規表現の文字列）。そのスライドは字の大きさを見ない
 //     clip   わざと切る印の属性の名前（CLIP_ATTR）
+//     annot  小さい注記の印の属性の名前（ANNOT_ATTR）。字の大きさの最小（smallText・smallSvgText）を見ない
 //   code と a は kit/check-messages.mjs の知らせ。sev は 'error' | 'warn'
 //
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
@@ -14,8 +15,12 @@
 // 図の箱からはみ出す、の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）を見ない。縦横どちらにも効く。前からの検査（bodyBottom など）には効かない
 export const CLIP_ATTR = 'data-clip';
 
+// 小さい注記の印（ANNOT_ATTR。docs/contract.md §10）：部品が返り点・読む順の番号のような「字の脇に添える注記」にわざと付ける。その要素の中（子孫も、SVG の字も）は、
+// 字の大きさの最小（smallText・smallSvgText）を見ない。ほかの検査と表示は変えない
+export const ANNOT_ATTR = 'data-annot';
+
 export function layoutScan(s, o) {
-  const JA = !!o.JA, CLIP = o.clip, refRe = new RegExp(o.refRe);
+  const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, refRe = new RegExp(o.refRe);
   const out = [];
   const add = (sev, code, a) => out.push({ code, sev, a: a || {} });
   const units = (t) => [...t].reduce((n, ch) => n + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1), 0);
@@ -73,7 +78,7 @@ export function layoutScan(s, o) {
         if (!n.textContent.trim()) continue;
         const e = n.parentElement;
         // ルビ（rt）の振り仮名は本文の半分の大きさが決まり（docs/reference.md「Japanese language arts」）
-        if (e.closest('svg') || e.closest('.katex') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
+        if (e.closest('svg') || e.closest('.katex') || e.closest('[' + ANNOT + ']') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
         const f = parseFloat(getComputedStyle(e).fontSize);
         const lim2 = e.closest('table,.plot') ? 23.9 : 26.6;
         if (f < lim2) { add('error', 'smallText', { px: f, t: n.textContent.trim().slice(0, 12) }); break; }
@@ -83,7 +88,7 @@ export function layoutScan(s, o) {
         const vb = g.viewBox && g.viewBox.baseVal;
         if (!vb || !vb.width) return;
         const sc = g.getBoundingClientRect().width / k / vb.width;
-        const fs = [...g.querySelectorAll('text')].map((t) => parseFloat(t.getAttribute('font-size') || getComputedStyle(t).fontSize) || 24);
+        const fs = [...g.querySelectorAll('text')].filter((t) => !t.closest('[' + ANNOT + ']')).map((t) => parseFloat(t.getAttribute('font-size') || getComputedStyle(t).fontSize) || 24);
         if (fs.length && Math.min(...fs) * sc < 23.9) add('error', 'smallSvgText', { px: (Math.min(...fs) * sc).toFixed(1) });
       });
     }
@@ -314,8 +319,8 @@ export function layoutScan(s, o) {
 }
 
 // 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数と印の名前を渡す形にする。
-// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・LAYOUT_CLIP という名前で使える）
+// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
-  return `(function(layoutScan, LAYOUT_CLIP){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)})`;
 }

@@ -5,7 +5,7 @@
 //   dev     プレビュー：印刷・位置・品質チェックの頼みを受ける（書き込みの口はない。編集はアプリの画面で行い、デッキは知らせを送るだけ）
 //   html    発表者ビュー：中の 2 つの画面（今・次）に同じデッキを srcdoc で入れるための元の HTML。shim はこの関数の文字列、
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
-// layoutScan・LAYOUT_CLIP：体裁の検査の関数とわざと切る印の名前（kit/core/layout-scan.mjs）。app/main.js が withLayoutScan でこの文字列を包んで渡す
+// layoutScan・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数とわざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
 var parentWin = window.parent;
@@ -96,7 +96,7 @@ function quickCheck(){
     DECK.seek(i, s._max, Infinity);
     // はみ出し・切れ・字の大きさ・字数：コマンド版と同じ関数（kit/core/layout-scan.mjs。app/main.js がこの仲立ちに渡す）。
     // 前からある知らせはブラウザ版の code と短い値のまま（overflowBottom・overflowRight・smallText と字数）、ほかはコマンド版の code と値
-    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP}).forEach(function(f){
+    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT}).forEach(function(f){
       var a = f.a, code = LEGACY[f.code];
       if (!code) return add(i, f.sev, f.code, a);
       add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? a.px : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
