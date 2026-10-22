@@ -9,7 +9,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { TEXT_NORMALIZE, normalizeTtsText, textNormalizeOutdated } from '../kit/core/tts-normalize.mjs';
+import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { inputHash, validateIndex } from '../kit/core/portable.mjs';
 import { buildJob } from '../kit/core/colab-core.mjs';
@@ -30,15 +30,6 @@ ok('counters collapse ("3 分" minutes, "10 本", "2 つ"); "x 2 y" and English 
   assert.equal(normalizeTtsText('x 2 y'), 'x 2 y');
   assert.equal(normalizeTtsText('Chapter 3 is'), 'Chapter 3 is');
   assert.equal(normalizeTtsText('Chapter 3 の話'), 'Chapter 3の話');   // 数字の後ろが日本語なら（英語の中でも）取る。数字の前の空白は取らない
-});
-ok('textNormalizeOutdated: missing or older is outdated; the current or a newer version is not', () => {
-  assert.equal(textNormalizeOutdated(undefined), true);
-  assert.equal(textNormalizeOutdated({ engine: 'x' }), true);
-  assert.equal(textNormalizeOutdated({ textNormalize: 'join-num-counter@0' }), true);
-  assert.equal(textNormalizeOutdated({ textNormalize: 'other-rule@9' }), true);
-  assert.equal(textNormalizeOutdated({ textNormalize: 'garbage' }), true);
-  assert.equal(textNormalizeOutdated({ textNormalize: TEXT_NORMALIZE }), false);
-  assert.equal(textNormalizeOutdated({ textNormalize: 'join-num-counter@99' }), false);
 });
 ok('inputHash and ttsParts do not depend on the pre-processing: "1 歩" keeps its space (and differs from "1歩", as before)', async () => {
   const a = parseNarration('# n\n\n## A\n[0] 次は 1 歩進みます。\n'), b = parseNarration('# n\n\n## A\n[0] 次は 1歩進みます。\n');

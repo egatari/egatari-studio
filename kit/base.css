@@ -17,7 +17,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 [data-mode="lecture"] tr.cur td{background:var(--emph-tint)}
 
 /* 操作の表示 */
-#bar{position:fixed;left:0;bottom:0;height:3px;background:var(--emph);z-index:10}
+#bar{position:fixed;left:0;bottom:0;height:var(--bar-h,3px);background:var(--bar,var(--emph));z-index:10}
 #jump{position:fixed;right:12px;bottom:10px;color:#fff;font:14px sans-serif;opacity:.7;z-index:10}
 .embedded #bar,.embedded #jump{display:none}
 .embedded body,.embedded{background:var(--bg)}
@@ -42,6 +42,18 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   font:14px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s}
 #deck-toast.show{opacity:1;transform:translate(-50%,0)}
 .printing #deck-toast{display:none}
+/* 授業の外へ出るリンクの確認（kit/deck.js）：行き先の host と全体を見せる箱。印刷と動画には出ない */
+#deck-extlink{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);font:15px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif}
+#deck-extlink .box{box-sizing:border-box;width:min(560px,100%);max-height:100%;overflow:auto;padding:20px 22px;border-radius:12px;background:#fff;color:#1a1a1a;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+#deck-extlink .t{margin:0 0 10px;font-size:17px;font-weight:700}
+#deck-extlink .host{margin:0 0 4px;font-size:22px;font-weight:700;word-break:break-all}
+#deck-extlink .url{margin:0 0 10px;padding:6px 8px;border-radius:6px;background:#f1f1f1;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;word-break:break-all;user-select:all}
+#deck-extlink ul{margin:0 0 12px;padding-left:1.2em;color:#8a2a00}
+#deck-extlink .row{display:flex;gap:10px;justify-content:flex-end}
+#deck-extlink button{all:unset;box-sizing:border-box;min-width:92px;padding:8px 14px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;border:2px solid #555;color:#1a1a1a;background:#fff}
+#deck-extlink button.go{background:#1a1a1a;color:#fff}
+#deck-extlink button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.printing #deck-extlink{display:none}
 /* 戻る（リンクで来たときだけ。kit/deck.js）：左上の小さな札。押す・Backspace・Alt+← で、リンクを押す前の位置へ。印刷と動画には出ない */
 #deck-back{all:unset;position:fixed;left:10px;top:7px;z-index:36;box-sizing:border-box;display:flex;align-items:center;gap:6px;max-width:min(46vw,420px);height:28px;padding:0 9px 0 7px;
   border-radius:999px;background:rgba(20,20,20,.74);color:#fff;font:13px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;cursor:pointer;
@@ -62,5 +74,5 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   .slide{position:relative!important;visibility:visible!important;opacity:1!important;page-break-after:always;break-after:page}
   [data-step]{opacity:1!important;transform:none!important}
   .draw{stroke-dashoffset:0!important}
-  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back{display:none!important}
+  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back,#deck-extlink{display:none!important}
 }

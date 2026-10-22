@@ -1,7 +1,9 @@
 ---
 name: motion-slides-video
-description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.html＋narration.md）を TTS（Irodori-TTS など OpenAI 互換の音声合成サーバー）で読み上げ、段階ごとの動画と通しの動画にし、音声入りの Egatari 形式の 1 ファイル（.ega.html）も作る。「HTMLスライドを動画にして」「TTS動画を作って」「音声入りの 1 ファイルにして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。
+description: Egatari Studio（旧 motion-academic-slides）のデッキ（deck.html＋narration.md）を TTS（Irodori-TTS など OpenAI 互換の音声合成サーバー）で読み上げ、段階ごとの動画と通しの動画にし、音声入りの Egatari 形式の 1 ファイル（.ega.html）も作る。「HTMLスライドを動画にして」「TTS動画を作って」「音声入りの 1 ファイルにして」「motion-slides-video」で使う。スライドと口述原稿を作るのは motion-slides。 Use for: narrated video from HTML slides, TTS video, make a narrated .ega.html.
 ---
+
+Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
 # motion-slides-video：デッキを TTS の動画と音声入りの 1 ファイルにする
 

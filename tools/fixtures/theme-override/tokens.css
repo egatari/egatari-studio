@@ -1,0 +1,8 @@
+/* 試験用のテーマ（tools/test-theme-order.mjs）：体裁の規則（kit/layouts.css・kit/base.css）を、html などを前に付けずに、同じ詳細度で上書きする。
+   テーマの CSS は layouts.css の後に読まれるので、ここに書いた規則が勝つ（前は layouts.css が勝っていた） */
+:root{ --marker: #5c5853; --bar: #8a857e; --bar-h: 6px; }
+.cover h1{top:260px}
+.body{left:96px;right:96px}
+.slide h2{border-bottom-width:6px}
+.concl{left:30px;border-radius:0}
+.pn{font-size:18px}

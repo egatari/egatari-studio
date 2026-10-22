@@ -10,7 +10,7 @@
 .body p{margin:0 0 8px}
 .body ul,.body ol{margin:0 0 8px;padding-left:1.2em}
 .body li{margin:0 0 4px}
-.body li::marker{color:var(--term)}
+.body li::marker{color:var(--marker,var(--term))}
 .body li ul{margin-top:2px}
 .body li li{list-style:"－ "}
 .body ul ul{font-size:28px}

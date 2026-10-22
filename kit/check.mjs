@@ -7,7 +7,7 @@
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
 //    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
-// B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン
+// B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン・雛形のままの仮の行とスライドの字（警告）
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
 // E. タイムラインの長さの一覧
@@ -40,7 +40,8 @@ import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
-import { layoutScan, CLIP_ATTR } from './core/layout-scan.mjs';
+import { layoutScan, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
+import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -276,7 +277,7 @@ phase = 'J リンク';
 phase = 'A 体裁';
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
 await page.evaluate(`window.__layoutScan = ${layoutScan}`);
-const aOut = await page.evaluate(([metaList, JA, CLIP]) => {
+const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
   const style = [], soft = [];
@@ -308,7 +309,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP]) => {
     const issues = [], warns = [];
     const body = s.querySelector('.body');
     // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
-    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
+    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
     if (body) {
       const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
@@ -325,7 +326,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP]) => {
     if (warns.length) soft.push({ i: m.i, issues: warns });
   });
   return { step0, style, soft, punct };
-}, [meta, JA, CLIP_ATTR]);
+}, [meta, JA, CLIP_ATTR, ANNOT_ATTR]);
 
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
@@ -384,6 +385,13 @@ for (const o of orphanSteps(built.segs, stepMeta)) {
     : { ja: (max ? `0〜${max}` : '0 だけ') + st, en: (max ? `steps 0–${max}` : 'step 0 only') + stEn };
   report(i, 'error', 'narrOrphan', { step: o.stepKey, line: o.line, end: o.end, range, static: meta[i].static, ...orphanDetail(o, stepMeta[i], narrText), comps: badComps.get(i) || [] }, o.stepKey);
 }
+// 雛形のまま（kit/core/template-text.mjs。編集アプリのスライド一覧が足した雛形）：仮の口述原稿の行（「✎ 」）と、スライドに残った雛形の字。
+// 直し忘れると TTS が読み、字幕・読める層にも出るので知らせる（警告。止めない）
+for (const p of placeholderSteps(narrText)) {
+  const i = meta.findIndex((m) => m.key === p.slideKey);
+  if (i >= 0) report(i, 'warn', 'narrPlaceholder', { line: p.line, t: p.text }, p.stepKey);
+}
+for (const t of templateTextIn(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) if (meta[t.index]) report(t.index, 'warn', 'templateText', { list: t.texts.map((x) => `「${x}」`).join(''), listEn: t.texts.map((x) => `“${x}”`).join(', '), n: t.texts.length });
 // 読みの指定 {x|y} は 1 つの記号か用語だけ（式や記号の組を 1 つの読みにしない）
 for (const seg of built.segs) {
   const i = meta.findIndex((m) => m.key === seg.slideKey);
