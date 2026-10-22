@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=8149887dcad547e4 -->
+<!-- i18n: pair=contract.md sha256=fd81c90827c3f80d -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -174,6 +174,7 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 - 同意済みでも毎回確かめる（箱に理由を書く）：リンクの字が行き先と別の host を名指している（`example.org` と見せて別の host へ。`www.` の違いは無視）、行き先が `https:` でない（`http:`・`mailto:`・`tel:`）、`download` がある、アドレスにユーザー名・パスワードの形がある、host が punycode（`xn--`）。ふつうの `https:` のリンクは、同じ閲覧のあいだ host ごとに 1 度だけ聞く（記憶はメモリだけ）
 - 開かない（**開く**のない箱）：`http`・`https`・`mailto`・`tel` 以外の scheme（`javascript:`・`data:`・`file:`・`blob:`・`vbscript:`・`ftp:` …）と、読めないアドレス。例外は、`file:` で開いた授業の、隣のファイルへの相対リンクで、毎回確かめる
 - 動画・発表者ビューの中の画面：何も起こさない。印刷：箱は隠す。編集のプレビュー・開発サーバーの枠（sandbox、ポップアップなし）：箱は行き先を知らせるだけで**開く**がない。たどるときは、書き出したデッキか 1 ファイルで
+- 再生器が自分で作るリンク（ライブの「ブラウザで参加する」・添付の保存）は授業の内容ではないので、確認の箱を通さない（形式の仕様 §11 (h)）。再生器が JavaScript の性質 `__egaOwn` で印を付け、授業の HTML からは付けられない（`data-ega-own` などの属性は効かない。`tools/test-extlinks.mjs` が確かめる）。ライブの板には、リンクの隣に参加先の host を出す
 - 実行時の口：`DECK.LinkPolicy()`、`DECK.extLink(href, text?, download?)`
 
 ## 10. 品質チェック：わざと切る

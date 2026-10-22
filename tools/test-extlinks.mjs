@@ -74,6 +74,9 @@ fs.writeFileSync(path.join(deckDir, 'deck.html'), `<!DOCTYPE html>
     <a id="js" href="javascript:window.__pwned=1">js</a>
     <a id="data" href="data:text/html,<script>window.__pwned=1</script>">data</a>
     <a id="file" href="file:///etc/passwd">file</a>
+    <a id="own1" href="https://own1.example/" data-ega-own="true">own1</a>
+    <a id="own2" href="https://own2.example/" __egaOwn="true" __egaown>own2</a>
+    <a id="own3" href="https://own3.example/" data-egaown egaown="1" data-own="1">own3</a>
     <a id="blank" href="https://third.example/blank" target="_blank">blank</a>
   </p></div>
 </section>
@@ -207,6 +210,25 @@ const popups = async (ctx_, fn) => { const got = []; const h = (pg) => got.push(
   ok((await dlg(p)) && (await dlg(p)).host === 'other.example', 'リンクにフォーカスして Enter でも確かめる');
   await p.keyboard.press('Escape');
   await p.close();
+}
+
+// ---- 再生器が作るリンクの印（__egaOwn）は JS の性質だけ：授業の HTML の属性では外せない（format spec §11 (h)）
+{
+  const p = await open();
+  for (const id of ['own1', 'own2', 'own3']) {
+    const n0 = requests.length;
+    const got = await popups(ctx, async () => { await p.click('#' + id); await p.waitForTimeout(150); });
+    ok(got.length === 0 && requests.length === n0 && !!(await dlg(p)), `作者の書いた印（#${id} の属性）では確認の箱を外せない`);
+    await p.keyboard.press('Escape');
+  }
+  ok(await p.evaluate(() => ['own1', 'own2', 'own3'].every((id) => document.getElementById(id).__egaOwn === undefined)), '属性は __egaOwn の性質にならない');
+  // 再生器自身が JS で付けた印だけが効く（このリンクは箱を通さず、既定の動作に任せる）
+  const r = await p.evaluate(() => { const a = document.createElement('a'); a.href = '#s-two'; a.__egaOwn = true; document.body.appendChild(a); let prevented; a.addEventListener('click', (e) => { setTimeout(() => { prevented = e.defaultPrevented; }); }, { once: true }); a.click(); return new Promise((res) => setTimeout(() => res(prevented), 50)); });
+  ok(r === false, 'JS で __egaOwn を付けたリンクは、確認の箱の処理に入らない');
+  await p.close();
+  const own = ['kit/deck.js', 'kit/tools.js', 'kit/live.js', 'kit/presenter.js', 'kit/shape.js'].map((f) => [f, fs.readFileSync(path.join(ROOT, f), 'utf8')]);
+  const bad = own.filter(([, t]) => /(getAttribute|hasAttribute|dataset|attributes)[^\n;]*egaOwn|egaOwn[^\n;]*(getAttribute|hasAttribute|dataset)/i.test(t)).map(([f]) => f);
+  ok(bad.length === 0, '__egaOwn を属性・dataset から読む所がない' + (bad.length ? '：' + bad : ''));
 }
 
 // ---- 動画（mode=video）：リンクは何もしない（これまでと同じ）

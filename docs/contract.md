@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=128137bcc97fa422 -->
+<!-- i18n: pair=contract.ja.md sha256=36d0541fa390f497 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -174,6 +174,7 @@ Format spec §11: a link whose target is not in the lesson is a phishing surface
 - Asked every time, whatever was agreed before (the box says why): the link text names a different host than the destination (`example.org` shown, another host linked; `www.` is ignored), the destination is not `https:` (`http:`, `mailto:`, `tel:`), the link has `download`, the address has a user name or password, or the host is punycode (`xn--`). A plain `https:` link is asked once per host in a viewing session (kept in memory only)
 - Refused (a box without **Open**): any scheme other than `http`, `https`, `mailto` and `tel` (`javascript:`, `data:`, `file:`, `blob:`, `vbscript:`, `ftp:`, …) and addresses that cannot be read. The one exception is a relative link in a lesson opened from `file:` to a neighbouring file, which is asked every time
 - Video mode, the presenter view's inner screens: nothing happens. Print: the box is hidden. The editor's preview and the dev server's frame (sandboxed, no popups): the box only tells where the link goes and has no **Open**; open the built deck or single file to follow it
+- Links the player makes itself (the live room's "Join in the browser", saving an attachment) are not lesson content and skip the box (format spec §11 (h)): the player marks them with the JavaScript property `__egaOwn`, which no lesson markup can set (attributes such as `data-ega-own` do nothing; `tools/test-extlinks.mjs` checks it), and the live pane shows the join page's host next to the link
 - Run-time API: `DECK.LinkPolicy()`, `DECK.extLink(href, text?, download?)`
 
 ## 10. Quality check: intended clipping
