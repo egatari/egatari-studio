@@ -1,5 +1,8 @@
 // 「授業の部屋を付けて配る」の板（編集アプリの横の板 #panel。拡張 live、format spec の extensions/live.md）：再生専用の書き出しの選べる形
-// - 部屋（room）と参加の鍵（key）は、教員のページ（部屋のサービスの画面）で部屋を作ってコピーした字を貼る。この画面はどこにもつながらない（要求を出さない）
+// - この画面はどこにもつながらない（要求を出さない）。部屋（room）と参加の鍵（key）の決め方は 2 つ：
+//   おすすめ（一方向。live.md §4、egatari/live の PROTOCOL.md §2.1）：この画面で setup（乱数）を作り、room と key をそこから導く。ホストには 1 本の文字列（room・key・setup・窓・活動）を
+//   渡し、ホストはそれをホストのページに 1 回だけ貼る。setup は鍵と同じく、この板が開いているあいだだけ覚え、教材にも書き出すファイルにも書かない
+//   前からの方法（たたんだ「前からの方法」）：ホストのページで部屋を作ってコピーした字を貼る
 // - 窓（いつからいつまで）・Q&A（教材全体で入／切）・段階ごとの投票（問いと 2〜6 の選択肢）を決める。部屋も同じ活動を知る必要があるので、活動の JSON をコピーして教員のページに渡す
 // - 教材に残すのは鍵のない設定（設定のファイル FORMAT.CONFIG_FILE の extensions.live。書き出すと索引の extensions.live）。鍵は書き出す派生にだけ入り、この板が覚えるのは開いているあいだだけ
 //
@@ -11,7 +14,7 @@
 //   panel.open()
 import { FORMAT } from '../kit/core/format.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText } from '../kit/core/live.mjs';
+import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText, newLiveSetup, liveSetupString } from '../kit/core/live.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 
 const LP = LivePolicy();
@@ -20,13 +23,26 @@ const MAX_CHOICES = 6;
 const STR = {
   ja: {
     title: 'ライブ（質問・投票）を付けて配る',
-    lead: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）に、ライブ（授業中の質問と投票）を付けます。① ${FORMAT.LIVE_ENDPOINT.replace(/^https:\/\//, '')} のホストのページでライブを作る → ② そこでコピーした「Egatari Studio に貼る設定」を下に貼る → ③ 投票を作って書き出す、の順です。この画面自体はインターネットに接続しません。参加コードは教材には保存せず、書き出すファイルにだけ入ります`,
+    lead: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）に、ライブ（授業中の質問・投票）を付けます。① ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ 書き出す、の順です。この画面自体はインターネットに接続しません。参加コードは教材には保存せず、書き出すファイルにだけ入ります`,
+    s1: '① ライブ ID と参加コード', make: 'ライブ ID と参加コードをこの画面で作る', remake: '作り直す',
+    remakeConfirm: 'ライブ ID と参加コードを作り直しますか？ 前の文字列で作ったライブや、前に書き出したファイルとは別のライブになります。',
+    madeHere: (room) => `ライブ ID ${room}（この画面で作りました。参加コードは書き出すファイルにだけ入ります）`,
+    fromHost: (room) => `ライブ ID ${room}（ホストのページで作ったライブの設定を使っています。文字列を貼る必要はありません）`,
+    noIds: 'まだライブ ID と参加コードがありません。下のボタンで作ってください。',
+    s2: '② ライブの時間と、質問・投票', s3: '③ ホストのページに 1 回だけ貼る文字列', s4: '④ 書き出す',
+    setupHelp: '下の文字列をコピーし、ホストのページを開いて 1 回だけ貼り、確認を済ませて「このライブを作る」を押してください。ライブ ID・参加コード・ライブの時間・質問・投票の設定がすべて入っているので、ホストのページでほかに入れるものはなく、ここに何かを貼り戻す必要もありません。',
+    setupWarn: 'この文字列には参加コードと、ライブを作るための秘密の値が入っています。参加者には渡さないでください（参加者に配るのは、書き出すファイルです）。',
+    setupAfter: 'ライブを作ったあとでライブの時間を変えるときは、ライブ ID と参加コードを作り直して、もう一度貼ってください。投票だけを変えたときは、下の「前からの方法」の「投票の設定をコピー」で、ホストのページの「投票の設定」に貼り直せます。',
+    setupWait: '「書き出す前に直すこと」がなくなると、ここに文字列が出ます。', setupNone: '文字列は、① でライブ ID と参加コードをこの画面で作ると出ます。',
+    copySetup: '文字列をコピー', copiedSetup: '文字列をコピーしました。ホストのページに 1 回だけ貼ってください', hostLink: 'ホストのページを開く',
+    manual: 'ホストのページで先にライブを作った場合（前からの方法）',
+    manualLead: 'ホストのページでライブを作り、そこでコピーした「Egatari Studio に貼る設定」をここに貼ります。この画面で作ったライブ ID で、あとから書き出し直すとき（参加コードはこの画面を閉じると忘れます）にも、ホスト用リンクのページの設定をここに貼れば、同じライブのまま書き出せます。',
     paste: 'ホストのページでコピーした設定（ライブ ID・参加コード・ライブの時間）', read: '読み込む', readOk: '設定を読み込みました', admin: 'これはホスト用リンクです（ライブを操作するためのコードが入っています）。ここには貼らないでください。ホストのページの「Egatari Studio に貼る設定」の「コピー」で写したものを貼ってください',
     badBlock: '部屋の字として読めません：', endpoint: '接続先', room: 'ライブ ID', key: '参加コード（書き出すファイルにだけ入ります）', from: 'ライブの開始', to: 'ライブの終了',
     qa: '参加者からの質問を受け付ける（教材全体で）', confused: '「わからない」の一押しを受け付ける（教材全体で。そのときのステップごとに数えます）', polls: '投票（ステップごと。そのステップを表示したときに、参加者の画面に出ます）', addPoll: '投票を追加', step: '出すステップ', here: '今プレビューに出ているステップにする', prompt: '設問', choice: (n) => `選択肢 ${n}`,
     addChoice: '選択肢を足す', delChoice: '消す', delPoll: 'この投票を消す', copy: '投票の設定（JSON。ホストのページの「投票の設定」に貼る）', copyBtn: '投票の設定をコピー', copied: '投票の設定をコピーしました。ホストのページの「投票の設定」に貼って「投票の設定を保存」を押してください',
     save: '設定を教材に保存（参加コードは保存しません）', saved: `設定を ${CFG} に書きました（鍵は書きません）`, portableNote: '1 ファイルに残すには「保存」を押してください', exp: 'ライブを付けて書き出す…',
-    problems: '書き出す前に直すこと', none: 'ありません', needKey: '参加コードがありません（ホストのページでコピーした設定を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
+    problems: '書き出す前に直すこと', none: 'ありません', needKey: '参加コードがありません（① の「ライブ ID と参加コードをこの画面で作る」を押すか、前からの方法でホストのページの設定を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
     keyTip: (k) => `ステップの鍵：${k}`,
     results: 'ライブが終わったら：ホストのページで結果（JSON）をダウンロードし、ここから教材の添付（役割：データ）にできます。結果は教材のファイルにだけ残り、参加者に配る再生のみのファイルには入りません',
     importResults: '授業の部屋の結果を取り込む…',
@@ -34,13 +50,26 @@ const STR = {
   },
   en: {
     title: 'Distribute with Live (questions and polls)',
-    lead: `Adds Live (questions and polls in class) to the Egatari file (play only, ${FORMAT.PLAY_EXT}) you hand to participants. ① Create a Live on the host page at ${FORMAT.LIVE_ENDPOINT.replace(/^https:\/\//, '')} → ② paste below the “Settings to paste into Egatari Studio” you copied there → ③ make the polls and export. This screen itself connects nowhere. The join code is not stored in the lesson; it goes only into the exported file`,
+    lead: `Adds Live (questions and polls in class) to the Egatari file (play only, ${FORMAT.PLAY_EXT}) you hand to participants. ① Make the Live ID and join code here → ② set the live time and the questions and polls → ③ copy the string and paste it once on the host page → ④ export. This screen itself connects nowhere. The join code is not stored in the lesson; it goes only into the exported file`,
+    s1: '① Live ID and join code', make: 'Make the Live ID and join code here', remake: 'Make new ones',
+    remakeConfirm: 'Make a new Live ID and join code? It becomes a different Live from the one made with the earlier string and from files exported before.',
+    madeHere: (room) => `Live ID ${room} (made here; the join code goes only into the exported file)`,
+    fromHost: (room) => `Live ID ${room} (using the settings of a Live made on the host page; no string to paste)`,
+    noIds: 'No Live ID and join code yet. Make them with the button below.',
+    s2: '② Live time, questions and polls', s3: '③ The string to paste once on the host page', s4: '④ Export',
+    setupHelp: 'Copy the string below, open the host page, paste it once, pass the check and press Create this Live. It holds the Live ID, the join code, the live time and the questions and polls, so there is nothing else to fill in on the host page and nothing to paste back here.',
+    setupWarn: 'This string holds the join code and the secret that creates the Live. Do not give it to participants (participants get the exported file).',
+    setupAfter: 'To change the live time after the Live was created, make a new Live ID and join code and paste again. If only the polls changed, use Copy poll settings under “The earlier way” below and paste them into Poll settings on the host page.',
+    setupWait: 'The string appears here once nothing is left under “To fix before exporting”.', setupNone: 'The string appears when you make the Live ID and join code here in ①.',
+    copySetup: 'Copy the string', copiedSetup: 'Copied the string. Paste it once on the host page', hostLink: 'Open the host page',
+    manual: 'If you created the Live on the host page first (the earlier way)',
+    manualLead: 'Create a Live on the host page and paste here the “Settings to paste into Egatari Studio” you copied there. Also use this to export again later for a Live made here (this screen forgets the join code when it closes): paste the settings from the host link\'s page and the export keeps the same Live.',
     paste: 'Settings copied from the host page (Live ID, join code, live time)', read: 'Load', readOk: 'Loaded the settings', admin: 'This is the host link (it carries the code that controls the Live). Do not paste it here: paste what Copy under “Settings to paste into Egatari Studio” on the host page copied',
     badBlock: 'Not room details: ', endpoint: 'Server', room: 'Live ID', key: 'Join code (goes only into the exported file)', from: 'Live starts', to: 'Live ends',
     qa: 'Accept questions from participants (whole lesson)', confused: 'Accept a one-tap “I don’t follow” (whole lesson; counted per step on screen)', polls: 'Polls (per step: shown on participants’ screens when that step is displayed)', addPoll: 'Add poll', step: 'Step to show it at', here: 'Use the step in the preview', prompt: 'Question', choice: (n) => `Choice ${n}`,
     addChoice: 'Add choice', delChoice: 'Remove', delPoll: 'Remove this poll', copy: 'Poll settings (JSON; paste into Poll settings on the host page)', copyBtn: 'Copy poll settings', copied: 'Copied the poll settings. Paste them into Poll settings on the host page and press Save poll settings',
     save: 'Save settings in the lesson (without the join code)', saved: `Wrote the settings to ${CFG} (without the key)`, portableNote: 'Press Save to keep them in the single file', exp: 'Export with Live…',
-    problems: 'To fix before exporting', none: 'None', needKey: 'No join code (paste the settings copied on the host page)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
+    problems: 'To fix before exporting', none: 'None', needKey: 'No join code (press “Make the Live ID and join code here” in ①, or paste the host page\'s settings under the earlier way)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
     keyTip: (k) => `Step key: ${k}`,
     results: 'After the Live: download the results (JSON) on the host page and add them here as an attachment of the lesson (role: data). They stay in the lesson file and never go into the play-only file for participants',
     importResults: 'Import live room results…',
@@ -85,7 +114,7 @@ export function createLivePanel(o) {
     const qaId = (Object.values(a).flat().find((x) => isObj(x) && x.kind === 'qa') || {}).id || 'qa';
     // 「わからない」（kind confused）：教材全体（"*"）に 1 つ。新しい設定では入、前からの設定にはなければ切
     const cf = (Array.isArray(a['*']) ? a['*'] : []).find((x) => isObj(x) && x.kind === 'confused');
-    return { endpoint: (l && l.endpoint) || FORMAT.LIVE_ENDPOINT, room: (l && l.room) || '', key: M ? M.key : '', from: l && l.window ? l.window.from : '', to: l && l.window ? l.window.to : '', qa: l ? qa : true, qaId,
+    return { endpoint: (l && l.endpoint) || FORMAT.LIVE_ENDPOINT, room: (l && l.room) || '', key: M ? M.key : '', setup: M ? M.setup : '', from: l && l.window ? l.window.from : '', to: l && l.window ? l.window.to : '', qa: l ? qa : true, qaId,
       confused: l ? !!cf : true, confusedId: (cf && cf.id) || 'confused', polls };
   }
   function activities() {
@@ -118,7 +147,8 @@ export function createLivePanel(o) {
     if (!ws) return;
     const conf = await readConfig(ws);
     const l = isObj(conf.extensions) && isObj(conf.extensions.live) ? lessonLive(conf.extensions.live) : null;
-    M = { ...fromLesson(l), key: M && M.room === (l && l.room) ? M.key : '' };
+    const same = M && M.room === (l && l.room);
+    M = { ...fromLesson(l), key: same ? M.key : '', setup: same ? M.setup : '' };
     steps = (o.stepKeys ? await o.stepKeys().catch(() => []) : []) || [];
     for (const p of M.polls) if (!p.label) p.label = autoLabel(p.step);   // label のない古い投票
     render();
@@ -129,7 +159,10 @@ export function createLivePanel(o) {
     i.addEventListener('input', () => { onchange(i.value); refreshProblems(); });
     return i;
   }
-  let probBox = null, jsonBox = null;
+  let probBox = null, jsonBox = null, setupBox = null, setupNote = null;
+  // ホストのページに貼る 1 本の文字列：この画面で作った setup があり、直すことがないときだけ
+  const setupText = () => (M.setup && !problems().length ? liveSetupString({ ...fullOf(), setup: M.setup }) : '');
+  const hostPage = () => (/^https:\/\/[^/]+$/.test(M.endpoint.trim()) ? M.endpoint.trim() : FORMAT.LIVE_ENDPOINT) + '/';
   function refreshProblems() {
     if (!probBox) return;
     const e = problems();
@@ -138,7 +171,23 @@ export function createLivePanel(o) {
     if (!e.length) probBox.append(el('p', { cls: 'live-ok', text: X.none }));
     else probBox.append(el('ul', { id: 'live-problems' }, e.map((x) => el('li', { text: x }))));
     if (jsonBox) jsonBox.value = activitiesText({ activities: activities() });
+    if (setupBox) {
+      const t = setupText();
+      setupBox.value = t;
+      setupBox.hidden = !t;
+      const c = document.getElementById('live-setup-copy'); if (c) c.disabled = !t;
+      if (setupNote) setupNote.textContent = t ? '' : M.setup ? X.setupWait : X.setupNone;
+    }
     const b = document.getElementById('live-export'); if (b) b.disabled = e.length > 0;
+  }
+  // ① この画面でライブ ID と参加コードを作る（乱数は crypto.getRandomValues。どこにも要求を出さない）
+  async function makeIds() {
+    if (M.setup && !confirm(X.remakeConfirm)) return;
+    try {
+      const s = await newLiveSetup();
+      M.setup = s.setup; M.room = s.room; M.key = s.key;
+      render();
+    } catch (err) { o.toast(X.fail + (err.message || err), true); }
   }
   function render() {
     const dl = el('datalist', { id: 'live-steps' }, steps.map((k) => el('option', { value: k, label: stepText(k, autoLabel(k), LANG) })));
@@ -147,6 +196,7 @@ export function createLivePanel(o) {
       try {
         const r = parseRoomBlock(paste.value);
         M.endpoint = r.endpoint; M.room = r.room; M.key = r.key; M.from = r.window.from; M.to = r.window.to;
+        M.setup = '';   // ホストのページで作ったライブ：貼る文字列はない
         // 部屋の字に活動があり、この教材にまだなければ使う
         if (r.activities && !M.polls.length) { const f = fromLesson({ activities: r.activities }); M.polls = f.polls; M.qa = f.qa; M.qaId = f.qaId; M.confused = f.confused; M.confusedId = f.confusedId; }
         paste.value = '';
@@ -193,29 +243,53 @@ export function createLivePanel(o) {
     const resultsInput = el('input', { type: 'file', id: 'live-results-file', accept: '.json,application/json', hidden: 'hidden' });
     resultsInput.addEventListener('change', () => { const f = (resultsInput.files || [])[0]; resultsInput.value = ''; if (f && o.importResults) o.importResults(f).catch((e) => o.toast(X.fail + (e.message || e), true)); });
     jsonBox = el('textarea', { id: 'live-json', rows: '6', readonly: 'readonly', spellcheck: 'false', 'aria-label': X.copy });
+    setupBox = el('textarea', { id: 'live-setup', rows: '4', readonly: 'readonly', spellcheck: 'false', autocomplete: 'off', 'aria-label': X.s3 });
+    setupNote = el('p', { cls: 'note', id: 'live-setup-note' });
     probBox = el('div', { id: 'live-problem-box' });
+    // ① の状態：この画面で作った／ホストのページの設定／まだない
+    const ids = M.setup && M.room ? X.madeHere(M.room) : M.key && M.room ? X.fromHost(M.room) : X.noIds;
+    const manualOpen = !M.setup && !!M.key;   // 前からの方法で読み込んだ設定を使っているときは開いておく
+    const manual = el('details', { id: 'live-manual', ...(manualOpen ? { open: 'open' } : {}) }, [
+      el('summary', { text: X.manual }),
+      el('p', { cls: 'note', text: X.manualLead }),
+      el('label', {}, [el('span', { text: X.paste }), paste]), el('div', { cls: 'row' }, [readBtn]),
+      el('label', {}, [el('span', { text: X.endpoint }), input('live-endpoint', M.endpoint, (v) => { M.endpoint = v; }, { spellcheck: 'false' })]),
+      el('label', {}, [el('span', { text: X.room }), input('live-room', M.room, (v) => { M.room = v.trim(); M.setup = ''; }, { spellcheck: 'false', placeholder: 'r-xxxxxxxx' })]),
+      el('label', {}, [el('span', { text: X.key }), input('live-key', M.key, (v) => { M.key = v.trim(); M.setup = ''; }, { spellcheck: 'false', autocomplete: 'off' })]),
+      el('h4', { text: X.copy }), jsonBox,
+      el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-copy', text: X.copyBtn, onclick: copyActivities })]),
+    ]);
     const body = [
       el('div', { id: 'live-panel' }, [
         el('p', { cls: 'lead', text: X.lead }),
-        el('label', {}, [el('span', { text: X.paste }), paste]), el('div', { cls: 'row' }, [readBtn]),
-        el('label', {}, [el('span', { text: X.endpoint }), input('live-endpoint', M.endpoint, (v) => { M.endpoint = v; }, { spellcheck: 'false' })]),
-        el('label', {}, [el('span', { text: X.room }), input('live-room', M.room, (v) => { M.room = v.trim(); }, { spellcheck: 'false', placeholder: 'r-xxxxxxxx' })]),
-        el('label', {}, [el('span', { text: X.key }), input('live-key', M.key, (v) => { M.key = v.trim(); }, { spellcheck: 'false', autocomplete: 'off' })]),
+        el('h3', { text: X.s1 }),
+        el('p', { id: 'live-ids', text: ids }),
+        el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-make', cls: M.setup || M.key ? '' : 'pri', text: M.setup || M.key ? X.remake : X.make, onclick: makeIds })]),
+        el('h3', { text: X.s2 }),
         el('label', {}, [el('span', { text: X.from }), winFrom]), el('label', {}, [el('span', { text: X.to }), winTo]),
         el('p', { cls: 'note', text: X.windowNote }),
         el('label', { cls: 'check' }, [qa, el('span', { text: X.qa })]),
         el('label', { cls: 'check' }, [cfBox, el('span', { text: X.confused })]),
-        el('h3', { text: X.polls }), dl, ...pollEls,
+        el('h4', { text: X.polls }), dl, ...pollEls,
         el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-addpoll', text: X.addPoll, onclick: () => { const k = (o.currentStep && o.currentStep()) || ''; M.polls.push({ id: nextId(), step: k, prompt: '', choices: ['', ''], label: autoLabel(k) }); render(); } })]),
         probBox,
-        el('h3', { text: X.copy }), jsonBox,
-        el('div', { cls: 'row' }, [
-          el('button', { type: 'button', id: 'live-copy', text: X.copyBtn, onclick: copyActivities }),
+        el('section', { id: 'live-oneway' }, M.key && !M.setup ? [] : [
+          el('h3', { text: X.s3 }),
+          el('p', { text: X.setupHelp }),
+          setupNote, setupBox,
+          el('div', { cls: 'row' }, [
+            el('button', { type: 'button', id: 'live-setup-copy', cls: 'pri', text: X.copySetup, onclick: copySetup }),
+            el('a', { id: 'live-host-link', href: hostPage(), target: '_blank', rel: 'noopener noreferrer', text: LANG === 'ja' ? `${X.hostLink}（${hostPage().replace(/\/$/, '')}）` : `${X.hostLink} (${hostPage().replace(/\/$/, '')})` }),
+          ]),
+          el('p', { cls: 'note live-warn', text: X.setupWarn }),
+          el('p', { cls: 'note', text: X.setupAfter }),
         ]),
+        el('h3', { text: X.s4 }),
         el('div', { cls: 'row' }, [
           el('button', { type: 'button', id: 'live-save', text: X.save, onclick: () => save().catch((e) => o.toast(X.fail + (e.message || e), true)) }),
           el('button', { type: 'button', id: 'live-export', cls: 'pri', text: X.exp, onclick: exportNow }),
         ]),
+        manual,
         o.importResults ? el('h3', { text: X.importResults.replace(/…$/, '') }) : null,
         o.importResults ? el('p', { cls: 'note', text: X.results }) : null,
         o.importResults ? el('div', { cls: 'row' }, [resultsInput, el('button', { type: 'button', id: 'live-import-results', text: X.importResults, onclick: () => resultsInput.click() })]) : null,
@@ -223,6 +297,12 @@ export function createLivePanel(o) {
     ];
     o.openPanel(X.title, body);
     refreshProblems();
+  }
+  async function copySetup() {
+    const t = setupText();
+    if (!t) return;
+    try { await navigator.clipboard.writeText(t); o.toast(X.copiedSetup); }
+    catch { o.toast(X.copyFallback, true); if (setupBox) { setupBox.focus(); setupBox.select(); } }
   }
   async function copyActivities() {
     const t = activitiesText({ activities: activities() });
@@ -241,6 +321,7 @@ export function createLivePanel(o) {
     ext.live = lessonLive(lessonOf());
     const text = JSON.stringify({ ...conf, extensions: ext }, null, 2) + '\n';
     if (text.includes(M.key.trim()) && M.key.trim()) throw new Error('the key would be written');   // 念のため
+    if (M.setup && text.includes(M.setup)) throw new Error('the setup secret would be written');
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
     await ws.writeText(CFG, text);
     await o.afterWrite();
@@ -253,7 +334,7 @@ export function createLivePanel(o) {
     try {
       // 作業フォルダ：設定を先に残す（書き出しは保存したものから組む）。1 ファイル：保存していない変更を作らない（設定は「設定を教材に残す」→「保存」）
       if (!o.portable()) { if (!(await save())) return; }
-      await o.exportLive(fullOf());
+      await o.exportLive(fullOf(), { oneWay: !!M.setup });
     } catch (err) { o.toast(X.fail + (err.message || err), true); }
   }
   return { open, isOpen: () => o.isOpen() };

@@ -1,5 +1,7 @@
 // 授業の部屋（拡張 live。format spec の extensions/live.md、通信は FORMAT.LIVE_VENDOR_DIR の写し）の試験（npm test の test-live）
 //   node tools/test-live.mjs <作業用のフォルダ>
+// 1b. 一方向の設定（PROTOCOL.md §2.1）：写しの試験ベクトル（fixtures/setup/payload.json）と同じ導き方・乱数は crypto.getRandomValues・文字列の往復と Schema・
+//    作るあいだ fetch・WebSocket・XMLHttpRequest を一度も呼ばない
 // 1. 決まりごと（kit/core/live-policy.mjs）：切断の番号の表が写しの close-codes.json と同じ・つなぎ直しの表・窓とゆとり・URL の origin・形の検査
 // 2. 書き出し：部屋を付けない派生は今までと同じ（付けた派生から、足した部分を除くと同じバイト）。付けた派生だけに CSP の <meta>（<head> の直後、どのスクリプトより前、
 //    connect-src は endpoint の 2 つの形だけ）・拡張のブロック・再生器。教材（索引と FORMAT.CONFIG_FILE）に鍵がない。鍵を設定のファイルに書くと書き出しを断る
@@ -18,7 +20,8 @@ import Ajv from 'ajv/dist/2020.js';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { buildPortable, liveRuntimeText } from '../kit/build.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339, stepLabel, stepFallback, stepText } from '../kit/core/live.mjs';
+import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339, stepLabel, stepFallback, stepText,
+  newLiveSetup, liveSetupIds, liveSetupString, parseLiveSetupString } from '../kit/core/live.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
@@ -132,6 +135,51 @@ ok(sv('activities')(L0.activities), 'schema: the activities shape is the protoco
     ok(N(Array.from({ length: 201 }, () => [[1, 1], [2, 2]])) === null && N([Array.from({ length: 5001 }, (_, i) => [i % 1000, 1])]) === null, 'normStrokes: more than 200 strokes, or more than 5000 points in one, gives nothing (as the review notes)');
     const msg = { v: 1, t: 'ask', activity: 'qa', step: 's-a:1', text: 'q', strokes: many, sourceSha256: SHA };
     ok(sv('learnerToServer')(msg) && JSON.stringify(msg).length < 40960, `schema: normalised strokes fit the vendored ask (and its 40960-byte frame; ${JSON.stringify(msg).length} bytes)`); } }
+
+// ---------------------------------------------------------------- 1b. 一方向の設定
+console.log('one-way setup');
+{
+  const vec = fixture('setup/payload.json');
+  ok(sv('setupPayload')(vec), 'one-way: the vendored test vector is a setupPayload');
+  const ids = await liveSetupIds(vec.setup);
+  ok(ids.room === vec.room && ids.key === vec.key, `one-way: room and key derive from setup as the protocol's test vector says (${ids.room})`);
+  // 通信の口を塞いで、呼ばれたら数える
+  const saved = {}, calls = [];
+  for (const k of ['fetch', 'WebSocket', 'XMLHttpRequest', 'EventSource']) { saved[k] = globalThis[k]; globalThis[k] = function () { calls.push(k); throw new Error('network: ' + k); }; }
+  const realGrv = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+  let grv = 0;
+  Object.defineProperty(globalThis.crypto, 'getRandomValues', { configurable: true, value: (a) => { grv++; return realGrv(a); } });
+  let made = [];
+  try {
+    for (let i = 0; i < 20; i++) made.push(await newLiveSetup());
+  } finally {
+    for (const k of Object.keys(saved)) globalThis[k] = saved[k];
+    delete globalThis.crypto.getRandomValues;
+  }
+  ok(calls.length === 0, 'one-way: making the ids makes no network call (fetch, WebSocket, XMLHttpRequest, EventSource are never touched)');
+  ok(grv === 20, `one-way: each setup takes its randomness from crypto.getRandomValues (${grv} calls for 20)`);
+  ok(made.every((m) => /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(m.setup) && /^r-[a-z2-7]{8}$/.test(m.room) && /^[A-Za-z0-9_-]{22}$/.test(m.key)), 'one-way: setup is 43 canonical base64url characters (32 bytes), room and key have the protocol\'s shapes');
+  ok(new Set(made.flatMap((m) => [m.setup, m.room, m.key])).size === 60, 'one-way: 20 setups give 20 different setups, rooms and keys');
+  ok(await Promise.all(made.map(async (m) => JSON.stringify(await liveSetupIds(m.setup)) === JSON.stringify({ room: m.room, key: m.key }))).then((r) => r.every(Boolean)), 'one-way: the ids are a function of setup alone');
+  { const fixed = await newLiveSetup(() => new Uint8Array(32).fill(7)); ok(fixed.setup === Buffer.from(new Uint8Array(32).fill(7)).toString('base64url'), 'one-way: setup is the base64url of the 32 random bytes'); }
+  let bad = null; try { await newLiveSetup(() => new Uint8Array(16)); } catch (e) { bad = e.message; }
+  ok(/32 bytes/.test(bad || ''), 'one-way: a random source that gives fewer than 32 bytes is refused');
+  // 文字列：往復・Schema・空白の無視・形の誤り
+  const str = liveSetupString(vec);
+  ok(str.startsWith(FORMAT.LIVE_SETUP_PREFIX) && /^[A-Za-z0-9_:-]+$/.test(str), 'one-way: the setup string is the prefix and base64url (no spaces, safe to paste anywhere)');
+  ok(JSON.stringify(parseLiveSetupString(str)) === JSON.stringify(vec), 'one-way: the string round-trips to the same payload');
+  ok(JSON.stringify(parseLiveSetupString('貼る：\n' + str.slice(0, 50) + '\n  ' + str.slice(50) + '\n')) === JSON.stringify(vec), 'one-way: line breaks and spaces added by mail or chat are ignored');
+  const m0 = made[0];
+  const fresh = parseLiveSetupString(liveSetupString({ ...L0, ...m0, extra: 'dropped' }));
+  ok(sv('setupPayload')(fresh) && fresh.room === m0.room && !('extra' in fresh), 'one-way: a string made from panel settings validates against the vendored setupPayload (only its members)');
+  const code = (t) => { try { parseLiveSetupString(t); return null; } catch (e) { return e.message; } };
+  ok(code(JSON.stringify(vec)) === 'prefix' && code(str.slice(0, -20)) === 'decode' && code(FORMAT.LIVE_SETUP_PREFIX + '***') === 'decode', 'one-way: other text, a cut string or bad characters are refused');
+  ok(code(FORMAT.LIVE_SETUP_PREFIX + Buffer.from(JSON.stringify({ ...vec, adminKey: 'x' })).toString('base64url')) === 'shape', 'one-way: unknown members are refused');
+  let noSetup = null; try { liveSetupString({ ...vec, setup: undefined }); } catch (e) { noSetup = e.message; }
+  ok(/no setup/.test(noSetup || ''), 'one-way: no string without a setup secret');
+  // 書き出すファイルに入るのは room と key だけ（setup は入らない）
+  ok(LP0.validate({ ...L0, room: m0.room, key: m0.key }, { key: true }).length === 0, 'one-way: the derived room and key are valid for the exported file');
+}
 
 // ---------------------------------------------------------------- 2. 書き出し
 console.log('export');

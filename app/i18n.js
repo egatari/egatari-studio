@@ -57,6 +57,7 @@ const ja = {
   exportPlayOnly: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
   exportLive: 'ライブ（質問・投票）を付けて配る…', playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
+  playOnlyLiveSetupToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ホストのページにまだ文字列を貼っていなければ、1 回だけ貼ってライブを作ってください。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
   // 「ライブ（質問・投票）を付けて配る」の「書き出す前に直すこと」：kit/core/live-policy.mjs の validate の誤り {code, …引数} → 文（app/live-panel.js）
   liveProblem: (p) => {
     const poll = p.id ? `投票 ${p.id}：` : '';
@@ -318,6 +319,7 @@ const en = {
   exportPlayOnly: `Export Egatari file (play only, ${FORMAT.PLAY_EXT}) for participants`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
   exportLive: 'Distribute with Live (questions and polls)…', playOnlyLiveToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
+  playOnlyLiveSetupToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). If you have not pasted the string on the host page yet, paste it there once to create the Live. During the live time, participants who open it and press Join are connected.`,
   // "To fix before exporting" in Distribute with Live: a problem {code, …params} from kit/core/live-policy.mjs's validate → text (app/live-panel.js)
   liveProblem: (p) => {
     const poll = p.id ? `Poll ${p.id}: ` : '';

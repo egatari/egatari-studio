@@ -180,6 +180,8 @@ main{flex:1;min-height:0;display:flex}
 #live-panel .live-choice{display:flex;gap:6px;margin:4px 0}#live-panel .live-choice input{flex:1;min-width:0}
 #live-panel .row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}#live-panel .note{font-size:12px;color:var(--muted,#666);margin:2px 0}
 #live-panel .live-step-label{display:inline-block;font-size:12.5px;color:var(--muted,#666);margin:2px 8px 2px 0}#live-panel #live-problems{color:var(--bad,#b00020)}#live-panel .lead{margin-top:0}
+#live-panel #live-setup{word-break:break-all}#live-panel #live-host-link{align-self:center;margin-left:4px}#live-panel .live-warn{font-weight:600}
+#live-panel #live-manual{border-top:1px solid var(--line);margin:14px 0 6px;padding-top:6px}#live-panel #live-manual>summary{cursor:pointer;color:var(--accent,inherit);margin:4px 0}
 #attach-problems{margin-top:8px;font-size:12.5px}
 
 /* 録音モード（app/rec-mode.js）：#deck の中の幅広い板。プレビュー（その段階の舞台）は横に細くする。横の板・口述原稿などは隠す */

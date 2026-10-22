@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "https://live.egatari.org/protocol/v1/schema.json",
  "title": "Egatari Live protocol v1",
- "description": "Messages and HTTP bodies of Egatari Live v1. Use #/$defs/learnerToServer, serverToLearner, teacherToServer, serverToTeacher, createRequest, createResponse, results, httpError. See PROTOCOL.md.",
+ "description": "Messages and HTTP bodies of Egatari Live v1. Use #/$defs/learnerToServer, serverToLearner, teacherToServer, serverToTeacher, createRequest, createResponse, setupPayload, results, httpError. See PROTOCOL.md.",
  "$defs": {
   "ref": {
    "type": "string",
@@ -22,6 +22,11 @@
    "type": "string",
    "pattern": "^[A-Za-z0-9_-]{43,64}$",
    "description": "teacher secret (base64url); never in a file"
+  },
+  "setup": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$",
+   "description": "one-way setup secret: 32 random bytes, base64url (PROTOCOL.md \u00a72.1); in the setup string only, never in a file"
   },
   "pid": {
    "type": "string",
@@ -49,7 +54,7 @@
   "sha256": {
    "type": "string",
    "pattern": "^[0-9a-f]{64}$",
-   "description": "the lesson's sourceSha256 (format spec §3.4), lowercase hex"
+   "description": "the lesson's sourceSha256 (format spec \u00a73.4), lowercase hex"
   },
   "point": {
    "type": "array",
@@ -82,7 +87,7 @@
      "$ref": "#/$defs/point"
     }
    },
-   "description": "a circled region: polylines in stage coordinates, the shape of Egatari Studio's review notes (contract §12). At most 20 strokes, 500 points each and 2000 points in all; no two consecutive points equal (checked by the server, bad_region)"
+   "description": "a circled region: polylines in stage coordinates, the shape of Egatari Studio's review notes (contract \u00a712). At most 20 strokes, 500 points each and 2000 points in all; no two consecutive points equal (checked by the server, bad_region)"
   },
   "reply": {
    "type": "object",
@@ -420,7 +425,8 @@
     "room_too_large",
     "turnstile_required",
     "turnstile_failed",
-    "unavailable"
+    "unavailable",
+    "room_exists"
    ]
   },
   "limits": {
@@ -1488,13 +1494,40 @@
      "minLength": 1,
      "maxLength": 2048,
      "description": "Cloudflare Turnstile token from the create page (required by the reference service)"
+    },
+    "room": {
+     "$ref": "#/$defs/room",
+     "description": "one-way setup (\u00a72.1): the room the editor derived from setup"
+    },
+    "key": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]{22}$",
+     "description": "one-way setup (\u00a72.1): the learner key the editor derived from setup"
+    },
+    "setup": {
+     "$ref": "#/$defs/setup"
     }
    },
    "required": [
     "window",
     "turnstile"
    ],
-   "additionalProperties": false
+   "additionalProperties": false,
+   "dependentRequired": {
+    "room": [
+     "key",
+     "setup",
+     "activities"
+    ],
+    "key": [
+     "room",
+     "setup"
+    ],
+    "setup": [
+     "room",
+     "key"
+    ]
+   }
   },
   "createResponse": {
    "type": "object",
@@ -1543,6 +1576,45 @@
     "expiresAt",
     "requireApproval",
     "teacherUrl"
+   ],
+   "additionalProperties": false
+  },
+  "setupPayload": {
+   "type": "object",
+   "description": "The decoded content of a setup string (PROTOCOL.md \u00a72.1): 'egatari-live-setup-v1:' + base64url(UTF-8 JSON of this object).",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "endpoint": {
+     "type": "string",
+     "pattern": "^https?://[^/]+$"
+    },
+    "room": {
+     "$ref": "#/$defs/room"
+    },
+    "key": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]{22}$"
+    },
+    "setup": {
+     "$ref": "#/$defs/setup"
+    },
+    "window": {
+     "$ref": "#/$defs/window"
+    },
+    "activities": {
+     "$ref": "#/$defs/activities"
+    }
+   },
+   "required": [
+    "v",
+    "endpoint",
+    "room",
+    "key",
+    "setup",
+    "window",
+    "activities"
    ],
    "additionalProperties": false
   },
