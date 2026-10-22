@@ -309,7 +309,9 @@ print("ok")
 });
 ok('notebook: the optional reference-voice cell is there, off by default, passes ref_voice to Irodori only, and says the voice must be one you may use', () => {
   const nb = JSON.parse(notebook()), text = nb.cells.map((c) => c.source.join('')).join('\n');
-  assert.ok(/UPLOAD = False/.test(text) && /DRIVE_PATH = ""/.test(text) && /ref_voice=REF_VOICE_PATH/.test(text));
+  assert.ok(/UPLOAD = False/.test(text) && /DRIVE_PATH = ""/.test(text) && /ref_voice=globals\(\)\.get\("REF_VOICE_PATH"\)/.test(text));
+  const load = nb.cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('irodori_synth')).source.join('');
+  assert.ok(!/REF_VOICE_PATH/.test(load.replace(/globals\(\)\.get\("REF_VOICE_PATH"\)/g, '')), 'cell 3 does not reference REF_VOICE_PATH bare (the optional cell may be skipped)');
   assert.ok(/right to use/.test(text) && /使ってよい声/.test(text) && /not uploaded anywhere else/.test(text));
   assert.ok(nb.cells.every((c) => c.cell_type !== 'code' || (c.execution_count === null && c.outputs.length === 0)), 'no outputs or execution counts');
 });

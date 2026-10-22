@@ -123,7 +123,7 @@ export function notebook() {
       '    os.environ["EGATARI_NODE_DEPS"] = "/content/node-deps"',
       '    os.environ["EGATARI_ORT_PROVIDERS"] = "cuda,cpu" if GPU else "cpu"',
       '    os.makedirs("/content/work", exist_ok=True)',
-      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/lab/voices", "/content/work", steps=40, seed=0, ref_voice=REF_VOICE_PATH)',
+      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/lab/voices", "/content/work", steps=40, seed=0, ref_voice=globals().get("REF_VOICE_PATH"))',
       '    INFO = {"engine": "irodori-colab", "model": job["recipe"]["model"], "seed": 0}',
       'print("ready:", INFO)',
     ].join('\n'), true),
