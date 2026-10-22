@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=2d02c0b6271b9c8a -->
+<!-- i18n: pair=reference.md sha256=5baaec095f2f77d6 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -346,7 +346,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 本文の「です・ます」（日本語） | エラー |
 | 組まれていない式、KaTeX のエラー | エラー |
 | デッキの中で「、。」と「，．」が混ざる（日本語） | 警告 |
-| 口述原稿のない段階 | 警告 |
+| 編集アプリのスライド一覧の雛形のまま（`kit/core/template-text.mjs`）：仮の印 `✎` で始まる口述原稿の行（`narrPlaceholder`）、雛形の字（「新しいスライドの見出し」「1 つ目の項目」など）のままのスライドの字（`templateText`）。仮の行は TTS が読み、字幕と読める層にも出るので、TTS（`tools/narration-json.mjs`・`tts/synth.py`）・`--portable`・`--play-only`・編集アプリの TTS と書き出しは先に一覧を出す | 警告 |
 | 古い音声：段階の音声がほかの口述原稿から作られている（`inputHash` が違うか `null`。`inputHash` がなければ TTS の控え `audio/seg_<digest>.json` で比べる）— `audio: stale` | 警告 |
 | 式を読み上げている口述原稿（発言ごとにその言語の規則で。下を参照。「Markdown と HTML」のように英字の名前を挙げるだけの日本語の文は式としない） | 警告 |
 | 1 ターンが 200 字（日本語）/ 60 語（ほかの言語）を超える | 情報 |

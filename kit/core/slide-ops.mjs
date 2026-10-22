@@ -8,13 +8,14 @@
 //   duplicateSlide(src, index, newId)        → {out, html}  その <section> を写して直後に入れる。写しの id は newId（data-key は外す）
 //   deleteSlide(src, index)                  → 文字列
 //   moveSlide(src, from, to)                 → 文字列     from 番目を to 番目へ（ほかのスライドの順はそのまま）
-//   slideTemplate(kind, {lang, id})          → {html, heading, steps}   新しいスライドの雛形（TEMPLATES の名前）。steps：口述原稿の段階
+//   slideTemplate(kind, {lang, id})          → {html, heading, steps}   新しいスライドの雛形（TEMPLATES の名前）。steps：口述原稿の段階と仮の行（「✎ 」で始まる）
 //   narration：sectionsOf(text)・insertSection(text, order, key, lines)・copySections(text, fromKey, slide)・removeSections(text, key)・reorderSections(text, order)
 //   manifest：removeAudio(text, slideKey) → {out, removed: {鍵: 記録}, files: [もう使われない audio/ の下のファイル]}
 //   newIdFor(src, rand?)                     → 文書のどの id・スライドの鍵とも重ならない s-xxxxxx
 import { parse } from 'parse5';
 import { analyzeSlideIds } from './build-core.mjs';
 import { newSlideId, headingLine, parseHeading, splitKey } from './narration-core.mjs';
+import { TEMPLATE_TEXT, placeholderLine } from './template-text.mjs';
 
 export const TEMPLATES = ['title-body', 'two-cols', 'figure', 'section', 'quote'];
 
@@ -159,43 +160,29 @@ export function newIdFor(src, rand) {
 }
 
 // ---------------------------------------------------------------- 新しいスライドの雛形（kit/layouts.css にある体裁だけ）
-const TPL = {
-  ja: {
-    'title-body': { h: '新しいスライド', li: ['1 つ目の項目', '2 つ目の項目'], concl: '⇒ このスライドの結論', n: '（ここにこのスライドで話すことを書きます）', ni: ['（1 つ目の項目で話すことを書きます）', '（2 つ目の項目で話すことを書きます）'], nc: '（結論の行で話すことを書きます）' },
-    'two-cols': { h: '2 つを比べる', a: '左の列', b: '右の列', concl: '⇒ 比べて分かること', n: '（左と右を比べて話します）', nc: '（結論の行で話すことを書きます）' },
-    figure: { h: '図の題', fig: '図をここに', cap: '図 1：図の説明', concl: '→ 図から読み取れること', n: '（図を指しながら話すことを書きます）', nc: '（結論の行で話すことを書きます）' },
-    section: { h: '新しい章', lead: 'この章で話すこと', n: '（ここから新しい章です）' },
-    quote: { h: '引用', q: '「引用する文をここに書きます」', cite: '— 出典', n: '（引用を読み上げ、何を言っているかを話します）' },
-  },
-  en: {
-    'title-body': { h: 'New slide', li: ['First point', 'Second point'], concl: '⇒ The point of this slide', n: '(Write what you say on this slide here.)', ni: ['(Write what you say with the first point.)', '(Write what you say with the second point.)'], nc: '(Write what you say with the conclusion line.)' },
-    'two-cols': { h: 'Compare two things', a: 'Left column', b: 'Right column', concl: '⇒ What the comparison shows', n: '(Compare the left and the right.)', nc: '(Write what you say with the conclusion line.)' },
-    figure: { h: 'Figure title', fig: 'Figure goes here', cap: 'Figure 1: what it shows', concl: '→ What the figure shows', n: '(Point at the figure and explain it.)', nc: '(Write what you say with the conclusion line.)' },
-    section: { h: 'New chapter', lead: 'What this chapter covers', n: '(A new chapter starts here.)' },
-    quote: { h: 'Quote', q: '“Write the quoted text here.”', cite: '— Source', n: '(Read the quote and say what it means.)' },
-  },
-};
 export function slideTemplate(kind, { lang = 'ja', id }) {
-  const t = (lang === 'en' ? TPL.en : TPL.ja)[kind];
+  // 字は kit/core/template-text.mjs（品質チェックが雛形のままの字と仮の口述原稿を見つけるのと同じもの）
+  const t = (lang === 'en' ? TEMPLATE_TEXT.en : TEMPLATE_TEXT.ja)[kind];
   if (!t) throw new Error('unknown slide template: ' + kind);
+  const P = placeholderLine;
   const sid = ` id="${id}"`;
   let html, steps;
   if (kind === 'title-body') {
     html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <ul>\n${t.li.map((x) => `      <li>${x}</li>`).join('\n')}\n    </ul>\n  </div>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
     // 本文の直下の箇条は 1 つずつステップになる（kit/deck.js の autoList）
-    steps = [['0', t.n], ['1', t.ni[0]], ['2', t.ni[1]], ['concl', t.nc]];
+    steps = [['0', P(t.n)], ['1', P(t.ni[0])], ['2', P(t.ni[1])], ['concl', P(t.nc)]];
   } else if (kind === 'two-cols') {
-    html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <div class="cols">\n      <div><p class="sub">${t.a}</p><ul><li>…</li></ul></div>\n      <div><p class="sub">${t.b}</p><ul><li>…</li></ul></div>\n    </div>\n  </div>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
-    steps = [['0', t.n], ['concl', t.nc]];
+    html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <div class="cols">\n      <div><p class="sub">${t.a}</p><ul><li>${t.la}</li></ul></div>\n      <div><p class="sub">${t.b}</p><ul><li>${t.lb}</li></ul></div>\n    </div>\n  </div>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
+    steps = [['0', P(t.n)], ['concl', P(t.nc)]];
   } else if (kind === 'figure') {
     html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <div class="fig"><svg viewBox="0 0 1184 360" role="img" aria-label="${t.fig}"><rect x="2" y="2" width="1180" height="356" rx="12" style="fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:12 8"/><text x="592" y="190" text-anchor="middle" style="fill:var(--muted);font-size:32px">${t.fig}</text></svg></div>\n    <p class="figcap">${t.cap}</p>\n  </div>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
-    steps = [['0', t.n], ['concl', t.nc]];
+    steps = [['0', P(t.n)], ['concl', P(t.nc)]];
   } else if (kind === 'section') {
     html = `<section class="slide sec noconcl static"${sid}>\n  <h1>${t.h}</h1>\n  <div class="lead">${t.lead}</div>\n</section>`;
-    steps = [['0', t.n]];
+    steps = [['0', P(t.n)]];
   } else {
     html = `<section class="slide noconcl"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <div class="box" style="font-size:36px;line-height:1.6;margin-top:48px;padding:28px 36px">${t.q}</div>\n    <p class="cite" style="text-align:right;font-size:24px">${t.cite}</p>\n  </div>\n</section>`;
-    steps = [['0', t.n]];
+    steps = [['0', P(t.n)]];
   }
   return { html, heading: t.h, steps };
 }

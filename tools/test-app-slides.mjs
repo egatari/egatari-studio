@@ -17,6 +17,9 @@ import { readPortable } from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { silentWav } from './portable-fixtures.mjs';
+import { spawnSync } from 'node:child_process';
+import { slideTemplate, insertSlide, insertSection, newIdFor } from '../kit/core/slide-ops.mjs';
+import { TEMPLATE_DEFAULTS } from '../kit/core/template-text.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -44,7 +47,33 @@ const filesOf = (dir) => {
   return out;
 };
 
+// 品質チェック（kit/check.mjs）：雛形ごとに 1 枚足した原稿で、雛形の字（templateText）と仮の口述原稿（narrPlaceholder）が警告になり、書き換えると消える
+function checkTemplates(work, ok) {
+  const d = makeDeck(path.join(work, 'slides-check'));
+  let deck = fs.readFileSync(path.join(d, 'deck.html'), 'utf8'), narr = fs.readFileSync(path.join(d, 'narration.md'), 'utf8');
+  const ids = [];
+  for (const kind of TEMPLATES) {
+    const id = newIdFor(deck), t = slideTemplate(kind, { lang: 'ja', id });
+    deck = insertSlide(deck, analyzeSlideIds(deck).slides.length - 1, t.html);
+    narr = insertSection(narr, analyzeSlideIds(deck).slides.map((s) => s.key), id, [`## ${t.heading} {#${id}}`, ...t.steps.map(([k, x]) => `[${k}] ${x}`)]);
+    ids.push(id);
+  }
+  const run = () => { const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(d, 'deck.html'), '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 }); try { return JSON.parse(r.stdout); } catch { return { results: [], err: r.stderr }; } };
+  fs.writeFileSync(path.join(d, 'deck.html'), deck);
+  fs.writeFileSync(path.join(d, 'narration.md'), narr);
+  const r1 = run();
+  const of = (code) => r1.results.filter((x) => x.code === code);
+  ok(of('templateText').map((x) => x.id).join() === ids.join() && of('templateText').every((x) => x.sev === 'warn'), `check: a fresh slide from each template has a templateText warning (${of('templateText').length}) ${r1.err || ''}`);
+  ok(of('narrPlaceholder').length === 10 && of('narrPlaceholder').every((x) => x.sev === 'warn' && ids.includes(x.id) && /仮の行/.test(x.msg)), `check: every placeholder narration line is a narrPlaceholder warning (${of('narrPlaceholder').length})`);
+  for (const t of TEMPLATE_DEFAULTS) deck = deck.split(t).join('自分の文 ' + t.length);
+  fs.writeFileSync(path.join(d, 'deck.html'), deck);
+  fs.writeFileSync(path.join(d, 'narration.md'), narr.replace(/✎ [^\n]*/g, '自分の口述原稿です。'));
+  const r2 = run();
+  ok(r2.results.length > 0 && !r2.results.some((x) => x.code === 'templateText' || x.code === 'narrPlaceholder'), 'check: rewriting the text and the narration clears both warnings');
+}
+
 export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir }) {
+  checkTemplates(work, ok);
   const dir = makeDeck(path.join(work, 'slides-min'));
   const portable = await buildPortable(path.join(dir, 'deck.html'), { out: path.join(work, 'slides-min' + FORMAT.FILE_EXT) });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
@@ -153,11 +182,62 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
           `${tag}: add "${kind}" adds a narration section "## … {#${id}}" with a placeholder line, after the previous slide's section`);
         ok(await checkShown() && (await sl()).sel === sel + 1 && (await state()).pos && (await state()).pos.i === sel + 1, `${tag}: add "${kind}": rebuilt, the preview shows the new slide, the quick check ran`);
         const errs = await page.$$eval('#panel-body .res.error', (xs) => xs.map((x) => x.textContent));
-        const mine = await page.$$eval('#panel-body .res', (xs, n) => xs.filter((x) => x.querySelector('.where').textContent.startsWith(`スライド ${n}：`)).map((x) => x.textContent), sel + 2);
-        ok(errs.length === 0 && mine.length === 0, `${tag}: add "${kind}": the quick check has no errors, and nothing on the new slide (every step has a placeholder line) ${JSON.stringify([errs, mine])}`);
+        const mine = await page.$$eval('#panel-body .res', (xs, n) => xs.filter((x) => x.querySelector('.where').textContent.startsWith(`スライド ${n}：`)).map((x) => [x.classList.contains('warn') ? 'warn' : 'other', x.textContent]), sel + 2);
+        const nSteps = sec.length;
+        ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /雛形の字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
+          `${tag}: add "${kind}": no errors; the new slide gets the template warnings only (template text 1, placeholder narration ${nSteps})${errs.length || mine.length !== nSteps + 1 ? ' ' + JSON.stringify([errs, mine]) : ''}`);
+        ok(sec.every((g) => g.turns.length === 1 && g.turns[0].raw.startsWith('✎ ')), `${tag}: add "${kind}": every placeholder line starts with the fixed mark "✎ "`);
         if (kind === 'title-body') ok(/足しました/.test(await announced()), `${tag}: the add is announced (aria-live)`);
         added.push(id);
         if (mode === 'folder' && kind === 'figure') await shot('slides-add.png');
+      }
+
+      // ---------------------------------------------------------------- 2b. 雛形のまま：書き換えると警告が消える・TTS と書き出しの前に見せる
+      if (mode === 'folder') {
+        const id = added[added.length - 1], cur = await snap();
+        // TTS の前：仮の行の段階で「TTS で作る」を押すと窓が出る。取消なら合成しない
+        await page.evaluate(() => { window.__synth = 0; window.__APP_TEST.tts = { info: () => ({ ok: true, label: 'stub' }), synth: async () => { window.__synth++; throw new Error('stub'); } }; });
+        await page.evaluate((i) => window.__APP_TEST.state() && document.getElementById('preview').contentWindow.postMessage({ type: 'app-go', i, k: 0 }, '*'), keys(cur.deck).indexOf(id));
+        await page.waitForFunction((i) => (window.__APP_TEST.state().pos || {}).i === i, keys(cur.deck).indexOf(id), { timeout: 10000 });
+        await page.click('#b-audio');
+        await page.waitForSelector('#dev-audio-tts:not([disabled])', { timeout: 10000 });
+        await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #left-list', { timeout: 2500 }));
+        const ttsDlg = await page.textContent('#dlg');
+        ok(/雛形の仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
+        await clickDlg(page, '#dlg-cancel');
+        ok(await page.evaluate(() => window.__synth) === 0, `${tag}: Cancel in the TTS warning synthesizes nothing`);
+        await page.click('#b-audio');
+        // 書き出しの前：雛形の字と仮の行の一覧。取消なら書かない、「このまま書き出す」なら書く
+        await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('slides-export.ega.html', { create: true }); const w = await window.__APP_TEST.saveHandle.createWritable(); await w.write(''); await w.close(); });
+        await clickMenuOpen(page, '#b-exportmenu');
+        await clickMenuItem(page, '#b-export-portable');
+        await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
+        const exDlg = await page.$$eval('#left-list li', (xs) => xs.map((x) => x.textContent));
+        ok(exDlg.some((t) => /雛形の字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
+        await clickDlg(page, '#dlg-cancel');
+        await page.waitForTimeout(300);
+        ok(await page.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size) === 0, `${tag}: Cancel in the export warning writes nothing`);
+        await clickMenuOpen(page, '#b-exportmenu');
+        await clickMenuItem(page, '#b-export-portable');
+        await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
+        await clickDlg(page, '#dlg-go');
+        await page.waitForFunction(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 0, null, { timeout: 30000 });
+        ok(true, `${tag}: “Export anyway” exports the file`);
+        // 書き換える：その枚の雛形の字と仮の行をすべて自分の文に
+        const T = await import('../kit/core/template-text.mjs');
+        let deck2 = cur.deck;
+        for (const d of T.TEMPLATE_DEFAULTS) deck2 = deck2.split(d).join('自分の文 ' + d.length);
+        const narr3 = cur.narr.replace(/✎ [^\n]*/g, '自分の口述原稿です。');
+        const b0 = (await state()).builds;
+        await page.evaluate(async ([deck, narr]) => {
+          for (const [rel, text] of [['deck.html', deck], ['narration.md', narr]]) { const w = await (await window.__sd.getFileHandle(rel)).createWritable(); await w.write(text); await w.close(); }
+        }, [deck2, narr3]);
+        await page.evaluate(() => window.__APP_TEST.rebuild());
+        await page.waitForFunction((b0) => { const s = window.__APP_TEST.state(); return s.builds > b0 && s.frameLoaded === s.loads; }, b0, { timeout: 30000 });
+        await page.click('#b-check');
+        await page.waitForSelector('#panel-body .sum');
+        const left = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent).filter((t) => /雛形/.test(t)));
+        ok(left.length === 0, `${tag}: rewriting the template text and the placeholder lines clears the warnings ${JSON.stringify(left)}`);
       }
 
       // ---------------------------------------------------------------- 3. 複製（口述原稿は写し、音声は写さない）

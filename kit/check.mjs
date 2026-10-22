@@ -7,7 +7,7 @@
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
 //    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
-// B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン
+// B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン・雛形のままの仮の行とスライドの字（警告）
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
 // E. タイムラインの長さの一覧
@@ -41,6 +41,7 @@ import { message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { layoutScan, CLIP_ATTR } from './core/layout-scan.mjs';
+import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -384,6 +385,13 @@ for (const o of orphanSteps(built.segs, stepMeta)) {
     : { ja: (max ? `0〜${max}` : '0 だけ') + st, en: (max ? `steps 0–${max}` : 'step 0 only') + stEn };
   report(i, 'error', 'narrOrphan', { step: o.stepKey, line: o.line, end: o.end, range, static: meta[i].static, ...orphanDetail(o, stepMeta[i], narrText), comps: badComps.get(i) || [] }, o.stepKey);
 }
+// 雛形のまま（kit/core/template-text.mjs。編集アプリのスライド一覧が足した雛形）：仮の口述原稿の行（「✎ 」）と、スライドに残った雛形の字。
+// 直し忘れると TTS が読み、字幕・読める層にも出るので知らせる（警告。止めない）
+for (const p of placeholderSteps(narrText)) {
+  const i = meta.findIndex((m) => m.key === p.slideKey);
+  if (i >= 0) report(i, 'warn', 'narrPlaceholder', { line: p.line, t: p.text }, p.stepKey);
+}
+for (const t of templateTextIn(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) if (meta[t.index]) report(t.index, 'warn', 'templateText', { list: t.texts.map((x) => `「${x}」`).join(''), listEn: t.texts.map((x) => `“${x}”`).join(', '), n: t.texts.length });
 // 読みの指定 {x|y} は 1 つの記号か用語だけ（式や記号の組を 1 つの読みにしない）
 for (const seg of built.segs) {
   const i = meta.findIndex((m) => m.key === seg.slideKey);

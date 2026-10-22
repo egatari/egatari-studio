@@ -28,6 +28,7 @@ import { rightsOf } from './rights.js';
 import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState } from '../kit/core/portable.mjs';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
+import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
@@ -590,6 +591,7 @@ const audio = createAudioPanel({
   ws: () => S.ws, generation: () => S.gen,
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
+  beforeTts: (keys) => leftoverGate('tts', keys),   // 雛形の仮の行（✎）のままの段階を、TTS の前に見せる
   // 音声の板の「録音モード (r)」のボタン（ツールバーには置かない：1 行に収まらなくなる）
   recMode: { label: T.recBtn, title: T.recTip, open: () => rec.open().then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
@@ -762,6 +764,13 @@ async function quickCheck() {
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
+  // 雛形のまま（スライド一覧の雛形の字・仮の口述原稿「✎ 」。kit/core/template-text.mjs。kit/check.mjs と同じ）：作業場所の原稿から
+  {
+    const left = await leftovers();
+    const title = (i) => (i === null || !S.slides[i] ? '' : S.slides[i].heading || '');
+    for (const x of left.slides) results.push({ sev: 'warn', code: 'templateText', arg: x.texts.join('」「'), i: x.index, title: title(x.index) });
+    for (const p of left.steps) { const i = (S.slides || []).findIndex((x) => x.key === p.slideKey); results.push({ sev: 'warn', code: 'narrPlaceholder', arg: p.stepKey, i: i < 0 ? null : i, title: title(i < 0 ? null : i) }); }
+  }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
@@ -776,6 +785,36 @@ async function quickCheck() {
     ...(results.length ? [llm.fixButton(results)] : []),
     ...items,
   ]);
+}
+// ---------------------------------------------------------------- 雛形のまま（kit/core/template-text.mjs）：品質チェック・TTS の前・書き出しの前
+// 作業場所の原稿（deck.html）と口述原稿から、スライド一覧の雛形の字と仮の口述原稿の行（「✎ 」）を探す。読めなければ何もないことにする
+async function leftovers() {
+  if (!S.ws) return { steps: [], slides: [] };
+  let deck = null, narr = null;
+  try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }); } catch { deck = null; }
+  try { narr = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }); } catch { narr = null; }
+  try { return draftLeftovers(deck, narr); } catch { return { steps: [], slides: [] }; }
+}
+// 見せて、続けるかを聞く（kind：'tts' | 'export'。keys：TTS で作る段階の鍵（null ならすべて））。何もなければ聞かずに true
+async function leftoverGate(kind, keys = null) {
+  const L = await leftovers();
+  const want = keys ? new Set(keys) : null;
+  const steps = L.steps.filter((p) => !want || want.has(`${p.slideKey}:${p.stepKey}`));
+  const slides = kind === 'export' ? L.slides : [];
+  if (!steps.length && !slides.length) return true;
+  const idx = (key) => (S.slides || []).findIndex((x) => x.key === key);
+  const head = (i) => (i >= 0 && S.slides[i] ? S.slides[i].heading || '' : '');
+  const lines = [
+    ...slides.map((x) => T.leftSlide(x.index + 1, head(x.index), x.texts)),
+    ...steps.map((p) => { const i = idx(p.slideKey); return T.leftStep(i + 1, head(i), p.stepKey, p.text); }),
+  ];
+  const MAX = 8;
+  const v = await ask({ title: kind === 'tts' ? T.leftTitleTts : T.leftTitleExport, kind: 'warn', body: [
+    el('p', { id: 'left-lead', text: kind === 'tts' ? T.leftLeadTts : T.leftLeadExport }),
+    el('ul', { id: 'left-list' }, [...lines.slice(0, MAX).map((t) => el('li', { text: t })), ...(lines.length > MAX ? [el('li', { text: T.leftMore(lines.length - MAX) })] : [])]),
+    el('p', { cls: 'hint', text: T.leftHint })],
+  buttons: [{ id: 'cancel', label: T.cancel, pri: true }, { id: 'go', label: kind === 'tts' ? T.leftGoTts : T.leftGoExport }] });
+  return v === 'go';
 }
 function showWarnings() {
   // 見つからないテーマの知らせには「テーマのフォルダを選ぶ…」（前に選んだものがあれば「使う」）
@@ -1224,6 +1263,7 @@ async function exportFolder(ws = S.ws) {
 // ---------------------------------------------------------------- フォルダのデッキを持ち運べる 1 ファイルに書き出す
 async function exportPortableFile() {
   if (!S.ws || S.portable) return;
+  if (!(await leftoverGate('export'))) return;
   const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
   let r;
@@ -1255,6 +1295,8 @@ async function exportPlayOnlyFile(room = null) {
   const ws0 = S.ws, g0 = S.gen, P = S.portable;
   const live = () => S.ws === ws0 && S.gen === g0;
   if (P && ws0.dirty) { toast(T.playOnlyUnsaved, true); return; }
+  if (!(await leftoverGate('export'))) return;
+  if (!live()) return;
   status(T.exporting);
   let html, name, writes = {};
   try {

@@ -46,6 +46,7 @@ const ja = {
   checkMsg: (c, a) => ({
     titleLong: `タイトル ${a} 字（26 字まで）`, titleLongEn: `タイトル ${a} 文字（60 文字まで）`, conclLong: `結論の行 ${a} 字（35 字まで）`, conclLongEn: `結論の行 ${a} 文字（70 文字まで）`,
     conclOverflow: '結論の行が枠からはみ出す', overflowBottom: `本文が下にはみ出す（${a}px）`, overflowRight: `本文が右にはみ出す（${a}px）`, smallText: `文字が小さい ${a}`,
+    narrPlaceholder: `口述原稿が雛形の仮の行（✎）のまま（ステップ ${a}。TTS はこのまま読み、字幕にも出る）`, templateText: `雛形の字のまま：「${a}」`,
     katexError: 'KaTeX エラーが残っている', noNarration: `口述原稿が無い（段階 ${a}）`, contrast: `コントラストが低い：${a}`, audioStale: `音声が古い（段階 ${a}。「音声」で録り直すか作り直す）`,
   }[c] || c),
   exporting: '書き出し中…', exportFailed: '書き出せませんでした', exported: (t, mb) => `${t} 書き出しました（${mb} MB）`, exportedToast: '組み立てた HTML に書き出しました（再生だけ。原稿は入りません）。ダブルクリックで開けます',
@@ -276,6 +277,14 @@ const ja = {
     nothingToKeep: 'この段階にはまだ音声がありません。Space で録音するか、右の矢印で飛ばします', atFirst: '最初の段階です', atLast: '最後の段階です。すべて見終わりました',
     retakeDiscarded: '今のテイクを捨てました。Space でもう一度録音', nothingToRetake: '取り直すテイクがありません（このモードで録った音声だけ取り直せます）', retakeDone: '前の音声に戻しました。Space で録音', retakeFail: '前の音声に戻せませんでした',
   },
+  // 雛形のまま（kit/core/template-text.mjs）：TTS の前・書き出しの前に見せる窓
+  leftTitleTts: '雛形のままの口述原稿があります', leftTitleExport: '雛形のままのところがあります',
+  leftLeadTts: '次のステップの口述原稿は、スライド一覧の雛形の仮の行（✎）のままです。このまま作ると、TTS がこの文を読み上げます。',
+  leftLeadExport: '次のところは、スライド一覧の雛形のままです。このまま書き出すと、仮の文がスライド・字幕・読める層に入ります。',
+  leftSlide: (n, h, list) => `スライド ${n}「${h}」：雛形の字 ${list.map((x) => '「' + x + '」').join('')}`,
+  leftStep: (n, h, k, t) => `スライド ${n}「${h}」のステップ [${k}]：${t}`,
+  leftMore: (n) => `ほか ${n} か所`, leftHint: '直すには、品質チェックの警告からそのスライドへ行き、口述原稿（n）か編集（e）で書き換えます。続けることもできます。',
+  leftGoTts: 'このまま作る', leftGoExport: 'このまま書き出す',
   // スライド一覧（app/slides-panel.js。backlog #79）
   slidesBtn: 'スライド一覧', slidesTip: 'スライド一覧を開く：スライドを足す・複製する・消す・並べ替える',
   sl: {
@@ -333,6 +342,7 @@ const en = {
   checkMsg: (c, a) => ({
     titleLong: `title is ${a} units (max 26)`, titleLongEn: `title is ${a} characters (max 60)`, conclLong: `conclusion is ${a} units (max 35)`, conclLongEn: `conclusion is ${a} characters (max 70)`,
     conclOverflow: 'conclusion overflows its box', overflowBottom: `body overflows at the bottom (${a}px)`, overflowRight: `body overflows to the right (${a}px)`, smallText: `text too small ${a}`,
+    narrPlaceholder: `narration is still the template placeholder (✎) (step ${a}; TTS reads it as is and it shows in the captions)`, templateText: `template text left: “${a}”`,
     katexError: 'KaTeX error left in the slide', noNarration: `no narration (step ${a})`, contrast: `low contrast: ${a}`, audioStale: `stale audio (step ${a}; record it again or regenerate it in Audio)`,
   }[c] || c),
   exporting: 'Exporting…', exportFailed: 'Could not export', exported: (t, mb) => `${t} exported (${mb} MB)`, exportedToast: 'Exported the built HTML (play only, without the source). Double-click it to open.',
@@ -561,6 +571,14 @@ const en = {
     nothingToKeep: 'This step has no audio yet. Press Space to record, or the right arrow to skip it', atFirst: 'This is the first step', atLast: 'This is the last step. All steps are done',
     retakeDiscarded: 'Discarded the take. Space to record again', nothingToRetake: 'No take to redo (only audio recorded in this mode can be redone)', retakeDone: 'Back to the previous audio. Space to record', retakeFail: 'Could not go back to the previous audio',
   },
+  // Template leftovers (kit/core/template-text.mjs): shown before TTS and before exporting
+  leftTitleTts: 'Some narration is still the template placeholder', leftTitleExport: 'Some template text is left',
+  leftLeadTts: 'The narration of these steps is still the slide list’s template placeholder (✎). If you go on, TTS reads it aloud.',
+  leftLeadExport: 'These parts are still the slide list’s template. If you export now, the placeholder text goes into the slides, the captions and the readable layer.',
+  leftSlide: (n, h, list) => `Slide ${n} “${h}”: template text ${list.map((x) => '“' + x + '”').join(', ')}`,
+  leftStep: (n, h, k, t) => `Slide ${n} “${h}”, step [${k}]: ${t}`,
+  leftMore: (n) => `${n} more`, leftHint: 'To fix them, go to the slide from the quality-check warning and rewrite the text with Narration (n) or Edit (e). You can also go on.',
+  leftGoTts: 'Make it anyway', leftGoExport: 'Export anyway',
   // Slide list (app/slides-panel.js, backlog #79)
   slidesBtn: 'Slides', slidesTip: 'Open the slide list: add, duplicate, delete and reorder slides',
   sl: {

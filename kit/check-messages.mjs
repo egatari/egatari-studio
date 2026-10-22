@@ -141,6 +141,9 @@ export const MESSAGES = {
   step0: { ja: (a) => `段階 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
   punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、デッキの多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the deck uses ${a.major}: use ${a.major} here too` },
   // ---------------------------------------------------------------- 口述原稿
+  // 雛形のまま（kit/core/template-text.mjs）：仮の口述原稿の行・スライドに残った雛形の字
+  narrPlaceholder: { ja: (a) => `口述原稿が雛形の仮の行のまま（narration.md ${a.line} 行目「${a.t}」）：話す言葉に書き換える（このままでは TTS が読み、字幕にも出る）`, en: (a) => `the narration is still the template placeholder (narration.md line ${a.line}, “${a.t}”): replace it with what you say (otherwise TTS reads it and it shows in the captions)` },
+  templateText: { ja: (a) => `雛形の字が残っている：${a.list}。自分の内容に書き換える`, en: (a) => `template text left on the slide: ${a.listEn}. Replace it with your own content` },
   narrMissing: { rule: 'R-narr-steps', ja: (a) => `この段階の口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（その段階で現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
   narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
   narrLang: { ja: (a) => `口述原稿の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the narration language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },

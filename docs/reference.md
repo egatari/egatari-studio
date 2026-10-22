@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4f05cebeb6ad2014 -->
+<!-- i18n: pair=reference.ja.md sha256=39d4e40986a3d5a4 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -347,6 +347,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | unrendered math or KaTeX errors | error |
 | mixed punctuation 、。 vs ，． across the deck (Japanese) | warn |
 | a step without narration | warn |
+| template leftovers from the editor's slide list (`kit/core/template-text.mjs`): a narration line that still starts with the placeholder mark `✎` (`narrPlaceholder`), or slide text still equal to a template default such as “New slide heading” or “First point” (`templateText`). TTS would read the placeholder and it would show in the captions and the readable layer, so TTS (`tools/narration-json.mjs`, `tts/synth.py`), `--portable` / `--play-only` and the editor's TTS and exports list them first | warn |
 | stale audio: a step's audio was made from other narration (`inputHash` differs or is `null`; without `inputHash`, the TTS cache record `audio/seg_<digest>.json` is compared) — `audio: stale` | warn |
 | narration that reads a formula (each turn by the rules of its language, see below; a Japanese sentence that only names things in Latin letters, such as “Markdown と HTML”, is not a formula) | warn |
 | turn > 200 characters (Japanese) / > 60 words (other languages) | info |

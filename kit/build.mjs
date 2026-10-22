@@ -32,8 +32,9 @@ import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs
 import { FORMAT } from './core/format.mjs';
 import { exportName, titleOf } from './core/export-name.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
-import { readRegular, readRegularText, regularStat } from './bounded-read.mjs';
+import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
+import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -242,6 +243,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   if (opts.portable) {
     if (opts.dev) { console.error('--portable cannot be combined with --dev'); process.exit(1); }
+    // 雛形のまま（編集アプリのスライド一覧が足した雛形の字・仮の口述原稿「✎ 」）：書き出す前に知らせる（止めない。kit/core/template-text.mjs）
+    {
+      const rd = (p, max) => { try { return readRegularText(p, { max }).text; } catch { return null; } };
+      const left = draftLeftovers(rd(src, READ_LIMITS.source), rd(path.join(path.dirname(src), 'narration.md'), READ_LIMITS.narration));
+      const lines = leftoverLines(left);
+      if (lines.length) { console.error(`portable: warning: ${lines.length} template leftover(s); the file is written anyway / 雛形のままのところ（書き出しはする）:`); for (const l of lines) console.error('  ' + l); }
+    }
     let r;
     try { r = await buildPortable(src, { ...opts }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
     const out = path.resolve(opts.out || defaultPortableOut(src, opts.playOnly, r.index?.metadata?.title || titleOf(r.html)));

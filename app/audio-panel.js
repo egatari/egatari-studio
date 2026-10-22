@@ -537,7 +537,8 @@ export function createAudioPanel(o) {
   // 1 行（{cue} の部分）ずつ作り、行ごとに後処理（無音を削る・音量）をしてから、ターンの間に無音を入れてつなぐ（tts/synth.py と同じ）。
   // 日本語は読み辞書（tts/yomi.yaml。tts/yomi.py と同じ規則の app/yomi-data.js）を通した文を渡す
   // key を渡すとその段階を作り直す（前処理の版が古い段階の一覧から。選んだ段階だけ）。渡さなければ今の段階。戻り値：できたら true
-  async function regenerate(arg) {
+  // gated：呼び手が雛形の仮の行の確かめ（o.beforeTts）を済ませた（まとめて作り直すとき）
+  async function regenerate(arg, gated = false) {
     const fromList = typeof arg === 'string';
     if (busyMsg || !view || !o.tts) return false;
     if (!fromList && !view.seg) return false;
@@ -551,6 +552,9 @@ export function createAudioPanel(o) {
     const lang = ttsLang(vw);
     const info = o.tts.info(lang);
     if (!info.ok) { say(L.ttsNo + info.reason, true); return false; }
+    // 雛形の仮の行（✎）のままの口述原稿は、合成の前に知らせる（続けてもよい。kit/core/template-text.mjs）
+    if (!gated && o.beforeTts && !(await o.beforeTts([key]))) return false;
+    if (busyMsg || o.ws() !== ws || o.generation() !== g) return false;
     setBusy(L.processing);
     const prog = () => card && card.querySelector('#dev-audio-prog');
     const stopWait = o.wait ? o.wait() : () => {};
@@ -621,9 +625,10 @@ export function createAudioPanel(o) {
   async function regenerateOld(v) {
     if (busyMsg || rec) return;
     const N = o.oldNorm, keys = (v.oldNorm || []).filter((k) => picked.has(k));
+    if (keys.length && o.beforeTts && !(await o.beforeTts(keys))) return;
     let n = 0;
     for (const k of keys) {
-      if (!(await regenerate(k))) break;
+      if (!(await regenerate(k, true))) break;
       picked.delete(k); n++;
     }
     if (view) show(view.key, view.i);
@@ -673,6 +678,7 @@ export function createAudioPanel(o) {
     const C = o.colab.t, ws = o.ws(), g = o.generation(), v = view;
     const keys = scope === 'all' ? null : (v.need || []);
     if (keys && !keys.length) { say(C.noSteps, true); return; }
+    if (o.beforeTts && !(await o.beforeTts(keys))) return;   // 雛形の仮の行（✎）のまま（keys が null ならすべての段階）
     if (!(await o.colab.confirm(C.privacyTitle, C.privacyBody, C.privacyGo))) return;
     if (o.ws() !== ws || o.generation() !== g) return;
     try {

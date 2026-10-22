@@ -3,6 +3,8 @@
 //   node tools/test-slide-ops.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
@@ -11,6 +13,7 @@ import {
   slideChunks, insertSlide, duplicateSlide, deleteSlide, moveSlide, slideTemplate, TEMPLATES, newIdFor,
   insertSection, copySections, removeSections, reorderSections, stepsIn, removeAudio, audioKeysOf,
 } from '../kit/core/slide-ops.mjs';
+import { draftLeftovers, isPlaceholder, PLACEHOLDER_MARK, TEMPLATE_DEFAULTS, TEMPLATE_TEXT } from '../kit/core/template-text.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let n = 0;
@@ -135,6 +138,76 @@ ok('CRLF: the deck keeps CRLF through add, duplicate, delete and move', () => {
 ok('refuses a deck with a key collision', () => {
   const bad = '<div id="stage"><section class="slide"><h2>A</h2></section><section class="slide"><h2>A</h2></section></div>';
   assert.throws(() => moveSlide(bad, 0, 1), /slide key/);
+});
+
+// 雛形のまま（kit/core/template-text.mjs）：雛形ごとに 1 枚足した原稿と口述原稿
+function withTemplates(lang = 'ja') {
+  let deck = DECK, narr = NARR;
+  const ids = [];
+  for (const kind of TEMPLATES) {
+    const id = newIdFor(deck), t = slideTemplate(kind, { lang, id });
+    deck = insertSlide(deck, analyzeSlideIds(deck).slides.length - 1, t.html);
+    narr = insertSection(narr, keys(deck), id, [`## ${t.heading} {#${id}}`, ...t.steps.map(([k, x]) => `[${k}] ${x}`)]);
+    ids.push(id);
+  }
+  return { deck, narr, ids };
+}
+ok('template text: one fixed placeholder mark, the defaults listed in one place', () => {
+  assert.equal(PLACEHOLDER_MARK, '✎');
+  for (const kind of TEMPLATES) for (const lang of ['ja', 'en']) {
+    const t = slideTemplate(kind, { lang, id: 's-aaaaaa' });
+    assert.ok(t.steps.every(([, x]) => isPlaceholder(x) && x.startsWith('✎ ')), kind);
+    assert.ok(TEMPLATE_DEFAULTS.includes(TEMPLATE_TEXT[lang][kind].h));
+  }
+  assert.equal(isPlaceholder('本当の文'), false);
+  assert.deepEqual(draftLeftovers(DECK, NARR), { steps: [], slides: [] });
+});
+ok('template text: a fresh slide from each template is found (text and placeholder), rewriting clears it', () => {
+  for (const lang of ['ja', 'en']) {
+    const { deck, narr, ids } = withTemplates(lang);
+    const L = draftLeftovers(deck, narr);
+    assert.deepEqual(L.slides.map((x) => x.key), ids, lang);
+    assert.deepEqual([...new Set(L.steps.map((x) => x.slideKey))], ids, lang);
+    assert.equal(L.steps.length, 4 + 2 + 2 + 1 + 1);
+    let d2 = deck;
+    for (const t of TEMPLATE_DEFAULTS) d2 = d2.split(t).join('own ' + t.length);
+    const n2 = narr.replace(/✎ [^\n]*/g, 'own words');
+    assert.deepEqual(draftLeftovers(d2, n2), { steps: [], slides: [] });
+    // 一部だけ直すと、残りだけ
+    const L3 = draftLeftovers(deck, narr.replace(/✎ [^\n]*/, 'own words'));
+    assert.equal(L3.steps.length, L.steps.length - 1);
+  }
+});
+ok('template text: TTS (narration-json) and --portable / --play-only warn first and still run', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slide-ops-'));
+  try {
+    fs.cpSync(path.join(ROOT, 'examples/minimal'), dir, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(path.join(ROOT, 'examples/minimal'), x)) });
+    const { deck, narr } = withTemplates('ja');
+    fs.writeFileSync(path.join(dir, 'deck.html'), deck);
+    fs.writeFileSync(path.join(dir, 'narration.md'), narr);
+    const nj = spawnSync(process.execPath, [path.join(ROOT, 'tools/narration-json.mjs'), path.join(dir, 'narration.md')], { encoding: 'utf8' });
+    assert.equal(nj.status, 0);
+    const w = JSON.parse(nj.stdout).warnings.filter((x) => /✎/.test(x));
+    assert.equal(w.length, 10, nj.stderr);
+    assert.match(nj.stderr, /雛形の仮の行（✎）のまま/);
+    for (const flag of ['--portable', '--play-only']) {
+      const out = path.join(dir, 'x' + flag.slice(2) + '.html');
+      const b = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html'), flag, '-o', out], { encoding: 'utf8' });
+      assert.equal(b.status, 0, b.stderr);
+      assert.match(b.stderr, /15 template leftover\(s\)/, flag);
+      assert.match(b.stderr, /template placeholder \(✎\) left/);
+      assert.ok(fs.existsSync(out));
+      // stderr の知らせは書き出しの前（書き出しの行は stdout）
+    }
+    // 直すと何も言わない
+    let d2 = deck; for (const t of TEMPLATE_DEFAULTS) d2 = d2.split(t).join('own ' + t.length);
+    fs.writeFileSync(path.join(dir, 'deck.html'), d2);
+    fs.writeFileSync(path.join(dir, 'narration.md'), narr.replace(/✎ [^\n]*/g, '自分の文です。'));
+    const b2 = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html'), '--portable', '-o', path.join(dir, 'y.html')], { encoding: 'utf8' });
+    assert.equal(b2.status, 0); assert.doesNotMatch(b2.stderr, /template leftover/);
+    const nj2 = spawnSync(process.execPath, [path.join(ROOT, 'tools/narration-json.mjs'), path.join(dir, 'narration.md')], { encoding: 'utf8' });
+    assert.equal(JSON.parse(nj2.stdout).warnings.filter((x) => /✎/.test(x)).length, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 console.log(`slide-ops: ${n} ok`);
