@@ -1,5 +1,7 @@
 # Security
 
+See also the [threat model](docs/threat-model.md) (what is protected, from whom, and where each protection lives in the code).
+
 ## Trust model: a deck is code
 
 Treat a working folder like a source-code repository, not like a document. Build, check, render or serve only decks you trust.

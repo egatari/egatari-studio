@@ -1,0 +1,32 @@
+# Known vulnerabilities in the packages that ship (dependencies, not devDependencies).
+# Fails only for high or critical advisories in production dependencies; dev-only advisories are not looked at (--omit=dev).
+# A new advisory can appear without any change here, so it also runs weekly. The existing test workflow is not touched.
+name: audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '41 4 * * 1'   # Mondays, 04:41 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: npm audit (production dependencies, high and above)
+        run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,80 @@
+<!-- i18n: pair=threat-model.md sha256=f324e8406052ff34 -->
+# 脅威モデル
+
+[English](threat-model.md) | 日本語
+
+Egatari Studio が何を、誰から、どのコードで守っているかの短い地図。[SECURITY.md](../SECURITY.md)（仕組みと受け入れた残余リスクの全体）と [contract.ja.md](contract.ja.md) §11（Live）の要約で、食い違うときはそれらとコードが正しい。いま作ってあるものを書いたもので、将来の約束ではない。
+
+## 守るもの
+
+- デッキを開く・編集する・ビルドする人のコンピューター上のファイル（デッキの作業フォルダーの外、編集アプリ自身の保存領域とフォルダーのハンドル）。
+- 口述原稿などの教材の内容。この文書が示す場所以外では、手元の外に出ないこと。
+- Studio が作って配るものの完全性（編集アプリのサイト、リリースの資産、同梱の部品）。
+
+## 前提
+
+- 作業フォルダーはソースコードのリポジトリと同じに扱う。ビルド・検査・配信は、信頼できるデッキにだけ行う（[SECURITY.md](../SECURITY.md)「Trust model: a deck is code」）。
+- 手元のコンピューターと、そこで動く他のプロセスは信頼する。ツールの実行中に別のユーザーやプロセスがフォルダーを書き換えることは対象外（SECURITY.md「Residual risks」）。
+- コマンドラインや環境変数で自分が指定するもの（デッキのパス、`--theme`、`-o`、`EGATARI_THEMES`、`IRODORI_URL`）は信頼する。
+
+## 1. 作ったデッキ：プレビューの iframe の中の信頼できない HTML
+
+**脅威。** デッキ（や編集アプリに貼った AI の返答、ダウンロードした単一ファイル）は、インラインのスクリプトと部品を含む HTML である。ファイルの読み書き、ネットワークへの接続、編集 UI の操作、編集 UI のなりすましを試みうる。
+
+**入れてある対策。**
+- 編集中、デッキは不透明なオリジンの sandbox 付き iframe（`sandbox="allow-scripts allow-modals"`、`allow-same-origin` なし）で動き、Content-Security-Policy は `connect-src 'none'`、ほかの資源は `data:` / `blob:` に限る（編集アプリは `app/preview-doc.js` の `PREVIEW_CSP`、開発サーバーは `server/dev.mjs`。開発サーバーは自分の `/deck/audio/` も許す）。
+- デッキが送れるのはヒントだけ（`server/hints.js`）で、書き込む文字は運べない。編集 UI はデッキの外で動き、ソースを自分で読み、「保存」を押したときだけ書く。編集アプリは、コードを含むデッキを動かす前に確認し、「コードがあるか」は単一ファイルの申告ではなくビルド後の中身で決める（`kit/core/code-scan.mjs`）。
+- 読み込みは上限つきの読み手を通す（`kit/bounded-read.mjs`、`app/bounded-read.js`。`tools/test-raw-reads.mjs` が直接の読み込みを見張る）。ビルドは作業フォルダーの外に出るパス（`../`、絶対パス、シンボリックリンク）を断り、include・埋め込み・数式・全体の大きさに上限がある。書き込みは `kit/safe-fs.mjs` を通す。添付はダウンロード専用で、実行しない。
+- 編集アプリのページ自身は `eval` を禁じている（`'unsafe-eval'` なし）。
+
+**対策の外。** デッキ自身のコードはプレビューの中で動き、スライドの領域には何でも描ける（偽の編集カードも）。信頼できるのは編集アプリ自身のパネルの操作だけ。開発サーバーのデッキ文書と `PREVIEW_CSP` は、取り下げ済みの部品を動かし続けるため `'unsafe-eval'` を残している。資源の使い方は予算で縛るもので、プロセス全体のメモリや時間までは縛らない。`kit/check.mjs`・`tools/pdf.mjs`・`render/`・試験は、ヘッドレス Chrome でデッキのコードを動かす（SECURITY.md）ので、信頼できるデッキにだけ使う。
+
+## 2. 手元で開く再生専用ファイル
+
+**脅威。** 学ぶ人が、他人から受け取った `.ega.html` や再生専用の写し（`--play-only`）を `file:` で開く。
+
+**入れてある対策。** 再生専用の写しにはソースがなく、スライドと音声だけで、オフラインで再生できる。手元の素材は data URI として埋め込む。単一ファイルの添付は開かず実行もしない。再生器は、索引のハッシュ・大きさ・SHA-256 を確かめたうえで `application/octet-stream` としてダウンロードを出すだけ。実行ファイル・スクリプト・HTML・SVG・アーカイブ・マクロ付き Office ファイルは、詰める段階で断る（`kit/core/attach-content.mjs`）。
+
+**対策の外。** 再生専用ファイルも、開けばブラウザーの中でスクリプトが動くページである。写しの作者が名乗る人かどうかは、写しからは分からない。信頼できる人のファイルだけを開くか、sandbox つきの枠の中で開く。作者がデッキに残した `http(s)` の参照は取り除かれない（ビルドは、完全なオフラインではないと警告する）。添付を保存して開いた後のふるまいは Egatari の外。
+
+## 3. Live：ネットワークは時間の窓の中だけ
+
+**脅威。** サーバーにつなぐ教材ファイルは、参加者がいることや入力を漏らしたり、意図しないサーバーに向けられたりしうる。
+
+**入れてある対策**（`kit/core/live-policy.mjs`、`kit/live.js`、`kit/core/live.mjs`。contract.ja.md §11）。
+- 再生器を持つのは、Live の部屋つきで書き出した再生専用の写しだけ。ほかの出力は変わらない。
+- endpoint は、認証情報・パス・クエリ・フラグメントのない `https:` のオリジンでなければならない（`parseEndpoint`）。ループバックの `http:` を許すのは、試験が使う開発版だけ（`live-policy.mjs` の定数）。配る再生器・編集アプリの書き出し・`kit/build.mjs --live` は許さない。
+- 再生器がつなぐのは、参加する人が「参加する」を押した後、`inWindow` が真（窓。両端に 2 分のゆとり）のとき、最上位の `file:`・`content:`・`http(s):` の文書からだけ（`docContext`）。枠・sandbox の文書・編集アプリのプレビュー・開発サーバーのプレビューでは、つながずに部屋のアドレスを文字で見せる。迷ったらつながない。
+- 書き出したファイルには、CSP の `<meta>` がちょうど 1 つあり、その `connect-src` が endpoint の `https://` と `wss://` の形そのものでなければならない（`connectSrc`・`cspOk`。すでに CSP のあるファイルは `kit/core/live.mjs` が断る）。WebSocket の URL は endpoint と同じオリジンにしか作らない（`socketUrl`・`sameEndpoint`）。
+- つなぎ直しは窓の外では止まり（`plan` が `window_over`）、サーバーの停止の番号でも止まる。待ち時間はバックオフとゆらぎをつける。
+- 部屋の鍵は教材に残さない（`validate` が教材の `live.key` を断る）。書き出した写しだけに入る。参加用のリンクでは `#` の後ろに置くので、アドレスとしてサーバーには送られない（`joinUrl`）。
+
+**対策の外。** 書き出した写しを持つ人は鍵を持ち、窓の間は参加できる。漏れた写しは「参加コードを変える」で締め出す。部屋に送る内容（質問・投票）は、選んだ Live のサーバーに届く。その守りは、このリポジトリではなく [egatari/live](https://github.com/egatari/live) のもの。
+
+## 4. Colab での音声合成
+
+**脅威。** 口述原稿の文章が Google の環境に出ていく。返ってくる音声の zip は外から来たデータである。
+
+**入れてある対策**（docs/editor.md「Make the audio in Colab」、`kit/core/colab-core.mjs`）。
+- 書き出す前に 1 度、編集アプリが確認する。Colab では口述原稿が Google の環境で処理され、モデルのファイルは Hugging Face から来るため。`tts-job.json` に入るのは、読む文章・声の名前・各段階の `inputHash`・`docId`・目標のレシピだけ。
+- 返ってくる zip は信頼しない。確保の前に上限を確かめ（zip 512 MiB、音声 1 つ 64 MiB、`records.json` 4 MiB、段階は 400 まで）、zip64・暗号化・未知の圧縮は断る。読むのは `records.json` と `audio/<名前>.wav` だけで、名前を検査し、音声は記録の長さの WAV として復号できなければならず、zip の中身を HTML やコードとして解釈しない。編集アプリは、ノートブックを信じずに、いまの口述原稿から各 `inputHash` を計算し直し、ほかの教材のために作った zip（`docId` が違う）は断る。
+- ノートブックのリンクは、リリースのタグに固定してある。
+
+**対策の外。** Google と Hugging Face が文章やモデルのファイルをどう扱うか。Colab の確認は、docs に書いた 1 つの環境でしか取れていない。
+
+## 5. サプライチェーン
+
+**脅威。** 悪意のある・脆弱な依存・部品・ワークフローのアクションが、利用者やリリースに届く。
+
+**入れてある対策。**
+- 実行時の依存は少なく、`package.json` で版を固定し、CI は `package-lock.json` から `npm ci` で入れる。
+- レジストリの部品は [egatari/components](https://github.com/egatari/components) のリリースの写しを同梱する。`npm run components:update` は、リリースの `manifest.json`（SHA-256）と tarball・全ファイルを突き合わせ、すでにある版は置き換えない。ビルドは部品をネットワークから取らず、`npm run components:check`（`gen:check` の一部）が `vendor/components` と `components.lock.json` を比べる。取り下げ済みの版（v1.0.0・v1.0.1）は、警告つきでしかビルドせず、黙っては使わない。
+- 編集アプリのページは、MP3 エンコーダーを自分のサイトからしか読まない。ブラウザー内の音声合成のウィンドウ（`lab/tts-helper.html`）は、固定した版のライブラリーを jsDelivr から、モデルを Hugging Face から読む。編集アプリと同じオリジンで、lab ページと同じく信頼しているため、そこでの侵害されたファイルは編集アプリの保存領域に届きうる（SECURITY.md）。
+- GitHub のワークフローは、すべて最小権限の `permissions:` を宣言する。CodeQL（`codeql.yml`）、`npm audit --omit=dev --audit-level=high`（`audit.yml`）、OpenSSF Scorecard（`scorecard.yml`）、npm と GitHub Actions の Dependabot（`.github/dependabot.yml`）が、コードと依存を見張る。知らせるだけで、それ自体でリリースを止めない。
+- 編集アプリのサイトのリリースは、古い版の写しを組み立てる前に、リリースノートに記した sha256 と突き合わせる（`tools/site-versions.mjs`、RELEASING.ja.md）。
+
+**対策の外。** 開発用の依存は CI で監査していない。アクションはコミットのハッシュではなく版のタグで固定しているので、タグが動かされると、Dependabot かレビューが気づくまで取り込まれうる。Dependabot が出す更新も、人が読む必要がある。
+
+## 報告
+
+[SECURITY.md](../SECURITY.md#reporting-a-vulnerability) を見てください。

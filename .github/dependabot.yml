@@ -1,0 +1,14 @@
+# Weekly version updates for npm (package.json / package-lock.json) and for the actions used in .github/workflows.
+# Few open pull requests at a time; each one still goes through the normal test workflow.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2

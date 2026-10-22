@@ -1,0 +1,36 @@
+# OpenSSF Scorecard: checks the repository's security practices and uploads the result as SARIF (Security -> Code scanning).
+# publish_results sends the score to the public OpenSSF API (only for a public repository); the token is read-only.
+name: scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 5 * * 1'   # Mondays, 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF
+      id-token: write          # publish_results (OIDC)
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+          category: scorecard
