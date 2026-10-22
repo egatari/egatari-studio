@@ -130,7 +130,7 @@ const bare = await serve(OUT, { headers: false });   // a host that sends no hea
 const framer = await serve(work, { headers: false });
 const browser = await launch();
 async function page(url = site.url, opts = {}) {
-  const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1280, height: 800 }, serviceWorkers: opts.sw === false ? 'block' : 'allow' });
+  const ctx = await browser.newContext({ locale: 'ja-JP', viewport: opts.viewport || { width: 1280, height: 800 }, serviceWorkers: opts.sw === false ? 'block' : 'allow' });
   // no test reaches the network: anything but this machine is answered here (links opened in a new tab)
   await ctx.route(/^https?:\/\/(?!127\.0\.0\.1[:/])/, (r) => r.fulfill({ status: 200, contentType: 'text/plain', body: 'outside' }));
   const p = await ctx.newPage();

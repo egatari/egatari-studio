@@ -28,6 +28,11 @@ const SKIP = [
 
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
+  ['tools/build-play.mjs', "JSON.parse(fs.readFileSync(rel('package.json'), 'utf8'))", 'Egatari Play の組み立て：リポジトリの package.json（版）を読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'lesson-shim.js'), 'utf8')", 'Egatari Play の組み立て：リポジトリの play/lesson-shim.js を読む'],
+  ['tools/build-play.mjs', "files[f] = fs.readFileSync(rel('play', f))", 'Egatari Play の組み立て：リポジトリの play/ の決まったファイルを読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('assets', 'logo', f))", 'Egatari Play の組み立て：リポジトリの assets/logo の画像を読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'sw.js'), 'utf8')", 'Egatari Play の組み立て：リポジトリの play/sw.js を読む'],
   ['kit/build.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
   ['kit/build.mjs', "liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'), opts)", 'リポジトリの授業の部屋の再生器（kit/live.js と kit/core/live-policy.mjs）を読む'],
   ['tools/live-fake-server.mjs', "JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'fixtures',", '試験の部屋のサーバー：リポジトリの通信の約束の写し（vendor/）の試験用のデータを読む'],

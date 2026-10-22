@@ -10,6 +10,7 @@ import { openRecents } from './recents.mjs';
 import { startLive } from './live-host.mjs';
 import { linkBox } from './links.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
+import { readFileBoundedText } from '../app/bounded-read.js';
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -55,7 +56,7 @@ async function openFile(blob, name, opts = {}) {
   if (blob.size > MAX_BYTES) { showMsg(W().errTooLarge(MAX_BYTES / 1024 / 1024)); return false; }
   announce(W().reading);
   let text;
-  try { text = await blob.text(); } catch { showMsg(W().errRead); return false; }
+  try { text = (await readFileBoundedText(blob, { max: MAX_BYTES, what: 'lesson' })).text; } catch (e) { showMsg(e && e.code === 'read-over' ? W().errTooLarge(MAX_BYTES / 1024 / 1024) : W().errRead); return false; }
   const r = await scan(text);
   if (!r || !r.ok) { showMsg(r && r.error === 'not-egatari' ? W().errNotEgatari : W().errParse); return false; }
   const info = { name: String(name || 'lesson.ega.html').slice(0, 300), title: r.meta.title, kind: r.kind, docId: r.meta.docId };

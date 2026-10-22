@@ -6,6 +6,8 @@
 //     list()        → [{id, name, size, title, kind, openedAt}] newest first
 //     add(blob, info) info = {name, title, kind, docId}; the same name, size and docId replaces the older entry. Keeps MAX entries
 //     get(id)       → Blob | null
+import { readFileBoundedText } from '../app/bounded-read.js';
+
 const MAX = 10;
 const DIR = 'recent';
 const INDEX = 'index.json';
@@ -24,7 +26,7 @@ async function opfs() {
   let dir = await root.getDirectoryHandle(DIR, { create: true });
   const write = async (name, data) => { const h = await dir.getFileHandle(name, { create: true }); const w = await h.createWritable(); await w.write(data); await w.close(); };
   const readIndex = async () => {
-    try { const f = await (await dir.getFileHandle(INDEX)).getFile(); const v = JSON.parse(await f.text()); return Array.isArray(v) ? v.filter((e) => e && ID_RE.test(e.id)).map(clean) : []; } catch { return []; }
+    try { const f = await (await dir.getFileHandle(INDEX)).getFile(); const v = JSON.parse((await readFileBoundedText(f, { max: 1024 * 1024, what: 'recent index' })).text); return Array.isArray(v) ? v.filter((e) => e && ID_RE.test(e.id)).map(clean) : []; } catch { return []; }
   };
   const drop = async (id) => { try { await dir.removeEntry(id + '.html'); } catch { /* already gone */ } };
   // probe once: some browsers expose the API but refuse to write (private windows)
