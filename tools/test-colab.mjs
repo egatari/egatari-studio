@@ -424,20 +424,50 @@ ok('python and JS say the same notice', () => {
 ok('notebook: every install is pinned to COLAB_PINS (npm and pip), and cell 1 prints the environment (Python, Node, GPU/CUDA, CUDA libraries, pins)', () => {
   const nb = JSON.parse(notebook()), code = nb.cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
   const text = code.join('\n');
-  const pins = text.match(/^PINS = (\{.*\})/m);
-  assert.ok(pins, 'PINS in the notebook'); assert.deepEqual(JSON.parse(pins[1]), COLAB_PINS);
-  for (const [k, v] of Object.entries(COLAB_PINS)) assert.match(v, /^\d+\.\d+\.\d+$/, `${k} is an exact version`);
-  assert.equal(COLAB_PINS['onnxruntime'], COLAB_PINS['onnxruntime-gpu'], 'the CPU and GPU onnxruntime share one version');
+  const pins = text.match(/^PIN_SETS = (\{.*\})/m);
+  assert.ok(pins, 'PIN_SETS in the notebook'); assert.deepEqual(JSON.parse(pins[1]), COLAB_PINS);
+  assert.deepEqual(Object.keys(COLAB_PINS).sort(), ['cuda12', 'cuda13']);
+  for (const [set, p] of Object.entries(COLAB_PINS)) {
+    assert.deepEqual(Object.keys(p).sort(), ['@huggingface/transformers', 'kokoro-onnx', 'onnxruntime', 'onnxruntime-gpu', 'onnxruntime-node'], set);
+    for (const [k, v] of Object.entries(p)) assert.match(v, /^\d+\.\d+\.\d+$/, `${set} ${k} is an exact version`);
+    assert.equal(p['onnxruntime'], p['onnxruntime-gpu'], `${set}: the CPU and GPU onnxruntime share one version`);
+  }
+  assert.ok(/^PINS = PIN_SETS\[PIN_SET\]$/m.test(text) && /"→ pin set", PIN_SET/.test(text), 'the chosen set is used and printed');
   assert.ok(/npm i --silent " \+ " "\.join\(f"\{k\}@\{PINS\[k\]\}" for k in \["onnxruntime-node","@huggingface\/transformers"\]\)/.test(text), 'npm uses the pins');
   assert.ok(/uv pip install [^\n]*f"\{k\}==\{PINS\[k\]\}" for k in \["kokoro-onnx","onnxruntime-gpu","onnxruntime"\]/.test(text), 'pip uses the pins');
   assert.ok(!/npm i [^\n]*onnxruntime-node @huggingface/.test(text) && !/kokoro-onnx onnxruntime-gpu/.test(text), 'no unpinned install left');
   const c1 = code.find((c) => c.includes('#@title 1.'));
   const env = c1.slice(0, c1.indexOf('git", "clone'));
-  for (const re of [/"env: Python", sys\.version/, /"node", "--version"/, /nvidia-smi/, /CUDA Version/, /no nvidia-smi/, /libcublasLt/, /"env: pinned"/]) assert.match(env, re, 'cell 1 prints the environment before the clone and the installs');
+  for (const re of [/"env: Python", sys\.version/, /"node", "--version"/, /nvidia-smi/, /CUDA Version/, /no nvidia-smi/, /libcublasLt/, /ldconfig -p/, /pick_pin_set\(/, /"env: pinned"/]) assert.match(env, re, 'cell 1 prints the environment and picks the pin set before the clone and the installs');
   const c3 = code.find((c) => c.includes('#@title 3.'));
   assert.ok(/env: onnxruntime-node/.test(c3) && /provider libraries/.test(c3) && /Irodori providers in use/.test(c3) && /Kokoro providers in use/.test(c3));
   const gen = fs.readFileSync(path.join(ROOT, 'tools/make-colab-notebook.mjs'), 'utf8');
-  assert.ok(/CUDA 13/.test(gen) && /libcublasLt\.so\.13/.test(gen) && /更新の仕方/.test(gen), 'the pin says which CUDA it needs, why it exists and how to update it');
+  assert.ok(/CUDA 13/.test(gen) && /libcublasLt\.so\.13/.test(gen) && /libcublasLt\.so\.12/.test(gen) && /更新の仕方/.test(gen), 'the pin says which CUDA it needs, why it exists and how to update it');
+});
+ok('notebook: the pin set follows the CUDA libraries cell 1 finds (fake ldconfig and file lists): .so.13 → cuda13, only .so.12 → cuda12, no GPU or none found → cuda13', () => {
+  const c1 = JSON.parse(notebook()).cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('#@title 1.')).source.join('');
+  const defs = c1.match(/^def cublas_majors[\s\S]*?(?=^print\()/m);
+  assert.ok(defs, 'cublas_majors and pick_pin_set in cell 1');
+  const LD12 = '\\t3 libs found in cache\\n\\tlibcublasLt.so.12 (libc6,x86-64) => /usr/local/cuda/lib64/libcublasLt.so.12\\n\\tlibcublas.so.12 (libc6,x86-64) => /usr/local/cuda/lib64/libcublas.so.12\\n';
+  const LD13 = '\\tlibcublasLt.so.13 (libc6,x86-64) => /usr/local/cuda/lib64/libcublasLt.so.13\\n';
+  const py = `
+import re
+${defs[0]}
+assert cublas_majors("${LD12}", []) == ["12"]
+assert cublas_majors("${LD12}", ["libcublasLt.so.13", "libcublasLt.so.13.0.1", "libcublasLt.so"]) == ["12", "13"]
+assert cublas_majors("", ["libcublasLt.so.12.4.5.8", "libcublasLt.so.12"]) == ["12"]
+assert cublas_majors("libcublas.so.12 (libc6) => /x/libcublas.so.12", []) == []
+assert cublas_majors("${LD13}", []) == ["13"]
+assert pick_pin_set(["12"], True)[0] == "cuda12" and "CUDA 12" in pick_pin_set(["12"], True)[1]
+assert pick_pin_set(["13"], True)[0] == "cuda13"
+assert pick_pin_set(["12", "13"], True)[0] == "cuda13"
+assert pick_pin_set([], True)[0] == "cuda13"
+assert pick_pin_set(["12"], False)[0] == "cuda13" and "no GPU" in pick_pin_set(["12"], False)[1]
+print("ok")
+`;
+  const r = spawnSync('python3', ['-I', '-c', py], { encoding: 'utf8' });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (python3 not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
 });
 
 // ---------------------------------------------------------------- 核の dry-run（Python。uv があれば）

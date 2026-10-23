@@ -16,24 +16,39 @@ const REPO = `https://github.com/${COLAB.repo}`;
 // ---------------------------------------------------------------- Colab に入れる版の固定（ここだけ。npm と pip の行はこれを使う）
 // なぜ固定するか：版を書かずに入れると、Colab のイメージ（CUDA のライブラリ）と、その日の最新の版の組み合わせが黙って変わる。
 //   2026-10-21 は通ったが、2026-10-23 の講習では onnxruntime-node の CUDA の実行プロバイダが libcublasLt.so.13 を見つけられず止まった。
-// 選んだ版：2026-10-21 に作者が Colab の T4 で通したときに、版を書かない `npm i` / `uv pip install` が入れたもの（その日の最新。
-//   onnxruntime-node 1.30.0 は 2026-09-14、transformers 4.3.1 は 2026-10-06、onnxruntime(-gpu) 1.31.0 は 2026-10-09、kokoro-onnx 0.6.1 は 2026-08-19 に出て、
-//   2026-10-23 の時点でもどれもそれより新しい版はない）。transformers 4.3.1 は onnxruntime-node を 1.30.0 ちょうどで求めるので、node_modules に 1 つだけになる。
-//   lab/ のブラウザ版（tts-engine.mjs の TRANSFORMERS_VERSION 3.7.6）に合わせないのは、3.7.6 が onnxruntime-node 1.21.0 を別に入れ、通した組み合わせと変わるから。
-// CUDA の版：onnxruntime-node 1.30.0 の GPU は、postinstall が NuGet の Microsoft.ML.OnnxRuntime.Gpu.Linux 1.30.0 を落とす（中の名前は 'cuda12' のままだが、
-//   中身は CUDA 13 用：libcublasLt.so.13・libcublas.so.13、cuDNN 9）。PyPI の onnxruntime-gpu も 1.27.0 から CUDA 13（1.26.0 が CUDA 12 の最後）。
-//   つまり Colab のイメージに CUDA 13 のライブラリがなければ GPU は使えず、どちらも CPU で動く（Node は colab/ort-fallback.mjs、Kokoro は
-//   colab/egatari_tts.py の load_kokoro が、お知らせを 1 行出して CPU に切り替える）。
+// 版の組は 2 つあり、セル 1 が見つけた CUDA のライブラリで選ぶ（pick_pin_set）：libcublasLt.so.13 があれば cuda13、.so.12 だけなら cuda12、
+//   GPU がない・どちらも見つからないなら cuda13（CPU ではどちらも動く）。どちらの組でも、GPU で作れなければ CPU に切り替える（colab/ort-fallback.mjs・load_kokoro）。
+// 各パッケージがどの CUDA を要るか（2026-10-23 に確かめた）：
+//   onnxruntime-node の GPU は postinstall が NuGet の Microsoft.ML.OnnxRuntime.Gpu.Linux（同じ版）を落とす。中の名前はどの版も 'cuda12' だが、
+//   1.30.0 の libonnxruntime_providers_cuda.so は libcublasLt.so.13・libcublas.so.13（CUDA 13、cuDNN 9）を、1.24.3 と 1.26.0 は libcublasLt.so.12（CUDA 12）を求める。
+//   PyPI の onnxruntime-gpu は 1.27.0 から CUDA 13（nvidia-*-cu13）、1.26.0 が CUDA 12 の最後。
+// cuda13：2026-10-21 に作者が Colab の T4 で通したときに、版を書かない `npm i` / `uv pip install` が入れたもの（その日の最新）。
+//   transformers 4.3.1 は onnxruntime-node を 1.30.0 ちょうどで求めるので、node_modules に 1 つだけになる。
+// cuda12：onnxruntime-node は 1.24.3。CUDA 12 の 1.26.0 を求める transformers の版はなく（4.0.0〜4.2.0 は 1.24.3 ちょうど、4.3.x は 1.30.0、3.x は 1.21 以前）、
+//   1.26.0 にすると transformers の下にもう 1 つ（1.24.3。postinstall がまた NuGet を落とす）入るため。transformers 4.2.0 は 1.24.3 ちょうどを求める。
+//   Docker（linux/amd64、Node 20.19.0、GPU なし）で、同じモデル（HF_REV b75a9bb）を irodori_node.mjs で読み込み、CPU で短い合成が通り、
+//   トークナイザの結果が 4.3.1 と同じことを確かめた（linux/arm64、4 steps・seed 0）。同じ組なら音はバイト単位で同じだが、組の間では少し違う
+//   （cuda12 と cuda13 で最大の差 0.47、差の RMS 0.033（信号の RMS 0.143）、相関 0.973）。onnxruntime-gpu は CUDA 12 の最後の 1.26.0。
 // onnxruntime（CPU 版）は kokoro-onnx が求める。onnxruntime-gpu と同じ版にする（どちらも同じ onnxruntime のモジュールを置くので、版が違うと混ざる）。
-// 更新の仕方：(1) ここの版を替えて `npm run gen`、(2) ノートブックをそのブランチから開き（STUDIO_REF）、セル 1 の環境の行（CUDA・libcublasLt の版）と
-//   セル 3 の providers を見ながら Colab の GPU と CPU で通す、(3) kit/core/colab-core.mjs の COLAB_VERIFIED を直す。GPU を CUDA 12 のイメージで使いたいなら、
-//   onnxruntime-node は CUDA 12 用の版（NuGet の中身を確かめる）に、onnxruntime-gpu は 1.26.0 以前にする必要がある（transformers の求める版も見ること）
+// lab/ のブラウザ版（tts-engine.mjs の TRANSFORMERS_VERSION 3.7.6）に合わせないのは、3.7.6 が onnxruntime-node 1.21.0 を別に入れるから。
+// 更新の仕方：(1) ここの版を替えて `npm run gen`（transformers が求める onnxruntime-node の版と、NuGet の .so が求める libcublasLt の版を確かめる）、
+//   (2) ノートブックをそのブランチから開き（STUDIO_REF）、セル 1 の環境の行（CUDA のライブラリと選んだ組）とセル 3 の providers を見ながら Colab の GPU と CPU で通す、
+//   (3) kit/core/colab-core.mjs の COLAB_VERIFIED を直す
 export const COLAB_PINS = Object.freeze({
-  'onnxruntime-node': '1.30.0',
-  '@huggingface/transformers': '4.3.1',
-  'onnxruntime-gpu': '1.31.0',
-  'onnxruntime': '1.31.0',
-  'kokoro-onnx': '0.6.1',
+  cuda13: Object.freeze({
+    'onnxruntime-node': '1.30.0',
+    '@huggingface/transformers': '4.3.1',
+    'onnxruntime-gpu': '1.31.0',
+    'onnxruntime': '1.31.0',
+    'kokoro-onnx': '0.6.1',
+  }),
+  cuda12: Object.freeze({
+    'onnxruntime-node': '1.24.3',
+    '@huggingface/transformers': '4.2.0',
+    'onnxruntime-gpu': '1.26.0',
+    'onnxruntime': '1.26.0',
+    'kokoro-onnx': '0.6.1',
+  }),
 });
 const NPM_PKGS = ['onnxruntime-node', '@huggingface/transformers'];
 const PIP_PKGS = ['kokoro-onnx', 'onnxruntime-gpu', 'onnxruntime'];
@@ -59,10 +74,19 @@ export function notebook() {
       `STUDIO_REPO = "${REPO}"`,
       'import glob, importlib, os, re, shutil, subprocess, sys',
       '# 環境（不具合を知らせるときは、この行も一緒に送ってください / include these lines when you report a problem）',
-      `PINS = ${JSON.stringify(COLAB_PINS)}   # 入れる版の固定（tools/make-colab-notebook.mjs の COLAB_PINS）`,
+      `PIN_SETS = ${JSON.stringify(COLAB_PINS)}   # 入れる版の固定（tools/make-colab-notebook.mjs の COLAB_PINS）`,
       'def _out(cmd):',
       '    try: return subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True, timeout=60).stdout.strip()',
       '    except (OSError, subprocess.SubprocessError): return ""',
+      'def cublas_majors(ldconfig, names):   # libcublasLt.so.N の N（ldconfig -p の出力と、見つけたファイルの名前から）',
+      '    found = set(re.findall(r"libcublasLt\\.so\\.(\\d+)\\b", ldconfig))',
+      '    found |= {m.group(1) for m in (re.fullmatch(r"libcublasLt\\.so\\.(\\d+)", n) for n in names) if m}',
+      '    return sorted(found, key=int)',
+      'def pick_pin_set(majors, has_gpu):   # 版の組と、その理由',
+      '    if not has_gpu: return "cuda13", "no GPU: either set runs on the CPU"',
+      '    if "13" in majors: return "cuda13", "CUDA 13 libraries found"',
+      '    if "12" in majors: return "cuda12", "only CUDA 12 libraries found"',
+      '    return "cuda13", "no libcublasLt found: the GPU may fall back to the CPU"',
       'print("env: Python", sys.version.split()[0], "· Node", _out(["node", "--version"]) or "(none)")',
       '_smi = _out(["nvidia-smi"])',
       'if _smi:',
@@ -71,8 +95,10 @@ export function notebook() {
       'else:',
       '    print("env: GPU none (no nvidia-smi) -> CPU")',
       '_dirs = [d for d in os.environ.get("LD_LIBRARY_PATH", "").split(":") if d] + ["/usr/local/cuda/lib64", "/usr/lib/x86_64-linux-gnu"]',
-      '_libs = sorted({os.path.basename(f) for d in _dirs for f in glob.glob(os.path.join(d, "libcublasLt.so.*")) if re.fullmatch(r"libcublasLt\\.so\\.\\d+", os.path.basename(f))})',
-      'print("env: CUDA libraries", ", ".join(_libs) or "(no libcublasLt)", "· onnxruntime 1.30+ GPU needs libcublasLt.so.13")',
+      '_majors = cublas_majors(_out("ldconfig -p"), [os.path.basename(f) for d in _dirs for f in glob.glob(os.path.join(d, "libcublasLt.so.*"))])',
+      'PIN_SET, _why = pick_pin_set(_majors, bool(_smi))',
+      'PINS = PIN_SETS[PIN_SET]',
+      'print("env: CUDA libraries", ", ".join("libcublasLt.so." + m for m in _majors) or "(no libcublasLt)", "→ pin set", PIN_SET, f"({_why})")',
       'print("env: pinned", ", ".join(f"{k}=={v}" for k, v in PINS.items()))',
       'def sh(cmd, what):   # 失敗したら、終了コードと出力の最後の 30 行を見せて止まる',
       '    r = subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True)',
