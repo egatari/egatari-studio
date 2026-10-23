@@ -1,3 +1,0 @@
-### Security
-
-- Dependency updates for two Dependabot alerts. **KaTeX 0.16.47 to 0.18.2** (exact pin), which fixes a prototype pollution in KaTeX's settings that could bypass the `trust` restrictions. Egatari builds decks from the author's own source and only trusts `\htmlClass`, `\htmlId` and `\htmlData`, so exposure was low; formulas in the examples render pixel-for-pixel the same (the generated class names gain a `katex-` prefix, e.g. `base` is now `katex-base`; nothing in Egatari depends on them). **certifi 2026.7.22 to 2026.10.19** in `tts/uv.lock`, which drops root CAs whose intermediate keys were compromised
