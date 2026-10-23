@@ -39,7 +39,7 @@ import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
-import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
+import { themeFolderWorkspace, themeNames, themeLabel, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 // プレビューの中の仲立ち：品質チェックの体裁の検査（kit/core/layout-scan.mjs。コマンド版と同じ関数）を渡す形に包む
 const SHIM = withLayoutScan(SHIM_SRC);
 
@@ -178,6 +178,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
+  autoSeq++; clearTimeout(autoTimer); showBadge(0, 0);
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -202,7 +203,7 @@ function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
 // 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
-  if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
+  if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   const a = document.activeElement;
   if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
   focusPreview();
@@ -443,10 +444,31 @@ function showError(err) {
   $('errtext').textContent = err || '';
 }
 // 組み立ての警告（と保存の警告）の数を、道具の列の「品質チェック」の札に出す（一覧は品質チェックの板の先頭）
-function showWarn() {
-  const b = $('b-check-badge'), n = S.warn.length;
+// 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告は板の先頭の一覧に
+// （札には数えない）。品質チェックは、プレビューを読み込み終えたたびに少し待ってから、組み立てが終わっているときだけかける（autoCheck）
+function showBadge(errs, warns) {
+  const b = $('b-check-badge'), n = errs + warns;
   b.hidden = !n;
-  b.textContent = n ? T.warnings(n) : '';
+  b.textContent = n ? T.checkBadge(errs, warns) : '';
+  b.classList.toggle('bad', errs > 0);
+  S.badge = { errs, warns };
+}
+const AUTO_CHECK_MS = 1000;
+let autoTimer = 0, autoSeq = 0;
+function scheduleAutoCheck() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(autoCheck, (window.__APP_TEST && window.__APP_TEST.autoCheckMs) || AUTO_CHECK_MS);
+}
+async function autoCheck() {
+  if (!S.base || !S.allowed || !S.ws) return;
+  if (S.building || S.again || S.frameLoaded !== S.loads) { scheduleAutoCheck(); return; }   // 組み立て・読み込みの途中：終わってから
+  const seq = ++autoSeq, ws = S.ws, load = S.loads;
+  const results = await checkResults();
+  if (seq !== autoSeq || S.ws !== ws || S.loads !== load || !results) return;   // 途中で次の読み込みになった（その読み込みがかけ直す）
+  showBadge(results.filter((r) => r.sev === 'error').length, results.filter((r) => r.sev === 'warn').length);
+  S.autoChecks = (S.autoChecks || 0) + 1;
+}
+function showWarn() {
   if (!$('panel').hidden && $('check-panel')) $('check-buildwarn')?.replaceWith(buildWarnBox());
   showNotice();
 }
@@ -530,6 +552,16 @@ async function themeDialog() {
   if (v === 'forget') await forgetTheme();
   else if (v === 'allow') await allowThemeFolder();
   else if (v === 'choose') await chooseThemeFolder();
+}
+// 新規作成の ② テーマの選択肢：同梱のテーマ（見せる名前）と、読む許可のある自分のテーマのフォルダのテーマ（theme.json の title・name、なければフォルダの名前）
+async function themeOptions() {
+  const out = RES.themes.map((t) => ({ value: t, label: (T.themeNames && T.themeNames[t]) || t }));
+  if (TF.handle && TF.state === 'granted') {
+    let names = [];
+    try { names = await themeNames(TF.handle); } catch { names = []; }
+    for (const n of names) if (!out.some((x) => x.value === n)) out.push({ value: n, label: await themeLabel(TF.handle, n), user: true });
+  }
+  return out;
 }
 // 起動時：前に選んだフォルダを IndexedDB から。許可が残っていれば（同じページの間など）すぐ使い、なければ次に使うときに求める
 async function initThemeFolder() {
@@ -818,6 +850,7 @@ async function quickCheck() {
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checkFailed }), buildWarnBox()]); return; }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
+  showBadge(errs, warns);
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
     el('span', { text: T.checkMsg(r.code, r.arg) }),
@@ -1598,7 +1631,6 @@ for (const M of [...MENUS, ...SUBS]) {
 }
 document.addEventListener('click', (e) => { if (!e.target.closest('#tools .menu')) closeMenus(); });
 $('b-help').onclick = showHelp;
-$('b-themes').onclick = themeDialog;
 $('w-themes').onclick = themeDialog;
 const drop = $('drop');
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -1648,6 +1680,8 @@ window.__APP_TEST = {
   audio: () => audio.state(),
   audioPanel: audio,
   rec: () => rec.state(),
+  badge: () => ({ ...(S.badge || { errs: 0, warns: 0 }), text: $('b-check-badge').textContent, hidden: $('b-check-badge').hidden, bad: $('b-check-badge').classList.contains('bad'), autoChecks: S.autoChecks || 0 }),
+  autoCheckMs: 0,
   menuOpen: () => { const M = openMenuOf(); return M ? M.list.id : null; },
   mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
   tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
@@ -1681,7 +1715,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => chooseThemeFolder() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

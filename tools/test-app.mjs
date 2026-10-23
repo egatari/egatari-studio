@@ -241,7 +241,7 @@ try {
     ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
     ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
   }
-  ok((await page.textContent('#welcome h1')).includes('1 ファイル（.ega.html）'), 'welcome: Japanese UI for ja locale');
+  ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('ここに .ega.html を落とす') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
@@ -252,6 +252,8 @@ try {
     && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3'
     && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
     'new: 「新規作成…」 opens the chat-AI dialog directly with 5 steps (subjects unticked, theme default); no blank or template');
+  ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'ほかのテーマを読み込む…']), 'new: the theme select shows display names, then 「ほかのテーマを読み込む…」');
+  ok(!(await page.$('#b-themes')), 'new: 「テーマのフォルダ…」 is not in File ▾ (it is in the theme select)');
   await clickDlg(page, '#dlg-cancel');
 
   // examples/minimal を OPFS に写して開く
@@ -849,7 +851,7 @@ try {
     const rps = await pstate();
     ok(rps.portable.lastTier === 'A' && rps.portable.lastTierA.audio.includes(rk), 'removed step: saved with tier A, its audio record changed');
     ok(rps.portable.saveWarnings.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)) && rps.warn.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)), `removed step: the warning is returned and in the warnings list (${JSON.stringify(rps.portable.saveWarnings)})`);
-    ok((await page.textContent('#toast')).includes('保存の警告') && await page.isVisible('#b-check-badge') && (await page.textContent('#b-check-badge')) === `警告 ${(await pstate()).warn.length}`, 'removed step: the save notice says there are warnings (the count on the Quality check badge)');
+    ok((await page.textContent('#toast')).includes('保存の警告') && (await pstate()).warn.some((w) => /removed/.test(w)), 'removed step: the save notice says there are warnings (listed in the Quality check panel)');
     const rsaved = await readPortable(new Uint8Array(await getFile('nd' + FORMAT.FILE_EXT)));
     const rblob = pnd.index.files[pnd.index.audio[rk].file];
     const rshared = Object.entries(pnd.index.audio).some(([k, x]) => k !== rk && pnd.index.files[x.file] === rblob);
@@ -1328,8 +1330,19 @@ try {
       await pt.waitForFunction(() => window.__APP_TEST.state().kind === 'memory' && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
     }]]) {
       if (open) await open();
-      // 品質チェックの警告の札も出ているとき（いちばん長いとき）
-      await pt.evaluate(() => { const b = document.getElementById('b-check-badge'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 warnings' : '警告 12'; });
+      // 品質チェックの札：読み込みの後に自動でかけた品質チェックの数（エラーと警告）。板の数と同じ
+      if (kind === 'folder') {
+        await pt.waitForFunction(() => window.__APP_TEST.badge().autoChecks > 0, null, { timeout: 30000 });
+        const bd = await pt.evaluate(() => window.__APP_TEST.badge());
+        await pt.click('#b-check');
+        await pt.waitForSelector('#panel-body .sum');
+        const sum = await pt.textContent('#panel-body .sum');
+        const m = /(\d+)\D+(\d+)/.exec(sum);
+        ok(m && +m[1] === bd.errs && +m[2] === bd.warns && bd.hidden === (bd.errs + bd.warns === 0) && bd.bad === (bd.errs > 0) && !(await pt.evaluate(() => window.__APP_TEST.ui().edit)), `badge (${lang}): after a build the quick check runs by itself and the badge shows its counts (${bd.errs} / ${bd.warns}, "${bd.text}"; panel "${sum}")`);
+        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+      }
+      // 品質チェックの札がいちばん長いとき（エラーも警告も 2 桁）
+      await pt.evaluate(() => { const b = document.getElementById('b-check-badge'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 errors · 12 warnings' : 'エラー 12 · 警告 12'; b.classList.add('bad'); });
       // 道具の列は 4 つ（ファイル ▾・スライド ▾・品質チェック・プレビュー ▾）と、段階 2 までの仮の板の群・使い方
       const top = await pt.evaluate(() => [...document.querySelectorAll('#tools > .menu > button, #tools > #b-check')].map((b) => b.firstChild.textContent.trim()));
       ok(JSON.stringify(top) === JSON.stringify(lang === 'en' ? ['File ▾', 'Slide ▾', 'Quality check', 'Preview ▾'] : ['ファイル ▾', 'スライド ▾', '品質チェック', 'プレビュー ▾']), `toolbar (${lang}, ${kind}): the four items ${top.join(' / ')}`);
@@ -1358,11 +1371,11 @@ try {
       const act = () => pt.evaluate(() => document.activeElement.id);
       const pos0 = await pt.evaluate(() => JSON.stringify(window.__APP_TEST.state().pos));
       await pt.keyboard.press('ArrowUp');
-      ok(await act() === 'b-themes', `menu keys (${lang}, ${kind}): ↑ from the first item wraps to the last`);
+      ok(await act() === 'b-open', `menu keys (${lang}, ${kind}): ↑ from the first item wraps to the last`);
       await pt.keyboard.press('ArrowDown');
       ok(await act() === 'b-new', `menu keys (${lang}, ${kind}): ↓ from the last item wraps to the first`);
       await pt.keyboard.press('End'); const end = await act(); await pt.keyboard.press('Home');
-      ok(end === 'b-themes' && await act() === 'b-new', `menu keys (${lang}, ${kind}): End / Home`);
+      ok(end === 'b-open' && await act() === 'b-new', `menu keys (${lang}, ${kind}): End / Home`);
       for (let i = 0; i < 8 && await act() !== 'b-exportmenu'; i++) await pt.keyboard.press('ArrowDown');
       await pt.keyboard.press('ArrowRight');
       ok(await pt.isVisible('#m-export') && await act() === 'b-export-play' && (await pt.getAttribute('#b-exportmenu', 'aria-expanded')) === 'true', `menu keys (${lang}, ${kind}): → opens Export ▸ and focuses its first item`);
@@ -1375,7 +1388,7 @@ try {
       ok(await pt.evaluate(() => JSON.stringify(window.__APP_TEST.state().pos)) === pos0, `menu keys (${lang}, ${kind}): arrow keys in the menu did not move the preview`);
       // ボタンの ↓ で開く・↑ で最後の項目から。→← はボタンからはプレビューへ（input-focus のまま）
       await pt.keyboard.press('ArrowUp');
-      ok(await pt.isVisible('#m-file') && await act() === 'b-themes', `menu button (${lang}, ${kind}): ↑ opens the menu at the last item`);
+      ok(await pt.isVisible('#m-file') && await act() === 'b-open', `menu button (${lang}, ${kind}): ↑ opens the menu at the last item`);
       await pt.keyboard.press('Escape');
       await pt.focus('#b-slidemenu'); await pt.keyboard.press('ArrowDown');
       ok(await pt.isVisible('#m-slide') && await act() === 'b-insert' && await pt.isHidden('#m-file'), `menu button (${lang}, ${kind}): ↓ opens Slide ▾ at the first item`);
@@ -1667,7 +1680,7 @@ try {
       ok((await po.evaluate(() => window.__perm.asked)) === 1 && (await po.evaluate(() => window.__perm.mode)) === 'read' && !themeWarn(s) && (await tst()).inBuild, 'theme folder: permission is requested again (read) and the deck builds with the theme');
       await po.evaluate(() => { const H = window.FileSystemHandle.prototype; H.queryPermission = window.__perm.q; H.requestPermission = window.__perm.r; });
       // 設定の窓（「開く ▾」の「テーマのフォルダ…」）：今のフォルダとテーマの名前。忘れる → 知らせが戻り、読み込み直しても選んでいない
-      await po.evaluate(() => document.getElementById('b-themes').click());
+      await po.evaluate(() => document.getElementById('w-themes').click());
       await po.waitForSelector('#dlg[open] #dlg-forget');
       ok((await po.textContent('#theme-now')).includes('thm-user') && (await po.textContent('#theme-names')).includes('evil, mytml') && !!(await po.$('#dlg-choose')), 'theme folder: the settings dialog shows the folder and its themes, with Change and Forget');
       if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'theme-folder-dialog.png') });
@@ -1789,7 +1802,7 @@ try {
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');
   await pe.goto(BASE);
-  ok((await pe.textContent('#welcome h1')) === 'Open a single file (.ega.html) to view and edit', 'i18n: English UI for en locale');
+  ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drop a .ega.html here'), 'i18n: English UI for en locale');
   // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
   await pe.evaluate(async (b64) => {
     const root = await navigator.storage.getDirectory();
@@ -1866,7 +1879,7 @@ try {
     await ps.goto(base + 'editor/?lang=en#x');
     await ps.waitForURL(base + '?lang=en#x', { timeout: 10000 }).catch(() => {});
     await ps.waitForSelector('#drop');
-    ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#welcome h1')) === 'Open a single file (.ega.html) to view and edit', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
+    ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#w-openfile')) === 'Open a file (.ega.html)…', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
     // スクリプトが動かなくても行ける：meta refresh とリンク（ページを開くと移ってしまうので、HTML を読んで確かめる）
     const stub = await (await fetch(base + 'editor/')).text();
     ok(/<meta http-equiv="refresh" content="0; url=\.\.\/">/.test(stub) && /<a href="\.\.\/">/.test(stub) && /location\.replace/.test(stub), `site (${tag}): editor/ also has a meta refresh and a link to ../`);

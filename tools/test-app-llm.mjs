@@ -20,7 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPack, commonBody, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 
@@ -69,9 +69,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(await page.isChecked('#paste-kind-a') && await page.isVisible('#paste-a-topic') && !(await page.isVisible('#paste-b-length')) && (await page.inputValue('#paste-a-speakers')) === 'one narrator',
     'llm: step 1 starts with A (make a new lesson); the speakers field has the default from the instructions');
   const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
-  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).length === 0 && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
+  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).length === 0 && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(seriesPart('academic', 'en')))} KB`),
     'llm: the instructions have series checkboxes with sizes; with no deck open, no series is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
-  ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(buildPack({ series: [], lang: 'en' }))} KB`) && (await page.textContent('#paste-series legend')) === 'Subjects (parts)',
+  ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(commonBody('en'))} KB`) && (await page.textContent('#paste-series legend')) === 'Subjects (parts)',
     'llm: the common body is shown as always included (ticked, cannot be removed) with its size; the series say “add only when needed”');
   ok((await page.textContent('#paste-series-hint')) === 'Using formulas, graphs or data charts? Choose “Academic (math, functions, data)”.' && (await page.getAttribute('#paste-series', 'aria-describedby')) === 'paste-series-hint',
     'llm: under the series, a hint says to add Academic for formulas, graphs or data charts (with the series’ display name)');
@@ -93,7 +93,16 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
   await page.click('#paste-series-academic');
   const total0 = await page.textContent('#paste-pack-size');
-  ok(total0 === `${packKb(packWithRequest({ series: ['academic'], lang: 'en', request: wantA }))} KB in all`, 'llm: the total follows what is written in step 1: ' + total0);
+  ok(total0 === `${packKb(packWithRequest({ series: ['academic'], lang: 'en', request: wantA }))} KB in all`, 'llm: the total follows what is written in step 3: ' + total0);
+  // 大きさは同じ測り方：合わせては、共通の本体と選んだ分野の和より小さくならない（バイトでも、出している KB でも）
+  {
+    const z = await page.evaluate(() => ({ total: +document.getElementById('paste-pack-size').dataset.bytes, common: +document.querySelector('label.paste-common').dataset.bytes,
+      parts: [...document.querySelectorAll('#paste-series input:checked')].map((b) => +b.closest('label').querySelector('[data-bytes]').dataset.bytes),
+      shown: [document.getElementById('paste-pack-size').textContent, document.querySelector('label.paste-common').textContent] }));
+    const sumB = z.common + z.parts.reduce((a, b) => a + b, 0);
+    const kbIn = (t) => parseFloat(/([\d.]+) KB/.exec(t)[1]);
+    ok(z.parts.length === 1 && z.total >= sumB && kbIn(z.shown[0]) >= kbIn(z.shown[1]), `llm sizes: the total (${z.total} B, ${z.shown[0]}) is at least the common body plus the chosen subjects (${sumB} B; ${z.shown[1].trim()})`);
+  }
   await shot('ai-step1.png');
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
@@ -252,6 +261,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
   ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /narration \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
     'llm: quality check reports the long title, the orphan [4] and the expression reading: ' + sum2);
+  { const bd = await page.evaluate(() => window.__APP_TEST.badge()); ok(bd.errs > 0 && bd.bad && !bd.hidden && bd.text.startsWith(`${bd.errs} error`), `llm: with errors, the Quality check badge shows the counts in the error colour ("${bd.text}")`); }
   const note2 = await page.textContent('#panel-body .hint');
   ok(/^The browser quality checker/.test(note2) && /If there are errors, press “Copy fix request for your AI” below/.test(note2), 'llm: with errors, the quality check note points to the fix request button below: ' + note2);
   ok((await page.textContent('#panel-body #b-revise')) === 'Revise…' && (await page.textContent('#panel-body #b-fixreq')) === 'Copy fix request for your AI', 'llm: the quality check panel starts with “Revise…” next to the fix request button');
@@ -316,10 +326,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const heads = await pj.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
     ok(heads.join('|') === '① 分野（使うパーツ）を選ぶ（選ばなくてもよい）|② デザイン（テーマ）を選ぶ|③ 頼みたいことを書く|④ AI への指示をコピーして、チャットに貼って送る|⑤ AI の返事を貼り付けて開く', 'llm ja: the 5 steps: ' + heads.join(' / '));
     const common = await pj.textContent('label.paste-common'), legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
-    const ja = packKb(buildPack({ series: [], lang: 'ja' }));
+    const ja = packKb(commonBody('ja'));
     const jaA = packKb(packWithRequest({ series: [], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja').replace(/\n*$/, '\n') + '- テーマ：default（<html data-theme="default">）\n' }));
     ok((await pj.textContent('#paste-series-hint')) === '数式・グラフ・データの図を使うなら「学術（数式・関数・データ）」を選ぶ' && (await pj.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm ja: no series ticked with no deck open, and the hint names 「学術（数式・関数・データ）」');
-    ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '分野（使うパーツ）' && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
+    ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '分野（使うパーツ）' && total.includes(`${jaA} KB`) && packSize(commonBody('ja')) !== packSize(commonBody('en')),
       `llm ja: the Japanese UI shows the sizes of the Japanese instructions (${common} / ${total})`);
     const scrollTo = (id) => pj.evaluate((id) => document.getElementById(id).scrollIntoView({ block: 'start' }), id);
     for (const [k, v] of Object.entries({ topic: '二分探索のしくみ', audience: '高校 2 年生', length: '5 枚', language: '日本語', examples: '電話帳で名前を探す' })) await pj.fill('#paste-a-' + k, v);

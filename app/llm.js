@@ -11,7 +11,7 @@
 //     ① と開いているメモ（comments.json。画像は backlog #90））→ ③ 今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で戻す）
 //   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart } from '../kit/core/llm-pack.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -32,7 +32,7 @@ const TX = {
     title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
     howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
     howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑤ に貼り付けます。',
-    themeLabel: 'テーマ', themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
+    themeLoad: 'ほかのテーマを読み込む…', themeLabel: 'テーマ', themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
     seriesHintNew: '使うパーツの説明が指示に加わります。何も選ばなければ共通の本体だけです',
     howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
     steps: {
@@ -118,7 +118,7 @@ const TX = {
     title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
     howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
     howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 5.',
-    themeLabel: 'Theme', themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
+    themeLoad: 'Load another theme…', themeLabel: 'Theme', themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
     seriesHintNew: 'Adds the notes on those parts to the instructions. With none chosen, only the common body is sent.',
     howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
     steps: {
@@ -273,7 +273,10 @@ export function setupLlm(app) {
   // req：{request() → 最後に付ける文（Promise でもよい）, missing() → 足りない欄 | null}。optional：指示を入れるかを選べる（挿入：既定は入れない）
   // split：新規作成（① 分野 を別のステップにする。既定は何も選ばない）。seriesTitle：その見出し
   async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied, split = false, seriesTitle = '' } = {}) {
-    const base = buildPack({ series: [], lang: LANG });
+    // 大きさはどれも同じ測り方（UTF-8 のバイト数 / 1024、小数 1 桁。kit/core/llm-pack.mjs の packSize・kbOf）。共通の本体と分野は、写す文に入るその部分そのもの
+    // （共通の本体は空の記入欄を含まない。含めると、記入欄を埋めた合わせての大きさより大きく見えた）。合わせては部分の和より小さくならない
+    const commonBytes = packSize(commonBody(LANG));
+    const partBytes = (s) => packSize(seriesPart(s, LANG));
     const initial = split ? [] : await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => {
@@ -285,7 +288,7 @@ export function setupLlm(app) {
     const packOn = () => !withPack || withPack.checked;
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
     const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
-    const update = async () => { total.textContent = X.packTotal(kb(await textNow())); };
+    const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); };
     for (const b of boxes) b.addEventListener('change', update);
     const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
     common.checked = true;
@@ -299,10 +302,10 @@ export function setupLlm(app) {
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
         el('legend', { text: X.seriesLegend }),
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
-          el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
+          el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })])),
       ]);
     const seriesHint = el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) });
-    const commonRow = el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]);
+    const commonRow = el('label', { cls: 'paste-common', for: 'paste-common', 'data-bytes': String(commonBytes) }, [common, el('span', { text: X.common(kbOf(commonBytes)) })]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide' }, split
       ? [el('span', { cls: 'hint', text: X.guide }), commonRow]
       : [el('span', { cls: 'hint', text: X.guide }), commonRow, seriesSet, seriesHint]);
@@ -364,13 +367,24 @@ export function setupLlm(app) {
     if (mode === 'new') {
       // ① 分野（使うパーツ）→ ② デザイン（テーマ）→ ③ 頼みたいこと → ④ コピー → ⑤ 貼り付け
       const req = requestStep(titles[0]);
-      const themes = (app.themes && app.themes.length ? app.themes : ['default']);
-      const sel = el('select', { id: 'paste-theme' }, themes.map((t) => el('option', { value: t, text: t })));
-      sel.value = themes.includes(newTheme) ? newTheme : themes.includes('default') ? 'default' : themes[0];
-      newTheme = sel.value;
+      // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
+      const sel = el('select', { id: 'paste-theme' });
+      const LOAD = '\u0000load';
+      const fill = async () => {
+        const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
+        sel.replaceChildren(...opts.map((o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) })),
+          ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
+        const vals = opts.map((o) => o.value);
+        sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];
+        newTheme = sel.value;
+      };
+      await fill();
       const reqWithTheme = { request: () => req.request().replace(/\n*$/, '\n') + X.themeLine(sel.value) + '\n', missing: () => req.missing() };
       const pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3] });
-      sel.addEventListener('change', () => { newTheme = sel.value; pack.update(); });
+      sel.addEventListener('change', async () => {
+        if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); pack.update(); return; }
+        newTheme = sel.value; pack.update();
+      });
       req.node.addEventListener('input', pack.update);
       const themeNode = step('paste-step-theme', titles[4], [el('p', { cls: 'hint', text: X.themeHint }),
         el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])]);

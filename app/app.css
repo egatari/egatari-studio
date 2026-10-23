@@ -289,6 +289,7 @@ main{flex:1;min-height:0;display:flex}
 #tools .tmp-group{display:inline-flex;gap:6px}
 #tools #b-previewmenu{margin-left:4px}
 #b-check .badge{margin-left:6px;font-size:11.5px;padding:0 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn-fg)}
+#b-check .badge.bad{background:var(--bad-bg);color:var(--bad-fg);font-weight:600}
 #b-filemenu.dirty::after{content:"●";color:var(--accent);margin-left:4px;font-size:10px;vertical-align:1px}
 #tools > .menu:first-child > .menu-list{left:0;right:auto}
 #tools .menu-list{min-width:240px}

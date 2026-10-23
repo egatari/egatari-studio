@@ -6,6 +6,7 @@
 //   loadThemeFolder() → handle | null、saveThemeFolder(handle)、forgetThemeFolder()   IndexedDB（使えなければ null・何もしない）
 //   permissionOf(handle) → 'granted' | 'prompt' | 'denied'、requestRead(handle) → bool（人の操作の中で呼ぶ）
 import { walk, readBytes } from './fsx.js';
+import { readFileBoundedText } from './bounded-read.js';
 
 // テーマは themes/<名前>/{tokens.css, theme.json, ロゴ}。深いフォルダ（間違えて大きなフォルダを選んだとき）は歩かない
 const THEME_DEPTH = 3;
@@ -24,6 +25,15 @@ export async function themeNames(handle) {
     try { await h.getFileHandle('tokens.css'); out.push(name); } catch { /* テーマでない */ }
   }
   return out.sort();
+}
+// 見せる名前：<名前>/theme.json の title、なければ name、なければフォルダの名前（読めなければフォルダの名前）。字は 60 字まで
+export async function themeLabel(handle, name) {
+  try {
+    const d = await handle.getDirectoryHandle(name);
+    const j = JSON.parse((await readFileBoundedText(await d.getFileHandle('theme.json'), { max: 65536, what: name + '/theme.json' })).text);
+    const t = [j && j.title, j && j.name].find((x) => typeof x === 'string' && x.trim());
+    return t ? t.trim().slice(0, 60) : name;
+  } catch { return name; }
 }
 export async function permissionOf(h) {
   try { return h.queryPermission ? await h.queryPermission({ mode: 'read' }) : 'granted'; } catch { return 'denied'; }
