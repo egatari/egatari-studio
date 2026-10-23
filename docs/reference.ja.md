@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=afa5d66c8561cd77 -->
+<!-- i18n: pair=reference.md sha256=9deb0cfe93df7933 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -188,7 +188,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--concl-bg` | 結論の行の背景（透明） |
 | `--marker` | `.body` の箇条書きの印（`--term`） |
 | `--bar`、`--bar-h` | 進み具合の帯の色（`--emph`。自動再生のときは `--term`）と高さ（3px） |
-| `--stage-bg` | スライドのまわりと暗転の色（#2f2f2f） |
+| `--stage-bg` | スライドのまわりの色（#2f2f2f） |
 | `--cap-size`、`--cap-bottom`、`--cap-side`、`--cap-max-lines` | 字幕の字の大きさ（27px）、下端からの距離（18px）、左右の余白（96px）、1 まとまりの行数の上限（3） |
 | `--cap-rate` | 手で送るときの字幕の読む速さ（字/秒。既定 ja 7、en 15。`DECK.captionRate` でも変えられる） |
 
@@ -247,10 +247,10 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | Home / End | 最初 / 最後のスライド |
 | 数字＋Enter | そのページへ |
 | f | 全画面 |
-| p | 発表者ビュー |
+| p | 発表者ビュー（もう一度 p で閉じる。発表者ビューでは Esc か p で閉じる。全画面のときは全画面をやめるだけ） |
 | a | 今の段階から自動再生（音声があれば流す）。移動のキーで止まる |
 | l | 授業モードの入り切り |
-| b | 暗転の入り切り |
+| b | 暗転（窓全体を真っ黒にする。隅に薄い知らせが 2 秒と、マウスを動かしたときに出る。もう一度 b・Esc・クリック・矢印・Space・PageUp/PageDown・Home/End で戻り、スライドは動かない） |
 | s | 字幕の入り切り：今の段階の口述原稿（表示用の文字）をスライドの下に出す |
 | Shift+s | 字幕の大きさ：S → M → L（22 / 27 / 34px）。上に短く知らせ、最後に選んだ大きさを覚える（localStorage） |
 | o | 一覧（矢印・Home/End で選び、Enter・Space・クリックで移る。Esc か o で閉じる） |

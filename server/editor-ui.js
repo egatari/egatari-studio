@@ -51,6 +51,7 @@ const STR = {
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
+    nUnsaved: 'The narration is not saved. Save or revert it to use the preview again', nRevert: 'Revert',
     dateLocale: 'en-US',
   },
   ja: {
@@ -68,6 +69,7 @@ const STR = {
     noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
+    nUnsaved: 'ナレーションが保存されていません。保存するか元に戻すと、プレビューを操作できます', nRevert: '元に戻す',
     dateLocale: 'ja-JP',
   },
 };
@@ -95,6 +97,9 @@ const CSS = [
   '.dev-lock{color:#7a4b00;font-size:12px;margin-top:6px}',
   '#dev-narr .dev-lock{display:none;margin:0;padding:6px 14px;background:#fff;border-top:1px solid #e3e6ee}#dev-side.dv-locked #dev-narr .dev-lock{display:block}',
   'iframe.dev-locked{opacity:.55;filter:grayscale(.3)}',
+  // 未保存の口述原稿でプレビューが止まっている間に、プレビューを押した・キーを押した：わけと、保存・元に戻すのボタン
+  '#dev-narr .dv-notice{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 8px;padding:8px 10px;border-radius:8px;background:#fff4cc;border:1px solid #f0c040;color:#5a3a00;font-size:13px}',
+  '#dev-narr .dv-notice:empty{display:none}#dev-narr .dv-notice span{flex:1 1 100%}',
   '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-audio{order:5}#dev-narr{order:6}',
   '#dev-editor{padding:12px 14px}',
   '.dev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dev-head .dv-t{font-weight:700}.dev-head .dv-m{color:#6b7385;font-size:12px;font-family:ui-monospace,Menlo,monospace}.dev-head .dv-sp{flex:1}',
@@ -224,6 +229,7 @@ export function createEditorUI(o) {
     const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
+    if (!(narr && narr.dirty)) narrNotice(false);
     drawPins();
   }
   // ---------------------------------------------------------------- 点の印（プレビューの上に重ねる。クリックは通す）
@@ -536,6 +542,8 @@ export function createEditorUI(o) {
       h('button', { cls: 'dv-ghost', text: '✕', title: L.closeN, on: { click: () => toggleNarr(false) } })]));
     drawer.appendChild(h('div', { cls: 'dv-sub', text: L.slide(narr.i + 1, String(title).replace(/\s+/g, ' ').trim()) }));
     drawer.appendChild(body);
+    // 未保存のわけを知らせる所（live region。中身は narrNotice が入れる）
+    body.appendChild(h('div', { cls: 'dv-notice', role: 'status', 'aria-live': 'polite' }));
     drawer.appendChild(h('div', { cls: 'dv-foot' }, [status, revert, saveBtn]));
     drawer.appendChild(h('div', { cls: 'dev-lock', text: L.locked }));
     const stale = h('div', { cls: 'dv-stale' }); body.appendChild(stale);
@@ -595,6 +603,7 @@ export function createEditorUI(o) {
     }
     saveBtn.onclick = doSave;
     revert.onclick = () => { cur.dirty = false; narrFocus = false; updateSide(); narrFollow(true); };
+    cur.actions = { save: doSave, revert: () => revert.onclick() };
   }
   function renderNext(box) {
     box = box || (drawer && drawer.querySelector('.dv-next'));
@@ -611,6 +620,41 @@ export function createEditorUI(o) {
       for (const t of turns) box.appendChild(h('p', {}, [t.role === 'novice' ? h('span', { cls: 'dv-role', text: 'Novice' }) : null, plain(t.text)]));
     });
   }
+
+  // ---------------------------------------------------------------- 止まっているプレビューを押した・キーを押した（#3・#8）
+  // 未保存の口述原稿でプレビューが inert のとき：わけ（と保存・元に戻すのボタン）を引き出しに出す。
+  // 口述原稿の欄に入っているだけ（未保存の変更なし）のとき：欄から離れれば inert が解けるので、押した点ではプレビューにフォーカスを渡す
+  // （inert の枠は押しても受けないので、そのままでは最初のクリックが失われる）
+  function narrNotice(on) {
+    const box = drawer && drawer.querySelector('.dv-notice');
+    if (!box) return;
+    if (!on) { if (box.firstChild) box.textContent = ''; return; }
+    const cur = narr;
+    box.textContent = '';
+    box.appendChild(h('span', { text: L.nUnsaved }));
+    box.appendChild(h('button', { cls: 'dv-pri', text: L.save, on: { click: () => { if (cur.actions) cur.actions.save(); } } }));
+    box.appendChild(h('button', { text: L.nRevert, title: L.revertT, on: { click: () => { if (cur.actions) cur.actions.revert(); focusFrame(); } } }));
+    try { box.scrollIntoView({ block: 'nearest' }); } catch { /* 無視 */ }
+  }
+  // 口述原稿のほかに止めているもの（原稿の欄・コメントの欄・音声の板の録音・録音モード）があるか
+  const otherLock = () => !!(editor || cbox || (extra.editing && extra.editing()));
+  function inFrameBox(x, y) {
+    const f = frameEl();
+    if (!f || !f.isConnected) return false;
+    const r = f.getBoundingClientRect();
+    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+  }
+  doc.addEventListener('pointerdown', (e) => {
+    const f = frameEl();
+    if (!f || !f.inert || !narr || otherLock() || side.contains(e.target) || !inFrameBox(e.clientX, e.clientY)) return;
+    if (narr.dirty) { narrNotice(true); return; }
+    if (narrFocus) {
+      // 欄から離れる（focusout で inert が解ける）→ プレビューにフォーカス。押したことでフォーカスが body に移らないように既定の動きは止める
+      e.preventDefault();
+      const a = doc.activeElement; if (a && drawer && drawer.contains(a)) a.blur();
+      if (!editing()) focusFrame();
+    }
+  }, true);
 
   // ---------------------------------------------------------------- Esc：開いている窓を閉じる（#48）
   // 上のもの（後に開いたもの）から 1 つずつ。all（Shift+Esc）なら全部。書いている途中の原稿の欄・コメントの欄がいちばん上。
@@ -654,6 +698,26 @@ export function createEditorUI(o) {
     else if (k === 'r') { if (o.onRecord) o.onRecord(); }   // 録音モードを開く（開くだけ。録音はこのページのキーでしか始まらない）
     else if (k === 'Escape') escape(shift, fromDeck);
   }
+  // 編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときの送りのキー：プレビューに送る（deck-cmd の key。プレビューは親の窓から
+  // 届いたものだけを受ける：kit/deck.js）。キーの出来事は作らない。f はプレビューの枠を全画面にする（中のデッキは押されていないので全画面にできない）。
+  // 送らないもの：Space・Enter（フォーカスのあるボタンを押すキー）、入力の欄・口述原稿の引き出し・開いた窓・メニューや一覧の中、
+  // プレビューが止まっているとき（編集している間・録音モード。未保存の口述原稿なら、わけを出す）
+  const FWD = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', 'b', 'a', 'f'];
+  const WIDGET = '[role=menu],[role=menuitem],[role=menubar],[role=listbox],[role=option],[role=tablist],[role=tab],[role=radiogroup],[role=slider],[role=tree],[role=grid],[role=dialog],[role=alertdialog],dialog';
+  function forwardKey(e) {
+    const t = e.target;
+    if (!enabled() || (t && t.closest && (t.closest('#dev-narr') || t.closest(WIDGET)))) return;
+    const f = frameEl();
+    if (!f || !f.isConnected) return;
+    if (f.inert || editing()) { if (narr && narr.dirty && !otherLock()) narrNotice(true); return; }
+    e.preventDefault();
+    if (e.key === 'f') {
+      if (doc.fullscreenElement) { if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {}); }
+      else if (f.requestFullscreen) f.requestFullscreen().then(() => focusFrame(), () => {});
+      return;
+    }
+    post({ type: 'deck-cmd', cmd: 'key', key: e.key });
+  }
   doc.addEventListener('keydown', (e) => {
     const t = e.target;
     if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
@@ -662,6 +726,7 @@ export function createEditorUI(o) {
     if (e.key === 'Escape') { key('Escape', false, e.shiftKey); return; }
     if (e.shiftKey) return;
     if (['e', 'n', 'c', 'r'].includes(e.key)) key(e.key, false);
+    else if (FWD.includes(e.key)) forwardKey(e);
   });
 
   // ---------------------------------------------------------------- プレビューからの知らせ

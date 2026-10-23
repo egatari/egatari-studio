@@ -689,7 +689,8 @@ window.addEventListener('message', (e) => {
   const frame = $('preview').contentWindow;
   if (e.source === frame) {
     ui.message(e);
-    if (m.type === 'app-open-presenter') openPresenter();
+    // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
+    if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
     else if (m.type === 'app-check-result' && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
@@ -709,7 +710,19 @@ const PRES_DOC = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Presen
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
 <body><iframe id="pf" sandbox="allow-scripts allow-modals" title="presenter"></iframe><script>
 var f=document.getElementById("pf");
+function closeMe(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); return; }
+  try{ if(opener&&!opener.closed) opener.focus(); }catch(e){}
+  window.close();
+}
+function into(){ try{ f.focus(); f.contentWindow&&f.contentWindow.focus(); }catch(e){} }
+f.addEventListener("load",function(){ into(); setTimeout(function(){ if(!document.hasFocus()&&f.contentWindow) f.contentWindow.postMessage({type:"app-pres-tap"},"*"); },300); });
+addEventListener("focus",function(){ if(document.activeElement===f||document.activeElement===document.body) into(); });
+addEventListener("keydown",function(e){
+  if(e.target!==f&&!e.defaultPrevented&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&(e.key==="Escape"||e.key==="p")){ if(e.key==="p"||!document.fullscreenElement) e.preventDefault(); closeMe(); }
+});
 addEventListener("message",function(e){
+  if(e.source===f.contentWindow&&e.data&&e.data.type==="app-pres-close"){ closeMe(); return; }
   if(e.source===f.contentWindow){ if(opener&&!opener.closed) opener.postMessage({type:"app-pres-up",m:e.data},"*"); }
   else if(e.source===opener&&e.data&&e.data.type==="app-pres-down"){ f.contentWindow&&f.contentWindow.postMessage(e.data.m,"*"); }
 });
@@ -1432,6 +1445,14 @@ $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.po
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); };
 $('b-warn').onclick = showWarnings;
+// 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
+// キーボードで押したとき（detail = 0）は残す。一覧を開くボタン・一覧の項目は一覧の側でフォーカスを動かすので触らない
+$('top').addEventListener('click', (e) => {
+  if (e.detail === 0) return;
+  const b = e.target.closest && e.target.closest('button');
+  if (!b || b.hasAttribute('aria-haspopup') || b.closest('[role=menu]')) return;
+  if (document.activeElement === b) b.blur();
+});
 // 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：開くと最初の項目に。↑↓ で移り、Esc・外を押す・項目を選ぶと閉じる
 const MENUS = [['b-openmenu', 'm-open'], ['b-savemenu', 'm-save'], ['b-exportmenu', 'm-export']].map(([b, m]) => ({ btn: $(b), list: $(m) }));
 const menuItems = (M) => [...M.list.querySelectorAll('button')].filter((b) => !b.hidden);
