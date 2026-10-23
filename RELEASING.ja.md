@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=49f56fcee62ea241 -->
+<!-- i18n: pair=RELEASING.md sha256=393fa83ad7d13a60 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -8,6 +8,8 @@
 ## 手順
 
 1. **候補。** 先に `kit/core/colab-core.mjs` の `COLAB.ref` をリリースのタグ `vX.Y.Z` にし（エディタの Colab へのリンクとノートブックの clone が使う）、`npm run gen` してコミットする。そのうえで、リリースする `main` のコミットに候補のタグを付けて push する：
+
+   **仕様の日付の版。** 候補のタグを付ける前に、`vendor/egatari-spec` が egatari-spec の最新の `wd-*` の版と同じであること（`vendor/egatari-spec/SOURCE.json` に `"snapshot": "wd-YYYY-MM-DD"` があり、`node tools/spec-snapshot.mjs --check` が `ok` と出す）。写すには `node tools/sync-spec.mjs <仕様の clone> --ref wd-YYYY-MM-DD`。最新の版のあとで仕様が変わっていたら、先に仕様の担当者に新しい版を切ってもらう。
 
    ```bash
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
@@ -48,7 +50,7 @@
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **リリースの説明**を CHANGELOG の節から作り、見本のファイルと編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）：
+7. **リリースの説明**を CHANGELOG の節から作る。説明には従う仕様の版を書く：「Egatari 1.0 WD YYYY-MM-DD に従う」（英語では “Follows Egatari 1.0 Working Draft YYYY-MM-DD”）。例外があれば書く。見本のファイルと編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）：
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md

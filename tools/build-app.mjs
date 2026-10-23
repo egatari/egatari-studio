@@ -14,6 +14,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
+import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
 import { buildExamples } from './examples-portable.mjs';
@@ -89,7 +90,9 @@ const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha25
 // 見本の持ち運べる 1 ファイル（dist/examples/。前の組み立ての残りは消してから書く）
 fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
 const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
-const resources = { version, text, b64, lazy, hints, themes, components, yomi, examples };
+// 従う仕様の日付の版（vendor/egatari-spec/SOURCE.json の snapshot。日付の付いた版でなければ null）
+const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FORMAT.VENDOR_DIR.split('/'), 'SOURCE.json'), 'utf8')).snapshot || null; } catch { return null; } })();
+const resources = { version, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 

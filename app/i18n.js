@@ -190,6 +190,7 @@ const ja = {
   themeNoPermission: 'テーマのフォルダを読む許可がありません', themeEmpty: (n) => `「${n}」にテーマ（<名前>/tokens.css）が見つかりません。テーマの入ったフォルダを選んでください`,
 
   helpTitle: '使い方',
+  helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた版ではない）'),
   help: [
     ['スライドを直す', ['<kbd>e</kbd> か「編集」で編集モード。文字の上をダブルクリックすると、エディタの欄に原稿（deck.html）のその部分が出ます。⌘/Ctrl+Enter か「保存」で保存',
       'プレビュー（スライド）は「どこを直したいか」を知らせるだけで、書き込みはエディタの欄のボタンを押したときだけです',
@@ -483,6 +484,7 @@ const en = {
   themeNoPermission: 'No permission to read the theme folder', themeEmpty: (n) => `No theme (<name>/tokens.css) in “${n}”. Choose a folder that contains themes.`,
 
   helpTitle: 'Help',
+  helpFormat: (snap) => (snap ? `Format: Egatari 1.0 Working Draft ${snap.replace(/^wd-/, '')}` : 'Format: Egatari 1.0 (no dated snapshot)'),
   help: [
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit” for edit mode. Double-click text to open that part of the source (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',
       'The preview (the slides) only points at what to edit; writes happen only when you press a button in the editor’s card.',

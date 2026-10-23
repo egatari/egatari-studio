@@ -51,6 +51,7 @@ const ALLOW = [
   ['lab/irodori.js', 'res.body.getReader()', '試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],
   ['tools/build-app.mjs', 'fs.readFileSync(', '編集アプリを組む：リポジトリの kit/・vendor/components/ と components.lock.json・themes/・app/・KaTeX・字を集める'],
+  ['tools/spec-snapshot.mjs', 'fs.readFileSync(', '写した仕様の SOURCE.json（リポジトリの中の小さな JSON）を読む'],
   ['tools/catalog.mjs', "fs.readFileSync(file, 'utf8')", '部品庫の一覧を作る：リポジトリの vendor/components/ の README を読む'],
   ['tools/catalog.mjs', "fs.readFileSync(OUT, 'utf8')", '部品庫の一覧：作り直したものと比べるために、このツールが書く vendor/components/CATALOG.md を読む（--check）'],
   ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(...p), 'utf8')", 'AI への指示を作る：リポジトリの tools/llm-guide/・docs/contract・vendor/components/ の README と index.js を読む（開発者の道具）'],
