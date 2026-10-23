@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=d7238e355c3eae98 -->
+<!-- i18n: pair=editor.ja.md sha256=ba1399d45499e44c -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -90,7 +90,7 @@ After each action the editor writes `deck.html`, `narration.md` and `audio/manif
 
 ### Make the audio in Colab (when there is no WebGPU)
 
-<!-- colab-verified --> **Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU: the Colab T4 run worked on 2026-10-21; on 2026-10-23 it failed with libcublasLt.so.13 because Colab's CUDA libraries changed, and the notebook now falls back to the CPU automatically. GPU with the pinned versions: not yet verified. Kokoro not yet.**
+<!-- colab-verified --> **Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s).**
 
 For computers without WebGPU (many school PCs, Safari, iPad), the Audio panel has a **Make the audio in Colab** group (open by default when the browser has no WebGPU). Free Colab (your own Google account) makes the same voices, and the editor imports the result with cue times. Browser TTS itself does not change.
 

@@ -566,7 +566,7 @@ export function createAudioPanel(o) {
       const narr = await ws.readText('narration.md', { max: READ_LIMITS.narration });
       const segs = parseNarration(narr || '');
       const voices = { expert: voiceOf(v, 'expert').name, novice: voiceOf(v, 'novice').name };
-      const job = await buildJob({ segs, docId: await o.colab.docId(), lang: ttsLang(v), voices, yomi: o.yomi || null, version: o.colab.version || '0', keys });
+      const job = await buildJob({ segs, docId: await o.colab.docId(), title: o.colab.title ? await o.colab.title() : null, lang: ttsLang(v), voices, yomi: o.yomi || null, version: o.colab.version || '0', keys });
       if (o.ws() !== ws || o.generation() !== g) return;
       if (!job.steps.length) { say(C.noSteps, true); return; }
       download('tts-job.json', enc.encode(JSON.stringify(job, null, 1) + '\n'), 'application/json');
@@ -598,7 +598,7 @@ export function createAudioPanel(o) {
       const segs = parseNarration(narr || '');
       const plan = await planImport({ zip, segs, docId: await o.colab.docId(), yomi: o.yomi || null });
       if (!live()) return;
-      if (plan.reject) { lines.push({ text: plan.reject.code === 'doc-id' ? C.rejectDoc : C.rejectRecords(plan.reject.why), bad: true }); return; }
+      if (plan.reject) { lines.push({ text: plan.reject.code === 'doc-id' ? C.rejectDoc(plan.reject.title) : C.rejectRecords(plan.reject.why), bad: true }); return; }
       let applied = 0;
       const no = o.beforeWrite ? await o.beforeWrite('audio') : null;
       if (no && plan.applied.length) lines.push({ text: no, bad: true });
