@@ -547,12 +547,12 @@ const browser = await launch();
   }, Buffer.from(HTML).toString('base64'));
   await page.evaluate(() => window.__APP_TEST.openFile({ handle: window.__ph }));
   await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
-  // 添付は「ファイル ▾」→「教材の情報…」の中（ui-redesign：道具の列の「添付」はない）
-  ok(!(await page.$('#b-attach')) && (await page.textContent('#b-info')) === '教材の情報…', 'editor: attachments are under File ▾ → 教材の情報… (no toolbar button)');
+  // 添付は「ファイル ▾」→「ファイルの情報…」の中（ui-redesign：道具の列の「添付」はない）
+  ok(!(await page.$('#b-attach')) && (await page.textContent('#b-info')) === 'ファイルの情報…', 'editor: attachments are under File ▾ → ファイルの情報… (no toolbar button)');
   await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
-  ok((await page.textContent('#panel-title')) === '教材の情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-list')), 'editor: Lesson info shows title/license/creators, then the attachments marked experimental (試行)');
-  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === '題名,ライセンス,作り手', 'editor: Lesson info lists the title, the license and the creators');
+  ok((await page.textContent('#panel-title')) === 'ファイルの情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-list')), 'editor: File info shows title/license/creators, then the attachments marked experimental (試行)');
+  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === '題名,ライセンス,作り手', 'editor: File info lists the title, the license and the creators');
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/notes.txt,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
   ok((await page.$eval('[data-attach-role="attachments/paper.pdf"]', (x) => x.value)) === 'pdf' && (await page.$eval('[data-attach-title="attachments/paper.pdf"]', (x) => x.value)) === 'Paper (PDF)' && (await page.$eval('[data-attach-role="attachments/code/run.py"]', (x) => x.value)) === '',
     'editor: role and title come from egatari.json (no role: empty)');

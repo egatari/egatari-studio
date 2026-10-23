@@ -1,5 +1,5 @@
 // チャットの AI との行き来（docs/authoring-with-llms.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す（名前に「AI で…」を付けない）：
-//   「新規作成…」→「チャットの AI に書いてもらう」（mode 'new'）：① 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列
+//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 分野（使うパーツ。既定はなし）→ ② デザイン（テーマ。返事の教材にも付ける）→ ③ 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列
 //     （既定はデッキを開いていればその部品・テーマから推したもの、開いていなければなし）と ① を組み立てて写す（kit/core/llm-pack.mjs）→
 //     ③ AI の返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を
 //     取り出し、スライドに id を付け（kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして
@@ -31,20 +31,23 @@ const TX = {
     method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
     title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
     howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
+    howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑤ に貼り付けます。',
+    themeLabel: 'テーマ', themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
+    seriesHintNew: '使うパーツの説明が指示に加わります。何も選ばなければ共通の本体だけです',
     howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
     steps: {
-      new: ['① 頼みたいことを書く', '② AI への指示をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて開く'],
+      new: ['③ 頼みたいことを書く', '④ AI への指示をコピーして、チャットに貼って送る', '⑤ AI の返事を貼り付けて開く', '① 分野（使うパーツ）を選ぶ（選ばなくてもよい）', '② デザイン（テーマ）を選ぶ'],
       insert: ['① 足すスライドを書く', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
       replace: ['① 直してほしいことを書く', '② 修正依頼をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて取り込む'],
     },
     step1Hint: '書いた内容は、コピーする指示の最後に入ります（チャットに貼ると添付のファイルの形になり、そこでは書き直せないため、先にここで書きます）。書かない項目は空のままでかまいません',
     kindLegend: 'どちらで作りますか', kindA: 'A　新しく作る', kindB: 'B　このチャットでここまで話し合った内容で作る',
     fieldPh: { topic: '例：二分探索のしくみ', audience: '例：高校 2 年生', length: '例：5 枚・10 分', language: '例：日本語', speakers: '例：1 人', examples: '例：電話帳で名前を探す' },
-    needTopic: '① の「題材」を書いてください',
+    needTopic: '③ の「題材」を書いてください',
     insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
     insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：具体例を 1 つ、練習問題を 1 つ',
     insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、頼む文が短くて済みます）',
-    withPack: 'AI への指示（共通の本体と系列）も入れる：このデッキを作ったのとは別の、新しいチャットで頼むとき',
+    withPack: 'AI への指示（共通の本体と分野）も入れる：このデッキを作ったのとは別の、新しいチャットで頼むとき',
     copyInsert: '頼む文をコピー',
     wish: '直してほしいこと（なくてもよい）', wishPh: '例：2 枚目の例を身近なものに替える',
     reviseHint: '修正依頼には、品質チェックの指摘と、① に書いたこと、開いているメモ（コメント）、今の deck.html と narration.md が入ります（長いデッキは指摘のあるスライドだけ）',
@@ -52,14 +55,14 @@ const TX = {
     revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・メモ ${c} 件` : ''}）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
     insertCopied: (kb) => `コピーしました（${kb} KB）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
     wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`,
-    guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ系列（必要なときだけ足す）と、① の頼みたいことです。系列を足すと、その教材に向くパーツの説明が加わります。',
+    guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ分野のパーツの説明と、頼みたいことです。',
     common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
-    seriesLegend: '系列（必要なときだけ足す）',
-    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を足す`,
+    seriesLegend: '分野（使うパーツ）',
+    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
     seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
     copyGuide: 'AI への指示をコピー',
-    copied: (kb) => `コピーしました（${kb} KB、① の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
+    copied: (kb) => `コピーしました（${kb} KB、③ の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ⑤ へ`,
     step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼ってボタンを押すと、次の囲みを待ちます',
     pasteLabel: 'AI の返事', placeholder: 'ここに AI の返事の全体か、囲みを 1 つ貼り付ける',
     go: { new: '開く', insert: '挿入', replace: '取り込む' }, only: 'これだけで取り込む',
@@ -114,20 +117,23 @@ const TX = {
     method: 'Have a chat AI write it', methodFix: 'Have a chat AI fix it',
     title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
     howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
+    howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 5.',
+    themeLabel: 'Theme', themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
+    seriesHintNew: 'Adds the notes on those parts to the instructions. With none chosen, only the common body is sent.',
     howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
     steps: {
-      new: ['1. Write what you want', '2. Copy the instructions, paste them into the chat and send', '3. Paste the AI’s reply and open it'],
+      new: ['3. Write what you want', '4. Copy the instructions, paste them into the chat and send', '5. Paste the AI’s reply and open it', '1. Choose subjects (parts) (optional)', '2. Choose the design (theme)'],
       insert: ['1. Describe the slides to add', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
       replace: ['1. Write what to change', '2. Copy the fix request, paste it into the chat and send', '3. Paste the AI’s reply and bring it in'],
     },
     step1Hint: 'What you write goes at the end of the copied instructions (pasted into a chat they often become an attachment you cannot edit there, so write it here first). Leave out anything you do not need.',
     kindLegend: 'How do you want to make it?', kindA: 'A. Make a new lesson', kindB: 'B. From what we have discussed so far in this chat',
     fieldPh: { topic: 'e.g. how binary search works', audience: 'e.g. first-year students', length: 'e.g. 5 slides, 10 minutes', language: 'e.g. English', speakers: 'e.g. one narrator', examples: 'e.g. finding a name in a phone book' },
-    needTopic: 'Write the topic in step 1.',
+    needTopic: 'Write the topic in step 3.',
     insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
     insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one worked example and one exercise',
     insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it stays short.',
-    withPack: 'Also include the instructions for the AI (common body and series): when you ask in a new chat, not the one that made this deck',
+    withPack: 'Also include the instructions for the AI (common body and subjects): when you ask in a new chat, not the one that made this deck',
     copyInsert: 'Copy the request',
     wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
     reviseHint: 'The fix request has the quality check findings, what you write in step 1, the open notes (comments) and the current deck.html and narration.md (for a long deck, only the slides with findings).',
@@ -135,14 +141,14 @@ const TX = {
     revised: (kb, n, c) => `Copied (${kb} KB; ${n} finding(s)${c ? `, ${c} note(s)` : ''}). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
     insertCopied: (kb) => `Copied (${kb} KB). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
     wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
-    guide: 'The copied instructions are the common body (always included), the series you add (only when needed) and what you wrote in step 1. A series adds the notes on parts that suit that kind of lesson.',
+    guide: 'The copied instructions are the common body (always included), the notes on the parts of the subjects you chose, and what you want.',
     common: (kb) => `Common body (always included)   ${kb} KB`,
-    seriesLegend: 'Series (add only when needed)',
-    seriesHint: (name) => `Using formulas, graphs or data charts? Add “${name}”.`,
+    seriesLegend: 'Subjects (parts)',
+    seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
     seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
     copyGuide: 'Copy instructions for your AI',
-    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 1). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
+    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 3). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 5.`,
     step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press the button; the editor then waits for the other.',
     pasteLabel: 'The AI’s reply', placeholder: 'Paste the whole reply of the AI here, or one block',
     go: { new: 'Open', insert: 'Insert', replace: 'Import' }, only: 'Import just this',
@@ -265,9 +271,10 @@ export function setupLlm(app) {
     return seriesForDeck(deck);
   }
   // req：{request() → 最後に付ける文（Promise でもよい）, missing() → 足りない欄 | null}。optional：指示を入れるかを選べる（挿入：既定は入れない）
-  async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied } = {}) {
+  // split：新規作成（① 分野 を別のステップにする。既定は何も選ばない）。seriesTitle：その見出し
+  async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied, split = false, seriesTitle = '' } = {}) {
     const base = buildPack({ series: [], lang: LANG });
-    const initial = await defaultSeries();
+    const initial = split ? [] : await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => {
       const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s });
@@ -289,16 +296,16 @@ export function setupLlm(app) {
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
     } });
-    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide' }, [
-      el('span', { cls: 'hint', text: X.guide }),
-      el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]),
-      el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
+    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
         el('legend', { text: X.seriesLegend }),
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
           el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
-      ]),
-      el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) }),
-    ]);
+      ]);
+    const seriesHint = el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) });
+    const commonRow = el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]);
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide' }, split
+      ? [el('span', { cls: 'hint', text: X.guide }), commonRow]
+      : [el('span', { cls: 'hint', text: X.guide }), commonRow, seriesSet, seriesHint]);
     if (withPack) {
       const show = () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); };
       withPack.addEventListener('change', show);
@@ -308,7 +315,8 @@ export function setupLlm(app) {
     const node = step('paste-step2', title, [
       ...(withPack ? [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })])] : []),
       packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
-    return { node, update };
+    const seriesNode = split ? step('paste-step-series', seriesTitle, [el('p', { cls: 'hint', text: X.seriesHintNew }), seriesSet, seriesHint]) : null;
+    return { node, update, seriesNode };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
   function reviseStep(copyMsg, title, results0) {
@@ -329,6 +337,7 @@ export function setupLlm(app) {
   // ---------------------------------------------------------------- AI の窓（③ の貼り付けは 3 つとも同じ）
   // 囲みを 1 つずつ（チャットの囲みの右上のコピーで）写して貼ったとき：届いた片方を持っておき、もう片方を待つ（窓を閉じると捨てる）
   let held = null;   // {kind: 'deck' | 'narration', text}
+  let newTheme = null;   // 新規作成の ② で選んだテーマ（返事の教材の <html data-theme> にも付ける）
   let insertAfter = null;   // 挿入：この番号（0 から）のスライドの後ろ。null なら最後
   const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
   // mode：'new'（新規作成）| 'insert'（スライドの挿入。opts.after）| 'replace'（修正。opts.results：品質チェックの結果があれば）。
@@ -351,11 +360,21 @@ export function setupLlm(app) {
       stateBox.hidden = !text; stateBox.classList.toggle('waiting', !!h); reset.hidden = !h;
       stateText.textContent = text || '';
     }
-    let s1, s2;
+    let s1, s2, pre = [];
     if (mode === 'new') {
+      // ① 分野（使うパーツ）→ ② デザイン（テーマ）→ ③ 頼みたいこと → ④ コピー → ⑤ 貼り付け
       const req = requestStep(titles[0]);
-      const pack = await packStep(copyMsg, req, { title: titles[1] });
+      const themes = (app.themes && app.themes.length ? app.themes : ['default']);
+      const sel = el('select', { id: 'paste-theme' }, themes.map((t) => el('option', { value: t, text: t })));
+      sel.value = themes.includes(newTheme) ? newTheme : themes.includes('default') ? 'default' : themes[0];
+      newTheme = sel.value;
+      const reqWithTheme = { request: () => req.request().replace(/\n*$/, '\n') + X.themeLine(sel.value) + '\n', missing: () => req.missing() };
+      const pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3] });
+      sel.addEventListener('change', () => { newTheme = sel.value; pack.update(); });
       req.node.addEventListener('input', pack.update);
+      const themeNode = step('paste-step-theme', titles[4], [el('p', { cls: 'hint', text: X.themeHint }),
+        el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])]);
+      pre = [pack.seriesNode, themeNode];
       s1 = req.node; s2 = pack.node;
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
@@ -382,7 +401,7 @@ export function setupLlm(app) {
       const buttons = [{ id: 'cancel', label: T.cancel }];
       if (held && (mode === 'replace' || (mode === 'insert' && held.kind === 'deck'))) buttons.push({ id: 'only', label: X.only });
       buttons.push({ id: 'import', label: X.go[mode], pri: true });
-      const shown = ask({ title: X.title[mode], kind: 'paste', body: [el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : X.howTo }), s1, s2, s3], buttons });
+      const shown = ask({ title: X.title[mode], kind: 'paste', body: [el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo }), ...pre, s1, s2, s3], buttons });
       if (focusArea) setTimeout(() => { area.focus(); s3.scrollIntoView({ block: 'nearest' }); }, 0);
       const v = await shown;
       if (v !== 'import' && v !== 'only') { held = null; return false; }
@@ -480,8 +499,13 @@ export function setupLlm(app) {
     await afterOpen();
     return null;
   }
+  // 選んだテーマを返事の教材の <html> に付ける（AI がテーマを付けなかったとき。付けていればその返事のまま）
+  function withTheme(deck) {
+    if (!newTheme || !/^[\w-]+$/.test(newTheme)) return deck;
+    return deck.replace(/<html\b[^>]*>/i, (tag) => (/\sdata-theme\s*=/i.test(tag) ? tag : tag.replace(/>$/, ` data-theme="${newTheme}">`)));
+  }
   async function openNew(r, notes, info = []) {
-    const ids = withIds(r.deck, r.narration);
+    const ids = withIds(withTheme(r.deck), r.narration);
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});

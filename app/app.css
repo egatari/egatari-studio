@@ -312,3 +312,14 @@ main{flex:1;min-height:0;display:flex}
 #panel .info-h{margin:16px 0 6px;font-size:15px;border-top:1px solid var(--line);padding-top:12px}
 #panel .buildwarn{margin:8px 0;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
 #panel .buildwarn summary{cursor:pointer;font-weight:600}
+/* 最初の画面（ui-redesign）：新規作成を主に。「…」のアイコンの試案 */
+.new-block{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.new-block .big{font-size:17px;padding:10px 18px;display:inline-flex;align-items:center;gap:10px}
+.ai-icon .sun{fill:var(--logo-sun)}
+#recent-none{margin:4px 0 0}
+.with-claude a{color:var(--muted);font-size:13px}
+#panel table.kinds{border-collapse:collapse;font-size:13px;margin:4px 0 12px}
+#panel table.kinds th,#panel table.kinds td{text-align:left;vertical-align:top;padding:4px 8px;border-bottom:1px solid var(--line)}
+.menu-list [role=menuitemradio]::before{content:"";display:inline-block;width:16px;font-size:9px;vertical-align:2px}
+.menu-list [role=menuitemradio][aria-checked="true"]::before{content:"●"}
+.menu-list [role=group]{display:flex;flex-direction:column;gap:2px}

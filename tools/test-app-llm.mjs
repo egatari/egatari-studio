@@ -51,18 +51,15 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // ---------------------------------------------------------------- 1. 「新規作成…」→「チャットの AI に書いてもらう」の窓：3 つのステップ・頼みたいこと（A・B）を書いて指示に入れる・指示を写す・誤り
   ok((await page.textContent('#w-new')) === 'New…' && !(await page.$('#w-paste')), 'llm: the welcome screen has “New…” (no separate AI entry)');
   await page.click('#w-new');
-  await page.waitForSelector('#dlg[open] #dlg-new-ai');
-  ok((await page.textContent('#dlg-new-blank')) === 'Blank' && (await page.textContent('#dlg-new-template')) === 'From a template' && (await page.textContent('#dlg-new-ai')) === 'Have a chat AI write it…', 'llm: “New…” offers Blank, From a template and Have a chat AI write it');
-  await shot('new-choice.png');
-  await clickDlg(page, '#dlg-new-ai');
+  // 新規作成はチャットの AI の道 1 本（白紙とテンプレートは外した。テンプレートはスライドの挿入に）：すぐに AI の窓が開く
   await page.waitForSelector('#dlg[open] #paste-text');
-  ok((await page.textContent('#ai-howto')) === 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.'
-    && await page.evaluate(() => { const h = document.getElementById('ai-howto'), s1 = document.getElementById('paste-step1'); return !!(h.compareDocumentPosition(s1) & Node.DOCUMENT_POSITION_FOLLOWING); }),
-    'llm: before step 1, the dialog explains to open a chat AI in another tab, send the instructions and paste the reply in step 3');
+  ok((await page.textContent('#ai-howto')) === 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 5.'
+    && await page.evaluate(() => { const h = document.getElementById('ai-howto'), s1 = document.getElementById('paste-step-series'); return !!(h.compareDocumentPosition(s1) & Node.DOCUMENT_POSITION_FOLLOWING); }),
+    'llm: before step 1, the dialog explains to open a chat AI in another tab, send the instructions and paste the reply in step 5');
   ok(!(await page.$('#dlg-body input[name=paste-mode]')) && (await page.$$eval('#dlg-body input[type=radio]', (xs) => xs.map((x) => x.name))).every((n) => n === 'paste-kind'), 'llm: there is no import-mode choice (the command decides it)');
   const steps = await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => [x.id, x.querySelector('h3').textContent, x.getAttribute('aria-labelledby') === x.querySelector('h3').id]));
-  ok(steps.map((x) => x[0]).join() === 'paste-step1,paste-step2,paste-step3' && steps.map((x) => x[1]).join('|') === '1. Write what you want|2. Copy the instructions, paste them into the chat and send|3. Paste the AI’s reply and open it' && steps.every((x) => x[2]),
-    'llm: the dialog has 3 steps in order, each a section labelled by its heading: ' + JSON.stringify(steps.map((x) => x[1])));
+  ok(steps.map((x) => x[0]).join() === 'paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3' && steps.map((x) => x[1]).join('|') === '1. Choose subjects (parts) (optional)|2. Choose the design (theme)|3. Write what you want|4. Copy the instructions, paste them into the chat and send|5. Paste the AI’s reply and open it' && steps.every((x) => x[2]),
+    'llm: the dialog has 5 steps in order (subjects, theme, request, copy, paste), each a section labelled by its heading: ' + JSON.stringify(steps.map((x) => x[1])));
   ok((await page.textContent('#dlg-title')) === 'New: have a chat AI write it' && (await page.textContent('#dlg-import')) === 'Open', 'llm: the dialog is titled “New: have a chat AI write it” and its button is “Open”');
   const unlabelled = await page.$$eval('#dlg-body input, #dlg-body textarea', (xs) => xs.filter((x) => !x.labels?.length && !x.closest('label') && !x.getAttribute('aria-label')).map((x) => x.id));
   ok(!unlabelled.length, 'llm a11y: every field in the dialog has a label: ' + JSON.stringify(unlabelled));
@@ -74,17 +71,19 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
   ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).length === 0 && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
     'llm: the instructions have series checkboxes with sizes; with no deck open, no series is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
-  ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(buildPack({ series: [], lang: 'en' }))} KB`) && (await page.textContent('#paste-series legend')) === 'Series (add only when needed)',
+  ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(buildPack({ series: [], lang: 'en' }))} KB`) && (await page.textContent('#paste-series legend')) === 'Subjects (parts)',
     'llm: the common body is shown as always included (ticked, cannot be removed) with its size; the series say “add only when needed”');
-  ok((await page.textContent('#paste-series-hint')) === 'Using formulas, graphs or data charts? Add “Academic (math, functions, data)”.' && (await page.getAttribute('#paste-series', 'aria-describedby')) === 'paste-series-hint',
+  ok((await page.textContent('#paste-series-hint')) === 'Using formulas, graphs or data charts? Choose “Academic (math, functions, data)”.' && (await page.getAttribute('#paste-series', 'aria-describedby')) === 'paste-series-hint',
     'llm: under the series, a hint says to add Academic for formulas, graphs or data charts (with the series’ display name)');
   // A の題材がないまま写そうとすると、① に戻す
   await page.click('#paste-copy-guide');
   await page.waitForSelector('#paste-copied:not([hidden])');
-  ok((await page.textContent('#paste-copied')) === 'Write the topic in step 1.' && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-a-topic'), 'llm: copying with no topic asks for it and moves the focus to the topic field');
+  ok((await page.textContent('#paste-copied')) === 'Write the topic in step 3.' && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-a-topic'), 'llm: copying with no topic asks for it and moves the focus to the topic field');
   const reqA = { topic: 'How binary search works', audience: 'First-year students', length: '5 slides', examples: 'Finding a name in a phone book\nGuessing a number' };
   for (const [k, v] of Object.entries(reqA)) await page.fill('#paste-a-' + k, v);
-  const wantA = filledRequest({ kind: 'A', values: { ...reqA, speakers: 'one narrator', language: '' } }, 'en');
+  // 頼みたいことの最後に ② のテーマ（既定は default）
+  const withThemeLine = (r, t = 'default', lang = 'en') => r.replace(/\n*$/, '\n') + (lang === 'en' ? `- Theme: ${t} (<html data-theme="${t}">)` : `- テーマ：${t}（<html data-theme="${t}">）`) + '\n';
+  const wantA = withThemeLine(filledRequest({ kind: 'A', values: { ...reqA, speakers: 'one narrator', language: '' } }, 'en'));
   // 系列に何も印がないまま写す：共通の本体と頼みたいことだけ
   ok((await page.textContent('#paste-pack-size')) === `${packKb(commonBody('en') + '\n' + wantA)} KB in all`, 'llm: with no series ticked, the total is the common body plus the request');
   await page.click('#paste-copy-guide');
@@ -105,7 +104,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(clip === packWithRequest({ series: ['academic'], lang: 'en', request: wantA }) && clip.endsWith(wantA) && clip.includes('- Topic: How binary search works') && clip.includes('- Examples or figures to include: Finding a name in a phone book\n  Guessing a number') && !clip.includes('*(Fill in A or B') && !clip.includes('**B. From our discussion so far**'),
     'llm: what was written for A is at the end of the copied instructions (the blank form and B are left out)');
   const copiedMsg = await page.textContent('#paste-copied');
-  ok(/with what you wrote in step 1/.test(copiedMsg) && /If it turns into an attachment, just send it\./.test(copiedMsg) && /go to step 3/.test(copiedMsg), 'llm: after copying, the dialog says to send it even if it becomes an attachment: ' + copiedMsg);
+  ok(/with what you wrote in step 3/.test(copiedMsg) && /If it turns into an attachment, just send it\./.test(copiedMsg) && /go to step 5/.test(copiedMsg), 'llm: after copying, the dialog says to send it even if it becomes an attachment: ' + copiedMsg);
   await shot('ai-step2.png');
   // B（このチャットでここまで話し合った内容で）
   await page.click('#paste-kind-b');
@@ -117,7 +116,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-copy-guide');
   await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), clip);
   const clipB = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
-  const wantB = filledRequest({ kind: 'B', values: { length: '10 minutes', audience: '' } }, 'en');
+  const wantB = withThemeLine(filledRequest({ kind: 'B', values: { length: '10 minutes', audience: '' } }, 'en'));
   ok(clipB.includes('## Series pack: business') && clipB.includes('`<m-kpi>`') && clipB.includes('## Series pack: info') && !clipB.includes('## Series pack: academic') && clipB.indexOf('Series pack: business') < clipB.indexOf('Series pack: info') && (await page.textContent('#paste-pack-size')) !== total0,
     'llm: ticking business and info (and unticking academic) copies those packs, in order, and updates the total');
   ok(clipB.endsWith(wantB) && clipB.includes('Make the lesson from what we have discussed so far in this chat.') && clipB.includes('- Length (slides or minutes): 10 minutes') && !clipB.includes('**A. Make a new lesson**'),
@@ -179,7 +178,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // deck.html → narration.md、narration.md → deck.html のどちらの順でも、返事の全体を貼ったときと同じものが開く。捨てて最初から・窓を閉じると捨てる
   const noIds = (t) => t.replace(/ id="s-[a-z2-7]{6}"/g, '').replace(/ \{#s-[a-z2-7]{6}\}/g, '');
   const whole = { deck: noIds(F['deck.html']), narration: noIds(F['narration.md']) };
-  const openPaste = async () => { await clickCommand(page, '#b-new'); await page.waitForSelector('#dlg[open] #dlg-new-ai'); await clickDlg(page, '#dlg-new-ai'); await page.waitForSelector('#dlg[open] #paste-text'); };
+  const openPaste = async () => { await clickCommand(page, '#b-new'); await page.waitForSelector('#dlg[open] #paste-text'); };
   const pasteOne = async (text) => { await page.fill('#paste-text', text); await clickDlg(page, '#dlg-import'); };
   const heldText = () => page.waitForSelector('#dlg[open] #paste-state:not([hidden])').then(() => page.textContent('#paste-state-text'));
   for (const order of [['deck', 'narration'], ['narration', 'deck']]) {
@@ -227,7 +226,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await openPaste();
   ok((await page.textContent('#b-new')) === 'New…' && !(await page.$('#b-paste')) && !(await page.$('#b-fiximport')) && !(await page.$('#paste-replace')),
     'llm: the Open menu has “New…” (no “Make with AI” / “Import AI fixes” entries; no replace choice)');
-  ok(await page.isChecked('#paste-series-business') && !(await page.isChecked('#paste-series-academic')), 'llm: with the business deck open, the instructions default to the business series (from its components and theme)');
+  ok((await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm: New… starts with no subject ticked, even with a business deck open (step 1 is optional)');
   await page.fill('#paste-text', replyOf(evil, bnarr));
   await clickDlg(page, '#dlg-import');
   await discard();
@@ -311,18 +310,16 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pj.waitForSelector('#drop');
     ok((await pj.textContent('#w-new')) === '新規作成…', 'llm ja: the welcome screen has 「新規作成…」');
     await pj.click('#w-new');
-    await pj.waitForSelector('#dlg[open] #dlg-new-ai');
-    await clickDlg(pj, '#dlg-new-ai');
     await pj.waitForSelector('#dlg[open] #paste-text');
-    ok((await pj.textContent('#ai-howto')) === 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。' && (await pj.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう',
+    ok((await pj.textContent('#ai-howto')) === 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑤ に貼り付けます。' && (await pj.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう',
       'llm ja: the explanation before step 1 and the title');
     const heads = await pj.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
-    ok(heads.join('|') === '① 頼みたいことを書く|② AI への指示をコピーして、チャットに貼って送る|③ AI の返事を貼り付けて開く', 'llm ja: the 3 steps: ' + heads.join(' / '));
+    ok(heads.join('|') === '① 分野（使うパーツ）を選ぶ（選ばなくてもよい）|② デザイン（テーマ）を選ぶ|③ 頼みたいことを書く|④ AI への指示をコピーして、チャットに貼って送る|⑤ AI の返事を貼り付けて開く', 'llm ja: the 5 steps: ' + heads.join(' / '));
     const common = await pj.textContent('label.paste-common'), legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
     const ja = packKb(buildPack({ series: [], lang: 'ja' }));
-    const jaA = packKb(packWithRequest({ series: [], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja') }));
-    ok((await pj.textContent('#paste-series-hint')) === '数式・グラフ・データの図を使うなら「学術（数式・関数・データ）」を足す' && (await pj.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm ja: no series ticked with no deck open, and the hint names 「学術（数式・関数・データ）」');
-    ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '系列（必要なときだけ足す）' && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
+    const jaA = packKb(packWithRequest({ series: [], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja').replace(/\n*$/, '\n') + '- テーマ：default（<html data-theme="default">）\n' }));
+    ok((await pj.textContent('#paste-series-hint')) === '数式・グラフ・データの図を使うなら「学術（数式・関数・データ）」を選ぶ' && (await pj.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm ja: no series ticked with no deck open, and the hint names 「学術（数式・関数・データ）」');
+    ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '分野（使うパーツ）' && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
       `llm ja: the Japanese UI shows the sizes of the Japanese instructions (${common} / ${total})`);
     const scrollTo = (id) => pj.evaluate((id) => document.getElementById(id).scrollIntoView({ block: 'start' }), id);
     for (const [k, v] of Object.entries({ topic: '二分探索のしくみ', audience: '高校 2 年生', length: '5 枚', language: '日本語', examples: '電話帳で名前を探す' })) await pj.fill('#paste-a-' + k, v);
@@ -331,7 +328,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pj.waitForFunction(() => /^コピーしました/.test(document.getElementById('paste-copied').textContent));
     const clipJ = (await pj.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     const cm = await pj.textContent('#paste-copied');
-    ok(clipJ.endsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- 題材：二分探索のしくみ\n- 対象（だれ向け）：高校 2 年生\n- 長さ（枚数か分）：5 枚\n- 言語：日本語\n- 話者：1 人\n- 入れたい例や図：電話帳で名前を探す\n') && /添付のファイルの形になっても、そのまま送ってください/.test(cm),
+    ok(clipJ.endsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- 題材：二分探索のしくみ\n- 対象（だれ向け）：高校 2 年生\n- 長さ（枚数か分）：5 枚\n- 言語：日本語\n- 話者：1 人\n- 入れたい例や図：電話帳で名前を探す\n- テーマ：default（<html data-theme="default">）\n') && /添付のファイルの形になっても、そのまま送ってください/.test(cm),
       'llm ja: the request written in step 1 ends the copied instructions, and the hint says to send it even as an attachment: ' + cm);
     await scrollTo('paste-step2');
     if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'ai-step2-ja.png') });

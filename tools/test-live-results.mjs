@@ -198,7 +198,7 @@ console.log('editor');
     // 結果を取り込む前の再生専用
     await exportTo('#b-export-play', 'before.play.ega.html');
     const playBeforeApp = await waitFile('before.play.ega.html');
-    // 添付の板（ファイル ▾ → 教材の情報…）
+    // 添付の板（ファイル ▾ → ファイルの情報…）
     await page.evaluate(() => document.getElementById('b-info').click());
     await page.waitForSelector('#attach-list');
     ok((await page.textContent('#attach-live')) === '授業の部屋の結果を取り込む…', 'editor: the attachments panel has 「授業の部屋の結果を取り込む…」');
@@ -230,7 +230,7 @@ console.log('editor');
     ok(lines.length === 2 && lines[0] === '質問 1 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results.png') });
     ok(await page.evaluate(() => window.__xss === undefined && !document.querySelector('#attach-list img, #xss-b')), 'editor: the learner strings render as text (no element, no script run)');
-    // 部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）。結果の取り込みは教材の情報…の添付だけ（参加者用の窓のライブには出さない）
+    // 部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）。結果の取り込みはファイルの情報…の添付だけ（参加者用の窓のライブには出さない）
     await page.setInputFiles('#attach-live-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...R0, room: 'r-bbbbbbbb' })) });
     await page.waitForSelector('#dlg[open] #live-results-mismatch');
     ok(/r-bbbbbbbb/.test(await page.textContent('#live-results-mismatch')) && /r-7k2q6xw4/.test(await page.textContent('#live-results-mismatch')), 'editor: a room mismatch shows a warning (and still allows the import)');

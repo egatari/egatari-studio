@@ -21,7 +21,7 @@ import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
 import LIVE_JS from '../kit/live.js?text';
 import { createTtsClient } from './tts-client.js';
 import { loadLame } from './mp3-loader.js';
-import { writeText, writeFile, cancelledError, readText, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
+import { writeFile, cancelledError, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
@@ -34,7 +34,6 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
-import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TEMPLATES } from '../kit/core/slide-ops.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
@@ -94,10 +93,11 @@ async function showWelcome() {
   $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true; $('saveloc').hidden = true;
   $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
-  $('w-open').disabled = !SUPPORTED;   // 「新規作成…」はフォルダがなくても「チャットの AI に書いてもらう」が使える
+  $('w-open').disabled = !SUPPORTED;   // 「新規作成…」（チャットの AI に書いてもらう）はフォルダがなくても使える
   showExamples();
   const list = await recentList();
-  $('recent').hidden = !list.length;
+  // 最近のファイル：なくても見出しは出す（「まだありません」）
+  $('recent').hidden = false; $('recent-none').hidden = list.length > 0;
   // ファイルを選ぶ画面がない（Safari・iPad など）：保存はダウンロードになり、保存のたびに新しいファイルができる
   $('save-note').hidden = !!window.showSaveFilePicker;
   const ul = $('recent-list'); ul.innerHTML = '';
@@ -355,7 +355,7 @@ const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // プレビューでは、知らせの部品（server/hints.js）も信頼する先頭部分に入れる（デッキの文書の中の </body> を探して入れない）
 function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
 // theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
-function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), ...(S.videoMode ? { query: '?mode=video' } : {}) }, '\n' + RES.hints); }
+function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) }, '\n' + RES.hints); }
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
 // 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
@@ -864,7 +864,11 @@ async function leftoverGate(kind, keys = null) {
 }
 function showHelp() {
   const h = T.help;
+  // 作業フォルダ・1 ファイル・再生専用・組み立てた HTML の違い（最初の画面から移した）
+  const kinds = el('table', { id: 'help-kinds', cls: 'kinds' }, [['kindFolder', 'kindFolderText'], ['kindFile', 'kindFileText'], ['kindPlay', 'kindPlayText'], ['kindBuilt', 'kindBuiltText']]
+    .map(([k, t]) => el('tr', {}, [el('th', { scope: 'row', text: T[k] }), el('td', { text: T[t] })])));
   openPanel(T.helpTitle, [
+    el('h3', { text: T.kindsTitle }), kinds,
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
   ]);
@@ -1441,67 +1445,24 @@ async function insertDialog() {
   else if (v.startsWith('tpl:')) await slidesPanel.add(v.slice(4), at);
 }
 
-// ---------------------------------------------------------------- プレビュー ▾：動画のモードで確かめる（プレビューを ?mode=video で読み込み直す）
-function setVideoMode(on) {
-  S.videoMode = !!on;
-  $('b-videomode').setAttribute('aria-checked', S.videoMode ? 'true' : 'false');
-  $('viewer').classList.toggle('video-mode', S.videoMode);
-  status(S.videoMode ? T.videoOn : '');
-  if (S.base && S.allowed) loadFrame();
+// ---------------------------------------------------------------- プレビュー ▾：表示のモード（スライドショー・授業・動画）。授業と動画はプレビューを ?mode= で読み込み直す
+// スライドショーは全画面にもする（f と同じ）。発表は保存した .ega.html をブラウザで開いて行う
+const MODE_ITEMS = { talk: 'b-full', lecture: 'b-lecturemode', video: 'b-videomode' };
+function setPreviewMode(mode) {
+  const was = S.previewMode || 'talk';
+  S.previewMode = mode;
+  for (const [m, id] of Object.entries(MODE_ITEMS)) $(id).setAttribute('aria-checked', m === mode ? 'true' : 'false');
+  $('viewer').dataset.mode = mode;
+  status(mode === 'talk' ? '' : T.modeOn[mode]);
+  if (was !== mode && S.base && S.allowed) loadFrame();
 }
+function fullScreen() { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); }
 
-// ---------------------------------------------------------------- 新規作成…：白紙から・雛形から（作業フォルダに作る）・チャットの AI に書いてもらう（app/llm.js）
-async function newChoice() {
-  const body = [el('p', { text: T.newChoiceLead }), el('dl', { id: 'new-choices', cls: 'choices' }, [
-    ...(SUPPORTED ? [el('dt', { text: T.newBlank }), el('dd', { text: T.newBlankDesc }), el('dt', { text: T.newTemplate }), el('dd', { text: T.newTemplateDesc })] : []),
-    el('dt', { text: llm.texts.method }), el('dd', { text: T.newAiDesc })]),
-    SUPPORTED ? null : el('p', { id: 'new-nofolder', cls: 'hint', text: T.newNoFolder })];
-  const v = await ask({ title: T.newChoiceTitle, body, buttons: [{ id: 'cancel', label: T.cancel },
-    ...(SUPPORTED ? [{ id: 'new-blank', label: T.newBlank }, { id: 'new-template', label: T.newTemplate }] : []),
-    { id: 'new-ai', label: llm.texts.method + '…', pri: true }] });
-  if (v === 'new-blank' || v === 'new-template') {
-    // フォームは最初の画面にある：デッキを開いていれば（未保存の変更を確かめて）最初の画面へ戻る
-    if ($('welcome').hidden) { if (!(await leavePortable())) return; await showWelcome(); }
-    showNewForm(true, v === 'new-blank' ? 'blank' : 'template');
-  }
-  else if (v === 'new-ai') await llm.newWithAi();
-}
-let newKind = 'template';
-function showNewForm(on, kind) {
-  $('newform').hidden = !on;
-  if (on) {
-    newKind = kind || 'template';
-    $('n-head').textContent = T.newFormTitle[newKind];
-    const sel = $('n-theme'); sel.innerHTML = '';
-    for (const t of RES.themes) sel.append(el('option', { value: t, text: t }));
-    $('n-lang').value = EN ? 'en' : 'ja';
-    $('n-title').value = ''; $('n-title').placeholder = EN ? 'Untitled deck' : '新しいデッキ';
-    $('n-title').focus();
-  }
-}
-async function createDeck() {
-  const opts = { lang: $('n-lang').value, theme: $('n-theme').value, title: $('n-title').value.trim() || null, blank: newKind === 'blank' };
-  const dir = await pickFolder();
-  if (!dir) return;
-  if (!(await hasPermission(dir)) && !(await askPermission(dir))) { toast(T.noPermission, true); return; }
-  let target = dir, empty = true;
-  for await (const _ of dir.keys()) { empty = false; break; }
-  if (!empty) {
-    // 空でないフォルダには書かない：中に新しいフォルダを作る
-    const baseName = (opts.title || (opts.lang === 'en' ? 'new-deck' : 'new-deck')).replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim().slice(0, 60) || 'new-deck';
-    let name = baseName, n = 2;
-    for (;;) { try { await dir.getDirectoryHandle(name); name = `${baseName}-${n++}`; } catch { break; } }
-    target = await dir.getDirectoryHandle(name, { create: true });
-  }
-  const files = newDeckFiles(opts);
-  for (const [rel, text] of Object.entries(files)) {
-    if ((await readText(target, rel)) !== null) { toast(T.exists(rel), true); return; }
-    await writeText(target, rel, text);
-  }
-  showNewForm(false);
-  toast(T.created(target.name));
-  await openFolder(target);
-}
+// ---------------------------------------------------------------- 新規作成…：チャットの AI に書いてもらう（app/llm.js）。白紙とスライドの形のテンプレートは新規作成から外した
+// （テンプレートはスライドの挿入に残す。作業フォルダの新しいデッキはコマンドの npm run new）
+async function newChoice() { await llm.newWithAi(); }
+// Claude Code・Cowork で作る人への案内の行き先（説明のページか README かは未定。ここだけを直す）
+const WITH_CLAUDE_URL = 'https://github.com/egatari/egatari-studio/blob/main/docs/' + (EN ? 'with-claude.md' : 'with-claude.ja.md');
 
 // ---------------------------------------------------------------- つなぎ
 applyTexts();
@@ -1512,8 +1473,7 @@ $('w-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
-$('n-cancel').onclick = () => showNewForm(false);
-$('n-go').onclick = createDeck;
+$('w-claude').href = WITH_CLAUDE_URL;
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
@@ -1537,13 +1497,14 @@ $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
 $('b-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.removeAt(i); };
 $('b-revise-cmd').onclick = () => llm.revise();
-$('b-videomode').onclick = () => setVideoMode(!S.videoMode);
+$('b-videomode').onclick = () => setPreviewMode(S.previewMode === 'video' ? 'talk' : 'video');
+$('b-lecturemode').onclick = () => setPreviewMode(S.previewMode === 'lecture' ? 'talk' : 'lecture');
 $('b-comments').onclick = () => ui.toggleComments();
 $('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-check').onclick = quickCheck;
 $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };
 $('b-presenter').onclick = openPresenter;
-$('b-full').onclick = () => { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); };
+$('b-full').onclick = () => { fullScreen(); setPreviewMode('talk'); };
 // 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
 // キーボードで押したとき（detail = 0）は残す。一覧を開くボタン・一覧の項目は一覧の側でフォーカスを動かすので触らない
 $('top').addEventListener('click', (e) => {
@@ -1559,7 +1520,7 @@ $('top').addEventListener('click', (e) => {
 // 止めたキーを見ない。一覧の中は role=menu なので送りもしない）。マウスで選んだら focus を残さない（キーはプレビューへ）、キーボードで選んだらボタンに返す
 const MENUS = [...document.querySelectorAll('#tools .menu > button[aria-haspopup=menu]')].map((btn) => ({ btn, list: $(btn.getAttribute('aria-controls')) }));
 const SUBS = [...document.querySelectorAll('#tools .menu-list .sub > button[aria-haspopup=menu]')].map((btn) => ({ btn, list: $(btn.getAttribute('aria-controls')), sub: true }));
-const menuItems = (M) => [...M.list.querySelectorAll(':scope > [role^=menuitem], :scope > .sub > [role^=menuitem]')].filter((b) => !b.hidden);
+const menuItems = (M) => [...M.list.querySelectorAll(':scope > [role^=menuitem], :scope > .sub > [role^=menuitem], :scope > [role=group] > [role^=menuitem]')].filter((b) => !b.hidden);
 for (const M of [...MENUS, ...SUBS]) for (const b of menuItems(M)) b.tabIndex = -1;
 function closeMenu(M, focusBtn) {
   for (const X of SUBS) if (X !== M && M.list.contains(X.list)) closeMenu(X);
@@ -1705,7 +1666,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

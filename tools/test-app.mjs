@@ -234,47 +234,25 @@ try {
   // ---------------------------------------------------------------- 2. はじめの画面
   await page.goto(BASE);
   await page.waitForSelector('#drop');
-  ok(await page.isVisible('#w-open') && await page.evaluate(() => document.getElementById('w-openfile').classList.contains('pri') && !document.getElementById('w-open').classList.contains('pri')), 'welcome: open-folder button visible (secondary)');
+  ok(await page.isVisible('#w-open') && await page.evaluate(() => document.getElementById('w-new').classList.contains('pri') && !document.getElementById('w-openfile').classList.contains('pri') && !document.getElementById('w-open').classList.contains('pri')), 'welcome: New… is the main button; Open and the folder are secondary');
+  // 最初の画面の順：新規作成 → 開く → 最近のファイル → サンプル → Claude Code・Cowork で作る（上級）→ フォルダで作業する…。ファイルの種類の表は使い方へ
+  {
+    const order = await page.evaluate(() => ['new-block', 'drop', 'recent', 'examples', 'w-claude', 'w-open'].map((id) => document.getElementById(id)).map((e, i, a) => i === 0 || !!(a[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)));
+    ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
+    ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
+  }
   ok((await page.textContent('#welcome h1')).includes('1 ファイル（.ega.html）'), 'welcome: Japanese UI for ja locale');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
-  // 新しいデッキ：フォルダを選ぶ画面の代わりに OPFS の空でないフォルダを返す → 中に新しいフォルダを作って開く
-  await page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    await root.removeEntry('talks', { recursive: true }).catch(() => {});
-    const parent = await root.getDirectoryHandle('talks', { create: true });
-    await parent.getFileHandle('other.txt', { create: true });
-    window.__parent = parent;
-    window.showDirectoryPicker = async () => parent;
-  });
-  // 新規作成…：白紙から・雛形から・チャットの AI に書いてもらう の 3 つ。雛形から（見本のスライド入り）
+  // 新規作成…：チャットの AI の道 1 本（① 分野 → ② デザイン → ③ 頼みたいこと → ④ コピー → ⑤ 貼り付け）。白紙とテンプレートは新規作成にない
   await page.click('#w-new');
-  await page.waitForSelector('#dlg[open] #dlg-new-template');
-  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && (await page.textContent('#dlg-new-blank')) === '白紙から' && (await page.textContent('#dlg-new-template')) === '雛形から' && (await page.textContent('#dlg-new-ai')) === 'チャットの AI に書いてもらう…',
-    'new: 「新規作成…」 offers 白紙から, 雛形から and チャットの AI に書いてもらう');
-  await page.click('#dlg-new-template');
-  await page.waitForSelector('#newform:not([hidden])');
-  ok((await page.textContent('#n-head')) === '新規作成：雛形から', 'new: 雛形から opens the form for a deck with the sample slides');
-  await page.fill('#n-title', 'テスト用のデッキ');
-  await page.click('#n-go');
-  await page.waitForFunction(() => window.__APP_TEST.state().open && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
-  const made = await page.evaluate(async () => { const d = await window.__parent.getDirectoryHandle('テスト用のデッキ'); const out = []; for await (const k of d.keys()) out.push(k); return out.sort().join(','); });
-  ok(made === 'deck.html,narration.md', 'new deck: created deck.html and narration.md in a new subfolder of a non-empty folder');
-  ok(!(await page.evaluate(() => window.__APP_TEST.state().error)), 'new deck: the template builds without error');
-  await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
-  // 白紙から（デッキを開いているときは「開く ▾ → 新規作成…」。最初の画面のフォームへ戻る）：表紙だけのデッキ
-  await clickCommand(page, '#b-new');
-  await page.waitForSelector('#dlg[open] #dlg-new-blank');
-  await page.click('#dlg-new-blank');
-  await page.waitForSelector('#newform:not([hidden])');
-  ok((await page.textContent('#n-head')) === '新規作成：白紙から', 'new: 白紙から (from the Open menu with a deck open) goes back to the form');
-  await page.fill('#n-title', '白紙のデッキ');
-  await page.click('#n-go');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.loads > 0 && /白紙のデッキ/.test(document.getElementById('deckname').textContent); }, null, { timeout: 20000 });
-  const blankDeck = await page.evaluate(async () => (await (await (await window.__parent.getDirectoryHandle('白紙のデッキ')).getFileHandle('deck.html')).getFile()).text());
-  ok((blankDeck.match(/<section class="slide/g) || []).length === 1 && /<h1>白紙のデッキ<\/h1>/.test(blankDeck) && !(await page.evaluate(() => window.__APP_TEST.state().error)), 'new: 白紙から makes a deck with only the title slide, and it builds');
-  await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+  await page.waitForSelector('#dlg[open] #paste-text');
+  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
+    && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3'
+    && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
+    'new: 「新規作成…」 opens the chat-AI dialog directly with 5 steps (subjects unticked, theme default); no blank or template');
+  await clickDlg(page, '#dlg-cancel');
 
   // examples/minimal を OPFS に写して開く
   const SRC = path.join(ROOT, 'examples/minimal');
@@ -642,8 +620,8 @@ try {
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダに書き出す』を使ってください。')
-      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダに書き出す…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダにエクスポート』を使ってください。')
+      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
     await shot(page, 'portable-exported-notice.png');
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-saveas') && await page.isHidden('#b-export-portable') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'false', 'portable: File ▾ has Save and Save as… (the single-file ones)');
@@ -1404,7 +1382,7 @@ try {
       await pt.keyboard.press('Tab');
       ok(await pt.isHidden('#m-slide'), `menu (${lang}, ${kind}): Tab closes the menu`);
       await clickMenuOpen(pt, '#b-previewmenu');
-      ok((await pt.textContent('#m-preview-note')).includes(FORMAT.FILE_EXT) && (await pt.getAttribute('#b-videomode', 'role')) === 'menuitemcheckbox', `menu (${lang}, ${kind}): Preview ▾ has the note about presenting from the saved file`);
+      ok((await pt.textContent('#m-preview-note')).includes(FORMAT.FILE_EXT) && (await pt.getAttribute('#b-videomode', 'role')) === 'menuitemradio' && (await pt.evaluate(() => document.activeElement.id)) === 'b-full', `menu (${lang}, ${kind}): Preview ▾ has the note about presenting from the saved file`);
       await pt.keyboard.press('Escape');
       // 動画のモードで確かめる：プレビューを ?mode=video で読み込み直す（もう一度選ぶと戻る）
       if (kind === 'folder') {
@@ -1416,8 +1394,18 @@ try {
           let m = null; for (let i = 0; i < 50 && m !== want; i++) { try { m = await fr.evaluate(() => window.DECK && DECK.ready ? DECK.mode : null); } catch { /* 読み込み中 */ } if (m !== want) await pt.waitForTimeout(100); }
           return m === want && (await pt.getAttribute('#b-videomode', 'aria-checked')) === (want === 'video' ? 'true' : 'false');
         };
-        ok(await vmode('video'), `preview (${lang}): Preview ▾ → video mode reloads the preview in video mode`);
-        ok(await vmode('talk'), `preview (${lang}): choosing it again goes back`);
+        ok(await vmode('video'), `preview (${lang}): Preview ▾ → 動画で確かめる reloads the preview in video mode`);
+        ok(await vmode('talk'), `preview (${lang}): choosing it again goes back to the slide show`);
+        {
+          const l0 = await pt.evaluate(() => window.__APP_TEST.state().loads);
+          await clickCommand(pt, '#b-lecturemode');
+          await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: 20000 });
+          const fr = pt.frames().find((x) => x.parentFrame() === pt.mainFrame());
+          let m = null; for (let i = 0; i < 50 && m !== 'lecture'; i++) { try { m = await fr.evaluate(() => window.DECK && DECK.ready ? DECK.mode : null); } catch { /* 読み込み中 */ } if (m !== 'lecture') await pt.waitForTimeout(100); }
+          ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'false', `preview (${lang}): 授業で確かめる shows lecture mode; the modes are one choice`);
+          await clickCommand(pt, '#b-lecturemode');
+        }
+        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a lecture', 'Check as a video', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '授業で確かめる', '動画で確かめる', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
       }
       // 狭い幅では 2 行に折り返し、はみ出さない
       await pt.setViewportSize({ width: 900, height: 860 });
@@ -1750,7 +1738,7 @@ try {
     ok(await kindOf(po) === 'play-only' && po.includes(pmin.index.docId) && !scanDocument(po).byId.has(FORMAT.INDEX_ID), `play-only (single file): exported a play-only file (${(po.length / 1024).toFixed(0)} KB, same docId, no index)`);
     // 最近開いたもの：1 ファイルも並び、そこから開き直せる
     await pq.reload();
-    await pq.waitForSelector('#recent:not([hidden])');
+    await pq.waitForSelector('#recent-list li[data-kind=file]');
     ok(await pq.isVisible('#recent-list li[data-kind=file]') && (await pq.textContent('#recent-list li[data-kind=file] .nm')) === 'lesson' + FORMAT.FILE_EXT && (await pq.textContent('#recent-list li[data-kind=file] .kind')) === '1 ファイル', 'recent: the opened single file is listed (marked as a single file)');
     await pq.click('#recent-list li[data-kind=file] button:not(.ghost)');
     await pq.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 20000 });
@@ -1771,6 +1759,7 @@ try {
     await pq.click('#b-help');
     await pq.waitForFunction(() => /Irodori-TTS/.test((document.getElementById('model-cache-info') || {}).textContent || ''));
     const info = await pq.textContent('#model-cache-info');
+    ok(await pq.isVisible('#panel-body #help-kinds') && (await pq.$$eval('#help-kinds th', (x) => x.length)) === 4, 'help: the four kinds of files (moved from the first screen) are in the help');
     await shot(pq, 'help-model-cache.png');
     ok(/保存領域を [\d.]+ [MG]B 使っています/.test(info) && info.includes('版 000000000000') && !(await pq.isDisabled('#b-model-delete')), 'model cache: Help shows storage use and the stored model');
     await pq.click('#b-model-delete');
@@ -1788,8 +1777,8 @@ try {
     await ps.waitForSelector('#drop');
     ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「チャットの AI に書いてもらう」') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成… → チャットの AI に書いてもらう); 新規作成… stays on');
     await ps.click('#w-new');
-    await ps.waitForSelector('#dlg[open] #dlg-new-ai');
-    ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')) && await ps.isVisible('#new-nofolder'), 'safari: 新規作成… offers only the chat AI (no working folders), and says why');
+    await ps.waitForSelector('#dlg[open] #paste-text');
+    ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the chat AI dialog (as everywhere)');
     await ps.click('#dlg-cancel');
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
     await shot(ps, 'welcome-safari.png');
