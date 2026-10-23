@@ -166,6 +166,8 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 ## Claude Code で使う
 
+Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作る：[docs/with-claude.ja.md](docs/with-claude.ja.md)（[English](docs/with-claude.md)）。
+
 スキルを Claude Code のスキルのフォルダにリンクする。スキルはリンク先の実体の場所からリポジトリを探すので、clone した場所は動かさない。
 
 ```bash
