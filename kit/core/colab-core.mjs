@@ -17,10 +17,11 @@ import { readZip, ZipError } from './zip-read.mjs';
 
 // 確かめた範囲の記し（ノートブックの最初のセル・それを案内する docs・エディタの「Colab で音声を作る」の説明に出す）。1 か所だけに書く。
 // 確かめる範囲が変わったら（Kokoro・CPU を通したなど）ここの文を直し、`npm run gen` と docs の <!-- colab-verified --> の行を揃える
-// （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）
+// （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）。固定した版（tools/make-colab-notebook.mjs の COLAB_PINS）で GPU を通したら、
+// 「固定した版での GPU の確認：まだ」「GPU with the pinned versions: not yet verified」をその日付に替える
 export const COLAB_VERIFIED = Object.freeze({
-  ja: '確認済み：2026-10-21、Irodori、Colab の T4 GPU（作者の環境で 1 回）。Kokoro と CPU はまだ',
-  en: "Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet.",
+  ja: '確認済み：2026-10-23、CPU（講習で、Irodori）。GPU：2026-10-21 に Colab の T4 で通ったが、2026-10-23 は Colab の CUDA のライブラリが変わって libcublasLt.so.13 で失敗し、いまは自動で CPU に切り替わる。固定した版での GPU の確認：まだ。Kokoro はまだ',
+  en: "Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU: the Colab T4 run worked on 2026-10-21; on 2026-10-23 it failed with libcublasLt.so.13 because Colab's CUDA libraries changed, and the notebook now falls back to the CPU automatically. GPU with the pinned versions: not yet verified. Kokoro not yet.",
 });
 export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-verified --> を付けた行にする
 
@@ -45,6 +46,9 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const KEY = /^[^\s:]{1,120}:[^\s:]{1,120}$/;
 const VOICE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const FILE = /^audio\/[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.wav$/;
+// recipe.runtime：ノートブックが書く「<版の組>/<実際の実行プロバイダ>」（cuda12/cuda・cuda13/cpu など。colab/egatari_tts.py の runtime_label）。
+// どの環境で作った音かの記録で、inputHash には入らない（版の組や GPU/CPU で音は少し違う）。形の合わないものは落とす（取り込みは止めない）
+const RUNTIME = /^[A-Za-z0-9._-]{1,32}\/[A-Za-z0-9._?-]{1,32}$/;
 
 // {cue}/{mark} で区切った部分の数から、cue の数（ターンの中の区切りだけ。ターンの間には cue を置かない。joinParts と同じ）
 export const expectedCues = (seg) => seg.turns.reduce((n, t) => n + Math.max(0, t.ttsParts.length - 1), 0);
@@ -104,7 +108,7 @@ export function parseRecords(text) {
     if (voice.bad) continue;
     records.set(key, {
       file: r.file, dur: r.dur, cues: r.cues.map(round3), inputHash: r.inputHash,
-      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}) },
+      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}), ...(typeof rc.runtime === 'string' && RUNTIME.test(rc.runtime) ? { runtime: rc.runtime } : {}) },
     });
   }
   return { records, docId, generator, problems };
