@@ -4,7 +4,9 @@
 // 2. クリックと Esc でも戻る（クリックは送らない・描かない。Esc はペンを切らない）。暗転の間のフォーカスは覆いにあり、Tab で下に抜けない。戻るとフォーカスも戻る
 // 3. キーの一覧（?）を開いたままの b：覆いが一覧より上で、Esc はまず暗転、次に一覧。外へのリンクの箱は暗転に入るとやめる
 // 4. 印刷：暗転していても、印刷の画面（beforeprint と print の media）は暗転していないときと同じ
-// 5. 動画（?mode=video）：b で暗転しない
+// 5. 動画（?mode=video）：b で暗転しない（隅の知らせも出ない）
+// 6. 暗転を終えるキー：矢印・Space・PageUp/PageDown・Home/End は暗転を終えるだけで、スライドも段階も動かさない
+// 7. 隅の知らせ（「暗転中 — b か Esc で戻ります」）：入ったときに出て約 2 秒で消え、マウスを動かすとまた出る。印刷には出ない
 import fs from 'node:fs';
 import path from 'node:path';
 import { launch, fileUrl } from '../kit/browser.mjs';
@@ -26,12 +28,19 @@ try {
   await p.evaluate(() => document.fonts.ready);
   await p.keyboard.press('ArrowRight');
   // 窓の画素のうち #000 から 2 より離れたものの数（ブラウザの中の canvas で数える）
+  // 隅の知らせ（#deck-black-hint、約 2 秒）の箱は数えない（知らせそのものは下の 6 で確かめる）
   const nonBlack = async (png) => p.evaluate(async (b64) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
     const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
     const g = c.getContext('2d'); g.drawImage(img, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height).data;
-    let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 2 || d[i + 1] > 2 || d[i + 2] > 2) n++;
+    const h = document.getElementById('deck-black-hint'), r = h ? h.getBoundingClientRect() : null, sc = c.width / innerWidth;
+    const inHint = (x, y) => r && x >= (r.left - 4) * sc && x <= (r.right + 4) * sc && y >= (r.top - 4) * sc && y <= (r.bottom + 4) * sc;
+    let n = 0; for (let i = 0; i < d.length; i += 4) {
+      if (!(d[i] > 2 || d[i + 1] > 2 || d[i + 2] > 2)) continue;
+      const q = i / 4; if (inHint(q % c.width, Math.floor(q / c.width))) continue;
+      n++;
+    }
     return { n, total: d.length / 4 };
   }, png.toString('base64'));
   const settle = () => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -124,6 +133,39 @@ try {
   await p.keyboard.press('b');
   ok(ext0 && !ext1.box && ext1.black && !ext1.stageInert, 'entering blackout closes the outside-link box ' + JSON.stringify({ ext0, ...ext1 }));
 
+  // 6. 暗転を終えるキー：どれも暗転を終えるだけ（スライドも段階も変わらない）
+  await p.keyboard.press('Escape');   // 念のため（ペンは切っておく）
+  await p.evaluate(() => document.activeElement && document.activeElement.blur());
+  for (const k of ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Space', 'PageUp', 'PageDown', 'Home', 'End']) {
+    const a = await p.evaluate(() => DECK.state());
+    await p.keyboard.press('b');
+    const on = await p.evaluate(() => document.documentElement.classList.contains('blackout'));
+    await p.keyboard.press(k);
+    await settle();
+    const z = await p.evaluate(() => ({ st: DECK.state(), black: document.documentElement.classList.contains('blackout'), cover: !!document.getElementById('deck-black') }));
+    ok(on && !z.black && !z.cover && z.st.slide === a.slide && z.st.step === a.step, `${k} ends blackout and leaves the slide and step unchanged ` + JSON.stringify({ before: [a.slide, a.step], after: [z.st.slide, z.st.step], on, black: z.black }));
+  }
+
+  // 7. 隅の知らせ：入ると出る → 約 2 秒で消える → マウスを動かすとまた出る → 約 2 秒で消える
+  const hint = () => p.evaluate(() => { const h = document.getElementById('deck-black-hint'); return h ? { show: h.classList.contains('show'), text: h.textContent, op: +getComputedStyle(h).opacity } : null; });
+  await p.mouse.move(600, 400);
+  await p.keyboard.press('b');
+  await p.waitForTimeout(400);
+  const h0 = await hint();
+  await p.waitForTimeout(2000);
+  const h1 = await hint();
+  await p.mouse.move(620, 420); await p.mouse.move(640, 440);
+  await p.waitForTimeout(400);
+  const h2 = await hint();
+  await p.waitForTimeout(2100);
+  const h3 = await hint();
+  ok(h0 && h0.show && h0.op > 0.9 && /暗転中|Blacked out/.test(h0.text), 'the corner hint shows when blackout starts ' + JSON.stringify(h0));
+  ok(h1 && !h1.show && h1.op < 0.1, 'the hint hides after about 2 s ' + JSON.stringify(h1));
+  ok(h2 && h2.show, 'moving the mouse during blackout shows the hint again ' + JSON.stringify(h2));
+  ok(h3 && !h3.show, 'and it hides again after about 2 s ' + JSON.stringify(h3));
+  await p.keyboard.press('b');
+  ok(!(await p.evaluate(() => !!document.getElementById('deck-black-hint'))), 'the hint goes away with the cover');
+
   // 印刷：暗転していても同じ
   const printShot = async (on) => {
     const q = await ctx.newPage();
@@ -137,7 +179,7 @@ try {
     await q.evaluate(() => document.fonts.ready);
     await q.waitForTimeout(300);
     const png = await q.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
-    const black = await q.evaluate(() => { const c = document.getElementById('deck-black'); return document.documentElement.classList.contains('blackout') && !!c && getComputedStyle(c).display === 'none'; });
+    const black = await q.evaluate(() => { const c = document.getElementById('deck-black'), h = document.getElementById('deck-black-hint'); return document.documentElement.classList.contains('blackout') && !!c && getComputedStyle(c).display === 'none' && !!h && getComputedStyle(h).display === 'none'; });
     await q.close();
     return { png, black };
   };
@@ -157,8 +199,9 @@ try {
   await v.goto(fileUrl(html) + '?mode=video');
   await v.waitForFunction(() => window.DECK && DECK.ready);
   await v.keyboard.press('b');
-  const vb = await v.evaluate(() => ({ black: document.documentElement.classList.contains('blackout'), cover: !!document.getElementById('deck-black') }));
-  ok(!vb.black && !vb.cover, 'video mode cannot enter blackout ' + JSON.stringify(vb));
+  await v.mouse.move(400, 300); await v.mouse.move(420, 320);
+  const vb = await v.evaluate(() => ({ black: document.documentElement.classList.contains('blackout'), cover: !!document.getElementById('deck-black'), hint: !!document.getElementById('deck-black-hint') }));
+  ok(!vb.black && !vb.cover && !vb.hint, 'video mode cannot enter blackout and shows no hint ' + JSON.stringify(vb));
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
 } finally { await b.close(); }
 if (fails) { console.log(`test-blackout: ${fails} failed`); process.exit(1); }

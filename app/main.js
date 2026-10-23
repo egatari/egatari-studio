@@ -688,7 +688,8 @@ window.addEventListener('message', (e) => {
   const frame = $('preview').contentWindow;
   if (e.source === frame) {
     ui.message(e);
-    if (m.type === 'app-open-presenter') openPresenter();
+    // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
+    if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
     else if (m.type === 'app-check-result' && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
@@ -708,7 +709,19 @@ const PRES_DOC = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Presen
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
 <body><iframe id="pf" sandbox="allow-scripts allow-modals" title="presenter"></iframe><script>
 var f=document.getElementById("pf");
+function closeMe(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); return; }
+  try{ if(opener&&!opener.closed) opener.focus(); }catch(e){}
+  window.close();
+}
+function into(){ try{ f.focus(); f.contentWindow&&f.contentWindow.focus(); }catch(e){} }
+f.addEventListener("load",function(){ into(); setTimeout(function(){ if(!document.hasFocus()&&f.contentWindow) f.contentWindow.postMessage({type:"app-pres-tap"},"*"); },300); });
+addEventListener("focus",function(){ if(document.activeElement===f||document.activeElement===document.body) into(); });
+addEventListener("keydown",function(e){
+  if(e.target!==f&&!e.defaultPrevented&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&(e.key==="Escape"||e.key==="p")){ if(e.key==="p"||!document.fullscreenElement) e.preventDefault(); closeMe(); }
+});
 addEventListener("message",function(e){
+  if(e.source===f.contentWindow&&e.data&&e.data.type==="app-pres-close"){ closeMe(); return; }
   if(e.source===f.contentWindow){ if(opener&&!opener.closed) opener.postMessage({type:"app-pres-up",m:e.data},"*"); }
   else if(e.source===opener&&e.data&&e.data.type==="app-pres-down"){ f.contentWindow&&f.contentWindow.postMessage(e.data.m,"*"); }
 });

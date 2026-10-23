@@ -87,7 +87,9 @@ if (Q.get("presenter")){
       // 「今の画面」で押したスライドへのリンク：本体でたどる（本体の位置が変われば、この画面もついてくる）
       if (window.opener) window.opener.postMessage({type: "deck-cmd", cmd: "link", frag: m.frag}, "*");
     }
-    else if (m.type === "deck-tool-key" && (m.alt || !key(m.key, m.shift))){
+    else if (m.type === "deck-tool-key" && !m.mod && (m.alt || !key(m.key, m.shift))){
+      // Esc（道具を使っていなければ。使っていれば上の key が切る）と p：発表者ビューを閉じる（presenter.js。全画面なら全画面をやめるだけ）
+      if (!m.alt && (m.key === "Escape" || m.key === "p")){ if (DECK.presenterClose) DECK.presenterClose(); return; }
       // 「今の画面」にフォーカスがあるときの送り操作。Backspace・Alt+← はリンクの前の位置へ戻る
       var bk = (m.key === "Backspace" && !m.alt && !m.shift) || (m.key === "ArrowLeft" && m.alt);
       var nx = !m.alt && /^(ArrowRight|ArrowDown|PageDown| )$/.test(m.key), pv = !m.alt && /^(ArrowLeft|ArrowUp|PageUp)$/.test(m.key);
@@ -752,7 +754,10 @@ function helpHtml(){
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
     (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
+    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
+    // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
+    '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){
@@ -782,7 +787,7 @@ function toggleHelp(on){
 window.addEventListener("keydown", function(e){
   if (FOLLOW){
     // 「今の画面」にフォーカスがあるときは、キーを発表者ビューに渡す
-    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey}, "*");
+    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey, mod: e.metaKey || e.ctrlKey}, "*");
     return;
   }
   if (!layer || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=7ec3fc996a0bfabf -->
+<!-- i18n: pair=reference.ja.md sha256=a8c488a5bf482da1 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -247,10 +247,10 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Home / End | first / last slide |
 | digits + Enter | go to that slide |
 | f | fullscreen |
-| p | presenter view |
+| p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | lecture mode on/off |
-| b | blackout (turns the whole window black; b again, a click or Esc brings it back) |
+| b | blackout (turns the whole window black, with a faint hint in the corner for 2 s and on mouse move; b again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide) |
 | s | captions on/off: the current step's narration (display text) at the bottom of the slide |
 | Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |
 | o | overview (arrows, Home/End, Enter/Space/click to go, Esc or o to close) |

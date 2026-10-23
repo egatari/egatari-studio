@@ -1234,6 +1234,9 @@ POS.subscribe(broadcast);
 // 発表者ビューに送る（tools.js がペンの色を知らせるのに使う）
 DECK.toPresenter = function(msg){ if (presenter && !presenter.closed) presenter.postMessage(msg, "*"); };
 function openPresenter(){
+  // もう開いていれば閉じる（p で入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）。
+  // 編集アプリのプレビューでは presenter は中継する親の窓（hello の送り元）なので閉じない。下の window.open（frame-shim.js）でアプリに頼み、アプリが入り切りする
+  if (presenter && !presenter.closed && presenter !== window.parent){ try { presenter.close(); } catch (e) {} presenter = null; return; }
   var u = new URL(location.href); u.searchParams.set("presenter", "1"); u.hash = "";
   presenter = window.open(u.href, "deck-presenter", "width=1400,height=820");
   setTimeout(POS.publish, 800);
@@ -1594,11 +1597,20 @@ function setBlack(on){
     // 押した点では送らない・描かない：押したら戻すだけ
     c.addEventListener("pointerdown", function(ev){ ev.preventDefault(); ev.stopPropagation(); setBlack(false); });
     ["mousedown", "click", "pointerup", "mouseup", "contextmenu"].forEach(function(n){ c.addEventListener(n, function(ev){ ev.preventDefault(); ev.stopPropagation(); }); });
+    // 隅の薄い知らせ（約 2 秒）。入ったときと、暗転の間にマウスを動かしたときに出す
+    var hint = document.createElement("div");
+    hint.id = "deck-black-hint"; hint.setAttribute("aria-hidden", "true");
+    hint.textContent = L10N("暗転中 — b か Esc で戻ります", "Blacked out — press b or Esc to return");
+    c.appendChild(hint);
+    BLACK.hint = hint;
+    c.addEventListener("pointermove", function(ev){ if (ev.pointerType !== "touch") blackHint(); });
     document.body.appendChild(c);
     de.classList.add("blackout");
+    blackHint();
     try { c.focus({preventScroll: true}); } catch (e) {}
   } else {
     var b = BLACK; BLACK = null;
+    clearTimeout(b.hintT);
     de.classList.remove("blackout");
     var back = b.prev, had = document.activeElement === b.el;
     b.el.remove();
@@ -1608,6 +1620,15 @@ function setBlack(on){
     }
   }
 }
+
+function blackHint(){
+  var b = BLACK; if (!b || !b.hint) return;
+  b.hint.classList.add("show");
+  clearTimeout(b.hintT);
+  b.hintT = setTimeout(function(){ if (b.hint) b.hint.classList.remove("show"); }, 2000);
+}
+// 暗転を終えるキー：b・Esc・矢印・Space・PageUp/PageDown・Home/End（どれも暗転を終えるだけで、スライドは動かさない）
+var BLACK_EXIT = /^(b|Escape|ArrowRight|ArrowLeft|ArrowUp|ArrowDown| |Spacebar|PageUp|PageDown|Home|End)$/;
 
 var buf = "";
 // 送りのキー（矢印・PageUp/PageDown・Home・End）。押したら true
@@ -1628,7 +1649,7 @@ function navKey(k, shift){
 var FWD_KEYS = /^(ArrowRight|ArrowLeft|ArrowUp|ArrowDown|PageUp|PageDown|Home|End|b|a)$/;
 function forwardedKey(k){
   if (!FWD_KEYS.test(k) || EXT.dlg || document.getElementById("dt-ov")) return;
-  if (isBlack()){ if (k === "b") setBlack(false); return; }
+  if (isBlack()){ if (BLACK_EXIT.test(k)) setBlack(false); return; }
   buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
   if (navKey(k, false)) return;
   if (k === "a") DECK.autoplay();
@@ -1637,8 +1658,8 @@ function forwardedKey(k){
 document.addEventListener("keydown", function(e){
   if (DECK.view || !DECK.ready) return;
   if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
-  // 暗転の間：Esc と b で戻る（ほかの道具の Esc にしない）。Tab は下のボタンに抜けない
-  if (isBlack() && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "Escape" || e.key === "b" || e.key === "Tab")){
+  // 暗転の間：b・Esc・矢印・Space・PageUp/PageDown・Home/End で戻る（戻すだけで送らない。ほかの道具の Esc にしない）。Tab は下のボタンに抜けない
+  if (isBlack() && !e.metaKey && !e.ctrlKey && !e.altKey && (BLACK_EXIT.test(e.key) || e.key === "Tab")){
     e.preventDefault(); e.stopImmediatePropagation();
     if (e.key !== "Tab") setBlack(false);
     return;
