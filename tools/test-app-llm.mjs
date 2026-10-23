@@ -80,7 +80,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await shot('ai-step1.png');
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
-  const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  const clip = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');   // Windows のクリップボードは CRLF にする
   ok(clip.startsWith('# Instructions for the AI') && clip.includes('**R-output**') && !clip.includes('For people.') && clip.includes('## Series pack: academic') && clip.includes('`<m-sweep>`') && !clip.includes('## Series pack: business') && !clip.includes('`<m-kpi>`'),
     `llm: “Copy instructions for your AI” copies the common body from “Instructions for the AI” and the academic pack (${Math.round(clip.length / 1024)} KB)`);
   ok(clip === packWithRequest({ series: ['academic'], lang: 'en', request: wantA }) && clip.endsWith(wantA) && clip.includes('- Topic: How binary search works') && clip.includes('- Examples or figures to include: Finding a name in a phone book\n  Guessing a number') && !clip.includes('*(Fill in A or B') && !clip.includes('**B. From our discussion so far**'),
@@ -96,8 +96,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-series-business');
   await page.click('#paste-series-info');
   await page.click('#paste-copy-guide');
-  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t !== c).catch(() => false), clip);
-  const clipB = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), clip);
+  const clipB = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
   const wantB = filledRequest({ kind: 'B', values: { length: '10 minutes', audience: '' } }, 'en');
   ok(clipB.includes('## Series pack: business') && clipB.includes('`<m-kpi>`') && clipB.includes('## Series pack: info') && !clipB.includes('## Series pack: academic') && clipB.indexOf('Series pack: business') < clipB.indexOf('Series pack: info') && (await page.textContent('#paste-pack-size')) !== total0,
     'llm: ticking business and info (and unticking academic) copies those packs, in order, and updates the total');
@@ -305,7 +305,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'ai-step1-ja.png') });
     await pj.click('#paste-copy-guide');
     await pj.waitForFunction(() => /^コピーしました/.test(document.getElementById('paste-copied').textContent));
-    const clipJ = await pj.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+    const clipJ = (await pj.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     const cm = await pj.textContent('#paste-copied');
     ok(clipJ.endsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- 題材：二分探索のしくみ\n- 対象（だれ向け）：高校 2 年生\n- 長さ（枚数か分）：5 枚\n- 言語：日本語\n- 話者：1 人\n- 入れたい例や図：電話帳で名前を探す\n') && /添付のファイルの形になっても、そのまま送ってください/.test(cm),
       'llm ja: the request written in step 1 ends the copied instructions, and the hint says to send it even as an attachment: ' + cm);
