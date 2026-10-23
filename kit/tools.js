@@ -87,7 +87,9 @@ if (Q.get("presenter")){
       // 「今の画面」で押したスライドへのリンク：本体でたどる（本体の位置が変われば、この画面もついてくる）
       if (window.opener) window.opener.postMessage({type: "deck-cmd", cmd: "link", frag: m.frag}, "*");
     }
-    else if (m.type === "deck-tool-key" && (m.alt || !key(m.key, m.shift))){
+    else if (m.type === "deck-tool-key" && !m.mod && (m.alt || !key(m.key, m.shift))){
+      // Esc（道具を使っていなければ。使っていれば上の key が切る）と p：発表者ビューを閉じる（presenter.js。全画面なら全画面をやめるだけ）
+      if (!m.alt && (m.key === "Escape" || m.key === "p")){ if (DECK.presenterClose) DECK.presenterClose(); return; }
       // 「今の画面」にフォーカスがあるときの送り操作。Backspace・Alt+← はリンクの前の位置へ戻る
       var bk = (m.key === "Backspace" && !m.alt && !m.shift) || (m.key === "ArrowLeft" && m.alt);
       var nx = !m.alt && /^(ArrowRight|ArrowDown|PageDown| )$/.test(m.key), pv = !m.alt && /^(ArrowLeft|ArrowUp|PageUp)$/.test(m.key);
@@ -193,6 +195,18 @@ function rgb(name){
   return (colorCache[name] = "rgb(" + d[0] + "," + d[1] + "," + d[2] + ")");
 }
 
+// 押したときにフォーカスをこの文書の舞台（tabindex=-1、枠は出さない）に置く。道具の面と操作の帯は pointerdown を止めるので、ブラウザは
+// フォーカスを動かさない：そのままでは、編集アプリの枠や欄にあったフォーカスが残り、押した後のキーがスライドに届かない（ふつうのクリックと同じにする）
+// この文書にフォーカスがあり、本体（body）か帯のボタンにあるなら動かさない（キーはもう本体に届く）
+function focusDeck(){
+  var st = document.getElementById("stage"), a = document.activeElement;
+  if (document.hasFocus() && (!a || a === document.body || a === document.documentElement || a === st || (cb && cb.contains(a)))) return;
+  try { window.focus(); } catch (e) {}
+  if (st){
+    if (!st.hasAttribute("tabindex")) st.tabIndex = -1;
+    try { st.focus({preventScroll: true}); } catch (e) {}
+  }
+}
 function build(){
   var stage = document.getElementById("stage");
   if (!stage || layer) return;
@@ -205,7 +219,9 @@ function build(){
   g = canvas.getContext("2d");
   cur = DECK.state().slide - 1;
   resize();
-  layer.addEventListener("pointerdown", function(e){ e.preventDefault(); if (e.button > 0) return; layer.setPointerCapture(e.pointerId); input("down", pt(e)); });
+  // 描くために既定の動き（選択・フォーカスの移動）は止めるが、フォーカスはこの文書の舞台に置く（編集アプリの枠などにフォーカスがあっても、
+  // 押した後のキーがスライドに届くように）
+  layer.addEventListener("pointerdown", function(e){ e.preventDefault(); focusDeck(); if (e.button > 0) return; layer.setPointerCapture(e.pointerId); input("down", pt(e)); });
   layer.addEventListener("pointermove", function(e){
     var ev = drawing && e.getCoalescedEvents ? e.getCoalescedEvents() : [];
     (ev.length ? ev : [e]).forEach(function(x){ input("move", pt(x)); });
@@ -625,7 +641,7 @@ function buildBar(){
   document.addEventListener("deck:aiaudio", addAiBadge);
   // 押してもフォーカスを奪わず（矢印キーがそのまま効く）、下の舞台にも届かない（ペンで描かない・クリックで送らない）
   ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick"].forEach(function(t){
-    cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); });
+    cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); if (t === "pointerdown") focusDeck(); });
   });
   cb.addEventListener("click", function(e){
     e.preventDefault(); e.stopPropagation();
@@ -738,7 +754,10 @@ function helpHtml(){
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
     (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
+    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
+    // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
+    '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){
@@ -768,10 +787,12 @@ function toggleHelp(on){
 window.addEventListener("keydown", function(e){
   if (FOLLOW){
     // 「今の画面」にフォーカスがあるときは、キーを発表者ビューに渡す
-    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey}, "*");
+    if (!typing(e.target)) window.parent.postMessage({type: "deck-tool-key", key: e.key, shift: e.shiftKey, alt: e.altKey, mod: e.metaKey || e.ctrlKey}, "*");
     return;
   }
   if (!layer || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  // 暗転の間（kit/deck.js の b）：道具のキーは使わない（b・Esc・クリックで戻すのは deck.js）
+  if (document.documentElement.classList.contains("blackout")) return;
   var k = e.key, done = true;
   if (ov){
     if (k === "ArrowRight") select(ov.sel + 1);

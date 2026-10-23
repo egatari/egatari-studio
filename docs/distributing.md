@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=fb80d9086f6ce981 -->
+<!-- i18n: pair=distributing.ja.md sha256=8a2dfb214a0ecbd1 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -16,6 +16,13 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the single file or the working folder to edit later; a play-only copy cannot be edited
 - **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-verified --> Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU: the Colab T4 run worked on 2026-10-21; on 2026-10-23 it failed with libcublasLt.so.13 because Colab's CUDA libraries changed, and the notebook now falls back to the CPU automatically. GPU with the pinned versions: not yet verified. Kokoro not yet. **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+
+## Presenting in class
+
+- **Order.** Open the presenter view first (`p`), then move the audience window to the projector and make it fullscreen (`f`). The presenter view stays on your own screen.
+- **Leaving the presenter view.** In the presenter view, Esc (when no drawing tool is on), `p` or **Close presenter view (p)** close it and return focus to the main window; if it is fullscreen, they only leave fullscreen. `p` in the main window also closes it. While the presenter window does not have focus, a large “Click here to control” overlay takes the first click.
+- **Stuck in the presenter view?** If it covers the screen and its keys do not respond, on a Mac press cmd+Tab to get back to the main window and press `p` (on Windows, Alt+Tab; not yet verified on Windows). The key list (<kbd>?</kbd>) shows the same tip.
+- **Blackout.** `b` turns the whole window black. A faint “Blacked out — press b or Esc to return” hint shows in the corner for 2 s, and again when you move the mouse. `b`, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End end the blackout without moving the slide; press the key again to go on.
 
 ## Live (questions and polls in class, draft)
 
