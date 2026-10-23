@@ -284,3 +284,31 @@ main{flex:1;min-height:0;display:flex}
 .menu-list .menu-sep{border-top:1px solid var(--line);margin:4px 0}
 #panel-body .fixrow{display:flex;gap:6px;margin:2px 0 8px}
 #panel-body .fixrow .fixreq{flex:1 1 0;width:auto;margin:0}
+
+/* 道具の列（ui-redesign 段階 1）：ファイル ▾・スライド ▾・品質チェック（警告の札）・仮の板の群・プレビュー ▾ */
+#tools .tmp-group{display:inline-flex;gap:6px}
+#tools #b-previewmenu{margin-left:4px}
+#b-check .badge{margin-left:6px;font-size:11.5px;padding:0 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn-fg)}
+#b-filemenu.dirty::after{content:"●";color:var(--accent);margin-left:4px;font-size:10px;vertical-align:1px}
+#tools > .menu:first-child > .menu-list{left:0;right:auto}
+#tools .menu-list{min-width:240px}
+.menu-sep{height:1px;background:var(--line);margin:4px 6px}
+.menu-list [aria-disabled="true"]{color:var(--muted)}
+.menu-list .sub{position:relative;display:flex;flex-direction:column}
+.menu-list .sub > button::after{content:"";flex:1}
+#tools .menu-list .sub-list{left:calc(100% + 4px);right:auto;top:-5px}
+.menu-list [role=menuitemcheckbox]::before{content:"";display:inline-block;width:1.2em}
+.menu-list [role=menuitemcheckbox][aria-checked="true"]::before{content:"✓"}
+.menu-note{margin:4px 6px 2px;padding:6px 4px 2px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);white-space:normal;max-width:280px}
+#dlg.wide{width:min(760px,94vw)}
+#play-live-box{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+#dlg #live-panel textarea{min-height:0;font:12px/1.4 ui-monospace,Menlo,monospace}
+#dlg .choices-grid h3{font-size:14px;margin:10px 0 4px}
+#dlg .choices-grid .row{justify-content:flex-start;flex-wrap:wrap;gap:6px}
+#panel .info-list{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:8px 0}
+#panel .info-list dt{color:var(--muted)}
+#panel .info-list dd{margin:0;overflow-wrap:anywhere}
+#panel .info-list dd.none{color:var(--muted);font-style:italic}
+#panel .info-h{margin:16px 0 6px;font-size:15px;border-top:1px solid var(--line);padding-top:12px}
+#panel .buildwarn{margin:8px 0;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
+#panel .buildwarn summary{cursor:pointer;font-weight:600}

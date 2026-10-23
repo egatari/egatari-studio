@@ -18,48 +18,66 @@
   <!-- ロゴ：assets/logo/egatari-32-*.svg（24〜32 px の専用版）と同じ形。色はテーマ（明るい・暗い）で app.css の --logo-ink / --logo-sun -->
   <div class="brand"><svg class="logo" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false"><path class="ink" d="M10 5H5V18.5 M22 27H27V13.5" fill="none" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="14" cy="8.25" r="1.75"/><path class="ink" d="M10 13.5Q15.125 13 19.875 11.875Q21.125 11.625 20.25 12.875L9.75 23.25L13.75 19Q16 16.625 16.875 19.875L17.375 22Q18.25 24.5 20.75 23Q22.625 21.875 22 20.25" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="brand"></span></div>
   <div id="deckname" class="deckname"></div>
+  <!-- 道具の列（ui-redesign 段階 1）：ファイル ▾・スライド ▾・品質チェック・（仮の板のボタン）・プレビュー ▾・使い方。
+       一覧は ARIA のメニューボタンの形（main.js の setupMenus：↑↓・Home/End・→← で入れ子・Esc で閉じてボタンに戻す）。
+       一覧が開いている間・一覧の中では、キーをプレビューに送らない（server/editor-ui.js の forwardKey） -->
   <nav id="tools" hidden>
     <div class="menu">
-      <button type="button" id="b-openmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-open" data-t="openMenu"></button>
-      <div id="m-open" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-openfile" role="menuitem" data-t="openFile"></button>
-        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
+      <button type="button" id="b-filemenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-file" data-t="fileMenu"></button>
+      <div id="m-file" class="menu-list" role="menu" aria-labelledby="b-filemenu" hidden>
         <button type="button" id="b-new" role="menuitem" data-t="newCmd"></button>
+        <button type="button" id="b-openfile" role="menuitem" data-t="fileOpen"></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-save" role="menuitem" data-t="save"></button>
+        <button type="button" id="b-saveas" class="only-portable" role="menuitem" data-t="saveAs"></button>
+        <button type="button" id="b-export-portable" class="only-folder" role="menuitem" data-t="saveAs"></button>
+        <div class="sub" role="none">
+          <button type="button" id="b-exportmenu" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
+          <div id="m-export" class="menu-list sub-list" role="menu" aria-labelledby="b-exportmenu" hidden>
+            <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
+            <button type="button" id="b-print" role="menuitem" data-t="print"></button>
+            <button type="button" id="b-unpack" class="only-portable" role="menuitem" data-t="exportFolder" hidden></button>
+          </div>
+        </div>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-info" role="menuitem" data-t="infoCmd"></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
         <button type="button" id="b-themes" role="menuitem" data-t="themeFolderItem"></button>
       </div>
     </div>
-    <div class="menu split only-portable" hidden>
-      <button type="button" id="b-save" data-t="save"></button>
-      <button type="button" id="b-savemenu" class="split-arrow" aria-haspopup="menu" aria-expanded="false" aria-controls="m-save" data-t-label="saveMore">▾</button>
-      <div id="m-save" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-savenew" role="menuitem" data-t="saveNew"></button>
-        <button type="button" id="b-saveas" role="menuitem" data-t="saveAs"></button>
-      </div>
-    </div>
-    <span class="sep"></span>
-    <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
-    <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
-    <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
-    <button type="button" id="b-audio" data-t="audio"></button>
-    <button type="button" id="b-attach" data-t="attach" data-t-label="attachTip"></button>
-    <span class="sep"></span>
-    <button type="button" id="b-check" data-t="check"></button>
     <div class="menu">
-      <button type="button" id="b-exportmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
-      <div id="m-export" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-unpack" class="only-portable" role="menuitem" data-t="exportFolder" hidden></button>
-        <button type="button" id="b-export" class="only-folder" role="menuitem" data-t="export"></button>
-        <button type="button" id="b-export-portable" class="only-folder" role="menuitem" data-t="exportPortable"></button>
-        <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
-        <button type="button" id="b-export-live" role="menuitem" data-t="exportLive"></button>
-        <button type="button" id="b-print" role="menuitem" data-t="print"></button>
+      <button type="button" id="b-slidemenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-slide" data-t="slideMenu"></button>
+      <div id="m-slide" class="menu-list" role="menu" aria-labelledby="b-slidemenu" hidden>
+        <button type="button" id="b-insert" role="menuitem" data-t="insertCmd"></button>
+        <button type="button" id="b-dup" role="menuitem" data-t="dupCmd"></button>
+        <button type="button" id="b-del" role="menuitem" data-t="delCmd"></button>
+        <!-- 整理…（#97。後の版）：全スライドの縮図の格子 -->
+        <button type="button" id="b-organize" role="menuitem" data-t="organizeCmd" hidden></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-revise-cmd" role="menuitem" data-t="reviseCmd"></button>
       </div>
     </div>
-    <button type="button" id="b-presenter" data-t="presenter"></button>
-    <button type="button" id="b-full" data-t="full"></button>
+    <button type="button" id="b-check"><span data-t="check"></span><span id="b-check-badge" class="badge" hidden></span></button>
+    <!-- 段階 2 で右の板の見出し（タブ）になる。それまでの仮の群 -->
     <span class="sep"></span>
-    <button type="button" id="b-warn" class="warn" hidden></button>
-    <button type="button" id="b-help" data-t="helpBtn"></button>
+    <div class="tmp-group" role="group" data-t-label="panelsGroup">
+      <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
+      <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
+      <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
+      <button type="button" id="b-audio" data-t="audio"></button>
+    </div>
+    <span class="sep"></span>
+    <div class="menu">
+      <button type="button" id="b-previewmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-preview" data-t="previewMenu"></button>
+      <div id="m-preview" class="menu-list" role="menu" aria-labelledby="b-previewmenu" aria-describedby="m-preview-note" hidden>
+        <button type="button" id="b-full" role="menuitem" data-t="fullCmd"></button>
+        <button type="button" id="b-presenter" role="menuitem" data-t="presenterCmd"></button>
+        <button type="button" id="b-videomode" role="menuitemcheckbox" aria-checked="false" data-t="videoCmd"></button>
+        <p id="m-preview-note" class="menu-note" role="none" data-t="previewNote"></p>
+      </div>
+    </div>
+    <button type="button" id="b-help" data-t="helpBtn" data-t-label="helpTip"></button>
   </nav>
   <button type="button" id="b-lang" class="ghost lang" lang="en" title="English / 日本語"></button>
 </header>

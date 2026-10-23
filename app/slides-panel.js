@@ -388,6 +388,8 @@ export function createSlidesPanel(ctx) {
     // 外からの操作（スライドの挿入…）：選んだスライド（一覧を開いていなければ null）・雛形から足す・同じ流れで書き換える（fn は run と同じ形）
     selected: () => (open && (ctx.slides() || []).length ? sel : null),
     add: (kind, after) => add(kind, after), apply: (fn) => run(fn),
+    // 道具の列の「スライド ▾」の複製・削除：この番号のスライド（一覧を開いていれば選んだもの、閉じていればプレビューの枚）
+    duplicateAt: (i) => { sel = i; return duplicate(); }, removeAt: (i) => { sel = i; return remove(); },
     refresh: () => { if (open) { render(); loadInfo(); } },
     onPos: () => {
       const p = ctx.pos();

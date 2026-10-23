@@ -9,6 +9,8 @@
 // - 投票には表示名（label。「4 枚目『XML の壁』・段階 1」）を付ける：作るとき・段階を変えたとき・label のない古い投票を開いたとき（スライドが見つかれば）。
 //   段階の鍵を出していたところ（段階の候補・投票の一覧）には label を出し、鍵は title の吹き出しに。鍵そのものは変えない
 //   panel.open()
+// embedded()：true なら「参加者用（再生のみ）…」の窓の中（app/main.js の participantExport）。書き出しのボタンと結果の取り込みは出さず、
+//   窓の「書き出す…」が ready()（直すことがなければ true。あれば知らせる）→ prepare()（作業フォルダは設定を残す。鍵を含む完全な設定 | null）を呼ぶ
 import { FORMAT } from '../kit/core/format.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText } from '../kit/core/live.mjs';
@@ -136,7 +138,9 @@ export function createLivePanel(o) {
     if (jsonBox) jsonBox.value = activitiesText({ activities: activities() });
     const b = document.getElementById('live-export'); if (b) b.disabled = e.length > 0;
   }
+  let embedded = false;
   function render() {
+    embedded = !!(o.embedded && o.embedded());
     const dl = el('datalist', { id: 'live-steps' }, steps.map((k) => el('option', { value: k, label: stepText(k, autoLabel(k), LANG) })));
     const paste = el('textarea', { id: 'live-paste', rows: '5', 'aria-label': X.paste, spellcheck: 'false' });
     const readBtn = el('button', { type: 'button', id: 'live-read', text: X.read, onclick: () => {
@@ -207,11 +211,11 @@ export function createLivePanel(o) {
         ]),
         el('div', { cls: 'row' }, [
           el('button', { type: 'button', id: 'live-save', text: X.save, onclick: () => save().catch((e) => o.toast(X.fail + (e.message || e), true)) }),
-          el('button', { type: 'button', id: 'live-export', cls: 'pri', text: X.exp, onclick: exportNow }),
+          embedded ? null : el('button', { type: 'button', id: 'live-export', cls: 'pri', text: X.exp, onclick: exportNow }),
         ]),
-        o.importResults ? el('h3', { text: X.importResults.replace(/…$/, '') }) : null,
-        o.importResults ? el('p', { cls: 'note', text: X.results }) : null,
-        o.importResults ? el('div', { cls: 'row' }, [resultsInput, el('button', { type: 'button', id: 'live-import-results', text: X.importResults, onclick: () => resultsInput.click() })]) : null,
+        o.importResults && !embedded ? el('h3', { text: X.importResults.replace(/…$/, '') }) : null,
+        o.importResults && !embedded ? el('p', { cls: 'note', text: X.results }) : null,
+        o.importResults && !embedded ? el('div', { cls: 'row' }, [resultsInput, el('button', { type: 'button', id: 'live-import-results', text: X.importResults, onclick: () => resultsInput.click() })]) : null,
       ]),
     ];
     o.openPanel(X.title, body);
@@ -249,5 +253,18 @@ export function createLivePanel(o) {
       await o.exportLive(fullOf());
     } catch (err) { o.toast(X.fail + (err.message || err), true); }
   }
-  return { open, isOpen: () => o.isOpen() };
+  // 窓の「書き出す…」から（embedded）：直すことがあれば知らせて false
+  function ready() {
+    if (!M) return false;
+    const e = problems();
+    if (e.length) { refreshProblems(); o.toast(e[0], true); const b = document.getElementById('live-problem-box'); if (b) b.scrollIntoView({ block: 'nearest' }); return false; }
+    return true;
+  }
+  // 書き出す前に：作業フォルダは設定を残す（書き出しは保存したものから組む）。返すもの：鍵を含む完全な設定（できなければ null）
+  async function prepare() {
+    if (!ready()) return null;
+    try { if (!o.portable() && !(await save())) return null; } catch (err) { o.toast(X.fail + (err.message || err), true); return null; }
+    return fullOf();
+  }
+  return { open, isOpen: () => o.isOpen(), ready, prepare };
 }

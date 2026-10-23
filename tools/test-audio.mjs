@@ -202,7 +202,7 @@ try {
   ok(await trustedOutside(), 'panel: the audio panel is outside the preview (trusted side panel)');
   ok((await page.textContent('#dev-audio-cur')).includes('まだありません'), 'panel: no audio yet for ' + key);
   ok((await page.textContent('#dev-audio .dv-script')).includes('学習率'), 'panel: shows the step script to read');
-  ok((await page.textContent('#saveloc')) === '作業フォルダ「audio-deck」に保存済み' && (await page.getAttribute('#saveloc', 'title')).includes('書き出す'), 'save location: a working folder says it is saved there and how to hand it out');
+  ok((await page.textContent('#saveloc')) === '作業フォルダ「audio-deck」に保存済み' && (await page.getAttribute('#saveloc', 'title')).includes('名前を付けて保存…'), 'save location: a working folder says it is saved there and how to hand it out');
   // 録音：板の「● 録音 (r)」は録音モードをこの段階で開く（録り方は 1 つ。#82）
   const rb = await page.evaluate(() => { const b = document.getElementById('dev-audio-rec'); return { text: b.textContent, ks: b.getAttribute('aria-keyshortcuts'), pop: b.getAttribute('aria-haspopup'), title: b.title }; });
   ok(rb.text.includes('録音') && rb.text.includes('(r)') && rb.ks === 'r' && rb.pop === 'dialog' && rb.title.includes('録音モード'), 'record: the panel button names its key (r) and says it opens recording mode ' + JSON.stringify(rb));

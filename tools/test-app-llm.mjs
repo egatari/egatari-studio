@@ -22,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPack, commonBody, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
-import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
+import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // Windows の checkout では CRLF になることがあるので LF にそろえる（試験の正規表現と、textarea が CRLF を LF にすることに合わせる）
@@ -179,7 +179,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // deck.html → narration.md、narration.md → deck.html のどちらの順でも、返事の全体を貼ったときと同じものが開く。捨てて最初から・窓を閉じると捨てる
   const noIds = (t) => t.replace(/ id="s-[a-z2-7]{6}"/g, '').replace(/ \{#s-[a-z2-7]{6}\}/g, '');
   const whole = { deck: noIds(F['deck.html']), narration: noIds(F['narration.md']) };
-  const openPaste = async () => { await clickMenuOpen(page, '#b-openmenu'); await clickMenuItem(page, '#b-new'); await page.waitForSelector('#dlg[open] #dlg-new-ai'); await clickDlg(page, '#dlg-new-ai'); await page.waitForSelector('#dlg[open] #paste-text'); };
+  const openPaste = async () => { await clickCommand(page, '#b-new'); await page.waitForSelector('#dlg[open] #dlg-new-ai'); await clickDlg(page, '#dlg-new-ai'); await page.waitForSelector('#dlg[open] #paste-text'); };
   const pasteOne = async (text) => { await page.fill('#paste-text', text); await clickDlg(page, '#dlg-import'); };
   const heldText = () => page.waitForSelector('#dlg[open] #paste-state:not([hidden])').then(() => page.textContent('#paste-state-text'));
   for (const order of [['deck', 'narration'], ['narration', 'deck']]) {
@@ -353,13 +353,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
 }
 
 // 貼り付けの窓から「今のデッキを置き換える」で取り込み、品質チェックの板の結果（.sum か、確かめられなかった言葉）を返す
-// 「修正…」は品質チェックの板の先頭にある（道具の列は 1 行に収めるため）：板を開いてから押す
+// 「修正…」は道具の列の「スライド ▾」にある（品質チェックの板の先頭にもある。そちらは上の試験で確かめる）
 async function openRevise(p, sel = '#paste-text') {
-  if (!(await p.$('#panel:not([hidden]) #b-revise'))) {
-    await clickUntil(p, '#b-check', () => p.waitForSelector('#panel:not([hidden]) #b-revise', { timeout: 20000 }));
-  }
-  // 窓は、プレビューの iframe の上に出る。押したものが iframe に行ってしまっても（tools/click-retry.mjs）、もう一度押す
-  await clickUntil(p, '#panel:not([hidden]) #b-revise', () => p.waitForSelector('#dlg[open] ' + sel, { timeout: 2500 }));
+  await clickCommand(p, '#b-revise-cmd');
+  await p.waitForSelector('#dlg[open] ' + sel, { timeout: 10000 });
 }
 async function pasteReplace(p, text, { only = false } = {}) {
   await openRevise(p);

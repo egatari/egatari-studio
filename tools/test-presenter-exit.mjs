@@ -234,7 +234,7 @@ try {
 
     // #2 A：Esc・p（#pf の中にフォーカス）で窓を閉じる
     for (const k of ['Escape', 'p']) {
-      ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-presenter')));
+      ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-previewmenu').then(() => page.click('#b-presenter'))));
       await pv.bringToFront();
       // キーは窓の中の枠（#pf、presenter.js）に届く：→ でプレビューが進み、覆いは消える
       const s0 = await (await previewFrame(page)).evaluate(() => DECK.state().slide + ':' + DECK.state().step);
@@ -248,7 +248,7 @@ try {
       ok(await page.evaluate(() => window.__focus) > f0, `#2 A: and gives focus back to the editor window (${k})`);
     }
     // #3 A：全画面（発表者の窓の文書）では Esc・p は全画面をやめるだけ
-    ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-presenter')));
+    ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-previewmenu').then(() => page.click('#b-presenter'))));
     await pv.bringToFront();
     await pv.evaluate(FS_STUB);
     for (const k of ['Escape', 'p']) {
@@ -261,7 +261,7 @@ try {
     await pf.click('#pv-close').catch((e) => { if (!pv.isClosed()) throw e; });
     ok(await closedSoon(pv), '#4 A: the close button closes the editor\'s presenter window');
     // #5 A：「今の画面」にフォーカスがあるときの Esc
-    ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-presenter')));
+    ({ pv, pf } = await openPA(ctx, page, () => page.click('#b-previewmenu').then(() => page.click('#b-presenter'))));
     await pv.bringToFront();
     const bb = await (await pf.$('#f-cur')).boundingBox();
     await pv.mouse.click(bb.x + bb.width * 0.3, bb.y + bb.height * 0.3); await pv.waitForTimeout(250);

@@ -191,13 +191,15 @@ console.log('editor');
     const exportTo = async (sel, name) => {
       await page.evaluate(async (n) => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle(n, { create: true }); }, name);
       await page.evaluate((s) => document.querySelector(s).click(), sel);
+      // 参加者用（再生のみ）…は窓で聞く（ライブは付けない）
+      if (sel === '#b-export-play') { await page.waitForSelector('#dlg[open] #play-live'); await clickDlg(page, '#dlg-export'); }
     };
     const waitFile = async (name) => { let t = ''; for (let i = 0; i < 300 && t.length < 1000; i++) { await page.waitForTimeout(100); t = (await outRead(name)) || ''; } return t; };
     // 結果を取り込む前の再生専用
     await exportTo('#b-export-play', 'before.play.ega.html');
     const playBeforeApp = await waitFile('before.play.ega.html');
-    // 添付の板
-    await page.click('#b-attach');
+    // 添付の板（ファイル ▾ → 教材の情報…）
+    await page.evaluate(() => document.getElementById('b-info').click());
     await page.waitForSelector('#attach-list');
     ok((await page.textContent('#attach-live')) === '授業の部屋の結果を取り込む…', 'editor: the attachments panel has 「授業の部屋の結果を取り込む…」');
     // 断る：壊れた JSON・大きすぎる
@@ -228,11 +230,8 @@ console.log('editor');
     ok(lines.length === 2 && lines[0] === '質問 1 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results.png') });
     ok(await page.evaluate(() => window.__xss === undefined && !document.querySelector('#attach-list img, #xss-b')), 'editor: the learner strings render as text (no element, no script run)');
-    // 授業の部屋の板から：部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）
-    await page.evaluate(() => document.getElementById('b-export-live').click());
-    await page.waitForSelector('#live-panel #live-import-results');
-    ok((await page.textContent('#live-import-results')) === '授業の部屋の結果を取り込む…', 'editor: the live panel has 「授業の部屋の結果を取り込む…」');
-    await page.setInputFiles('#live-results-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...R0, room: 'r-bbbbbbbb' })) });
+    // 部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）。結果の取り込みは教材の情報…の添付だけ（参加者用の窓のライブには出さない）
+    await page.setInputFiles('#attach-live-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...R0, room: 'r-bbbbbbbb' })) });
     await page.waitForSelector('#dlg[open] #live-results-mismatch');
     ok(/r-bbbbbbbb/.test(await page.textContent('#live-results-mismatch')) && /r-7k2q6xw4/.test(await page.textContent('#live-results-mismatch')), 'editor: a room mismatch shows a warning (and still allows the import)');
     await clickDlg(page, '#dlg-ok');

@@ -707,6 +707,8 @@ export function createEditorUI(o) {
   function forwardKey(e) {
     const t = e.target;
     if (!enabled() || (t && t.closest && (t.closest('#dev-narr') || t.closest(WIDGET)))) return;
+    // 一覧（role=menu）か窓が開いている間は送らない（編集アプリの道具の列の「ファイル ▾」など。focus が一覧の外にあっても）
+    if (doc.querySelector('[role=menu]:not([hidden]), dialog[open]')) return;
     const f = frameEl();
     if (!f || !f.isConnected) return;
     if (f.inert || editing()) { if (narr && narr.dirty && !otherLock()) narrNotice(true); return; }

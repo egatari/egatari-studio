@@ -43,7 +43,7 @@ const TX = {
     needTopic: '① の「題材」を書いてください',
     insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
     insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：具体例を 1 つ、練習問題を 1 つ',
-    insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、無料のチャットでも収まります）',
+    insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、頼む文が短くて済みます）',
     withPack: 'AI への指示（共通の本体と系列）も入れる：このデッキを作ったのとは別の、新しいチャットで頼むとき',
     copyInsert: '頼む文をコピー',
     wish: '直してほしいこと（なくてもよい）', wishPh: '例：2 枚目の例を身近なものに替える',
@@ -126,7 +126,7 @@ const TX = {
     needTopic: 'Write the topic in step 1.',
     insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
     insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one worked example and one exercise',
-    insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it fits in a free chat too.',
+    insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it stays short.',
     withPack: 'Also include the instructions for the AI (common body and series): when you ask in a new chat, not the one that made this deck',
     copyInsert: 'Copy the request',
     wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
@@ -625,7 +625,7 @@ export function setupLlm(app) {
   }
 
   const run = (p) => p.catch((e) => toast(String((e && e.message) || e), true));
-  // 「修正…」：品質チェックの板の先頭（道具の列は 1 行に収める決まりなので）。結果がなくても出す
+  // 「修正…」：品質チェックの板の先頭と、道具の列の「スライド ▾」（revise）。結果がなくても出す
   const reviseButton = () => el('button', { type: 'button', id: 'b-revise', cls: 'fixreq', text: T.reviseCmd, onclick: () => run(aiDialog('replace')) });
-  return { aiDialog, reviseButton, newWithAi: () => run(aiDialog('new')), insertWithAi: (after) => run(aiDialog('insert', { after })), importText, extraChecks, fixButton, fixRequest, texts: X };
+  return { aiDialog, reviseButton, revise: () => run(aiDialog('replace')), newWithAi: () => run(aiDialog('new')), insertWithAi: (after) => run(aiDialog('insert', { after })), importText, extraChecks, fixButton, fixRequest, texts: X };
 }
