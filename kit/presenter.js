@@ -60,7 +60,8 @@ DECK.presenterView = function(){
     "#pv main{flex:1;display:flex;gap:14px;padding:14px;min-height:0}" +
     "#pv-cur{flex:0 0 62%;display:flex;align-items:center}#pv-cur iframe{width:100%;aspect-ratio:16/9;border:0;background:#000}" +
     "#pv aside{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}" +
-    "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85}" +
+    // 「次」の画面は見るだけ：押しても中にフォーカスを入れない（中のデッキはキーを受けないので、キーが止まってしまう）。押すと発表者ビューに残る
+    "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85;pointer-events:none}" +
     "#pv .lab{font-size:13px;color:#999;margin-bottom:4px}" +
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
     "#pv-text .ai{font-size:12px;color:#aaa;margin:0 0 6px}" +

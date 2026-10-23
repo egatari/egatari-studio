@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=dbb34646f4fb276a -->
+<!-- i18n: pair=editor.ja.md sha256=09eaeb27a1dc702e -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -57,6 +57,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF”; slide backgrounds, including the section dividers, print in their screen colors even with “Background graphics” off).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window, which also plays the audio: autoplay started in the presenter view (<kbd>a</kbd> or its button) plays the narration once, in the editor window.
    - **Fullscreen:** the preview fills the screen (for the projector).
+   - **Keys:** after you click the toolbar, header or status bar, the arrows, PageUp/PageDown, Home/End, `b` (blackout: the whole preview turns black; `b` again, a click or Esc brings it back), `a` and `f` still reach the slides. While unsaved narration holds the preview, a click or key on it shows why, with Save and Revert next to it.
 
 ## Slide list (add, duplicate, delete, reorder)
 

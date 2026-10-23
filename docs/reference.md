@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=b9a5eb05b272e0d9 -->
+<!-- i18n: pair=reference.ja.md sha256=7ec3fc996a0bfabf -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -188,7 +188,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--concl-bg` | conclusion line background (transparent) |
 | `--marker` | list markers in `.body` (`--term`) |
 | `--bar`, `--bar-h` | progress bar color (`--emph`; `--term` during autoplay) and height (3px) |
-| `--stage-bg` | area around the slide and blackout (#2f2f2f) |
+| `--stage-bg` | area around the slide (#2f2f2f) |
 | `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines` | caption font size (27px), distance from the bottom (18px), side margins (96px), max lines per caption chunk (3) |
 | `--cap-rate` | caption reading speed when presenting by hand (characters/s; default ja 7, en 15; also `DECK.captionRate`) |
 
@@ -250,7 +250,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | p | presenter view |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | lecture mode on/off |
-| b | blackout on/off |
+| b | blackout (turns the whole window black; b again, a click or Esc brings it back) |
 | s | captions on/off: the current step's narration (display text) at the bottom of the slide |
 | Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |
 | o | overview (arrows, Home/End, Enter/Space/click to go, Esc or o to close) |

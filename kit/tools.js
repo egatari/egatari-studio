@@ -193,6 +193,18 @@ function rgb(name){
   return (colorCache[name] = "rgb(" + d[0] + "," + d[1] + "," + d[2] + ")");
 }
 
+// 押したときにフォーカスをこの文書の舞台（tabindex=-1、枠は出さない）に置く。道具の面と操作の帯は pointerdown を止めるので、ブラウザは
+// フォーカスを動かさない：そのままでは、編集アプリの枠や欄にあったフォーカスが残り、押した後のキーがスライドに届かない（ふつうのクリックと同じにする）
+// この文書にフォーカスがあり、本体（body）か帯のボタンにあるなら動かさない（キーはもう本体に届く）
+function focusDeck(){
+  var st = document.getElementById("stage"), a = document.activeElement;
+  if (document.hasFocus() && (!a || a === document.body || a === document.documentElement || a === st || (cb && cb.contains(a)))) return;
+  try { window.focus(); } catch (e) {}
+  if (st){
+    if (!st.hasAttribute("tabindex")) st.tabIndex = -1;
+    try { st.focus({preventScroll: true}); } catch (e) {}
+  }
+}
 function build(){
   var stage = document.getElementById("stage");
   if (!stage || layer) return;
@@ -205,7 +217,9 @@ function build(){
   g = canvas.getContext("2d");
   cur = DECK.state().slide - 1;
   resize();
-  layer.addEventListener("pointerdown", function(e){ e.preventDefault(); if (e.button > 0) return; layer.setPointerCapture(e.pointerId); input("down", pt(e)); });
+  // 描くために既定の動き（選択・フォーカスの移動）は止めるが、フォーカスはこの文書の舞台に置く（編集アプリの枠などにフォーカスがあっても、
+  // 押した後のキーがスライドに届くように）
+  layer.addEventListener("pointerdown", function(e){ e.preventDefault(); focusDeck(); if (e.button > 0) return; layer.setPointerCapture(e.pointerId); input("down", pt(e)); });
   layer.addEventListener("pointermove", function(e){
     var ev = drawing && e.getCoalescedEvents ? e.getCoalescedEvents() : [];
     (ev.length ? ev : [e]).forEach(function(x){ input("move", pt(x)); });
@@ -625,7 +639,7 @@ function buildBar(){
   document.addEventListener("deck:aiaudio", addAiBadge);
   // 押してもフォーカスを奪わず（矢印キーがそのまま効く）、下の舞台にも届かない（ペンで描かない・クリックで送らない）
   ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick"].forEach(function(t){
-    cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); });
+    cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); if (t === "pointerdown") focusDeck(); });
   });
   cb.addEventListener("click", function(e){
     e.preventDefault(); e.stopPropagation();
@@ -772,6 +786,8 @@ window.addEventListener("keydown", function(e){
     return;
   }
   if (!layer || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+  // 暗転の間（kit/deck.js の b）：道具のキーは使わない（b・Esc・クリックで戻すのは deck.js）
+  if (document.documentElement.classList.contains("blackout")) return;
   var k = e.key, done = true;
   if (ov){
     if (k === "ArrowRight") select(ov.sel + 1);

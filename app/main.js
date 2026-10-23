@@ -1404,6 +1404,14 @@ $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.po
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); };
 $('b-warn').onclick = showWarnings;
+// 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
+// キーボードで押したとき（detail = 0）は残す。一覧を開くボタン・一覧の項目は一覧の側でフォーカスを動かすので触らない
+$('top').addEventListener('click', (e) => {
+  if (e.detail === 0) return;
+  const b = e.target.closest && e.target.closest('button');
+  if (!b || b.hasAttribute('aria-haspopup') || b.closest('[role=menu]')) return;
+  if (document.activeElement === b) b.blur();
+});
 // 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：開くと最初の項目に。↑↓ で移り、Esc・外を押す・項目を選ぶと閉じる
 const MENUS = [['b-openmenu', 'm-open'], ['b-savemenu', 'm-save'], ['b-exportmenu', 'm-export']].map(([b, m]) => ({ btn: $(b), list: $(m) }));
 const menuItems = (M) => [...M.list.querySelectorAll('button')].filter((b) => !b.hidden);
