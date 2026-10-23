@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=ba1399d45499e44c -->
+<!-- i18n: pair=editor.ja.md sha256=6c63a26393e77bf2 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -102,7 +102,7 @@ For computers without WebGPU (many school PCs, Safari, iPad), the Audio panel ha
 
 The zip is a download, so it is untrusted. It is read as bytes with limits applied before anything is allocated (zip 512 MiB, 64 MiB per audio file, `records.json` 4 MiB, at most 400 steps; zip64, encryption and unknown compression are refused; CRC-32 is checked). Only `records.json` and `audio/<name>.wav` are read (names are checked), the audio must decode as a real WAV of the recorded length, and nothing in the zip is interpreted as HTML or code (spec §11).
 
-`tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a zip made by `tools/colab-fixture.mjs`; folder and single file).
+`tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. The optional `title` (the lesson title, up to 120 characters) in `tts-job.json` is copied into `records.json` and is used only to name the source lesson when an import is refused. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a zip made by `tools/colab-fixture.mjs`; folder and single file).
 
 ## Recording mode (keyboard only)
 

@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=4b58b04c3f426b87 -->
+<!-- i18n: pair=editor.md sha256=4275d4d913da7b18 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -102,7 +102,7 @@ WebGPU のない PC（学校の PC・Safari・iPad）のために、音声の板
 
 zip はダウンロード物なので信頼しない。バイトとして読み、割り当てる前に上限を課す（zip 512 MiB・音声 1 つ 64 MiB・`records.json` 4 MiB・段階は 400 まで。zip64・暗号化・知らない圧縮は断り、CRC-32 を確かめる）。読むのは `records.json` と `audio/<名前>.wav` だけ（名前を確かめる）。音声は本物の WAV として復号でき、長さが記録と合うこと。zip の中身を HTML やコードとして扱うことはない（仕様 §11）。
 
-`tts-job.json` と `records.json`（`egatari: "tts-job"` / `"tts-records"`、`v: 1`）はエディタとノートブックの間のこの製品の取り決めで、形式の仕様の物ではない。`records.json` の各段階の記録は仕様 §5.2 の音声の記録の形（`file`・`dur`・`cues`・`kind`・`sync`・`inputHash`・`recipe`）。試験は `tools/test-colab.mjs`（zip の読み取り・job・取り込みの計画・敵対の zip・ノートブック、`uv` があれば Python の核の dry-run）と `tools/test-colab-app.mjs`（`tools/colab-fixture.mjs` で作った zip での編集アプリの往復。フォルダと 1 ファイル）。
+`tts-job.json` と `records.json`（`egatari: "tts-job"` / `"tts-records"`、`v: 1`）はエディタとノートブックの間のこの製品の取り決めで、形式の仕様の物ではない。`tts-job.json` の任意の項目 `title`（教材の題。120 字まで）は `records.json` に写され、取り込みを断るときに、元の教材の名前を言うためだけに使う。`records.json` の各段階の記録は仕様 §5.2 の音声の記録の形（`file`・`dur`・`cues`・`kind`・`sync`・`inputHash`・`recipe`）。試験は `tools/test-colab.mjs`（zip の読み取り・job・取り込みの計画・敵対の zip・ノートブック、`uv` があれば Python の核の dry-run）と `tools/test-colab-app.mjs`（`tools/colab-fixture.mjs` で作った zip での編集アプリの往復。フォルダと 1 ファイル）。
 
 ## 録音モード（キーボードだけで録る）
 
