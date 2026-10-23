@@ -3,7 +3,7 @@
 //   testLlm({browser, BASE, ok, watch, shotDir})
 // 1. 「AI で新しく作る」の窓：3 つのステップ（① 頼みたいことを書く → ② 指示をコピーして送る → ③ 返事を貼り付けて開く）・ラベルと読み上げ・
 //    A（新しく作る）と B（このチャットの内容で）の記入が写した指示の最後に入る・添付になってもそのまま送る知らせ・共通の本体は外せない・
-//    系列（新しいデッキなら academic、開いているデッキならその部品・テーマから推したもの）・誤り（関係のない文字・閉じていない囲み・分けられないもの）
+//    系列（デッキを開いていなければどれも足さない（ヒントで「学術」を勧める）、開いているデッキならその部品・テーマから推したもの）・誤り（関係のない文字・閉じていない囲み・分けられないもの）
 // 2. 見本の返事（tools/llm-guide/worked/business：前置きの文章・```html と ```markdown・CRLF）を取り込む → 新しい 1 ファイルとして開き、
 //    スライドに id が付き、口述原稿の見出しが {#id} になり、品質チェックのエラーが 0
 // 2b. 囲みを 1 つずつ（囲みの行なし）：deck.html → narration.md と、その逆の順。受け取った知らせ・同じ方をもう一度・返事の全体と同じものが開く・
@@ -20,7 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPack, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 
@@ -64,22 +64,33 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(await page.isChecked('#paste-kind-a') && await page.isVisible('#paste-a-topic') && !(await page.isVisible('#paste-b-length')) && (await page.inputValue('#paste-a-speakers')) === 'one narrator',
     'llm: step 1 starts with A (make a new lesson); the speakers field has the default from the instructions');
   const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
-  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).map((b) => b[0]).join() === 'academic' && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
-    'llm: the instructions have series checkboxes with sizes; with no deck open, academic is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
+  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).length === 0 && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
+    'llm: the instructions have series checkboxes with sizes; with no deck open, no series is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
   ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(buildPack({ series: [], lang: 'en' }))} KB`) && (await page.textContent('#paste-series legend')) === 'Series (add only when needed)',
     'llm: the common body is shown as always included (ticked, cannot be removed) with its size; the series say “add only when needed”');
+  ok((await page.textContent('#paste-series-hint')) === 'Using formulas, graphs or data charts? Add “Academic (math, functions, data)”.' && (await page.getAttribute('#paste-series', 'aria-describedby')) === 'paste-series-hint',
+    'llm: under the series, a hint says to add Academic for formulas, graphs or data charts (with the series’ display name)');
   // A の題材がないまま写そうとすると、① に戻す
   await page.click('#paste-copy-guide');
   await page.waitForSelector('#paste-copied:not([hidden])');
   ok((await page.textContent('#paste-copied')) === 'Write the topic in step 1.' && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-a-topic'), 'llm: copying with no topic asks for it and moves the focus to the topic field');
   const reqA = { topic: 'How binary search works', audience: 'First-year students', length: '5 slides', examples: 'Finding a name in a phone book\nGuessing a number' };
   for (const [k, v] of Object.entries(reqA)) await page.fill('#paste-a-' + k, v);
-  const total0 = await page.textContent('#paste-pack-size');
   const wantA = filledRequest({ kind: 'A', values: { ...reqA, speakers: 'one narrator', language: '' } }, 'en');
+  // 系列に何も印がないまま写す：共通の本体と頼みたいことだけ
+  ok((await page.textContent('#paste-pack-size')) === `${packKb(commonBody('en') + '\n' + wantA)} KB in all`, 'llm: with no series ticked, the total is the common body plus the request');
+  await page.click('#paste-copy-guide');
+  await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+  const clip0 = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+  ok(clip0 === commonBody('en') + '\n' + wantA && !clip0.includes('## Series pack:'), 'llm: with no series ticked, the copied instructions are the common body and the request only');
+  await page.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
+  await page.click('#paste-series-academic');
+  const total0 = await page.textContent('#paste-pack-size');
   ok(total0 === `${packKb(packWithRequest({ series: ['academic'], lang: 'en', request: wantA }))} KB in all`, 'llm: the total follows what is written in step 1: ' + total0);
   await shot('ai-step1.png');
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), clip0);
   const clip = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');   // Windows のクリップボードは CRLF にする
   ok(clip.startsWith('# Instructions for the AI') && clip.includes('**R-output**') && !clip.includes('For people.') && clip.includes('## Series pack: academic') && clip.includes('`<m-sweep>`') && !clip.includes('## Series pack: business') && !clip.includes('`<m-kpi>`'),
     `llm: “Copy instructions for your AI” copies the common body from “Instructions for the AI” and the academic pack (${Math.round(clip.length / 1024)} KB)`);
@@ -297,7 +308,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(heads.join('|') === '① 頼みたいことを書く|② AI への指示をコピーして、チャットに貼って送る|③ 返事を貼り付けて開く', 'llm ja: the 3 steps: ' + heads.join(' / '));
     const common = await pj.textContent('label.paste-common'), legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
     const ja = packKb(buildPack({ series: [], lang: 'ja' }));
-    const jaA = packKb(packWithRequest({ series: ['academic'], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja') }));
+    const jaA = packKb(packWithRequest({ series: [], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja') }));
+    ok((await pj.textContent('#paste-series-hint')) === '数式・グラフ・データの図を使うなら「学術（数式・関数・データ）」を足す' && (await pj.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm ja: no series ticked with no deck open, and the hint names 「学術（数式・関数・データ）」');
     ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '系列（必要なときだけ足す）' && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
       `llm ja: the Japanese UI shows the sizes of the Japanese instructions (${common} / ${total})`);
     const scrollTo = (id) => pj.evaluate((id) => document.getElementById(id).scrollIntoView({ block: 'start' }), id);

@@ -34,6 +34,7 @@ const TX = {
     guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ系列（必要なときだけ足す）と、① の頼みたいことです。系列を足すと、その教材に向くパーツの説明が加わります。',
     common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
     seriesLegend: '系列（必要なときだけ足す）',
+    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を足す`,
     seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
     copyGuide: 'AI への指示をコピー',
@@ -101,6 +102,7 @@ const TX = {
     guide: 'The copied instructions are the common body (always included), the series you add (only when needed) and what you wrote in step 1. A series adds the notes on parts that suit that kind of lesson.',
     common: (kb) => `Common body (always included)   ${kb} KB`,
     seriesLegend: 'Series (add only when needed)',
+    seriesHint: (name) => `Using formulas, graphs or data charts? Add “${name}”.`,
     seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
     copyGuide: 'Copy instructions for your AI',
@@ -208,12 +210,11 @@ export function setupLlm(app) {
     };
   }
 
-  // ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す。既定は今のデッキの部品・テーマから推したもの、なければ academic）＋ ① の頼みたいこと
+  // ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す。既定は、デッキを開いていればその部品・テーマから推したもの、開いていなければどれも足さない）＋ ① の頼みたいこと
   async function defaultSeries() {
     let deck = '';
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
-    const s = seriesForDeck(deck);
-    return s.length ? s : ['academic'];
+    return seriesForDeck(deck);   // デッキがない（か、推せない）ときは [] ：共通の本体と頼みたいことだけ
   }
   async function packStep(copyMsg, req) {
     const base = buildPack({ series: [], lang: LANG });
@@ -240,11 +241,12 @@ export function setupLlm(app) {
     const node = step('paste-step2', X.step2, [el('div', { cls: 'paste-guide' }, [
       el('span', { cls: 'hint', text: X.guide }),
       el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]),
-      el('fieldset', { id: 'paste-series', cls: 'paste-series' }, [
+      el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
         el('legend', { text: X.seriesLegend }),
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
           el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
       ]),
+      el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) }),
       copy, total,
     ]), copyMsg]);
     return { node, update };

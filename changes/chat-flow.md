@@ -5,3 +5,4 @@
 ### Added
 
 - Editor app: the two blocks of a reply can be pasted one at a time (copied with each block's own copy button, without the ``` lines). The editor tells `deck.html` from `narration.md` by content (`pastePart` in `kit/core/llm-import.mjs`), keeps the first and says which one arrived and what to paste next, joins them in either order into the same result as the whole reply, and offers “Discard and start over”. Text with both but no fences, or with neither, is refused with how to copy instead. In Import AI fixes, “Import just this” brings in a fix that has only one block (a narration-only fix replaces just the sections with those ids).
+- Editor app, Make with AI: with no deck open, no series is ticked (the copied text is the common body plus the request); a hint under the list says to add Academic for formulas, graphs or data charts. With a deck open, the series inferred from it are still ticked.
