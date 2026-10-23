@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=8a2dfb214a0ecbd1 -->
+<!-- i18n: pair=distributing.ja.md sha256=761e3cc0bd0c5b23 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -25,6 +25,8 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 - **Blackout.** `b` turns the whole window black. A faint “Blacked out — press b or Esc to return” hint shows in the corner for 2 s, and again when you move the mouse. `b`, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End end the blackout without moving the slide; press the key again to go on.
 
 ## Live (questions and polls in class, draft)
+
+Live is a preview: the results file format may change until v0.4.7.
 
 An Egatari file (play only) can carry **Live** ([format extension `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md), draft): during the live time you choose, participants who open the file can send questions and answer polls from the lesson itself, without an app or an account. It is the only part of a lesson that uses the network, and only after the participant presses **Join**.
 

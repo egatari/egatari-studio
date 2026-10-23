@@ -19,7 +19,7 @@ import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable } from '../kit/core/portable.mjs';
-import { parseResults, isLiveResults, summarizeResults, summaryLines, resultsRecord, roomMatch, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, isLiveResults, summarizeResults, summaryLines, resultsRecord, roomMatch, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 import { titleProblem, descriptionProblem, roleProblem, inspectAttachment, blocking, ATTACH_LIMITS } from '../kit/core/attachments.mjs';
 import { clickDlg } from './click-retry.mjs';
 
@@ -61,14 +61,11 @@ console.log('shape');
   const m = (f) => { const x = clone(R0); f(x); return x; };
   const cases = [
     ['fixture', R0], ['xss strings', R1],
-    ['extra member', m((x) => { x.extra = 1; })], ['v 2', m((x) => { x.v = 2; })], ['no exportedAt', m((x) => { delete x.exportedAt; })],
-    ['bad room', m((x) => { x.room = 'r-ABCDEFGH'; })], ['bad window', m((x) => { x.window.from = '2026-10-30 09:00'; })], ['window extra', m((x) => { x.window.z = 1; })],
-    ['activities bad step', m((x) => { x.activities['no-colon'] = []; })], ['activity kind', m((x) => { x.activities['*'][0].kind = 'board'; })],
-    ['poll 13 choices', m((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })], ['prompt 301', m((x) => { x.activities['s-k3f9q2:2'][0].prompt = 'あ'.repeat(301); })],
+    ['v 2', m((x) => { x.v = 2; })], ['no exportedAt', m((x) => { delete x.exportedAt; })],
+    ['bad room', m((x) => { x.room = 'r-ABCDEFGH'; })], ['bad window', m((x) => { x.window.from = '2026-10-30 09:00'; })], ['activities bad step', m((x) => { x.activities['no-colon'] = []; })], ['poll 13 choices', m((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })], ['prompt 301', m((x) => { x.activities['s-k3f9q2:2'][0].prompt = 'あ'.repeat(301); })],
     ['qa without hidden', m((x) => { delete x.responses[0].hidden; })], ['text 500 emoji', m((x) => { x.responses[0].text = '😀'.repeat(500); })], ['text 501', m((x) => { x.responses[0].text = 'a'.repeat(501); })],
     ['name 41', m((x) => { x.responses[1].name = 'n'.repeat(41); })], ['choice 12', m((x) => { x.responses[1].choice = 12; })], ['choice 1.5', m((x) => { x.responses[1].choice = 1.5; })],
-    ['bad pid', m((x) => { x.responses[1].pid = 'short'; })], ['bad item id', m((x) => { x.responses[0].id = 'q-1'; })], ['response kind', m((x) => { x.responses[0].kind = 'board'; })],
-    ['responses not a list', m((x) => { x.responses = {}; })], ['empty responses', m((x) => { x.responses = []; })], ['array', [R0]],
+    ['bad pid', m((x) => { x.responses[1].pid = 'short'; })], ['bad item id', m((x) => { x.responses[0].id = 'q-1'; })], ['responses not a list', m((x) => { x.responses = {}; })], ['empty responses', m((x) => { x.responses = []; })], ['array', [R0]],
   ];
   const disagree = cases.filter(([, v]) => !!sv(v) !== parseResults(enc.encode(JSON.stringify(v))).ok).map(([n]) => n);
   ok(disagree.length === 0, `parseResults agrees with the vendored schema on ${cases.length} cases (${disagree.join(', ') || 'all agree'})`);
@@ -90,6 +87,34 @@ console.log('shape');
   const insp = await inspectAttachment('attachments/live-r-7k2q6xw4-2026-10-30.json', new Uint8Array(R1B));
   ok(!insp.problems.some(blocking) && insp.mime === 'application/json', 'the §3.8 content check accepts results (application/json, role data)');
   ok(roomMatch(R0, { room: 'r-7k2q6xw4' }) === 'match' && roomMatch(R0, { room: 'r-aaaaaaaa' }) === 'mismatch' && roomMatch(R0, null) === 'none', 'roomMatch: match, mismatch, none');
+  // 知らない項目・種類は無視して知らせる（拡張 live §3）。egatari-live 718f348 の src/room.js（results）が書く形：質問に strokes・sourceSha256・group・reply、
+  // 「わからない」の印 kind:"confused"（ActivityKind にも confused）。形が壊れた既知の項目は今までどおり断る
+  const L = clone(R0);
+  L.activities['*'].push({ id: 'c1', kind: 'confused' });
+  L.responses[0] = { ...L.responses[0], strokes: [{ x: 1, y: 2 }], sourceSha256: 'a'.repeat(64), group: 'g-1', reply: 'ok' };
+  const cf = { kind: 'confused', activity: 'c1', step: 's-k3f9q2:2', pid: 'q8Jk3nRy0MxS5uAb', at: '2026-10-30T09:30:00.000Z' };
+  L.responses.push(cf, { ...cf, pid: 'r9Kl4oSz1NyT6vBc' }, { ...cf, pid: 's0Lm5pTa2OzU7wCd' });
+  const Lr = parseResults(enc.encode(JSON.stringify(L)));
+  const sorted = (a) => [...a].sort().join();
+  ok(Lr.ok && sorted(Lr.skipped.members) === 'group,reply,sourceSha256,strokes' && JSON.stringify(Lr.skipped.kinds) === '{"confused":4}', `tolerant: reply/group/confused are accepted and reported (${JSON.stringify(Lr.skipped)})`);
+  ok(Lr.ok && !('reply' in Lr.results.responses[0]) && !('group' in Lr.results.responses[0]) && Lr.results.responses.length === R0.responses.length && !Lr.results.responses.some((x) => x.kind === 'confused') && Lr.results.activities['*'].length === R0.activities['*'].length, 'tolerant: unknown members and kinds are dropped from the parsed result, the known ones are kept');
+  ok(summarizeResults(Lr.results).responses === R0.responses.length && isLiveResults(enc.encode(JSON.stringify(L))), 'tolerant: the summary counts only known responses; isLiveResults accepts it');
+  const F = clone(R0);
+  F.futureThing = { a: 1 }; F.window.tz = 'x'; F.activities['*'][0].futureThing = 1; F.responses.push({ kind: 'rating', activity: 'p1', step: 's-k3f9q2:2', stars: 4, anything: [1] });
+  const Fr = parseResults(enc.encode(JSON.stringify(F)));
+  ok(Fr.ok && sorted(Fr.skipped.members) === 'futureThing,tz' && JSON.stringify(Fr.skipped.kinds) === '{"rating":1}', `tolerant: a made-up member and kind are accepted and reported (${JSON.stringify(Fr.skipped)})`);
+  ok(parseResults(FIX).skipped.members.length === 0 && Object.keys(parseResults(FIX).skipped.kinds).length === 0 && skippedNotice(parseResults(FIX).skipped, 'ja') === null, 'tolerant: the plain fixture skips nothing and gives no notice');
+  ok(/replies?|reply/.test(skippedNotice(Lr.skipped, 'en')) && /confused/.test(skippedNotice(Lr.skipped, 'en')) && /この版の Studio が知らない項目（.*reply.*confused/.test(skippedNotice(Lr.skipped, 'ja')), 'tolerant: the notice lists member and kind names (ja and en)');
+  const bad = (f) => { const x = clone(L); f(x); return parseResults(enc.encode(JSON.stringify(x))); };
+  const rejected = [
+    ['known member malformed', bad((x) => { x.responses[1].choice = 99; })], ['qa text type', bad((x) => { x.responses[0].text = 5; })], ['missing required', bad((x) => { delete x.responses[0].hidden; })],
+    ['bad room', bad((x) => { x.room = 'nope'; })], ['v 2', bad((x) => { x.v = 2; })], ['kind missing', bad((x) => { delete x.responses[1].kind; })],
+    ['kind not a string', bad((x) => { x.responses[1].kind = 7; })], ['activity kind missing', bad((x) => { x.activities['*'] = [{ id: 'z' }]; })], ['window bad', bad((x) => { x.window.from = 'now'; })],
+    ['bad poll activity', bad((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })],
+  ].filter(([, r]) => r.ok).map(([n]) => n);
+  ok(rejected.length === 0, `tolerant: anything malformed in a known member is still rejected (${rejected.join(', ') || 'all rejected'})`);
+  ok(parseResults(new Uint8Array(RESULTS_MAX_BYTES + 1)).code === 'too-large', 'tolerant: the size limit still applies');
+  globalThis.__L = L;
 }
 
 // ---------------------------------------------------------------- 2. コマンド
@@ -146,6 +171,20 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   for (const f of fs.readdirSync(path.join(deckDir, 'attachments'))) fs.rmSync(path.join(deckDir, 'attachments', f));
   fs.rmdirSync(path.join(deckDir, 'attachments'));
   fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: LIVE } }, null, 2) + '\n');
+}
+
+{
+  // 知らない項目のある結果：取り込む（コマンドは知らせを出す）。取り込んだファイルは元の bytes のまま
+  const t = path.join(work, 'deck-tolerant');
+  fs.cpSync(deckDir, t, { recursive: true });
+  fs.writeFileSync(path.join(t, CFG), JSON.stringify({ ...cfg0, extensions: { live: LIVE } }, null, 2) + '\n');
+  const LB = Buffer.from(JSON.stringify(globalThis.__L, null, 1));
+  const lf = path.join(work, 'results-newer.json'); fs.writeFileSync(lf, LB);
+  const a = portableCli('attach', t, lf);
+  const conf = JSON.parse(fs.readFileSync(path.join(t, CFG), 'utf8'));
+  const e = (conf[KEY] || [])[0];
+  ok(a.status === 0 && e && fs.readFileSync(path.join(t, e.path)).equals(LB), 'cli attach: results with unknown items are attached, and the stored file keeps the original bytes');
+  ok(/知らない項目（.*reply.*confused/.test(a.stderr + a.stdout), `cli attach: prints the skipped notice (${(a.stderr + a.stdout).trim().split('\n').pop().slice(0, 120)})`);
 }
 
 // ---------------------------------------------------------------- 3. 編集アプリ
