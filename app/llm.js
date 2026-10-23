@@ -1,15 +1,20 @@
-// チャットの AI との行き来（docs/authoring-with-llms.md）：
-//   「AI で新しく作る」：① 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列（既定は今のデッキの部品・テーマから推したもの。
-//   なければ academic）と ① を組み立てて写す（kit/core/llm-pack.mjs）→ ③ 返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。
-//   kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を取り出し（kit/core/llm-import.mjs）、スライドに id を付け
-//   （kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で1 ファイル（.ega.html）にして（app/build-worker.js の
-//   exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//   「AI の直しを取り込む」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
-//   「AI への修正依頼を写す」：品質チェックの結果・組み立ての知らせ・その規格の文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
+// チャットの AI との行き来（docs/authoring-with-llms.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す（名前に「AI で…」を付けない）：
+//   「新規作成…」→「チャットの AI に書いてもらう」（mode 'new'）：① 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列
+//     （既定はデッキを開いていればその部品・テーマから推したもの、開いていなければなし）と ① を組み立てて写す（kit/core/llm-pack.mjs）→
+//     ③ AI の返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を
+//     取り出し、スライドに id を付け（kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして
+//     （app/build-worker.js の exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける
+//   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'。backlog #93）：① 足すスライド（枚数・足したいこと）→ ② 短い頼む文
+//     （見出しの一覧と足す場所の前のスライドだけ。kit/core/llm-insert.mjs。新しいチャットなら指示も付けられる）→ ③ 返事のスライドを、選んだスライドの
+//     後ろ（選んでいなければ最後）に入れ、スライド一覧の「足す」と同じに id を付ける（app/slides-panel.js の apply：控え・元に戻す・組み直し・品質チェック）
+//   「修正…」（mode 'replace'）：① 直してほしいこと → ② 修正依頼（品質チェックの指摘・組み立ての知らせ・その規格の文章・今の原稿（kit/core/llm-fix.mjs）と、
+//     ① と開いているメモ（comments.json。画像は backlog #90））→ ③ 今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で戻す）
+//   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
+import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
@@ -23,14 +28,30 @@ import { memoryWorkspace } from './workspace.js';
 
 const TX = {
   ja: {
-    paste: 'AI で新しく作る…', pasteWelcome: 'AI で新しく作る', fixImport: 'AI の直しを取り込む…',
-    title: 'AI で新しく作る',
-    lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）に、3 つのステップで教材を作ってもらいます。',
-    step1: '① 頼みたいことを書く', step2: '② AI への指示をコピーして、チャットに貼って送る', step3: '③ 返事を貼り付けて開く',
+    method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
+    title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
+    howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
+    howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
+    steps: {
+      new: ['① 頼みたいことを書く', '② AI への指示をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて開く'],
+      insert: ['① 足すスライドを書く', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
+      replace: ['① 直してほしいことを書く', '② 修正依頼をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて取り込む'],
+    },
     step1Hint: '書いた内容は、コピーする指示の最後に入ります（チャットに貼ると添付のファイルの形になり、そこでは書き直せないため、先にここで書きます）。書かない項目は空のままでかまいません',
     kindLegend: 'どちらで作りますか', kindA: 'A　新しく作る', kindB: 'B　このチャットでここまで話し合った内容で作る',
     fieldPh: { topic: '例：二分探索のしくみ', audience: '例：高校 2 年生', length: '例：5 枚・10 分', language: '例：日本語', speakers: '例：1 人', examples: '例：電話帳で名前を探す' },
     needTopic: '① の「題材」を書いてください',
+    insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
+    insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：具体例を 1 つ、練習問題を 1 つ',
+    insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、無料のチャットでも収まります）',
+    withPack: 'AI への指示（共通の本体と系列）も入れる：このデッキを作ったのとは別の、新しいチャットで頼むとき',
+    copyInsert: '頼む文をコピー',
+    wish: '直してほしいこと（なくてもよい）', wishPh: '例：2 枚目の例を身近なものに替える',
+    reviseHint: '修正依頼には、品質チェックの指摘と、① に書いたこと、開いているメモ（コメント）、今の deck.html と narration.md が入ります（長いデッキは指摘のあるスライドだけ）',
+    copyRevise: '修正依頼をコピー', reviseNothing: '直すことが見つかりません。① に直してほしいことを書いてください',
+    revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・メモ ${c} 件` : ''}）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
+    insertCopied: (kb) => `コピーしました（${kb} KB）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
+    wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`,
     guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ系列（必要なときだけ足す）と、① の頼みたいことです。系列を足すと、その教材に向くパーツの説明が加わります。',
     common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
     seriesLegend: '系列（必要なときだけ足す）',
@@ -39,18 +60,15 @@ const TX = {
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
     copyGuide: 'AI への指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB、① の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
-    step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼って「開く」を押すと、次の囲みを待ちます',
+    step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼ってボタンを押すと、次の囲みを待ちます',
     pasteLabel: 'AI の返事', placeholder: 'ここに AI の返事の全体か、囲みを 1 つ貼り付ける',
-    fixTitleImport: 'AI の直しを取り込む',
-    fixImportLead: '修正依頼への AI の返事を貼り付けて、今のデッキに取り込みます。docId・音声はそのままです。直したスライドだけの返事なら、その id のスライドだけを置き換えます',
-    fixImportHint: '返事の全体（返事の下のコピーのボタン）か、2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます',
-    go: '開く', goFix: '取り込む', only: 'これだけで取り込む',
+    go: { new: '開く', insert: '挿入', replace: '取り込む' }, only: 'これだけで取り込む',
     untrusted: '貼り付けたものは開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
     held: {
       deck: (n) => `deck.html を受け取りました（スライド ${n} 枚。2 つのうち 1 つ目）。次に narration.md の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
       narration: (n) => `narration.md を受け取りました（${n} 節。2 つのうち 1 つ目）。次に deck.html の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
       again: (k) => `${k} をもう一度受け取ったので、前のものと入れ替えました。`,
-      onlyHint: '直しが片方だけなら「これだけで取り込む」を押します',
+      onlyHint: '返事が片方だけなら「これだけで取り込む」を押します',
       reset: '受け取ったものを捨てて最初から', resetDone: '受け取ったものを捨てました。返事の全体か、囲みを 1 つ貼り付けてください',
       joined: '2 回に分けて貼った deck.html と narration.md を合わせました',
     },
@@ -64,6 +82,7 @@ const TX = {
       'no-narration': 'narration.md の囲みが見つかりません（```narration.md で始まる囲み）',
       empty: '何も貼り付けられていません',
       'no-match': '直したスライドの id が今のデッキにありません',
+      'no-insert': '返事に足すスライド（<section class="slide">）がありません',
     },
     warn: {
       several: (w) => `${w.kind === 'deck' ? 'deck.html' : 'narration.md'} の囲みが ${w.n} 個あったので、最後のものを使いました`,
@@ -75,13 +94,14 @@ const TX = {
     building: '取り込んでいます…', buildFailed: '取り込んだ原稿を組み立てられませんでした',
     imported: (n, ids) => `取り込みました：${n} 枚${ids ? `、id を ${ids} 枚に付けました` : ''}`,
     replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`, replacedNarr: (n) => `口述原稿を置き換えました（${n} 節）`,
+    inserted: (n, at) => `スライド ${n} 枚を ${at} 枚目に挿入しました（id を付けました）`, undoInsert: (n) => `スライド ${n} 枚の挿入`,
     idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
     fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
-    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付け、返事を「AI の直しを取り込む」で取り込みます`,
+    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付けて送り、返事は「修正…」の ③ に貼り付けます`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
     copyCutOff: 'AI に送り直しを頼む文をコピー', cutOffCopied: 'コピーしました。チャットに貼り付け、返事をここに貼り付けてください',
-    fixNone: '直す問題はありません', pasteReply: 'AI の直しを取り込む…', close: '閉じる',
+    fixNone: '直す問題はありません', pasteReply: 'AI の返事を貼り付ける…', close: '閉じる',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('ja', 'narrOrphan', a) : `スライドにない段階の口述原稿 [${a}]`),
       compData: (a) => message('ja', 'compData', a),
@@ -91,14 +111,30 @@ const TX = {
     },
   },
   en: {
-    paste: 'Make with AI…', pasteWelcome: 'Make with AI', fixImport: 'Import AI fixes…',
-    title: 'Make with AI',
-    lead: 'A chat AI (claude.ai, Gemini, ChatGPT, …) makes the lesson for you in 3 steps.',
-    step1: '1. Write what you want', step2: '2. Copy the instructions, paste them into the chat and send', step3: '3. Paste the reply and open it',
+    method: 'Have a chat AI write it', methodFix: 'Have a chat AI fix it',
+    title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
+    howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
+    howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
+    steps: {
+      new: ['1. Write what you want', '2. Copy the instructions, paste them into the chat and send', '3. Paste the AI’s reply and open it'],
+      insert: ['1. Describe the slides to add', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
+      replace: ['1. Write what to change', '2. Copy the fix request, paste it into the chat and send', '3. Paste the AI’s reply and bring it in'],
+    },
     step1Hint: 'What you write goes at the end of the copied instructions (pasted into a chat they often become an attachment you cannot edit there, so write it here first). Leave out anything you do not need.',
     kindLegend: 'How do you want to make it?', kindA: 'A. Make a new lesson', kindB: 'B. From what we have discussed so far in this chat',
     fieldPh: { topic: 'e.g. how binary search works', audience: 'e.g. first-year students', length: 'e.g. 5 slides, 10 minutes', language: 'e.g. English', speakers: 'e.g. one narrator', examples: 'e.g. finding a name in a phone book' },
     needTopic: 'Write the topic in step 1.',
+    insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
+    insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one worked example and one exercise',
+    insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it fits in a free chat too.',
+    withPack: 'Also include the instructions for the AI (common body and series): when you ask in a new chat, not the one that made this deck',
+    copyInsert: 'Copy the request',
+    wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
+    reviseHint: 'The fix request has the quality check findings, what you write in step 1, the open notes (comments) and the current deck.html and narration.md (for a long deck, only the slides with findings).',
+    copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
+    revised: (kb, n, c) => `Copied (${kb} KB; ${n} finding(s)${c ? `, ${c} note(s)` : ''}). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
+    insertCopied: (kb) => `Copied (${kb} KB). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
+    wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
     guide: 'The copied instructions are the common body (always included), the series you add (only when needed) and what you wrote in step 1. A series adds the notes on parts that suit that kind of lesson.',
     common: (kb) => `Common body (always included)   ${kb} KB`,
     seriesLegend: 'Series (add only when needed)',
@@ -107,18 +143,15 @@ const TX = {
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
     copyGuide: 'Copy instructions for your AI',
     copied: (kb) => `Copied (${kb} KB, with what you wrote in step 1). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
-    step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press Open; the editor then waits for the other.',
+    step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press the button; the editor then waits for the other.',
     pasteLabel: 'The AI’s reply', placeholder: 'Paste the whole reply of the AI here, or one block',
-    fixTitleImport: 'Import AI fixes',
-    fixImportLead: 'Paste the AI’s reply to your fix request to bring it into the current deck. The docId and audio stay. A reply with only some slides replaces just those, by id.',
-    fixImportHint: 'Paste the whole reply (the copy button under the reply), or the two blocks one at a time (the copy button at the top right of each block).',
-    go: 'Open', goFix: 'Import', only: 'Import just this',
+    go: { new: 'Open', insert: 'Insert', replace: 'Import' }, only: 'Import just this',
     untrusted: 'Pasted content is treated like an opened file: if it contains scripts, the editor asks before running them.',
     held: {
       deck: (n) => `Got deck.html (${n} slide${n === 1 ? '' : 's'}; 1 of 2). Now copy the narration.md block with the copy button at its top right and paste it here.`,
       narration: (n) => `Got narration.md (${n} section${n === 1 ? '' : 's'}; 1 of 2). Now copy the deck.html block with the copy button at its top right and paste it here.`,
       again: (k) => `Got ${k} again; it replaces the earlier one. `,
-      onlyHint: 'If the fix has only this one, press “Import just this”.',
+      onlyHint: 'If the reply has only this one, press “Import just this”.',
       reset: 'Discard and start over', resetDone: 'Discarded. Paste the whole reply, or one block.',
       joined: 'Joined deck.html and narration.md pasted separately',
     },
@@ -132,6 +165,7 @@ const TX = {
       'no-narration': 'No narration.md block found (a block starting with ```narration.md).',
       empty: 'Nothing was pasted.',
       'no-match': 'None of the fixed slides’ ids is in the current deck.',
+      'no-insert': 'The reply has no slides to add (<section class="slide">).',
     },
     warn: {
       several: (w) => `There were ${w.n} ${w.kind === 'deck' ? 'deck.html' : 'narration.md'} blocks; the last one was used.`,
@@ -143,13 +177,14 @@ const TX = {
     building: 'Importing…', buildFailed: 'Could not build the imported deck',
     imported: (n, ids) => `Imported ${n} slides${ids ? `; added ids to ${ids}` : ''}`,
     replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`, replacedNarr: (n) => `Replaced the narration (${n} section(s))`,
+    inserted: (n, at) => `Inserted ${n} slide(s) at position ${at} (with new ids)`, undoInsert: (n) => `inserting ${n} slide(s)`,
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then bring the reply in with “Import AI fixes”.`,
+    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat and send, then paste the reply in step 3 of “Revise…”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
-    fixNone: 'No problems to fix.', pasteReply: 'Import AI fixes…', close: 'Close',
+    fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s reply…', close: 'Close',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('en', 'narrOrphan', a) : `Narration for a step the slide does not have [${a}]`),
       compData: (a) => message('en', 'compData', a),
@@ -168,7 +203,6 @@ export function setupLlm(app) {
   const base = T.checkMsg;
   // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
   T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : a && typeof a === 'object' && MESSAGES[c] ? message(LANG, c, a) : base(c, a));
-  for (const [id, t] of [['b-paste', X.paste], ['w-paste', X.pasteWelcome], ['b-fiximport', X.fixImport]]) { const b = $(id); if (b) b.textContent = t; }
 
   async function copyText(text, area) {
     try { await navigator.clipboard.writeText(text); return true; }
@@ -178,14 +212,13 @@ export function setupLlm(app) {
   }
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
-
-  // ---------------------------------------------------------------- 「AI で新しく作る」の窓：① 頼みたいことを書く → ② 指示をコピーして送る → ③ 返事を貼り付けて開く
   const step = (id, title, kids) => el('section', { id, cls: 'paste-step', 'aria-labelledby': id + '-h' }, [el('h3', { id: id + '-h', text: title }), ...kids]);
+  const readDeck = async () => ({ deck: (await S.ws.readText(S.deckFile, { max: READ_LIMITS.source })) || '', narration: (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || '' });
 
-  // ① 頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）。記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。
-  // 書いたものは、このページを開いている間は残す（窓を閉じて開き直しても）
+  // ---------------------------------------------------------------- ① 新規作成：頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）
+  // 記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。書いたものは、このページを開いている間は残す
   const draft = { kind: 'A', values: {} };
-  function requestStep() {
+  function requestStep(title) {
     const F = requestForm(LANG);
     const field = (sec, f) => {
       const id = `paste-${sec.toLowerCase()}-${f.key}`, key = sec + ':' + f.key, multi = f.key === 'examples';
@@ -204,19 +237,35 @@ export function setupLlm(app) {
     show();
     const values = () => Object.fromEntries([...(draft.kind === 'B' ? B : A).querySelectorAll('input,textarea')].map((x) => [x.name, x.value]));
     return {
-      node: step('paste-step1', X.step1, [el('p', { cls: 'hint', text: X.step1Hint }), kinds, A, B]),
+      node: step('paste-step1', title, [el('p', { cls: 'hint', text: X.step1Hint }), kinds, A, B]),
       request: () => filledRequest({ kind: draft.kind, values: values() }, LANG),
       missing: () => (draft.kind === 'A' && !String(values().topic || '').trim() ? A.querySelector('[name=topic]') : null),
     };
   }
+  // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
+  function insertStep(title, where) {
+    const n = el('input', { type: 'number', id: 'paste-insert-n', min: '1', max: '10', value: '1', inputmode: 'numeric' });
+    const wish = el('textarea', { id: 'paste-insert-wish', rows: '2', placeholder: X.insertWishPh, spellcheck: 'false' });
+    return {
+      node: step('paste-step1', title, [el('p', { id: 'paste-insert-where', cls: 'paste-where', text: where }), el('p', { cls: 'hint', text: X.insertHint }),
+        el('div', { cls: 'paste-fields' }, [
+          el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-insert-n', text: X.insertCount }), n]),
+          el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-insert-wish', text: X.insertWish }), wish]),
+        ])]),
+      count: () => Math.max(1, Math.min(10, Math.round(Number(n.value) || 1))),
+      wish: () => wish.value,
+    };
+  }
 
-  // ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す。既定は、デッキを開いていればその部品・テーマから推したもの、開いていなければどれも足さない）＋ ① の頼みたいこと
+  // ---------------------------------------------------------------- ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す）＋ 最後の頼み
+  // 系列の既定：デッキを開いていればその部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）。開いていなければ（か、推せなければ）足さない
   async function defaultSeries() {
     let deck = '';
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
-    return seriesForDeck(deck);   // デッキがない（か、推せない）ときは [] ：共通の本体と頼みたいことだけ
+    return seriesForDeck(deck);
   }
-  async function packStep(copyMsg, req) {
+  // req：{request() → 最後に付ける文（Promise でもよい）, missing() → 足りない欄 | null}。optional：指示を入れるかを選べる（挿入：既定は入れない）
+  async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied } = {}) {
     const base = buildPack({ series: [], lang: LANG });
     const initial = await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
@@ -225,20 +274,22 @@ export function setupLlm(app) {
       cb.checked = initial.includes(s);
       return cb;
     });
+    const withPack = optional ? el('input', { type: 'checkbox', id: 'paste-with-pack' }) : null;
+    const packOn = () => !withPack || withPack.checked;
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const update = () => { total.textContent = X.packTotal(kb(packWithRequest({ series: chosen(), lang: LANG, request: req.request() }))); };
+    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
+    const update = async () => { total.textContent = X.packTotal(kb(await textNow())); };
     for (const b of boxes) b.addEventListener('change', update);
-    update();
     const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
     common.checked = true;
-    const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
+    const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
       const miss = req.missing();
       if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.needTopic; miss.focus(); return; }
-      const text = packWithRequest({ series: chosen(), lang: LANG, request: req.request() });
+      const text = await textNow();
       const ok = await copyText(text);
-      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(text)) : X.fixCopyFailed;
+      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
     } });
-    const node = step('paste-step2', X.step2, [el('div', { cls: 'paste-guide' }, [
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide' }, [
       el('span', { cls: 'hint', text: X.guide }),
       el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]),
       el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
@@ -247,25 +298,50 @@ export function setupLlm(app) {
           el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
       ]),
       el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) }),
-      copy, total,
-    ]), copyMsg]);
+    ]);
+    if (withPack) {
+      const show = () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); };
+      withPack.addEventListener('change', show);
+      packParts.hidden = true;
+    }
+    await update();
+    const node = step('paste-step2', title, [
+      ...(withPack ? [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })])] : []),
+      packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
     return { node, update };
   }
+  // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
+  function reviseStep(copyMsg, title, results0) {
+    const wish = el('textarea', { id: 'paste-wish', rows: '3', placeholder: X.wishPh, spellcheck: 'false' });
+    const s1 = step('paste-step1', title[0], [el('p', { cls: 'hint', text: X.reviseHint }),
+      el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-wish', text: X.wish }), wish])]);
+    const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyRevise, onclick: async () => {
+      const results = results0 || (app.checkResults ? await app.checkResults() : []) || [];
+      const r = await reviseRequest(results, wish.value);
+      if (!r) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; wish.focus(); return; }
+      const ok = await copyText(r.text);
+      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.revised(kb(r.text), r.problems, r.notes) : X.fixCopyFailed;
+    } });
+    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy]), copyMsg]);
+    return { s1, s2 };
+  }
 
-  // ---------------------------------------------------------------- 貼り付け（「AI で新しく作る」の ③ と「AI の直しを取り込む」）
+  // ---------------------------------------------------------------- AI の窓（③ の貼り付けは 3 つとも同じ）
   // 囲みを 1 つずつ（チャットの囲みの右上のコピーで）写して貼ったとき：届いた片方を持っておき、もう片方を待つ（窓を閉じると捨てる）
   let held = null;   // {kind: 'deck' | 'narration', text}
+  let insertAfter = null;   // 挿入：この番号（0 から）のスライドの後ろ。null なら最後
   const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
-  // mode：'new'（AI で新しく作る）| 'replace'（AI の直しを取り込む：今のデッキに）。戻り値：開いたか
-  async function pasteDialog(mode0) {
-    const fix = mode0 === 'replace';
-    if (fix && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
+  // mode：'new'（新規作成）| 'insert'（スライドの挿入。opts.after）| 'replace'（修正。opts.results：品質チェックの結果があれば）。
+  // 取り込み方は入口が決める（③ に選ぶ欄はない）。opts.focusPaste：③ から始める（修正依頼をもう写したとき）。戻り値：取り込んだか
+  async function aiDialog(mode, opts = {}) {
+    if (mode !== 'new' && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
     held = null;
-    const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: fix ? '12' : '8', 'aria-describedby': 'paste-step3-hint' });
+    const titles = X.steps[mode];
+    const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: '8', 'aria-describedby': 'paste-step3-hint' });
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
     // 返事が切れていたとき：AI に送り直しを頼む文を写すボタン
-    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, EN ? 'en' : 'ja'); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
     const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
     // 持っている片方の知らせ（読み上げ）と、捨てて最初からのボタン
     const stateText = el('span', { id: 'paste-state-text' });
@@ -275,28 +351,47 @@ export function setupLlm(app) {
       stateBox.hidden = !text; stateBox.classList.toggle('waiting', !!h); reset.hidden = !h;
       stateText.textContent = text || '';
     }
-    const req = fix ? null : requestStep();
-    const pack = fix ? null : await packStep(copyMsg, req);
-    if (pack) req.node.addEventListener('input', pack.update);
-    const s3 = step('paste-step3', fix ? X.fixTitleImport : X.step3, [
-      el('p', { id: 'paste-step3-hint', cls: 'hint', text: fix ? X.fixImportHint : X.step3Hint }),
+    let s1, s2;
+    if (mode === 'new') {
+      const req = requestStep(titles[0]);
+      const pack = await packStep(copyMsg, req, { title: titles[1] });
+      req.node.addEventListener('input', pack.update);
+      s1 = req.node; s2 = pack.node;
+    } else if (mode === 'insert') {
+      const { deck, narration } = await readDeck();
+      const slides = sectionsOf(deck);
+      const n = slides.length;
+      insertAfter = opts.after === null || opts.after === undefined || opts.after >= n - 1 ? null : Math.max(-1, opts.after);
+      const at = insertAfter === null ? n - 1 : insertAfter;
+      const head = (i) => ((S.slides || [])[i] && (S.slides[i].heading || S.slides[i].key)) || '';
+      const where = insertAfter === null && opts.after !== n - 1 ? X.insertWhereLast(n, head(n - 1)) : X.insertWhere(at + 1, head(at));
+      const ins = insertStep(titles[0], where);
+      const req = { request: () => insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG }), missing: () => null };
+      const pack = await packStep(copyMsg, req, { title: titles[1], optional: true, copyLabel: X.copyInsert, copiedMsg: X.insertCopied });
+      ins.node.addEventListener('input', pack.update);
+      s1 = ins.node; s2 = pack.node;
+    } else {
+      const r = reviseStep(copyMsg, titles, opts.results || null);
+      s1 = r.s1; s2 = r.s2;
+    }
+    const s3 = step('paste-step3', titles[2], [
+      el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }),
       stateBox, el('label', { for: 'paste-text', cls: 'sr-only', text: X.pasteLabel }), area, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })]);
-    if (fix) s3.querySelector('h3').classList.add('sr-only');
-    let focusArea = fix;
+    let focusArea = !!opts.focusPaste;
     for (;;) {
       const buttons = [{ id: 'cancel', label: T.cancel }];
-      if (fix && held) buttons.push({ id: 'only', label: X.only });
-      buttons.push({ id: 'import', label: fix ? X.goFix : X.go, pri: true });
-      const shown = ask({ title: fix ? X.fixTitleImport : X.title, kind: 'paste', body: fix ? [el('p', { text: X.fixImportLead }), s3] : [el('p', { text: X.lead }), req.node, pack.node, s3], buttons });
-      if (focusArea) setTimeout(() => area.focus(), 0);
+      if (held && (mode === 'replace' || (mode === 'insert' && held.kind === 'deck'))) buttons.push({ id: 'only', label: X.only });
+      buttons.push({ id: 'import', label: X.go[mode], pri: true });
+      const shown = ask({ title: X.title[mode], kind: 'paste', body: [el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : X.howTo }), s1, s2, s3], buttons });
+      if (focusArea) setTimeout(() => { area.focus(); s3.scrollIntoView({ block: 'nearest' }); }, 0);
       const v = await shown;
       if (v !== 'import' && v !== 'only') { held = null; return false; }
-      const res = v === 'only' ? await importHeld() : await importText(area.value, fix ? 'replace' : 'new');
+      const res = v === 'only' ? await importHeld(mode) : await importText(area.value, mode);
       focusArea = true;
       if (res === null) { held = null; return true; }
       if (res && typeof res === 'object' && res.held) {
         area.value = ''; msg.hidden = true; cut.hidden = true;
-        showState(res.held, (res.again ? X.held.again(res.held === 'deck' ? 'deck.html' : 'narration.md') : '') + X.held[res.held](res.count) + (fix ? ' ' + X.held.onlyHint : ''));
+        showState(res.held, (res.again ? X.held.again(res.held === 'deck' ? 'deck.html' : 'narration.md') : '') + X.held[res.held](res.count) + (mode === 'replace' || (mode === 'insert' && res.held === 'deck') ? ' ' + X.held.onlyHint : ''));
         continue;
       }
       msg.hidden = false; msg.textContent = res;
@@ -322,8 +417,8 @@ export function setupLlm(app) {
       r = { deck: held.kind === 'deck' ? held.text : p.deck, narration: held.kind === 'narration' ? held.text : p.narration, warnings: [] };
       held = null;
       info.push(X.held.joined);
-    } else if (mode === 'new' || !p.fenced) {
-      // 片方だけ：持っておき、もう片方を待つ（「AI の直しを取り込む」に囲みの付いた片方だけの返事を貼ったときは、今までどおりその片方だけを取り込む）
+    } else if (mode !== 'replace' || !p.fenced) {
+      // 片方だけ：持っておき、もう片方を待つ（「修正…」に囲みの付いた片方だけの返事を貼ったときは、今までどおりその片方だけを取り込む）
       const again = !!held;
       const t = p.part === 'deck' ? p.deck : p.narration;
       held = { kind: p.part, text: t };
@@ -331,21 +426,38 @@ export function setupLlm(app) {
     }
     return finish(r, mode, info);
   }
-  // 「これだけで取り込む」（AI の直しを取り込む）：持っている片方だけで
-  async function importHeld() {
+  // 「これだけで取り込む」（修正・挿入）：持っている片方だけで
+  async function importHeld(mode) {
     if (!held) return X.err.empty;
     const r = { deck: held.kind === 'deck' ? held.text : null, narration: held.kind === 'narration' ? held.text : null, warnings: [] };
     held = null;
-    return finish(r, 'replace', []);
+    return finish(r, mode, []);
   }
   async function finish(r, mode, info) {
     const notes = r.warnings.map((w) => (X.warn[w.code] ? (typeof X.warn[w.code] === 'function' ? X.warn[w.code](w) : X.warn[w.code]) : w.code));
     if (r.narration === null && mode === 'new') return X.err['no-narration'];
-    if (r.deck === null && mode === 'new') return X.err['no-deck'];
+    if (r.deck === null && mode !== 'replace') return X.err['no-deck'];
+    if (mode === 'insert') return insertReply(r, notes, info);
     status(X.building);
     try {
       return mode === 'replace' ? await replaceDeck(r, notes, info) : await openNew(r, notes, info);
     } finally { status(''); }
+  }
+  // 挿入：スライド一覧の操作と同じ道（app/slides-panel.js の apply：読んだときから変わっていないか・控え・元に戻す・組み直し・品質チェック）
+  async function insertReply(r, notes, info) {
+    if (!sectionsOf(r.deck).length) return X.err['no-insert'];
+    let count = 0, none = false;
+    await app.slides.apply(async (b, slides) => {
+      const after = insertAfter === null || insertAfter >= slides.length ? slides.length - 1 : insertAfter;
+      const lang = /<html\b[^>]*\slang\s*=\s*["']?ja/i.test(b.deck) ? 'ja' : (/<html\b[^>]*\slang\s*=/i.test(b.deck) ? 'en' : LANG);
+      const m = insertSlides({ deck: b.deck, narration: b.narr || '', patchDeck: r.deck, patchNarration: r.narration, after, lang });
+      if (!m.ids.length) { none = true; return null; }
+      count = m.ids.length;
+      return { deck: m.deck, narr: m.narration, man: b.man, at: m.at, undoAt: Math.max(0, after), label: X.undoInsert(count),
+        done: [X.inserted(count, m.at + 1), ...info, ...notes].join(' · ') };
+    });
+    // 断られた・書けなかったときは、スライドの一覧が知らせる（窓は閉じる）
+    return none ? X.err['no-insert'] : null;
   }
 
   // id を付ける（同じ見出しのスライドは narration.md の節に出てきた順で対応させる）
@@ -450,7 +562,8 @@ export function setupLlm(app) {
   }
 
   // ---------------------------------------------------------------- 修正依頼
-  async function fixRequest(results) {
+  // 品質チェックの結果から依頼に入れる指摘（テーマの寸法のずれ・測る字体はテーマと環境の知らせで、デッキの中にはないので入れない）
+  async function problemsOf(results) {
     // スライドにない段階の口述原稿：narration.md の行（そのまま）と、合わせる先の段階を足す（kit/core/narration-lint.mjs の orphanDetail）
     let narrText = '';
     try { narrText = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }) || ''; } catch { /* なければ行は出さない */ }
@@ -463,13 +576,39 @@ export function setupLlm(app) {
       const o = { stepKey: seg.stepKey, line: seg.line, end: seg.end };
       return { ...r.arg, line: seg.line, end: seg.end, ...orphanDetail(o, r.arg, narrText) };
     };
-    // テーマの寸法のずれ（themeMetricsDrift）と測る字体（metricsFontLoad）はテーマと環境の知らせで、デッキ（AI が直すもの）の中にはないので依頼に入れない
-    const probs = results.filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
+    const probs = (results || []).filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
     for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
+    return probs;
+  }
+  // 開いているメモ（comments.json。読めなければなし）。点や手描きのメモの画像は backlog #90
+  async function openNotes() {
+    let list = [];
+    try { const t = await S.ws.readText('comments.json', { max: READ_LIMITS.comments }); const j = t ? JSON.parse(t) : []; list = Array.isArray(j) ? j : []; } catch { list = []; }
+    const slides = S.slides || [];
+    return list.filter((c) => c && c.status !== 'resolved' && String(c.comment || '').trim()).map((c) => {
+      const key = String(c.key || ''), i = slides.findIndex((s) => key === s.key || key.startsWith(s.key + ':'));
+      return { where: i >= 0 ? T.sl.slideName(i + 1, slides[i].heading || slides[i].key) : key, quote: String(c.quote || '').replace(/\s+/g, ' ').trim().slice(0, 120), text: String(c.comment).trim() };
+    });
+  }
+  // 「修正…」の ②：修正依頼（kit/core/llm-fix.mjs）に、直してほしいことと開いているメモを足す。直すことが何もなければ null
+  async function reviseRequest(results, wish) {
+    const probs = await problemsOf(results);
+    const notes = await openNotes();
+    const w = String(wish || '').trim();
+    if (!probs.length && !notes.length && !w) return null;
+    const { deck, narration } = await readDeck();
+    const req = buildFixRequest({ problems: probs, deck, narration, lang: LANG });
+    const extra = [];
+    if (w) extra.push(X.wishHead, '', w, '');
+    if (notes.length) extra.push(X.notesHead, '', ...notes.map(X.noteLine), '');
+    return { text: req.text + (extra.length ? '\n' + extra.join('\n') : ''), problems: probs.length, notes: notes.length };
+  }
+  // 品質チェックの板の「AI への修正依頼をコピー」：指摘だけの依頼を写して見せ、返事は「修正…」の ③ へ
+  async function fixRequest(results) {
+    const probs = await problemsOf(results);
     if (!probs.length) { toast(X.fixNone); return; }
-    const deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || '';
-    const narration = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }) || '';
+    const { deck, narration } = await readDeck();
     const req = buildFixRequest({ problems: probs, deck, narration, lang: LANG });
     const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false' });
     area.value = req.text;
@@ -479,14 +618,14 @@ export function setupLlm(app) {
     const v = await ask({ title: X.fixTitle, kind: 'paste', body: [
       el('p', { id: 'fix-lead', text: ok ? X.fixLead(probs.length, req.partial) : X.fixCopyFailed }), area],
       buttons: [{ id: 'cancel', label: X.close }, { id: 'paste', label: X.pasteReply, pri: true }] });
-    if (v === 'paste') await pasteDialog('replace');
+    if (v === 'paste') await aiDialog('replace', { results, focusPaste: true });
   }
   function fixButton(results) {
     return el('button', { type: 'button', id: 'b-fixreq', cls: 'fixreq', text: X.fix, onclick: () => fixRequest(results) });
   }
 
-  $('b-paste').onclick = () => pasteDialog('new').catch((e) => toast(String(e.message || e), true));
-  $('w-paste').onclick = () => pasteDialog('new').catch((e) => toast(String(e.message || e), true));
-  $('b-fiximport').onclick = () => pasteDialog('replace').catch((e) => toast(String(e.message || e), true));
-  return { pasteDialog, importText, extraChecks, fixButton, fixRequest, texts: X };
+  const run = (p) => p.catch((e) => toast(String((e && e.message) || e), true));
+  // 「修正…」：品質チェックの板の先頭（道具の列は 1 行に収める決まりなので）。結果がなくても出す
+  const reviseButton = () => el('button', { type: 'button', id: 'b-revise', cls: 'fixreq', text: T.reviseCmd, onclick: () => run(aiDialog('replace')) });
+  return { aiDialog, reviseButton, newWithAi: () => run(aiDialog('new')), insertWithAi: (after) => run(aiDialog('insert', { after })), importText, extraChecks, fixButton, fixRequest, texts: X };
 }

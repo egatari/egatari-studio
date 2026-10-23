@@ -1,5 +1,5 @@
 // 新しいデッキの雛形（npm run new と編集アプリの「新しいデッキ」が共有する）。依存なし（Node にもブラウザにも依存しない）
-//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids}) → {'deck.html': 文字列, 'narration.md': 文字列}
+//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids, blank}) → {'deck.html': 文字列, 'narration.md': 文字列}（blank：表紙だけ）
 // 表紙＋見本 3 枚（段階・数式と注目の演出・部品）＋まとめと、全段階ぶんの口述原稿
 // どのスライドにも乱数の id（s-xxxxxx）を付け、口述原稿の見出しは「## 見出し {#id}」（format spec §8.1）。
 // ids を渡せばその 5 つを使う（試験用）
@@ -178,5 +178,11 @@ ${turns(T.s3.n, T.s3.nc)}
 ## ${T.s4.h} {#${ID[4]}}
 ${turns(T.s4.n)}
 `;
+if (opts.blank) {
+  // 白紙から（編集アプリの「新規作成…」→「白紙から」）：表紙だけ。見本のスライドとその口述原稿は入れない
+  const a = deck.indexOf('</section>') + '</section>'.length, z = deck.lastIndexOf('</div>\n</body>');
+  const n = narration.indexOf('\n\n## ', narration.indexOf('{#' + ID[0] + '}'));
+  return { 'deck.html': deck.slice(0, a) + '\n\n' + deck.slice(z), 'narration.md': narration.slice(0, n) + '\n' };
+}
 return { 'deck.html': deck, 'narration.md': narration };
 }

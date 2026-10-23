@@ -1,5 +1,5 @@
 // チャットの AI（claude.ai・Gemini・ChatGPT など）の返事から deck.html と narration.md を取り出す（docs/authoring-with-llms.md §1 の形）。
-// Node にもブラウザにも依存しない（純粋な ESM）。編集アプリの「AI で新しく作る」「AI の直しを取り込む」（app/llm.js）と試験（tools/test-llm.mjs）が使う
+// Node にもブラウザにも依存しない（純粋な ESM）。編集アプリの「新規作成…」「修正…」などのチャットの AI のやり方（app/llm.js）と試験（tools/test-llm.mjs）が使う
 //
 //   extractBlocks(text) → {deck, narration, warnings: [], error: null | {code, message, line}}
 //     コードの囲み（``` か ~~~、3 つ以上）を探す。囲みの名前（```deck.html・```html・```markdown・```html title="deck.html"・```html:deck.html）、

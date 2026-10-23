@@ -41,8 +41,13 @@ export function createSlidesPanel(ctx) {
     el('div', { cls: 'sl-tools', role: 'toolbar', 'aria-label': T.toolsLabel }, [
       el('div', { cls: 'menu' }, [
         el('button', { type: 'button', id: 'sl-add', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-controls': 'sl-add-menu', text: T.add, onclick: (e) => { e.stopPropagation(); addMenu(); } }),
-        el('div', { id: 'sl-add-menu', cls: 'menu-list', role: 'menu', hidden: '' }, TEMPLATES.map((k) =>
-          el('button', { type: 'button', role: 'menuitem', id: 'sl-add-' + k, text: T.tpl[k], onclick: () => { closeAdd(); add(k); } }))),
+        // スライドの挿入：雛形から（slide-ops の雛形）か、チャットの AI に書いてもらう（ctx.aiInsert。app/llm.js）。どちらも選んだスライドの後ろ
+        el('div', { id: 'sl-add-menu', cls: 'menu-list', role: 'menu', hidden: '' }, [
+          el('div', { role: 'group', 'aria-labelledby': 'sl-add-tpl-h' }, [el('div', { id: 'sl-add-tpl-h', cls: 'menu-head', text: T.fromTpl }),
+            ...TEMPLATES.map((k) => el('button', { type: 'button', role: 'menuitem', id: 'sl-add-' + k, text: T.tpl[k], onclick: () => { closeAdd(); add(k); } }))]),
+          ...(ctx.aiInsert ? [el('div', { role: 'separator', cls: 'menu-sep' }),
+            el('button', { type: 'button', role: 'menuitem', id: 'sl-add-ai', text: T.byAi, onclick: () => { closeAdd(); ctx.aiInsert(sel); } })] : []),
+        ]),
       ]),
       el('button', { type: 'button', id: 'sl-dup', text: T.dup, title: T.dupTip, onclick: () => duplicate() }),
       el('button', { type: 'button', id: 'sl-del', text: T.del, title: T.delTip, onclick: () => remove() }),
@@ -278,9 +283,10 @@ export function createSlidesPanel(ctx) {
   const nameOf = (s, i) => T.slideName(i + 1, s.heading || T.untitled);
 
   // ---------------------------------------------------------------- 足す
-  function add(kind) {
+  // after：この番号のスライドの後ろ（省けば選んだスライド。null なら最後）
+  function add(kind, after = sel) {
     return run(async (b, slides) => {
-      const at = Math.min(sel, slides.length - 1);
+      const at = after === null ? slides.length - 1 : Math.min(after, slides.length - 1);
       const id = newIdFor(b.deck);
       const t = slideTemplate(kind, { lang: ctx.lang(b.deck), id });
       const deck = insertSlide(b.deck, at, t.html);
@@ -379,6 +385,9 @@ export function createSlidesPanel(ctx) {
   function wantOpen() { try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; } }
   return {
     toggle, isOpen: () => open, wantOpen,
+    // 外からの操作（スライドの挿入…）：選んだスライド（一覧を開いていなければ null）・雛形から足す・同じ流れで書き換える（fn は run と同じ形）
+    selected: () => (open && (ctx.slides() || []).length ? sel : null),
+    add: (kind, after) => add(kind, after), apply: (fn) => run(fn),
     refresh: () => { if (open) { render(); loadInfo(); } },
     onPos: () => {
       const p = ctx.pos();

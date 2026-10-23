@@ -5,7 +5,7 @@
 // 親から：{init, res}（同梱の資源。Worker を作るたびに 1 回）
 //         {id, op: 'build', ws, listing, file, opts, prefix}   組んで {html, trusted, stats, slides, theme, previewAudio, reasons}（theme：テーマの名前と寸法の宣言 {name, metrics, declared}。previewAudio：opts.previewAudio のときの音声の印。reasons：prefix（信頼する先頭部分）+ 組んだ文書から決めた理由）
 //         {id, op: 'exportIndex', ws, file, opts}               持ち運べる形式に書き出したときの索引だけ（部品庫の照合に使う）
-//         {id, op: 'exportHtml', ws, file, opts}                持ち運べる形式に書き出した文書（AI の出力の貼り付け。app/llm.js）
+//         {id, op: 'exportHtml', ws, file, opts}                持ち運べる形式に書き出した文書（AI の返事の貼り付け。app/llm.js）
 //         {id, op: 'scan', files, entry}                        取り出した原稿の全体の理由（codeReasons）
 //         {id, op: 'probe', name}                               試験：Worker の大域変数
 // 作業場所のファイルは親に問い合わせて読む（{rpc, gen, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, gen, ok, value}）。
@@ -62,7 +62,7 @@ self.onmessage = async (e) => {
         const r = await engine.exportPortable(m.file, m.opts || {});
         value = { index: r.index, registryEquivalent: r.registryEquivalent || [], yanked: (r.stats && r.stats.yanked) || [] };
       } else if (m.op === 'exportHtml') {
-        // 持ち運べる 1 ファイルそのもの（AI の出力の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）
+        // 持ち運べる 1 ファイルそのもの（AI の返事の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）
         const r = await engine.exportPortable(m.file, m.opts || {});
         value = { html: r.html };
       } else throw new Error('unknown op ' + m.op);

@@ -1,12 +1,12 @@
 // スライドに安定した id を付ける本体（format spec §8.1、docs/contract.md §4）。Node にもブラウザにも依存しない（純粋な ESM）
-// npm run ids（tools/ids.mjs：ファイルの読み書き・控え・JSON の鍵の付け替え）と、編集アプリの「AI で新しく作る」「AI の直しを取り込む」（app/llm.js）が共有する
+// npm run ids（tools/ids.mjs：ファイルの読み書き・控え・JSON の鍵の付け替え）と、編集アプリの「新規作成…」「修正…」などのチャットの AI のやり方（app/llm.js）が共有する
 //
 //   planIds(src, {taken, byOrder})        → {slides, docIds, problems, rename: Map(旧い鍵 → id), newIds: Map(番号 → id), order}
 //   rewriteDeckIds(src, plan)             → {out, morphs}       id のない <section class="slide"> に id="…" を足し、data-morph="旧い鍵" を付け替える
 //   rewriteNarrationIds(text, plan)       → {out, n}            「## 見出し」を「## 見出し {#id}」に（見出しの文字列はそのまま。行の区切りもそのまま）
 //   assignIds(deck, narration, opts)      → {deck, narration, added: [{index, id, key}], problems}   上の 3 つをまとめて
 //
-// byOrder（AI の出力の取り込みだけ）：同じ見出しのスライドが 2 枚以上あっても断らず、narration.md の同じ見出しの節を、出てきた順に
+// byOrder（AI の返事の取り込みだけ）：同じ見出しのスライドが 2 枚以上あっても断らず、narration.md の同じ見出しの節を、出てきた順に
 // それぞれのスライドに対応させる（n 番目の「## まとめ」→ n 番目の「まとめ」のスライド）。npm run ids は重なりを直さない（先に手で直す）
 import { parse } from 'parse5';
 import { analyzeSlideIds } from './build-core.mjs';

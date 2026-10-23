@@ -93,7 +93,7 @@ async function showWelcome() {
   $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true; $('saveloc').hidden = true;
   $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
-  $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
+  $('w-open').disabled = !SUPPORTED;   // 「新規作成…」はフォルダがなくても「チャットの AI に書いてもらう」が使える
   showExamples();
   const list = await recentList();
   $('recent').hidden = !list.length;
@@ -678,6 +678,7 @@ const slidesPanel = createSlidesPanel({
   guard: slideGuard, building: () => S.building,
   rebuild: async () => { const failed = await rebuild('save'); updateName(); return failed; },
   check: () => quickCheck(), ask, toast, audio, stale: () => S.stale || [],
+  aiInsert: (after) => llm.insertWithAi(after),
   onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
@@ -763,12 +764,11 @@ async function askCheck() {
   }
   return null;
 }
-async function quickCheck() {
-  if (!$('preview').contentWindow || !S.base) return;
-  openPanel(T.checkTitle, [el('p', { text: T.checking })]);
+// 品質チェックの結果を集める（板には出さない。「修正…」の修正依頼も使う）。プレビューが答えなければ null
+async function checkResults() {
+  if (!$('preview').contentWindow || !S.base) return null;
   const results = await askCheck();
-  const f = $('preview').contentWindow;
-  if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
+  if (!results) return null;
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
   // 雛形のまま（スライド一覧の雛形の字・仮の口述原稿「✎ 」。kit/core/template-text.mjs。kit/check.mjs と同じ）：作業場所の原稿から
   {
@@ -779,6 +779,14 @@ async function quickCheck() {
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  return results;
+}
+async function quickCheck() {
+  if (!$('preview').contentWindow || !S.base) return;
+  openPanel(T.checkTitle, [el('p', { text: T.checking })]);
+  const results = await checkResults();
+  const f = $('preview').contentWindow;
+  if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
@@ -788,7 +796,8 @@ async function quickCheck() {
   openPanel(T.checkTitle, [
     el('div', { cls: 'sum', text: T.checkSummary(errs, warns) }),
     el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, results.length > 0) }),
-    ...(results.length ? [llm.fixButton(results)] : []),
+    // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
+    el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(results.length ? [llm.fixButton(results)] : [])]),
     ...items,
   ]);
 }
@@ -1002,7 +1011,7 @@ function refusal(code, message, key = code) {
 }
 // 索引のない文書の、知らせの言葉の鍵（kit/core/portable.mjs の sourceKind：'play-only' | 'built' | 'source' | 'other'）
 const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-only' ? 'play-only' : e.kind === 'built' ? 'built-output' : 'no-source');
-// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の出力を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
+// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の返事を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
   if (!input) return false;
   const end = wait.begin();
@@ -1078,7 +1087,7 @@ async function openPortableNow(input) {
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
   const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
-    neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の出力を貼り付けて作った：まだどのファイルにもない
+    neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の返事を貼り付けて作った：まだどのファイルにもない
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
@@ -1104,7 +1113,7 @@ async function openPortableNow(input) {
 // ---------------------------------------------------------------- デッキの原稿（deck.html）を 1 つだけ開く
 // 「ファイルを開く」・ドロップで原稿の deck.html が来たとき：口述原稿・音声・そのデッキだけの部品は同じフォルダにあるので、
 // フォルダを開くか、このファイルだけを開くかを聞く。このファイルだけ：メモリの上の作業場所（deck.html だけ）を Worker で持ち運べる
-// 1 ファイルにし（AI の出力の貼り付けと同じ。app/llm.js）、ほかの開いたファイルと同じ道（openPortable：中身からコードを探して、あれば
+// 1 ファイルにし（AI の返事の貼り付けと同じ。app/llm.js）、ほかの開いたファイルと同じ道（openPortable：中身からコードを探して、あれば
 // 動かす前に確かめる）で開く。部品庫の部品とテーマは使え、そのデッキだけの部品がなければ組み立ての知らせに出る。新しい docId で、
 // どこにも保存していない（保存で、1 ファイルか空のフォルダかを選ぶ）
 async function openSource(name, bytes) {
@@ -1337,10 +1346,28 @@ async function exportPlayOnlyFile(room = null) {
   }
 }
 
-// ---------------------------------------------------------------- 新しいデッキ
-function showNewForm(on) {
+// ---------------------------------------------------------------- 新規作成…：白紙から・雛形から（作業フォルダに作る）・チャットの AI に書いてもらう（app/llm.js）
+async function newChoice() {
+  const body = [el('p', { text: T.newChoiceLead }), el('dl', { id: 'new-choices', cls: 'choices' }, [
+    ...(SUPPORTED ? [el('dt', { text: T.newBlank }), el('dd', { text: T.newBlankDesc }), el('dt', { text: T.newTemplate }), el('dd', { text: T.newTemplateDesc })] : []),
+    el('dt', { text: llm.texts.method }), el('dd', { text: T.newAiDesc })]),
+    SUPPORTED ? null : el('p', { id: 'new-nofolder', cls: 'hint', text: T.newNoFolder })];
+  const v = await ask({ title: T.newChoiceTitle, body, buttons: [{ id: 'cancel', label: T.cancel },
+    ...(SUPPORTED ? [{ id: 'new-blank', label: T.newBlank }, { id: 'new-template', label: T.newTemplate }] : []),
+    { id: 'new-ai', label: llm.texts.method + '…', pri: true }] });
+  if (v === 'new-blank' || v === 'new-template') {
+    // フォームは最初の画面にある：デッキを開いていれば（未保存の変更を確かめて）最初の画面へ戻る
+    if ($('welcome').hidden) { if (!(await leavePortable())) return; await showWelcome(); }
+    showNewForm(true, v === 'new-blank' ? 'blank' : 'template');
+  }
+  else if (v === 'new-ai') await llm.newWithAi();
+}
+let newKind = 'template';
+function showNewForm(on, kind) {
   $('newform').hidden = !on;
   if (on) {
+    newKind = kind || 'template';
+    $('n-head').textContent = T.newFormTitle[newKind];
     const sel = $('n-theme'); sel.innerHTML = '';
     for (const t of RES.themes) sel.append(el('option', { value: t, text: t }));
     $('n-lang').value = EN ? 'en' : 'ja';
@@ -1349,7 +1376,7 @@ function showNewForm(on) {
   }
 }
 async function createDeck() {
-  const opts = { lang: $('n-lang').value, theme: $('n-theme').value, title: $('n-title').value.trim() || null };
+  const opts = { lang: $('n-lang').value, theme: $('n-theme').value, title: $('n-title').value.trim() || null, blank: newKind === 'blank' };
   const dir = await pickFolder();
   if (!dir) return;
   if (!(await hasPermission(dir)) && !(await askPermission(dir))) { toast(T.noPermission, true); return; }
@@ -1379,7 +1406,8 @@ document.querySelector('#top .brand').title = T.brand;
 mountVersionUi({ version: RES.version, lang: EN ? 'en' : 'ja' });
 $('w-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
-$('w-new').onclick = () => showNewForm(true);
+$('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
+$('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
 $('b-slides').onclick = () => slidesPanel.toggle();
@@ -1510,6 +1538,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, updateName });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
+window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

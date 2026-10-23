@@ -3,7 +3,7 @@
 //   const b = createBuildClient(RES, loadLazy)
 //   await b.build(ws, listing, file, opts, prefix, {timeout})   → {html, trusted, stats, slides, theme, reasons}
 //   await b.exportIndex(ws, file, opts, {timeout})              → {index}
-//   await b.exportHtml(ws, file, opts, {timeout})               → {html}（持ち運べる 1 ファイル。AI の出力の貼り付け）
+//   await b.exportHtml(ws, file, opts, {timeout})               → {html}（持ち運べる 1 ファイル。AI の返事の貼り付け）
 //   await b.scan(files, entry, {timeout})                       → 理由の配列
 //   b.probe(name)                                               試験：Worker の大域変数
 //   b.setThemes(tws)                                            利用者のテーマのフォルダ（app/theme-folder.js の themeFolderWorkspace。null で使わない）
@@ -90,7 +90,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     return me;
   }
   function call(msg, ws, timeout = BUILD_TIMEOUT_MS) {
-    // メモリの上の作業場所（開いたファイル・deck.html だけ・AI の出力）では、ないファイルを知らせて空のまま組む（kit/core/build-core.mjs）
+    // メモリの上の作業場所（開いたファイル・deck.html だけ・AI の返事）では、ないファイルを知らせて空のまま組む（kit/core/build-core.mjs）
     if (ws && ws.kind === 'memory' && 'opts' in msg) msg = { ...msg, opts: { missingFiles: 'warn', ...(msg.opts || {}) } };
     if (ws) msg = { ...msg, themes: themeWs ? idOf(themeWs) : null };
     let t = 0;

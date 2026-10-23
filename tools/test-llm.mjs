@@ -18,6 +18,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
+import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
+import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
@@ -223,6 +225,31 @@ ok('頼みたいこと：指示の記入欄（A 6 項目・B 2 項目）を読�
     const pk = packWithRequest({ series: ['academic'], lang, request: a });
     assert.ok(pk.startsWith(commonBody(lang)) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
   }
+});
+
+ok('スライドの挿入（llm-insert）：頼む文は見出しの一覧と前のスライドだけ・返事のスライドに新しい id・口述原稿の節を同じ順で・新規作成の白紙', () => {
+  const deck = worked('business', 'deck.html'), narr = worked('business', 'narration.md');
+  const a = assignIds(deck, narr);
+  const S = [...a.deck.matchAll(/<section class="slide[^"]*" id="(s-[a-z2-7]{6})"/g)].map((m) => m[1]);
+  const secOf = (id) => a.deck.match(new RegExp(`<section class="slide[^"]*" id="${id}">[\\s\\S]*?</section>`))[0];
+  const q = insertRequest({ deck: a.deck, narration: a.narration, after: 0, n: 2, wish: 'an example', lang: 'en' });
+  assert.ok(q.startsWith('# Please add slides') && /the next 2 slides, after slide 1, “/.test(q) && q.includes('- What to add: an example') && q.includes(secOf(S[0])) && !q.includes(secOf(S[1])) && !q.includes(secOf(S[2])) && !q.includes('<!DOCTYPE html') && q.length < a.deck.length, q);
+  assert.ok(/one slide here, after slide 3/.test(insertRequest({ deck: a.deck, narration: a.narration, after: 2, n: 1, lang: 'en' })));
+  assert.ok(/ここ（スライド 2「[^」]+」の後ろ）に、スライドを 1 枚/.test(insertRequest({ deck: a.deck, narration: a.narration, after: 1, lang: 'ja' })));
+  // id の付いた返事でも付け直す・見出しの同じ節を対応させる・節のないスライドには仮の行
+  const patch = `<section class="slide" id="${S[2]}"><h2>One</h2></section>\n<section class="slide"><h2>Two</h2></section>\n<section class="slide"><h2>Three</h2></section>`;
+  const m = insertSlides({ deck: a.deck, narration: a.narration, patchDeck: patch, patchNarration: '## Two\n[0] two.\n\n## One\n[0] one.\n[concl] end.', after: 0, lang: 'en' });
+  const ids = [...m.deck.matchAll(/<section class="slide[^"]*" id="(s-[a-z2-7]{6})"/g)].map((x) => x[1]);
+  assert.equal(ids.length, 6); assert.deepEqual([ids[0], ids[4], ids[5]], S); assert.deepEqual(ids.slice(1, 4), m.ids); assert.equal(m.at, 1);
+  assert.ok(new Set(ids).size === 6 && m.ids.every((id) => /^s-[a-z2-7]{6}$/.test(id) && !S.includes(id)));
+  assert.ok(m.narration.includes(`## One {#${m.ids[0]}}\n[0] one.\n[concl] end.`) && m.narration.includes(`## Two {#${m.ids[1]}}\n[0] two.`) && m.narration.includes(`## Three {#${m.ids[2]}}\n[0] ✎ `));
+  assert.deepEqual([...m.narration.matchAll(/\{#(s-[a-z2-7]{6})\}/g)].map((x) => x[1]), ids);
+  // 最後の後ろ（after を省く）
+  const last = insertSlides({ deck: a.deck, narration: a.narration, patchDeck: '<section class="slide"><h2>Z</h2></section>', patchNarration: '## Z\n[0] z.', lang: 'en' });
+  assert.equal(last.at, 3);
+  assert.equal(insertSlides({ deck: a.deck, narration: a.narration, patchDeck: '<p>none</p>' }).ids.length, 0);
+  const b = newDeckFiles({ blank: true, lang: 'ja', title: 'T' });
+  assert.ok((b['deck.html'].match(/<section class="slide/g) || []).length === 1 && (b['narration.md'].match(/^## /gm) || []).length === 1 && b['deck.html'].includes('</html>'));
 });
 
 // ---------------------------------------------------------------- 3. id
