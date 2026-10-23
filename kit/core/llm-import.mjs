@@ -1,5 +1,5 @@
 // チャットの AI（claude.ai・Gemini・ChatGPT など）の返事から deck.html と narration.md を取り出す（docs/authoring-with-llms.md §1 の形）。
-// Node にもブラウザにも依存しない（純粋な ESM）。編集アプリの「AI の出力を貼り付ける」（app/llm.js）と試験（tools/test-llm.mjs）が使う
+// Node にもブラウザにも依存しない（純粋な ESM）。編集アプリの「AI で新しく作る」「AI の直しを取り込む」（app/llm.js）と試験（tools/test-llm.mjs）が使う
 //
 //   extractBlocks(text) → {deck, narration, warnings: [], error: null | {code, message, line}}
 //     コードの囲み（``` か ~~~、3 つ以上）を探す。囲みの名前（```deck.html・```html・```markdown・```html title="deck.html"・```html:deck.html）、
@@ -13,6 +13,10 @@
 //     patch の「## 見出し {#id}」の節で、narration の同じ id の節を置き換える（なければ後ろに足す）
 //   sectionsOf(deck) → [{id, start, end}]（<section class="slide"> の元の位置）。narrSections(text) → {lines, out: [{id, start, end}]}（「## 」の節の行）
 //   isPatch(deck) → <html> も <!DOCTYPE> もなく、<section class="slide" があるか（直したスライドだけの返事）
+//   pastePart(text) → extractBlocks の結果に {part, fenced} を足したもの。囲みを 1 つずつ（チャットの囲みの右上のコピーで）写して貼ったときに、
+//     届いたのがどちらかを決める。part：'both'（2 つとも）・'deck'・'narration'（片方だけ）・null（誤り。error を見る）。
+//     囲みのない中身は、<section class="slide" の構造があれば deck.html、「## 見出し」と [0] などの行があれば narration.md（両方なら
+//     error 'ambiguous'、どちらでもなければ今までどおり 'no-blocks'）。fenced：囲みの行があったか（なければ囲みの中身だけを写したもの）
 import { parse } from 'parse5';
 import { parseHeading } from './narration-core.mjs';
 
@@ -152,6 +156,25 @@ function narrationComplete(deck, narr) {
   const tail = body[body.length - 1].trim();
   // [concl] の行でも、文の終わりの字で終わっていなければ切れているとみなす（「[concl] 次は、伸びの」）
   return /[。．.!?！？][」』）)"”]*$/.test(tail);
+}
+
+export function pastePart(text) {
+  const r = extractBlocks(text);
+  const fenced = !r.warnings.some((w) => w.code === 'unfenced') && !(r.error && r.error.code === 'no-blocks');
+  if (!r.error) return { ...r, part: r.narration !== null ? 'both' : 'deck', fenced };
+  // 囲みはあるが deck.html がない：narration.md の囲みだけ
+  if (r.error.code === 'no-deck' && r.narration !== null) return { ...r, narration: r.narration.replace(/\s+$/, '') + '\n', error: null, part: 'narration', fenced: true };
+  if (r.error.code !== 'no-blocks') return { ...r, part: null, fenced };
+  // 囲みのない中身（囲みの右上のコピーで写したもの）：中身の形で決める
+  const src = String(text ?? '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
+  const deckLike = /<section\b[^>]*\bclass\s*=\s*["'][^"']*\bslide\b/i.test(src);
+  const narrLike = /^##\s+\S/m.test(src) && /^\s*\[(\d+|concl)\]/m.test(src);
+  if (deckLike && narrLike) return { ...r, part: null, fenced: false, error: { code: 'ambiguous', message: 'the pasted text has both slide markup (<section class="slide">) and narration lines (## heading, [0]) but no code blocks: paste the whole reply, or one block at a time' } };
+  // <!DOCTYPE html> はあるが </html> がない：写したものが途中で切れている
+  if (deckLike && /<!doctype\s+html|<html[\s>]/i.test(src) && !/<\/html>/i.test(src)) return { ...r, part: null, fenced: false, error: { code: 'cut-deck', message: 'the pasted deck.html has <!DOCTYPE html> but no </html>: it was probably cut off' } };
+  if (deckLike) return { deck: src + '\n', narration: null, warnings: [], error: null, part: 'deck', fenced: false };
+  if (narrLike) return { deck: null, narration: src + '\n', warnings: [], error: null, part: 'narration', fenced: false };
+  return { ...r, part: null, fenced: false };
 }
 
 export const isPatch = (deck) => !/<!doctype\s|<html[\s>]/i.test(deck) && /<section\b[^>]*\bclass\s*=\s*["'][^"']*\bslide\b/i.test(deck);

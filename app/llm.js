@@ -1,13 +1,15 @@
 // チャットの AI との行き来（docs/authoring-with-llms.md）：
-//   「AI への指示を写す」：共通の本体と、選んだ系列（既定は今のデッキの部品・テーマから推したもの。なければ academic）を組み立てて写す（kit/core/llm-pack.mjs）
-//   「AI の出力を貼り付ける」：返事の全体から deck.html と narration.md を取り出し（kit/core/llm-import.mjs）、スライドに id を付け
+//   「AI で新しく作る」：① 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列（既定は今のデッキの部品・テーマから推したもの。
+//   なければ academic）と ① を組み立てて写す（kit/core/llm-pack.mjs）→ ③ 返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。
+//   kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を取り出し（kit/core/llm-import.mjs）、スライドに id を付け
 //   （kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で1 ファイル（.ega.html）にして（app/build-worker.js の
 //   exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//   「今のデッキを置き換える」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
+//   「AI の直しを取り込む」では、今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で元の場所に戻す）
 //   「AI への修正依頼を写す」：品質チェックの結果・組み立ての知らせ・その規格の文章（作った指示から）・今の原稿で依頼の文章を作る（kit/core/llm-fix.mjs）
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
-import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
+import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
@@ -21,20 +23,40 @@ import { memoryWorkspace } from './workspace.js';
 
 const TX = {
   ja: {
-    paste: 'AI の出力を貼り付ける…', pasteWelcome: 'AI の出力を貼り付ける',
-    title: 'AI の出力を貼り付ける',
-    lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）の返事の全体を、チャットのコピーのボタンでコピーして貼り付けます。```deck.html と ```narration.md の 2 つの囲みを取り出し、スライドに id を付け、品質チェックをかけて開きます',
-    guide: 'AI への指示をチャットに貼り、最後の「頼みたいこと」の記入欄を埋めて送ります。教材に合う系列を選ぶと、その部品の説明が加わります：',
-    seriesLegend: (kb) => `系列（共通の本体 ${kb} KB に加える）`,
+    paste: 'AI で新しく作る…', pasteWelcome: 'AI で新しく作る', fixImport: 'AI の直しを取り込む…',
+    title: 'AI で新しく作る',
+    lead: 'チャットの AI（claude.ai・Gemini・ChatGPT など）に、3 つのステップで教材を作ってもらいます。',
+    step1: '① 頼みたいことを書く', step2: '② AI への指示をコピーして、チャットに貼って送る', step3: '③ 返事を貼り付けて開く',
+    step1Hint: '書いた内容は、コピーする指示の最後に入ります（チャットに貼ると添付のファイルの形になり、そこでは書き直せないため、先にここで書きます）。書かない項目は空のままでかまいません',
+    kindLegend: 'どちらで作りますか', kindA: 'A　新しく作る', kindB: 'B　このチャットでここまで話し合った内容で作る',
+    fieldPh: { topic: '例：二分探索のしくみ', audience: '例：高校 2 年生', length: '例：5 枚・10 分', language: '例：日本語', speakers: '例：1 人', examples: '例：電話帳で名前を探す' },
+    needTopic: '① の「題材」を書いてください',
+    guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ系列（必要なときだけ足す）と、① の頼みたいことです。系列を足すと、その教材に向くパーツの説明が加わります。',
+    common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
+    seriesLegend: '系列（必要なときだけ足す）',
     seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
     copyGuide: 'AI への指示をコピー',
-    copied: (kb) => `コピーしました（${kb} KB）。チャットに貼り付けてください（最後の記入欄を埋めて送ります）`,
-    placeholder: 'ここに AI の返事の全体を貼り付ける',
-    modeNew: '新しいデッキとして開く', modeReplace: '今のデッキを置き換える（docId・音声はそのまま。直したスライドだけの返事なら、その id のスライドだけ）',
-    go: '取り込む', untrusted: '貼り付けたものは開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
+    copied: (kb) => `コピーしました（${kb} KB、① の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
+    step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼って「開く」を押すと、次の囲みを待ちます',
+    pasteLabel: 'AI の返事', placeholder: 'ここに AI の返事の全体か、囲みを 1 つ貼り付ける',
+    fixTitleImport: 'AI の直しを取り込む',
+    fixImportLead: '修正依頼への AI の返事を貼り付けて、今のデッキに取り込みます。docId・音声はそのままです。直したスライドだけの返事なら、その id のスライドだけを置き換えます',
+    fixImportHint: '返事の全体（返事の下のコピーのボタン）か、2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます',
+    go: '開く', goFix: '取り込む', only: 'これだけで取り込む',
+    untrusted: '貼り付けたものは開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
+    held: {
+      deck: (n) => `deck.html を受け取りました（スライド ${n} 枚。2 つのうち 1 つ目）。次に narration.md の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
+      narration: (n) => `narration.md を受け取りました（${n} 節。2 つのうち 1 つ目）。次に deck.html の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
+      again: (k) => `${k} をもう一度受け取ったので、前のものと入れ替えました。`,
+      onlyHint: '直しが片方だけなら「これだけで取り込む」を押します',
+      reset: '受け取ったものを捨てて最初から', resetDone: '受け取ったものを捨てました。返事の全体か、囲みを 1 つ貼り付けてください',
+      joined: '2 回に分けて貼った deck.html と narration.md を合わせました',
+    },
     err: {
-      'no-blocks': 'コードの囲み（``` の行）が見つかりません。チャットのコピーのボタンで返事の全体をコピーしてください',
+      'no-blocks': 'コードの囲み（``` の行）も、deck.html・narration.md の中身も見つかりません。返事の全体（返事の下のコピーのボタン）か、2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）写して貼り付けてください',
+      ambiguous: 'スライド（<section class="slide">）と口述原稿（## 見出しと [0] の行）の両方が入っていますが、囲みの行（```）がないので分けられません。返事の全体を返事の下のコピーのボタンで写すか、2 つの囲みを 1 つずつ写して貼り付けてください',
+      'cut-deck': 'deck.html が </html> で終わっていません。途中までしか写せていないようです。囲みの右上のコピーのボタンで写し直してください',
       'no-deck': 'deck.html の囲みが見つかりません（```deck.html で始まる囲み）',
       'no-slides': 'deck.html の囲みに <section class="slide"> がありません',
       unclosed: (e) => `${e.line} 行目から始まる囲み${e.kind ? `（${e.kind === 'deck' ? 'deck.html' : 'narration.md'}）` : ''}が閉じていません。返事が途中で切れたようです。AI に「続きを」と頼むか、2 つの囲みで返し直してもらってください`,
@@ -51,14 +73,14 @@ const TX = {
     },
     building: '取り込んでいます…', buildFailed: '取り込んだ原稿を組み立てられませんでした',
     imported: (n, ids) => `取り込みました：${n} 枚${ids ? `、id を ${ids} 枚に付けました` : ''}`,
-    replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`,
+    replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`, replacedNarr: (n) => `口述原稿を置き換えました（${n} 節）`,
     idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
     fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
-    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付け、返事を「AI の出力を貼り付ける」で取り込みます（今のデッキを置き換える）`,
+    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付け、返事を「AI の直しを取り込む」で取り込みます`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
     copyCutOff: 'AI に送り直しを頼む文をコピー', cutOffCopied: 'コピーしました。チャットに貼り付け、返事をここに貼り付けてください',
-    fixNone: '直す問題はありません', pasteReply: '返事を貼り付ける…', close: '閉じる',
+    fixNone: '直す問題はありません', pasteReply: 'AI の直しを取り込む…', close: '閉じる',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('ja', 'narrOrphan', a) : `スライドにない段階の口述原稿 [${a}]`),
       compData: (a) => message('ja', 'compData', a),
@@ -68,20 +90,40 @@ const TX = {
     },
   },
   en: {
-    paste: 'Paste AI output…', pasteWelcome: 'Paste AI output',
-    title: 'Paste AI output',
-    lead: 'Paste the whole reply of a chat AI (claude.ai, Gemini, ChatGPT, …), copied with the chat’s copy button. The editor takes out the two blocks ```deck.html and ```narration.md, gives the slides ids, runs the quality check and opens it.',
-    guide: 'Paste the instructions for the AI into the chat, fill in “What I want” at the end, and send. Tick the series that fit your lesson to add their components:',
-    seriesLegend: (kb) => `Series (added to the common body, ${kb} KB)`,
+    paste: 'Make with AI…', pasteWelcome: 'Make with AI', fixImport: 'Import AI fixes…',
+    title: 'Make with AI',
+    lead: 'A chat AI (claude.ai, Gemini, ChatGPT, …) makes the lesson for you in 3 steps.',
+    step1: '1. Write what you want', step2: '2. Copy the instructions, paste them into the chat and send', step3: '3. Paste the reply and open it',
+    step1Hint: 'What you write goes at the end of the copied instructions (pasted into a chat they often become an attachment you cannot edit there, so write it here first). Leave out anything you do not need.',
+    kindLegend: 'How do you want to make it?', kindA: 'A. Make a new lesson', kindB: 'B. From what we have discussed so far in this chat',
+    fieldPh: { topic: 'e.g. how binary search works', audience: 'e.g. first-year students', length: 'e.g. 5 slides, 10 minutes', language: 'e.g. English', speakers: 'e.g. one narrator', examples: 'e.g. finding a name in a phone book' },
+    needTopic: 'Write the topic in step 1.',
+    guide: 'The copied instructions are the common body (always included), the series you add (only when needed) and what you wrote in step 1. A series adds the notes on parts that suit that kind of lesson.',
+    common: (kb) => `Common body (always included)   ${kb} KB`,
+    seriesLegend: 'Series (add only when needed)',
     seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
     copyGuide: 'Copy instructions for your AI',
-    copied: (kb) => `Copied (${kb} KB). Paste it into the chat (then fill in the fields at the end and send).`,
-    placeholder: 'Paste the whole reply of the AI here',
-    modeNew: 'Open as a new deck', modeReplace: 'Replace the current deck (docId and audio stay; a reply with only some slides replaces just those, by id)',
-    go: 'Import', untrusted: 'Pasted content is treated like an opened file: if it contains scripts, the editor asks before running them.',
+    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 1). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
+    step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press Open; the editor then waits for the other.',
+    pasteLabel: 'The AI’s reply', placeholder: 'Paste the whole reply of the AI here, or one block',
+    fixTitleImport: 'Import AI fixes',
+    fixImportLead: 'Paste the AI’s reply to your fix request to bring it into the current deck. The docId and audio stay. A reply with only some slides replaces just those, by id.',
+    fixImportHint: 'Paste the whole reply (the copy button under the reply), or the two blocks one at a time (the copy button at the top right of each block).',
+    go: 'Open', goFix: 'Import', only: 'Import just this',
+    untrusted: 'Pasted content is treated like an opened file: if it contains scripts, the editor asks before running them.',
+    held: {
+      deck: (n) => `Got deck.html (${n} slide${n === 1 ? '' : 's'}; 1 of 2). Now copy the narration.md block with the copy button at its top right and paste it here.`,
+      narration: (n) => `Got narration.md (${n} section${n === 1 ? '' : 's'}; 1 of 2). Now copy the deck.html block with the copy button at its top right and paste it here.`,
+      again: (k) => `Got ${k} again; it replaces the earlier one. `,
+      onlyHint: 'If the fix has only this one, press “Import just this”.',
+      reset: 'Discard and start over', resetDone: 'Discarded. Paste the whole reply, or one block.',
+      joined: 'Joined deck.html and narration.md pasted separately',
+    },
     err: {
-      'no-blocks': 'No code blocks (``` lines) found. Copy the whole reply with the chat’s copy button.',
+      'no-blocks': 'No code blocks (``` lines), and no deck.html or narration.md content found. Paste the whole reply (the copy button under the reply), or the two blocks one at a time (the copy button at the top right of each block).',
+      ambiguous: 'This has both slides (<section class="slide">) and narration (## headings and [0] lines) but no ``` lines, so they cannot be told apart. Copy the whole reply with the copy button under it, or the two blocks one at a time.',
+      'cut-deck': 'The deck.html does not end with </html>: only part of it was copied. Copy it again with the copy button at the top right of the block.',
       'no-deck': 'No deck.html block found (a block starting with ```deck.html).',
       'no-slides': 'The deck.html block has no <section class="slide">.',
       unclosed: (e) => `The block starting on line ${e.line}${e.kind ? ` (${e.kind === 'deck' ? 'deck.html' : 'narration.md'})` : ''} is not closed: the reply was probably cut off. Ask the AI to continue, or to send the two blocks again.`,
@@ -98,14 +140,14 @@ const TX = {
     },
     building: 'Importing…', buildFailed: 'Could not build the imported deck',
     imported: (n, ids) => `Imported ${n} slides${ids ? `; added ids to ${ids}` : ''}`,
-    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`,
+    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`, replacedNarr: (n) => `Replaced the narration (${n} section(s))`,
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then import the reply with “Paste AI output” (replace the current deck).`,
+    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat, then bring the reply in with “Import AI fixes”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
-    fixNone: 'No problems to fix.', pasteReply: 'Paste the reply…', close: 'Close',
+    fixNone: 'No problems to fix.', pasteReply: 'Import AI fixes…', close: 'Close',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('en', 'narrOrphan', a) : `Narration for a step the slide does not have [${a}]`),
       compData: (a) => message('en', 'compData', a),
@@ -124,7 +166,7 @@ export function setupLlm(app) {
   const base = T.checkMsg;
   // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
   T.checkMsg = (c, a) => (X.checkMsg[c] ? X.checkMsg[c](a) : a && typeof a === 'object' && MESSAGES[c] ? message(LANG, c, a) : base(c, a));
-  for (const id of ['b-paste', 'w-paste']) { const b = $(id); if (b) b.textContent = id === 'b-paste' ? X.paste : X.pasteWelcome; }
+  for (const [id, t] of [['b-paste', X.paste], ['w-paste', X.pasteWelcome], ['b-fiximport', X.fixImport]]) { const b = $(id); if (b) b.textContent = t; }
 
   async function copyText(text, area) {
     try { await navigator.clipboard.writeText(text); return true; }
@@ -135,15 +177,45 @@ export function setupLlm(app) {
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
 
-  // ---------------------------------------------------------------- AI への指示を写す（共通の本体 + 選んだ系列）
-  // 既定の選び方：今のデッキの部品・テーマから推した系列（kit/core/llm-pack.mjs の seriesForDeck）。なければ academic
+  // ---------------------------------------------------------------- 「AI で新しく作る」の窓：① 頼みたいことを書く → ② 指示をコピーして送る → ③ 返事を貼り付けて開く
+  const step = (id, title, kids) => el('section', { id, cls: 'paste-step', 'aria-labelledby': id + '-h' }, [el('h3', { id: id + '-h', text: title }), ...kids]);
+
+  // ① 頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）。記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。
+  // 書いたものは、このページを開いている間は残す（窓を閉じて開き直しても）
+  const draft = { kind: 'A', values: {} };
+  function requestStep() {
+    const F = requestForm(LANG);
+    const field = (sec, f) => {
+      const id = `paste-${sec.toLowerCase()}-${f.key}`, key = sec + ':' + f.key, multi = f.key === 'examples';
+      const inp = el(multi ? 'textarea' : 'input', { id, name: f.key, ...(multi ? { rows: '2' } : { type: 'text' }), placeholder: X.fieldPh[f.key] || '', autocomplete: 'off', spellcheck: 'false' });
+      inp.value = key in draft.values ? draft.values[key] : f.value;
+      inp.addEventListener('input', () => { draft.values[key] = inp.value; });
+      return el('div', { cls: 'paste-field' }, [el('label', { for: id, text: f.label }), inp]);
+    };
+    const radio = (k, label) => el('label', {}, [el('input', { type: 'radio', name: 'paste-kind', value: k, id: 'paste-kind-' + k.toLowerCase() }), el('span', { text: label })]);
+    const kinds = el('fieldset', { id: 'paste-kind', cls: 'paste-kind' }, [el('legend', { text: X.kindLegend }), radio('A', X.kindA), radio('B', X.kindB)]);
+    const A = el('div', { id: 'paste-req-a', cls: 'paste-fields' }, F.A.fields.map((f) => field('A', f)));
+    const B = el('div', { id: 'paste-req-b', cls: 'paste-fields' }, [F.B.text ? el('p', { cls: 'hint quote', text: F.B.text }) : null, ...F.B.fields.map((f) => field('B', f))]);
+    const show = () => { A.hidden = draft.kind !== 'A'; B.hidden = draft.kind !== 'B'; };
+    kinds.querySelector('#paste-kind-' + draft.kind.toLowerCase()).checked = true;
+    kinds.addEventListener('change', (e) => { if (e.target.name === 'paste-kind') { draft.kind = e.target.value; show(); } });
+    show();
+    const values = () => Object.fromEntries([...(draft.kind === 'B' ? B : A).querySelectorAll('input,textarea')].map((x) => [x.name, x.value]));
+    return {
+      node: step('paste-step1', X.step1, [el('p', { cls: 'hint', text: X.step1Hint }), kinds, A, B]),
+      request: () => filledRequest({ kind: draft.kind, values: values() }, LANG),
+      missing: () => (draft.kind === 'A' && !String(values().topic || '').trim() ? A.querySelector('[name=topic]') : null),
+    };
+  }
+
+  // ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す。既定は今のデッキの部品・テーマから推したもの、なければ academic）＋ ① の頼みたいこと
   async function defaultSeries() {
     let deck = '';
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
     const s = seriesForDeck(deck);
     return s.length ? s : ['academic'];
   }
-  async function packChooser(copyMsg) {
+  async function packStep(copyMsg, req) {
     const base = buildPack({ series: [], lang: LANG });
     const initial = await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
@@ -153,70 +225,124 @@ export function setupLlm(app) {
       return cb;
     });
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const update = () => { total.textContent = X.packTotal(kb(buildPack({ series: chosen(), lang: LANG }))); };
+    const update = () => { total.textContent = X.packTotal(kb(packWithRequest({ series: chosen(), lang: LANG, request: req.request() }))); };
     for (const b of boxes) b.addEventListener('change', update);
     update();
-    const copy = el('button', { type: 'button', id: 'paste-copy-guide', text: X.copyGuide, onclick: async () => {
-      const text = buildPack({ series: chosen(), lang: LANG });
+    const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
+    common.checked = true;
+    const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
+      const miss = req.missing();
+      if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.needTopic; miss.focus(); return; }
+      const text = packWithRequest({ series: chosen(), lang: LANG, request: req.request() });
       const ok = await copyText(text);
-      copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(text)) : X.fixCopyFailed;
+      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.copied(kb(text)) : X.fixCopyFailed;
     } });
-    return el('div', { cls: 'paste-guide' }, [
+    const node = step('paste-step2', X.step2, [el('div', { cls: 'paste-guide' }, [
       el('span', { cls: 'hint', text: X.guide }),
+      el('label', { cls: 'paste-common', for: 'paste-common' }, [common, el('span', { text: X.common(kb(base)) })]),
       el('fieldset', { id: 'paste-series', cls: 'paste-series' }, [
-        el('legend', { text: X.seriesLegend(kb(base)) }),
+        el('legend', { text: X.seriesLegend }),
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
           el('span', { cls: 'hint', text: X.plusKb(kbOf(packSize(buildPack({ series: [s], lang: LANG })) - packSize(base))) })])),
       ]),
       copy, total,
-    ]);
+    ]), copyMsg]);
+    return { node, update };
   }
 
-  // ---------------------------------------------------------------- 貼り付けの窓
-  // mode：'new' | 'replace'（デッキを開いているときだけ選べる）。戻り値：開いたか
+  // ---------------------------------------------------------------- 貼り付け（「AI で新しく作る」の ③ と「AI の直しを取り込む」）
+  // 囲みを 1 つずつ（チャットの囲みの右上のコピーで）写して貼ったとき：届いた片方を持っておき、もう片方を待つ（窓を閉じると捨てる）
+  let held = null;   // {kind: 'deck' | 'narration', text}
+  const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
+  // mode：'new'（AI で新しく作る）| 'replace'（AI の直しを取り込む：今のデッキに）。戻り値：開いたか
   async function pasteDialog(mode0) {
-    const canReplace = !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
-    const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: '12' });
-    const msg = el('p', { id: 'paste-msg', cls: 'note bad', hidden: '' });
+    const fix = mode0 === 'replace';
+    if (fix && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
+    held = null;
+    const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: fix ? '12' : '8', 'aria-describedby': 'paste-step3-hint' });
+    const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
+    const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
     // 返事が切れていたとき：AI に送り直しを頼む文を写すボタン
-    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, EN ? 'en' : 'ja'); const ok = await copyText(t); copyMsg.hidden = false; copyMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
-    const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', hidden: '' });
-    const chooser = await packChooser(copyMsg);
-    const radios = canReplace ? el('div', { cls: 'paste-mode' }, [
-      el('label', {}, [el('input', { type: 'radio', name: 'paste-mode', value: 'new', id: 'paste-new' }), el('span', { text: X.modeNew })]),
-      el('label', {}, [el('input', { type: 'radio', name: 'paste-mode', value: 'replace', id: 'paste-replace' }), el('span', { text: X.modeReplace })]),
-    ]) : null;
-    if (radios) radios.querySelector(mode0 === 'replace' ? '#paste-replace' : '#paste-new').checked = true;
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, EN ? 'en' : 'ja'); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
+    // 持っている片方の知らせ（読み上げ）と、捨てて最初からのボタン
+    const stateText = el('span', { id: 'paste-state-text' });
+    const reset = el('button', { type: 'button', id: 'paste-reset', text: X.held.reset, onclick: () => { held = null; showState(null, X.held.resetDone); area.value = ''; msg.hidden = true; area.focus(); } });
+    const stateBox = el('div', { id: 'paste-state', cls: 'paste-state', role: 'status', hidden: '' }, [stateText, reset]);
+    function showState(h, text) {
+      stateBox.hidden = !text; stateBox.classList.toggle('waiting', !!h); reset.hidden = !h;
+      stateText.textContent = text || '';
+    }
+    const req = fix ? null : requestStep();
+    const pack = fix ? null : await packStep(copyMsg, req);
+    if (pack) req.node.addEventListener('input', pack.update);
+    const s3 = step('paste-step3', fix ? X.fixTitleImport : X.step3, [
+      el('p', { id: 'paste-step3-hint', cls: 'hint', text: fix ? X.fixImportHint : X.step3Hint }),
+      stateBox, el('label', { for: 'paste-text', cls: 'sr-only', text: X.pasteLabel }), area, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })]);
+    if (fix) s3.querySelector('h3').classList.add('sr-only');
+    let focusArea = fix;
     for (;;) {
-      const v = await ask({ title: X.title, kind: 'paste', body: [
-        el('p', { text: X.lead }),
-        chooser,
-        copyMsg, area, radios, msg, cut, el('p', { cls: 'hint', text: X.untrusted })],
-        buttons: [{ id: 'cancel', label: T.cancel }, { id: 'import', label: X.go, pri: true }] });
-      if (v !== 'import') return false;
-      const mode = radios && radios.querySelector('#paste-replace').checked ? 'replace' : 'new';
-      const err = await importText(area.value, mode);
-      if (!err) return true;
-      msg.hidden = false; msg.textContent = err;
+      const buttons = [{ id: 'cancel', label: T.cancel }];
+      if (fix && held) buttons.push({ id: 'only', label: X.only });
+      buttons.push({ id: 'import', label: fix ? X.goFix : X.go, pri: true });
+      const shown = ask({ title: fix ? X.fixTitleImport : X.title, kind: 'paste', body: fix ? [el('p', { text: X.fixImportLead }), s3] : [el('p', { text: X.lead }), req.node, pack.node, s3], buttons });
+      if (focusArea) setTimeout(() => area.focus(), 0);
+      const v = await shown;
+      if (v !== 'import' && v !== 'only') { held = null; return false; }
+      const res = v === 'only' ? await importHeld() : await importText(area.value, fix ? 'replace' : 'new');
+      focusArea = true;
+      if (res === null) { held = null; return true; }
+      if (res && typeof res === 'object' && res.held) {
+        area.value = ''; msg.hidden = true; cut.hidden = true;
+        showState(res.held, (res.again ? X.held.again(res.held === 'deck' ? 'deck.html' : 'narration.md') : '') + X.held[res.held](res.count) + (fix ? ' ' + X.held.onlyHint : ''));
+        continue;
+      }
+      msg.hidden = false; msg.textContent = res;
       cut.hidden = !S.cutOff;
     }
   }
 
-  // 取り込む。戻り値：窓に出す誤りの言葉（なければ null）
+  // 取り込む。戻り値：窓に出す誤りの言葉か、片方を持って次を待つとき {held, again, count}（どちらもなければ null）
   async function importText(text, mode) {
     if (!String(text).trim()) return X.err.empty;
-    const r = extractBlocks(text);
+    const p = pastePart(text);
     // 前の返事が narration.md の途中で切れ、今度はその囲みだけが届いた：前の deck.html と合わせる
-    if (r.error && r.error.code === 'no-deck' && r.narration !== null && S.pendingDeck) { r.deck = S.pendingDeck; r.error = null; }
+    if (p.part === 'narration' && !held && S.pendingDeck) { p.deck = S.pendingDeck; p.part = 'both'; }
     // 囲みが切れていた（unclosed）か、囲みがなかった（no-blocks：ファイル・キャンバス・添付で返した）：送り直しを頼む文を写せる
-    S.cutOff = r.error && (r.error.code === 'unclosed' || r.error.code === 'no-blocks') ? r.error : null;
-    S.pendingDeck = S.cutOff && S.cutOff.code === 'unclosed' && r.deck ? r.deck : (r.error ? S.pendingDeck : null);
-    if (r.error) return typeof X.err[r.error.code] === 'function' ? X.err[r.error.code](r.error) : (X.err[r.error.code] || r.error.message);
+    S.cutOff = p.error && (p.error.code === 'unclosed' || p.error.code === 'no-blocks') ? p.error : null;
+    S.pendingDeck = S.cutOff && S.cutOff.code === 'unclosed' && p.deck ? p.deck : (p.error ? S.pendingDeck : null);
+    if (p.error) return typeof X.err[p.error.code] === 'function' ? X.err[p.error.code](p.error) : (X.err[p.error.code] || p.error.message);
+    let r = p;
+    const info = [];
+    if (p.part === 'both') held = null;
+    else if (held && held.kind !== p.part) {
+      // 2 回に分けて貼った片方ずつを合わせる（返事の全体を貼ったときと同じものになる。囲みの中身だけを写したので、囲みなしの知らせは出さない）
+      r = { deck: held.kind === 'deck' ? held.text : p.deck, narration: held.kind === 'narration' ? held.text : p.narration, warnings: [] };
+      held = null;
+      info.push(X.held.joined);
+    } else if (mode === 'new' || !p.fenced) {
+      // 片方だけ：持っておき、もう片方を待つ（「AI の直しを取り込む」に囲みの付いた片方だけの返事を貼ったときは、今までどおりその片方だけを取り込む）
+      const again = !!held;
+      const t = p.part === 'deck' ? p.deck : p.narration;
+      held = { kind: p.part, text: t };
+      return { held: p.part, again, count: p.part === 'deck' ? sectionsOf(t).length : narrSections(t).out.length };
+    }
+    return finish(r, mode, info);
+  }
+  // 「これだけで取り込む」（AI の直しを取り込む）：持っている片方だけで
+  async function importHeld() {
+    if (!held) return X.err.empty;
+    const r = { deck: held.kind === 'deck' ? held.text : null, narration: held.kind === 'narration' ? held.text : null, warnings: [] };
+    held = null;
+    return finish(r, 'replace', []);
+  }
+  async function finish(r, mode, info) {
     const notes = r.warnings.map((w) => (X.warn[w.code] ? (typeof X.warn[w.code] === 'function' ? X.warn[w.code](w) : X.warn[w.code]) : w.code));
     if (r.narration === null && mode === 'new') return X.err['no-narration'];
+    if (r.deck === null && mode === 'new') return X.err['no-deck'];
     status(X.building);
     try {
-      return mode === 'replace' ? await replaceDeck(r, notes) : await openNew(r, notes);
+      return mode === 'replace' ? await replaceDeck(r, notes, info) : await openNew(r, notes, info);
     } finally { status(''); }
   }
 
@@ -240,21 +366,26 @@ export function setupLlm(app) {
     await afterOpen();
     return null;
   }
-  async function openNew(r, notes) {
+  async function openNew(r, notes, info = []) {
     const ids = withIds(r.deck, r.narration);
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;
-    if (S.portable && S.portable.name === name) toast([X.imported((S.slides || []).length, ids.added), ...notes, ids.problems.length ? X.idProblems : '', X.unsavedNote].filter(Boolean).join(' · '), notes.length > 0 || ids.problems.length > 0);
+    if (S.portable && S.portable.name === name) toast([X.imported((S.slides || []).length, ids.added), ...info, ...notes, ids.problems.length ? X.idProblems : '', X.unsavedNote].filter(Boolean).join(' · '), notes.length > 0 || ids.problems.length > 0);
     return null;
   }
-  async function replaceDeck(r, notes) {
+  async function replaceDeck(r, notes, info = []) {
     const file = S.deckFile;
     const cur = await S.ws.readText(file, { max: READ_LIMITS.source }) || '';
     const curN = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }) || '';
-    let deck = r.deck, narration = r.narration === null ? curN : r.narration, what;
-    if (isPatch(deck)) {
+    let deck = r.deck === null ? cur : r.deck, narration = r.narration === null ? curN : r.narration, what;
+    if (r.deck === null) {
+      // 口述原稿だけの直し：節がどれも id 付きなら、その id の節だけを置き換える（ほかは全体を置き換える）
+      const N = narrSections(String(r.narration).replace(/\r\n?/g, '\n')).out;
+      if (N.length && N.every((x) => x.id)) narration = mergeNarration(curN, r.narration).narration;
+      what = X.replacedNarr(N.length);
+    } else if (isPatch(deck)) {
       const m = mergeSlides(cur, deck);
       if (!m.replaced.length) return X.err['no-match'];
       deck = m.deck;
@@ -287,7 +418,7 @@ export function setupLlm(app) {
       await app.rebuild('paste');
       if (S.codeOk === false) return null;
     }
-    toast([what, ...notes, ids.problems.length ? X.idProblems : '', S.portable ? X.unsavedNote : ''].filter(Boolean).join(' · '), notes.length > 0);
+    toast([what, ...info, ...notes, ids.problems.length ? X.idProblems : '', S.portable ? X.unsavedNote : ''].filter(Boolean).join(' · '), notes.length > 0);
     await afterOpen();
     return null;
   }
@@ -354,5 +485,6 @@ export function setupLlm(app) {
 
   $('b-paste').onclick = () => pasteDialog('new').catch((e) => toast(String(e.message || e), true));
   $('w-paste').onclick = () => pasteDialog('new').catch((e) => toast(String(e.message || e), true));
+  $('b-fiximport').onclick = () => pasteDialog('replace').catch((e) => toast(String(e.message || e), true));
   return { pasteDialog, importText, extraChecks, fixButton, fixRequest, texts: X };
 }

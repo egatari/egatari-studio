@@ -1,5 +1,5 @@
 // スライドに安定した id を付ける本体（format spec §8.1、docs/contract.md §4）。Node にもブラウザにも依存しない（純粋な ESM）
-// npm run ids（tools/ids.mjs：ファイルの読み書き・控え・JSON の鍵の付け替え）と、編集アプリの「AI の出力を貼り付ける」（app/llm.js）が共有する
+// npm run ids（tools/ids.mjs：ファイルの読み書き・控え・JSON の鍵の付け替え）と、編集アプリの「AI で新しく作る」「AI の直しを取り込む」（app/llm.js）が共有する
 //
 //   planIds(src, {taken, byOrder})        → {slides, docIds, problems, rename: Map(旧い鍵 → id), newIds: Map(番号 → id), order}
 //   rewriteDeckIds(src, plan)             → {out, morphs}       id のない <section class="slide"> に id="…" を足し、data-morph="旧い鍵" を付け替える

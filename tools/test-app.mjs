@@ -1729,7 +1729,7 @@ try {
     await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
     await ps.goto(BASE);
     await ps.waitForSelector('#drop');
-    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「AI の出力を貼り付ける」') && await ps.isDisabled('#w-new') && !(await ps.isDisabled('#w-paste')), 'safari: the note says how to make a new lesson (Paste AI output); New deck is off, paste is on');
+    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「AI で新しく作る」') && await ps.isDisabled('#w-new') && !(await ps.isDisabled('#w-paste')), 'safari: the note says how to make a new lesson (Paste AI output); New deck is off, paste is on');
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
     await shot(ps, 'welcome-safari.png');
     await ps.close();

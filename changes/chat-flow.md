@@ -1,0 +1,7 @@
+### Changed
+
+- Editor app: “Paste AI output” is now **Make with AI**, a dialog in three steps: 1. write what you want (A: make a new lesson — topic, audience, length, language, speakers, examples; B: from what was discussed in this chat), 2. copy the instructions and send them (the common body is shown as always included, series are added only when needed; what you wrote replaces the blank “What I want” form at the end, so the pack can be sent even when the chat turns it into an attachment, and the dialog says so), 3. paste the reply and open it. The instructions themselves are unchanged (`kit/core/llm-request.mjs`). Importing a reply to a fix request is **Import AI fixes** (Open menu and the fix request dialog).
+
+### Added
+
+- Editor app: the two blocks of a reply can be pasted one at a time (copied with each block's own copy button, without the ``` lines). The editor tells `deck.html` from `narration.md` by content (`pastePart` in `kit/core/llm-import.mjs`), keeps the first and says which one arrived and what to paste next, joins them in either order into the same result as the whole reply, and offers “Discard and start over”. Text with both but no fences, or with neither, is refused with how to copy instead. In Import AI fixes, “Import just this” brings in a fix that has only one block (a narration-only fix replaces just the sections with those ids).

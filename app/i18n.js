@@ -20,8 +20,8 @@ const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAg
 const ja = {
   brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '口述原稿 (n)', comments: 'コメント (c)', audio: '音声', recTip: 'この段階で録音モードを開く：口述原稿を大きく出して録る。Space で録音と停止、Esc でこの板に戻る（r）', attach: '添付', attachTip: '添付ファイル（attachments/。下書き・試行：役割ごとに入れてよい形式を確かめる）',
   check: '品質チェック', export: '組み立てた HTML を書き出す', print: '印刷 / PDF', presenter: '発表者ビュー', full: '全画面', helpBtn: '使い方',
-  welcomeTitle: `1 ファイル（${FX}）を開いて、見る・直す`, welcomeLead: `インストールは要りません。1 ファイル（${FX}）を開くか、新しいデッキを作るか、AI の出力を貼り付けると、ここで表示・編集できます`,
-  unsupported: 'このブラウザ（Safari・iPad など）では作業フォルダを開けず、「新しいデッキ」も使えません。新しく作るには「AI の出力を貼り付ける」から（チャットの AI に書かせた教材を貼ると、ここで 1 ファイルとして開きます）。1 ファイルを開く・直す・保存することはできます。作業フォルダを使うには、パソコンの Google Chrome か Microsoft Edge で開いてください',
+  welcomeTitle: `1 ファイル（${FX}）を開いて、見る・直す`, welcomeLead: `インストールは要りません。1 ファイル（${FX}）を開くか、新しいデッキを作るか、AI で新しく作ると、ここで表示・編集できます`,
+  unsupported: 'このブラウザ（Safari・iPad など）では作業フォルダを開けず、「新しいデッキ」も使えません。新しく作るには「AI で新しく作る」から（チャットの AI に作ってもらった教材を貼ると、ここで 1 ファイルとして開きます）。1 ファイルを開く・直す・保存することはできます。作業フォルダを使うには、パソコンの Google Chrome か Microsoft Edge で開いてください',
   dropHere: `ここに 1 ファイル（${FX}）か作業フォルダをドラッグ＆ドロップ`, openFolder: '作業フォルダを開く…', newDeck: '新しいデッキ',
   folderFor: '作業フォルダ（deck.html・narration.md・audio/ …）は Chrome / Edge で',
   kindsTitle: '作業フォルダと 1 ファイル',
@@ -315,8 +315,8 @@ const ja = {
 const en = {
   brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Narration (n)', comments: 'Notes (c)', audio: 'Audio', recTip: 'Open recording mode at this step: the narration in large type. Space starts and stops, Esc comes back here (r)', attach: 'Attach', attachTip: 'Attachments (attachments/; draft, experimental: checked against the formats each role allows)',
   check: 'Quality check', export: 'Export built HTML', print: 'Print / PDF', presenter: 'Presenter view', full: 'Fullscreen', helpBtn: 'Help',
-  welcomeTitle: `Open a single file (${FX}) to view and edit`, welcomeLead: `Nothing to install. Open a single file (${FX}), start a new deck or paste AI output to view and edit it here.`,
-  unsupported: 'This browser (Safari, iPad, …) cannot open working folders, so New deck is not available either. To make a new lesson, use Paste AI output (paste a lesson a chat AI wrote; it opens here as a single file). Opening, editing and saving single files works. For working folders, please use Google Chrome or Microsoft Edge on a computer.',
+  welcomeTitle: `Open a single file (${FX}) to view and edit`, welcomeLead: `Nothing to install. Open a single file (${FX}), start a new deck or make one with AI to view and edit it here.`,
+  unsupported: 'This browser (Safari, iPad, …) cannot open working folders, so New deck is not available either. To make a new lesson, use Make with AI (a chat AI writes the lesson and you paste it; it opens here as a single file). Opening, editing and saving single files works. For working folders, please use Google Chrome or Microsoft Edge on a computer.',
   dropHere: `Drop a single file (${FX}) or a working folder here`, openFolder: 'Open working folder…', newDeck: 'New deck',
   folderFor: 'Working folders (deck.html, narration.md, audio/ …) in Chrome / Edge:',
   kindsTitle: 'Working folder and single file',

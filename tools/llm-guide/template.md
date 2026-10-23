@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=f2aad6b797a1cde1 -->
+<!-- i18n: pair=template.ja.md sha256=130883c96e1eaaba -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -6,9 +6,9 @@ English | [日本語](authoring-with-llms.ja.md)
 
 **For people.** This is an instruction pack for chat AIs (claude.ai, Gemini, ChatGPT, …) that writes a first draft of an [Egatari](https://github.com/egatari/egatari-spec) lesson (Egatari is an open file format; Egatari Studio is the editor): an HTML slide deck with step-by-step reveals and a spoken script. No install and no coding tool needed.
 
-1. Open a new chat and paste **everything from “Instructions for the AI” to the end**, followed by the series packs your lesson needs (below), and end with the **What I want** section filled in (topic, audience, length, language, speakers; one narrator by default). The editor assembles and copies the pack for you, with “What I want” at the end (**Paste AI output → tick the series → Copy instructions for your AI**).
-2. Copy the AI’s **whole reply** (the chat’s copy button) and paste it into Egatari Studio: **Open ▾ → Paste AI output…**. The editor takes out the two files, gives every slide a stable id, runs the quality check and opens it.
-3. Fix the findings of the quality check, or press **Copy fix request for your AI** in the quality check panel and paste that into the same chat; paste the reply back (choose “Replace the current deck”).
+1. Open a new chat and paste **everything from “Instructions for the AI” to the end**, followed by the series packs your lesson needs (below), and end with the **What I want** section filled in (topic, audience, length, language, speakers; one narrator by default). The editor assembles and copies the pack for you, with “What I want” at the end (**Make with AI → write what you want → tick the series if needed → Copy instructions for your AI**; it puts what you wrote at the end, so you can send it even when the chat turns the long paste into an attachment).
+2. Copy the AI’s **whole reply** (the chat’s copy button), or its two blocks one at a time, and paste it into step 3 of **Make with AI** in Egatari Studio (**Open ▾ → Make with AI…**). The editor takes out the two files, gives every slide a stable id, runs the quality check and opens it.
+3. Fix the findings of the quality check, or press **Copy fix request for your AI** in the quality check panel and paste that into the same chat; paste the reply back with **Open ▾ → Import AI fixes…**.
 
 **Paste it each time, or register it once.** Pasting the pack at the start of each chat works in every chat AI and always uses the current pack; this is the default. If you write lessons often, you can keep the pack in the chat AI instead (copy it from the editor, or save this file and the series packs you need as text files):
 

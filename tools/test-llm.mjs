@@ -2,7 +2,9 @@
 //   node tools/test-llm.mjs [作業用のフォルダ]
 // 1. 指示（共通の本体 docs/authoring-with-llms*.md と系列 docs/llm-parts/*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・
 //    規格の名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所
-// 2. 返事から 2 つの囲みを取り出す（kit/core/llm-import.mjs）：名前の付け方・CRLF・前後の文章・閉じていない囲み・囲みなし・重なり
+// 2. 返事から 2 つの囲みを取り出す（kit/core/llm-import.mjs）：名前の付け方・CRLF・前後の文章・閉じていない囲み・囲みなし・重なり・
+//    囲みを 1 つずつ写して貼ったもの（pastePart：中身から deck.html か narration.md かを決める。合わせると返事の全体と同じ）
+// 1b. 頼みたいこと（kit/core/llm-request.mjs）：指示の記入欄を読む・埋める・指示の最後に入れる（本体は buildPack と同じ）
 // 3. id を付ける（kit/core/slide-ids.mjs）：見出しが同じスライド・今ある id・直したスライドだけの返事を戻す
 // 4. 修正依頼（kit/core/llm-fix.mjs）：エラーの言葉・規格の名前と文章・今のファイル。長いデッキは問題のスライドだけ
 // 5. 読みの指定の検査（kit/core/narration-lint.mjs）
@@ -14,7 +16,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { extractBlocks, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
@@ -171,6 +174,55 @@ ok('同じファイルの囲みが 2 つ → 最後のもの（知らせる）�
   const r = extractBlocks(`\`\`\`html\n${D}\n\`\`\`\n直しました：\n\`\`\`html\n${D2}\n\`\`\`\n\`\`\`js\nconsole.log(1)\n\`\`\`\n\`\`\`markdown\n${N}\n\`\`\``);
   assert.equal(r.deck.trim(), D2);
   assert.ok(r.warnings.some((w) => w.code === 'several' && w.kind === 'deck' && w.n === 2) && r.warnings.some((w) => w.code === 'ignored'));
+});
+
+ok('囲みを 1 つずつ貼る（pastePart）：返事の全体・deck.html だけ・narration.md だけ（囲みあり／なし）。合わせると返事の全体と同じ', () => {
+  for (const [name, deck, narr] of [['minimal', D, N], ['business', worked('business', 'deck.html'), worked('business', 'narration.md')], ['kokugo', worked('kokugo', 'deck.html'), worked('kokugo', 'narration.md')]]) {
+    const whole = extractBlocks(replyOf(deck, narr));
+    const w = pastePart(replyOf(deck, narr));
+    assert.ok(w.part === 'both' && w.fenced && w.error === null && w.deck === whole.deck && w.narration === whole.narration, name + ' whole');
+    // 囲みの右上のコピー：囲みの中身だけ（囲みの行なし）。前後の空行・CRLF もかまわない
+    const d = pastePart('\n' + deck.trim() + '\n'), n = pastePart(narr.trim().replace(/\n/g, '\r\n') + '\r\n\r\n');
+    assert.ok(d.part === 'deck' && !d.fenced && d.narration === null && d.error === null, name + ' deck only: ' + JSON.stringify([d.part, d.error]));
+    assert.ok(n.part === 'narration' && !n.fenced && n.deck === null && n.error === null, name + ' narration only: ' + JSON.stringify([n.part, n.error]));
+    assert.equal(d.deck, whole.deck, name + ': the deck pasted alone is the same as from the whole reply');
+    assert.equal(n.narration, whole.narration, name + ': the narration pasted alone is the same as from the whole reply');
+    // 囲みの付いた片方だけ（返事が 2 回に分かれた）
+    const fd = pastePart('```deck.html\n' + deck.trim() + '\n```\n'), fn = pastePart('Here:\n\n```markdown\n' + narr.trim() + '\n```\n');
+    assert.ok(fd.part === 'deck' && fd.fenced && fd.deck === whole.deck && fn.part === 'narration' && fn.fenced && fn.narration === whole.narration && fn.error === null, name + ' fenced halves');
+  }
+  // 直したスライドだけ（<!DOCTYPE> なし）の囲みの中身・id 付きの節だけの口述原稿
+  const patch = pastePart('<section class="slide" id="s-aaaaaa"><h2>A</h2></section>');
+  assert.ok(patch.part === 'deck' && isPatch(patch.deck));
+  assert.equal(pastePart('## A {#s-aaaaaa}\n[0] あ。\n[concl] い。').part, 'narration');
+});
+ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混ざったものは ambiguous・</html> のない deck は cut-deck', () => {
+  for (const t of ['ごめんなさい、できません。', 'https://claude.ai/share/abc', '## 見出しだけ\n本文', '[0] だけ']) {
+    const r = pastePart(t);
+    assert.ok(r.part === null && r.error && r.error.code === 'no-blocks', t + ': ' + JSON.stringify(r.error));
+  }
+  const amb = pastePart('<section class="slide"><h2>A</h2></section>\n\n## A\n[0] あ。');
+  assert.ok(amb.part === null && amb.error.code === 'ambiguous', JSON.stringify(amb.error));
+  const cut = pastePart('<!DOCTYPE html>\n<html><body><section class="slide"><h2>A</h2>');
+  assert.ok(cut.part === null && cut.error.code === 'cut-deck', JSON.stringify(cut.error));
+  // 閉じていない囲みは今までどおり unclosed
+  assert.equal(pastePart('```deck.html\n' + D).error.code, 'unclosed');
+});
+ok('頼みたいこと：指示の記入欄（A 6 項目・B 2 項目）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
+  for (const lang of ['en', 'ja']) {
+    const F = requestForm(lang);
+    assert.deepEqual(F.A.fields.map((f) => f.key), ['topic', 'audience', 'length', 'language', 'speakers', 'examples']);
+    assert.deepEqual(F.B.fields.map((f) => f.key), ['audience', 'length']);
+    assert.ok(F.A.fields.find((f) => f.key === 'speakers').value, 'speakers has a default');
+    assert.ok(requestBody(lang).startsWith('# ' + F.title + '\n'));
+    for (const s of [[], ['academic'], ['business', 'info']]) assert.equal(packWithRequest({ series: s, lang }), buildPack({ series: s, lang }), 'no request → the same pack');
+    const a = filledRequest({ kind: 'A', values: { topic: 'Binary search', audience: 'Year 11', examples: 'phone book\ndictionary', length: '' } }, lang);
+    assert.ok(a.startsWith('# ' + F.title + '\n\n**' + F.A.head + '**') && a.includes('Binary search') && a.includes('Year 11') && !a.includes(F.B.head) && !a.includes(F.A.fields[2].label) && /phone book\n {2}dictionary/.test(a), a);
+    const b = filledRequest({ kind: 'B', values: { length: '5' } }, lang);
+    assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[1].label) && !b.includes(F.A.head), b);
+    const pk = packWithRequest({ series: ['academic'], lang, request: a });
+    assert.ok(pk.startsWith(commonBody(lang)) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
+  }
 });
 
 // ---------------------------------------------------------------- 3. id
