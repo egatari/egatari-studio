@@ -11,6 +11,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve, reply } from './worker-protocol.mjs';
+import { sessionFactory, providersFromEnv } from './ort-fallback.mjs';
 import { decodeWav, encodeWav, toMono, resample } from '../kit/core/wav-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -24,11 +25,12 @@ const { IrodoriTTS } = await import(pathToFileURL(path.join(ROOT, 'lab/vendor/ir
 
 const MODELS = { text: 'text_encoder', speaker: 'speaker_encoder', duration: 'duration', dit: 'dit', dac: 'dacvae_decoder', enc: 'dacvae_encoder' };   // lab/tts-engine.mjs の MODELS と同じ
 const folder = fs.existsSync(path.join(modelDir, 'onnx_fp16')) ? 'onnx_fp16' : 'onnx';
-const providers = process.env.EGATARI_ORT_PROVIDERS ? process.env.EGATARI_ORT_PROVIDERS.split(',') : ['cuda', 'cpu'];
+// GPU（CUDA）で作れないセッションは CPU で作り直し、以後は最初から CPU（colab/ort-fallback.mjs）。お知らせは ready の返事に入れ、Python がノートブックに出す
+const factory = sessionFactory({ create: (file, opts) => ort.InferenceSession.create(file, opts), providers: providersFromEnv(process.env.EGATARI_ORT_PROVIDERS), log: (m) => console.error(m) });
 const sessions = {};
 for (const [k, name] of Object.entries(MODELS)) {
-  console.error(`loading ${name} (${providers.join(',')})`);
-  sessions[k] = await ort.InferenceSession.create(path.join(modelDir, folder, `${name}.onnx`), { executionProviders: providers, graphOptimizationLevel: 'all', logSeverityLevel: 3 });
+  console.error(`loading ${name} (${factory.providers.join(',')})`);
+  sessions[k] = await factory.create(path.join(modelDir, folder, `${name}.onnx`), { graphOptimizationLevel: 'all', logSeverityLevel: 3 });
 }
 T.env.allowRemoteModels = false; T.env.allowLocalModels = true; T.env.localModelPath = path.join(modelDir, 'tokenizer') + path.sep;
 const tokenizer = await T.AutoTokenizer.from_pretrained('llmjp_tok');
@@ -44,7 +46,7 @@ const refOf = (voice) => {
   return refs.get(voice);
 };
 
-reply(process.stdout, { ready: true });
+reply(process.stdout, { ready: true, providers: factory.providers, ...(factory.notice ? { notice: factory.notice } : {}) });
 await serve({
   input: process.stdin, output: process.stdout,
   handler: async (req) => {

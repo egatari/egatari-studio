@@ -344,15 +344,60 @@ def dry_run_synth(text: str, voice: str, role: str, lang: str):
     return np.concatenate([lead, body, lead]), sr
 
 
+CUDA_PROVIDER = "CUDAExecutionProvider"
+
+
+def first_line(e) -> str:
+    """例外の文の最初の空でない行（長すぎれば切る）。colab/ort-fallback.mjs の firstLine と同じ。"""
+    for line in str(e).splitlines():
+        if line.strip():
+            return line.strip()[:300]
+    return "(no message)"
+
+
+def cpu_notice(reason: str) -> str:
+    """GPU を使えず CPU にしたときの 1 行（colab/ort-fallback.mjs の cpuNotice と同じ文）。"""
+    return f"GPU（CUDA）を使えないため、CPU で合成します（遅くなります） / GPU (CUDA) could not be used, so the CPU is used and synthesis is slower. 理由 / reason: {reason}"
+
+
+def load_kokoro(model_path: str, voices_path: str, make=None, cpu_session=None, available=None, log=print):
+    """Kokoro を読み込む。GPU（CUDA）で作れなければ CPU で作り直す（ジョブを止めない）。戻り値は (Kokoro, お知らせ or None)。
+    kokoro-onnx は onnxruntime-gpu があると使える実行プロバイダを全部渡す。onnxruntime の Python は CUDA のライブラリが読めないと
+    多くの場合は警告だけ出して CPU で続ける（例外にならない）ので、実際のプロバイダも見て、CUDA があるはずなのに使えていなければ同じ 1 行を出す。
+    make・cpu_session・available は試験用の差し替え口（既定は kokoro_onnx と onnxruntime）。"""
+    if make is None or cpu_session is None or available is None:
+        import onnxruntime as rt
+        from kokoro_onnx import Kokoro
+        make = make or (lambda: Kokoro(model_path, voices_path))
+        cpu_session = cpu_session or (lambda: Kokoro.from_session(rt.InferenceSession(model_path, providers=["CPUExecutionProvider"]), voices_path))
+        available = available if available is not None else rt.get_available_providers()
+    try:
+        k = make()
+    except Exception as e:                      # GPU で作れない：CPU で作り直す（CPU でも駄目なら、その例外がそのまま上がる）
+        if CUDA_PROVIDER not in available:
+            raise
+        notice = cpu_notice(first_line(e))
+        log(notice)
+        return cpu_session(), notice
+    got = k.sess.get_providers() if hasattr(k, "sess") else []
+    if CUDA_PROVIDER in available and CUDA_PROVIDER not in got:
+        notice = cpu_notice(f"onnxruntime could not start {CUDA_PROVIDER} (see its warning above); providers in use: {got}")
+        log(notice)
+        return k, notice
+    return k, None
+
+
 def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None):
-    """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。"""
-    from kokoro_onnx import Kokoro
-    k = Kokoro(model_path, voices_path)
+    """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。
+    GPU を使えなければ CPU で続ける（load_kokoro）。"""
+    k, notice = load_kokoro(model_path, voices_path)
     al = {"bob": "am_michael", "alice": "af_heart", **(aliases or {})}
 
     def synth(text, voice, role, lang):
         samples, sr = k.create(text, voice=al.get(voice, voice), speed=1.0, lang="en-us")
         return samples, sr
+    synth.providers = k.sess.get_providers() if hasattr(k, "sess") else []   # 実際に使う実行プロバイダ（ノートブックが出す）
+    synth.notice = notice
     return synth
 
 
@@ -386,11 +431,17 @@ class IrodoriWorker:
         self._err = open(self._errpath, "wb")
         self._next = 0
         self._closed = False
+        self.providers, self.notice = [], None
         self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, text=True, encoding="utf-8", env=env)
         try:
             msg = self._read(ready_timeout)
             if not msg.get("ready"):
                 raise WorkerError(f"ワーカーの最初の返事が ready ではありません: {msg!r}")
+            # 実際に使う実行プロバイダと、GPU を使えず CPU にしたときのお知らせ（エラーではない。ノートブックの出力にそのまま出す）
+            self.providers = list(msg.get("providers") or [])
+            self.notice = msg.get("notice") or None
+            if self.notice:
+                print(self.notice, flush=True)
         except BaseException:
             self.close()
             raise

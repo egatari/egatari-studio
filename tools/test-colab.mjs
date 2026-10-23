@@ -18,7 +18,8 @@ import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { integratedLoudness, encodeWav, PROCESSING } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { colabZip } from './colab-fixture.mjs';
-import { notebook } from './make-colab-notebook.mjs';
+import { notebook, COLAB_PINS } from './make-colab-notebook.mjs';
+import { sessionFactory, providersFromEnv, cpuNotice, firstLine } from '../colab/ort-fallback.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const tests = [];
@@ -180,7 +181,7 @@ ok('worker protocol: requests are answered in order, one failure does not stop t
   assert.deepEqual(seen, [1, 3]);
 });
 ok('irodori_node.mjs imports no module that reaches parse5 (audio-core, portable, bounded-html) and uses no Node 22-only API', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8');   // 試験：リポジトリ自身のファイル
+  const src = ['colab/irodori_node.mjs', 'colab/ort-fallback.mjs'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');   // 試験：リポジトリ自身のファイル
   assert.ok(!/audio-core|portable\.mjs|bounded-html|parse5/.test(src.replace(/\/\/.*$/gm, '')), 'no parse5 chain');
   assert.ok(!/import\.meta\.(dirname|filename)|Array\.fromAsync|\.toSorted\(|Promise\.withResolvers|\bwith \{/.test(src.replace(/\/\/.*$/gm, '')), 'no newer-only API');
 });
@@ -314,6 +315,129 @@ ok('notebook: the optional reference-voice cell is there, off by default, passes
   assert.ok(!/REF_VOICE_PATH/.test(load.replace(/globals\(\)\.get\("REF_VOICE_PATH"\)/g, '')), 'cell 3 does not reference REF_VOICE_PATH bare (the optional cell may be skipped)');
   assert.ok(/right to use/.test(text) && /使ってよい声/.test(text) && /not uploaded anywhere else/.test(text));
   assert.ok(nb.cells.every((c) => c.cell_type !== 'code' || (c.execution_count === null && c.outputs.length === 0)), 'no outputs or execution counts');
+});
+
+// ---------------------------------------------------------------- GPU（CUDA）が使えないときの CPU への切り替え（2026-10-23 の講習：libcublasLt.so.13）
+const CUDA_ERR = 'OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library\n(libcublasLt.so.13: cannot open shared object file)';
+ok('ort fallback: a CUDA provider failure retries the same session on the CPU, says so once, and later sessions go straight to the CPU', async () => {
+  const tries = [], logs = [];
+  const f = sessionFactory({ providers: providersFromEnv('cuda,cpu'), log: (m) => logs.push(m), create: async (file, o) => { tries.push([file, o.executionProviders.join(',')]); if (o.executionProviders.includes('cuda')) throw new Error(CUDA_ERR); return { file, o }; } });
+  const got = [];
+  for (const n of ['a', 'b', 'c']) got.push(await f.create(n, { graphOptimizationLevel: 'all' }));
+  assert.deepEqual(tries, [['a', 'cuda,cpu'], ['a', 'cpu'], ['b', 'cpu'], ['c', 'cpu']]);
+  assert.deepEqual(f.providers, ['cpu']);
+  assert.equal(logs.length, 1, 'one notice');
+  assert.equal(f.notice, logs[0]);
+  assert.ok(/GPU（CUDA）を使えない/.test(f.notice) && /CPU/.test(f.notice) && /could not be used/.test(f.notice) && /slower/.test(f.notice), 'Japanese and English');
+  assert.ok(f.notice.endsWith('OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library') && !f.notice.includes('\n'), 'one line, with the first line of the reason');
+  assert.equal(got[0].o.graphOptimizationLevel, 'all', 'the other options are kept');
+});
+ok('ort fallback: no notice when CUDA works; a CPU failure is not hidden; an all-CPU list does not retry', async () => {
+  const logs = [];
+  const good = sessionFactory({ providers: ['cuda', 'cpu'], log: (m) => logs.push(m), create: async () => ({}) });
+  await good.create('a'); await good.create('b');
+  assert.deepEqual(good.providers, ['cuda', 'cpu']); assert.equal(good.notice, null); assert.equal(logs.length, 0);
+  const broken = sessionFactory({ providers: ['cuda', 'cpu'], log: (m) => logs.push(m), create: async (f, o) => { throw new Error(o.executionProviders.includes('cuda') ? CUDA_ERR : 'model is broken'); } });
+  await assert.rejects(broken.create('a'), /model is broken/);
+  let n = 0;
+  const cpu = sessionFactory({ providers: providersFromEnv('cpu'), log: (m) => logs.push(m), create: async () => { n++; throw new Error('model is broken'); } });
+  await assert.rejects(cpu.create('a'), /model is broken/);
+  assert.equal(n, 1); assert.equal(cpu.notice, null);
+  assert.deepEqual(providersFromEnv(''), ['cuda', 'cpu']); assert.deepEqual(providersFromEnv(' cuda , cpu '), ['cuda', 'cpu']);
+  assert.equal(firstLine(new Error('\n  first \nsecond')), 'first');
+  assert.ok(cpuNotice('x').endsWith('x'));
+});
+ok('irodori_node.mjs creates its sessions through the fallback and puts the providers and the notice in the ready line', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8').replace(/\/\/.*$/gm, '');
+  assert.ok(/sessionFactory\(/.test(src) && /factory\.create\(/.test(src) && !/InferenceSession\.create\([^)]*executionProviders/.test(src));
+  assert.ok(/ready: true, providers: factory\.providers/.test(src) && /factory\.notice/.test(src));
+});
+ok('python: a CUDA failure in the worker is passed through as one notice line (not an error), and the job continues on the CPU', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-fallback-'));
+  fs.mkdirSync(path.join(dir, 'voices'));
+  fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(await baseJob()));
+  const fake = path.join(ROOT, 'tools/colab-fake-worker.mjs');
+  const py = `
+import json, os, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+d = ${JSON.stringify(dir)}
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cuda,cpu", EGATARI_FAKE_ORT_FAIL="cuda"))
+assert w.providers == ["cpu"], w.providers
+assert w.notice and "libcublasLt" not in w.notice and "could not be used" in w.notice, w.notice
+job = E.validate_job(json.load(open(os.path.join(d, "job.json"), encoding="utf-8")))
+data = E.run_job(job, w, engine_info={"engine": "irodori-colab", "model": "m", "seed": 0})
+assert len(data) > 1000
+w.close()
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cuda,cpu"))
+assert w.providers == ["cuda", "cpu"] and w.notice is None, (w.providers, w.notice)
+w.close()
+try:
+    E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_FAKE_ORT_FAIL="all")); raise SystemExit("no raise")
+except E.WorkerError as e:
+    assert "Failed to load shared library" in str(e), str(e)
+print("DONE")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8', cwd: dir });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  const lines = r.stdout.split('\n').filter(Boolean);
+  assert.equal(lines.filter((l) => l.includes('GPU（CUDA）を使えない')).length, 1, 'the notice is printed once to the notebook output:\n' + r.stdout);
+  assert.ok(lines.at(-1) === 'DONE');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+ok('python: Kokoro falls back to the CPU too (load_kokoro), whether onnxruntime raises or quietly drops CUDA', () => {
+  const py = `
+import sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+class S:
+    def __init__(s, p): s.p = p
+    def get_providers(s): return s.p
+class K:
+    def __init__(s, p): s.sess = S(p)
+logs = []
+AV = ["TensorrtExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
+def boom(): raise RuntimeError("EP Error\\nlibcublasLt.so.13: cannot open shared object file")
+k, n = E.load_kokoro("m", "v", make=boom, cpu_session=lambda: K(["CPUExecutionProvider"]), available=AV, log=logs.append)
+assert k.sess.get_providers() == ["CPUExecutionProvider"] and n and "EP Error" in n and len(logs) == 1, (n, logs)
+k, n = E.load_kokoro("m", "v", make=lambda: K(["CPUExecutionProvider"]), cpu_session=None or (lambda: 1/0), available=AV, log=logs.append)
+assert n and "CUDAExecutionProvider" in n and len(logs) == 2, n
+k, n = E.load_kokoro("m", "v", make=lambda: K(["CUDAExecutionProvider", "CPUExecutionProvider"]), cpu_session=lambda: 1/0, available=AV, log=logs.append)
+assert n is None and len(logs) == 2
+try:
+    E.load_kokoro("m", "v", make=boom, cpu_session=lambda: 1/0, available=["CPUExecutionProvider"], log=logs.append); raise SystemExit("no raise")
+except RuntimeError as e:
+    assert "EP Error" in str(e)
+assert E.cpu_notice("r").endswith("r") and E.first_line(ValueError("\\n a \\nb")) == "a"
+print("ok")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8' });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+ok('python and JS say the same notice', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/egatari_tts.py'), 'utf8');
+  const m = src.match(/return f"(GPU（CUDA）[^"]*)\{reason\}"/);
+  assert.ok(m, 'cpu_notice in egatari_tts.py'); assert.equal(m[1], cpuNotice(''));
+});
+ok('notebook: every install is pinned to COLAB_PINS (npm and pip), and cell 1 prints the environment (Python, Node, GPU/CUDA, CUDA libraries, pins)', () => {
+  const nb = JSON.parse(notebook()), code = nb.cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
+  const text = code.join('\n');
+  const pins = text.match(/^PINS = (\{.*\})/m);
+  assert.ok(pins, 'PINS in the notebook'); assert.deepEqual(JSON.parse(pins[1]), COLAB_PINS);
+  for (const [k, v] of Object.entries(COLAB_PINS)) assert.match(v, /^\d+\.\d+\.\d+$/, `${k} is an exact version`);
+  assert.equal(COLAB_PINS['onnxruntime'], COLAB_PINS['onnxruntime-gpu'], 'the CPU and GPU onnxruntime share one version');
+  assert.ok(/npm i --silent " \+ " "\.join\(f"\{k\}@\{PINS\[k\]\}" for k in \["onnxruntime-node","@huggingface\/transformers"\]\)/.test(text), 'npm uses the pins');
+  assert.ok(/uv pip install [^\n]*f"\{k\}==\{PINS\[k\]\}" for k in \["kokoro-onnx","onnxruntime-gpu","onnxruntime"\]/.test(text), 'pip uses the pins');
+  assert.ok(!/npm i [^\n]*onnxruntime-node @huggingface/.test(text) && !/kokoro-onnx onnxruntime-gpu/.test(text), 'no unpinned install left');
+  const c1 = code.find((c) => c.includes('#@title 1.'));
+  const env = c1.slice(0, c1.indexOf('git", "clone'));
+  for (const re of [/"env: Python", sys\.version/, /"node", "--version"/, /nvidia-smi/, /CUDA Version/, /no nvidia-smi/, /libcublasLt/, /"env: pinned"/]) assert.match(env, re, 'cell 1 prints the environment before the clone and the installs');
+  const c3 = code.find((c) => c.includes('#@title 3.'));
+  assert.ok(/env: onnxruntime-node/.test(c3) && /provider libraries/.test(c3) && /Irodori providers in use/.test(c3) && /Kokoro providers in use/.test(c3));
+  const gen = fs.readFileSync(path.join(ROOT, 'tools/make-colab-notebook.mjs'), 'utf8');
+  assert.ok(/CUDA 13/.test(gen) && /libcublasLt\.so\.13/.test(gen) && /更新の仕方/.test(gen), 'the pin says which CUDA it needs, why it exists and how to update it');
 });
 
 // ---------------------------------------------------------------- 核の dry-run（Python。uv があれば）
