@@ -360,4 +360,12 @@ ok('品質チェック：です・ます の指摘は、どこ（id・見出し�
   assert.match(e.msg, /^スライド 1「丁寧すぎる」（s-desu01）：スライドの字に です・ます がある（「これは例です」）：スライドは常体.*（R-style）$/);
 });
 
+ok('fix request: the ask forbids Canvas, slide-making and file features and wants the two blocks in the chat body (en, ja)', () => {
+  const p = [{ sev: 'error', text: 'x', i: null, code: 'x' }];
+  const en = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'en' });
+  const ja = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'ja' });
+  assert.match(en.text, /Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks/);
+  assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み/);
+});
+
 console.log(`llm: ${n} ok (${work})`);

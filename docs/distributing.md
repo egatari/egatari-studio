@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=20fb37f5663309bf -->
+<!-- i18n: pair=distributing.ja.md sha256=ebe3961df95e89a9 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -11,6 +11,20 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 | Email | “Save the attachment, then open it in your browser.” | Mind the size limit of the mail system (often 20–25 MB; audio makes the file larger). Some school mail filters block or strip `.html` attachments: send a `.zip` of the file, or a Drive link, instead |
 | LMS (Moodle, Canvas, Classroom, …) | “Download the file, then open it.” | Upload it as a file resource and, if the LMS offers it, set the display to download. Shown inside the LMS page, scripts may be blocked and the lesson may not play |
 | Your own web space (a school web server, GitHub Pages, …) | the URL | Opens directly, also on phones and tablets. Any static hosting works; nothing runs on the server |
+
+**Where a single file runs** (checked against the vendors' documentation, 2026-10-23; not tried on every device):
+
+| Place | Does it run? |
+|---|---|
+| Downloaded and opened in a browser on a PC | Runs |
+| Web hosting (a school web server, GitHub Pages, Cloudflare Pages, …) | Runs |
+| Moodle (file resource, “open” or “embed”) | Probably runs; not verified on a real Moodle. A learner's submission may be forced to download |
+| Google Drive and Google Classroom previews | Does not run (the preview shows the file's text) |
+| SharePoint, OneDrive and Teams | Does not run (an HTML file with script is downloaded instead) |
+| The iPhone and iPad Files app | Does not run (Quick Look runs no JavaScript) |
+
+- **Give learners the play-only copy** (`--play-only`), and keep the editable file yourself.
+- **A public URL is visible to anyone who has it.** Web hosting has no sign-in; do not put anything there that only your class should see.
 
 - **Phones and tablets.** The quick preview of a file app (for example the iPhone Files app) may not run the lesson. Open the file in the browser, or give a URL. We have not yet checked every device and route; please tell us what worked for you ([feedback](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml))
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
