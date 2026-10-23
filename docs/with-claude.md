@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=feb6630f76b15592 -->
+<!-- i18n: pair=with-claude.ja.md sha256=43a3550692b0ceed -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)

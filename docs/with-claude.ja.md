@@ -26,7 +26,7 @@ ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
 ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
 ```
 
-Windows では、[README](../README.ja.md#claude-code-で使う) のディレクトリジャンクンクションを使います。
+Windows では、[README](../README.ja.md#claude-code-で使う) のディレクトリジャンクションを使います。
 
 ### Cowork（Claude のデスクトップアプリ）
 
