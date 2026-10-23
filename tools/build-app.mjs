@@ -89,7 +89,9 @@ const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha25
 // 見本の持ち運べる 1 ファイル（dist/examples/。前の組み立ての残りは消してから書く）
 fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
 const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
-const resources = { version, text, b64, lazy, hints, themes, components, yomi, examples };
+// 形式の仕様の写しの版（vendor/egatari-spec/SOURCE.json の snapshot。まだなければ null。「ファイルの情報…」が出す）
+const specSnapshot = (() => { try { const j = JSON.parse(fs.readFileSync(rel('vendor', 'egatari-spec', 'SOURCE.json'), 'utf8')); return j.snapshot === undefined ? null : j.snapshot; } catch { return null; } })();
+const resources = { version, text, b64, lazy, hints, themes, components, yomi, examples, specSnapshot };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 

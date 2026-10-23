@@ -25,7 +25,7 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState } from '../kit/core/portable.mjs';
+import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
@@ -1398,7 +1398,19 @@ async function readInfo() {
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && typeof c.metadata === 'object') m = c.metadata; } catch { m = null; }
   if (!m && S.portable) m = S.portable.index.metadata || null;
   const R = rightsOf(m || {});
-  return { ...R, title: R.title || (S.base ? titleOf(S.base) : '') };
+  // 形式の版（ファイルの version。作業フォルダはこの Studio が書く版）と、作った Studio（ファイルの generator.version。作業フォルダはこの Studio）
+  const ix = S.portable ? S.portable.index : null;
+  const v = ix && ix.version && Number.isInteger(ix.version.major) ? ix.version : FORMAT_VERSION;
+  const gen = ix && ix.generator && typeof ix.generator.version === 'string' ? ix.generator.version : null;
+  return { ...R, title: R.title || (S.base ? titleOf(S.base) : ''), format: T.infoFormat(FORMAT.DISPLAY_NAME, `${v.major}.${Number.isInteger(v.minor) ? v.minor : 0}`, snapshotText(RES.specSnapshot)),
+    studio: S.portable ? (gen ? T.infoMadeWith(gen) : T.infoMadeUnknown) : T.infoThisStudio(RES.version) };
+}
+// 仕様の写しの版：文字列（"WD 2026-10-24"）か {status|stage, date}。なければ null（形式は「Egatari 1.0」だけ）
+function snapshotText(sn) {
+  if (!sn) return null;
+  if (typeof sn === 'string') return sn.trim() || null;
+  if (typeof sn === 'object') { const st = sn.status || sn.stage || '', d = sn.date || ''; return `${st} ${d}`.trim() || null; }
+  return null;
 }
 function infoSection() {
   const R = INFO || {};
@@ -1407,6 +1419,9 @@ function infoSection() {
     el('p', { cls: 'hint', text: T.infoLead }),
     el('dl', { id: 'info-list', cls: 'info-list' }, rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { cls: v ? '' : 'none', text: v || T.infoNone })])),
     el('p', { cls: 'hint', text: S.portable ? T.infoEditFile : T.infoEditFolder }),
+    el('p', { id: 'info-format', text: R.format || '' }),
+    el('p', { id: 'info-studio', text: R.studio || '' }),
+    el('p', { cls: 'hint', id: 'info-player', text: T.infoPlayer }),
   ]);
 }
 async function lessonInfo() {
