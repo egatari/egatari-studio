@@ -294,7 +294,8 @@ def wav_bytes(pcm: np.ndarray) -> bytes:
 
 
 def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) -> bytes:
-    """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。"""
+    """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。
+    engine_info に runtime（runtime_label。版の組と実際のプロバイダ）があれば、どの段階の recipe にも書く（inputHash には入らない）。"""
     job = validate_job(job)
     jr = job["recipe"]
     steps_rec: dict = {}
@@ -320,6 +321,10 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
         }
         if jr.get("textNormalize") == TEXT_NORMALIZE:
             steps_rec[step["key"]]["recipe"]["textNormalize"] = TEXT_NORMALIZE
+        if info.get("runtime"):
+            if not RUNTIME_RE.match(str(info["runtime"])):
+                raise JobError(f"runtime は <版の組>/<プロバイダ> の形です: {info['runtime']!r}")
+            steps_rec[step["key"]]["recipe"]["runtime"] = str(info["runtime"])
         if progress:
             progress(i + 1, len(job["steps"]), step["key"])
     records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),
@@ -345,6 +350,23 @@ def dry_run_synth(text: str, voice: str, role: str, lang: str):
 
 
 CUDA_PROVIDER = "CUDAExecutionProvider"
+RUNTIME_RE = re.compile(r"^[A-Za-z0-9._-]{1,32}/[A-Za-z0-9._?-]{1,32}$")
+
+
+def provider_name(providers) -> str:
+    """onnxruntime の Python のセッションが実際に使うプロバイダ（get_providers() の並び）から、記録に書く短い名前（cuda・tensorrt・cpu など）。"""
+    for p in providers or []:
+        if p != "CPUExecutionProvider":
+            return p.replace("ExecutionProvider", "").lower() or "unknown"
+    return "cpu"
+
+
+def runtime_label(pin_set: str | None, provider: str | None) -> str:
+    """recipe.runtime の値：<版の組>/<実際のプロバイダ>（例 cuda12/cuda、cuda13/cpu。版の組がわからなければ none）。"""
+    label = f"{pin_set or 'none'}/{provider or 'unknown'}"
+    if not RUNTIME_RE.match(label):
+        raise ValueError(f"bad runtime label: {label!r}")
+    return label
 
 
 def first_line(e) -> str:
@@ -397,6 +419,7 @@ def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None)
         samples, sr = k.create(text, voice=al.get(voice, voice), speed=1.0, lang="en-us")
         return samples, sr
     synth.providers = k.sess.get_providers() if hasattr(k, "sess") else []   # 実際に使う実行プロバイダ（ノートブックが出す）
+    synth.provider = provider_name(synth.providers) if hasattr(k, "sess") else "unknown"
     synth.notice = notice
     return synth
 
@@ -431,7 +454,7 @@ class IrodoriWorker:
         self._err = open(self._errpath, "wb")
         self._next = 0
         self._closed = False
-        self.providers, self.notice = [], None
+        self.providers, self.provider, self.notice = [], "unknown", None
         self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, text=True, encoding="utf-8", env=env)
         try:
             msg = self._read(ready_timeout)
@@ -439,6 +462,7 @@ class IrodoriWorker:
                 raise WorkerError(f"ワーカーの最初の返事が ready ではありません: {msg!r}")
             # 実際に使う実行プロバイダと、GPU を使えず CPU にしたときのお知らせ（エラーではない。ノートブックの出力にそのまま出す）
             self.providers = list(msg.get("providers") or [])
+            self.provider = str(msg.get("provider") or "unknown")   # 実際に使っている実行プロバイダ（recipe.runtime に書く）
             self.notice = msg.get("notice") or None
             if self.notice:
                 print(self.notice, flush=True)

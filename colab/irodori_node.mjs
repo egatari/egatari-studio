@@ -11,7 +11,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve, reply } from './worker-protocol.mjs';
-import { sessionFactory, providersFromEnv } from './ort-fallback.mjs';
+import { sessionFactory, providersFromEnv, actualProvider, supportedBackends } from './ort-fallback.mjs';
 import { decodeWav, encodeWav, toMono, resample } from '../kit/core/wav-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -46,7 +46,7 @@ const refOf = (voice) => {
   return refs.get(voice);
 };
 
-reply(process.stdout, { ready: true, providers: factory.providers, ...(factory.notice ? { notice: factory.notice } : {}) });
+reply(process.stdout, { ready: true, providers: factory.providers, provider: actualProvider(factory, supportedBackends(ort)), ...(factory.notice ? { notice: factory.notice } : {}) });
 await serve({
   input: process.stdin, output: process.stdout,
   handler: async (req) => {

@@ -31,6 +31,19 @@ export function sessionFactory({ create, providers, log = () => {} }) {
   return f;
 }
 
+// 実際に使っている実行プロバイダ（記録の recipe.runtime に書く。'cuda'・'cpu' など 1 つ）。factory.providers は頼んだ並びで、
+// onnxruntime-node は自分の版にないプロバイダ（linux/arm64 の cuda など）を黙って飛ばすことがあるので、それだけでは決めない。
+// supported：ort.listSupportedBackends() の名前（わからなければ null。そのときは 'cuda?' のように ? を付ける）
+export function actualProvider(factory, supported) {
+  const first = factory.providers.find((p) => p !== 'cpu');
+  if (!first) return 'cpu';
+  if (!Array.isArray(supported)) return first + '?';
+  return supported.includes(first) ? first : 'cpu';
+}
+export function supportedBackends(ort) {
+  try { return typeof ort.listSupportedBackends === 'function' ? ort.listSupportedBackends().map((b) => String(b.name)) : null; } catch { return null; }
+}
+
 // EGATARI_ORT_PROVIDERS（"cuda,cpu" など）を読む。空なら既定（GPU があれば使う）
 export const providersFromEnv = (v) => {
   const list = String(v || '').split(',').map((s) => s.trim()).filter(Boolean);

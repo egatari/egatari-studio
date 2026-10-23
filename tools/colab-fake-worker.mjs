@@ -4,7 +4,7 @@
 // 2026-10-23 の Colab と同じ文で失敗する（CPU への切り替えとお知らせを試す）。EGATARI_FAKE_ORT_FAIL=all なら CPU でも失敗する
 import fs from 'node:fs';
 import { serve, reply } from '../colab/worker-protocol.mjs';
-import { sessionFactory, providersFromEnv } from '../colab/ort-fallback.mjs';
+import { sessionFactory, providersFromEnv, actualProvider } from '../colab/ort-fallback.mjs';
 import { encodeWav } from '../kit/core/wav-core.mjs';
 
 const fail = process.env.EGATARI_FAKE_ORT_FAIL || '';
@@ -22,7 +22,7 @@ const factory = sessionFactory({
 });
 for (const name of ['text_encoder', 'speaker_encoder', 'duration', 'dit', 'dacvae_decoder', 'dacvae_encoder']) await factory.create(name + '.onnx', {});
 console.error('fake worker: loaded once; session tries: ' + tries.join(' | '));
-reply(process.stdout, { ready: true, providers: factory.providers, ...(factory.notice ? { notice: factory.notice } : {}) });
+reply(process.stdout, { ready: true, providers: factory.providers, provider: actualProvider(factory, ['cpu', 'cuda']), ...(factory.notice ? { notice: factory.notice } : {}) });
 await serve({
   input: process.stdin, output: process.stdout,
   handler: async (req) => {
