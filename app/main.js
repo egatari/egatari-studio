@@ -15,6 +15,7 @@ import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
 import { createSlidesPanel } from './slides-panel.js';
+import { createThemeSwitch } from './theme-switch.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
@@ -289,6 +290,7 @@ function updateSaveLoc() {
 // 持ち運べる 1 ファイルの知らせ（その文書のコード・読むだけ）。プレビューの外（エディタの画面）に出す
 function showNotice() {
   const P = S.portable, lines = [];
+  themeItem();   // 段 A だけ・読むだけが替わったとき（組み直した後など）
   if (P && P.extended) lines.push(['notice-extended', T.extendedNotice]);
   if (P && P.mislabelled) lines.push(['notice-mislabel', T.codeMislabelled]);
   if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
@@ -681,7 +683,8 @@ async function themeDialog() {
   else if (v === 'load') await loadThemeDialog();
   else if (v === 'allow') await allowThemeFolder();
 }
-// 新規作成の ② テーマの選択肢：同梱のテーマ（見せる名前）と、読む許可のある自分のテーマのフォルダ・zip のテーマ（theme.json の title・name、なければフォルダの名前）
+// テーマの一覧（新規作成の ③ と「テーマを変更…」が同じものを使う）：同梱のテーマ（見せる名前）と、組み立てに渡す自分のテーマ（読む許可のあるテーマのフォルダと
+// このブラウザに保存したテーマ。userThemesWs。theme.json の title・name、なければフォルダの名前。user: true）
 async function themeOptions() {
   const out = RES.themes.map((t) => ({ value: t, label: (T.themeNames && T.themeNames[t]) || t }));
   const w = userThemesWs();
@@ -868,6 +871,20 @@ const slidesPanel = createSlidesPanel({
   aiInsert: (after) => llm.insertWithAi(after),
   onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
+// テーマを変更…（スライド ▾。app/theme-switch.js）：スライド一覧と同じ流れ（apply）で原稿の data-theme と egatari.json の themes を書き、組み直す。
+// 口述原稿・音声・秒数だけのファイル（組み直せない）と読むだけのファイルでは、押せない形で残し、わけを title と知らせに出す
+const themeSwitchWhy = () => (S.portable && S.portable.readOnly ? T.readOnlyNoEdit : S.portable && S.portable.tierAOnly ? T.themeSwitchNoRebuild : null);
+const themeSwitch = createThemeSwitch({
+  T, el, ask, close: (id) => $('dlg').close(id), toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt() || 0,
+  ws: () => S.ws, deckFile: () => S.deckFile, portable: () => S.portable,
+  themeOptions: () => themeOptions(), loadOtherTheme: () => loadThemeDialog(), userThemes: () => userThemesWs(),
+  bundled: (p) => (p in RES.text ? RES.text[p] : null), why: themeSwitchWhy,
+});
+function themeItem() {
+  const b = $('b-theme-switch'), w = themeSwitchWhy();
+  b.setAttribute('aria-disabled', w ? 'true' : 'false');
+  b.title = w || '';
+}
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
 { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }
@@ -1686,6 +1703,7 @@ $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
 $('b-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.removeAt(i); };
 $('b-revise-cmd').onclick = () => llm.revise();
+$('b-theme-switch').onclick = () => themeSwitch.open().catch((e) => toast(String(e.message || e), true));
 $('b-videomode').onclick = () => setPreviewMode(S.previewMode === 'video' ? 'talk' : 'video');
 $('b-lecturemode').onclick = () => setPreviewMode(S.previewMode === 'lecture' ? 'talk' : 'lecture');
 $('b-comments').onclick = () => ui.toggleComments();

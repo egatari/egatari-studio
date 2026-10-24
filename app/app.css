@@ -152,6 +152,11 @@ main{flex:1;min-height:0;display:flex}
 #notice .theme-changes{margin:2px 0 2px 18px;padding:0}
 #notice .theme-changes li{margin:1px 0}
 #notice .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px;vertical-align:-.2em}
+#theme-switch-list{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+#theme-switch-list .theme-opt{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer}
+#theme-switch-list .theme-opt:hover{background:var(--bg)}
+#theme-switch-list .theme-group{margin:6px 0 0 6px}
+#theme-switch-list .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px}
 #notice-theme-pinned button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
 #notice-theme button,#notice-exported button,#panel-body .theme-warn button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
 #panel-body .theme-warn{margin-top:6px}
