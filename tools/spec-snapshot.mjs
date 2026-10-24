@@ -15,6 +15,6 @@ const snap = src.snapshot;
 if (process.argv.includes('--check')) {
   if (snap === undefined) warn(`${FORMAT.VENDOR_DIR}/SOURCE.json has no "snapshot" field; sync again with tools/sync-spec.mjs`);
   else if (snap === null) warn(`${FORMAT.VENDOR_DIR} is spec commit ${String(src.commit).slice(0, 7)}, not a dated snapshot (wd-*). Fine on a branch; before an rc, sync to the latest wd-* tag (RELEASING.md step 1)`);
-  else if (!/^wd-\d{4}-\d{2}-\d{2}$/.test(snap)) warn(`snapshot "${snap}" is not of the form wd-YYYY-MM-DD`);
+  else if (!/^wd-\d{4}-\d{2}-\d{2}[a-z]?$/.test(snap)) warn(`snapshot "${snap}" is not of the form wd-YYYY-MM-DD (optionally followed by a letter)`);
   else console.log(`ok   spec snapshot ${snap} (${String(src.commit).slice(0, 7)})`);
 } else console.log(snap ?? 'null');

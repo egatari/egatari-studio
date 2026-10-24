@@ -29,7 +29,7 @@ for (const f of files) {
   fs.writeFileSync(dst, git('show', `${sha}:${f}`));   // バイトのまま（改行も変えない）
 }
 // 日付の付いた版（annotated tag wd-YYYY-MM-DD）に ちょうど当たるときだけ snapshot に入れる。違えば null
-const tags = git('tag', '--points-at', sha).toString().split('\n').filter((t) => /^wd-\d{4}-\d{2}-\d{2}$/.test(t)).sort();
+const tags = git('tag', '--points-at', sha).toString().split('\n').filter((t) => /^wd-\d{4}-\d{2}-\d{2}[a-z]?$/.test(t)).sort();
 const snapshot = tags.length ? tags[tags.length - 1] : null;
 if (!snapshot) console.warn(`warning: ${sha.slice(0, 7)} is not a wd-* snapshot tag; SOURCE.json gets snapshot: null`);
 fs.writeFileSync(path.join(OUT, 'SOURCE.json'), JSON.stringify({
