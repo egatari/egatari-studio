@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=10e4894405274e82 -->
+<!-- i18n: pair=contract.ja.md sha256=3ed3a9e2e77abe41 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -26,7 +26,7 @@ The "position" during a talk is given by three values: (slide i, step k, seconds
 | Mode | Elements of later steps | Elements of the current step |
 |---|---|---|
 | talk | hidden | appear (fade and move up) |
-| lecture | shown faintly | highlighted (`.cur`) |
+| lecture | shown faintly (`--lecture-dim`) | shown at full strength, no mark |
 | video | same as talk; advances automatically along the timeline | |
 
 ## 3. Components (Web Components)
@@ -47,7 +47,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - The component's steps start at the slide step `data-from` (default 1). When the slide is at step K, the component's step is `k = clamp(K - from + 1, 0, steps)`. Outside the component's range of steps it is called with t = Infinity
 - The runtime calls `mount` only after the stage is laid out, so a component may read its own size (`clientWidth`, `getBoundingClientRect`) in `mount`. When the deck starts while it is not laid out (inside a `display:none` iframe, or a tab shown later), the runtime waits until the stage has a size and the fonts that the layout started loading have loaded, then mounts and draws the opening position (and any `DECK.seek` asked for meanwhile); `DECK.ready` and `deck:ready` come only after that. A deck that is laid out at start mounts at once, as before
 - `render` must give **the same screen for the same (k, t)**. Do not rely on state from the previous call (going back, jumping and video export change the order of calls)
-- `ctx = {mode, slide, instant, deck, reset?}` (`reset`: see the next item). The component can choose, for example, to show the final state and highlight the current step when `ctx.mode === "lecture"`
+- `ctx = {mode, slide, instant, deck, reset?}` (`reset`: see the next item). The component can choose, for example, to show the final state (the runtime itself marks nothing as current) when `ctx.mode === "lecture"`
 - A component may let the viewer change it by hand during a step: open an overlay on a click (the conjugation card of `m-kobun`), rotate a model, drag a value. That state is not part of (i, k, t) (format spec §8.4): it must never open in `?mode=video`, not print, take nothing from the network, and show text only, and **entering a step, including the same one again, returns the component to what `render(k, t)` draws**. The component drops the state when `render` is called with a different k than the one it was changed at, or with `ctx.reset === true`. The runtime marks a component touched when a `pointerdown`, `keydown`, `wheel`, `input` or `change` happens inside it, and on the next step entry (any `DECK.seek` or `DECK.go`, a link, the presenter's commands, printing; not the later frames of the step's own real-time playback) first draws it at another step (t = Infinity) and then at (k, t) with `ctx.reset = true`. Components the viewer has not touched are drawn once, as before, so video frames and the cost of stepping do not change. Video, print and the presenter's view therefore always show the declared rendering (the presenter's view is a separate document that receives only positions)
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
 - Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the component and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the deck is treated as having code of its own)

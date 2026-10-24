@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=4909d77b27f7425c -->
+<!-- i18n: pair=README.ja.md sha256=11f935a91a03b164 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -27,7 +27,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
-- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, the current step highlighted), video (`?mode=video`)
+- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, later steps dimmed), video (`?mode=video`)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Quality control**: the standards (R-fit, R-steps, …) say what a deck must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
