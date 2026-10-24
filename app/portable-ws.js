@@ -1,5 +1,5 @@
 // 持ち運べる 1 ファイルから取り出した原稿の作業場所と、その確かめ（Worker もブラウザの API も使わない。Node の単体の試験でも動く）。説明は portable.js
-import { parseJsonStrict, manifestFromAudio, excludedReason, folderConfig } from '../kit/core/portable.mjs';
+import { manifestFromAudio, excludedReason, folderConfig } from '../kit/core/portable.mjs';
 import { audioState } from '../kit/core/audio-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -38,7 +38,7 @@ export function workspaceFromPortable(name, r) {
   if (isObj(audio) && Object.keys(audio).length) files.set('audio/manifest.json', enc.encode(manifestFromAudio(audio)));
   // 設定のファイル：docId（保存しても同じ文書であるように）と、索引の権利の表示（作り直しで消えないように）と添付の一覧（§3.8。展開と同じ。kit/core/portable.mjs の folderConfig）
   const CFG = FORMAT.CONFIG_FILE;
-  const text = folderConfig(r.index, files.has(CFG) ? parseJsonStrict(dec.decode(files.get(CFG))) : null);
+  const text = folderConfig(r.index, files.has(CFG) ? dec.decode(files.get(CFG)) : null);
   if (text !== null) files.set(CFG, enc.encode(text));
   // コメント（AI へのメモ）・控えなど、保存するファイルに入らないものは「保存していない変更」にしない
   return memoryWorkspace(name, files, { content: (rel) => rel === 'audio/manifest.json' || !excludedReason(rel) });

@@ -5,7 +5,7 @@
 //   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
-// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*・
+// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
@@ -14,10 +14,12 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
+import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
-import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
+import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
+import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -46,7 +48,7 @@ function addTree(virtDir, dir, filter = () => true) {
 // kit の実行系（.js .css。Node の .mjs は入れない）
 for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, rel('kit', f));
 // 実行系に入れる kit/core の ES モジュール（build-core の RUNTIME_MODULES。classicModule が DECK.PositionStore などにする。組み立てが字として読む）
-for (const f of Object.keys(RUNTIME_MODULES)) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
+for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
 // 部品：部品庫の写し vendor/components/<名前>/<版>/index.js（取り込んだすべての版）と components.lock.json（tools/vendor-components.mjs）
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
@@ -54,9 +56,13 @@ for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 const themes = [];
 for (const d of fs.readdirSync(rel('themes'), { withFileTypes: true })) {
   if (!d.isDirectory() || !fs.existsSync(rel('themes', d.name, 'tokens.css'))) continue;
-  themes.push(d.name); addTree('/repo/themes/' + d.name, rel('themes', d.name));
+  themes.push(d.name); addTree('/repo/themes/' + d.name, rel('themes', d.name), (f) => !excludedFromThemeHash(path.relative(rel('themes', d.name), f)));
 }
 themes.sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)));
+// 同梱のテーマの版の固定（themes.lock.json）と前の版の写し（vendor/themes/<名前>/<版>/。教材が記録した版で組み直す。kit/core/themes-lock.mjs）
+if (fs.existsSync(rel('themes.lock.json'))) add('/repo/themes.lock.json', rel('themes.lock.json'));
+// 説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）はテーマの一部でないので入れない（kit/core/themes-lock.mjs の excludedFromThemeHash）
+if (fs.existsSync(rel('vendor', 'themes'))) addTree('/repo/vendor/themes', rel('vendor', 'themes'), (f) => !excludedFromThemeHash(path.relative(rel('vendor', 'themes'), f).split(path.sep).slice(2).join('/')));
 // KaTeX：CSS・実行時の JS（SVG の中の式）・字（woff2 だけ）
 const kdir = path.dirname(require.resolve('katex'));
 add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css'));
@@ -89,7 +95,9 @@ const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha25
 // 見本の持ち運べる 1 ファイル（dist/examples/。前の組み立ての残りは消してから書く）
 fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
 const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
-const resources = { version, text, b64, lazy, hints, themes, components, yomi, examples };
+// 従う仕様の日付の版（vendor/egatari-spec/SOURCE.json の snapshot。日付の付いた版でなければ null）
+const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FORMAT.VENDOR_DIR.split('/'), 'SOURCE.json'), 'utf8')).snapshot || null; } catch { return null; } })();
+const resources = { version, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 

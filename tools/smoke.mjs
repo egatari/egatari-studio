@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 const [file, outdir = path.join(os.tmpdir(), 'motion-smoke')] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/smoke.mjs <built.html> [outdir]'); process.exit(2); }
 fs.mkdirSync(outdir, { recursive: true });
@@ -32,7 +32,7 @@ const shots = [[0,0,1e9],[1,1,0.2],[2,3,1e9],[4,1,0.6],[4,3,1e9],[3,2,1e9]]
 for (const [i,k,t] of shots) {
   await p.evaluate(([i,k,t]) => DECK.seek(i,k,t>1e8?Infinity:t, i-1), [i,k,t]);
   const f = `${outdir}/s${i}_${k}_${t>1e8?'end':t}.png`;
-  await p.screenshot({ path: f });
+  await stableCapture(p, { path: f });
   ok(fs.statSync(f).size > 5000, `画面 s${i} k${k} t=${t>1e8?'end':t} を撮れた`);
 }
 // 移動の確認：キーで送ると位置が進む
@@ -47,7 +47,7 @@ await p.goto(fileUrl(file) + `?mode=lecture#${li + 1}`);
 await p.waitForFunction(() => window.DECK && DECK.ready);
 ok(await p.evaluate(() => DECK.mode) === 'lecture', '?mode=lecture で授業モード');
 await p.evaluate((i) => DECK.seek(i, Math.min(2, DECK.slides[i]._max), Infinity), li);
-await p.screenshot({ path: `${outdir}/lecture_${li}_2.png` });
+await stableCapture(p, { path: `${outdir}/lecture_${li}_2.png` });
 await p.waitForTimeout(100);
 ok(errs.length === 0, 'コンソールのエラー・警告なし' + (errs.length ? '：' + errs.join(' | ') : ''));
 await b.close();

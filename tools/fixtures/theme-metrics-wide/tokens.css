@@ -1,0 +1,3 @@
+/* 試験用のテーマ（tools/test-theme-metrics.mjs）：本文の欄を左右 96px にし、結論の行を 540px に上げる。theme.json の metrics がそれを宣言する */
+.body{left:96px;right:96px;bottom:190px}
+.concl{top:540px}

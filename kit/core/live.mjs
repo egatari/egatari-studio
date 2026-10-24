@@ -1,7 +1,7 @@
 // 授業の部屋（拡張 live。format spec の extensions/live.md）を、再生専用の派生（§3.7）に付ける書き手の側。Node と編集アプリが共有する
 // （node: の読み込み・fs を使わない。再生器のスクリプトの字は呼ぶ側が渡す：Node は kit/build.mjs、編集アプリは tools/build-app.mjs が同梱したもの）
 //
-//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生：CSP の <meta>（<head> の開始タグの直後。どのスクリプトよりも前）・
+//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生（live.sourceSha256 があれば拡張のブロックに入れる：質問を教材の版に結び付ける）：CSP の <meta>（<head> の開始タグの直後。どのスクリプトよりも前）・
 //                                          拡張のブロック（#LIVE_BLOCK_ID）・再生器（kit/live.js）。live は鍵を含む完全なもの（validate {key:true}）
 //   liveCsp(endpoint)                      派生の CSP（connect-src は endpoint の https: と wss: だけ）
 //   liveRuntime(policySrc, clientSrc)      再生器の <script>（kit/core/live-policy.mjs を DECK.LivePolicy にして、kit/live.js を続ける）
@@ -14,6 +14,12 @@
 //                                          （スライドの順）。番号は 1 から。見出しは約 24 字で切り、なければ鍵。* は「教材全体」。スライドが見つからなければ stepFallback
 //   stepFallback(stepKey, lang)            label のない活動の表示：「s-xxx · 段階 1」（<slide>:<k> の k が数なら k + 1）。* は「教材全体」
 //   stepText(stepKey, label, lang)         表示する字：label があればそれ、なければ stepFallback
+//
+// エディタからの一方向の設定（format spec の extensions/live.md §4、egatari/live の PROTOCOL.md §2.1）。どれも要求を出さない（乱数は crypto.getRandomValues、ハッシュは crypto.subtle）
+//   newLiveSetup(rand?)                    → Promise<{setup, room, key}>：setup は 32 バイトの乱数（base64url 43 字）、room と key はそこから SHA-256 で導く
+//   liveSetupIds(setup)                    → Promise<{room, key}>：導き方（サービスも同じ計算で確かめる。教材ファイルには setup が入らないので、ファイルだけでは部屋を作れない）
+//   liveSetupString(live)                  {endpoint, room, key, setup, window, activities} → ホストのページに 1 回貼る 1 本の文字列（FORMAT.LIVE_SETUP_PREFIX + base64url(JSON)）
+//   parseLiveSetupString(text)             その逆（空白・改行は無視）。形が違えば Error（message は 'prefix' | 'decode' | 'shape'）
 //
 // 部屋を付けない派生には、どれも触れない（今と同じバイト）
 import { parse } from 'parse5';
@@ -78,7 +84,9 @@ export function addLive(html, live, runtime, opts = {}) {
   const m = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
   if (!m || m.index < at) throw new Error('live: no deck-meta');
   const ix = m.index + m[0].length;
-  const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities };
+  // sourceSha256（あれば）：教材の版。再生専用の派生の deck-meta からは消える（format spec §3.7）ので、質問を教材のその版に結び付けるためにここに入れる（拡張 live §1）
+  const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities,
+    ...(typeof live.sourceSha256 === 'string' ? { sourceSha256: live.sourceSha256 } : {}) };
   const block = '\n' + jsonScript(LIVE_BLOCK_ID, { [LIVE_EXT]: data }) + '\n' + runtime;
   return text.slice(0, at) + meta + text.slice(at, ix) + block + text.slice(ix);
 }
@@ -94,6 +102,67 @@ export function parseRoomBlock(input, opts = {}) {
   const errs = (opts.devLoopback ? LP_DEV : LP).validate({ ...out, activities: out.activities || {} }, { key: true });
   if (errs.length) { const e = new Error('invalid'); e.details = errs; throw e; }
   return out;
+}
+
+// ---------------------------------------------------------------- 一方向の設定（PROTOCOL.md §2.1）
+const B32 = 'abcdefghijklmnopqrstuvwxyz234567';
+const RE_SETUP = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
+function b64url(bytes) {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromB64url(s) {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+// 5 バイト → base32 8 字（RFC 4648 の字、小文字）
+function b32of5(b) {
+  let s = '', bits = 0, acc = 0;
+  for (const x of b.slice(0, 5)) {
+    acc = (acc << 8) | x; bits += 8;
+    while (bits >= 5) { bits -= 5; s += B32[(acc >> bits) & 31]; }
+    acc &= (1 << bits) - 1;
+  }
+  return s;
+}
+async function sha256(text) {
+  return new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+}
+export async function liveSetupIds(setup) {
+  if (typeof setup !== 'string' || !RE_SETUP.test(setup)) throw new Error('live: setup must be 43 base64url characters (32 random bytes)');
+  const room = 'r-' + b32of5(await sha256(`${FORMAT.NAME}-live/v1/room:` + setup));
+  const key = b64url((await sha256(`${FORMAT.NAME}-live/v1/key:` + setup)).slice(0, 16));
+  return { room, key };
+}
+export async function newLiveSetup(rand = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n))) {
+  const bytes = rand(32);
+  if (!(bytes instanceof Uint8Array) || bytes.length !== 32) throw new Error('live: the random source gave no 32 bytes');
+  const setup = b64url(bytes);
+  return { setup, ...(await liveSetupIds(setup)) };
+}
+const SETUP_MEMBERS = ['v', 'endpoint', 'room', 'key', 'setup', 'window', 'activities'];
+export function liveSetupString(live) {
+  const L = isObj(live) ? live : {};
+  if (typeof L.setup !== 'string' || !RE_SETUP.test(L.setup)) throw new Error('live: no setup secret');
+  const data = { v: 1, endpoint: L.endpoint, room: L.room, key: L.key, setup: L.setup,
+    window: isObj(L.window) ? { from: L.window.from, to: L.window.to } : L.window, activities: isObj(L.activities) ? L.activities : {} };
+  return FORMAT.LIVE_SETUP_PREFIX + b64url(new TextEncoder().encode(JSON.stringify(data)));
+}
+export function parseLiveSetupString(text) {
+  const s = String(text || '').replace(/\s+/g, '');
+  const at = s.indexOf(FORMAT.LIVE_SETUP_PREFIX);
+  if (at < 0) throw new Error('prefix');
+  const body = s.slice(at + FORMAT.LIVE_SETUP_PREFIX.length);
+  let o;
+  try {
+    if (!/^[A-Za-z0-9_-]+$/.test(body)) throw new Error('decode');
+    o = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(fromB64url(body)));
+  } catch { throw new Error('decode'); }
+  if (!isObj(o) || o.v !== 1 || Object.keys(o).some((k) => !SETUP_MEMBERS.includes(k)) || SETUP_MEMBERS.some((k) => !own(o, k)) || !RE_SETUP.test(String(o.setup))) throw new Error('shape');
+  return o;
 }
 
 export function lessonLive(live) {

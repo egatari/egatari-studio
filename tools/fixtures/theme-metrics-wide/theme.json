@@ -1,0 +1,9 @@
+{
+  "name": "theme-metrics-wide",
+  "extends": "default",
+  "metrics": {
+    "v": 1,
+    "body": { "left": 96, "right": 96 },
+    "concl": { "top": 540 }
+  }
+}

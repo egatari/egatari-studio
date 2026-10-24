@@ -312,7 +312,7 @@ try {
   await deckKey('d');
   ok(await until(async () => (await UI()).modeText === '発表の道具：ペン'), 'mode indicator: 発表の道具：ペン while the pen is on');
   await deckKey('x');
-  ok(await until(async () => (await UI()).modeText === '発表の道具：レーザー'), 'mode indicator: 発表の道具：レーザー');
+  ok(await until(async () => (await UI()).modeText === '発表の道具：レーザーポインター'), 'mode indicator: 発表の道具：レーザーポインター');
   await deckKey('Escape');
   ok(await until(async () => (await UI()).modeText === '表示'), 'mode indicator: back to 表示 after Esc');
 } catch (e) {

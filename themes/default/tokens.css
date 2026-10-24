@@ -3,7 +3,8 @@
    部品とレイアウトは意味で名付けた変数（--term, --emph, --muted …）だけを参照する */
 :root{
   --base: #1d4f91;                 /* 基調色。テーマごとにこれを替える */
-  --emph-hue: 27;                  /* 結論・問題の色相（赤）。補色にしたいテーマは calc で上書きする */
+  /* --emph-hue（結論・問題の色相）：既定では宣言しない。テーマが宣言すると --emph は oklch(0.52 0.21 <色相>) から導く
+     （下の @supports。kokugo は 38）。宣言しなければ --emph は下の固定の値 */
 
   /* 導かれる色。ここでは古いブラウザ向けの固定の値（既定の --base #1d4f91 から計算した値）を置き、
      下の @supports で基調色から導く式に置き換える（カスタムプロパティは後の宣言が常に勝つので、
@@ -19,12 +20,12 @@
   --bg:      #ffffff;
   --title:   var(--base);                       /* 古いブラウザでは基調色そのもの */
   --term:    var(--base);                       /* 用語・問い・補足 */
-  --emph:    #c50516;                           /* 結論・問題・目標（下の @supports で --emph-hue から導く） */
-  --muted:   #6e6e6e;                           /* 既知の結果・比較対象 */
+  --emph:    var(--emph-from-hue, #BE3012);     /* 結論・問題・目標。朱寄りの赤（白地 5.8:1。1 型色覚の模擬でも墨と分かれる。1.1.0） */
+  --muted:   #5C5853;                           /* 既知の結果・比較対象。温かい灰（白地 7.1:1。明るい教室の投影でも読める。1.1.0） */
   --line:    #cccccc;
   --rule:    var(--base);
   --term-tint: var(--base-wash);
-  --emph-tint: #fde6e3;
+  --emph-tint: #fbe7e3;
 
   /* 図の系列の色（順に使う） */
   --series-1: var(--term);
@@ -44,8 +45,9 @@
 }
 /* 対応しているブラウザでは基調色から導く（Chrome/Edge 119+、Firefox 128+、Safari 18+）。
    テーマの tokens.css はこの後に読まれるので、テーマが上書きした値はそのまま勝つ */
+/* --emph-hue を宣言したテーマだけ：--emph-hue がなければ --emph-from-hue は無効になり、--emph は固定の値 #BE3012 になる */
 @supports (color: oklch(0.5 0.1 30)){
-  :root{ --emph: oklch(0.52 0.21 var(--emph-hue)); }
+  :root{ --emph-from-hue: oklch(0.52 0.21 var(--emph-hue)); }
 }
 @supports (color: color-mix(in oklch, red 10%, white)){
   :root{

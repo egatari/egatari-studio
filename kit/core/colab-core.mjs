@@ -17,17 +17,17 @@ import { readZip, ZipError } from './zip-read.mjs';
 
 // 確かめた範囲の記し（ノートブックの最初のセル・それを案内する docs・エディタの「Colab で音声を作る」の説明に出す）。1 か所だけに書く。
 // 確かめる範囲が変わったら（Kokoro・CPU を通したなど）ここの文を直し、`npm run gen` と docs の <!-- colab-verified --> の行を揃える
-// （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）
+// （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）。固定した版（tools/make-colab-notebook.mjs の COLAB_PINS）での GPU は 2026-10-24 に確認した。
 export const COLAB_VERIFIED = Object.freeze({
-  ja: '確認済み：2026-10-21、Irodori、Colab の T4 GPU（作者の環境で 1 回）。Kokoro と CPU はまだ',
-  en: "Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet.",
+  ja: '確認済み：2026-10-23、CPU（講習で、Irodori）。GPU：2026-10-24 に Colab の T4 で、固定した版（cuda13 の組）で確認した（23 ステップを 42 秒）。Kokoro：2026-10-24 に T4 で cuda13 の組で確認した（59 ステップを 30 秒）',
+  en: "Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s).",
 });
 export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-verified --> を付けた行にする
 
 export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v: 1 });
 export const COLAB = Object.freeze({
   repo: 'egatari/egatari-studio', notebook: 'colab/egatari-tts.ipynb',
-  ref: 'v0.4.5',   // バッジの URL は版のタグに固定する（リリースの手順で替える。RELEASING.md）
+  ref: 'v0.4.8',   // バッジの URL は版のタグに固定する（リリースの手順で替える。RELEASING.md）
   pause: 0.35,
   models: Object.freeze({ irodori: 'irodori-tts-500m-v3', kokoro: 'kokoro-82m-v1.0' }),
   // 後処理の版（records の recipe.processing は PROCESSING に '+colab<ノートブックの版>' を付けたもの）：ノートブック（colab/egatari_tts.py）の後処理は audio-core.mjs と同じ数。数を変えたら名前も変える
@@ -45,13 +45,17 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const KEY = /^[^\s:]{1,120}:[^\s:]{1,120}$/;
 const VOICE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const FILE = /^audio\/[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.wav$/;
+// recipe.runtime：ノートブックが書く「<版の組>/<実際の実行プロバイダ>」（cuda12/cuda・cuda13/cpu など。colab/egatari_tts.py の runtime_label）。
+// どの環境で作った音かの記録で、inputHash には入らない（版の組や GPU/CPU で音は少し違う）。形の合わないものは落とす（取り込みは止めない）
+const RUNTIME = /^[A-Za-z0-9._-]{1,32}\/[A-Za-z0-9._?-]{1,32}$/;
 
 // {cue}/{mark} で区切った部分の数から、cue の数（ターンの中の区切りだけ。ターンの間には cue を置かない。joinParts と同じ）
 export const expectedCues = (seg) => seg.turns.reduce((n, t) => n + Math.max(0, t.ttsParts.length - 1), 0);
 export const engineOfLang = (lang) => (/^ja\b/i.test(lang || '') ? 'irodori' : 'kokoro');
 
 // ---------------------------------------------------------------- tts-job.json
-export async function buildJob({ segs, docId = null, lang, voices, yomi = null, version = '0', keys = null }) {
+const cleanTitle = (t) => (typeof t === 'string' ? t.replace(/\s+/g, ' ').trim().slice(0, 120) : '');
+export async function buildJob({ segs, docId = null, title = null, lang, voices, yomi = null, version = '0', keys = null }) {
   const engine = engineOfLang(lang), ja = engine === 'irodori';
   const terms = (yomi && yomi.terms) || [];
   const want = keys ? new Set(keys) : null;
@@ -70,6 +74,7 @@ export async function buildJob({ segs, docId = null, lang, voices, yomi = null, 
   }
   return {
     egatari: JOB.tag, v: JOB.v, docId,
+    ...(cleanTitle(title) ? { title: cleanTitle(title) } : {}),   // 取り込みの断り書きに教材の題を出すためだけ（inputHash や検証には使わない）
     generator: { name: 'egatari-studio', version: String(version) },
     recipe: { engine, model: COLAB.models[engine], seed: 0, dictionary: ja && yomi ? yomi.sha256 : null, processing: PROCESSING, textNormalize: TEXT_NORMALIZE },   // 文は前処理しない（ノートブックが合成の直前に textNormalize の規則をかける）
     steps,
@@ -83,9 +88,10 @@ export function parseRecords(text) {
   try { j = JSON.parse(text); } catch { return { records, docId: null, generator: null, problems: [{ why: 'records.json is not JSON' }], fatal: true }; }
   if (!isObj(j) || j.egatari !== JOB.recordsTag || j.v !== JOB.v || !isObj(j.steps)) return { records, docId: null, generator: null, problems: [{ why: 'records.json is not a tts-records v1 file' }], fatal: true };
   const docId = typeof j.docId === 'string' ? j.docId : null;
+  const title = cleanTitle(j.title) || null;
   const generator = isObj(j.generator) && typeof j.generator.name === 'string' ? { name: j.generator.name.slice(0, 80), version: String(j.generator.version ?? '').slice(0, 40) } : null;
   const keys = Object.keys(j.steps);
-  if (keys.length > COLAB_LIMITS.steps) return { records, docId, generator, problems: [{ why: `too many steps (${keys.length}; at most ${COLAB_LIMITS.steps})` }], fatal: true };
+  if (keys.length > COLAB_LIMITS.steps) return { records, docId, title, generator, problems: [{ why: `too many steps (${keys.length}; at most ${COLAB_LIMITS.steps})` }], fatal: true };
   for (const key of keys) {
     const r = j.steps[key];
     const no = (why) => problems.push({ key, why });
@@ -104,10 +110,10 @@ export function parseRecords(text) {
     if (voice.bad) continue;
     records.set(key, {
       file: r.file, dur: r.dur, cues: r.cues.map(round3), inputHash: r.inputHash,
-      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}) },
+      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}), ...(typeof rc.runtime === 'string' && RUNTIME.test(rc.runtime) ? { runtime: rc.runtime } : {}) },
     });
   }
-  return { records, docId, generator, problems };
+  return { records, docId, title, generator, problems };
 }
 
 // ---------------------------------------------------------------- zip
@@ -130,7 +136,7 @@ export async function planImport({ zip, segs, docId = null, yomi = null }) {
   const pr = parseRecords(new TextDecoder().decode(rj));
   if (pr.fatal) { out.reject = { code: 'bad-records', why: pr.problems[0].why }; return out; }
   out.generator = pr.generator;
-  if (docId !== null && pr.docId !== null && docId !== pr.docId) { out.reject = { code: 'doc-id', why: 'the job was made for another lesson (docId differs)' }; return out; }
+  if (docId !== null && pr.docId !== null && docId !== pr.docId) { out.reject = { code: 'doc-id', why: 'the job was made for another lesson (docId differs)', title: pr.title }; return out; }
   for (const p of pr.problems) out.skipped.push({ key: p.key || null, why: p.why });
   const byKey = new Map(segs.map((s) => [`${s.slideKey}:${s.stepKey}`, s]));
   for (const [key, rec] of pr.records) {

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 …]}
@@ -86,7 +86,7 @@ for (const { name, version, dir } of comps) {
       const ts = a > 0 ? [a * 0.35, a * 0.7, null] : [null];
       for (const t of ts) {
         await seek(s.i, k, t);
-        await p.screenshot({ path: path.join(shots, `s${s.i}_k${k}_${t === null ? 'end' : t.toFixed(2)}.png`) });
+        await stableCapture(p, { path: path.join(shots, `s${s.i}_k${k}_${t === null ? 'end' : t.toFixed(2)}.png`) });
       }
       // 最終状態の字：大きさ・重なり・スライドからのはみ出し
       const bad = await p.evaluate((i) => {
@@ -165,12 +165,12 @@ for (const { name, version, dir } of comps) {
       await load();
       await seek(s.i, k, 0.5);
       await settle();
-      const A = await p.screenshot();
+      const A = await stableCapture(p);
       await seek(s.i, s.max, null); await seek(s.i, 0, null); await seek(s.i, k, 1.7); await seek(s.i, Math.min(s.max, k + 1), 0.3);
       await seek(s.i, k, 0.5);
       await settle();
-      let B = await p.screenshot();
-      if (!A.equals(B)) { await settle(); B = await p.screenshot(); }   // 描画の遅れによる誤検出を避ける
+      let B = await stableCapture(p);
+      if (!A.equals(B)) { await settle(); B = await stableCapture(p); }   // 描画の遅れによる誤検出を避ける
       // アンチエイリアスの揺らぎ（数画素・数階調）は許す（kit/check.mjs の D と同じ基準）
       const nd = A.equals(B) ? 0 : await pixelDiff(A, B);
       const ok = nd <= 40;

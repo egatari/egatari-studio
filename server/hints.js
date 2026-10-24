@@ -230,8 +230,15 @@ document.addEventListener("deck:ink", function(e){
   m.strokes = S.slice();
   send(m);
 });
+// r（録音モードを開く）の直後の Space は、デッキに渡さない（デッキが段階を進めてしまう）。録音モードはすぐフォーカスを
+// 編集の画面に移すので、その前に押されたものだけ（録音は編集の画面のキーでしか始まらないので、ここでは捨てるだけ）
+var recAt = -1e9;
+window.addEventListener("keydown", function(e){
+  if ((e.key === " " || e.key === "Spacebar") && Date.now() - recAt < 800 && !typing(e)){ e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
 document.addEventListener("keydown", function(e){
   if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "r" && !e.shiftKey) recAt = Date.now();
   if (e.key === "e" || e.key === "n" || e.key === "c" || e.key === "r" || e.key === "Escape") send({kind: "key", key: e.key});
 });
 document.addEventListener("deck:tool", function(e){ send({kind: "tool", mode: e.detail ? e.detail.mode : null}); });

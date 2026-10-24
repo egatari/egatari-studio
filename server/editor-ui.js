@@ -16,6 +16,7 @@
 //     markLabel?: string,                          信頼する板の印の言葉（既定は「編集中 — アプリ」／「Editing — app」）
 //     extra?: {open?(), editing?()},               ほかの信頼する欄（編集アプリの音声の板 app/audio-panel.js）：開いているか（板を出す）、
 //                                                  編集している最中か（録音している間など。プレビューを inert にする）
+//     volatileComments?: () => bool,               コメントが保存されない（1 ファイルで開いている）とき true：コメントの一覧に知らせを出す
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
 //     modeHost?: 要素,                             今のモード（「編集中」「発表の道具：ペン」「表示」。aria-live で知らせる）を入れる画面の端の帯（プレビューの外）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
@@ -43,7 +44,7 @@ const STR = {
     loading: 'Loading…', loadFail: 'Could not load', stale: 'The source has changed. Please reload (this view was built from an older source)',
     saving: 'Saving…', saved: 'Saved', conflict: 'The source has changed. Please reload (copy what you typed first)', saveFail: 'Could not save', offline: 'Cannot reach the editor',
     reload: 'Reload', cPlace: 'e.g. make this line shorter / match the figure colors / add one example', cSave: 'Leave', cTitle: 'Note for the AI', cHint: '⌘/Ctrl+Enter to leave · written to comments.json',
-    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for the AI (open)', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
+    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for the AI (open)', cVolatile: 'Notes are not saved in a single file (they disappear when you close it). To keep them, use a working folder.', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
     toSlide: 'Click to go to the slide', nStale: (k) => 'You are editing a different step than the one shown (' + k + '). It will switch after you save or cancel',
     nLine: (n) => 'narration.md line ' + n, nNone: 'No narration yet', revertT: 'Revert to before editing', nTitle: 'Narration', step: 'Step ', closeN: 'Close (n)',
     discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No narration for this step yet. Start with “Add a turn”',
@@ -53,8 +54,9 @@ const STR = {
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
     inkMark: 'Drawn mark', inkMarks: (n) => n + ' drawn marks', inkT: 'The marks you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add marks to this note (up to 20)', inkFull: 'A note holds at most 20 marks', ink: 'Ink note (m)', inkTip: 'Draw circles or arrows on the slide (several marks for one note), then write the note (also d, or the pen button of the slide controls, while editing)',
+    nUnsaved: 'The narration is not saved. Save or revert it to use the preview again', nRevert: 'Revert',
     dateLocale: 'en-US',
-    modeEdit: 'Editing', modeInk: 'Editing: ink note', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
+    modeEdit: 'Editing', modeInk: 'Editing: ink note', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser pointer', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
   },
   ja: {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
@@ -62,7 +64,7 @@ const STR = {
     loading: '読み込み中…', loadFail: '読み込めませんでした', stale: '原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）',
     saving: '保存中…', saved: '保存しました', conflict: '原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
     reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'AI へのメモ', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
-    cFail: '残せませんでした', cDone: 'メモを残しました（comments.json）', cList: 'AI へのメモ（未対応）', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
+    cFail: '残せませんでした', cDone: 'メモを残しました（comments.json）', cList: 'AI へのメモ（未対応）', cVolatile: '1 ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
     toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中の段階（' + k + '）とは別の段階を編集中です。保存か取消のあとで切り替わります',
     nLine: (n) => 'narration.md ' + n + ' 行目', nNone: 'まだ口述原稿がありません', revertT: '編集前に戻す', nTitle: '口述原稿', step: '段階 ', closeN: '閉じる（n）',
     discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'この段階の口述原稿はまだありません。「発言を足す」で書き始めます',
@@ -72,8 +74,9 @@ const STR = {
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
     inkMark: '手書きの印', inkMarks: (n) => '手書きの印 ' + n + ' 本', inkT: '描いた印（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このメモの印に足せます（20 本まで）', inkFull: '1 つのメモの印は 20 本まで', ink: '手書きメモ（m）', inkTip: 'スライドに丸や矢印を描いてから（1 つのメモに何本でも）、メモを書きます（編集中は d・スライドの操作の帯のペンのボタンでも）',
+    nUnsaved: 'ナレーションが保存されていません。保存するか元に戻すと、プレビューを操作できます', nRevert: '元に戻す',
     dateLocale: 'ja-JP',
-    modeEdit: '編集中', modeInk: '編集中：手書きメモ', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザー', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
+    modeEdit: '編集中', modeInk: '編集中：手書きメモ', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
 };
 
@@ -100,6 +103,9 @@ const CSS = [
   '.dev-lock{color:#7a4b00;font-size:12px;margin-top:6px}',
   '#dev-narr .dev-lock{display:none;margin:0;padding:6px 14px;background:#fff;border-top:1px solid #e3e6ee}#dev-side.dv-locked #dev-narr .dev-lock{display:block}',
   'iframe.dev-locked{opacity:.55;filter:grayscale(.3)}',
+  // 未保存の口述原稿でプレビューが止まっている間に、プレビューを押した・キーを押した：わけと、保存・元に戻すのボタン
+  '#dev-narr .dv-notice{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 8px;padding:8px 10px;border-radius:8px;background:#fff4cc;border:1px solid #f0c040;color:#5a3a00;font-size:13px}',
+  '#dev-narr .dv-notice:empty{display:none}#dev-narr .dv-notice span{flex:1 1 100%}',
   '#dev-mark{order:0}#dev-badge{order:1}#dev-editor{order:2}#dev-comment{order:3}#dev-comments{order:4}#dev-audio{order:5}#dev-narr{order:6}',
   '#dev-editor{padding:12px 14px}',
   '.dev-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.dev-head .dv-t{font-weight:700}.dev-head .dv-m{color:#6b7385;font-size:12px;font-family:ui-monospace,Menlo,monospace}.dev-head .dv-sp{flex:1}',
@@ -116,6 +122,7 @@ const CSS = [
   '.dev-c{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}.dev-c:hover{background:#f4f6fb;border-color:#e0e5f0}',
   '.dev-c .dv-k{font-size:11.5px;color:#6b7385}.dev-c .dv-q{font-size:12px;color:#6b7385;border-left:2px solid #f59e0b;padding-left:6px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
   '.dev-c .dv-c{white-space:pre-wrap}.dev-c .dv-row{display:flex;justify-content:flex-end;margin-top:4px}',
+  '#dev-comments-volatile{margin:8px 8px 0;padding:6px 10px;border-radius:6px;font-size:12.5px;line-height:1.5;background:#fef3c7;color:#78350f;border:1px solid #f5d27a}',
   '.dev-empty{color:#8a91a1;padding:14px 8px;text-align:center}',
   '#dev-narr{flex:1 0 320px;background:#f7f8fb;border-top:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0;margin-top:10px}',
   '#dev-narr .dev-head{padding:10px 14px;margin:0;background:#fff;border-bottom:1px solid #e3e6ee}',
@@ -309,6 +316,7 @@ export function createEditorUI(o) {
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
     side.classList.toggle('dv-inking', inkDrawing());
+    if (!(narr && narr.dirty)) narrNotice(false);
     drawPins();
   }
   // ---------------------------------------------------------------- 点の印（プレビューの上に重ねる。クリックは通す）
@@ -583,6 +591,7 @@ export function createEditorUI(o) {
       cpanel = h('div', { id: 'dev-comments', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cList }, [
         h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cList }), h('span', { cls: 'dv-sp' }),
           h('button', { cls: 'dv-ghost', text: '✕', title: L.closeC, on: { click: () => toggleComments(false) } })]),
+        o.volatileComments && o.volatileComments() ? h('div', { id: 'dev-comments-volatile', role: 'note', text: L.cVolatile }) : null,
         h('div', { cls: 'dv-list' }, [h('div', { cls: 'dev-empty', text: L.loading })]),
       ]);
       side.appendChild(cpanel);
@@ -690,6 +699,8 @@ export function createEditorUI(o) {
       h('button', { cls: 'dv-ghost', text: '✕', title: L.closeN, on: { click: () => toggleNarr(false) } })]));
     drawer.appendChild(h('div', { cls: 'dv-sub', text: L.slide(narr.i + 1, String(title).replace(/\s+/g, ' ').trim()) }));
     drawer.appendChild(body);
+    // 未保存のわけを知らせる所（live region。中身は narrNotice が入れる）
+    body.appendChild(h('div', { cls: 'dv-notice', role: 'status', 'aria-live': 'polite' }));
     drawer.appendChild(h('div', { cls: 'dv-foot' }, [status, revert, saveBtn]));
     drawer.appendChild(h('div', { cls: 'dev-lock', text: L.locked }));
     const stale = h('div', { cls: 'dv-stale' }); body.appendChild(stale);
@@ -749,6 +760,7 @@ export function createEditorUI(o) {
     }
     saveBtn.onclick = doSave;
     revert.onclick = () => { cur.dirty = false; narrFocus = false; updateSide(); narrFollow(true); };
+    cur.actions = { save: doSave, revert: () => revert.onclick() };
   }
   function renderNext(box) {
     box = box || (drawer && drawer.querySelector('.dv-next'));
@@ -765,6 +777,41 @@ export function createEditorUI(o) {
       for (const t of turns) box.appendChild(h('p', {}, [t.role === 'novice' ? h('span', { cls: 'dv-role', text: 'Novice' }) : null, plain(t.text)]));
     });
   }
+
+  // ---------------------------------------------------------------- 止まっているプレビューを押した・キーを押した（#3・#8）
+  // 未保存の口述原稿でプレビューが inert のとき：わけ（と保存・元に戻すのボタン）を引き出しに出す。
+  // 口述原稿の欄に入っているだけ（未保存の変更なし）のとき：欄から離れれば inert が解けるので、押した点ではプレビューにフォーカスを渡す
+  // （inert の枠は押しても受けないので、そのままでは最初のクリックが失われる）
+  function narrNotice(on) {
+    const box = drawer && drawer.querySelector('.dv-notice');
+    if (!box) return;
+    if (!on) { if (box.firstChild) box.textContent = ''; return; }
+    const cur = narr;
+    box.textContent = '';
+    box.appendChild(h('span', { text: L.nUnsaved }));
+    box.appendChild(h('button', { cls: 'dv-pri', text: L.save, on: { click: () => { if (cur.actions) cur.actions.save(); } } }));
+    box.appendChild(h('button', { text: L.nRevert, title: L.revertT, on: { click: () => { if (cur.actions) cur.actions.revert(); focusFrame(); } } }));
+    try { box.scrollIntoView({ block: 'nearest' }); } catch { /* 無視 */ }
+  }
+  // 口述原稿のほかに止めているもの（原稿の欄・コメントの欄・音声の板の録音・録音モード）があるか
+  const otherLock = () => !!(editor || cbox || (extra.editing && extra.editing()));
+  function inFrameBox(x, y) {
+    const f = frameEl();
+    if (!f || !f.isConnected) return false;
+    const r = f.getBoundingClientRect();
+    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+  }
+  doc.addEventListener('pointerdown', (e) => {
+    const f = frameEl();
+    if (!f || !f.inert || !narr || otherLock() || side.contains(e.target) || !inFrameBox(e.clientX, e.clientY)) return;
+    if (narr.dirty) { narrNotice(true); return; }
+    if (narrFocus) {
+      // 欄から離れる（focusout で inert が解ける）→ プレビューにフォーカス。押したことでフォーカスが body に移らないように既定の動きは止める
+      e.preventDefault();
+      const a = doc.activeElement; if (a && drawer && drawer.contains(a)) a.blur();
+      if (!editing()) focusFrame();
+    }
+  }, true);
 
   // ---------------------------------------------------------------- Esc：開いている窓を閉じる（#48）
   // 上のもの（後に開いたもの）から 1 つずつ。all（Shift+Esc）なら全部。書いている途中の原稿の欄・コメントの欄がいちばん上。
@@ -809,6 +856,27 @@ export function createEditorUI(o) {
     else if (k === 'r') { if (o.onRecord) o.onRecord(); }   // 録音モードを開く（開くだけ。録音はこのページのキーでしか始まらない）
     else if (k === 'Escape') { if (!escape(shift, fromDeck) && editOn && toolMode === 'ink') toggleInk(false); }   // 閉じる窓がなければ手書きメモを切る
   }
+  // 編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときの送りのキー：プレビューに送る（deck-cmd の key。プレビューは親の窓から
+  // 届いたものだけを受ける：kit/deck.js）。キーの出来事は作らない。f はプレビューの枠を全画面にする（中のデッキは押されていないので全画面にできない）。
+  // 送らないもの：Space・Enter（フォーカスのあるボタンを押すキー）、入力の欄・口述原稿の引き出し・開いた窓・メニューや一覧の中、
+  // プレビューが止まっているとき（編集している間・録音モード。未保存の口述原稿なら、わけを出す）、編集モードの間の b・a・f（#69）
+  const FWD = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', 'b', 'a', 'f'];
+  const WIDGET = '[role=menu],[role=menuitem],[role=menubar],[role=listbox],[role=option],[role=tablist],[role=tab],[role=radiogroup],[role=slider],[role=tree],[role=grid],[role=dialog],[role=alertdialog],dialog';
+  function forwardKey(e) {
+    const t = e.target;
+    if (!enabled() || (t && t.closest && (t.closest('#dev-narr') || t.closest(WIDGET)))) return;
+    const f = frameEl();
+    if (!f || !f.isConnected) return;
+    if (f.inert || editing()) { if (narr && narr.dirty && !otherLock()) narrNotice(true); return; }
+    if (editOn && (e.key === 'a' || e.key === 'b' || e.key === 'f')) return;   // 編集モードの間は発表の道具（自動再生・暗転・全画面）を使わない（#69。デッキの側でも受けない）
+    e.preventDefault();
+    if (e.key === 'f') {
+      if (doc.fullscreenElement) { if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {}); }
+      else if (f.requestFullscreen) f.requestFullscreen().then(() => focusFrame(), () => {});
+      return;
+    }
+    post({ type: 'deck-cmd', cmd: 'key', key: e.key });
+  }
   doc.addEventListener('keydown', (e) => {
     const t = e.target;
     if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
@@ -816,7 +884,8 @@ export function createEditorUI(o) {
     if (doc.querySelector('dialog[open]')) return;
     if (e.key === 'Escape') { key('Escape', false, e.shiftKey); return; }
     if (e.shiftKey) return;
-    if (['e', 'n', 'c', 'r', 'm'].includes(e.key)) key(e.key, false);
+    if (["e", "n", "c", "r", "m"].includes(e.key)) key(e.key, false);
+    else if (FWD.includes(e.key)) forwardKey(e);
   });
 
   // ---------------------------------------------------------------- プレビューからの知らせ

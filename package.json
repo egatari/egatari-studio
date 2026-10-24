@@ -1,6 +1,6 @@
 {
   "name": "motion-academic-slides",
-  "version": "0.4.5",
+  "version": "0.4.8",
   "private": true,
   "license": "MIT",
   "homepage": "https://studio.egatari.org/",
@@ -26,10 +26,11 @@
     "comment-shots": "node tools/comment-shots.mjs",
     "release:assets": "node tools/release-assets.mjs",
     "gen": "node tools/catalog.mjs && node tools/make-llm-guide.mjs && node tools/katex-ranges.mjs && node tools/make-colab-notebook.mjs",
-    "gen:check": "node tools/components-update.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check",
+    "gen:check": "node tools/components-update.mjs --check && node tools/themes-lock.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check",
     "changelog": "node tools/changelog.mjs",
     "components:update": "node tools/components-update.mjs",
-    "components:check": "node tools/components-update.mjs --check"
+    "components:check": "node tools/components-update.mjs --check",
+    "themes:check": "node tools/themes-lock.mjs --check"
   },
   "engines": {
     "node": ">=22"
@@ -38,7 +39,7 @@
     "@fontsource/biz-udpgothic": "5.3.0",
     "@fontsource/biz-udpmincho": "5.3.0",
     "@fontsource/source-sans-3": "5.3.0",
-    "katex": "0.16.47",
+    "katex": "0.18.2",
     "lame-wasm": "0.3.0",
     "parse5": "8.0.1",
     "playwright-core": "1.64.1"

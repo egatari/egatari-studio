@@ -31,6 +31,7 @@ import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
@@ -93,7 +94,7 @@ async function showWelcome() {
   $('welcome').hidden = false; $('deck').hidden = true; $('tools').hidden = true; $('deckname').textContent = ''; $('notice').hidden = true; $('saveloc').hidden = true;
   $('top').classList.remove('has-deck');
   $('unsupported').hidden = SUPPORTED;
-  $('w-open').disabled = !SUPPORTED; $('w-new').disabled = !SUPPORTED;
+  $('w-open').disabled = !SUPPORTED;   // 「新規作成…」はフォルダがなくても「チャットの AI に書いてもらう」が使える
   showExamples();
   const list = await recentList();
   $('recent').hidden = !list.length;
@@ -177,7 +178,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
   engine.setWorkspace(ws);
@@ -300,6 +301,17 @@ function showNotice() {
       reps.length === 1 && S.ws && !(S.portable && S.portable.readOnly) ? [el('button', { type: 'button', id: 'b-yanked-rebuild', cls: 'pri', text: T.yankedRebuild(reps[0]), onclick: () => rebuildYanked(reps[0]) })] : []));
   }
   if (S.yankedDone) n.append(el('p', { id: 'notice-yanked-done', text: S.yankedDone }));
+  // 教材が記録した前の版の同梱のテーマ（themes.lock.json。kit/core/themes-lock.mjs）：その版で組んでいると知らせ、変わる色（前 → 今、色見本つき）と
+  // 「テーマを更新」を出す。黙って新しい色にしない（部品庫の取り下げた版と同じ）
+  for (const u of S.themePinned || []) {
+    const rows = u.tokens.map((x) => el('li', {}, [el('code', { text: x.token }), document.createTextNode(' '), swatch(x.from), document.createTextNode(` ${x.from} → `), swatch(x.to), document.createTextNode(` ${x.to}`)]));
+    n.append(el('div', { id: 'notice-theme-pinned', 'data-theme-name': u.name }, [
+      el('p', { text: T.themePinnedNotice(u.name, u.from, u.to) + (u.tokens.length ? '' : ' ' + T.themeNoColorChange) }),
+      rows.length ? el('ul', { cls: 'theme-changes' }, rows) : null,
+      S.ws && !(S.portable && S.portable.readOnly) ? el('p', {}, [el('button', { type: 'button', id: 'b-theme-update', cls: 'pri', text: T.themeUpdate, onclick: () => updateThemes() })]) : null,
+    ]));
+  }
+  if (S.themeDone) n.append(el('p', { id: 'notice-theme-done', text: S.themeDone }));
   // 見つからないテーマ（組み立ての知らせ）：テーマのフォルダを選ぶ・前に選んだものを読む許可を求める
   const missing = missingThemes(S.warn);
   if (missing.length && S.ws) n.append(el('p', { id: 'notice-theme', text: T.themeMissing(missing, TF.handle ? TF.state : 'none', TF.handle ? TF.handle.name : '') + ' ' }, themeButtons()));
@@ -319,12 +331,10 @@ async function rebuildYanked(version) {
   if (!ws || !todo.length) return;
   try {
     const CFG = FORMAT.CONFIG_FILE;
-    let conf = {};
-    try { const t = await ws.readText(CFG, { max: READ_LIMITS.json }); if (t) conf = JSON.parse(t); } catch { conf = {}; }
-    if (!conf || typeof conf !== 'object' || Array.isArray(conf)) conf = {};
-    conf.components = { ...(conf.components && typeof conf.components === 'object' ? conf.components : {}), ...Object.fromEntries(todo.map((y) => [y.name, y.replacement])) };
+    // 設定のファイルの components だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { components: configMerge(Object.fromEntries(todo.map((y) => [y.name, y.replacement]))) });
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
-    await ws.writeText(CFG, JSON.stringify(conf, null, 2) + '\n');
+    await ws.writeText(CFG, text);
     if (P) {
       const tags = new Set(todo.map((y) => y.tag));
       const carry = { ...P.index, components: (P.index.components || []).filter((c) => !tags.has(c.tag)) };
@@ -339,6 +349,40 @@ async function rebuildYanked(version) {
     await rebuild('components');
   } catch (e) { toast(T.yankedFailed(String((e && e.message) || e)), true); }
 }
+// 色見本（値は themes.lock.json の #RRGGBB だけ。CSP の下でも効くように style は CSSOM で）
+function swatch(c) {
+  const e = el('span', { cls: 'swatch', 'aria-hidden': 'true' });
+  if (/^#[0-9A-Fa-f]{6}$/.test(c)) e.style.backgroundColor = c;
+  return e;
+}
+// プレビューと書き出しの組み立てに渡すテーマの版（開いた 1 ファイルが記録した版。作業フォルダは egatari.json の themes を組み立てが読む）
+const themeOpts = () => (S.portable && S.portable.themePins ? { themeVersions: S.portable.themePins } : {});
+// 「テーマを更新」：egatari.json の themes を今の版にし（利用者が押したときだけ）、開いた 1 ファイルなら記録（carry）のテーマも新しい組み立てのものに替える。
+// 変わる色は知らせに書いたもの（format spec §7.2：記録したテーマで組み直す。黙って替えない）
+async function updateThemes() {
+  const ws = S.ws, P = S.portable;
+  const todo = (S.themePinned || []).slice();
+  if (!ws || !todo.length) return;
+  try {
+    const CFG = FORMAT.CONFIG_FILE;
+    // 設定のファイルの themes だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { themes: configMerge(Object.fromEntries(todo.map((u) => [u.name, u.to]))) });
+    if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
+    await ws.writeText(CFG, text);
+    if (P) {
+      const names = new Set(todo.map((u) => u.name));
+      const carry = { ...P.index, themes: (P.index.themes || []).filter((t) => !names.has(t.name)) };
+      const dry = await builder.exportIndex(ws, S.deckFile, { carry, updateThemes: true }, { timeout: buildTimeout() });
+      const fresh = (dry.index.themes || []).filter((t) => names.has(t.name));
+      P.index = { ...P.index, themes: [...carry.themes, ...fresh] };
+      P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
+      const probs = registryProblems(P.index, dry.index, dry.registryEquivalent);
+      if (P.tierAReg) { P.tierAOnly = probs.length ? T.roRegistry(probs.join('; ')) : null; P.tierAReg = !!probs.length; }
+    }
+    S.themePinned = []; S.themeDone = T.themeUpdateDone(todo.map((u) => `${u.name} ${u.from} → ${u.to}`).join('・'));
+    await rebuild('theme');
+  } catch (e) { toast(T.themeUpdateFailed(String((e && e.message) || e)), true); }
+}
 function signature(listing) {
   return [...listing.files].filter(([rel]) => rel !== 'comments.json').map(([rel, f]) => rel + ':' + f.m + ':' + f.s).sort().join('\n');
 }
@@ -349,7 +393,8 @@ const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // デッキの文書の中を探して決まりを入れることはしない）
 // プレビューでは、知らせの部品（server/hints.js）も信頼する先頭部分に入れる（デッキの文書の中の </body> を探して入れない）
 function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
-function previewHtml(base) { return withShim(base, { dev: true, load: S.loads }, '\n' + RES.hints); }
+// theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
+function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}) }, '\n' + RES.hints); }
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
 // 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
@@ -372,7 +417,7 @@ async function rebuild(reason) {
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         // 組み立てと判定は Worker で（期限を過ぎれば止めて失敗にする）。理由は Worker が組んだ文書（表示するバイト）から決める
-        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true }, reasonsPrefix(), { timeout: buildTimeout() });
+        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts() }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
@@ -383,7 +428,7 @@ async function rebuild(reason) {
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || [];
+        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || []; S.themePinned = r.stats.themePinned || []; S.theme = r.theme || null;
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);
@@ -564,6 +609,7 @@ const ui = createEditorUI({
   drawerHost: $('deck'),
   modeHost: $('st-mode'),   // 今のモード（編集中・発表の道具）は下の帯の端に出す（舞台に重ねない）
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
+  volatileComments: () => !!S.portable,
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
   extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() || rec.isOpen() },
@@ -587,6 +633,12 @@ async function colabDocId() {
   if (S.portable) return typeof S.portable.index.docId === 'string' ? S.portable.index.docId : null;
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
 }
+// 台本を書き出した教材の題（別の教材の音声を取り込もうとしたときの断り書きに使う）
+async function colabTitle() {
+  if (S.portable) return S.portable.index.metadata?.title || S.portable.index.title || (S.base ? titleOf(S.base) : '') || null;
+  try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && c.metadata && typeof c.metadata.title === 'string' && c.metadata.title) return c.metadata.title; } catch { /* 題はなくてもよい */ }
+  return S.base ? titleOf(S.base) || null : null;
+}
 const audio = createAudioPanel({
   ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
@@ -607,7 +659,7 @@ const audio = createAudioPanel({
   // Colab で音声を作る（WebGPU のない PC）：原稿の文が Google の環境で処理されるので、書き出す前に 1 度確かめる
   colab: {
     t: T.colab, version: RES.version,
-    docId: colabDocId,
+    docId: colabDocId, title: colabTitle,
     confirm: async (title, body, go) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
   },
 });
@@ -653,7 +705,7 @@ const livePanel = createLivePanel({
     return [...new Set(keys)];
   },
   slides: () => (S.slides || []).map((x) => ({ key: x.key, heading: x.heading || '' })),
-  exportLive: (live) => exportPlayOnlyFile(live),
+  exportLive: (live, opts) => exportPlayOnlyFile(live, opts),
   problemText: T.liveProblem,
 });
 // スライド一覧（app/slides-panel.js。backlog #79）：左の板。足す・複製・削除・並べ替えは原稿・口述原稿・音声の記録を書き、組み直す（段 B）
@@ -678,6 +730,7 @@ const slidesPanel = createSlidesPanel({
   guard: slideGuard, building: () => S.building,
   rebuild: async () => { const failed = await rebuild('save'); updateName(); return failed; },
   check: () => quickCheck(), ask, toast, audio, stale: () => S.stale || [],
+  aiInsert: (after) => llm.insertWithAi(after),
   onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
@@ -688,7 +741,8 @@ window.addEventListener('message', (e) => {
   const frame = $('preview').contentWindow;
   if (e.source === frame) {
     ui.message(e);
-    if (m.type === 'app-open-presenter') openPresenter();
+    // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
+    if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
     else if (m.type === 'app-check-result' && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
@@ -708,7 +762,19 @@ const PRES_DOC = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Presen
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
 <body><iframe id="pf" sandbox="allow-scripts allow-modals" title="presenter"></iframe><script>
 var f=document.getElementById("pf");
+function closeMe(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); return; }
+  try{ if(opener&&!opener.closed) opener.focus(); }catch(e){}
+  window.close();
+}
+function into(){ try{ f.focus(); f.contentWindow&&f.contentWindow.focus(); }catch(e){} }
+f.addEventListener("load",function(){ into(); setTimeout(function(){ if(!document.hasFocus()&&f.contentWindow) f.contentWindow.postMessage({type:"app-pres-tap"},"*"); },300); });
+addEventListener("focus",function(){ if(document.activeElement===f||document.activeElement===document.body) into(); });
+addEventListener("keydown",function(e){
+  if(e.target!==f&&!e.defaultPrevented&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&(e.key==="Escape"||e.key==="p")){ if(e.key==="p"||!document.fullscreenElement) e.preventDefault(); closeMe(); }
+});
 addEventListener("message",function(e){
+  if(e.source===f.contentWindow&&e.data&&e.data.type==="app-pres-close"){ closeMe(); return; }
   if(e.source===f.contentWindow){ if(opener&&!opener.closed) opener.postMessage({type:"app-pres-up",m:e.data},"*"); }
   else if(e.source===opener&&e.data&&e.data.type==="app-pres-down"){ f.contentWindow&&f.contentWindow.postMessage(e.data.m,"*"); }
 });
@@ -763,12 +829,11 @@ async function askCheck() {
   }
   return null;
 }
-async function quickCheck() {
-  if (!$('preview').contentWindow || !S.base) return;
-  openPanel(T.checkTitle, [el('p', { text: T.checking })]);
+// 品質チェックの結果を集める（板には出さない。「修正…」の修正依頼も使う）。プレビューが答えなければ null
+async function checkResults() {
+  if (!$('preview').contentWindow || !S.base) return null;
   const results = await askCheck();
-  const f = $('preview').contentWindow;
-  if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
+  if (!results) return null;
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
   // 雛形のまま（スライド一覧の雛形の字・仮の口述原稿「✎ 」。kit/core/template-text.mjs。kit/check.mjs と同じ）：作業場所の原稿から
   {
@@ -779,6 +844,14 @@ async function quickCheck() {
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  return results;
+}
+async function quickCheck() {
+  if (!$('preview').contentWindow || !S.base) return;
+  openPanel(T.checkTitle, [el('p', { text: T.checking })]);
+  const results = await checkResults();
+  const f = $('preview').contentWindow;
+  if (!results) { openPanel(T.checkTitle, [el('p', { text: T.checkFailed })]); return; }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
@@ -788,7 +861,8 @@ async function quickCheck() {
   openPanel(T.checkTitle, [
     el('div', { cls: 'sum', text: T.checkSummary(errs, warns) }),
     el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, results.length > 0) }),
-    ...(results.length ? [llm.fixButton(results)] : []),
+    // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
+    el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(results.length ? [llm.fixButton(results)] : [])]),
     ...items,
   ]);
 }
@@ -830,6 +904,7 @@ function showHelp() {
   const h = T.help;
   openPanel(T.helpTitle, [
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
+    el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
   ]);
 }
@@ -840,7 +915,7 @@ async function exportHtml() {
   if (!S.ws) return;
   status(T.exporting);
   let r;
-  try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false }, null, { timeout: buildTimeout() }); }
+  try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false, ...themeOpts() }, null, { timeout: buildTimeout() }); }
   catch (e) { toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   // 既定の名前は教材の題名（kit/core/export-name.mjs。なければデッキの名前）
   const name = exportName(titleOf(r.html), deckBase(), '.html');
@@ -1002,7 +1077,7 @@ function refusal(code, message, key = code) {
 }
 // 索引のない文書の、知らせの言葉の鍵（kit/core/portable.mjs の sourceKind：'play-only' | 'built' | 'source' | 'other'）
 const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-only' ? 'play-only' : e.kind === 'built' ? 'built-output' : 'no-source');
-// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の出力を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
+// input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の返事を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
   if (!input) return false;
   const end = wait.begin();
@@ -1078,7 +1153,7 @@ async function openPortableNow(input) {
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
   const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
-    neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の出力を貼り付けて作った：まだどのファイルにもない
+    neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の返事を貼り付けて作った：まだどのファイルにもない
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
   S.deckFile = r.index.entry;
@@ -1092,6 +1167,8 @@ async function openPortableNow(input) {
       const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);
       if (probs.length) { P.tierAOnly = T.roRegistry(probs.join('; ')); P.tierAReg = true; }
       P.yankedRecorded = dry.yanked || [];
+      // 記録した版の同梱のテーマ（themes.lock.json）：プレビューと書き出しも、その版で組む（黙って新しい色にしない。「テーマを更新」で今の版に）
+      P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
@@ -1104,7 +1181,7 @@ async function openPortableNow(input) {
 // ---------------------------------------------------------------- デッキの原稿（deck.html）を 1 つだけ開く
 // 「ファイルを開く」・ドロップで原稿の deck.html が来たとき：口述原稿・音声・そのデッキだけの部品は同じフォルダにあるので、
 // フォルダを開くか、このファイルだけを開くかを聞く。このファイルだけ：メモリの上の作業場所（deck.html だけ）を Worker で持ち運べる
-// 1 ファイルにし（AI の出力の貼り付けと同じ。app/llm.js）、ほかの開いたファイルと同じ道（openPortable：中身からコードを探して、あれば
+// 1 ファイルにし（AI の返事の貼り付けと同じ。app/llm.js）、ほかの開いたファイルと同じ道（openPortable：中身からコードを探して、あれば
 // 動かす前に確かめる）で開く。部品庫の部品とテーマは使え、そのデッキだけの部品がなければ組み立ての知らせに出る。新しい docId で、
 // どこにも保存していない（保存で、1 ファイルか空のフォルダかを選ぶ）
 async function openSource(name, bytes) {
@@ -1171,11 +1248,10 @@ async function savePortableBound(mode) {
   const files = ws.snapshot();
   if (mode === 'new') {
     identity = { docId: newDocId(), derivedFrom: { docId: P.index.docId, sourceSha256: P.index.sourceSha256 } };
-    let cfg = {};
-    try { cfg = JSON.parse(new TextDecoder().decode(files.get(CFG) || new Uint8Array())); } catch { cfg = {}; }
-    const m = cfg && typeof cfg.metadata === 'object' && cfg.metadata ? { ...cfg.metadata } : {};
-    m.derivedFrom = identity.derivedFrom;
-    cfgText = JSON.stringify({ ...cfg, docId: identity.docId, metadata: m }, null, 2) + '\n';
+    // docId と metadata.derivedFrom だけを変える（ほかの項目はバイトのまま。kit/core/config-file.mjs）
+    const old = files.has(CFG) ? new TextDecoder().decode(files.get(CFG)) : null;
+    try { cfgText = updateConfig(old, { docId: identity.docId, metadata: configMerge({ derivedFrom: identity.derivedFrom }) }); }
+    catch (e) { status(''); toast(String((e && e.message) || e), true); return; }
     files.set(CFG, new TextEncoder().encode(cfgText));
   }
   let html, index, deckMeta, tier, narrB = null;
@@ -1308,7 +1384,7 @@ async function exportPortableFile() {
 // ---------------------------------------------------------------- 再生専用（学生に配る形）を書き出す（kit/core/portable.mjs の playOnly、§3.7）
 // 1 ファイル：保存したもの（P.original）から。保存していない変更があれば、先に保存を求める。作業フォルダ：1 ファイルに組んでから
 // room：授業の部屋（拡張 live。app/live-panel.js が作る、鍵を含む完全なもの）。あれば派生に CSP の <meta> と再生器を足す（kit/core/live.mjs）
-async function exportPlayOnlyFile(room = null) {
+async function exportPlayOnlyFile(room = null, opts = {}) {
   if (!S.ws) return;
   const ws0 = S.ws, g0 = S.gen, P = S.portable;
   const live = () => S.ws === ws0 && S.gen === g0;
@@ -1316,11 +1392,12 @@ async function exportPlayOnlyFile(room = null) {
   if (!(await leftoverGate('export'))) return;
   if (!live()) return;
   status(T.exporting);
-  let html, name, writes = {};
+  let html, name, writes = {}, srcSha = null;
   try {
-    if (P) { html = playOnly(P.original); name = P.name; }
-    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
-    if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
+    if (P) { html = playOnly(P.original); name = P.name; srcSha = P.index && P.index.sourceSha256; }
+    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
+    if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + FORMAT.PLAY_EXT;
@@ -1330,17 +1407,35 @@ async function exportPlayOnlyFile(room = null) {
     if (!live()) throw cancelledError();
     for (const [rel, text] of Object.entries(writes)) await ws0.writeText(rel, text, { live });   // 作業フォルダ：初めて作った docId を残す
     status(T.exported(time(), (html.length / 1048576).toFixed(1)));
-    toast(h ? (room ? T.playOnlyLiveToast(room.room) : T.playOnlyToast) : T.downloadedToast(name));
+    toast(h ? (room ? (opts.oneWay ? T.playOnlyLiveSetupToast(room.room) : T.playOnlyLiveToast(room.room)) : T.playOnlyToast) : T.downloadedToast(name));
   } catch (e) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
     if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
   }
 }
 
-// ---------------------------------------------------------------- 新しいデッキ
-function showNewForm(on) {
+// ---------------------------------------------------------------- 新規作成…：白紙から・雛形から（作業フォルダに作る）・チャットの AI に書いてもらう（app/llm.js）
+async function newChoice() {
+  const body = [el('p', { text: T.newChoiceLead }), el('dl', { id: 'new-choices', cls: 'choices' }, [
+    ...(SUPPORTED ? [el('dt', { text: T.newBlank }), el('dd', { text: T.newBlankDesc }), el('dt', { text: T.newTemplate }), el('dd', { text: T.newTemplateDesc })] : []),
+    el('dt', { text: llm.texts.method }), el('dd', { text: T.newAiDesc })]),
+    SUPPORTED ? null : el('p', { id: 'new-nofolder', cls: 'hint', text: T.newNoFolder })];
+  const v = await ask({ title: T.newChoiceTitle, body, buttons: [{ id: 'cancel', label: T.cancel },
+    ...(SUPPORTED ? [{ id: 'new-blank', label: T.newBlank }, { id: 'new-template', label: T.newTemplate }] : []),
+    { id: 'new-ai', label: llm.texts.method + '…', pri: true }] });
+  if (v === 'new-blank' || v === 'new-template') {
+    // フォームは最初の画面にある：デッキを開いていれば（未保存の変更を確かめて）最初の画面へ戻る
+    if ($('welcome').hidden) { if (!(await leavePortable())) return; await showWelcome(); }
+    showNewForm(true, v === 'new-blank' ? 'blank' : 'template');
+  }
+  else if (v === 'new-ai') await llm.newWithAi();
+}
+let newKind = 'template';
+function showNewForm(on, kind) {
   $('newform').hidden = !on;
   if (on) {
+    newKind = kind || 'template';
+    $('n-head').textContent = T.newFormTitle[newKind];
     const sel = $('n-theme'); sel.innerHTML = '';
     for (const t of RES.themes) sel.append(el('option', { value: t, text: t }));
     $('n-lang').value = EN ? 'en' : 'ja';
@@ -1349,7 +1444,7 @@ function showNewForm(on) {
   }
 }
 async function createDeck() {
-  const opts = { lang: $('n-lang').value, theme: $('n-theme').value, title: $('n-title').value.trim() || null };
+  const opts = { lang: $('n-lang').value, theme: $('n-theme').value, title: $('n-title').value.trim() || null, blank: newKind === 'blank' };
   const dir = await pickFolder();
   if (!dir) return;
   if (!(await hasPermission(dir)) && !(await askPermission(dir))) { toast(T.noPermission, true); return; }
@@ -1379,7 +1474,8 @@ document.querySelector('#top .brand').title = T.brand;
 mountVersionUi({ version: RES.version, lang: EN ? 'en' : 'ja' });
 $('w-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
 $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFolder(h); };
-$('w-new').onclick = () => showNewForm(true);
+$('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
+$('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('n-cancel').onclick = () => showNewForm(false);
 $('n-go').onclick = createDeck;
 $('b-slides').onclick = () => slidesPanel.toggle();
@@ -1404,6 +1500,14 @@ $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.po
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { const f = $('preview'); (f.requestFullscreen ? f.requestFullscreen() : Promise.reject()).then(() => f.focus(), () => toast(T.noFullscreen, true)); };
 $('b-warn').onclick = showWarnings;
+// 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
+// キーボードで押したとき（detail = 0）は残す。一覧を開くボタン・一覧の項目は一覧の側でフォーカスを動かすので触らない
+$('top').addEventListener('click', (e) => {
+  if (e.detail === 0) return;
+  const b = e.target.closest && e.target.closest('button');
+  if (!b || b.hasAttribute('aria-haspopup') || b.closest('[role=menu]')) return;
+  if (document.activeElement === b) b.blur();
+});
 // 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：開くと最初の項目に。↑↓ で移り、Esc・外を押す・項目を選ぶと閉じる
 const MENUS = [['b-openmenu', 'm-open'], ['b-savemenu', 'm-save'], ['b-exportmenu', 'm-export']].map(([b, m]) => ({ btn: $(b), list: $(m) }));
 const menuItems = (M) => [...M.list.querySelectorAll('button')].filter((b) => !b.hidden);
@@ -1456,7 +1560,7 @@ window.__APP_TEST = {
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
-    portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
+    portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   attachBusy: () => attach.isBusy(),
@@ -1510,6 +1614,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, updateName });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
+window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

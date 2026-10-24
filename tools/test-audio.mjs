@@ -136,7 +136,7 @@ const recState = () => page.evaluate(() => window.__APP_TEST.rec());
 // 板の「● 録音 (r)」で録音モードを開く（その段階で）。戻り値：開いた段階
 async function openRecFromPanel(key) {
   await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
-  await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.phase === 'idle' && s.key === k; }, key, { timeout: 15000 });
+  await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.ready && s.phase === 'idle' && s.key === k; }, key, { timeout: 15000 });
   return (await recState()).key;
 }
 // 録音モードで 1 段：Space → ms 待つ → Space（stop が false なら止めない：上限で止まるのを待つ）→ 書き終わるまで

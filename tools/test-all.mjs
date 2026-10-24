@@ -2,7 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（手書きメモ）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（手書きメモ）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -34,10 +34,14 @@ const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace
 const steps = [
   ...unit,
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
+  // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
+  ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
   // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
   // 部品庫の写し（vendor/components）が components.lock.json と合っているか（ネットワークなし）
   ['components', ['tools/components-update.mjs', '--check']],
+  // 同梱のテーマの版の固定（themes.lock.json）が themes/・vendor/themes/ と合っているか
+  ['themes-lock', ['tools/themes-lock.mjs', '--check']],
   ['catalog', ['tools/catalog.mjs', '--check']],
   ['katex ranges', ['tools/katex-ranges.mjs', '--check']],
   // CHANGELOG の断片（changes/*.md）の書き方
@@ -53,7 +57,7 @@ const steps = [
   ['test-tools', ['tools/test-tools.mjs', MIN, path.join(tmp, 'tools')]],
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
-  // 暗転（b）：窓全体が #000・戻すと同じ画面・クリックと Esc・発表者ビューの札・印刷と動画は変わらない
+  // 暗転（b）：窓全体が #000・戻すと同じ画面・クリックと Esc・キーの一覧より上・発表者ビューの札・印刷と動画は変わらない
   ['test-blackout', ['tools/test-blackout.mjs', MIN]],
   // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・品質チェック
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
@@ -70,11 +74,14 @@ const steps = [
   ['test-security', ['tools/test-security.mjs']],
   // 部品庫が取り下げた版（format spec §6）：警告（CLI）・編集アプリのページに eval の許可がないこと・取り下げた版を記録した文書の知らせと「組み直す」・sandbox の枠
   ['test-yanked', ['tools/test-yanked.mjs', path.join(tmp, 'yanked')]],
+  ['test-theme-version', ['tools/test-theme-version.mjs', path.join(tmp, 'theme-version')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 並んでいないうちに起動したデッキ（display:none の iframe）を後で出しても、ふつうの起動と画素まで同じ（contract §3：mount は舞台が並んでから）
   ['test-mount-hidden', ['tools/test-mount-hidden.mjs', path.join(tmp, 'mount-hidden')]],
   // 見ている人が手で変えた部品の状態（m-kobun の札など）は段階に入るたびに消え、宣言どおりの画面に戻る（format spec §8.4、contract §3）。発表者ビュー・印刷も
   ['test-step-reset', ['tools/test-step-reset.mjs', path.join(tmp, 'step-reset')]],
+  // 画面を撮る共通の道具（stableCapture）：talk の操作の帯が写り込まず、読み込みの 0.5 秒後と 3 秒後で同じ絵
+  ['test-capture', ['tools/test-capture.mjs', path.join(tmp, 'capture')]],
   // 持ち運べる 1 ファイル（format spec）：Schema・往復・文書の試験用ファイル・file:// での再生
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
@@ -86,6 +93,10 @@ const steps = [
   ['test-live-results', ['tools/test-live-results.mjs', path.join(tmp, 'live-results')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
+  // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
+  ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
+  // 発表者ビューから抜けること：本体の p・発表者ビューの Esc と p・閉じるのボタン・全画面のときは全画面をやめるだけ・「今の画面」からの Esc と p・フォーカスがないときの覆い（組んだデッキと編集アプリ）
+  ['test-presenter-exit', ['tools/test-presenter-exit.mjs', path.join(tmp, 'presenter-exit')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）
   ...['ja', 'en'].flatMap((l) => [
     [`new ${l}`, ['tools/new.mjs', path.join(tmp, 'new-' + l), '--lang', l]],
@@ -94,7 +105,7 @@ const steps = [
   ]),
 ];
 // 組めなかったデッキに依るテストは飛ばす
-const needs = { 'check minimal': 'build minimal', smoke: 'build minimal', 'test-tools': 'build minimal', 'test-controls': 'build minimal', 'test-autoplay': 'build minimal', 'test-a11y': 'build minimal', 'check tmlr2026': 'build tmlr2026', 'check pitch': 'build pitch',
+const needs = { 'check minimal': 'build minimal', smoke: 'build minimal', 'test-tools': 'build minimal', 'test-controls': 'build minimal', 'test-autoplay': 'build minimal', 'test-blackout': 'build minimal', 'test-a11y': 'build minimal', 'check tmlr2026': 'build tmlr2026', 'check pitch': 'build pitch',
   'build new ja': 'new ja', 'check new ja': 'build new ja', 'build new en': 'new en', 'check new en': 'build new en' };
 // 国語の部品（m-kanbun・m-kobun・m-gendai）の見本のデッキ（examples/kokugo-kanbun）を普通と持ち運べる 1 ファイルに組み、検査でエラー 0。
 // 部品の読み取りの試験は egatari/components、漢文が知らせなしに読めることは test-kokugo-example（単体）、部品の描画と決定性は test-components（各部品の demo.html）
@@ -106,6 +117,11 @@ steps.push(
   ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
   // テーマの CSS を体裁（layouts.css）の後に読む（backlog #75）：組み立ての口ごとの順と、html を付けないテーマの規則が体裁に勝つこと・--marker・--bar・--bar-h
   ['test-theme-order', ['tools/test-theme-order.mjs', path.join(tmp, 'theme-order')]],
+  // テーマの寸法の宣言（theme.json の metrics、backlog #76）：検証と継承、同一性の hash、同梱のテーマの描いた箱が宣言どおり（厳しく）、
+  // 宣言した限りで本文の場所を見ること、themeMetricsDrift・themeMetricsInvalid（コマンド版とブラウザ版）、tools/theme-metrics.mjs measure
+  ['test-theme-metrics', ['tools/test-theme-metrics.mjs', path.join(tmp, 'theme-metrics')]],
+  // 印刷でも章の扉（sec）の背景が落ちない（backlog #57）：print の媒体の print-color-adjust・背景色、背景のグラフィックなしの pdf の画素
+  ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
@@ -129,6 +145,12 @@ steps.push(
   ['test-colab-app', ['tools/test-colab-app.mjs', path.join(tmp, 'colab-app')]],
   // 録音モード（app/rec-mode.js）：偽のマイクで、キーボードだけの録音・C の cue・取り直し・読み上げの知らせ（cue の計算は単体の test-rec-core）
   ['test-recording', ['tools/test-recording.mjs', path.join(tmp, 'recording')]],
+  // 読み上げで聞く（端末の声。format spec §5.6）：読む文（読み・読み辞書・join-num-counter）・端末の中の声だけ・再生器の帯と札・進むと止める・
+  // 動画のモードとタイムラインと (i, k, t) が変わらない・ファイルに何も書かない（再生器と編集アプリの音声の板。speechSynthesis は差し替え）
+  ['test-read-aloud', ['tools/test-read-aloud.mjs', path.join(tmp, 'read-aloud')]],
+  // egatari.json のほかの作り手の項目（format spec §3.3）：Studio のどの書き込み（書き出し・展開・段 A の保存・新しい教材・添付と授業の部屋の板・
+  // テーマを更新・--update-themes・portable attach）でもバイトのまま残る（kit/core/config-file.mjs の updateConfig）
+  ['test-config-preserve', ['tools/test-config-preserve.mjs', path.join(tmp, 'config-preserve')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する
@@ -190,6 +212,20 @@ console.log('\n' + 'test'.padEnd(w) + '  result  time');
 console.log('-'.repeat(w) + '  ------  ------');
 for (const r of results) console.log(r.name.padEnd(w) + '  ' + (r.code === 0 ? 'PASS  ' : r.code === -1 ? 'SKIP  ' : 'FAIL  ') + '  ' + (r.sec.toFixed(1) + ' s').padStart(6));
 const bad = results.filter((r) => r.code !== 0);
+// 時間の一覧（遅い順と合計）。失敗していても出す。GITHUB_STEP_SUMMARY があれば markdown の表も足す
+const timed = results.filter((r) => r.code !== -1).sort((a, b) => b.sec - a.sec);
+const total = results.reduce((s, r) => s + r.sec, 0);
+console.log('\nduration summary (slowest first)');
+const tw = Math.max(5, ...timed.map((r) => r.name.length));
+for (const r of timed) console.log(`  ${r.name.padEnd(tw)}  ${(r.sec.toFixed(1) + ' s').padStart(8)}${r.code === 0 ? '' : '  FAIL'}`);
+console.log(`  ${'total'.padEnd(tw)}  ${(total.toFixed(1) + ' s').padStart(8)}  (${(total / 60).toFixed(1)} min)`);
+if (process.env.GITHUB_STEP_SUMMARY) {
+  try {
+    const md = [`### test-all durations (${process.platform}, node ${process.versions.node})`, '', '| test | result | seconds |', '|---|---|---:|',
+      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ''].join('\n');
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
+  } catch (e) { console.log(`(could not write GITHUB_STEP_SUMMARY: ${e.message})`); }
+}
 console.log(`\n${results.length - bad.length}/${results.length} passed` + (bad.length ? `; failed: ${bad.map((r) => r.name).join(', ')}` : ''));
 console.log(`artifacts: ${tmp}`);
 process.exit(bad.length ? 1 : 0);

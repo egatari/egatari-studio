@@ -40,4 +40,13 @@ ok(r.labels.every((l) => !/ · [^·]{14,}$/.test(l) || /…$/.test(l)), 'long he
 const o = execFileSync('node', [path.join(ROOT, 'tools/sheet.mjs'), built, path.join(work, 'c.png'), '--cols', '2', '--width', '400'], { encoding: 'utf8' });
 ok(o.includes(path.join(work, 'c.png')) && o.includes(`${N} slides`), 'CLI prints the path and the count');
 ok(gridSize(2, 4, 640).cols === 2, 'fewer slides than columns shrinks the grid');
+
+// --steps：図・部品のあるスライドの全段階を横に並べる（minimal は 5 枚目だけが図で、段階 0〜4 の 5 枚が 1 行）
+const r3 = await sheet(deck, { out: path.join(work, 'steps.png'), steps: true });
+const g3 = gridSize(5, 5, 320), d3 = dims(r3.out);
+ok(r3.slides === 1 && r3.count === 5 && r3.cols === 5 && r3.rows === 1, `--steps: ${r3.slides} slide, ${r3.count} steps in ${r3.cols}×${r3.rows}`);
+ok(d3 && d3.w === g3.width && d3.h === g3.height, `--steps size ${d3 && d3.w}×${d3 && d3.h} = ${g3.width}×${g3.height}`);
+ok(r3.labels.join('|').startsWith('5:0 · ') && r3.labels[4] === '5:4', `--steps labels: ${r3.labels.join(' | ')}`);
+const o3 = execFileSync('node', [path.join(ROOT, 'tools/sheet.mjs'), built, path.join(work, 'd.png'), '--steps'], { encoding: 'utf8' });
+ok(o3.includes(path.join(work, 'd.png')) && o3.includes('5 steps of 1 slide'), 'CLI --steps prints the path and the count');
 process.exit(fails ? 1 : 0);

@@ -9,10 +9,12 @@ var DECK = window.DECK;
 var L = DECK.ja === false
   ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
      laser: "Laser (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
-     feedback: "Send feedback", back: "Back", black: "Blacked out", blackT: "The audience screen is black (b, or click it, to return)", legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "blackout"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool"]]}
+     feedback: "Send feedback", back: "Back", close: "Close presenter view (p)", tap: "Click here to control", black: "Blacked out", blackT: "The audience screen is black (b, or click it, to return)",
+     legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "blackout"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
   : {cur: "今の画面", nextFrame: "次の段階の画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
      laser: "レーザー（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
-     feedback: "フィードバックを送る", back: "戻る", black: "暗転中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）", legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "暗転"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除"]]};
+     feedback: "フィードバックを送る", back: "戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "暗転中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
+     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "暗転"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
@@ -43,7 +45,8 @@ DECK.presenterView = function(){
     '  <button type="button" id="pv-back" aria-label="' + L.back + '" hidden>← ' + L.back + '</button>' +
     '  <button type="button" id="pv-auto" title="' + L.autoKey + '" aria-pressed="false">▶ ' + L.auto + '</button>' + tools +
     '<button type="button" id="pv-reset" title="' + L.reset + '" aria-label="' + L.reset + '">⟲</button>' +
-    '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span></header>' +
+    '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span>' +
+    '  <button type="button" id="pv-close">' + L.close + '</button></header>' +
     ' <main><div id="pv-cur"><iframe id="f-cur" title="' + L.cur + '"></iframe></div>' +
     '  <aside><div id="pv-next"><div class="lab">' + L.next + '</div><iframe id="f-next" title="' + L.nextFrame + '" tabindex="-1"></iframe></div>' +
     '   <div id="pv-notes"><div class="lab">' + L.notes + '</div><div id="pv-text"></div></div></aside></main>' +
@@ -60,7 +63,8 @@ DECK.presenterView = function(){
     "#pv main{flex:1;display:flex;gap:14px;padding:14px;min-height:0}" +
     "#pv-cur{flex:0 0 62%;display:flex;align-items:center}#pv-cur iframe{width:100%;aspect-ratio:16/9;border:0;background:#000}" +
     "#pv aside{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}" +
-    "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85}" +
+    // 「次」の画面は見るだけ：押しても中にフォーカスを入れない（中のデッキはキーを受けないので、キーが止まってしまう）。押すと発表者ビューに残る
+    "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85;pointer-events:none}" +
     "#pv .lab{font-size:13px;color:#999;margin-bottom:4px}" +
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
     "#pv-text .ai{font-size:12px;color:#aaa;margin:0 0 6px}" +
@@ -80,6 +84,9 @@ DECK.presenterView = function(){
     // 暗転中（本体の画面が真っ黒）：見落とさないように、地を反転した札
     "#pv-black{padding:2px 12px;border-radius:6px;background:#fff;color:#000;font-weight:700;letter-spacing:.04em;box-shadow:0 0 0 2px #e11d48}#pv-black[hidden]{display:none}" +
     "#pv.pv-black #pv-cur iframe{opacity:.35}" +
+    // まだキーを受けられない（窓にフォーカスがない）ときの覆い：最初のクリックを受けてフォーカスを取り、消える
+    "#pv-tap{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);color:#fff;font-size:34px;font-weight:700;cursor:pointer;border:0;width:100%;border-radius:0}" +
+    "#pv-tap[hidden]{display:none}" +
     "#pv-keys{display:flex;flex-wrap:wrap;gap:4px 18px;padding:5px 16px 7px;background:#111;color:#999;font-size:13px}" +
     "#pv-keys #pv-fb{margin-left:auto;color:#8ab4e8;text-decoration:none}#pv-keys #pv-fb:hover{text-decoration:underline}@media print{#pv-fb{display:none}}" +
     "#pv-keys kbd{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:4px;background:#222;color:#ddd;font:600 11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}";
@@ -131,10 +138,38 @@ DECK.presenterView = function(){
   });
   fc.addEventListener("load", function(){ setTimeout(update, 300); });
   fn.addEventListener("load", function(){ setTimeout(update, 300); });
+  // 閉じる（Esc・p・閉じるのボタン）：全画面なら全画面をやめるだけ。そうでなければ窓を閉じて、本体の窓にフォーカスを返す（できるとき）。
+  // 編集アプリでは、この文書は発表者の窓の中の枠（#pf）にあるので、窓を閉じるのは親（app/main.js の PRES_DOC）に頼む
+  function closeView(){
+    if (document.fullscreenElement){ if (document.exitFullscreen) document.exitFullscreen().catch(function(){}); return; }
+    if (window.parent !== window){ try { window.parent.postMessage({type: "app-pres-close"}, "*"); } catch (e) {} return; }
+    try { if (opener && !opener.closed) opener.focus(); } catch (e) {}
+    window.close();
+  }
+  DECK.presenterClose = closeView;
+  document.getElementById("pv-close").onclick = function(){ closeView(); };
+  // 開いたらフォーカスを取る。まだキーを受けられなければ、大きな覆いで最初のクリックを受ける
+  var tap = document.createElement("button");
+  tap.type = "button"; tap.id = "pv-tap"; tap.textContent = L.tap; tap.hidden = true;
+  document.body.appendChild(tap);
+  function unTap(){ if (!tap.hidden){ tap.hidden = true; } }
+  tap.addEventListener("pointerdown", function(e){ e.preventDefault(); e.stopPropagation(); try { window.focus(); } catch (err) {} unTap(); });
+  tap.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); try { window.focus(); } catch (err) {} unTap(); });
+  window.addEventListener("focus", unTap);
+  document.addEventListener("keydown", unTap, true);   // キーが届いているなら覆いはいらない
+  try { window.focus(); } catch (e) {}
+  // 編集アプリの窓の中の枠（#pf）では、枠の hasFocus は窓にフォーカスがあっても false のことがある。窓（app/main.js の PRES_DOC）が自分の hasFocus を見て知らせる
+  if (window.parent !== window) window.addEventListener("message", function(e){ if (e.source === window.parent && e.data && e.data.type === "app-pres-tap" && !document.hasFocus()) tap.hidden = false; });
+  else setTimeout(function(){ if (!document.hasFocus()) tap.hidden = false; }, 300);
   document.addEventListener("keydown", function(e){
     var k = e.key;
     // フォーカスのあるボタンは Enter / Space でそれ自身を押す
     if ((k === " " || k === "Enter") && e.target && e.target.closest && e.target.closest("button, a[href]")) return;
+    // Esc（道具を使っていれば tools.js が先に切る：defaultPrevented）と p：閉じる。全画面のときの Esc は止めない（ブラウザのもの）
+    if (!e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.altKey && (k === "Escape" || k === "p")){
+      if (k === "p" || !document.fullscreenElement) e.preventDefault();
+      closeView(); return;
+    }
     // 戻る（リンクの前の位置へ）。ペンのときの Backspace は tools.js が書き込みを消すのに使う（defaultPrevented）
     if (!e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.shiftKey && ((k === "Backspace" && !e.altKey) || (k === "ArrowLeft" && e.altKey))){ e.preventDefault(); send("back"); return; }
     if (e.altKey) return;

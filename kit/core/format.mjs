@@ -30,6 +30,7 @@ export const FORMAT = Object.freeze({
   LIVE_ENDPOINT: `https://live.${NAME}.org`,
   LIVE_REPO: `https://github.com/${NAME}/live`,
   LIVE_VENDOR_DIR: `vendor/${NAME}-live-protocol`,
+  LIVE_SETUP_PREFIX: `${NAME}-live-setup-v1:`,        // エディタからの一方向の設定の文字列の前置（egatari/live の PROTOCOL.md §2.1）
   LIVE_STORE_PREFIX: `${NAME}-live-`,                 // 再生器の localStorage（pid）と sessionStorage（参加した）の鍵の前置（<prefix>pid:<room> など）
 });
 // 実行系（kit/deck.js）に渡す分（build-core が DECK.FORMAT として埋め込む）

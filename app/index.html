@@ -24,7 +24,7 @@
       <div id="m-open" class="menu-list" role="menu" hidden>
         <button type="button" id="b-openfile" role="menuitem" data-t="openFile"></button>
         <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
-        <button type="button" id="b-paste" role="menuitem"></button>
+        <button type="button" id="b-new" role="menuitem" data-t="newCmd"></button>
         <button type="button" id="b-themes" role="menuitem" data-t="themeFolderItem"></button>
       </div>
     </div>
@@ -78,8 +78,7 @@
       <div data-t="dropHere"></div>
       <div class="row">
         <button type="button" id="w-openfile" class="pri" data-t="openFile"></button>
-        <button type="button" id="w-new" data-t="newDeck"></button>
-        <button type="button" id="w-paste"></button>
+        <button type="button" id="w-new" data-t="newCmd"></button>
       </div>
       <p class="secondary"><span data-t="folderFor"></span> <button type="button" id="w-open" class="ghost" data-t="openFolder"></button></p>
     </div>
@@ -93,7 +92,7 @@
       </table>
     </details>
     <div id="newform" class="card" hidden>
-      <h2 data-t="newDeck"></h2>
+      <h2 id="n-head" data-t="newDeck"></h2>
       <label><span data-t="newTitle"></span><input id="n-title" type="text"></label>
       <label><span data-t="newLang"></span><select id="n-lang"><option value="ja">日本語</option><option value="en">English</option></select></label>
       <label><span data-t="newTheme"></span><select id="n-theme"></select></label>

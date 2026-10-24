@@ -14,7 +14,7 @@ export function fakeSpeech(text, role) {
   return out;
 }
 // mutate(records, files)：記録や音声を細工する（敵対 zip の試験）。戻り値：zip のバイト列
-export async function colabZip(job, { docId = job.docId, mutate = null, generator = { name: 'irodori-tts-colab', version: '1' } } = {}) {
+export async function colabZip(job, { docId = job.docId, title = job.title ?? null, mutate = null, generator = { name: 'irodori-tts-colab', version: '1' } } = {}) {
   const steps = {}, files = [];
   for (const st of job.steps) {
     const turns = st.turns.map((t) => t.segments.map((s) => (s.trim() ? processTake([fakeSpeech(s, t.role)], SR_IN).pcm : new Float32Array(0))));
@@ -26,7 +26,7 @@ export async function colabZip(job, { docId = job.docId, mutate = null, generato
     steps[st.key] = { file: name, dur: j.dur, cues: j.cues, kind: 'tts', sync: 'auto', inputHash: st.inputHash,
       recipe: { engine: 'dry-run', model: 'dry-run', voice, seed: null, dictionary: job.recipe.dictionary, processing: PROCESSING + '+colab1' } };
   }
-  const records = { egatari: 'tts-records', v: 1, docId, generator, steps };
+  const records = { egatari: 'tts-records', v: 1, docId, ...(title ? { title } : {}), generator, steps };
   const entries = [['records.json', new TextEncoder().encode(JSON.stringify(records, null, 1) + '\n')], ...files];
   if (mutate) mutate(records, entries);
   entries[0][1] = new TextEncoder().encode(JSON.stringify(records, null, 1) + '\n');

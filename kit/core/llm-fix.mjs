@@ -14,6 +14,7 @@
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
 import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
+import { DEFAULT_METRICS, limitsOf } from './theme-metrics.mjs';
 
 export function guideRules(guide) {
   const out = new Map();
@@ -61,7 +62,7 @@ export function rulesFor(p) {
 const L = {
   en: {
     head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
-    ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Reply with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
+    ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
     askPartial: (n) => `The deck is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
     problems: 'Findings', rules: 'Standards', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
     where: (p) => (p.i === null || p.i === undefined ? 'Whole deck' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
@@ -69,30 +70,33 @@ const L = {
   },
   ja: {
     head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
-    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。返事はちょうど 2 つのコードの囲み ```deck.html と ```narration.md にしてください（R-output）。',
+    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み ```deck.html と ```narration.md を書いてください（R-output）。',
     askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
     problems: '指摘', rules: '規格', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
     where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? `「${p.title}」` : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
 };
-// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は品質チェックのコマンド版の JSON の data（{px, lim}）か、ブラウザ版の arg（"583 > 565"・"23.2px「…」"）
-const LINE = 46;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
+// 量の目安（はみ出した px と行の数・字の大きさ）。p.data は品質チェックのコマンド版の JSON の data（{px, lim}）か、ブラウザ版の arg（"583 > 565"・"1240 > 1188"・"23.2px「…」"）
+// 限り（lim）と 1 行の高さ（line）はテーマの寸法（theme.json の metrics）から。値になければ既定（kit/core/theme-metrics.mjs の DEFAULT_METRICS）
+const DM = DEFAULT_METRICS;
+const LINE = DM.body.line;   // 本文の 1 行（32px × 1.45。kit/layouts.css の .body）
 const num = (x) => { const m = String(x ?? '').match(/-?\d+(?:\.\d+)?/g); return m ? m.map(Number) : []; };
 export function amountOf(p, lang = 'en') {
   const d = p.data, ja = lang === 'ja';
   const pick = (k, i) => (d && typeof d === 'object' && Number.isFinite(+d[k]) ? +d[k] : num(d)[i]);
   if (p.code === 'bodyBottom' || p.code === 'overflowBottom') {
-    const px = pick('px', 0), lim = pick('lim', 1) || 565;
+    const px = pick('px', 0), lim = pick('lim', 1) || limitsOf(DM).conclBottom;
+    const line = d && typeof d === 'object' && Number.isFinite(+d.line) && +d.line > 0 ? +d.line : LINE;
     if (!Number.isFinite(px)) return '';
-    const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / LINE));
-    return ja ? `本文を ${over} px（${LINE} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
-      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${LINE} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
+    const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / line));
+    return ja ? `本文を ${over} px（${line} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
+      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${line} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
   }
   if (p.code === 'bodyRight' || p.code === 'overflowRight') {
-    const px = pick('px', 0);
+    const px = pick('px', 0), lim = pick('lim', 1) || limitsOf(DM).right;
     if (!Number.isFinite(px)) return '';
-    const over = Math.ceil(px - 1236);
+    const over = Math.ceil(px - lim);
     return ja ? `右へ ${over} px はみ出している：幅を ${over} px 減らす` : `${over} px too wide: make it ${over} px narrower`;
   }
   if (p.code === 'smallSvgText' || p.code === 'smallText') {
