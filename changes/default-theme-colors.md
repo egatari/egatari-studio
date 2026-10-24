@@ -1,7 +1,9 @@
 ### Changed
 
-- Theme `default` 1.1.0: `--emph` (conclusions, problems) #C50516 → #BE3012, a vermilion-leaning red: under protan simulation it stays apart from the body text (CIEDE2000 to the ink 22.5 → 26.0), still 5.8:1 on white.
-  `--muted` (known results, captions, citations) #6E6E6E → #5C5853, 5.1:1 → 7.1:1 on white, so small grey text stays readable in a bright classroom. `--emph-tint` follows. Nothing else changes; `kokugo` keeps its own red and takes the new grey.
+- Theme `default` 1.1.0, `--emph` #C50516 → #BE3012: the orange-leaning red that CUD guidance recommends for P/D-type colour vision, darkened to text strength (5.80:1 on white, WCAG AA); protan ΔE00 to the ink 22.5 → 26.0.
+  The previous crimson leaned bluish, which CUD advises against, and was never a deliberate choice. `--emph-tint` follows; `kokugo` keeps its own red. Reasons: `themes/default/README.md`.
+- Theme `default` 1.1.0, `--muted` #6E6E6E → #5C5853: 5.10 → 7.06:1 on white (WCAG AAA level), for projectors and small text. `kokugo` inherits the new grey.
+  Trade-off: muted–ink ΔE00 25.6 → 18.2, acceptable because muted text also differs from the ink by role and position.
 
 ### Added
 
