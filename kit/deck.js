@@ -507,6 +507,8 @@ function seek(i, k, t, from, cont){
   k = Math.max(0, Math.min(s._max, k));
   if (REDUCE && t !== Infinity) t = Infinity;
   var mode = DECK.mode, lecture = mode === "lecture";
+  var dim = .5;
+  if (lecture){ var dv = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lecture-dim")); if (dv >= 0 && dv <= 1) dim = dv; }
   var entering = k === 0 && from !== undefined && from >= 0 && from !== i && t !== Infinity;
   var morph = entering && t < T.morph && morphSrc(i) === from;
   var fading = entering && !morph && t < T.slide;
@@ -528,7 +530,7 @@ function seek(i, k, t, from, cont){
       var p = n < k ? 1 : n > k ? 0 : prog(t, at, T.fade);
       var lift = !(e instanceof SVGElement) && e.tagName !== "TR" && !e.closest("svg");
       if (lecture){
-        e.style.opacity = n <= k ? 1 : .28;
+        e.style.opacity = n <= k ? 1 : dim;
         e.style.transform = "none";
       } else {
         e.style.opacity = p;

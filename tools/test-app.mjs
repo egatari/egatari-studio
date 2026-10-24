@@ -437,6 +437,7 @@ try {
   await page.click('#b-comments');
   await page.waitForSelector('#dev-comments .dev-c');
   ok((await page.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
+  ok(await page.locator('#dev-comments-volatile').count() === 0, 'comment: a working folder shows no “not saved” notice');
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
   // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
@@ -632,6 +633,11 @@ try {
     await previewAudioPlays(f, 'preview audio (single file in memory)');
     await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
+    // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
+    await page.click('#b-comments');
+    await page.waitForSelector('#dev-comments');
+    ok((await page.textContent('#dev-comments-volatile')) === '1 ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
+    await page.click('#b-comments');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
     ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダに書き出す』を使ってください。')

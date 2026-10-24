@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=a8c488a5bf482da1 -->
+<!-- i18n: pair=reference.ja.md sha256=bf969b59b4849b49 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -182,6 +182,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: lecture highlight) |
 | `--series-1` … `--series-4` | figure series colors |
+| `--lecture-dim` | lecture view: opacity of steps not yet reached (0.5) |
 | `--font-sans`, `--weight-body` | font family and body weight |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
@@ -226,7 +227,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Parameter | Meaning |
 |---|---|
 | `?mode=talk` | default: later steps hidden, current step fades in |
-| `?mode=lecture` | everything visible, later steps faded (0.28), current step highlighted (`.cur`), marks in final state |
+| `?mode=lecture` | everything visible, later steps faded (`--lecture-dim`, default 0.5), current step highlighted (`.cur`), marks in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |
@@ -494,7 +495,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
-| `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. Prints the path and the slide count |
+| `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. `--steps` instead lays out every step of each slide that has a figure or component, side by side, one row per slide (default tile width 320 px; output `<deck>/out/steps.png`) to check a figure's constraints step by step. Prints the path and the slide count |
 | `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
 | `node tools/catalog.mjs` | regenerate `vendor/components/CATALOG.md` |
 | `npm run components:update -- vX.Y.Z [--from <folder>]` | bring in a release of egatari/components into `vendor/components/` and `components.lock.json` (checks sha256 against `manifest.json`; never replaces a version) |

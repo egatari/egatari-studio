@@ -564,6 +564,7 @@ const ui = createEditorUI({
   lang: EN ? 'en' : 'ja',
   drawerHost: $('deck'),
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
+  volatileComments: () => !!S.portable,
   beforeEdit: (kind) => beforeEditing(kind),
   reload: async () => { await rebuild('reload'); loadFrame(); },
   extra: { open: () => audio.isOpen(), editing: () => audio.isBusy() || rec.isOpen() },
