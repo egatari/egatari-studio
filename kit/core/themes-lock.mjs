@@ -15,6 +15,13 @@
 import { NAME_RE, VERSION_RE } from './components-lock.mjs';
 
 export const THEMES_LOCK_FILE = 'themes.lock.json';
+// テーマの説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）：テーマの一部でない。読まず、写さず、hash に入れない
+// （format spec §6：テーマの sha256 は組み立てが読むファイル＝スタイルシート・宣言のファイル・参照する資源だけ）。rel はテーマのフォルダからの相対パス
+export function isThemeDoc(rel) {
+  const r = String(rel).replace(/\\/g, '/').replace(/^\.\//, '');
+  if (r.includes('/')) return false;
+  return /^(?:readme|license)/i.test(r) || /\.md$/i.test(r);
+}
 export const VENDOR_THEMES = ['vendor', 'themes'];
 const SHA_RE = /^[0-9a-f]{64}$/;
 const COLOR_RE = /^#[0-9A-Fa-f]{6}$/;

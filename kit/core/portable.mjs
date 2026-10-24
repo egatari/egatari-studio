@@ -16,7 +16,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
-import { readThemesLock, themesVendorDir, themePinsForIndex } from './themes-lock.mjs';
+import { readThemesLock, themesVendorDir, themePinsForIndex, isThemeDoc } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
@@ -691,18 +691,23 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     } else if (env.within(p, vThemeDir)) {
       // vendor/themes/<名前>/<版>/…：同梱のテーマの前の版の写し（教材が記録した版で組んだ。kit/core/themes-lock.mjs）。今の版と同じ名前で記録する
       const [name, version] = P.relative(vThemeDir, p).split(P.sep);
+      const k = P.relative(P.join(vThemeDir, name, version), p).split(P.sep).join('/');
+      if (isThemeDoc(k)) continue;   // 説明の文書はテーマの hash に入れない（format spec §6）
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regThemeVer.set(name, version);
-      regTheme.get(name).set(P.relative(P.join(vThemeDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
+      regTheme.get(name).set(k, readBytesVia(env, p));
     } else if (env.within(p, themeDir)) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
+      const k = P.relative(P.join(themeDir, name), p).split(P.sep).join('/');
+      if (isThemeDoc(k)) continue;   // 説明の文書はテーマの hash に入れない（format spec §6）
       if (!regTheme.has(name)) regTheme.set(name, new Map());
-      regTheme.get(name).set(P.relative(P.join(themeDir, name), p).split(P.sep).join('/'), readBytesVia(env, p));
+      regTheme.get(name).set(k, readBytesVia(env, p));
     } else {
       // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの機械・編集アプリでも同じテーマで組み直せる）
       const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
       if (!u) continue;
       const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
+      if (isThemeDoc(rp.split('/').slice(2).join('/'))) continue;   // 利用者のテーマの説明の文書は写さない
       if (files[rp] || env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
       files[rp] = readBytesVia(env, p);
     }

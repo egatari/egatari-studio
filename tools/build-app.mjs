@@ -18,6 +18,7 @@ import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
+import { isThemeDoc } from '../kit/core/themes-lock.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -54,12 +55,13 @@ for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 const themes = [];
 for (const d of fs.readdirSync(rel('themes'), { withFileTypes: true })) {
   if (!d.isDirectory() || !fs.existsSync(rel('themes', d.name, 'tokens.css'))) continue;
-  themes.push(d.name); addTree('/repo/themes/' + d.name, rel('themes', d.name));
+  themes.push(d.name); addTree('/repo/themes/' + d.name, rel('themes', d.name), (f) => !isThemeDoc(path.relative(rel('themes', d.name), f)));
 }
 themes.sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)));
 // 同梱のテーマの版の固定（themes.lock.json）と前の版の写し（vendor/themes/<名前>/<版>/。教材が記録した版で組み直す。kit/core/themes-lock.mjs）
 if (fs.existsSync(rel('themes.lock.json'))) add('/repo/themes.lock.json', rel('themes.lock.json'));
-if (fs.existsSync(rel('vendor', 'themes'))) addTree('/repo/vendor/themes', rel('vendor', 'themes'));
+// 説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）はテーマの一部でないので入れない（kit/core/themes-lock.mjs の isThemeDoc）
+if (fs.existsSync(rel('vendor', 'themes'))) addTree('/repo/vendor/themes', rel('vendor', 'themes'), (f) => !isThemeDoc(path.relative(rel('vendor', 'themes'), f).split(path.sep).slice(2).join('/')));
 // KaTeX：CSS・実行時の JS（SVG の中の式）・字（woff2 だけ）
 const kdir = path.dirname(require.resolve('katex'));
 add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css'));

@@ -5,6 +5,8 @@
 //    --update-themes は egatari.json を今の版にして、今の色で組む
 // 3. 持ち運べる 1 ファイル：前の版で組んだ 1 ファイルは、埋め込んだ前の色のまま再生する。展開（unpack）は記録の sha256 から egatari.json に版を固定し、
 //    組み直しても前の色のまま（記録の sha256 も同じ）。今の版で書き出した 1 ファイルの egatari.json は themes を持ち、展開して組み直すと同じバイト
+// 5. 説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）はテーマの一部でない：足しても hash は変わらず、themes:check も通り、
+//    利用者のテーマを 1 ファイルに入れるときも写さない。ロゴに書いても読まない（format spec §6）
 // 4. 編集アプリ：前の版を記録した 1 ファイル（egatari.json に themes のない、前の Studio が書いたもの）を開くと、プレビューは前の色のまま、
 //    知らせに変わる色（前 → 今、色見本）と「テーマを更新」。押したときだけ今の版で組み直し、egatari.json と記録が替わる
 import fs from 'node:fs';
@@ -19,7 +21,7 @@ import { build as coreBuild } from '../kit/core/build-core.mjs';
 import { exportPortable, readPortable } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { parseThemesLock, themesLockProblems, themeVersionForSha, themePinsForIndex, pickThemeVersion, themeUpdate, configThemePins } from '../kit/core/themes-lock.mjs';
-import { themesLockCheck } from './themes-lock.mjs';
+import { themesLockCheck, themeDirSha } from './themes-lock.mjs';
 import { unpack } from './portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -111,6 +113,41 @@ fs.writeFileSync(oldFile, pold.html);
   ok(rcu.index.themes.find((x) => x.name === 'default').sha256 === D.sha256[NEW] && !rcu.stats.themePinned.length, 'rebuild with carry and updateThemes: the current version');
   const r = await readPortable(new Uint8Array(fs.readFileSync(oldFile)));
   ok(r.sourceMatches === true, 'single file (old): reads cleanly');
+}
+
+// ---------------------------------------------------------------- 5. 説明の文書は hash に入らない
+{
+  const docs = { 'README.md': '# x\n', 'README.ja.md': '# x\n', 'NOTES.md': 'notes\n', 'LICENSE': 'MIT\n', 'LICENSE.txt': 'MIT\n' };
+  const addDocs = (dir) => { for (const [f, t] of Object.entries(docs)) fs.writeFileSync(path.join(dir, f), t); };
+  // 同梱のテーマ：themes/ と vendor/themes/ に足しても hash と themes:check は同じ
+  const R = path.join(work, 'docs-root');
+  fs.cpSync(path.join(ROOT, 'themes'), path.join(R, 'themes'), { recursive: true });
+  fs.cpSync(path.join(ROOT, 'vendor', 'themes'), path.join(R, 'vendor', 'themes'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'themes.lock.json'), path.join(R, 'themes.lock.json'));
+  addDocs(path.join(R, 'themes', 'default')); addDocs(path.join(R, 'vendor', 'themes', 'default', OLD)); addDocs(path.join(R, 'themes', 'kokugo'));
+  ok(themeDirSha(path.join(R, 'themes', 'default')) === D.sha256[NEW] && themeDirSha(path.join(R, 'vendor', 'themes', 'default', OLD)) === D.sha256[OLD], 'docs: README*, LICENSE* and *.md in a bundled theme do not change its sha256');
+  ok(themeDirSha(path.join(R, 'themes', 'kokugo')) === themeDirSha(path.join(ROOT, 'themes', 'kokugo')), 'docs: the same for a theme without a version (kokugo)');
+  ok(themesLockCheck(R).length === 0, 'docs: themes:check still passes with the documents added ' + JSON.stringify(themesLockCheck(R)));
+  // 利用者のテーマ：説明の文書を足しても hash は同じ。ロゴに書いた README.md は読まない。1 ファイルには写さない
+  const U = path.join(work, 'user-themes'), T = path.join(U, 'mine');
+  fs.mkdirSync(T, { recursive: true });
+  fs.writeFileSync(path.join(T, 'tokens.css'), ':root{--base:#335577}\n');
+  fs.writeFileSync(path.join(T, 'theme.json'), JSON.stringify({ name: 'mine', extends: 'default', logos: ['logo.svg', 'README.md'] }) + '\n');
+  fs.writeFileSync(path.join(T, 'logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>\n');
+  const before = themeDirSha(T);
+  addDocs(T);
+  ok(themeDirSha(T) === before, 'docs: README*, LICENSE* and *.md in a user theme do not change its sha256 (also when theme.json lists README.md as a logo)');
+  const deck = deckDir('user-theme');
+  fs.writeFileSync(deck, fs.readFileSync(deck, 'utf8').replace(/data-theme="[^"]*"/, 'data-theme="mine"'));
+  const prev = process.env.EGATARI_THEMES;
+  process.env.EGATARI_THEMES = U;
+  try {
+    const r = await exportPortable(nodeEnv, deck, {});
+    const names = Object.keys(r.files).filter((k) => k.startsWith('themes/mine/'));
+    ok(names.includes('themes/mine/tokens.css') && names.includes('themes/mine/logo.svg') && !names.some((k) => /README|LICENSE|\.md$/i.test(k)), 'docs: a user theme goes into the single file without its documents ' + JSON.stringify(names));
+    ok(r.stats.warn.some((w) => /README\.md/.test(w) && /ロゴにしない/.test(w)), 'docs: README.md listed as a logo is not read (warning)');
+    ok(!r.html.includes(Buffer.from('# x\n').toString('base64')), 'docs: the README is not embedded');
+  } finally { if (prev === undefined) delete process.env.EGATARI_THEMES; else process.env.EGATARI_THEMES = prev; }
 }
 
 // ---------------------------------------------------------------- 4. 再生と編集アプリ

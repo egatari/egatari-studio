@@ -25,7 +25,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
-import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning } from './themes-lock.mjs';
+import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, isThemeDoc } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
@@ -374,6 +374,8 @@ function themeAssets(env, t, warn, depth = 0, ud = [], tctx = null) {
   if (miss.length) warn.push(missingThemeWarning(env, miss[0], `「${P.basename(dir)}」（親のテーマなし）`));
   const par = pt ? themeAssets(env, pt, warn, depth + 1, ud, tctx) : null;
   const logos = cfg.logos ? cfg.logos.filter((f) => {
+    // 説明の文書（README*・LICENSE*・*.md）はロゴにしない（テーマの一部でない。読まない）
+    if (isThemeDoc(f)) { warn.push(`theme: 「${f}」は説明の文書なのでロゴにしない（読まない）`); return false; }
     const p = P.join(dir, String(f));
     if (!env.exists(p)) return false;
     if (inRoot(p)) return true;
