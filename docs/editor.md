@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=d7238e355c3eae98 -->
+<!-- i18n: pair=editor.ja.md sha256=6c63a26393e77bf2 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -90,7 +90,7 @@ After each action the editor writes `deck.html`, `narration.md` and `audio/manif
 
 ### Make the audio in Colab (when there is no WebGPU)
 
-<!-- colab-verified --> **Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU: the Colab T4 run worked on 2026-10-21; on 2026-10-23 it failed with libcublasLt.so.13 because Colab's CUDA libraries changed, and the notebook now falls back to the CPU automatically. GPU with the pinned versions: not yet verified. Kokoro not yet.**
+<!-- colab-verified --> **Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s).**
 
 For computers without WebGPU (many school PCs, Safari, iPad), the Audio panel has a **Make the audio in Colab** group (open by default when the browser has no WebGPU). Free Colab (your own Google account) makes the same voices, and the editor imports the result with cue times. Browser TTS itself does not change.
 
@@ -102,7 +102,7 @@ For computers without WebGPU (many school PCs, Safari, iPad), the Audio panel ha
 
 The zip is a download, so it is untrusted. It is read as bytes with limits applied before anything is allocated (zip 512 MiB, 64 MiB per audio file, `records.json` 4 MiB, at most 400 steps; zip64, encryption and unknown compression are refused; CRC-32 is checked). Only `records.json` and `audio/<name>.wav` are read (names are checked), the audio must decode as a real WAV of the recorded length, and nothing in the zip is interpreted as HTML or code (spec §11).
 
-`tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a zip made by `tools/colab-fixture.mjs`; folder and single file).
+`tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. The optional `title` (the lesson title, up to 120 characters) in `tts-job.json` is copied into `records.json` and is used only to name the source lesson when an import is refused. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a zip made by `tools/colab-fixture.mjs`; folder and single file).
 
 ## Recording mode (keyboard only)
 

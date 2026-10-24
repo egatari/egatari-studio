@@ -587,6 +587,12 @@ async function colabDocId() {
   if (S.portable) return typeof S.portable.index.docId === 'string' ? S.portable.index.docId : null;
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); return c && typeof c.docId === 'string' ? c.docId : null; } catch { return null; }
 }
+// 台本を書き出した教材の題（別の教材の音声を取り込もうとしたときの断り書きに使う）
+async function colabTitle() {
+  if (S.portable) return S.portable.index.metadata?.title || S.portable.index.title || (S.base ? titleOf(S.base) : '') || null;
+  try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && c.metadata && typeof c.metadata.title === 'string' && c.metadata.title) return c.metadata.title; } catch { /* 題はなくてもよい */ }
+  return S.base ? titleOf(S.base) || null : null;
+}
 const audio = createAudioPanel({
   ui, lang: EN ? 'en' : 'ja', tts, yomi: RES.yomi || null,
   loadMp3: () => loadLame({ test: () => window.__APP_TEST && window.__APP_TEST.mp3 }),
@@ -607,7 +613,7 @@ const audio = createAudioPanel({
   // Colab で音声を作る（WebGPU のない PC）：原稿の文が Google の環境で処理されるので、書き出す前に 1 度確かめる
   colab: {
     t: T.colab, version: RES.version,
-    docId: colabDocId,
+    docId: colabDocId, title: colabTitle,
     confirm: async (title, body, go) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
   },
 });

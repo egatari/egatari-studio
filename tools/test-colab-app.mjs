@@ -140,9 +140,9 @@ try {
   const r1 = await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + 'もう一文足しました。' })) }), [changed, nr]);
   ok(r1._status === 200 && r1.changed, 'folder: one step’s narration is edited after the export');
   // 取り込み：別の教材の zip は拒否
-  const other = await colabZip(job, { docId: PF.newDocId() });
+  const other = await colabZip(job, { docId: PF.newDocId(), title: 'ほかの授業' });
   await importZip(other);
-  ok((await msgs()).some((m) => m.includes('別の教材')) && (await opfsRead('audio/manifest.json')) === null, 'import: a zip made for another lesson (docId) is refused and nothing is written');
+  ok((await msgs()).some((m) => m.includes('別の教材「ほかの授業」のために作ったもの') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a zip made for another lesson (docId) is refused and nothing is written');
   // 敵対の zip：HTML を音声と言い張る・展開爆弾
   await importZip(await colabZip({ ...job, steps: [job.steps[0]] }, { mutate: (r, e) => { e[1] = [e[1][0], new TextEncoder().encode('<html><script>alert(1)</script></html>')]; } }));
   ok((await msgs()).some((m) => m.includes('WAV')) && !(await opfsRead('audio/manifest.json') || '').includes('"tts"'), 'import: a fake WAV (HTML) is refused; nothing is applied from it');
