@@ -8,6 +8,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.8] - 2026-10-24
+
+### Added
+
+- Theme versions, as for components: `themes/<name>/theme.json` has a `version`, earlier versions stay in `vendor/themes/<name>/<version>/` and `themes.lock.json` lists their hashes and changed colors (`npm run themes:check`, in `npm test`).
+  A lesson that recorded `default` 1.0.0 keeps it: the build warns `theme pinned: …` with old → new colors, `--update-themes` updates it, and the editor shows the colors with swatches and offers **Update theme**. Single files pin `themes` in their `egatari.json`. Documents at a theme's root (`README*`, `LICENSE*`, `*.md`) are never read or hashed; the `LICENSE*` of a user or lesson-local theme travels in the single file.
+- Player: **Listen with read-aloud (not saved as audio)** in the control bar reads a step without audio with a voice of the device
+  (local `speechSynthesis` voices only), shows “Reading aloud (this device's voice)”, and stops on the next step; never in video or print (format spec §5.6)
+- Editor app: the Audio panel can read the current step or the selected word aloud with the device voice, with `{x|y}` readings, the reading dictionary
+  and `join-num-counter@1`; nothing is written. `app/read-aloud.js` exports `readAloud(text, lang)` for the Pronunciation button (#101)
+- `kit/core/read-aloud.mjs`: the text to speak and the local-only voice choice, shared by the player (`DECK.ReadAloud`) and the editor
+- Build: every `deck-narration` turn carries `ttsParts`, the spoken pieces with readings applied (the `inputHash` input; format spec §4), so the player's
+  read-aloud says η as “イータ”; older files fall back to the display text with “Pronunciations not applied (older file)”. No audio becomes stale
+
+### Changed
+
+- Components v1.1.0 is the default version (1.0.0–1.0.3 are kept for lessons that recorded them). `m-kanbun`: reading-order numbers of two or more digits no longer spill out of their box (only their font size shrinks; one-digit numbers draw the same pixels as before), and every reading-order number carries `data-annot`, so the quality check no longer applies its 24 px minimum text size to them. `m-kobun`: the conjugation card the viewer opened also closes when a step is re-entered (`ctx.reset`). `m-codetree`: the DOM no longer depends on the order of `render` calls (nothing visible changes). Release notes: [egatari/components v1.1.0](https://github.com/egatari/components/releases/tag/v1.1.0)
+- Theme `default` 1.1.0, `--emph` #C50516 → #BE3012: the orange-leaning red that CUD guidance recommends for P/D-type colour vision, darkened to text strength (5.80:1 on white, WCAG AA); protan ΔE00 to the ink 22.5 → 26.0.
+  The previous crimson leaned bluish, which CUD advises against, and was never a deliberate choice. `--emph-tint` follows; `kokugo` keeps its own red. Reasons: `themes/default/README.md`.
+- Theme `default` 1.1.0, `--muted` #6E6E6E → #5C5853: 5.10 → 7.06:1 on white (WCAG AAA level), for projectors and small text. `kokugo` inherits the new grey.
+  Trade-off: muted–ink ΔE00 25.6 → 18.2, acceptable because muted text also differs from the ink by role and position.
+
+### Fixed
+
+- `egatari.json`: every Studio writer (export and unpack, Save and Save as new lesson, the Attachments and Live panels, **Update theme**,
+  **Rebuild with** a replacement version, `--update-themes`, `npm run portable -- attach`) now changes only its own members and keeps every
+  other member byte for byte, in place, through one helper `updateConfig(oldText, patch)` (`kit/core/config-file.mjs`). Before, the file was
+  parsed and re-serialized, which reformatted other producers' members, rounded large integers, turned `1e400` into `null` and moved numeric
+  member names first (format spec §3.3: other producers' members are preserved unchanged). A file that is not a JSON object is now refused
+  instead of being overwritten
+- `index.themes[].version` is always the theme's own version, never Studio's (format spec §3.8, §6): `kokugo` and `business` are 1.0.0 in
+  `themes.lock.json` with the hashes lessons already recorded (their files are unchanged), and a user or lesson-local theme without a `version` in
+  its `theme.json` is recorded as `"local"` with `source: "embedded"` and identified by its sha256 when rebuilt. Before, these themes recorded the
+  Studio version (e.g. `0.4.7`), and user themes were not recorded at all. `npm run themes:check` now requires every bundled theme to be in the lock
+- The single file's `egatari.json` `themes` now pins exactly the entries of `index.themes` with their versions, including the parent of a theme
+  that `extends` another and `"local"` themes (before, only themes pinned in `themes.lock.json` were listed)
+
 ## [0.4.7] - 2026-10-24
 
 ### Added
@@ -626,7 +663,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/egatari/egatari-studio/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/egatari/egatari-studio/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/egatari/egatari-studio/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/egatari/egatari-studio/compare/v0.4.4...v0.4.5
