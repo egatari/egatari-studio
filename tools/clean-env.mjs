@@ -35,6 +35,7 @@ const copyDeck = (src, dst) => fs.cpSync(src, dst, { recursive: true, filter: (x
 
 // 部品庫の写し（vendor/components）：components.lock.json と合っていること（ネットワークなし）と、既定の版の見本がこの環境でも組めること（出力は一時フォルダへ）
 node('components: vendor/components matches components.lock.json', 'tools/components-update.mjs', ['--check']);
+node('themes: themes/ and vendor/themes match themes.lock.json', 'tools/themes-lock.mjs', ['--check']);
 for (const c of vendorComponents(ROOT)) {
   if (fs.existsSync(path.join(c.dir, 'demo.html'))) node(`components: build ${c.name} ${c.version} demo`, 'kit/build.mjs', [path.join(c.dir, 'demo.html'), '-o', path.join(tmp, 'demos', c.name + '.html')]);
 }
