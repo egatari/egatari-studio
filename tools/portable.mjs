@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict, exportPortable, exportedState } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig } from '../kit/core/config-file.mjs';
 import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, themeVersionForSha, themeUpdate, themePinnedWarning } from '../kit/core/themes-lock.mjs';
@@ -59,23 +60,25 @@ export async function unpack(file, dir, { force = false } = {}) {
   // 設定のファイル（§3.3・§3.8）：docId・索引の権利の表示・添付の一覧（index.attachments）を残す（展開したフォルダを組み直しても同じ文書と一覧。
   // 編集アプリの作業場所と同じ。kit/core/portable.mjs の folderConfig）
   const CFG = FORMAT.CONFIG_FILE;
-  const cfgText = folderConfig(r.index, files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : null);
+  const cfgText = folderConfig(r.index, files[CFG] ? new TextDecoder().decode(files[CFG]) : null);
   if (cfgText !== null) files[CFG] = new TextEncoder().encode(cfgText);
   // 部品庫の部品の版を、設定のファイルの components に固定する（format spec §3.3：展開したフォルダを組み直しても版が黙って変わらないように。
   // 版は index.js の hash が合う手元の版、なければ記録の版。設定のファイルに components がもうあれば変えない。kit/core/components-lock.mjs）
   const pinned = unpackPins(r.index);
   if (Object.keys(pinned).length) {
-    const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
-    if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, components: pinned }, null, 2) + '\n');
+    const text = files[CFG] ? new TextDecoder().decode(files[CFG]) : null;
+    const conf = text !== null ? parseJsonStrict(text) : {};
+    if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(updateConfig(text, text !== null ? { components: pinned } : { docId: r.index.docId, components: pinned }));
   }
   // 同梱のテーマの版も、設定のファイルの themes に固定する（themes.lock.json。記録の sha256 が合う版。kit/core/themes-lock.mjs）。
   // 書き出した 1 ファイルはもう themes を持つ（そのまま）。持たない前の 1 ファイルだけここで足す。前の版なら知らせる
   const tPinned = unpackThemePins(r.index);
   const tWarn = [];
   if (Object.keys(tPinned).length) {
-    const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
+    const text = files[CFG] ? new TextDecoder().decode(files[CFG]) : null;
+    const conf = text !== null ? parseJsonStrict(text) : {};
     if (!Object.prototype.hasOwnProperty.call(conf, 'themes')) {
-      files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, themes: tPinned }, null, 2) + '\n');
+      files[CFG] = new TextEncoder().encode(updateConfig(text, text !== null ? { themes: tPinned } : { docId: r.index.docId, themes: tPinned }));
       const tl = themesLockAt(ROOT);
       for (const [name, v] of Object.entries(tPinned)) if (v !== tl.themes[name].current) tWarn.push(themePinnedWarning(themeUpdate(tl, name, v)));
     }
@@ -208,8 +211,8 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   if (!r.ok) throw new FormatError('not-live-results', `${file} is not live room results from the room service (${r.errors.slice(0, 3).join('; ')})`);
   const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
   const cfgPath = path.join(deckDir, CFG);
-  let conf = {};
-  if (fs.existsSync(cfgPath)) conf = parseJsonStrict(readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
+  let conf = {}, confText = null;
+  if (fs.existsSync(cfgPath)) conf = parseJsonStrict(confText = readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
   const list = Array.isArray(conf[KEY]) ? conf[KEY] : [];
   const warnings = [];
   const skipNote = skippedNotice(r.skipped, lang);
@@ -234,7 +237,8 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   const target = abs(rec.path);
   checkWritable(deckDir, target); checkWritable(deckDir, cfgPath);
   safeWriteFile(deckDir, target, bytes);
-  safeWriteFile(deckDir, cfgPath, JSON.stringify({ ...conf, [KEY]: [...list, rec] }, null, 2) + '\n');
+  // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+  safeWriteFile(deckDir, cfgPath, updateConfig(confText, { [KEY]: [...list, rec] }));
   return { path: rec.path, record: rec, summary: summarizeResults(r.results), warnings };
 }
 

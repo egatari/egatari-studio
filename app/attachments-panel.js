@@ -12,6 +12,7 @@
 //   はじめて取り込むときは、学ぶ人が打った字が入ること・教材のファイルにだけ残りどこにも送らないことを知らせる（一度だけ）。
 //   一覧では、その添付に「学ぶ人の回答」の印と、質問の数・投票ごとの数を出す（字はすべて textContent。学ぶ人の入力は信用しない）
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig } from '../kit/core/config-file.mjs';
 import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
   inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem, titleProblem, clipChars } from '../kit/core/attachments.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -125,10 +126,9 @@ export function createAttachPanel(o) {
     return { ws, files, conf, bad, plan, entries };
   }
   // 設定のファイルの添付の一覧を書き直す（ほかの項目と、各項目の知らない項目はそのまま。消えたファイルの項目は消す）
+  // attachments だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
   async function writeConfig(ws, conf, list) {
-    const out = { ...conf };
-    if (list.length) out[KEY] = list; else delete out[KEY];
-    const text = JSON.stringify(out, null, 2) + '\n';
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { [KEY]: list.length ? list : undefined });
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
     await ws.writeText(CFG, text);
   }

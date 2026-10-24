@@ -13,6 +13,7 @@
 //   段階の鍵を出していたところ（段階の候補・投票の一覧）には label を出し、鍵は title の吹き出しに。鍵そのものは変えない
 //   panel.open()
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText, newLiveSetup, liveSetupString } from '../kit/core/live.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -332,11 +333,10 @@ export function createLivePanel(o) {
     if (why) { o.toast(why, true); return false; }
     const ws = o.ws(), g = o.generation();
     if (!ws) return false;
-    const conf = await readConfig(ws);
+    // extensions.live だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
+    const old = await ws.readText(CFG, { max: READ_LIMITS.json });
     if (o.ws() !== ws || o.generation() !== g) return false;
-    const ext = isObj(conf.extensions) ? { ...conf.extensions } : {};
-    ext.live = lessonLive(lessonOf());
-    const text = JSON.stringify({ ...conf, extensions: ext }, null, 2) + '\n';
+    const text = updateConfig(old, { extensions: configMerge({ live: lessonLive(lessonOf()) }) });
     if (text.includes(M.key.trim()) && M.key.trim()) throw new Error('the key would be written');   // 念のため
     if (M.setup && text.includes(M.setup)) throw new Error('the setup secret would be written');
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });

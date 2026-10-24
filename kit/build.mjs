@@ -34,6 +34,7 @@ import { exportPortable, playOnly } from './core/portable.mjs';
 import { liveResultsWarning } from './core/live-results.mjs';
 import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs';
 import { FORMAT } from './core/format.mjs';
+import { updateConfig, configObject, merge as configMerge } from './core/config-file.mjs';
 import { exportName, titleOf } from './core/export-name.mjs';
 import { safeWriteFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
@@ -233,15 +234,17 @@ export function updateThemePins(srcPath) {
   const deckDir = path.dirname(path.resolve(srcPath)), cfg = path.join(deckDir, FORMAT.CONFIG_FILE);
   if (!fs.existsSync(cfg)) return [];
   const lock = parseThemesLock(fs.readFileSync(path.join(ROOT, THEMES_LOCK_FILE), 'utf8'));
-  const conf = JSON.parse(readRegular(cfg, { max: READ_LIMITS.json }).toString('utf8'));
-  const out = [];
+  const text = readRegular(cfg, { max: READ_LIMITS.json }).toString('utf8');
+  const conf = configObject(text);
+  const out = [], next = {};
   for (const [name, v] of Object.entries(configThemePins(conf))) {
     const t = lock.themes[name];
     if (!t || v === t.current) continue;
     out.push(t.versions.includes(v) ? themeUpdate(lock, name, v) : { name, from: v, to: t.current, tokens: [] });
-    conf.themes[name] = t.current;
+    next[name] = t.current;
   }
-  if (out.length) safeWriteFile(deckDir, cfg, JSON.stringify(conf, null, 2) + '\n');
+  // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+  if (out.length) safeWriteFile(deckDir, cfg, updateConfig(text, { themes: configMerge(next) }));
   return out;
 }
 

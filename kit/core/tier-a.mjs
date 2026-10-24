@@ -31,6 +31,7 @@ import {
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
 import { isJapanese, LATIN_MAX, parseRange, fontFaceCss } from './build-core.mjs';
 import { planAttachments, problemText, isAttachPath, inspectAttachment, blocking, nameProblem, roleProblem, attachmentMime, ATTACH_ROLES } from './attachments.mjs';
+import { updateConfig } from './config-file.mjs';
 
 const IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, RD_ID = FORMAT.READABLE_ID, CFG = FORMAT.CONFIG_FILE;
 const SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
@@ -343,8 +344,8 @@ async function run(original, filesIn, opts) {
   }
   // 添付の一覧（index.attachments）：設定のファイルの役割と題から、書き出しと同じ規則で（kit/core/attachments.mjs）。上限を超える・名前が正しくない
   // 添付は段 A でも入れない（断る。編集器は書く前に止める）
-  let cfgNew = null;
-  try { const cb = NEW.get(CFG) || (own(old, CFG) ? old[CFG] : null); cfgNew = cb ? parseJsonStrict(dec.decode(cb)) : null; } catch { cfgNew = null; }
+  let cfgNew = null, cfgText = null;
+  try { const cb = NEW.get(CFG) || (own(old, CFG) ? old[CFG] : null); cfgText = cb ? dec.decode(cb) : null; cfgNew = cfgText !== null ? parseJsonStrict(cfgText) : null; } catch { cfgNew = null; }
   const oldAttach = Array.isArray(ix[FORMAT.ATTACH_KEY]) ? ix[FORMAT.ATTACH_KEY] : null;
   // 中身の検査（§3.8。kit/core/attach-content.mjs）：足した・中身の変わった・記録（役割・題など）の変わった添付だけを、書き出しと同じく入れない（断る）。
   // 前からあって中身も記録も変わらないもの（keep）は、口述原稿だけの保存などで落とさずにそのまま残し、条件に合わなければ知らせる
@@ -376,9 +377,8 @@ async function run(original, filesIn, opts) {
   // 項目は 1 ファイルの設定のファイルには残さない（作業場所のものは呼び手が config で書き直せる）
   let configText = null;
   if (isObj(cfgNew) && own(finalFiles, CFG) && ((own(cfgNew, FORMAT.ATTACH_KEY) && !deepEqual(cfgNew[FORMAT.ATTACH_KEY], attachList)) || (attachDiff && !own(cfgNew, FORMAT.ATTACH_KEY)))) {
-    const c = { ...cfgNew };
-    if (attachList.length) c[FORMAT.ATTACH_KEY] = attachList; else delete c[FORMAT.ATTACH_KEY];
-    configText = JSON.stringify(c, null, 2) + '\n';
+    // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+    configText = updateConfig(cfgText, { [FORMAT.ATTACH_KEY]: attachList.length ? attachList : undefined });
     finalFiles[CFG] = new TextEncoder().encode(configText);
   }
 

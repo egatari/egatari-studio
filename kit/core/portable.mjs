@@ -21,6 +21,7 @@ import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 import { isLiveResults } from './live-results.mjs';
+import { updateConfig, merge as configMerge } from './config-file.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -590,21 +591,22 @@ export function configAttachmentsMatch(conf, index) {
   return sameJson(conf[FORMAT.ATTACH_KEY], want);
 }
 // 1 ファイルを作業フォルダに出すときの設定のファイル（§3.3・§3.8）：docId を残し、索引の権利の表示を写し、index.attachments を書く
-// （書き直す要がなければ null）。conf：今の設定のファイル（parse したもの。なければ null）
+// （書き直す要がなければ null）。text：今の設定のファイルの文字列（なければ null）。ほかの項目はバイトのまま（kit/core/config-file.mjs）
 const RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
-export function folderConfig(index, conf) {
+export function folderConfig(index, text) {
   const meta = isObj(index.metadata) ? index.metadata : {};
   const list = Array.isArray(index[FORMAT.ATTACH_KEY]) ? index[FORMAT.ATTACH_KEY] : null;
-  let c = conf, changed = false;
-  if (!isObj(c)) { c = { docId: index.docId, metadata: { ...meta } }; changed = true; }
+  const c = text === null || text === undefined ? null : parseJsonStrict(text);
+  const patch = {};
+  if (!isObj(c)) { patch.docId = index.docId; patch.metadata = { ...meta }; }
   else {
-    const cm = isObj(c.metadata) ? { ...c.metadata } : {};
-    let mc = false;
-    for (const k of RIGHTS) if (own(meta, k) && !own(cm, k)) { cm[k] = meta[k]; mc = true; }
-    if (mc) { c = { ...c, metadata: cm }; changed = true; }
+    const cm = isObj(c.metadata) ? c.metadata : {};
+    const add = Object.fromEntries(RIGHTS.filter((k) => own(meta, k) && !own(cm, k)).map((k) => [k, meta[k]]));
+    if (Object.keys(add).length) patch.metadata = isObj(c.metadata) ? configMerge(add) : add;
   }
-  if (list && list.length && !own(c, FORMAT.ATTACH_KEY)) { c = { ...c, [FORMAT.ATTACH_KEY]: list }; changed = true; }
-  return changed ? JSON.stringify(c, null, 2) + '\n' : null;
+  if (list && list.length && !(isObj(c) && own(c, FORMAT.ATTACH_KEY))) patch[FORMAT.ATTACH_KEY] = list;
+  if (!Object.keys(patch).length) return null;
+  return updateConfig(isObj(c) ? text : null, patch);
 }
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
@@ -755,9 +757,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   }
   // 設定のファイル（FORMAT.CONFIG_FILE）：docId（一度だけ作り、原稿に残して書き出しのたびに同じものを使う）と metadata
   const ePath = P.join(deckDir, CFG);
-  let econf = {};
+  let econf = {}, etext = null;
   if (env.exists(ePath) && inDeck(ePath)) {
-    const text = env.readText(ePath);   // 上限で断るもの（build-too-large）は設定の誤りにしない
+    const text = etext = env.readText(ePath);   // 上限で断るもの（build-too-large）は設定の誤りにしない
     try { econf = parseJsonStrict(text); } catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
     if (!isObj(econf)) fail('bad-config', `${CFG}: not an object`);
   }
@@ -771,14 +773,13 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (opts.identity) {
     const id = opts.identity;
     if (!(typeof id.docId === 'string' && RE.docId.test(id.docId))) fail('bad-config', `identity: docId "${id.docId}" is not a lowercase UUID`);
-    const m = isObj(econf.metadata) ? { ...econf.metadata } : {};
-    if (id.derivedFrom) m.derivedFrom = id.derivedFrom; else delete m.derivedFrom;
-    const text = JSON.stringify({ ...econf, docId: id.docId, metadata: m }, null, 2) + '\n';
+    // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+    const text = updateConfig(etext, { docId: id.docId, metadata: isObj(econf.metadata) ? configMerge({ derivedFrom: id.derivedFrom || undefined }) : (id.derivedFrom ? { derivedFrom: id.derivedFrom } : {}) });
     econf = parseJsonStrict(text);
     writes[CFG] = text;
   } else if (!own(econf, 'docId')) {
-    const text = JSON.stringify({ docId: newDocId(), ...Object.fromEntries(Object.entries(econf)) }, null, 2) + '\n';
-    econf = JSON.parse(text);
+    const text = updateConfig(etext, { docId: newDocId() });
+    econf = parseJsonStrict(text);
     writes[CFG] = text;
   }
   files[CFG] = writes[CFG] ? utf8(writes[CFG]) : readBytesVia(env, ePath);
@@ -838,9 +839,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     // 作業フォルダの設定のファイルは書き換えない（一覧に出ないものの項目も残す）
     const have = own(econf, FORMAT.ATTACH_KEY) ? econf[FORMAT.ATTACH_KEY] : undefined;
     if (!(have === undefined && !attachList.length) && !sameJson(have, attachList)) {
-      const c = { ...econf };
-      if (attachList.length) c[FORMAT.ATTACH_KEY] = attachList; else delete c[FORMAT.ATTACH_KEY];
-      files[CFG] = utf8(JSON.stringify(c, null, 2) + '\n');
+      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { [FORMAT.ATTACH_KEY]: attachList.length ? attachList : undefined }));
       if (have !== undefined) warnings.push(`${LOG}: ${CFG}: the copy in the single file lists only the attachments listed for readers (${attachList.length} of ${Array.isArray(have) ? have.length : 0}); the working folder's ${CFG} is unchanged`);
     }
   }
@@ -854,8 +853,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (!files[`components/${name}/index.js`] && regComp.has(name) && regComp.get(name).files.has('index.js') && RE.registryName.test(name)) used[name] = regComp.get(name).version;
     }
     if (Object.keys(used).length) {
-      const base = parseJsonStrict(new TextDecoder().decode(files[CFG]));
-      files[CFG] = utf8(JSON.stringify({ ...base, components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }, null, 2) + '\n');
+      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }));
     }
   }
   // 同じく、版を固定した同梱のテーマ（themes.lock.json。kit/core/themes-lock.mjs）の版（themes）も書く：展開したフォルダを組み直しても
@@ -864,8 +862,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const usedT = {};
     for (const name of regTheme.keys()) if (RE.registryName.test(name) && typeof r.stats.themeVersions[name] === 'string') usedT[name] = r.stats.themeVersions[name];
     if (Object.keys(usedT).length) {
-      const base = parseJsonStrict(new TextDecoder().decode(files[CFG]));
-      files[CFG] = utf8(JSON.stringify({ ...base, themes: Object.fromEntries(Object.keys(usedT).sort().map((k) => [k, usedT[k]])) }, null, 2) + '\n');
+      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { themes: Object.fromEntries(Object.keys(usedT).sort().map((k) => [k, usedT[k]])) }));
     }
   }
 
