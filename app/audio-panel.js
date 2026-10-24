@@ -30,6 +30,7 @@ import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
+import { readAloud, stopReadAloud, readingAloud, readAloudSupported } from './read-aloud.js';
 import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
@@ -56,6 +57,10 @@ const STR = {
     following: (k) => '音声を作り終えるまで、表示中の段階（' + k + '）には切り替えません',
     other: (k) => 'スライドで表示中の段階（' + k + '）とは別の段階です。スライドを動かすと切り替わります',
     wavNote: '（MP3 のエンコーダを読み込めないので WAV で保存しました。1 ファイル版には MP3 のエンコーダが入っていません）',
+    read: '読み上げで聞く（音声ファイルにはなりません）', readT: 'このステップの台本を、この端末の声で読みます。何も保存しません', readSel: '選んだ語を読み上げで聞く', readSelT: '台本の中で選んだ語や文だけを、この端末の声で読みます',
+    reading: '読み上げ中（この端末の声）', readStop: '■ 止める', readNoSel: '台本の欄で、聞きたい語を選んでください', readNoText: '読む言葉がありません',
+    readNoVoice: (l) => 'この端末には' + (/^ja\b/i.test(l) ? '日本語' : /^en\b/i.test(l) ? '英語' : '「' + l + '」') + 'の読み上げの声がありません（端末の中の声だけを使い、ネットワークの声は使いません）。音声が要るときは AI 音声（「TTS で作り直す」か Colab）で作ってください',
+    readNoSynth: 'このブラウザでは読み上げを使えません。音声が要るときは AI 音声（「TTS で作り直す」か Colab）で作ってください',
   },
   en: {
     title: 'Audio', close: 'Close', step: 'Step ', slide: (n, t) => 'Slide ' + n + ': ' + t, none: 'No audio for this step yet',
@@ -78,6 +83,10 @@ const STR = {
     following: (k) => 'Stays on this step until the audio is done (showing ' + k + ')',
     other: (k) => 'This is not the step shown on the slide (' + k + '). Move the slides to switch',
     wavNote: ' (saved as WAV: the MP3 encoder could not be loaded; the single-file editor has no MP3 encoder)',
+    read: 'Listen with read-aloud (not saved as audio)', readT: 'Reads this step’s script with this device’s voice. Nothing is saved', readSel: 'Listen to the selected word', readSelT: 'Reads only the word or text you selected in the script, with this device’s voice',
+    reading: 'Reading aloud (this device\'s voice)', readStop: '■ Stop', readNoSel: 'Select a word in the script first', readNoText: 'Nothing to read',
+    readNoVoice: (l) => 'This device has no read-aloud voice for ' + (/^ja\b/i.test(l) ? 'Japanese' : /^en\b/i.test(l) ? 'English' : '“' + l + '”') + ' (only voices on this device are used, never network voices). To get audio, make an AI voice (“Regenerate with TTS” or Colab)',
+    readNoSynth: 'Read-aloud is not available in this browser. To get audio, make an AI voice (“Regenerate with TTS” or Colab)',
   },
 };
 
@@ -99,6 +108,9 @@ const CSS = [
   '#dev-audio .dv-voices select{min-width:0;font:inherit;padding:2px 4px}#dev-audio .dv-voices .dv-vr{color:#4b5363}',
   '#dev-audio .dv-cur .dv-revert{margin-left:auto}',
   '#dev-audio .dv-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}',
+  '#dev-audio .dv-reading{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:2px 10px;border-radius:999px;background:#1f2937;color:#fff;font-size:12px;font-weight:600}',
+  '#dev-audio .dv-reading[hidden]{display:none}',
+  '#dev-audio .dv-reading::before{content:"";width:8px;height:8px;border-radius:50%;background:#34d399}',
   '#dev-audio button.dv-rec{border-color:#dc2626;color:#b91c1c}',
   '#dev-audio .dv-h{font-weight:700;font-size:12.5px;margin:10px 0 4px}',
   '#dev-audio .dv-take{border:1px solid #e0e4ec;border-radius:8px;padding:6px 8px;margin-bottom:6px;background:#fff}',
@@ -128,6 +140,37 @@ export function createAudioPanel(o) {
   if (!doc.getElementById('dev-audio-style')) { const st = doc.createElement('style'); st.id = 'dev-audio-style'; st.textContent = CSS; doc.head.appendChild(st); }
   let open = false, card = null, view = null, busyMsg = null, seq = 0;
   let focusRec = false;   // 録音モードを閉じた後：次に描いたとき「● 録音」にフォーカスを戻す
+  // 読み上げ（端末の声）：読んでいるステップと、読めなかったときの知らせ
+  let readKey = null, readMsg = null;
+  function stopRead(redraw = true) { const was = stopReadAloud(); readKey = null; if (was && redraw && view) draw(view); }
+  async function speakFor(v, input) {
+    readMsg = null;
+    const lang = ttsLang(v);
+    const terms = (o.yomi && o.yomi.terms) || [];
+    readKey = v.key;
+    const r = await readAloud(input, lang, { terms, onend: () => { if (readKey === v.key) { readKey = null; if (view && view.key === v.key) draw(view); } } });
+    if (!r.ok) { readKey = null; readMsg = { key: v.key, text: r.reason === 'no-voice' ? L.readNoVoice(lang) : r.reason === 'no-synth' ? L.readNoSynth : L.readNoText }; }
+    if (view && view.key === v.key) draw(view);
+    return r;
+  }
+  function readStep(v) { return v.seg ? speakFor(v, v.seg.turns) : null; }
+  // 台本の欄で選んだ語。表示の字（θ）に、このステップの読み（{θ|シータ}）があれば読みを当てる（長い語から）
+  function readSelection(v) {
+    const box = card && card.querySelector('#dev-audio-script');
+    const sel = win.getSelection && win.getSelection();
+    let text = sel && sel.rangeCount && box && box.contains(sel.anchorNode) && box.contains(sel.focusNode) ? String(sel).trim() : '';
+    if (!text) { readMsg = { key: v.key, text: L.readNoSel }; draw(v); return null; }
+    const pairs = [];
+    for (const t of v.seg.turns) for (const m of String(t.raw).matchAll(/\{([^{}|]+)\|([^{}]+)\}/g)) pairs.push([m[1], m[2]]);
+    pairs.sort((a, b) => b[0].length - a[0].length);
+    text = text.replace(/[{}|]/g, ' ');
+    if (pairs.length) {
+      const map = new Map(pairs.map(([x, y]) => [x, y]));
+      const re = new RegExp([...map.keys()].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+      text = text.replace(re, (x) => '{' + x + '|' + map.get(x) + '}');
+    }
+    return speakFor(v, text);
+  }
   // 段階ごとの、まだ使っていない取り直し（書けなかったときだけ。メモリの上）：key → [{id, kind, pcm, sr, dur, cues, recipe, inputHash, url, gainDb, at}]
   const takes = new Map();
   // 段階ごとの前の記録（「前に戻す」。新しいものが後ろ）：key → [manifest の記録 | null（音声がなかった）]。作業場所を替えると捨てる
@@ -190,6 +233,7 @@ export function createAudioPanel(o) {
   // ---------------------------------------------------------------- 描く
   function close() {
     stopSample();
+    stopRead(false);
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);
     flushUrls();
@@ -219,6 +263,7 @@ export function createAudioPanel(o) {
   // 段階 key（スライドの番号 i）を読み直して描く
   function show(key, i) {
     const my = ++seq;
+    if (readKey !== null && readKey !== key) stopRead(false);   // 別のステップに動いたら読み上げを止める
     if (view && view.url) freeUrl(view.url);
     view = { key, i, loading: true };
     draw(view);
@@ -279,6 +324,19 @@ export function createAudioPanel(o) {
     if (!o.tts || (ttsInfo && !ttsInfo.ok)) ttsBtn.disabled = true;
     card.appendChild(h('div', { cls: 'dv-tools' }, [recBtn, impBtn, ttsBtn]));
     if (o.tts && ttsInfo) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-ttsinfo', text: ttsInfo.ok ? ttsInfo.label : ttsInfo.hint || L.ttsNo + ttsInfo.reason }));
+    // 読み上げで聞く（端末の声。format spec §5.6）：今のステップと、台本で選んだ語。何も書かない（音声ファイルにはならない）
+    if (v.seg) {
+      const reading = readingAloud() && readKey === v.key;
+      const readBtn = h('button', { id: 'dev-audio-read', text: reading ? L.readStop : L.read, title: L.readT, 'aria-pressed': reading ? 'true' : 'false', on: { click: () => (readingAloud() ? stopRead() : readStep(v)) } });
+      const selBtn = h('button', { id: 'dev-audio-read-sel', text: L.readSel, title: L.readSelT, on: { mousedown: (e) => e.preventDefault(), click: () => readSelection(v) } });
+      if (!readAloudSupported()) { readBtn.disabled = true; selBtn.disabled = true; }
+      card.appendChild(h('div', { cls: 'dv-tools dv-read' }, [readBtn, selBtn]));
+      const lab = h('div', { cls: 'dv-reading', id: 'dev-audio-reading', role: 'status', 'aria-live': 'polite', text: reading ? L.reading : '' });
+      if (!reading) lab.hidden = true;
+      card.appendChild(lab);
+      if (!readAloudSupported()) card.appendChild(h('div', { cls: 'dv-note', id: 'dev-audio-read-no', text: L.readNoSynth }));
+      if (readMsg && readMsg.key === v.key) card.appendChild(h('div', { cls: 'dev-msg dv-err', id: 'dev-audio-read-msg', text: readMsg.text }));
+    }
     if (o.colab) drawColab(v, !!(o.tts && ttsInfo && !ttsInfo.ok));
     // 声を選ぶ欄
     drawVoices(v);

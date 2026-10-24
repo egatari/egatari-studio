@@ -16,7 +16,7 @@ import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
-import { RUNTIME_MODULES } from '../kit/core/build-core.mjs';
+import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
 
@@ -47,7 +47,7 @@ function addTree(virtDir, dir, filter = () => true) {
 // kit の実行系（.js .css。Node の .mjs は入れない）
 for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, rel('kit', f));
 // 実行系に入れる kit/core の ES モジュール（build-core の RUNTIME_MODULES。classicModule が DECK.PositionStore などにする。組み立てが字として読む）
-for (const f of Object.keys(RUNTIME_MODULES)) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
+for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
 // 部品：部品庫の写し vendor/components/<名前>/<版>/index.js（取り込んだすべての版）と components.lock.json（tools/vendor-components.mjs）
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);

@@ -210,7 +210,8 @@ function fontFacesOf(text, styles) {
   return faces;
 }
 const inRange = (range, c) => range.some(([a, b]) => c >= a && c <= b);
-const strings = (v, out = []) => { if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach((x) => strings(x, out)); else if (isObj(v)) Object.values(v).forEach((x) => strings(x, out)); return out; };
+// 見える字だけ（deck-narration の ttsParts は画面に出ないので、字の補いの判定に入れない）
+const shown = (v, out = []) => { if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach((x) => shown(x, out)); else if (isObj(v)) for (const [k, x] of Object.entries(v)) { if (k !== 'ttsParts') shown(x, out); } return out; };
 
 // ---------------------------------------------------------------- 本体
 export async function tierA(original, files, opts = {}) {
@@ -484,12 +485,12 @@ async function run(original, filesIn, opts) {
   let supplement = null;
   const lang = (r.deckMeta && r.deckMeta.lang) || (isObj(ix.metadata) && ix.metadata.lang) || 'ja';
   const need = new Set();
-  for (const { s, st } of narrChanged) for (const x of strings(newMap[s]?.[st])) for (const ch of x) if (ch.codePointAt(0) >= 0x20) need.add(ch.codePointAt(0));
+  for (const { s, st } of narrChanged) for (const x of shown(newMap[s]?.[st])) for (const ch of x) if (ch.codePointAt(0) >= 0x20) need.add(ch.codePointAt(0));
   if (need.size) {
     const have = fontFacesOf(original, L.styles);
     // 範囲（unicode-range）のない字（字を絞り込んだもの）は、元の口述原稿の字だけを持つとみなす（足りなければ補う。多めに足すことはあっても欠けない）
     const known = new Set();
-    for (const x of strings(parseJsonStrict(blockText('deck-narration')))) for (const ch of x) known.add(ch.codePointAt(0));
+    for (const x of shown(parseJsonStrict(blockText('deck-narration')))) for (const ch of x) known.add(ch.codePointAt(0));
     const covered = (c, family, w, style) => have.some((f) => f.family === family && f.w === w && f.style === style && (f.range ? inRange(f.range, c) : known.has(c)));
     const families = { biz: 'BIZ UDPGothic', sans3: 'Source Sans 3' };
     // 補うのは、文書が埋め込んでいる字（同じ family・weight・style）だけ（§7.2。400 だけを埋め込んだ文書には 400 だけ）

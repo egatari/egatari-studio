@@ -585,6 +585,18 @@ export function classicModule(src, name) {
   return `(function(){\n"use strict";\n${s.replace(/^export\s+function\s+/m, 'function ')}\nDECK.${name} = ${fn};\n})();`;
 }
 
+// 実行系に入れる kit/core の ES モジュールのうち、export が複数のもの（import なし・export function / export const だけ）。
+// 即時関数の中で読み、export したものを DECK.<name> の object に入れる（読み上げで聞く：kit/tools.js が使う。format spec §5.6）
+export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud' });
+export function classicNamespace(src, name) {
+  const s = String(src);
+  const names = [...s.matchAll(/^export\s+(?:function|const)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
+  if (/^\s*import\b/m.test(s) || !names.length || (s.match(/^\s*export\b/gm) || []).length !== names.length) {
+    throw new Error(`runtime module for DECK.${name}: needs "export function" / "export const" only, and no import`);
+  }
+  return `(function(){\n"use strict";\n${s.replace(/^export\s+/gm, '')}\nDECK.${name} = {${names.join(', ')}};\n})();`;
+}
+
 export function build(env0, srcPath, opts = {}) {
   const P = env0.path, KIT = env0.KIT, ROOT = env0.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
@@ -790,7 +802,8 @@ export function build(env0, srcPath, opts = {}) {
   const read = (dir, f) => env.readText(P.join(dir, f));
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
-  const textForFont = glyphText(html, narration, compJs, lang);
+  // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
+  const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
   const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn);
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
@@ -806,7 +819,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',

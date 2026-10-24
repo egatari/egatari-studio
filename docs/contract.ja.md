@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=3a8e8939ec5937cb -->
+<!-- i18n: pair=contract.md sha256=88a8acb6926cd164 -->
 # 約束事（実行系・部品・口述原稿・タイムライン）
 
 [English](contract.md) | 日本語
@@ -72,6 +72,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - `{mark:ID}` `{mark:ID|効果|hold=秒}` `{mark:clear}` で注目の演出を入れる（§7）。表示の文字列からは消え、TTS では `{cue}` と同じく区切りになる
 - 段階の区切り（`{cue}` と `{mark:…}`）はターンをまたいで順に並べたもの（`bounds`）が、TTS の `cues`（区切りの時刻の配列）と 1 対 1 に対応する。部品の伸縮は `{cue}` の分だけを使う
 - `{φ|ファイ}` はその場の読み（表示は φ、TTS は「ファイ」）。それ以外の記号は読み辞書で読む
+- 組み立ては各発言を `{role, text, ttsParts}` として `deck-narration`（`DECK.NARRATION`。format spec §4）に書く：`text` は表示の文、`ttsParts` は読みを当てた区切りごとの話す部品（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値、spec §5.4）。`ttsParts` は画面に出さず、字の絞り込みにも数えない。読み上げ（§5）はこれを読む。`inputHash` は変わらないので、音声が古くなることはない
 - 式全体は読まない（品質チェックが警告する）
 - `✎ ` で始まる行は、編集アプリが新しいスライドに入れた仮の文（Studio の決まりで、ファイルの形式には入らない）。ふつうの口述の文なので、残すと読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残った雛形の文は `templateText`）、編集アプリは音声を作る前と書き出す前に知らせる
 - 段階の中の拡張の行 `@x-<名前>-<欄> <値>`（`<名前>` に `-` は入らない）は、その段階の拡張のデータ。どの発言にも入らない：表示も読み上げもされず、`bounds` にもどの hash にも入らないので、直しても音声は古くならない。開発サーバー・編集アプリ・`npm run ids` はそのまま残す
@@ -97,6 +98,7 @@ dur = override.dur
 - audio：TTS の長さ（`audio/manifest.json`）。既定 lead = 0.25 s、pad_after = 0.6 s、音声のない段階の hold = 1.2 s
 - `startOffset`（符号化の遅れの秒数。編集アプリの MP3 なら 0.025057。format spec §5.2）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と区切りの時刻の 0 とする（自動再生も `render/render.mjs` も）
 - どの組み立ても、その段階の音声の `kind`（`tts`・`recorded`・`imported`。format spec §5.2）を `deck-audio` の項目に書く：ふつうの build、開発サーバーとプレビュー、1 ファイル、再生専用の派生（索引を外すので、再生器は `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば（`tts/synth.py` の記録）`tts` とみなす。無音の `dry-run` のエンジンには `kind` を付けない。再生器はまず `deck-audio` の `kind` を読み、なければ古い 1 ファイルの索引の音声の記録を読む（確かめられるブラウザでは索引の hash を確かめてから。`DECK.audioKind(key)`）。format spec §7.3 のとおり、音声の作り方は情報の欄と再生の操作の近くで示し、舞台と字幕には出さない：どこかの段階の音声が TTS なら、操作の帯に小さな札「AI 音声」/ "AI voice"（帯と一緒に出て、一緒に隠れる。説明と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）に同じ文を 1 行、その段階の発表者ビューにも 1 行。`imported` の音声は、キーの一覧と発表者ビューに「音声の作り方は記録されていません」/ "How the audio was made is not recorded"（札は出さない。`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には印を付けない
+- **読み上げ**（format spec §5.6）はタイムラインに入らない：**音声のない**段階で見る人が「読み上げで聞く（音声ファイルにはなりません）」を押すと、操作の帯がその段階を端末の声（`speechSynthesis` の `localService` の声だけ）で読み、読んでいる間「読み上げ中（この端末の声）」と出す。`dur`・`DECK.timeline()`・`deck-audio`・`(i, k, t)` の描画を変えず、何も書かず、`?mode=video` と印刷にはない。音声のある段階は、その音声を使う。読むのは `deck-narration` の `ttsParts`（§4）で、ない古いファイルでは表示の文を読み「読み方は反映されません（古いファイル）」と添える。読む文と声の選び方は `kit/core/read-aloud.mjs`（実行系では `DECK.ReadAloud`）
 - 調整は `timeline.json` に例外だけを書く：`{"更新の式:2": {"pad_after": 1.0}, "更新の式:concl": {"hold": 2}}`
 - 部品の `cues(k)` と音声の cue 時刻（`{cue}` の区切りの分だけ）が両方あり、数が合うとき、部品の時刻は区分線形に伸縮して音声に合わせる
 - 注目の演出（§7）：音声のない段階では `hold` の代わりに `max(hold, 印の終わり + pad_after)` を使う。音声のある段階では印は音声の中に収まるので dur は変わらない。`anim` は印を含まない。印を含めた動きの終わりは `motion = max(anim, 印の終わり)`（動画の書き出しはここまでをコマで撮る）
