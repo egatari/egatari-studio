@@ -40,7 +40,7 @@ const TX = {
     title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
     howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
     howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑥ に貼り付けます。',
-    themeLoad: 'テーマをフォルダから読み込む…', themeLoadZip: 'テーマを zip から読み込む…', themeMine: '自分のテーマ', themeLabel: 'テーマ',
+    themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ', themeLabel: 'テーマ',
     back: '← 戻る', contentLabel: '内容（要点・メモ・元の資料の文を貼る）', contentPh: '例：教えたい要点の箇条書き、授業のメモ、教科書や論文の一節など（そのまま貼ってかまいません）',
     contentHead: '## 内容（要点・メモ・元の資料）',
     phase: (n) => `${n} 枚なので、2 回に分けて作ります：まず構成案（見出しと要点の表）を頼み、次に ${BATCH} 枚ずつ頼みます`,
@@ -151,7 +151,7 @@ const TX = {
     title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
     howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
     howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 6.',
-    themeLoad: 'Load theme from folder…', themeLoadZip: 'Load theme from zip…', themeMine: 'My themes', themeLabel: 'Theme',
+    themeLoad: 'Load theme…', themeMine: 'My themes', themeLabel: 'Theme',
     back: '← Back', contentLabel: 'Content (key points, notes, or text from your source material)', contentPh: 'e.g. the points to teach as a list, your lesson notes, a passage from a textbook or paper (paste it as it is)',
     contentHead: '## Content (key points, notes, source material)',
     phase: (n) => `${n} slides, so it is made in two passes: first an outline (a table of headings and points), then ${BATCH} slides at a time`,
@@ -550,15 +550,14 @@ export function setupLlm(app) {
     if (mode === 'new') {
       // ① 場面（大分類・小分類）→ ② お使いの AI・分野（無料版だけ）・言いたいこと（折りたたみ）→ ③ デザイン（テーマ）→ ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け
       const req = requestStep(titles[0]);
-      // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。自分のテーマ（フォルダ・このブラウザ）は「自分のテーマ」の見出しの下。最後の「テーマをフォルダから読み込む…」（フォルダを選べるブラウザだけ）・「テーマを zip から読み込む…」
+      // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。自分のテーマ（フォルダ・このブラウザ）は「自分のテーマ」の見出しの下。最後の「テーマを読み込む…」で読み込みの窓（ZIP ファイル・テーマのフォルダ）
       const sel = el('select', { id: 'paste-theme' });
-      const LOAD = '\u0000load', ZIP = '\u0000zip';
+      const LOAD = '\u0000load';
       const fill = async () => {
         const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
         const opt = (o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) }), mine = opts.filter((o) => o.user);
         sel.replaceChildren(...opts.filter((o) => !o.user).map(opt), ...(mine.length ? [el('optgroup', { label: X.themeMine }, mine.map(opt))] : []),
-          ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []),
-          ...(app.loadThemeZip ? [el('option', { value: ZIP, text: X.themeLoadZip })] : []));
+          ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
         const vals = opts.map((o) => o.value);
         sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];
         newTheme = sel.value;
@@ -616,7 +615,7 @@ export function setupLlm(app) {
       showPlan();
       onKind();
       sel.addEventListener('change', async () => {
-        if (sel.value === LOAD || sel.value === ZIP) { const load = sel.value === LOAD ? app.loadOtherTheme : app.loadThemeZip; sel.value = newTheme; if (await load()) await fill(); pack.update(); return; }
+        if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); pack.update(); return; }
         newTheme = sel.value; pack.update();
       });
       req.node.addEventListener('input', pack.update);

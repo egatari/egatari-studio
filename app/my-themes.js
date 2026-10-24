@@ -2,7 +2,7 @@
 // どこから来たかには結ばない（source：'zip' が今。後で 'builder'）。テーマのフォルダ（app/theme-folder.js。ハンドルだけを覚える）とは別
 //   loadMyThemes() → Map<名前, {files: Map<場所, Uint8Array>, at, source, from}>
 //   putMyTheme(name, files, {source, from, at}) → 記録 | null   1 つ足す・同じ名前なら替える（ほかのモジュールからも。名前は RE.registryName）
-//   forgetMyThemes()   すべて忘れる
+//   deleteMyTheme(name)   1 つ削除する（「自分のテーマ」の窓の「削除」）
 //   mergedThemeWorkspace(folderWs, folderAt, myThemes)  テーマのフォルダ（themeFolderWorkspace か null）と自分のテーマを 1 つの作業場所にする
 //     （list・readBytes だけ。書く口はない）。組み立てはこれを /user-themes として読むので、探す順と根の決まりはテーマのフォルダと同じ。
 //     同じ名前のテーマがフォルダと自分のテーマの両方にあれば、あとから選んだ・入れたほう（folderAt とテーマの at の新しいほう）を使う
@@ -85,6 +85,6 @@ export async function putMyTheme(name, files, { source = '', from = '', at = Dat
   try { await themeDbTx('readwrite', (s) => s.put(rec, KEY + name)); } catch { return null; }
   return rec;
 }
-export async function forgetMyThemes() {
-  try { await themeDbTx('readwrite', (s) => s.delete(RANGE())); return true; } catch { return false; }
+export async function deleteMyTheme(name) {
+  try { await themeDbTx('readwrite', (s) => s.delete(KEY + name)); return true; } catch { return false; }
 }
