@@ -40,7 +40,7 @@ export function themesLockCheck(root = ROOT) {
   for (const [name, t] of Object.entries(lock.themes)) {
     const cfgPath = path.join(root, 'themes', name, 'theme.json');
     const ver = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')).version : undefined;
-    // theme.json の version はあってもなくてもよい（kokugo・business は 1.0.0 より前からのバイトのまま：記録した sha256 を変えない）。あれば今の版と同じ
+    // theme.json の version はあってもなくてもよい（kokugo は 1.0.0 より前からのバイトのまま：記録した sha256 を変えない）。あれば今の版と同じ
     if (ver !== undefined && ver !== t.current) e.push(`themes/${name}/theme.json: version ${JSON.stringify(ver)} is not the current version ${t.current} in ${THEMES_LOCK_FILE}`);
     for (const v of t.versions) {
       const dir = themeVersionDir(root, name, v, t.current);

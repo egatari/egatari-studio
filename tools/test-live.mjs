@@ -622,6 +622,7 @@ async function drawCircle(p, cx, cy, r) {
   const key2 = (await st(o.p)).step;
   await o.p.click('#live-ask .lv-cf');
   ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '「わからない」をホストに伝えました') && (await askState(o.p)).pressed === 'true', '"I don\'t follow": one tap, aria-pressed=true, announced');
+  ok(await o.p.$eval('#live-ask .lv-cf', (e) => { const x = document.createElement('div'); x.style.background = 'var(--emph)'; document.body.appendChild(x); const want = getComputedStyle(x).backgroundColor; x.remove(); return want !== 'rgba(0, 0, 0, 0)' && getComputedStyle(e).backgroundColor === want; }), '"I don\'t follow" pressed: its background is the deck theme\'s --emph');
   const cm = fake.messages.slice(n0).find((m) => m.t === 'confused');
   ok(cm && cm.activity === 'cf' && cm.step === key2 && cm.on === true && !('text' in cm) && sv('learnerToServer')(cm), `confused: the activity, the step on screen and on:true, no text (${cm && cm.step})`);
   await o.p.click('#live-ask .lv-cf');
