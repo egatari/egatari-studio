@@ -2,7 +2,8 @@
 // 新規作成の選び方とシード値（kit/core/new-deck.mjs・kit/core/purposes.mjs、backlog #99・#104、format spec §8.4）と、AI への指示の中身：
 // 1. 大分類・小分類・分野（パーツの組 → 系列）・頼む文の節（場面・構成の型・見せ方・外した言いたいこと）
 // 2. 言いたいこと：決めた表（FALLBACK）と manifest.json の読み方、外したものだけに使う部品
-// 3. 指示（pack）：言いたいこと → パーツ → ステップの表（写した部品から。全パーツの一覧を兼ね、＊ の印はない）、R-whole、外した部品は一覧と説明から消える、系列の見本は抜き出し
+// 3. 指示（pack）：言いたいこと → パーツ → ステップの表は組み立てのときに作る（入っている系列の部品だけ・外した札の行はない・＊ の印はない）、R-whole、
+//    外した言いたいことだけに使う部品はどこにも出ない（表・一覧・見本・文。「使わない」の 1 行を除く）、系列の見本は抜き出し、札は決めた 14 個（manifest は札を増やさない）
 // 4. シード値：作るときに 1 回だけ書く（あれば変えない）・直した返事が失っても戻す・egatari.json の studio.newDeck（ほかの項目はバイトのまま）
 // 5. シード値は組み立て（build）と 1 ファイル（pack → unpack）を通っても残る
 //   node tools/test-new-deck.mjs
@@ -12,8 +13,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, choiceRequest, withChoice, choiceOf, SEED_ATTR, newSeed, seedOf, withSeed, keepSeed } from '../kit/core/new-deck.mjs';
-import { FALLBACK, purposesFrom, componentsOff, purposesTable } from '../kit/core/purposes.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, choiceRequest, withChoice, choiceOf, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
+import { assemble } from '../kit/core/llm-pack-assemble.mjs';
+import { generate, LIMITS } from './make-llm-guide.mjs';
 import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { guideRules } from '../kit/core/llm-fix.mjs';
@@ -50,81 +53,138 @@ ok('request section: kind, structure and presentation of the subcategory, and th
   assert.equal(choiceRequest({ category: 'other', purposesOff: [] }, PURPOSES, 'ja'), '');
 });
 
-ok('purposes: 14 tiles from the decided table (fallback; ids as in the components purposes.json) while the vendored manifest has no purposes', () => {
-  assert.equal(FALLBACK.length, 14);
+const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
+const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents'];
+ok('purposes: the 14 decided tiles (parts-map §9); the vendored v1.1.0 manifest has no purposes, so the decided table is used', () => {
+  assert.equal(TILES.length, 14);
+  assert.deepEqual(PURPOSES.list.map((p) => p.id), TILE_IDS);
   assert.equal(PURPOSES.source, 'fallback');
-  assert.deepEqual(PURPOSES.list.map((p) => p.label.ja), ['比べる', '変化', '内訳', '数字を見せる', '手順', '年表・予定', '原因と結果', '循環', '階層・分類', '位置づけ', '重なり', '2 つの量の関係', 'ばらつき', '目次']);
-  assert.deepEqual(PURPOSES.list.map((p) => p.id), ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents']);
+  assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
-  // m-bars は 3 つの言いたいことに使う：全部外したときだけ使わせない
+  // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-codetree は階層と手順
   assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-curves']);
   assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-curves', 'm-market']);
-  assert.deepEqual(componentsOff([], PURPOSES), []);
-  // m-codetree は階層と手順に使う：手順だけ外しても残る
   assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-flow']);
+  assert.deepEqual(componentsOff([], PURPOSES), []);
+  // 札のない言いたいことの部品（m-kanbun・m-sweep・m-collect など）は外せない（分野から入る）
+  assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect'].some((t) => PURPOSES.components[t]));
 });
-ok('purposes: a manifest in the components release shape (ordered array, reserved ids, components.<dir>.purposes and variants) replaces the fallback', () => {
-  const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
+ok('purposes: a manifest (all 20 ids, ranking, reserved, an unknown id) maps onto exactly the 14 tiles; ranking folds into compare; unmapped ids warn and make no tile', () => {
+  const m = FIX();
+  assert.equal(m.purposes.length, 21);
   const P = purposesFrom(m);
   assert.equal(P.source, 'manifest');
-  const ids = m.purposes.filter((p) => !p.reserved).map((p) => p.id);
-  assert.deepEqual(P.list.map((p) => p.id), ids, 'the tiles follow the manifest order; reserved ids are left out');
-  assert.ok(!P.list.some((p) => p.id === 'deviation' || p.id === 'concept-links'));
-  assert.equal(P.list.find((p) => p.id === 'compare').label.ja, '比べる', 'a known id keeps the short tile label');
-  assert.equal(P.list.find((p) => p.id === 'compare').name.ja, '量を比べる', 'the table uses the manifest name');
+  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'exactly the 14 tiles, in the decided order');
+  assert.equal(P.list[0].label.ja, '比べる（量・特徴）');
+  assert.deepEqual(P.components['m-bars'], ['compare', 'change', 'part-whole'], 'ranking folds into compare');
   assert.deepEqual(P.list.find((p) => p.id === 'change').steps, { ja: '線を 1 本ずつ', en: 'One line at a time' }, 'steps come from the manifest');
-  assert.deepEqual(P.components['m-codetree'], ['hierarchy', 'process']);
+  assert.equal(P.list.find((p) => p.id === 'compare').name.ja, '量を比べる');
+  assert.deepEqual(P.unmapped.sort(), ['grouping', 'mystery', 'parameter', 'text-structure']);
+  for (const id of ['grouping', 'mystery', 'parameter', 'text-structure']) assert.ok(P.warnings.some((w) => w.includes(`"${id}" has no tile`)), 'warning for ' + id);
+  assert.ok(!P.warnings.some((w) => /deviation|concept-links/.test(w)), 'reserved ids are neither tiles nor warnings');
   assert.deepEqual(P.variants['m-kpi'], ['count', 'rise', 'flip', 'underline']);
   assert.deepEqual(P.variants['m-bars'], []);
-  // 形の合わない項目は落とし、何も残らなければ決めた表
-  assert.equal(purposesFrom({ purposes: [{ id: 'x' }, { id: 'Bad', ja: 'a', en: 'b' }] }).source, 'fallback');
-  assert.equal(purposesFrom({ purposes: [{ id: 'z', ja: 'z', en: 'z', reserved: true }] }).source, 'fallback');
+  // 写していない部品は入れない（vendored）
+  const Pv = purposesFrom({ ...m, components: { ...m.components, newone: { purposes: ['change'] } } }, { vendored: Object.values(m.components).map((c) => c.tag) });
+  assert.ok(!Pv.components['m-newone'] && !componentsOff(['change', 'compare', 'part-whole'], Pv).includes('m-newone'));
+  assert.deepEqual(purposesFrom({ components: { newone: { purposes: ['change'] } } }).components['m-newone'], ['change'], 'tag defaults to m-<dir>');
+});
+ok('purposes: a partly broken manifest drops only the bad entries (with a warning) and keeps every tile; reserved is any truthy value', () => {
+  const m = FIX();
+  m.purposes[2] = { id: 'change', name: { ja: '変化' } };   // ja・en がない
+  m.purposes.push(7, { id: 'Bad' }, { id: 'overlap', ja: 'x', en: 'y' });
+  m.purposes.find((p) => p.id === 'cycle').reserved = 'yes';
+  const P = purposesFrom(m);
+  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'all 14 tiles remain');
+  assert.deepEqual(P.list.find((p) => p.id === 'change').steps, TILES.find((t) => t.id === 'change').steps, 'a dropped id falls back per tile');
+  assert.equal(P.list.find((p) => p.id === 'cycle').name.ja, '循環', 'a reserved ("yes") id keeps the decided text');
+  assert.ok(P.warnings.some((w) => /purposes\[2\] dropped/.test(w)) && P.warnings.some((w) => /purposes\[21\] dropped \(not an object\)/.test(w)) && P.warnings.some((w) => /duplicate id/.test(w)));
+  assert.equal(purposesFrom({ purposes: 'x' }).source, 'fallback');
   assert.equal(purposesFrom(null).source, 'fallback');
-  // その manifest で組んだ表：部品のある行だけが部品を挙げ、ない行は近い部品か HTML。予約の id は出ない
-  const parts = Object.values(m.components).map((c) => ({ tag: c.tag, series: c.series }));
-  const t = purposesTable(P, parts, 'en', '');
-  assert.match(t, /^\| Varying a parameter \| `m-sweep` \(academic\) \| One value at a time \|$/m);
-  assert.match(t, /^\| Timeline, schedule \| none yet: the nearest part, or HTML or inline SVG \| One event at a time \|$/m);
-  assert.ok(!/Deviation|Concept links|other parts/.test(t));
+});
+ok('pack from the fixture manifest (generate): 14 table rows with manifest steps, no reserved or unmapped row, warnings printed', () => {
+  const g = generate({ manifest: FIX() });
+  assert.deepEqual(g.data.purposes.list.map((p) => p.id), TILE_IDS);
+  assert.ok(g.warnings.some((w) => w.includes('"mystery" has no tile')));
+  const t = assemble(g.data, { series: 'all', lang: 'en' });
+  const table = t.slice(t.indexOf('| purpose |'), t.indexOf('Each part'));
+  assert.equal(table.trim().split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| purpose') && !l.startsWith('|---')).length, 15, '14 rows + other parts');
+  assert.match(table, /^\| Compare amounts \| `m-bars` \(sorted for ranking\) \| One side, then the difference \|$/m);
+  assert.ok(!/Deviation|Concept links|Mystery|Ranking/.test(table));
 });
 
-ok(`pack ${PACK_VERSION}: the purpose table (from the vendored parts, no star markers) is also the list of all parts; R-purpose and R-whole are standards`, () => {
+const tagsIn = (text) => new Set([...text.matchAll(/m-[a-z]+(?![a-z-])/g)].map((m) => m[0]));
+ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the included packs, never names a part without its description, and has no star markers`, () => {
   for (const lang of ['en', 'ja']) {
-    const c = commonBody(lang);
-    assert.ok(c.includes('**R-purpose**') && c.includes('**R-whole**'), lang + ': standards');
-    assert.ok(guideRules(c).has('R-purpose') && guideRules(c).has('R-whole'), lang + ': fix requests can quote them');
-    assert.match(c, /https:\/\/github\.com\/egatari\/components\/blob\/v\d+\.\d+\.\d+\/components\/<(name|名前)>\/README\.md/, lang + ': pinned URL');
-    // 写した部品はどれも表に 1 回以上（全パーツの一覧を兼ねる）。写していない部品（m-timeline など）は出ない
+    const all = buildPack({ series: 'all', lang });
+    assert.ok(all.includes('**R-purpose**') && all.includes('**R-whole**'), lang + ': standards');
+    assert.ok(guideRules(all).has('R-purpose') && guideRules(all).has('R-whole'), lang + ': fix requests can quote them');
+    assert.match(all, /https:\/\/github\.com\/egatari\/components\/blob\/v\d+\.\d+\.\d+\/components\/<(name|名前)>\/README\.md/, lang + ': pinned URL');
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
-      assert.ok(c.includes('`m-' + d + '`'), `${lang}: m-${d} is in the table`);
-    for (const t of ['m-timeline', 'm-venn', 'm-scatter', 'm-cycle', 'm-compare']) assert.ok(!c.includes(t), `${lang}: ${t} is not named`);
-    assert.ok(!/＊|\w \*(?= \||,|$)| \* \|/m.test(c.slice(c.indexOf('### 2.7'), c.indexOf('### 2.8'))), lang + ': no star markers');
+      assert.ok(all.includes('`m-' + d + '`'), `${lang}: m-${d} is in the table of the full pack`);
+    for (const t of ['m-timeline', 'm-venn', 'm-scatter', 'm-cycle', 'm-compare']) assert.ok(!all.includes(t), `${lang}: ${t} is not named`);
+    assert.ok(!/＊/.test(all) && !/ \*(?= \||,|$)/m.test(all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'))), lang + ': no star markers');
+    // 系列を選ばない：表が指すのは共通の部品だけ（説明がないものは名前を出さない）。入っていない系列は何に使えるかだけ
+    const core = buildPack({ series: [], lang });
+    for (const t of ['m-curves', 'm-quad', 'm-market', 'm-kpi', 'm-seq', 'm-kanbun']) assert.ok(!core.includes(t), `${lang}: no series chosen → ${t} is not named`);
+    assert.ok(lang === 'en' ? /Packs not included here have parts for: academic \(change over time, spread\); business/.test(core) : /入っていない系列にもパーツがある：academic（時間での変化・ばらつき）/.test(core), lang + ': the packs not included are named by use');
+    for (const s of SERIES) {
+      const p = buildPack({ series: [s], lang });
+      const described = new Set([...p.matchAll(/### `<(m-[a-z]+)>`/g)].map((m) => m[1]));
+      for (const t of tagsIn(p.slice(p.indexOf('### 2.7'), p.indexOf('### 2.8')))) assert.ok(described.has(t), `${lang} ${s}: the table names ${t}, which is described`);
+    }
   }
-  const en = commonBody('en');
+  const en = buildPack({ series: 'all', lang: 'en' });
   assert.match(en, /^\| change over time \| `m-curves` \(academic\), `m-bars` \(few points\) \| one line at a time \|$/m);
   assert.match(en, /^\| timeline \| none yet: the nearest part, or HTML or inline SVG \| one event at a time \|$/m);
-  assert.match(en, /^\| other parts \| `m-collect` \(academic\), `m-gendai` \(kokugo\), `m-kanbun` \(kokugo\), `m-kobun` \(kokugo\), `m-sweep` \(academic\) \| see the pack \|$/m);
+  assert.match(buildPack({ series: [], lang: 'en' }), /^\| change over time \| `m-bars` \(few points\) \| one line at a time \|$/m);
+  assert.match(buildPack({ series: [], lang: 'en' }), /^\| one key number \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/m);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn/);
-  assert.match(commonBody('ja'), /\| 時間での変化 \| `m-curves`（academic）、`m-bars`（点が少ないとき） \| 線を 1 本ずつ \|/);
-  // 大きさ：全部（'all'）は 58 KB まで（#99 で 63 KB から縮めた。上限は 64 KB）
-  for (const lang of ['en', 'ja']) assert.ok(Buffer.byteLength(buildPack({ series: 'all', lang })) <= 58 * 1024, lang + ' all ≤ 58 KB');
+  // 大きさ：生成した指示（頼みたいことは記入欄のまま）の全部（'all'）は LIMITS.allTarget KB まで。写す文（内容・場面の節が入る）の上限ではない
+  for (const lang of ['en', 'ja']) assert.ok(Buffer.byteLength(buildPack({ series: 'all', lang })) <= LIMITS.allTarget * 1024, `${lang} generated pack 'all' ≤ ${LIMITS.allTarget} KB`);
   // 系列の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）
   const biz = seriesPart('business', 'en');
   assert.ok(biz.includes('```deck.html\n<section class="slide">') && !biz.includes('<!DOCTYPE html>') && biz.includes('<m-kpi') && !biz.includes('<m-bars orient'));
+  assert.ok(!/<!--\/?part/.test(en), 'no part markers left');
+});
+ok('pack: no part used only by the purposes turned off appears anywhere in the copied text (table, catalog, examples, prose), for every single purpose and pair', () => {
+  const ids = PURPOSES.list.map((p) => p.id);
+  const sets = [...ids.map((i) => [i])];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) sets.push([ids[i], ids[j]]);
+  sets.push(ids, ['key-number', 'process', 'contents'], ['compare', 'change', 'part-whole']);
+  let n = 0;
+  for (const off of sets) {
+    const ex = componentsOff(off, PURPOSES);
+    if (!ex.length) continue;
+    for (const lang of ['en', 'ja']) for (const series of [[], 'all', ...SERIES.map((s) => [s])]) {
+      const req = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: off }, PURPOSES, lang);
+      const lines = packWithRequest({ series, lang, request: '# R\n\n' + req, exclude: ex, off }).split('\n');
+      const dont = lines.filter((l) => /^- (Purposes turned off|使わない言いたいこと)/.test(l));
+      assert.ok(dont.length === 1, 'one "do not use" line');
+      const rest = lines.filter((l) => !dont.includes(l)).join('\n');
+      for (const t of ex) assert.ok(!new RegExp(t + '(?![a-z-])').test(rest), `${lang} ${JSON.stringify(series)} off ${off.join('+')}: ${t} appears`);
+      n++;
+    }
+  }
+  assert.ok(n > 500, `${n} packs checked`);
+  // 共通の見本は m-flow のスライドを除いても形が残る（表紙と箇条書き）
+  const cut = packWithRequest({ series: [], lang: 'en', request: 'R', exclude: ['m-flow'], off: ['process'] });
+  assert.ok(cut.includes('```deck.html\n<!DOCTYPE html>') && cut.includes('<h2>Two programs take part</h2>') && !cut.includes('From the address to the screen'));
+  assert.ok(!/^\| steps of a process \|/m.test(cut), 'the row of a purpose turned off is not in the table');
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (core and packs) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
   assert.deepEqual(off, ['m-flow', 'm-kpi', 'm-menu']);
   const full = packWithRequest({ series: ['business'], lang: 'en', request: 'R' });
-  const cut = packWithRequest({ series: ['business'], lang: 'en', request: 'R', exclude: off });
+  const cut = packWithRequest({ series: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'] });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));
-  assert.ok(!cut.includes('### `<m-flow>`') && !cut.includes('### `<m-kpi>`') && !cut.includes('| `<m-menu>` |') && !cut.includes('| `<m-kpi>` |'));
+  for (const t of off) assert.ok(!cut.includes(t), t + ' nowhere');
   assert.ok(cut.includes('### `<m-bars>`') && cut.includes('### `<m-quad>`'));
   assert.ok(cut.length < full.length);
-  assert.ok(!seriesPart('business', 'ja', off).includes('### `<m-kpi>`'));
+  assert.ok(!seriesPart('business', 'ja', off).includes('m-kpi'));
 });
 
-ok('seed: written once (a uint32 in decimal on <html>), kept when present, restored when a revised deck drops or changes it', () => {
+ok('seed: a fresh random seed at creation even when the reply has one; written once otherwise; restored on revise, also without an <html> start tag', () => {
   assert.equal(SEED_ATTR, 'data-egatari-seed');
   const s = newSeed();
   assert.ok(Number.isInteger(s) && s >= 0 && s < 2 ** 32);
@@ -133,14 +193,26 @@ ok('seed: written once (a uint32 in decimal on <html>), kept when present, resto
   const a = withSeed(deck, 123456789);
   assert.equal(a, deck.replace('data-theme="default">', 'data-theme="default" data-egatari-seed="123456789">'));
   assert.equal(seedOf(a), 123456789);
-  assert.equal(withSeed(a, 42), a, 'written once: an existing seed is not replaced');
+  assert.equal(withSeed(a, 42), a, 'withSeed keeps an existing seed');
+  // 新規作成：返事が data-egatari-seed="42" を書いていても新しい値
+  const reply = deck.replace('<html ', '<html data-egatari-seed="42" ');
+  const fresh = freshSeed(reply, 987654321);
+  assert.equal(seedOf(fresh), 987654321); assert.ok(!fresh.includes('"42"') && (fresh.match(/data-egatari-seed/g) || []).length === 1);
   assert.equal(seedOf(deck), null);
   assert.equal(seedOf('<html data-egatari-seed="4294967296">'), null);
   assert.equal(seedOf("<html data-egatari-seed='7'>"), 7);
+  // > を含む属性の値・コメントの中の <html> に惑わされない
+  const tricky = '<!DOCTYPE html>\n<!-- <html data-egatari-seed="1"> -->\n<html lang="ja" title="a>b">\n<body></body></html>';
+  const t2 = withSeed(tricky, 5);
+  assert.equal(seedOf(t2), 5); assert.ok(t2.includes('title="a>b" data-egatari-seed="5">') && t2.includes('<!-- <html data-egatari-seed="1"> -->'));
   const revised = deck.replace('<head>', '<head><title>new</title>');
   assert.equal(seedOf(keepSeed(a, revised)), 123456789, 'a revised deck without the seed gets it back');
   assert.equal(seedOf(keepSeed(a, withSeed(revised, 5))), 123456789, 'a changed seed is put back');
   assert.equal(keepSeed(deck, revised), revised, 'no seed before: nothing added on revise');
+  // <html> の開始タグのない返事：<!DOCTYPE> の後ろに <html data-egatari-seed> を足す
+  const noRoot = '<!DOCTYPE html>\n<head><title>x</title></head>\n<body></body>';
+  const k = keepSeed(a, noRoot);
+  assert.equal(seedOf(k), 123456789); assert.ok(k.startsWith('<!DOCTYPE html>\n<html data-egatari-seed="123456789">\n<head>'));
   assert.throws(() => withSeed(deck, 2 ** 32));
 });
 ok('choices: egatari.json studio.newDeck through updateConfig (other members byte for byte); with the outline in the same studio member', () => {

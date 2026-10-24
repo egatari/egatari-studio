@@ -62,7 +62,8 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
     for (const s of SERIES) {
       const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
       assert.equal(doc, seriesPart(s, lang), `${lang} ${s}`);
-      assert.equal(buildPack({ series: [s], lang }), commonBody(lang) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
+      // 共通の本体の表は、入っている系列の部品を指す（kit/core/llm-pack-assemble.mjs）
+      assert.equal(buildPack({ series: [s], lang }), commonBody(lang, [], [s]) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
     }
     assert.equal(buildPack({ series: ['info', 'academic', 'info'], lang }), buildPack({ series: 'academic,info', lang }));
     assert.equal(buildPack({ series: 'all', lang }), buildPack({ series: SERIES, lang }));
@@ -223,7 +224,7 @@ ok('頼みたいこと：指示の記入欄（A 6 項目・B 2 項目）を読�
     const b = filledRequest({ kind: 'B', values: { length: '5' } }, lang);
     assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[1].label) && !b.includes(F.A.head), b);
     const pk = packWithRequest({ series: ['academic'], lang, request: a });
-    assert.ok(pk.startsWith(commonBody(lang)) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
+    assert.ok(pk.startsWith(commonBody(lang, [], ['academic'])) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
   }
 });
 
@@ -250,6 +251,8 @@ ok('スライドの挿入（llm-insert）：頼む文は見出しの一覧と前
   assert.equal(insertSlides({ deck: a.deck, narration: a.narration, patchDeck: '<p>none</p>' }).ids.length, 0);
   const b = newDeckFiles({ blank: true, lang: 'ja', title: 'T' });
   assert.ok((b['deck.html'].match(/<section class="slide/g) || []).length === 1 && (b['narration.md'].match(/^## /gm) || []).length === 1 && b['deck.html'].includes('</html>'));
+  // npm run new も教材を作る：シード値を 1 回書く（format spec §8.4）。seed を渡せばその値
+  assert.ok(/<html [^>]*data-egatari-seed="\d+"/.test(b['deck.html']) && newDeckFiles({ blank: true, seed: 7 })['deck.html'].includes('data-egatari-seed="7"'));
 });
 
 // ---------------------------------------------------------------- 3. id

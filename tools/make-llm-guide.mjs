@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf } from '../kit/core/llm-pack-assemble.mjs';
-import { purposesFrom, purposesTable } from '../kit/core/purposes.mjs';
+import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -39,7 +39,7 @@ export const SERIES = ['academic', 'business', 'kokugo', 'info'];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
-export const LIMITS = { warn: 35, fail: 40, all: 64 };   // KB（1024 バイト）
+export const LIMITS = { warn: 35, fail: 40, all: 64, allTarget: 58 };   // KB（1024 バイト）。allTarget：全部（'all'）の目安（#99。試験 tools/test-new-deck.mjs が使う）
 
 // ---------------------------------------------------------------- 部品
 function frontmatter(text) {
@@ -251,18 +251,27 @@ const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENER
 const PACK_VERSION = '{{PACK_VERSION}}';
 
 // 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {common, series: {名前: 共通 + その系列}, all}}（KB）, data}
-export function generate() {
+export function generate(opts = {}) {
+  const warnings = [];
   const comps = components();
   for (const c of comps) if (Object.keys(c.ext).length && c.fm.series !== 'common') throw new Error(`vendor/components/${c.fm.name.replace(/^m-/, '')}/README.md: <!-- llm: … --> extension blocks are only for common components (this one is in ${c.fm.series})`);
   for (const s of SERIES) if (!comps.some((c) => c.fm.series === s)) throw new Error(`series ${s} has no component (frontmatter series: ${s})`);
   const themes = fs.readdirSync(rel('themes')).filter((n) => fs.statSync(rel('themes', n)).isDirectory()).sort();
   // 言いたいこと：部品庫の manifest.json（あれば）か、決めた表（kit/core/purposes.mjs）
-  const mf = rel('vendor', 'components', 'manifest.json');
-  const P = purposesFrom(fs.existsSync(mf) ? JSON.parse(read('vendor', 'components', 'manifest.json')) : null);
+  //   manifest.json が JSON として読めなければ、知らせて決めた表を使う（components:check が写しの壊れを見つける）。札に写らない id・形の合わない項目も知らせる
+  const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
+  let manifest = opts.manifest;
+  if (manifest === undefined) {
+    const mf = rel('vendor', 'components', 'manifest.json');
+    manifest = null;
+    if (fs.existsSync(mf)) { try { manifest = JSON.parse(read('vendor', 'components', 'manifest.json')); } catch (e) { warnings.push(`vendor/components/manifest.json is not JSON (${e.message}); the decided purposes table is used (run npm run components:check)`); } }
+  }
+  const { warnings: pw, unmapped, ...P } = purposesFrom(manifest, { vendored: allParts.map((c) => c.tag) });
+  warnings.push(...pw);
   const lock = JSON.parse(read('components.lock.json'));
   const src = `${lock.source}/blob/${lock.tag}/components/`;
-  const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
-  const data = { series: SERIES, purposes: P };
+  // 表（{{PURPOSES}}）は組み立てのときに作る（入っている系列・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
+  const data = { series: SERIES, purposes: P, parts: allParts, partsSrc: src };
   // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
   const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+)\}\}/g)].map((m) => m[1])));
   const pre = {};
@@ -280,16 +289,29 @@ export function generate() {
       const nsecs = narr.split(/\n(?=## )/).filter((x) => heads.includes(x.match(/^## (.*)$/m)?.[1]?.trim()));
       if (nsecs.length !== secs.length) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section for each slide with <${tag}>`);
       const note = ja ? '（その部品を使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
-      return `### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\``;
+      // 部品を外した組み立てでは、この見本ごと除く（<!--part:…-->）
+      return `<!--part:${tag}-->### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\`<!--/part-->`;
     };
+    // 見本の全体：部品を使うスライドとその口述原稿の節を <!--part:m-x--> で囲む（その部品を外した組み立てでは、そのスライドがなくなる）
     const worked = (name, title) => {
-      const deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
+      let deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
+      const heads = [];
+      deck = deck.replace(/\n*(<section class="slide[^"]*">[\s\S]*?<\/section>)/g, (m, sec) => {
+        const tags = [...new Set([...sec.matchAll(/<(m-[a-z]+)[\s>]/g)].map((x) => x[1]))];
+        if (!tags.length) return m;
+        heads.push([(sec.match(/<h[12]>([^<]*)<\/h[12]>/) || [])[1], tags]);
+        return `<!--part:${tags.join(',')}-->${m}<!--/part-->`;
+      });
+      for (const [h, tags] of heads) {
+        const re = new RegExp(`\\n*## ${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n[\\s\\S]*?(?=\\n## |$)`);
+        if (!re.test(narr)) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section "${h}"`);
+        narr = narr.replace(re, (m) => `<!--part:${tags.join(',')}-->${m}<!--/part-->`);
+      }
       return `### ${title}\n\n\`\`\`deck.html\n${deck}\n\`\`\`\n\n\`\`\`narration.md\n${narr}\n\`\`\``;
     };
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
       .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
-      .replace('{{PURPOSES}}', () => purposesTable(P, allParts, lang, src))
       .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)
@@ -344,7 +366,8 @@ export function generate() {
     sizes[lang] = { common: KB(base), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), all: KB(assemble(data, { series: 'all', lang })) };
   }
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
-  return { files, sizes, data };
+  for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
+  return { files, sizes, data, warnings };
 }
 
 // 大きさの検査：[{lang, what, kb, level: 'ok'|'warn'|'fail'}]
@@ -371,7 +394,8 @@ function leftovers() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const check = process.argv.includes('--check');
-  const { files, sizes } = generate();
+  const { files, sizes, warnings } = generate();
+  for (const w of warnings) console.warn('warning: ' + w);
   let stale = 0;
   fs.mkdirSync(rel('docs', 'llm-parts'), { recursive: true });
   for (const [file, text] of Object.entries(files)) {

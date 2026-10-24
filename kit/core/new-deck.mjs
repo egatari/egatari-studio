@@ -19,8 +19,10 @@
 //   SEED_ATTR                          'data-egatari-seed'
 //   newSeed(random?)                   新しいシード値（crypto.getRandomValues。random を渡せばそれ：試験用）
 //   seedOf(html)                       → 整数 | null（ない・形が違えば null）
-//   withSeed(html, seed)               <html> にシード値がなければ書く（あれば変えない：作るときの 1 回だけ）
+//   withSeed(html, seed)               <html> にシード値がなければ書く（あれば変えない）
+//   freshSeed(html, seed)              シード値を必ずこの値にする（新規作成：AI の返事が書いていた値は使わない。教材どうしが同じ見た目にならないように）
 //   keepSeed(oldHtml, newHtml)         新しい原稿（AI の直した返事など）が前のシード値を失った・変えたとき、前のものに戻す
+//   <html> の開始タグがない原稿（省略できる）には、<!DOCTYPE> の後ろ（なければ先頭）に <html data-egatari-seed="N"> を足す
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { componentsOff } from './purposes.mjs';
 
@@ -28,7 +30,7 @@ export const CATEGORIES = [
   { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
     { id: 'class', label: { ja: '授業（小・中・高）', en: 'School lesson' },
       structure: { ja: '導入（注意を引く・目標・前の学習の想起）→ 展開 → まとめ', en: 'introduction (gain attention, state the goal, recall prior learning) → development → summary' },
-      show: { ja: '1 画面に 1 つのこと。ステップで段階的に見せる。文字は台本に任せ、飾らない', en: 'one thing per screen; reveal step by step; leave the words to the narration; no decoration' } },
+      show: { ja: '1 画面に 1 つのこと。ステップで段階的に見せる。文字は台本に任せ、飾らない。国語は縦書き、隠して音読', en: 'one thing per screen; reveal step by step; leave the words to the narration; no decoration; Japanese language arts in vertical text, hidden for reading aloud' } },
     { id: 'lecture', label: { ja: '大学の講義', en: 'University lecture' },
       structure: { ja: '導入 → 展開 → まとめ。式と図を積み上げる', en: 'introduction → development → summary, building up equations and figures' },
       show: { ja: '見出しは主張の文にして図で示す。ステップで積み上げ、前のステップは残す', en: 'headings state the claim and a figure shows it; build up step by step and keep earlier steps on screen' } },
@@ -132,10 +134,12 @@ export function newSeed(random) {
   globalThis.crypto.getRandomValues(a);
   return a[0];
 }
-const HTML_TAG = /<html\b[^>]*>/i;
+// <html> の開始タグ（属性の値の中の > で切れない。コメントの中のものは数えない）
+const HTML_TAG = /<html\b(?:"[^"]*"|'[^']*'|[^>"'])*>/i;
+const firstHtmlTag = (s) => { const t = s.replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length)); const m = HTML_TAG.exec(t); return m ? { at: m.index, tag: s.slice(m.index, m.index + m[0].length) } : null; };
 const SEED_RE = /\sdata-egatari-seed\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
 export function seedOf(html) {
-  const tag = (String(html || '').match(HTML_TAG) || [])[0];
+  const tag = (firstHtmlTag(String(html || '')) || {}).tag;
   if (!tag) return null;
   const m = tag.match(SEED_RE);
   if (!m) return null;
@@ -146,15 +150,28 @@ export function seedOf(html) {
 }
 function setSeed(html, seed) {
   const s = String(html);
-  return s.replace(HTML_TAG, (tag) => (SEED_RE.test(tag) ? tag.replace(SEED_RE, ` ${SEED_ATTR}="${seed}"`) : tag.replace(/\s*(\/?)>$/, ` ${SEED_ATTR}="${seed}"$1>`)));
+  const f = firstHtmlTag(s);
+  if (!f) {
+    // <html> の開始タグがない：<!DOCTYPE …> の後ろ（なければ先頭）に足す
+    const d = /^\s*(?:<!--[\s\S]*?-->\s*)*<!DOCTYPE[^>]*>/i.exec(s);
+    const at = d ? d[0].length : 0;
+    return s.slice(0, at) + (d ? '\n' : '') + `<html ${SEED_ATTR}="${seed}">` + (d ? '' : '\n') + s.slice(at);
+  }
+  const tag = SEED_RE.test(f.tag) ? f.tag.replace(SEED_RE, ` ${SEED_ATTR}="${seed}"`) : f.tag.replace(/\s*(\/?)>$/, ` ${SEED_ATTR}="${seed}"$1>`);
+  return s.slice(0, f.at) + tag + s.slice(f.at + f.tag.length);
 }
+const checkSeed = (seed) => { if (!Number.isInteger(seed) || seed < 0 || seed >= SEED_MAX) throw new Error(`seed out of range: ${seed}`); };
 export function withSeed(html, seed) {
-  if (!Number.isInteger(seed) || seed < 0 || seed >= SEED_MAX) throw new Error(`seed out of range: ${seed}`);
-  if (!HTML_TAG.test(String(html)) || seedOf(html) !== null) return String(html);
+  checkSeed(seed);
+  if (!firstHtmlTag(String(html)) || seedOf(html) !== null) return String(html);
+  return setSeed(html, seed);
+}
+export function freshSeed(html, seed) {
+  checkSeed(seed);
   return setSeed(html, seed);
 }
 export function keepSeed(oldHtml, newHtml) {
   const was = seedOf(oldHtml);
-  if (was === null || seedOf(newHtml) === was || !HTML_TAG.test(String(newHtml))) return String(newHtml);
+  if (was === null || seedOf(newHtml) === was) return String(newHtml);
   return setSeed(newHtml, was);
 }

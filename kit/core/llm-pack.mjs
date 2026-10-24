@@ -28,7 +28,8 @@ export const SERIES = PACK.series;
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 
 export const buildPack = (opts) => assemble(PACK, opts);
-export const commonBody = (lang = 'en', exclude = []) => commonOf(PACK, lang, exclude) + '\n';
+// series：入っている系列（表が指す部品。省くと [] = 共通の本体だけ）。off：外した札
+export const commonBody = (lang = 'en', exclude = [], series = [], off = []) => commonOf(PACK, lang, exclude, series, off) + '\n';
 export const seriesPart = (name, lang = 'en', exclude = []) => partOf(PACK, name, lang, exclude) + '\n';
 export const PURPOSES = PACK.purposes;   // 言いたいこと（kit/core/purposes.mjs の形。source が 'manifest' か 'fallback'）
 export const requestBody = (lang = 'en') => requestOf(PACK, lang) + '\n';

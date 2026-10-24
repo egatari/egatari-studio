@@ -39,7 +39,7 @@
     }
   },
   "buildPack": {
-    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}",
+    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}",
     "params": "opts",
     "returns": "string"
   },

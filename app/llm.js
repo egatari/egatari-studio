@@ -16,7 +16,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, defaultSubjects, choiceRequest, withChoice, newSeed, withSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, defaultSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
@@ -430,9 +430,12 @@ export function setupLlm(app) {
     // （共通の本体は空の記入欄を含まない。含めると、記入欄を埋めた合わせての大きさより大きく見えた）。合わせては部分の和より小さくならない
     // 外した言いたいこと（新規作成の ②）だけに使う部品は、共通の本体と分野の説明からも除く：大きさもその分を引いたもの（update で出し直す）
     const ex = () => (req.exclude ? req.exclude() : []);
-    const commonBytes = packSize(commonBody(LANG, ex()));
+    const offNow = () => (req.off ? req.off() : []);
+    // 共通の本体の表は、入っている分野と外した言いたいことで変わる（kit/core/llm-pack-assemble.mjs）
+    const commonNow = () => commonBody(LANG, ex(), chosen(), offNow());
     const partBytes = (s) => packSize(seriesPart(s, LANG, ex()));
     const initial = split ? [] : await defaultSeries();
+    const commonBytes = packSize(commonBody(LANG, ex(), initial, offNow()));
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => {
       const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s });
@@ -442,11 +445,10 @@ export function setupLlm(app) {
     const withPack = optional ? el('input', { type: 'checkbox', id: 'paste-with-pack' }) : null;
     const packOn = () => !withPack || withPack.checked;
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex() }) : r; };
+    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex(), off: offNow() }) : r; };
     const update = async () => {
       const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t));
-      if (!req.exclude) return;
-      const cb = packSize(commonBody(LANG, ex()));
+      const cb = packSize(commonNow());
       commonRow.dataset.bytes = String(cb); commonRow.lastChild.textContent = X.common(kbOf(cb));
       for (const s of SERIES) { const h = seriesSet.querySelector(`#paste-series-${s}`).closest('label').querySelector('[data-bytes]'); const b = partBytes(s); h.dataset.bytes = String(b); h.textContent = X.plusKb(kbOf(b)); }
     };
@@ -457,6 +459,7 @@ export function setupLlm(app) {
       const miss = req.missing();
       if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.needTopic; miss.focus(); return; }
       const text = await textNow();
+      if (req.onCopy) req.onCopy();
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
     } });
@@ -548,7 +551,9 @@ export function setupLlm(app) {
       const longN = () => { const n = req.count(); return n && n > OUTLINE_OVER ? n : null; };
       const choiceNow = () => ({ category: draft.category, subcategory: draft.subcategory, purposesOff: draft.purposesOff,
         subjects: pack ? SUBJECTS.filter((x) => pack.chosen().includes(x.series)).map((x) => x.id) : [] });
-      newChoice = choiceNow;
+      // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）。写していなければ今の選び方
+      let copiedChoice = null;
+      newChoice = () => copiedChoice || choiceNow();
       const reqWithTheme = { request: () => {
         let t = req.request().replace(/\n*$/, '\n') + X.themeLine(sel.value) + '\n';
         const cr = choiceRequest(choiceNow(), PURPOSES, LANG);
@@ -557,7 +562,8 @@ export function setupLlm(app) {
         if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';
         if (longN()) t += '\n' + outlineRequest({ n: longN(), lang: LANG });
         return t;
-      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES) };
+      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES), off: () => draft.purposesOff,
+      onCopy: () => { copiedChoice = choiceNow(); } };
       // 大きさとトークンの目安（kit/core/llm-pack.mjs の packSize と同じバイト数。トークンは バイト ÷ 3 の目安）。80% を超えたら知らせる（止めない）
       const onSize = (bytes) => {
         const tok = Math.ceil(bytes / 3), pct = Math.round((tok / 32768) * 100);
@@ -756,8 +762,8 @@ export function setupLlm(app) {
   }
   async function openNew(r, notes, info = []) {
     const ids = withIds(withTheme(r.deck), r.narration);
-    // シード値（format spec §8.4）：教材を作るこのときに 1 回だけ、原稿の根の要素（<html>）に書く。AI が書いていればそのまま
-    ids.deck = withSeed(ids.deck, newSeed());
+    // シード値（format spec §8.4）：教材を作るこのときに 1 回だけ、原稿の根の要素（<html>）に書く
+    ids.deck = freshSeed(ids.deck, newSeed());   // 返事が data-egatari-seed を書いていても新しい値にする
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
     // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）

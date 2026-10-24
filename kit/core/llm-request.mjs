@@ -7,7 +7,7 @@
 //     A（新しく作る）の key：topic・audience・length・language・speakers・examples。B（ここまでの議論の内容で作る）の key：audience・length
 //   filledRequest({kind: 'A' | 'B', values: {key: 文字列}}, lang) → 埋めた「頼みたいこと」（選ばなかった方と、空の項目は入れない）
 //   packWithRequest({series, lang, request}) → buildPack と同じ組み立てで、最後の節を request（filledRequest の結果）に替えたもの。
-//     request がなければ buildPack と同じ。exclude：使わせない部品（新規作成で外した言いたいこと。一覧と説明から除く）
+//     request がなければ buildPack と同じ。exclude：使わせない部品（新規作成で外した言いたいこと。一覧と説明・表・見本から除く）。off：外した札（表の行を出さない）
 import { PACK } from './llm-pack-data.mjs';
 import { commonOf, partOf, requestOf, normalizeSeries } from './llm-pack-assemble.mjs';
 
@@ -48,8 +48,9 @@ export function filledRequest({ kind = 'A', values = {} } = {}, lang = 'en') {
   return [`# ${F.title}`, `**${s.head}**`, s.text, rows.join('\n')].filter(Boolean).join('\n\n') + '\n';
 }
 
-export function packWithRequest({ series = [], lang = 'en', request = null, exclude = [] } = {}) {
+export function packWithRequest({ series = [], lang = 'en', request = null, exclude = [], off = [] } = {}) {
   const tail = request ? String(request).trim() : requestOf(PACK, lang);
-  const parts = [commonOf(PACK, lang, exclude), ...normalizeSeries(series, PACK).map((s) => partOf(PACK, s, lang, exclude)), tail].filter(Boolean);
+  const ss = normalizeSeries(series, PACK);
+  const parts = [commonOf(PACK, lang, exclude, ss, off), ...ss.map((s) => partOf(PACK, s, lang, exclude)), tail].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }

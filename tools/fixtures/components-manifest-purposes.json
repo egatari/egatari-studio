@@ -184,6 +184,15 @@
     "en": "From the centre outwards"
    },
    "reserved": true
+  },
+  {
+   "id": "mystery",
+   "ja": "謎",
+   "en": "Mystery",
+   "steps": {
+    "ja": "一度に",
+    "en": "At once"
+   }
   }
  ],
  "components": {
@@ -309,5 +318,5 @@
    "variants": []
   }
  },
- "_note": "Test fixture: the manifest shape of egatari/components tools/release.mjs (conventions-v1.2 06535fb, unreleased); purposes.json as of that commit, sha256 and files left out."
+ "_note": "Test fixture: the manifest shape of egatari/components tools/release.mjs (conventions-v1.2 06535fb, unreleased): its 20 purposes (ranking, 2 reserved) plus one unknown id (\"mystery\"); sha256 and files left out."
 }

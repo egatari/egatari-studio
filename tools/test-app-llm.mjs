@@ -393,7 +393,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const mats = await pk.$$eval('#paste-materials li', (xs) => xs.map((x) => [x.textContent, x.tagName, !!x.querySelector('button,input')]));
     ok(mats.map((m) => m[0]).join() === '表,画像,数式,図形' && mats.every((m) => !m[2]), 'new materials: 表・画像・数式・図形 are always available (not toggles)');
     const tiles = await pk.$$eval('#paste-purposes button.tile', (xs) => xs.map((x) => [x.id, x.getAttribute('aria-pressed'), x.querySelector('.tile-label').textContent]));
-    ok(tiles.length === 14 && tiles.every((t) => t[1] === 'true') && tiles[0][2] === '比べる' && tiles[13][2] === '目次' && (await pk.textContent('#paste-purposes-sum')) === '言いたいこと：14 個のうち 14 個が入っています',
+    ok(tiles.length === 14 && tiles.every((t) => t[1] === 'true') && tiles[0][2] === '比べる（量・特徴）' && tiles[13][2] === '目次' && (await pk.textContent('#paste-purposes-sum')) === '言いたいこと：14 個のうち 14 個が入っています',
       'new purposes: 14 tiles, all on by default: ' + tiles.map((t) => t[2]).join('・'));
     await pk.fill('#paste-a-topic', '研究の進め方');
     const copy = async () => {
@@ -420,20 +420,22 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     if (shotDir) await pk.screenshot({ path: path.join(shotDir, 'new-purposes-ja.png') });
     await scrollTo('paste-step2');
     if (shotDir) await pk.screenshot({ path: path.join(shotDir, 'new-copy-ja.png') });
-    // 開く：シード値を <html> に 1 回だけ書き、選んだものを egatari.json の studio.newDeck に
-    await pk.fill('#paste-text', replyOf(worked('kokugo', 'deck.html'), worked('kokugo', 'narration.md')));
+    // 写した後に札を変えても、egatari.json に残すのは写したときの選び方
+    await pk.click('#paste-purpose-timeline');
+    // 開く：シード値を <html> に 1 回だけ書き（返事が data-egatari-seed="42" を書いていても新しい値）、選んだものを egatari.json の studio.newDeck に
+    await pk.fill('#paste-text', replyOf(worked('kokugo', 'deck.html').replace('<html ', '<html data-egatari-seed="42" '), worked('kokugo', 'narration.md')));
     await clickDlg(pk, '#dlg-import');
     await pk.waitForFunction(() => { const s = window.__APP_TEST.state(); return s && s.portable; }, null, { timeout: 30000 });
     const filesOf = () => pk.evaluate(() => { const f = window.__APP_TEST.files(); const d = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, d(v)])); });
     const F1 = await filesOf();
     const seed = seedOf(F1['deck.html']);
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
-    ok(Number.isInteger(seed) && /<html[^>]*\sdata-egatari-seed="\d+"/.test(F1['deck.html']) && JSON.stringify(nd) === JSON.stringify({ v: 1, category: 'research', subcategory: 'conference', subjects: [], purposesOff: ['contents', 'process'] }),
-      `new open: the seed is written once on <html> (${seed}) and the choices are kept in egatari.json studio.newDeck`);
+    ok(Number.isInteger(seed) && seed !== 42 && (F1['deck.html'].match(/data-egatari-seed/g) || []).length === 1 && /<html[^>]*\sdata-egatari-seed="\d+"/.test(F1['deck.html']) && JSON.stringify(nd) === JSON.stringify({ v: 1, category: 'research', subcategory: 'conference', subjects: [], purposesOff: ['contents', 'process'] }),
+      `new open: a fresh seed is written once on <html> (${seed}; the reply's 42 is replaced) and the choices copied are kept in egatari.json studio.newDeck (not the tile changed after copying)`);
     // 修正…：返事が <html> を書き直してシード値を落としても、前のシード値のまま
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));
     // 板の結果は前の品質チェックのものが先に出ることがあるので、置き換えた原稿が入るまで待つ
-    await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 }).catch(() => {});
+    await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 });
     const F2 = await filesOf();
     ok(seedOf(F2['deck.html']) === seed && F2['deck.html'].includes('<title>改 '), `new revise: a revised deck without the seed keeps the earlier seed (${seedOf(F2['deck.html'])}; ${(F2['deck.html'].match(/<title>[^<]*/) || [''])[0]})`);
     // 保存：1 ファイルにもシード値（組み立てた <html> と中の原稿）

@@ -1,10 +1,12 @@
 // 新しいデッキの雛形（npm run new と編集アプリの「新しいデッキ」が共有する）。依存なし（Node にもブラウザにも依存しない）
-//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids, blank}) → {'deck.html': 文字列, 'narration.md': 文字列}（blank：表紙だけ）
+//   newDeckFiles({lang: 'ja'|'en', theme: 'default', title, ids, blank, seed}) → {'deck.html': 文字列, 'narration.md': 文字列}（blank：表紙だけ）
+// 教材を作るので、<html> にシード値（data-egatari-seed。format spec §8.4）を 1 回だけ書く。seed を渡せばその値（試験用）、なければ乱数
 // 表紙＋見本 3 枚（段階・数式と注目の演出・部品）＋まとめと、全段階ぶんの口述原稿
 // どのスライドにも乱数の id（s-xxxxxx）を付け、口述原稿の見出しは「## 見出し {#id}」（format spec §8.1）。
 // ids を渡せばその 5 つを使う（試験用）
 // （中身は字下げしない：テンプレート文字列の中の空白がそのままファイルに入るため）
 import { newSlideId, headingLine } from '../core/narration-core.mjs';
+import { newSeed, SEED_ATTR } from '../core/new-deck.mjs';
 
 export function newDeckFiles(opts = {}) {
 opts = { lang: 'ja', theme: 'default', title: null, ...opts };
@@ -85,7 +87,7 @@ const T = EN ? {
 };
 
 const deck = `<!DOCTYPE html>
-<html lang="${opts.lang}" data-theme="${opts.theme}">
+<html lang="${opts.lang}" data-theme="${opts.theme}" ${SEED_ATTR}="${Number.isInteger(opts.seed) ? opts.seed : newSeed()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

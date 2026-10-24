@@ -1,4 +1,4 @@
-<!-- i18n: pair=business.md sha256=b19964558b071548 -->
+<!-- i18n: pair=business.md sha256=ebab281dd0ff2a34 -->
 ## 系列の指示：business（ビジネス）
 
 ビジネスの報告・提案の資料向け（KPI・ポジショニングマップ・市場規模・お金とモノの流れ）。テーマは `business`。架空の数字の断り（R-components）は `note` か表紙に書き、スライドの間で数字をそろえる（内訳を足すと書いた合計になる）。
@@ -11,4 +11,4 @@
 
 {{WORKED business "見本：ビジネス（日本語・business テーマ・m-kpi）" m-kpi}}
 
-段階の数え方：札が 3 枚の `m-kpi` は段階 1〜3。
+<!--part:m-kpi-->段階の数え方：札が 3 枚の `m-kpi` は段階 1〜3。<!--/part-->

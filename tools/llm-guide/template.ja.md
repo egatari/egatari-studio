@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=0bac6f89d6043312 -->
+<!-- i18n: pair=template.md sha256=f6328f0987e82896 -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 
@@ -150,9 +150,9 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ## 6. 見本
 
-小さな教材の見本（架空。形を見るためで、中身は写さない）。段階の数え方：2 項目の箇条書きは段階 1〜2 と `[concl]`、箱が 4 つの `m-flow` は段階 1〜4。系列の指示の最後にもそれぞれ見本がある。
+小さな教材の見本（架空。形を見るためで、中身は写さない）。段階の数え方：2 項目の箇条書きは段階 1〜2 と `[concl]`<!--part:m-flow-->、箱が 4 つの `m-flow` は段階 1〜4<!--/part-->。系列の指示の最後にもそれぞれ見本がある。
 
-{{WORKED common "共通（英語・default テーマ・注目の演出・m-flow）"}}
+{{WORKED common "共通（英語・default テーマ・注目の演出<!--part:m-flow-->・m-flow<!--/part-->）"}}
 
 # 頼みたいこと
 

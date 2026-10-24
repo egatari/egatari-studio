@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=30afb6996af1346b -->
+<!-- i18n: pair=template.ja.md sha256=4ca29f7d67bd9a7a -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -150,9 +150,9 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`; the `m-flow` with 4 boxes gives steps 1–4. The static cover has `[0]` only. Each series pack ends with an example of its own.
+A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Each series pack ends with an example of its own.
 
-{{WORKED common "Common (English, default theme, marks, m-flow)"}}
+{{WORKED common "Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)"}}
 
 # What I want
 
