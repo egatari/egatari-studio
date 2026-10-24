@@ -151,7 +151,8 @@ await (async () => {
     const f = deck('d-portable', 'mine');
     const r = await buildPortable(f, { subset: false });
     assert.ok(r.files['themes/mine/tokens.css'] && r.files['themes/mine/theme.json'], Object.keys(r.files).join(' '));
-    assert.ok(!(r.index.themes || []).some((t) => t.name === 'mine'));
+    // recorded as an embedded theme with its own version, or "local" without one (format spec §6), never Studio's version
+    assert.ok((r.index.themes || []).some((t) => t.name === 'mine' && t.source === 'embedded' && t.version === 'local' && /^[0-9a-f]{64}$/.test(t.sha256)), JSON.stringify(r.index.themes));
     assert.ok((r.index.themes || []).some((t) => t.name === 'default' && t.source === 'registry'));
     // the unpacked sources build with the same theme without any user dir
     const ex = path.join(tmp, 'extracted'); fs.mkdirSync(ex);

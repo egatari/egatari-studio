@@ -31,6 +31,7 @@ import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
@@ -330,12 +331,10 @@ async function rebuildYanked(version) {
   if (!ws || !todo.length) return;
   try {
     const CFG = FORMAT.CONFIG_FILE;
-    let conf = {};
-    try { const t = await ws.readText(CFG, { max: READ_LIMITS.json }); if (t) conf = JSON.parse(t); } catch { conf = {}; }
-    if (!conf || typeof conf !== 'object' || Array.isArray(conf)) conf = {};
-    conf.components = { ...(conf.components && typeof conf.components === 'object' ? conf.components : {}), ...Object.fromEntries(todo.map((y) => [y.name, y.replacement])) };
+    // 設定のファイルの components だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { components: configMerge(Object.fromEntries(todo.map((y) => [y.name, y.replacement]))) });
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
-    await ws.writeText(CFG, JSON.stringify(conf, null, 2) + '\n');
+    await ws.writeText(CFG, text);
     if (P) {
       const tags = new Set(todo.map((y) => y.tag));
       const carry = { ...P.index, components: (P.index.components || []).filter((c) => !tags.has(c.tag)) };
@@ -366,12 +365,10 @@ async function updateThemes() {
   if (!ws || !todo.length) return;
   try {
     const CFG = FORMAT.CONFIG_FILE;
-    let conf = {};
-    try { const t = await ws.readText(CFG, { max: READ_LIMITS.json }); if (t) conf = JSON.parse(t); } catch { conf = {}; }
-    if (!conf || typeof conf !== 'object' || Array.isArray(conf)) conf = {};
-    conf.themes = { ...(conf.themes && typeof conf.themes === 'object' && !Array.isArray(conf.themes) ? conf.themes : {}), ...Object.fromEntries(todo.map((u) => [u.name, u.to])) };
+    // 設定のファイルの themes だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { themes: configMerge(Object.fromEntries(todo.map((u) => [u.name, u.to]))) });
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
-    await ws.writeText(CFG, JSON.stringify(conf, null, 2) + '\n');
+    await ws.writeText(CFG, text);
     if (P) {
       const names = new Set(todo.map((u) => u.name));
       const carry = { ...P.index, themes: (P.index.themes || []).filter((t) => !names.has(t.name)) };
@@ -1250,11 +1247,10 @@ async function savePortableBound(mode) {
   const files = ws.snapshot();
   if (mode === 'new') {
     identity = { docId: newDocId(), derivedFrom: { docId: P.index.docId, sourceSha256: P.index.sourceSha256 } };
-    let cfg = {};
-    try { cfg = JSON.parse(new TextDecoder().decode(files.get(CFG) || new Uint8Array())); } catch { cfg = {}; }
-    const m = cfg && typeof cfg.metadata === 'object' && cfg.metadata ? { ...cfg.metadata } : {};
-    m.derivedFrom = identity.derivedFrom;
-    cfgText = JSON.stringify({ ...cfg, docId: identity.docId, metadata: m }, null, 2) + '\n';
+    // docId と metadata.derivedFrom だけを変える（ほかの項目はバイトのまま。kit/core/config-file.mjs）
+    const old = files.has(CFG) ? new TextDecoder().decode(files.get(CFG)) : null;
+    try { cfgText = updateConfig(old, { docId: identity.docId, metadata: configMerge({ derivedFrom: identity.derivedFrom }) }); }
+    catch (e) { status(''); toast(String((e && e.message) || e), true); return; }
     files.set(CFG, new TextEncoder().encode(cfgText));
   }
   let html, index, deckMeta, tier, narrB = null;

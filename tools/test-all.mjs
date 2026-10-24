@@ -144,6 +144,9 @@ steps.push(
   // 読み上げで聞く（端末の声。format spec §5.6）：読む文（読み・読み辞書・join-num-counter）・端末の中の声だけ・再生器の帯と札・進むと止める・
   // 動画のモードとタイムラインと (i, k, t) が変わらない・ファイルに何も書かない（再生器と編集アプリの音声の板。speechSynthesis は差し替え）
   ['test-read-aloud', ['tools/test-read-aloud.mjs', path.join(tmp, 'read-aloud')]],
+  // egatari.json のほかの作り手の項目（format spec §3.3）：Studio のどの書き込み（書き出し・展開・段 A の保存・新しい教材・添付と授業の部屋の板・
+  // テーマを更新・--update-themes・portable attach）でもバイトのまま残る（kit/core/config-file.mjs の updateConfig）
+  ['test-config-preserve', ['tools/test-config-preserve.mjs', path.join(tmp, 'config-preserve')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する
