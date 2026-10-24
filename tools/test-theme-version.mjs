@@ -163,6 +163,28 @@ fs.writeFileSync(oldFile, pold.html);
     ok(r.stats.warn.some((w) => /README\.md/.test(w) && /ロゴにしない/.test(w)), 'docs: README.md listed as a logo is not read (warning)');
     ok(!r.html.includes(Buffer.from('# x\n').toString('base64')), 'docs: the README is not embedded');
   } finally { if (prev === undefined) delete process.env.EGATARI_THEMES; else process.env.EGATARI_THEMES = prev; }
+  // 原稿のフォルダのテーマ（<作業フォルダ>/themes/<名前>/）も同じ：LICENSE は入り、README.md は入らず、hash は同じ、展開で戻る
+  {
+    const ldeck = deckDir('local-theme');
+    const LT = path.join(path.dirname(ldeck), 'themes', 'local');
+    fs.mkdirSync(LT, { recursive: true });
+    fs.writeFileSync(path.join(LT, 'tokens.css'), ':root{--base:#553311}\n');
+    fs.writeFileSync(path.join(LT, 'theme.json'), JSON.stringify({ name: 'local', extends: 'default' }) + '\n');
+    const bareSha = themeDirSha(LT);
+    fs.writeFileSync(path.join(LT, 'LICENSE'), docs.LICENSE);
+    fs.writeFileSync(path.join(LT, 'README.md'), docs['README.md']);
+    ok(themeDirSha(LT) === bareSha, 'docs (lesson-local theme): LICENSE and README.md do not change its sha256');
+    fs.writeFileSync(ldeck, fs.readFileSync(ldeck, 'utf8').replace(/data-theme="[^"]*"/, 'data-theme="local"'));
+    const r = await exportPortable(nodeEnv, ldeck, {});
+    const names = Object.keys(r.files).filter((k) => k.startsWith('themes/local/'));
+    ok(r.stats.theme === 'local' && names.includes('themes/local/tokens.css') && names.includes('themes/local/LICENSE') && !names.includes('themes/local/README.md'), 'docs (lesson-local theme): the single file has its LICENSE and not its README.md ' + JSON.stringify(names));
+    ok(Buffer.from(r.files['themes/local/LICENSE']).toString('utf8') === docs.LICENSE, 'docs (lesson-local theme): the LICENSE bytes are copied as they are');
+    const pf = path.join(work, 'local-theme' + FORMAT.FILE_EXT);
+    fs.writeFileSync(pf, r.html);
+    const LD = path.join(work, 'local-theme-unpacked');
+    await unpack(pf, LD);
+    ok(fs.readFileSync(path.join(LD, 'themes', 'local', 'LICENSE'), 'utf8') === docs.LICENSE && !fs.existsSync(path.join(LD, 'themes', 'local', 'README.md')) && themeDirSha(path.join(LD, 'themes', 'local')) === bareSha, 'docs (lesson-local theme): unpacking brings LICENSE back; the theme sha256 is unchanged');
+  }
 }
 
 // ---------------------------------------------------------------- 4. 再生と編集アプリ

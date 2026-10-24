@@ -360,6 +360,7 @@ function pinTheme(env, sel, name, tctx, warn) {
 function themeAssets(env, t, warn, depth = 0, ud = [], tctx = null) {
   const P = env.path, { dir, root } = t;
   if (depth > 16) throw new Error(`theme: extends is nested too deeply (${dir})`);
+  if (tctx && !tctx.dirs.includes(dir)) tctx.dirs.push(dir);
   const inRoot = (f) => env.within(f, root) && env.within(f, dir);
   const cfgPath = P.join(dir, 'theme.json');
   let cfg = {};
@@ -676,7 +677,8 @@ export function build(env0, srcPath, opts = {}) {
   const miss = opts.theme ? null : [];
   // 同梱のテーマの版（themes.lock.json）：opts.updateThemes（--update-themes・編集アプリの「テーマを更新」）なら今の版。
   // ほかは 組み直す文書の記録（opts.themeVersions）→ 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の themes → 今の版
-  const tctx = { lock: null, pins: {}, pinned: [], versions: {}, noted: new Set() };
+  // dirs：組み立てが使ったテーマのフォルダ（親も。持ち運べる 1 ファイルが、原稿のフォルダのテーマの LICENSE* を一緒に入れるため。出力には書かない）
+  const tctx = { lock: null, pins: {}, pinned: [], versions: {}, noted: new Set(), dirs: [] };
   try { tctx.lock = readThemesLock(env, ROOT); } catch (e) { warn.push(`themes.lock.json: ${e.message}`); }
   if (tctx.lock && !opts.updateThemes) {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
@@ -900,7 +902,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
   // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
     theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）

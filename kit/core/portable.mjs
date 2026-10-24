@@ -728,6 +728,22 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[rp] = readBytesVia(env, f);
     }
   }
+  // 原稿のフォルダのテーマ（<作業フォルダ>/themes/<名前>/ など、組み立てが使ったテーマのフォルダのうち作業フォルダの中のもの）の LICENSE*（最上位）も
+  // 同じく 1 ファイルに入れる（hash には入れない。利用者のテーマと同じ決まり）。作業フォルダそのものはテーマのフォルダとして扱わない
+  for (const d of Array.isArray(r.stats.themeDirs) ? r.stats.themeDirs : []) {
+    const root = P.resolve(d);
+    if (!inDeck(root) || root === P.resolve(deckDir)) continue;
+    const cands = new Set(['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'].map((f) => P.join(root, f)));
+    if (typeof env.listFiles === 'function') { try { for (const f of env.listFiles(root) || []) if (P.dirname(f) === root) cands.add(f); } catch { /* 一覧できない */ } }
+    for (const f of [...cands].sort()) {
+      if (!isThemeLicense(P.basename(f)) || !env.exists(f) || !inDeck(f) || !env.within(f, root)) continue;
+      const rp = rel(f);
+      if (files[rp]) continue;
+      const why = excludedReason(rp);
+      if (why) { warnings.push(`${LOG}: "${rp}" (theme licence) is excluded (${why}); not included`); continue; }
+      files[rp] = readBytesVia(env, f);
+    }
+  }
   const entry = rel(P.resolve(srcPath));
   if (!files[entry]) files[entry] = readBytesVia(env, P.resolve(srcPath));
   // voice.json（TTS の設定。build は読まない）：個人のパスを伏せる
