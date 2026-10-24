@@ -146,7 +146,7 @@ css(
   // 読み上げ中の札（format spec §5.6：端末の声で読んでいることを示す）。読んでいる間だけ出る。印刷には出さない
   "#dt-ra{position:fixed;left:12px;top:12px;z-index:36;display:none;align-items:center;gap:7px;padding:4px 12px 4px 9px;border-radius:999px;" +
   " background:rgba(20,20,20,.72);color:#fff;font:600 12.5px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;pointer-events:none}" +
-  "#dt-ra.on{display:flex}#dt-ra svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}#dt-ra small{opacity:.65;font-weight:400;font-size:11px}" +
+  "#dt-ra.on{display:flex}#dt-ra svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}#dt-ra small{opacity:.65;font-weight:400;font-size:11px}#dt-ra small.dt-ra-old{opacity:.9;color:#fcd34d}" +
   "#dt-cb button[aria-disabled=true]{opacity:.38;cursor:default}#dt-cb button[aria-disabled=true]:hover{background:none;color:rgba(255,255,255,.86)}" +
   "#dt-cb .dt-aib{margin:0 3px 0 1px;padding:3px 7px;border:1px solid rgba(255,255,255,.3);border-radius:999px;color:rgba(255,255,255,.78);" +
   " font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;letter-spacing:.02em;white-space:nowrap;cursor:default}" +
@@ -598,6 +598,7 @@ window.addEventListener("resize", fitOv);
 // ---------------------------------------------------------------- 読み上げで聞く（端末の声。format spec §5.6、backlog #89）
 // 音声のないステップだけを、見る人が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
 // 音声ファイルにはならない：何も書かず、タイムラインも (i, k, t) の描画も変えない（この道具は動画では作らない。札は印刷に出さない）。
+// 読む文は deck-narration の ttsParts（読みを当てた話す部品。AI 音声に渡すのと同じ）。ない古いファイルでは表示の文を読み、札に「読み方は反映されません（古いファイル）」。
 // 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中（この端末の声）」
 var RA = (function(){
   var M = DECK.ReadAloud, S = null, U = null;
@@ -611,8 +612,10 @@ var RA = (function(){
 })();
 var RA_T = DECK.ja !== false
   ? {btn: "読み上げで聞く（音声ファイルにはなりません）", stop: "読み上げを止める", on: "読み上げ中（この端末の声）", esc: "Esc で止める",
+     old: "読み方は反映されません（古いファイル）",
      audio: "このステップには音声があります（自動再生 a で流れます）", none: "このステップには台本がありません", voice: "この端末には、この言語の読み上げの声がありません"}
   : {btn: "Listen with read-aloud (not saved as audio)", stop: "Stop read-aloud", on: "Reading aloud (this device's voice)", esc: "Esc to stop",
+     old: "Pronunciations not applied (older file)",
      audio: "This step has audio (autoplay a plays it)", none: "This step has no script", voice: "This device has no read-aloud voice for this language"};
 function deckLang(){ return document.documentElement.lang || (DECK.ja !== false ? "ja" : "en"); }
 function raTurns(key){
@@ -625,14 +628,16 @@ function raWhy(key){
   if (DECK.AUDIO[key]) return RA_T.audio;
   return RA.M.spokenTurns(raTurns(key), {lang: deckLang(), normalize: DECK.TtsNormalize && DECK.TtsNormalize.normalizeTtsText}).length ? null : RA_T.none;
 }
-function raShow(on){
+// 古いファイル（deck-narration に ttsParts がない）：表示の文を読むので、読み {x|y} は当たらない（format spec §4・§5.6）
+function raOld(key){ return raTurns(key).some(function(t){ return !t || !Array.isArray(t.ttsParts); }); }
+function raShow(on, old){
   if (!RA) return;
   if (!RA.el){
     RA.el = document.createElement("div"); RA.el.id = "dt-ra"; RA.el.className = "deck-tools";
     RA.el.setAttribute("role", "status"); RA.el.setAttribute("aria-live", "polite");
     document.body.appendChild(RA.el);
   }
-  RA.el.innerHTML = on ? ICON.read + "<span>" + RA_T.on + "</span><small>" + RA_T.esc + "</small>" : "";
+  RA.el.innerHTML = on ? ICON.read + "<span>" + RA_T.on + "</span>" + (old ? '<small class="dt-ra-old">' + RA_T.old + "</small>" : "") + "<small>" + RA_T.esc + "</small>" : "";
   RA.el.classList.toggle("on", !!on);
   syncBar();
 }
@@ -657,7 +662,7 @@ function raStart(){
     var r = RA.reader.speak(turns, lang, {onend: function(){ if (RA.key === key){ RA.key = null; raShow(false); } }});
     if (!r.ok){ if (DECK.toast) DECK.toast(r.reason === "no-voice" ? RA_T.voice : RA_T.none); return; }
     RA.key = key;
-    raShow(true);
+    raShow(true, raOld(key));
   });
 }
 function raSync(b){

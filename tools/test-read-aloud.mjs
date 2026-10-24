@@ -20,7 +20,9 @@ import { applyYomi, parseYomiTerms } from '../kit/core/yomi.mjs';
 import { normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { classicNamespace, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
-import { build } from '../kit/build.mjs';
+import { build, buildPortable } from '../kit/build.mjs';
+import * as PF from '../kit/core/portable.mjs';
+import { audioState } from '../kit/core/audio-core.mjs';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -143,6 +145,45 @@ const OUT = path.join(DECK_DIR, 'out', 'deck.html');
 { const r = build(path.join(DECK_DIR, 'deck.html'), { out: OUT }); if (!fs.existsSync(OUT)) { fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, r.html); } }
 const bytes0 = sha(fs.readFileSync(OUT));
 
+// deck-narration の ttsParts（format spec §4）：どの発言も、TTS に渡す部品（parseNarration の ttsParts、inputHash に入る値）と同じ
+const blockOf = (html, id) => JSON.parse(new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`).exec(html)[1]);
+{
+  const html = fs.readFileSync(OUT, 'utf8'), dn = blockOf(html, 'deck-narration'), marks = blockOf(html, 'deck-marks');
+  let n = 0, same = 0, hashSame = 0, steps = 0;
+  for (const s of segs) {
+    const turns = dn[s.slideKey] && dn[s.slideKey][s.stepKey];
+    if (!turns) continue;
+    steps++;
+    s.turns.forEach((t, j) => { n++; if (turns[j] && JSON.stringify(turns[j].ttsParts) === JSON.stringify(t.ttsParts) && Object.keys(turns[j]).join() === 'role,text,ttsParts') same++; });
+    // deck-narration の ttsParts と区切り（deck-marks、なければ cue だけ）から作った inputHash の元の文字列が、口述原稿から作るものと同じ
+    const bounds = marks[`${s.slideKey}:${s.stepKey}`] || s.bounds;
+    const fromDeck = { turns: turns.map((t, j) => ({ role: t.role, ttsParts: t.ttsParts, bounds: s.turns[j].bounds })) };
+    if (PF.inputCanonical(fromDeck) === PF.inputCanonical(s) && bounds.length === s.bounds.length) hashSame++;
+  }
+  ok(n > 20 && same === n, `build: every deck-narration turn carries ttsParts equal to the TTS input ({role, text, ttsParts}; ${same}/${n})`);
+  ok(hashSame === steps, `build: ttsParts is the inputHash input of every step (${hashSame}/${steps})`);
+  const eta = Object.values(dn).flatMap((st) => Object.values(st).flat()).find((t) => t.text.includes('η は学習率'));
+  ok(eta && eta.ttsParts.join('').includes('イータ は学習率') && !eta.ttsParts.join('').includes('η'), 'build: {η|イータ} shows η and speaks イータ ' + JSON.stringify(eta));
+}
+// 前からある音声は古くならない：作った時の inputHash を持つ音声の記録は、1 ファイルに組んでも fresh のまま
+{
+  const man = JSON.parse(fs.readFileSync(path.join(DECK_DIR, 'audio', 'manifest.json'), 'utf8'));
+  const h0 = await PF.inputHash(segs[2]);
+  man.segments[AKEY].inputHash = h0;
+  const PD = path.join(work, 'deck-portable');
+  fs.rmSync(PD, { recursive: true, force: true });
+  fs.cpSync(DECK_DIR, PD, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(DECK_DIR, x)) });
+  fs.writeFileSync(path.join(PD, 'audio', 'manifest.json'), JSON.stringify(man));
+  fs.writeFileSync(path.join(PD, 'egatari.json'), JSON.stringify({ metadata: { license: 'CC-BY-4.0', copyright: '© 2026 Test', creators: ['Test'] } }) + '\n');
+  const pr = await buildPortable(path.join(PD, 'deck.html'), { out: path.join(PD, 'out', 'deck.ega.html') });
+  const rd = await PF.readPortable(pr.html);
+  const rec = rd.audio[AKEY];
+  const seg = parseNarration(new TextDecoder().decode(rd.files['narration.md'])).find((s) => `${s.slideKey}:${s.stepKey}` === AKEY);
+  ok(rec && rec.inputHash === h0 && await audioState(rec, seg) === 'fresh', 'audio: an existing take keeps its inputHash and stays fresh in a single file with ttsParts');
+  const dn = blockOf(pr.html, 'deck-narration');
+  ok(Object.values(dn).every((st) => Object.values(st).every((ts) => ts.every((t) => Array.isArray(t.ttsParts)))), 'single file: deck-narration carries ttsParts too');
+}
+
 const browser = await launch();
 try {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
@@ -200,6 +241,15 @@ try {
   await p.waitForFunction(() => window.__ra.queue.length > 0);
   await p.evaluate(() => window.__ra.finish());
   ok((await label()) === null, 'player: the label goes away when the reading ends');
+  // 読み（{η|イータ}）は deck-narration の ttsParts から：「イータ」と読み、古いファイルの知らせは出さない
+  await p.evaluate(() => { window.__ra.spoken = []; DECK.go(2, 2, false); });
+  await showBar();
+  await p.click('#dt-cb [data-b="read"]');
+  await p.waitForFunction(() => window.__ra.spoken.length > 0);
+  r = await R();
+  ok(/^イータ は学習率で/.test(r.spoken[0].text) && !/η/.test(r.spoken[0].text), 'player: reads イータ for η from ttsParts: ' + r.spoken[0].text);
+  ok(!(await p.evaluate(() => !!document.querySelector('#dt-ra .dt-ra-old'))), 'player: no older-file hint when ttsParts is present');
+  await p.keyboard.press('Escape');
   // タイムラインと (i, k, t) の画面は変わらない
   ok(await p.evaluate(() => JSON.stringify(DECK.timeline())) === tl0, 'player: the timeline is unchanged after read-aloud');
   const shot1 = await seekShot();
@@ -234,6 +284,26 @@ try {
   ok(await v2.evaluate(() => document.body.innerHTML) === domWith && await v2.evaluate(() => JSON.stringify(DECK.timeline())) === tlv, 'video: the DOM and the timeline are the same with or without a speech synthesizer');
   await ctx2.close();
   ok(sha(fs.readFileSync(OUT)) === bytes0, 'player: the file bytes are unchanged after read-aloud');
+  // 古いファイル（deck-narration に ttsParts がない）：表示の文を読み、札の横に「読み方は反映されません（古いファイル）」
+  {
+    const OLD = path.join(DECK_DIR, 'out', 'old.html');
+    const html = fs.readFileSync(OUT, 'utf8');
+    const dn = blockOf(html, 'deck-narration');
+    for (const sk of Object.keys(dn)) for (const st of Object.keys(dn[sk])) for (const t of dn[sk][st]) delete t.ttsParts;
+    fs.writeFileSync(OLD, html.replace(/(<script type="application\/json" id="deck-narration">)[\s\S]*?(<\/script>)/, (_, a, b) => a + JSON.stringify(dn) + b));
+    const o = await ctx.newPage();
+    await o.goto(fileUrl(OLD) + '#3');
+    await o.waitForFunction(() => window.DECK && DECK.ready);
+    await o.evaluate(() => { window.__ra.spoken = []; DECK.go(2, 2, false); });
+    await o.mouse.move(640, 790); await o.mouse.move(641, 791); await o.waitForTimeout(300);
+    await o.click('#dt-cb [data-b="read"]');
+    await o.waitForFunction(() => window.__ra.spoken.length > 0);
+    const os = await o.evaluate(() => ({ text: window.__ra.spoken[0].text, label: document.getElementById('dt-ra').textContent, hint: (document.querySelector('#dt-ra .dt-ra-old') || {}).textContent }));
+    ok(/^η は学習率で/.test(os.text), 'older file: falls back to the display text: ' + os.text);
+    ok(os.hint === '読み方は反映されません（古いファイル）' && os.label.startsWith('読み上げ中（この端末の声）'), 'older file: the label carries the hint 「読み方は反映されません（古いファイル）」 ' + JSON.stringify(os));
+    if (process.env.RA_SHOTS) await o.screenshot({ path: path.join(process.env.RA_SHOTS, 'player-old.png') });
+    await o.close();
+  }
 
   // ---------------------------------------------------------------- 5. 編集アプリ
   const DIST = path.join(work, 'dist');

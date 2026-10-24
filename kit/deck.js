@@ -289,7 +289,7 @@ DECK.define = function(name, cls){ if (!customElements.get(name)) customElements
 function json(id){ var s = document.getElementById(id); try { return s ? JSON.parse(s.textContent) : null; } catch (e) { console.error(id, e); return null; } }
 // 鍵（スライドの鍵・段階の鍵）で引く表は原型のない object にする（鍵が __proto__ や constructor でも取り違えない）
 function dict(o){ var d = Object.create(null); if (o && typeof o === "object") for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) d[k] = o[k]; return d; }
-DECK.NARRATION = dict(json("deck-narration"));   // {slideKey: {stepKey: [{role, text}]}}
+DECK.NARRATION = dict(json("deck-narration"));   // {slideKey: {stepKey: [{role, text, ttsParts?}]}}（ttsParts：読みを当てた話す部品。読み上げが使う）
 for (var narrKey in DECK.NARRATION) DECK.NARRATION[narrKey] = dict(DECK.NARRATION[narrKey]);
 DECK.AUDIO = dict(json("deck-audio"));           // {"slideKey:stepKey": {src, dur, cues:[秒…]}}
 DECK.MARKS = dict(json("deck-marks"));           // {"slideKey:stepKey": [{type:"cue"} | {type:"mark", id, effect, hold} | {type:"clear"}]}

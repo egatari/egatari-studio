@@ -802,7 +802,8 @@ export function build(env0, srcPath, opts = {}) {
   const read = (dir, f) => env.readText(P.join(dir, f));
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
-  const textForFont = glyphText(html, narration, compJs, lang);
+  // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
+  const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
   const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn);
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');

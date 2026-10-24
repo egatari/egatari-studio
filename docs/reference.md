@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=bc84f7a355a078e8 -->
+<!-- i18n: pair=reference.ja.md sha256=952ee7a0d4ddce7b -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -279,7 +279,7 @@ The `?` help ends with a **Send feedback** link and the version (for example `v0
 The speaker button in the control bar, **Listen with read-aloud (not saved as audio)**, reads the current step's narration with a voice of this device (the Web Speech API, format spec §5.6). It is for steps **without** audio: on a step with audio the button is greyed out and says that the step has audio (autoplay <kbd>a</kbd> plays it). While it reads, a label at the top left says **Reading aloud (this device's voice)**; moving to another step, <kbd>Esc</kbd>, or pressing the button again stops it.
 
 - Only voices that run on the device are used (`localService === true`, matching the deck's `<html lang>`; the exact region, the device's default voice and well-known natural voices come first; robotic and novelty voices such as Eddy or Bad News come last and are not used for Novice). Network voices are never used, even when the browser offers one as its default, because they send the text off the device. With two local voices for the language, Expert and Novice get different voices; with one, it reads both. Without any, nothing is read and a notice says “This device has no read-aloud voice for this language”.
-- The text is the step's display text (`deck-narration`, format spec §4) with the same text pre-processing as the AI voice (`join-num-counter@1`). A built deck carries the display text only, so `{x|y}` readings and the reading dictionary are applied in the editor's preview (see [the editor](editor.md#narration-audio-audio-panel)), not in the player.
+- The text is each turn's `ttsParts` in `deck-narration` (format spec §4: the spoken pieces with `{x|y}` readings applied, the same value that enters `inputHash`), joined, with the same text pre-processing as the AI voice (`join-num-counter@1`). Every build writes `ttsParts` (about 3–7 KB per example deck); it is not shown and not used for fonts. A file built before `ttsParts` existed falls back to the display text, and the label then adds “Pronunciations not applied (older file)”. The reading dictionary (`tts/yomi.yaml`) is applied only in the editor's preview (see [the editor](editor.md#narration-audio-audio-panel)) and the AI voice, not in the player.
 - It is not audio of the lesson: nothing is written to the file or a video, the timeline (`DECK.timeline()`) and the rendering at `(i, k, t)` do not change, a step being read lasts as long as the reading, and there is no button in `?mode=video` or print.
 
 ### Accessibility

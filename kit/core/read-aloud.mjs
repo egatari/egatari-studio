@@ -7,7 +7,7 @@
 //   編集アプリ（app/read-aloud.js）は ES モジュールとして読む。実際の speechSynthesis と SpeechSynthesisUtterance は呼ぶ側が渡す
 //
 //   spokenTurns(turns, {lang, terms, applyYomi, normalize}) → [{role, text}]（読む文のある発言だけ）
-//     turns：parseNarration の発言（ttsParts）、書いたままの発言（{role, raw}）、表示の文（deck-narration の {role, text}）、または文字列
+//     turns：parseNarration の発言（ttsParts）、書いたままの発言（{role, raw}）、deck-narration の発言（{role, text, ttsParts?}。ttsParts があればそれを、なければ表示の文を読む）、または文字列
 //   spokenText(raw, opts) → 文字列（1 つの語や選んだ文。上と同じ処理）
 //   localVoices(voices, lang) → 端末の中の声のうち、言語の合うもの（地域まで合う声・既定の声・自然な声が先、機械らしい声・遊びの声は後）
 //   pickVoices(voices, lang) → {expert, novice}（声がなければ null。2 つあれば話す人ごとに別の声、1 つなら同じ声。機械らしい声は Novice にも選ばない）
