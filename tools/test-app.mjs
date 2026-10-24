@@ -30,6 +30,7 @@ import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
+import { testNewDeckFlow } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
@@ -246,13 +247,13 @@ try {
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
-  // 新規作成…：チャットの AI の道 1 本（① 場面 → ② 分野と言いたいこと → ③ デザイン → ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け）。白紙とテンプレートは新規作成にない
+  // 新規作成…：チャットの AI の道 1 本（① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。歩き方は tools/test-app-newdeck.mjs）。白紙とテンプレートは新規作成にない
   await page.click('#w-new');
-  await page.waitForSelector('#dlg[open] #paste-text');
-  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
-    && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3'
+  await page.waitForSelector('#dlg[open] #paste-step-kind');
+  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
+    && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-content,paste-step-theme,paste-step-send,paste-step-paste'
     && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
-    'new: 「新規作成…」 opens the chat-AI dialog directly with 6 steps (subjects unticked, theme default); no blank or template');
+    'new: 「新規作成…」 opens the chat-AI page directly with 5 questions (subjects unticked, theme default); no blank or template');
   ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'ほかのテーマを読み込む…']), 'new: the theme select shows display names, then 「ほかのテーマを読み込む…」');
   ok(!(await page.$('#b-themes')), 'new: 「テーマのフォルダ…」 is not in File ▾ (it is in the theme select)');
   await clickDlg(page, '#dlg-cancel');
@@ -1795,9 +1796,9 @@ try {
     await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
     await ps.goto(BASE);
     await ps.waitForSelector('#drop');
-    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「チャットの AI に書いてもらう」') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成… → チャットの AI に書いてもらう); 新規作成… stays on');
+    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「新規作成…」（チャットの AI に書いてもらった教材を貼ると') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成…: paste what a chat AI wrote); 新規作成… stays on');
     await ps.click('#w-new');
-    await ps.waitForSelector('#dlg[open] #paste-text');
+    await ps.waitForSelector('#dlg[open] #paste-step-kind');
     ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the chat AI dialog (as everywhere)');
     await ps.click('#dlg-cancel');
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
@@ -1871,6 +1872,8 @@ try {
   // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
   await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
   await testAppOutline({ browser, BASE, ok, watch, shotDir: SHOTS });
+  // 新規作成・挿入・修正の流れを、使う人の場面（S1〜S7）として通して歩く（tools/test-app-newdeck.mjs）
+  await testNewDeckFlow({ browser, BASE, ok, watch, shotDir: SHOTS });
 
   // ---------------------------------------------------------------- 12c. スライド一覧：足す・複製・削除（元に戻す）・並べ替え（tools/test-app-slides.mjs）
   await testAppSlides({ browser, BASE, ok, watch, work, shotDir: SHOTS });

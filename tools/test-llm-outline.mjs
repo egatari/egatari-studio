@@ -11,11 +11,13 @@ const ok = (name, fn) => { fn(); n++; console.log('  ok   ' + name); };
 const table = (k, head = '| 番号 | 見出し | 要点 |') => [head, '|---|---|---|', ...Array.from({ length: k }, (_, i) => `| ${i + 1} | 見出し ${i + 1} | 要点 ${i + 1} |`)].join('\n');
 const fenced = (body, mark = '```') => `構成案です。\n\n${mark}outline\n${body}\n${mark}\n`;
 
-ok('slide count: 枚 / slides / スライド N, and minutes are not slides', () => {
+ok('slide count: 枚 / slides / スライド N, and minutes at 1 min ≈ 1 slide (slides win when both are given)', () => {
   assert.equal(slideCountOf('24 枚・40 分'), 24);
   assert.equal(slideCountOf('12 slides, 20 minutes'), 12);
   assert.equal(slideCountOf('スライド 9'), 9);
-  assert.equal(slideCountOf('10 分'), null);
+  assert.equal(slideCountOf('10 分'), 10, 'minutes count as slides (1 min ≈ 1 slide)');
+  assert.equal(slideCountOf('20 minutes'), 20);
+  assert.equal(slideCountOf('40 分・24 枚'), 24, 'slides win over minutes');
   assert.equal(slideCountOf(''), null);
 });
 ok(`up to ${OUTLINE_OVER} slides stays single-shot; more asks for an outline`, () => {

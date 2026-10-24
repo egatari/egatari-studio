@@ -14,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport } from './make-llm-guide.mjs';
@@ -38,17 +38,17 @@ ok('categories: Teaching / Research / Business / Guides / Other (no “Academic�
   assert.ok(subs.every((s) => s.structure.ja && s.structure.en && s.show.ja && s.show.en));
   assert.ok(CATEGORIES.find((c) => c.id === 'business').subs.some((s) => s.label.ja === '紹介・広報'));
   assert.ok(CATEGORIES.find((c) => c.id === 'guides').structure.ja.includes('場面や品目'));
-  // 手引き：マニュアル・規程・法令の説明・案内
+  // 手引き：マニュアル・決まりの説明（規程・法令）・案内（例つき）
   const g = CATEGORIES.find((c) => c.id === 'guides').subs;
   assert.deepEqual(g.map((x) => x.id), ['manual', 'rules', 'info']);
-  assert.deepEqual(g.map((x) => x.label.ja), ['マニュアル', '規程・法令の説明', '案内']);
-  assert.deepEqual(g.map((x) => x.label.en), ['Manual', 'Rules and regulations', 'Information and orientation']);
+  assert.deepEqual(g.map((x) => x.label.ja), ['マニュアル', '決まりの説明（規程・法令）', '案内（ごみの出し方・図書館・避難・履修登録など）']);
+  assert.deepEqual(g.map((x) => x.label.en), ['Manual', 'Rules and regulations', 'Information (waste sorting, library, evacuation, course registration…)']);
   assert.match(g[0].structure.ja, /^目的.*→ 手順を 1 つずつ → つまずきやすいところ$/);
   assert.match(g[1].structure.en, /^what the rules are about → who they apply to and when → what you must do → the original text and its date$/);
   assert.ok(g[1].show.ja.includes('原典') && g[1].show.ja.includes('いつの時点'));
   assert.match(g[2].structure.ja, /^どんな場面か → 品目や場面から引ける一覧 → わからないときの問い合わせ先$/);
   assert.ok(['ごみの分別', '図書館', '避難経路', '新入生', '履修登録'].every((w) => g[2].show.ja.includes(w)));
-  assert.match(choiceRequest({ category: 'guides', subcategory: 'rules', purposesOff: [] }, PURPOSES, 'ja'), /^- 場面：手引き／規程・法令の説明\n- 構成の型：何についての決まりか/);
+  assert.match(choiceRequest({ category: 'guides', subcategory: 'rules', purposesOff: [] }, PURPOSES, 'ja'), /^- 場面：手引き／決まりの説明（規程・法令）\n- 構成の型：何についての決まりか/);
   assert.deepEqual(choiceOf(withChoice(null, { category: 'guides', subcategory: 'info' })).subcategory, 'info');
 });
 ok('subjects are part sets mapped to the internal series (math → academic, …), not subcategories', () => {
@@ -56,6 +56,12 @@ ok('subjects are part sets mapped to the internal series (math → academic, …
   assert.deepEqual(seriesOfSubjects(['info', 'math']), ['academic', 'info']);
   assert.deepEqual(defaultSubjects('business'), ['business']);
   assert.deepEqual(defaultSubjects('teaching'), []);
+  // タイトルと内容から推す分野
+  assert.deepEqual(guessSubjects('漢文「臥薪嘗胆」'), ['kokugo']);
+  assert.deepEqual(guessSubjects('てこのはたらき'), []);
+  assert.deepEqual(guessSubjects('10 月の営業報告：売上のグラフ'), ['math', 'business']);
+  assert.deepEqual(guessSubjects('Huffman codes'), ['info']);
+  assert.deepEqual(guessSubjects(''), []);
   assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
 });
 ok('AI plan: free (default) packs only the chosen subjects; paid packs every series and ignores the subject ticks', () => {
@@ -72,7 +78,9 @@ ok('request section: kind, structure and presentation of the subcategory, and th
   const r = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: [] }, PURPOSES, 'ja');
   assert.equal(r, '- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的 → 方法 → 結果 → 考察 → 結論（背景・方法・結果でおよそ 3 分の 1 ずつ）\n- 見せ方：見出しは主張の文、図が証拠。箇条書きを減らす。1 分に 1 枚ほど');
   const e = choiceRequest({ category: 'guides', subcategory: null, purposesOff: ['key-number', 'process'] }, PURPOSES, 'en');
-  assert.match(e, /^- Kind: Guides\n- Structure: explain once/);
+  // 小分類の「この中にない」（null）：場面の行だけで、構成の型・見せ方は書かない
+  assert.match(e, /^- Kind: Guides\n- Purposes turned off/);
+  assert.equal(choiceRequest({ category: 'teaching', subcategory: null, purposesOff: [] }, PURPOSES, 'ja'), '- 場面：授業・研修');
   // 名前を出すのは組み立てに入る部品だけ：無料版で分野なしなら m-kpi（ビジネス）は出さない
   assert.match(e, /- Purposes turned off by the author: one key number, steps of a process\. Do not use their representations \(`m-flow`\)\./i);
   assert.match(choiceRequest({ category: 'guides', subjects: ['business'], purposesOff: ['key-number', 'process'] }, PURPOSES, 'en'), /their representations \(`m-flow`, `m-kpi`\)\./);
@@ -256,6 +264,11 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
   assert.ok(cut.includes('```deck.html\n<!DOCTYPE html>') && cut.includes('<h2>Two programs take part</h2>') && !cut.includes('From the address to the screen'));
   assert.ok(!/^\| steps of a process \|/m.test(cut), 'the row of a purpose turned off is not in the table');
 });
+// 無料版の写す文が名前を出す部品（m-…）は、その文の部品の一覧（§3 の表の行か ### の説明）にあるものだけ。
+// 一覧から外した部品の名前を、説明や注意の文が出してしまう（これから足す文で起きやすい）のを見つける。CSS の変数（--mm-h）などは数えない
+const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?![a-z-])/g)].map((m) => m[0]));
+const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+)>`/gm)].map((m) => m[1]));
+const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
 ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes over and its three largest sections', () => {
   const g = generate();
   const r = sizeReport(g.sizes).find((x) => x.lang === 'ja' && x.what === 'free all subjects');
