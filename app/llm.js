@@ -84,7 +84,7 @@ const TX = {
       other: { title: '例：町内会の夏祭りのお知らせ', audience: '例：町内の家族', content: '例：日時・場所・持ち物', wishes: '例：明るい調子で' },
     },
     // ③ 見た目
-    themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'ほかのテーマを読み込む…',
+    themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
     themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
     // ④ AI に送る
     planLegend: 'お使いのチャットの AI は、無料のプランですか、有料のプランですか',
@@ -222,7 +222,7 @@ const TX = {
       guides: { title: 'e.g. How to put out the rubbish', audience: 'e.g. People who have just moved in', content: 'e.g. The collection days and the sorting rules', wishes: 'e.g. Short sentences' },
       other: { title: 'e.g. Neighbourhood summer festival', audience: 'e.g. Families in the neighbourhood', content: 'e.g. Date, time, place, what to bring', wishes: 'e.g. A cheerful tone' },
     },
-    themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load another theme…',
+    themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
     themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
     planLegend: 'Is your chat AI on a free plan or a paid plan?',
     plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
@@ -487,13 +487,15 @@ export function setupLlm(app) {
     return Q;
   }
 
-  // ③ 見た目（テーマ）。選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
+  // ③ 見た目（テーマ）。選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマ）。自分のテーマ（フォルダ・このブラウザ）は「自分のテーマ」の見出しの下。
+  // 最後の「テーマを読み込む…」で読み込みの窓（ZIP ファイル・テーマのフォルダ）。一覧は「テーマを変更…」と同じ（app.themeOptions）
   async function themeQuestion(title, ctl) {
     const sel = el('select', { id: 'paste-theme' });
     const LOAD = '\u0000load';
     const fill = async () => {
       const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
-      sel.replaceChildren(...opts.map((o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) })),
+      const opt = (o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) }), mine = opts.filter((o) => o.user);
+      sel.replaceChildren(...opts.filter((o) => !o.user).map(opt), ...(mine.length ? [el('optgroup', { label: X.themeMine }, mine.map(opt))] : []),
         ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
       const vals = opts.map((o) => o.value);
       sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];

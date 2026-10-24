@@ -33,6 +33,8 @@ import { testAppOutline } from './test-app-outline.mjs';
 import { testNewDeckFlow } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
+import zlib from 'node:zlib';
+import { writeZip } from '../kit/core/zip-read.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -157,6 +159,14 @@ const loads = () => page.evaluate(() => window.__APP_TEST.state().loads);
 const POLL_WAIT = 3500;   // 外での変更の見張り（1.5 秒ごと）と組み直しが一巡りする時間
 // 道具の列の一覧の項目を押す（「ファイル ▾」などを外側から開いてから。tools/click-retry.mjs の clickCommand）
 async function menuClick(id, p = page) { await clickCommand(p, id); }
+// 新規作成の ③（テーマ）まで進む：① その他 → ② タイトルだけ
+async function toThemeQuestion(p = page) {
+  await p.check('#paste-cat-other');
+  await p.click('#paste-next-kind');
+  await p.fill('#paste-title', 'theme');
+  await p.click('#paste-next-content');
+  await p.waitForSelector('#paste-step-theme #paste-theme', { state: 'visible' });
+}
 // プレビューが空か（確かめの前に、前のデッキも新しいデッキも何も出ていない・動いていない）
 async function previewBlank(p = page) {
   const attr = await p.evaluate(() => { const f = document.getElementById('preview'); return { srcdoc: f.hasAttribute('srcdoc'), src: f.getAttribute('src') }; });
@@ -254,7 +264,16 @@ try {
     && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-content,paste-step-theme,paste-step-send,paste-step-paste'
     && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
     'new: 「新規作成…」 opens the chat-AI page directly with 5 questions (subjects unticked, theme default); no blank or template');
-  ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'ほかのテーマを読み込む…']), 'new: the theme select shows display names, then 「ほかのテーマを読み込む…」');
+  ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'テーマを読み込む…']), 'new: the theme select shows display names, then one 「テーマを読み込む…」');
+  // 「テーマを読み込む…」は新規作成の窓の上に読み込みの窓を開く（ZIP ファイル・フォルダ・キャンセル）。キャンセルで新規作成に戻る（③ までは ① その他・② タイトルで進む）
+  await toThemeQuestion(page);
+  await page.selectOption('#paste-theme', { label: 'テーマを読み込む…' });
+  await page.waitForSelector('#theme-load[open]');
+  ok((await page.textContent('#theme-load-title')) === 'テーマを読み込む' && (await page.textContent('#theme-load p')) === 'テーマを ZIP ファイルか、テーマのフォルダから読み込みます。'
+    && JSON.stringify(await page.$$eval('#theme-load button', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['キャンセル', 'フォルダを選ぶ…', 'ZIP ファイルを選ぶ…']), 'new: 「テーマを読み込む…」 opens the Load theme dialog (Cancel, Choose folder…, Choose ZIP file…)');
+  await page.click('#theme-load-cancel');
+  await page.waitForSelector('#theme-load', { state: 'detached' });
+  ok(await page.isVisible('#dlg[open] #paste-theme') && (await page.inputValue('#paste-theme')) === 'default', 'new: Cancel returns to the New dialog with the theme unchanged');
   ok(!(await page.$('#b-themes')), 'new: 「テーマのフォルダ…」 is not in File ▾ (it is in the theme select)');
   await clickDlg(page, '#dlg-cancel');
 
@@ -1616,26 +1635,29 @@ try {
       ok((await tst()).name === null && (await tst()).state === 'none', 'theme folder: none chosen at first');
       ok(await po.evaluate(() => window.__APP_TEST_OPEN(window.__thmDeck)) === true, 'theme folder: a folder deck whose theme (mytml) is not bundled opens');
       let s = await pst();
-      ok(!s.error && /「テーマのフォルダを選ぶ…」/.test(themeWarn(s) || ''), 'theme folder: the build warns theme not found and names "Choose theme folder…": ' + (themeWarn(s) || '').slice(0, 90));
-      ok(await po.isVisible('#notice-theme') && await po.isVisible('#notice-theme #b-theme-choose') && (await po.textContent('#notice-theme')).includes('mytml'), 'theme folder: the notice names the missing theme and offers "Choose theme folder…"');
+      ok(!s.error && /「テーマを読み込む…」/.test(themeWarn(s) || ''), 'theme folder: the build warns theme not found and names 「テーマを読み込む…」: ' + (themeWarn(s) || '').slice(0, 90));
+      ok(await po.isVisible('#notice-theme') && await po.isVisible('#notice-theme #b-theme-load') && (await po.textContent('#notice-theme')).includes('mytml') && /「テーマを読み込む…」で ZIP ファイルかテーマのフォルダから読み込んでください/.test(await po.textContent('#notice-theme')), 'theme folder: the notice names the missing theme, says what to do and offers 「テーマを読み込む…」');
       if (SHOTS) { await slidesNow(); await po.waitForTimeout(300); await po.screenshot({ path: path.join(SHOTS, 'theme-folder-prompt.png') }); }
       // 警告の一覧にも同じボタン。プレビューの読み込みが終わるのを待ってから板を開く：読み込み中に開くと、閉じる押下が
       // 読み直し中の iframe に届いてしまう（測定済み。試験の競合で、アプリの不具合ではない）
       await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
       await po.click('#b-check');
       await po.waitForSelector('#panel-body #check-buildwarn');
-      ok(await po.isVisible('#panel-body .theme-warn #b-theme-choose'), 'theme folder: the theme warning in the Quality check panel has the button too');
+      ok(await po.isVisible('#panel-body .theme-warn #b-theme-load'), 'theme folder: the theme warning in the Quality check panel has the button too');
       await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
       // 選ぶ（選ぶ画面の代わりに OPFS のフォルダ）→ 組み直して、そのテーマ（色とロゴ）で組む
       await po.evaluate(() => { window.__APP_TEST.themePicker = async (o) => { window.__pickOpts = o; return window.__thmUser; }; });
       let n0 = await builds();
-      await po.click('#notice-theme #b-theme-choose');
+      await po.click('#notice-theme #b-theme-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-folder');
+      await po.click('#theme-load-folder');
       await afterBuild(n0);
       s = await pst();
       let html = await appHtml();
       ok(!themeWarn(s) && (await tst()).inBuild && (await tst()).name === 'thm-user' && !(await po.isVisible('#notice-theme')), 'theme folder: after choosing, the deck builds with the theme from the folder (no warning, notice gone)');
       ok((await po.evaluate(() => window.__pickOpts.mode)) === 'read', 'theme folder: the picker asks for read access only');
       ok(html.includes('--theme-probe:#1a2b3c') && html.includes('data:image/png;base64,' + PNG.slice(0, 20)), 'theme folder: tokens.css and the logo of the user theme are in the build (main-thread engine)');
+      const folderHtml = html;
       const fr = pframe();
       ok(!!fr && (await fr.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--theme-probe').trim())) === '#1a2b3c', 'theme folder: the preview (worker build) uses the user theme');
       // 探す順：原稿のフォルダの themes/ が先
@@ -1690,24 +1712,105 @@ try {
       // 設定の窓（「開く ▾」の「テーマのフォルダ…」）：今のフォルダとテーマの名前。忘れる → 知らせが戻り、読み込み直しても選んでいない
       await po.evaluate(() => document.getElementById('w-themes').click());
       await po.waitForSelector('#dlg[open] #dlg-forget');
-      ok((await po.textContent('#theme-now')).includes('thm-user') && (await po.textContent('#theme-names')).includes('evil, mytml') && !!(await po.$('#dlg-choose')), 'theme folder: the settings dialog shows the folder and its themes, with Change and Forget');
+      ok((await po.textContent('#theme-now')).includes('thm-user') && (await po.textContent('#theme-names')).includes('evil, mytml') && !!(await po.$('#dlg-load')), 'theme folder: the My themes dialog shows the folder and its themes, with Load theme… and Forget this folder');
       if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'theme-folder-dialog.png') });
       n0 = await builds();
       await clickDlg(po, '#dlg-forget');
       await afterBuild(n0);
       s = await pst();
-      ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-choose'), 'theme folder: Forget → the deck builds without it again and the notice is back');
+      ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-load'), 'theme folder: Forget → the deck builds without it again and the notice is back');
       await po.goto(BASE);
       await po.waitForSelector('#drop');
       await po.waitForTimeout(300);
       ok((await tst()).name === null, 'theme folder: forgotten after a reload too (removed from IndexedDB)');
       // 空のフォルダ（テーマがない）は選ばない
       await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); const e = await root.getDirectoryHandle('thm-empty', { create: true }); window.__APP_TEST.themePicker = async () => e; document.getElementById('w-themes').click(); });
-      await po.waitForSelector('#dlg[open] #dlg-choose');
-      await clickDlg(po, '#dlg-choose');
+      await po.waitForSelector('#dlg[open] #dlg-load');
+      await clickDlg(po, '#dlg-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-folder');
+      await po.click('#theme-load-folder');
       await po.waitForTimeout(300);
       ok((await tst()).name === null && /テーマ（<名前>\/tokens\.css）が見つかりません/.test(await po.textContent('#toast')), 'theme folder: a folder without themes is not taken (says so)');
       await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
+
+      // テーマの zip（app/theme-zip.js）：GitHub の「Download ZIP」の形（<repo>-main/themes/mytml/）。フォルダのテーマと同じ組み立て・残す・忘れる・断る
+      const zipOf = (prefix, tf) => Buffer.from(writeZip(Object.entries(tf).map(([k, v]) => { const b = typeof v === 'string' ? Buffer.from(v) : Buffer.from(v.b64, 'base64'); return [prefix + k, new Uint8Array(b), { comp: new Uint8Array(zlib.deflateRawSync(b)) }]; }))).toString('base64');
+      const pickZip = (b64, name) => po.evaluate(([b, n]) => { window.__APP_TEST.themeZipPicker = async () => new File([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))], n, { type: 'application/zip' }); }, [b64, name]);
+      await pickZip(zipOf('egatari-themes-main/themes/', themeFiles), 'egatari-themes-main.zip');
+      await po.evaluate(async () => { window.__thmDeck = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-deck'); });
+      await po.evaluate(() => window.__APP_TEST_OPEN(window.__thmDeck));
+      ok(!!themeWarn(await pst()) && await po.isVisible('#notice-theme #b-theme-load'), 'theme zip: the notice offers 「テーマを読み込む…」');
+      n0 = await builds();
+      await po.click('#notice-theme #b-theme-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-zip');
+      await po.click('#theme-load-zip');
+      await afterBuild(n0);
+      s = await pst();
+      html = await appHtml();
+      ok(!themeWarn(s) && JSON.stringify((await tst()).mine) === '["evil","mytml"]' && (await tst()).inBuild && /テーマ 2 個/.test(await po.textContent('#toast')), 'theme zip: a GitHub-style zip (<repo>-main/themes/<name>/) loads every theme in it and the deck builds with it');
+      ok(html === folderHtml, 'theme zip: the build with the theme from the zip is byte-identical to the build with the same theme from a folder');
+      // 残す：読み込み直しても（IndexedDB に中身）
+      await po.goto(BASE);
+      await po.waitForSelector('#drop');
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 2, null, { timeout: 10000 });
+      ok((await po.textContent('#w-themes-state')).includes('mytml'), 'theme zip: remembered after a reload (contents in IndexedDB), shown on the first screen');
+      // 同じ名前のテーマをもう一度読み込む：置き換えたと知らせる
+      await pickZip(zipOf('egatari-themes-main/themes/', themeFiles), 'egatari-themes-main.zip');
+      await po.evaluate(() => document.getElementById('w-themes').click());
+      await po.waitForSelector('#dlg[open] #dlg-load');
+      await clickDlg(po, '#dlg-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-zip');
+      await po.click('#theme-load-zip');
+      await po.waitForFunction(() => /同じ名前のテーマ「evil」「mytml」があったので、今読み込んだものに置き換えました。/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
+      ok((await tst()).mine.length === 2, 'theme zip: loading a theme with the same name again replaces it and says so');
+      // 「自分のテーマ」の窓：テーマごとに見せる名前と「削除」。削除は確かめてから、1 つだけ
+      await po.evaluate(() => document.getElementById('w-themes').click());
+      await po.waitForSelector('#dlg[open] #theme-mine li[data-theme="mytml"] .theme-delete');
+      ok(JSON.stringify(await po.$$eval('#theme-mine li', (xs) => xs.map((x) => x.dataset.theme))) === '["evil","mytml"]' && !(await po.$('#dlg-forget')) && !!(await po.$('#dlg-load')), 'theme zip: the My themes dialog lists each saved theme with its own Delete (no bulk delete), and Load theme…');
+      if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'theme-zip-dialog.png') });
+      await po.click('#theme-mine li[data-theme="mytml"] .theme-delete');
+      await po.waitForSelector('#dlg[open] #dlg-delete');
+      ok((await po.textContent('#theme-delete-msg')) === '「mytml」をこのブラウザから削除します。読み込んだ ZIP ファイルは残ります。', 'theme zip: Delete asks first and says the ZIP file is kept');
+      await clickDlg(po, '#dlg-delete');
+      await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: 10000 });
+      await po.waitForSelector('#dlg[open] #theme-mine li[data-theme="evil"]');
+      ok(!(await po.$('#theme-mine li[data-theme="mytml"]')), 'theme zip: only that theme is deleted, and the dialog shows the rest');
+      await clickDlg(po, '#dlg-close');
+      // 削除したテーマを使うデッキ：何が起きたかと、次にすること
+      await po.evaluate(async () => { window.__thmDeck = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-deck'); });
+      await po.evaluate(() => window.__APP_TEST_OPEN(window.__thmDeck));
+      await po.waitForSelector('#notice-theme #b-theme-load');
+      ok(!!themeWarn(await pst()) && /このブラウザに保存したテーマにありません（削除したか、まだ読み込んでいません）。「テーマを読み込む…」/.test(await po.textContent('#notice-theme')), 'theme zip: a deck whose theme was deleted says it is not in this browser and to load it again with 「テーマを読み込む…」');
+      await po.goto(BASE);
+      await po.waitForSelector('#drop');
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 10000 });
+      ok(JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: the deletion holds after a reload');
+      // フォルダを選ぶと、保存したテーマと同じ名前（evil）があれば、フォルダのものを使うと知らせる（保存したテーマは消さない）
+      await po.evaluate(async () => { const u = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-user'); window.__APP_TEST.themePicker = async () => u; document.getElementById('w-themes').click(); });
+      await po.waitForSelector('#dlg[open] #dlg-load');
+      await clickDlg(po, '#dlg-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-folder');
+      await po.click('#theme-load-folder');
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 10000 });
+      const tt = await po.textContent('#toast');
+      ok(tt.includes('同じ名前のテーマ「evil」が、このブラウザにも保存してあります。フォルダのものを使います。') && !tt.includes('置き換えました') && JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: choosing a folder with a theme named like a saved one says the folder one is used (the saved one is kept)');
+      await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
+      await po.evaluate(async () => { await new Promise((r) => { const q = indexedDB.deleteDatabase('egatari-theme-folder'); q.onsuccess = q.onerror = q.onblocked = () => r(); }); await window.__APP_TEST.initThemeFolder(); });
+      // 断る：zip の外を指す名前・壊れた zip（読み込まず、そう言う）
+      for (const [b64, re, what] of [
+        [Buffer.from(writeZip([['x/../../mytml/tokens.css', new Uint8Array(Buffer.from(':root{}'))]])).toString('base64'), /ZIP ファイルの外を指す名前（\.\.）や絶対パスです/, 'a path with ..'],
+        [Buffer.from('this is not a zip').toString('base64'), /ZIP ファイルとして読めませんでした/, 'a broken zip'],
+        [zipOf('', { 'readme.txt': 'x' }), /テーマ（<名前>\/tokens\.css）が見つかりません/, 'a zip without a theme']]) {
+        await pickZip(b64, 'bad.zip');
+        await po.evaluate(() => document.getElementById('w-themes').click());
+        await po.waitForSelector('#dlg[open] #dlg-load');
+        await clickDlg(po, '#dlg-load');
+        await po.waitForSelector('#theme-load[open] #theme-load-zip');
+        await po.click('#theme-load-zip');
+        await po.waitForFunction((src) => new RegExp(src).test(document.getElementById('toast').textContent), re.source, { timeout: 10000 });
+        ok((await tst()).mine.length === 0, `theme zip: ${what} is refused with its message`);
+      }
+      await po.evaluate(() => { window.__APP_TEST.themeZipPicker = null; });
     }
     await po.close();
   }
@@ -1800,7 +1903,30 @@ try {
     await ps.click('#w-new');
     await ps.waitForSelector('#dlg[open] #paste-step-kind');
     ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the chat AI dialog (as everywhere)');
+    ok(JSON.stringify(await ps.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'テーマを読み込む…']), 'safari: the theme select offers 「テーマを読み込む…」');
+    await toThemeQuestion(ps);
+    await ps.selectOption('#paste-theme', { label: 'テーマを読み込む…' });
+    await ps.waitForSelector('#theme-load[open]');
+    ok(JSON.stringify(await ps.$$eval('#theme-load button', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['キャンセル', 'ZIP ファイルを選ぶ…']), 'safari: the Load theme dialog has no folder button (Cancel, Choose ZIP file…)');
+    await ps.click('#theme-load-cancel');
     await ps.click('#dlg-cancel');
+    // テーマの zip：設定の窓にはフォルダを選ぶボタンがなく、zip を読み込める。読み込んだテーマは新規作成のテーマの選択肢に出る
+    await ps.evaluate(async (b64) => {
+      await new Promise((r) => { const q = indexedDB.deleteDatabase('egatari-theme-folder'); q.onsuccess = q.onerror = q.onblocked = () => r(); });
+      await window.__APP_TEST.initThemeFolder();
+      window.__APP_TEST.themeZipPicker = async () => new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'mytheme.zip', { type: 'application/zip' });
+    }, Buffer.from(writeZip([['mytheme/tokens.css', new Uint8Array(Buffer.from(':root{}'))], ['mytheme/theme.json', new Uint8Array(Buffer.from('{"title":"My theme"}'))]])).toString('base64'));
+    await ps.click('#w-new');
+    await ps.waitForSelector('#dlg[open] #paste-step-kind');
+    await toThemeQuestion(ps);
+    await ps.selectOption('#paste-theme', { label: 'テーマを読み込む…' });
+    await ps.waitForSelector('#theme-load[open] #theme-load-zip');
+    await ps.click('#theme-load-zip');
+    await ps.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 10000 });
+    await ps.waitForSelector('#paste-theme optgroup', { state: 'attached' });
+    ok((await ps.$$eval('#paste-theme optgroup[label="自分のテーマ"] option', (xs) => xs.map((x) => x.textContent))).includes('My theme'), 'safari: a theme loaded from a zip is offered in the new-deck theme select under 「自分のテーマ」 (by its title)');
+    await ps.click('#dlg-cancel');
+    await ps.evaluate(async () => { window.__APP_TEST.themeZipPicker = null; await new Promise((r) => { const q = indexedDB.deleteDatabase('egatari-theme-folder'); q.onsuccess = q.onerror = q.onblocked = () => r(); }); });
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
     await shot(ps, 'welcome-safari.png');
     await ps.close();
