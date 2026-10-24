@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=591d78927b854944 -->
+<!-- i18n: pair=template.ja.md sha256=30afb6996af1346b -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -100,7 +100,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ### 2.7 Choosing a representation
 
-- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. A part marked * is not in the library yet: use a table, a list or inline SVG. Use only parts described in the text you were given (§3); if a part of another pack would fit better, say so in a one-line note.
+- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those described in the text you were given (§3, and the packs included). If a part of another pack would fit better, say so in a one-line note.
 
 {{PURPOSES}}
 
@@ -115,11 +115,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ## 3. Component catalog
 
-These components may be used in any lesson; a series pack, when it is included after §6, adds the components of its subject. Use only the components described in the text you were given. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
-
-All parts (the ones described below, and those of the packs; a pack adds its parts only when it is included):
-
-{{PARTS_INDEX}}
+These components may be used in any lesson; a series pack, when it is included after §6, adds the components of its subject. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
 
 {{CATALOG}}
 

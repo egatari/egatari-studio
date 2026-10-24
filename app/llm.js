@@ -59,7 +59,7 @@ const TX = {
     structure: (st, sh) => `構成の型：${st}。見せ方：${sh}`,
     materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
     purposesLegend: '言いたいこと',
-    purposesHint: '既定で全部入っています。押すと外れ、AI はその表し方を使いません。小さな字は中の表し方で、AI が言いたいこととデータから選びます。＊ はまだ部品庫にないもの',
+    purposesHint: '既定で全部入っています。押すと外れ、AI はその表し方を使いません。小さな字は中の表し方で、AI が言いたいこととデータから選びます（まだパーツがないものは、近いパーツか HTML で描きます）',
     purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個が入っています`,
     purposeOn: '入っている', purposeOff: '外した',
     howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
@@ -167,7 +167,7 @@ const TX = {
     structure: (st, sh) => `Structure: ${st}. Presentation: ${sh}`,
     materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
     purposesLegend: 'Purposes',
-    purposesHint: 'All are on by default. Press one to turn it off: the AI will not use that representation. The small text is what is inside; the AI chooses from the purpose and the data. * = not in the library yet.',
+    purposesHint: 'All are on by default. Press one to turn it off: the AI will not use that representation. The small text is what is inside; the AI chooses from the purpose and the data (where no part exists yet, it uses the nearest part or HTML).',
     purposesSum: (on, n) => `Purposes: ${on} of ${n} on`,
     purposeOn: 'on', purposeOff: 'off',
     howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
@@ -359,7 +359,16 @@ export function setupLlm(app) {
     scatter: '<path d="M5 27h22M5 5v22"/><circle cx="10" cy="21" r="1.4"/><circle cx="14" cy="18" r="1.4"/><circle cx="18" cy="14" r="1.4"/><circle cx="22" cy="11" r="1.4"/><circle cx="15" cy="22" r="1.4"/>',
     dist: '<path d="M5 27h22"/><rect x="6" y="21" width="4" height="6"/><rect x="10" y="13" width="4" height="14"/><rect x="14" y="8" width="4" height="19"/><rect x="18" y="15" width="4" height="12"/><rect x="22" y="22" width="4" height="5"/>',
     menu: '<rect x="4" y="5" width="10" height="9" rx="1"/><rect x="18" y="5" width="10" height="9" rx="1"/><rect x="4" y="18" width="10" height="9" rx="1"/><rect x="18" y="18" width="10" height="9" rx="1"/>',
+    bars: '<path d="M5 27h22"/><rect x="7" y="16" width="4" height="11"/><rect x="14" y="10" width="4" height="17"/><rect x="21" y="5" width="4" height="22"/>',
+    collect: '<rect x="3" y="5" width="5" height="4"/><rect x="10" y="5" width="5" height="4"/><rect x="17" y="5" width="5" height="4"/><rect x="24" y="5" width="5" height="4"/><path d="M16 12v6M13 15l3 3 3-3"/><rect x="10" y="21" width="12" height="7" rx="1"/>',
+    gendai: '<path d="M5 9h22M5 16h22M5 23h14"/><path d="M5 11h10" stroke-width="2.6"/><path d="M22 11c4 2 4 8 0 10"/>',
+    sweep: '<path d="M4 24c6 0 8-16 12-16s6 16 12 16"/><path d="M4 24c8 0 10-10 12-10s4 10 12 10" opacity=".5"/>',
+    other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
+  // 言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
+  const PURPOSE_ICON = { compare: 'compare', ranking: 'bars', change: 'line', 'part-whole': 'part', 'key-number': 'kpi', process: 'flow', timeline: 'timeline',
+    'cause-effect': 'cause', cycle: 'cycle', hierarchy: 'tree', position: 'matrix', overlap: 'venn', correlation: 'scatter', spread: 'dist', grouping: 'collect',
+    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep' };
   function icon(k) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
@@ -375,7 +384,7 @@ export function setupLlm(app) {
     const showSum = () => { sum.textContent = X.purposesSum(PURPOSES.list.length - draft.purposesOff.length, PURPOSES.list.length); };
     const tiles = PURPOSES.list.map((p) => {
       const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
-        [icon(p.icon), el('span', { cls: 'tile-label', text: p.label[LANG] }), el('small', { text: p.sub[LANG] })]);
+        [icon(PURPOSE_ICON[p.id] || 'other'), el('span', { cls: 'tile-label', text: p.label[LANG] }), p.sub[LANG] ? el('small', { text: p.sub[LANG] }) : null]);
       b.addEventListener('click', () => {
         const on = b.getAttribute('aria-pressed') !== 'true';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');

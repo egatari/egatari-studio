@@ -13,7 +13,8 @@
 //                                                 本文の <!-- llm: <系列> --> … <!-- llm: end --> はその系列の部分に「拡張」として（共通の部品だけ）、
 //                                                 <!-- llm: omit --> … <!-- llm: end --> は指示に入れない（開発者向けの注意など）
 //   themes/                                       {{THEMES}}：テーマの名前
-//   vendor/components/manifest.json（あれば）       {{PURPOSES}}（言いたいこと → 表し方 → ステップの表）と {{PARTS_INDEX}}（全パーツの 1 行の一覧。版を固定した URL 付き）。
+//   vendor/components/manifest.json（あれば）       {{PURPOSES}}：言いたいこと → パーツ → ステップの表。全パーツの一覧を兼ねる（写した既定の版の部品だけを出し、
+//                                                 部品がまだない言いたいことは「近い部品か HTML・インラインの SVG」。版を固定した URL 付き）。
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK（parts-map の 10）。どちらを使ったかは材料の purposes.source
 //                                                 TODO(#99, components v1.2.0)：m-curves（学術）と m-quad（ビジネス）を本体（series: common）へ移すのは部品庫 v1.2.0 で。
 //                                                 移ったら一覧と表はそのまま正しくなる（系列は frontmatter から読む）。系列の指示の文（tools/llm-guide/series/academic*.md・business*.md）の見直しを忘れない
@@ -28,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf } from '../kit/core/llm-pack-assemble.mjs';
-import { purposesFrom, purposesTable, partsIndex } from '../kit/core/purposes.mjs';
+import { purposesFrom, purposesTable } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -112,6 +113,14 @@ function cleanReadme(body) {
 // 部品の README の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫の README は変えない）。
 // find が README にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
 const PACK_EDITS = {
+  // 部品の中の作り（測り方・読み込み）は AI の書き方に関わらないので除く。札が発表の操作だけであることは短く残す（大きさを抑える。#99）
+  'm-gendai': [
+    { find: '線と枠は字の位置を測って SVG で描く。描くたびに測るので、呼び出しの順によらない（字が読み込まれる前と後では位置が違うので、品質チェックと動画は字を待ってから撮る）。\n', ja: '', en: '' },
+  ],
+  'm-kobun': [
+    { find: '表は部品の中にあり、何も読み込まない（ネットワークを使わない。中身は文字だけ）。', ja: '', en: '' },
+    { find: '札は発表の操作で、画面の決まり（`DECK.seek(i, k, t)`）の外にある：段階を動かす・もう一度押す・札を押す・同じ段階に入り直す（ランタイムが `ctx.reset` を渡すとき）と消え、動画（`?mode=video`）では開かず、印刷には出ない。', ja: '札は発表の操作だけ（段階が変わると消え、動画と印刷には出ない）。', en: '札は発表の操作だけ（段階が変わると消え、動画と印刷には出ない）。' },
+  ],
   'm-menu': [
     // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
     { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。（Add the menu after import; in the first draft use a plain list.）' },
@@ -203,7 +212,7 @@ const TABLE_HEAD = { ja: '| 部品 | 内容 | steps | データの形 |\n|---|--
 const rowOf = (c, lang) => `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`;
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
-function entryOf(c, lang) {
+function entryOf(c, lang, shown = new Set()) {
   const H = lang === 'ja' ? ['値', '型', '既定', '意味'] : ['prop', 'type', 'default', 'meaning'];
   let sup = false;
   // 秒で測る値（動きの速さ・ずれ）は表に載せない：既定のままで口述原稿に合う（§3 の前書きに書いてある）
@@ -213,8 +222,12 @@ function entryOf(c, lang) {
     if (!doc && AXIS[lang][p]) { doc = AXIS[lang][p] + ' *'; sup = true; }
     return `| \`${p}\` | ${d.type} | ${d.dflt ? '`' + cell(d.dflt) + '`' : ''} | ${cell(doc)} |`;
   });
-  const ex = shapeExample(c, lang);
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, c.body, lang)));
+  // README に書き方の囲み（```）があれば、データの形の見本の行は同じことなので出さない
+  // 系列の見本（抜き出し）がその部品を使っていれば、それが見本になる（#99：大きさを抑える）
+  const ex = /^```/m.test(c.body) || shown.has(c.fm.name) ? '' : shapeExample(c, lang);
+  // README の「子の JSON：`{…}`。」の行は、一覧の「データの形」の欄と同じことなので、データの形があるときはコードを外し、後ろの文（あれば）だけ残す
+  const body = c.shape && c.shape.schema ? c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join('')) : c.body;
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, body, lang)));
   return { entry: entry.trim(), sup };
 }
 
@@ -233,7 +246,7 @@ const AI_HEAD = /^# (Instructions for the AI|AI への指示)\s*$/m;
 // 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは系列の指示の後ろ、いちばん最後に付く
 const REQ_HEAD = /^# (What I want|頼みたいこと)\s*$/m;
 const KB = (s) => Buffer.byteLength(s, 'utf8') / 1024;
-const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES|PARTS_INDEX)/;
+const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES)/;
 // 指示の版：材料（版の行を除く。英語と日本語の両方）の SHA-256 の先頭 8 字。指示の文章が変われば変わり、変わらなければ同じ（手で上げない）
 const PACK_VERSION = '{{PACK_VERSION}}';
 
@@ -250,11 +263,25 @@ export function generate() {
   const src = `${lock.source}/blob/${lock.tag}/components/`;
   const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
   const data = { series: SERIES, purposes: P };
+  // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
+  const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+)\}\}/g)].map((m) => m[1])));
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
     const contractFile = ja ? 'docs/contract.ja.md' : 'docs/contract.md';
     const contract = read(contractFile);
+    // 系列の見本は抜き出し（{{WORKED 名前 "見出し" 部品}}）：その部品を使うスライドとその口述原稿の節だけ。骨組みと表紙は §6 の共通の見本と同じなので載せない
+    // （見本のファイルそのものは、npm test がそのまま組んで検査する）
+    const excerpt = (name, title, tag) => {
+      const deck = read('tools', 'llm-guide', 'worked', name, 'deck.html'), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md');
+      const secs = [...deck.matchAll(/<section class="slide[^"]*">[\s\S]*?<\/section>/g)].map((m) => m[0]).filter((s) => s.includes('<' + tag));
+      if (!secs.length) throw new Error(`tools/llm-guide/worked/${name}/deck.html: no slide uses <${tag}>`);
+      const heads = secs.map((s) => (s.match(/<h2>([^<]*)<\/h2>/) || [])[1]);
+      const nsecs = narr.split(/\n(?=## )/).filter((x) => heads.includes(x.match(/^## (.*)$/m)?.[1]?.trim()));
+      if (nsecs.length !== secs.length) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section for each slide with <${tag}>`);
+      const note = ja ? '（その部品を使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
+      return `### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\``;
+    };
     const worked = (name, title) => {
       const deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
       return `### ${title}\n\n\`\`\`deck.html\n${deck}\n\`\`\`\n\n\`\`\`narration.md\n${narr}\n\`\`\``;
@@ -262,9 +289,8 @@ export function generate() {
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
       .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
-      .replace('{{PURPOSES}}', () => purposesTable(P, lang))
-      .replace('{{PARTS_INDEX}}', () => partsIndex(P, allParts, lang, src))
-      .replace(/\{\{WORKED (\w+) "([^"]+)"\}\}/g, (_, n, t) => worked(n, t));
+      .replace('{{PURPOSES}}', () => purposesTable(P, allParts, lang, src))
+      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)
       .replace('{{GENERATED}}', GENERATED(path.basename(contractFile)));
@@ -280,7 +306,7 @@ export function generate() {
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
     for (const c of comps) {
-      const e = entryOf(c, lang);
+      const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, demote(stripRepoRefs(x))]));
       D.components[c.fm.name] = { series: c.fm.series, row: rowOf(c, lang), entry: e.entry, ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
