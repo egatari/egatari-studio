@@ -18,8 +18,9 @@ import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, choiceRequest,
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS } from './make-llm-guide.mjs';
-import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
+import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
 import { guideRules } from '../kit/core/llm-fix.mjs';
 import { withOutline, outlineOf } from '../kit/core/llm-outline.mjs';
 import { slideChunks, insertSlide, duplicateSlide, deleteSlide, moveSlide, slideTemplate } from '../kit/core/slide-ops.mjs';
@@ -72,22 +73,26 @@ ok('request section: kind, structure and presentation of the subcategory, and th
   assert.equal(r, '- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的 → 方法 → 結果 → 考察 → 結論（背景・方法・結果でおよそ 3 分の 1 ずつ）\n- 見せ方：見出しは主張の文、図が証拠。箇条書きを減らす。1 分に 1 枚ほど');
   const e = choiceRequest({ category: 'guides', subcategory: null, purposesOff: ['key-number', 'process'] }, PURPOSES, 'en');
   assert.match(e, /^- Kind: Guides\n- Structure: explain once/);
-  assert.match(e, /- Purposes turned off by the author: one key number, steps of a process\. Do not use their representations \(`m-flow`, `m-kpi`\)\./);
+  // 名前を出すのは組み立てに入る部品だけ：無料版で分野なしなら m-kpi（ビジネス）は出さない
+  assert.match(e, /- Purposes turned off by the author: one key number, steps of a process\. Do not use their representations \(`m-flow`\)\./i);
+  assert.match(choiceRequest({ category: 'guides', subjects: ['business'], purposesOff: ['key-number', 'process'] }, PURPOSES, 'en'), /their representations \(`m-flow`, `m-kpi`\)\./);
+  assert.match(choiceRequest({ plan: 'paid', purposesOff: ['timeline'] }, PURPOSES, 'en'), /\(`m-timeline`\)/);
+  assert.ok(!choiceRequest({ plan: 'free', subjects: ['math', 'business', 'kokugo', 'info'], purposesOff: ['timeline'] }, PURPOSES, 'en').includes('m-timeline'));
   assert.equal(choiceRequest({ category: null, purposesOff: [] }, PURPOSES, 'en'), '');
   assert.equal(choiceRequest({ category: 'other', purposesOff: [] }, PURPOSES, 'ja'), '');
 });
 
 const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
 const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents'];
-ok('purposes: the 14 decided tiles (parts-map §9); the vendored v1.1.0 manifest has no purposes, so the decided table is used', () => {
+ok('purposes: the 14 decided tiles (parts-map §9), mapped from the vendored v1.2.0 manifest', () => {
   assert.equal(TILES.length, 14);
   assert.deepEqual(PURPOSES.list.map((p) => p.id), TILE_IDS);
-  assert.equal(PURPOSES.source, 'fallback');
+  assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-codetree は階層と手順
-  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-curves']);
-  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-curves', 'm-market']);
+  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves']);
+  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-market', 'm-pie']);
   assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-flow']);
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep・m-collect など）は外せない（分野から入る）
@@ -144,14 +149,17 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     assert.ok(all.includes('**R-purpose**') && all.includes('**R-whole**'), lang + ': standards');
     assert.ok(guideRules(all).has('R-purpose') && guideRules(all).has('R-whole'), lang + ': fix requests can quote them');
     assert.match(all, /https:\/\/github\.com\/egatari\/components\/blob\/v\d+\.\d+\.\d+\/components\/<(name|名前)>\/README\.md/, lang + ': pinned URL');
+    // 有料版：すべての部品が表と説明にある。無料版（全部の分野でも）：有料版だけの部品はどこにも名前が出ない
+    const paid = buildPack({ lang, plan: 'paid' });
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
-      assert.ok(all.includes('`m-' + d + '`'), `${lang}: m-${d} is in the table of the full pack`);
-    for (const t of ['m-timeline', 'm-venn', 'm-scatter', 'm-cycle', 'm-compare']) assert.ok(!all.includes(t), `${lang}: ${t} is not named`);
+      assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
+    assert.deepEqual(PAID_ONLY, ['m-compare', 'm-cycle', 'm-fishbone', 'm-pie', 'm-scatter', 'm-timeline', 'm-tree', 'm-venn']);
+    for (const t of PAID_ONLY) assert.ok(!new RegExp(t + '(?![a-z-])').test(all), `${lang}: ${t} is not named in the free pack`);
     assert.ok(!/＊/.test(all) && !/ \*(?= \||,|$)/m.test(all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'))), lang + ': no star markers');
     // 系列を選ばない：表が指すのは共通の部品だけ（説明がないものは名前を出さない）。入っていない系列は何に使えるかだけ
     const core = buildPack({ series: [], lang });
     for (const t of ['m-curves', 'm-quad', 'm-market', 'm-kpi', 'm-seq', 'm-kanbun']) assert.ok(!core.includes(t), `${lang}: no series chosen → ${t} is not named`);
-    assert.ok(lang === 'en' ? /Packs not included here have parts for: academic \(change over time, spread\); business/.test(core) : /入っていない系列にもパーツがある：academic（時間での変化・ばらつき）/.test(core), lang + ': the packs not included are named by use');
+    assert.ok(lang === 'en' ? /Packs not included here have parts for: academic \(change over time, spread\); business/i.test(core) : /入っていない系列にもパーツがある：academic（時間での変化・ばらつき）/.test(core), lang + ': the packs not included are named by use');
     for (const s of SERIES) {
       const p = buildPack({ series: [s], lang });
       const described = new Set([...p.matchAll(/### `<(m-[a-z]+)>`/g)].map((m) => m[1]));
@@ -159,10 +167,12 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     }
   }
   const en = buildPack({ series: 'all', lang: 'en' });
-  assert.match(en, /^\| change over time \| `m-curves` \(academic\), `m-bars` \(few points\) \| one line at a time \|$/m);
-  assert.match(en, /^\| timeline \| none yet: the nearest part, or HTML or inline SVG \| one event at a time \|$/m);
-  assert.match(buildPack({ series: [], lang: 'en' }), /^\| change over time \| `m-bars` \(few points\) \| one line at a time \|$/m);
-  assert.match(buildPack({ series: [], lang: 'en' }), /^\| one key number \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/m);
+  assert.match(en, /^\| change over time \| `m-curves` \(academic\), `m-bars` \(few points\) \| one line at a time \|$/mi);
+  // 無料版：有料版だけの部品（m-timeline など）の行は「この文にはない」（名前は出さない）。有料版はその部品を挙げる
+  assert.match(en, /^\| timeline, schedule \| not in this text: the nearest part, or HTML or inline SVG \| one event at a time \|$/mi);
+  assert.match(buildPack({ lang: 'en', plan: 'paid' }), /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
+  assert.match(buildPack({ series: [], lang: 'en' }), /^\| change over time \| `m-bars` \(few points\) \| one line at a time \|$/mi);
+  assert.match(buildPack({ series: [], lang: 'en' }), /^\| one key number \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn/);
   // 大きさ：生成した指示（頼みたいことは記入欄のまま）の全部（'all'）は LIMITS.allTarget KB まで。写す文（内容・場面の節が入る）の上限ではない
   for (const lang of ['en', 'ja']) assert.ok(Buffer.byteLength(buildPack({ series: 'all', lang })) <= LIMITS.allTarget * 1024, `${lang} generated pack 'all' ≤ ${LIMITS.allTarget} KB`);
@@ -176,6 +186,25 @@ const PLAN_CHOICES = [
   ...[[], ...SUBJECTS.map((s) => [s.id]), SUBJECTS.map((s) => s.id)].map((subjects) => ({ plan: 'free', subjects })),
   { plan: 'paid', subjects: [] }, { plan: 'paid', subjects: ['kokugo'] },
 ];
+// 無料版で読み込む部品：FREE_CORE、FREE_HOME の部品はその系列から、系列の部品はその系列から（有料版だけの部品はない）
+const partsIn = (text) => [...tagsIn(text)].filter((t) => PACK_DATA.en.components[t]);
+const loadedFree = (series) => new Set(Object.keys(PACK_DATA.en.components).filter((t) => {
+  const s = FREE_HOME[t] || PACK_DATA.en.components[t].series;
+  return s === 'common' ? FREE_CORE.includes(t) : series.includes(s);
+}));
+ok('free plan: FREE_CORE is the v1.1.0 common set; m-curves, m-kpi and m-quad come only with their v1.1.0 subjects; the 8 new parts are paid only', () => {
+  assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu']);
+  assert.deepEqual({ ...FREE_HOME }, { 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });
+  for (const t of Object.keys(FREE_HOME)) assert.equal(PACK_DATA.en.components[t].series, 'common', t + ' is common in the vendored release');
+  for (const lang of ['en', 'ja']) {
+    const core = buildPack({ series: [], lang });
+    for (const t of partsIn(core)) assert.ok(FREE_CORE.includes(t), `${lang} free common only names ${t}`);
+    const biz = buildPack({ series: ['business'], lang }), aca = buildPack({ series: ['academic'], lang });
+    assert.ok(biz.includes('### `<m-kpi>`') && biz.includes('### `<m-quad>`') && !biz.includes('m-curves'));
+    assert.ok(aca.includes('### `<m-curves>`') && !aca.includes('m-kpi') && !aca.includes('m-quad'));
+    for (const t of PAID_ONLY) assert.ok(!buildPack({ series: 'all', lang }).includes(t) && buildPack({ lang, plan: 'paid' }).includes('### `<' + t + '>`'), t);
+  }
+});
 const capOk = (choice, bytes) => {
   const ss = seriesForChoice(choice);
   if (planOf(choice) === 'paid') return bytes <= PACK_CAP_KB.paid * 1024;
@@ -185,11 +214,11 @@ ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and �
   for (const lang of ['en', 'ja']) {
     for (let mask = 0; mask < 1 << SUBJECTS.length; mask++) {
       const choice = { plan: 'free', subjects: SUBJECTS.filter((_, i) => mask & (1 << i)).map((s) => s.id) };
-      const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), lang }));
+      const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), lang, plan: 'free' }));
       assert.ok(capOk(choice, b), `${lang} free ${choice.subjects.join('+') || '(none)'}: ${b} B`);
     }
-    const paid = buildPack({ series: seriesForChoice({ plan: 'paid' }), lang });
-    assert.equal(paid, buildPack({ series: 'all', lang }), 'paid is the full pack');
+    const paid = buildPack({ series: seriesForChoice({ plan: 'paid' }), lang, plan: 'paid' });
+    assert.equal(paid, buildPack({ series: [], lang, plan: 'paid' }), 'paid is the full pack whatever the subjects');
     for (const s of SERIES) assert.ok(paid.includes(lang === 'en' ? `## Series pack: ${s}` : s), `${lang} paid has ${s}`);
     assert.ok(capOk({ plan: 'paid' }, Buffer.byteLength(paid)));
   }
@@ -206,10 +235,14 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
     if (!ex.length) continue;
     for (const lang of ['en', 'ja']) for (const choice of PLAN_CHOICES) {
       const series = seriesForChoice(choice);
-      assert.ok(capOk(choice, Buffer.byteLength(buildPack({ series, lang, exclude: ex, off }))), `${lang} ${choice.plan} ${JSON.stringify(series)} off ${off.join('+')}: over the cap`);
-      plans.add(choice.plan);
-      const req = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: off }, PURPOSES, lang);
-      const lines = packWithRequest({ series, lang, request: '# R\n\n' + req, exclude: ex, off }).split('\n');
+      const plan = planOf(choice);
+      assert.ok(capOk(choice, Buffer.byteLength(buildPack({ series, lang, exclude: ex, off, plan }))), `${lang} ${plan} ${JSON.stringify(series)} off ${off.join('+')}: over the cap`);
+      plans.add(plan);
+      const req = choiceRequest({ ...choice, category: 'research', subcategory: 'conference', purposesOff: off }, PURPOSES, lang);
+      const whole = packWithRequest({ series, lang, request: '# R\n\n' + req, exclude: ex, off, plan });
+      // 無料版：読み込んだ部品（FREE_CORE と、選んだ分野の部品・FREE_HOME）のほかは、どこにも名前が出ない（「使わない」の行も含めて）
+      if (plan === 'free') for (const t of partsIn(whole)) assert.ok(loadedFree(series).has(t), `${lang} free ${JSON.stringify(series)} off ${off.join('+')}: ${t} is named but not loaded`);
+      const lines = whole.split('\n');
       const dont = lines.filter((l) => /^- (Purposes turned off|使わない言いたいこと)/.test(l));
       assert.ok(dont.length === 1, 'one "do not use" line');
       const rest = lines.filter((l) => !dont.includes(l)).join('\n');

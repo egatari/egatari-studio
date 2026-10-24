@@ -111,6 +111,15 @@ const WRONG = {
   'm-kanbun': '<script type="application/json">["学而時習之"]</script>',
   'm-kobun': '<script type="application/json">{"text": "春はあけぼの"}</script>',
   'm-menu': '<script type="application/json">[{"href": "#s-x", "label": "目次"}]</script>',
+  // 部品庫 v1.2.0 の部品：よくある取り違え（並びの名前・値の型）
+  'm-compare': '<script type="application/json">{"columns": [{"label": "A"}], "rows": [{"label": "値段", "values": [1]}]}</script>',
+  'm-venn': '<script type="application/json">{"circles": [{"label": "A"}, {"label": "B"}]}</script>',
+  'm-tree': '<script type="application/json">{"children": [{"label": "根"}]}</script>',
+  'm-fishbone': '<script type="application/json">{"effect": "結果", "causes": [{"label": "人"}]}</script>',
+  'm-scatter': '<script type="application/json">{"points": [[1, 2], [3, 4]]}</script>',
+  'm-pie': '<script type="application/json">{"slices": [{"label": "A", "value": "30%"}]}</script>',
+  'm-timeline': '<script type="application/json">{"events": [{"label": "創業", "year": 1990}]}</script>',
+  'm-cycle': '<script type="application/json">{"steps": [{"label": "計画"}, {"label": "実行"}]}</script>',
 };
 const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');

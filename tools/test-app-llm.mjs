@@ -437,8 +437,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
       'new plan: the paid plan hides the subjects (everything is included) and keeps the purpose tiles');
     const c3 = await copy();
     const size3 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(c3.includes('`<m-sweep>`') && c3.includes('`<m-kanbun>`') && c3.includes('`<m-codetree>`') && c3.includes('`<m-quad>`') && !c3.includes('### `<m-flow>`') && !/m-menu(?![a-z-])/.test(c3.replace(/^- 使わない言いたいこと.*$/m, '')) && size3 > size2,
-      `new plan: the paid plan copies every series pack and still leaves out the parts of the purposes turned off (${size2} → ${size3} bytes)`);
+    ok(c3.includes('`<m-sweep>`') && c3.includes('### `<m-timeline>`') && !c2.includes('m-timeline') && !c2.includes('m-venn') && c3.includes('`<m-kanbun>`') && c3.includes('`<m-codetree>`') && c3.includes('`<m-quad>`') && !c3.includes('### `<m-flow>`') && !/m-menu(?![a-z-])/.test(c3.replace(/^- 使わない言いたいこと.*$/m, '')) && size3 > size2,
+      `new plan: the paid plan copies every series pack and the paid-only parts (m-timeline; the free copy names none of them), and still leaves out the parts of the purposes turned off (${size2} → ${size3} bytes)`);
     // 写した後に札を変えても、egatari.json に残すのは写したときの選び方
     await pk.click('#paste-purpose-timeline');
     // 開く：シード値を <html> に 1 回だけ書き（返事が data-egatari-seed="42" を書いていても新しい値）、選んだものを egatari.json の studio.newDeck に

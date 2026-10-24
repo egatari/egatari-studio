@@ -1,31 +1,227 @@
 {
   "name": "egatari-components",
-  "version": "1.1.0",
-  "tag": "v1.1.0",
+  "version": "1.2.0",
+  "tag": "v1.2.0",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.1.0.tar.gz",
-    "sha256": "13ed148475314b43d7f90b0a51b1426da24a8c03b195366d1dcb0916b30e0494",
-    "bytes": 93523
+    "file": "egatari-components-v1.2.0.tar.gz",
+    "sha256": "616976330eed369c9a69deb79863a5b6adb8a8074b385175cd4305ae3ea8297d",
+    "bytes": 185143
   },
+  "purposes": [
+    {
+      "id": "compare",
+      "ja": "比べる（量・特徴）",
+      "en": "Compare (amounts or features)",
+      "steps": {
+        "ja": "一方を出し、それから違い",
+        "en": "One side, then the difference"
+      }
+    },
+    {
+      "id": "ranking",
+      "ja": "順位",
+      "en": "Ranking",
+      "steps": {
+        "ja": "並べ替えた棒を 1 本ずつ",
+        "en": "Sorted bars one at a time"
+      }
+    },
+    {
+      "id": "change",
+      "ja": "時間での変化",
+      "en": "Change over time",
+      "steps": {
+        "ja": "線を 1 本ずつ",
+        "en": "One line at a time"
+      }
+    },
+    {
+      "id": "part-whole",
+      "ja": "全体と内訳",
+      "en": "Part of a whole",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      }
+    },
+    {
+      "id": "key-number",
+      "ja": "1 つの大事な数字",
+      "en": "One key number",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      }
+    },
+    {
+      "id": "process",
+      "ja": "手順・工程",
+      "en": "Steps of a process",
+      "steps": {
+        "ja": "1 つの手順ずつ",
+        "en": "One step at a time"
+      }
+    },
+    {
+      "id": "timeline",
+      "ja": "年表・予定",
+      "en": "Timeline, schedule",
+      "steps": {
+        "ja": "1 つの出来事ずつ",
+        "en": "One event at a time"
+      }
+    },
+    {
+      "id": "cause-effect",
+      "ja": "原因と結果",
+      "en": "Cause and effect",
+      "steps": {
+        "ja": "原因、それから結果",
+        "en": "Causes, then the effect"
+      }
+    },
+    {
+      "id": "cycle",
+      "ja": "循環",
+      "en": "Cycle",
+      "steps": {
+        "ja": "1 つの段階ずつ",
+        "en": "One stage at a time"
+      }
+    },
+    {
+      "id": "hierarchy",
+      "ja": "階層・分類",
+      "en": "Hierarchy, classification",
+      "steps": {
+        "ja": "上から",
+        "en": "Top down"
+      }
+    },
+    {
+      "id": "position",
+      "ja": "位置づけ（2 軸）",
+      "en": "Position on 2 axes",
+      "steps": {
+        "ja": "軸、それから項目",
+        "en": "Axes, then items"
+      }
+    },
+    {
+      "id": "overlap",
+      "ja": "重なり",
+      "en": "Overlap",
+      "steps": {
+        "ja": "集合、それから重なり",
+        "en": "Sets, then the overlap"
+      }
+    },
+    {
+      "id": "correlation",
+      "ja": "2 つの量の関係",
+      "en": "Two quantities",
+      "steps": {
+        "ja": "点、それから傾向",
+        "en": "Points, then the trend"
+      }
+    },
+    {
+      "id": "spread",
+      "ja": "ばらつき",
+      "en": "Spread",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      }
+    },
+    {
+      "id": "grouping",
+      "ja": "まとめる・分ける",
+      "en": "Grouping",
+      "steps": {
+        "ja": "まとまる動き",
+        "en": "The grouping motion"
+      }
+    },
+    {
+      "id": "text-structure",
+      "ja": "文章の構造",
+      "en": "Structure of a text",
+      "steps": {
+        "ja": "読む順",
+        "en": "Reading order"
+      }
+    },
+    {
+      "id": "contents",
+      "ja": "目次",
+      "en": "Contents",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      }
+    },
+    {
+      "id": "parameter",
+      "ja": "パラメータを動かす",
+      "en": "Varying a parameter",
+      "steps": {
+        "ja": "値を 1 つずつ",
+        "en": "One value at a time"
+      }
+    },
+    {
+      "id": "deviation",
+      "ja": "差・増減",
+      "en": "Deviation, increase and decrease",
+      "steps": {
+        "ja": "基準、それから差",
+        "en": "The baseline, then the differences"
+      },
+      "reserved": true
+    },
+    {
+      "id": "concept-links",
+      "ja": "概念のつながり",
+      "en": "Concept links",
+      "steps": {
+        "ja": "中心から外へ",
+        "en": "From the centre outwards"
+      },
+      "reserved": true
+    }
+  ],
   "components": {
     "bars": {
       "tag": "m-bars",
       "series": "common",
-      "sha256": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09",
+      "purposes": [
+        "compare",
+        "ranking",
+        "change",
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de",
       "files": {
-        "README.md": "490350a2dccd80e80bdc8650f9edc03997a637cc80f41abdd98dc6c4b0f06091",
-        "demo.html": "3d5f8126cff0f961b88dab66bd1e2d62027bee94ac684f1079d87d011f61bd95",
-        "index.js": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09"
+        "README.md": "a6ff12673cf63e3e27f00f626c02c32b167a6bf8f43aa995f53a8f10cab60aef",
+        "demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
+        "index.js": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de"
       }
     },
     "codetree": {
       "tag": "m-codetree",
       "series": "info",
+      "purposes": [
+        "hierarchy",
+        "process"
+      ],
+      "variants": [],
       "sha256": "69169ea0290d26bfee7c223459dde0bd31173641d48f58f06c878de905b64372",
       "files": {
-        "README.md": "dd60479c4d678f94cb319ca0ce8f763907cd6f1274eb4661bc4be648ef08d6d2",
+        "README.md": "91d29e818127de8dc051f0b1bbc254e507be863752630e7a706c212e9f9433cd",
         "demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
         "index.js": "69169ea0290d26bfee7c223459dde0bd31173641d48f58f06c878de905b64372"
       }
@@ -33,39 +229,109 @@
     "collect": {
       "tag": "m-collect",
       "series": "academic",
+      "purposes": [
+        "grouping"
+      ],
+      "variants": [],
       "sha256": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217",
       "files": {
-        "README.md": "966692dfeeb46aeb2d9b1592d177877a69af71b609d4efbe9f6d426136656a3b",
+        "README.md": "03610949cf61472e16d98482c5cd04f9427ac373e5265f750f8ab14a95592512",
         "demo.html": "fe47548d4d6f0559cccba1595f6767d1c6139aa41d3ec45f879e04840acc3150",
         "index.js": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217"
       }
     },
+    "compare": {
+      "tag": "m-compare",
+      "series": "common",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "slide",
+        "reveal"
+      ],
+      "sha256": "1011573ee90d21031e0eb1e4675ae665e430eb58d12854a5bd8523cf56f2615a",
+      "files": {
+        "README.md": "ad05d5bc89d21d94080a134491207519df8d0e474a0b05a4adea2235f155854d",
+        "demo.html": "3683565c1e765ff372a8559fdb8e9bbfe5c8a49c0424fdbce071e9d7de65544d",
+        "index.js": "1011573ee90d21031e0eb1e4675ae665e430eb58d12854a5bd8523cf56f2615a"
+      }
+    },
     "curves": {
       "tag": "m-curves",
-      "series": "academic",
+      "series": "common",
+      "purposes": [
+        "change"
+      ],
+      "variants": [],
       "sha256": "1dc04df70819b0316ed1f74f522f006207c5f15ced5aa9e3e42d02e787030b7a",
       "files": {
-        "README.md": "e8b66c5dab742a53c136833137a6be49573a2df10c127de388e6b98ec1a4a834",
+        "README.md": "d4c70d4805b1bd72052e08fa1c556a34be50c8640aabba9b33cb1eb3f94f5722",
         "demo.html": "03bfd5a14b1a854ed263e933688f9d23dc703e9f2715fe168f703bb8bfc6f924",
         "index.js": "1dc04df70819b0316ed1f74f522f006207c5f15ced5aa9e3e42d02e787030b7a"
+      }
+    },
+    "cycle": {
+      "tag": "m-cycle",
+      "series": "common",
+      "purposes": [
+        "cycle"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "f99e97fc9ab7fb20126fefcc90ba5d0f4c0d41bd0f8ae27e3b9e9f5732206ef6",
+      "files": {
+        "README.md": "87c745e1aedc71f9d63764ba96c206e8afd3958f5e80e30d1276199854856bdb",
+        "demo.html": "ff4cc81abebdddd9aa1e096ecc0c33cf2595fabba96c3732460fcfbdfe3e3513",
+        "index.js": "f99e97fc9ab7fb20126fefcc90ba5d0f4c0d41bd0f8ae27e3b9e9f5732206ef6"
+      }
+    },
+    "fishbone": {
+      "tag": "m-fishbone",
+      "series": "common",
+      "purposes": [
+        "cause-effect"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "7ff73756298f4644d713118beb97ccfd224909bcd99e3b04f6264c80e3bff01b",
+      "files": {
+        "README.md": "215608334384765aa4d011190ee13332a5cf867040607ad65ac2d7ca205f385f",
+        "demo.html": "c46ef1f49184f3f60d209c266ba1c715d91d519f3389269ab8cdd998b6907edf",
+        "index.js": "7ff73756298f4644d713118beb97ccfd224909bcd99e3b04f6264c80e3bff01b"
       }
     },
     "flow": {
       "tag": "m-flow",
       "series": "common",
-      "sha256": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1",
+      "purposes": [
+        "process"
+      ],
+      "variants": [],
+      "sha256": "ffaeb45f69458ed39da09f7c0617eb881ee476dcb07728889574ec871f824479",
       "files": {
-        "README.md": "884276930ecbd35e1a1fcd1db8a5b7aeadaaa1e75f7ac668957747e74121375a",
+        "README.md": "bce01fa713567fc5e91d391335b3e3214a9b07c55c02f29cb3a93cdc6c44943f",
         "demo.html": "6a351702cb08d53b0652063d6df36f8cc45091bec0ceb5ef8782ab3442b3acfb",
-        "index.js": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1"
+        "index.js": "ffaeb45f69458ed39da09f7c0617eb881ee476dcb07728889574ec871f824479"
       }
     },
     "gendai": {
       "tag": "m-gendai",
       "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
       "sha256": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097",
       "files": {
-        "README.md": "7bb9b80b0a2766248298341c2fbff2dae20ec8ac3c6c6bdad4e27fec659ac247",
+        "README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
         "demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
         "index.js": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097"
       }
@@ -73,9 +339,13 @@
     "kanbun": {
       "tag": "m-kanbun",
       "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
       "sha256": "fcbe673e98e95a75808893fe51bb68de2fa8af2c940d485fc9b56bb21e37a48a",
       "files": {
-        "README.md": "44fe315a69b1f0d4b8432daeb480b8b7452f43c41e32245cd6e5ec7b8d5ec38f",
+        "README.md": "fc07b501b61e619a251c41c083ff286ae0a92caaea883ced740ed3217548956a",
         "demo.html": "f53ade6abcb9853ef3392bcd3da1785a735ce105c4f489c4f86ffcd79304c79b",
         "index.js": "fcbe673e98e95a75808893fe51bb68de2fa8af2c940d485fc9b56bb21e37a48a"
       }
@@ -83,29 +353,46 @@
     "kobun": {
       "tag": "m-kobun",
       "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
       "sha256": "74dcd2dd041a1eb0ca4eddd797b90df7e25512523cbf1e7c918e404007618044",
       "files": {
-        "README.md": "0fee1647adcf957debd055e525f5cbaa6d7c3223eeb957e058b51dcfb46c4238",
+        "README.md": "93da015e1c304ea539421522597fe7891cf17a85270718dbe09a5a6815d2b32c",
         "demo.html": "89797413522068cae048f33baa639021188ccb63dff6439b44bbece7d0ab2dac",
         "index.js": "74dcd2dd041a1eb0ca4eddd797b90df7e25512523cbf1e7c918e404007618044"
       }
     },
     "kpi": {
       "tag": "m-kpi",
-      "series": "business",
-      "sha256": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e",
+      "series": "common",
+      "purposes": [
+        "key-number"
+      ],
+      "variants": [
+        "count",
+        "rise",
+        "flip",
+        "underline"
+      ],
+      "sha256": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7",
       "files": {
-        "README.md": "6f54cc425d1b5257dce85d8a459dcfef5bfb8378de885ec600c74dc128d01cc8",
-        "demo.html": "9e58b5597ff81a5348a5ef24af40beb38d22bee2f23d5dea6f05a31b5dd9f3a5",
-        "index.js": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e"
+        "README.md": "c89b4c82237a988a18e1c9ff0832de68e8a5d34442eac760e4fceaa147ba116d",
+        "demo.html": "ef2110c087d69d23ed2e1fe3ab8e93a027a1354104384a65409ea5e5ad1a366a",
+        "index.js": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7"
       }
     },
     "market": {
       "tag": "m-market",
       "series": "business",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [],
       "sha256": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",
       "files": {
-        "README.md": "24b213ecf67ce7fb28a0a6cd13d83ed236b5484ff805049be2dcc3939dae73f7",
+        "README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
         "demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
         "index.js": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283"
       }
@@ -113,29 +400,77 @@
     "menu": {
       "tag": "m-menu",
       "series": "common",
+      "purposes": [
+        "contents"
+      ],
+      "variants": [],
       "sha256": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
       "files": {
-        "README.md": "23605501192ce16e64a24c0dd85f9bc937429c5e5c8ed7d55d86d99c642fce15",
+        "README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
         "demo.html": "53939907c9c3ecb426a6e2a4d771d07ece6d82879be2e21a40f3c5346da7828b",
         "index.js": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b"
       }
     },
+    "pie": {
+      "tag": "m-pie",
+      "series": "common",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "5d54b91c403e0671c38a2af3abf2377e888bc04fd519e658ab37796198ece38b",
+      "files": {
+        "README.md": "6c8676d12ad72f5d1865b935877920ffa3d6a3057b9eff1cccc73d56ce7dfe72",
+        "demo.html": "bd5b0e1185fba6ca340276276a4a024661eaba540ead0e37832919a7f52da1ce",
+        "index.js": "5d54b91c403e0671c38a2af3abf2377e888bc04fd519e658ab37796198ece38b"
+      }
+    },
     "quad": {
       "tag": "m-quad",
-      "series": "business",
+      "series": "common",
+      "purposes": [
+        "position"
+      ],
+      "variants": [],
       "sha256": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998",
       "files": {
-        "README.md": "6439f3811684849ab15f015f262e7804e36d77b8ed05436d038eb47e251b0416",
+        "README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
         "demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
         "index.js": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998"
+      }
+    },
+    "scatter": {
+      "tag": "m-scatter",
+      "series": "common",
+      "purposes": [
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "d30ca0a69f953cfc8a3da2fb37bc014fd866ffa8cd252e5e1110b51b0df6071f",
+      "files": {
+        "README.md": "b20e4952ea32928dd67a7382513e230f4813bfee0db3972f802fc831eb260562",
+        "demo.html": "250659e83bc68d6752b831f217796f6d69bf7fb6606cbe6cff22c41dc67566e8",
+        "index.js": "d30ca0a69f953cfc8a3da2fb37bc014fd866ffa8cd252e5e1110b51b0df6071f"
       }
     },
     "seq": {
       "tag": "m-seq",
       "series": "academic",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [],
       "sha256": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9",
       "files": {
-        "README.md": "5dcc79cd274116b2658a6a3c3f539326b33b02e7ced4c1802740c341134be800",
+        "README.md": "a39eb201cf9a0536e86e77443dc7bfa09cfaf79da5a6a5889048cda1805d322b",
         "demo.html": "bdb21764c9430d51d32c303481c522d06e3ce2785ccecd20c55a20f48371c5f6",
         "index.js": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9"
       }
@@ -143,11 +478,68 @@
     "sweep": {
       "tag": "m-sweep",
       "series": "academic",
+      "purposes": [
+        "parameter"
+      ],
+      "variants": [],
       "sha256": "281587eba26eeeee3aef8eb84969ffd565b9f0519ed494bab6d04ba3e1a42400",
       "files": {
-        "README.md": "108df40d0ef70024f4233c3248c0e9ba477f39b1b9be7742c3caf109c7899d63",
+        "README.md": "6a83b63d731cdf60ea1884649c086f98ba6f132dd121618eb409585072f29df1",
         "demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
         "index.js": "281587eba26eeeee3aef8eb84969ffd565b9f0519ed494bab6d04ba3e1a42400"
+      }
+    },
+    "timeline": {
+      "tag": "m-timeline",
+      "series": "common",
+      "purposes": [
+        "timeline"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "d41d912bd4d8220e1f699b1d1a3eb914aa3a3de3cd2125d3bd44a2eb5741ae66",
+      "files": {
+        "README.md": "f426258e77257059a036f9a5fb9c9900ec14b5ce3f0cf50994f151ab10390dc8",
+        "demo.html": "a1995ad23a7141bca833cd65d6b3b990fbe7eaeda7901f99940786408e2041d1",
+        "index.js": "d41d912bd4d8220e1f699b1d1a3eb914aa3a3de3cd2125d3bd44a2eb5741ae66"
+      }
+    },
+    "tree": {
+      "tag": "m-tree",
+      "series": "common",
+      "purposes": [
+        "hierarchy"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "64114daf70817e5cd44827205bbce7bfc6a343d4adad57460144e58039f34621",
+      "files": {
+        "README.md": "15b5763808366e06737d9bbda91b40c23aa9a99b97a977e71c683c783ef2fa35",
+        "demo.html": "60b0a5e5f6902ec93c8b88f506e7743f96a8089aa041fdb0140ca4424fb2301e",
+        "index.js": "64114daf70817e5cd44827205bbce7bfc6a343d4adad57460144e58039f34621"
+      }
+    },
+    "venn": {
+      "tag": "m-venn",
+      "series": "common",
+      "purposes": [
+        "overlap"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "09973e2aa0e4787a93a1b508c2587fd19cfe03ab39cbea25e388f57bd959e008",
+      "files": {
+        "README.md": "37e714233f78b3569daa688bbca1ce2a937813989bfd6cc95b2a76983d6c708b",
+        "demo.html": "cc12dfd9b79f10ee8815cd143d5abfc3812d6544b5194583cafb6bda1dbe6b6b",
+        "index.js": "09973e2aa0e4787a93a1b508c2587fd19cfe03ab39cbea25e388f57bd959e008"
       }
     }
   },
@@ -165,47 +557,71 @@
   },
   "files": {
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
-    "bars/README.md": "490350a2dccd80e80bdc8650f9edc03997a637cc80f41abdd98dc6c4b0f06091",
-    "bars/demo.html": "3d5f8126cff0f961b88dab66bd1e2d62027bee94ac684f1079d87d011f61bd95",
-    "bars/index.js": "98fa3cd96d3e6ef5af64815d307ded17b9afcab87f4798c9b6eca6a1bd4b4c09",
-    "codetree/README.md": "dd60479c4d678f94cb319ca0ce8f763907cd6f1274eb4661bc4be648ef08d6d2",
+    "bars/README.md": "a6ff12673cf63e3e27f00f626c02c32b167a6bf8f43aa995f53a8f10cab60aef",
+    "bars/demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
+    "bars/index.js": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de",
+    "codetree/README.md": "91d29e818127de8dc051f0b1bbc254e507be863752630e7a706c212e9f9433cd",
     "codetree/demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
     "codetree/index.js": "69169ea0290d26bfee7c223459dde0bd31173641d48f58f06c878de905b64372",
-    "collect/README.md": "966692dfeeb46aeb2d9b1592d177877a69af71b609d4efbe9f6d426136656a3b",
+    "collect/README.md": "03610949cf61472e16d98482c5cd04f9427ac373e5265f750f8ab14a95592512",
     "collect/demo.html": "fe47548d4d6f0559cccba1595f6767d1c6139aa41d3ec45f879e04840acc3150",
     "collect/index.js": "360bd02116d63fdec2fdcd45e5e1f11eb9eec8784dddaead26b552564667c217",
-    "curves/README.md": "e8b66c5dab742a53c136833137a6be49573a2df10c127de388e6b98ec1a4a834",
+    "compare/README.md": "ad05d5bc89d21d94080a134491207519df8d0e474a0b05a4adea2235f155854d",
+    "compare/demo.html": "3683565c1e765ff372a8559fdb8e9bbfe5c8a49c0424fdbce071e9d7de65544d",
+    "compare/index.js": "1011573ee90d21031e0eb1e4675ae665e430eb58d12854a5bd8523cf56f2615a",
+    "curves/README.md": "d4c70d4805b1bd72052e08fa1c556a34be50c8640aabba9b33cb1eb3f94f5722",
     "curves/demo.html": "03bfd5a14b1a854ed263e933688f9d23dc703e9f2715fe168f703bb8bfc6f924",
     "curves/index.js": "1dc04df70819b0316ed1f74f522f006207c5f15ced5aa9e3e42d02e787030b7a",
-    "flow/README.md": "884276930ecbd35e1a1fcd1db8a5b7aeadaaa1e75f7ac668957747e74121375a",
+    "cycle/README.md": "87c745e1aedc71f9d63764ba96c206e8afd3958f5e80e30d1276199854856bdb",
+    "cycle/demo.html": "ff4cc81abebdddd9aa1e096ecc0c33cf2595fabba96c3732460fcfbdfe3e3513",
+    "cycle/index.js": "f99e97fc9ab7fb20126fefcc90ba5d0f4c0d41bd0f8ae27e3b9e9f5732206ef6",
+    "fishbone/README.md": "215608334384765aa4d011190ee13332a5cf867040607ad65ac2d7ca205f385f",
+    "fishbone/demo.html": "c46ef1f49184f3f60d209c266ba1c715d91d519f3389269ab8cdd998b6907edf",
+    "fishbone/index.js": "7ff73756298f4644d713118beb97ccfd224909bcd99e3b04f6264c80e3bff01b",
+    "flow/README.md": "bce01fa713567fc5e91d391335b3e3214a9b07c55c02f29cb3a93cdc6c44943f",
     "flow/demo.html": "6a351702cb08d53b0652063d6df36f8cc45091bec0ceb5ef8782ab3442b3acfb",
-    "flow/index.js": "20be414e2dc3b813150887bb93041140b99b2b61352165bb50b74e9b664982a1",
-    "gendai/README.md": "7bb9b80b0a2766248298341c2fbff2dae20ec8ac3c6c6bdad4e27fec659ac247",
+    "flow/index.js": "ffaeb45f69458ed39da09f7c0617eb881ee476dcb07728889574ec871f824479",
+    "gendai/README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
     "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
     "gendai/index.js": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097",
-    "kanbun/README.md": "44fe315a69b1f0d4b8432daeb480b8b7452f43c41e32245cd6e5ec7b8d5ec38f",
+    "kanbun/README.md": "fc07b501b61e619a251c41c083ff286ae0a92caaea883ced740ed3217548956a",
     "kanbun/demo.html": "f53ade6abcb9853ef3392bcd3da1785a735ce105c4f489c4f86ffcd79304c79b",
     "kanbun/index.js": "fcbe673e98e95a75808893fe51bb68de2fa8af2c940d485fc9b56bb21e37a48a",
-    "kobun/README.md": "0fee1647adcf957debd055e525f5cbaa6d7c3223eeb957e058b51dcfb46c4238",
+    "kobun/README.md": "93da015e1c304ea539421522597fe7891cf17a85270718dbe09a5a6815d2b32c",
     "kobun/demo.html": "89797413522068cae048f33baa639021188ccb63dff6439b44bbece7d0ab2dac",
     "kobun/index.js": "74dcd2dd041a1eb0ca4eddd797b90df7e25512523cbf1e7c918e404007618044",
-    "kpi/README.md": "6f54cc425d1b5257dce85d8a459dcfef5bfb8378de885ec600c74dc128d01cc8",
-    "kpi/demo.html": "9e58b5597ff81a5348a5ef24af40beb38d22bee2f23d5dea6f05a31b5dd9f3a5",
-    "kpi/index.js": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e",
-    "market/README.md": "24b213ecf67ce7fb28a0a6cd13d83ed236b5484ff805049be2dcc3939dae73f7",
+    "kpi/README.md": "c89b4c82237a988a18e1c9ff0832de68e8a5d34442eac760e4fceaa147ba116d",
+    "kpi/demo.html": "ef2110c087d69d23ed2e1fe3ab8e93a027a1354104384a65409ea5e5ad1a366a",
+    "kpi/index.js": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7",
+    "market/README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
     "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
     "market/index.js": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",
-    "menu/README.md": "23605501192ce16e64a24c0dd85f9bc937429c5e5c8ed7d55d86d99c642fce15",
+    "menu/README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
     "menu/demo.html": "53939907c9c3ecb426a6e2a4d771d07ece6d82879be2e21a40f3c5346da7828b",
     "menu/index.js": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
-    "quad/README.md": "6439f3811684849ab15f015f262e7804e36d77b8ed05436d038eb47e251b0416",
+    "pie/README.md": "6c8676d12ad72f5d1865b935877920ffa3d6a3057b9eff1cccc73d56ce7dfe72",
+    "pie/demo.html": "bd5b0e1185fba6ca340276276a4a024661eaba540ead0e37832919a7f52da1ce",
+    "pie/index.js": "5d54b91c403e0671c38a2af3abf2377e888bc04fd519e658ab37796198ece38b",
+    "quad/README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
     "quad/demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
     "quad/index.js": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998",
-    "seq/README.md": "5dcc79cd274116b2658a6a3c3f539326b33b02e7ced4c1802740c341134be800",
+    "scatter/README.md": "b20e4952ea32928dd67a7382513e230f4813bfee0db3972f802fc831eb260562",
+    "scatter/demo.html": "250659e83bc68d6752b831f217796f6d69bf7fb6606cbe6cff22c41dc67566e8",
+    "scatter/index.js": "d30ca0a69f953cfc8a3da2fb37bc014fd866ffa8cd252e5e1110b51b0df6071f",
+    "seq/README.md": "a39eb201cf9a0536e86e77443dc7bfa09cfaf79da5a6a5889048cda1805d322b",
     "seq/demo.html": "bdb21764c9430d51d32c303481c522d06e3ce2785ccecd20c55a20f48371c5f6",
     "seq/index.js": "5e7bdf4a53fdd3a42303d2e5b9dabcb273aca8476d686100814f70cdbdb539e9",
-    "sweep/README.md": "108df40d0ef70024f4233c3248c0e9ba477f39b1b9be7742c3caf109c7899d63",
+    "sweep/README.md": "6a83b63d731cdf60ea1884649c086f98ba6f132dd121618eb409585072f29df1",
     "sweep/demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
-    "sweep/index.js": "281587eba26eeeee3aef8eb84969ffd565b9f0519ed494bab6d04ba3e1a42400"
+    "sweep/index.js": "281587eba26eeeee3aef8eb84969ffd565b9f0519ed494bab6d04ba3e1a42400",
+    "timeline/README.md": "f426258e77257059a036f9a5fb9c9900ec14b5ce3f0cf50994f151ab10390dc8",
+    "timeline/demo.html": "a1995ad23a7141bca833cd65d6b3b990fbe7eaeda7901f99940786408e2041d1",
+    "timeline/index.js": "d41d912bd4d8220e1f699b1d1a3eb914aa3a3de3cd2125d3bd44a2eb5741ae66",
+    "tree/README.md": "15b5763808366e06737d9bbda91b40c23aa9a99b97a977e71c683c783ef2fa35",
+    "tree/demo.html": "60b0a5e5f6902ec93c8b88f506e7743f96a8089aa041fdb0140ca4424fb2301e",
+    "tree/index.js": "64114daf70817e5cd44827205bbce7bfc6a343d4adad57460144e58039f34621",
+    "venn/README.md": "37e714233f78b3569daa688bbca1ce2a937813989bfd6cc95b2a76983d6c708b",
+    "venn/demo.html": "cc12dfd9b79f10ee8815cd143d5abfc3812d6544b5194583cafb6bda1dbe6b6b",
+    "venn/index.js": "09973e2aa0e4787a93a1b508c2587fd19cfe03ab39cbea25e388f57bd959e008"
   }
 }

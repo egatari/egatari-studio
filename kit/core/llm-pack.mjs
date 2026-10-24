@@ -17,12 +17,21 @@
 //   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
+//   PLANS・FREE_CORE・FREE_HOME・PAID_ONLY      お使いの AI の版ごとに読み込む部品（無料版は FREE_CORE と系列から。PAID_ONLY は有料版だけ）
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, PACK_CAP_KB, PAID_PACK_KB } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME };
+export const PAID_ONLY = paidOnly(PACK, 'free');   // 有料版だけの部品
+// その版と系列で組み立てに入る部品（有料版はすべて。無料版は FREE_CORE と、入っている系列の部品・FREE_HOME の部品）
+export function loadedParts(series = [], plan = 'free') {
+  const all = Object.keys(PACK.en.components).sort();
+  if (plan === 'paid') return all;
+  const ss = norm(series, PACK);
+  return all.filter((t) => { const s = freeSeriesOf(t, PACK.en.components[t].series); return s === 'common' || ss.includes(s); });
+}
 export const normalizeSeries = (series) => norm(series, PACK);
 
 export const SERIES = PACK.series;
@@ -30,8 +39,10 @@ export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめ
 
 export const buildPack = (opts) => assemble(PACK, opts);
 // series：入っている系列（表が指す部品。省くと [] = 共通の本体だけ）。off：外した札
-export const commonBody = (lang = 'en', exclude = [], series = [], off = []) => commonOf(PACK, lang, exclude, series, off) + '\n';
-export const seriesPart = (name, lang = 'en', exclude = []) => partOf(PACK, name, lang, exclude) + '\n';
+// plan：'free'（既定）| 'paid'。無料版は有料版だけの部品を除き、FREE_HOME の部品をその系列に置く
+const exOf = (exclude, plan) => [...new Set([...exclude, ...paidOnly(PACK, plan)])];
+export const commonBody = (lang = 'en', exclude = [], series = [], off = [], plan = 'free') => commonOf(planData(PACK, plan), lang, exOf(exclude, plan), series, off) + '\n';
+export const seriesPart = (name, lang = 'en', exclude = [], plan = 'free') => partOf(planData(PACK, plan), name, lang, exOf(exclude, plan)) + '\n';
 export const PURPOSES = PACK.purposes;   // 言いたいこと（kit/core/purposes.mjs の形。source が 'manifest' か 'fallback'）
 export const requestBody = (lang = 'en') => requestOf(PACK, lang) + '\n';
 
@@ -39,7 +50,8 @@ export function seriesOf(tag) {
   const c = PACK.en.components[String(tag).toLowerCase()];
   return c ? c.series : null;
 }
-export function membersOfSeries(name) { return membersOf(PACK.en, name); }
+// 系列の部品（plan の版から見た居場所。既定は無料版：m-kpi はビジネス、有料版だけの部品はどこにもない）
+export function membersOfSeries(name, plan = 'free') { return membersOf(planData(PACK, plan).en, name); }
 
 // 部品庫の部品のうち、デッキに出てくるもの（コメントの中も数える。軽い見積もりでよい）
 export function componentsIn(html) {
@@ -48,7 +60,8 @@ export function componentsIn(html) {
   return [...found].sort();
 }
 export function seriesForDeck(html) {
-  const s = new Set(componentsIn(html).map(seriesOf).filter((x) => x && x !== 'common'));
+  // 無料版から見た居場所（部品庫が共通にした m-kpi などは v1.1.0 の系列）
+  const s = new Set(componentsIn(html).map((t) => freeSeriesOf(t, seriesOf(t))).filter((x) => x && x !== 'common'));
   const h = String(html || '');
   const theme = (h.match(/<html[^>]*\sdata-theme\s*=\s*["']?([\w-]+)/i) || [])[1];
   if (theme === 'business') s.add('business');
@@ -62,7 +75,7 @@ export function componentNotes(names, lang = 'en') {
   return names.filter((n) => D.components[n]).map((n) => {
     const c = D.components[n];
     const ext = Object.entries(c.ext || {}).map(([, t]) => D.extHead.replace('{name}', n) + '\n\n' + t);
-    return [c.entry, ...ext].join('\n\n');
+    return partSpans([c.entry, ...ext].join('\n\n'), []);   // 印（<!--part:…-->）だけを外す
   }).join('\n\n');
 }
 

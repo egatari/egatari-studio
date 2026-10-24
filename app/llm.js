@@ -444,10 +444,12 @@ export function setupLlm(app) {
     const ex = () => (req.exclude ? req.exclude() : []);
     const offNow = () => (req.off ? req.off() : []);
     // 共通の本体の表は、入っている分野と外した言いたいことで変わる（kit/core/llm-pack-assemble.mjs）
-    const commonNow = () => commonBody(LANG, ex(), chosen(), offNow());
-    const partBytes = (s) => packSize(seriesPart(s, LANG, ex()));
+    // お使いの AI（新規作成。ほかの入口は無料版の組み立て）：有料版はすべての系列とすべての部品
+    const planNow = () => (req.allSeries && req.allSeries() ? 'paid' : 'free');
+    const commonNow = () => commonBody(LANG, ex(), chosen(), offNow(), planNow());
+    const partBytes = (s) => packSize(seriesPart(s, LANG, ex(), planNow()));
     const initial = split ? [] : await defaultSeries();
-    const commonBytes = packSize(commonBody(LANG, ex(), initial, offNow()));
+    const commonBytes = packSize(commonBody(LANG, ex(), initial, offNow(), planNow()));
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => {
       const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s });
@@ -458,7 +460,7 @@ export function setupLlm(app) {
     const packOn = () => !withPack || withPack.checked;
     // req.allSeries()：すべての系列を入れる（新規作成の有料版。分野の印は残すが使わない）
     const chosen = () => (req.allSeries && req.allSeries() ? [...SERIES] : boxes.filter((b) => b.checked).map((b) => b.value));
-    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex(), off: offNow() }) : r; };
+    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex(), off: offNow(), plan: planNow() }) : r; };
     const update = async () => {
       const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t));
       const cb = packSize(commonNow());

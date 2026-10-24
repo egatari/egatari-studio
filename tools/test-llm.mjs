@@ -23,7 +23,8 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY } from '../kit/core/llm-pack.mjs';
+import { freeSeriesOf } from '../kit/core/llm-pack-assemble.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -87,20 +88,21 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   const badOpt = node('kit/llm-pack.mjs', '--sereis', 'academic');
   assert.ok(badOpt.status === 2 && /unknown option --sereis/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
 });
-ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つの系列）。共通の部品は系列に重ねない・README に series がなければ作れない', () => {
+ok('部品の居場所：どの部品もちょうど 1 か所（有料版は README の series、無料版は FREE_CORE・FREE_HOME の系列、有料版だけの部品はどこにもない）。README に series がなければ作れない', () => {
   const dirs = vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map((c) => c.name);
-  for (const lang of ['en', 'ja']) {
-    const common = commonBody(lang), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang)]));
+  for (const lang of ['en', 'ja']) for (const plan of ['free', 'paid']) {
+    const common = commonBody(lang, [], [], [], plan), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang, [], plan)]));
     for (const c of dirs) {
-      const head = `### \`<m-${c}>\``, where = seriesOf('m-' + c);
-      assert.ok(where === 'common' || SERIES.includes(where), c);
+      const head = `### \`<m-${c}>\``, raw = seriesOf('m-' + c), where = plan === 'paid' ? raw : freeSeriesOf('m-' + c, raw);
+      assert.ok(raw === 'common' || SERIES.includes(raw), c);
       const places = [['common', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([n]) => n);
-      assert.deepEqual(places, [where], `${lang} m-${c}: ${places}`);
+      assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} m-${c}: ${places}`);
     }
+    if (plan === 'paid') continue;
     // m-flow のお金の流れは business の拡張（共通の本体には入らない）
     assert.ok(parts.business.includes('`<m-flow>`') && /kind/.test(parts.business) && !/`money`/.test(common), 'm-flow money flows in business');
   }
-  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'business'], ['m-quad', 'business'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
+  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'common'], ['m-quad', 'common'], ['m-curves', 'common'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
   // README に series のない部品があれば、作り直しは失敗する（写しの部品フォルダで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
   for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'components.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
@@ -127,10 +129,13 @@ ok('規格の名前は英語と日本語で同じ・規格は共通の本体だ�
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``), c);
+    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``) === !PAID_ONLY.includes('m-' + c), c + ' (free: every part but the paid-only ones)');
+    assert.ok(!/<!--\/?part/.test(g), 'part markers are removed');
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
   assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');
+  // 有料版：すべての部品が一覧にある
+  for (const lang of ['en', 'ja']) { const p = buildPack({ lang, plan: 'paid' }); for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(p.includes(`\`<m-${c}>\``), lang + ' paid ' + c); assert.ok(!/<!--\/?part/.test(p)); }
 });
 
 // ---------------------------------------------------------------- 2. 取り出し

@@ -29,6 +29,7 @@
 //   <html> の開始タグがない原稿（省略できる）には、<!DOCTYPE> の後ろ（なければ先頭）に <html data-egatari-seed="N"> を足す
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { componentsOff } from './purposes.mjs';
+import { loadedParts } from './llm-pack.mjs';
 
 export const CATEGORIES = [
   { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
@@ -119,7 +120,9 @@ export function choiceRequest(choice, P, lang) {
   const offIds = new Set((choice && choice.purposesOff) || []);
   const off = P.list.filter((p) => offIds.has(p.id));
   if (off.length) {
-    const comps = componentsOff([...offIds], P);
+    // 組み立てに入る部品の名前だけを出す（無料版の有料版だけの部品・選んでいない分野の部品は、指示に説明がない）
+    const loaded = new Set(loadedParts(seriesForChoice(choice), planOf(choice)));
+    const comps = componentsOff([...offIds], P).filter((t) => loaded.has(t));
     rows.push(L === 'ja'
       ? `- 使わない言いたいこと（作者が外した）：${off.map((p) => p.name.ja).join('・')}。その表し方${comps.length ? `（${comps.map((t) => '`' + t + '`').join('・')}）` : ''}は使わない`
       : `- Purposes turned off by the author: ${off.map((p) => p.name.en).join(', ')}. Do not use their representations${comps.length ? ` (${comps.map((t) => '`' + t + '`').join(', ')})` : ''}.`);

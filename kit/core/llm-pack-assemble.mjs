@@ -13,6 +13,37 @@ import { purposesTable } from './purposes.mjs';
 //   有料版：すべての系列のパーツを入れた指示（'all'）。PAID_PACK_KB まで
 export const PAID_PACK_KB = 120;   // 有料版の上限（仮の値。変えるならここだけ）
 export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, all: 58 }), paid: PAID_PACK_KB });
+
+// 無料版で読み込む部品（plan 'free'。有料版はすべて）：
+//   FREE_CORE：共通の本体に説明まで入る共通の部品（部品庫 v1.1.0 の共通の部品）
+//   FREE_HOME：部品庫が共通にした部品のうち、無料版では v1.1.0 の系列（分野）から入るもの
+//   ほかの共通の部品（v1.2.0 の新しい部品）は有料版だけ：無料版では一覧・説明・表・見本・文のどこにも名前を出さない
+//   （表は「近いパーツか HTML」に戻る。説明のない部品を AI に使わせない）
+export const PLANS = Object.freeze(['free', 'paid']);
+export const FREE_CORE = Object.freeze(['m-bars', 'm-flow', 'm-menu']);
+export const FREE_HOME = Object.freeze({ 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });
+const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
+// 無料版から見た部品の居場所：FREE_HOME の系列、FREE_CORE なら 'common'、ほかの共通の部品は null（有料版だけ）、系列の部品はその系列
+export function freeSeriesOf(tag, series) {
+  if (FREE_HOME[tag]) return FREE_HOME[tag];
+  if (series === 'common') return FREE_CORE.includes(tag) ? 'common' : null;
+  return series;
+}
+// 有料版だけの部品（無料版では除く）
+export function paidOnly(data, plan = 'free') {
+  if (planName(plan) === 'paid') return [];
+  return Object.keys(data.en.components).sort().filter((t) => freeSeriesOf(t, data.en.components[t].series) === null);
+}
+// その版から見た材料（無料版は部品の居場所を付け替えたもの。作るのは 1 回だけ）
+const planCache = new WeakMap();
+export function planData(data, plan = 'free') {
+  if (planName(plan) === 'paid') return data;
+  if (planCache.has(data)) return planCache.get(data);
+  const remap = (D) => ({ ...D, components: Object.fromEntries(Object.entries(D.components).map(([t, c]) => [t, { ...c, series: freeSeriesOf(t, c.series) }])) });
+  const d = { ...data, en: remap(data.en), ja: remap(data.ja), parts: (data.parts || []).map((c) => ({ ...c, series: freeSeriesOf(c.tag, c.series) })) };
+  planCache.set(data, d);
+  return d;
+}
 export function normalizeSeries(series, data) {
   if (series === undefined || series === null) return [];
   if (series === 'all') return [...data.series];
@@ -27,35 +58,52 @@ const tidy = (s) => s.replace(/\n{3,}/g, '\n\n').trim();
 // 部品に結び付いた文：exclude の部品があれば除き、なければ印だけを外す
 export const partSpans = (text, exclude = []) => text.replace(/<!--part:([a-z0-9,-]+)-->([\s\S]*?)<!--\/part-->/g, (_, tags, inner) => (tags.split(',').some((t) => exclude.includes(t)) ? '' : inner));
 
-function catalog(D, names) {
+// gone：組み立てに入らない部品（説明の中でその名前を出す所を除く。<!--part:…--> は make-llm-guide の markRefs が付ける）
+function catalog(D, names, gone = []) {
   if (!names.length) return '';
-  const rows = names.map((n) => D.components[n].row).join('\n');
+  const rows = names.map((n) => partSpans(D.components[n].row, gone)).join('\n');
   const sup = names.some((n) => D.components[n].sup);
-  return D.tableHead + '\n' + rows + '\n\n' + (sup ? D.supNote + '\n\n' : '') + names.map((n) => D.components[n].entry).join('\n\n');
+  return D.tableHead + '\n' + rows + '\n\n' + (sup ? D.supNote + '\n\n' : '') + names.map((n) => partSpans(D.components[n].entry, gone)).join('\n\n');
 }
-function extensions(D, series, exclude = []) {
+function extensions(D, series, exclude = [], gone = exclude) {
   return Object.keys(D.components).sort().filter((n) => !exclude.includes(n) && D.components[n].ext && D.components[n].ext[series])
-    .map((n) => D.extHead.replace('{name}', n) + '\n\n' + D.components[n].ext[series]).join('\n\n');
+    .map((n) => D.extHead.replace('{name}', n) + '\n\n' + partSpans(D.components[n].ext[series], gone)).join('\n\n');
+}
+// 組み立てに入らない部品：exclude と、共通の本体・入っている系列（series）の部品でないもの（無料版の材料なら、読み込まない部品も）
+export function goneParts(data, lang, exclude, series) {
+  const D = langOf(data, lang);
+  const ss = new Set(series);
+  return Object.keys(D.components).filter((n) => exclude.includes(n) || !(D.components[n].series === 'common' || ss.has(D.components[n].series)));
 }
 export const membersOf = (D, series) => Object.keys(D.components).sort().filter((n) => D.components[n].series === series);
 
 // series：入っている系列（表が指す部品を決める。既定 [] は共通の本体だけ：docs の共通の本体と同じ。null ならすべて）。off：外した札（表の行を出さない）
 export function commonOf(data, lang, exclude = [], series = [], off = []) {
   const D = langOf(data, lang);
-  const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, series: series === null ? null : normalizeSeries(series, data), off }) : '');
-  return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table).replace('{{CATALOG}}', () => catalog(D, membersOf(D, 'common').filter((n) => !exclude.includes(n)))));
+  const gone = goneParts(data, lang, exclude, series === null ? data.series : normalizeSeries(series, data));
+  const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, series: series === null ? null : normalizeSeries(series, data), off, hidden: (data.parts || []).filter((c) => c.series === null).map((c) => c.tag) }) : '');
+  return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table).replace('{{CATALOG}}', () => catalog(D, membersOf(D, 'common').filter((n) => !exclude.includes(n)), gone)));
 }
-export function partOf(data, name, lang, exclude = []) {
+// series：一緒に入る系列（説明の中の名前を残す部品を決める。既定はこの系列だけ）
+export function partOf(data, name, lang, exclude = [], series = [name]) {
   const D = langOf(data, lang);
   if (!D.series[name]) throw new Error(`llm-pack: unknown series "${name}"`);
-  return tidy(partSpans(D.series[name], exclude).replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)))).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude)));
+  const gone = goneParts(data, lang, exclude, [...new Set([name, ...series])]);
+  return tidy(partSpans(D.series[name], exclude).replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)), gone)).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude, gone)));
 }
 
 // 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／ここまでの議論の内容で）。いちばん最後に付く
 export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 
-export function assemble(data, { series = [], lang = 'en', exclude = [], off = [] } = {}) {
-  const ss = normalizeSeries(series, data);
-  const parts = [commonOf(data, lang, exclude, ss, off), ...ss.map((s) => partOf(data, s, lang, exclude)), requestOf(data, lang)].filter(Boolean);
+// plan：'free'（既定。選んだ系列と、無料版で読み込む部品だけ）| 'paid'（すべての系列とすべての部品。series は見ない）
+export function packParts(data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}) {
+  const P = planName(plan);
+  const d = planData(data, P);
+  const ss = P === 'paid' ? [...data.series] : normalizeSeries(series, data);
+  const ex = [...new Set([...exclude, ...paidOnly(data, P)])];
+  return [commonOf(d, lang, ex, ss, off), ...ss.map((s) => partOf(d, s, lang, ex, ss))];
+}
+export function assemble(data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}) {
+  const parts = [...packParts(data, { series, lang, exclude, off, plan }), requestOf(data, lang)].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }

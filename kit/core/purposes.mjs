@@ -108,7 +108,8 @@ export function componentsOff(off, P) {
 }
 
 const cell = (s) => String(s).replace(/\|/g, '\\|');
-export function purposesTable(P, parts, lang, src, { exclude = [], series = null, off = [] } = {}) {
+// hidden：入っているが、この版（無料版）では読み込まない部品。名前は出さず、行は「この文にはない」にする
+export function purposesTable(P, parts, lang, src, { exclude = [], series = null, off = [], hidden = [] } = {}) {
   const L = lang === 'ja' ? 'ja' : 'en';
   const ex = new Set(exclude), offs = new Set(off);
   const inPack = (c) => c.series === 'common' || !series || series.includes(c.series);
@@ -130,7 +131,7 @@ export function purposesTable(P, parts, lang, src, { exclude = [], series = null
     if (offs.has(p.id)) continue;
     const ts = [...here.keys()].filter((t) => serves(t, p.id)).sort(order(p.id));
     ts.forEach((t) => used.add(t));
-    const cellText = ts.length ? ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ') : elsewhere.some((c) => serves(c.tag, p.id)) ? notHere : none;
+    const cellText = ts.length ? ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ') : elsewhere.some((c) => serves(c.tag, p.id)) || hidden.some((t) => serves(t, p.id)) ? notHere : none;
     rows.push(`| ${cell(p.name[L])} | ${cellText} | ${cell(p.steps[L])} |`);
   }
   const rest = [...here.keys()].filter((t) => !used.has(t)).sort();

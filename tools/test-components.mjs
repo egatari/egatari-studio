@@ -10,8 +10,12 @@ import { execFileSync } from 'node:child_process';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
-// 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 …]}
-const KNOWN = {};
+// 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
+// v1.2.0：見せ方を並べる見本のスライド（「見せ方の種類（variant）」）の見出しの字（p.vlabel）が 24〜26 px で、本文の 27 px より小さい（smallText）。
+// 部品そのものではなく見本の書き方の問題なので、そのスライドのその誤りだけを既知にする
+const VARIANT_DEMO = { code: 'smallText', title: '見せ方の種類（variant）' };
+const KNOWN = Object.fromEntries(['compare', 'cycle', 'fishbone', 'pie', 'timeline', 'tree', 'venn'].map((n) => [n, [VARIANT_DEMO]]));
+const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');
@@ -43,7 +47,7 @@ for (const { name, version, dir } of comps) {
   }
   if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
   const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
-  const qBad = qErrs ? qErrs.filter((x) => !(KNOWN[name] || []).includes(x.rule)) : null;
+  const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
   const shots = path.join(outRoot, name, 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
