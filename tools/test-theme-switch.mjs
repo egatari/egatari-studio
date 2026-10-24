@@ -1,10 +1,11 @@
-// テーマを変える…（スライド ▾。app/theme-switch.js）の試験
+// テーマを変更…（スライド ▾。app/theme-switch.js）の試験
 //   node tools/test-theme-switch.mjs [作業用のフォルダ]
 // 1. 開いた 1 ファイル（examples/minimal を default で組んだもの。<html> にシード値などの属性、egatari.json にほかの作り手の項目）：
 //    default → business → kokugo と替え、そのたびにプレビューの --emph が替わる・<html> のほかの属性が残る・ほかの作り手の項目がバイトのまま・
 //    egatari.json の themes が新しいテーマを今の版で固定し、使わなくなったテーマの固定を外す・保存していない変更（●）になる。
 //    「元に戻す」で原稿と egatari.json がバイトまで戻り、プレビューの色も戻る。保存（段 B）した 1 ファイルの索引と egatari.json も新しいテーマ
-// 2. 作業フォルダ（OPFS）：egatari.json に themes がなくても固定を書き、ほかの項目を残す。元に戻すと元のバイト
+// 2. 作業フォルダ（OPFS）：egatari.json に themes がなくても固定を書き、ほかの項目を残す。元に戻すと元のバイト。
+//    default を前の版 1.0.0 に固定したデッキで business に変えると、土台の default も今の版に固定し直す（選んだテーマの今の見た目）
 // 3. 組み直せないファイル（テーマ庫の hash が違う：口述原稿・音声・秒数だけ）：項目は押せない形（aria-disabled）で、わけを title と知らせに出す
 // 4. 英語の画面：項目と窓の言葉
 import fs from 'node:fs';
@@ -102,7 +103,7 @@ async function openBytes(page, html, name) {
   await waitLoads(page, n);
   return r;
 }
-// スライド ▾ → テーマを変える… → 選ぶ → 変える（初めの編集では権利の確認に「続ける」）
+// スライド ▾ → テーマを変更… → 選ぶ → 変更（初めの編集では権利の確認に「続ける」）
 async function switchTo(page, name, { expectCurrent } = {}) {
   await clickCommand(page, '#b-theme-switch');
   await page.waitForSelector('#dlg[open] #theme-switch-list');
@@ -132,7 +133,7 @@ try {
     ok(themeOf(deck0) === 'default' && cfg0.includes(FOREIGN), `1 file: starts at default (--emph ${e0})`);
     await page.click('#b-slidemenu');
     const item = await page.textContent('#b-theme-switch');
-    ok(item === 'テーマを変える…' && (await page.getAttribute('#b-theme-switch', 'aria-disabled')) === 'false', `menu: スライド ▾ has 「${item}」, enabled`);
+    ok(item === 'テーマを変更…' && (await page.getAttribute('#b-theme-switch', 'aria-disabled')) === 'false', `menu: スライド ▾ has 「${item}」, enabled`);
     await page.keyboard.press('Escape');
     // 窓：見せる名前・今のテーマの印・色見本・ほかのテーマを読み込む…
     await clickCommand(page, '#b-theme-switch');
@@ -142,6 +143,8 @@ try {
     const sw = await page.$$eval('#theme-switch-list .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
     ok(sw.length === 6 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(194, 65, 12)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
     ok((await page.textContent('#theme-switch-load')) === 'ほかのテーマを読み込む…', 'chooser: 「ほかのテーマを読み込む…」');
+    const words = [await page.textContent('#dlg-title'), await page.textContent('#theme-switch-lead'), await page.textContent('#dlg-change'), await page.textContent('#dlg-cancel')];
+    ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが替わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
     await clickDlg(page, '#dlg-cancel');
     ok(await memFile(page, 'deck.html') === deck0 && !(await state(page)).portable.dirty, 'cancel: nothing changes');
 
@@ -215,6 +218,32 @@ try {
     await undo(page);
     ok(await read('deck.html') === files['deck.html'] && await read(CFG) === cfgF && await emph(page) === e0, 'folder: undo restores both files byte for byte');
   });
+  // 前の版の固定：default 1.0.0 → business に変えると default も今の版
+  await session('ja', async (page) => {
+    const dir = path.dirname(deckDir('folder-old'));
+    const OLD = '1.0.0', cfgO = `{"metadata": {"license": "CC-BY-4.0"}, ${FOREIGN}, "themes": {"default": "${OLD}"}}\n`;
+    const files = { 'deck.html': fs.readFileSync(path.join(dir, 'deck.html'), 'utf8'), 'narration.md': fs.readFileSync(path.join(dir, 'narration.md'), 'utf8'), [CFG]: cfgO };
+    await page.evaluate(async (files) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry('ts-old', { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle('ts-old', { create: true });
+      for (const [rel, text] of Object.entries(files)) { const w = await (await d.getFileHandle(rel, { create: true })).createWritable(); await w.write(text); await w.close(); }
+      window.__testDir = d;
+    }, files);
+    const read = (rel) => page.evaluate(async (rel) => { try { return await (await (await window.__testDir.getFileHandle(rel)).getFile()).text(); } catch { return null; } }, rel);
+    const muted = () => frame(page).evaluate(() => { const d = document.createElement('span'); d.style.color = 'var(--muted)'; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
+    const n = await loads(page);
+    ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'old pin: opens');
+    await waitLoads(page, n);
+    const m0 = await muted(), st0 = await state(page);
+    ok(m0 === 'rgb(110, 110, 110)' && st0.warn.some((w) => /^theme pinned:/.test(w)), `old pin: the deck builds with default ${OLD} (--muted ${m0})`);
+    await switchTo(page, 'business', { expectCurrent: 'default' });
+    const c1 = await read(CFG), p1 = JSON.parse(c1).themes, m1 = await muted(), st1 = await state(page);
+    ok(p1.default === CUR('default') && p1.business === CUR('business') && Object.keys(p1).length === 2 && c1.includes(FOREIGN), `old pin → business: default (the base) is pinned at current ${CUR('default')} too ` + JSON.stringify(p1));
+    ok(!st1.warn.some((w) => /^theme pinned:/.test(w)) && m1 !== m0, `old pin → business: the preview builds default at current too (no pinned-theme warning; --muted ${m1})`);
+    await undo(page);
+    ok(await read(CFG) === cfgO && await muted() === m0, 'old pin: undo restores the 1.0.0 pin byte for byte and the old colors');
+  });
 
   // ---------------------------------------------------------------- 4. 組み直せないファイル・英語
   for (const lang of ['ja', 'en']) {
@@ -224,7 +253,7 @@ try {
       ok(!!st.portable.tierAOnly, `${lang} tier A only: the file can only have narration, audio and timing edited`);
       await clickMenuOpen(page, '#b-slidemenu');
       const t = { text: await page.textContent('#b-theme-switch'), dis: await page.getAttribute('#b-theme-switch', 'aria-disabled'), title: await page.getAttribute('#b-theme-switch', 'title') };
-      const want = lang === 'ja' ? ['テーマを変える…', 'テーマを変えられません'] : ['Change theme…', 'theme of this file cannot be changed'];
+      const want = lang === 'ja' ? ['テーマを変更…', 'テーマを変更できません'] : ['Change theme…', 'theme of this file cannot be changed'];
       ok(t.text === want[0] && t.dis === 'true' && t.title.includes(want[1]), `${lang} tier A only: 「${t.text}」 is disabled with the reason ${JSON.stringify(t.title)}`);
       await page.$eval('#b-theme-switch', (b) => b.click());   // aria-disabled（Playwright は押さない）：押せる形のまま、わけを出す
       await page.waitForSelector('#toast.show.bad');
@@ -234,7 +263,7 @@ try {
         await clickCommand(page, '#b-theme-switch');
         await page.waitForSelector('#dlg[open] #theme-switch-list');
         const title = await page.textContent('#dlg-title'), labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
-        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Standard (current)', 'Business', 'Kokugo']) && (await page.textContent('#theme-switch-load')) === 'Load another theme…' && (await page.textContent('#dlg-change')) === 'Change', 'en: the chooser in English ' + JSON.stringify(labels));
+        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Standard (current)', 'Business', 'Kokugo']) && (await page.textContent('#theme-switch-load')) === 'Load another theme…' && (await page.textContent('#dlg-change')) === 'Change' && (await page.textContent('#dlg-cancel')) === 'Cancel', 'en: the chooser in English ' + JSON.stringify(labels));
         await clickDlg(page, '#dlg-cancel');
       }
     });

@@ -793,7 +793,7 @@ const slidesPanel = createSlidesPanel({
   aiInsert: (after) => llm.insertWithAi(after),
   onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
-// テーマを変える…（スライド ▾。app/theme-switch.js）：スライド一覧と同じ流れ（apply）で原稿の data-theme と egatari.json の themes を書き、組み直す。
+// テーマを変更…（スライド ▾。app/theme-switch.js）：スライド一覧と同じ流れ（apply）で原稿の data-theme と egatari.json の themes を書き、組み直す。
 // 口述原稿・音声・秒数だけのファイル（組み直せない）と読むだけのファイルでは、押せない形で残し、わけを title と知らせに出す
 const themeSwitchWhy = () => (S.portable && S.portable.readOnly ? T.readOnlyNoEdit : S.portable && S.portable.tierAOnly ? T.themeSwitchNoRebuild : null);
 const themeSwitch = createThemeSwitch({

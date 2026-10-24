@@ -71,7 +71,7 @@ const steps = [
   // 部品庫が取り下げた版（format spec §6）：警告（CLI）・編集アプリのページに eval の許可がないこと・取り下げた版を記録した文書の知らせと「組み直す」・sandbox の枠
   ['test-yanked', ['tools/test-yanked.mjs', path.join(tmp, 'yanked')]],
   ['test-theme-version', ['tools/test-theme-version.mjs', path.join(tmp, 'theme-version')]],
-  // テーマを変える…（スライド ▾）：data-theme だけを替え（ほかの属性・スライドは変えない）、egatari.json の themes の固定（ほかの項目はバイトのまま）、プレビューの色、元に戻す、段 B の保存、作業フォルダ、組み直せないファイル
+  // テーマを変更…（スライド ▾）：data-theme だけを替え（ほかの属性・スライドは変えない）、egatari.json の themes の固定（ほかの項目はバイトのまま）、プレビューの色、元に戻す、段 B の保存、作業フォルダ、組み直せないファイル
   ['test-theme-switch', ['tools/test-theme-switch.mjs', path.join(tmp, 'theme-switch')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 並んでいないうちに起動したデッキ（display:none の iframe）を後で出しても、ふつうの起動と画素まで同じ（contract §3：mount は舞台が並んでから）

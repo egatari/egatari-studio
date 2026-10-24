@@ -1,9 +1,10 @@
-// テーマを変える…（スライド ▾）：開いたデッキのテーマ（原稿の <html data-theme>）を後から替える
+// テーマを変更…（スライド ▾）：開いたデッキのテーマ（原稿の <html data-theme>）を後から替える
 // 書き換えるのは原稿の <html> の data-theme（ほかの属性は data-egatari-seed も含めてそのまま。スライドには触らない）と、
 // 設定のファイル（egatari.json）の themes（kit/core/config-file.mjs の updateConfig を通る。ほかの項目はバイトのまま）だけ。
 // 流れはスライド一覧の操作と同じ（app/slides-panel.js の apply）：書く前に控え、組み直し、保存していない変更（●）になり、「元に戻す」で戻る。
 // 版の固定：新しいテーマはその今の版（同梱のテーマは themes.lock.json の current、ほかは theme.json の version か "local"。1 ファイルの書き出しと同じ）。
-// 新しいテーマが土台にするテーマ（extends）は、今の固定があればそのまま、なければ今の版。前のテーマ（と土台）で新しいテーマが使わないものは固定を外す。
+// 新しいテーマが土台にするテーマ（extends）も、前の版に固定されていても今の版にする（変えるのは利用者が選んだときだけなので、新しいテーマの今の見た目にする）。
+// 前のテーマ（と土台）で新しいテーマが使わないものは固定を外す。
 // 開いた 1 ファイルが記録した版（P.themePins・P.index.themes。プレビューと段 B の保存が使う）も同じに替え、元に戻すときは戻す
 //
 //   themeOf(src)              原稿の <html> の data-theme（なければ 'default'）
@@ -128,7 +129,7 @@ export function createThemeSwitch(ctx) {
         el('p', { id: 'theme-switch-lead', text: T.themeSwitchLead }),
         el('div', { id: 'theme-switch-list', role: 'radiogroup', 'aria-label': T.themeSwitchTitle }, rows),
         el('p', {}, [load])],
-      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'change', label: T.themeSwitchGo, pri: true }] });
+      buttons: [{ id: 'cancel', label: T.themeSwitchCancel }, { id: 'change', label: T.themeSwitchGo, pri: true }] });
       if (v === 'load') { await ctx.loadOtherTheme(); continue; }
       if (v !== 'change') return null;
       return picked;
@@ -153,22 +154,20 @@ export function createThemeSwitch(ctx) {
       const conf = configObject(b.cfg);   // 読めない設定のファイルは上書きせずに断る（code 'bad-config'）
       const raw = conf.themes && typeof conf.themes === 'object' && !Array.isArray(conf.themes) ? conf.themes : {};
       const P = ctx.portable();
-      const eff = { ...raw, ...((P && P.themePins) || {}) };
       const oldChain = await chain(from), newChain = await chain(to);
       const keep = new Set(newChain.map((t) => t.name));
       const patch = {}, drop = [];
       for (const t of oldChain) if (!keep.has(t.name)) { drop.push(t.name); if (Object.prototype.hasOwnProperty.call(raw, t.name)) patch[t.name] = undefined; }
-      newChain.forEach((t, i) => {
+      newChain.forEach((t) => {
         if (!t.version) return;
-        const v = i === 0 ? t.version : (typeof eff[t.name] === 'string' ? eff[t.name] : t.version);
-        if (raw[t.name] !== v) patch[t.name] = v;
+        if (raw[t.name] !== t.version) patch[t.name] = t.version;
       });
       const cfg = Object.keys(patch).length ? updateConfig(b.cfg, { themes: configMerge(patch) }) : undefined;
-      // 開いた 1 ファイル：記録した版（プレビューと段 B の保存が使う）からも、外したテーマと新しいテーマを除く（新しいテーマは設定のファイルの今の版で組む）
+      // 開いた 1 ファイル：記録した版（プレビューと段 B の保存が使う）からも、外したテーマと新しいテーマ（と土台）を除く（設定のファイルの今の版で組む）
       let applied, revert;
       if (P) {
         const pins0 = P.themePins, index0 = P.index;
-        const gone = new Set([...drop, to]);
+        const gone = new Set([...drop, ...newChain.map((t) => t.name)]);
         applied = () => {
           const pins = Object.fromEntries(Object.entries(P.themePins || {}).filter(([k]) => !gone.has(k)));
           P.themePins = Object.keys(pins).length ? pins : null;
