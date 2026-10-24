@@ -11,10 +11,8 @@ import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
-// v1.2.0：見せ方を並べる見本のスライド（「見せ方の種類（variant）」）の見出しの字（p.vlabel）が 24〜26 px で、本文の 27 px より小さい（smallText）。
-// 部品そのものではなく見本の書き方の問題なので、そのスライドのその誤りだけを既知にする
-const VARIANT_DEMO = { code: 'smallText', title: '見せ方の種類（variant）' };
-const KNOWN = Object.fromEntries(['compare', 'cycle', 'fishbone', 'pie', 'timeline', 'tree', 'venn'].map((n) => [n, [VARIANT_DEMO]]));
+// 今はない（v1.2.0 の見せ方の見本のスライドの小さな見出しの字（smallText）は v1.2.1 で 27 px に直った）
+const KNOWN = {};
 const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);
