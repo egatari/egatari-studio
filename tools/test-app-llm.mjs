@@ -1,21 +1,27 @@
-// 編集アプリの「AI の出力を貼り付ける」と「AI への修正依頼を写す」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
+// 編集アプリの AI のやり方（「新規作成…」「スライドの挿入…」「修正…」の「チャットの AI に…」）と「AI への修正依頼をコピー」（app/llm.js）の確認。tools/test-app.mjs が呼ぶ
 // test-all: part of test-app（tools/test-app.mjs が読み込む。単独では走らせない）
 //   testLlm({browser, BASE, ok, watch, shotDir})
-// 1. 貼り付けの窓：開く・指示を写す（系列を選ぶ：新しいデッキなら academic、開いているデッキならその部品・テーマから推したもの）・
-//    誤り（囲みなし・閉じていない囲み）を窓の中に出す
+// 1. 「新規作成…」→「チャットの AI に書いてもらう」の窓：最初の説明・3 つのステップ（① 頼みたいことを書く → ② 指示をコピーして送る → ③ 返事を貼り付けて開く）・ラベルと読み上げ・
+//    A（新しく作る）と B（このチャットの内容で）の記入が写した指示の最後に入る・添付になってもそのまま送る知らせ・共通の本体は外せない・
+//    系列（デッキを開いていなければどれも足さない（ヒントで「学術」を勧める）、開いているデッキならその部品・テーマから推したもの）・誤り（関係のない文字・閉じていない囲み・分けられないもの）
 // 2. 見本の返事（tools/llm-guide/worked/business：前置きの文章・```html と ```markdown・CRLF）を取り込む → 新しい 1 ファイルとして開き、
 //    スライドに id が付き、口述原稿の見出しが {#id} になり、品質チェックのエラーが 0
-// 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）
+// 2b. 囲みを 1 つずつ（囲みの行なし）：deck.html → narration.md と、その逆の順。受け取った知らせ・同じ方をもう一度・返事の全体と同じものが開く・
+//    捨てて最初から・窓を閉じると捨てる
+// 3. スクリプトの入った返事：コードの確かめが出て、取り消せば開かない（前のデッキのまま）。開くの一覧の 2 つの入口の名前
 // 4. 規格を破った返事 → 品質チェックのエラー → 修正依頼の文章に、エラーの言葉・規格の名前と文章・今のファイルが入る →
-//    直したスライドだけの返事を「今のデッキを置き換える」で取り込む → docId はそのまま、そのスライドだけが替わり、エラー 0
-// 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）を開いていて、別のデッキの返事を「今のデッキを置き換える」で取り込む →
+//    直したスライドだけの返事を「修正…」で、囲みを 1 つずつ取り込む → docId はそのまま、そのスライドだけが替わり、エラー 0
+// 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）を開いていて、別のデッキの返事を「修正…」で取り込む →
 //    品質チェックが新しいプレビューに答える（前の読み込みに頼んで「応答しません」にならない）・プレビューが新しいデッキ・保存できる・
-//    直したスライドだけの置き換えも同じ。結果が 0 件の品質チェックの説明の文
-// 画像（shotDir があれば）：paste-dialog(-ja).png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・fix-replaced.png（1280×800）
+//    直したスライドだけの置き換え・口述原稿だけの直しを「これだけで取り込む」も同じ。結果が 0 件の品質チェックの説明の文
+// 6. 日本語の画面：入口の名前・3 つのステップ・大きさ・受け取った知らせ
+// 画像（shotDir があれば）：ai-step1(-ja).png・ai-step2(-ja).png・ai-step3-ja.png・paste-held(-ja).png・paste-dialog.png・paste-error.png・paste-cutoff.png・
+// paste-opened.png・fix-check.png・fix-request.png・paste-replace.png・fix-replaced.png（1280×800）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPack, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, packSize, packKb, kbOf } from '../kit/core/llm-pack.mjs';
+import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -42,29 +48,81 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.goto(BASE + '?lang=en');
   await page.waitForSelector('#drop');
 
-  // ---------------------------------------------------------------- 1. 窓・指示を写す・誤り
-  ok((await page.textContent('#w-paste')) === 'Paste AI output', 'llm: the welcome screen has “Paste AI output”');
-  await page.click('#w-paste');
+  // ---------------------------------------------------------------- 1. 「新規作成…」→「チャットの AI に書いてもらう」の窓：3 つのステップ・頼みたいこと（A・B）を書いて指示に入れる・指示を写す・誤り
+  ok((await page.textContent('#w-new')) === 'New…' && !(await page.$('#w-paste')), 'llm: the welcome screen has “New…” (no separate AI entry)');
+  await page.click('#w-new');
+  await page.waitForSelector('#dlg[open] #dlg-new-ai');
+  ok((await page.textContent('#dlg-new-blank')) === 'Blank' && (await page.textContent('#dlg-new-template')) === 'From a template' && (await page.textContent('#dlg-new-ai')) === 'Have a chat AI write it…', 'llm: “New…” offers Blank, From a template and Have a chat AI write it');
+  await shot('new-choice.png');
+  await clickDlg(page, '#dlg-new-ai');
   await page.waitForSelector('#dlg[open] #paste-text');
+  ok((await page.textContent('#ai-howto')) === 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.'
+    && await page.evaluate(() => { const h = document.getElementById('ai-howto'), s1 = document.getElementById('paste-step1'); return !!(h.compareDocumentPosition(s1) & Node.DOCUMENT_POSITION_FOLLOWING); }),
+    'llm: before step 1, the dialog explains to open a chat AI in another tab, send the instructions and paste the reply in step 3');
+  ok(!(await page.$('#dlg-body input[name=paste-mode]')) && (await page.$$eval('#dlg-body input[type=radio]', (xs) => xs.map((x) => x.name))).every((n) => n === 'paste-kind'), 'llm: there is no import-mode choice (the command decides it)');
+  const steps = await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => [x.id, x.querySelector('h3').textContent, x.getAttribute('aria-labelledby') === x.querySelector('h3').id]));
+  ok(steps.map((x) => x[0]).join() === 'paste-step1,paste-step2,paste-step3' && steps.map((x) => x[1]).join('|') === '1. Write what you want|2. Copy the instructions, paste them into the chat and send|3. Paste the AI’s reply and open it' && steps.every((x) => x[2]),
+    'llm: the dialog has 3 steps in order, each a section labelled by its heading: ' + JSON.stringify(steps.map((x) => x[1])));
+  ok((await page.textContent('#dlg-title')) === 'New: have a chat AI write it' && (await page.textContent('#dlg-import')) === 'Open', 'llm: the dialog is titled “New: have a chat AI write it” and its button is “Open”');
+  const unlabelled = await page.$$eval('#dlg-body input, #dlg-body textarea', (xs) => xs.filter((x) => !x.labels?.length && !x.closest('label') && !x.getAttribute('aria-label')).map((x) => x.id));
+  ok(!unlabelled.length, 'llm a11y: every field in the dialog has a label: ' + JSON.stringify(unlabelled));
+  const live = await page.evaluate(() => ['paste-copied', 'paste-state', 'paste-msg'].map((id) => document.getElementById(id).getAttribute('role')));
+  ok(live.join() === 'status,status,alert', 'llm a11y: the copy result and the received-block state are status regions, errors are alerts');
+  // 既定は A（新しく作る）。話者は指示の既定の値。B の欄は隠れている
+  ok(await page.isChecked('#paste-kind-a') && await page.isVisible('#paste-a-topic') && !(await page.isVisible('#paste-b-length')) && (await page.inputValue('#paste-a-speakers')) === 'one narrator',
+    'llm: step 1 starts with A (make a new lesson); the speakers field has the default from the instructions');
   const boxes = await page.$$eval('#paste-series input[type=checkbox]', (xs) => xs.map((x) => [x.value, x.checked, x.closest('label').textContent]));
-  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).map((b) => b[0]).join() === 'academic' && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
-    'llm: the instructions have series checkboxes with sizes; with no deck open, academic is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
-  ok((await page.textContent('#paste-series legend')) === `Series (added to the common body, ${packKb(buildPack({ series: [], lang: 'en' }))} KB)` && (await page.textContent('#paste-pack-size')) === `${packKb(buildPack({ series: ['academic'], lang: 'en' }))} KB in all`,
-    'llm: the legend gives the common body size and the total is shown, with the same calculation as node kit/llm-pack.mjs --list (UTF-8 bytes / 1024, English UI → English pack)');
+  ok(boxes.map((b) => b[0]).join() === 'academic,business,kokugo,info' && boxes.filter((b) => b[1]).length === 0 && boxes.every((b) => /\+\d+\.\d KB$/.test(b[2])) && boxes[0][2].endsWith(`+${kbOf(packSize(buildPack({ series: ['academic'], lang: 'en' })) - packSize(buildPack({ series: [], lang: 'en' })))} KB`),
+    'llm: the instructions have series checkboxes with sizes; with no deck open, no series is ticked: ' + JSON.stringify(boxes.map((b) => b[2])));
+  ok(await page.isChecked('#paste-common') && await page.isDisabled('#paste-common') && (await page.textContent('label.paste-common')).includes(`Common body (always included)`) && (await page.textContent('label.paste-common')).includes(`${packKb(buildPack({ series: [], lang: 'en' }))} KB`) && (await page.textContent('#paste-series legend')) === 'Series (add only when needed)',
+    'llm: the common body is shown as always included (ticked, cannot be removed) with its size; the series say “add only when needed”');
+  ok((await page.textContent('#paste-series-hint')) === 'Using formulas, graphs or data charts? Add “Academic (math, functions, data)”.' && (await page.getAttribute('#paste-series', 'aria-describedby')) === 'paste-series-hint',
+    'llm: under the series, a hint says to add Academic for formulas, graphs or data charts (with the series’ display name)');
+  // A の題材がないまま写そうとすると、① に戻す
   await page.click('#paste-copy-guide');
   await page.waitForSelector('#paste-copied:not([hidden])');
-  const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  ok((await page.textContent('#paste-copied')) === 'Write the topic in step 1.' && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-a-topic'), 'llm: copying with no topic asks for it and moves the focus to the topic field');
+  const reqA = { topic: 'How binary search works', audience: 'First-year students', length: '5 slides', examples: 'Finding a name in a phone book\nGuessing a number' };
+  for (const [k, v] of Object.entries(reqA)) await page.fill('#paste-a-' + k, v);
+  const wantA = filledRequest({ kind: 'A', values: { ...reqA, speakers: 'one narrator', language: '' } }, 'en');
+  // 系列に何も印がないまま写す：共通の本体と頼みたいことだけ
+  ok((await page.textContent('#paste-pack-size')) === `${packKb(commonBody('en') + '\n' + wantA)} KB in all`, 'llm: with no series ticked, the total is the common body plus the request');
+  await page.click('#paste-copy-guide');
+  await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+  const clip0 = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+  ok(clip0 === commonBody('en') + '\n' + wantA && !clip0.includes('## Series pack:'), 'llm: with no series ticked, the copied instructions are the common body and the request only');
+  await page.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
+  await page.click('#paste-series-academic');
+  const total0 = await page.textContent('#paste-pack-size');
+  ok(total0 === `${packKb(packWithRequest({ series: ['academic'], lang: 'en', request: wantA }))} KB in all`, 'llm: the total follows what is written in step 1: ' + total0);
+  await shot('ai-step1.png');
+  await page.click('#paste-copy-guide');
+  await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), clip0);
+  const clip = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');   // Windows のクリップボードは CRLF にする
   ok(clip.startsWith('# Instructions for the AI') && clip.includes('**R-output**') && !clip.includes('For people.') && clip.includes('## Series pack: academic') && clip.includes('`<m-sweep>`') && !clip.includes('## Series pack: business') && !clip.includes('`<m-kpi>`'),
     `llm: “Copy instructions for your AI” copies the common body from “Instructions for the AI” and the academic pack (${Math.round(clip.length / 1024)} KB)`);
-  const total0 = await page.textContent('#paste-pack-size');
+  ok(clip === packWithRequest({ series: ['academic'], lang: 'en', request: wantA }) && clip.endsWith(wantA) && clip.includes('- Topic: How binary search works') && clip.includes('- Examples or figures to include: Finding a name in a phone book\n  Guessing a number') && !clip.includes('*(Fill in A or B') && !clip.includes('**B. From our discussion so far**'),
+    'llm: what was written for A is at the end of the copied instructions (the blank form and B are left out)');
+  const copiedMsg = await page.textContent('#paste-copied');
+  ok(/with what you wrote in step 1/.test(copiedMsg) && /If it turns into an attachment, just send it\./.test(copiedMsg) && /go to step 3/.test(copiedMsg), 'llm: after copying, the dialog says to send it even if it becomes an attachment: ' + copiedMsg);
+  await shot('ai-step2.png');
+  // B（このチャットでここまで話し合った内容で）
+  await page.click('#paste-kind-b');
+  ok(await page.isVisible('#paste-b-length') && !(await page.isVisible('#paste-a-topic')), 'llm: choosing B shows its fields and hides A');
+  await page.fill('#paste-b-length', '10 minutes');
   await page.click('#paste-series-academic');
   await page.click('#paste-series-business');
   await page.click('#paste-series-info');
   await page.click('#paste-copy-guide');
-  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t !== c).catch(() => false), clip);
-  const clipB = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  await page.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), clip);
+  const clipB = (await page.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+  const wantB = filledRequest({ kind: 'B', values: { length: '10 minutes', audience: '' } }, 'en');
   ok(clipB.includes('## Series pack: business') && clipB.includes('`<m-kpi>`') && clipB.includes('## Series pack: info') && !clipB.includes('## Series pack: academic') && clipB.indexOf('Series pack: business') < clipB.indexOf('Series pack: info') && (await page.textContent('#paste-pack-size')) !== total0,
     'llm: ticking business and info (and unticking academic) copies those packs, in order, and updates the total');
+  ok(clipB.endsWith(wantB) && clipB.includes('Make the lesson from what we have discussed so far in this chat.') && clipB.includes('- Length (slides or minutes): 10 minutes') && !clipB.includes('**A. Make a new lesson**'),
+    'llm: B (from this chat) is at the end of the copied instructions');
+  await page.click('#paste-kind-a');
   const bdeck = worked('business', 'deck.html'), bnarr = worked('business', 'narration.md');
   await page.fill('#paste-text', replyOf(bdeck, bnarr, { crlf: true }));
   await shot('paste-dialog.png');
@@ -77,13 +135,19 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.fill('#paste-text', 'I could not do it, sorry.');
   await clickDlg(page, '#dlg-import');
   await page.waitForFunction(() => /No code blocks/.test(document.getElementById('paste-msg').textContent));
-  ok(true, 'llm: a reply without code blocks shows “No code blocks …”');
+  const unrel = await page.textContent('#paste-msg');
+  ok(/no deck\.html or narration\.md content/.test(unrel) && /two blocks one at a time/.test(unrel) && await page.isHidden('#paste-state') && !(await state()).open, 'llm: unrelated text says neither file was found and how to copy (whole reply, or one block at a time); nothing is kept: ' + unrel);
   await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
   await page.click('#paste-copy-cutoff');
-  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-copied').textContent));
+  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-cut-copied').textContent));
   const nob = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
   ok(/no code blocks/.test(nob) && /Do not output files, a canvas or attachments/.test(nob) && /R-output/.test(nob), 'llm: no code blocks → “Copy a resend request” asks for both blocks in the message body');
-  await page.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
+  await page.evaluate(() => { const m = document.getElementById('paste-cut-copied'); m.hidden = true; m.textContent = ''; });
+  // 囲みの行なしで、スライドと口述原稿が混ざったもの：分けられないと言う
+  await page.fill('#paste-text', '<section class="slide"><h2>A</h2></section>\n\n## A\n[0] Hello.');
+  await clickDlg(page, '#dlg-import');
+  await page.waitForFunction(() => /cannot be told apart/.test(document.getElementById('paste-msg').textContent));
+  ok(await page.isHidden('#paste-state'), 'llm: slides and narration mixed without ``` lines are refused as ambiguous, with how to copy instead');
 
   // ---------------------------------------------------------------- 2. 見本の返事を取り込む：はじめは narration.md の途中で切れた返事 →
   // 送り直しを頼む文を写す → narration.md の囲みだけの返事で、前の deck.html と合わせて開く
@@ -93,7 +157,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.waitForSelector('#dlg[open] #paste-copy-cutoff:not([hidden])');
   ok(/narration\.md/.test(await page.textContent('#paste-msg')), 'llm: a reply cut off inside narration.md says so and offers “Copy a resend request for your AI”');
   await page.click('#paste-copy-cutoff');
-  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-copied').textContent));
+  await page.waitForFunction(() => /Copied/.test(document.getElementById('paste-cut-copied').textContent));
   const resend = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
   ok(/cut off/.test(resend) && /Send only the narration\.md block again/.test(resend) && /R-output/.test(resend), 'llm: the resend request asks for only the missing narration.md block: ' + JSON.stringify(resend.slice(0, 90)));
   await shot('paste-cutoff.png');
@@ -108,15 +172,61 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(ids.length === 3 && ids.every((id) => F['narration.md'].includes(`{#${id}}`)) && !F['deck.html'].includes('\r'), `llm: ids added to all 3 slides and the narration headings (${ids.join(', ')})`);
   const sum1 = await page.textContent('#panel-body .sum');
   ok(/^0 errors/.test(sum1), 'llm: the quality check runs after import and reports no errors: ' + sum1);
-  const docId1 = st.portable.docId;
+  let docId1 = st.portable.docId;
   await shot('paste-opened.png');
+
+  // ---------------------------------------------------------------- 2b. 囲みを 1 つずつ写して貼る（チャットの囲みの右上のコピー：囲みの行なし）
+  // deck.html → narration.md、narration.md → deck.html のどちらの順でも、返事の全体を貼ったときと同じものが開く。捨てて最初から・窓を閉じると捨てる
+  const noIds = (t) => t.replace(/ id="s-[a-z2-7]{6}"/g, '').replace(/ \{#s-[a-z2-7]{6}\}/g, '');
+  const whole = { deck: noIds(F['deck.html']), narration: noIds(F['narration.md']) };
+  const openPaste = async () => { await clickMenuOpen(page, '#b-openmenu'); await clickMenuItem(page, '#b-new'); await page.waitForSelector('#dlg[open] #dlg-new-ai'); await clickDlg(page, '#dlg-new-ai'); await page.waitForSelector('#dlg[open] #paste-text'); };
+  const pasteOne = async (text) => { await page.fill('#paste-text', text); await clickDlg(page, '#dlg-import'); };
+  const heldText = () => page.waitForSelector('#dlg[open] #paste-state:not([hidden])').then(() => page.textContent('#paste-state-text'));
+  for (const order of [['deck', 'narration'], ['narration', 'deck']]) {
+    await openPaste();
+    const part = { deck: '\n' + bdeck.trim() + '\n', narration: bnarr.trim() + '\n' };
+    await pasteOne(part[order[0]]);
+    const h = await heldText();
+    const wantHeld = order[0] === 'deck' ? /^Got deck\.html \(3 slides; 1 of 2\)\. Now copy the narration\.md block/ : /^Got narration\.md \(3 sections; 1 of 2\)\. Now copy the deck\.html block/;
+    ok(wantHeld.test(h) && (await page.inputValue('#paste-text')) === '' && await page.isVisible('#paste-reset') && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-text') && !(await page.$('#dlg-only')),
+      `llm separate (${order.join(' → ')}): the first block is kept and the dialog says which one arrived and asks for the other (box emptied, focus back in it): ${h}`);
+    if (order[0] === 'deck') {
+      await shot('paste-held.png');
+      // 同じ方をもう一度：入れ替えたと言う
+      await pasteOne(part.deck);
+      await page.waitForFunction(() => /^Got deck\.html again/.test(document.getElementById('paste-state-text').textContent));
+      ok(true, 'llm separate: the same block pasted again replaces the kept one and says so');
+    }
+    await pasteOne(part[order[1]]);
+    await discard();
+    await page.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d; }, docId1, { timeout: 30000 });
+    await waitPanel();
+    const G = await files();
+    const toastT = await page.waitForFunction(() => /Joined/.test(document.getElementById('toast').textContent), null, { timeout: 10000 }).then(() => page.textContent('#toast')).catch(() => page.textContent('#toast'));
+    ok(noIds(G['deck.html']) === whole.deck && noIds(G['narration.md']) === whole.narration && /^0 errors/.test(await page.textContent('#panel-body .sum')),
+      `llm separate (${order.join(' → ')}): joining the two blocks opens the same deck.html and narration.md as the whole reply (ids aside), and the quality check passes`);
+    ok(/Joined deck\.html and narration\.md pasted separately/.test(toastT) && !/No code blocks: took/.test(toastT), 'llm separate: the import message says the two blocks were joined: ' + toastT);
+    docId1 = (await state()).portable.docId;
+  }
+  // 捨てて最初から・窓を閉じると捨てる
+  await openPaste();
+  await pasteOne(bdeck.trim());
+  await heldText();
+  await page.click('#paste-reset');
+  await page.waitForFunction(() => /^Discarded/.test(document.getElementById('paste-state-text').textContent));
+  ok(await page.isHidden('#paste-reset'), 'llm separate: “Discard and start over” drops the kept block and says so');
+  await pasteOne(bnarr.trim());
+  ok(/^Got narration\.md/.test(await heldText()), 'llm separate: after starting over, the next block is the first of two again (not joined with the discarded one)');
+  await clickDlg(page, '#dlg-cancel');
+  await openPaste();
+  ok(await page.isHidden('#paste-state'), 'llm separate: closing the dialog (Cancel) drops the kept block; the dialog opens empty again');
+  await clickDlg(page, '#dlg-cancel');
 
   // ---------------------------------------------------------------- 3. スクリプトの入った返事 → コードの確かめ
   const evil = bdeck.replace('</body>', '<script>window.__pastedRan = true;</script>\n</body>');
-  await clickMenuOpen(page, '#b-openmenu');
-  await clickMenuItem(page, '#b-paste');
-  await page.waitForSelector('#dlg[open] #paste-text');
-  ok(await page.isChecked('#paste-new'), 'llm: “Paste AI output…” from the menu defaults to a new deck');
+  await openPaste();
+  ok((await page.textContent('#b-new')) === 'New…' && !(await page.$('#b-paste')) && !(await page.$('#b-fiximport')) && !(await page.$('#paste-replace')),
+    'llm: the Open menu has “New…” (no “Make with AI” / “Import AI fixes” entries; no replace choice)');
   ok(await page.isChecked('#paste-series-business') && !(await page.isChecked('#paste-series-academic')), 'llm: with the business deck open, the instructions default to the business series (from its components and theme)');
   await page.fill('#paste-text', replyOf(evil, bnarr));
   await clickDlg(page, '#dlg-import');
@@ -133,9 +243,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const badN = bnarr.replace('## 導入から 3 か月の結果', '## 新しい仕分けの手順を入れてから 3 か月がたった今の結果のまとめ')
     .replace('[concl] 件数が増えても', '[4] {1-η|いちマイナスイータ} は使わない例です。\n[concl] 件数が増えても');
   await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));   // 前の結果の板を閉じておく（新しい品質チェックの板を待つため）
-  await clickMenuOpen(page, '#b-openmenu');
-  await clickMenuItem(page, '#b-paste');
-  await page.waitForSelector('#dlg[open] #paste-text');
+  await openPaste();
   await page.fill('#paste-text', replyOf(bad, badN, { labels: ['html title="deck.html"', 'md'] }));
   await clickDlg(page, '#dlg-import');
   await discard();
@@ -147,6 +255,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     'llm: quality check reports the long title, the orphan [4] and the expression reading: ' + sum2);
   const note2 = await page.textContent('#panel-body .hint');
   ok(/^The browser quality checker/.test(note2) && /If there are errors, press “Copy fix request for your AI” below/.test(note2), 'llm: with errors, the quality check note points to the fix request button below: ' + note2);
+  ok((await page.textContent('#panel-body #b-revise')) === 'Revise…' && (await page.textContent('#panel-body #b-fixreq')) === 'Copy fix request for your AI', 'llm: the quality check panel starts with “Revise…” next to the fix request button');
   await shot('fix-check.png');
   const docId2 = (await state()).portable.docId;
   await page.click('#b-fixreq');
@@ -164,11 +273,20 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const sid = F['deck.html'].match(/<section class="slide" id="(s-[a-z2-7]{6})">\s*<h2>新しい仕分け/)[1];
   const fixedSec = bdeck.match(/<section class="slide">\s*<h2>導入から 3 か月の結果<\/h2>[\s\S]*?<\/section>/)[0].replace('<section class="slide">', `<section class="slide" id="${sid}">`);
   const fixedNarr = bnarr.match(/## 導入から 3 か月の結果\n[\s\S]*?(?=\n## |\s*$)/)[0].replace('## 導入から 3 か月の結果', `## 導入から 3 か月の結果 {#${sid}}`);
+  ok((await page.textContent('#dlg-paste')) === 'Paste the AI’s reply…', 'llm: the fix request dialog leads to “Paste the AI’s reply…”');
   await clickDlg(page, '#dlg-paste');
   await page.waitForSelector('#dlg[open] #paste-text');
-  ok(await page.isChecked('#paste-replace'), 'llm: “Paste the reply…” opens the paste dialog with “Replace the current deck” selected');
-  await page.fill('#paste-text', 'Fixed:\n\n```deck.html\n' + fixedSec + '\n```\n\n```narration.md\n' + fixedNarr + '\n```\n');
+  ok((await page.textContent('#dlg-title')) === 'Revise: have a chat AI fix it' && await page.$('#paste-wish') && !(await page.$('#paste-kind')) && (await page.textContent('#dlg-import')) === 'Import' && /Paste the fix request you copy here/.test(await page.textContent('#ai-howto'))
+    && await page.evaluate(() => document.activeElement && document.activeElement.id === 'paste-text'),
+    'llm: “Paste the AI’s reply…” in the fix request opens Revise at step 3 (the paste box has the focus; the reply goes into the current deck)');
+  // 直しの返事も、囲みを 1 つずつ：deck.html（直したスライドだけ）→ 「これだけで取り込む」も出る → narration.md で合わせて取り込む
+  await page.fill('#paste-text', fixedSec);
+  await clickDlg(page, '#dlg-import');
+  await page.waitForSelector('#dlg[open] #paste-state:not([hidden])');
+  const heldFix = await page.textContent('#paste-state-text');
+  ok(/^Got deck\.html \(1 slide; 1 of 2\)/.test(heldFix) && /Import just this/.test(heldFix) && /If the reply has only this one/.test(heldFix) && (await page.textContent('#dlg-only')) === 'Import just this', 'llm fix import: one block of a fix is kept, with “Import just this” for a fix that has only one: ' + heldFix);
   await shot('paste-replace.png');
+  await page.fill('#paste-text', fixedNarr);
   await page.evaluate(() => { document.getElementById('panel').hidden = true; });
   await clickDlg(page, '#dlg-import');
   await waitPanel();
@@ -182,49 +300,75 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
 
   // ---------------------------------------------------------------- 5. ほかのデッキを開いていて、別のデッキの返事で「今のデッキを置き換える」
   // （1 ファイルの見本と作業フォルダ。置き換えの直後の品質チェックが、前の読み込みのプレビューに頼んで「デッキが応答しません」にならない）
-  await testReplace({ ctx, BASE, ok, watch, bdeck, bnarr });
+  await testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir });
 
-  // 日本語の画面：大きさは日本語の指示のもの（英語の大きさではない）。node kit/llm-pack.mjs --list --lang ja と同じ計算
+  // 日本語の画面：入口の名前・大きさは日本語の指示のもの（英語の大きさではない。node kit/llm-pack.mjs --list --lang ja と同じ計算）・
+  // 3 つのステップと、囲みを 1 つずつ貼ったときの知らせ（画像は shotDir があれば ai-step1-ja.png・ai-step2-ja.png・ai-step3-ja.png・paste-held-ja.png）
   {
-    const pj = await ctx.newPage();
-    watch(pj, 'llm-ja-size');
-    await pj.goto(BASE + '?lang=ja');
-    await pj.waitForSelector('#drop');
-    await pj.click('#w-paste');
-    await pj.waitForSelector('#dlg[open] #paste-text');
-    const legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
-    const ja = packKb(buildPack({ series: [], lang: 'ja' })), jaA = packKb(buildPack({ series: ['academic'], lang: 'ja' }));
-    ok(legend.includes(`${ja} KB`) && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
-      `llm: the Japanese UI shows the sizes of the Japanese instructions (${legend} / ${total})`);
-    await pj.close();
-  }
-  // 日本語の画面の窓（画像だけ）
-  if (shotDir) {
     const pj = await ctx.newPage();
     watch(pj, 'llm-ja');
     await pj.goto(BASE + '?lang=ja');
     await pj.waitForSelector('#drop');
-    await pj.click('#w-paste');
+    ok((await pj.textContent('#w-new')) === '新規作成…', 'llm ja: the welcome screen has 「新規作成…」');
+    await pj.click('#w-new');
+    await pj.waitForSelector('#dlg[open] #dlg-new-ai');
+    await clickDlg(pj, '#dlg-new-ai');
     await pj.waitForSelector('#dlg[open] #paste-text');
+    ok((await pj.textContent('#ai-howto')) === 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。' && (await pj.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう',
+      'llm ja: the explanation before step 1 and the title');
+    const heads = await pj.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
+    ok(heads.join('|') === '① 頼みたいことを書く|② AI への指示をコピーして、チャットに貼って送る|③ AI の返事を貼り付けて開く', 'llm ja: the 3 steps: ' + heads.join(' / '));
+    const common = await pj.textContent('label.paste-common'), legend = await pj.textContent('#paste-series legend'), total = await pj.textContent('#paste-pack-size');
+    const ja = packKb(buildPack({ series: [], lang: 'ja' }));
+    const jaA = packKb(packWithRequest({ series: [], lang: 'ja', request: filledRequest({ kind: 'A', values: { speakers: '1 人' } }, 'ja') }));
+    ok((await pj.textContent('#paste-series-hint')) === '数式・グラフ・データの図を使うなら「学術（数式・関数・データ）」を足す' && (await pj.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0, 'llm ja: no series ticked with no deck open, and the hint names 「学術（数式・関数・データ）」');
+    ok(common.includes('共通の本体（必ず入る）') && common.includes(`${ja} KB`) && legend === '系列（必要なときだけ足す）' && total.includes(`${jaA} KB`) && ja !== packKb(buildPack({ series: [], lang: 'en' })),
+      `llm ja: the Japanese UI shows the sizes of the Japanese instructions (${common} / ${total})`);
+    const scrollTo = (id) => pj.evaluate((id) => document.getElementById(id).scrollIntoView({ block: 'start' }), id);
+    for (const [k, v] of Object.entries({ topic: '二分探索のしくみ', audience: '高校 2 年生', length: '5 枚', language: '日本語', examples: '電話帳で名前を探す' })) await pj.fill('#paste-a-' + k, v);
+    if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'ai-step1-ja.png') });
+    await pj.click('#paste-copy-guide');
+    await pj.waitForFunction(() => /^コピーしました/.test(document.getElementById('paste-copied').textContent));
+    const clipJ = (await pj.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+    const cm = await pj.textContent('#paste-copied');
+    ok(clipJ.endsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- 題材：二分探索のしくみ\n- 対象（だれ向け）：高校 2 年生\n- 長さ（枚数か分）：5 枚\n- 言語：日本語\n- 話者：1 人\n- 入れたい例や図：電話帳で名前を探す\n') && /添付のファイルの形になっても、そのまま送ってください/.test(cm),
+      'llm ja: the request written in step 1 ends the copied instructions, and the hint says to send it even as an attachment: ' + cm);
+    await scrollTo('paste-step2');
+    if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'ai-step2-ja.png') });
+    await scrollTo('paste-step3');
     await pj.fill('#paste-text', replyOf(worked('kokugo', 'deck.html'), worked('kokugo', 'narration.md')));
     await top(pj);
-    await pj.screenshot({ path: path.join(shotDir, 'paste-dialog-ja.png') });
+    await scrollTo('paste-step3');
+    if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'ai-step3-ja.png') });
+    await pj.fill('#paste-text', worked('kokugo', 'deck.html').trim());
+    await clickDlg(pj, '#dlg-import');
+    await pj.waitForSelector('#dlg[open] #paste-state:not([hidden])');
+    const hj = await pj.textContent('#paste-state-text');
+    ok(/^deck\.html を受け取りました（スライド \d+ 枚。2 つのうち 1 つ目）。次に narration\.md の囲みを/.test(hj) && (await pj.textContent('#paste-reset')) === '受け取ったものを捨てて最初から', 'llm ja: the received-block state in Japanese: ' + hj);
+    await scrollTo('paste-step3');
+    if (shotDir) await pj.screenshot({ path: path.join(shotDir, 'paste-held-ja.png') });
     await pj.close();
   }
   await ctx.close();
 }
 
 // 貼り付けの窓から「今のデッキを置き換える」で取り込み、品質チェックの板の結果（.sum か、確かめられなかった言葉）を返す
-async function pasteReplace(p, text) {
+// 「修正…」は品質チェックの板の先頭にある（道具の列は 1 行に収めるため）：板を開いてから押す
+async function openRevise(p, sel = '#paste-text') {
+  if (!(await p.$('#panel:not([hidden]) #b-revise'))) {
+    await clickUntil(p, '#b-check', () => p.waitForSelector('#panel:not([hidden]) #b-revise', { timeout: 20000 }));
+  }
+  // 窓は、プレビューの iframe の上に出る。押したものが iframe に行ってしまっても（tools/click-retry.mjs）、もう一度押す
+  await clickUntil(p, '#panel:not([hidden]) #b-revise', () => p.waitForSelector('#dlg[open] ' + sel, { timeout: 2500 }));
+}
+async function pasteReplace(p, text, { only = false } = {}) {
+  await openRevise(p);
   await p.evaluate(() => { document.getElementById('panel').hidden = true; });
-  // 一覧もそのあとの窓も、プレビューの iframe の上に出る。押したものが iframe に行ってしまっても（tools/click-retry.mjs）、もう一度押す
-  await clickUntil(p, '#b-openmenu', () => p.waitForSelector('#m-open', { state: 'visible', timeout: 2500 }));
-  await clickUntil(p, '#b-paste', () => p.waitForSelector('#dlg[open] #paste-text', { timeout: 2500 }));
   await p.fill('#paste-text', text);
-  // 窓も iframe の上にあるので、ラジオを押したものが iframe に行くと状態が変わらない（p.check は変わらなかったと言って落ちる）。入るまで押し直す
-  await clickUntil(p, '#paste-replace', () => p.waitForFunction(() => document.getElementById('paste-replace').checked, null, { timeout: 2500 }));
   const t0 = Date.now();
   await clickDlg(p, '#dlg-import');
+  // 囲みの中身だけ（片方）：持っておく知らせが出る →「これだけで取り込む」
+  if (only) { await p.waitForSelector('#dlg[open] #dlg-only'); await clickDlg(p, '#dlg-only'); }
   await p.waitForFunction(() => { const b = document.getElementById('panel-body'); return !document.getElementById('panel').hidden && b && (b.querySelector('.sum') || /did not answer/.test(b.textContent)); }, null, { timeout: 40000 });
   return { sum: await p.evaluate(() => { const s = document.querySelector('#panel-body .sum'); return s ? s.textContent : document.getElementById('panel-body').textContent; }), ms: Date.now() - t0 };
 }
@@ -246,7 +390,7 @@ const sectionOf = (deck, heading) => {
   return deck.match(new RegExp(`<section class="slide" id="${id}">[\\s\\S]*?</section>`))[0];
 };
 
-async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
+async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
   const ex = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8');
   const exN = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8');
   const reply = replyOf(bdeck, bnarr);
@@ -269,6 +413,13 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     const r2 = await pasteReplace(p, '```deck.html\n' + sectionOf(F, '拠点ごとの').replace('拠点ごとの 1 日の出荷', '拠点ごとの出荷') + '\n```\n');
     const h2 = await previewHeadings(p, '拠点ごとの出荷');
     ok(/^0 errors/.test(r2.sum) && h2 && h2.includes('拠点ごとの出荷') && h2.includes('導入から 3 か月の結果'), `llm replace (single file): a reply with one slide replaces just that slide and the quality check answers (${r2.ms} ms): ${r2.sum}`);
+    // 口述原稿だけの直し（囲みの中身だけ、id 付きの節 1 つ）→「これだけで取り込む」：その節だけが替わる
+    const N0 = await p.evaluate(() => new TextDecoder().decode(Uint8Array.from(atob(window.__APP_TEST.files()['narration.md']), (c) => c.charCodeAt(0))));
+    const sec = N0.match(/## 拠点ごとの[^\n]*\{#s-[a-z2-7]{6}\}\n[\s\S]*?(?=\n## |\s*$)/)[0];
+    const sec2 = sec.replace(/^\[0\] .*$/m, '[0] 拠点ごとの出荷を、直した口述原稿で読みます。');
+    const r3 = await pasteReplace(p, sec2, { only: true });
+    const N1 = await p.evaluate(() => new TextDecoder().decode(Uint8Array.from(atob(window.__APP_TEST.files()['narration.md']), (c) => c.charCodeAt(0))));
+    ok(/^0 errors/.test(r3.sum) && N1.includes('[0] 拠点ごとの出荷を、直した口述原稿で読みます。') && N1.replace(sec2, sec) === N0, `llm replace (single file): a narration-only fix pasted as one block and imported with “Import just this” replaces just that section: ${r3.sum}`);
     // 保存：置き換えた中身が 1 ファイルに入り、保存していない印が消える
     await p.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('replaced-' + Date.now() + '.ega.html', { create: true }); });
     const sv = p.evaluate(() => window.__APP_TEST.save('save'));
@@ -310,6 +461,93 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr }) {
     const note0 = await p.textContent('#panel-body .hint');
     ok(/^The browser quality checker \(size, length, missing narration, color contrast\)\.( |$)/.test(note0) && /“Copy fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
       'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
+
+    // ---------------------------------------------------------------- 5c. 修正…：① 直してほしいこと・開いているメモ（comments.json）が修正依頼に入る。直すことがなければそう言う
+    await openRevise(p, '#paste-wish');
+    ok((await p.textContent('#dlg-title')) === 'Revise: have a chat AI fix it' && /Paste the fix request you copy here/.test(await p.textContent('#ai-howto')) && !(await p.$('#dlg-body input[type=radio]')),
+      'llm revise: “Revise…” opens “Revise: have a chat AI fix it” with the explanation first and no mode choice');
+    await p.click('#paste-copy-guide');
+    await p.waitForFunction(() => /^Nothing to fix was found/.test(document.getElementById('paste-copied').textContent), null, { timeout: 20000 });
+    ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'paste-wish'), 'llm revise: with no findings, notes or wishes, it says there is nothing to fix and moves to step 1');
+    await clickDlg(p, '#dlg-cancel');
+    await p.evaluate(async () => {
+      const list = [{ id: 'c1', key: '', quote: '3 か月', comment: 'Use a bar chart here', status: 'open' }, { id: 'c2', key: '', quote: '', comment: 'Already done', status: 'resolved' }];
+      const w = await (await window.__rdir.getFileHandle('comments.json', { create: true })).createWritable(); await w.write(JSON.stringify(list)); await w.close();
+    });
+    await openRevise(p, '#paste-wish');
+    await p.fill('#paste-wish', 'Make the second slide shorter');
+    await p.click('#paste-copy-guide');
+    await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent), null, { timeout: 20000 });
+    const rev = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+    ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /1 note\(s\)/.test(await p.textContent('#paste-copied')),
+      'llm revise: the fix request has what to change, the open notes (not resolved ones) and the current files');
+    if (shotDir) await p.screenshot({ path: path.join(shotDir, 'revise.png') });
+    await clickDlg(p, '#dlg-cancel');
+
+    // ---------------------------------------------------------------- 5d. スライドの挿入…：スライド一覧で選んだスライドの後ろに、チャットの AI に書いてもらう
+    const D3 = await read('deck.html');
+    const ids3 = [...D3.matchAll(/<section class="slide[^"]*" id="(s-[a-z2-7]{6})"/g)].map((m) => m[1]);
+    const heads3 = [...D3.matchAll(/<section class="slide[^"]*" id="s-[a-z2-7]{6}">[\s\S]*?<h[12][^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    await clickUntil(p, '#b-slides', () => p.waitForSelector('#slides:not([hidden]) #sl-o-0', { timeout: 2500 }));
+    await p.click('#sl-o-0');
+    await clickUntil(p, '#sl-add', () => p.waitForSelector('#sl-add-menu:not([hidden])', { timeout: 2500 }));
+    ok((await p.textContent('#sl-add')) === 'Insert slide ▾' && (await p.textContent('#sl-add-tpl-h')) === 'From a template' && (await p.textContent('#sl-add-ai')) === 'Have a chat AI write it…' && await p.$('#sl-add-title-body'),
+      'llm insert: the slide list’s “Insert slide ▾” offers From a template (the slide templates) and Have a chat AI write it');
+    await p.click('#sl-add-ai');
+    await p.waitForSelector('#dlg[open] #paste-insert-n');
+    ok((await p.textContent('#dlg-title')) === 'Insert slide: have a chat AI write it' && (await p.textContent('#paste-insert-where')) === `Insert after slide 1, “${heads3[0]}”` && /Open a chat AI/.test(await p.textContent('#ai-howto'))
+      && !(await p.isChecked('#paste-with-pack')) && await p.isHidden('#paste-pack-parts') && !(await p.$('#dlg-body input[type=radio]')) && (await p.textContent('#dlg-import')) === 'Insert',
+      'llm insert: the dialog says where (after the selected slide 1), explains first, has no mode choice, and leaves the instructions out by default');
+    await p.fill('#paste-insert-n', '2');
+    await p.fill('#paste-insert-wish', 'one worked example');
+    await p.click('#paste-copy-guide');
+    await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+    const insReq = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+    const other = (i) => D3.match(new RegExp(`<section class="slide[^"]*" id="${ids3[i]}">[\\s\\S]*?</section>`))[0];
+    ok(insReq.startsWith('# Please add slides') && insReq.includes(`the next 2 slides, after slide 1, “${heads3[0]}”`) && insReq.includes('- What to add: one worked example') && heads3.every((h, i) => insReq.includes(`${i + 1}. ${h}`))
+      && insReq.includes(other(0)) && !insReq.includes(other(1)) && !insReq.includes(other(2)) && !insReq.includes('Instructions for the AI') && insReq.length < D3.length,
+      `llm insert: the request asks for the next 2 slides after slide 1 with only the heading list and that slide (not the whole deck; ${insReq.length} vs ${D3.length} characters)`);
+    await p.check('#paste-with-pack');
+    ok(await p.isVisible('#paste-pack-parts'), 'llm insert: ticking “Also include the instructions” shows the common body and series');
+    await p.click('#paste-copy-guide');
+    await p.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), insReq);
+    const insPack = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+    ok(insPack.startsWith('# Instructions for the AI') && insPack.endsWith(insReq) && !insPack.includes('# What I want'), 'llm insert: with the instructions, the pack comes first and the insert request replaces “What I want” at the end');
+    await p.uncheck('#paste-with-pack');
+    if (shotDir) await p.screenshot({ path: path.join(shotDir, 'insert-ai.png') });
+    // 返事：囲みを 1 つずつ（deck.html → narration.md）。id のないスライド 2 枚
+    const newDeck = '<section class="slide">\n  <h2>Worked example</h2>\n  <div class="body"><p>Step by step.</p></div>\n  <div class="concl"><span>Done.</span></div>\n</section>\n\n<section class="slide noconcl">\n  <h2>Try it</h2>\n  <div class="body"><p>Your turn.</p></div>\n</section>';
+    const newNarr = '## Worked example\n[0] Here is a worked example.\n[concl] That is all.\n\n## Try it\n[0] Now try it yourself.';
+    await p.fill('#paste-text', newDeck);
+    await clickDlg(p, '#dlg-import');
+    await p.waitForSelector('#dlg[open] #paste-state:not([hidden])');
+    ok(/^Got deck\.html \(2 slides; 1 of 2\)/.test(await p.textContent('#paste-state-text')) && await p.$('#dlg-only'), 'llm insert: the slides block pasted alone is kept (with “Import just this”)');
+    await p.fill('#paste-text', newNarr);
+    await p.evaluate(() => { document.getElementById('panel').hidden = true; });
+    await clickDlg(p, '#dlg-import');
+    await p.waitForFunction(() => { const b = document.getElementById('panel-body'); return !document.getElementById('panel').hidden && b && b.querySelector('.sum'); }, null, { timeout: 40000 });
+    const D4 = await read('deck.html'), N4 = await read('narration.md');
+    const ids4 = [...D4.matchAll(/<section class="slide[^"]*" id="(s-[a-z2-7]{6})"/g)].map((m) => m[1]);
+    ok(ids4.length === 5 && ids4[0] === ids3[0] && ids4[3] === ids3[1] && ids4[4] === ids3[2] && new Set(ids4).size === 5 && /<h2>Worked example<\/h2>/.test(D4.match(new RegExp(`id="${ids4[1]}">[\\s\\S]*?</section>`))[0]) && /<h2>Try it<\/h2>/.test(D4.match(new RegExp(`id="${ids4[2]}">[\\s\\S]*?</section>`))[0]),
+      `llm insert: the two new slides go right after slide 1, with new ids (${ids4.slice(1, 3).join(', ')})`);
+    const order = [...N4.matchAll(/^## .*\{#(s-[a-z2-7]{6})\}$/gm)].map((m) => m[1]);
+    ok(N4.includes(`## Worked example {#${ids4[1]}}\n[0] Here is a worked example.\n[concl] That is all.`) && N4.includes(`## Try it {#${ids4[2]}}\n[0] Now try it yourself.`) && order.join() === ids4.join(),
+      'llm insert: their narration sections get the same ids and sit in slide order; the quality check ran');
+    // 最後のスライドを選んで「スライドの挿入 ▾ → 雛形から」：最後の後ろ
+    await p.click('#sl-o-4');
+    await clickUntil(p, '#sl-add', () => p.waitForSelector('#sl-add-menu:not([hidden])', { timeout: 2500 }));
+    if (shotDir) await p.screenshot({ path: path.join(shotDir, 'insert-menu.png') });
+    await p.click('#sl-add-quote');
+    for (let t0 = Date.now(); Date.now() - t0 < 20000; await p.waitForTimeout(100)) if ((await read('deck.html')).match(/<section class="slide/g).length === 6) break;
+    const D5 = await read('deck.html');
+    const ids5 = [...D5.matchAll(/<section class="slide[^"]*" id="(s-[a-z2-7]{6})"/g)].map((m) => m[1]);
+    ok(ids5.length === 6 && ids5.slice(0, 5).join() === ids4.join() && !ids4.includes(ids5[5]), 'llm insert: from a template with the last slide selected, the new slide goes after the last one');
+    // 選んだスライドがない（一覧の外から。null）：最後のスライドの後ろ
+    await clickUntil(p, '#sl-close', () => p.waitForSelector('#slides[hidden]', { state: 'attached', timeout: 2500 }));
+    await p.evaluate(() => { window.__APP_TEST.insertAi(null); });
+    await p.waitForSelector('#dlg[open] #paste-insert-where');
+    ok(/^Insert after the last slide \(6, /.test(await p.textContent('#paste-insert-where')), 'llm insert: with no slide selected, the chat AI insert goes after the last slide: ' + await p.textContent('#paste-insert-where'));
+    await clickDlg(p, '#dlg-cancel');
     await p.close();
   }
 }

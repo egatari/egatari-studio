@@ -248,13 +248,33 @@ try {
     window.__parent = parent;
     window.showDirectoryPicker = async () => parent;
   });
+  // 新規作成…：白紙から・雛形から・チャットの AI に書いてもらう の 3 つ。雛形から（見本のスライド入り）
   await page.click('#w-new');
+  await page.waitForSelector('#dlg[open] #dlg-new-template');
+  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && (await page.textContent('#dlg-new-blank')) === '白紙から' && (await page.textContent('#dlg-new-template')) === '雛形から' && (await page.textContent('#dlg-new-ai')) === 'チャットの AI に書いてもらう…',
+    'new: 「新規作成…」 offers 白紙から, 雛形から and チャットの AI に書いてもらう');
+  await page.click('#dlg-new-template');
+  await page.waitForSelector('#newform:not([hidden])');
+  ok((await page.textContent('#n-head')) === '新規作成：雛形から', 'new: 雛形から opens the form for a deck with the sample slides');
   await page.fill('#n-title', 'テスト用のデッキ');
   await page.click('#n-go');
   await page.waitForFunction(() => window.__APP_TEST.state().open && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
   const made = await page.evaluate(async () => { const d = await window.__parent.getDirectoryHandle('テスト用のデッキ'); const out = []; for await (const k of d.keys()) out.push(k); return out.sort().join(','); });
   ok(made === 'deck.html,narration.md', 'new deck: created deck.html and narration.md in a new subfolder of a non-empty folder');
   ok(!(await page.evaluate(() => window.__APP_TEST.state().error)), 'new deck: the template builds without error');
+  await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+  // 白紙から（デッキを開いているときは「開く ▾ → 新規作成…」。最初の画面のフォームへ戻る）：表紙だけのデッキ
+  await page.click('#b-openmenu');
+  await page.click('#b-new');
+  await page.waitForSelector('#dlg[open] #dlg-new-blank');
+  await page.click('#dlg-new-blank');
+  await page.waitForSelector('#newform:not([hidden])');
+  ok((await page.textContent('#n-head')) === '新規作成：白紙から', 'new: 白紙から (from the Open menu with a deck open) goes back to the form');
+  await page.fill('#n-title', '白紙のデッキ');
+  await page.click('#n-go');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.loads > 0 && /白紙のデッキ/.test(document.getElementById('deckname').textContent); }, null, { timeout: 20000 });
+  const blankDeck = await page.evaluate(async () => (await (await (await window.__parent.getDirectoryHandle('白紙のデッキ')).getFileHandle('deck.html')).getFile()).text());
+  ok((blankDeck.match(/<section class="slide/g) || []).length === 1 && /<h1>白紙のデッキ<\/h1>/.test(blankDeck) && !(await page.evaluate(() => window.__APP_TEST.state().error)), 'new: 白紙から makes a deck with only the title slide, and it builds');
   await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
 
   // examples/minimal を OPFS に写して開く
@@ -1735,7 +1755,11 @@ try {
     await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
     await ps.goto(BASE);
     await ps.waitForSelector('#drop');
-    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「AI の出力を貼り付ける」') && await ps.isDisabled('#w-new') && !(await ps.isDisabled('#w-paste')), 'safari: the note says how to make a new lesson (Paste AI output); New deck is off, paste is on');
+    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「チャットの AI に書いてもらう」') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成… → チャットの AI に書いてもらう); 新規作成… stays on');
+    await ps.click('#w-new');
+    await ps.waitForSelector('#dlg[open] #dlg-new-ai');
+    ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')) && await ps.isVisible('#new-nofolder'), 'safari: 新規作成… offers only the chat AI (no working folders), and says why');
+    await ps.click('#dlg-cancel');
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
     await shot(ps, 'welcome-safari.png');
     await ps.close();

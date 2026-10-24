@@ -194,8 +194,23 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-series label{display:flex;gap:8px;align-items:center}
 #dlg .paste-series label .hint{flex-basis:auto;margin-left:auto}
 #dlg #paste-pack-size{flex-basis:auto}
-#dlg .paste-mode{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13.5px}
-#dlg .paste-mode label{display:flex;gap:8px;align-items:flex-start}
+#dlg .paste-step{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:6px}
+#dlg .paste-step h3{font-size:15px;margin:2px 0 6px}
+#dlg .paste-step > .hint{margin:0 0 6px}
+#dlg .paste-kind{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 6px;padding:4px 10px 6px;border:1px solid var(--line);border-radius:6px;font-size:13.5px}
+#dlg .paste-kind legend{padding:0 4px}
+#dlg .paste-kind label{display:flex;gap:6px;align-items:center}
+#dlg .paste-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 12px}
+#dlg .paste-fields[hidden]{display:none}
+#dlg .paste-fields .quote{grid-column:1/-1;margin:0;padding:4px 8px;border-left:3px solid var(--line)}
+#dlg .paste-field{display:flex;flex-direction:column;gap:2px;font-size:13px}
+#dlg .paste-field input,#dlg .paste-field textarea{font:inherit;font-size:13.5px;line-height:1.4;min-height:0;max-height:none;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-common{flex-basis:100%;display:flex;gap:8px;align-items:center;font-size:13.5px;padding:5px 10px;border-radius:6px;background:var(--line);font-weight:600}
+#dlg .paste-common input{accent-color:var(--fg)}
+#dlg .paste-state{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0 0 6px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);font-size:13.5px}
+#dlg .paste-state.waiting{background:var(--warn-bg);color:var(--warn-fg);border-color:transparent;font-weight:600}
+#dlg .paste-state[hidden],#dlg .paste-state button[hidden]{display:none}
+#dlg #paste-copied.bad{color:var(--bad-fg)}
 #panel-body .fixreq{width:100%;margin:2px 0 8px}
 /* 添付の板（app/attachments-panel.js） */
 #panel-body ul.attach-list{list-style:none;padding:0;margin:8px 0}
@@ -258,3 +273,16 @@ main{flex:1;min-height:0;display:flex}
 #rec-mode .rm-btn.on kbd{color:var(--fg)}
 #rec-mode .rm-btn.wait{opacity:.7;cursor:progress}
 @media (max-width:720px){ #rec-mode{position:fixed;inset:0;z-index:1001} #deck.rec-on #viewer{display:none} }
+/* 新規作成…・スライドの挿入…・修正…（app/main.js・app/llm.js） */
+#dlg .paste-howto{margin:0 0 6px;padding:8px 12px;border-radius:8px;background:var(--line);font-size:13.5px}
+#dlg .paste-where{margin:0 0 6px;font-weight:600}
+#dlg .paste-with-pack{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:0 0 6px}
+#dlg .paste-field.wide{grid-column:span 2}
+#dlg .paste-field input[type=number]{width:6em}
+#dlg dl.choices{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:6px 0;font-size:13.5px}
+#dlg dl.choices dt{font-weight:600}
+#dlg dl.choices dd{margin:0;color:var(--muted)}
+.menu-list .menu-head{padding:4px 10px 2px;font-size:12px;color:var(--muted)}
+.menu-list .menu-sep{border-top:1px solid var(--line);margin:4px 0}
+#panel-body .fixrow{display:flex;gap:6px;margin:2px 0 8px}
+#panel-body .fixrow .fixreq{flex:1 1 0;width:auto;margin:0}
