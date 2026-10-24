@@ -157,7 +157,7 @@ css.textContent =
   "font:600 14px/1 system-ui,-apple-system,'Segoe UI',sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}" +
   "#live-ask .lv-q{font-size:21px}#live-ask .lv-cf{padding:0 14px}" +
   "#live-ask button:hover{background:rgba(20,20,20,.85)}#live-ask button:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px;background:rgba(20,20,20,.85)}" +
-  "#live-ask .lv-cf[aria-pressed=true]{background:#c2410c}" +
+  "#live-ask .lv-cf[aria-pressed=true]{background:var(--emph, #BA3C05)}" +   // 押した「わからない」はデッキのテーマの結論の色（:root の --emph。字は白）
   "#live-mark.lv-new::after{content:'';width:8px;height:8px;border-radius:50%;background:#ffb02e;margin-left:2px}" +
   // 囲むところ：舞台の上に重ねる SVG（舞台の座標 1280 × 720）。囲んでいる間だけ指とマウスを受ける
   "#live-ink{position:fixed;z-index:36;pointer-events:none;overflow:visible}#live-ink[hidden]{display:none}" +
