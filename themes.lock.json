@@ -1,5 +1,14 @@
 {
   "themes": {
+    "business": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880"
+      }
+    },
     "default": {
       "current": "1.1.0",
       "versions": [
@@ -19,6 +28,15 @@
             { "token": "--muted", "from": "#6E6E6E", "to": "#5C5853" }
           ]
         }
+      }
+    },
+    "kokugo": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2"
       }
     }
   }

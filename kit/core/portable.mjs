@@ -15,7 +15,7 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
-import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
+import { readLock, vendorDir, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
 import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
@@ -620,6 +620,7 @@ export function folderConfig(index, text) {
 //                          ないとき（1 ファイルの保存・貼り付け・deck.html だけ）は書かず、carry に exportedFrom があればそのまま残す
 //                          （identity：新しい docId の教材として保存するときは外す。§3.1）
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
+//   legacyNoThemePins      1 ファイルの egatari.json に themes を書かない（v0.4.6 までの Studio が書いた 1 ファイルを作る。試験用）
 //   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
 //                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
@@ -856,14 +857,44 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }));
     }
   }
-  // 同じく、版を固定した同梱のテーマ（themes.lock.json。kit/core/themes-lock.mjs）の版（themes）も書く：展開したフォルダを組み直しても
-  // テーマの色が黙って変わらない（部品の components と同じ。作業フォルダの設定のファイルは変えない。themes があればそのまま）
-  if (!own(econf, 'themes') && r.stats.themeVersions) {
-    const usedT = {};
-    for (const name of regTheme.keys()) if (RE.registryName.test(name) && typeof r.stats.themeVersions[name] === 'string') usedT[name] = r.stats.themeVersions[name];
-    if (Object.keys(usedT).length) {
-      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { themes: Object.fromEntries(Object.keys(usedT).sort().map((k) => [k, usedT[k]])) }));
+  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source}。version はテーマ自身の版（§3.8。Studio の版ではない）：
+  //   同梱のテーマ（registry）は固定のファイル（themes.lock.json）の版（組み立てが使った版。stats.themeVersions。同梱のテーマはどれも固定のファイルにある：
+  //   npm run themes:check）。原稿のフォルダのテーマ・利用者のテーマ（embedded：1 ファイルの themes/<名前>/ に入る）は theme.json の version、
+  //   なければ "local"（§6。組み直しでは sha256 で見分ける）。sha256 は組み立てが読んだファイル（文書 README*・LICENSE*・*.md を除く）の行から
+  const themeHash = async (m) => { const lines = []; for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`); return sha256Hex(lines.join('')); };
+  const ownVersion = (m) => { try { const v = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).version : null; return typeof v === 'string' && VERSION_RE.test(v) ? v : null; } catch { return null; } };
+  const themes = [];
+  // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
+  for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
+    if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
+    const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || ownVersion(m) || 'local';
+    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry' });
+  }
+  {
+    // 原稿のフォルダの中のテーマのフォルダと、利用者のテーマのフォルダのテーマ（組み立てが使ったもの。r.stats.themeDirs）
+    const userRoots = Array.isArray(rec.themeDirs) ? rec.themeDirs : [];
+    const emb = [];
+    for (const d of Array.isArray(r.stats.themeDirs) ? r.stats.themeDirs : []) {
+      const dir = P.resolve(d);
+      if (dir === P.resolve(deckDir) || env.within(dir, themeDir) || env.within(dir, vThemeDir)) continue;
+      if (!inDeck(dir) && !userRoots.some((u) => env.within(dir, u))) continue;
+      const name = P.basename(dir);
+      if (regTheme.has(name) || emb.some((e) => e.name === name)) continue;
+      const m = new Map();
+      for (const p of [...reads].sort()) {
+        if (!env.within(p, dir)) continue;
+        const k = P.relative(dir, p).split(P.sep).join('/');
+        if (!excludedFromThemeHash(k)) m.set(k, readBytesVia(env, p));
+      }
+      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded' });
     }
+    themes.push(...emb.sort((a, b) => cmpCodePoint(a.name, b.name)));
+  }
+  // 1 ファイルの中の設定のファイルの themes（§3.8）：index.themes のどの項目もその版で、ちょうどそれだけを書く（親のテーマ extends も、"local" も）。
+  // 展開したフォルダを組み直してもテーマの色が黙って変わらない（部品の components と同じ。作業フォルダの設定のファイルは変えない）
+  if (themes.length && !opts.legacyNoThemePins) {
+    const pins = Object.fromEntries([...themes].sort((a, b) => cmpCodePoint(a.name, b.name)).map((t) => [t.name, t.version]));
+    if (!sameJson(econf.themes, pins)) files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { themes: pins }));
   }
 
   // 外したもの・パスの規則
@@ -964,16 +995,6 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       // version：部品庫（egatari/components）のリリースの版（format spec §6）
       components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(normalizeEol(regComp.get(name).files.get('index.js'))), source: 'registry' });
     }
-  }
-  const themes = [];
-  // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
-  for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
-    if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
-    const lines = [];
-    for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`);
-    // version：版を固定したテーマ（themes.lock.json）はその版（組み立てが使った版。stats.themeVersions）、ほかは Studio の版
-    const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || env.version || '0';
-    themes.push({ name, version: tv, sha256: await sha256Hex(lines.join('')), source: 'registry' });
   }
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める

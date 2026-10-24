@@ -85,7 +85,7 @@ function deckDir(name, themes, src = 'minimal') {
 // 前の Studio（v0.4.6 まで）が書いた 1 ファイルと同じもの：前の版のテーマで組み、egatari.json に themes を書かない
 const oldBuild = (env, src, o) => { const r = coreBuild(env, src, { ...o, themeVersions: { default: OLD } }); r.stats.themeVersions = {}; return r; };
 const oldSrc = deckDir('portable-old');
-const pold = await exportPortable(nodeEnv, oldSrc, { build: oldBuild, fromFolder: true });
+const pold = await exportPortable(nodeEnv, oldSrc, { build: oldBuild, fromFolder: true, legacyNoThemePins: true });
 const oldFile = path.join(work, 'old' + FORMAT.FILE_EXT);
 fs.writeFileSync(oldFile, pold.html);
 {
@@ -185,6 +185,45 @@ fs.writeFileSync(oldFile, pold.html);
     await unpack(pf, LD);
     ok(fs.readFileSync(path.join(LD, 'themes', 'local', 'LICENSE'), 'utf8') === docs.LICENSE && !fs.existsSync(path.join(LD, 'themes', 'local', 'README.md')) && themeDirSha(path.join(LD, 'themes', 'local')) === bareSha, 'docs (lesson-local theme): unpacking brings LICENSE back; the theme sha256 is unchanged');
   }
+}
+
+// ---------------------------------------------------------------- 6. どのテーマも自分の版を記録する（format spec §3.8・§6）
+// 同梱の kokugo・business は 1.0.0（themes.lock.json。バイトは変えない：前に記録した sha256 のまま）。版のない利用者のテーマは "local"。
+// 1 ファイルの egatari.json の themes は index.themes のどの項目もその版で、ちょうどそれだけ（親のテーマ extends も）
+{
+  const SHA_3CBD96A = { kokugo: 'b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2', business: '3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880' };
+  const pinsOf = (r) => JSON.parse(Buffer.from(r.files[FORMAT.CONFIG_FILE]).toString('utf8')).themes;
+  const exact = (r) => { const p = pinsOf(r) || {}; return Object.keys(p).length === r.index.themes.length && r.index.themes.every((t) => p[t.name] === t.version); };
+  for (const name of ['kokugo', 'business']) {
+    ok(LOCK.themes[name] && LOCK.themes[name].current === '1.0.0' && LOCK.themes[name].sha256['1.0.0'] === SHA_3CBD96A[name] && themeDirSha(path.join(ROOT, 'themes', name)) === SHA_3CBD96A[name], `${name}: 1.0.0 in themes.lock.json with the sha256 recorded before (themes/${name} unchanged)`);
+    const deck = deckDir('own-' + name);
+    const o = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), deck, '--portable', '--theme', name, '-o', path.join(work, `own-${name}${FORMAT.FILE_EXT}`)], { encoding: 'utf8' });
+    const r = await readPortable(fs.readFileSync(path.join(work, `own-${name}${FORMAT.FILE_EXT}`), 'utf8'));
+    const t = r.index.themes.find((x) => x.name === name), d = r.index.themes.find((x) => x.name === 'default');
+    ok(o.status === 0 && t && t.version === '1.0.0' && t.sha256 === SHA_3CBD96A[name] && d && d.version === NEW, `--portable --theme ${name}: index.themes records ${name} 1.0.0 (its own version, not Studio's) and its parent default ${NEW} ` + JSON.stringify(r.index.themes));
+    ok(exact(r) && pinsOf(r)[name] === '1.0.0' && pinsOf(r).default === NEW, `--portable --theme ${name}: egatari.json themes pins exactly the index.themes entries ` + JSON.stringify(pinsOf(r)));
+  }
+  // 版のない利用者のテーマ：version "local"、固定も "local"。展開して組み直すと、原稿のフォルダのテーマとして同じ sha256 で見分けられる
+  const UT = path.join(work, 'user-themes-local');
+  fs.mkdirSync(path.join(UT, 'nover'), { recursive: true });
+  fs.writeFileSync(path.join(UT, 'nover', 'theme.json'), '{"name": "nover", "extends": "default"}\n');
+  fs.writeFileSync(path.join(UT, 'nover', 'tokens.css'), ':root { --emph: #123456; }\n');
+  const deck = deckDir('own-local');
+  fs.writeFileSync(deck, fs.readFileSync(deck, 'utf8').replace(/data-theme="[^"]*"/, 'data-theme="nover"'));
+  const prev = process.env.EGATARI_THEMES;
+  process.env.EGATARI_THEMES = UT;
+  let r;
+  try { r = await exportPortable(nodeEnv, deck, {}); } finally { if (prev === undefined) delete process.env.EGATARI_THEMES; else process.env.EGATARI_THEMES = prev; }
+  const t = r.index.themes.find((x) => x.name === 'nover');
+  ok(t && t.version === 'local' && t.source === 'embedded' && t.sha256 === themeDirSha(path.join(UT, 'nover')) && !r.index.themes.some((x) => x.version === r.index.generator.version && x.version !== NEW), 'user theme without a version: index.themes records version "local" (not the Studio version), its sha256 over the files the build reads ' + JSON.stringify(r.index.themes));
+  ok(exact(r) && pinsOf(r).nover === 'local', 'user theme without a version: egatari.json pins "nover": "local" ' + JSON.stringify(pinsOf(r)));
+  const pf = path.join(work, 'own-local' + FORMAT.FILE_EXT);
+  fs.writeFileSync(pf, r.html);
+  const UD = path.join(work, 'own-local-unpacked');
+  await unpack(pf, UD);
+  const r2 = await exportPortable(nodeEnv, path.join(UD, 'deck.html'), {});
+  const t2 = r2.index.themes.find((x) => x.name === 'nover');
+  ok(t2 && t2.sha256 === t.sha256 && t2.version === 'local' && r2.index.sourceSha256 === r.index.sourceSha256 && exact(r2), 'user theme without a version: rebuilding the unpacked folder (no user theme folder) finds the theme by its sha256, the same entry and pin');
 }
 
 // ---------------------------------------------------------------- 4. 再生と編集アプリ

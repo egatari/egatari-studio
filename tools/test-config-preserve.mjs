@@ -110,7 +110,7 @@ ok(p3.index.sourceSha256 === p1.index.sourceSha256 && dec.decode(p3.files[CFG]) 
 // 前の 1 ファイル（egatari.json に themes がない。v0.4.6 までの Studio）の展開：固定を足しても、ほかの項目はバイトのまま
 {
   const noPins = (env, src, o) => { const x = coreBuild(env, src, o); x.stats.themeVersions = {}; return x; };
-  const old = await exportPortable(nodeEnv, deck('old-nopins'), { fromFolder: true, build: noPins });
+  const old = await exportPortable(nodeEnv, deck('old-nopins'), { fromFolder: true, build: noPins, legacyNoThemePins: true });
   ok(!('themes' in configObject(dec.decode(old.files[CFG]))), 'fixture: a single file whose egatari.json has no themes pin');
   const f = path.join(work, 'old-nopins' + FORMAT.FILE_EXT);
   fs.writeFileSync(f, old.html);
