@@ -24,7 +24,8 @@ import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY } from '../kit/core/llm-pack.mjs';
-import { freeSeriesOf } from '../kit/core/llm-pack-assemble.mjs';
+import { freeSeriesOf, partOf, planData } from '../kit/core/llm-pack-assemble.mjs';
+import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -56,13 +57,20 @@ ok('指示の大きさ：共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、全
 });
 ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all・[]・重ね・順）・知らない系列は失敗', () => {
   for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
+    // docs は有料のプランの指示の全体：共通の本体（すべての系列が入ったときの表）と頼みたいこと、系列ごとの部分。合わせると --plan paid と同じ
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
-    assert.equal(file.slice(i), buildPack({ series: [], lang }));
+    const paidCommon = commonBody(lang, [], SERIES, [], 'paid');
+    assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
+    assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
+    assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: every subject|無料のプラン：すべての分野) \| [\d.]+ KB \| 59 KB \|/.test(file), lang + ': the size table lists both plans');
+    const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
+    assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
+    for (const t of PAID_ONLY) assert.ok(file.includes('### `<' + t + '>`'), `${lang}: the docs describe ${t}`);
     assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
     assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
     for (const s of SERIES) {
       const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
-      assert.equal(doc, seriesPart(s, lang), `${lang} ${s}`);
+      assert.equal(doc, partOf(planData(PACK, 'paid'), s, lang, [], SERIES) + '\n', `${lang} ${s}`);
       // 共通の本体の表は、入っている系列の部品を指す（kit/core/llm-pack-assemble.mjs）
       assert.equal(buildPack({ series: [s], lang }), commonBody(lang, [], [s]) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
     }
@@ -216,18 +224,19 @@ ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混
   // 閉じていない囲みは今までどおり unclosed
   assert.equal(pastePart('```deck.html\n' + D).error.code, 'unclosed');
 });
-ok('頼みたいこと：指示の記入欄（A 6 項目・B 2 項目）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
+ok('頼みたいこと：指示の記入欄（A 6 項目・B 3 項目）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
   for (const lang of ['en', 'ja']) {
     const F = requestForm(lang);
-    assert.deepEqual(F.A.fields.map((f) => f.key), ['topic', 'audience', 'length', 'language', 'speakers', 'examples']);
-    assert.deepEqual(F.B.fields.map((f) => f.key), ['audience', 'length']);
+    assert.deepEqual(F.A.fields.map((f) => f.key), ['title', 'audience', 'length', 'language', 'speakers', 'wishes']);
+    assert.deepEqual(F.B.fields.map((f) => f.key), ['title', 'audience', 'length']);
+    assert.ok(/^(Title \(used as is on the cover\)|タイトル（表紙にそのまま使う）)$/.test(F.A.fields[0].label) && F.A.fields[0].label === F.B.fields[0].label, F.A.fields[0].label);
     assert.ok(F.A.fields.find((f) => f.key === 'speakers').value, 'speakers has a default');
     assert.ok(requestBody(lang).startsWith('# ' + F.title + '\n'));
     for (const s of [[], ['academic'], ['business', 'info']]) assert.equal(packWithRequest({ series: s, lang }), buildPack({ series: s, lang }), 'no request → the same pack');
-    const a = filledRequest({ kind: 'A', values: { topic: 'Binary search', audience: 'Year 11', examples: 'phone book\ndictionary', length: '' } }, lang);
+    const a = filledRequest({ kind: 'A', values: { title: 'Binary search', audience: 'Year 11', wishes: 'phone book\ndictionary', length: '' } }, lang);
     assert.ok(a.startsWith('# ' + F.title + '\n\n**' + F.A.head + '**') && a.includes('Binary search') && a.includes('Year 11') && !a.includes(F.B.head) && !a.includes(F.A.fields[2].label) && /phone book\n {2}dictionary/.test(a), a);
     const b = filledRequest({ kind: 'B', values: { length: '5' } }, lang);
-    assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[1].label) && !b.includes(F.A.head), b);
+    assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[2].label) && !b.includes(F.A.head), b);
     const pk = packWithRequest({ series: ['academic'], lang, request: a });
     assert.ok(pk.startsWith(commonBody(lang, [], ['academic'])) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
   }

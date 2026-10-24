@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
-import { generate, LIMITS } from './make-llm-guide.mjs';
+import { generate, LIMITS, overMessage, sizeReport } from './make-llm-guide.mjs';
 import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -210,7 +210,7 @@ const capOk = (choice, bytes) => {
   if (planOf(choice) === 'paid') return bytes <= PACK_CAP_KB.paid * 1024;
   return bytes <= PACK_CAP_KB.free.all * 1024 && (ss.length > 1 || bytes <= PACK_CAP_KB.free.one * 1024);
 };
-ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 58 KB for every subject set; paid (every series) ≤ PAID_PACK_KB', () => {
+ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 59 KB for every subject set; paid (every series) ≤ PAID_PACK_KB', () => {
   for (const lang of ['en', 'ja']) {
     for (let mask = 0; mask < 1 << SUBJECTS.length; mask++) {
       const choice = { plan: 'free', subjects: SUBJECTS.filter((_, i) => mask & (1 << i)).map((s) => s.id) };
@@ -255,6 +255,41 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
   const cut = packWithRequest({ series: [], lang: 'en', request: 'R', exclude: ['m-flow'], off: ['process'] });
   assert.ok(cut.includes('```deck.html\n<!DOCTYPE html>') && cut.includes('<h2>Two programs take part</h2>') && !cut.includes('From the address to the screen'));
   assert.ok(!/^\| steps of a process \|/m.test(cut), 'the row of a purpose turned off is not in the table');
+});
+ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes over and its three largest sections', () => {
+  const g = generate();
+  const r = sizeReport(g.sizes).find((x) => x.lang === 'ja' && x.what === 'free all subjects');
+  assert.equal(r.max, 59, 'free.all cap is 59 KB');
+  const m = overMessage({ ...r, max: 50 }, g.data);
+  const bytes = Buffer.byteLength(buildPack({ series: 'all', lang: 'ja' }));
+  assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, subjects academic\\+business\\+kokugo\\+info: ${bytes} B, ${bytes - 50 * 1024} B over 50 KB \\(51200 B\\)\\. Largest sections: `));
+  assert.equal((m.split('Largest sections: ')[1].match(/\(\d+ B\)/g) || []).length, 3, m);
+});
+ok('free packs name no part outside their own catalog: every subject set × en/ja, and the sweep over purposes turned off', () => {
+  let n = 0;
+  for (const lang of ['en', 'ja']) for (let mask = 0; mask < 1 << SUBJECTS.length; mask++) {
+    const series = seriesOfSubjects(SUBJECTS.filter((_, i) => mask & (1 << i)).map((s) => s.id));
+    const t = packWithRequest({ series, lang, plan: 'free' });
+    assert.deepEqual(notInCatalog(t), [], `${lang} free ${series.join('+') || '(none)'}`);
+    n++;
+  }
+  const ids = PURPOSES.list.map((p) => p.id);
+  const sets = [...ids.map((i) => [i])];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) sets.push([ids[i], ids[j]]);
+  sets.push(ids);
+  for (const off of sets) {
+    const ex = componentsOff(off, PURPOSES);
+    for (const lang of ['en', 'ja']) for (const choice of PLAN_CHOICES.filter((c) => c.plan === 'free')) {
+      const series = seriesForChoice(choice);
+      const req = choiceRequest({ ...choice, category: 'research', subcategory: 'conference', purposesOff: off }, PURPOSES, lang);
+      // 「使わない」の 1 行は、外した部品の名前を出してよい（AI に使わないと伝える）
+      const t = packWithRequest({ series, lang, request: '# R\n\n' + req, exclude: ex, off, plan: 'free' }).split('\n').filter((l) => !/^- (Purposes turned off|使わない言いたいこと)/.test(l)).join('\n');
+      assert.deepEqual(notInCatalog(t), [], `${lang} free ${series.join('+') || '(none)'} off ${off.join('+')}`);
+      n++;
+    }
+  }
+  assert.ok(n > 1000, n + ' packs');
+  assert.deepEqual(notInCatalog('| `<m-bars>` | x |\nuse m-flow here; --mm-h'), ['m-flow'], 'the check finds a part named outside the catalog');
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (core and packs) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);

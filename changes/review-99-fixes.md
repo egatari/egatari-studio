@@ -11,7 +11,7 @@
 - New…: the purpose tiles are always the 14 decided ones (parts-map §9). The manifest's purposes are mapped onto them: `ranking` goes into Compare, now labelled 比べる（量・特徴） / Compare (amounts, features); ids without a tile (`text-structure`, `parameter`, `grouping`, unknown ones) make no tile and are reported by `npm run gen`.
 - School lesson presentation adds 国語は縦書き、隠して音読 (parts-map §7).
 - `npm run new` writes a random `data-egatari-seed` (format spec §8.4).
-- One size target for the generated pack: `LIMITS.allTarget` (58 KB, `tools/make-llm-guide.mjs`), used by the test.
+- One size target for the generated pack: `LIMITS.allTarget` (59 KB, `tools/make-llm-guide.mjs`), used by the test.
 
 ### Changed (API)
 

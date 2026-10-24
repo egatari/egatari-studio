@@ -12,7 +12,9 @@ import { purposesTable } from './purposes.mjs';
 //   無料版：共通の本体＋選んだ分野。1 つの分野なら one まで（越えたら npm run gen が止まる）、どの組でも all まで（全部の分野を選んでも）
 //   有料版：すべての系列のパーツを入れた指示（'all'）。PAID_PACK_KB まで
 export const PAID_PACK_KB = 120;   // 有料版の上限（仮の値。変えるならここだけ）
-export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, all: 58 }), paid: PAID_PACK_KB });
+// free.all：59（2026-10-25 に 58 から）。58 は部品庫 v1.1.0 の全部の分野の大きさに余裕を足した値で、モデルの限りを測ったものではない。
+// 無料のチャットの限りは 1 つの分野の 40 KB のほう。無料版で 4 つの分野を全部選ぶのは端の場合で、規格化が B のデータが出てから両方の上限を見直す
+export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, all: 59 }), paid: PAID_PACK_KB });
 
 // 無料版で読み込む部品（plan 'free'。有料版はすべて）：
 //   FREE_CORE：共通の本体に説明まで入る共通の部品（部品庫 v1.1.0 の共通の部品）

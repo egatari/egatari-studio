@@ -11,7 +11,7 @@
 import { PACK } from './llm-pack-data.mjs';
 import { requestOf, packParts } from './llm-pack-assemble.mjs';
 
-const KEYS = { A: ['topic', 'audience', 'length', 'language', 'speakers', 'examples'], B: ['audience', 'length'] };
+const KEYS = { A: ['title', 'audience', 'length', 'language', 'speakers', 'wishes'], B: ['title', 'audience', 'length'] };
 
 export function requestForm(lang = 'en') {
   const lines = requestOf(PACK, lang).split('\n');
