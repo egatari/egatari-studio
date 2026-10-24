@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=0925ff84dfeb6669 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=0697a8b2a2e53b92 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -8,6 +8,8 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 ## Checklist
 
 1. **Release candidate.** First set `COLAB.ref` in `kit/core/colab-core.mjs` to the release tag `vX.Y.Z` (the Colab link of the editor and the notebook's clone use it), run `npm run gen` and commit. Then, on the `main` commit to release, tag and push a candidate:
+
+   **The spec snapshot.** Before tagging an rc, `vendor/egatari-spec` must equal the latest `wd-*` snapshot of egatari-spec (`vendor/egatari-spec/SOURCE.json` has `"snapshot": "wd-YYYY-MM-DD"`, and `node tools/spec-snapshot.mjs --check` prints `ok`). Sync with `node tools/sync-spec.mjs <spec clone> --ref wd-YYYY-MM-DD`. If the spec has changed since its latest snapshot, ask the spec maintainer to cut a new snapshot first.
 
    ```bash
    git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
@@ -48,7 +50,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **Release notes** from the CHANGELOG section, with the example files and the editor site attached. The editor site `editor-site-vX.Y.Z.tar.gz` is this release's `dist/`, built from the tag in a temporary git worktree; later deploys serve it at `/vX.Y.Z/` and check it against the sha256 line in the notes ([docs/editor.md](docs/editor.md#versions-frozen-copies)):
+7. **Release notes** from the CHANGELOG section. They name the snapshot: "Follows Egatari 1.0 Working Draft YYYY-MM-DD"; state any exception. Attach the example files and the editor site. The editor site `editor-site-vX.Y.Z.tar.gz` is this release's `dist/`, built from the tag in a temporary git worktree; later deploys serve it at `/vX.Y.Z/` and check it against the sha256 line in the notes ([docs/editor.md](docs/editor.md#versions-frozen-copies)):
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md

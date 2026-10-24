@@ -34,6 +34,8 @@ const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace
 const steps = [
   ...unit,
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
+  // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
+  ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
   // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
   // 部品庫の写し（vendor/components）が components.lock.json と合っているか（ネットワークなし）
