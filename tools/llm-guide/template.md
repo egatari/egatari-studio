@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=d1b005d22fd8329e -->
+<!-- i18n: pair=template.ja.md sha256=ff3a003d42ebb159 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -32,14 +32,15 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 **Before you start (the most common failures):**
 
-- **Both code blocks must be complete and closed.** If the reply may be long, make fewer slides (5–7 is plenty); never stop in the middle of a block (R-output).
+- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep the lesson short (5–8 slides). When the request gives an outline and a range of its slides, write exactly the slides of that range: the editor asks for at most 6 at a time, so they fit.
 - **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and components, is at least 24 px.**
 - **Charts and figures:** components draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the component, not the text. A component of 380 px leaves room for one short line; with two lines, use 330 px.
 - **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox="0 0 560 320" width="560" height="320">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a component when one fits.
 
 ## 1. Output format
 
-- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. Do not output files, a canvas or attachments: write both code blocks in the body of your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the deck would be too long, make fewer slides.
+- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. Do not output files, a canvas or attachments: write both code blocks in the body of your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the deck would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).
+- **R-outline** When the request asks for an **outline only** (a long lesson made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table with the columns `#`, heading and point (one line), one row per slide, every slide of the lesson in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
 - **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and narration headings without `{#…}`. The editor adds ids after import. When you are given a deck that already has ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
 
 ## 2. deck.html

@@ -10,6 +10,13 @@
 - Editor app, **New…** is the chat-AI way only, in five steps: subjects (parts; optional, none ticked), design (theme, by display name: Standard, Business, Kokugo, and user themes by their `theme.json` title or name; added to the request and given to a reply without one), what you want, copy, paste. The first screen is New… (with the 「…」 icon draft), Open, Recent files, Samples, a small “Make it with Claude Code or Cowork (advanced)” link and Work in a folder…; the table of file kinds moved to the help.
 - Editor app, wording: Export (エクスポート), File info (ファイルの情報), Template (テンプレート), Samples (サンプル), Subjects (parts) (分野（使うパーツ）), Script (台本).
 
+- Editor app, **New…** is a full-screen page (← Back and Esc leave it; the steps run top to bottom). Step 3 has a large **Content** field whose text goes into the request, with the size and a token estimate (UTF-8 bytes ÷ 3) against a 32k-token context and a soft note above about 80 %.
+- Editor app, long lessons (more than 8 slides) are made in two passes: an outline first (one ```outline block, parsed and stored in `egatari.json` as `studio.outline`), then 6 slides at a time through Insert slide's chat-AI path (“Ask for the next 6”, with the outline, the range and the previous slide; the notice shows how many are left).
+
+### Changed
+
+- Instructions for the AI: pack version `4cc280e2` → `6fa429af`: new **R-outline** (an outline-only reply in one ```outline block, and later ranges written exactly); “make fewer slides (5–7 is plenty)” is replaced by “keep it short (5–8) without an outline; for a range of an outline, write exactly those slides (at most 6 are asked at a time)”.
+
 ### Removed
 
 - Editor app: Blank and From a template in New… (slide templates stay in Insert slide…; `npm run new` makes a new working folder).

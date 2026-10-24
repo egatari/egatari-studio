@@ -29,6 +29,7 @@ import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
+import { testAppOutline } from './test-app-outline.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 import { EXAMPLES } from './examples-portable.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
@@ -1863,6 +1864,7 @@ try {
 
   // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
   await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
+  await testAppOutline({ browser, BASE, ok, watch, shotDir: SHOTS });
 
   // ---------------------------------------------------------------- 12c. スライド一覧：足す・複製・削除（元に戻す）・並べ替え（tools/test-app-slides.mjs）
   await testAppSlides({ browser, BASE, ok, watch, work, shotDir: SHOTS });

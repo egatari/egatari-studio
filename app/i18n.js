@@ -34,6 +34,7 @@ const ja = {
   infoTitle: 'ファイルの情報', infoLead: '題・ライセンス・作り手は、教材の設定のファイル（egatari.json の metadata）に書かれたものです', infoNone: 'まだ書かれていません',
   infoEditFolder: '今は、ここでは書き換えられません。作業フォルダの egatari.json の metadata を直すと反映されます', infoEditFile: '今は、ここでは書き換えられません', infoAttach: '添付',
   themeNames: { default: '標準', business: 'ビジネス', kokugo: '国語' },
+  outlineNotice: (left, n) => `構成案：残り ${left} 枚（全 ${n} 枚）。`, outlineNextBtn: (k) => `次の ${k} 枚を頼む`,
   // 形式（ファイルの version と仕様の写しの版）と、作った Studio
   infoFormat: (name, v, snap) => `形式：${name} ${v}${snap ? `（${snap}）` : ''}`,
   infoMadeWith: (v) => `作った Studio：${v}`, infoMadeUnknown: '作った Studio：記録なし', infoThisStudio: (v) => `この Studio：${v}`,
@@ -352,6 +353,7 @@ const en = {
   infoTitle: 'File info', infoLead: 'The title, license and creators are what the lesson’s settings file says (metadata in egatari.json)', infoNone: 'Not given yet',
   infoEditFolder: 'They cannot be changed here yet. Edit metadata in egatari.json in the working folder and it shows here', infoEditFile: 'They cannot be changed here yet', infoAttach: 'Attachments',
   themeNames: { default: 'Standard', business: 'Business', kokugo: 'Kokugo' },
+  outlineNotice: (left, n) => `Outline: ${left} slides left (of ${n}).`, outlineNextBtn: (k) => `Ask for the next ${k}`,
   infoFormat: (name, v, snap) => `Format: ${name} ${v}${snap ? ` (${snap.replace(/^WD\b/, 'Working Draft').replace(/^CR\b/, 'Candidate Recommendation')})` : ''}`,
   infoMadeWith: (v) => `Made with Studio ${v}`, infoMadeUnknown: 'Made with Studio: not recorded', infoThisStudio: (v) => `This Studio: ${v}`,
   infoPlayer: 'Playback uses the player inside the file. Edit with the latest Studio.',

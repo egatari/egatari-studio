@@ -35,6 +35,7 @@ import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { TEMPLATES } from '../kit/core/slide-ops.mjs';
+import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
@@ -306,6 +307,12 @@ function showNotice() {
       reps.length === 1 && S.ws && !(S.portable && S.portable.readOnly) ? [el('button', { type: 'button', id: 'b-yanked-rebuild', cls: 'pri', text: T.yankedRebuild(reps[0]), onclick: () => rebuildYanked(reps[0]) })] : []));
   }
   if (S.yankedDone) n.append(el('p', { id: 'notice-yanked-done', text: S.yankedDone }));
+  const ol = S.outline && S.ws ? outlineLeft(S.outline) : 0;
+  if (ol > 0) {
+    const b = outlineNext(S.outline);
+    n.append(el('p', { id: 'notice-outline', text: T.outlineNotice(ol, S.outline.rows.length) + ' ' },
+      [el('button', { type: 'button', id: 'b-outline-next', cls: 'pri', text: T.outlineNextBtn(b.size), onclick: () => llm.nextBatch() })]));
+  }
   // 見つからないテーマ（組み立ての知らせ）：テーマのフォルダを選ぶ・前に選んだものを読む許可を求める
   const missing = missingThemes(S.warn);
   if (missing.length && S.ws) n.append(el('p', { id: 'notice-theme', text: T.themeMissing(missing, TF.handle ? TF.state : 'none', TF.handle ? TF.handle.name : '') + ' ' }, themeButtons()));
@@ -402,6 +409,9 @@ async function rebuild(reason) {
         const stale = await staleSteps(S.ws).catch(() => []);
         if (S.ws !== ws0 || S.gen !== g0) continue;
         S.stale = stale;
+        // 構成案（egatari.json の studio.outline。長い教材を 6 枚ずつ作る途中）：残りがあれば知らせに「次の 6 枚を頼む」
+        try { S.outline = outlineOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { S.outline = null; }
+        if (S.ws !== ws0 || S.gen !== g0) continue;
         for (const k of stale) S.warn.push(T.staleStep(k));
         const changed = r.html !== S.base;
         S.base = r.html; S.baseAudio = r.previewAudio || [];
