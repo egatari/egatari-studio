@@ -22,6 +22,23 @@ export const COLAB_VERIFIED = Object.freeze({
   ja: '確認済み：2026-10-23、CPU（講習で、Irodori）。GPU：2026-10-24 に Colab の T4 で、固定した版（cuda13 の組）で確認した（23 ステップを 42 秒）。Kokoro：2026-10-24 に T4 で cuda13 の組で確認した（59 ステップを 30 秒）',
   en: "Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s).",
 });
+// Colab での手順（音声の板の「クラウドで作る」の C2 と、ノートブックの最初のセルに同じ文を出す。1 か所だけに書く）。
+// handoff/audio-flow-2026-10-25.md §4 の cloud.c2Steps・§7。時間の目安は T4 のものだけ（CPU の数は実測してから足す）
+export const COLAB_STEPS = Object.freeze({
+  ja: Object.freeze([
+    '右上の「接続」を押す（T4 GPU につなぎます）。つながらないと知らせが出たら、メニューの「ランタイム」→「ランタイムのタイプを変更」で「CPU」を選んでから、もう一度「接続」（CPU でも作れますが、時間がかかります）',
+    '「ランタイム」→「すべてのセルを実行」',
+    'ファイルを選ぶ画面が出たら、書き出したファイルを選ぶ',
+    '終わると音声の ZIP ファイルがダウンロードされます',
+  ]),
+  en: Object.freeze([
+    'Press “Connect” at the top right (it connects to a T4 GPU). If it says it cannot connect, choose Runtime → Change runtime type → “CPU” and press “Connect” again (CPU works too, only slower)',
+    'Runtime → Run all',
+    'When asked to choose a file, choose the file you exported',
+    'When it finishes, a ZIP file of the audio is downloaded',
+  ]),
+});
+export const COLAB_TIME = Object.freeze({ ja: 'T4 で 10 ステップ 20 秒ほど。Google のアカウントが要ります', en: 'About 20 s for 10 steps on a T4. You need a Google account' });
 export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-verified --> を付けた行にする
 
 export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v: 1 });

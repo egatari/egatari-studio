@@ -1,6 +1,6 @@
-// ブラウザの TTS（音声の板 app/audio-panel.js の「TTS で作り直す」）。
+// ブラウザの TTS（音声の板 app/audio-panel.js の「AI 音声をこの PC で作る」「この PC で作り直す」）。info().ok が false なら、板は「この PC」を出さない。
 //   const tts = createTtsClient({lang, test, confirm})
-//   tts.info(deckLang) → {ok, reason, hint?, label}    使えるか・何を使うか（モデルの取得の大きさ）。hint：使えないときに板に出す案内（録音を先に）
+//   tts.info(deckLang) → {ok, reason, hint?, label}    使えるか・何を使うか（モデルの取得の大きさ）。hint：使えないときの案内（今の音声の板は出さない。「この PC」の答えを出さないだけ）
 //   tts.synth({lang, text, role, voices, onProgress(f, label)}) → {pcm: Float32Array, sr, recipe: {engine, model, voice, seed}}
 //
 // 合成は別の窓（lab/tts-helper.html。編集アプリと同じサイトのページ）で動かす：編集アプリのページは外へ繋がらない決まり（CSP の

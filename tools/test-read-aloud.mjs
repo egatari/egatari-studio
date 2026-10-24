@@ -353,7 +353,7 @@ try {
     await page.click('#b-audio');
     await page.waitForSelector('#dev-audio #dev-audio-read');
     const rb = await page.evaluate(() => document.getElementById('dev-audio-read').textContent);
-    ok(rb === '読み上げで聞く（音声ファイルにはなりません）', 'editor: the audio panel has 「読み上げで聞く（音声ファイルにはなりません）」');
+    ok(rb === '読み上げで聞く' && (await page.getAttribute('#dev-audio-read', 'title')) === 'この端末の声で読みます。音声ファイルにはなりません', 'editor: the audio panel has 「読み上げで聞く」 and says no audio file is made');
     await page.evaluate(() => { window.__ra.spoken = []; });
     await page.click('#dev-audio-read');
     await page.waitForFunction(() => window.__ra.spoken.length > 0);

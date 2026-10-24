@@ -263,6 +263,7 @@ function showDeck(label, title) {
   // スライド一覧：前に開いていたら（この画面の覚え。localStorage）開く。キーボードの位置はプレビューのまま
   if (slidesPanel.wantOpen() && !slidesPanel.isOpen()) slidesPanel.toggle(true, false);
 }
+let afterNameChange = null;   // 音声の板の A の 1 行（1 ファイルの未保存）を描き直す（音声の板を作った後に入れる）
 function updateName() {
   const dirty = S.portable && S.ws && S.ws.dirty;
   $('deckname').textContent = (dirty ? '● ' : '') + (S.label || '');
@@ -270,6 +271,7 @@ function updateName() {
   // 保存していない変更：「ファイル ▾」のボタンに印（保存は一覧の中にある）
   $('b-filemenu').classList.toggle('dirty', !!dirty);
   updateSaveLoc();
+  if (afterNameChange) afterNameChange();
 }
 // 今どこに保存されているか（#46）：作業フォルダ（その場で書く。保存のボタンはなく、配るときは書き出す）・1 ファイル（上書き / ダウンロード）・
 // 保存していない変更・まだファイルにしていない（メモリの上だけ）
@@ -453,7 +455,7 @@ async function rebuild(reason) {
           S.warn.push(...(S.portable.saveWarnings || []));
           updateName();
         }
-        // 音声が古い段階（フォルダも。音声の板で録り直すか TTS で作り直す）
+        // 音声の更新が必要なステップ（フォルダも。音声の板の「音声を更新」で作り直すか録り直す）
         const stale = await staleSteps(S.ws).catch(() => []);
         if (S.ws !== ws0 || S.gen !== g0) continue;
         S.stale = stale;
@@ -780,7 +782,7 @@ const audio = createAudioPanel({
   deckLang: () => (S.base && /<html[^>]*\slang="([^"]*)"/.exec(S.base)?.[1]) || (EN ? 'en' : 'ja'),
   beforeOpen: () => beforeEditing('audio'),
   beforeTts: (keys) => leftoverGate('tts', keys),   // 雛形の仮の行（✎）のままの段階を、TTS の前に見せる
-  // 音声の板の「● 録音 (r)」：その段階で録音モードを開く（録り方は録音モードだけ。#82。ツールバーには置かない：1 行に収まらなくなる）
+  // 音声の板の「● 録音 (r)」「録音モードを開く (r)」：そのステップで録音モードを開く（録り方は録音モードだけ。#82。ツールバーには置かない：1 行に収まらなくなる）
   recMode: { title: T.recTip, open: (opts) => rec.open(opts).then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
     if (!S.portable) return null;
@@ -790,13 +792,16 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
-  // Colab で音声を作る（WebGPU のない PC）：原稿の文が Google の環境で処理されるので、書き出す前に 1 度確かめる
+  // 1 ファイルの「保存」（A のボタン）と、前に使ったやり方を覚える設定のファイル（egatari.json の studio.audioMethod）
+  save: () => savePortable('save'), configFile: FORMAT.CONFIG_FILE,
+  // クラウドで作る（Google Colab）：台本の文が Google の環境で処理されるので、このブラウザで初めて書き出す前に 1 度だけ確かめる
   colab: {
     t: T.colab, version: RES.version,
     docId: colabDocId, title: colabTitle,
-    confirm: async (title, body, go) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
+    confirm: async (title, body, go, cancel) => (await ask({ title, body: [el('p', { id: 'colab-privacy', text: body })], buttons: [{ id: 'cancel', label: cancel || T.cancel }, { id: 'ok', label: go, pri: true }] })) === 'ok',
   },
 });
+afterNameChange = () => audio.dirtyChanged();
 // 録音モード（app/rec-mode.js）：キーボードだけで段階ごとに録る。信頼する編集の画面の中の幅広い板（プレビューは横に細くして、その段階の舞台を見せる）。
 // 音声の板（audio）の peek / commit / revert を通すので、書き方（audio/manifest.json・権利の確認・前に戻す）は音声の板と同じ
 const rec = createRecMode({

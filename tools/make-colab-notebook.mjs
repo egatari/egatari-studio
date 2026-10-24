@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COLAB, COLAB_VERIFIED, colabUrl } from '../kit/core/colab-core.mjs';
+import { COLAB, COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME, colabUrl } from '../kit/core/colab-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'colab', 'egatari-tts.ipynb');
@@ -58,14 +58,23 @@ export function notebook() {
     md([
       '# Egatari Studio: make the audio in Colab / Colab で音声を作る',
       '',
+      // 手順（音声の板の C2 と同じ文。kit/core/colab-core.mjs の COLAB_STEPS）
+      '**English — steps.** In the editor, open Audio → “Make AI audio in the cloud (Google Colab)” → “Export the script”, then:',
+      '',
+      ...COLAB_STEPS.en.map((x, i) => `${i + 1}. ${x}`),
+      '',
+      `Then, in the editor, use “Import the audio…” and choose the ZIP file. ${COLAB_TIME.en}. Japanese uses Irodori-TTS 500M-v3 (ONNX), other languages use Kokoro-82M.`,
+      '',
+      '**Privacy.** The script text in `tts-job.json` is processed in Google’s Colab environment, and the model files come from Hugging Face. Nothing else from your lesson is sent. Use it only for text you are allowed to share.',
+      '',
+      '**日本語 — 手順.** エディタの「音声」→「AI 音声をクラウドで作る（Google Colab）」→「台本を書き出す」の後に：',
+      '',
+      ...COLAB_STEPS.ja.map((x, i) => `${i + 1}. ${x}`),
+      '',
+      `そのあと、エディタの「できた音声を取り込む…」で ZIP ファイルを選びます。${COLAB_TIME.ja}。日本語は Irodori-TTS 500M-v3（ONNX）、ほかの言語は Kokoro-82M です。`,
+      '',
       ...(COLAB_VERIFIED ? [`> **${COLAB_VERIFIED.en}**`, `> **${COLAB_VERIFIED.ja}**`, ''] : []),
-      '**English.** Use this notebook when your computer has no WebGPU (many school PCs, Safari, iPad). In the editor, press “Audio → Make the audio in Colab → ① Export the steps”, run all the cells below, upload `tts-job.json` when asked, then import the zip it returns with “② Import the zip…”. Japanese uses Irodori-TTS 500M-v3 (ONNX), other languages use Kokoro-82M. A T4 GPU is faster; without one it falls back to the CPU (slow).',
-      '',
-      '**Privacy.** The narration text in `tts-job.json` is processed in Google’s Colab environment, and the model files come from Hugging Face. Nothing else from your lesson is sent. Use it only for text you are allowed to share.',
-      '',
-      '**日本語.** WebGPU のない PC（多くの学校 PC・Safari・iPad）で、音声を作るためのノートブックです。エディタの「音声 → Colab で音声を作る → ① 必要な段階を書き出す」で出した `tts-job.json` を、下のセルを上から順に実行して聞かれたときにアップロードし、返ってくる zip を「② できた zip を取り込む…」で取り込みます。日本語は Irodori-TTS 500M-v3（ONNX）、ほかの言語は Kokoro-82M です。T4 の GPU があると速く、なければ CPU になります（遅い）。',
-      '',
-      '**プライバシー.** `tts-job.json` の原稿の文は、Google の Colab の環境で処理され、モデルは Hugging Face から取得します。教材のほかのものは送られません。共有してよい文だけに使ってください。',
+      '**プライバシー.** `tts-job.json` の台本の文は、Google の Colab の環境で処理され、モデルは Hugging Face から取得します。教材のほかのものは送られません。共有してよい文だけに使ってください。',
     ].join('\n')),
     md('## 1. Set up / 準備'),
     code([

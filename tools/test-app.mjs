@@ -1980,10 +1980,10 @@ try {
   let ready = false;
   for (let i = 0; i < 100 && !ready; i++) { const fr = p1.frames().find((x) => x.parentFrame() === p1.mainFrame()); try { ready = !!(fr && await fr.evaluate(() => window.DECK && DECK.ready)); } catch { /* 読み込み中 */ } if (!ready) await p1.waitForTimeout(100); }
   ok(ready, 'single file: preview renders from file:// (fonts embedded)');
-  // 音声の板：1 ファイル版では TTS の窓がないので、ボタンは押せず、録音を先に勧めて配信版を案内する
+  // 音声の板：1 ファイル版（file://）では TTS の窓がないので「この PC で作る」は出さず、クラウドと録音を答えにする
   await p1.click('#b-audio');
-  await p1.waitForSelector('#dev-audio-ttsinfo');
-  ok(await p1.evaluate(() => document.getElementById('dev-audio-tts').disabled && /1 ファイル版のエディタ（file:\/\/）では使えません/.test(document.getElementById('dev-audio-ttsinfo').textContent) && /録音/.test(document.getElementById('dev-audio-ttsinfo').textContent)), 'single file: the Audio panel says TTS is not available on file:// and suggests recording');
+  await p1.waitForSelector('#dev-audio-how');
+  ok(await p1.evaluate(() => !document.getElementById('dev-audio-tts') && !document.getElementById('dev-audio-how-local') && !!document.getElementById('dev-audio-how-cloud') && !!document.getElementById('dev-audio-how-rec') && !!document.getElementById('dev-audio-rec')), 'single file: the Audio panel offers the cloud and recording (no この PC on file://)');
   await p1.click('#dev-audio .dv-ghost');
   // 持ち運べる 1 ファイル：file:// でも Worker で読める。ファイルを選ぶ画面がなければ「保存」はダウンロード
   await p1.evaluate(() => { window.showSaveFilePicker = undefined; });

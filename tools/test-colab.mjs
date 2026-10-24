@@ -12,7 +12,7 @@ import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serve } from '../colab/worker-protocol.mjs';
 import { readZip, writeZip, ZipError } from '../kit/core/zip-read.mjs';
-import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, colabUrl } from '../kit/core/colab-core.mjs';
+import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, COLAB_STEPS, COLAB_TIME, colabUrl } from '../kit/core/colab-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { integratedLoudness, encodeWav, PROCESSING, takeEntry } from '../kit/core/audio-core.mjs';
@@ -124,8 +124,9 @@ ok('import: the refusal for another lesson carries the source lesson title (from
   const old = await readColabZip(await colabZip(plain)), ro = (await planImport({ zip: old, segs, docId: 'doc-2', yomi })).reject;
   assert.equal(ro.code, 'doc-id'); assert.equal(ro.title, null);
   const src = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
-  assert.ok(src.includes("'この音声は、別の教材' + (t ? '「' + t + '」' : '') + 'のために作ったものなので、取り込みませんでした。台本を書き出した教材を開いてから、もう一度取り込んでください'"), 'ja message');
-  assert.ok(src.includes("'This audio was made for another lesson' + (t ? ', “' + t + '”' : '') + ', so it was not imported. Open the lesson you exported the script from, then import it again.'"), 'en message');
+  // 音声の板の言葉（handoff/audio-flow-2026-10-25.md の cloud.wrong）に、分かれば元の教材の題を添える
+  assert.ok(src.includes("wrong: 'この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください', wrongOf: (t) => `（「${t}」の台本から作った ZIP ファイルです）`"), 'ja message');
+  assert.ok(src.includes("wrong: 'This ZIP file has no audio for this lesson. Choose the ZIP file made from the script exported from this lesson', wrongOf: (t) => ` (it was made from the script of “${t}”)`"), 'en message');
   assert.ok(!/docId が違う|the docId differs/.test(src), 'no docId jargon in the messages');
 });
 ok('import: records that do not hold up are skipped one by one (path, cues count, hash, missing audio, kind) and never reach the files', async () => {
@@ -170,6 +171,18 @@ ok('notebook: colab/egatari-tts.ipynb is what tools/make-colab-notebook.mjs make
   assert.ok(colabUrl('v0.5.0').endsWith('/blob/v0.5.0/colab/egatari-tts.ipynb'));
   const text = nb.cells.map((c) => c.source.join('')).join('\n');
   assert.ok(/Google/.test(text) && /プライバシー/.test(text), 'the privacy note is in the notebook (en and ja)');
+});
+ok('notebook header: the same steps as the editor’s C2 (connect → CPU when T4 cannot connect → run all → choose the file → ZIP), ja and en, before the first code cell; only the T4 timing', () => {
+  const nb = JSON.parse(notebook()), first = nb.cells[0].source.join('');
+  assert.equal(nb.cells[0].cell_type, 'markdown');
+  for (const l of ['ja', 'en']) {
+    COLAB_STEPS[l].forEach((x, i) => assert.ok(first.includes(`${i + 1}. ${x}`), `${l} step ${i + 1}`));
+    assert.ok(first.includes(COLAB_TIME[l]), `${l} timing`);
+  }
+  assert.ok(first.indexOf(`1. ${COLAB_STEPS.en[0]}`) < first.indexOf(COLAB_VERIFIED.en), 'the steps come before the verified note');
+  assert.ok(/「接続」/.test(COLAB_STEPS.ja[0]) && /ランタイムのタイプを変更/.test(COLAB_STEPS.ja[0]) && /「CPU」/.test(COLAB_STEPS.ja[0]) && /すべてのセルを実行/.test(COLAB_STEPS.ja[1]), 'Colab’s Japanese menu names');
+  assert.ok(!COLAB_STEPS.ja.concat(COLAB_STEPS.en).some((x) => /\d+\s*(秒|分|s\b|min)/.test(x)) && /T4/.test(COLAB_TIME.ja) && !/CPU/.test(COLAB_TIME.ja + COLAB_TIME.en), 'no CPU timing');
+  assert.equal(nb.metadata.colab.gpuType, 'T4');
 });
 ok('verified note: kept in one constant (kit/core/colab-core.mjs); the notebook, the docs and the editor help carry it, and it says what was not verified', () => {
   const nb = JSON.parse(notebook()), first = nb.cells[0].source.join('');
