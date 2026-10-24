@@ -7,7 +7,7 @@
 //   必ず入るので、どちらの形でも教材と一緒に動く（別のファイル（outline.md など）は組み立てが読まないので 1 ファイルに入らない）。
 //   形式の決まった項目と混ざらないよう、Studio の項目は studio の下にまとめる。次に頼む番号（next）も一緒に書く
 //
-//   slideCountOf(text) → 枚数 | null       「12 枚」「12 slides」「スライド 12」（「10 分」は数えない）
+//   slideCountOf(text) → 枚数 | null       「12 枚」「12 slides」「スライド 12」、「20 分」「20 minutes」（1 分 ≒ 1 枚）
 //   outlineRequest({n, lang}) → 文字列     頼みたいことの後ろに付ける「構成案だけを返す」の節
 //   parseOutline(text) → {rows: [{heading, point}]} | {error: {code, line?}}
 //     code：'no-outline'（```outline の囲みがない）・'unclosed'（閉じていない）・'no-table'（表の行がない）・'empty-heading'（見出しのない行。line）・
@@ -26,7 +26,8 @@ export const OUTLINE_MAX = 60;
 
 export function slideCountOf(text) {
   const t = String(text || '');
-  const m = t.match(/(\d{1,3})\s*(?:枚|slides?\b)/i) || t.match(/(?:スライド|slides?)\s*(\d{1,3})\b/i);
+  // 分で書いた長さも数える（1 分 ≒ 1 枚。2 回に分けて頼むかの判断だけに使う）
+  const m = t.match(/(\d{1,3})\s*(?:枚|slides?\b)/i) || t.match(/(?:スライド|slides?)\s*(\d{1,3})\b/i) || t.match(/(\d{1,3})\s*(?:分|min(?:ute)?s?\b)/i);
   const n = m ? +m[1] : NaN;
   return Number.isInteger(n) && n > 0 ? n : null;
 }

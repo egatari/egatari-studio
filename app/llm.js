@@ -1,26 +1,28 @@
-// チャットの AI との行き来（docs/authoring-with-llms.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す（名前に「AI で…」を付けない）：
-//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 場面（大分類・小分類。kit/core/new-deck.mjs）→ ② お使いの AI（無料版・有料版。既定は無料版）、
-//     無料版なら分野（使うパーツの組。既定はなし。ビジネスの大分類ならビジネス。有料版はすべての系列を入れるので出さない）、
-//     折りたたみ（既定で閉じる）の中に素材（いつも使える）と言いたいこと（14 の札。既定で全部入り、外したものは AI に使わせない。kit/core/purposes.mjs）→ ③ デザイン（テーマ。返事の教材にも付ける）→
-//     ④ 頼みたいことを書く（kit/core/llm-request.mjs。場面の構成の型と外した言いたいことも足す）→ ⑤ 共通の本体と、選んだ系列
-//     （既定はデッキを開いていればその部品・テーマから推したもの、開いていなければなし）と ① を組み立てて写す（kit/core/llm-pack.mjs）→
-//     ③ AI の返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を
-//     取り出し、スライドに id を付け（kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして
-//     （app/build-worker.js の exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//     開くときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、選んだもの（お使いの AI・場面・分野・外した言いたいこと）を
-//     egatari.json の studio.newDeck に残す。「修正…」で入れ替える原稿がシード値を失っても、前のシード値に戻す（keepSeed）
-//   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'。backlog #93）：① 足すスライド（枚数・足したいこと）→ ② 短い頼む文
-//     （見出しの一覧と足す場所の前のスライドだけ。kit/core/llm-insert.mjs。新しいチャットなら指示も付けられる）→ ③ 返事のスライドを、選んだスライドの
-//     後ろ（選んでいなければ最後）に入れ、スライド一覧の「足す」と同じに id を付ける（app/slides-panel.js の apply：控え・元に戻す・組み直し・品質チェック）
+// チャットの AI との行き来（docs/authoring-with-llms.md。画面の流れと言葉は handoff/new-deck-flow-2026-10-25.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す：
+//   「新規作成…」（mode 'new'）：答えると考えが 1 つ進む問いを、考える順に並べる。答えた問いは 1 行にたたみ（［変更］で開き直す）、次の問いを開く
+//     ① どんな場面で使いますか（大分類・小分類。どちらも答える。あてはまらなければ「その他」「この中にない」。kit/core/new-deck.mjs）→
+//     ② 何について、だれに向けて作りますか（タイトルは必須。だれ向け・長さ・内容は「AI に任せる」か書く。詳しく：言語・話す人・そのほかの希望。
+//        「チャットの AI と、もう内容を話し合ってある」の切り替えで、タイトルのほかを隠す。kit/core/llm-request.mjs の記入欄）→
+//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（無料のプランか有料のプランか → 無料なら内容の分野（② から推した印）→
+//        折りたたみ「AI に使わせない図」（kit/core/purposes.mjs）→［指示をコピー］。kit/core/llm-pack.mjs）→
+//     ⑤ AI の出力を貼り付けます：欄 2 つ（スライド＝deck.html・台本＝narration.md。どちらに出力の全体を貼っても分け、違う欄に貼ったものは移す。kit/core/llm-import.mjs の pastePart）→
+//        ［作成］：スライドに id を付け（kit/core/slide-ids.mjs）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして（app/build-worker.js の exportHtml）、
+//        ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
+//        作るときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、写したときの選び方（プラン・場面・分野・使わない図）を
+//        egatari.json の studio.newDeck に残す（「その他」「この中にない」は subcategory: null）。「修正…」で入れ替える原稿がシード値を失っても、前のシード値に戻す（keepSeed）。
+//        長さが 9 枚から（分は 1 分 ≒ 1 枚）は 2 回に分けて頼む：⑤ がはじめに構成案の欄になり、受け取ったら 1〜6 枚目を頼む指示と 2 つの欄（kit/core/llm-outline.mjs）
+//   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'）：① 足すスライド → ② 短い指示（見出しの一覧と挿入する場所の前のスライドだけ。
+//     kit/core/llm-insert.mjs。別のチャットなら指示の全体も付けられる）→ ③ ⑤ と同じ 2 つの欄 →［挿入］：選んだスライドの後ろ（選んでいなければ最後）に入れ、
+//     スライド一覧の「足す」と同じに id を付ける（app/slides-panel.js の apply：控え・元に戻す・組み直し・品質チェック）
 //   「修正…」（mode 'replace'）：① 直してほしいこと → ② 修正依頼（品質チェックの指摘・組み立ての知らせ・その規格の文章・今の原稿（kit/core/llm-fix.mjs）と、
-//     ① と開いているメモ（comments.json。画像は backlog #90））→ ③ 今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で戻す）
-//   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
+//     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
+//   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, defaultSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, defaultSubjects, guessSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
-import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
+import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { slideCountOf, outlineRequest, parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, OUTLINE_OVER, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
@@ -34,110 +36,142 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
 
+
+// 画面の言葉（handoff/new-deck-flow-2026-10-25.md の文言の表。表にないものは handoff/ux-wording-principles.md の決まりで決めた）
 const TX = {
   ja: {
     method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
-    title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
-    howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
-    howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑥ に貼り付けます。',
-    themeLoad: 'ほかのテーマを読み込む…', themeLabel: 'テーマ',
-    back: '← 戻る', contentLabel: '内容（要点・メモ・元の資料の文を貼る）', contentPh: '例：教えたい要点の箇条書き、授業のメモ、教科書や論文の一節など（そのまま貼ってかまいません）',
+    title: { new: '新規作成', insert: 'スライドの挿入', replace: '修正' },
+    howTo: '足したいスライドを書くと、チャットの AI に送る指示ができます。AI の出力をここに貼り付けると、スライドを挿入します。',
+    howToNew: '4 つの問いに答えると、チャットの AI（ChatGPT・Gemini・Claude など）に送る指示ができます。AI の出力をここに貼り付けると、スライドができます。',
+    howToFix: '直してほしいことを書くと、チャットの AI に送る修正依頼ができます。AI の出力をここに貼り付けると、スライドを置き換えます。',
+    answered: (q, a) => `${q}：${a}`, change: '変更', next: '次へ', cancel: 'キャンセル',
+    back: '← 戻る',
+    steps: {
+      new: ['① どんな場面で使いますか', '② 何について、だれに向けて作りますか', '③ どんな見た目にしますか', '④ チャットの AI に指示を送ります', '⑤ AI の出力を貼り付けます'],
+      outline: '⑤ AI の構成案を貼り付けます',
+      insert: ['① どんなスライドを足しますか', '② チャットの AI に指示を送ります', '③ AI の出力を貼り付けます'],
+      replace: ['① どこを直してほしいですか', '② チャットの AI に修正依頼を送ります', '③ AI の出力を貼り付けます'],
+      batch: ['① 頼む範囲', '② チャットの AI に指示を送ります', '③ AI の出力を貼り付けます'],
+    },
+    // ① 場面
+    kindHint: '場面に合った組み立て（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます',
+    catLegend: '使う場面', subLegend: 'もう少し詳しく言うと', subNoneFit: 'この中にない',
+    structure: (st, sh) => `組み立て：${st}。見せ方：${sh}`,
+    needKind: '① の「どんな場面で使いますか」に答えてください',
+    // ② 内容
+    step1Hint: '書いたことは、AI への指示の最後に入ります',
+    titleLabel: 'タイトル（表紙に出ます）', titleQ: 'タイトル',
+    discussedShort: '内容はチャットの AI に渡してある',
+    audienceLegend: 'だれ向け', audienceAi: 'AI に任せる（① の場面から考えます）', audienceWrite: '書く', audienceLabel: 'だれ向けか',
+    lengthLegend: '長さ', lengthAi: 'AI に任せる（5〜8 枚くらいにします）', lengthSet: '指定する', lengthNLabel: '長さの数', lengthUnitLabel: '長さの単位',
+    unit: { slides: '枚', min: '分' }, lengthReq: (n, u) => (u === 'min' ? `${n} 分` : `${n} 枚`),
+    contentLegend: '内容', contentAi: 'AI に任せる（タイトルだけで考えます）', contentGive: 'ここに書く・貼る（授業のメモや教科書の文をそのまま貼れます）', contentGiven: 'チャットの AI に渡してある（PDF などの資料を添付した、または内容を話し合った）',
+    contentGivenNote: '指示は、その資料を渡したチャットに貼り付けてください', contentLabel: '内容',
     contentHead: '## 内容（要点・メモ・元の資料）',
-    phase: (n) => `${n} 枚なので、2 回に分けて作ります：まず構成案（見出しと要点の表）を頼み、次に ${BATCH} 枚ずつ頼みます`,
+    more: (l, s, w) => `詳しく：${l}・${s}${w ? '・そのほかの希望あり' : ''}`,
+    langLegend: '言語', langOpt: { ja: '日本語', en: 'English', other: 'その他' }, langOtherLabel: '言語の名前', langOtherPh: '例：中国語',
+    langReq: { ja: '日本語', en: '英語' },
+    speakersLegend: '話す人', speakers: { 1: '1 人で説明する', 2: '2 人（説明する人と、質問する人）' }, speakersShort: { 1: '1 人で説明', 2: '2 人で説明と質問' },
+    speakersReq: { 1: '1 人', 2: '2 人（Expert と Novice の掛け合い）' },
+    wishesLabel: 'そのほかの希望（なくてもよい）', wishesNote: '話す人は 2 人まで',
+    needTopic: '② の「タイトル」を書いてください',
+    ph: {
+      teaching: { title: '例：てこのはたらき', audience: '例：小学 6 年生', content: '例：\n・てこには支点・力点・作用点がある\n・支点から力点が遠いほど、小さな力で持ち上がる\n・身の回りのてこ（はさみ、くぎ抜き）', wishes: '例：小学生にわかる言葉で、問いかけを多めに' },
+      research: { title: '例：衛星画像による水田の水位の推定', audience: '例：学会の参加者（分野外の人もいる）', content: '例：論文の要旨やまとめを貼る', wishes: '例：結論を先に' },
+      business: { title: '例：10 月の営業報告', audience: '例：部長会議の出席者', content: '例：数字と、言いたい結論', wishes: '例：部長向けに丁寧な言葉で' },
+      guides: { title: '例：ごみの出し方', audience: '例：新しく越してきた人', content: '例：曜日と分け方の決まりの文', wishes: '例：短い文で' },
+      other: { title: '例：町内会の夏祭りのお知らせ', audience: '例：町内の家族', content: '例：日時・場所・持ち物', wishes: '例：明るい調子で' },
+    },
+    // ③ 見た目
+    themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'ほかのテーマを読み込む…',
+    themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
+    // ④ AI に送る
+    planLegend: 'お使いのチャットの AI は、無料のプランですか、有料のプランですか',
+    plan: { free: '無料のプラン（わからなければこちら）', paid: '有料のプラン' },
+    planHint: '無料のプランは長い指示を読み切れないことがあるので、指示を短くします',
+    seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
+    seriesHintNew: '選んだものの図の作り方を指示に入れます。選ばなければ、共通の図（棒グラフ・流れ図・年表など）だけです',
+    seriesName: { academic: '数式・関数・グラフ（数理・統計）', business: 'KPI・位置づけ・市場・お金の流れ（ビジネス）', kokugo: '漢文・古文・現代文・縦書き（国語）', info: '符号の木（情報）' },
+    seriesPaid: '有料のプランでは、すべての分野の図の作り方を指示に入れます',
+    seriesGuess: (name) => `② のタイトルと内容から${name}に印を付けました`,
+    seriesGuessKind: (name) => `① の場面から${name}に印を付けました`,
+    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
+    purposesFold: 'AI に使わせない図を選ぶ（ふつうは開かなくて大丈夫）',
+    purposesHint: '今は全部使えます。押した図は、AI が使いません',
+    purposesFoldSum: (on, n) => (on === n ? 'いまは全部使う' : `${n - on} 個を使わない`),
+    purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個を使う`,
+    purposesLegend: '言いたいこと', materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
+    purposeOn: '使う', purposeOff: '使わない',
+    packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
+    copyGuide: '指示をコピー',
+    copied: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ`,
+    phase: (n) => `${n} 枚なので、2 回に分けて頼みます。まず構成案（見出しの一覧）を頼み、次に ${BATCH} 枚ずつ頼みます`,
+    outlineCopied: (kb) => `コピーしました（${kb} KB）。チャットの AI に貼り付けて送ってください。構成案が出たら ⑤ へ`,
+    // ⑤ 貼り付け（挿入・修正の ③ も同じ）
+    step3Hint: 'AI の出力には、灰色の枠（コードブロック）が 2 つあります。スライド（deck.html）と台本（narration.md）です。それぞれ枠の右上のコピーのボタンで写して、下の欄に貼り付けます。出力をまとめてコピーしたときは、どちらかの欄に貼れば 2 つに分けて入れます',
+    pasteDeck: 'スライド（deck.html）', pasteNarr: '台本（narration.md）',
+    phDeck: 'deck.html のコードブロックを貼り付け', phNarr: 'narration.md のコードブロックを貼り付け',
+    stEmpty: 'まだ貼っていません', stDeck: (n) => `✓ スライド ${n} 枚`, stNarr: (n) => `✓ 台本 ${n} 節`,
+    split: '出力の全体だったので、スライドと台本に分けました',
+    moved: { deck: '台本の欄に入っていたスライドを、スライドの欄へ移しました', narr: 'スライドの欄に入っていた台本を、台本の欄へ移しました' },
+    noNarr: { new: '台本なしで作成します（台本はあとで書けます）', insert: '台本なしで挿入します（台本はあとで書けます）', replace: '台本は今のままにします' },
+    keepDeck: 'スライドは今のままにします',
+    go: { new: '作成', insert: '挿入', replace: '置き換える' },
+    replaceHint: '直したスライドだけが出力されたときは、そのスライドだけを置き換えます',
+    untrusted: '貼り付けたものは、開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
+    // 構成案（長い教材）
+    outlineLabel: '構成案（outline のコードブロック）', outlinePh: 'outline のコードブロックを貼り付け',
+    outlineHint: (a, b) => `構成案（outline のコードブロック）を貼り付けて［次へ］。そのあと ${a}〜${b} 枚目を頼む指示をコピーします。残りは作成の後、上の知らせの「次の ${BATCH} 枚を頼む」から`,
+    outlineQ: '構成案', outlineAnswer: (n) => `${n} 枚`,
     outlineGot: (n) => `構成案を受け取りました（${n} 枚）。${BATCH} 枚ずつ作ります`,
-    outlineCopied: (kb) => `コピーしました（${kb} KB）。同じチャットに貼り付けて送ってください。返事が来たら ⑥ へ`,
-    outlineStep: '構成案', outlineCopy: (a, b) => `${a}〜${b} 枚目を頼む文をコピー`,
-    outlineHint: (a, b) => `コピーした文を同じチャットに貼って送り、返事（${a}〜${b} 枚目の deck.html と narration.md）を下に貼り付けて開きます。残りは開いた後に、上の知らせの「次の ${BATCH} 枚を頼む」から頼みます`,
-    outlineErr: { 'no-outline': '```outline の囲みが見つかりません', unclosed: (e) => `${e.line} 行目からの \`\`\`outline の囲みが閉じていません。返事の続きを頼んでください`, 'no-table': '構成案の表の行が見つかりません（| 番号 | 見出し | 要点 | の形）', 'empty-heading': (e) => `${e.line} 行目に見出しのない行があります`, 'too-many': (e) => `構成案が ${e.n} 枚あります（60 枚まで）`, 'too-few': '構成案が 2 枚より少ないので、ふつうに 1 回で頼んでください' },
+    outlineCopy: (a, b) => `${a}〜${b} 枚目を頼む指示をコピー`,
+    batchCopied: (kb) => `コピーしました（${kb} KB）。同じチャットに貼り付けて送ってください。AI が書き終えたら、出力を下の欄に貼り付けます`,
+    outlineErr: { 'no-outline': 'outline のコードブロックが見つかりません', unclosed: (e) => `${e.line} 行目からの outline のコードブロックが閉じていません。AI に「続きを」と頼んでください`, 'no-table': '構成案の表の行が見つかりません（| 番号 | 見出し | 要点 | の形）', 'empty-heading': (e) => `${e.line} 行目に見出しのない行があります`, 'too-many': (e) => `構成案が ${e.n} 枚あります（60 枚まで）`, 'too-few': '構成案が 2 枚より少ないので、② の長さを短くして 1 回で頼んでください' },
     batchTitle: '構成案の続き', batchWhere: (a, b, n, left) => `構成案の ${a}〜${b} 枚目（全 ${n} 枚。残り ${left} 枚）を、最後のスライドの後ろに入れます`,
     batchDone: (left) => (left ? `構成案：残り ${left} 枚` : '構成案のスライドをすべて作りました'),
-    themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
-    seriesHintNew: '使うパーツの説明が指示に加わります。何も選ばなければ共通の本体だけです',
-    planLegend: 'お使いのチャットの AI は無料版ですか、有料版ですか',
-    plan: { free: '無料版（指示を軽くして、使う分野だけを入れる）', paid: '有料版（すべての分野のパーツの説明を入れる）' },
-    planHint: '無料版のチャットは長い指示を読み切れないことがあるので、指示を軽くします。わからなければ無料版のままで',
-    seriesPaid: '有料版では、すべての分野のパーツの説明が指示に入ります（分野は選びません）',
-    kindHint: '場面を選ぶと、その構成の型と見せ方を頼みたいことに入れます。選ばなくてもかまいません',
-    catLegend: '大分類', subLegend: '小分類', subNone: 'この大分類には小分類はありません',
-    structure: (st, sh) => `構成の型：${st}。見せ方：${sh}`,
-    materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
-    purposesLegend: '言いたいこと', purposesFold: 'AI に使わせない表し方を選ぶ（選ばなくてよい）',
-    purposesHint: '既定で全部入っています。押すと外れ、AI はその表し方を使いません。小さな字は中の表し方で、AI が言いたいこととデータから選びます（まだパーツがないものは、近いパーツか HTML で描きます）',
-    purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個が入っています`,
-    purposesFoldSum: (on, n) => (on === n ? 'いまは全部使う' : `${n - on} 個を外した`),
-    purposeOn: '入っている', purposeOff: '外した',
-    howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
-    steps: {
-      batch: ['① 頼む範囲', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
-      new: ['④ 頼みたいことを書く', '⑤ AI への指示をコピーして、チャットに貼って送る', '⑥ AI の返事を貼り付けて開く', '② お使いの AI と分野（使うパーツ）を選ぶ', '③ デザイン（テーマ）を選ぶ', '① 場面（大分類・小分類）を選ぶ（選ばなくてもよい）'],
-      insert: ['① 足すスライドを書く', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
-      replace: ['① 直してほしいことを書く', '② 修正依頼をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて取り込む'],
-    },
-    step1Hint: '書いた内容は、コピーする指示の最後に入ります（チャットに貼ると添付のファイルの形になり、そこでは書き直せないため、先にここで書きます）。書かない項目は空のままでかまいません',
-    kindLegend: 'どちらで作りますか', kindA: 'A　新しく作る', kindB: 'B　このチャットでここまで話し合った内容で作る',
-    fieldPh: { topic: '例：二分探索のしくみ', audience: '例：高校 2 年生', length: '例：5 枚・10 分', language: '例：日本語', speakers: '例：1 人', examples: '例：電話帳で名前を探す' },
-    needTopic: '④ の「題材」を書いてください',
+    // 挿入
     insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
-    insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：具体例を 1 つ、練習問題を 1 つ',
-    insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、頼む文が短くて済みます）',
-    withPack: 'AI への指示（共通の本体と分野）も入れる：このデッキを作ったのとは別の、新しいチャットで頼むとき',
-    copyInsert: '頼む文をコピー',
+    insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：練習問題を 1 つ',
+    insertHint: '指示には、今のスライドの見出しの一覧と、挿入する場所の前のスライドだけを入れます（短く済みます）',
+    withPack: 'このデッキを作ったのとは別のチャットに送る（指示の全体も付けます）',
+    copyInsert: '指示をコピー',
+    insertCopied: (kb) => `コピーしました（${kb} KB）。チャットの AI に貼り付けて送ってください。AI が書き終えたら ③ へ`,
+    // 修正
     wish: '直してほしいこと（なくてもよい）', wishPh: '例：2 枚目の例を身近なものに替える',
-    reviseHint: '修正依頼には、品質チェックの指摘と、① に書いたこと、開いているメモ（コメント）、今の deck.html と narration.md が入ります（長いデッキは指摘のあるスライドだけ）',
+    reviseHint: '修正依頼には、品質チェックの指摘、① に書いたこと、開いているコメント、今のスライドと台本が入ります（長いデッキは指摘のあるスライドだけ）',
     copyRevise: '修正依頼をコピー', reviseNothing: '直すことが見つかりません。① に直してほしいことを書いてください',
-    revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・メモ ${c} 件` : ''}）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
-    insertCopied: (kb) => `コピーしました（${kb} KB）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ③ へ`,
+    revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・コメント ${c} 件` : ''}）。チャットの AI に貼り付けて送ってください。AI が書き終えたら ③ へ`,
     wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`,
-    guide: 'コピーする指示は、共通の本体（必ず入る）と、選んだ分野のパーツの説明と、頼みたいことです。',
-    common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
-    seriesLegend: '分野（使うパーツ）',
-    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
-    seriesName: { academic: '数理・統計（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
-    plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
-    copyGuide: 'AI への指示をコピー',
-    copied: (kb) => `コピーしました（${kb} KB、④ の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ⑥ へ`,
-    step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼ってボタンを押すと、次の囲みを待ちます',
-    pasteLabel: 'AI の返事', placeholder: 'ここに AI の返事の全体か、囲みを 1 つ貼り付ける',
-    go: { new: '開く', insert: '挿入', replace: '取り込む' }, only: 'これだけで取り込む',
-    untrusted: '貼り付けたものは開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
-    held: {
-      deck: (n) => `deck.html を受け取りました（スライド ${n} 枚。2 つのうち 1 つ目）。次に narration.md の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
-      narration: (n) => `narration.md を受け取りました（${n} 節。2 つのうち 1 つ目）。次に deck.html の囲みを、その囲みの右上のコピーのボタンで写して、ここに貼り付けてください`,
-      again: (k) => `${k} をもう一度受け取ったので、前のものと入れ替えました。`,
-      onlyHint: '返事が片方だけなら「これだけで取り込む」を押します',
-      reset: '受け取ったものを捨てて最初から', resetDone: '受け取ったものを捨てました。返事の全体か、囲みを 1 つ貼り付けてください',
-      joined: '2 回に分けて貼った deck.html と narration.md を合わせました',
-    },
     err: {
-      'no-blocks': 'コードの囲み（``` の行）も、deck.html・narration.md の中身も見つかりません。返事の全体（返事の下のコピーのボタン）か、2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）写して貼り付けてください',
-      ambiguous: 'スライド（<section class="slide">）と口述原稿（## 見出しと [0] の行）の両方が入っていますが、囲みの行（```）がないので分けられません。返事の全体を返事の下のコピーのボタンで写すか、2 つの囲みを 1 つずつ写して貼り付けてください',
-      'cut-deck': 'deck.html が </html> で終わっていません。途中までしか写せていないようです。囲みの右上のコピーのボタンで写し直してください',
-      'no-deck': 'deck.html の囲みが見つかりません（```deck.html で始まる囲み）',
-      'no-slides': 'deck.html の囲みに <section class="slide"> がありません',
-      unclosed: (e) => `${e.line} 行目から始まる囲み${e.kind ? `（${e.kind === 'deck' ? 'deck.html' : 'narration.md'}）` : ''}が閉じていません。返事が途中で切れたようです。AI に「続きを」と頼むか、2 つの囲みで返し直してもらってください`,
-      'no-narration': 'narration.md の囲みが見つかりません（```narration.md で始まる囲み）',
-      empty: '何も貼り付けられていません',
-      'no-match': '直したスライドの id が今のデッキにありません',
-      'no-insert': '返事に足すスライド（<section class="slide">）がありません',
+      'no-blocks': 'スライドも台本も見つかりません。AI の出力のコードブロックを、枠の右上のコピーのボタンで写して貼り付けてください',
+      ambiguous: 'スライドと台本の両方が入っていますが、コードブロックの区切り（```）がないので分けられません。2 つのコードブロックを 1 つずつ写して、それぞれの欄に貼り付けてください',
+      'cut-deck': 'スライドが途中で切れています（</html> で終わっていません）。コードブロックの右上のコピーのボタンで写し直してください',
+      'no-deck': 'スライドの欄に deck.html がありません',
+      'no-slides': 'deck.html にスライド（<section class="slide">）がありません',
+      unclosed: (e) => `${e.line} 行目からのコードブロックが閉じていません。AI の出力が途中で切れたようです。AI に「続きを」と頼んでください`,
+      empty: 'スライドの欄が空です',
+      'no-match': '直したスライドが今のデッキに見つかりません（id が合いません）',
+      'no-insert': '出力に足すスライド（<section class="slide">）がありません',
     },
     warn: {
-      several: (w) => `${w.kind === 'deck' ? 'deck.html' : 'narration.md'} の囲みが ${w.n} 個あったので、最後のものを使いました`,
-      ignored: (w) => `どちらのファイルでもない囲み ${w.n} 個は使いませんでした`,
-      unfenced: '囲みがなかったので、<!DOCTYPE html> から </html> までと、その後ろの口述原稿を取り出しました',
-      autoclosed: (w) => `${w.line} 行目からの囲みが閉じていなかったので、次の囲みの手前で閉じました`,
-      unclosedAccepted: (w) => `${w.line} 行目からの narration.md の囲みに閉じる行（\`\`\`）がありませんでしたが、口述原稿は最後まであるので受け取りました`,
+      several: (w) => `${w.kind === 'deck' ? 'deck.html' : 'narration.md'} のコードブロックが ${w.n} 個あったので、最後のものを使いました`,
+      ignored: (w) => `スライドでも台本でもないコードブロック ${w.n} 個は使いませんでした`,
+      unfenced: 'コードブロックの区切りがなかったので、<!DOCTYPE html> から </html> までをスライド、その後ろを台本として取り出しました',
+      autoclosed: (w) => `${w.line} 行目からのコードブロックが閉じていなかったので、次のコードブロックの手前で閉じました`,
+      unclosedAccepted: () => '台本のコードブロックに閉じる行（```）がありませんでしたが、台本は最後まであるので受け取りました',
     },
-    building: '取り込んでいます…', buildFailed: '取り込んだ原稿を組み立てられませんでした',
-    imported: (n, ids) => `取り込みました：${n} 枚${ids ? `、id を ${ids} 枚に付けました` : ''}`,
-    replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`, replacedNarr: (n) => `口述原稿を置き換えました（${n} 節）`,
-    inserted: (n, at) => `スライド ${n} 枚を ${at} 枚目に挿入しました（id を付けました）`, undoInsert: (n) => `スライド ${n} 枚の挿入`,
+    building: { new: '作成しています…', insert: '挿入しています…', replace: '置き換えています…' }, buildFailed: 'スライドを組み立てられませんでした',
+    imported: (n) => `作成しました：スライド ${n} 枚`,
+    replaced: (n) => `置き換えました（${n}）`, replacedSlides: (ids) => `スライド ${ids.length} 枚を置き換えました`, replacedNarr: (n) => `台本を置き換えました（${n} 節）`,
+    inserted: (n, at) => `スライド ${n} 枚を ${at} 枚目に挿入しました`, undoInsert: (n) => `スライド ${n} 枚の挿入`,
     idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
     fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
-    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今の deck.html と narration.md'} をコピーしました。同じチャットに貼り付けて送り、返事は「修正…」の ③ に貼り付けます`,
+    fixLead: (n, partial) => `指摘 ${n} 件と、その決まり、${partial ? '問題のあるスライド' : '今のスライドと台本'} をコピーしました。同じチャットに貼り付けて送り、AI の出力は「修正…」の ③ に貼り付けます`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
-    copyCutOff: 'AI に送り直しを頼む文をコピー', cutOffCopied: 'コピーしました。チャットに貼り付け、返事をここに貼り付けてください',
-    fixNone: '直す問題はありません', pasteReply: 'AI の返事を貼り付ける…', close: '閉じる',
+    copyCutOff: 'AI に送り直しを頼む文をコピー', cutOffCopied: 'コピーしました。チャットに貼り付けて送り、AI の出力をここに貼り付けてください',
+    fixNone: '直す問題はありません', pasteReply: 'AI の出力を貼り付ける…', close: '閉じる',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('ja', 'narrOrphan', a) : `スライドにない段階の口述原稿 [${a}]`),
       compData: (a) => message('ja', 'compData', a),
@@ -148,107 +182,129 @@ const TX = {
   },
   en: {
     method: 'Have a chat AI write it', methodFix: 'Have a chat AI fix it',
-    title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
-    howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
-    howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 6.',
-    themeLoad: 'Load another theme…', themeLabel: 'Theme',
-    back: '← Back', contentLabel: 'Content (key points, notes, or text from your source material)', contentPh: 'e.g. the points to teach as a list, your lesson notes, a passage from a textbook or paper (paste it as it is)',
+    title: { new: 'New', insert: 'Insert slides', replace: 'Revise' },
+    howTo: 'Describe the slides to add to make instructions for a chat AI. Paste the AI’s output here and the slides are inserted.',
+    howToNew: 'Answer four questions to make instructions for a chat AI (ChatGPT, Gemini, Claude, …). Paste the AI’s output here and your slides are made.',
+    howToFix: 'Write what to change to make a fix request for a chat AI. Paste the AI’s output here and the slides are replaced.',
+    answered: (q, a) => `${q}: ${a}`, change: 'Change', next: 'Next', cancel: 'Cancel',
+    back: '← Back',
+    steps: {
+      new: ['1. Where will you use it?', '2. What is it about, and who is it for?', '3. How should it look?', '4. Send the instructions to your chat AI', '5. Paste the AI’s output'],
+      outline: '5. Paste the AI’s outline',
+      insert: ['1. What slides do you want to add?', '2. Send the instructions to your chat AI', '3. Paste the AI’s output'],
+      replace: ['1. What should be changed?', '2. Send the fix request to your chat AI', '3. Paste the AI’s output'],
+      batch: ['1. The range to ask for', '2. Send the instructions to your chat AI', '3. Paste the AI’s output'],
+    },
+    kindHint: 'Tells the AI the structure that suits it (for a lesson: introduction, development, summary). If none fits, choose Other.',
+    catLegend: 'Setting', subLegend: 'More precisely', subNoneFit: 'None of these',
+    structure: (st, sh) => `Structure: ${st}. Presentation: ${sh}`,
+    needKind: 'Answer “Where will you use it?” in step 1.',
+    step1Hint: 'What you write goes at the end of the instructions.',
+    titleLabel: 'Title (shown on the cover)', titleQ: 'Title',
+    discussedShort: 'content already given to the chat AI',
+    audienceLegend: 'Audience', audienceAi: 'Leave it to the AI (it works from your answer to step 1)', audienceWrite: 'Write it', audienceLabel: 'Who it is for',
+    lengthLegend: 'Length', lengthAi: 'Leave it to the AI (about 5–8 slides)', lengthSet: 'Set it', lengthNLabel: 'Length', lengthUnitLabel: 'Unit',
+    unit: { slides: 'slides', min: 'minutes' }, lengthReq: (n, u) => (u === 'min' ? `${n} minutes` : `${n} slides`),
+    contentLegend: 'Content', contentAi: 'Leave it to the AI (from the title alone)', contentGive: 'Write or paste it here (your notes or source text as it is)', contentGiven: 'Already given to the chat AI (you attached a PDF or other material, or discussed it)',
+    contentGivenNote: 'Paste the instructions into the chat where you gave the material.', contentLabel: 'Content',
     contentHead: '## Content (key points, notes, source material)',
-    phase: (n) => `${n} slides, so it is made in two passes: first an outline (a table of headings and points), then ${BATCH} slides at a time`,
-    outlineGot: (n) => `Got the outline (${n} slides). The slides are made ${BATCH} at a time`,
-    outlineCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the reply arrives, go to step 6.`,
-    outlineStep: 'Outline', outlineCopy: (a, b) => `Copy the request for slides ${a}–${b}`,
-    outlineHint: (a, b) => `Paste the copied text into the same chat and send it, then paste the reply (deck.html and narration.md of slides ${a}–${b}) below and open it. Ask for the rest after it opens, with “Ask for the next ${BATCH}” in the notice above.`,
-    outlineErr: { 'no-outline': 'No ```outline block found.', unclosed: (e) => `The \`\`\`outline block from line ${e.line} is not closed. Ask the AI to continue.`, 'no-table': 'No outline table rows found (| # | Heading | Point |).', 'empty-heading': (e) => `Line ${e.line} has a row without a heading.`, 'too-many': (e) => `The outline has ${e.n} slides (at most 60).`, 'too-few': 'The outline has fewer than 2 slides; ask for the lesson in one go instead.' },
+    more: (l, s, w) => `More: ${l}, ${s}${w ? ', other wishes' : ''}`,
+    langLegend: 'Language', langOpt: { ja: '日本語', en: 'English', other: 'Other' }, langOtherLabel: 'Which language', langOtherPh: 'e.g. French',
+    langReq: { ja: 'Japanese', en: 'English' },
+    speakersLegend: 'Speakers', speakers: { 1: 'One person explains', 2: 'Two (one explains, one asks)' }, speakersShort: { 1: 'one speaker', 2: 'two speakers' },
+    speakersReq: { 1: 'one narrator', 2: 'two (an Expert and Novice dialogue)' },
+    wishesLabel: 'Other wishes (optional)', wishesNote: 'At most two speakers',
+    needTopic: 'Write the title in step 2.',
+    ph: {
+      teaching: { title: 'e.g. How levers work', audience: 'e.g. Year 6 pupils', content: 'e.g.\n• A lever has a fulcrum, an effort and a load\n• The farther the effort is from the fulcrum, the less force it takes\n• Levers around us (scissors, a claw hammer)', wishes: 'e.g. Words a child understands, with plenty of questions' },
+      research: { title: 'e.g. Estimating paddy water levels from satellite images', audience: 'e.g. Conference attendees (some from other fields)', content: 'e.g. Paste the abstract or summary of your paper', wishes: 'e.g. Conclusion first' },
+      business: { title: 'e.g. October sales report', audience: 'e.g. Attendees of the managers’ meeting', content: 'e.g. The figures and the conclusion you want to make', wishes: 'e.g. Polite wording for managers' },
+      guides: { title: 'e.g. How to put out the rubbish', audience: 'e.g. People who have just moved in', content: 'e.g. The collection days and the sorting rules', wishes: 'e.g. Short sentences' },
+      other: { title: 'e.g. Neighbourhood summer festival', audience: 'e.g. Families in the neighbourhood', content: 'e.g. Date, time, place, what to bring', wishes: 'e.g. A cheerful tone' },
+    },
+    themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load another theme…',
+    themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
+    planLegend: 'Is your chat AI on a free plan or a paid plan?',
+    plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
+    planHint: 'A free plan may not read long instructions to the end, so they are kept short.',
+    seriesLegend: 'Will the slides need any of these? (subjects)',
+    seriesHintNew: 'Adds how to draw these to the instructions. With none, only the common figures (bar charts, flow diagrams, timelines, …).',
+    seriesName: { academic: 'Formulas, functions, graphs (math and statistics)', business: 'KPIs, positioning, markets, money flows (business)', kokugo: 'Kanbun, kobun, modern texts, vertical writing (Japanese language arts)', info: 'Code trees (information science)' },
+    seriesPaid: 'With a paid plan, the instructions include how to draw everything.',
+    seriesGuess: (name) => `Ticked ${name} from the title and content in step 2.`,
+    seriesGuessKind: (name) => `Ticked ${name} from your answer to step 1.`,
+    seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
+    purposesFold: 'Choose figures the AI should not use (usually not needed)',
+    purposesHint: 'All are in use. Press one and the AI will not use it.',
+    purposesFoldSum: (on, n) => (on === n ? 'all in use' : `${n - on} not used`),
+    purposesSum: (on, n) => `Purposes: ${on} of ${n} in use`,
+    purposesLegend: 'What it shows', materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
+    purposeOn: 'in use', purposeOff: 'not used',
+    packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
+    copyGuide: 'Copy the instructions',
+    copied: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
+    phase: (n) => `${n} slides, so you ask in two rounds: first an outline (a list of headings), then ${BATCH} slides at a time.`,
+    outlineCopied: (kb) => `Copied (${kb} KB). Paste it into your chat AI and send. When the outline is out, go to step 5.`,
+    step3Hint: 'The AI’s output has two grey boxes (code blocks): the slides (deck.html) and the script (narration.md). Copy each with the copy button at its top right and paste it below. If you copied the whole output, paste it into either field and it is split in two.',
+    pasteDeck: 'Slides (deck.html)', pasteNarr: 'Script (narration.md)',
+    phDeck: 'Paste the deck.html code block', phNarr: 'Paste the narration.md code block',
+    stEmpty: 'Not pasted yet', stDeck: (n) => `✓ ${n} slide${n === 1 ? '' : 's'}`, stNarr: (n) => `✓ Script, ${n} section${n === 1 ? '' : 's'}`,
+    split: 'That was the whole output; it was split into slides and script.',
+    moved: { deck: 'Moved the slides from the script field to the slides field.', narr: 'Moved the script from the slides field to the script field.' },
+    noNarr: { new: 'It will be made without a script (you can write one later).', insert: 'They will be inserted without a script (you can write one later).', replace: 'The script stays as it is.' },
+    keepDeck: 'The slides stay as they are.',
+    go: { new: 'Create', insert: 'Insert', replace: 'Replace' },
+    replaceHint: 'If only the fixed slides are in the output, only those slides are replaced.',
+    untrusted: 'Pasted content is treated like an opened file: if it contains scripts, you are asked before they run.',
+    outlineLabel: 'Outline (the outline code block)', outlinePh: 'Paste the outline code block',
+    outlineHint: (a, b) => `Paste the outline (the outline code block) and press Next. Then copy the instructions for slides ${a}–${b}. Ask for the rest after creating, with “Ask for the next ${BATCH}” in the notice above.`,
+    outlineQ: 'Outline', outlineAnswer: (n) => `${n} slides`,
+    outlineGot: (n) => `Got the outline (${n} slides). The slides are made ${BATCH} at a time.`,
+    outlineCopy: (a, b) => `Copy the instructions for slides ${a}–${b}`,
+    batchCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the AI has finished, paste its output below.`,
+    outlineErr: { 'no-outline': 'No outline code block found.', unclosed: (e) => `The outline code block from line ${e.line} is not closed. Ask the AI to continue.`, 'no-table': 'No outline table rows found (| # | Heading | Point |).', 'empty-heading': (e) => `Line ${e.line} has a row without a heading.`, 'too-many': (e) => `The outline has ${e.n} slides (at most 60).`, 'too-few': 'The outline has fewer than 2 slides; set a shorter length in step 2 and ask in one go.' },
     batchTitle: 'The rest of the outline', batchWhere: (a, b, n, left) => `Slides ${a}–${b} of the outline (${n} in all; ${left} left) go after the last slide`,
     batchDone: (left) => (left ? `Outline: ${left} slides left` : 'All slides of the outline are made'),
-    themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
-    seriesHintNew: 'Adds the notes on those parts to the instructions. With none chosen, only the common body is sent.',
-    planLegend: 'Is your chat AI a free or a paid plan?',
-    plan: { free: 'Free plan (lighter instructions with only the subjects you choose)', paid: 'Paid plan (notes on the parts of every subject)' },
-    planHint: 'A free chat may not take in long instructions, so they are kept light. If you are not sure, keep Free plan.',
-    seriesPaid: 'With a paid plan, the notes on the parts of every subject are in the instructions (no subjects to choose).',
-    kindHint: 'The structure and presentation of the kind you choose go into the request. You can leave it unchosen.',
-    catLegend: 'Category', subLegend: 'Subcategory', subNone: 'This category has no subcategories',
-    structure: (st, sh) => `Structure: ${st}. Presentation: ${sh}`,
-    materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
-    purposesLegend: 'Purposes', purposesFold: 'Choose representations the AI should not use (optional)',
-    purposesHint: 'All are on by default. Press one to turn it off: the AI will not use that representation. The small text is what is inside; the AI chooses from the purpose and the data (where no part exists yet, it uses the nearest part or HTML).',
-    purposesSum: (on, n) => `Purposes: ${on} of ${n} on`,
-    purposesFoldSum: (on, n) => (on === n ? 'all in use now' : `${n - on} turned off`),
-    purposeOn: 'on', purposeOff: 'off',
-    howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
-    steps: {
-      batch: ['1. The range to ask for', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
-      new: ['4. Write what you want', '5. Copy the instructions, paste them into the chat and send', '6. Paste the AI’s reply and open it', '2. Choose your chat AI and subjects (parts)', '3. Choose the design (theme)', '1. Choose the kind (category and subcategory) (optional)'],
-      insert: ['1. Describe the slides to add', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
-      replace: ['1. Write what to change', '2. Copy the fix request, paste it into the chat and send', '3. Paste the AI’s reply and bring it in'],
-    },
-    step1Hint: 'What you write goes at the end of the copied instructions (pasted into a chat they often become an attachment you cannot edit there, so write it here first). Leave out anything you do not need.',
-    kindLegend: 'How do you want to make it?', kindA: 'A. Make a new lesson', kindB: 'B. From what we have discussed so far in this chat',
-    fieldPh: { topic: 'e.g. how binary search works', audience: 'e.g. first-year students', length: 'e.g. 5 slides, 10 minutes', language: 'e.g. English', speakers: 'e.g. one narrator', examples: 'e.g. finding a name in a phone book' },
-    needTopic: 'Write the topic in step 4.',
     insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
-    insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one worked example and one exercise',
-    insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it stays short.',
-    withPack: 'Also include the instructions for the AI (common body and subjects): when you ask in a new chat, not the one that made this deck',
-    copyInsert: 'Copy the request',
+    insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one exercise',
+    insertHint: 'The instructions include only the list of slide headings and the slide before the new ones, so they stay short.',
+    withPack: 'Send to a different chat from the one that made this deck (adds the full instructions)',
+    copyInsert: 'Copy the instructions',
+    insertCopied: (kb) => `Copied (${kb} KB). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
     wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
-    reviseHint: 'The fix request has the quality check findings, what you write in step 1, the open notes (comments) and the current deck.html and narration.md (for a long deck, only the slides with findings).',
+    reviseHint: 'The fix request includes the quality check findings, what you wrote in step 1, open comments and the current slides and script (for a long deck, only the slides with findings).',
     copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
-    revised: (kb, n, c) => `Copied (${kb} KB; ${n} finding(s)${c ? `, ${c} note(s)` : ''}). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
-    insertCopied: (kb) => `Copied (${kb} KB). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 3.`,
+    revised: (kb, n, c) => `Copied (${kb} KB; ${n} finding(s)${c ? `, ${c} comment(s)` : ''}). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
     wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
-    guide: 'The copied instructions are the common body (always included), the notes on the parts of the subjects you chose, and what you want.',
-    common: (kb) => `Common body (always included)   ${kb} KB`,
-    seriesLegend: 'Subjects (parts)',
-    seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
-    seriesName: { academic: 'Math and statistics (formulas, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
-    plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
-    copyGuide: 'Copy instructions for your AI',
-    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 4). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 6.`,
-    step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press the button; the editor then waits for the other.',
-    pasteLabel: 'The AI’s reply', placeholder: 'Paste the whole reply of the AI here, or one block',
-    go: { new: 'Open', insert: 'Insert', replace: 'Import' }, only: 'Import just this',
-    untrusted: 'Pasted content is treated like an opened file: if it contains scripts, the editor asks before running them.',
-    held: {
-      deck: (n) => `Got deck.html (${n} slide${n === 1 ? '' : 's'}; 1 of 2). Now copy the narration.md block with the copy button at its top right and paste it here.`,
-      narration: (n) => `Got narration.md (${n} section${n === 1 ? '' : 's'}; 1 of 2). Now copy the deck.html block with the copy button at its top right and paste it here.`,
-      again: (k) => `Got ${k} again; it replaces the earlier one. `,
-      onlyHint: 'If the reply has only this one, press “Import just this”.',
-      reset: 'Discard and start over', resetDone: 'Discarded. Paste the whole reply, or one block.',
-      joined: 'Joined deck.html and narration.md pasted separately',
-    },
     err: {
-      'no-blocks': 'No code blocks (``` lines), and no deck.html or narration.md content found. Paste the whole reply (the copy button under the reply), or the two blocks one at a time (the copy button at the top right of each block).',
-      ambiguous: 'This has both slides (<section class="slide">) and narration (## headings and [0] lines) but no ``` lines, so they cannot be told apart. Copy the whole reply with the copy button under it, or the two blocks one at a time.',
-      'cut-deck': 'The deck.html does not end with </html>: only part of it was copied. Copy it again with the copy button at the top right of the block.',
-      'no-deck': 'No deck.html block found (a block starting with ```deck.html).',
-      'no-slides': 'The deck.html block has no <section class="slide">.',
-      unclosed: (e) => `The block starting on line ${e.line}${e.kind ? ` (${e.kind === 'deck' ? 'deck.html' : 'narration.md'})` : ''} is not closed: the reply was probably cut off. Ask the AI to continue, or to send the two blocks again.`,
-      'no-narration': 'No narration.md block found (a block starting with ```narration.md).',
-      empty: 'Nothing was pasted.',
-      'no-match': 'None of the fixed slides’ ids is in the current deck.',
-      'no-insert': 'The reply has no slides to add (<section class="slide">).',
+      'no-blocks': 'No slides or script found. Copy the code blocks of the AI’s output with the copy button at the top right of each box, and paste them.',
+      ambiguous: 'This has both slides and script but no code block lines (```), so they cannot be separated. Copy the two code blocks one at a time into their fields.',
+      'cut-deck': 'The slides are cut off (they do not end with </html>). Copy them again with the copy button at the top right of the code block.',
+      'no-deck': 'The slides field has no deck.html.',
+      'no-slides': 'The deck.html has no slides (<section class="slide">).',
+      unclosed: (e) => `The code block from line ${e.line} is not closed: the AI’s output was probably cut off. Ask the AI to continue.`,
+      empty: 'The slides field is empty.',
+      'no-match': 'The fixed slides are not in the current deck (their ids do not match).',
+      'no-insert': 'The output has no slides to add (<section class="slide">).',
     },
     warn: {
-      several: (w) => `There were ${w.n} ${w.kind === 'deck' ? 'deck.html' : 'narration.md'} blocks; the last one was used.`,
-      ignored: (w) => `${w.n} block(s) that are neither file were ignored.`,
-      unfenced: 'No code blocks: took <!DOCTYPE html> … </html> and the narration after it.',
-      autoclosed: (w) => `The block from line ${w.line} was not closed; it was closed before the next block.`,
-      unclosedAccepted: (w) => `The narration.md block from line ${w.line} has no closing \`\`\`; it was accepted because the narration looks complete.`,
+      several: (w) => `There were ${w.n} ${w.kind === 'deck' ? 'deck.html' : 'narration.md'} code blocks; the last one was used.`,
+      ignored: (w) => `${w.n} code block(s) that are neither slides nor script were not used.`,
+      unfenced: 'No code block lines: took <!DOCTYPE html> … </html> as the slides and the rest as the script.',
+      autoclosed: (w) => `The code block from line ${w.line} was not closed; it was closed before the next one.`,
+      unclosedAccepted: () => 'The script code block has no closing ```, but the script looks complete, so it was accepted.',
     },
-    building: 'Importing…', buildFailed: 'Could not build the imported deck',
-    imported: (n, ids) => `Imported ${n} slides${ids ? `; added ids to ${ids}` : ''}`,
-    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`, replacedNarr: (n) => `Replaced the narration (${n} section(s))`,
-    inserted: (n, at) => `Inserted ${n} slide(s) at position ${at} (with new ids)`, undoInsert: (n) => `inserting ${n} slide(s)`,
+    building: { new: 'Creating…', insert: 'Inserting…', replace: 'Replacing…' }, buildFailed: 'Could not build the slides',
+    imported: (n) => `Created ${n} slides`,
+    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`, replacedNarr: (n) => `Replaced the script (${n} section(s))`,
+    inserted: (n, at) => `Inserted ${n} slide(s) at position ${at}`, undoInsert: (n) => `inserting ${n} slide(s)`,
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
-    fix: 'Copy fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current deck.html and narration.md'}. Paste it into the same chat and send, then paste the reply in step 3 of “Revise…”.`,
+    fix: 'Copy a fix request for your AI', fixTitle: 'Fix request for your AI',
+    fixLead: (n, partial) => `Copied ${n} finding(s), their rules and ${partial ? 'the slides with problems' : 'the current slides and script'}. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
-    copyCutOff: 'Copy a resend request for your AI', cutOffCopied: 'Copied. Paste it into the chat, then paste the reply here.',
-    fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s reply…', close: 'Close',
+    copyCutOff: 'Copy a request to resend', cutOffCopied: 'Copied. Paste it into the chat and send, then paste the AI’s output here.',
+    fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s output…', close: 'Close',
     checkMsg: {
       orphanNarration: (a) => (a && typeof a === 'object' ? message('en', 'narrOrphan', a) : `Narration for a step the slide does not have [${a}]`),
       compData: (a) => message('en', 'compData', a),
@@ -258,6 +314,7 @@ const TX = {
     },
   },
 };
+
 
 export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
@@ -280,70 +337,179 @@ export function setupLlm(app) {
   const step = (id, title, kids) => el('section', { id, cls: 'paste-step', 'aria-labelledby': id + '-h' }, [el('h3', { id: id + '-h', text: title }), ...kids]);
   const readDeck = async () => ({ deck: (await S.ws.readText(S.deckFile, { max: READ_LIMITS.source })) || '', narration: (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || '' });
 
-  // ---------------------------------------------------------------- ① 新規作成：頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）
-  // 記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。書いたものは、このページを開いている間は残す
-  const draft = { kind: 'A', values: {}, plan: DEFAULT_PLAN, category: null, subcategory: null, purposesOff: [] };
-  function requestStep(title) {
-    const F = requestForm(LANG);
-    const field = (sec, f) => {
-      const id = `paste-${sec.toLowerCase()}-${f.key}`, key = sec + ':' + f.key, multi = f.key === 'examples';
-      const inp = el(multi ? 'textarea' : 'input', { id, name: f.key, ...(multi ? { rows: '2' } : { type: 'text' }), placeholder: X.fieldPh[f.key] || '', autocomplete: 'off', spellcheck: 'false' });
-      inp.value = key in draft.values ? draft.values[key] : f.value;
-      inp.addEventListener('input', () => { draft.values[key] = inp.value; });
-      return el('div', { cls: 'paste-field' }, [el('label', { for: id, text: f.label }), inp]);
-    };
-    const radio = (k, label) => el('label', {}, [el('input', { type: 'radio', name: 'paste-kind', value: k, id: 'paste-kind-' + k.toLowerCase() }), el('span', { text: label })]);
-    const kinds = el('fieldset', { id: 'paste-kind', cls: 'paste-kind' }, [el('legend', { text: X.kindLegend }), radio('A', X.kindA), radio('B', X.kindB)]);
-    const A = el('div', { id: 'paste-req-a', cls: 'paste-fields' }, F.A.fields.map((f) => field('A', f)));
-    const B = el('div', { id: 'paste-req-b', cls: 'paste-fields' }, [F.B.text ? el('p', { cls: 'hint quote', text: F.B.text }) : null, ...F.B.fields.map((f) => field('B', f))]);
-    const show = () => { A.hidden = draft.kind !== 'A'; B.hidden = draft.kind !== 'B'; };
-    kinds.querySelector('#paste-kind-' + draft.kind.toLowerCase()).checked = true;
-    kinds.addEventListener('change', (e) => { if (e.target.name === 'paste-kind') { draft.kind = e.target.value; show(); } });
-    show();
-    const values = () => Object.fromEntries([...(draft.kind === 'B' ? B : A).querySelectorAll('input,textarea')].map((x) => [x.name, x.value]));
-    // 内容（要点・メモ・元の資料の文）：大きな欄。頼みたいことの後ろに、そのまま入れる（大きさの心配は ② のお使いの AI が引き受ける）
-    const content = el('textarea', { id: 'paste-content', rows: '9', placeholder: X.contentPh, spellcheck: 'false' });
-    content.value = draft.content || '';
-    content.addEventListener('input', () => { draft.content = content.value; });
-    const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
-    const contentBox = el('div', { cls: 'paste-field wide paste-content' }, [el('label', { for: 'paste-content', text: X.contentLabel }), content]);
-    return {
-      node: step('paste-step1', title, [el('p', { cls: 'hint', text: X.step1Hint }), kinds, A, B, contentBox, phase]),
-      request: () => filledRequest({ kind: draft.kind, values: values() }, LANG),
-      content: () => content.value.trim(),
-      count: () => (draft.kind === 'A' || draft.kind === 'B' ? slideCountOf(values().length) : null),
-      phase,
-      missing: () => (draft.kind === 'A' && !String(values().topic || '').trim() ? A.querySelector('[name=topic]') : null),
-    };
+  // ---------------------------------------------------------------- 新規作成の問い（① 場面 → ② 内容 → ③ 見た目）。答えた問いは 1 行にたたみ、［変更］で開き直す
+  // 書いたもの・選んだものは、このページを開いている間は残す（次に開いたときも同じ答えから。問いは ① から順に開く）
+  const draft = {
+    category: null, sub: undefined,   // sub：undefined まだ答えていない | null この中にない | 小分類の id
+    title: '', audMode: 'ai', audience: '', lenMode: 'ai', lenN: '', lenUnit: 'slides', conMode: 'ai', content: '',   // conMode：'ai' | 'give'（ここに書く・貼る）| 'given'（チャットの AI に渡してある）
+    language: LANG, languageOther: '', speakers: 1, wishes: '', plan: DEFAULT_PLAN, purposesOff: [],
+  };
+  const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
+  const kindOk = () => { const c = catOf(draft.category); return !!c && (!c.subs.length || draft.sub !== undefined); };
+  const titleOk = () => !!draft.title.trim();
+  const lengthN = () => { if (draft.lenMode !== 'set') return null; const n = Math.round(Number(draft.lenN)); return Number.isFinite(n) && n > 0 ? Math.min(n, 999) : null; };
+  // 頼みたいこと（kit/core/llm-request.mjs の記入欄）。AI に任せた項目は書かない。話し合い済み（B）はタイトルだけ
+  function requestValues() {
+    const n = lengthN();
+    // 内容は「チャットの AI に渡してある」：B の頼み方（渡した資料と話し合いの内容で）。タイトル・だれ向け・長さは同じに聞く（詳しくの言語・話す人・希望は隠す）
+    if (draft.conMode === 'given') return { kind: 'B', values: { title: draft.title, audience: draft.audMode === 'write' ? draft.audience : '', length: n ? X.lengthReq(n, draft.lenUnit) : '' } };
+    return { kind: 'A', values: {
+      title: draft.title,
+      audience: draft.audMode === 'write' ? draft.audience : '',
+      length: n ? X.lengthReq(n, draft.lenUnit) : '',
+      language: draft.language === 'other' ? draft.languageOther : X.langReq[draft.language] || '',
+      speakers: X.speakersReq[draft.speakers] || X.speakersReq[1],
+      wishes: draft.wishes,
+    } };
   }
-  // ① 新規作成：場面（大分類 → 小分類。kit/core/new-deck.mjs）。小分類が構成の型を決め、その型と見せ方を頼みたいことに入れる。選ばなくてもよい。
-  // 大分類を選ぶと最初の小分類を選んでおく（小分類のない手引き・その他は大分類だけ）
-  function kindStep(title, onChange) {
-    const radio = (name, id, label) => el('label', {}, [el('input', { type: 'radio', name, value: id, id: `${name}-${id}` }), el('span', { text: label })]);
-    const cat = el('fieldset', { id: 'paste-cat', cls: 'paste-kind paste-cat' }, [el('legend', { text: X.catLegend }), ...CATEGORIES.map((c) => radio('paste-cat', c.id, c.label[LANG]))]);
+  const givenContent = () => (draft.conMode === 'give' ? draft.content.trim() : '');
+  // 2 回に分けて頼むか（9 枚から）：長さの数（分は 1 分 ≒ 1 枚。kit/core/llm-outline.mjs の slideCountOf）
+  const longN = () => { const v = requestValues().values.length; const n = v ? slideCountOf(v) : null; return n && n > OUTLINE_OVER ? n : null; };
+
+  const radio = (name, value, label, checked) => el('label', {}, [el('input', { type: 'radio', name, value, id: `${name}-${value}`, ...(checked ? { checked: '' } : {}) }), el('span', { text: label })]);
+  const setRadios = (box, name, v) => { for (const r of box.querySelectorAll(`input[name="${name}"]`)) r.checked = r.value === String(v); };
+  // 問い 1 つ：見出し・中身・［次へ］と、答えた後の 1 行（「使う場面：授業・研修／授業（小・中・高）［変更］」）
+  function question(id, title, kids, { q, answer, valid, onNext, onChange }) {
+    const nextBtn = el('button', { type: 'button', id: id.replace('paste-step-', 'paste-next-'), cls: 'pri', text: X.next });
+    const body = el('div', { cls: 'paste-q-body' }, [...kids, el('div', { cls: 'paste-guide' }, [nextBtn])]);
+    const ansText = el('span', { cls: 'paste-answer-text' });
+    const changeBtn = el('button', { type: 'button', id: id.replace('paste-step-', 'paste-change-'), cls: 'ghost', text: X.change });
+    const ans = el('p', { id: id + '-answer', cls: 'paste-answered', hidden: '' }, [ansText, changeBtn]);
+    const node = step(id, title, [body, ans]);
+    const Q = { node, done: false, nextBtn,
+      refresh() { nextBtn.disabled = !valid(); ansText.textContent = X.answered(q(), answer()); },
+      setDone(d) { Q.done = d; body.hidden = d; ans.hidden = !d; Q.refresh(); },
+      focus() { const f = node.querySelector('.paste-q-body input:not([type=hidden]):not([hidden]), .paste-q-body select, .paste-q-body textarea'); if (f) f.focus(); },
+    };
+    node.addEventListener('input', () => Q.refresh());
+    node.addEventListener('change', () => Q.refresh());
+    nextBtn.addEventListener('click', () => { if (valid()) onNext(); });
+    changeBtn.addEventListener('click', () => onChange());
+    return Q;
+  }
+
+  // ① 場面（大分類 → 小分類と「この中にない」。kit/core/new-deck.mjs）。どちらも答える問い（既定の印は付けない）。その他は小分類なし
+  function kindQuestion(title, ctl) {
+    const cat = el('fieldset', { id: 'paste-cat', cls: 'paste-kind paste-cat' }, [el('legend', { text: X.catLegend }), ...CATEGORIES.map((c) => radio('paste-cat', c.id, c.label[LANG], c.id === draft.category))]);
     const sub = el('fieldset', { id: 'paste-sub', cls: 'paste-kind paste-sub' });
     const note = el('p', { id: 'paste-structure', cls: 'hint paste-structure', role: 'status' });
     const render = () => {
-      const c = CATEGORIES.find((x) => x.id === draft.category) || null;
-      for (const r of cat.querySelectorAll('input')) r.checked = r.value === draft.category;
-      sub.replaceChildren(el('legend', { text: X.subLegend }), ...(c && c.subs.length ? c.subs.map((x) => radio('paste-sub', x.id, x.label[LANG])) : [el('span', { cls: 'hint', text: X.subNone })]));
-      sub.hidden = !c;
-      for (const r of sub.querySelectorAll('input')) r.checked = r.value === draft.subcategory;
-      const t = (c && c.subs.find((x) => x.id === draft.subcategory)) || (c && c.structure ? c : null);
-      note.textContent = t ? X.structure(t.structure[LANG], t.show[LANG]) : '';
-      note.hidden = !t;
+      const c = catOf(draft.category);
+      setRadios(cat, 'paste-cat', draft.category);
+      sub.replaceChildren(el('legend', { text: X.subLegend }), ...(c ? [...c.subs.map((x) => radio('paste-sub', x.id, x.label[LANG], x.id === draft.sub)), radio('paste-sub', 'none', X.subNoneFit, draft.sub === null)] : []));
+      sub.hidden = !c || !c.subs.length;
+      const s = c && c.subs.find((x) => x.id === draft.sub);
+      note.textContent = s ? X.structure(s.structure[LANG], s.show[LANG]) : '';
+      note.hidden = !s;
     };
     cat.addEventListener('change', (e) => {
       if (e.target.name !== 'paste-cat') return;
-      draft.category = e.target.value;
-      const c = CATEGORIES.find((x) => x.id === draft.category);
-      draft.subcategory = c && c.subs.length ? c.subs[0].id : null;
-      render(); onChange();
+      if (draft.category !== e.target.value) { draft.category = e.target.value; draft.sub = undefined; }
+      render(); ctl.changed();
     });
-    sub.addEventListener('change', (e) => { if (e.target.name === 'paste-sub') { draft.subcategory = e.target.value; render(); onChange(); } });
+    sub.addEventListener('change', (e) => { if (e.target.name === 'paste-sub') { draft.sub = e.target.value === 'none' ? null : e.target.value; render(); ctl.changed(); } });
     render();
-    return step('paste-step-kind', title, [el('p', { cls: 'hint', text: X.kindHint }), cat, sub, note]);
+    return question('paste-step-kind', title, [el('p', { cls: 'hint', text: X.kindHint }), cat, sub, note], {
+      q: () => X.catLegend,
+      answer: () => { const c = catOf(draft.category); if (!c) return ''; const s = c.subs.find((x) => x.id === draft.sub); return c.label[LANG] + (c.subs.length ? (LANG === 'ja' ? '／' : ' / ') + (s ? s.label[LANG] : X.subNoneFit) : ''); },
+      valid: kindOk, onNext: () => ctl.next(0), onChange: () => ctl.reopen(0),
+    });
   }
+
+  // ② 内容：タイトル（必須）・話し合い済みの切り替え・だれ向け／長さ／内容（「AI に任せる」か書くか）・詳しく（言語・話す人・そのほかの希望）
+  function contentQuestion(title, ctl) {
+    const ph = () => X.ph[draft.category] || X.ph.teaching;
+    const input = (id, value, set, extra = {}) => { const i = el('input', { type: 'text', id, autocomplete: 'off', spellcheck: 'false', ...extra }); i.value = value; i.addEventListener('input', () => { set(i.value); ctl.changed(); }); return i; };
+    const area = (id, value, set, rows) => { const t = el('textarea', { id, rows, spellcheck: 'false' }); t.value = value; t.addEventListener('input', () => { set(t.value); ctl.changed(); }); return t; };
+    const titleIn = input('paste-title', draft.title, (v) => { draft.title = v; }, { required: '', 'aria-required': 'true' });
+    // 「AI に任せる」か書くか（既定は AI に任せる。書く方を選ぶと欄が開く）
+    const pair = (name, legend, aiLabel, writeLabel, mode, setMode, field) => {
+      const fs = el('fieldset', { id: name, cls: 'paste-kind paste-pair' }, [el('legend', { text: legend }), radio(name, 'ai', aiLabel, mode() === 'ai'), radio(name, 'write', writeLabel, mode() !== 'ai'), field]);
+      const show = () => { field.hidden = mode() === 'ai'; };
+      fs.addEventListener('change', (e) => { if (e.target.name === name) { setMode(e.target.value); show(); ctl.changed(); if (e.target.value === 'write') { const f = field.querySelector('input,textarea'); if (f) f.focus(); } } });
+      show();
+      return fs;
+    };
+    const audIn = input('paste-audience', draft.audience, (v) => { draft.audience = v; }, { 'aria-label': X.audienceLabel });
+    const aud = pair('paste-audience-mode', X.audienceLegend, X.audienceAi, X.audienceWrite, () => draft.audMode, (v) => { draft.audMode = v; }, el('div', { cls: 'paste-pair-field' }, [audIn]));
+    const lenIn = el('input', { type: 'number', id: 'paste-length-n', min: '1', max: '999', inputmode: 'numeric', 'aria-label': X.lengthNLabel });
+    lenIn.value = draft.lenN;
+    lenIn.addEventListener('input', () => { draft.lenN = lenIn.value; ctl.changed(); });
+    const unit = el('select', { id: 'paste-length-unit', 'aria-label': X.lengthUnitLabel }, ['slides', 'min'].map((u) => el('option', { value: u, text: X.unit[u] })));
+    unit.value = draft.lenUnit;
+    unit.addEventListener('change', () => { draft.lenUnit = unit.value; ctl.changed(); });
+    const len = pair('paste-length-mode', X.lengthLegend, X.lengthAi, X.lengthSet, () => (draft.lenMode === 'set' ? 'write' : 'ai'), (v) => { draft.lenMode = v === 'write' ? 'set' : 'ai'; }, el('div', { cls: 'paste-pair-field paste-length' }, [lenIn, unit]));
+    const conIn = area('paste-content', draft.content, (v) => { draft.content = v; }, '8');
+    conIn.setAttribute('aria-label', X.contentLabel);
+    // 内容は 3 つの答え：AI に任せる（既定）・ここに書く・貼る（大きな欄が開く）・チャットの AI に渡してある（その資料を渡したチャットに貼る、と添える）
+    const conField = el('div', { cls: 'paste-pair-field paste-content' }, [conIn]);
+    const givenNote = el('p', { id: 'paste-content-given-note', cls: 'hint paste-pair-field', text: X.contentGivenNote });
+    const conMode = () => (draft.conMode === 'give' ? 'write' : draft.conMode === 'given' ? 'given' : 'ai');
+    const con = el('fieldset', { id: 'paste-content-mode', cls: 'paste-kind paste-pair' }, [el('legend', { text: X.contentLegend }),
+      radio('paste-content-mode', 'ai', X.contentAi, conMode() === 'ai'), radio('paste-content-mode', 'write', X.contentGive, conMode() === 'write'), conField,
+      radio('paste-content-mode', 'given', X.contentGiven, conMode() === 'given'), givenNote]);
+    con.addEventListener('change', (e) => {
+      if (e.target.name !== 'paste-content-mode') return;
+      draft.conMode = e.target.value === 'write' ? 'give' : e.target.value === 'given' ? 'given' : 'ai';
+      ctl.changed();
+      if (draft.conMode === 'give') conIn.focus();
+    });
+    // 詳しく（たたむ。今の答えを見出しに出す）
+    const langOther = input('paste-language-name', draft.languageOther, (v) => { draft.languageOther = v; }, { 'aria-label': X.langOtherLabel, placeholder: X.langOtherPh });
+    const langSet = el('fieldset', { id: 'paste-language', cls: 'paste-kind' }, [el('legend', { text: X.langLegend }), ...['ja', 'en', 'other'].map((k) => radio('paste-language', k, X.langOpt[k], draft.language === k)), langOther]);
+    const showLang = () => { langOther.hidden = draft.language !== 'other'; };
+    langSet.addEventListener('change', (e) => { if (e.target.name === 'paste-language') { draft.language = e.target.value; showLang(); ctl.changed(); if (draft.language === 'other') langOther.focus(); } });
+    showLang();
+    const spSet = el('fieldset', { id: 'paste-speakers', cls: 'paste-kind' }, [el('legend', { text: X.speakersLegend }), radio('paste-speakers', '1', X.speakers[1], draft.speakers === 1), radio('paste-speakers', '2', X.speakers[2], draft.speakers === 2)]);
+    spSet.addEventListener('change', (e) => { if (e.target.name === 'paste-speakers') { draft.speakers = e.target.value === '2' ? 2 : 1; ctl.changed(); } });
+    const wishes = area('paste-wishes', draft.wishes, (v) => { draft.wishes = v; }, '2');
+    wishes.setAttribute('aria-describedby', 'paste-wishes-note');
+    const moreSum = el('summary', { id: 'paste-more-h' });
+    const more = el('details', { id: 'paste-more', cls: 'paste-fold' }, [moreSum, langSet, spSet,
+      el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-wishes', text: X.wishesLabel }), wishes, el('small', { id: 'paste-wishes-note', cls: 'hint', text: X.wishesNote })])]);
+    const langName = () => (draft.language === 'other' ? draft.languageOther.trim() || X.langOpt.other : X.langOpt[draft.language]);
+    const rest = [aud, len, con, more];
+    const fillPh = () => { const p = ph(); titleIn.placeholder = p.title; audIn.placeholder = p.audience; conIn.placeholder = p.content; wishes.placeholder = p.wishes; };
+    const show = () => { conField.hidden = draft.conMode !== 'give'; givenNote.hidden = draft.conMode !== 'given'; more.hidden = draft.conMode === 'given'; moreSum.textContent = X.more(langName(), X.speakersShort[draft.speakers], !!draft.wishes.trim()); fillPh(); };
+    show();
+    const Q = question('paste-step-content', title, [el('p', { cls: 'hint', text: X.step1Hint }),
+      el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-title', text: X.titleLabel }), titleIn]),
+      ...rest], {
+      q: () => X.titleQ,
+      answer: () => {
+        const v = requestValues().values, sep = LANG === 'ja' ? '・' : ' · ';
+        return [draft.title.trim(), v.audience ? v.audience.trim() : '', v.length || '', draft.conMode === 'given' ? X.discussedShort : ''].filter(Boolean).join(sep);
+      },
+      valid: titleOk, onNext: () => ctl.next(1), onChange: () => ctl.reopen(1),
+    });
+    Q.show = show;
+    Q.titleIn = titleIn;
+    return Q;
+  }
+
+  // ③ 見た目（テーマ）。選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
+  async function themeQuestion(title, ctl) {
+    const sel = el('select', { id: 'paste-theme' });
+    const LOAD = '\u0000load';
+    const fill = async () => {
+      const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
+      sel.replaceChildren(...opts.map((o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) })),
+        ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
+      const vals = opts.map((o) => o.value);
+      sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];
+      newTheme = sel.value;
+    };
+    await fill();
+    sel.addEventListener('change', async () => {
+      if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); ctl.changed(); return; }
+      newTheme = sel.value; ctl.changed();
+    });
+    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])], {
+      q: () => X.themeLabel, answer: () => (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value),
+      valid: () => !!sel.value, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2),
+    });
+  }
+
   // ② の素材（いつも使える。押せない札）と言いたいこと（14 の札。既定で全部入り。押すと外れ、外したものだけに使う部品は指示の一覧からも除く）。
   // 入っている札は印と枠、外した札は薄くして斜線（色だけで分けない。app/app.css の .tile）。絵は parts-map の下書きの線画（仮。部品の見本から撮る絵に替える）
   const ICONS = {
@@ -435,72 +601,89 @@ export function setupLlm(app) {
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
     return seriesForDeck(deck);
   }
-  // req：{request() → 最後に付ける文（Promise でもよい）, missing() → 足りない欄 | null}。optional：指示を入れるかを選べる（挿入：既定は入れない）
-  // split：新規作成（② 分野 を別のステップにする。既定は何も選ばない）。seriesTitle：その見出し。req.exclude：使わせない部品（外した言いたいこと）
-  async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied, split = false, seriesTitle = '', onSize = null } = {}) {
-    // 大きさはどれも同じ測り方（UTF-8 のバイト数 / 1024、小数 1 桁。kit/core/llm-pack.mjs の packSize・kbOf）。共通の本体と分野は、写す文に入るその部分そのもの
-    // （共通の本体は空の記入欄を含まない。含めると、記入欄を埋めた合わせての大きさより大きく見えた）。合わせては部分の和より小さくならない
-    // 外した言いたいこと（新規作成の ②）だけに使う部品は、共通の本体と分野の説明からも除く：大きさもその分を引いたもの（update で出し直す）
-    const ex = () => (req.exclude ? req.exclude() : []);
-    const offNow = () => (req.off ? req.off() : []);
-    // 共通の本体の表は、入っている分野と外した言いたいことで変わる（kit/core/llm-pack-assemble.mjs）
-    // お使いの AI（新規作成。ほかの入口は無料版の組み立て）：有料版はすべての系列とすべての部品
-    const planNow = () => (req.allSeries && req.allSeries() ? 'paid' : 'free');
-    const commonNow = () => commonBody(LANG, ex(), chosen(), offNow(), planNow());
-    const partBytes = (s) => packSize(seriesPart(s, LANG, ex(), planNow()));
-    const initial = split ? [] : await defaultSeries();
-    const commonBytes = packSize(commonBody(LANG, ex(), initial, offNow(), planNow()));
+
+  // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る
+  // 問い「無料のプランですか、有料のプランですか」→ 無料なら「スライドに出てくるものはありますか」（内容の分野。② のタイトルと内容・① の場面から推したものに印）
+  // → 折りたたみ「AI に使わせない図を選ぶ」→［指示をコピー］。有料のプランはすべての分野を入れるので、分野の問いを隠す（印は無料に戻したときのために残る）
+  function sendStep(title, copyMsg, { request, missing }) {
+    const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）
+    const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.addEventListener('change', () => { touched.add(s); update(); }); return cb; });
+    const chosen = () => (draft.plan === 'paid' ? [...SERIES] : boxes.filter((b) => b.checked).map((b) => b.value));
+    const subjectsTicked = () => SUBJECTS.filter((x) => boxes.some((b) => b.checked && b.value === x.series)).map((x) => x.id);
+    const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map((p) => radio('paste-plan', p, X.plan[p], draft.plan === p))]);
+    const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
+    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint' }, [el('legend', { text: X.seriesLegend }),
+      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s })]))]);
+    const seriesHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew });
+    const guess = el('p', { id: 'paste-series-guess', cls: 'hint', role: 'status', hidden: '' });
+    const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
+    const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
-    const boxes = SERIES.map((s) => {
-      const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s });
-      cb.checked = initial.includes(s);
-      return cb;
-    });
-    const withPack = optional ? el('input', { type: 'checkbox', id: 'paste-with-pack' }) : null;
-    const packOn = () => !withPack || withPack.checked;
-    // req.allSeries()：すべての系列を入れる（新規作成の有料版。分野の印は残すが使わない）
-    const chosen = () => (req.allSeries && req.allSeries() ? [...SERIES] : boxes.filter((b) => b.checked).map((b) => b.value));
-    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex(), off: offNow(), plan: planNow() }) : r; };
-    const update = async () => {
-      const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t));
-      const cb = packSize(commonNow());
-      commonRow.dataset.bytes = String(cb); commonRow.lastChild.textContent = X.common(kbOf(cb));
-      for (const s of SERIES) { const h = seriesSet.querySelector(`#paste-series-${s}`).closest('label').querySelector('[data-bytes]'); if (!h) continue; const b = partBytes(s); h.dataset.bytes = String(b); h.textContent = X.plusKb(kbOf(b)); }
+    const exclude = () => componentsOff(draft.purposesOff, PURPOSES);
+    const textNow = () => packWithRequest({ series: chosen(), lang: LANG, request: request(), exclude: exclude(), off: draft.purposesOff, plan: draft.plan });
+    // 推した印：② のタイトルと内容の字（kit/core/new-deck.mjs の guessSubjects）と ① の場面（ビジネス → ビジネス）。自分で替えた分野はそのまま
+    const guessNow = () => {
+      const fromText = guessSubjects(draft.title + '\n' + givenContent()), fromKind = defaultSubjects(draft.category).filter((x) => !fromText.includes(x));
+      const want = new Set([...fromText, ...fromKind].map((id) => (SUBJECTS.find((x) => x.id === id) || {}).series));
+      for (const b of boxes) if (!touched.has(b.value)) b.checked = want.has(b.value);
+      const names = (ids) => ids.map((id) => (SUBJECTS.find((x) => x.id === id) || {}).series).filter((s) => s && !touched.has(s)).map((s) => (LANG === 'ja' ? `「${X.seriesName[s]}」` : `“${X.seriesName[s]}”`));
+      const a = names(fromText), k = names(fromKind);
+      guess.textContent = [a.length ? X.seriesGuess(a.join(LANG === 'ja' ? '' : ', ')) : '', k.length ? X.seriesGuessKind(k.join(LANG === 'ja' ? '' : ', ')) : ''].filter(Boolean).join(LANG === 'ja' ? '' : ' ');
+      guess.hidden = !guess.textContent;
     };
+    const showPlan = () => {
+      setRadios(planSet, 'paste-plan', draft.plan);
+      for (const x of [seriesSet, seriesHint]) x.hidden = draft.plan === 'paid';
+      guess.hidden = draft.plan === 'paid' || !guess.textContent;
+      paidNote.hidden = draft.plan !== 'paid';
+    };
+    const update = () => {
+      showPlan();
+      const n = longN();
+      phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
+      const t = textNow();
+      total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t));
+    };
+    planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; update(); } });
+    let copied = null;   // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）
+    const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, purposesOff: draft.purposesOff, subjects: subjectsTicked() });
+    const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
+      const miss = missing();
+      if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
+      const text = textNow();
+      copied = choiceNow();
+      const ok = await copyText(text);
+      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
+    } });
+    const node = step('paste-step-send', title, [planSet, planHint, seriesSet, seriesHint, guess, paidNote, partsTiles(update), phase, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
+    return { node, update, guessNow, choice: () => copied || choiceNow() };
+  }
+
+  // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ分野）も付ける
+  // 分野の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）
+  async function packStep(copyMsg, req, { title, copyLabel, copiedMsg }) {
+    const initial = await defaultSeries();
+    const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
+    const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
+    const withPack = el('input', { type: 'checkbox', id: 'paste-with-pack' });
+    const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
+    const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
+    const partBytes = (s) => packSize(seriesPart(s, LANG));
+    const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); };
     for (const b of boxes) b.addEventListener('change', update);
-    const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
-    common.checked = true;
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
-      const miss = req.missing();
-      if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.needTopic; miss.focus(); return; }
       const text = await textNow();
-      if (req.onCopy) req.onCopy();
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
     } });
-    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
-        el('legend', { text: X.seriesLegend }),
-        // 新規作成（split）では分野ごとの大きさを出さない（大きさの心配は ② のお使いの AI が引き受ける）
-        ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
-          split ? null : el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })])),
-      ]);
-    const seriesHint = el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) });
-    const commonRow = el('label', { cls: 'paste-common', for: 'paste-common', 'data-bytes': String(commonBytes) }, [common, el('span', { text: X.common(kbOf(commonBytes)) })]);
-    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide' }, split
-      ? [el('span', { cls: 'hint', text: X.guide }), commonRow]
-      : [el('span', { cls: 'hint', text: X.guide }), commonRow, seriesSet, seriesHint]);
-    if (withPack) {
-      const show = () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); };
-      withPack.addEventListener('change', show);
-      packParts.hidden = true;
-    }
+    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
+      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) })]);
+    withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
     await update();
-    const node = step('paste-step2', title, [
-      ...(withPack ? [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })])] : []),
+    const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),
       packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
-    const seriesNewHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew });
-    const seriesNode = split ? step('paste-step-series', seriesTitle, [seriesNewHint, seriesSet, seriesHint]) : null;
-    return { node, update, seriesNode, chosen, boxes, seriesParts: [seriesNewHint, seriesSet, seriesHint] };
+    return { node, update };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
   function reviseStep(copyMsg, title, results0) {
@@ -518,112 +701,165 @@ export function setupLlm(app) {
     return { s1, s2 };
   }
 
-  // ---------------------------------------------------------------- AI の窓（③ の貼り付けは 3 つとも同じ）
-  // 囲みを 1 つずつ（チャットの囲みの右上のコピーで）写して貼ったとき：届いた片方を持っておき、もう片方を待つ（窓を閉じると捨てる）
-  let held = null;   // {kind: 'deck' | 'narration', text}
+  // ---------------------------------------------------------------- AI の出力を貼る 2 つの欄（スライド＝deck.html・台本＝narration.md。新規作成の ⑤、挿入・修正の ③）
+  // 隠れた状態はない：欄ごとに受け取ったものを見せる。どちらの欄に出力の全体を貼っても 2 つに分け、違う欄に貼ったものは正しい欄へ移す
+  function pasteFields(mode, onChange) {
+    const info = el('p', { id: 'paste-info', cls: 'hint paste-info', role: 'status', hidden: '' });
+    const mk = (k) => {
+      const id = k === 'deck' ? 'paste-deck' : 'paste-narr';
+      const ta = el('textarea', { id, rows: '5', spellcheck: 'false', placeholder: k === 'deck' ? X.phDeck : X.phNarr, 'aria-describedby': id + '-st' });
+      const st = el('p', { id: id + '-st', cls: 'paste-st', role: 'status' });
+      const box = el('div', { cls: 'paste-field wide' }, [el('label', { for: id, text: k === 'deck' ? X.pasteDeck : X.pasteNarr }), ta, st]);
+      return { k, ta, st, box, val: null, err: null, warn: [], last: '' };
+    };
+    const F = { deck: mk('deck'), narr: mk('narr') };
+    let notes = [];
+    const errText = (e) => (typeof X.err[e.code] === 'function' ? X.err[e.code](e) : X.err[e.code] || e.message);
+    const set = (f, val, warn = []) => { f.val = val; f.err = null; f.warn = warn; };
+    function take(k) {
+      const f = F[k], other = F[k === 'deck' ? 'narr' : 'deck'];
+      const text = f.ta.value;
+      if (!text.trim()) { set(f, null); S.cutOff = null; return; }
+      notes = [];
+      const p = pastePart(text);
+      // コードブロックの中身だけ（枠の右上のコピーで写したもの）：区切りがないのはふつうなので、そのことは知らせない
+      if (p.part === 'deck' || p.part === 'narration') p.warnings = p.warnings.filter((w) => w.code !== 'unfenced');
+      // コードブロックが閉じていない（出力が切れた）・コードブロックがない（ファイル・キャンバス・添付で出した）：送り直しを頼む文を写せる
+      S.cutOff = p.error && (p.error.code === 'unclosed' || p.error.code === 'no-blocks') ? p.error : null;
+      if (p.error && p.error.code === 'unclosed' && p.error.kind === 'narration' && p.deck) {
+        // 台本の途中で切れた出力：スライドは受け取り、台本の欄に切れたことを出す（送り直してもらった台本だけを、台本の欄に貼る）
+        set(F.deck, p.deck, p.warnings); F.deck.ta.value = p.deck.replace(/\n$/, '');
+        F.narr.ta.value = ''; set(F.narr, null); F.narr.err = errText(p.error);
+        notes = [X.split];
+        return;
+      }
+      if (p.error) { set(f, null); f.err = errText(p.error); return; }
+      if (p.part === 'both') {
+        set(F.deck, p.deck, p.warnings); set(F.narr, p.narration);
+        F.deck.ta.value = p.deck.replace(/\n$/, ''); F.narr.ta.value = p.narration.replace(/\n$/, '');
+        notes = [X.split];
+        return;
+      }
+      const to = p.part === 'deck' ? 'deck' : 'narr', val = p.part === 'deck' ? p.deck : p.narration;
+      if (to !== k) {
+        F[to].ta.value = val.replace(/\n$/, ''); set(F[to], val, p.warnings);
+        f.ta.value = ''; set(f, null);
+        notes = [X.moved[to]];
+        return;
+      }
+      set(f, val, p.warnings);
+      void other;
+    }
+    function render() {
+      for (const f of [F.deck, F.narr]) {
+        let t = X.stEmpty, cls = '';
+        if (f.err) { t = f.err; cls = 'bad'; }
+        else if (f.val !== null) {
+          if (f.k === 'deck') { const n = sectionsOf(f.val).length; if (n) { t = X.stDeck(n); cls = 'ok'; } else { t = X.err['no-slides']; cls = 'bad'; f.err = t; } }
+          else { t = X.stNarr(narrSections(f.val.replace(/\r\n?/g, '\n')).out.length); cls = 'ok'; }
+        }
+        f.st.textContent = t; f.st.className = 'paste-st' + (cls ? ' ' + cls : '');
+      }
+      const w = [...F.deck.warn, ...F.narr.warn].map((x) => (typeof X.warn[x.code] === 'function' ? X.warn[x.code](x) : X.warn[x.code] || x.code));
+      info.textContent = [...notes, ...w].join(' ');
+      info.hidden = !info.textContent;
+      onChange();
+    }
+    // 欄に書き戻した字（分けた・移した中身）は、もう読んだもの：同じ字の input では読み直さない（知らせが消えないように）
+    for (const f of [F.deck, F.narr]) f.ta.addEventListener('input', () => { if (f.ta.value === f.last) return; take(f.k); F.deck.last = F.deck.ta.value; F.narr.last = F.narr.ta.value; render(); });
+    render();
+    return {
+      nodes: [info, F.deck.box, F.narr.box],
+      focus: () => F.deck.ta.focus(),
+      // 押してよいか（新規作成・挿入はスライドが要る。修正はどちらか 1 つでよい）と、ボタンの横に出す言葉
+      ready: () => {
+        if (F.deck.err || F.narr.err) return false;
+        return mode === 'replace' ? F.deck.val !== null || F.narr.val !== null : F.deck.val !== null;
+      },
+      note: () => {
+        if (F.deck.err || F.narr.err) return '';
+        if (F.deck.val !== null && F.narr.val === null) return X.noNarr[mode];
+        if (mode === 'replace' && F.deck.val === null && F.narr.val !== null) return X.keepDeck;
+        return '';
+      },
+      data: () => ({ deck: F.deck.val, narration: F.narr.val, warnings: [...F.deck.warn, ...F.narr.warn] }),
+    };
+  }
+
+  // ---------------------------------------------------------------- AI の窓
   let newTheme = null;
-  let outlineRows = null;   // 新規作成で受け取った構成案（[{heading, point}]）。次の返事（1〜6 枚目）で教材を開くときに outline.md にする
-  let batchNow = null;      // 構成案の続きの挿入（{rows, from, to}）   // 新規作成の ② で選んだテーマ（返事の教材の <html data-theme> にも付ける）
+  let outlineRows = null;   // 新規作成で受け取った構成案（[{heading, point}]）。最初の分を作るときに egatari.json の studio.outline にする
+  let batchNow = null;      // 構成案の続きの挿入（{rows, from, to}）
   let insertAfter = null;   // 挿入：この番号（0 から）のスライドの後ろ。null なら最後
-  let newChoice = null;     // 新規作成：選んだ場面・分野・外した言いたいこと（開くときに egatari.json の studio.newDeck へ）
+  let newChoice = null;     // 新規作成：写したときの選び方（作成するときに egatari.json の studio.newDeck へ）
   const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
   // mode：'new'（新規作成）| 'insert'（スライドの挿入。opts.after）| 'replace'（修正。opts.results：品質チェックの結果があれば）。
-  // 取り込み方は入口が決める（③ に選ぶ欄はない）。opts.focusPaste：③ から始める（修正依頼をもう写したとき）。戻り値：取り込んだか
+  // opts.focusPaste：貼り付けの欄から始める（修正依頼をもう写したとき）。戻り値：作成・挿入・置き換えをしたか
   async function aiDialog(mode, opts = {}) {
     if (mode !== 'new' && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
-    held = null;
     const titles = opts.batch ? X.steps.batch : X.steps[mode];
     outlineRows = null; batchNow = null; newChoice = null;
-    const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: '8', 'aria-describedby': 'paste-step3-hint' });
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
-    // 返事が切れていたとき：AI に送り直しを頼む文を写すボタン
-    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    // 出力が切れていた・コードブロックがなかったとき：AI に送り直しを頼む文を写すボタン
     const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
-    // 持っている片方の知らせ（読み上げ）と、捨てて最初からのボタン
-    const stateText = el('span', { id: 'paste-state-text' });
-    const reset = el('button', { type: 'button', id: 'paste-reset', text: X.held.reset, onclick: () => { held = null; showState(null, X.held.resetDone); area.value = ''; msg.hidden = true; area.focus(); } });
-    const stateBox = el('div', { id: 'paste-state', cls: 'paste-state', role: 'status', hidden: '' }, [stateText, reset]);
-    function showState(h, text) {
-      stateBox.hidden = !text; stateBox.classList.toggle('waiting', !!h); reset.hidden = !h;
-      stateText.textContent = text || '';
-    }
-    let s1, s2, pre = [];
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    S.cutOff = null;
+    const goNote = el('span', { id: 'paste-go-note', cls: 'hint paste-go-note', role: 'status' });
+    let outlinePhase = () => false;   // 新規作成で構成案を待っているとき（作成は押せない）
+    let fields = null;
+    const syncGo = () => {
+      const b = document.getElementById('dlg-import');
+      cut.hidden = !S.cutOff;
+      if (!b || !fields || !b.closest('#dlg[open]')) return;
+      const waiting = outlinePhase();
+      b.disabled = waiting || !fields.ready();
+      goNote.textContent = waiting ? '' : fields.note();
+      if (goNote.parentNode !== b.parentNode) b.parentNode.prepend(goNote);
+    };
+    fields = pasteFields(mode, () => syncGo());
+    const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
+      ...fields.nodes, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })];
+    let body;
     if (mode === 'new') {
-      // ① 場面（大分類・小分類）→ ② お使いの AI・分野（無料版だけ）・言いたいこと（折りたたみ）→ ③ デザイン（テーマ）→ ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け
-      const req = requestStep(titles[0]);
-      // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
-      const sel = el('select', { id: 'paste-theme' });
-      const LOAD = '\u0000load';
-      const fill = async () => {
-        const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
-        sel.replaceChildren(...opts.map((o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) })),
-          ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
-        const vals = opts.map((o) => o.value);
-        sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];
-        newTheme = sel.value;
+      // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。答えた問いはたたみ、④ ⑤ は ③ まで答えると出る
+      let Qs = [], reached = 0, send = null, five = null;
+      const ctl = {
+        changed() { for (const q of Qs) q.refresh(); if (Qs[1]) Qs[1].show(); if (send) { send.guessNow(); send.update(); } if (five) five.render(); },
+        next(k) {
+          Qs[k].setDone(true);
+          reached = Math.max(reached, k + 1);
+          // 次の答えていない問い（なければ ④）
+          const open = Qs.findIndex((q, i) => i > k && !q.done && i <= reached);
+          show();
+          if (open >= 0) Qs[open].focus(); else if (reached >= 3) send.node.querySelector('input').focus();
+        },
+        reopen(k) { Qs[k].setDone(false); Qs[k].focus(); },
       };
-      await fill();
-      // 頼みたいこと（＋テーマの行）・内容・（9 枚から）構成案だけを返す、の順に最後へ
-      const longN = () => { const n = req.count(); return n && n > OUTLINE_OVER ? n : null; };
-      // subjects は分野の印（有料版でも印は残す：無料版に戻したときの選び方。指示に入る系列は kit/core/new-deck.mjs の seriesForChoice）
-      const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.subcategory, purposesOff: draft.purposesOff,
-        subjects: pack ? SUBJECTS.filter((x) => pack.boxes.some((b) => b.checked && b.value === x.series)).map((x) => x.id) : [] });
-      // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）。写していなければ今の選び方
-      let copiedChoice = null;
-      newChoice = () => copiedChoice || choiceNow();
-      const reqWithTheme = { request: () => {
-        let t = req.request().replace(/\n*$/, '\n') + X.themeLine(sel.value) + '\n';
-        const cr = choiceRequest(choiceNow(), PURPOSES, LANG);
+      const show = () => { Qs.forEach((q, i) => { q.node.hidden = i > reached; }); send.node.hidden = five.node.hidden = reached < 3; if (reached >= 3) { send.guessNow(); send.update(); } five.render(); };
+      Qs = [kindQuestion(titles[0], ctl), contentQuestion(titles[1], ctl), await themeQuestion(titles[2], ctl)];
+      const request = () => {
+        let t = filledRequest(requestValues(), LANG).replace(/\n*$/, '\n') + X.themeLine(newTheme) + '\n';
+        const cr = choiceRequest({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, subjects: [], purposesOff: draft.purposesOff }, PURPOSES, LANG);
         if (cr) t += cr + '\n';
-        const c = req.content();
+        const c = givenContent();
         if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';
-        if (longN()) t += '\n' + outlineRequest({ n: longN(), lang: LANG });
+        const n = longN();
+        if (n) t += '\n' + outlineRequest({ n, lang: LANG });
         return t;
-      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES), off: () => draft.purposesOff, allSeries: () => draft.plan === 'paid',
-      onCopy: () => { copiedChoice = choiceNow(); } };
-      // 長い教材（9 枚から）は 2 回に分けて作ると知らせる。大きさの目安と警告は出さない（お使いの AI の問いが引き受ける）
-      const onSize = () => { const n = longN(); req.phase.hidden = !n; req.phase.textContent = n ? X.phase(n) : ''; };
-      let pack = null;
-      // 大分類がビジネスなら、ビジネスのパーツを入れておく（ほかの大分類に替えたら、自分で入れたのでなければ外す。kit/core/new-deck.mjs の defaultSubjects）
-      let autoSubjects = [];
-      const onKind = () => {
-        if (!pack) return;
-        const want = defaultSubjects(draft.category);
-        for (const b of pack.boxes) {
-          const id = (SUBJECTS.find((x) => x.series === b.value) || {}).id;
-          if (want.includes(id) && !b.checked) { b.checked = true; autoSubjects.push(id); }
-          else if (!want.includes(id) && autoSubjects.includes(id) && b.checked) { b.checked = false; autoSubjects = autoSubjects.filter((x) => x !== id); }
-        }
-        pack.update();
       };
-      const kindNode = kindStep(titles[5], onKind);
-      pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3], onSize });
-      for (const b of pack.boxes) b.addEventListener('change', () => { autoSubjects = autoSubjects.filter((x) => (SUBJECTS.find((y) => y.id === x) || {}).series !== b.value); });
-      // お使いの AI：無料版（既定。選んだ分野だけの軽い指示）か有料版（すべての系列）。有料版では分野の選び方を隠す
-      const planRadio = (p) => el('label', {}, [el('input', { type: 'radio', name: 'paste-plan', value: p, id: 'paste-plan-' + p }), el('span', { text: X.plan[p] })]);
-      const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map(planRadio)]);
-      const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
-      const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
-      const showPlan = () => {
-        for (const r of planSet.querySelectorAll('input')) r.checked = r.value === draft.plan;
-        for (const x of pack.seriesParts) x.hidden = draft.plan === 'paid';
-        paidNote.hidden = draft.plan !== 'paid';
+      const missing = () => {
+        if (!kindOk()) { const f = Qs[0].node.querySelector('input'); if (Qs[0].done) Qs[0].setDone(false); return { text: X.needKind, focus: () => f.focus() }; }
+        if (!titleOk()) { if (Qs[1].done) Qs[1].setDone(false); return { text: X.needTopic, focus: () => Qs[1].titleIn.focus() }; }
+        return null;
       };
-      planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; showPlan(); pack.update(); } });
-      pack.seriesNode.querySelector('h3').after(planSet, planHint);
-      pack.seriesNode.append(paidNote, partsTiles(pack.update));
-      showPlan();
-      onKind();
-      sel.addEventListener('change', async () => {
-        if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); pack.update(); return; }
-        newTheme = sel.value; pack.update();
-      });
-      req.node.addEventListener('input', pack.update);
-      const themeNode = step('paste-step-theme', titles[4], [el('p', { cls: 'hint', text: X.themeHint }),
-        el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])]);
-      pre = [kindNode, pack.seriesNode, themeNode];
-      s1 = req.node; s2 = pack.node;
+      send = sendStep(titles[3], copyMsg, { request, missing });
+      newChoice = send.choice;
+      five = fiveStep(titles, fields, pasteKids, () => syncGo());
+      outlinePhase = () => five.waiting();
+      Qs.forEach((q) => q.setDone(false));
+      show();
+      body = [...Qs.map((q) => q.node), send.node, five.node];
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
       const slides = sectionsOf(deck);
@@ -636,106 +872,97 @@ export function setupLlm(app) {
       const ins = B ? { node: step('paste-step1', X.steps.batch[0], [el('p', { id: 'paste-batch-where', cls: 'paste-where', text: X.batchWhere(B.from, B.to, B.rows.length, remaining(B)) })]), count: () => B.to - B.from + 1, wish: () => '' }
         : insertStep(titles[0], where);
       const req = { request: () => (B ? batchRequest({ rows: B.rows, from: B.from, to: B.to, deck, narration, lang: LANG })
-        : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })), missing: () => null };
+        : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })) };
       batchNow = B;
-      const pack = await packStep(copyMsg, req, { title: titles[1], optional: true, copyLabel: X.copyInsert, copiedMsg: X.insertCopied });
+      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied });
       ins.node.addEventListener('input', pack.update);
-      s1 = ins.node; s2 = pack.node;
+      body = [ins.node, pack.node, step('paste-step-paste', titles[2], pasteKids())];
     } else {
       const r = reviseStep(copyMsg, titles, opts.results || null);
-      s1 = r.s1; s2 = r.s2;
+      body = [r.s1, r.s2, step('paste-step-paste', titles[2], pasteKids())];
     }
-    const s3 = step('paste-step3', titles[2], [
-      el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }),
-      stateBox, el('label', { for: 'paste-text', cls: 'sr-only', text: X.pasteLabel }), area, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })]);
-    let focusArea = !!opts.focusPaste;
-    // 構成案を受け取ったら（新規作成）：その一覧と、1〜6 枚目を頼む文のコピーを ⑤ の前に出す
-    let outlineNode = null;
-    const showOutline = (rows) => {
-      const b = nextBatch({ rows, next: 1 });
-      const msgO = el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' });
-      outlineNode = step('paste-step-outline', X.outlineStep, [
-        el('p', { id: 'paste-outline-got', cls: 'note', role: 'status', text: X.outlineGot(rows.length) }),
-        el('ol', { id: 'paste-outline-list', cls: 'paste-outline' }, rows.map((r) => el('li', { text: r.point ? `${r.heading} — ${r.point}` : r.heading }))),
-        el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-outline-copy', cls: 'pri', text: X.outlineCopy(b.from, b.to), onclick: async () => {
-          const t = batchRequest({ rows, from: b.from, to: b.to, first: true, lang: LANG });
-          const ok = await copyText(t); msgO.hidden = false; msgO.textContent = ok ? X.outlineCopied(kb(t)) : X.fixCopyFailed;
-        } })]),
-        el('p', { cls: 'hint', text: X.outlineHint(b.from, b.to) }), msgO]);
-    };
+    let focusPaste = !!opts.focusPaste;
     for (;;) {
-      const buttons = [{ id: 'cancel', label: T.cancel }];
-      if (held && (mode === 'replace' || (mode === 'insert' && held.kind === 'deck'))) buttons.push({ id: 'only', label: X.only });
-      buttons.push({ id: 'import', label: X.go[mode], pri: true });
-      // 新規作成は画面いっぱいのページ（ステップを縦に並べる）。「← 戻る」と Esc で閉じる
+      // 新規作成は画面いっぱいのページ（問いを縦に並べる）。「← 戻る」と Esc で閉じる
       const back = mode === 'new' ? el('button', { type: 'button', id: 'page-back', cls: 'ghost page-back', text: X.back, onclick: () => { const d = document.getElementById('dlg'); if (d.open) d.close('cancel'); } }) : null;
-      const shown = ask({ title: opts.batch ? X.batchTitle : X.title[mode], kind: mode === 'new' ? 'paste page' : 'paste', body: [back, el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo }), ...pre, s1, s2, outlineNode, s3], buttons });
-      if (focusArea) setTimeout(() => { area.focus(); s3.scrollIntoView({ block: 'nearest' }); }, 0);
+      const shown = ask({ title: opts.batch ? X.batchTitle : X.title[mode], kind: mode === 'new' ? 'paste page' : 'paste',
+        body: [back, el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo }), ...body],
+        buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }] });
+      syncGo();
+      if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       const v = await shown;
-      if (v !== 'import' && v !== 'only') { held = null; return false; }
-      const res = v === 'only' ? await importHeld(mode) : await importText(area.value, mode);
-      focusArea = true;
-      if (res === null) { held = null; return true; }
-      if (res && typeof res === 'object' && res.outline) { outlineRows = res.outline; showOutline(res.outline); area.value = ''; msg.hidden = true; continue; }
-      if (res && typeof res === 'object' && res.held) {
-        area.value = ''; msg.hidden = true; cut.hidden = true;
-        showState(res.held, (res.again ? X.held.again(res.held === 'deck' ? 'deck.html' : 'narration.md') : '') + X.held[res.held](res.count) + (mode === 'replace' || (mode === 'insert' && res.held === 'deck') ? ' ' + X.held.onlyHint : ''));
-        continue;
-      }
+      if (v !== 'import') return false;
+      if (!fields.ready()) { focusPaste = true; continue; }
+      status(X.building[mode]);
+      let res;
+      try { res = await finish(fields.data(), mode); } finally { status(''); }
+      focusPaste = true;
+      if (res === null) return true;
       msg.hidden = false; msg.textContent = res;
-      cut.hidden = !S.cutOff;
     }
   }
 
-  // 取り込む。戻り値：窓に出す誤りの言葉か、片方を持って次を待つとき {held, again, count}（どちらもなければ null）
+  // ⑤（新規作成）：ふつうは 2 つの欄。長い教材（9 枚から）は、はじめに構成案の欄と［次へ］、受け取ったら構成案の一覧・1〜6 枚目の指示のコピー・2 つの欄
+  function fiveStep(titles, fields, pasteKids, onChange) {
+    const h = el('h3', { id: 'paste-step-paste-h' });
+    const box = el('div', { cls: 'paste-five' });
+    const node = el('section', { id: 'paste-step-paste', cls: 'paste-step', 'aria-labelledby': 'paste-step-paste-h' }, [h, box]);
+    const oText = el('textarea', { id: 'paste-outline-text', rows: '6', spellcheck: 'false', placeholder: X.outlinePh });
+    const oMsg = el('p', { id: 'paste-outline-msg', cls: 'note bad', role: 'alert', hidden: '' });
+    const kids = pasteKids();
+    const waiting = () => !!longN() && !outlineRows;
+    let shownAs = null;
+    const accept = () => {
+      const o = parseOutline(oText.value);
+      if (o.error) { const f = X.outlineErr[o.error.code]; oMsg.hidden = false; oMsg.textContent = typeof f === 'function' ? f(o.error) : (f || o.error.code); oText.focus(); return; }
+      oMsg.hidden = true; outlineRows = o.rows; render(true);
+    };
+    const next = el('button', { type: 'button', id: 'paste-outline-next', cls: 'pri', text: X.next, onclick: accept });
+    function render(force = false) {
+      const long = longN();
+      if (!long) outlineRows = null;   // ② で短くした：構成案は使わない
+      const as = !long ? 'fields' : outlineRows ? 'got' : 'outline';
+      if (as === shownAs && !force) { onChange(); return; }
+      shownAs = as;
+      if (as === 'outline') {
+        const b = nextBatch({ rows: Array.from({ length: long }, () => ({})), next: 1 });
+        h.textContent = titles[4] === X.steps.new[4] ? X.steps.outline : titles[4];
+        box.replaceChildren(el('p', { cls: 'hint', text: X.outlineHint(b.from, b.to) }),
+          el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-outline-text', text: X.outlineLabel }), oText]), oMsg, el('div', { cls: 'paste-guide' }, [next]));
+      } else if (as === 'got') {
+        const rows = outlineRows, b = nextBatch({ rows, next: 1 });
+        const msgO = el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' });
+        const change = el('button', { type: 'button', id: 'paste-change-outline', cls: 'ghost', text: X.change, onclick: () => { outlineRows = null; render(true); oText.focus(); } });
+        h.textContent = titles[4];
+        box.replaceChildren(
+          el('p', { id: 'paste-outline-answer', cls: 'paste-answered' }, [el('span', { cls: 'paste-answer-text', text: X.answered(X.outlineQ, X.outlineAnswer(rows.length)) }), change]),
+          el('p', { id: 'paste-outline-got', cls: 'note', role: 'status', text: X.outlineGot(rows.length) }),
+          el('ol', { id: 'paste-outline-list', cls: 'paste-outline' }, rows.map((r) => el('li', { text: r.point ? `${r.heading} — ${r.point}` : r.heading }))),
+          el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-outline-copy', cls: 'pri', text: X.outlineCopy(b.from, b.to), onclick: async () => {
+            const t = batchRequest({ rows, from: b.from, to: b.to, first: true, lang: LANG });
+            const ok = await copyText(t); msgO.hidden = false; msgO.textContent = ok ? X.batchCopied(kb(t)) : X.fixCopyFailed;
+          } })]), msgO, ...kids);
+      } else {
+        h.textContent = titles[4];
+        box.replaceChildren(...kids);
+      }
+      onChange();
+    }
+    return { node, render, waiting };
+  }
+
+
+  // 取り込む（__APP_TEST.paste：出力の全体を 1 回で）。戻り値：窓に出す誤りの言葉（できたら null）
   async function importText(text, mode) {
-    if (!String(text).trim()) return X.err.empty;
-    // 新規作成：構成案（```outline）が届いた（2 回に分けて作る長い教材の 1 回目）
-    if (mode === 'new' && /^\s*(`{3,}|~{3,})\s*outline\b/im.test(String(text))) {
-      const o = parseOutline(text);
-      if (o.error) { const f = X.outlineErr[o.error.code]; return typeof f === 'function' ? f(o.error) : (f || o.error.code); }
-      return { outline: o.rows };
-    }
     const p = pastePart(text);
-    // 前の返事が narration.md の途中で切れ、今度はその囲みだけが届いた：前の deck.html と合わせる
-    if (p.part === 'narration' && !held && S.pendingDeck) { p.deck = S.pendingDeck; p.part = 'both'; }
-    // 囲みが切れていた（unclosed）か、囲みがなかった（no-blocks：ファイル・キャンバス・添付で返した）：送り直しを頼む文を写せる
-    S.cutOff = p.error && (p.error.code === 'unclosed' || p.error.code === 'no-blocks') ? p.error : null;
-    S.pendingDeck = S.cutOff && S.cutOff.code === 'unclosed' && p.deck ? p.deck : (p.error ? S.pendingDeck : null);
     if (p.error) return typeof X.err[p.error.code] === 'function' ? X.err[p.error.code](p.error) : (X.err[p.error.code] || p.error.message);
-    let r = p;
-    const info = [];
-    if (p.part === 'both') held = null;
-    else if (held && held.kind !== p.part) {
-      // 2 回に分けて貼った片方ずつを合わせる（返事の全体を貼ったときと同じものになる。囲みの中身だけを写したので、囲みなしの知らせは出さない）
-      r = { deck: held.kind === 'deck' ? held.text : p.deck, narration: held.kind === 'narration' ? held.text : p.narration, warnings: [] };
-      held = null;
-      info.push(X.held.joined);
-    } else if (mode !== 'replace' || !p.fenced) {
-      // 片方だけ：持っておき、もう片方を待つ（「修正…」に囲みの付いた片方だけの返事を貼ったときは、今までどおりその片方だけを取り込む）
-      const again = !!held;
-      const t = p.part === 'deck' ? p.deck : p.narration;
-      held = { kind: p.part, text: t };
-      return { held: p.part, again, count: p.part === 'deck' ? sectionsOf(t).length : narrSections(t).out.length };
-    }
-    return finish(r, mode, info);
+    return finish({ deck: p.deck, narration: p.narration, warnings: p.warnings }, mode);
   }
-  // 「これだけで取り込む」（修正・挿入）：持っている片方だけで
-  async function importHeld(mode) {
-    if (!held) return X.err.empty;
-    const r = { deck: held.kind === 'deck' ? held.text : null, narration: held.kind === 'narration' ? held.text : null, warnings: [] };
-    held = null;
-    return finish(r, mode, []);
-  }
-  async function finish(r, mode, info) {
+  async function finish(r, mode) {
     const notes = r.warnings.map((w) => (X.warn[w.code] ? (typeof X.warn[w.code] === 'function' ? X.warn[w.code](w) : X.warn[w.code]) : w.code));
-    if (r.narration === null && mode === 'new') return X.err['no-narration'];
     if (r.deck === null && mode !== 'replace') return X.err['no-deck'];
-    if (mode === 'insert') return insertReply(r, notes, info);
-    status(X.building);
-    try {
-      return mode === 'replace' ? await replaceDeck(r, notes, info) : await openNew(r, notes, info);
-    } finally { status(''); }
+    if (mode === 'insert') return insertReply(r, notes, []);
+    return mode === 'replace' ? replaceDeck(r, notes, []) : openNew(r, notes, []);
   }
   // 挿入：スライド一覧の操作と同じ道（app/slides-panel.js の apply：読んだときから変わっていないか・控え・元に戻す・組み直し・品質チェック）
   async function insertReply(r, notes, info) {

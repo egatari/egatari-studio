@@ -366,3 +366,18 @@ main{flex:1;min-height:0;display:flex}
 #dlg .tile[aria-pressed="false"] .tile-label{text-decoration:line-through}
 #dlg .tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #dlg .tile.fixed{cursor:default;min-height:64px;background:var(--line);border-color:transparent}
+/* 新規作成の問い（app/llm.js）：答えた問いの 1 行と［変更］、「AI に任せる」か書くかの組、貼り付けの 2 つの欄の状態、作成のボタンの横の言葉 */
+#dlg .paste-answered{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:0;font-size:14px}
+#dlg .paste-answered[hidden],#dlg .paste-q-body[hidden],#dlg #paste-content-rest[hidden],#dlg .paste-pair-field[hidden],#dlg .paste-step[hidden],#dlg .paste-info[hidden]{display:none}
+#dlg .paste-answer-text{font-weight:600}
+#dlg .paste-pair{flex-direction:column;align-items:flex-start;flex-wrap:nowrap}
+#dlg .paste-pair-field{align-self:stretch;display:flex;gap:6px;align-items:center}
+#dlg .paste-pair-field input[type=text],#dlg .paste-pair-field textarea{flex:1;font:inherit;font-size:13.5px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-pair-field input[type=number]{width:6em;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-pair-field textarea{min-height:140px}
+#dlg #paste-language input[type=text][hidden]{display:none}
+#dlg .paste-st{margin:2px 0 0;font-size:13px;color:var(--muted)}
+#dlg .paste-st.ok{color:var(--fg);font-weight:600}
+#dlg .paste-st.bad{color:var(--bad-fg)}
+#dlg .paste-info{margin:0 0 6px}
+#dlg .paste-go-note{margin-right:auto;font-size:13px}

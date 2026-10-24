@@ -9,10 +9,12 @@
 //   SUBJECTS                           [{id, series, label: {en, ja}}]
 //   seriesOfSubjects(ids)              → 系列の名前（SERIES の順）
 //   defaultSubjects(category)          大分類を選んだときに入れておく分野（ビジネス → ビジネスのパーツ。ほかはなし）
+//   guessSubjects(text)                タイトルと内容の字から推す分野の id（漢文・古文 → 国語、数式・グラフ・統計 → 数理・統計 など。推せなければ []）
 //   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料版。既定）| 'paid'（有料版）。指示の大きさの上限は kit/core/llm-pack.mjs の PACK_CAP_KB
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
 //   seriesForChoice(choice)            指示に入れる系列：有料版はすべての系列（分野は選ばない）、無料版は選んだ分野の系列
-//   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''
+//   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''。
+//                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
 //   choiceOf(configText)               → studio.newDeck | null
 //   choice の形：{plan, category, subcategory, subjects: [id], purposesOff: [id]}（category・subcategory は id か null。subjects は無料版で選んだ分野。
@@ -72,10 +74,10 @@ export const CATEGORIES = [
     { id: 'manual', label: { ja: 'マニュアル', en: 'Manual' },
       structure: { ja: '目的（何ができるようになるか）→ 手順を 1 つずつ → つまずきやすいところ', en: 'goal (what you will be able to do) → the steps, one at a time → common pitfalls' },
       show: { ja: '1 枚に 1 つの手順。画面の切り抜きや手順の図', en: 'one step per slide; screen captures and process diagrams' } },
-    { id: 'rules', label: { ja: '規程・法令の説明', en: 'Rules and regulations' },
+    { id: 'rules', label: { ja: '決まりの説明（規程・法令）', en: 'Rules and regulations' },
       structure: { ja: '何についての決まりか → だれに・いつ当てはまるか → しなければならないこと → 原典の文とその日付', en: 'what the rules are about → who they apply to and when → what you must do → the original text and its date' },
       show: { ja: '原典の文をそのまま引くか添付し、いつの時点の内容かを必ず書く', en: 'quote or attach the original text as it is, and always state the date the content is valid for' } },
-    { id: 'info', label: { ja: '案内', en: 'Information and orientation' },
+    { id: 'info', label: { ja: '案内（ごみの出し方・図書館・避難・履修登録など）', en: 'Information (waste sorting, library, evacuation, course registration…)' },
       structure: { ja: 'どんな場面か → 品目や場面から引ける一覧 → わからないときの問い合わせ先', en: 'the situation → a list to look up by item or situation → where to ask' },
       show: { ja: 'ごみの分別・図書館の使い方・避難経路・新入生や新人の案内・履修登録など。見出しで引けるように分ける', en: 'waste sorting, using the library, evacuation routes, orientation for new students or staff, course registration; organised so that headings can be looked up' } },
   ],
@@ -96,6 +98,17 @@ export function seriesOfSubjects(ids) {
   return SUBJECTS.filter((s) => want.has(s.id)).map((s) => s.series);
 }
 export const defaultSubjects = (category) => (category === 'business' ? ['business'] : []);
+// タイトルと内容の字から推す分野（新規作成の ④ で印を付けておく。推せなければ []）。語は控えめに：はっきりその分野の語だけ
+const GUESS = [
+  ['math', /数式|関数|グラフ|統計|確率|微分|積分|方程式|ベクトル|行列|回帰|分散|標準偏差|\b(?:math|maths|mathematics|statistics|statistical|probability|equation|function|graph|calculus|regression)s?\b/i],
+  ['business', /売上|営業|市場|事業|経営|KPI|予算|決算|収益|\b(?:sales|market|revenue|business|budget|profit|KPIs?)\b/i],
+  ['kokugo', /漢文|古文|漢詩|現代文|国語|和歌|俳句|短歌|\b(?:kanbun|kobun)\b/i],
+  ['info', /符号|ハフマン|情報理論|\b(?:huffman|code tree|prefix code|information theory)\b/i],
+];
+export function guessSubjects(text) {
+  const t = String(text || '');
+  return GUESS.filter(([, re]) => re.test(t)).map(([id]) => id);
+}
 
 // お使いの AI（無料版・有料版）。無料版は選んだ分野のパーツと共通の本体だけの軽い指示、有料版はすべての系列のパーツを入れた指示
 export const AI_PLANS = ['free', 'paid'];
@@ -113,7 +126,9 @@ export function choiceRequest(choice, P, lang) {
   const rows = [];
   if (c && c.id !== 'other') {
     rows.push(L === 'ja' ? `- 場面：${c.label.ja}${s ? '／' + s.label.ja : ''}` : `- Kind: ${c.label.en}${s ? ' / ' + s.label.en : ''}`);
-    const st = (s || c).structure, sh = (s || c).show;
+    // 構成の型と見せ方は小分類から。小分類のある大分類で「この中にない」（subcategory: null）なら書かない（「その他」と同じ）
+    const t = s || (c.subs.length ? null : c);
+    const st = t && t.structure, sh = t && t.show;
     if (st) rows.push(L === 'ja' ? `- 構成の型：${st.ja}` : `- Structure: ${st.en}`);
     if (sh) rows.push(L === 'ja' ? `- 見せ方：${sh.ja}` : `- Presentation: ${sh.en}`);
   }
