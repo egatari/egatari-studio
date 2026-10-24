@@ -40,7 +40,8 @@ var ICON = {
   full: SVG('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
   help: SVG('<path d="M5.8 5.8a2.3 2.3 0 1 1 3.3 2.1c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="8" cy="12.6" r=".4" fill="currentColor"/>'),
   attach: SVG('<path d="M10.6 4.6L5.4 9.8a1.4 1.4 0 0 0 2 2l5.4-5.4a2.6 2.6 0 0 0-3.7-3.7L3.7 8.1a3.8 3.8 0 0 0 5.4 5.4l4.2-4.2"/>'),
-  cap: SVG('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M7 6.6a1.7 1.7 0 1 0 0 2.8M11.6 6.6a1.7 1.7 0 1 0 0 2.8"/>')
+  cap: SVG('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M7 6.6a1.7 1.7 0 1 0 0 2.8M11.6 6.6a1.7 1.7 0 1 0 0 2.8"/>'),
+  read: SVG('<path d="M2.4 6.2h2.4L8.2 3.4v9.2L4.8 9.8H2.4z"/><path d="M10.6 5.6a3.2 3.2 0 0 1 0 4.8M12.4 3.8a5.8 5.8 0 0 1 0 8.4"/>')
 };
 function typing(t){ return t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName)); }
 function css(text){ var s = document.createElement("style"); s.className = "deck-tools"; s.textContent = text; document.head.appendChild(s); }
@@ -142,6 +143,11 @@ css(
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
   // 合成した声の札（format spec §7.3）：帯と一緒に出て、一緒に隠れる
+  // 読み上げ中の札（format spec §5.6：端末の声で読んでいることを示す）。読んでいる間だけ出る。印刷には出さない
+  "#dt-ra{position:fixed;left:12px;top:12px;z-index:36;display:none;align-items:center;gap:7px;padding:4px 12px 4px 9px;border-radius:999px;" +
+  " background:rgba(20,20,20,.72);color:#fff;font:600 12.5px/1.6 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;pointer-events:none}" +
+  "#dt-ra.on{display:flex}#dt-ra svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}#dt-ra small{opacity:.65;font-weight:400;font-size:11px}" +
+  "#dt-cb button[aria-disabled=true]{opacity:.38;cursor:default}#dt-cb button[aria-disabled=true]:hover{background:none;color:rgba(255,255,255,.86)}" +
   "#dt-cb .dt-aib{margin:0 3px 0 1px;padding:3px 7px;border:1px solid rgba(255,255,255,.3);border-radius:999px;color:rgba(255,255,255,.78);" +
   " font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;letter-spacing:.02em;white-space:nowrap;cursor:default}" +
   // 帯が字幕の上に重なるときは、帯が出ている間だけ字幕を帯の上へ（--dt-cb-lift は舞台の座標。隠れると戻る）
@@ -589,21 +595,100 @@ function pick(i){
 function cols(){ return getComputedStyle(ov.box.querySelector("#dt-grid")).gridTemplateColumns.split(" ").length; }
 window.addEventListener("resize", fitOv);
 
+// ---------------------------------------------------------------- 読み上げで聞く（端末の声。format spec §5.6、backlog #89）
+// 音声のないステップだけを、見る人が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
+// 音声ファイルにはならない：何も書かず、タイムラインも (i, k, t) の描画も変えない（この道具は動画では作らない。札は印刷に出さない）。
+// 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中（この端末の声）」
+var RA = (function(){
+  var M = DECK.ReadAloud, S = null, U = null;
+  try { S = window.speechSynthesis || null; U = window.SpeechSynthesisUtterance || null; } catch (e) {}
+  if (!M || !S || typeof U !== "function" || FOLLOW) return null;
+  // 読めるステップ（口述原稿があり、音声がない）が 1 つもなければ出さない
+  var any = false;
+  for (var sk in DECK.NARRATION) for (var st in DECK.NARRATION[sk]) if (!DECK.AUDIO[sk + ":" + st] && (DECK.NARRATION[sk][st] || []).length) any = true;
+  if (!any) return null;
+  return {M: M, reader: M.createReader({synth: S, Utterance: U}), synth: S, key: null, el: null};
+})();
+var RA_T = DECK.ja !== false
+  ? {btn: "読み上げで聞く（音声ファイルにはなりません）", stop: "読み上げを止める", on: "読み上げ中（この端末の声）", esc: "Esc で止める",
+     audio: "このステップには音声があります（自動再生 a で流れます）", none: "このステップには台本がありません", voice: "この端末には、この言語の読み上げの声がありません"}
+  : {btn: "Listen with read-aloud (not saved as audio)", stop: "Stop read-aloud", on: "Reading aloud (this device's voice)", esc: "Esc to stop",
+     audio: "This step has audio (autoplay a plays it)", none: "This step has no script", voice: "This device has no read-aloud voice for this language"};
+function deckLang(){ return document.documentElement.lang || (DECK.ja !== false ? "ja" : "en"); }
+function raTurns(key){
+  var p = key.lastIndexOf(":"), sk = key.slice(0, p), st = key.slice(p + 1);
+  var n = DECK.NARRATION[sk];
+  return (n && n[st]) || [];
+}
+// 今のステップで読めないわけ（なければ null）
+function raWhy(key){
+  if (DECK.AUDIO[key]) return RA_T.audio;
+  return RA.M.spokenTurns(raTurns(key), {lang: deckLang(), normalize: DECK.TtsNormalize && DECK.TtsNormalize.normalizeTtsText}).length ? null : RA_T.none;
+}
+function raShow(on){
+  if (!RA) return;
+  if (!RA.el){
+    RA.el = document.createElement("div"); RA.el.id = "dt-ra"; RA.el.className = "deck-tools";
+    RA.el.setAttribute("role", "status"); RA.el.setAttribute("aria-live", "polite");
+    document.body.appendChild(RA.el);
+  }
+  RA.el.innerHTML = on ? ICON.read + "<span>" + RA_T.on + "</span><small>" + RA_T.esc + "</small>" : "";
+  RA.el.classList.toggle("on", !!on);
+  syncBar();
+}
+function raStop(){
+  if (!RA) return false;
+  var was = RA.key !== null;
+  RA.key = null;
+  RA.reader.cancel();
+  if (was) raShow(false);
+  return was;
+}
+function raStart(){
+  if (!RA) return;
+  if (RA.key !== null){ raStop(); return; }   // 読んでいる間にもう一度押すと止める
+  var key = DECK.state().key, why = raWhy(key);
+  if (why){ if (DECK.toast) DECK.toast(why); return; }
+  if (document.documentElement.classList.contains("autoplay")) DECK.autoplay(false);
+  var lang = deckLang();
+  var turns = RA.M.spokenTurns(raTurns(key), {lang: lang, normalize: DECK.TtsNormalize && DECK.TtsNormalize.normalizeTtsText});
+  RA.M.whenVoices(RA.synth, 1500).then(function(){
+    if (DECK.state().key !== key) return;    // 待つ間に動いた
+    var r = RA.reader.speak(turns, lang, {onend: function(){ if (RA.key === key){ RA.key = null; raShow(false); } }});
+    if (!r.ok){ if (DECK.toast) DECK.toast(r.reason === "no-voice" ? RA_T.voice : RA_T.none); return; }
+    RA.key = key;
+    raShow(true);
+  });
+}
+function raSync(b){
+  if (!RA || !b) return;
+  var why = raWhy(DECK.state().key), on = RA.key !== null;
+  if (why && !on) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled");
+  var lab = on ? RA_T.stop : why || RA_T.btn;
+  b.title = lab; b.setAttribute("aria-label", on ? RA_T.stop : RA_T.btn);
+  if (why && !on) b.setAttribute("aria-description", why); else b.removeAttribute("aria-description");
+}
+if (RA){
+  // 次のステップ・前のステップへ動いたら止める（同じステップのままの知らせでは止めない）
+  document.addEventListener("deck:pos", function(e){ if (RA.key !== null && e.detail && e.detail.key !== RA.key) raStop(); });
+  window.addEventListener("pagehide", raStop);
+}
+
 // ---------------------------------------------------------------- 操作の帯とキーの一覧（?）
 // ボタンはキーを押したのと同じにする（deck.js のキーも、この道具のキーも、同じ経路を通る）
 function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {key: k, shiftKey: !!shift, bubbles: true, cancelable: true})); }
 var JA = DECK.ja !== false;
 var TIP = JA
   ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザー", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
-     lect: "授業モード", cap: "字幕", pres: "発表者ビュー", full: "全画面", help: "キーの一覧"}
+     lect: "授業モード", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧"}
   : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
-     lect: "Lecture mode", cap: "Captions", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts"};
+     lect: "Lecture mode", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts"};
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
 var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
-  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
-var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "full", "help"];
+var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500;
 
@@ -613,13 +698,14 @@ function buildBar(){
   cb.setAttribute("aria-label", JA ? "スライドの操作" : "Slide controls");
   BTNS.forEach(function(b){
     if (!b){ var s = document.createElement("i"); s.className = "sep"; s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
+    if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
-    e.title = TIP[b[0]] + kk(b[1]);
+    e.title = TIP[b[0]] + (b[1] ? kk(b[1]) : "");
     e.setAttribute("aria-label", TIP[b[0]]);
-    e.setAttribute("aria-keyshortcuts", {"←": "ArrowLeft", "→": "ArrowRight", "⌫": "Backspace", "?": "Shift+?"}[b[1]] || b[1]);
+    if (b[1]) e.setAttribute("aria-keyshortcuts", {"←": "ArrowLeft", "→": "ArrowRight", "⌫": "Backspace", "?": "Shift+?"}[b[1]] || b[1]);
     if (TOGGLES.indexOf(b[0]) >= 0) e.setAttribute("aria-pressed", "false");
-    e.innerHTML = (ICON[b[0]] || ICON.play) + "<kbd>" + b[1] + "</kbd>" + (b[0] === "pen" || b[0] === "vpen" ? '<i class="dt-dot" aria-hidden="true"></i>' : "");
+    e.innerHTML = (ICON[b[0]] || ICON.play) + (b[1] ? "<kbd>" + b[1] + "</kbd>" : "") + (b[0] === "pen" || b[0] === "vpen" ? '<i class="dt-dot" aria-hidden="true"></i>' : "");
     e._act = b[2];
     cb.appendChild(e);
     // 消えるペンの後ろに、ペンの間だけ出る色のボタン
@@ -714,6 +800,7 @@ function syncBar(){
   }
   [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = "var(--" + COLORS[color] + ")"; });
   on("lect", DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
+  if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);
   if (a && a._p !== playing){
     a._p = playing;
@@ -812,6 +899,7 @@ window.addEventListener("keydown", function(e){
   else if (k === "d") toggle("pen");
   else if (k === "v") toggle("vpen");
   else if (k === "D") nextColor();
+  else if (k === "Escape" && RA && RA.key !== null) raStop();
   else if (k === "Escape" && mode) setMode(null);
   else if (k === "Escape" && cb && cb.contains(document.activeElement)) document.activeElement.blur();   // 帯から本体に戻る
   else if (k === "Backspace" && (mode === "pen" || mode === "vpen")) clear(e.shiftKey);
@@ -822,5 +910,6 @@ window.addEventListener("keydown", function(e){
 if (DECK.ready) build(); else document.addEventListener("deck:ready", build);
 DECK.tools = {mode: function(){ return mode; }, setMode: setMode, clear: clear, help: function(on){ toggleHelp(on); },
   color: function(c){ if (c === undefined) return color; setColor(c); },
-  overview: function(on){ if (on === false) closeOverview(); else if (!ov) openOverview(); }};
+  overview: function(on){ if (on === false) closeOverview(); else if (!ov) openOverview(); },
+  readAloud: function(on){ if (on === undefined) return !!(RA && RA.key !== null); if (on) { if (!RA || RA.key === null) raStart(); } else raStop(); }};
 })();

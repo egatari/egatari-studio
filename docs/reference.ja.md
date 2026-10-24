@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=9deb0cfe93df7933 -->
+<!-- i18n: pair=reference.md sha256=2857f283f864c3d0 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -266,13 +266,21 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 ### 操作の帯（マウスを動かすと出て、2.5 秒で隠れる）
 
-ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、発表者ビュー、全画面、キーの一覧、どこかの段階の音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
+ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、**読み上げで聞く（音声ファイルにはなりません）**（ブラウザに音声合成があり、台本があって音声のないステップがあるときだけ。[読み上げで聞く](#読み上げで聞く端末の声)）、発表者ビュー、全画面、キーの一覧、どこかの段階の音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（例：`v0.2.0`）がある。版・ブラウザ・OS・デッキの言語・モードだけを入れたフィードバックの form を開く。デッキの中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
 
 ### 字幕
 
 `s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（品質チェックがこの 2 色のコントラスト 4.5:1 以上を見ている）。段階を文のまとまり（2 行ほど。字が大きいほど短い。長すぎる文は読点や語の切れ目で分ける）に分け、1 つずつ出す。1 まとまりは `--cap-max-lines` 行（3）までで、超えたら後ろの行を見せる。手で送っている間（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。`--cap-rate` か `DECK.captionRate`）で次のまとまりに進め、段階が変わると最初から、最後のまとまりはそのまま残す。音声つきの自動再生と `?mode=video&captions=1` では、字数に比例して音声の時間を割り振って順に出す（動画で音声がなければ全部を出す）。大きさは `Shift+s`・`?capsize=`・テーマの `--cap-size` で変える。動画では `(i, k, t)` だけで決まる。操作の帯をスライドの下端に重ねるときは、帯が出ている間だけ字幕を帯の上へ上げ、隠れると戻す。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
+
+### 読み上げで聞く（端末の声）
+
+操作の帯のスピーカーのボタン「読み上げで聞く（音声ファイルにはなりません）」は、今のステップの台本を、この端末の声で読む（Web Speech API。format spec §5.6）。**音声のない**ステップのためのもの：音声のあるステップではボタンが薄くなり、そのステップには音声があること（自動再生 <kbd>a</kbd> で流れる）を示す。読んでいる間は左上に「読み上げ中（この端末の声）」と出る。別のステップに動く・<kbd>Esc</kbd>・もう一度ボタンを押すと止まる。
+
+- 使うのは端末の中で動く声だけ（`localService === true` で、デッキの `<html lang>` に合うもの。地域まで合う声・端末の既定の声・よく知られた自然な声が先で、Eddy や Bad News のような機械らしい声・遊びの声は後にし、Novice にも使わない）。ネットワークの声は、ブラウザがそれを既定にしていても使わない（文を端末の外へ送るため）。その言語の端末の声が 2 つあれば Expert と Novice を別の声で、1 つなら同じ声で読む。1 つもなければ読まず、「この端末には、この言語の読み上げの声がありません」と知らせる。
+- 読む文は、そのステップの表示の文（`deck-narration`、format spec §4）に、AI 音声と同じ文の前処理（`join-num-counter@1`）を当てたもの。組んだデッキは表示の文しか持たないので、`{x|y}` の読みと読み辞書は編集アプリのプレビュー（[編集アプリ](editor.ja.md)の音声の板）で当て、再生器では当てない。
+- 授業の音声ではない：ファイルにも動画にも何も書かず、タイムライン（`DECK.timeline()`）と `(i, k, t)` の描画は変わらない。読んでいるステップは読み終わるまで続き、`?mode=video` と印刷にはボタンがない。
 
 ### 読み上げとキーボード（アクセシビリティ）
 
@@ -293,7 +301,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 ### 実行時の API（スクリプトと品質チェック用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（部品を mount し、開いたときの位置を描いたら true。並んでいないうちに起動したデッキは舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-部品web-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（部品を mount し、開いたときの位置を描いたら true。並んでいないうちに起動したデッキは舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-部品web-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color, readAloud}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える。`readAloud()` は読み上げ中か、`readAloud(true / false)` で読む・止める）、`ReadAloud`（`kit/core/read-aloud.mjs`：`spokenTurns`・`pickVoices` など）、`TtsNormalize`、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
 
 ## 開発サーバー
 

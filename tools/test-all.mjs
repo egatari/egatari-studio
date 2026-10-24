@@ -136,6 +136,9 @@ steps.push(
   ['test-colab-app', ['tools/test-colab-app.mjs', path.join(tmp, 'colab-app')]],
   // 録音モード（app/rec-mode.js）：偽のマイクで、キーボードだけの録音・C の cue・取り直し・読み上げの知らせ（cue の計算は単体の test-rec-core）
   ['test-recording', ['tools/test-recording.mjs', path.join(tmp, 'recording')]],
+  // 読み上げで聞く（端末の声。format spec §5.6）：読む文（読み・読み辞書・join-num-counter）・端末の中の声だけ・再生器の帯と札・進むと止める・
+  // 動画のモードとタイムラインと (i, k, t) が変わらない・ファイルに何も書かない（再生器と編集アプリの音声の板。speechSynthesis は差し替え）
+  ['test-read-aloud', ['tools/test-read-aloud.mjs', path.join(tmp, 'read-aloud')]],
 );
 
 // 印もなく、どの段の引数にも出てこない試験のファイルがあれば、走らせずに失敗する
