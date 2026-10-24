@@ -22,7 +22,7 @@ import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
-import { parseResults, liveResultsWarning, resultsRecord, roomMatch, summarizeResults, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, liveResultsWarning, resultsRecord, roomMatch, summarizeResults, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 import { inspectAttachment, blocking, problemText, ATTACH_LIMITS, isAttachPath } from '../kit/core/attachments.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -181,6 +181,8 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   if (fs.existsSync(cfgPath)) conf = parseJsonStrict(readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
   const list = Array.isArray(conf[KEY]) ? conf[KEY] : [];
   const warnings = [];
+  const skipNote = skippedNotice(r.skipped, lang);
+  if (skipNote) warnings.push(skipNote);
   const live = conf.extensions && conf.extensions.live;
   const m = roomMatch(r.results, live);
   if (m === 'mismatch') warnings.push(`the results are for room ${r.results.room}, but this lesson's live settings name room ${live.room}; added anyway (the room may have been recreated)`);

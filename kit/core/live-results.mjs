@@ -2,8 +2,11 @@
 // 部屋のサービスから先生がダウンロードした JSON を、先生の教材に役割 data の添付（format spec §3.8）として足すための純ロジック。
 // Node にもブラウザにも依存しない（DOM・fs・時計に触れない）
 //
-//   parseResults(bytes)          → {ok: true, results} | {ok: false, code, errors}。code：'too-large' | 'not-utf8' | 'not-json' | 'not-results'
+//   parseResults(bytes)          → {ok: true, results, skipped} | {ok: false, code, errors}。code：'too-large' | 'not-utf8' | 'not-json' | 'not-results'
 //                                  （写しの Schema と同じ形か。tools/test-live-results.mjs が ajv と比べる）
+//                                  読み手は知らない項目と種類を無視する（拡張 live §3：Results readers MUST ignore unknown members and unknown kinds）。
+//                                  results からは落とし、skipped に {members: [名前…], kinds: {種類: 件数}} で数える（読んだ字そのまま。表示は skippedNotice）。
+//                                  知っている項目の形が壊れていれば今までどおり断る。取り込むときの JSON の bytes はそのまま残す（呼ぶ側が bytes を書く）
 //   isLiveResults(bytes)         結果のファイルか（中身で見分ける。名前を替えても分かる）
 //   summarizeResults(results)    {questions, responses, polls: [{id, step, prompt, choices, counts, total}]}（投票は活動の並び、その後に活動にない投票）
 //   resultsDate(results)         開いた日（window.from の日付。その時刻の時間帯のまま）
@@ -35,6 +38,47 @@ const cps = (s) => { let n = 0; for (const _ of s) n++; return n; };
 const short = (s, n) => str(s) && cps(s) <= n;
 const onlyKeys = (o, keys, at, e) => { for (const k of Object.keys(o)) if (!keys.includes(k)) e.push(`${at}: unknown member "${k.slice(0, 40)}"`); };
 const need = (o, keys, at, e) => { for (const k of keys) if (!own(o, k)) e.push(`${at}: "${k}" is missing`); };
+
+// 知らない項目・種類を落とす（読み手は無視する。拡張 live §3）。知っている形が壊れているかは resultsErrors が見る。
+// 返すもの：{value, skipped: {members: [名前…], kinds: {種類: 件数}}}。入れ物の形が違うところ（オブジェクトでない等）は触らず検査に任せる
+const SKIP_MAX = 50;
+const KEYS = {
+  results: ['v', 'room', 'window', 'activities', 'responses', 'exportedAt'], window: ['from', 'to'],
+  qa: ['id', 'kind', 'label'], poll: ['id', 'kind', 'prompt', 'choices', 'label'],
+  rqa: ['kind', 'activity', 'step', 'pid', 'at', 'id', 'text', 'read', 'answered', 'shown', 'hidden', 'name'], rpoll: ['kind', 'activity', 'step', 'pid', 'at', 'choice', 'name'],
+};
+export function tolerate(v) {
+  const skipped = { members: [], kinds: {} };
+  const member = (k) => { if (skipped.members.length < SKIP_MAX && !skipped.members.includes(k)) skipped.members.push(k); };
+  const kind = (k) => { if (own(skipped.kinds, k) || Object.keys(skipped.kinds).length < SKIP_MAX) skipped.kinds[k] = (skipped.kinds[k] || 0) + 1; };
+  const strip = (o, keys) => { const out = {}; for (const k of Object.keys(o)) { if (keys.includes(k)) out[k] = o[k]; else member(k); } return out; };
+  // 種類が文字なのに知らないものは落として数える（種類がない・文字でないものは壊れているので残して検査で断る）
+  const known = (x, kinds) => !(isObj(x) && str(x.kind) && x.kind !== '' && !kinds.includes(x.kind) && (kind(x.kind), true));
+  if (!isObj(v)) return { value: v, skipped };
+  const out = strip(v, KEYS.results);
+  if (isObj(out.window)) out.window = strip(out.window, KEYS.window);
+  if (isObj(out.activities)) {
+    const acts = {};
+    for (const [step, list] of Object.entries(out.activities)) {
+      acts[step] = Array.isArray(list) ? list.filter((a) => known(a, ['qa', 'poll'])).map((a) => (isObj(a) && (a.kind === 'qa' || a.kind === 'poll') ? strip(a, KEYS[a.kind]) : a)) : list;
+    }
+    out.activities = acts;
+  }
+  if (Array.isArray(out.responses)) out.responses = out.responses.filter((r) => known(r, ['qa', 'poll'])).map((r) => (isObj(r) && (r.kind === 'qa' || r.kind === 'poll') ? strip(r, KEYS['r' + r.kind]) : r));
+  return { value: out, skipped };
+}
+export const hasSkipped = (s) => !!s && (s.members.length > 0 || Object.keys(s.kinds).length > 0);
+const clip = (x) => { const t = String(x).replace(/[\u0000-\u001f\u007f]/g, ' '); return cps(t) > 40 ? [...t].slice(0, 40).join('') + '…' : t; };
+// 知らなかった項目の知らせ（1 行。名前は読んだ字をそのまま出すので、呼ぶ側は必ず textContent / 文字として出す）。なければ null
+export function skippedNotice(s, lang) {
+  if (!hasSkipped(s)) return null;
+  const names = [...s.members.map(clip), ...Object.entries(s.kinds).map(([k, n]) => `${clip(k)} ×${n}`)];
+  const shown = names.slice(0, 10), more = names.length - shown.length;
+  const list = shown.join(lang === 'en' ? ', ' : '・') + (more > 0 ? (lang === 'en' ? `, and ${more} more` : `・ほか ${more} 件`) : '');
+  return lang === 'en'
+    ? `Items this Studio version doesn't know (${list}) were not imported. The file itself is kept as it is.`
+    : `この版の Studio が知らない項目（${list}）は取り込みませんでした。ファイルそのものはそのまま残します`;
+}
 
 function checkActivity(a, at, e) {
   if (!isObj(a)) { e.push(`${at}: not an object`); return; }
@@ -106,9 +150,10 @@ export function parseResults(bytes) {
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(b); } catch { return { ok: false, code: 'not-utf8', errors: ['not UTF-8 text'] }; }
   let v;
   try { v = JSON.parse(text.replace(/^﻿/, '')); } catch (err) { return { ok: false, code: 'not-json', errors: [String((err && err.message) || err).slice(0, 200)] }; }
-  const errors = resultsErrors(v);
+  const { value, skipped } = tolerate(v);
+  const errors = resultsErrors(value);
   if (errors.length) return { ok: false, code: 'not-results', errors };
-  return { ok: true, results: v };
+  return { ok: true, results: value, skipped };
 }
 // 中身で見分ける（JSON で、結果の形のもの）。大きなものは JSON にする前に、先頭の印で外す
 export function isLiveResults(bytes) {

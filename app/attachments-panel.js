@@ -17,7 +17,7 @@ import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, 
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
-import { parseResults, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 
 // はじめての取り込みの知らせを見せたか（この機械のこのブラウザ。使えなければ毎回見せる）
 const NOTICE_KEY = 'egatari-studio-live-results-notice';
@@ -293,11 +293,13 @@ export function createAttachPanel(o) {
     const live = conf && conf.extensions && typeof conf.extensions === 'object' ? conf.extensions.live : null;
     const m = roomMatch(r.results, live);
     const s = summarizeResults(r.results);
+    const skipNote = skippedNotice(r.skipped, o.lang);   // この版が知らない項目（取り込まない。元のファイルはそのまま添付する）
     const showNotice = !noticeSeen();
     if (showNotice || m !== 'match') {
       const v = await o.ask({ title: X.liveTitle, kind: m === 'match' ? '' : 'warn', body: [
         m === 'mismatch' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveMismatch(r.results.room, live.room) }) : null,
         m === 'none' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveNoRoom }) : null,
+        skipNote ? el('p', { id: 'live-results-skipped', cls: 'note', text: skipNote }) : null,
         el('p', { id: 'live-results-privacy', text: X.livePrivacy }),
         el('p', { cls: 'hint', id: 'live-results-what', text: `${r.results.room} · ${r.results.window.from.slice(0, 10)} · ${X.liveWhat(s.responses, s.questions)}` }),
       ], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.liveGo, pri: true }] });
@@ -321,7 +323,7 @@ export function createAttachPanel(o) {
       if (bad) { o.toast(X.refused + msgOf(bad), true); return null; }
       await st.ws.writeBytes(rec.path, bytes);
       await writeConfig(st.ws, st.conf, [...listOf(st), rec]);
-      return X.liveAdded(rec.path) + (probs.length ? ' · ' + probs.map(msgOf).join(' · ') : '');
+      return X.liveAdded(rec.path) + (probs.length ? ' · ' + probs.map(msgOf).join(' · ') : '') + (skipNote ? ' · ' + skipNote : '');
     });
   });
 
