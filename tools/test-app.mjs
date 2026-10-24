@@ -1775,6 +1775,16 @@ try {
       await po.waitForSelector('#drop');
       await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 10000 });
       ok(JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: the deletion holds after a reload');
+      // フォルダを選ぶと、保存したテーマと同じ名前（evil）があれば、フォルダのものを使うと知らせる（保存したテーマは消さない）
+      await po.evaluate(async () => { const u = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-user'); window.__APP_TEST.themePicker = async () => u; document.getElementById('w-themes').click(); });
+      await po.waitForSelector('#dlg[open] #dlg-load');
+      await clickDlg(po, '#dlg-load');
+      await po.waitForSelector('#theme-load[open] #theme-load-folder');
+      await po.click('#theme-load-folder');
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 10000 });
+      const tt = await po.textContent('#toast');
+      ok(tt.includes('同じ名前のテーマ「evil」が、このブラウザにも保存してあります。フォルダのものを使います。') && !tt.includes('置き換えました') && JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: choosing a folder with a theme named like a saved one says the folder one is used (the saved one is kept)');
+      await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
       await po.evaluate(async () => { await new Promise((r) => { const q = indexedDB.deleteDatabase('egatari-theme-folder'); q.onsuccess = q.onerror = q.onblocked = () => r(); }); await window.__APP_TEST.initThemeFolder(); });
       // 断る：zip の外を指す名前・壊れた zip（読み込まず、そう言う）
       for (const [b64, re, what] of [

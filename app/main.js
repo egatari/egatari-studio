@@ -629,7 +629,7 @@ async function chooseThemeFolder() {
   const clash = await themeClash(names, { folder: false });
   TF.handle = h; TF.state = 'granted'; TF.at = Date.now();
   await saveThemeFolder(h, TF.at);
-  toast(T.themeChosen(h.name, names.length) + (clash.length ? ' ' + T.themeReplaced(clash) : ''));
+  toast(T.themeChosen(h.name, names.length) + (clash.length ? ' ' + T.themeFolderOverSaved(clash) : ''));
   await useThemeFolder(h);
   return true;
 }
