@@ -6,6 +6,8 @@
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
 //   --without-live-results  授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）の添付を 1 ファイルに入れない（入るときは知らせる）
 //   --play-only  その再生専用の派生（<デッキのフォルダ>/<題名><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   --update-themes  教材が固定した同梱のテーマの前の版（FORMAT.CONFIG_FILE の themes。themes.lock.json）を今の版にして組む（設定のファイルも書き換え、
+//                変わる色を出す）。付けなければ固定した版で組み、知らせる（黙って新しい色にしない。kit/core/themes-lock.mjs）
 //   --live 部屋.json  派生に授業の部屋を付ける（拡張 live。教員のページの「コピー」の JSON：endpoint・room・key・window。活動は FORMAT.CONFIG_FILE の
 //                extensions.live にあればそれ、なければ部屋の JSON の activities）。CSP の <meta> と再生器（kit/live.js）が入る。鍵は教材に残さない
 //   形式の名前・拡張子は kit/core/format.mjs
@@ -37,6 +39,7 @@ import { safeWriteFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
 import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
+import { THEMES_LOCK_FILE, parseThemesLock, configThemePins, themeUpdate } from './core/themes-lock.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -223,6 +226,24 @@ export function resolveDeckArg(src) {
   throw e;
 }
 
+// --update-themes：設定のファイル（FORMAT.CONFIG_FILE）の themes で前の版に固定したテーマを、今の版（themes.lock.json）にする。
+// 書き換えたら原稿のフォルダの設定のファイルを書く（リンクを通しては書かない）。返すもの：[{name, from, to, tokens}]（変えたもの）
+export function updateThemePins(srcPath) {
+  const deckDir = path.dirname(path.resolve(srcPath)), cfg = path.join(deckDir, FORMAT.CONFIG_FILE);
+  if (!fs.existsSync(cfg)) return [];
+  const lock = parseThemesLock(fs.readFileSync(path.join(ROOT, THEMES_LOCK_FILE), 'utf8'));
+  const conf = JSON.parse(readRegular(cfg, { max: READ_LIMITS.json }).toString('utf8'));
+  const out = [];
+  for (const [name, v] of Object.entries(configThemePins(conf))) {
+    const t = lock.themes[name];
+    if (!t || v === t.current) continue;
+    out.push(t.versions.includes(v) ? themeUpdate(lock, name, v) : { name, from: v, to: t.current, tokens: [] });
+    conf.themes[name] = t.current;
+  }
+  if (out.length) safeWriteFile(deckDir, cfg, JSON.stringify(conf, null, 2) + '\n');
+  return out;
+}
+
 // ---------------------------------------------------------------- CLI
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = process.argv.slice(2);
@@ -236,10 +257,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
     else if (a[i] === '--live') opts.liveFile = a[++i];
     else if (a[i] === '--without-live-results') opts.withoutLiveResults = true;
+    else if (a[i] === '--update-themes') opts.updateThemes = true;
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]] [--update-themes]'); process.exit(1); }
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
+  if (opts.updateThemes) {
+    let up;
+    try { up = updateThemePins(src); } catch (e) { console.error(`build: --update-themes: ${e.message}`); process.exit(1); }
+    for (const u of up) console.log(`theme updated: ${u.name} ${u.from} → ${u.to}${u.tokens.length ? ` (${u.tokens.map((x) => `${x.token} ${x.from} → ${x.to}`).join(', ')})` : ''} -> ${FORMAT.CONFIG_FILE}`);
+  }
   if (opts.liveFile) {
     if (!opts.playOnly) { console.error('--live needs --play-only'); process.exit(1); }
     try { opts.live = parseRoomBlock(readRegularText(opts.liveFile, { max: 65536 }).text); }

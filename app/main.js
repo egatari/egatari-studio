@@ -177,7 +177,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
   engine.setWorkspace(ws);
@@ -300,6 +300,17 @@ function showNotice() {
       reps.length === 1 && S.ws && !(S.portable && S.portable.readOnly) ? [el('button', { type: 'button', id: 'b-yanked-rebuild', cls: 'pri', text: T.yankedRebuild(reps[0]), onclick: () => rebuildYanked(reps[0]) })] : []));
   }
   if (S.yankedDone) n.append(el('p', { id: 'notice-yanked-done', text: S.yankedDone }));
+  // 教材が記録した前の版の同梱のテーマ（themes.lock.json。kit/core/themes-lock.mjs）：その版で組んでいると知らせ、変わる色（前 → 今、色見本つき）と
+  // 「テーマを更新」を出す。黙って新しい色にしない（部品庫の取り下げた版と同じ）
+  for (const u of S.themePinned || []) {
+    const rows = u.tokens.map((x) => el('li', {}, [el('code', { text: x.token }), document.createTextNode(' '), swatch(x.from), document.createTextNode(` ${x.from} → `), swatch(x.to), document.createTextNode(` ${x.to}`)]));
+    n.append(el('div', { id: 'notice-theme-pinned', 'data-theme-name': u.name }, [
+      el('p', { text: T.themePinnedNotice(u.name, u.from, u.to) + (u.tokens.length ? '' : ' ' + T.themeNoColorChange) }),
+      rows.length ? el('ul', { cls: 'theme-changes' }, rows) : null,
+      S.ws && !(S.portable && S.portable.readOnly) ? el('p', {}, [el('button', { type: 'button', id: 'b-theme-update', cls: 'pri', text: T.themeUpdate, onclick: () => updateThemes() })]) : null,
+    ]));
+  }
+  if (S.themeDone) n.append(el('p', { id: 'notice-theme-done', text: S.themeDone }));
   // 見つからないテーマ（組み立ての知らせ）：テーマのフォルダを選ぶ・前に選んだものを読む許可を求める
   const missing = missingThemes(S.warn);
   if (missing.length && S.ws) n.append(el('p', { id: 'notice-theme', text: T.themeMissing(missing, TF.handle ? TF.state : 'none', TF.handle ? TF.handle.name : '') + ' ' }, themeButtons()));
@@ -339,6 +350,42 @@ async function rebuildYanked(version) {
     await rebuild('components');
   } catch (e) { toast(T.yankedFailed(String((e && e.message) || e)), true); }
 }
+// 色見本（値は themes.lock.json の #RRGGBB だけ。CSP の下でも効くように style は CSSOM で）
+function swatch(c) {
+  const e = el('span', { cls: 'swatch', 'aria-hidden': 'true' });
+  if (/^#[0-9A-Fa-f]{6}$/.test(c)) e.style.backgroundColor = c;
+  return e;
+}
+// プレビューと書き出しの組み立てに渡すテーマの版（開いた 1 ファイルが記録した版。作業フォルダは egatari.json の themes を組み立てが読む）
+const themeOpts = () => (S.portable && S.portable.themePins ? { themeVersions: S.portable.themePins } : {});
+// 「テーマを更新」：egatari.json の themes を今の版にし（利用者が押したときだけ）、開いた 1 ファイルなら記録（carry）のテーマも新しい組み立てのものに替える。
+// 変わる色は知らせに書いたもの（format spec §7.2：記録したテーマで組み直す。黙って替えない）
+async function updateThemes() {
+  const ws = S.ws, P = S.portable;
+  const todo = (S.themePinned || []).slice();
+  if (!ws || !todo.length) return;
+  try {
+    const CFG = FORMAT.CONFIG_FILE;
+    let conf = {};
+    try { const t = await ws.readText(CFG, { max: READ_LIMITS.json }); if (t) conf = JSON.parse(t); } catch { conf = {}; }
+    if (!conf || typeof conf !== 'object' || Array.isArray(conf)) conf = {};
+    conf.themes = { ...(conf.themes && typeof conf.themes === 'object' && !Array.isArray(conf.themes) ? conf.themes : {}), ...Object.fromEntries(todo.map((u) => [u.name, u.to])) };
+    if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
+    await ws.writeText(CFG, JSON.stringify(conf, null, 2) + '\n');
+    if (P) {
+      const names = new Set(todo.map((u) => u.name));
+      const carry = { ...P.index, themes: (P.index.themes || []).filter((t) => !names.has(t.name)) };
+      const dry = await builder.exportIndex(ws, S.deckFile, { carry, updateThemes: true }, { timeout: buildTimeout() });
+      const fresh = (dry.index.themes || []).filter((t) => names.has(t.name));
+      P.index = { ...P.index, themes: [...carry.themes, ...fresh] };
+      P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
+      const probs = registryProblems(P.index, dry.index, dry.registryEquivalent);
+      if (P.tierAReg) { P.tierAOnly = probs.length ? T.roRegistry(probs.join('; ')) : null; P.tierAReg = !!probs.length; }
+    }
+    S.themePinned = []; S.themeDone = T.themeUpdateDone(todo.map((u) => `${u.name} ${u.from} → ${u.to}`).join('・'));
+    await rebuild('theme');
+  } catch (e) { toast(T.themeUpdateFailed(String((e && e.message) || e)), true); }
+}
 function signature(listing) {
   return [...listing.files].filter(([rel]) => rel !== 'comments.json').map(([rel, f]) => rel + ':' + f.m + ':' + f.s).sort().join('\n');
 }
@@ -373,7 +420,7 @@ async function rebuild(reason) {
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         // 組み立てと判定は Worker で（期限を過ぎれば止めて失敗にする）。理由は Worker が組んだ文書（表示するバイト）から決める
-        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true }, reasonsPrefix(), { timeout: buildTimeout() });
+        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts() }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
@@ -384,7 +431,7 @@ async function rebuild(reason) {
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || []; S.theme = r.theme || null;
+        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || []; S.themePinned = r.stats.themePinned || []; S.theme = r.theme || null;
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);
@@ -853,7 +900,7 @@ async function exportHtml() {
   if (!S.ws) return;
   status(T.exporting);
   let r;
-  try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false }, null, { timeout: buildTimeout() }); }
+  try { r = await builder.build(S.ws, await S.ws.list(), S.deckFile, { dev: false, ...themeOpts() }, null, { timeout: buildTimeout() }); }
   catch (e) { toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   // 既定の名前は教材の題名（kit/core/export-name.mjs。なければデッキの名前）
   const name = exportName(titleOf(r.html), deckBase(), '.html');
@@ -1105,6 +1152,8 @@ async function openPortableNow(input) {
       const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);
       if (probs.length) { P.tierAOnly = T.roRegistry(probs.join('; ')); P.tierAReg = true; }
       P.yankedRecorded = dry.yanked || [];
+      // 記録した版の同梱のテーマ（themes.lock.json）：プレビューと書き出しも、その版で組む（黙って新しい色にしない。「テーマを更新」で今の版に）
+      P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
     } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
@@ -1477,7 +1526,7 @@ window.__APP_TEST = {
   dirHandle: null,
   state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
-    portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
+    portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
   attachBusy: () => attach.isBusy(),

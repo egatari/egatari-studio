@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=a8c488a5bf482da1 -->
+<!-- i18n: pair=reference.ja.md sha256=cbdbfd6ad095169a -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -157,6 +157,7 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in your theme folders, then in `themes/`) |
 | `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
+| `version` | the theme's version (bundled themes listed in `themes.lock.json`; see “Theme versions” below) |
 | `metrics` | the theme's frame geometry for the quality checker and authoring tools (`"v": 1`; table below). Inherited field by field through `extends`; omitted fields take the defaults. Never used to draw ([contract](contract.md) §12) |
 
 `metrics` fields (stage pixels of 1280×720, numbers, decimals allowed). The defaults are today's `kit/layouts.css`; the limits derived from them are the checker's old constants (565, 680, 1236, 1162, 124, 44). The margins (6 and 4) are policy, not theme values. A theme that moves these boxes in its CSS should declare them (bundled and official library themes must); `node tools/theme-metrics.mjs measure <theme>` prints the block to paste.
@@ -178,7 +179,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | Token | Meaning |
 |---|---|
 | `--base` | base color; the others derive from it in `themes/default/tokens.css` |
-| `--emph-hue` | hue of `--emph` (default 27, red) |
+| `--emph-hue` | hue of `--emph`: a theme that sets it gets `--emph` = `oklch(0.52 0.21 <hue>)` (`kokugo`: 38). `default` does not set it and fixes `--emph` at `#BE3012` (from 1.1.0) |
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: lecture highlight) |
 | `--series-1` … `--series-4` | figure series colors |
@@ -191,6 +192,8 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--stage-bg` | area around the slide (#2f2f2f) |
 | `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines` | caption font size (27px), distance from the bottom (18px), side margins (96px), max lines per caption chunk (3) |
 | `--cap-rate` | caption reading speed when presenting by hand (characters/s; default ja 7, en 15; also `DECK.captionRate`) |
+
+**Theme versions.** A bundled theme that changes how lessons look gets a new `version` in its `theme.json`, and the earlier version stays in `vendor/themes/<name>/<version>/`, listed with its identity hash and the colors that changed in `themes.lock.json` (`npm run themes:check` checks the copies against the lock; in `npm test`). `default` 1.1.0 (`--emph` `#C50516` → `#BE3012`, `--muted` `#6E6E6E` → `#5C5853`) is the first such change; 1.0.0 is `default` as of Studio 0.4.6. As for components, a lesson is never restyled silently: a single file records each theme's name, version and hash (`index.themes`) and its `egatari.json` pins the version (`"themes": {"default": "1.1.0"}`; unpacking an older file without it pins the version whose hash the file recorded). A build of a folder pinned to an earlier version uses that copy and warns `theme pinned: …` with the colors that would change; `--update-themes` (or setting the pin to the current version) updates it. A folder without a pin follows the current version. The editor rebuilds an opened file with the theme version it recorded and offers **Update theme** ([editor](editor.md)). A theme that extends `default` uses the pinned `default` too. A single file keeps playing with the theme CSS it embeds, whatever the editor's version.
 
 Fonts: Japanese decks (`lang` is `ja` or missing) embed BIZ UDPGothic; other languages embed Source Sans 3 and use BIZ UDPGothic only for characters past U+024F. Only the font files (or, with `fonts/*.ttf` and uv, the glyphs) that the deck uses are embedded. BIZ UDPMincho is embedded as well, for the same characters, only when the deck uses it: `var(--font-mincho)` in the deck, its theme or a component it uses, `class="mincho"`, or `<html data-font="mincho">` (the definition of `--font-mincho` in `kit/layouts.css` does not count). `--font-mincho` is defined with `:where(:root)`, so a theme can override it. Theme `kokugo`: Mincho body text, indigo base, vermilion emphasis, off-white background, captions in BIZ UDPGothic (`--font-cap`).
 
@@ -428,6 +431,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 | `--portable` | write the single file (default `<working folder>/<lesson title>.ega.html`, at the top of the folder; `-o` sets the path) |
 | `--play-only` | write a play-only copy (default `<working folder>/<lesson title>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
 | `--without-live-results` | with `--portable`: leave out attachments that hold live room results (learners' questions and answers). Without it, a single file that contains them prints a warning. Play-only copies never contain them ([Live](distributing.md#live-questions-and-polls-in-class-draft)) |
+| `--update-themes` | rebuild with the current version of bundled themes that `egatari.json` pins to an earlier version (`themes`, below), and rewrite those pins; prints the colors that change |
 
 `npm run portable -- unpack <file> <dir> [--force]` extracts the source and audio into `<dir>` (and writes `audio/manifest.json` from the audio records, so the folder builds and packs again). It reads the file as text and never runs its scripts; it checks the index and every hash, the size limits and the path rules of the spec, refuses to write outside `<dir>` or through symbolic links, and refuses a non-empty `<dir>` unless `--force`. `npm run portable -- pack <dir> [-o file] [--play-only] [--without-live-results]` is `build --portable` on that folder: packing an unpacked folder gives the same file again. `npm run portable -- attach <dir> <results.json> [--en]` adds live room results downloaded from the Live server to the working folder as a `data` attachment (`attachments/live-<room>-<date>.json`, title “授業の部屋の結果（<room>、<date>）”, or in English with `--en`); it refuses anything that is not results of the vendored schema, files over 10 MiB, files that fail the §3.8 content checks and results already attached, and warns (but adds) when the room differs from `extensions.live.room` in `egatari.json`. `npm run portable -- compare <file> <dir>` takes a copy exported from a working folder and that folder (same `docId` in `egatari.json`) and says, by source hash, which was edited after the export: `same`, `copy` (unpack the copy to bring the edits back), `folder` (export again) or `both` (choose which to keep; nothing is merged). It writes nothing; a file without `exportedFrom` or a folder of another lesson is refused.
 

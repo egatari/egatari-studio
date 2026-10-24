@@ -18,6 +18,7 @@ import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig,
 import { FORMAT } from '../kit/core/format.mjs';
 import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
+import { THEMES_LOCK_FILE, parseThemesLock, themeVersionForSha, themeUpdate, themePinnedWarning } from '../kit/core/themes-lock.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
@@ -67,6 +68,18 @@ export async function unpack(file, dir, { force = false } = {}) {
     const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
     if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, components: pinned }, null, 2) + '\n');
   }
+  // 同梱のテーマの版も、設定のファイルの themes に固定する（themes.lock.json。記録の sha256 が合う版。kit/core/themes-lock.mjs）。
+  // 書き出した 1 ファイルはもう themes を持つ（そのまま）。持たない前の 1 ファイルだけここで足す。前の版なら知らせる
+  const tPinned = unpackThemePins(r.index);
+  const tWarn = [];
+  if (Object.keys(tPinned).length) {
+    const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
+    if (!Object.prototype.hasOwnProperty.call(conf, 'themes')) {
+      files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, themes: tPinned }, null, 2) + '\n');
+      const tl = themesLockAt(ROOT);
+      for (const [name, v] of Object.entries(tPinned)) if (v !== tl.themes[name].current) tWarn.push(themePinnedWarning(themeUpdate(tl, name, v)));
+    }
+  }
   const written = [];
   // 書く先は <dir> の中だけで、途中のフォルダも書く先もシンボリックリンクでないこと（壊れたリンクも。kit/safe-fs.mjs）。
   // どれか 1 つでも断るなら、何も書かないうちに断る
@@ -83,6 +96,7 @@ export async function unpack(file, dir, { force = false } = {}) {
   }
   const warnings = [...r.warnings];
   warnings.push(...registryWarnings(r.index));
+  warnings.push(...tWarn);
   return { written, warnings, index: r.index };
 }
 
@@ -124,6 +138,23 @@ export function unpackPins(index, root = ROOT) {
     if (v) out[c.name] = v; else if (typeof c.version === 'string' && VERSION_RE.test(c.version)) out[c.name] = c.version;
   }
   return out;
+}
+
+// 同梱のテーマの版の固定（themes.lock.json）。読めなければ null
+function themesLockAt(root) {
+  try { return parseThemesLock(fs.readFileSync(path.join(root, THEMES_LOCK_FILE), 'utf8')); } catch { return null; }
+}
+// 展開で設定のファイルに書くテーマの版：{名前: 版}。文書の同梱のテーマごとに、記録の sha256 が合う版（今の版も）。合わないもの・固定のファイルにないものは書かない
+export function unpackThemePins(index, root = ROOT) {
+  const lock = themesLockAt(root);
+  const out = {};
+  if (!lock) return out;
+  for (const t of Array.isArray(index.themes) ? index.themes : []) {
+    if (!t || t.source !== 'registry' || typeof t.name !== 'string' || !RE.registryName.test(t.name)) continue;
+    const v = themeVersionForSha(lock, t.name, t.sha256, t.version);
+    if (v) out[t.name] = v;
+  }
+  return Object.fromEntries(Object.keys(out).sort().map((k) => [k, out[k]]));
 }
 
 // 部品庫・テーマ庫の部品が、このリポジトリの写しにあるか（なければ段 B・C の編集はできない）。返すもの：知らせの配列。

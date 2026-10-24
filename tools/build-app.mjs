@@ -5,7 +5,7 @@
 //   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
-// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*・
+// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
@@ -57,6 +57,9 @@ for (const d of fs.readdirSync(rel('themes'), { withFileTypes: true })) {
   themes.push(d.name); addTree('/repo/themes/' + d.name, rel('themes', d.name));
 }
 themes.sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)));
+// 同梱のテーマの版の固定（themes.lock.json）と前の版の写し（vendor/themes/<名前>/<版>/。教材が記録した版で組み直す。kit/core/themes-lock.mjs）
+if (fs.existsSync(rel('themes.lock.json'))) add('/repo/themes.lock.json', rel('themes.lock.json'));
+if (fs.existsSync(rel('vendor', 'themes'))) addTree('/repo/vendor/themes', rel('vendor', 'themes'));
 // KaTeX：CSS・実行時の JS（SVG の中の式）・字（woff2 だけ）
 const kdir = path.dirname(require.resolve('katex'));
 add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css'));

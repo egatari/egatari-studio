@@ -16,6 +16,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
+import { readThemesLock, themesVendorDir, themePinsForIndex } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
@@ -658,15 +659,23 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   let componentVersions = opts.componentVersions;
   const carryLock = isObj(opts.carry) && Array.isArray(opts.carry.components) && opts.carry.components.length ? readLock(env0, env0.ROOT) : null;
   if (!componentVersions && carryLock) componentVersions = pinsForIndex(carryLock, opts.carry.components).pins;
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
+  // 記録したテーマも、sha256 の合う版で組む（同梱のテーマの版の固定 themes.lock.json。kit/core/themes-lock.mjs。黙って新しい色にしない）。
+  // opts.updateThemes（編集アプリの「テーマを更新」）なら今の版
+  let themeVersions = opts.themeVersions;
+  if (!themeVersions && !opts.updateThemes && isObj(opts.carry) && Array.isArray(opts.carry.themes) && opts.carry.themes.length) {
+    let tl = null;
+    try { tl = readThemesLock(env0, env0.ROOT); } catch { tl = null; }
+    if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
+  }
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
 
   // 原稿のファイル（依存の閉包）と、部品庫・テーマ庫の参照
   const files = dict();
-  const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes');
-  const regComp = new Map(), regTheme = new Map();
+  const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes'), vThemeDir = themesVendorDir(P, env.ROOT);
+  const regComp = new Map(), regTheme = new Map(), regThemeVer = new Map();
   for (const p of [...reads].sort()) {
     if (inDeck(p)) {
       const rp = rel(p);
@@ -679,6 +688,12 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       const [name, version] = P.relative(compDir, p).split(P.sep);
       if (!regComp.has(name)) regComp.set(name, { version, files: new Map() });
       regComp.get(name).files.set(P.relative(P.join(compDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
+    } else if (env.within(p, vThemeDir)) {
+      // vendor/themes/<名前>/<版>/…：同梱のテーマの前の版の写し（教材が記録した版で組んだ。kit/core/themes-lock.mjs）。今の版と同じ名前で記録する
+      const [name, version] = P.relative(vThemeDir, p).split(P.sep);
+      if (!regTheme.has(name)) regTheme.set(name, new Map());
+      regThemeVer.set(name, version);
+      regTheme.get(name).set(P.relative(P.join(vThemeDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
     } else if (env.within(p, themeDir)) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
       if (!regTheme.has(name)) regTheme.set(name, new Map());
@@ -806,6 +821,16 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[CFG] = utf8(JSON.stringify({ ...base, components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }, null, 2) + '\n');
     }
   }
+  // 同じく、版を固定した同梱のテーマ（themes.lock.json。kit/core/themes-lock.mjs）の版（themes）も書く：展開したフォルダを組み直しても
+  // テーマの色が黙って変わらない（部品の components と同じ。作業フォルダの設定のファイルは変えない。themes があればそのまま）
+  if (!own(econf, 'themes') && r.stats.themeVersions) {
+    const usedT = {};
+    for (const name of regTheme.keys()) if (RE.registryName.test(name) && typeof r.stats.themeVersions[name] === 'string') usedT[name] = r.stats.themeVersions[name];
+    if (Object.keys(usedT).length) {
+      const base = parseJsonStrict(new TextDecoder().decode(files[CFG]));
+      files[CFG] = utf8(JSON.stringify({ ...base, themes: Object.fromEntries(Object.keys(usedT).sort().map((k) => [k, usedT[k]])) }, null, 2) + '\n');
+    }
+  }
 
   // 外したもの・パスの規則
   const pathErr = checkArchivePaths(Object.keys(files));
@@ -907,11 +932,14 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     }
   }
   const themes = [];
-  for (const [name, m] of regTheme) {
+  // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
+  for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
     if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
     const lines = [];
     for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`);
-    themes.push({ name, version: env.version || '0', sha256: await sha256Hex(lines.join('')), source: 'registry' });
+    // version：版を固定したテーマ（themes.lock.json）はその版（組み立てが使った版。stats.themeVersions）、ほかは Studio の版
+    const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || env.version || '0';
+    themes.push({ name, version: tv, sha256: await sha256Hex(lines.join('')), source: 'registry' });
   }
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める
