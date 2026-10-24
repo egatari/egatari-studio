@@ -1,7 +1,7 @@
 // test-all: part of test-app
 // 新規作成の画面いっぱいのページ・内容の欄とトークンの目安・長い教材の 2 回に分けた作り方（構成案 → 6 枚ずつ。kit/core/llm-outline.mjs）
 //   testAppOutline({browser, BASE, ok, watch, shotDir})
-//   画像（shotDir があれば）：new-page.png・new-content-budget.png・new-outline.png・outline-progress.png
+//   画像（shotDir があれば）：new-page.png・new-content.png・new-outline.png・outline-progress.png
 import path from 'node:path';
 import { replyOf } from './test-app-llm.mjs';
 import { clickDlg } from './click-retry.mjs';
@@ -48,18 +48,17 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.fill('#paste-a-length', '8 枚');
     await page.fill('#paste-content', '・半分ずつ探す\n・並んでいることが前提');
     await page.waitForTimeout(200);
-    const bud = await page.evaluate(() => { const b = document.getElementById('paste-budget'), t = document.getElementById('paste-pack-size'); return { text: b.textContent, tokens: +b.dataset.tokens, bytes: +b.dataset.bytes, total: +t.dataset.bytes, warn: b.classList.contains('warn') }; });
-    ok(/トークン/.test(bud.text) && bud.bytes === bud.total && bud.tokens === Math.ceil(bud.bytes / 3) && !bud.warn && await page.isHidden('#paste-phase'), `content: next to it, the size and the token estimate use the same byte count as the total (${bud.text})`);
+    ok(!(await page.$('#paste-budget')) && !/トークン/.test(await page.textContent('#paste-step1')) && await page.isHidden('#paste-phase'), 'content: no size or token estimate next to it (the AI plan question in ② replaces the size worry)');
     await page.click('#paste-copy-guide');
     await page.waitForFunction(() => /^コピーしました/.test(document.getElementById('paste-copied').textContent));
     let c = await copied();
     ok(c.includes('## 内容（要点・メモ・元の資料）\n\n・半分ずつ探す\n・並んでいることが前提') && !c.includes('# まず構成案だけを返してください'), 'content: the content goes into the copied text; 8 slides stay single-shot (no outline request)');
-    // 長い内容：80% を超えたら知らせる（止めない）
+    // 長い内容：知らせは出さず、コピーもできる
     await page.fill('#paste-content', 'あ'.repeat(30000));
     await page.waitForTimeout(200);
-    ok(await page.evaluate(() => document.getElementById('paste-budget').classList.contains('warn')) && /内容を要点だけにするか/.test(await page.textContent('#paste-budget')) && !(await page.isDisabled('#paste-copy-guide')), 'content: over about 80% of 32k tokens, a soft note says what to shorten (copying still works)');
+    ok(!(await page.$('#dlg .warn')) && !(await page.isDisabled('#paste-copy-guide')), 'content: a long content shows no size warning and copying still works');
     await page.evaluate(() => document.getElementById('paste-content').scrollIntoView({ block: 'center' }));
-    await shot('new-content-budget.png');
+    await shot('new-content.png');
     await page.fill('#paste-content', '・半分ずつ探す');
     // 24 枚：まず構成案
     await page.fill('#paste-a-length', '24 枚');

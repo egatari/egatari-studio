@@ -17,11 +17,12 @@
 //   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
+//   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, PACK_CAP_KB, PAID_PACK_KB } from './llm-pack-assemble.mjs';
 
-export { assemble };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB };
 export const normalizeSeries = (series) => norm(series, PACK);
 
 export const SERIES = PACK.series;

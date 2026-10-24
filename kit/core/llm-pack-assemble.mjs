@@ -6,6 +6,13 @@
 //     <!--part:m-x[,m-y]--> … <!--/part--> で囲んだ文（見本のスライドとその口述原稿、部品の名前を出す文）は、その部品が exclude にあれば丸ごと除く
 //   {{PURPOSES}}：言いたいこと → パーツ → ステップの表を、組み立てのときに作る（材料の purposes・parts・partsSrc。入っている系列・exclude・外した札 off に合わせる）
 import { purposesTable } from './purposes.mjs';
+
+// 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
+// 新規作成の「お使いの AI」（kit/core/new-deck.mjs の AI_PLANS）ごと：
+//   無料版：共通の本体＋選んだ分野。1 つの分野なら one まで（越えたら npm run gen が止まる）、どの組でも all まで（全部の分野を選んでも）
+//   有料版：すべての系列のパーツを入れた指示（'all'）。PAID_PACK_KB まで
+export const PAID_PACK_KB = 120;   // 有料版の上限（仮の値。変えるならここだけ）
+export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, all: 58 }), paid: PAID_PACK_KB });
 export function normalizeSeries(series, data) {
   if (series === undefined || series === null) return [];
   if (series === 'all') return [...data.series];

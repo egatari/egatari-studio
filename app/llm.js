@@ -1,12 +1,13 @@
 // チャットの AI との行き来（docs/authoring-with-llms.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す（名前に「AI で…」を付けない）：
-//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 場面（大分類・小分類。kit/core/new-deck.mjs）→ ② 分野（使うパーツの組。既定はなし。ビジネスの大分類ならビジネス）と
-//     素材（いつも使える）と言いたいこと（14 の札。既定で全部入り、外したものは AI に使わせない。kit/core/purposes.mjs）→ ③ デザイン（テーマ。返事の教材にも付ける）→
+//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 場面（大分類・小分類。kit/core/new-deck.mjs）→ ② お使いの AI（無料版・有料版。既定は無料版）、
+//     無料版なら分野（使うパーツの組。既定はなし。ビジネスの大分類ならビジネス。有料版はすべての系列を入れるので出さない）、
+//     折りたたみ（既定で閉じる）の中に素材（いつも使える）と言いたいこと（14 の札。既定で全部入り、外したものは AI に使わせない。kit/core/purposes.mjs）→ ③ デザイン（テーマ。返事の教材にも付ける）→
 //     ④ 頼みたいことを書く（kit/core/llm-request.mjs。場面の構成の型と外した言いたいことも足す）→ ⑤ 共通の本体と、選んだ系列
 //     （既定はデッキを開いていればその部品・テーマから推したもの、開いていなければなし）と ① を組み立てて写す（kit/core/llm-pack.mjs）→
 //     ③ AI の返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を
 //     取り出し、スライドに id を付け（kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして
 //     （app/build-worker.js の exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//     開くときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、選んだもの（場面・分野・外した言いたいこと）を
+//     開くときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、選んだもの（お使いの AI・場面・分野・外した言いたいこと）を
 //     egatari.json の studio.newDeck に残す。「修正…」で入れ替える原稿がシード値を失っても、前のシード値に戻す（keepSeed）
 //   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'。backlog #93）：① 足すスライド（枚数・足したいこと）→ ② 短い頼む文
 //     （見出しの一覧と足す場所の前のスライドだけ。kit/core/llm-insert.mjs。新しいチャットなら指示も付けられる）→ ③ 返事のスライドを、選んだスライドの
@@ -16,7 +17,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, defaultSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, defaultSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
@@ -42,8 +43,6 @@ const TX = {
     themeLoad: 'ほかのテーマを読み込む…', themeLabel: 'テーマ',
     back: '← 戻る', contentLabel: '内容（要点・メモ・元の資料の文を貼る）', contentPh: '例：教えたい要点の箇条書き、授業のメモ、教科書や論文の一節など（そのまま貼ってかまいません）',
     contentHead: '## 内容（要点・メモ・元の資料）',
-    budget: (kb, tok, pct) => `写す文は合わせて ${kb} KB・約 ${tok.toLocaleString('ja-JP')} トークン（32k トークンの ${pct}%。目安は UTF-8 のバイト数 ÷ 3）`,
-    budgetWarn: '32k トークンまでのチャット（Gemini など）では、返事を書く余裕が足りないかもしれません。内容を要点だけにするか、分野を減らしてください（共通の本体は減らせません）',
     phase: (n) => `${n} 枚なので、2 回に分けて作ります：まず構成案（見出しと要点の表）を頼み、次に ${BATCH} 枚ずつ頼みます`,
     outlineGot: (n) => `構成案を受け取りました（${n} 枚）。${BATCH} 枚ずつ作ります`,
     outlineCopied: (kb) => `コピーしました（${kb} KB）。同じチャットに貼り付けて送ってください。返事が来たら ⑥ へ`,
@@ -54,18 +53,23 @@ const TX = {
     batchDone: (left) => (left ? `構成案：残り ${left} 枚` : '構成案のスライドをすべて作りました'),
     themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
     seriesHintNew: '使うパーツの説明が指示に加わります。何も選ばなければ共通の本体だけです',
+    planLegend: 'お使いのチャットの AI は無料版ですか、有料版ですか',
+    plan: { free: '無料版（指示を軽くして、使う分野だけを入れる）', paid: '有料版（すべての分野のパーツの説明を入れる）' },
+    planHint: '無料版のチャットは長い指示を読み切れないことがあるので、指示を軽くします。わからなければ無料版のままで',
+    seriesPaid: '有料版では、すべての分野のパーツの説明が指示に入ります（分野は選びません）',
     kindHint: '場面を選ぶと、その構成の型と見せ方を頼みたいことに入れます。選ばなくてもかまいません',
     catLegend: '大分類', subLegend: '小分類', subNone: 'この大分類には小分類はありません',
     structure: (st, sh) => `構成の型：${st}。見せ方：${sh}`,
     materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
-    purposesLegend: '言いたいこと',
+    purposesLegend: '言いたいこと', purposesFold: 'AI に使わせない表し方を選ぶ（選ばなくてよい）',
     purposesHint: '既定で全部入っています。押すと外れ、AI はその表し方を使いません。小さな字は中の表し方で、AI が言いたいこととデータから選びます（まだパーツがないものは、近いパーツか HTML で描きます）',
     purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個が入っています`,
+    purposesFoldSum: (on, n) => (on === n ? 'いまは全部使う' : `${n - on} 個を外した`),
     purposeOn: '入っている', purposeOff: '外した',
     howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
     steps: {
       batch: ['① 頼む範囲', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
-      new: ['④ 頼みたいことを書く', '⑤ AI への指示をコピーして、チャットに貼って送る', '⑥ AI の返事を貼り付けて開く', '② 分野（使うパーツ）と言いたいことを選ぶ', '③ デザイン（テーマ）を選ぶ', '① 場面（大分類・小分類）を選ぶ（選ばなくてもよい）'],
+      new: ['④ 頼みたいことを書く', '⑤ AI への指示をコピーして、チャットに貼って送る', '⑥ AI の返事を貼り付けて開く', '② お使いの AI と分野（使うパーツ）を選ぶ', '③ デザイン（テーマ）を選ぶ', '① 場面（大分類・小分類）を選ぶ（選ばなくてもよい）'],
       insert: ['① 足すスライドを書く', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
       replace: ['① 直してほしいことを書く', '② 修正依頼をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて取り込む'],
     },
@@ -150,8 +154,6 @@ const TX = {
     themeLoad: 'Load another theme…', themeLabel: 'Theme',
     back: '← Back', contentLabel: 'Content (key points, notes, or text from your source material)', contentPh: 'e.g. the points to teach as a list, your lesson notes, a passage from a textbook or paper (paste it as it is)',
     contentHead: '## Content (key points, notes, source material)',
-    budget: (kb, tok, pct) => `The copied text is ${kb} KB in all, about ${tok.toLocaleString('en-US')} tokens (${pct}% of 32k tokens; estimated as UTF-8 bytes ÷ 3)`,
-    budgetWarn: 'A chat with a 32k-token context (Gemini, for example) may not have room left for the reply. Cut the content to its key points, or choose fewer subjects (the common body cannot be shortened).',
     phase: (n) => `${n} slides, so it is made in two passes: first an outline (a table of headings and points), then ${BATCH} slides at a time`,
     outlineGot: (n) => `Got the outline (${n} slides). The slides are made ${BATCH} at a time`,
     outlineCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the reply arrives, go to step 6.`,
@@ -162,18 +164,23 @@ const TX = {
     batchDone: (left) => (left ? `Outline: ${left} slides left` : 'All slides of the outline are made'),
     themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
     seriesHintNew: 'Adds the notes on those parts to the instructions. With none chosen, only the common body is sent.',
+    planLegend: 'Is your chat AI a free or a paid plan?',
+    plan: { free: 'Free plan (lighter instructions with only the subjects you choose)', paid: 'Paid plan (notes on the parts of every subject)' },
+    planHint: 'A free chat may not take in long instructions, so they are kept light. If you are not sure, keep Free plan.',
+    seriesPaid: 'With a paid plan, the notes on the parts of every subject are in the instructions (no subjects to choose).',
     kindHint: 'The structure and presentation of the kind you choose go into the request. You can leave it unchosen.',
     catLegend: 'Category', subLegend: 'Subcategory', subNone: 'This category has no subcategories',
     structure: (st, sh) => `Structure: ${st}. Presentation: ${sh}`,
     materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
-    purposesLegend: 'Purposes',
+    purposesLegend: 'Purposes', purposesFold: 'Choose representations the AI should not use (optional)',
     purposesHint: 'All are on by default. Press one to turn it off: the AI will not use that representation. The small text is what is inside; the AI chooses from the purpose and the data (where no part exists yet, it uses the nearest part or HTML).',
     purposesSum: (on, n) => `Purposes: ${on} of ${n} on`,
+    purposesFoldSum: (on, n) => (on === n ? 'all in use now' : `${n - on} turned off`),
     purposeOn: 'on', purposeOff: 'off',
     howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
     steps: {
       batch: ['1. The range to ask for', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
-      new: ['4. Write what you want', '5. Copy the instructions, paste them into the chat and send', '6. Paste the AI’s reply and open it', '2. Choose subjects (parts) and purposes', '3. Choose the design (theme)', '1. Choose the kind (category and subcategory) (optional)'],
+      new: ['4. Write what you want', '5. Copy the instructions, paste them into the chat and send', '6. Paste the AI’s reply and open it', '2. Choose your chat AI and subjects (parts)', '3. Choose the design (theme)', '1. Choose the kind (category and subcategory) (optional)'],
       insert: ['1. Describe the slides to add', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
       replace: ['1. Write what to change', '2. Copy the fix request, paste it into the chat and send', '3. Paste the AI’s reply and bring it in'],
     },
@@ -275,7 +282,7 @@ export function setupLlm(app) {
 
   // ---------------------------------------------------------------- ① 新規作成：頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）
   // 記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。書いたものは、このページを開いている間は残す
-  const draft = { kind: 'A', values: {}, category: null, subcategory: null, purposesOff: [] };
+  const draft = { kind: 'A', values: {}, plan: DEFAULT_PLAN, category: null, subcategory: null, purposesOff: [] };
   function requestStep(title) {
     const F = requestForm(LANG);
     const field = (sec, f) => {
@@ -294,19 +301,18 @@ export function setupLlm(app) {
     kinds.addEventListener('change', (e) => { if (e.target.name === 'paste-kind') { draft.kind = e.target.value; show(); } });
     show();
     const values = () => Object.fromEntries([...(draft.kind === 'B' ? B : A).querySelectorAll('input,textarea')].map((x) => [x.name, x.value]));
-    // 内容（要点・メモ・元の資料の文）：大きな欄。頼みたいことの後ろに、そのまま入れる。その横に写す文の大きさとトークンの目安（packStep の onSize）
-    const content = el('textarea', { id: 'paste-content', rows: '9', placeholder: X.contentPh, spellcheck: 'false', 'aria-describedby': 'paste-budget' });
+    // 内容（要点・メモ・元の資料の文）：大きな欄。頼みたいことの後ろに、そのまま入れる（大きさの心配は ② のお使いの AI が引き受ける）
+    const content = el('textarea', { id: 'paste-content', rows: '9', placeholder: X.contentPh, spellcheck: 'false' });
     content.value = draft.content || '';
     content.addEventListener('input', () => { draft.content = content.value; });
-    const budget = el('p', { id: 'paste-budget', cls: 'hint paste-budget', role: 'status', 'aria-live': 'polite' });
     const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
-    const contentBox = el('div', { cls: 'paste-field wide paste-content' }, [el('label', { for: 'paste-content', text: X.contentLabel }), content, budget]);
+    const contentBox = el('div', { cls: 'paste-field wide paste-content' }, [el('label', { for: 'paste-content', text: X.contentLabel }), content]);
     return {
       node: step('paste-step1', title, [el('p', { cls: 'hint', text: X.step1Hint }), kinds, A, B, contentBox, phase]),
       request: () => filledRequest({ kind: draft.kind, values: values() }, LANG),
       content: () => content.value.trim(),
       count: () => (draft.kind === 'A' || draft.kind === 'B' ? slideCountOf(values().length) : null),
-      budget, phase,
+      phase,
       missing: () => (draft.kind === 'A' && !String(values().topic || '').trim() ? A.querySelector('[name=topic]') : null),
     };
   }
@@ -381,7 +387,11 @@ export function setupLlm(app) {
       el('ul', { cls: 'tiles', 'aria-labelledby': 'paste-materials-h' }, Object.keys(X.materials).map((k) => el('li', { cls: 'tile fixed', id: 'paste-material-' + k }, [icon(k), el('span', { cls: 'tile-label', text: X.materials[k] })]))),
     ]);
     const sum = el('p', { id: 'paste-purposes-sum', cls: 'hint', role: 'status' });
-    const showSum = () => { sum.textContent = X.purposesSum(PURPOSES.list.length - draft.purposesOff.length, PURPOSES.list.length); };
+    const foldSum = el('span', { id: 'paste-purposes-fold-sum', cls: 'hint' });
+    const showSum = () => {
+      const on = PURPOSES.list.length - draft.purposesOff.length;
+      sum.textContent = X.purposesSum(on, PURPOSES.list.length); foldSum.textContent = X.purposesFoldSum(on, PURPOSES.list.length);
+    };
     const tiles = PURPOSES.list.map((p) => {
       const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
         [icon(PURPOSE_ICON[p.id] || 'other'), el('span', { cls: 'tile-label', text: p.label[LANG] }), p.sub[LANG] ? el('small', { text: p.sub[LANG] }) : null]);
@@ -399,7 +409,9 @@ export function setupLlm(app) {
       el('p', { id: 'paste-purposes-hint', cls: 'hint', text: X.purposesHint }),
       el('div', { cls: 'tiles' }, tiles), sum,
     ]);
-    return [materials, purposes];
+    // 札は折りたたみの中（既定で閉じる）。札のはたらきは同じ（外すだけ。無料版・有料版のどちらでも）。閉じていても、外した数を見出しの横に出す
+    return el('details', { id: 'paste-purposes-fold', cls: 'paste-fold' }, [
+      el('summary', { id: 'paste-purposes-fold-h' }, [el('span', { text: X.purposesFold }), ' ', foldSum]), materials, purposes]);
   }
   // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
   function insertStep(title, where) {
@@ -444,13 +456,14 @@ export function setupLlm(app) {
     });
     const withPack = optional ? el('input', { type: 'checkbox', id: 'paste-with-pack' }) : null;
     const packOn = () => !withPack || withPack.checked;
-    const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
+    // req.allSeries()：すべての系列を入れる（新規作成の有料版。分野の印は残すが使わない）
+    const chosen = () => (req.allSeries && req.allSeries() ? [...SERIES] : boxes.filter((b) => b.checked).map((b) => b.value));
     const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex(), off: offNow() }) : r; };
     const update = async () => {
       const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t));
       const cb = packSize(commonNow());
       commonRow.dataset.bytes = String(cb); commonRow.lastChild.textContent = X.common(kbOf(cb));
-      for (const s of SERIES) { const h = seriesSet.querySelector(`#paste-series-${s}`).closest('label').querySelector('[data-bytes]'); const b = partBytes(s); h.dataset.bytes = String(b); h.textContent = X.plusKb(kbOf(b)); }
+      for (const s of SERIES) { const h = seriesSet.querySelector(`#paste-series-${s}`).closest('label').querySelector('[data-bytes]'); if (!h) continue; const b = partBytes(s); h.dataset.bytes = String(b); h.textContent = X.plusKb(kbOf(b)); }
     };
     for (const b of boxes) b.addEventListener('change', update);
     const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
@@ -465,8 +478,9 @@ export function setupLlm(app) {
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [
         el('legend', { text: X.seriesLegend }),
+        // 新規作成（split）では分野ごとの大きさを出さない（大きさの心配は ② のお使いの AI が引き受ける）
         ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }),
-          el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })])),
+          split ? null : el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })])),
       ]);
     const seriesHint = el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) });
     const commonRow = el('label', { cls: 'paste-common', for: 'paste-common', 'data-bytes': String(commonBytes) }, [common, el('span', { text: X.common(kbOf(commonBytes)) })]);
@@ -482,8 +496,9 @@ export function setupLlm(app) {
     const node = step('paste-step2', title, [
       ...(withPack ? [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })])] : []),
       packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
-    const seriesNode = split ? step('paste-step-series', seriesTitle, [el('p', { cls: 'hint', text: X.seriesHintNew }), seriesSet, seriesHint]) : null;
-    return { node, update, seriesNode, chosen, boxes };
+    const seriesNewHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew });
+    const seriesNode = split ? step('paste-step-series', seriesTitle, [seriesNewHint, seriesSet, seriesHint]) : null;
+    return { node, update, seriesNode, chosen, boxes, seriesParts: [seriesNewHint, seriesSet, seriesHint] };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
   function reviseStep(copyMsg, title, results0) {
@@ -533,7 +548,7 @@ export function setupLlm(app) {
     }
     let s1, s2, pre = [];
     if (mode === 'new') {
-      // ① 場面（大分類・小分類）→ ② 分野（使うパーツ）と言いたいこと → ③ デザイン（テーマ）→ ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け
+      // ① 場面（大分類・小分類）→ ② お使いの AI・分野（無料版だけ）・言いたいこと（折りたたみ）→ ③ デザイン（テーマ）→ ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け
       const req = requestStep(titles[0]);
       // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
       const sel = el('select', { id: 'paste-theme' });
@@ -549,8 +564,9 @@ export function setupLlm(app) {
       await fill();
       // 頼みたいこと（＋テーマの行）・内容・（9 枚から）構成案だけを返す、の順に最後へ
       const longN = () => { const n = req.count(); return n && n > OUTLINE_OVER ? n : null; };
-      const choiceNow = () => ({ category: draft.category, subcategory: draft.subcategory, purposesOff: draft.purposesOff,
-        subjects: pack ? SUBJECTS.filter((x) => pack.chosen().includes(x.series)).map((x) => x.id) : [] });
+      // subjects は分野の印（有料版でも印は残す：無料版に戻したときの選び方。指示に入る系列は kit/core/new-deck.mjs の seriesForChoice）
+      const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.subcategory, purposesOff: draft.purposesOff,
+        subjects: pack ? SUBJECTS.filter((x) => pack.boxes.some((b) => b.checked && b.value === x.series)).map((x) => x.id) : [] });
       // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）。写していなければ今の選び方
       let copiedChoice = null;
       newChoice = () => copiedChoice || choiceNow();
@@ -562,16 +578,10 @@ export function setupLlm(app) {
         if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';
         if (longN()) t += '\n' + outlineRequest({ n: longN(), lang: LANG });
         return t;
-      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES), off: () => draft.purposesOff,
+      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES), off: () => draft.purposesOff, allSeries: () => draft.plan === 'paid',
       onCopy: () => { copiedChoice = choiceNow(); } };
-      // 大きさとトークンの目安（kit/core/llm-pack.mjs の packSize と同じバイト数。トークンは バイト ÷ 3 の目安）。80% を超えたら知らせる（止めない）
-      const onSize = (bytes) => {
-        const tok = Math.ceil(bytes / 3), pct = Math.round((tok / 32768) * 100);
-        req.budget.textContent = X.budget(kbOf(bytes), tok, pct) + (pct > 80 ? ' ' + X.budgetWarn : '');
-        req.budget.classList.toggle('warn', pct > 80);
-        req.budget.dataset.tokens = String(tok); req.budget.dataset.bytes = String(bytes);
-        const n = longN(); req.phase.hidden = !n; req.phase.textContent = n ? X.phase(n) : '';
-      };
+      // 長い教材（9 枚から）は 2 回に分けて作ると知らせる。大きさの目安と警告は出さない（お使いの AI の問いが引き受ける）
+      const onSize = () => { const n = longN(); req.phase.hidden = !n; req.phase.textContent = n ? X.phase(n) : ''; };
       let pack = null;
       // 大分類がビジネスなら、ビジネスのパーツを入れておく（ほかの大分類に替えたら、自分で入れたのでなければ外す。kit/core/new-deck.mjs の defaultSubjects）
       let autoSubjects = [];
@@ -588,7 +598,20 @@ export function setupLlm(app) {
       const kindNode = kindStep(titles[5], onKind);
       pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3], onSize });
       for (const b of pack.boxes) b.addEventListener('change', () => { autoSubjects = autoSubjects.filter((x) => (SUBJECTS.find((y) => y.id === x) || {}).series !== b.value); });
-      pack.seriesNode.append(...partsTiles(pack.update));
+      // お使いの AI：無料版（既定。選んだ分野だけの軽い指示）か有料版（すべての系列）。有料版では分野の選び方を隠す
+      const planRadio = (p) => el('label', {}, [el('input', { type: 'radio', name: 'paste-plan', value: p, id: 'paste-plan-' + p }), el('span', { text: X.plan[p] })]);
+      const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map(planRadio)]);
+      const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
+      const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
+      const showPlan = () => {
+        for (const r of planSet.querySelectorAll('input')) r.checked = r.value === draft.plan;
+        for (const x of pack.seriesParts) x.hidden = draft.plan === 'paid';
+        paidNote.hidden = draft.plan !== 'paid';
+      };
+      planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; showPlan(); pack.update(); } });
+      pack.seriesNode.querySelector('h3').after(planSet, planHint);
+      pack.seriesNode.append(paidNote, partsTiles(pack.update));
+      showPlan();
       onKind();
       sel.addEventListener('change', async () => {
         if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); pack.update(); return; }

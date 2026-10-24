@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf } from '../kit/core/llm-pack-assemble.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -39,7 +39,9 @@ export const SERIES = ['academic', 'business', 'kokugo', 'info'];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
-export const LIMITS = { warn: 35, fail: 40, all: 64, allTarget: 58 };   // KB（1024 バイト）。allTarget：全部（'all'）の目安（#99。試験 tools/test-new-deck.mjs が使う）
+// KB（1024 バイト）。fail・allTarget・paid はお使いの AI ごとの上限（kit/core/llm-pack-assemble.mjs の PACK_CAP_KB）：
+// fail は無料版の共通の本体＋1 つの分野、allTarget は無料版のどの組でも（全部の分野＝'all'）、paid は有料版（'all'）。試験 tools/test-new-deck.mjs が使う
+export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free.one, all: 64, allTarget: PACK_CAP_KB.free.all, paid: PACK_CAP_KB.paid };
 
 // ---------------------------------------------------------------- 部品
 function frontmatter(text) {
