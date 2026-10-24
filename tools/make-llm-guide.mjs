@@ -13,6 +13,10 @@
 //                                                 本文の <!-- llm: <系列> --> … <!-- llm: end --> はその系列の部分に「拡張」として（共通の部品だけ）、
 //                                                 <!-- llm: omit --> … <!-- llm: end --> は指示に入れない（開発者向けの注意など）
 //   themes/                                       {{THEMES}}：テーマの名前
+//   vendor/components/manifest.json（あれば）       {{PURPOSES}}（言いたいこと → 表し方 → ステップの表）と {{PARTS_INDEX}}（全パーツの 1 行の一覧。版を固定した URL 付き）。
+//                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK（parts-map の 10）。どちらを使ったかは材料の purposes.source
+//                                                 TODO(#99, components v1.2.0)：m-curves（学術）と m-quad（ビジネス）を本体（series: common）へ移すのは部品庫 v1.2.0 で。
+//                                                 移ったら一覧と表はそのまま正しくなる（系列は frontmatter から読む）。系列の指示の文（tools/llm-guide/series/academic*.md・business*.md）の見直しを忘れない
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
 // 大きさ（--check）：共通 + 系列 1 つは 35 KB を超えれば警告・40 KB を超えれば失敗、全部（'all'）は 64 KB を超えれば失敗
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
@@ -24,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf } from '../kit/core/llm-pack-assemble.mjs';
+import { purposesFrom, purposesTable, partsIndex } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -228,7 +233,7 @@ const AI_HEAD = /^# (Instructions for the AI|AI への指示)\s*$/m;
 // 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは系列の指示の後ろ、いちばん最後に付く
 const REQ_HEAD = /^# (What I want|頼みたいこと)\s*$/m;
 const KB = (s) => Buffer.byteLength(s, 'utf8') / 1024;
-const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION)/;
+const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES|PARTS_INDEX)/;
 // 指示の版：材料（版の行を除く。英語と日本語の両方）の SHA-256 の先頭 8 字。指示の文章が変われば変わり、変わらなければ同じ（手で上げない）
 const PACK_VERSION = '{{PACK_VERSION}}';
 
@@ -238,7 +243,13 @@ export function generate() {
   for (const c of comps) if (Object.keys(c.ext).length && c.fm.series !== 'common') throw new Error(`vendor/components/${c.fm.name.replace(/^m-/, '')}/README.md: <!-- llm: … --> extension blocks are only for common components (this one is in ${c.fm.series})`);
   for (const s of SERIES) if (!comps.some((c) => c.fm.series === s)) throw new Error(`series ${s} has no component (frontmatter series: ${s})`);
   const themes = fs.readdirSync(rel('themes')).filter((n) => fs.statSync(rel('themes', n)).isDirectory()).sort();
-  const data = { series: SERIES };
+  // 言いたいこと：部品庫の manifest.json（あれば）か、決めた表（kit/core/purposes.mjs）
+  const mf = rel('vendor', 'components', 'manifest.json');
+  const P = purposesFrom(fs.existsSync(mf) ? JSON.parse(read('vendor', 'components', 'manifest.json')) : null);
+  const lock = JSON.parse(read('components.lock.json'));
+  const src = `${lock.source}/blob/${lock.tag}/components/`;
+  const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
+  const data = { series: SERIES, purposes: P };
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
@@ -251,6 +262,8 @@ export function generate() {
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
       .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
+      .replace('{{PURPOSES}}', () => purposesTable(P, lang))
+      .replace('{{PARTS_INDEX}}', () => partsIndex(P, allParts, lang, src))
       .replace(/\{\{WORKED (\w+) "([^"]+)"\}\}/g, (_, n, t) => worked(n, t));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)

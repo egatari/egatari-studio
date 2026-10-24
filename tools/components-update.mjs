@@ -186,7 +186,8 @@ export function checkVendor(root = ROOT) {
     }
   }
   for (const d of fs.existsSync(base) ? fs.readdirSync(base, { withFileTypes: true }) : []) {
-    if (!d.isDirectory()) { if (!['LICENSE', 'CATALOG.md'].includes(d.name)) e.push(`vendor/components/${d.name}: not expected`); continue; }
+    // manifest.json：言いたいこと（purposes）の材料（kit/core/purposes.mjs。部品庫のリリースが入れたら置く。TODO(#99)：components:update が置くようにする）
+    if (!d.isDirectory()) { if (!['LICENSE', 'CATALOG.md', 'manifest.json'].includes(d.name)) e.push(`vendor/components/${d.name}: not expected`); continue; }
     const c = lock.components[d.name];
     if (!c) { e.push(`vendor/components/${d.name}: not in ${LOCK_FILE}`); continue; }
     for (const v of fs.readdirSync(path.join(base, d.name))) if (!c.versions.includes(v)) e.push(`vendor/components/${d.name}/${v}: not in ${LOCK_FILE}`);

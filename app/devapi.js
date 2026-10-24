@@ -4,6 +4,7 @@
 import { short } from '../kit/core/sha1.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
 import { normPin } from '../kit/core/comment-core.mjs';
+import { keepSeed } from '../kit/core/new-deck.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 
 function parseRange(s) {
@@ -76,7 +77,7 @@ export function createDevApi(ctx) {
           const no = ctx.beforeWrite && await ctx.beforeWrite('source');
           if (!live()) return CANCEL();
           if (no) return err(403, no);
-          const next = fits(src.slice(0, r[0]) + body.text + src.slice(r[1]), SRC, file);
+          const next = fits(keepSeed(src, src.slice(0, r[0]) + body.text + src.slice(r[1])), SRC, file);   // シード値は保存で残す（format spec §8.4）
           await ws.backup(file, SRC);
           // 書く直前に：作業場所が同じで、原稿が確かめたときのままか（控えの間に外で変わっていれば上書きしない）
           if (!live()) return CANCEL();

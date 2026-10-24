@@ -1,9 +1,13 @@
 // チャットの AI との行き来（docs/authoring-with-llms.md）。AI は、ふつうのコマンドの中の 1 つのやり方として出す（名前に「AI で…」を付けない）：
-//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 分野（使うパーツ。既定はなし）→ ② デザイン（テーマ。返事の教材にも付ける）→ ③ 頼みたいことを書く（kit/core/llm-request.mjs）→ ② 共通の本体と、選んだ系列
+//   「新規作成…」（チャットの AI の道 1 本。mode 'new'）：① 場面（大分類・小分類。kit/core/new-deck.mjs）→ ② 分野（使うパーツの組。既定はなし。ビジネスの大分類ならビジネス）と
+//     素材（いつも使える）と言いたいこと（14 の札。既定で全部入り、外したものは AI に使わせない。kit/core/purposes.mjs）→ ③ デザイン（テーマ。返事の教材にも付ける）→
+//     ④ 頼みたいことを書く（kit/core/llm-request.mjs。場面の構成の型と外した言いたいことも足す）→ ⑤ 共通の本体と、選んだ系列
 //     （既定はデッキを開いていればその部品・テーマから推したもの、開いていなければなし）と ① を組み立てて写す（kit/core/llm-pack.mjs）→
 //     ③ AI の返事を貼り付けて開く：返事の全体（か、1 つずつ貼った 2 つの囲み。kit/core/llm-import.mjs の pastePart）から deck.html と narration.md を
 //     取り出し、スライドに id を付け（kit/core/slide-ids.mjs。npm run ids と同じ本体）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして
-//     （app/build-worker.js の exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける
+//     （app/build-worker.js の exportHtml）、ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
+//     開くときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、選んだもの（場面・分野・外した言いたいこと）を
+//     egatari.json の studio.newDeck に残す。「修正…」で入れ替える原稿がシード値を失っても、前のシード値に戻す（keepSeed）
 //   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'。backlog #93）：① 足すスライド（枚数・足したいこと）→ ② 短い頼む文
 //     （見出しの一覧と足す場所の前のスライドだけ。kit/core/llm-insert.mjs。新しいチャットなら指示も付けられる）→ ③ 返事のスライドを、選んだスライドの
 //     後ろ（選んでいなければ最後）に入れ、スライド一覧の「足す」と同じに id を付ける（app/slides-panel.js の apply：控え・元に戻す・組み直し・品質チェック）
@@ -11,7 +15,9 @@
 //     ① と開いているメモ（comments.json。画像は backlog #90））→ ③ 今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの返事は id で戻す）
 //   品質チェックの板の「AI への修正依頼をコピー」も、返事は「修正…」の ③ で取り込む
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart } from '../kit/core/llm-pack.mjs';
+import { buildPack, SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, commonBody, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SUBJECTS, defaultSubjects, choiceRequest, withChoice, newSeed, withSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { componentsOff } from '../kit/core/purposes.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -32,7 +38,7 @@ const TX = {
     method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
     title: { new: '新規作成：チャットの AI に書いてもらう', insert: 'スライドの挿入：チャットの AI に書いてもらう', replace: '修正：チャットの AI に直してもらう' },
     howTo: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ③ に貼り付けます。',
-    howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑤ に貼り付けます。',
+    howToNew: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする指示を貼って送ると、AI が教材を書きます。その返事を ⑥ に貼り付けます。',
     themeLoad: 'ほかのテーマを読み込む…', themeLabel: 'テーマ',
     back: '← 戻る', contentLabel: '内容（要点・メモ・元の資料の文を貼る）', contentPh: '例：教えたい要点の箇条書き、授業のメモ、教科書や論文の一節など（そのまま貼ってかまいません）',
     contentHead: '## 内容（要点・メモ・元の資料）',
@@ -40,7 +46,7 @@ const TX = {
     budgetWarn: '32k トークンまでのチャット（Gemini など）では、返事を書く余裕が足りないかもしれません。内容を要点だけにするか、分野を減らしてください（共通の本体は減らせません）',
     phase: (n) => `${n} 枚なので、2 回に分けて作ります：まず構成案（見出しと要点の表）を頼み、次に ${BATCH} 枚ずつ頼みます`,
     outlineGot: (n) => `構成案を受け取りました（${n} 枚）。${BATCH} 枚ずつ作ります`,
-    outlineCopied: (kb) => `コピーしました（${kb} KB）。同じチャットに貼り付けて送ってください。返事が来たら ⑤ へ`,
+    outlineCopied: (kb) => `コピーしました（${kb} KB）。同じチャットに貼り付けて送ってください。返事が来たら ⑥ へ`,
     outlineStep: '構成案', outlineCopy: (a, b) => `${a}〜${b} 枚目を頼む文をコピー`,
     outlineHint: (a, b) => `コピーした文を同じチャットに貼って送り、返事（${a}〜${b} 枚目の deck.html と narration.md）を下に貼り付けて開きます。残りは開いた後に、上の知らせの「次の ${BATCH} 枚を頼む」から頼みます`,
     outlineErr: { 'no-outline': '```outline の囲みが見つかりません', unclosed: (e) => `${e.line} 行目からの \`\`\`outline の囲みが閉じていません。返事の続きを頼んでください`, 'no-table': '構成案の表の行が見つかりません（| 番号 | 見出し | 要点 | の形）', 'empty-heading': (e) => `${e.line} 行目に見出しのない行があります`, 'too-many': (e) => `構成案が ${e.n} 枚あります（60 枚まで）`, 'too-few': '構成案が 2 枚より少ないので、ふつうに 1 回で頼んでください' },
@@ -48,17 +54,25 @@ const TX = {
     batchDone: (left) => (left ? `構成案：残り ${left} 枚` : '構成案のスライドをすべて作りました'),
     themeHint: 'スライドの色と書体を決めます。頼む文に入れます（返事の教材にテーマがなければ、このテーマを付けます）', themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
     seriesHintNew: '使うパーツの説明が指示に加わります。何も選ばなければ共通の本体だけです',
+    kindHint: '場面を選ぶと、その構成の型と見せ方を頼みたいことに入れます。選ばなくてもかまいません',
+    catLegend: '大分類', subLegend: '小分類', subNone: 'この大分類には小分類はありません',
+    structure: (st, sh) => `構成の型：${st}。見せ方：${sh}`,
+    materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
+    purposesLegend: '言いたいこと',
+    purposesHint: '既定で全部入っています。押すと外れ、AI はその表し方を使いません。小さな字は中の表し方で、AI が言いたいこととデータから選びます。＊ はまだ部品庫にないもの',
+    purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個が入っています`,
+    purposeOn: '入っている', purposeOff: '外した',
     howToFix: 'ブラウザの別のタブで、チャットの AI（Gemini・ChatGPT・Claude など）を開きます。ここでコピーする修正依頼を貼って送ると、AI が直したスライドを返します。その返事を ③ に貼り付けます。',
     steps: {
       batch: ['① 頼む範囲', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
-      new: ['③ 頼みたいことを書く', '④ AI への指示をコピーして、チャットに貼って送る', '⑤ AI の返事を貼り付けて開く', '① 分野（使うパーツ）を選ぶ（選ばなくてもよい）', '② デザイン（テーマ）を選ぶ'],
+      new: ['④ 頼みたいことを書く', '⑤ AI への指示をコピーして、チャットに貼って送る', '⑥ AI の返事を貼り付けて開く', '② 分野（使うパーツ）と言いたいことを選ぶ', '③ デザイン（テーマ）を選ぶ', '① 場面（大分類・小分類）を選ぶ（選ばなくてもよい）'],
       insert: ['① 足すスライドを書く', '② 頼む文をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて挿入する'],
       replace: ['① 直してほしいことを書く', '② 修正依頼をコピーして、チャットに貼って送る', '③ AI の返事を貼り付けて取り込む'],
     },
     step1Hint: '書いた内容は、コピーする指示の最後に入ります（チャットに貼ると添付のファイルの形になり、そこでは書き直せないため、先にここで書きます）。書かない項目は空のままでかまいません',
     kindLegend: 'どちらで作りますか', kindA: 'A　新しく作る', kindB: 'B　このチャットでここまで話し合った内容で作る',
     fieldPh: { topic: '例：二分探索のしくみ', audience: '例：高校 2 年生', length: '例：5 枚・10 分', language: '例：日本語', speakers: '例：1 人', examples: '例：電話帳で名前を探す' },
-    needTopic: '③ の「題材」を書いてください',
+    needTopic: '④ の「題材」を書いてください',
     insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
     insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：具体例を 1 つ、練習問題を 1 つ',
     insertHint: '頼む文には、今のスライドの見出しの一覧と、足す場所の前のスライドだけを入れます（デッキの全体は入れないので、頼む文が短くて済みます）',
@@ -74,10 +88,10 @@ const TX = {
     common: (kb) => `共通の本体（必ず入る）　${kb} KB`,
     seriesLegend: '分野（使うパーツ）',
     seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
-    seriesName: { academic: '学術（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
+    seriesName: { academic: '数理・統計（数式・関数・データ）', business: 'ビジネス（KPI・位置づけ・市場・お金の流れ）', kokugo: '国語（漢文・古文・現代文・縦書き）', info: '情報（符号の木）' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `合わせて ${kb} KB`,
     copyGuide: 'AI への指示をコピー',
-    copied: (kb) => `コピーしました（${kb} KB、③ の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ⑤ へ`,
+    copied: (kb) => `コピーしました（${kb} KB、④ の頼みたいこと入り）。チャットに貼り付けて送ってください。添付のファイルの形になっても、そのまま送ってください。返事が来たら ⑥ へ`,
     step3Hint: '返事の全体（返事の下のコピーのボタン）か、deck.html と narration.md の 2 つの囲みを 1 つずつ（囲みの右上のコピーのボタン）貼り付けます。1 つずつのときは、1 つ目を貼ってボタンを押すと、次の囲みを待ちます',
     pasteLabel: 'AI の返事', placeholder: 'ここに AI の返事の全体か、囲みを 1 つ貼り付ける',
     go: { new: '開く', insert: '挿入', replace: '取り込む' }, only: 'これだけで取り込む',
@@ -132,7 +146,7 @@ const TX = {
     method: 'Have a chat AI write it', methodFix: 'Have a chat AI fix it',
     title: { new: 'New: have a chat AI write it', insert: 'Insert slide: have a chat AI write it', replace: 'Revise: have a chat AI fix it' },
     howTo: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 3.',
-    howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 5.',
+    howToNew: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the instructions you copy here and send them; the AI writes the lesson. Then paste its reply in step 6.',
     themeLoad: 'Load another theme…', themeLabel: 'Theme',
     back: '← Back', contentLabel: 'Content (key points, notes, or text from your source material)', contentPh: 'e.g. the points to teach as a list, your lesson notes, a passage from a textbook or paper (paste it as it is)',
     contentHead: '## Content (key points, notes, source material)',
@@ -140,7 +154,7 @@ const TX = {
     budgetWarn: 'A chat with a 32k-token context (Gemini, for example) may not have room left for the reply. Cut the content to its key points, or choose fewer subjects (the common body cannot be shortened).',
     phase: (n) => `${n} slides, so it is made in two passes: first an outline (a table of headings and points), then ${BATCH} slides at a time`,
     outlineGot: (n) => `Got the outline (${n} slides). The slides are made ${BATCH} at a time`,
-    outlineCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the reply arrives, go to step 5.`,
+    outlineCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the reply arrives, go to step 6.`,
     outlineStep: 'Outline', outlineCopy: (a, b) => `Copy the request for slides ${a}–${b}`,
     outlineHint: (a, b) => `Paste the copied text into the same chat and send it, then paste the reply (deck.html and narration.md of slides ${a}–${b}) below and open it. Ask for the rest after it opens, with “Ask for the next ${BATCH}” in the notice above.`,
     outlineErr: { 'no-outline': 'No ```outline block found.', unclosed: (e) => `The \`\`\`outline block from line ${e.line} is not closed. Ask the AI to continue.`, 'no-table': 'No outline table rows found (| # | Heading | Point |).', 'empty-heading': (e) => `Line ${e.line} has a row without a heading.`, 'too-many': (e) => `The outline has ${e.n} slides (at most 60).`, 'too-few': 'The outline has fewer than 2 slides; ask for the lesson in one go instead.' },
@@ -148,17 +162,25 @@ const TX = {
     batchDone: (left) => (left ? `Outline: ${left} slides left` : 'All slides of the outline are made'),
     themeHint: 'Sets the colors and fonts of the slides. It goes into the request (and a reply without a theme gets this one)', themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
     seriesHintNew: 'Adds the notes on those parts to the instructions. With none chosen, only the common body is sent.',
+    kindHint: 'The structure and presentation of the kind you choose go into the request. You can leave it unchosen.',
+    catLegend: 'Category', subLegend: 'Subcategory', subNone: 'This category has no subcategories',
+    structure: (st, sh) => `Structure: ${st}. Presentation: ${sh}`,
+    materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
+    purposesLegend: 'Purposes',
+    purposesHint: 'All are on by default. Press one to turn it off: the AI will not use that representation. The small text is what is inside; the AI chooses from the purpose and the data. * = not in the library yet.',
+    purposesSum: (on, n) => `Purposes: ${on} of ${n} on`,
+    purposeOn: 'on', purposeOff: 'off',
     howToFix: 'Open a chat AI (Gemini, ChatGPT, Claude, …) in another browser tab. Paste the fix request you copy here and send it; the AI sends back the fixed slides. Then paste its reply in step 3.',
     steps: {
       batch: ['1. The range to ask for', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
-      new: ['3. Write what you want', '4. Copy the instructions, paste them into the chat and send', '5. Paste the AI’s reply and open it', '1. Choose subjects (parts) (optional)', '2. Choose the design (theme)'],
+      new: ['4. Write what you want', '5. Copy the instructions, paste them into the chat and send', '6. Paste the AI’s reply and open it', '2. Choose subjects (parts) and purposes', '3. Choose the design (theme)', '1. Choose the kind (category and subcategory) (optional)'],
       insert: ['1. Describe the slides to add', '2. Copy the request, paste it into the chat and send', '3. Paste the AI’s reply and insert it'],
       replace: ['1. Write what to change', '2. Copy the fix request, paste it into the chat and send', '3. Paste the AI’s reply and bring it in'],
     },
     step1Hint: 'What you write goes at the end of the copied instructions (pasted into a chat they often become an attachment you cannot edit there, so write it here first). Leave out anything you do not need.',
     kindLegend: 'How do you want to make it?', kindA: 'A. Make a new lesson', kindB: 'B. From what we have discussed so far in this chat',
     fieldPh: { topic: 'e.g. how binary search works', audience: 'e.g. first-year students', length: 'e.g. 5 slides, 10 minutes', language: 'e.g. English', speakers: 'e.g. one narrator', examples: 'e.g. finding a name in a phone book' },
-    needTopic: 'Write the topic in step 3.',
+    needTopic: 'Write the topic in step 4.',
     insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
     insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one worked example and one exercise',
     insertHint: 'The request has only the list of slide headings and the slide before the new ones (not the whole deck), so it stays short.',
@@ -174,10 +196,10 @@ const TX = {
     common: (kb) => `Common body (always included)   ${kb} KB`,
     seriesLegend: 'Subjects (parts)',
     seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
-    seriesName: { academic: 'Academic (math, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
+    seriesName: { academic: 'Math and statistics (formulas, functions, data)', business: 'Business (KPIs, positioning, markets, money flows)', kokugo: 'Japanese language arts (kanbun, kobun, gendai, vertical)', info: 'Information science (code trees)' },
     plusKb: (kb) => `+${kb} KB`, packTotal: (kb) => `${kb} KB in all`,
     copyGuide: 'Copy instructions for your AI',
-    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 3). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 5.`,
+    copied: (kb) => `Copied (${kb} KB, with what you wrote in step 4). Paste it into the chat and send. If it turns into an attachment, just send it. When the reply arrives, go to step 6.`,
     step3Hint: 'Paste the whole reply (the copy button under the reply), or the two blocks deck.html and narration.md one at a time (the copy button at the top right of each block). One at a time: paste the first and press the button; the editor then waits for the other.',
     pasteLabel: 'The AI’s reply', placeholder: 'Paste the whole reply of the AI here, or one block',
     go: { new: 'Open', insert: 'Insert', replace: 'Import' }, only: 'Import just this',
@@ -253,7 +275,7 @@ export function setupLlm(app) {
 
   // ---------------------------------------------------------------- ① 新規作成：頼みたいこと（A 新しく作る / B ここまでの議論の内容で作る）
   // 記入欄の見出しと既定の値は指示の「頼みたいこと」から（kit/core/llm-request.mjs）。書いたものは、このページを開いている間は残す
-  const draft = { kind: 'A', values: {} };
+  const draft = { kind: 'A', values: {}, category: null, subcategory: null, purposesOff: [] };
   function requestStep(title) {
     const F = requestForm(LANG);
     const field = (sec, f) => {
@@ -288,6 +310,88 @@ export function setupLlm(app) {
       missing: () => (draft.kind === 'A' && !String(values().topic || '').trim() ? A.querySelector('[name=topic]') : null),
     };
   }
+  // ① 新規作成：場面（大分類 → 小分類。kit/core/new-deck.mjs）。小分類が構成の型を決め、その型と見せ方を頼みたいことに入れる。選ばなくてもよい。
+  // 大分類を選ぶと最初の小分類を選んでおく（小分類のない手引き・その他は大分類だけ）
+  function kindStep(title, onChange) {
+    const radio = (name, id, label) => el('label', {}, [el('input', { type: 'radio', name, value: id, id: `${name}-${id}` }), el('span', { text: label })]);
+    const cat = el('fieldset', { id: 'paste-cat', cls: 'paste-kind paste-cat' }, [el('legend', { text: X.catLegend }), ...CATEGORIES.map((c) => radio('paste-cat', c.id, c.label[LANG]))]);
+    const sub = el('fieldset', { id: 'paste-sub', cls: 'paste-kind paste-sub' });
+    const note = el('p', { id: 'paste-structure', cls: 'hint paste-structure', role: 'status' });
+    const render = () => {
+      const c = CATEGORIES.find((x) => x.id === draft.category) || null;
+      for (const r of cat.querySelectorAll('input')) r.checked = r.value === draft.category;
+      sub.replaceChildren(el('legend', { text: X.subLegend }), ...(c && c.subs.length ? c.subs.map((x) => radio('paste-sub', x.id, x.label[LANG])) : [el('span', { cls: 'hint', text: X.subNone })]));
+      sub.hidden = !c;
+      for (const r of sub.querySelectorAll('input')) r.checked = r.value === draft.subcategory;
+      const t = (c && c.subs.find((x) => x.id === draft.subcategory)) || (c && c.structure ? c : null);
+      note.textContent = t ? X.structure(t.structure[LANG], t.show[LANG]) : '';
+      note.hidden = !t;
+    };
+    cat.addEventListener('change', (e) => {
+      if (e.target.name !== 'paste-cat') return;
+      draft.category = e.target.value;
+      const c = CATEGORIES.find((x) => x.id === draft.category);
+      draft.subcategory = c && c.subs.length ? c.subs[0].id : null;
+      render(); onChange();
+    });
+    sub.addEventListener('change', (e) => { if (e.target.name === 'paste-sub') { draft.subcategory = e.target.value; render(); onChange(); } });
+    render();
+    return step('paste-step-kind', title, [el('p', { cls: 'hint', text: X.kindHint }), cat, sub, note]);
+  }
+  // ② の素材（いつも使える。押せない札）と言いたいこと（14 の札。既定で全部入り。押すと外れ、外したものだけに使う部品は指示の一覧からも除く）。
+  // 入っている札は印と枠、外した札は薄くして斜線（色だけで分けない。app/app.css の .tile）。絵は parts-map の下書きの線画（仮。部品の見本から撮る絵に替える）
+  const ICONS = {
+    table: '<rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 19h24M12 6v20M20 6v20"/>',
+    image: '<rect x="4" y="6" width="24" height="20" rx="2"/><circle cx="11" cy="12" r="2.5"/><path d="M4 23l7-7 5 5 4-4 8 8"/>',
+    math: '<path d="M6 8h9l-6 8 6 8H6"/><path d="M19 13l7 7M26 13l-7 7"/>',
+    shape: '<rect x="4" y="5" width="12" height="12" rx="1"/><circle cx="21" cy="21" r="7"/>',
+    compare: '<rect x="3" y="7" width="11" height="18" rx="1"/><rect x="18" y="7" width="11" height="18" rx="1"/><path d="M6 12h5M6 16h5M21 12h5M21 16h5"/>',
+    line: '<path d="M5 27h22M5 5v22"/><path d="M7 22l6-7 5 4 8-11"/>',
+    part: '<circle cx="16" cy="16" r="11"/><path d="M16 5v11l9 6"/>',
+    kpi: '<rect x="3" y="6" width="26" height="20" rx="2"/><path d="M8 19h3M13 13v6M17 13h4v6h-4M24 16l2-3 2 3"/>',
+    flow: '<rect x="3" y="12" width="7" height="8" rx="1"/><rect x="22" y="12" width="7" height="8" rx="1"/><path d="M10 16h10M17 13l3 3-3 3"/>',
+    timeline: '<path d="M3 16h26"/><circle cx="8" cy="16" r="2"/><circle cx="16" cy="16" r="2"/><circle cx="24" cy="16" r="2"/><path d="M8 9v4M16 19v4M24 9v4"/>',
+    cause: '<path d="M4 16h22M26 16l-3-3M26 16l-3 3"/><path d="M8 8l5 8M16 8l5 8M8 24l5-8M16 24l5-8"/>',
+    cycle: '<path d="M16 5a11 11 0 0 1 10 7"/><path d="M27 20a11 11 0 0 1-9 7"/><path d="M10 26a11 11 0 0 1-5-12"/><path d="M26 7v5h-5M18 30l-2-3 3-2M3 17l2-3 3 2"/>',
+    tree: '<rect x="12" y="3" width="8" height="6" rx="1"/><rect x="3" y="22" width="8" height="6" rx="1"/><rect x="21" y="22" width="8" height="6" rx="1"/><path d="M16 9v6M7 15h18M7 15v7M25 15v7"/>',
+    matrix: '<path d="M16 4v24M4 16h24"/><circle cx="10" cy="10" r="1.6"/><circle cx="22" cy="21" r="1.6"/><circle cx="21" cy="9" r="1.6"/>',
+    venn: '<circle cx="12" cy="16" r="8"/><circle cx="20" cy="16" r="8"/>',
+    scatter: '<path d="M5 27h22M5 5v22"/><circle cx="10" cy="21" r="1.4"/><circle cx="14" cy="18" r="1.4"/><circle cx="18" cy="14" r="1.4"/><circle cx="22" cy="11" r="1.4"/><circle cx="15" cy="22" r="1.4"/>',
+    dist: '<path d="M5 27h22"/><rect x="6" y="21" width="4" height="6"/><rect x="10" y="13" width="4" height="14"/><rect x="14" y="8" width="4" height="19"/><rect x="18" y="15" width="4" height="12"/><rect x="22" y="22" width="4" height="5"/>',
+    menu: '<rect x="4" y="5" width="10" height="9" rx="1"/><rect x="18" y="5" width="10" height="9" rx="1"/><rect x="4" y="18" width="10" height="9" rx="1"/><rect x="18" y="18" width="10" height="9" rx="1"/>',
+  };
+  function icon(k) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
+    svg.innerHTML = ICONS[k] || '';   // 決まった線画だけ（外から来た字は入れない）
+    return svg;
+  }
+  function partsTiles(update) {
+    const materials = el('div', { id: 'paste-materials', cls: 'paste-tiles-group' }, [
+      el('h4', { id: 'paste-materials-h', text: X.materialsLegend }),
+      el('ul', { cls: 'tiles', 'aria-labelledby': 'paste-materials-h' }, Object.keys(X.materials).map((k) => el('li', { cls: 'tile fixed', id: 'paste-material-' + k }, [icon(k), el('span', { cls: 'tile-label', text: X.materials[k] })]))),
+    ]);
+    const sum = el('p', { id: 'paste-purposes-sum', cls: 'hint', role: 'status' });
+    const showSum = () => { sum.textContent = X.purposesSum(PURPOSES.list.length - draft.purposesOff.length, PURPOSES.list.length); };
+    const tiles = PURPOSES.list.map((p) => {
+      const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
+        [icon(p.icon), el('span', { cls: 'tile-label', text: p.label[LANG] }), el('small', { text: p.sub[LANG] })]);
+      b.addEventListener('click', () => {
+        const on = b.getAttribute('aria-pressed') !== 'true';
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        draft.purposesOff = on ? draft.purposesOff.filter((x) => x !== p.id) : [...draft.purposesOff, p.id];
+        showSum(); update();
+      });
+      return b;
+    });
+    showSum();
+    const purposes = el('div', { id: 'paste-purposes', cls: 'paste-tiles-group', role: 'group', 'aria-labelledby': 'paste-purposes-h', 'aria-describedby': 'paste-purposes-hint' }, [
+      el('h4', { id: 'paste-purposes-h', text: X.purposesLegend }),
+      el('p', { id: 'paste-purposes-hint', cls: 'hint', text: X.purposesHint }),
+      el('div', { cls: 'tiles' }, tiles), sum,
+    ]);
+    return [materials, purposes];
+  }
   // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
   function insertStep(title, where) {
     const n = el('input', { type: 'number', id: 'paste-insert-n', min: '1', max: '10', value: '1', inputmode: 'numeric' });
@@ -311,12 +415,14 @@ export function setupLlm(app) {
     return seriesForDeck(deck);
   }
   // req：{request() → 最後に付ける文（Promise でもよい）, missing() → 足りない欄 | null}。optional：指示を入れるかを選べる（挿入：既定は入れない）
-  // split：新規作成（① 分野 を別のステップにする。既定は何も選ばない）。seriesTitle：その見出し
+  // split：新規作成（② 分野 を別のステップにする。既定は何も選ばない）。seriesTitle：その見出し。req.exclude：使わせない部品（外した言いたいこと）
   async function packStep(copyMsg, req, { title, optional = false, copyLabel = X.copyGuide, copiedMsg = X.copied, split = false, seriesTitle = '', onSize = null } = {}) {
     // 大きさはどれも同じ測り方（UTF-8 のバイト数 / 1024、小数 1 桁。kit/core/llm-pack.mjs の packSize・kbOf）。共通の本体と分野は、写す文に入るその部分そのもの
     // （共通の本体は空の記入欄を含まない。含めると、記入欄を埋めた合わせての大きさより大きく見えた）。合わせては部分の和より小さくならない
-    const commonBytes = packSize(commonBody(LANG));
-    const partBytes = (s) => packSize(seriesPart(s, LANG));
+    // 外した言いたいこと（新規作成の ②）だけに使う部品は、共通の本体と分野の説明からも除く：大きさもその分を引いたもの（update で出し直す）
+    const ex = () => (req.exclude ? req.exclude() : []);
+    const commonBytes = packSize(commonBody(LANG, ex()));
+    const partBytes = (s) => packSize(seriesPart(s, LANG, ex()));
     const initial = split ? [] : await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => {
@@ -327,8 +433,14 @@ export function setupLlm(app) {
     const withPack = optional ? el('input', { type: 'checkbox', id: 'paste-with-pack' }) : null;
     const packOn = () => !withPack || withPack.checked;
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
-    const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t)); };
+    const textNow = async () => { const r = await req.request(); return packOn() ? packWithRequest({ series: chosen(), lang: LANG, request: r, exclude: ex() }) : r; };
+    const update = async () => {
+      const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); if (onSize) onSize(packSize(t));
+      if (!req.exclude) return;
+      const cb = packSize(commonBody(LANG, ex()));
+      commonRow.dataset.bytes = String(cb); commonRow.lastChild.textContent = X.common(kbOf(cb));
+      for (const s of SERIES) { const h = seriesSet.querySelector(`#paste-series-${s}`).closest('label').querySelector('[data-bytes]'); const b = partBytes(s); h.dataset.bytes = String(b); h.textContent = X.plusKb(kbOf(b)); }
+    };
     for (const b of boxes) b.addEventListener('change', update);
     const common = el('input', { type: 'checkbox', id: 'paste-common', disabled: '', 'aria-disabled': 'true' });
     common.checked = true;
@@ -359,7 +471,7 @@ export function setupLlm(app) {
       ...(withPack ? [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })])] : []),
       packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
     const seriesNode = split ? step('paste-step-series', seriesTitle, [el('p', { cls: 'hint', text: X.seriesHintNew }), seriesSet, seriesHint]) : null;
-    return { node, update, seriesNode };
+    return { node, update, seriesNode, chosen, boxes };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
   function reviseStep(copyMsg, title, results0) {
@@ -384,6 +496,7 @@ export function setupLlm(app) {
   let outlineRows = null;   // 新規作成で受け取った構成案（[{heading, point}]）。次の返事（1〜6 枚目）で教材を開くときに outline.md にする
   let batchNow = null;      // 構成案の続きの挿入（{rows, from, to}）   // 新規作成の ② で選んだテーマ（返事の教材の <html data-theme> にも付ける）
   let insertAfter = null;   // 挿入：この番号（0 から）のスライドの後ろ。null なら最後
+  let newChoice = null;     // 新規作成：選んだ場面・分野・外した言いたいこと（開くときに egatari.json の studio.newDeck へ）
   const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
   // mode：'new'（新規作成）| 'insert'（スライドの挿入。opts.after）| 'replace'（修正。opts.results：品質チェックの結果があれば）。
   // 取り込み方は入口が決める（③ に選ぶ欄はない）。opts.focusPaste：③ から始める（修正依頼をもう写したとき）。戻り値：取り込んだか
@@ -391,7 +504,7 @@ export function setupLlm(app) {
     if (mode !== 'new' && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
     held = null;
     const titles = opts.batch ? X.steps.batch : X.steps[mode];
-    outlineRows = null; batchNow = null;
+    outlineRows = null; batchNow = null; newChoice = null;
     const area = el('textarea', { id: 'paste-text', spellcheck: 'false', placeholder: X.placeholder, rows: '8', 'aria-describedby': 'paste-step3-hint' });
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
@@ -408,7 +521,7 @@ export function setupLlm(app) {
     }
     let s1, s2, pre = [];
     if (mode === 'new') {
-      // ① 分野（使うパーツ）→ ② デザイン（テーマ）→ ③ 頼みたいこと → ④ コピー → ⑤ 貼り付け
+      // ① 場面（大分類・小分類）→ ② 分野（使うパーツ）と言いたいこと → ③ デザイン（テーマ）→ ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け
       const req = requestStep(titles[0]);
       // 選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマのフォルダのテーマ）。最後の「ほかのテーマを読み込む…」でテーマのフォルダを選ぶ
       const sel = el('select', { id: 'paste-theme' });
@@ -424,13 +537,18 @@ export function setupLlm(app) {
       await fill();
       // 頼みたいこと（＋テーマの行）・内容・（9 枚から）構成案だけを返す、の順に最後へ
       const longN = () => { const n = req.count(); return n && n > OUTLINE_OVER ? n : null; };
+      const choiceNow = () => ({ category: draft.category, subcategory: draft.subcategory, purposesOff: draft.purposesOff,
+        subjects: pack ? SUBJECTS.filter((x) => pack.chosen().includes(x.series)).map((x) => x.id) : [] });
+      newChoice = choiceNow;
       const reqWithTheme = { request: () => {
         let t = req.request().replace(/\n*$/, '\n') + X.themeLine(sel.value) + '\n';
+        const cr = choiceRequest(choiceNow(), PURPOSES, LANG);
+        if (cr) t += cr + '\n';
         const c = req.content();
         if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';
         if (longN()) t += '\n' + outlineRequest({ n: longN(), lang: LANG });
         return t;
-      }, missing: () => req.missing() };
+      }, missing: () => req.missing(), exclude: () => componentsOff(draft.purposesOff, PURPOSES) };
       // 大きさとトークンの目安（kit/core/llm-pack.mjs の packSize と同じバイト数。トークンは バイト ÷ 3 の目安）。80% を超えたら知らせる（止めない）
       const onSize = (bytes) => {
         const tok = Math.ceil(bytes / 3), pct = Math.round((tok / 32768) * 100);
@@ -439,7 +557,24 @@ export function setupLlm(app) {
         req.budget.dataset.tokens = String(tok); req.budget.dataset.bytes = String(bytes);
         const n = longN(); req.phase.hidden = !n; req.phase.textContent = n ? X.phase(n) : '';
       };
-      const pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3], onSize });
+      let pack = null;
+      // 大分類がビジネスなら、ビジネスのパーツを入れておく（ほかの大分類に替えたら、自分で入れたのでなければ外す。kit/core/new-deck.mjs の defaultSubjects）
+      let autoSubjects = [];
+      const onKind = () => {
+        if (!pack) return;
+        const want = defaultSubjects(draft.category);
+        for (const b of pack.boxes) {
+          const id = (SUBJECTS.find((x) => x.series === b.value) || {}).id;
+          if (want.includes(id) && !b.checked) { b.checked = true; autoSubjects.push(id); }
+          else if (!want.includes(id) && autoSubjects.includes(id) && b.checked) { b.checked = false; autoSubjects = autoSubjects.filter((x) => x !== id); }
+        }
+        pack.update();
+      };
+      const kindNode = kindStep(titles[5], onKind);
+      pack = await packStep(copyMsg, reqWithTheme, { title: titles[1], split: true, seriesTitle: titles[3], onSize });
+      for (const b of pack.boxes) b.addEventListener('change', () => { autoSubjects = autoSubjects.filter((x) => (SUBJECTS.find((y) => y.id === x) || {}).series !== b.value); });
+      pack.seriesNode.append(...partsTiles(pack.update));
+      onKind();
       sel.addEventListener('change', async () => {
         if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); pack.update(); return; }
         newTheme = sel.value; pack.update();
@@ -447,7 +582,7 @@ export function setupLlm(app) {
       req.node.addEventListener('input', pack.update);
       const themeNode = step('paste-step-theme', titles[4], [el('p', { cls: 'hint', text: X.themeHint }),
         el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])]);
-      pre = [pack.seriesNode, themeNode];
+      pre = [kindNode, pack.seriesNode, themeNode];
       s1 = req.node; s2 = pack.node;
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
@@ -612,9 +747,15 @@ export function setupLlm(app) {
   }
   async function openNew(r, notes, info = []) {
     const ids = withIds(withTheme(r.deck), r.narration);
+    // シード値（format spec §8.4）：教材を作るこのときに 1 回だけ、原稿の根の要素（<html>）に書く。AI が書いていればそのまま
+    ids.deck = withSeed(ids.deck, newSeed());
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
-    // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）
-    if (outlineRows) files[FORMAT.CONFIG_FILE] = withOutline(null, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
+    // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
+    // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）
+    let cfg = null;
+    if (outlineRows) cfg = withOutline(cfg, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
+    if (newChoice) cfg = withChoice(cfg, newChoice());
+    if (cfg) files[FORMAT.CONFIG_FILE] = cfg;
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;
@@ -638,7 +779,8 @@ export function setupLlm(app) {
       narration = r.narration === null ? curN : mergeNarration(curN, r.narration).narration;
       what = X.replacedSlides(m.replaced);
     }
-    const ids = withIds(deck, narration);
+    // シード値は保存で必ず残す（§8.4）：直した返事が <html> ごと書き直してシード値を落としても、前のものに戻す
+    const ids = withIds(keepSeed(cur, deck), narration);
     what = what || X.replaced(file);
     if (S.portable) {
       // 1 ファイル（.ega.html）：今の作業場所のファイル（設定の docId・音声・部品）を残し、原稿だけを入れ替えて開き直す

@@ -246,13 +246,13 @@ try {
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
-  // 新規作成…：チャットの AI の道 1 本（① 分野 → ② デザイン → ③ 頼みたいこと → ④ コピー → ⑤ 貼り付け）。白紙とテンプレートは新規作成にない
+  // 新規作成…：チャットの AI の道 1 本（① 場面 → ② 分野と言いたいこと → ③ デザイン → ④ 頼みたいこと → ⑤ コピー → ⑥ 貼り付け）。白紙とテンプレートは新規作成にない
   await page.click('#w-new');
   await page.waitForSelector('#dlg[open] #paste-text');
   ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成：チャットの AI に書いてもらう' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
-    && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3'
+    && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-series,paste-step-theme,paste-step1,paste-step2,paste-step3'
     && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
-    'new: 「新規作成…」 opens the chat-AI dialog directly with 5 steps (subjects unticked, theme default); no blank or template');
+    'new: 「新規作成…」 opens the chat-AI dialog directly with 6 steps (subjects unticked, theme default); no blank or template');
   ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'ほかのテーマを読み込む…']), 'new: the theme select shows display names, then 「ほかのテーマを読み込む…」');
   ok(!(await page.$('#b-themes')), 'new: 「テーマのフォルダ…」 is not in File ▾ (it is in the theme select)');
   await clickDlg(page, '#dlg-cancel');

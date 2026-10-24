@@ -2,6 +2,7 @@
 // tools/make-llm-guide.mjs は作りたての材料で、kit/core/llm-pack.mjs は書き出した材料で同じ関数を使う。Node にもブラウザにも依存しない
 //   材料：{series: [名前…], en|ja: {common, request?, series: {名前: 文章}, components: {タグ: {series, row, entry, sup?, ext?: {系列: 文章}}}, tableHead, supNote, extHead}}
 //   common・series の文章の {{CATALOG}} にその場所の部品の一覧と説明、{{EXTENSIONS}} にほかの部品のその系列向けの節が入る
+//   exclude：使わせない部品（新規作成で外した言いたいことだけに使う部品。kit/core/purposes.mjs の componentsOff）。一覧・説明・拡張の節から除く
 export function normalizeSeries(series, data) {
   if (series === undefined || series === null) return [];
   if (series === 'all') return [...data.series];
@@ -20,26 +21,26 @@ function catalog(D, names) {
   const sup = names.some((n) => D.components[n].sup);
   return D.tableHead + '\n' + rows + '\n\n' + (sup ? D.supNote + '\n\n' : '') + names.map((n) => D.components[n].entry).join('\n\n');
 }
-function extensions(D, series) {
-  return Object.keys(D.components).sort().filter((n) => D.components[n].ext && D.components[n].ext[series])
+function extensions(D, series, exclude = []) {
+  return Object.keys(D.components).sort().filter((n) => !exclude.includes(n) && D.components[n].ext && D.components[n].ext[series])
     .map((n) => D.extHead.replace('{name}', n) + '\n\n' + D.components[n].ext[series]).join('\n\n');
 }
 export const membersOf = (D, series) => Object.keys(D.components).sort().filter((n) => D.components[n].series === series);
 
-export function commonOf(data, lang) {
+export function commonOf(data, lang, exclude = []) {
   const D = langOf(data, lang);
-  return tidy(D.common.replace('{{CATALOG}}', () => catalog(D, membersOf(D, 'common'))));
+  return tidy(D.common.replace('{{CATALOG}}', () => catalog(D, membersOf(D, 'common').filter((n) => !exclude.includes(n)))));
 }
-export function partOf(data, name, lang) {
+export function partOf(data, name, lang, exclude = []) {
   const D = langOf(data, lang);
   if (!D.series[name]) throw new Error(`llm-pack: unknown series "${name}"`);
-  return tidy(D.series[name].replace('{{CATALOG}}', () => catalog(D, membersOf(D, name))).replace('{{EXTENSIONS}}', () => extensions(D, name)));
+  return tidy(D.series[name].replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)))).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude)));
 }
 
 // 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／ここまでの議論の内容で）。いちばん最後に付く
 export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 
-export function assemble(data, { series = [], lang = 'en' } = {}) {
-  const parts = [commonOf(data, lang), ...normalizeSeries(series, data).map((s) => partOf(data, s, lang)), requestOf(data, lang)].filter(Boolean);
+export function assemble(data, { series = [], lang = 'en', exclude = [] } = {}) {
+  const parts = [commonOf(data, lang, exclude), ...normalizeSeries(series, data).map((s) => partOf(data, s, lang, exclude)), requestOf(data, lang)].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }

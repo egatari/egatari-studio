@@ -1,0 +1,160 @@
+// 新規作成の選び方（backlog #99、handoff/parts-map-2026-10-24.html の 7・9）と、教材のシード値（format spec §8.4、backlog #104）。
+// Node にもブラウザにも依存しない（純粋な ESM）。画面は app/llm.js
+//
+// 大分類（構成を決める場面）→ 小分類（構成の型）。教科・分野（数理・統計・国語・情報など）は小分類ではなく「パーツの組」で、
+// 今は指示の系列（academic・business・kokugo・info。kit/core/llm-pack.mjs の SERIES）にそのまま対応する（SUBJECTS の series）。
+// 系列の名前は内部の名前として残す（画面には出さない）。言いたいこと（kit/core/purposes.mjs）は既定で全部入り、外したものは AI に使わせない。
+//
+//   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
+//   SUBJECTS                           [{id, series, label: {en, ja}}]
+//   seriesOfSubjects(ids)              → 系列の名前（SERIES の順）
+//   defaultSubjects(category)          大分類を選んだときに入れておく分野（ビジネス → ビジネスのパーツ。ほかはなし）
+//   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''
+//   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
+//   choiceOf(configText)               → studio.newDeck | null
+//   choice の形：{category, subcategory, subjects: [id], purposesOff: [id]}（category・subcategory は id か null）
+//
+// シード値（§8.4）：原稿の根の要素（deck.html の <html>）の data-egatari-seed。10 進の整数 0 ≤ N < 2^32、なければ 0。
+// 編集器は教材を作るときに 1 回だけ書き（教材どうしが同じ見た目にならないように）、保存で必ず残す。
+//   SEED_ATTR                          'data-egatari-seed'
+//   newSeed(random?)                   新しいシード値（crypto.getRandomValues。random を渡せばそれ：試験用）
+//   seedOf(html)                       → 整数 | null（ない・形が違えば null）
+//   withSeed(html, seed)               <html> にシード値がなければ書く（あれば変えない：作るときの 1 回だけ）
+//   keepSeed(oldHtml, newHtml)         新しい原稿（AI の直した返事など）が前のシード値を失った・変えたとき、前のものに戻す
+import { updateConfig, merge, configObject } from './config-file.mjs';
+import { componentsOff } from './purposes.mjs';
+
+export const CATEGORIES = [
+  { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
+    { id: 'class', label: { ja: '授業（小・中・高）', en: 'School lesson' },
+      structure: { ja: '導入（注意を引く・目標・前の学習の想起）→ 展開 → まとめ', en: 'introduction (gain attention, state the goal, recall prior learning) → development → summary' },
+      show: { ja: '1 画面に 1 つのこと。ステップで段階的に見せる。文字は台本に任せ、飾らない', en: 'one thing per screen; reveal step by step; leave the words to the narration; no decoration' } },
+    { id: 'lecture', label: { ja: '大学の講義', en: 'University lecture' },
+      structure: { ja: '導入 → 展開 → まとめ。式と図を積み上げる', en: 'introduction → development → summary, building up equations and figures' },
+      show: { ja: '見出しは主張の文にして図で示す。ステップで積み上げ、前のステップは残す', en: 'headings state the claim and a figure shows it; build up step by step and keep earlier steps on screen' } },
+    { id: 'training', label: { ja: '研修・使い方の説明', en: 'Training and how-to' },
+      structure: { ja: '手順を 1 つずつ', en: 'one procedure step at a time' },
+      show: { ja: '手順の図、画面の切り抜き', en: 'process diagrams and screen captures' } },
+  ] },
+  { id: 'research', label: { ja: '研究発表', en: 'Research' }, subs: [
+    { id: 'conference', label: { ja: '学会の口頭発表', en: 'Conference talk' },
+      structure: { ja: '背景 → 目的 → 方法 → 結果 → 考察 → 結論（背景・方法・結果でおよそ 3 分の 1 ずつ）', en: 'background → aim → method → results → discussion → conclusion (background, method and results about a third each)' },
+      show: { ja: '見出しは主張の文、図が証拠。箇条書きを減らす。1 分に 1 枚ほど', en: 'headings are claims and figures the evidence; few bullet lists; about one slide per minute' } },
+    { id: 'seminar', label: { ja: 'ゼミ・進捗報告', en: 'Seminar or progress report' },
+      structure: { ja: '学会の口頭発表と同じ流れを短く', en: 'the conference structure, shorter' },
+      show: { ja: '密度は高くてよい', en: 'denser slides are fine' } },
+    { id: 'talk', label: { ja: '招待講演・一般向け', en: 'Invited or public talk' },
+      structure: { ja: '今の姿とありうる姿を行き来し、最後に呼びかける', en: 'alternate between what is and what could be; end with a call to action' },
+      show: { ja: '大きな絵、文字はごく少なく', en: 'large pictures, very little text' } },
+  ] },
+  { id: 'business', label: { ja: 'ビジネス', en: 'Business' }, subs: [
+    { id: 'report', label: { ja: '報告', en: 'Report' },
+      structure: { ja: '結論を先に（PREP。空・雨・傘）、ピラミッド構造', en: 'conclusion first (PREP; situation, interpretation, action), pyramid structure' },
+      show: { ja: '見出しは結論の文。印刷しても読める密度', en: 'headings state conclusions; dense enough to read when printed' } },
+    { id: 'proposal', label: { ja: '提案・意思決定', en: 'Proposal and decision' },
+      structure: { ja: '状況 → 問題 → 問い → 答え（SCQA）', en: 'situation → complication → question → answer (SCQA)' },
+      show: { ja: '少人数で決める会議室向け。図表は濃く', en: 'for a small meeting that decides; dense charts' } },
+    { id: 'pitch', label: { ja: 'ピッチ', en: 'Pitch' },
+      structure: { ja: '目的 → 課題 → 解決 → なぜ今 → 市場 → 競合 → 製品 → 事業モデル → チーム → 数字 → お願い', en: 'purpose → problem → solution → why now → market → competition → product → business model → team → financials → the ask' },
+      show: { ja: '10 枚ほど、大きな字、1 枚に 1 つのこと', en: 'about 10 slides, large text, one thing per slide' } },
+    { id: 'intro', label: { ja: '紹介・広報', en: 'Introduction and publicity' },
+      structure: { ja: '今の姿とありうる姿を行き来する', en: 'alternate between what is and what could be' },
+      show: { ja: '大きな絵、文字は少なく', en: 'large pictures, little text' } },
+  ] },
+  { id: 'guides', label: { ja: '手引き', en: 'Guides' }, subs: [],
+    structure: { ja: '一度通して説明し、あとは場面や品目から引けるように分ける', en: 'explain once from start to end, organised so that readers can look things up later by situation or item' },
+    show: { ja: '規程・法令などの原典の文を添え、いつの時点の内容かを必ず書く', en: 'quote the source text (rules, laws) and always state the date the content is valid for' } },
+  { id: 'other', label: { ja: 'その他', en: 'Other' }, subs: [] },
+];
+
+export const SUBJECTS = [
+  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' } },
+  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' } },
+  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' } },
+  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' } },
+];
+
+export function seriesOfSubjects(ids) {
+  const want = new Set(ids || []);
+  return SUBJECTS.filter((s) => want.has(s.id)).map((s) => s.series);
+}
+export const defaultSubjects = (category) => (category === 'business' ? ['business'] : []);
+
+const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
+export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }
+
+export function choiceRequest(choice, P, lang) {
+  const L = lang === 'ja' ? 'ja' : 'en';
+  const c = catOf(choice && choice.category);
+  const s = c && subOf(c.id, choice.subcategory);
+  const rows = [];
+  if (c && c.id !== 'other') {
+    rows.push(L === 'ja' ? `- 場面：${c.label.ja}${s ? '／' + s.label.ja : ''}` : `- Kind: ${c.label.en}${s ? ' / ' + s.label.en : ''}`);
+    const st = (s || c).structure, sh = (s || c).show;
+    if (st) rows.push(L === 'ja' ? `- 構成の型：${st.ja}` : `- Structure: ${st.en}`);
+    if (sh) rows.push(L === 'ja' ? `- 見せ方：${sh.ja}` : `- Presentation: ${sh.en}`);
+  }
+  const offIds = new Set((choice && choice.purposesOff) || []);
+  const off = P.list.filter((p) => offIds.has(p.id));
+  if (off.length) {
+    const comps = componentsOff([...offIds], P);
+    rows.push(L === 'ja'
+      ? `- 使わない言いたいこと（作者が外した）：${off.map((p) => p.name.ja).join('・')}。その表し方${comps.length ? `（${comps.map((t) => '`' + t + '`').join('・')}）` : ''}は使わない`
+      : `- Purposes turned off by the author: ${off.map((p) => p.name.en).join(', ')}. Do not use their representations${comps.length ? ` (${comps.map((t) => '`' + t + '`').join(', ')})` : ''}.`);
+  }
+  return rows.join('\n');
+}
+
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const clean = (choice) => ({
+  v: 1,
+  category: catOf(choice.category) ? choice.category : null,
+  subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
+  subjects: SUBJECTS.map((s) => s.id).filter((id) => (choice.subjects || []).includes(id)),
+  purposesOff: [...new Set((choice.purposesOff || []).filter((x) => typeof x === 'string'))].sort(),
+});
+export function withChoice(configText, choice) {
+  return updateConfig(configText || null, { studio: merge({ newDeck: clean(choice || {}) }) });
+}
+export function choiceOf(configText) {
+  let c;
+  try { c = configObject(configText); } catch { return null; }
+  const n = isObj(c.studio) ? c.studio.newDeck : null;
+  return isObj(n) && n.v === 1 ? n : null;
+}
+
+// ---------------------------------------------------------------- シード値（§8.4）
+export const SEED_ATTR = 'data-egatari-seed';
+const SEED_MAX = 2 ** 32;
+export function newSeed(random) {
+  if (typeof random === 'function') return Math.floor(random() * SEED_MAX) % SEED_MAX;
+  const a = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(a);
+  return a[0];
+}
+const HTML_TAG = /<html\b[^>]*>/i;
+const SEED_RE = /\sdata-egatari-seed\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+export function seedOf(html) {
+  const tag = (String(html || '').match(HTML_TAG) || [])[0];
+  if (!tag) return null;
+  const m = tag.match(SEED_RE);
+  if (!m) return null;
+  const v = (m[1] ?? m[2] ?? m[3] ?? '').trim();
+  if (!/^\d{1,10}$/.test(v)) return null;
+  const n = Number(v);
+  return n < SEED_MAX ? n : null;
+}
+function setSeed(html, seed) {
+  const s = String(html);
+  return s.replace(HTML_TAG, (tag) => (SEED_RE.test(tag) ? tag.replace(SEED_RE, ` ${SEED_ATTR}="${seed}"`) : tag.replace(/\s*(\/?)>$/, ` ${SEED_ATTR}="${seed}"$1>`)));
+}
+export function withSeed(html, seed) {
+  if (!Number.isInteger(seed) || seed < 0 || seed >= SEED_MAX) throw new Error(`seed out of range: ${seed}`);
+  if (!HTML_TAG.test(String(html)) || seedOf(html) !== null) return String(html);
+  return setSeed(html, seed);
+}
+export function keepSeed(oldHtml, newHtml) {
+  const was = seedOf(oldHtml);
+  if (was === null || seedOf(newHtml) === was || !HTML_TAG.test(String(newHtml))) return String(newHtml);
+  return setSeed(newHtml, was);
+}

@@ -19,6 +19,7 @@ import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isS
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
 import { normPin } from '../kit/core/comment-core.mjs';
+import { keepSeed } from '../kit/core/new-deck.mjs';
 import { userThemeDirs } from '../kit/theme-dirs.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -387,7 +388,7 @@ const server = http.createServer(async (req, res) => {
       const src = readIn(SRC_IN) ?? '';
       if (!page.ranges.has(`${r[0]}-${r[1]}`) || r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
       backup(SRC_IN);
-      writeIn(SRC_IN, src.slice(0, r[0]) + b.text + src.slice(r[1]));
+      writeIn(SRC_IN, keepSeed(src, src.slice(0, r[0]) + b.text + src.slice(r[1])));   // シード値は保存で残す（format spec §8.4）
       console.log(`edit ${deckBase} ${b.range}`);
       await afterWrite();
       return send(res, 200, { ok: true, error: page.error ? '保存しましたが、組み立てに失敗しました' : null });
