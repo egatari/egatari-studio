@@ -223,6 +223,7 @@ const ja = {
       '作業フォルダは Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません。1 ファイルはどのブラウザでも開けます）']],
     ['学ぶ人に配る', ['配るのは 1 ファイル（再生専用は --play-only）。Google ドライブでは、プレビューでは動かないので「ダウンロードしてからブラウザで開く」と添えます。メールの添付、LMS（Moodle・Google Classroom など）のファイルとしても配れます',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
+    ['Claude で教材を作る', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.ja.md" target="_blank" rel="noopener">Claude Code や Cowork で教材を作る手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「開く ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
   colab: {
@@ -517,6 +518,7 @@ const en = {
       'Working folders need Chrome / Edge (Safari and Firefox cannot open folders; single files open in any browser).']],
     ['Hand out to learners', ['Hand out the single file (a play-only copy with --play-only). On Google Drive the preview does not run it, so tell learners to download it first and open it in a browser. An email attachment or a file in an LMS (Moodle, Google Classroom …) works too.',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
+    ['Make lessons with Claude', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.md" target="_blank" rel="noopener">Guide: making lessons with Claude Code or Cowork</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “Open ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
   colab: {

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=caa8d5e49457f338 -->
+<!-- i18n: pair=README.md sha256=3662dd46b5107629 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -165,6 +165,8 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 詳しくは [docs/editor.ja.md](docs/editor.ja.md)（[English](docs/editor.md)）。
 
 ## Claude Code で使う
+
+Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作る：[docs/with-claude.ja.md](docs/with-claude.ja.md)（[English](docs/with-claude.md)）。
 
 スキルを Claude Code のスキルのフォルダにリンクする。スキルはリンク先の実体の場所からリポジトリを探すので、clone した場所は動かさない。
 

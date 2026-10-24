@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=e8e39faa10761308 -->
+<!-- i18n: pair=README.ja.md sha256=9a8192eb48784fed -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -165,6 +165,8 @@ Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run che
 Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 ## Using it with Claude Code
+
+Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
 Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
 
