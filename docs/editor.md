@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=274cf8970a048aaa -->
+<!-- i18n: pair=editor.ja.md sha256=6950bc979b5db742 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -36,6 +36,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    | Key | Action |
    |---|---|
    | `e` | edit mode; **double-click** an outlined element to open its source (HTML, with math as `\( … \)`), ⌘/Ctrl+Enter to save |
+   | `l` | lecture view: every step is shown, steps not yet reached are dimmed (`--lecture-dim`, 0.5 by default); the current step carries no mark. The same as `?mode=lecture` |
    | `n` | narration drawer for the step on screen (speaker, add / delete / reorder turns) |
    | Alt+click (Mac: ⌥ Option+click) | leave a note for the AI about that element (`comments.json`); the point you clicked is kept as a pin |
    | `m` or `d` (or the “Ink note (m)” button in the edit-mode bar, or the pen button of the slide controls, which reads “Ink note” while editing) | ink note, in edit mode only: draw a circle or an arrow on the slide; when you let go the note box opens for that mark in the side panel. While it is open you can keep drawing (an arrow plus a circle, several marks, up to 20): each stroke joins the same note. Leave keeps all the marks with the note (`strokes`); Cancel discards them all |

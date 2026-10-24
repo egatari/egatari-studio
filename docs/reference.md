@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=86d07da79714722b -->
+<!-- i18n: pair=reference.ja.md sha256=00963fbba9aa7d99 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -181,9 +181,9 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--base` | base color; the others derive from it in `themes/default/tokens.css` |
 | `--emph-hue` | hue of `--emph`: a theme that sets it gets `--emph` = `oklch(0.52 0.21 <hue>)` (`kokugo`: 38). `default` does not set it and fixes `--emph` at `#BE3012` (from 1.1.0) |
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
-| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: lecture highlight) |
+| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: not used by the kit now; kept so that existing themes and decks keep working) |
 | `--series-1` … `--series-4` | figure series colors |
-| `--lecture-dim` | lecture view: opacity of steps not yet reached (0.5) |
+| `--lecture-dim` | lecture view: opacity of steps not yet reached (0.5; a theme may set it within 0.45–0.5 so that it stays readable on a projector) |
 | `--font-sans`, `--weight-body` | font family and body weight |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
@@ -230,7 +230,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Parameter | Meaning |
 |---|---|
 | `?mode=talk` | default: later steps hidden, current step fades in |
-| `?mode=lecture` | everything visible, later steps faded (`--lecture-dim`, default 0.5), current step highlighted (`.cur`), marks in final state |
+| `?mode=lecture` | everything visible, later steps faded (`--lecture-dim`, default 0.5), the current step and earlier ones at full strength with no mark on the current step (no highlighter, no `.cur` class), marks in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |
