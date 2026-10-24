@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=6950bc979b5db742 -->
+<!-- i18n: pair=editor.ja.md sha256=f253d2fa2839fb38 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -61,7 +61,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Export ▾ → Print / PDF:** the browser's print dialog for the deck (one page per slide with the final state of each, as with `tools/pdf.mjs`; choose “Save as PDF”; slide backgrounds, including the section dividers, print in their screen colors even with “Background graphics” off).
    - **Presenter view** (or `p` in the deck): a window with the current slide, the next step, the narration as speaker notes, a timer and the drawing tools. It controls the preview in the editor window, which also plays the audio: autoplay started in the presenter view (<kbd>a</kbd> or its button) plays the narration once, in the editor window. `p` in the preview again closes it. In the presenter view, Esc (when no drawing tool is on), `p` or **Close presenter view (p)** close the window and return focus to the editor; if the presenter window is fullscreen, they only leave fullscreen. While the window does not have focus, a large “Click here to control” overlay takes the first click. Recommended order on a projector: open the presenter view first, then make the audience window (the editor's **Fullscreen**) fullscreen on the projector.
    - **Stuck in the presenter view?** If it covers the screen and its keys do not respond, on a Mac press cmd+Tab to get back to the editor window and press `p` (on Windows, Alt+Tab; not yet verified on Windows). The key list (<kbd>?</kbd>) shows the same tip.
-   - **Blackout in the presenter view:** while the main window is black, the presenter view shows "Blacked out", and `b` there also toggles blackout on the main window.
+   - **Blackout in the presenter view:** while the main window is black, the presenter view shows "Blacked out", and `b` there also toggles blackout on the main window. While it is black, the arrows, Space or PageUp/PageDown in the presenter view end blackout without moving the slide.
    - **Fullscreen:** the preview fills the screen (for the projector).
    - **Keys:** after you click the toolbar, header or status bar, the arrows, PageUp/PageDown, Home/End, `b` (blackout: the whole preview turns black, with a faint “Blacked out — press b or Esc to return” hint in the corner for 2 s, and again when the mouse moves; `b` again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide), `a` and `f` still reach the slides (not in edit mode, where `b`, `a` and `f` do nothing). While unsaved narration holds the preview, a click or key on it shows why, with Save and Revert next to it.
 

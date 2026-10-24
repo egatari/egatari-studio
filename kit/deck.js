@@ -1248,7 +1248,9 @@ window.addEventListener("message", function(e){
   if (!DECK.ready) return;
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
-    if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
+    // 暗転の間の「次」「前」（発表者ビューの矢印・PageUp/PageDown・Space）は、本体のキーと同じく暗転を終えるだけで送らない
+    if ((m.cmd === "next" || m.cmd === "prev") && isBlack()) setBlack(false);
+    else if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
     else if (m.cmd === "goto"){ POS.setCause("seek"); go(m.i, m.k, !!m.animate); POS.setCause(null); }
     else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
     else if (m.cmd === "back") back();

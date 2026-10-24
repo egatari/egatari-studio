@@ -2,7 +2,7 @@
 //   node tools/test-blackout.mjs <組んだ deck.html> [<画像を書くフォルダ>]
 // 1. ペンの線・字幕・操作の帯・知らせ（ペンの色）を出した画面で b：窓全体の画素が #000（ほぼ）。もう一度 b で、前と同じ画面
 // 2. クリックと Esc でも戻る（クリックは送らない・描かない。Esc はペンを切らない）。暗転の間のフォーカスは覆いにあり、Tab で下に抜けない。戻るとフォーカスも戻る
-// 3. 発表者ビュー：本体の b で「暗転中」の札が出て、発表者ビューの b で本体が戻る（札も消える）
+// 3. 発表者ビュー：本体の b で「暗転中」の札が出て、発表者ビューの b で本体が戻る（札も消える）。暗転の間の発表者ビューの矢印・Space・PageUp/PageDown は暗転を終えるだけで送らない
 // 3b. キーの一覧（?）を開いたままの b：覆いが一覧より上で、Esc はまず暗転、次に一覧。外へのリンクの箱は暗転に入るとやめる
 // 4. 印刷：暗転していても、印刷の画面（beforeprint と print の media）は暗転していないときと同じ
 // 5. 動画（?mode=video）：b で暗転しない（隅の知らせも出ない）
@@ -126,6 +126,20 @@ try {
   await pv.keyboard.press('b');
   await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: 5000 }).catch(() => {});
   ok(await p.evaluate(() => document.documentElement.classList.contains('blackout')), 'b in the presenter view also starts blackout on the main window');
+  // 暗転の間に発表者ビューで送りのキー：本体のキーと同じく暗転を終えるだけで、スライドも段階も動かさない
+  for (const k of ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Space', 'PageDown', 'PageUp']) {
+    const a = await p.evaluate(() => DECK.state());
+    const on = await p.evaluate(() => document.documentElement.classList.contains('blackout'));
+    await pv.keyboard.press(k);
+    await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: 3000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    const z = await p.evaluate(() => ({ st: DECK.state(), black: document.documentElement.classList.contains('blackout') }));
+    await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: 3000 }).catch(() => {});
+    const ind = await pv.evaluate(() => document.getElementById('pv-black').hidden);
+    ok(on && !z.black && ind && z.st.slide === a.slide && z.st.step === a.step, `${k} in the presenter view ends blackout on the main window and leaves the slide and step unchanged ` + JSON.stringify({ before: [a.slide, a.step], after: [z.st.slide, z.st.step], on, black: z.black, indicatorHidden: ind }));
+    await pv.keyboard.press('b');
+    await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: 3000 }).catch(() => {});
+  }
   await pv.close();
   await p.bringToFront();
   await p.keyboard.press('b');
