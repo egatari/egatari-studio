@@ -537,7 +537,6 @@ function seek(i, k, t, from, cont){
         e.style.transform = lift && p < 1 ? "translateY(" + ((1 - p) * 14).toFixed(2) + "px)" : "none";
       }
       e.classList.toggle("on", n <= k);
-      e.classList.toggle("cur", lecture && n === k && k > 0);
       // 発表では、まだ出ていない段階を読み上げない（授業モードでは薄く見えているので読む）
       if (A11Y){ var ah = !lecture && n > k; if (e._ah !== ah){ e._ah = ah; if (ah) e.setAttribute("aria-hidden", "true"); else e.removeAttribute("aria-hidden"); } }
     });

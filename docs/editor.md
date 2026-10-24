@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=7fc5448d1180f32c -->
+<!-- i18n: pair=editor.ja.md sha256=130c8c5db5156fbc -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -36,6 +36,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    | Key | Action |
    |---|---|
    | `e` | edit mode; **double-click** an outlined element to open its source (HTML, with math as `\( … \)`), ⌘/Ctrl+Enter to save |
+   | `l` | lecture view: every step is shown, steps not yet reached are dimmed (`--lecture-dim`, 0.5 by default); the current step carries no mark. The same as `?mode=lecture` |
    | `n` | narration drawer for the step on screen (speaker, add / delete / reorder turns) |
    | Alt+click (Mac: ⌥ Option+click) | leave a note for the AI about that element (`comments.json`); the point you clicked is kept as a pin |
    | `c` | list of open comments, numbered; while it is open, the pins of the step on screen are marked on the slide. Click one to go to its slide and step (its pin flashes), “Resolve” to mark it done |

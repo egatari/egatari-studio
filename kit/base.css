@@ -12,11 +12,9 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 .draw{stroke-dasharray:1;stroke-dashoffset:1}
 .static [data-step],.static .draw{opacity:1;stroke-dashoffset:0}
 
-/* 授業モード：今の段階を強調する（段階より後の要素は deck.js が薄くする） */
-/* lecture view: opacity of the steps not yet reached (a theme may override) */
+/* 授業モード：全部見せ、段階より後の要素は deck.js が薄くする（今の段階に印は付けない） */
+/* lecture view: opacity of the steps not yet reached (a theme may override, keep it within .45-.5); the current step is not marked */
 :root{--lecture-dim:.5}
-[data-mode="lecture"] .cur:not(tr):not(g):not(path):not(.concl){background:linear-gradient(transparent 58%,var(--emph-tint) 58%);border-radius:2px}
-[data-mode="lecture"] tr.cur td{background:var(--emph-tint)}
 
 /* 操作の表示 */
 #bar{position:fixed;left:0;bottom:0;height:var(--bar-h,3px);background:var(--bar,var(--emph));z-index:10}

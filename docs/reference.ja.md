@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ef2fba8f701a4015 -->
+<!-- i18n: pair=reference.md sha256=3fdf07b7080e7888 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -181,9 +181,9 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--base` | 基調色。ほかの色は `themes/default/tokens.css` でここから導く |
 | `--emph-hue` | `--emph` の色相：宣言したテーマは `--emph` が `oklch(0.52 0.21 <色相>)` になる（`kokugo` は 38）。`default` は宣言せず、`--emph` を `#BE3012` に決めている（1.1.0 から） |
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | 文字・背景・見出し・用語・結論・既知・細い線・見出しの下線 |
-| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は授業モードの強調） |
+| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマとデッキが動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
-| `--lecture-dim` | 授業の表示：まだ来ていない段階の不透明度（0.5） |
+| `--lecture-dim` | 授業の表示：まだ来ていない段階の不透明度（0.5。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
@@ -230,7 +230,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 引数 | 意味 |
 |---|---|
 | `?mode=talk` | 既定：後の段階は隠し、今の段階はフェードで出す |
-| `?mode=lecture` | 全部見せ、後の段階は薄く（`--lecture-dim`、既定 0.5）、今の段階を強調（`.cur`）。印は最終状態 |
+| `?mode=lecture` | 全部見せ、後の段階は薄く（`--lecture-dim`、既定 0.5）、今の段階とその前は濃いまま、今の段階に印は付けない（蛍光ペンも `.cur` クラスもなし）。印は最終状態 |
 | `?mode=video` | 書き出し用：道具と操作の帯を出さない。reduced-motion を無視する |
 | `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（書き出しで字幕を焼き込める） |
 | `?capsize=s` / `m` / `l` | 字幕の大きさ（22 / 27 / 34px）。覚えた大きさより優先。`?mode=video` では効かない |

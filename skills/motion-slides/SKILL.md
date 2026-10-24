@@ -91,7 +91,7 @@ Always reply in the language the user writes in, not the language of this file. 
 - 式とそれを導く一文は同じ段階。`<div data-step="k">` で一緒に囲む
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
 - 1 枚の段階は 5 前後まで
-- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。授業の表示（`?mode=lecture`、キー `l`）では同じ `data-step` が「先の段階も薄く見せて、今の所を強調」になる。授業用に別の原稿は作らない
+- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。授業の表示（`?mode=lecture`、キー `l`）では同じ `data-step` が「先の段階を薄く見せ、今の段階に印は付けない」になる。授業用に別の原稿は作らない
 - （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
 ## 5. 口述原稿（narration.md）
