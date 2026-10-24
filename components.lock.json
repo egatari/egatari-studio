@@ -2,6 +2,7 @@
   "source": "https://github.com/egatari/components",
   "tag": "v1.1.0",
   "tarballSha256": "13ed148475314b43d7f90b0a51b1426da24a8c03b195366d1dcb0916b30e0494",
+  "manifestSha256": "47c31772250d62efc879033176bf6ae780720646863e6599d5366397fb88ea5e",
   "releases": {
     "v1.0.0": {
       "tarballSha256": "ce4f0e7729578ea72377e6e46733b1b80647ec199d3628fb87bd83f772ff4d2d"

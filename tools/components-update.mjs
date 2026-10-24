@@ -84,7 +84,7 @@ export function verifyRelease(tag, manifestBytes, tarball) {
     if (!components[name]) throw new Error(`tarball: ${p} is not in a component of manifest.json`);
     components[name].files.set(p.slice(name.length + 1), b);
   }
-  return { version, tarballSha256: tsha, license, components, yanked };
+  return { version, tarballSha256: tsha, license, components, yanked, manifest: manifestBytes };
 }
 
 // 写しを書き、components.lock.json を直す。root：リポジトリの根（試験は一時フォルダ）
@@ -121,6 +121,8 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
     fs.renameSync(tmp, dest);
   }
   if (rel.license) { fs.mkdirSync(base, { recursive: true }); fs.writeFileSync(path.join(base, 'LICENSE'), rel.license); }
+  // リリースの manifest.json（バイトのまま）を写しに置く：言いたいこと（purposes）と見せ方（variants）を手元で読む（kit/core/purposes.mjs。tarball には入らない）
+  if (rel.manifest) { fs.mkdirSync(base, { recursive: true }); fs.writeFileSync(path.join(base, 'manifest.json'), rel.manifest); lock.manifestSha256 = sha(rel.manifest); }
   lock.source = source;
   lock.tag = tag;
   lock.tarballSha256 = rel.tarballSha256;
@@ -139,7 +141,7 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
     e.default = rel.version;
   }
   lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, versions: e.versions, sha256: e.sha256, ...(e.crlfSha256 ? { crlfSha256: e.crlfSha256 } : {}) }]));
-  const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, releases: lock.releases, ...(Object.keys(lock.yanked).length ? { yanked: lock.yanked } : {}), components: lock.components };
+  const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, ...(lock.manifestSha256 ? { manifestSha256: lock.manifestSha256 } : {}), releases: lock.releases, ...(Object.keys(lock.yanked).length ? { yanked: lock.yanked } : {}), components: lock.components };
   const problems = lockProblems(ordered);
   if (problems.length) throw new Error(`${LOCK_FILE}: ${problems.join('; ')}`);
   fs.writeFileSync(lockFile, JSON.stringify(ordered, null, 2) + '\n');
@@ -186,13 +188,22 @@ export function checkVendor(root = ROOT) {
     }
   }
   for (const d of fs.existsSync(base) ? fs.readdirSync(base, { withFileTypes: true }) : []) {
-    // manifest.json：言いたいこと（purposes）の材料（kit/core/purposes.mjs。部品庫のリリースが入れたら置く。TODO(#99)：components:update が置くようにする）
+    // manifest.json：既定の版（lock.tag）のリリースの manifest（言いたいこと・見せ方の材料。下で確かめる）
     if (!d.isDirectory()) { if (!['LICENSE', 'CATALOG.md', 'manifest.json'].includes(d.name)) e.push(`vendor/components/${d.name}: not expected`); continue; }
     const c = lock.components[d.name];
     if (!c) { e.push(`vendor/components/${d.name}: not in ${LOCK_FILE}`); continue; }
     for (const v of fs.readdirSync(path.join(base, d.name))) if (!c.versions.includes(v)) e.push(`vendor/components/${d.name}/${v}: not in ${LOCK_FILE}`);
   }
   if (!fs.existsSync(path.join(base, 'LICENSE'))) e.push('vendor/components/LICENSE is missing');
+  const mf = path.join(base, 'manifest.json');
+  if (fs.existsSync(mf)) {
+    const b = fs.readFileSync(mf);
+    let m = null;
+    try { m = JSON.parse(b.toString('utf8')); } catch { /* 下で */ }
+    if (!lock.manifestSha256) e.push(`vendor/components/manifest.json is not in ${LOCK_FILE} (manifestSha256)`);
+    else if (sha(b) !== lock.manifestSha256) e.push(`vendor/components/manifest.json does not match ${LOCK_FILE} manifestSha256`);
+    if (!m || m.tag !== lock.tag) e.push(`vendor/components/manifest.json is not the manifest of ${lock.tag}`);
+  } else if (lock.manifestSha256) e.push('vendor/components/manifest.json is missing');
   return e;
 }
 

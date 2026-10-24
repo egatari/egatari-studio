@@ -104,6 +104,13 @@ await t('update: a newer release keeps the old version; components not in it kee
   const again = applyRelease('v1.1.0', verifyRelease('v1.1.0', r2.manifest, r2.gz), { root: R });
   assert.deepEqual(again.added, []); assert.deepEqual(again.same, ['bars']);
   assert.deepEqual(checkVendor(R).filter((x) => !/source is/.test(x)), []);
+  // リリースの manifest.json をバイトのまま写しに置き、lock に sha256（言いたいこと・見せ方を手元で読む。#99）
+  const mf = path.join(R, 'vendor/components/manifest.json');
+  assert.ok(Buffer.from(r2.manifest).equals(fs.readFileSync(mf)), 'the release manifest.json is kept byte for byte');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(R, 'components.lock.json'), 'utf8')).manifestSha256, sha(r2.manifest));
+  fs.writeFileSync(mf, fs.readFileSync(mf, 'utf8').replace('1.1.0', '1.1.9'));
+  assert.ok(checkVendor(R).some((x) => /manifest\.json does not match/.test(x)), 'a changed manifest.json is found');
+  fs.writeFileSync(mf, Buffer.from(r2.manifest));
 });
 await t('update: refuses a tampered tarball, a file not in the manifest, a wrong version, a moved tag, and a replaced version', () => {
   const r = makeRelease('1.2.0', V2);
