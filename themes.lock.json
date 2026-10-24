@@ -1,12 +1,23 @@
 {
   "themes": {
     "business": {
-      "current": "1.0.0",
+      "current": "1.0.1",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.0.1"
       ],
       "sha256": {
-        "1.0.0": "3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880"
+        "1.0.0": "3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880",
+        "1.0.1": "ca94935076466e609eeed615e077edef0f0e8fb21994bc6614b78303846fae69"
+      },
+      "changes": {
+        "1.0.1": {
+          "date": "2026-10-25",
+          "reason": "--emph is the same orange, slightly darker, so that text in it reaches 4.5:1 on its own tint --emph-tint (4.34 → 4.66:1; emph boxes, kpi, quad, flow); 5.62:1 on white",
+          "tokens": [
+            { "token": "--emph", "from": "#C2410C", "to": "#BA3C05" }
+          ]
+        }
       }
     },
     "default": {
