@@ -11,7 +11,7 @@ export function normPin(p) {
   return { x: clamp(p.x, SLIDE_W), y: clamp(p.y, SLIDE_H) };
 }
 
-// strokes：編集モードの手書きメモ（コメントのペン、m）で描いた線。1 つのメモに線は何本でも（丸と矢印など。STROKES_MAX 本まで）。
+// strokes：編集モードのマーカー（コメントのペン、m）で描いた線。1 つのメモに線は何本でも（丸と矢印など。STROKES_MAX 本まで）。
 //   線はスライドの座標の点の並び [[x, y], …]（1280×720、表示の倍率によらない）。形は docs/contract.md「Review notes」（§13）
 //   pin と同じく信頼しない知らせが元なので、線ごとに：配列でなければ・点（有限の数の組）が 2 つに満たなければその線は捨てる。
 //   スライドの外は端に寄せ、0.1 に丸め、続けて同じ点は 1 つにする。STROKE_MAX（500）点を超える線は、収まるまで許す誤差を倍にしながら
@@ -79,7 +79,7 @@ export function entryStrokes(c) {
   if (c.stroke !== undefined) return normStrokes([c.stroke]);
   return null;
 }
-// 線の重心（全部の線の区間の中点を、区間の長さで重みを付けて平均したもの）。手書きメモの pin はこれ。長さが 0 なら 1 本目の最初の点
+// 線の重心（全部の線の区間の中点を、区間の長さで重みを付けて平均したもの）。マーカーの pin はこれ。長さが 0 なら 1 本目の最初の点
 export function strokesCentroid(S) {
   let sx = 0, sy = 0, sl = 0;
   for (const s of S) {

@@ -53,10 +53,10 @@ const STR = {
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
-    inkMark: 'Drawn mark', inkMarks: (n) => n + ' drawn marks', inkT: 'The marks you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add marks to this note (up to 20)', inkFull: 'A note holds at most 20 marks', ink: 'Ink note (m)', inkTip: 'Draw circles or arrows on the slide (several marks for one note), then write the note (also d, or the pen button of the slide controls, while editing)',
+    inkMark: 'Drawn mark', inkMarks: (n) => n + ' drawn marks', inkT: 'The marks you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add marks to this comment (up to 20)', inkFull: 'A comment holds at most 20 marks', ink: 'Marker (m)', inkTip: 'Circle or point to a spot, then add a comment (draw circles or arrows on the slide, several marks for one comment, then write it; also d, or the pen button of the slide controls, while editing)',
     nUnsaved: 'The narration is not saved. Save or revert it to use the preview again', nRevert: 'Revert',
     dateLocale: 'en-US',
-    modeEdit: 'Editing', modeInk: 'Editing: ink note', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser pointer', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
+    modeEdit: 'Editing', modeInk: 'Editing: marker', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser pointer', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
   },
   ja: {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
@@ -73,10 +73,10 @@ const STR = {
     noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
-    inkMark: '手書きの印', inkMarks: (n) => '手書きの印 ' + n + ' 本', inkT: '描いた印（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このメモの印に足せます（20 本まで）', inkFull: '1 つのメモの印は 20 本まで', ink: '手書きメモ（m）', inkTip: 'スライドに丸や矢印を描いてから（1 つのメモに何本でも）、メモを書きます（編集中は d・スライドの操作の帯のペンのボタンでも）',
+    inkMark: '手書きの印', inkMarks: (n) => '手書きの印 ' + n + ' 本', inkT: '描いた印（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このコメントの印に足せます（20 本まで）', inkFull: '1 つのコメントの印は 20 本まで', ink: 'マーカー（m）', inkTip: '丸や矢印で場所を示して、コメントを付ける（スライドに描いてから書きます。1 つのコメントに何本でも。編集中は d・スライドの操作の帯のペンのボタンでも）',
     nUnsaved: 'ナレーションが保存されていません。保存するか元に戻すと、プレビューを操作できます', nRevert: '元に戻す',
     dateLocale: 'ja-JP',
-    modeEdit: '編集中', modeInk: '編集中：手書きメモ', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
+    modeEdit: '編集中', modeInk: '編集中：マーカー', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
 };
 
@@ -182,7 +182,7 @@ const pinOf = (p) => {
   const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
   return { x: c(p.x, W), y: c(p.y, H) };
 };
-// 手書きメモの線（strokes：線の並び、線は [[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid と
+// マーカーの線（strokes：線の並び、線は [[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid と
 // 同じ規則の写し（tools/test-ink-comments.mjs が同じ答えか確かめる）。線ごとに 2 点に満たなければ捨て、端に寄せて 0.1 に丸め、続けて同じ点は 1 つ、
 // 500 点を超えれば Ramer–Douglas–Peucker で間引く。初めの 20 本を使い、点の合計が 2000 を超えれば全部を同じ誤差でさらに間引く。前の形の stroke は 1 本として読む
 const STROKE_MAX = 500, STROKE_IN = 5000, STROKES_MAX = 20, STROKES_POINTS = 2000, STROKES_IN = 200, STROKES_IN_POINTS = 20000;
@@ -306,7 +306,7 @@ export function createEditorUI(o) {
   let pinList = [], pending = null, flash = null;
   // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
   const extra = o.extra || {};
-  // 手書きメモの欄が開いていて、手書きメモの道具が入っている間は、プレビューに続けて線を描ける（欄は横の板にあり、描く所に重ならない）
+  // マーカーの欄が開いていて、マーカーの道具が入っている間は、プレビューに続けて線を描ける（欄は横の板にあり、描く所に重ならない）
   const inkDrawing = () => !!(cbox && cbox.ink && editOn && toolMode === 'ink');
   const editing = () => !!(editor || (cbox && !inkDrawing()) || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
   // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
@@ -388,7 +388,7 @@ export function createEditorUI(o) {
     modeEl.setAttribute('data-mode', kind);
   }
   // ---------------------------------------------------------------- 編集モードの札
-  // 手書きメモ（コメントのペン）：編集モードの間だけ。押すと（m でも）デッキ（kit/tools.js の道具 ink）に頼み、描き終えた線がコメントの欄を開く
+  // マーカー（コメントのペン）：編集モードの間だけ。押すと（m でも）デッキ（kit/tools.js の道具 ink）に頼み、描き終えた線がコメントの欄を開く
   const inkBtn = h('button', { cls: 'dv-ink', type: 'button', 'aria-pressed': 'false', text: L.ink, title: L.inkTip, on: { click: () => toggleInk() } });
   const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) }), inkBtn]);
   side.appendChild(badge);
@@ -499,12 +499,12 @@ export function createEditorUI(o) {
     if (!cbox) return;
     if (!force && cbox.ta.value.trim()) return;
     cbox.card.remove(); cbox = null; pending = null;
-    post({ type: 'edit-ink-reset' });   // 書きかけの手書きメモの線を捨てる（server/hints.js）
+    post({ type: 'edit-ink-reset' });   // 書きかけのマーカーの線を捨てる（server/hints.js）
     if (target && !editor) setTarget(null);
     updateSide();
     focusFrame();
   }
-  // 知らせ（Alt+クリックか手書きメモ）から、メモの場所：段階の鍵・要素の範囲・引用・点・線（手書きメモは何本でも。点は全部の線の重心）
+  // 知らせ（Alt+クリックかマーカー）から、メモの場所：段階の鍵・要素の範囲・引用・点・線（マーカーは何本でも。点は全部の線の重心）
   function placeOf(hint) {
     const key = str(hint.key, 400), range = hint.src == null ? null : str(hint.src, 40);
     if (!key || (range !== null && !RANGE.test(range))) return null;
@@ -551,7 +551,7 @@ export function createEditorUI(o) {
       h('div', { cls: 'dev-lock', text: L.locked }),
     ]);
     side.appendChild(card);
-    // 手書きメモ：欄が開いている間も描いた線は、同じメモに足す（同じ段階の知らせだけ。引用・範囲・点は全部の線の重心の下から取り直す）
+    // マーカー：欄が開いている間も描いた線は、同じメモに足す（同じ段階の知らせだけ。引用・範囲・点は全部の線の重心の下から取り直す）
     const box = cbox = { card, ta, ink: !!at.strokes, addInk(h2) {
       if (cbox !== box) return false;
       const a2 = placeOf(h2);
@@ -854,7 +854,7 @@ export function createEditorUI(o) {
     else if (k === 'c') toggleComments();
     else if (k === 'm') { if (editOn) toggleInk(); }
     else if (k === 'r') { if (o.onRecord) o.onRecord(); }   // 録音モードを開く（開くだけ。録音はこのページのキーでしか始まらない）
-    else if (k === 'Escape') { if (!escape(shift, fromDeck) && editOn && toolMode === 'ink') toggleInk(false); }   // 閉じる窓がなければ手書きメモを切る
+    else if (k === 'Escape') { if (!escape(shift, fromDeck) && editOn && toolMode === 'ink') toggleInk(false); }   // 閉じる窓がなければマーカーを切る
   }
   // 編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときの送りのキー：プレビューに送る（deck-cmd の key。プレビューは親の窓から
   // 届いたものだけを受ける：kit/deck.js）。キーの出来事は作らない。f はプレビューの枠を全画面にする（中のデッキは押されていないので全画面にできない）。
@@ -920,7 +920,7 @@ export function createEditorUI(o) {
     }
     // 信頼する欄で編集している間は、デッキからの知らせで板の欄を開け閉め・切り替えしない（頼んでいない切り替えで編集から離されない。
     // 本当にキーを押したのなら、プレビューは inert なのでデッキには届かない：知らせはデッキが自分で送ったもの）
-    // 手書きメモの欄が開いている間に描いた線は、そのメモに足す。ほかの欄を開く知らせ（Alt+クリック・ダブルクリック）は受けない
+    // マーカーの欄が開いている間に描いた線は、そのメモに足す。ほかの欄を開く知らせ（Alt+クリック・ダブルクリック）は受けない
     if (m.kind === 'comment' && cbox && cbox.ink && cbox.addInk(m)) return true;
     if (cbox && (m.kind === 'comment' || m.kind === 'edit')) { ignored++; if (m.strokes) post({ type: 'edit-ink-reset' }); return true; }
     if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; if (m.kind === 'comment' && m.strokes) post({ type: 'edit-ink-reset' }); return true; }

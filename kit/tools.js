@@ -2,7 +2,7 @@
 // - o：一覧（矢印で選び Enter・クリックで移る、Esc / o で閉じる）
 // - x：レーザー、d：ペン、v：消えるペン（もう一度押すか Esc で解除）、Shift+d：ペンの色（--emph → --term → --fg、赤・青・黒）
 //   ペンの間は帯のペンのボタンの後ろに色のボタンが出る。色を変えると短く知らせ、発表者ビューにも番号で知らせる
-// - m・d：手書きメモ（編集モードの間だけ。帯のペンのボタンも、編集中は「手書きメモ」になってこれを切り替える。開発サーバー・編集アプリのプレビュー）。描き終えた線を deck:ink {pts} で知らせ（server/hints.js が
+// - m・d：マーカー（編集モードの間だけ。帯のペンのボタンも、編集中は「マーカー」になってこれを切り替える。開発サーバー・編集アプリのプレビュー）。描き終えた線を deck:ink {pts} で知らせ（server/hints.js が
 //   コメントの知らせにする）、描いた線はすぐ消す（残すのは親の画面の重ね #dev-pins）。編集モードでないとき・発表者ビューからは使えない
 // - Backspace：今のスライドの書き込みを消す（ペンのとき）、Shift+Backspace：全スライドの書き込みを消す
 // - 動画（?mode=video）では何も作らない。印刷では隠す。発表者ビューの「今の画面」で描いた線は本体に送る
@@ -17,8 +17,8 @@ if (!DECK || DECK.mode === "video") return;
 var Q = new URLSearchParams(location.search);
 var W = 1280, H = 720;
 var COLORS = ["emph", "term", "fg"];
-var LABEL = DECK.ja === false ? {laser: "Laser", pen: "Pen", vpen: "Fading pen", ink: "Ink note"} : {laser: "レーザー", pen: "ペン", vpen: "消えるペン", ink: "手書きメモ"};
-var INK_COLOR = "#f59e0b";       // 手書きメモの描いている途中の線：親の画面の書きかけの印（.dev-pin.dv-new）と同じ色
+var LABEL = DECK.ja === false ? {laser: "Laser", pen: "Pen", vpen: "Fading pen", ink: "Marker"} : {laser: "レーザー", pen: "ペン", vpen: "消えるペン", ink: "マーカー"};
+var INK_COLOR = "#f59e0b";       // マーカーの描いている途中の線：親の画面の書きかけの印（.dev-pin.dv-new）と同じ色
 // ペンの色の名前（COLORS の順）と、色を選ぶボタンの名前
 var CNAME = DECK.ja === false ? ["Red", "Blue", "Black"] : ["赤", "青", "黒"];
 var CLAB = function(c){ return (DECK.ja === false ? "Pen color: " : "ペンの色：") + CNAME[c]; };
@@ -443,7 +443,7 @@ function input(phase, q){
   }
 }
 
-// 手書きメモ：描いている間だけこの面に線を見せ、離したら消して deck:ink {pts: [[x, y], …]}（スライドの座標、0.1 に丸め、1 点目から続けて同じ点なし、
+// マーカー：描いている間だけこの面に線を見せ、離したら消して deck:ink {pts: [[x, y], …]}（スライドの座標、0.1 に丸め、1 点目から続けて同じ点なし、
 // 5000 点まで）を送る。線を残す・確かめる・見せるのは親の画面（server/editor-ui.js）。点が 2 つに満たない（押しただけ）なら何も送らない
 var inkLine = null;
 function ink(phase, q){
@@ -509,7 +509,7 @@ function loop(){
 // ---------------------------------------------------------------- 道具の切り替え
 function setMode(m){
   if (EDIT && m && m !== "ink"){ sendState(null); return; }   // 編集中は道具を使わない（発表者ビューから頼まれても断り、向こうの道具も切る）
-  if (m === "ink" && (!EDIT || FOLLOW)) return;                // 手書きメモは編集中だけ
+  if (m === "ink" && (!EDIT || FOLLOW)) return;                // マーカーは編集中だけ
   var was = mode;
   mode = m || null; drawing = null; inkLine = null;
   if (!layer) return;
@@ -563,7 +563,7 @@ window.addEventListener("message", function(e){
   var m = e.data || {};
   if (m.type !== "deck-tool" || !layer) return;
   if (FOLLOW && e.source !== window.parent) return;
-  if (m.cmd === "mode") setMode(m.mode === "ink" ? null : m.mode);   // 手書きメモは発表者ビューからは選べない
+  if (m.cmd === "mode") setMode(m.mode === "ink" ? null : m.mode);   // マーカーは発表者ビューからは選べない
   else if (m.cmd === "color"){ if (typeof m.c === "number") setColor(m.c, FOLLOW); else nextColor(); }
   else if (m.cmd === "clear" || m.cmd === "clearAll") clear(m.cmd === "clearAll");
   else if (m.cmd === "pt" && !FOLLOW && mode && mode !== "ink") input(m.phase, m.phase === "leave" ? null : {x: m.x, y: m.y, p: m.p, c: COLORS.indexOf(m.c) >= 0 ? m.c : null});
@@ -740,9 +740,9 @@ function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {k
 var JA = DECK.ja !== false;
 var TIP = JA
   ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザー", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
-     lect: "授業モード", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "手書きメモ"}
+     lect: "授業モード", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
   : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
-     lect: "Lecture mode", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Ink note"};
+     lect: "Lecture mode", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
 var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
@@ -854,12 +854,12 @@ function syncBar(){
     return b;
   };
   on("laser", mode === "laser"); on("vpen", mode === "vpen");
-  // ペンのボタン：編集中は同じ絵のまま「手書きメモ」（押すと d と同じく手書きメモの入り切り）
+  // ペンのボタン：編集中は同じ絵のまま「マーカー」（押すと d と同じくマーカーの入り切り）
   var pb = on("pen", EDIT ? mode === "ink" : mode === "pen");
   if (pb && pb._ink !== EDIT){
     pb._ink = EDIT;
     var nm = EDIT ? TIP.ink : TIP.pen;
-    pb.title = nm + kk("d"); pb.setAttribute("aria-label", nm);
+    pb.title = nm + kk("d") + (EDIT ? (JA ? "：丸や矢印で場所を示して、コメントを付ける" : ": circle or point to a spot, then add a comment") : ""); pb.setAttribute("aria-label", nm);
   }
   var pen = mode === "pen" || mode === "vpen", sw = cb.querySelector(".dt-sw");
   if (sw){
@@ -902,7 +902,7 @@ function helpHtml(){
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
     row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "口述原稿" : "Narration"), row(K("c"), j ? "コメントの一覧" : "Comments"),
-    row(K("m") + " / " + K("d"), j ? "手書きメモ（編集モードの間）" : "Ink note (in edit mode)"),
+    row(K("m") + " / " + K("d"), j ? "マーカー（編集モードの間）：丸や矢印で場所を示して、コメントを付ける" : "Marker (in edit mode): circle or point to a spot, then add a comment"),
     row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "AI へのメモ" : "Note for the AI")]));
   // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();
@@ -961,7 +961,7 @@ window.addEventListener("keydown", function(e){
     else if (k === "Escape" || k === "o") closeOverview();
     // それ以外のキーも一覧の間は止める
   }
-  else if (EDIT && (k === "m" || k === "d")) toggle("ink");   // 手書きメモ（編集中だけ。ペンのキー d も）
+  else if (EDIT && (k === "m" || k === "d")) toggle("ink");   // マーカー（編集中だけ。ペンのキー d も）
   else if (EDIT && (k === "x" || k === "v" || k === "D" || k === "o" || k === "Backspace")) done = false;   // 編集中は道具と一覧のキーを使わない
   else if (k === "?") toggleHelp();
   else if (k === "Escape" && helpBox && helpBox.classList.contains("show")) toggleHelp(false);

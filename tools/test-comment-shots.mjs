@@ -1,7 +1,7 @@
 // コメントの画像（tools/comment-shots.mjs）の確認：node tools/test-comment-shots.mjs [作業用のフォルダ]
 // examples/minimal を写し、点のあるコメント・点のないコメント・解決済み・ない段階を comments.json に置いて撮る。
 // 画像があるか、印が点の所に描かれているか（輪の上の画素の色・輪の中は塞がない）、切り抜きが点を真ん中に含むか、撮るとデッキの画面が変わらないか。
-// 手書きメモの線（strokes。ここでは前の形の stroke 1 本）があれば、全体と切り抜きの両方で線の上の画素が印の色か、切り抜きが線の外接矩形＋余白を含むか
+// マーカーの線（strokes。ここでは前の形の stroke 1 本）があれば、全体と切り抜きの両方で線の上の画素が印の色か、切り抜きが線の外接矩形＋余白を含むか
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,7 +20,7 @@ let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
 
 const PIN = { x: 300, y: 400 };
-// 手書きメモ：(640, 360) の周りの半径 200×150 の楕円（120 点）。点（pin）は重心
+// マーカー：(640, 360) の周りの半径 200×150 の楕円（120 点）。点（pin）は重心
 const RING = Array.from({ length: 121 }, (_, j) => [640 + 200 * Math.cos(j * Math.PI / 60), 360 + 150 * Math.sin(j * Math.PI / 60)]);
 const comments = [
   { id: 'cpin1', created: '2026-01-01T00:00:00Z', key: '何を最小化するか:0', range: null, pin: PIN, quote: '', comment: 'ここ', status: 'open' },
@@ -68,7 +68,7 @@ ok(crop.w === 960 && crop.h === 600 && cl.x === 60 && cl.y === 250 && crop.px.sl
 ok(by.cedge.clip.x === 800 && by.cedge.clip.y === 0, 'crop at the edge stays inside the slide ' + JSON.stringify(by.cedge.clip));
 const np = await px(path.join(out, 'cnopin.png'), [[PIN.x + 15.5, PIN.y]]);
 ok(np.w === 1280 && !near(np.px[0], RED), 'no pin: the crop is the full slide, without a marker');
-// 手書きメモの線：楕円の上（右端・下端・左上の 45° あたり）は印の色、楕円の中心の外側の何もない所は印の色でない
+// マーカーの線：楕円の上（右端・下端・左上の 45° あたり）は印の色、楕円の中心の外側の何もない所は印の色でない
 const onRing = [[840, 360], [640, 510], [640 + 200 * Math.SQRT1_2, 360 - 150 * Math.SQRT1_2]];
 const ink = by.cink, ic = ink.clip;
 // cink は前の形（stroke 1 本）：strokes の 1 本として読む

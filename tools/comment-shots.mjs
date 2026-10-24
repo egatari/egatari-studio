@@ -5,7 +5,7 @@
 //
 // 画面は DECK.seek(i, k, Infinity)（段階 k の最後の状態）だけで決まるので、プレビューから画像を受け取らずに、ここで組み立てて撮り直す。
 // <デッキ>/.cache/comment-shots/ に書く（.cache は git に入れない）：
-//   <id>-full.png  スライド全体（1280×720）。点（pin）があれば印を描く。手書きメモの線（strokes。前の形の stroke も）があれば、全部の線を同じ色で描く
+//   <id>-full.png  スライド全体（1280×720）。点（pin）があれば印を描く。マーカーの線（strokes。前の形の stroke も）があれば、全部の線を同じ色で描く
 //   <id>.png       点の周り（スライドの 480×300 の範囲を 2 倍で）。線があれば、全部の線の外接矩形に余白 STROKE_MARGIN を足した範囲も含める
 //                  （480×300 より小さくはしない。スライドの外には出さない）。点がなければスライド全体と同じ
 //   index.json     [{id, key, slide, step, pin, strokes, quote, comment, full, crop, clip}]（撮れなかったものは error）
@@ -86,7 +86,7 @@ export async function commentShots(arg, o = {}) {
           DECK.seek(i, k, Infinity);
           for (const id of ['comment-shot-pin', 'comment-shot-ink']) { const o = document.getElementById(id); if (o) o.remove(); }
           if (!pin) return;
-          // 手書きメモの線：編集の画面の重ね（server/editor-ui.js の .dev-ink）と同じく、白い縁取りの上に印の色の線
+          // マーカーの線：編集の画面の重ね（server/editor-ui.js の .dev-ink）と同じく、白い縁取りの上に印の色の線
           if (strokes) {
             // 線ごとに M から始める（線どうしを繋がない）
             const NS = 'http://www.w3.org/2000/svg', d = strokes.map((s) => 'M' + s.map((q) => q[0] + ' ' + q[1]).join('L')).join('');

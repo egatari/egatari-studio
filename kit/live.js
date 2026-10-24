@@ -412,7 +412,7 @@ function ask(){
   var step = a.step === "*" ? (LP.RE.step.test(stepKey) ? stepKey : "*") : a.step;
   var ref = nextRef();
   var msg = {v: 1, t: "ask", ref: ref, activity: a.a.id, step: step, text: text.slice(0, LP.LIMITS.question)};
-  // 囲んだところ：囲んだステップのまま送るときだけ（舞台の座標、手書きメモと同じ規則で整える）。教材の版（あれば）
+  // 囲んだところ：囲んだステップのまま送るときだけ（舞台の座標、マーカーと同じ規則で整える）。教材の版（あれば）
   var strokes = region.length && regionStep === step && step !== "*" ? LP.normStrokes(region) : null;
   if (strokes) msg.strokes = strokes;
   if (typeof live.sourceSha256 === "string") msg.sourceSha256 = live.sourceSha256;

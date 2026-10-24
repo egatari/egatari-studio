@@ -1,15 +1,15 @@
-// 手書きメモ（#70：編集モードの間のコメントのペン）の確認：node tools/test-ink-comments.mjs <作業用のフォルダ>
+// マーカー（#70：編集モードの間のコメントのペン）の確認：node tools/test-ink-comments.mjs <作業用のフォルダ>
 // examples/minimal を作業用のフォルダに写して開発サーバーで開き、次を確かめる：
 //   1. 単体：線の決まり（kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid）と、編集の画面の写し（server/editor-ui.js の
 //      strokesOf・entryStrokesOf・strokesCentroidOf）が同じ答え。上限（20 本・1 本 500 点・合わせて 2000 点）、前の形の stroke を 1 本として読む。
 //      編集アプリの書き込み（app/devapi.js）も strokes を確かめて残し（前の形の stroke の知らせも strokes で書く）、pin は線の重心、線のない古いコメントもそのまま読める
-//   2. 編集モードでないとき m は何もしない。編集モードで m（と編集の板のボタン）で手書きメモになり、画面の端が「編集中：手書きメモ」。
-//      スライドの操作の帯のペンのボタンは「手書きメモ」になる（d とこのボタンは test-edit-modes の表でも確かめる）
+//   2. 編集モードでないとき m は何もしない。編集モードで m（と編集の板のボタン）でマーカーになり、画面の端が「編集中：マーカー」。
+//      スライドの操作の帯のペンのボタンは「マーカー」になる（d とこのボタンは test-edit-modes の表でも確かめる）
 //   3. 要素の周りに丸を描く → コメントの欄が開き（引用はその要素）、書きかけの線が重ね（#dev-pins）に出て、舞台（デッキの DOM・描く面）には残らない。
 //      欄が開いている間もプレビューは inert にならず、続けて 2 本（矢印・下線）描くと同じメモの線になる（欄は 1 つのまま、重ねに 3 本）
 //   4. 残す → comments.json に strokes（3 本。1 本目は期待した外接矩形・0.1 に丸め・500 点まで）、pin は全部の線の重心、src は重心の下の要素。
 //      取り消すと描いた線は全部捨てる（次の線は 1 本目から）。前の形（stroke 1 本）のコメントも一覧と重ねに出る
-//   5. 一覧を開くと、重ねに印の色の線が出る。Esc で手書きメモを切り、編集モードを出ると道具は残らない
+//   5. 一覧を開くと、重ねに印の色の線が出る。Esc でマーカーを切り、編集モードを出ると道具は残らない
 //   6. 編集モードでないときの発表のペンはこれまでどおり描ける
 //   7. comment-shots の全体と切り抜きの画像に、全部の線の上の画素が印の色で描かれ、切り抜きが全部の線を含む
 //   8. 書き出した 1 ファイル（再生専用も、そうでないものも）にコメントは入らない
@@ -154,19 +154,21 @@ try {
   await deckKey('m');
   const u1 = await UI();
   const layer = await dk().evaluate(() => { const l = document.getElementById('dt-layer'); return { cls: l.className, pe: getComputedStyle(l).pointerEvents, cursor: getComputedStyle(l).cursor }; });
-  ok(u1.tool === 'ink' && u1.modeText === '編集中：手書きメモ' && u1.mode === 'edit' && layer.pe === 'auto' && layer.cursor === 'crosshair' && (await tool()) === 'ink',
-    'in edit mode, m turns on the ink note; the indicator says 編集中：手書きメモ ' + JSON.stringify({ ...layer, mode: u1.modeText }));
+  ok(u1.tool === 'ink' && u1.modeText === '編集中：マーカー' && u1.mode === 'edit' && layer.pe === 'auto' && layer.cursor === 'crosshair' && (await tool()) === 'ink',
+    'in edit mode, m turns on the marker; the indicator says 編集中：マーカー ' + JSON.stringify({ ...layer, mode: u1.modeText }));
   ok(await page.evaluate(() => document.querySelector('#dev-badge .dv-ink').getAttribute('aria-pressed')) === 'true', 'the edit toolbar button shows it is on (aria-pressed)');
+  const inkBtn = await page.evaluate(() => { const b = document.querySelector('#dev-badge .dv-ink'); return { text: b.textContent, title: b.title }; });
+  ok(inkBtn.text === 'マーカー（m）' && inkBtn.title.startsWith('丸や矢印で場所を示して、コメントを付ける'), 'the edit toolbar button is named マーカー and its tooltip explains it ' + JSON.stringify(inkBtn));
   // 板のボタンで切る・入れる
   await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === null, null, { timeout: 2500 }));
   ok((await tool()) === null && (await UI()).modeText === '編集中', 'the edit toolbar button turns it off (indicator back to 編集中)');
   await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === 'ink', null, { timeout: 2500 }));
   ok((await tool()) === 'ink', 'and on again');
-  // スライドの操作の帯：編集中はペンのボタンだけが「手書きメモ」として残り、押している状態を見せる
+  // スライドの操作の帯：編集中はペンのボタンだけが「マーカー」として残り、押している状態を見せる
   await page.mouse.move(...await stagePt(640, 700)); await sleep(200);
   const pb = await dk().evaluate(() => { const b = document.querySelector('#dt-cb [data-b="pen"]'); return { label: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed'), shown: getComputedStyle(b).display !== 'none', laser: getComputedStyle(document.querySelector('#dt-cb [data-b="laser"]')).display }; });
   await page.screenshot({ path: path.join(work, 'ink-bar.png') });
-  ok(pb.label === '手書きメモ' && pb.pressed === 'true' && pb.shown && pb.laser === 'none', 'the slide controls show the pen button as 手書きメモ (pressed), the other tools stay hidden ' + JSON.stringify(pb));
+  ok(pb.label === 'マーカー' && pb.pressed === 'true' && pb.shown && pb.laser === 'none', 'the slide controls show the pen button as マーカー (pressed), the other tools stay hidden ' + JSON.stringify(pb));
 
   // 3. 文字のある要素の周りに丸を描く
   target = await dk().evaluate(() => {
@@ -190,7 +192,7 @@ try {
   // 欄が開いている間も描ける：プレビューは inert にならず、欄は横の板（プレビューの外）
   const lockState = await page.evaluate(() => { const f = document.getElementById('deck'), c = document.getElementById('dev-comment').getBoundingClientRect(), r = f.getBoundingClientRect();
     return { inert: f.inert, locked: f.classList.contains('dev-locked'), overlap: !(c.right <= r.left || c.left >= r.right || c.bottom <= r.top || c.top >= r.bottom) }; });
-  ok(!lockState.inert && !lockState.locked && !lockState.overlap && (await UI()).editing === false, 'while the ink note box is open the preview stays drawable and the box does not cover it ' + JSON.stringify(lockState));
+  ok(!lockState.inert && !lockState.locked && !lockState.overlap && (await UI()).editing === false, 'while the marker box is open the preview stays drawable and the box does not cover it ' + JSON.stringify(lockState));
   // 2 本目（右から指す矢印）と 3 本目（下線）：同じメモの線になる
   const arrow = [[target.cx + RX + 120, target.cy], [target.cx + RX + 10, target.cy], [target.cx + RX + 28, target.cy - 14], [target.cx + RX + 10, target.cy], [target.cx + RX + 28, target.cy + 14]];
   const under = Array.from({ length: 11 }, (_, j) => [target.cx - RX / 2 + j * RX / 10, target.cy + RY + 8]);
@@ -219,7 +221,7 @@ try {
   const cen = strokesCentroid(S);
   ok(c.pin && c.pin.x === cen.x && c.pin.y === cen.y && Math.abs(c.pin.x - target.cx) < RX && Math.abs(c.pin.y - target.cy) < target.h / 2, 'pin is the centroid over all strokes ' + JSON.stringify({ pin: c.pin, cen, one: strokeCentroid(s) }));
   ok(c.range === target.src && c.key === '何を最小化するか:0' && c.comment === 'この式を丸で囲んだ所を短く', 'key and src come from the element under the centroid ' + JSON.stringify({ key: c.key, range: c.range, want: target.src }));
-  ok((await tool()) === 'ink', 'the ink note stays on for the next mark');
+  ok((await tool()) === 'ink', 'the marker stays on for the next mark');
   // 取り消すと描いた線は全部捨てる：次のメモは 1 本目から
   await drawOnStage(Array.from({ length: 12 }, (_, j) => [200 + j * 20, 560]));
   await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
@@ -255,11 +257,11 @@ try {
   ok((await UI()).strokes === 0, 'no stroke is drawn on another step');
   await dk().evaluate(() => DECK.go(1, 0, false)); await sleep(300);
   await deckKey('Escape');
-  ok((await tool()) === null && (await UI()).modeText === '編集中', 'Esc turns the ink note off');
+  ok((await tool()) === null && (await UI()).modeText === '編集中', 'Esc turns the marker off');
   await deckKey('m');
   await page.evaluate(() => window.__DEV_UI.toggleEdit(false));
   await until(async () => (await UI()).modeText === '表示');
-  ok((await tool()) === null && (await UI()).modeText === '表示', 'leaving edit mode turns the ink note off');
+  ok((await tool()) === null && (await UI()).modeText === '表示', 'leaving edit mode turns the marker off');
   await page.evaluate(() => window.__DEV_UI.toggleComments(false));
 
   // 6. 発表のペン（編集モードでないとき）

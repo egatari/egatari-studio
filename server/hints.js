@@ -6,12 +6,12 @@
 // デッキ → 親：{type: "edit-hint", kind, …}
 //   ready                           実行系の準備ができた（親は位置を戻し、編集モードの状態を送り返す）
 //   key      {key}                  e・n・c・Escape が押された（入力中でないとき）
-//   tool     {mode}                 発表の道具が変わった（"laser"・"pen"・"vpen"、編集中の手書きメモ "ink" か null。kit/tools.js の deck:tool。親は画面の端に今のモードを出す）
+//   tool     {mode}                 発表の道具が変わった（"laser"・"pen"・"vpen"、編集中のマーカー "ink" か null。kit/tools.js の deck:tool。親は画面の端に今のモードを出す）
 //   edit     {src, h, tag, rect}     編集モードでダブルクリックした要素（data-src の範囲と data-src-h）
 //   comment  {key, src, quote, near, pin, rect} Alt/⌥+クリックした所（段階の鍵・要素の範囲・80 字までの引用、
 //            near：押した所の近くの字（部品の中の札・語など。60 字まで）、pin：押した点のスライドの座標 {x, y}（1280×720、表示の倍率によらない））
 //            段階の途中（動いている間）に押しても、点は鍵の段階の最後の状態（DECK.seek(i, k, Infinity)）を指すものとして残す
-//   comment  {…, strokes}           手書きメモ（編集中の道具 ink、m）で線を描き終えるたび（kit/tools.js の deck:ink）。strokes は書きかけのメモの線の全部
+//   comment  {…, strokes}           マーカー（編集中の道具 ink、m）で線を描き終えるたび（kit/tools.js の deck:ink）。strokes は書きかけのメモの線の全部
 //            [[[x, y], …], …]（スライドの座標。親が edit-ink-reset を送るか段階が変わるまで足していく。20 本まで）。
 //            pin は全部の線の重心（長さで重みを付けた区間の中点の平均）、key・src・quote・near は Alt+クリックと同じく、重心の下の要素から
 //            （重心が舞台の外・描く面の外なら 1 本目の 1 点目の下）。線を丸め・間引き・確かめるのは親の画面と書き込む側（kit/core/comment-core.mjs の normStrokes）
@@ -20,8 +20,8 @@
 //   {type: "edit-state", edit, target}  編集モードの枠を出す・消す、target の要素（data-src の範囲か "#comment"）に印。
 //                                       編集モードが変わったら document に deck:edit {on} を送る（kit/deck.js・kit/tools.js が発表の道具と自動再生・暗転・一覧などを切る）
 //   {type: "edit-go-key", key}          その段階へ移る（コメントの一覧から）
-//   {type: "edit-ink", on}              手書きメモの道具（kit/tools.js の ink）を出す・切る（編集モードの間だけ）
-//   {type: "edit-ink-reset"}            書きかけの手書きメモの線を捨てる（親がメモを残した・取り消した）
+//   {type: "edit-ink", on}              マーカーの道具（kit/tools.js の ink）を出す・切る（編集モードの間だけ）
+//   {type: "edit-ink-reset"}            書きかけのマーカーの線を捨てる（親がメモを残した・取り消した）
 // 部品はすべて class="edit-ui"（印刷では base.css が隠す）
 (function(){
 "use strict";
@@ -187,7 +187,7 @@ document.addEventListener("click", function(e){
   e.preventDefault(); e.stopPropagation();
   send(commentHint(e, e.target));
 }, true);
-// 手書きメモ：全部の線の重心（なければ 1 本目の 1 点目）の下の要素を、描く面（#dt-layer）を除いて探す。影の木（shadow DOM）の中へも降りる
+// マーカー：全部の線の重心（なければ 1 本目の 1 点目）の下の要素を、描く面（#dt-layer）を除いて探す。影の木（shadow DOM）の中へも降りる
 function centroid(S){
   var sx = 0, sy = 0, sl = 0;
   S.forEach(function(P){
@@ -221,7 +221,7 @@ document.addEventListener("deck:ink", function(e){
   if (!editOn || !window.DECK || !Array.isArray(P) || P.length < 2) return;
   var key = window.DECK.state().key;
   if (key !== inkKey){ inkPend = []; inkKey = key; }
-  if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A note holds at most 20 marks" : "1 つのメモの印は 20 本まで"); return; }
+  if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A comment holds at most 20 marks" : "1 つのコメントの印は 20 本まで"); return; }
   var S = inkPend.concat([P]), c = centroid(S), at = pointAt(c[0], c[1]) || pointAt(S[0][0][0], S[0][0][1]);
   if (!at) return;
   inkPend = S;
