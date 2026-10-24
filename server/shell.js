@@ -53,15 +53,17 @@ es.addEventListener('reload', () => {
 });
 
 // ---------------------------------------------------------------- 発表者ビュー（外枠が開く窓。その中でもデッキは sandbox の iframe）
+// デッキの p は入り切り（kit/deck.js の openPresenter と同じ）：開いていれば閉じて、フォーカスをプレビューに返す
 let pres = null;
-function openPresenter() {
+function togglePresenter() {
+  if (pres && !pres.closed) { try { pres.close(); } catch { /* 無視 */ } pres = null; try { frame.focus(); } catch { /* 無視 */ } return; }
   pres = window.open('/?presenter=1', 'deck-presenter', 'width=1400,height=820');
 }
 window.addEventListener('message', (e) => {
   const m = e.data || {};
   if (e.source === frame.contentWindow) {
     if (ui.message(e)) { /* 知らせ・位置 */ }
-    if (m.type === 'app-open-presenter') openPresenter();
+    if (m.type === 'app-open-presenter') togglePresenter();
     if (typeof m.type === 'string' && /^deck-/.test(m.type) && pres && !pres.closed) pres.postMessage({ type: 'app-pres-down', m }, '*');
   } else if (pres && e.source === pres && m.type === 'app-pres-up' && m.m && typeof m.m.type === 'string' && /^deck-/.test(m.m.type)) {
     frame.contentWindow && frame.contentWindow.postMessage(m.m, '*');

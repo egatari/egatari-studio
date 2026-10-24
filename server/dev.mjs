@@ -113,7 +113,8 @@ function shellPage() {
 </head><body><div id="wrap"><iframe id="deck" title="slides" sandbox="allow-scripts allow-modals" allow="fullscreen; autoplay"></iframe></div><div id="dev-bar"></div>
 <script type="module" src="/__dev/shell.js"></script></body></html>`;
 }
-// 発表者ビューの窓（外枠が開く）：中のデッキも sandbox の iframe。外枠（opener）との間の知らせを中継するだけで、合言葉は持たない
+// 発表者ビューの窓（外枠が開く）：中のデッキも sandbox の iframe。外枠（opener）との間の知らせを中継するだけで、合言葉は持たない。
+// 中の発表者ビューの Esc・p・閉じるのボタン（app-pres-close）と、この窓で押した Esc・p で窓を閉じる（全画面なら全画面をやめるだけ。app/main.js の PRES_DOC と同じ）
 function presenterPage() {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Presenter — ${escHtml(deckBase)}</title><link rel="icon" href="data:,">
 <style>html,body{margin:0;height:100%;background:#1b1b1b;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head>
@@ -122,8 +123,17 @@ function presenterPage() {
 const PRESENTER_JS = `var f=document.getElementById("pf"),n=0,cap=JSON.parse(document.getElementById("pres-cfg").textContent).cap;
 function load(){f.src="/preview?presenter=1&cap="+encodeURIComponent(cap)+(n?"&_r="+n:"");n++;}
 load();
+function closeMe(){
+  if(document.fullscreenElement){ if(document.exitFullscreen) document.exitFullscreen().catch(function(){}); return; }
+  try{ if(opener&&!opener.closed) opener.focus(); }catch(e){}
+  window.close();
+}
+addEventListener("keydown",function(e){
+  if(e.target!==f&&!e.defaultPrevented&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&(e.key==="Escape"||e.key==="p")){ if(e.key==="p"||!document.fullscreenElement) e.preventDefault(); closeMe(); }
+});
 addEventListener("message",function(e){
   var m=e.data||{};
+  if(e.source===f.contentWindow&&m.type==="app-pres-close"){ closeMe(); return; }
   if(e.source===f.contentWindow){ if(opener&&!opener.closed) opener.postMessage({type:"app-pres-up",m:m},"*"); }
   else if(opener&&e.source===opener){ if(m.type==="app-pres-down"&&m.m) f.contentWindow&&f.contentWindow.postMessage(m.m,"*"); else if(m.type==="app-pres-reload") load(); }
 });`;
@@ -416,7 +426,7 @@ const server = http.createServer(async (req, res) => {
       if (!b.comment || !String(b.comment).trim()) return send(res, 400, { error: '指示が空です' });
       const list = readComments();
       // pin（押した点のスライドの座標）は確かめて丸める（kit/core/comment-core.mjs）。なければ・形が違えば付けない（古いコメントと同じ形）
-      // strokes（手書きメモの線。前の形の stroke も 1 本として読む）も同じく確かめて丸め・間引く。なければ・点（pin）がなければ付けない。
+      // strokes（マーカーの線。前の形の stroke も 1 本として読む）も同じく確かめて丸め・間引く。なければ・点（pin）がなければ付けない。
       // 線があれば pin は線の重心にする（docs/contract.md §13）。書くのは strokes だけ
       let pin = normPin(b.pin);
       const strokes = pin ? entryStrokes(b) : null;
