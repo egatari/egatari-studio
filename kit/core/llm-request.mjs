@@ -4,14 +4,14 @@
 // 指示の本体（共通の本体・系列）はそのままで、最後の節だけを埋めたものに替える（指示の文章を変えないので、毎晩の評価の記録は動かない）
 //
 //   requestForm(lang) → {title, A: {head, fields: [{key, label, sep, value}]}, B: {head, text, fields: […]}}
-//     A（新しく作る）の key：topic・audience・length・language・speakers・examples。B（ここまでの議論の内容で作る）の key：audience・length
+//     A（新しく作る）の key：topic・audience・length・language・speakers・examples。B（渡した資料と話し合いの内容で作る）の key も同じ
 //   filledRequest({kind: 'A' | 'B', values: {key: 文字列}}, lang) → 埋めた「頼みたいこと」（選ばなかった方と、空の項目は入れない）
 //   packWithRequest({series, lang, request}) → buildPack と同じ組み立てで、最後の節を request（filledRequest の結果）に替えたもの。
 //     request がなければ buildPack と同じ。plan：お使いの AI（'free' 既定 | 'paid'。kit/core/llm-pack-assemble.mjs）。exclude：使わせない部品（新規作成で外した言いたいこと。一覧と説明・表・見本から除く）。off：外した札（表の行を出さない）
 import { PACK } from './llm-pack-data.mjs';
 import { requestOf, packParts } from './llm-pack-assemble.mjs';
 
-const KEYS = { A: ['title', 'audience', 'length', 'language', 'speakers', 'wishes'], B: ['title', 'audience', 'length'] };
+const KEYS = { A: ['title', 'audience', 'length', 'language', 'speakers', 'wishes'], B: ['title', 'audience', 'length', 'language', 'speakers', 'wishes'] };
 
 export function requestForm(lang = 'en') {
   const lines = requestOf(PACK, lang).split('\n');

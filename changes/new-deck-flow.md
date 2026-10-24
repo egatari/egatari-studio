@@ -7,6 +7,9 @@
 - Instructions for the AI (pack text): the request form has **Title (used as is on the cover)** instead of Topic, **Other wishes** instead of examples or figures, and a title line in B. B now reads “Make the lesson from the material given in this chat and what we have discussed so far.” R-dialogue keeps at most two roles when asked for three or more speakers.
 - The free-plan cap for every subject set is 59 KB (was 58). Over a cap, `npm run gen` names the pack (plan, language, subject set), the bytes over and its three largest sections.
 - docs/authoring-with-llms*.md and docs/llm-parts/ now show the full (paid-plan) pack. They have a note that a free plan should copy the lighter version from New…, and a size table for both plans.
+- **Create**, **Insert** and **Replace** stay in place and, while disabled, show the first missing thing right beside them (“Answer step 1”, “Write the title in step 2”, “Paste the slides in step 5”, and the step 3 forms for Insert and Revise). Notes such as “It will be made without a script” move from the left of the footer to beside the button.
+- Pasting: a code block pasted with text around it or with its fence lines leaves only the extracted block in the field and says so.
+- New…, “Already given to the chat AI”: the More fold (language, speakers, other wishes) is shown again, and those lines go into the B request in the same form as A. Pack text: the B heading is now “B. From the material and discussion in this chat” (ja 「B. 渡した資料と話し合いの内容で作る」), and the blank B form has Language, Speakers and Other wishes. Instructions pack `d737805d` → `214a0876`.
 
 ### Added
 

@@ -389,4 +389,4 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-st.ok{color:var(--fg);font-weight:600}
 #dlg .paste-st.bad{color:var(--bad-fg)}
 #dlg .paste-info{margin:0 0 6px}
-#dlg .paste-go-note{margin-right:auto;font-size:13px}
+#dlg .paste-go-note{align-self:center;font-size:13px;color:var(--muted)}

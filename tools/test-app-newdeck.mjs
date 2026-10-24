@@ -9,7 +9,8 @@
 // S7 S2 のデッキを修正：直したスライドだけの出力 → そのスライドだけを置き換える（台本は今のまま）
 // S3 会社員（en・有料のプラン）：長さを 20 分 → 2 回に分けて頼む（1 分 ≒ 1 枚）・① の場面から推した分野・⑤ は構成案の欄から → 1〜6 枚目 →［作成］
 // S4 国語の先生（ja）：② のタイトルと内容から国語に印・詳しくの要約（言語・話す人・そのほかの希望）・［変更］で直す・自分で替えた印は上書きしない・コードブロックを 1 つずつ
-// S5 大学の教員（ja・有料のプラン）：内容は「チャットの AI に渡してある」→ 詳しくを隠し、B の頼み方でタイトル・だれ向け・長さ
+// S5 大学の教員（ja・有料のプラン）：内容は「チャットの AI に渡してある」→ B の頼み方。詳しくも出し、A と同じ形でタイトル・だれ向け・長さ・言語・話者・希望
+// どの場面も：押せない［作成］［挿入］［置き換える］の横に、欠けているもののうち最初の 1 つ（「① に答えてください」など）。押せるときの添え書きもボタンの横
 // 画像（shotDir があれば）：flow-s1-kind.png・flow-s1-answered.png・flow-s1-paste.png・flow-s2-moved.png・flow-s3-outline.png・flow-s4-more.png・flow-s5.png・flow-s6-insert.png・flow-s7-revise.png
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,7 +51,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
   const tailOf = (c, lang) => c.slice(c.indexOf(lang === 'ja' ? '# 頼みたいこと' : '# What I want'));
   const files = (p) => p.evaluate(() => { const f = window.__APP_TEST.files(); if (!f) return null; const d = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, d(v)])); });
   const status = (p) => p.evaluate(() => ({ deck: document.getElementById('paste-deck-st').textContent, narr: document.getElementById('paste-narr-st').textContent, info: document.getElementById('paste-info').hidden ? '' : document.getElementById('paste-info').textContent,
-    go: document.getElementById('dlg-import').textContent, goOff: document.getElementById('dlg-import').disabled, note: (document.getElementById('paste-go-note') || {}).textContent || '' }));
+    go: document.getElementById('dlg-import').textContent, goOff: document.getElementById('dlg-import').disabled, note: (document.getElementById('paste-go-note') || {}).textContent || '',
+    beside: !!document.getElementById('paste-go-note') && document.getElementById('dlg-import').previousElementSibling === document.getElementById('paste-go-note') }));
   // ［作成］：新しい 1 ファイルとして開き、品質チェックの板が出るまで
   const create = async (p, dirty = false) => {
     const before = await p.evaluate(() => (window.__APP_TEST.state().portable || {}).docId || null);
@@ -71,6 +73,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const heads = await p1.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
     ok(heads.join('|') === '① どんな場面で使いますか|② 何について、だれに向けて作りますか|③ どんな見た目にしますか|④ チャットの AI に指示を送ります|⑤ AI の出力を貼り付けます', 'S1: five questions in thinking order: ' + heads.join(' / '));
     ok(JSON.stringify(await visible(p1, ['paste-step-kind', 'paste-step-content', 'paste-step-theme', 'paste-step-send', 'paste-step-paste'])) === '[true,false,false,false,false]', 'S1: only ① is open at first; the later questions appear as they are reached');
+    let st0 = await status(p1);
+    ok(st0.go === '作成' && st0.goOff && st0.note === '① に答えてください' && st0.beside, 'S1: 「作成」 stays in place, disabled, with 「① に答えてください」 right beside it: ' + JSON.stringify(st0));
     ok((await p1.$$eval('#paste-cat input:checked', (xs) => xs.length)) === 0 && await p1.isDisabled('#paste-next-kind') && await p1.isHidden('#paste-sub')
       && (await text(p1, '#paste-step-kind .hint')) === '場面に合った組み立て（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます' && !(await p1.$('#paste-step-kind button:has-text("飛ばす")')),
       'S1 ①: nothing is pre-selected, 「次へ」 is disabled until there is an answer, the hint names 「その他」, no skip button');
@@ -95,6 +99,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && (await text(p1, '#paste-audience-mode')).includes('AI に任せる（① の場面から考えます）') && (await text(p1, '#paste-length-mode')).includes('AI に任せる（5〜8 枚くらいにします）') && (await text(p1, '#paste-content-mode')).includes('AI に任せる（タイトルだけで考えます）')
       && (await text(p1, '#paste-more-h')) === '詳しく：日本語・1 人で説明' && !(await p1.$('#dlg-body [name=examples]')),
       'S1 ②: the title is required (「次へ」 disabled), audience, length and content default to 「AI に任せる」 with their fields closed, the 詳しく fold says 「日本語・1 人で説明」; no 「入れたい例や図」');
+    st0 = await status(p1);
+    ok(st0.goOff && st0.note === '② のタイトルを書いてください' && st0.beside, 'S1 ②: with ① answered, the reason beside 「作成」 moves on to 「② のタイトルを書いてください」');
     await p1.check('#paste-audience-mode-write');
     ok(await p1.isVisible('#paste-audience') && (await p1.getAttribute('#paste-audience', 'placeholder')) === '例：小学 6 年生', 'S1 ②: choosing 「書く」 opens the field, with a placeholder for the setting');
     await p1.check('#paste-audience-mode-ai');
@@ -123,7 +129,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await text(p1, '#paste-step3-hint')).startsWith('AI の出力には、灰色の枠（コードブロック）が 2 つあります。') && (await text(p1, 'label[for=paste-deck]')) === 'スライド（deck.html）' && (await text(p1, 'label[for=paste-narr]')) === '台本（narration.md）'
       && (await p1.getAttribute('#paste-deck', 'placeholder')) === 'deck.html のコードブロックを貼り付け', 'S1 ⑤: two fields, スライド（deck.html） and 台本（narration.md）; the hint introduces the code blocks as grey boxes');
     let st = await status(p1);
-    ok(st.deck === 'まだ貼っていません' && st.narr === 'まだ貼っていません' && st.go === '作成' && st.goOff && !(await p1.$('#dlg-only')) && !(await p1.$('#paste-reset')) && !(await p1.$('#paste-text')), 'S1 ⑤: both say 「まだ貼っていません」; 「作成」 waits for the slides; no hidden waiting state, no 「これだけで取り込む」 or reset');
+    ok(st.deck === 'まだ貼っていません' && st.narr === 'まだ貼っていません' && st.go === '作成' && st.goOff && st.note === '⑤ にスライドを貼り付けてください' && st.beside && !(await p1.$('#dlg-only')) && !(await p1.$('#paste-reset')) && !(await p1.$('#paste-text')), 'S1 ⑤: both say 「まだ貼っていません」; 「作成」 waits for the slides and says 「⑤ にスライドを貼り付けてください」 beside it; no hidden waiting state, no 「これだけで取り込む」 or reset');
     const cdeck = worked('common', 'deck.html'), cnarr = worked('common', 'narration.md');
     await p1.fill('#paste-deck', replyOf(cdeck, cnarr));
     st = await status(p1);
@@ -149,7 +155,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const i2 = await copy(p1);
     ok(!i1.includes('# AI への指示') && i1.includes('練習問題を 1 つ') && i2.startsWith('# AI への指示') && i2.endsWith(i1) && /AI が書き終えたら ③ へ$/.test(await text(p1, '#paste-copied')), 'S6: the short instructions, and with 「別のチャット」 the full instructions first');
     st = await status(p1);
-    ok(st.go === '挿入' && st.goOff, 'S6 ③: the same two fields; 「挿入」 waits for the slides');
+    ok(st.go === '挿入' && st.goOff && st.note === '③ にスライドを貼り付けてください' && st.beside, 'S6 ③: the same two fields; 「挿入」 waits for the slides and says 「③ にスライドを貼り付けてください」 beside it');
     const insDeck = '<section class="slide">\n  <h2>練習問題</h2>\n  <div class="body"><p>はさみの支点はどこ？</p></div>\n  <div class="concl"><span>支点は真ん中</span></div>\n</section>';
     const insNarr = '## 練習問題\n[0] はさみの支点はどこでしょう。\n[concl] 支点は真ん中にあります。';
     await p1.fill('#paste-narr', 'できました。\n\n```deck.html\n' + insDeck + '\n```\n\n```narration.md\n' + insNarr + '\n```\n');
@@ -198,12 +204,13 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const bdeck = worked('business', 'deck.html'), bnarr = worked('business', 'narration.md');
     await p2.fill('#paste-narr', bdeck.trim());
     st = await status(p2);
-    ok(st.deck === '✓ 3 slides' && st.narr === 'Not pasted yet' && st.info === 'Moved the slides from the script field to the slides field.' && (await p2.inputValue('#paste-narr')) === '' && !st.goOff && st.note === 'It will be made without a script (you can write one later).',
+    ok(st.deck === '✓ 3 slides' && st.narr === 'Not pasted yet' && st.info === 'Moved the slides from the script field to the slides field.' && (await p2.inputValue('#paste-narr')) === '' && !st.goOff && st.note === 'It will be made without a script (you can write one later).' && st.beside,
       'S2 ⑤: slides pasted into the script field move to the slides field; with no script, “Create” is enabled and says it is made without a script: ' + JSON.stringify(st));
     await shot(p2, 'flow-s2-moved.png', 'paste-step-paste');
     await p2.fill('#paste-deck', bnarr.trim());
     st = await status(p2);
-    ok(st.deck === 'Not pasted yet' && st.narr === '✓ Script, 3 sections' && st.info === 'Moved the script from the slides field to the script field.' && st.goOff, 'S2 ⑤: the script pasted into the slides field moves to the script field (and the slides field is now empty)');
+    ok(st.deck === 'Not pasted yet' && st.narr === '✓ Script, 3 sections' && st.info === 'Moved the script from the slides field to the script field.' && st.goOff && st.note === 'Paste the slides in step 5' && st.beside
+      && (await p2.inputValue('#paste-narr')) === bnarr.trim() && (await p2.inputValue('#paste-deck')) === '', 'S2 ⑤: the script pasted into the slides field moves to the script field, which keeps it (the slides field is now empty); “Create” says “Paste the slides in step 5”');
     await p2.fill('#paste-deck', bdeck.trim());
     st = await status(p2);
     ok(st.deck === '✓ 3 slides' && st.narr === '✓ Script, 3 sections' && st.note === '' && !st.goOff, 'S2 ⑤: both fields are filled; no note beside “Create”');
@@ -214,7 +221,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await clickCommand(p2, '#b-revise-cmd');
     await p2.waitForSelector('#dlg[open] #paste-wish');
     const rh = await p2.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
-    ok((await text(p2, '#dlg-title')) === 'Revise' && rh.join('|') === '1. What should be changed?|2. Send the fix request to your chat AI|3. Paste the AI’s output' && (await status(p2)).go === 'Replace' && (await status(p2)).goOff
+    ok((await text(p2, '#dlg-title')) === 'Revise' && rh.join('|') === '1. What should be changed?|2. Send the fix request to your chat AI|3. Paste the AI’s output' && (await status(p2)).go === 'Replace' && (await status(p2)).goOff && (await status(p2)).note === 'Paste the slides or the script in step 3' && (await status(p2)).beside
       && (await p2.$$eval('#paste-step-paste .hint', (xs) => xs.map((x) => x.textContent))).includes('If only the fixed slides are in the output, only those slides are replaced.'),
       'S7: “Revise” with three questions; “Replace” waits for the output; the hint says only fixed slides are replaced');
     const docId7 = (await p2.evaluate(() => window.__APP_TEST.state().portable.docId));
@@ -222,7 +229,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const sec = F2['deck.html'].match(new RegExp(`<section class="slide[^"]*" id="${sid}">[\\s\\S]*?</section>`))[0].replace('導入から 3 か月の結果', '3 か月の結果');
     await p2.fill('#paste-deck', 'Here is the fixed slide.\n\n```deck.html\n' + sec + '\n```\n');
     st = await status(p2);
-    ok(st.deck === '✓ 1 slide' && st.narr === 'Not pasted yet' && st.note === 'The script stays as it is.' && !st.goOff, 'S7 ③: one fixed slide; “Replace” is enabled and says the script stays');
+    ok(st.deck === '✓ 1 slide' && st.narr === 'Not pasted yet' && st.note === 'The script stays as it is.' && st.beside && !st.goOff
+      && st.info === 'Took the slides code block out of the output.' && (await p2.inputValue('#paste-deck')) === sec,
+      'S7 ③: one fixed slide; the field keeps just the extracted code block and says so; “Replace” is enabled and says the script stays');
     await shot(p2, 'flow-s7-revise.png', 'paste-step-paste');
     await p2.evaluate(() => { document.getElementById('panel').hidden = true; });
     await clickDlg(p2, '#dlg-import');
@@ -252,8 +261,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const c3 = await copy(p3);
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: kokugo') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
       'S3 ④: the paid pack with the outline request; the message says to go to step 5 when the outline is out');
-    ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')),
-      'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile');
+    ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
+      'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile and says “Paste the outline in step 5”');
     await p3.fill('#paste-outline-text', '```outline\n| 1 | A | x |\n');
     await p3.click('#paste-outline-next');
     ok(/is not closed/.test(await text(p3, '#paste-outline-msg')), 'S3 ⑤: an unclosed outline is refused with a reason');
@@ -320,7 +329,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const kdeck = worked('kokugo', 'deck.html'), knarr = worked('kokugo', 'narration.md');
     await p4.fill('#paste-deck', '```deck.html\n' + kdeck.trim() + '\n```');
     st = await status(p4);
-    ok(st.deck === '✓ スライド 2 枚' && st.narr === 'まだ貼っていません' && st.note === '台本なしで作成します（台本はあとで書けます）' && !st.goOff, 'S4 ⑤: the slides code block alone: 「台本なしで作成します」 beside 「作成」');
+    ok(st.deck === '✓ スライド 2 枚' && st.narr === 'まだ貼っていません' && st.note === '台本なしで作成します（台本はあとで書けます）' && st.beside && !st.goOff
+      && st.info === '出力からスライドのコードブロックを取り出しました' && (await p4.inputValue('#paste-deck')) === kdeck.trim(), 'S4 ⑤: the slides code block alone: the field keeps the block without its fence and says so; 「台本なしで作成します」 right beside 「作成」');
     await p4.fill('#paste-narr', '```narration.md\n' + knarr.trim() + '\n```');
     st = await status(p4);
     ok(st.narr === '✓ 台本 2 節' && st.note === '', 'S4 ⑤: then the script code block');
@@ -338,9 +348,11 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S5 ②: 内容 has three answers (AI に任せる, ここに書く・貼る, チャットの AI に渡してある); no separate “already discussed” switch');
     await p5.fill('#paste-title', 'ゼミの進め方');
     await p5.check('#paste-content-mode-given');
-    ok(await p5.isVisible('#paste-content-given-note') && (await text(p5, '#paste-content-given-note')) === '指示は、その資料を渡したチャットに貼り付けてください' && await p5.isHidden('#paste-content') && await p5.isHidden('#paste-more')
+    ok(await p5.isVisible('#paste-content-given-note') && (await text(p5, '#paste-content-given-note')) === '指示は、その資料を渡したチャットに貼り付けてください' && await p5.isHidden('#paste-content') && await p5.isVisible('#paste-more')
       && await p5.isVisible('#paste-audience-mode') && await p5.isVisible('#paste-length-mode'),
-      'S5 ②: 「チャットの AI に渡してある」 says to paste into that chat; the title, audience and length are still asked (the 詳しく fold is not)');
+      'S5 ②: 「チャットの AI に渡してある」 says to paste into that chat; the title, audience, length and the 詳しく fold are still asked');
+    await p5.click('#paste-more-h');
+    await p5.fill('#paste-wishes', '最後に議論する問いを 1 つ');
     await p5.check('#paste-audience-mode-write');
     await p5.fill('#paste-audience', '研究室の学部 4 年生');
     await shot(p5, 'flow-s5.png', 'paste-step-content');
@@ -350,14 +362,14 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p5.check('#paste-plan-paid');
     const c5 = await copy(p5);
     const sem = sub('research', 'seminar');
-    ok(tailOf(c5, 'ja') === `# 頼みたいこと\n\n**B. ここまでの議論の内容で作る**\n\nこのチャットで渡した資料と、ここまでの話し合いの内容で、教材を作ってください。\n\n- タイトル（表紙にそのまま使う）：ゼミの進め方\n- 対象（だれ向け）：研究室の学部 4 年生\n- テーマ：default（<html data-theme="default">）\n- 場面：研究発表／ゼミ・進捗報告\n- 構成の型：${sem.structure.ja}\n- 見せ方：${sem.show.ja}\n`,
-      'S5 ④: the request asks for the lesson from the material and the discussion, with the title and audience (the length left to the AI is not written)');
+    ok(tailOf(c5, 'ja') === `# 頼みたいこと\n\n**B. 渡した資料と話し合いの内容で作る**\n\nこのチャットで渡した資料と、ここまでの話し合いの内容で、教材を作ってください。\n\n- タイトル（表紙にそのまま使う）：ゼミの進め方\n- 対象（だれ向け）：研究室の学部 4 年生\n- 言語：日本語\n- 話者：1 人\n- そのほかの希望：最後に議論する問いを 1 つ\n- テーマ：default（<html data-theme="default">）\n- 場面：研究発表／ゼミ・進捗報告\n- 構成の型：${sem.structure.ja}\n- 見せ方：${sem.show.ja}\n`,
+      'S5 ④: the request (B. 渡した資料と話し合いの内容で作る) has the title, audience and the 詳しく lines in the same form as A (the length left to the AI is not written)');
     // 長さを指定すると B にも書く
     await p5.click('#paste-change-content');
     await p5.check('#paste-length-mode-write');
     await p5.fill('#paste-length-n', '7');
     await p5.click('#paste-next-content');
-    ok(tailOf(await copy(p5), 'ja').includes('- 対象（だれ向け）：研究室の学部 4 年生\n- 長さ（枚数か分）：7 枚\n- テーマ'), 'S5 ④: a length set on this path is written too');
+    ok(tailOf(await copy(p5), 'ja').includes('- 対象（だれ向け）：研究室の学部 4 年生\n- 長さ（枚数か分）：7 枚\n- 言語：日本語'), 'S5 ④: a length set on this path is written too');
     await p5.fill('#paste-narr', replyOf(worked('academic', 'deck.html'), worked('academic', 'narration.md')));
     st = await status(p5);
     ok(st.deck === '✓ スライド 3 枚' && st.narr === '✓ 台本 3 節' && st.info === '出力の全体だったので、スライドと台本に分けました', 'S5 ⑤: the whole output pasted into the script field is split');

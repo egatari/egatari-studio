@@ -224,11 +224,13 @@ ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混
   // 閉じていない囲みは今までどおり unclosed
   assert.equal(pastePart('```deck.html\n' + D).error.code, 'unclosed');
 });
-ok('頼みたいこと：指示の記入欄（A 6 項目・B 3 項目）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
+ok('頼みたいこと：指示の記入欄（A・B とも 6 項目。同じ名前）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
   for (const lang of ['en', 'ja']) {
     const F = requestForm(lang);
     assert.deepEqual(F.A.fields.map((f) => f.key), ['title', 'audience', 'length', 'language', 'speakers', 'wishes']);
-    assert.deepEqual(F.B.fields.map((f) => f.key), ['title', 'audience', 'length']);
+    assert.deepEqual(F.B.fields.map((f) => f.key), ['title', 'audience', 'length', 'language', 'speakers', 'wishes']);
+    assert.deepEqual(F.B.fields.map((f) => f.label), F.A.fields.map((f) => f.label), 'B has the same lines as A');
+    assert.equal(F.B.head, lang === 'ja' ? 'B. 渡した資料と話し合いの内容で作る' : 'B. From the material and discussion in this chat');
     assert.ok(/^(Title \(used as is on the cover\)|タイトル（表紙にそのまま使う）)$/.test(F.A.fields[0].label) && F.A.fields[0].label === F.B.fields[0].label, F.A.fields[0].label);
     assert.ok(F.A.fields.find((f) => f.key === 'speakers').value, 'speakers has a default');
     assert.ok(requestBody(lang).startsWith('# ' + F.title + '\n'));

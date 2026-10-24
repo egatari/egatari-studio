@@ -38,6 +38,7 @@ import { memoryWorkspace } from './workspace.js';
 
 
 // 画面の言葉（handoff/new-deck-flow-2026-10-25.md の文言の表。表にないものは handoff/ux-wording-principles.md の決まりで決めた）
+const CIRCLED = ['', '①', '②', '③', '④', '⑤', '⑥'];
 const TX = {
   ja: {
     method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
@@ -117,6 +118,10 @@ const TX = {
     moved: { deck: '台本の欄に入っていたスライドを、スライドの欄へ移しました', narr: 'スライドの欄に入っていた台本を、台本の欄へ移しました' },
     noNarr: { new: '台本なしで作成します（台本はあとで書けます）', insert: '台本なしで挿入します（台本はあとで書けます）', replace: '台本は今のままにします' },
     keepDeck: 'スライドは今のままにします',
+    extracted: { deck: '出力からスライドのコードブロックを取り出しました', narr: '出力から台本のコードブロックを取り出しました' },
+    // 押せない［作成］［挿入］［置き換える］の横：欠けているもののうち最初の 1 つ（n は問いの番号）
+    why: { kind: '① に答えてください', title: '② のタイトルを書いてください', deck: (n) => `${CIRCLED[n]} にスライドを貼り付けてください`, either: (n) => `${CIRCLED[n]} にスライドか台本を貼り付けてください`,
+      outline: (n) => `${CIRCLED[n]} に構成案を貼り付けてください`, fix: (n) => `${CIRCLED[n]} の欄の下の知らせを見てください` },
     go: { new: '作成', insert: '挿入', replace: '置き換える' },
     replaceHint: '直したスライドだけが出力されたときは、そのスライドだけを置き換えます',
     untrusted: '貼り付けたものは、開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
@@ -253,6 +258,9 @@ const TX = {
     moved: { deck: 'Moved the slides from the script field to the slides field.', narr: 'Moved the script from the slides field to the script field.' },
     noNarr: { new: 'It will be made without a script (you can write one later).', insert: 'They will be inserted without a script (you can write one later).', replace: 'The script stays as it is.' },
     keepDeck: 'The slides stay as they are.',
+    extracted: { deck: 'Took the slides code block out of the output.', narr: 'Took the script code block out of the output.' },
+    why: { kind: 'Answer step 1', title: 'Write the title in step 2', deck: (n) => `Paste the slides in step ${n}`, either: (n) => `Paste the slides or the script in step ${n}`,
+      outline: (n) => `Paste the outline in step ${n}`, fix: (n) => `See the message under the fields in step ${n}` },
     go: { new: 'Create', insert: 'Insert', replace: 'Replace' },
     replaceHint: 'If only the fixed slides are in the output, only those slides are replaced.',
     untrusted: 'Pasted content is treated like an opened file: if it contains scripts, you are asked before they run.',
@@ -351,9 +359,8 @@ export function setupLlm(app) {
   // 頼みたいこと（kit/core/llm-request.mjs の記入欄）。AI に任せた項目は書かない。話し合い済み（B）はタイトルだけ
   function requestValues() {
     const n = lengthN();
-    // 内容は「チャットの AI に渡してある」：B の頼み方（渡した資料と話し合いの内容で）。タイトル・だれ向け・長さは同じに聞く（詳しくの言語・話す人・希望は隠す）
-    if (draft.conMode === 'given') return { kind: 'B', values: { title: draft.title, audience: draft.audMode === 'write' ? draft.audience : '', length: n ? X.lengthReq(n, draft.lenUnit) : '' } };
-    return { kind: 'A', values: {
+    // 内容は「チャットの AI に渡してある」：B の頼み方（渡した資料と話し合いの内容で）。項目は A と同じ形（タイトル・だれ向け・長さ・詳しくの言語・話す人・希望）
+    return { kind: draft.conMode === 'given' ? 'B' : 'A', values: {
       title: draft.title,
       audience: draft.audMode === 'write' ? draft.audience : '',
       length: n ? X.lengthReq(n, draft.lenUnit) : '',
@@ -470,7 +477,7 @@ export function setupLlm(app) {
     const langName = () => (draft.language === 'other' ? draft.languageOther.trim() || X.langOpt.other : X.langOpt[draft.language]);
     const rest = [aud, len, con, more];
     const fillPh = () => { const p = ph(); titleIn.placeholder = p.title; audIn.placeholder = p.audience; conIn.placeholder = p.content; wishes.placeholder = p.wishes; };
-    const show = () => { conField.hidden = draft.conMode !== 'give'; givenNote.hidden = draft.conMode !== 'given'; more.hidden = draft.conMode === 'given'; moreSum.textContent = X.more(langName(), X.speakersShort[draft.speakers], !!draft.wishes.trim()); fillPh(); };
+    const show = () => { conField.hidden = draft.conMode !== 'give'; givenNote.hidden = draft.conMode !== 'given'; moreSum.textContent = X.more(langName(), X.speakersShort[draft.speakers], !!draft.wishes.trim()); fillPh(); };
     show();
     const Q = question('paste-step-content', title, [el('p', { cls: 'hint', text: X.step1Hint }),
       el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-title', text: X.titleLabel }), titleIn]),
@@ -721,7 +728,7 @@ export function setupLlm(app) {
     function take(k) {
       const f = F[k], other = F[k === 'deck' ? 'narr' : 'deck'];
       const text = f.ta.value;
-      if (!text.trim()) { set(f, null); S.cutOff = null; return; }
+      if (!text.trim()) { set(f, null); S.cutOff = null; notes = []; return; }
       notes = [];
       const p = pastePart(text);
       // コードブロックの中身だけ（枠の右上のコピーで写したもの）：区切りがないのはふつうなので、そのことは知らせない
@@ -749,6 +756,8 @@ export function setupLlm(app) {
         notes = [X.moved[to]];
         return;
       }
+      // 出力の一部（コードブロックの外の文があった）：取り出したコードブロックだけを欄に残し、そう言う
+      if (val.trim() !== text.trim()) { f.ta.value = val.replace(/\n$/, ''); notes = [X.extracted[to]]; }
       set(f, val, p.warnings);
       void other;
     }
@@ -778,6 +787,8 @@ export function setupLlm(app) {
         if (F.deck.err || F.narr.err) return false;
         return mode === 'replace' ? F.deck.val !== null || F.narr.val !== null : F.deck.val !== null;
       },
+      // 押せないわけ（n：貼り付けの問いの番号）
+      why: (n) => (F.deck.err || F.narr.err ? X.why.fix(n) : mode === 'replace' ? X.why.either(n) : X.why.deck(n)),
       note: () => {
         if (F.deck.err || F.narr.err) return '';
         if (F.deck.val !== null && F.narr.val === null) return X.noNarr[mode];
@@ -809,15 +820,19 @@ export function setupLlm(app) {
     S.cutOff = null;
     const goNote = el('span', { id: 'paste-go-note', cls: 'hint paste-go-note', role: 'status' });
     let outlinePhase = () => false;   // 新規作成で構成案を待っているとき（作成は押せない）
+    let unanswered = () => null;      // 新規作成：① ② の答えで欠けているもの（押せないわけ）
+    const pasteN = mode === 'new' ? 5 : 3;
     let fields = null;
     const syncGo = () => {
       const b = document.getElementById('dlg-import');
       cut.hidden = !S.cutOff;
       if (!b || !fields || !b.closest('#dlg[open]')) return;
-      const waiting = outlinePhase();
-      b.disabled = waiting || !fields.ready();
-      goNote.textContent = waiting ? '' : fields.note();
-      if (goNote.parentNode !== b.parentNode) b.parentNode.prepend(goNote);
+      // ボタンは同じ場所のまま。押せないときは、すぐ左に欠けているもののうち最初の 1 つを、押せるときは添え書き（台本なしで作成します など）を出す
+      const pre = unanswered(), waiting = outlinePhase(), ready = fields.ready();
+      b.disabled = !!pre || waiting || !ready;
+      goNote.textContent = pre || (waiting ? X.why.outline(pasteN) : !ready ? fields.why(pasteN) : fields.note());
+      if (b.previousSibling !== goNote) b.before(goNote);
+      b.setAttribute('aria-describedby', 'paste-go-note');
     };
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
@@ -859,6 +874,7 @@ export function setupLlm(app) {
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
       outlinePhase = () => five.waiting();
+      unanswered = () => (!kindOk() ? X.why.kind : !titleOk() ? X.why.title : null);
       Qs.forEach((q) => q.setDone(false));
       show();
       body = [...Qs.map((q) => q.node), send.node, five.node];
@@ -894,7 +910,7 @@ export function setupLlm(app) {
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       const v = await shown;
       if (v !== 'import') return false;
-      if (!fields.ready()) { focusPaste = true; continue; }
+      if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; continue; }
       status(X.building[mode]);
       let res;
       try { res = await finish(fields.data(), mode); } finally { status(''); }

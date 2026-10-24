@@ -94,7 +94,7 @@ export function partOf(data, name, lang, exclude = [], series = [name]) {
   return tidy(partSpans(D.series[name], exclude).replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)), gone)).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude, gone)));
 }
 
-// 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／ここまでの議論の内容で）。いちばん最後に付く
+// 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／渡した資料と話し合いの内容で）。いちばん最後に付く
 export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 
 // plan：'free'（既定。選んだ系列と、無料版で読み込む部品だけ）| 'paid'（すべての系列とすべての部品。series は見ない）

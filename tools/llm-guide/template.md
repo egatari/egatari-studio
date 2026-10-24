@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=18e5ee667d4d6681 -->
+<!-- i18n: pair=template.ja.md sha256=1d1f60f47474b9ae -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -173,10 +173,13 @@ A small lesson, fictional, showing the structure only (do not copy its content).
 - Speakers: one narrator
 - Other wishes:
 
-**B. From our discussion so far**
+**B. From the material and discussion in this chat**
 
 Make the lesson from the material given in this chat and what we have discussed so far.
 
 - Title (used as is on the cover):
 - Audience:
 - Length (slides or minutes):
+- Language:
+- Speakers: one narrator
+- Other wishes:
