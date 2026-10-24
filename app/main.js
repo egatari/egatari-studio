@@ -41,7 +41,9 @@ import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
-import { themeFolderWorkspace, themeNames, themeLabel, permissionOf, requestRead, loadThemeFolder, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
+import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
+import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
+import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, forgetMyThemes } from './my-themes.js';
 // プレビューの中の仲立ち：品質チェックの体裁の検査（kit/core/layout-scan.mjs。コマンド版と同じ関数）を渡す形に包む
 const SHIM = withLayoutScan(SHIM_SRC);
 
@@ -534,25 +536,67 @@ function buildWarnBox() {
 }
 
 // ---------------------------------------------------------------- 利用者のテーマのフォルダ（app/theme-folder.js。読むだけ）
-// TF.handle：選んだフォルダ（IndexedDB に残したもの）。TF.state：'granted'（組み立てに渡している）| 'prompt'（次に使うときに許可を求める）| 'denied'
-const TF = { handle: null, state: 'none' };
+// TF.handle：選んだフォルダ（IndexedDB に残したもの）。TF.state：'granted'（組み立てに渡している）| 'prompt'（次に使うときに許可を求める）| 'denied'。TF.at：選んだ時刻
+// TZ.themes：自分のテーマ（app/my-themes.js。中身ごと IndexedDB に残す。今は zip から読み込んだもの）。名前 → {files, at, source, from}。フォルダと同じ名前なら、新しいほうを使う
+const TF = { handle: null, state: 'none', at: 0 };
+const TZ = { themes: new Map() };
 const THEME_MISSING = /^theme not found: "([^"]+)"/;
 const missingThemes = (warn) => [...new Set((warn || []).map((w) => (THEME_MISSING.exec(w) || [])[1]).filter(Boolean))];
-// 知らせのボタン：前に選んだフォルダがあって許可がまだなら「「名前」を使う」と「ほかのフォルダを選ぶ…」、なければ「テーマのフォルダを選ぶ…」
+// 知らせのボタン：前に選んだフォルダがあって許可がまだなら「「名前」を使う」と「ほかのフォルダを選ぶ…」、なければ「テーマのフォルダを選ぶ…」。
+// どのブラウザでも「テーマを zip から読み込む…」（フォルダを選べないブラウザではこれだけ）
 function themeButtons() {
-  if (!SUPPORTED) return [];
+  const zip = el('button', { type: 'button', id: 'b-theme-zip', cls: SUPPORTED ? '' : 'pri', text: T.themeZipLoad, onclick: () => chooseThemeZip() });
+  if (!SUPPORTED) return [zip];
   if (TF.handle && TF.state !== 'granted') return [
     el('button', { type: 'button', id: 'b-theme-allow', cls: 'pri', text: T.themeUse(TF.handle.name), onclick: () => allowThemeFolder() }), ' ',
-    el('button', { type: 'button', id: 'b-theme-choose', text: T.themeChange, onclick: () => chooseThemeFolder() })];
-  return [el('button', { type: 'button', id: 'b-theme-choose', cls: TF.handle ? '' : 'pri', text: TF.handle ? T.themeChange : T.themeChoose, onclick: () => chooseThemeFolder() })];
+    el('button', { type: 'button', id: 'b-theme-choose', text: T.themeChange, onclick: () => chooseThemeFolder() }), ' ', zip];
+  return [el('button', { type: 'button', id: 'b-theme-choose', cls: TF.handle ? '' : 'pri', text: TF.handle ? T.themeChange : T.themeChoose, onclick: () => chooseThemeFolder() }), ' ', zip];
+}
+// 組み立てに渡す作業場所：許可のあるテーマのフォルダと zip のテーマ（どちらもなければ null）
+function userThemesWs() {
+  const f = TF.handle && TF.state === 'granted' ? themeFolderWorkspace(TF.handle) : null;
+  return TZ.themes.size ? mergedThemeWorkspace(f, TF.at, TZ.themes) : f;
 }
 // 組み立てに渡す（null で使わない）。開いているデッキがあれば組み直す
 async function useThemeFolder(h, again = true) {
-  const w = h ? themeFolderWorkspace(h) : null;
+  const w = userThemesWs();
   engine.setThemeWorkspace(w); builder.setThemes(w);
   if (h) TF.state = 'granted'; else if (!TF.handle) TF.state = 'none';
   showThemeState();
   if (again && S.ws) await rebuild('themes');
+}
+// zip とフォルダの両方にある名前（知らせ用）
+async function folderClash(names) {
+  if (!(TF.handle && TF.state === 'granted')) return [];
+  let have = [];
+  try { have = await themeNames(TF.handle); } catch { have = []; }
+  return names.filter((n) => have.includes(n));
+}
+// テーマの zip を読み込む（どのブラウザでも）。中身はこのブラウザに残す。同じ名前のテーマは今読み込んだものに替わる
+async function chooseThemeZip() {
+  let file;
+  try { file = await ((window.__APP_TEST && window.__APP_TEST.themeZipPicker) || pickZipFile)(); } catch { file = null; }
+  if (!file) return false;
+  const zn = String(file.name || 'theme.zip');
+  let themes;
+  try { themes = await readThemeZip(await readFileBounded(file, { max: THEME_ZIP_LIMITS.zipBytes, what: zn }), zn); }
+  catch (e) {
+    const k = themeZipErrorKind(e);
+    toast(k === 'too-large' ? T.themeZipTooLarge(zn) : k === 'no-theme' ? T.themeZipEmpty(zn) : k === 'refused' ? T.themeZipRefused(zn, e.entry, e.why) : T.themeZipBroken(zn), true);
+    return false;
+  }
+  const at = Date.now(), names = [...themes.keys()];
+  for (const [n, files] of themes) TZ.themes.set(n, (await putMyTheme(n, files, { source: 'zip', from: zn, at })) || { files, at, source: 'zip', from: zn });
+  const clash = await folderClash(names);
+  toast(T.themeZipLoaded(zn, names) + (clash.length ? ' ' + T.themeClash(clash, 'zip') : ''));
+  await useThemeFolder(null);
+  return true;
+}
+async function forgetMyThemesUi() {
+  await forgetMyThemes();
+  TZ.themes.clear();
+  toast(T.themeMineForgot);
+  await useThemeFolder(null);
 }
 async function chooseThemeFolder() {
   if (!SUPPORTED) { toast(T.unsupported, true); return false; }
@@ -564,9 +608,10 @@ async function chooseThemeFolder() {
   let names = [];
   try { names = await themeNames(h); } catch { /* 読めない */ }
   if (!names.length) { toast(T.themeEmpty(h.name), true); return false; }
-  TF.handle = h; TF.state = 'granted';
-  await saveThemeFolder(h);
-  toast(T.themeChosen(h.name, names.length));
+  TF.handle = h; TF.state = 'granted'; TF.at = Date.now();
+  await saveThemeFolder(h, TF.at);
+  const clash = names.filter((n) => TZ.themes.has(n));
+  toast(T.themeChosen(h.name, names.length) + (clash.length ? ' ' + T.themeClash(clash, 'folder') : ''));
   await useThemeFolder(h);
   return true;
 }
@@ -580,40 +625,48 @@ async function allowThemeFolder() {
 }
 async function forgetTheme() {
   await forgetThemeFolder();
-  TF.handle = null; TF.state = 'none';
+  TF.handle = null; TF.state = 'none'; TF.at = 0;
   toast(T.themeForgot);
   await useThemeFolder(null);
 }
 function showThemeState() {
   const st = $('w-themes-state');
-  if (st) st.textContent = TF.handle ? T.themeFolderNow(TF.handle.name, TF.state === 'granted') : '';
+  if (st) st.textContent = [TF.handle ? T.themeFolderNow(TF.handle.name, TF.state === 'granted') : '', TZ.themes.size ? T.themeMineNames([...TZ.themes.keys()].sort()) : ''].filter(Boolean).join(' ');
   if (!$('welcome').hidden || !S.ws) return;
   showNotice();
 }
-// 設定の窓（「開く ▾」の「テーマのフォルダ…」・はじめの画面）：今のフォルダとテーマの名前、替える・忘れる
+// 設定の窓（「開く ▾」の「テーマのフォルダ…」・はじめの画面）：今のフォルダとテーマの名前、替える・忘れる。zip のテーマ：読み込む・忘れる
 async function themeDialog() {
+  const zipNames = [...TZ.themes.keys()].sort();
   let names = null;
   if (TF.handle && TF.state === 'granted') { try { names = await themeNames(TF.handle); } catch { names = null; } }
   const v = await ask({ title: T.themeFolderTitle, body: [
     el('p', { text: T.themeFolderLead }),
     el('p', { id: 'theme-now', cls: 'note', text: TF.handle ? T.themeFolderNow(TF.handle.name, TF.state === 'granted') : T.themeFolderNone }),
     names ? el('p', { id: 'theme-names', cls: 'hint', text: T.themeFolderNames(names) }) : null,
-    el('p', { cls: 'hint', text: T.themeFolderKeep })],
+    el('p', { cls: 'hint', text: T.themeFolderKeep }),
+    el('p', { id: 'theme-mine-names', cls: 'note', text: T.themeMineNames(zipNames) }),
+    el('p', { cls: 'hint', text: T.themeMineKeep })],
   buttons: [...(TF.handle ? [{ id: 'forget', label: T.themeForget }] : []),
+    ...(zipNames.length ? [{ id: 'forget-mine', label: T.themeMineForget }] : []),
     ...(TF.handle && TF.state !== 'granted' ? [{ id: 'allow', label: T.themeUse(TF.handle.name) }] : []),
     ...(SUPPORTED ? [{ id: 'choose', label: TF.handle ? T.themeChange : T.themeChoose }] : []),
+    { id: 'zip', label: T.themeZipLoad },
     { id: 'close', label: T.close, pri: true }] });
   if (v === 'forget') await forgetTheme();
+  else if (v === 'forget-mine') await forgetMyThemesUi();
+  else if (v === 'zip') await chooseThemeZip();
   else if (v === 'allow') await allowThemeFolder();
   else if (v === 'choose') await chooseThemeFolder();
 }
-// 新規作成の ② テーマの選択肢：同梱のテーマ（見せる名前）と、読む許可のある自分のテーマのフォルダのテーマ（theme.json の title・name、なければフォルダの名前）
+// 新規作成の ② テーマの選択肢：同梱のテーマ（見せる名前）と、読む許可のある自分のテーマのフォルダ・zip のテーマ（theme.json の title・name、なければフォルダの名前）
 async function themeOptions() {
   const out = RES.themes.map((t) => ({ value: t, label: (T.themeNames && T.themeNames[t]) || t }));
-  if (TF.handle && TF.state === 'granted') {
+  const w = userThemesWs();
+  if (w) {
     let names = [];
-    try { names = await themeNames(TF.handle); } catch { names = []; }
-    for (const n of names) if (!out.some((x) => x.value === n)) out.push({ value: n, label: await themeLabel(TF.handle, n), user: true });
+    try { names = await themeNamesOf(w); } catch { names = []; }
+    for (const n of names) if (!out.some((x) => x.value === n)) out.push({ value: n, label: await themeLabelOf(w, n), user: true });
   }
   return out;
 }
@@ -622,6 +675,8 @@ async function initThemeFolder() {
   const h = await loadThemeFolder();
   TF.handle = h;
   TF.state = h ? await permissionOf(h) : 'none';
+  TF.at = h ? await loadThemeFolderAt() : 0;
+  TZ.themes = await loadMyThemes();
   await useThemeFolder(TF.state === 'granted' ? h : null, false);
 }
 
@@ -1734,7 +1789,7 @@ window.__APP_TEST = {
   buildWorkerProbe: (name) => builder.probe(name),
   buildTimeout: 0,
   themePicker: null,  // 試験：テーマのフォルダを選ぶ画面の代わり（(opts) → ハンドル）
-  themeFolder: () => ({ name: TF.handle ? TF.handle.name : null, state: TF.state, inBuild: !!engine.themeWorkspace }),
+  themeFolder: () => ({ name: TF.handle ? TF.handle.name : null, state: TF.state, inBuild: !!engine.themeWorkspace, mine: [...TZ.themes.keys()].sort() }),
   initThemeFolder: () => initThemeFolder(),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
   rebuild: () => rebuild('test'),
@@ -1779,7 +1834,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => chooseThemeFolder() });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: SUPPORTED ? () => chooseThemeFolder() : null, loadThemeZip: () => chooseThemeZip() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

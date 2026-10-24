@@ -1,0 +1,2 @@
+### Added
+- Editor: load custom themes from a `.zip` (**Load theme from zip…**), in every browser including Safari, Firefox and the iPad. Themes are found up to 5 levels deep (a GitHub “Download ZIP” works), all themes in the zip are loaded so `extends` within it resolves, and the zip is read as untrusted (size, entry and per-file limits; `..`, absolute paths, symbolic links and bad theme names refuse it). The themes are kept in the browser as “My themes”; with a theme folder, the theme chosen or loaded last wins.
