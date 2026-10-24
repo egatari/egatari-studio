@@ -25,6 +25,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
+import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
@@ -330,9 +331,36 @@ function missingThemeWarning(env, name, used) {
     : env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
   return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：作業フォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}作業フォルダの themes/${name}/ に置く`;
 }
-function themeAssets(env, t, warn, depth = 0, ud = []) {
+// 同梱のテーマの版の固定（themes.lock.json。kit/core/themes-lock.mjs）：教材が記録した前の版（作業フォルダの設定のファイルの themes、
+// 組み直す文書の索引から opts.themeVersions）なら、同梱の themes/<名前>/ の代わりにその版の写し vendor/themes/<名前>/<版>/ で組む。
+// 黙って新しい色にしない（部品庫の部品の版の固定と同じ。format spec §7.2 段 B）。知らせ（warn）と stats.themePinned（変わる色）を残す。
+// 同梱のテーマ（themes/<名前>/ に結んだもの）だけ。原稿のフォルダ・利用者のテーマのフォルダのテーマは版を持たない
+function pinTheme(env, sel, name, tctx, warn) {
+  if (!sel || !tctx || !tctx.lock) return sel;
+  const P = env.path, reg = P.join(env.ROOT, 'themes');
+  if (P.resolve(sel.dir) !== P.join(reg, name)) return sel;
+  const pick = pickThemeVersion(tctx.lock, name, Object.prototype.hasOwnProperty.call(tctx.pins, name) ? tctx.pins[name] : undefined);
+  if (pick.note && !tctx.noted.has(name)) { tctx.noted.add(name); warn.push(pick.note); }
+  if (!pick.version) return sel;
+  tctx.versions[name] = pick.version;
+  if (!pick.pinned) return sel;
+  const vroot = themesVendorDir(P, env.ROOT), vdir = P.join(vroot, name, pick.version);
+  if (!env.exists(P.join(vdir, 'tokens.css')) || !env.within(P.join(vdir, 'tokens.css'), vroot)) {
+    warn.push(`theme ${name}: version ${pick.version} is in themes.lock.json but not in vendor/themes; using ${tctx.lock.themes[name].current}`);
+    tctx.versions[name] = tctx.lock.themes[name].current;
+    return sel;
+  }
+  if (!tctx.pinned.some((u) => u.name === name)) {
+    const u = themeUpdate(tctx.lock, name, pick.version);
+    tctx.pinned.push(u);
+    warn.push(themePinnedWarning(u));
+  }
+  return { dir: vdir, root: vroot };
+}
+function themeAssets(env, t, warn, depth = 0, ud = [], tctx = null) {
   const P = env.path, { dir, root } = t;
   if (depth > 16) throw new Error(`theme: extends is nested too deeply (${dir})`);
+  if (tctx && !tctx.dirs.includes(dir)) tctx.dirs.push(dir);
   const inRoot = (f) => env.within(f, root) && env.within(f, dir);
   const cfgPath = P.join(dir, 'theme.json');
   let cfg = {};
@@ -343,10 +371,12 @@ function themeAssets(env, t, warn, depth = 0, ud = []) {
   // "extends" なら、親の tokens.css を先に置き、差分だけを上書きする。logos を書かなければ親のロゴを使う（"logos": [] で消せる）
   // 親はこのテーマの根の中か利用者のテーマのフォルダか themes/ の中だけ（呼び出した人が選んだテーマなら、そのフォルダの中か利用者のテーマのフォルダか themes/）
   const miss = [];
-  const pt = cfg.extends ? resolveTheme(env, String(cfg.extends), P.dirname(dir), root, warn, ud, miss) : null;
+  const pt = cfg.extends ? pinTheme(env, resolveTheme(env, String(cfg.extends), P.dirname(dir), root, warn, ud, miss), String(cfg.extends), tctx, warn) : null;
   if (miss.length) warn.push(missingThemeWarning(env, miss[0], `「${P.basename(dir)}」（親のテーマなし）`));
-  const par = pt ? themeAssets(env, pt, warn, depth + 1, ud) : null;
+  const par = pt ? themeAssets(env, pt, warn, depth + 1, ud, tctx) : null;
   const logos = cfg.logos ? cfg.logos.filter((f) => {
+    // 文書（README*・LICENSE*・*.md）はロゴにしない（テーマの一部でない。読まない）
+    if (excludedFromThemeHash(f)) { warn.push(`theme: 「${f}」は文書（README・LICENSE・.md）なのでロゴにしない（読まない）`); return false; }
     const p = P.join(dir, String(f));
     if (!env.exists(p)) return false;
     if (inRoot(p)) return true;
@@ -585,6 +615,18 @@ export function classicModule(src, name) {
   return `(function(){\n"use strict";\n${s.replace(/^export\s+function\s+/m, 'function ')}\nDECK.${name} = ${fn};\n})();`;
 }
 
+// 実行系に入れる kit/core の ES モジュールのうち、export が複数のもの（import なし・export function / export const だけ）。
+// 即時関数の中で読み、export したものを DECK.<name> の object に入れる（読み上げで聞く：kit/tools.js が使う。format spec §5.6）
+export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud' });
+export function classicNamespace(src, name) {
+  const s = String(src);
+  const names = [...s.matchAll(/^export\s+(?:function|const)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
+  if (/^\s*import\b/m.test(s) || !names.length || (s.match(/^\s*export\b/gm) || []).length !== names.length) {
+    throw new Error(`runtime module for DECK.${name}: needs "export function" / "export const" only, and no import`);
+  }
+  return `(function(){\n"use strict";\n${s.replace(/^export\s+/gm, '')}\nDECK.${name} = {${names.join(', ')}};\n})();`;
+}
+
 export function build(env0, srcPath, opts = {}) {
   const P = env0.path, KIT = env0.KIT, ROOT = env0.ROOT;
   const deckDir = P.dirname(P.resolve(srcPath));
@@ -645,10 +687,20 @@ export function build(env0, srcPath, opts = {}) {
   const ud = Array.isArray(env0.themeDirs) ? env0.themeDirs : [];
   for (const m of ud.missing || []) warn.push(`EGATARI_THEMES: フォルダ「${m}」が見つからない（飛ばす）`);
   const miss = opts.theme ? null : [];
-  let tsel = resolveTheme(env, themeName, deckDir, opts.theme ? null : deckDir, warn, ud, miss);
+  // 同梱のテーマの版（themes.lock.json）：opts.updateThemes（--update-themes・編集アプリの「テーマを更新」）なら今の版。
+  // ほかは 組み直す文書の記録（opts.themeVersions）→ 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の themes → 今の版
+  // dirs：組み立てが使ったテーマのフォルダ（親も。持ち運べる 1 ファイルが、原稿のフォルダのテーマの LICENSE* を一緒に入れるため。出力には書かない）
+  const tctx = { lock: null, pins: {}, pinned: [], versions: {}, noted: new Set(), dirs: [] };
+  try { tctx.lock = readThemesLock(env, ROOT); } catch (e) { warn.push(`themes.lock.json: ${e.message}`); }
+  if (tctx.lock && !opts.updateThemes) {
+    const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
+    if (env.exists(cfg) && inDeck(cfg)) { try { tctx.pins = configThemePins(JSON.parse(env.readText(cfg))); } catch { tctx.pins = {}; } }
+    if (opts.themeVersions && typeof opts.themeVersions === 'object') tctx.pins = { ...tctx.pins, ...opts.themeVersions };
+  }
+  let tsel = pinTheme(env, resolveTheme(env, themeName, deckDir, opts.theme ? null : deckDir, warn, ud, miss), themeName, tctx, warn);
   if (miss && miss.length) warn.push(missingThemeWarning(env0, themeName, 'default'));
-  if (!tsel) { themeName = 'default'; tsel = resolveTheme(env, 'default', P.join(ROOT, 'themes'), P.join(ROOT, 'themes'), warn); }
-  const theme = themeAssets(env, tsel, warn, 0, ud);
+  if (!tsel) { themeName = 'default'; tsel = pinTheme(env, resolveTheme(env, 'default', P.join(ROOT, 'themes'), P.join(ROOT, 'themes'), warn), 'default', tctx, warn); }
+  const theme = themeAssets(env, tsel, warn, 0, ud, tctx);
   if (theme.logos.length) {
     // ロゴの data: URI（読む前に数えた）を表紙ごとに入れる：つなぐ前に、増える大きさを組んだ文書の上限に数える
     budget.reset(html.length);
@@ -790,7 +842,8 @@ export function build(env0, srcPath, opts = {}) {
   const read = (dir, f) => env.readText(P.join(dir, f));
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
-  const textForFont = glyphText(html, narration, compJs, lang);
+  // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
+  const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
   const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn);
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
@@ -806,7 +859,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
@@ -862,7 +915,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
   // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
     theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）

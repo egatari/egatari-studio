@@ -178,12 +178,19 @@ export function parseNarration(text) {
 }
 
 
-// {slideKey: {stepKey: [{role, text}]}}（deck.js の DECK.NARRATION）
+// {slideKey: {stepKey: [{role, text, ttsParts}]}}（deck.js の DECK.NARRATION。format spec §4 の deck-narration）
+// ttsParts：読みを当てた話す部品（renderText の ttsParts。inputHash に入るのと同じ値、§5.4）。端末の読み上げ（§5.6）が使う。
+// withTts を false にすると表示の文だけ（字の絞り込みなど、見える字だけを数えるとき）
 // 鍵は原稿の文字列なので、__proto__ などでも壊れないよう原型のない object を使う
-export function narrationMap(segs, withLines = false) {
+export function narrationMap(segs, withLines = false, withTts = true) {
   const m = Object.create(null);
   for (const s of segs) {
-    (m[s.slideKey] ||= Object.create(null))[s.stepKey] = s.turns.map((t) => withLines ? { role: t.role, text: t.display, line: s.line } : { role: t.role, text: t.display });
+    (m[s.slideKey] ||= Object.create(null))[s.stepKey] = s.turns.map((t) => {
+      const o = { role: t.role, text: t.display };
+      if (withTts) o.ttsParts = t.ttsParts.slice();
+      if (withLines) o.line = s.line;
+      return o;
+    });
   }
   return m;
 }

@@ -62,7 +62,7 @@ export function rulesFor(p) {
 const L = {
   en: {
     head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
-    ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Reply with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
+    ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
     askPartial: (n) => `The deck is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
     problems: 'Findings', rules: 'Standards', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
     where: (p) => (p.i === null || p.i === undefined ? 'Whole deck' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
@@ -70,7 +70,7 @@ const L = {
   },
   ja: {
     head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
-    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。返事はちょうど 2 つのコードの囲み ```deck.html と ```narration.md にしてください（R-output）。',
+    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み ```deck.html と ```narration.md を書いてください（R-output）。',
     askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
     problems: '指摘', rules: '規格', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
     where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? `「${p.title}」` : ''}`),

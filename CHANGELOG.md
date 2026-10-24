@@ -8,6 +8,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.4.7] - 2026-10-24
+
+### Added
+
+- Editor app, Insert slide… → Have a chat AI write it (backlog #93): a short request of its own (`kit/core/llm-insert.mjs`: “the next n slides after slide X” or “one slide here”, with only the list of headings and the slide before, not the whole deck; the instructions can be added for a new chat). The returned slides are inserted after the selected slide (after the last one when nothing is selected), get new ids the same way as the slide list, their narration sections go in the same order, and the quality check runs; Undo works as for the slide list.
+- Editor app: the two blocks of a reply can be pasted one at a time (copied with each block's own copy button, without the ``` lines). The editor tells `deck.html` from `narration.md` by content (`pastePart` in `kit/core/llm-import.mjs`), keeps the first and says which one arrived and what to paste next, joins them in either order into the same result as the whole reply, and offers “Discard and start over”. Text with both but no fences, or with neither, is refused with how to copy instead. In Revise… and Insert slide…, “Import just this” brings in a reply that has only one block (a narration-only fix replaces just the sections with those ids).
+- `newDeckFiles({blank: true})` (`kit/templates/new-deck.mjs`): a deck with only the title slide.
+- Live, one way: **Distribute with Live** makes the Live ID and join code itself (from a random setup secret, `crypto.getRandomValues`; still no network request) and shows one string that the host pastes once on the host page, which creates exactly that Live (egatari/live PROTOCOL.md §2.1). The string holds a secret that is not in the exported file, so a copy of the file alone cannot be used to create the Live. **Save the setup string** downloads it as `egatari-live-setup-<room>.txt` (a host who closes the editor before pasting could otherwise never create the Live the handed-out files point at); the string is never written into the lesson, `egatari.json` or any export. The earlier way (create on the host page, paste its settings back) stays under a fold. The vendored protocol is updated to egatari/live 7f859c4 (main)
+- Live questions (draft): a **?** at the bottom right opens the question box on any slide; a question carries the step on screen, the lesson's `sourceSha256` (now written into the exported block as `live.sourceSha256`, since a play-only `deck-meta` has none) and an optional circled region (**Circle**, normalised with the review-notes stroke rule). **I don't follow** (kind `confused`) is a one-tap mark per step that can be taken back. The host's replies to the participant's own questions show in the pane. The editor's **Distribute with Live** offers **I don't follow** (on by default). The vendored protocol is updated to egatari/live 7f859c4 (main)
+- 写した仕様（vendor/egatari-spec）が従う日付の版（egatari-spec の `wd-YYYY-MM-DD` のタグ）を SOURCE.json の `snapshot` に残す。`tools/sync-spec.mjs --ref wd-2026-10-24` で写せる。タグでないコミットは `snapshot: null` になり、`tools/spec-snapshot.mjs --check`（test-all）が知らせる（知らせだけ）
+- 編集アプリの「使い方」に「形式：Egatari 1.0 WD 2026-10-24」と出す（ビルド時に SOURCE.json から読む）
+- `npm run sheet -- <deck> --steps` lays out every step of each slide that has a figure or component, side by side (one row per slide), to check a figure's constraints step by step; `skills/motion-slides` now asks for the constraints to be written down first and checked on that strip
+- The comments pane says, when a single file (.ega.html) is open, that notes are not saved there and disappear when it is closed
+- `docs/distributing`: a table of where a single file runs (and where it does not), and a reminder to give learners the play-only copy
+
+### Changed
+
+- Editor app: a chat AI is now one way inside three ordinary commands, not a separate entry (“Paste AI output” is gone). **New…** offers Blank (a working folder with only a title slide), From a template (the sample deck) and Have a chat AI write it; **Insert slide…** (“Insert slide ▾” in the slide list, which replaces “+ Add ▾”) offers From a template and Have a chat AI write it; **Revise…** (at the top of the quality check panel) has a chat AI fix the current lesson. Each AI dialog explains first (open a chat AI in another tab, send what you copy, paste the reply in step 3) and has three steps; the command fixes how the reply is brought in (no mode choice). UI and docs say “AI's reply” (「AI の返事」) instead of “AI output”.
+- Editor app, New… → Have a chat AI write it: 1. write what you want (A: a new lesson — topic, audience, length, language, speakers, examples; B: from what was discussed in this chat), 2. copy the instructions (the common body is shown as always included, series are added only when needed: with no deck open none is ticked and a hint suggests Academic for formulas, graphs or data charts; what you wrote replaces the blank “What I want” form at the end, so the pack can be sent even when the chat turns it into an attachment, and the dialog says so), 3. paste the reply and open it. The instructions themselves (`kit/core/llm-pack-data.mjs`) are unchanged (`kit/core/llm-request.mjs`).
+- Editor app, Revise…: the fix request has the quality check findings, what you want changed and the open notes (`comments.json`), and the reply replaces slides by id as before. The fix request button in the quality check panel leads to Revise… step 3.
+- Colab の確認した範囲に、固定した版（cuda13 の組）で GPU を通したこと（2026-10-24、T4、23 ステップを 42 秒）を記した。ノートブックが取得時に出す「HF_TOKEN を設定してください」の警告だけを消した（ほかの警告はそのまま）。
+- Colab の音声を別の教材に取り込もうとしたときの断り書きを、「docId が違う」ではなく、台本を書き出した教材の題を出して次にすることまで言う文にした。題は tts-job.json に任意で入れ、ノートブックが records.json に写す（古い zip は題なしの文で断る）。inputHash などの検証は変わらない。
+- Colab の Kokoro も T4 で確認した（2026-10-24、59 ステップを 30 秒）。Kokoro の実行プロバイダは CUDA と CPU だけを頼み（TensorRT を頼んで出ていた長い EP Error を出さない）、phonemizer の「words count mismatch」の警告も止めた（ほかの警告はそのまま）。
+- vendor/egatari-spec を WD 2026-10-24（72f8821）に合わせる。Schema・試験用の入力は変わらず、SOURCE.json だけが変わる。RELEASING に、候補の前に最新の WD と揃えることと、リリースの説明に従う版を書くことを足す
+- Fix requests (`kit/core/llm-fix.mjs`) now also tell the AI not to use Canvas, slide-making or file features and to reply in the chat body with the two blocks
+- Lecture view: steps not yet reached are dimmed to 0.5 (was 0.28), set by the theme variable `--lecture-dim` (default 0.5)
+
+### Fixed
+
+- Importing live room results from a newer Live server no longer fails: members and kinds this Studio version doesn't know (members or kinds added by a later Live server) are ignored, and the import lists what it skipped, in the Attachments panel, in Distribute with Live, and in `npm run portable -- attach`. The attached file keeps the original bytes; anything malformed in a known member is still refused
+
 ## [0.4.6] - 2026-10-24
 
 ### Added
@@ -40,7 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   the panel stays open behind it and then shows the new take. Parity of the old panel recording: docs/recording-parity.md
 - Editor app: recording mode reports a stop at the 600 s limit, stops there also in a background tab, and reports a recorder that cannot start
 - Build: the theme's CSS (`tokens.css`, parent themes first) now comes after `kit/layouts.css` in `<style id="deck-base">` (before: after the fonts and KaTeX, before `base.css`), in every build path (CLI, `--dev` and the dev server, portable and play-only exports, the editor app). A theme rule now overrides a layout rule of the same specificity (the cover title's position, the `.body` inset, the heading rule, `.concl`, `.pn`) without an `html` prefix. `latin.css` stays last. The bundled themes (default, business, kokugo) render the same as before (backlog #75)
-- New optional tokens with the old values as fallbacks: `--marker` (list markers; default `--term`), `--bar` and `--bar-h` (the progress bar; default `--emph`, 3px). Proposed with K1 by 須子 統太
+- New optional tokens with the old values as fallbacks: `--marker` (list markers; default `--term`), `--bar` and `--bar-h` (the progress bar; default `--emph`, 3px). Proposed with K1 by @totasuko-lab
 
 ### Removed
 
@@ -595,7 +626,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/egatari/egatari-studio/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/egatari/egatari-studio/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/egatari/egatari-studio/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/egatari/egatari-studio/compare/v0.4.3...v0.4.4

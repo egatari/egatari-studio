@@ -16,6 +16,7 @@
 //     markLabel?: string,                          信頼する板の印の言葉（既定は「編集中 — アプリ」／「Editing — app」）
 //     extra?: {open?(), editing?()},               ほかの信頼する欄（編集アプリの音声の板 app/audio-panel.js）：開いているか（板を出す）、
 //                                                  編集している最中か（録音している間など。プレビューを inert にする）
+//     volatileComments?: () => bool,               コメントが保存されない（1 ファイルで開いている）とき true：コメントの一覧に知らせを出す
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
 //   })
@@ -42,7 +43,7 @@ const STR = {
     loading: 'Loading…', loadFail: 'Could not load', stale: 'The source has changed. Please reload (this view was built from an older source)',
     saving: 'Saving…', saved: 'Saved', conflict: 'The source has changed. Please reload (copy what you typed first)', saveFail: 'Could not save', offline: 'Cannot reach the editor',
     reload: 'Reload', cPlace: 'e.g. make this line shorter / match the figure colors / add one example', cSave: 'Leave', cTitle: 'Note for the AI', cHint: '⌘/Ctrl+Enter to leave · written to comments.json',
-    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for the AI (open)', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
+    cFail: 'Could not leave the note', cDone: 'Note left (comments.json)', cList: 'Notes for the AI (open)', cVolatile: 'Notes are not saved in a single file (they disappear when you close it). To keep them, use a working folder.', closeC: 'Close (c)', resolve: 'Resolve', resolveT: 'Mark as done',
     toSlide: 'Click to go to the slide', nStale: (k) => 'You are editing a different step than the one shown (' + k + '). It will switch after you save or cancel',
     nLine: (n) => 'narration.md line ' + n, nNone: 'No narration yet', revertT: 'Revert to before editing', nTitle: 'Narration', step: 'Step ', closeN: 'Close (n)',
     discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No narration for this step yet. Start with “Add a turn”',
@@ -60,7 +61,7 @@ const STR = {
     loading: '読み込み中…', loadFail: '読み込めませんでした', stale: '原稿が変わっています。再読み込みしてください（この画面は古い原稿から作られています）',
     saving: '保存中…', saved: '保存しました', conflict: '原稿が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
     reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'AI へのメモ', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
-    cFail: '残せませんでした', cDone: 'メモを残しました（comments.json）', cList: 'AI へのメモ（未対応）', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
+    cFail: '残せませんでした', cDone: 'メモを残しました（comments.json）', cList: 'AI へのメモ（未対応）', cVolatile: '1 ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
     toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中の段階（' + k + '）とは別の段階を編集中です。保存か取消のあとで切り替わります',
     nLine: (n) => 'narration.md ' + n + ' 行目', nNone: 'まだ口述原稿がありません', revertT: '編集前に戻す', nTitle: '口述原稿', step: '段階 ', closeN: '閉じる（n）',
     discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'この段階の口述原稿はまだありません。「発言を足す」で書き始めます',
@@ -116,6 +117,7 @@ const CSS = [
   '.dev-c{padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}.dev-c:hover{background:#f4f6fb;border-color:#e0e5f0}',
   '.dev-c .dv-k{font-size:11.5px;color:#6b7385}.dev-c .dv-q{font-size:12px;color:#6b7385;border-left:2px solid #f59e0b;padding-left:6px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
   '.dev-c .dv-c{white-space:pre-wrap}.dev-c .dv-row{display:flex;justify-content:flex-end;margin-top:4px}',
+  '#dev-comments-volatile{margin:8px 8px 0;padding:6px 10px;border-radius:6px;font-size:12.5px;line-height:1.5;background:#fef3c7;color:#78350f;border:1px solid #f5d27a}',
   '.dev-empty{color:#8a91a1;padding:14px 8px;text-align:center}',
   '#dev-narr{flex:1 0 320px;background:#f7f8fb;border-top:1px solid #d9dde6;display:flex;flex-direction:column;min-height:0;margin-top:10px}',
   '#dev-narr .dev-head{padding:10px 14px;margin:0;background:#fff;border-bottom:1px solid #e3e6ee}',
@@ -436,6 +438,7 @@ export function createEditorUI(o) {
       cpanel = h('div', { id: 'dev-comments', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cList }, [
         h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cList }), h('span', { cls: 'dv-sp' }),
           h('button', { cls: 'dv-ghost', text: '✕', title: L.closeC, on: { click: () => toggleComments(false) } })]),
+        o.volatileComments && o.volatileComments() ? h('div', { id: 'dev-comments-volatile', role: 'note', text: L.cVolatile }) : null,
         h('div', { cls: 'dv-list' }, [h('div', { cls: 'dev-empty', text: L.loading })]),
       ]);
       side.appendChild(cpanel);

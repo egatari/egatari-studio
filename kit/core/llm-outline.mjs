@@ -18,6 +18,7 @@
 import { slideChunks } from './slide-ops.mjs';
 import { narrSections } from './llm-import.mjs';
 import { parseHeading } from './narration-core.mjs';
+import { updateConfig, merge } from './config-file.mjs';
 
 export const OUTLINE_OVER = 8;      // これより多い枚数は 2 回に分ける（8 枚まではこれまでどおり 1 回で）
 export const BATCH = 6;             // 1 回に頼む枚数（返事が途中で切れないように）
@@ -119,12 +120,10 @@ export function parseOutline(text) {
 const table = (rows, lang, mark) => [M(lang).tableHead, '|---|---|---|', ...rows.map((r, i) => `| ${i + 1} | ${cell(r.heading)} | ${cell(r.point)} |${mark && mark(i + 1) ? '   ' + mark(i + 1) : ''}`)];
 // 設定のファイル（egatari.json）の studio.outline：{v: 1, next, rows: [{heading, point}]}。ほかの項目はそのまま
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+// 書くのは kit/core/config-file.mjs の updateConfig だけ（studio の中の outline だけを差し替え、ほかの項目はバイトのまま。読めないファイルは code 'bad-config' で断る）
 export function withOutline(configText, { rows, next = 1 }) {
-  let c = {};
-  try { const j = JSON.parse(configText || '{}'); if (isObj(j)) c = j; } catch { c = {}; }
-  const studio = isObj(c.studio) ? { ...c.studio } : {};
-  studio.outline = { v: 1, next, rows: rows.map((r) => ({ heading: String(r.heading), point: String(r.point || '') })) };
-  return JSON.stringify({ ...c, studio }, null, 2) + '\n';
+  const outline = { v: 1, next, rows: rows.map((r) => ({ heading: String(r.heading), point: String(r.point || '') })) };
+  return updateConfig(configText || null, { studio: merge({ outline }) });
 }
 export function outlineOf(configText) {
   let c;

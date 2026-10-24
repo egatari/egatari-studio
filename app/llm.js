@@ -614,7 +614,7 @@ export function setupLlm(app) {
     const ids = withIds(withTheme(r.deck), r.narration);
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）
-    if (outlineRows) files[FORMAT.CONFIG_FILE] = withOutline('{}', { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
+    if (outlineRows) files[FORMAT.CONFIG_FILE] = withOutline(null, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;

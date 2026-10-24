@@ -3,7 +3,7 @@
 //   const srv = await startFakeLive({requireApproval})
 //   srv.endpoint（http://127.0.0.1:<port>）・srv.connections（{url, origin, query}）・srv.messages（学ぶ人から届いた JSON）・srv.http（ws でない要求）
 //   srv.drop(code)：つながっている全員を code で切る。srv.rejectNext(code)：次の接続を、手渡しの後すぐ code で切る。srv.admitAll()。srv.send(obj)。srv.close()
-// 返事：welcome（写しの fixtures/server-learner/welcome*.json を、この部屋と pid に合わせて）・ask と vote には ack（ref を返す）・name には ack・ping には pong
+// 返事：welcome（写しの fixtures/server-learner/welcome*.json を、この部屋と pid に合わせて）・ask と vote と confused には ack（ref を返す）・name には ack・ping には pong
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -71,7 +71,7 @@ export async function startFakeLive(opts = {}) {
         else if (m.t === 'name') sendObj({ v: 1, t: 'ack', ...ref });
         else if (c.status !== 'admitted') sendObj({ v: 1, t: 'error', code: 'not_admitted', ...ref });
         else if (m.t === 'ask') sendObj({ v: 1, t: 'ack', ...ref, item: 'q-' + 'abcdefghij' });
-        else if (m.t === 'vote') sendObj({ v: 1, t: 'ack', ...ref });
+        else if (m.t === 'vote' || m.t === 'confused') sendObj({ v: 1, t: 'ack', ...ref });
         else { sendObj({ v: 1, t: 'error', code: 'unknown_type', ...ref }); c.close(4400); }
       }
     });

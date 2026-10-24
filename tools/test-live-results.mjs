@@ -19,7 +19,7 @@ import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable } from '../kit/core/portable.mjs';
-import { parseResults, isLiveResults, summarizeResults, summaryLines, resultsRecord, roomMatch, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, isLiveResults, summarizeResults, summaryLines, resultsRecord, roomMatch, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 import { titleProblem, descriptionProblem, roleProblem, inspectAttachment, blocking, ATTACH_LIMITS } from '../kit/core/attachments.mjs';
 import { clickDlg } from './click-retry.mjs';
 
@@ -61,14 +61,11 @@ console.log('shape');
   const m = (f) => { const x = clone(R0); f(x); return x; };
   const cases = [
     ['fixture', R0], ['xss strings', R1],
-    ['extra member', m((x) => { x.extra = 1; })], ['v 2', m((x) => { x.v = 2; })], ['no exportedAt', m((x) => { delete x.exportedAt; })],
-    ['bad room', m((x) => { x.room = 'r-ABCDEFGH'; })], ['bad window', m((x) => { x.window.from = '2026-10-30 09:00'; })], ['window extra', m((x) => { x.window.z = 1; })],
-    ['activities bad step', m((x) => { x.activities['no-colon'] = []; })], ['activity kind', m((x) => { x.activities['*'][0].kind = 'board'; })],
-    ['poll 13 choices', m((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })], ['prompt 301', m((x) => { x.activities['s-k3f9q2:2'][0].prompt = 'あ'.repeat(301); })],
+    ['v 2', m((x) => { x.v = 2; })], ['no exportedAt', m((x) => { delete x.exportedAt; })],
+    ['bad room', m((x) => { x.room = 'r-ABCDEFGH'; })], ['bad window', m((x) => { x.window.from = '2026-10-30 09:00'; })], ['activities bad step', m((x) => { x.activities['no-colon'] = []; })], ['poll 13 choices', m((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })], ['prompt 301', m((x) => { x.activities['s-k3f9q2:2'][0].prompt = 'あ'.repeat(301); })],
     ['qa without hidden', m((x) => { delete x.responses[0].hidden; })], ['text 500 emoji', m((x) => { x.responses[0].text = '😀'.repeat(500); })], ['text 501', m((x) => { x.responses[0].text = 'a'.repeat(501); })],
-    ['name 41', m((x) => { x.responses[1].name = 'n'.repeat(41); })], ['choice 12', m((x) => { x.responses[1].choice = 12; })], ['choice 1.5', m((x) => { x.responses[1].choice = 1.5; })],
-    ['bad pid', m((x) => { x.responses[1].pid = 'short'; })], ['bad item id', m((x) => { x.responses[0].id = 'q-1'; })], ['response kind', m((x) => { x.responses[0].kind = 'board'; })],
-    ['responses not a list', m((x) => { x.responses = {}; })], ['empty responses', m((x) => { x.responses = []; })], ['array', [R0]],
+    ['name 41', m((x) => { x.responses[1].name = 'n'.repeat(41); })], ['choice 12', m((x) => { x.responses.find((r) => r.kind === 'poll').choice = 12; })], ['choice 1.5', m((x) => { x.responses.find((r) => r.kind === 'poll').choice = 1.5; })],
+    ['bad pid', m((x) => { x.responses[1].pid = 'short'; })], ['bad item id', m((x) => { x.responses[0].id = 'q-1'; })], ['responses not a list', m((x) => { x.responses = {}; })], ['empty responses', m((x) => { x.responses = []; })], ['array', [R0]],
   ];
   const disagree = cases.filter(([, v]) => !!sv(v) !== parseResults(enc.encode(JSON.stringify(v))).ok).map(([n]) => n);
   ok(disagree.length === 0, `parseResults agrees with the vendored schema on ${cases.length} cases (${disagree.join(', ') || 'all agree'})`);
@@ -76,10 +73,10 @@ console.log('shape');
   ok(parseResults(new Uint8Array(RESULTS_MAX_BYTES + 1)).code === 'too-large' && RESULTS_MAX_BYTES === ATTACH_LIMITS.fileBytes, 'over 10 MiB (the §3.8 attachment limit) is refused before parsing');
   ok(isLiveResults(FIX) && !isLiveResults(enc.encode('{"a":1}')) && !isLiveResults(enc.encode('x,y\n1,2\n')), 'isLiveResults: by content');
   const s = summarizeResults(R1);
-  ok(s.questions === 1 && s.responses === 4 && s.polls.length === 1 && s.polls[0].id === 'p1' && s.polls[0].counts.join() === '0,2,1' && s.polls[0].total === 3, 'summary: number of questions and the tally per poll');
+  ok(s.questions === 2 && s.responses === 6 && s.polls.length === 1 && s.polls[0].id === 'p1' && s.polls[0].counts.join() === '0,2,1' && s.polls[0].total === 3, 'summary: number of questions and the tally per poll');
   const inferred = summarizeResults({ ...R0, activities: {} });
   ok(inferred.polls.length === 1 && inferred.polls[0].counts.join() === '0,1' && summaryLines(inferred, 'en')[1] === 'Poll p1 — #1: 0 · #2: 1', 'summary: a poll without declared choices is tallied by index');
-  ok(summaryLines(s, 'ja')[0] === '質問 1 件' && summaryLines(s, 'ja')[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'summary lines (the strings are kept as text)');
+  ok(summaryLines(s, 'ja')[0] === '質問 2 件' && summaryLines(s, 'ja')[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'summary lines (the strings are kept as text)');
   for (const lang of ['ja', 'en']) {
     const rec = resultsRecord(R1, lang);
     ok(rec.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && rec.role === 'data', `record (${lang}): name live-<room>-<date>.json, role data`);
@@ -90,6 +87,33 @@ console.log('shape');
   const insp = await inspectAttachment('attachments/live-r-7k2q6xw4-2026-10-30.json', new Uint8Array(R1B));
   ok(!insp.problems.some(blocking) && insp.mime === 'application/json', 'the §3.8 content check accepts results (application/json, role data)');
   ok(roomMatch(R0, { room: 'r-7k2q6xw4' }) === 'match' && roomMatch(R0, { room: 'r-aaaaaaaa' }) === 'mismatch' && roomMatch(R0, null) === 'none', 'roomMatch: match, mismatch, none');
+  // 知らない項目・種類は無視して知らせる（拡張 live §3）。質問の strokes・sourceSha256・group・reply と「わからない」（kind:"confused"）は
+  // egatari/live の結果の形（写しの fixture にもある）として知っているので、そのまま残す。形が壊れた既知の項目は今までどおり断る
+  const Kr = parseResults(FIX);
+  ok(Kr.ok && Kr.skipped.members.length === 0 && Object.keys(Kr.skipped.kinds).length === 0 && skippedNotice(Kr.skipped, 'ja') === null && Kr.results.responses.length === R0.responses.length && Kr.results.responses.some((x) => x.kind === 'confused') && JSON.stringify(Kr.results.responses[1]) === JSON.stringify(R0.responses[1]) && Kr.results.activities['*'].length === R0.activities['*'].length, 'tolerant: strokes/sourceSha256/group/reply and confused are known: the fixture is kept as it is, nothing skipped, no notice');
+  const L = clone(R0);
+  L.futureThing = { a: 1 }; L.window.tz = 'x'; L.activities['*'][0].futureThing = 1; L.responses[0].futureThing = 2;
+  const rt = { kind: 'rating', activity: 'p1', step: 's-k3f9q2:2', stars: 4, anything: [1] };
+  L.responses.push(rt, { ...rt, stars: 2 }, { ...rt, stars: 5 });
+  const Lr = parseResults(enc.encode(JSON.stringify(L)));
+  const sorted = (a) => [...a].sort().join();
+  ok(Lr.ok && sorted(Lr.skipped.members) === 'futureThing,tz' && JSON.stringify(Lr.skipped.kinds) === '{"rating":3}', `tolerant: made-up members and kinds are accepted and reported (${JSON.stringify(Lr.skipped)})`);
+  ok(Lr.ok && !('futureThing' in Lr.results) && !('futureThing' in Lr.results.responses[0]) && 'reply' in Lr.results.responses[1] && Lr.results.responses.length === R0.responses.length && !Lr.results.responses.some((x) => x.kind === 'rating') && Lr.results.activities['*'].length === R0.activities['*'].length, 'tolerant: unknown members and kinds are dropped from the parsed result, the known ones are kept');
+  ok(summarizeResults(Lr.results).responses === R0.responses.length && isLiveResults(enc.encode(JSON.stringify(L))), 'tolerant: the summary counts only known responses; isLiveResults accepts it');
+  ok(/futureThing/.test(skippedNotice(Lr.skipped, 'en')) && /rating ×3/.test(skippedNotice(Lr.skipped, 'en')) && /この版の Studio が知らない項目（.*futureThing.*rating/.test(skippedNotice(Lr.skipped, 'ja')), 'tolerant: the notice lists member and kind names (ja and en)');
+  const PI = R0.responses.findIndex((x) => x.kind === 'poll');
+  const bad = (f) => { const x = clone(L); f(x); return parseResults(enc.encode(JSON.stringify(x))); };
+  const rejected = [
+    ['known member malformed', bad((x) => { x.responses[PI].choice = 99; })], ['qa text type', bad((x) => { x.responses[0].text = 5; })], ['missing required', bad((x) => { delete x.responses[0].hidden; })],
+    ['bad room', bad((x) => { x.room = 'nope'; })], ['v 2', bad((x) => { x.v = 2; })], ['kind missing', bad((x) => { delete x.responses[1].kind; })],
+    ['kind not a string', bad((x) => { x.responses[1].kind = 7; })], ['activity kind missing', bad((x) => { x.activities['*'] = [{ id: 'z' }]; })], ['window bad', bad((x) => { x.window.from = 'now'; })],
+    ['bad poll activity', bad((x) => { x.activities['s-k3f9q2:2'][0].choices = Array(13).fill('c'); })],
+    ['strokes malformed', bad((x) => { x.responses[1].strokes = [{ x: 1, y: 2 }]; })], ['group malformed', bad((x) => { x.responses[1].group = 'g-1'; })],
+    ['reply malformed', bad((x) => { x.responses[1].reply = 'ok'; })], ['sourceSha256 malformed', bad((x) => { x.responses[1].sourceSha256 = 'abc'; })],
+  ].filter(([, r]) => r.ok).map(([n]) => n);
+  ok(rejected.length === 0, `tolerant: anything malformed in a known member is still rejected (${rejected.join(', ') || 'all rejected'})`);
+  ok(parseResults(new Uint8Array(RESULTS_MAX_BYTES + 1)).code === 'too-large', 'tolerant: the size limit still applies');
+  globalThis.__L = L;
 }
 
 // ---------------------------------------------------------------- 2. コマンド
@@ -146,6 +170,20 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   for (const f of fs.readdirSync(path.join(deckDir, 'attachments'))) fs.rmSync(path.join(deckDir, 'attachments', f));
   fs.rmdirSync(path.join(deckDir, 'attachments'));
   fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: LIVE } }, null, 2) + '\n');
+}
+
+{
+  // 知らない項目のある結果：取り込む（コマンドは知らせを出す）。取り込んだファイルは元の bytes のまま
+  const t = path.join(work, 'deck-tolerant');
+  fs.cpSync(deckDir, t, { recursive: true });
+  fs.writeFileSync(path.join(t, CFG), JSON.stringify({ ...cfg0, extensions: { live: LIVE } }, null, 2) + '\n');
+  const LB = Buffer.from(JSON.stringify(globalThis.__L, null, 1));
+  const lf = path.join(work, 'results-newer.json'); fs.writeFileSync(lf, LB);
+  const a = portableCli('attach', t, lf);
+  const conf = JSON.parse(fs.readFileSync(path.join(t, CFG), 'utf8'));
+  const e = (conf[KEY] || [])[0];
+  ok(a.status === 0 && e && fs.readFileSync(path.join(t, e.path)).equals(LB), 'cli attach: results with unknown items are attached, and the stored file keeps the original bytes');
+  ok(/知らない項目（.*futureThing.*rating/.test(a.stderr + a.stdout), `cli attach: prints the skipped notice (${(a.stderr + a.stdout).trim().split('\n').pop().slice(0, 120)})`);
 }
 
 // ---------------------------------------------------------------- 3. 編集アプリ
@@ -227,7 +265,7 @@ console.log('editor');
     const row = `#attach-list [data-attach="${P1}"]`;
     ok((await page.textContent(`${row} .attach-badge`)) === '学ぶ人の回答', 'editor: the row is marked 「学ぶ人の回答」');
     const lines = await page.$$eval(`${row} .attach-live div`, (xs) => xs.map((x) => x.textContent));
-    ok(lines.length === 2 && lines[0] === '質問 1 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
+    ok(lines.length === 2 && lines[0] === '質問 2 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results.png') });
     ok(await page.evaluate(() => window.__xss === undefined && !document.querySelector('#attach-list img, #xss-b')), 'editor: the learner strings render as text (no element, no script run)');
     // 部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）。結果の取り込みはファイルの情報…の添付だけ（参加者用の窓のライブには出さない）

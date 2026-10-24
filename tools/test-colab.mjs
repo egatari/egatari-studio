@@ -112,6 +112,22 @@ ok('import: another lesson (docId) is rejected; an unknown docId on either side 
   assert.equal((await planImport({ zip: noId, segs, docId: 'doc-1', yomi })).reject, null);
   assert.deepEqual((await planImport({ zip: z, segs, docId: 'doc-1', yomi: { ...yomi, sha256: 'b'.repeat(64) } })).warnings, ['dictionary']);
 });
+ok('import: the refusal for another lesson carries the source lesson title (from the job, through records.json); old zips without a title still refuse; nothing validated changes', async () => {
+  const plain = await baseJob(), withT = await buildJob({ segs, docId: 'doc-1', title: '  光の   屈折  ', lang: 'ja', voices: { expert: 'bob', novice: 'alice' }, yomi, version: '0.4.3' });
+  assert.equal(withT.title, '光の 屈折'); assert.ok(!('title' in plain), 'no title key when none is given');
+  const { title: _t, ...rest } = withT; assert.deepEqual(rest, plain, 'the title is the only difference: inputHash, steps and recipe are unchanged');
+  const z = await readColabZip(await colabZip(withT));
+  assert.equal(parseRecords(new TextDecoder().decode(z.files.get('records.json'))).title, '光の 屈折');
+  const r = (await planImport({ zip: z, segs, docId: 'doc-2', yomi })).reject;
+  assert.equal(r.code, 'doc-id'); assert.equal(r.title, '光の 屈折');
+  assert.equal((await planImport({ zip: z, segs, docId: 'doc-1', yomi })).reject, null, 'same lesson still imports');
+  const old = await readColabZip(await colabZip(plain)), ro = (await planImport({ zip: old, segs, docId: 'doc-2', yomi })).reject;
+  assert.equal(ro.code, 'doc-id'); assert.equal(ro.title, null);
+  const src = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
+  assert.ok(src.includes("'この音声は、別の教材' + (t ? '「' + t + '」' : '') + 'のために作ったものなので、取り込みませんでした。台本を書き出した教材を開いてから、もう一度取り込んでください'"), 'ja message');
+  assert.ok(src.includes("'This audio was made for another lesson' + (t ? ', “' + t + '”' : '') + ', so it was not imported. Open the lesson you exported the script from, then import it again.'"), 'en message');
+  assert.ok(!/docId が違う|the docId differs/.test(src), 'no docId jargon in the messages');
+});
 ok('import: records that do not hold up are skipped one by one (path, cues count, hash, missing audio, kind) and never reach the files', async () => {
   const job = await baseJob();
   const mut = (f) => async () => planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r, e) => f(r, e) })), segs, docId: 'doc-1', yomi });
@@ -160,10 +176,12 @@ ok('verified note: kept in one constant (kit/core/colab-core.mjs); the notebook,
   const docs = ['docs/editor.md', 'docs/editor.ja.md'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8'));
   const i18n = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
   assert.match(COLAB_VERIFIED.ja, /^確認済み：\d{4}-\d{2}-\d{2}/); assert.match(COLAB_VERIFIED.en, /^Verified: \d{4}-\d{2}-\d{2}/);
-  assert.ok(/Kokoro/.test(COLAB_VERIFIED.ja) && /CPU/.test(COLAB_VERIFIED.ja) && /Kokoro/.test(COLAB_VERIFIED.en) && /CPU/.test(COLAB_VERIFIED.en), 'it names what is not verified yet');
+  assert.ok(/Kokoro/.test(COLAB_VERIFIED.ja) && /CPU/.test(COLAB_VERIFIED.ja) && /Kokoro/.test(COLAB_VERIFIED.en) && /CPU/.test(COLAB_VERIFIED.en), 'it names what was verified');
   assert.ok(first.includes(COLAB_VERIFIED.en) && first.includes(COLAB_VERIFIED.ja), 'first markdown cell of the notebook');
   docs.forEach((d, k) => { const lines = d.split('\n').filter((l) => l.includes(`<!-- ${COLAB_NOTE_MARK} -->`)); assert.ok(lines.length >= 1 && lines.every((l) => l.includes(COLAB_VERIFIED[k ? 'ja' : 'en'])), `docs/editor${k ? '.ja' : ''}.md`); });
   assert.ok(/COLAB_VERIFIED/.test(i18n), 'app/i18n.js reads the constant');
+  assert.ok(/2026-10-24/.test(COLAB_VERIFIED.ja) && /T4/.test(COLAB_VERIFIED.ja) && /cuda13/.test(COLAB_VERIFIED.ja) && /2026-10-24/.test(COLAB_VERIFIED.en) && /cuda13/.test(COLAB_VERIFIED.en), 'GPU verification is recorded');
+  assert.ok(!/固定した版での GPU の確認：まだ|not yet verified/.test(COLAB_VERIFIED.ja + COLAB_VERIFIED.en) && /2026-10-23/.test(COLAB_VERIFIED.ja), 'placeholder gone, CPU line kept');
   assert.ok(!/Unverified|未検証/.test(first) && !docs.some((d) => /Unverified|未検証/.test(d)));
 });
 
@@ -448,6 +466,13 @@ ok('notebook: cell 3 records the runtime (pin set and provider in use) for both 
   const c3 = JSON.parse(notebook()).cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('#@title 3.')).source.join('');
   assert.equal((c3.match(/"runtime": E\.runtime_label\(PIN_SET, synth\.provider\)/g) || []).length, 2);
 });
+ok('python: Kokoro asks for CUDA and CPU only (no TensorRT); the phonemizer logger is quieted and nothing else', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/egatari_tts.py'), 'utf8');
+  assert.ok(/def kokoro_providers\(available\)/.test(src) && /providers=kokoro_providers\(rt\.get_available_providers\(\)\)/.test(src) && !/TensorrtExecutionProvider/.test(src.replace(/#.*$/gm, '')), 'session providers');
+  assert.ok(/getLogger\("phonemizer"\)\.setLevel\(logging\.ERROR\)/.test(src) && !/logging\.disable|getLogger\(\)\.setLevel|simplefilter/.test(src), 'phonemizer only');
+  const r = spawnSync('python3', ['-I', '-c', 'import sys; sys.path.insert(0, ' + JSON.stringify(path.join(ROOT, 'colab')) + '); import egatari_tts as E; print(E.kokoro_providers(["TensorrtExecutionProvider","CUDAExecutionProvider","CPUExecutionProvider"]), E.kokoro_providers(["CPUExecutionProvider"]))'], { encoding: 'utf8' });
+  if (r.status === 0) assert.equal(r.stdout.trim(), "['CUDAExecutionProvider', 'CPUExecutionProvider'] ['CPUExecutionProvider']");
+});
 ok('python: Kokoro falls back to the CPU too (load_kokoro), whether onnxruntime raises or quietly drops CUDA', () => {
   const py = `
 import sys
@@ -486,6 +511,8 @@ ok('python and JS say the same notice', () => {
 ok('notebook: every install is pinned to COLAB_PINS (npm and pip), and cell 1 prints the environment (Python, Node, GPU/CUDA, CUDA libraries, pins)', () => {
   const nb = JSON.parse(notebook()), code = nb.cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
   const text = code.join('\n');
+  assert.ok(/class _NoHfTokenWarn/.test(text) && /"unauthenticated requests" not in rec\.getMessage\(\)/.test(text) && text.indexOf('_NoHfTokenWarn') < text.indexOf('snapshot_download(HF_REPO'), 'only the HF_TOKEN warning is filtered, before snapshot_download');
+  assert.ok(!/filterwarnings\("ignore"\)|simplefilter\("ignore"\)|setLevel\(logging\.(ERROR|CRITICAL)/.test(text), 'other warnings are not suppressed');
   const pins = text.match(/^PIN_SETS = (\{.*\})/m);
   assert.ok(pins, 'PIN_SETS in the notebook'); assert.deepEqual(JSON.parse(pins[1]), COLAB_PINS);
   assert.deepEqual(Object.keys(COLAB_PINS).sort(), ['cuda12', 'cuda13']);

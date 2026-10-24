@@ -13,6 +13,8 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 .static [data-step],.static .draw{opacity:1;stroke-dashoffset:0}
 
 /* 授業モード：今の段階を強調する（段階より後の要素は deck.js が薄くする） */
+/* lecture view: opacity of the steps not yet reached (a theme may override) */
+:root{--lecture-dim:.5}
 [data-mode="lecture"] .cur:not(tr):not(g):not(path):not(.concl){background:linear-gradient(transparent 58%,var(--emph-tint) 58%);border-radius:2px}
 [data-mode="lecture"] tr.cur td{background:var(--emph-tint)}
 

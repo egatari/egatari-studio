@@ -50,6 +50,13 @@ ok('storage: egatari.json studio.outline keeps the rows and the next slide; othe
   assert.deepEqual(j.studio.outline, { v: 1, next: 7, rows });
   assert.deepEqual(outlineOf(t), { rows, next: 7 });
   assert.deepEqual(outlineOf(withOutline('', { rows, next: 1 })), { rows, next: 1 });
+  // ほかの項目はバイトのまま（kit/core/config-file.mjs の updateConfig を通る）：大きな整数・1e400・"10" の名前・順・空白
+  const raw = '{"10": 1,  "docId": "x", "big": 12345678901234567890, "inf": 1e400, "studio": {"other": 1, "outline": {"v": 1, "next": 1, "rows": []}}, "acme": {"keep": [1, 2]}}';
+  const t2 = withOutline(raw, { rows, next: 3 });
+  assert.ok(t2.startsWith('{"10": 1,  "docId": "x", "big": 12345678901234567890, "inf": 1e400, "studio": {"other": 1, "outline": '), 'members before outline are byte-identical');
+  assert.ok(t2.endsWith('}, "acme": {"keep": [1, 2]}}'), 'members after studio are byte-identical');
+  assert.deepEqual(outlineOf(t2), { rows, next: 3 });
+  assert.throws(() => withOutline('not json', { rows, next: 1 }), (e) => e.code === 'bad-config');
   assert.equal(outlineOf('{}'), null);
   assert.equal(outlineOf('not json'), null);
   assert.equal(outlineOf(JSON.stringify({ studio: { outline: { v: 2, next: 1, rows } } })), null);

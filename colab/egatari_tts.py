@@ -328,6 +328,7 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
         if progress:
             progress(i + 1, len(job["steps"]), step["key"])
     records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),
+               **({"title": job["title"]} if isinstance(job.get("title"), str) and job["title"].strip() else {}),
                "generator": {"name": "irodori-tts-colab", "version": str(NOTEBOOK_VERSION)}, "steps": steps_rec}
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as z:
@@ -382,6 +383,11 @@ def cpu_notice(reason: str) -> str:
     return f"GPU（CUDA）を使えないため、CPU で合成します（遅くなります） / GPU (CUDA) could not be used, so the CPU is used and synthesis is slower. 理由 / reason: {reason}"
 
 
+def kokoro_providers(available) -> list:
+    """Kokoro の session に頼む実行プロバイダ：CUDA（使えるなら）と CPU だけ（TensorRT などは頼まない）。"""
+    return ([CUDA_PROVIDER] if CUDA_PROVIDER in available else []) + ["CPUExecutionProvider"]
+
+
 def load_kokoro(model_path: str, voices_path: str, make=None, cpu_session=None, available=None, log=print):
     """Kokoro を読み込む。GPU（CUDA）で作れなければ CPU で作り直す（ジョブを止めない）。戻り値は (Kokoro, お知らせ or None)。
     kokoro-onnx は onnxruntime-gpu があると使える実行プロバイダを全部渡す。onnxruntime の Python は CUDA のライブラリが読めないと
@@ -390,7 +396,8 @@ def load_kokoro(model_path: str, voices_path: str, make=None, cpu_session=None, 
     if make is None or cpu_session is None or available is None:
         import onnxruntime as rt
         from kokoro_onnx import Kokoro
-        make = make or (lambda: Kokoro(model_path, voices_path))
+        # TensorRT は Colab になく、kokoro-onnx に任せると最初に TensorRT を頼んで長い EP Error が出る。CUDA と CPU だけを頼む
+        make = make or (lambda: Kokoro.from_session(rt.InferenceSession(model_path, providers=kokoro_providers(rt.get_available_providers())), voices_path))
         cpu_session = cpu_session or (lambda: Kokoro.from_session(rt.InferenceSession(model_path, providers=["CPUExecutionProvider"]), voices_path))
         available = available if available is not None else rt.get_available_providers()
     try:
@@ -412,6 +419,8 @@ def load_kokoro(model_path: str, voices_path: str, make=None, cpu_session=None, 
 def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None):
     """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。
     GPU を使えなければ CPU で続ける（load_kokoro）。"""
+    import logging
+    logging.getLogger("phonemizer").setLevel(logging.ERROR)   # 「words count mismatch」の警告（無害）だけを止める。ほかの警告はそのまま
     k, notice = load_kokoro(model_path, voices_path)
     al = {"bob": "am_michael", "alice": "af_heart", **(aliases or {})}
 

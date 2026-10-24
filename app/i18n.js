@@ -82,6 +82,7 @@ const ja = {
   exportPlayOnly: '参加者用（再生のみ）…', playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
   playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
+  playOnlyLiveSetupToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ホストのページにまだ文字列を貼っていなければ、1 回だけ貼ってライブを作ってください。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
   // 「参加者用（再生のみ）…」のライブの「書き出す前に直すこと」：kit/core/live-policy.mjs の validate の誤り {code, …引数} → 文（app/live-panel.js）
   liveProblem: (p) => {
     const poll = p.id ? `投票 ${p.id}：` : '';
@@ -106,7 +107,9 @@ const ja = {
       case 'pollPrompt': return `${poll}設問を入れてください（${p.n} 字まで）`;
       case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
       case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
-      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa・confused・poll のどれか）`;
+      case 'confusedMembers': return '「わからない」には設問も選択肢も付けられません';
+      case 'sourceSha256': return '教材の版（sourceSha256）の形が正しくありません';
       case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
       case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
       case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
@@ -126,6 +129,11 @@ const ja = {
   yankedRebuild: (v) => `${v} で組み直す`,
   yankedDone: (v, changed, same) => `${v} で組み直しました。部品の同一性の hash が変わったもの：${changed.length ? changed.join('・') : 'なし'}${same.length ? `（コードが同じで hash が変わらないもの：${same.join('・')}）` : ''}。保存すると、この版と新しい hash が教材に記録されます`,
   yankedFailed: (m) => `組み直せませんでした：${m}`,
+  themePinnedNotice: (name, from, to) => `この教材は、テーマ「${name}」の前の版 ${from} で組んでいます（記録した版のまま。黙って新しい色にはしません）。今の版 ${to} にすると、次の色が変わります。`,
+  themeNoColorChange: '色は変わりません。',
+  themeUpdate: 'テーマを更新',
+  themeUpdateDone: (list) => `テーマを更新しました（${list}）。保存すると新しい色で書き出します。`,
+  themeUpdateFailed: (m) => `テーマを更新できませんでした：${m}`,
   extendedNotice: 'このファイルは独自のコード（動く部品やスクリプト）を含んでいます。コードはプレビューの中だけで、外へ繋がらずに動きます。ファイルを書き換えることはできません',
   codeTitle: 'このデッキは独自のコードを含んでいます', codeRun: 'プレビューを始める', codeDeclined: 'プレビューを始めませんでした（独自のコード）',
   codeLeadFile: 'このファイルには、独自の動く部品やスクリプトが入っています。プレビューを始めると、そのコードが動きます。信頼できるファイルだけで始めてください',
@@ -214,6 +222,7 @@ const ja = {
   themeNoPermission: 'テーマのフォルダを読む許可がありません', themeEmpty: (n) => `「${n}」にテーマ（<名前>/tokens.css）が見つかりません。テーマの入ったフォルダを選んでください`,
 
   helpTitle: '使い方',
+  helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた版ではない）'),
   help: [
     ['スライドを直す', ['<kbd>e</kbd> か「編集 (e)」で編集モード。文字の上をダブルクリックすると、エディタの欄に原稿（deck.html）のその部分が出ます。⌘/Ctrl+Enter か「保存」で保存',
       'プレビュー（スライド）は「どこを直したいか」を知らせるだけで、書き込みはエディタの欄のボタンを押したときだけです',
@@ -247,6 +256,7 @@ const ja = {
       '作業フォルダは Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません。1 ファイルはどのブラウザでも開けます）']],
     ['学ぶ人に配る', ['配るのは 1 ファイル（再生専用は --play-only）。Google ドライブでは、プレビューでは動かないので「ダウンロードしてからブラウザで開く」と添えます。メールの添付、LMS（Moodle・Google Classroom など）のファイルとしても配れます',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
+    ['Claude で教材を作る', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.ja.md" target="_blank" rel="noopener">Claude Code や Cowork で教材を作る手引き</a>`]],
     ['テーマのフォルダ', ['デッキのテーマが作業フォルダにも同梱のテーマにもないときは、「ファイル ▾」の「テーマのフォルダ…」（または知らせの「テーマのフォルダを選ぶ…」）で自分のテーマのフォルダ（~/.egatari/themes など）を選べます。読むだけで、書き込みません。同じところで替える・忘れることもできます']],
   ],
   colab: {
@@ -258,7 +268,7 @@ const ja = {
     noSteps: '書き出す段階がありません（どの段階も音声が最新です。「すべての段階」を選べば作り直せます）',
     exported: (n) => `tts-job.json を書き出しました（${n} 段階）。「Colab を開く」でノートブックを開き、上から順に実行して、聞かれたらこのファイルをアップロードしてください。できた zip を「② 取り込む」で読み込みます`,
     importing: 'zip を読んでいます…', zipFail: (m) => 'zip を取り込めません：' + m,
-    rejectDoc: 'この zip は別の教材のために作られたもの（docId が違う）なので、取り込みませんでした',
+    rejectDoc: (t) => 'この音声は、別の教材' + (t ? '「' + t + '」' : '') + 'のために作ったものなので、取り込みませんでした。台本を書き出した教材を開いてから、もう一度取り込んでください',
     rejectRecords: (w) => 'この zip は取り込めません（' + w + '）',
     summary: (a, m, k) => `取り込み：適用 ${a} 件（同期は自動）／印付き ${m} 件（書き出した後に原稿が変わった）／スキップ ${k} 件`,
     skipWhy: { 'no-step': '今の原稿にない段階', 'no-audio': '音声が zip にない', cues: '区切りの数が今の原稿と合わない' },
@@ -400,6 +410,7 @@ const en = {
   exportPlayOnly: 'For participants (play only)…', playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
   playOnlyLiveToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
+  playOnlyLiveSetupToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). If you have not pasted the string on the host page yet, paste it there once to create the Live. During the live time, participants who open it and press Join are connected.`,
   // "To fix before exporting" for Live in For participants (play only)…: a problem {code, …params} from kit/core/live-policy.mjs's validate → text (app/live-panel.js)
   liveProblem: (p) => {
     const poll = p.id ? `Poll ${p.id}: ` : '';
@@ -424,7 +435,9 @@ const en = {
       case 'pollPrompt': return `${poll}enter the question (at most ${p.n} characters)`;
       case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
       case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
-      case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'activityKind': return `${poll}the kind must be qa, confused or poll`;
+      case 'confusedMembers': return '“I don\'t follow” has no question and no choices';
+      case 'sourceSha256': return 'The lesson version (sourceSha256) is malformed';
       case 'activityLabel': return `${poll}the label is at most ${p.n} characters`;
       case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
       case 'tooManyActivities': return `At most ${p.n} questions and polls`;
@@ -444,6 +457,11 @@ const en = {
   yankedRebuild: (v) => `Rebuild with ${v}`,
   yankedDone: (v, changed, same) => `Rebuilt with ${v}. Components whose identity hash changed: ${changed.length ? changed.join(', ') : 'none'}${same.length ? ` (same code, same hash: ${same.join(', ')})` : ''}. Saving records this version and the new hashes in the lesson`,
   yankedFailed: (m) => `Could not rebuild: ${m}`,
+  themePinnedNotice: (name, from, to) => `This lesson is built with version ${from} of the theme "${name}", as it recorded (it is never restyled silently). Updating to the current version ${to} changes these colors.`,
+  themeNoColorChange: 'No colors change.',
+  themeUpdate: 'Update theme',
+  themeUpdateDone: (list) => `Theme updated (${list}). Saving writes the new colors.`,
+  themeUpdateFailed: (m) => `Could not update the theme: ${m}`,
   extendedNotice: 'This file contains its own code (interactive parts or scripts). The code runs only inside the preview, without network access, and cannot change the file.',
   codeTitle: 'This deck contains its own code', codeRun: 'Start the preview', codeDeclined: 'Preview not started (the deck contains its own code)',
   codeLeadFile: 'This file contains its own interactive parts or scripts. Starting the preview runs that code. Start it only for files you trust.',
@@ -530,6 +548,7 @@ const en = {
   themeNoPermission: 'No permission to read the theme folder', themeEmpty: (n) => `No theme (<name>/tokens.css) in “${n}”. Choose a folder that contains themes.`,
 
   helpTitle: 'Help',
+  helpFormat: (snap) => (snap ? `Format: Egatari 1.0 Working Draft ${snap.replace(/^wd-/, '')}` : 'Format: Egatari 1.0 (no dated snapshot)'),
   help: [
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit (e)” for edit mode. Double-click text to open that part of the source (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',
       'The preview (the slides) only points at what to edit; writes happen only when you press a button in the editor’s card.',
@@ -563,6 +582,7 @@ const en = {
       'Working folders need Chrome / Edge (Safari and Firefox cannot open folders; single files open in any browser).']],
     ['Hand out to learners', ['Hand out the single file (a play-only copy with --play-only). On Google Drive the preview does not run it, so tell learners to download it first and open it in a browser. An email attachment or a file in an LMS (Moodle, Google Classroom …) works too.',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
+    ['Make lessons with Claude', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.md" target="_blank" rel="noopener">Guide: making lessons with Claude Code or Cowork</a>`]],
     ['Theme folder', ['When the deck’s theme is neither in the working folder nor bundled, choose your own theme folder (for example ~/.egatari/themes) with “Theme folder…” in “File ▾” (or “Choose theme folder…” in the notice). It is only read, never written. Change or forget it in the same place.']],
   ],
   colab: {
@@ -574,7 +594,7 @@ const en = {
     noSteps: 'No step to export (every step has up-to-date audio; choose “all steps” to make them again)',
     exported: (n) => `Wrote tts-job.json (${n} step${n === 1 ? '' : 's'}). Open the notebook with “Open Colab”, run it from the top and upload this file when asked, then load the zip it returns with “② Import”`,
     importing: 'Reading the zip…', zipFail: (m) => 'Cannot import the zip: ' + m,
-    rejectDoc: 'This zip was made for another lesson (the docId differs), so nothing was imported',
+    rejectDoc: (t) => 'This audio was made for another lesson' + (t ? ', “' + t + '”' : '') + ', so it was not imported. Open the lesson you exported the script from, then import it again.',
     rejectRecords: (w) => 'This zip cannot be imported (' + w + ')',
     summary: (a, m, k) => `Imported: ${a} applied (sync auto) / ${m} marked (the narration changed after the export) / ${k} skipped`,
     skipWhy: { 'no-step': 'no such step in the narration now', 'no-audio': 'the audio is not in the zip', cues: 'the number of cue points differs from the narration' },
