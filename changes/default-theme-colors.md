@@ -8,4 +8,4 @@
 ### Added
 
 - Theme versions, as for components: `themes/<name>/theme.json` has a `version`, earlier versions stay in `vendor/themes/<name>/<version>/` and `themes.lock.json` lists their hashes and changed colors (`npm run themes:check`, in `npm test`).
-  A lesson that recorded `default` 1.0.0 keeps it: the build warns `theme pinned: …` with old → new colors, `--update-themes` updates it, and the editor shows the colors with swatches and offers **Update theme**. Single files pin `themes` in their `egatari.json`. Documents at a theme's root (`README*`, `LICENSE*`, `*.md`) are never read, copied or hashed.
+  A lesson that recorded `default` 1.0.0 keeps it: the build warns `theme pinned: …` with old → new colors, `--update-themes` updates it, and the editor shows the colors with swatches and offers **Update theme**. Single files pin `themes` in their `egatari.json`. Documents at a theme's root (`README*`, `LICENSE*`, `*.md`) are never read or hashed; a user theme's `LICENSE*` travels in the single file.

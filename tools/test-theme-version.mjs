@@ -5,8 +5,8 @@
 //    --update-themes は egatari.json を今の版にして、今の色で組む
 // 3. 持ち運べる 1 ファイル：前の版で組んだ 1 ファイルは、埋め込んだ前の色のまま再生する。展開（unpack）は記録の sha256 から egatari.json に版を固定し、
 //    組み直しても前の色のまま（記録の sha256 も同じ）。今の版で書き出した 1 ファイルの egatari.json は themes を持ち、展開して組み直すと同じバイト
-// 5. 説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）はテーマの一部でない：足しても hash は変わらず、themes:check も通り、
-//    利用者のテーマを 1 ファイルに入れるときも写さない。ロゴに書いても読まない（format spec §6）
+// 5. テーマのフォルダの最上位の文書（README*・LICENSE*・*.md）はテーマの一部でない：足しても hash は変わらず、themes:check も通り、ロゴに書いても読まない。
+//    利用者のテーマを 1 ファイルに入れるとき、README*・*.md は写さず、LICENSE* は写す（展開で戻る。format spec §6・§3.3）
 // 4. 編集アプリ：前の版を記録した 1 ファイル（egatari.json に themes のない、前の Studio が書いたもの）を開くと、プレビューは前の色のまま、
 //    知らせに変わる色（前 → 今、色見本）と「テーマを更新」。押したときだけ今の版で組み直し、egatari.json と記録が替わる
 import fs from 'node:fs';
@@ -20,6 +20,7 @@ import { build, buildPortable, nodeEnv } from '../kit/build.mjs';
 import { build as coreBuild } from '../kit/core/build-core.mjs';
 import { exportPortable, readPortable } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { excludedFromThemeHash, excludedFromThemeCopy } from '../kit/core/themes-lock.mjs';
 import { parseThemesLock, themesLockProblems, themeVersionForSha, themePinsForIndex, pickThemeVersion, themeUpdate, configThemePins } from '../kit/core/themes-lock.mjs';
 import { themesLockCheck, themeDirSha } from './themes-lock.mjs';
 import { unpack } from './portable.mjs';
@@ -46,6 +47,8 @@ ok(pickThemeVersion(LOCK, 'default', OLD).pinned && !pickThemeVersion(LOCK, 'def
 }
 ok(themesLockProblems({ themes: { default: { current: '1.0.0', versions: ['1.0.0', '1.1.0'], sha256: { '1.0.0': 'a'.repeat(64), '1.1.0': 'b'.repeat(64) } } } }).some((x) => /latest/.test(x)), 'lock: current must be the latest version');
 ok(themesLockProblems({ themes: { '../x': { current: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': 'a'.repeat(64) } } } }).some((x) => /registry name/.test(x)), 'lock: names are registry names');
+ok(['README.md', 'readme.ja.md', 'NOTES.md', 'LICENSE', 'LICENSE.md', 'licence.txt'].every(excludedFromThemeHash) && !['tokens.css', 'theme.json', 'logo.svg', 'img/x.md'].some(excludedFromThemeHash), 'hash: README*, LICENSE* and *.md at the theme root are left out, nothing else');
+ok(['README.md', 'NOTES.md', 'readme'].every(excludedFromThemeCopy) && !['LICENSE', 'LICENSE.md', 'licence.txt', 'tokens.css', 'img/x.md'].some(excludedFromThemeCopy), 'copy: README* and *.md are not copied; LICENSE* (also LICENSE.md) is');
 ok(JSON.stringify(configThemePins({ themes: { default: '1.0.0', '../x': '1.0.0', kokugo: '../1' } })) === JSON.stringify({ default: '1.0.0' }), 'egatari.json themes: malformed entries are ignored');
 
 // ---------------------------------------------------------------- 2. 組み立て（CLI）
@@ -144,7 +147,19 @@ fs.writeFileSync(oldFile, pold.html);
   try {
     const r = await exportPortable(nodeEnv, deck, {});
     const names = Object.keys(r.files).filter((k) => k.startsWith('themes/mine/'));
-    ok(names.includes('themes/mine/tokens.css') && names.includes('themes/mine/logo.svg') && !names.some((k) => /README|LICENSE|\.md$/i.test(k)), 'docs: a user theme goes into the single file without its documents ' + JSON.stringify(names));
+    ok(names.includes('themes/mine/tokens.css') && names.includes('themes/mine/logo.svg') && names.includes('themes/mine/LICENSE') && names.includes('themes/mine/LICENSE.txt') && !names.some((k) => /README|\.md$/i.test(k)), 'docs: a user theme goes into the single file with its LICENSE* and without README*/*.md ' + JSON.stringify(names));
+    ok(Buffer.from(r.files['themes/mine/LICENSE']).toString('utf8') === docs.LICENSE, 'docs: the LICENSE bytes are copied as they are');
+    // 展開すると LICENSE が戻る（README は戻らない）
+    const pf = path.join(work, 'user-theme' + FORMAT.FILE_EXT);
+    fs.writeFileSync(pf, r.html);
+    const UD = path.join(work, 'user-theme-unpacked');
+    await unpack(pf, UD);
+    ok(fs.readFileSync(path.join(UD, 'themes', 'mine', 'LICENSE'), 'utf8') === docs.LICENSE && fs.existsSync(path.join(UD, 'themes', 'mine', 'LICENSE.txt')) && !fs.existsSync(path.join(UD, 'themes', 'mine', 'README.md')), 'docs: unpacking the single file brings LICENSE back (README.md is not there)');
+    // その sha256 は、LICENSE も README もないテーマと同じ
+    const bare = path.join(work, 'user-theme-bare');
+    fs.mkdirSync(bare, { recursive: true });
+    for (const f of ['tokens.css', 'theme.json', 'logo.svg']) fs.copyFileSync(path.join(T, f), path.join(bare, f));
+    ok(themeDirSha(path.join(UD, 'themes', 'mine')) === themeDirSha(bare) && themeDirSha(T) === themeDirSha(bare), 'docs: the theme sha256 with LICENSE and README.md equals the sha256 without either');
     ok(r.stats.warn.some((w) => /README\.md/.test(w) && /ロゴにしない/.test(w)), 'docs: README.md listed as a logo is not read (warning)');
     ok(!r.html.includes(Buffer.from('# x\n').toString('base64')), 'docs: the README is not embedded');
   } finally { if (prev === undefined) delete process.env.EGATARI_THEMES; else process.env.EGATARI_THEMES = prev; }

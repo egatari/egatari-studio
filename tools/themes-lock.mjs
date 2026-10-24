@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { THEMES_LOCK_FILE, VENDOR_THEMES, parseThemesLock, isThemeDoc } from '../kit/core/themes-lock.mjs';
+import { THEMES_LOCK_FILE, VENDOR_THEMES, parseThemesLock, excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
 import { identityBytes } from '../kit/core/identity-hash.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -15,14 +15,14 @@ const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const cmpCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
 // テーマのフォルダの同一性の hash（組み立てが読むファイルだけ。親のテーマ extends は親の hash に入る）。
-// 最上位の説明の文書（README*・LICENSE*・*.md。isThemeDoc）は入れない（format spec §6）
+// 最上位の説明の文書（README*・LICENSE*・*.md。excludedFromThemeHash）は入れない（format spec §6）
 export function themeDirSha(dir) {
   const files = [];
   const cfgPath = path.join(dir, 'theme.json');
   let cfg = {};
   if (fs.existsSync(cfgPath)) { files.push('theme.json'); cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); }
   files.push('tokens.css');
-  for (const f of Array.isArray(cfg.logos) ? cfg.logos : []) if (!isThemeDoc(f) && fs.existsSync(path.join(dir, String(f)))) files.push(String(f).split(path.sep).join('/'));
+  for (const f of Array.isArray(cfg.logos) ? cfg.logos : []) if (!excludedFromThemeHash(f) && fs.existsSync(path.join(dir, String(f)))) files.push(String(f).split(path.sep).join('/'));
   const lines = [...new Set(files)].sort(cmpCodePoint).map((k) => `${k}\t${sha(identityBytes(k, fs.readFileSync(path.join(dir, ...k.split('/')))))}\n`);
   return sha(lines.join(''));
 }

@@ -16,7 +16,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
-import { readThemesLock, themesVendorDir, themePinsForIndex, isThemeDoc } from './themes-lock.mjs';
+import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
@@ -676,6 +676,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const files = dict();
   const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes'), vThemeDir = themesVendorDir(P, env.ROOT);
   const regComp = new Map(), regTheme = new Map(), regThemeVer = new Map();
+  const userThemeRoots = new Map();   // 1 ファイルに入れる利用者のテーマのフォルダ → その利用者のテーマのフォルダ（LICENSE* を足すため）
   for (const p of [...reads].sort()) {
     if (inDeck(p)) {
       const rp = rel(p);
@@ -692,14 +693,14 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       // vendor/themes/<名前>/<版>/…：同梱のテーマの前の版の写し（教材が記録した版で組んだ。kit/core/themes-lock.mjs）。今の版と同じ名前で記録する
       const [name, version] = P.relative(vThemeDir, p).split(P.sep);
       const k = P.relative(P.join(vThemeDir, name, version), p).split(P.sep).join('/');
-      if (isThemeDoc(k)) continue;   // 説明の文書はテーマの hash に入れない（format spec §6）
+      if (excludedFromThemeHash(k)) continue;   // README*・LICENSE*・*.md はテーマの hash に入れない（format spec §6）
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regThemeVer.set(name, version);
       regTheme.get(name).set(k, readBytesVia(env, p));
     } else if (env.within(p, themeDir)) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
       const k = P.relative(P.join(themeDir, name), p).split(P.sep).join('/');
-      if (isThemeDoc(k)) continue;   // 説明の文書はテーマの hash に入れない（format spec §6）
+      if (excludedFromThemeHash(k)) continue;   // README*・LICENSE*・*.md はテーマの hash に入れない（format spec §6）
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regTheme.get(name).set(k, readBytesVia(env, p));
     } else {
@@ -707,9 +708,24 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
       if (!u) continue;
       const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
-      if (isThemeDoc(rp.split('/').slice(2).join('/'))) continue;   // 利用者のテーマの説明の文書は写さない
+      if (excludedFromThemeCopy(rp.split('/').slice(2).join('/'))) continue;   // 利用者のテーマの README*・*.md は写さない
+      userThemeRoots.set(P.join(u, P.relative(u, p).split(P.sep)[0]), u);
       if (files[rp] || env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
       files[rp] = readBytesVia(env, p);
+    }
+  }
+  // 利用者のテーマの LICENSE*（最上位）：組み立ては読まないが、テーマの資源を配り直す 1 ファイルには付けて入れる（書体・ロゴの使用条件。§3.3 の閉包）。
+  // テーマの hash には入れない。一覧の口（env.listFiles）があればそれで、なければよくある名前を探す
+  for (const [root, u] of userThemeRoots) {
+    const cands = new Set(['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'].map((f) => P.join(root, f)));
+    if (typeof env.listFiles === 'function') { try { for (const f of env.listFiles(root) || []) if (P.dirname(f) === root) cands.add(f); } catch { /* 一覧できない */ } }
+    for (const f of [...cands].sort()) {
+      const base = P.basename(f);
+      if (!isThemeLicense(base) || !env.exists(f) || !env.within(f, root) || !env.within(f, u)) continue;
+      const rp = 'themes/' + P.relative(u, f).split(P.sep).join('/');
+      if (files[rp]) continue;
+      if (env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
+      files[rp] = readBytesVia(env, f);
     }
   }
   const entry = rel(P.resolve(srcPath));

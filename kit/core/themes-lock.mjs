@@ -15,12 +15,20 @@
 import { NAME_RE, VERSION_RE } from './components-lock.mjs';
 
 export const THEMES_LOCK_FILE = 'themes.lock.json';
-// テーマの説明の文書（テーマのフォルダの最上位の README*・LICENSE*・*.md）：テーマの一部でない。読まず、写さず、hash に入れない
-// （format spec §6：テーマの sha256 は組み立てが読むファイル＝スタイルシート・宣言のファイル・参照する資源だけ）。rel はテーマのフォルダからの相対パス
-export function isThemeDoc(rel) {
-  const r = String(rel).replace(/\\/g, '/').replace(/^\.\//, '');
-  if (r.includes('/')) return false;
-  return /^(?:readme|license)/i.test(r) || /\.md$/i.test(r);
+// テーマのフォルダの最上位の文書（README*・LICENSE*・*.md）：テーマの一部でない（format spec §6：テーマの sha256 は組み立てが読むファイル＝
+// スタイルシート・宣言のファイル・参照する資源だけ）。rel はテーマのフォルダからの相対パス。2 つの決まりを分ける：
+//   excludedFromThemeHash：hash に入れない・組み立てで読まない（ロゴに書いても）。README*・LICENSE*・*.md
+//   excludedFromThemeCopy：利用者のテーマを 1 ファイルに入れるとき写さない。README* と *.md だけ。LICENSE* は写す
+//     （書体・機関のロゴの使用条件は、資源を配り直す先に付いていく。§3.3 の閉包）
+const topLevel = (rel) => { const r = String(rel).replace(/\\/g, '/').replace(/^\.\//, ''); return r.includes('/') ? null : r; };
+export const isThemeLicense = (rel) => { const r = topLevel(rel); return r !== null && /^licen[cs]e/i.test(r); };
+export function excludedFromThemeHash(rel) {
+  const r = topLevel(rel);
+  return r !== null && (/^(?:readme|licen[cs]e)/i.test(r) || /\.md$/i.test(r));
+}
+export function excludedFromThemeCopy(rel) {
+  const r = topLevel(rel);
+  return r !== null && !isThemeLicense(r) && (/^readme/i.test(r) || /\.md$/i.test(r));
 }
 export const VENDOR_THEMES = ['vendor', 'themes'];
 const SHA_RE = /^[0-9a-f]{64}$/;
