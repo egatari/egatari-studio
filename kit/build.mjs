@@ -181,7 +181,8 @@ export async function buildPortable(srcPath, opts = {}) {
     if (!opts.playOnly) throw Object.assign(new Error('--live needs --play-only (a live room is added only to a play-only file)'), { code: 'live-needs-play-only' });
     // opts.liveDevLoopback：ループバックの http: の部屋（試験だけ。コマンドの引数にはしない）
     const dev = { devLoopback: opts.liveDevLoopback === true };
-    r.html = addLive(r.html, mergeLive(r.index.extensions && r.index.extensions.live, opts.live), liveRuntimeText(dev), dev);
+    // 教材の版（sourceSha256）も入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
+    r.html = addLive(r.html, { ...mergeLive(r.index.extensions && r.index.extensions.live, opts.live), sourceSha256: r.index.sourceSha256 }, liveRuntimeText(dev), dev);
   }
   return r;
 }

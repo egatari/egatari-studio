@@ -58,6 +58,7 @@ const ja = {
   exportPlayOnly: `参加者に配る Egatari ファイル（再生のみ・${FORMAT.PLAY_EXT}）を書き出す`, playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の 1 ファイルに書き出しました（原稿は入りません。ブラウザで開けば再生できます）',
   exportLive: 'ライブ（質問・投票）を付けて配る…', playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
+  playOnlyLiveSetupToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生のみ）を書き出しました。ホストのページにまだ文字列を貼っていなければ、1 回だけ貼ってライブを作ってください。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
   // 「ライブ（質問・投票）を付けて配る」の「書き出す前に直すこと」：kit/core/live-policy.mjs の validate の誤り {code, …引数} → 文（app/live-panel.js）
   liveProblem: (p) => {
     const poll = p.id ? `投票 ${p.id}：` : '';
@@ -82,7 +83,9 @@ const ja = {
       case 'pollPrompt': return `${poll}設問を入れてください（${p.n} 字まで）`;
       case 'pollChoices': return `${poll}選択肢は ${p.min}〜${p.max} 個にしてください`;
       case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
-      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa か poll）`;
+      case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa・confused・poll のどれか）`;
+      case 'confusedMembers': return '「わからない」には設問も選択肢も付けられません';
+      case 'sourceSha256': return '教材の版（sourceSha256）の形が正しくありません';
       case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
       case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
       case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
@@ -355,6 +358,7 @@ const en = {
   exportPlayOnly: `Export Egatari file (play only, ${FORMAT.PLAY_EXT}) for participants`, playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only single file (no source inside; it plays when opened in a browser).',
   exportLive: 'Distribute with Live (questions and polls)…', playOnlyLiveToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
+  playOnlyLiveSetupToast: (room) => `Exported an Egatari file (play only) with Live (Live ID ${room}). If you have not pasted the string on the host page yet, paste it there once to create the Live. During the live time, participants who open it and press Join are connected.`,
   // "To fix before exporting" in Distribute with Live: a problem {code, …params} from kit/core/live-policy.mjs's validate → text (app/live-panel.js)
   liveProblem: (p) => {
     const poll = p.id ? `Poll ${p.id}: ` : '';
@@ -379,7 +383,9 @@ const en = {
       case 'pollPrompt': return `${poll}enter the question (at most ${p.n} characters)`;
       case 'pollChoices': return `${poll}give ${p.min} to ${p.max} choices`;
       case 'pollChoice': return `${poll}enter choice ${p.c + 1} (at most ${p.n} characters)`;
-      case 'activityKind': return `${poll}the kind must be qa or poll`;
+      case 'activityKind': return `${poll}the kind must be qa, confused or poll`;
+      case 'confusedMembers': return '“I don\'t follow” has no question and no choices';
+      case 'sourceSha256': return 'The lesson version (sourceSha256) is malformed';
       case 'activityLabel': return `${poll}the label is at most ${p.n} characters`;
       case 'unknownMember': return `The Live settings have an unknown item (${p.path})`;
       case 'tooManyActivities': return `At most ${p.n} questions and polls`;

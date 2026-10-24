@@ -660,7 +660,7 @@ const livePanel = createLivePanel({
     return [...new Set(keys)];
   },
   slides: () => (S.slides || []).map((x) => ({ key: x.key, heading: x.heading || '' })),
-  exportLive: (live) => exportPlayOnlyFile(live),
+  exportLive: (live, opts) => exportPlayOnlyFile(live, opts),
   problemText: T.liveProblem,
 });
 // スライド一覧（app/slides-panel.js。backlog #79）：左の板。足す・複製・削除・並べ替えは原稿・口述原稿・音声の記録を書き、組み直す（段 B）
@@ -1329,7 +1329,7 @@ async function exportPortableFile() {
 // ---------------------------------------------------------------- 再生専用（学生に配る形）を書き出す（kit/core/portable.mjs の playOnly、§3.7）
 // 1 ファイル：保存したもの（P.original）から。保存していない変更があれば、先に保存を求める。作業フォルダ：1 ファイルに組んでから
 // room：授業の部屋（拡張 live。app/live-panel.js が作る、鍵を含む完全なもの）。あれば派生に CSP の <meta> と再生器を足す（kit/core/live.mjs）
-async function exportPlayOnlyFile(room = null) {
+async function exportPlayOnlyFile(room = null, opts = {}) {
   if (!S.ws) return;
   const ws0 = S.ws, g0 = S.gen, P = S.portable;
   const live = () => S.ws === ws0 && S.gen === g0;
@@ -1337,11 +1337,12 @@ async function exportPlayOnlyFile(room = null) {
   if (!(await leftoverGate('export'))) return;
   if (!live()) return;
   status(T.exporting);
-  let html, name, writes = {};
+  let html, name, writes = {}, srcSha = null;
   try {
-    if (P) { html = playOnly(P.original); name = P.name; }
-    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
-    if (room) html = addLive(html, room, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
+    if (P) { html = playOnly(P.original); name = P.name; srcSha = P.index && P.index.sourceSha256; }
+    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
+    if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + FORMAT.PLAY_EXT;
@@ -1351,7 +1352,7 @@ async function exportPlayOnlyFile(room = null) {
     if (!live()) throw cancelledError();
     for (const [rel, text] of Object.entries(writes)) await ws0.writeText(rel, text, { live });   // 作業フォルダ：初めて作った docId を残す
     status(T.exported(time(), (html.length / 1048576).toFixed(1)));
-    toast(h ? (room ? T.playOnlyLiveToast(room.room) : T.playOnlyToast) : T.downloadedToast(name));
+    toast(h ? (room ? (opts.oneWay ? T.playOnlyLiveSetupToast(room.room) : T.playOnlyLiveToast(room.room)) : T.playOnlyToast) : T.downloadedToast(name));
   } catch (e) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
     if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');

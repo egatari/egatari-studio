@@ -1,0 +1,3 @@
+### Added
+
+- Live questions (draft): a **?** at the bottom right opens the question box on any slide; a question carries the step on screen, the lesson's `sourceSha256` (now written into the exported block as `live.sourceSha256`, since a play-only `deck-meta` has none) and an optional circled region (**Circle**, normalised with the review-notes stroke rule). **I don't follow** (kind `confused`) is a one-tap mark per step that can be taken back. The host's replies to the participant's own questions show in the pane. The editor's **Distribute with Live** offers **I don't follow** (on by default). The vendored protocol is updated to egatari/live 7f859c4 (main)

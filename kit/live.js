@@ -36,29 +36,45 @@ var S = JA ? {
   off: "つないでいません", connecting: "つないでいます…", connected: "参加中", waiting: "待機室で待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "ライブは " + t + " に始まります"; }, after: "ライブの時間は終わりました", noNet: "この画面からは参加できません。教材のファイルをダウンロードして、ブラウザ（Chrome・Safari など）で直接開いてください。ライブ ID：",
   noNetLink: "この画面からは参加できません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", joinTo: "参加先：", roomLabel: "ライブ ID：",
-  name: "名前（任意）", nameNote: "名前はホストだけに見えます（入れなければ名前なしで送られます）", ask: "先生への質問", send: "送る", sent: "質問を送りました", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
-  shown: "ホストが全員に表示した質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
+  name: "名前（任意）", nameNote: "名前はホストだけに見えます（入れなければ名前なしで送られます）", ask: "ホストへの質問", send: "送る", sent: "質問を送りました",
+  askBtn: "ホストに質問する", askHint: "質問はホストだけが見ます。名前を入れなければ、名前なしで届きます",
+  where: function(t){ return "質問に付く場所：" + t; }, whereStep: function(i, k){ return "スライド " + i + "・ステップ " + k; }, whereAll: "教材全体",
+  circle: "囲む", circleOn: "囲むのを終える", circleHelp: "質問したいところを、スライドの上で指やマウスでなぞって囲めます（なくてもかまいません）。Esc で終わります",
+  circled: function(n){ return "囲んだところ：" + n + " 本"; }, clearCircle: "囲みを消す", circleGone: "ステップが変わったので、囲んだところを消しました", circleStart: "スライドの上をなぞって囲んでください。Esc で終わります", circleEnd: "囲むのを終えました",
+  inkLabel: "囲むところ（スライドの上）",
+  confused: "わからない", confusedTip: "このステップがわからないことを、ホストに伝えます（文は送りません）。もう一度押すと取り消します",
+  confusedSent: "「わからない」をホストに伝えました", confusedOff: "「わからない」を取り消しました",
+  replies: "ホストからの返事", yourQ: "あなたの質問：", gotReply: "ホストから返事が届きました", replyPrefix: "ホストの返事：", newReply: "新しい返事があります", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
+  shown: "ホストが全員に表示した質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問（そのときのステップと、囲んだところ）・投票・「わからない」（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
   stop: {bad_key: "この教材の鍵では部屋に入れません（鍵が違います）", room_not_found: "部屋が見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
     room_expired: "部屋の時間が終わりました", room_closed: "ホストがライブを終えました。再開したら、もう一度「参加する」を押してください", too_early: "まだライブの時間になっていません（この端末の時計も確かめてください）",
     room_full: "部屋が満員です。少し待ってから、もう一度参加してください", key_replaced: "先生が参加の鍵を替えました。このファイルでは入れません。新しいファイルをもらってください",
     not_approved: "先生が参加を認めませんでした", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "授業の部屋の時間は終わりました", unknown: "部屋から切断されました",
     bad_endpoint: "つなぐ先が教材の宣言と違うので、つなぎません", network: "つなげませんでした"},
   err: {unknown_activity: "この活動は部屋にありません", wrong_kind: "活動の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
-    rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる質問の数を超えました", room_limit: "部屋がいっぱいです", not_admitted: "先生の承認を待っています", other: "送れませんでした"}
+    rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる数を超えました", room_limit: "ライブがいっぱいで受け付けられませんでした", not_admitted: "ホストの許可を待っています", bad_region: "囲んだところを送れませんでした。囲みを消して送ってください", other: "送れませんでした"}
 } : {
   title: "Live (questions and polls)", again: "Try again", notice: "From this lesson you can send questions and votes to your teacher through Live at " + HOST, join: "Join", leave: "Leave", fold: "Fold", unfold: "Unfold", badge: "Live", pin: "Keep open", pollOpen: "This step has a poll. The Live pane is open",
   off: "Not connected", connecting: "Connecting…", connected: "Joined", waiting: "Waiting in the waiting room", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The Live starts at " + t; }, after: "The live time is over", noNet: "You cannot join from this screen. Download the lesson file and open it directly in a browser (Chrome, Safari, …). Live ID: ",
   noNetLink: "You cannot join from this screen. You can join in a new browser tab.", openJoin: "Join in the browser", joinTo: "Goes to: ", roomLabel: "Live ID: ",
-  name: "Name (optional)", nameNote: "Only the host sees your name (leave it empty to send without one)", ask: "Question for the teacher", send: "Send", sent: "Question sent", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
-  shown: "Questions the host showed to everyone", leftMsg: "Disconnected. You can join again", window: function(a, b){ return a + " – " + b; }, privacy: "Only what you choose to send (questions, votes, and a name if you type one) and a random id made on this device are sent. Your viewing position and timing are not",
+  name: "Name (optional)", nameNote: "Only the host sees your name (leave it empty to send without one)", ask: "Question for the host", send: "Send", sent: "Question sent",
+  askBtn: "Ask the host a question", askHint: "Only the host sees questions. Without a name, they arrive without one",
+  where: function(t){ return "The question is tied to: " + t; }, whereStep: function(i, k){ return "slide " + i + ", step " + k; }, whereAll: "the whole lesson",
+  circle: "Circle", circleOn: "Stop circling", circleHelp: "You can circle what you are asking about by tracing on the slide with a finger or the mouse (optional). Esc stops",
+  circled: function(n){ return "Circled: " + n + (n === 1 ? " stroke" : " strokes"); }, clearCircle: "Clear the circle", circleGone: "The step changed, so the circle was cleared", circleStart: "Trace on the slide to circle. Esc stops", circleEnd: "Stopped circling",
+  inkLabel: "Area to circle (on the slide)",
+  confused: "I don't follow", confusedTip: "Tells the host you don't follow this step (no text is sent). Tap again to take it back",
+  confusedSent: "Told the host you don't follow", confusedOff: "Took back “I don't follow”",
+  replies: "Replies from the host", yourQ: "Your question: ", gotReply: "The host replied", replyPrefix: "Host's reply: ", newReply: "There is a new reply", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
+  shown: "Questions the host showed to everyone", leftMsg: "Disconnected. You can join again", window: function(a, b){ return a + " – " + b; }, privacy: "Only what you choose to send (questions with the step on screen and anything you circled, votes, “I don't follow”, and a name if you type one) and a random id made on this device are sent. Your viewing position and timing are not",
   stop: {bad_key: "This lesson's key does not open the room (wrong key)", room_not_found: "The room does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
     room_expired: "The room's time is over", room_closed: "The host ended the Live. When it reopens, press Join again", too_early: "The Live has not started yet (also check this device's clock)",
     room_full: "The room is full. Wait a little and join again", key_replaced: "The teacher replaced the key: this file can no longer join. Ask for a new file",
     not_approved: "The teacher did not admit you", bad_message: "Protocol mismatch (a bug in the lesson or the server)", window_over: "The live room has ended", unknown: "Disconnected by the room",
     bad_endpoint: "The address does not match the one the lesson declares; not connecting", network: "Could not connect"},
   err: {unknown_activity: "This activity is not in the room", wrong_kind: "Wrong kind of activity", bad_choice: "No such choice", text_too_long: "The question is too long", empty_text: "The question is empty",
-    rate_limited: "Sending too fast. Wait a moment", quota_exceeded: "You have sent the maximum number of questions", room_limit: "The room is full", not_admitted: "Waiting for the teacher to admit you", other: "Could not send"}
+    rate_limited: "Sending too fast. Wait a moment", quota_exceeded: "You have reached the maximum you can send", room_limit: "The Live is full and could not take it", not_admitted: "Waiting for the host to admit you", bad_region: "The circle could not be sent. Clear it and send again", other: "Could not send"}
 };
 // 手動で「参加する」から試し直せる止まり方（ほかは、このファイルでは入れない）
 var REJOIN = {room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0};
@@ -133,9 +149,27 @@ css.textContent =
   "#live-pane .lv-sec[hidden],#live-pane [hidden]{display:none!important}" +
   "html.lv-side #dt-cb{left:calc((100% - var(--lv-w)) / 2)}html.lv-side #deck-toast{left:calc((100% - var(--lv-w)) / 2)}html.lv-side #jump{right:calc(var(--lv-w) + 12px)}html.lv-side #bar{max-width:calc(100% - var(--lv-w))}" +
   "html.lv-bottom #dt-cb{bottom:calc(var(--lv-h) + 10px)}html.lv-bottom #bar{bottom:var(--lv-h)}html.lv-bottom #jump,html.lv-bottom #dt-ind{bottom:calc(var(--lv-h) + 10px)}" +
+  // 右下の「?」と「わからない」（舞台の外の小さなボタン。板が開いていれば板の手前に寄せる）
+  "#live-ask{position:fixed;right:12px;bottom:12px;z-index:38;display:flex;gap:8px;align-items:center}" +
+  "html.lv-side #live-ask{right:calc(var(--lv-w) + 12px)}html.lv-bottom #live-ask{bottom:calc(var(--lv-h) + 12px)}" +
+  "#live-ask[hidden],#live-ask [hidden]{display:none!important}" +
+  "#live-ask button{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:999px;background:rgba(20,20,20,.55);color:#fff;" +
+  "font:600 14px/1 system-ui,-apple-system,'Segoe UI',sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}" +
+  "#live-ask .lv-q{font-size:21px}#live-ask .lv-cf{padding:0 14px}" +
+  "#live-ask button:hover{background:rgba(20,20,20,.85)}#live-ask button:focus-visible{outline:2px solid #9cc8ff;outline-offset:2px;background:rgba(20,20,20,.85)}" +
+  "#live-ask .lv-cf[aria-pressed=true]{background:#c2410c}" +
+  "#live-mark.lv-new::after{content:'';width:8px;height:8px;border-radius:50%;background:#ffb02e;margin-left:2px}" +
+  // 囲むところ：舞台の上に重ねる SVG（舞台の座標 1280 × 720）。囲んでいる間だけ指とマウスを受ける
+  "#live-ink{position:fixed;z-index:36;pointer-events:none;overflow:visible}#live-ink[hidden]{display:none}" +
+  "#live-ink.lv-drawing{pointer-events:auto;cursor:crosshair;touch-action:none;outline:3px dashed #ffb02e;outline-offset:-3px}" +
+  "#live-ink polyline{fill:none;stroke:#ff5a4f;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}" +
+  "#live-pane .lv-where{font-size:12px;color:#c4c9cf;margin:4px 0 0}" +
+  "#live-pane button[aria-pressed=true]{background:#ffb02e;border-color:#ffb02e;color:#111}" +
+  "#live-pane .lv-reply{display:block;margin-top:2px;padding-left:8px;border-left:3px solid #4d8dff;white-space:pre-wrap}" +
+  "#live-pane .lv-replies ul{list-style:none;padding-left:0}#live-pane .lv-replies li{margin:6px 0}" +
   "@keyframes lv-in{from{opacity:0}to{opacity:1}}" +
   "@media (prefers-reduced-motion:no-preference){.lv-dot{transition:background-color .2s}#live-pane{animation:lv-in .16s ease-out}}" +
-  ".printing #live-pane,.printing #live-mark{display:none!important}@media print{#live-pane,#live-mark{display:none!important}}";
+  ".printing #live-pane,.printing #live-mark,.printing #live-ask,.printing #live-ink{display:none!important}@media print{#live-pane,#live-mark,#live-ask,#live-ink{display:none!important}}";
 var pane = h("aside"); pane.id = "live-pane"; pane.setAttribute("aria-label", S.title); pane.setAttribute("data-state", "off");
 var head = h("div", "lv-head"), dot = h("span", "lv-dot"), title = h("span", "lv-title", S.title), state = h("span", "lv-state", S.off);
 dot.setAttribute("aria-hidden", "true");
@@ -166,14 +200,33 @@ var polls = h("div", "lv-sec lv-polls");
 var qa = h("div", "lv-sec lv-qa"), qaL = h("label", "", S.ask), qaT = h("textarea"), bSend = h("button", "lv-send lv-pri", S.send);
 qaT.id = "live-pane-q"; qaL.htmlFor = qaT.id; qaT.maxLength = LP.LIMITS.question; bSend.type = "button";
 var qaRow = h("div", "lv-row"); qaRow.appendChild(bSend);
-qa.appendChild(qaL); qa.appendChild(qaT); qa.appendChild(qaRow);
+// 質問に付く場所（送るときに画面にあるステップ）と、任意の「囲む」
+var pWhere = h("p", "lv-where"), pHint = h("p", "lv-small", S.askHint);
+var bCircle = h("button", "lv-circle", S.circle); bCircle.type = "button"; bCircle.setAttribute("aria-pressed", "false"); bCircle.title = S.circleHelp;
+var bClear = h("button", "lv-clear", S.clearCircle); bClear.type = "button"; bClear.hidden = true;
+var circled = h("span", "lv-small lv-circled");
+var circleRow = h("div", "lv-row"); circleRow.appendChild(bCircle); circleRow.appendChild(circled); circleRow.appendChild(bClear);
+var circleHelp = h("p", "lv-small", S.circleHelp); circleHelp.id = "live-pane-circle-help"; bCircle.setAttribute("aria-describedby", circleHelp.id);
+qa.appendChild(qaL); qa.appendChild(qaT); qa.appendChild(pWhere); qa.appendChild(circleRow); qa.appendChild(circleHelp); qa.appendChild(qaRow); qa.appendChild(pHint);
+// ホストからの返事（自分の質問への返事だけ。ほかの人の質問は届かない）
+var repSec = h("div", "lv-sec lv-replies"), repH = h("h3", "", S.replies), repUl = h("ul");
+repSec.appendChild(repH); repSec.appendChild(repUl);
 var shownSec = h("div", "lv-sec lv-shown"), shownH = h("h3", "", S.shown), shownUl = h("ul");
 shownSec.appendChild(shownH); shownSec.appendChild(shownUl);
 var pPriv = h("p", "lv-small", S.privacy);
 // 知らせる場所は板の外（たたんでいる間も読み上げる）
 var sr = h("div", "sr-only"); sr.setAttribute("role", "status"); sr.setAttribute("aria-live", "polite"); sr.id = "live-pane-status";
-[pNotice, pWin, pMsg, pAddr, linkRow, joinRow, nameL, nameI, nameNote, polls, qa, shownSec, pPriv].forEach(function(e){ body.appendChild(e); });
+[pNotice, pWin, pMsg, pAddr, linkRow, joinRow, nameL, nameI, nameNote, polls, qa, repSec, shownSec, pPriv].forEach(function(e){ body.appendChild(e); });
 pane.appendChild(head); pane.appendChild(body);
+// 右下の「?」（質問の欄を開く）と「わからない」（このステップで一押し。もう一度押すと取り消す）。舞台の外に置く
+var askBox = h("div"); askBox.id = "live-ask"; askBox.hidden = true;
+var bAsk = h("button", "lv-q", "?"); bAsk.type = "button"; bAsk.setAttribute("aria-label", S.askBtn); bAsk.title = S.askBtn; bAsk.setAttribute("aria-controls", "live-pane");
+var bConf = h("button", "lv-cf", S.confused); bConf.type = "button"; bConf.setAttribute("aria-pressed", "false"); bConf.title = S.confusedTip; bConf.hidden = true;
+askBox.appendChild(bConf); askBox.appendChild(bAsk);
+// 囲むところ（舞台の上に重ねる。舞台の DOM には入れない）
+var SVGNS = "http://www.w3.org/2000/svg";
+var ink = document.createElementNS(SVGNS, "svg"); ink.id = "live-ink"; ink.setAttribute("viewBox", "0 0 1280 720"); ink.setAttribute("preserveAspectRatio", "none");
+ink.setAttribute("aria-label", S.inkLabel); ink.setAttribute("role", "img"); ink.setAttribute("hidden", "");
 
 var fmt = function(s){ try { return new Date(s).toLocaleString(JA ? "ja-JP" : "en-US", {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}); } catch (e) { return s; } };
 pWin.textContent = S.window(fmt(live.window.from), fmt(live.window.to));
@@ -189,16 +242,22 @@ function autoWanted(){ return phase() === "open" && (!CTX || !!JOIN_URL) && poll
 function focusIn(){ var a = document.activeElement; return !!(a && pane.contains(a)); }
 function apply(wasOpen, how){
   var o = isOpen();
+  if (o) newReply = false;
   if (o === wasOpen) { render(); return; }
+  if (!o && drawing) setDrawing(false);
   var back = !o && focusIn();
   layout(); render();
   if (back) mark.focus();
   if (o && how === "poll") announce(S.pollOpen);
-  if (o && how === "mark"){
-    var to = !qa.hidden ? qaT : !joinRow.hidden && !bJoin.disabled ? bJoin : JOIN_URL && !linkRow.hidden ? aJoin : bFold;
-    try { to.focus({preventScroll: true}); } catch (e) {}
-  }
+  if (o && (how === "mark" || how === "ask")) focusForm();
 }
+// 開いた板で、まず使うところへ：質問の欄（つながっていれば）・「参加する」・「ブラウザで参加する」・閉じる
+function focusForm(){
+  var to = !qa.hidden ? qaT : !joinRow.hidden && !bJoin.disabled ? bJoin : JOIN_URL && !linkRow.hidden ? aJoin : bFold;
+  try { to.focus({preventScroll: true}); } catch (e) {}
+}
+// 「?」：板を開いて（開いたままにする）、質問の欄へ。まだ参加していなければ「参加する」へ（押すまでつながない）
+function openAsk(){ var was = isOpen(); pinned = true; if (was) { render(); focusForm(); } else apply(was, "ask"); }
 function syncAuto(){ var was = isOpen(); auto = autoWanted(); apply(was, "poll"); }
 function openPane(how){ var was = isOpen(); pinned = true; apply(was, how); }
 function collapse(){ var was = isOpen(); pinned = false; auto = false; dismissed = stepKey; apply(was); }
@@ -218,6 +277,7 @@ function layout(){
     root.style.setProperty("--lv-w", "0px"); root.style.setProperty("--lv-h", "0px");
     docked = null;
     if (st){ st.style.left = st.style.top = ""; st.style.transform = "translate(-50%,-50%) scale(" + Math.min(W / 1280, H / 720) + ")"; }
+    placeInk();
     return;
   }
   var side = W / Math.max(1, H) >= 1.25 && W >= 760;
@@ -230,11 +290,14 @@ function layout(){
   var k = Math.min(aw / 1280, ah / 720);
   st.style.left = (aw / 2) + "px"; st.style.top = (ah / 2) + "px";
   st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
+  placeInk();
 }
 
 // ---------------------------------------------------------------- 状態
 var ST = "off", ws = null, attempt = 0, retryTimer = null, retryAt = 0, tickTimer = null, pingTimer = null, endTimer = null, startTimer = null;
 var lastCode = 0, admitted = false, stepKey = "*", refN = 0, pending = {}, votes = {}, shownItems = [], nameSent = "", stopReason = "", left = false, info = "";
+// 質問の機能：pos（今のスライドとステップ、1 から。表示だけ）・囲んだ線（舞台の座標。囲んだステップ）・「わからない」（ステップごと）・自分の質問への返事
+var pos = null, region = [], regionStep = null, drawing = false, stroke = null, confusedOn = {}, replies = {}, newReply = false;
 function setState(s, why){ ST = s; stopReason = why || ""; render(); }
 function now(){ return Date.now(); }
 function phase(){ var t = now(); if (t < LP.windowStart(live.window)) return "before"; if (t > LP.windowEnd(live.window)) return "after"; return "open"; }
@@ -266,7 +329,41 @@ function render(){
   renderActivities(conn && admitted);
   shownSec.hidden = !(conn && shownItems.length);
   shownUl.textContent = "";
-  shownItems.forEach(function(it){ if (it && typeof it.text === "string") shownUl.appendChild(h("li", "", it.text)); });
+  shownItems.forEach(function(it){
+    if (!it || typeof it.text !== "string") return;
+    var li = h("li", "", it.text);
+    if (typeof it.reply === "string" && it.reply) li.appendChild(h("span", "lv-reply", S.replyPrefix + it.reply));
+    shownUl.appendChild(li);
+  });
+  renderQuestions(conn && admitted, ph);
+}
+// 「?」・「わからない」・質問に付く場所・囲んだところ・返事
+function renderQuestions(on, ph){
+  var hasQa = current("qa").length > 0, cf = current("confused")[0];
+  // 「?」は窓の中で Q&A があれば出す（押しても、つなぐのは「参加する」を押したときだけ）。つなげない文書では、板の代わりの案内を開く
+  askBox.hidden = ph !== "open" || !(hasQa || (on && cf));
+  bAsk.hidden = !hasQa;
+  bAsk.setAttribute("aria-expanded", isOpen() ? "true" : "false");
+  bConf.hidden = !(on && cf);
+  bConf.setAttribute("aria-pressed", confusedOn[confusedStep(cf)] ? "true" : "false");
+  pWhere.textContent = S.where(LP.RE.step.test(stepKey) && stepKey !== "*" && pos ? S.whereStep(pos.i + 1, pos.k + 1) : S.whereAll);
+  var n = region.length;
+  circled.textContent = n ? S.circled(n) : "";
+  bClear.hidden = !n;
+  bCircle.textContent = drawing ? S.circleOn : S.circle;
+  bCircle.setAttribute("aria-pressed", drawing ? "true" : "false");
+  bCircle.disabled = !on || stepKey === "*";
+  var list = Object.keys(replies).map(function(k){ return replies[k]; }).sort(function(a, b){ return String(b.at).localeCompare(String(a.at)); });
+  repSec.hidden = !(on && list.length);
+  repUl.textContent = "";
+  list.forEach(function(r){
+    var li = h("li");
+    li.appendChild(h("span", "lv-small", S.yourQ + r.question));
+    li.appendChild(h("span", "lv-reply", r.text));
+    repUl.appendChild(li);
+  });
+  mark.classList.toggle("lv-new", newReply && !isOpen());
+  if (newReply && !isOpen()) mState.textContent += JA ? "・" + S.newReply : ". " + S.newReply;
 }
 function current(kind){
   return LP.activitiesFor(live, stepKey).filter(function(x){ return x.a.kind === kind; });
@@ -314,7 +411,37 @@ function ask(){
   // "*" の Q&A：送るときに画面にある段階。段階に置いた Q&A：その段階
   var step = a.step === "*" ? (LP.RE.step.test(stepKey) ? stepKey : "*") : a.step;
   var ref = nextRef();
-  if (send({v: 1, t: "ask", ref: ref, activity: a.a.id, step: step, text: text.slice(0, LP.LIMITS.question)})){ pending[ref] = {kind: "ask"}; bSend.disabled = true; }
+  var msg = {v: 1, t: "ask", ref: ref, activity: a.a.id, step: step, text: text.slice(0, LP.LIMITS.question)};
+  // 囲んだところ：囲んだステップのまま送るときだけ（舞台の座標、手書きメモと同じ規則で整える）。教材の版（あれば）
+  var strokes = region.length && regionStep === step && step !== "*" ? LP.normStrokes(region) : null;
+  if (strokes) msg.strokes = strokes;
+  if (typeof live.sourceSha256 === "string") msg.sourceSha256 = live.sourceSha256;
+  if (send(msg)){ pending[ref] = {kind: "ask"}; bSend.disabled = true; }
+}
+// 「わからない」：その活動の段階（"*" なら今のステップ）。押すたびに入と切を替える
+function confusedStep(x){ return !x ? null : x.step === "*" ? (LP.RE.step.test(stepKey) ? stepKey : "*") : x.step; }
+function toggleConfused(){
+  var x = current("confused")[0];
+  if (!x || !admitted) return;
+  var step = confusedStep(x), on = !confusedOn[step], ref = nextRef();
+  if (send({v: 1, t: "confused", ref: ref, activity: x.a.id, step: step, on: on})){ pending[ref] = {kind: "confused", step: step, on: on, prev: !!confusedOn[step]}; confusedOn[step] = on; render(); }
+}
+function addReplies(list){
+  if (!Array.isArray(list)) return 0;
+  var n = 0;
+  list.slice(0, 400).forEach(function(r){
+    if (!r || typeof r.item !== "string" || typeof r.text !== "string") return;
+    var old = replies[r.item];
+    if (!old || old.text !== r.text) n++;
+    replies[r.item] = {question: typeof r.question === "string" ? r.question : "", text: r.text, at: typeof r.at === "string" ? r.at : "", pub: r.public === true};
+  });
+  return n;
+}
+function gotReplies(list, quiet){
+  var n = addReplies(list);
+  if (!n || quiet) return;
+  if (!isOpen()) newReply = true;
+  announce(S.gotReply);
 }
 function vote(x, choice){
   var ref = nextRef();
@@ -334,24 +461,29 @@ function onMessage(ev){
   var items = function(l){ return Array.isArray(l) ? l.filter(function(x){ return x && typeof x.text === "string"; }).slice(0, 50) : []; };
   if (m.t === "welcome"){
     attempt = 0; admitted = m.status === "admitted"; shownItems = items(m.shown); info = "";
+    addReplies(m.replies);
     setState(admitted ? "connected" : "waiting");
     announce(admitted ? S.connected : S.waiting);
     if (nameI.value.trim()) sendName();
   } else if (m.t === "admitted"){
-    admitted = true; shownItems = items(m.shown); setState("connected"); announce(S.connected);
+    admitted = true; shownItems = items(m.shown); addReplies(m.replies); setState("connected"); announce(S.connected);
   } else if (m.t === "shown"){
     shownItems = items(m.items); render();
+  } else if (m.t === "reply"){
+    gotReplies([m]); render();
   } else if (m.t === "ack"){
     var p = typeof m.ref === "string" ? pending[m.ref] : null;
     if (!p) return;
     delete pending[m.ref];
-    if (p.kind === "ask"){ qaT.value = ""; info = S.sent; announce(S.sent); }
+    if (p.kind === "ask"){ qaT.value = ""; info = S.sent; announce(S.sent); clearRegion(); setDrawing(false); }
+    else if (p.kind === "confused"){ info = ""; announce(p.on ? S.confusedSent : S.confusedOff); }
     else if (p.kind === "vote"){ votes[p.id] = {choice: p.choice, ok: true}; info = ""; announce(S.voted); }
     else if (p.kind === "name"){ nameSent = p.name; }
     render();
   } else if (m.t === "error"){
     var q = typeof m.ref === "string" ? pending[m.ref] : null;
     if (q) delete pending[m.ref];
+    if (q && q.kind === "confused") confusedOn[q.step] = q.prev;
     var code = typeof m.code === "string" ? m.code : "";
     info = S.err[code] || S.err.other; announce(info); render();
   }
@@ -411,6 +543,67 @@ function leave(){
   if (ws){ var s = ws; ws = null; try { s.close(1000, "bye"); } catch (e) {} }
   admitted = false; info = S.leftMsg; setState("off"); announce(S.leftMsg);
 }
+// ---------------------------------------------------------------- 囲む（舞台の上に重ねた SVG に、指やマウスで線を描く。舞台の座標 1280 × 720）
+function placeInk(){
+  var st = document.getElementById("stage");
+  if (!st || !ink.parentNode) return;
+  var r = st.getBoundingClientRect();
+  ink.style.left = r.left + "px"; ink.style.top = r.top + "px"; ink.style.width = r.width + "px"; ink.style.height = r.height + "px";
+}
+function drawInk(){
+  while (ink.firstChild) ink.removeChild(ink.firstChild);
+  region.concat(stroke ? [stroke] : []).forEach(function(s){
+    var pl = document.createElementNS(SVGNS, "polyline");
+    pl.setAttribute("points", s.map(function(p){ return p[0] + "," + p[1]; }).join(" "));
+    ink.appendChild(pl);
+  });
+  if (region.length || drawing) ink.removeAttribute("hidden"); else ink.setAttribute("hidden", "");
+}
+function setDrawing(on){
+  on = !!on && admitted && stepKey !== "*" && LP.RE.step.test(stepKey);
+  if (on === drawing) { drawInk(); render(); return; }
+  drawing = on; stroke = null;
+  ink.classList.toggle("lv-drawing", drawing);
+  if (drawing){ if (regionStep !== stepKey){ region = []; regionStep = stepKey; } placeInk(); }
+  drawInk(); render();
+  announce(drawing ? S.circleStart : S.circleEnd);
+}
+function clearRegion(){ region = []; regionStep = null; stroke = null; drawInk(); render(); }
+function stagePoint(e){
+  var r = ink.getBoundingClientRect();
+  if (!(r.width > 0 && r.height > 0)) return null;
+  return [Math.round(Math.min(1280, Math.max(0, (e.clientX - r.left) / r.width * 1280)) * 10) / 10, Math.round(Math.min(720, Math.max(0, (e.clientY - r.top) / r.height * 720)) * 10) / 10];
+}
+ink.addEventListener("pointerdown", function(e){
+  if (!drawing || region.length >= LP.LIMITS.strokes) return;
+  e.preventDefault(); e.stopPropagation();
+  try { ink.setPointerCapture(e.pointerId); } catch (x) {}
+  var p = stagePoint(e);
+  stroke = p ? [p] : null;
+});
+ink.addEventListener("pointermove", function(e){
+  if (!drawing || !stroke) return;
+  e.preventDefault();
+  var p = stagePoint(e), q = stroke[stroke.length - 1];
+  if (p && Math.hypot(p[0] - q[0], p[1] - q[1]) >= 2 && stroke.length < 5000){ stroke.push(p); drawInk(); }
+});
+function endStroke(){
+  if (!stroke) return;
+  if (stroke.length >= 2) region.push(stroke);
+  stroke = null; drawInk(); render();
+}
+ink.addEventListener("pointerup", endStroke);
+ink.addEventListener("pointercancel", endStroke);
+["click", "mousedown", "touchstart"].forEach(function(n){ ink.addEventListener(n, function(e){ if (drawing) e.stopPropagation(); }); });
+// 囲んでいる間：Esc で終わる（ほかのキーはそのまま。ステップが変われば、囲んだところは消える）
+window.addEventListener("keydown", function(e){
+  if (drawing && e.key === "Escape" && !e.metaKey && !e.ctrlKey && !e.altKey){ e.preventDefault(); e.stopPropagation(); setDrawing(false); try { bCircle.focus({preventScroll: true}); } catch (x) {} }
+}, true);
+bCircle.addEventListener("click", function(){ setDrawing(!drawing); });
+bClear.addEventListener("click", function(){ clearRegion(); try { bCircle.focus({preventScroll: true}); } catch (x) {} });
+bAsk.addEventListener("click", openAsk);
+bConf.addEventListener("click", toggleConfused);
+
 bJoin.addEventListener("click", join);
 bLeave.addEventListener("click", leave);
 bSend.addEventListener("click", ask);
@@ -419,12 +612,20 @@ nameI.addEventListener("change", sendName);
 
 // ---------------------------------------------------------------- 起動（deck.js が舞台を作った後）
 document.addEventListener("deck:pos", function(e){
-  var k = e.detail && e.detail.key;
-  if (typeof k === "string" && k !== stepKey){ stepKey = k; dismissed = null; if (pane.parentNode) syncAuto(); else render(); }
+  var d = e.detail || {}, k = d.key;
+  if (typeof d.i === "number" && typeof d.k === "number") pos = {i: d.i, k: d.k};
+  if (typeof k === "string" && k !== stepKey){
+    stepKey = k; dismissed = null;
+    // 囲んだところは、囲んだステップのもの：ステップが変われば消す
+    if (region.length || drawing){ var had = region.length > 0; drawing = false; ink.classList.remove("lv-drawing"); region = []; regionStep = null; stroke = null; drawInk(); if (had) announce(S.circleGone); }
+    if (pane.parentNode) syncAuto(); else render();
+  }
 });
 function start(){
   document.head.appendChild(css);
   document.body.appendChild(mark);
+  document.body.appendChild(ink);
+  document.body.appendChild(askBox);
   document.body.appendChild(pane);
   document.body.appendChild(sr);
   layout();
@@ -437,6 +638,7 @@ function start(){
   // このタブで参加したことがあれば（読み直しなど）、窓の中なら押さずにつなぐ
   if (!CTX && phase() === "open" && getItem("sessionStorage", JOINED_KEY) === "1") join();
 }
-DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt, open: isOpen(), pinned: pinned, auto: auto}; }};
+DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt, open: isOpen(), pinned: pinned, auto: auto,
+  drawing: drawing, strokes: region.length, confused: !!confusedOn[stepKey], replies: Object.keys(replies).length, newReply: newReply}; }};
 if (DECK.ready) start(); else document.addEventListener("deck:ready", start, {once: true});
 })();

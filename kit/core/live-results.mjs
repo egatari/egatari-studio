@@ -27,9 +27,11 @@ const RE = {
   activity: /^[A-Za-z0-9_-]{1,32}$/,
   step: /^(\*|[^\u0000-\u001f\u007f:]{1,80}:[^\u0000-\u001f\u007f:]{1,16})$/,
   item: /^q-[a-z2-7]{10}$/,
+  group: /^g-[a-z2-7]{10}$/,
+  sha256: /^[0-9a-f]{64}$/,
   datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
 };
-const MAX = { prompt: 300, choice: 100, choices: 12, name: 40, text: 500, choiceIndex: 11, label: 80 };
+const MAX = { prompt: 300, choice: 100, choices: 12, name: 40, text: 500, choiceIndex: 11, label: 80, reply: 200, strokes: 20, strokePoints: 500 };
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const str = (v) => typeof v === 'string';
@@ -44,9 +46,11 @@ const need = (o, keys, at, e) => { for (const k of keys) if (!own(o, k)) e.push(
 const SKIP_MAX = 50;
 const KEYS = {
   results: ['v', 'room', 'window', 'activities', 'responses', 'exportedAt'], window: ['from', 'to'],
-  qa: ['id', 'kind', 'label'], poll: ['id', 'kind', 'prompt', 'choices', 'label'],
-  rqa: ['kind', 'activity', 'step', 'pid', 'at', 'id', 'text', 'read', 'answered', 'shown', 'hidden', 'name'], rpoll: ['kind', 'activity', 'step', 'pid', 'at', 'choice', 'name'],
+  qa: ['id', 'kind', 'label'], confused: ['id', 'kind', 'label'], poll: ['id', 'kind', 'prompt', 'choices', 'label'],
+  rqa: ['kind', 'activity', 'step', 'pid', 'at', 'id', 'text', 'read', 'answered', 'shown', 'hidden', 'name', 'strokes', 'sourceSha256', 'group', 'reply'],
+  rconfused: ['kind', 'activity', 'step', 'pid', 'at'], rpoll: ['kind', 'activity', 'step', 'pid', 'at', 'choice', 'name'],
 };
+const KINDS = ['qa', 'confused', 'poll'];
 export function tolerate(v) {
   const skipped = { members: [], kinds: {} };
   const member = (k) => { if (skipped.members.length < SKIP_MAX && !skipped.members.includes(k)) skipped.members.push(k); };
@@ -60,11 +64,11 @@ export function tolerate(v) {
   if (isObj(out.activities)) {
     const acts = {};
     for (const [step, list] of Object.entries(out.activities)) {
-      acts[step] = Array.isArray(list) ? list.filter((a) => known(a, ['qa', 'poll'])).map((a) => (isObj(a) && (a.kind === 'qa' || a.kind === 'poll') ? strip(a, KEYS[a.kind]) : a)) : list;
+      acts[step] = Array.isArray(list) ? list.filter((a) => known(a, KINDS)).map((a) => (isObj(a) && KINDS.includes(a.kind) ? strip(a, KEYS[a.kind]) : a)) : list;
     }
     out.activities = acts;
   }
-  if (Array.isArray(out.responses)) out.responses = out.responses.filter((r) => known(r, ['qa', 'poll'])).map((r) => (isObj(r) && (r.kind === 'qa' || r.kind === 'poll') ? strip(r, KEYS['r' + r.kind]) : r));
+  if (Array.isArray(out.responses)) out.responses = out.responses.filter((r) => known(r, KINDS)).map((r) => (isObj(r) && KINDS.includes(r.kind) ? strip(r, KEYS['r' + r.kind]) : r));
   return { value: out, skipped };
 }
 export const hasSkipped = (s) => !!s && (s.members.length > 0 || Object.keys(s.kinds).length > 0);
@@ -82,30 +86,42 @@ export function skippedNotice(s, lang) {
 
 function checkActivity(a, at, e) {
   if (!isObj(a)) { e.push(`${at}: not an object`); return; }
-  if (a.kind === 'qa') { onlyKeys(a, ['id', 'kind', 'label'], at, e); need(a, ['id', 'kind'], at, e); }
+  // label：ステップの表示名（任意）。confused：「わからない」の一押し（文なし）
+  if (a.kind === 'qa' || a.kind === 'confused') { onlyKeys(a, ['id', 'kind', 'label'], at, e); need(a, ['id', 'kind'], at, e); }
   else if (a.kind === 'poll') {
     onlyKeys(a, ['id', 'kind', 'prompt', 'choices', 'label'], at, e); need(a, ['id', 'kind'], at, e);
     if (own(a, 'prompt') && !short(a.prompt, MAX.prompt)) e.push(`${at}.prompt: not a string of at most ${MAX.prompt} characters`);
     if (own(a, 'choices') && !(Array.isArray(a.choices) && a.choices.length <= MAX.choices && a.choices.every((c) => short(c, MAX.choice)))) e.push(`${at}.choices: not a list of at most ${MAX.choices} strings of at most ${MAX.choice} characters`);
-  } else { e.push(`${at}.kind: not "qa" or "poll"`); return; }
-  if (own(a, 'id') && !(str(a.id) && RE.activity.test(a.id))) e.push(`${at}.id: not an activity id`);
-  // 表示名（label。egatari/live の活動の表示だけの字。省ける）
+  } else { e.push(`${at}.kind: not "qa", "confused" or "poll"`); return; }
   if (own(a, 'label') && !short(a.label, MAX.label)) e.push(`${at}.label: not a string of at most ${MAX.label} characters`);
+  if (own(a, 'id') && !(str(a.id) && RE.activity.test(a.id))) e.push(`${at}.id: not an activity id`);
 }
+// 囲んだところ（写しの $defs/strokes）：1〜20 本、1 本 2〜500 点、点は舞台の座標 [x (0–1280), y (0–720)]
+const isPoint = (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number' && p[0] >= 0 && p[0] <= 1280 && p[1] >= 0 && p[1] <= 720;
+const isStrokes = (v) => Array.isArray(v) && v.length >= 1 && v.length <= MAX.strokes && v.every((s) => Array.isArray(s) && s.length >= 2 && s.length <= MAX.strokePoints && s.every(isPoint));
 function checkResponse(r, at, e) {
   if (!isObj(r)) { e.push(`${at}: not an object`); return; }
   const common = ['kind', 'activity', 'step', 'pid', 'at'];
   if (r.kind === 'qa') {
     const req = [...common, 'id', 'text', 'read', 'answered', 'shown', 'hidden'];
-    onlyKeys(r, [...req, 'name'], at, e); need(r, req, at, e);
+    onlyKeys(r, [...req, 'name', 'strokes', 'sourceSha256', 'group', 'reply'], at, e); need(r, req, at, e);
     if (own(r, 'id') && !(str(r.id) && RE.item.test(r.id))) e.push(`${at}.id: not a question id`);
+    if (own(r, 'strokes') && !isStrokes(r.strokes)) e.push(`${at}.strokes: not a circled region (strokes in stage coordinates)`);
+    if (own(r, 'sourceSha256') && !(str(r.sourceSha256) && RE.sha256.test(r.sourceSha256))) e.push(`${at}.sourceSha256: not a sha256`);
+    if (own(r, 'group') && !(str(r.group) && RE.group.test(r.group))) e.push(`${at}.group: not a group id`);
+    if (own(r, 'reply')) {
+      const y = r.reply;
+      if (!isObj(y) || Object.keys(y).some((k) => !['text', 'at', 'public'].includes(k)) || !(str(y.text) && cps(y.text) >= 1 && cps(y.text) <= MAX.reply) || !(str(y.at) && RE.datetime.test(y.at)) || typeof y.public !== 'boolean') e.push(`${at}.reply: not a reply {text, at, public}`);
+    }
     if (own(r, 'text') && !short(r.text, MAX.text)) e.push(`${at}.text: not a string of at most ${MAX.text} characters`);
     for (const k of ['read', 'answered', 'shown', 'hidden']) if (own(r, k) && typeof r[k] !== 'boolean') e.push(`${at}.${k}: not true or false`);
   } else if (r.kind === 'poll') {
     const req = [...common, 'choice'];
     onlyKeys(r, [...req, 'name'], at, e); need(r, req, at, e);
     if (own(r, 'choice') && !(Number.isInteger(r.choice) && r.choice >= 0 && r.choice <= MAX.choiceIndex)) e.push(`${at}.choice: not an integer from 0 to ${MAX.choiceIndex}`);
-  } else { e.push(`${at}.kind: not "qa" or "poll"`); return; }
+  } else if (r.kind === 'confused') {
+    onlyKeys(r, common, at, e); need(r, common, at, e);
+  } else { e.push(`${at}.kind: not "qa", "confused" or "poll"`); return; }
   if (own(r, 'activity') && !(str(r.activity) && RE.activity.test(r.activity))) e.push(`${at}.activity: not an activity id`);
   if (own(r, 'step') && !(str(r.step) && RE.step.test(r.step))) e.push(`${at}.step: not a step key`);
   if (own(r, 'pid') && !(str(r.pid) && RE.pid.test(r.pid))) e.push(`${at}.pid: not a participant id`);

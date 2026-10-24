@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=795387df9e5732dc -->
+<!-- i18n: pair=contract.ja.md sha256=60686db476726a18 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -211,6 +211,8 @@ Only a play-only copy exported with a live room carries the live player (`kit/li
 - It listens to `deck:pos` (`detail.key`) only to choose which polls to show and whether to open the pane; it never sends position or timing. It uses timers (reconnect, keep-alive, the window's end), which is allowed because it draws nothing on the stage
 - The endpoint MUST be `https:`. Only the development player, built by tests with `buildPortable(…, {liveDevLoopback: true})` (not a command-line option), accepts a loopback `http:` endpoint: the switch is a constant in `kit/core/live-policy.mjs` that only that build turns on, so the player in distributed lessons, the editor's export and `kit/build.mjs --live` refuse `http:`
 - It connects only after Join, inside the window (2 min leeway), in a top-level `file:`/`http(s):` document whose single CSP `<meta>` has `connect-src` equal to the endpoint; everything else (frames, `srcdoc`, sandboxed or preview documents) shows the room's address as text
+- Questions (draft): inside the window, while the room has a `qa` activity, a **?** button (`#live-ask .lv-q`, a `<button>` with an `aria-label`, at least 44 px) sits at the bottom right outside the pane. It opens the pane on the question box, or on Join before the participant has joined; it never connects by itself. A question carries the step key on screen when it is sent (`slideKey:stepKey`; the box says which slide and step in words), the lesson's `sourceSha256` (the exported block's `live.sourceSha256`, written by `kit/core/live.mjs` because a play-only `deck-meta` has none) and, optionally, a circled region: **Circle** (`aria-pressed`) turns on a drawing layer `#live-ink` over the stage (an SVG in stage coordinates, outside `#stage`; Esc ends it) whose strokes are normalised with `LivePolicy().normStrokes` (20 strokes, 500 points each, 2000 in all). A region belongs to its step: changing step clears it (announced)
+- **I don't follow** (`#live-ask .lv-cf`, `aria-pressed`) appears next to **?** while joined when the room has a `confused` activity for the step on screen; a tap marks that step, a second tap takes the mark back. The host's replies to the participant's own questions are listed in the pane under **Replies from the host** (also after a reload: the room sends them again on join); a new reply is announced and, while the pane is collapsed, marked on `#live-mark`. Server text stays text. **?**, **I don't follow** and the drawing layer are hidden in print and not created in video mode or the presenter view
 
 ## 12. Themes and the layout CSS
 
