@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=1dc6c8da0be5a1b2 -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=ee88a3d6df2eecaa -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -90,6 +90,10 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `np
 4. 両方のファイルをコミットする
 
 `npm run i18n -- --stamp-all` はすべての組にまとめて付ける。揃っているとわかっている文書の組を新しく置くときだけ使う。
+
+### 画面の言葉（用語集）
+
+使う人の目に触れる言葉は、用語集 `docs/terms.json`（表は `docs/terms.md`、言葉の決まりは `principles`）に従う。`npm run lint:terms`（`npm test` と CI でも走る）は、用語集が避ける言葉が画面の文字列（`app/`・`kit/` のプレーヤーの画面・`server/editor-ui.js`・`server/hints.js`）、`docs/*.md`、`skills/*/SKILL.md` にあると失敗する。ファイル・行・見つけた言葉・用語の id・置き換えを出す。別の意味の正当な使い方なら、置き換えずに `docs/terms-allow.json` に理由と書く。日本語の画面の文字列にある用語が、英語の相手の文字列にないときも知らせる（知らせだけ）。コード・id・ファイルの形式・CLI の引数・コメント・AI への指示は見ない。
 
 ## ライセンス
 

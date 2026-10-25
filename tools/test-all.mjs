@@ -37,6 +37,8 @@ const steps = [
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
+  // 画面の言葉（docs/terms.json の avoid の言葉が、画面の文字列・使い方の文書・skills に残っていないか）：残っていれば失敗（直すか、正当な使い方なら docs/terms-allow.json に理由と書く）
+  ['lint terms', ['tools/lint-terms.mjs']],
   // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
   // 部品庫の写し（vendor/components）が components.lock.json と合っているか（ネットワークなし）
   ['components', ['tools/components-update.mjs', '--check']],

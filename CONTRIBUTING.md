@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=4fa2db2f3e0315ae -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=6b73786400310f56 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -90,6 +90,10 @@ When you change one side:
 4. Commit both files
 
 `npm run i18n -- --stamp-all` stamps every pair at once; use it only when setting up a new set of documents that you know are in sync.
+
+### Words on screen (termbase)
+
+User-facing words follow the termbase `docs/terms.json` (the table is `docs/terms.md`; wording rules in its `principles`). `npm run lint:terms` (also run by `npm test` and CI) fails when a word the termbase avoids appears in UI strings (`app/`, the player UI in `kit/`, `server/editor-ui.js`, `server/hints.js`), in `docs/*.md` or in `skills/*/SKILL.md`. It prints the file, line, the word, the term id and the replacement. When a use is legitimate in another sense, add an entry with a reason to `docs/terms-allow.json` instead of forcing the replacement. It also warns when a Japanese UI string has a term whose English partner string lacks that term. Code, ids, file formats, CLI flags, comments and the instructions for the AI are not checked.
 
 ## License
 
