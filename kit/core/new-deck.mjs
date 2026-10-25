@@ -6,7 +6,7 @@
 // 系列の名前は内部の名前として残す（画面には出さない）。言いたいこと（kit/core/purposes.mjs）は既定で全部入り、外したものは AI に使わせない。
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
-//   SUBJECTS                           [{id, series, label: {en, ja}}]
+//   SUBJECTS                           [{id, series, label: {en, ja}, inside: {en, ja}, icon}]
 //   seriesOfSubjects(ids)              → 系列の名前（SERIES の順）
 //   defaultSubjects(category)          大分類を選んだときに入れておく分野（ビジネス → ビジネスのパーツ。ほかはなし）
 //   guessSubjects(text)                タイトルと内容の字から推す分野の id（漢文・古文 → 国語、数式・グラフ・統計 → 数理・統計 など。推せなければ []）
@@ -89,11 +89,13 @@ export const CATEGORIES = [
   { id: 'other', label: { ja: 'その他', en: 'Other' }, subs: [] },
 ];
 
+// 分野の札（新規作成 ④）：label は札の名前、inside は札の小さな字（中に入る図）、icon は札の絵（app/llm.js の ICONS の名前。なければ汎用の絵）。
+// 分野を足すときは、ここに 1 行（と系列の指示 tools/llm-guide/series/）を足すだけ（例：{ id: 'social', series: 'social', label: { ja: '社会', … }, inside: { ja: '地図・地理・歴史', … }, icon: 'map' }）
 export const SUBJECTS = [
-  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' } },
-  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' } },
-  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' } },
-  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' } },
+  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' }, icon: 'subj-math' },
+  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' }, icon: 'subj-business' },
+  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' }, icon: 'subj-kokugo' },
+  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'codetree' },
 ];
 
 export function seriesOfSubjects(ids) {

@@ -18,9 +18,10 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
+import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES, loadedParts } from '../kit/core/llm-pack.mjs';
 import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, FREE_SUBJECT_MAX, freeSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
+import { partLabel, partIcon, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -92,17 +93,18 @@ const TX = {
     plan: { free: '無料のプラン（わからなければこちら）', paid: '有料のプラン' },
     planHint: '無料のプランは長い指示を読み切れないことがあるので、指示を短くします',
     seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
-    seriesHintNew: '選んだものの図の作り方を指示に入れます。選ばなければ、共通の図（棒グラフ・流れ図・年表など）だけです',
-    seriesName: { academic: '数式・関数・グラフ（数理・統計）', business: 'KPI・位置づけ・市場・お金の流れ（ビジネス）', kokugo: '漢文・古文・現代文・縦書き（国語）', info: '符号の木（情報）' },
-    seriesPaid: '有料のプランでは、すべての分野の図の作り方を指示に入れます',
+    // 標準パーツの例は FREE_CORE の名前から作る（kit/core/part-labels.mjs の standardParts）
+    seriesHintNew: (ex) => `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${ex.join('・')}など）だけです`,
+    seriesPaid: '有料のプランでは全部入ります',
     seriesGuess: (name) => `② のタイトルと内容から${name}に印を付けました`,
     seriesGuessKind: (name) => `① の場面から${name}に印を付けました`,
     seriesMax: '無料のプランでは 2 つまで選べます',
     seriesStored: (a, b) => `無料のプランでは 2 つまでなので、「${a}」と「${b}」を使います。替えるときは印を外してください`,
     seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
-    purposesFold: 'AI に使わせない図を選ぶ（ふつうは開かなくて大丈夫）',
+    purposesFold: '使える図を見る・外す（ふつうは開かなくて大丈夫）',
+    partsCount: (n, off) => `使える図：${n} 種類（外したもの ${off}）`,
+    partsLegend: 'この指示で使える図', partOff: '外した',
     purposesHint: '今は全部使えます。押した図は、AI が使いません',
-    purposesFoldSum: (on, n) => (on === n ? 'いまは全部使う' : `${n - on} 個を使わない`),
     purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個を使う`,
     purposesLegend: '言いたいこと', materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
     purposeOn: '使う', purposeOff: '使わない',
@@ -235,17 +237,17 @@ const TX = {
     plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
     planHint: 'A free plan may not read long instructions to the end, so they are kept short.',
     seriesLegend: 'Will the slides need any of these? (subjects)',
-    seriesHintNew: 'Adds how to draw these to the instructions. With none, only the common figures (bar charts, flow diagrams, timelines, …).',
-    seriesName: { academic: 'Formulas, functions, graphs (math and statistics)', business: 'KPIs, positioning, markets, money flows (business)', kokugo: 'Kanbun, kobun, modern texts, vertical writing (Japanese language arts)', info: 'Code trees (information science)' },
-    seriesPaid: 'With a paid plan, the instructions include how to draw everything.',
+    seriesHintNew: (ex) => `Adds how to draw these to the instructions. With none, only the standard parts (${ex.join(', ')}, …).`,
+    seriesPaid: 'The paid plan includes all of them.',
     seriesGuess: (name) => `Ticked ${name} from the title and content in step 2.`,
     seriesGuessKind: (name) => `Ticked ${name} from your answer to step 1.`,
     seriesMax: 'Up to two on the free plan.',
     seriesStored: (a, b) => `Up to two on the free plan, so “${a}” and “${b}” are used. To change this, untick one.`,
     seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
-    purposesFold: 'Choose figures the AI should not use (usually not needed)',
+    purposesFold: 'See or turn off figures (usually not needed)',
+    partsCount: (n, off) => `Figures available: ${n} (${off} turned off)`,
+    partsLegend: 'Figures these instructions can use', partOff: 'turned off',
     purposesHint: 'All are in use. Press one and the AI will not use it.',
-    purposesFoldSum: (on, n) => (on === n ? 'all in use' : `${n - on} not used`),
     purposesSum: (on, n) => `Purposes: ${on} of ${n} in use`,
     purposesLegend: 'What it shows', materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
     purposeOn: 'in use', purposeOff: 'not used',
@@ -332,6 +334,8 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
+  // 分野の名前（挿入の分野の一覧）：中の図と分野の名前（kit/core/new-deck.mjs の SUBJECTS の inside・label）
+  const seriesName = Object.fromEntries(SUBJECTS.map((x) => [x.series, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
   // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
   // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
@@ -548,6 +552,13 @@ export function setupLlm(app) {
     collect: '<rect x="3" y="5" width="5" height="4"/><rect x="10" y="5" width="5" height="4"/><rect x="17" y="5" width="5" height="4"/><rect x="24" y="5" width="5" height="4"/><path d="M16 12v6M13 15l3 3 3-3"/><rect x="10" y="21" width="12" height="7" rx="1"/>',
     gendai: '<path d="M5 9h22M5 16h22M5 23h14"/><path d="M5 11h10" stroke-width="2.6"/><path d="M22 11c4 2 4 8 0 10"/>',
     sweep: '<path d="M4 24c6 0 8-16 12-16s6 16 12 16"/><path d="M4 24c8 0 10-10 12-10s4 10 12 10" opacity=".5"/>',
+    market: '<circle cx="16" cy="16" r="12"/><circle cx="16" cy="19" r="8"/><circle cx="16" cy="22" r="4"/>',
+    kanbun: '<path d="M21 4v24M12 4v24"/><path d="M15 9l3 2M15 18l3 2M24 13h3"/>',
+    kobun: '<rect x="6" y="4" width="20" height="24" rx="2"/><path d="M21 8v16M16 8v16M11 8v10"/>',
+    codetree: '<circle cx="16" cy="6" r="2.2"/><circle cx="9" cy="16" r="2.2"/><circle cx="23" cy="16" r="2.2"/><circle cx="5" cy="26" r="2.2"/><circle cx="13" cy="26" r="2.2"/><path d="M14.7 7.8L10.3 14.2M17.3 7.8l4.4 6.4M8 18l-2 6M10 18l2 6"/>',
+    'subj-math': '<path d="M5 27h22M5 5v22"/><path d="M8 9c3 16 13 16 16 0"/>',
+    'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
+    'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
     other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
   // 言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
@@ -560,16 +571,31 @@ export function setupLlm(app) {
     svg.innerHTML = ICONS[k] || '';   // 決まった線画だけ（外から来た字は入れない）
     return svg;
   }
-  function partsTiles(update) {
+  // 折りたたみ「使える図を見る・外す」：見出しの横（閉じていても見える）に使える図の数と外した数。中の上に、この指示で使える図の並び（読むだけ）、
+  // その下に素材と言いたいことの札（外すのはこちらだけ）。並びは組み立てと同じ部品の一覧（kit/core/llm-pack.mjs の loadedParts）から作り、
+  // 外した言いたいことだけに使う部品は薄く破線で斜線。parts()：{loaded: [タグ], off: Set(タグ)}。refresh() でプラン・分野・札に合わせて作り直す
+  function partsTiles(update, parts) {
+    const count = el('span', { id: 'paste-parts-count', cls: 'hint', 'aria-live': 'polite' });
+    const strip = el('ul', { id: 'paste-parts', cls: 'tiles parts', 'aria-labelledby': 'paste-parts-h' });
+    const partsGroup = el('div', { id: 'paste-parts-group', cls: 'paste-tiles-group' }, [el('h4', { id: 'paste-parts-h', text: X.partsLegend }), strip]);
+    const refresh = () => {
+      const { loaded, off } = parts();
+      strip.replaceChildren(...loaded.map((t) => {
+        const isOff = off.has(t);
+        return el('li', { cls: 'tile part' + (isOff ? ' off' : ''), 'data-part': t, title: '<' + t + '>' },
+          [icon(partIcon(t)), el('span', { cls: 'tile-label', text: partLabel(t, LANG) }), isOff ? el('span', { cls: 'sr-only', text: X.partOff }) : null]);
+      }));
+      const nOff = loaded.filter((t) => off.has(t)).length;
+      count.textContent = X.partsCount(loaded.length - nOff, nOff);
+    };
     const materials = el('div', { id: 'paste-materials', cls: 'paste-tiles-group' }, [
       el('h4', { id: 'paste-materials-h', text: X.materialsLegend }),
       el('ul', { cls: 'tiles', 'aria-labelledby': 'paste-materials-h' }, Object.keys(X.materials).map((k) => el('li', { cls: 'tile fixed', id: 'paste-material-' + k }, [icon(k), el('span', { cls: 'tile-label', text: X.materials[k] })]))),
     ]);
     const sum = el('p', { id: 'paste-purposes-sum', cls: 'hint', role: 'status' });
-    const foldSum = el('span', { id: 'paste-purposes-fold-sum', cls: 'hint' });
     const showSum = () => {
       const on = PURPOSES.list.length - draft.purposesOff.length;
-      sum.textContent = X.purposesSum(on, PURPOSES.list.length); foldSum.textContent = X.purposesFoldSum(on, PURPOSES.list.length);
+      sum.textContent = X.purposesSum(on, PURPOSES.list.length);
     };
     const tiles = PURPOSES.list.map((p) => {
       const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
@@ -588,9 +614,10 @@ export function setupLlm(app) {
       el('p', { id: 'paste-purposes-hint', cls: 'hint', text: X.purposesHint }),
       el('div', { cls: 'tiles' }, tiles), sum,
     ]);
-    // 札は折りたたみの中（既定で閉じる）。札のはたらきは同じ（外すだけ。無料版・有料版のどちらでも）。閉じていても、外した数を見出しの横に出す
-    return el('details', { id: 'paste-purposes-fold', cls: 'paste-fold' }, [
-      el('summary', { id: 'paste-purposes-fold-h' }, [el('span', { text: X.purposesFold }), ' ', foldSum]), materials, purposes]);
+    // 既定で閉じる。札のはたらきは同じ（外すだけ。無料版・有料版のどちらでも）
+    const node = el('details', { id: 'paste-purposes-fold', cls: 'paste-fold' }, [
+      el('summary', { id: 'paste-purposes-fold-h' }, [el('span', { text: X.purposesFold }), ' ', count]), partsGroup, materials, purposes]);
+    return { node, refresh };
   }
   // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
   function insertStep(title, where) {
@@ -623,55 +650,71 @@ export function setupLlm(app) {
   // 3 つ以上あれば印はそのまま（記録も書き換えない）、使うのは初めの 2 つ（freeSubjects）で、そう知らせる
   function sendStep(title, copyMsg, { request, missing, stored }) {
     const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）。前に選んだもの（stored）の印も
-    const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.addEventListener('change', () => { touched.add(s); update(); }); return cb; });
-    const subjectsTicked = () => SUBJECTS.filter((x) => boxes.some((b) => b.checked && b.value === x.series)).map((x) => x.id);
+    const ticked = new Set();    // 印のある分野（系列の名前）。有料のプランでは札は全部入りに見せるが、印は無料に戻したときのために残す
     const seriesOf = (id) => (SUBJECTS.find((x) => x.id === id) || {}).series;
+    // 分野の札（押すと入る・外れる。aria-pressed。入っている札は印と枠：色だけで分けない）
+    const tiles = SUBJECTS.map((x) => {
+      const b = el('button', { type: 'button', id: 'paste-series-' + x.series, cls: 'tile', 'data-subject': x.id, 'aria-pressed': 'false', title: membersOfSeries(x.series).join(', ') },
+        [icon(x.icon), el('span', { cls: 'tile-label', text: x.label[LANG] }), el('small', { text: x.inside[LANG] })]);
+      b.addEventListener('click', () => { if (draft.plan === 'paid') return; if (ticked.has(x.series)) ticked.delete(x.series); else ticked.add(x.series); touched.add(x.series); update(); });
+      return b;
+    });
+    const subjectsTicked = () => SUBJECTS.filter((x) => ticked.has(x.series)).map((x) => x.id);
     const chosen = () => (draft.plan === 'paid' ? [...SERIES] : freeSubjects(subjectsTicked()).map(seriesOf));
     for (const id of (stored && Array.isArray(stored.subjects) ? stored.subjects : [])) {
-      const b = boxes.find((x) => x.value === seriesOf(id));
-      if (b) { b.checked = true; touched.add(b.value); }
+      const sr = seriesOf(id);
+      if (sr) { ticked.add(sr); touched.add(sr); }
     }
     const subjectName = (id) => { const x = SUBJECTS.find((y) => y.id === id); return x ? x.label[LANG] : id; };
     const maxNote = el('p', { id: 'paste-series-max', cls: 'hint', role: 'status', hidden: '', text: X.seriesMax });
     const storedNote = el('p', { id: 'paste-series-stored', cls: 'note', role: 'status', hidden: '' });
-    // 無料のプラン：2 つに印があれば、ほかを押せなくする（印を外せばまた押せる）。3 つ以上（前の記録）なら使う 2 つを知らせる。有料のプランは限りなし
+    const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
+    // 札の状態：有料のプランは全部入りで押せない。無料のプランは 2 つに印があれば、ほかを押せなくする（印を外せばまた押せる）。
+    // 3 つ以上（前の記録）なら使う 2 つを知らせる
     const limit = () => {
-      const free = draft.plan !== 'paid', n = subjectsTicked().length;
-      for (const b of boxes) b.disabled = free && n >= FREE_SUBJECT_MAX && !b.checked;
+      const paid = draft.plan === 'paid', n = ticked.size;
+      seriesSet.classList.toggle('paid', paid);
+      for (const b of tiles) {
+        const sr = b.id.slice('paste-series-'.length), on = paid || ticked.has(sr);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.disabled = paid || (n >= FREE_SUBJECT_MAX && !on);
+      }
       const used = freeSubjects(subjectsTicked());
-      storedNote.hidden = !(free && n > FREE_SUBJECT_MAX);
+      storedNote.hidden = paid || n <= FREE_SUBJECT_MAX;
       storedNote.textContent = storedNote.hidden ? '' : X.seriesStored(subjectName(used[0]), subjectName(used[1]));
-      maxNote.hidden = !(free && n === FREE_SUBJECT_MAX);
+      maxNote.hidden = paid || n !== FREE_SUBJECT_MAX;
+      paidNote.hidden = !paid;
     };
     const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map((p) => radio('paste-plan', p, X.plan[p], draft.plan === p))]);
     const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
-    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint paste-series-max paste-series-stored' }, [el('legend', { text: X.seriesLegend }),
-      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s })])), maxNote, storedNote]);
-    const seriesHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew });
+    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint paste-series-max paste-series-stored paste-series-paid' }, [el('legend', { text: X.seriesLegend }),
+      el('div', { cls: 'tiles' }, tiles), maxNote, storedNote, paidNote]);
+    const seriesHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew(standardParts(LANG)) });
     const guess = el('p', { id: 'paste-series-guess', cls: 'hint', role: 'status', hidden: '' });
-    const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
     const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const exclude = () => componentsOff(draft.purposesOff, PURPOSES);
+    // 使える図：組み立てに入る部品（loadedParts。指示の一覧と同じ）と、外した言いたいことだけに使う部品
+    const parts = partsTiles(() => update(), () => ({ loaded: partOrder(loadedParts(chosen(), draft.plan)), off: new Set(exclude()) }));
     const textNow = () => packWithRequest({ series: chosen(), lang: LANG, request: request(), exclude: exclude(), off: draft.purposesOff, plan: draft.plan });
     // 推した印：② のタイトルと内容の字（kit/core/new-deck.mjs の guessSubjects）と ① の場面（ビジネス → ビジネス）。自分で替えた分野はそのまま
     const guessNow = () => {
       const fromText = guessSubjects(draft.title + '\n' + givenContent()), fromKind = defaultSubjects(draft.category).filter((x) => !fromText.includes(x));
       const want = new Set([...fromText, ...fromKind].map(seriesOf));
       // 推した印は、自分で付けた印と合わせて 2 つまで（SERIES は SUBJECTS と同じ順：初めの 2 つ）
-      let room = FREE_SUBJECT_MAX - boxes.filter((b) => touched.has(b.value) && b.checked).length;
-      for (const b of boxes) if (!touched.has(b.value)) { b.checked = want.has(b.value) && room > 0; if (b.checked) room--; }
-      const names = (ids) => ids.map(seriesOf).filter((s) => s && !touched.has(s) && boxes.some((b) => b.value === s && b.checked)).map((s) => (LANG === 'ja' ? `「${X.seriesName[s]}」` : `“${X.seriesName[s]}”`));
+      let room = FREE_SUBJECT_MAX - SERIES.filter((sr) => touched.has(sr) && ticked.has(sr)).length;
+      for (const sr of SERIES) if (!touched.has(sr)) { const on = want.has(sr) && room > 0; if (on) { ticked.add(sr); room--; } else ticked.delete(sr); }
+      const names = (ids) => ids.filter((id) => { const sr = seriesOf(id); return sr && !touched.has(sr) && ticked.has(sr); }).map((id) => (LANG === 'ja' ? `「${subjectName(id)}」` : `“${subjectName(id)}”`));
       const a = names(fromText), k = names(fromKind);
       guess.textContent = [a.length ? X.seriesGuess(a.join(LANG === 'ja' ? '' : ', ')) : '', k.length ? X.seriesGuessKind(k.join(LANG === 'ja' ? '' : ', ')) : ''].filter(Boolean).join(LANG === 'ja' ? '' : ' ');
       guess.hidden = !guess.textContent;
     };
     const showPlan = () => {
       setRadios(planSet, 'paste-plan', draft.plan);
-      for (const x of [seriesSet, seriesHint]) x.hidden = draft.plan === 'paid';
+      seriesHint.hidden = draft.plan === 'paid';
       guess.hidden = draft.plan === 'paid' || !guess.textContent;
-      paidNote.hidden = draft.plan !== 'paid';
       limit();
+      parts.refresh();
     };
     const update = () => {
       showPlan();
@@ -691,7 +734,7 @@ export function setupLlm(app) {
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
     } });
-    const node = step('paste-step-send', title, [planSet, planHint, seriesSet, seriesHint, guess, paidNote, partsTiles(update), phase, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
+    const node = step('paste-step-send', title, [planSet, planHint, seriesSet, seriesHint, guess, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
     return { node, update, guessNow, choice: () => copied || choiceNow() };
   }
 
@@ -713,8 +756,8 @@ export function setupLlm(app) {
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
-      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
-    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(X.seriesName.academic) })]);
+      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(seriesName.academic) })]);
     withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
     await update();
     const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),

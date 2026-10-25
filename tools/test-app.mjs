@@ -262,7 +262,7 @@ try {
   await page.waitForSelector('#dlg[open] #paste-step-kind');
   ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
     && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-content,paste-step-theme,paste-step-send,paste-step-paste'
-    && (await page.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
+    && (await page.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
     'new: 「新規作成…」 opens the chat-AI page directly with 5 questions (subjects unticked, theme default); no blank or template');
   ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['標準', 'ビジネス', '国語', 'テーマを読み込む…']), 'new: the theme select shows display names, then one 「テーマを読み込む…」');
   // 「テーマを読み込む…」は新規作成の窓の上に読み込みの窓を開く（ZIP ファイル・フォルダ・キャンセル）。キャンセルで新規作成に戻る（③ までは ① その他・② タイトルで進む）

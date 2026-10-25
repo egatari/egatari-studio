@@ -19,7 +19,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { CATEGORIES, seedOf } from '../kit/core/new-deck.mjs';
-import { SERIES } from '../kit/core/llm-pack.mjs';
+import { SERIES, FREE_CORE, buildPack } from '../kit/core/llm-pack.mjs';
+import { PART_LABELS } from '../kit/core/part-labels.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
 import { clickDlg, clickCommand } from './click-retry.mjs';
@@ -119,8 +120,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
     // ④ プランの問い（無料が既定）→ 分野（てこからは推せない：印なし）→ 図の折りたたみ（閉じている）→ コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
-      && (await p1.$$eval('#paste-series input:checked', (xs) => xs.length)) === 0 && await p1.isHidden('#paste-series-guess') && (await text(p1, '#paste-series legend')) === 'スライドに出てくるものはありますか（内容の分野）'
-      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'AI に使わせない図を選ぶ（ふつうは開かなくて大丈夫） いまは全部使う' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
+      && (await p1.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && await p1.isHidden('#paste-series-guess') && (await text(p1, '#paste-series legend')) === 'スライドに出てくるものはありますか（内容の分野）'
+      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === '使える図を見る・外す（ふつうは開かなくて大丈夫） 使える図：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the subjects question with nothing ticked, the closed figures fold and the size');
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -258,9 +259,10 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-next-theme');
     ok((await text(p3, '#paste-phase')) === '20 slides, so you ask in two rounds: first an outline (a list of headings), then 6 slides at a time.' && await p3.isVisible('#paste-phase'),
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
-    ok(await p3.isChecked('#paste-series-business') && (await text(p3, '#paste-series-guess')) === 'Ticked “KPIs, positioning, markets, money flows (business)” from your answer to step 1.', 'S3 ④: Business ticks the business subject, and says so');
+    ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from your answer to step 1.', 'S3 ④: Business ticks the business subject, and says so');
     await p3.check('#paste-plan-paid');
-    ok(await p3.isHidden('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'With a paid plan, the instructions include how to draw everything.', 'S3 ④: the paid plan hides the subjects question');
+    ok(await p3.isVisible('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'The paid plan includes all of them.'
+      && (await p3.$$eval('#paste-series .tile', (xs) => xs.every((x) => x.getAttribute('aria-pressed') === 'true' && x.disabled))), 'S3 ④: the paid plan shows every subject tile as on and not pressable, with “The paid plan includes all of them.”');
     const c3 = await copy(p3);
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: kokugo') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
       'S3 ④: the paid pack with the outline request; the message says to go to step 5 when the outline is out');
@@ -309,7 +311,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p4, 'flow-s4-more.png', 'paste-step-content');
     await p4.click('#paste-next-content');
     await p4.click('#paste-next-theme');
-    ok(await p4.isChecked('#paste-series-kokugo') && (await p4.$$eval('#paste-series input:checked', (xs) => xs.length)) === 1 && (await text(p4, '#paste-series-guess')) === '② のタイトルと内容から「漢文・古文・現代文・縦書き（国語）」に印を付けました',
+    ok((await p4.getAttribute('#paste-series-kokugo', 'aria-pressed')) === 'true' && (await p4.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 1 && (await text(p4, '#paste-series-guess')) === '② のタイトルと内容から「国語」に印を付けました',
       'S4 ④: 漢文 in the content ticks 国語, and says so');
     // ［変更］で ② を直す：④ ⑤ は出たまま。答えの 1 行も新しくなる
     await p4.click('#paste-change-content');
@@ -318,12 +320,12 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p4.click('#paste-next-content');
     ok((await answer(p4, 'content')) === 'タイトル：臥薪嘗胆（十八史略）', 'S4 ②: the answered line follows the change');
     // 自分で外した印は、推し直しで戻さない
-    await p4.uncheck('#paste-series-kokugo');
+    await p4.click('#paste-series-kokugo');
     await p4.click('#paste-change-content');
     await p4.fill('#paste-title', '臥薪嘗胆（漢文）');
     await p4.click('#paste-next-content');
-    ok(!(await p4.isChecked('#paste-series-kokugo')), 'S4 ④: a subject the author unticked is not ticked again by the guess');
-    await p4.check('#paste-series-kokugo');
+    ok((await p4.getAttribute('#paste-series-kokugo', 'aria-pressed')) === 'false', 'S4 ④: a subject the author unticked is not ticked again by the guess');
+    await p4.click('#paste-series-kokugo');
     const c4 = await copy(p4);
     const t4 = tailOf(c4, 'ja');
     ok(t4.startsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：臥薪嘗胆（漢文）\n- 言語：日本語\n- 話者：2 人（Expert と Novice の掛け合い）\n- そのほかの希望：書き下し文を先に\n- テーマ：default') && t4.includes('\n## 内容（要点・メモ・元の資料）\n\n漢文「臥薪嘗胆」の書き下し文と現代語訳\n') && c4.includes('`<m-kanbun>`'),
@@ -382,8 +384,11 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
 
     // ================================================================ S8 高校の先生（ja・無料のプラン）：分野は 2 つまで（推した印も 2 つまで。2 つで、ほかは押せない。外すとまた押せる。有料のプランは限りなし）
     const p8 = await open('ja', 's8');
-    const checked = (p) => p.$$eval('#paste-series input:checked', (xs) => xs.map((x) => x.value).join());
-    const disabledBoxes = (p) => p.$$eval('#paste-series input:disabled', (xs) => xs.map((x) => x.value).join());
+    const checked = (p) => p.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
+    // 使える図の並び（折りたたみの中）と、指示の一覧（§3 の表の行と ### の説明）の部品
+    const strip = (p) => p.$$eval('#paste-parts li', (xs) => xs.map((x) => x.dataset.part + (x.classList.contains('off') ? ':off' : '')).sort().join());
+    const catalog = (series, plan) => [...new Set([...buildPack({ series, lang: 'ja', plan }).matchAll(/^(?:\| `<|### `<)(m-[a-z]+)>`/gm)].map((m) => m[1]))].sort().join();
+    const disabledBoxes = (p) => p.$$eval('#paste-series .tile:disabled', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
     await startNew(p8);
     await p8.check('#paste-cat-business');
     await p8.check('#paste-sub-report');
@@ -392,13 +397,20 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
     ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info'
-      && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数式・関数・グラフ（数理・統計）」「KPI・位置づけ・市場・お金の流れ（ビジネス）」に印を付けました',
+      && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」に印を付けました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
     ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')) && await p8.isHidden('#paste-series-stored'),
       'S8 ④: with two ticked, the others are disabled and the reason 「無料のプランでは 2 つまで選べます」 is shown in the list');
-    await p8.uncheck('#paste-series-business');
+    ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
+    ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
+      && (await text(p8, '#paste-series-new-hint')).includes('標準パーツ（棒グラフ・流れ図・目次など）'), 'S8 ④: the hint names the standard parts from FREE_CORE’s labels: ' + await text(p8, '#paste-series-new-hint'));
+    ok(JSON.stringify(await p8.$$eval('#paste-series .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['数理・統計', '数式・関数・グラフ', true], ['ビジネス', 'KPI・位置づけ・市場・お金の流れ', true], ['国語', '漢文・古文・現代文・縦書き', true], ['情報', '符号の木', true]]),
+      'S8 ④: the subject tiles: an icon, the label and a small line of what is inside');
+    await p8.click('#paste-series-business');
     ok((await checked(p8)) === 'academic' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: unticking one enables the others again and hides the reason');
-    await p8.check('#paste-series-kokugo');
+    ok((await strip(p8)) === catalog(['academic'], 'free') && (await text(p8, '#paste-parts-count')) === `使える図：${catalog(['academic'], 'free').split(',').length} 種類（外したもの 0）` && (await p8.getAttribute('#paste-parts-count', 'aria-live')) === 'polite',
+      'S8 ④: the strip follows a single subject, and the fold summary counts them (aria-live polite): ' + await text(p8, '#paste-parts-count'));
+    await p8.click('#paste-series-kokugo');
     ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info', 'S8 ④: a different second subject disables the rest');
     const c8 = await copy(p8);
     ok(c8 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c8, 'ja'), plan: 'free' }), 'S8 ④: the copied instructions have the two subjects ticked');
@@ -408,11 +420,26 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
     await p8.check('#paste-plan-paid');
-    ok(await p8.isHidden('#paste-series') && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: the paid plan has no limit (no box disabled; the question is hidden)');
+    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === '有料のプランでは全部入ります',
+      'S8 ④: the paid plan has no limit: every tile is on and not pressable, with 「有料のプランでは全部入ります」');
+    ok((await strip(p8)) === catalog([], 'paid'), 'S8 ④: under the paid plan the strip lists every part');
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: [...SERIES], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies every series');
     await p8.check('#paste-plan-free');
     ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the limit applies again');
+    await p8.click('#paste-series-academic');
+    await p8.click('#paste-series-kokugo');
+    ok((await checked(p8)) === '' && (await strip(p8)) === catalog([], 'free') && (await strip(p8)) === [...FREE_CORE].sort().join(), 'S8 ④: with no subject, the strip is the standard parts: ' + await strip(p8));
+    await p8.click('#paste-series-kokugo');
+    ok((await strip(p8)) === catalog(['kokugo'], 'free'), 'S8 ④: 国語 alone: ' + await strip(p8));
+    await p8.click('#paste-purposes-fold-h');
+    await p8.click('#paste-purpose-process');
+    const offTile = await p8.$eval('#paste-parts li[data-part="m-flow"]', (x) => ({ o: +getComputedStyle(x).opacity, deco: getComputedStyle(x.querySelector('.tile-label')).textDecorationLine, b: getComputedStyle(x).borderTopStyle }));
+    const n8 = catalog(['kokugo'], 'free').split(',').length;
+    ok((await strip(p8)) === catalog(['kokugo'], 'free').replace('m-flow', 'm-flow:off') && offTile.o < 1 && offTile.deco.includes('line-through') && offTile.b === 'dashed' && (await text(p8, '#paste-parts-count')) === `使える図：${n8 - 1} 種類（外したもの 1）`,
+      'S8 ④: a figure turned off in the fold stays in the strip, faded, dashed and struck through, and the summary counts it: ' + await text(p8, '#paste-parts-count'));
+    await p8.click('#paste-purpose-process');
+    ok((await text(p8, '#paste-parts-count')) === `使える図：${n8} 種類（外したもの 0）`, 'S8 ④: turning it back on updates the count');
 
     // ================================================================ S9 前に 3 つの分野を選んだ教材（egatari.json の studio.newDeck）を開いて新規作成：印はそのまま、使うのは初めの 2 つ、記録は書き換えない
     const p9 = await open('ja', 's9');
@@ -440,7 +467,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const c9 = await copy(p9);
     ok(c9 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c9, 'ja'), plan: 'free' }), 'S9 ④: the copied instructions use only the first two (数理・統計 and 国語)');
     ok((await cfgNow()) === cfg9, 'S9: the stored record is not rewritten when it is read');
-    await p9.uncheck('#paste-series-academic');
+    await p9.click('#paste-series-academic');
     ok((await checked(p9)) === 'kokugo,info' && await p9.isHidden('#paste-series-stored') && await p9.isVisible('#paste-series-max') && (await disabledBoxes(p9)) === 'academic,business', 'S9 ④: unticking one leaves two: the notice goes, the limit stays');
     await p9.click('#dlg-cancel');
     ok((await cfgNow()) === cfg9, 'S9: the record is still unchanged after closing');

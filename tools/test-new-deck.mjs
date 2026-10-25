@@ -21,6 +21,7 @@ import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
 import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
+import { PART_LABELS, partLabel, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
 import { guideRules } from '../kit/core/llm-fix.mjs';
 import { withOutline, outlineOf } from '../kit/core/llm-outline.mjs';
@@ -83,6 +84,16 @@ ok('AI plan: free (default) packs only the chosen subjects; paid packs every ser
   assert.deepEqual({ ...PACK_CAP_KB.free }, { one: 40, two: 50 }, 'no cap for every subject (the free plan uses two at most)');
   assert.equal(LIMITS.fail, PACK_CAP_KB.free.one); assert.equal(LIMITS.two, PACK_CAP_KB.free.two); assert.equal(LIMITS.paid, PAID_PACK_KB);
   assert.equal(PAIRS.length, SERIES.length * (SERIES.length - 1) / 2);
+});
+ok('part labels: every vendored part has a ja/en name and an icon; the standard parts are FREE_CORE’s labels (no timeline, which is paid only); subjects carry their tile line', () => {
+  for (const t of Object.keys(PACK_DATA.en.components)) assert.ok(PART_LABELS[t] && PART_LABELS[t].ja && PART_LABELS[t].en && PART_LABELS[t].icon, t);
+  assert.deepEqual(standardParts('ja'), FREE_CORE.map((t) => PART_LABELS[t].ja));
+  assert.deepEqual(standardParts('ja'), ['棒グラフ', '流れ図', '目次']);
+  assert.deepEqual(standardParts('en'), FREE_CORE.map((t) => PART_LABELS[t].en));
+  assert.ok(!standardParts('ja').includes('年表') && PAID_ONLY.includes('m-timeline'));
+  assert.equal(partLabel('m-new-thing', 'ja'), 'm-new-thing');
+  assert.deepEqual(partOrder(['m-venn', 'm-menu', 'm-bars', 'm-zzz', 'm-flow']), ['m-bars', 'm-flow', 'm-menu', 'm-venn', 'm-zzz']);
+  for (const x of SUBJECTS) assert.ok(x.label.ja && x.label.en && x.inside.ja && x.inside.en && x.icon, x.id);
 });
 ok('request section: kind, structure and presentation of the subcategory, and the purposes turned off', () => {
   const r = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: [] }, PURPOSES, 'ja');

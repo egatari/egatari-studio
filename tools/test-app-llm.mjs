@@ -210,8 +210,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#paste-purpose-process');
     await pk.click('#paste-purpose-contents');
     const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
-    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-purposes-fold-sum')) === '2 個を使わない',
-      'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold says 「2 個を使わない」');
+    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === '使える図：1 種類（外したもの 2）',
+      'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(!c2.includes('### `<m-flow>`') && !c2.includes('| `<m-menu>` |') && c2.includes('- 使わない言いたいこと（作者が外した）：手順・工程・目次。その表し方（`m-flow`・`m-menu`）は使わない') && size2 < size1,
