@@ -20,17 +20,18 @@
 
 登録した指示は自動では新しくなりません。指示のはじめに **指示の版：…** の行があるので、編集アプリが新しくなったらコピーし直した指示の版と比べ、違えば登録したものを差し替えます。登録した指示は Claude Code のスキル（`skills/`）とは別物です。スキルは手元のコンピュータで教材の品質チェック・組み立て・読み上げ（TTS）までしますが、指示はチャットの AI に、貼り戻す 2 つのファイルを書かせるだけです。
 
-このファイルと系列の指示を合わせたものが**指示の全体**で、編集アプリが有料のプランのチャットの AI 向けにコピーするものと同じです：規格・出力の形と、すべての部品。**系列の指示**はそれぞれ、ある種類の教材の部品を足す：[academic](llm-parts/academic.ja.md)（`m-collect`・`m-seq`・`m-sweep`）、[business](llm-parts/business.ja.md)（`m-market`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[info](llm-parts/info.ja.md)（`m-codetree`）。無料のプランでは、編集アプリは部品を絞った軽い指示をコピーします（`node kit/llm-pack.mjs --series academic,info --lang ja` がその文章を出す。`--plan paid` を付けると指示の全体）。大きさ（KB は UTF-8 のバイト数 / 1024）：
+このファイルと系列の指示を合わせたものが**指示の全体**で、編集アプリが有料のプランのチャットの AI 向けにコピーするものと同じです：規格・出力の形と、すべての部品。**系列の指示**はそれぞれ、ある種類の教材の部品を足す：[academic](llm-parts/academic.ja.md)（`m-collect`・`m-seq`・`m-sweep`）、[business](llm-parts/business.ja.md)（`m-market`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[info](llm-parts/info.ja.md)（`m-codetree`）、[social](llm-parts/social.ja.md)（`m-map-japan`）。無料のプランでは、編集アプリは部品を絞った軽い指示をコピーします（`node kit/llm-pack.mjs --series academic,info --lang ja` がその文章を出す。`--plan paid` を付けると指示の全体）。大きさ（KB は UTF-8 のバイト数 / 1024）：
 
 | 指示 | 大きさ | 上限 |
 |---|---:|---:|
-| 無料のプラン：共通の本体だけ | 27.5 KB | 40 KB |
-| 無料のプラン：共通の本体＋academic | 37.1 KB | 40 KB |
+| 無料のプラン：共通の本体だけ | 27.6 KB | 40 KB |
+| 無料のプラン：共通の本体＋academic | 37.2 KB | 40 KB |
 | 無料のプラン：共通の本体＋business | 37.1 KB | 40 KB |
-| 無料のプラン：共通の本体＋kokugo | 38.1 KB | 40 KB |
+| 無料のプラン：共通の本体＋kokugo | 38.2 KB | 40 KB |
 | 無料のプラン：共通の本体＋info | 28.9 KB | 40 KB |
-| 無料のプラン：すべての分野 | 58.4 KB | 59 KB |
-| 有料のプラン：指示の全体（このファイルとすべての系列） | 87.1 KB | 120 KB |
+| 無料のプラン：共通の本体＋social | 31.1 KB | 40 KB |
+| 無料のプラン：すべての分野 | 61.9 KB | 59 KB |
+| 有料のプラン：指示の全体（このファイルとすべての系列） | 90.5 KB | 120 KB |
 
 どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・部品の README・`tools/llm-guide/` から作るので、手で直さない。
 
@@ -40,7 +41,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 # AI への指示
 
-指示の版：`0f5e51c9`
+指示の版：`a786636d`
 
 短い **Egatari の教材**を 1 つ書いてください。段階ごとに出る HTML のスライド（`deck.html`）と口述原稿（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと口述原稿は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -132,9 +133,9 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 | 2 つの量の関係 | `m-scatter` | 点、それから傾向 |
 | ばらつき | `m-seq`（academic） | 一度に全部 |
 | 目次 | `m-menu` | 一度に全部 |
-| その他のパーツ | `m-collect`（academic）、`m-gendai`（kokugo）、`m-kanbun`（kokugo）、`m-kobun`（kokugo）、`m-sweep`（academic） | その説明のとおり |
+| その他のパーツ | `m-collect`（academic）、`m-gendai`（kokugo）、`m-kanbun`（kokugo）、`m-kobun`（kokugo）、`m-map-japan`（social）、`m-sweep`（academic） | その説明のとおり |
 
-各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v1.3.0/components/<名前>/README.md（名前は `m-` を除いたもの）
+各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v1.4.0/components/<名前>/README.md（名前は `m-` を除いたもの）
 
 - **R-whole** 箇条書き・数字の札・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
 

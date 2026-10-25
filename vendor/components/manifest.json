@@ -1,13 +1,13 @@
 {
   "name": "egatari-components",
-  "version": "1.3.0",
-  "tag": "v1.3.0",
+  "version": "1.4.0",
+  "tag": "v1.4.0",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.3.0.tar.gz",
-    "sha256": "76038481c19a4effd31b51002ac61734d3d0557ef4e8b955070e7125c6ac1321",
-    "bytes": 186057
+    "file": "egatari-components-v1.4.0.tar.gz",
+    "sha256": "155fac4dcc9de43850166b16f250974e3ed17cc0456438971bc586cb72d5a55d",
+    "bytes": 218877
   },
   "purposes": [
     {
@@ -170,6 +170,15 @@
       "steps": {
         "ja": "値を 1 つずつ",
         "en": "One value at a time"
+      }
+    },
+    {
+      "id": "spatial",
+      "ja": "場所・地図",
+      "en": "Place / map",
+      "steps": {
+        "ja": "地図、それから地域・点・矢印を 1 つずつ",
+        "en": "The map, then regions, points and arrows one at a time"
       }
     },
     {
@@ -383,6 +392,24 @@
         "index.js": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7"
       }
     },
+    "map-japan": {
+      "tag": "m-map-japan",
+      "series": "social",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "164a139bb8ea60ad204fe73525fac3f982155cbf84cac9ea74cf6959e1310020",
+      "files": {
+        "README.md": "888bd62aa2cad169e2704a05bc4f526a0707240f75d58bdab40143b864346ba0",
+        "demo.html": "58063ad5e3cbf02d94b834cbe546798c21e1037ef11ad0d3da3761c9c95e6fee",
+        "index.js": "164a139bb8ea60ad204fe73525fac3f982155cbf84cac9ea74cf6959e1310020"
+      }
+    },
     "market": {
       "tag": "m-market",
       "series": "business",
@@ -593,6 +620,9 @@
     "kpi/README.md": "c89b4c82237a988a18e1c9ff0832de68e8a5d34442eac760e4fceaa147ba116d",
     "kpi/demo.html": "ef2110c087d69d23ed2e1fe3ab8e93a027a1354104384a65409ea5e5ad1a366a",
     "kpi/index.js": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7",
+    "map-japan/README.md": "888bd62aa2cad169e2704a05bc4f526a0707240f75d58bdab40143b864346ba0",
+    "map-japan/demo.html": "58063ad5e3cbf02d94b834cbe546798c21e1037ef11ad0d3da3761c9c95e6fee",
+    "map-japan/index.js": "164a139bb8ea60ad204fe73525fac3f982155cbf84cac9ea74cf6959e1310020",
     "market/README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
     "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
     "market/index.js": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",

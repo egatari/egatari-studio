@@ -91,6 +91,7 @@ export const SUBJECTS = [
   { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' } },
   { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' } },
   { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' } },
+  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' } },
 ];
 
 export function seriesOfSubjects(ids) {
