@@ -1,10 +1,10 @@
 // 画面の言葉の検査（npm run lint:terms）：用語集（docs/terms.json）の avoid の言葉が、使う人の目に触れる文字列に残っていないかを見る
-//   node tools/lint-terms.mjs [--root <dir>] [--json] [--counts] [--strict-pairs]
+//   node tools/lint-terms.mjs [--root <dir>] [--json] [--counts]
 // 言葉の一覧はこのファイルに書かない：docs/terms.json（言葉）と docs/terms-allow.json（正当な使い方と、照らし方の設定）だけを読む。
 // 見る所（使う人の目に触れる文字列）：
 //   - 画面のコード（app/*.js・kit/tools.js・kit/presenter.js・kit/deck.js・kit/live.js・kit/core/live-results.mjs・kit/core/part-labels.mjs・
 //     server/editor-ui.js・server/hints.js）の文字列リテラル（コメントは見ない）
-//   - docs/*.md・docs/*.ja.md（AI への指示の文書 authoring-with-llms* を除く）と skills/*/SKILL.md の地の文（フェンスのコード・`コード`・HTML のコメント・URL は見ない）
+//   - README(.ja).md・docs/*.md・docs/*.ja.md（AI への指示の文書 authoring-with-llms* を除く）と skills/*/SKILL.md の地の文（フェンスのコード・`コード`・HTML のコメント・URL は見ない）
 // 見ない所：AI への指示（kit/core/llm-pack-data.mjs・tools/llm-guide/**・docs/authoring-with-llms*・docs/llm-parts/*）、コードの名前・CSS のクラス・CLI の引数、
 //   コメント、changes/ と CHANGELOG
 // 照らし方：
@@ -18,7 +18,8 @@
 // 許す使い方：docs/terms-allow.json の allow：{file（* と ** を使える）, pattern（正規表現。その当たりが行の中の pattern の当たりに入っていれば許す）
 //   か line（その文字列を含む行なら許す）, term, reason, keep?}。使われなかった許しは知らせる（keep が真のもの＝今は当たる所がなくても残す、正当な使い方の記録、を除く）
 // ja と en の組：画面の文字列の表（{ja: …, en: …} の兄弟、const ja / const en、EN ? 'en' : 'ja' のような 3 項）で、
-//   ja にある用語の ja に対して、en にその用語の en があるか（大文字小文字を問わない）。知らせ（警告）だけ。--strict-pairs で失敗にする
+//   ja にある用語の ja に対して、en にその用語の en があるか（大文字小文字を問わない。語幹で比べる）。合わなければ失敗。
+//   正当な違い（ja の「授業」が授業の表示でなく授業そのものを言うときなど）は terms-allow.json の allow に pairs: true で書く
 // 出力：ファイル:行  見つけた言葉  用語の id → 置き換え。avoid に当たれば終了コード 1
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,11 +30,11 @@ const ri = args.indexOf('--root');
 const ROOT = ri >= 0 ? path.resolve(args[ri + 1]) : path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const JSON_OUT = args.includes('--json');
 const COUNTS = args.includes('--counts');
-const STRICT_PAIRS = args.includes('--strict-pairs');
+
 
 // ---- 見る所 ----
 const UI_CODE = ['app/*.js', 'kit/tools.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
-const PROSE = ['docs/*.md', 'skills/*/SKILL.md'];
+const PROSE = ['docs/*.md', 'README.md', 'README.ja.md', 'skills/*/SKILL.md'];
 const PROSE_EXCLUDE = ['docs/authoring-with-llms*', 'docs/terms.md'];
 
 export function globRe(g) {
@@ -57,7 +58,11 @@ function listFiles(root, globs, exclude = []) {
       if (e.isDirectory()) walk(rel); else all.push(rel);
     }
   };
-  for (const top of new Set(globs.map((g) => g.split('/')[0]))) if (fs.existsSync(path.join(root, top))) walk(top);
+  for (const top of new Set(globs.map((g) => g.split('/')[0]))) {
+    const p = path.join(root, top);
+    if (!fs.existsSync(p)) continue;
+    if (fs.statSync(p).isDirectory()) walk(top); else all.push(top);
+  }
   const inc = globs.map(globRe), exc = exclude.map(globRe);
   for (const f of all.sort()) if (inc.some((r) => r.test(f)) && !exc.some((r) => r.test(f))) out.add(f);
   return [...out];
@@ -375,7 +380,7 @@ export function findPairs(src) {
     if (tokens[i].value !== '?' || !lit(tokens[i + 1]) || tokens[i + 2].value !== ':' || !lit(tokens[i + 3])) continue;
     const a = tokens[i + 1], b = tokens[i + 3];
     const aj = isJa(a.value), bj = isJa(b.value);
-    if (aj === bj) continue;
+    if (aj === bj || !/[A-Za-z]{2,}/.test(aj ? b.value : a.value)) continue;   // 片方が空（'' など）なら組でない
     const [J, E] = aj ? [a, b] : [b, a];
     pairs.push({ ja: new Map([['', { text: J.value, start: J.start }]]), en: new Map([['', { text: E.value, start: E.start }]]), ternary: true });
   }
@@ -416,6 +421,8 @@ export function checkPairs(root, file, rules) {
         // 同じ ja の用語（スライド：slides と slide）はどれの en でもよい。en は語幹で比べる（recording → record、slides → slide）
         const ens = termPairs.filter((x) => x.ja.includes(hit)).flatMap((x) => x.en);
         if (ens.some((e) => et.includes(stem(e)))) continue;
+        const lineText = src.split('\n')[lineOf(starts, jv.start)];
+        if (rules.allow.some((al) => al.pairs && al.term === tp.id && al.fre.test(file) && ((al.line && lineText.includes(al.line)) || (al.pre && new RegExp(al.pattern).test(lineText))) && ++al.used)) continue;
         warnings.push({ file, line: lineOf(starts, jv.start) + 1, key, kind: 'term', id: tp.id, msg: `ja has 「${hit}」 (${tp.id}) but en lacks "${tp.en[tp.en.length - 1]}"${key ? ` [${key}]` : ''}` });
       }
     }
@@ -445,12 +452,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const [k, v] of [...c].sort((x, y) => y[1] - x[1])) console.log(`${v}\t${k}`);
   } else {
     for (const h of hits) console.log(`${h.file}:${h.line}:${h.col + 1}  「${h.found}」  ${h.id} → ${h.to}`);
-    for (const w of pairWarnings) console.log(`warning: ${w.file}:${w.line}  ${w.msg}`);
+    for (const w of pairWarnings) console.log(`${w.file}:${w.line}  ${w.msg}`);
     for (const a of unused) console.log(`warning: docs/terms-allow.json: allow entry #${a.k} (${a.file}, ${a.term}) matched nothing; remove it if it is no longer needed`);
   }
   const missing = pairWarnings.filter((w) => w.kind === 'missing');
   const termW = pairWarnings.filter((w) => w.kind === 'term');
-  const fail = hits.length > 0 || missing.length > 0 || (STRICT_PAIRS && termW.length > 0);
-  console.error(`lint:terms: ${files.length} files, ${rules.avoid.length} avoid words; ${hits.length} to replace, ${missing.length} strings without a partner, ${termW.length} ja↔en term warnings, ${unused.length} unused allow entries`);
+  const fail = hits.length > 0 || missing.length > 0 || termW.length > 0;
+  console.error(`lint:terms: ${files.length} files, ${rules.avoid.length} avoid words; ${hits.length} to replace, ${missing.length} strings without a partner, ${termW.length} ja↔en term mismatches, ${unused.length} unused allow entries`);
   process.exit(fail ? 1 : 0);
 }

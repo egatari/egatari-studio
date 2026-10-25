@@ -44,6 +44,26 @@
    "note": ""
   },
   {
+   "id": "lesson",
+   "group": "Format and files",
+   "en": "Lesson",
+   "ja": "教材",
+   "definition": "The whole thing a user makes and shares (one Egatari file); スライド is only the slide part.",
+   "avoid": {
+    "ja": [
+     "デッキ",
+     "資料（教材の意味で）"
+    ],
+    "en": [
+     "deck"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
    "id": "slides",
    "group": "Format and files",
    "en": "Slides",
@@ -55,14 +75,13 @@
      "デッキ"
     ],
     "en": [
-     "deck",
-     "source"
+     "deck"
     ]
    },
    "internal": "deck.html",
    "decided": "2026-10-24",
    "by": "owner",
-   "note": ""
+   "note": "原稿 is avoided in UI strings only; the format’s “editable source” (spec, sourceSha256) keeps its name in technical docs."
   },
   {
    "id": "script",
@@ -146,7 +165,7 @@
    "group": "Format and files",
    "en": "Template",
    "ja": "テンプレート",
-   "definition": "A slide layout used when inserting a slide.",
+   "definition": "A slide layout used when inserting a slide, and the starting set of slides for a new lesson.",
    "avoid": {
     "ja": [
      "雛形"
@@ -219,12 +238,9 @@
     "ja": [
      "合図",
      "キュー",
-     "マーカー",
-     "区切り"
+     "区切り（タイミングの意味で）"
     ],
-    "en": [
-     "marker"
-    ]
+    "en": []
    },
    "internal": "{cue}",
    "decided": "2026-10-24",
@@ -281,7 +297,7 @@
    "internal": "talk + preview (spec)",
    "decided": "2026-10-24",
    "by": "owner",
-   "note": ""
+   "note": "In prose about the mode, write 授業の表示 / the Lecture view; plain 授業 in prose means a class."
   },
   {
    "id": "video",
@@ -561,7 +577,7 @@
   {
    "id": "generate-cloud",
    "group": "Audio",
-   "en": "Make AI audio in the cloud (Google Colab)",
+   "en": "Make AI voice in the cloud (Google Colab)",
    "ja": "AI 音声をクラウドで作る（Google Colab）",
    "definition": "Generate audio in a Colab notebook and import the result.",
    "avoid": {
@@ -579,7 +595,7 @@
   {
    "id": "generate-local",
    "group": "Audio",
-   "en": "Make AI audio on this computer",
+   "en": "Make AI voice on this computer",
    "ja": "AI 音声をこの PC で作る",
    "definition": "Generate audio in the browser (needs a fast GPU).",
    "avoid": {
@@ -811,7 +827,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Subjects",
    "ja": "内容の分野",
-   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; up to two on the free plan.",
+   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; up to two on the free plan. Headings use 内容の分野; running text may say 分野.",
    "avoid": {
     "ja": [
      "分野（使うパーツ）",
@@ -970,6 +986,62 @@
    "internal": "",
    "decided": "2026-10-25",
    "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "parts-library",
+   "group": "Parts and themes",
+   "en": "Parts library",
+   "ja": "パーツライブラリ",
+   "definition": "The released collection of parts (egatari/components).",
+   "avoid": {
+    "ja": [
+     "部品庫"
+    ],
+    "en": [
+     "components library (UI)"
+    ]
+   },
+   "internal": "egatari/components",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "voice-sample",
+   "group": "Audio",
+   "en": "Preview voice",
+   "ja": "▶ 試聴",
+   "definition": "Play a short sample of a voice.",
+   "avoid": {
+    "ja": [
+     "見本（声の）"
+    ],
+    "en": [
+     "Sample (voice)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "offline-editor",
+   "group": "Format and files",
+   "en": "Offline editor",
+   "ja": "オフライン版のエディタ",
+   "definition": "The editor saved as one HTML file to use without a network.",
+   "avoid": {
+    "ja": [
+     "1 つの HTML にしたエディタ",
+     "1 ファイル版"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
    "note": ""
   },
   {
@@ -1148,6 +1220,23 @@
    "internal": "",
    "decided": "2026-10-20",
    "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "learner",
+   "group": "Format and files",
+   "en": "Learner",
+   "ja": "学習者",
+   "definition": "A person studying with a lesson (pedagogy and help text). In Live, and for play-only recipients in menus, use 参加者 / participant.",
+   "avoid": {
+    "ja": [
+     "学ぶ人"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
    "note": ""
   },
   {
@@ -1375,7 +1464,7 @@
    "group": "Buttons and common words",
    "en": "Edit this file? [Enable editing]",
    "ja": "このファイルを編集しますか ［編集を有効にする］",
-   "definition": "Asked once before editing a file.",
+   "definition": "Asked once before editing a file. The prompt itself is called 編集の確認 / the editing prompt.",
    "avoid": {
     "ja": [
      "権利の確認"

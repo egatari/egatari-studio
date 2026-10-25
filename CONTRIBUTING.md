@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=6b73786400310f56 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=746439f9c4cec47f -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -93,7 +93,7 @@ When you change one side:
 
 ### Words on screen (termbase)
 
-User-facing words follow the termbase `docs/terms.json` (the table is `docs/terms.md`; wording rules in its `principles`). `npm run lint:terms` (also run by `npm test` and CI) fails when a word the termbase avoids appears in UI strings (`app/`, the player UI in `kit/`, `server/editor-ui.js`, `server/hints.js`), in `docs/*.md` or in `skills/*/SKILL.md`. It prints the file, line, the word, the term id and the replacement. When a use is legitimate in another sense, add an entry with a reason to `docs/terms-allow.json` instead of forcing the replacement. It also warns when a Japanese UI string has a term whose English partner string lacks that term. Code, ids, file formats, CLI flags, comments and the instructions for the AI are not checked.
+User-facing words follow the termbase `docs/terms.json` (the table is `docs/terms.md`; wording rules in its `principles`). `npm run lint:terms` (also run by `npm test` and CI) fails when a word the termbase avoids appears in UI strings (`app/`, the player UI in `kit/`, `server/editor-ui.js`, `server/hints.js`), in `README(.ja).md`, `docs/*.md` or in `skills/*/SKILL.md`. It prints the file, line, the word, the term id and the replacement. When a use is legitimate in another sense, add an entry with a reason to `docs/terms-allow.json` instead of forcing the replacement. It also fails when a Japanese UI string has a term whose English partner string lacks that term (a legitimate difference gets an allow entry with `"pairs": true`). Code, ids, file formats, CLI flags, comments and the instructions for the AI are not checked.
 
 ## License
 

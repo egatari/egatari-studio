@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=ee88a3d6df2eecaa -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=da58b505519b33ed -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -93,7 +93,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `np
 
 ### 画面の言葉（用語集）
 
-使う人の目に触れる言葉は、用語集 `docs/terms.json`（表は `docs/terms.md`、言葉の決まりは `principles`）に従う。`npm run lint:terms`（`npm test` と CI でも走る）は、用語集が避ける言葉が画面の文字列（`app/`・`kit/` のプレーヤーの画面・`server/editor-ui.js`・`server/hints.js`）、`docs/*.md`、`skills/*/SKILL.md` にあると失敗する。ファイル・行・見つけた言葉・用語の id・置き換えを出す。別の意味の正当な使い方なら、置き換えずに `docs/terms-allow.json` に理由と書く。日本語の画面の文字列にある用語が、英語の相手の文字列にないときも知らせる（知らせだけ）。コード・id・ファイルの形式・CLI の引数・コメント・AI への指示は見ない。
+使う人の目に触れる言葉は、用語集 `docs/terms.json`（表は `docs/terms.md`、言葉の決まりは `principles`）に従う。`npm run lint:terms`（`npm test` と CI でも走る）は、用語集が避ける言葉が画面の文字列（`app/`・`kit/` のプレーヤーの画面・`server/editor-ui.js`・`server/hints.js`）、`README(.ja).md`・`docs/*.md`、`skills/*/SKILL.md` にあると失敗する。ファイル・行・見つけた言葉・用語の id・置き換えを出す。別の意味の正当な使い方なら、置き換えずに `docs/terms-allow.json` に理由と書く。日本語の画面の文字列にある用語が、英語の相手の文字列にないときも失敗する（正当な違いは `"pairs": true` の許しに書く）。コード・id・ファイルの形式・CLI の引数・コメント・AI への指示は見ない。
 
 ## ライセンス
 

@@ -57,12 +57,6 @@
     },
     {
       "file": "**",
-      "pattern": "部品庫",
-      "term": "part",
-      "reason": "部品庫 is the name of the component library (egatari/components); the termbase has no entry for it yet."
-    },
-    {
-      "file": "**",
       "pattern": "台本を書き出(しました|す…?|し)?|書き出した(とき|後|あと|台本)|confirmGo: '書き出す'|[Ee]xport the script|書き出す（台本",
       "term": "export",
       "reason": "Export script (台本を書き出す) is the audio panel's own action and keeps 書き出す (termbase export note, export-script)."
@@ -81,12 +75,6 @@
     },
     {
       "file": "**",
-      "pattern": "[Cc]omponent registry",
-      "term": "part",
-      "reason": "English name of 部品庫 (the component library, egatari/components); no termbase entry yet."
-    },
-    {
-      "file": "**",
       "pattern": "\\b[Kk]eys\\b|<kbd>",
       "term": "join-code",
       "reason": "Keyboard keys, not the join code."
@@ -102,12 +90,6 @@
       "pattern": "元の原稿|プログラムの原稿|JavaScript の原稿",
       "term": "slides",
       "reason": "Attachment role 'source' (the author's own source documents: TeX, Markdown, docx) and program source code; not the slides."
-    },
-    {
-      "file": "**",
-      "pattern": "[Ss]ource: |'Source'|\"Source\"|source takes|program source|JavaScript source|trust its source|source text|source material",
-      "term": "slides",
-      "reason": "Attachment role 'source', program source code, or the user's source material; not the slides."
     },
     {
       "file": "app/llm.js",
@@ -242,18 +224,6 @@
       "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
     },
     {
-      "file": "docs/reference.ja.md",
-      "pattern": "区切りは OS のもの|区切りは `:`",
-      "term": "cue",
-      "reason": "Path-list delimiter of EGATARI_THEMES, not a timing cue."
-    },
-    {
-      "file": "docs/contract.ja.md",
-      "pattern": "区切り",
-      "term": "cue",
-      "reason": "The spec's internal boundaries (bounds, ttsParts, cue times of the audio) in the component contract, not the user-facing timing."
-    },
-    {
       "file": "docs/threat-model.ja.md",
       "pattern": "「Trust model: a deck is code」",
       "term": "slides",
@@ -276,18 +246,6 @@
       "pattern": "圧縮 \\(zip 形式\\) フォルダー",
       "term": "zip-file",
       "reason": "Windows Explorer's own menu label."
-    },
-    {
-      "file": "kit/core/live-results.mjs",
-      "line": "this file contains live room results",
-      "term": "live",
-      "reason": "Command-line warning (kit/build.mjs --portable); the CLI's live-results messages (tools/portable.mjs) are outside this pass and keep 'live room' / 'learners' together."
-    },
-    {
-      "file": "kit/core/live-results.mjs",
-      "line": "this file contains live room results",
-      "term": "participant",
-      "reason": "Command-line warning (kit/build.mjs --portable); the CLI's live-results messages (tools/portable.mjs) are outside this pass and keep 'live room' / 'learners' together."
     },
     {
       "file": "**",
@@ -324,6 +282,73 @@
       "line": "plan: { free: '無料のプラン（わからなければこちら）'",
       "term": "paid-plan",
       "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
+    },
+    {
+      "file": "**",
+      "pattern": "補足資料|元の資料|PDF などの資料|その資料|渡した資料|発表資料",
+      "term": "lesson",
+      "reason": "資料 meaning source material or presentation material (attachment role, the user's own documents, a trigger phrase), not the lesson."
+    },
+    {
+      "file": "docs/threat-model.ja.md",
+      "pattern": "「Trust model: a deck is code」",
+      "term": "lesson",
+      "reason": "Verbatim title of a SECURITY.md section."
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "sample slides|Open a sample|load the sample",
+      "term": "voice-sample",
+      "reason": "Sample lessons and sample slides (the sample term), not the voice preview."
+    },
+    {
+      "file": "app/attachments-panel.js",
+      "line": "liveMismatch:",
+      "term": "lecture",
+      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
+      "pairs": true
+    },
+    {
+      "file": "app/live-panel.js",
+      "line": "授業中の質問・投票",
+      "term": "lecture",
+      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "授業なら導入・展開・まとめ",
+      "term": "lecture",
+      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "contentGive",
+      "term": "lecture",
+      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "themeSwitchNow:",
+      "term": "theme",
+      "reason": "The current-theme mark in the theme chooser; en says “(current)” next to the theme name.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "学会の参加者",
+      "term": "participant",
+      "reason": "Example text: conference attendees, not Live participants.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "purposesHint:",
+      "term": "what-to-convey",
+      "reason": "The hint sits under the What to convey heading; en refers to the tile with “it”.",
+      "pairs": true
     }
   ]
 }

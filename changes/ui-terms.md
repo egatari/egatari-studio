@@ -5,4 +5,4 @@
 
 ### Added
 
-- `npm run lint:terms` (also in `npm test`): flags avoided words of the termbase in UI strings, docs and skills, with `docs/terms-allow.json` for legitimate uses, and warns where a Japanese UI string's term has no matching English term in its partner.
+- `npm run lint:terms` (also in `npm test`): flags avoided words of the termbase in UI strings, docs and skills, with `docs/terms-allow.json` for legitimate uses, and fails where a Japanese UI string's term has no matching English term in its partner.
