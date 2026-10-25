@@ -128,8 +128,13 @@ const WRONG = {
   // 部品庫 v1.9.0：度数分布表の欄の名前・群を字の並びで書く
   'm-hist': '<script type="application/json">{"table": [{"class": "10〜20", "count": 4}]}</script>',
   'm-boxplot': '<script type="application/json">{"groups": [[3, 5, 7, 9, 12]]}</script>',
+  // 部品庫 v1.10.0：目盛りを lines の外に書く／区切りを数の並びで書く（m-hissan は子の JSON を持たない：式は属性 expr。下の NO_DATA）
+  'm-numberline': '<script type="application/json">{"from": 0, "to": 10, "marks": [{"at": 3}]}</script>',
+  'm-tape': '<script type="application/json">{"rows": [{"label": "A", "segs": [3, 2]}]}</script>',
 };
-const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
+// 子の JSON を持たない部品（static shape の schema が null：書くのは属性だけ）。データの形の誤りはない
+const NO_DATA = ['m-hissan'];
+const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name).filter((t) => !NO_DATA.includes(t));
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');
 const deckDir = path.join(work, 'deck');
 fs.mkdirSync(deckDir, { recursive: true });

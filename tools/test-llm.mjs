@@ -85,7 +85,7 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   // --list：--lang がなければ en と ja の両方の列、あれば その言語の大きさ（UTF-8 のバイト数 / 1024。編集アプリと同じ packKb）
   const kbx = (series, lang) => packKb(buildPack({ series, lang })) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu, m-predict\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
   const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
   assert.ok(listJa.status === 0 && listJa.stdout.includes(`common\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`academic\t${kbx(['academic'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
   const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');

@@ -36,6 +36,9 @@ export const PART_LABELS = Object.freeze({
   'm-timer': { ja: 'タイマー', en: 'Timer', icon: 'timer' },
   'm-hist': { ja: 'ヒストグラム', en: 'Histogram', icon: 'hist' },
   'm-boxplot': { ja: '箱ひげ図', en: 'Box plot', icon: 'boxplot' },
+  'm-hissan': { ja: '筆算', en: 'Column arithmetic', icon: 'hissan' },
+  'm-numberline': { ja: '数直線', en: 'Number line', icon: 'numberline' },
+  'm-tape': { ja: 'テープ図', en: 'Tape diagram', icon: 'tape' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');

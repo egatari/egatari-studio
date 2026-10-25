@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-numberline の見本</title>
+<!-- 組み方：node kit/build.mjs components/numberline/demo.html -o components/numberline/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>3 + 4 − 2 を数直線で</h2>
+  <div class="body">
+    <m-numberline style="height:400px">
+      <script type="application/json">{"lines": [{"from": 0, "to": 10, "step": 1}],
+        "marks": [{"at": 3}, {"at": 5, "kind": "open", "label": "答え", "show": 5}],
+        "jumps": [{"from": 3, "to": 7, "label": "+4"}, {"from": 7, "to": 5, "label": "−2"}]}</script>
+    </m-numberline>
+  </div>
+  <div class="concl"><span>→ たすときは右へ、ひくときは左へ進む</span></div>
+</section>
+
+<section class="slide">
+  <h2>1 と 2 の間を 10 に分ける</h2>
+  <div class="body">
+    <m-numberline build="ticks,magnify,marks" style="height:440px">
+      <script type="application/json">{"lines": [{"from": 0, "to": 3, "step": 1, "unit": "L"}],
+        "magnify": [{"from": 1, "to": 2}],
+        "marks": [{"at": 1.3, "line": 1}]}</script>
+    </m-numberline>
+  </div>
+  <div class="concl"><span>→ 1 目盛りは 0.1。1.3 は 1 と 0.1 が 3 つ</span></div>
+</section>
+
+<section class="slide">
+  <h2>1200 円の 2/3 はいくら（2 本の数直線）</h2>
+  <div class="body">
+    <m-numberline build="ticks,links,jumps,marks" style="height:490px">
+      <script type="application/json">{"lines": [{"from": 0, "to": 1200, "step": 400, "label": "代金", "unit": "円", "labels": [0, 1200]},
+                 {"from": 0, "to": 1, "step": "1/3", "label": "割合"}],
+        "link": [[1200, 1], [800, "2/3"]],
+        "jumps": [{"from": 1, "to": "2/3", "line": 1, "label": "×2/3"}, {"from": 1200, "to": 800, "label": "×2/3", "show": 4}],
+        "marks": [{"at": 800, "kind": "box"}]}</script>
+    </m-numberline>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>連立不等式の解（見せ方の種類）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">
+      <m-numberline variant="fade" arrow="on" style="height:400px">
+        <script type="application/json">{"lines": [{"from": -3, "to": 5, "step": 1, "label": "フェード"}],
+          "ranges": [{"from": -1, "incl": [false, false], "label": "*x* > −1"}, {"to": 3, "incl": [true, true], "label": "*x* ≦ 3"}]}</script>
+      </m-numberline>
+      <m-numberline variant="draw" arrow="on" style="height:400px">
+        <script type="application/json">{"lines": [{"from": -3, "to": 5, "step": 1, "label": "線を引く"}],
+          "ranges": [{"from": -1, "incl": [false, false], "label": "*x* > −1"}, {"to": 3, "incl": [true, true], "label": "*x* ≦ 3"}]}</script>
+      </m-numberline>
+    </div>
+  </div>
+  <div class="concl"><span>→ 重なる部分が解：−1 &lt; <i>x</i> ≦ 3（左はフェード、右は線を引く）</span></div>
+</section>
+
+</div>
+</body>
+</html>

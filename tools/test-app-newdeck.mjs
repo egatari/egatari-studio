@@ -136,7 +136,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ④ プランの問い（無料が既定）→ 分野（てこからは推せない：印なし）→ 図の折りたたみ（閉じている）→ コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
       && (await p1.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && await p1.isHidden('#paste-series-guess') && (await text(p1, '#paste-series legend')) === 'スライドに出てくるものはありますか（内容の分野）'
-      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'パーツを見る・伝えたいことを外す（ふつうは開かなくて大丈夫） パーツ：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
+      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'パーツを見る・伝えたいことを外す（ふつうは開かなくて大丈夫） パーツ：4 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the subjects question with nothing ticked, the closed figures fold and the size');
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -435,7 +435,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S8 ④: with two ticked, the others are disabled and the reason 「チャットの AI：無料のプランでは 2 つまで選べます」 is shown in the list');
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
-      && (await text(p8, '#paste-series-new-hint')).includes('標準パーツ（棒グラフ・流れ図・目次など）'), 'S8 ④: the hint names the standard parts from FREE_CORE’s labels: ' + await text(p8, '#paste-series-new-hint'));
+      && (await text(p8, '#paste-series-new-hint')).includes('標準パーツ（棒グラフ・流れ図・目次・予想と答えなど）'), 'S8 ④: the hint names the standard parts from FREE_CORE’s labels: ' + await text(p8, '#paste-series-new-hint'));
     ok(JSON.stringify(await p8.$$eval('#paste-series .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['数理・統計', '数式・関数・グラフ', true], ['ビジネス', 'KPI・位置づけ・市場・お金の流れ', true], ['国語', '漢文・古文・現代文・縦書き', true], ['情報', '符号の木', true], ['地図（社会：地理・歴史）', '日本地図', true]]),
       'S8 ④: the subject tiles: an icon, the label and a small line of what is inside');
     await p8.click('#paste-series-business');

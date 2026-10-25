@@ -218,7 +218,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#paste-purpose-process');
     await pk.click('#paste-purpose-contents');
     const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
-    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：1 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 14 個を使う',
+    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：2 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 14 個を使う',
       'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off; the summary counts out of 16');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));

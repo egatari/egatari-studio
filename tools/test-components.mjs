@@ -11,14 +11,8 @@ import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
-// v1.6.0 の map-japan の見本の 2 枚目「都道府県の人口（2020 年）」の結論の行が 37 字（Studio の R-concl は 35 字まで。出典の括弧を含む）。部品庫で直したら消す
-// 部品庫 v1.9.0 の見本で Studio の品質チェックが出すエラー（部品庫で直したら消す。2026-10-25、規格化の作業場へ知らせた）：
-//   boxplot：結論の行が 36.5 字。predict：−1・＋1 のボタンの字（26 px）と、本文が下に 7〜17 px はみ出す。timer：部品の字「時間です」が です・ます に見える
-const KNOWN = {
-  boxplot: [{ code: 'conclLong', title: '箱ひげ図のかき方：1 か月に読んだ本（架空の 11 人）' }],
-  predict: ['予想してみよう：落ちる速さ', '予想してみよう：小数のかけ算', '見せ方の種類（variant）'].flatMap((title) => [{ code: 'bodyBottom', title }, { code: 'smallText', title }]),
-  timer: [{ code: 'desuMasu', title: 'ワーク：困りごとを集める（架空の研修）' }],
-};
+// 部品庫 v1.10.0：m-numberline の見本の 3 枚目は本文が下に 47 px はみ出す（2026-10-26、部品庫で直したら消す）
+const KNOWN = { numberline: [{ code: 'bodyBottom', title: '1200 円の 2/3 はいくら（2 本の数直線）' }] };
 const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);
