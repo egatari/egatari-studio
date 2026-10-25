@@ -431,7 +431,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info,social'
       && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」を選びました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
-    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')),
+    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます' && await p8.isDisabled('#paste-tool-timer'),
       'S8 ④: with two ticked, the others are disabled and the reason 「チャットの AI：無料のプランでは 2 つまで選べます」 is shown in the list');
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
@@ -452,17 +452,15 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
     await p8.check('#paste-plan-paid');
-    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max') && !(await p8.$('#paste-series-paid')),
-      'S8 ④: on the paid plan the ticks stay as they are (never all ticked) and every tile is pressable');
-    ok((await strip(p8)) === catalog(['academic', 'kokugo'], 'paid'), 'S8 ④: under the paid plan the strip is every standard part with the chosen subjects: ' + await strip(p8));
-    await p8.click('#paste-series-info');
-    ok((await checked(p8)) === 'academic,kokugo,info' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: the paid plan has no limit of two');
-    ok((await strip(p8)) === catalog(['academic', 'kokugo', 'info'], 'paid'), 'S8 ④: the strip follows a third subject on the paid plan');
+    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,kokugo,info' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max') && !(await p8.$('#paste-series-paid')),
+      'S8 ④: on the paid plan the guess is applied again without the limit of two (ハフマン → info; Business, turned off by hand, stays off), never all ticked, and every tile is pressable: ' + await checked(p8));
+    ok((await strip(p8)) === catalog(['academic', 'kokugo', 'info'], 'paid'), 'S8 ④: under the paid plan the strip is every standard part with the chosen subjects: ' + await strip(p8));
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: ['academic', 'kokugo', 'info'], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies the three chosen subjects');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
-    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the ticks come down to the first two and the limit applies again');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isDisabled('#paste-tool-timer') && await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます',
+      'S8 ④: back to free with three ticks, the ticks come down to the first two in tile order, the timer tile is disabled too, and the limit message is shown');
     await p8.click('#paste-series-academic');
     await p8.click('#paste-series-kokugo');
     ok((await checked(p8)) === '' && (await strip(p8)) === catalog([], 'free') && (await strip(p8)) === [...FREE_CORE].sort().join(), 'S8 ④: with no subject, the strip is the standard parts: ' + await strip(p8));
@@ -514,24 +512,31 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p10.fill('#paste-title', '一次関数のグラフ');
     await p10.click('#paste-next-content');
     await p10.click('#paste-next-theme');
-    ok((await text(p10, '#paste-tools legend')) === 'スライドで使う道具はありますか（道具）' && (await text(p10, '#paste-tools-hint')) === '押した道具だけ、AI が使います'
+    ok((await text(p10, '#paste-tools legend')) === 'スライドで道具を使いますか' && (await text(p10, '#paste-tools-h')) === '道具' && (await text(p10, '#paste-tools-hint')) === '選んだ道具だけを、AI が使います'
       && JSON.stringify(await p10.$$eval('#paste-tools .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['タイマー', 'グループワークの時間・残り時間・ベル', true]])
       && (await tools10(p10)) === 'm-timer:false' && await p10.isHidden('#paste-tools-guess'),
-      'S10 ④: the tools row 「スライドで使う道具はありますか（道具）」 has the manifest\'s tile (タイマー, its examples and icon), not ticked without a reason: ' + await tools10(p10));
+      'S10 ④: the tools row 「スライドで道具を使いますか」 (heading 「道具」) has the manifest\'s tile (タイマー, its examples and icon), not ticked without a reason: ' + await tools10(p10));
     ok((await checked(p10)) === 'academic' && (await strip(p10)) === catalogT(['academic'], 'free', []) && !(await strip(p10)).includes('m-timer'), 'S10 ④: グラフ ticks math; without the tool the strip has no m-timer');
     // 希望に「10 分」：タイマーに印
     await p10.click('#paste-change-content');
     await p10.click('#paste-more-h');
     await p10.fill('#paste-wishes', '最後に 10 分で話し合う');
     await p10.click('#paste-next-content');
-    ok((await tools10(p10)) === 'm-timer:true' && (await text(p10, '#paste-tools-guess')) === '② のタイトル・内容・そのほかの希望から「タイマー」を選びました',
+    ok((await tools10(p10)) === 'm-timer:true' && (await text(p10, '#paste-tools-guess')) === '② のタイトル・内容・そのほかの希望に合わせて、「タイマー」を選びました。要らなければ外してください',
       'S10 ④: 「10 分」 in the wishes pre-ticks the timer and says so: ' + await text(p10, '#paste-tools-guess'));
     ok((await strip(p10)) === catalogT(['academic'], 'free', ['m-timer']) && (await strip(p10)).includes('m-timer'), 'S10 ④ free: with the tool, the strip is the pack catalog (m-timer in): ' + await strip(p10));
     const c10 = await copy(p10);
     ok(c10 === packWithRequest({ series: ['academic'], tools: ['m-timer'], lang: 'ja', request: tailOf(c10, 'ja'), plan: 'free' }) && c10.includes('### `<m-timer>`'), 'S10 ④ free: the copied pack has the ticked tool');
     ok((await answer(p10, 'send')) === '指示：チャットの AI：無料のプラン・数理・統計・タイマー・コピーしました', 'S10 ④: the answered line names the subject and the tool: ' + await answer(p10, 'send'));
-    // 有料のプラン：分野の推した印も道具も残り、並びは有料の一覧と同じ
+    // 無料のプラン：道具も 2 つに数える。分野＋道具で 2 つ：ほかの分野の札は押せず、わけが出る。道具だけ：並びは標準パーツとタイマー
     await p10.click('#paste-change-send');
+    ok((await disabledBoxes(p10)) === 'business,kokugo,info,social' && !(await p10.isDisabled('#paste-tool-timer')) && await p10.isVisible('#paste-series-max') && (await text(p10, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます',
+      'S10 ④ free: a subject and a tool are two choices: the other subject tiles are disabled and the limit message is shown');
+    await p10.click('#paste-series-academic');
+    ok((await checked(p10)) === '' && (await tools10(p10)) === 'm-timer:true' && (await disabledBoxes(p10)) === '' && await p10.isHidden('#paste-series-max') && (await strip(p10)) === catalogT([], 'free', ['m-timer']),
+      'S10 ④ free: the tool alone is one choice; the strip is the standard parts and the timer: ' + await strip(p10));
+    await p10.click('#paste-series-academic');
+    // 有料のプラン：分野の推した印も道具も残り、並びは有料の一覧と同じ
     await p10.check('#paste-plan-paid');
     ok((await checked(p10)) === 'academic' && (await tools10(p10)) === 'm-timer:true' && (await strip(p10)) === catalogT(['academic'], 'paid', ['m-timer']), 'S10 ④ paid: the guessed subject and tool stay ticked; the strip is the paid catalog with the tool: ' + await strip(p10));
     // 自分で外した道具は、推し直しで付け直さない。外すと並びと指示から消える
@@ -558,6 +563,11 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S11 ④ paid: the guess pre-ticks the subjects from step 2 (not all of them) and 「グループワーク」 ticks the timer');
     await p11.click('#paste-series-social');
     ok((await checked(p11)) === 'academic,kokugo,social' && (await strip(p11)) === catalogT(['academic', 'kokugo', 'social'], 'paid', ['m-timer']), 'S11 ④ paid: subject tiles are pressable on the paid plan, without a limit; the strip follows');
+    // 有料から無料へ（分野 3 つと道具）：札の順（分野が先、それから道具）で初めの 2 つが残り、わけが出る
+    await p11.check('#paste-plan-free');
+    ok((await checked(p11)) === 'academic,kokugo' && (await tools10(p11)) === 'm-timer:false' && await p11.isDisabled('#paste-tool-timer') && (await disabledBoxes(p11)) === 'business,info,social'
+      && await p11.isVisible('#paste-series-max') && (await text(p11, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます' && (await strip(p11)) === catalogT(['academic', 'kokugo'], 'free', []),
+      'S11 ④ paid → free with four ticks: the first two in tile order stay (subjects first), the timer is dropped and disabled, and the limit message says why');
   } finally {
     for (const c of contexts) await c.close();
   }

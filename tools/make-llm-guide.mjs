@@ -424,11 +424,14 @@ export function generate(opts = {}) {
     + `export const PACK = ${JSON.stringify(data, null, 1)};\n`;
   // 大きさ（KB）：無料版の共通の本体・共通＋1 つの分野・共通＋2 つの分野（どの組も）と、有料版（docs が見せる指示の全体）
   const sizes = {};
+  const TOOL_TAGS = (data.tools || []).map((t) => t.tag);
   for (const lang of ['en', 'ja']) {
     // 有料版：ふつうの組（どの 2 つの分野＋すべての道具。越えたら止まる）と、すべての分野と道具を選んだとき（いちばん大きい。越えても知らせるだけ）
     sizes[lang] = { common: KB(assemble(data, { series: [], lang })), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), pairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, lang }))])),
-      // 無料版で道具も押したとき（今は知らせるだけ：上限は道具なしの組で守る）
-      freeTools: Object.fromEntries([[ '', KB(assemble(data, { series: [], tools: 'all', lang })) ], ...SERIES.map((s) => [s, KB(assemble(data, { series: [s], tools: 'all', lang }))]), ...PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang }))])]),
+      // 無料版の道具：道具は分野と合わせて 2 つまでに数える。道具だけ（1 つの上限）、分野＋道具・道具 2 つ（2 つの組の上限）
+      freeTools: Object.fromEntries([...TOOL_TAGS.map((t) => [t, KB(assemble(data, { series: [], tools: [t], lang }))]),
+        ...TOOL_TAGS.flatMap((t) => SERIES.map((s) => [s + '+' + t, KB(assemble(data, { series: [s], tools: [t], lang }))])),
+        ...TOOL_TAGS.flatMap((a, i) => TOOL_TAGS.slice(i + 1).map((b) => [a + '+' + b, KB(assemble(data, { series: [], tools: [a, b], lang }))]))]),
       paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang, plan: 'paid' }))])), paid: KB(assemble(data, { series: 'all', tools: 'all', lang, plan: 'paid' })) };
   }
   const f1 = (x) => x.toFixed(1) + ' KB';
@@ -467,7 +470,10 @@ export function sizeReport(sizes) {
     for (const [s, kb] of Object.entries(z.series)) out.push({ lang, what: 'free common+' + s, plan: 'free', series: [s], kb, max: LIMITS.fail, level: kb > LIMITS.fail ? 'fail' : kb > LIMITS.warn ? 'warn' : 'ok' });
     for (const [p, kb] of Object.entries(z.pairs)) out.push({ lang, what: 'free common+' + p, plan: 'free', series: p.split('+'), pair: true, kb, max: LIMITS.two, level: kb > LIMITS.two ? 'fail' : 'ok' });
     // 無料版で道具も押したとき：1 つの分野なら LIMITS.fail、2 つなら LIMITS.two を越えたら知らせる（止めない。道具なしの組が上限の本体）
-    for (const [k, kb] of Object.entries(z.freeTools || {})) { const ss = k ? k.split('+') : [], max = ss.length === 2 ? LIMITS.two : LIMITS.fail; if (kb > max) out.push({ lang, what: 'free common' + (k ? '+' + k : '') + '+tools', plan: 'free', series: ss, tools: 'all', withTools: true, kb, max, level: 'warn' }); }
+    for (const [k, kb] of Object.entries(z.freeTools || {})) {
+      const ks = k.split('+'), ss = ks.filter((x) => !x.startsWith('m-')), ts = ks.filter((x) => x.startsWith('m-')), max = ks.length === 2 ? LIMITS.two : LIMITS.fail;
+      out.push({ lang, what: 'free common+' + k, plan: 'free', series: ss, tools: ts, withTools: true, toolPair: ks.length === 2, kb, max, level: kb > max ? 'fail' : 'ok' });
+    }
     // 有料版：どの 2 つの分野＋すべての道具も LIMITS.paid まで（越えたら止まる）。すべての分野と道具（いちばん大きいとき）は越えたら知らせるだけ
     for (const [p, kb] of Object.entries(z.paidPairs || {})) out.push({ lang, what: 'paid common+' + p + '+tools', plan: 'paid', series: p.split('+'), tools: 'all', paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
     if (z.paid !== undefined) out.push({ lang, what: 'paid all subjects+tools', plan: 'paid', series: [...SERIES], tools: 'all', worst: true, kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'warn' : 'ok' });
@@ -492,7 +498,7 @@ export function overMessage(r, data) {
   const text = assemble(data, { series: r.series, tools: r.tools || [], lang: r.lang, plan: r.plan });
   const bytes = Buffer.byteLength(text, 'utf8'), over = bytes - r.max * 1024;
   const top = largestSections(text).map((x) => `${x.head} (${x.bytes} B)`).join('; ');
-  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}${r.tools ? ', every tool' : ''}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
+  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}${r.tools === 'all' ? ', every tool' : Array.isArray(r.tools) && r.tools.length ? ', tools ' + r.tools.join('+') : ''}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
 }
 
 // 1 行目の i18n の印は残し、それより後ろを比べる・書く
@@ -531,13 +537,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   let fail = 0;
   // 2 つの組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
   const shownPair = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(z.pairs)[0]]));
+  const shownTool = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(Object.fromEntries(Object.entries(z.freeTools || {}).filter(([k]) => k.includes('+'))))?.[0]]));
   const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid common+' + largestPair(z.paidPairs)[0] + '+tools']));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : r.paidPair ? ` (largest pair with every tool; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.withTools ? ` (with every tool ticked; cap ${r.max} KB, a warning only)` : ''}`;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : r.paidPair ? ` (largest pair with every tool; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.toolPair ? ` (largest subject + tool; cap ${r.max} KB)` : r.withTools ? ` (tool alone; cap ${r.max} KB)` : ''}`;
     if (r.pair && r.level !== 'fail' && r.what !== shownPair[r.lang]) continue;
     if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
+    if (r.toolPair && r.level !== 'fail' && r.what !== shownTool[r.lang]) continue;
     if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
-    else if (r.level === 'warn' && (r.worst || r.withTools)) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
+    else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
     else if (r.level === 'warn') console.warn(`warning: ${line} — over the ${LIMITS.warn} KB target`);
     else console.log(line);
   }

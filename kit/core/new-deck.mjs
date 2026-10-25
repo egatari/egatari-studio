@@ -12,12 +12,13 @@
 //   guessSubjects(text)                タイトルと内容の字から推す分野の id（漢文・古文 → 国語、数式・グラフ・統計 → 数理・統計 など。推せなければ []）
 //   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料版。既定）| 'paid'（有料版）。指示の大きさの上限は kit/core/llm-pack.mjs の PACK_CAP_KB
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
-//   FREE_SUBJECT_MAX                   無料版で選べる分野の数（2）。指示の大きさの上限は 1 つなら PACK_CAP_KB.free.one、2 つなら free.two
+//   FREE_SUBJECT_MAX                   無料版で選べる数（2）：分野と道具を合わせて。指示の大きさの上限は 1 つなら PACK_CAP_KB.free.one、2 つなら free.two
 //   freeSubjects(ids)                  無料版で使う分野：選んだもののうち SUBJECTS の順で初めの FREE_SUBJECT_MAX 個
+//   freePick(subjects, tools)          無料版で使う分野と道具：札の順（分野が先、それから道具）で初めの FREE_SUBJECT_MAX 個 → {subjects, tools}
 //                                      （前の記録が 3 つ以上を持っていても、記録は書き換えず、使うのはこれだけ）
 //   guessTools(text)                   タイトル・内容・希望の字から推す道具のタグ（グループワーク・「10 分」・時間 → m-timer。推せなければ []）
-//   seriesForChoice(choice)            指示に入れる系列：有料版は選んだ分野すべての系列、無料版は使う分野（freeSubjects）の系列
-//   toolsForChoice(choice)             指示に入れる道具（選んだ道具のタグ。どちらの版でも）
+//   seriesForChoice(choice)            指示に入れる系列：有料版は選んだ分野すべての系列、無料版は使う分野（freePick）の系列
+//   toolsForChoice(choice)             指示に入れる道具（選んだ道具のタグ。無料版は freePick で、分野と合わせて 2 つまで）
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''。
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
@@ -119,12 +120,17 @@ export function guessSubjects(text) {
   return GUESS.filter(([, re]) => re.test(t)).map(([id]) => id);
 }
 
-// 無料版で選べる分野は 2 つまで（分野が増えても、無料版の指示の大きさは 2 つの組の上限 PACK_CAP_KB.free.two に収まる）
+// 無料版で選べるのは、分野と道具を合わせて 2 つまで（分野・道具が増えても、無料版の指示の大きさは 2 つの組の上限 PACK_CAP_KB.free.two に収まる。
+// 道具 1 つは分野 1 つと同じに数える：分野＋道具は 2 つの組の上限、道具だけは 1 つの上限）
 export const FREE_SUBJECT_MAX = 2;
 export const freeSubjects = (ids) => {
   const want = new Set(ids || []);
   return SUBJECTS.filter((s) => want.has(s.id)).slice(0, FREE_SUBJECT_MAX).map((s) => s.id);
 };
+export function freePick(subjects, tools) {
+  const ss = freeSubjects(subjects), want = new Set(tools || []);
+  return { subjects: ss, tools: TOOLS.map((x) => x.tag).filter((t) => want.has(t)).slice(0, Math.max(0, FREE_SUBJECT_MAX - ss.length)) };
+}
 
 // 道具の推し方（新規作成 ④ の「道具」の札。タイトル・内容・希望の字から）：グループワーク・「10 分」のような数と分・時間。
 // 控えめに：分数（2 分の 1）や「分野」「分子」などでは推さない（「15 分の作業」は推す）。推せない道具は推さない
@@ -142,7 +148,10 @@ export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
 export const seriesForChoice = (choice) => seriesOfSubjects(planOf(choice) === 'paid' ? (choice && choice.subjects) : freeSubjects(choice && choice.subjects));
-export const toolsForChoice = (choice) => { const want = new Set((choice && choice.tools) || []); return TOOLS.map((x) => x.tag).filter((t) => want.has(t)); };
+export const toolsForChoice = (choice) => {
+  if (planOf(choice) !== 'paid') return freePick(choice && choice.subjects, choice && choice.tools).tools;
+  const want = new Set((choice && choice.tools) || []); return TOOLS.map((x) => x.tag).filter((t) => want.has(t));
+};
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }
@@ -180,7 +189,7 @@ const clean = (choice) => ({
   category: catOf(choice.category) ? choice.category : null,
   subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
   subjects: SUBJECTS.map((s) => s.id).filter((id) => (choice.subjects || []).includes(id)),
-  tools: toolsForChoice(choice),
+  tools: TOOLS.map((x) => x.tag).filter((t) => (choice.tools || []).includes(t)),
   purposesOff: [...new Set((choice.purposesOff || []).filter((x) => typeof x === 'string'))].sort(),
 });
 export function withChoice(configText, choice) {

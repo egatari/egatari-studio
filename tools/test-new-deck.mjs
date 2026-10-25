@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, freePick, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff, toolsFrom } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
@@ -80,6 +80,14 @@ ok('AI plan: free (default) packs only the chosen subjects (two at most); paid p
   assert.deepEqual(seriesForChoice({ plan: 'paid' }), []);
   assert.deepEqual(toolsForChoice({ plan: 'free', tools: ['m-timer', 'm-nothing'] }), ['m-timer']);
   assert.deepEqual(toolsForChoice({ plan: 'paid' }), []);
+  // 無料のプラン：道具も 2 つに数える（札の順：分野が先、それから道具）
+  assert.deepEqual(freePick(['kokugo'], ['m-timer']), { subjects: ['kokugo'], tools: ['m-timer'] }, 'free: a subject and a tool');
+  assert.deepEqual(freePick([], ['m-timer']), { subjects: [], tools: ['m-timer'] }, 'free: a tool alone');
+  assert.deepEqual(freePick(['info', 'math'], ['m-timer']), { subjects: ['math', 'info'], tools: [] }, 'free: two subjects leave no room for a tool');
+  assert.deepEqual(freePick(['info', 'kokugo', 'math'], ['m-timer']), { subjects: ['math', 'kokugo'], tools: [] });
+  assert.deepEqual(toolsForChoice({ plan: 'free', subjects: ['math', 'info'], tools: ['m-timer'] }), [], 'the free pack drops a third choice');
+  assert.deepEqual(toolsForChoice({ plan: 'free', subjects: ['math'], tools: ['m-timer'] }), ['m-timer']);
+  assert.deepEqual(toolsForChoice({ plan: 'paid', subjects: ['math', 'info', 'kokugo'], tools: ['m-timer'] }), ['m-timer'], 'paid has no limit');
   // 無料版で使う分野は 2 つまで：前の記録が 3 つ以上でも、SUBJECTS の順で初めの 2 つ（記録の順や重なりは関係ない）
   assert.equal(FREE_SUBJECT_MAX, 2);
   assert.deepEqual(freeSubjects(['info', 'kokugo', 'math']), ['math', 'kokugo']);
@@ -314,6 +322,12 @@ ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and �
       const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), lang, plan: 'free' }));
       assert.ok(capOk(choice, b), `${lang} free ${choice.subjects.join('+') || '(none)'}: ${b} B`);
     }
+    // 道具は分野と合わせて 2 つに数える：道具だけは 1 つの上限、分野＋道具は 2 つの組の上限
+    for (const t of TOOLS.map((x) => x.tag)) for (const subjects of [[], ...SUBJECTS.map((x) => [x.id])]) {
+      const choice = { plan: 'free', subjects, tools: [t] };
+      const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), tools: toolsForChoice(choice), lang, plan: 'free' }));
+      assert.ok(b <= (subjects.length ? PACK_CAP_KB.free.two : PACK_CAP_KB.free.one) * 1024, `${lang} free ${subjects.join('+') || '(none)'} + ${t}: ${b} B`);
+    }
     // 前の記録が全部の分野を持っていても、無料版の指示は初めの 2 つ（数理・統計＋ビジネス）
     const every = { plan: 'free', subjects: SUBJECTS.map((s) => s.id) };
     assert.equal(buildPack({ series: seriesForChoice(every), lang, plan: 'free' }), buildPack({ series: ['academic', 'business'], lang, plan: 'free' }));
@@ -403,6 +417,12 @@ ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes 
   const g = generate();
   const rep = sizeReport(g.sizes);
   assert.ok(!rep.some((x) => x.plan === 'free' && /all/.test(x.what)), 'no free row for every subject');
+  // 無料版の道具：道具だけ（40 KB）と、どの分野＋道具（50 KB）も止まる行
+  for (const lang of ['en', 'ja']) for (const t of TOOLS.map((x) => x.tag)) {
+    const alone = rep.find((y) => y.lang === lang && y.what === 'free common+' + t);
+    assert.ok(alone && alone.max === 40 && alone.level === 'ok', `${lang} free ${t} alone`);
+    for (const s of SERIES) { const x = rep.find((y) => y.lang === lang && y.what === `free common+${s}+${t}`); assert.ok(x && x.toolPair && x.max === 50 && x.level === 'ok', `${lang} free ${s} + ${t}`); }
+  }
   // 有料版：どの 2 つの分野＋すべての道具は 120 KB で止まる行、すべての分野と道具は知らせるだけの行
   for (const lang of ['en', 'ja']) {
     for (const p of PAIRS) { const x = rep.find((y) => y.lang === lang && y.what === `paid common+${p.join('+')}+tools`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
