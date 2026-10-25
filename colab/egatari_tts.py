@@ -18,6 +18,7 @@ import json
 import math
 import re
 import sys
+import time
 import wave
 import zipfile
 from fractions import Fraction
@@ -32,6 +33,12 @@ TEXT_NORMALIZE = "join-num-counter@1"          # kit/core/tts-normalize.mjs の 
 TRIM_DB, TRIM_KEEP_S, TRIM_WIN_S = -45.0, 0.05, 0.02
 TARGET_LUFS, TARGET_TP_DB = -20.0, -1.5
 MAX_SECONDS = 600
+# Irodori の diffusion（rectified flow）の steps。GPU は pipeline の既定の 40。CPU（GPU がない・CPU に切り替えた）は少なくして速くする。
+# CPU の値は仮（2026-10-25）：持ち主が 16・24・40 の聞き比べで決める。Mac の CPU（同じ onnxruntime-node の CPU の道、fp32、参照音声を使い回す）で
+# 10 ステップ 209 字の台本の 1 ステップは 40 で 6.5 秒、24 で 4.3 秒、16 で 3.0 秒（decode などの固定の時間があるので steps に比例しない）
+IRODORI_STEPS = 40
+IRODORI_CPU_STEPS = 24
+STEPS_MAX = 200                                 # recipe.diffusionSteps として書く値の上限（kit/core/colab-core.mjs の parseRecords と同じ）
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 KEY = re.compile(r"^[^\s:]{1,120}:[^\s:]{1,120}$")
 VOICE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -275,7 +282,10 @@ def synthesize_step(step: dict, synth, recipe: dict):
             if norm:
                 text = normalize_tts_text(text)
             x, sr = synth(text, turn["voice"], turn.get("role", "expert"), step.get("lang", "ja"))
+            tp = time.monotonic()
             line = process_line(np.asarray(x), int(sr))
+            if getattr(synth, "profile", False):      # PROFILE：後処理（再標本化・無音を削る・音量）の時間も出す
+                print(f"    post-processing {time.monotonic() - tp:.2f} s (resample, trim, loudness)", flush=True)
             pieces.append(line)
             n += len(line)
     pcm = np.concatenate(pieces) if pieces else np.zeros(0)
@@ -293,15 +303,20 @@ def wav_bytes(pcm: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
-def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) -> bytes:
+def run_job(job: dict, synth, engine_info: dict | None = None, progress=None, clock=time.monotonic) -> bytes:
     """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。
-    engine_info に runtime（runtime_label。版の組と実際のプロバイダ）があれば、どの段階の recipe にも書く（inputHash には入らない）。"""
+    engine_info に runtime（runtime_label。版の組と実際のプロバイダ）があれば、どの段階の recipe にも書く（inputHash には入らない）。
+    diffusionSteps（Irodori の steps。整数）と precision（重みの精度 fp16・fp32）も同じく、どの段階の recipe にも書く（どう作ったかの記録だけで、inputHash には入らない）。
+    progress(i, n, key, step_s, total_s)：段階ごとに呼ぶ。時間は clock（単調な時計）で、合成の呼び出し（Node のワーカーの返事を待つ間も含む）を測る。"""
     job = validate_job(job)
+    t0 = clock()
     jr = job["recipe"]
     steps_rec: dict = {}
     members: list[tuple[str, bytes]] = []
     for i, step in enumerate(job["steps"]):
+        t1 = clock()
         pcm, cues = synthesize_step(step, synth, jr)
+        step_s = clock() - t1
         if not len(pcm):
             raise JobError(f"{step['key']}: 音が出ませんでした（読む文が空か、すべて無音です）")
         wav = wav_bytes(pcm)
@@ -325,8 +340,17 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
             if not RUNTIME_RE.match(str(info["runtime"])):
                 raise JobError(f"runtime は <版の組>/<プロバイダ> の形です: {info['runtime']!r}")
             steps_rec[step["key"]]["recipe"]["runtime"] = str(info["runtime"])
+        if info.get("diffusionSteps") is not None:
+            ds = info["diffusionSteps"]
+            if not (isinstance(ds, int) and not isinstance(ds, bool) and 1 <= ds <= STEPS_MAX):
+                raise JobError(f"diffusionSteps は 1〜{STEPS_MAX} の整数です: {ds!r}")
+            steps_rec[step["key"]]["recipe"]["diffusionSteps"] = ds
+        if info.get("precision") is not None:
+            if info["precision"] not in ("fp16", "fp32"):
+                raise JobError(f"precision は fp16 か fp32 です: {info['precision']!r}")
+            steps_rec[step["key"]]["recipe"]["precision"] = info["precision"]
         if progress:
-            progress(i + 1, len(job["steps"]), step["key"])
+            progress(i + 1, len(job["steps"]), step["key"], step_s, clock() - t0)
     records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),
                **({"title": job["title"]} if isinstance(job.get("title"), str) and job["title"].strip() else {}),
                "generator": {"name": "irodori-tts-colab", "version": str(NOTEBOOK_VERSION)}, "steps": steps_rec}
@@ -336,6 +360,42 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
         for n, b in members:
             z.writestr(n, b)
     return out.getvalue()
+
+
+# ---------------------------------------------------------------- 時間の表示（ノートブックが自分の時計で出す。Colab のセルの時間表示には頼らない）
+def clock_text(seconds: float) -> str:
+    """経過時間を m:ss（1 時間を超えれば h:mm:ss）に。"""
+    s = max(0, int(seconds))
+    h, m, sec = s // 3600, s % 3600 // 60, s % 60
+    return f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
+
+
+def progress_line(i: int, n: int, key: str, step_s: float, total_s: float) -> str:
+    """進み具合の 1 行：「3/10 s-intro:2  (+41.2 s, total 2:15)」。step_s はその段階の合成の時間、total_s は run_job の始めからの時間（どちらも単調な時計）。"""
+    return f"{i}/{n} {key}  (+{step_s:.1f} s, total {clock_text(total_s)})"
+
+
+def total_line(total_s: float, n: int) -> str:
+    """終わりの 1 行（全体の時間と、1 段階あたりの時間）。"""
+    per = total_s / n if n else 0.0
+    return f"synthesis: {n} steps in {clock_text(total_s)} ({per:.1f} s per step) / 合成：{n} ステップを {clock_text(total_s)}（1 ステップ {per:.1f} 秒）"
+
+
+# ---------------------------------------------------------------- Irodori の steps（GPU と CPU）
+def pick_irodori_steps(gpu: bool) -> int:
+    """GPU なら IRODORI_STEPS、GPU がない（CPU）なら IRODORI_CPU_STEPS。"""
+    return IRODORI_STEPS if gpu else IRODORI_CPU_STEPS
+
+
+def compute_label(gpu: bool, steps: int | None = None) -> str:
+    """env の行の終わりに付ける、どこで動くかと Irodori の steps（例「CPU（Irodori の steps=24）」）。Kokoro には steps がない。"""
+    return f"{'GPU' if gpu else 'CPU'}（Irodori の steps={pick_irodori_steps(gpu) if steps is None else steps}）"
+
+
+def env_compute_line(gpu: bool, steps: int | None = None) -> str:
+    """セル 1 の env の行：GPU を使うかと、Irodori の steps（CPU なら少ない steps を自動で選んだこと）。"""
+    what = "GPU (CUDA)" if gpu else "no GPU, CPU profile: fewer Irodori diffusion steps (faster) / GPU なし。CPU 用に Irodori の steps を減らします"
+    return f"env: {what} · {compute_label(gpu, steps)}"
 
 
 # ---------------------------------------------------------------- 合成エンジン（synth 関数を返す）
@@ -437,6 +497,28 @@ class WorkerError(RuntimeError):
     pass
 
 
+STAGE_ORDER = ("text", "ref-encode", "speaker", "duration", "dit", "decode")
+
+
+def stage_line(profile: dict, round_trip_s: float | None = None) -> str:
+    """ワーカーの段の時間（colab/stage-profile.mjs）を 1 行に：「stages: text 0.01 s · dit 4.33 s ×40 · decode 0.86 s · node 5.20 s · round trip 5.31 s」。
+    ref-encode が無いのは、参照音声の符号化を使い回したとき。"""
+    st = profile.get("stages") or {}
+    parts = []
+    for k in list(STAGE_ORDER) + sorted(set(st) - set(STAGE_ORDER)):
+        v = st.get(k)
+        if isinstance(v, dict):
+            n = v.get("n", 1)
+            parts.append(f"{k} {float(v.get('s', 0)):.2f} s" + (f" ×{n}" if n != 1 else ""))
+    if "ref-encode" not in st:
+        parts.append("ref-encode cached")
+    if isinstance(profile.get("totalS"), (int, float)):
+        parts.append(f"node {profile['totalS']:.2f} s")
+    if round_trip_s is not None:
+        parts.append(f"round trip {round_trip_s:.2f} s")
+    return "stages: " + " · ".join(parts)
+
+
 def tail_text(path: str, n: int = 30) -> str:
     """ファイルの最後の n 行（なければ空）。Node の標準エラーを見せるため。"""
     try:
@@ -451,12 +533,14 @@ class IrodoriWorker:
     cmd はワーカーを起動するコマンド（試験では偽のワーカーを渡す）。呼ぶと synth(text, voice, role, lang) → (samples, sr)。close() か with で終わらせる。
     Node の標準エラーはファイルに受け、失敗したときは最後の 30 行を例外に入れる。"""
 
-    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0, ref_voice: str | None = None):
+    def __init__(self, cmd: list[str], voices_dir: str, work_dir: str, steps: int | None = IRODORI_STEPS, seed: int = 0, env: dict | None = None, ready_timeout: float = 900.0, ref_voice: str | None = None, profile: bool = False):
         import os
         import subprocess
         import tempfile
         self.voices_dir, self.steps, self.seed = voices_dir, steps, seed
         self.ref_voice = ref_voice              # 自分の参照音声（prepare_reference_voice の出力）。あれば、どの声の名前でもこれを使う
+        self.profile = profile                  # 区切りごとに段の時間を出す（ワーカーは EGATARI_PROFILE=1 で起動しておく）
+        self.folder, self.load_s = None, None
         os.makedirs(work_dir, exist_ok=True)
         self._dir = tempfile.mkdtemp(dir=work_dir)
         self._errpath = os.path.join(self._dir, "node-stderr.log")
@@ -473,8 +557,12 @@ class IrodoriWorker:
             self.providers = list(msg.get("providers") or [])
             self.provider = str(msg.get("provider") or "unknown")   # 実際に使っている実行プロバイダ（recipe.runtime に書く）
             self.notice = msg.get("notice") or None
+            self.folder = msg.get("folder") or None   # 重みのフォルダ（onnx＝fp32・onnx_fp16）
+            self.load_s = msg.get("loadS")
             if self.notice:
                 print(self.notice, flush=True)
+            if self.steps is None:              # 自動：実際に CPU で動くなら（GPU がない・CPU に切り替えた）CPU 用の少ない steps
+                self.steps = pick_irodori_steps(self.provider != "cpu")
         except BaseException:
             self.close()
             raise
@@ -507,6 +595,7 @@ class IrodoriWorker:
         self._next += 1
         out = os.path.join(self._dir, f"out{self._next}.wav")
         req = {"id": self._next, "text": text, "voice": self.ref_voice or os.path.join(self.voices_dir, voice + ".wav"), "out": out, "steps": self.steps, "seed": self.seed}
+        t_req = time.monotonic()
         try:
             self._proc.stdin.write(json.dumps(req, ensure_ascii=False) + "\n")
             self._proc.stdin.flush()
@@ -515,9 +604,16 @@ class IrodoriWorker:
         r = self._read()
         if not r.get("ok"):
             raise WorkerError(f"合成に失敗しました（{text[:30]!r}）：{r.get('error')}\n--- Node の標準エラー（最後の 30 行）---\n{tail_text(self._errpath) or '(なし)'}")
+        if self.profile and isinstance(r.get("profile"), dict):
+            print("  " + stage_line(r["profile"], time.monotonic() - t_req), flush=True)
         sr, data = wavfile.read(out)
         os.remove(out)
         return data.astype(np.float64) / (32768.0 if data.dtype == np.int16 else 1.0), sr
+
+    @property
+    def precision(self) -> str | None:
+        """記録に書く重みの精度（fp32・fp16。わからなければ None）。"""
+        return {"onnx": "fp32", "onnx_fp16": "fp16"}.get(self.folder or "")
 
     def close(self) -> None:
         import shutil
@@ -552,12 +648,15 @@ class IrodoriWorker:
         self.close()
 
 
-def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int = 40, seed: int = 0, node: str = "node", ref_voice: str | None = None):
+def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: str, steps: int | None = None, seed: int = 0, node: str = "node", ref_voice: str | None = None, profile: bool = False):
     """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
     colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。ワーカーを 1 度だけ起動して使い回す
     （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。
-    ref_voice を渡すと、job の声の名前にかかわらずその WAV を参照音声にする（省略すれば lab/voices/<名前>.wav で、これまでと同じ）。"""
-    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed, ref_voice=ref_voice)
+    ref_voice を渡すと、job の声の名前にかかわらずその WAV を参照音声にする（省略すれば lab/voices/<名前>.wav で、これまでと同じ）。
+    steps を省くと、ワーカーが実際に使うプロバイダで決める（cpu なら IRODORI_CPU_STEPS、そのほかは IRODORI_STEPS。使った値は .steps）。"""
+    import os
+    env = dict(os.environ, EGATARI_PROFILE="1") if profile else None
+    return IrodoriWorker([node, node_script, model_dir], voices_dir, work_dir, steps=steps, seed=seed, ref_voice=ref_voice, profile=profile, env=env)
 
 
 # ---------------------------------------------------------------- コマンド（試験用。ノートブックはこれらの関数を直接呼ぶ）

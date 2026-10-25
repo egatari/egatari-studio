@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=466ff967aca69a2d -->
+<!-- i18n: pair=distributing.ja.md sha256=b65d3b3e778ba96f -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -29,7 +29,7 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 - **Phones and tablets.** The quick preview of a file app (for example the iPhone Files app) may not run the lesson. Open the file in the browser, or give a URL. We have not yet checked every device and route; please tell us what worked for you ([feedback](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml))
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the single file or the working folder to edit later; a play-only copy cannot be edited
-- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make AI audio in the cloud](editor.md#make-ai-audio-in-the-cloud-google-colab)). <!-- colab-verified --> Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s). **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make AI audio in the cloud](editor.md#make-ai-audio-in-the-cloud-google-colab)). <!-- colab-verified --> Verified: 2026-10-23, CPU (at a workshop, Irodori). 2026-10-24, T4 with the cuda13 pin set: Irodori 23 steps in 42 s, Kokoro 59 steps in 30 s. 2026-10-25, the owner's hand check (10 steps, one speaker; 209 Japanese / 518 English characters): T4 Japanese (Irodori) load 34 s, synthesis 19 s; T4 English (Kokoro) load 4 s, synthesis 4 s; CPU English load 7 s, synthesis 33 s (about 3 s per step, fine); CPU Japanese load 1 min, about 60 s per step at steps=40; a single step timed by hand took 90 s at steps=40 and 52.5 s at steps=16 (before this version, with fp16 weights and the reference voice encoded on every call).<!-- /colab-verified --> **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
 
 ## Presenting in class
 
