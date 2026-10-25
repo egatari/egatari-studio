@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=4ae3dcd8dfd2808b -->
+<!-- i18n: pair=threat-model.ja.md sha256=89f0cb0e6ca7ec1d -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)
@@ -67,7 +67,9 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 **Threat.** A malicious or vulnerable dependency, component or workflow action reaches users or the release.
 
 **What is in place.**
-- Runtime dependencies are few and pinned to exact versions in `package.json`, with `package-lock.json` installed by `npm ci` in CI.
+- Runtime dependencies are few and pinned to exact versions in `package.json`, with `package-lock.json` installed by `npm ci --ignore-scripts` in CI: no dependency's install script runs (the only one, esbuild's `postinstall`, is not needed; SECURITY.md lists it and the Colab exception).
+- Dependabot waits 7 days (14 for a major version) before proposing a new release (`cooldown` in `.github/dependabot.yml`); security updates are not delayed.
+- CI runs a patched Node (at least 22.23.4 / 24.22.1, the 2026-10-20/21 security release), not whatever version the runner has cached (SECURITY.md).
 - Registry components are vendored copies of [egatari/components](https://github.com/egatari/components) releases. `npm run components:update` checks the tarball and every file against the release's `manifest.json` (SHA-256), never replaces a version it already has; the build never fetches components, and `npm run components:check` (part of `gen:check`) compares `vendor/components` with `components.lock.json`. Yanked versions (v1.0.0 and v1.0.1) are built only with a warning, and never silently.
 - The editor page loads its MP3 encoder only from its own site. The browser-TTS window (`lab/tts-helper.html`) loads pinned libraries from jsDelivr and the model from Hugging Face; it is same-origin with the editor and trusted as the lab page is, so a compromised file there could reach the editor's storage (SECURITY.md).
 - GitHub workflows: every workflow declares least-privilege `permissions:`. CodeQL (`codeql.yml`), `npm audit --omit=dev --audit-level=high` (`audit.yml`), OpenSSF Scorecard (`scorecard.yml`) and Dependabot for npm and GitHub Actions (`.github/dependabot.yml`) watch the code and its dependencies. They report; they do not block a release by themselves.

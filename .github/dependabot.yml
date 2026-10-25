@@ -1,5 +1,8 @@
 # Weekly version updates for npm (package.json / package-lock.json) and for the actions used in .github/workflows.
 # Few open pull requests at a time; each one still goes through the normal test workflow.
+# Cooldown (SECURITY.md#dependency-updates-cooldown): a new release is proposed only after it has been public for 7 days
+# (14 for a major version), so that a hijacked release has time to be found and unpublished before it reaches a pull request here.
+# Security updates are not delayed: Dependabot does not apply the cooldown to them.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -7,8 +10,15 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 7
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
