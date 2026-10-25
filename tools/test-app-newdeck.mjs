@@ -431,7 +431,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info,social'
       && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」を選びました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
-    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます' && await p8.isDisabled('#paste-tool-timer'),
+    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます' && await p8.isDisabled('#paste-tool-timer'),
       'S8 ④: with two ticked, the others are disabled and the reason 「チャットの AI：無料のプランでは 2 つまで選べます」 is shown in the list');
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
@@ -459,7 +459,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(c8p === packWithRequest({ series: ['academic', 'kokugo', 'info'], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies the three chosen subjects');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
-    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isDisabled('#paste-tool-timer') && await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます',
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isDisabled('#paste-tool-timer') && await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます',
       'S8 ④: back to free with three ticks, the ticks come down to the first two in tile order, the timer tile is disabled too, and the limit message is shown');
     await p8.click('#paste-series-academic');
     await p8.click('#paste-series-kokugo');
@@ -530,7 +530,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await answer(p10, 'send')) === '指示：チャットの AI：無料のプラン・数理・統計・タイマー・コピーしました', 'S10 ④: the answered line names the subject and the tool: ' + await answer(p10, 'send'));
     // 無料のプラン：道具も 2 つに数える。分野＋道具で 2 つ：ほかの分野の札は押せず、わけが出る。道具だけ：並びは標準パーツとタイマー
     await p10.click('#paste-change-send');
-    ok((await disabledBoxes(p10)) === 'business,kokugo,info,social' && !(await p10.isDisabled('#paste-tool-timer')) && await p10.isVisible('#paste-series-max') && (await text(p10, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます',
+    ok((await disabledBoxes(p10)) === 'business,kokugo,info,social' && !(await p10.isDisabled('#paste-tool-timer')) && await p10.isVisible('#paste-series-max') && (await text(p10, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます',
       'S10 ④ free: a subject and a tool are two choices: the other subject tiles are disabled and the limit message is shown');
     await p10.click('#paste-series-academic');
     ok((await checked(p10)) === '' && (await tools10(p10)) === 'm-timer:true' && (await disabledBoxes(p10)) === '' && await p10.isHidden('#paste-series-max') && (await strip(p10)) === catalogT([], 'free', ['m-timer']),
@@ -566,7 +566,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // 有料から無料へ（分野 3 つと道具）：札の順（分野が先、それから道具）で初めの 2 つが残り、わけが出る
     await p11.check('#paste-plan-free');
     ok((await checked(p11)) === 'academic,kokugo' && (await tools10(p11)) === 'm-timer:false' && await p11.isDisabled('#paste-tool-timer') && (await disabledBoxes(p11)) === 'business,info,social'
-      && await p11.isVisible('#paste-series-max') && (await text(p11, '#paste-series-max')) === 'チャットの AI：無料のプランでは、教科と道具を合わせて 2 つまで選べます' && (await strip(p11)) === catalogT(['academic', 'kokugo'], 'free', []),
+      && await p11.isVisible('#paste-series-max') && (await text(p11, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます' && (await strip(p11)) === catalogT(['academic', 'kokugo'], 'free', []),
       'S11 ④ paid → free with four ticks: the first two in tile order stay (subjects first), the timer is dropped and disabled, and the limit message says why');
   } finally {
     for (const c of contexts) await c.close();

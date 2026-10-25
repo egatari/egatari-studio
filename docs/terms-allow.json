@@ -328,6 +328,37 @@
       "term": "preview-later",
       "reason": "授業 meaning a class or teaching (not the former display mode, now 先のステップを薄く見せる).",
       "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "チャットの AI が無料のプランなので",
+      "term": "free-plan",
+      "reason": "The free 2-choice message names the chat AI in the same sentence (「チャットの AI が無料のプランなので」), which keeps the chat-AI rule while reading as a sentence (standards session, 2026-10-26)."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "チャットの AI が無料のプランなので",
+      "term": "free-plan",
+      "reason": "The free 2-choice message names the chat AI in the same sentence (「チャットの AI が無料のプランなので」), which keeps the chat-AI rule while reading as a sentence (standards session, 2026-10-26)."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "分野と道具を合わせて",
+      "term": "subjects",
+      "reason": "Running text may say 分野 (terms.json subjects); the free 2-choice message counts subjects and tools together (standards session, 2026-10-26)."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "分野と道具を合わせて",
+      "term": "subjects",
+      "reason": "Running text may say 分野 (terms.json subjects); the free 2-choice message counts subjects and tools together (standards session, 2026-10-26)."
+    },
+    {
+      "file": "**",
+      "pattern": "教科書",
+      "term": "subjects",
+      "reason": "教科書 (textbook) is not the subject choice; 教科 as a word for subjects is avoided (the subject choice is 内容の分野 / 分野).",
+      "keep": true
     }
   ]
 }
