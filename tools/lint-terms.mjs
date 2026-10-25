@@ -19,7 +19,8 @@
 //   か line（その文字列を含む行なら許す）, term, reason, keep?}。使われなかった許しは知らせる（keep が真のもの＝今は当たる所がなくても残す、正当な使い方の記録、を除く）
 // ja と en の組：画面の文字列の表（{ja: …, en: …} の兄弟、const ja / const en、EN ? 'en' : 'ja' のような 3 項）で、
 //   ja にある用語の ja に対して、en にその用語の en があるか（大文字小文字を問わない。語幹で比べる）。合わなければ失敗。
-//   正当な違い（ja の「授業」が授業の表示でなく授業そのものを言うときなど）は terms-allow.json の allow に pairs: true で書く
+//   正当な違い（ja の「授業」が授業の表示でなく授業そのものを言うときなど）は terms-allow.json の allow に pairs: true で書く。
+//   terms-allow.json の noPairs（用語の id の並び）は組の検査をしない（ja の言葉が短く一般的な用語：本・形式）
 // 出力：ファイル:行  見つけた言葉  用語の id → 置き換え。avoid に当たれば終了コード 1
 import fs from 'node:fs';
 import path from 'node:path';
@@ -221,7 +222,9 @@ export function loadRules(root) {
     }
   }
   const allow = (cfg.allow || []).map((a, k) => ({ ...a, k, used: 0, fre: globRe(a.file), pre: a.pattern ? new RegExp(a.pattern, 'g') : null }));
-  return { terms, canon, avoid, allow };
+  // noPairs：ja↔en の組の検査をしない用語（ja の言葉が短く一般的で、部分一致が数え方や別の語に当たる：本 → 2 本・日本語、形式）
+  const noPairs = new Set(cfg.noPairs || []);
+  return { terms, canon, avoid, allow, noPairs };
 }
 
 // 1 つの文字列（行か、文字列リテラルの中身）の中の当たり
@@ -395,6 +398,7 @@ export function checkPairs(root, file, rules) {
   // 用語の組：ja の面 → en の面（同じ番号の部分どうし）
   const termPairs = [];
   for (const t of rules.terms) {
+    if (rules.noPairs && rules.noPairs.has(t.id)) continue;   // terms-allow.json の noPairs
     const js = surfaces(t.ja), es = surfaces(t.en);
     if (!js.length || !es.length) continue;
     termPairs.push({ id: t.id, ja: js, en: es });

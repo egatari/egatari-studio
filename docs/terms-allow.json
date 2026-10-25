@@ -1,5 +1,5 @@
 {
-  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}.",
+  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}. noPairs: term ids skipped by the ja↔en pair check (their ja word is too generic for substring pairing, e.g. 本 in 2 本 and 日本語).",
   "uiOnly": [
     "決まり"
   ],
@@ -9,6 +9,10 @@
     "雛形",
     "縮図",
     "暗転"
+  ],
+  "noPairs": [
+    "book",
+    "format-version"
   ],
   "allow": [
     {
@@ -96,12 +100,6 @@
       "pattern": "どんな場面で使いますか",
       "term": "setting",
       "reason": "The decided question of the setting step (glossary-quality: 使う場面, question 「どんな場面で使いますか」)."
-    },
-    {
-      "file": "app/llm.js",
-      "pattern": "分野外の人",
-      "term": "subjects",
-      "reason": "Example text: people outside the research field, not the Subjects step."
     },
     {
       "file": "app/llm.js",
@@ -249,42 +247,6 @@
     },
     {
       "file": "**",
-      "pattern": "チャットの AI[：:] ?無料のプラン",
-      "term": "free-plan",
-      "reason": "The required form 「チャットの AI：…のプラン」 (the plan is the chat AI's; Egatari has no plans)."
-    },
-    {
-      "file": "**",
-      "pattern": "チャットの AI[：:] ?有料のプラン",
-      "term": "paid-plan",
-      "reason": "The required form 「チャットの AI：…のプラン」 (the plan is the chat AI's; Egatari has no plans)."
-    },
-    {
-      "file": "**",
-      "line": "planLegend: 'お使いのチャットの AI は",
-      "term": "free-plan",
-      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
-    },
-    {
-      "file": "**",
-      "line": "plan: { free: '無料のプラン（わからなければこちら）'",
-      "term": "free-plan",
-      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
-    },
-    {
-      "file": "**",
-      "line": "planLegend: 'お使いのチャットの AI は",
-      "term": "paid-plan",
-      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
-    },
-    {
-      "file": "**",
-      "line": "plan: { free: '無料のプラン（わからなければこちら）'",
-      "term": "paid-plan",
-      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
-    },
-    {
-      "file": "**",
       "pattern": "補足資料|元の資料|PDF などの資料|その資料|渡した資料|発表資料",
       "term": "lesson",
       "reason": "資料 meaning source material or presentation material (attachment role, the user's own documents, a trigger phrase), not the lesson."
@@ -328,30 +290,6 @@
       "term": "preview-later",
       "reason": "授業 meaning a class or teaching (not the former display mode, now 先のステップを薄く見せる).",
       "pairs": true
-    },
-    {
-      "file": "app/llm.js",
-      "pattern": "チャットの AI が無料のプランなので",
-      "term": "free-plan",
-      "reason": "The free 2-choice message names the chat AI in the same sentence (「チャットの AI が無料のプランなので」), which keeps the chat-AI rule while reading as a sentence (standards session, 2026-10-26)."
-    },
-    {
-      "file": "docs/editor.ja.md",
-      "pattern": "チャットの AI が無料のプランなので",
-      "term": "free-plan",
-      "reason": "The free 2-choice message names the chat AI in the same sentence (「チャットの AI が無料のプランなので」), which keeps the chat-AI rule while reading as a sentence (standards session, 2026-10-26)."
-    },
-    {
-      "file": "app/llm.js",
-      "pattern": "分野と道具を合わせて",
-      "term": "subjects",
-      "reason": "Running text may say 分野 (terms.json subjects); the free 2-choice message counts subjects and tools together (standards session, 2026-10-26)."
-    },
-    {
-      "file": "docs/editor.ja.md",
-      "pattern": "分野と道具を合わせて",
-      "term": "subjects",
-      "reason": "Running text may say 分野 (terms.json subjects); the free 2-choice message counts subjects and tools together (standards session, 2026-10-26)."
     },
     {
       "file": "**",

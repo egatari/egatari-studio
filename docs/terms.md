@@ -31,6 +31,12 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | preview-later | Show later steps faintly | 先のステップを薄く見せる | An option of Slide show (and self-study), like captions: later steps of the slide appear faintly while the current one is shown. Key l. | 授業 ・ 授業モード ・ 授業の表示 / Lecture, Lecture mode, Lecture view | preview option (spec §1.2); ?mode=lecture legacy alias | 2026-10-25 (owner) |
 | video | Video | 動画 | Plays by itself along the timeline; used to record video. |  | video (spec) | 2026-10-24 (owner) |
 | self-study | (to be decided) | （未定） | Learner-driven mode with playback rate (spec learn). Name to be decided in the UX validation. Backlog #108. |  | learn (spec) |  (owner) |
+| stage | Slide (pane) | スライド（窓） | The 16:9 area that shows one slide at a time with its motion (spec: the stage pane, 1280×720 coordinates). In the UI it is called スライド; the spec word stage is not shown. | ステージ | stage (spec, Player P2) | 2026-10-26 (standards) |
+| book | Book | 本 | The read face of a lesson (the article), shown as a scrolled text or as pages, single or as a spread; a pane beside or instead of the slides (key r). | 読む面 / read face | article / read face (spec §9C) | 2026-10-26 (owner) |
+| read-with-script | Read with script | 台本で読む | For a lesson without a book: the slides shown small in a column, each followed by its steps' script, like a handout (spec: the text pane without an article). Key r. | ノート表示 / Notes view | text pane, narration (Player P2) | 2026-10-26 (standards) |
+| book-scroll | Scrolling | スクロール | Book shown as one scrolled column (spec layout flow). Acrobat ja wording. | フロー表示 | flow (Player P2) | 2026-10-26 (standards) |
+| book-single-page | Single page | 単一ページ | Book shown one page at a time. | 片ページ | pages=single | 2026-10-26 (standards) |
+| book-spread | Two-page view | 見開きページ | Book shown two pages side by side; chosen automatically on wide screens. | スプレッド | pages=spread | 2026-10-26 (standards) |
 | presenter-view | Presenter view | 発表者ビュー | A second window with the script, next step and tools (key p). |  |  | 2026-10-24 (owner) |
 | black-screen | Black screen | 黒い画面 | Blank the screen during a presentation (key b). | 暗転 / blackout |  | 2026-10-25 (owner) |
 | laser-pointer | Laser pointer | レーザーポインター | A pointer dot during a presentation (key x). | レーザー / laser |  | 2026-10-25 (owner) |
@@ -38,7 +44,13 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | marker | Marker | マーカー | In edit mode, circle or point at a place and attach a comment (key m). Not the cue layer. | 手書きメモ ・ 印をつけてメモ / ink note | strokes (§13) | 2026-10-25 (owner) |
 | comment | Comment | コメント | A note to the AI (or a collaborator) asking for a change at a place. | AI へのメモ ・ 書き込み / note for the AI | comments.json | 2026-10-25 (owner) |
 | thumbnail | Thumbnail | サムネイル | A small picture of a slide. | 縮図 |  | 2026-10-25 (owner) |
-| player | Player | プレーヤー | The part of an Egatari file that plays the lesson. | 再生器 / runtime (UI) | player (spec) | 2026-10-25 (owner) |
+| player | Player | プレーヤー | The part of an Egatari file that plays the lesson. The one Egatari ships is Egatari Player; other players may exist (spec §4.1). | 再生器 / runtime (UI) | player (spec §4.1) | 2026-10-25 (owner) |
+| egatari-player | Egatari Player | Egatari Player | Product name of the player bundled in files made by Egatari Studio, and used by Egatari Viewer. Never translated; has its own version. | Egatari プレーヤー ・ Studio のプレーヤー / Studio player | player.name egatari-player | 2026-10-25 (owner) |
+| egatari-viewer | Egatari Viewer | Egatari Viewer | The web app that opens and plays Egatari files (viewer.egatari.org; home-screen name Ega Viewer; icon え). Never translated. | Egatari Play ・ ビューア（単独で） / Egatari Play | play-site | 2026-10-25 (owner) |
+| egatari-studio | Egatari Studio | Egatari Studio | The editor (studio.egatari.org; icon す). Never translated. | エディター（製品名として） / Egatari Editor |  | 2026-10-25 (owner) |
+| format-version | Format | 形式 | In the file information panel: the Egatari format version the file follows, e.g. “Format: Egatari 1.0”. | 仕様の版 ・ 規格 / spec version | version (spec) | 2026-10-25 (standards) |
+| made-with | Made with | 作成 | In the file information panel: the software that wrote the file, e.g. “Made with: Egatari Studio 0.6.0”. Shown after Format and Player. Panel order: 形式 → プレーヤー → 作成. | 生成 ・ ジェネレーター / Generator | generator (spec) | 2026-10-25 (standards) |
+| earlier-draft-file | File from an earlier version | 前の版のファイル | A file made before the Egatari 1.0 file shape. It plays; to edit it, open it in the earlier Studio or follow the migration guide. | 古い形式 ・ 非対応のファイル / legacy file, unsupported file | pre-1.0 draft (spec §7.1) | 2026-10-25 (standards) |
 
 ## Audio
 
@@ -70,13 +82,13 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | insert | Insert | 挿入 | Final button of Insert slides. |  |  | 2026-10-25 (owner) |
 | replace | Replace | 置き換える | Final button of Revise. | 取り込む / Import |  | 2026-10-25 (owner) |
 | setting | Setting | 使う場面 | Where the lesson will be used (question: Where will you use it?). | 場面 ・ 大分類 ・ 小分類 / kind, category | category/subcategory | 2026-10-25 (owner) |
-| subjects | Subjects | 内容の分野 | Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; up to two on the free plan. Headings use 内容の分野; running text may say 分野. | 分野（使うパーツ） ・ 系列 / series | series | 2026-10-25 (owner) |
-| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 ・ 無料のプラン（単独で） | plan: free | 2026-10-25 (owner) |
-| paid-plan | Paid plan (of the chat AI) | 有料のプラン（チャットの AI の） | The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」. | 有料版 ・ 有料のプラン（単独で） | plan: paid | 2026-10-25 (owner) |
+| subjects | Subjects | 内容の分野 | Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; on the free plan up to two choices counting subjects and tools together. Headings use 内容の分野; running text may say 分野. | 系列 ・ 教科 / series | series | 2026-10-25 (owner) |
+| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 | plan: free | 2026-10-25 (owner) |
+| paid-plan | Paid plan (of the chat AI) | 有料のプラン（チャットの AI の） | The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」. | 有料版 | plan: paid | 2026-10-25 (owner) |
 | tools | Tools | 道具 | Parts the AI uses only when asked (e.g. Timer); chosen on both plans. |  | group: tool | 2026-10-25 (owner) |
 | standard-parts | Standard parts | 標準パーツ | Parts included without choosing a subject. | 共通の部品 ・ 共通パーツ ・ 共通の図 / common parts | common | 2026-10-25 (owner) |
 | parts-in-instructions | Parts in these instructions | この指示に入るパーツ | The parts whose notes are in the copied instructions. | 使える図 | loadedParts | 2026-10-25 (owner) |
-| what-to-convey | What to convey | 伝えたいこと | The 16 tiles (compare, change, …, predict, place/map); turning one off tells the AI not to use it. | 言いたいこと ・ 表し方（見出しで） / purposes | purposes | 2026-10-25 (owner) |
+| what-to-convey | What to convey | 伝えたいこと | The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it. | 言いたいこと ・ 表し方（見出しで） / purposes | purposes | 2026-10-25 (owner) |
 | title | Title (shown on the cover) | タイトル（表紙に出ます） | The lesson's title, used on the cover as written. | 題材 / topic |  | 2026-10-25 (owner) |
 | leave-to-ai | Leave it to the AI | AI に任せる | The chosen state of an optional field: the AI decides. | 空のまま ・ 選ばなくてよい |  | 2026-10-25 (owner) |
 

@@ -336,6 +336,112 @@
    "note": "Backlog #108."
   },
   {
+   "id": "stage",
+   "group": "Structure and playback",
+   "en": "Slide (pane)",
+   "ja": "スライド（窓）",
+   "definition": "The 16:9 area that shows one slide at a time with its motion (spec: the stage pane, 1280×720 coordinates). In the UI it is called スライド; the spec word stage is not shown.",
+   "avoid": {
+    "ja": [
+     "ステージ"
+    ],
+    "en": []
+   },
+   "internal": "stage (spec, Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book",
+   "group": "Structure and playback",
+   "en": "Book",
+   "ja": "本",
+   "definition": "The read face of a lesson (the article), shown as a scrolled text or as pages, single or as a spread; a pane beside or instead of the slides (key r).",
+   "avoid": {
+    "ja": [
+     "読む面"
+    ],
+    "en": [
+     "read face"
+    ]
+   },
+   "internal": "article / read face (spec §9C)",
+   "decided": "2026-10-26",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "read-with-script",
+   "group": "Structure and playback",
+   "en": "Read with script",
+   "ja": "台本で読む",
+   "definition": "For a lesson without a book: the slides shown small in a column, each followed by its steps' script, like a handout (spec: the text pane without an article). Key r.",
+   "avoid": {
+    "ja": [
+     "ノート表示"
+    ],
+    "en": [
+     "Notes view"
+    ]
+   },
+   "internal": "text pane, narration (Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book-scroll",
+   "group": "Structure and playback",
+   "en": "Scrolling",
+   "ja": "スクロール",
+   "definition": "Book shown as one scrolled column (spec layout flow).",
+   "avoid": {
+    "ja": [
+     "フロー表示"
+    ],
+    "en": []
+   },
+   "internal": "flow (Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": "Acrobat ja wording."
+  },
+  {
+   "id": "book-single-page",
+   "group": "Structure and playback",
+   "en": "Single page",
+   "ja": "単一ページ",
+   "definition": "Book shown one page at a time.",
+   "avoid": {
+    "ja": [
+     "片ページ"
+    ],
+    "en": []
+   },
+   "internal": "pages=single",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book-spread",
+   "group": "Structure and playback",
+   "en": "Two-page view",
+   "ja": "見開きページ",
+   "definition": "Book shown two pages side by side; chosen automatically on wide screens.",
+   "avoid": {
+    "ja": [
+     "スプレッド"
+    ],
+    "en": []
+   },
+   "internal": "pages=spread",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
    "id": "presenter-view",
    "group": "Structure and playback",
    "en": "Presenter view",
@@ -465,7 +571,7 @@
    "group": "Structure and playback",
    "en": "Player",
    "ja": "プレーヤー",
-   "definition": "The part of an Egatari file that plays the lesson.",
+   "definition": "The part of an Egatari file that plays the lesson. The one Egatari ships is Egatari Player; other players may exist (spec §4.1).",
    "avoid": {
     "ja": [
      "再生器"
@@ -474,9 +580,129 @@
      "runtime (UI)"
     ]
    },
-   "internal": "player (spec)",
+   "internal": "player (spec §4.1)",
    "decided": "2026-10-25",
    "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-player",
+   "group": "Structure and playback",
+   "en": "Egatari Player",
+   "ja": "Egatari Player",
+   "definition": "Product name of the player bundled in files made by Egatari Studio, and used by Egatari Viewer. Never translated; has its own version.",
+   "avoid": {
+    "ja": [
+     "Egatari プレーヤー",
+     "Studio のプレーヤー"
+    ],
+    "en": [
+     "Studio player"
+    ]
+   },
+   "internal": "player.name egatari-player",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-viewer",
+   "group": "Structure and playback",
+   "en": "Egatari Viewer",
+   "ja": "Egatari Viewer",
+   "definition": "The web app that opens and plays Egatari files (viewer.egatari.org; home-screen name Ega Viewer; icon え). Never translated.",
+   "avoid": {
+    "ja": [
+     "Egatari Play",
+     "ビューア（単独で）"
+    ],
+    "en": [
+     "Egatari Play"
+    ]
+   },
+   "internal": "play-site",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-studio",
+   "group": "Structure and playback",
+   "en": "Egatari Studio",
+   "ja": "Egatari Studio",
+   "definition": "The editor (studio.egatari.org; icon す). Never translated.",
+   "avoid": {
+    "ja": [
+     "エディター（製品名として）"
+    ],
+    "en": [
+     "Egatari Editor"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "format-version",
+   "group": "Structure and playback",
+   "en": "Format",
+   "ja": "形式",
+   "definition": "In the file information panel: the Egatari format version the file follows, e.g. “Format: Egatari 1.0”.",
+   "avoid": {
+    "ja": [
+     "仕様の版",
+     "規格"
+    ],
+    "en": [
+     "spec version"
+    ]
+   },
+   "internal": "version (spec)",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "made-with",
+   "group": "Structure and playback",
+   "en": "Made with",
+   "ja": "作成",
+   "definition": "In the file information panel: the software that wrote the file, e.g. “Made with: Egatari Studio 0.6.0”. Shown after Format and Player.",
+   "avoid": {
+    "ja": [
+     "生成",
+     "ジェネレーター"
+    ],
+    "en": [
+     "Generator"
+    ]
+   },
+   "internal": "generator (spec)",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": "Panel order: 形式 → プレーヤー → 作成."
+  },
+  {
+   "id": "earlier-draft-file",
+   "group": "Structure and playback",
+   "en": "File from an earlier version",
+   "ja": "前の版のファイル",
+   "definition": "A file made before the Egatari 1.0 file shape. It plays; to edit it, open it in the earlier Studio or follow the migration guide.",
+   "avoid": {
+    "ja": [
+     "古い形式",
+     "非対応のファイル"
+    ],
+    "en": [
+     "legacy file",
+     "unsupported file"
+    ]
+   },
+   "internal": "pre-1.0 draft (spec §7.1)",
+   "decided": "2026-10-25",
+   "by": "standards",
    "note": ""
   },
   {
@@ -833,11 +1059,11 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Subjects",
    "ja": "内容の分野",
-   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; up to two on the free plan. Headings use 内容の分野; running text may say 分野.",
+   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; on the free plan up to two choices counting subjects and tools together. Headings use 内容の分野; running text may say 分野.",
    "avoid": {
     "ja": [
-     "分野（使うパーツ）",
-     "系列"
+     "系列",
+     "教科"
     ],
     "en": [
      "series"
@@ -856,8 +1082,7 @@
    "definition": "The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
    "avoid": {
     "ja": [
-     "無料版",
-     "無料のプラン（単独で）"
+     "無料版"
     ],
     "en": []
    },
@@ -874,8 +1099,7 @@
    "definition": "The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」.",
    "avoid": {
     "ja": [
-     "有料版",
-     "有料のプラン（単独で）"
+     "有料版"
     ],
     "en": []
    },
@@ -942,7 +1166,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "What to convey",
    "ja": "伝えたいこと",
-   "definition": "The 16 tiles (compare, change, …, predict, place/map); turning one off tells the AI not to use it.",
+   "definition": "The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it.",
    "avoid": {
     "ja": [
      "言いたいこと",

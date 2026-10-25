@@ -70,7 +70,7 @@ node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
 
 1. 「このパーツをパーツライブラリ（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
 2. 下書きを作って**全文をユーザーに見せる**。テンプレート `proposal.yml` の欄に合わせ、本文を次の見出しで書く：
-   `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / 段階と最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・読む面・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
+   `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / 段階と最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・本・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
    - その教材だけの文言・未公開のデータ・個人のパスを入れない（例の数値は作り物にする）
 3. ユーザーが「送って」と明示したときだけ送る：
    ```bash
