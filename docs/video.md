@@ -1,9 +1,9 @@
-<!-- i18n: pair=video.ja.md sha256=11e07048ce5de1da -->
+<!-- i18n: pair=video.ja.md sha256=bbe6ca4245162c9b -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
 
-From a deck (`deck.html` + `narration.md`), this makes per-step videos and a full video. The rules are in [contract.md](contract.md) §4–5.
+From slides and a script (`deck.html` + `narration.md`), this makes per-step videos and a full video. The rules are in [contract.md](contract.md) §4–5.
 The list of TTS and render options and environment variables is in [reference.md](reference.md#tts).
 
 ## Requirements
@@ -27,8 +27,8 @@ The list of TTS and render options and environment variables is in [reference.md
 `tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
 
 - **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU machine on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
-- **No server**: in the editor app, the Audio panel makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#narration-audio-audio-panel))
-- **Google Colab**: a notebook that makes the audio on Colab, and an editor import for what it returns, are coming. Until then, use one of the ways above
+- **No server**: in the editor app, the Audio panel's **Make AI audio on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
+- **Google Colab**: a notebook for **Make AI audio in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
 
 ## Steps
 
@@ -64,13 +64,13 @@ node kit/build.mjs $D --portable      # or --play-only for a play-only copy for 
 
 ## Voices
 
-`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a deck that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the deck). The default bob and alice are often not available locally, so specify your own reference voices in voice.json.
+`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a lesson that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the lesson folder). The default bob and alice are often not available locally, so specify your own reference voices in voice.json.
 
 After each line is synthesized, the silence before and after is trimmed (-45 dB, keeping 0.05 s), the loudness is normalized with EBU R128 two-pass loudnorm to -20 LUFS / TP -1.5 dB / LRA 11, and the lines are joined with 350 ms of silence between them (`tts/core.py`).
 
 ## Reading dictionary
 
-`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody). Before the dictionary, the minus sign `−` (U+2212) is always replaced with マイナス, also in your own dictionary and in utterances without Japanese: the Irodori-TTS text normalisation removes it with the dashes, so `−1` would be read as 1 (the editor's browser TTS uses the same rules, `kit/core/yomi.mjs`).
+`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody). Before the dictionary, the minus sign `−` (U+2212) is always replaced with マイナス, also in your own dictionary and in utterances without Japanese: the Irodori-TTS text normalisation removes it with the dashes, so `−1` would be read as 1 (the editor's **Make AI audio on this computer** uses the same rules, `kit/core/yomi.mjs`).
 
 ## HTML with audio
 
@@ -78,7 +78,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 
 ## Engine and language
 
-`--engine` > `"engine"` in `voice.json` > the deck's `<html lang>` (`irodori` for `ja`, `voxcpm2` otherwise). Both run on the same mlx-audio server; only the model name differs (`ENGINES` in `tts/core.py`). The reading dictionary is not used for languages other than Japanese.
+`--engine` > `"engine"` in `voice.json` > the lesson's `<html lang>` (`irodori` for `ja`, `voxcpm2` otherwise). Both run on the same mlx-audio server; only the model name differs (`ENGINES` in `tts/core.py`). The reading dictionary is not used for languages other than Japanese.
 
 ```json
 {"lang": "en", "engine": "voxcpm2", "expert": "me"}
@@ -87,7 +87,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 ## Caching
 
 - **Audio**: if `seg_<digest>.wav` exists, it is not synthesized again. The digest is `segDigest` (kit/narration.mjs), a hash of the speaker, the text for TTS, the voice, the model, the loudness target, the gap between lines, the silence-trimming settings, and the reading dictionary and its rules (the dictionary actually used and `tts/yomi.py`). If any of these changes, it is rebuilt (fixing the dictionary rebuilds every step). Dry-run uses a different digest, so it never mixes with real audio. `--force` rebuilds
-- **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the contents of the audio file, dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, components or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
+- **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the contents of the audio file, dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, parts or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
 - When the number of steps decreases, the leftover `clip_NNNN.*` files are deleted (so that the serial numbers do not shift)
 
 ## Adjusting lengths (timeline.json)

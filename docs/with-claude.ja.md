@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=a66da91577fb660a -->
+<!-- i18n: pair=with-claude.md sha256=8e2fa0a24e378d12 -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -30,9 +30,9 @@ Windows では、[README](../README.ja.md#claude-code-で使う) のディレク
 
 ### Cowork（Claude のデスクトップアプリ）
 
-Cowork は、ディスク上の `~/.claude/skills/` を読みません。Claude のアカウントで有効にしたスキルを使います（「Customize」の「Skills」から、スキルのフォルダを zip にしてアップロード）。
+Cowork は、ディスク上の `~/.claude/skills/` を読みません。Claude のアカウントで有効にしたスキルを使います（「Customize」の「Skills」から、スキルのフォルダを ZIP ファイルにしてアップロード）。
 <!-- verify -->
-これらのスキルでは試していません。スキルは clone の Node コマンドを使うので、zip だけでは動かないかもしれません。うまくいかないときは、Claude Code か、チャットの AI（[チャットの AI で作る](authoring-with-llms.ja.md)）で作ってください。
+これらのスキルでは試していません。スキルは clone の Node コマンドを使うので、ZIP ファイルだけでは動かないかもしれません。うまくいかないときは、Claude Code か、チャットの AI（[チャットの AI で作る](authoring-with-llms.ja.md)）で作ってください。
 <!-- verify -->
 
 ## 最初に送る依頼
@@ -44,7 +44,7 @@ Claude の質問に答え、構成案を承認して、品質チェックが終�
 ## Studio で開く
 
 1. Chrome か Edge で <https://studio.egatari.org/> を開きます。
-2. 「ファイル ▾」→「フォルダで作業する…」で、Claude が作ったフォルダを選びます。Egatari ファイル（編集可）なら「ファイル ▾」→「開く…」。Egatari ファイル（再生のみ）は編集できません。
+2. 「ファイル ▾」→「フォルダで作業する…」で、Claude が作ったフォルダを選びます。Egatari ファイル（編集可）なら「ファイル ▾」→「開く…」。Egatari ファイル（再生専用）は編集できません。
 3. Claude がフォルダを直しているあいだも Studio を開いたままにすると、プレビューが自動で更新されます。くわしくは[編集アプリ](editor.ja.md)。
 
 ## うまくいかないとき
