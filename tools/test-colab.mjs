@@ -489,24 +489,24 @@ import os, sys
 sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
 import egatari_tts as E
 d = ${JSON.stringify(dir)}
-assert E.IRODORI_STEPS == 40 and E.IRODORI_CPU_STEPS == 24, "the CPU steps are one named constant (24 until the owner picks)"
+assert E.IRODORI_STEPS == 40 and E.IRODORI_CPU_STEPS == 16, "the CPU steps are one named constant (16, the owner's pick)"
 assert E.pick_irodori_steps(False) == E.IRODORI_CPU_STEPS and E.pick_irodori_steps(True) == E.IRODORI_STEPS
-assert E.compute_label(False) == "CPU（Irodori の steps=24）" and E.compute_label(True) == "GPU（Irodori の steps=40）"
+assert E.compute_label(False) == "CPU（Irodori の steps=16）" and E.compute_label(True) == "GPU（Irodori の steps=40）"
 line = E.env_compute_line(False)
-assert line.startswith("env: ") and line.endswith(" · CPU（Irodori の steps=24）"), line
+assert line.startswith("env: ") and line.endswith(" · CPU（Irodori の steps=16）"), line
 assert E.env_compute_line(True) == "env: GPU (CUDA) · GPU（Irodori の steps=40）", E.env_compute_line(True)
 def steps_sent(w):
     w("hello", "bob")
     log = open(w._errpath, encoding="utf-8").read()
     return [l for l in log.splitlines() if l.startswith("fake request:")]
 # GPU の検出を偽のワーカーで差し替える：CUDA が使える／CUDA で作れず CPU に切り替えた／最初から CPU
-for env, want_provider, want_steps in [({"EGATARI_ORT_PROVIDERS": "cuda,cpu"}, "cuda", 40), ({"EGATARI_ORT_PROVIDERS": "cuda,cpu", "EGATARI_FAKE_ORT_FAIL": "cuda"}, "cpu", 24), ({"EGATARI_ORT_PROVIDERS": "cpu"}, "cpu", 24)]:
+for env, want_provider, want_steps in [({"EGATARI_ORT_PROVIDERS": "cuda,cpu"}, "cuda", 40), ({"EGATARI_ORT_PROVIDERS": "cuda,cpu", "EGATARI_FAKE_ORT_FAIL": "cuda"}, "cpu", 16), ({"EGATARI_ORT_PROVIDERS": "cpu"}, "cpu", 16)]:
     w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, steps=None, env=dict(os.environ, **env))
     assert w.provider == want_provider and w.steps == want_steps, (env, w.provider, w.steps)
     assert steps_sent(w) == [f"fake request: steps={want_steps}"], steps_sent(w)
     w.close()
-w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, steps=16, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cpu"))
-assert w.steps == 16, "an explicit steps wins"
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, steps=24, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cpu"))
+assert w.steps == 24, "an explicit steps wins"
 w.close()
 print("ok")
 `, dir);

@@ -34,10 +34,10 @@ TRIM_DB, TRIM_KEEP_S, TRIM_WIN_S = -45.0, 0.05, 0.02
 TARGET_LUFS, TARGET_TP_DB = -20.0, -1.5
 MAX_SECONDS = 600
 # Irodori の diffusion（rectified flow）の steps。GPU は pipeline の既定の 40。CPU（GPU がない・CPU に切り替えた）は少なくして速くする。
-# CPU の値は仮（2026-10-25）：持ち主が 16・24・40 の聞き比べで決める。Mac の CPU（同じ onnxruntime-node の CPU の道、fp32、参照音声を使い回す）で
+# CPU の値は 16（2026-10-25、持ち主が 16・24・40 を聞き比べ、16 と 24 に聞いてわかる差がなかった）。Mac の CPU（同じ onnxruntime-node の CPU の道、fp32、参照音声を使い回す）で
 # 10 ステップ 209 字の台本の 1 ステップは 40 で 6.5 秒、24 で 4.3 秒、16 で 3.0 秒（decode などの固定の時間があるので steps に比例しない）
 IRODORI_STEPS = 40
-IRODORI_CPU_STEPS = 24
+IRODORI_CPU_STEPS = 16
 STEPS_MAX = 200                                 # recipe.diffusionSteps として書く値の上限（kit/core/colab-core.mjs の parseRecords と同じ）
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 KEY = re.compile(r"^[^\s:]{1,120}:[^\s:]{1,120}$")
@@ -388,7 +388,7 @@ def pick_irodori_steps(gpu: bool) -> int:
 
 
 def compute_label(gpu: bool, steps: int | None = None) -> str:
-    """env の行の終わりに付ける、どこで動くかと Irodori の steps（例「CPU（Irodori の steps=24）」）。Kokoro には steps がない。"""
+    """env の行の終わりに付ける、どこで動くかと Irodori の steps（例「CPU（Irodori の steps=16）」）。Kokoro には steps がない。"""
     return f"{'GPU' if gpu else 'CPU'}（Irodori の steps={pick_irodori_steps(gpu) if steps is None else steps}）"
 
 
