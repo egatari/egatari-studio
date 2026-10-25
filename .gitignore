@@ -22,3 +22,6 @@ comments.json
 dist/
 # single-file exports written by the CLI at the top of an example folder
 /examples/*/*.ega.html
+
+# Egatari Live の試験が作る一時ファイル
+.tmp-live-*

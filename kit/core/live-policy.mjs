@@ -15,7 +15,7 @@
 //                                          doc：{framed, protocol, origin, pathname, csp: [CSP の <meta> の content…]}（再生器が location と DOM から集める）
 //   LP.joinUrl(live)                        参加用のページ（egatari/live の /join#room=…&key=…）。鍵は # の後ろだけ（アドレスとしてサーバーに送られない）
 //   LP.offerJoinLink(ctx, doc)              つなげない文書で「ブラウザで参加する」を出すか（編集アプリのプレビュー・この派生の決まりでない文書では出さない）
-//   LP.normStrokes(v)                       質問に付ける「囲んだところ」の線を、Studio の手書きメモ（docs/contract.md §12）と同じ規則で整える。
+//   LP.normStrokes(v)                       質問に付ける「囲んだところ」の線を、Studio のマーカー（docs/contract.md §13）と同じ規則で整える。
 //                                          [[[x, y], …], …]（舞台の座標 1280 × 720、0.1 に丸め、続く同じ点なし、1 本 2〜500 点・20 本・合わせて 2000 点まで）か null
 // opts.allowLoopback：ループバックの http: の endpoint を許す（Node の試験と開発版の書き出しだけ。kit/core/live.mjs）
 export function LivePolicy(opts) {
@@ -33,7 +33,7 @@ export function LivePolicy(opts) {
     sha256: /^[0-9a-f]{64}$/,
   };
   // windowRoomMs：部屋のサービス（egatari/live v1）が作れる窓の長さの上限（3 時間）。再生器は長い窓も読む（windowMs）
-  // stroke*：質問に付ける「囲んだところ」（egatari/live の limits.js と Studio の手書きメモ §12 と同じ）。reply：ホストの返事の長さ
+  // stroke*：質問に付ける「囲んだところ」（egatari/live の limits.js と Studio のマーカー §13 と同じ）。reply：ホストの返事の長さ
   var LIMITS = { prompt: 300, choice: 100, label: 80, question: 500, name: 40, reply: 200, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000,
     stageW: 1280, stageH: 720, strokes: 20, strokePoints: 500, strokesPoints: 2000 };
   // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
@@ -226,7 +226,7 @@ export function LivePolicy(opts) {
     for (var i = 0; i < csp.length; i++) if (/(?:^|;)\s*connect-src\s+'none'\s*(;|$)/i.test(str(csp[i]) ? csp[i] : '')) return false;
     return true;
   }
-  // ---- 囲んだところ（docs/contract.md §12 の normStrokes と同じ規則。kit/core/comment-core.mjs と同じ答え）
+  // ---- 囲んだところ（docs/contract.md §13 の normStrokes と同じ規則。kit/core/comment-core.mjs と同じ答え）
   var r1 = function (v) { return Math.round(v * 10) / 10; };
   function cleanStroke(s) {
     if (!Array.isArray(s) || s.length > 5000) return null;

@@ -65,6 +65,12 @@ function deckDir(name, themes, src = 'minimal') {
   ok(old.stats.warn.some((w) => /^theme pinned: default 1\.0\.0 /.test(w) && w.includes('--emph #C50516 → #BE3012') && w.includes('--update-themes')), 'build: the warning lists old → new colors and explains --update-themes');
   const kok = build(deckDir('kokugo-old', { default: OLD }, 'kokugo-kanbun'));
   ok(kok.stats.themeVersions.default === OLD && /#6e6e6e/.test(kok.html), 'build: a theme extending default uses the pinned parent');
+  // business 1.0.1（--emph #C2410C → #BA3C05）：1.0.0 に固定したデッキは写し vendor/themes/business/1.0.0 で組み、親の default も継ぐ
+  const bizDeck = (name, themes) => { const d = deckDir(name, themes); fs.writeFileSync(d, fs.readFileSync(d, 'utf8').replace(/data-theme="[^"]*"/, 'data-theme="business"')); return d; };
+  const bold = build(bizDeck('biz-old', { business: '1.0.0' }));
+  ok(bold.stats.themeVersions.business === '1.0.0' && /#c2410c/.test(bold.html) && !/#ba3c05/.test(bold.html) && /#BE3012/.test(bold.html) && bold.stats.warn.some((w) => /^theme pinned: business 1\.0\.0 /.test(w) && w.includes('--emph #C2410C → #BA3C05')), 'build: business pinned to 1.0.0 keeps #c2410c (with its parent default) and warns old → new');
+  const bcur = build(bizDeck('biz-cur'));
+  ok(bcur.stats.themeVersions.business === LOCK.themes.business.current && /#ba3c05/.test(bcur.html) && !/#c2410c/.test(bcur.html) && !bcur.stats.themePinned.length, 'build: business without a pin uses the current version (#ba3c05)');
   const dflt = build(deckDir('dflt'));
   ok(!dflt.stats.themePinned.length && !dflt.stats.warn.some((w) => /^theme pinned:/.test(w)) && /#BE3012/.test(dflt.html), 'build: no pin → current version, no warning');
   const cur = build(deckDir('cur', { default: NEW }));
@@ -188,20 +194,24 @@ fs.writeFileSync(oldFile, pold.html);
 }
 
 // ---------------------------------------------------------------- 6. どのテーマも自分の版を記録する（format spec §3.8・§6）
-// 同梱の kokugo・business は 1.0.0（themes.lock.json。バイトは変えない：前に記録した sha256 のまま）。版のない利用者のテーマは "local"。
+// 同梱の kokugo は 1.0.0（バイトは変えない：前に記録した sha256 のまま）。business は 1.0.1（1.0.0 は前に記録した sha256 のまま vendor/themes/business/1.0.0 に）。
+// 版のない利用者のテーマは "local"。
 // 1 ファイルの egatari.json の themes は index.themes のどの項目もその版で、ちょうどそれだけ（親のテーマ extends も）
 {
   const SHA_3CBD96A = { kokugo: 'b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2', business: '3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880' };
   const pinsOf = (r) => JSON.parse(Buffer.from(r.files[FORMAT.CONFIG_FILE]).toString('utf8')).themes;
   const exact = (r) => { const p = pinsOf(r) || {}; return Object.keys(p).length === r.index.themes.length && r.index.themes.every((t) => p[t.name] === t.version); };
+  const CUR = { kokugo: '1.0.0', business: '1.0.1' };
+  ok(themeDirSha(path.join(ROOT, 'themes', 'kokugo')) === SHA_3CBD96A.kokugo, 'kokugo: themes/kokugo unchanged (the sha256 recorded before)');
+  ok(themeDirSha(path.join(ROOT, 'vendor', 'themes', 'business', '1.0.0')) === SHA_3CBD96A.business && themeDirSha(path.join(ROOT, 'themes', 'business')) === LOCK.themes.business.sha256['1.0.1'], 'business: the 1.0.0 copy keeps the sha256 recorded before; themes/business is 1.0.1');
   for (const name of ['kokugo', 'business']) {
-    ok(LOCK.themes[name] && LOCK.themes[name].current === '1.0.0' && LOCK.themes[name].sha256['1.0.0'] === SHA_3CBD96A[name] && themeDirSha(path.join(ROOT, 'themes', name)) === SHA_3CBD96A[name], `${name}: 1.0.0 in themes.lock.json with the sha256 recorded before (themes/${name} unchanged)`);
+    ok(LOCK.themes[name] && LOCK.themes[name].current === CUR[name] && LOCK.themes[name].sha256['1.0.0'] === SHA_3CBD96A[name], `${name}: current ${CUR[name]} in themes.lock.json, 1.0.0 with the sha256 recorded before`);
     const deck = deckDir('own-' + name);
     const o = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), deck, '--portable', '--theme', name, '-o', path.join(work, `own-${name}${FORMAT.FILE_EXT}`)], { encoding: 'utf8' });
     const r = await readPortable(fs.readFileSync(path.join(work, `own-${name}${FORMAT.FILE_EXT}`), 'utf8'));
     const t = r.index.themes.find((x) => x.name === name), d = r.index.themes.find((x) => x.name === 'default');
-    ok(o.status === 0 && t && t.version === '1.0.0' && t.sha256 === SHA_3CBD96A[name] && d && d.version === NEW, `--portable --theme ${name}: index.themes records ${name} 1.0.0 (its own version, not Studio's) and its parent default ${NEW} ` + JSON.stringify(r.index.themes));
-    ok(exact(r) && pinsOf(r)[name] === '1.0.0' && pinsOf(r).default === NEW, `--portable --theme ${name}: egatari.json themes pins exactly the index.themes entries ` + JSON.stringify(pinsOf(r)));
+    ok(o.status === 0 && t && t.version === CUR[name] && t.sha256 === LOCK.themes[name].sha256[CUR[name]] && d && d.version === NEW, `--portable --theme ${name}: index.themes records ${name} ${CUR[name]} (its own version, not Studio's) and its parent default ${NEW} ` + JSON.stringify(r.index.themes));
+    ok(exact(r) && pinsOf(r)[name] === CUR[name] && pinsOf(r).default === NEW, `--portable --theme ${name}: egatari.json themes pins exactly the index.themes entries ` + JSON.stringify(pinsOf(r)));
   }
   // 版のない利用者のテーマ：version "local"、固定も "local"。展開して組み直すと、原稿のフォルダのテーマとして同じ sha256 で見分けられる
   const UT = path.join(work, 'user-themes-local');

@@ -3,7 +3,7 @@
 // 読み書きするのは原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
-import { normPin } from '../kit/core/comment-core.mjs';
+import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
 import { keepSeed } from '../kit/core/new-deck.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
 
@@ -135,8 +135,11 @@ export function createDevApi(ctx) {
           if (!body.comment || !String(body.comment).trim()) return err(400, M.emptyComment);
           const list = await readComments(ws);
           if (!live()) return CANCEL();
-          const pin = normPin(body.pin);   // 開発サーバーと同じ規則（kit/core/comment-core.mjs）
-          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null, ...(pin ? { pin } : {}),
+          // 開発サーバーと同じ規則（kit/core/comment-core.mjs）：線は点があるときだけ、線があれば点は線の重心、書くのは strokes だけ
+          let pin = normPin(body.pin);
+          const strokes = pin ? entryStrokes(body) : null;
+          if (strokes) pin = strokesCentroid(strokes);
+          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}),
             quote: String(body.quote || '').slice(0, 200), comment: String(body.comment).trim(), status: 'open' };
           list.push(c); await writeComments(ws, list, live);
           if (live()) ctx.onComment && ctx.onComment();

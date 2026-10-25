@@ -144,7 +144,7 @@ try {
     const labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
     ok(JSON.stringify(labels) === JSON.stringify(['標準 （今のテーマ）', 'ビジネス', '国語']), 'chooser: display names, the current one marked ' + JSON.stringify(labels));
     const sw = await page.$$eval('#theme-switch-list .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
-    ok(sw.length === 6 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(194, 65, 12)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
+    ok(sw.length === 6 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
     ok((await page.textContent('#theme-switch-load')) === 'テーマを読み込む…' && !(await page.$('#theme-switch-mine')), 'chooser: 「テーマを読み込む…」 (the same entry as New ③); no 「自分のテーマ」 heading while there are none');
     const words = [await page.textContent('#dlg-title'), await page.textContent('#theme-switch-lead'), await page.textContent('#dlg-change'), await page.textContent('#dlg-cancel')];
     ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが替わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
@@ -156,7 +156,7 @@ try {
     const deck1 = await memFile(page, 'deck.html'), cfg1 = await memFile(page, CFG), e1 = await emph(page), st1 = await state(page);
     ok(themeOf(deck1) === 'business' && htmlAttrs(deck1) === ATTRS0, '→ business: data-theme changed; the seed and every other <html> attribute kept');
     ok(deck1 === deck0.replace('data-theme="default"', 'data-theme="business"'), '→ business: nothing else in the source changed (slides untouched)');
-    ok(e1 !== e0 && e1 === 'rgb(194, 65, 12)', `→ business: the preview --emph changed (${e0} → ${e1})`);
+    ok(e1 !== e0 && e1 === 'rgb(186, 60, 5)', `→ business: the preview --emph changed (${e0} → ${e1})`);
     ok(cfg1.includes(FOREIGN), '→ business: the foreign egatari.json member survives byte for byte');
     const p1 = JSON.parse(cfg1).themes;
     ok(p1.business === CUR('business') && p1.default === CUR('default') && Object.keys(p1).length === 2, '→ business: themes pins business at its current version, default (its base) kept ' + JSON.stringify(p1));

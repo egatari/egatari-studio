@@ -9,11 +9,12 @@
 //   #5  「今の画面」（iframe）にフォーカスがあるときの Esc・p も閉じる。ペンを使っていれば Esc はまずペンを切る（B・A）
 //   #6  窓にフォーカスがないとき（document.hasFocus を差し替え）：「ここを押すと操作できます」の覆いが出て、最初のクリックで消える。
 //       フォーカスがあるときは出ない。押した後はキーが効く（B）。「今の画面」「次」の中には覆いも閉じるボタンもない（B）
+// C（開発サーバー server/dev.mjs。発表者の窓は外枠 shell.js が開き、デッキは窓の中の枠）：本体の p は入り切り（#1）、発表者ビューの p・Esc で窓を閉じる（#2）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 
@@ -269,6 +270,49 @@ try {
     await press(pv, 'Escape');
     ok(inCur === 'f-cur' && await closedSoon(pv), '#5 A: Esc with focus in the current pane closes the editor\'s presenter window ' + JSON.stringify({ inCur }));
     await ctx.close();
+  }
+  {
+    // ---------------------------------------------------------------- C：開発サーバー（server/dev.mjs。外枠 shell.js がデッキに頼まれて窓を開く。デッキの presenter は親の窓）
+    // #1 C：本体（プレビュー）で p をもう一度押すと閉じる。#2 C：発表者ビュー（窓の中の枠 #pf）で p・Esc を押すと閉じる
+    console.log('C: dev server');
+    const srv = spawn(process.execPath, [path.join(ROOT, 'server/dev.mjs'), path.join(FX, 'deck.html'), '--port', '0'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    try {
+      const base = await new Promise((res, rej) => {
+        const t = setTimeout(() => rej(new Error('dev server did not start')), 15000);
+        srv.stdout.on('data', (d) => { const m = String(d).match(/http:\/\/127\.0\.0\.1:\d+\//); if (m) { clearTimeout(t); res(m[0]); } });
+      });
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const p = await ctx.newPage();
+      p.on('pageerror', (e) => errs.push('C: ' + e.message));
+      await p.goto(base);
+      const deckFrame = () => p.frames().find((f) => f !== p.mainFrame());
+      await p.waitForFunction(() => document.getElementById('deck'));
+      await (async () => { for (let i = 0; i < 50; i++) { const f = deckFrame(); if (f && await f.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false)) return; await p.waitForTimeout(200); } })();
+      const openPC = async () => {
+        await p.bringToFront(); await p.mouse.click(640, 300); await p.waitForTimeout(150);
+        const [pv] = await Promise.all([ctx.waitForEvent('page'), p.keyboard.press('p')]);
+        pv.on('pageerror', (e) => errs.push('C presenter: ' + e.message));
+        await pv.waitForLoadState();
+        const pf = await (async () => { for (let i = 0; i < 50; i++) { const f = pv.frames().find((x) => x !== pv.mainFrame() && /presenter=1/.test(x.url())); if (f && await f.$('#pv-close').catch(() => null)) return f; await pv.waitForTimeout(200); } return null; })();
+        await pv.waitForTimeout(800);
+        return { pv, pf };
+      };
+      let { pv, pf } = await openPC();
+      ok(!!pf, '#1 C: p in the dev server preview opens the presenter view');
+      await p.bringToFront(); await p.mouse.click(640, 300); await p.waitForTimeout(150);
+      await p.keyboard.press('p');
+      ok(await closedSoon(pv), '#1 C: p again in the preview closes the presenter view');
+      ({ pv, pf } = await openPC());
+      ok(!pv.isClosed(), '#1 C: and p opens it again');
+      for (const k of ['p', 'Escape']) {
+        if (pv.isClosed()) ({ pv, pf } = await openPC());
+        await pv.bringToFront();
+        await pf.focus('#pv-close'); await pf.evaluate(() => document.activeElement.blur()); await pv.waitForTimeout(150);   // フォーカスを中の発表者ビューの文書に置く（道具のボタンは押さない）
+        await press(pv, k);
+        ok(await closedSoon(pv), `#2 C: ${k} in the dev server's presenter view closes its window`);
+      }
+      await ctx.close();
+    } finally { srv.kill(); }
   }
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
 } finally {

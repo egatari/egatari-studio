@@ -27,9 +27,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Generated files, vendored components and changelog fragments (npm run gen:check)
         # gen:check starts with npm run components:check: vendor/components (copies of egatari/components releases) matches
         # components.lock.json (every version present, every index.js hash). No network: Studio builds only from the vendored copies.
@@ -53,9 +53,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          # floors: the 2026-10-20/21 Node security release (SECURITY.md#node-versions); the runner's cached 22.x/24.x can be older
+          node-version: ${{ matrix.node == 22 && '>=22.23.4 <23' || '>=24.22.1 <25' }}
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Stale English/Japanese document pairs (warnings only)
         # X.ja.md older than X.md (or the reverse) shows as a warning annotation; it does not fail the build (add --strict to make it fail)
         if: matrix.node == 22
@@ -90,9 +91,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: npm test
         env:
           TEMP: ${{ runner.temp }}
@@ -122,9 +123,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: npm test
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
@@ -160,7 +161,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
       - uses: astral-sh/setup-uv@v10.3.0
       - name: Empty home
         run: |
@@ -168,7 +169,7 @@ jobs:
           mkdir -p "$H"
           echo "HOME=$H" >> "$GITHUB_ENV"
           echo "IRODORI_URL=http://127.0.0.1:9" >> "$GITHUB_ENV"
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Build, check, export, TTS dry-run and new deck (tools/clean-env.mjs)
         run: node tools/clean-env.mjs
 
@@ -188,9 +189,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Install Playwright Chromium
         if: runner.os == 'Linux'
         run: npx playwright-core install --with-deps chromium

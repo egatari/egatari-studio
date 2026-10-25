@@ -46,7 +46,74 @@ export function layoutScan(s, o) {
   const box = (r) => ({ l: (r.left - sr.left) / k, t: (r.top - sr.top) / k, r: (r.right - sr.left) / k, b: (r.bottom - sr.top) / k });
   const h2 = s.querySelector('h2'), c = s.querySelector('.concl'), body = s.querySelector('.body');
   const tate = s.classList.contains('layout-tate');
-  let bodyOver = false;   // 本文が下にはみ出す（bodyBottom）。そのスライドでは、本文の中の字がスライドの外に出ることを別に数えない
+  let bodyOver = false;
+
+  // ---------------------------------------------------------------- 祖先で切られて見えない箱
+  // seen(b, from, own, stop) → {v, gone}：箱 b（スライドの座標）のうち、from から stop の手前までの祖先が切ったあとに見える部分 v。
+  //   own：from がその箱の要素そのもの（自分の overflow は自分の箱を切らない。clip・clip-path は自分も切る）。字の Range の箱なら false（字の要素の overflow も効く）
+  //   gone：null（見える）| 'hidden'（読み上げ用の隠し方で見えない：clip-path の inset・clip の rect で何も残らないか、
+  //         overflow が visible でない 2px 以下の箱（1×1 の .sr-only）の中）| 'cut'（見える大きさの overflow の箱で切られて何も残らない）
+  //   overflow は包む箱（containing block）の鎖の上だけで効く（絶対位置の子は、位置を決める祖先までの間の overflow で切られない）。clip・clip-path は子孫をみな切る
+  const clipCache = new Map();
+  const clipOf = (a) => {
+    let c = clipCache.get(a);
+    if (c) return c;
+    const st = getComputedStyle(a), r = a.getBoundingClientRect();
+    const bb = box(r);
+    c = { pos: st.position, cb: st.position !== 'static' || st.transform !== 'none', tf: st.transform !== 'none', ox: st.overflowX !== 'visible', oy: st.overflowY !== 'visible', inner: null, tiny: false, rect: null };
+    if (c.ox || c.oy) {
+      // 枠線の内側（clientLeft・clientTop と clientWidth・clientHeight）
+      c.inner = a instanceof HTMLElement ? box({ left: r.left + a.clientLeft * k, top: r.top + a.clientTop * k, right: r.left + (a.clientLeft + a.clientWidth) * k, bottom: r.top + (a.clientTop + a.clientHeight) * k }) : bb;
+      c.tiny = r.width <= 2 || r.height <= 2;
+    }
+    const w = bb.r - bb.l, h = bb.b - bb.t;
+    // clip-path: inset(上 右 下 左 [round …])（px と %。ほかの形は見ない）。箱は枠線の箱
+    const cp = st.clipPath || '';
+    const m = /^inset\(([^)]*)\)/.exec(cp.trim());
+    if (m) {
+      const vs = m[1].split(/\s+round\s+/)[0].trim().split(/\s+/);
+      const val = (x, len) => /%$/.test(x) ? parseFloat(x) / 100 * len : parseFloat(x) / k;
+      if (vs.length >= 1 && vs.length <= 4 && vs.every((x) => /^-?[\d.]+(px|%)?$/.test(x))) {
+        const [t0, r0 = t0, b0 = t0, l0 = r0] = vs;
+        c.rect = { l: bb.l + val(l0, w), t: bb.t + val(t0, h), r: bb.r - val(r0, w), b: bb.b - val(b0, h) };
+      }
+    }
+    // clip: rect(上, 右, 下, 左)（絶対位置の要素だけ。枠線の箱の左上から。auto はその辺のまま）
+    if (/^(absolute|fixed)$/.test(st.position) && /^rect\(/.test(st.clip || '')) {
+      const vs = st.clip.slice(5, -1).split(/[\s,]+/).filter(Boolean);
+      if (vs.length === 4) {
+        const px = (x, d) => (x === 'auto' ? d : parseFloat(x) / k);
+        const q = { l: bb.l + px(vs[3], 0), t: bb.t + px(vs[0], 0), r: bb.l + px(vs[1], w), b: bb.t + px(vs[2], h) };
+        c.rect = c.rect ? { l: Math.max(c.rect.l, q.l), t: Math.max(c.rect.t, q.t), r: Math.min(c.rect.r, q.r), b: Math.min(c.rect.b, q.b) } : q;
+      }
+    }
+    clipCache.set(a, c);
+    return c;
+  };
+  const cutBy = (v, q, x, y) => ({ l: x ? Math.max(v.l, q.l) : v.l, t: y ? Math.max(v.t, q.t) : v.t, r: x ? Math.min(v.r, q.r) : v.r, b: y ? Math.min(v.b, q.b) : v.b });
+  const empty = (v) => v.r - v.l <= 0 || v.b - v.t <= 0;
+  const seen = (b, from, own, stop) => {
+    let v = b, esc = null;   // esc：'abs' | 'fixed'。包む箱に着くまで祖先の overflow は切らない
+    for (let a = from; a && a !== stop && a !== s; a = a.parentElement) {
+      const c = clipOf(a);
+      if (!(own && a === from)) {
+        const isCb = esc === 'abs' ? c.cb : esc === 'fixed' ? c.tf : true;
+        if (isCb) {
+          esc = null;
+          if ((c.ox || c.oy) && c.inner) {
+            if (c.tiny) return { v: null, gone: 'hidden' };
+            v = cutBy(v, c.inner, c.ox, c.oy);
+            if (empty(v)) return { v: null, gone: 'cut' };
+          }
+        }
+      }
+      if (c.rect) { v = cutBy(v, c.rect, true, true); if (empty(v)) return { v: null, gone: 'hidden' }; }
+      if (!esc) esc = c.pos === 'absolute' ? 'abs' : c.pos === 'fixed' ? 'fixed' : null;
+    }
+    return { v, gone: null };
+  };
+  // 読み上げ用の隠し方の中か（要素の中の字ごと見えない）
+  const hiddenEl = (el) => seen(box(el.getBoundingClientRect()), el, false, s).gone === 'hidden';   // 本文が下にはみ出す（bodyBottom）。そのスライドでは、本文の中の字がスライドの外に出ることを別に数えない
 
   // ---------------------------------------------------------------- 見出しと結論の行
   if (h2) {
@@ -79,9 +146,12 @@ export function layoutScan(s, o) {
       if (el.closest('.katex') && !el.classList.contains('katex')) return;
       const r = el.getBoundingClientRect();
       if (!r.width && !r.height) return;
-      maxB = Math.max(maxB, (r.bottom - sr.top) / k);
-      maxR = Math.max(maxR, (r.right - sr.left) / k);
-      minL = Math.min(minL, (r.left - sr.left) / k);
+      // 祖先が切った後に見える部分だけ（読み上げ用の隠し方の中・切られて何も残らない箱は数えない。本文の箱より上の祖先は見ない）
+      const { v } = seen(box(r), el, true, body);
+      if (!v) return;
+      maxB = Math.max(maxB, v.b);
+      maxR = Math.max(maxR, v.r);
+      minL = Math.min(minL, v.l);
     });
     // 知らせの値：結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）は、既定と違うときだけ添える（既定のテーマの結果は前と同じ）
     if (maxB > lim) {
@@ -102,6 +172,7 @@ export function layoutScan(s, o) {
         const e = n.parentElement;
         // ルビ（rt）の振り仮名は本文の半分の大きさが決まり（docs/reference.md「Japanese language arts」）
         if (e.closest('svg') || e.closest('.katex') || e.closest('[' + ANNOT + ']') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
+        if (hiddenEl(e)) continue;   // 読み上げ用の隠し方の中の字（.sr-only の形の 1×1 の箱・clip-path: inset(50%) など）は見えない
         const f = parseFloat(getComputedStyle(e).fontSize);
         const lim2 = e.closest('table,.plot') ? 23.9 : 26.6;
         if (f < lim2) { add('error', 'smallText', { px: f, t: n.textContent.trim().slice(0, 12) }); break; }
@@ -110,6 +181,7 @@ export function layoutScan(s, o) {
       body.querySelectorAll('svg').forEach((g) => {
         const vb = g.viewBox && g.viewBox.baseVal;
         if (!vb || !vb.width) return;
+        if (hiddenEl(g)) return;
         const sc = g.getBoundingClientRect().width / k / vb.width;
         const fs = [...g.querySelectorAll('text')].filter((t) => !t.closest('[' + ANNOT + ']')).map((t) => parseFloat(t.getAttribute('font-size') || getComputedStyle(t).fontSize) || 24);
         if (fs.length && Math.min(...fs) * sc < 23.9) add('error', 'smallSvgText', { px: (Math.min(...fs) * sc).toFixed(1) });
@@ -119,7 +191,7 @@ export function layoutScan(s, o) {
 
   // ---------------------------------------------------------------- 切れる字・外に出る字（#52。警告）
   // 字の塊：HTML の文字のノード（の範囲）と SVG の <text>。見えないもの（display:none・visibility:hidden・opacity 0）、KaTeX の読み上げ用、
-  // 読み上げだけの .sr-only、注目の演出の SVG、わざと切る印（CLIP）の中は数えない
+  // 読み上げだけの .sr-only（と、同じ形の隠し方：overflow の 1×1 の箱・clip-path: inset(50%)・clip: rect(0 0 0 0)。hiddenEl）、注目の演出の SVG、わざと切る印（CLIP）の中は数えない
   const TOL = 2;
   const sample = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 24);
   const shown = (el) => {
@@ -137,14 +209,14 @@ export function layoutScan(s, o) {
     while ((n = tw.nextNode())) {
       if (!n.textContent.trim()) continue;
       const e = n.parentElement;
-      if (!e || e.closest('svg') || skip(e) || !shown(e)) continue;
+      if (!e || e.closest('svg') || skip(e) || !shown(e) || hiddenEl(e)) continue;
       const rg = document.createRange(); rg.selectNodeContents(n);
       const r = rg.getBoundingClientRect();
       if (!r.width && !r.height) continue;
       pieces.push({ el: e, svg: false, b: box(r), t: sample(n.textContent), n });
     }
     s.querySelectorAll('text').forEach((t) => {
-      if (!t.closest('svg') || t.closest('.katex') || skip(t) || !t.textContent.trim() || !shown(t)) return;
+      if (!t.closest('svg') || t.closest('.katex') || skip(t) || !t.textContent.trim() || !shown(t) || hiddenEl(t)) return;
       const r = t.getBoundingClientRect();
       if (!r.width && !r.height) return;
       pieces.push({ el: t, svg: true, b: box(r), t: sample(t.textContent) });
@@ -292,7 +364,7 @@ export function layoutScan(s, o) {
   const SHORT = 6;
   const seg = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter(JA ? 'ja' : 'en', { granularity: 'word' }) : null;
   s.querySelectorAll('td, th').forEach((cell) => {
-    if (skip(cell) || !shown(cell)) return;
+    if (skip(cell) || !shown(cell) || hiddenEl(cell)) return;
     const vert = /^vertical/.test(getComputedStyle(cell).writingMode);
     let full = '';
     const at = [];   // full の位置 → 行の番号（空白は null）

@@ -1,4 +1,5 @@
 {
   "name": "business",
-  "extends": "default"
+  "extends": "default",
+  "version": "1.0.1"
 }

@@ -223,7 +223,7 @@ function cmdAsset(args) {
       run('git', ['-C', ROOT, 'worktree', 'add', '--detach', src, tag]);
       const v = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8')).version;
       if (v !== version) throw new Error(`${tag}: package.json says ${v}`);
-      run('npm', ['ci', '--no-audit', '--no-fund'], src);
+      run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], src);   // インストールのスクリプトは走らせない（SECURITY.md）
       run(process.execPath, [path.join(src, 'tools', 'build-app.mjs'), '--out', site], src);
       const gz = packSite(site), file = path.join(OUT, assetName(version)), hex = sha256(gz);
       fs.writeFileSync(file, gz);

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=036a645c6f144260 -->
+<!-- i18n: pair=README.md sha256=ffa7bfb83e498dd7 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -27,7 +27,7 @@
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **注目の演出**：口述原稿に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーの点が出る
 - **モーフ**：`data-morph` のスライドでは、前のスライドの式や要素が今の位置へ滑ってくる（Keynote のマジックムーブ）
-- **1 つの原稿で 3 つのモード**：発表（`?mode=talk`）、授業（`?mode=lecture`：全部見せて今の段階を強調）、動画（`?mode=video`）
+- **1 つの原稿で 3 つのモード**：発表（`?mode=talk`）、授業（`?mode=lecture`：全部見せて先の段階を薄く）、動画（`?mode=video`）
 - **発表の道具**：発表者ビュー（口述原稿がカンペになる・タイマー）、スライド一覧、レーザー、ペン、消えるペン、操作の帯
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。部品はテーマの変数だけを使う
 - **品質管理**：規格（R-fit・R-steps など）がデッキの満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・段階・口述原稿の抜け・配色のコントラスト・部品の再現性・注目の演出・モーフを調べる

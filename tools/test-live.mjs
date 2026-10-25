@@ -114,7 +114,7 @@ ok(sv('activities')(L0.activities), 'schema: the activities shape is the protoco
   ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
   ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
 
-// 質問の機能：活動の種類 confused・派生の sourceSha256・囲んだところの規則（docs/contract.md §12 の手書きメモと同じ）
+// 質問の機能：活動の種類 confused・派生の sourceSha256・囲んだところの規則（docs/contract.md §13 のマーカーと同じ）
 { const withCf = (x) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused', ...x }] } });
   ok(LP.validate(withCf({}), { key: true }).length === 0 && LP.validate(withCf({ label: 'どのステップでも' }), { key: true }).length === 0 && sv('activities')(withCf({}).activities), 'validate: a confused activity ({id, kind}, optional label) is valid (policy and vendored schema)');
   ok(LP.validate(withCf({ choices: ['a', 'b'] }), { key: true }).some((e) => e.code === 'confusedMembers') && !sv('activities')(withCf({ prompt: 'x' }).activities), 'validate: a confused activity has no prompt or choices');
@@ -622,6 +622,7 @@ async function drawCircle(p, cx, cy, r) {
   const key2 = (await st(o.p)).step;
   await o.p.click('#live-ask .lv-cf');
   ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '「わからない」をホストに伝えました') && (await askState(o.p)).pressed === 'true', '"I don\'t follow": one tap, aria-pressed=true, announced');
+  ok(await o.p.$eval('#live-ask .lv-cf', (e) => { const x = document.createElement('div'); x.style.background = 'var(--emph)'; document.body.appendChild(x); const want = getComputedStyle(x).backgroundColor; x.remove(); return want !== 'rgba(0, 0, 0, 0)' && getComputedStyle(e).backgroundColor === want; }), '"I don\'t follow" pressed: its background is the deck theme\'s --emph');
   const cm = fake.messages.slice(n0).find((m) => m.t === 'confused');
   ok(cm && cm.activity === 'cf' && cm.step === key2 && cm.on === true && !('text' in cm) && sv('learnerToServer')(cm), `confused: the activity, the step on screen and on:true, no text (${cm && cm.step})`);
   await o.p.click('#live-ask .lv-cf');

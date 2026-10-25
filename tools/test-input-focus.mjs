@@ -8,7 +8,8 @@
 //   #6  外へのリンクの確認の箱：箱の字を押してもフォーカスは箱の中、Esc で閉じる、Tab は箱のボタンの中（A・B）
 //   #7  編集アプリの枠（見出し・状態の行・道具の列）を押した後も、矢印・PageUp/PageDown・Home/End・b・a がプレビューに届く。Space・Enter・欄・
 //       口述原稿の引き出しからは送らない。道具の列のボタンはマウスで押すとフォーカスを残さず、キーボードでは残す。
-//       プレビューは送られたキー（deck-cmd の key）を親の窓からだけ受け、自分・子の枠からのものは無視する（A。B は自分からのもの）
+//       プレビューは送られたキー（deck-cmd の key）を親の窓からだけ受け、自分・子の枠からのものは無視する（A。B は自分からのもの）。
+//       編集モードの間は、枠からの b・a・f は効かない（#69。矢印は届く）
 //   #3  未保存の口述原稿でプレビューが止まっている間に押す・キーを押す：わけ（live region）と保存・元に戻すのボタン（A）
 //   #8  口述原稿の欄から離れた後の最初のクリックで、プレビューにフォーカスが入る（A）
 //   #4  発表者ビューの「次」の画面を押しても、キーが止まらない（A・B）
@@ -265,6 +266,20 @@ try {
     await page.keyboard.press(' '); await wait(page, 400);
     const e2 = await editOn();
     ok(e1.edit && e1.focus !== 'b-edit' && e2 === e1.edit, `#7 A: a toolbar button clicked with the mouse does not keep focus, so Space does not press it again ${JSON.stringify({ ...e1, after: e2 })}`);
+    // 編集モードの間（#69）：枠から送る矢印は届くが、b・a・f は効かない（編集の画面も送らず、プレビューも親から届いた b・a を受けない）
+    if (e1.edit) {
+      await clickApp(page, '#deckname');
+      const m0 = await st(page);
+      await page.keyboard.press('b'); await page.keyboard.press('a'); await page.keyboard.press('f'); await wait(page, 300);
+      const mb = await fr(page, () => ({ black: !!document.getElementById('deck-black'), auto: document.documentElement.classList.contains('autoplay') }));
+      const mf = await page.evaluate(() => !!document.fullscreenElement);
+      await page.evaluate(() => { const w = document.getElementById('preview').contentWindow; w.postMessage({ type: 'deck-cmd', cmd: 'key', key: 'b' }, '*'); w.postMessage({ type: 'deck-cmd', cmd: 'key', key: 'a' }, '*'); });
+      await wait(page, 300);
+      const mp = await fr(page, () => ({ black: !!document.getElementById('deck-black'), auto: document.documentElement.classList.contains('autoplay') }));
+      await page.keyboard.press('ArrowRight'); await wait(page);
+      const m1 = await st(page);
+      ok(!mb.black && !mb.auto && !mf && !mp.black && !mp.auto && m1 !== m0, `#7 A: in edit mode, b, a and f from the app chrome do nothing (also when posted to the preview), the arrows still reach it ${JSON.stringify({ keys: mb, fullscreen: mf, posted: mp, m0, m1 })}`);
+    }
     await page.focus('#b-edit'); await page.keyboard.press('Enter'); await wait(page, 400);
     const e3 = { focus: await page.evaluate(() => document.activeElement && document.activeElement.id), edit: await editOn() };
     ok(e3.focus === 'b-edit' && e3.edit !== e1.edit, `#7 A: keyboard activation of a toolbar button still works and keeps focus ${JSON.stringify(e3)}`);

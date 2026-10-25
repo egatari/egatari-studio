@@ -36,9 +36,27 @@ Treat a working folder like a source-code repository, not like a document. Build
 - **The editor page forbids eval.** Its Content-Security-Policy (`app/index.html`, the hosted editor and the single-file `editor.html`) has no `'unsafe-eval'` (only `'wasm-unsafe-eval'`, which the MP3 encoder's WebAssembly needs and which allows no `eval` or `new Function`); `tools/test-yanked.mjs` listens for CSP violations on the page. The preview frame is a sandbox without `allow-same-origin` (opaque origin: no access to the editor page, its storage or the folder handles) and inherits the page's policy, so inside the editor a yanked `m-sweep` / `m-curves` shows its placeholder instead of running its formula. `PREVIEW_CSP` (`app/preview-doc.js`) and the dev server's deck document (`server/dev.mjs`, a top-level sandboxed document) keep `'unsafe-eval'` so that yanked versions still play there; `lab/tts-helper.html` is a separate page of its own with its own policy (`wasm-unsafe-eval` for the speech model).
 - **The code scan** (`kit/core/code-scan.mjs`) still treats formulas outside plain arithmetic as code in documents that record a yanked version.
 
-## Node.js
+## Node versions
 
-Use a Node.js release that includes the latest security fixes (the 2026-10-21 security releases fixed Brotli and TLS certificate checking issues); `engines` only sets the minimum major version.
+Use a Node.js release that includes the latest security fixes. The floor is the security release of 2026-10-20/21 (among others, Brotli and TLS certificate checking issues): **22.23.4, 24.22.1 or 26.12.1**, or later on the same line. Node 20, 23 and 25 are end-of-life and not supported.
+
+- `package.json` `engines` is `^22.23.4 || ^24.22.1 || >=26.12.1` (npm warns on an older Node; it does not refuse).
+- CI asks `actions/setup-node` for a range, not a bare major (`'>=22.23.4 <23'`, and `'>=24.22.1 <25'` for the Node 24 job). With a bare `22` the action takes whatever 22.x the runner image has cached, which lags behind: the Linux jobs of 2026-10-24 ran 22.23.3 and 24.21.0. With the range an older cached copy does not match, and the action downloads a patched one.
+
+## Dependency updates (cooldown)
+
+Dependabot (`.github/dependabot.yml`) proposes a new npm release only after it has been public for 7 days (14 days for a major version), and a new action release after 7 days. This gives a hijacked release (like the npm worms and `preinstall` payloads of 2025-2026) time to be found and unpublished before it reaches a pull request here. Security updates are not delayed: Dependabot does not apply the cooldown to them. A human still reads every update.
+
+## Install scripts
+
+CI installs with `npm ci --ignore-scripts`: no `preinstall`, `install` or `postinstall` script of any dependency runs. You can install the same way locally.
+
+- Packages with an install script in `package-lock.json` (`npm query ':attr(scripts, [install]), :attr(scripts, [preinstall]), :attr(scripts, [postinstall])'`, or `"hasInstallScript": true`): only **esbuild** (dev dependency, `postinstall: node install.js`). It is not needed: the binary comes in the platform package (`@esbuild/<os>-<arch>`, an optional dependency) and esbuild finds it at run time; the script only checks that binary and, on some systems, copies it over the JavaScript launcher to start a little faster. If a future esbuild ever needs it, run `npm rebuild esbuild` after `npm ci --ignore-scripts` for that package alone.
+- Playwright's Chromium is not an install script: CI downloads it in its own step (`npx playwright-core install --with-deps chromium`).
+- `tools/site-versions.mjs asset` (the release asset) also installs with `--ignore-scripts`.
+- Exception: the Colab notebook (`colab/egatari-tts.ipynb`) installs `onnxruntime-node` with its `postinstall`, which downloads the CUDA execution provider from NuGet; the GPU path does not work without it. The versions there are pinned (`tools/make-colab-notebook.mjs`).
+
+When a dependency is added or bumped, check the list again (`npm query` as above); a new install script needs a reason here and a targeted `npm rebuild <package>` step in the workflows.
 
 ## Residual risks (accepted)
 
