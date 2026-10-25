@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-hist の見本</title>
+<!-- 組み方：node kit/build.mjs components/hist/demo.html -o components/hist/out/demo.html（記録はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>ソフトボール投げの記録（架空の 20 人）</h2>
+  <div class="body">
+    <m-hist kind="dots" marks="mean,median,mode" xl="記録（m）" unit=" m" style="height:430px">
+      <script type="application/json">{"values": [25, 31, 22, 38, 25, 16, 29, 42, 27, 25, 33, 19, 24, 36, 22, 28, 34, 25, 21, 30]}</script>
+    </m-hist>
+  </div>
+  <div class="concl"><span>→ 平均値・中央値・最頻値は、同じ記録でも違う値になる</span></div>
+</section>
+
+
+<section class="slide">
+  <h2>度数を数える：通学時間（架空の 12 人）</h2>
+  <div class="body">
+    <m-hist build="values" xl="通学時間（分）" yl="人数（人）" style="height:430px">
+      <script type="application/json">{"values": [12, 25, 8, 17, 21, 14, 9, 28, 16, 19, 23, 15], "bins": {"start": 5, "width": 5}}</script>
+    </m-hist>
+  </div>
+  <div class="concl"><span>→ 1 人ずつ、記録の入る階級に積む（5 分以上 10 分未満、…）</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）：2 組の 50 m 走</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 36px">
+      <m-hist variant="fade" polygon="on" xl="フェード（fade、既定）" yl="人数（人）" style="height:420px">
+        <script type="application/json">{"series": [{"label": "1 組", "table": [{"from": 7.0, "to": 7.5, "count": 2}, {"from": 7.5, "to": 8.0, "count": 5}, {"from": 8.0, "to": 8.5, "count": 9}, {"from": 8.5, "to": 9.0, "count": 12}, {"from": 9.0, "to": 9.5, "count": 7}, {"from": 9.5, "to": 10.0, "count": 4}, {"from": 10.0, "to": 10.5, "count": 1}]}, {"label": "2 組", "table": [{"from": 7.0, "to": 7.5, "count": 0}, {"from": 7.5, "to": 8.0, "count": 2}, {"from": 8.0, "to": 8.5, "count": 6}, {"from": 8.5, "to": 9.0, "count": 10}, {"from": 9.0, "to": 9.5, "count": 11}, {"from": 9.5, "to": 10.0, "count": 7}, {"from": 10.0, "to": 10.5, "count": 4}]}]}</script>
+      </m-hist>
+      <m-hist variant="grow" polygon="on" xl="下から伸びる（grow）" yl="人数（人）" style="height:420px">
+        <script type="application/json">{"series": [{"label": "1 組", "table": [{"from": 7.0, "to": 7.5, "count": 2}, {"from": 7.5, "to": 8.0, "count": 5}, {"from": 8.0, "to": 8.5, "count": 9}, {"from": 8.5, "to": 9.0, "count": 12}, {"from": 9.0, "to": 9.5, "count": 7}, {"from": 9.5, "to": 10.0, "count": 4}, {"from": 10.0, "to": 10.5, "count": 1}]}, {"label": "2 組", "table": [{"from": 7.0, "to": 7.5, "count": 0}, {"from": 7.5, "to": 8.0, "count": 2}, {"from": 8.0, "to": 8.5, "count": 6}, {"from": 8.5, "to": 9.0, "count": 10}, {"from": 9.0, "to": 9.5, "count": 11}, {"from": 9.5, "to": 10.0, "count": 7}, {"from": 10.0, "to": 10.5, "count": 4}]}]}</script>
+      </m-hist>
+    </div>
+  </div>
+  <div class="concl"><span>→ 2 組は重ねて比べる（架空の各 40 人）。見せ方はシード値で選ばれる</span></div>
+</section>
+
+
+</div>
+</body>
+</html>

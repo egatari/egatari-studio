@@ -66,7 +66,7 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
       && !/every subject|すべての分野/.test(file.slice(0, file.indexOf('\n## '))), lang + ': the size table lists both plans: each subject and the largest pair for free, no row for every subject');
     const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
-    for (const t of PAID_ONLY) assert.ok(file.includes('### `<' + t + '>`'), `${lang}: the docs describe ${t}`);
+    for (const t of PAID_ONLY) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
     assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
     assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
     for (const s of SERIES) {

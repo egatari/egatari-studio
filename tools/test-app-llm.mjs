@@ -206,9 +206,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(mats.map((m) => m[0]).join() === '表,画像,数式,図形' && mats.every((m) => !m[1]), 'new materials: 表・画像・数式・図形 are always available (not toggles)');
     await pk.click('#paste-purposes-fold-h');
     const tiles = await pk.$$eval('#paste-purposes button.tile', (xs) => xs.map((x) => [x.getAttribute('aria-pressed'), x.querySelector('.tile-label').textContent]));
-    ok(tiles.length === 15 && tiles.every((t) => t[0] === 'true') && (await pk.isVisible('#paste-purposes-html')) && (await pk.textContent('#paste-purposes-html')) === 'パーツのない伝えたいことは、AI が HTML で近い形に描きます'
-      && (await pk.textContent('#paste-parts-h')) === 'この指示に入るパーツ' && (await pk.textContent('#paste-purposes-hint')) === '今は全部使えます。押した伝えたいことは、AI が使いません' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：15 個のうち 15 個を使う',
-      'new purposes: 15 tiles (the manifest\'s own purposes), all in use, the summary out of 15, the hint 「押した伝えたいことは、AI が使いません」, and always 「パーツのない伝えたいことは、AI が HTML で近い形に描きます」 under the strip 「この指示に入るパーツ」');
+    ok(tiles.length === 16 && tiles.every((t) => t[0] === 'true') && (await pk.isVisible('#paste-purposes-html')) && (await pk.textContent('#paste-purposes-html')) === 'パーツのない伝えたいことは、AI が HTML で近い形に描きます'
+      && (await pk.textContent('#paste-parts-h')) === 'この指示に入るパーツ' && (await pk.textContent('#paste-purposes-hint')) === '今は全部使えます。押した伝えたいことは、AI が使いません' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 16 個を使う',
+      'new purposes: 16 tiles (the manifest\'s own purposes), all in use, the summary out of 16, the hint 「押した伝えたいことは、AI が使いません」, and always 「パーツのない伝えたいことは、AI が HTML で近い形に描きます」 under the strip 「この指示に入るパーツ」');
     const c1 = await copy();
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; with all figures in use, every part is described');
     const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
@@ -218,8 +218,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#paste-purpose-process');
     await pk.click('#paste-purpose-contents');
     const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
-    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：1 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：15 個のうち 13 個を使う',
-      'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off; the summary counts out of 15');
+    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：1 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 14 個を使う',
+      'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off; the summary counts out of 16');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(!c2.includes('### `<m-flow>`') && !c2.includes('| `<m-menu>` |') && c2.includes('- 使わない言いたいこと（作者が外した）：手順・工程・目次。その表し方（`m-flow`・`m-menu`）は使わない') && size2 < size1,

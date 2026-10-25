@@ -122,6 +122,12 @@ const WRONG = {
   'm-cycle': '<script type="application/json">{"steps": [{"label": "計画"}, {"label": "実行"}]}</script>',
   // 部品庫 v1.5.0：点を経度・緯度でなく x・y で書く
   'm-map-japan': '<script type="application/json">{"points": [{"x": 139.7, "y": 35.7, "label": "東京"}]}</script>',
+  // 部品庫 v1.7.0：選択肢を字の並びで書く／時間を「3分」の字で書く
+  'm-predict': '<script type="application/json">{"question": "どちらが先に落ちる？", "choices": ["重い球", "軽い球"], "answer": 0}</script>',
+  'm-timer': '<script type="application/json">{"phases": [{"title": "話し合い", "sec": "3分"}]}</script>',
+  // 部品庫 v1.9.0：度数分布表の欄の名前・群を字の並びで書く
+  'm-hist': '<script type="application/json">{"table": [{"class": "10〜20", "count": 4}]}</script>',
+  'm-boxplot': '<script type="application/json">{"groups": [[3, 5, 7, 9, 12]]}</script>',
 };
 const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');

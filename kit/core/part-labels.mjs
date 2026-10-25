@@ -32,6 +32,10 @@ export const PART_LABELS = Object.freeze({
   'm-gendai': { ja: '現代文の読解', en: 'Modern text reading', icon: 'gendai' },
   'm-codetree': { ja: '符号の木', en: 'Code tree', icon: 'codetree' },
   'm-map-japan': { ja: '日本地図', en: 'Map of Japan', icon: 'map' },
+  'm-predict': { ja: '予想と答え', en: 'Predict and check', icon: 'predict' },
+  'm-timer': { ja: 'タイマー', en: 'Timer', icon: 'timer' },
+  'm-hist': { ja: 'ヒストグラム', en: 'Histogram', icon: 'hist' },
+  'm-boxplot': { ja: '箱ひげ図', en: 'Box plot', icon: 'boxplot' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');

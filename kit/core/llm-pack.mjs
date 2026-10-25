@@ -17,13 +17,13 @@
 //   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
-//   PLANS・FREE_CORE・FREE_HOME・PAID_ONLY      お使いの AI の版ごとに読み込む部品（無料版は FREE_CORE と系列から。PAID_ONLY は有料版だけ）
+//   PLANS・FREE_CORE・FREE_HOME・FREE_OUT・PAID_ONLY  お使いの AI の版ごとに読み込む部品（無料版は FREE_CORE と系列から。FREE_OUT の系列の部品と PAID_ONLY は有料版だけ）
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT };
 export const PAID_ONLY = paidOnly(PACK, 'free');   // 有料版だけの部品
 // その版と系列で組み立てに入る部品（有料版はすべて。無料版は FREE_CORE と、入っている系列の部品・FREE_HOME の部品）
 export function loadedParts(series = [], plan = 'free') {

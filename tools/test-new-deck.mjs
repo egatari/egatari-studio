@@ -19,7 +19,7 @@ import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects,
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
-import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -113,23 +113,29 @@ ok('request section: kind, structure and presentation of the subcategory, and th
 
 const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
 const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'spatial'];
-ok('purposes: the tiles are the vendored manifest\'s own purposes (15), with their label, examples and icon; the fallback table TILES reads the same', () => {
+// 部品庫 v1.7.0 から：16 個目の札 predict「予想して確かめる」（決めた表 TILES は v1.6.0 の 15 個のまま。tile のない前の manifest に predict はない）
+const OWN_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'predict', 'spatial'];
+ok('purposes: the tiles are the vendored manifest\'s own purposes (16), with their label, examples and icon; the fallback table TILES (15) reads the same', () => {
   assert.equal(TILES.length, 15);
   const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components', 'manifest.json'), 'utf8'));
   const own = man.purposes.filter((p) => p.tile === 'own' && !p.reserved);
-  assert.equal(own.length, 15);
+  assert.equal(own.length, 16);
   assert.equal(PURPOSES.tiles, 'manifest');
   assert.deepEqual(PURPOSES.list.map((p) => p.id), own.map((p) => p.id));
   for (const p of own) {
     const t = PURPOSES.list.find((x) => x.id === p.id), f = TILES.find((x) => x.id === p.id);
     assert.deepEqual([t.label, t.sub, t.icon], [p.label, p.examples, p.icon], p.id + ': label, examples and icon from the manifest');
+    if (p.id === 'predict') { assert.ok(!f, 'predict is not in the fallback table'); continue; }
+    if (p.id === 'spread') continue;   // 部品庫 v1.9.0 で札の小さな字が変わった（箱ひげ図・ドットプロット）。決めた表は v1.6.0 のまま
     assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...p.label }, { ...p.examples }], p.id + ': the fallback table reads the same');
   }
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'compare').ids, ['compare', 'ranking'], 'ranking folds into compare');
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'spatial').label, { ja: '場所・地図', en: 'Place / map' });
   assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'deviation', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
   assert.deepEqual(PURPOSES.components['m-map-japan'], ['spatial']);
-  assert.deepEqual(PURPOSES.list.map((p) => p.id), TILE_IDS);
+  assert.deepEqual(PURPOSES.list.map((p) => p.id), OWN_IDS);
+  assert.deepEqual(PURPOSES.list.find((p) => p.id === 'predict').label, { ja: '予想して確かめる', en: 'Predict, then check' });
+  assert.ok(!PURPOSES.list.some((p) => p.ids.includes('timebox')), 'timebox has no tile');
   assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
@@ -225,7 +231,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     const paid = buildPack({ lang, plan: 'paid' });
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
       assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
-    assert.deepEqual(PAID_ONLY, ['m-compare', 'm-cycle', 'm-fishbone', 'm-pie', 'm-scatter', 'm-timeline', 'm-tree', 'm-venn']);
+    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hist', 'm-pie', 'm-predict', 'm-scatter', 'm-timeline', 'm-timer', 'm-tree', 'm-venn']);
     for (const t of PAID_ONLY) assert.ok(!new RegExp(t + '(?![a-z-])').test(all), `${lang}: ${t} is not named in the free pack`);
     assert.ok(!/＊/.test(all) && !/ \*(?= \||,|$)/m.test(all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'))), lang + ': no star markers');
     // 系列を選ばない：表が指すのは共通の部品だけ（説明がないものは名前を出さない）。入っていない系列は何に使えるかだけ
@@ -266,11 +272,14 @@ const PLAN_CHOICES = [
 // 無料版で読み込む部品：FREE_CORE、FREE_HOME の部品はその系列から、系列の部品はその系列から（有料版だけの部品はない）
 const partsIn = (text) => [...tagsIn(text)].filter((t) => PACK_DATA.en.components[t]);
 const loadedFree = (series) => new Set(Object.keys(PACK_DATA.en.components).filter((t) => {
+  if (FREE_OUT.includes(t)) return false;
   const s = FREE_HOME[t] || PACK_DATA.en.components[t].series;
   return s === 'common' ? FREE_CORE.includes(t) : series.includes(s);
 }));
-ok('free plan: FREE_CORE is the v1.1.0 common set; m-curves, m-kpi and m-quad come only with their v1.1.0 subjects; the 8 new parts are paid only', () => {
+ok('free plan: FREE_CORE is the v1.1.0 common set; m-curves, m-kpi and m-quad come only with their v1.1.0 subjects; the newer common parts and FREE_OUT are paid only', () => {
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu']);
+  assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-hist']);
+  for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, 'academic', t + ' is academic in the vendored release');
   assert.deepEqual({ ...FREE_HOME }, { 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });
   for (const t of Object.keys(FREE_HOME)) assert.equal(PACK_DATA.en.components[t].series, 'common', t + ' is common in the vendored release');
   for (const lang of ['en', 'ja']) {

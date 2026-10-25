@@ -20,15 +20,20 @@ export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, two: 5
 // 無料版で読み込む部品（plan 'free'。有料版はすべて）：
 //   FREE_CORE：共通の本体に説明まで入る共通の部品（部品庫 v1.1.0 の共通の部品）
 //   FREE_HOME：部品庫が共通にした部品のうち、無料版では v1.1.0 の系列（分野）から入るもの
+//   FREE_OUT：系列の部品のうち、無料版では読み込まないもの
 //   ほかの共通の部品（v1.2.0 の新しい部品）は有料版だけ：無料版では一覧・説明・表・見本・文のどこにも名前を出さない
 //   （表は「近いパーツか HTML」に戻る。説明のない部品を AI に使わせない）
 export const PLANS = Object.freeze(['free', 'paid']);
 export const FREE_CORE = Object.freeze(['m-bars', 'm-flow', 'm-menu']);
 export const FREE_HOME = Object.freeze({ 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });
+// FREE_OUT：系列の部品のうち、無料版では読み込まないもの（有料版だけ）。部品庫 v1.9.0 の academic の m-hist・m-boxplot は、
+// 入れると無料版の数理・統計が 40 KB を越えるので、今は有料版だけ（2026-10-25 に決めた。無料版の表の spread・compare は近いパーツか HTML）
+export const FREE_OUT = Object.freeze(['m-boxplot', 'm-hist']);
 const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
 // 無料版から見た部品の居場所：FREE_HOME の系列、FREE_CORE なら 'common'、ほかの共通の部品は null（有料版だけ）、系列の部品はその系列
 export function freeSeriesOf(tag, series) {
   if (FREE_HOME[tag]) return FREE_HOME[tag];
+  if (FREE_OUT.includes(tag)) return null;
   if (series === 'common') return FREE_CORE.includes(tag) ? 'common' : null;
   return series;
 }

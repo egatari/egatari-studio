@@ -1,13 +1,13 @@
 {
   "name": "egatari-components",
-  "version": "1.6.0",
-  "tag": "v1.6.0",
+  "version": "1.9.0",
+  "tag": "v1.9.0",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.6.0.tar.gz",
-    "sha256": "b5a3ab6e7928320369e66a21255f3dfa938c467f05a8a5146f32401ce8b30988",
-    "bytes": 222242
+    "file": "egatari-components-v1.9.0.tar.gz",
+    "sha256": "8242af999c77b70f21d3aeee088d41afdd8bf60b6fc737579af9332f33800423",
+    "bytes": 276180
   },
   "purposes": [
     {
@@ -266,8 +266,8 @@
         "en": "Spread"
       },
       "examples": {
-        "ja": "ヒストグラム",
-        "en": "histogram"
+        "ja": "ヒストグラム・箱ひげ図・ドットプロット",
+        "en": "histogram, box plot, dot plot"
       }
     },
     {
@@ -323,6 +323,36 @@
       "icon": "sweep"
     },
     {
+      "id": "predict",
+      "ja": "予想してから確かめる",
+      "en": "Predict, then check",
+      "steps": {
+        "ja": "問いと選択肢、それから答え",
+        "en": "The question and choices, then the answer"
+      },
+      "tile": "own",
+      "icon": "predict",
+      "label": {
+        "ja": "予想して確かめる",
+        "en": "Predict, then check"
+      },
+      "examples": {
+        "ja": "手を挙げて数える・答えを開く",
+        "en": "show of hands, then the answer"
+      }
+    },
+    {
+      "id": "timebox",
+      "ja": "時間を区切る",
+      "en": "Time-boxing",
+      "steps": {
+        "ja": "区切りを 1 つずつ（残り時間）",
+        "en": "One phase at a time (time remaining)"
+      },
+      "tile": "none",
+      "icon": "timer"
+    },
+    {
       "id": "spatial",
       "ja": "場所・地図",
       "en": "Place / map",
@@ -373,11 +403,29 @@
         "part-whole"
       ],
       "variants": [],
-      "sha256": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de",
+      "sha256": "ab55b833294e5592c87f51da4c04394761170ed0eaa5cb1ea65b751c27917e24",
       "files": {
         "README.md": "a6ff12673cf63e3e27f00f626c02c32b167a6bf8f43aa995f53a8f10cab60aef",
         "demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
-        "index.js": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de"
+        "index.js": "ab55b833294e5592c87f51da4c04394761170ed0eaa5cb1ea65b751c27917e24"
+      }
+    },
+    "boxplot": {
+      "tag": "m-boxplot",
+      "series": "academic",
+      "purposes": [
+        "spread",
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "38e8b48b9f4635b808f3fc1f789cb9308cf5e2b9302e88823d52e9c5e8084865",
+      "files": {
+        "README.md": "179d6bb90be8fc71f81ad4e46a17589d42525793282d250f8ebe0c3afc2e3483",
+        "demo.html": "a74dad23a5d512013803048b631f6d6837da9ff56227fb0957b2d93e840f6bd4",
+        "index.js": "38e8b48b9f4635b808f3fc1f789cb9308cf5e2b9302e88823d52e9c5e8084865"
       }
     },
     "codetree": {
@@ -505,6 +553,23 @@
         "index.js": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097"
       }
     },
+    "hist": {
+      "tag": "m-hist",
+      "series": "academic",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "8d2a4da2b10fedf145dccded9e5659b6ea98655f4ab64a3b2198efd13ed7376b",
+      "files": {
+        "README.md": "ca26c360f65dd55a7d663b7f684262116d571de5cfdccffe9ead2d4d9cf2163d",
+        "demo.html": "49de12827c15d8bc58477d5d38c1e2d2af6fcfc9961aa274be85ca7a8fd4889d",
+        "index.js": "8d2a4da2b10fedf145dccded9e5659b6ea98655f4ab64a3b2198efd13ed7376b"
+      }
+    },
     "kanbun": {
       "tag": "m-kanbun",
       "series": "kokugo",
@@ -526,11 +591,12 @@
         "text-structure"
       ],
       "variants": [],
-      "sha256": "286c6a102471dbb2220ba8dbb1116af8e410471e9ef215fb233a68514762f266",
+      "interactive": true,
+      "sha256": "d7164849547b292fd1873a13d0beb1b80806087100406fa657b3bdea5cf0a32d",
       "files": {
         "README.md": "93da015e1c304ea539421522597fe7891cf17a85270718dbe09a5a6815d2b32c",
-        "demo.html": "89797413522068cae048f33baa639021188ccb63dff6439b44bbece7d0ab2dac",
-        "index.js": "286c6a102471dbb2220ba8dbb1116af8e410471e9ef215fb233a68514762f266"
+        "demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+        "index.js": "d7164849547b292fd1873a13d0beb1b80806087100406fa657b3bdea5cf0a32d"
       }
     },
     "kpi": {
@@ -563,11 +629,11 @@
         "sweep",
         "draw"
       ],
-      "sha256": "ee390226265dfc9cd6a848f8f9936ba83d6703064aaf4e368b74850d97236213",
+      "sha256": "7f39278f966d8f68424597e54e21ca98d7f9a9840ce1d4ab2758ab2dbb5633f1",
       "files": {
-        "README.md": "888bd62aa2cad169e2704a05bc4f526a0707240f75d58bdab40143b864346ba0",
-        "demo.html": "58063ad5e3cbf02d94b834cbe546798c21e1037ef11ad0d3da3761c9c95e6fee",
-        "index.js": "ee390226265dfc9cd6a848f8f9936ba83d6703064aaf4e368b74850d97236213"
+        "README.md": "e0425654f4135311689d164b031bc3c9c07b7e227470392568eec275a2d750cb",
+        "demo.html": "8eff884a79ce86db8fe3edcab6024f3538c4d4048a195deea4a6714df57fa775",
+        "index.js": "7f39278f966d8f68424597e54e21ca98d7f9a9840ce1d4ab2758ab2dbb5633f1"
       }
     },
     "market": {
@@ -591,11 +657,12 @@
         "contents"
       ],
       "variants": [],
-      "sha256": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
+      "interactive": true,
+      "sha256": "f8a7be31c7ff0e70aaa1ce88be420ddbea0a43a62e5f68b6abe84ec089a6f6b3",
       "files": {
         "README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
-        "demo.html": "53939907c9c3ecb426a6e2a4d771d07ece6d82879be2e21a40f3c5346da7828b",
-        "index.js": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b"
+        "demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+        "index.js": "f8a7be31c7ff0e70aaa1ce88be420ddbea0a43a62e5f68b6abe84ec089a6f6b3"
       }
     },
     "pie": {
@@ -614,6 +681,25 @@
         "README.md": "1cb43ea0cdd3329d9fce3c84b836f1350f433ab9841b18c7789a87f503c86946",
         "demo.html": "f51896a8236b7c2ca415bcf0b9c4a28cec6187c510f8b346b5d0688fffa5aa51",
         "index.js": "5d54b91c403e0671c38a2af3abf2377e888bc04fd519e658ab37796198ece38b"
+      }
+    },
+    "predict": {
+      "tag": "m-predict",
+      "series": "common",
+      "purposes": [
+        "predict"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "sha256": "6807eca03d1980b2bcdda2b020d5c5a2bcd3e118ee508fd0ea110e1584d31a70",
+      "files": {
+        "README.md": "b6269206b79ac67935905810946fa015c460c5ab6cc7875fdbb69c9af558ec5f",
+        "demo.html": "0059ebe29a85927593e6bab351bf108e4f49a3d721789ce0a2639a516d832ee6",
+        "index.js": "6807eca03d1980b2bcdda2b020d5c5a2bcd3e118ee508fd0ea110e1584d31a70"
       }
     },
     "quad": {
@@ -694,6 +780,37 @@
         "index.js": "d41d912bd4d8220e1f699b1d1a3eb914aa3a3de3cd2125d3bd44a2eb5741ae66"
       }
     },
+    "timer": {
+      "tag": "m-timer",
+      "series": "common",
+      "purposes": [
+        "timebox"
+      ],
+      "variants": [
+        "fade"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "clock": true,
+      "group": "tool",
+      "tile": {
+        "label": {
+          "ja": "タイマー",
+          "en": "Timer"
+        },
+        "examples": {
+          "ja": "グループワークの時間・残り時間・ベル",
+          "en": "Group-work time, time left, bells"
+        },
+        "icon": "timer"
+      },
+      "sha256": "cb3225c618f53cd8f6c819ea39d721ae8436c6a38861bee67dbac1a6c4ae8522",
+      "files": {
+        "README.md": "e32bd76486f2d1c1ec13d8d151300097344a20d4ef64a5368d72e82f41abbd50",
+        "demo.html": "3c05aaa492d4c2d7ed1273da20137d226a420c3467840d2ff74f65e5c8052284",
+        "index.js": "cb3225c618f53cd8f6c819ea39d721ae8436c6a38861bee67dbac1a6c4ae8522"
+      }
+    },
     "tree": {
       "tag": "m-tree",
       "series": "common",
@@ -746,7 +863,10 @@
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
     "bars/README.md": "a6ff12673cf63e3e27f00f626c02c32b167a6bf8f43aa995f53a8f10cab60aef",
     "bars/demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
-    "bars/index.js": "60ecc96fff09240fe36a54f8fb4eddd539e04fc65de21dbfc2517332b1a653de",
+    "bars/index.js": "ab55b833294e5592c87f51da4c04394761170ed0eaa5cb1ea65b751c27917e24",
+    "boxplot/README.md": "179d6bb90be8fc71f81ad4e46a17589d42525793282d250f8ebe0c3afc2e3483",
+    "boxplot/demo.html": "a74dad23a5d512013803048b631f6d6837da9ff56227fb0957b2d93e840f6bd4",
+    "boxplot/index.js": "38e8b48b9f4635b808f3fc1f789cb9308cf5e2b9302e88823d52e9c5e8084865",
     "codetree/README.md": "91d29e818127de8dc051f0b1bbc254e507be863752630e7a706c212e9f9433cd",
     "codetree/demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
     "codetree/index.js": "69169ea0290d26bfee7c223459dde0bd31173641d48f58f06c878de905b64372",
@@ -771,27 +891,33 @@
     "gendai/README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
     "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
     "gendai/index.js": "96ffcdf7e5d83555a5e926fd5ffaa93969be26be2b68269593958d21c0138097",
+    "hist/README.md": "ca26c360f65dd55a7d663b7f684262116d571de5cfdccffe9ead2d4d9cf2163d",
+    "hist/demo.html": "49de12827c15d8bc58477d5d38c1e2d2af6fcfc9961aa274be85ca7a8fd4889d",
+    "hist/index.js": "8d2a4da2b10fedf145dccded9e5659b6ea98655f4ab64a3b2198efd13ed7376b",
     "kanbun/README.md": "e6e7057dc78735a94506bd021882ce5534471ac69a0e4527b02dd798178e0d4c",
     "kanbun/demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
     "kanbun/index.js": "b01f11c37445d986eadc01f2b5ef9d4e07ee140a1000bae21b547acc139ad0d9",
     "kobun/README.md": "93da015e1c304ea539421522597fe7891cf17a85270718dbe09a5a6815d2b32c",
-    "kobun/demo.html": "89797413522068cae048f33baa639021188ccb63dff6439b44bbece7d0ab2dac",
-    "kobun/index.js": "286c6a102471dbb2220ba8dbb1116af8e410471e9ef215fb233a68514762f266",
+    "kobun/demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+    "kobun/index.js": "d7164849547b292fd1873a13d0beb1b80806087100406fa657b3bdea5cf0a32d",
     "kpi/README.md": "c89b4c82237a988a18e1c9ff0832de68e8a5d34442eac760e4fceaa147ba116d",
     "kpi/demo.html": "ef2110c087d69d23ed2e1fe3ab8e93a027a1354104384a65409ea5e5ad1a366a",
     "kpi/index.js": "0d5ae04f5e11d98462347e4f223ae2634a097fd738c91c8f9ee1cbc5f35884f7",
-    "map-japan/README.md": "888bd62aa2cad169e2704a05bc4f526a0707240f75d58bdab40143b864346ba0",
-    "map-japan/demo.html": "58063ad5e3cbf02d94b834cbe546798c21e1037ef11ad0d3da3761c9c95e6fee",
-    "map-japan/index.js": "ee390226265dfc9cd6a848f8f9936ba83d6703064aaf4e368b74850d97236213",
+    "map-japan/README.md": "e0425654f4135311689d164b031bc3c9c07b7e227470392568eec275a2d750cb",
+    "map-japan/demo.html": "8eff884a79ce86db8fe3edcab6024f3538c4d4048a195deea4a6714df57fa775",
+    "map-japan/index.js": "7f39278f966d8f68424597e54e21ca98d7f9a9840ce1d4ab2758ab2dbb5633f1",
     "market/README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
     "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
     "market/index.js": "cf56de10bae84cc35e6d6375b4873aa1bf3780ff0b5020c5432d33c4b6e5e283",
     "menu/README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
-    "menu/demo.html": "53939907c9c3ecb426a6e2a4d771d07ece6d82879be2e21a40f3c5346da7828b",
-    "menu/index.js": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
+    "menu/demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+    "menu/index.js": "f8a7be31c7ff0e70aaa1ce88be420ddbea0a43a62e5f68b6abe84ec089a6f6b3",
     "pie/README.md": "1cb43ea0cdd3329d9fce3c84b836f1350f433ab9841b18c7789a87f503c86946",
     "pie/demo.html": "f51896a8236b7c2ca415bcf0b9c4a28cec6187c510f8b346b5d0688fffa5aa51",
     "pie/index.js": "5d54b91c403e0671c38a2af3abf2377e888bc04fd519e658ab37796198ece38b",
+    "predict/README.md": "b6269206b79ac67935905810946fa015c460c5ab6cc7875fdbb69c9af558ec5f",
+    "predict/demo.html": "0059ebe29a85927593e6bab351bf108e4f49a3d721789ce0a2639a516d832ee6",
+    "predict/index.js": "6807eca03d1980b2bcdda2b020d5c5a2bcd3e118ee508fd0ea110e1584d31a70",
     "quad/README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
     "quad/demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
     "quad/index.js": "456a89a5f707a954e0fb8b17355b809a26f7d2ab10eecb6ee08514e084a90998",
@@ -807,6 +933,9 @@
     "timeline/README.md": "3129f8a0bf04df219bd53609aff97d6a2aafc748c5c7fb42e5d39a709043d0d5",
     "timeline/demo.html": "f7cedc506e9fd2ac87ad7f48108ded2c7402633dd797f6f66c06e88fbe751de7",
     "timeline/index.js": "d41d912bd4d8220e1f699b1d1a3eb914aa3a3de3cd2125d3bd44a2eb5741ae66",
+    "timer/README.md": "e32bd76486f2d1c1ec13d8d151300097344a20d4ef64a5368d72e82f41abbd50",
+    "timer/demo.html": "3c05aaa492d4c2d7ed1273da20137d226a420c3467840d2ff74f65e5c8052284",
+    "timer/index.js": "cb3225c618f53cd8f6c819ea39d721ae8436c6a38861bee67dbac1a6c4ae8522",
     "tree/README.md": "9ab7191f930b44220aeddca2fba62f5286593f04ec90635b36166f1f92b85dc8",
     "tree/demo.html": "782616a7cbe31f5a928e3f53d80a128d0a1aee284abf486c49506c1a97289e15",
     "tree/index.js": "64114daf70817e5cd44827205bbce7bfc6a343d4adad57460144e58039f34621",

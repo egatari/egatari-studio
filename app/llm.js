@@ -614,6 +614,10 @@ export function setupLlm(app) {
     kanbun: '<path d="M21 4v24M12 4v24"/><path d="M15 9l3 2M15 18l3 2M24 13h3"/>',
     kobun: '<rect x="6" y="4" width="20" height="24" rx="2"/><path d="M21 8v16M16 8v16M11 8v10"/>',
     map: '<path d="M16 28s-8-8.5-8-14a8 8 0 0 1 16 0c0 5.5-8 14-8 14z"/><circle cx="16" cy="14" r="3"/>',
+    predict: '<circle cx="12" cy="13" r="8"/><path d="M9.5 10.5a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1.1 1-1.1 1.8"/><circle cx="12" cy="18" r=".6"/><path d="M19 24l3 3 6-7"/>',
+    hist: '<path d="M4 27h24"/><rect x="5" y="19" width="5" height="8"/><rect x="10" y="11" width="5" height="16"/><rect x="15" y="7" width="5" height="20"/><rect x="20" y="15" width="5" height="12"/><path d="M7.5 17l5-8 5-4 5 8" opacity=".6"/>',
+    boxplot: '<path d="M4 16h5M23 16h5M4 12v8M28 12v8"/><rect x="9" y="10" width="14" height="12" rx="1"/><path d="M15 10v12"/>',
+    timer: '<circle cx="16" cy="18" r="10"/><path d="M13 4h6M16 4v4M16 18v-6M16 18l4 3M25 9l2-2"/>',
     codetree: '<circle cx="16" cy="6" r="2.2"/><circle cx="9" cy="16" r="2.2"/><circle cx="23" cy="16" r="2.2"/><circle cx="5" cy="26" r="2.2"/><circle cx="13" cy="26" r="2.2"/><path d="M14.7 7.8L10.3 14.2M17.3 7.8l4.4 6.4M8 18l-2 6M10 18l2 6"/>',
     'subj-math': '<path d="M5 27h22M5 5v22"/><path d="M8 9c3 16 13 16 16 0"/>',
     'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
@@ -624,7 +628,7 @@ export function setupLlm(app) {
   // 札の絵：manifest の purposes の icon（部品庫 v1.6.0 から。ICONS の名前）。ないとき・知らない名前のときは、言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
   const PURPOSE_ICON = { compare: 'compare', ranking: 'bars', change: 'line', 'part-whole': 'part', 'key-number': 'kpi', process: 'flow', timeline: 'timeline',
     'cause-effect': 'cause', cycle: 'cycle', hierarchy: 'tree', position: 'matrix', overlap: 'venn', correlation: 'scatter', spread: 'dist', grouping: 'collect',
-    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map' };
+    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map', predict: 'predict', timebox: 'timer' };
   function icon(k) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
