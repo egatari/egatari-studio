@@ -234,5 +234,5 @@ export function resultsRecord(r, lang, taken = () => false) {
 // 1 ファイル（.ega.html）に結果が入るときの知らせ（コマンド。編集アプリは書き出す前に尋ねる）。paths：exportPortable の stats.liveResults
 export function liveResultsWarning(paths) {
   if (!Array.isArray(paths) || !paths.length) return null;
-  return `this file contains live room results (${paths.map((x) => `"${x}"`).join(', ')}): learners' questions and answers. Remove them before giving it to others (export with --without-live-results)`;
+  return `this file contains live session results (${paths.map((x) => `"${x}"`).join(', ')}): participants' questions and answers. Remove them before giving it to others (export with --without-live-results)`;
 }

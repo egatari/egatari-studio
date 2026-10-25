@@ -414,7 +414,7 @@ const server = http.createServer(async (req, res) => {
       if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
       if (!(page?.slides || []).some((x) => x.key === sk)) return send(res, 400, { error: 'そのスライドはデッキにありません' });
-      const text = readIn(NARR) ?? '# 口述原稿\n';
+      const text = readIn(NARR) ?? '# 台本\n';
       if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '台本が変わっています。再読み込みしてください' });
       // 新しい節の見出しは、id のあるスライドなら「## 見出し {#id}」（スライドの一覧 {key, id, heading} を渡す）
       const out = rewriteNarration(text, sk, st, b.turns, page?.slides || []);

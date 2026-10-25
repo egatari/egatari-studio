@@ -182,7 +182,7 @@ export async function buildPortable(srcPath, opts = {}) {
   if (opts.playOnly) r.html = playOnly(r.html);
   // 授業の部屋（opts.live：部屋の JSON。parseRoomBlock の形）：再生専用の派生にだけ
   if (opts.live) {
-    if (!opts.playOnly) throw Object.assign(new Error('--live needs --play-only (a live room is added only to a play-only file)'), { code: 'live-needs-play-only' });
+    if (!opts.playOnly) throw Object.assign(new Error('--live needs --play-only (a live session is added only to a play-only file)'), { code: 'live-needs-play-only' });
     // opts.liveDevLoopback：ループバックの http: の部屋（試験だけ。コマンドの引数にはしない）
     const dev = { devLoopback: opts.liveDevLoopback === true };
     // 教材の版（sourceSha256）も入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
@@ -291,7 +291,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
     if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
-    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live room ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
+    console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live session ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);
     if (lw) console.warn('  ⚠ portable: ' + lw);

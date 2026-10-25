@@ -138,20 +138,20 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   const e = conf[KEY] && conf[KEY][0];
   ok(a.status === 0 && e && e.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && e.role === 'data' && e.title === 'ライブの結果（r-7k2q6xw4、2026-10-30）' && fs.readFileSync(path.join(deckDir, e.path)).equals(R1B) && conf.extensions.live.room === 'r-7k2q6xw4' && conf.docId === cfg0.docId,
     'cli attach: the results become attachments/live-<room>-<date>.json with role data and the title; other settings kept' + (a.status ? ': ' + a.stderr : ''));
-  ok(/learners typed/.test(a.stderr) && !/room r-/.test(a.stderr.replace(/live-r-/g, '')), 'cli attach: prints the privacy line; no room warning when the room matches');
+  ok(/participants typed/.test(a.stderr) && !/room r-/.test(a.stderr.replace(/live-r-/g, '')), 'cli attach: prints the privacy line; no room warning when the room matches');
   const dup = portableCli('attach', deckDir, resFile);
   ok(dup.status === 1 && /already attached/.test(dup.stderr), 'cli attach: the same results again are refused');
   const bad = portableCli('attach', deckDir, badFile), big = portableCli('attach', deckDir, bigFile);
-  ok(bad.status === 1 && /not live room results/.test(bad.stderr) && big.status === 1 && /larger than 10485760/.test(big.stderr), 'cli attach: bad JSON and an oversize file are refused');
+  ok(bad.status === 1 && /not live session results/.test(bad.stderr) && big.status === 1 && /larger than 10485760/.test(big.stderr), 'cli attach: bad JSON and an oversize file are refused');
   const oth = portableCli('attach', deckDir, otherFile);
   ok(oth.status === 0 && /results are for room r-bbbbbbbb, but this lesson's live settings name room r-7k2q6xw4; added anyway/.test(oth.stderr), 'cli attach: a room mismatch warns but adds');
   const pk = portableCli('pack', deckDir, '-o', path.join(work, 'with.ega.html'));
-  ok(pk.status === 0 && /this file contains live room results \("attachments\/live-r-7k2q6xw4-2026-10-30\.json", "attachments\/live-r-bbbbbbbb-2026-10-30\.json"\)/.test(pk.stderr), 'cli pack: warns that the single file contains live room results');
+  ok(pk.status === 0 && /this file contains live session results \("attachments\/live-r-7k2q6xw4-2026-10-30\.json", "attachments\/live-r-bbbbbbbb-2026-10-30\.json"\)/.test(pk.stderr), 'cli pack: warns that the single file contains live room results');
   const w = await readPortable(fs.readFileSync(path.join(work, 'with.ega.html'), 'utf8'));
   ok(w.index[KEY].length === 2 && w.index[KEY].every((x) => x.role === 'data') && Buffer.from(w.files['attachments/live-r-7k2q6xw4-2026-10-30.json']).equals(R1B), 'cli pack: the teacher\'s single file carries the results (role data)');
   const pk2 = portableCli('pack', deckDir, '-o', path.join(work, 'without.ega.html'), '--without-live-results');
   const wo = await readPortable(fs.readFileSync(path.join(work, 'without.ega.html'), 'utf8'));
-  ok(pk2.status === 0 && !/this file contains live room results/.test(pk2.stderr) && /live room results left out/.test(pk2.stderr) && !(wo.index[KEY] || []).length && !Object.keys(wo.files).some((p) => p.startsWith('attachments/')) && !JSON.parse(new TextDecoder().decode(wo.files[CFG]))[KEY],
+  ok(pk2.status === 0 && !/this file contains live session results/.test(pk2.stderr) && /live session results left out/.test(pk2.stderr) && !(wo.index[KEY] || []).length && !Object.keys(wo.files).some((p) => p.startsWith('attachments/')) && !JSON.parse(new TextDecoder().decode(wo.files[CFG]))[KEY],
     'cli pack --without-live-results: no results in the file (nor in its egatari.json); the working folder keeps them');
   ok(JSON.parse(fs.readFileSync(cfgPath, 'utf8'))[KEY].length === 2, 'cli pack --without-live-results: the working folder\'s egatari.json is unchanged');
   const bo = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'build.mjs'), deckDir, '--portable', '--without-live-results', '-o', path.join(work, 'without2.ega.html')], { encoding: 'utf8' });
@@ -161,7 +161,7 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   const play = fs.readFileSync(path.join(work, 'p.play.ega.html'), 'utf8');
   const sha = crypto.createHash('sha256').update(R1B).digest('hex');
   const b64 = R1B.toString('base64').slice(0, 40);
-  ok(po.status === 0 && !/contains live room results/.test(po.stderr) && !play.includes(sha) && !play.includes(b64) && !play.includes('window.__xss') && !play.includes(`id="${FORMAT.INDEX_ID}"`), 'play-only: no results (no blob, no hash, no learner text, no index) and no warning');
+  ok(po.status === 0 && !/contains live session results/.test(po.stderr) && !play.includes(sha) && !play.includes(b64) && !play.includes('window.__xss') && !play.includes(`id="${FORMAT.INDEX_ID}"`), 'play-only: no results (no blob, no hash, no learner text, no index) and no warning');
   ok(play === playBefore, 'play-only: byte-identical to the play-only export before the results were attached');
   const now = Date.now(), iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
   const lr = await buildPortable(path.join(deckDir, 'deck.html'), { playOnly: true, live: { v: 1, endpoint: FORMAT.LIVE_ENDPOINT, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(now), to: iso(now + 3600e3) } } });

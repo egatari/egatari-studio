@@ -891,7 +891,7 @@ function helpHtml(){
     sec(j ? "移動" : "Navigate", [
       row(K("→", "Space"), j ? "次のステップ" : "Next step"), row(K("←"), j ? "前のステップ" : "Previous step"),
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
-      row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Overview"),
+      row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Slide overview"),
       row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
     sec(j ? "表示" : "View", [
       row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "授業" : "Lecture"), row(K("s"), j ? "字幕" : "Captions"),

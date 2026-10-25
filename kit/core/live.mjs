@@ -73,9 +73,9 @@ export function addLive(html, live, runtime, opts = {}) {
   if (errs.length) throw new Error('live: ' + errs.join('; '));
   if (typeof runtime !== 'string' || !runtime.startsWith('<script>')) throw new Error('live: no player runtime');
   const text = String(html);
-  if (text.includes(`id="${FORMAT.INDEX_ID}"`)) throw new Error('live: a live room is added only to a play-only derivative (this file still has its index)');
+  if (text.includes(`id="${FORMAT.INDEX_ID}"`)) throw new Error('live: a live session is added only to a play-only derivative (this file still has its index)');
   if (/<meta\s+http-equiv\s*=\s*["']?content-security-policy/i.test(text)) throw new Error('live: the file already has a content security policy');
-  if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live room');
+  if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
   const at = headEnd(text);
   if (at < 0) throw new Error('live: no <head>');
   if (/<script/i.test(text.slice(0, at))) throw new Error('live: a script comes before <head>; the policy must come first');

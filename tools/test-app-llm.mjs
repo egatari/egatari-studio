@@ -76,8 +76,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // 閉じていないコードブロック（スライドの途中で切れた）：スライドの欄に知らせ、作成は押せない、送り直しを頼む文
   await page.fill('#paste-deck', 'Sure! Here is the deck:\n\n```deck.html\n<!DOCTYPE html>\n<html lang="en"><body><div id="stage">\n<section class="slide"><h2>Cut</h2>');
   let s = await st();
-  ok(/^The code block from line 3 is not closed: the AI’s output was probably cut off\. Ask the AI to continue\.$/.test(s.deck) && s.off && await page.isVisible('#paste-copy-cutoff') && (await page.textContent('#paste-copy-cutoff')) === 'Copy a request to resend',
-    'llm: an unclosed code block shows the reason under the slides field, keeps “Create” disabled and offers “Copy a request to resend”: ' + s.deck);
+  ok(/^The code block from line 3 is not closed: the AI’s output was probably cut off\. Ask the AI to continue\.$/.test(s.deck) && s.off && await page.isVisible('#paste-copy-cutoff') && (await page.textContent('#paste-copy-cutoff')) === 'Copy instructions to resend',
+    'llm: an unclosed code block shows the reason under the slides field, keeps “Create” disabled and offers “Copy instructions to resend”: ' + s.deck);
   await page.click('#paste-copy-cutoff');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-cut-copied').textContent));
   ok(/Send the lesson again in a shorter form/.test(await clip()) && (await page.textContent('#paste-cut-copied')) === 'Copied. Paste it into the chat and send, then paste the AI’s output here.', 'llm: the resend request asks for a shorter lesson');

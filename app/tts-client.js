@@ -28,12 +28,12 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
     : (EN ? `Kokoro-82M (English). First use downloads about ${(KOKORO_BYTES / 1e6).toFixed(0)} MB, later from the browser cache. Runs on this computer's GPU in a separate window`
       : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`);
   // WebGPU がないとき：まず録音を勧める（コマンドの案内は出さない。端末で使う人向けの言葉だけ）
-  const noGpu = EN ? 'Record your voice with “● Record” above: that works in any browser. Making AI audio on this computer needs WebGPU, which this browser does not have (use a recent Chrome or Edge on a computer)'
+  const noGpu = EN ? 'Record your voice with “● Record” above: that works in any browser. To make AI voice on this computer, WebGPU is needed, which this browser does not have (use a recent Chrome or Edge on a computer)'
     : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。AI 音声をこの PC で作るには WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
   // 1 ファイル版（file://）：TTS の窓のページがない。録音を先に、TTS は配信版で
-  const noFileHint = EN ? '“Remake on this computer” is not available in the editor packaged as one HTML file (file://). Record your voice with “● Record” above, or open the hosted editor (or a served dist/) to make AI audio on this computer'
-    : '「この PC で作り直す」は、1 つの HTML にしたエディタ（file://）では使えません。上の「● 録音」で録音できます。AI 音声をこの PC で作るのは、配信版のエディタ（か、dist/ を配ったもの）でできます';
-  const noFile = EN ? 'not in the editor packaged as one HTML file (open the hosted editor, or serve dist/)' : '1 つの HTML にしたエディタでは使えません（配信版か、dist/ を配って開いてください）';
+  const noFileHint = EN ? '“Remake on this computer” is not available in the Offline editor (file://). Record your voice with “● Record” above, or open the hosted editor (or a served dist/) to make AI voice on this computer'
+    : '「この PC で作り直す」は、オフライン版のエディタ（file://）では使えません。上の「● 録音」で録音できます。AI 音声をこの PC で作るのは、配信版のエディタ（か、dist/ を配ったもの）でできます';
+  const noFile = EN ? 'not in the Offline editor (open the hosted editor, or serve dist/)' : 'オフライン版のエディタでは使えません（配信版か、dist/ を配って開いてください）';
 
   window.addEventListener('message', (e) => {
     if (!win || e.source !== win || e.origin !== location.origin) return;

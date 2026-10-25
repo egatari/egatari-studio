@@ -287,7 +287,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-next-theme');
     ok((await text(p3, '#paste-phase')) === '20 slides, so you ask in two rounds: first an outline (a list of headings), then 6 slides at a time.' && await p3.isVisible('#paste-phase'),
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
-    ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from your answer to step 1.', 'S3 ④: Business ticks the business subject, and says so');
+    ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.', 'S3 ④: Business ticks the business subject, and says so');
     await p3.check('#paste-plan-paid');
     ok(await p3.isVisible('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'Chat AI: paid plan, so all of them are included.'
       && (await p3.$$eval('#paste-series .tile', (xs) => xs.every((x) => x.getAttribute('aria-pressed') === 'true' && x.disabled))), 'S3 ④: the paid plan shows every subject tile as on and not pressable, with “The paid plan includes all of them.”');

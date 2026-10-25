@@ -55,7 +55,7 @@ const STR = {
   },
   en: {
     title: 'Distribute with Live (questions and polls)',
-    lead: `Adds Live (questions and polls in class) to the Egatari file (play-only, ${FORMAT.PLAY_EXT}) you hand to participants. ① Make the Live ID and join code here → ② set the live time and the questions and polls → ③ copy the string and paste it once on the host page → ④ export. This screen itself connects nowhere. The join code is not stored in the lesson; it goes only into the exported file`,
+    lead: `Adds Live (questions and polls in class) to the Egatari file (play-only, ${FORMAT.PLAY_EXT}) you hand to participants. ① Make the Live ID and join code here → ② set the live time and the questions and polls → ③ copy the string and paste it once on the host page → ④ export. This screen itself connects nowhere. The join code is not saved in the lesson; it goes only into the exported file`,
     s1: '① Live ID and join code', make: 'Make the Live ID and join code here', remake: 'Make new ones',
     remakeConfirm: 'Make a new Live ID and join code? It becomes a different Live from the one made with the earlier string and from files exported before.',
     madeHere: (room) => `Live ID ${room} (made here; the join code goes only into the exported file)`,

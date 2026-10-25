@@ -15,7 +15,7 @@ export function modelCacheSection({ el, EN, ask, toast }) {
     kept: 'The browser keeps the models (persistent storage).',
     mayEvict: 'The browser may delete the models when the disk is nearly full, and Safari deletes them when you have not opened this site for about a week. They are then downloaded again.',
     old: 'Models of older versions are deleted automatically when a new version is downloaded.',
-    del: 'Delete models', askTitle: 'Delete the AI voice models?', askBody: (b) => `This deletes ${b ? size(b) : 'the models'} from this browser. Audio you made stays. Making AI audio on this computer next time downloads the model again (Japanese about 1.26 GB).`,
+    del: 'Delete models', askTitle: 'Delete the AI voice models?', askBody: (b) => `This deletes ${b ? size(b) : 'the models'} from this browser. Audio you made stays. Making AI voice on this computer next time downloads the model again (Japanese about 1.26 GB).`,
     cancel: 'Cancel', done: (n) => `Deleted ${n} model cache(s)`, failed: 'Could not delete the models',
   } : {
     title: 'この PC で作る AI 音声のモデル', none: 'このブラウザには AI 音声のモデルが入っていません。',

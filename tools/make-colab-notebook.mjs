@@ -59,7 +59,7 @@ export function notebook() {
       '# Egatari Studio: make the audio in Colab / Colab で音声を作る',
       '',
       // 手順（音声の板の C2 と同じ文。kit/core/colab-core.mjs の COLAB_STEPS）
-      '**English — steps.** In the editor, open Audio → “Make AI audio in the cloud (Google Colab)” → “Export the script”, then:',
+      '**English — steps.** In the editor, open Audio → “Make AI voice in the cloud (Google Colab)” → “Export script”, then:',
       '',
       ...COLAB_STEPS.en.map((x, i) => `${i + 1}. ${x}`),
       '',
