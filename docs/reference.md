@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=92a16833f2f0ef36 -->
+<!-- i18n: pair=reference.ja.md sha256=9ab4ff6d46da57e5 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -322,7 +322,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `n` | narration drawer for the current step (and preview of the next) |
 | `c` | open comments; click to jump, "resolve" to close |
 | Alt+click (on a Mac: ⌥ Option+click) | leave a note for the AI (`comments.json`) |
-| `m` / `d` (edit mode; the slide controls' pen button reads “Marker” there) | marker: draw circles or arrows (several marks for one note while its box is open), then write the note; the marks are kept as `strokes` ([contract §13](contract.md#13-review-notes-the-ink-stroke)) |
+| `m` (edit mode; the slide controls' pen button reads “Marker” there; `d` also opens it) | marker: draw circles or arrows (several marks for one note while its box is open), then write the note; the marks are kept as `strokes` ([contract §13](contract.md#13-review-notes-the-ink-stroke)) |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
 | endpoints | `GET /` (frame page; `?presenter=1`: presenter window), `GET /preview` (the deck document, sandboxed; the only framable endpoint; served only with the frame page's `cap` and `Sec-Fetch-Dest: iframe`, otherwise a 403 text page), `/deck/<file>` (inert: CSP `sandbox`, non-media as `text/plain` attachments), `/__dev/shell.js`, `/__dev/editor-ui.js`, `/__dev/presenter.js`, `/__dev/events` (SSE), `GET /__dev/info`, `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |

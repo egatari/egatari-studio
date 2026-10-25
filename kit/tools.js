@@ -854,12 +854,15 @@ function syncBar(){
     return b;
   };
   on("laser", mode === "laser"); on("vpen", mode === "vpen");
-  // ペンのボタン：編集中は同じ絵のまま「マーカー」（押すと d と同じくマーカーの入り切り）
+  // ペンのボタン：編集中は同じ絵のまま「マーカー」（押すとマーカーの入り切り）。見せるキーは今のモードのもの：ペンは d、マーカーは m
+  // （編集中の d もマーカーを開くが、マーカーのキーとしては見せない）
   var pb = on("pen", EDIT ? mode === "ink" : mode === "pen");
   if (pb && pb._ink !== EDIT){
     pb._ink = EDIT;
-    var nm = EDIT ? TIP.ink : TIP.pen;
-    pb.title = nm + kk("d") + (EDIT ? (JA ? "：丸や矢印で場所を示して、コメントを付ける" : ": circle or point to a spot, then add a comment") : ""); pb.setAttribute("aria-label", nm);
+    var nm = EDIT ? TIP.ink : TIP.pen, pk = EDIT ? "m" : "d", kb = pb.querySelector("kbd");
+    pb.title = nm + kk(pk) + (EDIT ? (JA ? "：丸や矢印で場所を示して、コメントを付ける" : ": circle or point to a spot, then add a comment") : ""); pb.setAttribute("aria-label", nm);
+    pb.setAttribute("aria-keyshortcuts", pk);
+    if (kb) kb.textContent = pk;
   }
   var pen = mode === "pen" || mode === "vpen", sw = cb.querySelector(".dt-sw");
   if (sw){
@@ -902,7 +905,7 @@ function helpHtml(){
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
     row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "口述原稿" : "Narration"), row(K("c"), j ? "コメントの一覧" : "Comments"),
-    row(K("m") + " / " + K("d"), j ? "マーカー（編集モードの間）：丸や矢印で場所を示して、コメントを付ける" : "Marker (in edit mode): circle or point to a spot, then add a comment"),
+    row(K("m"), j ? "マーカー（編集モードの間）：丸や矢印で場所を示して、コメントを付ける" : "Marker (in edit mode): circle or point to a spot, then add a comment"),
     row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "AI へのメモ" : "Note for the AI")]));
   // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();

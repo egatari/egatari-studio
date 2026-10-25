@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=6d45fcec361ad9f2 -->
+<!-- i18n: pair=editor.ja.md sha256=680854ae516f9028 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -39,7 +39,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    | `l` | lecture view: every step is shown, steps not yet reached are dimmed (`--lecture-dim`, 0.5 by default); the current step carries no mark. The same as `?mode=lecture` |
    | `n` | narration drawer for the step on screen (speaker, add / delete / reorder turns) |
    | Alt+click (Mac: ⌥ Option+click) | leave a note for the AI about that element (`comments.json`); the point you clicked is kept as a pin |
-   | `m` or `d` (or the “Marker (m)” button in the edit-mode bar, or the pen button of the slide controls, which reads “Marker” while editing) | marker, in edit mode only: draw a circle or an arrow on the slide; when you let go the note box opens for that mark in the side panel. While it is open you can keep drawing (an arrow plus a circle, several marks, up to 20): each stroke joins the same note. Leave keeps all the marks with the note (`strokes`); Cancel discards them all |
+   | `m` (or the “Marker (m)” button in the edit-mode bar, or the pen button of the slide controls, which reads “Marker”, with the key `m`, while editing; `d` also opens it) | marker, in edit mode only: draw a circle or an arrow on the slide; when you let go the note box opens for that mark in the side panel. While it is open you can keep drawing (an arrow plus a circle, several marks, up to 20): each stroke joins the same note. Leave keeps all the marks with the note (`strokes`); Cancel discards them all |
    | `c` | list of open comments, numbered; while it is open, the pins of the step on screen are marked on the slide. Click one to go to its slide and step (its pin flashes), “Resolve” to mark it done |
 
    The edit-mode bar, the source box, the narration drawer, the note box and the note list sit in one side panel on the right (the preview shrinks beside it), under an orange bar **編集中 — アプリ** / **Editing — app**. They are part of the editor page, not of the deck; **anything inside the slide area can be drawn by the deck, so trust only controls in the editor's own panels.** While the source or note box is open, the preview does not take clicks. The preview only points at what you double-clicked or Alt+clicked, and the editor reads the source, shows it and writes it when you press Save (or ⌘/Ctrl+Enter). The keys work with the focus on the preview or on the editor.

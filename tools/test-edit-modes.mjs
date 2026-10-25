@@ -92,7 +92,7 @@ const S = () => dk().evaluate(() => {
     cap: !!DECK.captions(), fs: !!document.fullscreenElement, jump: (document.getElementById('jump') || {}).textContent || '',
     layerOn: !!document.querySelector('#dt-layer.on'), layerPE: (() => { const l = document.getElementById('dt-layer'); return l ? getComputedStyle(l).pointerEvents : null; })(),
     toolBtnsHidden: ['laser', 'vpen', 'clear', 'auto', 'over', 'full'].every(hidden), toolBtnsShown: !['laser', 'pen', 'vpen', 'clear'].some(hidden), ink,
-    penBtn: (() => { const b = cb && cb.querySelector('[data-b="pen"]'); return b ? { shown: !hidden('pen'), label: b.getAttribute('aria-label'), title: b.title, pressed: b.getAttribute('aria-pressed') } : null; })(),
+    penBtn: (() => { const b = cb && cb.querySelector('[data-b="pen"]'); return b ? { shown: !hidden('pen'), label: b.getAttribute('aria-label'), title: b.title, kbd: (b.querySelector('kbd') || {}).textContent, ks: b.getAttribute('aria-keyshortcuts'), pressed: b.getAttribute('aria-pressed') } : null; })(),
   };
 });
 const UI = () => page.evaluate(() => ({ ...window.__DEV_UI.state(), live: document.getElementById('dev-mode') && document.getElementById('dev-mode').getAttribute('aria-live') }));
@@ -190,7 +190,7 @@ try {
       if (e1.auto) bad.push('autoplay on'); if (e1.audio) bad.push('audio playing'); if (e1.fs) bad.push('fullscreen'); if (e1.jump) bad.push('typed number kept');
       if (e1.lecture !== pre.lecture || e1.cap !== pre.cap) bad.push('lecture/captions changed');
       if (!e1.toolBtnsHidden) bad.push('tool buttons visible');
-      if (!e1.penBtn || !e1.penBtn.shown || e1.penBtn.label !== 'マーカー' || !/^マーカー（d）：丸や矢印で場所を示して、コメントを付ける$/.test(e1.penBtn.title)) bad.push('pen button is not the marker ' + JSON.stringify(e1.penBtn));
+      if (!e1.penBtn || !e1.penBtn.shown || e1.penBtn.label !== 'マーカー' || !/^マーカー（m）：丸や矢印で場所を示して、コメントを付ける$/.test(e1.penBtn.title) || e1.penBtn.kbd !== 'm' || e1.penBtn.ks !== 'm') bad.push('pen button is not the marker with the key m ' + JSON.stringify(e1.penBtn));
       if (name === 'pen' && !(e1.ink > 0)) bad.push('the ink drawn before editing is gone');   // 書いた線は見えたまま（板が開いて枠が狭まるので画素の数は変わる）
       row.enter = bad.length ? 'FAIL' : 'ok'; if (bad.length) fail('enter', bad.join(', '));
       // ---- 画面の端の表示
@@ -264,7 +264,7 @@ try {
       if (s4.tool !== null || s4.ov || s4.help || s4.black || s4.auto || s4.audio || s4.fs || s4.jump) lb.push('a state came back ' + JSON.stringify(s4));
       if (s4.i !== at.i || s4.k !== at.k) lb.push(`position ${at.i},${at.k} → ${s4.i},${s4.k}`);
       if (!s4.toolBtnsShown) lb.push('tool buttons still hidden');
-      if (!s4.penBtn || s4.penBtn.label !== 'ペン') lb.push('pen button still the marker ' + JSON.stringify(s4.penBtn));
+      if (!s4.penBtn || s4.penBtn.label !== 'ペン' || s4.penBtn.title !== 'ペン（d）' || s4.penBtn.kbd !== 'd' || s4.penBtn.ks !== 'd') lb.push('pen button still the marker (or its key is not d) ' + JSON.stringify(s4.penBtn));
       if (u4.modeText !== '表示') lb.push('indicator ' + u4.modeText);
       row.leave = lb.length ? 'FAIL' : 'ok'; if (lb.length) fail('leave', lb.join(', '));
       if (pv) {

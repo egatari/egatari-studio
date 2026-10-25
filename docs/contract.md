@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=022d80ac4c9d0f97 -->
+<!-- i18n: pair=contract.ja.md sha256=f1986defbf1d4e71 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -234,7 +234,7 @@ Review notes are the entries of `comments.json` in the working folder ([format s
 
 - Coordinates: slide coordinates, 1280×720, origin at the top left of the slide, independent of the zoom and the window. A point names the final state of the step `key` (`DECK.seek(i, k, Infinity)`)
 - `pin` (optional): `{x, y}`, numbers with 0 ≤ x ≤ 1280 and 0 ≤ y ≤ 720, rounded to 0.1. An Alt+click note's pin is the clicked point; a marker comment's pin is the centroid of all its strokes
-- `strokes` (optional, only with `pin`): the marks drawn with the marker (`m` or `d` in edit mode), as a list of polylines `[[[x, y], …], …]`:
+- `strokes` (optional, only with `pin`): the marks drawn with the marker (`m` in edit mode), as a list of polylines `[[[x, y], …], …]`:
   - one or more strokes per note (a circle and an arrow, several underlines): at most 20 strokes, at most 500 points each and at most 2000 points in all
   - each stroke has at least 2 points, each a pair of numbers clamped to the slide and rounded to 0.1, no two consecutive points equal; nothing else in a point (no pressure, no time); a reader draws each stroke as its own open polyline
   - centroid (the marker's `pin`): over all strokes, the mean of the segment midpoints weighted by segment length, Σ ℓᵢ·mᵢ / Σ ℓᵢ (the first point of the first stroke if the length is 0). The note's `key`, `range` and `quote` come from the element under this centroid
