@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=a45cce4a231d87b4 -->
+<!-- i18n: pair=reference.md sha256=ab83d80c1f0c6bd2 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -187,14 +187,14 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
-| `--concl-bg` | 結論の行の背景（透明） |
+| `--concl-bg` | 結論の行の背景（`default` は 1.2.0 から `#F5F5F5`。前は透明） |
 | `--marker` | `.body` の箇条書きの印（`--term`） |
 | `--bar`、`--bar-h` | 進み具合の帯の色（`--emph`。自動再生のときは `--term`）と高さ（3px） |
 | `--stage-bg` | スライドのまわりの色（#2f2f2f） |
 | `--cap-size`、`--cap-bottom`、`--cap-side`、`--cap-max-lines` | 字幕の字の大きさ（27px）、下端からの距離（18px）、左右の余白（96px）、1 まとまりの行数の上限（3） |
 | `--cap-rate` | 手で送るときの字幕の読む速さ（字/秒。既定 ja 7、en 15。`DECK.captionRate` でも変えられる） |
 
-**テーマの版。** 教材の見た目を変える同梱のテーマは `theme.json` の `version` を上げ、前の版は `vendor/themes/<名前>/<版>/` に残す。版ごとの同一性の hash と変わった色は `themes.lock.json` に書く（`npm run themes:check` が写しと固定を照らす。`npm test` に入る）。最初の例が `default` 1.1.0（`--emph` `#C50516` → `#BE3012`、`--muted` `#6E6E6E` → `#5C5853`）で、1.0.0 は Studio 0.4.6 までの `default`。`business` 1.0.1（`--emph` `#C2410C` → `#BA3C05`）は、`--emph-tint` の地の上の字が 4.5:1 に届くように橙を少し濃くした。この色にした理由は [themes/default/README.ja.md](../themes/default/README.ja.md)。テーマのフォルダの最上位の文書（`README*`・`LICENSE*`・`*.md`）はテーマの一部でない：組み立ては読まず（ロゴに書いても）、hash に入れない（仕様 §6）。利用者のテーマや教材のフォルダの `themes/` のテーマを Egatari ファイルに入れるときは、その `LICENSE*` を一緒に入れる（`themes/<名前>/LICENSE…`。展開でフォルダに戻る）。テーマの使用条件（書体・機関のロゴ）は資源を配り直す先に付いていく必要があるため（§3.3）。`README*` とほかの `*.md` は入れない。パーツと同じく、教材の色を黙って変えない：Egatari ファイルはテーマごとの名前・版・hash を記録し（`index.themes`）、中の `egatari.json` に版を固定する（`"themes": {"default": "1.1.0"}`。これを持たない前の Egatari ファイルを展開すると、記録の hash が合う版に固定する）。前の版に固定したフォルダを組むと、その版の写しで組み、変わる色を挙げて `theme pinned: …` と警告する。`--update-themes`（または固定を今の版にする）で更新する。固定のないフォルダは今の版に付いていく。編集アプリは、開いた Egatari ファイルを記録した版のテーマで組み直し、「テーマを更新」を出す（[編集アプリ](editor.ja.md)）。`default` を継ぐテーマも、固定した `default` を使う。Egatari ファイルは、エディタの版によらず、埋め込んだテーマの CSS のまま再生する。
+**テーマの版。** 教材の見た目を変える同梱のテーマは `theme.json` の `version` を上げ、前の版は `vendor/themes/<名前>/<版>/` に残す。版ごとの同一性の hash と変わった色は `themes.lock.json` に書く（`npm run themes:check` が写しと固定を照らす。`npm test` に入る）。最初の例が `default` 1.1.0（`--emph` `#C50516` → `#BE3012`、`--muted` `#6E6E6E` → `#5C5853`）で、1.0.0 は Studio 0.4.6 までの `default`。`business` 1.0.1（`--emph` `#C2410C` → `#BA3C05`）は、`--emph-tint` の地の上の字が 4.5:1 に届くように橙を少し濃くした。`default` 1.2.0 は、結論の行を左の `--emph` の縦線・太字・決まった位置・淡い灰の地（`--concl-bg` `#F5F5F5`）で示し、枠の中央揃えをやめて左揃えにした（位置と高さは同じ。縦組み `layout-tate` は枠のまま）。この色にした理由は [themes/default/README.ja.md](../themes/default/README.ja.md)。テーマのフォルダの最上位の文書（`README*`・`LICENSE*`・`*.md`）はテーマの一部でない：組み立ては読まず（ロゴに書いても）、hash に入れない（仕様 §6）。利用者のテーマや教材のフォルダの `themes/` のテーマを Egatari ファイルに入れるときは、その `LICENSE*` を一緒に入れる（`themes/<名前>/LICENSE…`。展開でフォルダに戻る）。テーマの使用条件（書体・機関のロゴ）は資源を配り直す先に付いていく必要があるため（§3.3）。`README*` とほかの `*.md` は入れない。パーツと同じく、教材の色を黙って変えない：Egatari ファイルはテーマごとの名前・版・hash を記録し（`index.themes`）、中の `egatari.json` に版を固定する（`"themes": {"default": "1.1.0"}`。これを持たない前の Egatari ファイルを展開すると、記録の hash が合う版に固定する）。前の版に固定したフォルダを組むと、その版の写しで組み、変わる色を挙げて `theme pinned: …` と警告する。`--update-themes`（または固定を今の版にする）で更新する。固定のないフォルダは今の版に付いていく。編集アプリは、開いた Egatari ファイルを記録した版のテーマで組み直し、「テーマを更新」を出す（[編集アプリ](editor.ja.md)）。`default` を継ぐテーマも、固定した `default` を使う。Egatari ファイルは、エディタの版によらず、埋め込んだテーマの CSS のまま再生する。
 
 字：日本語の教材（`lang` が `ja` か、ない）は BIZ UDPゴシックを埋め込む。ほかの言語は Source Sans 3 を埋め込み、U+024F より後ろの字だけを BIZ UDPゴシックで補う。埋め込むのは使っている字を含む分割ファイルだけ（`fonts/*.ttf` と uv があれば使っている字だけ）。BIZ UDP明朝は、教材が明朝を使うときだけ、同じ字を埋め込む：教材・テーマ・使っているパーツのどれかに `var(--font-mincho)` がある、`class="mincho"`、`<html data-font="mincho">`（`kit/layouts.css` の `--font-mincho` の定義は数えない）。`--font-mincho` は `:where(:root)` で決めてあるので、テーマで上書きできる。テーマ `kokugo`：本文は明朝、基調色は藍、強調は朱、地は生成り、字幕は BIZ UDPゴシック（`--font-cap`）。
 

@@ -43,7 +43,10 @@ ok(JSON.stringify(themePinsForIndex(LOCK, [{ name: 'default', version: '0.4.6', 
 ok(pickThemeVersion(LOCK, 'default', OLD).pinned && !pickThemeVersion(LOCK, 'default', NEW).pinned && !pickThemeVersion(LOCK, 'default', undefined).pinned && /not in themes\.lock\.json/.test(pickThemeVersion(LOCK, 'default', '9.9.9').note), 'pick: earlier version pinned, current or none not, unknown version noted');
 {
   const u = themeUpdate(LOCK, 'default', OLD);
-  ok(u.to === NEW && u.tokens.length === 2 && u.tokens.some((x) => x.token === '--emph' && x.from === '#C50516' && x.to === '#BE3012') && u.tokens.some((x) => x.token === '--muted' && x.from === '#6E6E6E' && x.to === '#5C5853'), 'update from 1.0.0: --emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853 ' + JSON.stringify(u.tokens));
+  ok(u.to === NEW && u.tokens.length === 3 && u.tokens.some((x) => x.token === '--emph' && x.from === '#C50516' && x.to === '#BE3012') && u.tokens.some((x) => x.token === '--muted' && x.from === '#6E6E6E' && x.to === '#5C5853') && u.tokens.some((x) => x.token === '--concl-bg' && x.from === '#FFFFFF' && x.to === '#F5F5F5'), 'update from 1.0.0: --emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5 ' + JSON.stringify(u.tokens));
+  // 1.2.0：結論の行（左の縦線・淡い灰の地 --concl-bg）。1.1.0 から変わる色は --concl-bg だけ
+  const u11 = themeUpdate(LOCK, 'default', '1.1.0');
+  ok(NEW === '1.2.0' && D.versions.includes('1.1.0') && u11.to === NEW && u11.tokens.length === 1 && u11.tokens[0].token === '--concl-bg' && u11.tokens[0].to === '#F5F5F5', 'update from 1.1.0: only --concl-bg #FFFFFF → #F5F5F5 ' + JSON.stringify(u11.tokens));
 }
 ok(themesLockProblems({ themes: { default: { current: '1.0.0', versions: ['1.0.0', '1.1.0'], sha256: { '1.0.0': 'a'.repeat(64), '1.1.0': 'b'.repeat(64) } } } }).some((x) => /latest/.test(x)), 'lock: current must be the latest version');
 ok(themesLockProblems({ themes: { '../x': { current: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': 'a'.repeat(64) } } } }).some((x) => /registry name/.test(x)), 'lock: names are registry names');
@@ -71,6 +74,17 @@ function deckDir(name, themes, src = 'minimal') {
   ok(bold.stats.themeVersions.business === '1.0.0' && /#c2410c/.test(bold.html) && !/#ba3c05/.test(bold.html) && /#BE3012/.test(bold.html) && bold.stats.warn.some((w) => /^theme pinned: business 1\.0\.0 /.test(w) && w.includes('--emph #C2410C → #BA3C05')), 'build: business pinned to 1.0.0 keeps #c2410c (with its parent default) and warns old → new');
   const bcur = build(bizDeck('biz-cur'));
   ok(bcur.stats.themeVersions.business === LOCK.themes.business.current && /#ba3c05/.test(bcur.html) && !/#c2410c/.test(bcur.html) && !bcur.stats.themePinned.length, 'build: business without a pin uses the current version (#ba3c05)');
+  // business は default 1.2.0 の結論の行の形（左の縦線）を継ぎ、地は自分の --concl-bg（淡い橙。default の後に読まれて勝つ）のまま
+  const bcss = bcur.html.slice(bcur.html.indexOf('/* 既定のテーマ（default）'));
+  ok(bcur.stats.themeVersions.default === NEW && bcur.html.includes(':where(.slide:not(.layout-tate)) .concl{left:30px') && bcss.indexOf('--concl-bg:  #F5F5F5') >= 0 && bcss.indexOf('--concl-bg: #fdf3ec') > bcss.indexOf('--concl-bg:  #F5F5F5'), 'build: business takes the 1.2.0 conclusion row shape from default and keeps its own --concl-bg (declared after default)');
+  // default 1.2.0 の結論の行の規則（横組みだけ）。1.1.0 に固定したデッキは写し vendor/themes/default/1.1.0 で組み、規則も地もない
+  const CONCL_RULE = ':where(.slide:not(.layout-tate)) .concl{left:30px;border:0;border-left:5px solid var(--emph)';
+  const d11 = build(deckDir('d11', { default: '1.1.0' }));
+  ok(d11.stats.themeVersions.default === '1.1.0' && !d11.html.includes(CONCL_RULE) && !/#F5F5F5/.test(d11.html) && /#BE3012/.test(d11.html) && d11.stats.warn.some((w) => /^theme pinned: default 1\.1\.0 /.test(w) && w.includes('--concl-bg #FFFFFF → #F5F5F5')), 'build: pinned to 1.1.0 keeps the framed conclusion row (no 1.2.0 rule, no ground) and warns old → new');
+  const k12 = build(deckDir('kokugo-cur', undefined, 'kokugo-kanbun'));
+  ok(k12.stats.themeVersions.default === NEW && k12.html.includes(CONCL_RULE) && /#F5F5F5/.test(k12.html), 'build: kokugo (extends default) takes the 1.2.0 conclusion row from its parent');
+  const k11 = build(deckDir('kokugo-11', { default: '1.1.0' }, 'kokugo-kanbun'));
+  ok(k11.stats.themeVersions.default === '1.1.0' && !k11.html.includes(CONCL_RULE), 'build: kokugo with default pinned to 1.1.0 keeps the framed conclusion row');
   const dflt = build(deckDir('dflt'));
   ok(!dflt.stats.themePinned.length && !dflt.stats.warn.some((w) => /^theme pinned:/.test(w)) && /#BE3012/.test(dflt.html), 'build: no pin → current version, no warning');
   const cur = build(deckDir('cur', { default: NEW }));
@@ -80,7 +94,7 @@ function deckDir(name, themes, src = 'minimal') {
   const src = deckDir('cli-up', { default: OLD });
   const u = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '--update-themes'], { encoding: 'utf8' });
   const conf = JSON.parse(fs.readFileSync(path.join(path.dirname(src), FORMAT.CONFIG_FILE), 'utf8'));
-  ok(u.status === 0 && /theme updated: default 1\.0\.0 → 1\.1\.0 \(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853\)/.test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
+  ok(u.status === 0 && /theme updated: default 1\.0\.0 → 1\.2\.0 \(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5\)/.test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
   ok(conf.themes.default === NEW && conf.docId, `CLI --update-themes: ${FORMAT.CONFIG_FILE} now pins ${NEW} (other fields kept)`);
   const c = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), deckDir('clicheck', { default: OLD }), '--json'], { encoding: 'utf8' });
   let j = null; try { j = JSON.parse(c.stdout); } catch { /* */ }
@@ -280,10 +294,10 @@ try {
     const c0 = await frame().evaluate(colors);
     ok(c0.emph === OLD_EMPH_CSS && c0.muted === OLD_MUTED, `${lang}: the preview keeps the 1.0.0 colors (no silent restyle: ${c0.emph}, ${c0.muted})`);
     const notice = await page.textContent('#notice-theme-pinned');
-    ok(notice.includes('default') && notice.includes(OLD) && notice.includes(NEW) && notice.includes('#C50516') && notice.includes('#BE3012') && notice.includes('#6E6E6E') && notice.includes('#5C5853'), `${lang}: the notice lists old → new colors`);
+    ok(notice.includes('default') && notice.includes(OLD) && notice.includes(NEW) && notice.includes('#C50516') && notice.includes('#BE3012') && notice.includes('#6E6E6E') && notice.includes('#5C5853') && notice.includes('#F5F5F5'), `${lang}: the notice lists old → new colors`);
     ok(/never restyled silently|黙って新しい色にはしません/.test(notice), `${lang}: the notice says nothing is restyled silently`);
     const sw = await page.$$eval('#notice-theme-pinned .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
-    ok(JSON.stringify(sw) === JSON.stringify([OLD_EMPH, NEW_EMPH, OLD_MUTED, NEW_MUTED]), `${lang}: swatches show the old and new colors ${JSON.stringify(sw)}`);
+    ok(JSON.stringify(sw) === JSON.stringify([OLD_EMPH, NEW_EMPH, OLD_MUTED, NEW_MUTED, 'rgb(255, 255, 255)', 'rgb(245, 245, 245)']), `${lang}: swatches show the old and new colors ${JSON.stringify(sw)}`);
     const btn = await page.textContent('#b-theme-update');
     ok(btn === (lang === 'ja' ? 'テーマを更新' : 'Update theme'), `${lang}: button "${btn}"`);
     const files = () => page.evaluate(() => window.__APP_TEST.files());

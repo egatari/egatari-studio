@@ -21,14 +21,16 @@
       }
     },
     "default": {
-      "current": "1.1.0",
+      "current": "1.2.0",
       "versions": [
         "1.0.0",
-        "1.1.0"
+        "1.1.0",
+        "1.2.0"
       ],
       "sha256": {
         "1.0.0": "d5486df8f7bc6df2f31e6d155f4d22583b5e12fca45ed434e74372788a953d0b",
-        "1.1.0": "afdeb965d6f6ce7d221fbe302fdcdd6414df65fcb41554600a6947994162330c"
+        "1.1.0": "afdeb965d6f6ce7d221fbe302fdcdd6414df65fcb41554600a6947994162330c",
+        "1.2.0": "bfd014ae758ad65233ef704c8d2535a7e939a09b1bf8cbe6cb1089c53c4fd629"
       },
       "changes": {
         "1.1.0": {
@@ -37,6 +39,13 @@
           "tokens": [
             { "token": "--emph", "from": "#C50516", "to": "#BE3012" },
             { "token": "--muted", "from": "#6E6E6E", "to": "#5C5853" }
+          ]
+        },
+        "1.2.0": {
+          "date": "2026-10-25",
+          "reason": "the conclusion row is marked by a left bar in --emph, a fixed position, bold text and a light neutral grey ground --concl-bg (was transparent; --emph text on it 5.3:1, the same for every colour-vision type and in greyscale), left-aligned instead of a centred frame; position and height unchanged; vertical (tate) lessons keep the frame",
+          "tokens": [
+            { "token": "--concl-bg", "from": "#FFFFFF", "to": "#F5F5F5" }
           ]
         }
       }

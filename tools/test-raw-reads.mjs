@@ -50,6 +50,7 @@ const ALLOW = [
   ['kit/core/zip-read.mjs', 'ds.readable.getReader()', 'Colab の zip の展開：既に上限の内で読んだバイトを展開する DecompressionStream の出力（宣言の大きさを超えたら打ち切る）'],
   ['colab/irodori_node.mjs', 'fs.readFileSync(voice)', 'リポジトリの参照音声（lab/voices/）を Colab で読む'],
   ['tools/make-colab-notebook.mjs', "fs.readFileSync(OUT, 'utf8')", 'リポジトリの生成物（ノートブック）が作り直したものと同じかの確認'],
+  ['tools/make-colab-notebook.mjs', "old = fs.readFileSync(p, 'utf8')", 'リポジトリの docs（<!-- colab-verified --> の記しを揃える）'],
   ['kit/core/attach-content.mjs', 'ds.readable.getReader()', '添付の中身の検査：既に上限の内で読んだバイトを展開する DecompressionStream の出力（展開した大きさを数えて上限で止める）'],
   ['lab/irodori.js', 'res.body.getReader()', '試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],

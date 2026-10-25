@@ -20,6 +20,7 @@ import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { colabZip } from './colab-fixture.mjs';
 import { notebook, COLAB_PINS } from './make-colab-notebook.mjs';
 import { sessionFactory, providersFromEnv, cpuNotice, firstLine, actualProvider, supportedBackends } from '../colab/ort-fallback.mjs';
+import { profileSessions, STAGE_NAMES } from '../colab/stage-profile.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const tests = [];
@@ -446,6 +447,144 @@ ok('import: recipe.runtime (pin set / provider) is kept into the take, a malform
   }
   assert.ok(plain.applied.every((x) => !('runtime' in x.rec.recipe)) && !('runtime' in bad.applied.find((x) => x.key === 'A:0').rec.recipe));
   for (const g of ['cuda13/cpu', 'none/cpu', 'cuda12/cuda?']) assert.equal((await planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r) => { r.steps['A:0'].recipe.runtime = g; } })), segs, docId: 'doc-1', yomi })).applied[0].rec.recipe.runtime, g);
+});
+const pyRun = (py, cwd) => {
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8', ...(cwd ? { cwd } : {}) });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return null; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  return r.stdout;
+};
+ok('python: progress lines carry the step time and the running total (monotonic clock around the real synthesis), and the end prints the total', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-progress-'));
+  fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(await baseJob()));
+  const out = pyRun(`
+import json, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+assert E.progress_line(3, 10, "s-intro:2", 41.23, 135.9) == "3/10 s-intro:2  (+41.2 s, total 2:15)", E.progress_line(3, 10, "s-intro:2", 41.23, 135.9)
+assert E.clock_text(0) == "0:00" and E.clock_text(59.9) == "0:59" and E.clock_text(3725) == "1:02:05"
+assert E.total_line(754, 10).startswith("synthesis: 10 steps in 12:34 (75.4 s per step)"), E.total_line(754, 10)
+# 偽の時計：合成（synth の呼び出し）ごとに 7 秒進む。run_job の時間は、その呼び出しを囲んで測る
+now = [100.0]
+def clock(): return now[0]
+def synth(text, voice, role, lang):
+    now[0] += 7.0
+    return E.dry_run_synth(text, voice, role, lang)
+seen = []
+job = E.validate_job(json.load(open(${JSON.stringify(path.join(dir, 'job.json'))}, encoding="utf-8")))
+E.run_job(job, synth, progress=lambda *a: seen.append(E.progress_line(*a)), clock=clock)
+print("\\n".join(seen))
+`);
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (out === null) return;
+  // A:0 は 4 区切り（3＋1）、A:1 と B:0 は 1 区切り
+  assert.deepEqual(out.trim().split('\n'), ['1/3 A:0  (+28.0 s, total 0:28)', '2/3 A:1  (+7.0 s, total 0:35)', '3/3 B:0  (+7.0 s, total 0:42)']);
+});
+ok('python: CPU auto-pick: no GPU (or the worker fell back to the CPU) gives IRODORI_CPU_STEPS, a GPU gives IRODORI_STEPS; the env line says which', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-steps-'));
+  fs.mkdirSync(path.join(dir, 'voices'));
+  const fake = path.join(ROOT, 'tools/colab-fake-worker.mjs');
+  const out = pyRun(`
+import os, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+d = ${JSON.stringify(dir)}
+assert E.IRODORI_STEPS == 40 and E.IRODORI_CPU_STEPS == 16, "the CPU steps are one named constant (16, the owner's pick)"
+assert E.pick_irodori_steps(False) == E.IRODORI_CPU_STEPS and E.pick_irodori_steps(True) == E.IRODORI_STEPS
+assert E.compute_label(False) == "CPU（Irodori の steps=16）" and E.compute_label(True) == "GPU（Irodori の steps=40）"
+line = E.env_compute_line(False)
+assert line.startswith("env: ") and line.endswith(" · CPU（Irodori の steps=16）"), line
+assert E.env_compute_line(True) == "env: GPU (CUDA) · GPU（Irodori の steps=40）", E.env_compute_line(True)
+def steps_sent(w):
+    w("hello", "bob")
+    log = open(w._errpath, encoding="utf-8").read()
+    return [l for l in log.splitlines() if l.startswith("fake request:")]
+# GPU の検出を偽のワーカーで差し替える：CUDA が使える／CUDA で作れず CPU に切り替えた／最初から CPU
+for env, want_provider, want_steps in [({"EGATARI_ORT_PROVIDERS": "cuda,cpu"}, "cuda", 40), ({"EGATARI_ORT_PROVIDERS": "cuda,cpu", "EGATARI_FAKE_ORT_FAIL": "cuda"}, "cpu", 16), ({"EGATARI_ORT_PROVIDERS": "cpu"}, "cpu", 16)]:
+    w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, steps=None, env=dict(os.environ, **env))
+    assert w.provider == want_provider and w.steps == want_steps, (env, w.provider, w.steps)
+    assert steps_sent(w) == [f"fake request: steps={want_steps}"], steps_sent(w)
+    w.close()
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, steps=24, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cpu"))
+assert w.steps == 24, "an explicit steps wins"
+w.close()
+print("ok")
+`, dir);
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (out !== null) assert.ok(out.includes('ok'));
+});
+ok('python: recipe.diffusionSteps and recipe.precision are written as provenance; the import keeps them, drops malformed ones, and inputHash does not change', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-recipe-'));
+  const job = await baseJob();
+  fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(job));
+  const out = pyRun(`
+import json, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+job = E.validate_job(json.load(open(${JSON.stringify(path.join(dir, 'job.json'))}, encoding="utf-8")))
+open(${JSON.stringify(path.join(dir, 'out.zip'))}, "wb").write(E.run_job(job, E.dry_run_synth, engine_info={"engine": "irodori-colab", "model": "m", "seed": 0, "diffusionSteps": 24, "precision": "fp32"}))
+for bad in [{"diffusionSteps": 0}, {"diffusionSteps": 2.5}, {"diffusionSteps": True}, {"precision": "int4"}]:
+    try:
+        E.run_job(job, E.dry_run_synth, engine_info=bad); raise SystemExit(f"no raise: {bad}")
+    except E.JobError:
+        pass
+print("ok")
+`);
+  if (out === null) { fs.rmSync(dir, { recursive: true, force: true }); return; }
+  const zip = await readColabZip(new Uint8Array(fs.readFileSync(path.join(dir, 'out.zip'))));
+  fs.rmSync(dir, { recursive: true, force: true });
+  const plan = await planImport({ zip, segs, docId: 'doc-1', yomi });
+  assert.equal(plan.applied.length, 3);
+  for (const it of plan.applied) {
+    assert.equal(it.rec.recipe.diffusionSteps, 24); assert.equal(it.rec.recipe.precision, 'fp32');
+    assert.equal(it.rec.inputHash, await inputHash(segs.find((s) => `${s.slideKey}:${s.stepKey}` === it.key)), 'inputHash is the narration only');
+  }
+  for (const [k, v] of [['diffusionSteps', 0], ['diffusionSteps', 1e6], ['diffusionSteps', '24'], ['precision', 'int4'], ['precision', 16]]) {
+    const p = await planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r) => { r.steps['A:0'].recipe[k] = v; } })), segs, docId: 'doc-1', yomi });
+    assert.ok(p.applied.some((x) => x.key === 'A:0') && !(k in p.applied.find((x) => x.key === 'A:0').rec.recipe), `${k}=${JSON.stringify(v)} is dropped, the step still imports`);
+  }
+});
+ok('stage profile: the worker times each ONNX session per request (stage names, call counts); the protocol passes the extra fields; Python prints one line', async () => {
+  let t = 0;
+  const fakeSession = (ms) => ({ inputNames: ['x'], async run() { t += ms; return { ok: true }; } });
+  const p = profileSessions({ text: fakeSession(10), enc: fakeSession(2000), dit: fakeSession(100), dac: fakeSession(900) }, () => t);
+  assert.deepEqual(p.sessions.dit.inputNames, ['x'], 'other properties pass through');
+  await p.sessions.text.run(); await p.sessions.enc.run(); for (let i = 0; i < 16; i++) await p.sessions.dit.run(); await p.sessions.dac.run();
+  assert.deepEqual(p.take(), { text: { s: 0.01, n: 1 }, 'ref-encode': { s: 2, n: 1 }, dit: { s: 1.6, n: 16 }, decode: { s: 0.9, n: 1 } });
+  assert.deepEqual(p.take(), {}, 'take resets');
+  assert.equal(STAGE_NAMES.enc, 'ref-encode');
+  const input = new PassThrough(), output = new PassThrough(); let got = '';
+  output.on('data', (d) => { got += d; });
+  const done = serve({ input, output, handler: async (r) => (r.id === 1 ? { profile: { totalS: 1 }, id: 99, ok: false } : undefined) });
+  input.end('{"id": 1}\n{"id": 2}\n');
+  await done;
+  assert.deepEqual(got.trim().split('\n').map((l) => JSON.parse(l)), [{ profile: { totalS: 1 }, id: 1, ok: true }, { id: 2, ok: true }], 'extra fields never override id/ok');
+  const out = pyRun(`
+import sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+print(E.stage_line({"stages": {"dit": {"s": 1.6, "n": 16}, "text": {"s": 0.01, "n": 1}, "decode": {"s": 0.9, "n": 1}}, "totalS": 2.52}, 2.6))
+print(E.stage_line({"stages": {"ref-encode": {"s": 2.0, "n": 1}}}))
+`);
+  if (out === null) return;
+  assert.deepEqual(out.trim().split('\n'), ['stages: text 0.01 s · dit 1.60 s ×16 · decode 0.90 s · ref-encode cached · node 2.52 s · round trip 2.60 s', 'stages: ref-encode 2.00 s']);
+});
+ok('notebook: cell 1 prints the CPU/GPU env line; cell 3 lets the worker pick the steps, loads fp32 on the CPU, records steps and precision; cell 4 prints timed progress and the total', () => {
+  const code = JSON.parse(notebook()).cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
+  const c1 = code.find((c) => c.includes('#@title 1.')), c3 = code.find((c) => c.includes('#@title 3.')), c4 = code.find((c) => c.includes('#@title 4.'));
+  assert.ok(/^print\(E\.env_compute_line\(GPU\)\)$/m.test(c1) && c1.indexOf('env_compute_line') > c1.indexOf('GPU = '), 'the env line comes after GPU detection');
+  assert.ok(/E\.irodori_synth\([^\n]*profile=PROFILE\)/.test(c3) && !/E\.irodori_synth\([^\n]*steps=/.test(c3), 'steps are left to the worker (auto-pick)');
+  assert.ok(/PROFILE = False   #@param \{type:"boolean"\}/.test(c3), 'a debug flag for the stage profile, off by default');
+  assert.ok(/IRODORI_FOLDER = "onnx_fp16" if GPU else "onnx"/.test(c3) && /allow_patterns=\[IRODORI_FOLDER \+ "\/\*", "tokenizer\/\*"\]/.test(c3) && /EGATARI_IRODORI_FOLDER/.test(c3));
+  assert.ok(/"diffusionSteps": synth\.steps/.test(c3) && /"precision": synth\.precision/.test(c3) && /E\.compute_label\(synth\.provider != "cpu", synth\.steps\)/.test(c3));
+  assert.ok(/time\.monotonic\(\)/.test(c3) && /loaded in/.test(c3));
+  assert.ok(/def progress\(i, n, key, step_s, total_s\): print\(E\.progress_line\(i, n, key, step_s, total_s\), flush=True\)/.test(c4));
+  assert.ok(/_t_synth = time\.monotonic\(\)/.test(c4) && /E\.total_line\(time\.monotonic\(\) - _t_synth, len\(job\["steps"\]\)\)/.test(c4) && c4.indexOf('_t_synth = ') < c4.indexOf('E.run_job('), 'the total is measured around run_job with a monotonic clock');
+});
+ok('worker: the reference voice is encoded once per voice (memoized in colab/irodori_node.mjs), and the CPU uses the fp32 weights', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8');
+  assert.ok(/tts\.wavToRefLatent = memo\(/.test(src) && /tts\.encodeRefLatent = memo\(/.test(src), 'both reference stages are memoized');
+  assert.ok(/EGATARI_IRODORI_FOLDER/.test(src) && /EGATARI_PROFILE/.test(src));
 });
 ok('python: provider_name and runtime_label (Kokoro: the providers the session really has)', () => {
   const py = `
