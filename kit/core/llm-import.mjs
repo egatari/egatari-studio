@@ -7,6 +7,10 @@
 //     順で、どちらのファイルかを決める。CRLF・前後や間の説明の文章はかまわない。同じファイルの囲みが 2 つ以上なら最後のものを使う（知らせる）
 //     閉じていない囲み → error 'unclosed'（返事が途中で切れた）。囲みがなくても、<!DOCTYPE html> … </html> と、その後ろの
 //     「## 見出し」と [0] の行があれば取り出す（画面からそのまま写したとき。知らせる）
+//     取り出した narration.md には決まった直し（mergeRepeatedSteps）をかける：1 つの節の中で同じ [k] の行が続けて繰り返されたら（掛け合いの発言ごとに
+//     [2] を書いた返事）、繰り返しの印を外して最初の [k] の段階の次の発言にする（発言の字と順は変えない。警告 'repeatedSteps'）。
+//     続いていない繰り返し（[2] … [3] … [2]）は直さない（組み立てがこれまでどおり重複として知らせる）
+//   mergeRepeatedSteps(narration) → {narration, merged: [{line, step}]}（line は外した印の行。1 から）
 //   mergeSlides(deck, patch) → {deck, replaced: [id…], missing: [id…]}
 //     patch（<section class="slide" id="…"> だけを並べたもの）の各スライドで、deck の同じ id のスライドを置き換える
 //   mergeNarration(narration, patch) → {narration, replaced: [id…], added: [id…]}
@@ -53,7 +57,35 @@ function kindOfPrev(lines, i) {
   return null;
 }
 
-export function extractBlocks(text) {
+// 1 つの節（## 見出し）の中で、同じ段階の印の行 [k] が続けて繰り返されたら（間に別の [j] の行がない）、繰り返しの印を外して前の段階の続きにする。
+// 印の後ろの字はそのまま残る（Expert:・Novice: の付いた行は、同じ段階の次の発言になる）。コメント（<!-- -->）の中の行は見ない
+export function mergeRepeatedSteps(narration) {
+  const lines = String(narration).split('\n');
+  const merged = [];
+  let last = null, inComment = false;
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    if (inComment) { if (ln.includes('-->')) inComment = false; continue; }
+    if (/^\s*<!--/.test(ln) && !ln.includes('-->')) { inComment = true; continue; }
+    if (/^##\s/.test(ln)) { last = null; continue; }
+    const m = ln.match(/^(\s*)\[(\d+|concl)\]\s*(.*)$/);
+    if (!m) continue;
+    if (m[2] === last) {
+      merged.push({ line: i + 1, step: m[2] });
+      lines[i] = m[3].trim() ? m[1] + m[3] : '';
+    } else last = m[2];
+  }
+  return { narration: merged.length ? lines.join('\n') : String(narration), merged };
+}
+const withMergedSteps = (res) => {
+  if (res.narration === null || res.narration === undefined) return res;
+  const r = mergeRepeatedSteps(res.narration);
+  if (!r.merged.length) return res;
+  return { ...res, narration: r.narration, warnings: [...res.warnings, { code: 'repeatedSteps', n: r.merged.length, steps: [...new Set(r.merged.map((x) => x.step))] }] };
+};
+
+export function extractBlocks(text) { return withMergedSteps(extractRaw(text)); }
+function extractRaw(text) {
   const src = String(text ?? '').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
   const lines = src.split('\n');
   const blocks = [];
@@ -173,7 +205,7 @@ export function pastePart(text) {
   // <!DOCTYPE html> はあるが </html> がない：写したものが途中で切れている
   if (deckLike && /<!doctype\s+html|<html[\s>]/i.test(src) && !/<\/html>/i.test(src)) return { ...r, part: null, fenced: false, error: { code: 'cut-deck', message: 'the pasted deck.html has <!DOCTYPE html> but no </html>: it was probably cut off' } };
   if (deckLike) return { deck: src + '\n', narration: null, warnings: [], error: null, part: 'deck', fenced: false };
-  if (narrLike) return { deck: null, narration: src + '\n', warnings: [], error: null, part: 'narration', fenced: false };
+  if (narrLike) return withMergedSteps({ deck: null, narration: src + '\n', warnings: [], error: null, part: 'narration', fenced: false });
   return { ...r, part: null, fenced: false };
 }
 

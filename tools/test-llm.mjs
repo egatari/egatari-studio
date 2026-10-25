@@ -16,7 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration, mergeRepeatedSteps } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
@@ -214,6 +214,30 @@ ok('囲みを 1 つずつ貼る（pastePart）：返事の全体・deck.html だ
   const patch = pastePart('<section class="slide" id="s-aaaaaa"><h2>A</h2></section>');
   assert.ok(patch.part === 'deck' && isPatch(patch.deck));
   assert.equal(pastePart('## A {#s-aaaaaa}\n[0] あ。\n[concl] い。').part, 'narration');
+});
+ok('import patch: the same [k] repeated on consecutive marker lines (one per dialogue turn) is merged under the first [k], every turn kept in order, with a warning; a non-consecutive repeat is left for the build to report', () => {
+  const deck = worked('common', 'deck.html');
+  const two = '## A {#s-a}\n\n[0] Expert: はじめ。\n\n[2] Expert: 一。\n[2] Novice: 二。\n\n[concl] Expert: 終わり。\n';
+  const three = '## A {#s-a}\n\n[2] Expert: 一。\n[2] Novice: 二。\n続きの行。\n[2] Expert: 三。\n\n## B {#s-b}\n\n[2] Expert: 別の節の [2] は別。\n';
+  for (const [text, n, turns] of [[two, 1, [['expert', '一。'], ['novice', '二。']]], [three, 2, [['expert', '一。'], ['novice', '二。続きの行。'], ['expert', '三。']]]]) {
+    const r = extractBlocks('```deck.html\n' + deck + '```\n\n```narration.md\n' + text + '```\n');
+    assert.equal(r.error, null);
+    assert.deepEqual(r.warnings.filter((w) => w.code === 'repeatedSteps'), [{ code: 'repeatedSteps', n, steps: ['2'] }], 'a warning, not an error');
+    const segs = parseNarration(r.narration);
+    assert.deepEqual(segs.warnings, [], 'no duplicate step left for the build');
+    const s2 = segs.filter((x) => x.slideKey === 's-a' && x.stepKey === '2');
+    assert.equal(s2.length, 1);
+    assert.deepEqual(s2[0].turns.map((x) => [x.role, x.raw]), turns, 'every turn in order under the first [2]');
+    // 囲みなしで台本だけを貼っても同じ直し
+    const p = pastePart(text);
+    assert.ok(p.part === 'narration' && p.narration === r.narration && p.warnings.some((w) => w.code === 'repeatedSteps'));
+  }
+  // 続いていない繰り返し（[2] … [3] … [2]）は直さない：組み立てがこれまでどおり重複として知らせる
+  const apart = '## A {#s-a}\n\n[2] Expert: 一。\n[3] Expert: 二。\n[2] Expert: 三。\n';
+  assert.deepEqual(mergeRepeatedSteps(apart), { narration: apart, merged: [] });
+  const r = extractBlocks('```deck.html\n' + deck + '```\n\n```narration.md\n' + apart + '```\n');
+  assert.ok(!r.warnings.some((w) => w.code === 'repeatedSteps'));
+  assert.ok(parseNarration(r.narration).warnings.some((w) => /が重複/.test(w)), 'still reported as a duplicate');
 });
 ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混ざったものは ambiguous・</html> のない deck は cut-deck', () => {
   for (const t of ['ごめんなさい、できません。', 'https://claude.ai/share/abc', '## 見出しだけ\n本文', '[0] だけ']) {
