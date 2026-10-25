@@ -112,9 +112,23 @@ ok('request section: kind, structure and presentation of the subcategory, and th
 });
 
 const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
-const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents'];
-ok('purposes: the 14 decided tiles (parts-map §9), mapped from the vendored v1.2.0 manifest', () => {
-  assert.equal(TILES.length, 14);
+const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'spatial'];
+ok('purposes: the tiles are the vendored manifest\'s own purposes (15), with their label, examples and icon; the fallback table TILES reads the same', () => {
+  assert.equal(TILES.length, 15);
+  const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components', 'manifest.json'), 'utf8'));
+  const own = man.purposes.filter((p) => p.tile === 'own' && !p.reserved);
+  assert.equal(own.length, 15);
+  assert.equal(PURPOSES.tiles, 'manifest');
+  assert.deepEqual(PURPOSES.list.map((p) => p.id), own.map((p) => p.id));
+  for (const p of own) {
+    const t = PURPOSES.list.find((x) => x.id === p.id), f = TILES.find((x) => x.id === p.id);
+    assert.deepEqual([t.label, t.sub, t.icon], [p.label, p.examples, p.icon], p.id + ': label, examples and icon from the manifest');
+    assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...p.label }, { ...p.examples }], p.id + ': the fallback table reads the same');
+  }
+  assert.deepEqual(PURPOSES.list.find((p) => p.id === 'compare').ids, ['compare', 'ranking'], 'ranking folds into compare');
+  assert.deepEqual(PURPOSES.list.find((p) => p.id === 'spatial').label, { ja: '場所・地図', en: 'Place / map' });
+  assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'deviation', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
+  assert.deepEqual(PURPOSES.components['m-map-japan'], ['spatial']);
   assert.deepEqual(PURPOSES.list.map((p) => p.id), TILE_IDS);
   assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
@@ -127,12 +141,14 @@ ok('purposes: the 14 decided tiles (parts-map §9), mapped from the vendored v1.
   // 札のない言いたいことの部品（m-kanbun・m-sweep・m-collect など）は外せない（分野から入る）
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect'].some((t) => PURPOSES.components[t]));
 });
-ok('purposes: a manifest (all 20 ids, ranking, reserved, an unknown id) maps onto exactly the 14 tiles; ranking folds into compare; unmapped ids warn and make no tile', () => {
+ok('purposes: an older manifest without tile fields (all 20 ids, ranking, reserved, an unknown id) maps onto exactly the 15 tiles of the table; ranking folds into compare; unmapped ids warn and make no tile', () => {
   const m = FIX();
   assert.equal(m.purposes.length, 21);
   const P = purposesFrom(m);
   assert.equal(P.source, 'manifest');
-  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'exactly the 14 tiles, in the decided order');
+  assert.equal(P.tiles, 'table');
+  assert.ok(P.warnings.some((w) => /no tile fields/.test(w)), 'gen warns that the table is used');
+  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'exactly the 15 tiles, in the decided order');
   assert.equal(P.list[0].label.ja, '比べる（量・特徴）');
   assert.deepEqual(P.components['m-bars'], ['compare', 'change', 'part-whole'], 'ranking folds into compare');
   assert.deepEqual(P.list.find((p) => p.id === 'change').steps, { ja: '線を 1 本ずつ', en: 'One line at a time' }, 'steps come from the manifest');
@@ -153,25 +169,52 @@ ok('purposes: a partly broken manifest drops only the bad entries (with a warnin
   m.purposes.push(7, { id: 'Bad' }, { id: 'overlap', ja: 'x', en: 'y' });
   m.purposes.find((p) => p.id === 'cycle').reserved = 'yes';
   const P = purposesFrom(m);
-  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'all 14 tiles remain');
+  assert.deepEqual(P.list.map((p) => p.id), TILE_IDS, 'all 15 tiles remain');
   assert.deepEqual(P.list.find((p) => p.id === 'change').steps, TILES.find((t) => t.id === 'change').steps, 'a dropped id falls back per tile');
   assert.equal(P.list.find((p) => p.id === 'cycle').name.ja, '循環', 'a reserved ("yes") id keeps the decided text');
   assert.ok(P.warnings.some((w) => /purposes\[2\] dropped/.test(w)) && P.warnings.some((w) => /purposes\[21\] dropped \(not an object\)/.test(w)) && P.warnings.some((w) => /duplicate id/.test(w)));
   assert.equal(purposesFrom({ purposes: 'x' }).source, 'fallback');
   assert.equal(purposesFrom(null).source, 'fallback');
 });
-ok('pack from the fixture manifest (generate): 14 table rows with manifest steps, no reserved or unmapped row, warnings printed', () => {
+ok('pack from the fixture manifest (generate): 15 table rows with manifest steps, no reserved or unmapped row, warnings printed', () => {
   const g = generate({ manifest: FIX() });
   assert.deepEqual(g.data.purposes.list.map((p) => p.id), TILE_IDS);
   assert.ok(g.warnings.some((w) => w.includes('"mystery" has no tile')));
   const t = assemble(g.data, { series: 'all', lang: 'en' });
   const table = t.slice(t.indexOf('| purpose |'), t.indexOf('Each part'));
-  assert.equal(table.trim().split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| purpose') && !l.startsWith('|---')).length, 15, '14 rows + other parts');
+  assert.equal(table.trim().split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| purpose') && !l.startsWith('|---')).length, 16, '15 rows + other parts');
   assert.match(table, /^\| Compare amounts \| `m-bars` \(sorted for ranking\) \| One side, then the difference \|$/m);
   assert.ok(!/Deviation|Concept links|Mystery|Ranking/.test(table));
 });
 
-const tagsIn = (text) => new Set([...text.matchAll(/m-[a-z]+(?![a-z-])/g)].map((m) => m[0]));
+ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial and m-map-japan never leak when turned off (free with social, paid); spatial has a part only when social is loaded', () => {
+  // into：外した札に入る id だけの部品も外れる
+  const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components', 'manifest.json'), 'utf8'));
+  const P = purposesFrom({ ...m, components: { ...m.components, rankonly: { purposes: ['ranking'] } } });
+  assert.deepEqual(P.components['m-rankonly'], ['compare'], 'ranking maps to the compare tile');
+  assert.ok(componentsOff(['compare'], P).includes('m-rankonly') && !componentsOff(['change'], P).includes('m-rankonly'));
+  assert.ok(componentsOff(['compare'], PURPOSES).includes('m-compare'));
+  assert.ok(!/m-compare(?![a-z-])/.test(packWithRequest({ lang: 'en', plan: 'paid', exclude: componentsOff(['compare'], PURPOSES), off: ['compare'] })), 'paid, compare off: m-compare is gone');
+  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan']);
+  for (const lang of ['en', 'ja']) {
+    for (const [what, opts] of [['free+social', { series: ['social'], plan: 'free' }], ['free+social+kokugo', { series: ['social', 'kokugo'], plan: 'free' }], ['paid', { series: [], plan: 'paid' }]]) {
+      const on = packWithRequest({ ...opts, lang });
+      assert.ok(on.includes('### `<m-map-japan>`') && /^\| [^|]+ \| `m-map-japan`/m.test(on), `${lang} ${what}: spatial on → m-map-japan is described and backs the spatial row`);
+      const off = packWithRequest({ ...opts, lang, exclude: componentsOff(['spatial'], PURPOSES), off: ['spatial'] });
+      assert.ok(!off.includes('map-japan'), `${lang} ${what}: spatial off → m-map-japan is named nowhere`);
+      assert.ok(!off.includes(PURPOSES.list.find((p) => p.id === 'spatial').name[lang] + ' |'), `${lang} ${what}: spatial off → no spatial row`);
+    }
+    // social が入っていない：場所・地図の行はパーツなし（AI が HTML で描く）、m-map-japan の名前は出さない
+    const name = PURPOSES.list.find((p) => p.id === 'spatial').name[lang];
+    for (const opts of [{ series: [] }, { series: ['academic', 'kokugo'] }]) {
+      const t = packWithRequest({ ...opts, lang });
+      assert.ok(!t.includes('map-japan'), `${lang} ${opts.series.join('+') || 'common'}: m-map-japan is not named without social`);
+      assert.ok(new RegExp('^\\| ' + name.replace(/[()/]/g, '\\$&') + ' \\| ' + (lang === 'ja' ? 'この文にはない' : 'not in this text')).test(t.split('\n').find((l) => l.startsWith('| ' + name + ' |')) || ''), `${lang}: the spatial row has no part without social`);
+    }
+  }
+});
+
+const tagsIn = (text) => new Set([...text.matchAll(/m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
 ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the included packs, never names a part without its description, and has no star markers`, () => {
   for (const lang of ['en', 'ja']) {
     const all = buildPack({ series: 'all', lang });
@@ -191,7 +234,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     assert.ok(lang === 'en' ? /Packs not included here have parts for: academic \(change over time, spread\); business/i.test(core) : /入っていない系列にもパーツがある：academic（時間での変化・ばらつき）/.test(core), lang + ': the packs not included are named by use');
     for (const s of SERIES) {
       const p = buildPack({ series: [s], lang });
-      const described = new Set([...p.matchAll(/### `<(m-[a-z]+)>`/g)].map((m) => m[1]));
+      const described = new Set([...p.matchAll(/### `<(m-[a-z]+(?:-[a-z]+)*)>`/g)].map((m) => m[1]));
       for (const t of tagsIn(p.slice(p.indexOf('### 2.7'), p.indexOf('### 2.8')))) assert.ok(described.has(t), `${lang} ${s}: the table names ${t}, which is described`);
     }
   }
@@ -296,8 +339,8 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
 });
 // 無料版の写す文が名前を出す部品（m-…）は、その文の部品の一覧（§3 の表の行か ### の説明）にあるものだけ。
 // 一覧から外した部品の名前を、説明や注意の文が出してしまう（これから足す文で起きやすい）のを見つける。CSS の変数（--mm-h）などは数えない
-const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?![a-z-])/g)].map((m) => m[0]));
-const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+)>`/gm)].map((m) => m[1]));
+const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
+const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]));
 const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
 ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes over and its three largest sections', () => {
   const g = generate();

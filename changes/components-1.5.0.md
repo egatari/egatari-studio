@@ -1,0 +1,4 @@
+### Added
+
+- Components v1.5.0: **`m-map-japan`**, the 47 prefectures of Japan for geography and history (regions, a choropleth, points, arrows and shapes, each by step; the territory dots and insets are fixed in the data), in a new series `social`. **New subject 地図（社会：地理・歴史） / Maps (social studies: geography, history)** in New… (step 4, small text 日本地図 / Map of Japan; guessed from 地図, 都道府県, 地理, 人口 and the like), with its series instructions `docs/llm-parts/social.md`. The free plan still allows two subjects, and every subject and pair stays within the caps (40 KB, 50 KB; paid 120 KB).
+- `m-curves`, `m-scatter` and `m-map-japan`: `anchor` also accepts `top` and `bottom`, as names for `above` and `below`. Release notes: [egatari/components v1.5.0](https://github.com/egatari/components/releases/tag/v1.5.0)

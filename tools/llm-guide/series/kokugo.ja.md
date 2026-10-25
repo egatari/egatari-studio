@@ -1,4 +1,4 @@
-<!-- i18n: pair=kokugo.md sha256=98aa843d4557536a -->
+<!-- i18n: pair=kokugo.md sha256=38ccc4684c2fcdbe -->
 ## 系列の指示：kokugo（国語）
 
 国語（漢文・古文・現代文）の教材向け。テーマは `kokugo`。口述原稿では、難しい語や名前に読み `{表示|読み}` を付ける（R-reading）。
@@ -13,4 +13,4 @@
 
 {{WORKED kokugo "見本：国語（kokugo テーマ・m-kanbun）" m-kanbun}}
 
-段階の数え方：`m-kanbun` は段階 1〜3（訓点・読む順・書き下し文）。
+段階の数え方：`m-kanbun` は訓点（段階 1）、読む順は句ごとに 1 段階、最後に書き下し文。`[n]` は句ごとに書く。

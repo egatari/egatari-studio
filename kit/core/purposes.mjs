@@ -1,18 +1,23 @@
 // 言いたいこと（purpose）→ 表し方 → パーツ（backlog #99、handoff/parts-map-2026-10-24.html の 8・9・10）。Node にもブラウザにも依存しない（純粋な ESM）
 // 新規作成の「言いたいこと」の札（app/llm.js）と、AI への指示の本体の表（組み立てのときに kit/core/llm-pack-assemble.mjs が作る）が同じ材料を使う。
 //
-// 札は決めた 14 個（TILES。parts-map の 9 の決定、2026-10-24）。部品庫の manifest は札を増やさない：manifest の purposes の id を札に写す
-// （ranking は「比べる」に入る）。札に写らない id（text-structure・parameter・grouping など）は札を作らず、その部品は分野（パーツの組）から入る。
+// 札は部品庫の manifest の purposes から作る（部品庫 v1.6.0 から。札の名前・絵・小さな字が manifest にある）：
+//   tile: "own"           その id で札を 1 つ作る（label が札の名前、examples が札の小さな字、icon が札の絵＝app/llm.js の ICONS の名前）
+//   tile: {"into": id}    その札に入る（ranking → compare）。札を外すと、入っている id もみな外れる
+//   tile: "none"          札を作らない（grouping・text-structure・parameter。その部品は分野（パーツの組）から入る）。reserved の id も札にしない
+// manifest に tile が 1 つもない（部品庫 v1.5.0 までの manifest）ときは、決めた表 TILES（v1.6.0 の札と同じ 15 個）に写し、gen が警告を出す。
+// 札の並びは manifest の purposes の順（表のときは TILES の順）。札の数は manifest しだい（v1.6.0 は 15：2026-10-24 の 14 個と spatial「場所・地図」）。
+// spatial のパーツ（m-map-japan）は分野「地図（社会）」（系列 social）にだけある。入っていなければ、ほかのパーツのない札と同じく AI が HTML で描く。
 //
 // 材料の出どころ：部品庫のリリースの manifest.json（components:update が vendor/components/manifest.json に置く）の
-//   purposes：順のある配列 [{id, ja, en, steps: {ja, en}, reserved?}]（reserved が真なら、まだ使う部品がない。札にも表にも使わない）
+//   purposes：順のある配列 [{id, ja, en, steps: {ja, en}, reserved?, tile?, label?, examples?, icon?}]（reserved が真なら、まだ使う部品がない。札にも表にも使わない）
 //   components.<名前>：{tag?, purposes: [id …]（主なものが先）, variants: [名前 …]（0 番目がシード値 0 の見せ方。なければ []）}。tag がなければ 'm-' + 名前
-// 形の合わない項目は 1 つずつ落として warnings に書く（全部を捨てない）。札ごとに、写る manifest の id が 1 つもなければ決めた表の文を使う。
+// 形の合わない項目は 1 つずつ落として warnings に書く（全部を捨てない）。表に写すときは、札ごとに写る manifest の id が 1 つもなければ決めた表の文を使う。
 // 部品の言いたいことは manifest にあればそれ、なければ部品庫 v1.1.0 の README の purposes:（FALLBACK_COMPONENTS）。
 //
-//   TILES                               [{id, ids: [manifest の id …], label, sub, name, steps}]（文はどれも {en, ja}）
+//   TILES                               [{id, ids: [manifest の id …], label, sub, name, steps}]（文はどれも {en, ja}）。manifest に tile がないときの札
 //   purposesFrom(manifest | null, {vendored?})
-//       → {source: 'manifest' | 'fallback', list: 札（TILES の順。name・steps は manifest があればそれ）, components: {タグ: [札の id …]},
+//       → {source: 'manifest' | 'fallback', tiles: 'manifest' | 'table', list: 札 [{id, ids, label, sub, name, steps, icon?}], components: {タグ: [札の id …]},
 //          variants: {タグ: [名前 …]}, unmapped: [札のない manifest の id …], warnings: [文 …]}
 //       vendored：組み立てに入る部品のタグ（Set か配列）。あれば、それ以外の部品は components に入れない（写していない部品の名前を AI に出さない）
 //   componentsOff(off, P)               外した言いたいこと（札の id）だけに使う部品。並びは名前の順
@@ -37,6 +42,7 @@ export const TILES = [
   { id: 'correlation', ids: ['correlation'], label: T('2 つの量の関係', 'Two quantities'), sub: T('散布図', 'scatter plot'), name: T('2 つの量の関係', 'two quantities'), steps: T('点、次に傾向', 'points, then the trend') },
   { id: 'spread', ids: ['spread'], label: T('ばらつき', 'Spread'), sub: T('ヒストグラム', 'histogram'), name: T('ばらつき', 'spread'), steps: T('全体を一度に', 'whole at once') },
   { id: 'contents', ids: ['contents'], label: T('目次', 'Contents'), sub: T('札の格子', 'grid of cards'), name: T('目次', 'contents'), steps: T('全体を一度に', 'whole at once') },
+  { id: 'spatial', ids: ['spatial'], label: T('場所・地図', 'Place / map'), sub: T('日本地図・塗り分け・地点と矢印', 'map of Japan, choropleth, points and arrows'), name: T('場所・地図', 'place, map'), steps: T('地図、それから地域・点・矢印を 1 つずつ', 'the map, then regions, points and arrows one at a time') },
 ];
 export const FALLBACK = TILES;
 // manifest の id → 札の id
@@ -70,23 +76,53 @@ export function purposesFrom(manifest, { vendored = null } = {}) {
   const comps = isObj(manifest) && isObj(manifest.components) ? Object.entries(manifest.components).filter(([, c]) => isObj(c)).map(([dir, c]) => ({ ...c, tag: typeof c.tag === 'string' ? c.tag : 'm-' + dir })) : [];
   const variants = Object.fromEntries(comps.filter((c) => !keep || keep.has(c.tag)).map((c) => [c.tag, strs(c.variants)]));
   // purposes：1 つずつ確かめる
-  const ok = {};
-  const unmapped = [];
+  const rows = [];
+  const seen = new Set();
   const raw = isObj(manifest) ? manifest.purposes : undefined;
   if (raw !== undefined && !Array.isArray(raw)) warnings.push('manifest.json: purposes is not an array (the decided table is used)');
   (Array.isArray(raw) ? raw : []).forEach((r, i) => {
-    const bad = !isObj(r) ? 'not an object' : typeof r.id !== 'string' || !ID.test(r.id) ? 'id is not a lowercase id' : typeof r.ja !== 'string' || typeof r.en !== 'string' ? 'ja or en is not a string' : ok[r.id] ? 'duplicate id' : null;
+    const bad = !isObj(r) ? 'not an object' : typeof r.id !== 'string' || !ID.test(r.id) ? 'id is not a lowercase id' : typeof r.ja !== 'string' || typeof r.en !== 'string' ? 'ja or en is not a string' : seen.has(r.id) ? 'duplicate id' : null;
     if (bad) { warnings.push(`manifest.json: purposes[${i}] dropped (${bad})`); return; }
-    if (r.reserved) return;
-    if (!TILE_OF[r.id]) { unmapped.push(r.id); return; }
-    ok[r.id] = { name: { ja: r.ja, en: r.en }, steps: str2(r.steps) };
+    seen.add(r.id);
+    if (!r.reserved) rows.push(r);
   });
-  for (const id of unmapped) warnings.push(`manifest.json: purpose "${id}" has no tile; its parts come only through their subject part set`);
-  const any = Object.keys(ok).length > 0;
-  const list = TILES.map((t) => {
-    const m = t.ids.map((id) => ok[id]).find(Boolean);   // 札の主な id から
-    return m ? { ...t, name: m.name, steps: m.steps || t.steps } : t;
-  });
+  const fromManifest = rows.some((r) => r.tile !== undefined);
+  const unmapped = [];
+  let list, any;
+  const tileOf = {};
+  if (fromManifest) {
+    // 札を manifest から：own の順に札、into はその札に、none は札なし
+    list = [];
+    for (const r of rows) {
+      if (r.tile !== 'own') continue;
+      const label = str2(r.label), sub = str2(r.examples);
+      if (!label || !sub) { warnings.push(`manifest.json: purpose "${r.id}" has tile "own" without label or examples (no tile)`); unmapped.push(r.id); continue; }
+      list.push({ id: r.id, ids: [r.id], label, sub, name: { ja: r.ja, en: r.en }, steps: str2(r.steps) || (TILES.find((t) => t.id === r.id) || {}).steps || T('', ''), ...(typeof r.icon === 'string' && ID.test(r.icon) ? { icon: r.icon } : {}) });
+      tileOf[r.id] = r.id;
+    }
+    for (const r of rows) {
+      if (r.tile === 'own') continue;
+      const into = isObj(r.tile) && typeof r.tile.into === 'string' ? list.find((t) => t.id === r.tile.into) : null;
+      if (into) { into.ids.push(r.id); tileOf[r.id] = into.id; continue; }
+      if (r.tile !== 'none') warnings.push(`manifest.json: purpose "${r.id}" has tile ${JSON.stringify(r.tile === undefined ? null : r.tile)}, not "own", {"into": <a tile>} or "none" (no tile)`);
+      unmapped.push(r.id);
+    }
+    any = list.length > 0;
+  } else {
+    // 部品庫 v1.5.0 までの manifest：決めた表（TILES）に写す
+    if (rows.length) warnings.push('manifest.json: purposes have no tile fields (components before v1.6.0); the tiles come from the decided table');
+    const ok = {};
+    for (const r of rows) {
+      if (!TILE_OF[r.id]) { unmapped.push(r.id); warnings.push(`manifest.json: purpose "${r.id}" has no tile; its parts come only through their subject part set`); continue; }
+      ok[r.id] = { name: { ja: r.ja, en: r.en }, steps: str2(r.steps) };
+    }
+    list = TILES.map((t) => {
+      const m = t.ids.map((id) => ok[id]).find(Boolean);   // 札の主な id から
+      return m ? { ...t, ids: [...t.ids], name: m.name, steps: m.steps || t.steps } : { ...t, ids: [...t.ids] };
+    });
+    Object.assign(tileOf, TILE_OF);
+    any = Object.keys(ok).length > 0;
+  }
   // 部品の言いたいこと → 札
   const components = {};
   const tags = uniq([...Object.keys(FALLBACK_COMPONENTS), ...comps.map((c) => c.tag)]);
@@ -94,10 +130,10 @@ export function purposesFrom(manifest, { vendored = null } = {}) {
     if (keep && !keep.has(tag)) continue;
     const c = comps.find((x) => x.tag === tag);
     const ids = c && Array.isArray(c.purposes) ? strs(c.purposes) : FALLBACK_COMPONENTS[tag] || [];
-    const tiles = uniq(ids.map((id) => TILE_OF[id]).filter(Boolean));
+    const tiles = uniq(ids.map((id) => tileOf[id]).filter(Boolean));
     if (tiles.length) components[tag] = tiles;
   }
-  return { source: any ? 'manifest' : 'fallback', list, components, variants, unmapped, warnings };
+  return { source: any ? 'manifest' : 'fallback', tiles: fromManifest ? 'manifest' : 'table', list, components, variants, unmapped, warnings };
 }
 
 export function componentsOff(off, P) {

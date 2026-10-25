@@ -35,7 +35,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
 const GUIDE = rel('tools', 'llm-guide');
-export const SERIES = ['academic', 'business', 'kokugo', 'info'];
+export const SERIES = ['academic', 'business', 'kokugo', 'info', 'social'];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
@@ -342,7 +342,7 @@ export function generate(opts = {}) {
   // 表（{{PURPOSES}}）は組み立てのときに作る（入っている系列・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
   const data = { series: SERIES, purposes: P, parts: allParts, partsSrc: src };
   // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
-  const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+)\}\}/g)].map((m) => m[1])));
+  const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
@@ -366,7 +366,7 @@ export function generate(opts = {}) {
       let deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
       const heads = [];
       deck = deck.replace(/\n*(<section class="slide[^"]*">[\s\S]*?<\/section>)/g, (m, sec) => {
-        const tags = [...new Set([...sec.matchAll(/<(m-[a-z]+)[\s>]/g)].map((x) => x[1]))];
+        const tags = [...new Set([...sec.matchAll(/<(m-[a-z]+(?:-[a-z]+)*)[\s>]/g)].map((x) => x[1]))];
         if (!tags.length) return m;
         heads.push([(sec.match(/<h[12]>([^<]*)<\/h[12]>/) || [])[1], tags]);
         return `<!--part:${tags.join(',')}-->${m}<!--/part-->`;
@@ -381,7 +381,7 @@ export function generate(opts = {}) {
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
       .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
-      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
+      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+(?:-[a-z]+)*))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)
       .replace('{{GENERATED}}', GENERATED(path.basename(contractFile)));

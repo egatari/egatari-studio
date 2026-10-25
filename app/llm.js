@@ -107,7 +107,7 @@ const TX = {
     partsCount: (n, off) => `パーツ：${n} 種類（外したもの ${off}）`,
     partsLegend: 'この指示に入るパーツ', partOff: '外した',
     purposesHtml: 'パーツのない表し方は、AI が HTML で近い形に描きます',
-    purposesHint: '今は全部使えます。押した図は、AI が使いません',
+    purposesHint: '今は全部使えます。押した表し方は、AI が使いません',
     purposesSum: (on, n) => `言いたいこと：${n} 個のうち ${on} 個を使う`,
     purposesLegend: '言いたいこと', materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
     purposeOn: '使う', purposeOff: '使わない',
@@ -252,7 +252,7 @@ const TX = {
     partsCount: (n, off) => `Parts: ${n} (${off} turned off)`,
     partsLegend: 'Parts in these instructions', partOff: 'turned off',
     purposesHtml: 'Representations without a part are drawn by the AI in HTML.',
-    purposesHint: 'All are in use. Press one and the AI will not use it.',
+    purposesHint: "All are in use. Press one and the AI won't use that representation.",
     purposesSum: (on, n) => `Purposes: ${on} of ${n} in use`,
     purposesLegend: 'What it shows', materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
     purposeOn: 'in use', purposeOff: 'not used',
@@ -583,7 +583,7 @@ export function setupLlm(app) {
     });
   }
 
-  // ② の素材（いつも使える。押せない札）と言いたいこと（14 の札。既定で全部入り。押すと外れ、外したものだけに使う部品は指示の一覧からも除く）。
+  // ② の素材（いつも使える。押せない札）と言いたいこと（manifest の札。v1.6.0 は 15。既定で全部入り。押すと外れ、外したものだけに使う部品は指示の一覧からも除く）。
   // 入っている札は印と枠、外した札は薄くして斜線（色だけで分けない。app/app.css の .tile）。絵は parts-map の下書きの線画（仮。部品の見本から撮る絵に替える）
   const ICONS = {
     table: '<rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 19h24M12 6v20M20 6v20"/>',
@@ -611,16 +611,18 @@ export function setupLlm(app) {
     market: '<circle cx="16" cy="16" r="12"/><circle cx="16" cy="19" r="8"/><circle cx="16" cy="22" r="4"/>',
     kanbun: '<path d="M21 4v24M12 4v24"/><path d="M15 9l3 2M15 18l3 2M24 13h3"/>',
     kobun: '<rect x="6" y="4" width="20" height="24" rx="2"/><path d="M21 8v16M16 8v16M11 8v10"/>',
+    map: '<path d="M16 28s-8-8.5-8-14a8 8 0 0 1 16 0c0 5.5-8 14-8 14z"/><circle cx="16" cy="14" r="3"/>',
     codetree: '<circle cx="16" cy="6" r="2.2"/><circle cx="9" cy="16" r="2.2"/><circle cx="23" cy="16" r="2.2"/><circle cx="5" cy="26" r="2.2"/><circle cx="13" cy="26" r="2.2"/><path d="M14.7 7.8L10.3 14.2M17.3 7.8l4.4 6.4M8 18l-2 6M10 18l2 6"/>',
     'subj-math': '<path d="M5 27h22M5 5v22"/><path d="M8 9c3 16 13 16 16 0"/>',
     'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
     'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
+    'subj-social': '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>',
     other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
-  // 言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
+  // 札の絵：manifest の purposes の icon（部品庫 v1.6.0 から。ICONS の名前）。ないとき・知らない名前のときは、言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
   const PURPOSE_ICON = { compare: 'compare', ranking: 'bars', change: 'line', 'part-whole': 'part', 'key-number': 'kpi', process: 'flow', timeline: 'timeline',
     'cause-effect': 'cause', cycle: 'cycle', hierarchy: 'tree', position: 'matrix', overlap: 'venn', correlation: 'scatter', spread: 'dist', grouping: 'collect',
-    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep' };
+    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map' };
   function icon(k) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
@@ -655,7 +657,7 @@ export function setupLlm(app) {
     };
     const tiles = PURPOSES.list.map((p) => {
       const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
-        [icon(PURPOSE_ICON[p.id] || 'other'), el('span', { cls: 'tile-label', text: p.label[LANG] }), p.sub[LANG] ? el('small', { text: p.sub[LANG] }) : null]);
+        [icon(p.icon && Object.hasOwn(ICONS, p.icon) ? p.icon : PURPOSE_ICON[p.id] || 'other'), el('span', { cls: 'tile-label', text: p.label[LANG] }), p.sub[LANG] ? el('small', { text: p.sub[LANG] }) : null]);
       b.addEventListener('click', () => {
         const on = b.getAttribute('aria-pressed') !== 'true';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');

@@ -120,6 +120,8 @@ const WRONG = {
   'm-pie': '<script type="application/json">{"slices": [{"label": "A", "value": "30%"}]}</script>',
   'm-timeline': '<script type="application/json">{"events": [{"label": "創業", "year": 1990}]}</script>',
   'm-cycle': '<script type="application/json">{"steps": [{"label": "計画"}, {"label": "実行"}]}</script>',
+  // 部品庫 v1.5.0：点を経度・緯度でなく x・y で書く
+  'm-map-japan': '<script type="application/json">{"points": [{"x": 139.7, "y": 35.7, "label": "東京"}]}</script>',
 };
 const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');

@@ -11,8 +11,8 @@ import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
-// 今はない（v1.2.0 の見せ方の見本のスライドの小さな見出しの字（smallText）は v1.2.1 で 27 px に直った）
-const KNOWN = {};
+// v1.6.0 の map-japan の見本の 2 枚目「都道府県の人口（2020 年）」の結論の行が 37 字（Studio の R-concl は 35 字まで。出典の括弧を含む）。部品庫で直したら消す
+const KNOWN = { 'map-japan': [{ code: 'conclLong', title: '都道府県の人口（2020 年）' }] };
 const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);

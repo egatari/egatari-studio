@@ -1,5 +1,5 @@
 // チャットの AI への指示（AI instruction pack）を組み立てる。Node にもブラウザにも依存しない（純粋な ESM）
-// 指示は「共通の本体」（規格 R-…・大きさ・出力の形・どの教材でも使う部品）と、系列ごとの部品の指示（academic・business・kokugo・info）からなる。
+// 指示は「共通の本体」（規格 R-…・大きさ・出力の形・どの教材でも使う部品）と、系列ごとの部品の指示（academic・business・kokugo・info・social）からなる。
 // 材料（kit/core/llm-pack-data.mjs）は tools/make-llm-guide.mjs が tools/llm-guide/・docs/contract・vendor/components/*/README.md から作る（手で直さない）。
 // 同じ関数を、編集アプリの「AI への指示をコピー」（app/llm.js）・コマンド（kit/llm-pack.mjs）・docs の書き出し（tools/make-llm-guide.mjs）・
 // 修正依頼（kit/core/llm-fix.mjs）が使う

@@ -31,6 +31,7 @@ export const PART_LABELS = Object.freeze({
   'm-kobun': { ja: '古文', en: 'Kobun', icon: 'kobun' },
   'm-gendai': { ja: '現代文の読解', en: 'Modern text reading', icon: 'gendai' },
   'm-codetree': { ja: '符号の木', en: 'Code tree', icon: 'codetree' },
+  'm-map-japan': { ja: '日本地図', en: 'Map of Japan', icon: 'map' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');

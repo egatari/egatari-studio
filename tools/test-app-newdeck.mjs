@@ -417,7 +417,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const checked = (p) => p.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
     // この指示に入るパーツの並び（折りたたみの中）と、指示の一覧（§3 の表の行と ### の説明）の部品
     const strip = (p) => p.$$eval('#paste-parts li', (xs) => xs.map((x) => x.dataset.part + (x.classList.contains('off') ? ':off' : '')).sort().join());
-    const catalog = (series, plan) => [...new Set([...buildPack({ series, lang: 'ja', plan }).matchAll(/^(?:\| `<|### `<)(m-[a-z]+)>`/gm)].map((m) => m[1]))].sort().join();
+    const catalog = (series, plan) => [...new Set([...buildPack({ series, lang: 'ja', plan }).matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]))].sort().join();
     const disabledBoxes = (p) => p.$$eval('#paste-series .tile:disabled', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
     await startNew(p8);
     await p8.check('#paste-cat-business');
@@ -426,7 +426,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.fill('#paste-title', '売上の統計と漢文の故事');
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
-    ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info'
+    ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info,social'
       && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」に印を付けました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
     ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')),
@@ -434,14 +434,14 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
       && (await text(p8, '#paste-series-new-hint')).includes('標準パーツ（棒グラフ・流れ図・目次など）'), 'S8 ④: the hint names the standard parts from FREE_CORE’s labels: ' + await text(p8, '#paste-series-new-hint'));
-    ok(JSON.stringify(await p8.$$eval('#paste-series .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['数理・統計', '数式・関数・グラフ', true], ['ビジネス', 'KPI・位置づけ・市場・お金の流れ', true], ['国語', '漢文・古文・現代文・縦書き', true], ['情報', '符号の木', true]]),
+    ok(JSON.stringify(await p8.$$eval('#paste-series .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['数理・統計', '数式・関数・グラフ', true], ['ビジネス', 'KPI・位置づけ・市場・お金の流れ', true], ['国語', '漢文・古文・現代文・縦書き', true], ['情報', '符号の木', true], ['地図（社会：地理・歴史）', '日本地図', true]]),
       'S8 ④: the subject tiles: an icon, the label and a small line of what is inside');
     await p8.click('#paste-series-business');
     ok((await checked(p8)) === 'academic' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: unticking one enables the others again and hides the reason');
     ok((await strip(p8)) === catalog(['academic'], 'free') && (await text(p8, '#paste-parts-count')) === `パーツ：${catalog(['academic'], 'free').split(',').length} 種類（外したもの 0）` && (await p8.getAttribute('#paste-parts-count', 'aria-live')) === 'polite',
       'S8 ④: the strip follows a single subject, and the fold summary counts them (aria-live polite): ' + await text(p8, '#paste-parts-count'));
     await p8.click('#paste-series-kokugo');
-    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info', 'S8 ④: a different second subject disables the rest');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social', 'S8 ④: a different second subject disables the rest');
     const c8 = await copy(p8);
     ok(c8 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c8, 'ja'), plan: 'free' }), 'S8 ④: the copied instructions have the two subjects ticked');
     // 推し直しでも 2 つを越えない（自分で付けた 2 つはそのまま）
@@ -450,14 +450,14 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
     await p8.check('#paste-plan-paid');
-    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === '有料のプランでは全部入ります',
+    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info,social' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info,social' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === '有料のプランでは全部入ります',
       'S8 ④: the paid plan has no limit: every tile is on and not pressable, with 「有料のプランでは全部入ります」');
     ok((await strip(p8)) === catalog([], 'paid'), 'S8 ④: under the paid plan the strip lists every part');
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: [...SERIES], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies every series');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
-    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the limit applies again');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the limit applies again');
     await p8.click('#paste-series-academic');
     await p8.click('#paste-series-kokugo');
     ok((await checked(p8)) === '' && (await strip(p8)) === catalog([], 'free') && (await strip(p8)) === [...FREE_CORE].sort().join(), 'S8 ④: with no subject, the strip is the standard parts: ' + await strip(p8));
