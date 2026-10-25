@@ -644,4 +644,5 @@ if (asJson) {
   console.log('');
   console.log(EN ? `${counts.error} errors, ${counts.warn} warnings, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
 }
-process.exit(ok ? 0 : 1);
+// 出力を書き終えてから終える（stdout がパイプのとき、process.exit は書きかけの出力（64 KiB を超える分）を捨てる。--json の大きな結果が途中で切れていた）
+process.stdout.write('', () => process.exit(ok ? 0 : 1));
