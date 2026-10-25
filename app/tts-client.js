@@ -28,12 +28,12 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
     : (EN ? `Kokoro-82M (English). First use downloads about ${(KOKORO_BYTES / 1e6).toFixed(0)} MB, later from the browser cache. Runs on this computer's GPU in a separate window`
       : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`);
   // WebGPU がないとき：まず録音を勧める（コマンドの案内は出さない。端末で使う人向けの言葉だけ）
-  const noGpu = EN ? 'Record the narration with “● Record” above: that works in any browser. Browser TTS needs WebGPU, which this browser does not have (use a recent Chrome or Edge on a computer)'
-    : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。ブラウザの TTS には WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
+  const noGpu = EN ? 'Record your voice with “● Record” above: that works in any browser. To make AI voice on this computer, WebGPU is needed, which this browser does not have (use a recent Chrome or Edge on a computer)'
+    : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。AI 音声をこの PC で作るには WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
   // 1 ファイル版（file://）：TTS の窓のページがない。録音を先に、TTS は配信版で
-  const noFileHint = EN ? '“Regenerate with TTS” is not available in this single-file editor (file://). Record the narration with “● Record” above, or open the hosted editor (or a served dist/) for browser TTS'
-    : '「TTS で作り直す」は、この 1 ファイル版のエディタ（file://）では使えません。上の「● 録音」で録音できます。ブラウザの TTS は配信版のエディタ（か、dist/ を配ったもの）で使えます';
-  const noFile = EN ? 'not in the single-file editor (open the hosted editor, or serve dist/)' : '1 ファイル版のエディタでは使えません（配信版か、dist/ を配って開いてください）';
+  const noFileHint = EN ? '“Remake on this computer” is not available in the Offline editor (file://). Record your voice with “● Record” above, or open the hosted editor (or a served dist/) to make AI voice on this computer'
+    : '「この PC で作り直す」は、オフライン版のエディタ（file://）では使えません。上の「● 録音」で録音できます。AI 音声をこの PC で作るのは、配信版のエディタ（か、dist/ を配ったもの）でできます';
+  const noFile = EN ? 'not in the Offline editor (open the hosted editor, or serve dist/)' : 'オフライン版のエディタでは使えません（配信版か、dist/ を配って開いてください）';
 
   window.addEventListener('message', (e) => {
     if (!win || e.source !== win || e.origin !== location.origin) return;
@@ -44,10 +44,10 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
     if (!w) return;
     if (m.kind === 'progress') { if (w.onProgress) w.onProgress(Math.max(0, Math.min(1, +m.f || 0)), typeof m.label === 'string' ? m.label.slice(0, 200) : ''); return; }
     waiting.delete(m.id);
-    if (m.kind === 'error') { w.reject(Object.assign(new Error(String(m.message || 'TTS failed').slice(0, 500)), { code: String(m.code || 'tts') })); return; }
+    if (m.kind === 'error') { w.reject(Object.assign(new Error(String(m.message || 'AI voice failed').slice(0, 500)), { code: String(m.code || 'tts') })); return; }
     if (m.kind === 'result') {
       const sr = +m.sr;
-      if (!(m.pcm instanceof Float32Array) || !(sr >= 8000 && sr <= 96000) || m.pcm.length > AUDIO_LIMITS.maxSeconds * sr) { w.reject(new Error('bad audio from the TTS window')); return; }
+      if (!(m.pcm instanceof Float32Array) || !(sr >= 8000 && sr <= 96000) || m.pcm.length > AUDIO_LIMITS.maxSeconds * sr) { w.reject(new Error('bad audio from the AI voice window')); return; }
       w.resolve({ pcm: m.pcm, sr, recipe: m.recipe && typeof m.recipe === 'object' ? m.recipe : { engine: 'unknown', model: 'unknown', voice: {}, seed: null } });
     }
   });
@@ -59,8 +59,8 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
     ready = { promise: new Promise((a, b) => { res = a; rej = b; }), done: false };
     ready.resolve = () => { ready.done = true; res(); };
     win = window.open(url.href, 'studio-tts', 'popup,width=520,height=420');
-    if (!win) throw Object.assign(new Error(EN ? 'the TTS window was blocked (allow pop-ups for this site)' : 'TTS の窓が開けませんでした（このサイトのポップアップを許可してください）'), { code: 'popup' });
-    const t = setTimeout(() => rej(new Error(EN ? 'the TTS window did not start' : 'TTS の窓が始まりませんでした')), 30000);
+    if (!win) throw Object.assign(new Error(EN ? 'the AI voice window was blocked (allow pop-ups for this site)' : 'AI 音声の窓が開けませんでした（このサイトのポップアップを許可してください）'), { code: 'popup' });
+    const t = setTimeout(() => rej(new Error(EN ? 'the AI voice window did not start' : 'AI 音声の窓が始まりませんでした')), 30000);
     try { await ready.promise; } finally { clearTimeout(t); }
     return win;
   }
@@ -86,7 +86,7 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
         waiting.set(id, { resolve, reject, onProgress });
         w.postMessage({ type: TYPE, kind: 'synth', id, engine, text: String(text), role, voice: (voices && voices[role]) || null }, location.origin);
         // 窓を閉じたら止める
-        const iv = setInterval(() => { if (!waiting.has(id)) clearInterval(iv); else if (w.closed) { clearInterval(iv); waiting.delete(id); reject(new Error(EN ? 'the TTS window was closed' : 'TTS の窓が閉じられました')); } }, 500);
+        const iv = setInterval(() => { if (!waiting.has(id)) clearInterval(iv); else if (w.closed) { clearInterval(iv); waiting.delete(id); reject(new Error(EN ? 'the AI voice window was closed' : 'AI 音声の窓が閉じられました')); } }, 500);
       });
     },
   };

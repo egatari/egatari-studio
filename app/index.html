@@ -73,12 +73,13 @@
     <div class="menu">
       <button type="button" id="b-previewmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-preview" data-t="previewMenu"></button>
       <div id="m-preview" class="menu-list" role="menu" aria-labelledby="b-previewmenu" aria-describedby="m-preview-note" hidden>
-        <!-- 表示のモード（スライドショー・授業・動画）は 1 つを選ぶ。スライドショーは全画面にもする -->
+        <!-- 表示のモード（スライドショー・動画）は 1 つを選ぶ。スライドショーは全画面にもする。先のステップを薄く見せる（l）は字幕と同じ入／切の選び（内部の名前は lecture、?mode=lecture） -->
         <div role="group" data-t-label="modesGroup">
           <button type="button" id="b-full" role="menuitemradio" aria-checked="true" data-t="fullCmd"></button>
-          <button type="button" id="b-lecturemode" role="menuitemradio" aria-checked="false" data-t="lectureCmd"></button>
           <button type="button" id="b-videomode" role="menuitemradio" aria-checked="false" data-t="videoCmd"></button>
         </div>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-lecturemode" role="menuitemcheckbox" aria-checked="false" data-t="lectureCmd"></button>
         <div role="separator" class="menu-sep"></div>
         <button type="button" id="b-presenter" role="menuitem" data-t="presenterCmd"></button>
         <p id="m-preview-note" class="menu-note" role="none" data-t="previewNote"></p>

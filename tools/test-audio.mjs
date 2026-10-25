@@ -288,7 +288,7 @@ try {
   ok((await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => w.includes(key) && w.includes('更新が必要')), 'stale: the build warnings list the stale step (folder)');
   await shot(page, 'audio-stale.png');
   await page.click('#b-check');
-  await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声が古い')), null, { timeout: 30000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声の更新が必要')), null, { timeout: 30000 });
   ok(true, 'stale: the quality check lists the stale step');
   await page.click('#panel-close');
   // TTS（差し替え）で作り直す
@@ -376,7 +376,7 @@ try {
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
   await page.waitForSelector('#dev-audio .dv-voice-warn');
   const vw48 = await page.evaluate(() => { const e = document.querySelector('#dev-audio .dv-voice-warn'); return { text: e.textContent, shown: e.getClientRects().length > 0 && !e.hidden && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' }; });
-  ok(vw48.shown && vw48.text === 'voice.json の声「myvoice」は、エディタで作る AI 音声の声にありません。AI 音声は既定の声「bob」で作ります（上の欄で選び直せます）', 'voice fallback: the myvoice notice is shown: ' + vw48.text);
+  ok(vw48.shown && vw48.text === '声「myvoice」はこのエディタでは使えません。既定の声「bob」で作ります', 'voice fallback: the myvoice notice is shown: ' + vw48.text);
   await page.$eval('#dev-audio .dv-voice-warn', (e) => e.scrollIntoView({ block: 'nearest' }));
   ok(await page.isVisible('#dev-audio .dv-voice-warn'), 'voice fallback: the notice is visible in the panel');
   await shot(page, 'audio-voice-fallback.png');

@@ -62,11 +62,11 @@ const STR = {
       rec: '自分の声で録音する', recBtn: '録音モードを開く (r)', recHint: '台本を大きく出して、キーボードだけで録れます。Space で録音と停止、Enter で次へ',
     },
     voice: { one: '声', expert: '説明する人の声', novice: '質問する人の声' },
-    sample: '▶ 見本', sampleStop: '■ 止める', sampleT: (n) => '「' + n + '」の短い見本を鳴らす（事前に作った音声。モデルは読み込みません）', noSample: 'この声には見本がありません', sampleFail: '見本を鳴らせません（配信版のエディタで開いてください）',
-    more: 'ほかの声', voiceSaved: (r, n) => r + 'を「' + n + '」にしました（voice.json）。次に AI 音声を作るときから使います', voiceMem: (r, n) => r + 'を「' + n + '」にしました。1 ファイルでは、この画面を開いている間だけ覚えます（作った音声の記録には声の名前が残ります）',
-    voiceUnknown: (r, n, fb) => 'voice.json の' + r + '「' + n + '」は、エディタで作る AI 音声の声にありません。AI 音声は既定の声「' + fb + '」で作ります（上の欄で選び直せます）',
+    sample: '▶ 試聴', sampleStop: '■ 止める', sampleT: (n) => '「' + n + '」を短く試聴する（事前に作った音声。モデルは読み込みません）', noSample: 'この声には試聴の音声がありません', sampleFail: '試聴できません（配信版のエディタで開いてください）',
+    more: 'ほかの声', voiceSaved: (r, n) => r + 'を「' + n + '」にしました（voice.json）。次に AI 音声を作るときから使います', voiceMem: (r, n) => r + 'を「' + n + '」にしました。Egatari ファイルでは、この画面を開いている間だけ覚えます（作った音声の記録には声の名前が残ります）',
+    voiceUnknown: (r, n, fb) => '声「' + n + '」はこのエディタでは使えません。既定の声「' + fb + '」で作ります',
     // C. このステップ
-    stepHead: (n, t, k) => `スライド ${n}「${t}」・ステップ ${k}`, none: 'まだ音声がありません',
+    stepHead: (n, t, k) => `スライド ${n}「${t}」・ステップ ${k}`, place: (n, k) => `スライド ${n}・ステップ ${k}`, none: 'まだ音声がありません',
     kind: { recorded: '録音', tts: 'AI 音声', imported: '取り込み' }, sec: (s) => s.toFixed(1) + ' 秒',
     stale: '更新が必要', staleT: 'この音声を作った後に台本が変わっています（または、どの台本から作ったか分かりません）。音声は消さずに残します',
     play: '▶ 聞く', playStop: '■ 止める', rec: '● 録音 (r)', importBtn: 'ファイルから取り込む…', local: 'この PC で作り直す',
@@ -83,9 +83,9 @@ const STR = {
     gain: (g) => '音量の調整 ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: '音声を作って書き込んでいる間、スライドはクリックを受けません',
     following: (k) => '音声を作り終えるまで、表示中のステップ（' + k + '）には切り替えません',
     other: (k) => 'スライドで表示中のステップ（' + k + '）とは別のステップです。スライドを動かすと切り替わります',
-    wavNote: '（MP3 のエンコーダを読み込めないので WAV で保存しました。1 ファイル版には MP3 のエンコーダが入っていません）',
-    read: '読み上げで聞く', readT: 'この端末の声で読みます。音声ファイルにはなりません', readSel: '選んだ語を読み上げで聞く', readSelT: '台本の中で選んだ語や文だけを、この端末の声で読みます',
-    reading: '読み上げ中（この端末の声）', readStop: '■ 止める', readNoSel: '台本の欄で、聞きたい語を選んでください', readNoText: '読む言葉がありません',
+    wavNote: '（MP3 のエンコーダを読み込めないので WAV で保存しました。オフライン版のエディタには MP3 のエンコーダが入っていません）',
+    read: '読み上げで聞く', readT: 'この端末の読み上げで読みます。音声ファイルにはなりません', readSel: '選んだ語を読み上げで聞く', readSelT: '台本の中で選んだ語や文だけを、この端末の読み上げで読みます',
+    reading: '読み上げ中', readStop: '■ 止める', readNoSel: '台本の欄で、聞きたい語を選んでください', readNoText: '読む言葉がありません',
     readNoVoice: (l) => 'この端末には' + (/^ja\b/i.test(l) ? '日本語' : /^en\b/i.test(l) ? '英語' : '「' + l + '」') + 'の読み上げの声がありません（端末の中の声だけを使い、ネットワークの声は使いません）。音声が要るときは AI 音声（クラウドの Google Colab か、この PC）で作ってください',
     readNoSynth: 'このブラウザでは読み上げを使えません。音声が要るときは AI 音声（クラウドの Google Colab か、この PC）で作ってください',
   },
@@ -93,21 +93,21 @@ const STR = {
     title: 'Audio', close: 'Close',
     deck: {
       none: (n) => `No audio yet (${n} step${n === 1 ? '' : 's'})`, some: (n, k) => `${k} of ${n} steps have audio`,
-      stale: (k) => `${k} step${k === 1 ? ' needs its' : 's need their'} audio updated (the script changed)`, voice: (k) => `You changed the voice; ${k} step${k === 1 ? ' still has' : 's still have'} AI audio in the old voice`,
+      stale: (k) => `${k} step${k === 1 ? '' : 's'}: audio needs updating (the script changed)`, voice: (k) => `You changed the voice; ${k} step${k === 1 ? ' still has' : 's still have'} AI voice in the old voice`,
       all: (n) => `All ${n} steps have audio`, unsaved: 'Not in the file until you save',
       makeRest: (k) => `Make the rest (${k} step${k === 1 ? '' : 's'})`, update: (k) => `Update audio (${k} step${k === 1 ? '' : 's'})`, save: 'Save',
       noSegs: 'No script yet (write it in the Script panel)',
     },
     how: {
-      legend: 'How do you want to add audio?', cloud: 'Make AI audio in the cloud (Google Colab)', local: 'Make AI audio on this computer',
+      legend: 'How do you want to add audio?', cloud: 'Make AI voice in the cloud (Google Colab)', local: 'Make AI voice on this computer',
       localHint: (size) => `The first time, the voice model (about ${size}) is downloaded`, localGo: (n) => `Make on this computer (${n} step${n === 1 ? '' : 's'})`, localNone: 'No step needs audio',
       rec: 'Record your own voice', recBtn: 'Open recording mode (r)', recHint: 'Shows the script large; record with the keyboard only. Space starts and stops, Enter goes to the next',
     },
     voice: { one: 'Voice', expert: 'Voice of the explainer', novice: 'Voice of the questioner' },
-    sample: '▶ Sample', sampleStop: '■ Stop', sampleT: (n) => 'Play a short sample of “' + n + '” (pre-made audio; no model is loaded)', noSample: 'No sample for this voice', sampleFail: 'Cannot play the sample (open the hosted editor)',
-    more: 'More voices', voiceSaved: (r, n) => r + ' set to “' + n + '” (voice.json). Used the next time you make AI audio', voiceMem: (r, n) => r + ' set to “' + n + '”. In a single file this is kept only while this page is open (the audio records keep the voice name)',
-    voiceUnknown: (r, n, fb) => 'The ' + r.toLowerCase() + ' “' + n + '” in voice.json is not one of the editor’s AI voices. AI audio uses the default voice “' + fb + '” instead (choose another above)',
-    stepHead: (n, t, k) => `Slide ${n} “${t}” · step ${k}`, none: 'No audio yet',
+    sample: '▶ Preview voice', sampleStop: '■ Stop', sampleT: (n) => 'Play a short preview of “' + n + '” (pre-made audio; no model is loaded)', noSample: 'No preview for this voice', sampleFail: 'Cannot play the preview (open the hosted editor)',
+    more: 'More voices', voiceSaved: (r, n) => r + ' set to “' + n + '” (voice.json). Used the next time you make AI voice', voiceMem: (r, n) => r + ' set to “' + n + '”. In an Egatari file this is kept only while this page is open (the audio records keep the voice name)',
+    voiceUnknown: (r, n, fb) => 'The voice “' + n + '” isn\'t available in this editor; the default voice “' + fb + '” is used.',
+    stepHead: (n, t, k) => `Slide ${n} “${t}” · step ${k}`, place: (n, k) => `slide ${n}, step ${k}`, none: 'No audio yet',
     kind: { recorded: 'Recording', tts: 'AI voice', imported: 'Imported' }, sec: (s) => s.toFixed(1) + ' s',
     stale: 'Needs updating', staleT: 'The script changed after this audio was made (or it is unknown which script it was made from). The audio is kept',
     play: '▶ Play', playStop: '■ Stop', rec: '● Record (r)', importBtn: 'Import from a file…', local: 'Remake on this computer',
@@ -115,7 +115,7 @@ const STR = {
     revertGone: (f) => 'Cannot revert: the previous audio file (audio/' + f + ') is missing',
     script: 'Script', scriptT: 'Read only (edit it in the Script panel). Drag the bottom-right corner to resize', cues: (n) => `${n} point${n === 1 ? '' : 's'} where the animation follows the voice (in recording, press C to place them)`,
     noSeg: 'This step has no script (write it in the Script panel first)',
-    processing: 'Processing…', making: (i, n) => `Making AI audio (${i} / ${n} steps)…`, madeAll: (k) => `Added AI audio to ${k} step${k === 1 ? '' : 's'}`, ttsNo: 'AI audio cannot be made on this computer: ',
+    processing: 'Processing…', making: (i, n) => `Making AI voice (${i} / ${n} steps)…`, madeAll: (k) => `Added AI voice to ${k} step${k === 1 ? '' : 's'}`, ttsNo: 'AI voice cannot be made on this computer: ',
     takes: 'Audio not used yet', use: 'Use this take', del: 'Discard', notUsed: 'It could not be written, so this step does not use it yet. Use it with “Use this take” below',
     using: 'Writing…', used: (f) => 'This step now uses it (audio/' + f + '). “Revert” brings back the previous audio', usedPortable: 'This step now uses it. Press Save to keep it in the file (“Revert” brings back the previous audio)',
     durOverride: (d) => 'timeline.json fixes this step to ' + d + ' s (dur): longer audio is cut',
@@ -124,11 +124,11 @@ const STR = {
     gain: (g) => 'level adjusted ' + (g >= 0 ? '+' : '') + g.toFixed(1) + ' dB', locked: 'The slides do not take clicks while audio is being made and written',
     following: (k) => 'Stays on this step until the audio is done (showing ' + k + ')',
     other: (k) => 'This is not the step shown on the slide (' + k + '). Move the slides to switch',
-    wavNote: ' (saved as WAV: the MP3 encoder could not be loaded; the single-file editor has no MP3 encoder)',
-    read: 'Listen with read-aloud', readT: 'Read with this device’s voice. No audio file is made', readSel: 'Listen to the selected word', readSelT: 'Reads only the word or text you selected in the script, with this device’s voice',
-    reading: 'Reading aloud (this device\'s voice)', readStop: '■ Stop', readNoSel: 'Select a word in the script first', readNoText: 'Nothing to read',
-    readNoVoice: (l) => 'This device has no read-aloud voice for ' + (/^ja\b/i.test(l) ? 'Japanese' : /^en\b/i.test(l) ? 'English' : '“' + l + '”') + ' (only voices on this device are used, never network voices). To get audio, make AI audio (in the cloud with Google Colab, or on this computer)',
-    readNoSynth: 'Read-aloud is not available in this browser. To get audio, make AI audio (in the cloud with Google Colab, or on this computer)',
+    wavNote: ' (saved as WAV: the MP3 encoder could not be loaded; the Offline editor has no MP3 encoder)',
+    read: 'Listen with read-aloud', readT: 'Read with this device’s voice. No audio file is made', readSel: 'Listen with read-aloud to the selected word', readSelT: 'Reads only the word or text you selected in the script, with this device’s voice',
+    reading: 'Reading aloud', readStop: '■ Stop', readNoSel: 'Select a word in the script first', readNoText: 'Nothing to read',
+    readNoVoice: (l) => 'This device has no read-aloud voice for ' + (/^ja\b/i.test(l) ? 'Japanese' : /^en\b/i.test(l) ? 'English' : '“' + l + '”') + ' (only voices on this device are used, never network voices). To get audio, make AI voice (in the cloud with Google Colab, or on this computer)',
+    readNoSynth: 'Read-aloud is not available in this browser. To get audio, make AI voice (in the cloud with Google Colab, or on this computer)',
   },
 };
 
@@ -504,6 +504,12 @@ export function createAudioPanel(o) {
       step('dev-audio-c2', ticks.c2, opn, [h('ol', { cls: 'dv-c2', id: 'dev-audio-c2-steps' }, C.steps.map((x) => h('li', { text: x }))), h('div', { cls: 'dv-note', id: 'dev-audio-c2-note', text: C.c2Note })]),
       step('dev-audio-c3', ticks.c3, imp, [h('div', { cls: 'dv-note', text: C.c3Hint })]),
     ])]);
+  }
+  // 鍵（スライドの鍵:ステップの鍵）を、画面の言葉の場所（「スライド 3・ステップ 2」）にする。見つからなければ鍵のまま
+  function placeOf(key) {
+    const j = key.lastIndexOf(':'), sk = key.slice(0, j), st = key.slice(j + 1);
+    for (let i = 0; ; i++) { const s = ui.slide(i); if (!s) break; if (s.key === sk) return L.place(i + 1, st); }
+    return key;
   }
   // ---------------------------------------------------------------- C. このステップ
   function drawStep(v) {
@@ -899,7 +905,7 @@ export function createAudioPanel(o) {
       update = plan.marked.map((it) => it.key);
       const skipped = plan.skipped.filter((x) => x.key !== undefined);
       lines.unshift({ text: update.length ? C.partial(applied, update.length) : C.done(applied) });
-      for (const x of skipped) lines.push({ text: C.skipped(x.key || '?', C.skipWhy[x.why] || x.why), bad: true });
+      for (const x of skipped) lines.push({ text: C.skipped(x.key ? placeOf(x.key) : '?', C.skipWhy[x.why] || x.why), bad: true });
       if (plan.warnings.includes('dictionary')) lines.push({ text: C.warnDict, bad: true });
       if (plan.warnings.includes('processing')) lines.push({ text: C.warnProc, bad: true });
       if (applied) { ticks.c3 = true; await remember('cloud'); }

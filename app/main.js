@@ -952,7 +952,7 @@ function loadPresenter() {
   const w = S.presWin;
   const f = w && !w.closed && w.document.getElementById('pf');
   if (!f) return;
-  w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
+  w.document.title = (EN ? 'Presenter view — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
   S.presLoads = (S.presLoads || 0) + 1;
   f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM, prefix: trustedPrefix() });
 }
@@ -1657,13 +1657,15 @@ async function insertDialog() {
   else if (v.startsWith('tpl:')) await slidesPanel.add(v.slice(4), at);
 }
 
-// ---------------------------------------------------------------- プレビュー ▾：表示のモード（スライドショー・授業・動画）。授業と動画はプレビューを ?mode= で読み込み直す
+// ---------------------------------------------------------------- プレビュー ▾：表示のモード（スライドショー・動画）と、先のステップを薄く見せる選び。選びと動画はプレビューを ?mode= で読み込み直す
 // スライドショーは全画面にもする（f と同じ）。発表は保存した .ega.html をブラウザで開いて行う
-const MODE_ITEMS = { talk: 'b-full', lecture: 'b-lecturemode', video: 'b-videomode' };
+// 先のステップを薄く見せる（内部の名前は lecture。?mode=lecture）はスライドショーの入／切の選び：モードの選びはスライドショーのまま、選びに印
 function setPreviewMode(mode) {
   const was = S.previewMode || 'talk';
   S.previewMode = mode;
-  for (const [m, id] of Object.entries(MODE_ITEMS)) $(id).setAttribute('aria-checked', m === mode ? 'true' : 'false');
+  $('b-full').setAttribute('aria-checked', mode !== 'video' ? 'true' : 'false');
+  $('b-videomode').setAttribute('aria-checked', mode === 'video' ? 'true' : 'false');
+  $('b-lecturemode').setAttribute('aria-checked', mode === 'lecture' ? 'true' : 'false');
   $('viewer').dataset.mode = mode;
   status(mode === 'talk' ? '' : T.modeOn[mode]);
   if (was !== mode && S.base && S.allowed) loadFrame();
@@ -1717,7 +1719,7 @@ $('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-check').onclick = quickCheck;
 $('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };
 $('b-presenter').onclick = openPresenter;
-$('b-full').onclick = () => { fullScreen(); setPreviewMode('talk'); };
+$('b-full').onclick = () => { fullScreen(); setPreviewMode(S.previewMode === 'lecture' ? 'lecture' : 'talk'); };
 // 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
 // キーボードで押したとき（detail = 0）は残す。一覧を開くボタン・一覧の項目は一覧の側でフォーカスを動かすので触らない
 $('top').addEventListener('click', (e) => {

@@ -1,24 +1,24 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋段階表示＋動く図＋口述原稿」まで一括で作り、Egatari 形式（.ega.html）の 1 ファイルにもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先の段階も薄く見せる授業の表示（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「Egatari にして」「ega にして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作ったデッキを動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, a presentation or lecture deck with step reveals, animated figures and narration, make it Egatari / .ega.html (a single portable file).
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先のステップを薄く見せる選び（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or lecture slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
 # motion-slides：動きのある HTML スライドを作る
 
-作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）のデッキ。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://studio.egatari.org/>）。
+作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）の教材。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://studio.egatari.org/>）。
 
 リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
 ## 1. 作るもの
 
-デッキは 1 つのフォルダにする。
+教材は 1 つのフォルダにする。
 
 ```
 <deck>/
-  deck.html       スライドの原稿（雛形は <repo>/examples/minimal/deck.html。口述原稿の見本は同じフォルダの narration.md）
-  narration.md    口述原稿（人が読んで直す）
+  deck.html       スライド（テンプレートは <repo>/examples/minimal/deck.html。台本の例は同じフォルダの narration.md）
+  narration.md    台本（人が読んで直す）
   data/  figs/    検算済みスクリプトの出力（JSON）、matplotlib の SVG
   scripts/        数値と図を作るスクリプト（uv で実行）
   macros.tex      論文の \newcommand（あれば）
@@ -26,76 +26,76 @@ Always reply in the language the user writes in, not the language of this file. 
 
 ## 2. 手順
 
-1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業／動画）、テーマ（同梱は `default` `business` `kokugo`。ピッチ・コンサルの発表なら `business`、国語なら `kokugo`。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か原稿の `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。§5）
+1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業／動画）、テーマ（同梱は `default` `business` `kokugo`。ピッチ・コンサルの発表なら `business`、国語なら `kokugo`。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。§5）
 2. **構成案を文字で書いてユーザーに見せる**（ここが一番大事。TeX しかないときは、レジュメの役割をここで果たす）
-   - スライドごとに：見出し（章の見出し）／言いたいこと（結論の行）／材料／動く図にするか
+   - スライドごとに：見出し（章の見出し）／伝えたいこと（結論の行）／材料／パーツを使うか
    - 枚数の目安：発表 1 分 ≒ 1 枚。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
-3. **静的な版を書く**：`deck.html` を雛形から作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` の雛形ができる。空でないフォルダには書かない）、段階なしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
-4. **段階と口述原稿を一緒に書く**（§4・§5）。段階の順は話す順なので、口述原稿を書きながら `data-step` を決める
+3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
+4. **ステップと台本を一緒に書く**（§4・§5）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
-5. **動く図**（§6）。効果のあるスライドだけ。部品庫（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
-6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。段階 0 で見えている本文の一覧は必ず読む
-7. **全スライドの最終段階を 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す。**図のあるスライドは、先に図の約束（例：染色体は細胞の中にある）を書き出し、`npm run sheet -- <deck> --steps` の段階ごとの帯で 1 つずつ確かめる。作り手の「確認しました」だけで終えない**
-8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・口述原稿を直し、Alt+クリック（Mac は ⌥ option+クリック）で AI へのメモを残す（編集モードの `m`（ペンのボタン、`d` でも開く）で、スライドに丸や矢印を描いてからメモを書くこともできる：マーカー）。「コメントを反映して」と言われたら：
-   - `<deck>/comments.json` の open を読む（`key` は `スライドの鍵:段階`、`range` は deck.html の位置、`quote` は要素の字の頭（点の近くの字があれば「近くの字 ｜ 要素の字」）、`pin` は押した点 `{x, y}`（スライドの座標 1280×720。ないものもある）、`strokes` はマーカーで描いた印 `[[[x, y], …], …]`（同じ座標の線の並び。1 つのメモに何本でも。マーカーだけ。そのときの `pin` は全部の印の重心。前のメモは 1 本だけの `stroke: [[x, y], …]` のこともあり、`strokes: [stroke]` と読む））
-   - **`strokes`（か `stroke`）があるメモは、描いた印（丸・矢印・下線）がメモの指すもの**：丸の中・矢印の先・下線の上が対象で（印が何本もあれば、全部を合わせて読む：丸と矢印なら丸の中を矢印の向きへ、など）、`quote` と `range` は全部の印の重心の下の要素からとった手がかりにすぎない。comment-shots の画像（印を赤い線で描いてある）を見て決める
-   - **先に `node <repo>/tools/comment-shots.mjs <deck>` を動かし、画像を見る**（Read で開く）。`<deck>/.cache/comment-shots/<id>.png` が点の周りの切り抜き（2 倍）、`<id>-full.png` がスライド全体で、どちらにも赤い輪で点を描いてある。図・部品へのコメントは、輪の所にある線・札・語が対象。言葉だけで決めない
-   - 直したら、その段階を撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
+5. **パーツ**（§6）。効果のあるスライドだけ。パーツライブラリ（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
+6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。ステップ 0 で見えている本文の一覧は必ず読む
+7. **全スライドの最終ステップを 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す。**図のあるスライドは、先に図の約束（例：染色体は細胞の中にある）を書き出し、`npm run sheet -- <deck> --steps` のステップごとの帯で 1 つずつ確かめる。作り手の「確認しました」だけで終えない**
+8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・台本を直し、Alt+クリック（Mac は ⌥ option+クリック）でコメントを残す（編集モードの `m`（ペンのボタン、`d` でも開く）で、スライドに丸や矢印を描いてからコメントを書くこともできる：マーカー）。「コメントを反映して」と言われたら：
+   - `<deck>/comments.json` の open を読む（`key` は `スライドの鍵:ステップ`、`range` は deck.html の位置、`quote` は要素の字の頭（点の近くの字があれば「近くの字 ｜ 要素の字」）、`pin` は押した点 `{x, y}`（スライドの座標 1280×720。ないものもある）、`strokes` はマーカーで描いた線 `[[[x, y], …], …]`（同じ座標の線の並び。1 つのコメントに何本でも。マーカーだけ。そのときの `pin` は全部の線の重心。前のコメントは 1 本だけの `stroke: [[x, y], …]` のこともあり、`strokes: [stroke]` と読む））
+   - **`strokes`（か `stroke`）があるコメントは、描いた線（丸・矢印・下線）がコメントの指すもの**：丸の中・矢印の先・下線の上が対象で（線が何本もあれば、全部を合わせて読む：丸と矢印なら丸の中を矢印の向きへ、など）、`quote` と `range` は全部の線の重心の下の要素からとった手がかりにすぎない。comment-shots の画像（描いた線を赤で描いてある）を見て決める
+   - **先に `node <repo>/tools/comment-shots.mjs <deck>` を動かし、画像を見る**（Read で開く）。`<deck>/.cache/comment-shots/<id>.png` が点の周りの切り抜き（2 倍）、`<id>-full.png` がスライド全体で、どちらにも赤い輪で点を描いてある。図・パーツへのコメントは、輪の所にある線・札・語が対象。言葉だけで決めない
+   - 直したら、そのステップを撮り直して（同じコマンドに id を付ける）、直ったかを目で確かめる。終わったものを resolved にする
 9. **組む**：`node <repo>/kit/build.mjs <deck>/deck.html` → `<deck>/out/deck.html`（単一の HTML。そのまま配れる。印刷で PDF）
-10. **1 ファイルで配る（Egatari 形式、拡張子 `.ega.html`）**：「Egatari にして」「1 ファイルで配れる形にして」と言われたら
-   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/<教材の題名>.ega.html`（デッキのフォルダの最上位。書いた場所は表示される）：原稿と音声（あれば）も入った 1 ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めての書き出しで `<deck>/egatari.json` に教材の id（docId）ができるので、デッキと一緒に残す
-   - `node <repo>/kit/build.mjs <deck> --play-only` → `<deck>/<教材の題名>.play.ega.html`：原稿を含まない再生専用。学ぶ人（生徒・受講者）に配るのはこちら
-   - 書き出す前に教材の情報を確かめる（§3「教材の情報」）
+10. **Egatari ファイルにして配る（拡張子 `.ega.html`）**：「Egatari にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」と言われたら
+   - `node <repo>/kit/build.mjs <deck> --portable` → `<deck>/<教材の題名>.ega.html`（教材のフォルダの最上位。書いた場所は表示される）：スライド・台本と音声（あれば）も入った Egatari ファイル。そのまま再生でき、編集アプリ <https://studio.egatari.org/> で開いて直し、保存し直せる（フォルダは要らない）。初めて作るときに `<deck>/egatari.json` に教材の id（docId）ができるので、教材のフォルダに残す
+   - `node <repo>/kit/build.mjs <deck> --play-only` → `<deck>/<教材の題名>.play.ega.html`：編集できるスライドと台本を含まない再生専用。参加者（生徒など）に配るのはこちら
+   - 作る前にファイルの情報を確かめる（§3「ファイルの情報」）
 
-## 3. 原稿の書き方（deck.html）
+## 3. スライドの書き方（deck.html）
 
 規格の正本は `<repo>/docs/authoring-with-llms.ja.md`（チャットの AI 向けの指示と同じもの。規格に R-title・R-fit・R-narr-steps などの名前がある。品質チェックの指摘もこの名前を添える）。ここでは要点だけを書く。特に：
 
 - **id は書かない**（R-noids）：§3 の下の項目のとおり、書き終えてから `npm run ids`
 - **読みの指定 `{x|y}` は 1 つの記号か 1 つの用語だけ**（R-reading）：`{θ|シータ}`・`{N₀|エヌゼロ}`。`{1-η|…}` や `{θとη|…}` のように式や記号の組を 1 つの読みにしない（品質チェックが警告する）
-- **教材の情報**：題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（`license`（SPDX の id）・`copyright`・`creators`・`attribution`）に書く（`docs/reference.ja.md`「1 ファイル」）。分からなければユーザーに聞き、作らない
-- **学ぶ人のデータを入れない**：生徒・受講者の名前・成績・回答・顔写真・提出物などは、見本でも原稿・口述原稿・データ・コメントに入れない（要るなら架空のものにして、架空と書く）
+- **ファイルの情報**：題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（`license`（SPDX の id）・`copyright`・`creators`・`attribution`）に書く（`docs/reference.ja.md`「Egatari ファイル」）。分からなければユーザーに聞き、作らない
+- **参加者のデータを入れない**：生徒など参加者の名前・成績・回答・顔写真・提出物などは、例でもスライド・台本・データ・コメントに入れない（要るなら架空のものにして、架空と書く）
 
 
 | 書き方 | 意味 |
 |---|---|
 | `<section class="slide">` | 1 枚。`<h2>` に章の見出し、`<div class="body">` に本文、`<div class="concl"><span>…</span></div>` に結論の行 |
 | `class="cover"` / `class="sec"` | 表紙 / 章・付録の扉（付録は `class="sec appendix"`。以降のページ番号は「付録」） |
-| `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / 段階なし（表紙・付録）/ 箇条書きも初めから全部 |
-| `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。部品は縦書きの指定（`m-gendai tate` など）で |
+| `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / ステップなし（表紙・付録）/ 箇条書きも初めから全部 |
+| `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。パーツは縦書きの指定（`m-gendai tate` など）で |
 | `<p class="sub">` `<div class="big">` `<p class="note">` `<div class="thm">` `<div class="cols">` | 小見出し / 主要な式 / 補足 / 定理の枠 / 横並び |
 | `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字（旧名 `blue` `red` `gray` も使える） |
 | `\( … \)` `\[ … \]` | 数式（KaTeX でビルド時に組む）。式の一部の色は `\hlE{…}`（結論・問題）`\hlT{…}`（用語）`\hlM{…}`（既知）で付ける（`\color{#D00000}` のように色を直接書かない） |
 | `{{FIG:名前}}` `{{JSON:file}}` | figs/名前.svg を埋め込む / data/file を埋め込む |
-| `<m-名前 …>` | 部品（自動で読み込まれる） |
+| `<m-名前 …>` | パーツ（自動で読み込まれる） |
 | `<section class="slide" data-morph>` `data-id="…"` `\morph{ID}{…}` | 前のスライドの同じ ID の要素が滑ってくる切り替え（§5 のモーフ） |
 
 - 色は直接書かない（`#D00000` など）。テーマの変数とクラスだけを使う。テーマを替えると全部が連動する
 - 文字は既定の大きさのまま。入りきらなければ文字を縮めずにスライドを分ける
 - 記号は最初に使う所で定義する（「\(d_n\)：観測データ」）
-- スライドの id（`s-` と base32 の小文字 6 字、乱数）は**自分で書かない**。新しいスライドは `<section class="slide">`（id なし）、口述原稿の見出しは `## <見出し>`（`{#…}` なし）で書き、書き終えたら `node <repo>/tools/ids.mjs <deck>`（`npm run ids -- <deck>`）で付ける（deck.html の id と narration.md の `{#id}` を一緒に付ける。2 回目は何も変えない）。今ある id は消さない・書き換えない。見出しは全部違うものにする（id のないスライドは見出しで口述原稿と対応する）
-- 英語のデッキは `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。品質チェックはです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は作業フォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
+- スライドの id（`s-` と base32 の小文字 6 字、乱数）は**自分で書かない**。新しいスライドは `<section class="slide">`（id なし）、台本の見出しは `## <見出し>`（`{#…}` なし）で書き、書き終えたら `node <repo>/tools/ids.mjs <deck>`（`npm run ids -- <deck>`）で付ける（deck.html の id と narration.md の `{#id}` を一緒に付ける。2 回目は何も変えない）。今ある id は消さない・書き換えない。見出しは全部違うものにする（id のないスライドは見出しで台本と対応する）
+- 英語の教材は `<html lang="en">`。本文の字は Source Sans 3（和文は BIZ UDPゴシックで補う）、ページ番号は「Appendix」、発表者ビューも英語になる。品質チェックはです・ます／句読点を見ず、タイトル 60 文字・結論 70 文字で警告。TTS は作業フォルダの `voice.json`（`{"lang": "en", "engine": "voxcpm2", …}`）で英語の音声に切り替える（例：`examples/tmlr2026-calibration/`）
 
-## 4. 段階表示（説明の順）
+## 4. ステップ表示（説明の順）
 
-**段階の順は、発表者が話す順にする。**話す前に見えている文字は、聞き手の注意を先取りする。
+**ステップの順は、発表者が話す順にする。**話す前に見えている文字は、聞き手の注意を先取りする。
 
 | 区分 | 扱い |
 |---|---|
-| 文脈：見出し、小見出し、導入の一文、前提 | 段階 0（初めから出す） |
+| 文脈：見出し、小見出し、導入の一文、前提 | ステップ 0（初めから出す） |
 | 材料：箇条書きの項目、式、表の行、図の要素 | 話す順に `data-step="1"`, `"2"`, … |
 | 後置き：まとめの一文、今後の課題、比較のための既知の式 | 材料のあと |
 | 結論の行 | 自動で最後（書かない） |
 
 - 箇条書きだけのスライド以外は `data-step` を必ず明示する（書かないと、箇条書き以外が初めから出る）
-- 式とそれを導く一文は同じ段階。`<div data-step="k">` で一緒に囲む
+- 式とそれを導く一文は同じステップ。`<div data-step="k">` で一緒に囲む
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
-- 1 枚の段階は 5 前後まで
-- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。授業の表示（`?mode=lecture`、キー `l`）では同じ `data-step` が「先の段階を薄く見せ、今の段階に印は付けない」になる。授業用に別の原稿は作らない
+- 1 枚のステップは 5 前後まで
+- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。先のステップを薄く見せる選び（`?mode=lecture`、キー `l`）では同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
 - （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
-## 5. 口述原稿（narration.md）
+## 5. 台本（narration.md）
 
 書式は `<repo>/docs/contract.ja.md §4`。
 
@@ -108,15 +108,15 @@ Always reply in the language the user writes in, not the language of this file. 
 ```
 
 - 見出しは、書くときは `## <スライドの見出し>`（スライドの見出しと同じ字。R-headings）。`npm run ids` が `## <スライドの見出し> {#<id>}` にする（id が鍵。見出しの文字列は読む人のため）。今ある `{#id}` は消さない。合わないと build が警告し、品質チェックはエラーにする
-- 段階 0 から結論の行まで、すべての段階に書く。段階の中で言うことは、その段階で現れる材料のことだけ
+- ステップ 0 から結論の行まで、すべてのステップに書く。ステップの中で言うことは、そのステップで現れる材料のことだけ
 - **話者は既定で 1 人**（話者名を書かない）。掛け合い（`Expert:` / `Novice:`）は利用者が頼んだときだけ。書き方は下の「掛け合いの書き方」
 - 記号は記号のまま書く（θ, L）。読みは読み辞書が付ける。例外は `{φ|ファイ}`（1 つの記号か用語だけ。R-reading）。**式全体は読まない**（「次の点は、今の点から勾配に比例した分だけ引いて作る」のように言葉で）
-- 図の動きに合わせて話すときは `{cue}` を入れる（部品の同期点と順に対応）
+- 図の動きに合わせて話すときは `{cue}`（タイミング）を入れる（パーツのタイミングと順に対応）
 - 尺の目安：1 秒 ≒ 5 字（話者で 4.7〜5.3 字）。発表時間から逆算して字数を配る
 
 ### 掛け合いの書き方（頼まれたときだけ）
 
-掛け合いは、認知的徒弟制（cognitive apprenticeship）の考え方で書く。熟達者（Expert）が考えを口に出して見せ、初学者（Novice）が学ぶ人の代わりに分からない所を表に出す。設計の元は論文 [arXiv:2607.12235](https://arxiv.org/abs/2607.12235) と、その実装・プロンプト <https://github.com/moiku/gemini-tts-lecture-generation>。AI への指示（`docs/authoring-with-llms.ja.md` の R-dialogue）と同じ決まり。
+掛け合いは、認知的徒弟制（cognitive apprenticeship）の考え方で書く。熟達者（Expert）が考えを口に出して見せ、初学者（Novice）が学習者の代わりに分からない所を表に出す。設計の元は論文 [arXiv:2607.12235](https://arxiv.org/abs/2607.12235) と、その実装・プロンプト <https://github.com/moiku/gemini-tts-lecture-generation>。AI への指示（`docs/authoring-with-llms.ja.md` の R-dialogue）と同じ決まり。
 
 ```markdown
 [2] Expert: η は学習率で、1 歩の大きさを決めます。
@@ -124,26 +124,26 @@ Always reply in the language the user writes in, not the language of this file. 
     Expert: 大きすぎると谷を飛び越えて、行ったり来たりします。坂を大股で下りると、向こう側の斜面に足が着くのと同じです。
 ```
 
-- **Novice は相づち役にしない。**その段階で学ぶ人が持ちそうな疑問を代弁する（「なぜ〜なのですか」「〜のときはどうなりますか」）か、自分の言葉で言い換える（「つまり〜ということですか」）。言い換えは、よくある誤解を含めてよい（Expert が直す）
+- **Novice は相づち役にしない。**そのステップで学習者が持ちそうな疑問を代弁する（「なぜ〜なのですか」「〜のときはどうなりますか」）か、自分の言葉で言い換える（「つまり〜ということですか」）。言い換えは、よくある誤解を含めてよい（Expert が直す）
 - **Expert は答えて 1 つ足す。**疑問には答えて、具体例か比喩を 1 つ添える。言い換えには、合っているか（どこが違うか）を確かめて、1 歩先へ進める（「そうです。さらに〜」）
-- **置く所は理解の分かれ目だけ**：誤解しやすい所、「なぜ」が残る所、前の内容とのつながりが見えにくい所。**1 枚に 1 回、2〜3 発言まで**。ほかの段階は Expert 1 人で話す（話者のない行は Expert）
+- **置く所は理解の分かれ目だけ**：誤解しやすい所、「なぜ」が残る所、前の内容とのつながりが見えにくい所。**1 枚に 1 回、2〜3 発言まで**。ほかのステップは Expert 1 人で話す（話者のない行は Expert）
 - **「なるほど」「そうなんですね」だけの発言は書かない。**直前の発言をくり返すだけの発言も書かない（内容を運ばない発言は尺を食うだけ）
 - 尺は発言の数ではなく字数で決まる（1 秒 ≒ 5 字）。1 回の発言は 1〜3 文で、長い説明は割る。尺を詰めるときは Expert の長い説明を短くし、Novice の疑問・言い換えは残す（そこが教材の中身）
-- 話す量の目安は Expert が 7 割前後。概念の核心の段階を厚く、手順・準備の段階は 1 人で短く
+- 話す量の目安は Expert が 7 割前後。概念の核心のステップを厚く、手順・準備のステップは 1 人で短く
 - TTS の演技の記号（`[laughing]` など）は書かない。英字や記号を先回りしてカタカナにしない（読みは読み辞書と `{表示|読み}` で付ける）
 
-### 注目の演出（`{mark}`）
+### 強調（`{mark}`）
 
-話し手が「ここ」と言う瞬間に、スライドの該当箇所に印を付ける（約束事は `docs/contract.ja.md §7`）。
+話し手が「ここ」と言う瞬間に、スライドの該当箇所を強調する（約束事は `docs/contract.ja.md §7`）。
 
 ```markdown
 [2] {mark:eta|circle}η は学習率です。{mark:grad}勾配は、損失が最も急に増える向きです。
 ```
 
 - 目印はスライド側に置く：式の一部は `\htmlId{eta}{\eta}`（同じ記号を何枚かで使うなら `\htmlData{mark=eta}{…}`）、それ以外の要素は `id="eta"` か `data-mark="eta"`
-- 効果：`underline`（既定。手描きの下線）、`circle`（囲み）、`box`（角丸の枠）、`spot`（ほかを薄くする）、`laser`（光の点。少しで消える）。`{mark:eta|circle|hold=2}` で 2 秒で消す（既定は段階の終わりまで）。`{mark:clear}` でその段階の印をすべて消す
-- 印は言葉の直前に置く（`{mark:eta}η は…`）。音声があれば TTS の区切りの時刻に、なければ段階の動きの後に 0.9 秒おきに出る
-- 1 つの段階に 1〜2 個まで。式の中の項を説明する段階で使い、印で説明を置き換えない（言葉でも「学習率は」と言う）
+- 効果：`underline`（既定。手描きの下線）、`circle`（丸で囲む）、`box`（角丸の枠）、`spot`（ほかを薄くする）、`laser`（光の点。少しで消える）。`{mark:eta|circle|hold=2}` で 2 秒で消す（既定はステップの終わりまで）。`{mark:clear}` でそのステップの強調をすべて消す
+- 強調は言葉の直前に置く（`{mark:eta}η は…`）。音声があればその言葉が読まれる時刻に、なければステップの動きの後に 0.9 秒おきに出る
+- 1 つのステップに 1〜2 個まで。式の中の項を説明するステップで使い、強調で説明を置き換えない（言葉でも「学習率は」と言う）
 - 目印の無い `{mark}` は build と品質チェックが警告する
 
 ### モーフ（`data-morph`）
@@ -156,14 +156,14 @@ Always reply in the language the user writes in, not the language of this file. 
   <ul><li data-id="gdef">…</li></ul>
 ```
 
-- 対応させる要素に、元と先で同じ `data-id` を付ける。式の一部は `\morph{ID}{…}`（元の式にも付ける）。注目の演出の目印とは `\htmlId{eta}{\morph{eta}{…}}` と重ねられる
+- 対応させる要素に、元と先で同じ `data-id` を付ける。式の一部は `\morph{ID}{…}`（元の式にも付ける）。強調の目印とは `\htmlId{eta}{\morph{eta}{…}}` と重ねられる
 - ID はスライドの中で一意に。同じ字の部分どうしを対応させ、変わる部分（\(\nabla f(\theta_t)\) → \(a\theta_t\)）は対応させずに消えて現れるのに任せる
-- 動くのは段階 0 で見えている要素だけ。新しく足す行は `data-step` で後から出す
-- 対応が無いと品質チェックが警告する。段階 0 の口述原稿は、動きの間（約 1 秒）に「先ほどの式を…」と受ける言葉から始める
+- 動くのはステップ 0 で見えている要素だけ。新しく足す行は `data-step` で後から出す
+- 対応が無いと品質チェックが警告する。ステップ 0 の台本は、動きの間（約 1 秒）に「先ほどの式を…」と受ける言葉から始める
 
-## 6. 動く図
+## 6. パーツ
 
-| 型 | 部品 | 例 |
+| 型 | パーツ | 例 |
 |---|---|---|
 | パラメータを動かす | `m-sweep` | 学習率を 0.1 → 0.5 → 1.8 と動かし、前の形を灰色で残す（`examples/minimal`） |
 | 線を 1 本ずつ引く | `m-curves` | 同じ予測分布に平均・中央値・分位点を順に引く |
@@ -175,14 +175,14 @@ Always reply in the language the user writes in, not the language of this file. 
 | 絞り込む | `m-market` | TAM → SAM → SOM の円を外から順に出す |
 | 数字を見せる | `m-kpi` | 掴みの 3 つの数字を 1 枚ずつ数え上げる |
 | お金の流れ | `m-flow`（`kind` `amount` `pulse`） | 顧客が払うお金とサービスの行き来を 2 本の矢印で描き、お金を流す |
-| 漢文を読む | `m-kanbun` | 白文に訓点を付け、読む順を 1 字ずつたどり（返り点で上へ戻る弧）、書き下し文にする（`examples/kokugo-kanbun`） |
+| 漢文を読む | `m-kanbun` | 白文に訓点を付け、読む順を句ごとに 1 ステップずつたどり（返り点・再読文字で前の句へ戻るところは別のステップ。上へ戻る弧）、書き下し文にする。台本の `[n]` は句ごとに 1 つ（`order-by="all"` で読む順の全体を 1 ステップ）（`examples/kokugo-kanbun`） |
 | 古文の品詞分解 | `m-kobun` | 1 文ずつ語に切って品詞で色を分け、助動詞を押すと活用表、最後に現代語訳 |
 | 現代文の構造 | `m-gendai` | 傍線・指示語の矢印・段落の役割（主張・具体例・対比）の枠と線 |
 | 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
 | 符号の木で復号する | `m-codetree` | 符号表から木を作り、系列を 1 語ずつたどって、白・黒のランを画素の升目に並べる（MH 符号） |
 
-- 一覧と属性は `<repo>/vendor/components/CATALOG.md`、見本は各部品の `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
-- **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、部品の子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
+- 一覧と属性は `<repo>/vendor/components/CATALOG.md`、動く例は各パーツの `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
+- **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、パーツの子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
 - 図に matplotlib などのグラフを入れるときは、各軸にデータの範囲より余白を取る（`ax.margins(0.05)` など）。端の点がプロット領域で切れないようにする
 - 動きは注意の誘導に限る。飾りの動きは付けない
 - 静的な図は matplotlib の SVG（図の幅[in] = 表示幅[px] / 100、文字 18pt）を `{{FIG:名前}}` で
@@ -191,20 +191,20 @@ Always reply in the language the user writes in, not the language of this file. 
 
 | 失敗 | 対策 |
 |---|---|
-| 後で出すはずの文字が初めから出る | `data-step` を明示する。品質チェックの「段階 0 の一覧」で確かめる |
+| 後で出すはずの文字が初めから出る | `data-step` を明示する。品質チェックの「ステップ 0 の一覧」で確かめる |
 | 未定義の記号がいきなり出る | 最初に使う所で「記号：意味」。表では記号の代わりに言葉 |
 | 1 枚の情報量が多い | 文字を縮めず分ける |
-| 口述原稿が式を読み上げている | 言葉で言い換える（品質チェックが警告する） |
-| 口述原稿の見出しがスライドと合わない | build の警告を見る。見出しを変えたら narration.md も直す |
+| 台本が式を読み上げている | 言葉で言い換える（品質チェックが警告する） |
+| 台本の見出しがスライドと合わない | build の警告を見る。見出しを変えたら narration.md も直す |
 | 論文のマクロでエラー | `macros.tex` に `\newcommand` を置く |
 | 図の色がテーマと合わない | 色を直接書いていないか確かめる（`var(--…)` だけを使う） |
 
 ## 8. 操作（発表）
 
-→ / Space：次の段階、←：前の段階、Shift+矢印：スライド単位、数字＋Enter：そのページ、f：全画面、
-p：発表者ビュー（口述原稿がカンペになる）、a：自動再生（音声があれば流す）、l：授業モード、b：暗転、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
+→ / Space：次のステップ、←：前のステップ、Shift+矢印：スライド単位、数字＋Enter：そのページ、f：全画面、
+p：発表者ビュー（台本がカンペになる）、a：自動再生（音声があれば流す）、l：授業、b：黒い画面、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
 
-発表中の道具：o：スライド一覧（矢印で選んで Enter）、x：レーザー、d：ペン、v：消えるペン（約 1 秒で消える）、
+発表中の道具：o：スライド一覧（矢印で選んで Enter）、x：レーザーポインター、d：ペン、v：消えるペン（約 1 秒で消える）、
 Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタンも出る）、Backspace：このスライドの書き込みを消す（Shift で全部）、Esc：道具を解除。
 ペンの線はスライドごとに残る。発表者ビューで x / d / v を押すと、左の画面に描いた線が本体に出る。
 印刷と動画（`?mode=video`）には出ない。
@@ -217,7 +217,7 @@ Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタ�
 ユーザーが「感想を送って」「フィードバックして」「不具合を報告して」と言ったとき、または長い作業の終わりで、ユーザーが前もって送ってよいと言っていたときに行う。勝手には送らない。
 
 1. この作業で困ったこと・不具合・わかりにくかった手順・よかった点を、箇条書きで短くまとめる（何をして、何が起きて、どうなってほしかったか）
-2. **私的な内容を入れない**：スライドの本文・口述原稿・論文の中身・音声・参照音声の名前・個人のパスやアドレス・ユーザー名。要るなら「数式の多いスライドで」のように一般化する
+2. **私的な内容を入れない**：スライドの本文・台本・論文の中身・音声・参照音声の名前・個人のパスやアドレス・ユーザー名。要るなら「数式の多いスライドで」のように一般化する
 3. `.github/ISSUE_TEMPLATE/feedback.yml` の欄に合わせて下書きを書き、**全文をユーザーに見せる**：
    ```
    ### Type

@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=40a25bdbc9c0f606 -->
+<!-- i18n: pair=with-claude.ja.md sha256=0cdb8e07c6a9febe -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -30,9 +30,9 @@ On Windows, use the directory junctions in the [README](../README.md#using-it-wi
 
 ### Cowork (the Claude desktop app)
 
-Cowork does not read `~/.claude/skills/` on disk. It uses the skills turned on in your Claude account (Customize ▸ Skills, then upload a zip of a skill folder).
+Cowork does not read `~/.claude/skills/` on disk. It uses the skills turned on in your Claude account (Customize ▸ Skills, then upload a ZIP file of a skill folder).
 <!-- verify -->
-We have not tried this with these skills. They run the repository's Node commands from the clone, so a zip may not be enough; if the upload does not work, make the lesson with Claude Code, or with a chat AI ([authoring with a chat AI](authoring-with-llms.md)).
+We have not tried this with these skills. They run the repository's Node commands from the clone, so a ZIP file may not be enough; if the upload does not work, make the lesson with Claude Code, or with a chat AI ([authoring with a chat AI](authoring-with-llms.md)).
 <!-- verify -->
 
 ## The first request to type
@@ -44,7 +44,7 @@ Answer Claude's questions, approve the outline, and wait for the quality checks 
 ## Open the result in Studio
 
 1. Open <https://studio.egatari.org/> in Chrome or Edge.
-2. **File ▾ → Work in a folder…** and choose the folder Claude made. Or **File ▾ → Open…** for an Egatari file (editable). An Egatari file (play only) cannot be edited.
+2. **File ▾ → Work in a folder…** and choose the folder Claude made. Or **File ▾ → Open…** for an Egatari file (editable). An Egatari file (play-only) cannot be edited.
 3. Keep Studio open while Claude changes the folder; the preview reloads by itself. See [the editor](editor.md).
 
 ## Problems

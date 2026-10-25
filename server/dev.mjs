@@ -97,8 +97,8 @@ function errorPage(err) {
 <style>body{margin:0;background:#2b1d1d;color:#fdd;font:15px/1.6 system-ui,sans-serif}
 .box{max-width:960px;margin:48px auto;padding:24px 28px;background:#3a2222;border:1px solid #a44;border-radius:10px}
 h1{font-size:20px;margin:0 0 12px;color:#fff}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;color:#fcc}
-p{color:#dbb}</style></head><body><div class="box"><h1>原稿を組み立てられませんでした</h1>
-<p>原稿を直して保存すると、自動で読み込み直します。</p><pre>${esc}</pre></div>
+p{color:#dbb}</style></head><body><div class="box"><h1>スライドを組み立てられませんでした</h1>
+<p>スライドを直して保存すると、自動で読み込み直します。</p><pre>${esc}</pre></div>
 </body></html>`;
 }
 const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -388,7 +388,7 @@ const server = http.createServer(async (req, res) => {
       const src = readIn(SRC_IN) ?? '';
       if (!r || r[1] > src.length) return send(res, 400, { error: '範囲が正しくありません' });
       // 今の組み立てで直せる要素（data-src を付けたもの）の範囲だけ
-      if (!page.ranges.has(`${r[0]}-${r[1]}`)) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
+      if (!page.ranges.has(`${r[0]}-${r[1]}`)) return send(res, 409, { error: 'スライドの HTML が変わっています。再読み込みしてください' });
       const text = src.slice(r[0], r[1]);
       return send(res, 200, { text, h: short(text) });
     }
@@ -397,7 +397,7 @@ const server = http.createServer(async (req, res) => {
       const r = parseRange(b.range);
       if (!r || typeof b.text !== 'string') return send(res, 400, { error: '範囲または本文が正しくありません' });
       const src = readIn(SRC_IN) ?? '';
-      if (!page.ranges.has(`${r[0]}-${r[1]}`) || r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: '原稿が変わっています。再読み込みしてください' });
+      if (!page.ranges.has(`${r[0]}-${r[1]}`) || r[1] > src.length || short(src.slice(r[0], r[1])) !== b.h) return send(res, 409, { error: 'スライドの HTML が変わっています。再読み込みしてください' });
       backup(SRC_IN);
       writeIn(SRC_IN, keepSeed(src, src.slice(0, r[0]) + b.text + src.slice(r[1])));   // シード値は保存で残す（format spec §8.4）
       console.log(`edit ${deckBase} ${b.range}`);
@@ -414,8 +414,8 @@ const server = http.createServer(async (req, res) => {
       if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
       if (!(page?.slides || []).some((x) => x.key === sk)) return send(res, 400, { error: 'そのスライドはデッキにありません' });
-      const text = readIn(NARR) ?? '# 口述原稿\n';
-      if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '口述原稿が変わっています。再読み込みしてください' });
+      const text = readIn(NARR) ?? '# 台本\n';
+      if (narrationRev(text, sk, st) !== b.rev) return send(res, 409, { error: '台本が変わっています。再読み込みしてください' });
       // 新しい節の見出しは、id のあるスライドなら「## 見出し {#id}」（スライドの一覧 {key, id, heading} を渡す）
       const out = rewriteNarration(text, sk, st, b.turns, page?.slides || []);
       if (out !== text) { backup(NARR); writeIn(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }

@@ -127,7 +127,7 @@ ok('import: the refusal for another lesson carries the source lesson title (from
   const src = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
   // 音声の板の言葉（handoff/audio-flow-2026-10-25.md の cloud.wrong）に、分かれば元の教材の題を添える
   assert.ok(src.includes("wrong: 'この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください', wrongOf: (t) => `（「${t}」の台本から作った ZIP ファイルです）`"), 'ja message');
-  assert.ok(src.includes("wrong: 'This ZIP file has no audio for this lesson. Choose the ZIP file made from the script exported from this lesson', wrongOf: (t) => ` (it was made from the script of “${t}”)`"), 'en message');
+  assert.ok(src.includes("wrong: 'This ZIP file has no audio for this lesson. Choose the ZIP file made from the script exported from this lesson', wrongOf: (t) => ` (the ZIP file was made from the script of “${t}”)`"), 'en message');
   assert.ok(!/docId が違う|the docId differs/.test(src), 'no docId jargon in the messages');
 });
 ok('import: records that do not hold up are skipped one by one (path, cues count, hash, missing audio, kind) and never reach the files', async () => {

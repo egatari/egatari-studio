@@ -184,7 +184,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         const errs = await page.$$eval('#panel-body .res.error', (xs) => xs.map((x) => x.textContent));
         const mine = await page.$$eval('#panel-body .res', (xs, n) => xs.filter((x) => x.querySelector('.where').textContent.startsWith(`スライド ${n}：`)).map((x) => [x.classList.contains('warn') ? 'warn' : 'other', x.textContent]), sel + 2);
         const nSteps = sec.length;
-        ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /雛形の字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
+        ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /テンプレートの字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
           `${tag}: add "${kind}": no errors; the new slide gets the template warnings only (template text 1, placeholder narration ${nSteps})${errs.length || mine.length !== nSteps + 1 ? ' ' + JSON.stringify([errs, mine]) : ''}`);
         ok(sec.every((g) => g.turns.length === 1 && g.turns[0].raw.startsWith('✎ ')), `${tag}: add "${kind}": every placeholder line starts with the fixed mark "✎ "`);
         if (kind === 'title-body') ok(/足しました/.test(await announced()), `${tag}: the add is announced (aria-live)`);
@@ -203,7 +203,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.waitForSelector('#dev-audio-tts:not([disabled])', { timeout: 10000 });
         await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #left-list', { timeout: 2500 }));
         const ttsDlg = await page.textContent('#dlg');
-        ok(/雛形の仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
+        ok(/テンプレートの仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
         await clickDlg(page, '#dlg-cancel');
         ok(await page.evaluate(() => window.__synth) === 0, `${tag}: Cancel in the TTS warning synthesizes nothing`);
         await page.click('#b-audio');
@@ -212,7 +212,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await clickCommand(page, '#b-export-portable');
         await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
         const exDlg = await page.$$eval('#left-list li', (xs) => xs.map((x) => x.textContent));
-        ok(exDlg.some((t) => /雛形の字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
+        ok(exDlg.some((t) => /テンプレートの字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
         await clickDlg(page, '#dlg-cancel');
         await page.waitForTimeout(300);
         ok(await page.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size) === 0, `${tag}: Cancel in the export warning writes nothing`);

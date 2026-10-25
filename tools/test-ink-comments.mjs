@@ -182,7 +182,7 @@ try {
   const opened = await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
   const q = opened ? await page.textContent('#dev-comment .dv-q').catch(() => '') : '';
   const card = opened ? await page.textContent('#dev-comment') : '';
-  ok(opened && q.includes(target.text.slice(0, 20)) && card.includes('手書きの印'), 'pointer-up opens the same comment box as Alt+click, quoting the circled element ' + JSON.stringify({ q, want: target.text.slice(0, 20) }));
+  ok(opened && q.includes(target.text.slice(0, 20)) && card.includes('マーカーの線'), 'pointer-up opens the same comment box as Alt+click, quoting the circled element ' + JSON.stringify({ q, want: target.text.slice(0, 20) }));
   const u2 = await UI();
   const pend = await page.evaluate(() => { const s = document.querySelector('#dev-pins svg.dev-ink.dv-new'); return s ? { stroke: getComputedStyle(s.querySelector('.dv-line')).stroke, n: s.querySelector('.dv-line').getAttribute('d').split('L').length } : null; });
   ok(u2.strokes === 1 && pend && /245, 158, 11/.test(pend.stroke) && u2.pins === 1, 'the pending stroke is drawn in the overlay in the pending pin colour ' + JSON.stringify({ pend, strokes: u2.strokes, pins: u2.pins }));
@@ -201,7 +201,7 @@ try {
   await until(async () => (await page.textContent('#dev-comment')).includes('3 本'));
   const card3 = await page.evaluate(() => ({ n: document.querySelectorAll('#dev-comment').length, text: document.getElementById('dev-comment').textContent,
     m: (document.querySelector('#dev-pins svg.dev-ink.dv-new .dv-line') || { getAttribute: () => '' }).getAttribute('d').split('M').length - 1, ink: document.querySelectorAll('#dev-pins svg.dev-ink').length }));
-  ok(card3.n === 1 && card3.text.includes('手書きの印 3 本') && card3.m === 3 && card3.ink === 1, 'two more strokes join the same pending note: one box, three strokes in the overlay ' + JSON.stringify({ n: card3.n, m: card3.m, ink: card3.ink }));
+  ok(card3.n === 1 && card3.text.includes('マーカーの線 3 本') && card3.m === 3 && card3.ink === 1, 'two more strokes join the same pending note: one box, three strokes in the overlay ' + JSON.stringify({ n: card3.n, m: card3.m, ink: card3.ink }));
   await page.screenshot({ path: path.join(work, 'ink-pending-3.png') });
 
   // 4. 残す
@@ -227,14 +227,14 @@ try {
   await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
   await drawOnStage(Array.from({ length: 12 }, (_, j) => [200 + j * 20, 600]));
   await until(async () => (await page.textContent('#dev-comment')).includes('2 本'));
-  const two = (await page.textContent('#dev-comment')).includes('手書きの印 2 本');
+  const two = (await page.textContent('#dev-comment')).includes('マーカーの線 2 本');
   await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
   await drawOnStage(Array.from({ length: 12 }, (_, j) => [700 + j * 20, 600]));
   await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
   const after = await page.evaluate(() => ({ text: document.querySelector('#dev-comment .dev-where .dv-s').textContent, m: document.querySelector('#dev-pins svg.dev-ink.dv-new .dv-line').getAttribute('d').split('M').length - 1 }));
   await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
   const after2 = JSON.parse(fs.readFileSync(COMMENTS, 'utf8'));
-  ok(two && after.m === 1 && after.text === '手書きの印' && after2.length === 1, 'cancel discards all the pending strokes (the next note starts from one stroke, nothing written) ' + JSON.stringify({ two, m: after.m, n: after2.length }));
+  ok(two && after.m === 1 && after.text === 'マーカーの線' && after2.length === 1, 'cancel discards all the pending strokes (the next note starts from one stroke, nothing written) ' + JSON.stringify({ two, m: after.m, n: after2.length }));
   // 前の形（stroke 1 本）のコメント：一覧と重ねに出る
   after2.push({ id: 'legacy1', created: '2026-01-01T00:00:00Z', key: '何を最小化するか:0', range: null, pin: { x: 900, y: 500 }, stroke: [[860, 470], [940, 470], [940, 530], [860, 530]], quote: '', comment: '前の形の線', status: 'open' });
   fs.writeFileSync(COMMENTS, JSON.stringify(after2, null, 2));
@@ -249,7 +249,7 @@ try {
     return { stroke: getComputedStyle(s.querySelector('.dv-line')).stroke, w: r.width, l: r.left - f.left, mark: document.querySelectorAll('#dev-comments .dv-s').length,
       three: document.querySelector('#dev-comments .dev-c .dv-s').textContent, legacy: old ? old.getAttribute('d') : null };
   });
-  ok(listed && listed.mark === 2 && listed.three === '手書きの印 3 本' && listed.legacy === 'M860 470L940 470L940 530L860 530', 'the list shows both notes with their marks; an old single-stroke note still renders ' + JSON.stringify(listed));
+  ok(listed && listed.mark === 2 && listed.three === 'マーカーの線 3 本' && listed.legacy === 'M860 470L940 470L940 530L860 530', 'the list shows both notes with their marks; an old single-stroke note still renders ' + JSON.stringify(listed));
   const box = await dk().evaluate(() => { const b = document.getElementById('stage').getBoundingClientRect(); return { l: b.left, w: b.width }; });
   await page.screenshot({ path: path.join(work, 'ink-listed.png') });
   ok(listed && /225, 29, 72/.test(listed.stroke) && Math.abs(listed.w - box.w) < 2 && Math.abs(listed.l - box.l) < 2 && listed.mark, 'a listed comment draws its stroke in the overlay in the pin colour, over the slide ' + JSON.stringify({ listed, box }));

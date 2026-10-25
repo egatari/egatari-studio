@@ -149,7 +149,7 @@ try {
   ok(sj.inputHash === await PF.inputHash(seg0) && JSON.stringify(sj.turns[0].segments.length) === JSON.stringify(seg0.turns[0].ttsParts.length), 'export: inputHash and the segments follow the narration');
   const eta = job.steps.find((x) => x.turns.some((t) => t.segments.some((s) => s.includes('イータ'))));
   ok(!!eta && !job.steps.some((x) => x.turns.some((t) => t.segments.some((q) => /[{}]/.test(q)))), 'export: the reading dictionary is applied by the editor (イータ), no markup');
-  ok((await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next');
+  ok((await msgs()).some((m) => /^台本を書き出しました（\d+ ステップ）。次は「Colab を開く」$/.test(m)) && !(await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next (no file name)');
   // 書き出した後に、1 つの段階の原稿を直す（その段階は印付きになる）
   const changed = keys[2];
   const nr = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), changed);

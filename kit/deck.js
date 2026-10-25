@@ -909,7 +909,7 @@ var A11Y = DECK.mode !== "video" && !DECK.view;
 var live = null, lastSaid = null;
 function L10N(ja, en){ return DECK.ja ? ja : en; }
 // 音声について示す文（format spec §7.3。キーの一覧・操作の帯の札の説明・発表者ビューで共通）。録音と音声のない段階は ""
-DECK.VOICE_NOTE = {tts: L10N("音声は AI で合成したものです", "The narration audio is AI-generated"),
+DECK.VOICE_NOTE = {tts: L10N("音声は AI で合成したものです", "The audio is AI-generated"),
   imported: L10N("音声の作り方は記録されていません", "How the audio was made is not recorded")};
 function voiceNote(key){ return DECK.VOICE_NOTE[DECK.audioKind(key)] || ""; }
 DECK.voiceNote = voiceNote;
@@ -939,7 +939,7 @@ function announce(i, k){
   else if (lastSaid.k === k) return;
   else {
     var txt = k > lastSaid.k ? s._items.filter(function(e){ return +e.getAttribute("data-step") === k; }).map(speakText).join(" ").trim() : "";
-    msg = txt || L10N("段階 " + k + " / " + s._max, "Step " + k + " of " + s._max);
+    msg = txt || L10N("ステップ " + k + " / " + s._max, "Step " + k + " of " + s._max);
   }
   lastSaid = {i: i, k: k};
   // 同じ文でも読み直されるように、いったん空にしてから入れる
@@ -1449,7 +1449,7 @@ function extLink(a){
   }
   if (window.DECK_DEV){   // 編集のプレビュー：授業の絵は作者のコードが描ける。外へは出ず、ここでは確かめもしない（書き出したデッキで確かめる）
     extDialog({title: L10N("プレビューでは外のページを開きません", "The preview does not open outside pages"), host: d.host, url: d.url,
-      notes: [L10N("書き出したデッキ・1 ファイルで開くと、行き先を確かめてから開きます", "In the built deck or single file, it asks before opening")], open: null, from: from});
+      notes: [L10N("組み立てた HTML・Egatari ファイルで開くと、行き先を確かめてから開きます", "In the built HTML or an Egatari file, it asks before opening")], open: null, from: from});
     return;
   }
   if (d.verdict === "open"){ extOpen(d.url); return; }
@@ -1595,7 +1595,7 @@ function setBlack(on){
     extClose();   // 覆いの下に箱を残すと、キーが箱に取られて b・Esc で戻れない
     var c = document.createElement("div");
     c.id = "deck-black"; c.tabIndex = -1;
-    c.setAttribute("role", "img"); c.setAttribute("aria-label", L10N("暗転中（b・クリック・Esc で戻る）", "Blacked out (b, click or Esc to return)"));
+    c.setAttribute("role", "img"); c.setAttribute("aria-label", L10N("黒い画面中（b・クリック・Esc で戻る）", "Blacked out (b, click or Esc to return)"));
     var prev = document.activeElement;
     BLACK = {el: c, prev: prev && prev !== document.body ? prev : null};
     // 押した点では送らない・描かない：押したら戻すだけ
@@ -1604,7 +1604,7 @@ function setBlack(on){
     // 隅の薄い知らせ（約 2 秒）。入ったときと、暗転の間にマウスを動かしたときに出す
     var hint = document.createElement("div");
     hint.id = "deck-black-hint"; hint.setAttribute("aria-hidden", "true");
-    hint.textContent = L10N("暗転中 — b か Esc で戻ります", "Blacked out — press b or Esc to return");
+    hint.textContent = L10N("黒い画面中 — b か Esc で戻ります", "Black screen — press b or Esc to return");
     c.appendChild(hint);
     BLACK.hint = hint;
     c.addEventListener("pointermove", function(ev){ if (ev.pointerType !== "touch") blackHint(); });

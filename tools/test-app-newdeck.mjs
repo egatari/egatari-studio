@@ -92,7 +92,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     let st0 = await status(p1);
     ok(st0.go === '作成' && st0.goOff && st0.note === '① に答えてください' && st0.beside, 'S1: 「作成」 stays in place, disabled, with 「① に答えてください」 right beside it: ' + JSON.stringify(st0));
     ok((await p1.$$eval('#paste-cat input:checked', (xs) => xs.length)) === 0 && await p1.isDisabled('#paste-next-kind') && await p1.isHidden('#paste-sub')
-      && (await text(p1, '#paste-step-kind .hint')) === '場面に合った組み立て（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます' && !(await p1.$('#paste-step-kind button:has-text("飛ばす")')),
+      && (await text(p1, '#paste-step-kind .hint')) === '使う場面に合った組み立て（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます' && !(await p1.$('#paste-step-kind button:has-text("飛ばす")')),
       'S1 ①: nothing is pre-selected, 「次へ」 is disabled until there is an answer, the hint names 「その他」, no skip button');
     ok((await p1.$$eval('#paste-cat label', (xs) => xs.map((x) => x.textContent))).join('|') === '授業・研修|研究発表|ビジネス|手引き|その他', 'S1 ①: the settings keep 「その他」');
     // その他：小分類はなく、すぐ答えになる。授業・研修に替えると小分類も答える問い（印なし・最後は「この中にない」）
@@ -113,7 +113,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ② タイトル（必須）・だれ向け・長さ・内容は「AI に任せる」が既定で欄は閉じている。例の文は ① の答えに合わせる
     ok(await p1.isDisabled('#paste-next-content') && (await p1.getAttribute('#paste-title', 'placeholder')) === '例：てこのはたらき' && (await text(p1, 'label[for=paste-title]')) === 'タイトル（表紙に出ます）'
       && await p1.isChecked('#paste-audience-mode-ai') && await p1.isHidden('#paste-audience') && await p1.isChecked('#paste-length-mode-ai') && await p1.isHidden('#paste-length-n') && await p1.isChecked('#paste-content-mode-ai') && await p1.isHidden('#paste-content')
-      && (await text(p1, '#paste-audience-mode')).includes('AI に任せる（① の場面から考えます）') && (await text(p1, '#paste-length-mode')).includes('AI に任せる（5〜8 枚くらいにします）') && (await text(p1, '#paste-content-mode')).includes('AI に任せる（タイトルだけで考えます）')
+      && (await text(p1, '#paste-audience-mode')).includes('AI に任せる（① の使う場面から考えます）') && (await text(p1, '#paste-length-mode')).includes('AI に任せる（5〜8 枚くらいにします）') && (await text(p1, '#paste-content-mode')).includes('AI に任せる（タイトルだけで考えます）')
       && (await text(p1, '#paste-more-h')) === '詳しく：日本語・1 人で説明' && !(await p1.$('#dlg-body [name=examples]')),
       'S1 ②: the title is required (「次へ」 disabled), audience, length and content default to 「AI に任せる」 with their fields closed, the 詳しく fold says 「日本語・1 人で説明」; no 「入れたい例や図」');
     st0 = await status(p1);
@@ -136,7 +136,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ④ プランの問い（無料が既定）→ 分野（てこからは推せない：印なし）→ 図の折りたたみ（閉じている）→ コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
       && (await p1.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && await p1.isHidden('#paste-series-guess') && (await text(p1, '#paste-series legend')) === 'スライドに出てくるものはありますか（内容の分野）'
-      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'パーツを見る・表し方を外す（ふつうは開かなくて大丈夫） パーツ：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
+      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'パーツを見る・伝えたいことを外す（ふつうは開かなくて大丈夫） パーツ：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the subjects question with nothing ticked, the closed figures fold and the size');
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -144,8 +144,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && c1 === packWithRequest({ series: [], lang: 'ja', request: t1, plan: 'free' }),
       'S1 ④: the copied instructions are the free common body with the request at the end; the fields left to the AI (だれ向け, 内容, そのほかの希望) are not written');
     ok((await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:shut:-:-:nobody:answer paste:open:step:-:body:-'
-      && (await answer(p1, 'send')) === '指示：無料のプラン・コピーしました' && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
-      'S1 ④: 「指示をコピー」 opens ⑤ (focus in the slides field) and folds ④ to 「指示：無料のプラン・コピーしました」: ' + await flowState(p1));
+      && (await answer(p1, 'send')) === '指示：チャットの AI：無料のプラン・コピーしました' && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
+      'S1 ④: 「指示をコピー」 opens ⑤ (focus in the slides field) and folds ④ to 「指示：チャットの AI：無料のプラン・コピーしました」: ' + await flowState(p1));
     ok(/^コピーしました（[\d.]+ KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ$/.test(await text(p1, '#paste-copied')), 'S1 ④: the copied message says to send it even as an attachment, then go to ⑤');
     // ⑤ 欄 2 つ。出力の全体をスライドの欄に貼る → 分ける
     ok((await text(p1, '#paste-step3-hint')).startsWith('AI の出力には、灰色の枠（コードブロック）が 2 つあります。') && (await text(p1, 'label[for=paste-deck]')) === 'スライド（deck.html）' && (await text(p1, 'label[for=paste-narr]')) === '台本（narration.md）'
@@ -169,7 +169,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p1.waitForSelector('#dlg[open] #paste-insert-n');
     const ih = await p1.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
     ok((await text(p1, '#dlg-title')) === 'スライドの挿入' && ih.join('|') === '① どんなスライドを足しますか|② チャットの AI に指示を送ります|③ AI の出力を貼り付けます'
-      && (await text(p1, '#ai-howto')) === '足したいスライドを書くと、チャットの AI に送る指示ができます。AI の出力をここに貼り付けると、スライドを挿入します。' && (await text(p1, 'label[for=paste-with-pack]')) === 'このデッキを作ったのとは別のチャットに送る（指示の全体も付けます）',
+      && (await text(p1, '#ai-howto')) === '足したいスライドを書くと、チャットの AI に送る指示ができます。AI の出力をここに貼り付けると、スライドを挿入します。' && (await text(p1, 'label[for=paste-with-pack]')) === 'この教材を作ったのとは別のチャットに送る（指示の全体も付けます）',
       'S6: 「スライドの挿入」 with three questions, and the choice to send to a different chat: ' + ih.join(' / '));
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
@@ -232,7 +232,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const bdeck = worked('business', 'deck.html'), bnarr = worked('business', 'narration.md');
     await p2.fill('#paste-narr', bdeck.trim());
     st = await status(p2);
-    ok(st.deck === '✓ 3 slides' && st.narr === 'Not pasted yet' && st.info === 'Moved the slides from the script field to the slides field.' && (await p2.inputValue('#paste-narr')) === '' && !st.goOff && st.note === 'It will be made without a script (you can write one later).' && st.beside,
+    ok(st.deck === '✓ 3 slides' && st.narr === 'Not pasted yet' && st.info === 'Moved the slides from the script field to the slides field.' && (await p2.inputValue('#paste-narr')) === '' && !st.goOff && st.note === 'It will be created without a script (you can write one later).' && st.beside,
       'S2 ⑤: slides pasted into the script field move to the slides field; with no script, “Create” is enabled and says it is made without a script: ' + JSON.stringify(st));
     await shot(p2, 'flow-s2-moved.png', 'paste-step-paste');
     await p2.fill('#paste-deck', bnarr.trim());
@@ -287,9 +287,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-next-theme');
     ok((await text(p3, '#paste-phase')) === '20 slides, so you ask in two rounds: first an outline (a list of headings), then 6 slides at a time.' && await p3.isVisible('#paste-phase'),
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
-    ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from your answer to step 1.', 'S3 ④: Business ticks the business subject, and says so');
+    ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.', 'S3 ④: Business ticks the business subject, and says so');
     await p3.check('#paste-plan-paid');
-    ok(await p3.isVisible('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'The paid plan includes all of them.'
+    ok(await p3.isVisible('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'Chat AI: paid plan, so all of them are included.'
       && (await p3.$$eval('#paste-series .tile', (xs) => xs.every((x) => x.getAttribute('aria-pressed') === 'true' && x.disabled))), 'S3 ④: the paid plan shows every subject tile as on and not pressable, with “The paid plan includes all of them.”');
     const c3 = await copy(p3);
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: kokugo') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
@@ -339,7 +339,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p4, 'flow-s4-more.png', 'paste-step-content');
     await p4.click('#paste-next-content');
     await p4.click('#paste-next-theme');
-    ok((await p4.getAttribute('#paste-series-kokugo', 'aria-pressed')) === 'true' && (await p4.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 1 && (await text(p4, '#paste-series-guess')) === '② のタイトルと内容から「国語」に印を付けました',
+    ok((await p4.getAttribute('#paste-series-kokugo', 'aria-pressed')) === 'true' && (await p4.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 1 && (await text(p4, '#paste-series-guess')) === '② のタイトルと内容から「国語」を選びました',
       'S4 ④: 漢文 in the content ticks 国語, and says so');
     // ［変更］で ② を直す：④ ⑤ は出たまま。答えの 1 行も新しくなる
     await p4.click('#paste-change-content');
@@ -427,10 +427,10 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
     ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info,social'
-      && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」に印を付けました',
+      && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」を選びました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
-    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')),
-      'S8 ④: with two ticked, the others are disabled and the reason 「無料のプランでは 2 つまで選べます」 is shown in the list');
+    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI：無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')),
+      'S8 ④: with two ticked, the others are disabled and the reason 「チャットの AI：無料のプランでは 2 つまで選べます」 is shown in the list');
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
       && (await text(p8, '#paste-series-new-hint')).includes('標準パーツ（棒グラフ・流れ図・目次など）'), 'S8 ④: the hint names the standard parts from FREE_CORE’s labels: ' + await text(p8, '#paste-series-new-hint'));
@@ -450,8 +450,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
     await p8.check('#paste-plan-paid');
-    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info,social' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info,social' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === '有料のプランでは全部入ります',
-      'S8 ④: the paid plan has no limit: every tile is on and not pressable, with 「有料のプランでは全部入ります」');
+    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info,social' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info,social' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === 'チャットの AI：有料のプランでは全部入ります',
+      'S8 ④: the paid plan has no limit: every tile is on and not pressable, with 「チャットの AI：有料のプランでは全部入ります」');
     ok((await strip(p8)) === catalog([], 'paid'), 'S8 ④: under the paid plan the strip lists every part');
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: [...SERIES], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies every series');

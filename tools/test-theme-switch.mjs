@@ -305,7 +305,7 @@ try {
       ok(!!st.portable.tierAOnly, `${lang} tier A only: the file can only have narration, audio and timing edited`);
       await clickMenuOpen(page, '#b-slidemenu');
       const t = { text: await page.textContent('#b-theme-switch'), dis: await page.getAttribute('#b-theme-switch', 'aria-disabled'), title: await page.getAttribute('#b-theme-switch', 'title') };
-      const want = lang === 'ja' ? ['テーマを変更…', 'テーマを変更できません'] : ['Change theme…', 'theme of this file cannot be changed'];
+      const want = lang === 'ja' ? ['テーマを変更…', 'テーマを変更できません'] : ['Change theme…', 'cannot change theme for this file'];
       ok(t.text === want[0] && t.dis === 'true' && t.title.includes(want[1]), `${lang} tier A only: 「${t.text}」 is disabled with the reason ${JSON.stringify(t.title)}`);
       await page.$eval('#b-theme-switch', (b) => b.click());   // aria-disabled（Playwright は押さない）：押せる形のまま、わけを出す
       await page.waitForSelector('#toast.show.bad');

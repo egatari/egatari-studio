@@ -208,7 +208,7 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   }
   const bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
   const r = parseResults(bytes);
-  if (!r.ok) throw new FormatError('not-live-results', `${file} is not live room results from the room service (${r.errors.slice(0, 3).join('; ')})`);
+  if (!r.ok) throw new FormatError('not-live-results', `${file} is not live session results from the live service (${r.errors.slice(0, 3).join('; ')})`);
   const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
   const cfgPath = path.join(deckDir, CFG);
   let conf = {}, confText = null;
@@ -220,7 +220,7 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   const live = conf.extensions && conf.extensions.live;
   const m = roomMatch(r.results, live);
   if (m === 'mismatch') warnings.push(`the results are for room ${r.results.room}, but this lesson's live settings name room ${live.room}; added anyway (the room may have been recreated)`);
-  else if (m === 'none') warnings.push(`this lesson has no live room in ${CFG}; added anyway`);
+  else if (m === 'none') warnings.push(`this lesson has no live session in ${CFG}; added anyway`);
   // 同じ中身をもう足してあれば断る
   const abs = (p) => path.join(deckDir, ...p.split('/'));
   for (const e of list) if (e && isAttachPath(e.path) && fs.existsSync(abs(e.path)) && fs.statSync(abs(e.path)).isFile() && fs.statSync(abs(e.path)).size === bytes.length && Buffer.from(bytes).equals(Buffer.from(readContained(deckDir, abs(e.path), null, { max: ATTACH_LIMITS.fileBytes })))) throw new FormatError('already-attached', `these results are already attached as ${e.path}`);
@@ -267,8 +267,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       if (lw) console.warn('  ⚠ portable: ' + lw);
     } else if (cmd === 'attach' && pos.length === 2) {
       const r = await attachLiveResults(pos[0], pos[1], { lang: flags.has('--en') ? 'en' : 'ja' });
-      console.log(`attached live room results as ${r.path} (role data; ${r.summary.questions} questions, ${r.summary.polls.length} polls) -> ${FORMAT.CONFIG_FILE}`);
-      console.warn('  ⚠ the results contain what learners typed (questions, names if they gave one); they stay in this working folder. Export with --without-live-results before giving the single file to others');
+      console.log(`attached live session results as ${r.path} (role data; ${r.summary.questions} questions, ${r.summary.polls.length} polls) -> ${FORMAT.CONFIG_FILE}`);
+      console.warn('  ⚠ the results contain what participants typed (questions, names if they gave one); they stay in this working folder. Export with --without-live-results before giving the Egatari file to others');
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
     } else {
       console.error('usage: npm run portable -- unpack <file> <dir> [--force]\n       npm run portable -- pack <dir> [-o out] [--play-only] [--without-live-results]\n       npm run portable -- attach <dir> <results.json> [--en]\n       npm run portable -- compare <file> <dir>');

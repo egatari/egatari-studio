@@ -1,0 +1,333 @@
+{
+  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}.",
+  "uiOnly": [
+    "決まり"
+  ],
+  "docsToo": [
+    "段階",
+    "部品",
+    "雛形",
+    "縮図",
+    "暗転"
+  ],
+  "allow": [
+    {
+      "file": "**",
+      "pattern": "(更新が必要|古い)[」*\\s]*の印",
+      "term": "emphasis",
+      "reason": "The mark on audio that needs updating is a different 印 (glossary-quality: other 印 stay).",
+      "keep": true
+    },
+    {
+      "file": "**",
+      "pattern": "「見た」の印",
+      "term": "emphasis",
+      "reason": "m-menu marks visited cards with 「見た」; a different 印 (glossary-quality: other 印 stay).",
+      "keep": true
+    },
+    {
+      "file": "**",
+      "pattern": "印刷|矢印|目印",
+      "term": "emphasis",
+      "reason": "印刷 (print), 矢印 (arrow) and 目印 are other words that contain 印."
+    },
+    {
+      "file": "**",
+      "pattern": "開く|[Oo]pen\\w*",
+      "term": "create",
+      "reason": "Ordinary Open (a file, folder, window or panel). The avoid targets only the final button of New, which is 作成 / Create."
+    },
+    {
+      "file": "**",
+      "pattern": "取り込む|[Ii]mport\\w*",
+      "term": "replace",
+      "reason": "Ordinary import (audio, a ZIP file, live results). The avoid targets only the final button of Revise, which is 置き換える / Replace."
+    },
+    {
+      "file": "**",
+      "pattern": "書き込み",
+      "term": "comment",
+      "reason": "書き込み meaning a write to a file, or pen strokes on the slide, is not a comment."
+    },
+    {
+      "file": "**",
+      "pattern": "知らせ",
+      "term": "finding",
+      "reason": "知らせ meaning a notification (toast, banner, warning) is not a quality-check finding; findings are 指摘."
+    },
+    {
+      "file": "**",
+      "pattern": "台本を書き出(しました|す…?|し)?|書き出した(とき|後|あと|台本)|confirmGo: '書き出す'|[Ee]xport the script|書き出す（台本",
+      "term": "export",
+      "reason": "Export script (台本を書き出す) is the audio panel's own action and keeps 書き出す (termbase export note, export-script)."
+    },
+    {
+      "file": "**",
+      "pattern": "\\b[Cc]heck(s|ed|ing)?\\b",
+      "term": "quality-check",
+      "reason": "English 'check' as an ordinary verb (Check as a slide show, check the license, npm run check). The avoid targets 'check' as the name of the quality check; that noun is written 'quality check' in the UI."
+    },
+    {
+      "file": "**",
+      "pattern": "(a|new|separate|TTS|AI voice|The|the|another tab or|that) window|[Ww]indows?\\b(?= (was|did|receives|downloads|with))|\\bWindows\\b|main window",
+      "term": "live-time",
+      "reason": "A browser window, not the live time (spec window)."
+    },
+    {
+      "file": "**",
+      "pattern": "\\b[Kk]eys\\b|<kbd>",
+      "term": "join-code",
+      "reason": "Keyboard keys, not the join code."
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "the kind must be qa",
+      "term": "setting",
+      "reason": "The kind of a live question or poll (qa, confused, poll), not the setting of New."
+    },
+    {
+      "file": "**",
+      "pattern": "元の原稿|プログラムの原稿|JavaScript の原稿",
+      "term": "slides",
+      "reason": "Attachment role 'source' (the author's own source documents: TeX, Markdown, docx) and program source code; not the slides."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "どんな場面で使いますか",
+      "term": "setting",
+      "reason": "The decided question of the setting step (glossary-quality: 使う場面, question 「どんな場面で使いますか」)."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "分野外の人",
+      "term": "subjects",
+      "reason": "Example text: people outside the research field, not the Subjects step."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "分け方の決まり|sorting rules",
+      "term": "standards",
+      "reason": "Example text (garbage sorting rules), not the R-* standards."
+    },
+    {
+      "file": "**",
+      "pattern": "コードブロックの区切り|区切りがない",
+      "term": "cue",
+      "reason": "The delimiter of a code block (```), not a timing cue."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "key points",
+      "term": "join-code",
+      "reason": "'key points' of the content, not a join code."
+    },
+    {
+      "file": "app/main.js",
+      "line": "addEventListener(\"message\"",
+      "term": "finding",
+      "reason": "Code inside a string (an injected script's message event), not UI text."
+    },
+    {
+      "file": "app/live-panel.js",
+      "line": "the key would be written",
+      "term": "join-code",
+      "reason": "Internal assertion text naming the spec field key; never shown in normal use."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "e\\.push\\(.*",
+      "term": "live",
+      "reason": "Validation messages that name the spec fields of the results JSON (room, window, activities, step key, reply)."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "e\\.push\\(.*",
+      "term": "live-time",
+      "reason": "Validation messages that name the spec fields of the results JSON."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "e\\.push\\(.*",
+      "term": "questions-polls",
+      "reason": "Validation messages that name the spec fields of the results JSON."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "e\\.push\\(.*",
+      "term": "join-code",
+      "reason": "Validation messages that name the spec fields of the results JSON (step key)."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "e\\.push\\(.*",
+      "term": "ai-output",
+      "reason": "Validation messages that name the spec field reply (the host's reply)."
+    },
+    {
+      "file": "**",
+      "pattern": "[Ss]tep keys?",
+      "term": "join-code",
+      "reason": "A step key (spec), not the join code."
+    },
+    {
+      "file": "kit/core/part-labels.mjs",
+      "pattern": "Key numbers",
+      "term": "join-code",
+      "reason": "Name of the m-kpi part (key numbers)."
+    },
+    {
+      "file": "kit/live.js",
+      "pattern": "囲み",
+      "term": "code-block",
+      "reason": "A circle a participant draws on the slide, not a code block."
+    },
+    {
+      "file": "**",
+      "pattern": "[Hh]ost's reply|new reply|[Rr]eplies from the host|host replied",
+      "term": "ai-output",
+      "reason": "The host's reply to a live question, not the AI's output."
+    },
+    {
+      "file": "**",
+      "pattern": "[Ww]rong kind of question",
+      "term": "setting",
+      "reason": "The kind of a live question or poll, not the setting."
+    },
+    {
+      "file": "skills/motion-components/SKILL.md",
+      "pattern": "「新しい部品を作って」「この図を部品にして」",
+      "term": "part",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
+    },
+    {
+      "file": "skills/motion-slides/SKILL.md",
+      "pattern": "「TTS動画にするスライドを作って」",
+      "term": "ai-voice",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
+    },
+    {
+      "file": "skills/motion-slides/SKILL.md",
+      "pattern": "「1 ファイルで配れる形にして」|「持ち運べる形にして」",
+      "term": "egatari-file",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
+    },
+    {
+      "file": "skills/motion-slides-video/SKILL.md",
+      "pattern": "「TTS動画を作って」",
+      "term": "ai-voice",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
+    },
+    {
+      "file": "skills/motion-slides-video/SKILL.md",
+      "pattern": "「音声入りの 1 ファイルにして」",
+      "term": "egatari-file",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
+    },
+    {
+      "file": "docs/threat-model.ja.md",
+      "pattern": "「Trust model: a deck is code」",
+      "term": "slides",
+      "reason": "Verbatim title of a SECURITY.md section."
+    },
+    {
+      "file": "docs/distributing.md",
+      "pattern": "“too many messages” \\(4429\\)",
+      "term": "finding",
+      "reason": "Live server close reason 4429, not a quality-check finding."
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "使わない言いたいこと|Purposes turned off",
+      "term": "what-to-convey",
+      "reason": "Quotes the line that New adds to the request sent to the AI (kit/core/new-deck.mjs); AI-facing text stays unchanged."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "圧縮 \\(zip 形式\\) フォルダー",
+      "term": "zip-file",
+      "reason": "Windows Explorer's own menu label."
+    },
+    {
+      "file": "**",
+      "pattern": "チャットの AI[：:] ?無料のプラン",
+      "term": "free-plan",
+      "reason": "The required form 「チャットの AI：…のプラン」 (the plan is the chat AI's; Egatari has no plans)."
+    },
+    {
+      "file": "**",
+      "pattern": "チャットの AI[：:] ?有料のプラン",
+      "term": "paid-plan",
+      "reason": "The required form 「チャットの AI：…のプラン」 (the plan is the chat AI's; Egatari has no plans)."
+    },
+    {
+      "file": "**",
+      "line": "planLegend: 'お使いのチャットの AI は",
+      "term": "free-plan",
+      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
+    },
+    {
+      "file": "**",
+      "line": "plan: { free: '無料のプラン（わからなければこちら）'",
+      "term": "free-plan",
+      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
+    },
+    {
+      "file": "**",
+      "line": "planLegend: 'お使いのチャットの AI は",
+      "term": "paid-plan",
+      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
+    },
+    {
+      "file": "**",
+      "line": "plan: { free: '無料のプラン（わからなければこちら）'",
+      "term": "paid-plan",
+      "reason": "The plan question and its answer options, which already name the chat AI (owner rule: options inside the plan question may stay short)."
+    },
+    {
+      "file": "**",
+      "pattern": "補足資料|元の資料|PDF などの資料|その資料|渡した資料|発表資料",
+      "term": "lesson",
+      "reason": "資料 meaning source material or presentation material (attachment role, the user's own documents, a trigger phrase), not the lesson."
+    },
+    {
+      "file": "docs/threat-model.ja.md",
+      "pattern": "「Trust model: a deck is code」",
+      "term": "lesson",
+      "reason": "Verbatim title of a SECURITY.md section."
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "sample slides|Open a sample|load the sample",
+      "term": "voice-sample",
+      "reason": "Sample lessons and sample slides (the sample term), not the voice preview."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "themeSwitchNow:",
+      "term": "theme",
+      "reason": "The current-theme mark in the theme chooser; en says “(current)” next to the theme name.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "学会の参加者",
+      "term": "participant",
+      "reason": "Example text: conference attendees, not Live participants.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "line": "purposesHint:",
+      "term": "what-to-convey",
+      "reason": "The hint sits under the What to convey heading; en refers to the tile with “it”.",
+      "pairs": true
+    },
+    {
+      "file": "**",
+      "pattern": "授業中|別の授業|授業なら|授業のメモ|授業の外|授業・研修|授業（小・中・高）|授業の後|授業前",
+      "term": "preview-later",
+      "reason": "授業 meaning a class or teaching (not the former display mode, now 先のステップを薄く見せる).",
+      "pairs": true
+    }
+  ]
+}
