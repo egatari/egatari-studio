@@ -17,7 +17,7 @@ if (!DECK || DECK.mode === "video") return;
 var Q = new URLSearchParams(location.search);
 var W = 1280, H = 720;
 var COLORS = ["emph", "term", "fg"];
-var LABEL = DECK.ja === false ? {laser: "Laser", pen: "Pen", vpen: "Fading pen", ink: "Marker"} : {laser: "レーザー", pen: "ペン", vpen: "消えるペン", ink: "マーカー"};
+var LABEL = DECK.ja === false ? {laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", ink: "Marker"} : {laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", ink: "マーカー"};
 var INK_COLOR = "#f59e0b";       // マーカーの描いている途中の線：親の画面の書きかけの印（.dev-pin.dv-new）と同じ色
 // ペンの色の名前（COLORS の順）と、色を選ぶボタンの名前
 var CNAME = DECK.ja === false ? ["Red", "Blue", "Black"] : ["赤", "青", "黒"];
@@ -654,7 +654,7 @@ window.addEventListener("resize", fitOv);
 // 音声のないステップだけを、見る人が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
 // 音声ファイルにはならない：何も書かず、タイムラインも (i, k, t) の描画も変えない（この道具は動画では作らない。札は印刷に出さない）。
 // 読む文は deck-narration の ttsParts（読みを当てた話す部品。AI 音声に渡すのと同じ）。ない古いファイルでは表示の文を読み、札に「読み方は反映されません（古いファイル）」。
-// 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中（この端末の声）」
+// 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中」
 var RA = (function(){
   var M = DECK.ReadAloud, S = null, U = null;
   try { S = window.speechSynthesis || null; U = window.SpeechSynthesisUtterance || null; } catch (e) {}
@@ -666,10 +666,10 @@ var RA = (function(){
   return {M: M, reader: M.createReader({synth: S, Utterance: U}), synth: S, key: null, el: null};
 })();
 var RA_T = DECK.ja !== false
-  ? {btn: "読み上げで聞く（音声ファイルにはなりません）", stop: "読み上げを止める", on: "読み上げ中（この端末の声）", esc: "Esc で止める",
+  ? {btn: "読み上げで聞く（音声ファイルにはなりません）", stop: "読み上げを止める", on: "読み上げ中", esc: "Esc で止める",
      old: "読み方は反映されません（古いファイル）",
      audio: "このステップには音声があります（自動再生 a で流れます）", none: "このステップには台本がありません", voice: "この端末には、この言語の読み上げの声がありません"}
-  : {btn: "Listen with read-aloud (not saved as audio)", stop: "Stop read-aloud", on: "Reading aloud (this device's voice)", esc: "Esc to stop",
+  : {btn: "Listen with read-aloud (not saved as audio)", stop: "Stop read-aloud", on: "Reading aloud", esc: "Esc to stop",
      old: "Pronunciations not applied (older file)",
      audio: "This step has audio (autoplay a plays it)", none: "This step has no script", voice: "This device has no read-aloud voice for this language"};
 function deckLang(){ return document.documentElement.lang || (DECK.ja !== false ? "ja" : "en"); }
@@ -739,10 +739,10 @@ if (RA){
 function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {key: k, shiftKey: !!shift, bubbles: true, cancelable: true})); }
 var JA = DECK.ja !== false;
 var TIP = JA
-  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザー", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
-     lect: "授業モード", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
-  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
-     lect: "Lecture mode", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
+  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
+     lect: "授業", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
+  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
+     lect: "Lecture", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
 var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
@@ -889,24 +889,24 @@ function helpHtml(){
   var sec = function(h, rows){ return '<div class="dt-sec"><h3>' + h + "</h3>" + rows.join("") + "</div>"; };
   var j = JA, cols = [
     sec(j ? "移動" : "Navigate", [
-      row(K("→", "Space"), j ? "次の段階" : "Next step"), row(K("←"), j ? "前の段階" : "Previous step"),
+      row(K("→", "Space"), j ? "次のステップ" : "Next step"), row(K("←"), j ? "前のステップ" : "Previous step"),
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
       row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Overview"),
       row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
     sec(j ? "表示" : "View", [
-      row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "授業モード" : "Lecture mode"), row(K("s"), j ? "字幕" : "Captions"),
+      row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "授業" : "Lecture"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
-      row(K("b"), j ? "暗転" : "Blackout"), row(K("f"), j ? "全画面" : "Fullscreen"), row(K("p"), j ? "発表者ビュー" : "Presenter view"),
+      row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen"), row(K("p"), j ? "発表者ビュー" : "Presenter view"),
       row(K("?"), j ? "このキーの一覧" : "This help")]),
     sec(j ? "道具" : "Tools", [
-      row(K("x"), j ? "レーザー" : "Laser"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
+      row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
       row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
       row(K("Esc"), j ? "道具を解除" : "Exit tool")])
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
-    row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "口述原稿" : "Narration"), row(K("c"), j ? "コメントの一覧" : "Comments"),
+    row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "台本" : "Script"), row(K("c"), j ? "コメントの一覧" : "Comments"),
     row(K("m"), j ? "マーカー（編集モードの間）：丸や矢印で場所を示して、コメントを付ける" : "Marker (in edit mode): circle or point to a spot, then add a comment"),
-    row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "AI へのメモ" : "Note for the AI")]));
+    row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "コメント" : "Comment")]));
   // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();
   var fbHtml = fb ? '<div class="dt-fb"><a href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' +

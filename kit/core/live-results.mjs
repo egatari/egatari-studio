@@ -218,8 +218,8 @@ export function roomMatch(r, live) {
   return room === r.room ? 'match' : 'mismatch';
 }
 const TXT = {
-  ja: { title: (room, d) => `授業の部屋の結果（${room}、${d}）`, desc: '学ぶ人が授業の部屋で送った質問と投票の答え（名前を書いた人はその名前も）が入っています。人に渡すときは外してください' },
-  en: { title: (room, d) => `Live room results (${room}, ${d})`, desc: 'Contains the questions and poll answers learners sent in the live room (and names, if they typed one). Remove it before giving the file to others' },
+  ja: { title: (room, d) => `ライブの結果（${room}、${d}）`, desc: '参加者がライブで送った質問と投票の答え（名前を書いた人はその名前も）が入っています。人に渡すときは外してください' },
+  en: { title: (room, d) => `Live results (${room}, ${d})`, desc: 'Contains the questions and poll answers participants sent in the Live (and names, if they typed one). Remove it before giving the file to others' },
 };
 // 添付の項目。taken(path) → bool：もうある名前（同じ部屋と日付を 2 度取り込むときは -2・-3 …）
 export function resultsRecord(r, lang, taken = () => false) {

@@ -7,14 +7,14 @@
 var DECK = window.DECK;
 // 画面の言葉（<html lang> が ja 以外なら英語。deck.js の DECK.ja）
 var L = DECK.ja === false
-  ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Speaker notes", slide: "Slide ", step: "Step ", none: "(no notes)", nextStep: "Next step",
-     laser: "Laser (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture mode (l)",
-     feedback: "Send feedback", back: "Back", close: "Close presenter view (p)", tap: "Click here to control", black: "Blacked out", blackT: "The audience screen is black (b, or click it, to return)",
-     legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "blackout"], ["x", "laser"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
-  : {cur: "今の画面", nextFrame: "次の段階の画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "口述原稿", slide: "スライド ", step: "段階 ", none: "（口述原稿なし）", nextStep: "次の段階",
-     laser: "レーザー（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業モード（l）",
-     feedback: "フィードバックを送る", back: "戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "暗転中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
-     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "暗転"], ["x", "レーザー"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
+  ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Script", slide: "Slide ", step: "Step ", none: "(no script)", nextStep: "Next step",
+     laser: "Laser pointer (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Lecture (l)",
+     feedback: "Send feedback", back: "Back", close: "Close presenter view (p)", tap: "Click here to control", black: "Black screen", blackT: "The audience screen is black (b, or click it, to return)",
+     legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "black screen"], ["x", "laser pointer"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
+  : {cur: "今の画面", nextFrame: "次のステップの画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "台本", slide: "スライド ", step: "ステップ ", none: "（台本なし）", nextStep: "次のステップ",
+     laser: "レーザーポインター（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "授業（l）",
+     feedback: "フィードバックを送る", back: "戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "黒い画面中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
+     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "黒い画面"], ["x", "レーザーポインター"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){

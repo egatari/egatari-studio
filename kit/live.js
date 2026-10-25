@@ -32,7 +32,7 @@ if (bad.length){ console.warn("live: ignored (" + bad.join("; ") + ")"); return;
 var JA = /^ja\b/i.test(document.documentElement.lang || "ja");
 var HOST = LP.hostOf(live.endpoint);
 var S = JA ? {
-  title: "ライブ（質問・投票）", again: "もう一度試す", notice: "この教材から、" + HOST + " のライブで先生に質問や投票を送れます", join: "参加する", leave: "退出する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "このステップに投票があります。ライブの板を開きました",
+  title: "ライブ（質問・投票）", again: "もう一度試す", notice: "この教材から、" + HOST + " のライブでホストに質問や投票を送れます", join: "参加する", leave: "退出する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "このステップに投票があります。ライブの板を開きました",
   off: "つないでいません", connecting: "つないでいます…", connected: "参加中", waiting: "待機室で待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
   before: function(t){ return "ライブは " + t + " に始まります"; }, after: "ライブの時間は終わりました", noNet: "この画面からは参加できません。教材のファイルをダウンロードして、ブラウザ（Chrome・Safari など）で直接開いてください。ライブ ID：",
   noNetLink: "この画面からは参加できません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", joinTo: "参加先：", roomLabel: "ライブ ID：",
@@ -46,15 +46,15 @@ var S = JA ? {
   confusedSent: "「わからない」をホストに伝えました", confusedOff: "「わからない」を取り消しました",
   replies: "ホストからの返事", yourQ: "あなたの質問：", gotReply: "ホストから返事が届きました", replyPrefix: "ホストの返事：", newReply: "新しい返事があります", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
   shown: "ホストが全員に表示した質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問（そのときのステップと、囲んだところ）・投票・「わからない」（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
-  stop: {bad_key: "この教材の鍵では部屋に入れません（鍵が違います）", room_not_found: "部屋が見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
-    room_expired: "部屋の時間が終わりました", room_closed: "ホストがライブを終えました。再開したら、もう一度「参加する」を押してください", too_early: "まだライブの時間になっていません（この端末の時計も確かめてください）",
-    room_full: "部屋が満員です。少し待ってから、もう一度参加してください", key_replaced: "先生が参加の鍵を替えました。このファイルでは入れません。新しいファイルをもらってください",
-    not_approved: "先生が参加を認めませんでした", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "授業の部屋の時間は終わりました", unknown: "部屋から切断されました",
+  stop: {bad_key: "この教材の参加コードではライブに入れません（参加コードが違います）", room_not_found: "ライブが見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
+    room_expired: "ライブの時間が終わりました", room_closed: "ホストがライブを終えました。再開したら、もう一度「参加する」を押してください", too_early: "まだライブの時間になっていません（この端末の時計も確かめてください）",
+    room_full: "ライブが満員です。少し待ってから、もう一度参加してください", key_replaced: "ホストが参加コードを替えました。このファイルでは入れません。新しいファイルをもらってください",
+    not_approved: "ホストが参加を認めませんでした", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "ライブの時間は終わりました", unknown: "ライブから切断されました",
     bad_endpoint: "つなぐ先が教材の宣言と違うので、つなぎません", network: "つなげませんでした"},
-  err: {unknown_activity: "この活動は部屋にありません", wrong_kind: "活動の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
+  err: {unknown_activity: "この質問・投票はライブにありません", wrong_kind: "質問・投票の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
     rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる数を超えました", room_limit: "ライブがいっぱいで受け付けられませんでした", not_admitted: "ホストの許可を待っています", bad_region: "囲んだところを送れませんでした。囲みを消して送ってください", other: "送れませんでした"}
 } : {
-  title: "Live (questions and polls)", again: "Try again", notice: "From this lesson you can send questions and votes to your teacher through Live at " + HOST, join: "Join", leave: "Leave", fold: "Fold", unfold: "Unfold", badge: "Live", pin: "Keep open", pollOpen: "This step has a poll. The Live pane is open",
+  title: "Live (questions and polls)", again: "Try again", notice: "From this lesson you can send questions and votes to the host through Live at " + HOST, join: "Join", leave: "Leave", fold: "Fold", unfold: "Unfold", badge: "Live", pin: "Keep open", pollOpen: "This step has a poll. The Live pane is open",
   off: "Not connected", connecting: "Connecting…", connected: "Joined", waiting: "Waiting in the waiting room", retrying: function(s){ return "Reconnecting in " + s + " s"; },
   before: function(t){ return "The Live starts at " + t; }, after: "The live time is over", noNet: "You cannot join from this screen. Download the lesson file and open it directly in a browser (Chrome, Safari, …). Live ID: ",
   noNetLink: "You cannot join from this screen. You can join in a new browser tab.", openJoin: "Join in the browser", joinTo: "Goes to: ", roomLabel: "Live ID: ",
@@ -68,12 +68,12 @@ var S = JA ? {
   confusedSent: "Told the host you don't follow", confusedOff: "Took back “I don't follow”",
   replies: "Replies from the host", yourQ: "Your question: ", gotReply: "The host replied", replyPrefix: "Host's reply: ", newReply: "There is a new reply", vote: "Vote", voted: "Vote recorded", revote: "You can change your vote",
   shown: "Questions the host showed to everyone", leftMsg: "Disconnected. You can join again", window: function(a, b){ return a + " – " + b; }, privacy: "Only what you choose to send (questions with the step on screen and anything you circled, votes, “I don't follow”, and a name if you type one) and a random id made on this device are sent. Your viewing position and timing are not",
-  stop: {bad_key: "This lesson's key does not open the room (wrong key)", room_not_found: "The room does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
-    room_expired: "The room's time is over", room_closed: "The host ended the Live. When it reopens, press Join again", too_early: "The Live has not started yet (also check this device's clock)",
-    room_full: "The room is full. Wait a little and join again", key_replaced: "The teacher replaced the key: this file can no longer join. Ask for a new file",
-    not_approved: "The teacher did not admit you", bad_message: "Protocol mismatch (a bug in the lesson or the server)", window_over: "The live room has ended", unknown: "Disconnected by the room",
+  stop: {bad_key: "This lesson's join code does not open the Live (wrong join code)", room_not_found: "The Live does not exist", superseded: "You joined in another tab or window, so this one was disconnected",
+    room_expired: "The live time is over", room_closed: "The host ended the Live. When it reopens, press Join again", too_early: "The Live has not started yet (also check this device's clock)",
+    room_full: "The Live is full. Wait a little and join again", key_replaced: "The host replaced the join code: this file can no longer join. Ask for a new file",
+    not_approved: "The host did not admit you", bad_message: "Protocol mismatch (a bug in the lesson or the server)", window_over: "The live time is over", unknown: "Disconnected by the Live",
     bad_endpoint: "The address does not match the one the lesson declares; not connecting", network: "Could not connect"},
-  err: {unknown_activity: "This activity is not in the room", wrong_kind: "Wrong kind of activity", bad_choice: "No such choice", text_too_long: "The question is too long", empty_text: "The question is empty",
+  err: {unknown_activity: "This question or poll is not in the Live", wrong_kind: "Wrong kind of question or poll", bad_choice: "No such choice", text_too_long: "The question is too long", empty_text: "The question is empty",
     rate_limited: "Sending too fast. Wait a moment", quota_exceeded: "You have reached the maximum you can send", room_limit: "The Live is full and could not take it", not_admitted: "Waiting for the host to admit you", bad_region: "The circle could not be sent. Clear it and send again", other: "Could not send"}
 };
 // 手動で「参加する」から試し直せる止まり方（ほかは、このファイルでは入れない）
