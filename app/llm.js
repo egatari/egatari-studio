@@ -19,7 +19,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, defaultSubjects, guessSubjects, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, FREE_SUBJECT_MAX, freeSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
@@ -97,6 +97,8 @@ const TX = {
     seriesPaid: '有料のプランでは、すべての分野の図の作り方を指示に入れます',
     seriesGuess: (name) => `② のタイトルと内容から${name}に印を付けました`,
     seriesGuessKind: (name) => `① の場面から${name}に印を付けました`,
+    seriesMax: '無料のプランでは 2 つまで選べます',
+    seriesStored: (a, b) => `無料のプランでは 2 つまでなので、「${a}」と「${b}」を使います。替えるときは印を外してください`,
     seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
     purposesFold: 'AI に使わせない図を選ぶ（ふつうは開かなくて大丈夫）',
     purposesHint: '今は全部使えます。押した図は、AI が使いません',
@@ -238,6 +240,8 @@ const TX = {
     seriesPaid: 'With a paid plan, the instructions include how to draw everything.',
     seriesGuess: (name) => `Ticked ${name} from the title and content in step 2.`,
     seriesGuessKind: (name) => `Ticked ${name} from your answer to step 1.`,
+    seriesMax: 'Up to two on the free plan.',
+    seriesStored: (a, b) => `Up to two on the free plan, so “${a}” and “${b}” are used. To change this, untick one.`,
     seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
     purposesFold: 'Choose figures the AI should not use (usually not needed)',
     purposesHint: 'All are in use. Press one and the AI will not use it.',
@@ -614,15 +618,35 @@ export function setupLlm(app) {
   // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る
   // 問い「無料のプランですか、有料のプランですか」→ 無料なら「スライドに出てくるものはありますか」（内容の分野。② のタイトルと内容・① の場面から推したものに印）
   // → 折りたたみ「AI に使わせない図を選ぶ」→［指示をコピー］。有料のプランはすべての分野を入れるので、分野の問いを隠す（印は無料に戻したときのために残る）
-  function sendStep(title, copyMsg, { request, missing }) {
-    const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）
+  // 無料のプランで選べる分野は 2 つまで（kit/core/new-deck.mjs の FREE_SUBJECT_MAX）：2 つに印があれば、ほかの印は押せなくし、わけを一覧の中に出す。
+  // 推した印も 2 つまで（SUBJECTS の順で初めの 2 つ）。stored：開いている教材の egatari.json の studio.newDeck（前に選んだもの）。その印から始め、
+  // 3 つ以上あれば印はそのまま（記録も書き換えない）、使うのは初めの 2 つ（freeSubjects）で、そう知らせる
+  function sendStep(title, copyMsg, { request, missing, stored }) {
+    const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）。前に選んだもの（stored）の印も
     const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.addEventListener('change', () => { touched.add(s); update(); }); return cb; });
-    const chosen = () => (draft.plan === 'paid' ? [...SERIES] : boxes.filter((b) => b.checked).map((b) => b.value));
     const subjectsTicked = () => SUBJECTS.filter((x) => boxes.some((b) => b.checked && b.value === x.series)).map((x) => x.id);
+    const seriesOf = (id) => (SUBJECTS.find((x) => x.id === id) || {}).series;
+    const chosen = () => (draft.plan === 'paid' ? [...SERIES] : freeSubjects(subjectsTicked()).map(seriesOf));
+    for (const id of (stored && Array.isArray(stored.subjects) ? stored.subjects : [])) {
+      const b = boxes.find((x) => x.value === seriesOf(id));
+      if (b) { b.checked = true; touched.add(b.value); }
+    }
+    const subjectName = (id) => { const x = SUBJECTS.find((y) => y.id === id); return x ? x.label[LANG] : id; };
+    const maxNote = el('p', { id: 'paste-series-max', cls: 'hint', role: 'status', hidden: '', text: X.seriesMax });
+    const storedNote = el('p', { id: 'paste-series-stored', cls: 'note', role: 'status', hidden: '' });
+    // 無料のプラン：2 つに印があれば、ほかを押せなくする（印を外せばまた押せる）。3 つ以上（前の記録）なら使う 2 つを知らせる。有料のプランは限りなし
+    const limit = () => {
+      const free = draft.plan !== 'paid', n = subjectsTicked().length;
+      for (const b of boxes) b.disabled = free && n >= FREE_SUBJECT_MAX && !b.checked;
+      const used = freeSubjects(subjectsTicked());
+      storedNote.hidden = !(free && n > FREE_SUBJECT_MAX);
+      storedNote.textContent = storedNote.hidden ? '' : X.seriesStored(subjectName(used[0]), subjectName(used[1]));
+      maxNote.hidden = !(free && n === FREE_SUBJECT_MAX);
+    };
     const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map((p) => radio('paste-plan', p, X.plan[p], draft.plan === p))]);
     const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
-    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint' }, [el('legend', { text: X.seriesLegend }),
-      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s })]))]);
+    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint paste-series-max paste-series-stored' }, [el('legend', { text: X.seriesLegend }),
+      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: X.seriesName[s] || s })])), maxNote, storedNote]);
     const seriesHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew });
     const guess = el('p', { id: 'paste-series-guess', cls: 'hint', role: 'status', hidden: '' });
     const paidNote = el('p', { id: 'paste-series-paid', cls: 'hint', role: 'status', hidden: '', text: X.seriesPaid });
@@ -633,9 +657,11 @@ export function setupLlm(app) {
     // 推した印：② のタイトルと内容の字（kit/core/new-deck.mjs の guessSubjects）と ① の場面（ビジネス → ビジネス）。自分で替えた分野はそのまま
     const guessNow = () => {
       const fromText = guessSubjects(draft.title + '\n' + givenContent()), fromKind = defaultSubjects(draft.category).filter((x) => !fromText.includes(x));
-      const want = new Set([...fromText, ...fromKind].map((id) => (SUBJECTS.find((x) => x.id === id) || {}).series));
-      for (const b of boxes) if (!touched.has(b.value)) b.checked = want.has(b.value);
-      const names = (ids) => ids.map((id) => (SUBJECTS.find((x) => x.id === id) || {}).series).filter((s) => s && !touched.has(s)).map((s) => (LANG === 'ja' ? `「${X.seriesName[s]}」` : `“${X.seriesName[s]}”`));
+      const want = new Set([...fromText, ...fromKind].map(seriesOf));
+      // 推した印は、自分で付けた印と合わせて 2 つまで（SERIES は SUBJECTS と同じ順：初めの 2 つ）
+      let room = FREE_SUBJECT_MAX - boxes.filter((b) => touched.has(b.value) && b.checked).length;
+      for (const b of boxes) if (!touched.has(b.value)) { b.checked = want.has(b.value) && room > 0; if (b.checked) room--; }
+      const names = (ids) => ids.map(seriesOf).filter((s) => s && !touched.has(s) && boxes.some((b) => b.value === s && b.checked)).map((s) => (LANG === 'ja' ? `「${X.seriesName[s]}」` : `“${X.seriesName[s]}”`));
       const a = names(fromText), k = names(fromKind);
       guess.textContent = [a.length ? X.seriesGuess(a.join(LANG === 'ja' ? '' : ', ')) : '', k.length ? X.seriesGuessKind(k.join(LANG === 'ja' ? '' : ', ')) : ''].filter(Boolean).join(LANG === 'ja' ? '' : ' ');
       guess.hidden = !guess.textContent;
@@ -645,6 +671,7 @@ export function setupLlm(app) {
       for (const x of [seriesSet, seriesHint]) x.hidden = draft.plan === 'paid';
       guess.hidden = draft.plan === 'paid' || !guess.textContent;
       paidNote.hidden = draft.plan !== 'paid';
+      limit();
     };
     const update = () => {
       showPlan();
@@ -870,7 +897,10 @@ export function setupLlm(app) {
         if (!titleOk()) { if (Qs[1].done) Qs[1].setDone(false); return { text: X.needTopic, focus: () => Qs[1].titleIn.focus() }; }
         return null;
       };
-      send = sendStep(titles[3], copyMsg, { request, missing });
+      // 前に選んだもの：開いている教材の egatari.json の studio.newDeck（読むだけ。書き換えない）
+      let stored = null;
+      if (S.ws) { try { stored = choiceOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { stored = null; } }
+      send = sendStep(titles[3], copyMsg, { request, missing, stored });
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
       outlinePhase = () => five.waiting();

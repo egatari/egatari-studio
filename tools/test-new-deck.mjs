@@ -4,7 +4,8 @@
 // 2. 言いたいこと：決めた表（FALLBACK）と manifest.json の読み方、外したものだけに使う部品
 // 3. 指示（pack）：言いたいこと → パーツ → ステップの表は組み立てのときに作る（入っている系列の部品だけ・外した札の行はない・＊ の印はない）、R-whole、
 //    外した言いたいことだけに使う部品はどこにも出ない（表・一覧・見本・文。「使わない」の 1 行を除く）、系列の見本は抜き出し、札は決めた 14 個（manifest は札を増やさない）
-//    お使いの AI：無料版（選んだ分野だけ）と有料版（すべての系列）のどちらでも、外した部品は出ず、大きさはそれぞれの上限（PACK_CAP_KB）まで
+//    お使いの AI：無料版（選んだ分野だけ。2 つまで）と有料版（すべての系列）のどちらでも、外した部品は出ず、大きさはそれぞれの上限（PACK_CAP_KB）まで。
+//    無料版の大きさは、1 つの分野のどれも（free.one）と 2 つの分野のどの組も（free.two）
 // 4. シード値：作るときに 1 回だけ書く（あれば変えない）・直した返事が失っても戻す・egatari.json の studio.newDeck（ほかの項目はバイトのまま）
 // 5. シード値は組み立て（build）と 1 ファイル（pack → unpack）を通っても残る
 //   node tools/test-new-deck.mjs
@@ -14,10 +15,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
-import { generate, LIMITS, overMessage, sizeReport } from './make-llm-guide.mjs';
+import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
 import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -71,8 +72,17 @@ ok('AI plan: free (default) packs only the chosen subjects; paid packs every ser
   assert.deepEqual(seriesForChoice({ subjects: ['info', 'math'] }), ['academic', 'info']);
   assert.deepEqual(seriesForChoice({ plan: 'free', subjects: [] }), []);
   assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['kokugo'] }), SERIES);
+  // 無料版で使う分野は 2 つまで：前の記録が 3 つ以上でも、SUBJECTS の順で初めの 2 つ（記録の順や重なりは関係ない）
+  assert.equal(FREE_SUBJECT_MAX, 2);
+  assert.deepEqual(freeSubjects(['info', 'kokugo', 'math']), ['math', 'kokugo']);
+  assert.deepEqual(freeSubjects(['info', 'info']), ['info']);
+  assert.deepEqual(freeSubjects(null), []);
+  assert.deepEqual(seriesForChoice({ plan: 'free', subjects: ['info', 'kokugo', 'business', 'math'] }), ['academic', 'business']);
+  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['info', 'kokugo', 'business'] }), SERIES, 'paid has no limit');
   assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
-  assert.equal(LIMITS.fail, PACK_CAP_KB.free.one); assert.equal(LIMITS.allTarget, PACK_CAP_KB.free.all); assert.equal(LIMITS.paid, PAID_PACK_KB);
+  assert.deepEqual({ ...PACK_CAP_KB.free }, { one: 40, two: 50 }, 'no cap for every subject (the free plan uses two at most)');
+  assert.equal(LIMITS.fail, PACK_CAP_KB.free.one); assert.equal(LIMITS.two, PACK_CAP_KB.free.two); assert.equal(LIMITS.paid, PAID_PACK_KB);
+  assert.equal(PAIRS.length, SERIES.length * (SERIES.length - 1) / 2);
 });
 ok('request section: kind, structure and presentation of the subcategory, and the purposes turned off', () => {
   const r = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: [] }, PURPOSES, 'ja');
@@ -182,16 +192,21 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   assert.match(buildPack({ series: [], lang: 'en' }), /^\| change over time \| `m-bars` \(few points\) \| one line at a time \|$/mi);
   assert.match(buildPack({ series: [], lang: 'en' }), /^\| one key number \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn/);
-  // 大きさ：生成した指示（頼みたいことは記入欄のまま）の全部（'all'）は LIMITS.allTarget KB まで。写す文（内容・場面の節が入る）の上限ではない
-  for (const lang of ['en', 'ja']) assert.ok(Buffer.byteLength(buildPack({ series: 'all', lang })) <= LIMITS.allTarget * 1024, `${lang} generated pack 'all' ≤ ${LIMITS.allTarget} KB`);
+  // 大きさ：生成した指示（頼みたいことは記入欄のまま）は 1 つの分野なら LIMITS.fail、2 つの組なら LIMITS.two KB まで。写す文（内容・場面の節が入る）の上限ではない
+  for (const lang of ['en', 'ja']) {
+    for (const s of SERIES) assert.ok(Buffer.byteLength(buildPack({ series: [s], lang })) <= LIMITS.fail * 1024, `${lang} generated pack ${s} ≤ ${LIMITS.fail} KB`);
+    for (const p of PAIRS) assert.ok(Buffer.byteLength(buildPack({ series: p, lang })) <= LIMITS.two * 1024, `${lang} generated pack ${p.join('+')} ≤ ${LIMITS.two} KB`);
+  }
   // 系列の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）
   const biz = seriesPart('business', 'en');
   assert.ok(biz.includes('```deck.html\n<section class="slide">') && !biz.includes('<!DOCTYPE html>') && biz.includes('<m-kpi') && !biz.includes('<m-bars orient'));
   assert.ok(!/<!--\/?part/.test(en), 'no part markers left');
 });
-// 無料版：分野なし・1 つずつ・全部。有料版：分野の印に関わらずすべての系列（seriesForChoice）
+// 無料版で選べる分野の組：なし・1 つずつ・2 つの組のどれも（3 つ以上は選べない。前の記録の 3 つ以上は初めの 2 つになる：freeSubjects）
+const FREE_SETS = [[], ...SUBJECTS.map((s) => [s.id]), ...SUBJECTS.flatMap((a, i) => SUBJECTS.slice(i + 1).map((b) => [a.id, b.id]))];
+// 無料版：分野なし・1 つずつ・2 つの組。有料版：分野の印に関わらずすべての系列（seriesForChoice）
 const PLAN_CHOICES = [
-  ...[[], ...SUBJECTS.map((s) => [s.id]), SUBJECTS.map((s) => s.id)].map((subjects) => ({ plan: 'free', subjects })),
+  ...FREE_SETS.map((subjects) => ({ plan: 'free', subjects })),
   { plan: 'paid', subjects: [] }, { plan: 'paid', subjects: ['kokugo'] },
 ];
 // 無料版で読み込む部品：FREE_CORE、FREE_HOME の部品はその系列から、系列の部品はその系列から（有料版だけの部品はない）
@@ -216,15 +231,19 @@ ok('free plan: FREE_CORE is the v1.1.0 common set; m-curves, m-kpi and m-quad co
 const capOk = (choice, bytes) => {
   const ss = seriesForChoice(choice);
   if (planOf(choice) === 'paid') return bytes <= PACK_CAP_KB.paid * 1024;
-  return bytes <= PACK_CAP_KB.free.all * 1024 && (ss.length > 1 || bytes <= PACK_CAP_KB.free.one * 1024);
+  if (ss.length > FREE_SUBJECT_MAX) return false;
+  return bytes <= (ss.length === 2 ? PACK_CAP_KB.free.two : PACK_CAP_KB.free.one) * 1024;
 };
-ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 59 KB for every subject set; paid (every series) ≤ PAID_PACK_KB', () => {
+ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 50 KB for every pair; paid (every series) ≤ PAID_PACK_KB', () => {
   for (const lang of ['en', 'ja']) {
-    for (let mask = 0; mask < 1 << SUBJECTS.length; mask++) {
-      const choice = { plan: 'free', subjects: SUBJECTS.filter((_, i) => mask & (1 << i)).map((s) => s.id) };
+    for (const subjects of FREE_SETS) {
+      const choice = { plan: 'free', subjects };
       const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), lang, plan: 'free' }));
       assert.ok(capOk(choice, b), `${lang} free ${choice.subjects.join('+') || '(none)'}: ${b} B`);
     }
+    // 前の記録が全部の分野を持っていても、無料版の指示は初めの 2 つ（数理・統計＋ビジネス）
+    const every = { plan: 'free', subjects: SUBJECTS.map((s) => s.id) };
+    assert.equal(buildPack({ series: seriesForChoice(every), lang, plan: 'free' }), buildPack({ series: ['academic', 'business'], lang, plan: 'free' }));
     const paid = buildPack({ series: seriesForChoice({ plan: 'paid' }), lang, plan: 'paid' });
     assert.equal(paid, buildPack({ series: [], lang, plan: 'paid' }), 'paid is the full pack whatever the subjects');
     for (const s of SERIES) assert.ok(paid.includes(lang === 'en' ? `## Series pack: ${s}` : s), `${lang} paid has ${s}`);
@@ -271,17 +290,23 @@ const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]
 const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
 ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes over and its three largest sections', () => {
   const g = generate();
-  const r = sizeReport(g.sizes).find((x) => x.lang === 'ja' && x.what === 'free all subjects');
-  assert.equal(r.max, 59, 'free.all cap is 59 KB');
-  const m = overMessage({ ...r, max: 50 }, g.data);
-  const bytes = Buffer.byteLength(buildPack({ series: 'all', lang: 'ja' }));
-  assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, subjects academic\\+business\\+kokugo\\+info: ${bytes} B, ${bytes - 50 * 1024} B over 50 KB \\(51200 B\\)\\. Largest sections: `));
+  const rep = sizeReport(g.sizes);
+  assert.ok(!rep.some((x) => /all/.test(x.what)), 'no row for every subject');
+  // 1 つの分野のどれも（40 KB）、2 つの組のどれも（50 KB）、ja と en で
+  for (const lang of ['en', 'ja']) {
+    for (const s of SERIES) assert.equal(rep.find((x) => x.lang === lang && x.what === 'free common+' + s).max, 40);
+    for (const p of PAIRS) { const x = rep.find((y) => y.lang === lang && y.what === 'free common+' + p.join('+')); assert.ok(x && x.pair && x.max === 50 && x.level === 'ok', `${lang} ${p.join('+')}`); }
+  }
+  const r = rep.find((x) => x.lang === 'ja' && x.what === 'free common+academic+kokugo');
+  const m = overMessage({ ...r, max: 40 }, g.data);
+  const bytes = Buffer.byteLength(buildPack({ series: ['academic', 'kokugo'], lang: 'ja' }));
+  assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, subjects academic\\+kokugo: ${bytes} B, ${bytes - 40 * 1024} B over 40 KB \\(40960 B\\)\\. Largest sections: `));
   assert.equal((m.split('Largest sections: ')[1].match(/\(\d+ B\)/g) || []).length, 3, m);
 });
-ok('free packs name no part outside their own catalog: every subject set × en/ja, and the sweep over purposes turned off', () => {
+ok('free packs name no part outside their own catalog: no subject, every single subject and every pair × en/ja, and the sweep over purposes turned off', () => {
   let n = 0;
-  for (const lang of ['en', 'ja']) for (let mask = 0; mask < 1 << SUBJECTS.length; mask++) {
-    const series = seriesOfSubjects(SUBJECTS.filter((_, i) => mask & (1 << i)).map((s) => s.id));
+  for (const lang of ['en', 'ja']) for (const subjects of FREE_SETS) {
+    const series = seriesOfSubjects(subjects);
     const t = packWithRequest({ series, lang, plan: 'free' });
     assert.deepEqual(notInCatalog(t), [], `${lang} free ${series.join('+') || '(none)'}`);
     n++;
@@ -364,6 +389,10 @@ ok('choices: egatari.json studio.newDeck through updateConfig (other members byt
   assert.equal(choiceOf(withChoice(null, { plan: 'gold' })).plan, 'free');
   assert.equal(choiceOf('{"studio": {"newDeck": {"v": 1, "category": null, "subcategory": null, "subjects": [], "purposesOff": []}}}').plan, 'free', 'an earlier record without plan reads as free');
   assert.equal(choiceOf('not json'), null);
+  // 前の記録に 3 つ以上の分野があっても、読む・書くでそのまま残す（使うのは freeSubjects の初めの 2 つ）
+  const three = withChoice(null, { plan: 'free', subjects: ['info', 'kokugo', 'math'] });
+  assert.deepEqual(choiceOf(three).subjects, ['math', 'kokugo', 'info']);
+  assert.deepEqual(seriesForChoice(choiceOf(three)), ['academic', 'kokugo']);
 });
 ok('seed survives every slide operation of the editor (insert, duplicate, delete, move): they splice slides and never touch <html> (§8.4 "MUST preserve it on save")', () => {
   const deck = withSeed(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), 2718281828);

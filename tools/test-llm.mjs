@@ -62,7 +62,8 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
     const paidCommon = commonBody(lang, [], SERIES, [], 'paid');
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
-    assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: every subject|無料のプラン：すべての分野) \| [\d.]+ KB \| 59 KB \|/.test(file), lang + ': the size table lists both plans');
+    assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: common body \+ the largest pair of subjects \(\w+ \+ \w+\)|無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（\w+＋\w+）) \| [\d.]+ KB \| 50 KB \|/.test(file)
+      && !/every subject|すべての分野/.test(file.slice(0, file.indexOf('\n## '))), lang + ': the size table lists both plans: each subject and the largest pair for free, no row for every subject');
     const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
     for (const t of PAID_ONLY) assert.ok(file.includes('### `<' + t + '>`'), `${lang}: the docs describe ${t}`);

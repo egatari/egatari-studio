@@ -206,6 +206,8 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-series legend{padding:0 4px}
 #dlg .paste-series label{display:flex;gap:8px;align-items:center}
 #dlg .paste-series label .hint{flex-basis:auto;margin-left:auto}
+#dlg .paste-series label:has(input:disabled){color:var(--muted)}
+#dlg .paste-series > p{margin:2px 0 0}
 #dlg #paste-pack-size{flex-basis:auto}
 #dlg .paste-step{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:6px}
 #dlg .paste-step h3{font-size:15px;margin:2px 0 6px}

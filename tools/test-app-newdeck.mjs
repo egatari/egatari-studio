@@ -10,6 +10,8 @@
 // S3 会社員（en・有料のプラン）：長さを 20 分 → 2 回に分けて頼む（1 分 ≒ 1 枚）・① の場面から推した分野・⑤ は構成案の欄から → 1〜6 枚目 →［作成］
 // S4 国語の先生（ja）：② のタイトルと内容から国語に印・詳しくの要約（言語・話す人・そのほかの希望）・［変更］で直す・自分で替えた印は上書きしない・コードブロックを 1 つずつ
 // S5 大学の教員（ja・有料のプラン）：内容は「チャットの AI に渡してある」→ B の頼み方。詳しくも出し、A と同じ形でタイトル・だれ向け・長さ・言語・話者・希望
+// S8 高校の先生（ja・無料のプラン）：分野は 2 つまで。推した印も 2 つまで、2 つでほかは押せずわけを出す、外すとまた押せる、有料のプランは限りなし
+// S9 前に 3 つの分野を選んだ教材を開いて新規作成：印はそのまま・使うのは初めの 2 つ（1 行で知らせる）・egatari.json は書き換えない
 // どの場面も：押せない［作成］［挿入］［置き換える］の横に、欠けているもののうち最初の 1 つ（「① に答えてください」など）。押せるときの添え書きもボタンの横
 // 画像（shotDir があれば）：flow-s1-kind.png・flow-s1-answered.png・flow-s1-paste.png・flow-s2-moved.png・flow-s3-outline.png・flow-s4-more.png・flow-s5.png・flow-s6-insert.png・flow-s7-revise.png
 import fs from 'node:fs';
@@ -17,6 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { CATEGORIES, seedOf } from '../kit/core/new-deck.mjs';
+import { SERIES } from '../kit/core/llm-pack.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
 import { clickDlg, clickCommand } from './click-retry.mjs';
@@ -376,6 +379,71 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await text(p5, '#dlg-cancel')) === 'キャンセル', 'S5: the cancel button is 「キャンセル」');
     const F5 = await create(p5);
     ok(newDeckOf(F5).plan === 'paid' && newDeckOf(F5).subcategory === 'seminar', 'S5: created with the paid plan');
+
+    // ================================================================ S8 高校の先生（ja・無料のプラン）：分野は 2 つまで（推した印も 2 つまで。2 つで、ほかは押せない。外すとまた押せる。有料のプランは限りなし）
+    const p8 = await open('ja', 's8');
+    const checked = (p) => p.$$eval('#paste-series input:checked', (xs) => xs.map((x) => x.value).join());
+    const disabledBoxes = (p) => p.$$eval('#paste-series input:disabled', (xs) => xs.map((x) => x.value).join());
+    await startNew(p8);
+    await p8.check('#paste-cat-business');
+    await p8.check('#paste-sub-report');
+    await p8.click('#paste-next-kind');
+    await p8.fill('#paste-title', '売上の統計と漢文の故事');
+    await p8.click('#paste-next-content');
+    await p8.click('#paste-next-theme');
+    ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info'
+      && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数式・関数・グラフ（数理・統計）」「KPI・位置づけ・市場・お金の流れ（ビジネス）」に印を付けました',
+      'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
+    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')) && await p8.isHidden('#paste-series-stored'),
+      'S8 ④: with two ticked, the others are disabled and the reason 「無料のプランでは 2 つまで選べます」 is shown in the list');
+    await p8.uncheck('#paste-series-business');
+    ok((await checked(p8)) === 'academic' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: unticking one enables the others again and hides the reason');
+    await p8.check('#paste-series-kokugo');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info', 'S8 ④: a different second subject disables the rest');
+    const c8 = await copy(p8);
+    ok(c8 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c8, 'ja'), plan: 'free' }), 'S8 ④: the copied instructions have the two subjects ticked');
+    // 推し直しでも 2 つを越えない（自分で付けた 2 つはそのまま）
+    await p8.click('#paste-change-content');
+    await p8.fill('#paste-title', '売上の統計と漢文の故事、ハフマン符号');
+    await p8.click('#paste-next-content');
+    ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
+    await p8.check('#paste-plan-paid');
+    ok(await p8.isHidden('#paste-series') && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: the paid plan has no limit (no box disabled; the question is hidden)');
+    const c8p = await copy(p8);
+    ok(c8p === packWithRequest({ series: [...SERIES], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies every series');
+    await p8.check('#paste-plan-free');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the limit applies again');
+
+    // ================================================================ S9 前に 3 つの分野を選んだ教材（egatari.json の studio.newDeck）を開いて新規作成：印はそのまま、使うのは初めの 2 つ、記録は書き換えない
+    const p9 = await open('ja', 's9');
+    const cfg9 = '{\n  "studio": {\n    "newDeck": {"v": 1, "plan": "free", "category": "teaching", "subcategory": "class", "subjects": ["math", "kokugo", "info"], "purposesOff": []}\n  }\n}\n';
+    await p9.evaluate(async ([d, n, c]) => {
+      const root = await navigator.storage.getDirectory();
+      const top = await root.getDirectoryHandle('newdeck-stored-' + Date.now(), { create: true });
+      for (const [k, v] of [['deck.html', d], ['narration.md', n], ['egatari.json', c]]) { const w = await (await top.getFileHandle(k, { create: true })).createWritable(); await w.write(v); await w.close(); }
+      window.__sdir = top;
+      window.__APP_TEST.open(top);
+    }, [fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8'), cfg9]);
+    await p9.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
+    const cfgNow = () => p9.evaluate(async () => (await (await window.__sdir.getFileHandle('egatari.json')).getFile()).text());
+    await clickCommand(p9, '#b-new');
+    await p9.waitForSelector('#dlg[open] #paste-step-kind');
+    await p9.check('#paste-cat-teaching');
+    await p9.check('#paste-sub-class');
+    await p9.click('#paste-next-kind');
+    await p9.fill('#paste-title', 'てこのはたらき');
+    await p9.click('#paste-next-content');
+    await p9.click('#paste-next-theme');
+    ok((await checked(p9)) === 'academic,kokugo,info' && (await disabledBoxes(p9)) === 'business' && await p9.isVisible('#paste-series-stored') && await p9.isHidden('#paste-series-max')
+      && (await text(p9, '#paste-series-stored')) === '無料のプランでは 2 つまでなので、「数理・統計」と「国語」を使います。替えるときは印を外してください',
+      'S9 ④: the three stored ticks stay, the fourth box is disabled, and one line says which two are used: ' + await text(p9, '#paste-series-stored'));
+    const c9 = await copy(p9);
+    ok(c9 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c9, 'ja'), plan: 'free' }), 'S9 ④: the copied instructions use only the first two (数理・統計 and 国語)');
+    ok((await cfgNow()) === cfg9, 'S9: the stored record is not rewritten when it is read');
+    await p9.uncheck('#paste-series-academic');
+    ok((await checked(p9)) === 'kokugo,info' && await p9.isHidden('#paste-series-stored') && await p9.isVisible('#paste-series-max') && (await disabledBoxes(p9)) === 'academic,business', 'S9 ④: unticking one leaves two: the notice goes, the limit stays');
+    await p9.click('#dlg-cancel');
+    ok((await cfgNow()) === cfg9, 'S9: the record is still unchanged after closing');
   } finally {
     for (const c of contexts) await c.close();
   }

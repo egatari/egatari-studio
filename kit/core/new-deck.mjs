@@ -12,13 +12,16 @@
 //   guessSubjects(text)                タイトルと内容の字から推す分野の id（漢文・古文 → 国語、数式・グラフ・統計 → 数理・統計 など。推せなければ []）
 //   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料版。既定）| 'paid'（有料版）。指示の大きさの上限は kit/core/llm-pack.mjs の PACK_CAP_KB
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
-//   seriesForChoice(choice)            指示に入れる系列：有料版はすべての系列（分野は選ばない）、無料版は選んだ分野の系列
+//   FREE_SUBJECT_MAX                   無料版で選べる分野の数（2）。指示の大きさの上限は 1 つなら PACK_CAP_KB.free.one、2 つなら free.two
+//   freeSubjects(ids)                  無料版で使う分野：選んだもののうち SUBJECTS の順で初めの FREE_SUBJECT_MAX 個
+//                                      （前の記録が 3 つ以上を持っていても、記録は書き換えず、使うのはこれだけ）
+//   seriesForChoice(choice)            指示に入れる系列：有料版はすべての系列（分野は選ばない）、無料版は使う分野（freeSubjects）の系列
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''。
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
 //   choiceOf(configText)               → studio.newDeck | null
 //   choice の形：{plan, category, subcategory, subjects: [id], purposesOff: [id]}（category・subcategory は id か null。subjects は無料版で選んだ分野。
-//   有料版でも選んであったものをそのまま残す：無料版に戻したときの選び方）
+//   有料版でも選んであったものをそのまま残す：無料版に戻したときの選び方。2 つより多い前の記録もそのまま残し、使うのは freeSubjects）
 //
 // シード値（§8.4）：原稿の根の要素（deck.html の <html>）の data-egatari-seed。10 進の整数 0 ≤ N < 2^32、なければ 0。
 // 編集器は教材を作るときに 1 回だけ書き（教材どうしが同じ見た目にならないように）、保存で必ず残す。
@@ -110,11 +113,18 @@ export function guessSubjects(text) {
   return GUESS.filter(([, re]) => re.test(t)).map(([id]) => id);
 }
 
+// 無料版で選べる分野は 2 つまで（分野が増えても、無料版の指示の大きさは 2 つの組の上限 PACK_CAP_KB.free.two に収まる）
+export const FREE_SUBJECT_MAX = 2;
+export const freeSubjects = (ids) => {
+  const want = new Set(ids || []);
+  return SUBJECTS.filter((s) => want.has(s.id)).slice(0, FREE_SUBJECT_MAX).map((s) => s.id);
+};
+
 // お使いの AI（無料版・有料版）。無料版は選んだ分野のパーツと共通の本体だけの軽い指示、有料版はすべての系列のパーツを入れた指示
 export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
-export const seriesForChoice = (choice) => (planOf(choice) === 'paid' ? SUBJECTS.map((s) => s.series) : seriesOfSubjects(choice && choice.subjects));
+export const seriesForChoice = (choice) => (planOf(choice) === 'paid' ? SUBJECTS.map((s) => s.series) : seriesOfSubjects(freeSubjects(choice && choice.subjects)));
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }

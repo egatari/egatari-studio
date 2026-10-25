@@ -9,12 +9,13 @@ import { purposesTable } from './purposes.mjs';
 
 // 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
 // 新規作成の「お使いの AI」（kit/core/new-deck.mjs の AI_PLANS）ごと：
-//   無料版：共通の本体＋選んだ分野。1 つの分野なら one まで（越えたら npm run gen が止まる）、どの組でも all まで（全部の分野を選んでも）
-//   有料版：すべての系列のパーツを入れた指示（'all'）。PAID_PACK_KB まで
+//   無料版：共通の本体＋選んだ分野（2 つまで。new-deck.mjs の FREE_SUBJECT_MAX）。1 つの分野なら one まで、2 つの分野ならどの組でも two まで
+//     （越えたら npm run gen が止まる）
+//   有料版：すべての系列のパーツを入れた指示。PAID_PACK_KB まで
 export const PAID_PACK_KB = 120;   // 有料版の上限（仮の値。変えるならここだけ）
-// free.all：59（2026-10-25 に 58 から）。58 は部品庫 v1.1.0 の全部の分野の大きさに余裕を足した値で、モデルの限りを測ったものではない。
-// 無料のチャットの限りは 1 つの分野の 40 KB のほう。無料版で 4 つの分野を全部選ぶのは端の場合で、規格化が B のデータが出てから両方の上限を見直す
-export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, all: 59 }), paid: PAID_PACK_KB });
+// free.two：50 は今いちばん大きい 2 つの組（国語＋数理・統計、およそ 48 KB）に 2 KB ほどの余裕を足した値で、モデルの限りを測ったものではない。
+// 無料のチャットの限りで効くのは 1 つの分野の 40 KB のほう。分野は増える（social など）ので、全部の分野の上限は置かず、無料版で選べる分野を 2 つまでにした（2026-10-25）
+export const PACK_CAP_KB = Object.freeze({ free: Object.freeze({ one: 40, two: 50 }), paid: PAID_PACK_KB });
 
 // 無料版で読み込む部品（plan 'free'。有料版はすべて）：
 //   FREE_CORE：共通の本体に説明まで入る共通の部品（部品庫 v1.1.0 の共通の部品）
