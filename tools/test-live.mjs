@@ -114,7 +114,7 @@ ok(sv('activities')(L0.activities), 'schema: the activities shape is the protoco
   ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
   ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
 
-// 質問の機能：活動の種類 confused・派生の sourceSha256・囲んだところの規則（docs/contract.md §12 の手書きメモと同じ）
+// 質問の機能：活動の種類 confused・派生の sourceSha256・囲んだところの規則（docs/contract.md §13 のマーカーと同じ）
 { const withCf = (x) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused', ...x }] } });
   ok(LP.validate(withCf({}), { key: true }).length === 0 && LP.validate(withCf({ label: 'どのステップでも' }), { key: true }).length === 0 && sv('activities')(withCf({}).activities), 'validate: a confused activity ({id, kind}, optional label) is valid (policy and vendored schema)');
   ok(LP.validate(withCf({ choices: ['a', 'b'] }), { key: true }).some((e) => e.code === 'confusedMembers') && !sv('activities')(withCf({ prompt: 'x' }).activities), 'validate: a confused activity has no prompt or choices');

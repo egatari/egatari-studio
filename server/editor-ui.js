@@ -18,6 +18,7 @@
 //                                                  編集している最中か（録音している間など。プレビューを inert にする）
 //     volatileComments?: () => bool,               コメントが保存されない（1 ファイルで開いている）とき true：コメントの一覧に知らせを出す
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
+//     modeHost?: 要素,                             今のモード（「編集中」「発表の道具：ペン」「表示」。aria-live で知らせる）を入れる画面の端の帯（プレビューの外）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
@@ -52,8 +53,10 @@ const STR = {
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no narration)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the deck', noOpen: (alt) => 'No open notes. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
+    inkMark: 'Drawn mark', inkMarks: (n) => n + ' drawn marks', inkT: 'The marks you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add marks to this comment (up to 20)', inkFull: 'A comment holds at most 20 marks', ink: 'Marker (m)', inkTip: 'Circle or point to a spot, then add a comment (draw circles or arrows on the slide, several marks for one comment, then write it; the pen button of the slide controls also opens it, and so does d)',
     nUnsaved: 'The narration is not saved. Save or revert it to use the preview again', nRevert: 'Revert',
     dateLocale: 'en-US',
+    modeEdit: 'Editing', modeInk: 'Editing: marker', modeView: 'Viewing', modeTool: (t) => 'Presenter tool: ' + t, tools: { laser: 'Laser pointer', pen: 'Pen', vpen: 'Fading pen' }, modeLabel: 'Current mode',
   },
   ja: {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックで指示 · e で終了',
@@ -70,8 +73,10 @@ const STR = {
     noChange: '変更はありません', next: (k, other) => '次の段階（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次の段階はありません', noNarr: '（口述原稿なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'この段階はデッキにありません', noOpen: (alt) => '未対応の指示はありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
+    inkMark: '手書きの印', inkMarks: (n) => '手書きの印 ' + n + ' 本', inkT: '描いた印（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このコメントの印に足せます（20 本まで）', inkFull: '1 つのコメントの印は 20 本まで', ink: 'マーカー（m）', inkTip: '丸や矢印で場所を示して、コメントを付ける（スライドに描いてから書きます。1 つのコメントに何本でも。スライドの操作の帯のペンのボタンでも開く。d でも開く）',
     nUnsaved: 'ナレーションが保存されていません。保存するか元に戻すと、プレビューを操作できます', nRevert: '元に戻す',
     dateLocale: 'ja-JP',
+    modeEdit: '編集中', modeInk: '編集中：マーカー', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
 };
 
@@ -146,13 +151,22 @@ const CSS = [
   '.dev-pin i:nth-child(1){left:10.5px;top:-12px;width:3px;height:8px}.dev-pin i:nth-child(2){left:10.5px;top:28px;width:3px;height:8px}',
   '.dev-pin i:nth-child(3){left:-12px;top:10.5px;width:8px;height:3px}.dev-pin i:nth-child(4){left:28px;top:10.5px;width:8px;height:3px}',
   '.dev-pin b{position:absolute;left:24px;top:-26px;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;background:#e11d48;color:#fff;font:700 11px/18px -apple-system,BlinkMacSystemFont,sans-serif;padding:0 4px;box-shadow:0 0 0 2px #fff}',
+  '.dev-ink{position:fixed;overflow:visible;pointer-events:none}.dev-ink path{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}',
+  '.dev-ink .dv-halo{stroke:#fff;stroke-width:7px;opacity:.9}.dev-ink .dv-line{stroke:#e11d48;stroke-width:3.5px}.dev-ink.dv-new .dv-line{stroke:#f59e0b}',
+  '#dev-badge .dv-ink{font:inherit;font-size:12px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:1px 10px;cursor:pointer}',
+  '#dev-badge .dv-ink[aria-pressed=true]{background:#f59e0b;border-color:#f59e0b;color:#231400}',
   '.dev-pin.dv-new{border-color:#f59e0b}.dev-pin.dv-new i,.dev-pin.dv-new b{background:#f59e0b}',
   '.dev-pin.dv-flash{animation:dv-flash .45s ease-in-out 4}',
   '@keyframes dv-flash{50%{transform:scale(1.9);box-shadow:0 0 0 6px rgba(225,29,72,.35),0 1px 6px rgba(0,0,0,.45)}}',
   '@media (prefers-reduced-motion:reduce){.dev-pin.dv-flash{animation:none;outline:4px solid #e11d48;outline-offset:4px}}',
+  // 今のモード（編集中・発表の道具・表示）。画面の端の帯（modeHost：編集アプリの下の帯・開発サーバーの外枠の下の帯）に置き、舞台に重ねない
+  '#dev-mode{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:1.4;color:inherit;opacity:.85;white-space:nowrap}',
+  '#dev-mode::before{content:"";width:8px;height:8px;border-radius:50%;background:#9aa3b2;flex:none}',
+  '#dev-mode[data-ink]::before{background:#f59e0b}#dev-mode[data-mode=edit]:not([data-ink])::before{background:#2563eb}#dev-mode[data-mode=tool]::before{background:#e11d48}',
   '#dev-toast{position:fixed;z-index:1002;right:16px;bottom:22px;max-width:388px;background:#1d2330;color:#fff;padding:8px 16px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}',
   '#dev-toast.dv-warn{background:#92400e}#dev-toast.dv-err{background:#9b1c1c}',
-  '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}}',
+  '@media (max-width:720px){#dev-side{position:fixed;right:0;top:0;bottom:0;max-width:100vw;width:100%;z-index:1000}#dev-side.dv-inking{top:auto;height:42vh}}',
+  '#dev-comment .dv-more{color:#7a4b00;font-size:12px;margin:-2px 0 8px}#dev-side.dv-inking #dev-comment .dev-lock{display:none}',
 ].join('\n');
 
 // 知らせの中身を確かめる（形が違えば捨てる）
@@ -168,6 +182,74 @@ const pinOf = (p) => {
   const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
   return { x: c(p.x, W), y: c(p.y, H) };
 };
+// マーカーの線（strokes：線の並び、線は [[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid と
+// 同じ規則の写し（tools/test-ink-comments.mjs が同じ答えか確かめる）。線ごとに 2 点に満たなければ捨て、端に寄せて 0.1 に丸め、続けて同じ点は 1 つ、
+// 500 点を超えれば Ramer–Douglas–Peucker で間引く。初めの 20 本を使い、点の合計が 2000 を超えれば全部を同じ誤差でさらに間引く。前の形の stroke は 1 本として読む
+const STROKE_MAX = 500, STROKE_IN = 5000, STROKES_MAX = 20, STROKES_POINTS = 2000, STROKES_IN = 200, STROKES_IN_POINTS = 20000;
+function strokeRdp(P, eps) {
+  const keep = new Uint8Array(P.length); keep[0] = keep[P.length - 1] = 1;
+  const st = [[0, P.length - 1]];
+  while (st.length) {
+    const [a, b] = st.pop();
+    const [ax, ay] = P[a], [bx, by] = P[b], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    let best = -1, bd = eps;
+    for (let i = a + 1; i < b; i++) {
+      const d = L ? Math.abs(dy * (P[i][0] - ax) - dx * (P[i][1] - ay)) / L : Math.hypot(P[i][0] - ax, P[i][1] - ay);
+      if (d > bd) { bd = d; best = i; }
+    }
+    if (best >= 0) { keep[best] = 1; st.push([a, best], [best, b]); }
+  }
+  return P.filter((_, i) => keep[i]);
+}
+const strokeC = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
+function strokeClean(s) {
+  if (!Array.isArray(s) || s.length > STROKE_IN) return null;
+  const out = [];
+  for (const q of s) {
+    if (!Array.isArray(q) || q.length < 2 || typeof q[0] !== 'number' || typeof q[1] !== 'number' || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) continue;
+    const p = [strokeC(q[0], W), strokeC(q[1], H)], l = out[out.length - 1];
+    if (!l || l[0] !== p[0] || l[1] !== p[1]) out.push(p);
+  }
+  return out.length < 2 ? null : out;
+}
+function strokeSimplify(P, max) {
+  let r = P;
+  for (let eps = 0.25; r.length > max; eps *= 2) r = strokeRdp(P, eps);
+  return r;
+}
+export function strokesOf(v) {
+  if (!Array.isArray(v) || v.length > STROKES_IN) return null;
+  let seen = 0;
+  for (const s of v) if (Array.isArray(s)) seen += s.length;
+  if (seen > STROKES_IN_POINTS) return null;
+  const raw = [];
+  for (const s of v) {
+    const c = strokeClean(s);
+    if (c) raw.push(strokeSimplify(c, STROKE_MAX));
+    if (raw.length === STROKES_MAX) break;
+  }
+  if (!raw.length) return null;
+  let r = raw;
+  const total = (a) => a.reduce((n, P) => n + P.length, 0);
+  for (let eps = 0.25; total(r) > STROKES_POINTS; eps *= 2) r = raw.map((P) => (P.length > 2 ? strokeRdp(P, eps) : P));
+  return r;
+}
+export function entryStrokesOf(c) {
+  if (!c || typeof c !== 'object') return null;
+  if (c.strokes !== undefined) return strokesOf(c.strokes);
+  if (c.stroke !== undefined) return strokesOf([c.stroke]);
+  return null;
+}
+export function strokesCentroidOf(S) {
+  let sx = 0, sy = 0, sl = 0;
+  for (const s of S) {
+    for (let i = 1; i < s.length; i++) {
+      const l = Math.hypot(s[i][0] - s[i - 1][0], s[i][1] - s[i - 1][1]);
+      sx += l * (s[i][0] + s[i - 1][0]) / 2; sy += l * (s[i][1] + s[i - 1][1]) / 2; sl += l;
+    }
+  }
+  return sl > 0 ? { x: strokeC(sx / sl, W), y: strokeC(sy / sl, H) } : { x: S[0][0][0], y: S[0][0][1] };
+}
 const splitKey = (key) => { const p = key.lastIndexOf(':'); return [key.slice(0, p), key.slice(p + 1)]; };
 // 口述原稿の書き方（{cue}・{φ|ファイ}・{mark:…}）を外して読める文にする（次の段階の見せ方だけ）
 const plain = (s) => String(s || '').replace(/\{([^{}|]*)\|[^{}]*\}/g, '$1').replace(/\{[^{}]*\}/g, '');
@@ -224,13 +306,16 @@ export function createEditorUI(o) {
   let pinList = [], pending = null, flash = null;
   // 信頼する入力の欄で編集しているか：原稿の欄・コメントの欄を開いている、口述原稿の欄に入力している（focus）・未保存の変更がある
   const extra = o.extra || {};
-  const editing = () => !!(editor || cbox || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
+  // マーカーの欄が開いていて、マーカーの道具が入っている間は、プレビューに続けて線を描ける（欄は横の板にあり、描く所に重ならない）
+  const inkDrawing = () => !!(cbox && cbox.ink && editOn && toolMode === 'ink');
+  const editing = () => !!(editor || (cbox && !inkDrawing()) || (narr && (narr.dirty || narrFocus)) || (extra.editing && extra.editing()));
   // 板を出すか（何か開いているとき）と、編集している間のプレビューの鍵（inert：クリックも入力も受けない）
   function updateSide() {
     side.hidden = !(editOn || editor || cbox || cpanel || drawer || (extra.open && extra.open()));
     const lock = editing(), f = frameEl();
     if (f) { f.inert = lock; f.classList.toggle('dev-locked', lock); }
     side.classList.toggle('dv-locked', lock);
+    side.classList.toggle('dv-inking', inkDrawing());
     if (!(narr && narr.dirty)) narrNotice(false);
     drawPins();
   }
@@ -259,6 +344,17 @@ export function createEditorUI(o) {
     const b = slideBox();
     if (!b) return;
     for (const c of show) {
+      // 手書きの印：スライドの大きさの svg（viewBox 1280×720）を同じ位置と倍率で重ねる。プレビューの中（舞台の DOM）には描かない
+      if (c.strokes) {
+        // 線ごとに M から（線どうしを繋がない）
+        const NS = 'http://www.w3.org/2000/svg', d = c.strokes.map((s) => 'M' + s.map((q) => q[0] + ' ' + q[1]).join('L')).join('');
+        const svg = doc.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'dev-ink' + (c.isNew ? ' dv-new' : '')); svg.setAttribute('data-id', c.id || 'new');
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', (W * b.k).toFixed(1)); svg.setAttribute('height', (H * b.k).toFixed(1));
+        svg.style.left = b.l.toFixed(1) + 'px'; svg.style.top = b.t.toFixed(1) + 'px';
+        for (const cls of ['dv-halo', 'dv-line']) { const pa = doc.createElementNS(NS, 'path'); pa.setAttribute('class', cls); pa.setAttribute('d', d); svg.appendChild(pa); }
+        pinLayer.appendChild(svg);
+      }
       const el = h('div', { cls: 'dev-pin' + (c.isNew ? ' dv-new' : ''), 'data-id': c.id || 'new' }, [h('i'), h('i'), h('i'), h('i'), c.n ? h('b', { text: String(c.n) }) : null]);
       el.style.left = (b.l + c.pin.x * b.k).toFixed(1) + 'px';
       el.style.top = (b.t + c.pin.y * b.k).toFixed(1) + 'px';
@@ -277,8 +373,24 @@ export function createEditorUI(o) {
   }
   const slideOf = (key) => (info ? info.slides.find((s) => s.key === key) : null);
 
+  // ---------------------------------------------------------------- 今のモード（画面の端。編集モードと発表の道具は同時には使わない：#69）
+  // 道具はデッキからの知らせ（tool）で知るだけ。編集モードに入ると、デッキ（kit/tools.js）が自分で道具を切って null を知らせてくる
+  let toolMode = null;
+  const modeEl = h('span', { id: 'dev-mode', cls: 'edit-ui', role: 'status', 'aria-live': 'polite', 'aria-label': L.modeLabel });
+  if (o.modeHost) o.modeHost.appendChild(modeEl);
+  function drawMode() {
+    const kind = editOn ? 'edit' : toolMode && toolMode !== 'ink' ? 'tool' : 'view', ink = editOn && toolMode === 'ink';
+    const text = kind === 'edit' ? (ink ? L.modeInk : L.modeEdit) : kind === 'tool' ? L.modeTool(L.tools[toolMode]) : L.modeView;
+    if (ink) modeEl.setAttribute('data-ink', ''); else modeEl.removeAttribute('data-ink');
+    inkBtn.setAttribute('aria-pressed', String(ink));
+    modeEl.hidden = !enabled() && kind === 'view';
+    if (modeEl.textContent !== text) modeEl.textContent = text;
+    modeEl.setAttribute('data-mode', kind);
+  }
   // ---------------------------------------------------------------- 編集モードの札
-  const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) })]);
+  // マーカー（コメントのペン）：編集モードの間だけ。押すと（m でも）デッキ（kit/tools.js の道具 ink）に頼み、描き終えた線がコメントの欄を開く
+  const inkBtn = h('button', { cls: 'dv-ink', type: 'button', 'aria-pressed': 'false', text: L.ink, title: L.inkTip, on: { click: () => toggleInk() } });
+  const badge = h('div', { id: 'dev-badge', cls: 'edit-ui' }, [h('b', { text: L.editMode }), h('span', { text: L.editTip(ALT) }), inkBtn]);
   side.appendChild(badge);
   function drawBadge() {
     badge.classList.toggle('dv-on', editOn);
@@ -287,13 +399,22 @@ export function createEditorUI(o) {
     if (warns.length) badge.appendChild(h('span', { cls: 'dv-warn', text: L.warn + warns.length, title: warns.join('\n'), on: { click: () => win.alert(warns.join('\n')) } }));
     updateSide();
   }
+  drawMode();
+  function toggleInk(on) {
+    on = on === undefined ? toolMode !== 'ink' : !!on;
+    if (on && (!editOn || !enabled())) return false;
+    post({ type: 'edit-ink', on });
+    return true;
+  }
   async function toggleEdit(on) {
     on = on === undefined ? !editOn : !!on;
     if (on && !enabled()) return false;
     if (on && o.beforeEdit && !(await o.beforeEdit('edit'))) return false;
     editOn = on;
     if (!on) closeEditor();
-    drawBadge(); sendState(); saveUi();
+    // 全画面（編集アプリの「全画面」はプレビューの枠を全画面にする）のままだと、横の板が見えない：編集に入るときは全画面をやめる
+    if (on && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+    drawBadge(); sendState(); saveUi(); drawMode();
     return true;
   }
 
@@ -378,43 +499,75 @@ export function createEditorUI(o) {
     if (!cbox) return;
     if (!force && cbox.ta.value.trim()) return;
     cbox.card.remove(); cbox = null; pending = null;
+    post({ type: 'edit-ink-reset' });   // 書きかけのマーカーの線を捨てる（server/hints.js）
     if (target && !editor) setTarget(null);
     updateSide();
     focusFrame();
   }
-  function openComment(hint) {
+  // 知らせ（Alt+クリックかマーカー）から、メモの場所：段階の鍵・要素の範囲・引用・点・線（マーカーは何本でも。点は全部の線の重心）
+  function placeOf(hint) {
     const key = str(hint.key, 400), range = hint.src == null ? null : str(hint.src, 40);
-    if (!enabled() || !key || (range !== null && !RANGE.test(range))) return;
-    if (busy()) { toast(L.busy, 'warn'); return; }
-    closeEditor(true); closeComment(true);
+    if (!key || (range !== null && !RANGE.test(range))) return null;
     // 引用：要素の字の頭（80 字）。押した所の近くの字（部品の中の札・語など）があれば前に付ける
     const q80 = (str(hint.quote, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 80);
     const near = (str(hint.near, 400) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
     const quote = (near && near !== q80 ? near + ' ｜ ' + q80 : q80).slice(0, 160);
-    const pin = pinOf(hint.pin);
+    let pin = pinOf(hint.pin);
+    const strokes = pin ? entryStrokesOf(hint) : null;
+    if (strokes) pin = strokesCentroidOf(strokes);
+    return { key, range, quote, pin, strokes };
+  }
+  function openComment(hint) {
+    const at0 = placeOf(hint);
+    if (!enabled() || !at0) return;
+    if (busy()) { toast(L.busy, 'warn'); if (at0.strokes) post({ type: 'edit-ink-reset' }); return; }
+    closeEditor(true); closeComment(true);
+    let at = at0;
     const ta = h('textarea', { placeholder: L.cPlace });
     const msg = h('div', { cls: 'dev-msg' });
     const save = h('button', { cls: 'dv-pri', text: L.cSave });
+    const pinRow = h('div', { cls: 'dev-where' });
+    const qEl = h('div', { cls: 'dv-q' });
+    const more = at.strokes ? h('div', { cls: 'dv-more', text: L.inkMore }) : null;
+    function drawPlace() {
+      pinRow.textContent = '';
+      pinRow.hidden = !at.pin;
+      if (at.pin) {
+        pinRow.appendChild(h('span', { cls: 'dv-n', text: '●' }));
+        if (at.strokes) pinRow.appendChild(h('span', { cls: 'dv-p dv-s', text: at.strokes.length > 1 ? L.inkMarks(at.strokes.length) : L.inkMark, title: L.inkT }));
+        pinRow.appendChild(h('span', { cls: 'dv-p', text: L.pinAt(Math.round(at.pin.x), Math.round(at.pin.y)), title: L.pinT }));
+      }
+      qEl.textContent = at.quote; qEl.hidden = !at.quote;
+      if (more) more.textContent = at.strokes && at.strokes.length >= 20 ? L.inkFull : L.inkMore;
+      pending = at.pin ? { key: at.key, pin: at.pin, strokes: at.strokes } : null;
+    }
     const card = h('div', { id: 'dev-comment', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.cTitle }, [
-      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: key }), h('span', { cls: 'dv-sp' }),
+      h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.cTitle }), h('span', { cls: 'dv-m', text: at.key }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeComment(true) } })]),
       whereLine(),
-      pin ? h('div', { cls: 'dev-where' }, [h('span', { cls: 'dv-n', text: '●' }), h('span', { cls: 'dv-p', text: L.pinAt(Math.round(pin.x), Math.round(pin.y)), title: L.pinT })]) : null,
-      quote ? h('div', { cls: 'dv-q', text: quote }) : null,
+      pinRow, more, qEl,
       ta, msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.cHint }), h('button', { text: L.cancel, on: { click: () => closeComment(true) } }), save]),
       h('div', { cls: 'dev-lock', text: L.locked }),
     ]);
     side.appendChild(card);
-    const box = cbox = { card, ta };
-    pending = pin ? { key, pin } : null;
+    // マーカー：欄が開いている間も描いた線は、同じメモに足す（同じ段階の知らせだけ。引用・範囲・点は全部の線の重心の下から取り直す）
+    const box = cbox = { card, ta, ink: !!at.strokes, addInk(h2) {
+      if (cbox !== box) return false;
+      const a2 = placeOf(h2);
+      if (!a2 || !a2.strokes || a2.key !== at.key) return false;
+      at = a2; drawPlace(); drawPins();
+      return true;
+    } };
+    drawPlace();
     updateSide();
     setTarget('#comment');
     ta.focus();
     function doSave() {
       if (!ta.value.trim() || cbox !== box) return;
       save.disabled = true;
-      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), comment: ta.value }).then((j) => {
+      const { key, range, quote, pin, strokes } = at;
+      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), comment: ta.value }).then((j) => {
         if (j._status !== 200) { save.disabled = false; showErr(msg, j._offline ? L.offline : (j.error || L.cFail)); return; }
         ta.value = ''; closeComment(true); toast(L.cDone);
         if (commentsOpen) loadComments();
@@ -454,7 +607,7 @@ export function createEditorUI(o) {
       const open = (Array.isArray(list) ? list : []).filter((c) => c && c.status === 'open');
       // comments.json は手でも直せるので、読んだ点もここで確かめ直す
       pinList = [];
-      open.forEach((c, i) => { const p = pinOf(c.pin); if (p) pinList.push({ id: String(c.id), n: i + 1, key: String(c.key), pin: p }); });
+      open.forEach((c, i) => { const p = pinOf(c.pin); if (p) pinList.push({ id: String(c.id), n: i + 1, key: String(c.key), pin: p, strokes: entryStrokesOf(c) }); });
       drawPins();
       if (!open.length) { box.appendChild(h('div', { cls: 'dev-empty', text: L.noOpen(ALT) })); return; }
       open.forEach((c, i) => {
@@ -462,6 +615,7 @@ export function createEditorUI(o) {
         const item = h('div', { cls: 'dev-c', title: L.toSlide, 'data-id': String(c.id) }, [
           h('div', { cls: 'dv-k' }, [p ? h('span', { cls: 'dv-n', text: String(i + 1) }) : null,
             String(c.key) + (isNaN(when) ? '' : ' · ' + when.toLocaleString(L.dateLocale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })),
+            p && entryStrokesOf(c) ? h('span', { cls: 'dv-p dv-s', text: entryStrokesOf(c).length > 1 ? L.inkMarks(entryStrokesOf(c).length) : L.inkMark, title: L.inkT }) : null,
             p ? h('span', { cls: 'dv-p', text: L.pinAt(Math.round(p.x), Math.round(p.y)), title: L.pinT }) : null]),
           c.quote ? h('div', { cls: 'dv-q', text: String(c.quote) }) : null,
           h('div', { cls: 'dv-c', text: String(c.comment) }),
@@ -698,13 +852,14 @@ export function createEditorUI(o) {
     if (k === 'e') toggleEdit();
     else if (k === 'n') { if (fromDeck && narr && narr.dirty) toast(L.busy, 'warn'); else toggleNarr(); }
     else if (k === 'c') toggleComments();
+    else if (k === 'm') { if (editOn) toggleInk(); }
     else if (k === 'r') { if (o.onRecord) o.onRecord(); }   // 録音モードを開く（開くだけ。録音はこのページのキーでしか始まらない）
-    else if (k === 'Escape') escape(shift, fromDeck);
+    else if (k === 'Escape') { if (!escape(shift, fromDeck) && editOn && toolMode === 'ink') toggleInk(false); }   // 閉じる窓がなければマーカーを切る
   }
   // 編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときの送りのキー：プレビューに送る（deck-cmd の key。プレビューは親の窓から
   // 届いたものだけを受ける：kit/deck.js）。キーの出来事は作らない。f はプレビューの枠を全画面にする（中のデッキは押されていないので全画面にできない）。
   // 送らないもの：Space・Enter（フォーカスのあるボタンを押すキー）、入力の欄・口述原稿の引き出し・開いた窓・メニューや一覧の中、
-  // プレビューが止まっているとき（編集している間・録音モード。未保存の口述原稿なら、わけを出す）
+  // プレビューが止まっているとき（編集している間・録音モード。未保存の口述原稿なら、わけを出す）、編集モードの間の b・a・f（#69）
   const FWD = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', 'b', 'a', 'f'];
   const WIDGET = '[role=menu],[role=menuitem],[role=menubar],[role=listbox],[role=option],[role=tablist],[role=tab],[role=radiogroup],[role=slider],[role=tree],[role=grid],[role=dialog],[role=alertdialog],dialog';
   function forwardKey(e) {
@@ -713,6 +868,7 @@ export function createEditorUI(o) {
     const f = frameEl();
     if (!f || !f.isConnected) return;
     if (f.inert || editing()) { if (narr && narr.dirty && !otherLock()) narrNotice(true); return; }
+    if (editOn && (e.key === 'a' || e.key === 'b' || e.key === 'f')) return;   // 編集モードの間は発表の道具（自動再生・暗転・全画面）を使わない（#69。デッキの側でも受けない）
     e.preventDefault();
     if (e.key === 'f') {
       if (doc.fullscreenElement) { if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {}); }
@@ -728,7 +884,7 @@ export function createEditorUI(o) {
     if (doc.querySelector('dialog[open]')) return;
     if (e.key === 'Escape') { key('Escape', false, e.shiftKey); return; }
     if (e.shiftKey) return;
-    if (['e', 'n', 'c', 'r'].includes(e.key)) key(e.key, false);
+    if (["e", "n", "c", "r", "m"].includes(e.key)) key(e.key, false);
     else if (FWD.includes(e.key)) forwardKey(e);
   });
 
@@ -749,17 +905,25 @@ export function createEditorUI(o) {
       return true;
     }
     if (m.type !== 'edit-hint') return false;
+    if (m.kind === 'tool') {
+      toolMode = ['laser', 'pen', 'vpen'].includes(m.mode) || (m.mode === 'ink' && editOn) ? m.mode : null;
+      drawMode(); updateSide();
+      return true;
+    }
     if (m.kind === 'ready') {
       const r = restorePos; restorePos = null; frameReloading = false;
       if (r) post({ type: 'deck-cmd', cmd: 'goto', i: r.i, k: r.k });
-      sendState(); drawBadge();
+      sendState(); drawBadge(); drawMode();
       loadInfo().then(() => { if (narrOpen && (!narr || !(narr.dirty || narrFocus))) narrFollow(true); });
       if (commentsOpen) loadComments();
       return true;
     }
     // 信頼する欄で編集している間は、デッキからの知らせで板の欄を開け閉め・切り替えしない（頼んでいない切り替えで編集から離されない。
     // 本当にキーを押したのなら、プレビューは inert なのでデッキには届かない：知らせはデッキが自分で送ったもの）
-    if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; return true; }
+    // マーカーの欄が開いている間に描いた線は、そのメモに足す。ほかの欄を開く知らせ（Alt+クリック・ダブルクリック）は受けない
+    if (m.kind === 'comment' && cbox && cbox.ink && cbox.addInk(m)) return true;
+    if (cbox && (m.kind === 'comment' || m.kind === 'edit')) { ignored++; if (m.strokes) post({ type: 'edit-ink-reset' }); return true; }
+    if (editing() && (m.kind === 'key' || m.kind === 'edit' || m.kind === 'comment')) { ignored++; if (m.kind === 'comment' && m.strokes) post({ type: 'edit-ink-reset' }); return true; }
     if (m.kind === 'key' && typeof m.key === 'string') key(m.key, true);
     else if (m.kind === 'edit') openEditor(m);
     else if (m.kind === 'comment') openComment(m);
@@ -776,9 +940,9 @@ export function createEditorUI(o) {
     if (narr) narr.dirty = false;
     pos = null; restorePos = null; frameReloading = false; info = null; target = null; pinList = []; pending = null; flash = null;
     if (drawer) { drawer.remove(); drawer = null; narr = null; }
-    narrOpen = false; editOn = false;
+    narrOpen = false; editOn = false; toolMode = null;
     if (cpanel) { cpanel.remove(); cpanel = null; } commentsOpen = false;
-    drawBadge();
+    drawBadge(); drawMode();
     updateSide();
   }
   // 外枠のページを読み込み直したとき（開発サーバー）：覚えていた状態と位置に戻す
@@ -790,9 +954,10 @@ export function createEditorUI(o) {
     if (ui.comments) toggleComments(true);
   }
   return {
-    message, frameLoading, reset, restoreSaved, toggleEdit, toggleNarr, toggleComments, toast, mark, escape, goStep, goIndex, busy: () => editing(),
+    message, frameLoading, reset, restoreSaved, toggleEdit, toggleInk, toggleNarr, toggleComments, toast, mark, escape, goStep, goIndex, busy: () => editing(),
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
-      comment: !!cbox, pins: pinLayer.childElementCount, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
+      mode: modeEl.getAttribute('data-mode'), modeText: modeEl.textContent, tool: toolMode,
+      comment: !!cbox, pins: pinLayer.querySelectorAll('.dev-pin').length, strokes: pinLayer.querySelectorAll('.dev-ink').length, pos: pos && { ...pos }, narrKey: narr ? narr.key : null, narrDirty: !!(narr && narr.dirty), editing: editing(), ignored }),
   };
 }

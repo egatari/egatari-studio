@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=3ed3a9e2e77abe41 -->
+<!-- i18n: pair=contract.ja.md sha256=f1986defbf1d4e71 -->
 # Contract (runtime, components, narration, timeline)
 
 English | [日本語](contract.ja.md)
@@ -227,3 +227,17 @@ A theme (`tokens.css`) is loaded after `kit/base.css` and `kit/layouts.css` (and
 - A deck does not have `metrics` and cannot change them: a deck's `<style>` that moves a box gets `themeMetricsDrift`, and the limits stay the theme's. A value that is not a number, out of range or inconsistent with the others is a build warning (`theme-metrics: …`; the checker reports them once per deck as `themeMetricsInvalid`), and the field (or, for inconsistent values, that theme's whole block) uses the parent's value
 - `metrics` is for checks and authoring tools only. The player never uses it to draw (only CSS draws), and it is part of the theme's identity: `theme.json` counts toward the theme's `sha256` like any other theme file
 - The bundled themes set tokens only, so the order does not change how they render
+
+## 13. Review notes: the ink stroke
+
+Review notes are the entries of `comments.json` in the working folder ([format spec](https://github.com/egatari/egatari-spec) §3.3). They are never put into a distributed file: a single file (.ega.html), play-only or not, leaves `comments.json` out. An entry is `{id, created, key, range, pin?, strokes?, quote, comment, status, resolved?}`; this section fixes the shape of the two places on the slide, so that another reader (a future review mode of Egatari Live that imports notes into the working folder) can use the same shape.
+
+- Coordinates: slide coordinates, 1280×720, origin at the top left of the slide, independent of the zoom and the window. A point names the final state of the step `key` (`DECK.seek(i, k, Infinity)`)
+- `pin` (optional): `{x, y}`, numbers with 0 ≤ x ≤ 1280 and 0 ≤ y ≤ 720, rounded to 0.1. An Alt+click note's pin is the clicked point; a marker comment's pin is the centroid of all its strokes
+- `strokes` (optional, only with `pin`): the marks drawn with the marker (`m` in edit mode), as a list of polylines `[[[x, y], …], …]`:
+  - one or more strokes per note (a circle and an arrow, several underlines): at most 20 strokes, at most 500 points each and at most 2000 points in all
+  - each stroke has at least 2 points, each a pair of numbers clamped to the slide and rounded to 0.1, no two consecutive points equal; nothing else in a point (no pressure, no time); a reader draws each stroke as its own open polyline
+  - centroid (the marker's `pin`): over all strokes, the mean of the segment midpoints weighted by segment length, Σ ℓᵢ·mᵢ / Σ ℓᵢ (the first point of the first stroke if the length is 0). The note's `key`, `range` and `quote` come from the element under this centroid
+- Normalizing (`normStrokes` in `kit/core/comment-core.mjs`, the one rule for both writers, the dev server and the editor app; the writers set `pin` to the centroid of the normalized strokes): a value that is not an array, has more than 200 strokes or more than 20000 points in all gives no strokes (the note is kept without them); per stroke, a value that is not an array, has more than 5000 points or fewer than 2 valid distinct points is dropped, invalid points are dropped and the rest clamped, rounded and de-duplicated, and above 500 points it is simplified with Ramer–Douglas–Peucker, keeping both ends, with a tolerance that starts at 0.25 and doubles until at most 500 points remain; the first 20 strokes are kept, and while they have more than 2000 points in all, every stroke is simplified again with one tolerance that starts at 0.25 and doubles; no stroke left gives no strokes
+- Older entries: entries without `pin` or `strokes` stay valid. An entry written before multi-stroke notes has `stroke`, a single polyline `[[x, y], …]`; readers MUST read it as `strokes: [stroke]` (`entryStrokes`; `strokes` wins when both are present). Writers write only `strokes`. Readers MUST ignore strokes they cannot read and still show the note
+- Display: the editor draws the strokes in its own overlay over the preview (`#dev-pins`), in the pin colour (red for listed notes, amber while the note is being written), never into the deck's DOM; `npm run comment-shots` draws all of them on both images and widens the crop to the bounding box of all strokes plus 48 px

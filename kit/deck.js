@@ -1224,7 +1224,7 @@ function broadcast(p){
   var ni = step < slides[cur]._max ? cur : cur + 1, nk = step < slides[cur]._max ? step + 1 : 0;
   var msg = {type: "deck-pos", i: cur, k: step, max: slides[cur]._max, n: slides.length, key: DECK.stepKey(cur, step),
              nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: p.playing, cause: p.cause || "control",
-             back: p.top ? titleOf(slides[p.top.i]) : null};
+             back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack()};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   if (window.parent !== window) window.parent.postMessage(msg, "*");
   // 埋め込み（format spec §9.4）：段階が変わるたびに位置を知らせる
@@ -1248,11 +1248,14 @@ window.addEventListener("message", function(e){
   if (!DECK.ready) return;
   if (m.type === "deck-cmd"){
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
-    if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
+    // 暗転の間の「次」「前」（発表者ビューの矢印・PageUp/PageDown・Space）は、本体のキーと同じく暗転を終えるだけで送らない
+    if ((m.cmd === "next" || m.cmd === "prev") && isBlack()) setBlack(false);
+    else if (m.cmd === "next"){ stopAuto(); next(); } else if (m.cmd === "prev"){ stopAuto(); prev(); }
     else if (m.cmd === "goto"){ POS.setCause("seek"); go(m.i, m.k, !!m.animate); POS.setCause(null); }
     else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
     else if (m.cmd === "back") back();
-    else if (m.cmd === "auto") DECK.autoplay();
+    else if (m.cmd === "blackout"){ if (!EDIT) setBlack(!isBlack()); else e.source.postMessage({type: "deck-black", on: false}, "*"); }   // 発表者ビューの b（編集中は入らない）
+    else if (m.cmd === "auto"){ if (!EDIT) DECK.autoplay(); else POS.publish(); }   // 編集中は始めない（発表者ビューのボタンは今の状態に戻す）
     // 編集の画面から送られたキー：編集のプレビュー（server/hints.js が DECK_DEV を立てる）で、親の窓から届いたものだけ。ほかの送り手（自分・子の枠・別の窓）は無視する
     else if (m.cmd === "key" && typeof m.key === "string"){ if (window.DECK_DEV && window.parent !== window && e.source === window.parent) forwardedKey(m.key); }
     else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
@@ -1579,7 +1582,7 @@ function start(){
 // ---------------------------------------------------------------- 暗転（b）
 // 窓全体を真っ黒（#000）の覆いで隠す：舞台・ペンの線・字幕・操作の帯・知らせ・キーの一覧のどれよりも上。もう一度 b・クリック・Esc で戻る。
 // 覆いの間はフォーカスを覆いに置き（Tab で下のボタンに抜けない）、戻すときは前のフォーカスに返す。動画（?mode=video）・発表者ビューの中の画面では入らない。
-// 印刷は覆いを出さない（base.css）。外へのリンクの確認の箱は、暗転に入るときに「やめる」にする
+// 印刷は覆いを出さない（base.css）。外へのリンクの確認の箱は、暗転に入るときに「やめる」にする。状態は deck-pos の black と deck-black で発表者ビューに知らせる
 // （これまでの .blackout #stage{visibility:hidden} は、今のスライドの visibility:visible が上書きして、スライドが見えたままだった）
 var BLACK = null;
 function isBlack(){ return !!BLACK; }
@@ -1620,6 +1623,7 @@ function setBlack(on){
       else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
     }
   }
+  if (presenter && !presenter.closed) presenter.postMessage({type: "deck-black", on: isBlack()}, "*");
 }
 
 function blackHint(){
@@ -1632,6 +1636,25 @@ function blackHint(){
 var BLACK_EXIT = /^(b|Escape|ArrowRight|ArrowLeft|ArrowUp|ArrowDown| |Spacebar|PageUp|PageDown|Home|End)$/;
 
 var buf = "";
+// 入力中か：フォーカスのある要素（影の木の中の欄も composedPath の先頭で見る）が文字を受けるもの。そのキーは送りにも道具にも使わない
+function typingIn(e){
+  var t = e.composedPath ? e.composedPath()[0] : e.target;
+  if (!t || t.nodeType !== 1) t = e.target;
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+}
+// 編集モード（開発サーバー・編集アプリのプレビュー。server/hints.js が document に deck:edit {on} を送る）：
+// 入るときに自動再生と音声・暗転・全画面・打ちかけのページ番号をやめ、編集している間は a・b・f（編集の画面から送られたキーも）と発表者ビューからの自動再生を受けない。
+// 出るときは何も戻さない。ふつうのデッキ（hints.js のない書き出し・再生専用の 1 ファイル・発表者ビュー）では起きない
+var EDIT = false;
+document.addEventListener("deck:edit", function(e){
+  EDIT = !!(e.detail && e.detail.on);
+  if (!EDIT) return;
+  stopAuto(); if (audioEl) audioEl.pause();
+  buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
+  setBlack(false);
+  extClose();
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+});
 // 送りのキー（矢印・PageUp/PageDown・Home・End）。押したら true
 function navKey(k, shift){
   var nav = true;
@@ -1646,19 +1669,21 @@ function navKey(k, shift){
   return nav;
 }
 // 編集の画面（信頼する親。server/editor-ui.js）から送られたキー：編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときに
-// 押した矢印・PageUp/PageDown・Home・End・b・a。キーの出来事は作らず、同じ処理を呼ぶ。外へのリンクの箱・スライド一覧の間は受けない
+// 押した矢印・PageUp/PageDown・Home・End・b・a。キーの出来事は作らず、同じ処理を呼ぶ。外へのリンクの箱・スライド一覧の間は受けない。
+// 編集モードの間は送りだけ受け、a・b は受けない（手で押したキーと同じ）
 var FWD_KEYS = /^(ArrowRight|ArrowLeft|ArrowUp|ArrowDown|PageUp|PageDown|Home|End|b|a)$/;
 function forwardedKey(k){
   if (!FWD_KEYS.test(k) || EXT.dlg || document.getElementById("dt-ov")) return;
   if (isBlack()){ if (BLACK_EXIT.test(k)) setBlack(false); return; }
   buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
   if (navKey(k, false)) return;
+  if (EDIT) return;
   if (k === "a") DECK.autoplay();
   else if (k === "b") setBlack(true);
 }
 document.addEventListener("keydown", function(e){
   if (DECK.view || !DECK.ready) return;
-  if (e.target && (e.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return;
+  if (typingIn(e)) return;
   // 暗転の間：b・Esc・矢印・Space・PageUp/PageDown・Home/End で戻る（戻すだけで送らない。ほかの道具の Esc にしない）。Tab は下のボタンに抜けない
   if (isBlack() && !e.metaKey && !e.ctrlKey && !e.altKey && (BLACK_EXIT.test(e.key) || e.key === "Tab")){
     e.preventDefault(); e.stopImmediatePropagation();
@@ -1678,6 +1703,7 @@ document.addEventListener("keydown", function(e){
   if (k === "Enter" && buf){ stopAuto(); go(parseInt(buf, 10) - 1, 0, false); buf = ""; if (j) j.textContent = ""; return; }
   buf = ""; if (j) j.textContent = "";
   if (navKey(k, e.shiftKey)){ e.preventDefault(); return; }
+  if (EDIT && (k === "a" || k === "b" || k === "f")) return;
   if (k === "f"){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
   else if (k === "p") openPresenter();
   else if (k === "a") DECK.autoplay();

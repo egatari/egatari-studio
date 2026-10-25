@@ -1,0 +1,3 @@
+### Fixed
+
+- Edit mode and the presenting tools no longer fight (#69): entering edit mode in the editor app or the dev server turns off the pen, fading pen and laser, stops autoplay and its audio, and closes the overview, blackout, key list, fullscreen, read-aloud and a half-typed slide number; while editing, the tool buttons are hidden and tool keys do nothing (also `b`, `a` and `f` forwarded from the editor's toolbar, header or status bar), and keys typed into text fields (also inside shadow DOM) are never tool or slide keys. Leaving edit mode restores nothing. The current mode (Editing / Presenter tool / Viewing) is shown at the screen edge, outside the slides, with an aria-live announcement.
