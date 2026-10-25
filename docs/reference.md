@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=dbd49598bd74d368 -->
+<!-- i18n: pair=reference.ja.md sha256=83e84f65c8fb9a51 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -501,7 +501,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new working folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run ids -- <working folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a lesson with duplicate keys, id collisions or invalid ids |
 | `npm run portable -- unpack <file> <dir> [--force]`, `npm run portable -- pack <dir> [-o file] [--play-only] [--without-live-results]`, `npm run portable -- attach <dir> <results.json>`, `npm run portable -- compare <file> <dir>` | Egatari file ↔ folder; see [Egatari file](#egatari-file---portable) |
-| `npm run build:app` | build the editor app: the hosted editor in `dist/` (for GitHub Pages; `dist/index.html`) and the single-file editor `dist/editor.html`. See [editor.md](editor.md) |
+| `npm run build:app` | build the editor app: the hosted editor in `dist/` (for GitHub Pages; `dist/index.html`) and the Offline editor `dist/editor.html`. See [editor.md](editor.md) |
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, script, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download the BIZ UDPGothic and BIZ UDPMincho TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/test-kokugo-example.mjs` | the kanbun of `examples/kokugo-kanbun` reads without warnings with the library's `m-kanbun` (no browser; the parts' own tests are in egatari/components) |

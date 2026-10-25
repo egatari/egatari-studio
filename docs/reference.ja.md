@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ab83d80c1f0c6bd2 -->
+<!-- i18n: pair=reference.md sha256=ad2d8a9410175e7e -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -20,8 +20,8 @@
 | `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（ステップごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
-| `components/<名前>/index.js` | build | 教材専用のパーツ（部品庫より先に探す） |
-| `egatari.json` | build・Egatari ファイル | `docId`・metadata・添付の一覧。`components` は部品庫のパーツの版の固定（`{"bars": "1.0.0"}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版が入り、展開でそれが書かれるので、組み直しで版が変わらない。固定がなければ `components.lock.json` の既定の版） |
+| `components/<名前>/index.js` | build | 教材専用のパーツ（パーツライブラリより先に探す） |
+| `egatari.json` | build・Egatari ファイル | `docId`・metadata・添付の一覧。`components` はパーツライブラリのパーツの版の固定（`{"bars": "1.0.0"}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版が入り、展開でそれが書かれるので、組み直しで版が変わらない。固定がなければ `components.lock.json` の既定の版） |
 | `themes/<名前>/` | build | 教材専用のテーマ |
 | `comments.json`、`.cache/edits/` | 開発サーバー | 開発サーバーが書く |
 | `out/<名前>.html` | — | build の既定の出力 |
@@ -92,7 +92,7 @@
 | `/*INCLUDE:ファイル*/` | ファイルの中身をそのまま入れる（作業フォルダ → `kit/` の順に探す）。そのフォルダの外を指すもの（`../`、絶対パス、シンボリックリンク）は警告して読まず、空にする |
 | `{{FIG:名前}}` | `figs/名前.svg`（なければ作業フォルダの `名前.svg`）を埋め込む。id に `名前-` を前置し、width・height を外す |
 | `{{JSON:ファイル}}` | `data/`（なければ作業フォルダ）の JSON を詰めて入れる。パーツの子の `<script type="application/json">` に置くと `this.data` で読める |
-| `<m-名前 …>` | パーツ。教材の `components/名前/index.js`、なければ部品庫の写し `vendor/components/名前/<版>/index.js` を自動で読み込む |
+| `<m-名前 …>` | パーツ。教材の `components/名前/index.js`、なければパーツライブラリの写し `vendor/components/名前/<版>/index.js` を自動で読み込む |
 
 `{{FIG:…}}`・`{{JSON:…}}`・`narration.md`・`timeline.json`・`macros.tex`・`audio/manifest.json` の中のファイルも、（シンボリックリンクをたどった先が）作業フォルダの中にあるときだけ読む。外なら警告（`refused: …`）して飛ばす。
 
@@ -109,7 +109,7 @@
 
 ### スライドの鍵
 
-スライドごとに鍵を 1 つ付ける（[約束事 §4](contract.ja.md#4-台本narrationmd)）：section の `id`、なければ手で書いた `data-key`、なければ見出しの正規化（タグを除き、`&nbsp;` を空白とみなし、空白をすべて除く）、なければ `s<番号>`。どのスライドにも id を付ける（`npm run new` は付ける。今ある教材には `npm run ids -- <デッキ>`）。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない。鍵が重なる教材は正しくない（品質チェックのエラー）。それでも組めるように、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く。
+スライドごとに鍵を 1 つ付ける（[約束事 §4](contract.ja.md#4-台本narrationmd)）：section の `id`、なければ手で書いた `data-key`、なければ見出しの正規化（タグを除き、`&nbsp;` を空白とみなし、空白をすべて除く）、なければ `s<番号>`。どのスライドにも id を付ける（`npm run new` は付ける。今ある教材には `npm run ids -- <教材>`）。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない。鍵が重なる教材は正しくない（品質チェックのエラー）。それでも組めるように、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く。
 
 ## 台本（narration.md）
 
@@ -137,7 +137,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 `dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 強調の終わり + pad_after))`（[contract §5](contract.ja.md#5-タイムライン)）。
 
-| `"スライドの鍵:段階"` の中の鍵 | 既定 | 意味 |
+| `"スライドの鍵:ステップ"` の中の鍵 | 既定 | 意味 |
 |---|---|---|
 | `dur` | — | 長さを固定（秒）。`lead + dur` を超えた音声は切る |
 | `hold` | 1.2 | 音声のないステップの長さ |
@@ -150,7 +150,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 ## テーマ
 
-決め方：`--theme` > `<html data-theme>` > `default`。名前は、作業フォルダからの相対パス → `<deck>/themes/<名前>/` → 自分のテーマのフォルダ（`EGATARI_THEMES` のフォルダを順に、その後に `~/.egatari/themes` があれば）→ 同梱の `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。`EGATARI_THEMES` はフォルダの並びで、区切りは OS のもの（`:`、Windows は `;`）。ないフォルダは警告して飛ばす。`theme.json`・`tokens.css`・ロゴ・親のテーマ（`extends`、何段でも）は、読む前に、実体のパスがそのテーマの許した根の中にあることを確かめる：教材のテーマなら作業フォルダ、部品庫のテーマなら `themes/`、自分のテーマのフォルダのテーマならそのフォルダ（実体のパスを 1 回だけ求める。`~/.egatari/themes` はシンボリックリンクでもよい）、`--theme` で選んだものならそのテーマのフォルダ。親は自分のテーマのフォルダと `themes/` からも取れる。`"extends": "default"` は、テーマのフォルダに自前の `default` がなければ同梱の `default`。外なら警告（`refused: …`）して読まず、教材のテーマなら `default` にする（[format spec](https://github.com/egatari/egatari-spec) §11）。教材（か `extends`）が選んだテーマがどこにもなければ誤りにせず、`theme not found: "<名前>" …` と警告して `default`（親はなし）で組む。`--theme` で選んで見つからないものは誤り。編集アプリは `EGATARI_THEMES`・`~/.egatari/themes` を見ない：そこではテーマのフォルダを 1 つ選び（「テーマを読み込む…」→「フォルダを選ぶ…」。読むだけ）、それが同じ順と同じ決まりで自分のテーマのフォルダの代わりになる（[編集アプリ](editor.ja.md)）。フォルダを選べないブラウザも含め、どのブラウザでも ZIP ファイルからテーマを読み込める（「テーマを読み込む…」→「ZIP ファイルを選ぶ…」）：そのテーマは「自分のテーマ」としてブラウザに保存され、同じ場所で同じ決まりで読む（フォルダと自分のテーマに同じ名前があれば、あとから選んだ・読み込んだほう）。選ばず、教材の `themes/` にもなければ、テーマが自分のテーマのフォルダにだけある教材はこの警告を出す。Egatari ファイル（`.ega.html`）は、自分のテーマのフォルダのテーマを教材の `themes/<名前>/` として入れるので、どこでも同じテーマで組み直せる。`extends` が 16 段より深ければ誤り。
+決め方：`--theme` > `<html data-theme>` > `default`。名前は、作業フォルダからの相対パス → `<deck>/themes/<名前>/` → 自分のテーマのフォルダ（`EGATARI_THEMES` のフォルダを順に、その後に `~/.egatari/themes` があれば）→ 同梱の `themes/<名前>/` の順に探す。フォルダには `tokens.css` が要る。`EGATARI_THEMES` はフォルダの並びで、区切りは OS のもの（`:`、Windows は `;`）。ないフォルダは警告して飛ばす。`theme.json`・`tokens.css`・ロゴ・親のテーマ（`extends`、何段でも）は、読む前に、実体のパスがそのテーマの許した根の中にあることを確かめる：教材のテーマなら作業フォルダ、パーツライブラリのテーマなら `themes/`、自分のテーマのフォルダのテーマならそのフォルダ（実体のパスを 1 回だけ求める。`~/.egatari/themes` はシンボリックリンクでもよい）、`--theme` で選んだものならそのテーマのフォルダ。親は自分のテーマのフォルダと `themes/` からも取れる。`"extends": "default"` は、テーマのフォルダに自前の `default` がなければ同梱の `default`。外なら警告（`refused: …`）して読まず、教材のテーマなら `default` にする（[format spec](https://github.com/egatari/egatari-spec) §11）。教材（か `extends`）が選んだテーマがどこにもなければ誤りにせず、`theme not found: "<名前>" …` と警告して `default`（親はなし）で組む。`--theme` で選んで見つからないものは誤り。編集アプリは `EGATARI_THEMES`・`~/.egatari/themes` を見ない：そこではテーマのフォルダを 1 つ選び（「テーマを読み込む…」→「フォルダを選ぶ…」。読むだけ）、それが同じ順と同じ決まりで自分のテーマのフォルダの代わりになる（[編集アプリ](editor.ja.md)）。フォルダを選べないブラウザも含め、どのブラウザでも ZIP ファイルからテーマを読み込める（「テーマを読み込む…」→「ZIP ファイルを選ぶ…」）：そのテーマは「自分のテーマ」としてブラウザに保存され、同じ場所で同じ決まりで読む（フォルダと自分のテーマに同じ名前があれば、あとから選んだ・読み込んだほう）。選ばず、教材の `themes/` にもなければ、テーマが自分のテーマのフォルダにだけある教材はこの警告を出す。Egatari ファイル（`.ega.html`）は、自分のテーマのフォルダのテーマを教材の `themes/<名前>/` として入れるので、どこでも同じテーマで組み直せる。`extends` が 16 段より深ければ誤り。
 
 | `theme.json` の項目 | 意味 |
 |---|---|
@@ -209,7 +209,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 パーツが使える `DECK` の道具：`el(tag, attrs, parent)`（SVG。`var()` の色は `style` に回す）、`mtext(parent, x, y, "*x*_0", attrs)`、`svgMath(parent, x, y, tex, {size, anchor, color, w, h})`、`Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})`（`.x() .y() .d(f, a, b, n) .poly(pts) .clip`）、`prog(t, start, dur)`、`lerp`、`ease`、`clamp01`、`color(名前)`。
 
-**スライドへのリンクと目次。** `<a href="#<スライドの id>">` と `<a href="#<スライドの id>:<段階の鍵>">` は、スライドかそのステップへのふつうのリンク（スクリプトなし。Core の文書に入れてよい）。実行系は文書の中でたどり、「戻る」を出す（[contract §9](contract.ja.md#9-スライドへのリンク)）。id は `npm run ids` が付けたものを使う。**`m-menu`** はそのリンクを札の格子に並べる（題・副題 `data-sub`・丸の字 `data-icon`・このセッションで見たスライドの「見た」の印・`per-step` でステップごとに出す）：[vendor/components/menu/1.0.2/README.md](../vendor/components/menu/1.0.2/README.md)。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の 2 枚目。スライドの中のリンクは `--term` の色で下線を引く。
+**スライドへのリンクと目次。** `<a href="#<スライドの id>">` と `<a href="#<スライドの id>:<ステップの鍵>">` は、スライドかそのステップへのふつうのリンク（スクリプトなし。Core の文書に入れてよい）。実行系は文書の中でたどり、「戻る」を出す（[contract §9](contract.ja.md#9-スライドへのリンク)）。id は `npm run ids` が付けたものを使う。**`m-menu`** はそのリンクを札の格子に並べる（題・副題 `data-sub`・丸の字 `data-icon`・このセッションで見たスライドの「見た」の印・`per-step` でステップごとに出す）：[vendor/components/menu/1.0.2/README.md](../vendor/components/menu/1.0.2/README.md)。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の 2 枚目。スライドの中のリンクは `--term` の色で下線を引く。
 
 ### 国語（kokugo）
 
@@ -219,7 +219,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 - **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中のパーツ・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きはパーツの指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの鍵・字幕・Egatari ファイルの読める層は、これまでどおり見出しの字から作る。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
 - **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、品質チェックは字の大きさを数えない。縦書きでは右に付く
 - **明朝**：`.mincho`、`<html data-font="mincho">`、または `--font-sans: var(--font-mincho)` にするテーマ（`kokugo`）
-- **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。ステップ：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。部品庫 v1.4.0 から句（列）ごとに 1 ステップで、返り点や再読文字で前の列へ戻ると、そこから別のステップ。`order-by="all"` なら読む順の全体を 1 ステップにし、`cues(k)` は 2 列目からの各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [vendor/components/kanbun/1.6.0/README.md](../vendor/components/kanbun/1.6.0/README.md)
+- **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。ステップ：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。パーツライブラリ v1.4.0 から句（列）ごとに 1 ステップで、返り点や再読文字で前の列へ戻ると、そこから別のステップ。`order-by="all"` なら読む順の全体を 1 ステップにし、`cues(k)` は 2 列目からの各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [vendor/components/kanbun/1.6.0/README.md](../vendor/components/kanbun/1.6.0/README.md)
 - **`m-kobun`**：古文を語に切り（`春[名]/は[係助]/…`）、品詞で色を分けて 1 文ずつ出し、最後のステップで現代語訳（`= …` の行）を並べる。助動詞 `[助動・基本形・意味・活用形]` を押す（または Enter）と、パーツの中の表から活用表と意味の札を出す（ネットワークを使わない。中身は文字だけ）。札は発表の操作で `DECK.seek(i, k, t)` の外：ステップに入るたびに（同じステップに入り直すときも）閉じ、動画のモードでは開かず、印刷に出ない。[vendor/components/kobun/1.0.2/README.md](../vendor/components/kobun/1.0.2/README.md)
 - **`m-gendai`**：現代文。`__傍線__`、`==二重傍線==`、`{語句|_A,#名前}` と `{これ|>名前}`（指示語から指す先への矢印）、段落の `@主張#p3`・`@具体例#p1>p3`・`@対比#p2~p1` を役割の枠で囲み線でつなぐ。横書きか `tate`。[vendor/components/gendai/1.0.2/README.md](../vendor/components/gendai/1.0.2/README.md)
 
@@ -237,7 +237,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `?presenter=1` | 発表者ビュー（`p` で開く） |
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
-| `#<スライドの id>` / `#<スライドの id>:<段階の鍵>` | そのスライド（ステップ 0）かステップ（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
+| `#<スライドの id>` / `#<スライドの id>:<ステップの鍵>` | そのスライド（ステップ 0）かステップ（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
 | `?embed=1` | iframe の中で：ステップが変わるたびに親へ `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く |
 | `?links=0` | `?embed=1` と一緒に：スライドへのリンクで動かず、代わりに `{egatari:"linkRefused", slideKey, stepKey}` を送る |
 
@@ -363,7 +363,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合わないスライドの id（`slide id: …`）。鍵が同じスライドが 2 枚（`slide key: …`）。教材のほかの id や `\htmlId{…}` と同じスライドの id（`slide id: …`） | エラー |
 | `## 見出し {#id}` の見出しの文字列が、そのスライドの見出しと違う（id が勝つ） | 情報 |
 | 旧来の規則で鍵が決まるスライド：手で書いた `data-key`、または `s<番号>`（id も見出しもない）—`slide key: legacy` | 警告 |
-| スライドへのリンク（`#<id>`・`#<id>:<段階の鍵>`・`#N`）で、行き先のスライドがない・ステップが範囲の外・結論のないスライドへの `:concl`。`#N` のリンクと id のないスライドへのリンク。ない相手のファイルへの相対リンク（[contract §9](contract.ja.md#9-スライドへのリンク)） | エラー。警告。警告 |
+| スライドへのリンク（`#<id>`・`#<id>:<ステップの鍵>`・`#N`）で、行き先のスライドがない・ステップが範囲の外・結論のないスライドへの `:concl`。`#N` のリンクと id のないスライドへのリンク。ない相手のファイルへの相対リンク（[contract §9](contract.ja.md#9-スライドへのリンク)） | エラー。警告。警告 |
 | パーツのデータが宣言した形（`static shape`）と合わない、またはパーツが描くときに例外を出した（`compData`：どのパーツの、どこが（場所・期待・実際）違うか、形と例。規格 R-components）。スライドのステップは `data-step` の要素と `.concl` からも数えるので、パーツが描けなくても台本が「スライドにないステップ」にならない | エラー |
 | コンソールのエラー（言葉だけ。スタックの行とファイルの場所・一時フォルダ・手元のサーバーの URL は除く） | エラー |
 | ステップ 0 で見えている本文 | 情報 |
@@ -409,7 +409,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
 
-作業フォルダのパーツ（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、部品庫のパーツは `vendor/components/` の中にあるときだけ読む。作業フォルダのパーツが外を指していれば、警告して読まず、部品庫のものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。
+作業フォルダのパーツ（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、パーツライブラリのパーツは `vendor/components/` の中にあるときだけ読む。作業フォルダのパーツが外を指していれば、警告して読まず、パーツライブラリのものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。
 
 ### 組み立ての上限
 
@@ -419,10 +419,10 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 ### Egatari ファイル（`--portable`）
 
-`node kit/build.mjs <deck.html> --portable` は `<作業フォルダ>/<教材の題名>.ega.html` を書き（名前は編集アプリのエクスポートと同じ規則：`metadata.title`、なければ教材の `<title>`。どの OS でも使える名前にする。題名がなければ `<デッキの名前>.ega.html`）、書いたファイルの絶対パスを表示する。ふつうの build と同じように再生でき、さらに教材の原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。教材を持ち運ぶための公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
+`node kit/build.mjs <deck.html> --portable` は `<作業フォルダ>/<教材の題名>.ega.html` を書き（名前は編集アプリのエクスポートと同じ規則：`metadata.title`、なければ教材の `<title>`。どの OS でも使える名前にする。題名がなければ `<教材の名前>.ega.html`）、書いたファイルの絶対パスを表示する。ふつうの build と同じように再生でき、さらに教材の原稿を中に持つので、元のフォルダがなくてもフォルダに戻せる（編集器で開き直せる）。教材を持ち運ぶための公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。拡張子・ブロックの id・メディアタイプはその仕様のもの。
 
 - **入るもの**：build が作業フォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・作業フォルダのパーツとテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち台本にあるステップのもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、実行系はそこから再生する。
-- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリのパーツとテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、教材の `themes/<名前>/` として写す）。部品庫・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
+- **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリのパーツとテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、教材の `themes/<名前>/` として写す）。パーツライブラリ・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
 - **教材の id**：初めてのエクスポートで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。教材と一緒に残す（次のエクスポートも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **スクリプトなしで読める台本**：全ステップの表示用の文字を、ふつうの HTML としても入れる（教材が動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）はステップごとにファイルの索引に集める。
@@ -464,7 +464,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`） |
 | `--engine irodori\|voxcpm2` | `voice.json` の `engine` と教材の言語より優先 |
 | `--yomi FILE` | 読み辞書（`MOTION_YOMI` より優先。既定 `tts/yomi.yaml`）。日本語だけ |
-| `--only 鍵,…` | このステップ（`スライドの鍵:段階`）だけ |
+| `--only 鍵,…` | このステップ（`スライドの鍵:ステップ`）だけ |
 | `--dry-run` | TTS を呼ばず、推定の長さの無音（日本語 7.5 字/秒、英語 2.5 語/秒）。キャッシュは別 |
 | `--force` | 音声のキャッシュを無視する |
 | `--replace-recorded` | 録音と取り込みの音声（manifest の `kind` が `recorded`・`imported`。編集アプリの音声の板が書く）も TTS で作り直す。付けなければ残す |
@@ -500,17 +500,17 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <作業フォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のある教材では何もしない |
 | `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]`・`npm run portable -- attach <フォルダ> <results.json>`・`npm run portable -- compare <ファイル> <フォルダ>` | Egatari ファイル ↔ フォルダ。[Egatari ファイル](#egatari-ファイル--portable) |
-| `npm run build:app` | 編集アプリを作る：`dist/` の配信版（GitHub Pages 用。`dist/index.html`）と、1 つの HTML にしたエディタ `dist/editor.html`。[editor.ja.md](editor.ja.md) |
+| `npm run build:app` | 編集アプリを作る：`dist/` の配信版（GitHub Pages 用。`dist/index.html`）と、オフライン版のエディタ `dist/editor.html`。[editor.ja.md](editor.ja.md) |
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、台本、コメント、外での変更、エクスポート、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
-| `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文が部品庫の `m-kanbun` で知らせなしに読めるか（ブラウザなし。パーツそのものの試験は egatari/components） |
+| `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文がパーツライブラリの `m-kanbun` で知らせなしに読めるか（ブラウザなし。パーツそのものの試験は egatari/components） |
 | `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、ステップ k の最終状態の PNG |
-| `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | コンタクトシート：全スライドの最終ステップを 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<デッキ>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。`--steps` を付けると、図かパーツのあるスライドだけ、全ステップを横に 1 行（1 スライド 1 行）に並べる（図の約束をステップごとに確かめる。タイルの幅は既定 320 px、出力は `<デッキ>/out/steps.png`）。出力の場所と枚数を印字する |
-| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応のコメント（id を並べればそれだけ、`--all` なら全部）ごとに、そのステップの最終状態にピン（と手書きの線を全部）を描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。線があれば少なくとも全部の線の外接矩形＋48 px。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。ステップがなくなったコメントは撮らずに知らせる |
+| `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | コンタクトシート：全スライドの最終ステップを 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<教材>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。`--steps` を付けると、図かパーツのあるスライドだけ、全ステップを横に 1 行（1 スライド 1 行）に並べる（図の約束をステップごとに確かめる。タイルの幅は既定 320 px、出力は `<教材>/out/steps.png`）。出力の場所と枚数を印字する |
+| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応のコメント（id を並べればそれだけ、`--all` なら全部）ごとに、そのステップの最終状態にピン（と手書きの線を全部）を描いた PNG：`<教材>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。線があれば少なくとも全部の線の外接矩形＋48 px。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。ステップがなくなったコメントは撮らずに知らせる |
 | `node tools/catalog.mjs` | `vendor/components/CATALOG.md` を作り直す |
 | `npm run components:update -- vX.Y.Z [--from <フォルダ>]` | egatari/components のリリースを `vendor/components/` と `components.lock.json` に取り込む（`manifest.json` の sha256 で確かめる。版は置き換えない） |
 | `npm run components:check` | `vendor/components` が `components.lock.json` と合うか（ネットワークなし） |

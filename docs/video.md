@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=bbe6ca4245162c9b -->
+<!-- i18n: pair=video.ja.md sha256=871f05e4c515da51 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -27,8 +27,8 @@ The list of TTS and render options and environment variables is in [reference.md
 `tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
 
 - **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU machine on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
-- **No server**: in the editor app, the Audio panel's **Make AI audio on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
-- **Google Colab**: a notebook for **Make AI audio in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
+- **No server**: in the editor app, the Audio panel's **Make AI voice on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
+- **Google Colab**: a notebook for **Make AI voice in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
 
 ## Steps
 
@@ -70,7 +70,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 
 ## Reading dictionary
 
-`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody). Before the dictionary, the minus sign `−` (U+2212) is always replaced with マイナス, also in your own dictionary and in utterances without Japanese: the Irodori-TTS text normalisation removes it with the dashes, so `−1` would be read as 1 (the editor's **Make AI audio on this computer** uses the same rules, `kit/core/yomi.mjs`).
+`tts/yomi.yaml` (can be replaced with another dictionary through `--yomi` or `MOTION_YOMI`) is applied with the rules in `tts/yomi.py`. `terms` are always replaced with kana (longest match; if the term is part of a longer kanji word or English word it is not replaced and a warning is given; not applied to utterances without Japanese), `watch` only reports words whose reading changes with context, and `watch_kanji` warns about unregistered words containing characters that have caused misreadings. Add only words "whose misreading you measured and confirmed is fixed by writing them in kana" (writing words that are already read correctly in kana degrades the prosody). Before the dictionary, the minus sign `−` (U+2212) is always replaced with マイナス, also in your own dictionary and in utterances without Japanese: the Irodori-TTS text normalisation removes it with the dashes, so `−1` would be read as 1 (the editor's **Make AI voice on this computer** uses the same rules, `kit/core/yomi.mjs`).
 
 ## HTML with audio
 

@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=8a9db59291d58917 -->
+<!-- i18n: pair=contract.ja.md sha256=d7c0edef2481d8c0 -->
 # Contract (runtime, parts, script, timeline)
 
 English | [日本語](contract.ja.md)

@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=a1a0d5e821b7c5f2 -->
+<!-- i18n: pair=dev-server.ja.md sha256=8a8e8b6369d3efc3 -->
 # Dev server (fix the slides in the browser)
 
 English | [日本語](dev-server.ja.md)

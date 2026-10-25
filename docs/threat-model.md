@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=d93e5bb9b741fffa -->
+<!-- i18n: pair=threat-model.ja.md sha256=fc0059bce69431a7 -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)
@@ -55,7 +55,7 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 
 **Threat.** Script text leaves the machine for Google's environment, and the returned audio ZIP file is data from outside.
 
-**What is in place** (docs/editor.md, "Make AI audio in the cloud (Google Colab)"; `kit/core/colab-core.mjs`).
+**What is in place** (docs/editor.md, "Make AI voice in the cloud (Google Colab)"; `kit/core/colab-core.mjs`).
 - The editor asks once before export, because in Colab the script text is processed in Google's environment and the model files come from Hugging Face. `tts-job.json` holds only the text to read, voice names, each step's `inputHash`, the `docId` and the target recipe.
 - The returned ZIP file is untrusted. It is read as bytes with limits checked before allocation (ZIP file 512 MiB, 64 MiB per audio file, `records.json` 4 MiB, at most 400 steps), and zip64, encryption and unknown compression are refused. Only `records.json` and `audio/<name>.wav` are read, names are checked, the audio must decode as a WAV of the recorded length, and nothing is interpreted as HTML or code. The editor recomputes each `inputHash` from the current script instead of trusting the notebook, and refuses a ZIP file made for another lesson (`docId`).
 - The notebook link is pinned to a release tag.

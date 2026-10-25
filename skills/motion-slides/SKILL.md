@@ -34,7 +34,7 @@ Always reply in the language the user writes in, not the language of this file. 
 3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **ステップと台本を一緒に書く**（§4・§5）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
-5. **パーツ**（§6）。効果のあるスライドだけ。部品庫（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
+5. **パーツ**（§6）。効果のあるスライドだけ。パーツライブラリ（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。ステップ 0 で見えている本文の一覧は必ず読む
 7. **全スライドの最終ステップを 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す。**図のあるスライドは、先に図の約束（例：染色体は細胞の中にある）を書き出し、`npm run sheet -- <deck> --steps` のステップごとの帯で 1 つずつ確かめる。作り手の「確認しました」だけで終えない**
 8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・台本を直し、Alt+クリック（Mac は ⌥ option+クリック）でコメントを残す（編集モードの `m`（ペンのボタン、`d` でも開く）で、スライドに丸や矢印を描いてからコメントを書くこともできる：マーカー）。「コメントを反映して」と言われたら：

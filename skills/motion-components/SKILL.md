@@ -1,6 +1,6 @@
 ---
 name: motion-components
-description: Egatari Studio（旧 motion-academic-slides）のパーツ（動きのある図。Web Components）を新しく書く・直す・部品庫（egatari/components）に提案する。「新しいパーツを作って」「この図をパーツにして」「新しい部品を作って」「この図を部品にして」「部品庫に入れて」「部品庫に提案して」「motion-components」で使う。パーツを使ってスライドを作るだけなら motion-slides。 Use for: write or fix a new part (component, animated figure), turn this figure into a part, propose a part to the components library.
+description: Egatari Studio（旧 motion-academic-slides）のパーツ（動きのある図。Web Components）を新しく書く・直す・パーツライブラリ（egatari/components）に提案する。「新しいパーツを作って」「この図をパーツにして」「新しい部品を作って」「この図を部品にして」「パーツライブラリに入れて」「パーツライブラリに提案して」「motion-components」で使う。パーツを使ってスライドを作るだけなら motion-slides。 Use for: write or fix a new part (component, animated figure), turn this figure into a part, propose a part to the components library.
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
@@ -9,9 +9,9 @@ Always reply in the language the user writes in, not the language of this file. 
 
 リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
 
-**部品庫は別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。部品庫のパーツを直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
+**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
 
-Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`node <repo>/kit/build.mjs <deck> --portable`）では、部品庫のパーツは名前・版・`index.js` の hash の付いた部品庫のパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
+Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`node <repo>/kit/build.mjs <deck> --portable`）では、パーツライブラリのパーツは名前・版・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
 
 ## 1. まず既存のパーツと動きの素で足りないか確かめる
 
@@ -21,7 +21,7 @@ Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`
 
 ## 2. 書き方（その教材専用のパーツ）
 
-置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → 部品庫の写しの順に探す）。
+置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → パーツライブラリの写しの順に探す）。
 
 ```js
 // m-名前：何を見せるか 1 行
@@ -57,18 +57,18 @@ node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
 
 失敗して直したことは、そのパーツの README に「注意」として書く（次に書く人が同じ失敗をしないように）。
 
-## 4. 部品庫に入れる条件
+## 4. パーツライブラリに入れる条件
 
-その教材専用に書いたパーツは、次のどちらかを満たしたら部品庫（egatari/components）への提案を考える。
+その教材専用に書いたパーツは、次のどちらかを満たしたらパーツライブラリ（egatari/components）への提案を考える。
 
 - 2 つ目の教材で使われた
 - 内容に依存しない形に書けた（データと文言をすべて属性か JSON で渡せる）
 
-## 5. 部品庫への提案（egatari/components の Issue）
+## 5. パーツライブラリへの提案（egatari/components の Issue）
 
-条件を満たしたとき、またはユーザーに頼まれたときは、egatari/components への提案を**申し出る**（勝手には送らない）。名前は提案のときに部品庫の管理者が決めるので、仮の名前のままでよい。
+条件を満たしたとき、またはユーザーに頼まれたときは、egatari/components への提案を**申し出る**（勝手には送らない）。名前は提案のときにパーツライブラリの管理者が決めるので、仮の名前のままでよい。
 
-1. 「このパーツを部品庫（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
+1. 「このパーツをパーツライブラリ（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
 2. 下書きを作って**全文をユーザーに見せる**。テンプレート `proposal.yml` の欄に合わせ、本文を次の見出しで書く：
    `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / 段階と最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・読む面・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
    - その教材だけの文言・未公開のデータ・個人のパスを入れない（例の数値は作り物にする）

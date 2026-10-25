@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.md sha256=2d5b98642b2fb0a1 -->
+<!-- i18n: pair=threat-model.md sha256=44261da36a667cd6 -->
 # 脅威モデル
 
 [English](threat-model.md) | 日本語
@@ -55,7 +55,7 @@ Egatari Studio が何を、誰から、どのコードで守っているかの�
 
 **脅威。** 台本の文章が Google の環境に出ていく。返ってくる音声の ZIP ファイルは外から来たデータである。
 
-**入れてある対策**（docs/editor.md「Make AI audio in the cloud (Google Colab)」、`kit/core/colab-core.mjs`）。
+**入れてある対策**（docs/editor.md「Make AI voice in the cloud (Google Colab)」、`kit/core/colab-core.mjs`）。
 - 書き出す前に 1 度、編集アプリが確認する。Colab では台本が Google の環境で処理され、モデルのファイルは Hugging Face から来るため。`tts-job.json` に入るのは、読む文章・声の名前・各ステップの `inputHash`・`docId`・目標のレシピだけ。
 - 返ってくる ZIP ファイルは信頼しない。確保の前に上限を確かめ（ZIP ファイル 512 MiB、音声 1 つ 64 MiB、`records.json` 4 MiB、ステップは 400 まで）、zip64・暗号化・未知の圧縮は断る。読むのは `records.json` と `audio/<名前>.wav` だけで、名前を検査し、音声は記録の長さの WAV として復号できなければならず、ZIP ファイルの中身を HTML やコードとして解釈しない。編集アプリは、ノートブックを信じずに、いまの台本から各 `inputHash` を計算し直し、ほかの教材のために作った ZIP ファイル（`docId` が違う）は断る。
 - ノートブックのリンクは、リリースのタグに固定してある。

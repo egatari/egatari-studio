@@ -19,7 +19,7 @@ Before the panel recording was removed, everything it did was listed and checked
 | Backup of `audio/manifest.json` to `.cache/edits/` before each write | Same | `tools/test-audio.mjs` |
 | Undo: **↶ Revert to previous** (20 per step, in memory) | Same history; Backspace reverts a take of this mode; the panel's button after Esc | `tools/test-audio.mjs`, `tools/test-recording.mjs` |
 | A take that cannot be written stays under **Audio not used yet** with **Use this take** | Same list; the screen says it was not written and where to use it; after Esc the panel shows it | `tools/test-audio.mjs` (“unused take”) |
-| “Edit this file?” prompt (Egatari file) and read-only refusal before writing | Same `beforeWrite` on every write; the “Edit this file?” check also runs when the screen opens | `tools/test-audio.mjs` (single file, tier A save) |
+| Editing prompt (“Edit this file?”, Egatari file) and read-only refusal before writing | Same `beforeWrite` on every write; the “Edit this file?” check also runs when the screen opens | `tools/test-audio.mjs` (single file, tier A save) |
 | Cancelled when another lesson is opened (workspace / generation) | Same checks; a take in progress is discarded and the screen resets (closed, idle, microphone released) | `tools/test-audio.mjs` (“workspace change”: the folder is opened again during a take) |
 | Preview inert while recording; hints from the preview cannot start a recording | Preview and toolbar inert while the screen is open; a hint can only open it | `tools/test-audio.mjs`, `tools/test-recording.mjs` |
 | Stayed on its step while recording | The screen owns the step; the panel, hidden behind it, follows the takes | `tools/test-audio.mjs` |

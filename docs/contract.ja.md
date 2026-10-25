@@ -52,8 +52,8 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` をパーツの子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、スライドは自前のコードを持つものとして扱う）
 - データの形は `static shape` に書く（`kit/shape.js`：JSON Schema の小さな部分集合で `{schema, example, note?}`。字で書くパーツは `{text: true, example}`、子の `<a href>` で書くパーツは `{links: true, example}`。json の属性は `static props` の `shape`）。実行系はステップを数える前に確かめ、違うとき・`mount` や `render` が例外を出したときはパーツを描かず、その場に札（`.m-error`）で何が違うかを出し、パーツのステップは属性 `steps`（なければ 0）にし、知らせを `DECK.componentErrors` に積む（品質チェック（コマンド版・ブラウザ版）が読む。スタックは載せない）。指示のパーツの一覧に形と見本が出る
-- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。部品庫のパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<デッキ>/components/<名前>/` に置き、先に探される
-- 版：組み立ては部品庫のパーツごとに、教材に固定した版（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。部品庫が取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録した教材は、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` は部品庫のリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8・カメラ）は Studio の実行系にあり、パーツではない
+- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
+- 版：組み立てはパーツライブラリのパーツごとに、教材に固定した版（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。パーツライブラリが取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録した教材は、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8・カメラ）は Studio の実行系にあり、パーツではない
 
 ## 4. 台本（narration.md）
 
@@ -77,13 +77,13 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - `✎ ` で始まる行は、編集アプリが新しいスライドに入れた仮の文（Studio の決まりで、ファイルの形式には入らない）。ふつうの口述の文なので、残すと読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの文は `templateText`）、編集アプリは音声を作る前とエクスポートする前に知らせる
 - ステップの中の拡張の行 `@x-<名前>-<欄> <値>`（`<名前>` に `-` は入らない）は、そのステップの拡張のデータ。どの発言にも入らない：表示も読み上げもされず、`bounds` にもどの hash にも入らないので、直しても音声は古くならない。開発サーバー・編集アプリ・`npm run ids` はそのまま残す
 
-**スライドの鍵**（[形式の仕様](https://github.com/egatari/egatari-spec) §8.1）。どのスライドにも変わらない id を付ける：`<section class="slide" id="s-k3f9q2">`。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、強調の目印（`id="…"`・`\htmlId{…}`）と同じ文書の id の名前空間にあるので、`deck.html` のほかのどの id とも重ねない。新しい id は `s-` と base32 の 6 字（`[a-z2-7]`、乱数）で、見出しから作らない（見出しを直しても何も変わらないように）。`npm run new` はどのスライドにも id を付ける。今ある教材には `npm run ids -- <デッキ>` で付ける。
+**スライドの鍵**（[形式の仕様](https://github.com/egatari/egatari-spec) §8.1）。どのスライドにも変わらない id を付ける：`<section class="slide" id="s-k3f9q2">`。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、強調の目印（`id="…"`・`\htmlId{…}`）と同じ文書の id の名前空間にあるので、`deck.html` のほかのどの id とも重ねない。新しい id は `s-` と base32 の 6 字（`[a-z2-7]`、乱数）で、見出しから作らない（見出しを直しても何も変わらないように）。`npm run new` はどのスライドにも id を付ける。今ある教材には `npm run ids -- <教材>` で付ける。
 
 - `deck.html` では、スライドの鍵（`data-key`、build が付ける）は section の `id`。id のないスライド（旧い書き方）は、最初の見出しを**正規化**した文字列（タグを除き、`&nbsp;` を空白とみなし、空白を**すべて**除いたもの）
 - `narration.md` では、スライドを `## <見出し> {#<id>}`（勧める書き方）、`## <id>`、`## <見出し>`（旧い書き方。id のないスライドだけ）で指す。`{#id}` があれば見出しの文字列より強い。見出しの文字列がスライドの見出しと違っても、品質チェックは指摘するだけ（情報）
 - id のあるスライドとないスライドを混ぜてよい。スライドごとに鍵を決める
 - 鍵が同じスライドが 2 枚ある教材は正しくない（品質チェックのエラー）。どちらかに id を付ける
-- ステップの鍵は `<スライドの鍵>:<段階>` で、**最後の** `:` で分ける（スライドの鍵に `:` があってもよい）。ステップは 0〜999 の 10 進（先頭の 0 なし）か `concl`。`[01]` や `[1000]` はステップにならない（build は警告し、品質チェックはエラーにする）
+- ステップの鍵は `<スライドの鍵>:<ステップ>` で、**最後の** `:` で分ける（スライドの鍵に `:` があってもよい）。ステップは 0〜999 の 10 進（先頭の 0 なし）か `concl`。`[01]` や `[1000]` はステップにならない（build は警告し、品質チェックはエラーにする）
 
 ## 5. タイムライン
 
@@ -153,12 +153,12 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 ふつうのリンクで、# の後ろがスライドの id なら、そのスライドへのリンクになる（[format spec §9.1A](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#91a-links-to-slides)）。スクリプトを含まないので、Core の文書に入れてよい。
 
 ```html
-<a href="#s-njd4kp">春暁</a>            <!-- id が s-njd4kp のスライドの段階 0 -->
-<a href="#s-njd4kp:2">読む順</a>        <!-- 段階 2。段階の鍵は 0・1・… か concl -->
+<a href="#s-njd4kp">春暁</a>            <!-- id が s-njd4kp のスライドのステップ 0 -->
+<a href="#s-njd4kp:2">読む順</a>        <!-- ステップ 2。ステップの鍵は 0・1・… か concl -->
 <a href="lesson2.ega.html">次の課</a>    <!-- ほかのファイル：授業の外へ出るリンク（下の節） -->
 ```
 
-- 書き方：`#<スライドの id>` か `#<スライドの id>:<段階の鍵>`。**最後の** `:` で切る。ステップの鍵は 0 から始まる 10 進（`0`・`1`・…、999 まで、先頭に 0 を付けない）か `concl` で、結論のステップは `concl` でだけ指す。どのスライドの id にも合わなければスライドの鍵と比べる（id のない旧来の教材。品質チェックはそのリンクを警告する）。数字だけの `#N` はこれまでどおりスライドの番号（1 から）
+- 書き方：`#<スライドの id>` か `#<スライドの id>:<ステップの鍵>`。**最後の** `:` で切る。ステップの鍵は 0 から始まる 10 進（`0`・`1`・…、999 まで、先頭に 0 を付けない）か `concl` で、結論のステップは `concl` でだけ指す。どのスライドの id にも合わなければスライドの鍵と比べる（id のない旧来の教材。品質チェックはそのリンクを警告する）。数字だけの `#N` はこれまでどおりスライドの番号（1 から）
 - 開いたときの位置：ファイルの URL の同じ書き方の # が、開いたときの位置（そのステップの最終状態）になる。読めない # は 1 枚目で開き、コンソールに警告を出す。最後のスライドを超える `#N` は最後のスライドで開く。送っている間のアドレスはこれまでどおり `#N`
 - リンクを押すと：発表と授業では、そのステップの最終状態（t = ∞）へ行き、止まったまま。自動再生中はそこへ飛んで、そのステップの初めから再生を続ける。動画のモードではリンクは何もしない（画面は (i, k, t) だけで決まる）。ペンやレーザーポインターを使っている間のクリックは描くほうに使い、リンクをたどらない
 - 戻る：リンクを押す前の位置を積んでおき（積み重ね）、**戻る** で直前のリンクの前の位置へ戻る（再生の状態は保つ）。左上の小さなボタン（リンクで来たときだけ出て、戻り先のスライドの見出しを書く）、Backspace（ペンを使っていないとき）、Alt+←、ブラウザの戻る。上の窓（top-level）ではリンク 1 回につき履歴を 1 つ積む（`pushState`）ので、ブラウザの戻ると進むも使える。進むでは、そのリンクの先で最後にいた位置へ戻る。ふつうの送り（矢印・番号・一覧）では履歴を積まない。iframe の中では積み重ねを覚えておくだけ

@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=6926b6059f3e1e45 -->
+<!-- i18n: pair=video.md sha256=388d24344d0c8fb2 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -64,7 +64,7 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 
 ## 声
 
-`--voices` > `<デッキ>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。
+`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 
@@ -92,7 +92,7 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 
 ## 長さの調整（timeline.json）
 
-ステップの長さは `DECK.timeline()` が決める（自動再生と動画のエクスポートで同じ）：`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : hold)`。既定は lead 0.25 s、pad_after 0.6 s、hold 1.2 s。例外だけを `<デッキ>/timeline.json` に書き、**build し直してから** render する。
+ステップの長さは `DECK.timeline()` が決める（自動再生と動画のエクスポートで同じ）：`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : hold)`。既定は lead 0.25 s、pad_after 0.6 s、hold 1.2 s。例外だけを `<教材>/timeline.json` に書き、**build し直してから** render する。
 
 ```json
 {"学習率と収束:concl": {"pad_after": 2.0}, "何を最小化するか:1": {"hold": 2.5}, "更新の式:0": {"dur": 6}}
