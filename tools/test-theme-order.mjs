@@ -80,14 +80,15 @@ const probe = async (file) => {
 };
 const fix = await probe(files.fix), d0 = await probe(files.def);
 await b.close();
-ok('default theme: the layout values of layouts.css / base.css', () => {
+// default 1.2.0 は結論の行だけを自分の規則で変える（左の縦線・left 30px・角なし。themes/default/tokens.css）
+ok('default theme: the layout values of layouts.css / base.css, and its own conclusion row (1.2.0)', () => {
   assert.equal(d0.coverTop, '200px'); assert.equal(d0.bodyLeft, '48px'); assert.equal(d0.bodyRight, '48px');
-  assert.equal(d0.h2Border, '2px'); assert.equal(d0.conclLeft, '48px'); assert.equal(d0.conclRadius, '10px'); assert.equal(d0.barH, '3px');
+  assert.equal(d0.h2Border, '2px'); assert.equal(d0.conclLeft, '30px'); assert.equal(d0.conclRadius, '0px'); assert.equal(d0.barH, '3px');
   if (d0.pn) assert.equal(d0.pn, '16px');
 });
-ok('a theme rule without an html prefix overrides layouts.css (cover title, .body inset, h2 rule, .concl, .pn)', () => {
+ok('a theme rule without an html prefix overrides layouts.css and its parent theme (cover title, .body inset, h2 rule, .concl, .pn)', () => {
   assert.equal(fix.coverTop, '260px'); assert.equal(fix.bodyLeft, '96px'); assert.equal(fix.bodyRight, '96px');
-  assert.equal(fix.h2Border, '6px'); assert.equal(fix.conclLeft, '30px'); assert.equal(fix.conclRadius, '0px');
+  assert.equal(fix.h2Border, '6px'); assert.equal(fix.conclLeft, '40px'); assert.equal(fix.conclRadius, '4px');
   if (fix.pn) assert.equal(fix.pn, '18px');
 });
 ok('K3 tokens: --marker (list markers), --bar and --bar-h (the progress bar)', () => {
