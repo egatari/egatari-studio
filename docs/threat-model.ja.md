@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.md sha256=a7160df211c1ff8a -->
+<!-- i18n: pair=threat-model.md sha256=a5313f68002a6079 -->
 # 脅威モデル
 
 [English](threat-model.md) | 日本語
@@ -67,7 +67,9 @@ Egatari Studio が何を、誰から、どのコードで守っているかの�
 **脅威。** 悪意のある・脆弱な依存・部品・ワークフローのアクションが、利用者やリリースに届く。
 
 **入れてある対策。**
-- 実行時の依存は少なく、`package.json` で版を固定し、CI は `package-lock.json` から `npm ci` で入れる。
+- 実行時の依存は少なく、`package.json` で版を固定し、CI は `package-lock.json` から `npm ci --ignore-scripts` で入れる。依存のインストールのスクリプトは走らない（ただ 1 つある esbuild の `postinstall` は要らない。それと Colab の例外は SECURITY.md に書いた）。
+- Dependabot は、新しい版が出てから 7 日（メジャー版は 14 日）待ってから提案する（`.github/dependabot.yml` の `cooldown`）。セキュリティの更新は待たない。
+- CI は修正の入った Node（2026-10-20/21 のセキュリティリリースの 22.23.4・24.22.1 以降）で走る。ランナーにたまたまある版は使わない（SECURITY.md）。
 - レジストリの部品は [egatari/components](https://github.com/egatari/components) のリリースの写しを同梱する。`npm run components:update` は、リリースの `manifest.json`（SHA-256）と tarball・全ファイルを突き合わせ、すでにある版は置き換えない。ビルドは部品をネットワークから取らず、`npm run components:check`（`gen:check` の一部）が `vendor/components` と `components.lock.json` を比べる。取り下げ済みの版（v1.0.0・v1.0.1）は、警告つきでしかビルドせず、黙っては使わない。
 - 編集アプリのページは、MP3 エンコーダーを自分のサイトからしか読まない。ブラウザー内の音声合成のウィンドウ（`lab/tts-helper.html`）は、固定した版のライブラリーを jsDelivr から、モデルを Hugging Face から読む。編集アプリと同じオリジンで、lab ページと同じく信頼しているため、そこでの侵害されたファイルは編集アプリの保存領域に届きうる（SECURITY.md）。
 - GitHub のワークフローは、すべて最小権限の `permissions:` を宣言する。CodeQL（`codeql.yml`）、`npm audit --omit=dev --audit-level=high`（`audit.yml`）、OpenSSF Scorecard（`scorecard.yml`）、npm と GitHub Actions の Dependabot（`.github/dependabot.yml`）が、コードと依存を見張る。知らせるだけで、それ自体でリリースを止めない。
