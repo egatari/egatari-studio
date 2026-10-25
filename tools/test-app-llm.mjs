@@ -26,7 +26,7 @@ export function replyOf(deck, narration, { crlf = false, labels = ['html', 'mark
   return crlf ? t.replace(/\n/g, '\r\n') : t;
 }
 // 新規作成の ①〜③ に答えて ④ ⑤ を出す（S1〜S7 の歩き方は tools/test-app-newdeck.mjs）
-export async function answerNew(p, { cat = 'teaching', sub = 'class', title = 'How binary search works' } = {}) {
+export async function answerNew(p, { cat = 'teaching', sub = 'class', title = 'How binary search works', paste = false } = {}) {
   await p.waitForSelector('#dlg[open] #paste-step-kind');
   await p.check('#paste-cat-' + cat);
   if (sub) await p.check('#paste-sub-' + sub);
@@ -34,7 +34,11 @@ export async function answerNew(p, { cat = 'teaching', sub = 'class', title = 'H
   await p.fill('#paste-title', title);
   await p.click('#paste-next-content');
   await p.click('#paste-next-theme');
-  await p.waitForSelector('#paste-step-paste:not([hidden]) #paste-deck');
+  // 1 つだけ開く流れ：③ の後は ④。⑤ は見出しから開ける（コピーすると自動で開く）
+  await p.waitForSelector('#paste-step-send-btn[aria-current=step]');
+  if (!paste) return;
+  await p.click('#paste-step-paste-btn');
+  await p.waitForSelector('#paste-step-paste-btn[aria-current=step]');
 }
 
 export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
@@ -117,7 +121,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // ---------------------------------------------------------------- 3. スクリプトの入った出力 → コードの確かめ
   const evil = bdeck.replace('</body>', '<script>window.__pastedRan = true;</script>\n</body>');
   await clickCommand(page, '#b-new');
-  await answerNew(page);
+  await answerNew(page, { paste: true });
   ok((await page.textContent('#b-new')) === 'New…' && !(await page.$('#b-paste')) && !(await page.$('#b-fiximport')), 'llm: the menu has “New…” (no separate AI import entries)');
   await page.fill('#paste-deck', replyOf(evil, bnarr));
   await clickDlg(page, '#dlg-import');
@@ -134,7 +138,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     .replace('[concl] 件数が増えても', '[4] {1-η|いちマイナスイータ} は使わない例です。\n[concl] 件数が増えても');
   await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
   await clickCommand(page, '#b-new');
-  await answerNew(page);
+  await answerNew(page, { paste: true });
   await page.fill('#paste-narr', replyOf(bad, badN, { labels: ['html title="deck.html"', 'md'] }));
   await clickDlg(page, '#dlg-import');
   await discard();
@@ -207,6 +211,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const c1 = await copy();
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; with all figures in use, every part is described');
     const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
+    // コピーすると ⑤ が開く。④ は［変更］で開き直す
+    ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
+    await pk.click('#paste-change-send');
     await pk.click('#paste-purpose-process');
     await pk.click('#paste-purpose-contents');
     const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
@@ -217,12 +224,15 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(!c2.includes('### `<m-flow>`') && !c2.includes('| `<m-menu>` |') && c2.includes('- 使わない言いたいこと（作者が外した）：手順・工程・目次。その表し方（`m-flow`・`m-menu`）は使わない') && size2 < size1,
       `new copy: the figures turned off leave the copied pack and the request says so (${size1} → ${size2} bytes)`);
     if (shotDir) { await pk.evaluate(() => document.getElementById('paste-purposes').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-purposes-ja.png') }); }
+    await pk.click('#paste-change-send');
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
     const size3 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(c3.includes('### `<m-timeline>`') && c3.includes('`<m-kanbun>`') && !c3.includes('### `<m-flow>`') && size3 > size2, `new plan: the paid plan copies every series and the paid-only parts, still without the figures turned off (${size2} → ${size3} bytes)`);
     // 写した後に札を変えても、egatari.json に残すのは写したときの選び方
+    await pk.click('#paste-change-send');
     await pk.click('#paste-purpose-timeline');
+    await pk.click('#paste-step-paste-btn');
     await pk.fill('#paste-narr', replyOf(worked('kokugo', 'deck.html').replace('<html ', '<html data-egatari-seed="42" '), worked('kokugo', 'narration.md')));
     await clickDlg(pk, '#dlg-import');
     await pk.waitForFunction(() => { const s = window.__APP_TEST.state(); return s && s.portable; }, null, { timeout: 30000 });
@@ -253,6 +263,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
 // 「修正…」は道具の列の「スライド ▾」にある（品質チェックの板の先頭にもある。そちらは上の試験で確かめる）
 async function openRevise(p, sel = '#paste-deck') {
   await clickCommand(p, '#b-revise-cmd');
+  // 1 つだけ開く流れ：修正は ① から。貼る欄（③）は見出しから開く
+  await p.waitForSelector('#dlg[open] #paste-step1-btn[aria-current=step]', { timeout: 10000 });
+  if (sel !== '#paste-wish') await p.click('#paste-step-paste-btn');
   await p.waitForSelector('#dlg[open] ' + sel, { timeout: 10000 });
 }
 // field：貼る欄（'deck' か 'narr'。出力の全体はどちらでもよい）
@@ -359,6 +372,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     await openRevise(p, '#paste-wish');
     ok((await p.textContent('#dlg-title')) === 'Revise' && /^Write what to change to make a fix request/.test(await p.textContent('#ai-howto')) && !(await p.$('#dlg-body input[type=radio]')),
       'llm revise: “Revise…” opens “Revise” with the explanation first and no mode choice');
+    await p.click('#paste-next-1');
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Nothing to fix was found/.test(document.getElementById('paste-copied').textContent), null, { timeout: 20000 });
     ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'paste-wish'), 'llm revise: with no findings, notes or wishes, it says there is nothing to fix and moves to step 1');
@@ -369,6 +383,9 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     });
     await openRevise(p, '#paste-wish');
     await p.fill('#paste-wish', 'Make the second slide shorter');
+    await p.click('#paste-next-1');
+    ok((await p.textContent('#paste-step1-answer .paste-answer-text')) === 'What to change (optional): Make the second slide shorter' && (await p.getAttribute('#paste-step2-btn', 'aria-current')) === 'step',
+      'llm revise: “Next” folds step 1 to its answer and opens step 2');
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent), null, { timeout: 20000 });
     const rev = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
@@ -393,6 +410,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       'llm insert: the dialog says where (after the selected slide 1), explains first, has no mode choice, and leaves the instructions out by default');
     await p.fill('#paste-insert-n', '2');
     await p.fill('#paste-insert-wish', 'one worked example');
+    await p.click('#paste-next-1');
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
     const insReq = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
@@ -400,14 +418,18 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     ok(insReq.startsWith('# Please add slides') && insReq.includes(`the next 2 slides, after slide 1, “${heads3[0]}”`) && insReq.includes('- What to add: one worked example') && heads3.every((h, i) => insReq.includes(`${i + 1}. ${h}`))
       && insReq.includes(other(0)) && !insReq.includes(other(1)) && !insReq.includes(other(2)) && !insReq.includes('Instructions for the AI') && insReq.length < D3.length,
       `llm insert: the request asks for the next 2 slides after slide 1 with only the heading list and that slide (not the whole deck; ${insReq.length} vs ${D3.length} characters)`);
+    ok((await p.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await p.isVisible('#paste-deck') && await p.isHidden('#paste-copy-guide'), 'llm insert: copying opens step 3 (the paste fields) and folds step 2');
+    await p.click('#paste-change2');
     await p.check('#paste-with-pack');
     ok(await p.isVisible('#paste-pack-parts'), 'llm insert: ticking “Send to a different chat” shows the subjects');
     await p.click('#paste-copy-guide');
     await p.waitForFunction((c) => navigator.clipboard.readText().then((t) => t.replace(/\r\n/g, '\n') !== c).catch(() => false), insReq);
     const insPack = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     ok(insPack.startsWith('# Instructions for the AI') && insPack.endsWith(insReq) && !insPack.includes('# What I want'), 'llm insert: with the instructions, the pack comes first and the insert request replaces “What I want” at the end');
+    await p.click('#paste-change2');
     await p.uncheck('#paste-with-pack');
     if (shotDir) await p.screenshot({ path: path.join(shotDir, 'insert-ai.png') });
+    await p.click('#paste-step-paste-btn');
     // 出力：コードブロックを 1 つずつ（それぞれの欄に）。id のないスライド 2 枚
     const newDeck = '<section class="slide">\n  <h2>Worked example</h2>\n  <div class="body"><p>Step by step.</p></div>\n  <div class="concl"><span>Done.</span></div>\n</section>\n\n<section class="slide noconcl">\n  <h2>Try it</h2>\n  <div class="body"><p>Your turn.</p></div>\n</section>';
     const newNarr = '## Worked example\n[0] Here is a worked example.\n[concl] That is all.\n\n## Try it\n[0] Now try it yourself.';

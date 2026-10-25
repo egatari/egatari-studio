@@ -48,6 +48,9 @@ const TX = {
     howToNew: '4 つの問いに答えると、チャットの AI（ChatGPT・Gemini・Claude など）に送る指示ができます。AI の出力をここに貼り付けると、スライドができます。',
     howToFix: '直してほしいことを書くと、チャットの AI に送る修正依頼ができます。AI の出力をここに貼り付けると、スライドを置き換えます。',
     answered: (q, a) => `${q}：${a}`, change: '変更', next: '次へ', cancel: 'キャンセル',
+    // 1 つだけ開く流れの、答えた段の 1 行（④ 指示・挿入と修正の ① ②）
+    sendQ: '指示', planShort: { free: '無料のプラン', paid: '有料のプラン' }, copiedShort: 'コピーしました', listSep: '・',
+    insertAnswer: (n, wish) => `${n} 枚${wish ? '・' + wish : ''}`, wishNone: 'なし',
     back: '← 戻る',
     steps: {
       new: ['① どんな場面で使いますか', '② 何について、だれに向けて作りますか', '③ どんな見た目にしますか', '④ チャットの AI に指示を送ります', '⑤ AI の出力を貼り付けます'],
@@ -196,6 +199,8 @@ const TX = {
     howToNew: 'Answer four questions to make instructions for a chat AI (ChatGPT, Gemini, Claude, …). Paste the AI’s output here and your slides are made.',
     howToFix: 'Write what to change to make a fix request for a chat AI. Paste the AI’s output here and the slides are replaced.',
     answered: (q, a) => `${q}: ${a}`, change: 'Change', next: 'Next', cancel: 'Cancel',
+    sendQ: 'Instructions', planShort: { free: 'Free plan', paid: 'Paid plan' }, copiedShort: 'copied', listSep: ' · ',
+    insertAnswer: (n, wish) => `${n} slide${n === 1 ? '' : 's'}${wish ? ' · ' + wish : ''}`, wishNone: 'none',
     back: '← Back',
     steps: {
       new: ['1. Where will you use it?', '2. What is it about, and who is it for?', '3. How should it look?', '4. Send the instructions to your chat AI', '5. Paste the AI’s output'],
@@ -350,7 +355,58 @@ export function setupLlm(app) {
   }
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
-  const step = (id, title, kids) => el('section', { id, cls: 'paste-step', 'aria-labelledby': id + '-h' }, [el('h3', { id: id + '-h', text: title }), ...kids]);
+  // 段：見出しは押せるボタン（aria-expanded・aria-controls）、中身は本体（flow が開け閉めする）。after は本体の外（答えの 1 行・コピーの知らせ）
+  const step = (id, title, kids, after = []) => {
+    const btn = el('button', { type: 'button', id: id + '-btn', cls: 'paste-step-h', 'aria-expanded': 'true', 'aria-controls': id + '-body', text: title });
+    const body = el('div', { id: id + '-body', cls: 'paste-step-body' }, kids);
+    const node = el('section', { id, cls: 'paste-step', 'aria-labelledby': id + '-h' }, [el('h3', { id: id + '-h' }, [btn]), body, ...after]);
+    node.acc = { btn, body };
+    return node;
+  };
+  // 答えた段の 1 行（［変更］で開き直す）。text()：答えの言葉
+  const summaryLine = (id, q, text, onChange) => {
+    const t = el('span', { cls: 'paste-answer-text' });
+    const line = el('p', { id: id + '-answer', cls: 'paste-answered', hidden: '' }, [t, el('button', { type: 'button', id: id.replace('paste-step', 'paste-change'), cls: 'ghost', text: X.change, onclick: () => onChange() })]);
+    line.refresh = () => { t.textContent = X.answered(q, text()); };
+    return line;
+  };
+  // 1 つだけ開く流れ（買い物の手続きのように）：いまの段だけ開き、答えた段は 1 行（［変更］）、まだの段は見出しだけ（薄く）。5 つ（3 つ）の見出しはいつも見える。
+  // 見出しはボタン（aria-expanded）、いまの段は aria-current="step"。見出しを押すと、開いたことのある段（と can() の段）を開く
+  //   items：[{node（step() の section）, q?（question() の Q：答えた 1 行と本体を Q が切り替える）, summary?（summaryLine）, can?(), focus?()}]
+  //   open(i, {focus})：その段だけ開き、見えるところへ動かし、最初の操作に印。done(i)：答えた（1 行にたたむ）
+  function flow(items, { onOpen } = {}) {
+    let cur = -1;
+    const seen = items.map(() => false), done = items.map(() => false);
+    const canOpen = (i) => seen[i] || !!(items[i].can && items[i].can());
+    const render = () => items.forEach((it, i) => {
+      const { btn, body } = it.node.acc;
+      const open = i === cur, folded = done[i] && !open;
+      if (it.q) { body.hidden = !(open || folded); it.q.setDone(folded); }
+      else { body.hidden = !open; if (it.summary) { it.summary.refresh(); it.summary.hidden = !folded; } }
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+      btn.setAttribute('aria-disabled', open || canOpen(i) ? 'false' : 'true');
+      it.node.classList.toggle('current', open);
+      it.node.classList.toggle('pending', !open && !seen[i]);
+    });
+    const firstControl = (it) => [...it.node.acc.body.querySelectorAll('input:not([type=hidden]), select, textarea, button')].find((x) => !x.disabled && x.getClientRects().length);
+    const F = {
+      get current() { return cur; },
+      isDone: (i) => done[i],
+      open(i, { focus = true } = {}) {
+        cur = i; seen[i] = true; render();
+        if (onOpen) onOpen(i);
+        if (!focus) return;
+        const it = items[i];
+        it.node.scrollIntoView({ block: 'start' });
+        if (it.focus) it.focus(); else if (it.q) it.q.focus(); else { const f = firstControl(it); if (f) f.focus(); }
+      },
+      done(i, d = true) { done[i] = d; render(); },
+      render,
+    };
+    items.forEach((it, i) => it.node.acc.btn.addEventListener('click', () => { if (i !== cur && canOpen(i)) F.open(i); }));
+    return F;
+  }
   const readDeck = async () => ({ deck: (await S.ws.readText(S.deckFile, { max: READ_LIMITS.source })) || '', narration: (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || '' });
 
   // ---------------------------------------------------------------- 新規作成の問い（① 場面 → ② 内容 → ③ 見た目）。答えた問いは 1 行にたたみ、［変更］で開き直す
@@ -620,16 +676,18 @@ export function setupLlm(app) {
     return { node, refresh };
   }
   // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
-  function insertStep(title, where) {
+  function insertStep(title, where, { onNext, onChange }) {
     const n = el('input', { type: 'number', id: 'paste-insert-n', min: '1', max: '10', value: '1', inputmode: 'numeric' });
     const wish = el('textarea', { id: 'paste-insert-wish', rows: '2', placeholder: X.insertWishPh, spellcheck: 'false' });
+    const count = () => Math.max(1, Math.min(10, Math.round(Number(n.value) || 1)));
+    const summary = summaryLine('paste-step1', X.insertCount, () => X.insertAnswer(count(), wish.value.trim()), onChange);
     return {
       node: step('paste-step1', title, [el('p', { id: 'paste-insert-where', cls: 'paste-where', text: where }), el('p', { cls: 'hint', text: X.insertHint }),
         el('div', { cls: 'paste-fields' }, [
           el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-insert-n', text: X.insertCount }), n]),
           el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-insert-wish', text: X.insertWish }), wish]),
-        ])]),
-      count: () => Math.max(1, Math.min(10, Math.round(Number(n.value) || 1))),
+        ]), el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-next-1', cls: 'pri', text: X.next, onclick: () => onNext() })])], [summary]),
+      summary, count,
       wish: () => wish.value,
     };
   }
@@ -648,7 +706,7 @@ export function setupLlm(app) {
   // 無料のプランで選べる分野は 2 つまで（kit/core/new-deck.mjs の FREE_SUBJECT_MAX）：2 つに印があれば、ほかの印は押せなくし、わけを一覧の中に出す。
   // 推した印も 2 つまで（SUBJECTS の順で初めの 2 つ）。stored：開いている教材の egatari.json の studio.newDeck（前に選んだもの）。その印から始め、
   // 3 つ以上あれば印はそのまま（記録も書き換えない）、使うのは初めの 2 つ（freeSubjects）で、そう知らせる
-  function sendStep(title, copyMsg, { request, missing, stored }) {
+  function sendStep(title, copyMsg, { request, missing, stored, onCopied, onChange }) {
     const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）。前に選んだもの（stored）の印も
     const ticked = new Set();    // 印のある分野（系列の名前）。有料のプランでは札は全部入りに見せるが、印は無料に戻したときのために残す
     const seriesOf = (id) => (SUBJECTS.find((x) => x.id === id) || {}).series;
@@ -733,14 +791,17 @@ export function setupLlm(app) {
       copied = choiceNow();
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
+      if (ok && onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
-    const node = step('paste-step-send', title, [planSet, planHint, seriesSet, seriesHint, guess, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
-    return { node, update, guessNow, choice: () => copied || choiceNow() };
+    // 答えた 1 行：プランと使う分野と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
+    const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], ...(draft.plan === 'paid' ? [] : freeSubjects(subjectsTicked()).map(subjectName)), X.copiedShort].join(X.listSep), onChange);
+    const node = step('paste-step-send', title, [planSet, planHint, seriesSet, seriesHint, guess, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+    return { node, summary, update, guessNow, choice: () => copied || choiceNow() };
   }
 
   // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ分野）も付ける
   // 分野の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）
-  async function packStep(copyMsg, req, { title, copyLabel, copiedMsg }) {
+  async function packStep(copyMsg, req, { title, copyLabel, copiedMsg, onCopied, onChange }) {
     const initial = await defaultSeries();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
@@ -754,30 +815,36 @@ export function setupLlm(app) {
       const text = await textNow();
       const ok = await copyText(text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
+      if (ok && onCopied) onCopied();
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
       ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(seriesName.academic) })]);
     withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
     await update();
+    const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);
     const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),
-      packParts, el('div', { cls: 'paste-guide' }, [copy, total]), copyMsg]);
-    return { node, update };
+      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+    return { node, summary, update };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
-  function reviseStep(copyMsg, title, results0) {
+  function reviseStep(copyMsg, title, results0, { onNext, onCopied, onChange }) {
     const wish = el('textarea', { id: 'paste-wish', rows: '3', placeholder: X.wishPh, spellcheck: 'false' });
+    const sum1 = summaryLine('paste-step1', X.wish, () => wish.value.trim() || X.wishNone, () => onChange(0));
     const s1 = step('paste-step1', title[0], [el('p', { cls: 'hint', text: X.reviseHint }),
-      el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-wish', text: X.wish }), wish])]);
+      el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-wish', text: X.wish }), wish]),
+      el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-next-1', cls: 'pri', text: X.next, onclick: () => onNext() })])], [sum1]);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyRevise, onclick: async () => {
       const results = results0 || (app.checkResults ? await app.checkResults() : []) || [];
       const r = await reviseRequest(results, wish.value);
-      if (!r) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; wish.focus(); return; }
+      if (!r) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
       const ok = await copyText(r.text);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.revised(kb(r.text), r.problems, r.notes) : X.fixCopyFailed;
+      if (ok && onCopied) onCopied();
     } });
-    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy]), copyMsg]);
-    return { s1, s2 };
+    const sum2 = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, () => onChange(1));
+    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg]);
+    return { s1, s2, sum1, sum2, wish };
   }
 
   // ---------------------------------------------------------------- AI の出力を貼る 2 つの欄（スライド＝deck.html・台本＝narration.md。新規作成の ⑤、挿入・修正の ③）
@@ -907,23 +974,21 @@ export function setupLlm(app) {
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
       ...fields.nodes, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })];
-    let body;
+    let body, openPaste = () => {};
     if (mode === 'new') {
-      // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。答えた問いはたたみ、④ ⑤ は ③ まで答えると出る
-      let Qs = [], reached = 0, send = null, five = null;
+      // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。1 つだけ開く流れ（flow）：答えた問いは 1 行にたたみ、次の問いを開く。
+      // ③ まで答えると ④、指示をコピーすると ⑤ が開く。⑤ は ④ を開いたら見出しから開ける（もう出力を持っている人）
+      let Qs = [], send = null, five = null, F = null;
       const ctl = {
-        changed() { for (const q of Qs) q.refresh(); if (Qs[1]) Qs[1].show(); if (send) { send.guessNow(); send.update(); } if (five) five.render(); },
+        changed() { for (const q of Qs) q.refresh(); if (Qs[1]) Qs[1].show(); if (send) { send.guessNow(); send.update(); } if (five) five.render(); if (F) F.render(); },
         next(k) {
-          Qs[k].setDone(true);
-          reached = Math.max(reached, k + 1);
+          F.done(k);
           // 次の答えていない問い（なければ ④）
-          const open = Qs.findIndex((q, i) => i > k && !q.done && i <= reached);
-          show();
-          if (open >= 0) Qs[open].focus(); else if (reached >= 3) send.node.querySelector('input').focus();
+          const j = [0, 1, 2].find((i) => i > k && !F.isDone(i));
+          F.open(j === undefined ? 3 : j);
         },
-        reopen(k) { Qs[k].setDone(false); Qs[k].focus(); },
+        reopen(k) { F.open(k); },
       };
-      const show = () => { Qs.forEach((q, i) => { q.node.hidden = i > reached; }); send.node.hidden = five.node.hidden = reached < 3; if (reached >= 3) { send.guessNow(); send.update(); } five.render(); };
       Qs = [kindQuestion(titles[0], ctl), contentQuestion(titles[1], ctl), await themeQuestion(titles[2], ctl)];
       const request = () => {
         let t = filledRequest(requestValues(), LANG).replace(/\n*$/, '\n') + X.themeLine(newTheme) + '\n';
@@ -936,20 +1001,23 @@ export function setupLlm(app) {
         return t;
       };
       const missing = () => {
-        if (!kindOk()) { const f = Qs[0].node.querySelector('input'); if (Qs[0].done) Qs[0].setDone(false); return { text: X.needKind, focus: () => f.focus() }; }
-        if (!titleOk()) { if (Qs[1].done) Qs[1].setDone(false); return { text: X.needTopic, focus: () => Qs[1].titleIn.focus() }; }
+        if (!kindOk()) { return { text: X.needKind, focus: () => F.open(0) }; }
+        if (!titleOk()) { return { text: X.needTopic, focus: () => { F.open(1, { focus: false }); Qs[1].node.scrollIntoView({ block: 'start' }); Qs[1].titleIn.focus(); } }; }
         return null;
       };
       // 前に選んだもの：開いている教材の egatari.json の studio.newDeck（読むだけ。書き換えない）
       let stored = null;
       if (S.ws) { try { stored = choiceOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { stored = null; } }
-      send = sendStep(titles[3], copyMsg, { request, missing, stored });
+      send = sendStep(titles[3], copyMsg, { request, missing, stored, onCopied: () => { F.done(3); F.open(4); }, onChange: () => F.open(3) });
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
       outlinePhase = () => five.waiting();
       unanswered = () => (!kindOk() ? X.why.kind : !titleOk() ? X.why.title : null);
-      Qs.forEach((q) => q.setDone(false));
-      show();
+      F = flow([...Qs.map((q) => ({ node: q.node, q })), { node: send.node, summary: send.summary }, { node: five.node, can: () => F.current >= 3 || F.isDone(3), focus: () => { const o = document.getElementById('paste-outline-text'); if (o && o.getClientRects().length) o.focus(); else fields.focus(); } }],
+        { onOpen: (i) => { if (i === 3) { send.guessNow(); send.update(); } if (i === 4) five.render(); } });
+      openPaste = () => F.open(4, { focus: false });
+      F.open(0, { focus: false });
+      send.update(); five.render();
       body = [...Qs.map((q) => q.node), send.node, five.node];
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
@@ -960,19 +1028,34 @@ export function setupLlm(app) {
       const head = (i) => ((S.slides || [])[i] && (S.slides[i].heading || S.slides[i].key)) || '';
       const where = insertAfter === null && opts.after !== n - 1 ? X.insertWhereLast(n, head(n - 1)) : X.insertWhere(at + 1, head(at));
       const B = opts.batch || null;   // 構成案の続き（{rows, from, to}）：範囲は決まっているので、枚数と足したいことの欄は出さない
-      const ins = B ? { node: step('paste-step1', X.steps.batch[0], [el('p', { id: 'paste-batch-where', cls: 'paste-where', text: X.batchWhere(B.from, B.to, B.rows.length, remaining(B)) })]), count: () => B.to - B.from + 1, wish: () => '' }
-        : insertStep(titles[0], where);
+      let F = null;
+      const nav = { onNext: () => { F.done(0); F.open(1); }, onChange: () => F.open(0) };
+      // 構成案の続き：範囲は決まっているので、① は範囲の 1 行だけ（本体はなく、いつも見える）
+      const ins = B ? { node: step('paste-step1', X.steps.batch[0], [], [el('p', { id: 'paste-batch-where', cls: 'paste-where', text: X.batchWhere(B.from, B.to, B.rows.length, remaining(B)) })]), summary: null, count: () => B.to - B.from + 1, wish: () => '' }
+        : insertStep(titles[0], where, nav);
       const req = { request: () => (B ? batchRequest({ rows: B.rows, from: B.from, to: B.to, deck, narration, lang: LANG })
         : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })) };
       batchNow = B;
-      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied });
+      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
       ins.node.addEventListener('input', pack.update);
-      body = [ins.node, pack.node, step('paste-step-paste', titles[2], pasteKids())];
+      const three = step('paste-step-paste', titles[2], pasteKids());
+      // 挿入も 1 つだけ開く流れ（① ② に必ず答えるものはないので、どの見出しからも開ける）
+      F = flow([{ node: ins.node, summary: ins.summary, can: () => !B }, { node: pack.node, summary: pack.summary, can: () => true }, { node: three, can: () => true, focus: () => fields.focus() }]);
+      openPaste = () => F.open(2, { focus: false });
+      // 構成案の続きは範囲が決まっている：① は答えた 1 行にして、② から始める
+      if (B) { F.done(0); F.open(1, { focus: false }); } else F.open(0, { focus: false });
+      body = [ins.node, pack.node, three];
     } else {
-      const r = reviseStep(copyMsg, titles, opts.results || null);
-      body = [r.s1, r.s2, step('paste-step-paste', titles[2], pasteKids())];
+      let F = null;
+      const r = reviseStep(copyMsg, titles, opts.results || null, { onNext: () => { F.done(0); F.open(1); }, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: (k) => F.open(k) });
+      const three = step('paste-step-paste', titles[2], pasteKids());
+      F = flow([{ node: r.s1, summary: r.sum1, can: () => true }, { node: r.s2, summary: r.sum2, can: () => true }, { node: three, can: () => true, focus: () => fields.focus() }]);
+      openPaste = () => F.open(2, { focus: false });
+      F.open(0, { focus: false });
+      body = [r.s1, r.s2, three];
     }
     let focusPaste = !!opts.focusPaste;
+    if (focusPaste) openPaste();
     for (;;) {
       // 新規作成は画面いっぱいのページ（問いを縦に並べる）。「← 戻る」と Esc で閉じる
       const back = mode === 'new' ? el('button', { type: 'button', id: 'page-back', cls: 'ghost page-back', text: X.back, onclick: () => { const d = document.getElementById('dlg'); if (d.open) d.close('cancel'); } }) : null;
@@ -983,11 +1066,11 @@ export function setupLlm(app) {
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       const v = await shown;
       if (v !== 'import') return false;
-      if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; continue; }
+      if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; if (!unanswered()) openPaste(); continue; }
       status(X.building[mode]);
       let res;
       try { res = await finish(fields.data(), mode); } finally { status(''); }
-      focusPaste = true;
+      focusPaste = true; openPaste();
       if (res === null) return true;
       msg.hidden = false; msg.textContent = res;
     }
@@ -995,9 +1078,9 @@ export function setupLlm(app) {
 
   // ⑤（新規作成）：ふつうは 2 つの欄。長い教材（9 枚から）は、はじめに構成案の欄と［次へ］、受け取ったら構成案の一覧・1〜6 枚目の指示のコピー・2 つの欄
   function fiveStep(titles, fields, pasteKids, onChange) {
-    const h = el('h3', { id: 'paste-step-paste-h' });
     const box = el('div', { cls: 'paste-five' });
-    const node = el('section', { id: 'paste-step-paste', cls: 'paste-step', 'aria-labelledby': 'paste-step-paste-h' }, [h, box]);
+    const node = step('paste-step-paste', titles[4], [box]);
+    const h = node.acc.btn;
     const oText = el('textarea', { id: 'paste-outline-text', rows: '6', spellcheck: 'false', placeholder: X.outlinePh });
     const oMsg = el('p', { id: 'paste-outline-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const kids = pasteKids();

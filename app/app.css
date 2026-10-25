@@ -211,7 +211,13 @@ main{flex:1;min-height:0;display:flex}
 #dlg #paste-pack-size{flex-basis:auto}
 #dlg .paste-step{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:6px}
 #dlg .paste-step h3{font-size:15px;margin:2px 0 6px}
-#dlg .paste-step > .hint{margin:0 0 6px}
+#dlg .paste-step-body > .hint{margin:0 0 6px}
+/* 1 つだけ開く流れ：見出しはボタン。まだの段は見出しだけ（薄く）、いまの段は左の線を強く */
+#dlg .paste-step-h{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:4px}
+#dlg .paste-step-h[aria-disabled="true"]{cursor:default}
+#dlg .paste-step-h:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#dlg .paste-step.pending > h3{color:var(--muted)}
+#dlg .paste-step-body[hidden]{display:none}
 #dlg .paste-kind{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 6px;padding:4px 10px 6px;border:1px solid var(--line);border-radius:6px;font-size:13.5px}
 #dlg .paste-kind legend{padding:0 4px}
 #dlg .paste-kind label{display:flex;gap:6px;align-items:center}
@@ -349,7 +355,8 @@ main{flex:1;min-height:0;display:flex}
 #dlg.page h2#dlg-title{margin-top:28px}
 #dlg.page .paste-step{border-left:3px solid var(--line);border-top:0;margin:0 0 6px 6px;padding:6px 0 14px 18px}
 #dlg.page .paste-step h3{font-size:16px;margin:0 0 6px}
-#dlg.page .paste-step:focus-within{border-left-color:var(--accent)}
+#dlg.page .paste-step.current,#dlg.page .paste-step:focus-within{border-left-color:var(--accent)}
+#dlg.page .paste-step.pending{padding-bottom:6px}
 #dlg.page #dlg-buttons{position:sticky;bottom:-24px;background:var(--panel);padding:10px 0;margin-top:8px;border-top:1px solid var(--line)}
 #dlg .paste-content{flex-basis:100%}
 #dlg .paste-content textarea{min-height:160px;font:13px/1.5 inherit;font-family:inherit}
