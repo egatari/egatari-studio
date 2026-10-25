@@ -221,6 +221,34 @@
   <div class="concl"><span>⇒ 本文を減らす</span></div>
 </section>
 
+<!-- 読み上げ用の層（見えない一覧）：祖先の 1×1 の箱・clip-path: inset(50%)・clip: rect(0 0 0 0) で隠した <li> は、切らなければスライドの下に出るが、
+     数えない（bodyBottom・smallText・textOverlap を出さない）。s-srover は同じ部品の下に本当にはみ出す箱を置く（bodyBottom だけ） -->
+<section class="slide" id="s-srlist">
+  <h2>部品の読み上げ用の一覧</h2>
+  <div class="body"><p>ふつうの本文。</p><m-srlist aria-label="見えない一覧のある部品"></m-srlist></div>
+  <div class="concl"><span>⇒ 何も出さない</span></div>
+</section>
+<section class="slide" id="s-srover">
+  <h2>読み上げ用の一覧と本当のはみ出し</h2>
+  <div class="body"><p>ふつうの本文。</p><m-srlist aria-label="見えない一覧のある部品"></m-srlist><div style="height:400px;border:2px solid var(--rule)"></div></div>
+  <div class="concl"><span>⇒ 本文を減らす</span></div>
+</section>
+<section class="slide" id="s-srmarkup">
+  <h2>手で書いた隠し方</h2>
+  <div class="body">
+    <p>ふつうの本文。</p>
+    <ul style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;padding:0">
+      <li style="font-size:16px">一行目</li><li style="font-size:16px">二行目</li><li style="font-size:16px">三行目</li><li style="font-size:16px">四行目</li><li style="font-size:16px">五行目</li>
+      <li style="font-size:16px">六行目</li><li style="font-size:16px">七行目</li><li style="font-size:16px">八行目</li><li style="font-size:16px">九行目</li><li style="font-size:16px">十行目</li>
+      <li style="font-size:16px">十一行目</li><li style="font-size:16px">十二行目</li><li style="font-size:16px">十三行目</li><li style="font-size:16px">十四行目</li><li style="font-size:16px">十五行目</li>
+      <li style="font-size:16px">十六行目</li><li style="font-size:16px">十七行目</li><li style="font-size:16px">十八行目</li><li style="font-size:16px">十九行目</li><li style="font-size:16px">二十行目</li>
+      <li style="font-size:16px">二十一行目</li><li style="font-size:16px">二十二行目</li><li style="font-size:16px">二十三行目</li><li style="font-size:16px">二十四行目</li><li style="font-size:16px">二十五行目</li>
+    </ul>
+    <div style="clip-path:inset(50%);height:80px"><p style="font-size:16px;margin:0;line-height:40px">隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字<br>隠した字</p></div>
+  </div>
+  <div class="concl"><span>⇒ 何も出さない</span></div>
+</section>
+
 <!-- 縦組みの限り（#51）：見出しが列に収まらない（tateTitle）、結論の列が高さではみ出す（conclOverflow） -->
 <section class="slide layout-tate" id="s-tate">
   <h2>縦組みの見出しがとても長くて一列には収まりきらない例</h2>
