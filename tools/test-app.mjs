@@ -359,7 +359,7 @@ try {
   ok((await page.inputValue('#dev-editor textarea')) === '書きかけ', 'edit conflict: the open editor keeps unsaved input across the reload');
   await page.press('#dev-editor textarea', 'Meta+Enter');
   await page.waitForSelector('#dev-editor .dev-msg.dv-err');
-  ok(/原稿が変わっています/.test(await page.textContent('#dev-editor .dev-msg')) && (await opfs.read('deck.html')) === deckExt, 'edit conflict: stale hash is rejected (409), shown in the editor, file untouched');
+  ok(/HTML が変わっています/.test(await page.textContent('#dev-editor .dev-msg')) && (await opfs.read('deck.html')) === deckExt, 'edit conflict: stale hash is rejected (409), shown in the editor, file untouched');
   await page.press('#dev-editor textarea', 'Escape');
   n = await loads();
   await opfs.write('deck.html', deck1);
@@ -430,7 +430,7 @@ try {
   f = await waitLoads(n, 10000);
   await page.press('#dev-narr .dev-turn textarea >> nth=0', 'Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
-  ok(/口述原稿が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
+  ok(/台本が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
   n = await loads();
   await page.click('#dev-narr .dev-msg button');
   f = await waitLoads(n);
@@ -664,12 +664,12 @@ try {
     // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
     await page.click('#b-comments');
     await page.waitForSelector('#dev-comments');
-    ok((await page.textContent('#dev-comments-volatile')) === '1 ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
+    ok((await page.textContent('#dev-comments-volatile')) === 'Egatari ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
     await page.click('#b-comments');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダにエクスポート』を使ってください。')
-      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダからエクスポートした写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダにエクスポート』を使ってください。')
+      && !(await page.textContent('#notice-exported')).includes('エクスポートしたあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
     await shot(page, 'portable-exported-notice.png');
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-saveas') && await page.isHidden('#b-export-portable') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'false', 'portable: File ▾ has Save and Save as… (the single-file ones)');
@@ -716,7 +716,7 @@ try {
     const aRead = await readPortable(new Uint8Array(aBuf));
     ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
     ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('書き出したあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
     fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
     ok(ps0.portable.stale.includes('何を最小化するか:0') && JSON.stringify(aRead.index.audio['何を最小化するか:0']) === JSON.stringify(pmin.index.audio['何を最小化するか:0']), 'tier A: the edited step\'s audio is kept as is and shown as stale');
     await shot(page, 'portable-tier-a-saved.png');
@@ -758,7 +758,7 @@ try {
     await clickCommand(page, '#b-save');
     await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
     ok((await page.textContent('#tier-b-warn')).includes('編集していないスライドも、見え方が変わることがあります'), 'tier B: warns before saving that slides you did not edit may look different');
-    ok((await page.textContent('#dlg-body')).includes('スライドの原稿を直したので'), 'tier B: says why it cannot save without rebuilding');
+    ok((await page.textContent('#dlg-body')).includes('スライドの HTML を直したので'), 'tier B: says why it cannot save without rebuilding');
     await shot(page, 'portable-tier-b-warning.png');
     await clickDlg(page, '#dlg-cancel');
     await page.waitForTimeout(200);
@@ -1607,7 +1607,7 @@ try {
       const msg = await po.textContent('#refuse-reason');
       ok(k === kind && (await po.textContent('#dlg pre.tech')).includes('[no-source]') && !!(await po.$('#dlg-folder')) === folder && !(await po.$('#dlg-only')), `refuse: ${what} → its own message (${kind}${folder ? ', offers "Open the folder…"' : ''}): ${msg.slice(0, 60)}…`);
       if (kind === 'built-output') { ok(/組み立てた発表用の HTML/.test(msg) && msg.includes(FORMAT.FILE_EXT), 'refuse: the built-output message says it is a presentation build and to open the source folder or a portable file'); if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'built-output.png') }); }
-      if (kind === 'play-only') ok(/再生専用版/.test(msg), 'refuse: the play-only message names the play-only portable file');
+      if (kind === 'play-only') ok(/再生専用の Egatari ファイル/.test(msg), 'refuse: the play-only message names the play-only portable file');
       await clickDlg(po, '#dlg-ok');
       ok(await p === false, `refuse: ${what} is not opened`);
     }
@@ -1882,7 +1882,7 @@ try {
     // 最近開いたもの：1 ファイルも並び、そこから開き直せる
     await pq.reload();
     await pq.waitForSelector('#recent-list li[data-kind=file]');
-    ok(await pq.isVisible('#recent-list li[data-kind=file]') && (await pq.textContent('#recent-list li[data-kind=file] .nm')) === 'lesson' + FORMAT.FILE_EXT && (await pq.textContent('#recent-list li[data-kind=file] .kind')) === '1 ファイル', 'recent: the opened single file is listed (marked as a single file)');
+    ok(await pq.isVisible('#recent-list li[data-kind=file]') && (await pq.textContent('#recent-list li[data-kind=file] .nm')) === 'lesson' + FORMAT.FILE_EXT && (await pq.textContent('#recent-list li[data-kind=file] .kind')) === 'Egatari ファイル', 'recent: the opened single file is listed (marked as a single file)');
     await pq.click('#recent-list li[data-kind=file] button:not(.ghost)');
     await pq.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 20000 });
     ok((await pq.evaluate(() => window.__APP_TEST.state().portable.name)) === 'lesson' + FORMAT.FILE_EXT, 'recent: reopened the single file from the list');

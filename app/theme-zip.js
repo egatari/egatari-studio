@@ -25,7 +25,7 @@ export const THEME_ZIP_LIMITS = Object.freeze({
 export class ThemeZipError extends Error {
   constructor(code, msg, extra = {}) { super(msg); this.name = 'ThemeZipError'; this.code = code; Object.assign(this, extra); }
 }
-const refused = (entry, why) => new ThemeZipError('refused', `refused zip entry: ${entry} (${why})`, { entry, why });
+const refused = (entry, why) => new ThemeZipError('refused', `refused ZIP file entry: ${entry} (${why})`, { entry, why });
 // zip-read と読み取りの誤りを、知らせの 4 つに分ける
 export function themeZipErrorKind(e) {
   if (e instanceof ThemeZipError) return e.code;
@@ -75,7 +75,7 @@ export async function readThemeZip(bytes, zipName = '') {
   catch (e) { throw wrap(e); }
   const dirOf = (n) => n.split('/').slice(0, -1).join('/');
   const dirs = [...r1.files.keys()].filter((n) => n.split('/').pop() === 'tokens.css').map(dirOf).sort();
-  if (!dirs.length) throw new ThemeZipError('no-theme', 'no theme (<name>/tokens.css) in the zip');
+  if (!dirs.length) throw new ThemeZipError('no-theme', 'no theme (<name>/tokens.css) in the ZIP file');
   if (dirs.length > L.themes) throw new ThemeZipError('too-large', `too many themes (${dirs.length}; at most ${L.themes})`);
   const themes = new Map(), dirName = new Map();
   for (const d of dirs) {

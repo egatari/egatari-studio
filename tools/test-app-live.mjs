@@ -74,12 +74,12 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       ok(!(await page.$eval('#live-manual', (d) => d.open)) && (await page.textContent('#live-panel')).includes('ホストのページで先にライブを作った場合（前からの方法）'), 'one-way: the earlier way is folded away (secondary)');
       ok(/まだライブ ID と参加コードがありません/.test(await page.textContent('#live-ids')) && /文字列は、① でライブ ID と参加コードをこの画面で作ると出ます/.test(await page.textContent('#live-setup-note')), 'one-way: before making ids, the panel says how to get the string');
       const lead = await page.textContent('#live-panel .lead');
-      ok(/ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ 書き出す/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
+      ok(/ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ エクスポートする/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
       await page.click('#live-make');
       await page.waitForFunction(() => /^r-[a-z2-7]{8}$/.test(document.querySelector('#live-room').value));
       const room = await page.inputValue('#live-room'), key = await page.inputValue('#live-key');
       ok(/^[A-Za-z0-9_-]{22}$/.test(key) && (await page.textContent('#live-ids')).includes(`ライブ ID ${room}（この画面で作りました`), `one-way: the panel made a Live ID (${room}) and a 22-character join code`);
-      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「書き出す前に直すこと」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
+      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「エクスポートする前に直すこと」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
       const f1 = new Date(Date.now() + 3600e3), t1 = new Date(Date.now() + 2 * 3600e3);
       await setWindow(f1, t1);
       const str = await page.inputValue('#live-setup');
@@ -277,7 +277,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       await openLive();
       await page.waitForSelector('#live-poll-1-label');
       ok(await page.textContent('#live-poll-0-label') === label, 'older poll without a label: the label is filled from the slide when the panel opens');
-      ok(await page.textContent('#live-poll-1-label') === 's-gone · ステップ 2' && await page.getAttribute('#live-poll-1-label', 'title') === 'ステップの鍵：s-gone:1', 'older poll on an unknown slide: shown as "s-gone · 段階 2", the key in the tooltip');
+      ok(await page.textContent('#live-poll-1-label') === 's-gone · ステップ 2' && await page.getAttribute('#live-poll-1-label', 'title') === 'ステップの識別子：s-gone:1', 'older poll on an unknown slide: shown as "s-gone · 段階 2", the key in the tooltip');
       const a2 = JSON.parse(await page.inputValue('#live-json'));
       ok(a2[step][0].label === label && !('label' in a2['s-gone:1'][0]), 'older polls: the JSON gets a label only where one could be made');
     }

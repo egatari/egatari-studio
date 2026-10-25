@@ -162,7 +162,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(req.includes('## Components used in this deck') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
   ok((await clip()) === req, 'llm: the fix request is on the clipboard');
   ok(/narration \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
-  ok(/^Copied \d+ finding\(s\), their rules and the current slides and script\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\.$/.test(await page.textContent('#fix-lead')), 'llm: the fix request dialog says where the output goes: ' + await page.textContent('#fix-lead'));
+  ok(/^Copied \d+ finding\(s\), their standards and the current slides and script\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\.$/.test(await page.textContent('#fix-lead')), 'llm: the fix request dialog says where the output goes: ' + await page.textContent('#fix-lead'));
   await shot('fix-request.png');
   F = await files();
   const sid = F['deck.html'].match(/<section class="slide" id="(s-[a-z2-7]{6})">\s*<h2>新しい仕分け/)[1];
@@ -206,9 +206,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(mats.map((m) => m[0]).join() === '表,画像,数式,図形' && mats.every((m) => !m[1]), 'new materials: 表・画像・数式・図形 are always available (not toggles)');
     await pk.click('#paste-purposes-fold-h');
     const tiles = await pk.$$eval('#paste-purposes button.tile', (xs) => xs.map((x) => [x.getAttribute('aria-pressed'), x.querySelector('.tile-label').textContent]));
-    ok(tiles.length === 15 && tiles.every((t) => t[0] === 'true') && (await pk.isVisible('#paste-purposes-html')) && (await pk.textContent('#paste-purposes-html')) === 'パーツのない表し方は、AI が HTML で近い形に描きます'
-      && (await pk.textContent('#paste-parts-h')) === 'この指示に入るパーツ' && (await pk.textContent('#paste-purposes-hint')) === '今は全部使えます。押した表し方は、AI が使いません' && (await pk.textContent('#paste-purposes-sum')) === '言いたいこと：15 個のうち 15 個を使う',
-      'new purposes: 15 tiles (the manifest\'s own purposes), all in use, the summary out of 15, the hint 「押した表し方は、AI が使いません」, and always 「パーツのない表し方は、AI が HTML で近い形に描きます」 under the strip 「この指示に入るパーツ」');
+    ok(tiles.length === 15 && tiles.every((t) => t[0] === 'true') && (await pk.isVisible('#paste-purposes-html')) && (await pk.textContent('#paste-purposes-html')) === 'パーツのない伝えたいことは、AI が HTML で近い形に描きます'
+      && (await pk.textContent('#paste-parts-h')) === 'この指示に入るパーツ' && (await pk.textContent('#paste-purposes-hint')) === '今は全部使えます。押した伝えたいことは、AI が使いません' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：15 個のうち 15 個を使う',
+      'new purposes: 15 tiles (the manifest\'s own purposes), all in use, the summary out of 15, the hint 「押した伝えたいことは、AI が使いません」, and always 「パーツのない伝えたいことは、AI が HTML で近い形に描きます」 under the strip 「この指示に入るパーツ」');
     const c1 = await copy();
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; with all figures in use, every part is described');
     const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
@@ -218,7 +218,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#paste-purpose-process');
     await pk.click('#paste-purpose-contents');
     const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
-    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：1 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '言いたいこと：15 個のうち 13 個を使う',
+    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：1 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：15 個のうち 13 個を使う',
       'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off; the summary counts out of 15');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
@@ -366,7 +366,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       `llm replace (working folder): a reply with one slide replaces just that slide in deck.html and the quality check answers (${r2.ms} ms): ${r2.sum}`);
     // 結果が 0 件でも、説明の文は途中で切れず、エラーがあれば修正依頼のボタンが出ることを言う
     const note0 = await p.textContent('#panel-body .hint');
-    ok(/^The browser quality checker \(size, length, missing narration, color contrast\)\.( |$)/.test(note0) && /“Copy a fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
+    ok(/^The browser quality checker \(size, length, missing script, color contrast\)\.( |$)/.test(note0) && /“Copy a fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
       'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
 
     // ---------------------------------------------------------------- 5c. 修正…：① 直してほしいこと・開いているメモ（comments.json）が修正依頼に入る。直すことがなければそう言う

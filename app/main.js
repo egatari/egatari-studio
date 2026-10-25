@@ -952,7 +952,7 @@ function loadPresenter() {
   const w = S.presWin;
   const f = w && !w.closed && w.document.getElementById('pf');
   if (!f) return;
-  w.document.title = (EN ? 'Presenter — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
+  w.document.title = (EN ? 'Presenter view — ' : '発表者ビュー — ') + (S.ws ? S.ws.name : '');
   S.presLoads = (S.presLoads || 0) + 1;
   f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM, prefix: trustedPrefix() });
 }

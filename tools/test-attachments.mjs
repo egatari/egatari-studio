@@ -558,7 +558,7 @@ const browser = await launch();
   const snap = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'egatari-spec', 'SOURCE.json'), 'utf8')); return j.snapshot; } catch { return undefined; } })();
   const snapText = !snap ? '' : typeof snap === 'string' ? snap : `${snap.status || snap.stage || ''} ${snap.date || ''}`.trim();
   ok((await page.textContent('#info-format')) === `形式：Egatari ${ixA.version.major}.${ixA.version.minor}${snapText ? `（${snapText}）` : ''}` && (await page.textContent('#info-studio')) === `作った Studio：${ixA.generator.version}`
-    && (await page.textContent('#info-player')) === '再生は、ファイルに入った再生器で動きます。編集はいつも最新の Studio で行ってください', `editor: File info of a single file shows the format (${await page.textContent('#info-format')}) and the Studio that made it (${await page.textContent('#info-studio')})`);
+    && (await page.textContent('#info-player')) === '再生は、ファイルに入ったプレーヤーで動きます。編集はいつも最新の Studio で行ってください', `editor: File info of a single file shows the format (${await page.textContent('#info-format')}) and the Studio that made it (${await page.textContent('#info-studio')})`);
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/notes.txt,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
   ok((await page.$eval('[data-attach-role="attachments/paper.pdf"]', (x) => x.value)) === 'pdf' && (await page.$eval('[data-attach-title="attachments/paper.pdf"]', (x) => x.value)) === 'Paper (PDF)' && (await page.$eval('[data-attach-role="attachments/code/run.py"]', (x) => x.value)) === '',
     'editor: role and title come from egatari.json (no role: empty)');

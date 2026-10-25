@@ -163,14 +163,14 @@ try {
 
   // ---- 2. 古い原稿からの編集は 409
   const r409r = await page.request.post(base + '__dev/edit', { data: { ...before, text: 'x' }, headers: TH }); const r409 = [r409r.status(), (await r409r.json()).error];
-  ok(r409[0] === 409 && /原稿が変わっています/.test(r409[1]), 'stale hash -> 409 ' + JSON.stringify(r409));
+  ok(r409[0] === 409 && /HTML が変わっています/.test(r409[1]), 'stale hash -> 409 ' + JSON.stringify(r409));
   ok(fs.readFileSync(DECK, 'utf8') === src1, 'file untouched after 409');
   // 画面でも分かるか：要素の hash を古くしてから開く（外枠が今の原稿を読み、知らせの hash と比べる）
   await dk().evaluate(() => document.querySelector('#stage .slide.active li[data-step="3"]').setAttribute('data-src-h', 'deadbeef'));
   await dk().locator('#stage .slide.active li[data-step="3"]').dblclick();
   await page.waitForSelector('#dev-editor .dev-msg.dv-err');
   await shot('3-conflict.png');
-  ok(/原稿が変わっています/.test(await page.locator('#dev-editor .dev-msg').textContent()) && await page.isDisabled('#dev-editor button.dv-pri'), 'stale element: conflict shown in the editor, Save disabled');
+  ok(/HTML が変わっています/.test(await page.locator('#dev-editor .dev-msg').textContent()) && await page.isDisabled('#dev-editor button.dv-pri'), 'stale element: conflict shown in the editor, Save disabled');
   await page.locator('#dev-editor textarea').press('Escape');
   // 書きかけのあいだに外で原稿が変わった → 保存は 409、入力は残る
   await dk().locator('#stage .slide.active li[data-step="3"]').dblclick();
@@ -183,7 +183,7 @@ try {
   ok((await page.locator('#dev-editor textarea').inputValue()) === '書きかけ', 'outside change: the open editor with unsaved input survives the reload');
   await page.locator('#dev-editor textarea').press('Meta+Enter');
   await page.waitForSelector('#dev-editor .dev-msg.dv-err');
-  ok(/原稿が変わっています/.test(await page.locator('#dev-editor .dev-msg').textContent()) && fs.readFileSync(DECK, 'utf8') === ext0, 'outside change: save -> 409 shown, file untouched');
+  ok(/HTML が変わっています/.test(await page.locator('#dev-editor .dev-msg').textContent()) && fs.readFileSync(DECK, 'utf8') === ext0, 'outside change: save -> 409 shown, file untouched');
   await page.locator('#dev-editor textarea').press('Escape');
   n = await loads();
   fs.writeFileSync(DECK, src1);
@@ -253,7 +253,7 @@ try {
   await page.locator('#dev-narr .dev-turn textarea').first().press('Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
   await shot('4b-narration-conflict.png');
-  ok(/口述原稿が変わっています/.test(await page.locator('#dev-narr .dev-msg').textContent()) && fs.readFileSync(NARR, 'utf8') === extNarr, 'narration conflict shown in drawer, file untouched');
+  ok(/台本が変わっています/.test(await page.locator('#dev-narr .dev-msg').textContent()) && fs.readFileSync(NARR, 'utf8') === extNarr, 'narration conflict shown in drawer, file untouched');
   n = await loads();
   await page.locator('#dev-narr .dev-msg button', { hasText: '再読み込み' }).click();
   await reloaded(n); await page.waitForTimeout(300);

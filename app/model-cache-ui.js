@@ -9,23 +9,23 @@ const size = (n) => (n >= 1e9 ? GB(n) + ' GB' : MB(n) + ' MB');
 
 export function modelCacheSection({ el, EN, ask, toast }) {
   const L = EN ? {
-    title: 'Browser TTS models', none: 'No TTS model is stored in this browser.',
+    title: 'AI voice models on this computer', none: 'No AI voice model is stored in this browser.',
     usage: (u, q) => `This site uses ${size(u)} of browser storage (up to ${size(q)}).`, noUsage: 'This browser does not report its storage use.',
     model: (n, b) => (n.startsWith(IRODORI_PREFIX) ? `Irodori-TTS (Japanese, version ${n.slice(IRODORI_PREFIX.length)})` : 'Kokoro-82M (English)') + (b ? `: ${size(b)}` : ''),
     kept: 'The browser keeps the models (persistent storage).',
     mayEvict: 'The browser may delete the models when the disk is nearly full, and Safari deletes them when you have not opened this site for about a week. They are then downloaded again.',
     old: 'Models of older versions are deleted automatically when a new version is downloaded.',
-    del: 'Delete models', askTitle: 'Delete the TTS models?', askBody: (b) => `This deletes ${b ? size(b) : 'the models'} from this browser. Audio you made stays. The next browser TTS downloads the model again (Japanese about 1.26 GB).`,
+    del: 'Delete models', askTitle: 'Delete the AI voice models?', askBody: (b) => `This deletes ${b ? size(b) : 'the models'} from this browser. Audio you made stays. Making AI audio on this computer next time downloads the model again (Japanese about 1.26 GB).`,
     cancel: 'Cancel', done: (n) => `Deleted ${n} model cache(s)`, failed: 'Could not delete the models',
   } : {
-    title: 'ブラウザの TTS のモデル', none: 'このブラウザには TTS のモデルが入っていません。',
+    title: 'この PC で作る AI 音声のモデル', none: 'このブラウザには AI 音声のモデルが入っていません。',
     usage: (u, q) => `このサイトはブラウザの保存領域を ${size(u)} 使っています（上限 ${size(q)}）。`, noUsage: 'このブラウザは保存領域の使用量を知らせません。',
     model: (n, b) => (n.startsWith(IRODORI_PREFIX) ? `Irodori-TTS（日本語、版 ${n.slice(IRODORI_PREFIX.length)}）` : 'Kokoro-82M（英語）') + (b ? `：${size(b)}` : ''),
     kept: 'モデルは消されずに残ります（ブラウザが保存を約束しています）。',
     mayEvict: 'ディスクの空きが足りなくなると、ブラウザがモデルを消すことがあります。Safari は、このサイトを 1 週間ほど開かないと消します。消えたら、次に使うときに取得し直します。',
     old: '古い版のモデルは、新しい版を取得するときに自動で消します。',
-    del: 'モデルを消す', askTitle: 'TTS のモデルを消しますか？', askBody: (b) => `このブラウザから ${b ? size(b) : 'モデル'} を消します。作った音声は消えません。次にブラウザの TTS を使うときに、モデルを取得し直します（日本語は約 1.26 GB）。`,
-    cancel: '取消', done: (n) => `モデルのキャッシュを ${n} 個消しました`, failed: 'モデルを消せませんでした',
+    del: 'モデルを消す', askTitle: 'AI 音声のモデルを消しますか？', askBody: (b) => `このブラウザから ${b ? size(b) : 'モデル'} を消します。作った音声は消えません。次に AI 音声をこの PC で作るときに、モデルを取得し直します（日本語は約 1.26 GB）。`,
+    cancel: 'キャンセル', done: (n) => `モデルのキャッシュを ${n} 個消しました`, failed: 'モデルを消せませんでした',
   };
   const box = el('section', { id: 'model-cache', cls: 'model-cache' });
   async function render() {

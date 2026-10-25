@@ -259,13 +259,13 @@ try {
   for (let i = at0; i < iCue; i++) await page.keyboard.press('ArrowRight');
   await waitIdx(iCue);
   const cueGuide = await page.evaluate(() => ({ chips: document.querySelectorAll('.rm-chip').length, notes: document.getElementById('rec-notes').textContent, lab: document.querySelector('.rm-chip').getAttribute('aria-label') }));
-  ok(cueGuide.chips === 2 && /動きに合わせる所が 2 個/.test(cueGuide.notes + '') === false && /未設定/.test(cueGuide.notes) && /動きに合わせる所 1 \/ 2/.test(cueGuide.lab), 'cue step: the boundaries are chips (2), with a note that they are not set yet');
+  ok(cueGuide.chips === 2 && /タイミングが 2 個/.test(cueGuide.notes + '') === false && /未設定/.test(cueGuide.notes) && /タイミング 1 \/ 2/.test(cueGuide.lab), 'cue step: the boundaries are chips (2), with a note that they are not set yet');
   await page.keyboard.press('Space'); await waitPhase('recording');
   const chipState = async () => page.evaluate(() => [...document.querySelectorAll('.rm-chip')].map((c) => c.className.replace('rm-chip', '').trim() + ':' + c.textContent));
   ok((await chipState())[0].startsWith('next'), 'cue: while recording the first chip is lit as the next one ' + JSON.stringify(await chipState()));
   await page.waitForTimeout(1200);
   await page.keyboard.press('c');
-  ok(/動きに合わせる所 1 \/ 2/.test(await liveHas(/動きに合わせる所 1 \/ 2/)), 'live: each C press announces "cue n of N"');
+  ok(/タイミング 1 \/ 2/.test(await liveHas(/タイミング 1 \/ 2/)), 'live: each C press announces "cue n of N"');
   await page.waitForTimeout(1000);
   await page.keyboard.press('c');
   ok((await chipState()).every((c) => c.startsWith('done')), 'cue: both chips are marked done after two presses ' + JSON.stringify(await chipState()));
@@ -332,7 +332,7 @@ try {
   ok(em.sync === 'manual' && em.cues.length === 1, `mark: one press for one {mark} → sync manual (${JSON.stringify(em.cues)})`);
   await page.keyboard.press('ArrowRight'); await waitIdx(MIXI);
   const mx = await page.evaluate(() => [...document.querySelectorAll('.rm-chip')].map((c) => c.getAttribute('aria-label')));
-  ok(mx.length === 2 && /印/.test(mx[0]) && !/印/.test(mx[1]), 'mix: a mark and a cue are both chips, labelled by kind ' + JSON.stringify(mx));
+  ok(mx.length === 2 && /強調/.test(mx[0]) && !/強調/.test(mx[1]), 'mix: a mark and a cue are both chips, labelled by kind ' + JSON.stringify(mx));
   await page.keyboard.press('Space'); await waitPhase('recording');
   const cnt0 = await page.textContent('#rec-count');
   await page.waitForTimeout(900); await page.keyboard.press('c');
