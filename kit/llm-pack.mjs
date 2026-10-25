@@ -16,8 +16,9 @@ Prints the instructions for a chat AI: the common body plus the series packs
          none by default, on both plans)
 --lang   language of the instructions (default en)
 --plan   the user's chat AI: free (default; the standard parts and the chosen
-         packs) or paid (every common part, including ${PAID_ONLY.join(', ')},
-         and the chosen packs and tools)
+         packs) or paid (the standard parts plus the chosen packs and tools;
+         the parts the free plan leaves out of its packs, ${PAID_ONLY.join(', ')},
+         come in only through the chosen packs or as standard parts)
 --list   lists the series, their components and the size of the common body
          with that series (KB = UTF-8 bytes / 1024), free plan, then the paid
          plan; without --lang, en and ja sizes
