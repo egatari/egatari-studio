@@ -390,7 +390,7 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-series .tile[aria-pressed="false"] .tile-label{text-decoration:none}
 #dlg .paste-series .tile:disabled{opacity:.45;border-style:dashed;cursor:default}
 #dlg .paste-series.paid .tile:disabled{opacity:1;border-style:solid}
-/* 使える図の並び（読むだけ）：外した部品は薄く破線で斜線 */
+/* この指示に入るパーツの並び（読むだけ）：外した部品は薄く破線で斜線 */
 #dlg .tiles.parts{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
 #dlg .tiles.parts .tile{min-height:56px;cursor:default;font-size:12px;border-width:1px}
 #dlg .tiles.parts .tile svg{width:22px;height:22px}

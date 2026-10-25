@@ -11,7 +11,7 @@
 // S4 国語の先生（ja）：② のタイトルと内容から国語に印・詳しくの要約（言語・話す人・そのほかの希望）・［変更］で直す・自分で替えた印は上書きしない・コードブロックを 1 つずつ
 // S5 大学の教員（ja・有料のプラン）：内容は「チャットの AI に渡してある」→ B の頼み方。詳しくも出し、A と同じ形でタイトル・だれ向け・長さ・言語・話者・希望
 // S8 高校の先生（ja・無料のプラン）：分野は 2 つまで。推した印も 2 つまで、2 つでほかは押せずわけを出す、外すとまた押せる、有料のプランは限りなし
-// S9 前に 3 つの分野を選んだ教材を開いて新規作成：印はそのまま・使うのは初めの 2 つ（1 行で知らせる）・egatari.json は書き換えない
+// S9 前に分野を選んだ教材を開いたまま新規作成：前の選び方は読まず、いつも印なしから（egatari.json は書き換えない）
 // どの場面も：押せない［作成］［挿入］［置き換える］の横に、欠けているもののうち最初の 1 つ（「① に答えてください」など）。押せるときの添え書きもボタンの横
 // 画像（shotDir があれば）：flow-s1-kind.png・flow-s1-answered.png・flow-s1-paste.png・flow-s2-moved.png・flow-s3-outline.png・flow-s4-more.png・flow-s5.png・flow-s6-insert.png・flow-s7-revise.png
 import fs from 'node:fs';
@@ -136,7 +136,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ④ プランの問い（無料が既定）→ 分野（てこからは推せない：印なし）→ 図の折りたたみ（閉じている）→ コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
       && (await p1.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && await p1.isHidden('#paste-series-guess') && (await text(p1, '#paste-series legend')) === 'スライドに出てくるものはありますか（内容の分野）'
-      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === '使える図を見る・外す（ふつうは開かなくて大丈夫） 使える図：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
+      && await p1.$eval('#paste-purposes-fold', (d) => !d.open) && (await text(p1, '#paste-purposes-fold-h')) === 'パーツを見る・表し方を外す（ふつうは開かなくて大丈夫） パーツ：3 種類（外したもの 0）' && /^指示の大きさ：[\d.]+ KB$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the subjects question with nothing ticked, the closed figures fold and the size');
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -415,7 +415,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ================================================================ S8 高校の先生（ja・無料のプラン）：分野は 2 つまで（推した印も 2 つまで。2 つで、ほかは押せない。外すとまた押せる。有料のプランは限りなし）
     const p8 = await open('ja', 's8');
     const checked = (p) => p.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
-    // 使える図の並び（折りたたみの中）と、指示の一覧（§3 の表の行と ### の説明）の部品
+    // この指示に入るパーツの並び（折りたたみの中）と、指示の一覧（§3 の表の行と ### の説明）の部品
     const strip = (p) => p.$$eval('#paste-parts li', (xs) => xs.map((x) => x.dataset.part + (x.classList.contains('off') ? ':off' : '')).sort().join());
     const catalog = (series, plan) => [...new Set([...buildPack({ series, lang: 'ja', plan }).matchAll(/^(?:\| `<|### `<)(m-[a-z]+)>`/gm)].map((m) => m[1]))].sort().join();
     const disabledBoxes = (p) => p.$$eval('#paste-series .tile:disabled', (xs) => xs.map((x) => x.id.replace('paste-series-', '')).join());
@@ -429,7 +429,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await checked(p8)) === 'academic,business' && (await disabledBoxes(p8)) === 'kokugo,info'
       && (await text(p8, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「ビジネス」に印を付けました',
       'S8 ④: the guess (math, business, kokugo) ticks only the first two in order and names only those: ' + await text(p8, '#paste-series-guess'));
-    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')) && await p8.isHidden('#paste-series-stored'),
+    ok(await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === '無料のプランでは 2 つまで選べます' && await p8.$eval('#paste-series-max', (e) => !!e.closest('#paste-series')),
       'S8 ④: with two ticked, the others are disabled and the reason 「無料のプランでは 2 つまで選べます」 is shown in the list');
     ok((await strip(p8)) === catalog(['academic', 'business'], 'free'), 'S8 ④: the figures strip lists exactly the parts in the copied pack (pair): ' + await strip(p8));
     ok((await text(p8, '#paste-series-new-hint')) === `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${FREE_CORE.map((t) => PART_LABELS[t].ja).join('・')}など）だけです`
@@ -438,7 +438,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S8 ④: the subject tiles: an icon, the label and a small line of what is inside');
     await p8.click('#paste-series-business');
     ok((await checked(p8)) === 'academic' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: unticking one enables the others again and hides the reason');
-    ok((await strip(p8)) === catalog(['academic'], 'free') && (await text(p8, '#paste-parts-count')) === `使える図：${catalog(['academic'], 'free').split(',').length} 種類（外したもの 0）` && (await p8.getAttribute('#paste-parts-count', 'aria-live')) === 'polite',
+    ok((await strip(p8)) === catalog(['academic'], 'free') && (await text(p8, '#paste-parts-count')) === `パーツ：${catalog(['academic'], 'free').split(',').length} 種類（外したもの 0）` && (await p8.getAttribute('#paste-parts-count', 'aria-live')) === 'polite',
       'S8 ④: the strip follows a single subject, and the fold summary counts them (aria-live polite): ' + await text(p8, '#paste-parts-count'));
     await p8.click('#paste-series-kokugo');
     ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info', 'S8 ④: a different second subject disables the rest');
@@ -467,12 +467,12 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-purpose-process');
     const offTile = await p8.$eval('#paste-parts li[data-part="m-flow"]', (x) => ({ o: +getComputedStyle(x).opacity, deco: getComputedStyle(x.querySelector('.tile-label')).textDecorationLine, b: getComputedStyle(x).borderTopStyle }));
     const n8 = catalog(['kokugo'], 'free').split(',').length;
-    ok((await strip(p8)) === catalog(['kokugo'], 'free').replace('m-flow', 'm-flow:off') && offTile.o < 1 && offTile.deco.includes('line-through') && offTile.b === 'dashed' && (await text(p8, '#paste-parts-count')) === `使える図：${n8 - 1} 種類（外したもの 1）`,
+    ok((await strip(p8)) === catalog(['kokugo'], 'free').replace('m-flow', 'm-flow:off') && offTile.o < 1 && offTile.deco.includes('line-through') && offTile.b === 'dashed' && (await text(p8, '#paste-parts-count')) === `パーツ：${n8 - 1} 種類（外したもの 1）`,
       'S8 ④: a figure turned off in the fold stays in the strip, faded, dashed and struck through, and the summary counts it: ' + await text(p8, '#paste-parts-count'));
     await p8.click('#paste-purpose-process');
-    ok((await text(p8, '#paste-parts-count')) === `使える図：${n8} 種類（外したもの 0）`, 'S8 ④: turning it back on updates the count');
+    ok((await text(p8, '#paste-parts-count')) === `パーツ：${n8} 種類（外したもの 0）`, 'S8 ④: turning it back on updates the count');
 
-    // ================================================================ S9 前に 3 つの分野を選んだ教材（egatari.json の studio.newDeck）を開いて新規作成：印はそのまま、使うのは初めの 2 つ、記録は書き換えない
+    // ================================================================ S9 前に分野を選んだ教材（egatari.json の studio.newDeck）を開いたまま新規作成：前の選び方は読まず、いつも印なしから。記録は書き換えない
     const p9 = await open('ja', 's9');
     const cfg9 = '{\n  "studio": {\n    "newDeck": {"v": 1, "plan": "free", "category": "teaching", "subcategory": "class", "subjects": ["math", "kokugo", "info"], "purposesOff": []}\n  }\n}\n';
     await p9.evaluate(async ([d, n, c]) => {
@@ -492,15 +492,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p9.fill('#paste-title', 'てこのはたらき');
     await p9.click('#paste-next-content');
     await p9.click('#paste-next-theme');
-    ok((await checked(p9)) === 'academic,kokugo,info' && (await disabledBoxes(p9)) === 'business' && await p9.isVisible('#paste-series-stored') && await p9.isHidden('#paste-series-max')
-      && (await text(p9, '#paste-series-stored')) === '無料のプランでは 2 つまでなので、「数理・統計」と「国語」を使います。替えるときは印を外してください',
-      'S9 ④: the three stored ticks stay, the fourth box is disabled, and one line says which two are used: ' + await text(p9, '#paste-series-stored'));
-    const c9 = await copy(p9);
-    ok(c9 === packWithRequest({ series: ['academic', 'kokugo'], lang: 'ja', request: tailOf(c9, 'ja'), plan: 'free' }), 'S9 ④: the copied instructions use only the first two (数理・統計 and 国語)');
-    ok((await cfgNow()) === cfg9, 'S9: the stored record is not rewritten when it is read');
-    await p9.click('#paste-change-send');
-    await p9.click('#paste-series-academic');
-    ok((await checked(p9)) === 'kokugo,info' && await p9.isHidden('#paste-series-stored') && await p9.isVisible('#paste-series-max') && (await disabledBoxes(p9)) === 'academic,business', 'S9 ④: unticking one leaves two: the notice goes, the limit stays');
+    ok((await checked(p9)) === '' && (await disabledBoxes(p9)) === '' && !(await p9.$('#paste-series-stored')) && (await cfgNow()) === cfg9,
+      'S9 ④: New… starts with no subject ticked even when the open lesson recorded three; the record is not touched');
     await p9.click('#dlg-cancel');
     ok((await cfgNow()) === cfg9, 'S9: the record is still unchanged after closing');
   } finally {
