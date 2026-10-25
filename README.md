@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=6d00a631e6530eaf -->
+<!-- i18n: pair=README.ja.md sha256=49a8776ad4d88e8a -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -14,7 +14,7 @@ English | [日本語](README.ja.md)
 
 *Egatari Studio (formerly motion-academic-slides). The npm package, the skills and the commands keep their names.*
 
-Academic slides as one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk, the Lecture view, a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
+Academic slides as one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk (with later steps shown faintly if you like), a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
 
 ![A slide from the TMLR 2026 example](docs/images/hero.png)
 
@@ -27,7 +27,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and p
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Emphasis**: `{mark:ID|circle}` in the script draws a hand-drawn underline, circle, box, spotlight or laser pointer dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
-- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, later steps dimmed), video (`?mode=video`)
+- **Two modes from one source**: slide show (`?mode=talk`) and video (`?mode=video`). Show later steps faintly is an option of the slide show (`l`; `?mode=lecture` opens it with the option on)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables
 - **Quality control**: the standards (R-fit, R-steps, …) say what a lesson must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, script coverage, contrast, part determinism, emphasis and morphs
@@ -49,7 +49,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and p
 
 | | Tier 1: slides (core) | Tier 2: narrated video (optional) |
 |---|---|---|
-| You get | HTML slides, presenter view, Lecture view, PDF | per-step MP4 clips, a full video, an Egatari file with audio |
+| You get | HTML slides, presenter view, the option to show later steps faintly, PDF | per-step MP4 clips, a full video, an Egatari file with audio |
 | Needs | Node ≥ 22; Google Chrome only for the quality checker, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
 | Optional | uv (font subsetting) | |
 
@@ -156,7 +156,7 @@ The same editing as the dev server, as a web page that opens an Egatari file (`.
 - **Script audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the script changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with “Make AI voice on this computer” (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#script-audio-audio-panel)). In an Egatari file this is saved without rebuilding
 - **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
-- **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print / PDF, File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show, in the Lecture view or as a video, or in presenter view with the script and the next step).
+- **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print / PDF, File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show or as a video, show later steps faintly, or in presenter view with the script and the next step).
 
 Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the command quality checker) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The browser quality checker covers a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full quality check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository parts and themes are the ones bundled when the editor was built; parts and themes inside the working folder are read from the folder.
 
@@ -227,7 +227,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 | f | fullscreen |
 | p | presenter view (speaker notes, next step, timer) |
 | a | autoplay (plays the audio if the lesson has it) |
-| l | Lecture view |
+| l | show later steps faintly (on/off) |
 | b | black screen |
 | s / Shift+s | captions (script, about two lines at a time) / caption size S, M, L |
 | o | slide overview (arrows + Enter) |

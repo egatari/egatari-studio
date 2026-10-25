@@ -283,21 +283,27 @@
    "note": ""
   },
   {
-   "id": "lecture",
+   "id": "preview-later",
    "group": "Structure and playback",
-   "en": "Lecture",
-   "ja": "授業",
-   "definition": "Slide show with later steps shown faintly.",
+   "en": "Show later steps faintly",
+   "ja": "先のステップを薄く見せる",
+   "definition": "An option of Slide show (and self-study), like captions: later steps of the slide appear faintly while the current one is shown. Key l.",
    "avoid": {
     "ja": [
-     "授業モード"
+     "授業",
+     "授業モード",
+     "授業の表示"
     ],
-    "en": []
+    "en": [
+     "Lecture",
+     "Lecture mode",
+     "Lecture view"
+    ]
    },
-   "internal": "talk + preview (spec)",
-   "decided": "2026-10-24",
+   "internal": "preview option (spec §1.2); ?mode=lecture legacy alias",
+   "decided": "2026-10-25",
    "by": "owner",
-   "note": "In prose about the mode, write 授業の表示 / the Lecture view; plain 授業 in prose means a class."
+   "note": ""
   },
   {
    "id": "video",

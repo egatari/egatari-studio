@@ -1461,10 +1461,10 @@ try {
           await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: 20000 });
           const fr = pt.frames().find((x) => x.parentFrame() === pt.mainFrame());
           let m = null; for (let i = 0; i < 50 && m !== 'lecture'; i++) { try { m = await fr.evaluate(() => window.DECK && DECK.ready ? DECK.mode : null); } catch { /* 読み込み中 */ } if (m !== 'lecture') await pt.waitForTimeout(100); }
-          ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'false', `preview (${lang}): 授業で確かめる shows lecture mode; the modes are one choice`);
+          ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'true', `preview (${lang}): 先のステップを薄く見せる turns the option on (internal mode lecture); the slide show stays the chosen mode`);
           await clickCommand(pt, '#b-lecturemode');
         }
-        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a lecture', 'Check as a video', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '授業で確かめる', '動画で確かめる', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
+        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
       }
       // 狭い幅では 2 行に折り返し、はみ出さない
       await pt.setViewportSize({ width: 900, height: 860 });

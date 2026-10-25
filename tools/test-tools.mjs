@@ -142,6 +142,19 @@ await pv.waitForTimeout(100);
 ok(await p.evaluate(() => DECK.tools.mode()) === null, '発表者ビューの Esc で本体も解除');
 await pv.close();
 
+// ---- 先のステップを薄く見せる（l。字幕と同じ入／切の選び）：?mode=lecture は古い名前のまま、スライドショーにこの選びを入れて開く
+const lp = await ctx.newPage(); watch(lp, '先のステップ');
+await lp.goto(url + '?mode=lecture#2'); await ready(lp);
+const lst = () => lp.evaluate(() => { const b = document.querySelector('#dt-cb [data-b="lect"]'); return { mode: DECK.mode, data: document.documentElement.getAttribute('data-mode'), pressed: b && b.getAttribute('aria-pressed'), on: b && b.classList.contains('on'), label: b && (b.getAttribute('aria-label') || b.title) }; });
+let ls = await lst();
+ok(ls.mode === 'lecture' && ls.pressed === 'true' && ls.on && /先のステップを薄く見せる|Show later steps faintly/.test(ls.label || ''), '?mode=lecture opens the slide show with 「先のステップを薄く見せる」 on (the band button shows it pressed) ' + JSON.stringify(ls));
+await lp.keyboard.press('l'); await lp.waitForTimeout(100);
+const off = await lst();
+await lp.keyboard.press('l'); await lp.waitForTimeout(100);
+const on2 = await lst();
+ok(off.mode === 'talk' && off.pressed === 'false' && !off.on && on2.mode === 'lecture' && on2.pressed === 'true' && on2.on, 'l toggles 「先のステップを薄く見せる」 and the band button shows its state ' + JSON.stringify({ off, on2 }));
+await lp.close();
+
 // ---- 動画モードでは何も作らない
 const v = await ctx.newPage(); watch(v, '動画');
 await v.goto(url + '?mode=video'); await ready(v);

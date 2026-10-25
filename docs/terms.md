@@ -28,7 +28,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | cue | Timing | タイミング | A point inside a step where an animation follows a word of the script. Shown only when a part uses it and in recording mode. | 合図 ・ キュー ・ 区切り（タイミングの意味で） | {cue} | 2026-10-24 (owner) |
 | emphasis | Emphasis | 強調 | A mark drawn on the slide when the script reaches a word (underline, circle, box…). | 注目の演出 ・ 印 / attention mark | {mark} | 2026-10-25 (owner) |
 | slide-show | Slide show | スライドショー | Presenting mode; the presenter moves step by step. |  | talk (spec) | 2026-10-24 (owner) |
-| lecture | Lecture | 授業 | Slide show with later steps shown faintly. In prose about the mode, write 授業の表示 / the Lecture view; plain 授業 in prose means a class. | 授業モード | talk + preview (spec) | 2026-10-24 (owner) |
+| preview-later | Show later steps faintly | 先のステップを薄く見せる | An option of Slide show (and self-study), like captions: later steps of the slide appear faintly while the current one is shown. Key l. | 授業 ・ 授業モード ・ 授業の表示 / Lecture, Lecture mode, Lecture view | preview option (spec §1.2); ?mode=lecture legacy alias | 2026-10-25 (owner) |
 | video | Video | 動画 | Plays by itself along the timeline; used to record video. |  | video (spec) | 2026-10-24 (owner) |
 | self-study | (to be decided) | （未定） | Learner-driven mode with playback rate (spec learn). Name to be decided in the UX validation. Backlog #108. |  | learn (spec) |  (owner) |
 | presenter-view | Presenter view | 発表者ビュー | A second window with the script, next step and tools (key p). |  |  | 2026-10-24 (owner) |

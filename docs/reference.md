@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=83e84f65c8fb9a51 -->
+<!-- i18n: pair=reference.ja.md sha256=ce7644d620f802d0 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -183,7 +183,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: not used by the kit now; kept so that existing themes and lessons keep working) |
 | `--series-1` … `--series-4` | figure series colors |
-| `--lecture-dim` | lecture view: opacity of steps not yet reached (0.5; a theme may set it within 0.45–0.5 so that it stays readable on a projector) |
+| `--lecture-dim` | show later steps faintly: opacity of steps not yet reached (0.5; a theme may set it within 0.45–0.5 so that it stays readable on a projector) |
 | `--font-sans`, `--weight-body` | font family and body weight |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
@@ -253,7 +253,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | f | fullscreen |
 | p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
-| l | lecture on/off |
+| l | show later steps faintly (on/off) |
 | b | black screen (turns the whole window black, with a faint hint in the corner for 2 s and on mouse move; b again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide; the presenter view shows "Black screen", and b there toggles it on the main window; the arrows, Space and PageUp/PageDown there also only end it) |
 | s | captions on/off: the current step's script (display text) at the bottom of the slide |
 | Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |
@@ -270,7 +270,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 
 ### Control bar (mouse move, hides after 2.5 s)
 
-Buttons: previous, next, autoplay/stop, laser pointer, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, lecture, captions, **Listen with read-aloud (not saved as audio)** (only when the browser has speech synthesis and some step has a script but no audio; see [Listen with read-aloud](#listen-with-read-aloud)), presenter view, fullscreen, help, and a small “AI voice” badge when any step's audio is TTS (format spec §7.3). Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
+Buttons: previous, next, autoplay/stop, laser pointer, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, show later steps faintly, captions, **Listen with read-aloud (not saved as audio)** (only when the browser has speech synthesis and some step has a script but no audio; see [Listen with read-aloud](#listen-with-read-aloud)), presenter view, fullscreen, help, and a small “AI voice” badge when any step's audio is TTS (format spec §7.3). Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
 The `?` help ends with a **Send feedback** link and the version (for example `v0.2.0`). It opens the feedback form prefilled with the version, browser, OS, lesson language and mode only; nothing from the lesson is sent. Not shown in video or print, or with `data-feedback="off"`.
 
@@ -297,7 +297,7 @@ Not added in `?mode=video` or the presenter-view iframes, and none of it changes
 
 ### Presenter view
 
-Current screen (left), next step (top right), script of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser pointer, pen, fading pen, clear, overview, lecture; while a pen is active, the same Red/Blue/Black swatches, synced with the main window by color index), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
+Current screen (left), next step (top right), script of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser pointer, pen, fading pen, clear, overview, show later steps faintly; while a pen is active, the same Red/Blue/Black swatches, synced with the main window by color index), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
 
 ### Print and PDF
 

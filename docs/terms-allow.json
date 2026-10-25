@@ -302,34 +302,6 @@
       "reason": "Sample lessons and sample slides (the sample term), not the voice preview."
     },
     {
-      "file": "app/attachments-panel.js",
-      "line": "liveMismatch:",
-      "term": "lecture",
-      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
-      "pairs": true
-    },
-    {
-      "file": "app/live-panel.js",
-      "line": "授業中の質問・投票",
-      "term": "lecture",
-      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
-      "pairs": true
-    },
-    {
-      "file": "app/llm.js",
-      "line": "授業なら導入・展開・まとめ",
-      "term": "lecture",
-      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
-      "pairs": true
-    },
-    {
-      "file": "app/llm.js",
-      "line": "contentGive",
-      "term": "lecture",
-      "reason": "Plain 授業 here means a class (decision: 授業 alone in prose is a class; the mode is 授業 / Lecture only as its name).",
-      "pairs": true
-    },
-    {
       "file": "app/i18n.js",
       "line": "themeSwitchNow:",
       "term": "theme",
@@ -348,6 +320,13 @@
       "line": "purposesHint:",
       "term": "what-to-convey",
       "reason": "The hint sits under the What to convey heading; en refers to the tile with “it”.",
+      "pairs": true
+    },
+    {
+      "file": "**",
+      "pattern": "授業中|別の授業|授業なら|授業のメモ|授業の外|授業・研修|授業（小・中・高）|授業の後|授業前",
+      "term": "preview-later",
+      "reason": "授業 meaning a class or teaching (not the former display mode, now 先のステップを薄く見せる).",
       "pairs": true
     }
   ]
