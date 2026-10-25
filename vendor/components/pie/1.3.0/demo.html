@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-pie の見本</title>
+<!-- 組み方：node kit/build.mjs components/pie/demo.html -o components/pie/out/demo.html（数値はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>1 か月の支出の内訳（架空）</h2>
+  <div class="body">
+    <m-pie unit="万円" digits="1" show="both" style="height:440px">
+      <script type="application/json">{
+        "slices": [
+          {"label": "住まい", "value": 8.5},
+          {"label": "食費", "value": 7.2},
+          {"label": "教育・娯楽", "value": 3.1},
+          {"label": "光熱・通信", "value": 2.6},
+          {"label": "交通", "value": 1.8},
+          {"label": "その他", "value": 2.0, "tone": "muted"}
+        ]
+      }</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>→ 住まいと食費で支出の 6 割を超える</span></div>
+</section>
+
+<section class="slide">
+  <h2>通学の手段（ドーナツ、1 切れずつ。架空）</h2>
+  <div class="body">
+    <m-pie donut="0.56" unit="人" per-step="1" style="height:440px">
+      <script type="application/json">{
+        "center": "回答\n{total}",
+        "slices": [
+          {"label": "自転車", "value": 41},
+          {"label": "徒歩", "value": 32},
+          {"label": "バス", "value": 18},
+          {"label": "電車", "value": 9}
+        ]
+      }</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>→ 7 割が自転車か徒歩で通っている</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 28px;text-align:center;font-size:27px">
+      <div>フェード（fade、既定）</div><div>掃くように（sweep）</div><div>大きくなる（grow）</div>
+      <m-pie variant="fade" style="height:340px">
+        <script type="application/json">{"slices": [{"label": "A", "value": 50}, {"label": "B", "value": 30}, {"label": "C", "value": 20}]}</script>
+      </m-pie>
+      <m-pie variant="sweep" style="height:340px">
+        <script type="application/json">{"slices": [{"label": "A", "value": 50}, {"label": "B", "value": 30}, {"label": "C", "value": 20}]}</script>
+      </m-pie>
+      <m-pie variant="grow" style="height:340px">
+        <script type="application/json">{"slices": [{"label": "A", "value": 50}, {"label": "B", "value": 30}, {"label": "C", "value": 20}]}</script>
+      </m-pie>
+    </div>
+  </div>
+  <div class="concl"><span>→ 資料のシード値（data-egatari-seed）で 1 つが選ばれる。数字は架空</span></div>
+</section>
+
+</div>
+</body>
+</html>
