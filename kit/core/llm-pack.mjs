@@ -4,7 +4,9 @@
 // 同じ関数を、編集アプリの「AI への指示をコピー」（app/llm.js）・コマンド（kit/llm-pack.mjs）・docs の書き出し（tools/make-llm-guide.mjs）・
 // 修正依頼（kit/core/llm-fix.mjs）が使う
 //
-//   buildPack({series, lang}) → 文字列         series：系列の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'
+//   buildPack({series, tools, lang, plan}) → 文字列   series：系列の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'。
+//                                                tools：道具（'m-timer' か 'timer' の配列・'all'。選ばない道具は入らない）。plan：'free'（既定）| 'paid'
+//   TOOLS                                       道具 [{tag, tile: {label, examples, icon}}]（新規作成の「道具」の札。manifest の group: "tool"）
 //   SERIES                                      系列の名前（決まった順）
 //   PACK_VERSION                                指示の版（材料の SHA-256 の先頭 8 字。指示のはじめの行に出る）
 //   commonBody(lang, exclude?)・seriesPart(name, lang, exclude?)  共通の本体・1 つの系列の部分（docs/authoring-with-llms*.md・docs/llm-parts/*.md と同じ中身。
@@ -21,18 +23,25 @@
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSeries as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSeries as norm, normalizeTools as normTools, toolTags, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
 
 export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT };
-export const PAID_ONLY = paidOnly(PACK, 'free');   // 有料版だけの部品
-// その版と系列で組み立てに入る部品（有料版はすべて。無料版は FREE_CORE と、入っている系列の部品・FREE_HOME の部品）
-export function loadedParts(series = [], plan = 'free') {
+export const PAID_ONLY = paidOnly(PACK, 'free');   // 有料版だけの部品（道具は入らない：押せばどちらの版でも入る）
+// その版・系列・道具で組み立てに入る部品（有料版はすべての共通の部品と選んだ系列の部品。無料版は FREE_CORE と、選んだ系列の部品・FREE_HOME の部品。
+// 道具は選んだものだけ、どちらの版でも）
+export function loadedParts(series = [], plan = 'free', tools = []) {
   const all = Object.keys(PACK.en.components).sort();
-  if (plan === 'paid') return all;
-  const ss = norm(series, PACK);
-  return all.filter((t) => { const s = freeSeriesOf(t, PACK.en.components[t].series); return s === 'common' || ss.includes(s); });
+  const ss = norm(series, PACK), on = normTools(tools, PACK), tt = toolTags(PACK);
+  return all.filter((t) => {
+    if (tt.includes(t)) return on.includes(t);
+    const raw = PACK.en.components[t].series;
+    const s = plan === 'paid' ? raw : freeSeriesOf(t, raw);
+    return s === 'common' || ss.includes(s);
+  });
 }
 export const normalizeSeries = (series) => norm(series, PACK);
+export const normalizeTools = (tools) => normTools(tools, PACK);
+export const TOOLS = PACK.tools || [];
 
 export const SERIES = PACK.series;
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
@@ -40,9 +49,10 @@ export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめ
 export const buildPack = (opts) => assemble(PACK, opts);
 // series：入っている系列（表が指す部品。省くと [] = 共通の本体だけ）。off：外した札
 // plan：'free'（既定）| 'paid'。無料版は有料版だけの部品を除き、FREE_HOME の部品をその系列に置く
-const exOf = (exclude, plan) => [...new Set([...exclude, ...paidOnly(PACK, plan)])];
-export const commonBody = (lang = 'en', exclude = [], series = [], off = [], plan = 'free') => commonOf(planData(PACK, plan), lang, exOf(exclude, plan), series, off) + '\n';
-export const seriesPart = (name, lang = 'en', exclude = [], plan = 'free') => partOf(planData(PACK, plan), name, lang, exOf(exclude, plan)) + '\n';
+// tools：選んだ道具（既定はなし。選ばない道具は除く）
+const exOf = (exclude, plan, tools = []) => { const on = normTools(tools, PACK); return [...new Set([...exclude, ...paidOnly(PACK, plan), ...toolTags(PACK).filter((t) => !on.includes(t))])]; };
+export const commonBody = (lang = 'en', exclude = [], series = [], off = [], plan = 'free', tools = []) => commonOf(planData(PACK, plan), lang, exOf(exclude, plan, tools), series, off) + '\n';
+export const seriesPart = (name, lang = 'en', exclude = [], plan = 'free', tools = []) => partOf(planData(PACK, plan), name, lang, exOf(exclude, plan, tools)) + '\n';
 export const PURPOSES = PACK.purposes;   // 言いたいこと（kit/core/purposes.mjs の形。source が 'manifest' か 'fallback'）
 export const requestBody = (lang = 'en') => requestOf(PACK, lang) + '\n';
 
@@ -51,7 +61,8 @@ export function seriesOf(tag) {
   return c ? c.series : null;
 }
 // 系列の部品（plan の版から見た居場所。既定は無料版：m-kpi はビジネス、有料版だけの部品はどこにもない）
-export function membersOfSeries(name, plan = 'free') { return membersOf(planData(PACK, plan).en, name); }
+// 道具は系列の部品に数えない（押したときだけ入る）
+export function membersOfSeries(name, plan = 'free') { const tt = toolTags(PACK); return membersOf(planData(PACK, plan).en, name).filter((t) => !tt.includes(t)); }
 
 // 部品庫の部品のうち、デッキに出てくるもの（コメントの中も数える。軽い見積もりでよい）
 export function componentsIn(html) {

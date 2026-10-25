@@ -136,6 +136,24 @@ export function purposesFrom(manifest, { vendored = null } = {}) {
   return { source: any ? 'manifest' : 'fallback', tiles: fromManifest ? 'manifest' : 'table', list, components, variants, unmapped, warnings };
 }
 
+// 道具（manifest の components.<名前>.group === "tool"。部品庫 v1.8.0 から）：AI に頼んだときだけ使う部品（タイマーなど）。
+// 新規作成の「道具」の札と、指示に入れるかどうか（札を押したときだけ入る）。札の名前・小さな字・絵は components.<名前>.tile {label, examples, icon}
+//   toolsFrom(manifest | null, {vendored?}) → [{tag, tile: {label: {ja, en}, examples: {ja, en}, icon}}]（manifest の部品の順。形の合わないものは落とす）
+export function toolsFrom(manifest, { vendored = null } = {}) {
+  const keep = vendored ? new Set(vendored) : null;
+  if (!isObj(manifest) || !isObj(manifest.components)) return [];
+  const out = [];
+  for (const [dir, c] of Object.entries(manifest.components)) {
+    if (!isObj(c) || c.group !== 'tool' || !isObj(c.tile)) continue;
+    const tag = typeof c.tag === 'string' ? c.tag : 'm-' + dir;
+    if (keep && !keep.has(tag)) continue;
+    const label = str2(c.tile.label), examples = str2(c.tile.examples);
+    if (!label || !examples) continue;
+    out.push({ tag, tile: { label, examples, icon: typeof c.tile.icon === 'string' && ID.test(c.tile.icon) ? c.tile.icon : 'other' } });
+  }
+  return out;
+}
+
 export function componentsOff(off, P) {
   const offSet = new Set(off || []);
   if (!offSet.size) return [];

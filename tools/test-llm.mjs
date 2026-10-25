@@ -23,7 +23,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY, TOOLS } from '../kit/core/llm-pack.mjs';
 import { freeSeriesOf, partOf, planData } from '../kit/core/llm-pack-assemble.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
@@ -59,13 +59,14 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
     // docs は有料のプランの指示の全体：共通の本体（すべての系列が入ったときの表）と頼みたいこと、系列ごとの部分。合わせると --plan paid と同じ
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
-    const paidCommon = commonBody(lang, [], SERIES, [], 'paid');
+    const paidCommon = commonBody(lang, [], SERIES, [], 'paid', 'all');
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
     assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: common body \+ the largest pair of subjects \(\w+ \+ \w+\)|無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（\w+＋\w+）) \| [\d.]+ KB \| 50 KB \|/.test(file)
-      && !/every subject|すべての分野/.test(file.slice(0, file.indexOf('\n## '))), lang + ': the size table lists both plans: each subject and the largest pair for free, no row for every subject');
+      && !/(Free plan|無料のプラン)[^|\n]*(every subject|すべての分野)/.test(file.slice(0, file.indexOf('\n## '))) && /\| (Paid plan: every subject and tool chosen|有料のプラン：すべての分野と道具を選んだとき)/.test(file),
+      lang + ': the size table lists both plans: each subject and the largest pair for free (no row for every subject), and the paid worst case (every subject and tool)');
     const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
-    assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
+    assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
     for (const t of PAID_ONLY) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
     assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
     assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
@@ -100,9 +101,10 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
 ok('部品の居場所：どの部品もちょうど 1 か所（有料版は README の series、無料版は FREE_CORE・FREE_HOME の系列、有料版だけの部品はどこにもない）。README に series がなければ作れない', () => {
   const dirs = vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map((c) => c.name);
   for (const lang of ['en', 'ja']) for (const plan of ['free', 'paid']) {
-    const common = commonBody(lang, [], [], [], plan), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang, [], plan)]));
+    // 道具はどちらの版でも共通の本体に（押したとき）
+    const common = commonBody(lang, [], [], [], plan, 'all'), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang, [], plan, 'all')]));
     for (const c of dirs) {
-      const head = `### \`<m-${c}>\``, raw = seriesOf('m-' + c), where = plan === 'paid' ? raw : freeSeriesOf('m-' + c, raw);
+      const head = `### \`<m-${c}>\``, raw = seriesOf('m-' + c), where = plan === 'paid' || TOOLS.some((t) => t.tag === 'm-' + c) ? raw : freeSeriesOf('m-' + c, raw);
       assert.ok(raw === 'common' || SERIES.includes(raw), c);
       const places = [['common', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([n]) => n);
       assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} m-${c}: ${places}`);
@@ -138,13 +140,13 @@ ok('規格の名前は英語と日本語で同じ・規格は共通の本体だ�
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``) === !PAID_ONLY.includes('m-' + c), c + ' (free: every part but the paid-only ones)');
+    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``) === !(PAID_ONLY.includes('m-' + c) || TOOLS.some((t) => t.tag === 'm-' + c)), c + ' (free: every part but the paid-only ones and the tools not ticked)');
     assert.ok(!/<!--\/?part/.test(g), 'part markers are removed');
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
   assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');
   // 有料版：すべての部品が一覧にある
-  for (const lang of ['en', 'ja']) { const p = buildPack({ lang, plan: 'paid' }); for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(p.includes(`\`<m-${c}>\``), lang + ' paid ' + c); assert.ok(!/<!--\/?part/.test(p)); }
+  for (const lang of ['en', 'ja']) { const p = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }); for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(p.includes(`\`<m-${c}>\``), lang + ' paid ' + c); assert.ok(!/<!--\/?part/.test(p)); }
 });
 
 // ---------------------------------------------------------------- 2. 取り出し

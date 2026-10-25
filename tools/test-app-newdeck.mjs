@@ -160,7 +160,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-paste.png', 'paste-step-paste');
     const F1 = await create(p1);
     const nd1 = newDeckOf(F1);
-    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: [], purposesOff: [] }) && Number.isInteger(seedOf(F1['deck.html'])) && F1['narration.md'].includes('{#s-'),
+    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: [], tools: [], purposesOff: [] }) && Number.isInteger(seedOf(F1['deck.html'])) && F1['narration.md'].includes('{#s-'),
       'S1: 「作成」 opens the new deck with a seed and keeps the choices in studio.newDeck: ' + JSON.stringify(nd1));
     ok(/^作成しました：スライド 3 枚 · 保存するまでファイルには書いていません/.test(await text(p1, '#toast')), 'S1: the toast says 「作成しました：スライド 3 枚」');
 
@@ -243,7 +243,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     st = await status(p2);
     ok(st.deck === '✓ 3 slides' && st.narr === '✓ Script, 3 sections' && st.note === '' && !st.goOff, 'S2 ⑤: both fields are filled; no note beside “Create”');
     const F2 = await create(p2);
-    ok(JSON.stringify(newDeckOf(F2)) === JSON.stringify({ v: 1, plan: 'free', category: 'guides', subcategory: null, subjects: [], purposesOff: [] }), 'S2: “None of these” is stored as subcategory: null in studio.newDeck: ' + JSON.stringify(newDeckOf(F2)));
+    ok(JSON.stringify(newDeckOf(F2)) === JSON.stringify({ v: 1, plan: 'free', category: 'guides', subcategory: null, subjects: [], tools: [], purposesOff: [] }), 'S2: “None of these” is stored as subcategory: null in studio.newDeck: ' + JSON.stringify(newDeckOf(F2)));
 
     // ================================================================ S7 S2 のデッキを修正：直したスライドだけが返る
     await clickCommand(p2, '#b-revise-cmd');
@@ -289,11 +289,13 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
     ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.', 'S3 ④: Business ticks the business subject, and says so');
     await p3.check('#paste-plan-paid');
-    ok(await p3.isVisible('#paste-series') && await p3.isVisible('#paste-series-paid') && (await text(p3, '#paste-series-paid')) === 'Chat AI: paid plan, so all of them are included.'
-      && (await p3.$$eval('#paste-series .tile', (xs) => xs.every((x) => x.getAttribute('aria-pressed') === 'true' && x.disabled))), 'S3 ④: the paid plan shows every subject tile as on and not pressable, with “The paid plan includes all of them.”');
+    ok(await p3.isVisible('#paste-series') && (await p3.$$eval('#paste-series .tile', (xs) => xs.map((x) => x.getAttribute('aria-pressed') + (x.disabled ? ':off' : '')).join())) === 'false,true,false,false,false'
+      && await p3.isHidden('#paste-series-max') && !(await p3.$('#paste-series-paid')) && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.',
+      'S3 ④: on the paid plan the subject tiles stay pressable and keep the guess (Business only; not every subject), with no “all included” line');
     const c3 = await copy(p3);
-    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: kokugo') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
-      'S3 ④: the paid pack with the outline request; the message says to go to step 5 when the outline is out');
+    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: business') && !c3.includes('## Series pack: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
+      'S3 ④: the paid pack is every standard part (m-timeline too) with the chosen subject (business, not kokugo) and the outline request; the message says to go to step 5 when the outline is out');
+    ok((await answer(p3, 'send')) === 'Instructions: Chat AI: paid plan · Business · copied', 'S3 ④: the answered line names the plan and the chosen subject: ' + await answer(p3, 'send'));
     ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
       'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile and says “Paste the outline in step 5”');
     await p3.fill('#paste-outline-text', '```outline\n| 1 | A | x |\n');
@@ -312,7 +314,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.fill('#paste-deck', replyOf(b1.deck, b1.narr));
     const F3 = await create(p3);
     const o3 = (JSON.parse(F3['egatari.json']).studio || {}).outline;
-    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', subjects: ['business'], purposesOff: [] }),
+    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', subjects: ['business'], tools: [], purposesOff: [] }),
       'S3: “Create” opens slides 1–6 with the outline (next: 7) and the paid plan in studio.newDeck');
 
     // ================================================================ S4 高校の国語の先生（ja・無料の Gemini）：漢文「臥薪嘗胆」
@@ -450,14 +452,17 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.click('#paste-next-content');
     ok((await checked(p8)) === 'academic,kokugo', 'S8 ④: a new guess never adds a third subject');
     await p8.check('#paste-plan-paid');
-    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,business,kokugo,info,social' && (await disabledBoxes(p8)) === 'academic,business,kokugo,info,social' && await p8.isHidden('#paste-series-max') && (await text(p8, '#paste-series-paid')) === 'チャットの AI：有料のプランでは全部入ります',
-      'S8 ④: the paid plan has no limit: every tile is on and not pressable, with 「チャットの AI：有料のプランでは全部入ります」');
-    ok((await strip(p8)) === catalog([], 'paid'), 'S8 ④: under the paid plan the strip lists every part');
+    ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max') && !(await p8.$('#paste-series-paid')),
+      'S8 ④: on the paid plan the ticks stay as they are (never all ticked) and every tile is pressable');
+    ok((await strip(p8)) === catalog(['academic', 'kokugo'], 'paid'), 'S8 ④: under the paid plan the strip is every standard part with the chosen subjects: ' + await strip(p8));
+    await p8.click('#paste-series-info');
+    ok((await checked(p8)) === 'academic,kokugo,info' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max'), 'S8 ④: the paid plan has no limit of two');
+    ok((await strip(p8)) === catalog(['academic', 'kokugo', 'info'], 'paid'), 'S8 ④: the strip follows a third subject on the paid plan');
     const c8p = await copy(p8);
-    ok(c8p === packWithRequest({ series: [...SERIES], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies every series');
+    ok(c8p === packWithRequest({ series: ['academic', 'kokugo', 'info'], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies the three chosen subjects');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
-    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the limit applies again');
+    ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,info,social' && await p8.isVisible('#paste-series-max'), 'S8 ④: back to free, the ticks come down to the first two and the limit applies again');
     await p8.click('#paste-series-academic');
     await p8.click('#paste-series-kokugo');
     ok((await checked(p8)) === '' && (await strip(p8)) === catalog([], 'free') && (await strip(p8)) === [...FREE_CORE].sort().join(), 'S8 ④: with no subject, the strip is the standard parts: ' + await strip(p8));
@@ -496,6 +501,63 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S9 ④: New… starts with no subject ticked even when the open lesson recorded three; the record is not touched');
     await p9.click('#dlg-cancel');
     ok((await cfgNow()) === cfg9, 'S9: the record is still unchanged after closing');
+
+    // ================================================================ S10 中学校の先生（ja）：数学のグループワーク。道具（タイマー）の札と推した印、有料のプランでも分野を推す、
+    // 道具は押したときだけ指示に入り、この指示に入るパーツの並びは、どちらのプランでも、道具があってもなくても、写す指示の一覧と同じ
+    const p10 = await open('ja', 's10');
+    const tools10 = (p) => p.$$eval('#paste-tools .tile', (xs) => xs.map((x) => x.dataset.tool + ':' + x.getAttribute('aria-pressed')).join());
+    const catalogT = (series, plan, tools) => [...new Set([...buildPack({ series, tools, lang: 'ja', plan }).matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]))].sort().join();
+    await startNew(p10);
+    await p10.check('#paste-cat-teaching');
+    await p10.check('#paste-sub-class');
+    await p10.click('#paste-next-kind');
+    await p10.fill('#paste-title', '一次関数のグラフ');
+    await p10.click('#paste-next-content');
+    await p10.click('#paste-next-theme');
+    ok((await text(p10, '#paste-tools legend')) === 'スライドで使う道具はありますか（道具）' && (await text(p10, '#paste-tools-hint')) === '押した道具だけ、AI が使います'
+      && JSON.stringify(await p10.$$eval('#paste-tools .tile', (xs) => xs.map((x) => [x.querySelector('.tile-label').textContent, x.querySelector('small').textContent, !!x.querySelector('svg').innerHTML]))) === JSON.stringify([['タイマー', 'グループワークの時間・残り時間・ベル', true]])
+      && (await tools10(p10)) === 'm-timer:false' && await p10.isHidden('#paste-tools-guess'),
+      'S10 ④: the tools row 「スライドで使う道具はありますか（道具）」 has the manifest\'s tile (タイマー, its examples and icon), not ticked without a reason: ' + await tools10(p10));
+    ok((await checked(p10)) === 'academic' && (await strip(p10)) === catalogT(['academic'], 'free', []) && !(await strip(p10)).includes('m-timer'), 'S10 ④: グラフ ticks math; without the tool the strip has no m-timer');
+    // 希望に「10 分」：タイマーに印
+    await p10.click('#paste-change-content');
+    await p10.click('#paste-more-h');
+    await p10.fill('#paste-wishes', '最後に 10 分で話し合う');
+    await p10.click('#paste-next-content');
+    ok((await tools10(p10)) === 'm-timer:true' && (await text(p10, '#paste-tools-guess')) === '② のタイトル・内容・そのほかの希望から「タイマー」を選びました',
+      'S10 ④: 「10 分」 in the wishes pre-ticks the timer and says so: ' + await text(p10, '#paste-tools-guess'));
+    ok((await strip(p10)) === catalogT(['academic'], 'free', ['m-timer']) && (await strip(p10)).includes('m-timer'), 'S10 ④ free: with the tool, the strip is the pack catalog (m-timer in): ' + await strip(p10));
+    const c10 = await copy(p10);
+    ok(c10 === packWithRequest({ series: ['academic'], tools: ['m-timer'], lang: 'ja', request: tailOf(c10, 'ja'), plan: 'free' }) && c10.includes('### `<m-timer>`'), 'S10 ④ free: the copied pack has the ticked tool');
+    ok((await answer(p10, 'send')) === '指示：チャットの AI：無料のプラン・数理・統計・タイマー・コピーしました', 'S10 ④: the answered line names the subject and the tool: ' + await answer(p10, 'send'));
+    // 有料のプラン：分野の推した印も道具も残り、並びは有料の一覧と同じ
+    await p10.click('#paste-change-send');
+    await p10.check('#paste-plan-paid');
+    ok((await checked(p10)) === 'academic' && (await tools10(p10)) === 'm-timer:true' && (await strip(p10)) === catalogT(['academic'], 'paid', ['m-timer']), 'S10 ④ paid: the guessed subject and tool stay ticked; the strip is the paid catalog with the tool: ' + await strip(p10));
+    // 自分で外した道具は、推し直しで付け直さない。外すと並びと指示から消える
+    await p10.click('#paste-tool-timer');
+    ok((await tools10(p10)) === 'm-timer:false' && (await strip(p10)) === catalogT(['academic'], 'paid', []) && !(await strip(p10)).includes('m-timer'), 'S10 ④ paid: unticking the tool takes it out of the strip');
+    const c10p = await copy(p10);
+    ok(c10p === packWithRequest({ series: ['academic'], lang: 'ja', request: tailOf(c10p, 'ja'), plan: 'paid' }) && !c10p.includes('m-timer'), 'S10 ④ paid: the copied pack has no unticked tool');
+    await p10.click('#paste-change-content');
+    await p10.fill('#paste-title', 'グループワーク：一次関数のグラフ');
+    await p10.click('#paste-next-content');
+    ok((await tools10(p10)) === 'm-timer:false', 'S10 ④: a tool unticked by hand is not ticked again by 「グループワーク」');
+
+    // 有料のプランでも、② から分野を推す（すべてに印は付けない）。「グループワーク」でタイマーに印
+    const p11 = await open('ja', 's11');
+    await startNew(p11);
+    await p11.check('#paste-cat-teaching');
+    await p11.check('#paste-sub-class');
+    await p11.click('#paste-next-kind');
+    await p11.fill('#paste-title', 'グループワーク：漢文の故事と統計');
+    await p11.click('#paste-next-content');
+    await p11.click('#paste-next-theme');
+    await p11.check('#paste-plan-paid');
+    ok((await checked(p11)) === 'academic,kokugo' && (await disabledBoxes(p11)) === '' && (await text(p11, '#paste-series-guess')) === '② のタイトルと内容から「数理・統計」「国語」を選びました' && (await tools10(p11)) === 'm-timer:true',
+      'S11 ④ paid: the guess pre-ticks the subjects from step 2 (not all of them) and 「グループワーク」 ticks the timer');
+    await p11.click('#paste-series-social');
+    ok((await checked(p11)) === 'academic,kokugo,social' && (await strip(p11)) === catalogT(['academic', 'kokugo', 'social'], 'paid', ['m-timer']), 'S11 ④ paid: subject tiles are pressable on the paid plan, without a limit; the strip follows');
   } finally {
     for (const c of contexts) await c.close();
   }

@@ -15,13 +15,15 @@
 //   FREE_SUBJECT_MAX                   無料版で選べる分野の数（2）。指示の大きさの上限は 1 つなら PACK_CAP_KB.free.one、2 つなら free.two
 //   freeSubjects(ids)                  無料版で使う分野：選んだもののうち SUBJECTS の順で初めの FREE_SUBJECT_MAX 個
 //                                      （前の記録が 3 つ以上を持っていても、記録は書き換えず、使うのはこれだけ）
-//   seriesForChoice(choice)            指示に入れる系列：有料版はすべての系列（分野は選ばない）、無料版は使う分野（freeSubjects）の系列
+//   guessTools(text)                   タイトル・内容・希望の字から推す道具のタグ（グループワーク・「10 分」・時間 → m-timer。推せなければ []）
+//   seriesForChoice(choice)            指示に入れる系列：有料版は選んだ分野すべての系列、無料版は使う分野（freeSubjects）の系列
+//   toolsForChoice(choice)             指示に入れる道具（選んだ道具のタグ。どちらの版でも）
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''。
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
 //   choiceOf(configText)               → studio.newDeck | null
-//   choice の形：{plan, category, subcategory, subjects: [id], purposesOff: [id]}（category・subcategory は id か null。subjects は無料版で選んだ分野。
-//   有料版でも選んであったものをそのまま残す：無料版に戻したときの選び方。2 つより多い前の記録もそのまま残し、使うのは freeSubjects）
+//   choice の形：{plan, category, subcategory, subjects: [id], tools: [タグ], purposesOff: [id]}（category・subcategory は id か null。subjects は選んだ分野
+//   （どちらの版でも）。2 つより多い記録もそのまま残し、無料版で使うのは freeSubjects。tools は選んだ道具。ない前の記録は道具なし）
 //
 // シード値（§8.4）：原稿の根の要素（deck.html の <html>）の data-egatari-seed。10 進の整数 0 ≤ N < 2^32、なければ 0。
 // 編集器は教材を作るときに 1 回だけ書き（教材どうしが同じ見た目にならないように）、保存で必ず残す。
@@ -34,7 +36,7 @@
 //   <html> の開始タグがない原稿（省略できる）には、<!DOCTYPE> の後ろ（なければ先頭）に <html data-egatari-seed="N"> を足す
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { componentsOff } from './purposes.mjs';
-import { loadedParts } from './llm-pack.mjs';
+import { loadedParts, TOOLS } from './llm-pack.mjs';
 
 export const CATEGORIES = [
   { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
@@ -124,11 +126,23 @@ export const freeSubjects = (ids) => {
   return SUBJECTS.filter((s) => want.has(s.id)).slice(0, FREE_SUBJECT_MAX).map((s) => s.id);
 };
 
-// お使いの AI（無料版・有料版）。無料版は選んだ分野のパーツと共通の本体だけの軽い指示、有料版はすべての系列のパーツを入れた指示
+// 道具の推し方（新規作成 ④ の「道具」の札。タイトル・内容・希望の字から）：グループワーク・「10 分」のような数と分・時間。
+// 控えめに：分数（2 分の 1）や「分野」「分子」などでは推さない（「15 分の作業」は推す）。推せない道具は推さない
+const TOOL_GUESS = {
+  'm-timer': /グループワーク|[0-9０-９]+\s*分(?!の\s*[0-9０-９一二三四五六七八九十]|[野類析布子母散解量岐割])|時間|\bgroup ?work\b|\b\d+\s*(?:min|mins|minutes)\b|\btime limit\b/i,
+};
+export function guessTools(text) {
+  const t = String(text || '');
+  return TOOLS.map((x) => x.tag).filter((tag) => TOOL_GUESS[tag] && TOOL_GUESS[tag].test(t));
+}
+
+// お使いの AI（無料版・有料版）。どちらも選んだ分野と選んだ道具を入れる。無料版は標準パーツ（FREE_CORE）と分野は 2 つまでの軽い指示、
+// 有料版はすべての共通のパーツと、選んだ分野（数は限らない）
 export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
-export const seriesForChoice = (choice) => (planOf(choice) === 'paid' ? SUBJECTS.map((s) => s.series) : seriesOfSubjects(freeSubjects(choice && choice.subjects)));
+export const seriesForChoice = (choice) => seriesOfSubjects(planOf(choice) === 'paid' ? (choice && choice.subjects) : freeSubjects(choice && choice.subjects));
+export const toolsForChoice = (choice) => { const want = new Set((choice && choice.tools) || []); return TOOLS.map((x) => x.tag).filter((t) => want.has(t)); };
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }
@@ -150,7 +164,7 @@ export function choiceRequest(choice, P, lang) {
   const off = P.list.filter((p) => offIds.has(p.id));
   if (off.length) {
     // 組み立てに入る部品の名前だけを出す（無料版の有料版だけの部品・選んでいない分野の部品は、指示に説明がない）
-    const loaded = new Set(loadedParts(seriesForChoice(choice), planOf(choice)));
+    const loaded = new Set(loadedParts(seriesForChoice(choice), planOf(choice), toolsForChoice(choice)));
     const comps = componentsOff([...offIds], P).filter((t) => loaded.has(t));
     rows.push(L === 'ja'
       ? `- 使わない言いたいこと（作者が外した）：${off.map((p) => p.name.ja).join('・')}。その表し方${comps.length ? `（${comps.map((t) => '`' + t + '`').join('・')}）` : ''}は使わない`
@@ -166,6 +180,7 @@ const clean = (choice) => ({
   category: catOf(choice.category) ? choice.category : null,
   subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
   subjects: SUBJECTS.map((s) => s.id).filter((id) => (choice.subjects || []).includes(id)),
+  tools: toolsForChoice(choice),
   purposesOff: [...new Set((choice.purposesOff || []).filter((x) => typeof x === 'string'))].sort(),
 });
 export function withChoice(configText, choice) {

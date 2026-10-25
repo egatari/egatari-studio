@@ -942,7 +942,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "What to convey",
    "ja": "伝えたいこと",
-   "definition": "The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it.",
+   "definition": "The 16 tiles (compare, change, …, predict, place/map); turning one off tells the AI not to use it.",
    "avoid": {
     "ja": [
      "言いたいこと",

@@ -15,11 +15,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
-import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { TILES, purposesFrom, componentsOff, toolsFrom } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
-import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT, TOOLS, loadedParts } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -65,21 +65,29 @@ ok('subjects are part sets mapped to the internal series (math → academic, …
   assert.deepEqual(guessSubjects('Huffman codes'), ['info']);
   assert.deepEqual(guessSubjects(''), []);
   assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
+  // 道具を推す：グループワーク・「10 分」（数と分）・時間。控えめに（2 分の 1・分野・十分では推さない）
+  for (const t of ['グループワークで話し合う', '10 分で付箋に書く', '１５分の作業', '作業の時間を区切る', 'Group work in pairs', 'a 5 min discussion']) assert.deepEqual(guessTools(t), ['m-timer'], t);
+  for (const t of ['てこのはたらき', '2 分の 1 の計算', '分野ごとの比較', '十分に説明する', '']) assert.deepEqual(guessTools(t), [], t);
 });
-ok('AI plan: free (default) packs only the chosen subjects; paid packs every series and ignores the subject ticks', () => {
+ok('AI plan: free (default) packs only the chosen subjects (two at most); paid packs the chosen subjects without a limit; tools on both plans', () => {
   assert.deepEqual(AI_PLANS, ['free', 'paid']);
   assert.equal(DEFAULT_PLAN, 'free');
   assert.equal(planOf({}), 'free'); assert.equal(planOf({ plan: 'paid' }), 'paid'); assert.equal(planOf({ plan: 'gold' }), 'free'); assert.equal(planOf(null), 'free');
   assert.deepEqual(seriesForChoice({ subjects: ['info', 'math'] }), ['academic', 'info']);
   assert.deepEqual(seriesForChoice({ plan: 'free', subjects: [] }), []);
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['kokugo'] }), SERIES);
+  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['kokugo'] }), ['kokugo']);
+  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: [] }), [], 'paid is never every subject by default');
+  assert.deepEqual(seriesForChoice({ plan: 'paid' }), []);
+  assert.deepEqual(toolsForChoice({ plan: 'free', tools: ['m-timer', 'm-nothing'] }), ['m-timer']);
+  assert.deepEqual(toolsForChoice({ plan: 'paid' }), []);
   // 無料版で使う分野は 2 つまで：前の記録が 3 つ以上でも、SUBJECTS の順で初めの 2 つ（記録の順や重なりは関係ない）
   assert.equal(FREE_SUBJECT_MAX, 2);
   assert.deepEqual(freeSubjects(['info', 'kokugo', 'math']), ['math', 'kokugo']);
   assert.deepEqual(freeSubjects(['info', 'info']), ['info']);
   assert.deepEqual(freeSubjects(null), []);
   assert.deepEqual(seriesForChoice({ plan: 'free', subjects: ['info', 'kokugo', 'business', 'math'] }), ['academic', 'business']);
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['info', 'kokugo', 'business'] }), SERIES, 'paid has no limit');
+  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['info', 'kokugo', 'business'] }), ['business', 'kokugo', 'info'], 'paid has no limit');
+  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: SUBJECTS.map((x) => x.id) }), SERIES);
   assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
   assert.deepEqual({ ...PACK_CAP_KB.free }, { one: 40, two: 50 }, 'no cap for every subject (the free plan uses two at most)');
   assert.equal(LIMITS.fail, PACK_CAP_KB.free.one); assert.equal(LIMITS.two, PACK_CAP_KB.free.two); assert.equal(LIMITS.paid, PAID_PACK_KB);
@@ -203,7 +211,7 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
   assert.ok(!/m-compare(?![a-z-])/.test(packWithRequest({ lang: 'en', plan: 'paid', exclude: componentsOff(['compare'], PURPOSES), off: ['compare'] })), 'paid, compare off: m-compare is gone');
   assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan']);
   for (const lang of ['en', 'ja']) {
-    for (const [what, opts] of [['free+social', { series: ['social'], plan: 'free' }], ['free+social+kokugo', { series: ['social', 'kokugo'], plan: 'free' }], ['paid', { series: [], plan: 'paid' }]]) {
+    for (const [what, opts] of [['free+social', { series: ['social'], plan: 'free' }], ['free+social+kokugo', { series: ['social', 'kokugo'], plan: 'free' }], ['paid+social', { series: ['social'], plan: 'paid' }]]) {
       const on = packWithRequest({ ...opts, lang });
       assert.ok(on.includes('### `<m-map-japan>`') && /^\| [^|]+ \| `m-map-japan`/m.test(on), `${lang} ${what}: spatial on → m-map-japan is described and backs the spatial row`);
       const off = packWithRequest({ ...opts, lang, exclude: componentsOff(['spatial'], PURPOSES), off: ['spatial'] });
@@ -228,10 +236,12 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     assert.ok(guideRules(all).has('R-purpose') && guideRules(all).has('R-whole'), lang + ': fix requests can quote them');
     assert.match(all, /https:\/\/github\.com\/egatari\/components\/blob\/v\d+\.\d+\.\d+\/components\/<(name|名前)>\/README\.md/, lang + ': pinned URL');
     // 有料版：すべての部品が表と説明にある。無料版（全部の分野でも）：有料版だけの部品はどこにも名前が出ない
-    const paid = buildPack({ lang, plan: 'paid' });
+    const paid = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' });
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
       assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
-    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hist', 'm-pie', 'm-predict', 'm-scatter', 'm-timeline', 'm-timer', 'm-tree', 'm-venn']);
+    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hist', 'm-pie', 'm-predict', 'm-scatter', 'm-timeline', 'm-tree', 'm-venn']);
+    assert.deepEqual(TOOLS.map((t) => t.tag), ['m-timer'], 'tools are not paid only: they come in on either plan when ticked');
+    assert.ok(!/m-timer/.test(all), lang + ': an unticked tool is not named in the free pack');
     for (const t of PAID_ONLY) assert.ok(!new RegExp(t + '(?![a-z-])').test(all), `${lang}: ${t} is not named in the free pack`);
     assert.ok(!/＊/.test(all) && !/ \*(?= \||,|$)/m.test(all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'))), lang + ': no star markers');
     // 系列を選ばない：表が指すのは共通の部品だけ（説明がないものは名前を出さない）。入っていない系列は何に使えるかだけ
@@ -248,7 +258,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   assert.match(en, /^\| change over time \| `m-curves` \(academic\), `m-bars` \(few points\) \| one line at a time \|$/mi);
   // 無料版：有料版だけの部品（m-timeline など）の行は「この文にはない」（名前は出さない）。有料版はその部品を挙げる
   assert.match(en, /^\| timeline, schedule \| not in this text: the nearest part, or HTML or inline SVG \| one event at a time \|$/mi);
-  assert.match(buildPack({ lang: 'en', plan: 'paid' }), /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
+  assert.match(buildPack({ series: 'all', tools: 'all', lang: 'en', plan: 'paid' }), /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
   assert.match(buildPack({ series: [], lang: 'en' }), /^\| change over time \| `m-bars` \(few points\) \| one line at a time \|$/mi);
   assert.match(buildPack({ series: [], lang: 'en' }), /^\| one key number \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn/);
@@ -264,10 +274,10 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
 });
 // 無料版で選べる分野の組：なし・1 つずつ・2 つの組のどれも（3 つ以上は選べない。前の記録の 3 つ以上は初めの 2 つになる：freeSubjects）
 const FREE_SETS = [[], ...SUBJECTS.map((s) => [s.id]), ...SUBJECTS.flatMap((a, i) => SUBJECTS.slice(i + 1).map((b) => [a.id, b.id]))];
-// 無料版：分野なし・1 つずつ・2 つの組。有料版：分野の印に関わらずすべての系列（seriesForChoice）
+// 無料版：分野なし・1 つずつ・2 つの組。有料版：選んだ分野（数は限らない）と道具（seriesForChoice・toolsForChoice）
 const PLAN_CHOICES = [
   ...FREE_SETS.map((subjects) => ({ plan: 'free', subjects })),
-  { plan: 'paid', subjects: [] }, { plan: 'paid', subjects: ['kokugo'] },
+  { plan: 'paid', subjects: [] }, { plan: 'paid', subjects: ['kokugo'] }, { plan: 'paid', subjects: ['math', 'social'], tools: ['m-timer'] },
 ];
 // 無料版で読み込む部品：FREE_CORE、FREE_HOME の部品はその系列から、系列の部品はその系列から（有料版だけの部品はない）
 const partsIn = (text) => [...tagsIn(text)].filter((t) => PACK_DATA.en.components[t]);
@@ -288,7 +298,7 @@ ok('free plan: FREE_CORE is the v1.1.0 common set; m-curves, m-kpi and m-quad co
     const biz = buildPack({ series: ['business'], lang }), aca = buildPack({ series: ['academic'], lang });
     assert.ok(biz.includes('### `<m-kpi>`') && biz.includes('### `<m-quad>`') && !biz.includes('m-curves'));
     assert.ok(aca.includes('### `<m-curves>`') && !aca.includes('m-kpi') && !aca.includes('m-quad'));
-    for (const t of PAID_ONLY) assert.ok(!buildPack({ series: 'all', lang }).includes(t) && buildPack({ lang, plan: 'paid' }).includes('### `<' + t + '>`'), t);
+    for (const t of PAID_ONLY) assert.ok(!buildPack({ series: 'all', lang }).includes(t) && buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }).includes('### `<' + t + '>`'), t);
   }
 });
 const capOk = (choice, bytes) => {
@@ -297,7 +307,7 @@ const capOk = (choice, bytes) => {
   if (ss.length > FREE_SUBJECT_MAX) return false;
   return bytes <= (ss.length === 2 ? PACK_CAP_KB.free.two : PACK_CAP_KB.free.one) * 1024;
 };
-ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 50 KB for every pair; paid (every series) ≤ PAID_PACK_KB', () => {
+ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and ≤ 50 KB for every pair; paid (any two subjects and every tool) ≤ PAID_PACK_KB', () => {
   for (const lang of ['en', 'ja']) {
     for (const subjects of FREE_SETS) {
       const choice = { plan: 'free', subjects };
@@ -307,11 +317,49 @@ ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and �
     // 前の記録が全部の分野を持っていても、無料版の指示は初めの 2 つ（数理・統計＋ビジネス）
     const every = { plan: 'free', subjects: SUBJECTS.map((s) => s.id) };
     assert.equal(buildPack({ series: seriesForChoice(every), lang, plan: 'free' }), buildPack({ series: ['academic', 'business'], lang, plan: 'free' }));
+    // 有料版：ふつうの組（どの 2 つの分野＋すべての道具）は上限の中。すべての分野と道具（いちばん大きいとき）は gen が知らせるだけ
+    for (const p of PAIRS) {
+      const choice = { plan: 'paid', subjects: SUBJECTS.filter((x) => p.includes(x.series)).map((x) => x.id), tools: TOOLS.map((t) => t.tag) };
+      const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), tools: toolsForChoice(choice), lang, plan: 'paid' }));
+      assert.ok(capOk(choice, b), `${lang} paid ${p.join('+')} + every tool: ${b} B`);
+    }
     const paid = buildPack({ series: seriesForChoice({ plan: 'paid' }), lang, plan: 'paid' });
-    assert.equal(paid, buildPack({ series: [], lang, plan: 'paid' }), 'paid is the full pack whatever the subjects');
-    for (const s of SERIES) assert.ok(paid.includes(lang === 'en' ? `## Series pack: ${s}` : s), `${lang} paid has ${s}`);
-    assert.ok(capOk({ plan: 'paid' }, Buffer.byteLength(paid)));
+    for (const s of SERIES) assert.ok(!paid.includes(lang === 'en' ? `## Series pack: ${s}` : `## 系列の指示：${s}`), `${lang} paid without a subject has no series pack ${s}`);
+    const rep = sizeReport(generate().sizes).find((x) => x.lang === lang && x.worst);
+    assert.ok(rep && rep.level === (rep.kb > PAID_PACK_KB ? 'warn' : 'ok'), `${lang} paid worst case is a warning only: ${rep && rep.kb}`);
   }
+});
+ok('pack: paid = every common part + the chosen subjects + the chosen tools; free = FREE_CORE + FREE_HOME and the chosen subjects (two at most); a tool goes in only when ticked; nothing unticked leaks', () => {
+  const common = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].series === 'common');
+  const tools = TOOLS.map((t) => t.tag);
+  const described = (text) => new Set([...text.matchAll(/^### `<(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]));
+  for (const lang of ['en', 'ja']) {
+    for (const choice of [{ plan: 'paid', subjects: [] }, { plan: 'paid', subjects: ['kokugo'] }, { plan: 'paid', subjects: ['math', 'business', 'kokugo', 'info'] }, { plan: 'paid', subjects: ['social'], tools },
+      { plan: 'free', subjects: [] }, { plan: 'free', subjects: ['math'] }, { plan: 'free', subjects: ['kokugo', 'social'], tools }, { plan: 'free', subjects: ['info', 'kokugo', 'math'] }]) {
+      const series = seriesForChoice(choice), plan = planOf(choice), on = toolsForChoice(choice);
+      const text = packWithRequest({ series, tools: on, lang, plan });
+      const want = new Set(Object.keys(PACK_DATA.en.components).filter((t) => {
+        if (tools.includes(t)) return on.includes(t);
+        const s = PACK_DATA.en.components[t].series;
+        return plan === 'paid' ? s === 'common' || series.includes(s) : loadedFree(series).has(t);
+      }));
+      const what = `${lang} ${plan} ${choice.subjects.join('+') || '(none)'}${on.length ? ' + ' + on.join('+') : ''}`;
+      assert.deepEqual([...described(text)].sort(), [...want].sort(), what + ': described parts');
+      assert.deepEqual(loadedParts(series, plan, on).sort(), [...want].sort(), what + ': loadedParts (the strip) is the pack catalog');
+      if (plan === 'paid') for (const t of common.filter((x) => !tools.includes(x))) assert.ok(want.has(t), what + ': every common part ' + t);
+      if (plan === 'free') assert.ok(series.length <= FREE_SUBJECT_MAX, what + ': two at most');
+      // 選んでいない分野・道具のパーツは、どこにも名前が出ない
+      for (const t of Object.keys(PACK_DATA.en.components).filter((x) => !want.has(x))) assert.ok(!new RegExp(t + '(?![a-z-])').test(text), `${what}: ${t} (not chosen) is named`);
+    }
+    // 道具は押したときだけ：同じ選び方で道具だけ違えば、違いは道具のパーツの説明と表
+    for (const plan of ['free', 'paid']) {
+      const without = buildPack({ series: ['academic'], lang, plan }), withT = buildPack({ series: ['academic'], tools: ['timer'], lang, plan });
+      assert.ok(!without.includes('m-timer') && withT.includes('### `<m-timer>`'), `${lang} ${plan}: m-timer only when ticked`);
+    }
+  }
+  assert.throws(() => buildPack({ tools: ['m-nothing'] }), /unknown tool/);
+  assert.deepEqual(toolsFrom(null), []);
+  assert.deepEqual(TOOLS[0].tile, { label: { ja: 'タイマー', en: 'Timer' }, examples: { ja: 'グループワークの時間・残り時間・ベル', en: 'Group-work time, time left, bells' }, icon: 'timer' }, 'the tool tile comes from the manifest');
 });
 ok('pack: no part used only by the purposes turned off appears anywhere in the copied text (table, catalog, examples, prose), for every single purpose and pair, in both AI plans, within each plan\'s cap', () => {
   const ids = PURPOSES.list.map((p) => p.id);
@@ -354,7 +402,13 @@ const notInCatalog = (text) => { const c = catalogOf(text); return [...namedPart
 ok('gen: a pack over its cap is named (plan, language, subjects) with the bytes over and its three largest sections', () => {
   const g = generate();
   const rep = sizeReport(g.sizes);
-  assert.ok(!rep.some((x) => /all/.test(x.what)), 'no row for every subject');
+  assert.ok(!rep.some((x) => x.plan === 'free' && /all/.test(x.what)), 'no free row for every subject');
+  // 有料版：どの 2 つの分野＋すべての道具は 120 KB で止まる行、すべての分野と道具は知らせるだけの行
+  for (const lang of ['en', 'ja']) {
+    for (const p of PAIRS) { const x = rep.find((y) => y.lang === lang && y.what === `paid common+${p.join('+')}+tools`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
+    const w = rep.find((y) => y.lang === lang && y.worst);
+    assert.ok(w && w.what === 'paid all subjects+tools' && w.max === 120 && w.level !== 'fail', `${lang} paid worst case never fails`);
+  }
   // 1 つの分野のどれも（40 KB）、2 つの組のどれも（50 KB）、ja と en で
   for (const lang of ['en', 'ja']) {
     for (const s of SERIES) assert.equal(rep.find((x) => x.lang === lang && x.what === 'free common+' + s).max, 40);
@@ -439,15 +493,15 @@ ok('choices: egatari.json studio.newDeck through updateConfig (other members byt
   const raw = '{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}}';
   const t = withChoice(raw, { category: 'teaching', subcategory: 'class', subjects: ['kokugo', 'nope'], purposesOff: ['spread', 'key-number', 'spread'] });
   assert.ok(t.startsWith('{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}'));
-  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: ['kokugo'], purposesOff: ['key-number', 'spread'] });
+  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: ['kokugo'], tools: [], purposesOff: ['key-number', 'spread'] });
   const both = withOutline(t, { rows: [{ heading: 'a', point: '' }, { heading: 'b', point: '' }], next: 3 });
   assert.equal(outlineOf(both).next, 3);
   assert.equal(choiceOf(both).category, 'teaching');
-  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class' })), { v: 1, plan: 'free', category: null, subcategory: null, subjects: [], purposesOff: [] });
+  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class' })), { v: 1, plan: 'free', category: null, subcategory: null, subjects: [], tools: [], purposesOff: [] });
   // お使いの AI：有料版を書いて読み戻す（ほかの選び方はそのまま）。知らない値は無料版、plan のない前の記録も無料版
-  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], purposesOff: ['cycle'] });
+  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], tools: ['m-timer', 'm-nope'], purposesOff: ['cycle'] });
   assert.ok(paid.includes('"plan": "paid"') || paid.includes('"plan":"paid"'));
-  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], purposesOff: ['cycle'] });
+  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], tools: ['m-timer'], purposesOff: ['cycle'] }, 'the chosen tools are kept (unknown ones dropped)');
   assert.deepEqual(choiceOf(withChoice(paid, { ...choiceOf(paid), plan: 'free' })), { ...choiceOf(paid), plan: 'free' }, 'switching back to free round-trips too');
   assert.equal(choiceOf(withChoice(null, { plan: 'gold' })).plan, 'free');
   assert.equal(choiceOf('{"studio": {"newDeck": {"v": 1, "category": null, "subcategory": null, "subjects": [], "purposesOff": []}}}').plan, 'free', 'an earlier record without plan reads as free');

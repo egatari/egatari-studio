@@ -229,7 +229,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
     const size3 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(c3.includes('### `<m-timeline>`') && c3.includes('`<m-kanbun>`') && !c3.includes('### `<m-flow>`') && size3 > size2, `new plan: the paid plan copies every series and the paid-only parts, still without the figures turned off (${size2} → ${size3} bytes)`);
+    ok(c3.includes('### `<m-timeline>`') && !c3.includes('m-kanbun') && !c3.includes('m-timer') && !c3.includes('### `<m-flow>`') && size3 > size2, `new plan: the paid plan copies every standard part (the paid-only ones too) but no subject or tool that is not chosen, still without the figures turned off (${size2} → ${size3} bytes)`);
     // 写した後に札を変えても、egatari.json に残すのは写したときの選び方
     await pk.click('#paste-change-send');
     await pk.click('#paste-purpose-timeline');
@@ -241,7 +241,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const F1 = await filesOf();
     const seed = seedOf(F1['deck.html']);
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
-    ok(Number.isInteger(seed) && seed !== 42 && (F1['deck.html'].match(/data-egatari-seed/g) || []).length === 1 && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', subjects: [], purposesOff: ['contents', 'process'] }),
+    ok(Number.isInteger(seed) && seed !== 42 && (F1['deck.html'].match(/data-egatari-seed/g) || []).length === 1 && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', subjects: [], tools: [], purposesOff: ['contents', 'process'] }),
       `new create: a fresh seed is written once on <html> (${seed}; the output's 42 is replaced) and the choices copied are kept in studio.newDeck (not the tile changed after copying)`);
     // 修正…：出力が <html> を書き直してシード値を落としても、前のシード値のまま
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));

@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, planData, paidOnly } from '../kit/core/llm-pack-assemble.mjs';
-import { purposesFrom } from '../kit/core/purposes.mjs';
+import { purposesFrom, toolsFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -340,7 +340,10 @@ export function generate(opts = {}) {
   const lock = JSON.parse(read('components.lock.json'));
   const src = `${lock.source}/blob/${lock.tag}/components/`;
   // 表（{{PURPOSES}}）は組み立てのときに作る（入っている系列・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
-  const data = { series: SERIES, purposes: P, parts: allParts, partsSrc: src };
+  // 道具（タイマーなど）：札を押したときだけ指示に入る共通の部品（manifest の group: "tool"）
+  const tools = toolsFrom(manifest, { vendored: allParts.map((c) => c.tag) });
+  for (const t of tools) if ((allParts.find((c) => c.tag === t.tag) || {}).series !== 'common') throw new Error(`${t.tag}: a tool must be in the common series`);
+  const data = { series: SERIES, purposes: P, tools, parts: allParts, partsSrc: src };
   // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
   const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
   const pre = {};
@@ -422,7 +425,11 @@ export function generate(opts = {}) {
   // 大きさ（KB）：無料版の共通の本体・共通＋1 つの分野・共通＋2 つの分野（どの組も）と、有料版（docs が見せる指示の全体）
   const sizes = {};
   for (const lang of ['en', 'ja']) {
-    sizes[lang] = { common: KB(assemble(data, { series: [], lang })), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), pairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, lang }))])), paid: KB(assemble(data, { lang, plan: 'paid' })) };
+    // 有料版：ふつうの組（どの 2 つの分野＋すべての道具。越えたら止まる）と、すべての分野と道具を選んだとき（いちばん大きい。越えても知らせるだけ）
+    sizes[lang] = { common: KB(assemble(data, { series: [], lang })), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), pairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, lang }))])),
+      // 無料版で道具も押したとき（今は知らせるだけ：上限は道具なしの組で守る）
+      freeTools: Object.fromEntries([[ '', KB(assemble(data, { series: [], tools: 'all', lang })) ], ...SERIES.map((s) => [s, KB(assemble(data, { series: [s], tools: 'all', lang }))]), ...PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang }))])]),
+      paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang, plan: 'paid' }))])), paid: KB(assemble(data, { series: 'all', tools: 'all', lang, plan: 'paid' })) };
   }
   const f1 = (x) => x.toFixed(1) + ' KB';
   for (const lang of ['en', 'ja']) {
@@ -437,8 +444,8 @@ export function generate(opts = {}) {
     // 無料のプランは 1 つの分野ごとと、いちばん大きい 2 つの組（選べるのは 2 つまで。ほかの組はこれより小さい）
     const [bigPair, bigKb] = largestPair(z.pairs), pairName = bigPair.split('+').join(ja ? '＋' : ' + ');
     const rows = ja
-      ? [['無料のプラン：共通の本体だけ', z.common, LIMITS.fail], ...SERIES.map((s) => [`無料のプラン：共通の本体＋${s}`, z.series[s], LIMITS.fail]), [`無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（${pairName}）`, bigKb, LIMITS.two], ['有料のプラン：指示の全体（このファイルとすべての系列）', z.paid, LIMITS.paid]]
-      : [['Free plan: common body only', z.common, LIMITS.fail], ...SERIES.map((s) => [`Free plan: common body + ${s}`, z.series[s], LIMITS.fail]), [`Free plan: common body + the largest pair of subjects (${pairName})`, bigKb, LIMITS.two], ['Paid plan: the full pack (this file and every series pack)', z.paid, LIMITS.paid]];
+      ? [['無料のプラン：共通の本体だけ', z.common, LIMITS.fail], ...SERIES.map((s) => [`無料のプラン：共通の本体＋${s}`, z.series[s], LIMITS.fail]), [`無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（${pairName}）`, bigKb, LIMITS.two], ['有料のプラン：すべての分野と道具を選んだとき（このファイルとすべての系列）', z.paid, LIMITS.paid]]
+      : [['Free plan: common body only', z.common, LIMITS.fail], ...SERIES.map((s) => [`Free plan: common body + ${s}`, z.series[s], LIMITS.fail]), [`Free plan: common body + the largest pair of subjects (${pairName})`, bigKb, LIMITS.two], ['Paid plan: every subject and tool chosen (this file and every series pack)', z.paid, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
     const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SERIES_LIST}}', list);
     files[commonFile(lang)] = preamble + commonOf(paid, lang, ex, SERIES) + '\n\n' + requestOf(data, lang) + '\n';
@@ -459,7 +466,11 @@ export function sizeReport(sizes) {
     out.push({ lang, what: 'free common', plan: 'free', series: [], kb: z.common, max: LIMITS.fail, level: z.common > LIMITS.fail ? 'fail' : z.common > LIMITS.warn ? 'warn' : 'ok' });
     for (const [s, kb] of Object.entries(z.series)) out.push({ lang, what: 'free common+' + s, plan: 'free', series: [s], kb, max: LIMITS.fail, level: kb > LIMITS.fail ? 'fail' : kb > LIMITS.warn ? 'warn' : 'ok' });
     for (const [p, kb] of Object.entries(z.pairs)) out.push({ lang, what: 'free common+' + p, plan: 'free', series: p.split('+'), pair: true, kb, max: LIMITS.two, level: kb > LIMITS.two ? 'fail' : 'ok' });
-    if (z.paid !== undefined) out.push({ lang, what: 'paid', plan: 'paid', series: [...SERIES], kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'fail' : 'ok' });
+    // 無料版で道具も押したとき：1 つの分野なら LIMITS.fail、2 つなら LIMITS.two を越えたら知らせる（止めない。道具なしの組が上限の本体）
+    for (const [k, kb] of Object.entries(z.freeTools || {})) { const ss = k ? k.split('+') : [], max = ss.length === 2 ? LIMITS.two : LIMITS.fail; if (kb > max) out.push({ lang, what: 'free common' + (k ? '+' + k : '') + '+tools', plan: 'free', series: ss, tools: 'all', withTools: true, kb, max, level: 'warn' }); }
+    // 有料版：どの 2 つの分野＋すべての道具も LIMITS.paid まで（越えたら止まる）。すべての分野と道具（いちばん大きいとき）は越えたら知らせるだけ
+    for (const [p, kb] of Object.entries(z.paidPairs || {})) out.push({ lang, what: 'paid common+' + p + '+tools', plan: 'paid', series: p.split('+'), tools: 'all', paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
+    if (z.paid !== undefined) out.push({ lang, what: 'paid all subjects+tools', plan: 'paid', series: [...SERIES], tools: 'all', worst: true, kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'warn' : 'ok' });
   }
   return out;
 }
@@ -478,10 +489,10 @@ export function largestSections(text, n = 3) {
 }
 // 上限を越えた指示の知らせ：どの指示か（版・言語・分野の組）、何バイト越えたか、大きい節 3 つ
 export function overMessage(r, data) {
-  const text = assemble(data, { series: r.series, lang: r.lang, plan: r.plan });
+  const text = assemble(data, { series: r.series, tools: r.tools || [], lang: r.lang, plan: r.plan });
   const bytes = Buffer.byteLength(text, 'utf8'), over = bytes - r.max * 1024;
   const top = largestSections(text).map((x) => `${x.head} (${x.bytes} B)`).join('; ');
-  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
+  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}${r.tools ? ', every tool' : ''}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
 }
 
 // 1 行目の i18n の印は残し、それより後ろを比べる・書く
@@ -520,10 +531,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   let fail = 0;
   // 2 つの組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
   const shownPair = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(z.pairs)[0]]));
+  const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid common+' + largestPair(z.paidPairs)[0] + '+tools']));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : ''}`;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : r.paidPair ? ` (largest pair with every tool; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.withTools ? ` (with every tool ticked; cap ${r.max} KB, a warning only)` : ''}`;
     if (r.pair && r.level !== 'fail' && r.what !== shownPair[r.lang]) continue;
+    if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
     if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
+    else if (r.level === 'warn' && (r.worst || r.withTools)) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
     else if (r.level === 'warn') console.warn(`warning: ${line} — over the ${LIMITS.warn} KB target`);
     else console.log(line);
   }

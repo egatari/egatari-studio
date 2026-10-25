@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=1d1f60f47474b9ae -->
+<!-- i18n: pair=template.ja.md sha256=486e382e646e2afc -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -20,7 +20,7 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. A registered pack is not the Claude Code skill (`skills/`): the skill also quality-checks, builds and narrates (TTS) the lesson on your computer, while the pack only lets a chat AI write the two files you paste back.
 
-This file and the series packs together are the **full pack**, the same text the editor copies for a chat AI on a paid plan: the standards, the output format and every component. Each **series pack** adds the components of one kind of lesson: {{SERIES_LIST}}. For a free plan the editor copies a lighter pack with fewer components (`node kit/llm-pack.mjs --series academic,info --lang en` prints it; add `--plan paid` for the full pack). Sizes (KB = UTF-8 bytes / 1024):
+This file and the series packs together are the **full pack**: the standards, the output format and every component. For a chat AI on a paid plan the editor copies every standard part with the subjects and tools chosen; with every subject and tool chosen, that is the full pack. Each **series pack** adds the components of one kind of lesson: {{SERIES_LIST}}. For a free plan the editor copies a lighter pack with fewer components (`node kit/llm-pack.mjs --series academic,info --lang en` prints it; add `--plan paid` for the paid-plan pack with those subjects, and `--series all --tools all --plan paid` for the full pack). Sizes (KB = UTF-8 bytes / 1024):
 
 {{SIZE_TABLE}}
 

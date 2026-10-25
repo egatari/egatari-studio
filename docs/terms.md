@@ -76,7 +76,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | tools | Tools | 道具 | Parts the AI uses only when asked (e.g. Timer); chosen on both plans. |  | group: tool | 2026-10-25 (owner) |
 | standard-parts | Standard parts | 標準パーツ | Parts included without choosing a subject. | 共通の部品 ・ 共通パーツ ・ 共通の図 / common parts | common | 2026-10-25 (owner) |
 | parts-in-instructions | Parts in these instructions | この指示に入るパーツ | The parts whose notes are in the copied instructions. | 使える図 | loadedParts | 2026-10-25 (owner) |
-| what-to-convey | What to convey | 伝えたいこと | The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it. | 言いたいこと ・ 表し方（見出しで） / purposes | purposes | 2026-10-25 (owner) |
+| what-to-convey | What to convey | 伝えたいこと | The 16 tiles (compare, change, …, predict, place/map); turning one off tells the AI not to use it. | 言いたいこと ・ 表し方（見出しで） / purposes | purposes | 2026-10-25 (owner) |
 | title | Title (shown on the cover) | タイトル（表紙に出ます） | The lesson's title, used on the cover as written. | 題材 / topic |  | 2026-10-25 (owner) |
 | leave-to-ai | Leave it to the AI | AI に任せる | The chosen state of an optional field: the AI decides. | 空のまま ・ 選ばなくてよい |  | 2026-10-25 (owner) |
 
