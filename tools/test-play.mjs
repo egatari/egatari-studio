@@ -764,7 +764,7 @@ console.log('home-screen hint');
     return { ctx, p, shown: () => p.isVisible('#install'), text: () => p.textContent('#install-text') };
   };
   let o = await open({ ua: IPAD_SAFARI });
-  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、アプリのように開けて、ネットワークがなくても使えます：「共有」ボタン（□に↑の形）→「ホーム画面に追加」→「追加」。',
+  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、オフラインでも開けます：「共有」（□に↑の形）→「ホーム画面に追加」→「追加」。' && await o.p.isHidden('#b-install'),
     'iPad Safari, in a browser tab: the hint shows, with the iOS labels');
   await o.p.click('#b-lang');
   ok(/Share → "Add to Home Screen" → "Add"/.test(await o.text()), 'the hint in English');
@@ -779,16 +779,28 @@ console.log('home-screen hint');
   ok(!(await o.shown()), 'iPad opened from the Home Screen (standalone): no hint');
   await o.ctx.close();
   o = await open({ ua: IPAD_CHROME });
-  ok(await o.shown() && /アドレスバーの「共有」ボタン（□に↑の形）→「ホーム画面に追加」→「追加」/.test(await o.text()), 'Chrome on iPad: the Chrome wording');
+  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、オフラインでも開けます：「共有」→「表示を増やす」→「ホーム画面に追加」（「Web アプリとして開く」はオンのまま）→「追加」。', 'Chrome on iPad (CriOS): 「表示を増やす」 and 「Web アプリとして開く」はオンのまま');
   await o.ctx.close();
   o = await open({ ua: IPADOS_DESKTOP, touch: 5 });
   ok(await o.shown(), 'iPadOS asking for the desktop site (a Mac with touch): the hint shows');
   await o.ctx.close();
-  for (const [name, ua] of [['desktop', ''], ['Android', ANDROID]]) {
-    o = await open({ ua });
-    ok(!(await o.shown()), `${name}: no hint`);
-    await o.ctx.close();
-  } }
+  // Android: nothing until the browser offers installing; then a real 「インストール」 button that calls prompt(); a PC never shows one
+  const offer = (p) => p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; return Promise.resolve(); }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); return e.defaultPrevented; });
+  o = await open({ ua: ANDROID });
+  ok(!(await o.shown()), 'Android before the browser offers installing: no hint');
+  ok(await offer(o.p) && await until(() => o.shown()) && await o.p.isVisible('#b-install') && await o.p.textContent('#b-install') === 'インストール' && await o.text() === 'この端末にインストールすると、オフラインでも開けます。',
+    'Android with beforeinstallprompt: the line with a 「インストール」 button');
+  await o.p.click('#b-install');
+  ok(await until(() => o.p.evaluate(() => window.__prompted === 1)) && await until(async () => !(await o.shown())), 'Android: 「インストール」 calls prompt(), then the line hides');
+  await o.ctx.close();
+  o = await open({ ua: ANDROID, standalone: true });
+  await offer(o.p);
+  ok(!(await o.shown()), 'Android running standalone: no install button');
+  await o.ctx.close();
+  o = await open({ ua: '' });
+  ok(!(await o.shown()), 'desktop: no hint');
+  ok(!(await offer(o.p)) && !(await o.shown()), 'desktop with beforeinstallprompt: no install button (the browser keeps its own)');
+  await o.ctx.close(); }
 
 // ---------------------------------------------------------------- 11. phone width and names
 console.log('phone width');

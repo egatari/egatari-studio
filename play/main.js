@@ -316,28 +316,49 @@ function initShare() {
   });
 }
 
-// ---------------------------------------------------------------- the add-to-home-screen hint (iPhone, iPad)
-// iOS and iPadOS offer no install prompt, so the start screen says how to add the Viewer, once per device until dismissed (×).
-// Only in a browser tab on iPhone or iPad (iPadOS in desktop mode reports a Mac with touch); never when opened from the Home
-// Screen (navigator.standalone, display-mode standalone), never on desktop or Android (Android has the browser's own prompt).
-// The browser decides the wording: Safari, Chrome on iOS (CriOS), or one sentence for any other.
+// ---------------------------------------------------------------- adding the Viewer to the device (iPhone, iPad, Android)
+// iOS and iPadOS offer no install prompt, so in a browser tab the start screen says how to add the Viewer, with iOS's own labels:
+// Safari, or Chrome on iOS (CriOS: its share sheet hides 「ホーム画面に追加」 behind 「表示を増やす」, and its 「Web アプリとして
+// 開く」 must stay on for a standalone, offline Viewer), or one sentence for any other browser. iPadOS asking for the desktop site
+// reports a Mac with touch. On Android, when the browser offers installing (beforeinstallprompt), the line carries a real
+// 「インストール」 button that calls prompt(). Never when opened from the Home Screen (navigator.standalone, display-mode),
+// never after × (remembered on this device), and never on a PC: there the .ega.html plays in the browser itself.
 const INSTALL_KEY = 'egatari-play-install-hint';
+let installEvent = null;   // Android's deferred beforeinstallprompt
+function isStandalone() {
+  if (navigator.standalone === true) return true;
+  try { return window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches; } catch { return false; }
+}
 function installKind() {
   const ua = navigator.userAgent || '';
+  if (isStandalone() || getPref(INSTALL_KEY) === 'dismissed') return null;
   const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (!ios) return null;
-  let standalone = navigator.standalone === true;
-  try { standalone = standalone || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches; } catch { /* no matchMedia */ }
-  if (standalone || getPref(INSTALL_KEY) === 'dismissed') return null;
-  return /CriOS/.test(ua) ? 'installChrome' : /FxiOS|EdgiOS|OPiOS|GSA\//.test(ua) ? 'installOther' : /Safari\//.test(ua) ? 'installSafari' : 'installOther';
+  if (ios) return /CriOS/.test(ua) ? 'installChrome' : /FxiOS|EdgiOS|OPiOS|GSA\//.test(ua) ? 'installOther' : /Safari\//.test(ua) ? 'installSafari' : 'installOther';
+  if (/Android/.test(ua) && installEvent) return 'installAndroid';
+  return null;
 }
 function renderInstallHint() {
   const k = installKind();
   $('install').hidden = !k;
+  $('b-install').hidden = k !== 'installAndroid';
   if (k) $('install-text').textContent = W()[k];
 }
+window.addEventListener('beforeinstallprompt', (e) => {
+  if (!/Android/.test(navigator.userAgent || '')) return;   // a PC keeps the browser's own UI; the Viewer is not needed there
+  e.preventDefault();
+  installEvent = e;
+  if (document.documentElement.hasAttribute('data-ready')) renderInstallHint();
+});
+window.addEventListener('appinstalled', () => { installEvent = null; if (document.documentElement.hasAttribute('data-ready')) renderInstallHint(); });
 function initInstallHint() {
   $('b-install-x').addEventListener('click', () => { setPref(INSTALL_KEY, 'dismissed'); $('install').hidden = true; try { $('file').focus(); } catch { /* ignore */ } });
+  $('b-install').addEventListener('click', async () => {
+    const e = installEvent;
+    if (!e) return;
+    installEvent = null;
+    try { await e.prompt(); await e.userChoice; } catch { /* the browser declined */ }
+    renderInstallHint();
+  });
   renderInstallHint();
 }
 
