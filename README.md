@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=62ec6cdb7949d027 -->
+<!-- i18n: pair=README.ja.md sha256=0d77296d6fbf65e5 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -238,7 +238,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 
 All keys (Home/End, PageUp/PageDown, presenter-view keys) and URL parameters: [docs/reference.md#presenting](docs/reference.md#presenting).
 
-Moving the mouse shows a toolbar with the same actions. It hides after 2.5 s. Drawings are kept per slide and never appear in print or video.
+A toolbar with the same actions is shown for about 5 s when the lesson opens (the first time on a device, with a line that says how to bring it back), then whenever the mouse moves or the screen is tapped; it hides after 2.5 s. While it is hidden, a faint **Show toolbar** button at the bottom left brings it back. Drawings are kept per slide and never appear in print or video.
 
 ![toolbar](docs/images/controls.png)
 

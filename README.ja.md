@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=215682628860d07b -->
+<!-- i18n: pair=README.md sha256=a90c434eea93e756 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -238,7 +238,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら 
 
 すべてのキー（Home/End、PageUp/PageDown、発表者ビューのキー）と URL の引数は [docs/reference.ja.md#発表](docs/reference.ja.md#発表)。
 
-マウスを動かすと、同じ操作のボタンを並べた帯が出る（2.5 秒止まると隠れる）。ペンの線はスライドごとに残り、印刷と動画には出ない。
+同じ操作のボタンを並べたツールバーが、開いたときに 5 秒ほど出る（その端末で初めてなら、出し方の 1 行を添える）。その後は、マウスを動かす・画面をタップすると出て、2.5 秒止まると隠れる。隠れている間は、左下の薄いボタン「ツールバーを表示」で出せる。ペンの線はスライドごとに残り、印刷と動画には出ない。
 
 ![ツールバー](docs/images/controls.png)
 
