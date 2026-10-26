@@ -484,13 +484,13 @@ async function orderDiffers(m, k) {
   await settle();
   let bufB = await page.screenshot({ clip: CLIP });
   if (!bufA.equals(bufB)) { await settle(); bufB = await page.screenshot({ clip: CLIP }); }   // 描画の遅れによる誤検出を避ける
-  // まず部品の DOM を比べる。DOM がバイトまで同じで、違いが NOISE_BOUNDS の内側（どれも図形の縁の 1 px・部品の箱の中、数が部品の面積の 0.1 % かつ 200 以下）なら、
+  // まず部品の DOM を比べる。DOM がバイトまで同じで、違いが NOISE_BOUNDS の内側（どれも図形の縁の 1 px・部品の箱の中、数が部品の面積の 0.1 % かつ 200 以下。縁から遠い画素は、ばらばらでわずか（各チャンネル 24/255 以下）なものを 4 個まで）なら、
   // 描き方の揺れ（アンチエイリアス。Linux の Chrome は描き直しを重ねると描き方を切り替える）で、呼び出し順への依存ではない（info の compOrderNoise に記録する）。
   // DOM が違う・比べる DOM のない部品（canvas など）は、今までどおり、はっきり違う画素が 40 を超えたら依存とみなす
   // （kit/render-compare.mjs。tools/test-components.mjs の決定性と同じ基準）
   if (bufA.equals(bufB)) return false;
   const r = await compareRenders(page, bufA, bufB, domA, await domSnapshot(page, m.i));
-  if (r.same && r.kind === 'noise') report(m.i, 'info', 'compOrderNoise', { k, n: r.n, cap: r.cap }, String(k));   // 揺れとして通したものは必ず記録する
+  if (r.same && r.kind === 'noise') report(m.i, 'info', 'compOrderNoise', { k, n: r.n, cap: r.cap, faint: r.faint || 0 }, String(k));   // 揺れとして通したものは必ず記録する
   return !r.same;
 }
 for (const m of meta) {

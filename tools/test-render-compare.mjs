@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
-import { diffStats, judgeRenders, describeRender, noiseCap, compareRenders, domSnapshot, noiseLog, NOISE_BOUNDS, LEGACY_TOL } from '../kit/render-compare.mjs';
+import { diffStats, faintOff, judgeRenders, describeRender, noiseCap, compareRenders, domSnapshot, noiseLog, NOISE_BOUNDS, LEGACY_TOL } from '../kit/render-compare.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-render-compare-'));
@@ -63,7 +63,7 @@ await t('diffStats: a dot or a block in a flat area is away from any edge; outsi
   assert.equal(other.out, other.n);
 });
 await t('NOISE_BOUNDS / noiseCap: a fraction of the component area, at most an absolute cap', () => {
-  assert.deepEqual({ ...NOISE_BOUNDS }, { strong: 48, edgePx: 1, boxPad: 2, capFrac: 0.001, capPx: 200 });
+  assert.deepEqual({ ...NOISE_BOUNDS }, { strong: 48, edgePx: 1, boxPad: 2, capFrac: 0.001, capPx: 200, offMax: 4, offMaxCh: 24 });
   assert.equal(noiseCap(1280 * 720), 200);
   assert.equal(noiseCap(400 * 300), 120);
   assert.equal(noiseCap(100 * 100), 10);
@@ -108,8 +108,42 @@ await t('noiseLog: logs only the accepted noise, with where it happened, and cou
   L.add('tree slide 1 step 4', { kind: 'noise', n: 45, cap: 200 });
   L.add('tree slide 1 step 5', { kind: 'exact', n: 0 });
   L.add('venn slide 2 step 4', { kind: 'legacy', n: 3 });
-  assert.equal(L.count, 1);
-  assert.equal(L.summary('x'), 'x: 1\n  tree slide 1 step 4: 45 px (cap 200)');
+  L.add('cycle slide 1 step 5', { kind: 'noise', n: 2, cap: 200, faint: 2 });
+  assert.equal(L.count, 2); assert.equal(L.faintCount, 1);
+  const P = process.platform;
+  assert.equal(L.summary('x'), `x: 2 (of which 1 with isolated faint off-edge pixels)\n  [${P}] tree slide 1 step 4: 45 px (cap 200)\n  [${P}] cycle slide 1 step 5: 2 px (cap 200), 2 isolated faint off-edge px`);
+});
+// 縁から遠い、ばらばらでわずかな違い（macOS の CI の m-cycle）：白地の平らなところ（部品の箱の中）の画素を、各チャンネル d だけ変える
+const OPT2 = { ...OPT, rects: [[0, 0, 59, 59]] };
+const faintAt = (pts, d) => diffStats(A, img((set) => { for (const [x, y] of pts) set(x, y, 255 - d); }), W, H, OPT2);
+const sq = snap(DOM, 400000, [[0, 0, 59, 59]]);
+await t('faint off-edge: 2 isolated non-edge pixels with a small difference (20/255 per channel) → accepted, with a note', () => {
+  const s = faintAt([[5, 5], [10, 50]], 20);
+  assert.deepEqual([s.n, s.off, s.out], [2, 2, 0]);
+  const r = judged(s, sq, sq);
+  assert.deepEqual([r.same, r.kind, r.faint], [true, 'noise', 2]);
+  assert.match(describeRender(r), /2 isolated faint pixel\(s\) away from edges \(each channel <= 24\/255, at most 4\).*accepted/);
+});
+await t('faintOff: off-edge pixels that touch each other are not isolated', () => {
+  // （平らなところで隣り合う 2 つの違いは、互いを縁とみなして diffStats では縁の画素になるので、ここでは faintOff だけを直に確かめる）
+  assert.equal(faintOff({ off: 2, offPts: [[5, 5, 20], [6, 6, 20]] }), false);
+  assert.equal(faintOff({ off: 2, offPts: [[5, 5, 20], [7, 5, 20]] }), true);
+});
+await t('faint off-edge: 4 pass; 5 such pixels fail', () => {
+  const four = [[5, 5], [10, 50], [50, 5], [50, 50]];
+  assert.equal(judged(faintAt(four, 20), sq, sq).same, true);
+  const r = judged(faintAt([...four, [5, 50]], 20), sq, sq);
+  assert.deepEqual([r.same, r.kind], [false, 'pixels']);
+});
+await t('faint off-edge: 1 non-edge pixel with a large difference (200 per channel) fails; so does 25/255, and outside the component box', () => {
+  assert.equal(judged(faintAt([[5, 5]], 200), sq, sq).same, false);
+  assert.equal(judged(faintAt([[5, 5]], 25), sq, sq).same, false, '25/255 is over the limit');
+  assert.equal(judged(faintAt([[5, 5]], 24), sq, sq).same, true, '24/255 is at the limit');
+  const outside = diffStats(A, img((set) => set(5, 5, 235)), W, H, { ...OPT, rects: [[20, 20, 39, 39]] });
+  assert.equal(outside.out, 1);
+  assert.equal(judged(outside, sq, sq).same, false, 'outside the component box');
+  assert.equal(judged(faintAt([[5, 5]], 20), sq, snap(DOM + ' ', 400000, [[0, 0, 59, 59]])).same, true, 'a different DOM: the old rule (≤ 40) as before');
+  assert.equal(judged(faintAt([[5, 5]], 20), sq, snap(DOM + ' ', 400000, [[0, 0, 59, 59]])).kind, 'dom');
 });
 
 // ---- 2. ブラウザ

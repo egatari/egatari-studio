@@ -49,7 +49,7 @@ for (const { name, version, dir } of comps) {
   if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
   const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
   const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
-  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note ${name} quality check: ${x.msg}`); }
+  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
   const shots = path.join(outRoot, name, 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -168,7 +168,7 @@ for (const { name, version, dir } of comps) {
       // まず部品の DOM を比べ、バイトまで同じなら縁だけの少しの画素の違い（描き方の揺れ）は許す（kit/render-compare.mjs の NOISE_BOUNDS。kit/check.mjs の D と同じ基準）
       const cmp = await compareRenders(p, A, B, DA, await domSnapshot(p, s.i));
       const ok = cmp.same;
-      if (!cmp.exact) console.log(`   ${ok ? 'note' : 'diff'} ${name} slide ${s.i + 1} (s${s.i}) step ${k}: ${cmp.note}`);
+      if (!cmp.exact) console.log(`   ${ok ? 'note' : 'diff'} [${process.platform}] ${name} slide ${s.i + 1} (s${s.i}) step ${k}: ${cmp.note}`);
       noise.add(`${name} slide ${s.i + 1} step ${k}`, cmp);
       det.push(`s${s.i}k${k}:${ok ? 'ok' : 'DIFF'}`);
       if (!ok) { fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_A.png`), A); fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_B.png`), B); }
@@ -193,7 +193,7 @@ for (const { name, version, dir } of comps) {
 }
 await b.close();
 console.log('');
-console.log(noise.summary('determinism: renderer-noise acceptances (DOM byte-identical, edge-only, kit/render-compare.mjs)'));
+console.log(noise.summary('determinism: renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
 console.log(`quality check: renderer-noise acceptances (compOrderNoise): ${qcNoise}`);
 if (fail) {
   console.log(`FAIL: ${fail} of ${names.length} component(s)`);

@@ -36,7 +36,7 @@ const b = await launch();
 
 const settle = (p) => p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
 // 画素の比較は kit/render-compare.mjs（tools/test-components.mjs の決定性・kit/check.mjs の D と同じ基準）：部品の DOM がバイトまで同じで、
-// 違いが NOISE_BOUNDS の内側（縁の 1 px・部品の箱の中・部品の面積の 0.1 % かつ 200 px 以下）なら描き方の揺れとして許して記録する。
+// 違いが NOISE_BOUNDS の内側（縁の 1 px・部品の箱の中・部品の面積の 0.1 % かつ 200 px 以下。縁から遠いのは、ばらばらでわずかなもの 4 個まで）なら描き方の揺れとして許して記録する。
 // DOM が違う・比べる DOM がない部品は、今までどおり画素の数だけ（はっきり違う画素が 40 以下）
 let exactN = 0, tolN = 0;
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
@@ -115,7 +115,7 @@ for (const { name, dir } of comps) {
         const cmp = await compareRenders(p, A, B, DA, DB), same = cmp.same;
         if (cmp.exact) exactN++; else if (same) tolN++;
         const tag = `${name}-s${i + 1}-k${k}-${how}-${label.replace(/\W+/g, '_')}`;
-        if (!cmp.exact) console.log(`     ${same ? 'note' : 'diff'} ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`);
+        if (!cmp.exact) console.log(`     ${same ? 'note' : 'diff'} [${process.platform}] ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`);
         noise.add(`${name} slide ${i + 1} step ${k} (${how}, ${label})`, cmp);
         if (!same) { fs.writeFileSync(path.join(out, tag + '-A.png'), A); fs.writeFileSync(path.join(out, tag + '-B.png'), B); }
         ok(same, `${name}: slide ${i + 1} step ${k}: ${how} interaction, then ${label} = before (pixel-equal)`, name);
@@ -181,7 +181,7 @@ if (!only || only.includes('kobun')) {
   const DF = await domOf(fr, 0), DR = await domOf(ref, 0);
   ok(DF.dom === DR.dom, 'presenter: the component in the presenter view = the declared rendering of (1, 2) (DOM)');
   const pc = await compareRenders(ref, R, P, DR, DF), same = pc.same;
-  if (!pc.exact) console.log(`     ${same ? 'note' : 'diff'} kobun slide 1 step 2 (presenter view): ${pc.note}`);
+  if (!pc.exact) console.log(`     ${same ? 'note' : 'diff'} [${process.platform}] kobun slide 1 step 2 (presenter view): ${pc.note}`);
   noise.add('kobun slide 1 step 2 (presenter view)', pc);
   if (!same) { fs.writeFileSync(path.join(out, 'presenter-ref.png'), R); fs.writeFileSync(path.join(out, 'presenter-cur.png'), P); }
   ok(same, 'presenter: the presenter view\'s current frame = the declared rendering of (1, 2) (pixel-equal)');
@@ -189,7 +189,7 @@ if (!only || only.includes('kobun')) {
 }
 await b.close();
 console.log(`comparisons: ${exactN} exactly equal, ${tolN} within the anti-aliasing tolerance (kit/render-compare.mjs)`);
-console.log(noise.summary('renderer-noise acceptances (DOM byte-identical, edge-only, kit/render-compare.mjs)'));
+console.log(noise.summary('renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
 if (failed.size) console.log('failed components: ' + [...failed].join(', '));
 console.log(fail ? `${fail} failure(s)` : 'all ok');
 process.exit(fail ? 1 : 0);
