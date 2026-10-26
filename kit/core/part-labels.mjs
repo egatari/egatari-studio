@@ -42,6 +42,8 @@ export const PART_LABELS = Object.freeze({
   'm-kakijun': { ja: '書き順', en: 'Stroke order', icon: 'kakijun' },
   'm-keyboard': { ja: '鍵盤', en: 'Keyboard', icon: 'keyboard' },
   'm-syntax': { ja: '英文の構造', en: 'Sentence structure', icon: 'syntax' },
+  'm-heatmap': { ja: 'ヒートマップ', en: 'Heatmap', icon: 'heatmap' },
+  'm-map-world': { ja: '世界地図', en: 'World map', icon: 'mapworld' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');

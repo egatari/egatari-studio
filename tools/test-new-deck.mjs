@@ -236,7 +236,7 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
   assert.ok(componentsOff(['compare'], P).includes('m-rankonly') && !componentsOff(['change'], P).includes('m-rankonly'));
   assert.ok(componentsOff(['compare'], PURPOSES).includes('m-compare'));
   assert.ok(!/m-compare(?![a-z-])/.test(packWithRequest({ lang: 'en', plan: 'paid', exclude: componentsOff(['compare'], PURPOSES), off: ['compare'] })), 'paid, compare off: m-compare is gone');
-  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan']);
+  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan', 'm-map-world']);
   for (const lang of ['en', 'ja']) {
     for (const [what, opts] of [['free+social', { series: ['social'], plan: 'free' }], ['free+social+kokugo', { series: ['social', 'kokugo'], plan: 'free' }], ['paid+social', { series: ['social'], plan: 'paid' }]]) {
       const on = packWithRequest({ ...opts, lang });
@@ -266,7 +266,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     const paid = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' });
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
       assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
-    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-pie', 'm-scatter', 'm-tape', 'm-timeline', 'm-tree', 'm-venn']);
+    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-heatmap', 'm-hissan', 'm-hist', 'm-kakijun', 'm-map-world', 'm-numberline', 'm-pie', 'm-scatter', 'm-tape', 'm-timeline', 'm-tree', 'm-venn']);
     assert.deepEqual(TOOLS.map((t) => t.tag), ['m-timer'], 'tools are not paid only: they come in on either plan when ticked');
     assert.ok(!/m-timer/.test(all), lang + ': an unticked tool is not named in the free pack');
     for (const t of PAID_ONLY) assert.ok(!new RegExp(t + '(?![a-z-])').test(all), `${lang}: ${t} is not named in the free pack`);
@@ -315,8 +315,8 @@ const loadedFree = (series) => new Set(Object.keys(PACK_DATA.en.components).filt
 }));
 ok('free plan: FREE_CORE is the v1.1.0 common set plus m-predict; m-curves, m-kpi and m-quad come only with their v1.1.0 subjects; the newer common parts and FREE_OUT are paid only', () => {
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict'], 'the v1.1.0 common set and m-predict (components v1.9.1)');
-  assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-tape']);
-  for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, t === 'm-kakijun' ? 'kokugo' : 'academic', t + ' is in its series in the vendored release');
+  assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-heatmap', 'm-hissan', 'm-hist', 'm-kakijun', 'm-map-world', 'm-numberline', 'm-tape']);
+  for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, ({ 'm-kakijun': 'kokugo', 'm-map-world': 'social' })[t] || 'academic', t + ' is in its series in the vendored release');
   // 音楽（部品庫 v1.11.0）：m-keyboard は無料版の music の指示に入る（FREE_OUT でない）。m-kakijun は国語でも無料版に名前を出さない。英語（v1.12.0）：m-syntax は無料版の english に入る
   for (const lang of ['en', 'ja']) {
     assert.ok(buildPack({ series: ['music'], lang }).includes('### `<m-keyboard>`') && !buildPack({ series: [], lang }).includes('m-keyboard'), lang + ': m-keyboard comes with the free music pack only');

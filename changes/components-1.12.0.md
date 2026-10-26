@@ -1,6 +1,6 @@
 ### Added
 
-- Components v1.12.0 is the default version: **`m-syntax`** (英文の構造: S V O C M marks, phrase and clause brackets, modifier arrows, parts of speech, then the Japanese translation), in the new series `english`. It comes with the subject English (foreign language) on both plans. Release notes: [egatari/components v1.12.0](https://github.com/egatari/components/releases/tag/v1.12.0)
+- Components v1.12.0 adds **`m-syntax`** (英文の構造: S V O C M marks, phrase and clause brackets, modifier arrows, parts of speech, then the Japanese translation), in the new series `english`. It comes with the subject English (foreign language) on both plans. Release notes: [egatari/components v1.12.0](https://github.com/egatari/components/releases/tag/v1.12.0)
 
 ### Changed
 

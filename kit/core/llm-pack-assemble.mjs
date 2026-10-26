@@ -30,8 +30,9 @@ export const FREE_HOME = Object.freeze({ 'm-curves': 'academic', 'm-kpi': 'busin
 // FREE_OUT：系列の部品のうち、無料版では読み込まないもの（有料版だけ）。部品庫 v1.10.0 の m-hissan・m-numberline・m-tape も今は有料版だけ。部品庫 v1.9.0 の academic の m-hist・m-boxplot は、
 // 入れると無料版の数理・統計が 40 KB を越えるので、今は有料版だけ（2026-10-25 に決めた。無料版の表の spread・compare は近いパーツか HTML）。
 // 部品庫 v1.11.0 の kokugo の m-kakijun（書き順）も有料版だけ（2026-10-26 に決めた）。music の m-keyboard は無料版の music の指示に入る。
-// 部品庫 v1.12.0 の english の m-syntax は無料版の english の指示に入る（2026-10-27、規格化の決め。english は無料の分野）
-export const FREE_OUT = Object.freeze(['m-boxplot', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-tape']);
+// 部品庫 v1.12.0 の english の m-syntax は無料版の english の指示に入る（2026-10-27、規格化の決め。english は無料の分野）。
+// 部品庫 v1.13.0 の academic の m-heatmap と social の m-map-world は有料版だけ（2026-10-27）
+export const FREE_OUT = Object.freeze(['m-boxplot', 'm-heatmap', 'm-hissan', 'm-hist', 'm-kakijun', 'm-map-world', 'm-numberline', 'm-tape']);
 const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
 // 無料版から見た部品の居場所：FREE_HOME の系列、FREE_CORE なら 'common'、ほかの共通の部品は null（有料版だけ）、系列の部品はその系列
 export function freeSeriesOf(tag, series) {

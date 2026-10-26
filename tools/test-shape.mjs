@@ -133,6 +133,9 @@ const WRONG = {
   'm-tape': '<script type="application/json">{"rows": [{"label": "A", "segs": [3, 2]}]}</script>',
   // 部品庫 v1.11.0：鍵盤を keys でなく notes に、1 つの字の並びで書く（m-kakijun は子の JSON を持たない：字は属性 text。下の NO_DATA）
   'm-keyboard': '<script type="application/json">{"range": "C4-C6", "steps": [{"notes": "C4 E4 G4", "label": "主和音"}]}</script>',
+  // 部品庫 v1.13.0：値を行の並びでなく 1 つの並びに書く／国を名前の字の並びで書く
+  'm-heatmap': '<script type="application/json">{"rows": ["ねこ", "いぬ"], "cols": ["ねこ", "いぬ"], "values": [45, 5, 6, 44]}</script>',
+  'm-map-world': '<script type="application/json">{"regions": ["日本", "中国"]}</script>',
 };
 // 子の JSON を持たない部品（static shape の schema が null：書くのは属性だけ。m-syntax は shape.text：子は記法の字）。データの形の誤りはない
 const NO_DATA = ['m-hissan', 'm-kakijun', 'm-syntax'];

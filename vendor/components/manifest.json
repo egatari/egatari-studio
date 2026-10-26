@@ -1,13 +1,13 @@
 {
   "name": "egatari-components",
-  "version": "1.12.0",
-  "tag": "v1.12.0",
+  "version": "1.13.0",
+  "tag": "v1.13.0",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.12.0.tar.gz",
-    "sha256": "2ca2387ce51c7943192e60a4e205eb02c0a21ba1aea67ec82049406c066b20bd",
-    "bytes": 426324
+    "file": "egatari-components-v1.13.0.tar.gz",
+    "sha256": "c4eacac92801520622c791fb2a439cbea761a42f3ce545ccefcaf0e88b60a00f",
+    "bytes": 505312
   },
   "purposes": [
     {
@@ -414,11 +414,11 @@
         "part-whole"
       ],
       "variants": [],
-      "sha256": "d488f33bb8b2dd6e7eadcae5185478a5cc113ab275e9e404f62342074c37ece9",
+      "sha256": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5",
       "files": {
-        "README.md": "51b2092ccfccd881b5ccc4a8dd9b6f1216bd1c3cb48721265a20134d7a8df2ef",
-        "demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
-        "index.js": "d488f33bb8b2dd6e7eadcae5185478a5cc113ab275e9e404f62342074c37ece9"
+        "README.md": "1a257645f1aa906e79f00b739c53f686609382a1b88363549f0df9fe38724c63",
+        "demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+        "index.js": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5"
       }
     },
     "boxplot": {
@@ -543,11 +543,11 @@
         "process"
       ],
       "variants": [],
-      "sha256": "786bd69cf38c0606cf6d685aee497b5f41ec4f782da022156d6279fa367e2146",
+      "sha256": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63",
       "files": {
-        "README.md": "bce01fa713567fc5e91d391335b3e3214a9b07c55c02f29cb3a93cdc6c44943f",
-        "demo.html": "6a351702cb08d53b0652063d6df36f8cc45091bec0ceb5ef8782ab3442b3acfb",
-        "index.js": "786bd69cf38c0606cf6d685aee497b5f41ec4f782da022156d6279fa367e2146"
+        "README.md": "e9c4b5df58d94ae1aad832f808673d8e63b5b11faabf2742df49433bdac7dd1a",
+        "demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+        "index.js": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63"
       }
     },
     "gendai": {
@@ -562,6 +562,24 @@
         "README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
         "demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
         "index.js": "404dfd299d301d4814fa93e62ed71885578aead294357f5f375d31d355984cc8"
+      }
+    },
+    "heatmap": {
+      "tag": "m-heatmap",
+      "series": "academic",
+      "purposes": [
+        "compare",
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep"
+      ],
+      "sha256": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66",
+      "files": {
+        "README.md": "d9eb2579d8a732f34d921b5bf1bfd8c90ff5327b6493534c200d2af0258d6a3a",
+        "demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+        "index.js": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66"
       }
     },
     "hissan": {
@@ -702,6 +720,24 @@
         "README.md": "0a6e3fc643f9a129c0b361b823415ce4046ab2e40855718f8fee8430a88d7985",
         "demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
         "index.js": "9d4aa9cdfbab2db58382003bdf53e47a5938a560293a9742a526580a3849079f"
+      }
+    },
+    "map-world": {
+      "tag": "m-map-world",
+      "series": "social",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31",
+      "files": {
+        "README.md": "b356516564a39be59c0eb3e984493f449ccf1019ac14b6d7dc9448856d79006e",
+        "demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+        "index.js": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31"
       }
     },
     "market": {
@@ -944,11 +980,11 @@
         "draw",
         "grow"
       ],
-      "sha256": "87fa74fa7d4779584b7e98c2d33401aa03dcbb7a4de2cecdbf9f4960de518b7c",
+      "sha256": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310",
       "files": {
-        "README.md": "ded73e14fc1968ef88317714cb851fb2b12d9fa1b13253bbddec441831bb0135",
-        "demo.html": "199941a1e593782ecb1e1fff05477d43d27f9df8b8d4e0d97a546d17c389f628",
-        "index.js": "87fa74fa7d4779584b7e98c2d33401aa03dcbb7a4de2cecdbf9f4960de518b7c"
+        "README.md": "ebc415796823b99119402574d8556f548fe8db431aeee424913ec6a84250d571",
+        "demo.html": "2866bb96c4b88ac5e0f9310ff9f25f4ab232002d321d23fdb37719353bee55d5",
+        "index.js": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310"
       }
     },
     "venn": {
@@ -983,9 +1019,9 @@
   },
   "files": {
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
-    "bars/README.md": "51b2092ccfccd881b5ccc4a8dd9b6f1216bd1c3cb48721265a20134d7a8df2ef",
-    "bars/demo.html": "06eb94dbed1cb11aadb51cb8789b24886d8f58dd29f3a467358320c268fe1e04",
-    "bars/index.js": "d488f33bb8b2dd6e7eadcae5185478a5cc113ab275e9e404f62342074c37ece9",
+    "bars/README.md": "1a257645f1aa906e79f00b739c53f686609382a1b88363549f0df9fe38724c63",
+    "bars/demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+    "bars/index.js": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5",
     "boxplot/README.md": "dde7398ac1a6de21f18defe2186cb853b2204c2c21a2f329dce729263dee9e6d",
     "boxplot/demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
     "boxplot/index.js": "dfb23884ace6ce26c7048c0a813b524009b10210e93107e3c95bbf760c630d2b",
@@ -1007,12 +1043,15 @@
     "fishbone/README.md": "7bbcb15b886e7fadfc1a349d539d6c48b40afff009590a726ef3e2d9e4863acd",
     "fishbone/demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
     "fishbone/index.js": "5584f4b44e5925801fa9f591c1b7e40c4f20d467733320c4798734b5530217cf",
-    "flow/README.md": "bce01fa713567fc5e91d391335b3e3214a9b07c55c02f29cb3a93cdc6c44943f",
-    "flow/demo.html": "6a351702cb08d53b0652063d6df36f8cc45091bec0ceb5ef8782ab3442b3acfb",
-    "flow/index.js": "786bd69cf38c0606cf6d685aee497b5f41ec4f782da022156d6279fa367e2146",
+    "flow/README.md": "e9c4b5df58d94ae1aad832f808673d8e63b5b11faabf2742df49433bdac7dd1a",
+    "flow/demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+    "flow/index.js": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63",
     "gendai/README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
     "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
     "gendai/index.js": "404dfd299d301d4814fa93e62ed71885578aead294357f5f375d31d355984cc8",
+    "heatmap/README.md": "d9eb2579d8a732f34d921b5bf1bfd8c90ff5327b6493534c200d2af0258d6a3a",
+    "heatmap/demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+    "heatmap/index.js": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66",
     "hissan/README.md": "51739066ecbe23247554782fe3fa8f8553abf14fb6503b47abeaeaf2ac0ce406",
     "hissan/demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
     "hissan/index.js": "8e49eb1ad6b20c5e4c63bd27813165138a4eff45a908c6b8f72b8b057eae0f3b",
@@ -1040,6 +1079,9 @@
     "map-japan/README.md": "0a6e3fc643f9a129c0b361b823415ce4046ab2e40855718f8fee8430a88d7985",
     "map-japan/demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
     "map-japan/index.js": "9d4aa9cdfbab2db58382003bdf53e47a5938a560293a9742a526580a3849079f",
+    "map-world/README.md": "b356516564a39be59c0eb3e984493f449ccf1019ac14b6d7dc9448856d79006e",
+    "map-world/demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+    "map-world/index.js": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31",
     "market/README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
     "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
     "market/index.js": "e5fe376e8a1d6b3c220eb2bc6a2e9da7e7fb84a11aa40d0f2507aa3daca6d70a",
@@ -1079,9 +1121,9 @@
     "timer/README.md": "78656e8f1f8bf78f74a712f57d31bec88b75b49d0bd99521c0e4a2c2d0bab0c4",
     "timer/demo.html": "1792b5b2c443088e3e2405fb733f33348e322decb5fe75dc3590fd1b6536f2b0",
     "timer/index.js": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161",
-    "tree/README.md": "ded73e14fc1968ef88317714cb851fb2b12d9fa1b13253bbddec441831bb0135",
-    "tree/demo.html": "199941a1e593782ecb1e1fff05477d43d27f9df8b8d4e0d97a546d17c389f628",
-    "tree/index.js": "87fa74fa7d4779584b7e98c2d33401aa03dcbb7a4de2cecdbf9f4960de518b7c",
+    "tree/README.md": "ebc415796823b99119402574d8556f548fe8db431aeee424913ec6a84250d571",
+    "tree/demo.html": "2866bb96c4b88ac5e0f9310ff9f25f4ab232002d321d23fdb37719353bee55d5",
+    "tree/index.js": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310",
     "venn/README.md": "2040e4f9a805af549b673bb70028a6ba256308446692eb8786ce5be97c5335dc",
     "venn/demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
     "venn/index.js": "6002f62db5422141052907ffb1cf0a8e0d48ef3f91cf81786745eb910e8485fc"

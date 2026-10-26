@@ -636,6 +636,10 @@ export function setupLlm(app) {
     'subj-english': '<path d="M5 21l5.5-14 5.5 14M7.2 16h6.6"/><path d="M19 21V9h4.2a3 3 0 0 1 0 6H19M19 15h4.8a3 3 0 0 1 0 6H19"/><path d="M4 26h24"/>',
     // m-syntax：語の下線と記号、修飾の矢印
     syntax: '<path d="M4 18h7M13 18h6M21 18h7"/><path d="M6 23h3M15 23h2M23 23h3"/><path d="M24 12c0-5-12-5-12 0" /><path d="M10.5 10.5l1.5 1.8 1.8-1.5"/>',
+    // m-heatmap：濃さの違う格子
+    heatmap: '<rect x="4" y="4" width="24" height="24" rx="1"/><rect x="4" y="4" width="8" height="8" fill="currentColor"/><rect x="12" y="12" width="8" height="8" fill="currentColor"/><rect x="20" y="20" width="8" height="8" fill="currentColor"/><rect x="12" y="4" width="8" height="8" fill="currentColor" opacity=".35"/><rect x="4" y="20" width="8" height="8" fill="currentColor" opacity=".35"/><path d="M12 4v24M20 4v24M4 12h24M4 20h24"/>',
+    // m-map-world：経線と緯線の地球
+    mapworld: '<circle cx="16" cy="16" r="12"/><path d="M4 16h24M6 10h20M6 22h20"/><path d="M16 4c-5 4-5 20 0 24M16 4c5 4 5 20 0 24"/>',
     // 音楽の分野：8 分音符を 2 つつないだ形
     'subj-music': '<path d="M12 24V7l14-3v17"/><path d="M12 11l14-3"/><ellipse cx="8.5" cy="24" rx="3.5" ry="2.7"/><ellipse cx="22.5" cy="21" rx="3.5" ry="2.7"/>',
     // 言いたいこと music（札なし。部品庫 v1.11.0 の purposes の icon "music"）：五線と音符
