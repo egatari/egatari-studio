@@ -77,6 +77,25 @@ ok('player と generator：索引と deck-meta に、名前と版。contracts �
   assert.ok(!base.html.includes('"runtime":1'), 'no contracts.runtime anywhere');
 });
 
+ok('player のない文書（1.0 の形より前の草案）：読み手は断らずに開き（preDraft）、取り出しと展開もできる。player を求めるのは書くもの・1.0 の出力の検査だけ', async () => {
+  const el = PF.scanDocument(base.html).byId.get(FORMAT.INDEX_ID);
+  const ix = JSON.parse(el.text); delete ix.player;
+  let h = await PF.replaceIndexText(base.html, JSON.stringify(ix, null, 1));
+  const meta = PF.scanDocument(h).byId.get('deck-meta'), m = JSON.parse(meta.text); delete m.player;
+  h = h.slice(0, meta.start) + `<script type="application/json" id="deck-meta">${PF.htmlSafeJson(JSON.stringify(m))}</script>` + h.slice(meta.end);
+  const r = await PF.readPortable(h);
+  assert.equal(r.preDraft, true);
+  assert.ok(r.warnings.some((w) => /before the 1\.0 file shape/.test(w)) && !r.warnings.some((w) => /missing "player"/.test(w)), JSON.stringify(r.warnings));
+  assert.equal((await PF.readPortable(h, { extract: true })).preDraft, true, 'extraction works too');
+  const f = path.join(work, 'pre-draft.ega.html'); fs.writeFileSync(f, h);
+  const { unpack } = await import('./portable.mjs');
+  await unpack(f, path.join(work, 'pre-draft-out'));
+  assert.ok(fs.existsSync(path.join(work, 'pre-draft-out', 'deck.html')), 'unpacks');
+  // 書く側の検査（1.0 の出力）は player を求める
+  assert.ok(PF.validateIndex(r.index).includes('index: missing "player"'));
+  assert.ok(PF.validateDeckMeta(r.deckMeta).some((e) => /missing "player"/.test(e)));
+});
+
 // ---------------------------------------------------------------- 版の決め方
 // 試験用の根：kit/player.json・lock・中身のファイルの写し
 function playerRoot(name) {
