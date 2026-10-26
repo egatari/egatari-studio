@@ -12,8 +12,8 @@ import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
-// 部品庫 v1.10.0：m-numberline の見本の 3 枚目は本文が下に 47 px はみ出す（2026-10-26、部品庫で直したら消す）
-const KNOWN = { numberline: [{ code: 'bodyBottom', title: '1200 円の 2/3 はいくら（2 本の数直線）' }] };
+// 今は項目なし（部品庫 v1.11.0 が m-numberline の見本の 3 枚目のはみ出しを直したので消した）
+const KNOWN = {};
 const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);

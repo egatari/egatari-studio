@@ -65,6 +65,10 @@ ok('subjects are part sets mapped to the internal series (math → academic, …
   assert.deepEqual(guessSubjects('てこのはたらき'), []);
   assert.deepEqual(guessSubjects('10 月の営業報告：売上のグラフ'), ['math', 'business']);
   assert.deepEqual(guessSubjects('Huffman codes'), ['info']);
+  assert.deepEqual(guessSubjects('ハ長調の音階と主和音（ピアノの鍵盤で）'), ['music']);
+  assert.deepEqual(guessSubjects('Major scales and chords on the piano'), ['music']);
+  assert.deepEqual(guessSubjects('キーボードの打ち方'), [], 'a computer keyboard is not music');
+  assert.deepEqual(SUBJECTS.find((s) => s.id === 'music'), { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' }, 'the music subject (components v1.11.0): a free subject');
   assert.deepEqual(guessSubjects(''), []);
   assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
   // 道具を推す：グループワーク・「10 分」（数と分）・時間。控えめに（2 分の 1・分野・十分では推さない）
@@ -105,6 +109,15 @@ ok('AI plan: free (default) packs only the chosen subjects (two at most); paid p
 });
 ok('part labels: every vendored part has a ja/en name and an icon; the standard parts are FREE_CORE’s labels (no timeline, which is paid only); subjects carry their tile line', () => {
   for (const t of Object.keys(PACK_DATA.en.components)) assert.ok(PART_LABELS[t] && PART_LABELS[t].ja && PART_LABELS[t].en && PART_LABELS[t].icon, t);
+  // 絵の名前はどれも app/llm.js の ICONS にある：パーツ（PART_LABELS）・分野の札（SUBJECTS）・manifest の言いたいこと（札のない music も）
+  const llmSrc = fs.readFileSync(path.join(ROOT, 'app', 'llm.js'), 'utf8');
+  const iconsBlock = llmSrc.slice(llmSrc.indexOf('const ICONS = {'), llmSrc.indexOf('};', llmSrc.indexOf('const ICONS = {')));
+  const ICON_KEYS = new Set([...iconsBlock.matchAll(/^\s+'?([\w-]+)'?: '</gm)].map((m) => m[1]));
+  const manifestPurposes = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components', 'manifest.json'), 'utf8')).purposes;
+  for (const [what, k] of [...Object.entries(PART_LABELS).map(([t, x]) => [t, x.icon]), ...SUBJECTS.map((x) => ['subject ' + x.id, x.icon]), ...manifestPurposes.filter((p) => p.icon).map((p) => ['purpose ' + p.id, p.icon])])
+    assert.ok(ICON_KEYS.has(k), `${what}: icon "${k}" is drawn in app/llm.js ICONS`);
+  assert.equal(manifestPurposes.find((p) => p.id === 'music').tile, 'none');
+  assert.ok(ICON_KEYS.has('music') && ICON_KEYS.has('subj-music') && ICON_KEYS.has('keyboard') && ICON_KEYS.has('kakijun'));
   assert.deepEqual(standardParts('ja'), FREE_CORE.map((t) => PART_LABELS[t].ja));
   assert.deepEqual(standardParts('ja'), ['棒グラフ', '流れ図', '目次', '予想と答え']);
   assert.deepEqual(standardParts('en'), FREE_CORE.map((t) => PART_LABELS[t].en));
@@ -160,7 +173,7 @@ ok('purposes: the tiles are the vendored manifest\'s own purposes (16), with the
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-codetree は階層と手順
   assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-numberline']);
   assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
-  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-flow', 'm-hissan']);
+  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-flow', 'm-hissan', 'm-kakijun']);
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep・m-collect など）は外せない（分野から入る）
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect'].some((t) => PURPOSES.components[t]));
@@ -249,7 +262,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     const paid = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' });
     for (const d of fs.readdirSync(path.join(ROOT, 'vendor', 'components')).filter((n) => fs.statSync(path.join(ROOT, 'vendor', 'components', n)).isDirectory()))
       assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
-    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hissan', 'm-hist', 'm-numberline', 'm-pie', 'm-scatter', 'm-tape', 'm-timeline', 'm-tree', 'm-venn']);
+    assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-pie', 'm-scatter', 'm-tape', 'm-timeline', 'm-tree', 'm-venn']);
     assert.deepEqual(TOOLS.map((t) => t.tag), ['m-timer'], 'tools are not paid only: they come in on either plan when ticked');
     assert.ok(!/m-timer/.test(all), lang + ': an unticked tool is not named in the free pack');
     for (const t of PAID_ONLY) assert.ok(!new RegExp(t + '(?![a-z-])').test(all), `${lang}: ${t} is not named in the free pack`);
@@ -298,8 +311,13 @@ const loadedFree = (series) => new Set(Object.keys(PACK_DATA.en.components).filt
 }));
 ok('free plan: FREE_CORE is the v1.1.0 common set plus m-predict; m-curves, m-kpi and m-quad come only with their v1.1.0 subjects; the newer common parts and FREE_OUT are paid only', () => {
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict'], 'the v1.1.0 common set and m-predict (components v1.9.1)');
-  assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-hissan', 'm-hist', 'm-numberline', 'm-tape']);
-  for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, 'academic', t + ' is academic in the vendored release');
+  assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-tape']);
+  for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, t === 'm-kakijun' ? 'kokugo' : 'academic', t + ' is in its series in the vendored release');
+  // 音楽（部品庫 v1.11.0）：m-keyboard は無料版の music の指示に入る（FREE_OUT でない）。m-kakijun は国語でも無料版に名前を出さない
+  for (const lang of ['en', 'ja']) {
+    assert.ok(buildPack({ series: ['music'], lang }).includes('### `<m-keyboard>`') && !buildPack({ series: [], lang }).includes('m-keyboard'), lang + ': m-keyboard comes with the free music pack only');
+    assert.ok(!buildPack({ series: ['kokugo'], lang }).includes('m-kakijun') && buildPack({ series: ['kokugo'], lang, plan: 'paid' }).includes('### `<m-kakijun>`'), lang + ': m-kakijun is paid only');
+  }
   assert.deepEqual({ ...FREE_HOME }, { 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });
   for (const t of Object.keys(FREE_HOME)) assert.equal(PACK_DATA.en.components[t].series, 'common', t + ' is common in the vendored release');
   for (const lang of ['en', 'ja']) {
@@ -470,7 +488,7 @@ ok('free packs name no part outside their own catalog: no subject, every single 
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (core and packs) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
-  assert.deepEqual(off, ['m-flow', 'm-hissan', 'm-kpi', 'm-menu']);
+  assert.deepEqual(off, ['m-flow', 'm-hissan', 'm-kakijun', 'm-kpi', 'm-menu']);
   const full = packWithRequest({ series: ['business'], lang: 'en', request: 'R' });
   const cut = packWithRequest({ series: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'] });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));

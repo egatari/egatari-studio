@@ -131,9 +131,11 @@ const WRONG = {
   // 部品庫 v1.10.0：目盛りを lines の外に書く／区切りを数の並びで書く（m-hissan は子の JSON を持たない：式は属性 expr。下の NO_DATA）
   'm-numberline': '<script type="application/json">{"from": 0, "to": 10, "marks": [{"at": 3}]}</script>',
   'm-tape': '<script type="application/json">{"rows": [{"label": "A", "segs": [3, 2]}]}</script>',
+  // 部品庫 v1.11.0：鍵盤を keys でなく notes に、1 つの字の並びで書く（m-kakijun は子の JSON を持たない：字は属性 text。下の NO_DATA）
+  'm-keyboard': '<script type="application/json">{"range": "C4-C6", "steps": [{"notes": "C4 E4 G4", "label": "主和音"}]}</script>',
 };
 // 子の JSON を持たない部品（static shape の schema が null：書くのは属性だけ）。データの形の誤りはない
-const NO_DATA = ['m-hissan'];
+const NO_DATA = ['m-hissan', 'm-kakijun'];
 const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name).filter((t) => !NO_DATA.includes(t));
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');
 const deckDir = path.join(work, 'deck');

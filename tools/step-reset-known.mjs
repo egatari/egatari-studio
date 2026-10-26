@@ -5,14 +5,10 @@
 // 揺れはいつも出るとは限らないので、「使われた」は「その場所を比べた」ことで、「通した」ことではない
 import { vendorComponents } from './vendor-components.mjs';
 
-// macOS の CI で m-cycle のスライド 1 の段階 5 を入り直すと、部品の DOM はバイトまで同じなのに、縦の線の両端の 2 px が縁から遠いところで
-// 54/255 違う（kit/render-compare.mjs の NOISE_BOUNDS の各チャンネル 24/255 を超える）。部品の直しは egatari-08 の m-cycle の修正
-// （egatari/components v1.11.0）。部品の DOM がバイトまで同じで、縁から遠い画素が 2 個まで（各チャンネル 64/255 以下）、
-// ほかは NOISE_BOUNDS の内側（数・部品の箱）のときだけ通す
-export const KNOWN = [
-  { platform: 'darwin', part: 'cycle', slide: 1, step: 5, until: '1.11.0', maxOff: 2, maxCh: 64,
-    label: 'KNOWN (macOS, cycle s1k5, until components 1.11.0)' },
-];
+// 項目の形：{platform, part, slide（1 から）, step, until（部品の版）, maxOff（縁から遠い画素の数の上限）, maxCh（各チャンネルの違いの上限 /255）, label}。
+// 部品の DOM がバイトまで同じで、縁から遠い画素が maxOff 個まで（各チャンネル maxCh 以下）、ほかは NOISE_BOUNDS の内側のときだけ通す。
+// 今は項目なし：macOS の m-cycle のスライド 1 の段階 5（until 1.11.0）は、部品庫 v1.11.0 の m-cycle の修正を取り込んだので、決めたとおり消した
+export const KNOWN = [];
 
 const ver = (s) => String(s).replace(/^v/, '').split('.').map((x) => +x || 0);
 export const versionAtLeast = (a, b) => { const x = ver(a), y = ver(b); for (let j = 0; j < 3; j++) if (x[j] !== y[j]) return x[j] > y[j]; return true; };

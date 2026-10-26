@@ -39,6 +39,8 @@ export const PART_LABELS = Object.freeze({
   'm-hissan': { ja: '筆算', en: 'Column arithmetic', icon: 'hissan' },
   'm-numberline': { ja: '数直線', en: 'Number line', icon: 'numberline' },
   'm-tape': { ja: 'テープ図', en: 'Tape diagram', icon: 'tape' },
+  'm-kakijun': { ja: '書き順', en: 'Stroke order', icon: 'kakijun' },
+  'm-keyboard': { ja: '鍵盤', en: 'Keyboard', icon: 'keyboard' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');

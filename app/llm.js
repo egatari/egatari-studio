@@ -632,12 +632,18 @@ export function setupLlm(app) {
     'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
     'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
     'subj-social': '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>',
+    // 音楽の分野：8 分音符を 2 つつないだ形
+    'subj-music': '<path d="M12 24V7l14-3v17"/><path d="M12 11l14-3"/><ellipse cx="8.5" cy="24" rx="3.5" ry="2.7"/><ellipse cx="22.5" cy="21" rx="3.5" ry="2.7"/>',
+    // 言いたいこと music（札なし。部品庫 v1.11.0 の purposes の icon "music"）：五線と音符
+    music: '<path d="M4 9h24M4 14h24M4 19h24M4 24h24" opacity=".45"/><ellipse cx="13" cy="21.5" rx="3.2" ry="2.4"/><path d="M16.2 21.5V6.5l5 2.5"/>',
+    keyboard: '<rect x="3" y="7" width="26" height="18" rx="1.5"/><path d="M9.5 7v18M16 7v18M22.5 7v18"/><path d="M7.5 7h4v10h-4zM14 7h4v10h-4zM20.5 7h4v10h-4z" fill="currentColor"/>',
+    kakijun: '<path d="M8 9c6-1 12-1 16 0"/><path d="M14 5c1 7 0 15-4 21"/><path d="M19 13c-3 7-7 11-10 12" opacity=".5"/><path d="M22 18l3 3-4 1z" fill="currentColor"/>',
     other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
   // 札の絵：manifest の purposes の icon（部品庫 v1.6.0 から。ICONS の名前）。ないとき・知らない名前のときは、言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
   const PURPOSE_ICON = { compare: 'compare', ranking: 'bars', change: 'line', 'part-whole': 'part', 'key-number': 'kpi', process: 'flow', timeline: 'timeline',
     'cause-effect': 'cause', cycle: 'cycle', hierarchy: 'tree', position: 'matrix', overlap: 'venn', correlation: 'scatter', spread: 'dist', grouping: 'collect',
-    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map', predict: 'predict', timebox: 'timer' };
+    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map', predict: 'predict', timebox: 'timer', music: 'music' };
   function icon(k) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');

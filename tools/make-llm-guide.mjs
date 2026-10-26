@@ -19,7 +19,7 @@
 //                                                 TODO(#99, components v1.2.0)：m-curves（学術）と m-quad（ビジネス）を本体（series: common）へ移すのは部品庫 v1.2.0 で。
 //                                                 移ったら一覧と表はそのまま正しくなる（系列は frontmatter から読む）。系列の指示の文（tools/llm-guide/series/academic*.md・business*.md）の見直しを忘れない
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
-// 大きさ（--check）：共通 + 系列 1 つは 35 KB を超えれば警告・40 KB を超えれば失敗、全部（'all'）は 64 KB を超えれば失敗
+// 大きさ（--check。sizeReport）：無料版の共通 + 系列 1 つは 35 KB を超えれば警告・40 KB を超えれば失敗、2 つの組は 50 KB、有料版は 120 KB（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -35,7 +35,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
 const GUIDE = rel('tools', 'llm-guide');
-export const SERIES = ['academic', 'business', 'kokugo', 'info', 'social'];
+export const SERIES = ['academic', 'business', 'kokugo', 'info', 'social', 'music'];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;

@@ -2,7 +2,7 @@
 // Node にもブラウザにも依存しない（純粋な ESM）。画面は app/llm.js
 //
 // 大分類（構成を決める場面）→ 小分類（構成の型）。教科・分野（数理・統計・国語・情報など）は小分類ではなく「パーツの組」で、
-// 今は指示の系列（academic・business・kokugo・info・social。kit/core/llm-pack.mjs の SERIES）にそのまま対応する（SUBJECTS の series）。
+// 今は指示の系列（academic・business・kokugo・info・social・music。kit/core/llm-pack.mjs の SERIES）にそのまま対応する（SUBJECTS の series）。
 // 系列の名前は内部の名前として残す（画面には出さない）。言いたいこと（kit/core/purposes.mjs）は既定で全部入り、外したものは AI に使わせない。
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
@@ -92,6 +92,7 @@ export const SUBJECTS = [
   { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' }, icon: 'subj-kokugo' },
   { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'codetree' },
   { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' }, icon: 'subj-social' },
+  { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' },
 ];
 
 export function seriesOfSubjects(ids) {
@@ -106,6 +107,7 @@ const GUESS = [
   ['kokugo', /漢文|古文|漢詩|現代文|国語|和歌|俳句|短歌|\b(?:kanbun|kobun)\b/i],
   ['info', /符号|ハフマン|情報理論|\b(?:huffman|code tree|prefix code|information theory)\b/i],
   ['social', /地図|都道府県|県庁所在地|県別|地理|人口|地方区分|\b(?:maps? of japan|prefectures?|geography)\b/i],
+  ['music', /音楽|音階|和音|鍵盤|ピアノ|楽譜|長調|短調|\b(?:music|musical|piano|chords?|major scales?|minor scales?)\b/i],
 ];
 export function guessSubjects(text) {
   const t = String(text || '');

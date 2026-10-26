@@ -48,10 +48,13 @@ ok('make-llm-guide --check：指示は材料から作り直したものと同じ
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-ok('指示の大きさ：共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、全部 ≤ 64 KB。前の全体版・core 版はない', () => {
+// 上限は PACK_CAP_KB（無料版は 1 つの分野 40 KB・2 つの組 50 KB、有料版 120 KB）。無料版で選べるのは 2 つまで（FREE_SUBJECT_MAX）なので、
+// 無料版のすべての系列の組（前の 64 KB の目安）は見ない（分野が 6 つになり、選べない組が 64 KB を越える）
+ok('指示の大きさ：無料版の共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、どの 2 つの組も ≤ 50 KB、有料版のすべての系列と道具 ≤ 120 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
     for (const s of SERIES) assert.ok(packSize(buildPack({ series: [s], lang })) <= 40 * 1024, `${lang} common+${s}`);
-    assert.ok(packSize(buildPack({ series: 'all', lang })) <= 64 * 1024, `${lang} all`);
+    for (let i = 0; i < SERIES.length; i++) for (let j = i + 1; j < SERIES.length; j++) assert.ok(packSize(buildPack({ series: [SERIES[i], SERIES[j]], lang })) <= 50 * 1024, `${lang} common+${SERIES[i]}+${SERIES[j]}`);
+    assert.ok(packSize(buildPack({ series: 'all', lang, plan: 'paid', tools: 'all' })) <= 120 * 1024, `${lang} paid all`);
   }
   for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
 });

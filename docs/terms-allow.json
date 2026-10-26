@@ -333,6 +333,12 @@
       "pattern": "More: English, one speaker|日本語 / English / Other",
       "term": "subject-english",
       "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "**",
+      "pattern": "鍵盤",
+      "term": "join-code",
+      "reason": "鍵盤 (piano keyboard, the part m-keyboard and the subject Music) is another word that contains 鍵."
     }
   ]
 }
