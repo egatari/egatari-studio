@@ -29,6 +29,7 @@ import { createEngine, READ_CONCURRENCY as ENGINE_READS } from '../app/engine.js
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { appComponentFiles } from './vendor-components.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
+import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -357,6 +358,8 @@ function appResources() {
   for (const f of fs.readdirSync(path.join(R, 'kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, path.join(R, 'kit', f));
   for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(path.join(R, 'kit', ...f.split('/')), 'utf8');
   for (const [v, f] of appComponentFiles(R)) add(v, f);
+  // 同梱のプレーヤーの版を決めるファイル（tools/build-app.mjs と同じ。kit/core/player.mjs）
+  for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] = fs.readFileSync(path.join(R, ...f.split('/')), 'utf8');
   tree('/repo/themes', path.join(R, 'themes'));
   const kdir = path.dirname(req.resolve('katex'));
   add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css')); add('/repo/katex/katex.min.js', path.join(kdir, 'katex.min.js'));

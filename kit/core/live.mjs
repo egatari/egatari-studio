@@ -1,9 +1,10 @@
 // 授業の部屋（拡張 live。format spec の extensions/live.md）を、再生専用の派生（§3.7）に付ける書き手の側。Node と編集アプリが共有する
 // （node: の読み込み・fs を使わない。再生器のスクリプトの字は呼ぶ側が渡す：Node は kit/build.mjs、編集アプリは tools/build-app.mjs が同梱したもの）
 //
-//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生（live.sourceSha256 があれば拡張のブロックに入れる：質問を教材の版に結び付ける）：CSP の <meta>（<head> の開始タグの直後。どのスクリプトよりも前）・
+//   addLive(playOnlyHtml, live, runtime)   部屋を付けた派生（live.sourceSha256 があれば拡張のブロックに入れる：質問を教材の版に結び付ける）：ファイルの決まり（CSP の <meta>。
+//                                          format spec §4.2）の connect-src に endpoint を足す（決まりがあればその場で書き換え、なければ <head> の開始タグの直後に入れる）・
 //                                          拡張のブロック（#LIVE_BLOCK_ID）・再生器（kit/live.js）。live は鍵を含む完全なもの（validate {key:true}）
-//   liveCsp(endpoint)                      派生の CSP（connect-src は endpoint の https: と wss: だけ）
+//   liveCsp(endpoint)                      派生の CSP（ファイルの決まりの基準に、connect-src として endpoint の https: と wss: だけを足したもの）
 //   liveRuntime(policySrc, clientSrc)      再生器の <script>（kit/core/live-policy.mjs を DECK.LivePolicy にして、kit/live.js を続ける）
 //   parseRoomBlock(text)                   教員のページの「コピー」の字（{v, endpoint, room, key, window, activities?}）→ その object（違えば Error）
 //   lessonLive(live)                       教材（作業フォルダの FORMAT.CONFIG_FILE と索引の extensions.live）に残す形：鍵を除く
@@ -27,6 +28,7 @@ import { LivePolicy } from './live-policy.mjs';
 import { classicModule, jsonScript } from './build-core.mjs';
 import { FORMAT } from './format.mjs';
 import { SCRIPTING } from './code-scan.mjs';
+import { policyText, policyMeta, findPolicies, parsePolicy, policyDiff, BASELINE } from './file-policy.mjs';
 
 const LP = LivePolicy();
 const LP_DEV = LivePolicy({ allowLoopback: true });
@@ -36,15 +38,20 @@ export const LIVE_EXT = 'live';
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 
-export function liveCsp(endpoint, opts = {}) {
+// extra.frame：ファイルの決まりが既に持つ frame-src の行き先（拡張 embed）。そのまま残す
+export function liveCsp(endpoint, opts = {}, extra = {}) {
   const cs = (opts.devLoopback ? LP_DEV : LP).connectSrc(endpoint);
   if (!cs) throw new Error(`live: endpoint "${endpoint}" is not an https origin`);
-  // 再生器が要るもの：埋め込んだスクリプトと CSS（inline）、data: と blob: の画像・字・音声と動画（音声の塊は blob: か data:）、
+  // ファイルの決まりの基準（kit/core/file-policy.mjs）：埋め込んだスクリプトと CSS（inline）、data: と blob: の画像・字・音声と動画、
   // 発表者ビューの枠（同じファイルを ?view= で開く。file:// では file: ）。外へ出るのは endpoint だけ。eval・フォーム・<base>・object は使わない
-  return [
-    "default-src 'none'", "script-src 'unsafe-inline'", "style-src 'unsafe-inline'", 'img-src data: blob:', 'font-src data:', 'media-src data: blob:',
-    `connect-src ${cs}`, "frame-src 'self' file:", "worker-src 'none'", "object-src 'none'", "manifest-src 'none'", "base-uri 'none'", "form-action 'none'",
-  ].join('; ');
+  return policyText({ connect: cs.split(' '), frame: extra.frame || [] });
+}
+// 今の決まり（ファイルの決まり）が基準（＋ frame-src の行き先）だけか。そうなら足した行き先 {frame} を、違えば null
+function baselineExtras(content) {
+  const p = parsePolicy(content);
+  const base = new Set(BASELINE.find(([d]) => d === 'frame-src')[1]);
+  const frame = (p.directives.get('frame-src') || []).filter((x) => !base.has(x));
+  return policyDiff(content, policyText({ frame })).length ? null : { frame };
 }
 
 const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
@@ -74,21 +81,41 @@ export function addLive(html, live, runtime, opts = {}) {
   if (typeof runtime !== 'string' || !runtime.startsWith('<script>')) throw new Error('live: no player runtime');
   const text = String(html);
   if (text.includes(`id="${FORMAT.INDEX_ID}"`)) throw new Error('live: a live session is added only to a play-only derivative (this file still has its index)');
-  if (/<meta\s+http-equiv\s*=\s*["']?content-security-policy/i.test(text)) throw new Error('live: the file already has a content security policy');
-  if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
+  // 拡張のブロック（deck-extensions）が既にあれば（拡張 embed。spec §4）、そこに live を足す。live が既にあれば断る
+  const blockRe = new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`);
+  const ex0 = blockRe.exec(text);
+  let others = {};
+  if (ex0) {
+    try { others = JSON.parse(ex0[1]); } catch { throw new Error('live: the extension block is not JSON'); }
+    if (!isObj(others)) throw new Error('live: the extension block is not an object');
+    if (own(others, LIVE_EXT)) throw new Error('live: the file already carries a live session');
+    if (text.split(`id="${LIVE_BLOCK_ID}"`).length !== 2) throw new Error('live: more than one extension block');
+  } else if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
   const at = headEnd(text);
   if (at < 0) throw new Error('live: no <head>');
-  if (/<script/i.test(text.slice(0, at))) throw new Error('live: a script comes before <head>; the policy must come first');
-  const meta = `\n<meta http-equiv="Content-Security-Policy" content="${liveCsp(live.endpoint, opts).replace(/"/g, '&quot;')}">`;
-  // 拡張のブロックと再生器：deck-meta の直後（実行系の前。再生器は deck:ready を待つ）
+  // ファイルの決まり（format spec §4.2）：1.0 の形のファイルは基準の決まりを持つ。connect-src に endpoint を足して、その場で書き換える
+  // （置き場所は変えない）。基準と違う決まり（緩めたもの・ほかの拡張の行き先）には足さない。決まりのない前の草案の派生には、今までどおり入れる
+  const pol = findPolicies(text);
+  if (pol.length > 1) throw new Error('live: the file has more than one content security policy');
+  let edit;
+  if (pol.length) {
+    const ex = baselineExtras(pol[0].content);
+    if (!ex) throw new Error('live: the file policy is not the baseline (§4.2); refusing to add the live endpoint to it');
+    edit = [pol[0].start, pol[0].end, policyMeta(liveCsp(live.endpoint, opts, ex))];
+  } else {
+    if (/<script/i.test(text.slice(0, at))) throw new Error('live: a script comes before <head>; the policy must come first');
+    edit = [at, at, '\n' + policyMeta(liveCsp(live.endpoint, opts))];
+  }
+  // 拡張のブロックと再生器：deck-meta の直後（実行系の前。再生器は deck:ready を待つ）。ブロックが既にあれば、それを置き換えてその後ろに
   const m = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
   if (!m || m.index < at) throw new Error('live: no deck-meta');
-  const ix = m.index + m[0].length;
+  const ix = ex0 ? ex0.index : m.index + m[0].length, ixEnd = ex0 ? ex0.index + ex0[0].length : ix;
   // sourceSha256（あれば）：教材の版。再生専用の派生の deck-meta からは消える（format spec §3.7）ので、質問を教材のその版に結び付けるためにここに入れる（拡張 live §1）
   const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities,
     ...(typeof live.sourceSha256 === 'string' ? { sourceSha256: live.sourceSha256 } : {}) };
-  const block = '\n' + jsonScript(LIVE_BLOCK_ID, { [LIVE_EXT]: data }) + '\n' + runtime;
-  return text.slice(0, at) + meta + text.slice(at, ix) + block + text.slice(ix);
+  const block = (ex0 ? '' : '\n') + jsonScript(LIVE_BLOCK_ID, { ...others, [LIVE_EXT]: data }) + '\n' + runtime;
+  if (edit[1] > ix) throw new Error('live: the policy comes after deck-meta');
+  return text.slice(0, edit[0]) + edit[2] + text.slice(edit[1], ix) + block + text.slice(ixEnd);
 }
 
 export function parseRoomBlock(input, opts = {}) {

@@ -9,9 +9,9 @@
     "profile",
     "requires",
     "contracts",
+    "player",
     "generator",
     "docId",
-    "entry",
     "sourceSha256",
     "files",
     "blobs",
@@ -54,15 +54,10 @@
     "contracts": {
       "type": "object",
       "required": [
-        "source",
-        "runtime"
+        "source"
       ],
       "properties": {
         "source": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "runtime": {
           "type": "integer",
           "minimum": 1
         }
@@ -82,8 +77,13 @@
         "version": {
           "type": "string",
           "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
         }
-      }
+      },
+      "description": "The producing software (informative; spec §7.1)."
     },
     "docId": {
       "type": "string",
@@ -264,6 +264,45 @@
         }
       },
       "description": "A copy exported from an authoring folder that remains the master (§3.1)."
+    },
+    "player": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "The bundled player (spec §4.1)."
+    },
+    "article": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "references": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "The article (spec §9C.1): archive path of article.md and of its CSL-JSON references."
     }
   },
   "$defs": {
@@ -384,5 +423,17 @@
         }
       ]
     }
-  }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "entry"
+      ]
+    },
+    {
+      "required": [
+        "article"
+      ]
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=d7c0edef2481d8c0 -->
+<!-- i18n: pair=contract.ja.md sha256=069337c69365a503 -->
 # Contract (runtime, parts, script, timeline)
 
 English | [日本語](contract.ja.md)
@@ -78,6 +78,8 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - Extension lines `@x-<name>-<field> <value>` (`<name>` without hyphens) inside a step carry extension data for that step. They are not part of any turn: never shown, never spoken, not in `bounds` nor in any hash, so editing them never makes audio stale. Editors (dev server, editor app, `npm run ids`) keep them as they are
 
 **Slide keys** ([format spec](https://github.com/egatari/egatari-spec) §8.1). Every slide should have a stable id: `<section class="slide" id="s-k3f9q2">`. Ids match `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and share the document's id namespace with emphasis targets (`id="…"`, `\htmlId{…}`), so they must not equal any other id in `deck.html`. New ids are `s-` plus 6 random base32 characters (`[a-z2-7]`), never derived from the heading, so that renaming a heading changes nothing. `npm run new` gives every slide an id; `npm run ids -- <deck>` adds ids to an existing lesson.
+
+A lesson being written may still have slides and headings without ids (a lesson an AI just wrote, older lessons): the build and the quality checker accept them, keyed as below. An Egatari file never carries such keys: the export gives every such slide and heading an id first and writes them back to the working folder (also the keys of `audio/manifest.json`, `timeline.json`, `comments.json` and `egatari.json`).
 
 - In `deck.html` the slide key (`data-key`, added by the build) is the section's `id`; a slide without id (legacy) is keyed by the **normalized** text of its first heading: tags removed, `&nbsp;` read as a space, and **all** whitespace removed
 - In `narration.md` a slide is addressed as `## <heading> {#<id>}` (recommended), `## <id>`, or `## <heading>` (legacy, only for slides without id). When `{#id}` is present it wins over the heading text; if the heading text differs from the slide's, the quality checker only reports a finding (info)

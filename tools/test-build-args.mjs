@@ -22,13 +22,13 @@ fs.cpSync(path.join(ROOT, 'examples/minimal'), deck, { recursive: true, filter: 
 let r = run(deck, '-o', path.join(tmp, 'a.html'));
 assert.equal(r.status, 0, r.stderr);
 assert.ok(fs.statSync(path.join(tmp, 'a.html')).size > 0);
-r = run(deck, '--portable', '-o', path.join(tmp, 'a.ega.html'));
-assert.equal(r.status, 0, r.stderr);
-assert.ok(fs.statSync(path.join(tmp, 'a.ega.html')).size > 0);
-// 2. deck.html を渡す今までの形
+// 2. deck.html を渡す今までの形（--portable の前に：書き出しは id のないスライドに id を付けて原稿に書き戻す。format spec §8.1）
 r = run(path.join(deck, 'deck.html'), '-o', path.join(tmp, 'b.html'));
 assert.equal(r.status, 0, r.stderr);
 assert.equal(fs.readFileSync(path.join(tmp, 'a.html'), 'utf8'), fs.readFileSync(path.join(tmp, 'b.html'), 'utf8'), 'the folder and its deck.html build the same file');
+r = run(deck, '--portable', '-o', path.join(tmp, 'a.ega.html'));
+assert.equal(r.status, 0, r.stderr);
+assert.ok(fs.statSync(path.join(tmp, 'a.ega.html')).size > 0);
 // 3. deck.html のないフォルダ（ふつうの build と --portable）
 const empty = path.join(tmp, 'empty');
 fs.mkdirSync(empty);
@@ -42,9 +42,13 @@ for (const extra of [[], ['--portable']]) {
 // 4. 既定の書き出し先：原稿のフォルダの最上位に、題名から作った名前（なければデッキの名前）。絶対パスを知らせる。out/ には書かない
 const d4 = path.join(tmp, 'd4');
 fs.cpSync(path.join(ROOT, 'examples/minimal'), d4, { recursive: true, filter: (s) => !/[\\/](out|\.cache)$/.test(s) });
-const before = fs.readFileSync(path.join(d4, 'deck.html'), 'utf8'), narr = fs.readFileSync(path.join(d4, 'narration.md'), 'utf8');
+let before = fs.readFileSync(path.join(d4, 'deck.html'), 'utf8');
 r = run(d4, '--portable');
 assert.equal(r.status, 0, r.stderr);
+// 最初の書き出しは id を付けて原稿に書き戻す（見本の原稿は id を持たない）。その後の書き出しは原稿を変えない
+assert.notEqual(fs.readFileSync(path.join(d4, 'deck.html'), 'utf8'), before, 'the first export wrote the slide ids back');
+before = fs.readFileSync(path.join(d4, 'deck.html'), 'utf8');
+const narr = fs.readFileSync(path.join(d4, 'narration.md'), 'utf8');
 const title = (before.match(/<title>([^<]*)<\/title>/) || [])[1];
 const f1 = path.join(d4, `${title}.ega.html`);
 assert.ok(fs.statSync(f1).size > 0, 'default: <deck>/<title>.ega.html');

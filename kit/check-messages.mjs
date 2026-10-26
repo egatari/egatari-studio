@@ -78,6 +78,13 @@ export const MESSAGES = {
   slideId: { rule: (a) => (/^slide key: /.test(a.msg) ? 'R-headings' : null), ja: (a) => a.msg, en: (a) => a.msg },
   legacyDataKey: { ja: (a) => `鍵「${a.key}」が手書きの data-key で決まっている（${a.line} 行目）：<section> に id を付ける（npm run ids）`, en: (a) => `the slide key “${a.key}” comes from a hand-written data-key (line ${a.line}): give the <section> an id (npm run ids)` },
   legacyIndex: { ja: (a) => `見出しも id もないので、鍵が位置の「${a.key}」になり、スライドを足すと変わる（${a.line} 行目）：<section> に id を付ける（npm run ids）`, en: (a) => `no heading and no id, so the key is the position “${a.key}” and changes when slides are added (line ${a.line}): give the <section> an id (npm run ids)` },
+  // 1.0 の語彙にない書き方（format spec §8.0。kit/core/legacy-vocab.mjs）。警告だけ
+  legacyColorClass: { ja: (a) => `クラス「${a.what}」は色の名前で、1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：意味のクラス「${a.to}」にする（term は用語・問い、emph は結論・問題、muted は既知のこと）`,
+    en: (a) => `the class “${a.what}” names a colour and is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): use the meaning class “${a.to}” (term for terms and questions, emph for conclusions and problems, muted for known results)` },
+  legacyStepAttr: { ja: (a) => `${a.what} は 1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：ステップの数と動きは要素の data-step と data-at、線の class="draw"、パーツの steps から決まる（format spec §8.0）。${a.what} を外す`,
+    en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
+  legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。原稿からは外す`,
+    en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the viewer chooses “Show later steps faintly” in the player; remove it from the source` },
   narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し「${a.heading}」がスライドの見出し「${a.slide}」と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
   // ---------------------------------------------------------------- リンク
   linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（1 ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the single file (.ega.html))` },

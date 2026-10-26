@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=393fa83ad7d13a60 -->
+<!-- i18n: pair=RELEASING.md sha256=21aea4b86ff6a9f7 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -8,6 +8,8 @@
 ## 手順
 
 1. **候補。** 先に `kit/core/colab-core.mjs` の `COLAB.ref` をリリースのタグ `vX.Y.Z` にし（エディタの Colab へのリンクとノートブックの clone が使う）、`npm run gen` してコミットする。そのうえで、リリースする `main` のコミットに候補のタグを付けて push する：
+
+   **同梱のプレーヤー。** ファイルは `player` {name, version} を持つ（形式の仕様 §4.1）。`kit/player.json` に Egatari Player の版、`kit/player.lock.json` に最後にリリースしたプレーヤーの版と SHA-256（`kit/core/player.mjs` の `PLAYER_FILES` のファイル：`kit/deck.js` とそれが入れる `kit/core` のモジュール、`presenter.js`・`tools.js`・`shape.js`、実行系の CSS、ライブのプレーヤー）がある。プレーヤーのファイルが lock と同じ組み立ては版をそのまま書き、ほかは `<版>+dev.<commit>`（git がなければ `+dev`）を書く。候補のタグを付ける前に `npm run player:check -- --strict` を走らせ、前のリリースからプレーヤーが変わっていれば `npm run player:bump -- patch|minor|major`（最初のリリースは `major` で 1.0.0）、`changes/player-<版>.md` を書き足し、`npm run gen:check` してコミットする（候補のファイルが版をそのまま持つように）。ブランチでは `npm run player:check` は知らせるだけ。
 
    **仕様の日付の版。** 候補のタグを付ける前に、`vendor/egatari-spec` が egatari-spec の最新の `wd-*` の版と同じであること（`vendor/egatari-spec/SOURCE.json` に `"snapshot": "wd-YYYY-MM-DD"` があり、`node tools/spec-snapshot.mjs --check` が `ok` と出す）。写すには `node tools/sync-spec.mjs <仕様の clone> --ref wd-YYYY-MM-DD`。最新の版のあとで仕様が変わっていたら、先に仕様の担当者に新しい版を切ってもらう。
 

@@ -32,7 +32,8 @@ import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
 import { testNewDeckFlow } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
-import { EXAMPLES } from './examples-portable.mjs';
+import { EXAMPLES, exampleRand } from './examples-portable.mjs';
+import { assignIds } from '../kit/core/slide-ids.mjs';
 import zlib from 'node:zlib';
 import { writeZip } from '../kit/core/zip-read.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
@@ -52,10 +53,20 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
 const firstDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i >= a.length && a.length === b.length ? '' : `\n       at ${i}: app …${JSON.stringify(a.slice(Math.max(0, i - 80), i + 120))}\n       node …${JSON.stringify(b.slice(Math.max(0, i - 80), i + 120))}`; };
 const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.join(SHOTS, name) }); };
 
+// examples/minimal にスライドの id を付けたもの（format spec §8.1：書き出しは id のないスライドに id を付けて書き戻すので、試験の鍵が書き出しの前後で
+// 変わらないように先に付ける。乱数は名前から決めたもの）。K('見出し') → そのスライドの id
+const MINI = assignIds(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8'), { rand: exampleRand('minimal') });
+const K = (h) => parseNarration(MINI.narration).sections.find((x) => x.heading === h).key;
+const MINIDIR = path.join(work, 'mini-src');   // MINI の作業フォルダ（Node の組み立てと比べる）
+fs.rmSync(MINIDIR, { recursive: true, force: true });
+fs.cpSync(path.join(ROOT, 'examples', 'minimal'), MINIDIR, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(ROOT, x)) });
+fs.writeFileSync(path.join(MINIDIR, 'deck.html'), MINI.deck); fs.writeFileSync(path.join(MINIDIR, 'narration.md'), MINI.narration);
+
 // ---------------------------------------------------------------- 0. 持ち運べる 1 ファイルを作る（Node）
 // examples/minimal に音声（TTS の dry-run。uv がなければ JS の無音）と権利の表示を足して 1 ファイルに。ライセンスを変えた写しも
 function prepareDeck(dir, metadata) {
   fs.cpSync(path.join(ROOT, 'examples', 'minimal'), dir, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(ROOT, x)) });
+  fs.writeFileSync(path.join(dir, 'deck.html'), MINI.deck); fs.writeFileSync(path.join(dir, 'narration.md'), MINI.narration);
   const r = spawnSync('uv', ['run', '--quiet', '--project', path.join(ROOT, 'tts'), 'python', path.join(ROOT, 'tts', 'synth.py'), dir, '--dry-run'], { encoding: 'utf8' });
   if (r.status !== 0) {
     fs.mkdirSync(path.join(dir, 'audio'), { recursive: true });
@@ -279,7 +290,7 @@ try {
 
   // examples/minimal を OPFS に写して開く
   const SRC = path.join(ROOT, 'examples/minimal');
-  const files = { 'deck.html': fs.readFileSync(path.join(SRC, 'deck.html'), 'utf8'), 'narration.md': fs.readFileSync(path.join(SRC, 'narration.md'), 'utf8') };
+  const files = { 'deck.html': MINI.deck, 'narration.md': MINI.narration };
   await page.evaluate(async (files) => {
     const root = await navigator.storage.getDirectory();
     await root.removeEntry('minimal', { recursive: true }).catch(() => {});
@@ -299,10 +310,10 @@ try {
 
   // ブラウザで組んだものと Node の build が同じ（字を絞り込まない設定で）
   const appHtml = await page.evaluate(() => window.__APP_TEST.build({ dev: false }));
-  const nodeHtml = build(path.join(SRC, 'deck.html'), { subset: false }).html;
+  const nodeHtml = build(path.join(MINIDIR, 'deck.html'), { subset: false }).html;
   ok(appHtml === nodeHtml, `build: browser build is byte-identical to Node build (subset off) (${(appHtml.length / 1024).toFixed(0)} KB)` + firstDiff(appHtml, nodeHtml));
   const appDev = await page.evaluate(() => window.__APP_TEST.build({ dev: true }));
-  const nodeDev = build(path.join(SRC, 'deck.html'), { dev: true }).html;
+  const nodeDev = build(path.join(MINIDIR, 'deck.html'), { dev: true }).html;
   ok(appDev === nodeDev, 'build: dev build (data-src) is byte-identical to Node' + firstDiff(appDev, nodeDev));
 
   // ---------------------------------------------------------------- 3. 原稿の編集（プレビューは知らせるだけ。欄はアプリのページに出る）
@@ -463,13 +474,13 @@ try {
   await page.waitForTimeout(400);
   ok((await trustedLayout(page, 'preview')).inert === false, 'comment: the preview takes clicks again after the note box closes');
   const comments = JSON.parse(await opfs.read('comments.json') || '[]');
-  ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === '何を最小化するか:0', 'comment: comments.json written');
+  ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === `${K('何を最小化するか')}:0`, 'comment: comments.json written');
   // 許す差：画面の 1 px（押す点は画面の px に丸められる。枠が小さいとスライドの座標で 1 を超える）と、点の 0.1 への丸め
   const ctol = cwant.unit + 0.1;
   ok(comments[0].pin && Math.abs(comments[0].pin.x - cwant.x) < ctol && Math.abs(comments[0].pin.y - cwant.y) < ctol, 'comment: the clicked point is kept in slide coordinates ' + JSON.stringify({ pin: comments[0].pin, cwant }));
   // 点の形が違う・範囲の外（アプリの devapi.js も開発サーバーと同じ規則）
   const appPins = [];
-  for (const pin of [{ x: '1', y: 2 }, { x: -50, y: 9999 }, { x: 3.21, y: 4, z: 1 }]) appPins.push((await page.evaluate((pin) => window.__APP_TEST.api('POST', '/__dev/comment', { key: '何を最小化するか:0', comment: 'pin test', pin }), pin)).pin ?? null);
+  for (const pin of [{ x: '1', y: 2 }, { x: -50, y: 9999 }, { x: 3.21, y: 4, z: 1 }]) appPins.push((await page.evaluate(([pin, key]) => window.__APP_TEST.api('POST', '/__dev/comment', { key, comment: 'pin test', pin }), [pin, `${K('何を最小化するか')}:0`])).pin ?? null);
   ok(JSON.stringify(appPins) === JSON.stringify([null, { x: 0, y: 720 }, { x: 3.2, y: 4 }]), 'comment: forged or out-of-range points are dropped or clamped in the app too ' + JSON.stringify(appPins));
   for (const c of JSON.parse(await opfs.read('comments.json')).slice(1)) await page.evaluate((id) => window.__APP_TEST.api('POST', '/__dev/comment/resolve', { id }), c.id);
   await f.evaluate(() => DECK.go(0, 0, false));
@@ -480,13 +491,13 @@ try {
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
   // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
-  await f.waitForFunction(() => DECK.state().key === '何を最小化するか:0', null, { timeout: 10000 });
+  await f.waitForFunction((key) => DECK.state().key === key, `${K('何を最小化するか')}:0`, { timeout: 10000 });
   await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: 10000 });
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // 枠の大きさの変化（ResizeObserver）で描き直した後
   const appPin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash') }; });
   const appWant = await page.evaluate(() => { const r = document.getElementById('preview').getBoundingClientRect(); return { l: r.left, t: r.top }; });
   const hAt = await f.evaluate((p) => { const s = document.getElementById('stage').getBoundingClientRect(); return { x: s.left + p.x * s.width / 1280, y: s.top + p.y * s.height / 720 }; }, comments[0].pin);
-  ok((await f.evaluate(() => DECK.state().key)) === '何を最小化するか:0' && appPin && appPin.flash && Math.abs(appPin.x - appWant.l - hAt.x) < 1.5 && Math.abs(appPin.y - appWant.t - hAt.y) < 1.5,
+  ok((await f.evaluate(() => DECK.state().key)) === `${K('何を最小化するか')}:0` && appPin && appPin.flash && Math.abs(appPin.x - appWant.l - hAt.x) < 1.5 && Math.abs(appPin.y - appWant.t - hAt.y) < 1.5,
     'comment: clicking it in the list goes to its step and flashes the marker on the clicked spot ' + JSON.stringify({ appPin, appWant, hAt }));
   await shot(page, 'comment-pin.png');
   await page.click('#dev-comments .dev-c button');
@@ -709,8 +720,8 @@ try {
     ok(!(await dlgOpen()), 'tier A: narration-only change saves without the rebuild warning');
     const aBuf = await getFile(MINF);
     let ps0 = await pstate();
-    ok(ps0.portable.lastTier === 'A' && ps0.portable.lastTierA && ps0.portable.lastTierA.narration.join() === '何を最小化するか:0', 'tier A: saved without rebuilding (only the edited step)');
-    try { regionDiff(pmin.html, aBuf.toString(), { narration: ['何を最小化するか:0'] }); ok(true, 'tier A: every byte outside the §7.2 regions is unchanged (region-aware diff)'); }
+    ok(ps0.portable.lastTier === 'A' && ps0.portable.lastTierA && ps0.portable.lastTierA.narration.join() === `${K('何を最小化するか')}:0`, 'tier A: saved without rebuilding (only the edited step)');
+    try { regionDiff(pmin.html, aBuf.toString(), { narration: [`${K('何を最小化するか')}:0`] }); ok(true, 'tier A: every byte outside the §7.2 regions is unchanged (region-aware diff)'); }
     catch (e) { ok(false, 'tier A: region-aware diff: ' + e.message.slice(0, 300)); }
     ok(aBuf.toString().includes(`id="${FORMAT.FONT_SUPPLEMENT_PREFIX}0"`) && ps0.portable.lastTierA.supplement && [...'蒼穹'].every((c) => ps0.portable.lastTierA.supplement.chars.includes(c)), 'tier A: a font supplement for the new glyphs (fetched from the app\'s own font files)');
     const aRead = await readPortable(new Uint8Array(aBuf));
@@ -718,7 +729,7 @@ try {
     ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
     ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
     fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
-    ok(ps0.portable.stale.includes('何を最小化するか:0') && JSON.stringify(aRead.index.audio['何を最小化するか:0']) === JSON.stringify(pmin.index.audio['何を最小化するか:0']), 'tier A: the edited step\'s audio is kept as is and shown as stale');
+    ok(ps0.portable.stale.includes(`${K('何を最小化するか')}:0`) && JSON.stringify(aRead.index.audio[`${K('何を最小化するか')}:0`]) === JSON.stringify(pmin.index.audio[`${K('何を最小化するか')}:0`]), 'tier A: the edited step\'s audio is kept as is and shown as stale');
     await shot(page, 'portable-tier-a-saved.png');
     await f.evaluate(() => DECK.go(2, 3, false));
     await page.click('#b-edit');
@@ -751,7 +762,7 @@ try {
     mem = await wsFiles();
     ok(mem['narration.md'].toString().includes('1 ファイルで書き直した口述原稿です。'), 'portable narration: narration.md changed in memory');
     ps = await pstate();
-    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === '何を最小化するか:0' && ps.warn.some((w) => w.includes('何を最小化するか:0')), `portable narration: the edited step is shown as stale (${ps.portable.stale.join(', ')})`);
+    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === `${K('何を最小化するか')}:0` && ps.warn.some((w) => w.includes(`${K('何を最小化するか')}:0`)), `portable narration: the edited step is shown as stale (${ps.portable.stale.join(', ')})`);
     await page.click('#b-narr');
 
     // 保存：スライドを直したので段 B（組み直す）。保存の前に、編集していないスライドの見え方が変わりうることを知らせる
@@ -776,7 +787,7 @@ try {
     ok(new TextDecoder().decode(saved.files['deck.html']).includes('（1 ファイルで編集）') && new TextDecoder().decode(saved.files['narration.md']).includes('1 ファイルで書き直した'), 'save: edits are in the saved source');
     const sameAudio = Object.values(pmin.index.audio).every((a) => saved.index.files[a.file] && saved.index.blobs[saved.index.files[a.file]].sha256 === pmin.index.blobs[pmin.index.files[a.file]].sha256);
     ok(sameAudio && Object.keys(saved.index.audio).length === Object.keys(pmin.index.audio).length, 'save: unchanged audio blobs keep the same sha256');
-    const mk = '何を最小化するか:0';
+    const mk = `${K('何を最小化するか')}:0`;
     ok(saved.index.audio[mk].inputHash === pmin.index.audio[mk].inputHash && await isStale(saved.index.audio[mk], parseNarration(new TextDecoder().decode(saved.files['narration.md'])).find((x) => `${x.slideKey}:${x.stepKey}` === mk)), 'save: the edited step keeps its old inputHash (stale, audio not deleted)');
     ok(['license', 'copyright', 'attribution', 'creators'].every((k) => JSON.stringify(saved.index.metadata[k]) === JSON.stringify(pmin.index.metadata[k])), 'save: license, copyright, attribution and creators kept');
     ok(!saved.index.metadata.derivedFrom, 'save: same docId → no derivedFrom');
@@ -881,7 +892,7 @@ try {
     await page.click('#b-narr');
 
     // 段階の口述原稿をまるごと消して保存（段 A）→ その音声の記録と塊も消え、保存の知らせと警告の一覧に出る（§5.4）
-    const rk = '何を最小化するか:3';
+    const rk = `${K('何を最小化するか')}:3`;
     ok(!!pnd.index.audio[rk], 'removed step: it had audio');
     await f.evaluate(() => DECK.go(1, 3, false));
     await page.click('#b-narr');
@@ -1003,7 +1014,7 @@ try {
     await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
     const oth = await page.evaluate(async () => { const u = new Uint8Array(await (await window.__other.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); });
     const othText = Buffer.from(oth, 'base64').toString();
-    let othOk = true; try { regionDiff(pother, othText, { narration: ['何を最小化するか:1'] }); } catch (e) { othOk = false; console.log('    ' + e.message.slice(0, 300)); }
+    let othOk = true; try { regionDiff(pother, othText, { narration: [`${K('何を最小化するか')}:1`] }); } catch (e) { othOk = false; console.log('    ' + e.message.slice(0, 300)); }
     ok((await page.evaluate(() => window.__APP_TEST.state())).portable.lastTier === 'A' && othOk && JSON.parse(scanDocument(othText).byId.get(FORMAT.INDEX_ID).text).themes[0].sha256 === '0'.repeat(64), 'tier A only: narration saved without rebuilding; the registry entry and every other byte kept');
   }
 
@@ -1096,7 +1107,7 @@ try {
   // ---------------------------------------------------------------- 10e. コードが動くかは中身から決める（申告の profile を信じない。§6）・確かめはプレビューと発表者ビューのどちらにも効く
   {
     hostileQuiet = true;
-    const MIN = fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8');
+    const MIN = MINI.deck;
     const ONERR = MIN.replace('</section>', '<img alt="" src="data:," onerror="window.__onerrorRan = 1">\n</section>');
     const mkdir = (name, files) => page.evaluate(async ([name, files]) => {
       const root = await navigator.storage.getDirectory();
@@ -1105,7 +1116,7 @@ try {
       for (const [rel, text] of Object.entries(files)) { const w = await (await d.getFileHandle(rel, { create: true })).createWritable(); await w.write(text); await w.close(); }
       (window.__cdirs ||= {})[name] = d;
     }, [name, files]);
-    const narrMin = fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8');
+    const narrMin = MINI.narration;
     // 大きすぎるファイル：File.size で読む前に断る（arrayBuffer() を呼ばない）
     const big = page.evaluate(() => window.__APP_TEST.openFile({ file: { name: 'big.html', size: 200 * 1024 * 1024, arrayBuffer() { window.__bigRead = true; return Promise.resolve(new ArrayBuffer(8)); } } }));
     await page.waitForSelector('#dlg[open] #refuse-reason');
@@ -1266,7 +1277,7 @@ try {
         return h;
       };
     });
-    const KEY = '何を最小化するか:0';
+    const KEY = `${K('何を最小化するか')}:0`;
     const edit = async (text) => {
       const g = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), KEY);
       const pr = page.evaluate(([k, rev, turns]) => { const [sk, st] = [k.slice(0, k.lastIndexOf(':')), k.slice(k.lastIndexOf(':') + 1)]; return window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: sk, stepKey: st, rev, turns }); },
@@ -1616,7 +1627,7 @@ try {
     // OPFS のフォルダを「テーマのフォルダ」として選ぶ（tml に似たテスト用のテーマ：色とロゴ）。探す順・根の決まり・残す・許可の求め直し・忘れる・1 ファイルへの書き出し
     {
       const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      const minDeck = fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8');
+      const minDeck = MINI.deck;   // id 付き（書き出しが書き戻す id で組み立てが変わらないように）
       const deckWith = (t) => minDeck.replace('data-theme="default"', `data-theme="${t}"`);
       const themeFiles = {
         'mytml/tokens.css': ':root{--accent:#1a2b3c;--theme-probe:#1a2b3c}\n',
@@ -1645,7 +1656,7 @@ try {
         window.__thmDeck = d; window.__thmUser = u;
         window.__putDeck = (rel, v) => put(d, rel, v);
         await window.__APP_TEST.initThemeFolder();
-      }, [deckWith('mytml'), fs.readFileSync(path.join(ROOT, 'examples/minimal/narration.md'), 'utf8'), themeFiles]);
+      }, [deckWith('mytml'), MINI.narration, themeFiles]);
       const tst = () => po.evaluate(() => window.__APP_TEST.themeFolder());
       const builds = () => po.evaluate(() => window.__APP_TEST.state().builds);
       const afterBuild = (n0) => po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.builds > n && !window.__APP_TEST.state().error; }, n0, { timeout: 30000 });

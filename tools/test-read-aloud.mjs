@@ -6,6 +6,7 @@
 // 4. 再生器（speechSynthesis の差し替え）：帯のボタン・音声のあるステップでは読まない・読む・札「読み上げ中（この端末の声）」・進むと止める・
 //    Esc で止める・声がない端末の知らせ・タイムラインと (i, k, t) の画面が変わらない・動画のモードでは何も作らない・ファイルのバイトが変わらない
 // 5. 編集アプリの音声の板：今のステップ（読み辞書を当てた文）と選んだ語・声がないときの知らせ（AI 音声・Colab）・作業フォルダに何も書かない
+import { giveIds } from './portable-fixtures.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -131,6 +132,7 @@ const STUB = `(() => {
 const DECK_DIR = path.join(work, 'deck');
 fs.rmSync(DECK_DIR, { recursive: true, force: true });
 fs.cpSync(path.join(ROOT, 'examples', 'minimal'), DECK_DIR, { recursive: true, filter: (s) => !/[\\/](?:out|video)([\\/]|$)/.test(path.relative(path.join(ROOT, 'examples'), s)) });
+giveIds(DECK_DIR);   // スライドの id（書き出しが付けるものを先に。format spec §8.1）
 const segs = parseNarration(fs.readFileSync(path.join(DECK_DIR, 'narration.md'), 'utf8'));
 const AKEY = `${segs[2].slideKey}:${segs[2].stepKey}`;
 {

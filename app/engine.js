@@ -87,7 +87,8 @@ export function createEngine(res, loadLazy) {
       return null;
     }
     return {
-      path: P, KIT: ROOT + '/kit', ROOT, katexDir: ROOT + '/katex', katex, version: res.version || '',
+      // commit：アプリを組んだときの commit（tools/build-app.mjs）。同梱の再生器の版の "+dev.<commit>"（kit/core/player.mjs）
+      path: P, KIT: ROOT + '/kit', ROOT, katexDir: ROOT + '/katex', katex, version: res.version || '', commit: res.commit || '',
       fontDir: (pkg) => ROOT + '/fonts/' + pkg,
       // 編集アプリ：テーマが見つからない知らせの言葉（kit/core/build-core.mjs）。themeDirs：選んだテーマのフォルダ（なければ空）
       app: true,

@@ -557,7 +557,9 @@ ok('seed survives the build and a single-file round trip (pack → unpack)', () 
     assert.equal(seedOf(html), 3141592653, 'the built page carries the seed on <html>');
     const back = path.join(dir, 'back');
     execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'unpack', out, back], { stdio: 'pipe' });
-    assert.equal(fs.readFileSync(path.join(back, 'deck.html'), 'utf8'), deck, 'the unpacked source is byte for byte the same, seed included');
+    // 書き出しは id を付けて作業フォルダに書き戻す（format spec §8.1）：比べるのはその原稿
+    assert.equal(fs.readFileSync(path.join(back, 'deck.html'), 'utf8'), fs.readFileSync(path.join(src, 'deck.html'), 'utf8'), 'the unpacked source is byte for byte the same, seed included');
+    assert.equal(seedOf(fs.readFileSync(path.join(src, 'deck.html'), 'utf8')), seedOf(deck));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 console.log(`new-deck: ${n} ok`);

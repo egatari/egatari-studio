@@ -244,7 +244,10 @@ await t('slide keys and the readable layer do not depend on layout-tate', () => 
   const a = path.join(work, 'tate.html'), c = path.join(work, 'plain.html');
   for (const [src, o] of [[good, a], [plainDeck, c]]) { const r = node('kit/build.mjs', src, '--portable', '-o', o); assert.equal(r.status, 0, r.stderr); }
   const layer = (f) => { const h = fs.readFileSync(f, 'utf8'); const m = h.match(/<section id="[^"]*readable"[\s\S]*?<\/section>/); assert.ok(m, 'readable layer in ' + f); return m[0]; };
-  const A = layer(a), C = layer(c);
+  // id のないスライドには書き出しがそれぞれ新しい id を付ける（format spec §8.1。乱数）：その id は比べない
+  const norm = (h) => h.replace(/\bs-[a-z2-7]{6}\b/g, 's-ID');
+  const A = norm(layer(a)), C = norm(layer(c));
+  assert.ok(A.includes('data-slide-key="s-ID"'), 'the slide without an id got one at export');
   assert.equal(A, C);
   assert.ok(A.includes('<h2>縦組みのスライドの見本</h2>') && A.includes('<h2>孟浩然「春暁」</h2>'), 'headings in the readable layer');
   const keys = (h) => [...h.matchAll(/data-slide-key="([^"]*)"/g)].map((m) => m[1]);
