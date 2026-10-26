@@ -26,7 +26,7 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, GENERATOR } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
@@ -1293,7 +1293,7 @@ async function openPortableNow(input) {
     return false;
   }
   // 前の版のファイル（索引に player がない。§7.1）：組み直さずに、ファイルそのものを再生する（編集・保存は断る）
-  const early = earlierFile(r.index, { name: GENERATOR, version: RES.version });
+  const early = earlierFile(r);
   if (early) return openEarlierFile(name, bytes, r, early, handle);
   // 独自のコード：申告（index.profile）を信じず、取り出した原稿の中身から決める（§6）。中のコードが動く前に知らせる。
   // 申告が core なのに中身にコードがあれば、コードを含むものとして聞き、申告が食い違うことも知らせる。

@@ -1,10 +1,12 @@
 // 前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1「Drafts before 1.0」、docs/terms.json の earlier-draft-file）
 //   node tools/test-app-earlier.mjs [作業用のフォルダ]
-// 1. 決まり（Node）：player のない索引は前の版・player があれば 1.0・この Studio の同じ版が書いた player のないもの（1.0 の形を書く前の開発中の組み立て）は前の版にしない・
+// 1. 決まり（Node）：前の版かどうかは readPortable の preDraft（索引に player がない）だけで決める。player のない索引は、作ったのがこの Studio の同じ版でも前の版・
+//    この Studio が書き出した 1.0 のファイル（player がある）は前の版にしない・
 //    開く Studio の版（versions.json にあればその版、なければ 1.0 より前の最も新しい版、読めなければ凍結した写しの範囲か v0.4.8）・作業フォルダ（egatari.json と id のないスライド）
 // 2. 編集アプリ（tools/build-app.mjs で組んで 127.0.0.1 で配る。versions.json のあるサイト /site/ とないところ /nosite/）：
 //    仕様の試験用のファイル（vendor/egatari-spec/fixtures/documents。player のない草案のファイル）を開くと知らせと 2 つのボタン（正しい URL）が出て、
-//    ファイルそのものがプレビューで再生され、編集・保存は断る。player を足した写し（1.0 のファイルのつもり）と、この Studio の版が書いたものは知らせなし。
+//    ファイルそのものがプレビューで再生され、編集・保存は断る。player を足した写し（1.0 のファイルのつもり）と、この Studio が書き出したものは知らせなし。
+//    player がなく generator がこの Studio の版のもの（0.6.0 より前のリリースが同じ版の番号で書いたもの）は知らせあり。
 //    英語の画面。作業フォルダ：egatari.json と id のないスライド → 知らせ（npm run ids。編集は断らない）→ id を付けて組み直すと知らせが消える。egatari.json のないフォルダは知らせなし
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
-import { scanDocument, replaceIndexText, GENERATOR } from '../kit/core/portable.mjs';
+import { scanDocument, replaceIndexText, readPortable, GENERATOR } from '../kit/core/portable.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftStudioVersion, draftStudioUrl, guideUrl, FIRST_1_0, LAST_DRAFT_STUDIO, STUDIO_SITE } from '../app/earlier-draft.js';
 
@@ -33,11 +35,21 @@ const indexOf = (html) => JSON.parse(scanDocument(html).byId.get(FORMAT.INDEX_ID
 const draftIx = indexOf(draftHtml);
 const me = { name: GENERATOR, version: VERSION };
 ok(!Object.prototype.hasOwnProperty.call(draftIx, 'player') && draftIx.generator.version === '0.3.1', `fixture: minimal-portable-core has no player (made with ${draftIx.generator.version})`);
-ok(JSON.stringify(earlierFile(draftIx, me)) === JSON.stringify({ made: '0.3.1' }), 'rule: an index without player is from an earlier version');
-ok(earlierFile({ ...draftIx, player: { name: 'egatari-player', version: '1.0.0' } }, me) === null, 'rule: an index with player is a 1.0 file');
-ok(earlierFile({ ...draftIx, generator: { name: GENERATOR, version: VERSION } }, me) === null, 'rule: no player but written by this Studio version (a build before it writes player) is not flagged');
-ok(earlierFile({ ...draftIx, generator: { name: 'other-tool', version: VERSION } }, me) !== null, 'rule: no player from another producer is flagged');
-ok(earlierFile({ ...draftIx, generator: { name: GENERATOR, version: '0.4.7' } }, { name: GENERATOR, version: '0.6.0' }).made === '0.4.7', 'rule: 0.4.7 file in a 0.6.0 editor is flagged');
+// この Studio の書き出し（1.0 の形）：examples/minimal を写したフォルダを詰める（書き出しは id をフォルダに書き戻すので写しで）
+const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-earlier-pack-'));
+for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(ROOT, 'examples', 'minimal', f), path.join(packDir, f));
+const packedPath = path.join(packDir, 'lesson' + FORMAT.FILE_EXT);
+execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', packDir, '-o', packedPath], { stdio: 'pipe' });
+const packedHtml = fs.readFileSync(packedPath, 'utf8');
+const readDraft = await readPortable(draftHtml);
+const readPacked = await readPortable(packedHtml);
+ok(readDraft.preDraft === true && JSON.stringify(earlierFile(readDraft)) === JSON.stringify({ made: '0.3.1' }), 'rule: a file without player (readPortable preDraft) is from an earlier version');
+ok(readPacked.preDraft === false && Object.prototype.hasOwnProperty.call(readPacked.index, 'player') && earlierFile(readPacked) === null, `rule: a 1.0 file written by this Studio (player ${readPacked.index.player && readPacked.index.player.version}) is not flagged`);
+ok(earlierFile({ preDraft: false, index: { ...draftIx, player: { name: 'egatari-player', version: '1.0.0' } } }) === null, 'rule: preDraft false (an index with player) is a 1.0 file');
+ok(JSON.stringify(earlierFile({ preDraft: true, index: { ...draftIx, generator: { name: GENERATOR, version: VERSION } } })) === JSON.stringify({ made: VERSION }), `rule: no player is flagged even when made by this Studio's version number (${VERSION}): one source of truth, no exception`);
+ok(earlierFile({ preDraft: true, index: { ...draftIx, generator: { name: 'other-tool', version: VERSION } } }) !== null, 'rule: no player from another producer is flagged');
+ok(earlierFile({ preDraft: true, index: { ...draftIx, generator: undefined } }).made === null, 'rule: no generator → made is null');
+ok(earlierFile({ index: draftIx }) === null && earlierFile(null) === null, 'rule: only preDraft decides (an index alone, without the reader\'s verdict, is not flagged)');
 const site = { versions: ['0.6.0', '0.4.8', '0.4.7', '0.4.1'] };
 ok(draftStudioVersion('0.4.7', site) === '0.4.7', 'studio: the version that made it, when versions.json lists it');
 ok(draftStudioVersion('0.3.1', site) === '0.4.8' && draftStudioVersion(null, site) === '0.4.8', 'studio: otherwise the newest listed version before ' + FIRST_1_0);
@@ -52,13 +64,15 @@ ok(JSON.stringify(earlierFolder(analyzeSlideIds(noIds), true)) === '{"noId":1}',
 ok(earlierFolder(analyzeSlideIds(noIds), false) === null && earlierFolder(analyzeSlideIds(withIds), true) === null, 'folder: no egatari.json, or every slide has an id → not flagged');
 
 // ---------------------------------------------------------------- 2. 編集アプリ
-// 試験のファイル：前の版（そのまま）・作った版が versions.json にある前の版（0.4.7）・1.0（player を足した写し）・この Studio の版が書いた player のないもの
+// 試験のファイル：前の版（そのまま）・作った版が versions.json にある前の版（0.4.7）・1.0（player を足した写し）・
+// player がなく generator がこの Studio の版のもの（前の版）・この Studio が書き出した 1.0 のファイル
 const editIx = (fn) => replaceIndexText(draftHtml, (() => { const x = indexOf(draftHtml); fn(x); return JSON.stringify(x); })());
 const FILES = {
   draft: draftHtml,
   v047: await editIx((x) => { x.generator.version = '0.4.7'; }),
   v10: await editIx((x) => { x.player = { name: 'egatari-player', version: '1.0.0' }; }),
   mine: await editIx((x) => { x.generator = { name: GENERATOR, version: VERSION }; }),
+  packed: packedHtml,
 };
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
 const VERSIONS = JSON.stringify({ root: '0.6.0', versions: ['0.6.0', '0.4.8', '0.4.7', '0.4.1'] });
@@ -138,7 +152,10 @@ try {
   ok(await openFile(page, 'v10') === true, 'file: a 1.0 file (player added) opens');
   st = await state(page);
   ok(!(await notice(page)) && st.earlier === null, 'file: a 1.0 file has no earlier-version notice');
-  ok(await openFile(page, 'mine') === true && !(await notice(page)) && (await state(page)).earlier === null, `file: no player but made by this Studio (${VERSION}) → no notice`);
+  ok(await openFile(page, 'mine') === true && (n = await notice(page)) && n.kind === 'file' && n.lead.includes(`v${VERSION} で作成`), `file: no player, generator this Studio's version (${VERSION}) → the notice (preDraft decides) ` + JSON.stringify(n && n.lead));
+  ok(await openFile(page, 'packed') === true && !(await notice(page)) && (await state(page)).earlier === null, 'file: a 1.0 file written by this Studio → no notice');
+  st = await state(page);
+  ok(st.portable && !st.portable.readOnly, 'file: a 1.0 file written by this Studio is not read-only');
 
   // 作業フォルダ（OPFS）：egatari.json と id のないスライド
   const deck = fs.readFileSync(path.join(ROOT, 'examples/minimal/deck.html'), 'utf8');
@@ -182,6 +199,7 @@ try {
 } finally {
   await browser.close();
   srv.close();
+  fs.rmSync(packDir, { recursive: true, force: true });
 }
 ok(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
 console.log(fails ? `\n${fails} failed` : '\nall ok');

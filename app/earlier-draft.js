@@ -27,15 +27,14 @@ export function older(a, b) {
 }
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
-// 開いたファイルの索引 → 前の版のファイルなら {made: 作った Studio の版か null}、そうでなければ null
-// editor：{name, version}（この Studio の generator の名前と版）。この Studio の同じ版か後の版が書いた player のないファイルは、
-// 1.0 の形を書く前のこの Studio の開発中の組み立て（player を書くようになるまで）なので、前の版にしない
-export function earlierFile(index, editor = {}) {
-  if (!index || typeof index !== 'object' || own(index, 'player')) return null;
-  const g = index.generator && typeof index.generator === 'object' ? index.generator : {};
-  const made = typeof g.version === 'string' && g.version ? g.version : null;
-  if (editor.name && g.name === editor.name && made && PLAIN.test(made) && PLAIN.test(editor.version || '') && !older(made, editor.version)) return null;
-  return { made };
+// 開いたファイルの読み取りの結果（kit/core/portable.mjs の readPortable。Worker を通しても同じ形）→ 前の版のファイルなら {made: 作った Studio の版か null}、
+// そうでなければ null。前の版かどうかは readPortable の preDraft（索引に player がない）だけで決める（2 つ目の判定を持たない）。
+// この Studio は書くファイルに必ず player を書く（format spec §4.1）ので、この Studio が書いたファイルは前の版にならない
+export function earlierFile(read) {
+  if (!read || read.preDraft !== true) return null;
+  const ix = read.index && typeof read.index === 'object' ? read.index : {};
+  const g = ix.generator && typeof ix.generator === 'object' ? ix.generator : {};
+  return { made: typeof g.version === 'string' && g.version ? g.version : null };
 }
 
 // 作業フォルダ：analysis（kit/core/build-core.mjs の analyzeSlideIds）と、設定のファイルがあるか → {noId: id のないスライドの数} か null
