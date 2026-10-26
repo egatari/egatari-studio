@@ -68,6 +68,10 @@ ok('subjects are part sets mapped to the internal series (math → academic, …
   assert.deepEqual(guessSubjects('ハ長調の音階と主和音（ピアノの鍵盤で）'), ['music']);
   assert.deepEqual(guessSubjects('Major scales and chords on the piano'), ['music']);
   assert.deepEqual(guessSubjects('キーボードの打ち方'), [], 'a computer keyboard is not music');
+  assert.deepEqual(guessSubjects('関係代名詞と第 5 文型（英文の構造）'), ['english']);
+  assert.deepEqual(guessSubjects('Lesson in English: photosynthesis'), [], 'the lesson language English is not the subject');
+  assert.deepEqual(SUBJECTS.find((s) => s.id === 'english').label, { ja: '英語', en: 'English (foreign language)' }, 'the english subject (components v1.12.0): a free subject');
+  assert.deepEqual(SUBJECTS.map((s) => s.id), ['math', 'business', 'kokugo', 'english', 'info', 'social', 'music'], 'tile order: the language subjects together, music last');
   assert.deepEqual(SUBJECTS.find((s) => s.id === 'music'), { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' }, 'the music subject (components v1.11.0): a free subject');
   assert.deepEqual(guessSubjects(''), []);
   assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
@@ -117,7 +121,7 @@ ok('part labels: every vendored part has a ja/en name and an icon; the standard 
   for (const [what, k] of [...Object.entries(PART_LABELS).map(([t, x]) => [t, x.icon]), ...SUBJECTS.map((x) => ['subject ' + x.id, x.icon]), ...manifestPurposes.filter((p) => p.icon).map((p) => ['purpose ' + p.id, p.icon])])
     assert.ok(ICON_KEYS.has(k), `${what}: icon "${k}" is drawn in app/llm.js ICONS`);
   assert.equal(manifestPurposes.find((p) => p.id === 'music').tile, 'none');
-  assert.ok(ICON_KEYS.has('music') && ICON_KEYS.has('subj-music') && ICON_KEYS.has('keyboard') && ICON_KEYS.has('kakijun'));
+  assert.ok(ICON_KEYS.has('music') && ICON_KEYS.has('subj-music') && ICON_KEYS.has('keyboard') && ICON_KEYS.has('kakijun') && ICON_KEYS.has('subj-english') && ICON_KEYS.has('syntax'));
   assert.deepEqual(standardParts('ja'), FREE_CORE.map((t) => PART_LABELS[t].ja));
   assert.deepEqual(standardParts('ja'), ['棒グラフ', '流れ図', '目次', '予想と答え']);
   assert.deepEqual(standardParts('en'), FREE_CORE.map((t) => PART_LABELS[t].en));
@@ -313,9 +317,10 @@ ok('free plan: FREE_CORE is the v1.1.0 common set plus m-predict; m-curves, m-kp
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict'], 'the v1.1.0 common set and m-predict (components v1.9.1)');
   assert.deepEqual([...FREE_OUT], ['m-boxplot', 'm-hissan', 'm-hist', 'm-kakijun', 'm-numberline', 'm-tape']);
   for (const t of FREE_OUT) assert.equal(PACK_DATA.en.components[t].series, t === 'm-kakijun' ? 'kokugo' : 'academic', t + ' is in its series in the vendored release');
-  // 音楽（部品庫 v1.11.0）：m-keyboard は無料版の music の指示に入る（FREE_OUT でない）。m-kakijun は国語でも無料版に名前を出さない
+  // 音楽（部品庫 v1.11.0）：m-keyboard は無料版の music の指示に入る（FREE_OUT でない）。m-kakijun は国語でも無料版に名前を出さない。英語（v1.12.0）：m-syntax は無料版の english に入る
   for (const lang of ['en', 'ja']) {
     assert.ok(buildPack({ series: ['music'], lang }).includes('### `<m-keyboard>`') && !buildPack({ series: [], lang }).includes('m-keyboard'), lang + ': m-keyboard comes with the free music pack only');
+    assert.ok(buildPack({ series: ['english'], lang }).includes('### `<m-syntax>`') && !buildPack({ series: [], lang }).includes('m-syntax'), lang + ': m-syntax comes with the free english pack only');
     assert.ok(!buildPack({ series: ['kokugo'], lang }).includes('m-kakijun') && buildPack({ series: ['kokugo'], lang, plan: 'paid' }).includes('### `<m-kakijun>`'), lang + ': m-kakijun is paid only');
   }
   assert.deepEqual({ ...FREE_HOME }, { 'm-curves': 'academic', 'm-kpi': 'business', 'm-quad': 'business' });

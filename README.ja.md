@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=167a8d420b9a2a08 -->
+<!-- i18n: pair=README.md sha256=d403fdf30e1d954c -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -287,7 +287,7 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 |---|---|
 | `docs/contract.ja.md` | 約束事（位置と時刻、パーツ、台本、タイムライン、強調、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
 | `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md`、`docs/distributing.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする、学習者に配る（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)、[English](docs/distributing.md)） |
-| `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体。系列の指示（academic・business・kokugo・info・social・music）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
+| `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体。系列の指示（academic・business・kokugo・english・info・social・music）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、台本、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、台本の解析、品質チェック、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しい教材のテンプレート |
 | `vendor/components/` | [egatari/components](https://github.com/egatari/components) のリリース（パーツ）の写し。取り込んだ版をすべて残し、既定の版は `components.lock.json` で固定。一覧は `vendor/components/CATALOG.md`。取り込みは `npm run components:update -- vX.Y.Z` |

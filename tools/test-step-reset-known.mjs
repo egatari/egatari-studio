@@ -28,8 +28,8 @@ t('self-expiring: an entry fails once the vendored part reaches its version, wit
 });
 t('the vendored version today (components.lock.json) has not expired the entry', () => {
   assert.deepEqual(expired(KNOWN), [], `cycle ${lockedVersion('cycle')}`);
-  assert.equal(lockedVersion('cycle'), '1.11.0');
-  assert.equal(expired([E]).length, 1, 'the removed entry would have expired at the vendored 1.11.0');
+  assert.ok(versionAtLeast(lockedVersion('cycle'), '1.11.0'), `cycle ${lockedVersion('cycle')}`);
+  assert.equal(expired([E]).length, 1, 'the removed entry would have expired at the vendored version (1.11.0 or later)');
 });
 t('entryFor: only that platform, part, slide and step', () => {
   assert.equal(entryFor([E], 'darwin', 'cycle', 1, 5), E);

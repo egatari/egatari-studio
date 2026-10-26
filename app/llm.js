@@ -632,6 +632,10 @@ export function setupLlm(app) {
     'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
     'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
     'subj-social': '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>',
+    // 英語の分野：A と下線（文の要素の印）
+    'subj-english': '<path d="M5 21l5.5-14 5.5 14M7.2 16h6.6"/><path d="M19 21V9h4.2a3 3 0 0 1 0 6H19M19 15h4.8a3 3 0 0 1 0 6H19"/><path d="M4 26h24"/>',
+    // m-syntax：語の下線と記号、修飾の矢印
+    syntax: '<path d="M4 18h7M13 18h6M21 18h7"/><path d="M6 23h3M15 23h2M23 23h3"/><path d="M24 12c0-5-12-5-12 0" /><path d="M10.5 10.5l1.5 1.8 1.8-1.5"/>',
     // 音楽の分野：8 分音符を 2 つつないだ形
     'subj-music': '<path d="M12 24V7l14-3v17"/><path d="M12 11l14-3"/><ellipse cx="8.5" cy="24" rx="3.5" ry="2.7"/><ellipse cx="22.5" cy="21" rx="3.5" ry="2.7"/>',
     // 言いたいこと music（札なし。部品庫 v1.11.0 の purposes の icon "music"）：五線と音符

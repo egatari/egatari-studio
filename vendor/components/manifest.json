@@ -1,13 +1,13 @@
 {
   "name": "egatari-components",
-  "version": "1.11.0",
-  "tag": "v1.11.0",
+  "version": "1.12.0",
+  "tag": "v1.12.0",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.11.0.tar.gz",
-    "sha256": "dd75a0e048e9de44865ad9ae8e0ddb0ae37cd13d2fb8b037d75c9e0d87238756",
-    "bytes": 412713
+    "file": "egatari-components-v1.12.0.tar.gz",
+    "sha256": "2ca2387ce51c7943192e60a4e205eb02c0a21ba1aea67ec82049406c066b20bd",
+    "bytes": 426324
   },
   "purposes": [
     {
@@ -781,11 +781,11 @@
       "interactive": true,
       "viewerInput": true,
       "preview": "none",
-      "sha256": "63a31a715880253e90dd36f8e0248bc8ce06ff510a2072782cd6df7f760379eb",
+      "sha256": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2",
       "files": {
-        "README.md": "11a0c1e6a7c6edcf7cb2582460fda1988a30c14b3c604693658c28529d7570d2",
+        "README.md": "9e027bfc8f4507f1bbc92a7d9701d57f1eebc79b00851a432e9a9ccb1dc241cb",
         "demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
-        "index.js": "63a31a715880253e90dd36f8e0248bc8ce06ff510a2072782cd6df7f760379eb"
+        "index.js": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2"
       }
     },
     "quad": {
@@ -846,6 +846,23 @@
         "README.md": "a854c5408fd923d1f02fbade4de9da71b7e0ce76c325b38d968ceb5e9fb1ca47",
         "demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
         "index.js": "40ebf91679dc6c5cc820f7974e3511cd576ec3bd0b945b752334feb059b04719"
+      }
+    },
+    "syntax": {
+      "tag": "m-syntax",
+      "series": "english",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8",
+      "files": {
+        "README.md": "68b3235ac772a01ebfacf5fe65e1477e9196cfd80121cdcd60fe4ab69d84275f",
+        "demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+        "index.js": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8"
       }
     },
     "tape": {
@@ -909,11 +926,11 @@
         },
         "icon": "timer"
       },
-      "sha256": "fad8bc3c63ea12f1c8329f71d64e828279f933599a279388a251a7a7cefc2350",
+      "sha256": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161",
       "files": {
-        "README.md": "c3a7212b518d0090291aabf3098fc834a3bd0df5388571835700429074200d0b",
+        "README.md": "78656e8f1f8bf78f74a712f57d31bec88b75b49d0bd99521c0e4a2c2d0bab0c4",
         "demo.html": "1792b5b2c443088e3e2405fb733f33348e322decb5fe75dc3590fd1b6536f2b0",
-        "index.js": "fad8bc3c63ea12f1c8329f71d64e828279f933599a279388a251a7a7cefc2350"
+        "index.js": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161"
       }
     },
     "tree": {
@@ -1035,9 +1052,9 @@
     "pie/README.md": "d2c11950f7099fd534818fc4c6f8da068a3574e12ed466465b21249f75a3941b",
     "pie/demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
     "pie/index.js": "0d9fd415e240132088ac080742c1447ae2e79d72e6e4013a0258718f8f21cd41",
-    "predict/README.md": "11a0c1e6a7c6edcf7cb2582460fda1988a30c14b3c604693658c28529d7570d2",
+    "predict/README.md": "9e027bfc8f4507f1bbc92a7d9701d57f1eebc79b00851a432e9a9ccb1dc241cb",
     "predict/demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
-    "predict/index.js": "63a31a715880253e90dd36f8e0248bc8ce06ff510a2072782cd6df7f760379eb",
+    "predict/index.js": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2",
     "quad/README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
     "quad/demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
     "quad/index.js": "bd7cb157ba5a2a0e227399f3837321d89d986b90a6ec7456b9a12f25aba1cb2d",
@@ -1050,15 +1067,18 @@
     "sweep/README.md": "a854c5408fd923d1f02fbade4de9da71b7e0ce76c325b38d968ceb5e9fb1ca47",
     "sweep/demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
     "sweep/index.js": "40ebf91679dc6c5cc820f7974e3511cd576ec3bd0b945b752334feb059b04719",
+    "syntax/README.md": "68b3235ac772a01ebfacf5fe65e1477e9196cfd80121cdcd60fe4ab69d84275f",
+    "syntax/demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+    "syntax/index.js": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8",
     "tape/README.md": "865d748ed6f9fc986f863d7d7680231ed27734755ad3f078084468fcea24f4b1",
     "tape/demo.html": "202be8eef25df51fc3cd6c11e9d523fa4bf3c26cf10a4c1108da9e616f7d01a7",
     "tape/index.js": "412661216803f33e9e76ae1835f5f949bfacd4f56060ff6a87fa469c3a2fdedb",
     "timeline/README.md": "f5ef97c6b931e5579e2002cf405d1876430cbf0dc1de910074d33482f3f2cd3a",
     "timeline/demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
     "timeline/index.js": "b695649a73d2e8561e2a5aacc0a54d469b423b9375eb624e557369f9e89b018a",
-    "timer/README.md": "c3a7212b518d0090291aabf3098fc834a3bd0df5388571835700429074200d0b",
+    "timer/README.md": "78656e8f1f8bf78f74a712f57d31bec88b75b49d0bd99521c0e4a2c2d0bab0c4",
     "timer/demo.html": "1792b5b2c443088e3e2405fb733f33348e322decb5fe75dc3590fd1b6536f2b0",
-    "timer/index.js": "fad8bc3c63ea12f1c8329f71d64e828279f933599a279388a251a7a7cefc2350",
+    "timer/index.js": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161",
     "tree/README.md": "ded73e14fc1968ef88317714cb851fb2b12d9fa1b13253bbddec441831bb0135",
     "tree/demo.html": "199941a1e593782ecb1e1fff05477d43d27f9df8b8d4e0d97a546d17c389f628",
     "tree/index.js": "87fa74fa7d4779584b7e98c2d33401aa03dcbb7a4de2cecdbf9f4960de518b7c",

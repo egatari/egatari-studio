@@ -41,6 +41,7 @@ export const PART_LABELS = Object.freeze({
   'm-tape': { ja: 'テープ図', en: 'Tape diagram', icon: 'tape' },
   'm-kakijun': { ja: '書き順', en: 'Stroke order', icon: 'kakijun' },
   'm-keyboard': { ja: '鍵盤', en: 'Keyboard', icon: 'keyboard' },
+  'm-syntax': { ja: '英文の構造', en: 'Sentence structure', icon: 'syntax' },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');
