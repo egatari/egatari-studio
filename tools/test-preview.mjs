@@ -5,7 +5,7 @@
 // - 薄さは --preview-opacity（0.45）、--lecture-dim はそれと同じ値
 // - data-preview="none" の要素は薄くせず隠す（段階を持つ要素も、薄く見せる段階の要素の中の要素も）。書き手が印を付けた部品には preview:false
 // - preview:"none" の部品は外から薄くしない（段階を持つ部品は隠す、薄く見せる段階の中の部品も隠す）
-// - ctx.slide はスライドの鍵（文字列）
+// - ctx.slide はスライドの鍵（文字列）。ctx.entered は別のスライドから・跳んで入った最初の描画だけ true
 // - ? の情報：形式 → プレーヤー → 作成 の順と言葉（ja・en）。title があればそれ、無ければ name から。player が無ければその行を出さない。版の文字列だけの deck-meta では出さない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,7 +23,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++
 const LOG = `DECK.define("m-pv-log", class extends DECK.MotionElement {
   static steps = 2;
   mount(ctx){ this._m = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; }
-  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; this.textContent = "log " + k; }
+  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; (this._e = this._e || []).push(ctx.entered); this.textContent = "log " + k; }
 });
 `;
 const ANS = `DECK.define("m-pv-ans", class extends DECK.MotionElement {
@@ -49,6 +49,10 @@ const deck = (lang) => `<!DOCTYPE html>
     <m-pv-log id="lg" style="display:block;height:40px"></m-pv-log>
     <div data-preview="none"><m-pv-log id="lg2" style="display:block;height:40px"></m-pv-log></div>
   </div>
+</section>
+<section class="slide noconcl" id="s-two">
+  <h2>Two</h2>
+  <div class="body"><p data-step="1">two</p></div>
 </section>
 </div>
 </body>
@@ -117,6 +121,30 @@ await p.keyboard.press('l');
 r = await probe(p, 1);
 ok(r.mode === 'lecture' && r.lg.mode === 'talk' && r.lg.preview === true && r.ans === 0, 'l turns preview on again: ctx talk + preview');
 await p.close();
+
+// ---- ctx.entered：別のスライドから・跳んで入った最初の描画だけ true
+{
+  const q = await page(built.ja);
+  const E = () => q.evaluate(() => { const l = document.getElementById('lg'), e = l._e || []; l._e = []; return e; });
+  await q.evaluate(() => { window.__pos = 0; document.addEventListener('deck:pos', () => { window.__pos++; }); });
+  let e = await E();
+  ok(e.length > 0 && e[0] === true && e.slice(1).every((x) => x === false), 'entered: true on the first render when the lesson opens ' + JSON.stringify(e));
+  await q.keyboard.press('ArrowRight'); await q.waitForTimeout(400);
+  e = await E();
+  ok(e.length > 0 && e.every((x) => x === false), 'entered: false when stepping within the slide ' + JSON.stringify(e.slice(0, 4)));
+  await q.evaluate(() => DECK.go(1, 0, false)); await q.waitForTimeout(200); await E();
+  await q.keyboard.press('ArrowLeft'); await q.waitForTimeout(400);
+  e = await E();
+  ok(e.length > 0 && e[0] === true && e.slice(1).every((x) => x === false), 'entered: true on coming back from another slide ' + JSON.stringify(e.slice(0, 4)));
+  await q.evaluate(() => DECK.go(0, 1, false)); await q.waitForTimeout(300);
+  e = await E();
+  ok(e.length > 0 && e[0] === true, 'entered: true after a jump within the same slide (link, overview, page number) ' + JSON.stringify(e.slice(0, 4)));
+  await q.evaluate(() => DECK.seek(0, 1, Infinity));
+  e = await E();
+  ok(e.length === 1 && e[0] === false, 'entered: false when the same position is drawn again ' + JSON.stringify(e));
+  ok(await q.evaluate(() => window.__pos) >= 3, 'deck:pos still fires for components pinned before ctx.entered');
+  await q.close();
+}
 
 // ---- ?mode=talk&preview=1（Player P8 の preview=1）も同じ
 p = await page(built.ja, '?mode=talk&preview=1');

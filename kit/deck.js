@@ -407,6 +407,9 @@ DECK.feedbackUrl = function(){
 if (typeof DECK.PositionStore !== "function") throw new Error("deck.js: DECK.PositionStore がない（kit/core/position.mjs を先に読み込む） / missing DECK.PositionStore (load kit/core/position.mjs first)");
 var POS = DECK.PositionStore();
 var slides = [], fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
+// ctx.entered（format spec §8.4）：別のスライドから入ったか、跳んで入った（リンク・一覧・ページ番号・発表者ビューや編集の goto・開いたとき）あとの最初の描画で true。
+// jumpTo：跳んだ先のスライド（go が step でない動きで書き、seek の最初の描画が読んで消す）
+var jumpTo = -1;
 
 function setupSlide(s, i, mainEnd){
   // 小さい注記の印は部品が mount で付けたものにだけ効く：書き手がデッキに書いたものは、部品の中に手で書いた子も含め、部品が作る前にここで外す
@@ -527,6 +530,8 @@ function previewOpacity(){
 // (i, k, t) の画面を描く。唯一の描画の入口。cont：実時間の再生の 2 コマ目から（同じ段階の続き。段階に入るのではない）
 function seek(i, k, t, from, cont){
   i = Math.max(0, Math.min(slides.length - 1, i));
+  var entered = !cont && (lastPos === null || lastPos.i !== i || jumpTo === i);
+  if (!cont && jumpTo === i) jumpTo = -1;
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
   if (REDUCE && t !== Infinity) t = Infinity;
@@ -580,7 +585,7 @@ function seek(i, k, t, from, cont){
   var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
     var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
-    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, deck: DECK};
+    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, entered: entered, deck: DECK};
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
       if (c._touched && !cont){ c._touched = false; untouch(c, p.k, ctx); }
@@ -1191,9 +1196,10 @@ function play(i, k, animate, from){
   })();
   POS.publish();
 }
-function go(i, k, animate){
+function go(i, k, animate, stepMove){
   var from = POS.i;
   i = Math.max(0, Math.min(slides.length - 1, i));
+  if (!stepMove) jumpTo = i;   // 1 段階ずつの送り・戻し（自動再生を含む）でない動きは跳ぶ（ctx.entered）
   LINKS.seen[i] = true;
   play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1);
   // 履歴の項目の state（リンクの深さ）は残し、その項目の中の今の位置（at：ブラウザの「進む」で戻る先）を書く（format spec §9.1A の「戻る」）
@@ -1205,8 +1211,8 @@ function go(i, k, animate){
     }
   } catch (e) {}
 }
-function next(){ var i = POS.i, k = POS.k; if (k < slides[i]._max) go(i, k + 1, true); else if (i < slides.length - 1) go(i + 1, 0, true); }
-function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false); else if (i > 0) go(i - 1, slides[i - 1]._max, false); }
+function next(){ var i = POS.i, k = POS.k; if (k < slides[i]._max) go(i, k + 1, true, true); else if (i < slides.length - 1) go(i + 1, 0, true, true); }
+function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false, true); else if (i > 0) go(i - 1, slides[i - 1]._max, false, true); }
 // 起動の前（部品の mount の前）の go は開く位置にする（最後の 1 つ。その前に頼まれた seek は捨てる）。送り・戻しは何もしない
 DECK.go = function(i, k, animate){ if (!started){ pendingGo = [i, k]; pendingSeek = null; return; } go(i, k, animate); };
 DECK.next = function(){ if (started) next(); }; DECK.prev = function(){ if (started) prev(); };
@@ -1233,7 +1239,7 @@ function runSeg(){
   if (!auto) return;
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
-  if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true); POS.setCause(c0); }
+  if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true, true); POS.setCause(c0); }
   auto.started = true;
   if (g.audio){
     if (!audioEl){
@@ -1296,7 +1302,7 @@ window.addEventListener("message", function(e){
     else if (m.cmd === "key" && typeof m.key === "string"){ if (window.DECK_DEV && window.parent !== window && e.source === window.parent) forwardedKey(m.key); }
     else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter", {detail: {source: e.source}})); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length && e.source === window.parent){   // 発表者ビューの中の画面：発表者ビュー（親）からだけ
-    go(m.i, m.k, !!m.animate);
+    go(m.i, m.k, !!m.animate, m.i === POS.i);   // 同じスライドの中の送りは跳ばない（ctx.entered。本体の位置についていくだけ）
   } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
     // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
     LINKS.follow = m.follow;
