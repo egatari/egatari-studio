@@ -115,10 +115,12 @@ ok('版の決め方：出した版と中身が同じなら版のまま、違え�
   const sha = await playerHash((rel) => fs.readFileSync(path.join(r, rel)));
   fs.writeFileSync(path.join(r, PLAYER_LOCK), JSON.stringify({ version: '1.0.0', sha256: sha }) + '\n');
   assert.deepEqual(await resolvePlayer(envOf(r, 'abc1234')), { name: 'egatari-player', version: '1.0.0', title: 'Egatari Player', released: true, sha256: sha });
-  // 改行だけが違う（Windows の checkout）：同じ中身
+  // 改行だけが違う（Windows の checkout と Unix の checkout）：同じ中身。今の改行の逆にする（Windows の CI では checkout がもう CRLF）
   const dj = path.join(r, 'kit', 'deck.js');
-  fs.writeFileSync(dj, fs.readFileSync(dj, 'utf8').replace(/\n/g, '\r\n'));
-  assert.equal((await resolvePlayer(envOf(r, 'abc1234'))).version, '1.0.0', 'CRLF checkout: the same player');
+  const dt = fs.readFileSync(dj, 'utf8');
+  fs.writeFileSync(dj, dt.includes('\r\n') ? dt.replace(/\r\n/g, '\n') : dt.replace(/\n/g, '\r\n'));
+  assert.notEqual(fs.readFileSync(dj, 'utf8'), dt);
+  assert.equal((await resolvePlayer(envOf(r, 'abc1234'))).version, '1.0.0', 'CRLF and LF checkouts: the same player');
   fs.appendFileSync(dj, '\n// changed\n');
   assert.equal((await resolvePlayer(envOf(r, 'abc1234'))).version, '1.0.0+dev.abc1234');
   assert.equal((await resolvePlayer(envOf(r, ''))).version, '1.0.0+dev', 'no commit (the editor app without git)');
