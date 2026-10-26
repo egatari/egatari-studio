@@ -1510,6 +1510,18 @@ async function savePortableBound(mode) {
       if (ws.revision !== rev || !live()) { if (!live()) { cancelled(); return; } rev = null; }
       const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
       if (ws.revision !== rev) rev = null;
+      // 組み直すと、ファイルのプレーヤーがこの Studio のものに替わる（format spec §4.1：保存の前に、どのプレーヤーが入るかを言う）。
+      // 替わるかは exportPortable の playerChange だけで決める（名前が違うとき。同じプレーヤーの版の違いは聞かない）
+      if (r.playerChange) {
+        if (!live()) { cancelled(); return; }
+        status('');
+        const pc = r.playerChange, label = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
+        const go = await ask({ title: T.playerChangeTitle, kind: 'warn', body: [el('p', { id: 'player-change', text: T.playerChangeBody(label(pc.from), label(pc.to)) })],
+          buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.playerChangeGo, pri: true }] });
+        if (go !== 'save') return;
+        if (!live()) { cancelled(); return; }
+        status(T.saving);
+      }
       html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
     }
   } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }

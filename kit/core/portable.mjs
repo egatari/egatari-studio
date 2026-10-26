@@ -1099,7 +1099,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const generator = { name: GENERATOR, version: env.version || '0', title: GENERATOR_TITLE };
   // 作り直し（段 B・C）は再生器を替える：前の文書の再生器の名前が違えば知らせる（§4.1：保存の前に、どの再生器が入るかを使う人に言う）
   const was = isObj(opts.carry) && isObj(opts.carry.player) && typeof opts.carry.player.name === 'string' ? opts.carry.player : null;
-  const playerChange = was && was.name !== player.name ? { from: { name: was.name, version: String(was.version ?? '') }, to: player } : null;
+  const playerChange = was && was.name !== player.name ? { from: { name: was.name, version: String(was.version ?? ''), ...(typeof was.title === 'string' && was.title ? { title: was.title } : {}) }, to: player } : null;
   if (playerChange) warnings.push(`${LOG}: the saved file will carry ${player.title} ${player.version} instead of its player "${playerChange.from.name}" ${playerChange.from.version}`);
   const index = {
     format: FID, version: { ...FORMAT_VERSION }, profile: embeddedCode ? 'extended' : 'core',
