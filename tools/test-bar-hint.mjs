@@ -21,7 +21,7 @@ const HINT_JA = 'マウスを画面の下に動かす（タップする）と、
 const st = (p) => p.evaluate(() => {
   const cb = document.getElementById('dt-cb'), h = document.getElementById('dt-hint'), hd = document.getElementById('dt-handle');
   const r = hd && hd.getBoundingClientRect();
-  return { bar: !!cb && cb.classList.contains('show'), hint: h ? h.textContent : null, handle: !!hd && hd.classList.contains('show'),
+  return { bar: !!cb && cb.classList.contains('show'), hint: h ? h.textContent : null, hintRole: h ? h.getAttribute('role') : null, hintAria: h ? h.getAttribute('aria-hidden') : null, handle: !!hd && hd.classList.contains('show'),
     handleOp: hd ? +getComputedStyle(hd).opacity : null, handleTab: hd ? hd.tabIndex : null, handleAria: hd ? hd.getAttribute('aria-hidden') : null,
     handleName: hd ? hd.getAttribute('aria-label') : null, handleBox: r ? { l: r.left, b: innerHeight - r.bottom, w: r.width, h: r.height } : null,
     pos: DECK.state().slide * 100 + DECK.state().step, focusHandle: document.activeElement === hd };
@@ -40,6 +40,7 @@ async function open(ctx, q = '') {
   let p = await open(ctx);
   let s = await st(p);
   ok(s.bar && s.hint === HINT_JA, `first open: the bar and the hint line are shown (${s.hint})`);
+  ok(s.hintRole === null && s.hintAria === 'true', `the hint line is not announced to screen readers (no role, aria-hidden) ${JSON.stringify([s.hintRole, s.hintAria])}`);
   ok(!s.handle && s.handleTab === -1 && s.handleAria === 'true', 'first open: no handle while the bar is shown (not in the Tab order)');
   await p.screenshot({ path: path.join(outdir, 'first-open.png') });
   await p.waitForTimeout(3600);

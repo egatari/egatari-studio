@@ -907,7 +907,8 @@ function showHandle(on){
 function hintSeen(){ try { return localStorage.getItem(HINT_KEY) === "1"; } catch (e) { return false; } }
 function showHint(){
   hint = document.createElement("div"); hint.id = "dt-hint"; hint.className = "deck-tools";
-  hint.setAttribute("role", "status");
+  // 読み上げソフトには知らせない（キーボードでは Tab でツールバーに入れる。取っ手は名前で読まれる）
+  hint.setAttribute("aria-hidden", "true");
   hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar";
   document.body.appendChild(hint);
   placeHint();
