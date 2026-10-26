@@ -1,9 +1,11 @@
-<!-- i18n: pair=viewer-classroom.ja.md sha256=6dacf4f7c8badb91 -->
+<!-- i18n: pair=viewer-classroom.ja.md sha256=d021404d01ae8148 -->
 # Handing a lesson to students on iPad (Classroom and Egatari Viewer)
 
 English | [日本語](viewer-classroom.ja.md)
 
 On an iPad, a lesson does not run when its HTML file is opened from the Files app. Students open it in **Egatari Viewer** (`https://viewer.egatari.org/`; on the Home Screen it is called **Ega Viewer**). The file is read on the iPad and never uploaded.
+
+A lesson shared as a link in Slack or Teams plays directly on iPhone and iPad (their in-app browsers run the lesson's scripts). Egatari Viewer is needed for files opened from Classroom and the Files app, where iOS shows HTML without running its scripts.
 
 <!-- On-screen words are those of the ui-redesign line (File ▾ → Export ▸ → For participants (play-only)…). On the current main line
      the item is "Export ▾" → "Export Egatari file (play only, .play.ega.html) for participants", which asks where to save right away (no dialog).

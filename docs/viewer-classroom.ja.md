@@ -1,9 +1,11 @@
-<!-- i18n: pair=viewer-classroom.md sha256=2c86da84f1a6cbd3 -->
+<!-- i18n: pair=viewer-classroom.md sha256=f01278b43cc5b153 -->
 # iPad の生徒に教材を配る（Classroom と Egatari Viewer）
 
 [English](viewer-classroom.md) | 日本語
 
 iPad では、HTML のファイルを「ファイル」App から開いても教材は動きません。生徒は **Egatari Viewer**（`https://viewer.egatari.org/`。ホーム画面での名前は **Ega Viewer**）で開きます。ファイルは iPad の中で読まれ、どこにも送られません。
+
+Slack や Teams でリンクとして共有した教材は、iPhone・iPad でもそのまま再生できます（アプリの中のブラウザが教材のスクリプトを動かすため）。Egatari Viewer が要るのは Classroom と「ファイル」App から開くファイルです（iOS はそこで HTML をスクリプトを動かさずに表示するため）。
 
 <!-- 画面の言葉は ui-redesign の版（ファイル ▾ → エクスポート ▸ → 参加者用（再生専用）…）。今の main の版では
      「書き出す ▾」→「参加者に配る Egatari ファイル（再生のみ・.play.ega.html）を書き出す」で、窓は出ずにすぐ保存先を聞く。
