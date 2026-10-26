@@ -1,9 +1,10 @@
-// タッチ画面（iPad・スマートフォン）での操作の帯（kit/tools.js）
+// タッチ画面（iPad・スマートフォン）でのツールバー（kit/tools.js）
 //   node tools/test-touch.mjs <built.html> [画面の保存先]
 // Chromium と、入っていれば WebKit（npx playwright-core install webkit。なければ「skip」）で、タッチを模して：
 // - 帯が隠れた後、スライドを指でタップすると帯が出る（位置は動かない）。何度でも
 // - 帯のボタンは指のタップで 1 回だけ効く（次へ・前へ・字幕。ブラウザが click も送っても 2 回にならない）
 // - 指で押した後も、帯は決まった時間で隠れる（:hover が残っても）
+// - 隠れた帯を出すタップ（帯のボタンのあった場所、読み上げで聞くの場所でも）と取っ手のタップは、出すだけでボタンを押さない
 // - マウスのクリックは今までどおり 1 回
 import fs from 'node:fs';
 import os from 'node:os';
@@ -55,6 +56,42 @@ async function run(name, browser) {
   ok(await p.evaluate(() => !document.activeElement || !document.activeElement.closest('#dt-cb')), `${name}: no focus is left on the bar after a tap`);
   await p.waitForTimeout(3500);
   ok(!(await shown()), `${name}: after tapping its buttons the bar still hides (no stuck hover)`);
+  // 隠れた帯を出すタップ・薄い取っ手のタップは、出すだけで帯のボタンを押さない（帯のボタンのあった場所、読み上げで聞くの場所でも）
+  {
+    const where = await p.evaluate(() => {
+      const c = document.getElementById('dt-cb');
+      c.classList.add('show');   // 出ているときの場所を測る（隠れているときは下にずれている）
+      const r = (n) => { const b = c.querySelector(`button[data-b="${n}"]`); if (!b) return null; const x = b.getBoundingClientRect(); return { x: x.left + x.width / 2, y: x.top + x.height / 2 }; };
+      const out = { read: r('read'), next: r('next'), cap: r('cap'), help: r('help') };
+      c.classList.remove('show');
+      return out;
+    });
+    const state = () => p.evaluate(() => ({ pos: DECK.state().slide * 100 + DECK.state().step, read: !!(DECK.tools && DECK.tools.readAloud && DECK.tools.readAloud()),
+      cap: !!(DECK.captions && DECK.captions()), help: !!document.querySelector('#dt-help.show'), on: [...document.querySelectorAll('#dt-cb button.on')].map((b) => b.dataset.b).join() }));
+    // 1 つずつ確かめる：前の確かめが押してしまったもの（字幕・読み上げ・キーの一覧）を戻してから、帯が隠れるのを待つ
+    const hideBar = async () => {
+      await p.evaluate(() => { if (DECK.tools.readAloud()) DECK.tools.readAloud(false); if (DECK.captions()) DECK.captions(false); if (document.querySelector('#dt-help.show')) DECK.tools.help(false); });
+      for (let i = 0; i < 40 && await shown(); i++) await p.waitForTimeout(200);
+    };
+    const targets = ['read', 'next', 'cap', 'help'].filter((k) => where[k]);
+    if (!where.read) console.log(`${name}: (no 読み上げで聞く button in this browser: no local voice; checking the other buttons' places)`);
+    for (const k of targets) {
+      await hideBar();
+      const s0 = await state();
+      await p.touchscreen.tap(where[k].x, where[k].y); await p.waitForTimeout(700);
+      const s1 = await state();
+      ok(await shown() && JSON.stringify(s1) === JSON.stringify(s0), `${name}: a tap where the hidden bar's ${k} button sits only shows the bar ${JSON.stringify(s0)} → ${JSON.stringify(s1)}`);
+    }
+    await hideBar();
+    const hd = await p.evaluate(() => { const h = document.getElementById('dt-handle'); if (!h || !h.classList.contains('show')) return null; const r = h.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    ok(!!hd, `${name}: the faint handle is shown while the bar is hidden`);
+    if (hd) {
+      const s0 = await state();
+      await p.touchscreen.tap(hd.x, hd.y); await p.waitForTimeout(700);
+      const s1 = await state();
+      ok(await shown() && JSON.stringify(s1) === JSON.stringify(s0), `${name}: a tap on the handle only shows the bar ${JSON.stringify(s0)} → ${JSON.stringify(s1)}`);
+    }
+  }
   // マウス（同じ窓で）：クリックは今までどおり 1 回
   await p.mouse.move(512, 740, { steps: 3 }); await p.waitForTimeout(300);
   const q0 = await pos();
