@@ -1,6 +1,6 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先のステップを薄く見せる選び（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or lecture slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、選び「先のステップを薄く見せる（l）」。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or teaching slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
@@ -92,7 +92,7 @@ Always reply in the language the user writes in, not the language of this file. 
 - 式とそれを導く一文は同じステップ。`<div data-step="k">` で一緒に囲む
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
 - 1 枚のステップは 5 前後まで
-- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。先のステップを薄く見せる選び（`?mode=lecture`、キー `l`）では同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
+- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。選び「先のステップを薄く見せる（l）」（発表中にキー `l` で入／切）では、同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
 - （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
 ## 5. 台本（narration.md）
@@ -202,7 +202,7 @@ Always reply in the language the user writes in, not the language of this file. 
 ## 8. 操作（発表）
 
 → / Space：次のステップ、←：前のステップ、Shift+矢印：スライド単位、数字＋Enter：そのページ、f：全画面、
-p：発表者ビュー（台本がカンペになる）、a：自動再生（音声があれば流す）、l：授業、b：黒い画面、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
+p：発表者ビュー（台本がカンペになる）、a：自動再生（音声があれば流す）、l：先のステップを薄く見せる（入／切）、b：黒い画面、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
 
 発表中の道具：o：スライド一覧（矢印で選んで Enter）、x：レーザーポインター、d：ペン、v：消えるペン（約 1 秒で消える）、
 Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタンも出る）、Backspace：このスライドの書き込みを消す（Shift で全部）、Esc：道具を解除。
