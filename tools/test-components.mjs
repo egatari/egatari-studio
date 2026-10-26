@@ -194,7 +194,7 @@ for (const { name, version, dir } of comps) {
 await b.close();
 console.log('');
 console.log(noise.summary('determinism: renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
-console.log(`quality check: renderer-noise acceptances (compOrderNoise): ${qcNoise}`);
+console.log(`quality check: renderer-noise acceptances (compOrderNoise) [${process.platform}]: ${qcNoise}`);
 if (fail) {
   console.log(`FAIL: ${fail} of ${names.length} component(s)`);
   for (const [n, w] of failed) console.log(`  - ${n}: ${w}`);

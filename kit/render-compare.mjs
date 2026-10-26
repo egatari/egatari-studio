@@ -133,6 +133,22 @@ export async function compareRenders(page, A, B, sa, sb) {
   return r;
 }
 
+// スライド全体の DOM を比べるときの属性のそろえ方（これだけ）：属性の並び（名前の順にする）・空の class（なくす）・style の空白と宣言の順
+// （宣言ごとに「名前: 値」、値の中の空白の並びは 1 つ、括弧の内側と , の前後の空白はなくし、宣言を名前の順に）。ほかの違い（値・属性の有無・class の中身）はそのまま残る。
+// 実行系は段階の表示で属性を足す順が呼び出し順で変わるので、スライド全体はこの形で比べる（部品の DOM はバイトのまま）
+// （この関数はブラウザの中でも動かすので、外の名前を使わない）
+export function canonAttrs(attrs) {
+  const style = (v) => v.split(';').map((d) => d.trim()).filter(Boolean).map((d) => {
+    const c = d.indexOf(':');
+    if (c < 0) return d.replace(/\s+/g, ' ');
+    const val = d.slice(c + 1).trim().replace(/\s+/g, ' ').replace(/\s*,\s*/g, ',').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+    return d.slice(0, c).trim() + ': ' + val;
+  }).sort().join('; ');
+  return attrs.filter(([k, v]) => !(k === 'class' && v.trim() === ''))
+    .map(([k, v]) => [k, k === 'style' ? style(v) : v])
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+}
+
 // 部品の写し：{dom（部品の木の文字列。shadow DOM も含め、何もそろえない。比べる DOM のない部品があれば null）,
 //   rects（部品の箱。画面の中に切ったもの）, area（箱の和集合の面積。画面の外は数えない）}
 // opts：{i}（DECK.slides[i] の部品）か {sel}（CSS セレクター）
@@ -141,14 +157,8 @@ const SNAPSHOT_IN_PAGE = ({ i, sel }) => {
   const OPAQUE = new Set(['canvas', 'video', 'iframe', 'object', 'embed']);
   let opaque = false;
   let out = [], canon = false;
-  // canon（スライド全体のときだけ）：属性の並び・空の class・style の書き方（空白と宣言の順）の違いは同じとみなす（実行系は段階の表示で属性を足す順が呼び出し順で変わる）
-  const attrs = (n) => {
-    const A = [...n.attributes].map((a) => [a.name, a.value]);
-    if (!canon) return A;
-    return A.map(([k, v]) => [k, k === 'style' && n.style ? n.style.cssText.split(';').map((x) => x.trim()).filter(Boolean).sort().join('; ')
-      : k === 'class' ? v.split(/\s+/).filter(Boolean).sort().join(' ') : v])
-      .filter(([k, v]) => !((k === 'class' || k === 'style') && v === '')).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-  };
+  // canon（スライド全体のときだけ）：canonAttrs（属性の並び・空の class・style の空白と宣言の順だけをそろえる）
+  const attrs = (n) => { const A = [...n.attributes].map((a) => [a.name, a.value]); return canon ? canonAttrs(A) : A; };
   const walk = (n) => {
     if (n.nodeType === 3) { out.push(JSON.stringify(n.data)); return; }
     if (n.nodeType === 8) { out.push('<!--' + n.data + '-->'); return; }
@@ -186,7 +196,8 @@ const SNAPSHOT_IN_PAGE = ({ i, sel }) => {
   }
   return { dom, rects, area, slideDom, slideRect };
 };
-export const domSnapshot = (page, opts) => page.evaluate(SNAPSHOT_IN_PAGE, typeof opts === 'number' ? { i: opts } : opts);
+const SNAPSHOT_FN = new Function('args', `const canonAttrs = ${canonAttrs.toString()};\nreturn (${SNAPSHOT_IN_PAGE.toString()})(args);`);
+export const domSnapshot = (page, opts) => page.evaluate(SNAPSHOT_FN, typeof opts === 'number' ? { i: opts } : opts);
 
 // 揺れとして通した比べを数える（試験の終わりにまとめて出す）
 export function noiseLog() {
@@ -201,7 +212,8 @@ export function noiseLog() {
     get faintCount() { return items.filter((x) => x.faint).length; },
     summary(label = 'renderer-noise acceptances') {
       const f = items.filter((x) => x.faint).length;
-      return `${label}: ${items.length} (of which ${f} with isolated faint off-edge pixels)${items.length ? '\n  ' + items.map((x) => x.s).join('\n  ') : ''}`;
+      const plat = typeof process !== 'undefined' ? process.platform : '?';
+      return `${label} [${plat}]: ${items.length} (of which ${f} with isolated faint off-edge pixels)${items.length ? '\n  ' + items.map((x) => x.s).join('\n  ') : ''}`;
     },
   };
 }

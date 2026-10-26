@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
-import { diffStats, faintOff, judgeRenders, describeRender, noiseCap, compareRenders, domSnapshot, noiseLog, NOISE_BOUNDS, LEGACY_TOL } from '../kit/render-compare.mjs';
+import { diffStats, faintOff, canonAttrs, judgeRenders, describeRender, noiseCap, compareRenders, domSnapshot, noiseLog, NOISE_BOUNDS, LEGACY_TOL } from '../kit/render-compare.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-render-compare-'));
@@ -111,7 +111,7 @@ await t('noiseLog: logs only the accepted noise, with where it happened, and cou
   L.add('cycle slide 1 step 5', { kind: 'noise', n: 2, cap: 200, faint: 2 });
   assert.equal(L.count, 2); assert.equal(L.faintCount, 1);
   const P = process.platform;
-  assert.equal(L.summary('x'), `x: 2 (of which 1 with isolated faint off-edge pixels)\n  [${P}] tree slide 1 step 4: 45 px (cap 200)\n  [${P}] cycle slide 1 step 5: 2 px (cap 200), 2 isolated faint off-edge px`);
+  assert.equal(L.summary('x'), `x [${P}]: 2 (of which 1 with isolated faint off-edge pixels)\n  [${P}] tree slide 1 step 4: 45 px (cap 200)\n  [${P}] cycle slide 1 step 5: 2 px (cap 200), 2 isolated faint off-edge px`);
 });
 // 縁から遠い、ばらばらでわずかな違い（macOS の CI の m-cycle）：白地の平らなところ（部品の箱の中）の画素を、各チャンネル d だけ変える
 const OPT2 = { ...OPT, rects: [[0, 0, 59, 59]] };
@@ -124,7 +124,7 @@ await t('faint off-edge: 2 isolated non-edge pixels with a small difference (20/
   assert.deepEqual([r.same, r.kind, r.faint], [true, 'noise', 2]);
   assert.match(describeRender(r), /2 isolated faint pixel\(s\) away from edges \(each channel <= 24\/255, at most 4\).*accepted/);
 });
-await t('outside the component box: accepted only on an edge, inside the slide, when the whole slide DOM is identical too (attribute order, empty class and style spacing aside)', () => {
+await t('outside the component box: accepted only on an edge, inside the slide, when the whole slide DOM is identical too (only attribute order, empty class and style spacing or order are normalised: canonAttrs)', () => {
   // 部品の箱は四角の中だけ（[25, 25, 34, 34]）、スライドは画面全体。四角の縁（x = 19）の画素は部品の箱の外
   const o = { ...OPT, rects: [[25, 25, 34, 34]], outer: [0, 0, 59, 59] };
   const s = diffStats(A, img((set) => set(19, 22, 128)), W, H, o);
@@ -140,6 +140,26 @@ await t('outside the component box: accepted only on an edge, inside the slide, 
   assert.equal(judged(far, sl('<section>a</section>'), sl('<section>a</section>')).same, false, 'outside the slide');
   const flat = diffStats(A, img((set) => set(5, 5, 0)), W, H, o);
   assert.equal(judged(flat, sl('<section>a</section>'), sl('<section>a</section>')).same, false, 'outside the component and away from edges');
+});
+await t('canonAttrs (slide DOM only): ignores attribute order, an empty class, and style spacing or declaration order', () => {
+  const c = (a) => JSON.stringify(canonAttrs(a));
+  const base = [['data-step', '2'], ['aria-hidden', 'true'], ['style', 'opacity: 0; transform: translateY(14px);']];
+  assert.equal(c([['aria-hidden', 'true'], ['style', 'transform:translateY( 14px );opacity:0'], ['class', ''], ['data-step', '2']]), c(base));
+  assert.equal(c([...base, ['class', '  ']]), c(base));
+  assert.equal(c([['style', 'fill:rgb(1,2,3)']]), c([['style', 'fill: rgb(1, 2, 3);']]));
+});
+await t('canonAttrs: does NOT ignore any other difference (a changed value, an added attribute, a changed class, a changed style value)', () => {
+  const c = (a) => JSON.stringify(canonAttrs(a));
+  const base = [['data-step', '2'], ['class', 'a b'], ['style', 'opacity: 0']];
+  assert.notEqual(c([['data-step', '3'], ['class', 'a b'], ['style', 'opacity: 0']]), c(base), 'changed value');
+  assert.notEqual(c([...base, ['aria-hidden', 'true']]), c(base), 'added attribute');
+  assert.notEqual(c([['data-step', '2'], ['style', 'opacity: 0']]), c(base), 'removed attribute');
+  assert.notEqual(c([['data-step', '2'], ['class', 'a c'], ['style', 'opacity: 0']]), c(base), 'changed class');
+  assert.notEqual(c([['data-step', '2'], ['class', 'b a'], ['style', 'opacity: 0']]), c(base), 'class token order is not normalised');
+  assert.notEqual(c([['data-step', '2'], ['class', 'a b'], ['style', 'opacity: 0.5']]), c(base), 'changed style value');
+  assert.notEqual(c([['data-step', '2'], ['class', 'a b'], ['style', 'opacity: 0; color: red']]), c(base), 'added style declaration');
+  assert.notEqual(c([['data-step', '2'], ['class', 'a b'], ['style', '']]), c([['data-step', '2'], ['class', 'a b']]), 'an empty style is not dropped');
+  assert.notEqual(c([['title', 'a  b']]), c([['title', 'a b']]), 'spacing in other attributes is kept');
 });
 await t('faintOff: off-edge pixels that touch each other are not isolated', () => {
   // （平らなところで隣り合う 2 つの違いは、互いを縁とみなして diffStats では縁の画素になるので、ここでは faintOff だけを直に確かめる）

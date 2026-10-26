@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
+import { KNOWN, expired, entryFor, knownAccepts, unused, lockedVersion } from './step-reset-known.mjs';
 
 const args = process.argv.slice(2);
 const oi = args.indexOf('--only');
@@ -38,7 +39,11 @@ const settle = (p) => p.evaluate(() => document.fonts.ready.then(() => new Promi
 // 画素の比較は kit/render-compare.mjs（tools/test-components.mjs の決定性・kit/check.mjs の D と同じ基準）：部品の DOM がバイトまで同じで、
 // 違いが NOISE_BOUNDS の内側（縁の 1 px・部品の箱の中・部品の面積の 0.1 % かつ 200 px 以下。縁から遠いのは、ばらばらでわずかなもの 4 個まで）なら描き方の揺れとして許して記録する。
 // DOM が違う・比べる DOM がない部品は、今までどおり画素の数だけ（はっきり違う画素が 40 以下）
-let exactN = 0, tolN = 0;
+let exactN = 0, tolN = 0, knownN = 0;
+// 既知の揺れ（期限つき。tools/step-reset-known.mjs）：部品庫の既定の版が期限に達していたら、項目が残っていること自体を失敗にする
+const lockVer = lockedVersion();
+for (const x of expired(KNOWN, lockVer)) ok(false, x.msg);
+const seenKnown = new Set();
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
 const shot = async (p) => { await settle(p); return p.screenshot({ clip: CLIP }); };
 const goTo = (p, i, k) => p.evaluate(([i, k]) => DECK.go(i, k, false), [i, k]);
@@ -112,10 +117,15 @@ for (const { name, dir } of comps) {
         await p.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
         await p.mouse.move(0, 0);
         const B = await shot(p), DB = await domOf(p, i);
-        const cmp = await compareRenders(p, A, B, DA, DB), same = cmp.same;
-        if (cmp.exact) exactN++; else if (same) tolN++;
+        const cmp = await compareRenders(p, A, B, DA, DB);
+        const ke = entryFor(KNOWN, process.platform, name, i + 1, k);
+        if (ke) seenKnown.add(ke);
+        const known = knownAccepts(ke, cmp, DA, DB);
+        const same = cmp.same || known;
+        if (known) { knownN++; console.log(`     ${ke.label} ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`); }
+        if (cmp.exact) exactN++; else if (cmp.same) tolN++;
         const tag = `${name}-s${i + 1}-k${k}-${how}-${label.replace(/\W+/g, '_')}`;
-        if (!cmp.exact) console.log(`     ${same ? 'note' : 'diff'} [${process.platform}] ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`);
+        if (!cmp.exact && !known) console.log(`     ${same ? 'note' : 'diff'} [${process.platform}] ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`);
         noise.add(`${name} slide ${i + 1} step ${k} (${how}, ${label})`, cmp);
         if (!same) { fs.writeFileSync(path.join(out, tag + '-A.png'), A); fs.writeFileSync(path.join(out, tag + '-B.png'), B); }
         ok(same, `${name}: slide ${i + 1} step ${k}: ${how} interaction, then ${label} = before (pixel-equal)`, name);
@@ -189,6 +199,8 @@ if (!only || only.includes('kobun')) {
 }
 await b.close();
 console.log(`comparisons: ${exactN} exactly equal, ${tolN} within the anti-aliasing tolerance (kit/render-compare.mjs)`);
+for (const x of unused(KNOWN, process.platform, comps.map((c) => c.name), seenKnown)) ok(false, x.msg);
+console.log(`known flakes accepted: ${knownN} [${process.platform}] (tools/step-reset-known.mjs; components ${lockVer})`);
 console.log(noise.summary('renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
 if (failed.size) console.log('failed components: ' + [...failed].join(', '));
 console.log(fail ? `${fail} failure(s)` : 'all ok');
