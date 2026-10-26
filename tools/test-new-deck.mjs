@@ -15,7 +15,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, freePick, FREE_SUBJECT_MAX, freeSubjects, SEED_ATTR, newSeed, seedOf, withSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, freePick, FREE_SUBJECT_MAX, freeSubjects } from '../kit/core/new-deck.mjs';
+import * as NEW_DECK from '../kit/core/new-deck.mjs';
+import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff, toolsFrom } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
@@ -478,36 +480,9 @@ ok('pack: turning purposes off removes the parts used only for them from the cat
   assert.ok(!seriesPart('business', 'ja', off).includes('m-kpi'));
 });
 
-ok('seed: a fresh random seed at creation even when the reply has one; written once otherwise; restored on revise, also without an <html> start tag', () => {
-  assert.equal(SEED_ATTR, 'data-egatari-seed');
-  const s = newSeed();
-  assert.ok(Number.isInteger(s) && s >= 0 && s < 2 ** 32);
-  assert.equal(newSeed(() => 0.5), 2 ** 31);
-  const deck = '<!DOCTYPE html>\n<html lang="ja" data-theme="default">\n<head></head><body></body></html>';
-  const a = withSeed(deck, 123456789);
-  assert.equal(a, deck.replace('data-theme="default">', 'data-theme="default" data-egatari-seed="123456789">'));
-  assert.equal(seedOf(a), 123456789);
-  assert.equal(withSeed(a, 42), a, 'withSeed keeps an existing seed');
-  // 新規作成：返事が data-egatari-seed="42" を書いていても新しい値
-  const reply = deck.replace('<html ', '<html data-egatari-seed="42" ');
-  const fresh = freshSeed(reply, 987654321);
-  assert.equal(seedOf(fresh), 987654321); assert.ok(!fresh.includes('"42"') && (fresh.match(/data-egatari-seed/g) || []).length === 1);
-  assert.equal(seedOf(deck), null);
-  assert.equal(seedOf('<html data-egatari-seed="4294967296">'), null);
-  assert.equal(seedOf("<html data-egatari-seed='7'>"), 7);
-  // > を含む属性の値・コメントの中の <html> に惑わされない
-  const tricky = '<!DOCTYPE html>\n<!-- <html data-egatari-seed="1"> -->\n<html lang="ja" title="a>b">\n<body></body></html>';
-  const t2 = withSeed(tricky, 5);
-  assert.equal(seedOf(t2), 5); assert.ok(t2.includes('title="a>b" data-egatari-seed="5">') && t2.includes('<!-- <html data-egatari-seed="1"> -->'));
-  const revised = deck.replace('<head>', '<head><title>new</title>');
-  assert.equal(seedOf(keepSeed(a, revised)), 123456789, 'a revised deck without the seed gets it back');
-  assert.equal(seedOf(keepSeed(a, withSeed(revised, 5))), 123456789, 'a changed seed is put back');
-  assert.equal(keepSeed(deck, revised), revised, 'no seed before: nothing added on revise');
-  // <html> の開始タグのない返事：<!DOCTYPE> の後ろに <html data-egatari-seed> を足す
-  const noRoot = '<!DOCTYPE html>\n<head><title>x</title></head>\n<body></body>';
-  const k = keepSeed(a, noRoot);
-  assert.equal(seedOf(k), 123456789); assert.ok(k.startsWith('<!DOCTYPE html>\n<html data-egatari-seed="123456789">\n<head>'));
-  assert.throws(() => withSeed(deck, 2 ** 32));
+ok('no lesson seed (format spec §8.4: variants by name only): npm run new writes none and the module has no seed helpers', () => {
+  for (const o of [{}, { blank: true }, { lang: 'en' }]) assert.ok(!newDeckFiles(o)['deck.html'].includes('data-egatari-seed'), JSON.stringify(o));
+  for (const k of ['SEED_ATTR', 'newSeed', 'seedOf', 'withSeed', 'freshSeed', 'keepSeed']) assert.equal(NEW_DECK[k], undefined, k);
 });
 ok('choices: egatari.json studio.newDeck through updateConfig (other members byte for byte); with the outline in the same studio member', () => {
   const raw = '{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}}';
@@ -531,35 +506,41 @@ ok('choices: egatari.json studio.newDeck through updateConfig (other members byt
   assert.deepEqual(choiceOf(three).subjects, ['math', 'kokugo', 'info']);
   assert.deepEqual(seriesForChoice(choiceOf(three)), ['academic', 'kokugo']);
 });
-ok('seed survives every slide operation of the editor (insert, duplicate, delete, move): they splice slides and never touch <html> (§8.4 "MUST preserve it on save")', () => {
-  const deck = withSeed(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), 2718281828);
+// 前の原稿の data-egatari-seed（誰も読まない属性）と、パーツの variant は、バイトのまま残す（段 A がバイトを保つため、保存で消さない）
+const OLD_SEED = (t) => t.replace(/<html\b([^>]*)>/, '<html$1 data-egatari-seed="2718281828">');
+const WITH_VARIANT = (t) => t.replace(/<m-sweep\b/, '<m-sweep variant="draw"');
+ok('variant attributes and an old data-egatari-seed survive every slide operation of the editor (insert, duplicate, delete, move) byte for byte', () => {
+  const deck = WITH_VARIANT(OLD_SEED(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8')));
+  assert.ok(deck.includes('data-egatari-seed="2718281828"') && deck.includes('<m-sweep variant="draw"'), 'fixture');
   const n = slideChunks(deck).slides.length;
   assert.ok(n >= 2);
+  const head = deck.slice(0, deck.indexOf('<section'));
+  const sweep = /<m-sweep variant="draw"[^>]*>/.exec(deck)[0];
   const outs = [
     insertSlide(deck, 0, slideTemplate('title-body', { lang: 'en', id: 's-aaaaaa' })),
     duplicateSlide(deck, 0, 's-bbbbbb').out,
-    deleteSlide(deck, n - 1),
     moveSlide(deck, 0, n - 1),
   ];
-  for (const o of outs) { assert.equal(seedOf(o), 2718281828); assert.equal((o.match(/data-egatari-seed/g) || []).length, 1); }
+  for (const o of outs) { assert.ok(o.startsWith(head), 'the <html> start tag and head are untouched'); assert.ok(o.includes(sweep), 'the variant attribute is kept'); }
+  const del = deleteSlide(deck, n - 1);
+  assert.ok(del.startsWith(head));
 });
-ok('seed survives the build and a single-file round trip (pack → unpack)', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-seed-'));
+ok('variant attributes and an old data-egatari-seed survive a single-file round trip (pack → unpack) byte for byte', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-variant-'));
   try {
     const src = path.join(dir, 'src');
     fs.mkdirSync(src);
-    const deck = withSeed(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), 3141592653);
+    const deck = WITH_VARIANT(OLD_SEED(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8')));
     fs.writeFileSync(path.join(src, 'deck.html'), deck);
     fs.copyFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), path.join(src, 'narration.md'));
     const out = path.join(dir, 'lesson.ega.html');
     execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', src, '-o', out], { stdio: 'pipe' });
-    const html = fs.readFileSync(out, 'utf8');
-    assert.equal(seedOf(html), 3141592653, 'the built page carries the seed on <html>');
     const back = path.join(dir, 'back');
     execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'unpack', out, back], { stdio: 'pipe' });
     // 書き出しは id を付けて作業フォルダに書き戻す（format spec §8.1）：比べるのはその原稿
-    assert.equal(fs.readFileSync(path.join(back, 'deck.html'), 'utf8'), fs.readFileSync(path.join(src, 'deck.html'), 'utf8'), 'the unpacked source is byte for byte the same, seed included');
-    assert.equal(seedOf(fs.readFileSync(path.join(src, 'deck.html'), 'utf8')), seedOf(deck));
+    const written = fs.readFileSync(path.join(src, 'deck.html'), 'utf8');
+    assert.equal(fs.readFileSync(path.join(back, 'deck.html'), 'utf8'), written, 'the unpacked source is byte for byte the same, the old seed included');
+    assert.match(written, /<html\b[^>]*\sdata-egatari-seed="2718281828"/, 'writing the ids back keeps the old seed attribute');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 console.log(`new-deck: ${n} ok`);

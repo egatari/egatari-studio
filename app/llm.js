@@ -8,8 +8,8 @@
 //     ⑤ AI の出力を貼り付けます：欄 2 つ（スライド＝deck.html・台本＝narration.md。どちらに出力の全体を貼っても分け、違う欄に貼ったものは移す。kit/core/llm-import.mjs の pastePart）→
 //        ［作成］：スライドに id を付け（kit/core/slide-ids.mjs）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして（app/build-worker.js の exportHtml）、
 //        ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//        作るときに 1 回だけ、原稿の <html> にシード値（data-egatari-seed。format spec §8.4）を書き、写したときの選び方（プラン・場面・分野・使わない図）を
-//        egatari.json の studio.newDeck に残す（「その他」「この中にない」は subcategory: null）。「修正…」で入れ替える原稿がシード値を失っても、前のシード値に戻す（keepSeed）。
+//        作るときに、写したときの選び方（プラン・場面・分野・使わない図）を
+//        egatari.json の studio.newDeck に残す（「その他」「この中にない」は subcategory: null）。シード値は書かない（format spec §8.4：見せ方は variant の名前だけ）。
 //        長さが 9 枚から（分は 1 分 ≒ 1 枚）は 2 回に分けて頼む：⑤ がはじめに構成案の欄になり、受け取ったら 1〜6 枚目を頼む指示と 2 つの欄（kit/core/llm-outline.mjs）
 //   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'）：① 足すスライド → ② 短い指示（見出しの一覧と挿入する場所の前のスライドだけ。
 //     kit/core/llm-insert.mjs。別のチャットなら指示の全体も付けられる）→ ③ ⑤ と同じ 2 つの欄 →［挿入］：選んだスライドの後ろ（選んでいなければ最後）に入れ、
@@ -19,7 +19,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES, TOOLS, loadedParts } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, FREE_SUBJECT_MAX, freePick, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, newSeed, freshSeed, keepSeed } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, FREE_SUBJECT_MAX, freePick, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
 import { componentsOff } from '../kit/core/purposes.mjs';
 import { partLabel, partIcon, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
@@ -1232,8 +1232,6 @@ export function setupLlm(app) {
   }
   async function openNew(r, notes, info = []) {
     const ids = withIds(withTheme(r.deck), r.narration);
-    // シード値（format spec §8.4）：教材を作るこのときに 1 回だけ、原稿の根の要素（<html>）に書く
-    ids.deck = freshSeed(ids.deck, newSeed());   // 返事が data-egatari-seed を書いていても新しい値にする
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
     // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）
@@ -1264,8 +1262,7 @@ export function setupLlm(app) {
       narration = r.narration === null ? curN : mergeNarration(curN, r.narration).narration;
       what = X.replacedSlides(m.replaced);
     }
-    // シード値は保存で必ず残す（§8.4）：直した返事が <html> ごと書き直してシード値を落としても、前のものに戻す
-    const ids = withIds(keepSeed(cur, deck), narration);
+    const ids = withIds(deck, narration);
     what = what || X.replaced(file);
     if (S.portable) {
       // 1 ファイル（.ega.html）：今の作業場所のファイル（設定の docId・音声・部品）を残し、原稿だけを入れ替えて開き直す

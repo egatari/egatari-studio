@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
-import { CATEGORIES, seedOf } from '../kit/core/new-deck.mjs';
+import { CATEGORIES } from '../kit/core/new-deck.mjs';
 import { SERIES, FREE_CORE, buildPack } from '../kit/core/llm-pack.mjs';
 import { PART_LABELS } from '../kit/core/part-labels.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -160,8 +160,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-paste.png', 'paste-step-paste');
     const F1 = await create(p1);
     const nd1 = newDeckOf(F1);
-    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: [], tools: [], purposesOff: [] }) && Number.isInteger(seedOf(F1['deck.html'])) && F1['narration.md'].includes('{#s-'),
-      'S1: 「作成」 opens the new deck with a seed and keeps the choices in studio.newDeck: ' + JSON.stringify(nd1));
+    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: [], tools: [], purposesOff: [] }) && !F1['deck.html'].includes('data-egatari-seed') && F1['narration.md'].includes('{#s-'),
+      'S1: 「作成」 opens the new deck (no seed written) and keeps the choices in studio.newDeck: ' + JSON.stringify(nd1));
     ok(/^作成しました：スライド 3 枚 · 保存するまでファイルには書いていません/.test(await text(p1, '#toast')), 'S1: the toast says 「作成しました：スライド 3 枚」');
 
     // ================================================================ S6 S1 の先生：練習問題を 1 枚足す（別のチャットで頼む：指示の全体も付ける）

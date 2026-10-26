@@ -1,6 +1,6 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、先のステップを薄く見せる選び（lecture）。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or lecture slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードがあり、発表では「先のステップを薄く見せる（l）」を選べる。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or teaching slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
@@ -10,6 +10,8 @@ Always reply in the language the user writes in, not the language of this file. 
 作るものは **Egatari**（オープンなファイル形式。仕様は <https://github.com/egatari/egatari-spec>）の教材。作る道具が **Egatari Studio**（このリポジトリと編集アプリ <https://studio.egatari.org/>）。
 
 リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
+
+**入れるのは Egatari Studio の clone 1 つだけでよい。**パーツ（パーツライブラリ egatari/components のリリース）とテーマは、このリポジトリの `vendor/` に写してあるので、パーツライブラリのリポジトリを clone しなくても、全部のパーツが使える。パーツライブラリのリポジトリが要るのは、新しいパーツを提案するとき（motion-components スキル）だけ。
 
 ## 1. 作るもの
 
@@ -28,13 +30,20 @@ Always reply in the language the user writes in, not the language of this file. 
 
 1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業／動画）、テーマ（同梱は `default` `business` `kokugo`。ピッチ・コンサルの発表なら `business`、国語なら `kokugo`。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。§5）
 2. **構成案を文字で書いてユーザーに見せる**（ここが一番大事。TeX しかないときは、レジュメの役割をここで果たす）
-   - スライドごとに：見出し（章の見出し）／伝えたいこと（結論の行）／材料／パーツを使うか
-   - 枚数の目安：発表 1 分 ≒ 1 枚。1 枚に 8 行・100 字まで
+   - 書く前に、パーツの一覧 `<repo>/vendor/components/CATALOG.md` を全部読む（§6。全部のパーツが候補）
+   - 形：番号付きの並びで、1 枚に 1 項目。各項目に、この順で書く：見出し／**伝えたいこと**／**おすすめのパーツ**（理由）／結論の行／材料
+     - 見出し：章の見出し
+     - 伝えたいこと：パーツライブラリの伝えたいこと（`<repo>/vendor/components/manifest.json` の `purposes`）のどれか。名前は札の名前 `label.ja` があればそれ、なければ `ja`（比べる（量・特徴）・変化・内訳 など）。どれにも当たらなければ「なし（文と式）」
+     - おすすめのパーツ（理由）：その伝えたいことに合うパーツ（`manifest.json` の `components.<名前>.purposes` にその伝えたいことがあるもの。`CATALOG.md` の内容で選ぶ）と、選んだ理由。**おすすめにする前に、必要な機能があるかを README で確かめる**（例：`m-map-japan` で地方をまとめて塗れるか）。合うものがなければ「なし」か「新しい表現」（§6「合うパーツがないとき」）。**操作できるパーツ**（manifest の `interactive` のとおり。例：`m-predict`）には「発表中に操作できる」と添える
+     - **道具**（manifest の `group` が `"tool"` のパーツ）は、授業の中に時間を区切る活動（グループワーク・演習・『3 分で考える』など）があるときだけおすすめに入れる。教材の全体の長さ（「全体で 30 分」など）は当たらない
+     - 数：利用者が書いた値か、スクリプトで出す値だけを書く。それ以外は「（値はスクリプトで出す）」と書き、構成案の段で数を作らない
+   - パーツは**おすすめとして聞く**。例：「このスライドは年表のパーツ `m-timeline` がおすすめです。使いますか。ほかのパーツ・新しい表現・パーツなし（文と式）にもできます」。決めるのは利用者
+   - 枚数の目安：話す部分は 1 分 ≒ 1 枚。活動（指示とタイマー）は、何分でも 1 枚と数える。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **ステップと台本を一緒に書く**（§4・§5）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
-5. **パーツ**（§6）。効果のあるスライドだけ。パーツライブラリ（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
+5. **パーツ**（§6）。構成案で決めたスライドだけ。使うパーツの `README.md` と `demo.html` を読んでから書く。新しい表現を作ったら、パーツの候補として知らせる（§6）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。ステップ 0 で見えている本文の一覧は必ず読む
 7. **全スライドの最終ステップを 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す。**図のあるスライドは、先に図の約束（例：染色体は細胞の中にある）を書き出し、`npm run sheet -- <deck> --steps` のステップごとの帯で 1 つずつ確かめる。作り手の「確認しました」だけで終えない**
 8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・台本を直し、Alt+クリック（Mac は ⌥ option+クリック）でコメントを残す（編集モードの `m`（ペンのボタン、`d` でも開く）で、スライドに丸や矢印を描いてからコメントを書くこともできる：マーカー）。「コメントを反映して」と言われたら：
@@ -65,7 +74,7 @@ Always reply in the language the user writes in, not the language of this file. 
 | `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / ステップなし（表紙・付録）/ 箇条書きも初めから全部 |
 | `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。パーツは縦書きの指定（`m-gendai tate` など）で |
 | `<p class="sub">` `<div class="big">` `<p class="note">` `<div class="thm">` `<div class="cols">` | 小見出し / 主要な式 / 補足 / 定理の枠 / 横並び |
-| `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字（旧名 `blue` `red` `gray` も使える） |
+| `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字 |
 | `\( … \)` `\[ … \]` | 数式（KaTeX でビルド時に組む）。式の一部の色は `\hlE{…}`（結論・問題）`\hlT{…}`（用語）`\hlM{…}`（既知）で付ける（`\color{#D00000}` のように色を直接書かない） |
 | `{{FIG:名前}}` `{{JSON:file}}` | figs/名前.svg を埋め込む / data/file を埋め込む |
 | `<m-名前 …>` | パーツ（自動で読み込まれる） |
@@ -92,7 +101,7 @@ Always reply in the language the user writes in, not the language of this file. 
 - 式とそれを導く一文は同じステップ。`<div data-step="k">` で一緒に囲む
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
 - 1 枚のステップは 5 前後まで
-- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。先のステップを薄く見せる選び（`?mode=lecture`、キー `l`）では同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
+- 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。選び「先のステップを薄く見せる（l）」（発表中にキー `l` で入／切）では、同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
 - （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
 ## 5. 台本（narration.md）
@@ -163,25 +172,16 @@ Always reply in the language the user writes in, not the language of this file. 
 
 ## 6. パーツ
 
-| 型 | パーツ | 例 |
-|---|---|---|
-| パラメータを動かす | `m-sweep` | 学習率を 0.1 → 0.5 → 1.8 と動かし、前の形を灰色で残す（`examples/minimal`） |
-| 線を 1 本ずつ引く | `m-curves` | 同じ予測分布に平均・中央値・分位点を順に引く |
-| 図を組み立てる | `m-flow` | 証明の各ステップに合わせて箱と矢印を出す |
-| まとまる | `m-collect` | 8 回の観測が 2 つの事後モーメントに吸い込まれる |
-| 逐次更新 | `m-seq` | 回答を 1 個ずつ加え、事後分布と決定が動く |
-| 量を比べる | `m-bars` | 年ごとの売上を 1 本ずつ伸ばし、最後の年で軸を広げる（`examples/pitch-fictional`） |
-| 位置づける | `m-quad` | 2 軸の地図に競合を 1 つずつ置き、最後に自社の点を置いて動かす |
-| 絞り込む | `m-market` | TAM → SAM → SOM の円を外から順に出す |
-| 数字を見せる | `m-kpi` | 掴みの 3 つの数字を 1 枚ずつ数え上げる |
-| お金の流れ | `m-flow`（`kind` `amount` `pulse`） | 顧客が払うお金とサービスの行き来を 2 本の矢印で描き、お金を流す |
-| 漢文を読む | `m-kanbun` | 白文に訓点を付け、読む順を句ごとに 1 ステップずつたどり（返り点・再読文字で前の句へ戻るところは別のステップ。上へ戻る弧）、書き下し文にする。台本の `[n]` は句ごとに 1 つ（`order-by="all"` で読む順の全体を 1 ステップ）（`examples/kokugo-kanbun`） |
-| 古文の品詞分解 | `m-kobun` | 1 文ずつ語に切って品詞で色を分け、助動詞を押すと活用表、最後に現代語訳 |
-| 現代文の構造 | `m-gendai` | 傍線・指示語の矢印・段落の役割（主張・具体例・対比）の枠と線 |
-| 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
-| 符号の木で復号する | `m-codetree` | 符号表から木を作り、系列を 1 語ずつたどって、白・黒のランを画素の升目に並べる（MH 符号） |
+パーツはパーツライブラリ（egatari/components）のリリースの写し `<repo>/vendor/components/` にある。**全部のパーツが使える**（標準パーツも、分野のパーツも、道具も。チャットの AI への指示のように、プランや分野で絞らない）。
 
-- 一覧と属性は `<repo>/vendor/components/CATALOG.md`、動く例は各パーツの `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
+- 一覧：`<repo>/vendor/components/CATALOG.md`（全部のパーツの内容・ステップの数・受け取る値）。構成案の前に全部読む。使うと決めたパーツは `<repo>/vendor/components/<名前>/<版>/README.md`（書き方・データの形・台本との合わせ方）と `demo.html`（動く例）を読む
+- 分け方：`<repo>/vendor/components/manifest.json` の `components.<名前>`
+  - `series`：`common` が**標準パーツ**。ほかは分野（`academic`・`business`・`kokugo`・`info`・`social`）。スキルではどれも使える
+  - `purposes`：そのパーツが合う伝えたいこと（`purposes` の `id`。名前は `purposes` の `ja`）
+  - `interactive`：`true` なら操作できるパーツ。構成案で「発表中に操作できる」と添える
+  - `group`：`"tool"` なら道具。授業の中に時間を区切る活動（グループワーク・演習・『3 分で考える』など）があるときだけ使う
+- 使った例：`examples/minimal`（`m-sweep`）、`examples/pitch-fictional`（`m-bars` などビジネスのパーツ）、`examples/kokugo-kanbun`（`m-kanbun`・`m-menu`）
+- **合うパーツがないとき**：伝えたいことに合うパーツがなければ、表現カタログ（egatari/components の docs/expression-catalogue.md。パーツライブラリのリポジトリを clone してあればその中、なければ <https://github.com/egatari/components/blob/main/docs/expression-catalogue.md>）を見て、新しい表現を作ってよい。作るのは、その教材のパーツ（`<deck>/components/<名前>/index.js`。motion-components スキル）か、インライン SVG と `data-step`。カタログを読めなければ、インライン SVG と `data-step` で描く。作ったら、構成案と終わりの報告で**パーツの候補**として知らせる（何を伝えるための表現か・どのスライドか・カタログのどの項目に近いか）。パーツライブラリへの提案は、利用者が頼んだときだけ（motion-components スキル §5）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、パーツの子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
 - 図に matplotlib などのグラフを入れるときは、各軸にデータの範囲より余白を取る（`ax.margins(0.05)` など）。端の点がプロット領域で切れないようにする
 - 動きは注意の誘導に限る。飾りの動きは付けない
@@ -202,7 +202,7 @@ Always reply in the language the user writes in, not the language of this file. 
 ## 8. 操作（発表）
 
 → / Space：次のステップ、←：前のステップ、Shift+矢印：スライド単位、数字＋Enter：そのページ、f：全画面、
-p：発表者ビュー（台本がカンペになる）、a：自動再生（音声があれば流す）、l：授業、b：黒い画面、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
+p：発表者ビュー（台本がカンペになる）、a：自動再生（音声があれば流す）、l：先のステップを薄く見せる（入／切）、b：黒い画面、s：字幕（2 行ほどずつ送る）、Shift+s：字幕の大きさ（S / M / L）。
 
 発表中の道具：o：スライド一覧（矢印で選んで Enter）、x：レーザーポインター、d：ペン、v：消えるペン（約 1 秒で消える）、
 Shift+d：ペンの色（ペンの間は操作の帯に赤・青・黒のボタンも出る）、Backspace：このスライドの書き込みを消す（Shift で全部）、Esc：道具を解除。

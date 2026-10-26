@@ -1,0 +1,3 @@
+### Added
+- Files from an earlier version (no `player` in the index, format spec §7.1) open read-only: the lesson plays in the preview with its own player, editing and saving are refused, and a notice offers **Open in the earlier Studio** (`studio.egatari.org/v<made-with>/`, or the newest pre-1.0 version in `versions.json`) and **Open the migration guide**. Working folders with `egatari.json` and slides without an id get the same notice, with `npm run ids`; it goes away once the ids are added.
+- Migration guide for lessons made with an earlier version: `docs/migrating-0.x.md` (日本語: `docs/migrating-0.x.ja.md`), written so that a person or an AI coding agent can follow it step by step.

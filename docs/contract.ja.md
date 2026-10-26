@@ -1,187 +1,118 @@
-<!-- i18n: pair=contract.md sha256=93c677c21407be3d -->
-# 約束事（実行系・パーツ・台本・タイムライン）
+<!-- i18n: pair=contract.md sha256=516a6aacb450f0f8 -->
+# 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
 
-このリポジトリのすべてのパーツは、この文書の約束に従う。変えるときはこの文書を先に直す（英語版の [contract.md](contract.md) も）。
-選択肢・記法・キーの一覧は [reference.ja.md](reference.ja.md)（[English](reference.md)）。
+**規範の文は形式の仕様で、このページではない。**作るときの記法（スライド・ステップ・スライドの種類・時間の定数・数式・ファイルの参照・スライドの識別子・台本・読み・パーツの約束・強調・モーフ）は [Egatari の形式の仕様 §8](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#8-authoring-source-contract-version-1) が決める。タイムラインは §5.5、スライドへのリンクは §9.1A。表示のモード・先のステップを薄く見せる選び・授業の外へ出るリンクは [Egatari Player 1.0](https://github.com/egatari/egatari-spec/blob/main/egatari-player-1.0.md)（P1・P4）。このページには、Egatari Studio が足すものだけを書く：実装の置き場所、実行時の API、開発サーバー、`✎` の仮の行、品質チェックの指摘の名前、Studio 自身の CSS の手がかり。食い違うときは仕様が正しい。変えるときは仕様を先に直す。
+
+選択肢・記法・キーの 1 行ずつの一覧は [reference.ja.md](reference.ja.md)（[English](reference.md)）。下の節の番号は、ほかからの参照が切れないように残している。
+
+| 項目 | 規範の文 |
+|---|---|
+| 位置 *(i, k, t)*・ステップ・スライドの種類・時間の定数・数式・原稿の中の参照 | 形式 §8.0 |
+| タイムライン（`dur`・`lead`・`pad_after`・`hold`・上書き） | 形式 §5.5 |
+| スライドの識別子と鍵・ステップの印 | 形式 §8.1 |
+| 台本（ブロック・発言・`{cue}`・`{note:…}`・拡張の行）・読み | 形式 §8.2・§8.3 |
+| パーツ（`ctx`・ステップ・先を薄く見せる・見せ方・見る人の入力・音・テーマの色） | 形式 §8.4 |
+| 強調（`{mark}`） | 形式 §8.5 |
+| モーフ（`data-morph`） | 形式 §8.6 |
+| 表示のモード・先のステップを薄く見せる | Player P1 |
+| スライドへのリンク・授業の外へ出るリンク | 形式 §9.1A、Player P4・P4.2 |
+| ライブ | 拡張 `live`（形式の `extensions/live.md`） |
 
 ## 1. 位置と時刻
 
-発表中の「位置」は (スライド i, ステップ k, ステップの開始からの秒数 t) の 3 つで決まる。
-
-- ステップ 0 はスライドに入った直後。`data-step="k"` の要素はステップ k で現れる。結論の行（`.concl`）は自動で最後のステップになる
-- **画面は (i, k, t) だけで決まる**。実時間の時計、`setTimeout`、`requestAnimationFrame`、シードのない乱数をパーツの中で使ってはいけない
-- t = Infinity はそのステップの最終状態（戻る・ページ指定・印刷・動画の静止区間）
-- 実行系は 1 か所（`DECK.seek(i, k, t)`）で画面を描く。手動の発表では実時間を、動画のエクスポートでは仮想の時刻を渡す
-
-- ステップ 0 でスライドが切り替わる途中（`seek(i, 0, t, from)`）は、前のスライド `from` を最終状態で下に描く。`data-morph` のスライドに元のスライドから入るときは、重ねて薄れる代わりにモーフになる（§8）
-- 画面を撮る側（動画のエクスポート・品質チェック）は、`seek` の後に `requestAnimationFrame` を 2 回待ってから撮る（描画が反映される前の画面を撮らないため）
-- テーマの色は `oklch()` や `color-mix()` で書かれているので、`getComputedStyle` の値は rgb にならないことがある。数値が要るときは canvas に塗って読む
+- Studio の実行系は画面を 1 か所で描く：`DECK.seek(i, k, t)`（`t = Infinity` はそのステップの最終状態）。発表では実時間を、動画の書き出しでは仮の時間を渡す。**パーツは実時間の時計、`setTimeout`、`requestAnimationFrame`、シードのない乱数を使ってはいけない**
+- ステップ 0 でスライドが切り替わっている間（`seek(i, 0, t, from)`）は、前のスライド `from` を最終状態で下に描く。元のスライドから入った `data-morph` のスライドは、代わりにモーフで動く（§8）
+- 画面を撮るもの（動画の書き出し・品質チェック）は、`seek` の後に `requestAnimationFrame` を 2 回待ってから撮る
+- テーマの色は `oklch()` と `color-mix()` で書くので、`getComputedStyle` の値が rgb とは限らない。数が要るときは canvas に塗って読み戻す
 
 ## 2. 表示モード
 
-`?mode=talk|lecture|video`（既定は `talk`）。`data-step` は共通で、見せ方だけが変わる。
-
-| モード | ステップより後の要素 | 今のステップの要素 |
-|---|---|---|
-| talk（発表） | 隠す | 現れる（フェードと上への移動） |
-| lecture（授業） | 薄く見せる（`--lecture-dim`） | 濃く見せる。印は付けない |
-| video（動画） | talk と同じ。タイムラインで自動に進む | |
+モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|video`（既定は `talk`。または `<html data-mode>`）。`learn` はまだない。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
 
 ## 3. パーツ（Web Components）
 
+パーツの約束は形式 §8.4。Studio の実行時の API での書き方：
+
 ```js
 DECK.define("m-sweep", class extends DECK.MotionElement {
-  static steps = 2;                         // 部品の段階数（属性 steps で上書きできる）
-  static props = {                          // 受け取る値の宣言（部品一覧の自動生成に使う）
+  static steps = 2;                         // ステップの数（steps 属性で上書きできる）
+  static props = {                          // 受け取る値の宣言（パーツの一覧を作るのに使う）
     from: {type: "number", default: 0, doc: "始めの値"},
   };
-  mount(ctx)       { /* 1 回だけ。SVG や要素を作る */ }
-  duration(k)      { return 1.2; }          // 段階 k の動きの長さ（秒）
-  cues(k)          { return null; }         // 段階 k の中の同期点（秒の配列）。口述原稿のその段階の {cue} 1 つにつき 1 つ（先頭の 0 は書かない）
-  render(k, t, ctx){ /* 段階 k の開始から t 秒後の状態を描く。t = Infinity なら最終状態 */ }
+  mount(ctx)       { /* 1 回だけ。SVG と要素を作る */ }
+  duration(k)      { return 1.2; }          // ステップ k の動きの長さ（秒）
+  cues(k)          { return null; }         // ステップ k の中の同期点：そのステップの台本の {cue} 1 つに 1 つ（頭の 0 は書かない）
+  render(k, t, ctx){ /* ステップ k が始まって t 秒の状態。t = Infinity は最終状態 */ }
 });
 ```
 
-- パーツのステップはスライドのステップ `data-from`（既定 1）から始まる。スライドのステップ K のとき、パーツのステップは `k = clamp(K - from + 1, 0, steps)`。パーツのステップの範囲の外では t = Infinity で呼ばれる
-- 実行系は、舞台が並べ終わってから `mount` を呼ぶ。パーツは `mount` で自分の大きさ（`clientWidth`・`getBoundingClientRect`）を読んでよい。並んでいないうちに起動したとき（`display:none` の iframe の中、後で出すタブの中）は、舞台に大きさが付き、並べたことで読み始めた字（Web フォント）を読み終えるまで待ってから mount し、開いたときの位置（と、待つ間に頼まれた `DECK.seek`）を描く。`DECK.ready` と `deck:ready` はその後。起動のときに並んでいるスライドは、これまでどおりすぐに mount する
-- `render` は**同じ (k, t) なら必ず同じ画面**にする。前回の呼び出しの状態に頼らない（戻る・飛ぶ・動画のエクスポートで順番が変わるため）
-- `ctx = {mode, slide, instant, deck, reset?}`（`reset` は次の項目）。`ctx.mode === "lecture"` のときは最終状態を見せる、などをパーツが選べる（本体は今のステップに印を付けない）
-- パーツは、ステップの間に見ている人が手で変えられるようにしてよい：押したときに札を重ねて出す（`m-kobun` の活用表）、模型を回す、値をずらす。その状態は (i, k, t) に入らない（format spec §8.4）：`?mode=video` では開かず、印刷に出さず、ネットワークから何も取らず、中身は文字だけにし、**ステップに入るたび（同じステップに入り直すときも）、パーツは `render(k, t)` の描く画面に戻る**。パーツは、変えたときと違う k で `render` が呼ばれたとき、または `ctx.reset === true` で呼ばれたときに、その状態を捨てる。実行系は、パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると触った印を付け、次にステップに入るとき（`DECK.seek`・`DECK.go`・リンク・発表者ビューからの操作・印刷。そのステップの実時間の再生の 2 コマ目からは除く）に、別のステップ（t = Infinity）を描いてから、`ctx.reset = true` を付けて (k, t) を描く。触っていないパーツはこれまでどおり 1 回だけ描くので、動画のコマも送りの手間も変わらない。こうして動画・印刷・発表者ビューはいつも宣言どおりの画面になる（発表者ビューは位置だけを受け取る別の文書）
+- `ctx` は形式 §8.4 に挙げたものだけ。ほかに頼らない（Studio の実行系は内部のもの `ctx.deck` も渡すが、約束の一部ではない）
+- 手で動かした状態：パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると、実行系はそのパーツに触れた印を付け、次にステップに入るとき（どの `DECK.seek` や `DECK.go` も、リンク、発表者ビューの指示、印刷）、まず別のステップ（t = Infinity）で描いてから (k, t) を `ctx.reset = true` で描く。触れていないパーツは 1 回だけ描く
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
-- 数値データは検算済みのスクリプトの出力だけを使う。`<script type="application/json">{{JSON:file.json}}</script>` をパーツの子に置くと `this.data` で読める（直接の子にちょうど 1 つ。2 つ以上あれば `this.data` は `null` で、スライドは自前のコードを持つものとして扱う）
-- データの形は `static shape` に書く（`kit/shape.js`：JSON Schema の小さな部分集合で `{schema, example, note?}`。字で書くパーツは `{text: true, example}`、子の `<a href>` で書くパーツは `{links: true, example}`。json の属性は `static props` の `shape`）。実行系はステップを数える前に確かめ、違うとき・`mount` や `render` が例外を出したときはパーツを描かず、その場に札（`.m-error`）で何が違うかを出し、パーツのステップは属性 `steps`（なければ 0）にし、知らせを `DECK.componentErrors` に積む（品質チェック（コマンド版・ブラウザ版）が読む。スタックは載せない）。指示のパーツの一覧に形と見本が出る
+- データ：検算したスクリプトが出した数だけを使う。パーツの子に `<script type="application/json">{{JSON:file.json}}</script>` を置き、`this.data` で読む（直下の子にちょうど 1 つ。2 つ以上なら `this.data` は `null` で、スライドは独自のコードを持つものとして扱う）
+- データの形は `static shape` で宣言する（`kit/shape.js`：JSON Schema の小さな部分集合 `{schema, example, note?}`。文で書くパーツは `{text: true, example}`、子の `<a href>` は `{links: true, example}`。json の属性は `static props` に `shape` を持てる）。実行系はステップを数える前に確かめる：合わないとき、または `mount`・`render` が例外を投げたときは描かず、その場に何が悪いかを書いた代わり（`.m-error`）を出し、ステップの数は `steps` 属性（なければ 0）、問題は `DECK.componentErrors` へ（品質チェックがコマンドでもブラウザでも読む。スタックは出さない）。指示のパーツの一覧に形と例が出る
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
-- 版：組み立てはパーツライブラリのパーツごとに、教材に固定した版（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。パーツライブラリが取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録した教材は、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8・カメラ）は Studio の実行系にあり、パーツではない
+- 版：組み立てはパーツライブラリのパーツごとに、教材に固定した版（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。パーツライブラリが取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録した教材は、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8）は Studio の実行系にあり、パーツではない
 
 ## 4. 台本（narration.md）
 
-```markdown
-## 更新の式 {#s-k3f9q2}           ← スライドの見出しと、スライドの id
-[0] 更新の式です。今の点から、次の点を決めます。
-[1] 次の点は、今の点から勾配に比例した分だけ引いて作ります。
-[2] Expert: η は学習率で、1 歩の大きさを決めます。
-    Novice: 大きすぎると、どうなりますか。
-[concl] つまり、勾配の逆向きに、学習率に比例した幅だけ進みます。
-```
+記法は形式 §8.1〜§8.3。Studio が足すもの：
 
-- `[k]` はステップの番号、`[concl]` は結論の行のステップ。1 つのステップに複数の行（話者の交代）を書ける
-- 話者は `Expert:` と `Novice:` だけ。話者のない行は Expert（1 人モード）
-- `{cue}` でステップの中の同期点を入れる（パーツの `cues(k)` と順に対応する）
-- `{mark:ID}` `{mark:ID|効果|hold=秒}` `{mark:clear}` で強調を入れる（§7）。表示の文字列からは消え、TTS では `{cue}` と同じく区切りになる
-- ステップの区切り（`{cue}` と `{mark:…}`）はターンをまたいで順に並べたもの（`bounds`）が、TTS の `cues`（区切りの時刻の配列）と 1 対 1 に対応する。パーツの伸縮は `{cue}` の分だけを使う
-- `{φ|ファイ}` はその場の読み（表示は φ、TTS は「ファイ」）。それ以外の記号は読み辞書で読む
-- 組み立ては各発言を `{role, text, ttsParts}` として `deck-narration`（`DECK.NARRATION`。format spec §4）に書く：`text` は表示の文、`ttsParts` は読みを当てた区切りごとの話す断片（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値、spec §5.4）。`ttsParts` は画面に出さず、字の絞り込みにも数えない。読み上げ（§5）はこれを読む。`inputHash` は変わらないので、音声が古くなることはない
-- 式全体は読まない（品質チェックが警告する）
-- `✎ ` で始まる行は、編集アプリが新しいスライドに入れた仮の文（Studio の決まりで、ファイルの形式には入らない）。ふつうの口述の文なので、残すと読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの文は `templateText`）、編集アプリは音声を作る前とエクスポートする前に知らせる
-- ステップの中の拡張の行 `@x-<名前>-<欄> <値>`（`<名前>` に `-` は入らない）は、そのステップの拡張のデータ。どの発言にも入らない：表示も読み上げもされず、`bounds` にもどの hash にも入らないので、直しても音声は古くならない。開発サーバー・編集アプリ・`npm run ids` はそのまま残す
-
-**スライドの鍵**（[形式の仕様](https://github.com/egatari/egatari-spec) §8.1）。どのスライドにも変わらない id を付ける：`<section class="slide" id="s-k3f9q2">`。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、強調の目印（`id="…"`・`\htmlId{…}`）と同じ文書の id の名前空間にあるので、`deck.html` のほかのどの id とも重ねない。新しい id は `s-` と base32 の 6 字（`[a-z2-7]`、乱数）で、見出しから作らない（見出しを直しても何も変わらないように）。`npm run new` はどのスライドにも id を付ける。今ある教材には `npm run ids -- <教材>` で付ける。
-
-書いている途中の教材には、id のないスライドや見出しがあってよい（AI が書いたばかりの教材、前からの教材）：build と品質チェックは受け付け、下の決まりで鍵を決める。Egatari ファイルにはそうした鍵を書かない：エクスポートが先にそのスライドと見出しに id を付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` の鍵も）。
-
-- `deck.html` では、スライドの鍵（`data-key`、build が付ける）は section の `id`。id のないスライド（旧い書き方）は、最初の見出しを**正規化**した文字列（タグを除き、`&nbsp;` を空白とみなし、空白を**すべて**除いたもの）
-- `narration.md` では、スライドを `## <見出し> {#<id>}`（勧める書き方）、`## <id>`、`## <見出し>`（旧い書き方。id のないスライドだけ）で指す。`{#id}` があれば見出しの文字列より強い。見出しの文字列がスライドの見出しと違っても、品質チェックは指摘するだけ（情報）
-- id のあるスライドとないスライドを混ぜてよい。スライドごとに鍵を決める
-- 鍵が同じスライドが 2 枚ある教材は正しくない（品質チェックのエラー）。どちらかに id を付ける
-- ステップの鍵は `<スライドの鍵>:<ステップ>` で、**最後の** `:` で分ける（スライドの鍵に `:` があってもよい）。ステップは 0〜999 の 10 進（先頭の 0 なし）か `concl`。`[01]` や `[1000]` はステップにならない（build は警告し、品質チェックはエラーにする）
+- `npm run new` はどのスライドにも id を付ける。`npm run ids -- <deck>` は id のない教材に id を付ける（台本の見出しの `{#id}` も付け、`audio/manifest.json`・`timeline.json`・`comments.json` の鍵も付け替える）。そのような教材を開いて直せるように、Studio の組み立ては id のないスライドをまだ見出しで鍵にし、品質チェックが知らせる（`legacyIndex`・`linkNoId`）。鍵の重なりはエラーで、組めるように組み立ては後のスライドに `#2`・`#3`… を付ける
+- Egatari ファイルには見出しによる鍵を書かない：エクスポートが先に id のないスライドと台本の見出しに id を付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` の鍵も。控えは `.cache/edits/`）
+- 組み立ては発言ごとに `{role, text, ttsParts}` を `deck-narration`（`DECK.NARRATION`）に書く：`ttsParts`（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値）は表示せず、字の絞り込みにも入れない。読み上げで聞く（§5）がこれを読む
+- `✎ ` で始まる行は、編集アプリが新しいスライドに置いた仮の行（Studio の決まりで、形式の一部ではない）。ふつうの台本の文なので、残せば読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの字は `templateText`）、編集アプリは TTS と書き出しの前にその警告を出す
+- 式をそのまま読まない（品質チェックが警告する）。拡張の行は、開発サーバー・編集アプリ・`npm run ids` がそのまま残す
 
 ## 5. タイムライン
 
-各ステップの長さは実行系の `DECK.timeline()` が決める（自動再生と動画のエクスポートが同じ関数を使う）。
+式と定数は形式 §5.5 と §8.0。Studio では `DECK.timeline()` が計算する（自動再生も動画の書き出しも同じ関数）。`timeline.json` には例外だけを書く（`{"<スライドの鍵>:2": {"pad_after": 1.0}}`）。
 
-```
-dur = override.dur
-   ?? max(anim, audio ? lead + audio + pad_after : hold)
-```
-
-- anim：そのステップの動きの長さ（組み込みの効果とパーツの `duration(k)` の最大）。ステップ 0 はスライドの切り替え（0.35 s）、前のスライドからのモーフ（§8）なら 0.9 s を含む
-- audio：TTS の長さ（`audio/manifest.json`）。既定 lead = 0.25 s、pad_after = 0.6 s、音声のないステップの hold = 1.2 s
-- `startOffset`（符号化の遅れの秒数。編集アプリの MP3 なら 0.025057。format spec §5.2）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と区切りの時刻の 0 とする（自動再生も `render/render.mjs` も）
-- どの組み立ても、そのステップの音声の `kind`（`tts`・`recorded`・`imported`。format spec §5.2）を `deck-audio` の項目に書く：ふつうの build、開発サーバーとプレビュー、Egatari ファイル、再生専用の派生（索引を外すので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば（`tts/synth.py` の記録）`tts` とみなす。無音の `dry-run` のエンジンには `kind` を付けない。プレーヤーはまず `deck-audio` の `kind` を読み、なければ古い Egatari ファイルの索引の音声の記録を読む（確かめられるブラウザでは索引の hash を確かめてから。`DECK.audioKind(key)`）。format spec §7.3 のとおり、音声の作り方は情報の欄と再生の操作の近くで示し、舞台と字幕には出さない：どこかのステップの音声が TTS なら、操作の帯に小さな札「AI 音声」/ "AI voice"（帯と一緒に出て、一緒に隠れる。説明と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）に同じ文を 1 行、そのステップの発表者ビューにも 1 行。`imported` の音声は、キーの一覧と発表者ビューに「音声の作り方は記録されていません」/ "How the audio was made is not recorded"（札は出さない。`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には印を付けない
-- **読み上げ**（format spec §5.6）はタイムラインに入らない：**音声のない**ステップで見る人が「読み上げで聞く（音声ファイルにはなりません）」を押すと、操作の帯がそのステップを端末の読み上げの声（`speechSynthesis` の `localService` の声だけ）で読み、読んでいる間「読み上げ中」と出す。`dur`・`DECK.timeline()`・`deck-audio`・`(i, k, t)` の描画を変えず、何も書かず、`?mode=video` と印刷にはない。音声のあるステップは、その音声を使う。読むのは `deck-narration` の `ttsParts`（§4）で、ない古いファイルでは表示の文を読み「読み方は反映されません（古いファイル）」と添える。読む文と声の選び方は `kit/core/read-aloud.mjs`（実行系では `DECK.ReadAloud`）
-- 調整は `timeline.json` に例外だけを書く：`{"更新の式:2": {"pad_after": 1.0}, "更新の式:concl": {"hold": 2}}`
-- パーツの `cues(k)` と音声の cue 時刻（`{cue}` の区切りの分だけ）が両方あり、数が合うとき、パーツの時刻は区分線形に伸縮して音声に合わせる
-- 強調（§7）：音声のないステップでは `hold` の代わりに `max(hold, 印の終わり + pad_after)` を使う。音声のあるステップでは印は音声の中に収まるので dur は変わらない。`anim` は印を含まない。印を含めた動きの終わりは `motion = max(anim, 印の終わり)`（動画のエクスポートはここまでをコマで撮る）
+- `startOffset`（エンコーダの遅れの秒。編集アプリの MP3 では 0.025057 など）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と同期点の時刻の 0 とする（自動再生も `render/render.mjs` も）
+- どの組み立ても、ステップの音声の `kind` を `deck-audio` の項目に書く（再生専用の派生は索引を落とすので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば `tts` とする。音のない `dry-run` には `kind` を付けない。プレーヤーは `deck-audio` の `kind` を先に読み、前のファイルでは索引の音声の記録に戻る（`DECK.audioKind(key)`）。形式 §7.3 のとおり、音声の作り方は情報と再生の操作の近くで言い、スライドの上や字幕には出さない：どこかのステップの音声が TTS なら、操作の帯に小さな「AI 音声」/ "AI voice" の札（title と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）と、そのステップの発表者ビューにも同じ文。`imported` の音声には「音声の作り方は記録されていません」/ "How the audio was made is not recorded" をそこに出し、札は付けない（`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には付けない
+- **読み上げで聞く**（形式 §5.6）はタイムラインに入らない：音声のないステップで「読み上げで聞く（音声ファイルにはなりません）」を押すと、端末の読み上げの声（`speechSynthesis`。`localService` の声だけ）で `ttsParts` を読む（`ttsParts` のない前のファイルでは「読み方は反映されません（古いファイル）」）。`dur`・`DECK.timeline()`・`deck-audio`・描く画面を変えず、何も書かず、`?mode=video` と印刷にはない（`kit/core/read-aloud.mjs`、`DECK.ReadAloud`）
+- 強調まで含めた動きの終わりは `motion = max(anim, marksEnd)`。動画の書き出しはここまでのコマを撮る
 
 ## 6. （廃止）
 
-canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で外した。§7 以降への参照が変わらないよう、番号は残す。動画のエクスポート（`render/render.mjs`）はそのまま：1 ステップ = 1 クリップ。
+canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくした。§7 から後への参照が切れないように番号を残す。
 
 ## 7. 強調（`{mark}`）
 
-話し手の言葉に合わせて、スライドの一部に印を付ける。印も (i, k, t) だけで決まる（`seek` が毎回描き直す）。
+記法・効果・目印・時刻は形式 §8.5。Studio では（初めの 2 つは AI への指示に引く）：
 
-```markdown
-[2] {mark:eta|circle}η は学習率です。{mark:grad}勾配は、損失が最も急に増える向きです。
-```
-```html
-<div class="big" data-step="1">\[ \theta_{t+1}=\theta_t-\htmlId{eta}{\eta}\,\htmlId{grad}{\nabla f(\theta_t)} \]</div>
-```
-
-- 書式：`{mark:ID}`、`{mark:ID|効果}`、`{mark:ID|効果|hold=秒}`、`{mark:clear}`（その時点で、そのステップの印をすべて消す）
 - 効果：`underline`（既定。手描きの下線を左から右へ）、`circle`（手描きの囲み）、`box`（角丸の枠）、`spot`（対象のまわり以外を背景色で薄くする）、`laser`（光の点が対象の下へ滑ってきて少し留まる）
-- hold：出てから消え始めるまでの秒数。既定はステップの終わりまで（`laser` だけ 1.5 秒）。消えるときは 0.3 秒で薄れる。`spot` と `laser` は 1 つずつで、次のものが出ると前のものの位置から移る
 - 目印：スライドの中の `id="ID"` か `data-mark="ID"` の要素。式の一部は KaTeX の `\htmlId{ID}{…}` / `\htmlData{mark=ID}{…}`（build はこの 2 つと `\htmlClass` だけを許す）。同じ ID を何枚かで使うなら `data-mark` にする（id は文書の中で一意に）
-- 時刻：音声があり、区切りの数（`bounds` と `cues`）が合うときは `cue + lead`。音声が無い（生の発表・TTS の前）か数が合わないときは、そのステップの動きの終わり（`anim`）から 0.9 秒おき（`{cue}` は数えない）
-- 描き方：スライドに重ねた SVG（`svg.marks`、1280×720 の座標）に、対象の字の外形（文字の箱の和）から形を作り 0.5 秒で描く。色は `var(--emph)` と `var(--bg)`。手描きの揺れは ID とステップから決まる乱数で作る
-- t = Infinity はそのステップの最終状態（hold や clear で消えた印は出さない）。授業は常に最終状態。次のステップに進むと、前のステップの印は消える（ステップごとに独立）
-- 印刷（PDF）には出さない
-- 埋め込み：build が `<script id="deck-marks">` に `{"slideKey:stepKey": bounds}`（`{mark}` を含むステップだけ）を入れる。`DECK.MARKS`、品質チェック用に `DECK.marks(i, k)`（`[{id, effect, start, end, found}]`）
-- 品質チェック：build は目印が原稿の文字列に無いと警告する（パーツが作る要素は見えない）。品質チェックは実際の画面で目印を探し、無ければ警告、ステップごとの印の一覧を情報で出す
+- 描き方：スライドに重ねた SVG（`svg.marks`、1280×720）に、目印の字の輪郭（字の箱の和）から形を作って描く。手描きの揺れは ID とステップで決まる乱数で作る。次の `spot`・`laser` は前のものの位置から動く
+- 組み立ては `{"スライドの鍵:ステップの鍵": bounds}`（`{mark}` のあるステップだけ）を `<script id="deck-marks">` に入れる。`DECK.MARKS`、品質チェック用に `DECK.marks(i, k)`（`[{id, effect, start, end, found}]`）
+- 品質チェック：組み立ては目印が原稿の字にないと警告する（パーツが作る要素は見えない）。品質チェックは実際の画面で目印を探し、なければ警告し、ステップごとの強調を情報として並べる
 
 ## 8. モーフ（`data-morph`）
 
-前のスライドと同じ要素が、前の位置から今の位置へ滑ってくる切り替え（Keynote のマジックムーブ）。明示したスライドだけに起きる。
+対応のさせ方と時刻は形式 §8.6。Studio では：
 
-```html
-<section class="slide" data-morph>               <!-- 前のスライドから。data-morph="鍵" ならそのスライドから入ったときだけ -->
-  <p>\( \morph{th1}{\theta_{t+1}}=\morph{th0}{\theta_t}-\morph{eta}{\eta}\,\morph{g}{\nabla f(\theta_t)} \)</p>
-  <ul><li data-id="gdef">\(\nabla f(\theta_t)\)：勾配</li></ul>
-```
-
-- 対応：元と先のスライドで同じ `data-id` を持つ要素。式の一部は `\morph{ID}{…}`（= `\htmlData{id=ID}{…}`、build の既定のマクロ）。`\htmlId{eta}{\morph{eta}{…}}` のように強調の目印と重ねてよい。ID はスライドの中で一意にする（2 つ目以降は使わない。入れ子は外側だけが動く）
-- 起きるとき：ステップ 0 に入る `seek(i, 0, t, from)` で、`from` が元のスライド（既定は i−1）のとき。長さ `DECK.T.morph` = 0.9 s。戻る・飛ぶ（t = Infinity）、印刷、`prefers-reduced-motion` では起きない。授業でも起きる
-- 描き方：元のスライドを最終状態で下に描き、先のスライドの背景を透かす。対応する先の要素は、字の外形の中心が元の字の中心に重なる位置・大きさから、translate＋scale（transform-origin は左上）で今の位置へ動く。色が違えば補間する。対応する元の要素は隠す。対応のない元の部分は初めの 45% で消え、対応のない先の部分（ステップ 0 で見えているもの）は後の 55% で現れる
-- ステップ 0 で見えていない先の要素（`data-step` > 0 の中）は動かさない（後で普通に現れる）
-- 位置は元の最終状態と先のステップ 0 の配置を舞台の座標（1280×720）で測り、(from, i) ごとに覚える。呼び出し順によらず同じ画面になる。窓の大きさや字が変わったら測り直す
-- タイムライン：`data-morph` で元が前のスライドなら、`anim(i, 0)` は 0.9 s 以上（自動再生と動画のエクスポートは i−1 から入る）
-- 限界：SVG の中の要素は対象外。対応する要素を囲む枠や背景（`.thm` など）は切り替えの終わりで入れ替わる。字が違う要素どうしを対応させると、大きさを合わせて伸び縮みする（同じ字どうしに使う）
-- 品質チェック：元のスライドが無い、対応する `data-id` が 1 つも無い、ID の重複を警告し、対応の一覧を情報で出す。`DECK.morph(i)` = `{src, ids, later, dupSrc, dupDst}`
+- `\morph{ID}{…}` は組み立ての既定のマクロ。`\htmlId{eta}{\morph{eta}{…}}` のように強調の目印と重ねられる。元のスライドを最終状態で下に描き、対応した要素は、字の輪郭の中心が元の場所に重なる位置から translate と scale（transform-origin は左上）で動き、色は補間する。対応した要素を囲む枠や背景（`.thm` など）は終わりに入れ替わる。字の違う要素どうしを対応させると伸び縮みする。位置は (from, i) ごとに覚え、窓の大きさや字が変わると測り直す。`DECK.T.morph` = 0.9
+- 品質チェック：元のスライドがない、合う `data-id` が 1 つもない、ID が重なる、を警告し、対応を情報として並べる（`DECK.morph(i)` = `{src, ids, later, dupSrc, dupDst}`）
 
 ## 9. スライドへのリンク
 
-ふつうのリンクで、# の後ろがスライドの id なら、そのスライドへのリンクになる（[format spec §9.1A](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#91a-links-to-slides)）。スクリプトを含まないので、Core の文書に入れてよい。
+書き方と動きは形式 §9.1A と Player P4（`#<スライドの id>` か `#<スライドの id>:<ステップの鍵>` のアンカー。数字だけの `#N` はスライドの番号）。Studio では：
 
-```html
-<a href="#s-njd4kp">春暁</a>            <!-- id が s-njd4kp のスライドのステップ 0 -->
-<a href="#s-njd4kp:2">読む順</a>        <!-- ステップ 2。ステップの鍵は 0・1・… か concl -->
-<a href="lesson2.ega.html">次の課</a>    <!-- ほかのファイル：授業の外へ出るリンク（下の節） -->
-```
-
-- 書き方：`#<スライドの id>` か `#<スライドの id>:<ステップの鍵>`。**最後の** `:` で切る。ステップの鍵は 0 から始まる 10 進（`0`・`1`・…、999 まで、先頭に 0 を付けない）か `concl` で、結論のステップは `concl` でだけ指す。どのスライドの id にも合わなければスライドの鍵と比べる（id のない旧来の教材。品質チェックはそのリンクを警告する）。数字だけの `#N` はこれまでどおりスライドの番号（1 から）
-- 開いたときの位置：ファイルの URL の同じ書き方の # が、開いたときの位置（そのステップの最終状態）になる。読めない # は 1 枚目で開き、コンソールに警告を出す。最後のスライドを超える `#N` は最後のスライドで開く。送っている間のアドレスはこれまでどおり `#N`
-- リンクを押すと：発表と授業では、そのステップの最終状態（t = ∞）へ行き、止まったまま。自動再生中はそこへ飛んで、そのステップの初めから再生を続ける。動画のモードではリンクは何もしない（画面は (i, k, t) だけで決まる）。ペンやレーザーポインターを使っている間のクリックは描くほうに使い、リンクをたどらない
-- 戻る：リンクを押す前の位置を積んでおき（積み重ね）、**戻る** で直前のリンクの前の位置へ戻る（再生の状態は保つ）。左上の小さなボタン（リンクで来たときだけ出て、戻り先のスライドの見出しを書く）、Backspace（ペンを使っていないとき）、Alt+←、ブラウザの戻る。上の窓（top-level）ではリンク 1 回につき履歴を 1 つ積む（`pushState`）ので、ブラウザの戻ると進むも使える。進むでは、そのリンクの先で最後にいた位置へ戻る。ふつうの送り（矢印・番号・一覧）では履歴を積まない。iframe の中では積み重ねを覚えておくだけ
-- 上の窓は動かさない：スライドへのリンクで窓を移動させない。クリックは文書の中で受けて止める（`preventDefault`）。ほかのファイル・サイトへのリンクは授業の外へ出るリンクで、窓の中の移動にはしない（下の「授業の外へ出るリンク」）
-- キーボード：フォーカスのあるリンクは Enter でたどる。キーボードで押したリンクなら、戻るとそのリンクにフォーカスを戻す
-- 埋め込み（`?embed=1`、iframe の中）：ステップが変わるたびに親へ `{egatari:"position", slideKey, stepKey, t, cause}` を送る（`cause`：`link`・`seek`・`control`・`play`。最終状態で見せたステップの `t` は `null`）。動き方を制限する親は、`?links=0` か命令 `{egatari:"links", id?, follow:false}` でリンクを止める（答えは `{egatari:"links", id, follow}`。`window.parent` からの知らせだけを聞く）。止めたリンクでは動かず、`{egatari:"linkRefused", slideKey, stepKey}` を送る（親が自分で seek してもよい）。内部の知らせ `deck-pos`（発表者ビュー・編集アプリ）にも `cause` と `back`（戻り先のスライドの見出し、なければ `null`）を付ける
-- 発表者ビュー：ほかの送りと同じく本体についてくる。自分の「戻る」ボタンを出し、Backspace・Alt+← を本体に渡す。「今の画面」の iframe で押したリンクは本体がたどる
-- 字幕と読み上げの領域は、ほかの送りと同じく行き先のステップについてくる
-- 実行時の API：`DECK.resolveFragment(f)` → `{i, k, key, id}` か `{error}`、`DECK.fragment(i, k)`、`DECK.follow(f)`、`DECK.back()`、`DECK.links()` → `{depth, follow, back}`、`DECK.visited(i | key)`（このセッションでそのスライドを見せたか。`m-menu` が使う）
-- 品質チェック：行き先のスライドがない・ステップが範囲の外・結論のないスライドへの `concl`・最後のスライドを超える番号のリンクは**エラー**。`#N` のリンク、id のないスライドへのリンク、ない相手のファイルへの相対リンクは警告
+- **戻る**：左上の小さなボタン（リンクで来たときだけ出て、戻る先のスライドの名前を書く）、Backspace（ペンを使っていないとき）、Alt+←、ブラウザの戻る。上の窓ではリンク 1 つごとに履歴を 1 つ足す（`pushState`）。枠の中では積み上げをメモリにだけ持つ。どのスライドの id にも合わない # はスライドの鍵と比べ（id のない教材）、品質チェックがそのリンクを警告する
+- 埋め込み（`?embed=1`）の知らせは Player P8。Studio の内部の `deck-pos` の知らせ（発表者ビュー・編集アプリ）は `cause` と `back` も運ぶ。発表者ビューの窓は本体の窓についていき、Backspace・Alt+← を本体に送る
+- 実行時の API：`DECK.resolveFragment(f)` → `{i, k, key, id}` か `{error}`、`DECK.fragment(i, k)`、`DECK.follow(f)`、`DECK.back()`、`DECK.links()` → `{depth, follow, back}`、`DECK.visited(i | key)`（`m-menu` が使う）
+- 品質チェック：ないスライドへのリンク、範囲の外のステップ、結論の行のないスライドの `concl`、最後より後のスライドの番号は**エラー**。`#N` のリンク、id のないスライドへのリンク、ない相手のファイルへの相対リンクは警告
 
 ### 授業の外へ出るリンク
 
-形式の仕様 §11：授業の中でない行き先へのリンクは偽装に使われうるので、プレーヤーは出る前に行き先を見せる。決まりは純ロジックの `kit/core/link-policy.mjs`（`LinkPolicy().decide(link, {base, hosts})`。DOM も `node:` も使わない）で、実行系（`DECK.LinkPolicy`）・試験・将来の再生ページが共有する。
+決まりは Player P4.2。Studio は純ロジックの `kit/core/link-policy.mjs`（`LinkPolicy().decide(link, {base, hosts})`。DOM も `node:` も使わない）で実装し、実行系（`DECK.LinkPolicy`）・試験・将来の再生ページが共有する。
 
-- この文書の中を指さないリンクのクリック（左・修飾キー付き・中ボタン・フォーカスして Enter）はすべて止め、窓は移らない。確認の箱（`#deck-extlink`、`role="alertdialog"`、`aria-modal`）に行き先の host と全体のアドレスを見せ、**開く**を押したときだけ、新しい閲覧文脈（`noopener,noreferrer`）で開く。焦点は**やめる**から始まり、Tab は箱の中で回り、Esc か箱の外を押すとやめてリンクに焦点を戻す。後ろの授業は `inert` で、箱の中のキー・ポインターでスライドは動かない
-- 同意済みでも毎回確かめる（箱に理由を書く）：リンクの字が行き先と別の host を名指している（`example.org` と見せて別の host へ。`www.` の違いは無視）、行き先が `https:` でない（`http:`・`mailto:`・`tel:`）、`download` がある、アドレスにユーザー名・パスワードの形がある、host が punycode（`xn--`）。ふつうの `https:` のリンクは、同じ閲覧のあいだ host ごとに 1 度だけ聞く（記憶はメモリだけ）
-- 開かない（**開く**のない箱）：`http`・`https`・`mailto`・`tel` 以外の scheme（`javascript:`・`data:`・`file:`・`blob:`・`vbscript:`・`ftp:` …）と、読めないアドレス。例外は、`file:` で開いた授業の、隣のファイルへの相対リンクで、毎回確かめる
-- 動画・発表者ビューの中の画面：何も起こさない。印刷：箱は隠す。編集のプレビュー・開発サーバーの枠（sandbox、ポップアップなし）：箱は行き先を知らせるだけで**開く**がない。たどるときは、組み立てたスライドか Egatari ファイルで
-- プレーヤーが自分で作るリンク（ライブの「ブラウザで参加する」・添付の保存）は授業の内容ではないので、確認の箱を通さない（形式の仕様 §11 (h)）。プレーヤーが JavaScript の性質 `__egaOwn` で印を付け、授業の HTML からは付けられない（`data-ega-own` などの属性は効かない。`tools/test-extlinks.mjs` が確かめる）。ライブの板には、リンクの隣に参加先の host を出す
-- 実行時の口：`DECK.LinkPolicy()`、`DECK.extLink(href, text?, download?)`
+- 確認の箱は `#deck-extlink`（`role="alertdialog"`・`aria-modal`）：行き先のホストと完全なアドレス、**開く** で `noopener,noreferrer` の新しい窓に開く。focus は **キャンセル** から、Tab は箱の中を回り、Esc か外のクリックで取り消してリンクに focus を戻す。後ろの授業は `inert`。ふつうの `https:` のリンクは、見ている間にホストごとに 1 回だけ聞く（メモリにだけ持つ）。リンクの字と行き先のホストが違う、`https:` でない、`download` がある、ユーザー名やパスワードがある、punycode のホスト、は毎回聞く。ほかの scheme は断る（`file:` で開いた授業から隣のファイルへの相対リンクは毎回聞く）
+- 動画のモードと発表者ビューの中の画面では何もしない。印刷では箱を隠す。編集アプリのプレビューと開発サーバーの枠（sandbox。ポップアップなし）では、箱は行き先を伝えるだけで **開く** がない
+- プレーヤーが自分で作るリンク（ライブの「ブラウザで参加する」・添付の保存）は箱を通さない：プレーヤーが JavaScript の性質 `__egaOwn` で印を付け、授業の HTML からは付けられない（`tools/test-extlinks.mjs` が確かめる）
+- 実行時の API：`DECK.LinkPolicy()`、`DECK.extLink(href, text?, download?)`
 
 ## 10. 品質チェック：わざと切る
 
@@ -223,7 +154,7 @@ canon への書き出し（Marp 形式の教材のバンドル）は 0.4.2 で�
 
 テーマ（`tokens.css`）は、どの組み立ての口でも、`kit/base.css` と `kit/layouts.css` の後（`kit/latin.css` の前）に読む。なので、テーマは変数だけでなく体裁の規則も上書きできる：表紙・章の扉・見出し・`.body` の余白・結論の行・ページ番号・箇条書きの印・進み具合の帯。`html` を前に付けるなどして詳細度で勝たなくてよい。
 
-- テーマが何を替えても、色の変数の意味は変わらない：`--emph` は結論・問題、`--term` は用語・補足、`--muted` は既知の結果、`--fg` は地の文字、`--line` は飾りだけ。パーツはこれらの変数だけを使い（§3）、品質チェックの色の決まり（`--bg` とのコントラスト）はどのテーマにも効く
+- テーマが何を替えても、色の変数は形式 §8.4 の意味のまま。パーツはその変数だけを使い、品質チェックの色の決まり（`--bg` とのコントラスト）はどのテーマにも効く
 - 体裁の箱を動かすテーマにも品質チェックは効く。テーマは箱の場所を `theme.json` の `metrics`（`"v": 1`）で宣言する。値は 1280×720 の舞台の px で、項目は `body.left`・`body.right`・`body.top`・`body.floor`・`body.line`・`concl.top`・`concl.height`・`tate.rule`・`tate.conclRight`・`tate.left`・`tate.floor`（意味と既定は[リファレンス](reference.ja.md#テーマ)）。書かない項目は `extends` の親から項目ごとに、親もなければ既定（今の `kit/layouts.css`）から取るので、`metrics` のないテーマは今までとまったく同じに検査する（[形式の仕様](https://github.com/egatari/egatari-spec) §6）
 - 品質チェックは、本文の場所の限り（`bodyBottom`・`bodyRight`・`tateBodyHead`・`bodyConclCol`・`bodyLeft`）をこの値から導く。`metrics` が動かすのは限りの場所だけで、限りそのものは変えない：余裕（結論の行の上 6px、横の 4px）、字の大きさの最小（R-fit）、見出しと結論の字数（R-title・R-concl）は `metrics` では変わらない
 - 同梱のテーマ（`themes/`）と公式のテーマ庫のテーマが本文・結論の行・縦組みの列を既定の場所から動かすなら、`metrics` を宣言しなければならない。その CSS が描く箱が宣言と 1px を超えて違えば `tools/test-theme-metrics.mjs` が失敗する。ほかのテーマ（自分のテーマ）は宣言を勧める：品質チェック（`npm run check` と編集アプリの品質チェック）は、描いた箱が宣言と 1px を超えて違うとき、または `metrics` のないテーマが箱を動かしたとき、教材に 1 回 `themeMetricsDrift` を警告する。警告は項目ごとに宣言の値と描いた値、箱を動かしたのがテーマの CSS かスライドの `<style>` かを言う。箱を測るのは同梱の字体が読み込まれてから（`document.fonts.ready` の後、見出しとページ番号の字体が読み込み済みと答えたとき）だけで、代わりの字体では測らない：読み込めなければ比べずに、教材に 1 回 `metricsFontLoad` を警告する。`node tools/theme-metrics.mjs measure <テーマ>` が、描いたテーマから測った塊を出す。値は整数の px で、どの端も限りが緩くなる側へ外向きに丸める（1px 未満なので、丸めだけではずれにならない）

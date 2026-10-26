@@ -1,5 +1,5 @@
 // テーマを変更…（スライド ▾）：開いたデッキのテーマ（原稿の <html data-theme>）を後から替える
-// 書き換えるのは原稿の <html> の data-theme（ほかの属性は data-egatari-seed も含めてそのまま。スライドには触らない）と、
+// 書き換えるのは原稿の <html> の data-theme（ほかの属性はそのまま。スライドには触らない）と、
 // 設定のファイル（egatari.json）の themes（kit/core/config-file.mjs の updateConfig を通る。ほかの項目はバイトのまま）だけ。
 // 流れはスライド一覧の操作と同じ（app/slides-panel.js の apply）：書く前に控え、組み直し、保存していない変更（●）になり、「元に戻す」で戻る。
 // 版の固定：新しいテーマはその今の版（同梱のテーマは themes.lock.json の current、ほかは theme.json の version か "local"。1 ファイルの書き出しと同じ）。

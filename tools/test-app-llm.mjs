@@ -14,7 +14,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { packKb } from '../kit/core/llm-pack.mjs';
-import { seedOf } from '../kit/core/new-deck.mjs';
 import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -239,22 +238,22 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.waitForFunction(() => { const s = window.__APP_TEST.state(); return s && s.portable; }, null, { timeout: 30000 });
     const filesOf = () => pk.evaluate(() => { const f = window.__APP_TEST.files(); const d = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, d(v)])); });
     const F1 = await filesOf();
-    const seed = seedOf(F1['deck.html']);
+    const seedAttrs = (t) => (t.match(/data-egatari-seed="[^"]*"/g) || []).join(',');
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
-    ok(Number.isInteger(seed) && seed !== 42 && (F1['deck.html'].match(/data-egatari-seed/g) || []).length === 1 && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', subjects: [], tools: [], purposesOff: ['contents', 'process'] }),
-      `new create: a fresh seed is written once on <html> (${seed}; the output's 42 is replaced) and the choices copied are kept in studio.newDeck (not the tile changed after copying)`);
-    // 修正…：出力が <html> を書き直してシード値を落としても、前のシード値のまま
+    ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', subjects: [], tools: [], purposesOff: ['contents', 'process'] }),
+      `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tile changed after copying)`);
+    // 修正…：出力が前のシード値を持たなければ、足さない（誰も読まない属性）
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));
     await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 });
     const F2 = await filesOf();
-    ok(seedOf(F2['deck.html']) === seed, `new revise: a revised deck without the seed keeps the earlier seed (${seedOf(F2['deck.html'])})`);
+    ok(seedAttrs(F2['deck.html']) === '', `new revise: a revised deck without the seed gets none put back (${seedAttrs(F2['deck.html'])})`);
     await pk.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('seed-' + Date.now() + '.ega.html', { create: true }); });
     const sv = pk.evaluate(() => window.__APP_TEST.save('save'));
     const which = await Promise.race([sv.then(() => 'saved'), pk.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 }).then(() => 'tierB')]);
     if (which === 'tierB') await clickDlg(pk, '#dlg-rebuild');
     await sv;
     const saved = await pk.evaluate(async () => (await (await window.__APP_TEST.saveHandle.getFile()).text()));
-    ok(seedOf(saved) === seed && seedOf((await filesOf())['deck.html']) === seed, 'new save: the saved single file carries the same seed');
+    ok(!saved.includes('data-egatari-seed') && seedAttrs((await filesOf())['deck.html']) === '', 'new save: the saved single file has no seed');
     await pk.close();
   }
   await ctx.close();

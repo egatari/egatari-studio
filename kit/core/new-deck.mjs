@@ -26,15 +26,7 @@
 //   choice の形：{plan, category, subcategory, subjects: [id], tools: [タグ], purposesOff: [id]}（category・subcategory は id か null。subjects は選んだ分野
 //   （どちらの版でも）。2 つより多い記録もそのまま残し、無料版で使うのは freeSubjects。tools は選んだ道具。ない前の記録は道具なし）
 //
-// シード値（§8.4）：原稿の根の要素（deck.html の <html>）の data-egatari-seed。10 進の整数 0 ≤ N < 2^32、なければ 0。
-// 編集器は教材を作るときに 1 回だけ書き（教材どうしが同じ見た目にならないように）、保存で必ず残す。
-//   SEED_ATTR                          'data-egatari-seed'
-//   newSeed(random?)                   新しいシード値（crypto.getRandomValues。random を渡せばそれ：試験用）
-//   seedOf(html)                       → 整数 | null（ない・形が違えば null）
-//   withSeed(html, seed)               <html> にシード値がなければ書く（あれば変えない）
-//   freshSeed(html, seed)              シード値を必ずこの値にする（新規作成：AI の返事が書いていた値は使わない。教材どうしが同じ見た目にならないように）
-//   keepSeed(oldHtml, newHtml)         新しい原稿（AI の直した返事など）が前のシード値を失った・変えたとき、前のものに戻す
-//   <html> の開始タグがない原稿（省略できる）には、<!DOCTYPE> の後ろ（なければ先頭）に <html data-egatari-seed="N"> を足す
+// 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { componentsOff } from './purposes.mjs';
 import { loadedParts, TOOLS } from './llm-pack.mjs';
@@ -203,53 +195,3 @@ export function choiceOf(configText) {
   return { ...n, plan: planOf(n) };   // plan のない前の記録は無料版
 }
 
-// ---------------------------------------------------------------- シード値（§8.4）
-export const SEED_ATTR = 'data-egatari-seed';
-const SEED_MAX = 2 ** 32;
-export function newSeed(random) {
-  if (typeof random === 'function') return Math.floor(random() * SEED_MAX) % SEED_MAX;
-  const a = new Uint32Array(1);
-  globalThis.crypto.getRandomValues(a);
-  return a[0];
-}
-// <html> の開始タグ（属性の値の中の > で切れない。コメントの中のものは数えない）
-const HTML_TAG = /<html\b(?:"[^"]*"|'[^']*'|[^>"'])*>/i;
-const firstHtmlTag = (s) => { const t = s.replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length)); const m = HTML_TAG.exec(t); return m ? { at: m.index, tag: s.slice(m.index, m.index + m[0].length) } : null; };
-const SEED_RE = /\sdata-egatari-seed\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
-export function seedOf(html) {
-  const tag = (firstHtmlTag(String(html || '')) || {}).tag;
-  if (!tag) return null;
-  const m = tag.match(SEED_RE);
-  if (!m) return null;
-  const v = (m[1] ?? m[2] ?? m[3] ?? '').trim();
-  if (!/^\d{1,10}$/.test(v)) return null;
-  const n = Number(v);
-  return n < SEED_MAX ? n : null;
-}
-function setSeed(html, seed) {
-  const s = String(html);
-  const f = firstHtmlTag(s);
-  if (!f) {
-    // <html> の開始タグがない：<!DOCTYPE …> の後ろ（なければ先頭）に足す
-    const d = /^\s*(?:<!--[\s\S]*?-->\s*)*<!DOCTYPE[^>]*>/i.exec(s);
-    const at = d ? d[0].length : 0;
-    return s.slice(0, at) + (d ? '\n' : '') + `<html ${SEED_ATTR}="${seed}">` + (d ? '' : '\n') + s.slice(at);
-  }
-  const tag = SEED_RE.test(f.tag) ? f.tag.replace(SEED_RE, ` ${SEED_ATTR}="${seed}"`) : f.tag.replace(/\s*(\/?)>$/, ` ${SEED_ATTR}="${seed}"$1>`);
-  return s.slice(0, f.at) + tag + s.slice(f.at + f.tag.length);
-}
-const checkSeed = (seed) => { if (!Number.isInteger(seed) || seed < 0 || seed >= SEED_MAX) throw new Error(`seed out of range: ${seed}`); };
-export function withSeed(html, seed) {
-  checkSeed(seed);
-  if (!firstHtmlTag(String(html)) || seedOf(html) !== null) return String(html);
-  return setSeed(html, seed);
-}
-export function freshSeed(html, seed) {
-  checkSeed(seed);
-  return setSeed(html, seed);
-}
-export function keepSeed(oldHtml, newHtml) {
-  const was = seedOf(oldHtml);
-  if (was === null || seedOf(newHtml) === was) return String(newHtml);
-  return setSeed(newHtml, was);
-}

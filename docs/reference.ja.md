@@ -1,13 +1,15 @@
-<!-- i18n: pair=reference.md sha256=dc1c1d4b555c1a43 -->
+<!-- i18n: pair=reference.md sha256=bbbf264a8ebef1d4 -->
 # リファレンス
 
 [English](reference.md) | 日本語
 
-使える選択肢・記法・キーを、コードから拾って 1 行ずつ並べたもの。理由と厳密な規則（位置と時刻、タイムラインの式、強調、モーフ）は [contract.ja.md](contract.ja.md)。手順の説明は [README](../README.ja.md)、[dev-server.ja.md](dev-server.ja.md)、[video.ja.md](video.ja.md)。
+使える選択肢・記法・キーを、コードから拾って 1 行ずつ並べたもの。スライドと台本の記法・タイムライン・強調・モーフの規範の文は [形式の仕様 §8](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#8-authoring-source-contract-version-1) と §5.5。このページは Studio の実装の早見で、[contract.ja.md](contract.ja.md) はどの節に何があるかと Studio の注を書く。手順の説明は [README](../README.ja.md)、[dev-server.ja.md](dev-server.ja.md)、[video.ja.md](video.ja.md)。
 
 目次：[スライドの記法](#スライドの記法) · [台本](#台本narrationmd) · [長さ](#長さtimelinejson) · [テーマ](#テーマ) · [パーツ](#パーツ) · [発表](#発表) · [開発サーバー](#開発サーバー) · [品質チェック](#品質チェック) · [build](#build) · [TTS](#tts) · [動画のエクスポート](#動画のエクスポート) · [道具](#道具) · [環境変数](#環境変数)
 
 ## スライドの記法
+
+規範は形式の仕様 §8.0（スライド・ステップ・スライドの種類・数式・参照）と §8.1（スライドの id）。下の表は Studio の位置・手がかり・警告を足したもの。
 
 ### 作業フォルダのファイル
 
@@ -39,21 +41,19 @@
 | `class="… nostep"` | 箇条書きを自動でステップにしない |
 | `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える（既定の値。テーマの `metrics` で両方とも動く） |
 | `class="… layout-tate"` | 縦組みのスライド：見出しは右端の縦の列、本文はその左に縦書き、結論の行は左端の縦の列（[国語](#国語kokugo)） |
-| section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける。[スライドの鍵](#スライドの鍵) |
+| section の `id="…"` | スライドの id で、それが鍵（形式 §8.1）。どのスライドにも付ける。[スライドの鍵](#スライドの鍵) |
 | `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `data-chapter="名前"` | ここから章を始める（`sec` と同じ扱い。章の名前を指定） |
-| `data-steps="n"` | ステップの数の下限（旧形式の `data-anim` 用） |
-| `data-anim="名前"` | 旧形式の動き：`DECK.ANIM[名前](slide, k, instant)` を呼ぶ。動画では各ステップの最終状態だけになる。新しく書くならパーツにする |
 | 直下の子に `<div class="pn">` | ページ番号を自分で書く（なければ 2 枚目から `i/N` が入る） |
 | `<html lang="en">` | 英語の教材：本文は Source Sans 3、画面の言葉は英語、品質チェックは英語の規格、TTS は `voxcpm2` |
 | `<html data-theme="名前">` | テーマ（`--theme` が優先） |
-| `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
+| `<html data-mode="talk">` | URL に `?mode=` がないときのモード（`talk` か `video`） |
 | `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/egatari/egatari-studio/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
 | `<html data-feedback="off">` | `?` の一覧と発表者ビューにフィードバックのリンクを出さない（`DECK.FEEDBACK_URL = null`） |
 | `<html data-favicon="off">` | タブのアイコンを入れない。既定では、組んだ教材（ふつうの build・`--portable`・`--play-only`）の `<head>` の先頭に、Egatari のマークを `<link rel="icon">`（data: URI）として入れる（明るい画面と暗い画面の色は 1 つの SVG に入れる。外へのリクエストはない）。スライドが自分の `<link rel="icon">` を持つなら、それを使い、何も足さない |
 | `<html data-font="mincho">` | 本文を BIZ UDP明朝にする（`--font-sans: var(--font-mincho)`）。[国語](#国語kokugo) |
 
-本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`/`.blue`、`.emph`/`.red`、`.muted`/`.gray`、`.b` 色と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
+本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`、`.emph`、`.muted`、`.b` 色（意味は形式 §8.0）と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
 
 ### ステップの属性
 
@@ -69,7 +69,7 @@
 | `steps="n"`（パーツ） | パーツのステップの数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.ja.md#7-強調mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。`id` のない section に手で `data-key` を書けば、それを鍵に使う（旧来の書き方。品質チェックが警告する）。[スライドの鍵](#スライドの鍵) |
+| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。書き手は書かない（形式 §8.0） |
 
 ### 数式
 
@@ -109,15 +109,15 @@
 
 ### スライドの鍵
 
-スライドごとに鍵を 1 つ付ける（[約束事 §4](contract.ja.md#4-台本narrationmd)）：section の `id`、なければ手で書いた `data-key`、なければ見出しの正規化（タグを除き、`&nbsp;` を空白とみなし、空白をすべて除く）、なければ `s<番号>`。どのスライドにも id を付ける（`npm run new` は付ける。今ある教材には `npm run ids -- <教材>`）。id は `^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合うもので、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない。鍵が重なる教材は正しくない（品質チェックのエラー）。それでも組めるように、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く。
+スライドの鍵はその `id`（形式 §8.1：`^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合い、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない）。`npm run new` はどのスライドにも id を付ける。id のない教材には `npm run ids -- <教材>`。そのような教材も開いて直せるように、build は id のないスライドを見出しで鍵にし、品質チェックが知らせる（`legacyIndex`）。鍵の重なりはエラーで、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く（[約束事 §4](contract.ja.md#4-台本narrationmd)）。
 
 ## 台本（narration.md）
 
+規範は形式の仕様 §8.1〜§8.3。
+
 | 書き方 | 意味 |
 |---|---|
-| `## 見出し {#s-k3f9q2}` | その id のスライド（勧める書き方。id が見出しの文字列より強い） |
-| `## s-k3f9q2` | その id のスライド |
-| `## 見出し` | 旧い書き方（id のないスライド）：見出しの文字列からタグと空白を除いたもの |
+| `## 見出し {#s-k3f9q2}` | その id のスライド（見出しの文字列は読む人のため） |
 | `[0]` `[1]` … `[concl]` | そのステップの台本。続く行は同じステップ。ステップは 0〜999 で先頭の 0 なし（`[01]` はステップにならない） |
 | `@x-<名前>-<欄> <値>` | ステップの中の拡張の行：そのステップのデータとして残す。表示も読み上げもせず、hash にも入らない |
 | `Expert:` / `Novice:`（`E:` / `N:`、全角のコロンも可） | 話者の発言。話者のない行は Expert（1 人モード）か、前の発言の続き |
@@ -135,7 +135,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 ## 長さ（timeline.json）
 
-`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 強調の終わり + pad_after))`（[contract §5](contract.ja.md#5-タイムライン)）。
+`dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 強調の終わり + pad_after))`（規範は形式の仕様 §5.5 と §8.0。[contract §5](contract.ja.md#5-タイムライン)）。
 
 | `"スライドの鍵:ステップ"` の中の鍵 | 既定 | 意味 |
 |---|---|---|
@@ -183,7 +183,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | 文字・背景・見出し・用語・結論・既知・細い線・見出しの下線 |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマと教材が動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
-| `--lecture-dim` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.5。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる） |
+| `--preview-opacity` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.45。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる。`--lecture-dim` は同じものの別名） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
@@ -230,7 +230,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 引数 | 意味 |
 |---|---|
 | `?mode=talk` | 既定：後のステップは隠し、今のステップはフェードで出す |
-| `?mode=lecture` | 全部見せ、後のステップは薄く（`--lecture-dim`、既定 0.5）、今のステップとその前は濃いまま、今のステップに目印は付けない（蛍光ペンも `.cur` クラスもなし）。強調は最終状態 |
+| `?mode=talk&preview=1` | 先のステップを薄く見せる：全部見せ、後のステップは薄く（`--preview-opacity`、既定 0.45。`data-preview="none"` の要素と `preview: "none"` を宣言したパーツは隠したまま）、今のステップとその前は濃いまま、今のステップに目印は付けない（蛍光ペンも `.cur` クラスもなし）。強調は最終状態 |
 | `?mode=video` | 動画のエクスポート用：道具と操作の帯を出さない。reduced-motion を無視する |
 | `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（動画のエクスポートで字幕を焼き込める） |
 | `?capsize=s` / `m` / `l` | 字幕の大きさ（22 / 27 / 34px）。覚えた大きさより優先。`?mode=video` では効かない |
