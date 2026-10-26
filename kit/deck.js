@@ -298,10 +298,13 @@ for (var narrKey in DECK.NARRATION) DECK.NARRATION[narrKey] = dict(DECK.NARRATIO
 DECK.AUDIO = dict(json("deck-audio"));           // {"slideKey:stepKey": {src, dur, cues:[秒…]}}
 DECK.MARKS = dict(json("deck-marks"));           // {"slideKey:stepKey": [{type:"cue"} | {type:"mark", id, effect, hold} | {type:"clear"}]}
 DECK.TIMING = dict(json("deck-timing"));         // {"slideKey:stepKey": {dur, hold, lead, pad_after}}
-// deck-meta：持ち運べる形式の書き出しでは {format:<形式の名前>, version:{major,minor}, generator:{name, version}, docId, …}、
-// ふつうの build では {version:"0.2.1"}。DECK.VERSION は作った版（package.json の version）
+// deck-meta：持ち運べる形式の書き出しでは {format:<形式の名前>, version:{major,minor}, player:{name, version, title}, generator:{name, version, title}, docId, …}、
+// ふつうの build では {version:"0.2.1"}。DECK.VERSION は今動いている実行系（プレーヤー）の版：player.version（format spec §4.1）。
+// player のない前の版のファイル（§7.1）では、実行系を入れた generator.version。ふつうの build では Studio の版（package.json の version）。
+// 作ったソフトの版（generator.version）は DECK.MADE_WITH（? の窓の「作成」の行は deck-meta から直に出す）
 DECK.META = json("deck-meta") || {};
-DECK.VERSION = (DECK.META.generator && DECK.META.generator.version) || (typeof DECK.META.version === "string" ? DECK.META.version : "");
+DECK.MADE_WITH = (DECK.META.generator && typeof DECK.META.generator.version === "string" && DECK.META.generator.version) || "";
+DECK.VERSION = (DECK.META.player && typeof DECK.META.player.version === "string" && DECK.META.player.version) || DECK.MADE_WITH || (typeof DECK.META.version === "string" ? DECK.META.version : "");
 // 持ち運べる形式の音声の参照（<scheme><blobId>）を data: URI にする：塊 <prefix><blobId>-0, -1, … を、次が無くなるまで順に復号してつなぐ
 // （format spec §3.7・§4。形式の識別子は build が DECK.FORMAT に入れる（kit/core/format.mjs）。塊の境が 3 バイトの倍数（= を含まない）なら base64 の文字列をそのままつなげる）
 var FMT = DECK.FORMAT || null;
@@ -395,8 +398,10 @@ DECK.feedbackUrl = function(){
   var u;
   try { u = new URL(DECK.FEEDBACK_URL, location.href); } catch (e) { return null; }
   if (/\/issues\/new\/?$/.test(u.pathname) && !u.searchParams.has("template")) u.searchParams.set("template", "feedback.yml");
+  // version はプレーヤーの版。作ったソフトの版が別にあれば context に添える（made=…）
   var v = {version: DECK.VERSION, browser: shortUA(), os: shortOS(),
-    context: "lang=" + (document.documentElement.lang || "ja") + ", mode=" + DECK.mode + (Q.get("presenter") ? ", presenter" : "")};
+    context: "lang=" + (document.documentElement.lang || "ja") + ", mode=" + DECK.mode + (Q.get("presenter") ? ", presenter" : "") +
+      (DECK.MADE_WITH && DECK.MADE_WITH !== DECK.VERSION ? ", made=" + DECK.MADE_WITH : "")};
   for (var k in v) if (v[k] && !u.searchParams.has(k)) u.searchParams.set(k, v[k]);
   return u.href;
 };

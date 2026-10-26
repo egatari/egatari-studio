@@ -213,28 +213,34 @@ const withMeta = (lang, meta, name) => {
 const full = { format: 'egatari', version: { major: 1, minor: 0 }, player: { name: 'egatari-player', version: '1.0.0' }, generator: { name: 'egatari-studio', version: '0.6.0' }, docId: '00000000-0000-4000-8000-000000000000', title: 'preview', lang: 'ja', portable: true, tracking: [] };
 const noPlayer = { ...full }; delete noPlayer.player;
 const titled = { ...full, player: { name: 'x-play', version: '2.1.0', title: 'Some Player' }, generator: { name: 'x-make', version: '3.0', title: 'Some Studio' } };
-const about = async (file) => {
+const about = async (file, ver) => {
   const q = await page(file);
+  if (ver) ver.push(await q.evaluate(() => [DECK.VERSION, DECK.MADE_WITH]));
   await q.keyboard.press('?');
   await q.waitForSelector('#dt-help.show');
   const rows = await q.$$eval('#dt-help .dt-about-r', (xs) => xs.map((x) => x.textContent));
   await q.close();
   return rows;
 };
+const PKG_VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const EXP = {
   ja: ['形式：Egatari 1.0', 'プレーヤー：Egatari Player 1.0.0', '作成：Egatari Studio 0.6.0'],
   en: ['Format: Egatari 1.0', 'Player: Egatari Player 1.0.0', 'Made with: Egatari Studio 0.6.0'],
 };
 for (const lang of ['ja', 'en']) {
-  let rows = await about(withMeta(lang, { ...full, lang }, 'meta-full.html'));
+  const ver = [];
+  let rows = await about(withMeta(lang, { ...full, lang }, 'meta-full.html'), ver);
   ok(JSON.stringify(rows) === JSON.stringify(EXP[lang]), `info panel (${lang}): Format → Player → Made with ${JSON.stringify(rows)}`);
-  rows = await about(withMeta(lang, { ...noPlayer, lang }, 'meta-noplayer.html'));
+  ok(JSON.stringify(ver[0]) === JSON.stringify(['1.0.0', '0.6.0']), `DECK.VERSION (${lang}) is the player's version, DECK.MADE_WITH the generator's ${JSON.stringify(ver[0])}`);
+  rows = await about(withMeta(lang, { ...noPlayer, lang }, 'meta-noplayer.html'), ver);
+  ok(JSON.stringify(ver[1]) === JSON.stringify(['0.6.0', '0.6.0']), `DECK.VERSION (${lang}) without player (a file before 1.0) is the generator's ${JSON.stringify(ver[1])}`);
   ok(JSON.stringify(rows) === JSON.stringify([EXP[lang][0], EXP[lang][2]]), `info panel (${lang}): without player, no Player line ${JSON.stringify(rows)}`);
   rows = await about(withMeta(lang, { ...titled, lang }, 'meta-titled.html'));
   ok(JSON.stringify(rows) === JSON.stringify([EXP[lang][0], EXP[lang][1].replace('Egatari Player 1.0.0', 'Some Player 2.1.0'), EXP[lang][2].replace('Egatari Studio 0.6.0', 'Some Studio 3.0')]), `info panel (${lang}): player.title and generator.title are shown when present ${JSON.stringify(rows)}`);
   rows = await about(withMeta(lang, { ...full, lang, player: { name: 'other-player', version: '1' } }, 'meta-untitled.html'));
   ok(rows[1] === EXP[lang][1].replace('Egatari Player 1.0.0', 'other-player 1'), `info panel (${lang}): without title, a name outside the format's own is shown as written ${JSON.stringify(rows)}`);
-  rows = await about(built[lang]);
+  rows = await about(built[lang], ver);
+  ok(ver[2][0] === PKG_VERSION && ver[2][1] === '', `DECK.VERSION (${lang}) in a plain build is Studio's version ${JSON.stringify(ver[2])}`);
   ok(rows.length === 0, `info panel (${lang}): a plain build (deck-meta with a version string only) shows no version lines ${JSON.stringify(rows)}`);
 }
 // 名前は文字として出す（deck-meta の中身で HTML を作らない）
