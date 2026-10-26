@@ -755,7 +755,7 @@ var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto"
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
-var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500;
+var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 
 function buildBar(){
   cb = document.createElement("div"); cb.id = "dt-cb"; cb.className = "deck-tools";
@@ -795,22 +795,40 @@ function buildBar(){
   ["pointerdown", "mousedown", "pointerup", "mouseup", "dblclick"].forEach(function(t){
     cb.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); if (t === "pointerdown") focusDeck(); });
   });
+  // タッチ（指・ペン）：pointerdown を止めているので、WebKit は指で押したボタンに click を送らない。pointerup で押したことにし、
+  // そのあとブラウザが click も送ったら、同じタップの 2 回目として捨てる（1 回のタップで 1 回だけ）
+  var touchAct = 0;
+  cb.addEventListener("pointerup", function(e){
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+    var b = e.target.closest && e.target.closest("button"), at = document.elementFromPoint(e.clientX, e.clientY);
+    if (!b || !cb.contains(b) || !(at && b.contains(at))) return;   // 指をボタンの外へずらして離したら押さない
+    touchAct = Date.now();
+    act(b, false);
+  });
   cb.addEventListener("click", function(e){
     e.preventDefault(); e.stopPropagation();
     var b = e.target.closest("button");
     if (!b) return;
+    if (touchAct && e.detail !== 0 && Date.now() - touchAct < 800){ touchAct = 0; return; }   // タッチの pointerup で押した後の click
+    act(b, e.detail === 0);
+  });
+  function act(b, keyboard){
     if (typeof b._act === "function") b._act(); else press(b._act);
-    // マウスで押したらフォーカスを残さない（矢印キーがそのまま効く）。キーボード（Enter / Space、detail = 0）なら残す
-    if (e.detail !== 0){
+    // マウス・指で押したらフォーカスを残さない（矢印キーがそのまま効く）。キーボード（Enter / Space、detail = 0）なら残す
+    if (!keyboard){
       b.blur();
       if (document.activeElement && cb.contains(document.activeElement)) document.activeElement.blur();
     }
     wake();
-  });
+  }
   // Tab で帯に入ったら見せておく
   cb.addEventListener("focusin", function(){ wake(); });
   document.addEventListener("deck:captions", function(){ syncBar(); liftCaptions(); });
   window.addEventListener("pointermove", function(e){ if (!e.buttons) wake(e); }, {passive: true});
+  // 最後に押したのが指か（指で押した後の :hover は残ることがあるので、隠すかどうかの判断に使わない）
+  window.addEventListener("pointerdown", function(e){ touchLast = e.pointerType === "touch"; }, {capture: true, passive: true});
+  // 指のタップは pointermove を送らない：帯の外をタップしたら帯を出す（送らない。舞台に重ねるときも、下のほうに限らない）
+  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wake(); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
@@ -846,7 +864,7 @@ function wake(e){
   liftCaptions();
   clearTimeout(hideT);
   hideT = setTimeout(function hide(){
-    if (cb.matches(":hover") || cb.contains(document.activeElement)){ hideT = setTimeout(hide, 800); return; }
+    if ((!touchLast && cb.matches(":hover")) || cb.contains(document.activeElement)){ hideT = setTimeout(hide, 800); return; }
     cb.classList.remove("show");
     liftCaptions();
   }, SHOW_MS);
