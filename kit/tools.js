@@ -766,7 +766,13 @@ var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "full", "h
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 // 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
-var OPEN_MS = 5000, openUntil = 0, hint = null, handle = null, touchAct = 0;   // touchAct：指で押した時刻（後から届く click を捨てる）
+var OPEN_MS = 5000, openUntil = 0, hint = null, handle = null, touchAct = 0;
+// revealedAt：帯が隠れた状態から出た時刻。帯を出したのと同じ押し方（隠れた帯の上のタップの後から届く click、出てくる途中のクリック）で
+// ボタンを押したことにしない（帯を起こすタップで「読み上げで聞く」などが動かないように）。キーボードは除く
+var revealedAt = 0, REVEAL_GUARD = 350;
+function justRevealed(){ return Date.now() - revealedAt < REVEAL_GUARD; }
+// マウスの動き・指のタップで帯が隠れた状態から出たときだけ、その時刻を覚える（開いたときに出すのと Tab で出すのは除く：すぐ押してよい）
+function wakeByPointer(e){ var was = !!cb && cb.classList.contains("show"); wake(e); if (cb && !was && cb.classList.contains("show")) revealedAt = Date.now(); }   // touchAct：指で押した時刻（後から届く click を捨てる）
 var HINT_KEY = ((DECK.FORMAT && DECK.FORMAT.id) || "deck") + "-player-bar-hint-v1";
 
 function buildBar(){
@@ -814,6 +820,7 @@ function buildBar(){
     var b = e.target.closest && e.target.closest("button"), at = document.elementFromPoint(e.clientX, e.clientY);
     if (!b || !cb.contains(b) || !(at && b.contains(at))) return;   // 指をボタンの外へずらして離したら押さない
     touchAct = Date.now();
+    if (justRevealed()) return;
     act(b, false);
   });
   cb.addEventListener("click", function(e){
@@ -821,6 +828,7 @@ function buildBar(){
     var b = e.target.closest("button");
     if (!b) return;
     if (touchAct && e.detail !== 0 && Date.now() - touchAct < 800){ touchAct = 0; return; }   // タッチの pointerup で押した後の click
+    if (e.detail !== 0 && justRevealed()) return;   // 帯を出したタップ・クリックの続き
     act(b, e.detail === 0);
   });
   function act(b, keyboard){
@@ -835,11 +843,11 @@ function buildBar(){
   // Tab で帯に入ったら見せておく
   cb.addEventListener("focusin", function(){ wake(); });
   document.addEventListener("deck:captions", function(){ syncBar(); liftCaptions(); });
-  window.addEventListener("pointermove", function(e){ if (!e.buttons) wake(e); }, {passive: true});
+  window.addEventListener("pointermove", function(e){ if (!e.buttons) wakeByPointer(e); }, {passive: true});
   // 最後に押したのが指か（指で押した後の :hover は残ることがあるので、隠すかどうかの判断に使わない）
   window.addEventListener("pointerdown", function(e){ touchLast = e.pointerType === "touch"; }, {capture: true, passive: true});
   // 指のタップは pointermove を送らない：帯の外をタップしたら帯を出す（送らない。舞台に重ねるときも、下のほうに限らない）
-  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wake(); }, {passive: true});
+  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wakeByPointer(); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
