@@ -764,10 +764,10 @@ console.log('home-screen hint');
     return { ctx, p, shown: () => p.isVisible('#install'), text: () => p.textContent('#install-text') };
   };
   let o = await open({ ua: IPAD_SAFARI });
-  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、オフラインでも開けます：「共有」（□に↑の形）→「ホーム画面に追加」→「追加」。' && await o.p.isHidden('#b-install'),
+  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、オフラインでも開けます：「共有」（□に↑の形）→「表示を増やす」→「ホーム画面に追加」→「追加」。' && await o.p.isHidden('#b-install'),
     'iPad Safari, in a browser tab: the hint shows, with the iOS labels');
   await o.p.click('#b-lang');
-  ok(/Share → "Add to Home Screen" → "Add"/.test(await o.text()), 'the hint in English');
+  ok(/Share → "More" → "Add to Home Screen" → "Add"/.test(await o.text()), 'the hint in English');
   await o.p.click('#b-lang');
   ok(await o.p.getAttribute('#b-install-x', 'aria-label') === 'この案内を閉じる', 'the × has a name');
   await o.p.click('#b-install-x');

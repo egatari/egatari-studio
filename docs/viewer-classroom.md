@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer-classroom.ja.md sha256=d66e913f8bf7dc2a -->
+<!-- i18n: pair=viewer-classroom.ja.md sha256=864ef9cce3940753 -->
 # Handing a lesson to students on iPad (Classroom and Egatari Viewer)
 
 English | [日本語](viewer-classroom.ja.md)
@@ -9,7 +9,7 @@ A lesson shared as a link in Slack or Teams plays directly on iPhone and iPad (t
 
 <!-- On-screen words are those of the ui-redesign line (File ▾ → Export ▸ → For participants (play-only)…). On the current main line
      the item is "Export ▾" → "Export Egatari file (play only, .play.ega.html) for participants", which asks where to save right away (no dialog).
-     Checked on an iPad (2026-10-27, the owner, Chrome): adding to the Home Screen ("More", "Open as Web App" on), offline, and Open a file's "Choose File" and "Google Drive". The Safari steps, Chrome's English labels and Classroom's ︙ menu labels are not checked yet -->
+     Checked on an iPad (2026-10-27, the owner): it opens in Chrome and in Safari and can be added to the Home Screen from both (after "More"; Chrome with "Open as Web App" on); added from Chrome it opens offline; Open a file offers Google Drive only in Chrome (Safari shows the iOS document picker). Not checked yet: the English labels, Classroom's ︙ menu, and Google Drive as a Files location in Safari -->
 
 ## Teacher: export the play-only file and post it in Classroom
 
@@ -21,9 +21,10 @@ A lesson shared as a link in Slack or Teams plays directly on iPhone and iPad (t
 
 ## Student: open it in Ega Viewer on the iPad
 
-1. Once: open `viewer.egatari.org` and add it to the Home Screen. In Safari: Share → scroll the list down to "Add to Home Screen" → "Add". In Chrome: Share → "More" → "Add to Home Screen" (keep "Open as Web App" on) → "Add". The Viewer's start screen shows the same tip. **Ega Viewer** appears on the Home Screen with the え icon, and from then on it opens without a network.
-2. In Classroom, open the attachment, then ︙ → Open in → Save to Files to save it on the iPad. A file in Google Drive needs no saving (step 3).
-3. Open **Ega Viewer**, press **Open a file**, and choose the saved file under "Choose File", or a file under "Google Drive" (Classroom attachments are in the Classroom folder). The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the control bar at the bottom: → (Next) moves on, and Captions shows the captions.
+1. Once: open `viewer.egatari.org` and add it to the Home Screen. In Safari: Share → "More" → "Add to Home Screen" → "Add". In Chrome: Share → "More" → "Add to Home Screen" (keep "Open as Web App" on) → "Add". The Viewer's start screen shows the same tip. **Ega Viewer** appears on the Home Screen with the え icon, and from then on it opens without a network.
+2. An Ega Viewer added from Chrome needs no saving (Google Drive in step 3). One added from Safari needs the file saved on the iPad first: open it in Classroom or the Google Drive app, then ︙ → Open in → Save to Files.
+3. Open **Ega Viewer**, press **Open a file**, and choose the saved file under "Choose File". When it was added from Chrome, "Google Drive" is offered too (Classroom attachments are in the Classroom folder). The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the control bar at the bottom: → (Next) moves on, and Captions shows the captions.
+   - When it was added from Safari, Google Drive can probably still be chosen under "Choose File" if it is turned on as a location in the Files app (Browse → Edit). Not checked yet.
 4. Next time, open it from Recent files on the start screen (on an iPad several people use, turn on Shared device so nothing is kept).
 
 A lesson with Live (questions and polls) first shows Join and Watch without joining. Only joining the Live uses the network.
