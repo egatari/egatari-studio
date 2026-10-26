@@ -4,7 +4,7 @@
 // 部品庫の部品の見本（vendor/components の既定の版の demo.html）を組み、部品のあるスライドの各段階（押すと状態が変わる m-kobun・m-menu。ほかの部品は最後の段階）で：
 //   画面を撮る（A）→ 部品を操作する（m-kobun：助動詞の語を押して札を開く。ほかの部品：部品の真ん中を押す。m-menu の札は押すとリンクで動く）→
 //   次の段階へ進んでから戻る（スライドの最後の段階では次のスライドへ行って戻る）／DECK.go(i, k) で同じ段階に入り直す／DECK.seek(i, k, Infinity) で入り直す
-//   → 撮った画面が A と画素まで同じ
+//   → 撮った画面が A と画素まで同じ（部品の DOM がバイトまで同じなら、縁のアンチエイリアスの少しの揺れは許して記録する：kit/render-compare.mjs）
 // m-kobun はキーボード（Tab で選んで Enter）でも開いて確かめる（比べる前にフォーカスを外す。フォーカスの枠はブラウザの状態で、部品の状態ではない）
 // m-menu の「見た」の印はこのセッションで開いたスライドの記録（contract §9、DECK.visited）で、手で変えた部品の状態ではないので、
 // 撮る前に行き先をすべて開いておく
@@ -15,6 +15,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
+import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 
 const args = process.argv.slice(2);
 const oi = args.indexOf('--only');
@@ -34,31 +35,11 @@ const HIDE = '#dt-cb,#deck-toast,#deck-back{display:none!important}';
 const b = await launch();
 
 const settle = (p) => p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
-// 画素の比較：{exact, n（はっきり違う画素 = RGB の差の和が 48 を超える画素の数）, box（違う画素を囲む箱）, same}。
-// same は exact か、n が 40 以下（アンチエイリアスの揺らぎ。tools/test-components.mjs の決定性と kit/check.mjs の D と同じ基準）
-async function comparePixels(p, A, B) {
-  if (A.equals(B)) return { exact: true, n: 0, box: null, same: true };
-  const r = await p.evaluate(async ([a, b]) => {
-    const load = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });
-    const [ia, ib] = await Promise.all([load(a), load(b)]);
-    const c = document.createElement('canvas'); c.width = ia.width; c.height = ia.height;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(ia, 0, 0); const da = g.getImageData(0, 0, c.width, c.height).data;
-    g.clearRect(0, 0, c.width, c.height); g.drawImage(ib, 0, 0); const db = g.getImageData(0, 0, c.width, c.height).data;
-    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, n = 0, any = 0;
-    for (let j = 0; j < da.length; j += 4) {
-      const d = Math.abs(da[j] - db[j]) + Math.abs(da[j + 1] - db[j + 1]) + Math.abs(da[j + 2] - db[j + 2]) + Math.abs(da[j + 3] - db[j + 3]);
-      if (!d) continue;
-      any++;
-      if (d > 48) n++;
-      const x = (j / 4) % c.width, y = Math.floor(j / 4 / c.width);
-      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
-    }
-    return { exact: any === 0, n, box: any ? [x0, y0, x1, y1] : null };
-  }, [A.toString('base64'), B.toString('base64')]);
-  return Object.assign(r, { same: r.exact || r.n <= 40 });
-}
+// 画素の比較は kit/render-compare.mjs（tools/test-components.mjs の決定性・kit/check.mjs の D と同じ基準）：部品の DOM がバイトまで同じで、
+// 違いが NOISE_BOUNDS の内側（縁の 1 px・部品の箱の中・部品の面積の 0.1 % かつ 200 px 以下）なら描き方の揺れとして許して記録する。
+// DOM が違う・比べる DOM がない部品は、今までどおり画素の数だけ（はっきり違う画素が 40 以下）
 let exactN = 0, tolN = 0;
+const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
 const shot = async (p) => { await settle(p); return p.screenshot({ clip: CLIP }); };
 const goTo = (p, i, k) => p.evaluate(([i, k]) => DECK.go(i, k, false), [i, k]);
 
@@ -83,8 +64,8 @@ async function interact(p, i, how) {
   return { n: targets.length, opened, kobun: targets.some((t) => t.tag === 'm-kobun') };
 }
 
-// 部品の DOM（属性・style・中身）。画素が違ったとき、部品の状態が違うのか描き方（ラスタライズ）の揺れなのかの手がかり
-const domOf = (p, i) => p.evaluate((i) => DECK.slides[i]._comps.map((c) => c.outerHTML).join('\n'), i);
+// 部品の DOM（属性・style・中身・shadow DOM）。画素が違ったとき、部品の状態が違うのか描き方（ラスタライズ）の揺れなのかを分ける
+const domOf = (p, i) => domSnapshot(p, i);
 
 for (const { name, dir } of comps) {
   const deck = path.join(out, name, 'demo.html');
@@ -131,10 +112,11 @@ for (const { name, dir } of comps) {
         await p.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
         await p.mouse.move(0, 0);
         const B = await shot(p), DB = await domOf(p, i);
-        const cmp = await comparePixels(p, A, B), same = cmp.same;
+        const cmp = await compareRenders(p, A, B, DA, DB), same = cmp.same;
         if (cmp.exact) exactN++; else if (same) tolN++;
         const tag = `${name}-s${i + 1}-k${k}-${how}-${label.replace(/\W+/g, '_')}`;
-        if (!cmp.exact) console.log(`     ${same ? 'note' : 'diff'}: ${cmp.n} pixel(s) clearly differ in ${JSON.stringify(cmp.box)}; component DOM ${DA === DB ? 'identical' : 'differs'}`);
+        if (!cmp.exact) console.log(`     ${same ? 'note' : 'diff'} ${name} slide ${i + 1} step ${k} (${how}, ${label}): ${cmp.note}`);
+        noise.add(`${name} slide ${i + 1} step ${k} (${how}, ${label})`, cmp);
         if (!same) { fs.writeFileSync(path.join(out, tag + '-A.png'), A); fs.writeFileSync(path.join(out, tag + '-B.png'), B); }
         ok(same, `${name}: slide ${i + 1} step ${k}: ${how} interaction, then ${label} = before (pixel-equal)`, name);
         if (!same) await open();
@@ -196,15 +178,18 @@ if (!only || only.includes('kobun')) {
   const P = await pv.screenshot({ clip: CLIP });
   const popupInFrame = await fr.evaluate(() => [...document.querySelectorAll('m-kobun .kb-pop')].some((e) => e.style.display === 'block'));
   ok(!popupInFrame, 'presenter: no card is open in the presenter view while the main window has one open');
-  ok(await domOf(fr, 0) === await domOf(ref, 0), 'presenter: the component in the presenter view = the declared rendering of (1, 2) (DOM)');
-  const pc = await comparePixels(ref, R, P), same = pc.same;
-  if (!pc.exact) console.log(`     ${same ? 'note' : 'diff'}: ${pc.n} pixel(s) clearly differ in ${JSON.stringify(pc.box)}`);
+  const DF = await domOf(fr, 0), DR = await domOf(ref, 0);
+  ok(DF.dom === DR.dom, 'presenter: the component in the presenter view = the declared rendering of (1, 2) (DOM)');
+  const pc = await compareRenders(ref, R, P, DR, DF), same = pc.same;
+  if (!pc.exact) console.log(`     ${same ? 'note' : 'diff'} kobun slide 1 step 2 (presenter view): ${pc.note}`);
+  noise.add('kobun slide 1 step 2 (presenter view)', pc);
   if (!same) { fs.writeFileSync(path.join(out, 'presenter-ref.png'), R); fs.writeFileSync(path.join(out, 'presenter-cur.png'), P); }
   ok(same, 'presenter: the presenter view\'s current frame = the declared rendering of (1, 2) (pixel-equal)');
   await pv.close(); await main.close(); await ref.close();
 }
 await b.close();
-console.log(`comparisons: ${exactN} exactly equal, ${tolN} within the anti-aliasing tolerance`);
+console.log(`comparisons: ${exactN} exactly equal, ${tolN} within the anti-aliasing tolerance (kit/render-compare.mjs)`);
+console.log(noise.summary('renderer-noise acceptances (DOM byte-identical, edge-only, kit/render-compare.mjs)'));
 if (failed.size) console.log('failed components: ' + [...failed].join(', '));
 console.log(fail ? `${fail} failure(s)` : 'all ok');
 process.exit(fail ? 1 : 0);

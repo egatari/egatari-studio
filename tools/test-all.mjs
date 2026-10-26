@@ -129,6 +129,8 @@ steps.push(
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
+  ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 // チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
