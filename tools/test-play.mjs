@@ -305,7 +305,7 @@ console.log('service worker');
   // the next launch: every window of the Viewer closed, then opened again
   await o.p.close();
   const p3 = await o.ctx.newPage();
-  await p3.goto(site.url); await p3.waitForSelector('html[data-ready]');
+  await p3.goto(site.url, { waitUntil: 'commit' }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });   // the page may reload once as it takes over: wait for the page, not for the first load
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
   c = await cached(p3);
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
@@ -316,7 +316,7 @@ console.log('service worker');
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
     'a third version found while the Viewer is in use: it waits (no reload)');
-  await p3.goto(site.url); await p3.waitForSelector('html[data-ready]');
+  await p3.goto(site.url, { waitUntil: 'commit' }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });   // the page may reload once as it takes over: wait for the page, not for the first load
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000), `a launch at the start screen (the only window): the waiting version takes over (${b3.version})`);
   await o.ctx.close();
   built.version = b3.version; built.files = b3.files; }
