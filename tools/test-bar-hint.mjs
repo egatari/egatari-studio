@@ -1,4 +1,4 @@
-// 操作の帯の見つけ方（kit/tools.js、backlog #122）
+// ツールバーの見つけ方（kit/tools.js、backlog #122）
 //   node tools/test-bar-hint.mjs <built.html> [画面の保存先]
 // - 開くと帯を 5 秒ほど見せる。その端末で初めてなら、帯の上に出し方の 1 行。隠れると 1 行も消える
 // - 2 回目に開いたときは 1 行を出さない（localStorage に覚える）。localStorage が使えなければ毎回出す
@@ -17,7 +17,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++
 const url = fileUrl(file);
 const b = await launch();
 const errs = [];
-const HINT_JA = 'マウスを画面の下に動かす（タップする）と、この操作の帯が出ます';
+const HINT_JA = 'マウスを画面の下に動かす（タップする）と、ツールバーが出ます';
 const st = (p) => p.evaluate(() => {
   const cb = document.getElementById('dt-cb'), h = document.getElementById('dt-hint'), hd = document.getElementById('dt-handle');
   const r = hd && hd.getBoundingClientRect();
@@ -49,7 +49,7 @@ async function open(ctx, q = '') {
   s = await st(p);
   ok(!s.bar && s.hint === null, 'first open: the bar and the hint hide after about 5 s');
   ok(s.handle && s.handleOp > 0.15 && s.handleOp < 0.5 && s.handleTab === 0 && s.handleAria === null, `the handle is shown, faint (opacity ${s.handleOp}), and in the Tab order`);
-  ok(s.handleName === '操作の帯を出す', `the handle has an accessible name (${s.handleName})`);
+  ok(s.handleName === 'ツールバーを表示', `the handle has an accessible name (${s.handleName})`);
   ok(s.handleBox && s.handleBox.l < 20 && s.handleBox.b < 16 && s.handleBox.w <= 40 && s.handleBox.h <= 24, `the handle is small, at the bottom left (${JSON.stringify(s.handleBox)})`);
   await p.screenshot({ path: path.join(outdir, 'handle.png') });
   // クリックで帯が出る。送らず、フォーカスも奪わない

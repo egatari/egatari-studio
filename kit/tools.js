@@ -900,7 +900,7 @@ function hintSeen(){ try { return localStorage.getItem(HINT_KEY) === "1"; } catc
 function showHint(){
   hint = document.createElement("div"); hint.id = "dt-hint"; hint.className = "deck-tools";
   hint.setAttribute("role", "status");
-  hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、この操作の帯が出ます" : "Move the mouse to the bottom of the screen (or tap) to show these controls";
+  hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar";
   document.body.appendChild(hint);
   placeHint();
   try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
@@ -911,7 +911,7 @@ function placeHint(){ if (hint && cb) hint.style.bottom = Math.round((parseFloat
 // マウスを近づけると帯が出て取っ手は見えなくなるが、押せるままにする（押しても帯をもう一度出すだけ）
 function buildHandle(){
   handle = document.createElement("button"); handle.type = "button"; handle.id = "dt-handle"; handle.className = "deck-tools";
-  var lab = JA ? "操作の帯を出す" : "Show the control bar";
+  var lab = JA ? "ツールバーを表示" : "Show toolbar";
   handle.setAttribute("aria-label", lab); handle.title = lab;
   handle.innerHTML = '<svg viewBox="0 0 24 12" width="24" height="12" aria-hidden="true"><path d="M5 9l7-5 7 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   ["pointerdown", "mousedown"].forEach(function(t){ handle.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); focusDeck(); }); });

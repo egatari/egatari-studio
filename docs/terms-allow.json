@@ -297,6 +297,42 @@
       "term": "subjects",
       "reason": "教科書 (textbook) is not the subject choice; 教科 as a word for subjects is avoided (the subject choice is 内容の分野 / 分野).",
       "keep": true
+    },
+    {
+      "file": "app/audio-panel.js",
+      "pattern": "/\\^en\\\\b/i\\.test\\(l\\) \\? 'English'",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "langOpt: \\{ ja: '日本語', en: 'English'",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "langReq: \\{ ja: 'Japanese', en: 'English' \\}",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "app/main.js",
+      "pattern": "EN \\? '日本語' : 'English'|'Switch to English'",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "app/tts-client.js",
+      "pattern": "Kokoro-82M \\(English\\)",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
+    },
+    {
+      "file": "docs/editor.md",
+      "pattern": "More: English, one speaker|日本語 / English / Other",
+      "term": "subject-english",
+      "reason": "English as a language name (the lesson's language, a voice's language, the language switch), not the subject tile (subject-english)."
     }
   ]
 }

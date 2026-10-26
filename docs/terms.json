@@ -442,6 +442,26 @@
    "note": ""
   },
   {
+   "id": "toolbar",
+   "group": "Structure and playback",
+   "en": "Toolbar",
+   "ja": "ツールバー",
+   "definition": "The bar of playback and presentation controls at the bottom of the player; it hides and comes back when the mouse moves to the bottom or the screen is tapped. Its small faint handle is labelled ツールバーを表示 / Show toolbar.",
+   "avoid": {
+    "ja": [
+     "操作の帯",
+     "コントロールバー"
+    ],
+    "en": [
+     "control bar"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": "Google Slides / PowerPoint wording."
+  },
+  {
    "id": "presenter-view",
    "group": "Structure and playback",
    "en": "Presenter view",
@@ -1071,6 +1091,40 @@
    },
    "internal": "series",
    "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "subject-english",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "English (foreign language)",
+   "ja": "英語",
+   "definition": "The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the lesson language English.",
+   "avoid": {
+    "ja": [
+     "語学"
+    ],
+    "en": [
+     "English (subject)"
+    ]
+   },
+   "internal": "series english",
+   "decided": "2026-10-26",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "subject-music",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Music",
+   "ja": "音楽",
+   "definition": "The subject tile for music (parts series music: keyboard, score).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "series music",
+   "decided": "2026-10-26",
    "by": "owner",
    "note": ""
   },

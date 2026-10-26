@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=49a8776ad4d88e8a -->
+<!-- i18n: pair=README.ja.md sha256=62ec6cdb7949d027 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -28,7 +28,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and p
 - **Emphasis**: `{mark:ID|circle}` in the script draws a hand-drawn underline, circle, box, spotlight or laser pointer dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
 - **Two modes from one source**: slide show (`?mode=talk`) and video (`?mode=video`). Show later steps faintly is an option of the slide show (`l`; `?mode=lecture` opens it with the option on)
-- **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
+- **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, toolbar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables
 - **Quality control**: the standards (R-fit, R-steps, …) say what a lesson must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, script coverage, contrast, part determinism, emphasis and morphs
 - **Dev server**: edit text and the script in the browser, leave comments for your AI coding tool
@@ -231,16 +231,16 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 | b | black screen |
 | s / Shift+s | captions (script, about two lines at a time) / caption size S, M, L |
 | o | slide overview (arrows + Enter) |
-| x / d / v | laser pointer / pen / fading pen; Shift+d (or the swatches in the control bar) changes the pen color |
+| x / d / v | laser pointer / pen / fading pen; Shift+d (or the swatches in the toolbar) changes the pen color |
 | Backspace (Shift+Backspace) | while a pen is active: clear the drawings on this slide (on all slides) |
 | Esc | leave the current tool |
 | ? | list of keys |
 
 All keys (Home/End, PageUp/PageDown, presenter-view keys) and URL parameters: [docs/reference.md#presenting](docs/reference.md#presenting).
 
-Moving the mouse shows a control bar with the same actions. It hides after 2.5 s. Drawings are kept per slide and never appear in print or video.
+Moving the mouse shows a toolbar with the same actions. It hides after 2.5 s. Drawings are kept per slide and never appear in print or video.
 
-![control bar](docs/images/controls.png)
+![toolbar](docs/images/controls.png)
 
 ## Themes
 

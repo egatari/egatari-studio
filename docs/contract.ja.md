@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=516a6aacb450f0f8 -->
+<!-- i18n: pair=contract.md sha256=93f7830890b7025a -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -71,7 +71,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 式と定数は形式 §5.5 と §8.0。Studio では `DECK.timeline()` が計算する（自動再生も動画の書き出しも同じ関数）。`timeline.json` には例外だけを書く（`{"<スライドの鍵>:2": {"pad_after": 1.0}}`）。
 
 - `startOffset`（エンコーダの遅れの秒。編集アプリの MP3 では 0.025057 など）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と同期点の時刻の 0 とする（自動再生も `render/render.mjs` も）
-- どの組み立ても、ステップの音声の `kind` を `deck-audio` の項目に書く（再生専用の派生は索引を落とすので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば `tts` とする。音のない `dry-run` には `kind` を付けない。プレーヤーは `deck-audio` の `kind` を先に読み、前のファイルでは索引の音声の記録に戻る（`DECK.audioKind(key)`）。形式 §7.3 のとおり、音声の作り方は情報と再生の操作の近くで言い、スライドの上や字幕には出さない：どこかのステップの音声が TTS なら、操作の帯に小さな「AI 音声」/ "AI voice" の札（title と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）と、そのステップの発表者ビューにも同じ文。`imported` の音声には「音声の作り方は記録されていません」/ "How the audio was made is not recorded" をそこに出し、札は付けない（`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には付けない
+- どの組み立ても、ステップの音声の `kind` を `deck-audio` の項目に書く（再生専用の派生は索引を落とすので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば `tts` とする。音のない `dry-run` には `kind` を付けない。プレーヤーは `deck-audio` の `kind` を先に読み、前のファイルでは索引の音声の記録に戻る（`DECK.audioKind(key)`）。形式 §7.3 のとおり、音声の作り方は情報と再生の操作の近くで言い、スライドの上や字幕には出さない：どこかのステップの音声が TTS なら、ツールバーに小さな「AI 音声」/ "AI voice" の札（title と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）と、そのステップの発表者ビューにも同じ文。`imported` の音声には「音声の作り方は記録されていません」/ "How the audio was made is not recorded" をそこに出し、札は付けない（`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には付けない
 - **読み上げで聞く**（形式 §5.6）はタイムラインに入らない：音声のないステップで「読み上げで聞く（音声ファイルにはなりません）」を押すと、端末の読み上げの声（`speechSynthesis`。`localService` の声だけ）で `ttsParts` を読む（`ttsParts` のない前のファイルでは「読み方は反映されません（古いファイル）」）。`dur`・`DECK.timeline()`・`deck-audio`・描く画面を変えず、何も書かず、`?mode=video` と印刷にはない（`kit/core/read-aloud.mjs`、`DECK.ReadAloud`）
 - 強調まで含めた動きの終わりは `motion = max(anim, marksEnd)`。動画の書き出しはここまでのコマを撮る
 
