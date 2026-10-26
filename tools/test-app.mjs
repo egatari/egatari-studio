@@ -1879,9 +1879,10 @@ try {
     const ico = new Uint8Array(await (await fetch(base + 'favicon.ico')).arrayBuffer());
     const icoDark = await fetch(base + 'favicon-dark.ico');
     ok(ico.length > 100 && ico[0] === 0 && ico[2] === 1 && ico[4] === 3 && icoDark.status === 200, `site (${tag}): favicon.ico (3 sizes) and favicon-dark.ico are served`);
+    ok(Buffer.from(ico).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'studio', 'favicon.ico'))), `site (${tag}): Studio's favicon is the す icon (assets/logo/studio/), not the え mark`);
     const man = await (await fetch(base + 'manifest.webmanifest')).json().catch(() => null);
     const manIcons = man && Array.isArray(man.icons) ? await Promise.all(man.icons.map(async (x) => (await fetch(new URL(x.src, base + 'manifest.webmanifest'))).status)) : [];
-    ok(!!man && man.name === 'Egatari Studio' && man.icons.map((x) => x.sizes).join() === '192x192,512x512' && manIcons.every((x) => x === 200) && (await fetch(base + 'apple-touch-icon.png')).status === 200, `site (${tag}): manifest with 192/512 icons and apple-touch-icon`);
+    ok(!!man && man.name === 'Egatari Studio' && man.short_name === 'Egatari Studio' && man.icons.map((x) => x.sizes).join() === '192x192,512x512' && manIcons.every((x) => x === 200) && (await fetch(base + 'apple-touch-icon.png')).status === 200, `site (${tag}): manifest with 192/512 icons and apple-touch-icon`);
     await ps.goto(base);
     await ps.waitForSelector('#drop');
     ok(await ps.evaluate(() => !!document.querySelector('link[rel=icon][href="favicon.ico"]') && !!document.querySelector('link[rel=icon][media="(prefers-color-scheme: dark)"][href="favicon-dark.ico"]') && !!document.querySelector('link[rel=manifest]') && !!document.querySelector('#top .brand svg.logo circle.sun')), `site (${tag}): icon links and the header logo`);

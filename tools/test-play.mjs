@@ -1,17 +1,20 @@
-// Egatari Play（play/、play.egatari.org）の試験（npm test の test-play）
+// Egatari Viewer（play/、viewer.egatari.org）の試験（npm test の test-play）
 //   node tools/test-play.mjs <作業用のフォルダ>
 // _play/ を一時フォルダに組み（tools/build-play.mjs。試験の部屋だけループバックを許す版）、_headers を読んで同じ見出しを付ける小さなサーバーで配る
 // （Cloudflare の静的なファイルと同じ。POST /share は play/worker.js と同じ 303）。確かめること：
 //  1. 組み立て：_headers（CSP・frame-ancestors・X-Frame-Options）・manifest（192・512 の画像・share_target）・sw.js の一覧（自分のファイルだけ）
-//  2. 再生のみと編集可の 1 ファイルを開く（種類の表示・題・sandbox の枠・srcdoc・信頼する先頭部分の CSP）
+//  2. 再生専用と編集可の Egatari ファイルを開く（種類の表示・題・sandbox の枠・srcdoc・信頼する先頭部分の CSP）
 //  3. sandbox：教材から親の DOM・localStorage・IndexedDB・OPFS・cookie・fetch・WebSocket・親への遷移に届かない
 //  4. 枠の中を断る：見出しのあるサーバーでは読み込まれず、見出しのないサーバーでも guard.js が止める
-//  5. service worker：キャッシュは自分のファイルだけ（教材を開いても増えない）・オフラインで開ける・新しい版の知らせと更新
+//  5. service worker：キャッシュは自分のファイルだけ（教材を開いても増えない）・初めに開いた後はオフラインで開ける（読み込み直しも）・
+//     新しい版は次に開いたときから（再生中・ほかの窓で教材を再生している間は入れ替えない。更新のボタンはない）
 //  6. 最近のファイル：OPFS と IndexedDB の両方で、保存・一覧・開き直し・1 つ削除・すべて削除・残さない設定
 //  7. share_target：service worker が受けて開く／service worker がないときは知らせ
 //  8. リンク：教材が頼んだリンクは決まり（kit/core/link-policy.mjs）の箱をページの側に出す。開かない scheme・相対・別の host の字・
 //     同じ host の 2 度目・偽の送り手（枠でない窓）の頼みは無視
-//  9. ライブのない教材は通信 0（開いてから閉じるまで要求も WebSocket もない）
+//  9. ライブのない教材は通信 0（開いてから閉じるまで要求も WebSocket もない）。教材のバイトはどの要求・WebSocket の送信にも入らない（ライブに参加しても）
+//     ファイルが自分の CSP の <meta>（format spec §4.2。F1 からすべてのファイルに入る）を持っていても再生でき、その決まりも枠の中で効く
+//     間違いの知らせ（Egatari ファイルでない・大きすぎる・オフラインで参加）は次にすることで終わる
 // 10. ライブ：参加する前・窓の外は通信 0、参加する（ページが WebSocket を持つ。教材の枠はつながない）・質問・投票の段階で板が開く・投票・
 //     このページが許さない endpoint は参加のページへのリンクだけ。試験の部屋は tools/live-fake-server.mjs
 // 11. 電話の幅で横にはみ出さない・ボタンに名前がある
@@ -27,6 +30,8 @@ import { buildPlay, pageCsp } from './build-play.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { scanLesson } from '../play/scan.mjs';
 import { decideLink } from '../play/links.mjs';
+import { faviconSvg } from '../kit/core/favicon.mjs';
+import { liveCsp } from '../kit/core/live.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -69,6 +74,15 @@ const put = (name, html) => { FIX[name] = path.join(work, name); fs.writeFileSyn
 put('lesson.play.ega.html', playOnly); put('lesson.ega.html', editable); put('live.play.ega.html', live); put('early.play.ega.html', early);
 put('other.play.ega.html', other); put('teacher.ega.html', editableLive); put('qa.play.ega.html', qaOnly);
 put('not-egatari.html', '<!doctype html><title>x</title><p>hello</p>');
+// lesson bytes: a marker that occurs only in the file (a comment in the body), to look for in every request and WebSocket frame
+const MARK = 'LESSON-BYTES-' + Math.random().toString(36).slice(2, 12);
+const marked = (html) => html.replace('<body', `<!-- ${MARK} --><body`);
+if (!marked(playOnly).includes(MARK) || !marked(live).includes(MARK)) throw new Error('fixtures: no <body to mark');
+put('marked.play.ega.html', marked(playOnly)); put('marked-live.play.ega.html', marked(live));
+// format spec §4.2: the file's own policy, first in <head> (F1 writes it into every file). Baseline: connect-src 'none' and the liveCsp shape
+const BASELINE = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'self' file:; worker-src 'none'; object-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'";
+if (liveCsp('https://live.egatari.org').replace(/connect-src [^;]+/, "connect-src 'none'") !== BASELINE) throw new Error('fixtures: the §4.2 baseline no longer matches kit/core/live.mjs liveCsp');
+put('csp.play.ega.html', playOnly.replace(/<head>\n?/, (h) => `${h}<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${BASELINE}">\n`));
 
 // ---------------------------------------------------------------- 1. the build
 console.log('build');
@@ -85,7 +99,13 @@ ok(built.csp === CSP_FOR(`'self' http://${host} ws://${host}`) && headersText.in
 ok(pageCsp(['https://live.egatari.org'], LivePolicy()) === CSP_FOR("'self' https://live.egatari.org wss://live.egatari.org"), 'CSP: the production build connects only to itself (the service worker\'s install) and the built-in Live endpoint');
 const manifest = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.webmanifest'), 'utf8'));
 ok(manifest.icons.map((i) => i.sizes).join() === '192x192,512x512' && manifest.icons.every((i) => fs.existsSync(path.join(OUT, i.src))), 'manifest: the 192 and 512 px logo icons, present in the build');
-ok(fs.readFileSync(path.join(OUT, 'icons', 'icon-512.png')).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'icon-512.png'))), 'manifest: icon-512.png is assets/logo/icon-512.png unchanged');
+ok(fs.readFileSync(path.join(OUT, 'icons', 'icon-512.png')).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'icon-512.png'))), 'manifest: icon-512.png is assets/logo/icon-512.png unchanged (the え mark)');
+ok(manifest.name === 'Egatari Viewer' && manifest.short_name === 'Ega Viewer', `manifest: name "Egatari Viewer", home-screen name "Ega Viewer" (${manifest.name} / ${manifest.short_name})`);
+ok(fs.readFileSync(path.join(OUT, 'icons', 'favicon.svg'), 'utf8') === faviconSvg() && fs.readFileSync(path.join(OUT, 'icons', 'favicon.ico')).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'favicon.ico'))),
+  'icons: the え favicon (the SVG of exported .ega.html files, and assets/logo/favicon.ico), not Studio\'s す');
+{ const html = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
+  ok(/<title>Egatari Viewer<\/title>/.test(html) && /name="apple-mobile-web-app-title" content="Ega Viewer"/.test(html) && !/Egatari Play/.test(html) && !/id="b-update"/.test(html),
+    'index.html: titled Egatari Viewer, home-screen title Ega Viewer, no "Egatari Play", no update button'); }
 ok(manifest.share_target && manifest.share_target.method === 'POST' && manifest.share_target.enctype === 'multipart/form-data' && manifest.share_target.params.files[0].name === 'lesson', 'manifest: share_target POST multipart with the file field "lesson"');
 const swText = fs.readFileSync(path.join(OUT, 'sw.js'), 'utf8');
 ok(swText.includes(JSON.stringify(built.version)) && !/\.put\s*\(/.test(swText.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), 'sw.js: versioned; never calls cache.put (only the install list is cached)');
@@ -159,7 +179,7 @@ console.log('open');
   await openFixture(o.p, 'lesson.play.ega.html');
   const f = await lessonFrame(o.p);
   ok(!!f, 'play-only: the lesson plays (DECK.ready in the frame)');
-  ok(await o.p.textContent('#lesson-kind') === 'Egatari ファイル（再生のみ）', 'play-only: shown as 「Egatari ファイル（再生のみ）」');
+  ok(await o.p.textContent('#lesson-kind') === 'Egatari ファイル（再生専用）', 'play-only: shown as 「Egatari ファイル（再生専用）」');
   const attrs = await o.p.$eval('#lesson', (e) => ({ sandbox: e.getAttribute('sandbox'), src: e.getAttribute('src'), srcdoc: e.srcdoc.slice(0, 400) }));
   ok(attrs.sandbox === 'allow-scripts' && attrs.src === null, `the frame: sandbox="allow-scripts" only, srcdoc (no src) (${attrs.sandbox})`);
   ok(/^<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';[^"]*connect-src 'none'/.test(attrs.srcdoc), 'the frame: the trusted prefix carries the preview policy (connect-src \'none\') before the file\'s bytes');
@@ -175,7 +195,16 @@ console.log('open');
   await o.p.click('#b-lang');
   await o.p.click('#b-close');
   await openFixture(o.p, 'not-egatari.html');
-  ok(await until(() => o.p.evaluate(() => /Egatari ファイルではありません/.test(document.querySelector('#msg').textContent))) && !(await o.p.$('#lesson')), 'not an Egatari file: refused with a message, nothing runs');
+  ok(await until(() => o.p.evaluate(() => /^Egatari ファイルではありません。Egatari Studio からエクスポートした \.ega\.html のファイルを選んでください。$/.test(document.querySelector('#msg').textContent))) && !(await o.p.$('#lesson')),
+    'not an Egatari file: refused with a message that ends with what to do (choose a .ega.html exported from Egatari Studio); nothing runs');
+  // a file over the limit (100 MB): refused before it is read, with what to do
+  await o.p.evaluate(() => window.__play.openFile({ size: 100 * 1024 * 1024 + 1 }, 'big.ega.html'));
+  ok(await until(() => o.p.evaluate(() => /^ファイルが大きすぎます（100 MB まで）。ファイルを作った人に、100 MB までのファイルにしてもらってください。$/.test(document.querySelector('#msg').textContent))) && !(await o.p.$('#lesson')),
+    'too large: refused with a message that ends with what to do');
+  await o.p.click('#b-lang');
+  await o.p.evaluate(() => window.__play.openFile({ size: 100 * 1024 * 1024 + 1 }, 'big.ega.html'));
+  ok(await until(() => o.p.evaluate(() => /Ask the person who made it/.test(document.querySelector('#msg').textContent))), 'too large (English): the same, in English');
+  await o.p.click('#b-lang');
   ok(o.errors.length === 0, `no page errors (${o.errors.join(' | ')})`);
   await o.close(); }
 
@@ -232,37 +261,65 @@ console.log('service worker');
   await o.p.evaluate(() => navigator.serviceWorker.ready);
   await o.p.reload(); await o.p.waitForSelector('html[data-ready]');
   ok(await until(() => o.p.evaluate(() => !!navigator.serviceWorker.controller)), 'the service worker controls the page');
-  const cached = () => o.p.evaluate(async () => { const out = {}; for (const k of await caches.keys()) out[k] = (await (await caches.open(k)).keys()).map((r) => r.url).sort(); return out; });
+  const cached = (p = o.p) => p.evaluate(async () => { const out = {}; for (const k of await caches.keys()) out[k] = (await (await caches.open(k)).keys()).map((r) => r.url).sort(); return out; });
   const want = built.files.map((f) => new URL(f, site.url).href).sort();
   let c = await cached();
   ok(Object.keys(c).length === 1 && JSON.stringify(Object.values(c)[0]) === JSON.stringify(want), `the cache holds exactly the page's own files (${Object.values(c)[0]?.length} of ${want.length})`);
+  ok(['./', './play.js', './reader.js', './play.css', './guard.js', './manifest.webmanifest', './icons/icon-192.png', './icons/favicon.svg'].every((f) => built.files.includes(f)),
+    'the app shell is precached: page, script, reader Worker, style sheet, guard, manifest and icons (the page loads no font file)');
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p);
   c = await cached();
   ok(JSON.stringify(Object.values(c)[0]) === JSON.stringify(want) && Object.keys(c).length === 1, 'after opening a lesson: the cache is unchanged (the lesson file is not cached)');
+  // offline after the first visit: a new navigation and a reload both open the Viewer, its icons and manifest, and a lesson plays
+  const before = site.reqs.length;
   await o.ctx.setOffline(true);
   await o.p.goto(site.url); await o.p.waitForSelector('html[data-ready]', { timeout: 10000 }).catch(() => {});
   ok(await o.p.evaluate(() => document.documentElement.hasAttribute('data-ready')), 'offline: the page opens from the service worker');
+  await o.p.reload(); await o.p.waitForSelector('html[data-ready]', { timeout: 10000 }).catch(() => {});
+  ok(await o.p.evaluate(() => document.documentElement.hasAttribute('data-ready') && document.querySelector('.logo-light').complete && document.querySelector('.logo-light').naturalWidth > 0),
+    'offline: a reload opens the page again, with its logo');
+  ok(await o.p.evaluate(async () => (await fetch('./manifest.webmanifest')).ok && (await fetch('./icons/icon-192.png')).ok && (await fetch('./icons/favicon.svg')).ok), 'offline: the manifest and icons come from the cache');
   await openFixture(o.p, 'lesson.play.ega.html');
   ok(!!(await lessonFrame(o.p)), 'offline: a lesson plays');
+  ok(site.reqs.length === before, `offline: nothing reached the server (${site.reqs.slice(before).join(', ')})`);
+  await o.p.click('#b-close');
   await o.ctx.setOffline(false);
-  // a new version: rebuilt into the same folder; the page shows the update and changes version only when asked
+  // a new version, rebuilt into the same folder. It is found while a lesson plays: it installs and waits; nothing is swapped
   const v1 = built.version;
   const b2 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v2' });
-  await o.p.goto(site.url); await o.p.waitForSelector('html[data-ready]');
+  await openFixture(o.p, 'lesson.play.ega.html'); const f1 = await lessonFrame(o.p);
+  await f1.evaluate(() => DECK.go(1, 0));
   await o.p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
-  ok(await until(() => o.p.evaluate(() => !document.getElementById('update').hidden), 10000), 'a new version: 「新しい版があります」 with an update button');
-  ok(await o.p.textContent('#version') === v1, 'a new version: the old one keeps running until the viewer updates');
-  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p);
-  ok(await o.p.evaluate(() => document.getElementById('update').hidden), 'a new version: the notice is held back while a lesson plays (nothing appears next to the lesson\'s frame)');
-  await o.p.click('#b-close');
-  ok(await until(() => o.p.evaluate(() => !document.getElementById('update').hidden)), 'a new version: the notice comes back when the lesson is closed');
-  await Promise.all([o.p.waitForNavigation({ timeout: 10000 }).catch(() => {}), o.p.click('#b-update')]);
-  await o.p.waitForSelector('html[data-ready]');
-  ok(await until(() => o.p.evaluate((v) => document.getElementById('version').textContent === v, b2.version)), `after updating: version ${b2.version}`);
-  c = await cached();
-  ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'after updating: only the new version\'s cache remains');
-  await o.close();
-  built.version = b2.version; built.files = b2.files; }
+  ok(await until(() => o.p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return !!(r && r.waiting); }), 15000), 'a new version: it installs and waits');
+  await sleep(1500);
+  ok(await o.p.textContent('#version') === v1 && await o.p.$('#lesson') !== null && await f1.evaluate(() => DECK.state().slide) === 2,
+    'a new version found while a lesson plays: nothing is swapped (same version, the lesson still at its slide, no reload)');
+  ok(!(await o.p.$('#update')) && !(await o.p.$('#b-update')), 'no update notice or button: a new version is used from the next launch');
+  // another window launched while the first one plays: the new version still waits (the worker grants a takeover only to a lone window)
+  const p2 = await o.ctx.newPage();
+  await p2.goto(site.url); await p2.waitForSelector('html[data-ready]');
+  await sleep(2500);
+  ok(await p2.textContent('#version') === v1 && await o.p.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting) && await f1.evaluate(() => DECK.state().slide) === 2,
+    'a second window while a lesson plays: the new version still waits; the playing lesson is untouched');
+  await p2.close();
+  // the next launch: every window of the Viewer closed, then opened again
+  await o.p.close();
+  const p3 = await o.ctx.newPage();
+  await p3.goto(site.url); await p3.waitForSelector('html[data-ready]');
+  ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
+  c = await cached(p3);
+  ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
+  // a launch at the start screen with a version waiting (a home-screen app that was never closed, then opened): taken over at once
+  // (an update found more than 10 s after the launch waits even at the start screen: the Viewer is in use, not being launched)
+  await sleep(10500);
+  const b3 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v3' });
+  await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
+    'a third version found while the Viewer is in use: it waits (no reload)');
+  await p3.goto(site.url); await p3.waitForSelector('html[data-ready]');
+  ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000), `a launch at the start screen (the only window): the waiting version takes over (${b3.version})`);
+  await o.ctx.close();
+  built.version = b3.version; built.files = b3.files; }
 
 // ---------------------------------------------------------------- 6. recent files
 console.log('recent files');
@@ -325,7 +382,7 @@ site.extra.set('/__test/share.html', shareForm);
   await o.p.setInputFiles('#i', FIX['lesson.play.ega.html']);
   await Promise.all([o.p.waitForURL((u) => u.pathname === '/' && !u.search, { timeout: 15000 }).catch(() => {}), o.p.evaluate(() => document.getElementById('f').submit())]);
   const f = await lessonFrame(o.p);
-  ok(!!f && await o.p.textContent('#lesson-kind') === 'Egatari ファイル（再生のみ）', 'share_target: the service worker receives the shared file and the page plays it');
+  ok(!!f && await o.p.textContent('#lesson-kind') === 'Egatari ファイル（再生専用）', 'share_target: the service worker receives the shared file and the page plays it');
   ok(!site.reqs.includes('POST /share'), 'share_target: the file never reaches the server');
   const c = await o.p.evaluate(async () => { let n = 0; for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) if (!/\/(|guard\.js|play\.(js|css)|reader\.js|manifest\.webmanifest|icons\/[^/]+)$/.test(new URL(r.url).pathname)) n++; return n; });
   ok(c === 0, 'share_target: the shared file is not cached');
@@ -451,6 +508,74 @@ console.log('no network');
   await o.p.click('#b-close');
   ok(reqs.length === 0 && ws.length === 0 && fake.connections.length === before, `a lesson without live: no request and no WebSocket from opening to closing (${reqs.join(', ')})`);
   ok(await o.p.$eval('#b-live', (b) => b.hidden), 'a lesson without live: no Live button');
+  await o.close(); }
+
+// ---------------------------------------------------------------- 9b. no lesson bytes on the network; the file's own policy
+console.log('lesson bytes and the file\'s policy');
+{ const o = await page();
+  await o.p.evaluate(() => navigator.serviceWorker.ready); await o.p.reload(); await o.p.waitForSelector('html[data-ready]'); await sleep(300);
+  const seen = [];   // every request (the page, its Workers and the service worker) and every WebSocket frame sent: url and body
+  o.ctx.on('request', (r) => { seen.push(r.url() + ' ' + (r.postData() || '')); });
+  o.p.on('websocket', (w) => { seen.push(w.url()); w.on('framesent', (fr) => seen.push(String(fr.payload))); });
+  const srv0 = site.reqs.length;
+  fake.reset();
+  await openFixture(o.p, 'marked.play.ega.html');
+  const f = await lessonFrame(o.p);
+  ok(!!f && await f.evaluate(() => DECK.slides.length) > 1, 'lesson bytes: the marked lesson plays');
+  await f.evaluate(() => { DECK.go(1, 0); DECK.go(2, 0); });
+  await o.p.click('#b-close');
+  // a lesson with Live: join, ask and vote; only the question and the vote go out
+  await openFixture(o.p, 'marked-live.play.ega.html');
+  await o.p.waitForSelector('#b-start-join', { state: 'visible' });
+  await o.p.click('#b-start-join');
+  const g = await lessonFrame(o.p);
+  ok(await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected')), 'lesson bytes: the marked lesson with Live joins');
+  await o.p.fill('#live-q', 'しつもん'); await o.p.click('#b-send');
+  await until(() => fake.messages.some((m) => m.t === 'ask'));
+  await g.evaluate(() => DECK.go(1, 0));
+  await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]'));
+  await o.p.check('#live fieldset[data-poll="p1"] input[value="0"]'); await o.p.click('#live fieldset[data-poll="p1"] button.vote');
+  await until(() => fake.messages.some((m) => m.t === 'vote'));
+  await o.p.click('#b-close');
+  // the shared file of an Android share goes to the service worker in memory only; recent files stay in this browser's storage
+  const leaked = seen.filter((x) => x.includes(MARK) || x.includes('<!DOCTYPE html>') || x.includes('deck-meta'));
+  ok(seen.length > 0 && leaked.length === 0 && !JSON.stringify(fake.messages).includes(MARK), `no lesson bytes in any request or WebSocket frame (${seen.length} looked at; ${leaked.map((x) => x.slice(0, 80)).join(' | ')})`);
+  ok(site.reqs.slice(srv0).every((r) => /^GET /.test(r)), `the Viewer's own server got no upload (${site.reqs.slice(srv0).join(', ')})`);
+  await o.close(); }
+// the file's own CSP <meta> (§4.2): it plays in the sandbox, and both policies apply (the prefix's and the file's)
+{ const o = await page();
+  await openFixture(o.p, 'csp.play.ega.html');
+  const f = await lessonFrame(o.p);
+  ok(!!f && await f.evaluate(() => DECK.slides.length) > 1, 'a file with its own §4.2 CSP <meta> plays in the sandbox');
+  const r = await f.evaluate(async () => {
+    const pol = [];
+    document.addEventListener('securitypolicyviolation', (e) => pol.push(e.originalPolicy));
+    let fetched = 'no';
+    try { await fetch('https://example.org/'); fetched = 'yes'; } catch { fetched = 'blocked'; }
+    await new Promise((res) => setTimeout(res, 300));
+    return { metas: [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].map((m) => m.content), pol, fetched };
+  });
+  const norm = (p) => p.split(';').map((x) => x.trim().split(/\s+/).join(' ')).filter(Boolean).sort().join('; ');
+  ok(r.metas.length === 2 && norm(r.metas[1]) === norm(BASELINE), `the frame carries the prefix's policy and then the file's own (${r.metas.length} policies)`);
+  ok(r.fetched === 'blocked' && r.pol.some((p) => norm(p) === norm(BASELINE)) && r.pol.some((p) => /'unsafe-eval'/.test(p)),
+    `both apply: a fetch from the lesson is reported against the file's policy and the prefix's (${r.pol.length} reports)`);
+  ok(o.errors.length === 0, `no page errors (${o.errors.join(' | ')})`);
+  await o.close(); }
+// joining a Live while offline: said at once, with what to do; the lesson still plays
+{ const o = await page();
+  fake.reset();
+  await openFixture(o.p, 'live.play.ega.html');
+  await o.p.waitForSelector('#b-start-join', { state: 'visible' });
+  await o.ctx.setOffline(true);
+  await o.p.click('#b-start-join');
+  ok(!!(await lessonFrame(o.p)), 'offline Join: the lesson plays');
+  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークにつながっていません。Wi-Fi などにつないでから、「もう一度試す」を押してください。参加しなくても教材は見られます$/.test(document.getElementById('live-msg').textContent))),
+    'offline Join: the message says the device is offline and what to do');
+  ok(await o.p.textContent('#b-join') === 'もう一度試す' && await o.p.isEnabled('#b-join') && fake.connections.length === 0, 'offline Join: 「もう一度試す」 is offered; nothing was attempted');
+  await o.ctx.setOffline(false);
+  await o.p.click('#b-join');
+  ok(await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected')), 'offline Join: back online, 「もう一度試す」 joins');
+  await o.p.click('#b-close');
   await o.close(); }
 
 // ---------------------------------------------------------------- 10. live: the start screen first, then the frame

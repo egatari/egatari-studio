@@ -1,4 +1,4 @@
-// Egatari Play: the lesson's frame (spec §10.1.2, §11; live §2A).
+// Egatari Viewer: the lesson's frame (spec §10.1.2, §11; live §2A).
 // The lesson document is the page's trusted prefix followed by the file's bytes unchanged (app/preview-doc.js): the prefix carries
 // the preview policy (PREVIEW_CSP: connect-src 'none', frame-src 'none', only data: and blob: resources), so it is in force before
 // any untrusted byte is parsed, and the page never searches the lesson's markup for a place to insert anything.

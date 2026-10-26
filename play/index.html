@@ -7,25 +7,28 @@
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#4A488E">
-<meta name="description" content="Egatari ファイル（.ega.html）をこの端末で開いて再生します。ファイルはどこにも送りません。 / Open and play Egatari files (.ega.html) on this device. Files are never uploaded.">
-<title>Egatari Play</title>
+<meta name="description" content="Egatari Viewer：Egatari ファイル（.ega.html）をこの端末で開いて再生します。ファイルはどこにも送りません。 / Egatari Viewer: open and play Egatari files (.ega.html) on this device. Files are never uploaded.">
+<meta name="apple-mobile-web-app-title" content="Ega Viewer">
+<meta name="application-name" content="Ega Viewer">
+<title>Egatari Viewer</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/favicon.ico" sizes="any">
+<link rel="icon" href="./icons/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="stylesheet" href="./play.css">
 <script type="module" src="./play.js"></script>
 </head>
 <body>
 <div id="framed" hidden>
-  <p lang="ja">このページはほかのページの枠の中では動きません。<a href="./" target="_top" rel="noopener noreferrer">Egatari Play</a> を直接開いてください。</p>
-  <p lang="en">This page does not run inside another page's frame. Open <a href="./" target="_top" rel="noopener noreferrer">Egatari Play</a> directly.</p>
+  <p lang="ja">このページはほかのページの枠の中では動きません。<a href="./" target="_top" rel="noopener noreferrer">Egatari Viewer</a> を直接開いてください。</p>
+  <p lang="en">This page does not run inside another page's frame. Open <a href="./" target="_top" rel="noopener noreferrer">Egatari Viewer</a> directly.</p>
 </div>
 <a class="skip" href="#main" data-i18n="skip">本文へ</a>
 <header id="bar">
-  <a id="home" href="./" aria-label="Egatari Play">
+  <a id="home" href="./" aria-label="Egatari Viewer">
     <img src="./icons/egatari-32-light.svg" alt="" width="28" height="28" class="logo-light">
     <img src="./icons/egatari-32-dark.svg" alt="" width="28" height="28" class="logo-dark">
-    <span class="name">Egatari Play</span>
+    <span class="name">Egatari Viewer</span>
   </a>
   <div id="lesson-info" hidden>
     <span id="lesson-title"></span>
@@ -37,10 +40,6 @@
     <button type="button" id="b-lang" lang="en">English</button>
   </div>
 </header>
-<div id="update" role="status" hidden>
-  <span data-i18n="updateReady">新しい版があります。</span>
-  <button type="button" id="b-update" data-i18n="updateNow">更新する</button>
-</div>
 <main id="main" tabindex="-1">
   <section id="start" aria-labelledby="start-h">
     <h1 id="start-h" data-i18n="startTitle">Egatari ファイルを再生する</h1>
@@ -63,11 +62,12 @@
       <button type="button" id="b-clear" hidden data-i18n="clearAll">すべて削除</button>
     </section>
     <section id="about" aria-labelledby="about-h">
-      <h2 id="about-h" data-i18n="aboutTitle">このページについて</h2>
+      <h2 id="about-h" data-i18n="aboutTitle">Egatari Viewer について</h2>
       <ul>
-        <li data-i18n="about1">iPhone・iPad など、ファイルのアプリから HTML のファイルを直接開けない端末のための再生ページです。</li>
-        <li data-i18n="about2">教材は、このページとは切り離された枠（sandbox）の中で動きます。教材からは、このページの保存場所にも、ネットワークにも届きません。</li>
-        <li data-i18n="about3">ライブ（質問・投票）のある教材では、「参加する」を押したときだけ、このページが教材に書かれたライブにつなぎます。</li>
+        <li data-i18n="about1">iPad・iPhone のように、ファイルのアプリから HTML のファイルを直接開けない端末で、Egatari ファイルを再生するためのアプリです。</li>
+        <li data-i18n="about2">教材は、Egatari Viewer とは切り離された枠（sandbox）の中で動きます。教材からは、Egatari Viewer の保存場所にも、ネットワークにも届きません。</li>
+        <li data-i18n="about3">ライブ（質問・投票）のある教材では、「参加する」を押したときだけ、Egatari Viewer が教材に書かれたライブにつなぎます。</li>
+        <li data-i18n="about5">ホーム画面に追加すると、ネットワークがなくても開けます。新しい版は、次に開いたときから使われます（再生中には入れ替わりません）。</li>
         <li data-i18n="about4">教材を作る・直すのは Egatari Studio です。</li>
       </ul>
       <p class="small"><a href="https://github.com/egatari/egatari-spec" rel="noopener noreferrer" target="_blank" data-i18n="specLink">Egatari の仕様</a> · <span data-i18n="version">版</span> <span id="version"></span></p>

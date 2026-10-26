@@ -1,4 +1,4 @@
-// Egatari Play: recent files, kept on this device only (OPFS; IndexedDB where OPFS cannot be written from a page).
+// Egatari Viewer: recent files, kept on this device only (OPFS; IndexedDB where OPFS cannot be written from a page).
 // Only this page's origin can read them; the lesson's frame has an opaque origin and cannot (play/frame.mjs).
 // Nothing is ever sent anywhere. The viewer can delete one file or all of them.
 //

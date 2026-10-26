@@ -1,8 +1,12 @@
-// Egatari Play: the service worker (docs/play.md).
+// Egatari Viewer: the service worker (docs/viewer.md).
 // - It caches only this page's own files, listed by the build (tools/build-play.mjs), under a cache named by the version.
 //   It never stores what it did not precache: no lesson file, no shared file, no other response (cache.put is never called).
-// - A new version installs beside the old one and waits; the page shows "a new version" and the viewer chooses to update
-//   (skip-waiting), so a lesson being played is never replaced under the viewer.
+// - Offline: every file of the app shell (the page, its script, the reader Worker, the style sheet, the manifest and the icons;
+//   the page uses the system fonts and loads no font file) is precached at install, so a Viewer opened once opens with no network.
+// - A new version installs beside the old one and waits. It takes over on the next launch only: the browser activates it when no
+//   window of the Viewer is open, and a freshly launched page at its start screen asks 'activate-if-idle', which is granted only
+//   when that page is the Viewer's only window (so a lesson playing in another window is never swapped). There is no
+//   skip-waiting on install and no update button.
 // - Android share_target: a POST to ./share carries a shared file. The worker answers with a redirect to ./?share=1 and hands
 //   the file to the page that asks for it (share-claim), from memory only; if no page asks within 60 s the file is dropped.
 const VERSION = '__VERSION__';
@@ -24,10 +28,16 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('message', (e) => {
   const m = e.data || {};
-  if (m.type === 'skip-waiting') self.skipWaiting();
+  if (m.type === 'activate-if-idle' && e.source) e.waitUntil(activateIfIdle(e.source));
   else if (m.type === 'share-claim' && e.source) claimShare(e.source);
   else if (m.type === 'version' && e.source) e.source.postMessage({ type: 'version', version: VERSION });
 });
+
+async function activateIfIdle(asker) {
+  const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (wins.length <= 1 && (!wins.length || wins[0].id === asker.id)) { await self.skipWaiting(); return; }
+  asker.postMessage({ type: 'busy' });
+}
 
 let shared = null;          // {file, done} while a shared file waits for its page
 function claimShare(client) {

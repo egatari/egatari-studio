@@ -1,4 +1,4 @@
-// Egatari Play: Live (questions and polls) held by the page for the sandboxed lesson (format spec extensions/live.md §2A).
+// Egatari Viewer: Live (questions and polls) held by the page for the sandboxed lesson (format spec extensions/live.md §2A).
 // The lesson never connects (its frame has connect-src 'none' and is framed, §2.1). The page:
 //   - reads extensions.live with a parser that runs nothing (play/scan.mjs) and validates it (kit/core/live-policy.mjs, key required);
 //   - follows §2 itself: no request outside the window or before the viewer presses Join (one tap, the destination host shown),
@@ -16,7 +16,7 @@
 //     onOpen(true, 'poll')  a poll step came on screen (announced); onOpen('polls', n): the number of polls the viewer can answer now changed
 import { FORMAT } from '../kit/core/format.mjs';
 
-const REJOIN = { room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, unknown: 1, window_over: 0 };
+const REJOIN = { room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, offline: 1, unknown: 1, window_over: 0 };
 
 export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpen, announce }) {
   const HOST = LP.hostOf(live.endpoint);
@@ -190,7 +190,13 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
       if (ST !== 'off') setState('stopped', 'window_over'); else render();
     }, Math.min(ms + 500, 2147483000));
   }
-  function join() { if (!DIRECT || phase() !== 'open') return; left = false; attempt = 0; info = ''; connect(); }
+  // offline (navigator.onLine is false only when the device surely has no network): say so at once, with what to do, instead of retrying
+  function join() {
+    if (!DIRECT || phase() !== 'open') return;
+    left = false; attempt = 0; info = '';
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { clearTimers(); setState('stopped', 'offline'); say(S.stop.offline); return; }
+    connect();
+  }
   function leave() {
     left = true; clearTimers();
     if (ws) { const s = ws; ws = null; try { s.close(1000, 'bye'); } catch { /* gone */ } }

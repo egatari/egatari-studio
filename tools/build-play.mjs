@@ -1,4 +1,4 @@
-// Egatari Play (play/, play.egatari.org) を組む：_play/ に静的なファイル一式を書く（説明は docs/play.md）
+// Egatari Viewer (play/, viewer.egatari.org) を組む：_play/ に静的なファイル一式を書く（説明は docs/viewer.md）
 //   node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.org …] [--dev-loopback] [--version-tag <字>]
 //   --live-endpoint  このページが自分でつないでよいライブの部屋の origin（くり返せる。既定は FORMAT.LIVE_ENDPOINT だけ）。
 //                    ほかの endpoint の教材には、参加のページへのリンクだけを出す。ページの CSP の connect-src にも同じものを書く
@@ -6,7 +6,9 @@
 //   --version-tag    版の名前に足す字（試験で「新しい版」を作るため）
 // 実行系（kit/）は写さない：kit/core/link-policy.mjs・live-policy.mjs・bounded-html.mjs（parse5）と app/preview-doc.js を esbuild で取り込む
 // 書くもの：index.html・guard.js・play.css・play.js（本体）・reader.js（教材を読む Worker）・sw.js（版つき。自分のファイルだけを覚える）・
-// manifest.webmanifest（share_target）・icons/（assets/logo の 192・512 px ほか）・_headers（CSP・枠の中を断る。Cloudflare の静的なファイルの見出し）
+// manifest.webmanifest（name「Egatari Viewer」、ホーム画面の名前 short_name「Ega Viewer」、share_target）・icons/（「え」：assets/logo の 192・512 px・
+// favicon.ico・favicon-dark.ico・apple-touch-icon と、書き出した .ega.html と同じ SVG のファビコン kit/core/favicon.mjs）・_headers（CSP・枠の中を断る。Cloudflare の静的なファイルの見出し）
+// アイコンは「え」のまま（Egatari のファイルを開くアプリ）。Studio の「す」（assets/logo/studio/）は使わない
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -14,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
+import { faviconSvg } from '../kit/core/favicon.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -46,7 +49,7 @@ export const PERMISSIONS = 'camera=(), microphone=(), geolocation=(), payment=()
 
 export function headersFile(csp) {
   return [
-    '# Egatari Play: response headers for every file (Cloudflare Workers static assets and Pages read this file; docs/play.md).',
+    '# Egatari Viewer: response headers for every file (Cloudflare Workers static assets and Pages read this file; docs/viewer.md).',
     '# Self-hosting: send the same headers from your server. A host that cannot send headers (e.g. GitHub Pages) cannot refuse framing.',
     '/*',
     `  Content-Security-Policy: ${csp}`,
@@ -64,8 +67,8 @@ export function headersFile(csp) {
 
 const MANIFEST = {
   id: './',
-  name: 'Egatari Play',
-  short_name: 'Egatari Play',
+  name: 'Egatari Viewer',
+  short_name: 'Ega Viewer',
   description: 'Egatari ファイル（.ega.html）をこの端末で開いて再生します / Open and play Egatari files (.ega.html) on this device',
   lang: 'ja',
   dir: 'ltr',
@@ -86,7 +89,7 @@ const MANIFEST = {
   },
 };
 
-const ICONS = [['icon-192.png'], ['icon-512.png'], ['favicon.ico'], ['apple-touch-icon.png'], ['egatari-32-light.svg'], ['egatari-32-dark.svg']];
+const ICONS = [['icon-192.png'], ['icon-512.png'], ['favicon.ico'], ['favicon-dark.ico'], ['apple-touch-icon.png'], ['egatari-32-light.svg'], ['egatari-32-dark.svg']];
 
 export async function buildPlay(opts) {
   const policy = LivePolicy({ allowLoopback: opts.devLoopback });
@@ -109,6 +112,7 @@ export async function buildPlay(opts) {
   files['reader.js'] = Buffer.from(worker.outputFiles[0].text);
   for (const f of ['index.html', 'guard.js', 'play.css']) files[f] = fs.readFileSync(rel('play', f));
   for (const [f] of ICONS) files['icons/' + f] = fs.readFileSync(rel('assets', 'logo', f));
+  files['icons/favicon.svg'] = Buffer.from(faviconSvg());   // the え favicon of exported .ega.html files (one SVG, light and dark)
   files['manifest.webmanifest'] = Buffer.from(JSON.stringify(MANIFEST, null, 2) + '\n');
   // the version: package version + a hash of every file (the main bundle built without a version)
   const h = crypto.createHash('sha256');

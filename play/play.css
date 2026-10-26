@@ -1,4 +1,4 @@
-/* Egatari Play (play/): the page that plays Egatari files. Phone width first; light and dark. */
+/* Egatari Viewer (play/): the page that plays Egatari files. Phone width first; light and dark. */
 :root {
   --bg: #ffffff; --fg: #1d1d24; --muted: #5b5d6b; --line: #d6d7e0; --panel: #f4f4f8;
   --accent: #4A488E; --accent-fg: #ffffff; --warn: #8a4b00; --err: #b3261e; --ok: #1f7a46; --focus: #2c63d4;
@@ -45,11 +45,6 @@ button:disabled { opacity: 0.5; cursor: default; }
 [data-state=connected] .dot, .dot[data-state=connected] { background: var(--ok); }
 [data-state=connecting] .dot, [data-state=waiting] .dot, [data-state=retrying] .dot { background: #e0b341; }
 [data-state=stopped] .dot { background: var(--err); }
-
-/* the update notice: shown only while no lesson plays (play/main.js); a toast, so it moves nothing */
-#update { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); max-width: calc(100vw - 32px);
-  display: flex; gap: 12px; align-items: center; justify-content: center; padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); flex-wrap: wrap; }
 
 #main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 #main:focus { outline: none; }
@@ -122,7 +117,7 @@ body.headless #bar { display: none; }
 #live[data-mode=strip] fieldset label { margin: 0; font-size: 0.8125rem; gap: 4px; align-items: center; }
 #live[data-mode=strip] fieldset input { width: 16px; height: 16px; margin: 0; }
 #live[data-mode=strip] fieldset .row { margin: 0; flex-wrap: nowrap; }
-/* the overlay variant's poll sheet over the frame (measured; docs/play.md) */
+/* the overlay variant's poll sheet over the frame (measured; docs/viewer.md) */
 #live[data-mode=overlay].poll-open { top: auto !important; bottom: 0; left: 0 !important; width: 100% !important; height: auto !important; max-height: 70%; overflow: auto; border-radius: 0; background: var(--panel); color: var(--fg); }
 #live[data-mode=overlay].poll-open #live-poll-view { padding: 8px 12px; }
 .live-head { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }

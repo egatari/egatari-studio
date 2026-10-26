@@ -1,4 +1,4 @@
-// Egatari Play: links the lesson asks the page to open (format spec §11: "Hosts that play lessons apply the same rule to links
+// Egatari Viewer: links the lesson asks the page to open (format spec §11: "Hosts that play lessons apply the same rule to links
 // the lesson asks them to open"). The rule is the player's own, kit/core/link-policy.mjs (DECK.LinkPolicy on main).
 // The box is in the page's chrome, outside the lesson's frame, so the lesson cannot draw over it or press it.
 // Opening is always an ordinary <a target="_blank" rel="noopener noreferrer"> that the viewer taps in this page: the page never

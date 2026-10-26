@@ -1,4 +1,4 @@
-// Egatari Play on Cloudflare Workers static assets (play/wrangler.toml). The page is static files (_play/, with _headers);
+// Egatari Viewer on Cloudflare Workers static assets (play/wrangler.toml). The page is static files (_play/, with _headers);
 // this Worker only answers requests that match no file. The one it handles: an Android share (POST /share) that arrives
 // when the page's service worker is not installed yet, which cannot be received here (nothing is uploaded or stored):
 // the page is told to ask the viewer to open the app once and share again.

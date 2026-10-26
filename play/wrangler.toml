@@ -1,7 +1,7 @@
-# Egatari Play (play.egatari.org): Cloudflare Workers static assets. Development and test config (docs/play.md).
+# Egatari Viewer (viewer.egatari.org): Cloudflare Workers static assets. Development and test config (docs/viewer.md).
 # Build first: `node tools/build-play.mjs` writes ../_play/. Then `npx wrangler@4.124.0 dev -c play/wrangler.toml` serves it locally.
 # Production settings are in wrangler.production.toml; keep the two in step. Never run `wrangler deploy` with this file.
-name = "egatari-play-dev"
+name = "egatari-viewer-dev"
 main = "worker.js"
 compatibility_date = "2026-08-01"
 # account_id = "<your Cloudflare account id>"   # not committed: pass CLOUDFLARE_ACCOUNT_ID at deploy time

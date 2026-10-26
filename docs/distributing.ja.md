@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.md sha256=42c75b71f16e2be8 -->
+<!-- i18n: pair=distributing.md sha256=9405fdde51ed6d86 -->
 # 学ぶ人に教材を配る
 
 [English](distributing.md) | 日本語
@@ -22,6 +22,8 @@
 | Google ドライブ・Google Classroom のプレビュー | 動かない（プレビューは中身の文字を見せる） |
 | SharePoint・OneDrive・Teams | 動かない（スクリプトの入った HTML はダウンロードになる） |
 | iPhone・iPad の「ファイル」アプリ | 動かない（Quick Look は JavaScript を動かさない） |
+
+**iPad の生徒には** [Egatari Viewer](viewer.ja.md)（`viewer.egatari.org`、ホーム画面の名前は Ega Viewer）で開いてもらう：[iPad の生徒に教材を配る（Classroom と Egatari Viewer）](viewer-classroom.ja.md)。
 
 - **学生には再生専用の写しを渡す**（`--play-only`）。直せるファイルは手元に残す
 - **公開の URL は、アドレスを知っている人なら誰でも見られる。** ウェブの置き場所にはサインインがない。授業の人だけに見せたいものは置かない

@@ -1,15 +1,15 @@
-# Egatari Play (play.egatari.org): production config.
-# Deploy (by the maintainer, after approval; docs/play.md "Deploying"):
+# Egatari Viewer (viewer.egatari.org): production config.
+# Deploy (by the maintainer, after approval; docs/viewer.md "Deploying"):
 #   node tools/build-play.mjs && CLOUDFLARE_ACCOUNT_ID=<account id> npx wrangler@4.124.0 deploy -c play/wrangler.production.toml
 # Keep it in step with wrangler.toml (the development and test config).
-name = "egatari-play"
+name = "egatari-viewer"
 main = "worker.js"
 compatibility_date = "2026-08-01"
 # account_id = "<your Cloudflare account id>"   # not committed: pass CLOUDFLARE_ACCOUNT_ID at deploy time
 workers_dev = false
 
 # A Custom Domain makes `wrangler deploy` create the DNS record and certificate itself (the egatari.org zone must be in this account).
-routes = [{ pattern = "play.egatari.org", custom_domain = true }]
+routes = [{ pattern = "viewer.egatari.org", custom_domain = true }]
 
 [assets]
 directory = "../_play"

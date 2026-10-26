@@ -1,4 +1,4 @@
-// Egatari Play: read what the page needs from a lesson file without running it (spec §11, live §2A.1).
+// Egatari Viewer: read what the page needs from a lesson file without running it (spec §11, live §2A.1).
 // The file is parsed as a string with parse5 under limits (kit/core/bounded-html.mjs); nothing is executed or loaded.
 // Kept: deck-meta, deck-extensions and the index (egatari-index) — the JSON blocks of spec §3 and §4.
 //

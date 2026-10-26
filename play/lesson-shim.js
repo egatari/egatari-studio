@@ -1,4 +1,4 @@
-// Egatari Play: the page's own small script at the start of the lesson document, before the lesson's bytes
+// Egatari Viewer: the page's own small script at the start of the lesson document, before the lesson's bytes
 // (the trusted prefix of app/preview-doc.js, spec §11). It runs in the lesson's sandboxed frame (opaque origin) and has no
 // more power than the lesson: the page treats every message from the frame as an untrusted request (play/main.js).
 //   1. ?embed=1: a srcdoc document has no address of its own, so the embedding mode (spec §9.4: position events) is set
@@ -10,6 +10,12 @@
 //      download attribute, which the page refuses). The page treats it as untrusted, applies the
 //      link rule (spec §11, kit/core/link-policy.mjs) itself and opens nothing without a tap in its own interface.
 //      Links inside the lesson (#…, spec §9.1A) stay with the player.
+//   3. Touch (iPad, iPhone, Android tablets): the player's control bar (kit/tools.js: 前へ・次へ・字幕・読み上げで聞く …) wakes on
+//      pointermove, which a finger tap does not send, so after its first few seconds a touch-only viewer had no way to bring it
+//      back. A trusted touch tap is relayed to the player as one pointermove (no buttons) at the bottom edge, where the bar wakes
+//      even when it lies over the slide. The bar's buttons cancel pointerdown (so that they keep the focus on the slide); WebKit
+//      then sends no click after a finger tap, so a tap on a bar button that gets no click within 350 ms is completed with one
+//      click on that button (once; a real click cancels it). Nothing else changes: the player's own handlers decide.
 (function lessonShim() {
   "use strict";
   try { history.replaceState(null, "", "about:srcdoc?embed=1"); } catch (e) { /* the page falls back to deck-pos */ }
@@ -51,6 +57,20 @@
     send(a.getAttribute("href"), (a.textContent || "") + " " + (a.getAttribute("aria-label") || a.getAttribute("alt") || ""), a.hasAttribute("download"));
   }
   window.addEventListener("click", onClick, true);
+  var pendingTap = null;
+  window.addEventListener("pointerup", function (e) {
+    if (!e.isTrusted || e.pointerType !== "touch") return;
+    var t = e.target, btn = t && t.closest ? t.closest("#dt-cb button") : null;
+    if (btn) {
+      clearTimeout(pendingTap && pendingTap.timer);
+      pendingTap = { btn: btn, timer: setTimeout(function () { var p = pendingTap; pendingTap = null; if (p && p.btn.isConnected) p.btn.click(); }, 350) };
+      return;
+    }
+    try { window.dispatchEvent(new PointerEvent("pointermove", { pointerType: "mouse", clientX: e.clientX, clientY: Math.max(0, window.innerHeight - 1), buttons: 0 })); } catch (x) { /* no PointerEvent */ }
+  }, true);
+  window.addEventListener("click", function (e) {
+    if (pendingTap && e.isTrusted && e.target && e.target.closest && e.target.closest("#dt-cb button") === pendingTap.btn) { clearTimeout(pendingTap.timer); pendingTap = null; }
+  }, true);
   window.addEventListener("auxclick", onClick, true);
   // The player's own window.open (after its confirmation box, presenter view): no popups here; ask the page instead
   window.open = function (u) { if (u != null && !/[?&]presenter=1/.test(String(u)) && navigator.userActivation && navigator.userActivation.isActive) send(u, ""); return null; };

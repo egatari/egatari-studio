@@ -1,8 +1,8 @@
-// Egatari Play: where the lesson's frame and the Live controls go. Chosen once when the lesson starts (and again only when the
+// Egatari Viewer: where the lesson's frame and the Live controls go. Chosen once when the lesson starts (and again only when the
 // device is rotated or the window is resized), never while the viewer uses the page: the frame's geometry never changes under a tap.
 // Why: the lesson's frame runs in its own process, and Chrome hands a tap to it by hit-test data from the last frame shown, so a
 // control that has just appeared where the lesson was (a pane over the frame, or a frame that just shrank) can lose its first tap
-// to the lesson (measured: docs/play.md). Controls therefore live outside the frame's area from the start.
+// to the lesson (measured: docs/viewer.md). Controls therefore live outside the frame's area from the start.
 //
 //   computeLayout({w, h, headerH, live, polls, variant}) → {mode, header, frame: {x, y, w, h}, live: {x, y, w, h} | null, stage: {w, h}}
 //     w, h      the viewport; headerH the page's bar when shown

@@ -25,6 +25,7 @@ them in a way that suggests endorsement.
 | `favicon.ico` / `favicon-dark.ico` | 16 (bracketless glyph) / 32 / 48 px |
 | `apple-touch-icon.png` | 180 px, opaque white tile |
 | `icon-192.png` / `icon-512.png` | Web app manifest icons (transparent) |
+| `studio/` | Egatari Studio's own tab and app icon 「す」 (placeholder, `tools/studio-icons.mjs`; see `studio/README.md`). 「え」 stays the mark for Egatari, Egatari Viewer and exported files |
 
 `favicon.ico`, `apple-touch-icon.png` and `icon-512.png` are copied from the specification repository's logo files; `icon-192.png` and `favicon-dark.ico` are copied from the logo masters (the 16 px and 32 px sizes are hand-fitted, so do not make them by scaling the SVGs).
 

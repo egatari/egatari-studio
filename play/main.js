@@ -1,4 +1,4 @@
-// Egatari Play (play.egatari.org): open an Egatari file (.ega.html) on this device and play it (docs/play.md).
+// Egatari Viewer (viewer.egatari.org): open an Egatari file (.ega.html) on this device and play it (docs/viewer.md).
 // - The file is read in this page and never uploaded. It plays in a sandboxed frame with an opaque origin (play/frame.mjs).
 // - Recent files stay on this device (play/recents.mjs). Android shares arrive through the service worker (play/sw.js).
 // - Live is held by this page, not by the lesson (play/live-host.mjs). Links the lesson asks to open go through the
@@ -27,7 +27,7 @@ const framed = document.documentElement.hasAttribute('data-framed');
 let lang = initialLang();
 const W = () => WORDS[lang];
 
-const S = { playing: null, frame: null, live: null, recents: null, reloading: false, updateReady: false, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
+const S = { playing: null, frame: null, live: null, recents: null, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
 const sr = $('sr');
 function announce(t) { sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 30); }
 function showMsg(t) { $('msg').textContent = t || ''; }
@@ -89,7 +89,6 @@ function play(text, r, info) {
   $('lesson-title').lang = r.meta.lang || '';
   $('lesson-kind').textContent = r.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   $('b-close').hidden = false;
-  $('update').hidden = true;   // held back while a lesson plays
   if (!(history.state && history.state.egaPlay)) history.pushState({ egaPlay: 1 }, '');
   if (!live) { startFrame(); return; }
   S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: onLive, el: liveEls() });
@@ -122,7 +121,7 @@ function startFrame() {
   try { S.frame.focus(); } catch { /* not focusable yet */ }
 }
 // the no-slack variant for phones in landscape on 16:9 screens (play/layout.mjs). The owner chose 'overlay' (the full screen for the
-// slide); 'strip' is the alternative. ?noslack=strip or ?noslack=overlay switches it for measuring (docs/play.md).
+// slide); 'strip' is the alternative. ?noslack=strip or ?noslack=overlay switches it for measuring (docs/viewer.md).
 // The overlay is safe only because its indicator is always shown over the frame's top edge from the moment the frame is placed,
 // and is never toggled (hidden, then shown) over the frame: taps were lost exactly when page chrome switched from hidden to shown
 // over the out-of-process frame. Any change to that (hiding the indicator, a sheet that appears where nothing was) must be
@@ -176,7 +175,6 @@ function closeLesson(quiet) {
   document.body.classList.remove('headless');
   S.playing = null;
   if (quiet) return;
-  if (S.updateReady) $('update').hidden = false;   // held back while the lesson played
   document.body.classList.remove('playing');
   $('player').hidden = true;
   $('lesson-info').hidden = true;
@@ -258,22 +256,41 @@ function initKeep() {
 }
 async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }
 
-// ---------------------------------------------------------------- service worker: only this page's own files; versioned update
+// ---------------------------------------------------------------- service worker: the app shell offline; a new version on the next launch
+// The service worker (play/sw.js) caches this page's own files, so the Viewer opens with no network once it has been opened.
+// A new version installs beside the running one and waits. It takes over only on a launch: when no window of the Viewer is open
+// (the browser then activates it by itself), or at the start screen of a fresh launch, where this page asks the waiting worker to
+// take over and reloads once. The worker agrees only when this is the Viewer's only window (play/sw.js 'activate-if-idle').
+// Nothing is swapped while a lesson is open: no request is made while playing, and a takeover that races with opening a file does
+// not reload (the running page keeps its own scripts; every file it needs is already loaded).
+// Coming back to the Viewer (visibilitychange) counts as a launch only on the start screen, with no lesson open.
 async function initSW() {
   if (!('serviceWorker' in navigator)) return null;
   let reg;
   try { reg = await navigator.serviceWorker.register('./sw.js', { scope: './' }); } catch { return null; }
-  const show = () => { if (reg.waiting && navigator.serviceWorker.controller) { S.updateReady = true; if (!S.playing) $('update').hidden = false; } };
-  show();
-  reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') show(); }); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
-  $('b-update').addEventListener('click', () => {
-    if (S.playing && !window.confirm(W().updateWhilePlaying)) return;
-    if (!reg.waiting) { location.reload(); return; }
-    S.reloading = true;
-    reg.waiting.postMessage({ type: 'skip-waiting' });
+  if (!reg) return null;   // a browser that blocks service workers may resolve without a registration
+  let asked = false;
+  const takeOver = () => {
+    if (S.playing || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
+    asked = true;
+    reg.waiting.postMessage({ type: 'activate-if-idle' });
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked && !S.playing) location.reload(); });
+  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'busy') asked = false; });
+  takeOver();
+  reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && launching) takeOver(); }); });
+  // a launch: the first seconds after the page started. Later, an update found while the Viewer is in use waits for the next launch
+  let launching = true;
+  setTimeout(() => { launching = false; }, 10000);
+  if (!S.playing) reg.update().catch(() => {});
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || S.playing) return;
+    asked = false;
+    launching = true;
+    setTimeout(() => { launching = false; }, 10000);
+    takeOver();
+    reg.update().catch(() => {});
   });
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (S.reloading) location.reload(); });
   return reg;
 }
 

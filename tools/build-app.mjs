@@ -135,10 +135,11 @@ const bundleMain = async (res) => (await esbuild.build({
 let js = await bundleMain(resources);
 const css = fs.readFileSync(rel('app', 'app.css'), 'utf8');
 const html = fs.readFileSync(rel('app', 'index.html'), 'utf8');
-// ロゴ（assets/logo/。MIT の対象外：NOTICE）：ファビコン（16 px は括弧なしの字、32・48 px は括弧付き。暗い画面は favicon-dark.ico）・
-// apple-touch-icon（180 px）・ウェブアプリの manifest の 192・512 px。配信版はファイルとして根に置き、1 ファイル版は data: で埋め込む
-// （manifest は file:// では使えないので入れない）。.ega.html の実行系・再生にはロゴを入れない
-const LOGO = (f) => rel('assets', 'logo', f);
+// Studio のアイコン「す」（assets/logo/studio/。tools/studio-icons.mjs が作る仮の組んだ字。作者の手描きができたら差し替える。MIT の対象外：NOTICE）：
+// ファビコン（16 px は括弧なしの字、32・48 px は括弧付き。暗い画面は favicon-dark.ico）・apple-touch-icon（180 px）・ウェブアプリの manifest の 192・512 px。
+// 「え」（assets/logo/）は Egatari の印：見出しのロゴ・Egatari Viewer・書き出した .ega.html のファビコン（kit/core/favicon.mjs）に使い、Studio のタブとホーム画面は「す」。
+// 配信版はファイルとして根に置き、1 ファイル版は data: で埋め込む（manifest は file:// では使えないので入れない）。.ega.html の実行系・再生にはこれを入れない
+const LOGO = (f) => rel('assets', 'logo', 'studio', f);
 const ICON_FILES = ['favicon.ico', 'favicon-dark.ico', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 const iconLinks = (href) => [
   `<link rel="icon" href="${href('favicon.ico')}" sizes="16x16 32x32 48x48">`,
@@ -147,7 +148,7 @@ const iconLinks = (href) => [
 ].join('\n');
 const dataUri = (f) => `data:${f.endsWith('.png') ? 'image/png' : 'image/x-icon'};base64,` + fs.readFileSync(LOGO(f)).toString('base64');
 const MANIFEST = {
-  name: 'Egatari Studio', short_name: 'Egatari', start_url: './', scope: './', display: 'standalone',
+  name: 'Egatari Studio', short_name: 'Egatari Studio', start_url: './', scope: './', display: 'standalone',
   background_color: '#f4f5f8', theme_color: '#ffffff',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
 };

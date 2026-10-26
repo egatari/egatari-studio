@@ -1,4 +1,4 @@
-// Egatari Play: count taps on the page's Live controls that the browser hands to the lesson's frame instead (docs/play.md "Layout").
+// Egatari Viewer: count taps on the page's Live controls that the browser hands to the lesson's frame instead (docs/viewer.md "Layout").
 // Not part of npm test (it takes minutes and is meant to run several copies at once to load the machine):
 //   node tools/play-tap-measure.mjs <work dir> [--n 15] [--cases join,poll-portrait,poll-slack,poll-strip,poll-overlay,rotate,leave (also: poll-wide)] [--shots <dir>]
 // Each case opens a new browser context, opens a Live lesson (a test room: tools/live-fake-server.mjs) and taps right away, as fast as
