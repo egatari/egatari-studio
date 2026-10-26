@@ -270,6 +270,43 @@ ok('拡張の行き先：live は endpoint の https: と wss: を connect-src �
   assert.throws(() => addLive(loose, live, liveRuntimeText()), /not the baseline/);
 });
 
+ok('live と embed を 1 つのファイルに：書き出しは extensions.embed を deck-extensions に写し（どの 1 ファイルにも）、決まりの frame-src に行き先を足す。授業の部屋はそのブロックに live を足し、connect-src に endpoint。どちらの拡張も自分のディレクティブだけ', async () => {
+  const YT = 'https://www.youtube-nocookie.com/embed/X';
+  const embed = { v: 1, items: { v1: { src: YT, title: '動画' } } };
+  const d = path.join(work, 'embed');
+  makeDeck(d);
+  // 教材の授業の部屋の設定（鍵なし）も持つ：索引には live と embed の両方
+  const cfg = JSON.parse(fs.readFileSync(path.join(d, FORMAT.CONFIG_FILE), 'utf8'));
+  fs.writeFileSync(path.join(d, FORMAT.CONFIG_FILE), JSON.stringify({ ...cfg, extensions: { live: { v: 1, endpoint: 'https://live.example.org', activities: {} } } }, null, 2) + '\n');
+  const r0 = await buildPortable(path.join(d, 'deck.html'), {});
+  const r = await buildPortable(path.join(d, 'deck.html'), { carry: { ...plainJson(r0.index), extensions: { ...plainJson(r0.index.extensions), embed } } });
+  assert.ok(r.index.extensions.embed && r.index.extensions.live, 'the index has both');
+  const blockOf = (h) => { const m = /<script type="application\/json" id="deck-extensions">([^<]*)<\/script>/.exec(h); return m ? JSON.parse(m[1]) : null; };
+  assert.deepEqual(blockOf(r.html), { embed }, 'the editable file carries embed in deck-extensions (live only goes in with a room)');
+  const want = policyText({ frame: ['https://www.youtube-nocookie.com'] });
+  assert.equal(findPolicies(r.html)[0].content, want);
+  assert.deepEqual(checkFilePolicy(r.html), []);
+  assert.deepEqual((await PF.readPortable(r.html)).warnings.filter((w) => /not conforming/.test(w)), []);
+  // 再生専用の派生も同じブロックと決まり
+  const po = PF.playOnly(r.html);
+  assert.deepEqual(blockOf(po), { embed }); assert.deepEqual(checkFilePolicy(po), []);
+  // 授業の部屋を足す：ブロックは 1 つで live と embed、決まりは connect-src と frame-src の両方
+  const live = { v: 1, endpoint: 'https://live.example.org', room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: '2026-10-26T00:00:00Z', to: '2026-10-26T02:00:00Z' }, activities: {} };
+  const L = addLive(po, live, liveRuntimeText());
+  assert.equal((L.match(/id="deck-extensions"/g) || []).length, 1);
+  const b = blockOf(L);
+  assert.deepEqual(Object.keys(b).sort(), ['embed', 'live']); assert.deepEqual(b.embed, embed); assert.equal(b.live.room, live.room);
+  assert.equal(findPolicies(L).length, 1);
+  assert.deepEqual(policyDiff(findPolicies(L)[0].content, policyText({ connect: ['https://live.example.org', 'wss://live.example.org'], frame: ['https://www.youtube-nocookie.com'] })), []);
+  assert.deepEqual(checkFilePolicy(L), [], 'baseline + live (connect-src) + embed (frame-src), parsed');
+  assert.ok(L.indexOf('<script>\nwindow.DECK = window.DECK || {}; DECK.LIVE_CFG') > L.indexOf('id="deck-extensions"'), 'the live player follows the block');
+  // 2 つ目の部屋は断る
+  assert.throws(() => addLive(L, live, liveRuntimeText()), /already carries a live session/);
+  // 逆の順：live の決まりを持つ派生でも、宣言の比べ方は同じ（どちらの拡張も自分のディレクティブだけ）
+  const loose = L.replace("frame-src 'self' file: https://www.youtube-nocookie.com", "frame-src 'self' file: https://www.youtube-nocookie.com https://live.example.org");
+  assert.ok(checkFilePolicy(loose).some((x) => /frame-src: extra source https:\/\/live\.example\.org/.test(x)), 'live does not widen frame-src');
+});
+
 // ---------------------------------------------------------------- 旧来の鍵・id
 ok('旧来の鍵を書かない：id のない原稿（見出しの鍵・手で書いた data-key・s<n>）から書き出すと、どのスライドも id、見出しはどれも {#id}、記録の鍵（音声・timeline・設定の活動）も id。2 回目は何も変えない', async () => {
   const d = path.join(work, 'legacy');

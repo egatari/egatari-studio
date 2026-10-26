@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=677c81290aa2920b -->
+<!-- i18n: pair=reference.md sha256=dc1c1d4b555c1a43 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -426,7 +426,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 - **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、控え、`*.local.json`、資格情報、使っていない音声と TTS の控えのファイル。build が読んだのに外したファイルは知らせる。このリポジトリのパーツとテーマは写さず、名前・版・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、教材の `themes/<名前>/` として写す）。パーツライブラリ・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
 - **教材の id**：初めてのエクスポートで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。教材と一緒に残す（次のエクスポートも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution` は実行系のメタデータにも写すので、再生専用の写しにも残る。題と言語は `<title>` と `<html lang>` から。
 - **プレーヤーと作成**（仕様 §4.1・§7.1）：索引と `deck-meta` に、同梱のプレーヤー `player`（`{"name": "egatari-player", "version": …, "title": "Egatari Player"}`。`title` は人に見せる名前、`name` は変わらない識別子。版は `kit/player.json` のもので、プレーヤーのファイルが `kit/player.lock.json` に記録したリリースと違えば `+dev.<commit>` を付ける。`npm run player:check`）と、ファイルを書いたソフト（作成）`generator`（`{"name": "egatari-studio", "version": <Studio の版>, "title": "Egatari Studio"}`）を書く。`contracts` は `{"source": 1}`。組み直さない保存（段 A）は `player` と `generator` をバイトのまま残す。組み直すとこの Studio のものを書き、ファイルがほかのプレーヤーを持っていたときは知らせる。
-- **ファイルの CSP**（仕様 §4.2 の file policy）：`<meta charset>` のすぐ後、どのスクリプト・スタイル・リンクよりも前に `<meta http-equiv="Content-Security-Policy">`。中身は基準のもので、どこにも繋がらない（`connect-src 'none'`）。ライブ付きの再生専用ファイルは、ライブの endpoint だけをその場で `connect-src` に足す。CSP がない・置き場所が違う・中身が違う（解析したディレクティブで比べる）ファイルは、読み手が「仕様に合わない」と知らせる（再生はできる）。
+- **ファイルの CSP**（仕様 §4.2 の file policy）：`<meta charset>` のすぐ後、どのスクリプト・スタイル・リンクよりも前に `<meta http-equiv="Content-Security-Policy">`。中身は基準のもので、どこにも繋がらない（`connect-src 'none'`）。ライブ付きの再生専用ファイルは、ライブの endpoint だけをその場で `connect-src` に足す。`embed`（どのファイルでも `deck-extensions` に写す）の行き先は `frame-src` に入る。CSP がない・置き場所が違う・中身が違う（解析したディレクティブで比べる）ファイルは、読み手が「仕様に合わない」と知らせる（再生はできる）。
 - **スライドの id**（仕様 §8.1）：ファイルの中のスライドにはどれも id、台本の見出しにはどれも `{#id}` がある。ないもの（AI が書いたばかりの教材、見出しの字・手で書いた `data-key`・`s<n>` の旧い鍵）にはエクスポートで付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` の鍵も。控えは `.cache/edits/`）。build と品質チェックは id のないものも受け付ける。
 - **スクリプトなしで読める台本**：全ステップの表示用の文字を、ふつうの HTML としても入れる（教材が動いているときは隠す）。保存・検索・読み上げのため。
 - **拡張の行**（`@x-<名前>-<欄> 値`）はステップごとにファイルの索引に集める。

@@ -1,7 +1,7 @@
 ### Changed (API)
 
 - Egatari files follow the 1.0 file shape (format spec §4.1, §4.2, §7.1, §8.1): the index and `deck-meta` carry **`player`** (`{"name": "egatari-player", "version": …, "title": "Egatari Player"}`, the bundled Egatari Player; its version is in `kit/player.json`, with `+dev.<commit>` when the player files differ from the release in `kit/player.lock.json`) and **`generator`** (`{"name": "egatari-studio", "version": <Studio's version>, "title": "Egatari Studio"}`, was `motion-academic-slides`; `title` is the name shown to people). `contracts` is `{"source": 1}`; `contracts.runtime` is no longer written or read.
-- Every Egatari file carries the **file policy**: a Content-Security-Policy `<meta>` right after `<meta charset>` with the baseline that connects nowhere. A play-only copy with Live merges the Live's endpoint into its `connect-src` in place. Readers report a missing, misplaced or different policy (compared as parsed directives) as not conforming.
+- Every Egatari file carries the **file policy**: a Content-Security-Policy `<meta>` right after `<meta charset>` with the baseline that connects nowhere. Every Egatari file copies `extensions.embed` into `deck-extensions`, and the policy adds the declared destinations of each extension in its own directive (embed → `frame-src`, Live → `connect-src`); a play-only copy with Live merges the endpoint into the policy and adds `live` to the same block, also next to embed. Readers report a missing, misplaced or different policy (compared as parsed directives) as not conforming.
 
 ### Added
 

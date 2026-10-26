@@ -81,7 +81,16 @@ export function addLive(html, live, runtime, opts = {}) {
   if (typeof runtime !== 'string' || !runtime.startsWith('<script>')) throw new Error('live: no player runtime');
   const text = String(html);
   if (text.includes(`id="${FORMAT.INDEX_ID}"`)) throw new Error('live: a live session is added only to a play-only derivative (this file still has its index)');
-  if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
+  // 拡張のブロック（deck-extensions）が既にあれば（拡張 embed。spec §4）、そこに live を足す。live が既にあれば断る
+  const blockRe = new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`);
+  const ex0 = blockRe.exec(text);
+  let others = {};
+  if (ex0) {
+    try { others = JSON.parse(ex0[1]); } catch { throw new Error('live: the extension block is not JSON'); }
+    if (!isObj(others)) throw new Error('live: the extension block is not an object');
+    if (own(others, LIVE_EXT)) throw new Error('live: the file already carries a live session');
+    if (text.split(`id="${LIVE_BLOCK_ID}"`).length !== 2) throw new Error('live: more than one extension block');
+  } else if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
   const at = headEnd(text);
   if (at < 0) throw new Error('live: no <head>');
   // ファイルの決まり（format spec §4.2）：1.0 の形のファイルは基準の決まりを持つ。connect-src に endpoint を足して、その場で書き換える
@@ -97,16 +106,16 @@ export function addLive(html, live, runtime, opts = {}) {
     if (/<script/i.test(text.slice(0, at))) throw new Error('live: a script comes before <head>; the policy must come first');
     edit = [at, at, '\n' + policyMeta(liveCsp(live.endpoint, opts))];
   }
-  // 拡張のブロックと再生器：deck-meta の直後（実行系の前。再生器は deck:ready を待つ）
+  // 拡張のブロックと再生器：deck-meta の直後（実行系の前。再生器は deck:ready を待つ）。ブロックが既にあれば、それを置き換えてその後ろに
   const m = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
   if (!m || m.index < at) throw new Error('live: no deck-meta');
-  const ix = m.index + m[0].length;
+  const ix = ex0 ? ex0.index : m.index + m[0].length, ixEnd = ex0 ? ex0.index + ex0[0].length : ix;
   // sourceSha256（あれば）：教材の版。再生専用の派生の deck-meta からは消える（format spec §3.7）ので、質問を教材のその版に結び付けるためにここに入れる（拡張 live §1）
   const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities,
     ...(typeof live.sourceSha256 === 'string' ? { sourceSha256: live.sourceSha256 } : {}) };
-  const block = '\n' + jsonScript(LIVE_BLOCK_ID, { [LIVE_EXT]: data }) + '\n' + runtime;
+  const block = (ex0 ? '' : '\n') + jsonScript(LIVE_BLOCK_ID, { ...others, [LIVE_EXT]: data }) + '\n' + runtime;
   if (edit[1] > ix) throw new Error('live: the policy comes after deck-meta');
-  return text.slice(0, edit[0]) + edit[2] + text.slice(edit[1], ix) + block + text.slice(ix);
+  return text.slice(0, edit[0]) + edit[2] + text.slice(edit[1], ix) + block + text.slice(ixEnd);
 }
 
 export function parseRoomBlock(input, opts = {}) {

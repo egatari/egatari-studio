@@ -4,7 +4,7 @@
 //   BASELINE                        基準の決まり（ディレクティブ → 源の配列）。外へは繋がらない（connect-src 'none'）
 //   policyText(extra)               extra {connect: [源…], frame: [源…]}（宣言した拡張が足す行き先）を基準に足した文字列
 //   policyMeta(text)                <meta http-equiv="Content-Security-Policy" content="…">
-//   extensionSources(extensions)    索引の extensions（か deck-extensions）から、決まりに足す行き先 {connect, frame}：
+//   extensionSources(extensions)    deck-extensions（実行系が宣言する拡張。いくつあってもよく、それぞれ自分のディレクティブだけに足す）から、決まりに足す行き先 {connect, frame}：
 //                                   live は endpoint の両方の形（https:/wss:）を connect-src に、embed は一覧の行き先（§3 の許す一覧にあるもの）を frame-src に
 //   parsePolicy(text)               → {directives: Map(名前 → 源の配列), duplicates: [名前]}（名前は小文字、源は比べる形にそろえる）
 //   policyDiff(actual, expected)    解析したディレクティブと源の集まりで比べる（順と空白は問わない）→ 違いの文字列の配列（[] なら同じ）

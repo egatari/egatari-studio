@@ -23,7 +23,7 @@ import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, at
 import { isLiveResults } from './live-results.mjs';
 import { updateConfig, merge as configMerge } from './config-file.mjs';
 import { resolvePlayer, PLAYER } from './player.mjs';
-import { policyMeta, policyText, checkFilePolicy } from './file-policy.mjs';
+import { policyMeta, policyText, checkFilePolicy, extensionSources } from './file-policy.mjs';
 import { exportIds } from './slide-ids.mjs';
 import { analyzeSlideIds } from './build-core.mjs';
 import { READ_LIMITS } from './bounded-read-core.mjs';
@@ -33,6 +33,7 @@ const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, 
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SRC_RE = new RegExp(`^${reEsc(SCHEME)}([A-Za-z0-9_]{1,32})$`);
 const LOG = 'portable';   // 知らせの前置
+const RUNTIME_EXT_ID = 'deck-extensions';   // 実行系の拡張のブロック（spec §4。kit/core/live.mjs の LIVE_BLOCK_ID と同じ）
 
 export const FORMAT_VERSION = Object.freeze({ major: 1, minor: 0 });
 // contracts は {source} だけ（format spec §7.1。実行系の約束の版 runtime は 1.0 の形で外した：再生器は player が名指す）
@@ -1138,7 +1139,16 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 組み立ての出力に差し込む：deck-meta、音声の参照、読める層・索引・塊
   const oldMeta = jsonScript('deck-meta', metaPh);
   if (html.split(oldMeta).length !== 2) fail('internal', 'deck-meta placeholder not found exactly once');
-  html = html.replace(oldMeta, () => jsonScript('deck-meta', deckMeta));
+  // 拡張 embed（spec の extensions/embed.md）：索引の extensions.embed を実行系の deck-extensions にも写す（どの 1 ファイルにも。再生器が読み、
+  // ファイルの決まりの frame-src の行き先はここから決まる。§4.2）。deck-meta の直後（実行系より前）
+  const runtimeExt = isObj(index.extensions) && isObj(index.extensions.embed) ? { embed: index.extensions.embed } : null;
+  html = html.replace(oldMeta, () => jsonScript('deck-meta', deckMeta) + (runtimeExt ? '\n' + jsonScript(RUNTIME_EXT_ID, runtimeExt) : ''));
+  // ファイルの決まり（§4.2）：基準に、deck-extensions が宣言する行き先を足す（embed → frame-src）。組み立てが入れた基準の <meta> を置き換える
+  if (runtimeExt) {
+    const baseMeta = policyMeta(policyText());
+    if (html.split(baseMeta).length !== 2) fail('internal', 'file policy placeholder not found exactly once');
+    html = html.replace(baseMeta, () => policyMeta(policyText(extensionSources(runtimeExt))));
+  }
   // 音声の参照（deck-audio の src）と、その MIME（任意の mime。再生器が中身から推し量らずに済む）
   pend.forEach(({ file }, n) => {
     const ph = `"${SCHEME}P${tag}_${n}"`, id = fileMap[fileOfSrc.get(file)];
