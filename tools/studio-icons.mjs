@@ -92,18 +92,21 @@ async function make() {
   out['favicon.svg'] = Buffer.from(faviconSvg());
   let sheet = null;
   if (SHEET) {
-    // 作ったファイルそのものを並べる（ico は中の PNG を取り出す）。3 段目は ico の中の絵を 6 倍に（画素のまま）
+    // 作ったファイルそのものを並べる（ico は中の PNG を取り出す）。下の段は ico の中の絵を 6 倍に、いちばん下は 16 px を 12 倍に（画素のまま）
     const pngsOf = (buf) => { const n = buf.readUInt16LE(4), r = []; for (let i = 0; i < n; i++) { const e = 6 + 16 * i; r.push(buf.subarray(buf.readUInt32LE(e + 12), buf.readUInt32LE(e + 12) + buf.readUInt32LE(e + 8))); } return r; };
     const img = (b, style = '') => `<img style="${style}" src="data:image/png;base64,${b.toString('base64')}">`;
     const row = (bg, parts) => `<div style="background:${bg};display:flex;gap:18px;align-items:end;padding:14px">${parts.join('')}</div>`;
     const svgImg = `<img width="32" height="32" src="data:image/svg+xml;base64,${out['favicon.svg'].toString('base64')}">`;
-    const big = (buf) => pngsOf(buf).map((b) => img(b, `width:${b.readUInt32BE(16) * 6}px;image-rendering:pixelated`));
-    await page.setViewportSize({ width: 1100, height: 900 });
+    const big = (buf, k = 6) => pngsOf(buf).map((b) => img(b, `width:${b.readUInt32BE(16) * k}px;image-rendering:pixelated`));
+    await page.setViewportSize({ width: 1100, height: 1000 });
     await page.setContent('<!doctype html><body style="margin:0">'
       + row('#fff', [...pngsOf(out['favicon.ico']).map((b) => img(b)), svgImg, img(out['apple-touch-icon.png'], 'outline:1px solid #ccc'), img(out['icon-192.png']), img(out['icon-512.png'], 'width:256px')])
       + row('#111', [...pngsOf(out['favicon-dark.ico']).map((b) => img(b))])
-      + row('#fff', big(out['favicon.ico'])) + row('#111', big(out['favicon-dark.ico'])) + '</body>');
-    sheet = await page.screenshot({ fullPage: true });
+      + row('#fff', big(out['favicon.ico'])) + row('#111', big(out['favicon-dark.ico']))
+      + row('#fff', [big(out['favicon.ico'], 12)[0], big(out['favicon-dark.ico'], 12)[0].replace('style="', 'style="background:#111;')]) + '</body>');
+    const h = await page.evaluate(() => Math.ceil(document.body.getBoundingClientRect().height));
+    await page.setViewportSize({ width: 1100, height: h });
+    sheet = await page.screenshot();   // one capture of the whole page (fullPage stitching repeated parts)
   }
   await browser.close();
   return { out, sheet };
