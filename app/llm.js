@@ -632,6 +632,8 @@ export function setupLlm(app) {
     'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
     'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
     'subj-social': '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>',
+    // 情報の分野：画面と、その中の山かっこ（コード）
+    'subj-info': '<rect x="4" y="6" width="24" height="16" rx="2"/><path d="M12 27h8M16 22v5"/><path d="M13 11l-3 3 3 3M19 11l3 3-3 3"/>',
     // 英語の分野：A と下線（文の要素の印）
     'subj-english': '<path d="M5 21l5.5-14 5.5 14M7.2 16h6.6"/><path d="M19 21V9h4.2a3 3 0 0 1 0 6H19M19 15h4.8a3 3 0 0 1 0 6H19"/><path d="M4 26h24"/>',
     // m-syntax：語の下線と記号、修飾の矢印

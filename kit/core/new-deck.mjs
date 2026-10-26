@@ -2,7 +2,7 @@
 // Node にもブラウザにも依存しない（純粋な ESM）。画面は app/llm.js
 //
 // 大分類（構成を決める場面）→ 小分類（構成の型）。教科・分野（数理・統計・国語・情報など）は小分類ではなく「パーツの組」で、
-// 今は指示の系列（academic・business・kokugo・english・info・social・music。kit/core/llm-pack.mjs の SERIES）にそのまま対応する（SUBJECTS の series）。
+// 今は指示の系列（kit/core/llm-pack.mjs の SERIES。並びは kit/core/subject-order.mjs の SUBJECT_ORDER）にそのまま対応する（SUBJECTS の series）。
 // 系列の名前は内部の名前として残す（画面には出さない）。言いたいこと（kit/core/purposes.mjs）は既定で全部入り、外したものは AI に使わせない。
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
@@ -30,6 +30,7 @@
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { componentsOff } from './purposes.mjs';
 import { loadedParts, TOOLS } from './llm-pack.mjs';
+import { SUBJECT_ORDER } from './subject-order.mjs';
 
 export const CATEGORIES = [
   { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
@@ -86,15 +87,18 @@ export const CATEGORIES = [
 
 // 分野の札（新規作成 ④）：label は札の名前、inside は札の小さな字（中に入る図）、icon は札の絵（app/llm.js の ICONS の名前。なければ汎用の絵）。
 // 分野を足すときは、ここに 1 行（と系列の指示 tools/llm-guide/series/）を足すだけ（例：social の行）
-export const SUBJECTS = [
-  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' }, icon: 'subj-math' },
-  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' }, icon: 'subj-business' },
+const SUBJECT_LIST = [
   { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' }, icon: 'subj-kokugo' },
-  { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' }, icon: 'subj-english' },
-  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'codetree' },
-  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' }, icon: 'subj-social' },
+  { id: 'social', series: 'social', label: { ja: '社会（地図）', en: 'Social studies (maps)' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' }, icon: 'subj-social' },
+  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' }, icon: 'subj-math' },
   { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' },
+  { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' }, icon: 'subj-english' },
+  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'subj-info' },
+  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' }, icon: 'subj-business' },
 ];
+// 並びは kit/core/subject-order.mjs の SUBJECT_ORDER（系列の名前）だけで決める
+const bySeries = (series) => SUBJECT_ORDER.indexOf(series);
+export const SUBJECTS = SUBJECT_LIST.slice().sort((x, y) => bySeries(x.series) - bySeries(y.series));
 
 export function seriesOfSubjects(ids) {
   const want = new Set(ids || []);
@@ -102,15 +106,16 @@ export function seriesOfSubjects(ids) {
 }
 export const defaultSubjects = (category) => (category === 'business' ? ['business'] : []);
 // タイトルと内容の字から推す分野（新規作成の ④ で印を付けておく。推せなければ []）。語は控えめに：はっきりその分野の語だけ
-const GUESS = [
-  ['math', /数式|関数|グラフ|統計|確率|微分|積分|方程式|ベクトル|行列|回帰|分散|標準偏差|\b(?:math|maths|mathematics|statistics|statistical|probability|equation|function|graph|calculus|regression)s?\b/i],
-  ['business', /売上|営業|市場|事業|経営|KPI|予算|決算|収益|\b(?:sales|market|revenue|business|budget|profit|KPIs?)\b/i],
+const GUESS_LIST = [
   ['kokugo', /漢文|古文|漢詩|現代文|国語|和歌|俳句|短歌|\b(?:kanbun|kobun)\b/i],
+  ['social', /地図|都道府県|県庁所在地|県別|地理|人口|地方区分|\b(?:maps? of japan|prefectures?|geography)\b/i],
+  ['math', /数式|関数|グラフ|統計|確率|微分|積分|方程式|ベクトル|行列|回帰|分散|標準偏差|\b(?:math|maths|mathematics|statistics|statistical|probability|equation|function|graph|calculus|regression)s?\b/i],
+  ['music', /音楽|音階|和音|鍵盤|ピアノ|楽譜|長調|短調|\b(?:music|musical|piano|chords?|major scales?|minor scales?)\b/i],
   ['english', /英語|英文|英文法|文型|関係代名詞|関係副詞|不定詞|分詞構文|\b(?:English grammar|sentence structures?|relative clauses?|SVOC)\b/i],
   ['info', /符号|ハフマン|情報理論|\b(?:huffman|code tree|prefix code|information theory)\b/i],
-  ['social', /地図|都道府県|県庁所在地|県別|地理|人口|地方区分|\b(?:maps? of japan|prefectures?|geography)\b/i],
-  ['music', /音楽|音階|和音|鍵盤|ピアノ|楽譜|長調|短調|\b(?:music|musical|piano|chords?|major scales?|minor scales?)\b/i],
+  ['business', /売上|営業|市場|事業|経営|KPI|予算|決算|収益|\b(?:sales|market|revenue|business|budget|profit|KPIs?)\b/i],
 ];
+const GUESS = GUESS_LIST.slice().sort((x, y) => bySeries(SUBJECT_LIST.find((s) => s.id === x[0]).series) - bySeries(SUBJECT_LIST.find((s) => s.id === y[0]).series));
 export function guessSubjects(text) {
   const t = String(text || '');
   return GUESS.filter(([, re]) => re.test(t)).map(([id]) => id);

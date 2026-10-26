@@ -30,12 +30,14 @@ import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, planData, paidOnly } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom, toolsFrom } from '../kit/core/purposes.mjs';
+import { SUBJECT_ORDER } from '../kit/core/subject-order.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
 const GUIDE = rel('tools', 'llm-guide');
-export const SERIES = ['academic', 'business', 'kokugo', 'english', 'info', 'social', 'music'];
+// 札の順（kit/core/new-deck.mjs の SUBJECTS）と同じ：kit/core/subject-order.mjs の SUBJECT_ORDER だけで決める
+export const SERIES = [...SUBJECT_ORDER];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
