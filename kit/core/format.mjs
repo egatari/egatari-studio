@@ -34,5 +34,5 @@ export const FORMAT = Object.freeze({
   LIVE_STORE_PREFIX: `${NAME}-live-`,                 // 再生器の localStorage（pid）と sessionStorage（参加した）の鍵の前置（<prefix>pid:<room> など）
 });
 // 実行系（kit/deck.js）に渡す分（build-core が DECK.FORMAT として埋め込む）
-export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID,
+export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, displayName: FORMAT.DISPLAY_NAME, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID,
   indexId: FORMAT.INDEX_ID, attachKey: FORMAT.ATTACH_KEY, attachDir: FORMAT.ATTACH_DIR, attachRoles: FORMAT.ATTACH_ROLES });

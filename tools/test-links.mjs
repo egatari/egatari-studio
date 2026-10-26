@@ -96,6 +96,29 @@ const open = async (hash = '', q = '') => {
   }
 }
 
+// ---- URL の # はスライドの id（format spec §9.1A）。番号（#N）は開くときにだけ読む
+{
+  const p = await open('#2');
+  ok(await st(p) === '2:0' && await p.evaluate(() => location.hash) === '#s-two', `#2 で開くと 2 枚目、# は #s-two に書き直す（${await p.evaluate(() => location.hash)}）`);
+  await p.keyboard.press('ArrowRight'); await settle(p);
+  ok(await p.evaluate(() => location.hash) === '#s-two:1', `送ると # は #<id>:<段階>（${await p.evaluate(() => location.hash)}）`);
+  await p.keyboard.press('Shift+ArrowRight'); await settle(p);
+  ok(await p.evaluate(() => location.hash) === '#s-three', `次のスライドへ：#s-three（${await p.evaluate(() => location.hash)}）`);
+  await p.keyboard.press('End'); await settle(p);
+  await p.keyboard.press('ArrowLeft'); await settle(p);
+  ok(await st(p) === '3:3' && await p.evaluate(() => location.hash) === '#s-three:concl', `結論の段階は #s-three:concl（${await p.evaluate(() => location.hash)}）`);
+  await p.reload(); await ready(p);
+  ok(await st(p) === '3:3', `書いた # で読み込み直すと同じ位置（${await st(p)}）`);
+  // 一覧（o）で選んでも # は id
+  await p.keyboard.press('o'); await p.waitForSelector('#dt-ov');
+  await p.click('#dt-ov .dt-cell >> nth=1'); await settle(p, 400);
+  ok(await st(p) === '2:0' && await p.evaluate(() => location.hash) === '#s-two', `一覧で選ぶと #s-two（${await st(p)} ${await p.evaluate(() => location.hash)}）`);
+  // 手で番号を書いても動く
+  await p.evaluate(() => { location.hash = '#4'; }); await settle(p, 400);
+  ok(await st(p) === '4:0', `手で書いた #4 でも動く（${await st(p)}）`);
+  await p.close();
+}
+
 // ---- 発表（talk）でのクリック・戻る
 {
   const p = await open('#s-menu01:2');
@@ -108,7 +131,7 @@ const open = async (hash = '', q = '') => {
   ok(await backShown(p), 'リンクで来たら戻るボタンが出る');
   ok(await p.evaluate(() => document.querySelector('#deck-back .to').textContent) === '目次', '戻るボタンに戻り先の見出し');
   ok(await p.evaluate(() => history.length) === h0 + 1, '上の窓では履歴に 1 つ積む（ブラウザの戻るでも戻れる）');
-  ok(await p.evaluate(() => location.hash) === '#3', 'URL の # は番号のまま');
+  ok(await p.evaluate(() => location.hash) === '#s-three:2', `URL の # はスライドの id と段階（format spec §9.1A。${await p.evaluate(() => location.hash)}）`);
   await p.keyboard.press('Backspace'); await settle(p);
   ok(await st(p) === '1:2', `Backspace で戻る（${await st(p)}）`);
   ok(!(await backShown(p)), '戻りきったら戻るボタンは消える');
@@ -208,12 +231,12 @@ f.src = 'deck.html' + location.search + location.hash;
   const p = await ctx.newPage(); watch(p, 'host');
   await p.goto(fileUrl(host) + '?embed=1#s-menu01:2');
   const fr = () => p.frame({ url: /deck\.html/ });
-  await p.waitForFunction(() => window.msgs.some((m) => m.type === 'deck-pos'), null, { timeout: 10000 });
+  await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'position'), null, { timeout: 10000 });
   const h0 = await p.evaluate(() => history.length);
   await fr().click(card('#s-three:2')); await p.waitForTimeout(200);
   const pos = await p.evaluate(() => window.msgs.filter((m) => m.egatari === 'position').pop());
   ok(pos && pos.cause === 'link' && pos.slideKey === 's-three' && pos.stepKey === '2' && pos.t === null, `埋め込み：{egatari:"position", cause:"link"}（${JSON.stringify(pos)}）`);
-  ok(await p.evaluate(() => { const m = window.msgs.filter((x) => x.type === 'deck-pos').pop(); return m.cause === 'link' && m.back === '目次'; }), 'deck-pos にも cause と戻り先');
+  ok(await p.evaluate(() => !window.msgs.some((x) => x.type === 'deck-pos')), '埋め込みの親には deck-pos を送らない（Player P8 の position だけ）');
   ok(await p.evaluate(() => history.length) === h0, '埋め込みでは上の窓の履歴を積まない');
   ok(await fr().evaluate(() => !document.getElementById('deck-back').hidden), '埋め込みでも戻るボタン');
   await fr().focus('body'); await p.keyboard.press('Backspace'); await p.waitForTimeout(200);
@@ -229,7 +252,7 @@ f.src = 'deck.html' + location.search + location.hash;
   await fr().click(card('#s-two')); await p.waitForTimeout(200);
   ok(await fr().evaluate(() => DECK.state().slide) === 1, '親でない窓からの links は無視する');
   await p.goto(fileUrl(host) + '?embed=1&links=0#s-menu01:2');
-  await p.waitForFunction(() => window.msgs.some((m) => m.type === 'deck-pos'), null, { timeout: 10000 });
+  await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'position'), null, { timeout: 10000 });
   await fr().click(card('#s-two')); await p.waitForTimeout(200);
   ok(await fr().evaluate(() => DECK.state().slide) === 1 && await p.evaluate(() => window.msgs.some((m) => m.egatari === 'linkRefused')), '?embed=1&links=0 なら初めから止める');
   await p.close();
