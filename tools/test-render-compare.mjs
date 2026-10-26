@@ -124,6 +124,23 @@ await t('faint off-edge: 2 isolated non-edge pixels with a small difference (20/
   assert.deepEqual([r.same, r.kind, r.faint], [true, 'noise', 2]);
   assert.match(describeRender(r), /2 isolated faint pixel\(s\) away from edges \(each channel <= 24\/255, at most 4\).*accepted/);
 });
+await t('outside the component box: accepted only on an edge, inside the slide, when the whole slide DOM is identical too (attribute order, empty class and style spacing aside)', () => {
+  // 部品の箱は四角の中だけ（[25, 25, 34, 34]）、スライドは画面全体。四角の縁（x = 19）の画素は部品の箱の外
+  const o = { ...OPT, rects: [[25, 25, 34, 34]], outer: [0, 0, 59, 59] };
+  const s = diffStats(A, img((set) => set(19, 22, 128)), W, H, o);
+  assert.deepEqual([s.n, s.off, s.out, s.far], [1, 0, 1, 0]);
+  const sl = (slideDom) => ({ ...snap(DOM, 400000, o.rects), slideDom });
+  const r = judged(s, sl('<section>a</section>'), sl('<section>a</section>'));
+  assert.deepEqual([r.same, r.kind, r.outside], [true, 'noise', 1]);
+  assert.match(describeRender(r), /1 outside the component box but inside the slide, whose DOM is identical too/);
+  assert.equal(judged(s, sl('<section>a</section>'), sl('<section>b</section>')).same, false, 'the slide DOM differs');
+  assert.equal(judged(s, snap(DOM, 400000, o.rects), snap(DOM, 400000, o.rects)).same, false, 'no slide DOM to compare');
+  const far = diffStats(A, img((set) => set(19, 22, 128)), W, H, { ...o, outer: [30, 30, 59, 59] });
+  assert.equal(far.far, 1);
+  assert.equal(judged(far, sl('<section>a</section>'), sl('<section>a</section>')).same, false, 'outside the slide');
+  const flat = diffStats(A, img((set) => set(5, 5, 0)), W, H, o);
+  assert.equal(judged(flat, sl('<section>a</section>'), sl('<section>a</section>')).same, false, 'outside the component and away from edges');
+});
 await t('faintOff: off-edge pixels that touch each other are not isolated', () => {
   // （平らなところで隣り合う 2 つの違いは、互いを縁とみなして diffStats では縁の画素になるので、ここでは faintOff だけを直に確かめる）
   assert.equal(faintOff({ off: 2, offPts: [[5, 5, 20], [6, 6, 20]] }), false);
@@ -182,6 +199,21 @@ await t('domSnapshot: includes the shadow DOM; a part with a canvas has no DOM t
   await p.evaluate(() => document.querySelector('#b').shadowRoot.querySelector('rect').setAttribute('width', '51'));
   assert.notEqual((await domSnapshot(p, { sel: '#b' })).dom, s1);
   assert.equal((await domSnapshot(p, { sel: '#c' })).dom, null);
+});
+await t('domSnapshot of a slide: the component part stays byte-exact; the slide part ignores only attribute order, empty class and style spacing', async () => {
+  // スライド（section）に #a を入れる（#c の canvas はスライドの外）
+  await p.evaluate(() => { const sl = document.createElement('section'); document.body.prepend(sl); sl.appendChild(document.querySelector('#a')); sl._comps = [document.querySelector('#a')]; window.DECK = { slides: [sl] }; const d = document.createElement('div'); d.id = 'x'; d.setAttribute('data-step', '2'); d.setAttribute('style', 'opacity:0;transform:none'); sl.appendChild(d); });
+  const s1 = await domSnapshot(p, 0);
+  assert.ok(s1.slideDom && s1.slideRect, 'a slide snapshot has slideDom and slideRect');
+  await p.evaluate(() => { const d = document.querySelector('#x'); d.removeAttribute('data-step'); d.setAttribute('class', ''); d.setAttribute('data-step', '2'); d.setAttribute('style', 'transform: none; opacity: 0;'); });
+  const s2 = await domSnapshot(p, 0);
+  assert.equal(s2.slideDom, s1.slideDom);
+  assert.equal(s2.dom, s1.dom);
+  await p.evaluate(() => document.querySelector('#x').setAttribute('data-step', '3'));
+  assert.notEqual((await domSnapshot(p, 0)).slideDom, s1.slideDom, 'a real change of the slide counts');
+  await p.evaluate(() => { const c = document.querySelector('#a circle'); const f = c.getAttribute('cx'); c.removeAttribute('cx'); c.setAttribute('cx', f); });
+  assert.notEqual((await domSnapshot(p, 0)).dom, s1.dom, 'attribute order inside the component is not normalised');
+  await p.evaluate(() => { document.querySelector('#x').remove(); delete window.DECK; });
 });
 // 本物の画面（円の縁のアンチエイリアス）を撮り、B を作る：縁の画素（まわりに段差のある画素）の一部を隣の画素の色にする／縁でないところに塊を描く
 const perturb = (shot, how) => p.evaluate(async ([s, how]) => {
