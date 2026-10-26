@@ -93,6 +93,7 @@ for (const device of ['iPad (gen 11)', 'iPad (gen 11) landscape', 'iPad Mini']) 
   console.log(device);
   const o = await page(device);
   const vp = o.p.viewportSize();
+  ok(await o.p.isVisible('#install'), `${device}: the add-to-home-screen hint shows (a browser tab, not standalone)`);
   ok(await o.p.title() === 'Egatari Viewer' && await o.p.textContent('#start-h') === 'Egatari ファイルを再生する' && await noScroll(o.p), `${device} (${vp.width} × ${vp.height}): the start screen, titled Egatari Viewer, no horizontal scroll`);
   await o.p.setInputFiles('#file', FIX['lesson.play.ega.html']);
   const f = await lessonFrame(o.p);

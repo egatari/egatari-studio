@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=b934eb0805338741 -->
+<!-- i18n: pair=viewer.ja.md sha256=c59e832e73860e36 -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -19,7 +19,7 @@ The viewer chooses the file in the page (or shares it to the installed app on An
 
 - **Open a file**: the 「ファイルを開く」 (Open a file) button, or drop a file on the page. Only Egatari files play: a page whose `deck-meta` is not an Egatari one is refused. The bar shows the lesson's title and whether it is an 「Egatari ファイル（編集可）」 (editable: an Egatari file with its archive layer) or an 「Egatari ファイル（再生専用）」 (play-only). Both play the same; editing is done in Egatari Studio.
 - **Recent files**: files you open are kept in the browser, under the notice 「この端末にだけ保存されます」 (stored on this device only), in OPFS (the origin private file system) or, where a page cannot write OPFS (older Safari), in IndexedDB. Up to 10 files; each can be deleted, or all at once; the checkbox 「開いたファイルを最近の一覧に残す」 turns keeping off. **「共有の端末」 (Shared device)** is for a device several people use, such as a school iPad: it turns keeping off and deletes the files already kept, and the choice is remembered on the device. It is off by default (`SHARED_DEVICE_DEFAULT` in `play/main.js`, one constant to flip). Nothing is sent anywhere.
-- **Install**: the page is a web app (manifest and service worker; `name` "Egatari Viewer", `short_name` "Ega Viewer", and `apple-mobile-web-app-title` for iOS). On Android and desktop Chrome, install it from the browser menu; on iPhone and iPad, Share → Add to Home Screen. Once it has been opened, it opens offline.
+- **Install**: the page is a web app (manifest and service worker; `name` "Egatari Viewer", `short_name` "Ega Viewer", and `apple-mobile-web-app-title` for iOS). On Android and desktop Chrome, install it from the browser menu; on iPhone and iPad, Share → Add to Home Screen. Once it has been opened, it opens offline. iOS and iPadOS have no install prompt, so on iPhone and iPad, in a browser tab (not from the Home Screen), the start screen shows one line with iOS's own labels (Share → "Add to Home Screen" → "Add"; the Chrome wording names the Share button in the address bar) until it is dismissed with × (remembered on the device). Desktop and Android do not show it.
 - **Share to it (Android)**: the installed app is a share target. Share an .ega.html from the Files app or a chat app and choose Egatari Viewer.
 - **Language**: Japanese first; the 「English」 button switches (remembered on this device).
 

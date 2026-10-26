@@ -40,6 +40,7 @@ function setLang(l) {
   $('player').setAttribute('aria-label', W().lessonFrame);
   if (S.playing) $('lesson-kind').textContent = S.playing.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   renderRecents();
+  renderInstallHint();
 }
 
 // ---------------------------------------------------------------- reading a file (in a Worker: play/reader-worker.mjs)
@@ -315,12 +316,38 @@ function initShare() {
   });
 }
 
+// ---------------------------------------------------------------- the add-to-home-screen hint (iPhone, iPad)
+// iOS and iPadOS offer no install prompt, so the start screen says how to add the Viewer, once per device until dismissed (×).
+// Only in a browser tab on iPhone or iPad (iPadOS in desktop mode reports a Mac with touch); never when opened from the Home
+// Screen (navigator.standalone, display-mode standalone), never on desktop or Android (Android has the browser's own prompt).
+// The browser decides the wording: Safari, Chrome on iOS (CriOS), or one sentence for any other.
+const INSTALL_KEY = 'egatari-play-install-hint';
+function installKind() {
+  const ua = navigator.userAgent || '';
+  const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (!ios) return null;
+  let standalone = navigator.standalone === true;
+  try { standalone = standalone || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches; } catch { /* no matchMedia */ }
+  if (standalone || getPref(INSTALL_KEY) === 'dismissed') return null;
+  return /CriOS/.test(ua) ? 'installChrome' : /FxiOS|EdgiOS|OPiOS|GSA\//.test(ua) ? 'installOther' : /Safari\//.test(ua) ? 'installSafari' : 'installOther';
+}
+function renderInstallHint() {
+  const k = installKind();
+  $('install').hidden = !k;
+  if (k) $('install-text').textContent = W()[k];
+}
+function initInstallHint() {
+  $('b-install-x').addEventListener('click', () => { setPref(INSTALL_KEY, 'dismissed'); $('install').hidden = true; try { $('file').focus(); } catch { /* ignore */ } });
+  renderInstallHint();
+}
+
 // ---------------------------------------------------------------- start
 async function main() {
   if (framed) return;
   setLang(lang);
   $('version').textContent = VERSION;
   initKeep();
+  initInstallHint();
   getReader();   // now, so that opening a lesson later makes no request at all
   $('b-lang').addEventListener('click', () => setLang(lang === 'ja' ? 'en' : 'ja'));
   $('file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; if (f) openFile(f, f.name); e.target.value = ''; });

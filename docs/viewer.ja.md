@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=e784ec2f2e87b71b -->
+<!-- i18n: pair=viewer.md sha256=fe58d73510c592fe -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
@@ -19,7 +19,7 @@ Egatari ファイルを Web ページとして開けない場面があるため�
 
 - **ファイルを開く**：「ファイルを開く」を押すか、ページにファイルをドロップします。再生するのは Egatari のファイルだけで、`deck-meta` が Egatari のものでないページは断ります。上の帯に教材の題と、「Egatari ファイル（編集可）」（原稿の層のある Egatari ファイル）か「Egatari ファイル（再生専用）」かを出します。どちらも同じように再生します。直すのは Egatari Studio です。
 - **最近のファイル**：開いたファイルは「この端末にだけ保存されます」の知らせのもとで、ブラウザの中の OPFS（origin ごとの非公開のファイル領域）に残ります。ページから OPFS に書けないブラウザ（古い Safari）では IndexedDB に残します。10 個まで。1 つずつでも、すべてでも消せます。「開いたファイルを最近の一覧に残す」を外すと残しません。**「共有の端末」**は、学校の iPad のように何人かで使う端末のためのもので、オンにすると最近のファイルを残さず、いま残っているものも消します（選んだことはこの端末に覚えます）。既定はオフです（`play/main.js` の `SHARED_DEVICE_DEFAULT`。定数 1 つで替えられます）。どこにも送りません。
-- **入れる**：ページは Web アプリ（manifest と service worker。`name` は「Egatari Viewer」、`short_name` は「Ega Viewer」、iOS には `apple-mobile-web-app-title`）です。Android とパソコンの Chrome ではブラウザのメニューから入れ、iPhone・iPad では 共有 → ホーム画面に追加。一度開いた後は、オフラインでも開けます。
+- **入れる**：ページは Web アプリ（manifest と service worker。`name` は「Egatari Viewer」、`short_name` は「Ega Viewer」、iOS には `apple-mobile-web-app-title`）です。Android とパソコンの Chrome ではブラウザのメニューから入れ、iPhone・iPad では 共有 → ホーム画面に追加。一度開いた後は、オフラインでも開けます。iOS と iPadOS には入れる案内がないので、iPhone・iPad のブラウザのタブで開いたとき（ホーム画面からでないとき）は、最初の画面に iOS の言葉どおりの 1 行（「共有」ボタン（□に↑の形）→「ホーム画面に追加」→「追加」。Chrome ではアドレスバーの「共有」ボタン）を、× で閉じるまで出します（この端末に覚えます）。パソコンと Android では出しません。
 - **共有で開く（Android）**：入れたアプリは共有の受け先になります。ファイルのアプリやチャットから .ega.html を共有し、Egatari Viewer を選びます。
 - **言葉**：日本語が先で、「English」のボタンで英語に替えます（この端末に覚えます）。
 

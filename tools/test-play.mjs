@@ -751,6 +751,45 @@ for (const [kind, fix] of [['polls', 'live.play.ega.html'], ['nopolls', 'qa.play
   ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'b-live'), 'Escape returns the focus to the Live button');
   await o.close(); }
 
+// ---------------------------------------------------------------- 10b. the add-to-home-screen hint (iPhone, iPad only; not standalone; until dismissed)
+console.log('home-screen hint');
+{ const IPAD_SAFARI = 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const IPAD_CHROME = 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.0.0 Mobile/15E148 Safari/604.1';
+  const IPADOS_DESKTOP = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+  const open = async ({ ua, standalone = false, touch = 0 } = {}) => {
+    const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 820, height: 1180 }, ...(ua ? { userAgent: ua } : {}), serviceWorkers: 'block' });
+    await ctx.addInitScript(([sa, tp]) => { if (sa) Object.defineProperty(navigator, 'standalone', { value: true }); if (tp) Object.defineProperty(navigator, 'maxTouchPoints', { value: tp }); }, [standalone, touch]);
+    const p = await ctx.newPage(); await p.goto(site.url); await p.waitForSelector('html[data-ready]');
+    return { ctx, p, shown: () => p.isVisible('#install'), text: () => p.textContent('#install-text') };
+  };
+  let o = await open({ ua: IPAD_SAFARI });
+  ok(await o.shown() && await o.text() === 'ホーム画面に追加すると、アプリのように開けて、ネットワークがなくても使えます：「共有」ボタン（□に↑の形）→「ホーム画面に追加」→「追加」。',
+    'iPad Safari, in a browser tab: the hint shows, with the iOS labels');
+  await o.p.click('#b-lang');
+  ok(/Share → "Add to Home Screen" → "Add"/.test(await o.text()), 'the hint in English');
+  await o.p.click('#b-lang');
+  ok(await o.p.getAttribute('#b-install-x', 'aria-label') === 'この案内を閉じる', 'the × has a name');
+  await o.p.click('#b-install-x');
+  ok(!(await o.shown()), 'dismissed: the hint hides');
+  await o.p.reload(); await o.p.waitForSelector('html[data-ready]');
+  ok(!(await o.shown()), 'dismissed: it stays hidden after a reload (remembered on this device)');
+  await o.ctx.close();
+  o = await open({ ua: IPAD_SAFARI, standalone: true });
+  ok(!(await o.shown()), 'iPad opened from the Home Screen (standalone): no hint');
+  await o.ctx.close();
+  o = await open({ ua: IPAD_CHROME });
+  ok(await o.shown() && /アドレスバーの「共有」ボタン（□に↑の形）→「ホーム画面に追加」→「追加」/.test(await o.text()), 'Chrome on iPad: the Chrome wording');
+  await o.ctx.close();
+  o = await open({ ua: IPADOS_DESKTOP, touch: 5 });
+  ok(await o.shown(), 'iPadOS asking for the desktop site (a Mac with touch): the hint shows');
+  await o.ctx.close();
+  for (const [name, ua] of [['desktop', ''], ['Android', ANDROID]]) {
+    o = await open({ ua });
+    ok(!(await o.shown()), `${name}: no hint`);
+    await o.ctx.close();
+  } }
+
 // ---------------------------------------------------------------- 11. phone width and names
 console.log('phone width');
 { const o = await page(site.url, { viewport: { width: 375, height: 740 } });

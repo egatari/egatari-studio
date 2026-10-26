@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer-classroom.ja.md sha256=d021404d01ae8148 -->
+<!-- i18n: pair=viewer-classroom.ja.md sha256=4e07b4023e7c3e0a -->
 # Handing a lesson to students on iPad (Classroom and Egatari Viewer)
 
 English | [日本語](viewer-classroom.ja.md)
@@ -21,9 +21,9 @@ A lesson shared as a link in Slack or Teams plays directly on iPhone and iPad (t
 
 ## Student: open it in Ega Viewer on the iPad
 
-1. Once: open `viewer.egatari.org` in Safari, then Share → Add to Home Screen. **Ega Viewer** appears on the Home Screen with the え icon. From then on it opens without a network.
+1. Once: open `viewer.egatari.org` and add it to the Home Screen. In Safari: Share → "Add to Home Screen" → "Add"; in Chrome: Share in the address bar → "Add to Home Screen" → "Add". The Viewer's start screen shows the same tip. **Ega Viewer** appears on the Home Screen with the え icon, and from then on it opens without a network.
 2. In Classroom, open the attachment, then ︙ → Open in → Save to Files to save it on the iPad.
-3. Open **Ega Viewer**, press **Open a file** and choose the saved file. The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the control bar at the bottom: → (Next) moves on, and Captions shows the captions.
+3. Open **Ega Viewer**, press **Open a file** and choose the saved file. With the Google Drive app installed, you can also skip saving: Open a file → Browse → Google Drive (Classroom attachments are in the Classroom folder). The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the control bar at the bottom: → (Next) moves on, and Captions shows the captions.
 4. Next time, open it from Recent files on the start screen (on an iPad several people use, turn on Shared device so nothing is kept).
 
 A lesson with Live (questions and polls) first shows Join and Watch without joining. Only joining the Live uses the network.

@@ -60,6 +60,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 #msg { color: var(--err); margin: 12px 0; }
 .notice strong { color: var(--fg); }
 .notice { background: var(--panel); border-radius: 8px; padding: 8px 12px; }
+/* the add-to-home-screen hint (iPhone, iPad; play/main.js initInstallHint) */
+.install { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; }
+.install[hidden] { display: none; }
+.install span { flex: 1; }
+.install .x { flex: none; min-width: 44px; min-height: 44px; margin: -8px -8px -8px 0; border: 0; background: transparent; color: var(--muted); font-size: 1.25rem; }
 .keep { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .keep input { width: 20px; height: 20px; }
 #recent-list { list-style: none; padding: 0; margin: 8px 0; }
