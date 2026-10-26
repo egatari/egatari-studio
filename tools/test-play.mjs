@@ -327,6 +327,7 @@ for (const store of ['opfs', 'idb']) {
   const o = await page(site.url + (store === 'idb' ? '?store=idb' : ''));
   ok((await state(o.p)).store === store, `${store}: the store in use`);
   ok(/この端末にだけ保存されます/.test(await o.p.textContent('#recent')), `${store}: the notice 「この端末にだけ保存されます」`);
+  ok(await o.p.textContent('#recent-store') === '保存先：このブラウザの中', `${store}: 「保存先：このブラウザの中」 (no OPFS or IndexedDB on screen)`);
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   await openFixture(o.p, 'lesson.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 2));
@@ -416,7 +417,7 @@ console.log('links');
   ok(sent.length === 1 && JSON.stringify(Object.keys(sent[0]).sort()) === '["egatari","href","text"]' && sent[0].href === 'https://example.org/page' && sent[0].text === '参考',
     `the viewer's click sends the spec's {egatari: "openLink", href, text} (${JSON.stringify(sent[0])})`);
   ok(b.open && b.host === 'example.org' && b.url === 'https://example.org/page' && b.href === 'https://example.org/page' && !b.openHidden, 'a link out of the lesson: the page shows the destination host and address in its own box');
-  ok(b.rel.includes('noopener') && b.rel.includes('noreferrer') && b.focus === 'b-link-cancel', 'the box: opens with noopener noreferrer; the focus starts on Cancel');
+  ok(b.rel.includes('noopener') && b.rel.includes('noreferrer') && b.focus === 'b-link-cancel' && await o.p.textContent('#b-link-cancel') === 'キャンセル', 'the box: opens with noopener noreferrer; the focus starts on 「キャンセル」');
   ok(await f.evaluate(() => document.getElementById('deck-extlink') === null), 'the player\'s own box does not appear (the page handles it)');
   const [popup] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), o.p.click('#a-link-open')]);
   ok(!!popup, 'Open: a new tab, only after the tap in the page\'s box');
@@ -622,9 +623,9 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   await o.p.evaluate(() => window.postMessage({ egatari: 'position', slideKey: '何を最小化するか', stepKey: '0' }, '*'));
   await sleep(200);
   ok((await state(o.p)).live.step !== POLL_STEP, 'live: a position message that does not come from the frame is ignored');
-  ok(await o.p.textContent('#b-leave') === '抜ける', 'live: the leave button reads 「抜ける」');
+  ok(await o.p.textContent('#b-leave') === '退出する', 'live: the leave button reads 「退出する」');
   await o.p.click('#b-leave');
-  ok(await until(() => fake.open === 0), 'live: 「抜ける」 closes the connection');
+  ok(await until(() => fake.open === 0), 'live: 「退出する」 closes the connection');
   ok(await until(() => o.p.isVisible('#b-join')), 'live: after leaving, Join is offered again in the same place');
   await o.p.click('#b-close');
   ok(await until(() => fake.open === 0) && fake.connections.length === 1, 'live: closing the lesson leaves no connection');
@@ -659,6 +660,8 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   ok(await o.p.isHidden('#b-start-join') && await o.p.isVisible('#a-start-join') && href === 'http://localhost:9/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD' && await o.p.getAttribute('#a-start-join', 'rel') === 'noopener noreferrer',
     'live at an endpoint this page does not allow: only the join page link (the key after #, noopener noreferrer), no Join');
   ok(/localhost:9/.test(await o.p.textContent('#live-dest')), 'live: the join link shows its host');
+  ok(await o.p.textContent('#live-start-notice') === 'このライブ（localhost:9）には、ブラウザの新しいタブで参加します。Egatari Viewer が自分でつなぐのは、決まったライブのサービスだけだからです。',
+    'live at another endpoint: the start screen says it opens in a browser tab, and why');
   await o.p.click('#b-watch'); await lessonFrame(o.p);
   ok(fake.connections.length === 0, 'live: still no connection');
   await o.p.click('#b-close');
@@ -738,7 +741,7 @@ for (const [kind, fix] of [['polls', 'live.play.ega.html'], ['nopolls', 'qa.play
   const p1 = await geo(o.p);
   ok(p0.mode === 'bottom' && p1.mode === 'slack' && p1.frame.h === 390 && !overlap(p1.frame, p1.live), `rotation to landscape: laid out again once (bottom → slack, ${JSON.stringify(p1.frame)})`);
   await o.p.click('#b-leave');
-  ok(await until(() => fake.open === 0), 'rotation: 「抜ける」 works right after');
+  ok(await until(() => fake.open === 0), 'rotation: 「退出する」 works right after');
   await o.p.setViewportSize({ width: 375, height: 667 });
   await until(async () => (await geo(o.p)).mode === 'bottom');
   ok(JSON.stringify((await geo(o.p)).frame) === JSON.stringify(p0.frame), 'rotation back: the portrait layout again');
