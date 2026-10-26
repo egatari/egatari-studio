@@ -5,6 +5,7 @@
 // - 帯のボタンは指のタップで 1 回だけ効く（次へ・前へ・字幕。ブラウザが click も送っても 2 回にならない）
 // - 指で押した後も、帯は決まった時間で隠れる（:hover が残っても）
 // - マウスのクリックは今までどおり 1 回
+// - 帯を起こすタップ（隠れた帯の「読み上げで聞く」・次への場所、取っ手）と、出てくる途中のマウスのクリックはボタンを押さない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,8 @@ const url = fileUrl(file);
 
 async function run(name, browser) {
   const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true });
+  // 読み上げ（speechSynthesis.speak）が呼ばれた回数
+  await ctx.addInitScript(() => { window.__spoken = 0; try { const S = window.speechSynthesis; if (S) { const o = S.speak.bind(S); S.speak = (u) => { window.__spoken++; try { o(u); } catch (e) {} }; } } catch (e) {} });
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
@@ -32,13 +35,13 @@ async function run(name, browser) {
   await p.waitForTimeout(5400);
   ok(!(await shown()), `${name}: the bar hides after its first seconds`);
   const p0 = await pos();
-  await tapStage(); await p.waitForTimeout(300);
+  await tapStage(); await p.waitForTimeout(600);
   ok(await shown(), `${name}: a tap on the slide brings the bar back`);
   ok(await pos() === p0, `${name}: the tap on the slide does not advance (${p0} → ${await pos()})`);
   await p.screenshot({ path: path.join(outdir, name + '-woken.png') });
   await p.waitForTimeout(3200);
   ok(!(await shown()), `${name}: the bar hides again`);
-  await tapStage(); await p.waitForTimeout(300);
+  await tapStage(); await p.waitForTimeout(600);
   ok(await shown(), `${name}: and comes back on the next tap`);
   // 帯のボタン：1 回のタップで 1 回
   await p.tap(btn('next')); await p.waitForTimeout(900);
@@ -56,10 +59,34 @@ async function run(name, browser) {
   await p.waitForTimeout(3500);
   ok(!(await shown()), `${name}: after tapping its buttons the bar still hides (no stuck hover)`);
   // マウス（同じ窓で）：クリックは今までどおり 1 回
-  await p.mouse.move(512, 740, { steps: 3 }); await p.waitForTimeout(300);
+  await p.mouse.move(512, 740, { steps: 3 }); await p.waitForTimeout(600);
   const q0 = await pos();
   await p.click(btn('next')); await p.waitForTimeout(900);
   ok(await pos() === q0 + 1, `${name}: a mouse click is still one step (${q0} → ${await pos()})`);
+  // 帯を起こすタップは、ボタンを押したことにならない（隠れた帯の「読み上げで聞く」の場所・取っ手）
+  for (const target of ['read', 'next']) {
+    await p.evaluate(() => { if (DECK.tools.readAloud()) DECK.tools.readAloud(false); document.activeElement && document.activeElement.blur && document.activeElement.blur(); });
+    await p.mouse.move(512, 300); await p.waitForTimeout(3300);
+    const hid = !(await shown());
+    const r = await p.evaluate((n) => { const b = document.querySelector('#dt-cb [data-b="' + n + '"]'); if (!b) return null; const x = b.getBoundingClientRect(); return { x: x.x + x.width / 2, y: x.y + x.height / 2 }; }, target);
+    if (!r) { console.log(`note ${name}: no ${target} button in this deck`); continue; }
+    const s0 = await pos(), sp0 = await p.evaluate(() => window.__spoken || 0);
+    await p.touchscreen.tap(r.x, r.y); await p.waitForTimeout(800);
+    const after = await p.evaluate(() => ({ reading: DECK.tools.readAloud(), spoken: window.__spoken || 0 }));
+    ok(hid && await shown() && await pos() === s0 && !after.reading && after.spoken === sp0, `${name}: a tap on the hidden bar where ${target} is only wakes the bar (no step, no read-aloud)`);
+  }
+  await p.mouse.move(512, 300); await p.waitForTimeout(3300);
+  const h0 = await pos();
+  await p.tap('#dt-handle'); await p.waitForTimeout(800);
+  ok(await shown() && await pos() === h0 && !(await p.evaluate(() => DECK.tools.readAloud())), `${name}: a tap on the faint handle only wakes the bar`);
+  // マウス：出てくる途中（隠れた帯の場所）のクリックは押したことにしない。出た後のクリックは効く
+  await p.mouse.move(512, 300); await p.waitForTimeout(3300);
+  const m0 = await pos();
+  const nb = await p.evaluate(() => { const x = document.querySelector('#dt-cb [data-b="next"]').getBoundingClientRect(); return { x: x.x + x.width / 2, y: x.y + x.height / 2 }; });
+  await p.mouse.move(nb.x, nb.y); await p.mouse.down(); await p.mouse.up(); await p.waitForTimeout(600);
+  ok(await pos() === m0, `${name}: a mouse click while the bar is fading in does not press the button under it`);
+  await p.mouse.click(nb.x, nb.y); await p.waitForTimeout(600);
+  ok(await pos() === m0 + 1, `${name}: once shown, a click presses it (${m0} → ${await pos()})`);
   ok(errs.length === 0, `${name}: no page errors` + (errs.length ? ': ' + errs.join(' | ') : ''));
   await ctx.close();
 }
