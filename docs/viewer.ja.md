@@ -1,11 +1,11 @@
-<!-- i18n: pair=viewer.md sha256=ddf5ab2b6d920199 -->
+<!-- i18n: pair=viewer.md sha256=7265f7534f28037c -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
 
 Egatari Viewer は、[Egatari](https://github.com/egatari/egatari-spec) のファイル（.ega.html）を、見る人の端末の中で開いて再生する Web アプリです。置き場所は `https://viewer.egatari.org/` の予定で、ホーム画面に追加したときの名前は **Ega Viewer**、アイコンは「え」（Egatari の印。Egatari Studio のアイコンは「す」）です。**まだ公開していません**（[公開の手順](#公開の手順管理者向け)）。
 
-先生向け：[iPad の生徒に教材を配る（Classroom と Egatari Viewer）](viewer-classroom.ja.md)。
+配る人向け：[iPhone・iPad で教材を開く（Egatari Viewer）](viewer-sharing.ja.md)。
 
 Egatari ファイルを Web ページとして開けない場面があるために作りました。
 
