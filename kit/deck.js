@@ -1214,7 +1214,8 @@ function go(i, k, animate, stepMove){
     if (!DECK.view){
       var hs = history.state;
       if (hs && typeof hs.egatariLink === "number") hs = Object.assign({}, hs, {at: {i: i, k: Math.max(0, Math.min(slides[i]._max, k))}});
-      history.replaceState(hs, "", location.pathname + location.search + "#" + (i + 1));
+      // # はスライドの id（と段階の鍵）：#<id>・#<id>:<段階の鍵>（format spec §9.1A）。開くときは番号（#N）も今までどおり読む
+      history.replaceState(hs, "", location.pathname + location.search + "#" + fragmentOf(i, Math.max(0, Math.min(slides[i]._max, k))));
     }
   } catch (e) {}
 }
@@ -1385,7 +1386,7 @@ function followLink(pos, opts){
   var target = {slideKey: slides[pos.i]._key, stepKey: stepKey(slides[pos.i], pos.k)};
   if (!LINKS.follow){ post(Object.assign({egatari: "linkRefused"}, target)); return false; }
   var depth = POS.push({i: POS.i, k: POS.k, el: opts.keyboard ? opts.el : null});
-  if (TOP) try { history.pushState({egatariLink: depth, to: {i: pos.i, k: pos.k}}, "", "#" + (pos.i + 1)); } catch (e) {}
+  if (TOP) try { history.pushState({egatariLink: depth, to: {i: pos.i, k: pos.k}}, "", "#" + fragmentOf(pos.i, pos.k)); } catch (e) {}
   moveTo(pos.i, pos.k, "link");
   return true;
 }
