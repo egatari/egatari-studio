@@ -149,6 +149,10 @@ main{flex:1;min-height:0;display:flex}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
 #notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
 #notice p{margin:2px 0}
+#notice .theme-changes{margin:2px 0 2px 18px;padding:0}
+#notice .theme-changes li{margin:1px 0}
+#notice .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px;vertical-align:-.2em}
+#notice-theme-pinned button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
 #notice-theme button,#notice-exported button,#panel-body .theme-warn button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
 #panel-body .theme-warn{margin-top:6px}
 #dlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);padding:18px 22px;width:min(560px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -194,8 +198,23 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-series label{display:flex;gap:8px;align-items:center}
 #dlg .paste-series label .hint{flex-basis:auto;margin-left:auto}
 #dlg #paste-pack-size{flex-basis:auto}
-#dlg .paste-mode{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13.5px}
-#dlg .paste-mode label{display:flex;gap:8px;align-items:flex-start}
+#dlg .paste-step{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:6px}
+#dlg .paste-step h3{font-size:15px;margin:2px 0 6px}
+#dlg .paste-step > .hint{margin:0 0 6px}
+#dlg .paste-kind{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 6px;padding:4px 10px 6px;border:1px solid var(--line);border-radius:6px;font-size:13.5px}
+#dlg .paste-kind legend{padding:0 4px}
+#dlg .paste-kind label{display:flex;gap:6px;align-items:center}
+#dlg .paste-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 12px}
+#dlg .paste-fields[hidden]{display:none}
+#dlg .paste-fields .quote{grid-column:1/-1;margin:0;padding:4px 8px;border-left:3px solid var(--line)}
+#dlg .paste-field{display:flex;flex-direction:column;gap:2px;font-size:13px}
+#dlg .paste-field input,#dlg .paste-field textarea{font:inherit;font-size:13.5px;line-height:1.4;min-height:0;max-height:none;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-common{flex-basis:100%;display:flex;gap:8px;align-items:center;font-size:13.5px;padding:5px 10px;border-radius:6px;background:var(--line);font-weight:600}
+#dlg .paste-common input{accent-color:var(--fg)}
+#dlg .paste-state{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:0 0 6px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);font-size:13.5px}
+#dlg .paste-state.waiting{background:var(--warn-bg);color:var(--warn-fg);border-color:transparent;font-weight:600}
+#dlg .paste-state[hidden],#dlg .paste-state button[hidden]{display:none}
+#dlg #paste-copied.bad{color:var(--bad-fg)}
 #panel-body .fixreq{width:100%;margin:2px 0 8px}
 /* 添付の板（app/attachments-panel.js） */
 #panel-body ul.attach-list{list-style:none;padding:0;margin:8px 0}
@@ -214,6 +233,8 @@ main{flex:1;min-height:0;display:flex}
 #live-panel .live-choice{display:flex;gap:6px;margin:4px 0}#live-panel .live-choice input{flex:1;min-width:0}
 #live-panel .row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}#live-panel .note{font-size:12px;color:var(--muted,#666);margin:2px 0}
 #live-panel .live-step-label{display:inline-block;font-size:12.5px;color:var(--muted,#666);margin:2px 8px 2px 0}#live-panel #live-problems{color:var(--bad,#b00020)}#live-panel .lead{margin-top:0}
+#live-panel #live-setup{word-break:break-all}#live-panel #live-host-link{align-self:center;margin-left:4px}#live-panel .live-warn{font-weight:600}
+#live-panel #live-manual{border-top:1px solid var(--line);margin:14px 0 6px;padding-top:6px}#live-panel #live-manual>summary{cursor:pointer;color:var(--accent,inherit);margin:4px 0}
 #attach-problems{margin-top:8px;font-size:12.5px}
 
 /* 録音モード（app/rec-mode.js）：#deck の中の幅広い板。プレビュー（その段階の舞台）は横に細くする。横の板・口述原稿などは隠す */
@@ -254,4 +275,18 @@ main{flex:1;min-height:0;display:flex}
 #rec-mode .rm-btn kbd{display:inline-block;padding:0 6px;border:1px solid var(--line);border-radius:4px;font:600 12px/1.6 ui-monospace,Menlo,monospace;background:var(--bg)}
 #rec-mode .rm-btn.on{background:#dc2626;border-color:#dc2626;color:#fff}
 #rec-mode .rm-btn.on kbd{color:var(--fg)}
+#rec-mode .rm-btn.wait{opacity:.7;cursor:progress}
 @media (max-width:720px){ #rec-mode{position:fixed;inset:0;z-index:1001} #deck.rec-on #viewer{display:none} }
+/* 新規作成…・スライドの挿入…・修正…（app/main.js・app/llm.js） */
+#dlg .paste-howto{margin:0 0 6px;padding:8px 12px;border-radius:8px;background:var(--line);font-size:13.5px}
+#dlg .paste-where{margin:0 0 6px;font-weight:600}
+#dlg .paste-with-pack{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:0 0 6px}
+#dlg .paste-field.wide{grid-column:span 2}
+#dlg .paste-field input[type=number]{width:6em}
+#dlg dl.choices{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:6px 0;font-size:13.5px}
+#dlg dl.choices dt{font-weight:600}
+#dlg dl.choices dd{margin:0;color:var(--muted)}
+.menu-list .menu-head{padding:4px 10px 2px;font-size:12px;color:var(--muted)}
+.menu-list .menu-sep{border-top:1px solid var(--line);margin:4px 0}
+#panel-body .fixrow{display:flex;gap:6px;margin:2px 0 8px}
+#panel-body .fixrow .fixreq{flex:1 1 0;width:auto;margin:0}

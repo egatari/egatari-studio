@@ -32,6 +32,8 @@ on:
       - 'components.lock.json'
       - 'tools/vendor-components.mjs'
       - 'themes/**'
+      - 'vendor/themes/**'
+      - 'themes.lock.json'
       - 'server/hints.js'
       - 'server/editor-ui.js'
       - 'tools/build-app.mjs'
@@ -52,6 +54,8 @@ on:
       - 'components.lock.json'
       - 'tools/vendor-components.mjs'
       - 'themes/**'
+      - 'vendor/themes/**'
+      - 'themes.lock.json'
       - 'server/hints.js'
       - 'server/editor-ui.js'
       - 'tools/build-app.mjs'
@@ -87,9 +91,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Build the editor
         run: node tools/build-app.mjs --out _site
       - name: Check the build
@@ -105,7 +109,7 @@ jobs:
           cat _site/versions.json
       - uses: actions/configure-pages@v5
         if: steps.release.outputs.deploy == 'true'
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: steps.release.outputs.deploy == 'true'
         with:
           path: _site
@@ -125,4 +129,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

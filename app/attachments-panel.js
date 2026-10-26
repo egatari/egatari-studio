@@ -12,12 +12,13 @@
 //   はじめて取り込むときは、学ぶ人が打った字が入ること・教材のファイルにだけ残りどこにも送らないことを知らせる（一度だけ）。
 //   一覧では、その添付に「学ぶ人の回答」の印と、質問の数・投票ごとの数を出す（字はすべて textContent。学ぶ人の入力は信用しない）
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig } from '../kit/core/config-file.mjs';
 import { planAttachments, configEntries, attachPathProblem, attachMediaProblem, ATTACH_LIMITS, ATTACH_ROLES, ATTACH_PREFIX, isAttachPath,
   inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, descriptionProblem, titleProblem, clipChars } from '../kit/core/attachments.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
-import { parseResults, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 
 // はじめての取り込みの知らせを見せたか（この機械のこのブラウザ。使えなければ毎回見せる）
 const NOTICE_KEY = 'egatari-studio-live-results-notice';
@@ -125,10 +126,9 @@ export function createAttachPanel(o) {
     return { ws, files, conf, bad, plan, entries };
   }
   // 設定のファイルの添付の一覧を書き直す（ほかの項目と、各項目の知らない項目はそのまま。消えたファイルの項目は消す）
+  // attachments だけを変える（ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）
   async function writeConfig(ws, conf, list) {
-    const out = { ...conf };
-    if (list.length) out[KEY] = list; else delete out[KEY];
-    const text = JSON.stringify(out, null, 2) + '\n';
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { [KEY]: list.length ? list : undefined });
     if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
     await ws.writeText(CFG, text);
   }
@@ -293,11 +293,13 @@ export function createAttachPanel(o) {
     const live = conf && conf.extensions && typeof conf.extensions === 'object' ? conf.extensions.live : null;
     const m = roomMatch(r.results, live);
     const s = summarizeResults(r.results);
+    const skipNote = skippedNotice(r.skipped, o.lang);   // この版が知らない項目（取り込まない。元のファイルはそのまま添付する）
     const showNotice = !noticeSeen();
     if (showNotice || m !== 'match') {
       const v = await o.ask({ title: X.liveTitle, kind: m === 'match' ? '' : 'warn', body: [
         m === 'mismatch' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveMismatch(r.results.room, live.room) }) : null,
         m === 'none' ? el('p', { id: 'live-results-mismatch', cls: 'note bad', text: X.liveNoRoom }) : null,
+        skipNote ? el('p', { id: 'live-results-skipped', cls: 'note', text: skipNote }) : null,
         el('p', { id: 'live-results-privacy', text: X.livePrivacy }),
         el('p', { cls: 'hint', id: 'live-results-what', text: `${r.results.room} · ${r.results.window.from.slice(0, 10)} · ${X.liveWhat(s.responses, s.questions)}` }),
       ], buttons: [{ id: 'cancel', label: X.cancel }, { id: 'ok', label: X.liveGo, pri: true }] });
@@ -321,7 +323,7 @@ export function createAttachPanel(o) {
       if (bad) { o.toast(X.refused + msgOf(bad), true); return null; }
       await st.ws.writeBytes(rec.path, bytes);
       await writeConfig(st.ws, st.conf, [...listOf(st), rec]);
-      return X.liveAdded(rec.path) + (probs.length ? ' · ' + probs.map(msgOf).join(' · ') : '');
+      return X.liveAdded(rec.path) + (probs.length ? ' · ' + probs.map(msgOf).join(' · ') : '') + (skipNote ? ' · ' + skipNote : '');
     });
   });
 

@@ -1,6 +1,6 @@
 // 生成したファイル（node tools/katex-ranges.mjs）。手で直さない。KaTeX の字（woff2）の cmap が持つ字の範囲（unicode-range の値）
 export const KATEX_RANGES = Object.freeze({
- "version": "0.16.47",
+ "version": "0.19.0",
  "fonts": {
   "KaTeX_AMS-Regular": "U+20,U+41-5a,U+6b,U+a0,U+a5,U+ae,U+f0,U+127,U+2c6,U+2dc,U+302-303,U+3dd,U+3f0,U+2035,U+210f,U+2127,U+2132,U+2136-2138,U+2141,U+2190,U+2192,U+219a-219b,U+219e,U+21a0,U+21a2-21a3,U+21ab-21ae,U+21b0-21b1,U+21b6-21b7,U+21ba-21bb,U+21be-21bf,U+21c2-21c4,U+21c6-21cf,U+21da-21db,U+21dd,U+21e0,U+21e2,U+2201,U+2204-2205,U+220d,U+2212,U+2214,U+2216,U+221d,U+2220-2226,U+2234-2235,U+223c-223d,U+2241-2242,U+2246,U+2248,U+224a,U+224e-224f,U+2251-2253,U+2256-2257,U+225c,U+2266-2269,U+226c,U+226e-2273,U+2276-2277,U+227c-2281,U+2288-228b,U+228f-2290,U+229a-229b,U+229d-22a1,U+22a8-22aa,U+22ac-22af,U+22b2-22b5,U+22b8,U+22ba-22bc,U+22c5,U+22c7,U+22c9-22d4,U+22d6-22db,U+22de-22e1,U+22e6-22ed,U+2322-2323,U+24c8,U+250c,U+2510,U+2514,U+2518,U+2571-2572,U+25a0-25a1,U+25b2-25b3,U+25b6,U+25bc-25bd,U+25c0,U+25ca,U+2605,U+2713,U+2720,U+29eb,U+2a5e,U+2a7d-2a7e,U+2a85-2a8c,U+2a95-2a96,U+2ab5-2aba,U+2ac5-2ac6,U+2acb-2acc,U+e006-e009,U+e00c-e011,U+e016-e01b",
   "KaTeX_Caligraphic-Bold": "U+20,U+41-5a,U+a0",

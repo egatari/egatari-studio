@@ -148,7 +148,7 @@ try {
   }, files);
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'folder: opened');
   const f = await frameReady();
-  await page.evaluate(() => { window.__pred = { phase: (s, p) => s.phase === p, idx: (s, n) => s.open && s.idx === n && s.phase === 'idle' && !!s.key, idle: (s) => s.open && s.phase === 'idle' && !!s.key }; });
+  await page.evaluate(() => { window.__pred = { phase: (s, p) => s.phase === p, idx: (s, n) => s.open && s.ready && s.idx === n && s.phase === 'idle' && !!s.key, idle: (s) => s.open && s.ready && s.phase === 'idle' && !!s.key }; });
   ok(!(await page.$('#b-rec')), 'toolbar: no extra button (the toolbar must stay on one row); the entry is r and the Audio panel');
 
   // ---------------------------------------------------------------- 開く（r）
@@ -416,6 +416,83 @@ try {
   await page.keyboard.press('Shift+Escape');
   await page.waitForSelector('#rec-mode', { state: 'detached' });
   ok(!(await page.evaluate(() => window.__APP_TEST.audio().open)), 'close: Shift+Esc closes recording mode and the panel');
+
+  // ---------------------------------------------------------------- 準備中に押した Space（r の直後）：覚えておき、準備ができたら 1 回だけ録り始める
+  // 遅い PC・macOS のマイクの許可を真似る：ファイルの読み（口述原稿・manifest）を 250 ms、getUserMedia を 300 ms 遅らせる
+  await page.evaluate(() => {
+    window.__slow = { gf: FileSystemFileHandle.prototype.getFile, gum: navigator.mediaDevices.getUserMedia, start: MediaRecorder.prototype.start, starts: 0, gums: 0 };
+    const S = window.__slow;
+    FileSystemFileHandle.prototype.getFile = function (...a) { return new Promise((r) => setTimeout(r, 250)).then(() => S.gf.apply(this, a)); };
+    navigator.mediaDevices.getUserMedia = function (...a) { S.gums++; return new Promise((r) => setTimeout(r, 300)).then(() => S.gum.apply(navigator.mediaDevices, a)); };
+    MediaRecorder.prototype.start = function (...a) { S.starts++; return S.start.apply(this, a); };
+  });
+  const unslow = () => page.evaluate(() => { const S = window.__slow; FileSystemFileHandle.prototype.getFile = S.gf; navigator.mediaDevices.getUserMedia = S.gum; MediaRecorder.prototype.start = S.start; });
+  const slowCounts = () => page.evaluate(() => ({ starts: window.__slow.starts, gums: window.__slow.gums, dialogs: document.querySelectorAll('#rec-mode').length }));
+  await page.evaluate(() => { window.__slow.starts = 0; window.__slow.gums = 0; document.body.focus(); });
+  await page.keyboard.press('r');
+  await page.keyboard.press('Space');
+  await page.keyboard.press('r');       // 開いている途中にもう一度 r：画面は 1 つのまま
+  await page.keyboard.press('Space');   // 準備中にもう一度押しても、2 回は始めない
+  const prep = await page.evaluate(() => { const b = document.getElementById('rec-b-space'); const s = window.__APP_TEST.rec(); return { ready: s.ready, pending: s.pending, text: b && b.textContent, busy: b && b.getAttribute('aria-busy'), state: (document.getElementById('rec-state') || {}).textContent, focus: document.activeElement && document.activeElement.id, dialogs: document.querySelectorAll('#rec-mode').length }; });
+  ok(!prep.ready && prep.pending && /準備中/.test(prep.text) && prep.busy === 'true' && /準備中/.test(prep.state), 'ready: while it is getting ready the record control says 準備中 (aria-busy) and keeps the Space press ' + JSON.stringify(prep));
+  ok(prep.focus === 'rec-mode' && prep.dialogs === 1, 'ready: the screen and the focus are there at once, before it is ready; r again while opening keeps one screen ' + JSON.stringify(prep));
+  await waitPhase('recording');
+  await page.waitForTimeout(800);
+  let sc = await slowCounts();
+  ok(sc.starts === 1 && sc.gums === 1 && sc.dialogs === 1 && (await recState()).ready && !(await recState()).pending, 'ready: Space pressed right after r (slow files, getUserMedia +300 ms) starts exactly one take ' + JSON.stringify(sc));
+  await page.keyboard.press('r');       // 開いているときの r：何もしない（画面は 1 つ）
+  await page.waitForTimeout(300);
+  ok((await slowCounts()).dialogs === 1 && (await recState()).phase === 'recording', 'ready: opening again while it is open keeps the one screen and the take');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+  // プレビューにフォーカスがあるとき、r と同時の Space：デッキは段階を進めない（録音モードはすぐフォーカスを移す）
+  {
+    await page.click('#preview', { position: { x: 40, y: 40 } });
+    await page.waitForTimeout(400);
+    const k0 = (await page.evaluate(() => window.__APP_TEST.ui().pos)).key;
+    // デッキが受けた Space を数える（デッキの送りのキーと同じ document の keydown）
+    const df = page.frames().find((x) => x.parentFrame() === page.mainFrame());
+    await df.evaluate(() => { window.__deckSpace = 0; document.addEventListener('keydown', (e) => { if (e.key === ' ') window.__deckSpace++; }); });
+    const inFrame = await page.evaluate(() => document.activeElement && document.activeElement.id === 'preview');
+    await page.evaluate(() => { window.__slow.starts = 0; });
+    await page.keyboard.press('r');
+    await page.keyboard.press('Space');
+    await page.waitForSelector('#rec-mode');
+    await waitRec('idle').catch(() => {});
+    await page.waitForTimeout(1200);
+    const pos1 = (await page.evaluate(() => window.__APP_TEST.ui().pos)).key;
+    const deckSpace = await df.evaluate(() => window.__deckSpace);
+    sc = await slowCounts();
+    ok(inFrame && deckSpace === 0 && pos1 === k0 && sc.dialogs === 1 && sc.starts <= 1, 'ready: Space at the same instant as r in the preview does not reach the deck (it does not advance) ' + JSON.stringify({ inFrame, deckSpace, k0, pos1, ...sc }));
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#rec-mode', { state: 'detached' });
+  }
+  // 音声の板の「● 録音 (r)」を押してすぐ Space（フォーカスはまだボタン）：録音の画面は 1 つ、テイクは 1 つ
+  await page.click('#b-audio');
+  await page.waitForSelector('#dev-audio #dev-audio-rec');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.key; });
+  await page.evaluate(() => { window.__slow.starts = 0; window.__slow.gums = 0; });
+  await page.click('#dev-audio-rec');
+  await page.keyboard.press('Space');
+  await waitPhase('recording');
+  await page.waitForTimeout(800);
+  sc = await slowCounts();
+  ok(sc.starts === 1 && sc.dialogs === 1, 'ready: Space right after the panel\'s ● Record button opens one recording screen and starts one take ' + JSON.stringify(sc));
+  await page.keyboard.press('Shift+Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+  ok((await slowCounts()).dialogs === 0, 'ready: Esc leaves no recording screen behind');
+  // 準備に失敗（マイクを使えない）：覚えた Space は捨て、いつもの知らせ。録音は始まらない
+  await page.evaluate(() => { window.__slow.starts = 0; navigator.mediaDevices.getUserMedia = () => new Promise((_, rej) => setTimeout(() => rej(new DOMException('Permission denied', 'NotAllowedError')), 300)); document.body.focus(); });
+  await page.keyboard.press('r');
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await waitRec('idle');
+  await page.waitForTimeout(400);
+  sc = await slowCounts();
+  ok(sc.starts === 0 && !(await recState()).pending && /マイクを許可/.test(await alertText()), 'ready: if the microphone is refused, the kept Space is dropped and the usual error is shown ' + JSON.stringify(sc));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#rec-mode', { state: 'detached' });
+  await unslow();
 
   // ---------------------------------------------------------------- English
   await page.goto(BASE + '?lang=en');

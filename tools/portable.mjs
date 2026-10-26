@@ -16,13 +16,15 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict, exportPortable, exportedState } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { updateConfig } from '../kit/core/config-file.mjs';
 import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
+import { THEMES_LOCK_FILE, parseThemesLock, themeVersionForSha, themeUpdate, themePinnedWarning } from '../kit/core/themes-lock.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
-import { parseResults, liveResultsWarning, resultsRecord, roomMatch, summarizeResults, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { parseResults, skippedNotice, liveResultsWarning, resultsRecord, roomMatch, summarizeResults, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 import { inspectAttachment, blocking, problemText, ATTACH_LIMITS, isAttachPath } from '../kit/core/attachments.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -58,14 +60,28 @@ export async function unpack(file, dir, { force = false } = {}) {
   // 設定のファイル（§3.3・§3.8）：docId・索引の権利の表示・添付の一覧（index.attachments）を残す（展開したフォルダを組み直しても同じ文書と一覧。
   // 編集アプリの作業場所と同じ。kit/core/portable.mjs の folderConfig）
   const CFG = FORMAT.CONFIG_FILE;
-  const cfgText = folderConfig(r.index, files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : null);
+  const cfgText = folderConfig(r.index, files[CFG] ? new TextDecoder().decode(files[CFG]) : null);
   if (cfgText !== null) files[CFG] = new TextEncoder().encode(cfgText);
   // 部品庫の部品の版を、設定のファイルの components に固定する（format spec §3.3：展開したフォルダを組み直しても版が黙って変わらないように。
   // 版は index.js の hash が合う手元の版、なければ記録の版。設定のファイルに components がもうあれば変えない。kit/core/components-lock.mjs）
   const pinned = unpackPins(r.index);
   if (Object.keys(pinned).length) {
-    const conf = files[CFG] ? parseJsonStrict(new TextDecoder().decode(files[CFG])) : { docId: r.index.docId };
-    if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(JSON.stringify({ ...conf, components: pinned }, null, 2) + '\n');
+    const text = files[CFG] ? new TextDecoder().decode(files[CFG]) : null;
+    const conf = text !== null ? parseJsonStrict(text) : {};
+    if (!Object.prototype.hasOwnProperty.call(conf, 'components')) files[CFG] = new TextEncoder().encode(updateConfig(text, text !== null ? { components: pinned } : { docId: r.index.docId, components: pinned }));
+  }
+  // 同梱のテーマの版も、設定のファイルの themes に固定する（themes.lock.json。記録の sha256 が合う版。kit/core/themes-lock.mjs）。
+  // 書き出した 1 ファイルはもう themes を持つ（そのまま）。持たない前の 1 ファイルだけここで足す。前の版なら知らせる
+  const tPinned = unpackThemePins(r.index);
+  const tWarn = [];
+  if (Object.keys(tPinned).length) {
+    const text = files[CFG] ? new TextDecoder().decode(files[CFG]) : null;
+    const conf = text !== null ? parseJsonStrict(text) : {};
+    if (!Object.prototype.hasOwnProperty.call(conf, 'themes')) {
+      files[CFG] = new TextEncoder().encode(updateConfig(text, text !== null ? { themes: tPinned } : { docId: r.index.docId, themes: tPinned }));
+      const tl = themesLockAt(ROOT);
+      for (const [name, v] of Object.entries(tPinned)) if (v !== tl.themes[name].current) tWarn.push(themePinnedWarning(themeUpdate(tl, name, v)));
+    }
   }
   const written = [];
   // 書く先は <dir> の中だけで、途中のフォルダも書く先もシンボリックリンクでないこと（壊れたリンクも。kit/safe-fs.mjs）。
@@ -83,6 +99,7 @@ export async function unpack(file, dir, { force = false } = {}) {
   }
   const warnings = [...r.warnings];
   warnings.push(...registryWarnings(r.index));
+  warnings.push(...tWarn);
   return { written, warnings, index: r.index };
 }
 
@@ -124,6 +141,23 @@ export function unpackPins(index, root = ROOT) {
     if (v) out[c.name] = v; else if (typeof c.version === 'string' && VERSION_RE.test(c.version)) out[c.name] = c.version;
   }
   return out;
+}
+
+// 同梱のテーマの版の固定（themes.lock.json）。読めなければ null
+function themesLockAt(root) {
+  try { return parseThemesLock(fs.readFileSync(path.join(root, THEMES_LOCK_FILE), 'utf8')); } catch { return null; }
+}
+// 展開で設定のファイルに書くテーマの版：{名前: 版}。文書の同梱のテーマごとに、記録の sha256 が合う版（今の版も）。合わないもの・固定のファイルにないものは書かない
+export function unpackThemePins(index, root = ROOT) {
+  const lock = themesLockAt(root);
+  const out = {};
+  if (!lock) return out;
+  for (const t of Array.isArray(index.themes) ? index.themes : []) {
+    if (!t || t.source !== 'registry' || typeof t.name !== 'string' || !RE.registryName.test(t.name)) continue;
+    const v = themeVersionForSha(lock, t.name, t.sha256, t.version);
+    if (v) out[t.name] = v;
+  }
+  return Object.fromEntries(Object.keys(out).sort().map((k) => [k, out[k]]));
 }
 
 // 部品庫・テーマ庫の部品が、このリポジトリの写しにあるか（なければ段 B・C の編集はできない）。返すもの：知らせの配列。
@@ -177,10 +211,12 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   if (!r.ok) throw new FormatError('not-live-results', `${file} is not live room results from the room service (${r.errors.slice(0, 3).join('; ')})`);
   const CFG = FORMAT.CONFIG_FILE, KEY = FORMAT.ATTACH_KEY;
   const cfgPath = path.join(deckDir, CFG);
-  let conf = {};
-  if (fs.existsSync(cfgPath)) conf = parseJsonStrict(readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
+  let conf = {}, confText = null;
+  if (fs.existsSync(cfgPath)) conf = parseJsonStrict(confText = readContained(deckDir, cfgPath, 'utf8', { max: READ_LIMITS.json }));
   const list = Array.isArray(conf[KEY]) ? conf[KEY] : [];
   const warnings = [];
+  const skipNote = skippedNotice(r.skipped, lang);
+  if (skipNote) warnings.push(skipNote);
   const live = conf.extensions && conf.extensions.live;
   const m = roomMatch(r.results, live);
   if (m === 'mismatch') warnings.push(`the results are for room ${r.results.room}, but this lesson's live settings name room ${live.room}; added anyway (the room may have been recreated)`);
@@ -201,7 +237,8 @@ export async function attachLiveResults(dir, file, { lang = 'ja' } = {}) {
   const target = abs(rec.path);
   checkWritable(deckDir, target); checkWritable(deckDir, cfgPath);
   safeWriteFile(deckDir, target, bytes);
-  safeWriteFile(deckDir, cfgPath, JSON.stringify({ ...conf, [KEY]: [...list, rec] }, null, 2) + '\n');
+  // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+  safeWriteFile(deckDir, cfgPath, updateConfig(confText, { [KEY]: [...list, rec] }));
   return { path: rec.path, record: rec, summary: summarizeResults(r.results), warnings };
 }
 

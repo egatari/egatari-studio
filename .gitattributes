@@ -6,3 +6,6 @@ components.lock.json text eol=lf
 docs/authoring-with-llms*.md text eol=lf
 docs/llm-parts/*.md text eol=lf
 kit/core/llm-pack-data.mjs text eol=lf
+# 同梱のテーマの前の版の写し（themes.lock.json。kit/core/themes-lock.mjs）：バイトのまま
+vendor/themes/** -text
+themes.lock.json text eol=lf

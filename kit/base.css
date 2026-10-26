@@ -12,16 +12,22 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 .draw{stroke-dasharray:1;stroke-dashoffset:1}
 .static [data-step],.static .draw{opacity:1;stroke-dashoffset:0}
 
-/* 授業モード：今の段階を強調する（段階より後の要素は deck.js が薄くする） */
-[data-mode="lecture"] .cur:not(tr):not(g):not(path):not(.concl){background:linear-gradient(transparent 58%,var(--emph-tint) 58%);border-radius:2px}
-[data-mode="lecture"] tr.cur td{background:var(--emph-tint)}
+/* 授業モード：全部見せ、段階より後の要素は deck.js が薄くする（今の段階に印は付けない） */
+/* lecture view: opacity of the steps not yet reached (a theme may override, keep it within .45-.5); the current step is not marked */
+:root{--lecture-dim:.5}
 
 /* 操作の表示 */
 #bar{position:fixed;left:0;bottom:0;height:var(--bar-h,3px);background:var(--bar,var(--emph));z-index:10}
 #jump{position:fixed;right:12px;bottom:10px;color:#fff;font:14px sans-serif;opacity:.7;z-index:10}
 .embedded #bar,.embedded #jump{display:none}
 .embedded body,.embedded{background:var(--bg)}
-.blackout #stage{visibility:hidden}
+/* 暗転（b。kit/deck.js）：窓全体を真っ黒の覆いで隠す。舞台・ペンの線・字幕・操作の帯・知らせ・戻るの札より上。印刷と動画には出ない */
+#deck-black{position:fixed;inset:0;z-index:2147483600;background:#000;cursor:default;outline:none}
+.printing #deck-black{display:none}
+#deck-black-hint{position:absolute;right:16px;bottom:14px;padding:4px 10px;border-radius:6px;color:rgba(255,255,255,.55);background:rgba(255,255,255,.06);font:13px/1.4 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;opacity:0;transition:opacity .3s;pointer-events:none}
+#deck-black-hint.show{opacity:1}
+/* 舞台は押したときにフォーカスを受ける（kit/tools.js：ペン・レーザーで押してもキーが本体に届くように）。枠は出さない */
+#stage:focus{outline:none}
 .autoplay #bar{background:var(--term)}
 /* 注目の演出（{mark:…}）の重ね描き。スライドの座標（1280×720）で描く。印刷には出さない */
 .slide > svg.marks{position:absolute;left:0;top:0;width:1280px;height:720px;pointer-events:none;z-index:30;overflow:visible}
@@ -53,6 +59,7 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 #deck-extlink button{all:unset;box-sizing:border-box;min-width:92px;padding:8px 14px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;border:2px solid #555;color:#1a1a1a;background:#fff}
 #deck-extlink button.go{background:#1a1a1a;color:#fff}
 #deck-extlink button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+#deck-extlink .box:focus{outline:none}
 .printing #deck-extlink{display:none}
 /* 戻る（リンクで来たときだけ。kit/deck.js）：左上の小さな札。押す・Backspace・Alt+← で、リンクを押す前の位置へ。印刷と動画には出ない */
 #deck-back{all:unset;position:fixed;left:10px;top:7px;z-index:36;box-sizing:border-box;display:flex;align-items:center;gap:6px;max-width:min(46vw,420px);height:28px;padding:0 9px 0 7px;
@@ -65,14 +72,16 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 #deck-back .lab{flex:none;font-weight:600}
 #deck-back .to{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.78}
 #deck-back kbd{flex:none;font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:2px 4px;border:1px solid rgba(255,255,255,.35);border-radius:4px;opacity:.7}
-.printing #deck-back,.blackout #deck-back{display:none}
+.printing #deck-back{display:none}
 
 @media print{
   @page{size:1280px 720px;margin:0}
   html,body{background:#fff;overflow:visible;height:auto}
+  /* 印刷では背景が落ちるのが既定（章の扉の白抜きの字が白地に消える）。スライドと扉は画面と同じ色で刷る。紙面（html・body）は白のまま */
+  .slide,.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #stage{position:static;transform:none!important;width:auto;height:auto}
   .slide{position:relative!important;visibility:visible!important;opacity:1!important;page-break-after:always;break-after:page}
   [data-step]{opacity:1!important;transform:none!important}
   .draw{stroke-dashoffset:0!important}
-  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back,#deck-extlink{display:none!important}
+  #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back,#deck-extlink,#deck-black,#deck-black-hint,#pv-tap{display:none!important}
 }

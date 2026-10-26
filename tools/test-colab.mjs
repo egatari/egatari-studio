@@ -15,10 +15,11 @@ import { readZip, writeZip, ZipError } from '../kit/core/zip-read.mjs';
 import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, colabUrl } from '../kit/core/colab-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
-import { integratedLoudness, encodeWav, PROCESSING } from '../kit/core/audio-core.mjs';
+import { integratedLoudness, encodeWav, PROCESSING, takeEntry } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { colabZip } from './colab-fixture.mjs';
-import { notebook } from './make-colab-notebook.mjs';
+import { notebook, COLAB_PINS } from './make-colab-notebook.mjs';
+import { sessionFactory, providersFromEnv, cpuNotice, firstLine, actualProvider, supportedBackends } from '../colab/ort-fallback.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const tests = [];
@@ -111,6 +112,22 @@ ok('import: another lesson (docId) is rejected; an unknown docId on either side 
   assert.equal((await planImport({ zip: noId, segs, docId: 'doc-1', yomi })).reject, null);
   assert.deepEqual((await planImport({ zip: z, segs, docId: 'doc-1', yomi: { ...yomi, sha256: 'b'.repeat(64) } })).warnings, ['dictionary']);
 });
+ok('import: the refusal for another lesson carries the source lesson title (from the job, through records.json); old zips without a title still refuse; nothing validated changes', async () => {
+  const plain = await baseJob(), withT = await buildJob({ segs, docId: 'doc-1', title: '  光の   屈折  ', lang: 'ja', voices: { expert: 'bob', novice: 'alice' }, yomi, version: '0.4.3' });
+  assert.equal(withT.title, '光の 屈折'); assert.ok(!('title' in plain), 'no title key when none is given');
+  const { title: _t, ...rest } = withT; assert.deepEqual(rest, plain, 'the title is the only difference: inputHash, steps and recipe are unchanged');
+  const z = await readColabZip(await colabZip(withT));
+  assert.equal(parseRecords(new TextDecoder().decode(z.files.get('records.json'))).title, '光の 屈折');
+  const r = (await planImport({ zip: z, segs, docId: 'doc-2', yomi })).reject;
+  assert.equal(r.code, 'doc-id'); assert.equal(r.title, '光の 屈折');
+  assert.equal((await planImport({ zip: z, segs, docId: 'doc-1', yomi })).reject, null, 'same lesson still imports');
+  const old = await readColabZip(await colabZip(plain)), ro = (await planImport({ zip: old, segs, docId: 'doc-2', yomi })).reject;
+  assert.equal(ro.code, 'doc-id'); assert.equal(ro.title, null);
+  const src = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
+  assert.ok(src.includes("'この音声は、別の教材' + (t ? '「' + t + '」' : '') + 'のために作ったものなので、取り込みませんでした。台本を書き出した教材を開いてから、もう一度取り込んでください'"), 'ja message');
+  assert.ok(src.includes("'This audio was made for another lesson' + (t ? ', “' + t + '”' : '') + ', so it was not imported. Open the lesson you exported the script from, then import it again.'"), 'en message');
+  assert.ok(!/docId が違う|the docId differs/.test(src), 'no docId jargon in the messages');
+});
 ok('import: records that do not hold up are skipped one by one (path, cues count, hash, missing audio, kind) and never reach the files', async () => {
   const job = await baseJob();
   const mut = (f) => async () => planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r, e) => f(r, e) })), segs, docId: 'doc-1', yomi });
@@ -159,10 +176,12 @@ ok('verified note: kept in one constant (kit/core/colab-core.mjs); the notebook,
   const docs = ['docs/editor.md', 'docs/editor.ja.md'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8'));
   const i18n = fs.readFileSync(path.join(ROOT, 'app/i18n.js'), 'utf8');
   assert.match(COLAB_VERIFIED.ja, /^確認済み：\d{4}-\d{2}-\d{2}/); assert.match(COLAB_VERIFIED.en, /^Verified: \d{4}-\d{2}-\d{2}/);
-  assert.ok(/Kokoro/.test(COLAB_VERIFIED.ja) && /CPU/.test(COLAB_VERIFIED.ja) && /Kokoro/.test(COLAB_VERIFIED.en) && /CPU/.test(COLAB_VERIFIED.en), 'it names what is not verified yet');
+  assert.ok(/Kokoro/.test(COLAB_VERIFIED.ja) && /CPU/.test(COLAB_VERIFIED.ja) && /Kokoro/.test(COLAB_VERIFIED.en) && /CPU/.test(COLAB_VERIFIED.en), 'it names what was verified');
   assert.ok(first.includes(COLAB_VERIFIED.en) && first.includes(COLAB_VERIFIED.ja), 'first markdown cell of the notebook');
   docs.forEach((d, k) => { const lines = d.split('\n').filter((l) => l.includes(`<!-- ${COLAB_NOTE_MARK} -->`)); assert.ok(lines.length >= 1 && lines.every((l) => l.includes(COLAB_VERIFIED[k ? 'ja' : 'en'])), `docs/editor${k ? '.ja' : ''}.md`); });
   assert.ok(/COLAB_VERIFIED/.test(i18n), 'app/i18n.js reads the constant');
+  assert.ok(/2026-10-24/.test(COLAB_VERIFIED.ja) && /T4/.test(COLAB_VERIFIED.ja) && /cuda13/.test(COLAB_VERIFIED.ja) && /2026-10-24/.test(COLAB_VERIFIED.en) && /cuda13/.test(COLAB_VERIFIED.en), 'GPU verification is recorded');
+  assert.ok(!/固定した版での GPU の確認：まだ|not yet verified/.test(COLAB_VERIFIED.ja + COLAB_VERIFIED.en) && /2026-10-23/.test(COLAB_VERIFIED.ja), 'placeholder gone, CPU line kept');
   assert.ok(!/Unverified|未検証/.test(first) && !docs.some((d) => /Unverified|未検証/.test(d)));
 });
 
@@ -180,7 +199,7 @@ ok('worker protocol: requests are answered in order, one failure does not stop t
   assert.deepEqual(seen, [1, 3]);
 });
 ok('irodori_node.mjs imports no module that reaches parse5 (audio-core, portable, bounded-html) and uses no Node 22-only API', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8');   // 試験：リポジトリ自身のファイル
+  const src = ['colab/irodori_node.mjs', 'colab/ort-fallback.mjs'].map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');   // 試験：リポジトリ自身のファイル
   assert.ok(!/audio-core|portable\.mjs|bounded-html|parse5/.test(src.replace(/\/\/.*$/gm, '')), 'no parse5 chain');
   assert.ok(!/import\.meta\.(dirname|filename)|Array\.fromAsync|\.toSorted\(|Promise\.withResolvers|\bwith \{/.test(src.replace(/\/\/.*$/gm, '')), 'no newer-only API');
 });
@@ -314,6 +333,230 @@ ok('notebook: the optional reference-voice cell is there, off by default, passes
   assert.ok(!/REF_VOICE_PATH/.test(load.replace(/globals\(\)\.get\("REF_VOICE_PATH"\)/g, '')), 'cell 3 does not reference REF_VOICE_PATH bare (the optional cell may be skipped)');
   assert.ok(/right to use/.test(text) && /使ってよい声/.test(text) && /not uploaded anywhere else/.test(text));
   assert.ok(nb.cells.every((c) => c.cell_type !== 'code' || (c.execution_count === null && c.outputs.length === 0)), 'no outputs or execution counts');
+});
+
+// ---------------------------------------------------------------- GPU（CUDA）が使えないときの CPU への切り替え（2026-10-23 の講習：libcublasLt.so.13）
+const CUDA_ERR = 'OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library\n(libcublasLt.so.13: cannot open shared object file)';
+ok('ort fallback: a CUDA provider failure retries the same session on the CPU, says so once, and later sessions go straight to the CPU', async () => {
+  const tries = [], logs = [];
+  const f = sessionFactory({ providers: providersFromEnv('cuda,cpu'), log: (m) => logs.push(m), create: async (file, o) => { tries.push([file, o.executionProviders.join(',')]); if (o.executionProviders.includes('cuda')) throw new Error(CUDA_ERR); return { file, o }; } });
+  const got = [];
+  for (const n of ['a', 'b', 'c']) got.push(await f.create(n, { graphOptimizationLevel: 'all' }));
+  assert.deepEqual(tries, [['a', 'cuda,cpu'], ['a', 'cpu'], ['b', 'cpu'], ['c', 'cpu']]);
+  assert.deepEqual(f.providers, ['cpu']);
+  assert.equal(logs.length, 1, 'one notice');
+  assert.equal(f.notice, logs[0]);
+  assert.ok(/GPU（CUDA）を使えない/.test(f.notice) && /CPU/.test(f.notice) && /could not be used/.test(f.notice) && /slower/.test(f.notice), 'Japanese and English');
+  assert.ok(f.notice.endsWith('OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library') && !f.notice.includes('\n'), 'one line, with the first line of the reason');
+  assert.equal(got[0].o.graphOptimizationLevel, 'all', 'the other options are kept');
+});
+ok('ort fallback: no notice when CUDA works; a CPU failure is not hidden; an all-CPU list does not retry', async () => {
+  const logs = [];
+  const good = sessionFactory({ providers: ['cuda', 'cpu'], log: (m) => logs.push(m), create: async () => ({}) });
+  await good.create('a'); await good.create('b');
+  assert.deepEqual(good.providers, ['cuda', 'cpu']); assert.equal(good.notice, null); assert.equal(logs.length, 0);
+  const broken = sessionFactory({ providers: ['cuda', 'cpu'], log: (m) => logs.push(m), create: async (f, o) => { throw new Error(o.executionProviders.includes('cuda') ? CUDA_ERR : 'model is broken'); } });
+  await assert.rejects(broken.create('a'), /model is broken/);
+  let n = 0;
+  const cpu = sessionFactory({ providers: providersFromEnv('cpu'), log: (m) => logs.push(m), create: async () => { n++; throw new Error('model is broken'); } });
+  await assert.rejects(cpu.create('a'), /model is broken/);
+  assert.equal(n, 1); assert.equal(cpu.notice, null);
+  assert.deepEqual(providersFromEnv(''), ['cuda', 'cpu']); assert.deepEqual(providersFromEnv(' cuda , cpu '), ['cuda', 'cpu']);
+  assert.equal(firstLine(new Error('\n  first \nsecond')), 'first');
+  assert.ok(cpuNotice('x').endsWith('x'));
+});
+ok('irodori_node.mjs creates its sessions through the fallback and puts the providers and the notice in the ready line', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/irodori_node.mjs'), 'utf8').replace(/\/\/.*$/gm, '');
+  assert.ok(/sessionFactory\(/.test(src) && /factory\.create\(/.test(src) && !/InferenceSession\.create\([^)]*executionProviders/.test(src));
+  assert.ok(/ready: true, providers: factory\.providers, provider: actualProvider\(factory, supportedBackends\(ort\)\)/.test(src) && /factory\.notice/.test(src));
+});
+ok('python: a CUDA failure in the worker is passed through as one notice line (not an error), and the job continues on the CPU', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'colab-fallback-'));
+  fs.mkdirSync(path.join(dir, 'voices'));
+  fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify(await baseJob()));
+  const fake = path.join(ROOT, 'tools/colab-fake-worker.mjs');
+  const py = `
+import json, os, sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+d = ${JSON.stringify(dir)}
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cuda,cpu", EGATARI_FAKE_ORT_FAIL="cuda"))
+assert w.providers == ["cpu"] and w.provider == "cpu", (w.providers, w.provider)
+assert w.notice and "libcublasLt" not in w.notice and "could not be used" in w.notice, w.notice
+job = E.validate_job(json.load(open(os.path.join(d, "job.json"), encoding="utf-8")))
+data = E.run_job(job, w, engine_info={"engine": "irodori-colab", "model": "m", "seed": 0, "runtime": E.runtime_label("cuda12", w.provider)})
+assert len(data) > 1000
+open(os.path.join(d, "out.zip"), "wb").write(data)
+w.close()
+w = E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_ORT_PROVIDERS="cuda,cpu"))
+assert w.providers == ["cuda", "cpu"] and w.provider == "cuda" and w.notice is None, (w.providers, w.provider, w.notice)
+w.close()
+try:
+    E.IrodoriWorker(["node", ${JSON.stringify(fake)}], os.path.join(d, "voices"), d, env=dict(os.environ, EGATARI_FAKE_ORT_FAIL="all")); raise SystemExit("no raise")
+except E.WorkerError as e:
+    assert "Failed to load shared library" in str(e), str(e)
+print("DONE")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8', cwd: dir });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  const lines = r.stdout.split('\n').filter(Boolean);
+  assert.equal(lines.filter((l) => l.includes('GPU（CUDA）を使えない')).length, 1, 'the notice is printed once to the notebook output:\n' + r.stdout);
+  assert.ok(lines.at(-1) === 'DONE');
+  const zip = await readColabZip(new Uint8Array(fs.readFileSync(path.join(dir, 'out.zip'))));
+  const plan = await planImport({ zip, segs, docId: 'doc-1', yomi });
+  assert.deepEqual(plan.applied.map((x) => x.rec.recipe.runtime), ['cuda12/cpu', 'cuda12/cpu', 'cuda12/cpu'], 'every record says what actually ran (after the fallback)');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+ok('ort fallback: the provider actually used comes from the fallback and the backends this build has, not the requested list', () => {
+  const f = (providers) => ({ providers });
+  assert.equal(actualProvider(f(['cuda', 'cpu']), ['cpu', 'webgpu', 'cuda', 'tensorrt']), 'cuda', 'x64: CUDA loaded without error');
+  assert.equal(actualProvider(f(['cpu']), ['cpu', 'cuda']), 'cpu', 'after the fallback');
+  assert.equal(actualProvider(f(['cuda', 'cpu']), ['cpu']), 'cpu', 'linux/arm64: no CUDA in the build, onnxruntime-node skips it quietly');
+  assert.equal(actualProvider(f(['cuda', 'cpu']), null), 'cuda?', 'unknown: marked with ?');
+  assert.deepEqual(supportedBackends({ listSupportedBackends: () => [{ name: 'cpu', bundled: true }, { name: 'cuda', bundled: false }] }), ['cpu', 'cuda']);
+  assert.equal(supportedBackends({}), null); assert.equal(supportedBackends({ listSupportedBackends: () => { throw new Error('x'); } }), null);
+});
+ok('import: recipe.runtime (pin set / provider) is kept into the take, a malformed one is dropped, and inputHash is the same with or without it', async () => {
+  const job = await baseJob();
+  const plain = await planImport({ zip: await readColabZip(await colabZip(job)), segs, docId: 'doc-1', yomi });
+  const withRt = await planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r) => { for (const k of Object.keys(r.steps)) r.steps[k].recipe.runtime = 'cuda12/cuda'; } })), segs, docId: 'doc-1', yomi });
+  const bad = await planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r) => { r.steps['A:0'].recipe.runtime = '../../x y'; } })), segs, docId: 'doc-1', yomi });
+  assert.deepEqual(withRt.applied.map((x) => x.key), plain.applied.map((x) => x.key), 'runtime does not make a step stale');
+  assert.deepEqual(withRt.marked, []); assert.deepEqual(bad.applied.map((x) => x.key), plain.applied.map((x) => x.key));
+  assert.deepEqual(withRt.applied.map((x) => x.rec.inputHash), plain.applied.map((x) => x.rec.inputHash));
+  for (const it of withRt.applied) {
+    assert.equal(it.rec.recipe.runtime, 'cuda12/cuda');
+    assert.equal(it.rec.inputHash, await inputHash(segs.find((s) => `${s.slideKey}:${s.stepKey}` === it.key)), 'inputHash is computed from the narration only');
+    const e = takeEntry({ file: 'audio/x.mp3', dur: it.rec.dur, cues: it.rec.cues, kind: 'tts', inputHash: it.rec.inputHash, recipe: it.rec.recipe });
+    assert.equal(e.recipe.runtime, 'cuda12/cuda', 'the audio manifest keeps it');
+  }
+  assert.ok(plain.applied.every((x) => !('runtime' in x.rec.recipe)) && !('runtime' in bad.applied.find((x) => x.key === 'A:0').rec.recipe));
+  for (const g of ['cuda13/cpu', 'none/cpu', 'cuda12/cuda?']) assert.equal((await planImport({ zip: await readColabZip(await colabZip(job, { mutate: (r) => { r.steps['A:0'].recipe.runtime = g; } })), segs, docId: 'doc-1', yomi })).applied[0].rec.recipe.runtime, g);
+});
+ok('python: provider_name and runtime_label (Kokoro: the providers the session really has)', () => {
+  const py = `
+import sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+assert E.provider_name(["CUDAExecutionProvider", "CPUExecutionProvider"]) == "cuda"
+assert E.provider_name(["TensorrtExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]) == "tensorrt"
+assert E.provider_name(["CPUExecutionProvider"]) == "cpu" and E.provider_name([]) == "cpu"
+assert E.runtime_label("cuda12", "cuda") == "cuda12/cuda" and E.runtime_label(None, "cpu") == "none/cpu" and E.runtime_label("cuda13", "cuda?") == "cuda13/cuda?"
+try:
+    E.runtime_label("a b", "cpu"); raise SystemExit("no raise")
+except ValueError:
+    pass
+class S:
+    def get_providers(s): return ["CPUExecutionProvider"]
+class K:
+    sess = S()
+    def create(s, *a, **k): return [0.0], 24000
+import types
+E.load_kokoro = lambda *a, **k: (K(), None)
+syn = E.kokoro_synth("m", "v")
+assert syn.provider == "cpu" and syn.providers == ["CPUExecutionProvider"], syn.provider
+print("ok")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8' });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+ok('notebook: cell 3 records the runtime (pin set and provider in use) for both engines', () => {
+  const c3 = JSON.parse(notebook()).cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('#@title 3.')).source.join('');
+  assert.equal((c3.match(/"runtime": E\.runtime_label\(PIN_SET, synth\.provider\)/g) || []).length, 2);
+});
+ok('python: Kokoro asks for CUDA and CPU only (no TensorRT); the phonemizer logger is quieted and nothing else', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/egatari_tts.py'), 'utf8');
+  assert.ok(/def kokoro_providers\(available\)/.test(src) && /providers=kokoro_providers\(rt\.get_available_providers\(\)\)/.test(src) && !/TensorrtExecutionProvider/.test(src.replace(/#.*$/gm, '')), 'session providers');
+  assert.ok(/getLogger\("phonemizer"\)\.setLevel\(logging\.ERROR\)/.test(src) && !/logging\.disable|getLogger\(\)\.setLevel|simplefilter/.test(src), 'phonemizer only');
+  const r = spawnSync('python3', ['-I', '-c', 'import sys; sys.path.insert(0, ' + JSON.stringify(path.join(ROOT, 'colab')) + '); import egatari_tts as E; print(E.kokoro_providers(["TensorrtExecutionProvider","CUDAExecutionProvider","CPUExecutionProvider"]), E.kokoro_providers(["CPUExecutionProvider"]))'], { encoding: 'utf8' });
+  if (r.status === 0) assert.equal(r.stdout.trim(), "['CUDAExecutionProvider', 'CPUExecutionProvider'] ['CPUExecutionProvider']");
+});
+ok('python: Kokoro falls back to the CPU too (load_kokoro), whether onnxruntime raises or quietly drops CUDA', () => {
+  const py = `
+import sys
+sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'colab'))})
+import egatari_tts as E
+class S:
+    def __init__(s, p): s.p = p
+    def get_providers(s): return s.p
+class K:
+    def __init__(s, p): s.sess = S(p)
+logs = []
+AV = ["TensorrtExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
+def boom(): raise RuntimeError("EP Error\\nlibcublasLt.so.13: cannot open shared object file")
+k, n = E.load_kokoro("m", "v", make=boom, cpu_session=lambda: K(["CPUExecutionProvider"]), available=AV, log=logs.append)
+assert k.sess.get_providers() == ["CPUExecutionProvider"] and n and "EP Error" in n and len(logs) == 1, (n, logs)
+k, n = E.load_kokoro("m", "v", make=lambda: K(["CPUExecutionProvider"]), cpu_session=None or (lambda: 1/0), available=AV, log=logs.append)
+assert n and "CUDAExecutionProvider" in n and len(logs) == 2, n
+k, n = E.load_kokoro("m", "v", make=lambda: K(["CUDAExecutionProvider", "CPUExecutionProvider"]), cpu_session=lambda: 1/0, available=AV, log=logs.append)
+assert n is None and len(logs) == 2
+try:
+    E.load_kokoro("m", "v", make=boom, cpu_session=lambda: 1/0, available=["CPUExecutionProvider"], log=logs.append); raise SystemExit("no raise")
+except RuntimeError as e:
+    assert "EP Error" in str(e)
+assert E.cpu_notice("r").endswith("r") and E.first_line(ValueError("\\n a \\nb")) == "a"
+print("ok")
+`;
+  const r = spawnSync('uv', ['run', '--quiet', '--no-project', '--with', 'numpy', '--with', 'scipy', 'python', '-I', '-c', py], { encoding: 'utf8' });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (uv not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+ok('python and JS say the same notice', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'colab/egatari_tts.py'), 'utf8');
+  const m = src.match(/return f"(GPU（CUDA）[^"]*)\{reason\}"/);
+  assert.ok(m, 'cpu_notice in egatari_tts.py'); assert.equal(m[1], cpuNotice(''));
+});
+ok('notebook: every install is pinned to COLAB_PINS (npm and pip), and cell 1 prints the environment (Python, Node, GPU/CUDA, CUDA libraries, pins)', () => {
+  const nb = JSON.parse(notebook()), code = nb.cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
+  const text = code.join('\n');
+  assert.ok(/class _NoHfTokenWarn/.test(text) && /"unauthenticated requests" not in rec\.getMessage\(\)/.test(text) && text.indexOf('_NoHfTokenWarn') < text.indexOf('snapshot_download(HF_REPO'), 'only the HF_TOKEN warning is filtered, before snapshot_download');
+  assert.ok(!/filterwarnings\("ignore"\)|simplefilter\("ignore"\)|setLevel\(logging\.(ERROR|CRITICAL)/.test(text), 'other warnings are not suppressed');
+  const pins = text.match(/^PIN_SETS = (\{.*\})/m);
+  assert.ok(pins, 'PIN_SETS in the notebook'); assert.deepEqual(JSON.parse(pins[1]), COLAB_PINS);
+  assert.deepEqual(Object.keys(COLAB_PINS).sort(), ['cuda12', 'cuda13']);
+  for (const [set, p] of Object.entries(COLAB_PINS)) {
+    assert.deepEqual(Object.keys(p).sort(), ['@huggingface/transformers', 'kokoro-onnx', 'onnxruntime', 'onnxruntime-gpu', 'onnxruntime-node'], set);
+    for (const [k, v] of Object.entries(p)) assert.match(v, /^\d+\.\d+\.\d+$/, `${set} ${k} is an exact version`);
+    assert.equal(p['onnxruntime'], p['onnxruntime-gpu'], `${set}: the CPU and GPU onnxruntime share one version`);
+  }
+  assert.ok(/^PINS = PIN_SETS\[PIN_SET\]$/m.test(text) && /"→ pin set", PIN_SET/.test(text), 'the chosen set is used and printed');
+  assert.ok(/npm i --silent " \+ " "\.join\(f"\{k\}@\{PINS\[k\]\}" for k in \["onnxruntime-node","@huggingface\/transformers"\]\)/.test(text), 'npm uses the pins');
+  assert.ok(/uv pip install [^\n]*f"\{k\}==\{PINS\[k\]\}" for k in \["kokoro-onnx","onnxruntime-gpu","onnxruntime"\]/.test(text), 'pip uses the pins');
+  assert.ok(!/npm i [^\n]*onnxruntime-node @huggingface/.test(text) && !/kokoro-onnx onnxruntime-gpu/.test(text), 'no unpinned install left');
+  const c1 = code.find((c) => c.includes('#@title 1.'));
+  const env = c1.slice(0, c1.indexOf('git", "clone'));
+  for (const re of [/"env: Python", sys\.version/, /"node", "--version"/, /nvidia-smi/, /CUDA Version/, /no nvidia-smi/, /libcublasLt/, /ldconfig -p/, /pick_pin_set\(/, /"env: pinned"/]) assert.match(env, re, 'cell 1 prints the environment and picks the pin set before the clone and the installs');
+  const c3 = code.find((c) => c.includes('#@title 3.'));
+  assert.ok(/env: onnxruntime-node/.test(c3) && /provider libraries/.test(c3) && /Irodori providers in use/.test(c3) && /Kokoro providers in use/.test(c3));
+  const gen = fs.readFileSync(path.join(ROOT, 'tools/make-colab-notebook.mjs'), 'utf8');
+  assert.ok(/CUDA 13/.test(gen) && /libcublasLt\.so\.13/.test(gen) && /libcublasLt\.so\.12/.test(gen) && /更新の仕方/.test(gen), 'the pin says which CUDA it needs, why it exists and how to update it');
+});
+ok('notebook: the pin set follows the CUDA libraries cell 1 finds (fake ldconfig and file lists): .so.13 → cuda13, only .so.12 → cuda12, no GPU or none found → cuda13', () => {
+  const c1 = JSON.parse(notebook()).cells.find((c) => c.cell_type === 'code' && c.source.join('').includes('#@title 1.')).source.join('');
+  const defs = c1.match(/^def cublas_majors[\s\S]*?(?=^print\()/m);
+  assert.ok(defs, 'cublas_majors and pick_pin_set in cell 1');
+  const LD12 = '\\t3 libs found in cache\\n\\tlibcublasLt.so.12 (libc6,x86-64) => /usr/local/cuda/lib64/libcublasLt.so.12\\n\\tlibcublas.so.12 (libc6,x86-64) => /usr/local/cuda/lib64/libcublas.so.12\\n';
+  const LD13 = '\\tlibcublasLt.so.13 (libc6,x86-64) => /usr/local/cuda/lib64/libcublasLt.so.13\\n';
+  const py = `
+import re
+${defs[0]}
+assert cublas_majors("${LD12}", []) == ["12"]
+assert cublas_majors("${LD12}", ["libcublasLt.so.13", "libcublasLt.so.13.0.1", "libcublasLt.so"]) == ["12", "13"]
+assert cublas_majors("", ["libcublasLt.so.12.4.5.8", "libcublasLt.so.12"]) == ["12"]
+assert cublas_majors("libcublas.so.12 (libc6) => /x/libcublas.so.12", []) == []
+assert cublas_majors("${LD13}", []) == ["13"]
+assert pick_pin_set(["12"], True)[0] == "cuda12" and "CUDA 12" in pick_pin_set(["12"], True)[1]
+assert pick_pin_set(["13"], True)[0] == "cuda13"
+assert pick_pin_set(["12", "13"], True)[0] == "cuda13"
+assert pick_pin_set([], True)[0] == "cuda13"
+assert pick_pin_set(["12"], False)[0] == "cuda13" and "no GPU" in pick_pin_set(["12"], False)[1]
+print("ok")
+`;
+  const r = spawnSync('python3', ['-I', '-c', py], { encoding: 'utf8' });
+  if (r.error && r.error.code === 'ENOENT') { console.log('  (python3 not found: skipped)'); return; }
+  assert.equal(r.status, 0, r.stderr + r.stdout);
 });
 
 // ---------------------------------------------------------------- 核の dry-run（Python。uv があれば）

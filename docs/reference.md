@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=1e4df7610b6ef977 -->
+<!-- i18n: pair=reference.ja.md sha256=4fa7424be5fe2b16 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -37,7 +37,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `class="slide sec appendix"` | appendix divider. Page numbers after it read 付録 / Appendix. Without `appendix`, a `sec` slide whose text contains 付録 or Appendix also counts |
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
-| `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px |
+| `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px (by default; a theme's `metrics` moves both) |
 | `class="… layout-tate"` | fully vertical slide: the heading in a vertical column at the right edge, the body in vertical writing to its left, the conclusion as a vertical column at the left edge ([Japanese language arts](#japanese-language-arts-kokugo)) |
 | `id="…"` on a section | slide key (overrides the heading). Use when two headings are the same. See [Slide keys](#slide-keys) |
 | `data-morph` / `data-morph="key"` | morph in from the previous slide / from the slide with that key ([contract §8](contract.md#8-morphs-data-morph)) |
@@ -50,6 +50,7 @@ Contents: [Deck syntax](#deck-syntax) · [Narration](#narration-narrationmd) · 
 | `<html data-mode="lecture">` | default mode when the URL has no `?mode=` |
 | `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/egatari/egatari-studio/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
 | `<html data-feedback="off">` | no feedback link in the `?` help or the presenter view (`DECK.FEEDBACK_URL = null`) |
+| `<html data-favicon="off">` | no tab icon. By default a built deck (normal, `--portable`, `--play-only`) gets the Egatari mark as a `<link rel="icon">` data: URI at the top of `<head>` (light and dark colours in one SVG, no network request); a deck that has its own `<link rel="icon">` keeps it and gets nothing added |
 | `<html data-font="mincho">` | body text in BIZ UDPMincho (`--font-sans: var(--font-mincho)`); see [Japanese language arts](#japanese-language-arts-kokugo) |
 
 Body classes (all colors come from the theme): `.sub` subheading · `.big` main equation · `.note` note (27px) · `.thm` theorem box · `.box` tinted box · `.cols` side-by-side columns · `.arrow` centered arrow line · `.fig` / `.figcap` figure and caption · `.cite` citation (20px) · `.plot` box for `DECK.Plot` · `.readout .num` tabular number · `td.r` right-aligned cell · `.term`/`.blue`, `.emph`/`.red`, `.muted`/`.gray`, `.b` colors and bold · `.tate` vertical writing · `.mincho` Mincho · `.tcy` upright digits in vertical text · `<ruby>` readings ([Japanese language arts](#japanese-language-arts-kokugo)).
@@ -156,25 +157,44 @@ Resolution: `--theme` > `<html data-theme>` > `default`. A name is looked up as 
 | `extends` | parent theme: its `tokens.css` is placed first (looked up next to this theme, then in your theme folders, then in `themes/`) |
 | `logos` | image files (relative to the theme folder; png, jpg, svg, webp) placed on every cover. Inherited through `extends` when omitted; `"logos": []` removes them |
 | `name` | informational |
+| `version` | the theme's version (bundled themes listed in `themes.lock.json`; see “Theme versions” below) |
+| `metrics` | the theme's frame geometry for the quality checker and authoring tools (`"v": 1`; table below). Inherited field by field through `extends`; omitted fields take the defaults. Never used to draw ([contract](contract.md) §12) |
+
+`metrics` fields (stage pixels of 1280×720, numbers, decimals allowed). The defaults are today's `kit/layouts.css`; the limits derived from them are the checker's old constants (565, 680, 1236, 1162, 124, 44). The margins (6 and 4) are policy, not theme values. A theme that moves these boxes in its CSS should declare them (bundled and official library themes must); `node tools/theme-metrics.mjs measure <theme>` prints the block to paste.
+
+| Field | Meaning | Default | Used by the checker as |
+|---|---|---|---|
+| `body.left`, `body.right`, `body.top` | the horizontal `.body` box (left and right as distances from the edges) | 48, 48, 122 | right limit `1280 − body.right + 4` (`bodyRight`) |
+| `body.floor` | how far the body may go down without a conclusion line (`noconcl`; above the page number) | 680 | bottom limit with `noconcl` |
+| `body.line` | the height of one body line, only for the “about n lines” in findings and fix requests | 46 | messages |
+| `concl.top`, `concl.height` | the horizontal conclusion line box | 571, 72 | bottom limit `concl.top − 6` (`bodyBottom`) |
+| `tate.rule` | x of the rule of the vertical heading (`layout-tate`) | 1166 | right limit `tate.rule − 4` (`tateBodyHead`) |
+| `tate.conclRight`, `tate.left` | right edge of the vertical conclusion column; left of the body without a conclusion | 120, 48 | left limit `tate.conclRight + 4` (`bodyConclCol`) / `tate.left − 4` (`bodyLeft`) |
+| `tate.floor` | bottom limit of the vertical body | 680 | bottom limit of `layout-tate` |
+
+A value that is not a number, outside 0–1280 (x) or 0–720 (y), an unknown field, `v` other than 1, or values that do not fit together (the body top below the conclusion line, a body narrower than 320px, …) is a build warning (`theme-metrics: …`) and the parent's (or default) value is used. The checker compares the declaration with what the theme renders (`themeMetricsDrift`, below).
 
 CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit/base.css`, `kit/layouts.css`, the theme's `tokens.css` (parent themes first) and, for decks whose `lang` is not Japanese, `kit/latin.css`. The theme comes after the layout CSS, so a theme rule with the same specificity overrides a layout rule (for example `.cover h1{top:260px}` or `.body{left:96px;right:96px}`); no `html` prefix is needed. The meaning of the color tokens ([contract](contract.md) §12) and the quality checker's color checks still apply to such a theme. This is the same in every build path (CLI, `--dev` and the dev server, `--portable`, `--play-only`, the editor app).
 
 | Token | Meaning |
 |---|---|
 | `--base` | base color; the others derive from it in `themes/default/tokens.css` |
-| `--emph-hue` | hue of `--emph` (default 27, red) |
+| `--emph-hue` | hue of `--emph`: a theme that sets it gets `--emph` = `oklch(0.52 0.21 <hue>)` (`kokugo`: 38). `default` does not set it and fixes `--emph` at `#BE3012` (from 1.1.0) |
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
-| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: lecture highlight) |
+| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: not used by the kit now; kept so that existing themes and decks keep working) |
 | `--series-1` … `--series-4` | figure series colors |
+| `--lecture-dim` | lecture view: opacity of steps not yet reached (0.5; a theme may set it within 0.45–0.5 so that it stays readable on a projector) |
 | `--font-sans`, `--weight-body` | font family and body weight |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
 | `--concl-bg` | conclusion line background (transparent) |
 | `--marker` | list markers in `.body` (`--term`) |
 | `--bar`, `--bar-h` | progress bar color (`--emph`; `--term` during autoplay) and height (3px) |
-| `--stage-bg` | area around the slide and blackout (#2f2f2f) |
+| `--stage-bg` | area around the slide (#2f2f2f) |
 | `--cap-size`, `--cap-bottom`, `--cap-side`, `--cap-max-lines` | caption font size (27px), distance from the bottom (18px), side margins (96px), max lines per caption chunk (3) |
 | `--cap-rate` | caption reading speed when presenting by hand (characters/s; default ja 7, en 15; also `DECK.captionRate`) |
+
+**Theme versions.** A bundled theme that changes how lessons look gets a new `version` in its `theme.json`, and the earlier version stays in `vendor/themes/<name>/<version>/`, listed with its identity hash and the colors that changed in `themes.lock.json` (`npm run themes:check` checks the copies against the lock; in `npm test`). `default` 1.1.0 (`--emph` `#C50516` → `#BE3012`, `--muted` `#6E6E6E` → `#5C5853`) is the first such change; 1.0.0 is `default` as of Studio 0.4.6. `business` 1.0.1 (`--emph` `#C2410C` → `#BA3C05`) darkens its orange so that text on `--emph-tint` reaches 4.5:1. Why these colors: [themes/default/README.md](../themes/default/README.md). Documents at the top of a theme folder (`README*`, `LICENSE*`, `*.md`) are not part of the theme: the build never reads them (not even when listed as a logo) and they are not counted in its hash (spec §6). When a single file carries a user theme or a theme in the lesson's own `themes/` folder, the theme's `LICENSE*` files go with it (`themes/<name>/LICENSE…`, back in the folder on unpack), since a theme's licence (fonts, an institution's logo terms) must travel with its assets (§3.3); `README*` and other `*.md` files are left out. As for components, a lesson is never restyled silently: a single file records each theme's name, version and hash (`index.themes`) and its `egatari.json` pins the version (`"themes": {"default": "1.1.0"}`; unpacking an older file without it pins the version whose hash the file recorded). A build of a folder pinned to an earlier version uses that copy and warns `theme pinned: …` with the colors that would change; `--update-themes` (or setting the pin to the current version) updates it. A folder without a pin follows the current version. The editor rebuilds an opened file with the theme version it recorded and offers **Update theme** ([editor](editor.md)). A theme that extends `default` uses the pinned `default` too. A single file keeps playing with the theme CSS it embeds, whatever the editor's version.
 
 Fonts: Japanese decks (`lang` is `ja` or missing) embed BIZ UDPGothic; other languages embed Source Sans 3 and use BIZ UDPGothic only for characters past U+024F. Only the font files (or, with `fonts/*.ttf` and uv, the glyphs) that the deck uses are embedded. BIZ UDPMincho is embedded as well, for the same characters, only when the deck uses it: `var(--font-mincho)` in the deck, its theme or a component it uses, `class="mincho"`, or `<html data-font="mincho">` (the definition of `--font-mincho` in `kit/layouts.css` does not count). `--font-mincho` is defined with `:where(:root)`, so a theme can override it. Theme `kokugo`: Mincho body text, indigo base, vermilion emphasis, off-white background, captions in BIZ UDPGothic (`--font-cap`).
 
@@ -210,7 +230,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Parameter | Meaning |
 |---|---|
 | `?mode=talk` | default: later steps hidden, current step fades in |
-| `?mode=lecture` | everything visible, later steps faded (0.28), current step highlighted (`.cur`), marks in final state |
+| `?mode=lecture` | everything visible, later steps faded (`--lecture-dim`, default 0.5), the current step and earlier ones at full strength with no mark on the current step (no highlighter, no `.cur` class), marks in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |
@@ -231,10 +251,10 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Home / End | first / last slide |
 | digits + Enter | go to that slide |
 | f | fullscreen |
-| p | presenter view |
+| p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | lecture mode on/off |
-| b | blackout on/off |
+| b | blackout (turns the whole window black, with a faint hint in the corner for 2 s and on mouse move; b again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide; the presenter view shows "Blacked out", and b there toggles it on the main window; the arrows, Space and PageUp/PageDown there also only end it) |
 | s | captions on/off: the current step's narration (display text) at the bottom of the slide |
 | Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |
 | o | overview (arrows, Home/End, Enter/Space/click to go, Esc or o to close) |
@@ -250,13 +270,21 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 
 ### Control bar (mouse move, hides after 2.5 s)
 
-Buttons: previous, next, autoplay/stop, laser, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, lecture, captions, presenter view, fullscreen, help, and a small “AI voice” badge when any step's audio is TTS (format spec §7.3). Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
+Buttons: previous, next, autoplay/stop, laser, pen, fading pen (both pen buttons carry a dot in the current color; while a pen is active, Red/Blue/Black swatches appear after them; click one to pick it, the selected one is aria-pressed), clear ink (this slide, in any tool), overview, lecture, captions, **Listen with read-aloud (not saved as audio)** (only when the browser has speech synthesis and some step has narration but no audio; see [Read-aloud](#read-aloud-device-voice)), presenter view, fullscreen, help, and a small “AI voice” badge when any step's audio is TTS (format spec §7.3). Tab moves into the bar (it stays visible while it has focus), Enter/Space presses the focused button and keeps focus there, Esc returns focus to the slide; a mouse click never leaves focus on a button. It sits in the letterbox below the slide when there are at least 44px, otherwise over the bottom edge and only when the mouse is near the bottom. Hidden in print and video.
 
 The `?` help ends with a **Send feedback** link and the version (for example `v0.2.0`). It opens the feedback form prefilled with the version, browser, OS, deck language and mode only; nothing from the deck is sent. Not shown in video or print, or with `data-feedback="off"`.
 
 ### Captions
 
 `s`, the CC button, or `?captions=1` shows the current step's narration (the display text of `narration.md`, readings and `{mark}` removed) in a bar at the bottom of the slide: `--fg` background, `--bg` text (the quality checker keeps their contrast ≥ 4.5:1). The step is split into sentence groups (about two lines; shorter at larger sizes; overlong sentences are split at commas or word boundaries) and one group is shown at a time, at most `--cap-max-lines` (3) lines; if a group still overflows, its last lines are shown. While presenting by hand (and in autoplay without audio) the groups advance at reading speed (ja 7 characters/s, en 15; `--cap-rate` or `DECK.captionRate`), restart at every step change, and the last group stays. During autoplay with audio, and in `?mode=video&captions=1`, each group is shown for a share of the audio proportional to its length (in video without audio the whole step is shown); the size is set with `Shift+s`, `?capsize=` or the theme's `--cap-size`; in video this depends only on `(i, k, t)`. When the control bar sits over the bottom edge, the captions move up above it while it is shown and back down when it hides. Never printed. `render/render.mjs` opens `?mode=video` without captions; pass the parameter there to burn them in.
+
+### Read-aloud (device voice)
+
+The speaker button in the control bar, **Listen with read-aloud (not saved as audio)**, reads the current step's narration with a voice of this device (the Web Speech API, format spec §5.6). It is for steps **without** audio: on a step with audio the button is greyed out and says that the step has audio (autoplay <kbd>a</kbd> plays it). While it reads, a label at the top left says **Reading aloud (this device's voice)**; moving to another step, <kbd>Esc</kbd>, or pressing the button again stops it.
+
+- Only voices that run on the device are used (`localService === true`, matching the deck's `<html lang>`; the exact region, the device's default voice and well-known natural voices come first; robotic and novelty voices such as Eddy or Bad News come last and are not used for Novice). Network voices are never used, even when the browser offers one as its default, because they send the text off the device. With two local voices for the language, Expert and Novice get different voices; with one, it reads both. Without any, nothing is read and a notice says “This device has no read-aloud voice for this language”.
+- The text is each turn's `ttsParts` in `deck-narration` (format spec §4: the spoken pieces with `{x|y}` readings applied, the same value that enters `inputHash`), joined, with the same text pre-processing as the AI voice (`join-num-counter@1`). Every build writes `ttsParts` (about 3–7 KB per example deck); it is not shown and not used for fonts. A file built before `ttsParts` existed falls back to the display text, and the label then adds “Pronunciations not applied (older file)”. The reading dictionary (`tts/yomi.yaml`) is applied only in the editor's preview (see [the editor](editor.md#narration-audio-audio-panel)) and the AI voice, not in the player.
+- It is not audio of the lesson: nothing is written to the file or a video, the timeline (`DECK.timeline()`) and the rendering at `(i, k, t)` do not change, a step being read lasts as long as the reading, and there is no button in `?mode=video` or print.
 
 ### Accessibility
 
@@ -277,7 +305,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 ### Run-time API (for scripts and tests)
 
-`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready` (true once the components are mounted and the opening position drawn; a deck started while not laid out waits for the stage to get a size, [contract §3](contract.md#3-components-web-components)), `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview, color}` (`color()` is the pen color index 0–2, `color(n)` sets it), `captions(on)` (no argument: is it on), `captionSize(z)` (`"s"` / `"m"` / `"l"`; no argument: the current size; `null` in video), `captionRate` (characters/s), `toast(msg)` (brief notice), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text), `resolveFragment(f)` (→ `{i, k, key, id}` or `{error}`), `fragment(i, k)`, `follow(f)`, `back()`, `links()` (→ `{depth, follow, back}`), `visited(i | key)` ([contract §9](contract.md#9-links-to-slides)). Events on `document` also include `deck:captions` (`detail = {on}`). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto, cause, back}`; `cause` is `control`, `link`, `seek` or `play`, `back` the title of the slide Back returns to or `null`).
+`DECK.seek(i, k, t, from)`, `go(i, k, animate)`, `next()`, `prev()`, `state()` → `{slide, step, max, key, mode}`, `timeline()`, `autoplay(on)`, `stepKey(i, k)`, `marks(i, k)`, `morph(i)`, `slides`, `mode`, `ready` (true once the components are mounted and the opening position drawn; a deck started while not laid out waits for the stage to get a size, [contract §3](contract.md#3-components-web-components)), `NARRATION`, `AUDIO`, `MARKS`, `TIMING`, `VERSION` (the `version` in `package.json`, embedded by the build), `FEEDBACK_URL` (or `null`), `feedbackUrl()` (the prefilled form URL, or `null`), `tools.{mode, setMode, clear, help, overview, color, readAloud}` (`color()` is the pen color index 0–2, `color(n)` sets it; `readAloud()` says whether read-aloud is reading, `readAloud(true / false)` starts or stops it), `ReadAloud` (`kit/core/read-aloud.mjs`: `spokenTurns`, `pickVoices`, …), `TtsNormalize`, `captions(on)` (no argument: is it on), `captionSize(z)` (`"s"` / `"m"` / `"l"`; no argument: the current size; `null` in video), `captionRate` (characters/s), `toast(msg)` (brief notice), `caption()` (the caption text shown, or `null`), `announce()` (the live-region text), `resolveFragment(f)` (→ `{i, k, key, id}` or `{error}`), `fragment(i, k)`, `follow(f)`, `back()`, `links()` (→ `{depth, follow, back}`), `visited(i | key)` ([contract §9](contract.md#9-links-to-slides)). Events on `document` also include `deck:captions` (`detail = {on}`), `deck:tool` (`detail = {mode}`: `"laser"`, `"pen"`, `"vpen"` or `null`, when the presenting tool changes) and `deck:edit` (`detail = {on}`; only the preview of the dev server and the editor app sends it, when edit mode changes: the runtime then turns the presenting tools off, see [dev server](dev-server.md)). Events on `document`: `deck:ready`, `deck:pos` (`detail = {i, k, max, n, key, nextKey, auto, cause, back}`; `cause` is `control`, `link`, `seek` or `play`, `back` the title of the slide Back returns to or `null`).
 
 ## Dev server
 
@@ -294,6 +322,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 | `n` | narration drawer for the current step (and preview of the next) |
 | `c` | open comments; click to jump, "resolve" to close |
 | Alt+click (on a Mac: ⌥ Option+click) | leave a note for the AI (`comments.json`) |
+| `m` (edit mode; the slide controls' pen button reads “Marker” there; `d` also opens it) | marker: draw circles or arrows (several marks for one note while its box is open), then write the note; the marks are kept as `strokes` ([contract §13](contract.md#13-review-notes-the-ink-stroke)) |
 | conflicts | a save is refused if the source changed since it was opened |
 | files written | `deck.html` (only the edited element), `narration.md` (only that step), `comments.json`, `.cache/edits/` (last 30 copies) |
 | endpoints | `GET /` (frame page; `?presenter=1`: presenter window), `GET /preview` (the deck document, sandboxed; the only framable endpoint; served only with the frame page's `cap` and `Sec-Fetch-Dest: iframe`, otherwise a 403 text page), `/deck/<file>` (inert: CSP `sandbox`, non-media as `text/plain` attachments), `/__dev/shell.js`, `/__dev/editor-ui.js`, `/__dev/presenter.js`, `/__dev/events` (SSE), `GET /__dev/info`, `GET /__dev/source?range=a-b`, `POST /__dev/edit`, `GET`/`POST /__dev/narration`, `GET /__dev/comments`, `POST /__dev/comment`, `POST /__dev/comment/resolve` |
@@ -325,7 +354,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | `sev` | `error`, `warn` or `info` |
 | `code` | the kind of result (stable; the list is `kit/check-messages.mjs`) |
 | `rule` | the id of the standard in the authoring guide (`R-title`, `R-fit`, …), or `null` |
-| `data` | the values of the result (e.g. `{"px": 583, "lim": 565, "concl": true}` for a body overflow), used by fix requests to give the amount to cut |
+| `data` | the values of the result (e.g. `{"px": 583, "lim": 565, "concl": true}` for a body overflow; with a theme whose `metrics` differ from the defaults also `conclTop`, `line`, and `lim` for `bodyRight`), used by fix requests to give the amount to cut |
 | `msg` | the whole finding in `lang`: where, what and how to fix |
 
 | Quality check | Severity |
@@ -342,7 +371,8 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | title ends with a colon | error |
 | `layout-tate`: the vertical title does not fit its column | error |
 | conclusion > 35 units (Japanese) / > 70 characters (English); conclusion overflows its box (also the vertical column of `layout-tate`) | error / warn; error |
-| body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one) | error |
+| body below 565px (680px with `noconcl`) or right of 1236px; with `layout-tate`: below 680px, right of 1162px (over the heading column), left of 124px (over the conclusion column; 44px without one). These are the defaults: the limits come from the theme's `metrics` ([Themes](#themes)) | error |
+| the theme's rendered boxes differ from its `metrics` by more than 1px, or a theme without `metrics` (or the deck's own `<style>`) moves the body, conclusion line or vertical columns (`themeMetricsDrift`, once per deck: each field with the declared and rendered value and whether the theme's or the deck's CSS moved it); unusable `metrics` values (`themeMetricsInvalid`, once per deck); the bundled fonts did not load, so the boxes were not measured (`metricsFontLoad`, once per deck; a fallback font is never measured) | warn |
 | body text < 27px, table/plot text < 24px, SVG text < 24px (skipped on slides whose heading contains 文献; ruby readings in `rt` are not counted; text inside an element with `data-annot`, a deliberately small annotation such as `m-kanbun`'s reading-order numbers, is not counted: [contract §10](contract.md#10-quality-check-intended-clipping)) | error |
 | text cut off by a box with `overflow` other than `visible` (`textClipped`); SVG text cut off by its viewport (viewBox) or going off the slide (`svgTextOut`); SVG text overflowing the `<rect>` around it (`svgTextBox`); text outside `.body` going off the slide or overlapping the heading, conclusion line or page number (`outsideBody`). Text inside an element with `data-clip` is not checked by these ([contract §10](contract.md#10-quality-check-intended-clipping)); on a slide with `bodyBottom`, text in `.body` going off the slide is not reported again | warn |
 | on any slide (cover, section divider, `layout-tate`, absolutely positioned layouts): on a slide without `.body`, text going off the 1280×720 slide (`textOffSlide`; with `.body` this is `outsideBody`); a text box overlapping another text box or the slide's decorative band, such as the band at the top of the cover (`textOverlap`: line rectangles of the two boxes intersect by more than 2px in both directions; a KaTeX formula counts as one box, its visual box; a parent and its child, text inside the same component, and SVG text are not compared; on a slide with a body-position error, body text against the heading or conclusion line is not reported again). On a cover or section divider the finding names the allowed children and where a subtitle goes. Text inside `data-clip`, hidden text, KaTeX's MathML and `.sr-only` are not checked | warn |
@@ -411,6 +441,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 | `--portable` | write the single file (default `<working folder>/<lesson title>.ega.html`, at the top of the folder; `-o` sets the path) |
 | `--play-only` | write a play-only copy (default `<working folder>/<lesson title>.play.ega.html`): no source, only the runtime and its audio. Use it for learners when the source or extension data should not be handed out |
 | `--without-live-results` | with `--portable`: leave out attachments that hold live room results (learners' questions and answers). Without it, a single file that contains them prints a warning. Play-only copies never contain them ([Live](distributing.md#live-questions-and-polls-in-class-draft)) |
+| `--update-themes` | rebuild with the current version of bundled themes that `egatari.json` pins to an earlier version (`themes`, below), and rewrite those pins; prints the colors that change |
 
 `npm run portable -- unpack <file> <dir> [--force]` extracts the source and audio into `<dir>` (and writes `audio/manifest.json` from the audio records, so the folder builds and packs again). It reads the file as text and never runs its scripts; it checks the index and every hash, the size limits and the path rules of the spec, refuses to write outside `<dir>` or through symbolic links, and refuses a non-empty `<dir>` unless `--force`. `npm run portable -- pack <dir> [-o file] [--play-only] [--without-live-results]` is `build --portable` on that folder: packing an unpacked folder gives the same file again. `npm run portable -- attach <dir> <results.json> [--en]` adds live room results downloaded from the Live server to the working folder as a `data` attachment (`attachments/live-<room>-<date>.json`, title “授業の部屋の結果（<room>、<date>）”, or in English with `--en`); it refuses anything that is not results of the vendored schema, files over 10 MiB, files that fail the §3.8 content checks and results already attached, and warns (but adds) when the room differs from `extensions.live.room` in `egatari.json`. `npm run portable -- compare <file> <dir>` takes a copy exported from a working folder and that folder (same `docId` in `egatari.json`) and says, by source hash, which was edited after the export: `same`, `copy` (unpack the copy to bring the edits back), `folder` (export again) or `both` (choose which to keep; nothing is merged). It writes nothing; a file without `exportedFrom` or a folder of another lesson is refused.
 
@@ -472,11 +503,13 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/test-app.mjs` | tests the editor app (OPFS folder, edit, narration, comments, external changes, export, presenter) |
 | `node tools/get-fonts.mjs` | download the BIZ UDPGothic and BIZ UDPMincho TTFs into `fonts/` (enables glyph subsetting with uv) |
 | `node tools/test-kokugo-example.mjs` | the kanbun of `examples/kokugo-kanbun` reads without warnings with the library's `m-kanbun` (no browser; the components' own tests are in egatari/components) |
+| `node tools/theme-metrics.mjs measure <theme> [--lang ja\|en]`, `node tools/theme-metrics.mjs check <theme>` | render a theme (a folder or a name, as for `--theme`) and print its `metrics` block measured from the rendered boxes, to paste into `theme.json` (whole pixels, each edge rounded outward to the more lenient limit by less than 1px; exits with 2 without measuring when the bundled fonts do not load); `check` compares the declaration (or the defaults) with the rendered boxes and exits with 1 when they differ |
+| `node tools/test-theme-metrics.mjs [workdir]` | theme `metrics`: validation and inheritance, the theme hash, every bundled theme renders as declared (strict), the limits and `themeMetricsDrift` in the checker and the editor's quick check |
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
-| `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. Prints the path and the slide count |
-| `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
+| `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. `--steps` instead lays out every step of each slide that has a figure or component, side by side, one row per slide (default tile width 320 px; output `<deck>/out/steps.png`) to check a figure's constraints step by step. Prints the path and the slide count |
+| `npm run comment-shots -- <working folder \| deck.html> [id …] [--all]` | for each open comment in `comments.json` (or the listed ids, or all with `--all`), PNGs of its step's final state with its pin (and ink strokes) drawn: `<deck>/.cache/comment-shots/<id>.png` (480×300 of the slide around the pin at 2×, at least the bounding box of its strokes plus 48 px, the whole slide without a pin), `<id>-full.png` and `index.json`. A comment whose step is gone is reported, not shot |
 | `node tools/catalog.mjs` | regenerate `vendor/components/CATALOG.md` |
 | `npm run components:update -- vX.Y.Z [--from <folder>]` | bring in a release of egatari/components into `vendor/components/` and `components.lock.json` (checks sha256 against `manifest.json`; never replaces a version) |
 | `npm run components:check` | `vendor/components` matches `components.lock.json` (no network) |

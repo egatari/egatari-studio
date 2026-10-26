@@ -3,7 +3,7 @@
 // 1. 試験用のデッキ（tools/fixtures/check-overflow/deck.html。#52 の例 2 つ（s-fix52a・s-fix52b）を含む）を kit/check.mjs --json で検査し、
 //    スライドごとに出る体裁の知らせが決めたとおり：m-flow の箱からはみ出す字（svgTextBox）、印のない切れた箱（textClipped）、
 //    スライドの外に出る m-kpi の札の名前（svgTextOut の slide）と札の箱からはみ出す名前（svgTextBox）、viewBox で切れる字（svgTextOut の viewBox）、
-//    本文の外の字（outsideBody）、本文が下にはみ出すスライドでは本文の中の図の字がスライドの外に出ても bodyBottom だけ、図の中の小さい字（smallSvgText）、縦組みの見出しと結論の列（tateTitle・conclOverflow）。
+//    本文の外の字（outsideBody）、本文が下にはみ出すスライドでは本文の中の図の字がスライドの外に出ても bodyBottom だけ、図の中の小さい字（smallSvgText）、縦組みの見出しと結論の列（tateTitle・conclOverflow）、読み上げ用の隠した一覧（1×1 の箱・clip-path・clip の中の <li>）は数えず、隣の本当のはみ出しは bodyBottom。
 //    わざと切る印（data-clip。kit/core/layout-scan.mjs の CLIP_ATTR）を付けたもの（s-fix52b・s-flowclip）は何も出さない。新しい知らせは警告
 // 2. 知らせの言葉（kit/check-messages.mjs）：新しい code は日本語と英語があり、規格は R-fit、textClipped は印の名前を言う
 // 3. ブラウザ版の品質チェック（app/frame-shim.js を app/main.js と同じく withLayoutScan で包み、プレビューと同じ文書で動かす）：
@@ -55,6 +55,9 @@ const EXPECT = {
   's-annotsvg': ['smallSvgText'],
   's-tate': ['conclOverflow', 'tateTitle'],
   's-bodyover': ['bodyBottom'],
+  's-srlist': [],
+  's-srover': ['bodyBottom'],
+  's-srmarkup': [],
 };
 const codesBy = (list, idOf) => {
   const m = {};
@@ -97,6 +100,15 @@ await t(`check: ${ANNOT_ATTR} exempts only what a component makes, and only the 
 await t('check: a body that overflows at the bottom is one error, not also a warning for each figure label it pushes off the slide', () => {
   const xs = J.results.filter((x) => x.id === 's-bodyover' && x.sev !== 'info' && x.code !== 'narrMissing');
   assert.deepEqual(xs.map((x) => x.sev + ' ' + x.code), ['error bodyBottom']);
+});
+await t('check: a visually hidden list (1×1 overflow box, clip-path inset(50%), clip rect(0 0 0 0)) is not measured, but a real overflow next to it is', () => {
+  const xs = (id) => J.results.filter((x) => x.id === id && x.sev !== 'info' && x.code !== 'narrMissing').map((x) => x.sev + ' ' + x.code);
+  assert.deepEqual(xs('s-srlist'), []);                // no bodyBottom from the <li> boxes, no smallText for the 16px <li>
+  assert.deepEqual(xs('s-srmarkup'), []);
+  assert.deepEqual(xs('s-srover'), ['error bodyBottom']);
+  // the reported bottom is the visible 400px box, not the hidden <li> far below it
+  const r = J.results.find((x) => x.id === 's-srover' && x.code === 'bodyBottom');
+  assert.ok(r.data.px > 565 && r.data.px <= 720, 'bodyBottom px ' + r.data.px);
 });
 await t('check: viewBox and slide edges are told apart; text outside the body says what it hits', () => {
   assert.equal(J.results.find((x) => x.id === 's-viewbox' && x.code === 'svgTextOut').data.edge, 'viewBox');

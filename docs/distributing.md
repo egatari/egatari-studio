@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=20fb37f5663309bf -->
+<!-- i18n: pair=distributing.ja.md sha256=17504f86b750df66 -->
 # Handing a lesson to learners
 
 English | [日本語](distributing.ja.md)
@@ -12,19 +12,45 @@ A lesson goes out as one HTML file: the [single file (`.ega.html`)](reference.md
 | LMS (Moodle, Canvas, Classroom, …) | “Download the file, then open it.” | Upload it as a file resource and, if the LMS offers it, set the display to download. Shown inside the LMS page, scripts may be blocked and the lesson may not play |
 | Your own web space (a school web server, GitHub Pages, …) | the URL | Opens directly, also on phones and tablets. Any static hosting works; nothing runs on the server |
 
+**Where a single file runs** (checked against the vendors' documentation, 2026-10-23; not tried on every device):
+
+| Place | Does it run? |
+|---|---|
+| Downloaded and opened in a browser on a PC | Runs |
+| Web hosting (a school web server, GitHub Pages, Cloudflare Pages, …) | Runs |
+| Moodle (file resource, “open” or “embed”) | Probably runs; not verified on a real Moodle. A learner's submission may be forced to download |
+| Google Drive and Google Classroom previews | Does not run (the preview shows the file's text) |
+| SharePoint, OneDrive and Teams | Does not run (an HTML file with script is downloaded instead) |
+| The iPhone and iPad Files app | Does not run (Quick Look runs no JavaScript) |
+
+- **Give learners the play-only copy** (`--play-only`), and keep the editable file yourself.
+- **A public URL is visible to anyone who has it.** Web hosting has no sign-in; do not put anything there that only your class should see.
+
 - **Phones and tablets.** The quick preview of a file app (for example the iPhone Files app) may not run the lesson. Open the file in the browser, or give a URL. We have not yet checked every device and route; please tell us what worked for you ([feedback](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml))
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way learners will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the single file or the working folder to edit later; a play-only copy cannot be edited
-- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-verified --> Verified: 2026-10-21, Irodori, Colab T4 GPU (one run in the author's environment). Kokoro and CPU not yet. **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+- **Audio without WebGPU.** The editor can make the narration audio in Colab on a computer without WebGPU ([Make the audio in Colab](editor.md#make-the-audio-in-colab-when-there-is-no-webgpu)). <!-- colab-verified --> Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s). **Privacy:** in Colab the narration text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+
+## Presenting in class
+
+- **Order.** Open the presenter view first (`p`), then move the audience window to the projector and make it fullscreen (`f`). The presenter view stays on your own screen.
+- **Leaving the presenter view.** In the presenter view, Esc (when no drawing tool is on), `p` or **Close presenter view (p)** close it and return focus to the main window; if it is fullscreen, they only leave fullscreen. `p` in the main window also closes it. While the presenter window does not have focus, a large “Click here to control” overlay takes the first click.
+- **Stuck in the presenter view?** If it covers the screen and its keys do not respond, on a Mac press cmd+Tab to get back to the main window and press `p` (on Windows, Alt+Tab; not yet verified on Windows). The key list (<kbd>?</kbd>) shows the same tip.
+- **Blackout.** `b` turns the whole window black. A faint “Blacked out — press b or Esc to return” hint shows in the corner for 2 s, and again when you move the mouse. `b`, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End end the blackout without moving the slide; press the key again to go on.
 
 ## Live (questions and polls in class, draft)
 
+Live is a preview: the results file format may change until v0.4.7.
+
 An Egatari file (play only) can carry **Live** ([format extension `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md), draft): during the live time you choose, participants who open the file can send questions and answer polls from the lesson itself, without an app or an account. It is the only part of a lesson that uses the network, and only after the participant presses **Join**.
 
-1. **Create a Live** on the host page of the Live server (default `https://live.egatari.org`; the service and its protocol are [egatari/live](https://github.com/egatari/live)). Choose the live time (start and end). Bookmark the host link it shows once (it carries the code that controls the Live; there is no recovery). **Use a waiting room** lets in only the people the host admits.
-2. In the editor, **Export ▾ → Distribute with Live (questions and polls)…**. Paste the **Settings to paste into Egatari Studio** copied on the host page (Live ID, join code, live time). Turn questions on or off for the whole lesson and add polls per step (a question and 2–6 choices; **Use the step in the preview** takes the step on screen). Each poll gets a label that says where it is, such as “Slide 4 'XML の壁', step 1” (slide number, slide heading cut to about 24 characters, step number, all counted from 1); the label is shown in the step suggestions and the poll list, and the step key (for example `s-cjatth:0`) stays in the tooltip. The label follows the step when you change it. Polls saved before labels existed get one when the panel opens, if their slide is still in the deck; otherwise they are shown by the key, as `s-cjatth · step 1`. **To fix before exporting** lists what is still missing, in the editor's language.
-3. **Copy poll settings** and paste them into **Poll settings** on the host page, so the Live knows the same polls (it refuses votes for questions, polls or choices it does not know). The JSON carries the labels (`label`, display text only; the keys are unchanged), so the host page and the join page show “Slide 4 'XML の壁', step 1” instead of the step key, and the results JSON keeps them. A Live whose polls have no labels shows each poll by its step key (`s-cjatth · step 1`, “whole lesson” for `*`).
-4. **Export with Live…** writes the Egatari file (play only). Hand it out as usual (download, then open in a browser).
+1. In the editor, **Export ▾ → Distribute with Live (questions and polls)…** and press **Make the Live ID and join code here** (the editor makes them from random numbers; it still connects nowhere). Set the live time (start and end), turn questions on or off and add polls (see step 3 for labels). The panel then shows **one string**: **Copy the string**, **Open the host page**, paste it there once, pass the check and press **Create this Live**. The string already holds the Live ID, the join code, the live time and the questions and polls, so there is nothing else to enter on the host page and nothing to paste back into the editor. Bookmark the host link the host page shows once, then export (step 5). The string also holds a secret that is not in the exported file, so someone with only the file cannot create the Live and become its host; do not hand the string to participants. **Save the setup string** (next to **Copy the string**) downloads it as a small text file (`egatari-live-setup-<Live ID>.txt`); keep it like the host link. Save it if you may close the editor before pasting: the editor cannot show the same string again, and files already handed out would point at a Live nobody can create. The string is never written into the lesson, `egatari.json` or any export. To change the live time after creating the Live, make a new Live ID and join code and paste again. If the editor was closed in between (it does not keep the join code), paste the host link page's **Settings to paste into Egatari Studio** under the earlier way to export for the same Live.
+
+   **The earlier way** (under **If you created the Live on the host page first** in the same panel) stays: steps 2–4 below.
+2. **Create a Live** on the host page of the Live server (default `https://live.egatari.org`; the service and its protocol are [egatari/live](https://github.com/egatari/live)). Choose the live time (start and end). Bookmark the host link it shows once (it carries the code that controls the Live; there is no recovery). **Use a waiting room** lets in only the people the host admits.
+3. In the editor, **Export ▾ → Distribute with Live (questions and polls)…**. Paste the **Settings to paste into Egatari Studio** copied on the host page (Live ID, join code, live time). Turn questions on or off for the whole lesson and add polls per step (a question and 2–6 choices; **Use the step in the preview** takes the step on screen). Each poll gets a label that says where it is, such as “Slide 4 'XML の壁', step 1” (slide number, slide heading cut to about 24 characters, step number, all counted from 1); the label is shown in the step suggestions and the poll list, and the step key (for example `s-cjatth:0`) stays in the tooltip. The label follows the step when you change it. Polls saved before labels existed get one when the panel opens, if their slide is still in the deck; otherwise they are shown by the key, as `s-cjatth · step 1`. **To fix before exporting** lists what is still missing, in the editor's language.
+4. **Copy poll settings** and paste them into **Poll settings** on the host page, so the Live knows the same polls (it refuses votes for questions, polls or choices it does not know). The JSON carries the labels (`label`, display text only; the keys are unchanged), so the host page and the join page show “Slide 4 'XML の壁', step 1” instead of the step key, and the results JSON keeps them. A Live whose polls have no labels shows each poll by its step key (`s-cjatth · step 1`, “whole lesson” for `*`).
+5. **Export with Live…** writes the Egatari file (play only). Hand it out as usual (download, then open in a browser).
 
 What the participant's copy does:
 
@@ -39,6 +65,8 @@ What the participant's copy does:
 - **Restricted connections.** The copy has a content security policy whose `connect-src` is exactly the Live server (`https://` and `wss://` of its host); the player also checks that the WebSocket address has the declared origin. Nothing (scripts, styles, images) is loaded from the server.
 
 The lesson itself keeps the settings without the join code (`extensions.live` in `egatari.json`, and in the single file's index); the join code goes only into the exported copy. Anyone holding the copy can join during the Live; **Change join code** on the host page locks out copies that leaked (they then show a clear message). From the command line: `node kit/build.mjs <deck> --play-only --live room.json` (`room.json` is the settings from the host page's Copy button; polls come from `egatari.json`'s `extensions.live`, otherwise from `room.json`).
+
+**Questions (draft).** A small **?** at the bottom right opens the question box from any slide. The question is tied to the step on screen (the box says which slide and step) and to this version of the lesson; **Circle** lets the participant trace around what they mean on the slide (optional; Esc stops, changing step clears it). Only the host sees questions; without a name they arrive without one. Next to **?**, **I don't follow** sends a one-tap mark for the step on screen, without text (tap again to take it back); the host sees how many people marked each step. On the host page the host can group similar questions and send a short reply, which reaches only the people who asked, or also everyone if the host ticks **Also show to all participants**. Replies appear in the pane under **Replies from the host**, also after reopening the file during the Live. **Distribute with Live** has a checkbox for **I don't follow** (on by default).
 
 **Rehearse before class:** create a Live whose live time starts now, export, open the copy on two devices, join, send a question and vote, and check the host page shows them. When handing out, also share the join link for phones and tablets: the host page's **Text to share** has a ready-to-paste message.
 

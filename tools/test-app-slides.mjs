@@ -361,7 +361,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
     watch(pe, 'slides-en');
     await pe.goto(BASE + '?lang=en');
     await pe.waitForSelector('#drop');
-    ok(await pe.textContent('#b-slides') === 'Slides' && await pe.getAttribute('#b-slides', 'title') === 'Open the slide list: add, duplicate, delete and reorder slides' && await pe.textContent('#sl-add') === '+ Add ▾', 'slides (en): English labels');
+    ok(await pe.textContent('#b-slides') === 'Slides' && await pe.getAttribute('#b-slides', 'title') === 'Open the slide list: add, duplicate, delete and reorder slides' && await pe.textContent('#sl-add') === 'Insert slide ▾', 'slides (en): English labels');
     await pe.close();
   } finally { await ctx.close(); }
 }

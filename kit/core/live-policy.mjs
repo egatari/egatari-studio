@@ -15,6 +15,8 @@
 //                                          doc：{framed, protocol, origin, pathname, csp: [CSP の <meta> の content…]}（再生器が location と DOM から集める）
 //   LP.joinUrl(live)                        参加用のページ（egatari/live の /join#room=…&key=…）。鍵は # の後ろだけ（アドレスとしてサーバーに送られない）
 //   LP.offerJoinLink(ctx, doc)              つなげない文書で「ブラウザで参加する」を出すか（編集アプリのプレビュー・この派生の決まりでない文書では出さない）
+//   LP.normStrokes(v)                       質問に付ける「囲んだところ」の線を、Studio のマーカー（docs/contract.md §13）と同じ規則で整える。
+//                                          [[[x, y], …], …]（舞台の座標 1280 × 720、0.1 に丸め、続く同じ点なし、1 本 2〜500 点・20 本・合わせて 2000 点まで）か null
 // opts.allowLoopback：ループバックの http: の endpoint を許す（Node の試験と開発版の書き出しだけ。kit/core/live.mjs）
 export function LivePolicy(opts) {
   // 開発版の再生器だけ true（kit/core/live.mjs の liveRuntime(…, {devLoopback: true}) が書き換える）。配る写しの再生器では常に false
@@ -28,9 +30,12 @@ export function LivePolicy(opts) {
     ref: /^[A-Za-z0-9_-]{1,32}$/,
     step: /^(\*|[^\u0000-\u001f\u007f:]{1,80}:[^\u0000-\u001f\u007f:]{1,16})$/,
     datetime: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/,
+    sha256: /^[0-9a-f]{64}$/,
   };
   // windowRoomMs：部屋のサービス（egatari/live v1）が作れる窓の長さの上限（3 時間）。再生器は長い窓も読む（windowMs）
-  var LIMITS = { prompt: 300, choice: 100, label: 80, question: 500, name: 40, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000 };
+  // stroke*：質問に付ける「囲んだところ」（egatari/live の limits.js と Studio のマーカー §13 と同じ）。reply：ホストの返事の長さ
+  var LIMITS = { prompt: 300, choice: 100, label: 80, question: 500, name: 40, reply: 200, choicesMin: 2, choicesMax: 12, activities: 64, windowMs: 7 * 24 * 3600 * 1000, windowRoomMs: 3 * 3600 * 1000,
+    stageW: 1280, stageH: 720, strokes: 20, strokePoints: 500, strokesPoints: 2000 };
   // 窓の両端のゆとり（サーバーと同じ 2 分。仕様は 5 分まで許す）
   var SKEW_MS = 2 * 60 * 1000;
   // 切断の番号（egatari/live の protocol/close-codes.json）。retry はサーバーの表の値。この再生器のふるまいは plan が決める
@@ -69,13 +74,18 @@ export function LivePolicy(opts) {
     var wantKey = !!(opts && opts.key), maxW = opts && opts.maxWindowMs > 0 ? opts.maxWindowMs : LIMITS.windowMs, e = [];
     var add = function (code, path, params, text) { e.push(problem(code, path, params, text)); };
     if (!isObj(live)) return [problem('notObject', 'live', {}, 'live: not an object')];
-    var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1 };
+    // sourceSha256：書き出す派生にだけ（教材の版。play-only の deck-meta からは消えるので、質問を教材のその版に結び付けるために拡張に入れる）
+    var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1, sourceSha256: 1 };
     for (var k in live) if (own(live, k) && !own(known, k)) add('unknownMember', 'live.' + k, { member: k }, 'live.' + k + ': unknown member');
     if (live.v !== 1) add('version', 'live.v', {}, 'live.v: must be 1');
     if (!parseEndpoint(live.endpoint)) add('endpoint', 'live.endpoint', {}, 'live.endpoint: not an https origin (e.g. https://live.example.org)');
     if (!str(live.room) || !RE.room.test(live.room)) add('room', 'live.room', {}, 'live.room: not a room id (r- and 8 characters a-z, 2-7)');
     if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) add('key', 'live.key', {}, 'live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
     else if (own(live, 'key')) add('keyStored', 'live.key', {}, 'live.key: the key must not be stored in the lesson (it goes only into the exported file)');
+    if (own(live, 'sourceSha256')) {
+      if (!wantKey) add('unknownMember', 'live.sourceSha256', { member: 'sourceSha256' }, 'live.sourceSha256: only in the exported file (the lesson has its own sourceSha256)');
+      else if (!str(live.sourceSha256) || !RE.sha256.test(live.sourceSha256)) add('sourceSha256', 'live.sourceSha256', {}, 'live.sourceSha256: not 64 lowercase hex digits');
+    }
     var w = live.window;
     if (!isObj(w)) add('windowMissing', 'live.window', {}, 'live.window: missing');
     else {
@@ -105,14 +115,17 @@ export function LivePolicy(opts) {
         if (!str(x.id) || !RE.activity.test(x.id)) add('activityId', at + '.id', P, at + '.id: 1-32 characters A-Z a-z 0-9 _ -');
         else if (own(ids, x.id)) add('activityIdTwice', at + '.id', P, at + '.id: "' + x.id + '" is used twice');
         else ids[x.id] = 1;
-        if (x.kind === 'qa') {
+        if (x.kind === 'confused') {
+          // 「わからない」の一押し：文も選択肢もない
+          if (own(x, 'choices') || own(x, 'prompt')) add('confusedMembers', at, P, at + ': a confused activity has no prompt or choices');
+        } else if (x.kind === 'qa') {
           if (own(x, 'choices')) add('qaChoices', at, P, at + ': a qa has no choices');
           if (own(x, 'prompt') && (!str(x.prompt) || x.prompt.length > LIMITS.prompt)) add('qaPrompt', at + '.prompt', { step: sk, index: i, id: P.id, n: LIMITS.prompt }, at + '.prompt: at most ' + LIMITS.prompt + ' characters');
         } else if (x.kind === 'poll') {
           if (!str(x.prompt) || !x.prompt.trim() || x.prompt.length > LIMITS.prompt) add('pollPrompt', at + '.prompt', { step: sk, index: i, id: P.id, n: LIMITS.prompt }, at + '.prompt: 1-' + LIMITS.prompt + ' characters');
           if (!Array.isArray(x.choices) || x.choices.length < LIMITS.choicesMin || x.choices.length > LIMITS.choicesMax) add('pollChoices', at + '.choices', { step: sk, index: i, id: P.id, min: LIMITS.choicesMin, max: LIMITS.choicesMax }, at + '.choices: ' + LIMITS.choicesMin + '-' + LIMITS.choicesMax + ' choices');
           else for (var c = 0; c < x.choices.length; c++) if (!str(x.choices[c]) || !x.choices[c].trim() || x.choices[c].length > LIMITS.choice) add('pollChoice', at + '.choices[' + c + ']', { step: sk, index: i, id: P.id, c: c, n: LIMITS.choice }, at + '.choices[' + c + ']: 1-' + LIMITS.choice + ' characters');
-        } else add('activityKind', at + '.kind', P, at + '.kind: "qa" or "poll"');
+        } else add('activityKind', at + '.kind', P, at + '.kind: "qa", "confused" or "poll"');
         // label：ステップの表示名（任意。「4 枚目『…』・ステップ 1」。表示だけの字で、鍵ではない）
         if (own(x, 'label') && (!str(x.label) || x.label.length > LIMITS.label)) add('activityLabel', at + '.label', { step: sk, index: i, id: P.id, n: LIMITS.label }, at + '.label: at most ' + LIMITS.label + ' characters');
         for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1, label: 1 }, xk)) add('unknownMember', at + '.' + xk, { step: sk, index: i, id: P.id, member: xk }, at + '.' + xk + ': unknown member');
@@ -213,7 +226,52 @@ export function LivePolicy(opts) {
     for (var i = 0; i < csp.length; i++) if (/(?:^|;)\s*connect-src\s+'none'\s*(;|$)/i.test(str(csp[i]) ? csp[i] : '')) return false;
     return true;
   }
-  return { RE: RE, LIMITS: LIMITS, SKEW_MS: SKEW_MS, CODES: CODES, BACKOFF: BACKOFF, RETRY_MIN_MS: RETRY_MIN_MS,
+  // ---- 囲んだところ（docs/contract.md §13 の normStrokes と同じ規則。kit/core/comment-core.mjs と同じ答え）
+  var r1 = function (v) { return Math.round(v * 10) / 10; };
+  function cleanStroke(s) {
+    if (!Array.isArray(s) || s.length > 5000) return null;
+    var out = [];
+    for (var i = 0; i < s.length; i++) {
+      var p = s[i];
+      if (!Array.isArray(p) || p.length < 2 || typeof p[0] !== 'number' || typeof p[1] !== 'number' || !isFinite(p[0]) || !isFinite(p[1])) continue;
+      var x = r1(Math.min(LIMITS.stageW, Math.max(0, p[0]))), y = r1(Math.min(LIMITS.stageH, Math.max(0, p[1])));
+      var q = out[out.length - 1];
+      if (!q || q[0] !== x || q[1] !== y) out.push([x, y]);
+    }
+    return out.length >= 2 ? out : null;
+  }
+  // Ramer–Douglas–Peucker（両端を残す）
+  function rdp(P, eps) {
+    if (P.length <= 2) return P.slice();
+    var keep = new Array(P.length), stack = [[0, P.length - 1]];
+    keep[0] = keep[P.length - 1] = true;
+    while (stack.length) {
+      var se = stack.pop(), a = se[0], b = se[1], ax = P[a][0], ay = P[a][1], dx = P[b][0] - ax, dy = P[b][1] - ay, L = Math.hypot(dx, dy), best = -1, bi = -1;
+      for (var i = a + 1; i < b; i++) {
+        var d = L > 0 ? Math.abs(dy * (P[i][0] - ax) - dx * (P[i][1] - ay)) / L : Math.hypot(P[i][0] - ax, P[i][1] - ay);
+        if (d > best) { best = d; bi = i; }
+      }
+      if (best > eps) { keep[bi] = true; stack.push([a, bi], [bi, b]); }
+    }
+    var out = [];
+    for (var j = 0; j < P.length; j++) if (keep[j]) out.push(P[j]);
+    return out;
+  }
+  function simplify(P, max) { var r = P; for (var eps = 0.25; r.length > max; eps *= 2) r = rdp(P, eps); return r; }
+  function normStrokes(v) {
+    if (!Array.isArray(v) || v.length > 200) return null;
+    var seen = 0;
+    for (var i = 0; i < v.length; i++) if (Array.isArray(v[i])) seen += v[i].length;
+    if (seen > 20000) return null;
+    var raw = [];
+    for (var j = 0; j < v.length && raw.length < LIMITS.strokes; j++) { var c = cleanStroke(v[j]); if (c) raw.push(simplify(c, LIMITS.strokePoints)); }
+    if (!raw.length) return null;
+    var total = function (a) { var n = 0; for (var k = 0; k < a.length; k++) n += a[k].length; return n; };
+    var r = raw;
+    for (var eps = 0.25; total(r) > LIMITS.strokesPoints; eps *= 2) r = raw.map(function (P) { return P.length > 2 ? rdp(P, eps) : P; });
+    return r;
+  }
+  return { RE: RE, LIMITS: LIMITS, normStrokes: normStrokes, SKEW_MS: SKEW_MS, CODES: CODES, BACKOFF: BACKOFF, RETRY_MIN_MS: RETRY_MIN_MS,
     validate: validate, inWindow: inWindow, windowStart: windowStart, windowEnd: windowEnd, closeInfo: closeInfo, plan: plan,
     socketUrl: socketUrl, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor,
     docContext: docContext, cspOk: cspOk, joinUrl: joinUrl, offerJoinLink: offerJoinLink };

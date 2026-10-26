@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=e8e39faa10761308 -->
+<!-- i18n: pair=README.ja.md sha256=11f935a91a03b164 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -27,7 +27,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and a
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Attention marks**: `{mark:ID|circle}` in the narration draws a hand-drawn underline, circle, box, spotlight or laser dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
-- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, the current step highlighted), video (`?mode=video`)
+- **Three modes from one source**: talk (`?mode=talk`), lecture (`?mode=lecture`: everything visible, later steps dimmed), video (`?mode=video`)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, control bar
 - **Themes**: one base color per theme (`themes/<name>/tokens.css`). Components only use theme variables
 - **Quality control**: the standards (R-fit, R-steps, …) say what a deck must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, narration coverage, contrast, component determinism, marks and morphs
@@ -152,7 +152,7 @@ The same editing as the dev server, as a web page that opens a single file (`.eg
 - **Open a single file, no folder needed:** “Open single file…” on the first screen (or dropping the file) opens a [single file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as new lesson…” writes it under a new lesson id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A narration, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Export single file” writes one. Works in any current browser (saving downloads where there is no file picker)
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the narration, Alt / ⌥ Option + click for a note for the AI (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
 - **Open a working folder:** drop the working folder (the one with `deck.html`) on the page, or press “Open working folder…”, and let the browser edit that folder. "New deck" makes `deck.html` and `narration.md` from the same template as `npm run new`. Recent working folders are listed on the first screen.
-- **Draft with a chat AI, no coding tool needed:** paste the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT, then paste the whole reply into “Paste AI output…”: the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quality check. “Copy fix request for your AI” in the quality check panel writes the findings, the standards they break and the current files for the same chat; its reply replaces the current deck (keeping its id and audio)
+- **Draft with a chat AI, no coding tool needed:** in “New…” → “Have a chat AI write it”, write what you want, copy the [instructions for the AI](docs/authoring-with-llms.md) into claude.ai, Gemini or ChatGPT and send, then paste the whole reply (or its two blocks one at a time): the editor takes out `deck.html` and `narration.md`, gives the slides ids, opens the deck as a new single file (scripts in a reply ask before running, like any opened file) and runs the quality check. “Copy fix request for your AI” in the quality check panel writes the findings, the standards they break and the current files for the same chat; “Revise…” brings its reply into the current deck (keeping its id and audio); “Insert slide…” can have the AI add slides after the one you select
 - **Narration audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the narration changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with browser TTS (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#narration-audio-audio-panel)). In a single file this is saved without rebuilding
 - **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
@@ -165,6 +165,8 @@ Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run che
 Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 ## Using it with Claude Code
+
+Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
 Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
 

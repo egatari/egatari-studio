@@ -15,11 +15,13 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
-import { readLock, vendorDir, pinsForIndex, versionForSha } from './components-lock.mjs';
+import { readLock, vendorDir, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
+import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 import { isLiveResults } from './live-results.mjs';
+import { updateConfig, merge as configMerge } from './config-file.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -589,21 +591,22 @@ export function configAttachmentsMatch(conf, index) {
   return sameJson(conf[FORMAT.ATTACH_KEY], want);
 }
 // 1 ファイルを作業フォルダに出すときの設定のファイル（§3.3・§3.8）：docId を残し、索引の権利の表示を写し、index.attachments を書く
-// （書き直す要がなければ null）。conf：今の設定のファイル（parse したもの。なければ null）
+// （書き直す要がなければ null）。text：今の設定のファイルの文字列（なければ null）。ほかの項目はバイトのまま（kit/core/config-file.mjs）
 const RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
-export function folderConfig(index, conf) {
+export function folderConfig(index, text) {
   const meta = isObj(index.metadata) ? index.metadata : {};
   const list = Array.isArray(index[FORMAT.ATTACH_KEY]) ? index[FORMAT.ATTACH_KEY] : null;
-  let c = conf, changed = false;
-  if (!isObj(c)) { c = { docId: index.docId, metadata: { ...meta } }; changed = true; }
+  const c = text === null || text === undefined ? null : parseJsonStrict(text);
+  const patch = {};
+  if (!isObj(c)) { patch.docId = index.docId; patch.metadata = { ...meta }; }
   else {
-    const cm = isObj(c.metadata) ? { ...c.metadata } : {};
-    let mc = false;
-    for (const k of RIGHTS) if (own(meta, k) && !own(cm, k)) { cm[k] = meta[k]; mc = true; }
-    if (mc) { c = { ...c, metadata: cm }; changed = true; }
+    const cm = isObj(c.metadata) ? c.metadata : {};
+    const add = Object.fromEntries(RIGHTS.filter((k) => own(meta, k) && !own(cm, k)).map((k) => [k, meta[k]]));
+    if (Object.keys(add).length) patch.metadata = isObj(c.metadata) ? configMerge(add) : add;
   }
-  if (list && list.length && !own(c, FORMAT.ATTACH_KEY)) { c = { ...c, [FORMAT.ATTACH_KEY]: list }; changed = true; }
-  return changed ? JSON.stringify(c, null, 2) + '\n' : null;
+  if (list && list.length && !(isObj(c) && own(c, FORMAT.ATTACH_KEY))) patch[FORMAT.ATTACH_KEY] = list;
+  if (!Object.keys(patch).length) return null;
+  return updateConfig(isObj(c) ? text : null, patch);
 }
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
@@ -617,6 +620,7 @@ export function folderConfig(index, conf) {
 //                          ないとき（1 ファイルの保存・貼り付け・deck.html だけ）は書かず、carry に exportedFrom があればそのまま残す
 //                          （identity：新しい docId の教材として保存するときは外す。§3.1）
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
+//   legacyNoThemePins      1 ファイルの egatari.json に themes を書かない（v0.4.6 までの Studio が書いた 1 ファイルを作る。試験用）
 //   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
 //                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
@@ -658,15 +662,24 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   let componentVersions = opts.componentVersions;
   const carryLock = isObj(opts.carry) && Array.isArray(opts.carry.components) && opts.carry.components.length ? readLock(env0, env0.ROOT) : null;
   if (!componentVersions && carryLock) componentVersions = pinsForIndex(carryLock, opts.carry.components).pins;
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
+  // 記録したテーマも、sha256 の合う版で組む（同梱のテーマの版の固定 themes.lock.json。kit/core/themes-lock.mjs。黙って新しい色にしない）。
+  // opts.updateThemes（編集アプリの「テーマを更新」）なら今の版
+  let themeVersions = opts.themeVersions;
+  if (!themeVersions && !opts.updateThemes && isObj(opts.carry) && Array.isArray(opts.carry.themes) && opts.carry.themes.length) {
+    let tl = null;
+    try { tl = readThemesLock(env0, env0.ROOT); } catch { tl = null; }
+    if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
+  }
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
 
   // 原稿のファイル（依存の閉包）と、部品庫・テーマ庫の参照
   const files = dict();
-  const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes');
-  const regComp = new Map(), regTheme = new Map();
+  const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes'), vThemeDir = themesVendorDir(P, env.ROOT);
+  const regComp = new Map(), regTheme = new Map(), regThemeVer = new Map();
+  const userThemeRoots = new Map();   // 1 ファイルに入れる利用者のテーマのフォルダ → その利用者のテーマのフォルダ（LICENSE* を足すため）
   for (const p of [...reads].sort()) {
     if (inDeck(p)) {
       const rp = rel(p);
@@ -679,17 +692,59 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       const [name, version] = P.relative(compDir, p).split(P.sep);
       if (!regComp.has(name)) regComp.set(name, { version, files: new Map() });
       regComp.get(name).files.set(P.relative(P.join(compDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
+    } else if (env.within(p, vThemeDir)) {
+      // vendor/themes/<名前>/<版>/…：同梱のテーマの前の版の写し（教材が記録した版で組んだ。kit/core/themes-lock.mjs）。今の版と同じ名前で記録する
+      const [name, version] = P.relative(vThemeDir, p).split(P.sep);
+      const k = P.relative(P.join(vThemeDir, name, version), p).split(P.sep).join('/');
+      if (excludedFromThemeHash(k)) continue;   // README*・LICENSE*・*.md はテーマの hash に入れない（format spec §6）
+      if (!regTheme.has(name)) regTheme.set(name, new Map());
+      regThemeVer.set(name, version);
+      regTheme.get(name).set(k, readBytesVia(env, p));
     } else if (env.within(p, themeDir)) {
       const name = P.relative(themeDir, p).split(P.sep)[0];
+      const k = P.relative(P.join(themeDir, name), p).split(P.sep).join('/');
+      if (excludedFromThemeHash(k)) continue;   // README*・LICENSE*・*.md はテーマの hash に入れない（format spec §6）
       if (!regTheme.has(name)) regTheme.set(name, new Map());
-      regTheme.get(name).set(P.relative(P.join(themeDir, name), p).split(P.sep).join('/'), readBytesVia(env, p));
+      regTheme.get(name).set(k, readBytesVia(env, p));
     } else {
       // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの機械・編集アプリでも同じテーマで組み直せる）
       const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
       if (!u) continue;
       const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
+      if (excludedFromThemeCopy(rp.split('/').slice(2).join('/'))) continue;   // 利用者のテーマの README*・*.md は写さない
+      userThemeRoots.set(P.join(u, P.relative(u, p).split(P.sep)[0]), u);
       if (files[rp] || env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
       files[rp] = readBytesVia(env, p);
+    }
+  }
+  // 利用者のテーマの LICENSE*（最上位）：組み立ては読まないが、テーマの資源を配り直す 1 ファイルには付けて入れる（書体・ロゴの使用条件。§3.3 の閉包）。
+  // テーマの hash には入れない。一覧の口（env.listFiles）があればそれで、なければよくある名前を探す
+  for (const [root, u] of userThemeRoots) {
+    const cands = new Set(['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'].map((f) => P.join(root, f)));
+    if (typeof env.listFiles === 'function') { try { for (const f of env.listFiles(root) || []) if (P.dirname(f) === root) cands.add(f); } catch { /* 一覧できない */ } }
+    for (const f of [...cands].sort()) {
+      const base = P.basename(f);
+      if (!isThemeLicense(base) || !env.exists(f) || !env.within(f, root) || !env.within(f, u)) continue;
+      const rp = 'themes/' + P.relative(u, f).split(P.sep).join('/');
+      if (files[rp]) continue;
+      if (env.exists(P.join(deckDir, ...rp.split('/')))) { warnings.push(`${LOG}: "${rp}" from a user theme folder clashes with the deck's own file; not included`); continue; }
+      files[rp] = readBytesVia(env, f);
+    }
+  }
+  // 原稿のフォルダのテーマ（<作業フォルダ>/themes/<名前>/ など、組み立てが使ったテーマのフォルダのうち作業フォルダの中のもの）の LICENSE*（最上位）も
+  // 同じく 1 ファイルに入れる（hash には入れない。利用者のテーマと同じ決まり）。作業フォルダそのものはテーマのフォルダとして扱わない
+  for (const d of Array.isArray(r.stats.themeDirs) ? r.stats.themeDirs : []) {
+    const root = P.resolve(d);
+    if (!inDeck(root) || root === P.resolve(deckDir)) continue;
+    const cands = new Set(['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'].map((f) => P.join(root, f)));
+    if (typeof env.listFiles === 'function') { try { for (const f of env.listFiles(root) || []) if (P.dirname(f) === root) cands.add(f); } catch { /* 一覧できない */ } }
+    for (const f of [...cands].sort()) {
+      if (!isThemeLicense(P.basename(f)) || !env.exists(f) || !inDeck(f) || !env.within(f, root)) continue;
+      const rp = rel(f);
+      if (files[rp]) continue;
+      const why = excludedReason(rp);
+      if (why) { warnings.push(`${LOG}: "${rp}" (theme licence) is excluded (${why}); not included`); continue; }
+      files[rp] = readBytesVia(env, f);
     }
   }
   const entry = rel(P.resolve(srcPath));
@@ -703,9 +758,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   }
   // 設定のファイル（FORMAT.CONFIG_FILE）：docId（一度だけ作り、原稿に残して書き出しのたびに同じものを使う）と metadata
   const ePath = P.join(deckDir, CFG);
-  let econf = {};
+  let econf = {}, etext = null;
   if (env.exists(ePath) && inDeck(ePath)) {
-    const text = env.readText(ePath);   // 上限で断るもの（build-too-large）は設定の誤りにしない
+    const text = etext = env.readText(ePath);   // 上限で断るもの（build-too-large）は設定の誤りにしない
     try { econf = parseJsonStrict(text); } catch (e) { fail('bad-config', `${CFG}: ${e.message}`); }
     if (!isObj(econf)) fail('bad-config', `${CFG}: not an object`);
   }
@@ -719,14 +774,13 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (opts.identity) {
     const id = opts.identity;
     if (!(typeof id.docId === 'string' && RE.docId.test(id.docId))) fail('bad-config', `identity: docId "${id.docId}" is not a lowercase UUID`);
-    const m = isObj(econf.metadata) ? { ...econf.metadata } : {};
-    if (id.derivedFrom) m.derivedFrom = id.derivedFrom; else delete m.derivedFrom;
-    const text = JSON.stringify({ ...econf, docId: id.docId, metadata: m }, null, 2) + '\n';
+    // ほかの項目（ほかの作り手の項目も）はバイトのまま（§3.3。kit/core/config-file.mjs）
+    const text = updateConfig(etext, { docId: id.docId, metadata: isObj(econf.metadata) ? configMerge({ derivedFrom: id.derivedFrom || undefined }) : (id.derivedFrom ? { derivedFrom: id.derivedFrom } : {}) });
     econf = parseJsonStrict(text);
     writes[CFG] = text;
   } else if (!own(econf, 'docId')) {
-    const text = JSON.stringify({ docId: newDocId(), ...Object.fromEntries(Object.entries(econf)) }, null, 2) + '\n';
-    econf = JSON.parse(text);
+    const text = updateConfig(etext, { docId: newDocId() });
+    econf = parseJsonStrict(text);
     writes[CFG] = text;
   }
   files[CFG] = writes[CFG] ? utf8(writes[CFG]) : readBytesVia(env, ePath);
@@ -786,9 +840,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     // 作業フォルダの設定のファイルは書き換えない（一覧に出ないものの項目も残す）
     const have = own(econf, FORMAT.ATTACH_KEY) ? econf[FORMAT.ATTACH_KEY] : undefined;
     if (!(have === undefined && !attachList.length) && !sameJson(have, attachList)) {
-      const c = { ...econf };
-      if (attachList.length) c[FORMAT.ATTACH_KEY] = attachList; else delete c[FORMAT.ATTACH_KEY];
-      files[CFG] = utf8(JSON.stringify(c, null, 2) + '\n');
+      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { [FORMAT.ATTACH_KEY]: attachList.length ? attachList : undefined }));
       if (have !== undefined) warnings.push(`${LOG}: ${CFG}: the copy in the single file lists only the attachments listed for readers (${attachList.length} of ${Array.isArray(have) ? have.length : 0}); the working folder's ${CFG} is unchanged`);
     }
   }
@@ -802,9 +854,47 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (!files[`components/${name}/index.js`] && regComp.has(name) && regComp.get(name).files.has('index.js') && RE.registryName.test(name)) used[name] = regComp.get(name).version;
     }
     if (Object.keys(used).length) {
-      const base = parseJsonStrict(new TextDecoder().decode(files[CFG]));
-      files[CFG] = utf8(JSON.stringify({ ...base, components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }, null, 2) + '\n');
+      files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }));
     }
+  }
+  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source}。version はテーマ自身の版（§3.8。Studio の版ではない）：
+  //   同梱のテーマ（registry）は固定のファイル（themes.lock.json）の版（組み立てが使った版。stats.themeVersions。同梱のテーマはどれも固定のファイルにある：
+  //   npm run themes:check）。原稿のフォルダのテーマ・利用者のテーマ（embedded：1 ファイルの themes/<名前>/ に入る）は theme.json の version、
+  //   なければ "local"（§6。組み直しでは sha256 で見分ける）。sha256 は組み立てが読んだファイル（文書 README*・LICENSE*・*.md を除く）の行から
+  const themeHash = async (m) => { const lines = []; for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`); return sha256Hex(lines.join('')); };
+  const ownVersion = (m) => { try { const v = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).version : null; return typeof v === 'string' && VERSION_RE.test(v) ? v : null; } catch { return null; } };
+  const themes = [];
+  // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
+  for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
+    if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
+    const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || ownVersion(m) || 'local';
+    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry' });
+  }
+  {
+    // 原稿のフォルダの中のテーマのフォルダと、利用者のテーマのフォルダのテーマ（組み立てが使ったもの。r.stats.themeDirs）
+    const userRoots = Array.isArray(rec.themeDirs) ? rec.themeDirs : [];
+    const emb = [];
+    for (const d of Array.isArray(r.stats.themeDirs) ? r.stats.themeDirs : []) {
+      const dir = P.resolve(d);
+      if (dir === P.resolve(deckDir) || env.within(dir, themeDir) || env.within(dir, vThemeDir)) continue;
+      if (!inDeck(dir) && !userRoots.some((u) => env.within(dir, u))) continue;
+      const name = P.basename(dir);
+      if (regTheme.has(name) || emb.some((e) => e.name === name)) continue;
+      const m = new Map();
+      for (const p of [...reads].sort()) {
+        if (!env.within(p, dir)) continue;
+        const k = P.relative(dir, p).split(P.sep).join('/');
+        if (!excludedFromThemeHash(k)) m.set(k, readBytesVia(env, p));
+      }
+      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded' });
+    }
+    themes.push(...emb.sort((a, b) => cmpCodePoint(a.name, b.name)));
+  }
+  // 1 ファイルの中の設定のファイルの themes（§3.8）：index.themes のどの項目もその版で、ちょうどそれだけを書く（親のテーマ extends も、"local" も）。
+  // 展開したフォルダを組み直してもテーマの色が黙って変わらない（部品の components と同じ。作業フォルダの設定のファイルは変えない）
+  if (themes.length && !opts.legacyNoThemePins) {
+    const pins = Object.fromEntries([...themes].sort((a, b) => cmpCodePoint(a.name, b.name)).map((t) => [t.name, t.version]));
+    if (!sameJson(econf.themes, pins)) files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { themes: pins }));
   }
 
   // 外したもの・パスの規則
@@ -905,13 +995,6 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       // version：部品庫（egatari/components）のリリースの版（format spec §6）
       components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(normalizeEol(regComp.get(name).files.get('index.js'))), source: 'registry' });
     }
-  }
-  const themes = [];
-  for (const [name, m] of regTheme) {
-    if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
-    const lines = [];
-    for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`);
-    themes.push({ name, version: env.version || '0', sha256: await sha256Hex(lines.join('')), source: 'registry' });
   }
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める

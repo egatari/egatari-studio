@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=6773db52dff278d6 -->
+<!-- i18n: pair=reference.md sha256=3e8c56509d77818b -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -37,7 +37,7 @@
 | `class="slide sec appendix"` | 付録の扉。以降のページ番号は「付録」/ Appendix。`appendix` がなくても、文字に「付録」か Appendix を含む `sec` は付録の扉とみなす |
 | `class="… static"` | 段階なし：全部見せる。`.concl` も別の段階にしない |
 | `class="… nostep"` | 箇条書きを自動で段階にしない |
-| `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える |
+| `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える（既定の値。テーマの `metrics` で両方とも動く） |
 | `class="… layout-tate"` | 縦組みのスライド：見出しは右端の縦の列、本文はその左に縦書き、結論の行は左端の縦の列（[国語](#国語kokugo)） |
 | section の `id="…"` | スライドの鍵（見出しより優先）。見出しが重なるときに付ける。[スライドの鍵](#スライドの鍵) |
 | `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
@@ -50,6 +50,7 @@
 | `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
 | `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/egatari/egatari-studio/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
 | `<html data-feedback="off">` | `?` の一覧と発表者ビューにフィードバックのリンクを出さない（`DECK.FEEDBACK_URL = null`） |
+| `<html data-favicon="off">` | タブのアイコンを入れない。既定では、組んだデッキ（ふつうの build・`--portable`・`--play-only`）の `<head>` の先頭に、Egatari のマークを `<link rel="icon">`（data: URI）として入れる（明るい画面と暗い画面の色は 1 つの SVG に入れる。外へのリクエストはない）。原稿が自分の `<link rel="icon">` を持つなら、それを使い、何も足さない |
 | `<html data-font="mincho">` | 本文を BIZ UDP明朝にする（`--font-sans: var(--font-mincho)`）。[国語](#国語kokugo) |
 
 本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`/`.blue`、`.emph`/`.red`、`.muted`/`.gray`、`.b` 色と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
@@ -156,25 +157,44 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `extends` | 親のテーマ：その `tokens.css` を先に置く（このテーマの隣 → 自分のテーマのフォルダ → `themes/` の順に探す） |
 | `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
+| `version` | テーマの版（`themes.lock.json` に載せた同梱のテーマ。下の「テーマの版」） |
+| `metrics` | 品質チェックと書き手の道具のための、テーマの体裁の寸法（`"v": 1`。下の表）。`extends` の親から項目ごとに引き継ぎ、書かない項目は既定。描くのには使わない（[契約](contract.ja.md) §12） |
+
+`metrics` の項目（1280×720 の舞台の px。数で、小数も可）。既定は今の `kit/layouts.css` で、そこから導く限りは今までの検査の数（565・680・1236・1162・124・44）。余裕（6・4）は検査の方針で、テーマの値ではない。CSS でこれらの箱を動かすテーマは宣言するとよい（同梱と公式のテーマ庫のテーマは宣言しなければならない）。`node tools/theme-metrics.mjs measure <テーマ>` が貼る塊を出す。
+
+| 項目 | 意味 | 既定 | 検査での使い方 |
+|---|---|---|---|
+| `body.left`・`body.right`・`body.top` | 横組みの `.body` の箱（左・右は端からの距離） | 48・48・122 | 右の限り `1280 − body.right + 4`（`bodyRight`） |
+| `body.floor` | 結論の行がないとき（`noconcl`）本文が下りてよい限り（ページ番号の上） | 680 | `noconcl` の下の限り |
+| `body.line` | 本文 1 行の高さ。知らせと修正依頼の「およそ n 行」だけに使う | 46 | 知らせ |
+| `concl.top`・`concl.height` | 横組みの結論の行の箱 | 571・72 | 下の限り `concl.top − 6`（`bodyBottom`） |
+| `tate.rule` | 縦組み（`layout-tate`）の見出しの罫の x | 1166 | 右の限り `tate.rule − 4`（`tateBodyHead`） |
+| `tate.conclRight`・`tate.left` | 縦組みの結論の列の右端・結論がないときの本文の左 | 120・48 | 左の限り `tate.conclRight + 4`（`bodyConclCol`）／`tate.left − 4`（`bodyLeft`） |
+| `tate.floor` | 縦組みの本文の地の限り | 680 | `layout-tate` の下の限り |
+
+数でない値・範囲の外（x は 0〜1280、y は 0〜720）・知らない項目・`v` が 1 でない・互いに合わない値（本文の上端が結論の行より下、本文の幅が 320px より狭い、など）は組み立ての警告（`theme-metrics: …`）で、親の（なければ既定の）値を使う。品質チェックは宣言とテーマが描く箱を比べる（下の `themeMetricsDrift`）。
 
 CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.css`・`kit/layouts.css`・テーマの `tokens.css`（親のテーマから順に）・`kit/latin.css`（`lang` が日本語でないデッキだけ）の順に書く。テーマは体裁の CSS の後なので、同じ詳細度のテーマの規則は体裁の規則に勝つ（例：`.cover h1{top:260px}`、`.body{left:96px;right:96px}`）。`html` を前に付けなくてよい。そうしたテーマにも、色の変数の意味（[契約](contract.ja.md) §12）と品質チェックの色の検査はそのまま効く。組み立ての口（コマンド、`--dev` と開発サーバー、`--portable`、`--play-only`、編集アプリ）はどれも同じ。
 
 | 変数 | 意味 |
 |---|---|
 | `--base` | 基調色。ほかの色は `themes/default/tokens.css` でここから導く |
-| `--emph-hue` | `--emph` の色相（既定 27、赤） |
+| `--emph-hue` | `--emph` の色相：宣言したテーマは `--emph` が `oklch(0.52 0.21 <色相>)` になる（`kokugo` は 38）。`default` は宣言せず、`--emph` を `#BE3012` に決めている（1.1.0 から） |
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | 文字・背景・見出し・用語・結論・既知・細い線・見出しの下線 |
-| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は授業モードの強調） |
+| `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマとデッキが動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
+| `--lecture-dim` | 授業の表示：まだ来ていない段階の不透明度（0.5。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
 | `--concl-bg` | 結論の行の背景（透明） |
 | `--marker` | `.body` の箇条書きの印（`--term`） |
 | `--bar`、`--bar-h` | 進み具合の帯の色（`--emph`。自動再生のときは `--term`）と高さ（3px） |
-| `--stage-bg` | スライドのまわりと暗転の色（#2f2f2f） |
+| `--stage-bg` | スライドのまわりの色（#2f2f2f） |
 | `--cap-size`、`--cap-bottom`、`--cap-side`、`--cap-max-lines` | 字幕の字の大きさ（27px）、下端からの距離（18px）、左右の余白（96px）、1 まとまりの行数の上限（3） |
 | `--cap-rate` | 手で送るときの字幕の読む速さ（字/秒。既定 ja 7、en 15。`DECK.captionRate` でも変えられる） |
+
+**テーマの版。** 教材の見た目を変える同梱のテーマは `theme.json` の `version` を上げ、前の版は `vendor/themes/<名前>/<版>/` に残す。版ごとの同一性の hash と変わった色は `themes.lock.json` に書く（`npm run themes:check` が写しと固定を照らす。`npm test` に入る）。最初の例が `default` 1.1.0（`--emph` `#C50516` → `#BE3012`、`--muted` `#6E6E6E` → `#5C5853`）で、1.0.0 は Studio 0.4.6 までの `default`。`business` 1.0.1（`--emph` `#C2410C` → `#BA3C05`）は、`--emph-tint` の地の上の字が 4.5:1 に届くように橙を少し濃くした。この色にした理由は [themes/default/README.ja.md](../themes/default/README.ja.md)。テーマのフォルダの最上位の文書（`README*`・`LICENSE*`・`*.md`）はテーマの一部でない：組み立ては読まず（ロゴに書いても）、hash に入れない（仕様 §6）。利用者のテーマや原稿のフォルダの `themes/` のテーマを 1 ファイルに入れるときは、その `LICENSE*` を一緒に入れる（`themes/<名前>/LICENSE…`。展開でフォルダに戻る）。テーマの使用条件（書体・機関のロゴ）は資源を配り直す先に付いていく必要があるため（§3.3）。`README*` とほかの `*.md` は入れない。部品と同じく、教材の色を黙って変えない：1 ファイルはテーマごとの名前・版・hash を記録し（`index.themes`）、中の `egatari.json` に版を固定する（`"themes": {"default": "1.1.0"}`。これを持たない前の 1 ファイルを展開すると、記録の hash が合う版に固定する）。前の版に固定したフォルダを組むと、その版の写しで組み、変わる色を挙げて `theme pinned: …` と警告する。`--update-themes`（または固定を今の版にする）で更新する。固定のないフォルダは今の版に付いていく。編集アプリは、開いた 1 ファイルを記録した版のテーマで組み直し、「テーマを更新」を出す（[編集アプリ](editor.ja.md)）。`default` を継ぐテーマも、固定した `default` を使う。1 ファイルは、エディタの版によらず、埋め込んだテーマの CSS のまま再生する。
 
 字：日本語のデッキ（`lang` が `ja` か、ない）は BIZ UDPゴシックを埋め込む。ほかの言語は Source Sans 3 を埋め込み、U+024F より後ろの字だけを BIZ UDPゴシックで補う。埋め込むのは使っている字を含む分割ファイルだけ（`fonts/*.ttf` と uv があれば使っている字だけ）。BIZ UDP明朝は、デッキが明朝を使うときだけ、同じ字を埋め込む：デッキ・テーマ・使っている部品のどれかに `var(--font-mincho)` がある、`class="mincho"`、`<html data-font="mincho">`（`kit/layouts.css` の `--font-mincho` の定義は数えない）。`--font-mincho` は `:where(:root)` で決めてあるので、テーマで上書きできる。テーマ `kokugo`：本文は明朝、基調色は藍、強調は朱、地は生成り、字幕は BIZ UDPゴシック（`--font-cap`）。
 
@@ -210,7 +230,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 引数 | 意味 |
 |---|---|
 | `?mode=talk` | 既定：後の段階は隠し、今の段階はフェードで出す |
-| `?mode=lecture` | 全部見せ、後の段階は薄く（0.28）、今の段階を強調（`.cur`）。印は最終状態 |
+| `?mode=lecture` | 全部見せ、後の段階は薄く（`--lecture-dim`、既定 0.5）、今の段階とその前は濃いまま、今の段階に印は付けない（蛍光ペンも `.cur` クラスもなし）。印は最終状態 |
 | `?mode=video` | 書き出し用：道具と操作の帯を出さない。reduced-motion を無視する |
 | `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（書き出しで字幕を焼き込める） |
 | `?capsize=s` / `m` / `l` | 字幕の大きさ（22 / 27 / 34px）。覚えた大きさより優先。`?mode=video` では効かない |
@@ -231,10 +251,10 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | Home / End | 最初 / 最後のスライド |
 | 数字＋Enter | そのページへ |
 | f | 全画面 |
-| p | 発表者ビュー |
+| p | 発表者ビュー（もう一度 p で閉じる。発表者ビューでは Esc か p で閉じる。全画面のときは全画面をやめるだけ） |
 | a | 今の段階から自動再生（音声があれば流す）。移動のキーで止まる |
 | l | 授業モードの入り切り |
-| b | 暗転の入り切り |
+| b | 暗転（窓全体を真っ黒にする。隅に薄い知らせが 2 秒と、マウスを動かしたときに出る。もう一度 b・Esc・クリック・矢印・Space・PageUp/PageDown・Home/End で戻り、スライドは動かない。発表者ビューには「暗転中」と出て、そこで b を押しても本体を暗転・解除できる。発表者ビューの矢印・Space・PageUp/PageDown も暗転を終えるだけで、スライドは動かない） |
 | s | 字幕の入り切り：今の段階の口述原稿（表示用の文字）をスライドの下に出す |
 | Shift+s | 字幕の大きさ：S → M → L（22 / 27 / 34px）。上に短く知らせ、最後に選んだ大きさを覚える（localStorage） |
 | o | 一覧（矢印・Home/End で選び、Enter・Space・クリックで移る。Esc か o で閉じる） |
@@ -250,13 +270,21 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 ### 操作の帯（マウスを動かすと出て、2.5 秒で隠れる）
 
-ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、発表者ビュー、全画面、キーの一覧、どこかの段階の音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
+ボタン：前へ、次へ、自動再生・停止、レーザー、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、授業モード、字幕、**読み上げで聞く（音声ファイルにはなりません）**（ブラウザに音声合成があり、台本があって音声のないステップがあるときだけ。[読み上げで聞く](#読み上げで聞く端末の声)）、発表者ビュー、全画面、キーの一覧、どこかの段階の音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（例：`v0.2.0`）がある。版・ブラウザ・OS・デッキの言語・モードだけを入れたフィードバックの form を開く。デッキの中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
 
 ### 字幕
 
 `s`・CC のボタン・`?captions=1` で、今の段階の口述原稿（`narration.md` の表示用の文字。読みと `{mark}` は除く）をスライドの下端の帯に出す。地は `--fg`、文字は `--bg`（品質チェックがこの 2 色のコントラスト 4.5:1 以上を見ている）。段階を文のまとまり（2 行ほど。字が大きいほど短い。長すぎる文は読点や語の切れ目で分ける）に分け、1 つずつ出す。1 まとまりは `--cap-max-lines` 行（3）までで、超えたら後ろの行を見せる。手で送っている間（と音声のない自動再生）は、読む速さ（ja 7 字/秒、en 15 字/秒。`--cap-rate` か `DECK.captionRate`）で次のまとまりに進め、段階が変わると最初から、最後のまとまりはそのまま残す。音声つきの自動再生と `?mode=video&captions=1` では、字数に比例して音声の時間を割り振って順に出す（動画で音声がなければ全部を出す）。大きさは `Shift+s`・`?capsize=`・テーマの `--cap-size` で変える。動画では `(i, k, t)` だけで決まる。操作の帯をスライドの下端に重ねるときは、帯が出ている間だけ字幕を帯の上へ上げ、隠れると戻す。印刷には出さない。`render/render.mjs` は字幕なしの `?mode=video` で開くので、焼き込むならそこに引数を足す。
+
+### 読み上げで聞く（端末の声）
+
+操作の帯のスピーカーのボタン「読み上げで聞く（音声ファイルにはなりません）」は、今のステップの台本を、この端末の声で読む（Web Speech API。format spec §5.6）。**音声のない**ステップのためのもの：音声のあるステップではボタンが薄くなり、そのステップには音声があること（自動再生 <kbd>a</kbd> で流れる）を示す。読んでいる間は左上に「読み上げ中（この端末の声）」と出る。別のステップに動く・<kbd>Esc</kbd>・もう一度ボタンを押すと止まる。
+
+- 使うのは端末の中で動く声だけ（`localService === true` で、デッキの `<html lang>` に合うもの。地域まで合う声・端末の既定の声・よく知られた自然な声が先で、Eddy や Bad News のような機械らしい声・遊びの声は後にし、Novice にも使わない）。ネットワークの声は、ブラウザがそれを既定にしていても使わない（文を端末の外へ送るため）。その言語の端末の声が 2 つあれば Expert と Novice を別の声で、1 つなら同じ声で読む。1 つもなければ読まず、「この端末には、この言語の読み上げの声がありません」と知らせる。
+- 読む文は、`deck-narration` の各発言の `ttsParts`（format spec §4：`{x|y}` の読みを当てた話す部品。`inputHash` に入るのと同じ値）をつないだものに、AI 音声と同じ文の前処理（`join-num-counter@1`）を当てたもの。どの組み立ても `ttsParts` を書く（見本のデッキで 3〜7 KB ほど）。画面には出さず、字の絞り込みにも数えない。`ttsParts` のない前のファイルでは表示の文を読み、札に「読み方は反映されません（古いファイル）」を添える。読み辞書（`tts/yomi.yaml`）は編集アプリのプレビュー（[編集アプリ](editor.ja.md)の音声の板）と AI 音声だけで当て、再生器では当てない。
+- 授業の音声ではない：ファイルにも動画にも何も書かず、タイムライン（`DECK.timeline()`）と `(i, k, t)` の描画は変わらない。読んでいるステップは読み終わるまで続き、`?mode=video` と印刷にはボタンがない。
 
 ### 読み上げとキーボード（アクセシビリティ）
 
@@ -277,7 +305,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 ### 実行時の API（スクリプトと品質チェック用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（部品を mount し、開いたときの位置を描いたら true。並んでいないうちに起動したデッキは舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-部品web-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える）、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（部品を mount し、開いたときの位置を描いたら true。並んでいないうちに起動したデッキは舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-部品web-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（`package.json` の `version`。build が埋め込む）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color, readAloud}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える。`readAloud()` は読み上げ中か、`readAloud(true / false)` で読む・止める）、`ReadAloud`（`kit/core/read-aloud.mjs`：`spokenTurns`・`pickVoices` など）、`TtsNormalize`、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）、`deck:tool`（`detail = {mode}`：`"laser"`・`"pen"`・`"vpen"` か `null`。発表の道具が変わったとき）、`deck:edit`（`detail = {on}`。開発サーバーと編集アプリのプレビューだけが、編集モードが変わったときに送る。実行系は発表の道具を切る。[開発サーバー](dev-server.ja.md)）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
 
 ## 開発サーバー
 
@@ -294,6 +322,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `n` | 今の段階の口述原稿の引き出し（次の段階も表示） |
 | `c` | 指示の一覧。クリックでそのスライドへ、「解決」で閉じる |
 | Alt+クリック（Mac は ⌥ option+クリック） | AI へのメモを残す（`comments.json`） |
+| `m`（編集モード。スライドの操作の帯のペンのボタンは「マーカー」になる。`d` でも開く） | マーカー：丸や矢印を描いてからメモを書く（欄が開いている間に描いた線も同じメモの印になる）。印は `strokes` として残る（[約束事 §13](contract.ja.md#13-レビューのメモ手書きの印)） |
 | 衝突 | 開いた後に原稿が変わっていれば保存しない |
 | 書き換えるファイル | `deck.html`（直した要素だけ）、`narration.md`（その段階だけ）、`comments.json`、`.cache/edits/`（新しい 30 個） |
 | 口 | `GET /`（外枠。`?presenter=1` は発表者ビューの窓）、`GET /preview`（デッキの文書。sandbox の中で開く。iframe に入れてよい唯一の口。外枠の `cap` と `Sec-Fetch-Dest: iframe` がそろったときだけ出し、ほかは 403 の文字のページ）、`/deck/<ファイル>`（動かない形：CSP の `sandbox`、音声・画像など以外は `text/plain` の attachment）、`/__dev/shell.js`、`/__dev/editor-ui.js`、`/__dev/presenter.js`、`/__dev/events`（SSE）、`GET /__dev/info`、`GET /__dev/source?range=a-b`、`POST /__dev/edit`、`GET`/`POST /__dev/narration`、`GET /__dev/comments`、`POST /__dev/comment`、`POST /__dev/comment/resolve` |
@@ -325,7 +354,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `sev` | `error`・`warn`・`info` |
 | `code` | 結果の種類（変えない名前。一覧は `kit/check-messages.mjs`） |
 | `rule` | 書き方の指示の規格の名前（`R-title`・`R-fit` など）。なければ `null` |
-| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など）。修正依頼が削る量を言うのに使う |
+| `data` | その結果の値（本文のはみ出しなら `{"px": 583, "lim": 565, "concl": true}` など。`metrics` が既定と違うテーマでは `conclTop`・`line`、`bodyRight` の `lim` も）。修正依頼が削る量を言うのに使う |
 | `msg` | `lang` の指摘の全体：どこか・何が違うか・どう直すか |
 
 | 品質チェック | 重さ |
@@ -342,7 +371,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | タイトルがコロンで終わる | エラー |
 | `layout-tate`：縦組みのタイトルが列に収まらない | エラー |
 | 結論の行が 35 字を超える（日本語）/ 70 文字を超える（英語）。結論が枠からはみ出す（`layout-tate` の縦の列でも） | エラー / 警告。エラー |
-| 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px） | エラー |
+| 本文が 565px（`noconcl` は 680px）より下、1236px より右に出る。`layout-tate` では 680px より下、1162px より右（見出しの列に重なる）、124px より左（結論の列に重なる。結論がなければ 44px）。これらは既定の値で、限りはテーマの `metrics` から決める（[テーマ](#テーマ)） | エラー |
+| テーマが描く箱がその `metrics` と 1px を超えて違う、または `metrics` のないテーマ（かデッキ自身の `<style>`）が本文・結論の行・縦組みの列を動かす（`themeMetricsDrift`。デッキに 1 回。項目ごとに宣言の値と描いた値、動かしたのがテーマの CSS かデッキの CSS か）。使えない `metrics` の値（`themeMetricsInvalid`。デッキに 1 回）。同梱の字体が読み込めず、箱を測らなかった（`metricsFontLoad`。デッキに 1 回。代わりの字体では測らない） | 警告 |
 | 本文の字が 27px 未満、表・図の字が 24px 未満、SVG の字が 24px 未満（見出しに「文献」を含むスライドは除く。`rt` の振り仮名は数えない。`data-annot` を付けた要素の中の字、つまり `m-kanbun` の読む順の番号のようにわざと小さくした注記は数えない：[約束事 §10](contract.ja.md#10-品質チェックわざと切る)） | エラー |
 | `overflow` が `visible` でない箱で切れる字（`textClipped`）、枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりの `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）。`data-clip` を付けた要素の中の字はこれらで見ない（[約束事 §10](contract.ja.md#10-品質チェックわざと切る)）。`bodyBottom` のスライドでは、`.body` の中の字がスライドの外に出ることを重ねて知らせない | 警告 |
 | どのスライドでも（表紙・章の扉・`layout-tate`・絶対位置の配置）：`.body` のないスライドで 1280×720 の外に出る字（`textOffSlide`。`.body` のあるスライドでは `outsideBody`）、ほかの字の箱やスライドの帯（飾り。表紙の上の帯など）に重なる字の箱（`textOverlap`：2 つの箱の行の矩形が縦横とも 2px を超えて重なる。KaTeX の式は式の見た目の箱 1 つで比べる。親と子、同じ部品の中の字どうし、SVG の字は比べない。本文の場所のエラーのあるスライドでは、本文の字と見出し・結論の行の重なりを重ねて知らせない）。表紙と章の扉では、置ける子要素と副題の置き場所を添える。`data-clip` の中の字、見えない字、KaTeX の MathML、`.sr-only` は見ない | 警告 |
@@ -410,6 +440,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `--portable` | 1 ファイルを書く（既定 `<作業フォルダ>/<教材の題名>.ega.html`。作業フォルダの最上位。`-o` で場所） |
 | `--play-only` | 再生専用の写しを書く（既定 `<作業フォルダ>/<教材の題名>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない学習者向け |
 | `--without-live-results` | `--portable` と一緒に：授業の部屋の結果（学ぶ人の質問と答え）の添付を入れない。付けないと、結果の入る 1 ファイルには知らせを出す。再生専用の写しには決して入らない（[ライブ](distributing.ja.md#ライブ授業中の質問と投票下書き)） |
+| `--update-themes` | `egatari.json` が前の版に固定した同梱のテーマ（下の `themes`）を今の版にして組み、固定も書き換える。変わる色を出す |
 
 `npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。`npm run portable -- attach <フォルダ> <results.json> [--en]` は、ライブのサーバーからダウンロードした授業の部屋の結果を、作業フォルダの役割 `data` の添付にする（`attachments/live-<部屋>-<日付>.json`、題は「授業の部屋の結果（<部屋>、<日付>）」。`--en` で英語）。写しの Schema の結果でないもの・10 MiB を超えるもの・§3.8 の中身の検査に通らないもの・もう足した結果は断り、部屋が `egatari.json` の `extensions.live.room` と違えば知らせて足す。`npm run portable -- compare <ファイル> <フォルダ>` は、作業フォルダから書き出した写しとそのフォルダ（`egatari.json` の `docId` が同じ）を受け取り、書き出しの後にどちらを直したかを原稿の hash で言う：`same`（どちらも直していない）・`copy`（写しを直した。写しを展開すればフォルダに戻せる）・`folder`（フォルダを直した。書き出し直す）・`both`（両方。どちらを残すかを選ぶ。混ぜない）。何も書かない。`exportedFrom` のないファイルと、ほかの教材のフォルダは断る。
 
@@ -471,11 +502,13 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `node tools/test-app.mjs` | 編集アプリのテスト（OPFS のフォルダ、編集、口述原稿、指示、外での変更、書き出し、発表者ビュー） |
 | `node tools/get-fonts.mjs` | BIZ UDPゴシックと BIZ UDP明朝の TTF を `fonts/` に取ってくる（uv で使っている字だけに絞れるようになる） |
 | `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文が部品庫の `m-kanbun` で知らせなしに読めるか（ブラウザなし。部品そのものの試験は egatari/components） |
+| `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
+| `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、段階 k の最終状態の PNG |
-| `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles]` | コンタクトシート：全スライドの最終段階を 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<デッキ>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。出力の場所と枚数を印字する |
-| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピンを描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
+| `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | コンタクトシート：全スライドの最終段階を 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<デッキ>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。`--steps` を付けると、図か部品のあるスライドだけ、全段階を横に 1 行（1 スライド 1 行）に並べる（図の約束を段階ごとに確かめる。タイルの幅は既定 320 px、出力は `<デッキ>/out/steps.png`）。出力の場所と枚数を印字する |
+| `npm run comment-shots -- <作業フォルダ \| deck.html> [id …] [--all]` | `comments.json` の未対応の指示（id を並べればそれだけ、`--all` なら全部）ごとに、その段階の最終状態にピン（と手書きの線を全部）を描いた PNG：`<デッキ>/.cache/comment-shots/<id>.png`（ピンの周りのスライドの 480×300 を 2 倍で。線があれば少なくとも全部の線の外接矩形＋48 px。ピンがなければスライド全体）、`<id>-full.png`、`index.json`。段階がなくなった指示は撮らずに知らせる |
 | `node tools/catalog.mjs` | `vendor/components/CATALOG.md` を作り直す |
 | `npm run components:update -- vX.Y.Z [--from <フォルダ>]` | egatari/components のリリースを `vendor/components/` と `components.lock.json` に取り込む（`manifest.json` の sha256 で確かめる。版は置き換えない） |
 | `npm run components:check` | `vendor/components` が `components.lock.json` と合うか（ネットワークなし） |

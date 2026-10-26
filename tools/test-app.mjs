@@ -248,13 +248,33 @@ try {
     window.__parent = parent;
     window.showDirectoryPicker = async () => parent;
   });
+  // 新規作成…：白紙から・雛形から・チャットの AI に書いてもらう の 3 つ。雛形から（見本のスライド入り）
   await page.click('#w-new');
+  await page.waitForSelector('#dlg[open] #dlg-new-template');
+  ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && (await page.textContent('#dlg-new-blank')) === '白紙から' && (await page.textContent('#dlg-new-template')) === '雛形から' && (await page.textContent('#dlg-new-ai')) === 'チャットの AI に書いてもらう…',
+    'new: 「新規作成…」 offers 白紙から, 雛形から and チャットの AI に書いてもらう');
+  await page.click('#dlg-new-template');
+  await page.waitForSelector('#newform:not([hidden])');
+  ok((await page.textContent('#n-head')) === '新規作成：雛形から', 'new: 雛形から opens the form for a deck with the sample slides');
   await page.fill('#n-title', 'テスト用のデッキ');
   await page.click('#n-go');
   await page.waitForFunction(() => window.__APP_TEST.state().open && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
   const made = await page.evaluate(async () => { const d = await window.__parent.getDirectoryHandle('テスト用のデッキ'); const out = []; for await (const k of d.keys()) out.push(k); return out.sort().join(','); });
   ok(made === 'deck.html,narration.md', 'new deck: created deck.html and narration.md in a new subfolder of a non-empty folder');
   ok(!(await page.evaluate(() => window.__APP_TEST.state().error)), 'new deck: the template builds without error');
+  await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+  // 白紙から（デッキを開いているときは「開く ▾ → 新規作成…」。最初の画面のフォームへ戻る）：表紙だけのデッキ
+  await page.click('#b-openmenu');
+  await page.click('#b-new');
+  await page.waitForSelector('#dlg[open] #dlg-new-blank');
+  await page.click('#dlg-new-blank');
+  await page.waitForSelector('#newform:not([hidden])');
+  ok((await page.textContent('#n-head')) === '新規作成：白紙から', 'new: 白紙から (from the Open menu with a deck open) goes back to the form');
+  await page.fill('#n-title', '白紙のデッキ');
+  await page.click('#n-go');
+  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.loads > 0 && /白紙のデッキ/.test(document.getElementById('deckname').textContent); }, null, { timeout: 20000 });
+  const blankDeck = await page.evaluate(async () => (await (await (await window.__parent.getDirectoryHandle('白紙のデッキ')).getFileHandle('deck.html')).getFile()).text());
+  ok((blankDeck.match(/<section class="slide/g) || []).length === 1 && /<h1>白紙のデッキ<\/h1>/.test(blankDeck) && !(await page.evaluate(() => window.__APP_TEST.state().error)), 'new: 白紙から makes a deck with only the title slide, and it builds');
   await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
 
   // examples/minimal を OPFS に写して開く
@@ -287,9 +307,27 @@ try {
 
   // ---------------------------------------------------------------- 3. 原稿の編集（プレビューは知らせるだけ。欄はアプリのページに出る）
   await f.evaluate(() => DECK.go(2, 3, false));
+  // 発表の道具（ペン）を選んでから編集モードに入る（#69）：道具は切れ、ダブルクリックは編集になり、線は描かれない。画面の端に今のモード
+  await f.evaluate(() => window.focus());   // プレビューの文書にフォーカスを（別のプロセスの iframe なので、本体を押すだけでは届かないことがある）
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode') && document.getElementById('dev-mode').textContent === '発表の道具：ペン');
+  ok(await f.evaluate(() => DECK.tools.mode()) === 'pen' && await page.evaluate(() => !!document.querySelector('#status #st-mode #dev-mode[aria-live=polite]')), 'tools vs edit: the pen is on and the footer shows 発表の道具：ペン (aria-live)');
   await page.click('#b-edit');
   await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
   ok(true, 'edit: toolbar button turns on edit mode');
+  ok(await f.evaluate(() => DECK.tools.mode() === null && !document.querySelector('#dt-layer.on') && getComputedStyle(document.querySelector('#dt-cb [data-b=laser]')).display === 'none'
+    && document.querySelector('#dt-cb [data-b=pen]').getAttribute('aria-label') === 'マーカー'), 'tools vs edit: entering edit mode turns the pen off, hides the tool buttons and turns the pen button into マーカー (#70)');
+  ok(await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中', 'tools vs edit: the footer shows 編集中');
+  await f.evaluate(() => window.focus());
+  for (const k of ['x', 'v']) await f.locator('body').press(k);
+  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: x / v do nothing while editing');
+  // ペンのキー d はマーカー（#70）：画面の端は「編集中：マーカー」、もう一度 d で切れる
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中：マーカー', null, { timeout: 5000 }).catch(() => {});
+  ok(await f.evaluate(() => DECK.tools.mode()) === 'ink' && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中：マーカー', 'tools vs edit: d enters the marker while editing (footer: 編集中：マーカー)');
+  await f.locator('body').press('d');
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中', null, { timeout: 5000 }).catch(() => {});
+  ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: d again leaves the marker');
   const li = f.locator('#stage .slide.active li[data-step="2"]');
   await li.dblclick();
   await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
@@ -335,6 +373,7 @@ try {
   await f.locator('body').press('e');   // 編集モードを切る（デッキで押した e は知らせとしてアプリに届く）
   await page.waitForFunction(() => !window.__APP_TEST.ui().edit);
   ok(!(await f.evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'edit: e pressed in the preview turns edit mode off (forwarded hint)');
+  ok(await f.evaluate(() => DECK.tools.mode()) === null && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '表示', 'tools vs edit: leaving edit mode does not bring the pen back (footer: 表示)');
   await f.evaluate(() => DECK.go(1, 0, false));
   await page.click('#b-narr');
   await page.waitForSelector('#dev-narr .dev-turn textarea');
@@ -437,6 +476,7 @@ try {
   await page.click('#b-comments');
   await page.waitForSelector('#dev-comments .dev-c');
   ok((await page.textContent('#dev-comments')).includes('この見出しを短く'), 'comment: listed in the comments panel');
+  ok(await page.locator('#dev-comments-volatile').count() === 0, 'comment: a working folder shows no “not saved” notice');
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
   // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
@@ -632,6 +672,11 @@ try {
     await previewAudioPlays(f, 'preview audio (single file in memory)');
     await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
+    // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
+    await page.click('#b-comments');
+    await page.waitForSelector('#dev-comments');
+    ok((await page.textContent('#dev-comments-volatile')) === '1 ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
+    await page.click('#b-comments');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
     ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダから書き出した写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダに書き出す』を使ってください。')
@@ -1729,7 +1774,11 @@ try {
     await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
     await ps.goto(BASE);
     await ps.waitForSelector('#drop');
-    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「AI の出力を貼り付ける」') && await ps.isDisabled('#w-new') && !(await ps.isDisabled('#w-paste')), 'safari: the note says how to make a new lesson (Paste AI output); New deck is off, paste is on');
+    ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「チャットの AI に書いてもらう」') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成… → チャットの AI に書いてもらう); 新規作成… stays on');
+    await ps.click('#w-new');
+    await ps.waitForSelector('#dlg[open] #dlg-new-ai');
+    ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')) && await ps.isVisible('#new-nofolder'), 'safari: 新規作成… offers only the chat AI (no working folders), and says why');
+    await ps.click('#dlg-cancel');
     ok(await ps.isVisible('#save-note') && (await ps.textContent('#save-note')).includes('新しいファイル'), 'safari: the welcome screen says each save downloads a new file');
     await shot(ps, 'welcome-safari.png');
     await ps.close();

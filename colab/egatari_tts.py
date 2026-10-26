@@ -294,7 +294,8 @@ def wav_bytes(pcm: np.ndarray) -> bytes:
 
 
 def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) -> bytes:
-    """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。"""
+    """job を合成して zip（audio/*.wav と records.json）のバイト列を返す。engine_info：{engine, model, seed, voice: {role: name}} を上書きする記録。
+    engine_info に runtime（runtime_label。版の組と実際のプロバイダ）があれば、どの段階の recipe にも書く（inputHash には入らない）。"""
     job = validate_job(job)
     jr = job["recipe"]
     steps_rec: dict = {}
@@ -320,9 +321,14 @@ def run_job(job: dict, synth, engine_info: dict | None = None, progress=None) ->
         }
         if jr.get("textNormalize") == TEXT_NORMALIZE:
             steps_rec[step["key"]]["recipe"]["textNormalize"] = TEXT_NORMALIZE
+        if info.get("runtime"):
+            if not RUNTIME_RE.match(str(info["runtime"])):
+                raise JobError(f"runtime は <版の組>/<プロバイダ> の形です: {info['runtime']!r}")
+            steps_rec[step["key"]]["recipe"]["runtime"] = str(info["runtime"])
         if progress:
             progress(i + 1, len(job["steps"]), step["key"])
     records = {"egatari": "tts-records", "v": 1, "docId": job.get("docId"),
+               **({"title": job["title"]} if isinstance(job.get("title"), str) and job["title"].strip() else {}),
                "generator": {"name": "irodori-tts-colab", "version": str(NOTEBOOK_VERSION)}, "steps": steps_rec}
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as z:
@@ -344,15 +350,86 @@ def dry_run_synth(text: str, voice: str, role: str, lang: str):
     return np.concatenate([lead, body, lead]), sr
 
 
+CUDA_PROVIDER = "CUDAExecutionProvider"
+RUNTIME_RE = re.compile(r"^[A-Za-z0-9._-]{1,32}/[A-Za-z0-9._?-]{1,32}$")
+
+
+def provider_name(providers) -> str:
+    """onnxruntime の Python のセッションが実際に使うプロバイダ（get_providers() の並び）から、記録に書く短い名前（cuda・tensorrt・cpu など）。"""
+    for p in providers or []:
+        if p != "CPUExecutionProvider":
+            return p.replace("ExecutionProvider", "").lower() or "unknown"
+    return "cpu"
+
+
+def runtime_label(pin_set: str | None, provider: str | None) -> str:
+    """recipe.runtime の値：<版の組>/<実際のプロバイダ>（例 cuda12/cuda、cuda13/cpu。版の組がわからなければ none）。"""
+    label = f"{pin_set or 'none'}/{provider or 'unknown'}"
+    if not RUNTIME_RE.match(label):
+        raise ValueError(f"bad runtime label: {label!r}")
+    return label
+
+
+def first_line(e) -> str:
+    """例外の文の最初の空でない行（長すぎれば切る）。colab/ort-fallback.mjs の firstLine と同じ。"""
+    for line in str(e).splitlines():
+        if line.strip():
+            return line.strip()[:300]
+    return "(no message)"
+
+
+def cpu_notice(reason: str) -> str:
+    """GPU を使えず CPU にしたときの 1 行（colab/ort-fallback.mjs の cpuNotice と同じ文）。"""
+    return f"GPU（CUDA）を使えないため、CPU で合成します（遅くなります） / GPU (CUDA) could not be used, so the CPU is used and synthesis is slower. 理由 / reason: {reason}"
+
+
+def kokoro_providers(available) -> list:
+    """Kokoro の session に頼む実行プロバイダ：CUDA（使えるなら）と CPU だけ（TensorRT などは頼まない）。"""
+    return ([CUDA_PROVIDER] if CUDA_PROVIDER in available else []) + ["CPUExecutionProvider"]
+
+
+def load_kokoro(model_path: str, voices_path: str, make=None, cpu_session=None, available=None, log=print):
+    """Kokoro を読み込む。GPU（CUDA）で作れなければ CPU で作り直す（ジョブを止めない）。戻り値は (Kokoro, お知らせ or None)。
+    kokoro-onnx は onnxruntime-gpu があると使える実行プロバイダを全部渡す。onnxruntime の Python は CUDA のライブラリが読めないと
+    多くの場合は警告だけ出して CPU で続ける（例外にならない）ので、実際のプロバイダも見て、CUDA があるはずなのに使えていなければ同じ 1 行を出す。
+    make・cpu_session・available は試験用の差し替え口（既定は kokoro_onnx と onnxruntime）。"""
+    if make is None or cpu_session is None or available is None:
+        import onnxruntime as rt
+        from kokoro_onnx import Kokoro
+        # TensorRT は Colab になく、kokoro-onnx に任せると最初に TensorRT を頼んで長い EP Error が出る。CUDA と CPU だけを頼む
+        make = make or (lambda: Kokoro.from_session(rt.InferenceSession(model_path, providers=kokoro_providers(rt.get_available_providers())), voices_path))
+        cpu_session = cpu_session or (lambda: Kokoro.from_session(rt.InferenceSession(model_path, providers=["CPUExecutionProvider"]), voices_path))
+        available = available if available is not None else rt.get_available_providers()
+    try:
+        k = make()
+    except Exception as e:                      # GPU で作れない：CPU で作り直す（CPU でも駄目なら、その例外がそのまま上がる）
+        if CUDA_PROVIDER not in available:
+            raise
+        notice = cpu_notice(first_line(e))
+        log(notice)
+        return cpu_session(), notice
+    got = k.sess.get_providers() if hasattr(k, "sess") else []
+    if CUDA_PROVIDER in available and CUDA_PROVIDER not in got:
+        notice = cpu_notice(f"onnxruntime could not start {CUDA_PROVIDER} (see its warning above); providers in use: {got}")
+        log(notice)
+        return k, notice
+    return k, None
+
+
 def kokoro_synth(model_path: str, voices_path: str, aliases: dict | None = None):
-    """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。"""
-    from kokoro_onnx import Kokoro
-    k = Kokoro(model_path, voices_path)
+    """Kokoro-82M v1.0（kokoro-onnx）。bob・alice は近い声（am_michael・af_heart）に読み替える（ブラウザ版と同じ）。
+    GPU を使えなければ CPU で続ける（load_kokoro）。"""
+    import logging
+    logging.getLogger("phonemizer").setLevel(logging.ERROR)   # 「words count mismatch」の警告（無害）だけを止める。ほかの警告はそのまま
+    k, notice = load_kokoro(model_path, voices_path)
     al = {"bob": "am_michael", "alice": "af_heart", **(aliases or {})}
 
     def synth(text, voice, role, lang):
         samples, sr = k.create(text, voice=al.get(voice, voice), speed=1.0, lang="en-us")
         return samples, sr
+    synth.providers = k.sess.get_providers() if hasattr(k, "sess") else []   # 実際に使う実行プロバイダ（ノートブックが出す）
+    synth.provider = provider_name(synth.providers) if hasattr(k, "sess") else "unknown"
+    synth.notice = notice
     return synth
 
 
@@ -386,11 +463,18 @@ class IrodoriWorker:
         self._err = open(self._errpath, "wb")
         self._next = 0
         self._closed = False
+        self.providers, self.provider, self.notice = [], "unknown", None
         self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, text=True, encoding="utf-8", env=env)
         try:
             msg = self._read(ready_timeout)
             if not msg.get("ready"):
                 raise WorkerError(f"ワーカーの最初の返事が ready ではありません: {msg!r}")
+            # 実際に使う実行プロバイダと、GPU を使えず CPU にしたときのお知らせ（エラーではない。ノートブックの出力にそのまま出す）
+            self.providers = list(msg.get("providers") or [])
+            self.provider = str(msg.get("provider") or "unknown")   # 実際に使っている実行プロバイダ（recipe.runtime に書く）
+            self.notice = msg.get("notice") or None
+            if self.notice:
+                print(self.notice, flush=True)
         except BaseException:
             self.close()
             raise
