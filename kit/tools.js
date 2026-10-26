@@ -142,6 +142,13 @@ css(
   " background:rgba(20,20,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 2px 12px rgba(0,0,0,.25);" +
   " opacity:0;pointer-events:none;transform:translate(-50%,6px);transition:opacity .25s,transform .25s;user-select:none;-webkit-user-select:none}" +
   "#dt-cb.show{opacity:.92;pointer-events:auto;transform:translate(-50%,0)}#dt-cb.show:hover{opacity:1}" +
+  // 出し方の 1 行（帯の上）と、帯が隠れている間の左下の取っ手
+  "#dt-hint{position:fixed;left:50%;transform:translateX(-50%);z-index:35;max-width:calc(100vw - 32px);box-sizing:border-box;padding:5px 12px;border-radius:8px;" +
+  " background:rgba(20,20,20,.72);color:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,\"Hiragino Sans\",\"Segoe UI\",sans-serif;text-align:center;pointer-events:none}" +
+  "#dt-handle{all:unset;position:fixed;left:8px;bottom:6px;z-index:34;box-sizing:border-box;width:34px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;" +
+  " color:#fff;background:rgba(20,20,20,.45);opacity:0;cursor:pointer;transition:opacity .25s}" +
+  "#dt-handle.show{opacity:.3}#dt-handle.show:hover,#dt-handle.show:focus-visible{opacity:.85}" +
+  "#dt-handle:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px rgba(0,0,0,.55)}" +
   "#dt-cb button{all:unset;position:relative;box-sizing:border-box;width:32px;height:32px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.86);" +
   " display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .12s,color .12s}" +
   "#dt-cb button:hover{background:rgba(255,255,255,.14);color:#fff}" +
@@ -259,7 +266,9 @@ function build(){
     cur = e.detail.i; drawing = null; vanish = []; redraw();
   });
   window.addEventListener("resize", function(){ requestAnimationFrame(resize); });
-  if (!FOLLOW){ buildBar(); loadAttachments(); }
+  // 埋め込みで親が操作を隠したとき（?embed=1&controls=0、Player P8）は帯を作らない（取っ手も出し方の行もない）
+  var noControls = Q.get("embed") === "1" && /^(0|false|no|off)$/i.test(Q.get("controls") || "");
+  if (!FOLLOW){ if (!noControls) buildBar(); loadAttachments(); }
 }
 
 // ---------------------------------------------------------------- 添付（format spec §3.8）：ダウンロードだけ
@@ -756,6 +765,9 @@ var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto"
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
+// 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
+var OPEN_MS = 5000, openUntil = 0, hint = null, handle = null, touchAct = 0;   // touchAct：指で押した時刻（後から届く click を捨てる）
+var HINT_KEY = ((DECK.FORMAT && DECK.FORMAT.id) || "deck") + "-player-bar-hint-v1";
 
 function buildBar(){
   cb = document.createElement("div"); cb.id = "dt-cb"; cb.className = "deck-tools";
@@ -797,7 +809,6 @@ function buildBar(){
   });
   // タッチ（指・ペン）：pointerdown を止めているので、WebKit は指で押したボタンに click を送らない。pointerup で押したことにし、
   // そのあとブラウザが click も送ったら、同じタップの 2 回目として捨てる（1 回のタップで 1 回だけ）
-  var touchAct = 0;
   cb.addEventListener("pointerup", function(e){
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
     var b = e.target.closest && e.target.closest("button"), at = document.elementFromPoint(e.clientX, e.clientY);
@@ -834,7 +845,11 @@ function buildBar(){
   document.addEventListener("deck:pos", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
   placeBar(); syncBar();
-  wake();              // 開いたときに一度見せて、あることを知らせる
+  buildHandle();
+  // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
+  openUntil = Date.now() + OPEN_MS;
+  wake();              // 先に（帯の大きさを測る前に）出す：初めから出た状態で描き、フェードさせない
+  if (!hintSeen()) showHint();
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
 function placeBar(){
@@ -842,6 +857,7 @@ function placeBar(){
   var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
   cb._over = m < 44;
   cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - 38) / 2))) + "px";
+  placeHint();
   liftCaptions();
 }
 // 帯が出ていて字幕の下端に重なるなら、重なる分（＋6px）だけ字幕を上げる。帯が余白にあるとき・隠れたときは 0（上げた分は戻る）
@@ -861,13 +877,53 @@ function wake(e){
   // 舞台に重ねるときは、下のほうにマウスが来たときだけ出す（レーザーやペンの邪魔をしない）
   if (e && cb._over && e.clientY < innerHeight - OVER_ZONE && !cb.classList.contains("show")) return;
   cb.classList.add("show");
+  showHandle(false);
   liftCaptions();
   clearTimeout(hideT);
   hideT = setTimeout(function hide(){
-    if ((!touchLast && cb.matches(":hover")) || cb.contains(document.activeElement)){ hideT = setTimeout(hide, 800); return; }
+    if ((!touchLast && cb.matches(":hover")) || cb.contains(document.activeElement) || (handle && handle === document.activeElement)){ hideT = setTimeout(hide, 800); return; }
     cb.classList.remove("show");
+    if (hint){ hint.remove(); hint = null; }
+    showHandle(true);
     liftCaptions();
-  }, SHOW_MS);
+  }, Math.max(SHOW_MS, openUntil - Date.now()));
+}
+// 取っ手は帯が隠れている間だけ見え、Tab で選べる（帯が出ている間は Tab の順にも読み上げにも入れない）
+function showHandle(on){
+  if (!handle) return;
+  handle.classList.toggle("show", on);
+  handle.tabIndex = on ? 0 : -1;
+  if (on) handle.removeAttribute("aria-hidden"); else handle.setAttribute("aria-hidden", "true");
+}
+// 出し方の 1 行を見せたことは、この端末の localStorage に覚える。読めない・書けない（保存できない設定など）ときは毎回見せる
+function hintSeen(){ try { return localStorage.getItem(HINT_KEY) === "1"; } catch (e) { return false; } }
+function showHint(){
+  hint = document.createElement("div"); hint.id = "dt-hint"; hint.className = "deck-tools";
+  hint.setAttribute("role", "status");
+  hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、この操作の帯が出ます" : "Move the mouse to the bottom of the screen (or tap) to show these controls";
+  document.body.appendChild(hint);
+  placeHint();
+  try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
+}
+function placeHint(){ if (hint && cb) hint.style.bottom = Math.round((parseFloat(cb.style.bottom) || 10) + (cb.offsetHeight || 38) + 8) + "px"; }
+// 帯が隠れている間の取っ手：左下の小さく薄いボタン（スライドの字にかからない）。押すと帯を出す。Tab で選べ、読み上げソフトには名前で読まれる。
+// マウス・指で押してもフォーカスは移さない（矢印キーはスライドに効いたまま）。キーボードで押したら帯の最初のボタンへ
+// マウスを近づけると帯が出て取っ手は見えなくなるが、押せるままにする（押しても帯をもう一度出すだけ）
+function buildHandle(){
+  handle = document.createElement("button"); handle.type = "button"; handle.id = "dt-handle"; handle.className = "deck-tools";
+  var lab = JA ? "操作の帯を出す" : "Show the control bar";
+  handle.setAttribute("aria-label", lab); handle.title = lab;
+  handle.innerHTML = '<svg viewBox="0 0 24 12" width="24" height="12" aria-hidden="true"><path d="M5 9l7-5 7 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  ["pointerdown", "mousedown"].forEach(function(t){ handle.addEventListener(t, function(e){ e.preventDefault(); e.stopPropagation(); focusDeck(); }); });
+  handle.addEventListener("pointerup", function(e){ e.stopPropagation(); if (e.pointerType === "touch" || e.pointerType === "pen"){ touchAct = Date.now(); wake(); } });
+  handle.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    if (touchAct && e.detail !== 0 && Date.now() - touchAct < 800){ touchAct = 0; return; }
+    wake();
+    if (e.detail === 0){ var f = cb.querySelector("button"); if (f) f.focus(); }
+  });
+  document.body.appendChild(handle);
+  showHandle(false);
 }
 function syncBar(){
   if (!cb) return;

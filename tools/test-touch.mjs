@@ -29,7 +29,7 @@ async function run(name, browser) {
   const shown = () => p.evaluate(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show'); });
   const btn = (n) => `#dt-cb button[data-b="${n}"]`;
   const tapStage = async () => { const r = await p.evaluate(() => document.getElementById('stage').getBoundingClientRect().toJSON()); await p.touchscreen.tap(r.x + r.width * 0.5, r.y + r.height * 0.35); };
-  await p.waitForTimeout(3200);
+  await p.waitForTimeout(5400);
   ok(!(await shown()), `${name}: the bar hides after its first seconds`);
   const p0 = await pos();
   await tapStage(); await p.waitForTimeout(300);
