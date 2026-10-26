@@ -289,7 +289,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
     ok((await p3.getAttribute('#paste-series-business', 'aria-pressed')) === 'true' && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.', 'S3 ④: Business ticks the business subject, and says so');
     await p3.check('#paste-plan-paid');
-    ok(await p3.isVisible('#paste-series') && (await p3.$$eval('#paste-series .tile', (xs) => xs.map((x) => x.getAttribute('aria-pressed') + (x.disabled ? ':off' : '')).join())) === 'false,true,false,false,false'
+    ok(await p3.isVisible('#paste-series') && (await p3.$$eval('#paste-series .tile', (xs) => xs.map((x) => x.getAttribute('aria-pressed') + (x.disabled ? ':off' : '')).join())) === 'false,true,false,false,false,false'
       && await p3.isHidden('#paste-series-max') && !(await p3.$('#paste-series-paid')) && (await text(p3, '#paste-series-guess')) === 'Ticked “Business” from the setting in step 1.',
       'S3 ④: on the paid plan the subject tiles stay pressable and keep the guess (Business only; not every subject), with no “all included” line');
     const c3 = await copy(p3);
