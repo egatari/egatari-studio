@@ -5,7 +5,8 @@
 // - 薄さは --preview-opacity（0.45）、--lecture-dim はそれと同じ値
 // - data-preview="none" の要素は薄くせず隠す（段階を持つ要素も、薄く見せる段階の要素の中の要素も）。書き手が印を付けた部品には preview:false
 // - preview:"none" の部品は外から薄くしない（段階を持つ部品は隠す、薄く見せる段階の中の部品も隠す）
-// - ? の情報：形式 → プレーヤー → 作成 の順と言葉（ja・en）。player が無ければその行を出さない。版の文字列だけの deck-meta では出さない
+// - ctx.slide はスライドの鍵（文字列）
+// - ? の情報：形式 → プレーヤー → 作成 の順と言葉（ja・en）。title があればそれ、無ければ name から。player が無ければその行を出さない。版の文字列だけの deck-meta では出さない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,8 +22,8 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++
 
 const LOG = `DECK.define("m-pv-log", class extends DECK.MotionElement {
   static steps = 2;
-  mount(ctx){ this._m = {mode: ctx.mode, preview: ctx.preview}; }
-  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview}; this.textContent = "log " + k; }
+  mount(ctx){ this._m = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; }
+  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; this.textContent = "log " + k; }
 });
 `;
 const ANS = `DECK.define("m-pv-ans", class extends DECK.MotionElement {
@@ -94,6 +95,7 @@ let r = await probe(p, 1);
 ok(r.mode === 'lecture', '?mode=lecture: the internal mode is lecture (' + r.mode + ')');
 ok(r.lg && r.lg.mode === 'talk' && r.lg.preview === true, 'render ctx: mode "talk", preview true (not "lecture") ' + JSON.stringify(r.lg));
 ok(r.lgMount && r.lgMount.mode === 'talk' && r.lgMount.preview === true, 'mount ctx: mode "talk", preview true ' + JSON.stringify(r.lgMount));
+ok(r.lg.slide === 's-pv' && r.lgMount.slide === 's-pv', 'ctx.slide is the slide key (a string), in mount and render ' + JSON.stringify([r.lgMount.slide, r.lg.slide]));
 ok(r.pv === 0.45 && r.dim === r.pv, `--preview-opacity is 0.45 and --lecture-dim equals it (${r.pv}, ${r.dim})`);
 ok(r.p1 === 1 && Math.abs(r.p2 - 0.45) < 1e-6, `a later step is shown at 0.45 (p1 ${r.p1}, p2 ${r.p2})`);
 ok(r.p2Aria === null, 'a faint later step is not aria-hidden');
@@ -149,6 +151,7 @@ const withMeta = (lang, meta, name) => {
 };
 const full = { format: 'egatari', version: { major: 1, minor: 0 }, player: { name: 'egatari-player', version: '1.0.0' }, generator: { name: 'egatari-studio', version: '0.6.0' }, docId: '00000000-0000-4000-8000-000000000000', title: 'preview', lang: 'ja', portable: true, tracking: [] };
 const noPlayer = { ...full }; delete noPlayer.player;
+const titled = { ...full, player: { name: 'x-play', version: '2.1.0', title: 'Some Player' }, generator: { name: 'x-make', version: '3.0', title: 'Some Studio' } };
 const about = async (file) => {
   const q = await page(file);
   await q.keyboard.press('?');
@@ -166,6 +169,10 @@ for (const lang of ['ja', 'en']) {
   ok(JSON.stringify(rows) === JSON.stringify(EXP[lang]), `info panel (${lang}): Format → Player → Made with ${JSON.stringify(rows)}`);
   rows = await about(withMeta(lang, { ...noPlayer, lang }, 'meta-noplayer.html'));
   ok(JSON.stringify(rows) === JSON.stringify([EXP[lang][0], EXP[lang][2]]), `info panel (${lang}): without player, no Player line ${JSON.stringify(rows)}`);
+  rows = await about(withMeta(lang, { ...titled, lang }, 'meta-titled.html'));
+  ok(JSON.stringify(rows) === JSON.stringify([EXP[lang][0], EXP[lang][1].replace('Egatari Player 1.0.0', 'Some Player 2.1.0'), EXP[lang][2].replace('Egatari Studio 0.6.0', 'Some Studio 3.0')]), `info panel (${lang}): player.title and generator.title are shown when present ${JSON.stringify(rows)}`);
+  rows = await about(withMeta(lang, { ...full, lang, player: { name: 'other-player', version: '1' } }, 'meta-untitled.html'));
+  ok(rows[1] === EXP[lang][1].replace('Egatari Player 1.0.0', 'other-player 1'), `info panel (${lang}): without title, a name outside the format's own is shown as written ${JSON.stringify(rows)}`);
   rows = await about(built[lang]);
   ok(rows.length === 0, `info panel (${lang}): a plain build (deck-meta with a version string only) shows no version lines ${JSON.stringify(rows)}`);
 }

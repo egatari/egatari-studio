@@ -515,6 +515,7 @@ function animDur(i, k){
 }
 
 // 部品に渡す ctx.mode（format spec §8.4："talk" | "learn" | "video"）：内部の "lecture" は talk（preview は別に渡す）
+// ctx.slide はスライドの鍵（文字列。format spec §8.1・§8.4）。要素は渡さない（部品が要るなら自分で探す）
 function ctxMode(){ return DECK.mode === "lecture" ? "talk" : DECK.mode; }
 // 先のステップを薄く見せるときの濃さ：テーマの --preview-opacity（format spec §8.4。base.css が 0.45 を置く）。
 // 無いか範囲の外なら --lecture-dim（古い名前。base.css では --preview-opacity と同じ）、それも無ければ 0.45
@@ -579,7 +580,7 @@ function seek(i, k, t, from, cont){
   var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
     var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
-    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s, instant: p.t === Infinity, deck: DECK};
+    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, deck: DECK};
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
       if (c._touched && !cont){ c._touched = false; untouch(c, p.k, ctx); }
@@ -1589,7 +1590,7 @@ function start(){
   started = true;
   slides.forEach(function(s, i){
     s._comps.forEach(function(c){
-      try { c.mount({mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s, deck: DECK}); watchTouch(c); }
+      try { c.mount({mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, deck: DECK}); watchTouch(c); }
       catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(); }
     });
   });

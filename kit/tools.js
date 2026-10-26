@@ -922,15 +922,17 @@ function helpHtml(){
       : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + about + fbHtml + "</div>";
 }
 // このファイルの版（format spec §4.1、Player P3）：形式 → プレーヤー → 作成 の順（docs/terms.json の format-version・player・made-with）。
-// deck-meta の version（{major, minor}）・player・generator（{name, version}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）
+// deck-meta の version（{major, minor}）・player・generator（{name, version, title?}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）
 function aboutHtml(){
   var M = DECK.META || {}, F = DECK.FORMAT || {}, j = JA, rows = [];
   var isObj = function(x){ return !!x && typeof x === "object" && !Array.isArray(x); };
-  // {name, version} → 人に見せる名前："egatari-player" は「Egatari Player」（形式の識別子の後ろを語ごとに大文字で始める）、ほかの名前はそのまま
+  // {name, version, title?} → 人に見せる名前：title があればそれ（format spec §3.1・§4.1）。無ければ name から：
+  // "egatari-player" は「Egatari Player」（形式の識別子の後ろを語ごとに大文字で始める。title の無い前の版のファイル向け）、ほかの名前はそのまま
   var prod = function(x){
-    if (!isObj(x) || typeof x.name !== "string" || !x.name) return "";
-    var n = x.name, id = F.id || "", dn = F.displayName || "";
-    if (id && dn && n.indexOf(id + "-") === 0 && /^[a-z0-9-]+$/.test(n)) n = dn + n.slice(id.length).replace(/-([a-z0-9])/g, function(m, c){ return " " + c.toUpperCase(); });
+    if (!isObj(x)) return "";
+    var n = typeof x.title === "string" && x.title.trim() ? x.title.trim() : typeof x.name === "string" ? x.name : "", id = F.id || "", dn = F.displayName || "";
+    if (!n) return "";
+    if (n === x.name && id && dn && n.indexOf(id + "-") === 0 && /^[a-z0-9-]+$/.test(n)) n = dn + n.slice(id.length).replace(/-([a-z0-9])/g, function(m, c){ return " " + c.toUpperCase(); });
     return n.slice(0, 80) + (typeof x.version === "string" && x.version ? " " + x.version.slice(0, 40) : "");
   };
   var v = M.version;
