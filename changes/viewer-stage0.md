@@ -1,7 +1,7 @@
 ### Added
 
 - Egatari Viewer stage 0: works offline once opened (the app shell is precached by its service worker; lessons are still read on the device only); a new version takes over on the next launch only, never while a lesson plays (no update button); the manifest names it "Egatari Viewer", "Ega Viewer" on the Home Screen, with the え icon. Config and docs move to viewer.egatari.org (`play/wrangler*.toml`, Worker `egatari-viewer`; docs/viewer.md, docs/viewer-classroom.md for teachers using Google Classroom and iPad)
-- `tools/studio-icons.mjs` makes Egatari Studio's own tab and app icon 「す」 (`assets/logo/studio/`, a typeset placeholder in the style and sizes of え, replaceable by hand-drawn 16 and 24 px files); `tools/test-viewer-webkit.mjs` checks the Viewer in Playwright's WebKit at iPad sizes (not part of `npm test`)
+- `tools/studio-icons.mjs` makes Egatari Studio's own tab and app icon 「す」 (`assets/logo/studio/`, a typeset placeholder in the style and sizes of え, replaceable by hand-drawn 16 and 24 px files); `tools/test-viewer-webkit.mjs` checks the Viewer in Playwright's WebKit at iPad sizes (a step of `npm test`; skipped where WebKit is not installed)
 
 ### Changed
 

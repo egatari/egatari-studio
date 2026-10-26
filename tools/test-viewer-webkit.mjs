@@ -1,6 +1,6 @@
 // Egatari Viewer を iPad に近い形で確かめる（Playwright の WebKit と iPad の端末の記述：画面の大きさ・タッチ・Safari の UA）
 //   node tools/test-viewer-webkit.mjs [<作業用のフォルダ>]
-// npm test には入れていない（WebKit は `npx playwright-core install webkit` で別に入れる。入っていなければ「skip」で終わる）。
+// npm test の段 test-viewer-webkit（WebKit は `npx playwright-core install webkit` で別に入れる。入っていなければ「skip」で通る）。
 // 本物の iPad の代わりではない（handoff の確認リスト viewer-ipad-check.md が本物の iPad の手順）。ここで見るのは：
 //   iPad (gen 11) の縦と横、iPad Mini の縦で：最初の画面が出て横にはみ出さない・題が Egatari Viewer。再生専用と編集可のファイルを開いて再生し、
 //   タップで次のステップに進む・字幕（s）が出る・閉じる。Egatari ファイルでない・大きすぎるファイルの知らせ。オフラインで「参加する」の知らせ。
