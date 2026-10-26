@@ -558,13 +558,16 @@ function sendState(m){
   if (m === null) s.mode = null;   // 発表者ビューの道具も切る
   DECK.toPresenter(s);
 }
-document.addEventListener("deck:presenter", function(){ sendState(EDIT ? null : undefined); });
+// 発表者ビュー（deck.js が確かめた hello の送り元）。本体の道具の命令はここか、編集のプレビューの親の窓（中継）からだけ受ける
+var presSrc = null;
+document.addEventListener("deck:presenter", function(e){ presSrc = (e.detail && e.detail.source) || null; sendState(EDIT ? null : undefined); });
 
 // 発表者ビューから（または発表者ビューが「今の画面」へ）送る操作
 window.addEventListener("message", function(e){
   var m = e.data || {};
   if (m.type !== "deck-tool" || !layer) return;
   if (FOLLOW && e.source !== window.parent) return;
+  if (!FOLLOW && !(e.source && (e.source === presSrc || (window.DECK_DEV && window.parent !== window && e.source === window.parent)))) return;
   if (m.cmd === "mode") setMode(m.mode === "ink" ? null : m.mode);   // マーカーは発表者ビューからは選べない
   else if (m.cmd === "color"){ if (typeof m.c === "number") setColor(m.c, FOLLOW); else nextColor(); }
   else if (m.cmd === "clear" || m.cmd === "clearAll") clear(m.cmd === "clearAll");

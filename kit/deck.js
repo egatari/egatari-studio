@@ -1247,7 +1247,11 @@ function runSeg(){
 DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };
 
 // ---------------------------------------------------------------- 発表者ビューとの連携（postMessage。file:// でも動く）
-var presenter = null;
+var presenter = null, presenterOpened = null;   // presenter：位置を送る相手（hello の送り元）。presenterOpened：この窓が開いた発表者ビュー
+// 編集のプレビューか：開発サーバー・編集アプリが入れる server/hints.js が DECK_DEV を立て、親の窓（編集の画面）が発表者ビューとキーを中継する
+function editorParent(){ return !!window.DECK_DEV && window.parent !== window && !DECK.view; }
+// deck-cmd を受けてよい送り手：この窓が開いた発表者ビューと、編集のプレビューの親の窓だけ（ほかの窓・枠からは動かされない）
+function trustedCmd(src){ return !!src && ((presenterOpened && src === presenterOpened) || (editorParent() && src === window.parent)); }
 // PositionStore の購読者：位置を知らせるたびに（POS.publish）発表者ビュー・埋め込みの親・deck:pos へ送る
 function broadcast(p){
   var cur = p.i, step = p.k;
@@ -1256,7 +1260,8 @@ function broadcast(p){
              nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: p.playing, cause: p.cause || "control",
              back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack()};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
-  if (window.parent !== window) window.parent.postMessage(msg, "*");
+  // 編集のプレビュー（server/hints.js が DECK_DEV を立てた枠）では、中継する親の窓にも送る。ほかの親（埋め込み・知らない枠）には送らない（埋め込みは下の position だけ）
+  if (editorParent() && presenter !== window.parent) window.parent.postMessage(msg, "*");
   // 埋め込み（Player P8）：段階が変わるたびに位置を知らせる
   if (EMBED) post({egatari: "position", slideKey: slides[cur]._key, stepKey: stepKey(slides[cur], step), t: p.t, cause: p.cause || "control"});
   document.dispatchEvent(new CustomEvent("deck:pos", {detail: msg}));
@@ -1269,7 +1274,7 @@ function openPresenter(){
   // 編集アプリのプレビューでは presenter は中継する親の窓（hello の送り元）なので閉じない。下の window.open（frame-shim.js）でアプリに頼み、アプリが入り切りする
   if (presenter && !presenter.closed && presenter !== window.parent){ try { presenter.close(); } catch (e) {} presenter = null; return; }
   var u = new URL(location.href); u.searchParams.set("presenter", "1"); u.hash = "";
-  presenter = window.open(u.href, "deck-presenter", "width=1400,height=820");
+  presenter = presenterOpened = window.open(u.href, "deck-presenter", "width=1400,height=820");
   setTimeout(POS.publish, 800);
 }
 window.addEventListener("message", function(e){
@@ -1277,6 +1282,7 @@ window.addEventListener("message", function(e){
   // 発表者ビュー自身（スライドを持たない）や起動前の窓に届いた命令は無視する
   if (!DECK.ready) return;
   if (m.type === "deck-cmd"){
+    if (!trustedCmd(e.source)) return;   // 知らない窓・枠からの命令は受けない
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     // 暗転の間の「次」「前」（発表者ビューの矢印・PageUp/PageDown・Space）は、本体のキーと同じく暗転を終えるだけで送らない
     if ((m.cmd === "next" || m.cmd === "prev") && isBlack()) setBlack(false);
@@ -1288,8 +1294,8 @@ window.addEventListener("message", function(e){
     else if (m.cmd === "auto"){ if (!EDIT) DECK.autoplay(); else POS.publish(); }   // 編集中は始めない（発表者ビューのボタンは今の状態に戻す）
     // 編集の画面から送られたキー：編集のプレビュー（server/hints.js が DECK_DEV を立てる）で、親の窓から届いたものだけ。ほかの送り手（自分・子の枠・別の窓）は無視する
     else if (m.cmd === "key" && typeof m.key === "string"){ if (window.DECK_DEV && window.parent !== window && e.source === window.parent) forwardedKey(m.key); }
-    else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter")); }
-  } else if (m.type === "deck-goto" && DECK.view && slides.length){
+    else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter", {detail: {source: e.source}})); }
+  } else if (m.type === "deck-goto" && DECK.view && slides.length && e.source === window.parent){   // 発表者ビューの中の画面：発表者ビュー（親）からだけ
     go(m.i, m.k, !!m.animate);
   } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
     // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
