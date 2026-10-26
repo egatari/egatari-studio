@@ -1,11 +1,12 @@
 // ZIP の安全な読み取り（Colab から戻る zip の取り込み。ダウンロード物＝信頼しない。node: も fs も使わない。ブラウザの Worker 外でも動く）
 //
-//   const r = await readZip(bytes, { maxMembers, maxMemberBytes: (name) => 上限（バイト）, maxTotalBytes, accept: (name) => boolean })
+//   const r = await readZip(bytes, { maxMembers, maxMemberBytes: (name) => 上限（バイト）, maxTotalBytes, accept: (name, {symlink}) => boolean })
 //   → { files: Map<名前, Uint8Array>, skipped: [名前…] }
 //
 // 守ること：割り当てる前に上限を課す（中央ディレクトリの数・宣言された大きさを見てから、その順で膨らませる）。展開は上限を超えた時点で打ち切る
 // （宣言と実際が食い違う zip 爆弾）。CRC-32 を確かめる。暗号化・zip64・複数ディスク・ストアと deflate 以外の方式は断る。
 // 名前は accept が通したものだけ読む（ほかは skipped に数えて読まない）。同じ名前が 2 度出れば断る。どれも失敗は ZipError（code 付き）
+// accept の 2 つめの引数：{symlink}（外部属性の上位 16 ビットが Unix のシンボリックリンク。断るかは呼び手が決める。accept が投げればそのまま投げる）
 const EOCD = 0x06054b50, CEN = 0x02014b50, LOC = 0x04034b50;
 
 export class ZipError extends Error {
@@ -67,13 +68,14 @@ export async function readZip(bytes, { maxMembers = 512, maxMemberBytes = () => 
     const flags = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true), crc = dv.getUint32(p + 16, true);
     const csize = dv.getUint32(p + 20, true), usize = dv.getUint32(p + 24, true);
     const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const symlink = ((dv.getUint32(p + 38, true) >>> 16) & 0xf000) === 0xa000;
     if (p + 46 + nl + xl + cl > cdOff + cdSize) throw bad('zip-corrupt', 'bad central directory entry');
     const name = dec.decode(u.subarray(p + 46, p + 46 + nl));
     p += 46 + nl + xl + cl;
     if (name.endsWith('/')) continue;                 // フォルダの項目
     if (seen.has(name)) throw bad('zip-dup', `duplicate member: ${name}`);
     seen.add(name);
-    if (!accept(name)) { skipped.push(name); continue; }
+    if (!accept(name, { symlink })) { skipped.push(name); continue; }
     if (flags & 1) throw bad('zip-encrypted', `${name}: encrypted members are not supported`);
     if (csize === 0xffffffff || usize === 0xffffffff) throw bad('zip64', 'zip64 is not supported');
     if (method !== 0 && method !== 8) throw bad('zip-method', `${name}: unsupported compression method ${method}`);
@@ -96,7 +98,7 @@ export async function readZip(bytes, { maxMembers = 512, maxMemberBytes = () => 
 }
 
 // 試験・道具用の書き手。entries：[名前, 中身, opts?]。既定はストア（ノートブックの zipfile の出力と同じ読み方で読める）。
-// opts：{comp: deflate-raw で縮めた中身（method 8 にする）, usize: 宣言する大きさ（細工用）, flags: 一般目的ビット（細工用）}
+// opts：{comp: deflate-raw で縮めた中身（method 8 にする）, usize: 宣言する大きさ（細工用）, flags: 一般目的ビット（細工用）, mode: Unix のモード（0o120777 でシンボリックリンク）}
 export function writeZip(entries) {
   const enc = new TextEncoder(), parts = [], cen = [];
   let off = 0;
@@ -109,6 +111,7 @@ export function writeZip(entries) {
     const ch = new Uint8Array(46 + nb.length), c = new DataView(ch.buffer);
     c.setUint32(0, CEN, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, flags, true); c.setUint16(10, method, true);
     c.setUint32(16, crc, true); c.setUint32(20, body.length, true); c.setUint32(24, usize, true); c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+    if (opts.mode) { c.setUint16(4, 0x0314, true); c.setUint32(38, (opts.mode & 0xffff) * 0x10000, true); }
     ch.set(nb, 46);
     parts.push(lh, body); cen.push(ch); off += lh.length + body.length;
   }

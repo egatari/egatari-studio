@@ -117,8 +117,8 @@ jobs:
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
   macos:
     runs-on: macos-latest
-    # macOS runners are slow: npm test takes 24-26 min here and new tests add about 2 min, so 30 min was too tight (clean on macOS takes under 2 min; its 25 min is enough)
-    timeout-minutes: 45
+    # macOS runners are slow: npm test now runs past 45 min here (test-components alone passes 600 s), so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough)
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -129,6 +129,7 @@ jobs:
       - name: npm test
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
+          TEST_STEP_TIMEOUT_S: '1200'
         run: npm test
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB

@@ -832,7 +832,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       total += b.length;
       files[p] = b; got.add(p);
     }
-    if (liveLeft.length) warnings.push(`${LOG}: live room results left out (${liveLeft.map((x) => `"${x}"`).join(', ')}); the working folder keeps them`);
+    if (liveLeft.length) warnings.push(`${LOG}: live session results left out (${liveLeft.map((x) => `"${x}"`).join(', ')}); the working folder keeps them`);
     // 入れたときの知らせは呼び手が出す（再生専用の派生には入らないので。kit/core/live-results.mjs の liveResultsWarning）
     const carryBy = new Map((carryList || []).filter((c) => isObj(c) && typeof c.path === 'string').map((c) => [c.path, c]));
     for (const e of plan.list) if (got.has(e.path)) attachList.push(copyUnknown(e, carryBy.get(e.path), ATTACH_KNOWN));

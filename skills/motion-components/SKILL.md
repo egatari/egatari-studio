@@ -1,27 +1,27 @@
 ---
 name: motion-components
-description: Egatari Studio（旧 motion-academic-slides）の動く図の部品（Web Components）を新しく書く・直す・部品庫（egatari/components）に提案する。「新しい部品を作って」「この図を部品にして」「部品庫に入れて」「部品庫に提案して」「motion-components」で使う。部品を使ってスライドを作るだけなら motion-slides。 Use for: write or fix a new component (animated figure), turn this figure into a component, propose a component to the components library.
+description: Egatari Studio（旧 motion-academic-slides）のパーツ（動きのある図。Web Components）を新しく書く・直す・パーツライブラリ（egatari/components）に提案する。「新しいパーツを作って」「この図をパーツにして」「新しい部品を作って」「この図を部品にして」「パーツライブラリに入れて」「パーツライブラリに提案して」「motion-components」で使う。パーツを使ってスライドを作るだけなら motion-slides。 Use for: write or fix a new part (component, animated figure), turn this figure into a part, propose a part to the components library.
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
-# motion-components：動く図の部品を書く
+# motion-components：パーツを書く
 
 リポジトリ：このファイルの 2 つ上（`<repo>`。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
 
-**部品庫は別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。部品庫の部品を直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
+**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
 
-Egatari（オープンなファイル形式。拡張子 `.ega.html`）の 1 ファイル（`node <repo>/kit/build.mjs <deck> --portable`）では、部品庫の部品は名前・版・`index.js` の hash の付いた部品庫の部品として入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` の部品はそのデッキ独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
+Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`node <repo>/kit/build.mjs <deck> --portable`）では、パーツライブラリのパーツは名前・版・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
 
-## 1. まず既存の部品と動きの素で足りないか確かめる
+## 1. まず既存のパーツと動きの素で足りないか確かめる
 
-`vendor/components/CATALOG.md` と各 `demo.html` を見る。属性を足せば済むなら、新しく作らずに既存の部品を広げる（egatari/components への提案になる。§5）。
+`vendor/components/CATALOG.md` と各 `demo.html` を見る。属性を足せば済むなら、新しく作らずに既存のパーツを広げる（egatari/components への提案になる。§5）。
 
-多くの図は部品にしなくてよい：インライン SVG と `data-step`・印（`{mark}`）・モーフ（`data-morph`）・カメラ（Studio の実行系の動きの素。`docs/contract.ja.md §7・§8`）で動かせる。部品にするのは、データから配置を計算する・要素が多い・操作がある・授業をまたいで使う、といったときだけ。
+多くの図はパーツにしなくてよい：インライン SVG と `data-step`・強調（`{mark}`）・モーフ（`data-morph`）・カメラ（Studio の実行系の動きの素。`docs/contract.ja.md §7・§8`）で動かせる。パーツにするのは、データから配置を計算する・要素が多い・操作がある・授業をまたいで使う、といったときだけ。
 
-## 2. 書き方（デッキ専用の部品）
+## 2. 書き方（その教材専用のパーツ）
 
-置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → 部品庫の写しの順に探す）。
+置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → パーツライブラリの写しの順に探す）。
 
 ```js
 // m-名前：何を見せるか 1 行
@@ -38,40 +38,40 @@ DECK.define("m-名前", class extends DECK.MotionElement {
 守ること（品質チェック `kit/check.mjs` と egatari/components の試験が確かめる）：
 
 1. **(k, t) だけで画面を決める**。前回の render の状態に頼らない。`setTimeout`・`requestAnimationFrame`・`Date`・シードのない乱数は使わない
-2. t = Infinity は段階 k の最終状態、k = 0 は初期状態
+2. t = Infinity はステップ k の最終状態、k = 0 は初期状態
 3. 色は `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)` だけ（`DECK.el` は fill / stroke の `var()` を style に回す）
 4. 図の文字は 24px 以上。凡例ではなく線の近くに直接書く
 5. 数値は検算済みのスクリプトの出力（子の `<script type="application/json">` → `this.data`）だけを使う
 6. 補間は `DECK.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `DECK.lerp`
 7. 図の中の式は `DECK.svgMath(親, x, y, "TeX", {size, anchor})`、簡単な記号は `DECK.mtext`（`*u*_0`）
-8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書く部品は `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えば部品の代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
+8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
 
 ## 3. 確かめる
 
-デッキを組んで品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
+教材を組んで品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
 
 ```bash
 node <repo>/kit/build.mjs <deck>/deck.html && node <repo>/kit/check.mjs <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は検査が終わっていない：エラー 0 ではない
 node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
 ```
 
-失敗して直したことは、その部品の README に「注意」として書く（次に書く人が同じ失敗をしないように）。
+失敗して直したことは、そのパーツの README に「注意」として書く（次に書く人が同じ失敗をしないように）。
 
-## 4. 部品庫に入れる条件
+## 4. パーツライブラリに入れる条件
 
-デッキ専用に書いた部品は、次のどちらかを満たしたら部品庫（egatari/components）への提案を考える。
+その教材専用に書いたパーツは、次のどちらかを満たしたらパーツライブラリ（egatari/components）への提案を考える。
 
-- 2 つ目のデッキで使われた
+- 2 つ目の教材で使われた
 - 内容に依存しない形に書けた（データと文言をすべて属性か JSON で渡せる）
 
-## 5. 部品庫への提案（egatari/components の Issue）
+## 5. パーツライブラリへの提案（egatari/components の Issue）
 
-条件を満たしたとき、またはユーザーに頼まれたときは、egatari/components への提案を**申し出る**（勝手には送らない）。名前は提案の段階で部品庫の管理者が決めるので、仮の名前のままでよい。
+条件を満たしたとき、またはユーザーに頼まれたときは、egatari/components への提案を**申し出る**（勝手には送らない）。名前は提案のときにパーツライブラリの管理者が決めるので、仮の名前のままでよい。
 
-1. 「この部品を部品庫（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
+1. 「このパーツをパーツライブラリ（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
 2. 下書きを作って**全文をユーザーに見せる**。テンプレート `proposal.yml` の欄に合わせ、本文を次の見出しで書く：
-   `### Example / 例`（デッキの中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / 段階と最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・読む面・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
-   - デッキ固有の文言・未公開のデータ・個人のパスを入れない（見本の数値は作り物にする）
+   `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / 段階と最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・本・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
+   - その教材だけの文言・未公開のデータ・個人のパスを入れない（例の数値は作り物にする）
 3. ユーザーが「送って」と明示したときだけ送る：
    ```bash
    gh issue create -R egatari/components --title "[proposal] <何を見せる図か>" --label proposal --body-file <下書き>

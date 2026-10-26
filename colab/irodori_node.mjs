@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve, reply } from './worker-protocol.mjs';
 import { sessionFactory, providersFromEnv, actualProvider, supportedBackends } from './ort-fallback.mjs';
 import { decodeWav, encodeWav, toMono, resample } from '../kit/core/wav-core.mjs';
+import { profileSessions } from './stage-profile.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const modelDir = process.argv[2];
@@ -24,7 +25,12 @@ const T = await import(pathToFileURL(require.resolve('@huggingface/transformers'
 const { IrodoriTTS } = await import(pathToFileURL(path.join(ROOT, 'lab/vendor/irodori-tts-webgpu/pipeline.mjs')).href);
 
 const MODELS = { text: 'text_encoder', speaker: 'speaker_encoder', duration: 'duration', dit: 'dit', dac: 'dacvae_decoder', enc: 'dacvae_encoder' };   // lab/tts-engine.mjs の MODELS と同じ
-const folder = fs.existsSync(path.join(modelDir, 'onnx_fp16')) ? 'onnx_fp16' : 'onnx';
+// 重みのフォルダ：EGATARI_IRODORI_FOLDER（onnx か onnx_fp16）があればそれ、なければ onnx_fp16（あれば）か onnx。
+// ノートブックは GPU では onnx_fp16、CPU では onnx（fp32）を落とす。CPU の onnxruntime は fp16 の演算が遅い（Mac の CPU で dit が fp32 の約 1.8 倍の時間）
+const want = process.env.EGATARI_IRODORI_FOLDER;
+const folder = want && ['onnx', 'onnx_fp16'].includes(want) && fs.existsSync(path.join(modelDir, want)) ? want
+  : fs.existsSync(path.join(modelDir, 'onnx_fp16')) ? 'onnx_fp16' : 'onnx';
+const t0 = performance.now();
 // GPU（CUDA）で作れないセッションは CPU で作り直し、以後は最初から CPU（colab/ort-fallback.mjs）。お知らせは ready の返事に入れ、Python がノートブックに出す
 const factory = sessionFactory({ create: (file, opts) => ort.InferenceSession.create(file, opts), providers: providersFromEnv(process.env.EGATARI_ORT_PROVIDERS), log: (m) => console.error(m) });
 const sessions = {};
@@ -34,7 +40,17 @@ for (const [k, name] of Object.entries(MODELS)) {
 }
 T.env.allowRemoteModels = false; T.env.allowLocalModels = true; T.env.localModelPath = path.join(modelDir, 'tokenizer') + path.sep;
 const tokenizer = await T.AutoTokenizer.from_pretrained('llmjp_tok');
-const tts = new IrodoriTTS({ ort, sessions, tokenizer });
+const loadS = Math.round(performance.now() - t0) / 1000;
+// EGATARI_PROFILE=1：依頼ごとの段の時間を返事に入れる（colab/stage-profile.mjs。ノートブックの PROFILE）
+const prof = process.env.EGATARI_PROFILE === '1' ? profileSessions(sessions) : null;
+const tts = new IrodoriTTS({ ort, sessions: prof ? prof.sessions : sessions, tokenizer });
+// 参照音声の潜在表現（dacvae_encoder）と話者の状態（speaker_encoder）は、同じ参照音声なら区切りごとに同じなので、声ごとに 1 度だけ計算して使い回す
+// （入力が同じなので結果も同じで、音は変わらない。CPU では dacvae_encoder が 1 区切りに数秒かかり、diffusion の steps によらない固定の時間の大部分だった）。
+// 鍵は配列そのもの（refOf が声ごとに同じ Float32Array を返し、wavToRefLatent の結果の latent も同じものを返す）
+// 失敗した計算は覚えない（次の依頼でやり直す）。sr と opts は synthesize からはいつも同じ（48 kHz・既定）
+const memo = (fn) => { const m = new WeakMap(); return (x, ...rest) => { if (!m.has(x)) { const p = Promise.resolve(fn(x, ...rest)); m.set(x, p); p.catch(() => m.delete(x)); } return m.get(x); }; };
+tts.wavToRefLatent = memo(tts.wavToRefLatent.bind(tts));
+tts.encodeRefLatent = memo(tts.encodeRefLatent.bind(tts));
 
 const refs = new Map();   // 参照音声（声ごとに 1 度だけ読んで 48 kHz に）
 const refOf = (voice) => {
@@ -46,12 +62,15 @@ const refOf = (voice) => {
   return refs.get(voice);
 };
 
-reply(process.stdout, { ready: true, providers: factory.providers, provider: actualProvider(factory, supportedBackends(ort)), ...(factory.notice ? { notice: factory.notice } : {}) });
+reply(process.stdout, { ready: true, providers: factory.providers, provider: actualProvider(factory, supportedBackends(ort)), folder, loadS, ...(factory.notice ? { notice: factory.notice } : {}) });
 await serve({
   input: process.stdin, output: process.stdout,
   handler: async (req) => {
+    const t = performance.now();
+    if (prof) prof.reset();
     const r = await tts.synthesize(req.text, refOf(req.voice), 48000, { numSteps: req.steps || 40, seed: req.seed || 0 });
     fs.writeFileSync(req.out, encodeWav(r.audio instanceof Float32Array ? r.audio : Float32Array.from(r.audio), r.sampleRate));
+    return prof ? { profile: { stages: prof.take(), totalS: Math.round(performance.now() - t) / 1000 } } : undefined;
   },
 });
 process.exit(0);

@@ -19,7 +19,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { MP3, PROCESSING } from '../kit/core/audio-core.mjs';
 import { writeZip } from '../kit/core/zip-read.mjs';
-import { expectedCues, COLAB_VERIFIED } from '../kit/core/colab-core.mjs';
+import { expectedCues, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
 import { colabZip } from './colab-fixture.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
@@ -67,21 +67,25 @@ const opfsRead = (rel, bin) => page.evaluate(async ([rel, bin]) => {
 }, [rel, !!bin]);
 const idle = () => page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading; }, null, { timeout: 60000 });
 const msgs = () => page.$$eval('#dev-audio .dv-colab-msg', (e) => e.map((x) => x.textContent));
-// 書き出す（確かめの窓 → 取り消すか進む）→ ダウンロードした tts-job.json
-async function exportJob(scope = 'need') {
-  await page.selectOption('#dev-audio-colab-scope', scope);
-  await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
-  await page.waitForSelector('#dlg[open] #colab-privacy');
+// C1 台本を書き出す（このブラウザで初めてなら確かめの窓 → 進む）→ ダウンロードした tts-job.json。sel：押すボタン
+async function exportJob(confirm, sel = '#dev-audio-colab-export') {
   const dl = page.waitForEvent('download');
-  await clickDlg(page, '#dlg-ok');
+  if (confirm) {
+    await clickUntil(page, sel, () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
+    await clickDlg(page, '#dlg-ok');
+  } else await page.click(sel);
   const d = await dl;
+  ok(!confirm ? !(await page.$('#dlg[open] #colab-privacy')) : true, 'export: no privacy question after the first time');
   ok(d.suggestedFilename() === 'tts-job.json', 'export: downloads tts-job.json');
   return JSON.parse(fs.readFileSync(await d.path(), 'utf8'));
 }
+let lastChooser = null;
 async function importZip(bytes) {
   const fc = page.waitForEvent('filechooser');
   await page.click('#dev-audio-colab-import');
-  await (await fc).setFiles({ name: 'egatari-tts-result.zip', mimeType: 'application/zip', buffer: Buffer.from(bytes) });
+  const chooser = await fc;
+  lastChooser = { multiple: chooser.isMultiple(), accept: await chooser.element().getAttribute('accept'), type: await chooser.element().getAttribute('type'), dir: await chooser.element().evaluate((e) => e.webkitdirectory) };
+  await chooser.setFiles({ name: 'egatari-tts-result.zip', mimeType: 'application/zip', buffer: Buffer.from(bytes) });
   await page.waitForFunction(() => document.querySelector('#dev-audio .dv-colab-msg'), null, { timeout: 60000 });
   await idle();
 }
@@ -105,35 +109,47 @@ try {
   }, files);
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'folder: opened');
   await frameReady();
-  // WebGPU がない（学校の PC・Safari）：群は開いていて、そこに誘導する
+  // WebGPU がない（学校の PC・Safari）：B の既定はクラウド（Google Colab）で、C1〜C3 が出る
   await page.evaluate(() => Object.defineProperty(navigator, 'gpu', { value: undefined, configurable: true }));
   await page.click('#b-audio');
-  await page.waitForSelector('#dev-audio #dev-audio-colab');
+  await page.waitForSelector('#dev-audio #dev-audio-cloud-body');
   await idle();
-  ok(await page.evaluate(() => document.getElementById('dev-audio-colab').open), 'panel: the Colab group is open when the browser has no WebGPU');
-  ok(await page.evaluate(() => document.getElementById('dev-audio-tts').disabled), 'panel: browser TTS is off without WebGPU');
-  const un = await page.$('#dev-audio-colab-verified');
-  ok(!!un && (await un.textContent()) === COLAB_VERIFIED.ja, 'panel: the "verified" note (what was and was not verified) is shown');
+  ok(await page.evaluate(() => document.getElementById('dev-audio-how').open && document.querySelector('#dev-audio-how input:checked').value === 'cloud' && !document.getElementById('dev-audio-how-local') && !document.getElementById('dev-audio-tts')), 'B: without WebGPU, クラウド is the default and この PC is not offered');
+  ok((await page.textContent('#dev-audio-deck')) === `まだ音声がありません（${keys.length} ステップ）` && !(await page.$('#dev-audio-action')), 'A: no audio yet, no action (B is open instead)');
+  const cb = await page.evaluate(() => ({ c: [...document.querySelectorAll('#dev-audio-cloud-body .dv-steps > li')].map((li) => li.querySelector('.dv-c > button, .dv-c > a').textContent), c2: [...document.querySelectorAll('#dev-audio-c2-steps li')].map((x) => x.textContent), note: document.getElementById('dev-audio-c2-note').textContent, text: document.getElementById('dev-audio-cloud-body').textContent }));
+  ok(cb.c.join('|') === '台本を書き出す|Colab を開く|できた音声を取り込む…', 'C1–C3: 台本を書き出す, Colab を開く, できた音声を取り込む… ' + cb.c.join('|'));
+  ok(JSON.stringify(cb.c2) === JSON.stringify(COLAB_STEPS.ja) && /「接続」/.test(cb.c2[0]) && /ランタイムのタイプを変更/.test(cb.c2[0]) && cb.note === COLAB_TIME.ja, 'C2: the steps in the panel (接続 → CPU when it cannot connect → すべてのセルを実行 → choose the file → ZIP downloads) and the T4 timing');
+  ok(!cb.c2.some((x) => /\d+\s*(秒|分)/.test(x)) && (cb.text.match(/\d+\s*(秒|分)/g) || []).length === 1, 'C2: only the T4 timing line (no CPU timing)');
+  ok((await page.textContent('#dev-audio-c1 .dv-note')) === `音声の要る ${keys.length} ステップの台本を 1 つのファイルにします`, 'C1: counts the steps that need audio');
   const href = await page.getAttribute('#dev-audio-colab-open', 'href');
-  ok(/^https:\/\/colab\.research\.google\.com\/github\/egatari\/egatari-studio\/blob\/[^/]+\/colab\/egatari-tts\.ipynb$/.test(href) && (await page.getAttribute('#dev-audio-colab-open', 'rel')) === 'noopener', 'panel: "Open Colab" links to the official notebook (new tab, noopener)');
-  ok((await page.textContent('#dev-audio-colab-scope option[value=need]')).includes(`（${keys.length}）`), `panel: the default scope counts the steps without audio (${keys.length})`);
-  // プライバシーの確認：取り消せば書き出さない
+  ok(/^https:\/\/colab\.research\.google\.com\/github\/egatari\/egatari-studio\/blob\/[^/]+\/colab\/egatari-tts\.ipynb$/.test(href) && (await page.getAttribute('#dev-audio-colab-open', 'rel')) === 'noopener' && (await page.getAttribute('#dev-audio-colab-open', 'target')) === '_blank', 'C2: "Colab を開く" links to the official notebook (new tab, noopener)');
+  // プライバシーの確認（初めての 1 回）：キャンセルすれば書き出さない
   await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
-  ok((await page.textContent('#colab-privacy')).includes('Google'), 'export: the privacy note says the narration is processed in Google’s environment');
+  ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドやほかのファイルは渡しません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab に渡します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab に渡します / 書き出す / キャンセル)');
   let downloaded = false; page.once('download', () => { downloaded = true; });
   await clickDlg(page, '#dlg-cancel');
   await page.waitForTimeout(300);
-  ok(!downloaded, 'export: cancelling the privacy question writes nothing');
-  // 書き出す
-  const job = await exportJob('need');
+  ok(!downloaded && !(await page.$('#dev-audio-c1[data-done="1"]')), 'C1: cancelling the privacy question writes nothing (no ✓)');
+  // 書き出す（確かめる）
+  const job = await exportJob(true);
+  ok(await page.waitForSelector('#dev-audio-c1[data-done="1"]', { timeout: 5000 }).then(() => true, () => false), 'C1: ✓ after the export');
+  ok((await page.evaluate(() => window.__APP_TEST.audio().method)) === 'cloud' && JSON.parse(await opfsRead('egatari.json')).studio.audioMethod === 'cloud' && JSON.parse(await opfsRead('egatari.json')).docId === DOC, 'method: the export records studio.audioMethod = cloud (docId kept)');
+  // C2：Colab を開く（新しいタブ。試験ではネットワークに出ない）→ ✓
+  await ctx.route('https://colab.research.google.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>colab</title>' }));
+  const popP = ctx.waitForEvent('page');
+  await page.click('#dev-audio-colab-open');
+  await (await popP).close();
+  ok(await page.waitForSelector('#dev-audio-c2[data-done="1"]', { timeout: 5000 }).then(() => true, () => false), 'C2: ✓ after opening Colab');
+  // もう一度書き出す：確かめは出ない（このブラウザで 1 回だけ）
+  await exportJob(false);
   ok(job.egatari === 'tts-job' && job.v === 1 && job.docId === DOC && job.steps.length === keys.length, `export: tts-job.json has docId and ${keys.length} steps`);
   ok(job.recipe.engine === 'irodori' && job.recipe.processing === PROCESSING && /^[0-9a-f]{64}$/.test(job.recipe.dictionary), 'export: recipe target (engine, processing, reading dictionary hash)');
   const sj = job.steps.find((x) => x.key === keys[0]), seg0 = segs[0];
   ok(sj.inputHash === await PF.inputHash(seg0) && JSON.stringify(sj.turns[0].segments.length) === JSON.stringify(seg0.turns[0].ttsParts.length), 'export: inputHash and the segments follow the narration');
   const eta = job.steps.find((x) => x.turns.some((t) => t.segments.some((s) => s.includes('イータ'))));
   ok(!!eta && !job.steps.some((x) => x.turns.some((t) => t.segments.some((q) => /[{}]/.test(q)))), 'export: the reading dictionary is applied by the editor (イータ), no markup');
-  ok((await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next');
+  ok((await msgs()).some((m) => /^台本を書き出しました（\d+ ステップ）。次は「Colab を開く」$/.test(m)) && !(await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next (no file name)');
   // 書き出した後に、1 つの段階の原稿を直す（その段階は印付きになる）
   const changed = keys[2];
   const nr = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), changed);
@@ -142,7 +158,8 @@ try {
   // 取り込み：別の教材の zip は拒否
   const other = await colabZip(job, { docId: PF.newDocId(), title: 'ほかの授業' });
   await importZip(other);
-  ok((await msgs()).some((m) => m.includes('別の教材「ほかの授業」のために作ったもの') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a zip made for another lesson (docId) is refused and nothing is written');
+  ok((await msgs()).some((m) => m.startsWith('この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください') && m.includes('「ほかの授業」') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a ZIP file made for another lesson (docId) is refused and nothing is written');
+  ok(lastChooser && lastChooser.type === 'file' && !lastChooser.multiple && !lastChooser.dir && /\.zip/.test(lastChooser.accept), 'C3: a plain <input type=file> for one ZIP file (no folder picker) ' + JSON.stringify(lastChooser));
   // 敵対の zip：HTML を音声と言い張る・展開爆弾
   await importZip(await colabZip({ ...job, steps: [job.steps[0]] }, { mutate: (r, e) => { e[1] = [e[1][0], new TextEncoder().encode('<html><script>alert(1)</script></html>')]; } }));
   ok((await msgs()).some((m) => m.includes('WAV')) && !(await opfsRead('audio/manifest.json') || '').includes('"tts"'), 'import: a fake WAV (HTML) is refused; nothing is applied from it');
@@ -154,7 +171,8 @@ try {
   // 本番の zip
   await importZip(await colabZip(job));
   const sum = (await msgs())[0];
-  ok(sum.includes(`適用 ${keys.length - 1} 件`) && sum.includes('印付き 1 件'), 'import: ' + sum);
+  ok(sum === `${keys.length - 1} ステップに AI 音声を付けました。1 ステップは、書き出した後に台本が変わっているので使っていません`, 'import: ' + sum);
+  ok(await page.waitForSelector('#dev-audio-c3[data-done="1"]', { timeout: 5000 }).then(() => true, () => false), 'C3: ✓ after the import');
   const man = JSON.parse(await opfsRead('audio/manifest.json'));
   const applied = keys.filter((k) => k !== changed);
   ok(JSON.stringify(Object.keys(man.segments)) === JSON.stringify(applied), 'import: only the steps whose narration matches are written (the changed step is not)');
@@ -171,19 +189,15 @@ try {
   const withCues = applied.find((k) => man.segments[k].cues.length > 0);
   ok(withCues ? man.segments[withCues].cues.every((c, i, a) => c >= 0 && (i === 0 || c >= a[i - 1])) : true, 'import: the measured cue times are increasing seconds');
   ok(!(await opfsRead('audio/manifest.json')).includes(changed), 'import: the changed step has no audio yet');
-  // 印付き
-  ok(await page.isVisible(`#dev-audio .dv-marked[data-key="${changed}"]`), 'marked: the changed step is listed as marked (not applied)');
-  ok((await audioStateOf()).takes === 0, 'marked: no take was made for it');
-  await page.click(`#dev-audio .dv-marked[data-key="${changed}"] .dv-use-old`);
-  await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !!document.querySelector('#dev-audio-cur'); }, changed);
-  await page.waitForFunction(async (k) => (await window.__testDir.getDirectoryHandle('audio').then((d) => d.getFileHandle('manifest.json')).then((h) => h.getFile()).then((f) => f.text())).includes(k), changed, { timeout: 30000 });
-  const man2 = JSON.parse(await opfsRead('audio/manifest.json')).segments[changed];
-  ok(man2.kind === 'tts' && man2.inputHash === job.steps.find((x) => x.key === changed).inputHash && man2.inputHash !== await PF.inputHash(parseNarration(await opfsRead('narration.md')).find((s) => `${s.slideKey}:${s.stepKey}` === changed)), 'marked: "use it, still marked stale" writes the old inputHash (so it shows stale)');
-  // 古い印のままでも、書き出し直しの対象に入る
-  await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-  await idle();
-  ok((await page.textContent('#dev-audio-colab-scope option[value=need]')).includes('（1）'), 'export scope: the stale step is the only one left to export');
-  ok((await audioStateOf()).errors === undefined, 'panel state is readable');
+  // 合わなかったステップ：使わず（印付きの一覧はない）、「音声を更新（1 ステップ）」が前のやり方（クラウド）でその分を書き出す
+  ok(!(await page.$('.dv-marked, .dv-use-old')) && (await audioStateOf()).takes === 0, 'import: the changed step is not used and not listed as “marked”; no take for it');
+  ok((await page.textContent('#dev-audio-update-left')) === '音声を更新（1 ステップ）', 'import: offers 音声を更新（1 ステップ） for the step whose script changed');
+  ok((await page.textContent('#dev-audio-action')) === '残りの音声を作る（1 ステップ）', 'A: one step left: 残りの音声を作る（1 ステップ）');
+  const job2 = await exportJob(false, '#dev-audio-update-left');
+  ok(job2.steps.length === 1 && job2.steps[0].key === changed, 'update: continues with the cloud: exports only the changed step');
+  await importZip(await colabZip(job2));
+  ok((await msgs())[0] === '1 ステップに AI 音声を付けました' && JSON.parse(await opfsRead('audio/manifest.json')).segments[changed], 'update: the changed step is imported');
+  ok((await page.textContent('#dev-audio-deck .dv-line')) === `${keys.length} ステップすべてに音声があります` && !(await page.$('#dev-audio-action')), 'A: all steps have audio, no action');
 
   // ---------------------------------------------------------------- 2. 持ち運べる 1 ファイル
   const PDIR = path.join(work, 'pmin');
@@ -192,7 +206,8 @@ try {
   fs.mkdirSync(path.join(PDIR, 'audio'), { recursive: true });
   {
     const segments = {};
-    segs.forEach((x, j) => { fs.writeFileSync(path.join(PDIR, 'audio', `seg_js${j}.wav`), silentWav(0.5)); segments[`${x.slideKey}:${x.stepKey}`] = { file: `seg_js${j}.wav`, dur: 0.5, cues: [], sync: 'none' }; });
+    // 最初のステップだけ音声あり（ほかは音声なし。書き出すのは音声の要るステップ）
+    segs.slice(0, 1).forEach((x, j) => { fs.writeFileSync(path.join(PDIR, 'audio', `seg_js${j}.wav`), silentWav(0.5)); segments[`${x.slideKey}:${x.stepKey}`] = { file: `seg_js${j}.wav`, dur: 0.5, cues: [], sync: 'none' }; });
     fs.writeFileSync(path.join(PDIR, 'audio', 'manifest.json'), JSON.stringify({ segments }, null, 1));
     fs.writeFileSync(path.join(PDIR, 'egatari.json'), JSON.stringify({ metadata: { license: 'CC-BY-4.0', copyright: '© 2026 Test Author', creators: ['Test Author'] } }, null, 2) + '\n');
   }
@@ -203,20 +218,26 @@ try {
   await page.click('#b-audio');
   await page.waitForSelector('#dlg[open]');
   await clickDlg(page, '#dlg-ok');
-  await page.waitForSelector('#dev-audio #dev-audio-colab');
+  await page.waitForSelector('#dev-audio #dev-audio-cloud-body');
   await idle();
-  const pjob = await exportJob('all');
+  // iPad の Safari のように、フォルダ・ファイルを選ぶ仕組み（File System Access）がない
+  await page.evaluate(() => { for (const k of ['showDirectoryPicker', 'showOpenFilePicker']) { try { delete window[k]; } catch { /* 無視 */ } window[k] = undefined; } });
+  const need = keys.length - 1;
+  const pjob = await exportJob(false);
   const pdoc = (await page.evaluate(() => window.__APP_TEST.state().portable)).docId;
-  ok(pjob.docId === pdoc && pjob.steps.length === keys.length, 'portable: the job carries the index docId; all steps are exported');
+  ok(pjob.docId === pdoc && pjob.steps.length === need && !pjob.steps.some((x) => x.key === keys[0]), 'portable: the job carries the index docId; the steps that need audio are exported');
   await importZip(await colabZip(pjob));
-  ok((await msgs())[0].includes(`適用 ${keys.length} 件`), 'portable: ' + (await msgs())[0]);
+  ok((await msgs())[0] === `${need} ステップに AI 音声を付けました`, 'C3 without a folder picker: the ZIP file is imported through a plain file input: ' + (await msgs())[0]);
+  ok(lastChooser && lastChooser.type === 'file' && !lastChooser.dir, 'C3: no folder picker was needed');
   ok(await page.evaluate(() => window.__APP_TEST.state().portable.dirty), 'portable: the imported audio marks the file unsaved');
-  await page.evaluate(() => window.__APP_TEST.save('save'));
+  ok((await page.textContent('#dev-audio-deck .dv-line[data-kind="unsaved"]')) === '保存するまでファイルには入っていません' && (await page.textContent('#dev-audio-action')) === '保存', 'A: single file: 保存するまでファイルには入っていません and the action is 保存');
+  await page.click('#dev-audio-action');
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
   const ps = await page.evaluate(() => window.__APP_TEST.state().portable);
-  ok(ps.lastTier === 'A' && ps.lastTierA && JSON.stringify([...ps.lastTierA.audio].sort()) === JSON.stringify([...keys].sort()) && !ps.dirty, 'portable: saved by tier A; only the audio of the imported steps changed');
+  ok(ps.lastTier === 'A' && ps.lastTierA && JSON.stringify([...ps.lastTierA.audio].sort()) === JSON.stringify([...keys.slice(1)].sort()) && !ps.dirty, 'portable: saved by tier A; only the audio of the imported steps changed');
   const saved = await page.evaluate(() => window.__APP_TEST.saved());
   let diffOk = true;
-  try { regionDiff(pmin.html, saved, { audio: keys }); } catch (e) { diffOk = false; console.log('       ' + e.message.slice(0, 300)); }
+  try { regionDiff(pmin.html, saved, { audio: keys.slice(1) }); } catch (e) { diffOk = false; console.log('       ' + e.message.slice(0, 300)); }
   ok(diffOk, 'portable: bytes outside the tier A regions are identical (region diff)');
   const back = await PF.readPortable(saved);
   const rec = back.index.audio[keys[2]], seg2 = segs[2];

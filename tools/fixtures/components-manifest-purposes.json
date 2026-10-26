@@ -1,0 +1,322 @@
+{
+ "name": "egatari-components",
+ "version": "1.2.0",
+ "tag": "v1.2.0",
+ "purposes": [
+  {
+   "id": "compare",
+   "ja": "量を比べる",
+   "en": "Compare amounts",
+   "steps": {
+    "ja": "一方を出し、それから違い",
+    "en": "One side, then the difference"
+   }
+  },
+  {
+   "id": "ranking",
+   "ja": "順位",
+   "en": "Ranking",
+   "steps": {
+    "ja": "並べ替えた棒を 1 本ずつ",
+    "en": "Sorted bars one at a time"
+   }
+  },
+  {
+   "id": "change",
+   "ja": "時間での変化",
+   "en": "Change over time",
+   "steps": {
+    "ja": "線を 1 本ずつ",
+    "en": "One line at a time"
+   }
+  },
+  {
+   "id": "part-whole",
+   "ja": "全体と内訳",
+   "en": "Part of a whole",
+   "steps": {
+    "ja": "一度に全部",
+    "en": "Whole at once"
+   }
+  },
+  {
+   "id": "key-number",
+   "ja": "1 つの大事な数字",
+   "en": "One key number",
+   "steps": {
+    "ja": "一度に全部",
+    "en": "Whole at once"
+   }
+  },
+  {
+   "id": "process",
+   "ja": "手順・工程",
+   "en": "Steps of a process",
+   "steps": {
+    "ja": "1 つの手順ずつ",
+    "en": "One step at a time"
+   }
+  },
+  {
+   "id": "timeline",
+   "ja": "年表・予定",
+   "en": "Timeline, schedule",
+   "steps": {
+    "ja": "1 つの出来事ずつ",
+    "en": "One event at a time"
+   }
+  },
+  {
+   "id": "cause-effect",
+   "ja": "原因と結果",
+   "en": "Cause and effect",
+   "steps": {
+    "ja": "原因、それから結果",
+    "en": "Causes, then the effect"
+   }
+  },
+  {
+   "id": "cycle",
+   "ja": "循環",
+   "en": "Cycle",
+   "steps": {
+    "ja": "1 つの段階ずつ",
+    "en": "One stage at a time"
+   }
+  },
+  {
+   "id": "hierarchy",
+   "ja": "階層・分類",
+   "en": "Hierarchy, classification",
+   "steps": {
+    "ja": "上から",
+    "en": "Top down"
+   }
+  },
+  {
+   "id": "position",
+   "ja": "位置づけ（2 軸）",
+   "en": "Position on 2 axes",
+   "steps": {
+    "ja": "軸、それから項目",
+    "en": "Axes, then items"
+   }
+  },
+  {
+   "id": "overlap",
+   "ja": "重なり",
+   "en": "Overlap",
+   "steps": {
+    "ja": "集合、それから重なり",
+    "en": "Sets, then the overlap"
+   }
+  },
+  {
+   "id": "correlation",
+   "ja": "2 つの量の関係",
+   "en": "Two quantities",
+   "steps": {
+    "ja": "点、それから傾向",
+    "en": "Points, then the trend"
+   }
+  },
+  {
+   "id": "spread",
+   "ja": "ばらつき",
+   "en": "Spread",
+   "steps": {
+    "ja": "一度に全部",
+    "en": "Whole at once"
+   }
+  },
+  {
+   "id": "grouping",
+   "ja": "まとめる・分ける",
+   "en": "Grouping",
+   "steps": {
+    "ja": "まとまる動き",
+    "en": "The grouping motion"
+   }
+  },
+  {
+   "id": "text-structure",
+   "ja": "文章の構造",
+   "en": "Structure of a text",
+   "steps": {
+    "ja": "読む順",
+    "en": "Reading order"
+   }
+  },
+  {
+   "id": "contents",
+   "ja": "目次",
+   "en": "Contents",
+   "steps": {
+    "ja": "一度に全部",
+    "en": "Whole at once"
+   }
+  },
+  {
+   "id": "parameter",
+   "ja": "パラメータを動かす",
+   "en": "Varying a parameter",
+   "steps": {
+    "ja": "値を 1 つずつ",
+    "en": "One value at a time"
+   }
+  },
+  {
+   "id": "deviation",
+   "ja": "差・増減",
+   "en": "Deviation, increase and decrease",
+   "steps": {
+    "ja": "基準、それから差",
+    "en": "The baseline, then the differences"
+   },
+   "reserved": true
+  },
+  {
+   "id": "concept-links",
+   "ja": "概念のつながり",
+   "en": "Concept links",
+   "steps": {
+    "ja": "中心から外へ",
+    "en": "From the centre outwards"
+   },
+   "reserved": true
+  },
+  {
+   "id": "mystery",
+   "ja": "謎",
+   "en": "Mystery",
+   "steps": {
+    "ja": "一度に",
+    "en": "At once"
+   }
+  }
+ ],
+ "components": {
+  "bars": {
+   "tag": "m-bars",
+   "series": "common",
+   "purposes": [
+    "compare",
+    "ranking",
+    "change",
+    "part-whole"
+   ],
+   "variants": []
+  },
+  "curves": {
+   "tag": "m-curves",
+   "series": "academic",
+   "purposes": [
+    "change"
+   ],
+   "variants": []
+  },
+  "flow": {
+   "tag": "m-flow",
+   "series": "common",
+   "purposes": [
+    "process"
+   ],
+   "variants": []
+  },
+  "menu": {
+   "tag": "m-menu",
+   "series": "common",
+   "purposes": [
+    "contents"
+   ],
+   "variants": []
+  },
+  "kpi": {
+   "tag": "m-kpi",
+   "series": "business",
+   "purposes": [
+    "key-number"
+   ],
+   "variants": [
+    "count",
+    "rise",
+    "flip",
+    "underline"
+   ]
+  },
+  "market": {
+   "tag": "m-market",
+   "series": "business",
+   "purposes": [
+    "part-whole"
+   ],
+   "variants": []
+  },
+  "quad": {
+   "tag": "m-quad",
+   "series": "business",
+   "purposes": [
+    "position"
+   ],
+   "variants": []
+  },
+  "sweep": {
+   "tag": "m-sweep",
+   "series": "academic",
+   "purposes": [
+    "parameter"
+   ],
+   "variants": []
+  },
+  "seq": {
+   "tag": "m-seq",
+   "series": "academic",
+   "purposes": [
+    "spread"
+   ],
+   "variants": []
+  },
+  "collect": {
+   "tag": "m-collect",
+   "series": "academic",
+   "purposes": [
+    "grouping"
+   ],
+   "variants": []
+  },
+  "kanbun": {
+   "tag": "m-kanbun",
+   "series": "kokugo",
+   "purposes": [
+    "text-structure"
+   ],
+   "variants": []
+  },
+  "kobun": {
+   "tag": "m-kobun",
+   "series": "kokugo",
+   "purposes": [
+    "text-structure"
+   ],
+   "variants": []
+  },
+  "gendai": {
+   "tag": "m-gendai",
+   "series": "kokugo",
+   "purposes": [
+    "text-structure"
+   ],
+   "variants": []
+  },
+  "codetree": {
+   "tag": "m-codetree",
+   "series": "info",
+   "purposes": [
+    "hierarchy",
+    "process"
+   ],
+   "variants": []
+  }
+ },
+ "_note": "Test fixture: the manifest shape of egatari/components tools/release.mjs (conventions-v1.2 06535fb, unreleased): its 20 purposes (ranking, 2 reserved) plus one unknown id (\"mystery\"); sha256 and files left out."
+}

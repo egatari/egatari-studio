@@ -58,6 +58,8 @@ const EXPECT = {
   's-srlist': [],
   's-srover': ['bodyBottom'],
   's-srmarkup': [],
+  's-subpx': [],
+  's-twopx': ['bodyBottom'],
 };
 const codesBy = (list, idOf) => {
   const m = {};
@@ -109,6 +111,13 @@ await t('check: a visually hidden list (1×1 overflow box, clip-path inset(50%),
   // the reported bottom is the visible 400px box, not the hidden <li> far below it
   const r = J.results.find((x) => x.id === 's-srover' && x.code === 'bodyBottom');
   assert.ok(r.data.px > 565 && r.data.px <= 720, 'bodyBottom px ' + r.data.px);
+});
+await t('check: an overflow under 1 px is not reported (0.4 px), and a reported one is never “0 px” (2 px is “2 px”): the comparison and the message round the same way', () => {
+  assert.deepEqual(J.results.filter((x) => x.id === 's-subpx' && x.sev === 'error').map((x) => x.code), []);
+  const r = J.results.find((x) => x.id === 's-twopx' && x.code === 'bodyBottom');
+  assert.deepEqual([r.data.px, r.data.lim], [567, 565]);
+  assert.ok(r.msg.includes('本文が下に 2 px はみ出す（567px > 565px'), r.msg);
+  assert.ok(message('en', 'bodyBottom', r.data).includes('by 2 px'));
 });
 await t('check: viewBox and slide edges are told apart; text outside the body says what it hits', () => {
   assert.equal(J.results.find((x) => x.id === 's-viewbox' && x.code === 'svgTextOut').data.edge, 'viewBox');

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-timeline の見本</title>
+<!-- 組み方：node kit/build.mjs components/timeline/demo.html -o components/timeline/out/demo.html（年はどれも広く知られた史実） -->
+<style>
+.vcap{font-size:24px;line-height:1.3;margin:0 0 6px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>明治のおもな出来事</h2>
+  <div class="body">
+    <m-timeline style="height:430px">
+      <script type="application/json">{
+        "nodes": [
+          {"label": "明治維新", "when": "1868", "whenLabel": "明治元年", "note": "五箇条の御誓文"},
+          {"label": "廃藩置県", "when": "1871"},
+          {"label": "鉄道の開業", "when": "1872", "note": "新橋〜横浜"},
+          {"label": "西南戦争", "when": "1877"},
+          {"label": "憲法の発布", "when": "1889", "tone": "emph"},
+          {"label": "日清戦争", "when": "1894"},
+          {"label": "日露戦争", "when": "1904"}
+        ]
+      }</script>
+    </m-timeline>
+  </div>
+  <div class="concl"><span>→ 約 20 年で憲法をもつ国になった</span></div>
+</section>
+
+<section class="slide">
+  <h2>明治・大正の作家の生涯</h2>
+  <div class="body">
+    <m-timeline style="height:430px">
+      <script type="application/json">{
+        "nodes": [
+          {"label": "明治", "when": "1868", "end": "1912", "lane": "時代", "tone": "muted"},
+          {"label": "大正", "when": "1912", "end": "1926", "lane": "時代", "tone": "muted"},
+          {"label": "森鷗外", "when": "1862", "end": "1922", "lane": "作家"},
+          {"label": "夏目漱石", "when": "1867", "end": "1916", "lane": "作家"},
+          {"label": "正岡子規", "when": "1867", "end": "1902", "lane": "作家"},
+          {"label": "樋口一葉\n24 歳で没", "when": "1872", "end": "1896", "lane": "作家", "tone": "emph"},
+          {"label": "芥川龍之介", "when": "1892", "end": "1927", "lane": "作家"},
+          {"label": "宮沢賢治", "when": "1896", "end": "1933", "lane": "作家"}
+        ]
+      }</script>
+    </m-timeline>
+  </div>
+  <div class="concl"><span>→ 重なる生涯は段を分けて積む。漱石と子規は同じ年の生まれ</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 36px">
+      <div><p class="vcap">現れてから線（fade、既定）</p>
+        <m-timeline variant="fade" style="height:330px">
+          <script type="application/json">{"nodes": [{"label": "明治維新", "when": "1868"}, {"label": "明治", "when": "1868", "end": "1912"}, {"label": "憲法の発布", "when": "1889"}]}</script>
+        </m-timeline></div>
+      <div><p class="vcap">線を引いてから（draw）</p>
+        <m-timeline variant="draw" style="height:330px">
+          <script type="application/json">{"nodes": [{"label": "明治維新", "when": "1868"}, {"label": "明治", "when": "1868", "end": "1912"}, {"label": "憲法の発布", "when": "1889"}]}</script>
+        </m-timeline></div>
+      <div><p class="vcap">軸の側から大きくなる（grow）</p>
+        <m-timeline variant="grow" style="height:330px">
+          <script type="application/json">{"nodes": [{"label": "明治維新", "when": "1868"}, {"label": "明治", "when": "1868", "end": "1912"}, {"label": "憲法の発布", "when": "1889"}]}</script>
+        </m-timeline></div>
+    </div>
+  </div>
+  <div class="concl"><span>→ 資料のシード値（data-egatari-seed）で 1 つが選ばれる</span></div>
+</section>
+
+</div>
+</body>
+</html>

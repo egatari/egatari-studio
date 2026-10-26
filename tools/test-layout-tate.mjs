@@ -163,7 +163,7 @@ for (const theme of ['default', 'kokugo']) {
         const h2 = sl.querySelector('h2'), c = sl.querySelector('.concl'), pn = sl.querySelector('.pn'), cs = getComputedStyle(h2);
         return { wm: cs.writingMode, bl: parseFloat(cs.borderLeftWidth), bb: parseFloat(cs.borderBottomWidth), h2: rel(h2.getBoundingClientRect()), h2g: glyphs(h2),
           body: glyphs(sl.querySelector('.body')), pn: pn && rel(pn.getBoundingClientRect()),
-          c: c && { wm: getComputedStyle(c).writingMode, box: rel(c.getBoundingClientRect()), g: glyphs(c) } };
+          c: c && { wm: getComputedStyle(c).writingMode, box: rel(c.getBoundingClientRect()), g: glyphs(c), bt: parseFloat(getComputedStyle(c).borderTopWidth), rad: getComputedStyle(c).borderTopLeftRadius, jc: getComputedStyle(c).justifyContent } };
       }, s.i);
       const near = (a, b, what) => assert.ok(Math.abs(a - b) <= 1, `${what}: ${a.toFixed(1)} (expected ${b})`);
       const inside = (g, box, what) => { for (const x of g) assert.ok(x.l >= box.l - 1 && x.r <= box.r + 1 && x.t >= box.t - 1 && x.b <= box.b + 1, `${what}: "${x.s}" ${JSON.stringify(x)} outside ${JSON.stringify(box)}`); };
@@ -179,6 +179,8 @@ for (const theme of ['default', 'kokugo']) {
       if (g.c) {
         assert.equal(g.c.wm, 'vertical-rl', 'conclusion writing-mode');
         near(g.c.box.l, 48, 'conclusion left'); near(g.c.box.t, 48, 'conclusion top');
+        // default 1.2.0 の結論の行（左の縦線・左揃え）は横組みだけ。縦組みの結論の列は今までの枠（四辺の線・角丸・中央揃え）のまま
+        assert.ok(g.c.bt >= 2 && g.c.rad === '10px' && g.c.jc === 'center', `conclusion column keeps its frame (border-top ${g.c.bt}, radius ${g.c.rad}, ${g.c.jc})`);
         assert.ok(g.c.box.r <= 124, `conclusion column right ${g.c.box.r}`);
         inside(g.c.g, g.c.box, 'conclusion text fits its box');
         for (const x of g.body) assert.ok(x.l >= g.c.box.r + 8, `body text "${x.s}" over the conclusion column (${x.l.toFixed(1)})`);

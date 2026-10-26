@@ -37,6 +37,8 @@ const steps = [
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
+  // 画面の言葉（docs/terms.json の avoid の言葉が、画面の文字列・使い方の文書・skills に残っていないか）：残っていれば失敗（直すか、正当な使い方なら docs/terms-allow.json に理由と書く）
+  ['lint terms', ['tools/lint-terms.mjs']],
   // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
   // 部品庫の写し（vendor/components）が components.lock.json と合っているか（ネットワークなし）
   ['components', ['tools/components-update.mjs', '--check']],
@@ -75,6 +77,8 @@ const steps = [
   // 部品庫が取り下げた版（format spec §6）：警告（CLI）・編集アプリのページに eval の許可がないこと・取り下げた版を記録した文書の知らせと「組み直す」・sandbox の枠
   ['test-yanked', ['tools/test-yanked.mjs', path.join(tmp, 'yanked')]],
   ['test-theme-version', ['tools/test-theme-version.mjs', path.join(tmp, 'theme-version')]],
+  // テーマを変更…（スライド ▾）：data-theme だけを替え（ほかの属性・スライドは変えない）、egatari.json の themes の固定（ほかの項目はバイトのまま）、プレビューの色、元に戻す、段 B の保存、作業フォルダ、組み直せないファイル
+  ['test-theme-switch', ['tools/test-theme-switch.mjs', path.join(tmp, 'theme-switch')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 並んでいないうちに起動したデッキ（display:none の iframe）を後で出しても、ふつうの起動と画素まで同じ（contract §3：mount は舞台が並んでから）
   ['test-mount-hidden', ['tools/test-mount-hidden.mjs', path.join(tmp, 'mount-hidden')]],
@@ -125,6 +129,8 @@ steps.push(
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
+  ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 // チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
@@ -167,6 +173,7 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 
+const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : 600;
 function run(name, argv) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -174,8 +181,8 @@ function run(name, argv) {
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (verbose) process.stdout.write(d); });
     ch.stderr.on('data', (d) => { out += d; if (verbose) process.stderr.write(d); });
-    // 1 つのテストが 10 分を超えたら止める（ブラウザが固まったとき）
-    const timer = setTimeout(() => { out += '\n[test-all] timeout: killed after 600 s\n'; ch.kill('SIGKILL'); }, 600_000);
+    // 1 つのテストが 10 分（遅い macOS の CI では TEST_STEP_TIMEOUT_S で延ばす）を超えたら止める（ブラウザが固まったとき）
+    const timer = setTimeout(() => { out += `\n[test-all] timeout: killed after ${STEP_TIMEOUT_S} s\n`; ch.kill('SIGKILL'); }, STEP_TIMEOUT_S * 1000);
     ch.on('close', (code, sig) => { clearTimeout(timer); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }

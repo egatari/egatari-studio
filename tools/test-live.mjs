@@ -276,7 +276,7 @@ console.log('no network');
   quiet(o.net, 'after the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html'])); await sleep(1500);
   const t = await o.p.$eval('#live-pane .lv-notice', (e) => e.textContent);
-  ok(t.includes(host) && /のライブで先生に質問や投票を送れます/.test(t), `before Join: the notice names the endpoint ("${t}")`);
+  ok(t.includes(host) && /のライブでホストに質問や投票を送れます/.test(t), `before Join: the notice names the endpoint ("${t}")`);
   ok(await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && b.textContent === '参加する'), 'before Join: the Join button is there');
   quiet(o.net, 'before Join is clicked'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html']) + '?mode=video'); await sleep(800);
@@ -403,7 +403,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
   const s = await st(o.p), msg = await o.p.$eval('#live-pane .lv-msg', (e) => e.textContent);
   ok(fake.connections.length === 1 && s.reason === reason && msg.length > 4, `${code} (${reason}): no reconnect, with a message ("${msg}")`);
   ok((await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && !b.closest('[hidden]'))) === rejoin, `${code}: Join again is ${rejoin ? '' : 'not '}offered`);
-  if (code === 4441) ok(msg === '先生が参加を認めませんでした' && await o.p.$eval('#live-pane .lv-join', (b) => b.textContent) === 'もう一度試す', '4441: "the teacher did not admit you" with a manual Try again');
+  if (code === 4441) ok(msg === 'ホストが参加を認めませんでした' && await o.p.$eval('#live-pane .lv-join', (b) => b.textContent) === 'もう一度試す', '4441: "the teacher did not admit you" with a manual Try again');
   await o.close();
 }
 // 先生が閉じた（4423）：ゆっくり（30 秒より後）つなぎ直す

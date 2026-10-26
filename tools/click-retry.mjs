@@ -41,3 +41,24 @@ export async function clickMenuItem(page, selector) {
   const h = await page.waitForSelector(selector, { state: 'attached' });
   return clickUntil(page, selector, () => page.waitForFunction((b) => { const l = b.closest('.menu-list'); return !l || l.hidden; }, h, { timeout: EFFECT_MS }));
 }
+
+// 道具の列の一覧の中の項目を押す（ui-redesign：ファイル ▾・スライド ▾・プレビュー ▾ と入れ子の「書き出し ▸」）：
+// その項目を含む一覧を外側から順に開いてから押す。効果は一覧が閉じること（窓を開く項目は、その後に窓を待つ）
+export async function clickCommand(page, selector) {
+  const chain = await page.evaluate((sel) => {
+    const b = document.querySelector(sel);
+    if (!b) throw new Error('no ' + sel);
+    const out = [];
+    for (let l = b.closest('[role=menu]'); l; l = l.parentElement && l.parentElement.closest('[role=menu]')) {
+      const opener = document.querySelector(`[aria-controls="${l.id}"]`);
+      if (opener) out.unshift('#' + opener.id);
+    }
+    return out;
+  }, selector);
+  if (!chain.length) return page.click(selector);
+  for (const o of chain) {
+    const id = await page.getAttribute(o, 'aria-controls');
+    if (await page.isHidden('#' + id)) await clickMenuOpen(page, o);
+  }
+  return clickMenuItem(page, selector);
+}

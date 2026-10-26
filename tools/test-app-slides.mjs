@@ -20,7 +20,7 @@ import { silentWav } from './portable-fixtures.mjs';
 import { spawnSync } from 'node:child_process';
 import { slideTemplate, insertSlide, insertSection, newIdFor } from '../kit/core/slide-ops.mjs';
 import { TEMPLATE_DEFAULTS } from '../kit/core/template-text.mjs';
-import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem } from './click-retry.mjs';
+import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ID = /^s-[a-z2-7]{6}$/;
@@ -184,7 +184,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         const errs = await page.$$eval('#panel-body .res.error', (xs) => xs.map((x) => x.textContent));
         const mine = await page.$$eval('#panel-body .res', (xs, n) => xs.filter((x) => x.querySelector('.where').textContent.startsWith(`スライド ${n}：`)).map((x) => [x.classList.contains('warn') ? 'warn' : 'other', x.textContent]), sel + 2);
         const nSteps = sec.length;
-        ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /雛形の字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
+        ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /テンプレートの字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
           `${tag}: add "${kind}": no errors; the new slide gets the template warnings only (template text 1, placeholder narration ${nSteps})${errs.length || mine.length !== nSteps + 1 ? ' ' + JSON.stringify([errs, mine]) : ''}`);
         ok(sec.every((g) => g.turns.length === 1 && g.turns[0].raw.startsWith('✎ ')), `${tag}: add "${kind}": every placeholder line starts with the fixed mark "✎ "`);
         if (kind === 'title-body') ok(/足しました/.test(await announced()), `${tag}: the add is announced (aria-live)`);
@@ -203,22 +203,20 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.waitForSelector('#dev-audio-tts:not([disabled])', { timeout: 10000 });
         await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #left-list', { timeout: 2500 }));
         const ttsDlg = await page.textContent('#dlg');
-        ok(/雛形の仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
+        ok(/テンプレートの仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
         await clickDlg(page, '#dlg-cancel');
         ok(await page.evaluate(() => window.__synth) === 0, `${tag}: Cancel in the TTS warning synthesizes nothing`);
         await page.click('#b-audio');
         // 書き出しの前：雛形の字と仮の行の一覧。取消なら書かない、「このまま書き出す」なら書く
         await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('slides-export.ega.html', { create: true }); const w = await window.__APP_TEST.saveHandle.createWritable(); await w.write(''); await w.close(); });
-        await clickMenuOpen(page, '#b-exportmenu');
-        await clickMenuItem(page, '#b-export-portable');
+        await clickCommand(page, '#b-export-portable');
         await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
         const exDlg = await page.$$eval('#left-list li', (xs) => xs.map((x) => x.textContent));
-        ok(exDlg.some((t) => /雛形の字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
+        ok(exDlg.some((t) => /テンプレートの字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
         await clickDlg(page, '#dlg-cancel');
         await page.waitForTimeout(300);
         ok(await page.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size) === 0, `${tag}: Cancel in the export warning writes nothing`);
-        await clickMenuOpen(page, '#b-exportmenu');
-        await clickMenuItem(page, '#b-export-portable');
+        await clickCommand(page, '#b-export-portable');
         await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
         await clickDlg(page, '#dlg-go');
         await page.waitForFunction(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 0, null, { timeout: 30000 });
@@ -349,6 +347,27 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.waitForSelector('#panel-body .sum');
         const errs = await page.$$eval('#panel-body .res.error', (xs) => xs.map((x) => x.textContent));
         ok(errs.length === 0, `${tag}: the reopened file has no quick-check errors ${JSON.stringify(errs)}`);
+      }
+      // ---------------------------------------------------------------- 7. 道具の列の「スライド ▾」（ui-redesign）：一覧で選んだスライドに
+      {
+        await selectRow(0);
+        const before = await snap(), b0 = (await state()).builds;
+        await clickCommand(page, '#b-dup');
+        // 開き直した 1 ファイルは、最初の編集の前に権利を見せる
+        if (await page.waitForSelector('#dlg[open] #rights-list', { timeout: 3000 }).then(() => true, () => false)) await clickDlg(page, '#dlg-ok');
+        await settle(b0);
+        const after = await snap();
+        ok(keys(after.deck).length === keys(before.deck).length + 1 && keys(after.deck)[0] === keys(before.deck)[0] && keys(after.deck)[2] === keys(before.deck)[1], `${tag}: Slide ▾ → Duplicate copies the slide selected in the list`);
+        await selectRow(1);
+        await clickCommand(page, '#b-del');
+        await page.waitForSelector('#dlg[open] #sl-del-what');
+        ok((await page.textContent('#sl-del-what')).includes('スライド 2'), `${tag}: Slide ▾ → Delete asks about the selected slide`);
+        await clickDlg(page, '#dlg-cancel');
+        await clickCommand(page, '#b-insert');
+        await page.waitForSelector('#dlg[open] #insert-choices');
+        ok(await page.isVisible('#insert-title-body') && await page.isVisible('#insert-ai') && (await page.textContent('#insert-lead')).includes('スライド 2'), `${tag}: Slide ▾ → Insert slide… offers the templates and the chat AI, after the selected slide`);
+        if (mode === 'folder') await shot('slides-insert-dialog.png');
+        await clickDlg(page, '#dlg-cancel');
       }
       if (mode === 'file') {
         // ✕ で閉じると、つまみに戻る

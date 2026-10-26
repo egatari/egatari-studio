@@ -39,8 +39,8 @@
     }
   },
   "buildPack": {
+    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { series = [], tools = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}",
     "params": "opts",
-    "assembleParams": "data, { series = [], lang = 'en' } = {}",
     "returns": "string"
   },
   "llm-import.extractBlocks": {

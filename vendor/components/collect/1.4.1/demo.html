@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-collect の見本</title>
+<!-- 組み方：node kit/build.mjs components/collect/demo.html -o components/collect/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<script>
+// 見本の数値：8 回のコイン投げ（表なら 1）から、一様な事前分布 Beta(1,1) のもとでの事後平均と事後分散を計算する
+document.addEventListener("DOMContentLoaded", function(){
+  var ans = [1, 1, 0, 1, 1, 0, 1, 1], s = ans.reduce(function(a, b){ return a + b; }, 0), n = ans.length;
+  var al = 1 + s, be = 1 + n - s, mean = al / (al + be), v = al * be / (Math.pow(al + be, 2) * (al + be + 1));
+  document.getElementById("ans-data").textContent = JSON.stringify({
+    cols: 4,
+    chips: ans.map(function(x, i){ return {label: "試行 " + (i + 1) + "：" + (x ? "表" : "裏"), to: [0, 1]}; }),
+    targets: [{label: "事後平均", tex: "\\mathrm{E}[\\theta\\mid D]", value: mean.toFixed(3)},
+              {label: "事後分散", tex: "\\mathrm{Var}[\\theta\\mid D]", value: v.toFixed(4)}]
+  });
+});
+</script>
+<div id="stage">
+
+<section class="slide">
+  <h2>観測の要約</h2>
+  <div class="body">
+    <p data-step="1">8 回の観測は，事後分布の 2 つのモーメントにまとまる</p>
+    <m-collect data-from="2" box-w="300" box-h="120" style="height:340px">
+      <script type="application/json" id="ans-data">{}</script>
+    </m-collect>
+  </div>
+  <div class="concl"><span>→ 次の予測には，この 2 つの値だけ持てばよい</span></div>
+</section>
+
+</div>
+</body>
+</html>

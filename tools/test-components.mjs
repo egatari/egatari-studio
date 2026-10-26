@@ -2,16 +2,19 @@
 // この Studio で組んで、ブラウザで動かして確かめる（部品を変えたときの試験の本体は egatari/components の npm test。これは Studio との結合の試験）
 //   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
 // 確かめること：見本が組めて、品質チェック（kit/check.mjs）のエラーが 0（KNOWN に書いたものを除く）／コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
-// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること／m-gendai の線（つなぐ線・指示語の矢印・傍線）が自分の端のほかで札に入らず、段落の枠の辺を横切らないこと
+// 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する。部品の DOM がバイトまで同じなら、縁のアンチエイリアスの少しの揺れは許して記録する：kit/render-compare.mjs）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること／m-gendai の線（つなぐ線・指示語の矢印・傍線）が自分の端のほかで札に入らず、段落の枠の辺を横切らないこと
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
+import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 
-// 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 …]}
-const KNOWN = {};
+// 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
+// 部品庫 v1.10.0：m-numberline の見本の 3 枚目は本文が下に 47 px はみ出す（2026-10-26、部品庫で直したら消す）
+const KNOWN = { numberline: [{ code: 'bodyBottom', title: '1200 円の 2/3 はいくら（2 本の数直線）' }] };
+const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string' ? k === x.rule : k.code === x.code && k.title === x.title));
 
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');
@@ -23,6 +26,8 @@ const comps = args.length ? all.filter((c) => args.includes(c.name)) : all;
 const names = comps.map((c) => c.name);
 
 const b = await launch();
+const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
+let qcNoise = 0;            // 品質チェックが揺れとして通した数（compOrderNoise）
 let fail = 0;
 const failed = [];   // [名前, 理由]
 for (const { name, version, dir } of comps) {
@@ -43,7 +48,8 @@ for (const { name, version, dir } of comps) {
   }
   if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
   const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
-  const qBad = qErrs ? qErrs.filter((x) => !(KNOWN[name] || []).includes(x.rule)) : null;
+  const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
+  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
   const shots = path.join(outRoot, name, 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -57,18 +63,6 @@ for (const { name, version, dir } of comps) {
   };
   // 撮る前に字と描画が落ち着くのを待つ（docs/contract.md §1：seek の後に requestAnimationFrame を 2 回）
   const settle = () => p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
-  // はっきり違う画素（RGB の差の和が 48 を超える）の数
-  const pixelDiff = (a, b) => p.evaluate(async ([a, b]) => {
-    const ld = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });
-    const [ia, ib] = await Promise.all([ld(a), ld(b)]);
-    const c = document.createElement('canvas'); c.width = ia.width; c.height = ia.height;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(ia, 0, 0); const da = g.getImageData(0, 0, c.width, c.height).data;
-    g.clearRect(0, 0, c.width, c.height); g.drawImage(ib, 0, 0); const db = g.getImageData(0, 0, c.width, c.height).data;
-    let n = 0;
-    for (let i = 0; i < da.length; i += 4) if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 48) n++;
-    return n;
-  }, [a.toString('base64'), b.toString('base64')]);
   const seek = (i, k, t) => p.evaluate(([i, k, t]) => DECK.seek(i, k, t === null ? Infinity : t), [i, k, t]);
   await load();
   // 部品のあるスライドと、各段階の動きの長さ
@@ -158,23 +152,24 @@ for (const { name, version, dir } of comps) {
       bad.forEach((x) => issues.push(`s${s.i} k${k}: ${x}`));
     }
   }
-  // 決定性：読み込み直後の (i, k, 0.5) と、ほかの位置を経てからの (i, k, 0.5) を比べる
+  // 決定性：読み込み直後の (i, k, 0.5) と、ほかの位置を経てからの (i, k, 0.5) を比べる（部品の DOM がバイトまで同じで、画素の違いが縁の少しだけなら描き方の揺れとして許し、記録する）
   const det = [];
   for (const s of plan) {
     for (let k = 1; k <= s.max; k++) {
       await load();
       await seek(s.i, k, 0.5);
       await settle();
-      const A = await stableCapture(p);
+      const A = await stableCapture(p), DA = await domSnapshot(p, s.i);
       await seek(s.i, s.max, null); await seek(s.i, 0, null); await seek(s.i, k, 1.7); await seek(s.i, Math.min(s.max, k + 1), 0.3);
       await seek(s.i, k, 0.5);
       await settle();
       let B = await stableCapture(p);
       if (!A.equals(B)) { await settle(); B = await stableCapture(p); }   // 描画の遅れによる誤検出を避ける
-      // アンチエイリアスの揺らぎ（数画素・数階調）は許す（kit/check.mjs の D と同じ基準）
-      const nd = A.equals(B) ? 0 : await pixelDiff(A, B);
-      const ok = nd <= 40;
-      if (nd && ok) console.log(`   note s${s.i}k${k}: ${nd} pixel(s) differ beyond tolerance 0 (within 40, ok)`);
+      // まず部品の DOM を比べ、バイトまで同じなら縁だけの少しの画素の違い（描き方の揺れ）は許す（kit/render-compare.mjs の NOISE_BOUNDS。kit/check.mjs の D と同じ基準）
+      const cmp = await compareRenders(p, A, B, DA, await domSnapshot(p, s.i));
+      const ok = cmp.same;
+      if (!cmp.exact) console.log(`   ${ok ? 'note' : 'diff'} [${process.platform}] ${name} slide ${s.i + 1} (s${s.i}) step ${k}: ${cmp.note}`);
+      noise.add(`${name} slide ${s.i + 1} step ${k}`, cmp);
       det.push(`s${s.i}k${k}:${ok ? 'ok' : 'DIFF'}`);
       if (!ok) { fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_A.png`), A); fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_B.png`), B); }
     }
@@ -198,6 +193,8 @@ for (const { name, version, dir } of comps) {
 }
 await b.close();
 console.log('');
+console.log(noise.summary('determinism: renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
+console.log(`quality check: renderer-noise acceptances (compOrderNoise) [${process.platform}]: ${qcNoise}`);
 if (fail) {
   console.log(`FAIL: ${fail} of ${names.length} component(s)`);
   for (const [n, w] of failed) console.log(`  - ${n}: ${w}`);

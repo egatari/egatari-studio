@@ -324,7 +324,7 @@ try {
     await page.keyboard.type('x'); await wait(page);
     await clickPrev(page);
     const n1 = await page.evaluate(() => { const b = document.querySelector('#dev-narr .dv-notice'); return b ? { text: b.textContent, role: b.getAttribute('role'), live: b.getAttribute('aria-live'), btns: [...b.querySelectorAll('button')].map((x) => x.textContent), vis: b.getBoundingClientRect().height > 0 } : null; });
-    ok(!!n1 && /ナレーションが保存されていません。保存するか元に戻すと、プレビューを操作できます/.test(n1.text) && n1.role === 'status' && n1.vis && n1.btns.includes('保存') && n1.btns.includes('元に戻す'),
+    ok(!!n1 && /台本が保存されていません。保存するか元に戻すと、プレビューを操作できます/.test(n1.text) && n1.role === 'status' && n1.vis && n1.btns.includes('保存') && n1.btns.includes('元に戻す'),
       `#3 A: a click on the preview held by unsaved narration shows why, with Save and Revert, in a live region ${JSON.stringify(n1)}`);
     // キーでも：いったん消してから → を押す
     await page.evaluate(() => { const b = document.querySelector('#dev-narr .dv-notice'); if (b) b.textContent = ''; });
@@ -359,7 +359,7 @@ try {
     // #4 A：発表者ビュー（#pf の中）の「次」の画面を押す → 矢印でプレビューが進む
     const { ctx, page } = await openA();
     await clickPrev(page);
-    const [pv] = await Promise.all([ctx.waitForEvent('page'), page.click('#b-presenter')]);
+    const [pv] = await Promise.all([ctx.waitForEvent('page'), page.click('#b-previewmenu').then(() => page.click('#b-presenter'))]);
     await pv.setViewportSize({ width: 1400, height: 820 });
     let pf = null;
     for (let i = 0; i < 60 && !pf; i++) { pf = pv.frames().find((f) => f.parentFrame() === pv.mainFrame()); if (pf && !(await pf.$('#f-next').catch(() => null))) pf = null; if (!pf) await pv.waitForTimeout(150); }

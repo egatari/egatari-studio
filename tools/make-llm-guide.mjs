@@ -13,6 +13,11 @@
 //                                                 本文の <!-- llm: <系列> --> … <!-- llm: end --> はその系列の部分に「拡張」として（共通の部品だけ）、
 //                                                 <!-- llm: omit --> … <!-- llm: end --> は指示に入れない（開発者向けの注意など）
 //   themes/                                       {{THEMES}}：テーマの名前
+//   vendor/components/manifest.json（あれば）       {{PURPOSES}}：言いたいこと → パーツ → ステップの表。全パーツの一覧を兼ねる（写した既定の版の部品だけを出し、
+//                                                 部品がまだない言いたいことは「近い部品か HTML・インラインの SVG」。版を固定した URL 付き）。
+//                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK（parts-map の 10）。どちらを使ったかは材料の purposes.source
+//                                                 TODO(#99, components v1.2.0)：m-curves（学術）と m-quad（ビジネス）を本体（series: common）へ移すのは部品庫 v1.2.0 で。
+//                                                 移ったら一覧と表はそのまま正しくなる（系列は frontmatter から読む）。系列の指示の文（tools/llm-guide/series/academic*.md・business*.md）の見直しを忘れない
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
 // 大きさ（--check）：共通 + 系列 1 つは 35 KB を超えれば警告・40 KB を超えれば失敗、全部（'all'）は 64 KB を超えれば失敗
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
@@ -23,17 +28,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { vendorComponents } from './vendor-components.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf } from '../kit/core/llm-pack-assemble.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, planData, paidOnly } from '../kit/core/llm-pack-assemble.mjs';
+import { purposesFrom, toolsFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
 const GUIDE = rel('tools', 'llm-guide');
-export const SERIES = ['academic', 'business', 'kokugo', 'info'];
+export const SERIES = ['academic', 'business', 'kokugo', 'info', 'social'];
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
-export const LIMITS = { warn: 35, fail: 40, all: 64 };   // KB（1024 バイト）
+// KB（1024 バイト）。fail・two・paid はお使いの AI ごとの上限（kit/core/llm-pack-assemble.mjs の PACK_CAP_KB）：
+// fail は無料版の共通の本体＋1 つの分野、two は無料版の共通の本体＋2 つの分野（どの組でも。無料版で選べるのは 2 つまで）、paid は有料版。試験 tools/test-new-deck.mjs が使う
+export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free.one, two: PACK_CAP_KB.free.two, paid: PACK_CAP_KB.paid };
+// 2 つの分野の組（SERIES の順）。'a+b' の名前で大きさを持つ
+export const PAIRS = SERIES.flatMap((a, i) => SERIES.slice(i + 1).map((b) => [a, b]));
+// いちばん大きい組：[名前, KB]
+export const largestPair = (pairs) => Object.entries(pairs).reduce((m, x) => (!m || x[1] > m[1] ? x : m), null);
 
 // ---------------------------------------------------------------- 部品
 function frontmatter(text) {
@@ -94,8 +106,16 @@ function stripRepoRefs(body) {
 //  - 相対リンク [字](../../SECURITY.md) は字だけにする（AI には開けない。http(s):・mailto:・# で始まるものは残す）。括弧の中に残ったファイル名だけの言及
 //    （「（…。SECURITY.md）」）と、中が空になった括弧は除く
 //  - 版の経緯（「v1.0.2 から」「since v1.0.2」）は除く（AI に要るのは今の決まりだけ）
+//  - 見せ方（variant）の行は名前の並びだけにする：見せ方はシード値で選ばれ、AI が書くものではない（動きの説明は要らない。大きさを抑える。format spec §8.4）
+const VARIANT_LINE = /^- 見せ方（`variant`[^）\n]*）：(.*)$/gm;
+function shortVariants(body) {
+  return body.replace(VARIANT_LINE, (_, rest) => {
+    const names = [...rest.split('書かなければ')[0].matchAll(/`([a-z][a-z0-9-]*)`(?=（)/g)].map((m) => '`' + m[1] + '`');
+    return `- 見せ方（\`variant\`）：${names.join('・')}。書かなければ資料のシード値で選ばれる（書かなくてよい）`;
+  });
+}
 function cleanReadme(body) {
-  return body
+  return shortVariants(body)
     .replace(/\[([^\]]+)\]\((?![a-z][a-z0-9+.-]*:|#)[^)\s]*\)/gi, '$1')
     .replace(/[（(]\s*(?:since\s+)?v\d+(?:\.\d+)+\s*(?:から|onwards?)?[。.、,]?\s*/gi, (m) => m.slice(0, 1))
     .replace(/\b(?:since|from)\s+v\d+(?:\.\d+)+[,;]?\s*/gi, '')
@@ -107,6 +127,19 @@ function cleanReadme(body) {
 // 部品の README の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫の README は変えない）。
 // find が README にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
 const PACK_EDITS = {
+  // 積み上げ棒の描き方（色の満ち方・名前の置き場所）は AI の書き方に関わらないので短く（大きさを抑える）
+  'm-bars': [
+    { find: '下の系列から順に色が満ちながら棒が合計まで伸び、合計を棒の端に（`unit` 付き）、それぞれの値を区切りの中に単位なしで書く（区切りが字より小さければ書かない）。系列の名前は、縦棒なら最後の組の棒の右、横棒なら最初の組の棒の上に、区切りの真ん中にそろえて書く。軸の上限は合計から決める。組の `tone` は合計の数字の色になる（区切りの色は系列の色のまま）。',
+      ja: '合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。', en: '合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。' },
+  ],
+  // 前の色の経緯は要らない（今の決まりだけ）
+  'm-flow': [
+    { find: '（v1.2.0 から。前は線の名前と `muted` の箱の字が `--muted` で、投影すると薄かった）', ja: '', en: '' },
+  ],
+  // 部品の中の作り（測り方・読み込み）は AI の書き方に関わらないので除く（大きさを抑える。#99）。m-kobun の札の説明は部品庫 v1.9.1 で llm: omit に移った
+  'm-gendai': [
+    { find: '線と枠は字の位置を測って SVG で描く。描くたびに測るので、呼び出しの順によらない（字が読み込まれる前と後では位置が違うので、品質チェックと動画は字を待ってから撮る）。\n', ja: '', en: '' },
+  ],
   'm-menu': [
     // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
     { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。（Add the menu after import; in the first draft use a plain list.）' },
@@ -183,7 +216,9 @@ function shapeBrief(c, lang) {
     const attrs = Object.entries(c.rawProps).filter(([, d]) => d && d.shape).map(([n, d]) => `${n}="${JSON.stringify(d.example ?? d.default)}"`);
     return (ja ? '属性だけ（JSON の子なし）' : 'attributes only (no JSON child)') + (attrs.length ? ': `' + attrs.join(' ') + '`' : '');
   }
-  return '`' + SH.brief(sh.schema) + '`' + (sh.note ? ' — ' + sh.note[lang] : '');
+  // note は {en, ja} か、1 つの言語の字（部品庫 v1.2.0 の m-tree など）
+  const note = !sh.note ? '' : typeof sh.note === 'string' ? sh.note : sh.note[lang] || sh.note.en || sh.note.ja || '';
+  return '`' + SH.brief(sh.schema) + '`' + (note ? ' — ' + note : '');
 }
 function shapeExample(c, lang) {
   const sh = c.shape;
@@ -198,7 +233,7 @@ const TABLE_HEAD = { ja: '| 部品 | 内容 | steps | データの形 |\n|---|--
 const rowOf = (c, lang) => `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`;
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
-function entryOf(c, lang) {
+function entryOf(c, lang, shown = new Set()) {
   const H = lang === 'ja' ? ['値', '型', '既定', '意味'] : ['prop', 'type', 'default', 'meaning'];
   let sup = false;
   // 秒で測る値（動きの速さ・ずれ）は表に載せない：既定のままで口述原稿に合う（§3 の前書きに書いてある）
@@ -206,11 +241,59 @@ function entryOf(c, lang) {
     const d = c.props.get(p) || { type: '', dflt: '', doc: '' };
     let doc = d.doc;
     if (!doc && AXIS[lang][p]) { doc = AXIS[lang][p] + ' *'; sup = true; }
-    return `| \`${p}\` | ${d.type} | ${d.dflt ? '`' + cell(d.dflt) + '`' : ''} | ${cell(doc)} |`;
+    return `| \`${p}\` | ${d.type} | ${d.dflt && d.dflt !== 'undefined' ? '`' + cell(d.dflt) + '`' : ''} | ${cell(doc)} |`;
   });
-  const ex = shapeExample(c, lang);
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, c.body, lang)));
+  // README に書き方の囲み（```）があれば、データの形の見本の行は同じことなので出さない
+  // 系列の見本（抜き出し）がその部品を使っていれば、それが見本になる（#99：大きさを抑える）
+  const ex = /^```/m.test(c.body) || shown.has(c.fm.name) ? '' : shapeExample(c, lang);
+  // README の「子の JSON：`{…}`。」の行は、一覧の「データの形」の欄と同じことなので、データの形があるときはコードを外し、後ろの文（あれば）だけ残す
+  const body = c.shape && c.shape.schema ? c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join('')) : c.body;
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, body, lang)));
   return { entry: entry.trim(), sup };
+}
+
+// 部品の説明の中で、ほかの部品の名前を出す所（「比べるなら `m-compare`」など）を <!--part:m-x--> で囲む：その部品が組み立てに入らない
+// （外した言いたいこと・選んでいない分野・無料版で読み込まない部品）とき、組み立て（kit/core/llm-pack-assemble.mjs の partSpans）が除く。
+// 名前が括弧（…）の中なら括弧ごと、そうでなければその文（。まで。箇条書きの印は残す）を囲む
+export function markRefs(text, self, known) {
+  return text.split('\n').map((line) => {
+    const spans = [];
+    for (const m of line.matchAll(/(?<![\w<-])`?(m-[a-z0-9]+(?:-[a-z0-9]+)*)`?(?![\w-])/g)) {
+      const t = m[1];
+      if (t === self || !known.has(t)) continue;
+      let a = -1, depth = 0;
+      for (let i = m.index - 1; i >= 0; i--) { if (line[i] === '）') depth++; else if (line[i] === '（') { if (depth === 0) { a = i; break; } depth--; } }
+      let b = -1; depth = 0;
+      if (a >= 0) for (let i = m.index; i < line.length; i++) { if (line[i] === '（') depth++; else if (line[i] === '）') { if (depth === 0) { b = i + 1; break; } depth--; } }
+      if (a >= 0 && b > 0) {
+        // 括弧の中に、名前より前の文（。で終わる）があれば、それは残し、名前のある文から括弧の終わりの手前までを囲む
+        const dot = line.lastIndexOf('。', m.index);
+        const nx = line.indexOf('。', m.index), inner = nx > 0 && nx < b - 1;
+        if (dot > a) spans.push([dot + 1, inner ? nx + 1 : b - 1, t]);
+        else if (inner) spans.push([a + 1, nx + 1, t]);   // （`m-bars` と同じ。3 桁ごとにカンマ）→（3 桁ごとにカンマ）
+        else spans.push([a, b, t]);
+        continue;
+      }
+      const lead = (line.match(/^\s*(?:[-*] |\d+\. )?/) || [''])[0].length;
+      // 表の行なら、その桁の中だけ（桁の区切り | を越えない）
+      const cellA = line.startsWith('|') ? line.lastIndexOf(' | ', m.index) + 3 : lead;
+      const cellB = line.startsWith('|') ? line.indexOf(' |', m.index) : line.length;
+      let s0 = line.lastIndexOf('。', m.index); s0 = s0 < cellA ? cellA : s0 + 1;
+      let e0 = line.indexOf('。', m.index); e0 = e0 < 0 || e0 >= cellB ? cellB : e0 + 1;
+      spans.push([s0, e0, t]);
+    }
+    if (!spans.length) return line;
+    // 重なる囲みは 1 つにまとめる（名前を合わせる）
+    spans.sort((x, y) => x[0] - y[0]);
+    const merged = [];
+    for (const [a, b, t] of spans) {
+      const last = merged[merged.length - 1];
+      if (last && a < last[1]) { last[1] = Math.max(last[1], b); if (!last[2].includes(t)) last[2].push(t); } else merged.push([a, b, [t]]);
+    }
+    let out = line;
+    for (const [a, b, ts] of merged.reverse()) out = out.slice(0, a) + `<!--part:${ts.join(',')}-->` + out.slice(a, b) + '<!--/part-->' + out.slice(b);
+    return out;
+  }).join('\n');
 }
 
 // ---------------------------------------------------------------- 約束事（docs/contract.md）の箇条書き
@@ -228,30 +311,76 @@ const AI_HEAD = /^# (Instructions for the AI|AI への指示)\s*$/m;
 // 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは系列の指示の後ろ、いちばん最後に付く
 const REQ_HEAD = /^# (What I want|頼みたいこと)\s*$/m;
 const KB = (s) => Buffer.byteLength(s, 'utf8') / 1024;
-const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION)/;
+const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES)/;
 // 指示の版：材料（版の行を除く。英語と日本語の両方）の SHA-256 の先頭 8 字。指示の文章が変われば変わり、変わらなければ同じ（手で上げない）
 const PACK_VERSION = '{{PACK_VERSION}}';
 
 // 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {common, series: {名前: 共通 + その系列}, all}}（KB）, data}
-export function generate() {
+export function generate(opts = {}) {
+  const warnings = [];
   const comps = components();
   for (const c of comps) if (Object.keys(c.ext).length && c.fm.series !== 'common') throw new Error(`vendor/components/${c.fm.name.replace(/^m-/, '')}/README.md: <!-- llm: … --> extension blocks are only for common components (this one is in ${c.fm.series})`);
   for (const s of SERIES) if (!comps.some((c) => c.fm.series === s)) throw new Error(`series ${s} has no component (frontmatter series: ${s})`);
   const themes = fs.readdirSync(rel('themes')).filter((n) => fs.statSync(rel('themes', n)).isDirectory()).sort();
-  const data = { series: SERIES };
+  // 言いたいこと：部品庫の manifest.json（あれば）か、決めた表（kit/core/purposes.mjs）
+  //   manifest.json が JSON として読めなければ、知らせて決めた表を使う（components:check が写しの壊れを見つける）。札に写らない id・形の合わない項目も知らせる
+  const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
+  let manifest = opts.manifest;
+  if (manifest === undefined) {
+    const mf = rel('vendor', 'components', 'manifest.json');
+    manifest = null;
+    if (fs.existsSync(mf)) { try { manifest = JSON.parse(read('vendor', 'components', 'manifest.json')); } catch (e) { warnings.push(`vendor/components/manifest.json is not JSON (${e.message}); the decided purposes table is used (run npm run components:check)`); } }
+  }
+  const { warnings: pw, unmapped, ...P } = purposesFrom(manifest, { vendored: allParts.map((c) => c.tag) });
+  warnings.push(...pw);
+  const lock = JSON.parse(read('components.lock.json'));
+  const src = `${lock.source}/blob/${lock.tag}/components/`;
+  // 表（{{PURPOSES}}）は組み立てのときに作る（入っている系列・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
+  // 道具（タイマーなど）：札を押したときだけ指示に入る共通の部品（manifest の group: "tool"）
+  const tools = toolsFrom(manifest, { vendored: allParts.map((c) => c.tag) });
+  for (const t of tools) if ((allParts.find((c) => c.tag === t.tag) || {}).series !== 'common') throw new Error(`${t.tag}: a tool must be in the common series`);
+  const data = { series: SERIES, purposes: P, tools, parts: allParts, partsSrc: src };
+  // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
+  const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
     const contractFile = ja ? 'docs/contract.ja.md' : 'docs/contract.md';
     const contract = read(contractFile);
+    // 系列の見本は抜き出し（{{WORKED 名前 "見出し" 部品}}）：その部品を使うスライドとその口述原稿の節だけ。骨組みと表紙は §6 の共通の見本と同じなので載せない
+    // （見本のファイルそのものは、npm test がそのまま組んで検査する）
+    const excerpt = (name, title, tag) => {
+      const deck = read('tools', 'llm-guide', 'worked', name, 'deck.html'), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md');
+      const secs = [...deck.matchAll(/<section class="slide[^"]*">[\s\S]*?<\/section>/g)].map((m) => m[0]).filter((s) => s.includes('<' + tag));
+      if (!secs.length) throw new Error(`tools/llm-guide/worked/${name}/deck.html: no slide uses <${tag}>`);
+      const heads = secs.map((s) => (s.match(/<h2>([^<]*)<\/h2>/) || [])[1]);
+      const nsecs = narr.split(/\n(?=## )/).filter((x) => heads.includes(x.match(/^## (.*)$/m)?.[1]?.trim()));
+      if (nsecs.length !== secs.length) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section for each slide with <${tag}>`);
+      const note = ja ? '（その部品を使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
+      // 部品を外した組み立てでは、この見本ごと除く（<!--part:…-->）
+      return `<!--part:${tag}-->### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\`<!--/part-->`;
+    };
+    // 見本の全体：部品を使うスライドとその口述原稿の節を <!--part:m-x--> で囲む（その部品を外した組み立てでは、そのスライドがなくなる）
     const worked = (name, title) => {
-      const deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
+      let deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
+      const heads = [];
+      deck = deck.replace(/\n*(<section class="slide[^"]*">[\s\S]*?<\/section>)/g, (m, sec) => {
+        const tags = [...new Set([...sec.matchAll(/<(m-[a-z]+(?:-[a-z]+)*)[\s>]/g)].map((x) => x[1]))];
+        if (!tags.length) return m;
+        heads.push([(sec.match(/<h[12]>([^<]*)<\/h[12]>/) || [])[1], tags]);
+        return `<!--part:${tags.join(',')}-->${m}<!--/part-->`;
+      });
+      for (const [h, tags] of heads) {
+        const re = new RegExp(`\\n*## ${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n[\\s\\S]*?(?=\\n## |$)`);
+        if (!re.test(narr)) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section "${h}"`);
+        narr = narr.replace(re, (m) => `<!--part:${tags.join(',')}-->${m}<!--/part-->`);
+      }
       return `### ${title}\n\n\`\`\`deck.html\n${deck}\n\`\`\`\n\n\`\`\`narration.md\n${narr}\n\`\`\``;
     };
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
       .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
-      .replace(/\{\{WORKED (\w+) "([^"]+)"\}\}/g, (_, n, t) => worked(n, t));
+      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+(?:-[a-z]+)*))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)
       .replace('{{GENERATED}}', GENERATED(path.basename(contractFile)));
@@ -266,10 +395,11 @@ export function generate() {
       extHead: ja ? '### `<{name}>`：この系列の拡張（部品の説明は §3）' : '### `<{name}>`: extension for this series (the component is described in §3)',
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
+    const known = new Set(comps.map((c) => c.fm.name));
     for (const c of comps) {
-      const e = entryOf(c, lang);
-      const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, demote(stripRepoRefs(x))]));
-      D.components[c.fm.name] = { series: c.fm.series, row: rowOf(c, lang), entry: e.entry, ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
+      const e = entryOf(c, lang, shownInWorked);
+      const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
+      D.components[c.fm.name] = { series: c.fm.series, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
     for (const s of SERIES) {
       const f = `tools/llm-guide/series/${s}${ja ? '.ja' : ''}.md`;
@@ -288,35 +418,83 @@ export function generate() {
   files[DATA_FILE] = '// generated by tools/make-llm-guide.mjs from tools/llm-guide/, docs/contract*.md and vendor/components/*/README.md; do not edit by hand\n'
     + '// AI への指示の材料。組み立ては kit/core/llm-pack.mjs（buildPack）\n'
     + `export const PACK = ${JSON.stringify(data, null, 1)};\n`;
+  // 大きさ（KB）：無料版の共通の本体・共通＋1 つの分野・共通＋2 つの分野（どの組も）と、有料版（docs が見せる指示の全体）
   const sizes = {};
+  const TOOL_TAGS = (data.tools || []).map((t) => t.tag);
+  for (const lang of ['en', 'ja']) {
+    // 有料版：ふつうの組（どの 2 つの分野＋すべての道具。越えたら止まる）と、すべての分野と道具を選んだとき（いちばん大きい。越えても知らせるだけ）
+    sizes[lang] = { common: KB(assemble(data, { series: [], lang })), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), pairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, lang }))])),
+      // 無料版の道具：道具は分野と合わせて 2 つまでに数える。道具だけ（1 つの上限）、分野＋道具・道具 2 つ（2 つの組の上限）
+      freeTools: Object.fromEntries([...TOOL_TAGS.map((t) => [t, KB(assemble(data, { series: [], tools: [t], lang }))]),
+        ...TOOL_TAGS.flatMap((t) => SERIES.map((s) => [s + '+' + t, KB(assemble(data, { series: [s], tools: [t], lang }))])),
+        ...TOOL_TAGS.flatMap((a, i) => TOOL_TAGS.slice(i + 1).map((b) => [a + '+' + b, KB(assemble(data, { series: [], tools: [a, b], lang }))]))]),
+      paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang, plan: 'paid' }))])), paid: KB(assemble(data, { series: 'all', tools: 'all', lang, plan: 'paid' })) };
+  }
+  const f1 = (x) => x.toFixed(1) + ' KB';
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
-    const base = assemble(data, { series: [], lang });
+    // docs は有料版の指示の全体（kit/llm-pack.mjs --plan paid と同じ）：共通の本体と頼みたいこと、系列ごとの部分。どの部品も説明がある
+    const paid = planData(data, 'paid'), ex = paidOnly(data, 'paid');
     const list = SERIES.map((s) => {
-      const add = Math.ceil(KB(assemble(data, { series: [s], lang })) - KB(base));
-      const names = membersOf(data[lang], s).map((n) => '`' + n + '`').join(ja ? '・' : ', ');
-      return ja ? `[${s}](llm-parts/${s}.ja.md)（${names}。+${add} KB）` : `[${s}](llm-parts/${s}.md) (${names}; +${add} KB)`;
+      const names = membersOf(paid[lang], s).map((n) => '`' + n + '`').join(ja ? '・' : ', ');
+      return ja ? `[${s}](llm-parts/${s}.ja.md)（${names}）` : `[${s}](llm-parts/${s}.md) (${names})`;
     }).join(ja ? '、' : '; ');
-    const preamble = pre[lang].replace('{{SIZE_COMMON}}', String(Math.ceil(KB(base)))).replace('{{SERIES_LIST}}', list);
-    files[commonFile(lang)] = preamble + commonOf(data, lang) + '\n\n' + requestOf(data, lang) + '\n';
+    const z = sizes[lang];
+    // 無料のプランは 1 つの分野ごとと、いちばん大きい 2 つの組（選べるのは 2 つまで。ほかの組はこれより小さい）
+    const [bigPair, bigKb] = largestPair(z.pairs), pairName = bigPair.split('+').join(ja ? '＋' : ' + ');
+    const rows = ja
+      ? [['無料のプラン：共通の本体だけ', z.common, LIMITS.fail], ...SERIES.map((s) => [`無料のプラン：共通の本体＋${s}`, z.series[s], LIMITS.fail]), [`無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（${pairName}）`, bigKb, LIMITS.two], ['有料のプラン：すべての分野と道具を選んだとき（このファイルとすべての系列）', z.paid, LIMITS.paid]]
+      : [['Free plan: common body only', z.common, LIMITS.fail], ...SERIES.map((s) => [`Free plan: common body + ${s}`, z.series[s], LIMITS.fail]), [`Free plan: common body + the largest pair of subjects (${pairName})`, bigKb, LIMITS.two], ['Paid plan: every subject and tool chosen (this file and every series pack)', z.paid, LIMITS.paid]];
+    const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
+    const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SERIES_LIST}}', list);
+    files[commonFile(lang)] = preamble + commonOf(paid, lang, ex, SERIES) + '\n\n' + requestOf(data, lang) + '\n';
     for (const s of SERIES) {
-      files[partFile(s, lang)] = `<!-- generated by tools/make-llm-guide.mjs (series pack ${s}; paste it after ${path.basename(commonFile(lang))}); do not edit by hand -->\n` + partOf(data, s, lang) + '\n';
+      files[partFile(s, lang)] = `<!-- generated by tools/make-llm-guide.mjs (series pack ${s}, full pack; paste it after ${path.basename(commonFile(lang))}); do not edit by hand -->\n` + partOf(paid, s, lang, ex, SERIES) + '\n';
     }
-    sizes[lang] = { common: KB(base), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), all: KB(assemble(data, { series: 'all', lang })) };
   }
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
-  return { files, sizes, data };
+  for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
+  return { files, sizes, data, warnings };
 }
 
-// 大きさの検査：[{lang, what, kb, level: 'ok'|'warn'|'fail'}]
+// 大きさの検査：[{lang, what, plan, series, kb, max, level: 'ok'|'warn'|'fail'}]（plan・series：どの指示か。上限を越えたときに組み直して中を見せる）
 export function sizeReport(sizes) {
   const out = [];
   for (const [lang, z] of Object.entries(sizes)) {
-    out.push({ lang, what: 'common', kb: z.common, level: z.common > LIMITS.fail ? 'fail' : z.common > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [s, kb] of Object.entries(z.series)) out.push({ lang, what: 'common+' + s, kb, level: kb > LIMITS.fail ? 'fail' : kb > LIMITS.warn ? 'warn' : 'ok' });
-    out.push({ lang, what: 'all', kb: z.all, level: z.all > LIMITS.all ? 'fail' : 'ok' });
+    // 無料版：共通の本体、共通の本体＋1 つの分野（LIMITS.fail）、共通の本体＋2 つの分野のどの組も（LIMITS.two）。有料版：すべての部品（LIMITS.paid）
+    out.push({ lang, what: 'free common', plan: 'free', series: [], kb: z.common, max: LIMITS.fail, level: z.common > LIMITS.fail ? 'fail' : z.common > LIMITS.warn ? 'warn' : 'ok' });
+    for (const [s, kb] of Object.entries(z.series)) out.push({ lang, what: 'free common+' + s, plan: 'free', series: [s], kb, max: LIMITS.fail, level: kb > LIMITS.fail ? 'fail' : kb > LIMITS.warn ? 'warn' : 'ok' });
+    for (const [p, kb] of Object.entries(z.pairs)) out.push({ lang, what: 'free common+' + p, plan: 'free', series: p.split('+'), pair: true, kb, max: LIMITS.two, level: kb > LIMITS.two ? 'fail' : 'ok' });
+    // 無料版で道具も押したとき：1 つの分野なら LIMITS.fail、2 つなら LIMITS.two を越えたら知らせる（止めない。道具なしの組が上限の本体）
+    for (const [k, kb] of Object.entries(z.freeTools || {})) {
+      const ks = k.split('+'), ss = ks.filter((x) => !x.startsWith('m-')), ts = ks.filter((x) => x.startsWith('m-')), max = ks.length === 2 ? LIMITS.two : LIMITS.fail;
+      out.push({ lang, what: 'free common+' + k, plan: 'free', series: ss, tools: ts, withTools: true, toolPair: ks.length === 2, kb, max, level: kb > max ? 'fail' : 'ok' });
+    }
+    // 有料版：どの 2 つの分野＋すべての道具も LIMITS.paid まで（越えたら止まる）。すべての分野と道具（いちばん大きいとき）は越えたら知らせるだけ
+    for (const [p, kb] of Object.entries(z.paidPairs || {})) out.push({ lang, what: 'paid common+' + p + '+tools', plan: 'paid', series: p.split('+'), tools: 'all', paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
+    if (z.paid !== undefined) out.push({ lang, what: 'paid all subjects+tools', plan: 'paid', series: [...SERIES], tools: 'all', worst: true, kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'warn' : 'ok' });
   }
   return out;
+}
+// 指示の中の大きい節：見出し（# ・## ・### 。コードの囲みの中の行は見出しにしない）で分け、バイト数の大きい順に n 個
+export function largestSections(text, n = 3) {
+  const secs = [];
+  let cur = { head: '(before the first heading)', bytes: 0 }, fence = null;
+  for (const ln of String(text).split('\n')) {
+    const f = ln.match(/^(`{3,}|~{3,})/);
+    if (f) { if (!fence) fence = f[1]; else if (ln.startsWith(fence) && !ln.slice(fence.length).trim()) fence = null; }
+    if (!fence && !f && /^#{1,3} \S/.test(ln)) { if (cur.bytes) secs.push(cur); cur = { head: ln.trim(), bytes: 0 }; }
+    cur.bytes += Buffer.byteLength(ln, 'utf8') + 1;
+  }
+  secs.push(cur);
+  return secs.sort((a, b) => b.bytes - a.bytes).slice(0, n);
+}
+// 上限を越えた指示の知らせ：どの指示か（版・言語・分野の組）、何バイト越えたか、大きい節 3 つ
+export function overMessage(r, data) {
+  const text = assemble(data, { series: r.series, tools: r.tools || [], lang: r.lang, plan: r.plan });
+  const bytes = Buffer.byteLength(text, 'utf8'), over = bytes - r.max * 1024;
+  const top = largestSections(text).map((x) => `${x.head} (${x.bytes} B)`).join('; ');
+  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}${r.tools === 'all' ? ', every tool' : Array.isArray(r.tools) && r.tools.length ? ', tools ' + r.tools.join('+') : ''}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
 }
 
 // 1 行目の i18n の印は残し、それより後ろを比べる・書く
@@ -332,7 +510,8 @@ function leftovers() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const check = process.argv.includes('--check');
-  const { files, sizes } = generate();
+  const { files, sizes, warnings, data } = generate();
+  for (const w of warnings) console.warn('warning: ' + w);
   let stale = 0;
   fs.mkdirSync(rel('docs', 'llm-parts'), { recursive: true });
   for (const [file, text] of Object.entries(files)) {
@@ -352,9 +531,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else { fs.unlinkSync(rel(f)); console.log(`removed ${f}`); }
   }
   let fail = 0;
+  // 2 つの組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
+  const shownPair = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(z.pairs)[0]]));
+  const shownTool = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(Object.fromEntries(Object.entries(z.freeTools || {}).filter(([k]) => k.includes('+'))))?.[0]]));
+  const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid common+' + largestPair(z.paidPairs)[0] + '+tools']));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB`;
-    if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.what === 'all' ? LIMITS.all : LIMITS.fail} KB)`); }
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : r.paidPair ? ` (largest pair with every tool; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.toolPair ? ` (largest subject + tool; cap ${r.max} KB)` : r.withTools ? ` (tool alone; cap ${r.max} KB)` : ''}`;
+    if (r.pair && r.level !== 'fail' && r.what !== shownPair[r.lang]) continue;
+    if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
+    if (r.toolPair && r.level !== 'fail' && r.what !== shownTool[r.lang]) continue;
+    if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
+    else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
     else if (r.level === 'warn') console.warn(`warning: ${line} — over the ${LIMITS.warn} KB target`);
     else console.log(line);
   }

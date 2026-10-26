@@ -1,5 +1,5 @@
 // 試験用の偽の常駐ワーカー（モデルなし）：colab/irodori_node.mjs と同じ通信（colab/worker-protocol.mjs）で、文の長さの正弦波を out に書く。
-// text が "boom" なら失敗を返し、"die" なら標準エラーに書いて終了コード 3 で落ちる。標準エラーに起動の行を出す（ログは標準エラーへ）
+// 依頼ごとに標準エラーに「fake request: steps=N」を書く。text が "boom" なら失敗を返し、"die" なら標準エラーに書いて終了コード 3 で落ちる。標準エラーに起動の行を出す（ログは標準エラーへ）
 // セッションは colab/ort-fallback.mjs で 6 つ作る（偽の create）。EGATARI_FAKE_ORT_FAIL=cuda なら、cuda を含むプロバイダでの作成が
 // 2026-10-23 の Colab と同じ文で失敗する（CPU への切り替えとお知らせを試す）。EGATARI_FAKE_ORT_FAIL=all なら CPU でも失敗する
 import fs from 'node:fs';
@@ -26,6 +26,7 @@ reply(process.stdout, { ready: true, providers: factory.providers, provider: act
 await serve({
   input: process.stdin, output: process.stdout,
   handler: async (req) => {
+    console.error(`fake request: steps=${req.steps}`);   // 試験が標準エラーの記録から、頼まれた steps を確かめる
     if (req.text === 'boom') throw new Error('boom!');
     if (req.text === 'die') { console.error('fatal: out of memory (fake)'); process.exit(3); }
     const n = Math.round(24000 * (0.3 + 0.05 * req.text.length)), x = new Float32Array(n);

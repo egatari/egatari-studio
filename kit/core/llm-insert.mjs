@@ -2,7 +2,7 @@
 // Node にもブラウザにも依存しない（純粋な ESM）。指示の本文（kit/core/llm-pack-data.mjs）は変えない：頼む文はここで作る
 //
 //   insertRequest({deck, narration, after, n, wish, lang}) → 文字列
-//     「スライド X の後ろに続きの n 枚」（n が 1 なら「ここに 1 枚」）を頼む短い文。無料のチャットの文脈に収まるよう、今のデッキの全体は
+//     「スライド X の後ろに続きの n 枚」（n が 1 なら「ここに 1 枚」）を頼む短い文。頼む文を短く保つよう、今のデッキの全体は
 //     付けず、スライドの見出しの一覧と、足す場所の前のスライド（とその口述原稿の節）だけを添える。after：0 から。-1 なら先頭（前のスライドなし）
 //   insertSlides({deck, narration, patchDeck, patchNarration, after, lang, rand}) → {deck, narration, ids: [新しい id…], at（最初の新しいスライドの番号）}
 //     返事のスライド（<section class="slide">。id は付けない約束だが、付いていても新しく付け直す）を after 番目の後ろに順に入れ、

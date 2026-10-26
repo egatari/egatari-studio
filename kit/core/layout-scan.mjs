@@ -153,16 +153,19 @@ export function layoutScan(s, o) {
       maxR = Math.max(maxR, v.r);
       minL = Math.min(minL, v.l);
     });
+    // はみ出しの大きさは整数の px に丸めてから比べる（知らせと同じ丸め）：丸めて 0 px（1 px に満たない）なら知らせない。知らせる px は限り ± 丸めた量なので、
+    // 「0 px はみ出す」は出ない（結論の行の上の余裕と同じ考え。下・右・左・縦組みの見出しの列と結論の列で同じ決まり）
+    const overB = Math.round(maxB - lim), overR = Math.round(maxR - limR), overL = Math.round(limL - minL);
     // 知らせの値：結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）は、既定と違うときだけ添える（既定のテーマの結果は前と同じ）
-    if (maxB > lim) {
+    if (overB >= 1) {
       bodyOver = true;
-      const a = { px: Math.round(maxB), lim, concl: !tate && !noconcl };
+      const a = { px: lim + overB, lim, concl: !tate && !noconcl };
       if (a.concl && M.concl.top !== DM.concl.top) a.conclTop = M.concl.top;
       if (M.body.line !== DM.body.line) a.line = M.body.line;
       add('error', 'bodyBottom', a);
     }
-    if (maxR > limR) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: Math.round(maxR), lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: Math.round(maxR), lim: limR } : { px: Math.round(maxR) });
-    if (minL < limL) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: Math.round(minL), lim: limL });
+    if (overR >= 1) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: limR + overR, lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: limR + overR, lim: limR } : { px: limR + overR });
+    if (overL >= 1) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: limL - overL, lim: limL });
     // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
     if (!refRe.test(h2 ? h2.textContent : '')) {
       const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);

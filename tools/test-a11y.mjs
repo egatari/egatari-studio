@@ -54,7 +54,7 @@ ok(t.includes(want1), `次の段階で、新しく出た段階の文字を読む
 ok(!/\\theta|annotation/.test(t), '式は TeX の原文を読ませない');
 await p.keyboard.press('ArrowLeft'); await settle(p);
 t = await liveNew(p, t);
-ok(/^段階 0 \/ \d+$/.test(t), `前へ戻ると「段階 k / K」（${t}）`);
+ok(/^ステップ 0 \/ \d+$/.test(t), `前へ戻ると「ステップ k / K」（${t}）`);
 await p.keyboard.press('l'); await settle(p);
 ok(await p.evaluate(() => DECK.slides[1]._items.every((e) => e.getAttribute('aria-hidden') !== 'true')), '授業モードでは後の段階も読める（薄く見えているので）');
 await p.keyboard.press('l');

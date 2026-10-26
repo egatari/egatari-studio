@@ -1,0 +1,3 @@
+### Added
+
+- Components v1.9.0 is the default version: **`m-hist`** (histogram, frequency polygon, dot plot, with mean, median and mode lines) and **`m-boxplot`** (a box plot built step by step like the textbook procedure; groups side by side), both in the series `academic`. The 伝えたいこと tile ばらつき / Spread now reads ヒストグラム・箱ひげ図・ドットプロット. On the free plan both are paid-only for now (`FREE_OUT`: never named in a free pack; spread and compare fall back to the nearest part or HTML), so the free 数理・統計 pack stays under 40 KB. Instructions pack `8e0efb1a` → `fb9e430d`; the largest free pair is ja 49,233 B (academic + kokugo; cap 51,200 B), paid ja 101,615 B. Release notes: [egatari/components v1.9.0](https://github.com/egatari/components/releases/tag/v1.9.0)

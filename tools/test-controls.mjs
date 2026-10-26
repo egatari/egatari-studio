@@ -193,7 +193,9 @@ await r.waitForTimeout(2900);
 await r.mouse.move(640, 300, { steps: 3 }); await r.waitForTimeout(300);
 ok(!(await shown(r)), '重ねるときは、舞台の中ほどでマウスを動かしても出ない');
 await r.keyboard.press('d');
-await r.mouse.move(640, 690, { steps: 3 }); await r.waitForTimeout(300);
+await r.mouse.move(640, 690, { steps: 3 });
+// 遅い機械（CI の macOS）では帯が出るまで 300 ms を超えることがあるので、出るのを最大 3 秒待つ（画素は見ない）
+await r.waitForFunction(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show') && +getComputedStyle(c).opacity > .5; }, null, { timeout: 3000 }).catch(() => {});
 ok(await shown(r), '下のほうに来ると出る');
 await shot(r, 'main-bar-overlay');
 const r0 = await pos(r);
