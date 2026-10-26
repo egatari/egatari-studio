@@ -173,6 +173,7 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 
+const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : 600;
 function run(name, argv) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -180,8 +181,8 @@ function run(name, argv) {
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (verbose) process.stdout.write(d); });
     ch.stderr.on('data', (d) => { out += d; if (verbose) process.stderr.write(d); });
-    // 1 つのテストが 10 分を超えたら止める（ブラウザが固まったとき）
-    const timer = setTimeout(() => { out += '\n[test-all] timeout: killed after 600 s\n'; ch.kill('SIGKILL'); }, 600_000);
+    // 1 つのテストが 10 分（遅い macOS の CI では TEST_STEP_TIMEOUT_S で延ばす）を超えたら止める（ブラウザが固まったとき）
+    const timer = setTimeout(() => { out += `\n[test-all] timeout: killed after ${STEP_TIMEOUT_S} s\n`; ch.kill('SIGKILL'); }, STEP_TIMEOUT_S * 1000);
     ch.on('close', (code, sig) => { clearTimeout(timer); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }
