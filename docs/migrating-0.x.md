@@ -1,4 +1,4 @@
-<!-- i18n: pair=migrating-0.x.ja.md sha256=8bfa8406a05c087a -->
+<!-- i18n: pair=migrating-0.x.ja.md sha256=6b36e8693953600a -->
 # Moving a lesson from an earlier version to Egatari 1.0
 
 English | [日本語](migrating-0.x.ja.md)
@@ -50,7 +50,8 @@ You need a copy of the current Egatari Studio repository (`npm ci --ignore-scrip
    - delete hand-written `data-key="…"` attributes on slides (the ids replace them);
    - delete `{zoom:…}` marks from the narration. If a zoom carried meaning, tell the author; a lens part can do it later;
    - change links that contain `?mode=lecture` to `?mode=talk`;
-   - in `article.md`, change `:name:` to `:label:`.
+   - in `article.md`, change `:name:` to `:label:`;
+   - you can delete `data-egatari-seed`; it has no effect.
 
    Change nothing else. Do not reword the narration, rename slides or touch the audio.
 

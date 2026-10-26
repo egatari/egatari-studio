@@ -1,4 +1,4 @@
-<!-- i18n: pair=migrating-0.x.md sha256=8825035a8c2c06ee -->
+<!-- i18n: pair=migrating-0.x.md sha256=58fc0f0c2f740b86 -->
 # 前の版で作った教材を Egatari 1.0 に移す
 
 [English](migrating-0.x.md) | 日本語
@@ -51,6 +51,7 @@
    - 台本の `{zoom:…}` を消す。寄る動きに意味があったなら作者に伝える（あとで寄るパーツでできる）
    - `?mode=lecture` を含むリンクを `?mode=talk` にする
    - `article.md` の `:name:` を `:label:` にする
+   - `data-egatari-seed` は消してかまいません（効果はありません）
 
    ほかは変えません。台本の言い回し・スライドの名前・音声には手を付けません。
 

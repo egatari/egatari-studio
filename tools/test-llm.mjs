@@ -294,8 +294,8 @@ ok('スライドの挿入（llm-insert）：頼む文は見出しの一覧と前
   assert.equal(insertSlides({ deck: a.deck, narration: a.narration, patchDeck: '<p>none</p>' }).ids.length, 0);
   const b = newDeckFiles({ blank: true, lang: 'ja', title: 'T' });
   assert.ok((b['deck.html'].match(/<section class="slide/g) || []).length === 1 && (b['narration.md'].match(/^## /gm) || []).length === 1 && b['deck.html'].includes('</html>'));
-  // npm run new も教材を作る：シード値を 1 回書く（format spec §8.4）。seed を渡せばその値
-  assert.ok(/<html [^>]*data-egatari-seed="\d+"/.test(b['deck.html']) && newDeckFiles({ blank: true, seed: 7 })['deck.html'].includes('data-egatari-seed="7"'));
+  // シード値は書かない（format spec §8.4：見せ方は variant の名前だけ）
+  assert.ok(!b['deck.html'].includes('data-egatari-seed') && !newDeckFiles({ blank: true })['deck.html'].includes('data-egatari-seed'));
 });
 
 // ---------------------------------------------------------------- 3. id

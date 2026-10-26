@@ -37,7 +37,7 @@ const CFG = FORMAT.CONFIG_FILE;
 
 // ---------------------------------------------------------------- 0. 文字列の操作（ブラウザなし）
 {
-  const src = '<!DOCTYPE html>\n<html lang="ja" data-theme="default" data-egatari-seed="abc" class="x">\n<body></body></html>';
+  const src = '<!DOCTYPE html>\n<html lang="ja" data-theme="default" data-keep="abc" class="x">\n<body></body></html>';
   ok(themeOf(src) === 'default' && themeOf('<html lang="ja">') === 'default' && themeOf("<html data-theme='kokugo'>") === 'kokugo', 'themeOf: reads data-theme, default when absent');
   ok(withTheme(src, 'business') === src.replace('data-theme="default"', 'data-theme="business"'), 'withTheme: only the value changes');
   ok(withTheme('<html lang="en">\n<p data-theme="x">', 'kokugo') === '<html lang="en" data-theme="kokugo">\n<p data-theme="x">', 'withTheme: adds the attribute to <html> only');
@@ -46,20 +46,19 @@ const CFG = FORMAT.CONFIG_FILE;
 }
 
 // ---------------------------------------------------------------- 1. 材料
-const SEED = '6c1f3a9e0b2d4c58';
 const FOREIGN = '"org.example.producer": {"big": 12345678901234567890,  "list": [1, 2 ,3], "10": "ten"}';
 function deckDir(name) {
   const dir = path.join(work, name);
   fs.cpSync(path.join(ROOT, 'examples', 'minimal'), dir, { recursive: true, filter: (x) => !/[\\/](out|audio)([\\/]|$)/.test(path.relative(ROOT, x)) });
   const deck = path.join(dir, 'deck.html');
-  fs.writeFileSync(deck, fs.readFileSync(deck, 'utf8').replace(/<html\b[^>]*>/, `<html lang="ja" data-theme="default" data-egatari-seed="${SEED}" data-keep="1" class="keep-me">`));
+  fs.writeFileSync(deck, fs.readFileSync(deck, 'utf8').replace(/<html\b[^>]*>/, `<html lang="ja" data-theme="default" data-keep="1" class="keep-me">`));
   fs.writeFileSync(path.join(dir, CFG), `{\n  "docId": "00000000-0000-4000-8000-000000000042",\n  "metadata": {"license": "CC-BY-4.0", "copyright": "© 2026 Test", "attribution": "Test", "creators": ["Test"]},\n  ${FOREIGN}\n}\n`);
   return deck;
 }
 const pf = await exportPortable(nodeEnv, deckDir('pf'), {});
 const htmlAttrs = (src) => { const m = /<html\b[^>]*>/i.exec(src); return m ? m[0].replace(/\sdata-theme="[^"]*"/, '') : null; };
 const ATTRS0 = htmlAttrs(Buffer.from(pf.files['deck.html']).toString('utf8'));
-ok(ATTRS0 && ATTRS0.includes(SEED) && Buffer.from(pf.files[CFG]).toString('utf8').includes(FOREIGN), 'fixture: the single file has the seed and the foreign member');
+ok(ATTRS0 && ATTRS0.includes('data-keep="1"') && Buffer.from(pf.files[CFG]).toString('utf8').includes(FOREIGN), 'fixture: the single file has the extra <html> attributes and the foreign member');
 // テーマ庫の hash が違う 1 ファイル（組み直せない：口述原稿・音声・秒数だけ）
 const pother = await (async () => {
   const ix = JSON.parse(scanDocument(pf.html).byId.get(FORMAT.INDEX_ID).text);
@@ -154,7 +153,7 @@ try {
     // default → business
     await switchTo(page, 'business', { expectCurrent: 'default' });
     const deck1 = await memFile(page, 'deck.html'), cfg1 = await memFile(page, CFG), e1 = await emph(page), st1 = await state(page);
-    ok(themeOf(deck1) === 'business' && htmlAttrs(deck1) === ATTRS0, '→ business: data-theme changed; the seed and every other <html> attribute kept');
+    ok(themeOf(deck1) === 'business' && htmlAttrs(deck1) === ATTRS0, '→ business: data-theme changed; every other <html> attribute kept');
     ok(deck1 === deck0.replace('data-theme="default"', 'data-theme="business"'), '→ business: nothing else in the source changed (slides untouched)');
     ok(e1 !== e0 && e1 === 'rgb(186, 60, 5)', `→ business: the preview --emph changed (${e0} → ${e1})`);
     ok(cfg1.includes(FOREIGN), '→ business: the foreign egatari.json member survives byte for byte');
@@ -172,7 +171,7 @@ try {
     await switchTo(page, 'business', { expectCurrent: 'default' });
     await switchTo(page, 'kokugo', { expectCurrent: 'business' });
     const deck2 = await memFile(page, 'deck.html'), cfg2 = await memFile(page, CFG), e2 = await emph(page);
-    ok(themeOf(deck2) === 'kokugo' && htmlAttrs(deck2) === ATTRS0, '→ kokugo: data-theme changed; the seed and other attributes kept');
+    ok(themeOf(deck2) === 'kokugo' && htmlAttrs(deck2) === ATTRS0, '→ kokugo: data-theme changed; other attributes kept');
     ok(e2 !== e1 && e2 !== e0, `→ kokugo: the preview --emph changed again (${e2})`);
     const p2 = JSON.parse(cfg2).themes;
     ok(cfg2.includes(FOREIGN) && p2.kokugo === CUR('kokugo') && p2.default === CUR('default') && !('business' in p2), '→ kokugo: kokugo pinned, business dropped (nothing uses it), foreign member kept ' + JSON.stringify(p2));
