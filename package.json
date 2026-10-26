@@ -31,7 +31,9 @@
     "changelog": "node tools/changelog.mjs",
     "components:update": "node tools/components-update.mjs",
     "components:check": "node tools/components-update.mjs --check",
-    "themes:check": "node tools/themes-lock.mjs --check"
+    "themes:check": "node tools/themes-lock.mjs --check",
+    "player:check": "node tools/player.mjs check",
+    "player:bump": "node tools/player.mjs bump"
   },
   "engines": {
     "node": "^22.23.4 || ^24.22.1 || >=26.12.1"

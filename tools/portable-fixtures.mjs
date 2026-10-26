@@ -9,6 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { FORMAT } from '../kit/core/format.mjs';
 import { scanDocument, replaceIndexText, playOnly, htmlSafeJson } from '../kit/core/portable.mjs';
 import { buildPortable } from '../kit/build.mjs';
+import { findPolicies, policyMeta } from '../kit/core/file-policy.mjs';
+import { assignIds } from '../kit/core/slide-ids.mjs';
+import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
+import { parseNarration } from '../kit/core/narration-core.mjs';
 
 // 無音の WAV（8 kHz・モノラル・16 bit）
 export function silentWav(sec) {
@@ -54,6 +58,19 @@ ${canary ? '<script>window.__portableCanary = (window.__portableCanary || 0) + 1
   return dir;
 }
 
+// 作業フォルダ（見本の写しなど）のスライドに id を付ける（format spec §8.1。書き出しが付けて書き戻すものを先に。試験の鍵が書き出しの前後で変わらないように）。
+// 返すもの：見出し → スライドの id（idOf('何を最小化するか') → 's-…'）。音声の記録などの鍵は付け替えない（先に呼ぶこと）
+export function giveIds(dir) {
+  const deck = path.join(dir, 'deck.html'), narr = path.join(dir, 'narration.md');
+  const n = fs.existsSync(narr) ? readRegular(narr, { max: READ_LIMITS.narration }).toString('utf8') : '';
+  const a = assignIds(readRegular(deck, { max: READ_LIMITS.source }).toString('utf8'), n);
+  if (a.problems.length) throw new Error('giveIds: ' + a.problems.map((x) => x.msg).join('; '));
+  fs.writeFileSync(deck, a.deck);
+  if (n) fs.writeFileSync(narr, a.narration);
+  const map = new Map(parseNarration(a.narration || '').sections.map((x) => [x.heading, x.key]));
+  return (heading) => { if (!map.has(heading)) throw new Error(`giveIds: no heading "${heading}"`); return map.get(heading); };
+}
+
 // 索引を JSON の object として直し、hash を付け直す
 async function editIndex(html, fn) {
   const el = scanDocument(html).byId.get(FORMAT.INDEX_ID);
@@ -90,7 +107,23 @@ export async function makeFixtures(out) {
   put('minimal-portable-core', base, { read: 'ok', profile: 'core', code: false, play: true });
   put('minimal-play-only', playOnly(base), { read: { error: 'no-source' }, play: true });
   put('portable-extended', await build('ext', { component: true }), { read: 'ok', profile: 'extended', play: true });
-  put('legacy-heading-keys', await build('legacy', { ids: false }), { read: 'ok', audioKeys: ['はじめに:0', '一歩ずつ:0'], play: true });
+  // id のない原稿（AI が書いたばかりのもの・旧来の鍵）から書き出したもの：書き出しが id を付ける（§8.1）。鍵はどれもスライドの id で、見出しの字・
+  // 手で書いた data-key・s<n> の鍵は書かない（spec の legacy-heading-keys は 1.0 の形より前の文書。この書き手はもう作らない）
+  put('idless-source', await build('idless', { ids: false }), { read: 'ok', idKeys: true, play: true });
+  // 1.0 の形の読み手の試験（spec fixtures/README.md の Planned）：player のない文書（前の草案）・決まりのない文書・緩めた決まり・順を替えた決まり
+  {
+    const noPlayer = await editIndex(base, (x) => { delete x.player; });
+    const meta = scanDocument(noPlayer).byId.get('deck-meta'), m = JSON.parse(meta.text);
+    delete m.player;
+    put('missing-player', noPlayer.slice(0, meta.start) + `<script type="application/json" id="deck-meta">${htmlSafeJson(JSON.stringify(m))}</script>` + noPlayer.slice(meta.end), { read: 'ok', preDraft: true, play: true });
+  }
+  {
+    const pol = findPolicies(base)[0];
+    const at = (t) => base.slice(0, pol.start) + t + base.slice(pol.end + (t === '' && base[pol.end] === '\n' ? 1 : 0));
+    put('no-policy', at(''), { read: 'ok', policy: 'missing', play: true });
+    put('policy-loosened', at(policyMeta(pol.content.replace("connect-src 'none'", 'connect-src https://tracker.example'))), { read: 'ok', policy: 'differs', play: true });
+    put('policy-reordered', at(policyMeta(pol.content.split('; ').reverse().join(';  '))), { read: 'ok', policy: 'ok', play: true });
+  }
   put('script-breakout', await build('breakout', { breakout: true }), { read: 'ok', identicalSource: true, play: true });
   const canaryHtml = await build('canary', { canary: true });
   put('canary-script', canaryHtml, { read: 'ok', canary: '__portableCanary', profile: 'extended', code: true, play: true });

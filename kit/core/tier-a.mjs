@@ -39,7 +39,8 @@ const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'de
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // 索引の項目の並び（足すときの位置。書き出し（exportPortable）と同じ順）
-const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom'];
+// player と generator（§4.1）は段 A では書き換えない（ここに並べるのは、足す項目を入れる順のため）
+const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom'];
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
 
@@ -605,7 +606,7 @@ async function run(original, filesIn, opts) {
   let back;
   try { back = await readPortable(html); } catch (e) { refuse('verify', `the edited file does not read back: ${e.message}`); }
   if (!back.sourceMatches) refuse('verify', 'the edited file does not read back with a matching sourceSha256');
-  const me = back.deckMeta ? validateDeckMeta(back.deckMeta) : ['no deck-meta'];
+  const me = back.deckMeta ? validateDeckMeta(back.deckMeta, { preDraft: back.preDraft }) : ['no deck-meta'];
   if (me.length) refuse('verify', me.join('; '));
   if (back.index.docId !== docId || back.deckMeta.docId !== docId) refuse('verify', 'docId was not kept');
   return {

@@ -26,7 +26,7 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
@@ -1302,8 +1302,8 @@ async function openPortableNow(input) {
   if (extended) S.codeOk = true;                          // 開く前に聞いて「始める」を押した
   // 作り直して保存できるか（段 B）：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）。
   // できなければ段 A の編集（口述原稿・音声・秒数）だけ。組み立てられない文書と、段 A も段 B もできない文書は読むだけ
-  if (!r.index.contracts || r.index.contracts.runtime !== CONTRACTS.runtime) P.tierAOnly = T.roRuntime(r.index.contracts && r.index.contracts.runtime, CONTRACTS.runtime);
-  else {
+  // （contracts は {source} だけ。実行系の約束の版 contracts.runtime は 1.0 の形で外した：作り直しは再生器を替える。format spec §4.1・§7.1）
+  {
     try {
       const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
       const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);

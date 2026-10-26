@@ -22,6 +22,11 @@ import { utf8Length } from './bounded-read-core.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 import { isLiveResults } from './live-results.mjs';
 import { updateConfig, merge as configMerge } from './config-file.mjs';
+import { resolvePlayer, PLAYER } from './player.mjs';
+import { policyMeta, policyText, checkFilePolicy } from './file-policy.mjs';
+import { exportIds } from './slide-ids.mjs';
+import { analyzeSlideIds } from './build-core.mjs';
+import { READ_LIMITS } from './bounded-read-core.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -30,9 +35,13 @@ const SRC_RE = new RegExp(`^${reEsc(SCHEME)}([A-Za-z0-9_]{1,32})$`);
 const LOG = 'portable';   // 知らせの前置
 
 export const FORMAT_VERSION = Object.freeze({ major: 1, minor: 0 });
-export const CONTRACTS = Object.freeze({ source: 1, runtime: 1 });
+// contracts は {source} だけ（format spec §7.1。実行系の約束の版 runtime は 1.0 の形で外した：再生器は player が名指す）
+export const CONTRACTS = Object.freeze({ source: 1 });
 export const FEATURES = Object.freeze(['sources-v1', 'audio-v1']);
-export const GENERATOR = 'motion-academic-slides';
+// generator：ファイルを書いたソフト（Egatari Studio と、その版 = package.json の version）。同梱の再生器は player（kit/core/player.mjs）
+export const GENERATOR = 'egatari-studio';
+export const GENERATOR_TITLE = 'Egatari Studio';   // 人に見せる名前（generator.title。spec §3.1）
+export { PLAYER };
 const MiB = 1024 * 1024;
 // §11 の推奨の上限（読み手が断ってよい値）と §3.2 の塊の大きさ
 export const LIMITS = Object.freeze({
@@ -252,7 +261,9 @@ export function validateIndex(ix) {
   const int = (v, where, min) => { if (!Number.isInteger(v) || v < min) e.push(`${where}: not an integer >= ${min}`); };
   const path = (v, where) => { if (str(v, where)) { const p = pathProblem(v); if (p) e.push(`${where}: ${p}`); } };
   if (!isObj(ix)) return ['index: not an object'];
-  need(ix, ['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'metadata'], 'index');
+  // entry と article（§9C.1）：少なくともどちらか（記事だけの教材は entry なし。§4「Lessons without slides」）
+  need(ix, ['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'sourceSha256', 'files', 'blobs', 'metadata'], 'index');
+  if (!own(ix, 'entry') && !own(ix, 'article')) e.push('index: missing "entry" (or "article": a lesson has slides, an article, or both)');
   if (own(ix, 'format') && ix.format !== FID) e.push(`format: not "${FID}"`);
   if (own(ix, 'version')) versionCheck(ix.version, 'version', e);
   if (own(ix, 'profile') && !['core', 'extended'].includes(ix.profile)) e.push('profile: not core or extended');
@@ -261,9 +272,18 @@ export function validateIndex(ix) {
     else { ix.requires.forEach((f, j) => str(f, `requires[${j}]`, RE.feature)); if (new Set(ix.requires).size !== ix.requires.length) e.push('requires: duplicate items'); }
   }
   if (own(ix, 'contracts')) contractsCheck(ix.contracts, 'contracts', e);
+  if (own(ix, 'player')) generatorCheck(ix.player, 'player', e);
   if (own(ix, 'generator')) generatorCheck(ix.generator, 'generator', e);
   if (own(ix, 'docId')) str(ix.docId, 'docId', RE.docId);
   if (own(ix, 'entry')) path(ix.entry, 'entry');
+  if (own(ix, 'article')) {
+    const a = ix.article;
+    if (!isObj(a)) e.push('article: not an object');
+    else {
+      if (!own(a, 'path')) e.push('article: missing "path"');
+      for (const k of ['path', 'references']) if (own(a, k)) str(a[k], `article.${k}`, null, 1);
+    }
+  }
   if (own(ix, 'sourceSha256')) str(ix.sourceSha256, 'sourceSha256', RE.sha256);
   if (own(ix, 'files')) {
     if (!isObj(ix.files)) e.push('files: not an object');
@@ -360,11 +380,12 @@ function versionCheck(v, w, e) {
 }
 function contractsCheck(c, w, e) {
   if (!isObj(c)) { e.push(`${w}: not an object`); return; }
-  for (const k of ['source', 'runtime']) if (!(Number.isInteger(c[k]) && c[k] >= 1)) e.push(`${w}.${k}: not an integer >= 1`);
+  if (!(Number.isInteger(c.source) && c.source >= 1)) e.push(`${w}.source: not an integer >= 1`);
 }
 function generatorCheck(g, w, e) {
   if (!isObj(g)) { e.push(`${w}: not an object`); return; }
   for (const k of ['name', 'version']) if (!(typeof g[k] === 'string' && g[k].length)) e.push(`${w}.${k}: not a non-empty string`);
+  if (own(g, 'title') && !(typeof g.title === 'string' && g.title.length)) e.push(`${w}.title: not a non-empty string`);
 }
 const numArr = (a) => Array.isArray(a) && a.every((x) => typeof x === 'number' && Number.isFinite(x) && x >= 0);
 // 符号化の遅れ（§5.2 startOffset：秒、0〜1）
@@ -460,13 +481,15 @@ function completionCheck(c, w, e) {
   if (own(c, 'reachedEnd') && c.reachedEnd !== true) e.push(`${w}.reachedEnd: not true`);
 }
 // 実行系の deck-meta（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-meta.schema.json）
-export function validateDeckMeta(m) {
+// opts.preDraft：1.0 の形より前の草案の文書（player がない。§7.1）を読むとき、player がないことは問わない（読むのは今までどおり。書くものは必ず持つ）
+export function validateDeckMeta(m, opts = {}) {
   const e = [];
   if (!isObj(m)) return ['deck-meta: not an object'];
-  for (const k of ['format', 'version', 'contracts', 'generator', 'docId', 'title', 'lang', 'portable', 'tracking']) if (!own(m, k)) e.push(`deck-meta: missing "${k}"`);
+  for (const k of ['format', 'version', 'contracts', 'player', 'generator', 'docId', 'title', 'lang', 'portable', 'tracking']) if (!own(m, k) && !(k === 'player' && opts.preDraft)) e.push(`deck-meta: missing "${k}"`);
   if (own(m, 'format') && m.format !== FID) e.push(`deck-meta.format: not "${FID}"`);
   if (own(m, 'version')) versionCheck(m.version, 'deck-meta.version', e);
   if (own(m, 'contracts')) contractsCheck(m.contracts, 'deck-meta.contracts', e);
+  if (own(m, 'player')) generatorCheck(m.player, 'deck-meta.player', e);
   if (own(m, 'generator')) generatorCheck(m.generator, 'deck-meta.generator', e);
   if (own(m, 'docId') && !(typeof m.docId === 'string' && RE.docId.test(m.docId))) e.push('deck-meta.docId: not a UUID');
   if (own(m, 'title') && !(typeof m.title === 'string' && m.title.length)) e.push('deck-meta.title: not a non-empty string');
@@ -574,7 +597,7 @@ const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
-const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom']);
+const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom']);
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 // JSON の値が同じか（object の項目の順は問わない）
 export function sameJson(a, b) {
@@ -608,6 +631,45 @@ export function folderConfig(index, text) {
   if (!Object.keys(patch).length) return null;
   return updateConfig(isObj(c) ? text : null, patch);
 }
+// 書き出しの前の id（§8.1。kit/core/slide-ids.mjs の exportIds）：作業フォルダの原稿・口述原稿・音声の記録・timeline.json・comments.json を
+// 上限つきで読み、付け替えたものを {writes: {作業フォルダの中のパス: 字}} で返す。付けられない原稿（id の書式の誤り・鍵の重なり）は断る
+function exportIdsFor(env, deckDir, srcPath, inDeck, opts) {
+  const P = env.path;
+  // 上限を超えるもの（読み取りの read-over）は組み立てと同じ build-too-large で、読む前に断る
+  const bounded = (p, max, what) => { try { return env.readText(p, max); } catch (e) { if (e && e.code === 'read-over') throw new BuildLimitError(`files read (${what})`, e.n, max); throw e; } };
+  const read = (rel, max) => { const p = P.join(deckDir, ...rel.split('/')); return env.exists(p) && inDeck(p) ? bounded(p, max, rel) : null; };
+  const entryRel = P.relative(deckDir, P.resolve(srcPath)).split(P.sep).join('/');
+  const NAMES = { deck: entryRel, narration: 'narration.md', manifest: 'audio/manifest.json', timeline: 'timeline.json', comments: 'comments.json' };
+  const L = READ_LIMITS;
+  const files = { deck: bounded(P.resolve(srcPath), L.source, 'source'), narration: read('narration.md', L.narration), manifest: read('audio/manifest.json', L.json), timeline: read('timeline.json', L.json), comments: read('comments.json', L.comments) };
+  const x = exportIds(files, opts.idRand ? { rand: opts.idRand } : {});
+  if (x.problems.length) fail('slide-ids', 'slides cannot be given ids (§8.1); fix these first: ' + x.problems.map((q) => q.msg).join('; '), x.problems);
+  const writes = {}, warnings = [];
+  for (const [k, text] of Object.entries(x.changed)) writes[NAMES[k]] = text;
+  // 設定のファイルの中の段階・スライドの鍵（授業の部屋の活動 extensions.live.activities・metadata.authorship・articleLinks）も付け替える。ほかのバイトはそのまま
+  const cfgText = x.aliases.size ? read(CFG, L.json) : null;
+  if (cfgText !== null) {
+    let c = null; try { c = parseJsonStrict(cfgText); } catch { c = null; }
+    const rk = (k) => { const i = String(k).lastIndexOf(':'); const sk = i < 0 ? k : k.slice(0, i); return x.aliases.has(sk) && !x.ids.has(sk) ? x.aliases.get(sk) + (i < 0 ? '' : k.slice(i)) : k; };
+    const remap = (o) => { let n = 0; const out = {}; for (const k of Object.keys(o)) { const nk = k === '*' ? k : rk(k); if (nk !== k) n++; if (!own(out, nk)) out[nk] = o[k]; } return n ? out : null; };
+    const patch = {};
+    if (isObj(c) && isObj(c.extensions) && isObj(c.extensions.live) && isObj(c.extensions.live.activities)) { const a = remap(c.extensions.live.activities); if (a) patch.extensions = configMerge({ live: configMerge({ activities: a }) }); }
+    if (isObj(c) && isObj(c.metadata) && isObj(c.metadata.authorship)) { const a = remap(c.metadata.authorship); if (a) patch.metadata = configMerge({ authorship: a }); }
+    if (isObj(c) && isObj(c.articleLinks)) { const a = remap(c.articleLinks); if (a) patch.articleLinks = a; }
+    if (Object.keys(patch).length) writes[CFG] = updateConfig(cfgText, patch);
+  }
+  if (x.added.length) warnings.push(`${LOG}: gave ${x.added.length} slide(s) an id (§8.1) and wrote them back to the working folder: ${x.added.map((a) => `${a.key} → ${a.id}`).join(', ')}`);
+  for (const o of x.orphans) warnings.push(`${LOG}: narration section "## ${o.key}" matches no slide; it was given the id ${o.id}`);
+  // 確かめ：付けた後の原稿はどのスライドも id で、口述原稿のどの見出しも {#id}
+  const deck = x.changed.deck ?? files.deck, narr = x.changed.narration ?? files.narration;
+  const a = analyzeSlideIds(deck);
+  if (a.slides.some((s) => s.rule !== 'id') || /\sdata-key\s*=/.test(sectionTags(deck))) fail('slide-ids', 'internal: a slide is still without an id after assigning ids');
+  if (narr !== null && parseNarration(narr).sections?.some((s) => !s.id)) fail('slide-ids', 'internal: a narration heading is still without {#id}');
+  return { writes, warnings, added: x.added, orphans: x.orphans };
+}
+// <section class="slide"> の開始タグだけをつないだもの（手で書いた data-key が残っていないかを見る）
+function sectionTags(html) { return (html.match(/<section\b[^>]*>/gi) || []).filter((t) => /\bclass\s*=\s*["']?[^"'>]*\bslide\b/i.test(t)).join(''); }
+
 // env：build-core の env。必須でないもの：env.readBytes(p)（なければ readBase64）、env.compressAudio、env.audioFailed
 // opts：build-core の opts（theme など）に加えて
 //   build(env, src, opts)  組み立ての関数（既定は build-core の build。編集アプリは自分の組み立てを渡せる）
@@ -621,24 +683,37 @@ export function folderConfig(index, text) {
 //                          （identity：新しい docId の教材として保存するときは外す。§3.1）
 //   attachLimits           添付の上限（kit/core/attachments.mjs の ATTACH_LIMITS を変える。試験用）
 //   legacyNoThemePins      1 ファイルの egatari.json に themes を書かない（v0.4.6 までの Studio が書いた 1 ファイルを作る。試験用）
+//   idRand                 id のないスライドに付ける id の乱数（rand(n) → n バイト。見本を組むたびに同じ文書にする。kit/core/narration-core.mjs の newSlideId）
 //   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
 //                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
-// 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE）, warnings, stats}
+// 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE と、id を付けたときの
+//   原稿・口述原稿・記録の JSON）, warnings, stats, playerChange（carry の再生器の名前が違うとき {from, to}、ほかは null）, ids: {added, orphans}}
 export async function exportPortable(env0, srcPath, opts = {}) {
   const P = env0.path;
+  // 記事（§9C）のある教材は作り直さない（この書き手は article-v1 を持たない。作り直すと記事が落ちる：§7.2）
+  if (isObj(opts.carry) && own(opts.carry, 'article')) fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
   const deckDir = P.dirname(P.resolve(srcPath));
   const rel = (p) => P.relative(deckDir, p).split(P.sep).join('/');
   const warnings = [], writes = dict();
   const inDeck = (p) => env0.within(p, deckDir);
 
+  // スライドの id（format spec §8.1）：ファイルに書く原稿は、どのスライドにも id、narration.md のどの見出しにも {#id} がある。
+  // ないもの（AI が書いたばかりの原稿・旧来の鍵）にはここで付け、作業フォルダにも書き戻す（writes。docId と同じ。次の書き出しも同じ id）
+  const idFix = exportIdsFor(env0, deckDir, srcPath, inDeck, opts);
+  for (const w of idFix.warnings) warnings.push(w);
+  const overlay = new Map();   // 絶対パス → 付け替えた字（組み立ても書き出しもこれを読む）
+  for (const [rp, text] of Object.entries(idFix.writes)) { overlay.set(P.resolve(deckDir, ...rp.split('/')), text); writes[rp] = text; }
   // 組み立てが読んだファイルを記録する
   const reads = new Set();
+  const over = (p) => overlay.get(P.resolve(p));
   const rec = { ...env0,
-    readText(p, max) { reads.add(P.resolve(p)); return env0.readText(p, max); },
-    ...(typeof env0.readTextBytes === 'function' ? { readTextBytes(p, max) { reads.add(P.resolve(p)); return env0.readTextBytes(p, max); } } : {}),
-    readBase64(p, max) { reads.add(P.resolve(p)); return env0.readBase64(p, max); },
+    readText(p, max) { reads.add(P.resolve(p)); const o = over(p); return o !== undefined ? o : env0.readText(p, max); },
+    ...(typeof env0.readTextBytes === 'function' ? { readTextBytes(p, max) { reads.add(P.resolve(p)); const o = over(p); return o !== undefined ? { text: o, bytes: utf8Length(o) } : env0.readTextBytes(p, max); } } : {}),
+    readBase64(p, max) { reads.add(P.resolve(p)); const o = over(p); return o !== undefined ? toBase64(utf8(o)) : env0.readBase64(p, max); },
+    ...(typeof env0.readBytes === 'function' ? { readBytes(p, max) { const o = over(p); return o !== undefined ? utf8(o) : env0.readBytes(p, max); } } : {}),
+    ...(typeof env0.size === 'function' ? { size(p) { const o = over(p); return o !== undefined ? utf8Length(o) : env0.size(p); } } : {}),
   };
   // 組み立てと書き出しで 1 つの数え方（kit/core/build-core.mjs の buildBudget・chargedEnv）：書き出しが読むもの（口述原稿・原稿のファイルの写し・
   // voice.json・設定のファイル・音声と、その圧縮の前の元のファイル・控えの JSON）も、組み立てが読むものと同じ回数と大きさの合計に、読む前に数える
@@ -670,7 +745,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     try { tl = readThemesLock(env0, env0.ROOT); } catch { tl = null; }
     if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
   }
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh });
+  // ファイルの決まり（§4.2）：基準のまま（外へは繋がらない）。授業の部屋の派生だけが行き先を足す（kit/core/live.mjs の addLive）
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, policyMeta: policyMeta(policyText()) });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
@@ -1015,11 +1091,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const em = isObj(econf.metadata) ? econf.metadata : {};
   for (const k of META_KEYS) if (own(em, k)) metadata[k] = em[k];
   if (own(em, 'title') && typeof em.title === 'string' && em.title) metadata.title = em.title;
-  const generator = { name: GENERATOR, version: env.version || '0' };
+  // player：同梱の再生器（§4.1。kit/core/player.mjs。出した版と中身が同じでなければ "+dev.<commit>"）。generator：書いたソフト（Egatari Studio）
+  const pl = await resolvePlayer(env0);
+  // title：人に見せる名前（spec §3.1・§4.1。name は変わらない識別子）
+  const player = { name: pl.name, version: pl.version, title: pl.title };
+  const generator = { name: GENERATOR, version: env.version || '0', title: GENERATOR_TITLE };
+  // 作り直し（段 B・C）は再生器を替える：前の文書の再生器の名前が違えば知らせる（§4.1：保存の前に、どの再生器が入るかを使う人に言う）
+  const was = isObj(opts.carry) && isObj(opts.carry.player) && typeof opts.carry.player.name === 'string' ? opts.carry.player : null;
+  const playerChange = was && was.name !== player.name ? { from: { name: was.name, version: String(was.version ?? '') }, to: player } : null;
+  if (playerChange) warnings.push(`${LOG}: the saved file will carry ${player.title} ${player.version} instead of its player "${playerChange.from.name}" ${playerChange.from.version}`);
   const index = {
     format: FID, version: { ...FORMAT_VERSION }, profile: embeddedCode ? 'extended' : 'core',
     requires: Object.keys(audio).length ? ['sources-v1', 'audio-v1'] : ['sources-v1'],
-    contracts: { ...CONTRACTS }, generator, docId, entry, sourceSha256: srcSha, files: fileMap, blobs,
+    contracts: { ...CONTRACTS }, player, generator, docId, entry, sourceSha256: srcSha, files: fileMap, blobs,
     ...(Object.keys(audio).length ? { audio } : {}),
     ...(components.length ? { components } : {}),
     ...(themes.length ? { themes } : {}),
@@ -1043,7 +1127,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const ie = validateIndex(index);
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {
-    format: FID, version: { ...FORMAT_VERSION }, contracts: { ...CONTRACTS }, generator, docId, title: metadata.title, lang,
+    format: FID, version: { ...FORMAT_VERSION }, contracts: { ...CONTRACTS }, player, generator, docId, title: metadata.title, lang,
     portable: true, sourceSha256: srcSha, tracking: [],
     ...(metadata.completion ? { completion: metadata.completion } : {}),
     ...Object.fromEntries(['license', 'copyright', 'attribution'].filter((k) => own(metadata, k)).map((k) => [k, metadata[k]])),
@@ -1087,6 +1171,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (html.split(prefixPh).length !== 2) fail('internal', 'archive placeholder not found exactly once');
   html = html.replace(prefixPh, () => layer);
   if (html.includes('\r')) html = html.replace(/\r\n?/g, '\n');
+  // 書いたものが §4.2 の決まりに合うこと（置き場所と中身。合わなければ書かない）
+  { const pp = checkFilePolicy(html);
+    if (pp.length) fail('file-policy', 'the file policy (§4.2) is not in place: ' + pp.join('; '), pp); }
   const size = utf8Length(html);
   if (size > WARN_BYTES) warnings.push(`${LOG}: the file is ${(size / MiB).toFixed(1)} MiB (over ${WARN_BYTES / MiB} MiB): consider splitting the lesson into chapters`);
   if (size > LIMITS.fileBytes) warnings.push(`${LOG}: the file is over ${LIMITS.fileBytes / MiB} MiB; editors may refuse it`);
@@ -1100,7 +1187,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag);
     }
   }
-  return { registryEquivalent, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
+  return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）
@@ -1112,7 +1199,8 @@ export const KNOWN = Object.freeze({
   component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path']),
   theme: new Set(['name', 'version', 'sha256', 'source', 'path']),
   blob: new Set(['mime', 'bytes', 'sha256', 'chunks']),
-  version: new Set(['major', 'minor']), contracts: new Set(['source', 'runtime']), generator: new Set(['name', 'version']),
+  // contracts.runtime：前の草案の項目。知っている項目として扱い、作り直しでは写さない（1.0 の形にはない。§7.1）
+  version: new Set(['major', 'minor']), contracts: new Set(['source', 'runtime']), player: new Set(['name', 'version', 'title']), generator: new Set(['name', 'version', 'title']),
 });
 // src の、dst にも known にもない項目を dst に写す（同じ値の参照のまま。書き出しで JSON にする）
 export function copyUnknown(dst, src, known) {
@@ -1124,6 +1212,7 @@ export function copyUnknown(dst, src, known) {
 // （今の行から作られなければ、行を消したということなので残さない）
 function carryUnknown(index, carry, opts) {
   for (const k of Object.keys(carry)) if (!KNOWN_INDEX.has(k) && !own(index, k)) index[k] = carry[k];
+  // player は写さない：作り直しは再生器を替える（§4.1）ので、前の再生器の記録の項目はこの再生器のことではない
   for (const k of ['version', 'contracts', 'generator']) copyUnknown(index[k], carry[k], KNOWN[k]);
   if (isObj(carry.metadata)) {
     // 知っている項目でも、この書き手が作らなかったもの（ほかの書き手が書いた description など）は残す
@@ -1288,7 +1377,7 @@ export function sourceKind(text, scan, deckMeta = readDeckMeta(scan)) {
   return HTML_START.test(text) && SLIDE_SECTION.test(text) ? 'source' : 'other';
 }
 // input：文字列か UTF-8 のバイト列。opts.limits で上限を変えられる（試験用）
-// opts.extract：取り出すだけ（§7.1・§3.5・§9.3）。知らない major の版や知らない必須の機能（requires）の文書でも、1.x の規則で索引と塊の検査が
+// opts.extract：取り出すだけ（§7.1・§3.5・Player P7）。知らない major の版や知らない必須の機能（requires）の文書でも、1.x の規則で索引と塊の検査が
 //   通れば原稿を返す（編集も書き出し（作り直し）もさせない。extractOnly: true、extractReason: 'major' | 'feature'）。取り出しは書き出しではない
 // 返すもの：{index, files: {path: Uint8Array}, audio: {stepKey: record}, deckMeta, docId, warnings, sourceMatches, extractOnly}
 export async function readPortable(input, opts = {}) {
@@ -1336,10 +1425,13 @@ export async function readPortable(input, opts = {}) {
     // audio/manifest.json は index.audio から作るもの（§3.3）。入っていれば、展開で記録と食い違うので断る
     if (fp.some((p) => foldPath(p) === 'audio/manifest.json')) fail('bad-path', 'audio/manifest.json must not be in files (it is derived from index.audio)');
   }
-  const errs = validateIndex(ix).filter((x) => !(extractOnly && /^version\.major:/.test(x)));
+  // 1.0 の形より前の草案の文書（player がない。§7.1）：今までどおり読む（player がないことは問わない）。preDraft を返し、編集器が知らせる・断る
+  const preDraft = !own(ix, 'player');
+  const errs = validateIndex(ix).filter((x) => !(extractOnly && /^version\.major:/.test(x)) && !(preDraft && x === 'index: missing "player"'));
   if (errs.length) fail('invalid-index', 'index is invalid: ' + errs.slice(0, 8).join('; '), errs);
   const paths = Object.keys(ix.files);
-  if (!own(ix.files, ix.entry)) fail('invalid-index', `entry "${ix.entry}" is not in files`);
+  if (own(ix, 'entry') && !own(ix.files, ix.entry)) fail('invalid-index', `entry "${ix.entry}" is not in files`);
+  if (isObj(ix.article) && !own(ix.files, ix.article.path)) fail('invalid-index', `article.path "${ix.article.path}" is not in files`);
   for (const p of paths) if (!own(ix.blobs, ix.files[p])) fail('invalid-index', `files["${p}"] refers to a missing blob ${ix.files[p]}`);
   if (ix.audio) for (const [k, a] of Object.entries(ix.audio)) {
     if (!own(ix.files, a.file)) fail('invalid-index', `audio["${k}"].file "${a.file}" is not in files`);
@@ -1418,11 +1510,13 @@ export async function readPortable(input, opts = {}) {
   const sourceMatches = !!deckMeta && deckMeta.sourceSha256 === ix.sourceSha256 && computed === ix.sourceSha256;
   if (!deckMeta) warnings.push('no deck-meta in the runtime layer');
   else {
-    for (const e of validateDeckMeta(deckMeta)) warnings.push(e);
+    for (const e of validateDeckMeta(deckMeta, { preDraft })) warnings.push(e);
     if (deckMeta.sourceSha256 !== ix.sourceSha256) warnings.push('the compiled lesson and its source disagree (deck-meta.sourceSha256 differs from the index): tier A edits are not allowed');
     if (deckMeta.docId !== ix.docId) warnings.push('deck-meta.docId differs from the index docId');
   }
-  if (isObj(ix.contracts) && ix.contracts.runtime !== CONTRACTS.runtime) warnings.push(`runtime contract ${ix.contracts.runtime} differs from this editor's (${CONTRACTS.runtime}): only tier A edits without an upgrade`);
+  // ファイルの決まり（§4.2）：置き場所と中身（基準と、実行系が宣言した拡張の行き先だけ）。合わなければ知らせる（再生はできる。前の草案には決まりがない）
+  if (preDraft) warnings.push(`the file was made with a draft of ${FORMAT.DISPLAY_NAME} before the 1.0 file shape (no player, §7.1)`);
+  else for (const p of checkFilePolicy(text)) warnings.push(`not conforming: ${p}`);
   const da = scan.byId.get('deck-audio');
   if (isScript(da, 'application/json')) {
     try {
@@ -1436,7 +1530,7 @@ export async function readPortable(input, opts = {}) {
   for (const w of attachmentIndexWarnings(ix)) warnings.push(w);
   if (futureMajor) warnings.push(`${FORMAT.DISPLAY_NAME} ${ix.version.major}.${ix.version.minor} is newer than this reader (1.x): the source can be extracted, not edited`);
   if (unknownFeatures.length) warnings.push(`the file requires features this reader does not implement (${unknownFeatures.join(', ')}): the source can be extracted, not edited or re-exported`);
-  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, extractOnly, extractReason: futureMajor ? 'major' : unknownFeatures.length ? 'feature' : null };
+  return { index: ix, files, audio, deckMeta, docId: ix.docId, warnings, sourceMatches, preDraft, extractOnly, extractReason: futureMajor ? 'major' : unknownFeatures.length ? 'feature' : null };
 }
 
 // ---------------------------------------------------------------- 再生専用の派生（§3.7）

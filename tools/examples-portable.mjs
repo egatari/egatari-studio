@@ -24,6 +24,16 @@ export function exampleDocId(name) {
   return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20, 32)}`;
 }
 
+// 名前から決めた乱数（rand(n) → n バイト。kit/core/narration-core.mjs の newSlideId に渡す）：sha256 を数え上げで伸ばす
+export function exampleRand(name) {
+  let i = 0;
+  return (n) => {
+    const out = new Uint8Array(n);
+    for (let o = 0; o < n; o += 32) out.set(crypto.createHash('sha256').update(`egatari-studio example ids: ${name}: ${i++}`).digest().subarray(0, n - o), o);
+    return out;
+  };
+}
+
 export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} } = {}) {
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-examples-'));
@@ -38,7 +48,8 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       if (!fs.existsSync(cfg)) fs.writeFileSync(cfg, JSON.stringify({ docId: exampleDocId(name) }, null, 2) + '\n');
       const file = name + FORMAT.FILE_EXT, out = path.join(outDir, file);
       const src = path.join(copy, 'deck.html');
-      const r = await buildPortable(src, { out });
+      // id のないスライド（minimal・tmlr2026 の原稿は id を持たない）に書き出しが付ける id も、名前から決めた乱数で（組むたびに同じ文書）
+      const r = await buildPortable(src, { out, idRand: exampleRand(name) });
       writeOutput(src, out, r.html);
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};

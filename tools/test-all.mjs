@@ -90,6 +90,8 @@ const steps = [
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
+  // 1.0 のファイルの形（書く側）：player と generator・版の決め方と player:check・段 A は player を残す・ファイルの決まり（CSP）・旧来の鍵を書かない・記事だけの教材・プレビュー
+  ['test-file-shape', ['tools/test-file-shape.mjs', path.join(tmp, 'file-shape')]],
   ['test-attachments', ['tools/test-attachments.mjs', path.join(tmp, 'attachments'), '--shots', path.join(tmp, 'attachments-shots')]],
   // 授業の部屋（拡張 live）：決まりごと・部屋を付けた派生だけの CSP・通信なしの場面・file:// から試験の部屋へ・つなぎ直し・舞台の描画が変わらない
   ['test-live', ['tools/test-live.mjs', path.join(tmp, 'live')]],

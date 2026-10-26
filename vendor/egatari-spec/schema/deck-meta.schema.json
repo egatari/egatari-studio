@@ -7,6 +7,7 @@
     "format",
     "version",
     "contracts",
+    "player",
     "generator",
     "docId",
     "title",
@@ -23,6 +24,9 @@
     },
     "contracts": {
       "$ref": "egatari-index.schema.json#/properties/contracts"
+    },
+    "player": {
+      "$ref": "egatari-index.schema.json#/properties/player"
     },
     "generator": {
       "$ref": "egatari-index.schema.json#/properties/generator"

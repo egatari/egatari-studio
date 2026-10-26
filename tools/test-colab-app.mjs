@@ -22,6 +22,7 @@ import { writeZip } from '../kit/core/zip-read.mjs';
 import { expectedCues, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
 import { colabZip } from './colab-fixture.mjs';
 import { silentWav } from './portable-fixtures.mjs';
+import { assignIds } from '../kit/core/slide-ids.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { clickUntil, clickDlg } from './click-retry.mjs';
 
@@ -95,11 +96,13 @@ try {
   await page.waitForSelector('#drop');
   // ---------------------------------------------------------------- 1. 作業フォルダ
   const SRC = path.join(ROOT, 'examples/minimal');
-  const narr = fs.readFileSync(path.join(SRC, 'narration.md'), 'utf8');
+  // スライドの id（format spec §8.1）：エディタの書き出しが付けるものを先に（鍵が保存の前後で同じ）
+  const withIds = assignIds(fs.readFileSync(path.join(SRC, 'deck.html'), 'utf8'), fs.readFileSync(path.join(SRC, 'narration.md'), 'utf8'));
+  const narr = withIds.narration;
   const segs = parseNarration(narr);
   const keys = segs.map((s) => `${s.slideKey}:${s.stepKey}`);
   const DOC = PF.newDocId();
-  const files = { 'deck.html': fs.readFileSync(path.join(SRC, 'deck.html'), 'utf8'), 'narration.md': narr, [FORMAT.CONFIG_FILE]: JSON.stringify({ docId: DOC }) + '\n' };
+  const files = { 'deck.html': withIds.deck, 'narration.md': narr, [FORMAT.CONFIG_FILE]: JSON.stringify({ docId: DOC }) + '\n' };
   await page.evaluate(async (files) => {
     const root = await navigator.storage.getDirectory();
     await root.removeEntry('colab-deck', { recursive: true }).catch(() => {});
@@ -203,6 +206,7 @@ try {
   const PDIR = path.join(work, 'pmin');
   fs.rmSync(PDIR, { recursive: true, force: true });
   fs.cpSync(SRC, PDIR, { recursive: true, filter: (s) => !/[\\/](?:out|video)([\\/]|$)/.test(path.relative(path.join(ROOT, 'examples'), s)) });
+  fs.writeFileSync(path.join(PDIR, 'deck.html'), withIds.deck); fs.writeFileSync(path.join(PDIR, 'narration.md'), narr);   // 同じ id（上）
   fs.mkdirSync(path.join(PDIR, 'audio'), { recursive: true });
   {
     const segments = {};

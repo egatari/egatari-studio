@@ -22,7 +22,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { segDigest } from '../kit/narration.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
-import { silentWav } from './portable-fixtures.mjs';
+import { silentWav, giveIds } from './portable-fixtures.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-audio-core-'));
@@ -255,6 +255,7 @@ ok('記録：takeEntry・setManifestEntry・audioState（最新・古い・分�
 ok('段 A：持ち運べる 1 ファイルの 1 つの段階の音声を録音（MP3）に替える。決まった場所のほかは同じバイト・古さの印', async () => {
   const dir = path.join(work, 'minimal');
   fs.cpSync(path.join(ROOT, 'examples', 'minimal'), dir, { recursive: true, filter: (s) => !/[\\/](?:out|video)([\\/]|$)/.test(path.relative(path.join(ROOT, 'examples'), s)) });
+  giveIds(dir);   // スライドの id（書き出しが付けるものを先に。鍵が書き出しの前後で同じ）
   fs.mkdirSync(path.join(dir, 'audio'), { recursive: true });
   const segs = parseNarration(fs.readFileSync(path.join(dir, 'narration.md'), 'utf8'));
   const segments = {};

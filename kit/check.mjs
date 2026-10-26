@@ -17,6 +17,7 @@
 // G. モーフ（data-morph）：元のスライドと対応する data-id があるか、対応の一覧
 // H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
 // I. スライドの id と鍵（format spec §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
+//    1.0 の語彙にない書き方（§8.0：色のクラス blue・red・gray、data-steps・data-anim、<html data-mode="lecture">。警告）、
 //    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
 // J. スライドへのリンク（format spec §9.1A）：<a href="#<id>"> と #<id>:<段階の鍵> の行き先がないか段階が範囲の外ならエラー。
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
@@ -44,6 +45,7 @@ import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
+import { legacyVocabulary } from './core/legacy-vocab.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -113,6 +115,8 @@ if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: the
     if (s.rule === 'data-key') report(s.index, 'warn', 'legacyDataKey', { key: s.key, line: s.line });
     else if (s.rule === 'index') report(s.index, 'warn', 'legacyIndex', { key: s.key, line: s.line });
   }
+  // 1.0 の語彙にない書き方（format spec §8.0）：色のクラス blue・red・gray、data-steps・data-anim、<html data-mode="lecture">。警告だけ（教材は組める）
+  for (const x of legacyVocabulary(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(null, 'warn', x.code, x);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {

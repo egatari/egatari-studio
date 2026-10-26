@@ -36,7 +36,7 @@ import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs
 import { FORMAT } from './core/format.mjs';
 import { updateConfig, configObject, merge as configMerge } from './core/config-file.mjs';
 import { exportName, titleOf } from './core/export-name.mjs';
-import { safeWriteFile } from './safe-fs.mjs';
+import { safeWriteFile, backupFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
 import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
@@ -51,6 +51,15 @@ const ROOT = path.dirname(KIT);
 // 版（package.json の version）。デッキに DECK.VERSION として埋め込む（フィードバックの欄に入れる）
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '';
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
+// 同梱の再生器の版の "+dev.<commit>"（kit/core/player.mjs）に使う、このリポジトリの今の commit（短い形）。git がなければ ''（"+dev" だけ）
+let _commit = null;
+export function repoCommit() {
+  if (_commit === null) {
+    const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8', timeout: 10000 });
+    _commit = r.status === 0 && /^[0-9a-f]{4,40}$/.test((r.stdout || '').trim()) ? r.stdout.trim() : '';
+  }
+  return _commit;
+}
 
 // ---------------------------------------------------------------- 字の絞り込み（fonts/ に TTF があるとき）
 // 字の絞り込みに使う fonttools / brotli の版（キャッシュの鍵にも入れる）
@@ -147,6 +156,7 @@ export function listFiles(dir) {
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex,
+  get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir: (pkg) => path.dirname(require.resolve(`${pkg}/package.json`)),
   exists: (p) => fs.existsSync(p),
@@ -177,7 +187,12 @@ export async function buildPortable(srcPath, opts = {}) {
   const r = await exportPortable(nodeEnv, srcPath, { fromFolder: true, ...opts });
   const deckDir = path.dirname(path.resolve(srcPath));
   // 原稿のフォルダに残すもの（FORMAT.CONFIG_FILE）：リンクを通しては書かない（kit/safe-fs.mjs）
-  for (const [rel, text] of Object.entries(r.writes)) safeWriteFile(deckDir, path.join(deckDir, ...rel.split('/')), text);
+  // 書き出しがスライドに id を付けたとき（format spec §8.1）は原稿・口述原稿・記録の JSON も書き換えるので、先に .cache/edits/ に控えを残す（npm run ids と同じ）
+  for (const [rel, text] of Object.entries(r.writes)) {
+    const f = path.join(deckDir, ...rel.split('/'));
+    if (rel !== FORMAT.CONFIG_FILE) backupFile(deckDir, f, path.join('.cache', 'edits'), { max: READ_LIMITS.source });
+    safeWriteFile(deckDir, f, text);
+  }
   // 再生専用の派生（§3.7）：索引と、音声のほかの塊を除く。添付は入らない（授業の部屋の結果も。拡張 live §3）
   if (opts.playOnly) r.html = playOnly(r.html);
   // 授業の部屋（opts.live：部屋の JSON。parseRoomBlock の形）：再生専用の派生にだけ
@@ -290,7 +305,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const out = path.resolve(opts.out || defaultPortableOut(src, opts.playOnly, r.index?.metadata?.title || titleOf(r.html)));
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
-    if (Object.keys(r.writes).length) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
+    if (r.writes[FORMAT.CONFIG_FILE]) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
+    const idw = Object.keys(r.writes).filter((k) => k !== FORMAT.CONFIG_FILE);
+    if (idw.length) console.log(`  slide ids written back to the working folder (backups in .cache/edits/): ${idw.join(', ')}`);
     console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live session ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);

@@ -246,7 +246,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       ok(nm.endsWith(mark + FORMAT.PLAY_EXT) && nm.length > (mark + FORMAT.PLAY_EXT).length, `export with Live: the file name has the mark on the title side, the extension unchanged (${nm})`);
     }
     const at = html.indexOf('<meta http-equiv="Content-Security-Policy"');
-    ok(at > 0 && at < html.search(/<script/i) && html.slice(0, at).trimEnd().endsWith('<head>'), 'export with a live room: the CSP meta right after <head>, before any script');
+    ok(at > 0 && at < html.search(/<script/i) && /<head>\s*<meta charset="utf-8">$/.test(html.slice(0, at).trimEnd()) && (html.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1, 'export with a live room: the one CSP meta (the file policy with the endpoint merged in, format spec §4.2) right after <meta charset>, before any script');
     const csp = (/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(html) || [])[1] || '';
     ok(csp.includes(`; connect-src ${cr.endpoint} ${cr.endpoint.replace(/^https/, 'wss')};`), `export with a live room: connect-src is the endpoint only (${cr.endpoint})`);
     const m = new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(html);
@@ -263,7 +263,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     for (let i = 0; i < 300 && plain.length < 1000; i++) { await page.waitForTimeout(100); plain = (await opfs.read('plain.play.ega.html')) || ''; }
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
     { const nm = await page.evaluate(() => window.__APP_TEST.lastSaveName); ok(!/ライブ|live/.test(nm) && nm.endsWith(FORMAT.PLAY_EXT), `play-only without Live: no mark in the file name (${nm})`); }
-    ok(plain.length > 1000 && !plain.includes('Content-Security-Policy') && !plain.includes(LIVE_BLOCK_ID) && !plain.includes(cr.key), 'play-only without a room (the lesson has live settings): no CSP, no block, no key');
+    ok(plain.length > 1000 && /http-equiv="Content-Security-Policy" content="[^"]*connect-src 'none';/.test(plain) && (plain.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1 && !plain.includes(LIVE_BLOCK_ID) && !plain.includes(cr.key), 'play-only without a room (the lesson has live settings): only the baseline file policy (connect-src \'none\'), no block, no key');
     // 編集アプリのページの決まりはそのまま（connect-src 'self'）
     const appCsp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]').content);
     const srcCsp = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8')) || [])[1];

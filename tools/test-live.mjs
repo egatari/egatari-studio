@@ -23,6 +23,8 @@ import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { addLive, liveCsp, parseRoomBlock, lessonLive, mergeLive, LIVE_BLOCK_ID, localToRfc3339, stepLabel, stepFallback, stepText,
   newLiveSetup, liveSetupIds, liveSetupString, parseLiveSetupString } from '../kit/core/live.mjs';
 import { previewDocument } from '../app/preview-doc.js';
+import { checkFilePolicy, placementProblems } from '../kit/core/file-policy.mjs';
+import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
 
@@ -188,33 +190,40 @@ fs.cpSync(path.join(ROOT, 'examples', 'minimal'), deckDir, { recursive: true });
 const deck = path.join(deckDir, 'deck.html');
 const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const POLL_STEP = '何を最小化するか:0';
+// 段階の鍵はスライドの id（書き出しが見本の原稿に付ける。format spec §8.1）：最初の書き出しの後に口述原稿から引く（下）
+let POLL_STEP = '何を最小化するか:0';
 const POLL_LABEL = '2 枚目『何を最小化するか』・段階 1';
-const ACTS = { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
+let ACTS = { '*': [{ id: 'qa', kind: 'qa' }, { id: 'cf', kind: 'confused' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: POLL_LABEL }] };
 const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
 // 教材の設定（鍵なし）：作業フォルダの設定のファイルの extensions.live
 const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
-await buildPortable(deck, {});   // docId を作る
+await buildPortable(deck, {});   // docId を作る（スライドの id も付けて書き戻す）
 const cfg0 = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+{ const sid = parseNarration(fs.readFileSync(path.join(deckDir, 'narration.md'), 'utf8')).sections.find((x) => x.heading === '何を最小化するか').key;
+  ok(/^s-[a-z2-7]{6}$/.test(sid), `export gave the example's slides ids and wrote them back (${sid})`);
+  POLL_STEP = `${sid}:0`; ACTS = { '*': ACTS['*'], [POLL_STEP]: ACTS['何を最小化するか:0'] }; }
 const plain = (await buildPortable(deck, { playOnly: true })).html;
 fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n');
 const now = Date.now();
 const live = await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) });
 const portable = await buildPortable(deck, {});
 ok(portable.index.extensions && portable.index.extensions.live && !('key' in portable.index.extensions.live) && JSON.stringify(portable.index.extensions.live.activities) === JSON.stringify(ACTS), 'portable: the lesson keeps extensions.live (from the config file) without the key');
-ok(!portable.html.includes('Q2xhc3Nyb29tS2V5MDAwMD') && !portable.html.includes('Content-Security-Policy'), 'portable: the key is nowhere in the teacher\'s own single file, and it has no CSP');
+ok(!portable.html.includes('Q2xhc3Nyb29tS2V5MDAwMD') && /http-equiv="Content-Security-Policy" content="[^"]*connect-src 'none'/.test(portable.html) && checkFilePolicy(portable.html).length === 0,
+  'portable: the key is nowhere in the teacher\'s own single file, and its policy is the baseline (connect-src \'none\'; format spec §4.2)');
 const plain2 = (await buildPortable(deck, { playOnly: true })).html;
 ok(plain2 === plain, 'play-only without --live: the same bytes whether or not the lesson has live settings (the derivative carries no live room)');
 const L = live.html;
 const metaRe = /\n<meta http-equiv="Content-Security-Policy" content="[^"]*">/;
 const blockRe = new RegExp(`\\n<script type="application/json" id="${LIVE_BLOCK_ID}">[^<]*</script>\\n<script>\\n[\\s\\S]*?\\n</script>`);
-ok(L.replace(metaRe, '').replace(blockRe, '') === plain, 'live derivative = the play-only derivative + the CSP meta + the extension block and player (nothing else changes)');
-ok(!plain.includes('Content-Security-Policy') && !plain.includes(`id="${LIVE_BLOCK_ID}"`) && !plain.includes('live-pane'), 'play-only without live: no CSP meta, no extension block, no player');
+ok(L.replace(metaRe, '').replace(blockRe, '') === plain.replace(metaRe, ''), 'live derivative = the play-only derivative with the endpoint merged into its policy + the extension block and player (nothing else changes)');
+ok(metaRe.exec(L).index === metaRe.exec(plain).index, 'live derivative: the policy stays where the file had it (merged in place, format spec §4.2)');
+ok((plain.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1 && checkFilePolicy(plain).length === 0 && !plain.includes(`id="${LIVE_BLOCK_ID}"`) && !plain.includes('live-pane'), 'play-only without live: the baseline policy only, no extension block, no player');
+ok(checkFilePolicy(L).length === 0, 'live derivative: its policy is the baseline plus the declared live endpoint (parsed comparison) ' + JSON.stringify(checkFilePolicy(L)));
 const BLOCK = JSON.parse(new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(L)[1]).live;
 ok(BLOCK.sourceSha256 === portable.index.sourceSha256 && /^[0-9a-f]{64}$/.test(BLOCK.sourceSha256) && !('sourceSha256' in portable.index.extensions.live),
   'live derivative: the extension block carries the lesson\'s sourceSha256 (the play-only deck-meta has none); the lesson\'s own settings do not');
 const cspAt = L.indexOf('<meta http-equiv="Content-Security-Policy"');
-ok(cspAt > 0 && cspAt < L.search(/<script/i) && cspAt === L.indexOf('<head>') + '<head>'.length + 1, 'live derivative: the CSP meta comes right after <head>, before any script');
+ok(cspAt > 0 && cspAt < L.search(/<script/i) && cspAt === L.indexOf('<meta charset="utf-8">') + '<meta charset="utf-8">'.length + 1 && placementProblems(L).length === 0, 'live derivative: the CSP meta comes right after <meta charset>, before any script');
 ok((L.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1, 'live derivative: exactly one CSP meta');
 const csp = /http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(L)[1];
 const host = new URL(fake.endpoint).host;
