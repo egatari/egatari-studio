@@ -186,6 +186,8 @@ css(
   "#dt-help .dt-ai{margin:10px 0 0;text-align:center;font-size:12px;color:#c9ced8}" +
   "#dt-help .dt-fb{margin-top:8px;text-align:center;font-size:12px}#dt-help .dt-fb a{color:#9cc8ff;text-decoration:none}#dt-help .dt-fb a:hover{text-decoration:underline}" +
   "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
+  "#dt-help .dt-about{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;font-size:12px;color:#9a9a9a}" +
+  "#dt-help .dt-about-v{color:#ddd;font-variant-numeric:tabular-nums}" +
   // 添付（ダウンロードだけ）
   "#dt-help .dt-att{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-att ul{list-style:none;margin:0;padding:0}" +
   "#dt-help .dt-att li{display:flex;align-items:center;gap:12px;padding:5px 0}#dt-help .dt-att .dt-att-n{flex:1;min-width:0}" +
@@ -909,14 +911,34 @@ function helpHtml(){
     row(K(/mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent) ? "⌥ option" : "Alt") + "+" + (j ? "クリック" : "click"), j ? "コメント" : "Comment")]));
   // フィードバック：版・ブラウザ・言語・モードだけを入れた issue form を開く（デッキの中身は送らない）
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();
+  var about = aboutHtml();
   var fbHtml = fb ? '<div class="dt-fb"><a href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' +
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
-    (DECK.VERSION ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
+    (DECK.VERSION && !about ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
     (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
     // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
     '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
-      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + fbHtml + "</div>";
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + about + fbHtml + "</div>";
+}
+// このファイルの版（format spec §4.1、Player P3）：形式 → プレーヤー → 作成 の順（docs/terms.json の format-version・player・made-with）。
+// deck-meta の version（{major, minor}）・player・generator（{name, version}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）
+function aboutHtml(){
+  var M = DECK.META || {}, F = DECK.FORMAT || {}, j = JA, rows = [];
+  var isObj = function(x){ return !!x && typeof x === "object" && !Array.isArray(x); };
+  // {name, version} → 人に見せる名前："egatari-player" は「Egatari Player」（形式の識別子の後ろを語ごとに大文字で始める）、ほかの名前はそのまま
+  var prod = function(x){
+    if (!isObj(x) || typeof x.name !== "string" || !x.name) return "";
+    var n = x.name, id = F.id || "", dn = F.displayName || "";
+    if (id && dn && n.indexOf(id + "-") === 0 && /^[a-z0-9-]+$/.test(n)) n = dn + n.slice(id.length).replace(/-([a-z0-9])/g, function(m, c){ return " " + c.toUpperCase(); });
+    return n.slice(0, 80) + (typeof x.version === "string" && x.version ? " " + x.version.slice(0, 40) : "");
+  };
+  var v = M.version;
+  if (isObj(v) && Number.isInteger(v.major) && Number.isInteger(v.minor) && (!M.format || M.format === F.id)) rows.push([j ? "形式" : "Format", (F.displayName || M.format || "") + " " + v.major + "." + v.minor]);
+  var pl = prod(M.player); if (pl) rows.push([j ? "プレーヤー" : "Player", pl]);
+  var ge = prod(M.generator); if (ge) rows.push([j ? "作成" : "Made with", ge]);
+  if (!rows.length) return "";
+  return '<div class="dt-about">' + rows.map(function(r){ return '<div class="dt-about-r"><span class="dt-about-k">' + esc(r[0]) + (j ? "：" : ": ") + '</span><span class="dt-about-v">' + esc(r[1]) + "</span></div>"; }).join("") + "</div>";
 }
 function toggleHelp(on){
   if (!helpBox){

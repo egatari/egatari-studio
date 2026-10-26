@@ -3,7 +3,7 @@
 // - 画面は (スライド i, 段階 k, 段階の開始からの秒数 t) だけで決まる。DECK.seek(i, k, t) が唯一の描画の入口
 // - 手動の発表は実時間で seek を呼び、動画の書き出しは仮想の時刻で呼ぶ
 // - 操作：→ / Space / PageDown で次の段階、← / PageUp で前の段階、Shift+→ / Shift+← でスライド単位、
-//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で授業モード、b で暗転、s で字幕、Shift+s で字幕の大きさ
+//   Home / End、数字＋Enter でそのページ、f で全画面、p で発表者ビュー、a で自動再生、l で先のステップを薄く見せる、b で暗転、s で字幕、Shift+s で字幕の大きさ
 // - 読み上げソフト向け（動画では作らない）：隠れたスライドは aria-hidden と inert、今のスライドは role="group"、
 //   位置と新しく出た段階の文字を aria-live の領域（#deck-live、画面には出ない）で知らせる
 (function(){
@@ -14,7 +14,11 @@ var REDUCE = window.matchMedia && window.matchMedia("(prefers-reduced-motion: re
 var NS = "http://www.w3.org/2000/svg";
 var T = DECK.T = {fade: .45, draw: .7, drawSlow: 1.4, drawDelay: .1, slide: .35, morph: .9, lead: .25, padAfter: .6, hold: 1.2};
 
+// 表示のモード（Player P1）：talk・video（learn はまだない）。「先のステップを薄く見せる」は talk の選択肢（preview）で、
+// 内部では DECK.mode = "lecture" と書く（?mode=lecture は古い呼び方のまま通す。?mode=talk&preview=1 も同じ。Player P8）。
+// 部品に渡す ctx では mode:"talk"・preview:true（format spec §8.4。ctxMode）
 DECK.mode = Q.get("mode") || document.documentElement.getAttribute("data-mode") || "talk";
+if (DECK.mode === "talk" && Q.get("preview") === "1") DECK.mode = "lecture";
 // 画面に出す言葉の言語：<html lang> が ja か、lang が無ければ日本語。それ以外は英語
 DECK.ja = /^ja\b/i.test(document.documentElement.lang || "ja");
 DECK.view = Q.get("view") || "";   // "", "follow"（発表者ビューの中の現在の画面）, "next"（次の画面）
@@ -432,12 +436,22 @@ function setupSlide(s, i, mainEnd){
   else if (c){ max += 1; c.setAttribute("data-step", max); c.setAttribute("data-concl", ""); items.push(c); }
   s._tok = 0;
   s._max = max; s._items = items; s._comps = comps; s._cstep = c && !s.classList.contains("static") ? max : -1;
+  // 答えの印（format spec §8.4、Player P1）：data-preview="none" の要素と、static preview = "none" を宣言した部品（部品庫の manifest の
+  // preview: "none" と同じ宣言）。先のステップを薄く見せるときも、その中は薄くせず先の段階を隠す。部品は自分で先の段階を描かない
+  var npRoots = [].slice.call(s.querySelectorAll('[data-preview="none"]')).concat(comps.filter(function(x){ return x.constructor && x.constructor.preview === "none"; }));
+  var inNp = function(e){ return npRoots.some(function(r){ return r === e || r.contains(e); }); };
+  items.forEach(function(e){ e._noPrev = inNp(e); });
+  comps.forEach(function(x){ x._ctxNoPrev = !!x.closest('[data-preview="none"]'); });   // 書き手が印を付けた部品には preview:false を渡す
+  s._npHide = npRoots.filter(function(r){ return !(r.hasAttribute("data-step") && items.indexOf(r) >= 0); }).map(function(r){
+    var host = r.parentElement && r.parentElement.closest("[data-step]");
+    return host && s.contains(host) && items.indexOf(host) >= 0 ? {el: r, step: +host.getAttribute("data-step"), op: r.style.opacity, hidden: false} : null;
+  }).filter(Boolean);
   s._key = s.getAttribute("data-key") || s.id || ("s" + (i + 1));
   s._morph = s.hasAttribute("data-morph") ? s.getAttribute("data-morph") : null;   // "" なら前のスライドから
   // 線を描く要素（.draw）は、それを含む段階の要素に紐づける
   s._draws = [].slice.call(s.querySelectorAll(".draw")).map(function(d){
     var host = d.closest("[data-step]");
-    return {el: d, step: host && s.contains(host) ? +host.getAttribute("data-step") : (d.hasAttribute("data-step") ? +d.getAttribute("data-step") : 0),
+    return {el: d, noPrev: inNp(d), step: host && s.contains(host) ? +host.getAttribute("data-step") : (d.hasAttribute("data-step") ? +d.getAttribute("data-step") : 0),
             dur: d.classList.contains("drawslow") ? T.drawSlow : T.draw, at: +(d.getAttribute("data-at") || 0)};
   });
   if (i > 0 && !s.querySelector(":scope > .pn")){
@@ -500,15 +514,23 @@ function animDur(i, k){
   return d;
 }
 
+// 部品に渡す ctx.mode（format spec §8.4："talk" | "learn" | "video"）：内部の "lecture" は talk（preview は別に渡す）
+function ctxMode(){ return DECK.mode === "lecture" ? "talk" : DECK.mode; }
+// 先のステップを薄く見せるときの濃さ：テーマの --preview-opacity（format spec §8.4。base.css が 0.45 を置く）。
+// 無いか範囲の外なら --lecture-dim（古い名前。base.css では --preview-opacity と同じ）、それも無ければ 0.45
+function previewOpacity(){
+  var cs = getComputedStyle(document.documentElement), v = parseFloat(cs.getPropertyValue("--preview-opacity"));
+  if (!(v >= 0 && v <= 1)) v = parseFloat(cs.getPropertyValue("--lecture-dim"));
+  return v >= 0 && v <= 1 ? v : .45;
+}
 // (i, k, t) の画面を描く。唯一の描画の入口。cont：実時間の再生の 2 コマ目から（同じ段階の続き。段階に入るのではない）
 function seek(i, k, t, from, cont){
   i = Math.max(0, Math.min(slides.length - 1, i));
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
   if (REDUCE && t !== Infinity) t = Infinity;
-  var mode = DECK.mode, lecture = mode === "lecture";
-  var dim = .5;
-  if (lecture){ var dv = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lecture-dim")); if (dv >= 0 && dv <= 1) dim = dv; }
+  var mode = ctxMode(), lecture = DECK.mode === "lecture";
+  var dim = lecture ? previewOpacity() : 1;
   var entering = k === 0 && from !== undefined && from >= 0 && from !== i && t !== Infinity;
   var morph = entering && t < T.morph && morphSrc(i) === from;
   var fading = entering && !morph && t < T.slide;
@@ -529,7 +551,9 @@ function seek(i, k, t, from, cont){
       var n = +e.getAttribute("data-step"), at = +(e.getAttribute("data-at") || 0);
       var p = n < k ? 1 : n > k ? 0 : prog(t, at, T.fade);
       var lift = !(e instanceof SVGElement) && e.tagName !== "TR" && !e.closest("svg");
-      if (lecture){
+      // 答えの印（data-preview="none"、preview:"none" の部品。e._noPrev）は薄く見せず、発表と同じく先の段階を隠す
+      var faint = lecture && !e._noPrev;
+      if (faint){
         e.style.opacity = n <= k ? 1 : dim;
         e.style.transform = "none";
       } else {
@@ -538,19 +562,24 @@ function seek(i, k, t, from, cont){
       }
       e.classList.toggle("on", n <= k);
       // 発表では、まだ出ていない段階を読み上げない（授業モードでは薄く見えているので読む）
-      if (A11Y){ var ah = !lecture && n > k; if (e._ah !== ah){ e._ah = ah; if (ah) e.setAttribute("aria-hidden", "true"); else e.removeAttribute("aria-hidden"); } }
+      if (A11Y){ var ah = !faint && n > k; if (e._ah !== ah){ e._ah = ah; if (ah) e.setAttribute("aria-hidden", "true"); else e.removeAttribute("aria-hidden"); } }
     });
   }
   s._draws.forEach(function(w){
-    var p = s.classList.contains("static") || lecture || w.step < k ? 1 : w.step > k ? 0 : prog(t, w.at + T.drawDelay, w.dur);
+    var p = s.classList.contains("static") || (lecture && !w.noPrev) || w.step < k ? 1 : w.step > k ? 0 : prog(t, w.at + T.drawDelay, w.dur);
     w.el.style.strokeDashoffset = (1 - p).toFixed(4);
+  });
+  // 薄く見せる段階の要素の中にある答えの印（段階を持たない data-preview="none" の要素・preview:"none" の部品）は、その段階まで隠す
+  s._npHide.forEach(function(x){
+    var hide = lecture && x.step > k;
+    if (x.hidden !== hide){ x.hidden = hide; x.el.style.opacity = hide ? "0" : x.op; if (A11Y){ if (hide) x.el.setAttribute("aria-hidden", "true"); else x.el.removeAttribute("aria-hidden"); } }
   });
   // 部品の伸縮に使うのは {cue} の区切りの時刻だけ（{mark} の時刻は注目の演出が使う）
   var ac = compCues(i, k);
   var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
     var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
-    var ctx = {mode: mode, slide: s, instant: p.t === Infinity, deck: DECK};
+    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s, instant: p.t === Infinity, deck: DECK};
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
       if (c._touched && !cont){ c._touched = false; untouch(c, p.k, ctx); }
@@ -581,7 +610,7 @@ function watchTouch(c){
 function untouch(c, k, ctx){
   ctx.reset = true;
   var n = c.steps, other = k > 0 ? 0 : n > 0 ? 1 : -1;
-  if (other >= 0) c.render(other, Infinity, {mode: ctx.mode, slide: ctx.slide, instant: true, deck: ctx.deck, reset: true});
+  if (other >= 0) c.render(other, Infinity, {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide, instant: true, deck: ctx.deck, reset: true});
 }
 // 起動の前（部品の mount の前）に頼まれた seek は覚えておき、mount の後に描く（最後の 1 つ）
 var started = false, pendingSeek = null, pendingGo = null;   // started：start() に入った（mount を始めた）
@@ -1227,7 +1256,7 @@ function broadcast(p){
              back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack()};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   if (window.parent !== window) window.parent.postMessage(msg, "*");
-  // 埋め込み（format spec §9.4）：段階が変わるたびに位置を知らせる
+  // 埋め込み（Player P8）：段階が変わるたびに位置を知らせる
   if (EMBED) post({egatari: "position", slideKey: slides[cur]._key, stepKey: stepKey(slides[cur], step), t: p.t, cause: p.cause || "control"});
   document.dispatchEvent(new CustomEvent("deck:pos", {detail: msg}));
 }
@@ -1560,7 +1589,7 @@ function start(){
   started = true;
   slides.forEach(function(s, i){
     s._comps.forEach(function(c){
-      try { c.mount({mode: DECK.mode, slide: s, deck: DECK}); watchTouch(c); }
+      try { c.mount({mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s, deck: DECK}); watchTouch(c); }
       catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(); }
     });
   });

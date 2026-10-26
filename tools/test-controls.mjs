@@ -93,11 +93,11 @@ ok(autoOn && autoOff, '自動再生のボタンで始めて止める（状態が
 // 授業モード
 await p.click(btn('lect'));
 ok(await p.evaluate(() => DECK.mode === 'lecture' && document.querySelector('#dt-cb [data-b="lect"]').classList.contains('on')), '授業モードのボタン');
-// 授業の表示には今の段階の印（蛍光ペンも .cur も）がなく、先の段階は --lecture-dim で薄い（backlog #86）
+// 授業の表示には今の段階の印（蛍光ペンも .cur も）がなく、先の段階は --preview-opacity で薄い（backlog #86、Player P1）
 const lectProbe = () => p.evaluate(() => {
   const i = DECK.slides.findIndex((s) => s._max >= 2), k = 1;
   DECK.seek(i, k, Infinity);
-  const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--lecture-dim'));
+  const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--preview-opacity'));
   const items = [...DECK.slides[i].querySelectorAll('[data-step]')];
   const marked = items.filter((e) => /gradient/.test(getComputedStyle(e).backgroundImage) || e.classList.contains('cur'));
   const future = items.filter((e) => +e.getAttribute('data-step') > k), now = items.filter((e) => +e.getAttribute('data-step') <= k);
@@ -107,11 +107,11 @@ const lectProbe = () => p.evaluate(() => {
 const lp = await lectProbe();
 ok(lp.i >= 0 && lp.nItems > 0 && lp.nFuture > 0, '授業の表示で確かめる段階がある（' + JSON.stringify([lp.i, lp.nItems, lp.nFuture]) + '）');
 ok(lp.cur === 0 && lp.marked === 0, '授業の表示に今の段階の印（.cur・蛍光ペンの地）がない');
-ok(lp.dim >= .45 && lp.dim <= .5 && lp.futureOp.every((o) => o === lp.dim) && lp.nowOp.every((o) => o === 1), '先の段階は --lecture-dim（' + lp.dim + '）で薄く、今までの段階は濃い');
-await p.evaluate(() => document.documentElement.style.setProperty('--lecture-dim', '.45'));
+ok(lp.dim === .45 && lp.futureOp.every((o) => o === lp.dim) && lp.nowOp.every((o) => o === 1), '先の段階は --preview-opacity（' + lp.dim + '）で薄く、今までの段階は濃い');
+await p.evaluate(() => document.documentElement.style.setProperty('--preview-opacity', '.3'));
 const lp2 = await lectProbe();
-ok(lp2.futureOp.length > 0 && lp2.futureOp.every((o) => o === .45), 'テーマが --lecture-dim を変えると先の段階がそれに従う');
-await p.evaluate(() => document.documentElement.style.removeProperty('--lecture-dim'));
+ok(lp2.futureOp.length > 0 && lp2.futureOp.every((o) => o === .3), 'テーマが --preview-opacity を変えると先の段階がそれに従う');
+await p.evaluate(() => document.documentElement.style.removeProperty('--preview-opacity'));
 ok(!/\.cur\b|emph-tint/.test(fs.readFileSync(new URL('../kit/base.css', import.meta.url), 'utf8')), 'kit/base.css に今の段階の強調の規則がない');
 await p.click(btn('lect'));
 ok(await p.evaluate(() => DECK.mode) === 'talk', '授業モードを戻す');
