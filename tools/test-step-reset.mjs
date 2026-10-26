@@ -41,8 +41,7 @@ const settle = (p) => p.evaluate(() => document.fonts.ready.then(() => new Promi
 // DOM が違う・比べる DOM がない部品は、今までどおり画素の数だけ（はっきり違う画素が 40 以下）
 let exactN = 0, tolN = 0, knownN = 0;
 // 既知の揺れ（期限つき。tools/step-reset-known.mjs）：部品庫の既定の版が期限に達していたら、項目が残っていること自体を失敗にする
-const lockVer = lockedVersion();
-for (const x of expired(KNOWN, lockVer)) ok(false, x.msg);
+for (const x of expired(KNOWN)) ok(false, x.msg);
 const seenKnown = new Set();
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
 const shot = async (p) => { await settle(p); return p.screenshot({ clip: CLIP }); };
@@ -200,7 +199,7 @@ if (!only || only.includes('kobun')) {
 await b.close();
 console.log(`comparisons: ${exactN} exactly equal, ${tolN} within the anti-aliasing tolerance (kit/render-compare.mjs)`);
 for (const x of unused(KNOWN, process.platform, comps.map((c) => c.name), seenKnown)) ok(false, x.msg);
-console.log(`known flakes accepted: ${knownN} [${process.platform}] (tools/step-reset-known.mjs; components ${lockVer})`);
+console.log(`known flakes accepted: ${knownN} [${process.platform}] (tools/step-reset-known.mjs; vendored ${KNOWN.map((e) => `${e.part} ${lockedVersion(e.part)}`).join(', ')})`);
 console.log(noise.summary('renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
 if (failed.size) console.log('failed components: ' + [...failed].join(', '));
 console.log(fail ? `${fail} failure(s)` : 'all ok');

@@ -1,11 +1,9 @@
 // tools/test-step-reset.mjs の既知の揺れ（KNOWN）：部品庫の直しを待つあいだだけ、決まった 1 か所の決まった形の違いを通す
 // test-all: part of test-step-reset
-// 期限つき：部品庫の既定の版（components.lock.json の tag）が until 以上になったら、その項目が残っているだけで失敗（消すように言う）。
+// 期限つき：その部品の既定の版（components.lock.json。tools/vendor-components.mjs が読む）が until 以上になったら、その項目が残っているだけで失敗（消すように言う）。
 // 使われない項目も失敗：その OS で、その部品・スライド・段階の比べが 1 度も行われなかったら（場所が変わった・消えた）。
 // 揺れはいつも出るとは限らないので、「使われた」は「その場所を比べた」ことで、「通した」ことではない
-import fs from 'node:fs';
-import path from 'node:path';
-import { ROOT } from './vendor-components.mjs';
+import { vendorComponents } from './vendor-components.mjs';
 
 // macOS の CI で m-cycle のスライド 1 の段階 5 を入り直すと、部品の DOM はバイトまで同じなのに、縦の線の両端の 2 px が縁から遠いところで
 // 54/255 違う（kit/render-compare.mjs の NOISE_BOUNDS の各チャンネル 24/255 を超える）。部品の直しは egatari-08 の m-cycle の修正
@@ -18,12 +16,14 @@ export const KNOWN = [
 
 const ver = (s) => String(s).replace(/^v/, '').split('.').map((x) => +x || 0);
 export const versionAtLeast = (a, b) => { const x = ver(a), y = ver(b); for (let j = 0; j < 3; j++) if (x[j] !== y[j]) return x[j] > y[j]; return true; };
-export const lockedVersion = (root = ROOT) => JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8')).tag;
+// 部品の既定の版（components.lock.json の components.<名前>.default）。部品がなければ null
+export const lockedVersion = (part) => { const c = vendorComponents().find((x) => x.name === part); return c ? c.version : null; };
 
-// 期限の切れた項目：[{e, msg}]
-export function expired(known, version) {
-  return known.filter((e) => versionAtLeast(version, e.until))
-    .map((e) => ({ e, msg: `${e.label}: the vendored components are ${version} (>= ${e.until}); remove this KNOWN entry from tools/step-reset-known.mjs` }));
+// 期限の切れた項目：[{e, msg}]。versionOf(part) は部品の既定の版（null なら部品がない：それも消すように言う）
+export function expired(known, versionOf = lockedVersion) {
+  return known.map((e) => ({ e, v: versionOf(e.part) })).filter(({ e, v }) => v === null || versionAtLeast(v, e.until))
+    .map(({ e, v }) => ({ e, msg: v === null ? `${e.label}: part ${e.part} is not vendored any more; remove this KNOWN entry from tools/step-reset-known.mjs`
+      : `${e.label}: the vendored ${e.part} is ${v} (>= ${e.until}); remove this KNOWN entry from tools/step-reset-known.mjs` }));
 }
 
 // この比べに当てはまる項目（場所と OS）。slide は 1 から

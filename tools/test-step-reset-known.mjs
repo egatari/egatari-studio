@@ -1,6 +1,6 @@
 // tools/step-reset-known.mjs（test-step-reset の既知の揺れ）の試験
 // test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
-// 期限（部品庫の既定の版が until 以上なら失敗）、使われない項目（その場所を比べなかったら失敗）、通す形（DOM がバイトまで同じ・縁から遠い画素 2 個まで・64/255 以下）
+// 期限（その部品の既定の版が until 以上なら失敗）、使われない項目（その場所を比べなかったら失敗）、通す形（DOM がバイトまで同じ・縁から遠い画素 2 個まで・64/255 以下）
 import assert from 'node:assert/strict';
 import { KNOWN, versionAtLeast, lockedVersion, expired, entryFor, knownAccepts, unused } from './step-reset-known.mjs';
 
@@ -18,15 +18,17 @@ t('versionAtLeast compares numerically (v prefix allowed)', () => {
   assert.equal(versionAtLeast('v2.0.0', '1.11.0'), true);
   assert.equal(versionAtLeast('v1.9.0', '1.11.0'), false);
 });
-t('self-expiring: an entry fails once the vendored components reach its version, with a message to remove it', () => {
-  assert.deepEqual(expired([E], 'v1.10.0'), []);
-  const x = expired([E], 'v1.11.0');
+t('self-expiring: an entry fails once the vendored part reaches its version, with a message to remove it', () => {
+  assert.deepEqual(expired([E], () => '1.10.0'), []);
+  const x = expired([E], () => '1.11.0');
   assert.equal(x.length, 1);
-  assert.match(x[0].msg, /components are v1\.11\.0 \(>= 1\.11\.0\); remove this KNOWN entry/);
-  assert.equal(expired([E], 'v1.12.3').length, 1);
+  assert.match(x[0].msg, /the vendored cycle is 1\.11\.0 \(>= 1\.11\.0\); remove this KNOWN entry/);
+  assert.equal(expired([E], () => '1.12.3').length, 1);
+  assert.match(expired([E], () => null)[0].msg, /not vendored any more/);
 });
 t('the vendored version today (components.lock.json) has not expired the entry', () => {
-  assert.deepEqual(expired(KNOWN, lockedVersion()), [], `locked ${lockedVersion()}`);
+  assert.deepEqual(expired(KNOWN), [], `cycle ${lockedVersion('cycle')}`);
+  assert.equal(lockedVersion('cycle'), '1.10.0');
 });
 t('entryFor: only that platform, part, slide and step', () => {
   assert.equal(entryFor([E], 'darwin', 'cycle', 1, 5), E);
