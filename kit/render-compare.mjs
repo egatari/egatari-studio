@@ -93,7 +93,7 @@ export function describeRender(r) {
   const box = r.box ? ` in ${JSON.stringify(r.box)}` : '';
   if (r.kind === 'legacy') return `${r.n} pixel(s) clearly differ${box}; no component DOM to compare (canvas etc.)${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
   if (r.kind === 'dom') return `${r.n} pixel(s) clearly differ${box}; component DOM differs, so no renderer-noise allowance${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
-  const why = [r.off && !r.same ? `${r.off} away from any edge` : '', r.out ? `${r.out} outside the component` : ''].filter(Boolean).join(', ');
+  const why = [r.off && !r.same ? `${r.off} away from any edge (first [x, y, max channel diff]: ${JSON.stringify((r.offPts || []).slice(0, 4))})` : '', r.out ? `${r.out} outside the component` : ''].filter(Boolean).join(', ');
   const faint = r.same && r.off ? `; ${r.off} isolated faint pixel(s) away from edges (each channel <= ${NOISE_BOUNDS.offMaxCh}/255, at most ${NOISE_BOUNDS.offMax})` : '';
   const where = why || `all within ${NOISE_BOUNDS.edgePx} px of an edge${faint}, inside the component`;
   return `${r.n} pixel(s) clearly differ${box}, ${where}; component DOM byte-identical; cap ${r.cap} (${(NOISE_BOUNDS.capFrac * 100).toFixed(1)} % of the component area ${r.compArea} px, at most ${NOISE_BOUNDS.capPx})${r.same ? ' -> accepted as renderer anti-aliasing noise' : ''}`;

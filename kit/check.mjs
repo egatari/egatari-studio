@@ -491,8 +491,10 @@ async function orderDiffers(m, k) {
   if (bufA.equals(bufB)) return false;
   const r = await compareRenders(page, bufA, bufB, domA, await domSnapshot(page, m.i));
   if (r.same && r.kind === 'noise') report(m.i, 'info', 'compOrderNoise', { k, n: r.n, cap: r.cap, faint: r.faint || 0 }, String(k));   // 揺れとして通したものは必ず記録する
+  lastOrderNote = r.note;
   return !r.same;
 }
+let lastOrderNote = '';   // 最後に違ったときの説明（compOrder のエラーに添える：DOM が違うのか、どこの何画素か）
 for (const m of meta) {
   if (!m.comps) continue;
   for (let k = 1; k <= m.max; k++) {
@@ -500,7 +502,7 @@ for (const m of meta) {
     // （操作の帯が消えるなど。上の HIDE_CHROME）が挟まった誤報なので、念のため 3 回続けて違ったときだけ報告する
     let differs = true;
     for (let n = 0; n < 3 && differs; n++) differs = await orderDiffers(m, k);
-    if (differs) report(m.i, 'error', 'compOrder', { k }, String(k));
+    if (differs) { report(m.i, 'error', 'compOrder', { k }, String(k)); report(m.i, 'info', 'compOrderDetail', { k, note: lastOrderNote }, String(k)); }
   }
 }
 // 検査のために何度も飛び回ったので、最後にもう一度最初から開き直しておく（念のため）
