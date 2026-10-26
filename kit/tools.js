@@ -767,7 +767,6 @@ function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 // 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
 var OPEN_MS = 5000, openUntil = 0, hint = null, handle = null, touchAct = 0;   // touchAct：指で押した時刻（後から届く click を捨てる）
-var wakeTap = 0;   // 隠れた帯を指のタップで出した時刻：そのタップの後から届く click が、出たばかりの帯のボタンを押さないように捨てる
 var HINT_KEY = ((DECK.FORMAT && DECK.FORMAT.id) || "deck") + "-player-bar-hint-v1";
 
 function buildBar(){
@@ -822,9 +821,6 @@ function buildBar(){
     var b = e.target.closest("button");
     if (!b) return;
     if (touchAct && e.detail !== 0 && Date.now() - touchAct < 800){ touchAct = 0; return; }   // タッチの pointerup で押した後の click
-    // 隠れた帯を出したタップの click：ブラウザは pointerup の後（帯が出て押せるようになった後）の場所で click を送るので、
-    // ボタンのあった場所（読み上げで聞くなど）をタップすると、出すと同時に押してしまう。出すだけにする
-    if (wakeTap && e.detail !== 0 && Date.now() - wakeTap < 800){ wakeTap = 0; return; }
     act(b, e.detail === 0);
   });
   function act(b, keyboard){
@@ -843,11 +839,7 @@ function buildBar(){
   // 最後に押したのが指か（指で押した後の :hover は残ることがあるので、隠すかどうかの判断に使わない）
   window.addEventListener("pointerdown", function(e){ touchLast = e.pointerType === "touch"; }, {capture: true, passive: true});
   // 指のタップは pointermove を送らない：帯の外をタップしたら帯を出す（送らない。舞台に重ねるときも、下のほうに限らない）
-  window.addEventListener("pointerup", function(e){
-    if (e.pointerType !== "touch" || (e.target && e.target.closest && e.target.closest("#dt-cb"))) return;
-    wakeTap = cb.classList.contains("show") ? 0 : Date.now();
-    wake();
-  }, {passive: true});
+  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wake(); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
