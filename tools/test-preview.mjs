@@ -6,6 +6,7 @@
 // - data-preview="none" の要素は薄くせず隠す（段階を持つ要素も、薄く見せる段階の要素の中の要素も）。書き手が印を付けた部品には preview:false
 // - preview:"none" の部品は外から薄くしない（段階を持つ部品は隠す、薄く見せる段階の中の部品も隠す）
 // - ctx.slide はスライドの鍵（文字列）。ctx.entered は別のスライドから・跳んで入った最初の描画だけ true
+// - 動きを減らす設定では static clock = true の部品だけ実際の t、ほかは最後の状態
 // - ? の情報：形式 → プレーヤー → 作成 の順と言葉（ja・en）。title があればそれ、無ければ name から。player が無ければその行を出さない。版の文字列だけの deck-meta では出さない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,13 +24,20 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++
 const LOG = `DECK.define("m-pv-log", class extends DECK.MotionElement {
   static steps = 2;
   mount(ctx){ this._m = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; }
-  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; (this._e = this._e || []).push(ctx.entered); this.textContent = "log " + k; }
+  render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide}; this._lt = t; (this._e = this._e || []).push(ctx.entered); this.textContent = "log " + k; }
 });
 `;
 const ANS = `DECK.define("m-pv-ans", class extends DECK.MotionElement {
   static preview = "none";
   static steps = 1;
   render(k, t, ctx){ this._c = {mode: ctx.mode, preview: ctx.preview}; this.textContent = "answer 42"; }
+});
+`;
+const CLOCK = `DECK.define("m-pv-clock", class extends DECK.MotionElement {
+  static clock = true;
+  static steps = 1;
+  duration(k){ return k === 1 ? 3 : 0; }
+  render(k, t, ctx){ (this._t = this._t || []).push(t); this.textContent = "clock " + (t === Infinity ? "end" : t.toFixed(1)); }
 });
 `;
 const deck = (lang) => `<!DOCTYPE html>
@@ -52,7 +60,9 @@ const deck = (lang) => `<!DOCTYPE html>
 </section>
 <section class="slide noconcl" id="s-two">
   <h2>Two</h2>
-  <div class="body"><p data-step="1">two</p></div>
+  <div class="body"><p data-step="1" id="two1">two</p>
+    <m-pv-clock id="ck" data-from="1" style="display:block;height:40px"></m-pv-clock>
+    <m-pv-log id="lg3" data-from="1" style="display:block;height:40px"></m-pv-log></div>
 </section>
 </div>
 </body>
@@ -65,6 +75,8 @@ for (const lang of ['ja', 'en']) {
   fs.mkdirSync(path.join(dir, 'components', 'pv-ans'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'components', 'pv-log', 'index.js'), LOG);
   fs.writeFileSync(path.join(dir, 'components', 'pv-ans', 'index.js'), ANS);
+  fs.mkdirSync(path.join(dir, 'components', 'pv-clock'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'components', 'pv-clock', 'index.js'), CLOCK);
   fs.writeFileSync(path.join(dir, 'deck.html'), deck(lang));
   execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html')], { stdio: 'pipe' });
   built[lang] = path.join(dir, 'out', 'deck.html');
@@ -143,6 +155,27 @@ await p.close();
   e = await E();
   ok(e.length === 1 && e[0] === false, 'entered: false when the same position is drawn again ' + JSON.stringify(e));
   ok(await q.evaluate(() => window.__pos) >= 3, 'deck:pos still fires for components pinned before ctx.entered');
+  await q.close();
+}
+
+// ---- 動きを減らす設定：static clock = true の部品だけ実際の t（Player P3）、ほかは最後の状態
+for (const reduce of [true, false]) {
+  const q = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  q.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
+  if (reduce) await q.emulateMedia({ reducedMotion: 'reduce' });
+  await q.goto(fileUrl(built.ja) + '#s-two');
+  await q.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await q.evaluate(() => { document.getElementById('ck')._t = []; });
+  await q.keyboard.press('ArrowRight');
+  await q.waitForTimeout(150);
+  const early = await q.evaluate(() => ({ op: +getComputedStyle(document.getElementById('two1')).opacity, lt: document.getElementById('lg3')._lt }));
+  await q.waitForTimeout(1200);
+  const r = await q.evaluate(() => ({ ts: document.getElementById('ck')._t, st: DECK.state() }));
+  const fin = r.ts.filter((x) => x !== Infinity);
+  if (reduce) {
+    ok(r.st.step === 1 && fin.length >= 3 && fin.some((x) => x > 0.8) && fin.every((x) => x < 3), `reduced motion: a clock component (static clock = true) gets the real t ${JSON.stringify(fin.slice(-3).map((x) => +x.toFixed(2)))}`);
+    ok(early.op === 1 && early.lt === Infinity, `reduced motion: everything else is at its final state at once (item opacity ${early.op}, other component t ${early.lt})`);
+  } else ok(fin.length >= 3 && fin.some((x) => x > 0.8), 'normal motion: the clock component runs as before');
   await q.close();
 }
 

@@ -496,19 +496,25 @@ function compRealTime(c, k, D, audioCues){
   return src[n] + (D - dst[n]);
 }
 
-// 段階 k の動きの長さ（秒、実時間）。部品の時刻が音声の cue で伸縮されるなら、その伸縮後の終わり
+// 経た時間そのものを見せる部品（時計・カウントダウン）：部品の class の static clock = true（format spec §8.4。manifest は読まない）。
+// 動きを減らす設定（prefers-reduced-motion）でも、この部品にだけ実際の t を渡す（Player P3）。ほかはすべて最後の状態
+function isClock(c){ return !!(c.constructor && c.constructor.clock === true); }
+// 段階 k の動きの長さ（秒、実時間）。部品の時刻が音声の cue で伸縮されるなら、その伸縮後の終わり。動きを減らす設定では時計の部品の長さだけ
 function animDur(i, k){
   var s = slides[i], d = 0;
-  if (REDUCE) return 0;
-  if (k === 0 && i > 0) d = morphSrc(i) === i - 1 ? T.morph : T.slide;
-  s._items.forEach(function(e){ if (+e.getAttribute("data-step") === k) d = Math.max(d, +(e.getAttribute("data-at") || 0) + T.fade); });
-  s._draws.forEach(function(w){ if (w.step === k) d = Math.max(d, w.at + T.drawDelay + w.dur); });
+  if (REDUCE && !s._comps.some(isClock)) return 0;
+  if (!REDUCE && k === 0 && i > 0) d = morphSrc(i) === i - 1 ? T.morph : T.slide;
+  if (!REDUCE){
+    s._items.forEach(function(e){ if (+e.getAttribute("data-step") === k) d = Math.max(d, +(e.getAttribute("data-at") || 0) + T.fade); });
+    s._draws.forEach(function(w){ if (w.step === k) d = Math.max(d, w.at + T.drawDelay + w.dur); });
+  }
   var ac = null;
   if (s._comps.length){
     ac = compCues(i, k);
     if (ac){ var lead = timing(i, k).lead || 0; ac = ac.map(function(x){ return x + lead; }); }
   }
   s._comps.forEach(function(c){
+    if (REDUCE && !isClock(c)) return;
     var p = compPos(c, k, 0);
     if (p.t === Infinity) return;
     var D = c.duration(p.k) || 0;
@@ -534,6 +540,7 @@ function seek(i, k, t, from, cont){
   if (!cont && jumpTo === i) jumpTo = -1;
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
+  var tReal = t;   // 時計の部品には、動きを減らす設定でも実際の t（isClock）
   if (REDUCE && t !== Infinity) t = Infinity;
   var mode = ctxMode(), lecture = DECK.mode === "lecture";
   var dim = lecture ? previewOpacity() : 1;
@@ -582,9 +589,9 @@ function seek(i, k, t, from, cont){
   });
   // 部品の伸縮に使うのは {cue} の区切りの時刻だけ（{mark} の時刻は注目の演出が使う）
   var ac = compCues(i, k);
-  var lead = t === Infinity ? 0 : (timing(i, k).lead || 0);
   s._comps.forEach(function(c){
-    var p = compPos(c, k, t === Infinity ? Infinity : t, ac && ac.map(function(x){ return x + lead; }));
+    var tc = REDUCE && isClock(c) ? tReal : t, lead = tc === Infinity ? 0 : (timing(i, k).lead || 0);
+    var p = compPos(c, k, tc, ac && ac.map(function(x){ return x + lead; }));
     var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, entered: entered, deck: DECK};
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
@@ -1181,10 +1188,10 @@ function play(i, k, animate, from){
   announce(i, k);
   if (CAP.on && CAP_LIVE) capRestart(i, k);
   POS.setT(!animate || REDUCE ? null : 0);
-  if (!animate || REDUCE){ seek(i, k, Infinity); POS.publish(); return; }
+  if (!animate || (REDUCE && !(animDur(i, k) > 0))){ seek(i, k, Infinity); POS.publish(); return; }
   if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
-  legacy(slides[i], k, false);
-  var d = Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
+  legacy(slides[i], k, REDUCE);   // 動きを減らす設定で時計の部品のために回すときも、ほかは最後の状態
+  var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
   t0 = performance.now();
   var first = true;
   (function loop(){
