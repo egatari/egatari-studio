@@ -1880,6 +1880,7 @@ try {
     const icoDark = await fetch(base + 'favicon-dark.ico');
     ok(ico.length > 100 && ico[0] === 0 && ico[2] === 1 && ico[4] === 3 && icoDark.status === 200, `site (${tag}): favicon.ico (3 sizes) and favicon-dark.ico are served`);
     ok(Buffer.from(ico).equals(fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'studio', 'favicon.ico'))), `site (${tag}): Studio's favicon is the す icon (assets/logo/studio/), not the え mark`);
+    ok((await (await fetch(base + 'favicon.svg')).text()) === fs.readFileSync(path.join(ROOT, 'assets', 'logo', 'studio', 'favicon.svg'), 'utf8'), `site (${tag}): favicon.svg (light and dark in one) is served`);
     const man = await (await fetch(base + 'manifest.webmanifest')).json().catch(() => null);
     const manIcons = man && Array.isArray(man.icons) ? await Promise.all(man.icons.map(async (x) => (await fetch(new URL(x.src, base + 'manifest.webmanifest'))).status)) : [];
     ok(!!man && man.name === 'Egatari Studio' && man.short_name === 'Egatari Studio' && man.icons.map((x) => x.sizes).join() === '192x192,512x512' && manIcons.every((x) => x === 200) && (await fetch(base + 'apple-touch-icon.png')).status === 200, `site (${tag}): manifest with 192/512 icons and apple-touch-icon`);

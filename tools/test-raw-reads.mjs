@@ -57,7 +57,7 @@ const ALLOW = [
   ['kit/core/attach-content.mjs', 'ds.readable.getReader()', '添付の中身の検査：既に上限の内で読んだバイトを展開する DecompressionStream の出力（展開した大きさを数えて上限で止める）'],
   ['lab/irodori.js', 'res.body.getReader()', '試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],
-  ['tools/studio-icons.mjs', 'fs.readFileSync(', 'Studio のアイコン「す」を作る道具：node_modules の BIZ UDPGothic（CSS と字）、リポジトリの assets/logo/studio/hand/ の手描きの絵と、このツールが書いたアイコン（--check）を読む'],
+  ['tools/studio-icons.mjs', 'fs.readFileSync(', 'Studio のアイコン「す」を作る道具：リポジトリの assets/logo/studio/src/ の SVG・hand/ の手描きの絵と、このツールが書いたアイコン（--check）を読む'],
   ['tools/build-app.mjs', 'fs.readFileSync(', '編集アプリを組む：リポジトリの kit/・vendor/components/ と components.lock.json・themes/・app/・KaTeX・字を集める'],
   ['tools/spec-snapshot.mjs', 'fs.readFileSync(', '写した仕様の SOURCE.json（リポジトリの中の小さな JSON）を読む'],
   ['tools/catalog.mjs', "fs.readFileSync(file, 'utf8')", '部品庫の一覧を作る：リポジトリの vendor/components/ の README を読む'],
