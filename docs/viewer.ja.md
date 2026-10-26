@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=7265f7534f28037c -->
+<!-- i18n: pair=viewer.md sha256=446c0db41def1bd3 -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語

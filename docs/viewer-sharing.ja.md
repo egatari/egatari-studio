@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer-sharing.md sha256=72def14bb8e41dc0 -->
+<!-- i18n: pair=viewer-sharing.md sha256=c4f500302e5f9896 -->
 # iPhone・iPad で教材を開く（Egatari Viewer）
 
 [English](viewer-sharing.md) | 日本語
@@ -12,7 +12,8 @@ Slack や Teams のように HTML を自分で開くアプリでは、Viewer な
      iPad で確かめた（2026-10-27、作者）：Chrome でも Safari でも開け、ホーム画面に追加できる（どちらも「表示を増やす」の後。Chrome は「Web アプリとして開く」オン）・
      Chrome から追加したものはオフラインでも開ける・「ファイルを開く」に「Google ドライブ」が出るのは Chrome だけ（Safari は iOS のファイルの選択だけ）。
      iOS の共有の一覧には、ホーム画面のウェブアプリ（Ega Viewer）は出ない。ファイルは「"ファイル"に保存」してから Viewer で選ぶ。
-     まだ：Safari で「ファイル」App に Google ドライブを入れる道。配る経路ごとのメニューの言葉（Classroom の「︙」など）は研修の配布資料の側に置く -->
+     英語の "View More"・"Add to Home Screen" も iPad の Chrome で確かめた。まだ：Safari で「ファイル」App に Google ドライブを入れる道。
+     この文書は配る経路を問わない形にし、特定の経路（Classroom など）のメニューの手順は書かない -->
 
 ## 配る人：再生専用をエクスポートして渡す
 
