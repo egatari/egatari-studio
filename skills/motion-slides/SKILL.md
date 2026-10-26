@@ -65,7 +65,7 @@ Always reply in the language the user writes in, not the language of this file. 
 | `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / ステップなし（表紙・付録）/ 箇条書きも初めから全部 |
 | `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。パーツは縦書きの指定（`m-gendai tate` など）で |
 | `<p class="sub">` `<div class="big">` `<p class="note">` `<div class="thm">` `<div class="cols">` | 小見出し / 主要な式 / 補足 / 定理の枠 / 横並び |
-| `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字（旧名 `blue` `red` `gray` も使える） |
+| `class="term"` `"emph"` `"muted"` `"b"` | 用語・問い / 結論・問題・目標 / 既知の結果 / 太字 |
 | `\( … \)` `\[ … \]` | 数式（KaTeX でビルド時に組む）。式の一部の色は `\hlE{…}`（結論・問題）`\hlT{…}`（用語）`\hlM{…}`（既知）で付ける（`\color{#D00000}` のように色を直接書かない） |
 | `{{FIG:名前}}` `{{JSON:file}}` | figs/名前.svg を埋め込む / data/file を埋め込む |
 | `<m-名前 …>` | パーツ（自動で読み込まれる） |

@@ -1,4 +1,4 @@
-<!-- i18n: pair=migrating-0.x.ja.md sha256=6b36e8693953600a -->
+<!-- i18n: pair=migrating-0.x.ja.md sha256=c93cb522d9e82d7c -->
 # Moving a lesson from an earlier version to Egatari 1.0
 
 English | [日本語](migrating-0.x.ja.md)
@@ -23,6 +23,7 @@ A file is from an earlier version when its index (the `egatari-index` block) or 
 | `{zoom:…}` in narration (camera, draft) | Removed; zooming is a part's effect |
 | `?mode=lecture` | Removed; use `talk` with the "show later steps faintly" option |
 | `:name:` in the article | `:label:` only |
+| `data-anim` and `data-steps` (old animations), `data-mode="lecture"`, colour classes `blue` `red` `gray` | Removed; `data-step` and parts, `data-mode="talk"`, `term` `emph` `muted` |
 
 The lesson's identity (`docId`), its text, its audio and its rights information do not change.
 
@@ -49,7 +50,9 @@ You need a copy of the current Egatari Studio repository (`npm ci --ignore-scrip
 3. **Remove what 1.0 no longer has.** In `deck.html`, `narration.md` and `article.md` (if present):
    - delete hand-written `data-key="…"` attributes on slides (the ids replace them);
    - delete `{zoom:…}` marks from the narration. If a zoom carried meaning, tell the author; a lens part can do it later;
-   - change links that contain `?mode=lecture` to `?mode=talk`;
+   - change links that contain `?mode=lecture` to `?mode=talk`, and `data-mode="lecture"` on `<html>` to `data-mode="talk"` (showing later steps faintly is now an option the presenter turns on);
+   - replace the old colour classes `blue`, `red` and `gray` with `term`, `emph` and `muted`;
+   - a slide with `data-anim` or `data-steps` (an old kind of animation): do not convert it yourself; tell the author, who can rewrite it with `data-step` or a part;
    - in `article.md`, change `:name:` to `:label:`;
    - you can delete `data-egatari-seed`; it has no effect.
 
@@ -68,4 +71,4 @@ You need a copy of the current Egatari Studio repository (`npm ci --ignore-scrip
 
 ## When to stop and ask
 
-Stop and ask the author, rather than guess, when two slides would get the same key, when `npm run ids` refuses the folder, when a slide only made sense with a zoom, or when the check reports something the steps above did not cause.
+Stop and ask the author, rather than guess, when two slides would get the same key, when a slide uses `data-anim` or `data-steps`, when `npm run ids` refuses the folder, when a slide only made sense with a zoom, or when the check reports something the steps above did not cause.

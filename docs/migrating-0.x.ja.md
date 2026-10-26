@@ -1,4 +1,4 @@
-<!-- i18n: pair=migrating-0.x.md sha256=58fc0f0c2f740b86 -->
+<!-- i18n: pair=migrating-0.x.md sha256=4090a825467307ef -->
 # 前の版で作った教材を Egatari 1.0 に移す
 
 [English](migrating-0.x.md) | 日本語
@@ -23,6 +23,7 @@
 | 台本の `{zoom:…}`（カメラ、草案） | なくなった。寄る動きはパーツの演出 |
 | `?mode=lecture` | なくなった。`talk` と「先のステップを薄く見せる」を使う |
 | 本の `:name:` | `:label:` だけ |
+| `data-anim` と `data-steps`（前の動き）、`data-mode="lecture"`、色のクラス `blue` `red` `gray` | なくなった。`data-step` とパーツ、`data-mode="talk"`、`term` `emph` `muted` |
 
 教材の ID（`docId`）・文・音声・権利の情報は変わりません。
 
@@ -49,7 +50,9 @@
 3. **1.0 にないものを外す。** `deck.html`・`narration.md`・`article.md`（あれば）で、次のことをします。
    - スライドの手書きの `data-key="…"` を消す（id が代わりになる）
    - 台本の `{zoom:…}` を消す。寄る動きに意味があったなら作者に伝える（あとで寄るパーツでできる）
-   - `?mode=lecture` を含むリンクを `?mode=talk` にする
+   - `?mode=lecture` を含むリンクを `?mode=talk` にし、`<html>` の `data-mode="lecture"` を `data-mode="talk"` にする（先のステップを薄く見せるのは、発表する人が入れる選びになった）
+   - 前の色のクラス `blue`・`red`・`gray` を `term`・`emph`・`muted` にする
+   - `data-anim` か `data-steps` のあるスライド（前の種類の動き）は、自分で書き換えない。作者に伝える（`data-step` かパーツで書き直せる）
    - `article.md` の `:name:` を `:label:` にする
    - `data-egatari-seed` は消してかまいません（効果はありません）
 
@@ -70,6 +73,7 @@
 
 次のときは、推し量らずに作者に聞きます。
 - 2 つのスライドが同じ鍵になるとき
+- `data-anim` か `data-steps` を使うスライドがあるとき
 - `npm run ids` が断ったとき
 - 寄る動きがないと意味が通らないスライドがあるとき
 - 上の手順で起きたのではない誤りを、検査が知らせたとき
