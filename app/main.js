@@ -1277,7 +1277,7 @@ async function openPortableNow(input) {
   catch (e) {
     status('');
     // 知らない major の版・知らない必須の機能：編集も書き出し（作り直し）もしないが、1.x の規則で索引と塊が検査を通れば原稿をフォルダに
-    // 取り出せる（§7.1・§3.5・§9.3。取り出しは書き出しではない）。通らなければ取り出しも断る
+    // 取り出せる（§7.1・§3.5・Player P7。取り出しは書き出しではない）。通らなければ取り出しも断る
     // デッキの原稿（deck.html）：断らずに、フォルダを開くか、このファイルだけを開くかを聞く
     if (e.code === 'no-source' && e.kind === 'source') return openSource(name, bytes);
     const extract = (e.code === 'unsupported-version' || e.code === 'unknown-feature') && !!window.showDirectoryPicker;

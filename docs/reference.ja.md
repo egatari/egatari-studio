@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=7abd61e7ae63a0f6 -->
+<!-- i18n: pair=reference.md sha256=aa9fd2c49e05a0a5 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -47,7 +47,7 @@
 | 直下の子に `<div class="pn">` | ページ番号を自分で書く（なければ 2 枚目から `i/N` が入る） |
 | `<html lang="en">` | 英語の教材：本文は Source Sans 3、画面の言葉は英語、品質チェックは英語の規格、TTS は `voxcpm2` |
 | `<html data-theme="名前">` | テーマ（`--theme` が優先） |
-| `<html data-mode="lecture">` | URL に `?mode=` がないときのモード |
+| `<html data-mode="talk">` | URL に `?mode=` がないときのモード（`talk` か `video`） |
 | `<html data-feedback-url="URL">` | 「フィードバックを送る」の宛先（既定 `https://github.com/egatari/egatari-studio/issues/new`）。GitHub の `/issues/new` なら `template=feedback.yml` を足す。`version` `browser` `os` `context`（言語・モード）を URL の引数として付ける |
 | `<html data-feedback="off">` | `?` の一覧と発表者ビューにフィードバックのリンクを出さない（`DECK.FEEDBACK_URL = null`） |
 | `<html data-favicon="off">` | タブのアイコンを入れない。既定では、組んだ教材（ふつうの build・`--portable`・`--play-only`）の `<head>` の先頭に、Egatari のマークを `<link rel="icon">`（data: URI）として入れる（明るい画面と暗い画面の色は 1 つの SVG に入れる。外へのリクエストはない）。スライドが自分の `<link rel="icon">` を持つなら、それを使い、何も足さない |
@@ -183,7 +183,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | 文字・背景・見出し・用語・結論・既知・細い線・見出しの下線 |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマと教材が動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
-| `--lecture-dim` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.5。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる） |
+| `--preview-opacity` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.45。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる。`--lecture-dim` は同じものの別名） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
@@ -230,7 +230,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 引数 | 意味 |
 |---|---|
 | `?mode=talk` | 既定：後のステップは隠し、今のステップはフェードで出す |
-| `?mode=lecture` | 全部見せ、後のステップは薄く（`--lecture-dim`、既定 0.5）、今のステップとその前は濃いまま、今のステップに目印は付けない（蛍光ペンも `.cur` クラスもなし）。強調は最終状態 |
+| `?mode=talk&preview=1` | 先のステップを薄く見せる（`?mode=lecture` も同じに読む）：全部見せ、後のステップは薄く（`--preview-opacity`、既定 0.45。`data-preview="none"` の要素と `preview: "none"` を宣言したパーツは隠したまま）、今のステップとその前は濃いまま、今のステップに目印は付けない（蛍光ペンも `.cur` クラスもなし）。強調は最終状態 |
 | `?mode=video` | 動画のエクスポート用：道具と操作の帯を出さない。reduced-motion を無視する |
 | `?captions=1` | 字幕を出して開く（`s` と同じ）。`?mode=video` では字幕はこれでだけ出る（動画のエクスポートで字幕を焼き込める） |
 | `?capsize=s` / `m` / `l` | 字幕の大きさ（22 / 27 / 34px）。覚えた大きさより優先。`?mode=video` では効かない |

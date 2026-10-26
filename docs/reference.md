@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=f8a2d4391d491bc6 -->
+<!-- i18n: pair=reference.ja.md sha256=847b1897db6c9a6f -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -47,7 +47,7 @@ Contents: [Slide syntax](#slide-syntax) · [Script](#script-narrationmd) · [Tim
 | `<div class="pn">` as a direct child | your own page number (otherwise one is added from slide 2 on: `i/N`) |
 | `<html lang="en">` | English lesson: Source Sans 3 body font, English UI text, English quality-check standards, `voxcpm2` TTS |
 | `<html data-theme="name">` | theme (overridden by `--theme`) |
-| `<html data-mode="lecture">` | default mode when the URL has no `?mode=` |
+| `<html data-mode="talk">` | default mode when the URL has no `?mode=` (`talk` or `video`) |
 | `<html data-feedback-url="URL">` | where **Send feedback** points (default `https://github.com/egatari/egatari-studio/issues/new`). For a GitHub `/issues/new` URL, `template=feedback.yml` is added; `version`, `browser`, `os` and `context` (lang, mode) are added as query parameters |
 | `<html data-feedback="off">` | no feedback link in the `?` help or the presenter view (`DECK.FEEDBACK_URL = null`) |
 | `<html data-favicon="off">` | no tab icon. By default a built lesson (normal, `--portable`, `--play-only`) gets the Egatari mark as a `<link rel="icon">` data: URI at the top of `<head>` (light and dark colours in one SVG, no network request); slides that have their own `<link rel="icon">` keep it and get nothing added |
@@ -183,7 +183,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | text, background, headings, terms, conclusions, known results, thin lines, heading rule |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | derived colors and tints (`--term-tint`: `.thm`; `--base-wash`: `.box`; `--emph-tint`: not used by the kit now; kept so that existing themes and lessons keep working) |
 | `--series-1` … `--series-4` | figure series colors |
-| `--lecture-dim` | show later steps faintly: opacity of steps not yet reached (0.5; a theme may set it within 0.45–0.5 so that it stays readable on a projector) |
+| `--preview-opacity` | show later steps faintly: opacity of steps not yet reached (0.45; a theme may set it within 0.45–0.5 so that it stays readable on a projector; `--lecture-dim` is an alias) |
 | `--font-sans`, `--weight-body` | font family and body weight |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
@@ -230,7 +230,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Parameter | Meaning |
 |---|---|
 | `?mode=talk` | default: later steps hidden, current step fades in |
-| `?mode=lecture` | everything visible, later steps faded (`--lecture-dim`, default 0.5), the current step and earlier ones at full strength with no mark on the current step (no highlighter, no `.cur` class), emphasis in final state |
+| `?mode=talk&preview=1` | show later steps faintly (`?mode=lecture` is read the same): everything visible, later steps faded (`--preview-opacity`, default 0.45; elements marked `data-preview="none"` and parts that declare `preview: "none"` stay hidden), the current step and earlier ones at full strength with no mark on the current step (no highlighter, no `.cur` class), emphasis in final state |
 | `?mode=video` | for rendering: no tools or control bar, reduced-motion ignored |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |

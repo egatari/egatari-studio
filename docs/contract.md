@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=d7c0edef2481d8c0 -->
+<!-- i18n: pair=contract.ja.md sha256=2a324a1d2e22308c -->
 # Contract (runtime, parts, script, timeline)
 
 English | [日本語](contract.ja.md)
@@ -21,13 +21,14 @@ The "position" during a talk is given by three values: (slide i, step k, seconds
 
 ## 2. Display modes
 
-`?mode=talk|lecture|video` (default `talk`). `data-step` is shared; only the presentation changes.
+`?mode=talk|video` (default `talk`; the format names a third mode, `learn`, which this player does not have yet; Egatari Player P1). `data-step` is shared; only the presentation changes.
 
 | Mode | Elements of later steps | Elements of the current step |
 |---|---|---|
 | talk | hidden | appear (fade and move up) |
-| lecture | shown faintly (`--lecture-dim`) | shown at full strength, no mark |
 | video | same as talk; advances automatically along the timeline | |
+
+**Show later steps faintly** (`?preview=1`, key `l`; `?mode=lecture` is still read as talk with this option) is an option of talk, not a mode: later steps are shown at `--preview-opacity` (0.45; `--lecture-dim` is an alias), the current step at full strength with no mark. Elements marked `data-preview="none"` (an exercise's answer) and parts that declare `preview: "none"` are not shown ahead: their later steps stay hidden (format spec §8.4).
 
 ## 3. Parts (Web Components)
 
@@ -47,7 +48,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - The part's steps start at the slide step `data-from` (default 1). When the slide is at step K, the part's step is `k = clamp(K - from + 1, 0, steps)`. Outside the part's range of steps it is called with t = Infinity
 - The runtime calls `mount` only after the stage is laid out, so a part may read its own size (`clientWidth`, `getBoundingClientRect`) in `mount`. When the slides start while they are not laid out (inside a `display:none` iframe, or a tab shown later), the runtime waits until the stage has a size and the fonts that the layout started loading have loaded, then mounts and draws the opening position (and any `DECK.seek` asked for meanwhile); `DECK.ready` and `deck:ready` come only after that. Slides that are laid out at start mount at once, as before
 - `render` must give **the same screen for the same (k, t)**. Do not rely on state from the previous call (going back, jumping and video export change the order of calls)
-- `ctx = {mode, slide, instant, deck, reset?}` (`reset`: see the next item). The part can choose, for example, to show the final state (the runtime itself marks nothing as current) when `ctx.mode === "lecture"`
+- `ctx = {mode, preview, slide, instant, reset?}` (format spec §8.4): `mode` is `"talk"`, `"learn"` or `"video"`; `preview` is `true` when later steps are shown faintly — the part then draws the content of its later steps faintly at `--preview-opacity` and keeps their controls inert, unless it declares `preview: "none"` (its later steps reveal an answer); `reset`: see the next item. Rely on nothing else in `ctx`
 - A part may let the viewer change it by hand during a step: open an overlay on a click (the conjugation card of `m-kobun`), rotate a model, drag a value. That state is not part of (i, k, t) (format spec §8.4): it must never open in `?mode=video`, not print, take nothing from the network, and show text only, and **entering a step, including the same one again, returns the part to what `render(k, t)` draws**. The part drops the state when `render` is called with a different k than the one it was changed at, or with `ctx.reset === true`. The runtime marks a part touched when a `pointerdown`, `keydown`, `wheel`, `input` or `change` happens inside it, and on the next step entry (any `DECK.seek` or `DECK.go`, a link, the presenter's commands, printing; not the later frames of the step's own real-time playback) first draws it at another step (t = Infinity) and then at (k, t) with `ctx.reset = true`. Parts the viewer has not touched are drawn once, as before, so video frames and the cost of stepping do not change. Video, print and the presenter's view therefore always show the declared rendering (the presenter's view is a separate document that receives only positions)
 - **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
 - Use only numeric data output by scripts that have been checked. Put `<script type="application/json">{{JSON:file.json}}</script>` as a child of the part and read it as `this.data` (exactly one such direct child; with two or more, `this.data` is `null` and the slides are treated as having code of its own)
@@ -124,7 +125,7 @@ Marks part of a slide in time with the speaker's words. Marks are also determine
 - Targets: an element in the slide with `id="ID"` or `data-mark="ID"`. For part of an equation, KaTeX's `\htmlId{ID}{…}` / `\htmlData{mark=ID}{…}` (the build allows only these two and `\htmlClass`). If the same ID is used on several slides, use `data-mark` (ids must be unique in the document)
 - Timing: when there is audio and the boundary counts (`bounds` and `cues`) match, `cue + lead`. When there is no audio (a live talk, before TTS) or the counts do not match, every 0.9 s from the end of the step's motion (`anim`) (`{cue}` is not counted)
 - Drawing: on an SVG overlaid on the slide (`svg.marks`, 1280×720 coordinates), the shape is built from the outline of the target's text (the union of the glyph boxes) and drawn over 0.5 s. Colors are `var(--emph)` and `var(--bg)`. The hand-drawn wobble is made with random numbers determined by the ID and the step
-- t = Infinity is the final state of the step (marks that have disappeared through hold or clear are not shown). Lecture always shows the final state. When you move on to the next step, the marks of the previous step disappear (each step is independent)
+- t = Infinity is the final state of the step (marks that have disappeared through hold or clear are not shown). With later steps shown faintly, marks are always in their final state. When you move on to the next step, the marks of the previous step disappear (each step is independent)
 - Marks are not printed (PDF)
 - Embedding: the build puts `{"slideKey:stepKey": bounds}` (only for steps that contain `{mark}`) into `<script id="deck-marks">`. `DECK.MARKS`, and for the quality checker `DECK.marks(i, k)` (`[{id, effect, start, end, found}]`)
 - Quality check: the build warns when a target is not in the source text (it cannot see elements created by parts). The quality checker looks for the targets on the actual screen, warns if they are missing, and lists the marks of each step as info
@@ -140,7 +141,7 @@ A transition in which the same elements as on the previous slide slide from thei
 ```
 
 - Pairing: elements with the same `data-id` on the source and destination slides. For part of an equation, `\morph{ID}{…}` (= `\htmlData{id=ID}{…}`, a default macro of the build). It may be combined with an emphasis target, as in `\htmlId{eta}{\morph{eta}{…}}`. IDs must be unique within a slide (the second and later ones are not used; when nested, only the outer one moves)
-- When it happens: at `seek(i, 0, t, from)` entering step 0, when `from` is the source slide (by default i−1). Length `DECK.T.morph` = 0.9 s. It does not happen when going back or jumping (t = Infinity), when printing, or with `prefers-reduced-motion`. It does happen in lecture
+- When it happens: at `seek(i, 0, t, from)` entering step 0, when `from` is the source slide (by default i−1). Length `DECK.T.morph` = 0.9 s. It does not happen when going back or jumping (t = Infinity), when printing, or with `prefers-reduced-motion`. It does happen with later steps shown faintly
 - Drawing: the source slide is drawn underneath in its final state, and the destination slide's background is made transparent. Each paired destination element moves to its current place with translate + scale (transform-origin at the top left), starting from the position and size at which the center of its text outline lies on the center of the source text. If the colors differ, they are interpolated. The paired source elements are hidden. Unpaired parts of the source disappear during the first 45%, and unpaired parts of the destination (those visible at step 0) appear during the last 55%
 - Destination elements not visible at step 0 (inside `data-step` > 0) do not move (they appear normally later)
 - Positions are measured in stage coordinates (1280×720) from the source's final state and the destination's step-0 layout, and remembered for each (from, i). The screen is the same whatever the order of calls. They are measured again when the window size or the text changes
@@ -160,7 +161,7 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 
 - Grammar: `#<slide id>` or `#<slide id>:<stepKey>`, split at the **last** `:`. The step key is canonical decimal (`0`, `1`, …, at most 999) or `concl`; the conclusion step is addressed only as `concl`. A fragment that matches no slide id is matched against slide keys (legacy lessons without ids); the quality checker warns about such links. A purely numeric `#N` is the slide number (1-based), as before
 - Start position: the same fragments in the file's URL select the position at load (final state of that step). An unreadable fragment opens slide 1 with a console warning; `#N` beyond the last slide opens the last one. While navigating, the address shows `#N` (unchanged)
-- Following a link: in talk and lecture the player goes to that step in its final state (t = ∞) and stays paused; during autoplay it seeks there and keeps playing from the start of that step. In video mode links do nothing (the screen is a function of (i, k, t) only). With a pen or the laser pointer active, a click draws and does not follow
+- Following a link: in talk (later steps shown faintly or not) the player goes to that step in its final state (t = ∞) and stays paused; during autoplay it seeks there and keeps playing from the start of that step. In video mode links do nothing (the screen is a function of (i, k, t) only). With a pen or the laser pointer active, a click draws and does not follow
 - Back: the player keeps the positions before each link (a stack). **Back** returns to the position before the most recent link, keeping the playing state: the small button at the top left (shown only after arriving by a link; it names the slide it returns to), Backspace (when no pen is active), Alt+←, or the browser's back button. In a top-level window each link adds one history entry (`pushState`), so the browser's back and forward work too; forward returns to the last position reached after that link. Ordinary navigation (arrows, numbers, overview) adds no entries. In a frame the stack is kept in memory only
 - Never top-level: links to slides never navigate the window; the click is handled inside the document (`preventDefault`). A link to another file or site leaves the lesson and is never an in-window navigation (see "Links that leave the lesson" below)
 - Keyboard: a focused link follows on Enter; when the link was activated from the keyboard, Back returns focus to it
@@ -172,13 +173,13 @@ An ordinary anchor whose fragment is a slide id is a link to that slide ([format
 
 ### Links that leave the lesson
 
-Format spec §11: a link whose target is not in the lesson is a phishing surface, so the player shows where it goes before leaving. The rule is a pure module, `kit/core/link-policy.mjs` (`LinkPolicy().decide(link, {base, hosts})`, no DOM, no `node:`), which the runtime (`DECK.LinkPolicy`), the tests and a future play page share.
+Egatari Player P4.2: a link whose target is not in the lesson is a phishing surface, so the player shows where it goes before leaving. The rule is a pure module, `kit/core/link-policy.mjs` (`LinkPolicy().decide(link, {base, hosts})`, no DOM, no `node:`), which the runtime (`DECK.LinkPolicy`), the tests and a future play page share.
 
 - Every click (primary, modified or middle button, Enter on a focused link) on a link that does not point into this document is cancelled; the window never navigates. The player shows a confirmation (`#deck-extlink`, `role="alertdialog"`, `aria-modal`) with the destination's host and the full address, and opens it only on **Open**, in a new browsing context with `noopener,noreferrer`. Focus starts on **Cancel**; Tab cycles inside the box, Esc or a click outside cancels and returns focus to the link, the lesson behind is `inert`, and keys and pointer events in the box never move the slides
 - Asked every time, whatever was agreed before (the box says why): the link text names a different host than the destination (`example.org` shown, another host linked; `www.` is ignored), the destination is not `https:` (`http:`, `mailto:`, `tel:`), the link has `download`, the address has a user name or password, or the host is punycode (`xn--`). A plain `https:` link is asked once per host in a viewing session (kept in memory only)
 - Refused (a box without **Open**): any scheme other than `http`, `https`, `mailto` and `tel` (`javascript:`, `data:`, `file:`, `blob:`, `vbscript:`, `ftp:`, …) and addresses that cannot be read. The one exception is a relative link in a lesson opened from `file:` to a neighbouring file, which is asked every time
 - Video mode, the presenter view's inner screens: nothing happens. Print: the box is hidden. The editor's preview and the dev server's frame (sandboxed, no popups): the box only tells where the link goes and has no **Open**; open the built slides or the Egatari file to follow it
-- Links the player makes itself (the Live's "Join in the browser", saving an attachment) are not lesson content and skip the box (format spec §11 (h)): the player marks them with the JavaScript property `__egaOwn`, which no lesson markup can set (attributes such as `data-ega-own` do nothing; `tools/test-extlinks.mjs` checks it), and the live pane shows the join page's host next to the link
+- Links the player makes itself (the Live's "Join in the browser", saving an attachment) are not lesson content and skip the box (Egatari Player P4.2): the player marks them with the JavaScript property `__egaOwn`, which no lesson markup can set (attributes such as `data-ega-own` do nothing; `tools/test-extlinks.mjs` checks it), and the live pane shows the join page's host next to the link
 - Run-time API: `DECK.LinkPolicy()`, `DECK.extLink(href, text?, download?)`
 
 ## 10. Quality check: intended clipping
