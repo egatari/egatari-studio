@@ -45,7 +45,7 @@ function langOf(lang) {
   return /^ja\b/i.test(navigator.language || '') ? 'ja' : 'en';
 }
 // サイトの versions.json：{root: "0.4.3", versions: ["0.4.3", "0.4.2", …]}（なければ null）
-async function readVersions(url) {
+export async function readVersions(url) {
   try {
     const j = JSON.parse(new TextDecoder().decode(await fetchBounded(url, { max: READ_LIMITS.json, what: 'versions.json' })));
     const vs = Array.isArray(j.versions) ? j.versions.filter((v) => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)).sort(cmpVersion) : [];

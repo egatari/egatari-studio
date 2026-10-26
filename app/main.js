@@ -26,7 +26,9 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
+import { CONTRACTS, LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, GENERATOR } from '../kit/core/portable.mjs';
+import { analyzeSlideIds } from '../kit/core/build-core.mjs';
+import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
@@ -68,12 +70,17 @@ const builder = createBuildClient(RES, loadLazy);
 const buildTimeout = () => (window.__APP_TEST && window.__APP_TEST.buildTimeout) || BUILD_TIMEOUT_MS;
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
-//    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches}
+//    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches, earlier（前の版のファイル）}
+// earlier：前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）：{kind: 'file' | 'folder', made, noId, version, studioUrl, guideUrl} か null。
+//   知らせに前の版の Studio と移し替えの手引きを出す。ファイルは組み直さず、ファイルそのもの（自分のプレーヤー）をプレビューで再生し、編集・保存を断る。
+//   作業フォルダは知らせるだけ（この版でも組めて、編集できる。id を付ければ知らせが消える）
 const S = {
   ws: null, portable: null, deckFile: null, base: null, preview: null, slides: [], warn: [], error: null,
   sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
-  presWin: null, checks: new Map(), lastBuildMs: 0, ranges: new Set(), codeOk: null,
+  presWin: null, checks: new Map(), lastBuildMs: 0, ranges: new Set(), codeOk: null, earlier: null,
 };
+// 前の版のファイルなら、編集を断るわけ（なければ null）。前の版の作業フォルダは知らせるだけで、編集は断らない
+const earlierWhy = () => (S.earlier && S.earlier.kind === 'file' ? T.earlierNoEdit : null);
 
 // ---------------------------------------------------------------- 画面の部品
 let toastTimer = 0;
@@ -173,6 +180,8 @@ async function openFolder(handle) {
   if (!S.deckFile) { toast(T.noDeck, true); S.ws = null; return false; }
   S.sig = signature(listing);
   recentAdd(handle);
+  S.earlier = await folderEarlier(ws);
+  if (S.ws !== ws) return false;
   showDeck(handle.name + ' / ' + S.deckFile, handle.name);
   // 原稿のフォルダの部品やスクリプト（そのデッキのコード）があれば、プレビューで動かす前に知らせて確かめる（§6）。
   // 確かめは組んだ文書から決めるので、組み立て（rebuild）の中で聞く。取り消したらはじめの画面に戻る
@@ -184,7 +193,7 @@ async function openFolder(handle) {
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
   autoSeq++; clearTimeout(autoTimer); showBadge(0, 0);
-  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.gen = (S.gen || 0) + 1;
+  S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
   engine.setWorkspace(ws);
@@ -295,11 +304,12 @@ function showNotice() {
   themeItem();   // 段 A だけ・読むだけが替わったとき（組み直した後など）
   if (P && P.extended) lines.push(['notice-extended', T.extendedNotice]);
   if (P && P.mislabelled) lines.push(['notice-mislabel', T.codeMislabelled]);
-  if (P && P.readOnly) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
+  if (P && P.readOnly && !P.earlier) lines.push(['notice-readonly', T.readOnlyNotice(P.readOnly)]);
   else if (P && P.tierAOnly) lines.push(['notice-tier-a', T.tierAOnlyNotice(P.tierAOnly)]);
   if (P && !P.readOnly && P.sourceMatches === false) lines.push(['notice-mismatch', T.mismatchNotice]);
   if (P && P.sourceOnly && !P.handle) lines.push(['notice-source-only', T.sourceOnlyNotice]);
   const n = $('notice'); n.innerHTML = '';
+  if (S.earlier) n.append(earlierNotice(S.earlier));
   for (const [id, text] of lines) n.append(el('p', { id, text }));
   // 作業フォルダから書き出した写し（index.exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、作業フォルダに書き出すボタン（メニューと同じ名前）を出す。
   // 編集は断らない。写しの今の sourceSha256 が書き出したときの値と違えば、書き出しの後にこの写しで直した（hash で比べる。時刻は持たない）
@@ -413,7 +423,11 @@ const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 // プレビューでは、知らせの部品（server/hints.js）も信頼する先頭部分に入れる（デッキの文書の中の </body> を探して入れない）
 function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
 // theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
-function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) }, '\n' + RES.hints); }
+function previewHtml(base) {
+  // 前の版のファイル：ファイルそのもの（自分のプレーヤー）を再生するだけ。この版の仲立ちの頼み（品質チェック・位置）は受けない
+  if (S.earlier && S.earlier.kind === 'file') return withShim(base, { load: S.loads, ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) });
+  return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) }, '\n' + RES.hints);
+}
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
 // 解析の状態は同じなので、ここで読むものと表示するものは同じ。原稿のフォルダの部品（組み立てが実行系の中に入れる）は組み立てが数える
@@ -421,6 +435,7 @@ function previewHtml(base) { return withShim(base, { dev: true, load: S.loads, .
 const reasonsPrefix = () => trustedPrefix(`${SHIM}(${enc({ dev: true, load: 0 })});\n${RES.hints}`);
 // 組み直す（同時に 1 つだけ。途中で頼まれたら終わってからもう一度）。戻り値：失敗したら true
 async function rebuild(reason) {
+  if (S.earlier && S.earlier.kind === 'file') return false;   // 前の版のファイルは組み直さない（ファイルそのものを再生する）
   if (S.building) { S.again = true; return S.building; }
   S.building = (async () => {
     let failed = false;
@@ -463,6 +478,12 @@ async function rebuild(reason) {
         try { S.outline = outlineOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { S.outline = null; }
         if (S.ws !== ws0 || S.gen !== g0) continue;
         for (const k of stale) S.warn.push(T.staleStep(k));
+        // 前の版の作業フォルダ：移し替え（npm run ids）が済めば、知らせを消して編集できるようにする
+        if (S.earlier && S.earlier.kind === 'folder') {
+          const e = await folderEarlier(S.ws);
+          if (S.ws !== ws0 || S.gen !== g0) continue;
+          S.earlier = e;
+        }
         const changed = r.html !== S.base;
         S.base = r.html; S.baseAudio = r.previewAudio || [];
         S.ranges = new Set([...r.html.matchAll(/ data-src="(\d+-\d+)" data-src-h="[0-9a-f]{8}"/g)].map((m) => m[1]));
@@ -520,7 +541,7 @@ function scheduleAutoCheck() {
   autoTimer = setTimeout(autoCheck, (window.__APP_TEST && window.__APP_TEST.autoCheckMs) || AUTO_CHECK_MS);
 }
 async function autoCheck() {
-  if (!S.base || !S.allowed || !S.ws) return;
+  if (!S.base || !S.allowed || !S.ws || (S.earlier && S.earlier.kind === 'file')) return;
   if (S.building || S.again || S.frameLoaded !== S.loads) { scheduleAutoCheck(); return; }   // 組み立て・読み込みの途中：終わってから
   const seq = ++autoSeq, ws = S.ws, load = S.loads;
   const results = await checkResults();
@@ -727,6 +748,7 @@ const api = createDevApi({
   get ws() { return S.ws; },
   generation: () => S.gen,
   beforeWrite: async (kind) => {
+    if (earlierWhy()) return earlierWhy();
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
     // 段 A の編集だけの文書（実行系の約束の版・部品庫の hash が違う。§6・§7.2）：スライドの原稿は直せない
@@ -786,6 +808,7 @@ const audio = createAudioPanel({
   // 音声の板の「● 録音 (r)」「録音モードを開く (r)」：そのステップで録音モードを開く（録り方は録音モードだけ。#82。ツールバーには置かない：1 行に収まらなくなる）
   recMode: { title: T.recTip, open: (opts) => rec.open(opts).then((on) => { if (on) ui.mark('rec', true); }) },
   beforeWrite: async () => {
+    if (earlierWhy()) return earlierWhy();
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
     return (await ensureRights()) ? null : T.rightsDeclined;   // 音声は段 A の場所（段 A の編集だけの文書でも直せる）
@@ -820,6 +843,7 @@ const attach = createAttachPanel({
   // 「ファイル ▾」の「教材の情報…」：題・ライセンス・作り手の下に、添付の板
   openPanel: (title, body) => openPanel(T.infoTitle, [infoSection(), el('h3', { cls: 'info-h', text: title }), ...[].concat(body)]), isOpen: () => !$('panel').hidden && !!$('attach-panel'),
   beforeWrite: async () => {
+    if (earlierWhy()) return earlierWhy();
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
     return (await ensureRights()) ? null : T.rightsDeclined;   // 添付は段 A の場所（段 A の編集だけの文書でも直せる）
@@ -835,6 +859,7 @@ const livePanel = createLivePanel({
   isOpen: () => !!$('live-panel'), embedded: () => !!liveHost,
   portable: () => !!S.portable,
   beforeWrite: async () => {
+    if (earlierWhy()) return earlierWhy();
     if (!S.portable) return null;
     if (S.portable.readOnly) return T.readOnlyNoEdit;
     return (await ensureRights()) ? null : T.rightsDeclined;
@@ -856,6 +881,7 @@ const livePanel = createLivePanel({
 // 1 ファイルの段 A の保存はスライドの原稿の変更を断る（kit/core/tier-a.mjs の source-changed）ので、次の「保存」は組み直しになる
 async function slideGuard() {
   if (!S.ws || !S.base) return T.sl.notReady;
+  if (earlierWhy()) return earlierWhy();
   if (S.portable && S.portable.readOnly) return T.readOnlyNoEdit;
   if (S.portable && S.portable.tierAOnly) return T.tierAOnlyNoSlides;
   if (ui.busy() || audio.isBusy() || rec.isOpen()) return T.sl.editing;
@@ -879,7 +905,7 @@ const slidesPanel = createSlidesPanel({
 });
 // テーマを変更…（スライド ▾。app/theme-switch.js）：スライド一覧と同じ流れ（apply）で原稿の data-theme と egatari.json の themes を書き、組み直す。
 // 口述原稿・音声・秒数だけのファイル（組み直せない）と読むだけのファイルでは、押せない形で残し、わけを title と知らせに出す
-const themeSwitchWhy = () => (S.portable && S.portable.readOnly ? T.readOnlyNoEdit : S.portable && S.portable.tierAOnly ? T.themeSwitchNoRebuild : null);
+const themeSwitchWhy = () => (earlierWhy() || (S.portable && S.portable.readOnly ? T.readOnlyNoEdit : S.portable && S.portable.tierAOnly ? T.themeSwitchNoRebuild : null));
 const themeSwitch = createThemeSwitch({
   T, el, ask, close: (id) => $('dlg').close(id), toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt() || 0,
   ws: () => S.ws, deckFile: () => S.deckFile, portable: () => S.portable,
@@ -1006,6 +1032,7 @@ async function checkResults() {
 }
 async function quickCheck() {
   if (!$('preview').contentWindow || !S.base) return;
+  if (S.earlier && S.earlier.kind === 'file') { toast(T.earlierNoCheck, true); return; }
   openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checking }), buildWarnBox()]);
   const results = await checkResults();
   const f = $('preview').contentWindow;
@@ -1189,6 +1216,7 @@ async function codeConsent(reasons) {
 
 // 編集モード・口述原稿を開く前に：読むだけの文書なら断り、まだなら権利を見せる
 async function beforeEditing(kind) {
+  if (earlierWhy()) { toast(earlierWhy(), true); return false; }
   if (!S.portable) return true;
   if (S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return false; }
   if (S.portable.tierAOnly && kind === 'edit') { toast(T.tierAOnlyNoSlides, true); return false; }
@@ -1264,6 +1292,9 @@ async function openPortableNow(input) {
     }
     return false;
   }
+  // 前の版のファイル（索引に player がない。§7.1）：組み直さずに、ファイルそのものを再生する（編集・保存は断る）
+  const early = earlierFile(r.index, { name: GENERATOR, version: RES.version });
+  if (early) return openEarlierFile(name, bytes, r, early, handle);
   // 独自のコード：申告（index.profile）を信じず、取り出した原稿の中身から決める（§6）。中のコードが動く前に知らせる。
   // 申告が core なのに中身にコードがあれば、コードを含むものとして聞き、申告が食い違うことも知らせる。
   // プレビューは空にしてから聞く（前の文書も後ろに見せない）。取り消せば開かない（今開いているものはそのまま。そのプレビューを読み込み直す）
@@ -1320,6 +1351,70 @@ async function openPortableNow(input) {
   return true;
 }
 
+// ---------------------------------------------------------------- 前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）
+// ファイル：組み直さない（この版の組み立てで作り直すと、別のプレーヤーの別の教材になる）。ファイルそのもの（自分のプレーヤー）を
+// プレビューで再生し、編集・保存は断る（P.readOnly）。教材独自のコード（取り出した原稿の中身から。§6）があれば、再生の前に聞く。
+// ファイルのプレーヤーそのものは、ほかの教材のコードと同じく sandbox の枠の中で、この版の決まり（CSP）の下で動く
+async function openEarlierFile(name, bytes, r, early, handle) {
+  let reasons;
+  try { reasons = await builder.scan(r.files, r.index.entry, { timeout: buildTimeout() }); }
+  catch (e) {
+    status('');
+    await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code || 'error', String(e.message || e)), buttons: [{ id: 'ok', label: T.ok, pri: true }] });
+    return false;
+  }
+  const mislabelled = r.index.profile !== 'extended' && reasons.length > 0;
+  const extended = r.index.profile === 'extended' || reasons.length > 0;
+  if (extended) {
+    blankPreview();
+    const v = await codeDialog(T.codeLeadFile, reasons, mislabelled);
+    if (v !== 'run') { status(''); toast(T.codeDeclined, true); if (S.ws && S.base && S.codeOk !== false) loadFrame(); return false; }
+  }
+  const links = await draftLinks(early.made, EN ? 'en' : 'ja');
+  stopPoll();
+  const original = new TextDecoder().decode(bytes);
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: T.earlierNoEdit, tierAOnly: null, rightsOk: false, extended, mislabelled,
+    codeReasons: reasons, codeOk: true, saved: null, neverSaved: false, original, narr0: null, sourceMatches: r.sourceMatches, lastTier: null, earlier: true };
+  resetDeck(workspaceFromPortable(name, r), P);
+  S.earlier = { kind: 'file', made: early.made, ...links };
+  S.deckFile = r.index.entry;
+  if (extended) S.codeOk = true;
+  if (handle) recentAdd(handle);
+  showDeck(name, name);
+  S.base = original; S.baseAudio = []; S.slides = []; S.warn = r.warnings.slice(); S.preview = true; S.allowed = true;
+  showWarn();
+  slidesPanel.refresh();
+  status('');
+  loadFrame();
+  return true;
+}
+// 作業フォルダ：設定のファイル（egatari.json）があり、id のないスライドがあれば前の版の作業フォルダ（読めなければ前の版にしない）。知らせるだけで、編集は断らない
+async function folderEarlier(ws) {
+  try {
+    const file = S.deckFile || '';
+    const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
+    if (!(await ws.exists(dir + FORMAT.CONFIG_FILE))) return null;
+    const src = await ws.readText(file, { max: READ_LIMITS.source });
+    const e = src === null ? null : earlierFolder(analyzeSlideIds(src), true);
+    return e ? { kind: 'folder', made: null, noId: e.noId, ...(await draftLinks(null, EN ? 'en' : 'ja')) } : null;
+  } catch { return null; }
+}
+// 知らせ：何が起きているか → 前の版の Studio で開く・移し替えの手引きを開く → 新しいタブのこと → コマンドで移すとき
+function earlierNotice(x) {
+  const folder = x.kind === 'folder';
+  const link = (id, href, text, pri) => el('a', { id, cls: 'btn' + (pri ? ' pri' : ''), href, target: '_blank', rel: 'noopener', text });
+  const cli = folder ? T.earlierCliFolder : T.earlierCliFile(x.version);
+  return el('div', { id: 'notice-earlier', 'data-kind': x.kind }, [
+    el('p', { id: 'earlier-lead' }, [el('strong', { text: folder ? T.earlierFolderTitle(x.noId) : T.earlierTitle(x.made) }), document.createTextNode(' ' + (folder ? T.earlierFolderBody : T.earlierBody))]),
+    el('p', { cls: 'earlier-actions' }, [
+      link('b-earlier-studio', x.studioUrl, T.earlierOpenStudio, true), ' ',
+      link('b-earlier-guide', x.guideUrl, T.earlierGuide, false),
+    ]),
+    el('p', { id: 'earlier-hint', cls: 'hint', text: T.earlierStudioHint(x.version, folder) }),
+    el('p', { id: 'earlier-cli', cls: 'hint' }, [document.createTextNode(cli[0]), el('code', { text: cli[1] }), document.createTextNode(cli[2])]),
+  ]);
+}
+
 // ---------------------------------------------------------------- デッキの原稿（deck.html）を 1 つだけ開く
 // 「ファイルを開く」・ドロップで原稿の deck.html が来たとき：口述原稿・音声・そのデッキだけの部品は同じフォルダにあるので、
 // フォルダを開くか、このファイルだけを開くかを聞く。このファイルだけ：メモリの上の作業場所（deck.html だけ）を Worker で持ち運べる
@@ -1369,7 +1464,7 @@ async function savePortableBound(mode) {
   // 書き込みにも渡す（途中で替われば入れ替えずに取り消す）。替わっていたら、その後は何も書かず状態も変えない
   const live = () => S.portable === P && S.ws === ws && S.gen === g;
   const cancelled = () => { status(''); toast(T.api.cancelled, true); };
-  if (P.readOnly) { toast(T.readOnlyNoSave, true); return; }
+  if (P.readOnly) { toast(P.earlier ? T.earlierNoSave : T.readOnlyNoSave, true); return; }
   // deck.html だけを開いて、まだどこにも保存していない：1 ファイルに保存するか、空のフォルダに書き出すかを選ぶ
   if (P.sourceOnly && !P.handle && mode === 'save') {
     const v = await ask({ title: T.saveWhereTitle, body: [el('p', { id: 'save-where', text: T.saveWhereLead })],
@@ -1623,6 +1718,7 @@ function infoSection() {
 }
 async function lessonInfo() {
   if (!S.ws) return;
+  if (earlierWhy()) { toast(earlierWhy(), true); return; }
   if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; }
   INFO = await readInfo();
   await attach.open();
@@ -1823,7 +1919,7 @@ window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
-  state: () => ({ deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
+  state: () => ({ earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
