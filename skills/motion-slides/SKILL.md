@@ -11,6 +11,8 @@ Always reply in the language the user writes in, not the language of this file. 
 
 リポジトリ：このファイルの 2 つ上（`<repo>` と書く。`~/.claude/skills/` にシンボリックリンク（Windows ではジャンクション）で入れたときは、リンク先の実体の 2 つ上。`realpath`（Windows の PowerShell なら `(Get-Item <パス>).Target`）で確かめる）。約束事は `<repo>/docs/contract.ja.md`。
 
+**入れるのは Egatari Studio の clone 1 つだけでよい。**パーツ（パーツライブラリ egatari/components のリリース）とテーマは、このリポジトリの `vendor/` に写してあるので、パーツライブラリのリポジトリを clone しなくても、全部のパーツが使える。パーツライブラリのリポジトリが要るのは、新しいパーツを提案するとき（motion-components スキル）だけ。
+
 ## 1. 作るもの
 
 教材は 1 つのフォルダにする。
@@ -28,13 +30,18 @@ Always reply in the language the user writes in, not the language of this file. 
 
 1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業／動画）、テーマ（同梱は `default` `business` `kokugo`。ピッチ・コンサルの発表なら `business`、国語なら `kokugo`。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。§5）
 2. **構成案を文字で書いてユーザーに見せる**（ここが一番大事。TeX しかないときは、レジュメの役割をここで果たす）
-   - スライドごとに：見出し（章の見出し）／伝えたいこと（結論の行）／材料／パーツを使うか
+   - 書く前に、パーツの一覧 `<repo>/vendor/components/CATALOG.md` を全部読む（§6。全部のパーツが候補）
+   - スライドごとに：見出し（章の見出し）／**伝えたいこと**／**おすすめのパーツ**／結論の行／材料
+     - 伝えたいこと：パーツライブラリの伝えたいこと（`<repo>/vendor/components/manifest.json` の `purposes` の `ja`。比べる（量・特徴）・時間での変化・全体と内訳・手順・工程・年表・予定 など）のどれか。どれにも当たらなければ「なし（文と式）」
+     - おすすめのパーツ：その伝えたいことに合うパーツ（`manifest.json` の `components.<名前>.purposes` にその伝えたいことがあるもの。`CATALOG.md` の内容で選ぶ）。合うものがなければ「なし」か「新しい表現」（§6「合うパーツがないとき」）。**操作できるパーツ**（`manifest.json` の `components.<名前>.interactive` が `true`。`m-predict`・`m-timer` など）には「発表中に操作できる」と添える
+     - **道具**（`manifest.json` の `components.<名前>.group` が `"tool"`。今は `m-timer`）は、頼みや材料にグループワークか時間（「10 分」「時間を区切る」など）が出てくるときだけおすすめに入れる
+   - パーツは**おすすめとして聞く**。例：「このスライドは年表のパーツ `m-timeline` がおすすめです。使いますか。ほかのパーツ・新しい表現・パーツなし（文と式）にもできます」。決めるのは利用者
    - 枚数の目安：発表 1 分 ≒ 1 枚。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **ステップと台本を一緒に書く**（§4・§5）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（§3。自分で作った id は重なりや書式の誤りのもと）
-5. **パーツ**（§6）。効果のあるスライドだけ。パーツライブラリ（`<repo>/vendor/components/CATALOG.md`。egatari/components の写し）から選び、なければ新しく書く（motion-components スキル）
+5. **パーツ**（§6）。構成案で決めたスライドだけ。使うパーツの `README.md` と `demo.html` を読んでから書く。新しい表現を作ったら、パーツの候補として知らせる（§6）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。ステップ 0 で見えている本文の一覧は必ず読む
 7. **全スライドの最終ステップを 1 枚の画像で見る**：`node <repo>/tools/sheet.mjs <deck>/deck.html`（`npm run sheet -- <deck>`。出力は `<deck>/out/sheet.png`。`--cols 4`・`--width 640`・`--tiles`（1 枚ずつの PNG も書く））。品質チェックでは見えないもの（凡例の意味の取り違え、軸の端で切れた点、図と文の食い違いなど）がある。画像を読めるなら Read で開いて全スライドを見て、読めないなら利用者に見てもらう。直したら撮り直す。**図のあるスライドは、先に図の約束（例：染色体は細胞の中にある）を書き出し、`npm run sheet -- <deck> --steps` のステップごとの帯で 1 つずつ確かめる。作り手の「確認しました」だけで終えない**
 8. **見ながら直す**：`node <repo>/server/dev.mjs <deck>/deck.html` を開いてもらう。ユーザーはブラウザ上で文字・台本を直し、Alt+クリック（Mac は ⌥ option+クリック）でコメントを残す（編集モードの `m`（ペンのボタン、`d` でも開く）で、スライドに丸や矢印を描いてからコメントを書くこともできる：マーカー）。「コメントを反映して」と言われたら：
@@ -163,25 +170,16 @@ Always reply in the language the user writes in, not the language of this file. 
 
 ## 6. パーツ
 
-| 型 | パーツ | 例 |
-|---|---|---|
-| パラメータを動かす | `m-sweep` | 学習率を 0.1 → 0.5 → 1.8 と動かし、前の形を灰色で残す（`examples/minimal`） |
-| 線を 1 本ずつ引く | `m-curves` | 同じ予測分布に平均・中央値・分位点を順に引く |
-| 図を組み立てる | `m-flow` | 証明の各ステップに合わせて箱と矢印を出す |
-| まとまる | `m-collect` | 8 回の観測が 2 つの事後モーメントに吸い込まれる |
-| 逐次更新 | `m-seq` | 回答を 1 個ずつ加え、事後分布と決定が動く |
-| 量を比べる | `m-bars` | 年ごとの売上を 1 本ずつ伸ばし、最後の年で軸を広げる（`examples/pitch-fictional`） |
-| 位置づける | `m-quad` | 2 軸の地図に競合を 1 つずつ置き、最後に自社の点を置いて動かす |
-| 絞り込む | `m-market` | TAM → SAM → SOM の円を外から順に出す |
-| 数字を見せる | `m-kpi` | 掴みの 3 つの数字を 1 枚ずつ数え上げる |
-| お金の流れ | `m-flow`（`kind` `amount` `pulse`） | 顧客が払うお金とサービスの行き来を 2 本の矢印で描き、お金を流す |
-| 漢文を読む | `m-kanbun` | 白文に訓点を付け、読む順を句ごとに 1 ステップずつたどり（返り点・再読文字で前の句へ戻るところは別のステップ。上へ戻る弧）、書き下し文にする。台本の `[n]` は句ごとに 1 つ（`order-by="all"` で読む順の全体を 1 ステップ）（`examples/kokugo-kanbun`） |
-| 古文の品詞分解 | `m-kobun` | 1 文ずつ語に切って品詞で色を分け、助動詞を押すと活用表、最後に現代語訳 |
-| 現代文の構造 | `m-gendai` | 傍線・指示語の矢印・段落の役割（主張・具体例・対比）の枠と線 |
-| 目次・選ぶ 1 枚 | `m-menu` | 各部へのリンクの札を並べ、押すとそのスライドへ、「戻る」で目次へ（`examples/kokugo-kanbun`）。札は `<a href="#<スライドの id>">` |
-| 符号の木で復号する | `m-codetree` | 符号表から木を作り、系列を 1 語ずつたどって、白・黒のランを画素の升目に並べる（MH 符号） |
+パーツはパーツライブラリ（egatari/components）のリリースの写し `<repo>/vendor/components/` にある。**全部のパーツが使える**（標準パーツも、分野のパーツも、道具も。チャットの AI への指示のように、プランや分野で絞らない）。
 
-- 一覧と属性は `<repo>/vendor/components/CATALOG.md`、動く例は各パーツの `demo.html`（`<repo>/vendor/components/<名前>/<版>/`）
+- 一覧：`<repo>/vendor/components/CATALOG.md`（全部のパーツの内容・ステップの数・受け取る値）。構成案の前に全部読む。使うと決めたパーツは `<repo>/vendor/components/<名前>/<版>/README.md`（書き方・データの形・台本との合わせ方）と `demo.html`（動く例）を読む
+- 分け方：`<repo>/vendor/components/manifest.json` の `components.<名前>`
+  - `series`：`common` が**標準パーツ**。ほかは分野（`academic`・`business`・`kokugo`・`info`・`social`）。スキルではどれも使える
+  - `purposes`：そのパーツが合う伝えたいこと（`purposes` の `id`。名前は `purposes` の `ja`）
+  - `interactive`：`true` なら操作できるパーツ。構成案で「発表中に操作できる」と添える
+  - `group`：`"tool"` なら道具。頼みにグループワークか時間が出てくるときだけ使う
+- 使った例：`examples/minimal`（`m-sweep`）、`examples/pitch-fictional`（`m-bars` などビジネスのパーツ）、`examples/kokugo-kanbun`（`m-kanbun`・`m-menu`）
+- **合うパーツがないとき**：伝えたいことに合うパーツがなければ、表現カタログ（egatari/components の docs/expression-catalogue.md。パーツライブラリのリポジトリを clone してあればその中、なければ <https://github.com/egatari/components/blob/main/docs/expression-catalogue.md>）を見て、新しい表現を作ってよい。作るのは、その教材のパーツ（`<deck>/components/<名前>/index.js`。motion-components スキル）か、インライン SVG と `data-step`。カタログを読めなければ、インライン SVG と `data-step` で描く。作ったら、構成案と終わりの報告で**パーツの候補**として知らせる（何を伝えるための表現か・どのスライドか・カタログのどの項目に近いか）。パーツライブラリへの提案は、利用者が頼んだときだけ（motion-components スキル §5）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、パーツの子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
 - 図に matplotlib などのグラフを入れるときは、各軸にデータの範囲より余白を取る（`ax.margins(0.05)` など）。端の点がプロット領域で切れないようにする
 - 動きは注意の誘導に限る。飾りの動きは付けない
