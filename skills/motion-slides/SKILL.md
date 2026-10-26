@@ -1,6 +1,6 @@
 ---
 name: motion-slides
-description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードに、選び「先のステップを薄く見せる（l）」。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or teaching slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
+description: 動きのある HTML の授業・発表・説明の資料（学術・ビジネス・国語の漢文/古文/現代文など）を、構成案から「スライド＋ステップ表示＋パーツ＋台本」まで一括で作り、Egatari ファイル（.ega.html）にもする（Egatari Studio、旧 motion-academic-slides）。数式は KaTeX、テーマは基調色 1 つで切り替え、発表（talk）と動画（video）のモードがあり、発表では「先のステップを薄く見せる（l）」を選べる。「HTMLスライドを作って」「動きのあるスライド」「アニメーション付きの発表資料」「motion-slides」「論文からスライドを作って（HTML版）」「TTS動画にするスライドを作って」「AI 音声の動画にするスライドを作って」「Egatari にして」「ega にして」「Egatari ファイルにして」「1 ファイルで配れる形にして」「持ち運べる形にして」で使う。Marp 形式のスライドは対象外。作った教材を動画にするのは motion-slides-video。 Use for: make HTML slides, animated slides, presentation or teaching slides with step reveals, animated parts and a script, make it an Egatari file (.ega.html).
 ---
 
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
@@ -31,12 +31,14 @@ Always reply in the language the user writes in, not the language of this file. 
 1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業／動画）、テーマ（同梱は `default` `business` `kokugo`。ピッチ・コンサルの発表なら `business`、国語なら `kokugo`。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。§5）
 2. **構成案を文字で書いてユーザーに見せる**（ここが一番大事。TeX しかないときは、レジュメの役割をここで果たす）
    - 書く前に、パーツの一覧 `<repo>/vendor/components/CATALOG.md` を全部読む（§6。全部のパーツが候補）
-   - スライドごとに：見出し（章の見出し）／**伝えたいこと**／**おすすめのパーツ**／結論の行／材料
-     - 伝えたいこと：パーツライブラリの伝えたいこと（`<repo>/vendor/components/manifest.json` の `purposes` の `ja`。比べる（量・特徴）・時間での変化・全体と内訳・手順・工程・年表・予定 など）のどれか。どれにも当たらなければ「なし（文と式）」
-     - おすすめのパーツ：その伝えたいことに合うパーツ（`manifest.json` の `components.<名前>.purposes` にその伝えたいことがあるもの。`CATALOG.md` の内容で選ぶ）。合うものがなければ「なし」か「新しい表現」（§6「合うパーツがないとき」）。**操作できるパーツ**（`manifest.json` の `components.<名前>.interactive` が `true`。`m-predict`・`m-timer` など）には「発表中に操作できる」と添える
-     - **道具**（`manifest.json` の `components.<名前>.group` が `"tool"`。今は `m-timer`）は、頼みや材料にグループワークか時間（「10 分」「時間を区切る」など）が出てくるときだけおすすめに入れる
+   - 形：番号付きの並びで、1 枚に 1 項目。各項目に、この順で書く：見出し／**伝えたいこと**／**おすすめのパーツ**（理由）／結論の行／材料
+     - 見出し：章の見出し
+     - 伝えたいこと：パーツライブラリの伝えたいこと（`<repo>/vendor/components/manifest.json` の `purposes`）のどれか。名前は札の名前 `label.ja` があればそれ、なければ `ja`（比べる（量・特徴）・変化・内訳 など）。どれにも当たらなければ「なし（文と式）」
+     - おすすめのパーツ（理由）：その伝えたいことに合うパーツ（`manifest.json` の `components.<名前>.purposes` にその伝えたいことがあるもの。`CATALOG.md` の内容で選ぶ）と、選んだ理由。**おすすめにする前に、必要な機能があるかを README で確かめる**（例：`m-map-japan` で地方をまとめて塗れるか）。合うものがなければ「なし」か「新しい表現」（§6「合うパーツがないとき」）。**操作できるパーツ**（manifest の `interactive` のとおり。例：`m-predict`）には「発表中に操作できる」と添える
+     - **道具**（manifest の `group` が `"tool"` のパーツ）は、授業の中に時間を区切る活動（グループワーク・演習・『3 分で考える』など）があるときだけおすすめに入れる。教材の全体の長さ（「全体で 30 分」など）は当たらない
+     - 数：利用者が書いた値か、スクリプトで出す値だけを書く。それ以外は「（値はスクリプトで出す）」と書き、構成案の段で数を作らない
    - パーツは**おすすめとして聞く**。例：「このスライドは年表のパーツ `m-timeline` がおすすめです。使いますか。ほかのパーツ・新しい表現・パーツなし（文と式）にもできます」。決めるのは利用者
-   - 枚数の目安：発表 1 分 ≒ 1 枚。1 枚に 8 行・100 字まで
+   - 枚数の目安：話す部分は 1 分 ≒ 1 枚。活動（指示とタイマー）は、何分でも 1 枚と数える。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
 4. **ステップと台本を一緒に書く**（§4・§5）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
@@ -177,7 +179,7 @@ Always reply in the language the user writes in, not the language of this file. 
   - `series`：`common` が**標準パーツ**。ほかは分野（`academic`・`business`・`kokugo`・`info`・`social`）。スキルではどれも使える
   - `purposes`：そのパーツが合う伝えたいこと（`purposes` の `id`。名前は `purposes` の `ja`）
   - `interactive`：`true` なら操作できるパーツ。構成案で「発表中に操作できる」と添える
-  - `group`：`"tool"` なら道具。頼みにグループワークか時間が出てくるときだけ使う
+  - `group`：`"tool"` なら道具。授業の中に時間を区切る活動（グループワーク・演習・『3 分で考える』など）があるときだけ使う
 - 使った例：`examples/minimal`（`m-sweep`）、`examples/pitch-fictional`（`m-bars` などビジネスのパーツ）、`examples/kokugo-kanbun`（`m-kanbun`・`m-menu`）
 - **合うパーツがないとき**：伝えたいことに合うパーツがなければ、表現カタログ（egatari/components の docs/expression-catalogue.md。パーツライブラリのリポジトリを clone してあればその中、なければ <https://github.com/egatari/components/blob/main/docs/expression-catalogue.md>）を見て、新しい表現を作ってよい。作るのは、その教材のパーツ（`<deck>/components/<名前>/index.js`。motion-components スキル）か、インライン SVG と `data-step`。カタログを読めなければ、インライン SVG と `data-step` で描く。作ったら、構成案と終わりの報告で**パーツの候補**として知らせる（何を伝えるための表現か・どのスライドか・カタログのどの項目に近いか）。パーツライブラリへの提案は、利用者が頼んだときだけ（motion-components スキル §5）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、パーツの子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
