@@ -120,7 +120,7 @@ const EN = {
     download: 'It downloads a file', userinfo: 'The address contains a user name or password part', punycode: 'The site name may use look-alike characters' },
 };
 export const WORDS = { ja: JA, en: EN };
-const LANG_KEY = 'egatari-play-lang';   // internal key (kept from the play-site line)
+const LANG_KEY = 'egatari-viewer-lang';
 export function initialLang() {
   try { const s = localStorage.getItem(LANG_KEY); if (s === 'ja' || s === 'en') return s; } catch { /* storage blocked */ }
   const l = (navigator.languages && navigator.languages[0]) || navigator.language || 'ja';

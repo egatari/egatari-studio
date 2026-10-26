@@ -138,7 +138,7 @@ console.log('files and messages (iPad (gen 11))');
     const t = async (k, fn) => { try { out[k] = await fn(); } catch (e) { out[k] = 'blocked:' + (e && e.name); } };
     await t('origin', () => location.origin);
     await t('parentDom', () => window.parent.document.title);
-    await t('localStorage', () => localStorage.getItem('egatari-play-lang'));
+    await t('localStorage', () => localStorage.getItem('egatari-viewer-lang'));
     await t('fetch', () => Promise.race([fetch('/').then((x) => 'fetched ' + x.status), new Promise((res) => setTimeout(() => res('timeout'), 1500))]));
     return out;
   });

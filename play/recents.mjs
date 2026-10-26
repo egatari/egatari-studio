@@ -11,7 +11,7 @@ import { readFileBoundedText } from '../app/bounded-read.js';
 const MAX = 10;
 const DIR = 'recent';
 const INDEX = 'index.json';
-const DB = 'egatari-play';
+const DB = 'egatari-viewer';
 const STORE = 'recent';
 const newId = () => { const b = crypto.getRandomValues(new Uint8Array(12)); return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); };
 const ID_RE = /^[0-9a-f]{24}$/;

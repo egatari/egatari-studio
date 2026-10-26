@@ -11,7 +11,8 @@
 //   the file to the page that asks for it (share-claim), from memory only; if no page asks within 60 s the file is dropped.
 const VERSION = '__VERSION__';
 const FILES = __FILES__;
-const PREFIX = 'egatari-play-';
+const PREFIX = 'egatari-viewer-';
+const OLD_PREFIXES = ['egatari-play-'];   // the name before the rename to Egatari Viewer: deleted on activate, never read
 const CACHE = PREFIX + VERSION;
 const scope = new URL(self.registration.scope);
 const OWN = new Set(FILES.map((f) => new URL(f, scope).href));
@@ -22,7 +23,7 @@ self.addEventListener('install', (e) => {
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k.startsWith(PREFIX) && k !== CACHE) await caches.delete(k);
+    for (const k of await caches.keys()) if ((k.startsWith(PREFIX) && k !== CACHE) || OLD_PREFIXES.some((p) => k.startsWith(p))) await caches.delete(k);
     await self.clients.claim();
   })());
 });

@@ -224,7 +224,7 @@ console.log('sandbox');
     await t('parentDom', () => window.parent.document.title);
     await t('localStorage', () => localStorage.getItem('secret'));
     await t('cookie', () => document.cookie);
-    await t('indexedDB', () => new Promise((res, rej) => { const q = indexedDB.open('egatari-play'); q.onsuccess = () => res('opened'); q.onerror = () => rej(q.error); }));
+    await t('indexedDB', () => new Promise((res, rej) => { const q = indexedDB.open('egatari-viewer'); q.onsuccess = () => res('opened'); q.onerror = () => rej(q.error); }));
     await t('opfs', async () => { const root = await navigator.storage.getDirectory(); return (await (await root.getFileHandle('secret.txt')).getFile()).text(); });
     await t('fetch', () => Promise.race([fetch('/').then((x) => 'fetched ' + x.status), new Promise((res) => setTimeout(() => res('timeout'), 1500))]));
     await t('ws', () => new Promise((res) => { try { const s = new WebSocket('ws://127.0.0.1:1/'); s.onerror = () => res('error'); s.onopen = () => res('open'); setTimeout(() => res('pending'), 800); } catch (e) { res('blocked:' + e.name); } }));
@@ -312,12 +312,14 @@ console.log('service worker');
   // a launch at the start screen with a version waiting (a home-screen app that was never closed, then opened): taken over at once
   // (an update found more than 10 s after the launch waits even at the start screen: the Viewer is in use, not being launched)
   await sleep(10500);
+  await p3.evaluate(() => caches.open('egatari-play-0.4.8-0000000000'));   // a cache under the name before the rename
   const b3 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v3' });
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
     'a third version found while the Viewer is in use: it waits (no reload)');
   await p3.goto(site.url, { waitUntil: 'commit' }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });   // the page may reload once as it takes over: wait for the page, not for the first load
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000), `a launch at the start screen (the only window): the waiting version takes over (${b3.version})`);
+  ok(await until(async () => { const k = await p3.evaluate(() => caches.keys()); return k.length === 1 && k[0] === 'egatari-viewer-' + b3.version; }, 10000), 'activate: only the egatari-viewer- cache of this version remains (the old egatari-play- cache is deleted)');
   await o.ctx.close();
   built.version = b3.version; built.files = b3.files; }
 

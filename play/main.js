@@ -90,7 +90,7 @@ function play(text, r, info) {
   $('lesson-title').lang = r.meta.lang || '';
   $('lesson-kind').textContent = r.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   $('b-close').hidden = false;
-  if (!(history.state && history.state.egaPlay)) history.pushState({ egaPlay: 1 }, '');
+  if (!(history.state && history.state.egaViewer)) history.pushState({ egaViewer: 1 }, '');
   if (!live) { startFrame(); return; }
   S.live = startLive({ live, words: W(), lang, allowed: LIVE_ALLOWED, policy: LP, announce, onOpen: onLive, el: liveEls() });
   S.hasPolls = S.live.hasPolls;
@@ -236,7 +236,7 @@ async function renderRecents() {
   $('recent-empty').hidden = list.length > 0;
   $('b-clear').hidden = list.length === 0;
 }
-const KEEP_KEY = 'egatari-play-keep', SHARED_KEY = 'egatari-play-shared';
+const KEEP_KEY = 'egatari-viewer-keep', SHARED_KEY = 'egatari-viewer-shared';
 const getPref = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* memory only */ } };
 function isShared() { const v = getPref(SHARED_KEY); return v === '1' ? true : v === '0' ? false : SHARED_DEVICE_DEFAULT; }
@@ -323,7 +323,7 @@ function initShare() {
 // reports a Mac with touch. On Android, when the browser offers installing (beforeinstallprompt), the line carries a real
 // 「インストール」 button that calls prompt(). Never when opened from the Home Screen (navigator.standalone, display-mode),
 // never after × (remembered on this device), and never on a PC: there the .ega.html plays in the browser itself.
-const INSTALL_KEY = 'egatari-play-install-hint';
+const INSTALL_KEY = 'egatari-viewer-install-hint';
 let installEvent = null;   // Android's deferred beforeinstallprompt
 function isStandalone() {
   if (navigator.standalone === true) return true;
@@ -376,7 +376,7 @@ async function main() {
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f, f.name); });
-  $('b-close').addEventListener('click', () => { if (history.state && history.state.egaPlay) history.back(); else closeLesson(); });
+  $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
   $('b-live').addEventListener('click', focusLive);
   $('b-start-join').addEventListener('click', () => { if (S.live) S.live.join(); startFrame(); });
