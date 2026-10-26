@@ -1,0 +1,13 @@
+{
+  "read": "ok",
+  "play": true,
+  "tierA": {
+    "keeps": [
+      "player",
+      "generator"
+    ]
+  },
+  "rebuild": {
+    "warns": "player-change"
+  }
+}

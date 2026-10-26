@@ -3,6 +3,7 @@
 // 1. 仕様の写し（FORMAT.VENDOR_DIR）の Schema（ajv。ネットワークは使わない）と、依存のない検査器（validateIndex）が、仕様の試験用の索引で同じ判定をする。
 //    仕様の文書の試験用ファイル（fixtures/documents/）は読まない：1.0 の形より前のもの（player も決まりもない。Studio v0.3.1 が作った）で、
 //    rc の前に Studio v0.6.0 から作り直すまで、1.0 の形の実装は飛ばす（spec の fixtures/README.md）。文書の試験は 4. の自分で作るもの
+//    1.0 の形の文書の試験用ファイル（fixtures/documents-1.0/。spec main ada436c から）は 4b. で expect.json のとおりに読む
 // 2. パスの規則・重複を断る JSON・上限の順
 // 3. 往復：フォルダ → 1 ファイル → 展開 → フォルダで、原稿のバイト・音声のバイト・docId が同じ。もう一度まとめると同じファイル・同じ sourceSha256。
 //    展開したフォルダを組むと同じ HTML。外すもの（comments.json・.cache・out/・使わない音声）と voice.json の伏せ字
@@ -25,6 +26,8 @@ import { makeFixtures, silentWav, addUnknownMembers, makeDeck } from './portable
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { tierA } from '../kit/core/tier-a.mjs';
+import { earlierFile } from '../app/earlier-draft.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SPEC = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
@@ -547,6 +550,78 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
 });
 
 // ---------------------------------------------------------------- ブラウザ
+// ---------------------------------------------------------------- 4b. 1.0 の形の文書の試験用ファイル（仕様の fixtures/documents-1.0/、expect.json）
+// expect の鍵 → Studio の結果（名前が違うものは、どちらも名前を変えずに対応表で読む）：
+//   read: "ok"                 readPortable が断らない（preDraft は false）
+//   read: {preDraft: true}     readPortable の preDraft
+//   conforming: true / false   readPortable の warnings に「not conforming: 」で始まるものがない / ある
+//   report: "no-policy"            → warnings の「not conforming: no Content-Security-Policy <meta> …」（Studio に符号はない）
+//   report: "policy-extra-source"  → warnings の「not conforming: file policy differs …: <directive>: extra source <source>」
+//   edit: "may-refuse"         app/earlier-draft.js の earlierFile（編集アプリは前の版のファイルとして読むだけにする）
+//   tierA.keeps                段 A の保存（kit/core/tier-a.mjs）で、索引と deck-meta のその項目がバイトのまま
+//   rebuild.warns: "player-change" → exportPortable（buildPortable）の playerChange と「will carry … instead of its player」の warnings
+//   play: true                 ヘッドレス Chrome で file:// から開き、DECK.ready・ページのエラーなし
+const DOC10 = path.join(SPEC, 'fixtures', 'documents-1.0');
+const REPORT = { 'no-policy': /^not conforming: no Content-Security-Policy <meta>/, 'policy-extra-source': /^not conforming: file policy differs .*: [a-z-]+: extra source \S+/ };
+const doc10 = () => fs.readdirSync(DOC10).filter((f) => f.endsWith('.ega.html')).sort().map((f) => {
+  const name = f.slice(0, -'.ega.html'.length);
+  return { name, file: path.join(DOC10, f), expect: JSON.parse(fs.readFileSync(path.join(DOC10, name + '.expect.json'), 'utf8')) };
+});
+const pieceOf = (text, key) => { const i = text.indexOf(`"${key}"`); return i < 0 ? null : text.slice(i, text.indexOf('}', i) + 1); };
+ok('1.0 の形の文書の試験用ファイル（fixtures/documents-1.0）：expect.json のとおり（読む・決まりに合う・知らせ・編集を断る・段 A・作り直し）', async () => {
+  const docs = doc10();
+  assert.deepEqual(docs.map((d) => d.name), ['foreign-player', 'minimal', 'missing-player', 'no-policy', 'policy-loosened', 'policy-reordered']);
+  const known = new Set(['read', 'conforming', 'report', 'play', 'edit', 'tierA', 'rebuild']);
+  for (const d of docs) {
+    for (const k of Object.keys(d.expect)) assert.ok(known.has(k), `${d.name}: expect key "${k}" is mapped in this test`);
+    const text = fs.readFileSync(d.file, 'utf8');
+    const r = await PF.readPortable(text);
+    if (d.expect.read === 'ok') assert.equal(r.preDraft, false, `${d.name}: read ok (a 1.0 file)`);
+    else assert.deepEqual(d.expect.read, { preDraft: true }, d.name), assert.equal(r.preDraft, true, `${d.name}: preDraft`);
+    const nc = r.warnings.filter((w) => /^not conforming: /.test(w));
+    if (d.expect.conforming === true) assert.deepEqual(nc, [], `${d.name}: conforming`);
+    if (d.expect.conforming === false) assert.ok(nc.length > 0, `${d.name}: not conforming`);
+    if (d.expect.report) { assert.ok(REPORT[d.expect.report], `${d.name}: report "${d.expect.report}" is mapped`); assert.ok(nc.some((w) => REPORT[d.expect.report].test(w)), `${d.name}: ${d.expect.report} → ${JSON.stringify(nc)}`); }
+    if (d.expect.edit === 'may-refuse') assert.ok(earlierFile(r) !== null, `${d.name}: the editor refuses to edit (earlier-version file, read only)`);
+    else assert.equal(earlierFile(r), null, `${d.name}: the editor edits it`);
+    if (d.expect.tierA) {
+      const files = { ...r.files, 'audio/manifest.json': new TextEncoder().encode(PF.manifestFromAudio(r.audio)) };
+      const narr = new TextDecoder().decode(files['narration.md']);
+      const edited = narr.replace(/^(\[0\] .+)$/m, '$1（直した）');
+      assert.notEqual(edited, narr, `${d.name}: the test edits the script`);
+      files['narration.md'] = new TextEncoder().encode(edited);
+      const t = await tierA(text, files);
+      assert.ok(t.ok, `${d.name}: tier A [${t.code}] ${t.reason}`);
+      for (const k of d.expect.tierA.keeps) {
+        for (const id of [FORMAT.INDEX_ID, 'deck-meta']) {
+          const a = pieceOf(PF.scanDocument(text).byId.get(id).text, k), b = pieceOf(PF.scanDocument(t.html).byId.get(id).text, k);
+          assert.ok(a !== null && a === b, `${d.name}: tier A keeps ${id} ${k} byte for byte (${a})`);
+        }
+      }
+    }
+    if (d.expect.rebuild) {
+      assert.equal(d.expect.rebuild.warns, 'player-change', `${d.name}: rebuild.warns is mapped`);
+      const dir = path.join(work, 'doc10-' + d.name);
+      await unpack(d.file, dir, { force: true });
+      const b = await buildPortable(path.join(dir, 'deck.html'), { carry: r.index });
+      assert.ok(b.playerChange && b.playerChange.from.name === r.index.player.name && b.playerChange.to.name === 'egatari-player', `${d.name}: playerChange ${JSON.stringify(b.playerChange)}`);
+      assert.ok(b.warnings.some((w) => /will carry .* instead of its player/.test(w)), `${d.name}: the rebuild warns ${JSON.stringify(b.warnings)}`);
+    }
+  }
+  // 再生：どれもヘッドレス Chrome で開ける（決まりのないもの・ゆるめたもの・player のないものも）
+  const browser = await launch();
+  try {
+    for (const d of docs.filter((x) => x.expect.play)) {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      const errs = [];
+      page.on('pageerror', (e) => errs.push(e.message));
+      await page.goto(fileUrl(d.file));
+      await page.waitForFunction(() => window.DECK && DECK.ready && DECK.slides && DECK.slides.length > 0, null, { timeout: 30000 });
+      assert.deepEqual(errs, [], `${d.name}: plays without page errors`);
+      await page.close();
+    }
+  } finally { await browser.close(); }
+});
 ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生が再生できる・音声の参照が読める・コンソールのエラーなし。ブラウザでの取り出しも印のスクリプトを動かさない', async () => {
   const browser = await launch();
   try {

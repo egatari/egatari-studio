@@ -360,7 +360,6 @@
     "component": {
       "type": "object",
       "required": [
-        "tag",
         "name",
         "version",
         "sha256",
@@ -390,6 +389,19 @@
         },
         "path": {
           "$ref": "#/$defs/archivePath"
+        },
+        "requires": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Parts this part imports, name to exact version (spec §6.1)."
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SPDX license expression (spec §6)."
         }
       },
       "if": {
