@@ -455,10 +455,12 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,kokugo,info' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max') && !(await p8.$('#paste-series-paid')),
       'S8 ④: on the paid plan the guess is applied again without the limit of two (ハフマン → info; Business, turned off by hand, stays off), never all ticked, and every tile is pressable: ' + await checked(p8));
     ok((await strip(p8)) === catalog(['academic', 'kokugo', 'info'], 'paid'), 'S8 ④: under the paid plan the strip is every standard part with the chosen subjects: ' + await strip(p8));
+    ok((await text(p8, '#paste-series-social small')) === '日本地図・世界地図', 'S8 ④: on the paid plan the social tile names the world map too: ' + await text(p8, '#paste-series-social small'));
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: ['academic', 'kokugo', 'info'], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies the three chosen subjects');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
+    ok((await text(p8, '#paste-series-social small')) === '日本地図', 'S8 ④: back on the free plan the social tile says 日本地図 only');
     ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,english,info,social,music' && await p8.isDisabled('#paste-tool-timer') && await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます',
       'S8 ④: back to free with three ticks, the ticks come down to the first two in tile order, the timer tile is disabled too, and the limit message is shown');
     await p8.click('#paste-series-academic');

@@ -129,6 +129,11 @@ ok('part labels: every vendored part has a ja/en name and an icon; the standard 
   assert.equal(partLabel('m-new-thing', 'ja'), 'm-new-thing');
   assert.deepEqual(partOrder(['m-venn', 'm-menu', 'm-bars', 'm-zzz', 'm-flow']), ['m-bars', 'm-flow', 'm-menu', 'm-venn', 'm-zzz']);
   for (const x of SUBJECTS) assert.ok(x.label.ja && x.label.en && x.inside.ja && x.inside.en && x.icon, x.id);
+  // 有料のプランだけの中の図（FREE_OUT）がある分野は、有料のときの札の字（insidePaid）にその名前がある。無料の字には出さない
+  const soc = SUBJECTS.find((x) => x.id === 'social');
+  assert.ok(FREE_OUT.includes('m-map-world') && soc.insidePaid.ja.includes(PART_LABELS['m-map-world'].ja) && !soc.inside.ja.includes(PART_LABELS['m-map-world'].ja), 'social: 世界地図 only on the paid tile');
+  assert.deepEqual(soc.inside, { ja: '日本地図', en: 'Map of Japan' });
+  assert.deepEqual(soc.insidePaid, { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' });
 });
 ok('request section: kind, structure and presentation of the subcategory, and the purposes turned off', () => {
   const r = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: [] }, PURPOSES, 'ja');
