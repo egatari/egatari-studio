@@ -9,10 +9,10 @@ import { vendorComponents } from './vendor-components.mjs';
 // 部品の DOM がバイトまで同じで、縁から遠い画素が maxOff 個まで（各チャンネル maxCh 以下）、ほかは NOISE_BOUNDS の内側のときだけ通す。
 // macOS の m-cycle のスライド 1 の段階 5：前の項目（until 1.11.0）は v1.11.0 の修正を取り込んで消したが、v1.11.0〜v1.13.0 でも同じ揺れが残る
 // （部品の DOM はバイトまで同じで、(324,294)・(324,379) の 2 px が縁から遠いところで 29〜54/255 違う。CI でときどき落ちる）。
-// 直しは部品庫（egatari/components）に頼んだ。その版を取り込む 1.14.0 で期限が切れる
+// 直しは部品庫（egatari/components）に頼み、1.13.1 の修正として出る予定（1.x は 1.13.x で直しだけを出す）。それを取り込むと期限が切れる
 export const KNOWN = [
-  { platform: 'darwin', part: 'cycle', slide: 1, step: 5, until: '1.14.0', maxOff: 2, maxCh: 64,
-    label: 'KNOWN (macOS, cycle s1k5, until components 1.14.0)' },
+  { platform: 'darwin', part: 'cycle', slide: 1, step: 5, until: '1.13.1', maxOff: 2, maxCh: 64,
+    label: 'KNOWN (macOS, cycle s1k5, until components 1.13.1)' },
 ];
 
 const ver = (s) => String(s).replace(/^v/, '').split('.').map((x) => +x || 0);
