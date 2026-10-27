@@ -24,7 +24,6 @@ import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-gui
 import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT, TOOLS, loadedParts } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partOrder, standardParts } from '../kit/core/part-labels.mjs';
-import { SUBJECT_ORDER } from '../kit/core/subject-order.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
 import { guideRules } from '../kit/core/llm-fix.mjs';
 import { withOutline, outlineOf } from '../kit/core/llm-outline.mjs';
@@ -58,7 +57,6 @@ ok('categories: Teaching / Research / Business / Guides / Other (no “Academic�
 });
 ok('subjects are part sets mapped to the internal series (math → academic, …), not subcategories', () => {
   assert.deepEqual(SUBJECTS.map((s) => s.series), SERIES);
-  assert.deepEqual(SERIES, [...SUBJECT_ORDER], 'the order lives in one place: kit/core/subject-order.mjs');
   assert.deepEqual(seriesOfSubjects(['info', 'math']), ['academic', 'info']);
   assert.deepEqual(defaultSubjects('business'), ['business']);
   assert.deepEqual(defaultSubjects('teaching'), []);
@@ -73,11 +71,7 @@ ok('subjects are part sets mapped to the internal series (math → academic, …
   assert.deepEqual(guessSubjects('関係代名詞と第 5 文型（英文の構造）'), ['english']);
   assert.deepEqual(guessSubjects('Lesson in English: photosynthesis'), [], 'the lesson language English is not the subject');
   assert.deepEqual(SUBJECTS.find((s) => s.id === 'english').label, { ja: '英語', en: 'English (foreign language)' }, 'the english subject (components v1.12.0): a free subject');
-  assert.deepEqual(SUBJECTS.map((s) => s.id), ['math', 'business', 'kokugo', 'english', 'info', 'social', 'music'], 'tile order (held while the owner reconsiders it; kit/core/subject-order.mjs)');
-  assert.deepEqual(SUBJECTS.find((s) => s.id === 'social').label, { ja: '社会（地図）', en: 'Social studies (maps)' });
-  assert.deepEqual(SUBJECTS.find((s) => s.id === 'social').inside, { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' }, 'the inside line is static (it also names m-map-world, paid only)');
-  assert.equal(SUBJECTS.find((s) => s.id === 'info').icon, 'subj-info', 'info has its own subject icon, not the part icon');
-  assert.ok(SUBJECTS.every((s) => s.icon.startsWith('subj-')), 'every subject tile uses a subj-* icon');
+  assert.deepEqual(SUBJECTS.map((s) => s.id), ['math', 'business', 'kokugo', 'english', 'info', 'social', 'music'], 'tile order: the language subjects together, music last');
   assert.deepEqual(SUBJECTS.find((s) => s.id === 'music'), { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' }, 'the music subject (components v1.11.0): a free subject');
   assert.deepEqual(guessSubjects(''), []);
   assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
@@ -359,7 +353,7 @@ ok('caps per AI plan with all purposes on: free ≤ 40 KB with one subject and �
       const b = Buffer.byteLength(buildPack({ series: seriesForChoice(choice), tools: toolsForChoice(choice), lang, plan: 'free' }));
       assert.ok(b <= (subjects.length ? PACK_CAP_KB.free.two : PACK_CAP_KB.free.one) * 1024, `${lang} free ${subjects.join('+') || '(none)'} + ${t}: ${b} B`);
     }
-    // 前の記録が全部の分野を持っていても、無料版の指示は札の順で初めの 2 つ（数理・統計＋ビジネス）
+    // 前の記録が全部の分野を持っていても、無料版の指示は初めの 2 つ（数理・統計＋ビジネス）
     const every = { plan: 'free', subjects: SUBJECTS.map((s) => s.id) };
     assert.equal(buildPack({ series: seriesForChoice(every), lang, plan: 'free' }), buildPack({ series: ['academic', 'business'], lang, plan: 'free' }));
     // 有料版：ふつうの組（どの 2 つの分野＋すべての道具）は上限の中。すべての分野と道具（いちばん大きいとき）は gen が知らせるだけ

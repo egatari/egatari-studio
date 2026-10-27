@@ -7,7 +7,7 @@
 //   tile: "none"          札を作らない（grouping・text-structure・parameter。その部品は分野（パーツの組）から入る）。reserved の id も札にしない
 // manifest に tile が 1 つもない（部品庫 v1.5.0 までの manifest）ときは、決めた表 TILES（v1.6.0 の札と同じ 15 個）に写し、gen が警告を出す。
 // 札の並びは manifest の purposes の順（表のときは TILES の順）。札の数は manifest しだい（v1.6.0 は 15：2026-10-24 の 14 個と spatial「場所・地図」）。
-// spatial のパーツ（m-map-japan・有料版だけの m-map-world）は分野「社会（地図）」（系列 social）にだけある。入っていなければ、ほかのパーツのない札と同じく AI が HTML で描く。
+// spatial のパーツ（m-map-japan）は分野「地図（社会）」（系列 social）にだけある。入っていなければ、ほかのパーツのない札と同じく AI が HTML で描く。
 //
 // 材料の出どころ：部品庫のリリースの manifest.json（components:update が vendor/components/manifest.json に置く）の
 //   purposes：順のある配列 [{id, ja, en, steps: {ja, en}, reserved?, tile?, label?, examples?, icon?}]（reserved が真なら、まだ使う部品がない。札にも表にも使わない）
