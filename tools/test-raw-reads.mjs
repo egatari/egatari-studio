@@ -29,6 +29,7 @@ const SKIP = [
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
   ['tools/play-tap-measure.mjs', "JSON.parse(fs.readFileSync(cfg, 'utf8'))", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの設定のファイルを読む'],
+  ['tools/play-tap-measure.mjs', "matchAll(/<section class=", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの deck.html から、スライドの id（鍵）を読む'],
   ['tools/play-tap-measure.mjs', "r.end(fs.readFileSync(f))", 'Egatari Viewer の押しの計測：自分で組んだ _play/ のファイルを配る（試験のサーバー）'],
   ['tools/build-play.mjs', "JSON.parse(fs.readFileSync(rel('package.json'), 'utf8'))", 'Egatari Viewer の組み立て：リポジトリの package.json（版）を読む'],
   ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'lesson-shim.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/lesson-shim.js を読む'],

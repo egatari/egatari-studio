@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer-sharing.ja.md sha256=19c0b85683759f7f -->
+<!-- i18n: pair=viewer-sharing.ja.md sha256=4227b734c0fce4f5 -->
 # Opening a lesson on iPhone and iPad (Egatari Viewer)
 
 English | [日本語](viewer-sharing.ja.md)
@@ -27,7 +27,7 @@ Apps that open HTML themselves, such as Slack and Teams, play the file without t
 
 1. Once: open `viewer.egatari.org` and add it to the Home Screen. In Safari: Share → "View More" → "Add to Home Screen" → "Add". In Chrome: Share → "View More" → "Add to Home Screen" (keep "Open as Web App" on) → "Add". The Viewer's start screen shows the same tip. **Ega Viewer** appears on the Home Screen with the え icon, and from then on it opens without a network.
 2. Put the file on the device: in the app that received it (mail, Google Drive, a school app and so on), open the file's share menu and choose "Save to Files". A file in Google Drive can also stay there (step 3). Ega Viewer is not listed in the share sheet, so it cannot be opened from there directly.
-3. Open **Ega Viewer**, press **Open a file** → "Choose File", and choose the saved file. In an Ega Viewer added from Chrome, "Google Drive" is offered too. The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the control bar at the bottom: → (Next) moves on, and Captions shows the captions.
+3. Open **Ega Viewer**, press **Open a file** → "Choose File", and choose the saved file. In an Ega Viewer added from Chrome, "Google Drive" is offered too. The bar shows the lesson's title and "Egatari file (play-only)", and the lesson plays. Tap the slide to show the toolbar at the bottom: → (Next) moves on, and Captions shows the captions.
    - When it was added from Safari, Google Drive can probably still be chosen under "Choose File" if it is turned on as a location in the Files app (Browse → Edit). Not checked yet.
 4. Next time, open it from Recent files on the start screen (on a device several people use, turn on Shared device so nothing is kept).
 

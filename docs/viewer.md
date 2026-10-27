@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=cdcc498e396b742a -->
+<!-- i18n: pair=viewer.ja.md sha256=a6b85e2f9fcb0ab5 -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -71,7 +71,7 @@ The service worker (`play/sw.js`) caches only the page's own files, listed by th
 
 ## Touch
 
-The lesson's own player (`kit/tools.js`) shows its control bar (前へ, 次へ, 字幕, 読み上げで聞く …) on `pointermove`, which a finger tap does not send, and its buttons cancel `pointerdown`, after which WebKit sends no click for a tap. On an iPad the bar would show for its first seconds and never again. The page's shim (`play/lesson-shim.js`, item 3) therefore relays a trusted touch tap as one `pointermove` at the bottom edge (the bar wakes), and completes a tap on a bar button that got no click within 350 ms with one click on that button. The player itself is unchanged, so files made by any version behave the same; the player should take touch on its own later. `tools/test-viewer-webkit.mjs` checks this in Playwright's WebKit with iPad sizes.
+The lesson's own player (`kit/tools.js`) takes touch itself, so the page adds nothing for it: a tap on the slide wakes the toolbar (前へ, 次へ, 字幕, 読み上げで聞く …), a tap that wakes it does not press a button under it (`REVEAL_GUARD`, 350 ms), the bar is shown for 5 seconds when the lesson opens, and a small handle brings it back when it is hidden. The lesson shim (`play/lesson-shim.js`) only sets the embedding mode and hands links out of the lesson to the page. `tools/test-viewer-webkit.mjs` checks the bar, captions and read-aloud in Playwright's WebKit with iPad sizes.
 
 ## Building
 

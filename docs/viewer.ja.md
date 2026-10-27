@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=446c0db41def1bd3 -->
+<!-- i18n: pair=viewer.md sha256=1bb28f606942ea38 -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
@@ -71,7 +71,7 @@ service worker（`play/sw.js`）が覚えるのは、組み立てが一覧にし
 
 ## タッチ
 
-教材のプレーヤー（`kit/tools.js`）は、操作の帯（前へ・次へ・字幕・読み上げで聞く …）を `pointermove` で出しますが、指のタップは `pointermove` を送りません。帯のボタンは `pointerdown` を取り消すので、WebKit はタップの後に click を送りません。そのままでは iPad で帯が最初の数秒だけ出て、二度と出せません。そこでページの shim（`play/lesson-shim.js` の 3）が、信頼できるタッチのタップを下の端での `pointermove` 1 つとしてプレーヤーに渡し（帯が出る）、帯のボタンへのタップに 350 ms のうちに click が来なければ、そのボタンを 1 回押します。プレーヤーは変えていないので、どの版で作ったファイルも同じに動きます。後でプレーヤーそのものがタッチを扱うのがよいです。`tools/test-viewer-webkit.mjs` が Playwright の WebKit と iPad の大きさで確かめます。
+教材のプレーヤー（`kit/tools.js`）がタッチを自分で扱うので、ページは何も足しません。スライドのタップでツールバー（前へ・次へ・字幕・読み上げで聞く …）が起き、帯を起こしたタップはその下のボタンを押しません（`REVEAL_GUARD`、350 ms）。教材を開いたとき帯を 5 秒見せ、隠れている間は小さな取っ手から戻せます。教材の shim（`play/lesson-shim.js`）は、埋め込みの形にすることと、教材の外へ出るリンクをページに渡すことだけをします。`tools/test-viewer-webkit.mjs` が Playwright の WebKit と iPad の大きさで、帯・字幕・読み上げを確かめます。
 
 ## 組み立て
 

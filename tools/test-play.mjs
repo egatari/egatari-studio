@@ -51,7 +51,9 @@ const deck = path.join(deckDir, 'deck.html');
 await buildPortable(deck, {});   // docId
 const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const POLL_STEP = '何を最小化するか:0';
+// v0.6: a slide's key is its stable id (format spec §8.1; the build writes it into deck.html), not its title. The poll is on slide 2
+const SLIDE2 = [...fs.readFileSync(deck, 'utf8').matchAll(/<section class="slide[^"]*"[^>]*\bid="([^"]+)"/g)][1][1];
+const POLL_STEP = `${SLIDE2}:0`;
 const ACTS = { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'], label: '2 枚目・ステップ 1' }] };
 const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
 const cfg0 = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
@@ -82,7 +84,8 @@ put('marked.play.ega.html', marked(playOnly)); put('marked-live.play.ega.html', 
 // format spec §4.2: the file's own policy, first in <head> (F1 writes it into every file). Baseline: connect-src 'none' and the liveCsp shape
 const BASELINE = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'self' file:; worker-src 'none'; object-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'";
 if (liveCsp('https://live.egatari.org').replace(/connect-src [^;]+/, "connect-src 'none'") !== BASELINE) throw new Error('fixtures: the §4.2 baseline no longer matches kit/core/live.mjs liveCsp');
-put('csp.play.ega.html', playOnly.replace(/<head>\n?/, (h) => `${h}<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${BASELINE}">\n`));
+// v0.6 writes the policy into every file itself, so only add it when the build did not
+put('csp.play.ega.html', /http-equiv="Content-Security-Policy"/.test(playOnly) ? playOnly : playOnly.replace(/<head>\n?/, (h) => `${h}<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${BASELINE}">\n`));
 
 // ---------------------------------------------------------------- 1. the build
 console.log('build');
@@ -614,7 +617,7 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   const ask = fake.messages.find((m) => m.t === 'ask');
   ok(ask && Object.keys(ask).sort().join() === 'activity,ref,step,t,text,v', `live: only what the activity needs (${ask && Object.keys(ask).join(',')})`);
   await f.evaluate(() => DECK.go(1, 0));
-  ok(await until(() => o.p.evaluate(() => window.__play.state().live.step === '何を最小化するか:0')), 'live: the page learns the step from the lesson\'s position events');
+  ok(await until(() => o.p.evaluate((k) => window.__play.state().live.step === k, POLL_STEP)), 'live: the page learns the step from the lesson\'s position events');
   ok(await until(() => o.p.isVisible('#live fieldset[data-poll="p1"]')), 'live: a step with a poll shows the poll in the pane');
   await o.p.check('#live fieldset[data-poll="p1"] input[value="1"]');
   await o.p.click('#live fieldset[data-poll="p1"] button.vote');
@@ -622,7 +625,7 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   ok(!fake.messages.some((m) => /pos|position|time|play/i.test(m.t)), 'live: no viewing position or timing is sent');
   await f.evaluate(() => DECK.go(2, 0));
   ok(await until(() => o.p.evaluate(() => !document.querySelector('#live fieldset[data-poll="p1"]'))), 'live: leaving the step removes its poll');
-  await o.p.evaluate(() => window.postMessage({ egatari: 'position', slideKey: '何を最小化するか', stepKey: '0' }, '*'));
+  await o.p.evaluate((k) => window.postMessage({ egatari: 'position', slideKey: k, stepKey: '0' }, '*'), SLIDE2);
   await sleep(200);
   ok((await state(o.p)).live.step !== POLL_STEP, 'live: a position message that does not come from the frame is ignored');
   ok(await o.p.textContent('#b-leave') === '退出する', 'live: the leave button reads 「退出する」');

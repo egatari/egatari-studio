@@ -47,7 +47,8 @@ put('lesson.play.ega.html', playOnly);
 put('lesson.ega.html', (await buildPortable(deck, {})).html);
 put('not-egatari.html', '<!doctype html><title>x</title><p>hello</p>');
 const BASELINE = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'self' file:; worker-src 'none'; object-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'";
-put('csp.play.ega.html', playOnly.replace(/<head>\n?/, (h) => `${h}<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${BASELINE}">\n`));
+// v0.6 writes the policy into every file itself, so only add it when the build did not
+put('csp.play.ega.html', /http-equiv="Content-Security-Policy"/.test(playOnly) ? playOnly : playOnly.replace(/<head>\n?/, (h) => `${h}<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${BASELINE}">\n`));
 fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: { '*': [{ id: 'qa', kind: 'qa' }] } } } }, null, 2) + '\n');
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const now = Date.now();
@@ -101,7 +102,7 @@ for (const device of ['iPad (gen 11)', 'iPad (gen 11) landscape', 'iPad Mini']) 
   const box = await (await o.p.$('#lesson')).boundingBox();
   ok(box && box.width > 0.9 * vp.width && box.x >= 0 && box.x + box.width <= vp.width + 1 && await noScroll(o.p), `${device}: the lesson fills the width (${box && Math.round(box.width)} px), no horizontal scroll`);
   // the player's own controls (kit/tools.js): a tap on the slide shows the bar; 「次へ」 moves on; 「字幕」 shows the captions
-  // the bar shows for a moment when the lesson opens, then hides; a finger tap must bring it back (touch sends no pointermove)
+  // the bar shows for 5 seconds when the lesson opens, then hides; the player itself brings it back on a finger tap (no help from the page)
   await until(() => f.evaluate(() => { const c = document.getElementById('dt-cb'); return !!c && !c.classList.contains('show'); }), 8000);
   await o.p.tap('#lesson', { position: { x: box.width * 0.5, y: box.height * 0.4 } });
   ok(await until(() => f.evaluate(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show'); }), 3000), `${device}: a tap on the slide shows the player's control bar`);

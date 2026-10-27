@@ -339,6 +339,12 @@
       "pattern": "鍵盤",
       "term": "join-code",
       "reason": "鍵盤 (piano keyboard, the part m-keyboard and the subject Music) is another word that contains 鍵."
+    },
+    {
+      "file": "docs/viewer*.md",
+      "pattern": "「English」",
+      "term": "subject-english",
+      "reason": "The Viewer's language button is labelled 「English」 (the language name, not the school subject)."
     }
   ]
 }

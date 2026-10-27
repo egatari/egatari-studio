@@ -26,7 +26,8 @@ const deckDir = path.join(W, 'deck'); fs.cpSync(path.join(ROOT, 'examples', 'min
 const deck = path.join(deckDir, 'deck.html'); await buildPortable(deck, {});
 const fake = await startFakeLive();
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-const POLL_STEP = '何を最小化するか:0';
+// v0.6: a slide's key is its stable id (written into deck.html by the build), not its title
+const POLL_STEP = `${[...fs.readFileSync(deck, 'utf8').matchAll(/<section class="slide[^"]*"[^>]*\bid="([^"]+)"/g)][1][1]}:0`;
 const cfg = path.join(deckDir, FORMAT.CONFIG_FILE); const c0 = JSON.parse(fs.readFileSync(cfg, 'utf8'));
 fs.writeFileSync(cfg, JSON.stringify({ ...c0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: { '*': [{ id: 'qa', kind: 'qa' }], [POLL_STEP]: [{ id: 'p1', kind: 'poll', prompt: '学習率を大きくすると？', choices: ['速く収束', '発散しうる', '変わらない'] }] } } } }));
 const now = Date.now();

@@ -11,4 +11,4 @@
 
 ### Fixed
 
-- Egatari Viewer on touch screens: a tap on the slide brings back the player's control bar, and a tap on a bar button acts in WebKit (the page's lesson shim; the player is unchanged)
+- Egatari Viewer on touch screens: the player takes touch itself (wake tap, `REVEAL_GUARD`, the bar shown on open, a handle), so the page's lesson shim no longer relays taps or completes clicks
