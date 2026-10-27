@@ -142,8 +142,10 @@ css(
   " background:rgba(20,20,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 2px 12px rgba(0,0,0,.25);" +
   " opacity:0;pointer-events:none;transform:translate(-50%,6px);transition:opacity .25s,transform .25s;user-select:none;-webkit-user-select:none}" +
   "#dt-cb.show{opacity:.92;pointer-events:auto;transform:translate(-50%,0)}#dt-cb.show:hover{opacity:1}" +
+  // 幅の狭い画面（スマートフォンの縦など）：帯は画面の幅に収め、入りきらないボタンは次の行へ（2 行の帯は角を小さく丸める。区切りは行の端で消す）
+  "#dt-cb{box-sizing:border-box;width:max-content;max-width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center}#dt-cb.dt-wrap{border-radius:18px}#dt-cb.dt-wrap .sep{margin:0 2px}" +
   // 出し方の 1 行（帯の上）と、帯が隠れている間の左下の取っ手
-  "#dt-hint{position:fixed;left:50%;transform:translateX(-50%);z-index:35;max-width:calc(100vw - 32px);box-sizing:border-box;padding:5px 12px;border-radius:8px;" +
+  "#dt-hint{position:fixed;left:50%;transform:translateX(-50%);z-index:35;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:5px 12px;border-radius:8px;" +
   " background:rgba(20,20,20,.72);color:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,\"Hiragino Sans\",\"Segoe UI\",sans-serif;text-align:center;pointer-events:none}" +
   "#dt-handle{all:unset;position:fixed;left:8px;bottom:6px;z-index:34;box-sizing:border-box;width:34px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;" +
   " color:#fff;background:rgba(20,20,20,.45);opacity:0;cursor:pointer;transition:opacity .25s}" +
@@ -852,19 +854,23 @@ function buildBar(){
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
-  placeBar(); syncBar();
   buildHandle();
   // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
   openUntil = Date.now() + OPEN_MS;
   wake();              // 先に（帯の大きさを測る前に）出す：初めから出た状態で描き、フェードさせない
+  placeBar(); syncBar();   // 帯の高さ（狭い画面では 2 行）を測って置く
   if (!hintSeen()) showHint();
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
 function placeBar(){
   if (!cb) return;
   var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
-  cb._over = m < 44;
-  cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - 38) / 2))) + "px";
+  // 帯の高さ（狭い画面では 2 行になる）。隠れていても大きさは測れる
+  cb.classList.remove("dt-wrap");
+  var bh = cb.offsetHeight || 38;
+  if (bh > 50){ cb.classList.add("dt-wrap"); bh = cb.offsetHeight; }
+  cb._over = m < bh + 6;
+  cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - bh) / 2))) + "px";
   placeHint();
   liftCaptions();
 }
@@ -909,7 +915,10 @@ function showHint(){
   hint = document.createElement("div"); hint.id = "dt-hint"; hint.className = "deck-tools";
   // 読み上げソフトには知らせない（キーボードでは Tab でツールバーに入れる。取っ手は名前で読まれる）
   hint.setAttribute("aria-hidden", "true");
-  hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar";
+  // 指で操る端末（マウスのように上に置けない：hover: none）ではタップの言い方、それ以外はマウスの言い方
+  var tap = false; try { tap = matchMedia("(hover: none)").matches; } catch (e) {}
+  hint.textContent = tap ? (JA ? "画面をタップすると、ツールバーが出ます" : "Tap the screen to show the toolbar")
+    : (JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar");
   document.body.appendChild(hint);
   placeHint();
   try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
@@ -967,6 +976,8 @@ function syncBar(){
     a.title = (playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto) + kk("a");
     a.setAttribute("aria-label", playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto);
   }
+  // ボタンの数が変わって（ペンの色・編集モード）帯の行の数が変わったら、置き直す
+  if (cb.offsetHeight !== cb._h){ cb._h = cb.offsetHeight; placeBar(); }
 }
 
 // 開発サーバー・編集アプリのプレビューか（そこに入る server/hints.js が DECK_DEV を立てる）。そうなら e / n / c も一覧に載せる

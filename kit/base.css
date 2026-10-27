@@ -5,6 +5,9 @@ html,body{margin:0;height:100%;background:var(--stage-bg,#2f2f2f)}
 body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(--fg);overflow:hidden;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 #stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:50% 50%}
+/* 舞台（幅 1280px を縮めて見せる）を body の中で切る（body を舞台の箱にし、body の overflow を画面に移さない）。
+   そうしないと、スマートフォンのブラウザは縮める前の舞台の幅に合わせてページを広げ（縦の 390px が 660px ほどに）、スライドの左右が切れる */
+@media screen{html{overflow:hidden}body{position:relative}}
 /* スライド：重ねて描く。display を切り替えないので、隠れたスライドでも図の大きさを測れる */
 .slide{position:absolute;inset:0;width:1280px;height:720px;background:var(--bg);overflow:hidden;visibility:hidden;opacity:0}
 .slide.active{visibility:visible;opacity:1}
