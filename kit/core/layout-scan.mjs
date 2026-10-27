@@ -413,6 +413,42 @@ export function layoutScan(s, o) {
     note('cellWordBreak', { t: sample(tv), lines: line + 1, split: sample(split.replace(/\s+/g, ' ')) });
   });
   for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
+
+  // 章の扉（.sec）の題は h1。h2 だけで書いた扉を知らせる（#128。CSS は h2 も読めるようにしたが、書き方は h1 にそろえる）
+  if (s.classList.contains('sec') && s.querySelector('h2') && !s.querySelector('h1')) add('warn', 'secHeading', { t: sample((s.querySelector('h2').textContent || '').replace(/\s+/g, ' ').trim()) });
+
+  // 字と地のコントラスト（見出しと本文。計算した色で。WCAG 4.5:1 より低ければ警告。#128）：地は字の要素から上へ、色のある最初の background-color
+  // （背景の画像・グラデーションのある所、半透明の重ね、薄く見せている要素は測らない）。いちばん低いものを 1 つ知らせる
+  {
+    const cv = document.createElement('canvas'); cv.width = 1; cv.height = 1;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const rgbOf = (css) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const alphaOf = (css) => { const m = /rgba?\(([^)]*)\)/.exec(css); if (!m) return 1; const p = m[1].split(/[ ,/]+/).filter(Boolean); return p.length > 3 ? parseFloat(p[3]) : 1; };
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const ratioOf = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const own = (e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    let worst = null;
+    for (const e of s.querySelectorAll('h1, h2, h3, .lead, .concl, .body p, .body li, .body td, .body th, .body dt, .body dd, .body span, .body div')) {
+      if (!own(e) || e.closest('svg, .katex, [aria-hidden="true"]')) continue;
+      let custom = false, faint = false, bg = null, skip = false, op = 1;
+      for (let a = e; a; a = a.parentElement) {
+        if (a.tagName.includes('-')) { custom = true; break; }
+        const cs = getComputedStyle(a);
+        op *= parseFloat(cs.opacity);
+        if (cs.display === 'none' || cs.visibility === 'hidden') { skip = true; break; }
+        if (cs.backgroundImage && cs.backgroundImage !== 'none') { skip = true; break; }
+        if (!bg && cs.backgroundColor) { const al = alphaOf(cs.backgroundColor); if (al >= 0.99) bg = cs.backgroundColor; else if (al > 0.01) { skip = true; break; } }
+      }
+      if (custom || skip || op < 0.99) faint = true;
+      if (faint) continue;
+      const ccs = getComputedStyle(e).color;
+      if (alphaOf(ccs) < 0.99) continue;
+      const fg = rgbOf(ccs), back = rgbOf(bg || '#fff');
+      const r = ratioOf(fg, back);
+      if (r < 4.5 && (!worst || r < worst.r)) worst = { r, tag: e.tagName.toLowerCase(), t: sample((e.textContent || '').replace(/\s+/g, ' ').trim()) };
+    }
+    if (worst) add('warn', 'textContrast', { ratio: worst.r.toFixed(2), min: 4.5, tag: worst.tag, t: worst.t });
+  }
   return out;
 }
 

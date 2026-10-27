@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=e86614ffa33fa073 -->
+<!-- i18n: pair=reference.ja.md sha256=78dfb498f30dd90d -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -35,7 +35,7 @@ Normative: format spec §8.0 (slides, steps, kinds of slide, math, references) a
 | `<section class="slide">` inside `<div id="stage">` | one slide (1280×720). `<h2>` heading, `<div class="body">` body, `<div class="concl"><span>…</span></div>` conclusion line |
 | `class="slide cover"` | cover. Its children are `.venue` (venue or course, top 120px), `<h1>` (title, top 200px; a subtitle goes on a second line after `<br>`, as in `<h1>Title<br>Subtitle</h1>`, or into `.venue`) and `.au` (authors and affiliation, top 450px; several lines with `<br>`); theme logos are added at the bottom left (`.logos`). These are absolutely positioned, and the cover has no `.body`: any other element (such as `<p class="sub">`) is not placed and lands at the top edge over the band. Place other text yourself with `position:absolute` and `top` in the slides' `<style>`, in free space. The quality check warns when text goes off the slide or overlaps other text or the band (`textOffSlide`, `textOverlap`) |
 | `data-nologos` on the cover | no theme logos on this cover (also skipped when the cover already has a `.logos` element) |
-| `class="slide sec"` | chapter divider (`<h1>` at top 300px, `.lead` at top 390px; other text is placed as on the cover). Starts a chapter for `--full` video export |
+| `class="slide sec"` | chapter divider: the title is `<h1>` (an `<h2>` is shown the same way, and the quality checker warns) (`<h1>` at top 300px, `.lead` at top 390px; other text is placed as on the cover). Starts a chapter for `--full` video export |
 | `class="slide sec appendix"` | appendix divider. Page numbers after it read 付録 / Appendix. Without `appendix`, a `sec` slide whose text contains 付録 or Appendix also counts |
 | `class="… static"` | no steps at all: everything visible, `.concl` is not a separate step |
 | `class="… nostep"` | do not turn list items into steps automatically |
@@ -390,6 +390,8 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | turn > 200 characters (Japanese) / > 60 words (other languages) | info |
 | the script language differs from the slide language (`narrLang`) | info |
 | contrast of `--fg --term --emph --title --accent2` vs `--bg` < 4.5:1; `--muted` < 3:1 | error; warn |
+| on each slide, text of a heading or the body against the background behind it (computed colours; not over images or gradients, not faint text) < 4.5:1, the lowest one per slide — `textContrast` | warn |
+| a chapter divider (`class="slide sec"`) with an `<h2>` and no `<h1>` (the title of a divider is `<h1>`; an `<h2>` is shown the same way) — `secHeading` | warn |
 | part drawing depends on call order | error |
 | emphasis target not found; list of emphasis per step | warn; info |
 | morph: source slide missing, no shared `data-id`, duplicate ids; pairs | warn; info |

@@ -139,6 +139,8 @@ steps.push(
   ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
+  // 章の扉の h2（#128）と、字と地のコントラストの警告
+  ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],

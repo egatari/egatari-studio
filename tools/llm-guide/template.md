@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=486e382e646e2afc -->
+<!-- i18n: pair=template.ja.md sha256=0cde370c9bf84513 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -77,10 +77,11 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
+- Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
 - Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo series pack, which describes it), and the `data-morph` attribute (§2.5).
 - Inside `.body`: `<p class="sub">` sub-heading, `<div class="big">` main equation, `<p class="note">` note, `<div class="thm">` theorem box, `<div class="cols">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
-- **R-headings** Every slide heading (`h1` on the cover, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
+- **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
 - **R-colors** Colors only through the theme: the classes above and the math macros `\hlE` `\hlT` `\hlM`; no hex, `rgb()`, named colors, `\color` or `\textcolor`. In a component or inline SVG: {{contract §3 "**Use only the theme's CSS variables"}}
 
 ### 2.3 Steps (reveal order = speaking order)

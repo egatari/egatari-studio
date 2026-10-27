@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=7978847496a5f7cb -->
+<!-- i18n: pair=template.md sha256=3c217cda25bf790d -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 
@@ -77,10 +77,11 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
+- 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
 - `<section>` の class：`noconcl`（結論の行なし）、`static`（段階なし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の系列の指示があるときだけ）、属性 `data-morph`（§2.5）
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
-- **R-headings** スライドの見出し（表紙は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を足す）。そのスライドの口述原稿の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
+- **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を足す）。そのスライドの口述原稿の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
 - **R-colors** 色はテーマだけで：上の class と式のマクロ `\hlE` `\hlT` `\hlM`。16 進・`rgb()`・色の名前・`\color`・`\textcolor` は使わない。部品や SVG の中では：{{contract §3 "**色はテーマの CSS 変数だけ"}}
 
 ### 2.3 段階（出す順 = 話す順）

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d44a07bd9fd5259b -->
+<!-- i18n: pair=reference.md sha256=f8528cbd3e2e757d -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -35,7 +35,7 @@
 | `<div id="stage">` の中の `<section class="slide">` | 1 枚（1280×720）。`<h2>` 見出し、`<div class="body">` 本文、`<div class="concl"><span>…</span></div>` 結論の行 |
 | `class="slide cover"` | 表紙。子要素は `.venue`（会場・授業の名前。top 120px）、`<h1>`（題名。top 200px。副題は `<br>` のあとの 2 行目に書くか（`<h1>題名<br>副題</h1>`）、`.venue` に入れる）、`.au`（著者・所属。top 450px。`<br>` で何行でも）で、テーマのロゴが左下に入る（`.logos`）。どれも絶対位置で、表紙には `.body` がない。ほかの要素（`<p class="sub">` など）は置き場所が決まらず、スライドの上端の帯に重なる。ほかの字は、スライドの `<style>` で `position:absolute` と `top` を決めて空いた場所に置く。字がスライドの外に出る・ほかの字や帯に重なると品質チェックが警告する（`textOffSlide`・`textOverlap`） |
 | 表紙に `data-nologos` | この表紙にはロゴを入れない（表紙に `.logos` の要素が既にあるときも入れない） |
-| `class="slide sec"` | 章の扉（`<h1>` は top 300px、`.lead` は top 390px。ほかの字は表紙と同じく自分で置く）。動画の `--full` の章の始まり |
+| `class="slide sec"` | 章の扉。題は `<h1>`（`<h2>` でも同じに見せ、品質チェックが知らせる）（`<h1>` は top 300px、`.lead` は top 390px。ほかの字は表紙と同じく自分で置く）。動画の `--full` の章の始まり |
 | `class="slide sec appendix"` | 付録の扉。以降のページ番号は「付録」/ Appendix。`appendix` がなくても、文字に「付録」か Appendix を含む `sec` は付録の扉とみなす |
 | `class="… static"` | ステップなし：全部見せる。`.concl` も別のステップにしない |
 | `class="… nostep"` | 箇条書きを自動でステップにしない |
@@ -389,6 +389,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 1 ターンが 200 字（日本語）/ 60 語（ほかの言語）を超える | 情報 |
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
+| スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
+| 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |
 | モーフ：元のスライドが無い、同じ `data-id` が無い、ID の重複。対応の一覧 | 警告。情報 |

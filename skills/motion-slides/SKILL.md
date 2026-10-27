@@ -70,7 +70,7 @@ Always reply in the language the user writes in, not the language of this file. 
 | 書き方 | 意味 |
 |---|---|
 | `<section class="slide">` | 1 枚。`<h2>` に章の見出し、`<div class="body">` に本文、`<div class="concl"><span>…</span></div>` に結論の行 |
-| `class="cover"` / `class="sec"` | 表紙 / 章・付録の扉（付録は `class="sec appendix"`。以降のページ番号は「付録」） |
+| `class="cover"` / `class="sec"` | 表紙 / 章・付録の扉（付録は `class="sec appendix"`。以降のページ番号は「付録」）。どちらも題は `<h1>`（扉に `<h2>` を書かない） |
 | `class="noconcl"` / `"static"` / `"nostep"` | 結論の行なし / ステップなし（表紙・付録）/ 箇条書きも初めから全部 |
 | `class="layout-tate"` | 縦組みのスライド：見出しは右端の縦の列（14 字まで）、本文は縦書き、結論は左端の縦の列（19 字まで）。パーツは縦書きの指定（`m-gendai tate` など）で |
 | `<p class="sub">` `<div class="big">` `<p class="note">` `<div class="thm">` `<div class="cols">` | 小見出し / 主要な式 / 補足 / 定理の枠 / 横並び |
