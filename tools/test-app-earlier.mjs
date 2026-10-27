@@ -186,7 +186,8 @@ try {
   await page.evaluate(() => window.__APP_TEST.rebuild());
   ok(!(await notice(page)) && (await state(page)).earlier === null, 'folder: after the ids are added, the notice goes away');
   // 1.0 の作業フォルダ（どのスライドにも id があり、egatari.json がある）に、id のないスライドを手で 1 枚足した：知らせなし・編集できる
-  const added = moved.replace('</div>\n</body>', '<section class="slide">\n  <h2>手で足したスライド</h2>\n</section>\n</div>\n</body>');
+  // 改行は deck.html のまま（Windows の checkout では CRLF。'\n' 決め打ちだと置き換わらない）
+  const added = moved.replace(/<\/div>(\r?\n)<\/body>/, (m0, nl) => `<section class="slide">${nl}  <h2>手で足したスライド</h2>${nl}</section>${nl}</div>${nl}</body>`);
   ok(added !== moved && analyzeSlideIds(added).slides.filter((s) => s.id === null).length === 1, 'folder: test adds one slide without an id by hand');
   await writeFolder('current', { 'deck.html': added, 'narration.md': narr, [FORMAT.CONFIG_FILE]: JSON.stringify({ docId: '3f2c9a8e-1b2d-4c5e-9f00-112233445566' }, null, 2) + '\n' });
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dir)) === true && !(await notice(page)) && (await state(page)).earlier === null, 'folder: egatari.json and a hand-added slide without an id → no earlier-version notice');
