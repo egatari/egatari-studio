@@ -50,7 +50,7 @@ const STR = {
     discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No script for this step yet. Start with “Add a turn”',
     speaker: 'Speaker', expert: 'Explainer (Expert)', novice: 'Questioner (Novice)', tPlace: 'What to say. {cue} marks a sync point, {φ|phi} sets a reading',
     up: 'Move up', del: 'Delete', delT: 'Delete this turn', add: '+ Add a turn', nConflict: 'The script has changed. Please reload (copy what you typed first)',
-    noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', noNext: 'No next step', noNarr: '(no script)',
+    noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', concl: 'conclusion line', noNext: 'No next step', noNarr: '(no script)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the slides', noOpen: (alt) => 'No open comments. ' + alt + '+click on a slide to leave one',
     pinAt: (x, y) => 'at ' + x + ', ' + y + ' on the slide', pinT: 'Where you clicked (slide coordinates, 1280×720)',
     inkMark: 'Marker line', inkMarks: (n) => n + ' marker lines', inkT: 'The lines you drew (in comments.json as strokes)', inkMore: 'Keep drawing on the slide to add lines to this comment (up to 20)', inkFull: 'A comment holds at most 20 lines', ink: 'Marker (m)', inkTip: 'Circle or point to a spot, then add a comment (draw circles or arrows on the slide, several lines for one comment, then write it; the pen button in the slide’s toolbar also opens it, and so does d)',
@@ -70,7 +70,7 @@ const STR = {
     discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'このステップの台本はまだありません。「発言を足す」で書き始めます',
     speaker: '話者', expert: '説明する人（Expert）', novice: '質問する人（Novice）', tPlace: '話す内容。{cue} で同期点、{φ|ファイ} で読みを指定できます',
     up: '前へ', del: '削除', delT: 'この発言を消す', add: '＋ 発言を足す', nConflict: '台本が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）',
-    noChange: '変更はありません', next: (k, other) => '次のステップ（' + k + (other ? '、次のスライド' : '') + '）', noNext: '次のステップはありません', noNarr: '（台本なし）',
+    noChange: '変更はありません', next: (k, other) => '次のステップ（' + k + (other ? '、次のスライド' : '') + '）', concl: '結論の行', noNext: '次のステップはありません', noNarr: '（台本なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'このステップはスライドにありません', noOpen: (alt) => '未対応のコメントはありません。スライドの上で ' + alt + '+クリックすると残せます',
     pinAt: (x, y) => 'スライドの ' + x + ', ' + y, pinT: '押した所（スライドの座標、1280×720）',
     inkMark: 'マーカーの線', inkMarks: (n) => 'マーカーの線 ' + n + ' 本', inkT: '描いた線（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このコメントに線を足せます（20 本まで）', inkFull: '1 つのコメントの線は 20 本まで', ink: 'マーカー（m）', inkTip: '丸や矢印で場所を示して、コメントを付ける（スライドに描いてから書きます。1 つのコメントに何本でも。スライドのツールバーのペンのボタンでも開く。d でも開く）',
@@ -259,6 +259,8 @@ export function createEditorUI(o) {
   const win = doc.defaultView || window;
   const EN = o.lang === 'en';
   const L = EN ? STR.en : STR.ja;
+  // ステップの見せ方：結論の行のステップ（鍵 concl）は「結論の行」、ほかは番号
+  const stepLab = (k) => (k === 'concl' ? L.concl : k);
   const ALT = /mac|iphone|ipad/i.test((win.navigator.userAgentData && win.navigator.userAgentData.platform) || win.navigator.platform || win.navigator.userAgent) ? '⌥ option' : 'Alt';
   const api = (m, u, b) => Promise.resolve(o.api(m, u, b)).then((j) => (j && typeof j === 'object' ? j : { _status: 0 }), () => ({ _status: 0, _offline: true }));
   const enabled = () => !o.enabled || o.enabled();
@@ -671,7 +673,7 @@ export function createEditorUI(o) {
     if (narr && narr.dirty) {
       if (narr.key === key) return;
       const stale = drawer.querySelector('.dv-stale');
-      if (stale) { stale.style.display = 'block'; stale.textContent = L.nStale(key); }
+      if (stale) { stale.style.display = 'block'; stale.textContent = L.nStale(stepLab(splitKey(key)[1])); }
       return;
     }
     const sk = splitKey(key);
@@ -695,7 +697,7 @@ export function createEditorUI(o) {
     const saveBtn = h('button', { cls: 'dv-pri', text: L.save });
     const revert = h('button', { text: L.cancel, title: L.revertT });
     const body = h('div', { cls: 'dv-body' });
-    drawer.appendChild(h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.nTitle }), h('span', { cls: 'dv-m', text: L.step + narr.stepKey }), h('span', { cls: 'dv-sp' }),
+    drawer.appendChild(h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.nTitle }), h('span', { cls: 'dv-m', text: narr.stepKey === 'concl' ? L.concl : L.step + narr.stepKey }), h('span', { cls: 'dv-sp' }),
       h('button', { cls: 'dv-ghost', text: '✕', title: L.closeN, on: { click: () => toggleNarr(false) } })]));
     drawer.appendChild(h('div', { cls: 'dv-sub', text: L.slide(narr.i + 1, String(title).replace(/\s+/g, ' ').trim()) }));
     drawer.appendChild(body);
@@ -767,7 +769,7 @@ export function createEditorUI(o) {
     if (!box || !pos || !narr) return;
     const nk = typeof pos.nextKey === 'string' ? pos.nextKey : null;
     box.innerHTML = '';
-    box.appendChild(h('div', { cls: 'dv-lab', text: nk ? L.next(splitKey(nk)[1], splitKey(nk)[0] !== narr.slideKey) : L.noNext }));
+    box.appendChild(h('div', { cls: 'dv-lab', text: nk ? L.next(stepLab(splitKey(nk)[1]), splitKey(nk)[0] !== narr.slideKey) : L.noNext }));
     if (!nk) return;
     const want = nk;
     api('GET', '/__dev/narration?key=' + encodeURIComponent(nk)).then((j) => {
