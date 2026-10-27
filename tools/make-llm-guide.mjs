@@ -137,6 +137,10 @@ const PACK_EDITS = {
   'm-gendai': [
     { find: '線と枠は字の位置を測って SVG で描く。描くたびに測るので、呼び出しの順によらない（字が読み込まれる前と後では位置が違うので、品質チェックと動画は字を待ってから撮る）。\n', ja: '', en: '' },
   ],
+  // range：鍵盤に入らない鍵を書く誤りが多いので、使う鍵を全部含めることを先に言う（規格の求め。0.6.0）
+  'm-keyboard': [
+    { find: '- `range`：両端は白鍵、1〜3 オクターブ', ja: '- `range`：使う鍵を全部含める。両端は白鍵、1〜3 オクターブ', en: '- `range`：使う鍵を全部含める。両端は白鍵、1〜3 オクターブ（Include every key you use; both ends white keys, 1–3 octaves.）' },
+  ],
   'm-menu': [
     // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
     { find: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。', ja: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。', en: '目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。（Add the menu after import; in the first draft use a plain list.）' },
@@ -145,6 +149,23 @@ const PACK_EDITS = {
     { find: '  <a href="lesson2.ega.html" data-sub="次の課">返り点の練習</a>\n', ja: '', en: '' },
   ],
 };
+// 一覧の行（内容・データの形の欄）の言い換え。PACK_EDITS と同じ決まり（find が行になければ失敗）。lang があればその言語の行だけ（データの形の注記は言語ごと）
+const ROW_EDITS = {
+  'm-keyboard': [
+    // 0.6.0 のプレーヤーは events(k) を呼ばないので、部品は音を鳴らさない。音は #114（0.6.3）で入る：そのとき「光らせて音も鳴らす」に戻す
+    { find: '音階・和音・半音と全音を光らせて音も鳴らす', to: '音階・和音・半音と全音を光らせる' },
+    { lang: 'ja', find: '（両端は白鍵、1〜3 オクターブ）', to: '（使う鍵を全部含める。両端は白鍵、1〜3 オクターブ）' },
+    { lang: 'en', find: '(white keys at both ends, 1–3 octaves)', to: '(include every key you use; white keys at both ends, 1–3 octaves)' },
+  ],
+};
+function applyRowEdits(name, row, lang) {
+  let out = row;
+  for (const e of (ROW_EDITS[name] || []).filter((x) => !x.lang || x.lang === lang)) {
+    if (!out.includes(e.find)) throw new Error(`ROW_EDITS ${name}: ${JSON.stringify(e.find)} is not in the ${lang} catalog row any more (review tools/make-llm-guide.mjs)`);
+    out = out.replace(e.find, () => e.to);
+  }
+  return out;
+}
 function applyPackEdits(name, body, lang) {
   let out = body;
   for (const e of PACK_EDITS[name] || []) {
@@ -227,7 +248,7 @@ function shapeExample(c, lang) {
 }
 const TIMING = /秒数|（秒）/;
 const TABLE_HEAD = { ja: '| 部品 | 内容 | steps | データの形 |\n|---|---|---|---|', en: '| component | what it shows | steps | data shape |\n|---|---|---|---|' };
-const rowOf = (c, lang) => `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`;
+const rowOf = (c, lang) => applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`, lang);
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
 function entryOf(c, lang, shown = new Set()) {
