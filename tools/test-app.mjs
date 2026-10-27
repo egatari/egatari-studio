@@ -762,8 +762,14 @@ try {
     mem = await wsFiles();
     ok(mem['narration.md'].toString().includes('1 ファイルで書き直した口述原稿です。'), 'portable narration: narration.md changed in memory');
     ps = await pstate();
-    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === `${K('何を最小化するか')}:0` && ps.warn.some((w) => w.includes(`${K('何を最小化するか')}:0`)), `portable narration: the edited step is shown as stale (${ps.portable.stale.join(', ')})`);
+    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === `${K('何を最小化するか')}:0` && !ps.warn.some((w) => w.includes(`${K('何を最小化するか')}:0`)), `portable narration: the edited step is stale, and not listed again as a build warning (${ps.portable.stale.join(', ')})`);
     await page.click('#b-narr');
+    // 品質チェックの板：そのスライドの指摘として出る（中の鍵は見せない）
+    await page.click('#b-check');
+    await page.waitForSelector('#panel-body .sum');
+    const staleRes = await page.evaluate(() => [...document.querySelectorAll('#panel-body .res.warn')].map((r) => r.textContent).find((t) => t.includes('音声の更新が必要')) || '');
+    ok(/ステップ 0。/.test(staleRes) && staleRes.includes('スライド 2') && !/s-[a-z0-9]{6}/.test(staleRes), `portable narration: the Quality check lists the stale step on its slide, without the internal key (${staleRes})`);
+    await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
 
     // 保存：スライドを直したので段 B（組み直す）。保存の前に、編集していないスライドの見え方が変わりうることを知らせる
     await clickCommand(page, '#b-save');
@@ -1397,6 +1403,32 @@ try {
         const m = /(\d+)\D+(\d+)/.exec(sum);
         ok(m && +m[1] === bd.errs && +m[2] === bd.warns && bd.hidden === (bd.errs + bd.warns === 0) && bd.bad === (bd.errs > 0) && !(await pt.evaluate(() => window.__APP_TEST.ui().edit)), `badge (${lang}): after a build the quick check runs by itself and the badge shows its counts (${bd.errs} / ${bd.warns}, "${bd.text}"; panel "${sum}")`);
         await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        // 組み立ての警告（無い目印 {mark:zzq}）：警告の数に入り、中の名前（## s-…・narration.md の行）を見せず、押すとそのスライドへ
+        const nar0 = await pt.evaluate(async () => (await (await window.__open.getFileHandle('narration.md')).getFile()).text());
+        const putNarr = (t) => pt.evaluate(async (x) => { const w = await (await window.__open.getFileHandle('narration.md')).createWritable(); await w.write(x); await w.close(); }, t);
+        await putNarr(nar0.replace('{mark:grad}', '{mark:zzq}'));
+        const nb = await pt.evaluate(() => window.__APP_TEST.state().builds);
+        await pt.evaluate(() => window.__APP_TEST.rebuild());
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n && window.__APP_TEST.state().warn.some((w) => w.includes('zzq')), nb, { timeout: 30000 });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+        await pt.click('#b-check');
+        await pt.waitForSelector('#panel-body .sum');
+        await pt.waitForSelector('#panel-body #check-buildwarn li');
+        const bw = await pt.evaluate(() => ({ sum: document.querySelector('#panel-body .sum').textContent, n: window.__APP_TEST.state().warn.length,
+          checked: document.querySelectorAll('#panel-body .res.warn').length, text: document.getElementById('check-buildwarn').textContent,
+          go: [...document.querySelectorAll('#check-buildwarn li.go')].map((li) => li.textContent), badge: window.__APP_TEST.badge() }));
+        const mw = /(\d+)\D+(\d+)/.exec(bw.sum);
+        ok(mw && +mw[2] === bw.checked + bw.n && bw.n > 0 && bw.badge.warns === +mw[2], `build warnings (${lang}): counted in the summary and the badge ("${bw.sum}" = ${bw.checked} checker + ${bw.n} build; badge "${bw.badge.text}")`);
+        ok(!/## s-|narration\.md|\[\d+\]/.test(bw.text) && bw.go.length === 1 && bw.go[0].includes(lang === 'en' ? 'slide 3' : 'スライド 3') && bw.go[0].includes(lang === 'en' ? 'Emphasis: ' : '強調：'), `build warnings (${lang}): no internal names; the slide number and title instead (${bw.go[0]})`);
+        await pt.click('#check-buildwarn li.go');
+        await pt.waitForFunction(() => window.__APP_TEST.state().pos && window.__APP_TEST.state().pos.i === 2, null, { timeout: 5000 }).catch(() => {});
+        ok((await pt.evaluate(() => window.__APP_TEST.state().pos?.i)) === 2, `build warnings (${lang}): clicking one goes to its slide`);
+        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        await putNarr(nar0);
+        const nb2 = await pt.evaluate(() => window.__APP_TEST.state().builds);
+        await pt.evaluate(() => window.__APP_TEST.rebuild());
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n, nb2, { timeout: 30000 });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
       }
       // 品質チェックの札がいちばん長いとき（エラーも警告も 2 桁）
       await pt.evaluate(() => { const b = document.getElementById('b-check-badge'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 errors · 12 warnings' : 'エラー 12 · 警告 12'; b.classList.add('bad'); });

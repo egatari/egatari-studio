@@ -42,6 +42,7 @@ import { TEMPLATES } from '../kit/core/slide-ops.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { setupLlm } from './llm.js';
+import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
@@ -192,7 +193,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  autoSeq++; clearTimeout(autoTimer); showBadge(0, 0);
+  autoSeq++; clearTimeout(autoTimer); showBadge(0, 0, 0);
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -477,7 +478,6 @@ async function rebuild(reason) {
         // 構成案（egatari.json の studio.outline。長い教材を 6 枚ずつ作る途中）：残りがあれば知らせに「次の 6 枚を頼む」
         try { S.outline = outlineOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { S.outline = null; }
         if (S.ws !== ws0 || S.gen !== g0) continue;
-        for (const k of stale) S.warn.push(T.staleStep(k));
         // 前の版の作業フォルダ：移し替え（npm run ids）が済めば、知らせを消して編集できるようにする
         if (S.earlier && S.earlier.kind === 'folder') {
           const e = await folderEarlier(S.ws);
@@ -525,14 +525,14 @@ function showError(err) {
   $('errtext').textContent = err || '';
 }
 // 組み立ての警告（と保存の警告）の数を、道具の列の「品質チェック」の札に出す（一覧は品質チェックの板の先頭）
-// 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告は板の先頭の一覧に
-// （札には数えない）。品質チェックは、プレビューを読み込み終えたたびに少し待ってから、組み立てが終わっているときだけかける（autoCheck）
-function showBadge(errs, warns) {
-  const b = $('b-check-badge'), n = errs + warns;
+// 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告（build。一覧は板の先頭）も
+// 警告に数える（板の「エラー · 警告」と同じ数）。品質チェックは、プレビューを読み込み終えたたびに少し待ってから、組み立てが終わっているときだけかける（autoCheck）
+function showBadge(errs, checkWarns, build = S.warn.length) {
+  const b = $('b-check-badge'), warns = checkWarns + build, n = errs + warns;
   b.hidden = !n;
   b.textContent = n ? T.checkBadge(errs, warns) : '';
   b.classList.toggle('bad', errs > 0);
-  S.badge = { errs, warns };
+  S.badge = { errs, warns, checked: checkWarns };
 }
 const AUTO_CHECK_MS = 1000;
 let autoTimer = 0, autoSeq = 0;
@@ -551,13 +551,19 @@ async function autoCheck() {
 }
 function showWarn() {
   if (!$('panel').hidden && $('check-panel')) $('check-buildwarn')?.replaceWith(buildWarnBox());
+  if (S.badge) showBadge(S.badge.errs, S.badge.checked || 0);   // 保存の警告が増えた：札の数も
   showNotice();
 }
 // 組み立ての警告の一覧（見つからないテーマの知らせには「テーマを読み込む…」。前に選んだフォルダがあれば「使う」）
 function buildWarnBox() {
   if (!S.warn.length) return el('div', { id: 'check-buildwarn', hidden: '' });
   return el('details', { id: 'check-buildwarn', cls: 'buildwarn', open: '' }, [el('summary', { text: T.checkBuildWarn(S.warn.length) }),
-    el('ul', {}, S.warn.map((w) => el('li', { text: w }, THEME_MISSING.test(w) ? [el('div', { cls: 'row theme-warn' }, themeButtons())] : [])))]);
+    el('ul', {}, S.warn.map((w) => {
+      // 中の名前は見せず、スライドが分かればその番号と見出し。押すとその枚へ（品質チェックの指摘と同じ）
+      const v = warnView(w, S.slides, T), go = v.i === null ? null : () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-go', i: v.i, k: 0 }, '*'); };
+      return el('li', go ? { cls: 'go', onclick: go } : {}, [v.text, ...(go ? [el('div', { cls: 'where', text: T.slideN(v.i + 1, (S.slides[v.i] || {}).heading || '') })] : []),
+        ...(THEME_MISSING.test(w) ? [el('div', { cls: 'row theme-warn' }, themeButtons())] : [])]);
+    }))]);
 }
 
 // ---------------------------------------------------------------- 利用者のテーマのフォルダ（app/theme-folder.js。読むだけ）
@@ -1027,7 +1033,7 @@ async function checkResults() {
     for (const p of left.steps) { const i = (S.slides || []).findIndex((x) => x.key === p.slideKey); results.push({ sev: 'warn', code: 'narrPlaceholder', arg: p.stepKey, i: i < 0 ? null : i, title: title(i < 0 ? null : i) }); }
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
-  for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k.slice(k.lastIndexOf(':') + 1), i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
   return results;
 }
 async function quickCheck() {
@@ -1037,8 +1043,8 @@ async function quickCheck() {
   const results = await checkResults();
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checkFailed }), buildWarnBox()]); return; }
-  const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
-  showBadge(errs, warns);
+  const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length + S.warn.length;
+  showBadge(errs, warns - S.warn.length);
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
     el('span', { text: T.checkMsg(r.code, r.arg) }),
