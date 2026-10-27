@@ -43,8 +43,8 @@ jobs:
   # Browser: kit/browser.mjs tries CHROME_PATH, then Google Chrome, then Playwright's Chromium (installed below).
   test:
     runs-on: ubuntu-latest
-    # Linux took up to 28 min on main (test 22), so 30 min was too tight
-    timeout-minutes: 45
+    # Linux: npm test now runs past 45 min (test 24 on v0.6-integration was cancelled at 45 min while still passing; test-components alone takes about 545 s), so the job and each test-all step get more time
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +67,7 @@ jobs:
         # CI=true makes tools/test-all.mjs stream every test's output; MOTION_TEST_ARTIFACTS: screenshots go to a fixed folder that the upload step reads
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
+          TEST_STEP_TIMEOUT_S: '900'
         run: npm test
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
@@ -85,8 +86,8 @@ jobs:
   # Tier 1 on Windows: paths (C:\...), file:// URLs, CRLF checkouts. Uses the preinstalled Google Chrome (no Playwright Chromium).
   windows:
     runs-on: windows-latest
-    # Windows took up to 26.5 min, so 30 min was too tight
-    timeout-minutes: 45
+    # Windows: npm test now runs past 45 min (cancelled at 45 min on v0.6-integration while still passing; test-components alone takes about 575 s, near the default 600 s step cap), so the job and each test-all step get more time
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -99,6 +100,7 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
+          TEST_STEP_TIMEOUT_S: '900'
         run: npm test
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
