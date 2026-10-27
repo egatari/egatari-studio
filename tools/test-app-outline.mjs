@@ -118,8 +118,11 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.fill('#paste-narr', replyOf(b2.deck, b2.narr));
     // 「挿入」が押せないまま（CI でだけ起きた）：押せないわけ（ボタンの左の 1 行）と欄の状態を出して落とす
     await page.waitForFunction(() => !document.getElementById('dlg-import').disabled, null, { timeout: 15000 }).catch(async () => {
-      const d = await page.evaluate(() => ({ note: (document.getElementById('paste-go-note') || {}).textContent, msg: (document.getElementById('paste-msg') || {}).textContent,
-        states: [...document.querySelectorAll('#dlg-body .paste-state, #dlg-body [id$="-state"]')].map((e) => e.id + ': ' + e.textContent) }));
+      const d = await page.evaluate(() => { const g = (id) => { const e = document.getElementById(id); return e ? e.textContent : null; }; const b = document.getElementById('dlg-import');
+        return { note: g('paste-go-note'), msg: g('paste-msg'), info: g('paste-info'), deck: g('paste-deck-st'), narr: g('paste-narr-st'), title: g('dlg-title'),
+          deckLen: (document.getElementById('paste-deck') || {}).value?.length, narrLen: (document.getElementById('paste-narr') || {}).value?.length,
+          inOpen: !!(b && b.closest('#dlg[open]')), buttons: [...document.querySelectorAll('#dlg-buttons button')].map((x) => x.id + (x.disabled ? ':off' : '')).join(),
+          steps: [...document.querySelectorAll('#dlg-body section.paste-step')].map((x) => x.id + (x.querySelector('.paste-step-body') && !x.querySelector('.paste-step-body').hidden ? ':open' : '')).join() }; });
       throw new Error('batch: 「挿入」 stays disabled: ' + JSON.stringify(d));
     });
     await clickDlg(page, '#dlg-import');
