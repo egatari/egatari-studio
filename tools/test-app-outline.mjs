@@ -106,12 +106,22 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.waitForSelector('#dlg[open] #paste-batch-where');
     ok((await page.textContent('#dlg-title')) === '構成案の続き' && /7〜12 枚目（全 24 枚。残り 18 枚）/.test(await page.textContent('#paste-batch-where')), 'batch: 「次の 6 枚を頼む」 opens the insert dialog for slides 7–12 with the remaining count');
     await page.click('#paste-copy-guide');
-    await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'));
+    // 写せなかったとき（CI でだけ起きた）：わけが分かるように、知らせと写したものの先頭を出して落とす
+    await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'), null, { timeout: 30000 }).catch(async () => {
+      const d = await page.evaluate(() => ({ copied: (document.getElementById('paste-copied') || {}).textContent, msg: (document.getElementById('paste-msg') || {}).textContent, last: (window.__APP_TEST.lastCopy || '').slice(0, 200) }));
+      throw new Error('batch: the request was not copied: ' + JSON.stringify(d));
+    });
     c = await copied();
     ok(c.includes('ちょうど 6 枚') && c.includes('<h2>見出し 6</h2>') && c.includes('[0] これはスライド 6 です。') && !c.includes('<h2>見出し 5</h2>') && /\| 7 \| 見出し 7 \| 要点 7 \|\s+← 今回は 7〜12 枚目/.test(c), 'batch: the request carries the outline, the range and the previous slide (with its narration)');
     const b2 = slidesOf(7, 12, false);
     ok((await page.textContent('#dlg-import')) === '挿入' && await page.isDisabled('#dlg-import'), 'batch: the same two fields; 「挿入」 waits for the slides');
     await page.fill('#paste-narr', replyOf(b2.deck, b2.narr));
+    // 「挿入」が押せないまま（CI でだけ起きた）：押せないわけ（ボタンの左の 1 行）と欄の状態を出して落とす
+    await page.waitForFunction(() => !document.getElementById('dlg-import').disabled, null, { timeout: 15000 }).catch(async () => {
+      const d = await page.evaluate(() => ({ note: (document.getElementById('paste-go-note') || {}).textContent, msg: (document.getElementById('paste-msg') || {}).textContent,
+        states: [...document.querySelectorAll('#dlg-body .paste-state, #dlg-body [id$="-state"]')].map((e) => e.id + ': ' + e.textContent) }));
+      throw new Error('batch: 「挿入」 stays disabled: ' + JSON.stringify(d));
+    });
     await clickDlg(page, '#dlg-import');
     await page.waitForFunction(() => /残り 12 枚/.test((document.getElementById('notice-outline') || {}).textContent || ''), null, { timeout: 30000 });
     of = await ofile();
