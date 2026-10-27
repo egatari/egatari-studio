@@ -197,6 +197,8 @@ await r.mouse.move(640, 690, { steps: 3 });
 // 遅い機械（CI の macOS）では帯が出るまで 300 ms を超えることがあるので、出るのを最大 3 秒待つ（画素は見ない）
 await r.waitForFunction(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show') && +getComputedStyle(c).opacity > .5; }, null, { timeout: 3000 }).catch(() => {});
 ok(await shown(r), '下のほうに来ると出る');
+// 出てから 350 ms（kit/tools.js の REVEAL_GUARD）の間のクリックは、帯を出した動きの続きとして押さない。人が狙って押すのと同じく、その後で押す
+await r.waitForTimeout(400);
 await shot(r, 'main-bar-overlay');
 const r0 = await pos(r);
 await r.click(btn('vpen')); await r.click(btn('clear')); await r.click(btn('pen'));
