@@ -102,7 +102,7 @@ Always reply in the language the user writes in, not the language of this file. 
 - 表は見出しの行を初めから出し、行を 1 行ずつ。新旧の比較は新しい結果を先に、既知の結果を `muted` で後から
 - 1 枚のステップは 5 前後まで
 - 表示のモードは発表（`talk`。既定）と動画（`?mode=video`。タイムラインで自動に進む）。選び「先のステップを薄く見せる（l）」（発表中にキー `l` で入／切）では、同じ `data-step` が「先のステップを薄く見せ、今のステップに蛍光ペンの色は付けない」になる。授業用に別のスライドは作らない
-- （v0.5 で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
+- （v0.6.x 以降で足す予定：配置の種類 slides / flow / pages / split。仕様が決まったらここに書く）
 
 ## 5. 台本（narration.md）
 
