@@ -1,11 +1,11 @@
-// colab/egatari-tts.ipynb を作る（手で直さない。材料は下のセルの文と colab/egatari_tts.py）
+// colab/egatari-tts.ipynb を作る（手で直さない。材料は下のセルの文と colab/egatari_tts.py）。docs の <!-- colab-verified --> の記しも COLAB_VERIFIED に揃える
 //   node tools/make-colab-notebook.mjs [--check]
 // ノートブックの核（後処理・cue の測定・zip）は colab/egatari_tts.py にあり、ノートブックはそれをリポジトリから取って呼ぶだけ
 // （ローカルで dry-run できるように。tools/test-colab.mjs）。--check：ファイルが作り直したものと同じか（違えば終了コード 1）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COLAB, COLAB_VERIFIED, colabUrl } from '../kit/core/colab-core.mjs';
+import { COLAB, COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME, colabUrl } from '../kit/core/colab-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'colab', 'egatari-tts.ipynb');
@@ -58,14 +58,23 @@ export function notebook() {
     md([
       '# Egatari Studio: make the audio in Colab / Colab で音声を作る',
       '',
+      // 手順（音声の板の C2 と同じ文。kit/core/colab-core.mjs の COLAB_STEPS）
+      '**English — steps.** In the editor, open Audio → “Make AI voice in the cloud (Google Colab)” → “Export script”, then:',
+      '',
+      ...COLAB_STEPS.en.map((x, i) => `${i + 1}. ${x}`),
+      '',
+      `Then, in the editor, use “Import the audio…” and choose the ZIP file. ${COLAB_TIME.en}. Japanese uses Irodori-TTS 500M-v3 (ONNX), other languages use Kokoro-82M.`,
+      '',
+      '**Privacy.** The script text in `tts-job.json` is processed in Google’s Colab environment, and the model files come from Hugging Face. Nothing else from your lesson is sent. Use it only for text you are allowed to share.',
+      '',
+      '**日本語 — 手順.** エディタの「音声」→「AI 音声をクラウドで作る（Google Colab）」→「台本を書き出す」の後に：',
+      '',
+      ...COLAB_STEPS.ja.map((x, i) => `${i + 1}. ${x}`),
+      '',
+      `そのあと、エディタの「できた音声を取り込む…」で ZIP ファイルを選びます。${COLAB_TIME.ja}。日本語は Irodori-TTS 500M-v3（ONNX）、ほかの言語は Kokoro-82M です。`,
+      '',
       ...(COLAB_VERIFIED ? [`> **${COLAB_VERIFIED.en}**`, `> **${COLAB_VERIFIED.ja}**`, ''] : []),
-      '**English.** Use this notebook when your computer has no WebGPU (many school PCs, Safari, iPad). In the editor, press “Audio → Make the audio in Colab → ① Export the steps”, run all the cells below, upload `tts-job.json` when asked, then import the zip it returns with “② Import the zip…”. Japanese uses Irodori-TTS 500M-v3 (ONNX), other languages use Kokoro-82M. A T4 GPU is faster; without one it falls back to the CPU (slow).',
-      '',
-      '**Privacy.** The narration text in `tts-job.json` is processed in Google’s Colab environment, and the model files come from Hugging Face. Nothing else from your lesson is sent. Use it only for text you are allowed to share.',
-      '',
-      '**日本語.** WebGPU のない PC（多くの学校 PC・Safari・iPad）で、音声を作るためのノートブックです。エディタの「音声 → Colab で音声を作る → ① 必要な段階を書き出す」で出した `tts-job.json` を、下のセルを上から順に実行して聞かれたときにアップロードし、返ってくる zip を「② できた zip を取り込む…」で取り込みます。日本語は Irodori-TTS 500M-v3（ONNX）、ほかの言語は Kokoro-82M です。T4 の GPU があると速く、なければ CPU になります（遅い）。',
-      '',
-      '**プライバシー.** `tts-job.json` の原稿の文は、Google の Colab の環境で処理され、モデルは Hugging Face から取得します。教材のほかのものは送られません。共有してよい文だけに使ってください。',
+      '**プライバシー.** `tts-job.json` の台本の文は、Google の Colab の環境で処理され、モデルは Hugging Face から取得します。教材のほかのものは送られません。共有してよい文だけに使ってください。',
     ].join('\n')),
     md('## 1. Set up / 準備'),
     code([
@@ -124,6 +133,8 @@ export function notebook() {
       'print("onnxruntime", ort.__version__, "· providers:", ort.get_available_providers())',
       'GPU = "CUDAExecutionProvider" in ort.get_available_providers() and bool(_smi)',
       'print("GPU (CUDA):", GPU, "（使えなければ合成の前に自動で CPU に切り替えます / falls back to the CPU automatically if it cannot be used）" if GPU else "-> CPU で動かします（遅い）")',
+      '# GPU がなければ、日本語（Irodori）は CPU 用の少ない steps で合成する（colab/egatari_tts.py の IRODORI_CPU_STEPS。セル 3 で実際に CPU になったときも同じ）',
+      'print(E.env_compute_line(GPU))',
     ].join('\n'), true),
     md('## 2. Upload tts-job.json / tts-job.json をアップロード'),
     code([
@@ -170,6 +181,10 @@ export function notebook() {
     md('## 3. Load the model / モデルを読み込む'),
     code([
       '#@title 3. Load the model / モデルを読み込む',
+      'PROFILE = False   #@param {type:"boolean"}',
+      '# PROFILE：日本語（Irodori）で、区切りごとに段の時間（文の符号化・参照音声・dit・復号・後処理）を出す（遅いときの調べ用。音は変わらない）',
+      'import time',
+      '_t_load = time.monotonic()   # この時計で測る（Colab のセルの時間表示は長い実行で合わないことがある）',
       'ENGINE = job["recipe"]["engine"]',
       'if ENGINE == "kokoro":',
       '    from huggingface_hub import hf_hub_download',
@@ -194,7 +209,10 @@ export function notebook() {
       '        for _h in logging.getLogger(_n).handlers: _h.addFilter(_hf_filter)',
       '    warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")',
       '    # local_dir にして実ファイルで置く（既定のキャッシュは blobs/ への symlink で、onnxruntime-node が外部データ text_encoder.onnx.data を「model directory の外」として断る）',
-      '    MODEL_DIR = snapshot_download(HF_REPO, revision=HF_REV, allow_patterns=["onnx_fp16/*", "tokenizer/*"], local_dir="/content/irodori-model")',
+      '    # GPU は fp16（onnx_fp16、1.2 GB）、CPU は fp32（onnx、2.3 GB）：CPU の onnxruntime は fp16 の演算が遅い（colab/irodori_node.mjs）',
+      '    IRODORI_FOLDER = "onnx_fp16" if GPU else "onnx"',
+      '    MODEL_DIR = snapshot_download(HF_REPO, revision=HF_REV, allow_patterns=[IRODORI_FOLDER + "/*", "tokenizer/*"], local_dir="/content/irodori-model")',
+      '    os.environ["EGATARI_IRODORI_FOLDER"] = IRODORI_FOLDER',
       '    os.makedirs("/content/node-deps", exist_ok=True)',
       `    sh("cd /content/node-deps && npm init -y && npm i --silent " + " ".join(f"{k}@{PINS[k]}" for k in ${JSON.stringify(NPM_PKGS)}), "npm のインストール")`,
       '    _ortn = "/content/node-deps/node_modules/onnxruntime-node"',
@@ -203,19 +221,24 @@ export function notebook() {
       '    os.environ["EGATARI_NODE_DEPS"] = "/content/node-deps"',
       '    os.environ["EGATARI_ORT_PROVIDERS"] = "cuda,cpu" if GPU else "cpu"',
       '    os.makedirs("/content/work", exist_ok=True)',
-      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/lab/voices", "/content/work", steps=40, seed=0, ref_voice=globals().get("REF_VOICE_PATH"))',
-      '    INFO = {"engine": "irodori-colab", "model": job["recipe"]["model"], "seed": 0, "runtime": E.runtime_label(PIN_SET, synth.provider)}',
-      '    print("Irodori providers in use:", synth.providers, "→ runtime", INFO["runtime"])   # GPU を使えなかったときは、その上に CPU に切り替えたお知らせが 1 行出る。runtime は記録の recipe に入る',
+      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/lab/voices", "/content/work", seed=0, ref_voice=globals().get("REF_VOICE_PATH"), profile=PROFILE)   # steps は省く：実際に CPU なら CPU 用の少ない steps（E.IRODORI_CPU_STEPS）',
+      '    INFO = {"engine": "irodori-colab", "model": job["recipe"]["model"], "seed": 0, "runtime": E.runtime_label(PIN_SET, synth.provider), "diffusionSteps": synth.steps, "precision": synth.precision}',
+      '    print("Irodori providers in use:", synth.providers, "→ runtime", INFO["runtime"], "·", E.compute_label(synth.provider != "cpu", synth.steps), "·", synth.precision)   # GPU を使えなかったときは、その上に CPU に切り替えたお知らせが 1 行出る。runtime と steps は記録の recipe に入る',
       'print("ready:", INFO)',
+      'print(f"loaded in {time.monotonic() - _t_load:.1f} s / 読み込み {time.monotonic() - _t_load:.1f} 秒")',
     ].join('\n'), true),
     md('## 4. Synthesize and download the zip / 合成して zip をダウンロード'),
     code([
       '#@title 4. Synthesize / 合成して zip をダウンロード',
-      'def progress(i, n, key): print(f"{i}/{n} {key}")',
+      'import time',
+      '# 段階ごとに、その段階の時間と始めからの時間を出す（単調な時計で、Node のワーカーの合成を待つ間も含む。Colab のセルの時間表示には頼らない）',
+      'def progress(i, n, key, step_s, total_s): print(E.progress_line(i, n, key, step_s, total_s), flush=True)',
+      '_t_synth = time.monotonic()',
       'try:',
       '    data = E.run_job(job, synth, engine_info=INFO, progress=progress)',
       'finally:   # 常駐の Node ワーカーを終わらせる（もう一度合成するときはセル 3 から）',
       '    if hasattr(synth, "close"): synth.close()',
+      'print(E.total_line(time.monotonic() - _t_synth, len(job["steps"])), flush=True)',
       'open("egatari-tts-result.zip", "wb").write(data)',
       'files.download("egatari-tts-result.zip")',
       'print("Done. Import egatari-tts-result.zip in the editor (② Import the zip…). / できました。エディタの「② できた zip を取り込む…」へ。")',
@@ -229,10 +252,22 @@ export function notebook() {
   return JSON.stringify(nb, null, 1) + '\n';
 }
 
+// docs の確かめた範囲の記し（<!-- colab-verified --> と <!-- /colab-verified --> の間）を COLAB_VERIFIED に揃える。en の docs は en、.ja.md は ja
+export const VERIFIED_DOCS = Object.freeze(['docs/editor.md', 'docs/editor.ja.md', 'docs/distributing.md', 'docs/distributing.ja.md']);
+export function syncVerified(text, lang) {
+  return text.replace(/(<!-- colab-verified --> (?:\*\*)?)(.*?)((?:\*\*)?<!-- \/colab-verified -->)/g, (_, a, _old, b) => a + COLAB_VERIFIED[lang] + b);
+}
+
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1] === fileURLToPath(import.meta.url)) {
   const text = notebook();
+  const docs = VERIFIED_DOCS.map((f) => { const p = path.join(ROOT, f), old = fs.readFileSync(p, 'utf8'); return { f, p, old, now: syncVerified(old, f.endsWith('.ja.md') ? 'ja' : 'en') }; });
   if (process.argv.includes('--check')) {
+    const stale = docs.filter((d) => d.old !== d.now).map((d) => d.f);
+    if (stale.length) { console.error(`the colab-verified note in ${stale.join(', ')} is out of date: run npm run gen`); process.exit(1); }
     if (!fs.existsSync(OUT) || fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') !== text) { console.error('colab/egatari-tts.ipynb is out of date: run npm run gen'); process.exit(1); }
     console.log('colab/egatari-tts.ipynb is up to date (' + colabUrl() + ')');
-  } else { fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, text); console.log('wrote ' + path.relative(ROOT, OUT)); }
+  } else {
+    fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, text); console.log('wrote ' + path.relative(ROOT, OUT));
+    for (const d of docs) if (d.old !== d.now) { fs.writeFileSync(d.p, d.now); console.log('wrote ' + d.f); }
+  }
 }

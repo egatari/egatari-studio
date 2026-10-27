@@ -1,0 +1,2 @@
+### Changed
+- Docs: the format specification's §8 is now the normative text of the authoring source. `docs/contract(.ja).md` points to it (a table of which section says what) and keeps only Studio's notes: its run-time API, the dev server, the `✎` placeholders, the quality checker's codes and Studio's CSS hooks; `docs/reference(.ja).md` points to §8 and §5.5 for slides, script and timing. The legacy `data-steps`, `data-anim`, `data-mode="lecture"` and `.blue`/`.red`/`.gray` are no longer listed as current; the migration guide says what to replace them with.

@@ -16,14 +16,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration } from '../kit/core/llm-import.mjs';
+import { extractBlocks, pastePart, isPatch, mergeSlides, mergeNarration, mergeRepeatedSteps } from '../kit/core/llm-import.mjs';
 import { requestForm, filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY, TOOLS } from '../kit/core/llm-pack.mjs';
+import { freeSeriesOf, partOf, planData } from '../kit/core/llm-pack-assemble.mjs';
+import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
@@ -46,23 +48,36 @@ ok('make-llm-guide --check：指示は材料から作り直したものと同じ
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-ok('指示の大きさ：共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、全部 ≤ 64 KB。前の全体版・core 版はない', () => {
+// 上限は PACK_CAP_KB（無料版は 1 つの分野 40 KB・2 つの組 50 KB、有料版 120 KB）。無料版で選べるのは 2 つまで（FREE_SUBJECT_MAX）なので、
+// 無料版のすべての系列の組（前の 64 KB の目安）は見ない（分野が 6 つになり、選べない組が 64 KB を越える）
+ok('指示の大きさ：無料版の共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、どの 2 つの組も ≤ 50 KB、有料版のすべての系列と道具 ≤ 120 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
     for (const s of SERIES) assert.ok(packSize(buildPack({ series: [s], lang })) <= 40 * 1024, `${lang} common+${s}`);
-    assert.ok(packSize(buildPack({ series: 'all', lang })) <= 64 * 1024, `${lang} all`);
+    for (let i = 0; i < SERIES.length; i++) for (let j = i + 1; j < SERIES.length; j++) assert.ok(packSize(buildPack({ series: [SERIES[i], SERIES[j]], lang })) <= 50 * 1024, `${lang} common+${SERIES[i]}+${SERIES[j]}`);
+    assert.ok(packSize(buildPack({ series: 'all', lang, plan: 'paid', tools: 'all' })) <= 120 * 1024, `${lang} paid all`);
   }
   for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
 });
 ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all・[]・重ね・順）・知らない系列は失敗', () => {
   for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
+    // docs は有料のプランの指示の全体：共通の本体（すべての系列が入ったときの表）と頼みたいこと、系列ごとの部分。合わせると --plan paid と同じ
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
-    assert.equal(file.slice(i), buildPack({ series: [], lang }));
+    const paidCommon = commonBody(lang, [], SERIES, [], 'paid', 'all');
+    assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
+    assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
+    assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: common body \+ the largest pair of subjects \(\w+ \+ \w+\)|無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（\w+＋\w+）) \| [\d.]+ KB \| 50 KB \|/.test(file)
+      && !/(Free plan|無料のプラン)[^|\n]*(every subject|すべての分野)/.test(file.slice(0, file.indexOf('\n## '))) && /\| (Paid plan: every subject and tool chosen|有料のプラン：すべての分野と道具を選んだとき)/.test(file),
+      lang + ': the size table lists both plans: each subject and the largest pair for free (no row for every subject), and the paid worst case (every subject and tool)');
+    const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
+    assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
+    for (const t of PAID_ONLY) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
     assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
     assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
     for (const s of SERIES) {
       const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
-      assert.equal(doc, seriesPart(s, lang), `${lang} ${s}`);
-      assert.equal(buildPack({ series: [s], lang }), commonBody(lang) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
+      assert.equal(doc, partOf(planData(PACK, 'paid'), s, lang, [], SERIES) + '\n', `${lang} ${s}`);
+      // 共通の本体の表は、入っている系列の部品を指す（kit/core/llm-pack-assemble.mjs）
+      assert.equal(buildPack({ series: [s], lang }), commonBody(lang, [], [s]) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
     }
     assert.equal(buildPack({ series: ['info', 'academic', 'info'], lang }), buildPack({ series: 'academic,info', lang }));
     assert.equal(buildPack({ series: 'all', lang }), buildPack({ series: SERIES, lang }));
@@ -73,7 +88,7 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   // --list：--lang がなければ en と ja の両方の列、あれば その言語の大きさ（UTF-8 のバイト数 / 1024。編集アプリと同じ packKb）
   const kbx = (series, lang) => packKb(buildPack({ series, lang })) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu, m-predict\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
   const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
   assert.ok(listJa.status === 0 && listJa.stdout.includes(`common\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`academic\t${kbx(['academic'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
   const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');
@@ -86,20 +101,22 @@ ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all
   const badOpt = node('kit/llm-pack.mjs', '--sereis', 'academic');
   assert.ok(badOpt.status === 2 && /unknown option --sereis/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
 });
-ok('部品の居場所：どの部品もちょうど 1 か所（共通か 1 つの系列）。共通の部品は系列に重ねない・README に series がなければ作れない', () => {
+ok('部品の居場所：どの部品もちょうど 1 か所（有料版は README の series、無料版は FREE_CORE・FREE_HOME の系列、有料版だけの部品はどこにもない）。README に series がなければ作れない', () => {
   const dirs = vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map((c) => c.name);
-  for (const lang of ['en', 'ja']) {
-    const common = commonBody(lang), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang)]));
+  for (const lang of ['en', 'ja']) for (const plan of ['free', 'paid']) {
+    // 道具はどちらの版でも共通の本体に（押したとき）
+    const common = commonBody(lang, [], [], [], plan, 'all'), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang, [], plan, 'all')]));
     for (const c of dirs) {
-      const head = `### \`<m-${c}>\``, where = seriesOf('m-' + c);
-      assert.ok(where === 'common' || SERIES.includes(where), c);
+      const head = `### \`<m-${c}>\``, raw = seriesOf('m-' + c), where = plan === 'paid' || TOOLS.some((t) => t.tag === 'm-' + c) ? raw : freeSeriesOf('m-' + c, raw);
+      assert.ok(raw === 'common' || SERIES.includes(raw), c);
       const places = [['common', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([n]) => n);
-      assert.deepEqual(places, [where], `${lang} m-${c}: ${places}`);
+      assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} m-${c}: ${places}`);
     }
+    if (plan === 'paid') continue;
     // m-flow のお金の流れは business の拡張（共通の本体には入らない）
     assert.ok(parts.business.includes('`<m-flow>`') && /kind/.test(parts.business) && !/`money`/.test(common), 'm-flow money flows in business');
   }
-  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'business'], ['m-quad', 'business'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
+  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'common'], ['m-quad', 'common'], ['m-curves', 'common'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
   // README に series のない部品があれば、作り直しは失敗する（写しの部品フォルダで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
   for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'components.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
@@ -126,10 +143,13 @@ ok('規格の名前は英語と日本語で同じ・規格は共通の本体だ�
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``), c);
+    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``) === !(PAID_ONLY.includes('m-' + c) || TOOLS.some((t) => t.tag === 'm-' + c)), c + ' (free: every part but the paid-only ones and the tools not ticked)');
+    assert.ok(!/<!--\/?part/.test(g), 'part markers are removed');
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
   assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');
+  // 有料版：すべての部品が一覧にある
+  for (const lang of ['en', 'ja']) { const p = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }); for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(p.includes(`\`<m-${c}>\``), lang + ' paid ' + c); assert.ok(!/<!--\/?part/.test(p)); }
 });
 
 // ---------------------------------------------------------------- 2. 取り出し
@@ -198,6 +218,30 @@ ok('囲みを 1 つずつ貼る（pastePart）：返事の全体・deck.html だ
   assert.ok(patch.part === 'deck' && isPatch(patch.deck));
   assert.equal(pastePart('## A {#s-aaaaaa}\n[0] あ。\n[concl] い。').part, 'narration');
 });
+ok('import patch: the same [k] repeated on consecutive marker lines (one per dialogue turn) is merged under the first [k], every turn kept in order, with a warning; a non-consecutive repeat is left for the build to report', () => {
+  const deck = worked('common', 'deck.html');
+  const two = '## A {#s-a}\n\n[0] Expert: はじめ。\n\n[2] Expert: 一。\n[2] Novice: 二。\n\n[concl] Expert: 終わり。\n';
+  const three = '## A {#s-a}\n\n[2] Expert: 一。\n[2] Novice: 二。\n続きの行。\n[2] Expert: 三。\n\n## B {#s-b}\n\n[2] Expert: 別の節の [2] は別。\n';
+  for (const [text, n, turns] of [[two, 1, [['expert', '一。'], ['novice', '二。']]], [three, 2, [['expert', '一。'], ['novice', '二。続きの行。'], ['expert', '三。']]]]) {
+    const r = extractBlocks('```deck.html\n' + deck + '```\n\n```narration.md\n' + text + '```\n');
+    assert.equal(r.error, null);
+    assert.deepEqual(r.warnings.filter((w) => w.code === 'repeatedSteps'), [{ code: 'repeatedSteps', n, steps: ['2'] }], 'a warning, not an error');
+    const segs = parseNarration(r.narration);
+    assert.deepEqual(segs.warnings, [], 'no duplicate step left for the build');
+    const s2 = segs.filter((x) => x.slideKey === 's-a' && x.stepKey === '2');
+    assert.equal(s2.length, 1);
+    assert.deepEqual(s2[0].turns.map((x) => [x.role, x.raw]), turns, 'every turn in order under the first [2]');
+    // 囲みなしで台本だけを貼っても同じ直し
+    const p = pastePart(text);
+    assert.ok(p.part === 'narration' && p.narration === r.narration && p.warnings.some((w) => w.code === 'repeatedSteps'));
+  }
+  // 続いていない繰り返し（[2] … [3] … [2]）は直さない：組み立てがこれまでどおり重複として知らせる
+  const apart = '## A {#s-a}\n\n[2] Expert: 一。\n[3] Expert: 二。\n[2] Expert: 三。\n';
+  assert.deepEqual(mergeRepeatedSteps(apart), { narration: apart, merged: [] });
+  const r = extractBlocks('```deck.html\n' + deck + '```\n\n```narration.md\n' + apart + '```\n');
+  assert.ok(!r.warnings.some((w) => w.code === 'repeatedSteps'));
+  assert.ok(parseNarration(r.narration).warnings.some((w) => /が重複/.test(w)), 'still reported as a duplicate');
+});
 ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混ざったものは ambiguous・</html> のない deck は cut-deck', () => {
   for (const t of ['ごめんなさい、できません。', 'https://claude.ai/share/abc', '## 見出しだけ\n本文', '[0] だけ']) {
     const r = pastePart(t);
@@ -210,20 +254,23 @@ ok('pastePart：関係のない文字は no-blocks・両方が囲みなしで混
   // 閉じていない囲みは今までどおり unclosed
   assert.equal(pastePart('```deck.html\n' + D).error.code, 'unclosed');
 });
-ok('頼みたいこと：指示の記入欄（A 6 項目・B 2 項目）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
+ok('頼みたいこと：指示の記入欄（A・B とも 6 項目。同じ名前）を読み、埋めたものを指示の最後に入れる。本体は buildPack と同じ', () => {
   for (const lang of ['en', 'ja']) {
     const F = requestForm(lang);
-    assert.deepEqual(F.A.fields.map((f) => f.key), ['topic', 'audience', 'length', 'language', 'speakers', 'examples']);
-    assert.deepEqual(F.B.fields.map((f) => f.key), ['audience', 'length']);
+    assert.deepEqual(F.A.fields.map((f) => f.key), ['title', 'audience', 'length', 'language', 'speakers', 'wishes']);
+    assert.deepEqual(F.B.fields.map((f) => f.key), ['title', 'audience', 'length', 'language', 'speakers', 'wishes']);
+    assert.deepEqual(F.B.fields.map((f) => f.label), F.A.fields.map((f) => f.label), 'B has the same lines as A');
+    assert.equal(F.B.head, lang === 'ja' ? 'B. 渡した資料と話し合いの内容で作る' : 'B. From the material and discussion in this chat');
+    assert.ok(/^(Title \(used as is on the cover\)|タイトル（表紙にそのまま使う）)$/.test(F.A.fields[0].label) && F.A.fields[0].label === F.B.fields[0].label, F.A.fields[0].label);
     assert.ok(F.A.fields.find((f) => f.key === 'speakers').value, 'speakers has a default');
     assert.ok(requestBody(lang).startsWith('# ' + F.title + '\n'));
     for (const s of [[], ['academic'], ['business', 'info']]) assert.equal(packWithRequest({ series: s, lang }), buildPack({ series: s, lang }), 'no request → the same pack');
-    const a = filledRequest({ kind: 'A', values: { topic: 'Binary search', audience: 'Year 11', examples: 'phone book\ndictionary', length: '' } }, lang);
+    const a = filledRequest({ kind: 'A', values: { title: 'Binary search', audience: 'Year 11', wishes: 'phone book\ndictionary', length: '' } }, lang);
     assert.ok(a.startsWith('# ' + F.title + '\n\n**' + F.A.head + '**') && a.includes('Binary search') && a.includes('Year 11') && !a.includes(F.B.head) && !a.includes(F.A.fields[2].label) && /phone book\n {2}dictionary/.test(a), a);
     const b = filledRequest({ kind: 'B', values: { length: '5' } }, lang);
-    assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[1].label) && !b.includes(F.A.head), b);
+    assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[2].label) && !b.includes(F.A.head), b);
     const pk = packWithRequest({ series: ['academic'], lang, request: a });
-    assert.ok(pk.startsWith(commonBody(lang)) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
+    assert.ok(pk.startsWith(commonBody(lang, [], ['academic'])) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
   }
 });
 
@@ -250,6 +297,8 @@ ok('スライドの挿入（llm-insert）：頼む文は見出しの一覧と前
   assert.equal(insertSlides({ deck: a.deck, narration: a.narration, patchDeck: '<p>none</p>' }).ids.length, 0);
   const b = newDeckFiles({ blank: true, lang: 'ja', title: 'T' });
   assert.ok((b['deck.html'].match(/<section class="slide/g) || []).length === 1 && (b['narration.md'].match(/^## /gm) || []).length === 1 && b['deck.html'].includes('</html>'));
+  // シード値は書かない（format spec §8.4：見せ方は variant の名前だけ）
+  assert.ok(!b['deck.html'].includes('data-egatari-seed') && !newDeckFiles({ blank: true })['deck.html'].includes('data-egatari-seed'));
 });
 
 // ---------------------------------------------------------------- 3. id

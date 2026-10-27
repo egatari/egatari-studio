@@ -50,7 +50,9 @@ td.r{text-align:right;font-variant-numeric:tabular-nums}
 .cover .logos img{height:var(--logo-h,128px);width:auto;display:block}
 .cover::before{content:"";position:absolute;left:0;right:0;top:0;height:10px;background:var(--base)}
 .sec{background:var(--sec-bg,var(--base))}
-.sec h1{position:absolute;left:48px;right:48px;top:300px;margin:0;text-align:center;font-size:48px;color:var(--sec-fg,#fff)}
+/* 章の扉の題は h1。h2 で書いても同じに見せる（ふつうのスライドの h2 の色・下線のままだと、地と同じ色で読めない。#128） */
+.sec h1,.sec h2{position:absolute;left:48px;right:48px;top:300px;margin:0;text-align:center;font-size:48px;color:var(--sec-fg,#fff)}
+.sec h2{padding-bottom:0;border-bottom:0;line-height:normal}
 .sec .lead{position:absolute;left:48px;right:48px;top:390px;text-align:center;font-size:27px;color:var(--sec-fg,#fff);opacity:.85}
 
 /* JavaScript で描く図（DECK.Plot と部品） */

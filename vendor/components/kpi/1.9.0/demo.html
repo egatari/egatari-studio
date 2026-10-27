@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-kpi の見本</title>
+<!-- 組み方：node kit/build.mjs components/kpi/demo.html -o components/kpi/out/demo.html（数値はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>試験導入の結果（架空）</h2>
+  <div class="body">
+    <m-kpi style="height:330px">
+      <script type="application/json">{
+        "cards": [
+          {"label": "報告書を書く時間", "value": 64, "unit": "%", "prefix": "−", "delta": {"dir": "down", "text": "1 本あたり", "good": true}, "note": "試験導入の 6 社の平均"},
+          {"label": "試験導入の会社", "value": 6, "unit": "社", "delta": {"dir": "up", "text": "前の期から 4 社"}, "note": "うち 4 社が有償へ"},
+          {"label": "月の継続率", "value": 97.5, "digits": 1, "unit": "%", "tone": "emph", "delta": {"dir": "down", "text": "前の期から 0.8 pt"}, "note": "解約は 1 社"}
+        ]
+      }</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>→ 書く時間が 3 分の 1 になった</span></div>
+</section>
+
+<section class="slide">
+  <h2>まとめて出す（per-step="0"）</h2>
+  <div class="body">
+    <m-kpi per-step="0" cols="2" style="height:380px">
+      <script type="application/json">{
+        "cards": [
+          {"label": "利用者", "value": 12800, "unit": "人"},
+          {"label": "月の下書き", "value": 41000, "unit": "本"},
+          {"label": "平均の作成時間", "value": 7.5, "digits": 1, "unit": "分", "from": 20},
+          {"label": "満足度", "value": 4.6, "digits": 1, "unit": "/ 5"}
+        ]
+      }</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>→ 数字は架空</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px 40px">
+      <m-kpi variant="count" style="height:200px">
+        <script type="application/json">{"cards": [{"label": "数え上げ（count、既定）", "value": 1280, "unit": "人", "delta": {"dir": "up", "text": "前の月から 120 人"}}]}</script>
+      </m-kpi>
+      <m-kpi variant="rise" style="height:200px">
+        <script type="application/json">{"cards": [{"label": "浮かび上がる（rise）", "value": 1280, "unit": "人", "delta": {"dir": "up", "text": "前の月から 120 人"}}]}</script>
+      </m-kpi>
+      <m-kpi variant="flip" style="height:200px">
+        <script type="application/json">{"cards": [{"label": "桁ごとにめくる（flip）", "value": 1280, "unit": "人", "delta": {"dir": "up", "text": "前の月から 120 人"}}]}</script>
+      </m-kpi>
+      <m-kpi variant="underline" style="height:200px">
+        <script type="application/json">{"cards": [{"label": "下線を引く（underline）", "value": 1280, "unit": "人", "delta": {"dir": "up", "text": "前の月から 120 人"}}]}</script>
+      </m-kpi>
+    </div>
+  </div>
+  <div class="concl"><span>→ 資料のシード値（data-egatari-seed）で 1 つが選ばれる。数字は架空</span></div>
+</section>
+
+</div>
+</body>
+</html>

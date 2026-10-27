@@ -19,9 +19,26 @@ import { readZip, ZipError } from './zip-read.mjs';
 // 確かめる範囲が変わったら（Kokoro・CPU を通したなど）ここの文を直し、`npm run gen` と docs の <!-- colab-verified --> の行を揃える
 // （tools/test-colab.mjs が、記しのある所が揃っているかを確かめる）。固定した版（tools/make-colab-notebook.mjs の COLAB_PINS）での GPU は 2026-10-24 に確認した。
 export const COLAB_VERIFIED = Object.freeze({
-  ja: '確認済み：2026-10-23、CPU（講習で、Irodori）。GPU：2026-10-24 に Colab の T4 で、固定した版（cuda13 の組）で確認した（23 ステップを 42 秒）。Kokoro：2026-10-24 に T4 で cuda13 の組で確認した（59 ステップを 30 秒）',
-  en: "Verified: 2026-10-23, CPU (at a workshop, Irodori). GPU verified on 2026-10-24 on a T4 with the cuda13 pin set (23 steps in 42 s). Kokoro verified on 2026-10-24 on a T4 with cuda13 (59 steps in 30 s).",
+  ja: '確認済み：2026-10-23、CPU（講習で、Irodori）。2026-10-24、T4 で固定した版（cuda13 の組）：Irodori 23 ステップを 42 秒、Kokoro 59 ステップを 30 秒。2026-10-25、持ち主の手での計測（10 ステップ・話者 1 人。日本語 209 字・英語 518 字）：T4 の日本語（Irodori）は読み込み 34 秒・合成 19 秒、T4 の英語（Kokoro）は読み込み 4 秒・合成 4 秒、CPU の英語は読み込み 7 秒・合成 33 秒（1 ステップ約 3 秒で十分使える）、CPU の日本語は読み込み 1 分・1 ステップ約 60 秒（steps=40）。1 ステップだけの手での計測は steps=40 で 90 秒、steps=16 で 52.5 秒（この版より前の、fp16 の重みで参照音声を毎回符号化していたとき）',
+  en: "Verified: 2026-10-23, CPU (at a workshop, Irodori). 2026-10-24, T4 with the cuda13 pin set: Irodori 23 steps in 42 s, Kokoro 59 steps in 30 s. 2026-10-25, the owner's hand check (10 steps, one speaker; 209 Japanese / 518 English characters): T4 Japanese (Irodori) load 34 s, synthesis 19 s; T4 English (Kokoro) load 4 s, synthesis 4 s; CPU English load 7 s, synthesis 33 s (about 3 s per step, fine); CPU Japanese load 1 min, about 60 s per step at steps=40; a single step timed by hand took 90 s at steps=40 and 52.5 s at steps=16 (before this version, with fp16 weights and the reference voice encoded on every call).",
 });
+// Colab での手順（音声の板の「クラウドで作る」の C2 と、ノートブックの最初のセルに同じ文を出す。1 か所だけに書く）。
+// handoff/audio-flow-2026-10-25.md §4 の cloud.c2Steps・§7。時間の目安は T4 のものだけ（CPU の数は実測してから足す）
+export const COLAB_STEPS = Object.freeze({
+  ja: Object.freeze([
+    '右上の「接続」を押す（T4 GPU につなぎます）。つながらないと知らせが出たら、メニューの「ランタイム」→「ランタイムのタイプを変更」で「CPU」を選んでから、もう一度「接続」（CPU でも作れますが、時間がかかります）',
+    '「ランタイム」→「すべてのセルを実行」',
+    'ファイルを選ぶ画面が出たら、書き出したファイルを選ぶ',
+    '終わると音声の ZIP ファイルがダウンロードされます',
+  ]),
+  en: Object.freeze([
+    'Press “Connect” at the top right (it connects to a T4 GPU). If it says it cannot connect, choose Runtime → Change runtime type → “CPU” and press “Connect” again (CPU works too, only slower)',
+    'Runtime → Run all',
+    'When asked to choose a file, choose the file you exported',
+    'When it finishes, a ZIP file of the audio is downloaded',
+  ]),
+});
+export const COLAB_TIME = Object.freeze({ ja: 'T4 で 10 ステップ 20 秒ほど。Google のアカウントが要ります', en: 'About 20 s for 10 steps on a T4. You need a Google account' });
 export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-verified --> を付けた行にする
 
 export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v: 1 });
@@ -48,6 +65,11 @@ const FILE = /^audio\/[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.wav$/;
 // recipe.runtime：ノートブックが書く「<版の組>/<実際の実行プロバイダ>」（cuda12/cuda・cuda13/cpu など。colab/egatari_tts.py の runtime_label）。
 // どの環境で作った音かの記録で、inputHash には入らない（版の組や GPU/CPU で音は少し違う）。形の合わないものは落とす（取り込みは止めない）
 const RUNTIME = /^[A-Za-z0-9._-]{1,32}\/[A-Za-z0-9._?-]{1,32}$/;
+// recipe.diffusionSteps（Irodori の diffusion の steps。GPU は 40、CPU は少ない。colab/egatari_tts.py の IRODORI_STEPS・IRODORI_CPU_STEPS）と
+// recipe.precision（重みの精度。GPU は fp16、CPU は fp32）：runtime と同じく、どう作ったかの記録だけで inputHash には入らない（音は少し違うが、
+// 台本は同じなので段階は古くならない）。形の合わないものは落とす
+const STEPS_MAX = 200;
+const PRECISIONS = Object.freeze(['fp16', 'fp32']);
 
 // {cue}/{mark} で区切った部分の数から、cue の数（ターンの中の区切りだけ。ターンの間には cue を置かない。joinParts と同じ）
 export const expectedCues = (seg) => seg.turns.reduce((n, t) => n + Math.max(0, t.ttsParts.length - 1), 0);
@@ -110,7 +132,7 @@ export function parseRecords(text) {
     if (voice.bad) continue;
     records.set(key, {
       file: r.file, dur: r.dur, cues: r.cues.map(round3), inputHash: r.inputHash,
-      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}), ...(typeof rc.runtime === 'string' && RUNTIME.test(rc.runtime) ? { runtime: rc.runtime } : {}) },
+      recipe: { engine: rc.engine.slice(0, 80), model: rc.model.slice(0, 200), voice, seed: rc.seed ?? null, dictionary: rc.dictionary ?? null, processing: rc.processing.slice(0, 80), ...(typeof rc.textNormalize === 'string' && rc.textNormalize ? { textNormalize: rc.textNormalize.slice(0, 80) } : {}), ...(typeof rc.runtime === 'string' && RUNTIME.test(rc.runtime) ? { runtime: rc.runtime } : {}), ...(Number.isInteger(rc.diffusionSteps) && rc.diffusionSteps >= 1 && rc.diffusionSteps <= STEPS_MAX ? { diffusionSteps: rc.diffusionSteps } : {}), ...(PRECISIONS.includes(rc.precision) ? { precision: rc.precision } : {}) },
     });
   }
   return { records, docId, title, generator, problems };

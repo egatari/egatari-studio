@@ -26,6 +26,10 @@
   --rule:    var(--base);
   --term-tint: var(--base-wash);
   --emph-tint: #fbe7e3;
+  --concl-bg:  #F5F5F5;                         /* 結論の行の地。無彩のごく淡い灰（--emph の字 5.3:1・--fg 14.6:1。色覚の型と白黒でも見え方が同じ。1.2.0） */
+
+  /* 先のステップを薄く見せるときの濃さ（format spec §8.4 の --preview-opacity。プレーヤーも部品もこれを読む） */
+  --preview-opacity: .45;
 
   /* 図の系列の色（順に使う） */
   --series-1: var(--term);
@@ -64,3 +68,6 @@
     --title:      oklch(from var(--base) min(l, 0.32) c h);
   }
 }
+/* 結論の行（1.2.0）：左の縦線＋決まった位置（571px・高さ 72px は kit/layouts.css のまま）＋太字＋淡い灰の地 --concl-bg。色だけに頼らない（WCAG 1.4.1）。
+   テーマの CSS は layouts.css の後に読まれるので、同じ詳細度（:where は 0）で勝つ。縦組み（layout-tate）の結論の列は今までの枠のまま */
+:where(.slide:not(.layout-tate)) .concl{left:30px;border:0;border-left:5px solid var(--emph);border-radius:0;justify-content:flex-start;padding-left:13px}

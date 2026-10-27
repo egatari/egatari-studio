@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-timer の見本</title>
+<!-- 組み方：node kit/build.mjs components/timer/demo.html -o components/timer/out/demo.html（架空の研修。見本なので秒数は短い。授業では 180 など） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl">
+  <h2>ワーク：困りごとを集める（架空の研修）</h2>
+  <div class="body">
+    <p class="ia-badge" style="margin:0 0 10px;line-height:1.3"><span style="display:inline-block;font-size:27px;font-weight:700;color:var(--fg);border:2px dashed var(--accent2);border-radius:8px;padding:0 12px">操作できる</span></p>
+    <m-timer style="height:420px">
+      <script type="application/json">{
+        "ready": {"title": "準備の確認", "text": "付箋とペン、A3 の用紙がそろっているか。\n終わらなくてよい。書けた所までを持ち帰る。"},
+        "phases": [
+          {"title": "① 付箋に書く", "short": "付箋に書く", "sec": 90, "text": "職場の困りごとを、付箋 1 枚に 1 件。\n個人で、3 枚を目安に。"},
+          {"title": "② 島で読み上げる", "short": "島で読み上げる", "sec": 15, "text": "順に読み上げて貼る。近いものを寄せる。"},
+          {"title": "③ 1 つ選ぶ", "short": "1 つ選ぶ", "sec": 20, "text": "よく起きて、手間の大きいものを 1 つ選ぶ。"}
+        ],
+        "bells": [{"left": 60, "count": 1}, {"left": 10, "count": 2}, {"left": 0, "count": 3}]
+      }</script>
+    </m-timer>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>字を変える（labels）</h2>
+  <div class="body">
+    <m-timer style="height:470px">
+      <script type="application/json">{
+        "ready": {"title": "合図を待つ", "text": "全員が席に着いたら始める。"},
+        "phases": [
+          {"title": "考える時間", "short": "1 人で考える", "sec": 20, "text": "話さずに、自分の考えをメモに書く。"},
+          {"title": "話す時間", "short": "2 人で話す", "sec": 15, "text": "隣の人と、メモを見せ合う。"}
+        ],
+        "labels": {"total": "全部で", "remaining": "あと", "done": "そこまで", "start": "合図で始めます", "next": "そこまで。次へ進みます", "end": "そこまで"}
+      }</script>
+    </m-timer>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

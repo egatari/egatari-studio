@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FORMAT } from '../kit/core/format.mjs';
-import { clickUntil } from './click-retry.mjs';
+import { clickDlg } from './click-retry.mjs';
 import { LIVE_BLOCK_ID, parseLiveSetupString, liveSetupIds } from '../kit/core/live.mjs';
 import Ajv from 'ajv/dist/2020.js';
 
@@ -41,8 +41,20 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       for (const [id, d] of [['#live-from', f], ['#live-to', t]]) await page.$eval(id, (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, localInput(d));
     };
     const openManual = async () => { if (!(await page.$eval('#live-manual', (d) => d.open))) await page.click('#live-manual > summary'); };
-    await menuClick('#b-export-live');
-    await page.waitForSelector('#live-panel');
+    // ファイル ▾ → エクスポート ▸ → 参加者用（再生のみ）…：窓の「ライブ（質問・投票）を付ける」に印を付けると、同じ窓にライブの設定が出る（ui-redesign）
+    const openLive = async () => {
+      await menuClick('#b-export-play');
+      await page.waitForSelector('#dlg[open] #play-live');
+      await page.check('#play-live');
+      await page.waitForSelector('#dlg[open] #play-live-box #live-panel');
+    };
+    ok(!(await page.$('#b-export-live')), 'live: there is no separate “Distribute with Live…” command');
+    await menuClick('#b-export-play');
+    await page.waitForSelector('#dlg[open] #play-live');
+    ok(!(await page.isChecked('#play-live')) && !(await page.$('#live-panel')), 'live: the participant export dialog starts with Live unticked and no Live settings');
+    await page.check('#play-live');
+    await page.waitForSelector('#dlg[open] #play-live-box #live-panel');
+    ok(await page.isVisible('#live-make') && !(await page.$('#live-export')) && !(await page.$('#live-import-results')), 'live: ticking it shows the Live settings in the same dialog (its own export button and results import are not there)');
     ok(await page.inputValue('#live-endpoint') === FORMAT.LIVE_ENDPOINT, `live panel: the endpoint defaults to ${FORMAT.LIVE_ENDPOINT}`);
 
     // ---------------------------------------------------------------- 0. 一方向の設定
@@ -62,12 +74,12 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       ok(!(await page.$eval('#live-manual', (d) => d.open)) && (await page.textContent('#live-panel')).includes('ホストのページで先にライブを作った場合（前からの方法）'), 'one-way: the earlier way is folded away (secondary)');
       ok(/まだライブ ID と参加コードがありません/.test(await page.textContent('#live-ids')) && /文字列は、① でライブ ID と参加コードをこの画面で作ると出ます/.test(await page.textContent('#live-setup-note')), 'one-way: before making ids, the panel says how to get the string');
       const lead = await page.textContent('#live-panel .lead');
-      ok(/ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ 書き出す/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
+      ok(/ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ エクスポートする/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
       await page.click('#live-make');
       await page.waitForFunction(() => /^r-[a-z2-7]{8}$/.test(document.querySelector('#live-room').value));
       const room = await page.inputValue('#live-room'), key = await page.inputValue('#live-key');
       ok(/^[A-Za-z0-9_-]{22}$/.test(key) && (await page.textContent('#live-ids')).includes(`ライブ ID ${room}（この画面で作りました`), `one-way: the panel made a Live ID (${room}) and a 22-character join code`);
-      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「書き出す前に直すこと」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
+      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「エクスポートする前に直すこと」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
       const f1 = new Date(Date.now() + 3600e3), t1 = new Date(Date.now() + 2 * 3600e3);
       await setWindow(f1, t1);
       const str = await page.inputValue('#live-setup');
@@ -114,7 +126,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       for (let i = 0; i < 50 && !(cfg0 && cfg0.includes(room2)); i++) { await page.waitForTimeout(100); cfg0 = await opfs.read(FORMAT.CONFIG_FILE); }
       ok(!!cfg0 && cfg0.includes(room2) && !cfg0.includes(key2) && !cfg0.includes(setup2), `one-way save: ${FORMAT.CONFIG_FILE} keeps the room, not the key nor the setup secret`);
       await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('oneway.play.ega.html', { create: true }); });
-      await page.click('#live-export');
+      await page.click('#dlg-export');
       let h1 = '';
       for (let i = 0; i < 300 && h1.length < 1000; i++) { await page.waitForTimeout(100); h1 = (await opfs.read('oneway.play.ega.html')) || ''; }
       await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
@@ -125,6 +137,8 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       // ほかの書き出し（1 ファイル・再生専用）にも、ブラウザの保存場所のどこにも、setup がない
       await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('oneway-plain.play.ega.html', { create: true }); });
       await menuClick('#b-export-play');
+      await page.waitForSelector('#dlg[open] #play-live');
+      await page.click('#dlg-export');
       let h2 = '';
       for (let i = 0; i < 300 && h2.length < 1000; i++) { await page.waitForTimeout(100); h2 = (await opfs.read('oneway-plain.play.ega.html')) || ''; }
       await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
@@ -150,6 +164,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     }
 
     // ---------------------------------------------------------------- 1. 前からの方法（たたんだ中）
+    await openLive();
     await openManual();
     // 教員のリンク（教員の鍵入り）は断る
     const keyBefore = await page.inputValue('#live-key');
@@ -192,17 +207,20 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await shot(page, 'live-poll-labels.png');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
     await page.fill('#live-endpoint', 'http://127.0.0.1:8787');
-    ok(await page.$eval('#live-export', (b) => b.disabled) && /接続先が正しくありません/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused (in Japanese)');
+    ok(/接続先が正しくありません/.test(await page.textContent('#live-problems')), 'live panel: an http://127.0.0.1 endpoint is refused (in Japanese)');
     await openManual(); await page.fill('#live-paste', block); await page.click('#live-read');
     { const pi = await page.$('#live-paste'); if (pi) await page.fill('#live-paste', ''); }
     // 窓が 3 時間より長い（部屋のサービス v1 の上限）
     const to0 = await page.inputValue('#live-to');
     await page.$eval('#live-to', (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, await page.evaluate((f) => { const d = new Date(new Date(f).getTime() + 4 * 3600e3); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }, await page.inputValue('#live-from')));
-    ok(await page.$eval('#live-export', (b) => b.disabled) && /3 時間まで/.test(await page.textContent('#live-problems')), 'live panel: a window over 3 hours is refused with a clear message');
+    ok(/3 時間まで/.test(await page.textContent('#live-problems')), 'live panel: a window over 3 hours is refused with a clear message');
     await page.$eval('#live-to', (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); }, to0);
     // 形の誤り：選択肢が空
     await page.fill('#live-poll-0-c2', '');
-    ok(await page.$eval('#live-export', (b) => b.disabled) && !!(await page.$('#live-problems')), 'live panel: an empty choice is a problem; export is disabled');
+    ok(!!(await page.$('#live-problems')), 'live panel: an empty choice is a problem');
+    await page.click('#dlg-export');
+    await page.waitForTimeout(300);
+    ok(await page.isVisible('#dlg[open] #live-panel') && /選択肢 3/.test(await page.textContent('#toast')), 'live: Export… with something to fix keeps the dialog open and says what');
     // 直すことは画面の言葉で（validate の code から。英語の開発者向けの文を出さない）
     { const t = await page.textContent('#live-problems'); ok(/投票 p1：選択肢 3 を入れてください（100 字まで）/.test(t) && !/live\.activities|characters/.test(t), `live panel: the problem is in plain Japanese ("${t}")`); }
     await page.$eval('#live-problem-box', (e) => e.scrollIntoView({ block: 'center' })); await shot(page, 'live-panel-problems.png');
@@ -217,12 +235,18 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await shot(page, 'live-panel.png');
     // 部屋を付けて書き出す
     await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('live.play.ega.html', { create: true }); });
-    await page.click('#live-export');
+    await page.click('#dlg-export');
     let html = '';
     for (let i = 0; i < 300 && html.length < 1000; i++) { await page.waitForTimeout(100); html = (await opfs.read('live.play.ega.html')) || ''; }
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
+    {
+      const nm = await page.evaluate(() => window.__APP_TEST.lastSaveName);
+      const lf = new Date(c.extensions.live.window.from);
+      const p2 = (n) => String(n).padStart(2, '0'), mark = `（ライブ ${p2(lf.getMonth() + 1)}-${p2(lf.getDate())}）`;
+      ok(nm.endsWith(mark + FORMAT.PLAY_EXT) && nm.length > (mark + FORMAT.PLAY_EXT).length, `export with Live: the file name has the mark on the title side, the extension unchanged (${nm})`);
+    }
     const at = html.indexOf('<meta http-equiv="Content-Security-Policy"');
-    ok(at > 0 && at < html.search(/<script/i) && html.slice(0, at).trimEnd().endsWith('<head>'), 'export with a live room: the CSP meta right after <head>, before any script');
+    ok(at > 0 && at < html.search(/<script/i) && /<head>\s*<meta charset="utf-8">$/.test(html.slice(0, at).trimEnd()) && (html.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1, 'export with a live room: the one CSP meta (the file policy with the endpoint merged in, format spec §4.2) right after <meta charset>, before any script');
     const csp = (/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(html) || [])[1] || '';
     ok(csp.includes(`; connect-src ${cr.endpoint} ${cr.endpoint.replace(/^https/, 'wss')};`), `export with a live room: connect-src is the endpoint only (${cr.endpoint})`);
     const m = new RegExp(`<script type="application/json" id="${LIVE_BLOCK_ID}">([^<]*)</script>`).exec(html);
@@ -233,10 +257,13 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 部屋を付けない再生専用：何も入らない
     await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle('plain.play.ega.html', { create: true }); });
     await menuClick('#b-export-play');
+    await page.waitForSelector('#dlg[open] #play-live');
+    await page.click('#dlg-export');
     let plain = '';
     for (let i = 0; i < 300 && plain.length < 1000; i++) { await page.waitForTimeout(100); plain = (await opfs.read('plain.play.ega.html')) || ''; }
     await page.evaluate(() => { window.__APP_TEST.saveHandle = null; });
-    ok(plain.length > 1000 && !plain.includes('Content-Security-Policy') && !plain.includes(LIVE_BLOCK_ID) && !plain.includes(cr.key), 'play-only without a room (the lesson has live settings): no CSP, no block, no key');
+    { const nm = await page.evaluate(() => window.__APP_TEST.lastSaveName); ok(!/ライブ|live/.test(nm) && nm.endsWith(FORMAT.PLAY_EXT), `play-only without Live: no mark in the file name (${nm})`); }
+    ok(plain.length > 1000 && /http-equiv="Content-Security-Policy" content="[^"]*connect-src 'none';/.test(plain) && (plain.match(/http-equiv="Content-Security-Policy"/g) || []).length === 1 && !plain.includes(LIVE_BLOCK_ID) && !plain.includes(cr.key), 'play-only without a room (the lesson has live settings): only the baseline file policy (connect-src \'none\'), no block, no key');
     // 編集アプリのページの決まりはそのまま（connect-src 'self'）
     const appCsp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]').content);
     const srcCsp = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8')) || [])[1];
@@ -247,16 +274,15 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       const old = { '*': [{ id: 'qa', kind: 'qa' }], [step]: [{ id: 'p1', kind: 'poll', prompt: 'old', choices: ['a', 'b'] }], 's-gone:1': [{ id: 'p2', kind: 'poll', prompt: 'gone', choices: ['a', 'b'] }] };
       cfgNow.extensions.live.activities = old;
       await opfs.write(FORMAT.CONFIG_FILE, JSON.stringify(cfgNow, null, 2) + '\n');
-      await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
-      await menuClick('#b-export-live');
+      await openLive();
       await page.waitForSelector('#live-poll-1-label');
       ok(await page.textContent('#live-poll-0-label') === label, 'older poll without a label: the label is filled from the slide when the panel opens');
-      ok(await page.textContent('#live-poll-1-label') === 's-gone · ステップ 2' && await page.getAttribute('#live-poll-1-label', 'title') === 'ステップの鍵：s-gone:1', 'older poll on an unknown slide: shown as "s-gone · 段階 2", the key in the tooltip');
+      ok(await page.textContent('#live-poll-1-label') === 's-gone · ステップ 2' && await page.getAttribute('#live-poll-1-label', 'title') === 'ステップの識別子：s-gone:1', 'older poll on an unknown slide: shown as "s-gone · 段階 2", the key in the tooltip');
       const a2 = JSON.parse(await page.inputValue('#live-json'));
       ok(a2[step][0].label === label && !('label' in a2['s-gone:1'][0]), 'older polls: the JSON gets a label only where one could be made');
     }
-    // 板を閉じる（設定を消す：Q&A を切って投票を消して残すと、部屋の設定は残るが活動は空）
-    await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+    // 窓を閉じる
+    await clickDlg(page, '#dlg-cancel');
   } finally {
     ctx.off('request', onReq);
     page.off('websocket', onWs);

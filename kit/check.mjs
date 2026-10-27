@@ -17,6 +17,7 @@
 // G. モーフ（data-morph）：元のスライドと対応する data-id があるか、対応の一覧
 // H. 読み上げ（a11y）：alt の無い <img>、名前（aria-label / <title>）の無い SVG の図（警告）と部品（情報）
 // I. スライドの id と鍵（format spec §8.1）：id の書式、鍵の重なり、id とほかの id（目印・\htmlId）の衝突、
+//    1.0 の語彙にない書き方（§8.0：色のクラス blue・red・gray、data-steps・data-anim、<html data-mode="lecture">。警告）、
 //    どのスライドにも合わない narration.md の節（エラー）、{#id} の見出しとスライドの見出しの違い（情報）
 // J. スライドへのリンク（format spec §9.1A）：<a href="#<id>"> と #<id>:<段階の鍵> の行き先がないか段階が範囲の外ならエラー。
 //    番号（#N）・id のないスライドの鍵へのリンクは警告。ほかのファイルへのリンクは、ファイルがなければ警告
@@ -33,6 +34,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
+import { compareRenders, domSnapshot } from './render-compare.mjs';
 import { build, isJapanese, analyzeSlideIds, listFiles } from './build.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
@@ -44,6 +46,7 @@ import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
+import { legacyVocabulary } from './core/legacy-vocab.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -113,6 +116,8 @@ if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: the
     if (s.rule === 'data-key') report(s.index, 'warn', 'legacyDataKey', { key: s.key, line: s.line });
     else if (s.rule === 'index') report(s.index, 'warn', 'legacyIndex', { key: s.key, line: s.line });
   }
+  // 1.0 の語彙にない書き方（format spec §8.0）：色のクラス blue・red・gray、data-steps・data-anim、<html data-mode="lecture">。警告だけ（教材は組める）
+  for (const x of legacyVocabulary(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(null, 'warn', x.code, x);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {
@@ -460,19 +465,6 @@ for (const v of ['--fg', '--term', '--emph', '--title', '--accent2']) {
 // ================================================================ D. 部品の再現性（呼び出し順に依存していないか）
 phase = 'D 再現性';
 const CLIP = { x: 0, y: 0, width: 1280, height: 720 };
-async function pixelDiff(a, b) {
-  return page.evaluate(async ([a, b]) => {
-    const load = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });
-    const [ia, ib] = await Promise.all([load(a), load(b)]);
-    const c = document.createElement('canvas'); c.width = ia.width; c.height = ia.height;
-    const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(ia, 0, 0); const da = g.getImageData(0, 0, c.width, c.height).data;
-    g.clearRect(0, 0, c.width, c.height); g.drawImage(ib, 0, 0); const db = g.getImageData(0, 0, c.width, c.height).data;
-    let n = 0;
-    for (let i = 0; i < da.length; i += 4) if (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2]) > 48) n++;
-    return n;
-  }, [a.toString('base64'), b.toString('base64')]);
-}
 // 撮る前に字と描画が落ち着くのを待つ（docs/contract.md §1：seek の後に requestAnimationFrame を 2 回）
 // 埋め込みの字はスライドが見えたときに初めて読まれるので、先に全部読んでおく
 const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f) => f.load().catch(() => {})))
@@ -489,16 +481,24 @@ async function orderDiffers(m, k) {
   await settle();
   await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
   await settle();
-  const bufA = await page.screenshot({ clip: CLIP });
+  const bufA = await page.screenshot({ clip: CLIP }), domA = await domSnapshot(page, m.i);
   await page.evaluate(([i, max]) => DECK.seek(i, max, Infinity), [m.i, m.max]);
   await page.evaluate(([i]) => DECK.seek(i, 0, Infinity), [m.i]);
   await page.evaluate(([i, k]) => DECK.seek(i, k, 0.4), [m.i, k]);
   await settle();
   let bufB = await page.screenshot({ clip: CLIP });
   if (!bufA.equals(bufB)) { await settle(); bufB = await page.screenshot({ clip: CLIP }); }   // 描画の遅れによる誤検出を避ける
-  // アンチエイリアスの揺らぎ（数ピクセル・数階調）は許す。はっきり違う画素が 40 を超えたら依存とみなす
-  return !bufA.equals(bufB) && (await pixelDiff(bufA, bufB)) > 40;
+  // まず部品の DOM を比べる。DOM がバイトまで同じで、違いが NOISE_BOUNDS の内側（どれも図形の縁の 1 px・部品の箱の中、数が部品の面積の 0.1 % かつ 200 以下。縁から遠い画素は、ばらばらでわずか（各チャンネル 24/255 以下）なものを 4 個まで）なら、
+  // 描き方の揺れ（アンチエイリアス。Linux の Chrome は描き直しを重ねると描き方を切り替える）で、呼び出し順への依存ではない（info の compOrderNoise に記録する）。
+  // DOM が違う・比べる DOM のない部品（canvas など）は、今までどおり、はっきり違う画素が 40 を超えたら依存とみなす
+  // （kit/render-compare.mjs。tools/test-components.mjs の決定性と同じ基準）
+  if (bufA.equals(bufB)) return false;
+  const r = await compareRenders(page, bufA, bufB, domA, await domSnapshot(page, m.i));
+  if (r.same && r.kind === 'noise') report(m.i, 'info', 'compOrderNoise', { k, n: r.n, cap: r.cap, faint: r.faint || 0 }, String(k));   // 揺れとして通したものは必ず記録する
+  lastOrderNote = r.note;
+  return !r.same;
 }
+let lastOrderNote = '';   // 最後に違ったときの説明（compOrder のエラーに添える：DOM が違うのか、どこの何画素か）
 for (const m of meta) {
   if (!m.comps) continue;
   for (let k = 1; k <= m.max; k++) {
@@ -506,7 +506,7 @@ for (const m of meta) {
     // （操作の帯が消えるなど。上の HIDE_CHROME）が挟まった誤報なので、念のため 3 回続けて違ったときだけ報告する
     let differs = true;
     for (let n = 0; n < 3 && differs; n++) differs = await orderDiffers(m, k);
-    if (differs) report(m.i, 'error', 'compOrder', { k }, String(k));
+    if (differs) { report(m.i, 'error', 'compOrder', { k }, String(k)); report(m.i, 'info', 'compOrderDetail', { k, note: lastOrderNote }, String(k)); }
   }
 }
 // 検査のために何度も飛び回ったので、最後にもう一度最初から開き直しておく（念のため）

@@ -74,6 +74,7 @@ export async function readInWorker(bytes, { extract = false, timeout = READER_TI
     deckMeta: m.deckMetaText ? parseJsonStrict(m.deckMetaText) : null,
     files: unpackFiles(m),
     warnings: m.warnings || [], sourceMatches: !!m.sourceMatches, extractOnly: !!m.extractOnly,
+    preDraft: !!m.preDraft,   // 1.0 の形より前の草案のファイル（索引に player がない。§7.1。readPortable が決める。app/earlier-draft.js の earlierFile が読む）
   };
 }
 // 試験：Worker の大域変数（印のスクリプトが Worker の中でも動いていないこと）

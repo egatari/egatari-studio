@@ -1,0 +1,79 @@
+<!-- i18n: pair=migrating-0.x.md sha256=4090a825467307ef -->
+# 前の版で作った教材を Egatari 1.0 に移す
+
+[English](migrating-0.x.md) | 日本語
+
+この説明は、人でも、Claude Code や Codex のような AI のコーディングの道具でも、順にたどれるように書いています。AI には「このページに沿って、`<ファイル>` を Egatari 1.0 に移して」と頼めます。
+
+## これが要るか
+
+古い教材を**再生する**だけなら要りません。Egatari のファイルは自分のプレーヤーを持っているので、前の版で作った教材はそのまま再生できます。古い教材を**編集する**だけなら、これも要りません。前の版の編集アプリが、版ごとのアドレス（例：`https://studio.egatari.org/v0.4.8/`）で使えます（版ごとのアドレスは v0.4.1 から。一覧は `https://studio.egatari.org/versions.json`）。そのようなファイルを今の編集アプリで開くと、前の版のファイルだと知らせて再生し、「前の版の Studio で開く」と「移し替えの手引きを開く」（このページ）を出します。
+
+要るのは、古い教材を**今の編集アプリで**直したいときだけです。
+
+前の版のファイルかどうかは、索引（`egatari-index` のブロック）か `deck-meta` のブロックに `player` があるかで分かります。なければ前の版のファイルです。
+
+## 何が変わったか（形式の仕様「The 1.0 file shape」）
+
+| 1.0 より前 | 1.0 |
+|---|---|
+| スライドを、見出しの字・手書きの `data-key`・位置で見分けることがあった | どのスライドにも `id` がある。台本の見出しに `{#id}` が付く |
+| `generator` が、作ったソフトと中のプレーヤーの両方を指していた | `player` が同梱のプレーヤー、`generator` は作ったソフトだけ |
+| ファイルに通信の決まりがない | どのファイルも、頭に決まった Content-Security-Policy の `<meta>` を持つ |
+| 台本の `{zoom:…}`（カメラ、草案） | なくなった。寄る動きはパーツの演出 |
+| `?mode=lecture` | なくなった。`talk` と「先のステップを薄く見せる」を使う |
+| 本の `:name:` | `:label:` だけ |
+| `data-anim` と `data-steps`（前の動き）、`data-mode="lecture"`、色のクラス `blue` `red` `gray` | なくなった。`data-step` とパーツ、`data-mode="talk"`、`term` `emph` `muted` |
+
+教材の ID（`docId`）・文・音声・権利の情報は変わりません。
+
+## 手順
+
+今の Egatari Studio のリポジトリの写し（`npm ci --ignore-scripts` 済み）と、手順 1 のための前の版の編集アプリを使います。
+
+1. **前の版で、古いファイルを作業フォルダに出す。** 前の版の編集アプリ（`https://studio.egatari.org/v0.4.8/`、またはそのファイルを作った版。`versions.json` にあれば）で開いて「書き出す ▾ →作業フォルダに書き出す…」を使います。または、その版のタグの Egatari Studio で次を実行します。
+
+   ```bash
+   npm run portable -- unpack old.ega.html lesson/
+   ```
+
+   フォルダには `deck.html`・`narration.md`・音声・`audio/manifest.json`・`egatari.json`（`docId` が入っている）ができます。
+
+2. **すべてのスライドに id を付ける。** 今の Studio の写しで次を実行します。
+
+   ```bash
+   npm run ids -- lesson/
+   ```
+
+   id のないスライドに `id="s-xxxxxx"` を付け、台本の見出しを `## 見出し {#id}` に書き換えます。`audio/manifest.json`・`timeline.json`・`comments.json` の鍵も新しい id に付け替えるので、音声はつながったままです。`data-morph` の参照も付け替え、書き換えるファイルの控えを `lesson/.cache/edits/` に残します（`pack` は入れません）。音声は作り直しません。もう一度実行して、2 回目に何も変わらないことを確かめます。
+
+3. **1.0 にないものを外す。** `deck.html`・`narration.md`・`article.md`（あれば）で、次のことをします。
+   - スライドの手書きの `data-key="…"` を消す（id が代わりになる）
+   - 台本の `{zoom:…}` を消す。寄る動きに意味があったなら作者に伝える（あとで寄るパーツでできる）
+   - `?mode=lecture` を含むリンクを `?mode=talk` にし、`<html>` の `data-mode="lecture"` を `data-mode="talk"` にする（先のステップを薄く見せるのは、発表する人が入れる選びになった）
+   - 前の色のクラス `blue`・`red`・`gray` を `term`・`emph`・`muted` にする
+   - `data-anim` か `data-steps` のあるスライド（前の種類の動き）は、自分で書き換えない。作者に伝える（`data-step` かパーツで書き直せる）
+   - `article.md` の `:name:` を `:label:` にする
+   - `data-egatari-seed` は消してかまいません（効果はありません）
+
+   ほかは変えません。台本の言い回し・スライドの名前・音声には手を付けません。
+
+4. **今の Studio で確かめて、組み直す。**
+
+   ```bash
+   npm run check -- lesson/deck.html
+   npm run portable -- pack lesson/ -o lesson.ega.html
+   ```
+
+   直すのは、上の手順で起きた誤りだけです。言葉や配置についての注意は作者が決めることで、移す作業には入れません。`pack` が、テーマを教材の記録した版に固定したと知らせることがあります（例：`theme pinned: default 1.1.0 …`）。移しても見た目を変えないためなので、そのままにします。移す作業の中でテーマやパーツを更新しません。
+
+5. **確かめる。** 新しいファイルの索引に `player` があり、`docId` が古いファイルと同じであることを確かめます。今の編集アプリで開いて全部のスライドを進め、各スライドの最後のステップを古いファイルと見比べます。違って見えるスライドがあれば、作者に伝えます。
+
+## 止めて聞くとき
+
+次のときは、推し量らずに作者に聞きます。
+- 2 つのスライドが同じ鍵になるとき
+- `data-anim` か `data-steps` を使うスライドがあるとき
+- `npm run ids` が断ったとき
+- 寄る動きがないと意味が通らないスライドがあるとき
+- 上の手順で起きたのではない誤りを、検査が知らせたとき

@@ -1,0 +1,1131 @@
+{
+  "name": "egatari-components",
+  "version": "1.13.0",
+  "tag": "v1.13.0",
+  "repository": "https://github.com/egatari/components",
+  "license": "MIT",
+  "tarball": {
+    "file": "egatari-components-v1.13.0.tar.gz",
+    "sha256": "c4eacac92801520622c791fb2a439cbea761a42f3ce545ccefcaf0e88b60a00f",
+    "bytes": 505312
+  },
+  "purposes": [
+    {
+      "id": "compare",
+      "ja": "比べる（量・特徴）",
+      "en": "Compare (amounts or features)",
+      "steps": {
+        "ja": "一方を出し、それから違い",
+        "en": "One side, then the difference"
+      },
+      "tile": "own",
+      "icon": "compare",
+      "label": {
+        "ja": "比べる（量・特徴）",
+        "en": "Compare (amounts, features)"
+      },
+      "examples": {
+        "ja": "棒・並べた棒・比べる図",
+        "en": "bars, sorted bars, comparison"
+      }
+    },
+    {
+      "id": "ranking",
+      "ja": "順位",
+      "en": "Ranking",
+      "steps": {
+        "ja": "並べ替えた棒を 1 本ずつ",
+        "en": "Sorted bars one at a time"
+      },
+      "tile": {
+        "into": "compare"
+      },
+      "icon": "bars"
+    },
+    {
+      "id": "change",
+      "ja": "時間での変化",
+      "en": "Change over time",
+      "steps": {
+        "ja": "線を 1 本ずつ",
+        "en": "One line at a time"
+      },
+      "tile": "own",
+      "icon": "line",
+      "label": {
+        "ja": "変化",
+        "en": "Change"
+      },
+      "examples": {
+        "ja": "折れ線・縦棒",
+        "en": "line, columns"
+      }
+    },
+    {
+      "id": "part-whole",
+      "ja": "全体と内訳",
+      "en": "Part of a whole",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "part",
+      "label": {
+        "ja": "内訳",
+        "en": "Part of a whole"
+      },
+      "examples": {
+        "ja": "積み上げ棒・円・入れ子の円",
+        "en": "stacked bars, pie, nested circles"
+      }
+    },
+    {
+      "id": "key-number",
+      "ja": "1 つの大事な数字",
+      "en": "One key number",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "kpi",
+      "label": {
+        "ja": "数字を見せる",
+        "en": "Key number"
+      },
+      "examples": {
+        "ja": "大きな数字",
+        "en": "big number"
+      }
+    },
+    {
+      "id": "process",
+      "ja": "手順・工程",
+      "en": "Steps of a process",
+      "steps": {
+        "ja": "1 つの手順ずつ",
+        "en": "One step at a time"
+      },
+      "tile": "own",
+      "icon": "flow",
+      "label": {
+        "ja": "手順",
+        "en": "Steps"
+      },
+      "examples": {
+        "ja": "流れ図",
+        "en": "flow chart"
+      }
+    },
+    {
+      "id": "timeline",
+      "ja": "年表・予定",
+      "en": "Timeline, schedule",
+      "steps": {
+        "ja": "1 つの出来事ずつ",
+        "en": "One event at a time"
+      },
+      "tile": "own",
+      "icon": "timeline",
+      "label": {
+        "ja": "年表・予定",
+        "en": "Timeline"
+      },
+      "examples": {
+        "ja": "年表",
+        "en": "timeline"
+      }
+    },
+    {
+      "id": "cause-effect",
+      "ja": "原因と結果",
+      "en": "Cause and effect",
+      "steps": {
+        "ja": "原因、それから結果",
+        "en": "Causes, then the effect"
+      },
+      "tile": "own",
+      "icon": "cause",
+      "label": {
+        "ja": "原因と結果",
+        "en": "Cause and effect"
+      },
+      "examples": {
+        "ja": "特性要因図",
+        "en": "fishbone"
+      }
+    },
+    {
+      "id": "cycle",
+      "ja": "循環",
+      "en": "Cycle",
+      "steps": {
+        "ja": "1 つの段階ずつ",
+        "en": "One stage at a time"
+      },
+      "tile": "own",
+      "icon": "cycle",
+      "label": {
+        "ja": "循環",
+        "en": "Cycle"
+      },
+      "examples": {
+        "ja": "サイクル",
+        "en": "cycle"
+      }
+    },
+    {
+      "id": "hierarchy",
+      "ja": "階層・分類",
+      "en": "Hierarchy, classification",
+      "steps": {
+        "ja": "上から",
+        "en": "Top down"
+      },
+      "tile": "own",
+      "icon": "tree",
+      "label": {
+        "ja": "階層・分類",
+        "en": "Hierarchy"
+      },
+      "examples": {
+        "ja": "木",
+        "en": "tree"
+      }
+    },
+    {
+      "id": "position",
+      "ja": "位置づけ（2 軸）",
+      "en": "Position on 2 axes",
+      "steps": {
+        "ja": "軸、それから項目",
+        "en": "Axes, then items"
+      },
+      "tile": "own",
+      "icon": "matrix",
+      "label": {
+        "ja": "位置づけ",
+        "en": "Position"
+      },
+      "examples": {
+        "ja": "4 象限・2 軸の地図",
+        "en": "4 quadrants, 2-axis map"
+      }
+    },
+    {
+      "id": "overlap",
+      "ja": "重なり",
+      "en": "Overlap",
+      "steps": {
+        "ja": "集合、それから重なり",
+        "en": "Sets, then the overlap"
+      },
+      "tile": "own",
+      "icon": "venn",
+      "label": {
+        "ja": "重なり",
+        "en": "Overlap"
+      },
+      "examples": {
+        "ja": "ベン図",
+        "en": "Venn diagram"
+      }
+    },
+    {
+      "id": "correlation",
+      "ja": "2 つの量の関係",
+      "en": "Two quantities",
+      "steps": {
+        "ja": "点、それから傾向",
+        "en": "Points, then the trend"
+      },
+      "tile": "own",
+      "icon": "scatter",
+      "label": {
+        "ja": "2 つの量の関係",
+        "en": "Two quantities"
+      },
+      "examples": {
+        "ja": "散布図",
+        "en": "scatter plot"
+      }
+    },
+    {
+      "id": "spread",
+      "ja": "ばらつき",
+      "en": "Spread",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "dist",
+      "label": {
+        "ja": "ばらつき",
+        "en": "Spread"
+      },
+      "examples": {
+        "ja": "ヒストグラム・箱ひげ図・ドットプロット",
+        "en": "histogram, box plot, dot plot"
+      }
+    },
+    {
+      "id": "grouping",
+      "ja": "まとめる・分ける",
+      "en": "Grouping",
+      "steps": {
+        "ja": "まとまる動き",
+        "en": "The grouping motion"
+      },
+      "tile": "none",
+      "icon": "collect"
+    },
+    {
+      "id": "text-structure",
+      "ja": "文章の構造",
+      "en": "Structure of a text",
+      "steps": {
+        "ja": "読む順",
+        "en": "Reading order"
+      },
+      "tile": "none",
+      "icon": "gendai"
+    },
+    {
+      "id": "contents",
+      "ja": "目次",
+      "en": "Contents",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "menu",
+      "label": {
+        "ja": "目次",
+        "en": "Contents"
+      },
+      "examples": {
+        "ja": "札の格子",
+        "en": "grid of cards"
+      }
+    },
+    {
+      "id": "parameter",
+      "ja": "パラメータを動かす",
+      "en": "Varying a parameter",
+      "steps": {
+        "ja": "値を 1 つずつ",
+        "en": "One value at a time"
+      },
+      "tile": "none",
+      "icon": "sweep"
+    },
+    {
+      "id": "predict",
+      "ja": "予想してから確かめる",
+      "en": "Predict, then check",
+      "steps": {
+        "ja": "問いと選択肢、それから答え",
+        "en": "The question and choices, then the answer"
+      },
+      "tile": "own",
+      "icon": "predict",
+      "label": {
+        "ja": "予想して確かめる",
+        "en": "Predict, then check"
+      },
+      "examples": {
+        "ja": "手を挙げて数える・答えを開く",
+        "en": "show of hands, then the answer"
+      }
+    },
+    {
+      "id": "timebox",
+      "ja": "時間を区切る",
+      "en": "Time-boxing",
+      "steps": {
+        "ja": "区切りを 1 つずつ（残り時間）",
+        "en": "One phase at a time (time remaining)"
+      },
+      "tile": "none",
+      "icon": "timer"
+    },
+    {
+      "id": "spatial",
+      "ja": "場所・地図",
+      "en": "Place / map",
+      "steps": {
+        "ja": "地図、それから地域・点・矢印を 1 つずつ",
+        "en": "The map, then regions, points and arrows one at a time"
+      },
+      "tile": "own",
+      "icon": "map",
+      "label": {
+        "ja": "場所・地図",
+        "en": "Place / map"
+      },
+      "examples": {
+        "ja": "日本地図・塗り分け・地点と矢印",
+        "en": "map of Japan, choropleth, points and arrows"
+      }
+    },
+    {
+      "id": "music",
+      "ja": "音楽（音の高さ・和音・リズム）",
+      "en": "Music (pitch, chords, rhythm)",
+      "steps": {
+        "ja": "音・和音を 1 つずつ",
+        "en": "One note or chord at a time"
+      },
+      "tile": "none",
+      "icon": "music"
+    },
+    {
+      "id": "deviation",
+      "ja": "差・増減",
+      "en": "Deviation, increase and decrease",
+      "steps": {
+        "ja": "基準、それから差",
+        "en": "The baseline, then the differences"
+      },
+      "reserved": true
+    },
+    {
+      "id": "concept-links",
+      "ja": "概念のつながり",
+      "en": "Concept links",
+      "steps": {
+        "ja": "中心から外へ",
+        "en": "From the centre outwards"
+      },
+      "reserved": true
+    }
+  ],
+  "components": {
+    "bars": {
+      "tag": "m-bars",
+      "series": "common",
+      "purposes": [
+        "compare",
+        "ranking",
+        "change",
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5",
+      "files": {
+        "README.md": "1a257645f1aa906e79f00b739c53f686609382a1b88363549f0df9fe38724c63",
+        "demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+        "index.js": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5"
+      }
+    },
+    "boxplot": {
+      "tag": "m-boxplot",
+      "series": "academic",
+      "purposes": [
+        "spread",
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "dfb23884ace6ce26c7048c0a813b524009b10210e93107e3c95bbf760c630d2b",
+      "files": {
+        "README.md": "dde7398ac1a6de21f18defe2186cb853b2204c2c21a2f329dce729263dee9e6d",
+        "demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+        "index.js": "dfb23884ace6ce26c7048c0a813b524009b10210e93107e3c95bbf760c630d2b"
+      }
+    },
+    "codetree": {
+      "tag": "m-codetree",
+      "series": "info",
+      "purposes": [
+        "hierarchy",
+        "process"
+      ],
+      "variants": [],
+      "sha256": "cde0439fa559fb69edcdc98746121e5a8579f1228b63b1f8b774a79faf105504",
+      "files": {
+        "README.md": "fc177f553892266aff9616febebe6442920128a6fe7e7060d495a1e594f3143c",
+        "demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
+        "index.js": "cde0439fa559fb69edcdc98746121e5a8579f1228b63b1f8b774a79faf105504"
+      }
+    },
+    "collect": {
+      "tag": "m-collect",
+      "series": "academic",
+      "purposes": [
+        "grouping"
+      ],
+      "variants": [],
+      "sha256": "aa261290f03e37a315fdbe1e02f546dacacf64ac10106e303e6a4a76c69d68c1",
+      "files": {
+        "README.md": "03610949cf61472e16d98482c5cd04f9427ac373e5265f750f8ab14a95592512",
+        "demo.html": "fe47548d4d6f0559cccba1595f6767d1c6139aa41d3ec45f879e04840acc3150",
+        "index.js": "aa261290f03e37a315fdbe1e02f546dacacf64ac10106e303e6a4a76c69d68c1"
+      }
+    },
+    "compare": {
+      "tag": "m-compare",
+      "series": "common",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "slide",
+        "reveal"
+      ],
+      "sha256": "83884f0c9c1e1648a9d8e90c2da6a09fcdafc2d4837b99b106f652f58199a32b",
+      "files": {
+        "README.md": "839d6abe3ffcc351621dc8446d57a6c3266f6b1db6ae9b44a0e492104cd08992",
+        "demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+        "index.js": "83884f0c9c1e1648a9d8e90c2da6a09fcdafc2d4837b99b106f652f58199a32b"
+      }
+    },
+    "curves": {
+      "tag": "m-curves",
+      "series": "common",
+      "purposes": [
+        "change"
+      ],
+      "variants": [],
+      "sha256": "0ea32f82e10341ae276804a5ba0f570d9faab4063fb808c53085aa7d9d76d361",
+      "files": {
+        "README.md": "783c6a032ea069085212a1bf7a2347b6d45cfe4c67f37e46928abe7867ad285d",
+        "demo.html": "619346c92ad2d72013a91fa07283e845f475c7d898512f1132c8f0b6017a465a",
+        "index.js": "0ea32f82e10341ae276804a5ba0f570d9faab4063fb808c53085aa7d9d76d361"
+      }
+    },
+    "cycle": {
+      "tag": "m-cycle",
+      "series": "common",
+      "purposes": [
+        "cycle"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15",
+      "files": {
+        "README.md": "3e952b4cef4fea509fc873d97490103efc886495a33b01c7cec42a549f5c68a7",
+        "demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+        "index.js": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15"
+      }
+    },
+    "fishbone": {
+      "tag": "m-fishbone",
+      "series": "common",
+      "purposes": [
+        "cause-effect"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "5584f4b44e5925801fa9f591c1b7e40c4f20d467733320c4798734b5530217cf",
+      "files": {
+        "README.md": "7bbcb15b886e7fadfc1a349d539d6c48b40afff009590a726ef3e2d9e4863acd",
+        "demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+        "index.js": "5584f4b44e5925801fa9f591c1b7e40c4f20d467733320c4798734b5530217cf"
+      }
+    },
+    "flow": {
+      "tag": "m-flow",
+      "series": "common",
+      "purposes": [
+        "process"
+      ],
+      "variants": [],
+      "sha256": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63",
+      "files": {
+        "README.md": "e9c4b5df58d94ae1aad832f808673d8e63b5b11faabf2742df49433bdac7dd1a",
+        "demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+        "index.js": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63"
+      }
+    },
+    "gendai": {
+      "tag": "m-gendai",
+      "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "sha256": "404dfd299d301d4814fa93e62ed71885578aead294357f5f375d31d355984cc8",
+      "files": {
+        "README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
+        "demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+        "index.js": "404dfd299d301d4814fa93e62ed71885578aead294357f5f375d31d355984cc8"
+      }
+    },
+    "heatmap": {
+      "tag": "m-heatmap",
+      "series": "academic",
+      "purposes": [
+        "compare",
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep"
+      ],
+      "sha256": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66",
+      "files": {
+        "README.md": "d9eb2579d8a732f34d921b5bf1bfd8c90ff5327b6493534c200d2af0258d6a3a",
+        "demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+        "index.js": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66"
+      }
+    },
+    "hissan": {
+      "tag": "m-hissan",
+      "series": "academic",
+      "purposes": [
+        "process"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "preview": "none",
+      "sha256": "8e49eb1ad6b20c5e4c63bd27813165138a4eff45a908c6b8f72b8b057eae0f3b",
+      "files": {
+        "README.md": "51739066ecbe23247554782fe3fa8f8553abf14fb6503b47abeaeaf2ac0ce406",
+        "demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+        "index.js": "8e49eb1ad6b20c5e4c63bd27813165138a4eff45a908c6b8f72b8b057eae0f3b"
+      }
+    },
+    "hist": {
+      "tag": "m-hist",
+      "series": "academic",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "9a54e86b7ffc0a58b8af6d1a744dc5d524b776349eb2310da105aadaf3f80a9b",
+      "files": {
+        "README.md": "4c4463b2d622e31e50f66ce473b528e9105c96098f9eda7469fd090c97d234a8",
+        "demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+        "index.js": "9a54e86b7ffc0a58b8af6d1a744dc5d524b776349eb2310da105aadaf3f80a9b"
+      }
+    },
+    "kakijun": {
+      "tag": "m-kakijun",
+      "series": "kokugo",
+      "license": "MIT AND OFL-1.1",
+      "purposes": [
+        "process"
+      ],
+      "variants": [
+        "draw",
+        "pen"
+      ],
+      "sha256": "e8404ed384f5d97a25f3f1d954a7c79636f3637c75e4ab5846985def07513d70",
+      "files": {
+        "LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+        "OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+        "README.md": "159f800b57dd7f8409bc99602e961f947d233e91621df2e7d1a780b9a9fe5035",
+        "demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+        "index.js": "e8404ed384f5d97a25f3f1d954a7c79636f3637c75e4ab5846985def07513d70",
+        "strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c"
+      }
+    },
+    "kanbun": {
+      "tag": "m-kanbun",
+      "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "sha256": "99c2f6f57c1d4c32d3593b619b979bc845391a37e8722d383f962e34612ce70a",
+      "files": {
+        "README.md": "8901582992d59b5c433339e07368b3721ce095f751b9dc90c990ec224e431e55",
+        "demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+        "index.js": "99c2f6f57c1d4c32d3593b619b979bc845391a37e8722d383f962e34612ce70a"
+      }
+    },
+    "keyboard": {
+      "tag": "m-keyboard",
+      "series": "music",
+      "purposes": [
+        "music"
+      ],
+      "variants": [
+        "light",
+        "press",
+        "rise"
+      ],
+      "sha256": "f23b07b10d9eea732c57d7694799093bf2319a51788819be79e7786f5dad5583",
+      "files": {
+        "README.md": "b7482d535ed7de4094eb4e4d852cdb9bf1550af65d1da31b0d97fc66f5600098",
+        "demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+        "index.js": "f23b07b10d9eea732c57d7694799093bf2319a51788819be79e7786f5dad5583"
+      }
+    },
+    "kobun": {
+      "tag": "m-kobun",
+      "series": "kokugo",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "1ee2a833b88ef8daa8c339b617aa21fa7af201f96262234ec94b589593488b1c",
+      "files": {
+        "README.md": "f1b1cee08d89411e057801045a53ddd78566721a188b6b29bdfb33533012a084",
+        "demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+        "index.js": "1ee2a833b88ef8daa8c339b617aa21fa7af201f96262234ec94b589593488b1c"
+      }
+    },
+    "kpi": {
+      "tag": "m-kpi",
+      "series": "common",
+      "purposes": [
+        "key-number"
+      ],
+      "variants": [
+        "count",
+        "rise",
+        "flip",
+        "underline"
+      ],
+      "sha256": "322bdf828be3dcbbedf42ed93cd89d17417438a50acc028d44f0fe34a9f2e623",
+      "files": {
+        "README.md": "eea844fc3bf70aea07ae78c592f689bed038e71766888cb8164855ba5a4a0555",
+        "demo.html": "9e06266e83cc9f04912f8330e03c87e0c1e510c3f2d7ad9fd82680bf822a0f34",
+        "index.js": "322bdf828be3dcbbedf42ed93cd89d17417438a50acc028d44f0fe34a9f2e623"
+      }
+    },
+    "map-japan": {
+      "tag": "m-map-japan",
+      "series": "social",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "9d4aa9cdfbab2db58382003bdf53e47a5938a560293a9742a526580a3849079f",
+      "files": {
+        "README.md": "0a6e3fc643f9a129c0b361b823415ce4046ab2e40855718f8fee8430a88d7985",
+        "demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+        "index.js": "9d4aa9cdfbab2db58382003bdf53e47a5938a560293a9742a526580a3849079f"
+      }
+    },
+    "map-world": {
+      "tag": "m-map-world",
+      "series": "social",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31",
+      "files": {
+        "README.md": "b356516564a39be59c0eb3e984493f449ccf1019ac14b6d7dc9448856d79006e",
+        "demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+        "index.js": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31"
+      }
+    },
+    "market": {
+      "tag": "m-market",
+      "series": "business",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "e5fe376e8a1d6b3c220eb2bc6a2e9da7e7fb84a11aa40d0f2507aa3daca6d70a",
+      "files": {
+        "README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
+        "demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+        "index.js": "e5fe376e8a1d6b3c220eb2bc6a2e9da7e7fb84a11aa40d0f2507aa3daca6d70a"
+      }
+    },
+    "menu": {
+      "tag": "m-menu",
+      "series": "common",
+      "purposes": [
+        "contents"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "487d4cacb1bccb2ab61e3be9e0ec9511672db152cf5a4cb8ceb2582a64e178df",
+      "files": {
+        "README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
+        "demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+        "index.js": "487d4cacb1bccb2ab61e3be9e0ec9511672db152cf5a4cb8ceb2582a64e178df"
+      }
+    },
+    "numberline": {
+      "tag": "m-numberline",
+      "series": "academic",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "f569c5e5a39d8d9e02b1a4bbe629251df5269180f921fd449dd58dd3cf3c218d",
+      "files": {
+        "README.md": "d783c9ecb1337b42c86336403030bb03a62c18a1f472457cde6e7aabef6db8ee",
+        "demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+        "index.js": "f569c5e5a39d8d9e02b1a4bbe629251df5269180f921fd449dd58dd3cf3c218d"
+      }
+    },
+    "pie": {
+      "tag": "m-pie",
+      "series": "common",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "0d9fd415e240132088ac080742c1447ae2e79d72e6e4013a0258718f8f21cd41",
+      "files": {
+        "README.md": "d2c11950f7099fd534818fc4c6f8da068a3574e12ed466465b21249f75a3941b",
+        "demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+        "index.js": "0d9fd415e240132088ac080742c1447ae2e79d72e6e4013a0258718f8f21cd41"
+      }
+    },
+    "predict": {
+      "tag": "m-predict",
+      "series": "common",
+      "purposes": [
+        "predict"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "preview": "none",
+      "sha256": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2",
+      "files": {
+        "README.md": "9e027bfc8f4507f1bbc92a7d9701d57f1eebc79b00851a432e9a9ccb1dc241cb",
+        "demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+        "index.js": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2"
+      }
+    },
+    "quad": {
+      "tag": "m-quad",
+      "series": "common",
+      "purposes": [
+        "position"
+      ],
+      "variants": [],
+      "sha256": "bd7cb157ba5a2a0e227399f3837321d89d986b90a6ec7456b9a12f25aba1cb2d",
+      "files": {
+        "README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
+        "demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
+        "index.js": "bd7cb157ba5a2a0e227399f3837321d89d986b90a6ec7456b9a12f25aba1cb2d"
+      }
+    },
+    "scatter": {
+      "tag": "m-scatter",
+      "series": "common",
+      "purposes": [
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "b77dbc8a2e03d2742ff329cae1dfff1df39540d65337306b7b17585222a0f91a",
+      "files": {
+        "README.md": "c5220f1188c99f2d332bcc2ff4fc87a65d36492371c2199520c63bce3845f7f8",
+        "demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+        "index.js": "b77dbc8a2e03d2742ff329cae1dfff1df39540d65337306b7b17585222a0f91a"
+      }
+    },
+    "seq": {
+      "tag": "m-seq",
+      "series": "academic",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [],
+      "sha256": "08d2e359f2397c8b71c0ceabfe277756d3aea4e21a5d809e30765184cc04d464",
+      "files": {
+        "README.md": "7997eec13fd687dc54e10f19e8aa061c259bc0001954475fd2ae9412d7340856",
+        "demo.html": "bdb21764c9430d51d32c303481c522d06e3ce2785ccecd20c55a20f48371c5f6",
+        "index.js": "08d2e359f2397c8b71c0ceabfe277756d3aea4e21a5d809e30765184cc04d464"
+      }
+    },
+    "sweep": {
+      "tag": "m-sweep",
+      "series": "academic",
+      "purposes": [
+        "parameter"
+      ],
+      "variants": [],
+      "sha256": "40ebf91679dc6c5cc820f7974e3511cd576ec3bd0b945b752334feb059b04719",
+      "files": {
+        "README.md": "a854c5408fd923d1f02fbade4de9da71b7e0ce76c325b38d968ceb5e9fb1ca47",
+        "demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
+        "index.js": "40ebf91679dc6c5cc820f7974e3511cd576ec3bd0b945b752334feb059b04719"
+      }
+    },
+    "syntax": {
+      "tag": "m-syntax",
+      "series": "english",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8",
+      "files": {
+        "README.md": "68b3235ac772a01ebfacf5fe65e1477e9196cfd80121cdcd60fe4ab69d84275f",
+        "demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+        "index.js": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8"
+      }
+    },
+    "tape": {
+      "tag": "m-tape",
+      "series": "academic",
+      "purposes": [
+        "part-whole",
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "412661216803f33e9e76ae1835f5f949bfacd4f56060ff6a87fa469c3a2fdedb",
+      "files": {
+        "README.md": "865d748ed6f9fc986f863d7d7680231ed27734755ad3f078084468fcea24f4b1",
+        "demo.html": "202be8eef25df51fc3cd6c11e9d523fa4bf3c26cf10a4c1108da9e616f7d01a7",
+        "index.js": "412661216803f33e9e76ae1835f5f949bfacd4f56060ff6a87fa469c3a2fdedb"
+      }
+    },
+    "timeline": {
+      "tag": "m-timeline",
+      "series": "common",
+      "purposes": [
+        "timeline"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "b695649a73d2e8561e2a5aacc0a54d469b423b9375eb624e557369f9e89b018a",
+      "files": {
+        "README.md": "f5ef97c6b931e5579e2002cf405d1876430cbf0dc1de910074d33482f3f2cd3a",
+        "demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+        "index.js": "b695649a73d2e8561e2a5aacc0a54d469b423b9375eb624e557369f9e89b018a"
+      }
+    },
+    "timer": {
+      "tag": "m-timer",
+      "series": "common",
+      "purposes": [
+        "timebox"
+      ],
+      "variants": [
+        "fade"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "clock": true,
+      "group": "tool",
+      "preview": "none",
+      "tile": {
+        "label": {
+          "ja": "タイマー",
+          "en": "Timer"
+        },
+        "examples": {
+          "ja": "グループワークの時間・残り時間・ベル",
+          "en": "Group-work time, time left, bells"
+        },
+        "icon": "timer"
+      },
+      "sha256": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161",
+      "files": {
+        "README.md": "78656e8f1f8bf78f74a712f57d31bec88b75b49d0bd99521c0e4a2c2d0bab0c4",
+        "demo.html": "1792b5b2c443088e3e2405fb733f33348e322decb5fe75dc3590fd1b6536f2b0",
+        "index.js": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161"
+      }
+    },
+    "tree": {
+      "tag": "m-tree",
+      "series": "common",
+      "purposes": [
+        "hierarchy"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310",
+      "files": {
+        "README.md": "ebc415796823b99119402574d8556f548fe8db431aeee424913ec6a84250d571",
+        "demo.html": "2866bb96c4b88ac5e0f9310ff9f25f4ab232002d321d23fdb37719353bee55d5",
+        "index.js": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310"
+      }
+    },
+    "venn": {
+      "tag": "m-venn",
+      "series": "common",
+      "purposes": [
+        "overlap"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "6002f62db5422141052907ffb1cf0a8e0d48ef3f91cf81786745eb910e8485fc",
+      "files": {
+        "README.md": "2040e4f9a805af549b673bb70028a6ba256308446692eb8786ce5be97c5335dc",
+        "demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+        "index.js": "6002f62db5422141052907ffb1cf0a8e0d48ef3f91cf81786745eb910e8485fc"
+      }
+    }
+  },
+  "yanked": {
+    "1.0.0": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    },
+    "1.0.1": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    }
+  },
+  "files": {
+    "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
+    "bars/README.md": "1a257645f1aa906e79f00b739c53f686609382a1b88363549f0df9fe38724c63",
+    "bars/demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+    "bars/index.js": "8eb80eebfe7f69f7548e9185929be1a9b5aaf3eddf03a6e658eba0daa7e2dec5",
+    "boxplot/README.md": "dde7398ac1a6de21f18defe2186cb853b2204c2c21a2f329dce729263dee9e6d",
+    "boxplot/demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+    "boxplot/index.js": "dfb23884ace6ce26c7048c0a813b524009b10210e93107e3c95bbf760c630d2b",
+    "codetree/README.md": "fc177f553892266aff9616febebe6442920128a6fe7e7060d495a1e594f3143c",
+    "codetree/demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
+    "codetree/index.js": "cde0439fa559fb69edcdc98746121e5a8579f1228b63b1f8b774a79faf105504",
+    "collect/README.md": "03610949cf61472e16d98482c5cd04f9427ac373e5265f750f8ab14a95592512",
+    "collect/demo.html": "fe47548d4d6f0559cccba1595f6767d1c6139aa41d3ec45f879e04840acc3150",
+    "collect/index.js": "aa261290f03e37a315fdbe1e02f546dacacf64ac10106e303e6a4a76c69d68c1",
+    "compare/README.md": "839d6abe3ffcc351621dc8446d57a6c3266f6b1db6ae9b44a0e492104cd08992",
+    "compare/demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+    "compare/index.js": "83884f0c9c1e1648a9d8e90c2da6a09fcdafc2d4837b99b106f652f58199a32b",
+    "curves/README.md": "783c6a032ea069085212a1bf7a2347b6d45cfe4c67f37e46928abe7867ad285d",
+    "curves/demo.html": "619346c92ad2d72013a91fa07283e845f475c7d898512f1132c8f0b6017a465a",
+    "curves/index.js": "0ea32f82e10341ae276804a5ba0f570d9faab4063fb808c53085aa7d9d76d361",
+    "cycle/README.md": "3e952b4cef4fea509fc873d97490103efc886495a33b01c7cec42a549f5c68a7",
+    "cycle/demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+    "cycle/index.js": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15",
+    "fishbone/README.md": "7bbcb15b886e7fadfc1a349d539d6c48b40afff009590a726ef3e2d9e4863acd",
+    "fishbone/demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+    "fishbone/index.js": "5584f4b44e5925801fa9f591c1b7e40c4f20d467733320c4798734b5530217cf",
+    "flow/README.md": "e9c4b5df58d94ae1aad832f808673d8e63b5b11faabf2742df49433bdac7dd1a",
+    "flow/demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+    "flow/index.js": "6517a807c61648042a229fb9f404803e857ecd7102176447815f0c7333018f63",
+    "gendai/README.md": "7c27d1d44261a79b5e012d1f5018f449f9c6ac56222c189c688686e92e32892f",
+    "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+    "gendai/index.js": "404dfd299d301d4814fa93e62ed71885578aead294357f5f375d31d355984cc8",
+    "heatmap/README.md": "d9eb2579d8a732f34d921b5bf1bfd8c90ff5327b6493534c200d2af0258d6a3a",
+    "heatmap/demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+    "heatmap/index.js": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66",
+    "hissan/README.md": "51739066ecbe23247554782fe3fa8f8553abf14fb6503b47abeaeaf2ac0ce406",
+    "hissan/demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+    "hissan/index.js": "8e49eb1ad6b20c5e4c63bd27813165138a4eff45a908c6b8f72b8b057eae0f3b",
+    "hist/README.md": "4c4463b2d622e31e50f66ce473b528e9105c96098f9eda7469fd090c97d234a8",
+    "hist/demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+    "hist/index.js": "9a54e86b7ffc0a58b8af6d1a744dc5d524b776349eb2310da105aadaf3f80a9b",
+    "kakijun/LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+    "kakijun/OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+    "kakijun/README.md": "159f800b57dd7f8409bc99602e961f947d233e91621df2e7d1a780b9a9fe5035",
+    "kakijun/demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+    "kakijun/index.js": "e8404ed384f5d97a25f3f1d954a7c79636f3637c75e4ab5846985def07513d70",
+    "kakijun/strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c",
+    "kanbun/README.md": "8901582992d59b5c433339e07368b3721ce095f751b9dc90c990ec224e431e55",
+    "kanbun/demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+    "kanbun/index.js": "99c2f6f57c1d4c32d3593b619b979bc845391a37e8722d383f962e34612ce70a",
+    "keyboard/README.md": "b7482d535ed7de4094eb4e4d852cdb9bf1550af65d1da31b0d97fc66f5600098",
+    "keyboard/demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+    "keyboard/index.js": "f23b07b10d9eea732c57d7694799093bf2319a51788819be79e7786f5dad5583",
+    "kobun/README.md": "f1b1cee08d89411e057801045a53ddd78566721a188b6b29bdfb33533012a084",
+    "kobun/demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+    "kobun/index.js": "1ee2a833b88ef8daa8c339b617aa21fa7af201f96262234ec94b589593488b1c",
+    "kpi/README.md": "eea844fc3bf70aea07ae78c592f689bed038e71766888cb8164855ba5a4a0555",
+    "kpi/demo.html": "9e06266e83cc9f04912f8330e03c87e0c1e510c3f2d7ad9fd82680bf822a0f34",
+    "kpi/index.js": "322bdf828be3dcbbedf42ed93cd89d17417438a50acc028d44f0fe34a9f2e623",
+    "map-japan/README.md": "0a6e3fc643f9a129c0b361b823415ce4046ab2e40855718f8fee8430a88d7985",
+    "map-japan/demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+    "map-japan/index.js": "9d4aa9cdfbab2db58382003bdf53e47a5938a560293a9742a526580a3849079f",
+    "map-world/README.md": "b356516564a39be59c0eb3e984493f449ccf1019ac14b6d7dc9448856d79006e",
+    "map-world/demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+    "map-world/index.js": "4cbe8ae31fdf1b6f863a4b4bf1806adc41858b9004bb291468a3fbee538b4d31",
+    "market/README.md": "04f02cdb47ed31bdb795257170b4fedfeb313544c078e5c01297cc529d850fa7",
+    "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+    "market/index.js": "e5fe376e8a1d6b3c220eb2bc6a2e9da7e7fb84a11aa40d0f2507aa3daca6d70a",
+    "menu/README.md": "b24986b0986a87d1a8f5ee76ea792f0b83d330386ec39206c5bd0d16c85274ee",
+    "menu/demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+    "menu/index.js": "487d4cacb1bccb2ab61e3be9e0ec9511672db152cf5a4cb8ceb2582a64e178df",
+    "numberline/README.md": "d783c9ecb1337b42c86336403030bb03a62c18a1f472457cde6e7aabef6db8ee",
+    "numberline/demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+    "numberline/index.js": "f569c5e5a39d8d9e02b1a4bbe629251df5269180f921fd449dd58dd3cf3c218d",
+    "pie/README.md": "d2c11950f7099fd534818fc4c6f8da068a3574e12ed466465b21249f75a3941b",
+    "pie/demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+    "pie/index.js": "0d9fd415e240132088ac080742c1447ae2e79d72e6e4013a0258718f8f21cd41",
+    "predict/README.md": "9e027bfc8f4507f1bbc92a7d9701d57f1eebc79b00851a432e9a9ccb1dc241cb",
+    "predict/demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+    "predict/index.js": "c371e55ef1617b75e768f9593ce855c6762c03b34b88579075f5bb7b7b7faad2",
+    "quad/README.md": "491e8e5b82ac9806c50a639c638d9022fe904cffae3a70f21ba1b149f8fb1461",
+    "quad/demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
+    "quad/index.js": "bd7cb157ba5a2a0e227399f3837321d89d986b90a6ec7456b9a12f25aba1cb2d",
+    "scatter/README.md": "c5220f1188c99f2d332bcc2ff4fc87a65d36492371c2199520c63bce3845f7f8",
+    "scatter/demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+    "scatter/index.js": "b77dbc8a2e03d2742ff329cae1dfff1df39540d65337306b7b17585222a0f91a",
+    "seq/README.md": "7997eec13fd687dc54e10f19e8aa061c259bc0001954475fd2ae9412d7340856",
+    "seq/demo.html": "bdb21764c9430d51d32c303481c522d06e3ce2785ccecd20c55a20f48371c5f6",
+    "seq/index.js": "08d2e359f2397c8b71c0ceabfe277756d3aea4e21a5d809e30765184cc04d464",
+    "sweep/README.md": "a854c5408fd923d1f02fbade4de9da71b7e0ce76c325b38d968ceb5e9fb1ca47",
+    "sweep/demo.html": "1ee86ba2b910d3feffdcb3d7defae63c4e0dceeada44520e478724e39123bf70",
+    "sweep/index.js": "40ebf91679dc6c5cc820f7974e3511cd576ec3bd0b945b752334feb059b04719",
+    "syntax/README.md": "68b3235ac772a01ebfacf5fe65e1477e9196cfd80121cdcd60fe4ab69d84275f",
+    "syntax/demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+    "syntax/index.js": "1c4a94a2a02ab694981f93f9ab96d354bb755a64f3ae61a2354a6357dddf47a8",
+    "tape/README.md": "865d748ed6f9fc986f863d7d7680231ed27734755ad3f078084468fcea24f4b1",
+    "tape/demo.html": "202be8eef25df51fc3cd6c11e9d523fa4bf3c26cf10a4c1108da9e616f7d01a7",
+    "tape/index.js": "412661216803f33e9e76ae1835f5f949bfacd4f56060ff6a87fa469c3a2fdedb",
+    "timeline/README.md": "f5ef97c6b931e5579e2002cf405d1876430cbf0dc1de910074d33482f3f2cd3a",
+    "timeline/demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+    "timeline/index.js": "b695649a73d2e8561e2a5aacc0a54d469b423b9375eb624e557369f9e89b018a",
+    "timer/README.md": "78656e8f1f8bf78f74a712f57d31bec88b75b49d0bd99521c0e4a2c2d0bab0c4",
+    "timer/demo.html": "1792b5b2c443088e3e2405fb733f33348e322decb5fe75dc3590fd1b6536f2b0",
+    "timer/index.js": "ea28c6e3266ecf08e5ae2786bd21cead1db03aca0f1c9746ad93341eeda2a161",
+    "tree/README.md": "ebc415796823b99119402574d8556f548fe8db431aeee424913ec6a84250d571",
+    "tree/demo.html": "2866bb96c4b88ac5e0f9310ff9f25f4ab232002d321d23fdb37719353bee55d5",
+    "tree/index.js": "8d127b96395f3fb934b5d00b81b7617ce18fdf153bdb703c044fa5736e352310",
+    "venn/README.md": "2040e4f9a805af549b673bb70028a6ba256308446692eb8786ce5be97c5335dc",
+    "venn/demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+    "venn/index.js": "6002f62db5422141052907ffb1cf0a8e0d48ef3f91cf81786745eb910e8485fc"
+  }
+}

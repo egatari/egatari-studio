@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-syntax の見本</title>
+<!-- 組み方：node kit/build.mjs components/syntax/demo.html -o components/syntax/out/demo.html -->
+<!-- 英文と和訳は見本のために書いたもの -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl">
+  <h2>SVO と修飾する句</h2>
+  <div class="body">
+    <m-syntax style="height:420px">
+      [S The boy {形^ in the red cap}] [V plays] [O tennis] [M {副^plays after school}].
+      = 赤い帽子の男の子は、放課後にテニスをする。
+    </m-syntax>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>SVOC：O と C はイコールの関係</h2>
+  <div class="body">
+    <m-syntax pos="on" style="height:500px">
+      [S We[代]] [V call[動]] [O him[代]] [C Ken[名]].
+      = 私たちは彼をケンと呼ぶ。
+      [S The[冠] news[名]] [V made[動]] [O her[代]] [C happy[形]].
+      = その知らせは彼女を幸せにした。
+    </m-syntax>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>関係代名詞の節は前の名詞を説明する</h2>
+  <div class="body">
+    <m-syntax variant="draw" style="height:420px">
+      [S The girl {形^ [S who] [V lives] [M next door]}] [V is] [C my friend].
+      = 隣に住んでいる女の子は、私の友達だ。
+    </m-syntax>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

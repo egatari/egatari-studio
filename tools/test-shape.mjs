@@ -111,8 +111,35 @@ const WRONG = {
   'm-kanbun': '<script type="application/json">["学而時習之"]</script>',
   'm-kobun': '<script type="application/json">{"text": "春はあけぼの"}</script>',
   'm-menu': '<script type="application/json">[{"href": "#s-x", "label": "目次"}]</script>',
+  // 部品庫 v1.2.0 の部品：よくある取り違え（並びの名前・値の型）
+  'm-compare': '<script type="application/json">{"columns": [{"label": "A"}], "rows": [{"label": "値段", "values": [1]}]}</script>',
+  'm-venn': '<script type="application/json">{"circles": [{"label": "A"}, {"label": "B"}]}</script>',
+  'm-tree': '<script type="application/json">{"children": [{"label": "根"}]}</script>',
+  'm-fishbone': '<script type="application/json">{"effect": "結果", "causes": [{"label": "人"}]}</script>',
+  'm-scatter': '<script type="application/json">{"points": [[1, 2], [3, 4]]}</script>',
+  'm-pie': '<script type="application/json">{"slices": [{"label": "A", "value": "30%"}]}</script>',
+  'm-timeline': '<script type="application/json">{"events": [{"label": "創業", "year": 1990}]}</script>',
+  'm-cycle': '<script type="application/json">{"steps": [{"label": "計画"}, {"label": "実行"}]}</script>',
+  // 部品庫 v1.5.0：点を経度・緯度でなく x・y で書く
+  'm-map-japan': '<script type="application/json">{"points": [{"x": 139.7, "y": 35.7, "label": "東京"}]}</script>',
+  // 部品庫 v1.7.0：選択肢を字の並びで書く／時間を「3分」の字で書く
+  'm-predict': '<script type="application/json">{"question": "どちらが先に落ちる？", "choices": ["重い球", "軽い球"], "answer": 0}</script>',
+  'm-timer': '<script type="application/json">{"phases": [{"title": "話し合い", "sec": "3分"}]}</script>',
+  // 部品庫 v1.9.0：度数分布表の欄の名前・群を字の並びで書く
+  'm-hist': '<script type="application/json">{"table": [{"class": "10〜20", "count": 4}]}</script>',
+  'm-boxplot': '<script type="application/json">{"groups": [[3, 5, 7, 9, 12]]}</script>',
+  // 部品庫 v1.10.0：目盛りを lines の外に書く／区切りを数の並びで書く（m-hissan は子の JSON を持たない：式は属性 expr。下の NO_DATA）
+  'm-numberline': '<script type="application/json">{"from": 0, "to": 10, "marks": [{"at": 3}]}</script>',
+  'm-tape': '<script type="application/json">{"rows": [{"label": "A", "segs": [3, 2]}]}</script>',
+  // 部品庫 v1.11.0：鍵盤を keys でなく notes に、1 つの字の並びで書く（m-kakijun は子の JSON を持たない：字は属性 text。下の NO_DATA）
+  'm-keyboard': '<script type="application/json">{"range": "C4-C6", "steps": [{"notes": "C4 E4 G4", "label": "主和音"}]}</script>',
+  // 部品庫 v1.13.0：値を行の並びでなく 1 つの並びに書く／国を名前の字の並びで書く
+  'm-heatmap': '<script type="application/json">{"rows": ["ねこ", "いぬ"], "cols": ["ねこ", "いぬ"], "values": [45, 5, 6, 44]}</script>',
+  'm-map-world': '<script type="application/json">{"regions": ["日本", "中国"]}</script>',
 };
-const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name);
+// 子の JSON を持たない部品（static shape の schema が null：書くのは属性だけ。m-syntax は shape.text：子は記法の字）。データの形の誤りはない
+const NO_DATA = ['m-hissan', 'm-kakijun', 'm-syntax'];
+const comps = vendorComponents(ROOT).map((c) => 'm-' + c.name).filter((t) => !NO_DATA.includes(t));
 ok(comps.every((t) => WRONG[t] || t === 'm-sweep'), 'every component has a wrong-shape example in this test');
 const deckDir = path.join(work, 'deck');
 fs.mkdirSync(deckDir, { recursive: true });

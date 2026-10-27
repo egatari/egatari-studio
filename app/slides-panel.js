@@ -7,6 +7,7 @@
 // 書いた後は組み直し（段 B：1 ファイルは次の「保存」で組み直す。スライドの原稿が変わると段 A は断るので）、プレビューをその枚へ動かし、品質チェックを出す
 // 元に戻す：直前の 1 つの操作を、メモリの上の前の中身（3 つのファイルと消した音声のバイト・音声の板の使っていない取り直し）で戻す。
 // 次のスライドの操作・作業場所を替える・1 ファイルの保存までで、その間に 3 つのファイルがほかの編集で変わっていれば戻さない（控えは .cache/edits/ に残る）
+// 設定のファイル（egatari.json）は、それを書き換える操作（テーマを変更。app/theme-switch.js。fn が cfg を返したとき）でだけ比べ、書いて戻す
 //
 //   createSlidesPanel(ctx)
 //     ctx = {T（app/i18n.js の T.sl）, el, host（#slides）, ws(), generation(), deckFile(), slides()（組み立ての {key, id, heading}）, pos()（{i}）,
@@ -17,6 +18,7 @@
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { headingLine, parseNarration } from '../kit/core/narration-core.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import {
   slideChunks, insertSlide, duplicateSlide, deleteSlide, moveSlide, slideTemplate, TEMPLATES, newIdFor,
   insertSection, copySections, removeSections, reorderSections, stepsIn, removeAudio, audioEntries,
@@ -25,6 +27,7 @@ import {
 export const ROW = 84, THUMB_W = 128;
 const OPEN_KEY = 'egatari-slides-open';
 const SRC = { max: READ_LIMITS.source }, NARR = { max: READ_LIMITS.narration }, JSONL = { max: READ_LIMITS.json };
+const CFG = FORMAT.CONFIG_FILE;
 
 export function createSlidesPanel(ctx) {
   const { T, el, host } = ctx;
@@ -216,7 +219,8 @@ export function createSlidesPanel(ctx) {
   }
 
   // ---------------------------------------------------------------- 操作の共通の流れ
-  // fn(before) → {deck, narr, man, files: [audio/ の下の消すファイル], at（操作の後に見せる枚）, label（元に戻すの説明）, done（知らせ）, takeOut?: 鍵} | null（やめた）
+  // fn(before) → {deck, narr, man, cfg?（設定のファイル。省けば変えない）, files: [audio/ の下の消すファイル], at（操作の後に見せる枚）, label（元に戻すの説明）, done（知らせ）, takeOut?: 鍵,
+  //               applied?()（書いた後、組み直す前に。メモリの上の状態を変える）, revert?()（元に戻すとき、組み直す前に）} | null（やめた）
   async function run(fn) {
     if (busy) { ctx.toast(T.busy, true); return false; }
     const why = await ctx.guard();
@@ -227,7 +231,7 @@ export function createSlidesPanel(ctx) {
     try {
       const b = ctx.building(); if (b) await b;
       const file = ctx.deckFile();
-      const read = async () => ({ deck: await ws.readText(file, SRC), narr: await ws.readText('narration.md', NARR), man: await ws.readText('audio/manifest.json', JSONL) });
+      const read = async () => ({ deck: await ws.readText(file, SRC), narr: await ws.readText('narration.md', NARR), man: await ws.readText('audio/manifest.json', JSONL), cfg: await ws.readText(CFG, JSONL) });
       const before = await read();
       if (before.deck === null) throw new Error(file + ' not found');
       const c = slideChunks(before.deck);
@@ -237,7 +241,7 @@ export function createSlidesPanel(ctx) {
       // 書く直前に：読んだときのままか（確かめの窓の間にほかの道具が書いていれば上書きしない）
       const now = await read();
       if (!alive()) return false;
-      if (now.deck !== before.deck || now.narr !== before.narr || now.man !== before.man) { ctx.toast(T.changed, true); return false; }
+      if (now.deck !== before.deck || now.narr !== before.narr || now.man !== before.man || (r.cfg !== undefined && now.cfg !== before.cfg)) { ctx.toast(T.changed, true); return false; }
       const files = [];
       for (const f of r.files || []) {
         const rel = 'audio/' + f;
@@ -247,7 +251,8 @@ export function createSlidesPanel(ctx) {
       await writeAll(ws, file, before, r, alive);
       for (const x of files) await ws.remove(x.rel, { live: alive, max: AUDIO_LIMITS.fileBytes });
       const takes = r.takeOut && ctx.audio ? ctx.audio.takeOut(r.takeOut) : null;
-      undo = { label: r.label, file, before, after: { deck: r.deck, narr: r.narr, man: r.man }, files, takes, at: r.undoAt };
+      if (r.applied) r.applied();
+      undo = { label: r.label, file, before, after: { deck: r.deck, narr: r.narr, man: r.man, cfg: r.cfg }, files, takes, revert: r.revert || null, at: r.undoAt };
       sel = r.at;
       await afterChange(r.at, r.done);
       return true;
@@ -258,9 +263,9 @@ export function createSlidesPanel(ctx) {
       return false;
     } finally { busy = false; updateButtons(); }
   }
-  // 3 つのファイルを書く（変わったものだけ。前に控え）。null は「ないファイル」：あったものは消す（remove が控える）
+  // 3 つのファイル（と設定のファイル）を書く（変わったものだけ。前に控え）。null は「ないファイル」：あったものは消す（remove が控える）
   async function writeAll(ws, file, before, next, alive) {
-    for (const [rel, a, b, lim] of [[file, before.deck, next.deck, SRC], ['narration.md', before.narr, next.narr, NARR], ['audio/manifest.json', before.man, next.man, JSONL]]) {
+    for (const [rel, a, b, lim] of [[file, before.deck, next.deck, SRC], ['narration.md', before.narr, next.narr, NARR], ['audio/manifest.json', before.man, next.man, JSONL], [CFG, before.cfg, next.cfg, JSONL]]) {
       if (a === b || b === undefined) continue;
       if (b === null) { if (a !== null) await ws.remove(rel, { live: alive, max: lim.max }); continue; }
       if (a !== null) await ws.backup(rel, lim);
@@ -353,11 +358,12 @@ export function createSlidesPanel(ctx) {
     const alive = () => ctx.ws() === ws && ctx.generation() === g;
     try {
       const b = ctx.building(); if (b) await b;
-      const now = { deck: await ws.readText(u.file, SRC), narr: await ws.readText('narration.md', NARR), man: await ws.readText('audio/manifest.json', JSONL) };
-      if (now.deck !== u.after.deck || now.narr !== u.after.narr || now.man !== u.after.man) { undo = null; render(); ctx.toast(T.undoChanged, true); return false; }
-      await writeAll(ws, u.file, now, u.before, alive);
+      const now = { deck: await ws.readText(u.file, SRC), narr: await ws.readText('narration.md', NARR), man: await ws.readText('audio/manifest.json', JSONL), cfg: await ws.readText(CFG, JSONL) };
+      if (now.deck !== u.after.deck || now.narr !== u.after.narr || now.man !== u.after.man || (u.after.cfg !== undefined && now.cfg !== u.after.cfg)) { undo = null; render(); ctx.toast(T.undoChanged, true); return false; }
+      await writeAll(ws, u.file, now, u.after.cfg === undefined ? { ...u.before, cfg: undefined } : u.before, alive);
       for (const x of u.files) await ws.writeBytes(x.rel, x.bytes, { live: alive });
       if (u.takes && ctx.audio) ctx.audio.putBack(u.takes);
+      if (u.revert) u.revert();
       undo = null;
       sel = u.at;
       await afterChange(u.at, T.undone(u.label));
@@ -388,6 +394,8 @@ export function createSlidesPanel(ctx) {
     // 外からの操作（スライドの挿入…）：選んだスライド（一覧を開いていなければ null）・雛形から足す・同じ流れで書き換える（fn は run と同じ形）
     selected: () => (open && (ctx.slides() || []).length ? sel : null),
     add: (kind, after) => add(kind, after), apply: (fn) => run(fn),
+    // 道具の列の「スライド ▾」の複製・削除：この番号のスライド（一覧を開いていれば選んだもの、閉じていればプレビューの枚）
+    duplicateAt: (i) => { sel = i; return duplicate(); }, removeAt: (i) => { sel = i; return remove(); },
     refresh: () => { if (open) { render(); loadInfo(); } },
     onPos: () => {
       const p = ctx.pos();

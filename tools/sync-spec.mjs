@@ -1,6 +1,7 @@
 // 持ち運べるデッキの形式の仕様（format spec。場所は kit/core/format.mjs の FORMAT.SPEC_URL）から、試験に要る JSON Schema と
 // 試験用の入力だけを FORMAT.VENDOR_DIR（vendor/<名前>-spec/）に写す。仕様の本文は写さない（リンクする）。写した版はその SOURCE.json に残す
-//   node tools/sync-spec.mjs <仕様のリポジトリの clone> [--ref <commit か wd-* のタグ>]   （既定は HEAD）
+//   node tools/sync-spec.mjs <仕様のリポジトリの clone> [--ref <commit か wd-* のタグ>] [--branch <名前>]   （既定は HEAD）
+//   --branch：タグでない版（main の次の WD の前など）を写すとき、どの枝から取ったかを SOURCE.json の branch に書く
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -14,7 +15,9 @@ const PARTS = ['schema', 'fixtures', 'LICENSE'];   // Schema・試験用のデ�
 const args = process.argv.slice(2);
 const ri = args.indexOf('--ref');
 const ref = ri >= 0 ? args[ri + 1] : 'HEAD';
-const src = args.find((a, i) => !a.startsWith('--') && !(ri >= 0 && i === ri + 1));
+const bi = args.indexOf('--branch');
+const branch = bi >= 0 ? args[bi + 1] : null;
+const src = args.find((a, i) => !a.startsWith('--') && !(ri >= 0 && i === ri + 1) && !(bi >= 0 && i === bi + 1));
 if (!src) { console.error('usage: node tools/sync-spec.mjs <path to the spec clone> [--ref <commit>]'); process.exit(2); }
 
 const git = (...a) => execFileSync('git', ['-C', src, ...a], { encoding: 'buffer', maxBuffer: 64 << 20 });
@@ -33,7 +36,7 @@ const tags = git('tag', '--points-at', sha).toString().split('\n').filter((t) =>
 const snapshot = tags.length ? tags[tags.length - 1] : null;
 if (!snapshot) console.warn(`warning: ${sha.slice(0, 7)} is not a wd-* snapshot tag; SOURCE.json gets snapshot: null`);
 fs.writeFileSync(path.join(OUT, 'SOURCE.json'), JSON.stringify({
-  repository: FORMAT.SPEC_URL, commit: sha, snapshot, files: files.length,
+  repository: FORMAT.SPEC_URL, commit: sha, snapshot, ...(branch && !snapshot ? { branch, note_ref: `the ${branch} branch at ${sha.slice(0, 7)}, not a tag (wd-*): re-vendor the next wd-* tag at rc prep` } : {}), files: files.length,
   note: 'Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again.',
 }, null, 2) + '\n');
 console.log(`${FORMAT.VENDOR_DIR}: ${files.length} files from ${FORMAT.SPEC_URL} ${sha.slice(0, 7)}`);

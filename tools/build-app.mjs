@@ -11,14 +11,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
+import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
 import { buildExamples } from './examples-portable.mjs';
-import { vendorComponents, appComponentFiles } from './vendor-components.mjs';
+import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
 import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -97,7 +99,11 @@ fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
 const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
 // 従う仕様の日付の版（vendor/egatari-spec/SOURCE.json の snapshot。日付の付いた版でなければ null）
 const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FORMAT.VENDOR_DIR.split('/'), 'SOURCE.json'), 'utf8')).snapshot || null; } catch { return null; } })();
-const resources = { version, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
+// 同梱の再生器（kit/core/player.mjs）：版の決め方に使うファイル（kit/player.json・kit/player.lock.json と中身の PLAYER_FILES）を字として入れ、
+// アプリを組んだ commit を渡す（中身が出した版と違えば "+dev.<commit>"。git がなければ "+dev"）
+for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] = fs.readFileSync(rel(...f.split('/')), 'utf8');
+const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
+const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
 const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
 const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
 
@@ -152,7 +158,7 @@ const MANIFEST = {
   background_color: '#f4f5f8', theme_color: '#ffffff',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
 };
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1), and the parts of egatari/components (MIT; the stroke data in m-kakijun is SIL OFL 1.1, see vendor/components/kakijun/). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
@@ -179,6 +185,13 @@ for (const f of ['LICENSE', 'NOTICE']) if (fs.existsSync(rel(f))) fs.copyFileSyn
 const LAME_DIR = path.join(path.dirname(require.resolve('lame-wasm')), '..');   // dist/index.umd.cjs の上（exports が package.json を出さない）
 fs.mkdirSync(path.join(ED, 'vendor', 'lame-wasm'), { recursive: true });
 for (const [from, to] of [['dist/index.js', 'index.js'], ['LICENSE', 'LICENSE'], ['package.json', 'package.json'], ['README.md', 'README.md']]) fs.copyFileSync(path.join(LAME_DIR, from), path.join(ED, 'vendor', 'lame-wasm', to));
+// 部品の使用条件：app.js に入れた部品の index.js のうち、MIT のほかの条件を持つもの（部品庫の manifest の license。m-kakijun の字の形は SIL OFL 1.1）は、
+// その部品のフォルダの使用条件のファイル（LICENSE*・OFL*・COPYING*・NOTICE* と、変えた所の記録 *CHANGES.md）を vendor/components/<名前>/<版>/ に写す。
+// 部品庫全体の MIT は vendor/components/LICENSE
+const partLicenses = componentLicenseFiles(ROOT);
+for (const [virt, file] of partLicenses) { const to = path.join(ED, virt.replace(/^\/repo\//, '')); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(file, to); }
+fs.mkdirSync(path.join(ED, 'vendor', 'components'), { recursive: true });
+fs.copyFileSync(path.join(ROOT, 'vendor', 'components', 'LICENSE'), path.join(ED, 'vendor', 'components', 'LICENSE'));
 // 版の案内だけを組んだもの（app/version-notice.js）：サイトの組み立て（tools/site-versions.mjs）が、案内を持たない古い凍結した写し（/vX.Y.Z/）に
 // ../version-notice.js として読み込ませる（この版の編集アプリは app.js に同じものを持つ）
 fs.writeFileSync(path.join(ED, 'version-notice.js'), (await esbuild.build({

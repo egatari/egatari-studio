@@ -116,7 +116,7 @@ try {
   await pv.waitForFunction(() => !document.getElementById('pv-black').hidden, null, { timeout: 5000 }).catch(() => {});
   const pv1 = await pv.evaluate(() => { const e = document.getElementById('pv-black'); return { shown: !e.hidden && e.getBoundingClientRect().width > 0, text: e.textContent }; });
   if (outDir) await pv.screenshot({ path: path.join(outDir, 'blackout-presenter.png') });
-  ok(hidden0 && pv1.shown && /暗転中|Blacked out/.test(pv1.text), 'the presenter view shows the blacked-out indicator while the main window is black ' + JSON.stringify({ hidden0, ...pv1 }));
+  ok(hidden0 && pv1.shown && /黒い画面中|Black screen/.test(pv1.text), 'the presenter view shows the blacked-out indicator while the main window is black ' + JSON.stringify({ hidden0, ...pv1 }));
   await pv.bringToFront();
   await pv.keyboard.press('b');
   await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: 5000 }).catch(() => {});
@@ -198,7 +198,7 @@ try {
   const h2 = await hint();
   await p.waitForTimeout(2100);
   const h3 = await hint();
-  ok(h0 && h0.show && h0.op > 0.9 && /暗転中|Blacked out/.test(h0.text), 'the corner hint shows when blackout starts ' + JSON.stringify(h0));
+  ok(h0 && h0.show && h0.op > 0.9 && /黒い画面中|Black screen/.test(h0.text), 'the corner hint shows when blackout starts ' + JSON.stringify(h0));
   ok(h1 && !h1.show && h1.op < 0.1, 'the hint hides after about 2 s ' + JSON.stringify(h1));
   ok(h2 && h2.show, 'moving the mouse during blackout shows the hint again ' + JSON.stringify(h2));
   ok(h3 && !h3.show, 'and it hides again after about 2 s ' + JSON.stringify(h3));

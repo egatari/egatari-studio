@@ -13,7 +13,7 @@ self.onmessage = async (e) => {
     // 塊ごとに 1 つのバッファを 1 回だけ渡し、パス → バッファの表を添える（同じ塊を指すパスごとに写さない。§11）
     const { buffers, table } = packFiles(r.files);
     self.postMessage({ id: m.id, ok: true, indexText: JSON.stringify(r.index), deckMetaText: r.deckMeta ? JSON.stringify(r.deckMeta) : null,
-      buffers, table, warnings: r.warnings, sourceMatches: r.sourceMatches, extractOnly: !!r.extractOnly }, buffers);
+      buffers, table, warnings: r.warnings, sourceMatches: r.sourceMatches, extractOnly: !!r.extractOnly, preDraft: !!r.preDraft }, buffers);
   } catch (err) {
     self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err), kind: (err && err.details && typeof err.details.kind === 'string') ? err.details.kind : null } });
   }

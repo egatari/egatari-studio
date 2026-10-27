@@ -153,16 +153,19 @@ export function layoutScan(s, o) {
       maxR = Math.max(maxR, v.r);
       minL = Math.min(minL, v.l);
     });
+    // はみ出しの大きさは整数の px に丸めてから比べる（知らせと同じ丸め）：丸めて 0 px（1 px に満たない）なら知らせない。知らせる px は限り ± 丸めた量なので、
+    // 「0 px はみ出す」は出ない（結論の行の上の余裕と同じ考え。下・右・左・縦組みの見出しの列と結論の列で同じ決まり）
+    const overB = Math.round(maxB - lim), overR = Math.round(maxR - limR), overL = Math.round(limL - minL);
     // 知らせの値：結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）は、既定と違うときだけ添える（既定のテーマの結果は前と同じ）
-    if (maxB > lim) {
+    if (overB >= 1) {
       bodyOver = true;
-      const a = { px: Math.round(maxB), lim, concl: !tate && !noconcl };
+      const a = { px: lim + overB, lim, concl: !tate && !noconcl };
       if (a.concl && M.concl.top !== DM.concl.top) a.conclTop = M.concl.top;
       if (M.body.line !== DM.body.line) a.line = M.body.line;
       add('error', 'bodyBottom', a);
     }
-    if (maxR > limR) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: Math.round(maxR), lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: Math.round(maxR), lim: limR } : { px: Math.round(maxR) });
-    if (minL < limL) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: Math.round(minL), lim: limL });
+    if (overR >= 1) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: limR + overR, lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: limR + overR, lim: limR } : { px: limR + overR });
+    if (overL >= 1) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: limL - overL, lim: limL });
     // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
     if (!refRe.test(h2 ? h2.textContent : '')) {
       const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
@@ -410,6 +413,42 @@ export function layoutScan(s, o) {
     note('cellWordBreak', { t: sample(tv), lines: line + 1, split: sample(split.replace(/\s+/g, ' ')) });
   });
   for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
+
+  // 章の扉（.sec）の題は h1。h2 だけで書いた扉を知らせる（#128。CSS は h2 も読めるようにしたが、書き方は h1 にそろえる）
+  if (s.classList.contains('sec') && s.querySelector('h2') && !s.querySelector('h1')) add('warn', 'secHeading', { t: sample((s.querySelector('h2').textContent || '').replace(/\s+/g, ' ').trim()) });
+
+  // 字と地のコントラスト（見出しと本文。計算した色で。WCAG 4.5:1 より低ければ警告。#128）：地は字の要素から上へ、色のある最初の background-color
+  // （背景の画像・グラデーションのある所、半透明の重ね、薄く見せている要素は測らない）。いちばん低いものを 1 つ知らせる
+  {
+    const cv = document.createElement('canvas'); cv.width = 1; cv.height = 1;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const rgbOf = (css) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+    const alphaOf = (css) => { const m = /rgba?\(([^)]*)\)/.exec(css); if (!m) return 1; const p = m[1].split(/[ ,/]+/).filter(Boolean); return p.length > 3 ? parseFloat(p[3]) : 1; };
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const ratioOf = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const own = (e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    let worst = null;
+    for (const e of s.querySelectorAll('h1, h2, h3, .lead, .concl, .body p, .body li, .body td, .body th, .body dt, .body dd, .body span, .body div')) {
+      if (!own(e) || e.closest('svg, .katex, [aria-hidden="true"]')) continue;
+      let custom = false, faint = false, bg = null, skip = false, op = 1;
+      for (let a = e; a; a = a.parentElement) {
+        if (a.tagName.includes('-')) { custom = true; break; }
+        const cs = getComputedStyle(a);
+        op *= parseFloat(cs.opacity);
+        if (cs.display === 'none' || cs.visibility === 'hidden') { skip = true; break; }
+        if (cs.backgroundImage && cs.backgroundImage !== 'none') { skip = true; break; }
+        if (!bg && cs.backgroundColor) { const al = alphaOf(cs.backgroundColor); if (al >= 0.99) bg = cs.backgroundColor; else if (al > 0.01) { skip = true; break; } }
+      }
+      if (custom || skip || op < 0.99) faint = true;
+      if (faint) continue;
+      const ccs = getComputedStyle(e).color;
+      if (alphaOf(ccs) < 0.99) continue;
+      const fg = rgbOf(ccs), back = rgbOf(bg || '#fff');
+      const r = ratioOf(fg, back);
+      if (r < 4.5 && (!worst || r < worst.r)) worst = { r, tag: e.tagName.toLowerCase(), t: sample((e.textContent || '').replace(/\s+/g, ' ').trim()) };
+    }
+    if (worst) add('warn', 'textContrast', { ratio: worst.r.toFixed(2), min: 4.5, tag: worst.tag, t: worst.t });
+  }
   return out;
 }
 

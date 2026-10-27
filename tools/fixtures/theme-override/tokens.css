@@ -4,5 +4,5 @@
 .cover h1{top:260px}
 .body{left:96px;right:96px}
 .slide h2{border-bottom-width:6px}
-.concl{left:30px;border-radius:0}
+.concl{left:40px;border-radius:4px}   /* default 1.2.0 の結論の行（left 30px・角なし）とも違う値にする */
 .pn{font-size:18px}

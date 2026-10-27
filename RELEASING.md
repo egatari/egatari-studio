@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=0697a8b2a2e53b92 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=3af88f55e0f7051d -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -8,6 +8,8 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 ## Checklist
 
 1. **Release candidate.** First set `COLAB.ref` in `kit/core/colab-core.mjs` to the release tag `vX.Y.Z` (the Colab link of the editor and the notebook's clone use it), run `npm run gen` and commit. Then, on the `main` commit to release, tag and push a candidate:
+
+   **The bundled player.** Files carry `player` {name, version} (format spec §4.1): `kit/player.json` holds Egatari Player's version, and `kit/player.lock.json` the version and SHA-256 of the last released player (the files in `PLAYER_FILES`, `kit/core/player.mjs`: `kit/deck.js`, the `kit/core` modules it bundles, `presenter.js`, `tools.js`, `shape.js`, the runtime CSS and the Live player). A build whose player files equal the lock writes the plain version; any other build writes `<version>+dev.<commit>` (`+dev` without git). Before tagging an rc, run `npm run player:check -- --strict`; if the player changed since its last release, run `npm run player:bump -- patch|minor|major` (the first release is `major`: 1.0.0), fill in `changes/player-<version>.md`, run `npm run gen:check` and commit, so that the candidate's files carry the plain player version. On branches `npm run player:check` only informs.
 
    **The spec snapshot.** Before tagging an rc, `vendor/egatari-spec` must equal the latest `wd-*` snapshot of egatari-spec (`vendor/egatari-spec/SOURCE.json` has `"snapshot": "wd-YYYY-MM-DD"`, and `node tools/spec-snapshot.mjs --check` prints `ok`). Sync with `node tools/sync-spec.mjs <spec clone> --ref wd-YYYY-MM-DD`. If the spec has changed since its latest snapshot, ask the spec maintainer to cut a new snapshot first.
 

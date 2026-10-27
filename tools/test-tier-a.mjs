@@ -430,7 +430,7 @@ ok('字の補い：番号は今ある補い（正準の 10 進）の次、最後
 ok('読める層：段階は番号の小さい順で concl が最後（原稿の書き順によらない）。どのスライドにも当たらない口述原稿は入れず知らせる', async () => {
   const d = decks.minimal, r = d.r;
   const ws = workspace(r), narr = getText(ws, 'narration.md');
-  const sk = '何を最小化するか';
+  const sk = parseNarration(narr).sections.find((x) => x.heading === '何を最小化するか').key;   // スライドの id（書き出しが付けた。format spec §8.1）
   const segs = parseNarration(narr).filter((x) => x.slideKey === sk);
   const lineOf = (st) => narr.split('\n')[segs.find((x) => x.stepKey === st).line - 1];
   // 1. 1・2・concl を消す

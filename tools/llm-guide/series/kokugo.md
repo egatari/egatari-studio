@@ -1,4 +1,4 @@
-<!-- i18n: pair=kokugo.ja.md sha256=1c73838c0aed9091 -->
+<!-- i18n: pair=kokugo.ja.md sha256=3c8f30dfbdc21054 -->
 ## Series pack: kokugo (Japanese language arts)
 
 For 国語 lessons: 漢文, 古文 and 現代文. Use the `kokugo` theme. In the narration, give the reading of hard words and names with `{display|reading}` (R-reading).
@@ -11,6 +11,6 @@ Components of this pack, in addition to those of §3:
 
 {{EXTENSIONS}}
 
-{{WORKED kokugo "Worked example: kokugo (kokugo theme, m-kanbun)"}}
+{{WORKED kokugo "Worked example: kokugo (kokugo theme, m-kanbun)" m-kanbun}}
 
-Steps: `m-kanbun` gives steps 1–3 (訓点, reading order, 書き下し文).
+Steps: `m-kanbun` gives 訓点 (step 1), then one step per 句 of the reading order, then the 書き下し文: write one `[n]` per 句.

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Render noise</title>
+<!-- tools/test-render-compare.mjs: m-noise (components/noise) changes its pixels but not its DOM after its last step has been drawn -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-cover"><h1>Render noise</h1></section>
+
+<section class="slide noconcl" id="s-small">
+  <h2>Anti-aliasing noise only</h2>
+  <div class="body">
+    <m-noise id="n-small" amp="0.4" r="10" style="height:300px"></m-noise>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-big">
+  <h2>A real change</h2>
+  <div class="body">
+    <m-noise id="n-big" amp="40" r="60" style="height:300px"></m-noise>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

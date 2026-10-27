@@ -13,8 +13,12 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
 .static [data-step],.static .draw{opacity:1;stroke-dashoffset:0}
 
 /* 授業モード：全部見せ、段階より後の要素は deck.js が薄くする（今の段階に印は付けない） */
-/* lecture view: opacity of the steps not yet reached (a theme may override, keep it within .45-.5); the current step is not marked */
-:root{--lecture-dim:.5}
+/* show later steps faintly (Player P1): opacity of the steps not yet reached (format spec §8.4 --preview-opacity; a theme may override);
+   the current step is not marked. --lecture-dim is the old name, kept equal for components pinned before v1.10.0 */
+:root{--preview-opacity:.45;--lecture-dim:var(--preview-opacity)}
+/* 日本語・中国語の行の分け方（format spec §8.0）：小さい仮名・長音（ー）・閉じ括弧・句読点を行の初めに置かない（JIS X 4051 の行頭禁則）。
+   html の lang から、スライド・字幕・発表者ビューの台本・部品（影の木の中も）へ受け継がれる。縦組み（.tate）は前から strict */
+:root:lang(ja),:root:lang(zh){line-break:strict}
 
 /* 操作の表示 */
 #bar{position:fixed;left:0;bottom:0;height:var(--bar-h,3px);background:var(--bar,var(--emph));z-index:10}

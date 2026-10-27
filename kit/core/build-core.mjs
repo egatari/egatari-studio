@@ -127,8 +127,9 @@ export function analyzeSlideIds(src) {
       // rule：鍵をどの規則で決めたか（id / data-key / heading / index）。data-key と index（s<n>）は旧来の規則（品質チェックが警告する）
       const dk = attr(n, 'data-key'), hk = h ? normalizeKey(inner(src, h)) : '';
       const rule = id ? 'id' : dk ? 'data-key' : hk ? 'heading' : 'index';
+      // headingKey：見出しから作る旧来の鍵（id のあるスライドでも。書き出しが {#id} のない「## 見出し」をそのスライドに結ぶため）
       slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,
-        heading: h ? headingText(inner(src, h)) : '', line: lineOf(off), start: off });
+        heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, line: lineOf(off), start: off });
       return;
     }
     const id = attr(n, 'id');
@@ -324,10 +325,10 @@ function resolveTheme(env, name, baseDir, root, warn, ud = [], missing = null) {
   throw new Error(`theme not found: ${name}`);
 }
 // 見つからないテーマの知らせ（原稿の data-theme・extends）：既定のテーマで組む。env.themeDirs がなければ利用者のテーマのフォルダを読めない。
-// 編集アプリ（env.app）は、選んだテーマのフォルダ（env.themeDirs が空でない）か、まだ選んでいない（空。「テーマのフォルダを選ぶ…」で選べる）かで言い分ける
+// 編集アプリ（env.app）は、選んだテーマのフォルダ・自分のテーマ（env.themeDirs が空でない）か、どちらもない（空。「テーマを読み込む…」で読み込める）かで言い分ける
 function missingThemeWarning(env, name, used) {
   const ud = Array.isArray(env.themeDirs) && env.themeDirs.length > 0;
-  const where = env.app ? (ud ? `選んだテーマのフォルダに ${name}/ を置くか、` : '編集アプリでは「テーマのフォルダを選ぶ…」で自分のテーマのフォルダ（~/.egatari/themes など）を選ぶか、')
+  const where = env.app ? (ud ? `選んだテーマのフォルダに ${name}/ を置くか、` : '編集アプリでは「テーマを読み込む…」で ZIP ファイルか自分のテーマのフォルダ（~/.egatari/themes など）から読み込むか、')
     : env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
   return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：作業フォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}作業フォルダの themes/${name}/ に置く`;
 }
@@ -877,7 +878,11 @@ export function build(env0, srcPath, opts = {}) {
   const bodyEl = htmlEl && (htmlEl.childNodes || []).find((n) => n.tagName === 'body');
   const headTag = headEl && headEl.sourceCodeLocation && headEl.sourceCodeLocation.startTag;
   if (!headTag) throw new Error('<head> がない');
-  const headAt = headTag.endOffset;
+  // 入れる場所：<head> の開始タグの直後。ただし <head> の最初の要素が <meta charset> ならその後ろ（字の宣言を文書の先頭の 1024 バイトの内に残す。
+  // ファイルの決まり（format spec §4.2）は <meta charset> の次）
+  const head1 = (headEl.childNodes || []).find((n) => n.tagName);
+  const charsetFirst = head1 && head1.tagName === 'meta' && (head1.attrs || []).some((a) => a.name === 'charset') && head1.sourceCodeLocation;
+  const headAt = charsetFirst ? head1.sourceCodeLocation.endOffset : headTag.endOffset;
   const FENCE = (n) => n.tagName && (n.tagName.startsWith('m-') || ['template', 'svg', 'math', 'noscript'].includes(n.tagName));
   let at = -1;
   const seekScript = (n) => {
@@ -903,7 +908,8 @@ export function build(env0, srcPath, opts = {}) {
     return seek(pdoc);
   })();
   const iconLink = wantsFavicon(attr(htmlEl, 'data-favicon'), hasOwnIcon) ? faviconLink() + '\n' : '';
-  const a1 = html.slice(0, headAt) + '\n' + iconLink, a2 = html.slice(headAt, at) + pre;
+  // opts.policyMeta：ファイルの決まり（format spec §4.2。持ち運べる形式の書き出しが渡す CSP の <meta>）。どのスクリプト・スタイル・<link>・URL の属性よりも前
+  const a1 = html.slice(0, headAt) + '\n' + (opts.policyMeta ? opts.policyMeta + '\n' : '') + iconLink, a2 = html.slice(headAt, at) + pre;
   html = a1 + headCss + a2 + scripts + '\n' + html.slice(at);
   const trusted = [
     { name: 'deck-base', start: a1.length, end: a1.length + headCss.length, tags: ['style'] },

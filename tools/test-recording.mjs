@@ -163,7 +163,7 @@ try {
   ok(a11y.focus, 'a11y: focus moves to the recording screen');
   ok(a11y.topInert && a11y.prevInert, 'a11y: the toolbar and the preview are inert while it is open');
   ok(a11y.live === 'polite' && a11y.alert === 'alert', 'a11y: a polite live region and an alert region');
-  ok(/録音モード/.test(await liveHas(/録音モード/)) && /Space/.test(await live()) && /段階 1 \/ \d+/.test(await live()), 'live: opening announces the mode, the keys and the step');
+  ok(/録音モード/.test(await liveHas(/録音モード/)) && /Space/.test(await live()) && /ステップ 1 \/ \d+/.test(await live()), 'live: opening announces the mode, the keys and the step');
   const names = await page.evaluate(() => [...document.querySelectorAll('#rec-mode button')].map((b) => ({ id: b.id, name: b.textContent.trim(), ks: b.getAttribute('aria-keyshortcuts') })));
   ok(names.length === 7 && names.every((b) => b.name && b.ks), 'a11y: every key also has a button with a name and aria-keyshortcuts ' + names.map((b) => b.ks).join(','));
   const pr = await page.evaluate(() => ({ text: document.getElementById('rec-script').textContent, pos: document.getElementById('rec-pos').textContent, fs: parseFloat(getComputedStyle(document.getElementById('rec-script')).fontSize), vb: document.getElementById('viewer').getBoundingClientRect().width, rb: document.getElementById('rec-mode').getBoundingClientRect().width, state: document.getElementById('rec-state').textContent }));
@@ -188,7 +188,7 @@ try {
   ok(st.key === keys[1], 'move: → goes to the next step (' + st.key + ')');
   await page.waitForFunction((k) => (window.__APP_TEST.ui().pos || {}).key === k, keys[1], { timeout: 10000 });
   ok(true, 'stage: the preview follows the recording cursor');
-  ok(/段階 2 \/ \d+/.test(await liveHas(/段階 2 \//)), 'live: a step change announces "step n of N"');
+  ok(/ステップ 2 \/ \d+/.test(await liveHas(/ステップ 2 \//)), 'live: a step change announces "step n of N"');
   await page.keyboard.press('ArrowLeft'); await waitIdx(0);
 
   // ---------------------------------------------------------------- Enter：音声のない段階では進まない
@@ -214,16 +214,16 @@ try {
   ok(st.phase === 'idle' && st.key === keys[1] && st.mine.includes(keys[0]), 'Enter: moved to the next step, which waits (recording never starts by itself)');
   await page.waitForTimeout(600);
   ok((await recState()).phase === 'idle' && !(await recState()).taps, 'Enter: still waiting a moment later');
-  ok(/段階 2 \/ \d+/.test(await live()), 'live: the next step is announced');
+  ok(/ステップ 2 \/ \d+/.test(await live()), 'live: the next step is announced');
 
   // ---------------------------------------------------------------- Space で止める：同じ段階に留まり、結果が見える
   await record(3500, [], 'Space');
   const e1 = await waitWritten(keys[1], null);
   st = await recState();
   ok(st.key === keys[1] && st.idx === 1, 'Space: stopping stays on the same step');
-  await liveHas(/Enter で次の段階/);
+  await liveHas(/Enter で次のステップ/);
   const res = await page.evaluate(() => ({ r: (document.getElementById('rec-result') || {}).textContent, cur: document.getElementById('rec-cur').textContent, live: document.getElementById('rec-live').textContent }));
-  ok(/録音しました：\d\.\d\d 秒/.test(res.r || '') && /録音/.test(res.cur) && /Enter で次の段階/.test(res.live), 'Space: the take length and gain are shown and announced ' + JSON.stringify(res));
+  ok(/録音しました：\d\.\d\d 秒/.test(res.r || '') && /録音/.test(res.cur) && /Enter で次のステップ/.test(res.live), 'Space: the take length and gain are shown and announced ' + JSON.stringify(res));
   await shot(page, 'rec-taken.png');
   // Enter（録った後）：採用して次へ（書き換えない）
   await page.keyboard.press('Enter'); await waitIdx(2);
@@ -259,13 +259,13 @@ try {
   for (let i = at0; i < iCue; i++) await page.keyboard.press('ArrowRight');
   await waitIdx(iCue);
   const cueGuide = await page.evaluate(() => ({ chips: document.querySelectorAll('.rm-chip').length, notes: document.getElementById('rec-notes').textContent, lab: document.querySelector('.rm-chip').getAttribute('aria-label') }));
-  ok(cueGuide.chips === 2 && /区切りが 2 個/.test(cueGuide.notes + '') === false && /未設定/.test(cueGuide.notes) && /区切り 1 \/ 2/.test(cueGuide.lab), 'cue step: the boundaries are chips (2), with a note that they are not set yet');
+  ok(cueGuide.chips === 2 && /タイミングが 2 個/.test(cueGuide.notes + '') === false && /未設定/.test(cueGuide.notes) && /タイミング 1 \/ 2/.test(cueGuide.lab), 'cue step: the boundaries are chips (2), with a note that they are not set yet');
   await page.keyboard.press('Space'); await waitPhase('recording');
   const chipState = async () => page.evaluate(() => [...document.querySelectorAll('.rm-chip')].map((c) => c.className.replace('rm-chip', '').trim() + ':' + c.textContent));
   ok((await chipState())[0].startsWith('next'), 'cue: while recording the first chip is lit as the next one ' + JSON.stringify(await chipState()));
   await page.waitForTimeout(1200);
   await page.keyboard.press('c');
-  ok(/区切り 1 \/ 2/.test(await liveHas(/区切り 1 \/ 2/)), 'live: each C press announces "cue n of N"');
+  ok(/タイミング 1 \/ 2/.test(await liveHas(/タイミング 1 \/ 2/)), 'live: each C press announces "cue n of N"');
   await page.waitForTimeout(1000);
   await page.keyboard.press('c');
   ok((await chipState()).every((c) => c.startsWith('done')), 'cue: both chips are marked done after two presses ' + JSON.stringify(await chipState()));
@@ -332,7 +332,7 @@ try {
   ok(em.sync === 'manual' && em.cues.length === 1, `mark: one press for one {mark} → sync manual (${JSON.stringify(em.cues)})`);
   await page.keyboard.press('ArrowRight'); await waitIdx(MIXI);
   const mx = await page.evaluate(() => [...document.querySelectorAll('.rm-chip')].map((c) => c.getAttribute('aria-label')));
-  ok(mx.length === 2 && /印/.test(mx[0]) && !/印/.test(mx[1]), 'mix: a mark and a cue are both chips, labelled by kind ' + JSON.stringify(mx));
+  ok(mx.length === 2 && /強調/.test(mx[0]) && !/強調/.test(mx[1]), 'mix: a mark and a cue are both chips, labelled by kind ' + JSON.stringify(mx));
   await page.keyboard.press('Space'); await waitPhase('recording');
   const cnt0 = await page.textContent('#rec-count');
   await page.waitForTimeout(900); await page.keyboard.press('c');
@@ -406,7 +406,7 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('#rec-mode', { state: 'detached' });
   await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key === k && s.entry && s.entry.file === f; }, [pkey, eP.file], { timeout: 15000 });
-  ok(await page.isVisible('#dev-audio-player') && await page.isVisible('#dev-audio-revert'), 'panel: after Esc the panel shows the new take for that step, with Revert to previous');
+  ok(await page.isVisible('#dev-audio-play') && !!(await page.$('#dev-audio-player')) && await page.isVisible('#dev-audio-revert'), 'panel: after Esc the panel shows the new take for that step, with Revert to previous');
   // r で開いても、開いていた板は閉じない（録音モードの間は隠れるだけ）
   await page.evaluate(() => document.body.focus());
   await page.keyboard.press('r');

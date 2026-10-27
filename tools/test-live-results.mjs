@@ -80,8 +80,8 @@ console.log('shape');
   for (const lang of ['ja', 'en']) {
     const rec = resultsRecord(R1, lang);
     ok(rec.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && rec.role === 'data', `record (${lang}): name live-<room>-<date>.json, role data`);
-    ok(rec.title === (lang === 'ja' ? '授業の部屋の結果（r-7k2q6xw4、2026-10-30）' : 'Live room results (r-7k2q6xw4, 2026-10-30)'), `record (${lang}): the title has only the room id and the date: ${rec.title}`);
-    ok(!titleProblem(rec.title) && !descriptionProblem(rec.description) && !roleProblem(rec.path, 'data') && (lang === 'ja' ? /学ぶ人.*質問と投票の答え/ : /questions and poll answers learners/).test(rec.description), `record (${lang}): title ≤ 120 and description ≤ 300, one line (§3.8); the description says it holds learners' questions and answers`);
+    ok(rec.title === (lang === 'ja' ? 'ライブの結果（r-7k2q6xw4、2026-10-30）' : 'Live results (r-7k2q6xw4, 2026-10-30)'), `record (${lang}): the title has only the room id and the date: ${rec.title}`);
+    ok(!titleProblem(rec.title) && !descriptionProblem(rec.description) && !roleProblem(rec.path, 'data') && (lang === 'ja' ? /参加者.*質問と投票の答え/ : /questions and poll answers participants/).test(rec.description), `record (${lang}): title ≤ 120 and description ≤ 300, one line (§3.8); the description says it holds learners' questions and answers`);
   }
   ok(resultsRecord(R0, 'ja', (p) => p.endsWith('2026-10-30.json')).path === 'attachments/live-r-7k2q6xw4-2026-10-30-2.json', 'record: a second import of the same room and day gets -2');
   const insp = await inspectAttachment('attachments/live-r-7k2q6xw4-2026-10-30.json', new Uint8Array(R1B));
@@ -136,22 +136,22 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   const a = portableCli('attach', deckDir, resFile);
   const conf = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   const e = conf[KEY] && conf[KEY][0];
-  ok(a.status === 0 && e && e.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && e.role === 'data' && e.title === '授業の部屋の結果（r-7k2q6xw4、2026-10-30）' && fs.readFileSync(path.join(deckDir, e.path)).equals(R1B) && conf.extensions.live.room === 'r-7k2q6xw4' && conf.docId === cfg0.docId,
+  ok(a.status === 0 && e && e.path === 'attachments/live-r-7k2q6xw4-2026-10-30.json' && e.role === 'data' && e.title === 'ライブの結果（r-7k2q6xw4、2026-10-30）' && fs.readFileSync(path.join(deckDir, e.path)).equals(R1B) && conf.extensions.live.room === 'r-7k2q6xw4' && conf.docId === cfg0.docId,
     'cli attach: the results become attachments/live-<room>-<date>.json with role data and the title; other settings kept' + (a.status ? ': ' + a.stderr : ''));
-  ok(/learners typed/.test(a.stderr) && !/room r-/.test(a.stderr.replace(/live-r-/g, '')), 'cli attach: prints the privacy line; no room warning when the room matches');
+  ok(/participants typed/.test(a.stderr) && !/room r-/.test(a.stderr.replace(/live-r-/g, '')), 'cli attach: prints the privacy line; no room warning when the room matches');
   const dup = portableCli('attach', deckDir, resFile);
   ok(dup.status === 1 && /already attached/.test(dup.stderr), 'cli attach: the same results again are refused');
   const bad = portableCli('attach', deckDir, badFile), big = portableCli('attach', deckDir, bigFile);
-  ok(bad.status === 1 && /not live room results/.test(bad.stderr) && big.status === 1 && /larger than 10485760/.test(big.stderr), 'cli attach: bad JSON and an oversize file are refused');
+  ok(bad.status === 1 && /not live session results/.test(bad.stderr) && big.status === 1 && /larger than 10485760/.test(big.stderr), 'cli attach: bad JSON and an oversize file are refused');
   const oth = portableCli('attach', deckDir, otherFile);
   ok(oth.status === 0 && /results are for room r-bbbbbbbb, but this lesson's live settings name room r-7k2q6xw4; added anyway/.test(oth.stderr), 'cli attach: a room mismatch warns but adds');
   const pk = portableCli('pack', deckDir, '-o', path.join(work, 'with.ega.html'));
-  ok(pk.status === 0 && /this file contains live room results \("attachments\/live-r-7k2q6xw4-2026-10-30\.json", "attachments\/live-r-bbbbbbbb-2026-10-30\.json"\)/.test(pk.stderr), 'cli pack: warns that the single file contains live room results');
+  ok(pk.status === 0 && /this file contains live session results \("attachments\/live-r-7k2q6xw4-2026-10-30\.json", "attachments\/live-r-bbbbbbbb-2026-10-30\.json"\)/.test(pk.stderr), 'cli pack: warns that the single file contains live room results');
   const w = await readPortable(fs.readFileSync(path.join(work, 'with.ega.html'), 'utf8'));
   ok(w.index[KEY].length === 2 && w.index[KEY].every((x) => x.role === 'data') && Buffer.from(w.files['attachments/live-r-7k2q6xw4-2026-10-30.json']).equals(R1B), 'cli pack: the teacher\'s single file carries the results (role data)');
   const pk2 = portableCli('pack', deckDir, '-o', path.join(work, 'without.ega.html'), '--without-live-results');
   const wo = await readPortable(fs.readFileSync(path.join(work, 'without.ega.html'), 'utf8'));
-  ok(pk2.status === 0 && !/this file contains live room results/.test(pk2.stderr) && /live room results left out/.test(pk2.stderr) && !(wo.index[KEY] || []).length && !Object.keys(wo.files).some((p) => p.startsWith('attachments/')) && !JSON.parse(new TextDecoder().decode(wo.files[CFG]))[KEY],
+  ok(pk2.status === 0 && !/this file contains live session results/.test(pk2.stderr) && /live session results left out/.test(pk2.stderr) && !(wo.index[KEY] || []).length && !Object.keys(wo.files).some((p) => p.startsWith('attachments/')) && !JSON.parse(new TextDecoder().decode(wo.files[CFG]))[KEY],
     'cli pack --without-live-results: no results in the file (nor in its egatari.json); the working folder keeps them');
   ok(JSON.parse(fs.readFileSync(cfgPath, 'utf8'))[KEY].length === 2, 'cli pack --without-live-results: the working folder\'s egatari.json is unchanged');
   const bo = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'build.mjs'), deckDir, '--portable', '--without-live-results', '-o', path.join(work, 'without2.ega.html')], { encoding: 'utf8' });
@@ -161,7 +161,7 @@ fs.writeFileSync(bigFile, Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20));
   const play = fs.readFileSync(path.join(work, 'p.play.ega.html'), 'utf8');
   const sha = crypto.createHash('sha256').update(R1B).digest('hex');
   const b64 = R1B.toString('base64').slice(0, 40);
-  ok(po.status === 0 && !/contains live room results/.test(po.stderr) && !play.includes(sha) && !play.includes(b64) && !play.includes('window.__xss') && !play.includes(`id="${FORMAT.INDEX_ID}"`), 'play-only: no results (no blob, no hash, no learner text, no index) and no warning');
+  ok(po.status === 0 && !/contains live session results/.test(po.stderr) && !play.includes(sha) && !play.includes(b64) && !play.includes('window.__xss') && !play.includes(`id="${FORMAT.INDEX_ID}"`), 'play-only: no results (no blob, no hash, no learner text, no index) and no warning');
   ok(play === playBefore, 'play-only: byte-identical to the play-only export before the results were attached');
   const now = Date.now(), iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
   const lr = await buildPortable(path.join(deckDir, 'deck.html'), { playOnly: true, live: { v: 1, endpoint: FORMAT.LIVE_ENDPOINT, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(now), to: iso(now + 3600e3) } } });
@@ -229,48 +229,47 @@ console.log('editor');
     const exportTo = async (sel, name) => {
       await page.evaluate(async (n) => { window.__APP_TEST.saveHandle = await window.__testDir.getFileHandle(n, { create: true }); }, name);
       await page.evaluate((s) => document.querySelector(s).click(), sel);
+      // 参加者用（再生のみ）…は窓で聞く（ライブは付けない）
+      if (sel === '#b-export-play') { await page.waitForSelector('#dlg[open] #play-live'); await clickDlg(page, '#dlg-export'); }
     };
     const waitFile = async (name) => { let t = ''; for (let i = 0; i < 300 && t.length < 1000; i++) { await page.waitForTimeout(100); t = (await outRead(name)) || ''; } return t; };
     // 結果を取り込む前の再生専用
     await exportTo('#b-export-play', 'before.play.ega.html');
     const playBeforeApp = await waitFile('before.play.ega.html');
-    // 添付の板
-    await page.click('#b-attach');
+    // 添付の板（ファイル ▾ → ファイルの情報…）
+    await page.evaluate(() => document.getElementById('b-info').click());
     await page.waitForSelector('#attach-list');
-    ok((await page.textContent('#attach-live')) === '授業の部屋の結果を取り込む…', 'editor: the attachments panel has 「授業の部屋の結果を取り込む…」');
+    ok((await page.textContent('#attach-live')) === 'ライブの結果を取り込む…', 'editor: the attachments panel has 「ライブの結果を取り込む…」');
     // 断る：壊れた JSON・大きすぎる
     await page.setInputFiles('#attach-live-file', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":1,"room":') });
     await page.waitForFunction(() => /取り込めません/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
-    ok(/授業の部屋の結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')) && (await fread('attachments/live-r-7k2q6xw4-2026-10-30.json')) === null, 'editor: bad JSON is refused with a clear message');
+    ok(/ライブの結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')) && (await fread('attachments/live-r-7k2q6xw4-2026-10-30.json')) === null, 'editor: bad JSON is refused with a clear message');
     await page.setInputFiles('#attach-live-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ hello: 'world' })) });
     await page.waitForTimeout(400);
-    ok(/授業の部屋の結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')), 'editor: JSON that is not results is refused');
+    ok(/ライブの結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')), 'editor: JSON that is not results is refused');
     await page.setInputFiles('#attach-live-file', { name: 'big.json', mimeType: 'application/json', buffer: Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20) });
     await page.waitForFunction(() => /大きすぎて/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
     ok(/10\.0 MB まで/.test(await toastText()), 'editor: an oversize file is refused (10 MiB)');
     // 取り込む：はじめての知らせ（部屋は合う）
     await page.setInputFiles('#attach-live-file', { name: 'results.json', mimeType: 'application/json', buffer: R1B });
     await page.waitForSelector('#dlg[open] #live-results-privacy');
-    ok(/学ぶ人が打った字/.test(await page.textContent('#live-results-privacy')) && /どこにも送りません/.test(await page.textContent('#live-results-privacy')) && !(await page.$('#dlg #live-results-mismatch')), 'editor: the first import shows the privacy notice (no room warning when the room matches)');
+    ok(/参加者が打った字/.test(await page.textContent('#live-results-privacy')) && /どこにも送りません/.test(await page.textContent('#live-results-privacy')) && !(await page.$('#dlg #live-results-mismatch')), 'editor: the first import shows the privacy notice (no room warning when the room matches)');
     await clickDlg(page, '#dlg-ok');
     await waitIdle();
     const P1 = 'attachments/live-r-7k2q6xw4-2026-10-30.json';
     const conf1 = JSON.parse(await fread(CFG));
     const e1 = conf1[KEY].find((x) => x.path === P1);
-    ok(e1 && e1.role === 'data' && e1.title === '授業の部屋の結果（r-7k2q6xw4、2026-10-30）' && /質問と投票の答え/.test(e1.description) && (await fread(P1)) === R1B.toString('utf8') && conf1.extensions.live.room === 'r-7k2q6xw4',
+    ok(e1 && e1.role === 'data' && e1.title === 'ライブの結果（r-7k2q6xw4、2026-10-30）' && /質問と投票の答え/.test(e1.description) && (await fread(P1)) === R1B.toString('utf8') && conf1.extensions.live.room === 'r-7k2q6xw4',
       'editor: the results are an attachment with role data, the title (room and date only) and the description');
     ok(await page.$eval(`[data-attach-role="${P1}"]`, (x) => x.value) === 'data' && await page.$eval(`[data-attach-title="${P1}"]`, (x) => x.value) === e1.title, 'editor: the list shows role data and the title');
     const row = `#attach-list [data-attach="${P1}"]`;
-    ok((await page.textContent(`${row} .attach-badge`)) === '学ぶ人の回答', 'editor: the row is marked 「学ぶ人の回答」');
+    ok((await page.textContent(`${row} .attach-badge`)) === '参加者の回答', 'editor: the row is marked 「参加者の回答」');
     const lines = await page.$$eval(`${row} .attach-live div`, (xs) => xs.map((x) => x.textContent));
     ok(lines.length === 2 && lines[0] === '質問 2 件' && lines[1] === `投票 p1「${XSS}」 — <b id="xss-b">A</b>: 0 · B: 2 · C: 1`, 'editor: the summary shows the number of questions and the tally per poll: ' + JSON.stringify(lines));
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results.png') });
     ok(await page.evaluate(() => window.__xss === undefined && !document.querySelector('#attach-list img, #xss-b')), 'editor: the learner strings render as text (no element, no script run)');
-    // 授業の部屋の板から：部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）
-    await page.evaluate(() => document.getElementById('b-export-live').click());
-    await page.waitForSelector('#live-panel #live-import-results');
-    ok((await page.textContent('#live-import-results')) === '授業の部屋の結果を取り込む…', 'editor: the live panel has 「授業の部屋の結果を取り込む…」');
-    await page.setInputFiles('#live-results-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...R0, room: 'r-bbbbbbbb' })) });
+    // 部屋が違う結果（知らせは一度だけなので、出るのは部屋の知らせ）。結果の取り込みはファイルの情報…の添付だけ（参加者用の窓のライブには出さない）
+    await page.setInputFiles('#attach-live-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...R0, room: 'r-bbbbbbbb' })) });
     await page.waitForSelector('#dlg[open] #live-results-mismatch');
     ok(/r-bbbbbbbb/.test(await page.textContent('#live-results-mismatch')) && /r-7k2q6xw4/.test(await page.textContent('#live-results-mismatch')), 'editor: a room mismatch shows a warning (and still allows the import)');
     await clickDlg(page, '#dlg-ok');

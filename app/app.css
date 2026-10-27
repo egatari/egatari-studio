@@ -152,19 +152,36 @@ main{flex:1;min-height:0;display:flex}
 #notice .theme-changes{margin:2px 0 2px 18px;padding:0}
 #notice .theme-changes li{margin:1px 0}
 #notice .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px;vertical-align:-.2em}
+#theme-switch-list{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+#theme-switch-list .theme-opt{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer}
+#theme-switch-list .theme-opt:hover{background:var(--bg)}
+#theme-switch-list .theme-group{margin:6px 0 0 6px}
+#theme-switch-list .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px}
 #notice-theme-pinned button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
 #notice-theme button,#notice-exported button,#panel-body .theme-warn button{padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;vertical-align:baseline}
+/* 前の版のファイル・作業フォルダの知らせ（app/earlier-draft.js）：2 つの道はリンク（新しいタブ）をボタンの形で */
+#notice-earlier .earlier-actions{margin:4px 0}
+#notice-earlier a.btn{display:inline-block;padding:2px 10px;font-size:13px;margin:2px 4px 2px 0;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--fg);text-decoration:none;white-space:nowrap}
+#notice-earlier a.btn:hover{border-color:var(--accent)}
+#notice-earlier a.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+#notice-earlier a.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#notice-earlier .hint{font-size:12.5px}
+#notice-earlier code{font-size:12px}
 #panel-body .theme-warn{margin-top:6px}
-#dlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);padding:18px 22px;width:min(560px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.35)}
-#dlg::backdrop{background:rgba(10,12,16,.45)}
+#dlg,#theme-load{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);padding:18px 22px;width:min(560px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+#dlg::backdrop,#theme-load::backdrop{background:rgba(10,12,16,.45)}
 #dlg.warn{border-color:var(--bad-fg)}
-#dlg h2{font-size:17px;margin:0 0 10px}
-#dlg .row{justify-content:flex-end}
+#dlg h2,#theme-load h2{font-size:17px;margin:0 0 10px}
+#dlg .row,#theme-load .row{justify-content:flex-end}
 #dlg dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:10px 0}
 #dlg dt{color:var(--muted)}
 #dlg dd{margin:0;overflow-wrap:anywhere}
 #dlg .note{width:auto}
 #dlg .hint{color:var(--muted);font-size:12.5px;margin:6px 0}
+#dlg h3{font-size:14px;margin:12px 0 4px}
+#dlg ul.my-themes{list-style:none;padding:0;margin:4px 0}
+#dlg ul.my-themes li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
+#dlg ul.my-themes button{padding:2px 10px;font-size:13px}
 #dlg .confirm{display:flex;gap:8px;align-items:flex-start;margin:10px 0}
 #dlg pre.tech{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:8px;max-height:30vh;overflow:auto}
 /* 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：まとめて、1280 px 以上で 1 行に収める */
@@ -197,10 +214,18 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-series legend{padding:0 4px}
 #dlg .paste-series label{display:flex;gap:8px;align-items:center}
 #dlg .paste-series label .hint{flex-basis:auto;margin-left:auto}
+#dlg .paste-series label:has(input:disabled){color:var(--muted)}
+#dlg .paste-series > p{margin:2px 0 0}
 #dlg #paste-pack-size{flex-basis:auto}
 #dlg .paste-step{border-top:1px solid var(--line);padding:8px 0 4px;margin-top:6px}
 #dlg .paste-step h3{font-size:15px;margin:2px 0 6px}
-#dlg .paste-step > .hint{margin:0 0 6px}
+#dlg .paste-step-body > .hint{margin:0 0 6px}
+/* 1 つだけ開く流れ：見出しはボタン。まだの段は見出しだけ（薄く）、いまの段は左の線を強く */
+#dlg .paste-step-h{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:4px}
+#dlg .paste-step-h[aria-disabled="true"]{cursor:default}
+#dlg .paste-step-h:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#dlg .paste-step.pending > h3{color:var(--muted)}
+#dlg .paste-step-body[hidden]{display:none}
 #dlg .paste-kind{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 6px;padding:4px 10px 6px;border:1px solid var(--line);border-radius:6px;font-size:13.5px}
 #dlg .paste-kind legend{padding:0 4px}
 #dlg .paste-kind label{display:flex;gap:6px;align-items:center}
@@ -290,3 +315,107 @@ main{flex:1;min-height:0;display:flex}
 .menu-list .menu-sep{border-top:1px solid var(--line);margin:4px 0}
 #panel-body .fixrow{display:flex;gap:6px;margin:2px 0 8px}
 #panel-body .fixrow .fixreq{flex:1 1 0;width:auto;margin:0}
+
+/* 道具の列（ui-redesign 段階 1）：ファイル ▾・スライド ▾・品質チェック（警告の札）・仮の板の群・プレビュー ▾ */
+#tools .tmp-group{display:inline-flex;gap:6px}
+#tools #b-previewmenu{margin-left:4px}
+#b-check .badge{margin-left:6px;font-size:11.5px;padding:0 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn-fg)}
+#b-check .badge.bad{background:var(--bad-bg);color:var(--bad-fg);font-weight:600}
+#b-filemenu.dirty::after{content:"●";color:var(--accent);margin-left:4px;font-size:10px;vertical-align:1px}
+#tools > .menu:first-child > .menu-list{left:0;right:auto}
+#tools .menu-list{min-width:240px}
+.menu-sep{height:1px;background:var(--line);margin:4px 6px}
+.menu-list [aria-disabled="true"]{color:var(--muted)}
+.menu-list .sub{position:relative;display:flex;flex-direction:column}
+.menu-list .sub > button::after{content:"";flex:1}
+#tools .menu-list .sub-list{left:calc(100% + 4px);right:auto;top:-5px}
+.menu-list [role=menuitemcheckbox]::before{content:"";display:inline-block;width:1.2em}
+.menu-list [role=menuitemcheckbox][aria-checked="true"]::before{content:"✓"}
+.menu-note{margin:4px 6px 2px;padding:6px 4px 2px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);white-space:normal;max-width:280px}
+#dlg.wide{width:min(760px,94vw)}
+#play-live-box{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+#dlg #live-panel textarea{min-height:0;font:12px/1.4 ui-monospace,Menlo,monospace}
+#dlg .choices-grid h3{font-size:14px;margin:10px 0 4px}
+#dlg .choices-grid .row{justify-content:flex-start;flex-wrap:wrap;gap:6px}
+#panel .info-list{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:8px 0}
+#panel .info-list dt{color:var(--muted)}
+#panel .info-list dd{margin:0;overflow-wrap:anywhere}
+#panel .info-list dd.none{color:var(--muted);font-style:italic}
+#panel .info-h{margin:16px 0 6px;font-size:15px;border-top:1px solid var(--line);padding-top:12px}
+#panel .buildwarn{margin:8px 0;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
+#panel .buildwarn summary{cursor:pointer;font-weight:600}
+/* 最初の画面（ui-redesign）：新規作成を主に。「…」のアイコンの試案 */
+.new-block{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.new-block .big{font-size:17px;padding:10px 18px;display:inline-flex;align-items:center;gap:10px}
+.ai-icon .sun{fill:var(--logo-sun)}
+#recent-none{margin:4px 0 0}
+.with-claude a{color:var(--muted);font-size:13px}
+#panel table.kinds{border-collapse:collapse;font-size:13px;margin:4px 0 12px}
+#panel table.kinds th,#panel table.kinds td{text-align:left;vertical-align:top;padding:4px 8px;border-bottom:1px solid var(--line)}
+.menu-list [role=menuitemradio]::before{content:"";display:inline-block;width:16px;font-size:9px;vertical-align:2px}
+.menu-list [role=menuitemradio][aria-checked="true"]::before{content:"●"}
+.menu-list [role=group]{display:flex;flex-direction:column;gap:2px}
+/* 新規作成：画面いっぱいのページ（#dlg.page）。ステップを縦の流れに（左の線と番号の見出し） */
+#dlg.page{width:100vw;max-width:none;height:100vh;max-height:none;margin:0;border-radius:0;border:0;padding:16px max(16px,calc((100vw - 880px) / 2)) 24px;box-sizing:border-box;overflow:auto}
+#dlg.page::backdrop{background:var(--bg)}
+#dlg.page h2{font-size:22px;margin:6px 0 12px}
+#dlg.page .page-back{position:fixed;top:10px;left:12px;z-index:2;padding:4px 10px;color:var(--accent);background:var(--panel)}
+#dlg.page h2#dlg-title{margin-top:28px}
+#dlg.page .paste-step{border-left:3px solid var(--line);border-top:0;margin:0 0 6px 6px;padding:6px 0 14px 18px}
+#dlg.page .paste-step h3{font-size:16px;margin:0 0 6px}
+#dlg.page .paste-step.current,#dlg.page .paste-step:focus-within{border-left-color:var(--accent)}
+#dlg.page .paste-step.pending{padding-bottom:6px}
+#dlg.page #dlg-buttons{position:sticky;bottom:-24px;background:var(--panel);padding:10px 0;margin-top:8px;border-top:1px solid var(--line)}
+#dlg .paste-content{flex-basis:100%}
+#dlg .paste-content textarea{min-height:160px;font:13px/1.5 inherit;font-family:inherit}
+#dlg .paste-outline{margin:6px 0 8px;padding-left:1.6em;max-height:30vh;overflow:auto;font-size:13.5px}
+#notice-outline button{padding:2px 10px;font-size:13px;margin-left:4px}
+/* 新規作成 ① 場面（大分類・小分類）と ② 素材・言いたいことの札（app/llm.js の kindStep・partsTiles）。入っている札は印と枠、外した札は薄く斜線（色だけで分けない） */
+#dlg .paste-sub[hidden],#dlg .paste-structure[hidden]{display:none}
+#dlg .paste-structure{margin:4px 0 0;padding:4px 10px;border-left:3px solid var(--accent);font-size:13.5px}
+/* ② お使いの AI（無料版・有料版）と、言いたいことの札の折りたたみ（既定で閉じる） */
+#dlg .paste-plan{margin:0 0 4px}
+#dlg .paste-fold{margin:10px 0 4px;border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+#dlg .paste-fold > summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}
+#dlg .paste-fold > summary .hint{font-weight:400;margin-left:6px}
+#dlg .paste-tiles-group{margin:10px 0 4px}
+#dlg .paste-tiles-group h4{font-size:14px;margin:4px 0 6px}
+#dlg .paste-tiles-group > .hint{margin:0 0 6px}
+#dlg .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;list-style:none;margin:0;padding:0}
+#dlg .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;min-height:86px;padding:8px 6px 6px;border:2px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit;font-size:13px;line-height:1.3;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+#dlg .tile svg{width:30px;height:30px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#dlg .tile .tile-label{font-weight:600}
+#dlg .tile small{font-size:11.5px;color:var(--muted);line-height:1.25}
+#dlg .tile[aria-pressed="true"]{border-color:var(--accent)}
+#dlg .tile[aria-pressed="true"]::after{content:"✓";position:absolute;top:2px;right:6px;font-weight:700;color:var(--accent)}
+#dlg .tile[aria-pressed="false"]{opacity:.5;border-style:dashed;background-image:linear-gradient(to top right,transparent calc(50% - 1px),var(--muted) calc(50% - 1px),var(--muted) calc(50% + 1px),transparent calc(50% + 1px))}
+#dlg .tile[aria-pressed="false"] .tile-label{text-decoration:line-through}
+#dlg .tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#dlg .tile.fixed{cursor:default;min-height:64px;background:var(--line);border-color:transparent}
+/* 分野の札（新規作成 ④）：押していない札はふつうの見た目、押せない札（無料のプランで 2 つまで）は薄く破線、有料のプランは全部入りで押せない */
+#dlg .paste-series .tiles{margin:2px 0 4px}
+#dlg .paste-series .tile[aria-pressed="false"]{opacity:1;border-style:solid;background-image:none}
+#dlg .paste-series .tile[aria-pressed="false"] .tile-label{text-decoration:none}
+#dlg .paste-series .tile:disabled{opacity:.45;border-style:dashed;cursor:default}
+#dlg .paste-series.paid .tile:disabled{opacity:1;border-style:solid}
+/* この指示に入るパーツの並び（読むだけ）：外した部品は薄く破線で斜線 */
+#dlg .tiles.parts{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+#dlg .tiles.parts .tile{min-height:56px;cursor:default;font-size:12px;border-width:1px}
+#dlg .tiles.parts .tile svg{width:22px;height:22px}
+#dlg .tiles.parts .tile.off{opacity:.5;border-style:dashed;background-image:linear-gradient(to top right,transparent calc(50% - 1px),var(--muted) calc(50% - 1px),var(--muted) calc(50% + 1px),transparent calc(50% + 1px))}
+#dlg .tiles.parts .tile.off .tile-label{text-decoration:line-through}
+/* 新規作成の問い（app/llm.js）：答えた問いの 1 行と［変更］、「AI に任せる」か書くかの組、貼り付けの 2 つの欄の状態、作成のボタンの横の言葉 */
+#dlg .paste-answered{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:0;font-size:14px}
+#dlg .paste-answered[hidden],#dlg .paste-q-body[hidden],#dlg #paste-content-rest[hidden],#dlg .paste-pair-field[hidden],#dlg .paste-step[hidden],#dlg .paste-info[hidden]{display:none}
+#dlg .paste-answer-text{font-weight:600}
+#dlg .paste-pair{flex-direction:column;align-items:flex-start;flex-wrap:nowrap}
+#dlg .paste-pair-field{align-self:stretch;display:flex;gap:6px;align-items:center}
+#dlg .paste-pair-field input[type=text],#dlg .paste-pair-field textarea{flex:1;font:inherit;font-size:13.5px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-pair-field input[type=number]{width:6em;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg .paste-pair-field textarea{min-height:140px}
+#dlg #paste-language input[type=text][hidden]{display:none}
+#dlg .paste-st{margin:2px 0 0;font-size:13px;color:var(--muted)}
+#dlg .paste-st.ok{color:var(--fg);font-weight:600}
+#dlg .paste-st.bad{color:var(--bad-fg)}
+#dlg .paste-info{margin:0 0 6px}
+#dlg .paste-go-note{align-self:center;font-size:13px;color:var(--muted)}

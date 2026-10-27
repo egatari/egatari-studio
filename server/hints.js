@@ -221,7 +221,7 @@ document.addEventListener("deck:ink", function(e){
   if (!editOn || !window.DECK || !Array.isArray(P) || P.length < 2) return;
   var key = window.DECK.state().key;
   if (key !== inkKey){ inkPend = []; inkKey = key; }
-  if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A comment holds at most 20 marks" : "1 つのコメントの印は 20 本まで"); return; }
+  if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A comment holds at most 20 lines" : "1 つのコメントの線は 20 本まで"); return; }
   var S = inkPend.concat([P]), c = centroid(S), at = pointAt(c[0], c[1]) || pointAt(S[0][0][0], S[0][0][1]);
   if (!at) return;
   inkPend = S;

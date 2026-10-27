@@ -2,7 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -37,6 +37,8 @@ const steps = [
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
   ['i18n pairs', ['tools/i18n-pairs.mjs', '--check', '--plain']],
+  // 画面の言葉（docs/terms.json の avoid の言葉が、画面の文字列・使い方の文書・skills に残っていないか）：残っていれば失敗（直すか、正当な使い方なら docs/terms-allow.json に理由と書く）
+  ['lint terms', ['tools/lint-terms.mjs']],
   // 作ったファイル（リポジトリに入れておくもの）が材料と同じか：違えば失敗（直すのは npm run gen）。AI への指示（llm guide）は後ろの段
   // 部品庫の写し（vendor/components）が components.lock.json と合っているか（ネットワークなし）
   ['components', ['tools/components-update.mjs', '--check']],
@@ -56,6 +58,11 @@ const steps = [
   ['test-components', ['tools/test-components.mjs', '--shots', path.join(tmp, 'components')]],
   ['test-tools', ['tools/test-tools.mjs', MIN, path.join(tmp, 'tools')]],
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
+  ['test-preview', ['tools/test-preview.mjs', path.join(tmp, 'preview')]],
+  ['test-message-sources', ['tools/test-message-sources.mjs', MIN, path.join(tmp, 'message-sources')]],
+  ['test-touch', ['tools/test-touch.mjs', MIN, path.join(tmp, 'touch')]],
+  ['test-bar-hint', ['tools/test-bar-hint.mjs', MIN, path.join(tmp, 'bar-hint')]],
+  ['test-line-break', ['tools/test-line-break.mjs', MIN]],
   ['test-autoplay', ['tools/test-autoplay.mjs', MIN]],
   // 暗転（b）：窓全体が #000・戻すと同じ画面・クリックと Esc・キーの一覧より上・発表者ビューの札・印刷と動画は変わらない
   ['test-blackout', ['tools/test-blackout.mjs', MIN]],
@@ -75,6 +82,8 @@ const steps = [
   // 部品庫が取り下げた版（format spec §6）：警告（CLI）・編集アプリのページに eval の許可がないこと・取り下げた版を記録した文書の知らせと「組み直す」・sandbox の枠
   ['test-yanked', ['tools/test-yanked.mjs', path.join(tmp, 'yanked')]],
   ['test-theme-version', ['tools/test-theme-version.mjs', path.join(tmp, 'theme-version')]],
+  // テーマを変更…（スライド ▾）：data-theme だけを替え（ほかの属性・スライドは変えない）、egatari.json の themes の固定（ほかの項目はバイトのまま）、プレビューの色、元に戻す、段 B の保存、作業フォルダ、組み直せないファイル
+  ['test-theme-switch', ['tools/test-theme-switch.mjs', path.join(tmp, 'theme-switch')]],
   ['test-a11y', ['tools/test-a11y.mjs', MIN, path.join(tmp, 'a11y')]],
   // 並んでいないうちに起動したデッキ（display:none の iframe）を後で出しても、ふつうの起動と画素まで同じ（contract §3：mount は舞台が並んでから）
   ['test-mount-hidden', ['tools/test-mount-hidden.mjs', path.join(tmp, 'mount-hidden')]],
@@ -86,6 +95,8 @@ const steps = [
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
+  // 1.0 のファイルの形（書く側）：player と generator・版の決め方と player:check・段 A は player を残す・ファイルの決まり（CSP）・旧来の鍵を書かない・記事だけの教材・プレビュー
+  ['test-file-shape', ['tools/test-file-shape.mjs', path.join(tmp, 'file-shape')]],
   ['test-attachments', ['tools/test-attachments.mjs', path.join(tmp, 'attachments'), '--shots', path.join(tmp, 'attachments-shots')]],
   // 授業の部屋（拡張 live）：決まりごと・部屋を付けた派生だけの CSP・通信なしの場面・file:// から試験の部屋へ・つなぎ直し・舞台の描画が変わらない
   ['test-live', ['tools/test-live.mjs', path.join(tmp, 'live')]],
@@ -98,6 +109,10 @@ const steps = [
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
+  // 前の版のファイル・作業フォルダ（format spec §7.1）：知らせと 2 つのボタン（前の版の Studio の URL・移し替えの手引き）、ファイルそのものの再生、編集・保存を断る、1.0 のファイルは知らせなし
+  ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
+  // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
+  ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
   ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
   // 発表者ビューから抜けること：本体の p・発表者ビューの Esc と p・閉じるのボタン・全画面のときは全画面をやめるだけ・「今の画面」からの Esc と p・フォーカスがないときの覆い（組んだデッキと編集アプリ）
@@ -129,7 +144,11 @@ steps.push(
   ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
+  // 章の扉の h2（#128）と、字と地のコントラストの警告
+  ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
+  ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 // チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
@@ -172,6 +191,7 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 
+const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : 600;
 function run(name, argv) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -179,8 +199,8 @@ function run(name, argv) {
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (verbose) process.stdout.write(d); });
     ch.stderr.on('data', (d) => { out += d; if (verbose) process.stderr.write(d); });
-    // 1 つのテストが 10 分を超えたら止める（ブラウザが固まったとき）
-    const timer = setTimeout(() => { out += '\n[test-all] timeout: killed after 600 s\n'; ch.kill('SIGKILL'); }, 600_000);
+    // 1 つのテストが 10 分（遅い macOS の CI では TEST_STEP_TIMEOUT_S で延ばす）を超えたら止める（ブラウザが固まったとき）
+    const timer = setTimeout(() => { out += `\n[test-all] timeout: killed after ${STEP_TIMEOUT_S} s\n`; ch.kill('SIGKILL'); }, STEP_TIMEOUT_S * 1000);
     ch.on('close', (code, sig) => { clearTimeout(timer); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }

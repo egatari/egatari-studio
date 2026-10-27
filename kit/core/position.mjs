@@ -6,7 +6,7 @@
 // - いまの持ち主は舞台（kit/deck.js）：描いた位置（i, k）は seek のたびに at() で書き（知らせない。1 コマごとには配らない）、
 //   知らせる（publish）のは、deck.js がこれまで位置を送っていた時（段階を決めたとき・自動再生を止めたとき・発表者ビューがつながったとき）だけ。
 //   購読者（deck.js の broadcast：発表者ビュー・埋め込みの親・deck:pos）は、そのときの写し（snapshot）を受け取る
-// - t は位置の知らせに載せる段階の t：動きの初めから描くなら 0、最終状態なら null（format spec §9.4 の position の t）
+// - t は位置の知らせに載せる段階の t：動きの初めから描くなら 0、最終状態なら null（Player P8 の position の t）
 // - cause は位置が変わったわけ（control・link・seek・play）。null なら知らせでは control
 // - trail の項目は中身を見ない（deck.js は {i, k, el} を積む。el はキーボードで押したリンク）
 export function createPositionStore() {

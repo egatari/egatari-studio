@@ -89,7 +89,8 @@ ok('play-only with a Live room: CSP img-src allows data:, and the icon is a data
 // ハッシュ：アイコンは組んだ後の文書にだけ入る。原稿の sourceSha256 は、原稿のファイルの hash のまま
 ok('portable: the embedded source is the author\'s bytes (no icon), so sourceSha256 does not depend on the icon', () => {
   const txt = (v) => typeof v === 'string' ? v : Buffer.from(v).toString('utf8');
-  assert.equal(txt(port.files['deck.html']), SRC);
+  // 原稿のバイト（書き出しが id を付けて書き戻したもの。format spec §8.1）
+  assert.equal(txt(port.files['deck.html']), fs.readFileSync(on, 'utf8'));
   assert.ok(!/data-egatari-favicon/.test(txt(port.files['deck.html'])));
   assert.match(port.index.sourceSha256, /^[0-9a-f]{64}$/);
   assert.equal(port.deckMeta.sourceSha256, port.index.sourceSha256);

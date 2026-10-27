@@ -32,7 +32,7 @@ import { attachmentsOf, attachmentIndexWarnings, sniffMedia, ATTACH_LIMITS, plan
 import * as F from './attach-fixtures.mjs';
 import { unpack } from './portable.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
-import { clickUntil, clickDlg } from './click-retry.mjs';
+import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -547,10 +547,18 @@ const browser = await launch();
   }, Buffer.from(HTML).toString('base64'));
   await page.evaluate(() => window.__APP_TEST.openFile({ handle: window.__ph }));
   await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
-  ok(!!(await page.$('#b-attach')) && (await page.textContent('#b-attach')) === '添付', 'editor: the toolbar has “添付”');
-  await page.click('#b-attach');
+  // 添付は「ファイル ▾」→「ファイルの情報…」の中（ui-redesign：道具の列の「添付」はない）
+  ok(!(await page.$('#b-attach')) && (await page.textContent('#b-info')) === 'ファイルの情報…', 'editor: attachments are under File ▾ → ファイルの情報… (no toolbar button)');
+  await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
-  ok(/試行/.test(await page.textContent('#panel-title')) && /試行/.test(await page.getAttribute('#b-attach', 'aria-label') || await page.getAttribute('#b-attach', 'title') || ''), 'editor: the panel header and the tooltip mark attachments as experimental (試行)');
+  ok((await page.textContent('#panel-title')) === 'ファイルの情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-list')), 'editor: File info shows title/license/creators, then the attachments marked experimental (試行)');
+  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === '題名,ライセンス,作り手', 'editor: File info lists the title, the license and the creators');
+  // 形式の版（ファイルの version と仕様の写しの版）と、作った Studio（generator.version）。再生器の添え書き
+  const ixA = JSON.parse(scanDocument(HTML).byId.get(FORMAT.INDEX_ID).text);
+  const snap = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'egatari-spec', 'SOURCE.json'), 'utf8')); return j.snapshot; } catch { return undefined; } })();
+  const snapText = !snap ? '' : typeof snap === 'string' ? snap : `${snap.status || snap.stage || ''} ${snap.date || ''}`.trim();
+  ok((await page.textContent('#info-format')) === `形式：Egatari ${ixA.version.major}.${ixA.version.minor}${snapText ? `（${snapText}）` : ''}` && (await page.textContent('#info-studio')) === `作った Studio：${ixA.generator.version}`
+    && (await page.textContent('#info-player')) === '再生は、ファイルに入ったプレーヤーで動きます。編集はいつも最新の Studio で行ってください', `editor: File info of a single file shows the format (${await page.textContent('#info-format')}) and the Studio that made it (${await page.textContent('#info-studio')})`);
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/data.csv,attachments/notes.txt,attachments/paper.pdf', 'editor: the side panel lists the attachments of the single file');
   ok((await page.$eval('[data-attach-role="attachments/paper.pdf"]', (x) => x.value)) === 'pdf' && (await page.$eval('[data-attach-title="attachments/paper.pdf"]', (x) => x.value)) === 'Paper (PDF)' && (await page.$eval('[data-attach-role="attachments/code/run.py"]', (x) => x.value)) === '',
     'editor: role and title come from egatari.json (no role: empty)');
@@ -660,8 +668,9 @@ const browser = await launch();
   }, ff);
   await page.evaluate(() => window.__APP_TEST_OPEN(window.__fd));
   await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder', null, { timeout: 30000 });
-  await page.click('#b-attach');
+  await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
+  { const pv = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; ok((await page.textContent('#info-studio')) === `この Studio：${pv}` && (await page.textContent('#info-format')).startsWith('形式：Egatari 1.'), `editor: File info of a working folder shows this Studio's version (${pv}) and the format it writes`); }
   await page.setInputFiles('#attach-file', { name: 'paper.pdf', mimeType: 'application/pdf', buffer: PDF });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
   await clickDlg(page, '#dlg-ok');

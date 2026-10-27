@@ -22,7 +22,7 @@ import { tierA } from '../kit/core/tier-a.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { updateConfig, merge, configObject } from '../kit/core/config-file.mjs';
 import { unpack, attachLiveResults } from './portable.mjs';
-import { clickMenuOpen, clickMenuItem, clickDlg } from './click-retry.mjs';
+import { clickCommand, clickDlg } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-config-preserve-')));
@@ -175,7 +175,8 @@ try {
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(BASE + '?lang=ja');
   await page.waitForSelector('#drop');
-  const menuClick = async (id) => { await clickMenuOpen(page, '#b-exportmenu'); await page.waitForSelector(`#${await page.getAttribute('#b-exportmenu', 'aria-controls')}:not([hidden])`); await clickMenuItem(page, id); };
+  // ファイル ▾ の項目（ui-redesign の道具の列。エクスポート ▸ の中のものも clickCommand が開いて押す）
+  const menuClick = (id) => clickCommand(page, id);
   const until = async (fn, ms = 30000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v || Date.now() - t0 > ms) return v; await page.waitForTimeout(100); } };
   const okAll = async () => { for (let i = 0; i < 6 && await page.$('#dlg[open]'); i++) { await clickDlg(page, '#dlg-ok'); await page.waitForTimeout(300); } };
   const idle = () => page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy(), null, { timeout: 30000 });
@@ -202,7 +203,7 @@ try {
   const fx1 = await until(async () => { const t = await fread(); return t && configObject(t).docId ? t : null; }, 60000);
   ok(kept(fx1), `editor (folder): exporting the single file writes the docId into ${CFG}; the other members stay byte for byte\n` + show(fx1));
   // 添付の板：足す
-  await page.click('#b-attach');
+  await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
   await page.setInputFiles('#attach-file', { name: 'extra.txt', mimeType: 'text/plain', buffer: Buffer.from('extra\n') });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');
@@ -211,12 +212,15 @@ try {
   const fx2 = await until(async () => { const t = await fread(); return t && (configObject(t)[KEY] || []).some((e) => e.path === 'attachments/extra.txt') ? t : null; });
   ok(kept(fx2), `editor (folder): the attachments panel writes ${CFG}; the other members stay byte for byte\n` + show(fx2));
   // 授業の部屋の板：保存
-  await menuClick('#b-export-live');
-  await page.waitForSelector('#live-panel');
+  // ライブの設定は「参加者用（再生のみ）…」の窓の「ライブ（質問・投票）を付ける」の中
+  await menuClick('#b-export-play');
+  await page.waitForSelector('#dlg[open] #play-live');
+  await page.check('#play-live');
+  await page.waitForSelector('#dlg[open] #live-panel');
   await page.click('#live-save');
   const fx3 = await until(async () => { const t = await fread(); return t && configObject(t).extensions && configObject(t).extensions.live ? t : null; });
   ok(kept(fx3) && fx3.includes(fx2.match(/"attachments": \[[\s\S]*?\n {2}\]/)[0]), `editor (folder): the live panel saves extensions.live into ${CFG}; the other members stay byte for byte\n` + show(fx3));
-  await page.keyboard.press('Escape');
+  await clickDlg(page, '#dlg-cancel');
 
   // 1 ファイル（OPFS のハンドル）：前の版のテーマを記録したもの（「テーマを更新」の知らせが出る）
   const pf = await exportPortable(nodeEnv, deck('app-single', { themes: { default: '1.0.0' } }), { fromFolder: true });
@@ -234,7 +238,7 @@ try {
   await okAll();
   ok(kept(await wsCfg()), `editor (single file): opening keeps ${CFG} byte for byte in the other members`);
   // 添付を足して保存（段 A）
-  await page.click('#b-attach');
+  await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
   await page.setInputFiles('#attach-file', { name: 'more.txt', mimeType: 'text/plain', buffer: Buffer.from('more\n') });
   await page.waitForSelector('#dlg[open] #attach-new-title-0');

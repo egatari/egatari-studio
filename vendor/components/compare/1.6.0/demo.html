@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-compare の見本</title>
+<!-- 組み方：node kit/build.mjs components/compare/demo.html -o components/compare/out/demo.html（申請の比較は架空） -->
+<style>
+.vlabel{font-size:27px;color:var(--muted);margin:0 0 6px}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>紙の申請とオンライン申請（架空）</h2>
+  <div class="body">
+    <m-compare style="height:420px">
+      <script type="application/json">{
+        "sides": [{"label": "紙の申請", "tone": "muted"}, {"label": "オンライン申請"}],
+        "rows": [
+          {"label": "受付時間", "values": ["平日 9〜17 時", "24 時間"], "better": 1, "diff": "夜や休日にも出せる"},
+          {"label": "書類", "values": ["窓口で書く", "画面に入力"], "better": 1, "diff": "書き損じがない"},
+          {"label": "結果が届くまで", "values": ["約 2 週間", "約 3 日"], "better": 1, "diff": "11 日ほど早い"},
+          {"label": "手数料", "values": ["300 円", "300 円"], "diff": "同じ"}
+        ]
+      }</script>
+    </m-compare>
+  </div>
+  <div class="concl"><span>→ 違うのは時間。費用は変わらない</span></div>
+</section>
+
+<section class="slide">
+  <h2>植物の細胞と動物の細胞</h2>
+  <div class="body">
+    <m-compare style="height:420px">
+      <script type="application/json">{
+        "sides": [{"label": "植物の細胞"}, {"label": "動物の細胞", "tone": "accent2"}],
+        "rows": [
+          {"label": "核・細胞膜", "values": ["ある", "ある"], "diff": "どちらにもある"},
+          {"label": "細胞壁", "values": ["ある", "ない"], "diff": "植物だけ"},
+          {"label": "葉緑体", "values": ["ある（緑の部分）", "ない"], "diff": "植物だけ"},
+          {"label": "液胞", "values": ["大きく発達", "小さく目立たない"], "diff": "植物で大きい"}
+        ]
+      }</script>
+    </m-compare>
+  </div>
+  <div class="concl"><span>→ 細胞壁と葉緑体は植物の細胞だけにある</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 32px">
+      <div><p class="vlabel">fade（既定）</p>
+      <m-compare variant="fade" style="height:380px">
+        <script type="application/json">{"sides": [{"label": "A 案", "tone": "muted"}, {"label": "B 案"}],
+          "rows": [{"values": ["3 日", "1 日"], "better": 1}, {"values": ["5 万円", "8 万円"], "better": 0}, {"values": ["2 人", "1 人"], "better": 1}]}</script>
+      </m-compare></div>
+      <div><p class="vlabel">slide（横から寄る）</p>
+      <m-compare variant="slide" style="height:380px">
+        <script type="application/json">{"sides": [{"label": "A 案", "tone": "muted"}, {"label": "B 案"}],
+          "rows": [{"values": ["3 日", "1 日"], "better": 1}, {"values": ["5 万円", "8 万円"], "better": 0}, {"values": ["2 人", "1 人"], "better": 1}]}</script>
+      </m-compare></div>
+      <div><p class="vlabel">reveal（1 行ずつ）</p>
+      <m-compare variant="reveal" style="height:380px">
+        <script type="application/json">{"sides": [{"label": "A 案", "tone": "muted"}, {"label": "B 案"}],
+          "rows": [{"values": ["3 日", "1 日"], "better": 1}, {"values": ["5 万円", "8 万円"], "better": 0}, {"values": ["2 人", "1 人"], "better": 1}]}</script>
+      </m-compare></div>
+    </div>
+  </div>
+  <div class="concl"><span>→ 資料のシード値（data-egatari-seed）で 1 つが選ばれる。数字は架空</span></div>
+</section>
+
+</div>
+</body>
+</html>

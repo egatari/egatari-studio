@@ -18,48 +18,74 @@
   <!-- ロゴ：assets/logo/egatari-32-*.svg（24〜32 px の専用版）と同じ形。色はテーマ（明るい・暗い）で app.css の --logo-ink / --logo-sun -->
   <div class="brand"><svg class="logo" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true" focusable="false"><path class="ink" d="M10 5H5V18.5 M22 27H27V13.5" fill="none" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="14" cy="8.25" r="1.75"/><path class="ink" d="M10 13.5Q15.125 13 19.875 11.875Q21.125 11.625 20.25 12.875L9.75 23.25L13.75 19Q16 16.625 16.875 19.875L17.375 22Q18.25 24.5 20.75 23Q22.625 21.875 22 20.25" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="brand"></span></div>
   <div id="deckname" class="deckname"></div>
+  <!-- 道具の列（ui-redesign 段階 1）：ファイル ▾・スライド ▾・品質チェック・（仮の板のボタン）・プレビュー ▾・使い方。
+       一覧は ARIA のメニューボタンの形（main.js の setupMenus：↑↓・Home/End・→← で入れ子・Esc で閉じてボタンに戻す）。
+       一覧が開いている間・一覧の中では、キーをプレビューに送らない（server/editor-ui.js の forwardKey） -->
   <nav id="tools" hidden>
     <div class="menu">
-      <button type="button" id="b-openmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-open" data-t="openMenu"></button>
-      <div id="m-open" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-openfile" role="menuitem" data-t="openFile"></button>
-        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
+      <button type="button" id="b-filemenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-file" data-t="fileMenu"></button>
+      <div id="m-file" class="menu-list" role="menu" aria-labelledby="b-filemenu" hidden>
         <button type="button" id="b-new" role="menuitem" data-t="newCmd"></button>
-        <button type="button" id="b-themes" role="menuitem" data-t="themeFolderItem"></button>
+        <button type="button" id="b-openfile" role="menuitem" data-t="fileOpen"></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-save" role="menuitem" data-t="save"></button>
+        <button type="button" id="b-saveas" class="only-portable" role="menuitem" data-t="saveAs"></button>
+        <button type="button" id="b-export-portable" class="only-folder" role="menuitem" data-t="saveAs"></button>
+        <div class="sub" role="none">
+          <button type="button" id="b-exportmenu" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
+          <div id="m-export" class="menu-list sub-list" role="menu" aria-labelledby="b-exportmenu" hidden>
+            <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
+            <button type="button" id="b-print" role="menuitem" data-t="print"></button>
+            <button type="button" id="b-unpack" class="only-portable" role="menuitem" data-t="exportFolder" hidden></button>
+          </div>
+        </div>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-info" role="menuitem" data-t="infoCmd"></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-open" role="menuitem" data-t="openFolderItem"></button>
       </div>
     </div>
-    <div class="menu split only-portable" hidden>
-      <button type="button" id="b-save" data-t="save"></button>
-      <button type="button" id="b-savemenu" class="split-arrow" aria-haspopup="menu" aria-expanded="false" aria-controls="m-save" data-t-label="saveMore">▾</button>
-      <div id="m-save" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-savenew" role="menuitem" data-t="saveNew"></button>
-        <button type="button" id="b-saveas" role="menuitem" data-t="saveAs"></button>
-      </div>
-    </div>
-    <span class="sep"></span>
-    <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
-    <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
-    <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
-    <button type="button" id="b-audio" data-t="audio"></button>
-    <button type="button" id="b-attach" data-t="attach" data-t-label="attachTip"></button>
-    <span class="sep"></span>
-    <button type="button" id="b-check" data-t="check"></button>
     <div class="menu">
-      <button type="button" id="b-exportmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
-      <div id="m-export" class="menu-list" role="menu" hidden>
-        <button type="button" id="b-unpack" class="only-portable" role="menuitem" data-t="exportFolder" hidden></button>
-        <button type="button" id="b-export" class="only-folder" role="menuitem" data-t="export"></button>
-        <button type="button" id="b-export-portable" class="only-folder" role="menuitem" data-t="exportPortable"></button>
-        <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
-        <button type="button" id="b-export-live" role="menuitem" data-t="exportLive"></button>
-        <button type="button" id="b-print" role="menuitem" data-t="print"></button>
+      <button type="button" id="b-slidemenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-slide" data-t="slideMenu"></button>
+      <div id="m-slide" class="menu-list" role="menu" aria-labelledby="b-slidemenu" hidden>
+        <button type="button" id="b-insert" role="menuitem" data-t="insertCmd"></button>
+        <button type="button" id="b-dup" role="menuitem" data-t="dupCmd"></button>
+        <button type="button" id="b-del" role="menuitem" data-t="delCmd"></button>
+        <!-- 整理…（#97。後の版）：全スライドの縮図の格子 -->
+        <button type="button" id="b-organize" role="menuitem" data-t="organizeCmd" hidden></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-revise-cmd" role="menuitem" data-t="reviseCmd"></button>
+        <!-- テーマを変更…（app/theme-switch.js）：デッキ全体の体裁。変えられないファイルでは押せない形で残し、title にわけ -->
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-theme-switch" role="menuitem" data-t="themeSwitchCmd"></button>
       </div>
     </div>
-    <button type="button" id="b-presenter" data-t="presenter"></button>
-    <button type="button" id="b-full" data-t="full"></button>
+    <button type="button" id="b-check"><span data-t="check"></span><span id="b-check-badge" class="badge" hidden></span></button>
+    <!-- 段階 2 で右の板の見出し（タブ）になる。それまでの仮の群 -->
     <span class="sep"></span>
-    <button type="button" id="b-warn" class="warn" hidden></button>
-    <button type="button" id="b-help" data-t="helpBtn"></button>
+    <div class="tmp-group" role="group" data-t-label="panelsGroup">
+      <button type="button" id="b-edit" data-t="edit" data-key="e"></button>
+      <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
+      <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
+      <button type="button" id="b-audio" data-t="audio"></button>
+    </div>
+    <span class="sep"></span>
+    <div class="menu">
+      <button type="button" id="b-previewmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-preview" data-t="previewMenu"></button>
+      <div id="m-preview" class="menu-list" role="menu" aria-labelledby="b-previewmenu" aria-describedby="m-preview-note" hidden>
+        <!-- 表示のモード（スライドショー・動画）は 1 つを選ぶ。スライドショーは全画面にもする。先のステップを薄く見せる（l）は字幕と同じ入／切の選び（内部の名前は lecture、?mode=lecture） -->
+        <div role="group" data-t-label="modesGroup">
+          <button type="button" id="b-full" role="menuitemradio" aria-checked="true" data-t="fullCmd"></button>
+          <button type="button" id="b-videomode" role="menuitemradio" aria-checked="false" data-t="videoCmd"></button>
+        </div>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-lecturemode" role="menuitemcheckbox" aria-checked="false" data-t="lectureCmd"></button>
+        <div role="separator" class="menu-sep"></div>
+        <button type="button" id="b-presenter" role="menuitem" data-t="presenterCmd"></button>
+        <p id="m-preview-note" class="menu-note" role="none" data-t="previewNote"></p>
+      </div>
+    </div>
+    <button type="button" id="b-help" data-t="helpBtn" data-t-label="helpTip"></button>
   </nav>
   <button type="button" id="b-lang" class="ghost lang" lang="en" title="English / 日本語"></button>
 </header>
@@ -72,43 +98,33 @@
       <p data-t="welcomeLead"></p>
     </div>
     <div id="unsupported" class="note bad" hidden data-t="unsupported"></div>
+    <!-- 新規作成（チャットの AI の道 1 本）を主に。アイコンは「…」の試案（返事を書いている点。最初の点は緋色） -->
+    <div id="new-block" class="card new-block">
+      <button type="button" id="w-new" class="pri big"><svg class="ai-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M7 4H4v9M17 20h3v-9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7.7" cy="12" r="2.0" class="sun"/><circle cx="12" cy="12" r="2.0" fill="currentColor"/><circle cx="16.3" cy="12" r="2.0" fill="currentColor"/></svg><span data-t="newCmd"></span></button>
+      <p class="hint" data-t="newLead"></p>
+    </div>
     <div id="drop" class="drop" tabindex="0">
       <!-- assets/logo/egatari-*.svg（48 px 以上は master）と同じ形 -->
-      <div class="drop-icon"><svg class="logo" viewBox="0 0 256 256" width="72" height="72" aria-hidden="true" focusable="false"><path class="ink" d="M84 40H40V152 M172 216H216V104" fill="none" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="112" cy="66" r="12.5"/><path class="ink" d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/></svg></div>
+      <div class="drop-icon"><svg class="logo" viewBox="0 0 256 256" width="56" height="56" aria-hidden="true" focusable="false"><path class="ink" d="M84 40H40V152 M172 216H216V104" fill="none" stroke-width="15" stroke-linecap="square" stroke-linejoin="miter"/><circle class="sun" cx="112" cy="66" r="12.5"/><path class="ink" d="M80 107Q121 103 160 94Q170 92 163 102L78 184L110 151Q128 132 135 158L139 175Q146 197 168 183Q184 173 177 161L170 163" fill="none" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" transform="translate(-1 2)"/></svg></div>
       <div data-t="dropHere"></div>
       <div class="row">
-        <button type="button" id="w-openfile" class="pri" data-t="openFile"></button>
-        <button type="button" id="w-new" data-t="newCmd"></button>
+        <button type="button" id="w-openfile" data-t="openFile"></button>
       </div>
-      <p class="secondary"><span data-t="folderFor"></span> <button type="button" id="w-open" class="ghost" data-t="openFolder"></button></p>
     </div>
-    <details id="kinds" class="card kinds" open>
-      <summary data-t="kindsTitle"></summary>
-      <table>
-        <tr><th scope="row" data-t="kindFolder"></th><td data-t="kindFolderText"></td></tr>
-        <tr><th scope="row" data-t="kindFile"></th><td data-t="kindFileText"></td></tr>
-        <tr><th scope="row" data-t="kindPlay"></th><td data-t="kindPlayText"></td></tr>
-        <tr><th scope="row" data-t="kindBuilt"></th><td data-t="kindBuiltText"></td></tr>
-      </table>
-    </details>
-    <div id="newform" class="card" hidden>
-      <h2 id="n-head" data-t="newDeck"></h2>
-      <label><span data-t="newTitle"></span><input id="n-title" type="text"></label>
-      <label><span data-t="newLang"></span><select id="n-lang"><option value="ja">日本語</option><option value="en">English</option></select></label>
-      <label><span data-t="newTheme"></span><select id="n-theme"></select></label>
-      <p class="hint" data-t="newHint"></p>
-      <div class="row"><button type="button" id="n-cancel" data-t="cancel"></button><button type="button" id="n-go" class="pri" data-t="newGo"></button></div>
+    <div id="recent" class="card">
+      <h2 data-t="recent"></h2>
+      <ul id="recent-list"></ul>
+      <p id="recent-none" class="hint" data-t="recentNone"></p>
     </div>
     <div id="examples" class="card" hidden>
       <h2 data-t="examples"></h2>
       <p class="hint" data-t="examplesLead"></p>
       <ul id="examples-list"></ul>
     </div>
-    <div id="recent" class="card" hidden>
-      <h2 data-t="recent"></h2>
-      <ul id="recent-list"></ul>
-    </div>
     <p id="save-note" class="note" hidden data-t="saveNote"></p>
+    <!-- Claude Code・Cowork で作る人への案内（行き先は main.js の WITH_CLAUDE_URL の 1 か所。説明のページか README かは未定） -->
+    <p class="note with-claude"><a id="w-claude" target="_blank" rel="noopener" data-t="withClaude"></a></p>
+    <p class="note secondary"><span data-t="folderFor"></span> <button type="button" id="w-open" class="ghost" data-t="openFolder"></button></p>
     <p class="note theme-row"><button type="button" id="w-themes" class="ghost" data-t="themeFolderItem"></button> <span id="w-themes-state"></span></p>
     <p class="note" data-t="privacy"></p>
   </section>

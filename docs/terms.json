@@ -1,0 +1,1782 @@
+{
+ "version": "2026-10-25",
+ "source_language": "en",
+ "principles": "handoff/ux-wording-principles.md",
+ "terms": [
+  {
+   "id": "egatari-file",
+   "group": "Format and files",
+   "en": "Egatari file",
+   "ja": "Egatari ファイル",
+   "definition": "A single .ega.html file that plays and can be opened and edited in the editor.",
+   "avoid": {
+    "ja": [
+     "1 ファイル",
+     "持ち運べる"
+    ],
+    "en": [
+     "portable file"
+    ]
+   },
+   "internal": "portable (spec)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "play-only",
+   "group": "Format and files",
+   "en": "Play-only",
+   "ja": "再生専用",
+   "definition": "An Egatari file without the editable source, for participants.",
+   "avoid": {
+    "ja": [
+     "再生のみ",
+     "参加者に配る再生のみ版"
+    ],
+    "en": [
+     "play only"
+    ]
+   },
+   "internal": "play-only derivative (spec)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "lesson",
+   "group": "Format and files",
+   "en": "Lesson",
+   "ja": "教材",
+   "definition": "The whole thing a user makes and shares (one Egatari file); スライド is only the slide part.",
+   "avoid": {
+    "ja": [
+     "デッキ",
+     "資料（教材の意味で）"
+    ],
+    "en": [
+     "deck"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "slides",
+   "group": "Format and files",
+   "en": "Slides",
+   "ja": "スライド",
+   "definition": "The slide content of a lesson (deck.html). Editing the markup itself is “Edit HTML”.",
+   "avoid": {
+    "ja": [
+     "原稿",
+     "デッキ"
+    ],
+    "en": [
+     "deck"
+    ]
+   },
+   "internal": "deck.html",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": "原稿 is avoided in UI strings only; the format’s “editable source” (spec, sourceSha256) keeps its name in technical docs."
+  },
+  {
+   "id": "script",
+   "group": "Format and files",
+   "en": "Script",
+   "ja": "台本",
+   "definition": "What is spoken, step by step (narration.md).",
+   "avoid": {
+    "ja": [
+     "口述原稿",
+     "ナレーション原稿"
+    ],
+    "en": [
+     "narration"
+    ]
+   },
+   "internal": "narration.md",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "export-script",
+   "group": "Format and files",
+   "en": "Export script",
+   "ja": "台本を書き出す",
+   "definition": "Save the script of the steps that need audio as one file, for generating audio in the cloud.",
+   "avoid": {
+    "ja": [
+     "声の依頼ファイル",
+     "tts-job.json（画面で）"
+    ],
+    "en": []
+   },
+   "internal": "tts-job.json",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "file-info",
+   "group": "Format and files",
+   "en": "File info",
+   "ja": "ファイルの情報",
+   "definition": "Title, license, creators and attachments of the file.",
+   "avoid": {
+    "ja": [
+     "教材の情報"
+    ],
+    "en": [
+     "Lesson info"
+    ]
+   },
+   "internal": "metadata",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "sample",
+   "group": "Format and files",
+   "en": "Samples",
+   "ja": "サンプル",
+   "definition": "Example lessons shipped with the editor.",
+   "avoid": {
+    "ja": [
+     "見本",
+     "見本の教材"
+    ],
+    "en": [
+     "examples"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "template",
+   "group": "Format and files",
+   "en": "Template",
+   "ja": "テンプレート",
+   "definition": "A slide layout used when inserting a slide, and the starting set of slides for a new lesson.",
+   "avoid": {
+    "ja": [
+     "雛形"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "zip-file",
+   "group": "Format and files",
+   "en": "ZIP file",
+   "ja": "ZIP ファイル",
+   "definition": "A compressed archive (theme import, cloud audio result).",
+   "avoid": {
+    "ja": [
+     "zip"
+    ],
+    "en": [
+     "zip"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "slide",
+   "group": "Structure and playback",
+   "en": "Slide",
+   "ja": "スライド",
+   "definition": "One screen of a lesson.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "slide",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "step",
+   "group": "Structure and playback",
+   "en": "Step",
+   "ja": "ステップ",
+   "definition": "One click-forward within a slide; the order things appear in, matching what is said.",
+   "avoid": {
+    "ja": [
+     "段階"
+    ],
+    "en": []
+   },
+   "internal": "step (spec)",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "cue",
+   "group": "Structure and playback",
+   "en": "Timing",
+   "ja": "タイミング",
+   "definition": "A point inside a step where an animation follows a word of the script.",
+   "avoid": {
+    "ja": [
+     "合図",
+     "キュー",
+     "区切り（タイミングの意味で）"
+    ],
+    "en": []
+   },
+   "internal": "{cue}",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": "Shown only when a part uses it and in recording mode."
+  },
+  {
+   "id": "emphasis",
+   "group": "Structure and playback",
+   "en": "Emphasis",
+   "ja": "強調",
+   "definition": "A mark drawn on the slide when the script reaches a word (underline, circle, box…).",
+   "avoid": {
+    "ja": [
+     "注目の演出",
+     "印"
+    ],
+    "en": [
+     "attention mark"
+    ]
+   },
+   "internal": "{mark}",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "slide-show",
+   "group": "Structure and playback",
+   "en": "Slide show",
+   "ja": "スライドショー",
+   "definition": "Presenting mode; the presenter moves step by step.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "talk (spec)",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "preview-later",
+   "group": "Structure and playback",
+   "en": "Show later steps faintly",
+   "ja": "先のステップを薄く見せる",
+   "definition": "An option of Slide show (and self-study), like captions: later steps of the slide appear faintly while the current one is shown. Key l.",
+   "avoid": {
+    "ja": [
+     "授業",
+     "授業モード",
+     "授業の表示"
+    ],
+    "en": [
+     "Lecture",
+     "Lecture mode",
+     "Lecture view"
+    ]
+   },
+   "internal": "preview option (spec §1.2); ?mode=lecture legacy alias",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "video",
+   "group": "Structure and playback",
+   "en": "Video",
+   "ja": "動画",
+   "definition": "Plays by itself along the timeline; used to record video.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "video (spec)",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "self-study",
+   "group": "Structure and playback",
+   "en": "(to be decided)",
+   "ja": "（未定）",
+   "definition": "Learner-driven mode with playback rate (spec learn). Name to be decided in the UX validation.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "learn (spec)",
+   "decided": "",
+   "by": "owner",
+   "note": "Backlog #108."
+  },
+  {
+   "id": "stage",
+   "group": "Structure and playback",
+   "en": "Slide (pane)",
+   "ja": "スライド（窓）",
+   "definition": "The 16:9 area that shows one slide at a time with its motion (spec: the stage pane, 1280×720 coordinates). In the UI it is called スライド; the spec word stage is not shown.",
+   "avoid": {
+    "ja": [
+     "ステージ"
+    ],
+    "en": []
+   },
+   "internal": "stage (spec, Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book",
+   "group": "Structure and playback",
+   "en": "Book",
+   "ja": "本",
+   "definition": "The read face of a lesson (the article), shown as a scrolled text or as pages, single or as a spread; a pane beside or instead of the slides (key r).",
+   "avoid": {
+    "ja": [
+     "読む面"
+    ],
+    "en": [
+     "read face"
+    ]
+   },
+   "internal": "article / read face (spec §9C)",
+   "decided": "2026-10-26",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "read-with-script",
+   "group": "Structure and playback",
+   "en": "Read with script",
+   "ja": "台本で読む",
+   "definition": "For a lesson without a book: the slides shown small in a column, each followed by its steps' script, like a handout (spec: the text pane without an article). Key r.",
+   "avoid": {
+    "ja": [
+     "ノート表示"
+    ],
+    "en": [
+     "Notes view"
+    ]
+   },
+   "internal": "text pane, narration (Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book-scroll",
+   "group": "Structure and playback",
+   "en": "Scrolling",
+   "ja": "スクロール",
+   "definition": "Book shown as one scrolled column (spec layout flow).",
+   "avoid": {
+    "ja": [
+     "フロー表示"
+    ],
+    "en": []
+   },
+   "internal": "flow (Player P2)",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": "Acrobat ja wording."
+  },
+  {
+   "id": "book-single-page",
+   "group": "Structure and playback",
+   "en": "Single page",
+   "ja": "単一ページ",
+   "definition": "Book shown one page at a time.",
+   "avoid": {
+    "ja": [
+     "片ページ"
+    ],
+    "en": []
+   },
+   "internal": "pages=single",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "book-spread",
+   "group": "Structure and playback",
+   "en": "Two-page view",
+   "ja": "見開きページ",
+   "definition": "Book shown two pages side by side; chosen automatically on wide screens.",
+   "avoid": {
+    "ja": [
+     "スプレッド"
+    ],
+    "en": []
+   },
+   "internal": "pages=spread",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "toolbar",
+   "group": "Structure and playback",
+   "en": "Toolbar",
+   "ja": "ツールバー",
+   "definition": "The bar of playback and presentation controls at the bottom of the player; it hides and comes back when the mouse moves to the bottom or the screen is tapped. Its small faint handle is labelled ツールバーを表示 / Show toolbar.",
+   "avoid": {
+    "ja": [
+     "操作の帯",
+     "コントロールバー"
+    ],
+    "en": [
+     "control bar"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-26",
+   "by": "standards",
+   "note": "Google Slides / PowerPoint wording."
+  },
+  {
+   "id": "presenter-view",
+   "group": "Structure and playback",
+   "en": "Presenter view",
+   "ja": "発表者ビュー",
+   "definition": "A second window with the script, next step and tools (key p).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "black-screen",
+   "group": "Structure and playback",
+   "en": "Black screen",
+   "ja": "黒い画面",
+   "definition": "Blank the screen during a presentation (key b).",
+   "avoid": {
+    "ja": [
+     "暗転"
+    ],
+    "en": [
+     "blackout"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "laser-pointer",
+   "group": "Structure and playback",
+   "en": "Laser pointer",
+   "ja": "レーザーポインター",
+   "definition": "A pointer dot during a presentation (key x).",
+   "avoid": {
+    "ja": [
+     "レーザー"
+    ],
+    "en": [
+     "laser"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "pen",
+   "group": "Structure and playback",
+   "en": "Pen",
+   "ja": "ペン",
+   "definition": "Draw on the slide during a presentation (key d).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "marker",
+   "group": "Structure and playback",
+   "en": "Marker",
+   "ja": "マーカー",
+   "definition": "In edit mode, circle or point at a place and attach a comment (key m).",
+   "avoid": {
+    "ja": [
+     "手書きメモ",
+     "印をつけてメモ"
+    ],
+    "en": [
+     "ink note"
+    ]
+   },
+   "internal": "strokes (§13)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": "Not the cue layer."
+  },
+  {
+   "id": "comment",
+   "group": "Structure and playback",
+   "en": "Comment",
+   "ja": "コメント",
+   "definition": "A note to the AI (or a collaborator) asking for a change at a place.",
+   "avoid": {
+    "ja": [
+     "AI へのメモ",
+     "書き込み"
+    ],
+    "en": [
+     "note for the AI"
+    ]
+   },
+   "internal": "comments.json",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "thumbnail",
+   "group": "Structure and playback",
+   "en": "Thumbnail",
+   "ja": "サムネイル",
+   "definition": "A small picture of a slide.",
+   "avoid": {
+    "ja": [
+     "縮図"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "player",
+   "group": "Structure and playback",
+   "en": "Player",
+   "ja": "プレーヤー",
+   "definition": "The part of an Egatari file that plays the lesson. The one Egatari ships is Egatari Player; other players may exist (spec §4.1).",
+   "avoid": {
+    "ja": [
+     "再生器"
+    ],
+    "en": [
+     "runtime (UI)"
+    ]
+   },
+   "internal": "player (spec §4.1)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-player",
+   "group": "Structure and playback",
+   "en": "Egatari Player",
+   "ja": "Egatari Player",
+   "definition": "Product name of the player bundled in files made by Egatari Studio, and used by Egatari Viewer. Never translated; has its own version.",
+   "avoid": {
+    "ja": [
+     "Egatari プレーヤー",
+     "Studio のプレーヤー"
+    ],
+    "en": [
+     "Studio player"
+    ]
+   },
+   "internal": "player.name egatari-player",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-viewer",
+   "group": "Structure and playback",
+   "en": "Egatari Viewer",
+   "ja": "Egatari Viewer",
+   "definition": "The web app that opens and plays Egatari files (viewer.egatari.org; home-screen name Ega Viewer; icon え). Never translated.",
+   "avoid": {
+    "ja": [
+     "Egatari Play",
+     "ビューア（単独で）"
+    ],
+    "en": [
+     "Egatari Play"
+    ]
+   },
+   "internal": "play-site",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "egatari-studio",
+   "group": "Structure and playback",
+   "en": "Egatari Studio",
+   "ja": "Egatari Studio",
+   "definition": "The editor (studio.egatari.org; icon す). Never translated.",
+   "avoid": {
+    "ja": [
+     "エディター（製品名として）"
+    ],
+    "en": [
+     "Egatari Editor"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "format-version",
+   "group": "Structure and playback",
+   "en": "Format",
+   "ja": "形式",
+   "definition": "In the file information panel: the Egatari format version the file follows, e.g. “Format: Egatari 1.0”.",
+   "avoid": {
+    "ja": [
+     "仕様の版",
+     "規格"
+    ],
+    "en": [
+     "spec version"
+    ]
+   },
+   "internal": "version (spec)",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "made-with",
+   "group": "Structure and playback",
+   "en": "Made with",
+   "ja": "作成",
+   "definition": "In the file information panel: the software that wrote the file, e.g. “Made with: Egatari Studio 0.6.0”. Shown after Format and Player.",
+   "avoid": {
+    "ja": [
+     "生成",
+     "ジェネレーター"
+    ],
+    "en": [
+     "Generator"
+    ]
+   },
+   "internal": "generator (spec)",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": "Panel order: 形式 → プレーヤー → 作成."
+  },
+  {
+   "id": "earlier-draft-file",
+   "group": "Structure and playback",
+   "en": "File from an earlier version",
+   "ja": "前の版のファイル",
+   "definition": "A file made before the Egatari 1.0 file shape. It plays; to edit it, open it in the earlier Studio or follow the migration guide.",
+   "avoid": {
+    "ja": [
+     "古い形式",
+     "非対応のファイル"
+    ],
+    "en": [
+     "legacy file",
+     "unsupported file"
+    ]
+   },
+   "internal": "pre-1.0 draft (spec §7.1)",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "ai-voice",
+   "group": "Audio",
+   "en": "AI voice",
+   "ja": "AI 音声",
+   "definition": "Audio generated by speech synthesis.",
+   "avoid": {
+    "ja": [
+     "TTS（画面で）"
+    ],
+    "en": [
+     "TTS"
+    ]
+   },
+   "internal": "kind: tts",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "recording",
+   "group": "Audio",
+   "en": "Recording",
+   "ja": "録音",
+   "definition": "Audio recorded with a microphone.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "kind: recorded",
+   "decided": "",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "recording-mode",
+   "group": "Audio",
+   "en": "Recording mode",
+   "ja": "録音モード",
+   "definition": "Full-screen script with keyboard-only recording (key r).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "read-aloud",
+   "group": "Audio",
+   "en": "Listen with read-aloud",
+   "ja": "読み上げで聞く",
+   "definition": "The device's voice reads the script; no audio file is made.",
+   "avoid": {
+    "ja": [
+     "端末の声"
+    ],
+    "en": []
+   },
+   "internal": "speechSynthesis",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "audio-update",
+   "group": "Audio",
+   "en": "Update audio (n steps)",
+   "ja": "音声を更新（n ステップ）",
+   "definition": "Regenerate audio for steps whose script or voice changed.",
+   "avoid": {
+    "ja": [
+     "古い音声を作り直す"
+    ],
+    "en": []
+   },
+   "internal": "stale",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "needs-update",
+   "group": "Audio",
+   "en": "Audio needs updating",
+   "ja": "音声の更新が必要",
+   "definition": "The script changed after this audio was made.",
+   "avoid": {
+    "ja": [
+     "音声が古い",
+     "印付き"
+    ],
+    "en": []
+   },
+   "internal": "stale",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "generate-cloud",
+   "group": "Audio",
+   "en": "Make AI voice in the cloud (Google Colab)",
+   "ja": "AI 音声をクラウドで作る（Google Colab）",
+   "definition": "Generate audio in a Colab notebook and import the result.",
+   "avoid": {
+    "ja": [
+     "Colab で音声を作る",
+     "WebGPU がないとき"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "generate-local",
+   "group": "Audio",
+   "en": "Make AI voice on this computer",
+   "ja": "AI 音声をこの PC で作る",
+   "definition": "Generate audio in the browser (needs a fast GPU).",
+   "avoid": {
+    "ja": [
+     "ブラウザの TTS"
+    ],
+    "en": []
+   },
+   "internal": "WebGPU",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "explainer",
+   "group": "Audio",
+   "en": "Explainer",
+   "ja": "説明する人",
+   "definition": "The main speaker of a two-speaker script.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "Expert (spec)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "questioner",
+   "group": "Audio",
+   "en": "Questioner",
+   "ja": "質問する人",
+   "definition": "The second speaker, voicing the learner's questions.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "Novice (spec)",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "new",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "New…",
+   "ja": "新規作成…",
+   "definition": "Create a lesson by asking a chat AI.",
+   "avoid": {
+    "ja": [
+     "新しいデッキ"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "chat-ai",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Chat AI",
+   "ja": "チャットの AI",
+   "definition": "ChatGPT, Gemini, Claude and similar chat services.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "instructions",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Instructions",
+   "ja": "指示",
+   "definition": "The text copied to the chat AI (pack plus request).",
+   "avoid": {
+    "ja": [
+     "頼む文",
+     "AI への指示書"
+    ],
+    "en": [
+     "pack"
+    ]
+   },
+   "internal": "pack",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "fix-request",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Fix request",
+   "ja": "修正依頼",
+   "definition": "Instructions asking the AI to fix findings and comments.",
+   "avoid": {
+    "ja": [
+     "是正依頼",
+     "直しの依頼"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-20",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "ai-output",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "The AI's output",
+   "ja": "AI の出力",
+   "definition": "What the chat AI returns.",
+   "avoid": {
+    "ja": [
+     "AI の返事"
+    ],
+    "en": [
+     "reply"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "code-block",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Code block",
+   "ja": "コードブロック",
+   "definition": "A grey box in the AI's output holding one file.",
+   "avoid": {
+    "ja": [
+     "囲み"
+    ],
+    "en": [
+     "fence"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": "First mention: 灰色の枠（コードブロック）."
+  },
+  {
+   "id": "create",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Create",
+   "ja": "作成",
+   "definition": "Final button of New: build the lesson from the pasted output.",
+   "avoid": {
+    "ja": [
+     "開く"
+    ],
+    "en": [
+     "Open"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "insert",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Insert",
+   "ja": "挿入",
+   "definition": "Final button of Insert slides.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "replace",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Replace",
+   "ja": "置き換える",
+   "definition": "Final button of Revise.",
+   "avoid": {
+    "ja": [
+     "取り込む"
+    ],
+    "en": [
+     "Import"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "setting",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Setting",
+   "ja": "使う場面",
+   "definition": "Where the lesson will be used (question: Where will you use it?).",
+   "avoid": {
+    "ja": [
+     "場面",
+     "大分類",
+     "小分類"
+    ],
+    "en": [
+     "kind",
+     "category"
+    ]
+   },
+   "internal": "category/subcategory",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "subjects",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Subjects",
+   "ja": "内容の分野",
+   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; on the free plan up to two choices counting subjects and tools together. Headings use 内容の分野; running text may say 分野.",
+   "avoid": {
+    "ja": [
+     "系列",
+     "教科"
+    ],
+    "en": [
+     "series"
+    ]
+   },
+   "internal": "series",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "subject-english",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "English (foreign language)",
+   "ja": "英語",
+   "definition": "The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the lesson language English.",
+   "avoid": {
+    "ja": [
+     "語学"
+    ],
+    "en": [
+     "English (subject)"
+    ]
+   },
+   "internal": "series english",
+   "decided": "2026-10-26",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "subject-music",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Music",
+   "ja": "音楽",
+   "definition": "The subject tile for music (parts series music: keyboard, score).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "series music",
+   "decided": "2026-10-26",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "free-plan",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Free plan (of the chat AI)",
+   "ja": "無料のプラン（チャットの AI の）",
+   "definition": "The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
+   "avoid": {
+    "ja": [
+     "無料版"
+    ],
+    "en": []
+   },
+   "internal": "plan: free",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "paid-plan",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Paid plan (of the chat AI)",
+   "ja": "有料のプラン（チャットの AI の）",
+   "definition": "The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」.",
+   "avoid": {
+    "ja": [
+     "有料版"
+    ],
+    "en": []
+   },
+   "internal": "plan: paid",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "tools",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Tools",
+   "ja": "道具",
+   "definition": "Parts the AI uses only when asked (e.g. Timer); chosen on both plans.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "group: tool",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "standard-parts",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Standard parts",
+   "ja": "標準パーツ",
+   "definition": "Parts included without choosing a subject.",
+   "avoid": {
+    "ja": [
+     "共通の部品",
+     "共通パーツ",
+     "共通の図"
+    ],
+    "en": [
+     "common parts"
+    ]
+   },
+   "internal": "common",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "parts-in-instructions",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Parts in these instructions",
+   "ja": "この指示に入るパーツ",
+   "definition": "The parts whose notes are in the copied instructions.",
+   "avoid": {
+    "ja": [
+     "使える図"
+    ],
+    "en": []
+   },
+   "internal": "loadedParts",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "what-to-convey",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "What to convey",
+   "ja": "伝えたいこと",
+   "definition": "The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it.",
+   "avoid": {
+    "ja": [
+     "言いたいこと",
+     "表し方（見出しで）"
+    ],
+    "en": [
+     "purposes"
+    ]
+   },
+   "internal": "purposes",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "title",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Title (shown on the cover)",
+   "ja": "タイトル（表紙に出ます）",
+   "definition": "The lesson's title, used on the cover as written.",
+   "avoid": {
+    "ja": [
+     "題材"
+    ],
+    "en": [
+     "topic"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "leave-to-ai",
+   "group": "New lesson, insert, revise (chat AI)",
+   "en": "Leave it to the AI",
+   "ja": "AI に任せる",
+   "definition": "The chosen state of an optional field: the AI decides.",
+   "avoid": {
+    "ja": [
+     "空のまま",
+     "選ばなくてよい"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "parts-library",
+   "group": "Parts and themes",
+   "en": "Parts library",
+   "ja": "パーツライブラリ",
+   "definition": "The released collection of parts (egatari/components).",
+   "avoid": {
+    "ja": [
+     "部品庫"
+    ],
+    "en": [
+     "components library (UI)"
+    ]
+   },
+   "internal": "egatari/components",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "voice-sample",
+   "group": "Audio",
+   "en": "Preview voice",
+   "ja": "▶ 試聴",
+   "definition": "Play a short sample of a voice.",
+   "avoid": {
+    "ja": [
+     "見本（声の）"
+    ],
+    "en": [
+     "Sample (voice)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "offline-editor",
+   "group": "Format and files",
+   "en": "Offline editor",
+   "ja": "オフライン版のエディタ",
+   "definition": "The editor saved as one HTML file to use without a network.",
+   "avoid": {
+    "ja": [
+     "1 つの HTML にしたエディタ",
+     "1 ファイル版"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "part",
+   "group": "Parts and themes",
+   "en": "Part",
+   "ja": "パーツ",
+   "definition": "An animated figure with its own steps (m-…).",
+   "avoid": {
+    "ja": [
+     "部品",
+     "動く図"
+    ],
+    "en": [
+     "component (UI)"
+    ]
+   },
+   "internal": "component",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "interactive-parts",
+   "group": "Parts and themes",
+   "en": "Interactive parts",
+   "ja": "操作できるパーツ",
+   "definition": "Parts the viewer can operate (counts, numbers, cards); marked with a different frame and a badge.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "interactive: true",
+   "decided": "2026-10-25",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "theme",
+   "group": "Parts and themes",
+   "en": "Theme",
+   "ja": "テーマ",
+   "definition": "Colours, fonts and logo of the slides.",
+   "avoid": {
+    "ja": [
+     "デザインアドオン"
+    ],
+    "en": []
+   },
+   "internal": "theme",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "change-theme",
+   "group": "Parts and themes",
+   "en": "Change theme…",
+   "ja": "テーマを変更…",
+   "definition": "Switch the lesson's theme (Slide menu).",
+   "avoid": {
+    "ja": [
+     "テーマを変える…"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "load-theme",
+   "group": "Parts and themes",
+   "en": "Load theme…",
+   "ja": "テーマを読み込む…",
+   "definition": "Add a theme from a ZIP file or a theme folder.",
+   "avoid": {
+    "ja": [
+     "ほかのテーマを読み込む…"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "my-themes",
+   "group": "Parts and themes",
+   "en": "My themes",
+   "ja": "自分のテーマ",
+   "definition": "Themes loaded by the user.",
+   "avoid": {
+    "ja": [
+     "テーマのフォルダ…（画面で）"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "quality-control",
+   "group": "Quality",
+   "en": "Quality control",
+   "ja": "品質管理",
+   "definition": "The whole system of standards, checks and fix requests.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-20",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "standards",
+   "group": "Quality",
+   "en": "Standards",
+   "ja": "規格",
+   "definition": "Rules that the AI and people follow (R-fit…). One is “a standard”.",
+   "avoid": {
+    "ja": [
+     "決まり"
+    ],
+    "en": [
+     "rules"
+    ]
+   },
+   "internal": "R-*",
+   "decided": "2026-10-20",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "quality-check",
+   "group": "Quality",
+   "en": "Quality check",
+   "ja": "品質チェック",
+   "definition": "Checking a lesson against the standards.",
+   "avoid": {
+    "ja": [
+     "検査",
+     "簡易チェック"
+    ],
+    "en": [
+     "check",
+     "lint"
+    ]
+   },
+   "internal": "check.mjs",
+   "decided": "2026-10-20",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "finding",
+   "group": "Quality",
+   "en": "Finding",
+   "ja": "指摘",
+   "definition": "Something the quality check found.",
+   "avoid": {
+    "ja": [
+     "知らせ",
+     "エラーの文"
+    ],
+    "en": [
+     "message"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-20",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "learner",
+   "group": "Format and files",
+   "en": "Learner",
+   "ja": "学習者",
+   "definition": "A person studying with a lesson (pedagogy and help text). In Live, and for play-only recipients in menus, use 参加者 / participant.",
+   "avoid": {
+    "ja": [
+     "学ぶ人"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "live",
+   "group": "Live",
+   "en": "Live",
+   "ja": "ライブ",
+   "definition": "A time-limited session where participants send questions and answer polls.",
+   "avoid": {
+    "ja": [
+     "授業の部屋",
+     "部屋"
+    ],
+    "en": [
+     "room (UI)"
+    ]
+   },
+   "internal": "room (spec)",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "live-time",
+   "group": "Live",
+   "en": "Live time",
+   "ja": "ライブの時間",
+   "definition": "When the live session is open.",
+   "avoid": {
+    "ja": [
+     "時間の窓"
+    ],
+    "en": [
+     "window (UI)"
+    ]
+   },
+   "internal": "window (spec)",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "host",
+   "group": "Live",
+   "en": "Host",
+   "ja": "ホスト",
+   "definition": "The person who runs the live session.",
+   "avoid": {
+    "ja": [
+     "教員",
+     "先生（ライブの側）"
+    ],
+    "en": [
+     "teacher"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "participant",
+   "group": "Live",
+   "en": "Participant",
+   "ja": "参加者",
+   "definition": "A person who joins the live session.",
+   "avoid": {
+    "ja": [
+     "学ぶ人",
+     "受講者"
+    ],
+    "en": [
+     "learner (UI)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "join-code",
+   "group": "Live",
+   "en": "Join code",
+   "ja": "参加コード",
+   "definition": "The code to join a live session.",
+   "avoid": {
+    "ja": [
+     "参加の鍵",
+     "鍵"
+    ],
+    "en": [
+     "key (UI)"
+    ]
+   },
+   "internal": "key (spec)",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "host-link",
+   "group": "Live",
+   "en": "Host link",
+   "ja": "ホスト用リンク",
+   "definition": "The link that opens the host page.",
+   "avoid": {
+    "ja": [
+     "教員の鍵"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "waiting-room",
+   "group": "Live",
+   "en": "Waiting room",
+   "ja": "待機室",
+   "definition": "Where participants wait for the host's approval.",
+   "avoid": {
+    "ja": [
+     "承認"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "questions-polls",
+   "group": "Live",
+   "en": "Questions and polls",
+   "ja": "質問・投票",
+   "definition": "Activities in a live session.",
+   "avoid": {
+    "ja": [
+     "活動",
+     "Q&A"
+    ],
+    "en": [
+     "activities"
+    ]
+   },
+   "internal": "activities",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "show-everyone",
+   "group": "Live",
+   "en": "Show to everyone",
+   "ja": "全員に表示",
+   "definition": "Reveal results to all participants.",
+   "avoid": {
+    "ja": [
+     "映す"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-22",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "cancel",
+   "group": "Buttons and common words",
+   "en": "Cancel",
+   "ja": "キャンセル",
+   "definition": "Close a dialog without doing anything.",
+   "avoid": {
+    "ja": [
+     "取消"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "save",
+   "group": "Buttons and common words",
+   "en": "Save / Save as…",
+   "ja": "保存／名前を付けて保存…",
+   "definition": "",
+   "avoid": {
+    "ja": [
+     "新しい教材として保存",
+     "別のファイルに保存"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "saved",
+   "group": "Buttons and common words",
+   "en": "Saved / Unsaved",
+   "ja": "保存済み／未保存",
+   "definition": "Save status label.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "enable-editing",
+   "group": "Buttons and common words",
+   "en": "Edit this file? [Enable editing]",
+   "ja": "このファイルを編集しますか ［編集を有効にする］",
+   "definition": "Asked once before editing a file. The prompt itself is called 編集の確認 / the editing prompt.",
+   "avoid": {
+    "ja": [
+     "権利の確認"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "export",
+   "group": "Buttons and common words",
+   "en": "Export",
+   "ja": "エクスポート",
+   "definition": "Save the lesson in another form (menu action). Its messages use the same word: エクスポートしました.",
+   "avoid": {
+    "ja": [
+     "書き出し（メニュー名で）",
+     "書き出しました（エクスポートの知らせで）"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-10-24",
+   "by": "owner",
+   "note": "One word per action: the message repeats the word of the button or menu that triggered it. 書き出す is only the audio panel’s own 台本を書き出す (export-script)."
+  }
+ ]
+}

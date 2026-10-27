@@ -6,6 +6,7 @@
 // 4. 再生器（speechSynthesis の差し替え）：帯のボタン・音声のあるステップでは読まない・読む・札「読み上げ中（この端末の声）」・進むと止める・
 //    Esc で止める・声がない端末の知らせ・タイムラインと (i, k, t) の画面が変わらない・動画のモードでは何も作らない・ファイルのバイトが変わらない
 // 5. 編集アプリの音声の板：今のステップ（読み辞書を当てた文）と選んだ語・声がないときの知らせ（AI 音声・Colab）・作業フォルダに何も書かない
+import { giveIds } from './portable-fixtures.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -131,6 +132,7 @@ const STUB = `(() => {
 const DECK_DIR = path.join(work, 'deck');
 fs.rmSync(DECK_DIR, { recursive: true, force: true });
 fs.cpSync(path.join(ROOT, 'examples', 'minimal'), DECK_DIR, { recursive: true, filter: (s) => !/[\\/](?:out|video)([\\/]|$)/.test(path.relative(path.join(ROOT, 'examples'), s)) });
+giveIds(DECK_DIR);   // スライドの id（書き出しが付けるものを先に。format spec §8.1）
 const segs = parseNarration(fs.readFileSync(path.join(DECK_DIR, 'narration.md'), 'utf8'));
 const AKEY = `${segs[2].slideKey}:${segs[2].stepKey}`;
 {
@@ -221,7 +223,7 @@ try {
   let r = await R();
   const want = segs.find((s) => `${s.slideKey}:${s.stepKey}` === segs[3].slideKey + ':' + segs[3].stepKey);
   ok(r.spoken.length === 1 && r.spoken[0].voice === 'Kyoko' && r.spoken[0].local === true && r.spoken[0].text === normalizeTtsText(want.turns[0].display), 'player: reads the current step with the local voice (never the network default) ' + JSON.stringify(r.spoken));
-  ok((await label()) && (await label()).startsWith('読み上げ中（この端末の声）'), 'player: shows 「読み上げ中（この端末の声）」 while reading: ' + await label());
+  ok((await label()) && (await label()).startsWith('読み上げ中'), 'player: shows 「読み上げ中」 while reading: ' + await label());
   b = await btn();
   ok(b.pressed === 'true', 'player: the button is pressed while reading');
   ok(await p.evaluate(() => DECK.tools.readAloud()) === true, 'player: DECK.tools.readAloud() says it is reading');
@@ -300,7 +302,7 @@ try {
     await o.waitForFunction(() => window.__ra.spoken.length > 0);
     const os = await o.evaluate(() => ({ text: window.__ra.spoken[0].text, label: document.getElementById('dt-ra').textContent, hint: (document.querySelector('#dt-ra .dt-ra-old') || {}).textContent }));
     ok(/^η は学習率で/.test(os.text), 'older file: falls back to the display text: ' + os.text);
-    ok(os.hint === '読み方は反映されません（古いファイル）' && os.label.startsWith('読み上げ中（この端末の声）'), 'older file: the label carries the hint 「読み方は反映されません（古いファイル）」 ' + JSON.stringify(os));
+    ok(os.hint === '読み方は反映されません（古いファイル）' && os.label.startsWith('読み上げ中'), 'older file: the label carries the hint 「読み方は反映されません（古いファイル）」 ' + JSON.stringify(os));
     if (process.env.RA_SHOTS) await o.screenshot({ path: path.join(process.env.RA_SHOTS, 'player-old.png') });
     await o.close();
   }
@@ -353,14 +355,14 @@ try {
     await page.click('#b-audio');
     await page.waitForSelector('#dev-audio #dev-audio-read');
     const rb = await page.evaluate(() => document.getElementById('dev-audio-read').textContent);
-    ok(rb === '読み上げで聞く（音声ファイルにはなりません）', 'editor: the audio panel has 「読み上げで聞く（音声ファイルにはなりません）」');
+    ok(rb === '読み上げで聞く' && (await page.getAttribute('#dev-audio-read', 'title')) === 'この端末の読み上げで読みます。音声ファイルにはなりません', 'editor: the audio panel has 「読み上げで聞く」 and says no audio file is made');
     await page.evaluate(() => { window.__ra.spoken = []; });
     await page.click('#dev-audio-read');
     await page.waitForFunction(() => window.__ra.spoken.length > 0);
     const es = await page.evaluate(() => window.__ra.spoken.slice());
     ok(es.length === 1 && es[0].voice === 'Kyoko' && es[0].text === 'イータ は学習率で、1歩の大きさを決めます。エルかく も読みます。', 'editor: reads the step with readings, the reading dictionary and join-num-counter, with a local voice ' + JSON.stringify(es));
     await page.waitForSelector('#dev-audio-reading:not([hidden])');
-    ok((await page.textContent('#dev-audio-reading')) === '読み上げ中（この端末の声）', 'editor: shows 「読み上げ中（この端末の声）」 while reading');
+    ok((await page.textContent('#dev-audio-reading')) === '読み上げ中', 'editor: shows 「読み上げ中」 while reading');
     if (process.env.RA_SHOTS) await page.screenshot({ path: path.join(process.env.RA_SHOTS, 'editor-reading.png') });
     await page.evaluate(() => window.__ra.finish());
     await page.waitForSelector('#dev-audio-reading', { state: 'hidden' });

@@ -25,3 +25,19 @@ export function appComponentFiles(root = ROOT) {
   }
   return out;
 }
+
+// 部品の使用条件のファイル（MIT のほかの条件を持つ部品のフォルダにある LICENSE*・LICENCE*・OFL*・COPYING*・NOTICE* と、変えた所の記録 *CHANGES.md）：
+// [アプリの中の場所 /repo/…, ファイル] の配列（取り込んだすべての版）。編集アプリの組み立て（tools/build-app.mjs）が vendor/components/<名前>/<版>/ に写す
+export const LICENSE_FILE = /^(?:LICEN[CS]E|OFL|COPYING|NOTICE)[^/]*$|CHANGES\.md$/i;
+export function componentLicenseFiles(root = ROOT) {
+  const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
+  const out = [];
+  for (const name of Object.keys(lock.components).sort()) {
+    for (const v of lock.components[name].versions) {
+      const dir = path.join(vendorBase(root), name, v);
+      if (!fs.existsSync(dir)) continue;
+      for (const f of fs.readdirSync(dir).sort()) if (LICENSE_FILE.test(f) && fs.statSync(path.join(dir, f)).isFile()) out.push([`/repo/${VENDOR_COMPONENTS.join('/')}/${name}/${v}/${f}`, path.join(dir, f)]);
+    }
+  }
+  return out;
+}
