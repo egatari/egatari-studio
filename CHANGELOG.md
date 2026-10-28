@@ -156,6 +156,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Long lessons made in two rounds: after creating the first slides from the outline, opening "Ask for the next 6" right away could leave "Insert" disabled for good, even with both fields accepted (✓ slides, ✓ script). The creating dialog still finished its work (the quality check after the build) in the background and then recomputed the shared button as if it were still waiting for the outline. A dialog now updates the button only while it is the one shown.
 - Components v1.13.1: `m-cycle` writes an attribute only when its value changed, which fixes the macOS step-reset raster flake. Release notes: [egatari/components v1.13.1](https://github.com/egatari/components/releases/tag/v1.13.1)
 - Components v1.4.1: `m-kanbun` fits its columns to the element's height and width (characters shrink 1 px at a time, to 42 px at least, and a `console.warn` says what is missing); its notes say that a poem that still does not fit is split, 2 句 per slide. Release notes: [egatari/components v1.4.1](https://github.com/egatari/components/releases/tag/v1.4.1)
 - Components v1.7.1: `m-bars` no longer draws negative bar heights in an element with no height (it warns instead), and `m-map-japan` in small elements places the territory names in the nearby sea with a leader line instead of leaving them out. Release notes: [egatari/components v1.7.1](https://github.com/egatari/components/releases/tag/v1.7.1)
