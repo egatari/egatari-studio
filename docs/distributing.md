@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=c3b4e6166bd63da4 -->
+<!-- i18n: pair=distributing.ja.md sha256=688fba6fcd72f0e2 -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)
@@ -40,7 +40,7 @@ A lesson goes out as one HTML file: the [Egatari file (`.ega.html`)](reference.m
 
 ## Live (questions and polls in class, draft)
 
-Live is a preview: the results file format may change until v0.4.7.
+Live is a preview: the format extension `live` is a draft, so the results file format may still change.
 
 An Egatari file (play-only) can carry **Live** ([format extension `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md), draft): during the live time you choose, participants who open the file can send questions and answer polls from the lesson itself, without an app or an account. It is the only part of a lesson that uses the network, and only after the participant presses **Join**.
 

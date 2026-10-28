@@ -15,7 +15,7 @@ import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
 import { createSlidesPanel } from './slides-panel.js';
-import { createThemeSwitch } from './theme-switch.js';
+import { createThemeSwitch, themeOf, withTheme } from './theme-switch.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
@@ -26,7 +26,7 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable } from '../kit/core/portable.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
@@ -1394,7 +1394,8 @@ async function openEarlierFile(name, bytes, r, early, handle) {
   loadFrame();
   return true;
 }
-// 作業フォルダ：設定のファイル（egatari.json）があり、id のないスライドがあれば前の版の作業フォルダ（読めなければ前の版にしない）。知らせるだけで、編集は断らない
+// 作業フォルダ：設定のファイル（egatari.json）があり、どのスライドにも id がなければ前の版の作業フォルダ（app/earlier-draft.js の earlierFolder。
+// 手で足した id のないスライドだけでは前の版にしない。読めなければ前の版にしない）。知らせるだけで、編集は断らない
 async function folderEarlier(ws) {
   try {
     const file = S.deckFile || '';
@@ -1458,6 +1459,18 @@ async function openSource(name, bytes) {
 // スライドの原稿が変わった（など段 A でできない）なら段 B（このエディタの版で組み直す）で、保存の前にそのことを知らせて確かめる
 // 保存は 1 つずつ。始めたときの作業場所と文書に結び付け、途中（組み直し・確かめの窓・書き込み）で別のものを開いたら、
 // その後の作業場所の書き込みと状態の更新はしない（開いた先には何も書かない）
+// 段 A が断ったわけ（a）が、テーマを変えただけ（スライドの原稿の違いが <html> の data-theme だけ。app/theme-switch.js）か
+async function themeOnlyChange(P, a, files) {
+  const entry = P.index && P.index.entry;
+  if (a.code !== 'source-changed' || !entry || !Array.isArray(a.details) || a.details.length !== 1 || a.details[0] !== entry || !files.get(entry)) return false;
+  try {
+    const old = (await readPortable(P.original)).files[entry];
+    if (!old) return false;
+    const before = new TextDecoder().decode(old), after = new TextDecoder().decode(files.get(entry));
+    const to = themeOf(after);
+    return themeOf(before) !== to && withTheme(before, to) === after;
+  } catch { return false; }
+}
 async function savePortable(mode = 'save') {
   if (S.saving) { toast(T.api.busySave, true); return; }
   S.saving = true;
@@ -1505,11 +1518,17 @@ async function savePortableBound(mode) {
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
-      const v = await ask({ title: T.tierBTitle, kind: 'warn',
-        body: [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { cls: 'hint', text: T.tierBWhy(a.code) }), el('p', { cls: 'hint', text: T.tierBGap })],
-        buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
-      if (v !== 'rebuild') { status(''); return; }
-      if (!live()) { cancelled(); return; }
+      // まだどこにも保存していない文書（AI の出力から作った・deck.html だけを開いた）は、この Studio が組んだものなので、組み直しても
+      // 見え方は変わらない：聞かずに組み直す。テーマを変えただけ（原稿の違いが <html> の data-theme だけ）なら、そのわけだけを言う
+      if (!((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) {
+        const why = (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
+        const body = why === 'theme-changed' ? [el('p', { id: 'tier-b-why', text: T.tierBWhy(why) })]
+          : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why) }), el('p', { cls: 'hint', text: T.tierBGap })];
+        const v = await ask({ title: T.tierBTitle, kind: why === 'theme-changed' ? undefined : 'warn', body,
+          buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
+        if (v !== 'rebuild') { status(''); return; }
+        if (!live()) { cancelled(); return; }
+      }
       // 段 B は今の作業場所から組む：組み始めの版を保存するものの版にし、組んでいる間に編集があれば（混ざりうるので）「保存した」にしない
       rev = ws.revision;
       narrB = await ws.readText('narration.md', { max: READ_LIMITS.narration });

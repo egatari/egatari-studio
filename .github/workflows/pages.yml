@@ -10,7 +10,7 @@
 #   /versions.json  the root version and the frozen copies (the editor shows a version list and, in a copy, a notice)
 # All paths are relative: the site works at the custom domain https://studio.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
-# Only release tags deploy: a push of vX.Y.Z (three numbers; v0.5.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
+# Only release tags deploy: a push of vX.Y.Z (three numbers; v0.6.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
 # (to deploy that release again). Pushes to main and pull requests only build (so a broken build is caught before a release);
 # "Run workflow" on a branch is a dry build. See RELEASING.md.
 # Needs: Settings -> Pages -> Source: GitHub Actions; the variable EDITOR_PAGES = true (until then nothing deploys);
