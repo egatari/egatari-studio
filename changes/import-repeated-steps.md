@@ -1,3 +1,0 @@
-### Fixed
-
-- Pasting an AI's output: when the script repeats the same step marker on consecutive marker lines within one slide (one `[k]` per dialogue turn, as some models write: `[2] Expert: …` / `[2] Novice: …`), the repeats are now merged under the first `[k]` as the next turns of that step, every turn kept in order, with a warning (「台本で同じステップの番号（[2]）が続けて繰り返されていたので、1 つのステップの発言としてまとめました」 / “The script repeated the same step marker ([2]) on consecutive lines, so those turns were kept together under one step.”). Before, the build reported the step as a duplicate and dropped a turn. A non-consecutive repeat (`[2]` … `[3]` … `[2]`) is still reported as before. The instructions pack is unchanged.
