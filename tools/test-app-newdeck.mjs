@@ -129,9 +129,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await answer(p1, 'content')) === 'タイトル：てこのはたらき・6 枚' && await p1.isVisible('#paste-step-theme'), 'S1 ②: collapses to 「タイトル：てこのはたらき・6 枚」');
     ok((await p1.inputValue('#paste-theme')) === 'default' && (await text(p1, '#paste-step-theme .hint')) === 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', 'S1 ③: the default theme and the hint about 「テーマを変更…」');
     await p1.click('#paste-next-theme');
-    ok((await answer(p1, 'theme')) === 'テーマ：標準' && (await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:open:step:-:body:- paste:shut:-:pending:nobody:-'
+    ok((await answer(p1, 'theme')) === 'テーマ：藍' && (await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:open:step:-:body:- paste:shut:-:pending:nobody:-'
       && await p1.isHidden('#paste-deck') && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-plan-free'),
-      'S1 ③: collapses to 「テーマ：標準」; ④ opens with the focus on its first control, and ⑤ is only a heading (no paste fields yet): ' + await flowState(p1));
+      'S1 ③: collapses to 「テーマ：藍」; ④ opens with the focus on its first control, and ⑤ is only a heading (no paste fields yet): ' + await flowState(p1));
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
     // ④ プランの問い（無料が既定）→ 分野（てこからは推せない：印なし）→ 図の折りたたみ（閉じている）→ コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
