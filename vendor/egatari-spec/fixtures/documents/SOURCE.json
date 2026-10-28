@@ -1,6 +1,8 @@
 {
-  "generator": "egatari-studio v0.3.1",
+  "generator": "egatari-studio v0.4.8 (package.json at tag v0.6.0-rc.1; player egatari-player 1.0.0)",
   "repository": "https://github.com/egatari/egatari-studio",
-  "commit": "e131d041bf16d58a4b801773edfd90949a28d136",
-  "command": "node tools/portable-fixtures.mjs <dir>"
+  "tag": "v0.6.0-rc.1",
+  "commit": "f112bb4c1e1e71a317857610f9d35916c20b7ca7",
+  "command": "node tools/portable-fixtures.mjs <dir>",
+  "note": "legacy-heading-keys.* is kept from Studio v0.3.1 (e131d041) on purpose: the current writer no longer produces it"
 }
