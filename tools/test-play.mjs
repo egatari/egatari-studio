@@ -314,11 +314,25 @@ console.log('service worker');
   // the next launch: every window of the Viewer closed, then opened again
   const NEXT_LAUNCH_MS = 90000;
   await o.p.close();
+  // With no window left, the browser activates the waiting worker by itself once the old one has gone idle (Chrome stops it, waits 1 s,
+  // then runs the new worker's activate). A launch is a later moment, so the test waits for that activation (seen through the DevTools
+  // ServiceWorker domain from a blank tab, which is no client) before it opens the Viewer again.
+  // Opening the Viewer while the old worker is still running instead hits a race in Chrome, not in the Viewer: the navigation makes Chrome
+  // stop the old worker, which then stays "activated" (never redundant), the new one stays "installed", and the navigation never commits
+  // (no fetch and no activate event reach either worker). It never committed within 90 s on macOS CI (run 40675601284, both attempts);
+  // locally under CPU load it showed in about 1 of 15 tries, always with the old worker still running at the goto, and once waited > 400 s.
+  // The activation itself is quick, but under full CPU load its caches.delete alone took 8 to 26 s locally: allow NEXT_LAUNCH_MS for it.
   const p3 = await o.ctx.newPage();
-  // The navigation waits until the new worker has activated (its activate deletes the old cache and claims the clients). That is a few
-  // ms here, but under full CPU load it took 25 s locally (caches.delete 12 s, clients.claim 13.5 s), and on macOS CI the goto passed 30 s:
-  // give the launch NEXT_LAUNCH_MS (the page may reload once as it takes over: wait for the page, not for the first load)
-  await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });
+  { const cdp = await o.ctx.newCDPSession(p3), st = new Map();
+    cdp.on('ServiceWorker.workerVersionUpdated', (e) => { for (const v of e.versions) st.set(+v.versionId, `${v.status}/${v.runningStatus}`); });
+    await cdp.send('ServiceWorker.enable');
+    const newest = () => st.get(Math.max(...st.keys())) || '';
+    const activated = await until(() => /^activated\//.test(newest()), NEXT_LAUNCH_MS);
+    const seen = [...st].map(([id, s]) => `${id}:${s}`).join(' ');
+    await cdp.detach();
+    if (!activated) throw new Error(`the next launch: with every window closed, the browser did not activate the waiting version within ${NEXT_LAUNCH_MS / 1000} s (${seen})`); }
+  // the page may still reload once as it takes over: wait for the page, not for the first load
+  await p3.goto(site.url, { waitUntil: 'commit', timeout: 30000 }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
   c = await cached(p3);
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
