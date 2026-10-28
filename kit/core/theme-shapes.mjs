@@ -70,9 +70,9 @@ export function lookCss(look) {
   }
   return out.join('\n');
 }
-// tokens.css から断片を読み出す：{key: {id, css}}
+// tokens.css から断片を読み出す：{key: {id, css}}。改行は LF にそろえてから（Windows の checkout は CRLF）
 export function lookIn(tokensCss) {
   const out = {};
-  for (const m of String(tokensCss).matchAll(/\/\* look (\w+): ([\w-]+) \*\/\n([\s\S]*?)\n\/\* \/look \*\//g)) out[m[1]] = { id: m[2], css: m[3] };
+  for (const m of String(tokensCss).replace(/\r\n?/g, '\n').matchAll(/\/\* look (\w+): ([\w-]+) \*\/\n([\s\S]*?)\n\/\* \/look \*\//g)) out[m[1]] = { id: m[2], css: m[3] };
   return out;
 }
