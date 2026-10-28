@@ -1,13 +1,13 @@
 {
   "name": "egatari-components",
-  "version": "1.13.0",
-  "tag": "v1.13.0",
+  "version": "1.13.1",
+  "tag": "v1.13.1",
   "repository": "https://github.com/egatari/components",
   "license": "MIT",
   "tarball": {
-    "file": "egatari-components-v1.13.0.tar.gz",
-    "sha256": "c4eacac92801520622c791fb2a439cbea761a42f3ce545ccefcaf0e88b60a00f",
-    "bytes": 505312
+    "file": "egatari-components-v1.13.1.tar.gz",
+    "sha256": "388604d82852a572e23a22d08017c13b033c3cbbcc741b821f02bcd1b54ef7ef",
+    "bytes": 505429
   },
   "purposes": [
     {
@@ -511,11 +511,11 @@
         "draw",
         "grow"
       ],
-      "sha256": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15",
+      "sha256": "3ec0ef6a389a529f0d312ccb985d60cf0a4ef66e436ca6d583c9a6dcb6e6cc00",
       "files": {
         "README.md": "3e952b4cef4fea509fc873d97490103efc886495a33b01c7cec42a549f5c68a7",
         "demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
-        "index.js": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15"
+        "index.js": "3ec0ef6a389a529f0d312ccb985d60cf0a4ef66e436ca6d583c9a6dcb6e6cc00"
       }
     },
     "fishbone": {
@@ -1039,7 +1039,7 @@
     "curves/index.js": "0ea32f82e10341ae276804a5ba0f570d9faab4063fb808c53085aa7d9d76d361",
     "cycle/README.md": "3e952b4cef4fea509fc873d97490103efc886495a33b01c7cec42a549f5c68a7",
     "cycle/demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
-    "cycle/index.js": "9960adabbfff419066663823d185dc4f60c4444e89fd777404fb97969d896c15",
+    "cycle/index.js": "3ec0ef6a389a529f0d312ccb985d60cf0a4ef66e436ca6d583c9a6dcb6e6cc00",
     "fishbone/README.md": "7bbcb15b886e7fadfc1a349d539d6c48b40afff009590a726ef3e2d9e4863acd",
     "fishbone/demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
     "fishbone/index.js": "5584f4b44e5925801fa9f591c1b7e40c4f20d467733320c4798734b5530217cf",

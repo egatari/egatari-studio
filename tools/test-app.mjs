@@ -248,8 +248,19 @@ async function presenterAudioPlays(html, tag) {
     await pop.keyboard.press('a');
   } finally { await cx.close(); }
 }
+// 口述原稿の板・編集の窓の「保存」を押す。板は開いた直後で、プレビューの枠が狭まったところ：macOS の CI では、押したものが下のプレビューの iframe に届き、
+// 何も保存されずに次の読み込みを待って 15 秒で落ちた（tools/click-retry.mjs）。効果（保存を始めてボタンが押せなくなった・板が閉じた・口述原稿が未保存でなくなった）が出るまで押し直す
+async function clickSave(sel) {
+  const h = await page.waitForSelector(sel);
+  return clickUntil(page, sel, () => page.waitForFunction((b) => !b.isConnected || b.disabled || (!!b.closest('#dev-narr') && !window.__APP_TEST.ui().narrDirty), h, { timeout: 2500 }));
+}
 async function waitLoads(n, timeout = 15000) {
-  await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout });
+  await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout }).catch(async (e) => {
+    // 読み込みが来なかったわけ（組み立て中か・組み立ての回数・エラー・板の状態）を出して落とす
+    const d = await page.evaluate(() => { const s = window.__APP_TEST.state(), u = window.__APP_TEST.ui(); return { loads: s.loads, builds: s.builds, error: s.error, narrKey: u.narrKey, narrDirty: u.narrDirty, pos: u.pos && u.pos.key,
+      narrStatus: (document.querySelector('#dev-narr .dv-st') || {}).textContent, narrMsg: (document.querySelector('#dev-narr .dev-msg') || {}).textContent, editorMsg: (document.querySelector('#dev-editor .dev-msg') || {}).textContent }; }).catch(() => null);
+    throw new Error(`${e.message.split('\n')[0]} (waiting for load ${n + 1}): ${JSON.stringify(d)}`);
+  });
   return frameReady();
 }
 
@@ -395,7 +406,7 @@ try {
   await shot(page, 'narration.png');
   ok(await page.evaluate(() => document.getElementById('preview').inert && window.__APP_TEST.ui().editing), 'narration: the preview is inert while a narration field is being edited (unsaved)');
   n = await loads();
-  await page.click('#dev-narr .dv-foot button.dv-pri');
+  await clickSave('#dev-narr .dv-foot button.dv-pri');
   f = await waitLoads(n);
   ok(await page.evaluate(() => !document.getElementById('preview').inert && !window.__APP_TEST.ui().editing), 'narration: after Save the preview takes input again');
   const narr1 = await opfs.read('narration.md');
@@ -413,7 +424,7 @@ try {
     });
     const ta = page.locator('#dev-narr .dev-turn textarea').first();
     await ta.fill('保存する入力（アプリ）');
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     await page.waitForFunction(() => !!window.__nGate);
     await ta.fill('保存する入力（アプリ）、その後の入力');
     await page.locator('#dev-narr .dev-head .dv-t').click();
@@ -427,7 +438,7 @@ try {
       'narration: typing again before the save finishes keeps the drawer dirty and the newer input, and the preview stays inert ' + JSON.stringify({ dirty: st.ui.narrDirty, inert: st.inert, v: st.v }));
     await page.evaluate(() => { FileSystemFileHandle.prototype.createWritable = window.__origCW; });
     n = await loads();
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
     await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty);
     ok(await page.evaluate(() => !document.getElementById('preview').inert) && (await opfs.read('narration.md')).includes('保存する入力（アプリ）、その後の入力'), 'narration: the next save stores the newer input and the preview takes input again');
@@ -712,7 +723,7 @@ try {
     await page.waitForSelector('#dev-narr .dev-turn textarea');
     await page.locator('#dev-narr .dev-turn textarea').first().fill('まず、何を最小化するのかを確かめます。蒼穹の下で考えます。');   // 「蒼」「穹」は minimal が埋め込む字にない（fonts/*.ttf がなく @fontsource の分割ファイルを丸ごと埋め込んでも。「鬱」は入ってしまう。test-tier-a と同じ）
     n = await loads();
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
     await page.click('#b-narr');
     await clickCommand(page, '#b-save');
@@ -741,7 +752,7 @@ try {
     await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
     await page.locator('#dev-editor textarea').fill('\\(\\eta>0\\)：<b>学習率</b>（1 ファイルで編集）');
     n = await loads();
-    await page.click('#dev-editor button.dv-pri');   // 保存（⌘+Enter はフォルダの試験で確かめた）
+    await clickSave('#dev-editor button.dv-pri');   // 保存（⌘+Enter はフォルダの試験で確かめた）
     f = await waitLoads(n);
     const wsFiles = async () => Object.fromEntries(Object.entries(await page.evaluate(() => window.__APP_TEST.files())).map(([k, v]) => [k, Buffer.from(v, 'base64')]));
     let mem = await wsFiles();
@@ -757,7 +768,7 @@ try {
     await page.waitForSelector('#dev-narr .dev-turn textarea');
     await page.locator('#dev-narr .dev-turn textarea').first().fill('1 ファイルで書き直した口述原稿です。');
     n = await loads();
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
     mem = await wsFiles();
     ok(mem['narration.md'].toString().includes('1 ファイルで書き直した口述原稿です。'), 'portable narration: narration.md changed in memory');
@@ -905,7 +916,7 @@ try {
     await page.waitForSelector('#dev-narr .dev-turn textarea');
     for (let i = 0; i < 10 && await page.locator('#dev-narr .dev-turn').count(); i++) await page.locator('#dev-narr .dev-turn').first().locator('button.dv-ghost').last().click();
     n = await loads();
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
     await page.click('#b-narr');
     ok(!parseNarration((await wsFiles())['narration.md'].toString()).some((x) => `${x.slideKey}:${x.stepKey}` === rk), 'removed step: gone from narration.md');
@@ -958,7 +969,7 @@ try {
       await page.waitForSelector('#dev-narr .dev-turn textarea');
       await page.locator('#dev-narr .dev-turn textarea').first().fill('知らない項目を残す試験です。');
       n = await loads();
-      await page.click('#dev-narr .dv-foot button.dv-pri');
+      await clickSave('#dev-narr .dv-foot button.dv-pri');
       f = await waitLoads(n);
       await page.click('#b-narr');
       await clickCommand(page, '#b-save');
@@ -972,7 +983,7 @@ try {
       await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
       await page.locator('#dev-editor textarea').fill('はじめに（段 B）');
       n = await loads();
-      await page.click('#dev-editor button.dv-pri');
+      await clickSave('#dev-editor button.dv-pri');
       f = await waitLoads(n);
       await page.click('#b-edit');
       await clickCommand(page, '#b-save');
@@ -1013,7 +1024,7 @@ try {
     await page.waitForSelector('#dev-narr .dev-turn textarea');
     await page.locator('#dev-narr .dev-turn textarea').first().fill('部品庫の違う文書でも口述原稿は直せます。');
     const nn = await loads();
-    await page.click('#dev-narr .dv-foot button.dv-pri');
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
     of = await waitLoads(nn);
     await page.click('#b-narr');
     await clickCommand(page, '#b-save');
@@ -1101,7 +1112,7 @@ try {
     await page.waitForFunction(() => { const t = document.querySelector('#dev-editor textarea'); return t && !t.disabled; });
     await page.fill('#dev-editor textarea', '信頼する画面で直した見出し');
     n0 = await loads();
-    await page.click('#dev-editor button.dv-pri');
+    await clickSave('#dev-editor button.dv-pri');
     f = await waitLoads(n0);
     const after = await hsnap();
     ok(after['deck.html'].includes('信頼する画面で直した見出し') && after['narration.md'] === HF['narration.md'] && after['comments.json'] === null, 'hostile: the write happens only on Save in the app editor');

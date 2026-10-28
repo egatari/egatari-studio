@@ -4,7 +4,7 @@
 //   画像（shotDir があれば）：new-page.png・new-content.png・new-outline.png・outline-progress.png
 import path from 'node:path';
 import { replyOf, answerNew } from './test-app-llm.mjs';
-import { clickDlg } from './click-retry.mjs';
+import { clickDlg, clickUntil } from './click-retry.mjs';
 
 const head = (i) => `見出し ${i}`;
 export function slidesOf(from, to, whole) {
@@ -105,9 +105,10 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.click('#b-outline-next');
     await page.waitForSelector('#dlg[open] #paste-batch-where');
     ok((await page.textContent('#dlg-title')) === '構成案の続き' && /7〜12 枚目（全 24 枚。残り 18 枚）/.test(await page.textContent('#paste-batch-where')), 'batch: 「次の 6 枚を頼む」 opens the insert dialog for slides 7–12 with the remaining count');
-    await page.click('#paste-copy-guide');
-    // 写せなかったとき（CI でだけ起きた）：わけが分かるように、知らせと写したものの先頭を出して落とす
-    await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'), null, { timeout: 30000 }).catch(async () => {
+    // 窓は開いたばかりで、下にプレビュー（組んだ 6 枚）がある。macOS の CI では、この直後の押しが下のプレビューの iframe に届いて何も写らないことがあった
+    // （知らせも写したものも空のまま 30 秒。tools/click-retry.mjs）。写るまで押し直す（写すのは何度でも同じ文）
+    // 写せなかったとき：わけが分かるように、知らせと写したものの先頭を出して落とす
+    await clickUntil(page, '#paste-copy-guide', () => page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'), null, { timeout: 2500 })).catch(async () => {
       const d = await page.evaluate(() => ({ copied: (document.getElementById('paste-copied') || {}).textContent, msg: (document.getElementById('paste-msg') || {}).textContent, last: (window.__APP_TEST.lastCopy || '').slice(0, 200) }));
       throw new Error('batch: the request was not copied: ' + JSON.stringify(d));
     });

@@ -8,8 +8,8 @@ let n = 0, fail = 0;
 const t = (name, fn) => { n++; try { fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n     ' + String(e.message).split('\n').join('\n     ')); } };
 const E = { platform: 'darwin', part: 'cycle', slide: 1, step: 5, until: '1.11.0', maxOff: 2, maxCh: 64, label: 'KNOWN (macOS, cycle s1k5, until components 1.11.0)' };
 
-t('the entry is exactly macOS, cycle, slide 1, step 5, until components 1.13.1 (the earlier one expired at 1.11.0; the flake came back, fix planned in components 1.13.1)', () => {
-  assert.deepEqual(KNOWN, [{ ...E, until: '1.13.1', label: 'KNOWN (macOS, cycle s1k5, until components 1.13.1)' }]);
+t('no entries today: the macOS cycle s1k5 entry expired at components 1.13.1 and was removed (E below is only a sample for the rules)', () => {
+  assert.deepEqual(KNOWN, []);
 });
 t('versionAtLeast compares numerically (v prefix allowed)', () => {
   assert.equal(versionAtLeast('v1.11.0', '1.11.0'), true);

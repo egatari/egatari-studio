@@ -119,9 +119,9 @@ jobs:
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
   macos:
     runs-on: macos-latest
-    # macOS runners are slow: npm test now runs past 45 min here (test-components alone passes 600 s), so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough).
-    # The speed of a macOS runner varies by about 10 % from run to run: test-components took 1111 s on v0.6-integration (17b03ed) and passed the 1200 s step cap on v0.6.1-walk,
-    # where every test was about 8 % slower (npm test 70.8 min, near the old 75 min job cap), so the step cap is 1800 s and the job cap 90 min
+    # macOS runners are slow: npm test now runs past 45 min here, so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough).
+    # test-components reached the 1200 s step cap here (1190.8 s, then 1200 s in run 40594677324): it now runs the quality checks alongside the browser checks and is split into two test-all steps.
+    # The speed of a macOS runner varies by about 10 % from run to run (npm test took 70.8 min on v0.6.1-walk, near the old 75 min job cap), so the step cap is 1800 s and the job cap 90 min
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7

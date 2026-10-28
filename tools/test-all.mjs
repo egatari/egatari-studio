@@ -55,7 +55,8 @@ const steps = [
   ['build pitch', ['kit/build.mjs', 'examples/pitch-fictional/deck.html']],
   ['check pitch', ['kit/check.mjs', 'examples/pitch-fictional/deck.html']],
   ['smoke', ['tools/smoke.mjs', MIN, path.join(tmp, 'smoke')]],
-  ['test-components', ['tools/test-components.mjs', '--shots', path.join(tmp, 'components')]],
+  // 部品の見本（部品庫の部品が増えるたびに長くなる。遅い macOS の CI で 1 段の上限 1200 秒に届いた）は、名前の順に 2 組に分けて別々の段にする（--only test-components で両方）
+  ...[1, 2].map((i) => [`test-components ${i}/2`, ['tools/test-components.mjs', '--shard', `${i}/2`, '--shots', path.join(tmp, 'components')]]),
   ['test-tools', ['tools/test-tools.mjs', MIN, path.join(tmp, 'tools')]],
   ['test-controls', ['tools/test-controls.mjs', MIN, path.join(tmp, 'controls')]],
   ['test-preview', ['tools/test-preview.mjs', path.join(tmp, 'preview')]],
@@ -207,7 +208,7 @@ function run(name, argv) {
 const results = [];
 const byName = new Map();
 for (const [name, argv] of steps) {
-  if (only && !only.has(name) && !(name.startsWith('build') && [...only].some((n) => needs[n] === name))) continue;
+  if (only && !only.has(name) && !only.has(name.replace(/ \d+\/\d+$/, '')) && !(name.startsWith('build') && [...only].some((n) => needs[n] === name))) continue;
   const dep = needs[name];
   if (dep && byName.has(dep) && byName.get(dep).code !== 0) {
     const r = { name, code: -1, out: `skipped: ${dep} failed`, sec: 0 };

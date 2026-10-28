@@ -1,12 +1,14 @@
 // 部品庫の部品（egatari/components のリリースの写し vendor/components/<名前>/<版>/。既定の版は components.lock.json）の見本（demo.html）を、
 // この Studio で組んで、ブラウザで動かして確かめる（部品を変えたときの試験の本体は egatari/components の npm test。これは Studio との結合の試験）
-//   node tools/test-components.mjs [名前 …] [--shots 画像の出力先]
+//   node tools/test-components.mjs [名前 …] [--shots 画像の出力先] [--shard i/n]
+//   --shard i/n：部品を名前の順に n 組に分けた i 組目だけ（test-all が別々の段として走らせる。遅い CI の 1 段の上限に収めるため）
+//   品質チェック（kit/check.mjs。自分のブラウザを起動する子のプロセス）は、ブラウザの描画の確かめと並べて先に走らせる（TEST_COMPONENTS_CHECK_JOBS 本まで。既定 2）
 // 確かめること：見本が組めて、品質チェック（kit/check.mjs）のエラーが 0（KNOWN に書いたものを除く）／コンソールのエラーがない／段階ごとの途中と最終状態の画像／決定性（同じ (i, k, t) を、
 // 直後に描いたときと、ほかの位置へ飛んで戻ってから描いたときで、画素が一致する。部品の DOM がバイトまで同じなら、縁のアンチエイリアスの少しの揺れは許して記録する：kit/render-compare.mjs）／図の字が 24px 以上／字の重なり・はみ出し／部品が印を付けた軸の線（line.axis）を横切る字と、箱（rect.box）に 4px より近い字／m-kanbun の振り仮名・送り仮名の重なりと、長い送り仮名で次の字が下がること／m-gendai の線（つなぐ線・指示語の矢印・傍線）が自分の端のほかで札に入らず、段落の枠の辺を横切らないこと
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
@@ -19,11 +21,37 @@ const known = (name, x) => (KNOWN[name] || []).some((k) => (typeof k === 'string
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');
 const shotsRoot = si >= 0 ? path.resolve(args.splice(si, 2)[1]) : null;
+const hi = args.indexOf('--shard');
+const shard = hi >= 0 ? args.splice(hi, 2)[1].match(/^(\d+)\/(\d+)$/) : null;
+if (hi >= 0 && (!shard || +shard[1] < 1 || +shard[1] > +shard[2])) { console.error('--shard must be i/n with 1 <= i <= n'); process.exit(2); }
 const outRoot = shotsRoot || fs.mkdtempSync(path.join(os.tmpdir(), 'test-components-'));
 const all = vendorComponents().filter((c) => fs.existsSync(path.join(c.dir, 'demo.html')));
 for (const n of args) if (!all.some((c) => c.name === n)) { console.error(`no demo for ${n} in vendor/components (default version)`); process.exit(2); }
-const comps = args.length ? all.filter((c) => args.includes(c.name)) : all;
+const picked = args.length ? all.filter((c) => args.includes(c.name)) : all;
+// 組への分け方：名前の順に並べて、続いた範囲で n 等分（部品が増えても、ほかの組の部品が動くのは境目のあたりだけ）
+const comps = shard ? picked.filter((_, j) => Math.floor(j * +shard[2] / picked.length) === +shard[1] - 1) : picked;
 const names = comps.map((c) => c.name);
+if (shard) console.log(`shard ${shard[1]}/${shard[2]}: ${names.join(' ')}`);
+
+// 品質チェックを先に走らせる（順に、同時に JOBS 本まで）。結果は部品ごとの Promise（{ stdout, error }）
+const JOBS = Math.max(1, Number(process.env.TEST_COMPONENTS_CHECK_JOBS) || 2);
+const checks = new Map();
+let nextCheck = 0, runningChecks = 0;
+const waiters = new Map();
+const pumpChecks = () => {
+  while (runningChecks < JOBS && nextCheck < comps.length) {
+    const { name, dir } = comps[nextCheck++];
+    runningChecks++;
+    execFile(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(dir, 'demo.html'), '--json'], { maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => {
+      runningChecks--;
+      checks.set(name, { error, stdout: String(stdout || '') });
+      const w = waiters.get(name); if (w) { waiters.delete(name); w(); }
+      pumpChecks();
+    });
+  }
+};
+const checkResult = (name) => checks.has(name) ? Promise.resolve(checks.get(name)) : new Promise((r) => waiters.set(name, () => r(checks.get(name))));
+pumpChecks();
 
 const b = await launch();
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
@@ -39,17 +67,6 @@ for (const { name, version, dir } of comps) {
     console.log(`== ${name}: BUILD FAILED\n${String(e.stderr || e.message).trim()}`);
     continue;
   }
-  // 品質チェック（見本の原稿を検査器にかける。エラーは KNOWN のほか 0）
-  let qc = null;
-  try {
-    qc = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(dir, 'demo.html'), '--json'], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }).toString());
-  } catch (e) {
-    try { qc = JSON.parse(String(e.stdout || '')); } catch { qc = null; }
-  }
-  if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
-  const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
-  const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
-  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
   const shots = path.join(outRoot, name, 'shots');
   fs.mkdirSync(shots, { recursive: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -174,6 +191,13 @@ for (const { name, version, dir } of comps) {
       if (!ok) { fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_A.png`), A); fs.writeFileSync(path.join(shots, `det_fail_s${s.i}_k${k}_B.png`), B); }
     }
   }
+  // 品質チェック（見本の原稿を検査器にかける。エラーは KNOWN のほか 0）：先に走らせておいたものの結果
+  let qc = null;
+  { const r = await checkResult(name); try { qc = JSON.parse(r.stdout); } catch { qc = null; } }
+  if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
+  const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
+  const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
+  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
   const why = [];
   if (!qBad) why.push('quality check did not run');
   else if (qBad.length) why.push(`${qBad.length} quality check error(s): ${qBad.map((x) => x.msg).join(' / ')}`);
