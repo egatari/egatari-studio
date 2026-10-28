@@ -403,6 +403,25 @@
           "minLength": 1,
           "description": "SPDX license expression (spec §6)."
         },
+        "renderers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "version"
+            ],
+            "properties": {
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "options": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Build-time renderers used for this part's fields, name to {version, options}; the same record as at the top level of the part's data (spec §6.2)."
+        },
         "subset": {
           "type": "object",
           "required": [
