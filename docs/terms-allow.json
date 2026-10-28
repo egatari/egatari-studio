@@ -366,6 +366,12 @@
       "pattern": "「English」",
       "term": "subject-english",
       "reason": "The Viewer's language button is labelled 「English」 (the language name, not the school subject)."
+    },
+    {
+      "file": "docs/viewer*.md",
+      "pattern": "「(Egatari |Ega )?Viewer」",
+      "term": "viewer-person",
+      "reason": "Egatari Viewer is the app's name (manifest name and short_name), not a person who opens a lesson."
     }
   ]
 }
