@@ -1023,8 +1023,12 @@ export function setupLlm(app) {
     let unanswered = () => null;      // 新規作成：① ② の答えで欠けているもの（押せないわけ）
     const pasteN = mode === 'new' ? 5 : 3;
     let fields = null;
+    // この呼び出しの窓の印（ask に渡す本体の 1 行目）。窓は 1 つを使い回すので、印が文書にないとき（前の窓・次の窓が出ている）はボタンに触らない。
+    // 前の窓の後始末（作成の後の品質チェックを待つ）が次の窓（構成案の続き）を開いた後に終わり、その計算が今の窓の「挿入」を押せなくしていた
+    const howto = el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo });
     const syncGo = () => {
       const b = document.getElementById('dlg-import');
+      if (!howto.isConnected) return;
       cut.hidden = !S.cutOff;
       if (!b || !fields || !b.closest('#dlg[open]')) return;
       // ボタンは同じ場所のまま。押せないときは、すぐ左に欠けているもののうち最初の 1 つを、押せるときは添え書き（台本なしで作成します など）を出す
@@ -1120,7 +1124,7 @@ export function setupLlm(app) {
       // 新規作成は画面いっぱいのページ（問いを縦に並べる）。「← 戻る」と Esc で閉じる
       const back = mode === 'new' ? el('button', { type: 'button', id: 'page-back', cls: 'ghost page-back', text: X.back, onclick: () => { const d = document.getElementById('dlg'); if (d.open) d.close('cancel'); } }) : null;
       const shown = ask({ title: opts.batch ? X.batchTitle : X.title[mode], kind: mode === 'new' ? 'paste page' : 'paste',
-        body: [back, el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo }), ...body],
+        body: [back, howto, ...body],
         buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }] });
       syncGo();
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
@@ -1130,8 +1134,8 @@ export function setupLlm(app) {
       status(X.building[mode]);
       let res;
       try { res = await finish(fields.data(), mode); } finally { status(''); }
+      if (res === null) return true;   // 窓は閉じた：貼り付けの段を開き直さない（開き直すと、もう閉じた窓の計算が走る）
       focusPaste = true; openPaste();
-      if (res === null) return true;
       msg.hidden = false; msg.textContent = res;
     }
   }
@@ -1314,6 +1318,10 @@ export function setupLlm(app) {
     const t0 = Date.now(), ready = () => S.allowed && !S.building && S.loads > 0 && S.frameLoaded === S.loads;
     while (Date.now() - t0 < 20000 && !ready()) await new Promise((r) => setTimeout(r, 100));
     if (ready()) await app.quickCheck();
+    // 試験（tools/test-app-outline.mjs）：この後始末を、次の窓を開いて貼った後まで待たせる（__APP_TEST.afterOpenGate：Promise）。済んだ数は afterOpens
+    const AT = window.__APP_TEST;
+    if (AT && AT.afterOpenGate) await AT.afterOpenGate;
+    if (AT) AT.afterOpens = (AT.afterOpens || 0) + 1;
   }
 
   // ---------------------------------------------------------------- 品質チェックに足すもの（このページで、narration.md の元の文字列から）
