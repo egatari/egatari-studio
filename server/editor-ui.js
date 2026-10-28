@@ -959,6 +959,8 @@ export function createEditorUI(o) {
   }
   return {
     message, frameLoading, reset, restoreSaved, toggleEdit, toggleInk, toggleNarr, toggleComments, toast, mark, escape, goStep, goIndex, busy: () => editing(),
+    // 読み込み直した後、覚えた位置に戻す前か（その間に届く最初の位置は 1 枚目で、見ている位置ではない）
+    restoring: () => !!restorePos,
     side, h, pos: () => (pos ? { ...pos } : null), slide: (i) => (info && info.slides[i]) || null, loadInfo, refresh: () => updateSide(),
     state: () => ({ edit: editOn, narr: narrOpen, comments: commentsOpen, editor: editor ? { range: editor.range, dirty: editor.ta.value !== editor.orig } : null,
       mode: modeEl.getAttribute('data-mode'), modeText: modeEl.textContent, tool: toolMode,

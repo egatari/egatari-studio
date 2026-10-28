@@ -939,7 +939,8 @@ window.addEventListener('message', (e) => {
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
     }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
-      if (m.type === 'deck-pos') { S.pos = m; slidesPanel.onPos(); }
+      // 読み込み直した直後の最初の位置（1 枚目）は、戻す位置に動くまで見ている位置にしない（server/editor-ui.js と同じ。スライド ▾ の対象・一覧の選択が 1 枚目に跳ばない）
+      if (m.type === 'deck-pos' && !ui.restoring()) { S.pos = m; slidesPanel.onPos(); }
       if (S.presWin && !S.presWin.closed) S.presWin.postMessage({ type: 'app-pres-down', m }, '*');
     }
   } else if (S.presWin && e.source === S.presWin && m.type === 'app-pres-up' && m.m && typeof m.m.type === 'string' && /^deck-/.test(m.m.type)) {
