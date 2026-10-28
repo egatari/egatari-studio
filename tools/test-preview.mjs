@@ -155,6 +155,20 @@ await p.close();
   e = await E();
   ok(e.length === 1 && e[0] === false, 'entered: false when the same position is drawn again ' + JSON.stringify(e));
   ok(await q.evaluate(() => window.__pos) >= 3, 'deck:pos still fires for components pinned before ctx.entered');
+  // 印刷（beforeprint・afterprint）と DECK.aside（スライド一覧・品質チェックの縮図）の描画とその戻りは、スライドに入ったことにしない
+  await E();
+  await q.evaluate(() => { window.dispatchEvent(new Event('beforeprint')); window.dispatchEvent(new Event('afterprint')); });
+  e = await E();
+  ok(e.length >= 2 && e.every((x) => x === false), 'entered: false while printing and on the return from printing ' + JSON.stringify(e.slice(0, 6)));
+  const st = await q.evaluate(() => DECK.state());
+  ok(st.slide === 1 && st.step === 1, 'after printing the viewer is back at the same position ' + JSON.stringify(st));
+  await q.evaluate(() => DECK.aside(() => { DECK.seek(1, 0, Infinity); DECK.seek(0, 0, Infinity); }));
+  e = await E();
+  ok(e.length >= 2 && e.every((x) => x === false), 'entered: false in DECK.aside and on its return ' + JSON.stringify(e.slice(0, 6)));
+  await q.evaluate(() => DECK.go(1, 0, false)); await q.waitForTimeout(200); await E();
+  await q.evaluate(() => DECK.go(0, 0, false)); await q.waitForTimeout(300);
+  e = await E();
+  ok(e.length > 0 && e[0] === true, 'entered: a real jump after printing still enters ' + JSON.stringify(e.slice(0, 4)));
   await q.close();
 }
 

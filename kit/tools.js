@@ -625,7 +625,8 @@ function openOverview(){
     ? '<div class="dt-head"><b>Slides</b><span>Arrows to select · Enter / click to go · Esc to close</span></div>'
     : '<div class="dt-head"><b>スライド一覧</b><span>矢印で選ぶ · Enter / クリックで移る · Esc で閉じる</span></div>') + '<div id="dt-grid"></div>';
   var grid = box.querySelector("#dt-grid"), cells = [];
-  slides.forEach(function(s, i){
+  // 縮図のための描画はスライドに入ったことにしない（format spec §8.4 entered：見る人の入力は残る）。DECK.aside が終わると元の位置を描く
+  (DECK.aside || function(f){ return f(); })(function(){ slides.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
     var c = s.cloneNode(true);
     c.classList.remove("active"); c.removeAttribute("id"); uniqIds(c, "dt" + i + "-");
@@ -640,8 +641,8 @@ function openOverview(){
     cell.querySelector(".dt-cap span").textContent = titleOf(s);
     cell.addEventListener("click", function(){ pick(i); });
     grid.appendChild(cell); cells.push(cell);
-  });
-  DECK.seek(ci, ck, Infinity);     // 元の位置に戻す
+  }); });
+  if (!DECK.aside) DECK.seek(ci, ck, Infinity);     // 元の位置に戻す
   document.body.appendChild(box);
   ov = {box: box, cells: cells, sel: ci, ci: ci, back: back};
   if (cb) cb.inert = true;   // 一覧の間は Tab が下の帯に抜けない

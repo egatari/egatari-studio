@@ -538,11 +538,23 @@ function previewOpacity(){
   if (!(v >= 0 && v <= 1)) v = parseFloat(cs.getPropertyValue("--lecture-dim"));
   return v >= 0 && v <= 1 ? v : .45;
 }
+// 横に置く描画（format spec §8.4 entered）：印刷・縮図（スライド一覧・品質チェック）のための描画と、その後の見ている位置への戻りは、
+// スライドに入ったことにしない（ctx.entered は false、見る人の入力は消えない、触った部品の印も残す）。入れ子にしてよい
+var ASIDE = 0, asideBack = null;
+function asideBegin(){ if (ASIDE++ === 0) asideBack = {last: lastPos, jump: jumpTo}; }
+function asideEnd(back){
+  if (ASIDE === 0 || --ASIDE > 0) return;
+  var b = asideBack; asideBack = null;
+  lastPos = b.last; jumpTo = b.jump;
+  if (back && lastPos) seek(lastPos.i, lastPos.k, Infinity, undefined, true);
+}
+// fn の中の DECK.seek は横に置く描画。終わったら見ている位置に戻して描く
+DECK.aside = function(fn){ asideBegin(); try { return fn(); } finally { asideEnd(true); } };
 // (i, k, t) の画面を描く。唯一の描画の入口。cont：実時間の再生の 2 コマ目から（同じ段階の続き。段階に入るのではない）
 function seek(i, k, t, from, cont){
   i = Math.max(0, Math.min(slides.length - 1, i));
-  var entered = !cont && (lastPos === null || lastPos.i !== i || jumpTo === i);
-  if (!cont && jumpTo === i) jumpTo = -1;
+  var entered = !cont && !ASIDE && (lastPos === null || lastPos.i !== i || jumpTo === i);
+  if (!cont && !ASIDE && jumpTo === i) jumpTo = -1;
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
   var tReal = t;   // 時計の部品には、動きを減らす設定でも実際の t（isClock）
@@ -600,7 +612,7 @@ function seek(i, k, t, from, cont){
     var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, entered: entered, deck: DECK};
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
-      if (c._touched && !cont){ c._touched = false; untouch(c, p.k, ctx); }
+      if (c._touched && !cont && !ASIDE){ c._touched = false; untouch(c, p.k, ctx); }
       c.render(p.k, p.t, ctx);
     }
     catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(); }
@@ -1770,15 +1782,19 @@ document.addEventListener("keydown", function(e){
 
 // 印刷（PDF 化）では、すべての段階を出した最終状態にする
 var printPos = null;
+// 印刷のための描画とその後の戻りはスライドに入ったことにしない（format spec §8.4 entered：見る人の入力は残る）
+var printAside = false;
 window.addEventListener("beforeprint", function(){
   if (!DECK.ready) return;
   stopLoop(); printPos = {i: POS.i, k: POS.k};
+  if (!printAside){ printAside = true; asideBegin(); }
   slides.forEach(function(s, i){ seek(i, s._max, Infinity); });
   document.documentElement.classList.add("printing");
 });
 window.addEventListener("afterprint", function(){
   document.documentElement.classList.remove("printing");
-  if (printPos && DECK.ready) seek(printPos.i, printPos.k, Infinity);
+  if (printAside){ printAside = false; asideEnd(false); }
+  if (printPos && DECK.ready) seek(printPos.i, printPos.k, Infinity, undefined, true);
 });
 window.addEventListener("resize", function(){ fit(); morphCache = {}; });
 if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; });
