@@ -23,7 +23,7 @@ import { SERIES, FREE_CORE, buildPack } from '../kit/core/llm-pack.mjs';
 import { PART_LABELS } from '../kit/core/part-labels.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
-import { clickDlg, clickCommand } from './click-retry.mjs';
+import { clickDlg, clickCommand, clickUntil } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', 'worked', n, f), 'utf8').replace(/\r\n/g, '\n');
@@ -173,7 +173,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S6: 「スライドの挿入」 with three questions, and the choice to send to a different chat: ' + ih.join(' / '));
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
-    await p1.click('#paste-next-1');
+    // macOS の CI では、プレビューの上の窓のボタンを押しても下の iframe に届くことがある（click-retry.mjs）：② が開くまで押し直す
+    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: 2500 }));
     ok((await flowState(p1)) === '1:shut:-:-:nobody:answer 2:open:step:-:body:- paste:shut:-:pending:nobody:-' && (await text(p1, '#paste-step1-answer .paste-answer-text')) === '足す枚数：1 枚・練習問題を 1 つ',
       'S6: 「次へ」 folds ① to 「足す枚数：1 枚・練習問題を 1 つ」 and opens ②');
     const i1 = await copy(p1);
