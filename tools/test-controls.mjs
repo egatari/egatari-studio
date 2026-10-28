@@ -76,6 +76,8 @@ ok(await p.evaluate(() => DECK.tools.color()) === 1 && s0.pressed.join() === 'fa
 ok(await p.evaluate(() => { const t = document.getElementById('deck-toast'); return t && t.classList.contains('show') && t.textContent; }) === 'ペンの色：青', '色を変えると「ペンの色：青」と知らせる');
 ok(/青/.test(await p.locator('#dt-ind').innerText()), '左下の表示にも色の名前');
 ok(await p.evaluate(() => { const d = document.querySelector('#dt-cb [data-b="pen"] .dt-dot'); return getComputedStyle(d).backgroundColor === getComputedStyle(document.querySelector('#dt-cb .dt-sw [data-c="1"] i')).backgroundColor; }), 'ペンのボタンの点が今の色');
+// ペンの色はテーマによらない決まった色（#132。青は #005AFF）
+ok(await p.evaluate(() => getComputedStyle(document.querySelector('#dt-cb [data-b="pen"] .dt-dot')).backgroundColor) === 'rgb(0, 90, 255)', 'ペンの青は決まった色 #005AFF（テーマの --term ではない）');
 await p.keyboard.press('Shift+D'); await p.waitForTimeout(100);
 ok(await p.evaluate(() => DECK.tools.color()) === 2 && (await sw()).pressed[2] === 'true' && await p.evaluate(() => document.getElementById('deck-toast').textContent) === 'ペンの色：黒', 'Shift+d でも色のボタンと知らせが変わる');
 await p.mouse.move(330, 330, { steps: 2 }); await p.waitForTimeout(150);

@@ -8,7 +8,7 @@
 //    色覚の模擬（Machado ほか 2009、強さ 1.0、線形 RGB）：強調の赤 --emph と基調色 --term の差 ΔE*ab が 3 色型・1 型・2 型で 35 以上
 //      （テーマの見比べ 2026-10-27 の線。常盤・焦茶をこれで直した）、CIEDE2000 で 3 色型・1 型・2 型・3 型 20 以上（テーマの工房の C4）、
 //      --emph と本文 --fg の CIEDE2000 が 1 型で 20 以上（C5）
-// 3. ペンの色（kit/tools.js の PEN。テーマによらない赤 #FF4B00・青 #005AFF・黒 #000000）：どのテーマの地 --bg の上でも線のコントラスト 3:1（WCAG 1.4.11）、
+// 3. ペンの色（kit/tools.js の PEN_COLOR。テーマによらない赤 #FF4B00・青 #005AFF・黒 #000000）：どのテーマの地 --bg の上でも線のコントラスト 3:1（WCAG 1.4.11）、
 //    3 色の組の差 ΔE*ab が 3 色型・1 型・2 型・3 型で 35 以上（テーマの赤・青と同じ線）
 // 4. 形の断片（kit/core/theme-shapes.mjs）：theme.json の look の形が tokens.css にそのまま写してある。テーマの CSS は :where() で包まない
 //    （組み込みの規則より詳細度が下がり、半分だけ効く。default 1.2.0 の結論の行だけは、組み込みの .concl と同じ詳細度で書いた前からの例外）
@@ -38,7 +38,7 @@ const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + nam
 
 const THEMES = fs.readdirSync(path.join(ROOT, 'themes')).filter((d) => fs.existsSync(path.join(ROOT, 'themes', d, 'tokens.css'))).sort();
 const PEN_SRC = fs.readFileSync(path.join(ROOT, 'kit', 'tools.js'), 'utf8');
-const PEN = JSON.parse((PEN_SRC.match(/var PEN = (\{[^}]*\});/) || [])[1].replace(/(\w+):/g, '"$1":'));
+const PEN = JSON.parse((PEN_SRC.match(/var PEN_COLOR = (\{[^}]*\});/) || [])[1].replace(/(\w+):/g, '"$1":'));
 const MIN = { text: 4.5, line: 3, emphTerm76: 35, emphTerm00: 20, emphFg00: 20, pen76: 35 };
 const fix = (x, d = 2) => Number(x).toFixed(d);
 
