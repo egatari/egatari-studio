@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=359fb0fdc4e4dcb7 -->
+<!-- i18n: pair=reference.ja.md sha256=ab032677d2b9274a -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -202,7 +202,9 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 
 Fonts: Japanese lessons (`lang` is `ja` or missing) embed BIZ UDPGothic; other languages embed Source Sans 3 and use BIZ UDPGothic only for characters past U+024F. Only the font files (or, with `fonts/*.ttf` and uv, the glyphs) that the lesson uses are embedded. BIZ UDPMincho is embedded as well, for the same characters, only when the lesson uses it: `var(--font-mincho)` in the lesson, its theme or a part it uses, `class="mincho"`, or `<html data-font="mincho">` (the definition of `--font-mincho` in `kit/layouts.css` does not count). `--font-mincho` is defined with `:where(:root)`, so a theme can override it. Theme `kokugo`: Mincho body text, indigo base, vermilion emphasis, off-white background, captions in BIZ UDPGothic (`--font-cap`).
 
-English bold and italic: lessons in other languages also embed Source Sans 3 italic (400 and 700), only the files with characters the lesson uses. In a Japanese lesson, Latin text inside `<em>` or `<i>` is set in Source Sans 3 italic, and only those characters' files are embedded.
+English italic: Source Sans 3 italic is embedded only for text the lesson sets in italic (`<em>`, `<i>`, `<cite>`, `<dfn>`, `<var>`, `font-style: italic` in a `style` attribute, a lesson `<style>` that sets italic, or a part's code that sets italic text; a part's math symbols in KaTeX_Math do not count): 400 italic for that text, 700 italic only for italic text inside bold (`<b>`, `<strong>`, headings, `<th>`, the conclusion line, `.sub`), and of each only the files with those characters. A lesson without italic text embeds none. In a Japanese lesson only Latin characters count, and Latin text in `<em>`, `<i>` and `<cite>` is set in Source Sans 3 italic.
+
+A theme whose body font is a Japanese font from the list (`asagi`: Zen Maru Gothic) embeds BIZ UDPGothic only for characters that font does not cover.
 
 The fonts a file can carry are a fixed list, all under the SIL Open Font License and from `@fontsource` (`FONT_LIST` in `kit/core/build-core.mjs`). Only the fonts a lesson chooses go into its file, so a longer list does not make files heavier. A font is chosen by the theme's `theme.json` `fonts`, or by naming its family in the theme's or the slides' CSS.
 

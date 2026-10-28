@@ -201,18 +201,51 @@ export function chosenFonts(css, cfgFonts) {
   for (const f of FONT_LIST) if (new RegExp(`(^|[\\s,:"'])${reEsc(f.family)}(?=$|[\\s,;"'!}])`, 'i').test(c)) out.add(f);
   return [...out].filter((f) => f.family !== FONTS.biz.family && f.family !== FONTS.sans3.family && f.family !== FONTS.mincho.family);
 }
+// テーマの本文の字体（一覧のもの）：theme.json の fonts.body か、テーマの CSS の最後の --font-sans の最初の名前
+export function bodyFont(themeCss, cfgFonts) {
+  if (cfgFonts && typeof cfgFonts === 'object' && cfgFonts.body) return fontByFamily(cfgFonts.body);
+  const all = [...String(themeCss || '').replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/--font-sans\s*:\s*([^;}]+)/g)];
+  return all.length ? fontByFamily(all[all.length - 1][1].split(',')[0]) : null;
+}
 // スライドの CSS（<style> の中と style="" の値）。一覧の字体を名指しているかを見る
 export function deckCss(html) {
   const h = String(html).replace(/data:[^"')\s]+/g, '');
   return [...h.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n') + '\n' +
     [...h.matchAll(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((m) => m[1] ?? m[2]).join(';\n');
 }
-// 日本語の教材で、強調（<em>・<i>）の中のラテン文字。英語の斜体（Source Sans 3 の斜体）で出す字
-export function italicLatin(html) {
-  const h = String(html).replace(/data:[^"')\s]+/g, '').replace(/<script\b[\s\S]*?<\/script>/gi, '');
-  let t = '';
-  for (const m of h.matchAll(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi)) t += decodeEntities(m[2].replace(/<[^>]*>/g, ''));
-  return /[A-Za-z]/.test(t) ? [...new Set(t)].filter((c) => c.codePointAt(0) <= LATIN_MAX && c.trim()).join('') + ' ' : '';
+// 斜体で出す字（英語の斜体 Source Sans 3 の 400i・700i を、使うときだけ・使う字の分割ファイルだけ入れるため）：
+//   <em>・<i>・<cite>・<dfn>・<var>・<address> と style の font-style:italic|oblique の中の字。太字の中（<b>・<strong>・h1〜h6・<th>・class の concl・sub・b、
+//   style の font-weight:bold|600〜900）なら w700、ほかは w400。スライドの <style> が font-style:italic を書いていれば、本文の字は全部 w400 に数える（規則の当たる先は見ない）。
+//   部品の JS が italic を書いている行の文字列の字も w400 に数える（数式の記号 class "mi" は除く）。latin：ラテン文字（U+024F まで）だけにする（日本語の教材）
+const ITALIC_TAGS = new Set(['em', 'i', 'cite', 'dfn', 'var', 'address']);
+const BOLD_TAGS = new Set(['b', 'strong', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'th']);
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+export function italicText(html, compJs = '', latin = false) {
+  const h = String(html).replace(/data:[^"')\s]+/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const body = h.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '');
+  const w = { 400: '', 700: '' };
+  const stack = [];
+  for (const m of body.matchAll(/<(\/?)([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^'">])*)>|([^<]+)/g)) {
+    if (m[4] !== undefined) { const top = stack[stack.length - 1]; if (top && top.it) w[top.bold ? 700 : 400] += decodeEntities(m[4]); continue; }
+    const name = m[2].toLowerCase(), attrs = m[3] || '';
+    if (m[1]) { const k = stack.map((x) => x.name).lastIndexOf(name); if (k >= 0) stack.length = k; continue; }
+    if (VOID_TAGS.has(name) || /\/\s*$/.test(attrs)) continue;
+    const st = (attrs.match(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/i) || []).slice(1).join('');
+    const cls = (attrs.match(/\sclass\s*=\s*(?:"([^"]*)"|'([^']*)')/i) || []).slice(1).join('');
+    const top = stack[stack.length - 1] || { it: false, bold: false };
+    const it = /font-style\s*:\s*normal/i.test(st) ? false : top.it || ITALIC_TAGS.has(name) || /font-style\s*:\s*(italic|oblique)/i.test(st);
+    const bold = /font-weight\s*:\s*(normal|[1-5]00)\b/i.test(st) ? false : top.bold || BOLD_TAGS.has(name) || /(^|\s)(concl|sub|b)(\s|$)/.test(cls) || /font-weight\s*:\s*(bold|[6-9]00)\b/i.test(st);
+    stack.push({ name, it, bold });
+  }
+  const sheet = [...h.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((x) => x[1]).join('\n');
+  if (/font-style\s*:\s*(italic|oblique)/i.test(sheet)) w[400] += decodeEntities(body.replace(/<[^>]*>/g, ''));
+  // 部品の数式の記号（class "mi"、KaTeX_Math で出す。DECK.mtext）の italic は数えない
+  // 斜体を書いている行の文字列だけを数える
+  for (const l of String(compJs).split('\n')) if (/italic|oblique/.test(l) && !/["'\s]mi["'\s]|KaTeX/.test(l)) w[400] += unescapeJs(jsLiterals(l));
+  const keep = (t) => [...new Set(t)].filter((c) => c.trim() && (!latin || c.codePointAt(0) <= LATIN_MAX)).join('');
+  const out = { 400: keep(w[400]), 700: keep(w[700]) };
+  if (latin) for (const k of [400, 700]) if (!/[A-Za-z]/.test(out[k])) out[k] = '';
+  return out;
 }
 // デッキが明朝を使うか：原稿（取り込みの後）・テーマの CSS・使っている部品の JS のどれかが var(--font-mincho) か "BIZ UDPMincho" を書いている、
 // <html data-font="mincho">、class に mincho がある。kit の CSS（--font-mincho の定義と .mincho の規則）は数えない
@@ -313,16 +346,23 @@ export function rangesOf(chars) {
 // 字の包みが env にあるか（編集アプリの 1 ファイル版は明朝を持たない）
 const hasFont = (env, font, italic = false) => { try { return env.exists(env.path.join(env.fontDir(font.pkg), `400${italic ? '-italic' : ''}.css`)); } catch { return false; } };
 // mincho：明朝も埋め込む（usesMincho）。warn：明朝の字がないときに知らせる
-// more：{chosen：一覧から選んだ字体（chosenFonts）、italic：日本語の教材の強調の中のラテン文字（italicLatin）}
+// more：{chosen：一覧から選んだ字体（chosenFonts）、italic：斜体で出す字 {400, 700}（italicText）、body：テーマの本文の字体（bodyFont）}
 function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) {
   const add = (a, b) => ({ css: a.css + b.css, n: a.n + b.n, bytes: a.bytes + b.bytes });
-  let g = fontCssGothic(env, text, subset, lang);
-  // 英語の斜体（Source Sans 3 の 400・700 の斜体）：英語などの教材は初めから（使う字の分割ファイルだけ）。
-  // 日本語の教材は強調（<em>・<i>）の中にラテン文字があるときだけ、その字だけを入れ、強調の中のラテン文字をこの斜体で出す
-  if (!isJapanese(lang)) { if (hasFont(env, FONTS.sans3, true)) g = add(g, rangeCss(env, [FONTS.sans3], text, true)); }
-  else if (more.italic && hasFont(env, FONTS.sans3, true)) {
-    const it = rangeCss(env, [FONTS.sans3], more.italic, true);
-    if (it.n) g = add(g, { ...it, css: it.css + `:is(em,i){font-family:"${FONTS.sans3.family}",var(--font-sans)}\n` });
+  // 本文の日本語の字体を一覧から選んだテーマ（浅葱の Zen Maru Gothic など。more.body）：BIZ UDPゴシックは、その字体が持たない字だけ（同じ字を 2 度入れない）
+  const body = more.body && more.body.group === 'ja' && hasFont(env, more.body) && (more.chosen || []).includes(more.body) ? more.body : null;
+  let gtext = text;
+  if (body && isJapanese(lang)) {
+    const rs = fontFaces(env, body, [body.weights[0]]).flatMap((f) => f.range);
+    gtext = [...new Set(text)].filter((c) => { const cp = c.codePointAt(0); return !rs.some(([lo, hi]) => cp >= lo && cp <= hi); }).join('');
+  }
+  let g = fontCssGothic(env, gtext, subset, lang);
+  // 英語の斜体（Source Sans 3 の 400i・700i）：斜体で出す字（italicText）があるときだけ、その太さの、その字を含む分割ファイルだけ。
+  // 日本語の教材は強調の中のラテン文字だけで、強調の中のラテン文字をこの斜体で出す
+  if (more.italic && hasFont(env, FONTS.sans3, true)) {
+    let it = { css: '', n: 0, bytes: 0 };
+    for (const wt of [400, 700]) if (more.italic[wt]) it = add(it, rangeCss(env, [{ ...FONTS.sans3, weights: [wt] }], more.italic[wt], true));
+    if (it.n) g = add(g, isJapanese(lang) ? { ...it, css: it.css + `:is(em,i,cite){font-family:"${FONTS.sans3.family}",var(--font-sans)}\n` } : it);
   }
   for (const f of more.chosen || []) {
     if (!hasFont(env, f)) { warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`); continue; }
@@ -902,7 +942,7 @@ export function build(env0, srcPath, opts = {}) {
   // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
   const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
   const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn,
-    { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: isJapanese(lang) ? italicLatin(html) : '' });
+    { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: italicText(html, compJs, isJapanese(lang)), body: bodyFont(theme.css, theme.cfg && theme.cfg.fonts) });
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
   const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');

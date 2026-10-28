@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=fd2177e84169917b -->
+<!-- i18n: pair=reference.md sha256=4be9dd726badbb15 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -202,7 +202,9 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 
 字：日本語の教材（`lang` が `ja` か、ない）は BIZ UDPゴシックを埋め込む。ほかの言語は Source Sans 3 を埋め込み、U+024F より後ろの字だけを BIZ UDPゴシックで補う。埋め込むのは使っている字を含む分割ファイルだけ（`fonts/*.ttf` と uv があれば使っている字だけ）。BIZ UDP明朝は、教材が明朝を使うときだけ、同じ字を埋め込む：教材・テーマ・使っているパーツのどれかに `var(--font-mincho)` がある、`class="mincho"`、`<html data-font="mincho">`（`kit/layouts.css` の `--font-mincho` の定義は数えない）。`--font-mincho` は `:where(:root)` で決めてあるので、テーマで上書きできる。テーマ `kokugo`：本文は明朝、基調色は藍、強調は朱、地は生成り、字幕は BIZ UDPゴシック（`--font-cap`）。
 
-英語の太字と斜体：日本語以外の教材は Source Sans 3 の斜体（400・700）も埋め込む（使う字を含む分割ファイルだけ）。日本語の教材では、`<em>`・`<i>` の中のラテン文字を Source Sans 3 の斜体で出し、その字の分割ファイルだけを埋め込む。
+英語の斜体：Source Sans 3 の斜体は、教材が斜体で出す字があるときだけ埋め込む（`<em>`・`<i>`・`<cite>`・`<dfn>`・`<var>`、`style` 属性の `font-style: italic`、斜体を書いた教材の `<style>`、斜体の字を書くパーツのコード。パーツの数式の記号（KaTeX_Math）は数えない）。その字には 400 の斜体、太字の中（`<b>`・`<strong>`・見出し・`<th>`・結論の行・`.sub`）の斜体の字にだけ 700 の斜体を、どちらもその字を含む分割ファイルだけ入れる。斜体の字のない教材には入れない。日本語の教材ではラテン文字だけを数え、`<em>`・`<i>`・`<cite>` の中のラテン文字を Source Sans 3 の斜体で出す。
+
+本文の字体を一覧の日本語の字体にしたテーマ（`asagi`：Zen Maru Gothic）では、BIZ UDPゴシックはその字体が持たない字だけを埋め込む。
 
 ファイルに入れられる字体は決まった一覧で、どれも SIL Open Font License、`@fontsource` のもの（`kit/core/build-core.mjs` の `FONT_LIST`）。ファイルに入るのは教材が選んだ字体だけなので、一覧が長くてもファイルは重くならない。選ぶのはテーマの `theme.json` の `fonts` か、テーマ・スライドの CSS で字体の名前を書くこと。
 

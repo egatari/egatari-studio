@@ -2,7 +2,8 @@
 //   node tools/test-fonts.mjs [作業フォルダ]
 // 1. 一覧（FONT_LIST）：10 の字体（日本語 5・英語 4・等幅 1）、どれも @fontsource の包みが package.json にある
 // 2. 選んだ字体だけが入る：一覧の字体をスライドの CSS で名指すと埋め込み、名指さない字体は入らない。既定の日本語の教材は Source Sans 3 を入れない
-// 3. 英語の斜体：英語の教材は Source Sans 3 の斜体を入れる。日本語の教材は <em>・<i> の中にラテン文字があるときだけ
+// 3. 英語の斜体：斜体で出す字があるときだけ、その太さ（400i・700i）の、その字の分割ファイルだけ。日本語の教材は強調の中のラテン文字だけ
+// 3b. 本文の字体を一覧から選んだテーマ（浅葱）：BIZ UDPゴシックはその字体が持たない字だけ
 // 4. 品質チェック：一覧にない字体（端末の字体）を名指したスライドに fontNotEmbedded（警告、名前を挙げる）。埋め込んだ字体・総称の字体には出ない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,7 +11,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { FONT_LIST, chosenFonts, italicLatin } from '../kit/core/build-core.mjs';
+import { FONT_LIST, chosenFonts, italicText } from '../kit/core/build-core.mjs';
 import { message } from '../kit/check-messages.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -20,10 +21,10 @@ fs.mkdirSync(work, { recursive: true });
 let n = 0, fail = 0;
 const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n     ' + String(e.message).split('\n').join('\n     ')); } };
 
-const deck = (name, lang, body) => {
+const deck = (name, lang, body, theme = 'default') => {
   const dir = path.join(work, name);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>\n<html lang="${lang}" data-theme="default">\n<head><meta charset="utf-8"><title>${name}</title></head>\n<body><div id="stage">\n<section class="slide noconcl static" id="s1"><h2>${lang === 'ja' ? '字体の見本' : 'Fonts'}</h2><div class="body">${body}</div></section>\n</div></body></html>\n`);
+  fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>\n<html lang="${lang}" data-theme="${theme}">\n<head><meta charset="utf-8"><title>${name}</title></head>\n<body><div id="stage">\n<section class="slide noconcl static" id="s1"><h2>${lang === 'ja' ? '字体の見本' : 'Fonts'}</h2><div class="body">${body}</div></section>\n</div></body></html>\n`);
   fs.writeFileSync(path.join(dir, 'narration.md'), `## s1\n\n[0] ${lang === 'ja' ? '字体の見本です。' : 'Fonts.'}\n`);
   const b = spawnSync(process.execPath, ['kit/build.mjs', path.join(dir, 'deck.html')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(b.status, 0, b.stderr);
@@ -43,8 +44,12 @@ await t('一覧：日本語 5・英語 4・等幅 1 の 10 の名前（Klee One 
 await t('選ぶ：theme.json の fonts と CSS の名指し（既定の 3 つは数えない）。強調の中のラテン文字', () => {
   assert.deepEqual(chosenFonts('.x{font-family:"Klee One",serif} /* "Andika" */', { body: 'Zen Maru Gothic' }).map((f) => f.family).sort(), ['Klee One', 'Zen Maru Gothic']);
   assert.deepEqual(chosenFonts('--font-sans:"BIZ UDPGothic","Hiragino Sans",sans-serif'), []);
-  assert.equal(italicLatin('<p>和文<em>のみ</em></p>'), '');
-  assert.ok(italicLatin('<p>和文<em>Bayes</em></p>').includes('B'));
+  assert.deepEqual(italicText('<p>和文<em>のみ</em></p>', '', true), { 400: '', 700: '' });
+  assert.ok(italicText('<p>和文<em>Bayes</em></p>', '', true)[400].includes('B'));
+  const en = italicText('<p>plain <em>soft</em> <b>bold <i>both</i></b> <span style="font-style:italic">st</span></p><h2>Head <em>Ital</em></h2>');
+  assert.equal([...en[400]].sort().join(''), [...new Set('softst')].sort().join(''));
+  assert.equal([...en[700]].sort().join(''), [...new Set('bothItal')].sort().join(''));
+  assert.deepEqual(italicText('<p>no italics here</p>'), { 400: '', 700: '' });
 });
 
 await t('既定の日本語の教材：BIZ UDPゴシックだけ（強調の中にラテン文字がなければ Source Sans 3 も斜体も入らない）', () => {
@@ -55,13 +60,24 @@ await t('既定の日本語の教材：BIZ UDPゴシックだけ（強調の中�
 await t('日本語の教材の <em> の中のラテン文字：Source Sans 3 の斜体だけを足し、強調にその字体を当てる', () => {
   const r = deck('ja-em', 'ja', '<p>ベイズの考え方（<em>Bayes</em>）</p>');
   assert.ok(r.has('Source Sans 3/italic') && !r.has('Source Sans 3/normal'), r.faces.join(' '));
-  assert.ok(r.html.includes(':is(em,i){font-family:"Source Sans 3",var(--font-sans)}'));
+  assert.ok(r.html.includes(':is(em,i,cite){font-family:"Source Sans 3",var(--font-sans)}'));
 });
 
-await t('英語の教材：Source Sans 3 の 400・700 と斜体', () => {
-  const r = deck('en', 'en', '<p>Plain text and <em>italic</em>.</p>');
-  assert.ok(r.has('Source Sans 3/normal') && r.has('Source Sans 3/italic'), r.faces.join(' '));
-  assert.ok(new Set([...r.html.matchAll(/font-family:"Source Sans 3";font-style:italic;font-display:block;font-weight:(\d+)/g)].map((m) => m[1])).size === 2, 'italic 400 and 700');
+await t('英語の教材：斜体のない教材は斜体を入れない。<em> があれば 400 の斜体を、その字の分割ファイル（latin）だけ。太字の中の斜体があれば 700 の斜体も', () => {
+  const plain = deck('en-plain', 'en', '<p>Plain text, <b>bold</b> and more.</p>');
+  assert.ok(plain.has('Source Sans 3/normal') && !plain.has('Source Sans 3/italic'), plain.faces.join(' '));
+  const it = deck('en-it', 'en', '<p>Plain text and <em>italic</em>.</p>');
+  const w = (r) => [...r.html.matchAll(/font-family:"Source Sans 3";font-style:italic;font-display:block;font-weight:(\d+)/g)].map((m) => m[1]);
+  assert.deepEqual(w(it), ['400'], 'one face: 400 italic, the latin chunk only');
+  const bi = deck('en-bi', 'en', '<p>Plain and <em>italic</em>, <b>bold <em>bold italic</em></b>.</p>');
+  assert.deepEqual(w(bi).sort(), ['400', '700']);
+});
+
+await t('浅葱（本文が Zen Maru Gothic）：BIZ UDPゴシックは Zen Maru Gothic が持たない字だけ（同じ字を 2 度入れない）。既定のテーマより重くならない', () => {
+  const body = '<p>丸い字の見本：ひらがな・カタカナ・漢字、ABC 123。</p>';
+  const a = deck('asagi', 'ja', body, 'asagi'), d = deck('asagi-default', 'ja', body);
+  assert.ok(a.has('Zen Maru Gothic/normal') && !a.has('BIZ UDPGothic/normal'), a.faces.join(' '));
+  assert.ok(a.html.length <= d.html.length * 1.05, `asagi ${a.html.length} B vs default ${d.html.length} B`);
 });
 
 let rKlee = null, rSys = null;
