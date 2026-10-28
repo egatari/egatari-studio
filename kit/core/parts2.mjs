@@ -141,38 +141,17 @@ export function metaMismatch(meta, rec) {
 }
 const eqObj = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); return ka.length === kb.length && ka.every((k, j) => k === kb[j] && a[k] === b[k]); };
 
-// 版の比べ方（semver の順。前リリース < リリース）
-export function compareVersions(a, b) {
-  const [ma, pa] = String(a).split('+')[0].split(/-(.*)/s), [mb, pb] = String(b).split('+')[0].split(/-(.*)/s);
-  const na = ma.split('.').map(Number), nb = mb.split('.').map(Number);
-  for (let j = 0; j < 3; j++) if (na[j] !== nb[j]) return na[j] - nb[j];
-  if (!pa && !pb) return 0;
-  if (!pa) return 1;
-  if (!pb) return -1;
-  const xa = pa.split('.'), xb = pb.split('.');
-  for (let j = 0; j < Math.max(xa.length, xb.length); j++) {
-    if (xa[j] === undefined) return -1;
-    if (xb[j] === undefined) return 1;
-    const da = /^\d+$/.test(xa[j]), db = /^\d+$/.test(xb[j]);
-    if (da && db) { if (+xa[j] !== +xb[j]) return +xa[j] - +xb[j]; }
-    else if (da !== db) return da ? -1 : 1;
-    else if (xa[j] !== xb[j]) return xa[j] < xb[j] ? -1 : 1;
-  }
-  return 0;
-}
-
 // 使う要素（m-…）から、書き込むパーツを依存の順に決める。
 //   used：教材の中の要素の名前、local：{要素の名前: {meta, code, where}}（埋め込みのパーツ）、pins：{名前: 版}（設定のファイルの components）
 // 返すもの：{parts: [{name, version, source: 'registry' | 'embedded', tag?, requires, file?, code?, meta}], missing: [要素の名前], warn: [文], conflicts: [文]}
 // 順：要るパーツが先（深さ優先の後順、名前の順に辿る）。同じ名前のライブラリのパーツの違う版は両方入る（name@version で分ける）。
-// 要素の名前は 1 つのファイルで 1 つ（§6.1 Order）：同じ要素のパーツの 2 つの版が要るときは、要る版のうちいちばん新しいものだけを書き、
-// ぶつかったことを知らせる（古い版を要るパーツは、ファイルの中で missing になる）。名前の違うパーツが同じ要素の名前を定義するときは、
-// 先に辿った方（教材が直に使う要素は名前の順）を残す
+// 要素の名前は 1 つのファイルで 1 つ（§6.1 Order）：同じ要素の名前を定義するパーツが 2 つ要る（1 つのパーツの 2 つの版でも、名前の違うパーツでも）なら
+// conflicts に書く。組み立てはそのとき断る（どちらかの版を落とすと、それを要るパーツが動かない。作り手がパーツを直す：§7.2 段 C）
 export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } = {}) {
   const cat = lock2.catalogues[catalogue];
   const byTag = new Map();
   for (const [n, v] of Object.entries(cat.parts)) { const p = lock2.parts[n][v]; if (p.kind === 'element') byTag.set(p.tag, n); }
-  const run = (override, exclude) => {
+  const run = () => {
     const warn = [], missing = [];
     const versionOf = (n) => {
       if (own(pins, n) && isObj(lock2.parts[n]) && own(lock2.parts[n], pins[n])) return pins[n];
@@ -180,10 +159,8 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
       return cat.parts[n];
     };
     const out = [], seen = new Set(), visiting = new Set();
-    const visit = (name, version0, from) => {
-      const version = own(override, name) ? override[name] : version0;
+    const visit = (name, version, from) => {
       const id = `${name}@${version}`;
-      if (exclude.has(id)) return false;
       if (seen.has(id)) return true;
       if (visiting.has(id)) { warn.push(`parts: ${id} requires itself (cycle via ${from}); not written`); return false; }
       const loc = Object.values(local).find((l) => l.meta && l.meta.name === name && l.meta.version === version);
@@ -207,31 +184,11 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
     }
     return { parts: out, missing, warn };
   };
-  const override = {}, exclude = new Set(), conflicts = [];
-  let r = run(override, exclude);
-  // 要素の名前がぶつかるか（ぶつかりを直すと別のぶつかりが出ることはない：書くパーツは減るだけ。念のため 4 回まで）
-  for (let round = 0; round < 4; round++) {
-    const tags = new Map();
-    for (const p of r.parts) if (p.tag) { if (!tags.has(p.tag)) tags.set(p.tag, []); tags.get(p.tag).push(p); }
-    let changed = false;
-    for (const [tag, ps] of tags) {
-      if (ps.length < 2) continue;
-      changed = true;
-      const ids = ps.map((p) => `${p.name}@${p.version}`);
-      if (ps.every((p) => p.name === ps[0].name)) {
-        const best = ps.map((p) => p.version).sort(compareVersions).pop();
-        override[ps[0].name] = best;
-        conflicts.push(`<${tag}>: ${ids.join(', ')} are required; one file defines an element name once, so only ${ps[0].name}@${best} (the highest) is written (format spec §6.1 Order)`);
-      } else {
-        const keep = ps.find((p) => used.includes(tag) && (own(local, tag) ? p.source === 'embedded' : p.source === 'registry')) || ps[0];
-        for (const p of ps) if (p !== keep) exclude.add(`${p.name}@${p.version}`);
-        conflicts.push(`<${tag}>: defined by ${ids.join(' and ')}; one file defines an element name once, so only ${keep.name}@${keep.version} is written (format spec §6.1 Order)`);
-      }
-    }
-    if (!changed) break;
-    r = run(override, exclude);
-  }
-  return { ...r, warn: [...r.warn, ...conflicts], conflicts };
+  const r = run();
+  const tags = new Map(), conflicts = [];
+  for (const p of r.parts) if (p.tag) { if (!tags.has(p.tag)) tags.set(p.tag, []); tags.get(p.tag).push(`${p.name}@${p.version}`); }
+  for (const [tag, ids] of tags) if (ids.length > 1) conflicts.push(`<${tag}> is defined by ${ids.join(' and ')}, but one file defines an element name once (format spec §6.1 Order); update the parts so that one definition satisfies every requirement`);
+  return { ...r, conflicts };
 }
 
 // ---------------------------------------------------------------- 組み立てのときの描画（§6.2 Render）
@@ -291,7 +248,7 @@ export function subsetCode(code, decl, text) {
   let out = String(code);
   for (const d of list) {
     if (typeof d.data !== 'string' || typeof d.key !== 'string') { problems.push(`entry ${JSON.stringify(d).slice(0, 80)}: needs data and key`); continue; }
-    if (!d.data.startsWith('block:')) { problems.push(`${d.data.slice(0, 64)}: subsetting a field of the lesson's data is not supported yet (only block:<name>); kept whole`); continue; }
+    if (!/^block:[a-z][a-z0-9-]{0,63}$/.test(d.data)) { problems.push(`entry data ${JSON.stringify(d.data.slice(0, 64))} is not block:<name>`); continue; }
     const name = d.data.slice(6), keyField = d.key;
     let found = false;
     out = out.replace(BLOCK_RE, (m, bn, json) => {

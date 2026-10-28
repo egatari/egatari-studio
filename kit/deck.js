@@ -291,38 +291,35 @@ DECK.define = function(name, cls){ if (!customElements.get(name)) customElements
 
 // ---------------------------------------------------------------- 部品庫 2.0 のパーツ（format spec §6.1・§8.4）
 // 2.0 のパーツは DECK.define ではなく、組み立てが書き込む登録簿（kit/parts-registry.js、globalThis.egatariParts）で定義される。
-// 登録簿の status() は {defined: ["name@version"], failed: [{name, version, reason}]}（§6.1。要素の名前は持たない）。
-// 要素の名前は組み立てが書く deck-parts（[{name, version, tag}]。索引の components の name・version・tag と同じ）から引く。
-// 再生器は、定義できた要素のパーツの要素にだけ ctx を渡す（ctx.deck は渡さない）。1.x の部品は今までどおり
+// 登録簿の status() は {defined: ["name@version"], failed: [{name, version, element?, reason}]}（§6.1）。失敗の要素は failed[].element で引く。
+// 再生器は 2.0 のパーツ（定義された要素のうち 1.x の DECK.MotionElement でないもの）に ctx だけを渡す（ctx.deck は渡さない）。1.x の部品は今までどおり
 function parts2(){
   var R = window.egatariParts;
   if (!R || typeof R.status !== "function") return null;
   var st;
   try { st = R.status(); } catch (e) { return null; }
-  if (!st || !Array.isArray(st.defined) || !Array.isArray(st.failed)) return null;
-  var list = json("deck-parts"), tagOf = Object.create(null), ok = Object.create(null);
-  (Array.isArray(list) ? list : []).forEach(function(p){ if (p && typeof p.tag === "string") tagOf[p.name + "@" + p.version] = p.tag; });
-  st.defined.forEach(function(id){ if (tagOf[id]) ok[tagOf[id]] = id; });
-  return {status: st, tagOf: tagOf, elements: ok};
+  return st && Array.isArray(st.defined) && Array.isArray(st.failed) ? st : null;
 }
-var P2 = null;   // init で読む：{status, tagOf: {name@version: 要素の名前}, elements: {定義できた要素の名前: name@version}}
+var P2 = null;   // init で読む：登録簿の status()
 function isPart2(e){
-  if (!P2 || !e.localName || !Object.prototype.hasOwnProperty.call(P2.elements, e.localName)) return false;
+  if (!P2 || !e.localName || e instanceof MotionElement) return false;
   var C = customElements.get(e.localName);
-  return !!C && e instanceof C && typeof e.render === "function";
+  return !!C && e instanceof C && typeof e.render === "function" && typeof e.mount === "function";
 }
 // 登録簿が失敗を記録したパーツ（と、それに頼るパーツ）の要素：最後の状態の字の代わり（aria-label）を出し、品質チェックに知らせる。
-// duplicate（2 度目の define）と、要素の名前をほかのパーツが先に定義した element は、最初のものが動くので字の代わりにしない
+// duplicate（2 度目の define）と、その要素の名前がほかのパーツで定義できているもの（element）は、最初のものが動くので字の代わりにしない
 function partFailures(s, i){
   if (!P2) return;
-  P2.status.failed.forEach(function(f){
-    var tag = P2.tagOf[f.name + "@" + f.version];
-    if (!tag || f.reason === "duplicate" || P2.elements[tag]) return;
-    [].forEach.call(s.querySelectorAll(tag), function(e){
+  P2.failed.forEach(function(f){
+    var tag = f.element;
+    if (typeof tag !== "string" || !tag || f.reason === "duplicate" || customElements.get(tag)) return;
+    var list;
+    try { list = s.querySelectorAll(tag); } catch (e) { return; }   // 名前でない element（meta の失敗）
+    [].forEach.call(list, function(e){
       if (e._partFailed) return;
       e._partFailed = true;
       var rec = {slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: tag, label: e.getAttribute("aria-label") || "",
-        index: [].indexOf.call(s.querySelectorAll(tag), e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason};
+        index: [].indexOf.call(list, e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason};
       DECK.componentErrors.push(rec);
       console.warn("[deck] " + tag + " (" + (s.id || rec.key) + "): " + rec.msg);
       [].slice.call(e.childNodes).forEach(function(n){ if (!(n.nodeType === 1 && n.localName === "script")) e.removeChild(n); });

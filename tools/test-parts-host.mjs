@@ -4,7 +4,7 @@
 // m-probe・m-boom・m-orphan は作業フォルダの埋め込みのパーツ）を組んで開き、確かめること：
 //   組み立て：登録簿がパーツより前・パーツが依存の順・m-flow の tex を KaTeX で描いて texHtml と renderers を足す・m-kakijun の塊を教材の字に絞る
 //   登録簿：status() は {defined, failed: [{name, version, reason}]}。factory が投げたパーツ（factory）と、それに頼るパーツ（dependency）は失敗として記録され、
-//   その要素は字の代わり（data-part-failure="define"）と品質チェックへの知らせ。要素の名前は組み立てが書く deck-parts から引く
+//   その要素（failed[].element）は字の代わり（data-part-failure="define"）と品質チェックへの知らせ。要素の名前がぶつかる教材は組まずに断る
 //   組み立て：meta が字のままの object でない埋め込みのパーツは書かずに知らせる。絞り込みの字は原稿の全部（属性の値も）・口述原稿・パーツに渡すデータ・glyphs
 //   ctx：mount に mode・preview・slide・lang・slides・go・report・visited（deck はない）。slides は凍った [{key, title, steps, concl}]
 //   守り（2 段）：mount・render で投げたパーツは base が止めて ctx.report("error") し、デッキは動き続ける
@@ -54,11 +54,22 @@ const strokes = /\/\*@egatari-block strokes\*\/(.*?)\/\*@egatari-block-end\*\//s
 const keptS = strokes ? (() => { const v = JSON.parse(strokes[1]); return Array.isArray(v) ? v.map((x) => x.char) : Object.keys(v).filter((k) => !k.startsWith('_')); })() : [];
 ok(keptS.length > 0 && keptS.every((k) => kept.includes(k)) && kept.every((k) => keptS.includes(k)), `both declared blocks are subset on their own to the same text (${keptS.length} / ${kept.length})`);
 ok(/refused: components\/nonlit\/index\.js: the meta of egatariParts\.define is not a literal JSON object/.test(log) && !/\/\/ ---- nonlit@/.test(html), 'an embedded part whose meta is not a literal object is reported and not written');
-const dp = /<script type="application\/json" id="deck-parts">([\s\S]*?)<\/script>/.exec(html);
-const deckParts = dp ? JSON.parse(dp[1]) : [];
-ok(deckParts.some((x) => x.name === 'bars' && x.version === '2.0.0' && x.tag === 'm-bars') && deckParts.some((x) => x.name === 'boom' && x.tag === 'm-boom') && deckParts.every((x) => x.tag),
-  `deck-parts lists the element parts' name, version and tag (${deckParts.map((x) => x.name + '@' + x.version + '=' + x.tag).join(' ')})`);
 ok(!/component not found|is not in components2/.test(log), 'no part is missing from the build');
+// 要素の名前がぶつかる教材は組まずに断る（§6.1 Order：名前の違う 2 つのパーツが <m-pie> を定義する。作り手がパーツを直す、§7.2 段 C）
+{
+  const cdir = path.join(out, 'conflict-src');
+  fs.rmSync(cdir, { recursive: true, force: true });
+  fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), cdir, { recursive: true });
+  for (const [n, code] of [['pie', 'egatariParts.define({name: "mypie", version: "0.1.0", requires: {base: "1.0.0"}, element: "m-pie"}, function(d){ return class extends d.base.Part {}; });'],
+    ['zz', 'egatariParts.define({name: "zz", version: "0.1.0", requires: {pie: "2.0.0"}, element: "m-zz"}, function(d){ return class extends HTMLElement {}; });']]) {
+    fs.mkdirSync(path.join(cdir, 'components', n), { recursive: true });
+    fs.writeFileSync(path.join(cdir, 'components', n, 'index.js'), code + '\n');
+  }
+  fs.writeFileSync(path.join(cdir, 'deck.html'), fs.readFileSync(path.join(cdir, 'deck.html'), 'utf8').replace('</div>\n</body>', '<section class="slide" id="p-five"><h2>ぶつかり</h2><div class="body"><m-pie aria-label="円"></m-pie><m-zz aria-label="z"></m-zz></div></section>\n</div>\n</body>'));
+  const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(cdir, 'deck.html'), '-o', path.join(out, 'conflict.html')], { encoding: 'utf8' });
+  ok(rc.status !== 0 && /<m-pie> is defined by .*one file defines an element name once/.test(rc.stdout + rc.stderr) && !fs.existsSync(path.join(out, 'conflict.html')),
+    `two parts defining one element name: the build refuses and reports the conflict (${rc.status}; ${(rc.stdout + rc.stderr).split('\n').find((l) => /m-pie/.test(l)) || ''})`);
+}
 // 1 ファイル（--portable）にはまだしない（索引の components に 2.0 のパーツを書くのは後の段。1.x の書き方の記録は中のコードと合わない）
 {
   const tmpDeck = path.join(out, 'portable-src');
@@ -82,7 +93,7 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
 };
 const { p, errs } = await open(fileUrl(deck));
 const st = await p.evaluate(() => egatariParts.status());
-ok(eq2(Object.keys(st), ['defined', 'failed']) && st.failed.some((f) => f.name === 'boom' && f.reason === 'factory') && st.failed.some((f) => f.name === 'orphan' && f.reason === 'dependency'),
+ok(eq2(Object.keys(st), ['defined', 'failed']) && st.failed.some((f) => f.name === 'boom' && f.element === 'm-boom' && f.reason === 'factory') && st.failed.some((f) => f.name === 'orphan' && f.element === 'm-orphan' && f.reason === 'dependency'),
   `registry status(): the failed factory (factory) and its dependant (dependency): ${st.failed.map((f) => f.name + ': ' + f.reason).join(' | ')}`);
 ok(['bars@2.0.0', 'flow@2.0.0', 'kakijun@2.0.0', 'probe@0.1.0'].every((t) => st.defined.includes(t)), 'registry defined the element parts');
 const fb = await p.evaluate(() => ['m-boom', 'm-orphan'].map((t) => { const e = document.querySelector(t); const x = e && e.querySelector('[data-part-failure="define"]'); return x ? x.textContent : null; }));

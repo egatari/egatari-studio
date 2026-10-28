@@ -8,13 +8,15 @@
 //   （その名前がもう定義されていれば element の失敗：factory は呼ばない）
 // - 失敗はパーツごとに 1 つの理由（reason）で記録する（§6.1 Registry）。そのパーツに頼るパーツも失敗する。ほかのパーツは動く。
 //   要素は定義されないので、再生器は最後の状態の絵か字の代わりを出す
-//     factory    factory が投げた（factory が関数でない・要素のパーツが HTMLElement のクラスを返さない・meta が形に合わない、も同じ扱い）
+//     meta       meta が、正しい name と version を持つ object でない（requires・element の形の違いも）
+//     factory    factory が関数でない・投げた・要素のパーツが custom element のクラスを返さない
 //     missing    要るパーツ（requires の name@version）が先に定義されていない
 //     dependency 要るパーツが失敗した
 //     duplicate  同じ name@version の 2 度目の define（後のものは使わない。最初のものが残る）
-//     element    その custom element の名前がもう定義されている（最初のものが残る。1 つのファイルで要素の名前は 1 つ）
+//     element    その custom element の名前がもう定義されている（最初のものが残る。1 つのファイルで要素の名前は 1 つ）か、定義が投げた
 // 再生器（deck.js）と道具が読むための口（パーツは使わない。数えない property）：
-//   egatariParts.status() → {defined: ["name@version", …], failed: [{name, version, reason}, …]}（どちらも呼ばれた順）
+//   egatariParts.status() → {defined: ["name@version", …], failed: [{name, version, element?, reason}, …]}（どちらも呼ばれた順。
+//   element は meta のとおり：再生器が、どの要素を最後の状態の絵か字の代わりにするかを知る）
 (function(){
 "use strict";
 if (globalThis.egatariParts) return;   // 2 回書き込まれても、最初のものだけ
@@ -29,8 +31,9 @@ function str(x){ return typeof x === "string" ? x : String(x); }
 function fail(meta, reason, why){
   var name = meta && typeof meta === "object" ? str(meta.name) : "undefined";
   var version = meta && typeof meta === "object" ? str(meta.version) : "undefined";
+  var element = meta && typeof meta === "object" && typeof meta.element === "string" ? meta.element : null;
   if (reason !== "duplicate") failed[name + "@" + version] = reason;
-  failures.push({name: name, version: version, reason: reason});
+  failures.push(element === null ? {name: name, version: version, reason: reason} : {name: name, version: version, element: element, reason: reason});
   try { console.warn("[egatariParts] " + name + "@" + version + ": " + reason + (why ? " (" + why + ")" : "")); } catch (e) { /* 知らせに失敗しても続ける */ }
 }
 function metaProblem(meta){
@@ -48,7 +51,7 @@ function metaProblem(meta){
 }
 function define(meta, factory){
   var p = metaProblem(meta);
-  if (p) return fail(meta, "factory", p);
+  if (p) return fail(meta, "meta", p);
   var id = meta.name + "@" + meta.version;
   if (parts[id] || failed[id]) return fail(meta, "duplicate", id + " is already defined; the first is kept");
   if (meta.element !== undefined && customElements.get(meta.element)) return fail(meta, "element", "<" + meta.element + "> is already defined; the first is kept");
@@ -76,7 +79,7 @@ function define(meta, factory){
   defined.push(id);
 }
 function status(){
-  return {defined: defined.slice(), failed: failures.map(function(f){ return {name: f.name, version: f.version, reason: f.reason}; })};
+  return {defined: defined.slice(), failed: failures.map(function(f){ var o = {name: f.name, version: f.version}; if (f.element !== undefined) o.element = f.element; o.reason = f.reason; return o; })};
 }
 var reg = {define: define};
 Object.defineProperty(reg, "status", {value: status, enumerable: false});

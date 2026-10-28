@@ -4,7 +4,7 @@
 //    この Studio が書き出した 1.0 のファイル（player がある）は前の版にしない・
 //    開く Studio の版（versions.json にあればその版、なければ 1.0 より前の最も新しい版、読めなければ凍結した写しの範囲か v0.4.8）・作業フォルダ（egatari.json があり、どのスライドにも id がない。手で足した id のないスライドだけでは前の版にしない）
 // 2. 編集アプリ（tools/build-app.mjs で組んで 127.0.0.1 で配る。versions.json のあるサイト /site/ とないところ /nosite/）：
-//    仕様の試験用のファイル（vendor/egatari-spec/fixtures/documents。player のない草案のファイル）を開くと知らせと 2 つのボタン（正しい URL）が出て、
+//    仕様の試験用のファイル（vendor/egatari-spec/fixtures/documents の legacy-heading-keys。player のない草案のファイル。cb5588f からほかは 1.0 の形）を開くと知らせと 2 つのボタン（正しい URL）が出て、
 //    ファイルそのものがプレビューで再生され、編集・保存は断る。player を足した写し（1.0 のファイルのつもり）と、この Studio が書き出したものは知らせなし。
 //    player がなく generator がこの Studio の版のもの（0.6.0 より前のリリースが同じ版の番号で書いたもの）は知らせあり。
 //    英語の画面。作業フォルダ：egatari.json と id のないスライド → 知らせ（npm run ids。編集は断らない）→ id を付けて組み直すと知らせが消える。id のあるフォルダに id のないスライドを手で足しても知らせなし。egatari.json のないフォルダは知らせなし
@@ -30,11 +30,11 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
 
 // ---------------------------------------------------------------- 1. 決まり
 const SPEC_DOCS = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'), 'fixtures', 'documents');
-const draftHtml = fs.readFileSync(path.join(SPEC_DOCS, 'minimal-portable-core.ega.html'), 'utf8');
+const draftHtml = fs.readFileSync(path.join(SPEC_DOCS, 'legacy-heading-keys.ega.html'), 'utf8');
 const indexOf = (html) => JSON.parse(scanDocument(html).byId.get(FORMAT.INDEX_ID).text);
 const draftIx = indexOf(draftHtml);
 const me = { name: GENERATOR, version: VERSION };
-ok(!Object.prototype.hasOwnProperty.call(draftIx, 'player') && draftIx.generator.version === '0.3.1', `fixture: minimal-portable-core has no player (made with ${draftIx.generator.version})`);
+ok(!Object.prototype.hasOwnProperty.call(draftIx, 'player') && draftIx.generator.version === '0.3.1', `fixture: legacy-heading-keys (a pre-1.0 draft file kept by the spec) has no player (made with ${draftIx.generator.version})`);
 // この Studio の書き出し（1.0 の形）：examples/minimal を写したフォルダを詰める（書き出しは id をフォルダに書き戻すので写しで）
 const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-earlier-pack-'));
 for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(ROOT, 'examples', 'minimal', f), path.join(packDir, f));

@@ -885,8 +885,6 @@ export function build(env0, srcPath, opts = {}) {
   const scriptList = [
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
     j('deck-meta', opts.deckMeta || { version: env.version }),
-    // 部品庫 2.0 の要素のパーツの name・version・tag（索引の components と同じ。再生器が登録簿の status() の name@version を要素に結ぶ）
-    parts2 ? j('deck-parts', parts2.parts.filter((p) => p.tag).map((p) => ({ name: p.name, version: p.version, tag: p.tag }))) : '',
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
@@ -999,7 +997,7 @@ export function defaultOut(P, srcPath) {
 // egatariParts.define を書いていれば埋め込みのパーツ（requires を字で読む）、そうでなければ 1.x の部品（DECK.define。legacy で返し、今までどおり読む）。
 // 組み立てのときに描く欄（build.fields）は KaTeX で描いてデータに足し（abcjs はまだ：描かずに残し、パーツが元の字を出して知らせる）、
 // 絞り込み（build.subset）は教材の字（原稿の全部の字・口述原稿・パーツに渡すデータ・パーツの glyphs）に出てくるキーだけを、宣言ごとに宣言した順に残す。
-// meta は字で読む（§6.1：式のない JSON の object。読めないパーツは書かない）。同じ要素の名前のパーツは 1 つだけ（resolveParts）。
+// meta は字で読む（§6.1：式のない object の字。読めないパーツは書かない）。同じ要素の名前を定義するパーツが 2 つ要るなら断る（resolveParts の conflicts）。
 // 返すもの：{html, js, legacy: [1.x として読む要素], localFiles, catalogue, parts: [{name, version, source, tag?, requires, license?, sha256?, subset?, renderers?}]}
 function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins, warn, macros, lessonText }) {
   const local = {}, legacy = [], localFiles = [], refused = new Set();
@@ -1015,6 +1013,8 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
     local[tag] = { meta: rd.meta, code, where };
   }
   const r = resolveParts(lock2, catalogue, used.filter((t) => !legacy.includes(t) && !refused.has(t)), { local, pins });
+  // 要素の名前がぶつかる：組まずに断る（§6.1 Order。どれかの版を落とすと、それを要るパーツが動かない。作り手がパーツを直す：§7.2 段 C）
+  if (r.conflicts.length) throw new Error(`components ${catalogue}: ${r.conflicts.join('; ')}`);
   warn.push(...r.warn);
   for (const t of r.missing) warn.push(`component not found: ${t} (not in the components ${catalogue} catalogue)`);
   const base = vendorDir2(P, ROOT), parts = [];
