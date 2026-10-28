@@ -272,6 +272,8 @@ function compWhat(a, ja) {
     case 'empty': return ja ? '要素の中に字がない' : 'there is no text inside the element';
     case 'notLinks': return ja ? 'この部品は JSON ではなく、子のリンク <a href> で書く' : 'this component is written as child <a href> links, not as JSON';
     case 'noLinks': return ja ? '子のリンク <a href> がない' : 'there are no child <a href> links';
+    // 部品が ctx.report で知らせた（format spec §8.4。code は data・attr・error など。msg は部品の言葉で [名前] から始まる）
+    case 'report': return ja ? `部品が知らせた（${a.code}）：${a.msg}` : `the component reported (${a.code}): ${a.msg}`;
     default: return a.dataLike
       ? (ja ? `部品が描けずに止まった（${a.msg}）。データの形が部品の形と合っていないときに出る誤り` : `the component stopped while drawing (${a.msg}); this usually means the data does not have the component’s shape`)
       : (ja ? `部品が描けずに止まった（${a.msg}）` : `the component stopped while drawing (${a.msg})`);

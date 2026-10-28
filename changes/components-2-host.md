@@ -1,0 +1,9 @@
+### Added
+
+- Components 2.0 (preview, opt-in per lesson): Studio vendors egatari/components **v2.0.0-rc.1** next to 1.13.x (`vendor/components-2/`, `components2.lock.json`, `tools/components2-update.mjs`). A lesson uses it only when `egatari.json` has `"componentsCatalogue": "2"` (or a catalogue version) or the build is given `--components-catalogue 2`; every other lesson builds with 1.x exactly as before.
+- For a 2.0 lesson the build writes the parts registry (`egatariParts`, format spec §6.1) and then the parts in dependency order with exact versions, renders the declared `tex` fields with KaTeX at build time (`texHtml`, `renderers`; spec §6.2), and keeps only the characters the lesson uses in subset blocks (e.g. `m-kakijun` stroke data). `abc` fields (abcjs) are not rendered yet: the part shows the source and reports it.
+- The player passes the full component context of spec §8.4 (`lang`, `slides`, `go`, `report`, `visited`, alongside `mode`, `preview`, `slide`, `instant`, `entered`, `reset`) and calls `layout(ctx)` when the window is resized, fonts finish loading or a slide becomes visible. Exceptions in parts are contained by the part's base and again by the player; reports are kept in `DECK.componentReports` (errors also in `DECK.componentErrors`).
+
+### Fixed
+
+- Printing, the slide overview and the quality check no longer count as entering a slide (`ctx.entered`), and returning from them keeps the viewer's input (counts in `m-predict`, a timer's extension); video frames never enter (spec §8.4).

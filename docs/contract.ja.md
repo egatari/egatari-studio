@@ -48,7 +48,9 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 });
 ```
 
-- `ctx` は形式 §8.4 に挙げたものだけ。ほかに頼らない（Studio の実行系は内部のもの `ctx.deck` も渡すが、約束の一部ではない）
+- `ctx` は形式 §8.4 に挙げたものだけ。ほかに頼らない（Studio の実行系は内部のもの `ctx.deck` も渡すが、約束の一部ではなく、1.x のパーツにだけ渡す）
+- **パーツライブラリ 2.0（試し。教材ごとに選ぶ）。** 作業フォルダの `egatari.json` に `"componentsCatalogue": "2"`（または `"2.0.0-rc.1"` のようなカタログの版。組み立ての `--components-catalogue`）がある教材は、egatari/components 2.x のパーツで組む（`vendor/components-2/<名前>/<版>/`、`components2.lock.json` で固定、`node tools/components2-update.mjs v2.Y.Z` で取り込む）。組み立ては登録簿 `egatariParts`（`kit/parts-registry.js`、形式 §6.1）を書き、使う要素が要るパーツを依存の順に、ちょうどの版で書く。教材の中のパーツ（`<デッキ>/components/<名前>/index.js`）は、`egatariParts.define` を書いていれば埋め込みの 2.0 のパーツ（`requires` は字で読み、動かさない）、`DECK.define` なら 1.x のパーツのまま。パーツが `build.fields` に宣言した欄は組み立てのときに描き（今は KaTeX。abcjs はまだ）、`build.subset` の塊は教材の字だけを残す（形式 §6.2）。2.0 のパーツには `deck` のない `ctx` を渡し、実行系は `layout(ctx)` を呼び（大きさが変わった・字が読み込まれた・スライドが見えた）、パーツの知らせを `DECK.componentReports` に残す（`error`・`data`・`attr` は `DECK.componentErrors` にも）。`componentsCatalogue` がなければ何も変わらない
+- 見ている人のものでない描画（印刷・スライド一覧・品質チェック・動画のコマ）はスライドに入ったことにしない：`ctx.entered` は `false` のまま、見ている位置に戻るときも見る人の入力を消さない。別の位置を描いて戻る道具は、`DECK.seek` を `DECK.aside(fn)` の中で呼ぶ
 - 手で動かした状態：パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると、実行系はそのパーツに触れた印を付け、次にステップに入るとき（どの `DECK.seek` や `DECK.go` も、リンク、発表者ビューの指示、印刷）、まず別のステップ（t = Infinity）で描いてから (k, t) を `ctx.reset = true` で描く。触れていないパーツは 1 回だけ描く
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - データ：検算したスクリプトが出した数だけを使う。パーツの子に `<script type="application/json">{{JSON:file.json}}</script>` を置き、`this.data` で読む（直下の子にちょうど 1 つ。2 つ以上なら `this.data` は `null` で、スライドは独自のコードを持つものとして扱う）
