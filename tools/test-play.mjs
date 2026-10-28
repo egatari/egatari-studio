@@ -144,7 +144,9 @@ function serve(dir, { headers = true } = {}) {
   const extra = new Map(), reqs = [];
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x');
-    reqs.push(req.method + ' ' + u.pathname);
+    // the browser's own update check of the service worker script (header Service-Worker: script) is marked: it may reach the server even
+    // while the page is offline (see the offline check below)
+    reqs.push(req.method + ' ' + u.pathname + (req.headers['service-worker'] === 'script' ? ' (update check)' : ''));
     if (extra.has(u.pathname)) { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(extra.get(u.pathname)); return; }
     if (u.pathname === '/share' && req.method === 'POST') { req.resume(); res.writeHead(303, { Location: '/?share=nosw' }); res.end(); return; }
     let p = decodeURIComponent(u.pathname); if (p.endsWith('/')) p += 'index.html';
@@ -284,7 +286,11 @@ console.log('service worker');
   ok(await o.p.evaluate(async () => (await fetch('./manifest.webmanifest')).ok && (await fetch('./icons/icon-192.png')).ok && (await fetch('./icons/favicon.svg')).ok), 'offline: the manifest and icons come from the cache');
   await openFixture(o.p, 'lesson.play.ega.html');
   ok(!!(await lessonFrame(o.p)), 'offline: a lesson plays');
-  ok(site.reqs.length === before, `offline: nothing reached the server (${site.reqs.slice(before).join(', ')})`);
+  // The browser checks for an update of sw.js about 1 s after a navigation (Soft Update). That fetch is made by the browser itself, so
+  // Playwright's setOffline does not stop it, and on a slow runner (macOS CI) it lands inside the offline part. It is not the Viewer
+  // fetching anything: on a real offline device it fails and the old worker stays. Only that check may reach the server here.
+  const reached = site.reqs.slice(before).filter((r) => r !== 'GET /sw.js (update check)');
+  ok(reached.length === 0, `offline: nothing the Viewer asked for reached the server (${reached.join(', ')}; the browser's update checks of sw.js: ${site.reqs.length - before - reached.length})`);
   await o.p.click('#b-close');
   await o.ctx.setOffline(false);
   // a new version, rebuilt into the same folder. It is found while a lesson plays: it installs and waits; nothing is swapped
