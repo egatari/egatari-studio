@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-hissan の見本</title>
+<!-- 組み方：node kit/build.mjs components/hissan/demo.html -o components/hissan/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>0 のあるひき算：1003−457</h2>
+  <div class="body">
+    <m-hissan expr="1003-457" style="height:400px"></m-hissan>
+  </div>
+  <div class="concl"><span>→ 十の位も百の位も 0 なので、千の位から順にくり下げる</span></div>
+</section>
+
+<section class="slide">
+  <h2>2 けたをかけるかけ算：38×24</h2>
+  <div class="body">
+    <m-hissan expr="38×24" style="height:420px"></m-hissan>
+  </div>
+  <div class="concl"><span>→ 38×2 の 76 は、十の位から書く</span></div>
+</section>
+
+<section class="slide">
+  <h2>2 けたでわるわり算：851÷23</h2>
+  <div class="body">
+    <m-hissan expr="851÷23" kari="on" style="height:440px"></m-hissan>
+  </div>
+  <div class="concl"><span>→ 仮の商が大きすぎたら、1 小さくしてやり直す</span></div>
+</section>
+
+</div>
+</body>
+</html>
