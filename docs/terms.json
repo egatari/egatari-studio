@@ -1422,7 +1422,7 @@
    "definition": "Drop zone on the start screen, e.g. “.ega.html ファイルをここにドラッグ＆ドロップ”. Follows Google Drive / Windows wording.",
    "avoid": {
     "ja": [
-     "落とす"
+     "落とす（ファイルを置く意味で）"
     ],
     "en": [
      "Drop … here (alone)"
@@ -1441,11 +1441,11 @@
    "definition": "A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder.",
    "avoid": {
     "ja": [
-     "写し",
+     "写し（書き出したファイルの意味で）",
      "フォルダには入りません"
     ],
     "en": [
-     "copy (alone)"
+     "copy (for an exported file)"
     ]
    },
    "internal": "exportedFrom (spec §3.1)",
@@ -1461,11 +1461,11 @@
    "definition": "Privacy line: the app reads and writes files on the device and uploads nothing, e.g. 「ファイルはどこにもアップロードしません」. Usual wording of browser-only tools.",
    "avoid": {
     "ja": [
-     "送りません",
-     "送信しません"
+     "送りません（プライバシーの文で）",
+     "送信しません（同）"
     ],
     "en": [
-     "sent (alone)"
+     "sent (in the privacy line)"
     ]
    },
    "internal": "",

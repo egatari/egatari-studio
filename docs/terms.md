@@ -105,9 +105,9 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | theme | Theme | テーマ | Colours, fonts and logo of the slides. | デザインアドオン | theme | 2026-10-24 (owner) |
 | change-theme | Change theme… | テーマを変更… | Switch the lesson's theme (Slide menu). | テーマを変える… |  | 2026-10-25 (standards) |
 | load-theme | Load theme… | テーマを読み込む… | Add a theme from a ZIP file or a theme folder. | ほかのテーマを読み込む… |  | 2026-10-25 (standards) |
-| drag-and-drop | Drag a file here | ここにファイルをドラッグ＆ドロップ | Drop zone on the start screen, e.g. “.ega.html ファイルをここにドラッグ＆ドロップ”. Follows Google Drive / Windows wording. | 落とす / Drop … here (alone) |  | 2026-10-29 (standards) |
-| exported-file | File exported from a working folder | 作業フォルダから書き出したファイル | A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder. | 写し ・ フォルダには入りません / copy (alone) | exportedFrom (spec §3.1) | 2026-10-29 (standards) |
-| no-upload | Not uploaded | アップロードしません | Privacy line: the app reads and writes files on the device and uploads nothing, e.g. 「ファイルはどこにもアップロードしません」. Usual wording of browser-only tools. | 送りません ・ 送信しません / sent (alone) |  | 2026-10-29 (standards) |
+| drag-and-drop | Drag a file here | ここにファイルをドラッグ＆ドロップ | Drop zone on the start screen, e.g. “.ega.html ファイルをここにドラッグ＆ドロップ”. Follows Google Drive / Windows wording. | 落とす（ファイルを置く意味で） / Drop … here (alone) |  | 2026-10-29 (standards) |
+| exported-file | File exported from a working folder | 作業フォルダから書き出したファイル | A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder. | 写し（書き出したファイルの意味で） ・ フォルダには入りません / copy (for an exported file) | exportedFrom (spec §3.1) | 2026-10-29 (standards) |
+| no-upload | Not uploaded | アップロードしません | Privacy line: the app reads and writes files on the device and uploads nothing, e.g. 「ファイルはどこにもアップロードしません」. Usual wording of browser-only tools. | 送りません（プライバシーの文で） ・ 送信しません（同） / sent (in the privacy line) |  | 2026-10-29 (standards) |
 | my-themes | My themes | 自分のテーマ | Themes loaded by the user. | テーマのフォルダ…（画面で） |  | 2026-10-25 (standards) |
 
 ## Quality

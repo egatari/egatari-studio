@@ -386,24 +386,6 @@
       "reason": "A frozen copy of a release (version notice), not an exported file."
     },
     {
-      "file": "README.ja.md",
-      "line": "ZIP を落とす",
-      "term": "drag-and-drop",
-      "reason": "Download the ZIP, not a drop zone."
-    },
-    {
-      "file": "docs/editor.ja.md",
-      "line": "形の合わない値は落とす",
-      "term": "drag-and-drop",
-      "reason": "Discard a value, not a drop zone."
-    },
-    {
-      "file": "docs/contract.ja.md",
-      "line": "再生専用の派生は索引を落とす",
-      "term": "drag-and-drop",
-      "reason": "Omit the index, not a drop zone."
-    },
-    {
       "file": "app/**",
       "pattern": "写し|[Cc]opy",
       "term": "exported-file",
@@ -434,16 +416,17 @@
       "reason": "Participants sent answers in the Live (a description of the data)."
     },
     {
-      "file": "docs/viewer.ja.md",
-      "line": "何も送りません",
-      "term": "no-upload",
-      "reason": "postMessage between the frame and the go-between, not an upload claim."
-    },
-    {
       "file": "app/i18n.js",
       "pattern": "Sample lessons",
       "term": "voice-sample",
       "reason": "The glossary term sample (Samples) in the examples lead, not a voice sample."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}",
+      "term": "no-upload",
+      "pairs": true,
+      "reason": "The English privacy line says 'nothing is uploaded' (owner-decided wording) for ja アップロードしません."
     }
   ]
 }

@@ -41,6 +41,7 @@ import { applyYomi } from '../kit/core/yomi.mjs';
 import { readAloud, stopReadAloud, readingAloud, readAloudSupported } from './read-aloud.js';
 import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, expectedCues, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
+import { AI_VOICE_LABELS } from './i18n.js';
 import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
@@ -57,7 +58,7 @@ const STR = {
     },
     // B. 音声の付け方
     how: {
-      legend: '音声をどう付けますか', cloud: 'AI 音声をクラウドで作る（Google Colab）', local: 'AI 音声をこの PC で作る',
+      legend: '音声をどう付けますか', cloud: AI_VOICE_LABELS.ja.cloud, local: AI_VOICE_LABELS.ja.local,
       localHint: (size) => `初めてのときに音声のモデル（約 ${size}）を取得します`, localGo: (n) => `この PC で作る（${n} ステップ）`, localNone: '音声の要るステップはありません',
       rec: '自分の声で録音する', recBtn: '録音モードを開く (r)', recHint: '台本を大きく出して、キーボードだけで録れます。Space で録音と停止、Enter で次へ',
     },
@@ -99,7 +100,7 @@ const STR = {
       noSegs: 'No script yet (write it in the Script panel)',
     },
     how: {
-      legend: 'How do you want to add audio?', cloud: 'Make AI voice in the cloud (Google Colab)', local: 'Make AI voice on this computer',
+      legend: 'How do you want to add audio?', cloud: AI_VOICE_LABELS.en.cloud, local: AI_VOICE_LABELS.en.local,
       localHint: (size) => `The first time, the voice model (about ${size}) is downloaded`, localGo: (n) => `Make on this computer (${n} step${n === 1 ? '' : 's'})`, localNone: 'No step needs audio',
       rec: 'Record your own voice', recBtn: 'Open recording mode (r)', recHint: 'Shows the script large; record with the keyboard only. Space starts and stops, Enter goes to the next',
     },

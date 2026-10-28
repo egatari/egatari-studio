@@ -12,6 +12,11 @@ function pickLang() {
   return /^ja\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ja') ? 'ja' : 'en';
 }
 export const EN = pickLang() === 'en';
+// 音声の板の「音声をどう付けますか」の 2 つの選び（app/audio-panel.js が同じものを使う）。はじめの画面のプライバシーの文もこの名前で言う
+export const AI_VOICE_LABELS = {
+  ja: { cloud: 'AI 音声をクラウドで作る（Google Colab）', local: 'AI 音声をこの PC で作る' },
+  en: { cloud: 'Make AI voice in the cloud (Google Colab)', local: 'Make AI voice on this computer' },
+};
 document.documentElement.lang = EN ? 'en' : 'ja';
 // クラウドで作る（音声の板の「音声をどう付けますか」の Google Colab。手順は COLAB_STEPS）。確認した範囲の記しは kit/core/colab-core.mjs の COLAB_VERIFIED（1 か所）
 const ver = (l) => COLAB_VERIFIED[l];
@@ -59,7 +64,7 @@ const ja = {
   newGo: 'フォルダを選んで作る', cancel: 'キャンセル', recent: '最近のファイル', recentNone: 'まだありません', reopen: '開く', forget: '一覧から消す',
   recentFolder: '作業フォルダ', recentFile: 'Egatari ファイル', cannotOpenRecentFile: 'このファイルは開けません（移動・削除された？）',
   saveNote: '注意：このブラウザでは、Egatari ファイルの「保存」はダウンロードになり、保存するたびに、ダウンロードのフォルダに新しいファイルができます（名前に番号が付くことがあります）。次に開くときは、いちばん新しいものを選んでください',
-  privacy: 'ファイルは、開いたファイルと選んだフォルダだけを読み書きし、どこにもアップロードしません。AI 音声を初めて使うときは、音声のモデルをダウンロードします（教材はアップロードしません）。',
+  privacy: `ファイルは、開いたファイルと選んだフォルダだけを読み書きし、どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}」では、初めに音声のプログラムとモデルをダウンロードします。「${AI_VOICE_LABELS.ja.cloud}」では、台本を自分で Colab にアップロードします。`,
   buildFailed: 'スライドを組み立てられませんでした', buildFailedHint: 'スライドを直して保存すると、自動で組み直します（AI のコーディング道具やほかのエディタで直してもかまいません）', building: '組み立て中…',
   noPermission: 'フォルダを読み書きする許可がありません', cannotOpen: 'このフォルダは開けません（移動・削除された？）', dropFolder: 'ファイルではなくフォルダを選んでください',
   noDeck: 'このフォルダにスライドの HTML（deck.html）がありません', popupBlocked: '新しい窓を開けませんでした（ポップアップを許可してください）', noFullscreen: '全画面にできませんでした',
@@ -195,7 +200,7 @@ const ja = {
   // はじめの画面の見本（サイトに置いた 1 ファイル。tools/build-app.mjs）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。開いて再生したり、直したりできます。', exampleOpen: '開く',
   exampleFailed: 'サンプルを読み込めませんでした',
-  exampleMeta: (n, mb, code) => `${n} 枚 · ${mb} MB${code ? ' · 独自のコードを含む（開く前に確かめます）' : ''}`,
+  exampleMeta: (n, mb, code) => `${n} 枚 · ${mb} MB${code ? ' · 独自のコードを含む（開くときに確認します）' : ''}`,
   unsavedTitle: '保存していない変更', unsavedLead: '開いているファイルに、保存していない変更があります。捨てて先へ進みますか？',
   unsavedLang: '保存していない変更は消えます。言葉を切り替えますか？',
   saving: '保存しています…', saveFailed: '保存できませんでした',
@@ -426,7 +431,7 @@ const en = {
   newGo: 'Choose a folder and create', cancel: 'Cancel', recent: 'Recent files', recentNone: 'None yet', reopen: 'Open', forget: 'Remove from list',
   recentFolder: 'working folder', recentFile: 'Egatari file', cannotOpenRecentFile: 'This file cannot be opened (moved or deleted?)',
   saveNote: 'Note: in this browser, Save for an Egatari file is a download, and each save makes a new file in your downloads (the name may get a number). Next time, open the newest one.',
-  privacy: 'Only the file you open and the folder you choose are read and written; nothing is uploaded. The first time you use AI voice, the voice model is downloaded (your lesson is not uploaded).',
+  privacy: `Only the file you open and the folder you choose are read and written; nothing is uploaded. “${AI_VOICE_LABELS.en.local}” first downloads the voice program and model. “${AI_VOICE_LABELS.en.cloud}” has you upload the script to Colab yourself.`,
   buildFailed: 'The slides could not be built', buildFailedHint: 'Fix the slides and save; it rebuilds automatically (fixing it in an AI coding tool or another editor works too).', building: 'Building…',
   noPermission: 'No permission to read and write this folder', cannotOpen: 'This folder cannot be opened (moved or deleted?)', dropFolder: 'Please choose a folder, not a file',
   noDeck: 'No slides HTML (deck.html) in this folder', popupBlocked: 'Could not open a new window (allow pop-ups)', noFullscreen: 'Could not go fullscreen',
@@ -559,7 +564,7 @@ const en = {
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
   examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Open one to play it or edit it.', exampleOpen: 'Open',
   exampleFailed: 'Could not load the sample',
-  exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asked before it runs)' : ''}`,
+  exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening)' : ''}`,
   unsavedTitle: 'Unsaved changes', unsavedLead: 'The open file has unsaved changes. Discard them and continue?',
   unsavedLang: 'Unsaved changes will be lost. Switch the language?',
   saving: 'Saving…', saveFailed: 'Could not save',
