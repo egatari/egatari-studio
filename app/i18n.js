@@ -73,8 +73,10 @@ const ja = {
     conclOverflow: '結論の行が枠からはみ出す', overflowBottom: `本文が下にはみ出す（${a}px）`, overflowRight: `本文が右にはみ出す（${a}px）`, smallText: `文字が小さい ${a}`,
     narrPlaceholder: `台本がテンプレートの仮の行（✎）のまま（ステップ ${a}。AI 音声はこのまま読み、字幕にも出る）`, templateText: `テンプレートの字のまま：「${a}」`,
     katexError: 'KaTeX エラーが残っている', noNarration: `台本が無い（ステップ ${a}）`, contrast: `コントラストが低い：${a}`, audioStale: `音声の更新が必要（ステップ ${a}。「音声」で録り直すか更新する）`,
+    refVoice: `参照音声（AI 音声が声をまねる元の録音）の ${a} が作業フォルダの中にある。教材には入らない（スライドで使うとエクスポートできない）。作業フォルダの外に置く`,
   }[c] || c),
-  exporting: 'エクスポート中…', exportFailed: 'エクスポートできませんでした', exported: (t, mb) => `${t} エクスポートしました（${mb} MB）`,   exists: (f) => `${f} がすでにあります`, created: (n) => `「${n}」に新しい教材を作りました`,
+  exporting: 'エクスポート中…', exportFailed: 'エクスポートできませんでした',
+  refVoiceRefused: (p) => `スライドが参照音声（AI 音声が声をまねる元の録音。voice.json の声）の ${p} を使っています。教材には参照音声を入れません（入るのは、その声で作った音声だけです）。スライドから外すか、録音を作業フォルダの外に移してください`, exported: (t, mb) => `${t} エクスポートしました（${mb} MB）`,   exists: (f) => `${f} がすでにあります`, created: (n) => `「${n}」に新しい教材を作りました`,
   // 1 ファイル（.ega.html。フォルダなしで開く・保存する）
   openFile: `ファイルを開く（${FX}）…`, openFolderItem: 'フォルダで作業する…', save: '保存',
   saveNew: '新しいファイルとして保存する（元のファイルとは別のものになります）', saveNewHint: '新しい識別子（docId）で保存し、元の教材を derivedFrom に記録します。権利の表示と作り手はそのまま残ります', saveAs: '名前を付けて保存…', saveAsTitle: '名前を付けて保存', saveAsGo: '保存…', exportMenu: 'エクスポート ▸',
@@ -438,8 +440,10 @@ const en = {
     conclOverflow: 'conclusion overflows its box', overflowBottom: `body overflows at the bottom (${a}px)`, overflowRight: `body overflows to the right (${a}px)`, smallText: `text too small ${a}`,
     narrPlaceholder: `script is still the template placeholder (✎) (step ${a}; AI voice reads it as is and it shows in the captions)`, templateText: `template text left: “${a}”`,
     katexError: 'KaTeX error left in the slide', noNarration: `no script (step ${a})`, contrast: `low contrast: ${a}`, audioStale: `audio needs updating (step ${a}; record it again or update it in Audio)`,
+    refVoice: `the reference voice ${a} (the recording an AI voice imitates) is inside the working folder. A lesson never carries it (if the slides use it, export is refused). Keep it outside the working folder`,
   }[c] || c),
-  exporting: 'Exporting…', exportFailed: 'Could not export', exported: (t, mb) => `${t} exported (${mb} MB)`, exists: (f) => `${f} already exists`, created: (n) => `Created a new lesson in “${n}”`,
+  exporting: 'Exporting…', exportFailed: 'Could not export',
+  refVoiceRefused: (p) => `The slides use ${p}, a reference voice (the recording an AI voice imitates, named in voice.json). A lesson never carries a reference voice, only the audio made with it. Remove it from the slides or move the recording out of the working folder`, exported: (t, mb) => `${t} exported (${mb} MB)`, exists: (f) => `${f} already exists`, created: (n) => `Created a new lesson in “${n}”`,
   // single file (.ega.html; open and save without a folder)
   openFile: `Open a file (${FX})…`, openFolderItem: 'Work in a folder…', save: 'Save',
   saveNew: 'Save as a new file (it becomes separate from the original)', saveNewHint: 'Saves under a new document id (docId) and records the original lesson as derivedFrom. Copyright, attribution and creators stay', saveAs: 'Save as…', saveAsTitle: 'Save as', saveAsGo: 'Save…', exportMenu: 'Export ▸',

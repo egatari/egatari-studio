@@ -184,7 +184,8 @@ export function defaultOut(srcPath) { return core.defaultOut(path, srcPath); }
 // 持ち運べる 1 ファイル（kit/core/portable.mjs）。設定のファイル（docId）を初めて作ったときは原稿のフォルダに書く。
 // 作業フォルダからの書き出しなので、索引に書き出しの印（exportedFrom、format spec §3.1）を書く（opts.fromFolder: false で書かない）
 export async function buildPortable(srcPath, opts = {}) {
-  const r = await exportPortable(nodeEnv, srcPath, { fromFolder: true, ...opts });
+  // voiceRefDir：名前で書いた声の参照音声のフォルダ（tts/synth.py と同じ IRODORI_REF_DIR）。作業フォルダの中なら、その参照音声も入れない（kit/core/ref-voice.mjs）
+  const r = await exportPortable(nodeEnv, srcPath, { fromFolder: true, voiceRefDir: process.env.IRODORI_REF_DIR, ...opts });
   const deckDir = path.dirname(path.resolve(srcPath));
   // 原稿のフォルダに残すもの（FORMAT.CONFIG_FILE）：リンクを通しては書かない（kit/safe-fs.mjs）
   // 書き出しがスライドに id を付けたとき（format spec §8.1）は原稿・口述原稿・記録の JSON も書き換えるので、先に .cache/edits/ に控えを残す（npm run ids と同じ）

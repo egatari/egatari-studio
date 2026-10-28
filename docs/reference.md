@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=10b9b1bd08893cf6 -->
+<!-- i18n: pair=reference.ja.md sha256=8aeb705cdc753a36 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -480,7 +480,7 @@ Attachments are archive entries, so adding, removing or renaming files under `at
 
 | `voice.json` field | Meaning |
 |---|---|
-| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the lesson). Defaults `bob`, `alice` |
+| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the lesson). Defaults `bob`, `alice`. The reference voice is never packed into the Egatari file (.ega.html): keep it outside the working folder |
 | `lang` | language (default: `lang` of the lesson's HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
 | `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
 

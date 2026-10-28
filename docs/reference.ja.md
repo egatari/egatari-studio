@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=1658f408a361f6a8 -->
+<!-- i18n: pair=reference.md sha256=68ce8c4c0f053301 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -479,7 +479,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 
 | `voice.json` の項目 | 意味 |
 |---|---|
-| `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対なら教材から）。既定 `bob`、`alice` |
+| `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対なら教材から）。既定 `bob`、`alice`。参照音声は Egatari ファイル（.ega.html）に入らない：作業フォルダの外に置く |
 | `lang` | 言語（既定は教材の HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
 | `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
 

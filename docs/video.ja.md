@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=441d086c8dce8b80 -->
+<!-- i18n: pair=video.md sha256=5d04212d0399ff67 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -64,7 +64,7 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 
 ## 声
 
-`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。
+`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。教材には参照音声を入れず、その声で作った音声だけが入る（[Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md) の `recipe`）：Egatari ファイル（.ega.html）へのエクスポートは、voice.json が指す参照音声を外し（ステップの音声や添付になっていても）、スライドが使っていれば断る。品質チェックは作業フォルダの中の参照音声を知らせる。参照音声は作業フォルダの外に置く。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 

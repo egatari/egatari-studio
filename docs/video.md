@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=e16a1356953a8ea1 -->
+<!-- i18n: pair=video.ja.md sha256=da169d5dcdf8d96b -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -64,7 +64,7 @@ node kit/build.mjs $D --portable      # or --play-only for a play-only copy for 
 
 ## Voices
 
-`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a lesson that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the lesson folder). The default bob and alice are often not available locally, so specify your own reference voices in voice.json.
+`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a lesson that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the lesson folder). The default bob and alice are often not available locally, so specify your own reference voices in voice.json. A lesson never carries a reference voice, only the audio made with it ([Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md), `recipe`): export to an Egatari file (.ega.html) leaves out a reference voice named in voice.json (as a step's audio or an attachment) and refuses when the slides use one, and the quality check reports one inside the working folder. Keep reference voices outside the working folder.
 
 After each line is synthesized, the silence before and after is trimmed (-45 dB, keeping 0.05 s), the loudness is normalized with EBU R128 two-pass loudnorm to -20 LUFS / TP -1.5 dB / LRA 11, and the lines are joined with 350 ms of silence between them (`tts/core.py`).
 

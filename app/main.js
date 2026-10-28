@@ -26,7 +26,8 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason } from '../kit/core/portable.mjs';
+import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
@@ -1034,6 +1035,23 @@ async function checkResults() {
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k.slice(k.lastIndexOf(':') + 1), i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  // 参照音声（AI 音声が声をまねる元の録音。voice.json がパスで指すもの）が作業フォルダの中にある：教材には入れない（format spec §5 の recipe。
+  // kit/core/ref-voice.mjs。エクスポートはスライドが使えば断り、ほかは外す）。コマンドの品質チェック（kit/check.mjs の refVoice）は場所ごとに分けて言う
+  if (S.ws && !S.portable) {
+    try {
+      const text = await S.ws.readText('voice.json', { max: READ_LIMITS.json });
+      const vj = text ? JSON.parse(text) : null;
+      const L = vj && typeof vj === 'object' ? await S.ws.list({ audio: true }) : null;
+      const seen = new Set();
+      for (const [k, v] of Object.entries(L ? vj : {})) {
+        if (!/^(expert|novice)$/i.test(k) || typeof v !== 'string' || !(/[\\/]/.test(v) || /\.wav$/i.test(v)) || /^(~|\/|[A-Za-z]:)/.test(v)) continue;
+        const rel = normPosix(v.replace(/\\/g, '/'));
+        if (rel.startsWith('..') || seen.has(rel) || !L.files.has(rel) || excludedReason(rel)) continue;
+        seen.add(rel);
+        results.push({ sev: 'warn', code: 'refVoice', arg: rel, i: null, title: '' });
+      }
+    } catch { /* voice.json がない・読めない */ }
+  }
   return results;
 }
 async function quickCheck() {
@@ -1252,6 +1270,8 @@ function refusal(code, message, key = code) {
   return [el('p', { id: 'refuse-reason', 'data-kind': key, text: T.refuse(key) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
 }
 // 索引のない文書の、知らせの言葉の鍵（kit/core/portable.mjs の sourceKind：'play-only' | 'built' | 'source' | 'other'）
+// 保存・エクスポートの失敗の言葉：参照音声を断ったとき（kit/core/ref-voice.mjs。format spec §5 の recipe）は画面の言葉で、ほかは元の文
+const failText = (e) => (e && e.code === 'reference-voice' ? T.refVoiceRefused((e.details && e.details.path) || '') : String((e && e.message) || e));
 const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-only' ? 'play-only' : e.kind === 'built' ? 'built-output' : 'no-source');
 // input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の返事を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
@@ -1549,7 +1569,7 @@ async function savePortableBound(mode) {
       }
       html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
     }
-  } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  } catch (e) { status(''); toast(T.saveFailed + ': ' + failText(e), true); return; }
   if (!live()) { cancelled(); return; }
   try {
     let h = mode === 'save' ? P.handle : null, wrote = false;
@@ -1624,7 +1644,7 @@ async function exportPortableFile() {
   status(T.exporting);
   let r;
   try { r = await engine.exportPortable(S.deckFile, { fromFolder: true }); }   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
-  catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   // 授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）が入る：人に渡すなら外す。外して書き出すのを 1 回で選べる
@@ -1635,7 +1655,7 @@ async function exportPortableFile() {
     if (v === 'cancel' || !live()) { status(''); return; }
     if (v === 'without') {
       try { r = await engine.exportPortable(S.deckFile, { fromFolder: true, withoutLiveResults: true }); }
-      catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+      catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
       if (!live()) { status(''); toast(T.api.cancelled, true); return; }
     }
   }
@@ -1672,7 +1692,7 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
     else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
     // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
     if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
-  } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  } catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   // ライブ付き：題名の側に印（「題名（ライブ 10-30）.play.ega.html」。日付はライブの開始の日、この端末の時間帯）。拡張子は変えない
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + (room ? liveMark(room) : '') + FORMAT.PLAY_EXT;

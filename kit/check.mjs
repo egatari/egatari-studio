@@ -35,7 +35,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
 import { compareRenders, domSnapshot } from './render-compare.mjs';
-import { build, isJapanese, analyzeSlideIds, listFiles } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv } from './build.mjs';
+import { referenceVoices, matchReference } from './core/ref-voice.mjs';
+import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
 import { normalizeKey } from './narration.mjs';
@@ -186,6 +188,38 @@ if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: the
     const plan = planAttachments(found, conf);
     for (const x of plan.problems) report(null, x.level === 'must' ? 'error' : 'warn', x.code, x);
     if (plan.include.length) report(null, 'info', 'attachList', { n: plan.include.length, listed: plan.list.length, size: plan.total < 1048576 ? `${(plan.total / 1024).toFixed(0)} KB` : `${(plan.total / 1048576).toFixed(1)} MiB` });
+  }
+}
+
+// ================================================================ M. 参照音声（AI 音声が声をまねる元の録音。format spec §5 の recipe）
+// voice.json が指す、作業フォルダの中の参照音声（kit/core/ref-voice.mjs。名前の声は IRODORI_REF_DIR が作業フォルダの中のとき）。
+// エクスポート（kit/core/portable.mjs）は教材に入れない：スライドが使えば断る（エラー）、段階の音声・添付なら外す（警告）、ほかの所は知らせるだけ（情報）
+{
+  const deckDir = fs.realpathSync(path.dirname(path.resolve(src)));
+  let refs = [];
+  try { refs = referenceVoices(nodeEnv, deckDir, { refDir: process.env.IRODORI_REF_DIR }); } catch { refs = []; }
+  if (refs.length) {
+    // スライドが使うもの：組み立てた HTML に、その録音の中身が埋め込まれている（data: の URI。名前を変えた写しも当たる）
+    const usedBySlides = new Set();
+    for (const r of refs) {
+      const b = r.load();
+      if (b && b.length && built.html.includes(Buffer.from(b.subarray(0, 3 * 1024)).toString('base64'))) usedBySlides.add(r.rel);
+    }
+    // 段階の音声（audio/manifest.json の file）
+    const inAudio = new Set();
+    try {
+      const man = JSON.parse(readRegular(path.join(deckDir, 'audio', 'manifest.json'), { max: READ_LIMITS.json }).toString('utf8'));
+      for (const v of Object.values(man.segments || man)) {
+        if (!v || typeof v.file !== 'string') continue;
+        const m = matchReference(refs, path.relative(deckDir, path.resolve(deckDir, 'audio', v.file)).split(path.sep).join('/'));
+        if (m) inAudio.add(m.rel);
+      }
+    } catch { /* ない・読めない */ }
+    for (const r of refs) {
+      if (excludedReason(r.rel)) continue;   // 隠しフォルダ（.cache など）・out/ など：エクスポートも作業フォルダの写しも見ない所
+      const where = usedBySlides.has(r.rel) ? 'slides' : inAudio.has(r.rel) ? 'audio' : r.rel.startsWith(FORMAT.ATTACH_DIR + '/') ? 'attachments' : 'folder';
+      report(null, where === 'slides' ? 'error' : where === 'folder' ? 'info' : 'warn', 'refVoice', { path: r.rel, where });
+    }
   }
 }
 

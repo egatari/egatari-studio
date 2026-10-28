@@ -19,6 +19,7 @@ import { readLock, vendorDir, pinsForIndex, versionForSha, VERSION_RE } from './
 import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
+import { referenceVoices, matchReference, REFERENCE_VOICE_RULE } from './ref-voice.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 import { isLiveResults } from './live-results.mjs';
 import { updateConfig, merge as configMerge } from './config-file.mjs';
@@ -720,6 +721,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // voice.json・設定のファイル・音声と、その圧縮の前の元のファイル・控えの JSON）も、組み立てが読むものと同じ回数と大きさの合計に、読む前に数える
   const budget = buildBudget(opts.limits, 0), LIM = budget.L;
   const env = chargedEnv(rec, budget);
+  // 参照音声（AI 音声が声をまねる元の録音。voice.json が指す、作業フォルダの中のもの）：教材に入れない（format spec §5 の recipe。kit/core/ref-voice.mjs）。
+  // voice.json は env0 で読む（組み立てが読んだものとして記録すると、伏せる前の voice.json が入ってしまう）。opts.voiceRefDir：名前の声のフォルダ（IRODORI_REF_DIR）
+  const refVoices = referenceVoices(env0, deckDir, { refDir: opts.voiceRefDir });
+  const refOf = (abs, bytes) => {
+    if (!refVoices.length) return null;
+    if (!bytes) {
+      try {
+        const n = typeof env0.size === 'function' ? env0.size(abs) : null;
+        if (refVoices.some((x) => x.size === null || n === null || x.size === n)) bytes = readBytesVia(env0, abs);
+      } catch { bytes = null; }
+    }
+    return matchReference(refVoices, rel(abs), bytes);
+  };
   // 口述原稿：音声を段階に結び付け、inputHash と拡張の行に使う（build と同じ規則で読む）
   const narrPath = P.join(deckDir, 'narration.md');
   const segs = env.exists(narrPath) && inDeck(narrPath) ? parseNarration(env.readText(narrPath)) : [];
@@ -727,6 +741,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const tag = nonce();
   const pend = [];
   const audioRef = (key, file, v) => {
+    const ref = refOf(file);
+    if (ref) { warnings.push(`${LOG}: audio for "${key}" is the reference voice "${ref.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); return null; }
     if (!segByKey.has(key)) { warnings.push(`${LOG}: audio for "${key}" has no narration step; not included`); return null; }
     if (!(typeof v.dur === 'number' && v.dur > 0)) { warnings.push(`${LOG}: audio for "${key}" has no duration; not included`); return null; }
     pend.push({ key, file, v });
@@ -824,6 +840,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[rp] = readBytesVia(env, f);
     }
   }
+  // 原稿が参照音声を使っている（<audio src> など。組み立てが HTML に埋め込んだ）：外すと HTML に残るので、書き出しを断る
+  for (const [rp, b] of Object.entries(files)) {
+    const ref = matchReference(refVoices, rp, b);
+    if (ref) fail('reference-voice', `"${rp}" is the reference voice "${ref.rel}" (voice.json) and the slides use it; remove it from the slides or move the recording out of the working folder: ${REFERENCE_VOICE_RULE}`, { path: rp, reference: ref.rel });
+  }
   const entry = rel(P.resolve(srcPath));
   if (!files[entry]) files[entry] = readBytesVia(env, P.resolve(srcPath));
   // voice.json（TTS の設定。build は読まない）：個人のパスを伏せる
@@ -884,6 +905,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       }
     }
     const carryList = isObj(opts.carry) && Array.isArray(opts.carry[FORMAT.ATTACH_KEY]) ? opts.carry[FORMAT.ATTACH_KEY] : null;
+    // 参照音声は添付にしない（音声はもともと添付にならないが、決まりの名前を添えて知らせる）
+    for (let i = found.length - 1; i >= 0; i--) {
+      const pr = matchReference(refVoices, found[i].path);
+      if (pr) { warnings.push(`${LOG}: attachment "${found[i].path}" is the reference voice "${pr.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); found.splice(i, 1); }
+    }
     const plan = planAttachments(found, econf, { carry: carryList, limits: opts.attachLimits });
     for (const x of plan.problems) warnings.push(`${LOG}: ${problemText(x)}`);
     const L = plan.limits;
@@ -891,6 +917,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const got = new Set();
     for (const p of plan.include) {
       const b = files[p] || readBytesVia(env, P.join(deckDir, ...p.split('/')));
+      // 名前を変えた参照音声の写し（中身が同じ）も外す
+      const pc = matchReference(refVoices, p, b);
+      if (pc) { warnings.push(`${LOG}: attachment "${p}" is the reference voice "${pc.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); continue; }
       // 中身が音声・動画（名前では分からないもの）：入れない
       const media = attachMediaProblem(p, b.subarray(0, 64));
       if (media) { warnings.push(`${LOG}: ${problemText(media)}`); continue; }
