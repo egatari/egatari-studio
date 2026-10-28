@@ -132,7 +132,9 @@ ok('版の決め方：出した版と中身が同じなら版のまま、違え�
 });
 ok('npm run player:check は知らせるだけ（終了コード 0）、--strict は違えば 1。player:bump は版と lock と changes/player-*.md を書く（最初は major で 1.0.0）', () => {
   const r = playerRoot('pc');
-  const run = (...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools', 'player.mjs'), ...a, '--root', r], { encoding: 'utf8' });
+  // 最初のリリースの前の形から始める（このリポジトリの lock はもう 1.0.0 を固定している）
+  fs.writeFileSync(path.join(r, PLAYER_LOCK), JSON.stringify({ version: null, sha256: null }, null, 2) + '\n');
+  const run =(...a) => spawnSync(process.execPath, [path.join(ROOT, 'tools', 'player.mjs'), ...a, '--root', r], { encoding: 'utf8' });
   let x = run('check');
   assert.equal(x.status, 0, x.stderr); assert.match(x.stdout, /information only/);
   x = run('check', '--strict');
