@@ -20,7 +20,7 @@ import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
 import { parseResults, skippedNotice, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 
-// はじめての取り込みの知らせを見せたか（この機械のこのブラウザ。使えなければ毎回見せる）
+// はじめての取り込みの知らせを見せたか（この端末のこのブラウザ。使えなければ毎回見せる）
 const NOTICE_KEY = 'egatari-studio-live-results-notice';
 const noticeSeen = () => { try { return localStorage.getItem(NOTICE_KEY) === '1'; } catch { return false; } };
 const noticeDone = () => { try { localStorage.setItem(NOTICE_KEY, '1'); } catch { /* 使えない環境 */ } };

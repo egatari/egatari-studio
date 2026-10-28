@@ -72,7 +72,7 @@ add('/repo/katex/katex.min.js', path.join(kdir, 'katex.min.js'));
 for (const f of fs.readdirSync(path.join(kdir, 'fonts'))) if (f.endsWith('.woff2')) add('/repo/katex/fonts/' + f, path.join(kdir, 'fonts', f));
 // 字：@fontsource の 400・700 の CSS と、そこから参照される woff2（あとで読む）。
 // BIZ UDP明朝（明朝を使うデッキだけが読む）は配信版にだけ入れる。1 ファイル版に埋め込むと約 11 MB 増えるので、1 ファイル版の
-// アプリは明朝を知らずに組む（明朝を使うデッキは、見る人の機械の明朝で出ると知らせる。kit/core/build-core.mjs の fontCss）
+// アプリは明朝を知らずに組む（明朝を使うデッキは、開く端末の明朝で表示されると知らせる。kit/core/build-core.mjs の fontCss）
 const MINCHO = '@fontsource/biz-udpmincho';
 for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3', MINCHO]) {
   const dir = path.dirname(require.resolve(`${pkg}/package.json`));

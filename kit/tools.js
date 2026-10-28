@@ -667,7 +667,7 @@ function cols(){ return getComputedStyle(ov.box.querySelector("#dt-grid")).gridT
 window.addEventListener("resize", fitOv);
 
 // ---------------------------------------------------------------- 読み上げで聞く（端末の声。format spec §5.6、backlog #89）
-// 音声のないステップだけを、見る人が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
+// 音声のないステップだけを、参加者が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
 // 音声ファイルにはならない：何も書かず、タイムラインも (i, k, t) の描画も変えない（この道具は動画では作らない。札は印刷に出さない）。
 // 読む文は deck-narration の ttsParts（読みを当てた話す部品。AI 音声に渡すのと同じ）。ない古いファイルでは表示の文を読み、札に「読み方は反映されません（古いファイル）」。
 // 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中」

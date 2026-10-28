@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=871f05e4c515da51 -->
+<!-- i18n: pair=video.ja.md sha256=e16a1356953a8ea1 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -13,7 +13,7 @@ The list of TTS and render options and environment variables is in [reference.md
   - `GET  {IRODORI_URL}/v1/models`: checks that it is running
   - `POST {IRODORI_URL}/v1/audio/speech`: synthesizes one line at a time. The body is JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<sentence>", "ref_audio": "<path to the reference wav>", "response_format": "wav"}`.
-    `ref_audio` is a path that the server reads (if the server is on another machine, a path on that machine)
+    `ref_audio` is a path that the server reads (if the server is on another computer, a path on that computer)
 - The default reference voices `bob` and `alice` (and `alice_en`, `bob_en`) are synthetic voices included in `tts/voices/` ([where they come from](../tts/voices/README.md)). For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
 
 | Environment variable | Meaning | Default |
@@ -26,7 +26,7 @@ The list of TTS and render options and environment variables is in [reference.md
 
 `tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
 
-- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU machine on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
+- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU computer on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
 - **No server**: in the editor app, the Audio panel's **Make AI voice on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
 - **Google Colab**: a notebook for **Make AI voice in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
 

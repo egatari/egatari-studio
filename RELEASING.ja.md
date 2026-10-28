@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=21aea4b86ff6a9f7 -->
+<!-- i18n: pair=RELEASING.md sha256=736414e27b9c181b -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -39,7 +39,7 @@
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # 0 でなければならない
    ```
 
-   **個人の環境に頼らない。** 版のどこも、保守する人の機械を前提にしない：個人のパス・アドレス・秘密・声、`skills/` にないスキル。`tools/test-selfcontained.mjs` がこれを確かめる（`npm test` と CI に入っている。3 を見る）。リリースのコミットでもう一度走らせる：
+   **個人の環境に頼らない。** 版のどこも、保守する人のパソコンを前提にしない：個人のパス・アドレス・秘密・声、`skills/` にないスキル。`tools/test-selfcontained.mjs` がこれを確かめる（`npm test` と CI に入っている。3 を見る）。リリースのコミットでもう一度走らせる：
 
    ```bash
    node tools/test-selfcontained.mjs

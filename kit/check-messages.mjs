@@ -84,7 +84,7 @@ export const MESSAGES = {
   legacyStepAttr: { ja: (a) => `${a.what} は 1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：ステップの数と動きは要素の data-step と data-at、線の class="draw"、パーツの steps から決まる（format spec §8.0）。${a.what} を外す`,
     en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
   legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。原稿からは外す`,
-    en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the viewer chooses “Show later steps faintly” in the player; remove it from the source` },
+    en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the participant chooses “Show later steps faintly” in the player; remove it from the source` },
   narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し「${a.heading}」がスライドの見出し「${a.slide}」と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
   // ---------------------------------------------------------------- リンク
   linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（1 ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the single file (.ega.html))` },
@@ -122,7 +122,7 @@ export const MESSAGES = {
     en: (a) => `the attachment “${a.path}” cannot be checked (${a.why}): §3.8 attachments are checked before packing; save it again without encryption or unusual compression (it is not packed)` },
   attachInjection: { ja: (a) => `添付「${a.path}」の ${a.n} 個の値が = + - @ やタブで始まり、表計算のソフトで数式として読まれうる${a.row ? `（最初は ${a.row} 行 ${a.col} 列）` : a.where ? `（${a.where}）` : ''}：意図したものか確かめる（入れる）`,
     en: (a) => `${a.n} value(s) in the attachment “${a.path}” start with = + - @ or a tab and may be read as formulas by a spreadsheet${a.row ? ` (first at row ${a.row}, column ${a.col})` : a.where ? ` (in ${a.where})` : ''}: check that this is intended (it is packed)` },
-  attachPrivate: { ja: (a) => `添付「${a.path}」に${({ 'private key': '秘密鍵', 'access key': 'アクセスの鍵', 'password or token': 'パスワードかトークン', 'machine-specific path': 'この機械のパス' })[a.what] || a.what}らしい文字がある：配る前に確かめて消す（入れる）`,
+  attachPrivate: { ja: (a) => `添付「${a.path}」に${({ 'private key': '秘密鍵', 'access key': 'アクセスの鍵', 'password or token': 'パスワードかトークン', 'device-specific path': 'この端末のパス' })[a.what] || a.what}らしい文字がある：配る前に確かめて消す（入れる）`,
     en: (a) => `the attachment “${a.path}” seems to contain a ${a.what}: check and remove it before sharing (it is packed)` },
   attachBadDescription: { ja: (a) => `添付「${a.path}」の説明（description）が使えない（${a.why}）：${a.max} 字までの 1〜2 文（改行なし）にする（説明なしで一覧に出す）`,
     en: (a) => `the description of the attachment “${a.path}” cannot be used (${a.why}): write one or two sentences, at most ${a.max} characters, without line breaks (listed without it)` },

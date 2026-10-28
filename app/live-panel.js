@@ -47,7 +47,7 @@ const STR = {
     qa: '参加者からの質問を受け付ける（教材全体で）', confused: '「わからない」の一押しを受け付ける（教材全体で。そのときのステップごとに数えます）', polls: '投票（ステップごと。そのステップを表示したときに、参加者の画面に出ます）', addPoll: '投票を追加', step: '出すステップ', here: '今プレビューに出ているステップにする', prompt: '設問', choice: (n) => `選択肢 ${n}`,
     addChoice: '選択肢を足す', delChoice: '消す', delPoll: 'この投票を消す', copy: '投票の設定（JSON。ホストのページの「投票の設定」に貼る）', copyBtn: '投票の設定をコピー', copied: '投票の設定をコピーしました。ホストのページの「投票の設定」に貼って「投票の設定を保存」を押してください',
     save: '設定を教材に保存（参加コードは保存しません）', saved: `設定を ${CFG} に書きました（参加コードは書きません）`, portableNote: 'Egatari ファイルに残すには「保存」を押してください', exp: 'ライブを付けてエクスポート…',
-    problems: 'エクスポートする前に直すこと', none: 'ありません', needKey: '参加コードがありません（① の「ライブ ID と参加コードをこの画面で作る」を押すか、前からの方法でホストのページの設定を貼ってください）', windowNote: '時刻はこの機械の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
+    problems: 'エクスポートする前に直すこと', none: 'ありません', needKey: '参加コードがありません（① の「ライブ ID と参加コードをこの画面で作る」を押すか、前からの方法でホストのページの設定を貼ってください）', windowNote: '時刻はこの端末の時間帯で入れます', copyFallback: 'コピーできませんでした。下の字を選んでコピーしてください',
     keyTip: (k) => `ステップの識別子：${k}`,
     results: 'ライブが終わったら：ホストのページで結果（JSON）をダウンロードし、ここから教材の添付（役割：データ）にできます。結果は教材のファイルにだけ残り、参加者に配る Egatari ファイル（再生専用）には入りません',
     importResults: 'ライブの結果を取り込む…',
@@ -76,7 +76,7 @@ const STR = {
     qa: 'Accept questions from participants (whole lesson)', confused: 'Accept a one-tap “I don’t follow” (whole lesson; counted per step on screen)', polls: 'Polls (per step: shown on participants’ screens when that step is displayed)', addPoll: 'Add poll', step: 'Step to show it at', here: 'Use the step in the preview', prompt: 'Question', choice: (n) => `Choice ${n}`,
     addChoice: 'Add choice', delChoice: 'Remove', delPoll: 'Remove this poll', copy: 'Poll settings (JSON; paste into Poll settings on the host page)', copyBtn: 'Copy poll settings', copied: 'Copied the poll settings. Paste them into Poll settings on the host page and press Save poll settings',
     save: 'Save settings in the lesson (without the join code)', saved: `Wrote the settings to ${CFG} (without the join code)`, portableNote: 'Press Save to keep them in the Egatari file', exp: 'Export with Live…',
-    problems: 'To fix before exporting', none: 'None', needKey: 'No join code (press “Make the Live ID and join code here” in ①, or paste the host page\'s settings under the earlier way)', windowNote: 'Times are in this computer\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
+    problems: 'To fix before exporting', none: 'None', needKey: 'No join code (press “Make the Live ID and join code here” in ①, or paste the host page\'s settings under the earlier way)', windowNote: 'Times are in this device\'s time zone', copyFallback: 'Could not copy. Select the text below and copy it',
     keyTip: (k) => `Step id: ${k}`,
     results: 'After the Live: download the results (JSON) on the host page and add them here as an attachment of the lesson (role: data). They stay in the lesson file and never go into the Egatari file (play-only) you hand to participants',
     importResults: 'Import Live results…',
@@ -85,7 +85,7 @@ const STR = {
 };
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const pad = (n) => String(n).padStart(2, '0');
-// RFC 3339 → <input type="datetime-local"> の値（この機械の時間帯）
+// RFC 3339 → <input type="datetime-local"> の値（この端末の時間帯）
 function toLocalInput(s) {
   const t = Date.parse(s || '');
   if (!isFinite(t)) return '';
@@ -94,7 +94,7 @@ function toLocalInput(s) {
 }
 function fromLocalInput(v) {
   if (!v) return '';
-  const d = new Date(v);   // datetime-local の値はこの機械の時刻として読まれる
+  const d = new Date(v);   // datetime-local の値はこの端末の時刻として読まれる
   if (!isFinite(d.getTime())) return '';
   return localToRfc3339(v, -d.getTimezoneOffset());
 }

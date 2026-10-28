@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.md sha256=9c4dcfe99cf90cad -->
+<!-- i18n: pair=threat-model.md sha256=bd300eadaba33572 -->
 # 脅威モデル
 
 [English](threat-model.md) | 日本語

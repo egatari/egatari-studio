@@ -1737,7 +1737,7 @@ try {
       ok(s.warn.some((w) => /refused: テーマのロゴ「\.\.\/mytml\/logos\/mark\.png」/.test(w)) && html.includes('--theme-probe:#0e0e0e') && !html.includes('data:image/png;base64,' + PNG.slice(0, 20)), 'theme folder: a logo outside its theme directory is refused (containment as in the CLI)');
       await po.evaluate(([t]) => window.__putDeck('deck.html', t), [deckWith('mytml')]);
       await po.evaluate(() => window.__APP_TEST.rebuild());
-      // 持ち運べる 1 ファイル：使ったテーマは原稿の themes/mytml/ として入る（ほかの機械でも同じテーマで組める）
+      // 持ち運べる 1 ファイル：使ったテーマは原稿の themes/mytml/ として入る（ほかの端末でも同じテーマで組める）
       await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('thm-export.ega.html', { create: true }); });
       await po.evaluate(() => document.getElementById('b-export-portable').click());
       for (let i = 0; i < 150 && !(await po.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 1000)); i++) await po.waitForTimeout(200);

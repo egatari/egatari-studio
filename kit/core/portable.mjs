@@ -560,7 +560,7 @@ const EXCLUDE = [
   [/\.local\.json$/i, 'local settings (*.local.json)'],
   [/(?:\.(?:pem|key|p12|pfx)$|(^|\/)(?:credentials|secrets?)(\.[^/]*)?$)/i, 'credentials'],
 ];
-export const EXCLUDED_CATEGORIES = Object.freeze([...EXCLUDE.map((x) => x[1]), 'audio not referenced by a narration step', 'personal reference voices', 'machine-specific paths in voice.json']);
+export const EXCLUDED_CATEGORIES = Object.freeze([...EXCLUDE.map((x) => x[1]), 'audio not referenced by a narration step', 'personal reference voices', 'device-specific paths in voice.json']);
 export const excludedReason = (rel) => (EXCLUDE.find(([re]) => re.test(rel)) || [])[1] || null;
 
 // voice.json：声の指定がパスなら、ファイル名（拡張子なし）だけにする。そのほかの場所らしい値は消す
@@ -784,7 +784,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regTheme.get(name).set(k, readBytesVia(env, p));
     } else {
-      // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの機械・編集アプリでも同じテーマで組み直せる）
+      // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの端末・編集アプリでも同じテーマで組み直せる）
       const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
       if (!u) continue;
       const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
@@ -980,7 +980,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const p of Object.keys(files)) {
     if (!/^(?:text|application\/(?:json|xml))|svg/.test(mimeOf(p))) continue;
     const t = new TextDecoder().decode(files[p]);
-    if (/(?:\/Users\/|\/home\/)[^\s"'<>/]+|[A-Za-z]:\\(?:Users|Documents and Settings)\\/.test(t)) warnings.push(`${LOG}: "${p}" seems to contain a machine-specific path (check before sharing)`);
+    if (/(?:\/Users\/|\/home\/)[^\s"'<>/]+|[A-Za-z]:\\(?:Users|Documents and Settings)\\/.test(t)) warnings.push(`${LOG}: "${p}" seems to contain a device-specific path (check before sharing)`);
   }
 
   // 音声：埋め込みと同じく AAC に圧縮（ffmpeg がなければ WAV のまま）。同じ中身は 1 つの塊に

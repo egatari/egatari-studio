@@ -278,7 +278,7 @@ function fontCss(env, text, subset, lang, mincho = false, warn = []) {
   const t = isJapanese(lang) ? text : [...new Set(text)].filter((c) => c.codePointAt(0) > LATIN_MAX).join('');
   if (!t) return g;
   const m = (subset && env.subset ? env.subset(t, 'mincho') : null) || (hasFont(env, FONTS.mincho) ? rangeCss(env, [FONTS.mincho], t) : null);
-  if (!m) { warn.push('明朝（BIZ UDP明朝）の字がないので埋め込まない（見る人の機械の明朝で出る）。node tools/get-fonts.mjs か npm ci'); return g; }
+  if (!m) { warn.push('明朝（BIZ UDP明朝）の字がないので埋め込まない（開く端末の明朝で表示されます）。node tools/get-fonts.mjs か npm ci'); return g; }
   return { css: g.css + m.css, n: g.n + m.n, bytes: g.bytes + m.bytes };
 }
 function fontCssGothic(env, text, subset, lang) {
@@ -778,7 +778,7 @@ export function build(env0, srcPath, opts = {}) {
       else { warn.push(`refused: 部品庫の部品 ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
-    // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（機械ごとのパスを出力に書かない）
+    // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（端末ごとのパスを出力に書かない）
     const where = env.within(file, deckDir) ? P.relative(deckDir, file) : P.relative(ROOT, file);
     if (env.within(file, deckDir)) localComps.push(where.split(P.sep).join('/'));
     compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');

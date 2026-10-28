@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=388d24344d0c8fb2 -->
+<!-- i18n: pair=video.md sha256=441d086c8dce8b80 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -26,7 +26,7 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
 
 `tts/synth.py` は、上の 2 つの要求に答えるサーバーならどれとでも動く。試しているのは [mlx-audio](https://github.com/Blaizzy/mlx-audio) で、これは Apple シリコンの Mac でだけ動く。ほかの道：
 
-- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のある機械）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別の機械で動くなら、`ref_audio` はその機械の上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` から声を写すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
+- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のあるパソコン）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別のパソコンで動くなら、`ref_audio` はそのパソコンの上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` から声を写すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
 - **サーバーなし**：編集アプリの音声の板の「AI 音声をこの PC で作る」で、ステップごとにブラウザの中で音声を作る（WebGPU が要る）か、マイクで録音する（[editor.ja.md](editor.ja.md#台本の音声音声の板)）
 - **Google Colab**：「AI 音声をクラウドで作る（Google Colab）」のためのノートブックと、その結果を編集アプリに取り込む機能を用意している。それまでは上のどれかを使う
 

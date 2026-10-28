@@ -1,0 +1,3 @@
+### Changed
+
+- Wording (glossary 2026-10-28, `docs/terms.json`): the computer or tablet a lesson is opened on is called 端末 / device, not 機械 / machine, and the person who opens a lesson is 参加者 (participant) or 学習者 (learner), not 見る人 / viewer. In the Live panel the time note reads 「時刻はこの端末の時間帯で入れます」 ("Times are in this device's time zone"); an attachment warning names 「この端末のパス」 ("device-specific path"); without the Mincho font a build says the lesson 「開く端末の明朝で表示されます」. The docs follow (パソコン where a real PC is meant, such as a TTS server on another computer). `lint:terms` checks the new words; 機械学習 and the 4M (人・機械・方法・材料) of the m-fishbone example stay.

@@ -215,7 +215,7 @@ function blankPreview() {
 }
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
-// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
+// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い端末）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
 // 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
@@ -1674,7 +1674,7 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
     if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
-  // ライブ付き：題名の側に印（「題名（ライブ 10-30）.play.ega.html」。日付はライブの開始の日、この機械の時間帯）。拡張子は変えない
+  // ライブ付き：題名の側に印（「題名（ライブ 10-30）.play.ega.html」。日付はライブの開始の日、この端末の時間帯）。拡張子は変えない
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + (room ? liveMark(room) : '') + FORMAT.PLAY_EXT;
   if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
   try {

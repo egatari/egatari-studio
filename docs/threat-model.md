@@ -8,13 +8,13 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 ## What is protected
 
 - The files on the computer of the person who opens, edits or builds a lesson (outside the lesson's working folder, and the editor's own storage and folder handles).
-- Script text and other lesson content, which should leave the machine only where this document says so.
+- Script text and other lesson content, which should leave the computer only where this document says so.
 - The integrity of what Studio builds and ships (the editor site, release assets, vendored parts).
 
 ## Assumptions
 
 - A working folder is treated like a source-code repository: you build, check or serve only lessons you trust ([SECURITY.md](../SECURITY.md), "Trust model: a deck is code").
-- The local machine and other local processes are trusted. Another local user or a process changing the folder while a tool runs is out of scope (SECURITY.md, "Residual risks").
+- The local computer and other local processes are trusted. Another local user or a process changing the folder while a tool runs is out of scope (SECURITY.md, "Residual risks").
 - What you name on the command line or in the environment (lesson path, `--theme`, `-o`, `EGATARI_THEMES`, `IRODORI_URL`) is trusted.
 
 ## 1. Authored lessons: untrusted HTML in the preview iframe
@@ -53,7 +53,7 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 
 ## 4. Colab TTS
 
-**Threat.** Script text leaves the machine for Google's environment, and the returned audio ZIP file is data from outside.
+**Threat.** Script text leaves the computer for Google's environment, and the returned audio ZIP file is data from outside.
 
 **What is in place** (docs/editor.md, "Make AI voice in the cloud (Google Colab)"; `kit/core/colab-core.mjs`).
 - The editor asks once before export, because in Colab the script text is processed in Google's environment and the model files come from Hugging Face. `tts-job.json` holds only the text to read, voice names, each step's `inputHash`, the `docId` and the target recipe.

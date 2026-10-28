@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=3af88f55e0f7051d -->
+<!-- i18n: pair=RELEASING.ja.md sha256=4eb1b5d933831094 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -39,7 +39,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git log origin/main..HEAD --format=%B | grep -ci claude-session   # must print 0
    ```
 
-   **No personal environment.** Nothing in the release may need the maintainer's machine: personal paths, addresses, secrets or voices, or a skill that is not in `skills/`. `tools/test-selfcontained.mjs` checks this (it is in `npm test` and CI; see step 3); run it once more on the release commit:
+   **No personal environment.** Nothing in the release may need the maintainer's computer: personal paths, addresses, secrets or voices, or a skill that is not in `skills/`. `tools/test-selfcontained.mjs` checks this (it is in `npm test` and CI; see step 3); run it once more on the release commit:
 
    ```bash
    node tools/test-selfcontained.mjs
