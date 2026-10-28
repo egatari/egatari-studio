@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=80d62adb02f229aa -->
+<!-- i18n: pair=reference.ja.md sha256=359fb0fdc4e4dcb7 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -535,6 +535,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 | `node tools/test-theme-metrics.mjs [workdir]` | theme `metrics`: validation and inheritance, the theme hash, every bundled theme renders as declared (strict), the limits and `themeMetricsDrift` in the checker and the editor's quick check |
 | `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
 | `node tools/test-themes.mjs [workdir] [--shots <dir>]` | every bundled theme: a sample lesson builds and passes the quality check; role-colour contrast, colour-vision simulation and the pen colours (see [Themes](#themes)); the `look` shapes in `tokens.css` match `kit/core/theme-shapes.mjs`; prints the numbers, and with `--shots` a contact sheet per theme |
+| `node tools/test-fonts.mjs [workdir]` | fonts: only the chosen fonts are embedded (from `theme.json` `fonts` or named in CSS), Source Sans 3 italic in English lessons and for Latin text in `<em>`/`<i>` of Japanese ones, and `fontNotEmbedded` for a font that is not in the file |
 | `node tools/pdf.mjs <built.html> <out.pdf>` | PDF, one page per slide |
 | `node tools/shot.mjs <built.html> <out.png> [i] [k] [mode]` | PNG of slide i (0-based), step k, final state |
 | `npm run sheet -- <working folder \| deck.html \| built.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | contact sheet: one PNG with every slide at its final step (1-based number, and the key if short; default tile width 640 px; output `<deck>/out/sheet.png`); `--tiles` also writes each slide's PNG to `<out>-tiles/`. `--steps` instead lays out every step of each slide that has a figure or part, side by side, one row per slide (default tile width 320 px; output `<deck>/out/steps.png`) to check a figure's constraints step by step. Prints the path and the slide count |

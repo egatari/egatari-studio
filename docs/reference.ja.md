@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=bf073a10b2a3db32 -->
+<!-- i18n: pair=reference.md sha256=fd2177e84169917b -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -534,6 +534,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/test-themes.mjs [作業フォルダ] [--shots <フォルダ>]` | 同梱のどのテーマでも、サンプルの教材が組めて品質チェックを通る。役割の色のコントラスト・色覚の模擬・ペンの色（[テーマ](#テーマ)）。`tokens.css` の `look` の形が `kit/core/theme-shapes.mjs` と同じ。数字の表を出し、`--shots` ならテーマごとの 1 枚の画像も |
+| `node tools/test-fonts.mjs [作業フォルダ]` | 字体：選んだ字体だけが入る（`theme.json` の `fonts` か CSS の名指し）、英語の教材と日本語の教材の `<em>`・`<i>` の中のラテン文字の Source Sans 3 の斜体、ファイルに入っていない字体の `fontNotEmbedded` |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、ステップ k の最終状態の PNG |
 | `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | コンタクトシート：全スライドの最終ステップを 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<教材>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。`--steps` を付けると、図かパーツのあるスライドだけ、全ステップを横に 1 行（1 スライド 1 行）に並べる（図の約束をステップごとに確かめる。タイルの幅は既定 320 px、出力は `<教材>/out/steps.png`）。出力の場所と枚数を印字する |
