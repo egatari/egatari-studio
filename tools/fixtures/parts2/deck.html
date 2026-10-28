@@ -13,7 +13,7 @@
   <h2>棒と試験のパーツ</h2>
   <div class="body">
     <m-bars aria-label="売上" style="height:300px"><script type="application/json">
-      {"series": [{"label": "売上"}], "groups": [{"label": "1 年目", "value": 1.2}, {"label": "2 年目", "value": 3.4}]}
+      {"series": [{"label": "売上"}], "groups": [{"label": "1 年目", "value": 1.2}, {"label": "2 年目", "value": 3.4}, {"label": "\u307b", "value": 2}]}
     </script></m-bars>
     <m-probe id="probe-a" data-from="1" style="display:block;width:400px;height:40px"></m-probe>
   </div>
@@ -28,6 +28,7 @@
     <m-probe id="probe-report" report="size" style="display:inline-block;width:280px;height:90px;vertical-align:top"></m-probe>
     <m-boom aria-label="作れないパーツ" style="display:inline-block;width:280px;height:90px;vertical-align:top"></m-boom>
     <m-orphan aria-label="頼る先が作れないパーツ" style="display:inline-block;width:280px;height:90px;vertical-align:top"></m-orphan>
+    <m-nonlit aria-label="読めない meta のパーツ" style="display:inline-block;width:280px;height:90px;vertical-align:top"></m-nonlit>
     <p data-step="1">段階 1 の字</p>
   </div>
 </section>
@@ -46,7 +47,7 @@
 <section class="slide" id="p-four">
   <h2>絞り込み</h2>
   <div class="body">
-    <m-kakijun text="あさ" aria-label="あさの書き順" style="height:340px;width:900px"></m-kakijun>
+    <m-kakijun text="あさ&#x3072;" aria-label="あさの書き順" style="height:340px;width:900px"></m-kakijun>
   </div>
 </section>
 

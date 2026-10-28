@@ -3,11 +3,13 @@
 // 教材 tools/fixtures/parts2/（egatari.json の componentsCatalogue で 2.0。m-bars・m-flow・m-kakijun は vendor/components-2 の写し、
 // m-probe・m-boom・m-orphan は作業フォルダの埋め込みのパーツ）を組んで開き、確かめること：
 //   組み立て：登録簿がパーツより前・パーツが依存の順・m-flow の tex を KaTeX で描いて texHtml と renderers を足す・m-kakijun の塊を教材の字に絞る
-//   登録簿：factory が投げたパーツと、それに頼るパーツは失敗として記録され、その要素は字の代わり（data-part-failure="define"）と品質チェックへの知らせ
+//   登録簿：status() は {defined, failed: [{name, version, reason}]}。factory が投げたパーツ（factory）と、それに頼るパーツ（dependency）は失敗として記録され、
+//   その要素は字の代わり（data-part-failure="define"）と品質チェックへの知らせ。要素の名前は組み立てが書く deck-parts から引く
+//   組み立て：meta が字のままの object でない埋め込みのパーツは書かずに知らせる。絞り込みの字は原稿の全部（属性の値も）・口述原稿・パーツに渡すデータ・glyphs
 //   ctx：mount に mode・preview・slide・lang・slides・go・report・visited（deck はない）。slides は凍った [{key, title, steps, concl}]
 //   守り（2 段）：mount・render で投げたパーツは base が止めて ctx.report("error") し、デッキは動き続ける
 //   report：size は DECK.componentReports にだけ、error・data は DECK.componentErrors にも
-//   layout：起動・窓の大きさが変わった・隠れていたスライドが見えたときに呼ばれ、そのあと描き直す（entered なし）
+//   layout：起動・窓の大きさが変わった・隠れていたスライドが見えた・隠れていた文書が見えた（visibilitychange）ときに呼ばれ、そのあと描き直す（entered なし）
 //   entered：別のスライドから入った最初の描画だけ true。印刷（beforeprint/afterprint）・DECK.aside の描画とその戻り・動画のコマでは false
 //   ctx.go：スライドへのリンクと同じに動く。知らないスライドは false
 //   DECK なし：登録簿と shape・base・bars だけのページ（deck.js なし）で m-bars が mount・render できる（Appendix A 1A）
@@ -15,7 +17,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 
@@ -23,12 +25,16 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-host-')));
 fs.mkdirSync(out, { recursive: true });
 let fail = 0;
+const eq2 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fail++; };
 const build = (src, dst, extra = []) => execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '-o', dst, ...extra], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
 // ---------------------------------------------------------------- 組み立て
 const deck = path.join(out, 'parts2.html');
-const log = build(path.join(ROOT, 'tools/fixtures/parts2/deck.html'), deck);
+// 知らせ（⚠）は stderr に出る：両方を読む
+const run1 = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(ROOT, 'tools/fixtures/parts2/deck.html'), '-o', deck], { encoding: 'utf8' });
+const log = run1.stdout + run1.stderr;
+ok(run1.status === 0, `the 2.0 lesson builds (${run1.status})`);
 const html = fs.readFileSync(deck, 'utf8');
 const order = [...html.matchAll(/\/\/ ---- ([a-z][a-z0-9-]*@[0-9][^ ]*) \(/g)].map((m) => m[1]);
 ok(html.indexOf('egatariParts registry') >= 0 && html.indexOf('egatariParts registry') < html.indexOf('// ---- shape@1.0.0'), 'the registry is written before every part');
@@ -43,6 +49,15 @@ ok(flowData && flowData.renderers && flowData.renderers.katex && /^\d+\.\d+\.\d+
 const meta = /\/\*@egatari-block stroke-meta\*\/(.*?)\/\*@egatari-block-end\*\//s.exec(html);
 const kept = meta ? Object.keys(JSON.parse(meta[1])).filter((k) => !k.startsWith('_')) : [];
 ok(kept.includes('あ') && kept.includes('さ') && !kept.includes('ぬ') && kept.length < 60, `m-kakijun: stroke data subset to the lesson's characters (${kept.length} kept)`);
+ok(kept.includes('ひ') && kept.includes('ほ') && kept.includes('ね'), "subset text: an attribute value (text=\"…&#x3072;\"), the data passed to parts (\\u307b) and the part's glyphs (ね) count");
+const strokes = /\/\*@egatari-block strokes\*\/(.*?)\/\*@egatari-block-end\*\//s.exec(html);
+const keptS = strokes ? (() => { const v = JSON.parse(strokes[1]); return Array.isArray(v) ? v.map((x) => x.char) : Object.keys(v).filter((k) => !k.startsWith('_')); })() : [];
+ok(keptS.length > 0 && keptS.every((k) => kept.includes(k)) && kept.every((k) => keptS.includes(k)), `both declared blocks are subset on their own to the same text (${keptS.length} / ${kept.length})`);
+ok(/refused: components\/nonlit\/index\.js: the meta of egatariParts\.define is not a literal JSON object/.test(log) && !/\/\/ ---- nonlit@/.test(html), 'an embedded part whose meta is not a literal object is reported and not written');
+const dp = /<script type="application\/json" id="deck-parts">([\s\S]*?)<\/script>/.exec(html);
+const deckParts = dp ? JSON.parse(dp[1]) : [];
+ok(deckParts.some((x) => x.name === 'bars' && x.version === '2.0.0' && x.tag === 'm-bars') && deckParts.some((x) => x.name === 'boom' && x.tag === 'm-boom') && deckParts.every((x) => x.tag),
+  `deck-parts lists the element parts' name, version and tag (${deckParts.map((x) => x.name + '@' + x.version + '=' + x.tag).join(' ')})`);
 ok(!/component not found|is not in components2/.test(log), 'no part is missing from the build');
 // 1 ファイル（--portable）にはまだしない（索引の components に 2.0 のパーツを書くのは後の段。1.x の書き方の記録は中のコードと合わない）
 {
@@ -67,14 +82,14 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
 };
 const { p, errs } = await open(fileUrl(deck));
 const st = await p.evaluate(() => egatariParts.status());
-ok(st.failures.some((f) => f.name === 'boom' && /factory threw/.test(f.reason)) && st.failures.some((f) => f.name === 'orphan' && /boom@0\.1\.0, which failed/.test(f.reason)),
-  `registry records the failed factory and its dependant: ${st.failures.map((f) => f.name + ': ' + f.reason).join(' | ')}`);
-ok(['m-bars', 'm-flow', 'm-kakijun', 'm-probe'].every((t) => st.elements[t]), 'registry defined the element parts');
+ok(eq2(Object.keys(st), ['defined', 'failed']) && st.failed.some((f) => f.name === 'boom' && f.reason === 'factory') && st.failed.some((f) => f.name === 'orphan' && f.reason === 'dependency'),
+  `registry status(): the failed factory (factory) and its dependant (dependency): ${st.failed.map((f) => f.name + ': ' + f.reason).join(' | ')}`);
+ok(['bars@2.0.0', 'flow@2.0.0', 'kakijun@2.0.0', 'probe@0.1.0'].every((t) => st.defined.includes(t)), 'registry defined the element parts');
 const fb = await p.evaluate(() => ['m-boom', 'm-orphan'].map((t) => { const e = document.querySelector(t); const x = e && e.querySelector('[data-part-failure="define"]'); return x ? x.textContent : null; }));
 ok(fb[0] === '作れないパーツ' && fb[1] === '頼る先が作れないパーツ', `failed parts show their text equivalent (${JSON.stringify(fb)})`);
 const m0 = await p.evaluate(() => window.__probe.mounts.find((m) => m.id === 'probe-a'));
 ok(m0 && ['go', 'lang', 'mode', 'preview', 'report', 'slide', 'slides', 'visited'].every((k) => m0.keys.includes(k)) && !m0.hasDeck, `ctx at mount: ${m0 && m0.keys.join(',')} (no deck)`);
-ok(m0 && m0.lang === 'ja' && m0.slide === 'p-one' && m0.frozen && JSON.stringify(m0.slides[0]) === JSON.stringify(['p-one', '棒と試験のパーツ', 2, true]) && JSON.stringify(m0.slides[3]) === JSON.stringify(['p-four', '絞り込み', 2, false]),
+ok(m0 && m0.lang === 'ja' && m0.slide === 'p-one' && m0.frozen && JSON.stringify(m0.slides[0]) === JSON.stringify(['p-one', '棒と試験のパーツ', 3, true]) && JSON.stringify(m0.slides[3]) === JSON.stringify(['p-four', '絞り込み', 3, false]),
   `ctx.slides: ${JSON.stringify(m0 && m0.slides)}`);
 ok(await p.evaluate(() => !!document.querySelector('m-bars svg rect, m-bars svg path')), 'm-bars 2.0 drew its SVG');
 const lay0 = await p.evaluate(() => window.__probe.layouts.filter((x) => x.id === 'probe-a').length);
@@ -125,6 +140,17 @@ await p.evaluate(() => DECK.go(1, 0, false));
 await p.evaluate(() => DECK.go(0, 0, false));
 r = await renders();
 ok(r.length >= 1 && r[0].entered === true, 'a real jump after them still enters (entered true)');
+// 文書が隠れて、また見えた（visibilitychange。§8.4 Layout）
+await mark();
+await p.evaluate(() => {
+  const set = (v) => { Object.defineProperty(document, 'visibilityState', { value: v, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); };
+  set('hidden');
+  window.__hiddenLayouts = window.__probe.layouts.length;
+  set('visible');
+});
+const vis = await p.evaluate(() => ({ hidden: window.__hiddenLayouts, after: window.__probe.layouts.filter((x) => x.id === 'probe-a').length }));
+r = await renders();
+ok(vis.hidden === 0 && vis.after >= 1 && r.length >= 1 && r.every((x) => x.entered === false), `visibilitychange to visible: layout (${vis.after}) then a render without entering; nothing while hidden`);
 // 大きさが変わった
 await mark();
 await p.setViewportSize({ width: 900, height: 600 });

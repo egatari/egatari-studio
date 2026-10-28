@@ -291,35 +291,44 @@ DECK.define = function(name, cls){ if (!customElements.get(name)) customElements
 
 // ---------------------------------------------------------------- 部品庫 2.0 のパーツ（format spec §6.1・§8.4）
 // 2.0 のパーツは DECK.define ではなく、組み立てが書き込む登録簿（kit/parts-registry.js、globalThis.egatariParts）で定義される。
-// 再生器は、登録簿が定義した要素の名前（status().elements）で見分け、ctx だけを渡す（ctx.deck は渡さない）。1.x の部品は今までどおり
+// 登録簿の status() は {defined: ["name@version"], failed: [{name, version, reason}]}（§6.1。要素の名前は持たない）。
+// 要素の名前は組み立てが書く deck-parts（[{name, version, tag}]。索引の components の name・version・tag と同じ）から引く。
+// 再生器は、定義できた要素のパーツの要素にだけ ctx を渡す（ctx.deck は渡さない）。1.x の部品は今までどおり
 function parts2(){
   var R = window.egatariParts;
   if (!R || typeof R.status !== "function") return null;
-  try { return R.status(); } catch (e) { return null; }
+  var st;
+  try { st = R.status(); } catch (e) { return null; }
+  if (!st || !Array.isArray(st.defined) || !Array.isArray(st.failed)) return null;
+  var list = json("deck-parts"), tagOf = Object.create(null), ok = Object.create(null);
+  (Array.isArray(list) ? list : []).forEach(function(p){ if (p && typeof p.tag === "string") tagOf[p.name + "@" + p.version] = p.tag; });
+  st.defined.forEach(function(id){ if (tagOf[id]) ok[tagOf[id]] = id; });
+  return {status: st, tagOf: tagOf, elements: ok};
 }
-var P2 = null;   // init で読む：{defined, elements, failures}
+var P2 = null;   // init で読む：{status, tagOf: {name@version: 要素の名前}, elements: {定義できた要素の名前: name@version}}
 function isPart2(e){
   if (!P2 || !e.localName || !Object.prototype.hasOwnProperty.call(P2.elements, e.localName)) return false;
   var C = customElements.get(e.localName);
   return !!C && e instanceof C && typeof e.render === "function";
 }
-// 登録簿が失敗を記録したパーツ（と、それに頼るパーツ）の要素：最後の状態の字の代わり（aria-label）を出し、品質チェックに知らせる
+// 登録簿が失敗を記録したパーツ（と、それに頼るパーツ）の要素：最後の状態の字の代わり（aria-label）を出し、品質チェックに知らせる。
+// duplicate（2 度目の define）と、要素の名前をほかのパーツが先に定義した element は、最初のものが動くので字の代わりにしない
 function partFailures(s, i){
   if (!P2) return;
-  P2.failures.forEach(function(f){
-    if (!f.element) return;
-    [].forEach.call(s.querySelectorAll(f.element), function(e){
+  P2.status.failed.forEach(function(f){
+    var tag = P2.tagOf[f.name + "@" + f.version];
+    if (!tag || f.reason === "duplicate" || P2.elements[tag]) return;
+    [].forEach.call(s.querySelectorAll(tag), function(e){
       if (e._partFailed) return;
       e._partFailed = true;
-      var rec = {slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: f.element, label: e.getAttribute("aria-label") || "",
-        index: [].indexOf.call(s.querySelectorAll(f.element), e), phase: "define", kind: "exception", msg: f.name + "@" + f.version + ": " + f.reason};
+      var rec = {slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: tag, label: e.getAttribute("aria-label") || "",
+        index: [].indexOf.call(s.querySelectorAll(tag), e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason};
       DECK.componentErrors.push(rec);
-      console.warn("[deck] " + f.element + " (" + (s.id || rec.key) + "): " + rec.msg);
-      var label = (e.getAttribute("aria-label") || "").trim();
+      console.warn("[deck] " + tag + " (" + (s.id || rec.key) + "): " + rec.msg);
       [].slice.call(e.childNodes).forEach(function(n){ if (!(n.nodeType === 1 && n.localName === "script")) e.removeChild(n); });
       var box = document.createElement("div");
       box.className = "m-error"; box.setAttribute("role", "note"); box.setAttribute("data-part-failure", "define");
-      box.textContent = label || "<" + f.element + ">";
+      box.textContent = (e.getAttribute("aria-label") || "").trim() || "<" + tag + ">";
       e.appendChild(box);
     });
   });
@@ -620,7 +629,7 @@ function ctxFor(c, s, o){
 // 2 段目の守り（format spec §6.1 Containment）：部品の duration・cues・layout が投げた例外は、再生器の外に出さない
 function safeDur(c, k){ try { return c.duration(k) || 0; } catch (e) { compFail(c, c._slide, c._i, {kind: "exception", msg: errText(e)}, "duration"); c.mount(ctxFor(c, c._slide, {instant: true, entered: false})); return 0; } }
 function safeCues(c, k){ try { return c.cues(k); } catch (e) { compFail(c, c._slide, c._i, {kind: "exception", msg: errText(e)}, "cues"); c.mount(ctxFor(c, c._slide, {instant: true, entered: false})); return null; } }
-// layout(ctx)（format spec §8.4 Layout）：舞台の大きさが変わった・使う字が読み込まれた・隠れていたスライドが見えたときに呼ぶ。
+// layout(ctx)（format spec §8.4 Layout）：舞台の大きさが変わった・使う字が読み込まれた・隠れていたスライドが見えた・隠れていた文書が見えた（visibilitychange）ときに呼ぶ。
 // 持つ部品だけ。投げたら 2 段目の守り。返すもの：呼んだ部品があったか
 function layoutComps(list){
   var any = false;
@@ -1910,6 +1919,8 @@ window.addEventListener("afterprint", function(){
   if (printPos && DECK.ready) seek(printPos.i, printPos.k, Infinity, undefined, true);
 });
 window.addEventListener("resize", function(){ fit(); morphCache = {}; relayout(); });
+// 隠れていた文書（別のタブ・最小化）が見えた（format spec §8.4 Layout：隠れている間は字の大きさが測れないことがある）
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") relayout(); });
 if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; relayout(); });
 // 手で書き換えた #（番号・スライドの id・id:段階）へ。リンクの「戻る」の履歴とは別（popstate が先に位置を戻すので、ここでは動かない）
 window.addEventListener("hashchange", function(){

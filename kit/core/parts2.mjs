@@ -65,74 +65,173 @@ export function pickCatalogue(lock2, want) {
   return { catalogue: lock2.default, note: `componentsCatalogue "${w.slice(0, 40)}" is not in ${LOCK2_FILE}; using ${lock2.default}` };
 }
 
-// 埋め込みのパーツ（作業フォルダの components/<名前>/index.js）の meta：最初の egatariParts.define({…}) の name・version・requires・element を字で読む
-// （組み立てはパーツのコードを動かさない）。読めなければ null
+// パーツの meta を字で読む（組み立てはパーツのコードを動かさない。§6.1 Registry：meta は define の最初の引数に、式のない JSON の object の
+// 字のまま書く）。埋め込みのパーツ（作業フォルダの components/<名前>/index.js）にも、部品庫のパーツ（固定のファイルと照らす）にも使う。
+// 読めるのは字（"…"）と object だけ。鍵は "…" か名前（部品庫のパーツは {name: "bars", …} と書く）。注釈・式・変数・' の字・末尾の , は読まない
+// 返すもの：egatariParts.define( がなければ null。あれば {meta: {name, version, requires, element?}} か {problem: 文}
+const DEFINE_RE = /\begatariParts\s*\.\s*define\s*\(/;
+function metaLiteral(src, i0) {
+  let i = i0;
+  const ws = () => { while (i < src.length && /\s/.test(src[i])) i++; };
+  const err = (m) => { throw new Error(`${m} at offset ${i - i0}`); };
+  const string = () => {
+    let j = i + 1;
+    for (; j < src.length && src[j] !== '"'; j++) { if (src[j] === '\\') j++; else if (src[j] === '\n') err('unterminated string'); }
+    if (j >= src.length) err('unterminated string');
+    let v;
+    try { v = JSON.parse(src.slice(i, j + 1)); } catch { err('not a JSON string'); }
+    i = j + 1;
+    return v;
+  };
+  const object = (depth) => {
+    if (depth > 4) err('nested too deeply');
+    i++;   // {
+    const o = {};
+    ws();
+    if (src[i] === '}') { i++; return o; }
+    for (;;) {
+      ws();
+      let k;
+      if (src[i] === '"') k = string();
+      else { const m = /^[A-Za-z_$][\w$]*/.exec(src.slice(i, i + 80)); if (!m) err('a key is neither a JSON string nor a name'); k = m[0]; i += k.length; }
+      if (own(o, k)) err(`key ${JSON.stringify(k)} is written twice`);
+      ws();
+      if (src[i] !== ':') err('expected ":"');
+      i++; ws();
+      if (src[i] === '"') o[k] = string();
+      else if (src[i] === '{') o[k] = object(depth + 1);
+      else err(`the value of ${JSON.stringify(k)} is not a string or an object literal`);
+      ws();
+      if (src[i] === ',') { i++; ws(); if (src[i] === '}') err('trailing comma'); continue; }
+      if (src[i] === '}') { i++; return o; }
+      err('expected "," or "}"');
+    }
+  };
+  ws();
+  if (src[i] !== '{') err('the first argument is not an object literal');
+  const value = object(0);
+  ws();
+  if (src[i] !== ',') err('the meta is not followed by ","');
+  return value;
+}
 export function readDefineMeta(code) {
-  const src = String(code), at = src.indexOf('egatariParts.define(');
-  if (at < 0) return null;
-  const open = src.indexOf('{', at);
-  if (open < 0 || src.slice(at + 20, open).trim() !== '') return null;
-  // 対応する } まで（字の中の括弧は数えない）
-  let depth = 0, end = -1, q = null;
-  for (let i = open; i < src.length && i < open + 4096; i++) {
-    const c = src[i];
-    if (q) { if (c === '\\') i++; else if (c === q) q = null; continue; }
-    if (c === '"' || c === "'") q = c;
-    else if (c === '{') depth++;
-    else if (c === '}' && --depth === 0) { end = i; break; }
-  }
-  if (end < 0) return null;
-  let body = src.slice(open + 1, end);
+  const src = String(code), m = DEFINE_RE.exec(src);
+  if (!m) return null;
+  let v;
+  try { v = metaLiteral(src.slice(m.index + m[0].length, m.index + m[0].length + 8192), 0); }
+  catch (e) { return { problem: `the meta of egatariParts.define is not a literal JSON object (format spec §6.1): ${e.message}` }; }
+  const bad = (w) => ({ problem: `the meta of egatariParts.define: ${w}` });
+  if (typeof v.name !== 'string' || !NAME_RE.test(v.name)) return bad('name is not a part name');
+  if (typeof v.version !== 'string' || !VERSION_RE.test(v.version)) return bad('version is not an exact version');
+  if (v.requires !== undefined && !isObj(v.requires)) return bad('requires is not an object');
   const requires = {};
-  const rq = /requires\s*:\s*\{([^}]*)\}/.exec(body);
-  if (rq) {
-    for (const x of rq[1].matchAll(/["']?([a-z][a-z0-9-]*)["']?\s*:\s*["']([^"']+)["']/g)) requires[x[1]] = x[2];
-    body = body.replace(rq[0], '');
+  for (const [r, rv] of Object.entries(v.requires || {})) {
+    if (!NAME_RE.test(r) || typeof rv !== 'string' || !VERSION_RE.test(rv)) return bad(`requires.${r.slice(0, 64)} is not a part name with an exact version`);
+    requires[r] = rv;
   }
-  const str = (k) => { const r = new RegExp(`(?:^|[,{\\s])["']?${k}["']?\\s*:\\s*["']([^"']*)["']`).exec(body); return r ? r[1] : undefined; };
-  const name = str('name'), version = str('version'), element = str('element');
-  if (!name || !version) return null;
-  return { name, version, requires, ...(element ? { element } : {}) };
+  if (v.element !== undefined && (typeof v.element !== 'string' || !/^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/.test(v.element))) return bad('element is not a custom element name');
+  return { meta: { name: v.name, version: v.version, requires, ...(v.element ? { element: v.element } : {}) } };
+}
+// 部品庫のパーツ：字で読んだ meta が固定のファイルの記録（requires・tag）と合うか。合わない点の文を返す
+export function metaMismatch(meta, rec) {
+  const e = [];
+  if (!eqObj(meta.requires, rec.requires || {})) e.push(`requires ${JSON.stringify(meta.requires)} ≠ ${JSON.stringify(rec.requires || {})}`);
+  if ((meta.element || null) !== (rec.tag || null)) e.push(`element ${meta.element || '(none)'} ≠ ${rec.tag || '(none)'}`);
+  return e;
+}
+const eqObj = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); return ka.length === kb.length && ka.every((k, j) => k === kb[j] && a[k] === b[k]); };
+
+// 版の比べ方（semver の順。前リリース < リリース）
+export function compareVersions(a, b) {
+  const [ma, pa] = String(a).split('+')[0].split(/-(.*)/s), [mb, pb] = String(b).split('+')[0].split(/-(.*)/s);
+  const na = ma.split('.').map(Number), nb = mb.split('.').map(Number);
+  for (let j = 0; j < 3; j++) if (na[j] !== nb[j]) return na[j] - nb[j];
+  if (!pa && !pb) return 0;
+  if (!pa) return 1;
+  if (!pb) return -1;
+  const xa = pa.split('.'), xb = pb.split('.');
+  for (let j = 0; j < Math.max(xa.length, xb.length); j++) {
+    if (xa[j] === undefined) return -1;
+    if (xb[j] === undefined) return 1;
+    const da = /^\d+$/.test(xa[j]), db = /^\d+$/.test(xb[j]);
+    if (da && db) { if (+xa[j] !== +xb[j]) return +xa[j] - +xb[j]; }
+    else if (da !== db) return da ? -1 : 1;
+    else if (xa[j] !== xb[j]) return xa[j] < xb[j] ? -1 : 1;
+  }
+  return 0;
 }
 
 // 使う要素（m-…）から、書き込むパーツを依存の順に決める。
 //   used：教材の中の要素の名前、local：{要素の名前: {meta, code, where}}（埋め込みのパーツ）、pins：{名前: 版}（設定のファイルの components）
-// 返すもの：{parts: [{name, version, source: 'registry' | 'embedded', tag?, requires, file?, code?, meta}], missing: [要素の名前], warn: [文]}
-// 順：要るパーツが先（深さ優先の後順、名前の順に辿る）。同じ名前の違う版は両方入る（name@version で分ける）
+// 返すもの：{parts: [{name, version, source: 'registry' | 'embedded', tag?, requires, file?, code?, meta}], missing: [要素の名前], warn: [文], conflicts: [文]}
+// 順：要るパーツが先（深さ優先の後順、名前の順に辿る）。同じ名前のライブラリのパーツの違う版は両方入る（name@version で分ける）。
+// 要素の名前は 1 つのファイルで 1 つ（§6.1 Order）：同じ要素のパーツの 2 つの版が要るときは、要る版のうちいちばん新しいものだけを書き、
+// ぶつかったことを知らせる（古い版を要るパーツは、ファイルの中で missing になる）。名前の違うパーツが同じ要素の名前を定義するときは、
+// 先に辿った方（教材が直に使う要素は名前の順）を残す
 export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } = {}) {
-  const warn = [], missing = [], cat = lock2.catalogues[catalogue];
+  const cat = lock2.catalogues[catalogue];
   const byTag = new Map();
   for (const [n, v] of Object.entries(cat.parts)) { const p = lock2.parts[n][v]; if (p.kind === 'element') byTag.set(p.tag, n); }
-  const versionOf = (n) => {
-    if (own(pins, n) && isObj(lock2.parts[n]) && own(lock2.parts[n], pins[n])) return pins[n];
-    if (own(pins, n)) warn.push(`part ${n}: version "${String(pins[n]).slice(0, 40)}" is not in ${LOCK2_FILE}; using ${cat.parts[n] || '(none)'}`);
-    return cat.parts[n];
+  const run = (override, exclude) => {
+    const warn = [], missing = [];
+    const versionOf = (n) => {
+      if (own(pins, n) && isObj(lock2.parts[n]) && own(lock2.parts[n], pins[n])) return pins[n];
+      if (own(pins, n)) warn.push(`part ${n}: version "${String(pins[n]).slice(0, 40)}" is not in ${LOCK2_FILE}; using ${cat.parts[n] || '(none)'}`);
+      return cat.parts[n];
+    };
+    const out = [], seen = new Set(), visiting = new Set();
+    const visit = (name, version0, from) => {
+      const version = own(override, name) ? override[name] : version0;
+      const id = `${name}@${version}`;
+      if (exclude.has(id)) return false;
+      if (seen.has(id)) return true;
+      if (visiting.has(id)) { warn.push(`parts: ${id} requires itself (cycle via ${from}); not written`); return false; }
+      const loc = Object.values(local).find((l) => l.meta && l.meta.name === name && l.meta.version === version);
+      const reg = !loc && isObj(lock2.parts[name]) ? lock2.parts[name][version] : null;
+      if (!loc && !reg) { warn.push(`parts: ${id}${from ? ` (required by ${from})` : ''} is not in ${LOCK2_FILE}`); return false; }
+      visiting.add(id);
+      const requires = loc ? loc.meta.requires : reg.requires;
+      for (const r of Object.keys(requires).sort()) visit(r, requires[r], id);
+      visiting.delete(id);
+      seen.add(id);
+      out.push(loc
+        ? { name, version, source: 'embedded', ...(loc.meta.element ? { tag: loc.meta.element } : {}), requires, code: loc.code, where: loc.where, meta: loc.meta }
+        : { name, version, source: 'registry', ...(reg.tag ? { tag: reg.tag } : {}), requires, meta: reg });
+      return true;
+    };
+    for (const tag of [...used].sort()) {
+      if (own(local, tag)) { visit(local[tag].meta.name, local[tag].meta.version, null); continue; }
+      const n = byTag.get(tag);
+      if (!n) { missing.push(tag); continue; }
+      visit(n, versionOf(n), null);
+    }
+    return { parts: out, missing, warn };
   };
-  const out = [], seen = new Set(), visiting = new Set();
-  const visit = (name, version, from) => {
-    const id = `${name}@${version}`;
-    if (seen.has(id)) return true;
-    if (visiting.has(id)) { warn.push(`parts: ${id} requires itself (cycle via ${from}); not written`); return false; }
-    const loc = Object.values(local).find((l) => l.meta && l.meta.name === name && l.meta.version === version);
-    const reg = !loc && isObj(lock2.parts[name]) ? lock2.parts[name][version] : null;
-    if (!loc && !reg) { warn.push(`parts: ${id}${from ? ` (required by ${from})` : ''} is not in ${LOCK2_FILE}`); return false; }
-    visiting.add(id);
-    const requires = loc ? loc.meta.requires : reg.requires;
-    for (const r of Object.keys(requires).sort()) visit(r, requires[r], id);
-    visiting.delete(id);
-    seen.add(id);
-    out.push(loc
-      ? { name, version, source: 'embedded', ...(loc.meta.element ? { tag: loc.meta.element } : {}), requires, code: loc.code, where: loc.where, meta: loc.meta }
-      : { name, version, source: 'registry', ...(reg.tag ? { tag: reg.tag } : {}), requires, meta: reg });
-    return true;
-  };
-  for (const tag of [...used].sort()) {
-    if (own(local, tag)) { visit(local[tag].meta.name, local[tag].meta.version, null); continue; }
-    const n = byTag.get(tag);
-    if (!n) { missing.push(tag); continue; }
-    visit(n, versionOf(n), null);
+  const override = {}, exclude = new Set(), conflicts = [];
+  let r = run(override, exclude);
+  // 要素の名前がぶつかるか（ぶつかりを直すと別のぶつかりが出ることはない：書くパーツは減るだけ。念のため 4 回まで）
+  for (let round = 0; round < 4; round++) {
+    const tags = new Map();
+    for (const p of r.parts) if (p.tag) { if (!tags.has(p.tag)) tags.set(p.tag, []); tags.get(p.tag).push(p); }
+    let changed = false;
+    for (const [tag, ps] of tags) {
+      if (ps.length < 2) continue;
+      changed = true;
+      const ids = ps.map((p) => `${p.name}@${p.version}`);
+      if (ps.every((p) => p.name === ps[0].name)) {
+        const best = ps.map((p) => p.version).sort(compareVersions).pop();
+        override[ps[0].name] = best;
+        conflicts.push(`<${tag}>: ${ids.join(', ')} are required; one file defines an element name once, so only ${ps[0].name}@${best} (the highest) is written (format spec §6.1 Order)`);
+      } else {
+        const keep = ps.find((p) => used.includes(tag) && (own(local, tag) ? p.source === 'embedded' : p.source === 'registry')) || ps[0];
+        for (const p of ps) if (p !== keep) exclude.add(`${p.name}@${p.version}`);
+        conflicts.push(`<${tag}>: defined by ${ids.join(' and ')}; one file defines an element name once, so only ${keep.name}@${keep.version} is written (format spec §6.1 Order)`);
+      }
+    }
+    if (!changed) break;
+    r = run(override, exclude);
   }
-  return { parts: out, missing, warn };
+  return { ...r, warn: [...r.warn, ...conflicts], conflicts };
 }
 
 // ---------------------------------------------------------------- 組み立てのときの描画（§6.2 Render）
@@ -149,7 +248,11 @@ export function eachField(data, path, fn) {
   };
   walk(data, 0);
 }
-// 1 つの要素のデータを描く。renderers = {katex: (src, options) => html}（ない描き手は描かない：§6.2 Missing output はパーツが出す）
+// 描いた結果の欄の名前（§6.2 Render。規範）：欄の名前に接尾辞を足す。katex は <欄>Html、abcjs は <欄>Svg と <欄>Map
+export const RENDERED_SUFFIXES = Object.freeze({ katex: Object.freeze(['Html']), abcjs: Object.freeze(['Svg', 'Map']) });
+export const renderedFieldNames = (renderer, field) => (RENDERED_SUFFIXES[renderer] || []).map((x) => field + x);
+// 1 つの要素のデータを描く。renderers = {katex: {version, defaults, render: (src, options) => ({Html: …})}}：render は接尾辞ごとの結果を返す
+// （欄の名前はここで決める。知らない接尾辞は捨てる）。ない描き手は描かない（§6.2 Missing output はパーツが出す）
 // 返すもの：{data, rendered: n, missing: [描き手の名前], used: {名前: {version, options}}}
 export function renderFields(data, build, renderers) {
   const fields = isObj(build) && isObj(build.fields) ? build.fields : {};
@@ -158,11 +261,15 @@ export function renderFields(data, build, renderers) {
   let n = 0;
   for (const [path, name] of Object.entries(fields)) {
     const r = renderers[name];
-    if (!r) { missing.add(name); continue; }
+    if (!r || !own(RENDERED_SUFFIXES, name)) { missing.add(name); continue; }
     const opt = { ...(r.defaults || {}), ...(isObj(options[name]) ? options[name] : {}) };
     eachField(data, path, (holder, key) => {
       if (typeof holder[key] !== 'string') return;
-      Object.assign(holder, r.render(holder[key], opt, key));
+      const res = r.render(holder[key], opt, key);
+      if (!isObj(res)) return;
+      let any = false;
+      for (const x of RENDERED_SUFFIXES[name]) if (own(res, x)) { holder[key + x] = res[x]; any = true; }
+      if (!any) return;
       n++;
       used[name] = { version: r.version, options: opt };
     });
@@ -174,30 +281,38 @@ export function renderFields(data, build, renderers) {
 // ---------------------------------------------------------------- 絞り込み（§6.2 Subset）
 const BLOCK_RE = /\/\*@egatari-block ([a-z][a-z0-9-]{0,63})\*\/([\s\S]*?)\/\*@egatari-block-end\*\//g;
 // code の中の印の付いた塊を、text に出てくるキーだけに絞る。decl：パーツの build.subset（1 つか配列）。
-// 返すもの：{code, keys: 残したキー（字の並び、符号の順）, blocks: [名前], problems: [文]}。塊のないパーツは code のまま
+// 教材の字（text）は、呼ぶ側が集める（§6.2 Subset：原稿の全部の字（属性の値も）・口述原稿・パーツに渡すデータ・パーツの glyphs）。
+// 宣言ごとに別々に、宣言した順に絞る。残したキー（keys）は、どの宣言で残したものも合わせて 1 回ずつ、符号の順
+// 返すもの：{code, keys, blocks: [名前], problems: [文]}。塊のないパーツは code のまま
 export function subsetCode(code, decl, text) {
-  const list = (Array.isArray(decl) ? decl : [decl]).filter((d) => isObj(d) && typeof d.data === 'string' && d.data.startsWith('block:'));
-  const want = new Map(list.map((d) => [d.data.slice(6), d.key]));
+  const list = (Array.isArray(decl) ? decl : [decl]).filter((d) => isObj(d));
   const chars = new Set(Array.from(String(text)));
   const kept = new Set(), blocks = [], problems = [];
-  const out = String(code).replace(BLOCK_RE, (m, name, json) => {
-    if (!want.has(name)) return m;
-    let v;
-    try { v = JSON.parse(json); } catch (e) { problems.push(`block ${name}: not JSON (${e.message})`); return m; }
-    const keyField = want.get(name);
-    let res;
-    if (Array.isArray(v)) {
-      res = v.filter((it) => isObj(it) && typeof it[keyField] === 'string' && chars.has(it[keyField]));
-      res.forEach((it) => kept.add(it[keyField]));
-    } else if (isObj(v)) {
-      res = {};
-      for (const k of Object.keys(v)) if (k.startsWith('_')) res[k] = v[k];   // _ で始まる欄（使用条件の表示など）は先に、そのまま
-      for (const k of Object.keys(v)) if (!k.startsWith('_') && chars.has(k)) { res[k] = v[k]; kept.add(k); }
-    } else { problems.push(`block ${name}: neither an object nor an array`); return m; }
-    blocks.push(name);
-    return `/*@egatari-block ${name}*/${JSON.stringify(res)}/*@egatari-block-end*/`;
-  });
-  for (const n of want.keys()) if (!blocks.includes(n) && !problems.some((p) => p.startsWith(`block ${n}:`))) problems.push(`block ${n}: not found in the code`);
+  let out = String(code);
+  for (const d of list) {
+    if (typeof d.data !== 'string' || typeof d.key !== 'string') { problems.push(`entry ${JSON.stringify(d).slice(0, 80)}: needs data and key`); continue; }
+    if (!d.data.startsWith('block:')) { problems.push(`${d.data.slice(0, 64)}: subsetting a field of the lesson's data is not supported yet (only block:<name>); kept whole`); continue; }
+    const name = d.data.slice(6), keyField = d.key;
+    let found = false;
+    out = out.replace(BLOCK_RE, (m, bn, json) => {
+      if (bn !== name) return m;
+      found = true;
+      let v;
+      try { v = JSON.parse(json); } catch (e) { problems.push(`block ${name}: not JSON (${e.message})`); return m; }
+      let res;
+      if (Array.isArray(v)) {
+        res = v.filter((it) => isObj(it) && typeof it[keyField] === 'string' && chars.has(it[keyField]));
+        res.forEach((it) => kept.add(it[keyField]));
+      } else if (isObj(v)) {
+        res = {};
+        for (const k of Object.keys(v)) if (k.startsWith('_')) res[k] = v[k];   // _ で始まる欄（使用条件の表示など）は先に、そのまま
+        for (const k of Object.keys(v)) if (!k.startsWith('_') && chars.has(k)) { res[k] = v[k]; kept.add(k); }
+      } else { problems.push(`block ${name}: neither an object nor an array`); return m; }
+      if (!blocks.includes(name)) blocks.push(name);
+      return `/*@egatari-block ${name}*/${JSON.stringify(res)}/*@egatari-block-end*/`;
+    });
+    if (!found) problems.push(`block ${name}: not found in the code`);
+  }
   const keys = [...kept].sort((a, b) => a.codePointAt(0) - b.codePointAt(0)).join('');
   return { code: out, keys, blocks, problems };
 }

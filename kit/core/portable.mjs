@@ -334,6 +334,15 @@ export function validateIndex(ix) {
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
       if (c.source === 'embedded' && !own(c, 'path')) e.push(`${w}: embedded without path`);
       if (own(c, 'path')) path(c.path, `${w}.path`);
+      // renderers（format spec §6.2 Render・index schema）：組み立てのときに描いた描き手 {名前: {version, options?}}。パーツのデータの renderers と同じ
+      if (own(c, 'renderers')) {
+        if (!isObj(c.renderers)) e.push(`${w}.renderers: not an object`);
+        else for (const [n, rr] of Object.entries(c.renderers)) {
+          if (!isObj(rr)) { e.push(`${w}.renderers.${n.slice(0, 40)}: not an object`); continue; }
+          str(rr.version, `${w}.renderers.${n.slice(0, 40)}.version`, null, 1);
+          if (own(rr, 'options') && !isObj(rr.options)) e.push(`${w}.renderers.${n.slice(0, 40)}.options: not an object`);
+        }
+      }
     });
   }
   if (own(ix, 'themes')) {

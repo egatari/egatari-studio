@@ -5,12 +5,16 @@
 // - meta = {name, version, requires?, element?}。requires は {名前: ちょうどの版}（範囲は書かない）
 // - factory(deps) を、requires の名前ごとにそのパーツの factory が返した値を入れた object で呼び、返り値を name@version で持つ。
 //   返り値は浅く凍らせる（ほかのパーツの返り値を変えてはいけない）。element があれば、返ったクラスをその名前の custom element にする
-//   （まだ定義されていなければ）
-// - 先に書かれていないパーツを要る・要るパーツが失敗した・factory が投げた・meta が形に合わない：そのパーツを失敗として記録し、
-//   それに頼るパーツも失敗する。ほかのパーツは動く。要素は定義されないので、再生器は最後の状態の絵か字の代わりを出す
-// - 同じ name@version をもう一度 define したら、後のものは使わない（警告）
-// 再生器（deck.js）と試験が読むための口（パーツは使わない。数えない property）：
-//   egatariParts.status() → {defined: ["name@version", …], elements: {要素の名前: "name@version"}, failures: [{name, version, element, reason}]}
+//   （その名前がもう定義されていれば element の失敗：factory は呼ばない）
+// - 失敗はパーツごとに 1 つの理由（reason）で記録する（§6.1 Registry）。そのパーツに頼るパーツも失敗する。ほかのパーツは動く。
+//   要素は定義されないので、再生器は最後の状態の絵か字の代わりを出す
+//     factory    factory が投げた（factory が関数でない・要素のパーツが HTMLElement のクラスを返さない・meta が形に合わない、も同じ扱い）
+//     missing    要るパーツ（requires の name@version）が先に定義されていない
+//     dependency 要るパーツが失敗した
+//     duplicate  同じ name@version の 2 度目の define（後のものは使わない。最初のものが残る）
+//     element    その custom element の名前がもう定義されている（最初のものが残る。1 つのファイルで要素の名前は 1 つ）
+// 再生器（deck.js）と道具が読むための口（パーツは使わない。数えない property）：
+//   egatariParts.status() → {defined: ["name@version", …], failed: [{name, version, reason}, …]}（どちらも呼ばれた順）
 (function(){
 "use strict";
 if (globalThis.egatariParts) return;   // 2 回書き込まれても、最初のものだけ
@@ -20,14 +24,14 @@ var ELEMENT = /^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/;
 var own = function(o, k){ return Object.prototype.hasOwnProperty.call(o, k); };
 var parts = Object.create(null);     // "name@version" → {value}
 var failed = Object.create(null);    // "name@version" → reason
-var failures = [], elements = Object.create(null), order = [];
-function fail(meta, reason){
-  var name = meta && typeof meta.name === "string" ? meta.name : String(meta && meta.name);
-  var version = meta && typeof meta.version === "string" ? meta.version : String(meta && meta.version);
-  var element = meta && typeof meta.element === "string" ? meta.element : null;
-  failed[name + "@" + version] = reason;
-  failures.push({name: name, version: version, element: element, reason: reason});
-  try { console.warn("[egatariParts] " + name + "@" + version + ": " + reason); } catch (e) { /* 知らせに失敗しても続ける */ }
+var defined = [], failures = [];
+function str(x){ return typeof x === "string" ? x : String(x); }
+function fail(meta, reason, why){
+  var name = meta && typeof meta === "object" ? str(meta.name) : "undefined";
+  var version = meta && typeof meta === "object" ? str(meta.version) : "undefined";
+  if (reason !== "duplicate") failed[name + "@" + version] = reason;
+  failures.push({name: name, version: version, reason: reason});
+  try { console.warn("[egatariParts] " + name + "@" + version + ": " + reason + (why ? " (" + why + ")" : "")); } catch (e) { /* 知らせに失敗しても続ける */ }
 }
 function metaProblem(meta){
   if (!meta || typeof meta !== "object") return "meta is not an object";
@@ -44,42 +48,35 @@ function metaProblem(meta){
 }
 function define(meta, factory){
   var p = metaProblem(meta);
-  if (p) return fail(meta, p);
+  if (p) return fail(meta, "factory", p);
   var id = meta.name + "@" + meta.version;
-  if (parts[id] || failed[id]){ try { console.warn("[egatariParts] " + id + " is defined twice (the first is kept)"); } catch (e) {} return; }
-  if (typeof factory !== "function") return fail(meta, "factory is not a function");
+  if (parts[id] || failed[id]) return fail(meta, "duplicate", id + " is already defined; the first is kept");
+  if (meta.element !== undefined && customElements.get(meta.element)) return fail(meta, "element", "<" + meta.element + "> is already defined; the first is kept");
+  if (typeof factory !== "function") return fail(meta, "factory", "factory is not a function");
   var deps = Object.create(null), req = meta.requires || {};
   for (var r in req){
     if (!own(req, r)) continue;
     var rid = r + "@" + req[r];
-    if (failed[rid]) return fail(meta, "requires " + rid + ", which failed");
-    if (!parts[rid]) return fail(meta, "requires " + rid + ", which is not defined before it");
+    if (failed[rid]) return fail(meta, "dependency", "requires " + rid + ", which failed");
+    if (!parts[rid]) return fail(meta, "missing", "requires " + rid + ", which is not defined before it");
     deps[r] = parts[rid].value;
   }
   var value;
   try { value = factory(Object.freeze(deps)); }
-  catch (e) { return fail(meta, "factory threw: " + (e && e.message !== undefined ? e.message : String(e))); }
+  catch (e) { return fail(meta, "factory", "factory threw: " + (e && e.message !== undefined ? e.message : String(e))); }
   if (meta.element !== undefined){
-    if (typeof value !== "function" || !(value.prototype instanceof HTMLElement)) return fail(meta, "element part did not return a class extending HTMLElement");
+    if (typeof value !== "function" || !(value.prototype instanceof HTMLElement)) return fail(meta, "factory", "element part did not return a class extending HTMLElement");
+    // factory の中で同じ名前が定義された場合も、最初のものを残す
+    if (customElements.get(meta.element)) return fail(meta, "element", "<" + meta.element + "> is already defined; the first is kept");
+    try { customElements.define(meta.element, value); }
+    catch (e) { return fail(meta, "element", "customElements.define threw: " + (e && e.message !== undefined ? e.message : String(e))); }
   }
   if (value !== null && (typeof value === "object" || typeof value === "function")) Object.freeze(value);
   parts[id] = {value: value};
-  order.push(id);
-  if (meta.element !== undefined){
-    try {
-      if (!customElements.get(meta.element)){ customElements.define(meta.element, value); elements[meta.element] = id; }
-      else if (customElements.get(meta.element) === value) elements[meta.element] = id;
-      else console.warn("[egatariParts] " + id + ": <" + meta.element + "> is already defined (not redefined)");
-    } catch (e) {
-      delete parts[id]; order.pop();
-      return fail(meta, "customElements.define threw: " + (e && e.message !== undefined ? e.message : String(e)));
-    }
-  }
+  defined.push(id);
 }
 function status(){
-  var el = {};
-  for (var k in elements) el[k] = elements[k];
-  return {defined: order.slice(), elements: el, failures: failures.map(function(f){ return {name: f.name, version: f.version, element: f.element, reason: f.reason}; })};
+  return {defined: defined.slice(), failed: failures.map(function(f){ return {name: f.name, version: f.version, reason: f.reason}; })};
 }
 var reg = {define: define};
 Object.defineProperty(reg, "status", {value: status, enumerable: false});
