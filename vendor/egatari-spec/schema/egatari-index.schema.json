@@ -402,6 +402,23 @@
           "type": "string",
           "minLength": 1,
           "description": "SPDX license expression (spec §6)."
+        },
+        "subset": {
+          "type": "object",
+          "required": [
+            "keys",
+            "sha256"
+          ],
+          "properties": {
+            "keys": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "description": "Keys kept by the build-time subset and the SHA-256 of the subset code in the file (spec §6.2)."
         }
       },
       "if": {
