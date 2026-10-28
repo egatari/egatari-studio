@@ -149,6 +149,7 @@ main{flex:1;min-height:0;display:flex}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
 #notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
 #notice p{margin:2px 0}
+#notice:has(> p.info:only-child){background:var(--panel);color:var(--fg)}   /* 案内だけのとき（警告がないとき）は警告の色にしない */
 #notice .theme-changes{margin:2px 0 2px 18px;padding:0}
 #notice .theme-changes li{margin:1px 0}
 #notice .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px;vertical-align:-.2em}

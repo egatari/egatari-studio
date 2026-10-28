@@ -1,5 +1,5 @@
 {
- "version": "2026-10-28",
+ "version": "2026-10-29",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -1411,6 +1411,65 @@
    },
    "internal": "",
    "decided": "2026-10-25",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "drag-and-drop",
+   "group": "Parts and themes",
+   "en": "Drag a file here",
+   "ja": "ここにファイルをドラッグ＆ドロップ",
+   "definition": "Drop zone on the start screen, e.g. “.ega.html ファイルをここにドラッグ＆ドロップ”. Follows Google Drive / Windows wording.",
+   "avoid": {
+    "ja": [
+     "落とす"
+    ],
+    "en": [
+     "Drop … here (alone)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "exported-file",
+   "group": "Parts and themes",
+   "en": "File exported from a working folder",
+   "ja": "作業フォルダから書き出したファイル",
+   "definition": "A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder.",
+   "avoid": {
+    "ja": [
+     "写し",
+     "フォルダには入りません"
+    ],
+    "en": [
+     "copy (alone)"
+    ]
+   },
+   "internal": "exportedFrom (spec §3.1)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "no-upload",
+   "group": "Parts and themes",
+   "en": "Not uploaded",
+   "ja": "アップロードしません",
+   "definition": "Privacy line: the app reads and writes files on the device and uploads nothing, e.g. 「ファイルはどこにもアップロードしません」. Usual wording of browser-only tools.",
+   "avoid": {
+    "ja": [
+     "送りません",
+     "送信しません"
+    ],
+    "en": [
+     "sent (alone)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-29",
    "by": "standards",
    "note": ""
   },

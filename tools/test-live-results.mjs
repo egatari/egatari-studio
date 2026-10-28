@@ -253,7 +253,7 @@ console.log('editor');
     // 取り込む：はじめての知らせ（部屋は合う）
     await page.setInputFiles('#attach-live-file', { name: 'results.json', mimeType: 'application/json', buffer: R1B });
     await page.waitForSelector('#dlg[open] #live-results-privacy');
-    ok(/参加者が打った字/.test(await page.textContent('#live-results-privacy')) && /どこにも送りません/.test(await page.textContent('#live-results-privacy')) && !(await page.$('#dlg #live-results-mismatch')), 'editor: the first import shows the privacy notice (no room warning when the room matches)');
+    ok(/参加者が打った字/.test(await page.textContent('#live-results-privacy')) && /どこにもアップロードしません/.test(await page.textContent('#live-results-privacy')) && !(await page.$('#dlg #live-results-mismatch')), 'editor: the first import shows the privacy notice (no room warning when the room matches)');
     await clickDlg(page, '#dlg-ok');
     await waitIdle();
     const P1 = 'attachments/live-r-7k2q6xw4-2026-10-30.json';

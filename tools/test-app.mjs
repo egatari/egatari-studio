@@ -275,7 +275,7 @@ try {
     ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
     ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
   }
-  ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('ここに .ega.html を落とす') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
+  ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('.ega.html ファイルをここにドラッグ＆ドロップ') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
@@ -690,8 +690,8 @@ try {
     await page.click('#b-comments');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダからエクスポートした写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダにエクスポート』を使ってください。')
-      && !(await page.textContent('#notice-exported')).includes('エクスポートしたあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）から書き出したものです。ここで直しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま直して保存できます。')
+      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
     await shot(page, 'portable-exported-notice.png');
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-saveas') && await page.isHidden('#b-export-portable') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'false', 'portable: File ▾ has Save and Save as… (the single-file ones)');
@@ -738,7 +738,7 @@ try {
     const aRead = await readPortable(new Uint8Array(aBuf));
     ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
     ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('書き出したあと、このファイルで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
     fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
     ok(ps0.portable.stale.includes(`${K('何を最小化するか')}:0`) && JSON.stringify(aRead.index.audio[`${K('何を最小化するか')}:0`]) === JSON.stringify(pmin.index.audio[`${K('何を最小化するか')}:0`]), 'tier A: the edited step\'s audio is kept as is and shown as stale');
     await shot(page, 'portable-tier-a-saved.png');
@@ -2009,7 +2009,7 @@ try {
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');
   await pe.goto(BASE);
-  ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drop a .ega.html here'), 'i18n: English UI for en locale');
+  ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drag a .ega.html file here'), 'i18n: English UI for en locale');
   // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
   await pe.evaluate(async (b64) => {
     const root = await navigator.storage.getDirectory();
@@ -2020,7 +2020,7 @@ try {
   }, fs.readFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT)).toString('base64'));
   await pe.waitForSelector('#notice-exported', { timeout: 30000 });
   { const t = await pe.textContent('#notice-exported');
-    ok(t.startsWith("This is a copy exported from a lesson folder. Changes made here do not go back into the folder. To bring them back, use 'Export working folder'.") && t.includes('This copy has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
+    ok(t.startsWith("This file was exported from a working folder (the folder that holds the slide and script files). Editing it here does not change the files in that folder. If you don't have the folder, you can edit and save this file as usual.") && t.includes('This file has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
     const st = await pe.evaluate(() => window.__APP_TEST.state().portable);
     ok(st && st.readOnly === null && !st.tierAOnly, 'exportedFrom: the exported copy stays editable (not read-only)'); }
   await pe.close();

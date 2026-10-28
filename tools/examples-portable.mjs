@@ -49,7 +49,7 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       const file = name + FORMAT.FILE_EXT, out = path.join(outDir, file);
       const src = path.join(copy, 'deck.html');
       // id のないスライド（minimal・tmlr2026 の原稿は id を持たない）に書き出しが付ける id も、名前から決めた乱数で（組むたびに同じ文書）
-      const r = await buildPortable(src, { out, idRand: exampleRand(name) });
+      const r = await buildPortable(src, { out, idRand: exampleRand(name), fromFolder: false });
       writeOutput(src, out, r.html);
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};

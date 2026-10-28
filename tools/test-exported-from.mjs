@@ -18,6 +18,7 @@ import { tierA } from '../kit/core/tier-a.mjs';
 import { buildPortable, nodeEnv } from '../kit/build.mjs';
 import { unpack, compare } from './portable.mjs';
 import { makeDeck } from './portable-fixtures.mjs';
+import { buildExamples } from './examples-portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SPEC = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
@@ -231,6 +232,12 @@ ok('npm run portable -- compare：写しとフォルダのどちらを書き出�
   fs.writeFileSync(fresh, fx.html);
   assert.ok(fs.existsSync(path.join(N, CFG)));
   assert.equal((await compare(fresh, N)).state, 'same');
+});
+
+ok('見本（examples/）：配る 1 ファイルは書き出しの印を持たない（フォルダを持たない人が開くので。CLI の --portable は印を書くまま）', async () => {
+  const list = await buildExamples(path.join(work, 'examples-out'), { log: () => {} });
+  assert.ok(list.length >= 4);
+  for (const x of list) assert.ok(!fs.readFileSync(path.join(work, 'examples-out', x.file), 'utf8').includes('"exportedFrom"'), `${x.name} carries exportedFrom`);
 });
 
 let failed = 0;
