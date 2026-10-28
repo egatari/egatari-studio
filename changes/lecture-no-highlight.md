@@ -1,2 +1,0 @@
-### Changed
-- Lecture view (`?mode=lecture`, key `l`): the highlighter on the current step is removed (the underline-style background on `.cur`, and the row tint on a current table row), and no other mark replaces it. The runtime no longer adds the `.cur` class to step elements. Steps not yet reached stay dimmed with the theme variable `--lecture-dim` (0.5 by default; a theme may set it within 0.45–0.5); steps already reached are at full strength. Talk and video modes are unchanged, byte for byte. `--emph-tint` stays in the themes but the kit no longer uses it. Backlog #86

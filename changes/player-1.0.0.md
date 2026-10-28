@@ -1,3 +1,0 @@
-### Changed
-
-- Egatari Player 1.0.0 (the bundled player that files carry, `player` in the index and `deck-meta`): the first fixed release of the player, following Egatari 1.0 (wd-2026-10-28). Files now record which player they play with, and Studio asks before a save would change it. For lessons: the toolbar shows for 5 s when a lesson opens, with a first-time hint and a faint handle while it is hidden; on touch screens a tap shows the toolbar without pressing the button underneath; Japanese and Chinese line breaks follow strict kinsoku; parts whose previews are dimmed use `--preview-opacity`.

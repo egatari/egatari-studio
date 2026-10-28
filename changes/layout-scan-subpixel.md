@@ -1,3 +1,0 @@
-### Fixed
-
-- Quality check (R-fit): an overflow of the body under 1 px is no longer reported. A fractional overflow such as 565.4px against 565px was an error whose message read 「本文が下に 0 px はみ出す（565px > 565px…）」. The overflow is now rounded to whole pixels before it is compared, and the message uses the same rounded value, so a reported overflow is never "0 px" (2 px reads "2 px"). The same rule applies to `bodyBottom`, `bodyRight`, `bodyLeft`, `tateBodyHead` and `bodyConclCol`. Slides that overflowed by less than half a pixel lose that error, and the reported px of the others can move by under 1 px.
