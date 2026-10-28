@@ -4,6 +4,7 @@
 // 本物の iPad の代わりではない（handoff の確認リスト viewer-ipad-check.md が本物の iPad の手順）。ここで見るのは：
 //   iPad (gen 11) の縦と横、iPad Mini の縦で：最初の画面が出て横にはみ出さない・題が Egatari Viewer。再生専用と編集可のファイルを開いて再生し、
 //   タップで次のステップに進む・字幕（s）が出る・閉じる。Egatari ファイルでない・大きすぎるファイルの知らせ。オフラインで「参加する」の知らせ。
+//   Mac の Safari（Desktop Safari）で、送りのキーがフォーカスのどこにあっても教材を動かす（tools/viewer-keys-check.mjs）。
 //   sandbox の隔て（教材から Viewer の DOM・保存場所・ネットワークに届かない）。ファイルの CSP の <meta>（format spec §4.2）があっても再生する
 // service worker は見ない（Playwright の WebKit は service worker を扱えない。オフラインと版は tools/test-play.mjs が Chromium で見る）
 import fs from 'node:fs';
@@ -16,6 +17,7 @@ import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { buildPlay } from './build-play.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
+import { checkViewerKeys } from './viewer-keys-check.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-viewer-webkit-')));
@@ -120,6 +122,16 @@ for (const device of ['iPad (gen 11)', 'iPad (gen 11) landscape', 'iPad Mini']) 
   ok(o.errors.length === 0, `${device}: no page errors (${o.errors.join(' | ')})`);
   await o.ctx.close();
 }
+
+// a Mac with Safari (keyboard): the navigation keys move the lesson wherever the focus is (tools/viewer-keys-check.mjs).
+// WebKit does not focus a button on a click, and may refuse the page's iframe.focus(): the page hands the keys over
+console.log('keys (Desktop Safari)');
+{ const o = await page('Desktop Safari');
+  await o.p.setInputFiles('#file', FIX['lesson.play.ega.html']);
+  const f = await lessonFrame(o.p);
+  await checkViewerKeys({ ctx: o.ctx, p: o.p, f, ok, until, engine: 'WebKit' });
+  ok(o.errors.length === 0, `keys: no page errors (${o.errors.join(' | ')})`);
+  await o.ctx.close(); }
 
 console.log('files and messages (iPad (gen 11))');
 { const o = await page('iPad (gen 11)');
