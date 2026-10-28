@@ -1,0 +1,10 @@
+{
+  "name": "sumi",
+  "extends": "default",
+  "version": "1.0.0",
+  "look": {
+    "heading": "band",
+    "cover": "left-bar",
+    "concl": "left-rule"
+  }
+}

@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=3c217cda25bf790d -->
+<!-- i18n: pair=template.md sha256=795eff1426c9f9a4 -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 
@@ -70,7 +70,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 </html>
 ```
 
-- `lang`：`ja`・`en` など（教材の言語）。`data-theme`：{{THEMES}} のどれか（ビジネス・ピッチは `business`、国語は `kokugo`、ほかは `default`）
+- `lang`：`ja`・`en` など（教材の言語）。`data-theme`：ビジネス・ピッチは `sumi`、国語は `kokugo`、ほかは `default`
 - `<script>` は部品のデータ（§2.6）だけ。`<style>` は配置（大きさ・間隔）だけに使い、色は書かない
 
 ### 2.2 スライド

@@ -156,6 +156,9 @@ export const MESSAGES = {
   themeMetricsInvalid: {
     ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値は親のテーマ（なければ既定）の値で検査した：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
     en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. Those values were checked with the parent theme's (or the default) values: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
+  fontNotEmbedded: {
+    ja: (a) => `ファイルに入っていない字体です（${(a.fonts || []).join('・')}）。開く端末によって見え方が変わります：どの端末でも同じに見せるには、ファイルに入る字体（docs/reference.ja.md「字体」の一覧）から選ぶ`,
+    en: (a) => `This font is not embedded in the file (${(a.fonts || []).join(', ')}), so it looks different on each device: to look the same everywhere, choose a font that goes into the file (the list in docs/reference.md, “Fonts”)` },
   secHeading: { ja: (a) => `章の扉の題が h2 で書かれている（「${a.t}」）：章の扉（<section class="slide sec">）の題は h1 にする`, en: (a) => `the chapter divider's title is written with h2 (“${a.t}”): write the title of a divider (<section class="slide sec">) as h1` },
   textContrast: { rule: 'R-colors', ja: (a) => `字と地のコントラストが低い（${a.ratio}:1 < ${a.min}:1、<${a.tag}>「${a.t}」）：テーマの色に戻す（スライドに書いた色・地の色を消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between text and background (${a.ratio}:1 < ${a.min}:1, <${a.tag}> “${a.t}”): go back to the theme colors (remove colors and backgrounds written on the slide; use only theme classes and variables)` },
   smallText: { rule: 'R-fit', ja: (a) => `字が小さい（${a.px}px：「${a.t}」。本文は 27px、表・図は 24px から）：font-size を書かず既定の大きさに戻し、入らなければスライドを分ける`, en: (a) => `text is too small (${a.px}px: “${a.t}”; body text needs 27px, tables and figures 24px): remove the font-size and split the slide if it does not fit` },

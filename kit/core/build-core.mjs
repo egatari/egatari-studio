@@ -173,6 +173,47 @@ export const FONTS = {
   sans3: { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3' },
   mincho: { family: 'BIZ UDPMincho', pkg: '@fontsource/biz-udpmincho' },
 };
+// 選べる字体の一覧（#133。handoff/fonts-inventory-2026-10-28.md §8.1）：どれも OFL で @fontsource にある。一覧は Studio の側にあり、
+// ファイルに入るのは、教材が選んだ字体だけ（テーマの theme.json の fonts、テーマ・スライドの CSS が名指した字体）。使っている字の分割ファイルだけ。
+//   group：ja（日本語）・en（英語）・mono（等幅）　weights：太さ（Klee One の太字は 600）　italic：斜体もある（英語の字体は斜体も入れる）
+// 既定の 3 つ（BIZ UDPゴシック・Source Sans 3・BIZ UDP明朝）はこれまでどおり上の FONTS の決まりで入る（明朝は使うときだけ）。
+// 一覧にない字体を CSS が名指してもよいが、ファイルには入らない（開く端末にあればその字体。品質チェックが fontNotEmbedded で知らせる）
+export const FONT_LIST = Object.freeze([
+  { family: 'BIZ UDPGothic', pkg: '@fontsource/biz-udpgothic', group: 'ja', weights: [400, 700], default: true },
+  { family: 'BIZ UDPMincho', pkg: '@fontsource/biz-udpmincho', group: 'ja', weights: [400, 700] },
+  { family: 'Shippori Mincho', pkg: '@fontsource/shippori-mincho', group: 'ja', weights: [400, 700] },
+  { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700] },
+  { family: 'Klee One', pkg: '@fontsource/klee-one', group: 'ja', weights: [400, 600] },
+  { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3', group: 'en', weights: [400, 700], italic: true, default: true },
+  { family: 'Source Serif 4', pkg: '@fontsource/source-serif-4', group: 'en', weights: [400, 700], italic: true },
+  { family: 'Andika', pkg: '@fontsource/andika', group: 'en', weights: [400, 700], italic: true },
+  { family: 'Atkinson Hyperlegible Next', pkg: '@fontsource/atkinson-hyperlegible-next', group: 'en', weights: [400, 700], italic: true },
+  { family: 'Source Code Pro', pkg: '@fontsource/source-code-pro', group: 'mono', weights: [400, 700] },
+].map((f) => Object.freeze(f)));
+export const fontByFamily = (name) => FONT_LIST.find((f) => f.family.toLowerCase() === String(name || '').trim().replace(/^["']|["']$/g, '').toLowerCase()) || null;
+// 教材が選んだ一覧の字体（既定の 3 つは除く）：テーマの theme.json の fonts（{body, heading} の字体の名前）と、テーマ・スライドの CSS に名前が出てくるもの
+const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export function chosenFonts(css, cfgFonts) {
+  const out = new Set();
+  const named = cfgFonts && typeof cfgFonts === 'object' ? Object.values(cfgFonts) : [];
+  for (const n of named) { const f = fontByFamily(n); if (f) out.add(f); }
+  const c = String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const f of FONT_LIST) if (new RegExp(`(^|[\\s,:"'])${reEsc(f.family)}(?=$|[\\s,;"'!}])`, 'i').test(c)) out.add(f);
+  return [...out].filter((f) => f.family !== FONTS.biz.family && f.family !== FONTS.sans3.family && f.family !== FONTS.mincho.family);
+}
+// スライドの CSS（<style> の中と style="" の値）。一覧の字体を名指しているかを見る
+export function deckCss(html) {
+  const h = String(html).replace(/data:[^"')\s]+/g, '');
+  return [...h.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n') + '\n' +
+    [...h.matchAll(/\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((m) => m[1] ?? m[2]).join(';\n');
+}
+// 日本語の教材で、強調（<em>・<i>）の中のラテン文字。英語の斜体（Source Sans 3 の斜体）で出す字
+export function italicLatin(html) {
+  const h = String(html).replace(/data:[^"')\s]+/g, '').replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  let t = '';
+  for (const m of h.matchAll(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi)) t += decodeEntities(m[2].replace(/<[^>]*>/g, ''));
+  return /[A-Za-z]/.test(t) ? [...new Set(t)].filter((c) => c.codePointAt(0) <= LATIN_MAX && c.trim()).join('') + ' ' : '';
+}
 // デッキが明朝を使うか：原稿（取り込みの後）・テーマの CSS・使っている部品の JS のどれかが var(--font-mincho) か "BIZ UDPMincho" を書いている、
 // <html data-font="mincho">、class に mincho がある。kit の CSS（--font-mincho の定義と .mincho の規則）は数えない
 export function usesMincho(html, themeCss = '', compJs = '') {
@@ -185,17 +226,18 @@ export const isJapanese = (lang) => !lang || /^ja\b/i.test(lang);
 // 英語などのデッキで、BIZ UDPゴシックに任せる字（Source Sans 3 が持つラテン文字・記号の大部分より後ろ）
 export const LATIN_MAX = 0x24f;
 // 字の分割ファイルの一覧：{w, family, file, range}（file は env.path の上の場所）
-export function fontFaces(env, font, weights = [400, 700]) {
+// italic：斜体の分割ファイル（@fontsource の {w}-italic.css。font-style:italic で書く）
+export function fontFaces(env, font, weights = font.weights || [400, 700], italic = false) {
   const P = env.path;
   const dir = env.fontDir(font.pkg);
   const faces = [];
   for (const w of weights) {
-    const css = env.readText(P.join(dir, `${w}.css`));
+    const css = env.readText(P.join(dir, `${w}${italic ? '-italic' : ''}.css`));
     for (const block of css.match(/@font-face\s*\{[^}]*\}/g) || []) {
       const url = block.match(/url\(\.\/files\/([^)]+\.woff2)\)/)?.[1];
       const range = block.match(/unicode-range:\s*([^;]+);/)?.[1];
       if (!url) continue;
-      faces.push({ w, family: font.family, file: P.join(dir, 'files', url), range: parseRange(range || 'U+0-10FFFF') });
+      faces.push({ w, family: font.family, file: P.join(dir, 'files', url), range: parseRange(range || 'U+0-10FFFF'), ...(italic ? { style: 'italic' } : {}) });
     }
   }
   return faces;
@@ -242,12 +284,12 @@ export function glyphText(html, narration, compJs = '', lang = '') {
 }
 
 // 分割ファイル（unicode-range ごと）のうち、使っている字を含むものだけを埋め込む
-function rangeCss(env, fonts, text) {
+function rangeCss(env, fonts, text, italic = false) {
   const used = new Set();
   for (const ch of text) used.add(ch.codePointAt(0));
   const hit = (r) => { for (const [a, b] of r) for (const c of used) if (c >= a && c <= b) return true; return false; };
   let css = '', n = 0, bytes = 0;
-  for (const f of fonts.flatMap((x) => fontFaces(env, x))) {
+  for (const f of fonts.flatMap((x) => fontFaces(env, x, x.weights || [400, 700], italic))) {
     if (!hit(f.range)) continue;
     const b64 = env.readBase64(f.file);
     bytes += b64.length; n++;
@@ -269,17 +311,31 @@ export function rangesOf(chars) {
   return out;
 }
 // 字の包みが env にあるか（編集アプリの 1 ファイル版は明朝を持たない）
-const hasFont = (env, font) => { try { return env.exists(env.path.join(env.fontDir(font.pkg), '400.css')); } catch { return false; } };
+const hasFont = (env, font, italic = false) => { try { return env.exists(env.path.join(env.fontDir(font.pkg), `400${italic ? '-italic' : ''}.css`)); } catch { return false; } };
 // mincho：明朝も埋め込む（usesMincho）。warn：明朝の字がないときに知らせる
-function fontCss(env, text, subset, lang, mincho = false, warn = []) {
-  const g = fontCssGothic(env, text, subset, lang);
+// more：{chosen：一覧から選んだ字体（chosenFonts）、italic：日本語の教材の強調の中のラテン文字（italicLatin）}
+function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) {
+  const add = (a, b) => ({ css: a.css + b.css, n: a.n + b.n, bytes: a.bytes + b.bytes });
+  let g = fontCssGothic(env, text, subset, lang);
+  // 英語の斜体（Source Sans 3 の 400・700 の斜体）：英語などの教材は初めから（使う字の分割ファイルだけ）。
+  // 日本語の教材は強調（<em>・<i>）の中にラテン文字があるときだけ、その字だけを入れ、強調の中のラテン文字をこの斜体で出す
+  if (!isJapanese(lang)) { if (hasFont(env, FONTS.sans3, true)) g = add(g, rangeCss(env, [FONTS.sans3], text, true)); }
+  else if (more.italic && hasFont(env, FONTS.sans3, true)) {
+    const it = rangeCss(env, [FONTS.sans3], more.italic, true);
+    if (it.n) g = add(g, { ...it, css: it.css + `:is(em,i){font-family:"${FONTS.sans3.family}",var(--font-sans)}\n` });
+  }
+  for (const f of more.chosen || []) {
+    if (!hasFont(env, f)) { warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`); continue; }
+    g = add(g, rangeCss(env, [f], text));
+    if (f.italic) g = add(g, rangeCss(env, [f], text, true));
+  }
   if (!mincho) return g;
   // 明朝は和文（ラテン文字より後ろ）のための字。英語などのデッキでは Source Sans 3 が持たない字だけ
   const t = isJapanese(lang) ? text : [...new Set(text)].filter((c) => c.codePointAt(0) > LATIN_MAX).join('');
   if (!t) return g;
   const m = (subset && env.subset ? env.subset(t, 'mincho') : null) || (hasFont(env, FONTS.mincho) ? rangeCss(env, [FONTS.mincho], t) : null);
   if (!m) { warn.push('明朝（BIZ UDP明朝）の字がないので埋め込まない（見る人の機械の明朝で出る）。node tools/get-fonts.mjs か npm ci'); return g; }
-  return { css: g.css + m.css, n: g.n + m.n, bytes: g.bytes + m.bytes };
+  return add(g, m);
 }
 function fontCssGothic(env, text, subset, lang) {
   const sub = (t) => (subset && env.subset ? env.subset(t) : null);
@@ -845,7 +901,8 @@ export function build(env0, srcPath, opts = {}) {
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
   // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
   const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
-  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn);
+  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn,
+    { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: isJapanese(lang) ? italicLatin(html) : '' });
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
   const scriptSafe = (t) => String(t).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');

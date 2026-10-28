@@ -1,0 +1,16 @@
+/* 焦茶（kogecha）：暗く冷たい茶に青緑、生成りの地。人文・歴史・地域向け。見出しは二重線、表紙は細い枠。
+   赤との差を保つため茶を暗く冷たくした（1 型の模擬で赤との差 ΔE 28 → 37）。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #3f3530;                 /* 焦茶 */
+  --accent2: #1d6b70;              /* 青緑。3 つ目の系列 */
+  --bg: #fcfaf5;                   /* 生成り */
+  --cover-bg: #f3ece1;
+  --sec-bg: #3f3530;
+  --series-3: var(--accent2);
+}
+/* look heading: double */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:6px double var(--base)}
+/* /look */
+/* look cover: frame */
+.slide.cover::before{left:28px;right:28px;top:28px;bottom:28px;height:auto;background:transparent;border:2px solid var(--base)}
+/* /look */

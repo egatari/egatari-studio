@@ -1,0 +1,10 @@
+{
+  "name": "murasaki",
+  "extends": "default",
+  "version": "1.0.0",
+  "look": {
+    "heading": "left-bar",
+    "cover": "bottom-band",
+    "concl": "left-rule"
+  }
+}

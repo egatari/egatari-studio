@@ -179,6 +179,8 @@ function quickCheck(fonts){
   });
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
   // 同梱の字体が読み込めていなければ測らない（代わりの字体では測らない）：metricsFontLoad
+  // ファイルに入っていない字体（コマンド版と同じ。metricsFonts の foreign）
+  if (fonts && fonts.foreign && fonts.foreign.length) add(null, "warn", "fontNotEmbedded", {fonts: fonts.foreign});
   if (fonts && !fonts.ok) add(null, "warn", "metricsFontLoad", {theme: TH && TH.name || "default", fonts: fonts.missing});
   else try {
     var pr = metricsProbe(document, METRICS);

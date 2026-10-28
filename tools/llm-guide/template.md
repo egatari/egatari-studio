@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=0cde370c9bf84513 -->
+<!-- i18n: pair=template.ja.md sha256=415d97dbf387a19e -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -70,7 +70,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 </html>
 ```
 
-- `lang`: `en`, `ja`, … (the language of the lesson). `data-theme`: one of {{THEMES}} (`business` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`).
+- `lang`: `en`, `ja`, … (the language of the lesson). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.
 - No `<script>` except component data (§2.6), no `<link>`. A `<style>` block is allowed only for layout (sizes, gaps), never colors.
 
 ### 2.2 Slides

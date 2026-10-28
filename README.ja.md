@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=d403fdf30e1d954c -->
+<!-- i18n: pair=README.md sha256=2e7d4976763e0b25 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -29,7 +29,7 @@
 - **モーフ**：`data-morph` のスライドでは、前のスライドの式や要素が今の位置へ滑ってくる（Keynote のマジックムーブ）
 - **1 組のスライドと台本で 2 つのモード**：スライドショー（`?mode=talk`）と動画（`?mode=video`）。先のステップを薄く見せるのはスライドショーの選び（`l`。`?mode=lecture` はこの選びを入れて開く）
 - **発表の道具**：発表者ビュー（台本がカンペになる・タイマー）、スライド一覧、レーザーポインター、ペン、消えるペン、ツールバー
-- **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う
+- **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う。同梱は 7 つ：藍（`default`）・墨（`sumi`）・国語・常盤・江戸紫・焦茶・浅葱（[リファレンス](docs/reference.ja.md#テーマ)）
 - **品質管理**：規格（R-fit・R-steps など）が教材の満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・ステップ・台本の抜け・配色のコントラスト・パーツの再現性・強調・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と台本を直し、AI のコーディング道具へのメモを残せる
 - **Egatari ファイル（`.ega.html`）**：`--portable` で（教材のフォルダの最上位に、題名から作った名前で。書いた場所は表示される）、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は編集できるスライドと台本を入れない写し。Egatari ファイルの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)

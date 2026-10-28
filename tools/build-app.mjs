@@ -6,7 +6,7 @@
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
-// server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
+// server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700 と斜体）、配信版だけ BIZ UDP明朝と選べる字体（FONT_LIST）。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 import * as esbuild from 'esbuild';
 import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
-import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
+import { RUNTIME_MODULES, RUNTIME_NAMESPACES, FONT_LIST } from '../kit/core/build-core.mjs';
 import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
@@ -70,15 +70,17 @@ const kdir = path.dirname(require.resolve('katex'));
 add('/repo/katex/katex.min.css', path.join(kdir, 'katex.min.css'));
 add('/repo/katex/katex.min.js', path.join(kdir, 'katex.min.js'));
 for (const f of fs.readdirSync(path.join(kdir, 'fonts'))) if (f.endsWith('.woff2')) add('/repo/katex/fonts/' + f, path.join(kdir, 'fonts', f));
-// 字：@fontsource の 400・700 の CSS と、そこから参照される woff2（あとで読む）。
-// BIZ UDP明朝（明朝を使うデッキだけが読む）は配信版にだけ入れる。1 ファイル版に埋め込むと約 11 MB 増えるので、1 ファイル版の
-// アプリは明朝を知らずに組む（明朝を使うデッキは、見る人の機械の明朝で出ると知らせる。kit/core/build-core.mjs の fontCss）
-const MINCHO = '@fontsource/biz-udpmincho';
-for (const pkg of ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3', MINCHO]) {
+// 字：@fontsource の CSS（太さごと。斜体のある英語の字体は斜体も）と、そこから参照される woff2（あとで読む）。一覧は kit/core/build-core.mjs の FONT_LIST（#133）。
+// 1 ファイル版に入れるのは既定の BIZ UDPゴシックと Source Sans 3（斜体も）だけ。ほか（BIZ UDP明朝・選べる字体）は配信版にだけ入れる
+// （1 ファイル版に埋め込むと明朝だけで約 11 MB 増える。1 ファイル版のアプリはそれを持たずに組み、使うデッキには、開く端末の字体で出ると知らせる。
+// kit/core/build-core.mjs の fontCss）
+const SINGLE_FONTS = ['@fontsource/biz-udpgothic', '@fontsource/source-sans-3'];
+for (const f of FONT_LIST) {
+  const pkg = f.pkg;
   const dir = path.dirname(require.resolve(`${pkg}/package.json`));
-  for (const w of [400, 700]) {
-    const css = fs.readFileSync(path.join(dir, `${w}.css`), 'utf8');
-    text[`/repo/fonts/${pkg}/${w}.css`] = css;
+  for (const w of f.weights) for (const it of f.italic ? ['', '-italic'] : ['']) {
+    const css = fs.readFileSync(path.join(dir, `${w}${it}.css`), 'utf8');
+    text[`/repo/fonts/${pkg}/${w}${it}.css`] = css;
     for (const m of css.matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)) {
       const v = `/repo/fonts/${pkg}/files/${m[1]}`;
       if (!lazyFiles[v]) { lazy.push(v); lazyFiles[v] = path.join(dir, 'files', m[1]); }
@@ -104,8 +106,8 @@ const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FOR
 for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] = fs.readFileSync(rel(...f.split('/')), 'utf8');
 const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
 const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
-const isMincho = (v) => v.startsWith(`/repo/fonts/${MINCHO}/`);
-const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !isMincho(v))), lazy: lazy.filter((v) => !isMincho(v)) };
+const hostedOnly = (v) => v.startsWith('/repo/fonts/') && !SINGLE_FONTS.some((p) => v.startsWith(`/repo/fonts/${p}/`));
+const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
@@ -226,7 +228,7 @@ console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(
 if (SINGLE) {
   const inline = (s) => s.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
   const pack = {};
-  for (const [v, f] of Object.entries(lazyFiles)) if (!isMincho(v)) pack[v] = fs.readFileSync(f).toString('base64');
+  for (const [v, f] of Object.entries(lazyFiles)) if (!hostedOnly(v)) pack[v] = fs.readFileSync(f).toString('base64');
   const jsSingle = await bundleMain(resourcesSingle);
   const one = html
     .replace('<!--APP_ICONS-->', () => iconLinks((f) => dataUri(f)))

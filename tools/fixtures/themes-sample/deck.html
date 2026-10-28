@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<title>テーマの見本</title>
+<!-- テーマの見本（tools/test-themes.mjs が同梱のテーマごとに data-theme を替えて組み、品質チェック・色の検査・スクリーンショットに使う）。
+     表紙・章の扉・箇条書きと結論の行・用語と強調・枠・図（m-bars）・縦書き。中身は架空 -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="t-cover">
+  <div class="venue">テーマの見本（架空の授業）</div>
+  <h1>確率の考え方<br>— 偶然を数える —</h1>
+  <div class="au">見本 太郎（架空の人物）</div>
+</section>
+
+<section class="slide sec noconcl static" id="t-sec">
+  <h1>1　サイコロを振る</h1>
+  <p class="lead">同じように確からしい、とは何か</p>
+</section>
+
+<section class="slide static" id="t-list">
+  <h2>確率の 3 つの見方</h2>
+  <div class="body">
+    <p class="sub">どれも同じ数を指す</p>
+    <ul>
+      <li><span class="term">数学的確率</span>：場合の数の比で決める</li>
+      <li><span class="term">統計的確率</span>：何度も試した割合で決める<ul><li class="muted">回数を増やすと近づく</li></ul></li>
+      <li><span class="emph">主観確率</span>：確からしさの度合い。<em>Bayes</em> の考え方</li>
+    </ul>
+  </div>
+  <div class="concl"><span>→ 3 つの見方は、同じ規則に従う</span></div>
+</section>
+
+<section class="slide static" id="t-box">
+  <h2>和の法則</h2>
+  <div class="body">
+    <div class="box">排反な事象 A と B について、\(P(A \cup B) = P(A) + P(B)\)</div>
+    <p class="note muted">例：1 の目か 2 の目が出る確率は \(\tfrac{1}{6} + \tfrac{1}{6} = \tfrac{1}{3}\)</p>
+  </div>
+  <div class="concl"><span>→ 重ならなければ、足すだけでよい</span></div>
+</section>
+
+<section class="slide" id="t-bars">
+  <h2>600 回振った結果</h2>
+  <div class="body">
+    <m-bars per-step="0" aria-label="1 から 6 の目の出た回数：98、103、95、107、99、98" style="height:360px">
+      <script type="application/json">{"groups": [{"label": "1", "value": 98}, {"label": "2", "value": 103}, {"label": "3", "value": 95}, {"label": "4", "value": 107, "tone": "emph"}, {"label": "5", "value": 99}, {"label": "6", "value": 98}]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>→ どの目も 100 回の近く</span></div>
+</section>
+
+<section class="slide layout-tate static" id="t-tate">
+  <h2>縦書きの見本</h2>
+  <div class="body">
+    <p>偶然に見えることも、<span class="term">数を重ねる</span>と形が見えてくる。</p>
+    <p class="muted">これを大数の法則という。</p>
+  </div>
+  <div class="concl"><span>数えれば見える</span></div>
+</section>
+
+</div>
+</body>
+</html>

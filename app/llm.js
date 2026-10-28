@@ -573,7 +573,7 @@ export function setupLlm(app) {
     const LOAD = '\u0000load';
     const fill = async () => {
       const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
-      const opt = (o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}) }), mine = opts.filter((o) => o.user);
+      const opt = (o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}), ...(o.note ? { 'data-note': o.note } : {}) }), mine = opts.filter((o) => o.user);
       sel.replaceChildren(...opts.filter((o) => !o.user).map(opt), ...(mine.length ? [el('optgroup', { label: X.themeMine }, mine.map(opt))] : []),
         ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
       const vals = opts.map((o) => o.value);
@@ -585,7 +585,12 @@ export function setupLlm(app) {
       if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); ctl.changed(); return; }
       newTheme = sel.value; ctl.changed();
     });
-    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel])], {
+    // 選んだ同梱のテーマの「向き」（研究・講義向け など）を、選ぶ欄の下に小さく
+    const note = el('small', { id: 'paste-theme-note', cls: 'hint' });
+    const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; };
+    sel.addEventListener('change', showNote);
+    showNote();
+    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note])], {
       q: () => X.themeLabel, answer: () => (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value),
       valid: () => !!sel.value, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2),
     });

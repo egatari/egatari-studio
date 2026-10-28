@@ -144,6 +144,8 @@ steps.push(
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   // 章の扉の h2（#128）と、字と地のコントラストの警告
   ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
+  // 同梱のテーマ（#129）とペンの色（#132）：テーマごとに見本を組み、品質チェック・役割の色のコントラストと色覚の模擬・ペンの 3 色の地の上の比と差・形の断片
+  ['test-themes', ['tools/test-themes.mjs', path.join(tmp, 'themes'), '--shots', path.join(tmp, 'themes-shots')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],

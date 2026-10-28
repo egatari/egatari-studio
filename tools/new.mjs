@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { choosableOf, RETIRED } from '../kit/core/themes-list.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -36,7 +37,10 @@ if (!folder) fail(`missing <folder>\n${USAGE}`);
 if (!['en', 'ja'].includes(opts.lang)) fail(`--lang must be en or ja (got ${opts.lang})`);
 const themes = fs.readdirSync(path.join(ROOT, 'themes'), { withFileTypes: true })
   .filter((d) => d.isDirectory() && fs.existsSync(path.join(ROOT, 'themes', d.name, 'tokens.css'))).map((d) => d.name);
-if (!themes.includes(opts.theme)) fail(`unknown theme "${opts.theme}" (available: ${themes.join(', ')})`);
+// 新しく選べるのは CHOOSABLE（kit/core/themes-list.mjs）。business は同梱のまま組めるが、新しい教材には選べない（#129）
+const choosable = choosableOf(themes);
+if (RETIRED.includes(opts.theme)) fail(`the theme "${opts.theme}" is no longer offered for new lessons (lessons that use it still build); for business and pitch decks use "sumi" (available: ${choosable.join(', ')})`);
+if (!choosable.includes(opts.theme)) fail(`unknown theme "${opts.theme}" (available: ${choosable.join(', ')})`);
 const EN = opts.lang === 'en';
 const title = (opts.title ?? (EN ? 'Untitled deck' : '新しいデッキ')).trim() || (EN ? 'Untitled deck' : '新しいデッキ');
 

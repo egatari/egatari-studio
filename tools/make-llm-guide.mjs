@@ -12,7 +12,6 @@
 //                                                 props の型・既定値・説明（static props）・データの形（static shape）・README の本文。
 //                                                 本文の <!-- llm: <系列> --> … <!-- llm: end --> はその系列の部分に「拡張」として（共通の部品だけ）、
 //                                                 <!-- llm: omit --> … <!-- llm: end --> は指示に入れない（開発者向けの注意など）
-//   themes/                                       {{THEMES}}：テーマの名前
 //   vendor/components/manifest.json（あれば）       {{PURPOSES}}：言いたいこと → パーツ → ステップの表。全パーツの一覧を兼ねる（写した既定の版の部品だけを出し、
 //                                                 部品がまだない言いたいことは「近い部品か HTML・インラインの SVG」。版を固定した URL 付き）。
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK（parts-map の 10）。どちらを使ったかは材料の purposes.source
@@ -329,7 +328,7 @@ const AI_HEAD = /^# (Instructions for the AI|AI への指示)\s*$/m;
 // 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは系列の指示の後ろ、いちばん最後に付く
 const REQ_HEAD = /^# (What I want|頼みたいこと)\s*$/m;
 const KB = (s) => Buffer.byteLength(s, 'utf8') / 1024;
-const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|THEMES|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES)/;
+const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES)/;
 // 指示の版：材料（版の行を除く。英語と日本語の両方）の SHA-256 の先頭 8 字。指示の文章が変われば変わり、変わらなければ同じ（手で上げない）
 const PACK_VERSION = '{{PACK_VERSION}}';
 
@@ -339,7 +338,6 @@ export function generate(opts = {}) {
   const comps = components();
   for (const c of comps) if (Object.keys(c.ext).length && c.fm.series !== 'common') throw new Error(`vendor/components/${c.fm.name.replace(/^m-/, '')}/README.md: <!-- llm: … --> extension blocks are only for common components (this one is in ${c.fm.series})`);
   for (const s of SERIES) if (!comps.some((c) => c.fm.series === s)) throw new Error(`series ${s} has no component (frontmatter series: ${s})`);
-  const themes = fs.readdirSync(rel('themes')).filter((n) => fs.statSync(rel('themes', n)).isDirectory()).sort();
   // 言いたいこと：部品庫の manifest.json（あれば）か、決めた表（kit/core/purposes.mjs）
   //   manifest.json が JSON として読めなければ、知らせて決めた表を使う（components:check が写しの壊れを見つける）。札に写らない id・形の合わない項目も知らせる
   const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
@@ -397,7 +395,6 @@ export function generate(opts = {}) {
     };
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
-      .replace('{{THEMES}}', themes.map((t) => '`' + t + '`').join(' '))
       .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+(?:-[a-z]+)*))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)

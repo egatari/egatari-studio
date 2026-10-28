@@ -1,0 +1,14 @@
+/* 常盤（tokiwa）：青みの深い緑。理科・自然・学校向け。見出しは太い下線と題の前の四角、表紙は上に太い帯、箇条書きの印も四角。
+   赤との差を保つため緑を少し青に寄せた（1 型の模擬で赤との差 ΔE 33 → 40）。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #0a5753;                 /* 常盤 */
+}
+/* look heading: thick-square */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom-width:5px;padding-left:34px}
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2::before{content:"";position:absolute;left:0;top:14px;width:20px;height:20px;background:var(--base)}
+/* /look */
+/* look cover: top-band-wide */
+.slide.cover::before{height:22px}
+/* /look */
+/* 箇条書きの印は四角 */
+.slide .body > ul{list-style:square}

@@ -41,6 +41,7 @@ import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { TEMPLATES } from '../kit/core/slide-ops.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
+import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
 import { setupLlm } from './llm.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
@@ -709,7 +710,9 @@ async function themeDialog() {
 // テーマの一覧（新規作成の ③ と「テーマを変更…」が同じものを使う）：同梱のテーマ（見せる名前）と、組み立てに渡す自分のテーマ（読む許可のあるテーマのフォルダと
 // このブラウザに保存したテーマ。userThemesWs。theme.json の title・name、なければフォルダの名前。user: true）
 async function themeOptions() {
-  const out = RES.themes.map((t) => ({ value: t, label: (T.themeNames && T.themeNames[t]) || t }));
+  // 同梱のテーマは選べるもの（kit/core/themes-list.mjs の CHOOSABLE）だけを、和色の名前と小さな「向き」で（#129。business は新しくは選べない）
+  const L = EN ? 'en' : 'ja';
+  const out = choosableOf(RES.themes).map((t) => ({ value: t, label: themeLabel(t, L), note: themeNote(t, L) }));
   const w = userThemesWs();
   if (w) {
     let names = [];
@@ -907,7 +910,7 @@ const slidesPanel = createSlidesPanel({
 // 口述原稿・音声・秒数だけのファイル（組み直せない）と読むだけのファイルでは、押せない形で残し、わけを title と知らせに出す
 const themeSwitchWhy = () => (earlierWhy() || (S.portable && S.portable.readOnly ? T.readOnlyNoEdit : S.portable && S.portable.tierAOnly ? T.themeSwitchNoRebuild : null));
 const themeSwitch = createThemeSwitch({
-  T, el, ask, close: (id) => $('dlg').close(id), toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt() || 0,
+  T, el, ask, lang: EN ? 'en' : 'ja', close: (id) => $('dlg').close(id), toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt() || 0,
   ws: () => S.ws, deckFile: () => S.deckFile, portable: () => S.portable,
   themeOptions: () => themeOptions(), loadOtherTheme: () => loadThemeDialog(), userThemes: () => userThemesWs(),
   bundled: (p) => (p in RES.text ? RES.text[p] : null), why: themeSwitchWhy,

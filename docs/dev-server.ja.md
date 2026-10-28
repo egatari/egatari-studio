@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=68852d6d9cdf2187 -->
+<!-- i18n: pair=dev-server.md sha256=745de443ccae956c -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -12,7 +12,7 @@ Node を入れずに同じことをするなら[編集アプリ](editor.ja.md)�
 
 ```bash
 node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
-npm run dev -- path/to/deck.html --port 5174 --theme business
+npm run dev -- path/to/deck.html --port 5174 --theme sumi
 ```
 
 作業フォルダ（deck.html、narration.md、timeline.json、macros.tex、data/、figs/、components/、audio/manifest.json）と、

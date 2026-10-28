@@ -1,6 +1,6 @@
 // 発表中の道具（tools.js）：一覧表示、レーザーポインタ、ペン、消えるペン。(i, k, t) の描画とは独立した重ね描き
 // - o：一覧（矢印で選び Enter・クリックで移る、Esc / o で閉じる）
-// - x：レーザー、d：ペン、v：消えるペン（もう一度押すか Esc で解除）、Shift+d：ペンの色（--emph → --term → --fg、赤・青・黒）
+// - x：レーザー、d：ペン、v：消えるペン（もう一度押すか Esc で解除）、Shift+d：ペンの色（赤・青・黒。テーマによらない決まった 3 色：PEN）
 //   ペンの間は帯のペンのボタンの後ろに色のボタンが出る。色を変えると短く知らせ、発表者ビューにも番号で知らせる
 // - m・d：マーカー（編集モードの間だけ。帯のペンのボタンも、編集中は「マーカー」になってこれを切り替える。開発サーバー・編集アプリのプレビュー）。描き終えた線を deck:ink {pts} で知らせ（server/hints.js が
 //   コメントの知らせにする）、描いた線はすぐ消す（残すのは親の画面の重ね #dev-pins）。編集モードでないとき・発表者ビューからは使えない
@@ -16,7 +16,11 @@ var DECK = window.DECK;
 if (!DECK || DECK.mode === "video") return;
 var Q = new URLSearchParams(location.search);
 var W = 1280, H = 720;
-var COLORS = ["emph", "term", "fg"];
+// ペンの色（#132）：テーマの色（--emph・--term・--fg）ではなく、決まった 3 色。カラーユニバーサルデザイン推奨配色の赤・青と黒。
+// どのテーマの地の上でも、線のコントラスト 3:1（WCAG 1.4.11）と色覚の模擬での区別を保つ（tools/test-themes.mjs が全テーマの地で確かめる）
+var COLORS = ["red", "blue", "black"];
+var PEN = {red: "#FF4B00", blue: "#005AFF", black: "#000000"};
+var OLD_PEN = {emph: "red", term: "blue", fg: "black"};   // 0.6.1 までの名前（テーマの変数の名前）で届いた点も受ける
 var LABEL = DECK.ja === false ? {laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", ink: "Marker"} : {laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", ink: "マーカー"};
 var INK_COLOR = "#f59e0b";       // マーカーの描いている途中の線：親の画面の書きかけの印（.dev-pin.dv-new）と同じ色
 // ペンの色の名前（COLORS の順）と、色を選ぶボタンの名前
@@ -77,7 +81,7 @@ if (Q.get("presenter")){
   // 発表者ビュー（presenter.js）のボタンから使う
   // 色は番号で送る（本体・「今の画面」と食い違わないように）
   var setPColor = function(c){ pcolor = c; post({cmd: "color", c: c}); document.dispatchEvent(new CustomEvent("deck:ptool", {detail: {mode: pmode}})); };
-  DECK.ptools = {key: key, mode: function(){ return pmode; }, icons: ICON, colors: COLORS, names: CNAME, label: CLAB,
+  DECK.ptools = {key: key, mode: function(){ return pmode; }, icons: ICON, colors: COLORS, hex: PEN, names: CNAME, label: CLAB,
     color: function(c){ if (c === undefined) return pcolor; setPColor(c); }};
   document.addEventListener("keydown", function(e){
     if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -214,6 +218,7 @@ var colorCache = {};
 
 // テーマの色を canvas で使える形にする（oklch() や color-mix() のままだと読めないことがあるので、塗って読む）
 function rgb(name){
+  if (PEN[name]) return PEN[name];
   if (colorCache[name]) return colorCache[name];
   var p = document.createElement("i"); p.style.color = "var(--" + name + ")"; document.body.appendChild(p);
   var c = getComputedStyle(p).color; p.remove();
@@ -580,7 +585,7 @@ window.addEventListener("message", function(e){
   if (m.cmd === "mode") setMode(m.mode === "ink" ? null : m.mode);   // マーカーは発表者ビューからは選べない
   else if (m.cmd === "color"){ if (typeof m.c === "number") setColor(m.c, FOLLOW); else nextColor(); }
   else if (m.cmd === "clear" || m.cmd === "clearAll") clear(m.cmd === "clearAll");
-  else if (m.cmd === "pt" && !FOLLOW && mode && mode !== "ink") input(m.phase, m.phase === "leave" ? null : {x: m.x, y: m.y, p: m.p, c: COLORS.indexOf(m.c) >= 0 ? m.c : null});
+  else if (m.cmd === "pt" && !FOLLOW && mode && mode !== "ink") input(m.phase, m.phase === "leave" ? null : {x: m.x, y: m.y, p: m.p, c: COLORS.indexOf(m.c) >= 0 ? m.c : OLD_PEN[m.c] || null});
   else if (m.cmd === "key" && m.key === "l"){
     // 授業モード：本体はキーとして押し、「今の画面」は自分で切り替える（deck.js は埋め込みのキーを受けない）
     if (!FOLLOW) press("l");
@@ -798,7 +803,7 @@ function buildBar(){
       COLORS.forEach(function(c, j){
         var x = document.createElement("button"); x.type = "button";
         x.setAttribute("data-c", j); x.title = CLAB(j) + kk("Shift+d"); x.setAttribute("aria-label", CLAB(j)); x.setAttribute("aria-pressed", "false");
-        x.innerHTML = '<i aria-hidden="true" style="background:var(--' + c + ')"></i>';
+        x.innerHTML = '<i aria-hidden="true" style="background:' + PEN[c] + '"></i>';
         x._act = function(){ setColor(j); };
         sw.appendChild(x);
       });
@@ -957,7 +962,7 @@ function syncBar(){
     sw.hidden = !pen;
     [].forEach.call(sw.children, function(x, j){ x.setAttribute("aria-pressed", j === color ? "true" : "false"); });
   }
-  [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = "var(--" + COLORS[color] + ")"; });
+  [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = PEN[COLORS[color]]; });
   on("lect", DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
   if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);

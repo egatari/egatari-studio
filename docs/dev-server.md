@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=747537548dc71103 -->
+<!-- i18n: pair=dev-server.ja.md sha256=4e6f28ca4f3a642d -->
 # Dev server (fix the slides in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -12,7 +12,7 @@ To do the same without Node, use the [editor app](editor.md) (Chrome / Edge).
 
 ```bash
 node server/dev.mjs examples/minimal/deck.html            # http://127.0.0.1:8730/
-npm run dev -- path/to/deck.html --port 5174 --theme business
+npm run dev -- path/to/deck.html --port 5174 --theme sumi
 ```
 
 It watches the working folder (deck.html, narration.md, timeline.json, macros.tex, data/, figs/, components/, audio/manifest.json)

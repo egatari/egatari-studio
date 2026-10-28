@@ -1,0 +1,36 @@
+/* 墨（sumi）：ほぼ無彩の濃い灰（墨）に、結論・強調の橙と、3 つ目の系列の青緑。報告・提案向け（前の business の代わり）。
+   見出しは墨の帯に白抜き、表紙と章の扉は左寄せで橙の縦線。字は既定の BIZ UDPゴシック。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #2f3437;                 /* 墨。見出しの帯の白抜きの字 12.6:1 */
+  --emph: #ba3c05;                 /* 橙（白地 5.6:1） */
+  --accent2: #0f6e6a;              /* 青緑。3 つ目の系列 */
+  --fg: #1f2326;
+  --muted: #5d6166;
+  --line: #c9ccce;
+  --title: #1f2326;
+  --rule: var(--emph);             /* 見出しの帯の下の線・表紙と扉の縦線は橙 */
+  --cover-bg: #f3f3f2;
+  --sec-bg: #2f3437;
+  --series-1: var(--base);
+  --series-2: var(--emph);
+  --series-3: var(--accent2);
+  --series-4: #8a8f94;
+}
+@supports (color: color-mix(in oklch, red 10%, white)){
+  :root{
+    --term-tint: color-mix(in oklch, var(--base) 8%, white);
+    --emph-tint: color-mix(in oklch, var(--emph) 13%, white);
+    --concl-bg: color-mix(in oklch, var(--emph) 6%, white);
+  }
+}
+/* look heading: band */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}
+/* /look */
+/* look cover: left-bar */
+.slide.cover{text-align:left}
+.slide.cover::before{left:0;right:auto;top:0;bottom:0;width:18px;height:auto;background:var(--rule)}
+.slide.cover h1{left:96px;color:var(--fg)}
+.slide.cover .venue,.slide.cover .au{left:96px}
+.slide.sec h1,.slide.sec h2,.slide.sec .lead{text-align:left;left:96px}
+.slide.sec h1,.slide.sec h2{border-left:10px solid var(--rule);padding-left:24px;margin-left:-34px}
+/* /look */

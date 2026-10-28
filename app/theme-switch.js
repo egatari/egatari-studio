@@ -9,7 +9,7 @@
 //
 //   themeOf(src)              原稿の <html> の data-theme（なければ 'default'）
 //   withTheme(src, name)      <html> の data-theme だけを name にした原稿
-//   createThemeSwitch(ctx)    ctx = {T, el, ask, close(id)（窓を閉じる）, toast, apply(fn)（スライド一覧の apply）, at()（今の枚）, ws(), deckFile(), portable(),
+//   createThemeSwitch(ctx)    ctx = {T, el, ask, lang（'ja' | 'en'。選べなくしたテーマの見せる名前）, close(id)（窓を閉じる）, toast, apply(fn)（スライド一覧の apply）, at()（今の枚）, ws(), deckFile(), portable(),
 //                                    themeOptions()（新規作成の ③ と同じ一覧。自分のテーマは user: true）, loadOtherTheme()（「テーマを読み込む」の窓。読み込んだら true）,
 //                                    userThemes()（組み立てに渡す自分のテーマの作業場所：テーマのフォルダとこのブラウザに保存したテーマ（app/my-themes.js の mergedThemeWorkspace）か null）,
 //                                    bundled(path)（同梱のファイルの文字列か null）, why()（変えられない理由か null）}
@@ -18,6 +18,7 @@ import { configObject, updateConfig, merge as configMerge } from '../kit/core/co
 import { parseThemesLock, currentThemeVersion } from '../kit/core/themes-lock.mjs';
 import { VERSION_RE } from '../kit/core/components-lock.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
+import { themeLabel, themeNote } from '../kit/core/themes-list.mjs';
 
 const NAME_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const HTML_TAG = /<html\b[^>]*>/i;
@@ -122,7 +123,8 @@ export function createThemeSwitch(ctx) {
     for (;;) {
       fresh();
       const opts = (await ctx.themeOptions()).slice();
-      if (!opts.some((o) => o.value === current)) opts.push({ value: current, label: current });
+      // 今のテーマが一覧にない（選べなくした business・見つからないテーマ）：今のテーマとして見せる名前で足す（選び直せる）
+      if (!opts.some((o) => o.value === current)) opts.push({ value: current, label: themeLabel(current, ctx.lang), note: themeNote(current, ctx.lang) });
       let picked = current;
       const rows = [];
       let mineHead = false;
@@ -133,7 +135,7 @@ export function createThemeSwitch(ctx) {
         const input = el('input', { type: 'radio', name: 'theme-switch', id, value: o.value, ...(o.value === current ? { checked: '' } : {}), ...(NAME_RE.test(o.value) ? {} : { disabled: '' }) });
         input.addEventListener('change', () => { if (input.checked) picked = o.value; });
         rows.push(el('label', { cls: 'theme-opt', for: id }, [input, swatch(c.base), swatch(c.emph),
-          el('span', { text: o.label }), ...(o.value === current ? [el('span', { cls: 'hint', text: ' ' + T.themeSwitchNow })] : [])]));
+          el('span', { text: o.label }), ...(o.note ? [' ', el('small', { cls: 'hint theme-note', text: o.note })] : []), ...(o.value === current ? [el('span', { cls: 'hint', text: ' ' + T.themeSwitchNow })] : [])]));
       }
       const load = el('button', { type: 'button', id: 'theme-switch-load', text: T.themeLoad, onclick: () => ctx.close('load') });
       const v = await ctx.ask({ title: T.themeSwitchTitle, body: [

@@ -75,7 +75,7 @@ export function seriesForDeck(html) {
   const s = new Set(componentsIn(html).map((t) => freeSeriesOf(t, seriesOf(t))).filter((x) => x && x !== 'common'));
   const h = String(html || '');
   const theme = (h.match(/<html[^>]*\sdata-theme\s*=\s*["']?([\w-]+)/i) || [])[1];
-  if (theme === 'business') s.add('business');
+  if (theme === 'business' || theme === 'sumi') s.add('business');
   if (theme === 'kokugo' || /class\s*=\s*["'][^"']*\blayout-tate\b/i.test(h)) s.add('kokugo');
   return PACK.series.filter((x) => s.has(x));
 }

@@ -31,7 +31,7 @@ DECK.presenterView = function(){
       (/^(pen|vpen)$/.test(t[0]) ? '<i class="pv-dot" aria-hidden="true"></i>' : "") + "</button>" +
       // 消えるペンの後ろに、ペンの間だけ出る色のボタン（本体と同じ番号を送る）
       (t[0] === "vpen" && PT.colors ? '<span class="pv-sw" role="group" aria-label="' + L.color + '" hidden>' + PT.colors.map(function(c, j){
-        return '<button type="button" data-c="' + j + '" title="' + PT.label(j) + '" aria-label="' + PT.label(j) + '" aria-pressed="false"><i aria-hidden="true" style="background:var(--' + c + ')"></i></button>';
+        return '<button type="button" data-c="' + j + '" title="' + PT.label(j) + '" aria-label="' + PT.label(j) + '" aria-pressed="false"><i aria-hidden="true" style="background:' + (PT.hex ? PT.hex[c] : "var(--" + c + ")") + '"></i></button>';
       }).join("") + "</span>" : "");
   }).join("") + "</span>" : "";
   var legend = L.legend.map(function(x){ return "<span><kbd>" + x[0] + "</kbd> " + x[1] + "</span>"; }).join("");
@@ -193,7 +193,7 @@ DECK.presenterView = function(){
     var c = PT && PT.color ? PT.color() : 0, sw = document.querySelector("#pv .pv-sw");
     if (sw) sw.hidden = !(m === "pen" || m === "vpen");
     [].forEach.call(document.querySelectorAll("#pv .pv-sw button"), function(b){ b.setAttribute("aria-pressed", +b.getAttribute("data-c") === c ? "true" : "false"); });
-    [].forEach.call(document.querySelectorAll("#pv .pv-dot"), function(d){ d.style.background = "var(--" + PT.colors[c] + ")"; });
+    [].forEach.call(document.querySelectorAll("#pv .pv-dot"), function(d){ d.style.background = PT.hex ? PT.hex[PT.colors[c]] : "var(--" + PT.colors[c] + ")"; });
     [].forEach.call(document.querySelectorAll("#pv .pv-tools [data-b]"), function(b){
       var n = b.getAttribute("data-b"), on = n === "lect" ? DECK.mode === "lecture" : n === m;   // 先のステップを薄く見せる：字幕と同じ入／切
       b.classList.toggle("on", on);

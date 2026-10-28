@@ -563,7 +563,16 @@ export async function metricsFonts(doc, timeoutMs) {
     try { faces = await wait(F.load(w.font, T)); } catch (e) { faces = null; }
     if (!faces || !faces.length || !F.check(w.font, T) || faces.some((f) => f.status !== 'loaded')) missing.push(own);
   }
-  return { ok: !missing.length, missing: [...new Set(missing)] };
+  // ファイルに入っていない字体（fontNotEmbedded）：スライドの字の要素の font-family の最初の名前が、埋め込んだ字体（document.fonts）でも
+  // 総称（sans-serif など）でもないもの。開く端末にあればその字体で出るので、端末によって見え方が変わる（#133）
+  const GENERIC = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-serif|ui-sans-serif|ui-monospace|ui-rounded|math|emoji|fangsong|inherit|initial|unset|-apple-system)$/i;
+  const foreign = new Set();
+  for (const e of doc.querySelectorAll('#stage .slide, #stage .slide *')) {
+    if (e.closest('[data-metrics-probe]') || ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+    const first = unq(String(getComputedStyle(e).fontFamily).split(',')[0] || '');
+    if (first && !GENERIC.test(first) && !bundled.has(first)) foreign.add(first);
+  }
+  return { ok: !missing.length, missing: [...new Set(missing)], foreign: [...foreign].sort() };
 }
 
 // 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）と印の名前を渡す形にする。

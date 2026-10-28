@@ -126,12 +126,12 @@ try {
     await waitLoads(page, n0);
 
     // 1. 保存していない文書：テーマを変更 → 保存で窓は出ない
-    await switchTo(page, 'business');
+    await switchTo(page, 'sumi');
     let r = await saveAndRead(page);
     let st = await state(page);
     let saved = await savedFile(page);
     ok(r.dlg === null && r.seenDuring === 0, `${lang} never saved: theme changed → Save asks nothing ` + JSON.stringify(r));
-    ok(st.portable.lastTier === 'B' && themeOf(new TextDecoder().decode(saved.files['deck.html'])) === 'business', `${lang} never saved: rebuilt and saved with the new theme (tier ${st.portable.lastTier})`);
+    ok(st.portable.lastTier === 'B' && themeOf(new TextDecoder().decode(saved.files['deck.html'])) === 'sumi', `${lang} never saved: rebuilt and saved with the new theme (tier ${st.portable.lastTier})`);
 
     // 2. 保存した文書：テーマだけを変えた → わけはテーマのことだけ
     await switchTo(page, 'kokugo');

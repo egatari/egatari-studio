@@ -1,11 +1,11 @@
 // テーマを変更…（スライド ▾。app/theme-switch.js）の試験
 //   node tools/test-theme-switch.mjs [作業用のフォルダ]
 // 1. 開いた 1 ファイル（examples/minimal を default で組んだもの。<html> にシード値などの属性、egatari.json にほかの作り手の項目）：
-//    default → business → kokugo と替え、そのたびにプレビューの --emph が替わる・<html> のほかの属性が残る・ほかの作り手の項目がバイトのまま・
+//    default → sumi → kokugo と替え、そのたびにプレビューの --emph が替わる・<html> のほかの属性が残る・ほかの作り手の項目がバイトのまま・
 //    egatari.json の themes が新しいテーマを今の版で固定し、使わなくなったテーマの固定を外す・保存していない変更（●）になる。
 //    「元に戻す」で原稿と egatari.json がバイトまで戻り、プレビューの色も戻る。保存（段 B）した 1 ファイルの索引と egatari.json も新しいテーマ
 // 2. 作業フォルダ（OPFS）：egatari.json に themes がなくても固定を書き、ほかの項目を残す。元に戻すと元のバイト。
-//    default を前の版 1.0.0 に固定したデッキで business に変えると、土台の default も今の版に固定し直す（選んだテーマの今の見た目）
+//    default を前の版 1.0.0 に固定したデッキで sumi に変えると、土台の default も今の版に固定し直す（選んだテーマの今の見た目）
 // 3. 組み直せないファイル（テーマ庫の hash が違う：口述原稿・音声・秒数だけ）：項目は押せない形（aria-disabled）で、わけを title と知らせに出す
 // 4. 英語の画面：項目と窓の言葉
 // 5. ZIP ファイルのテーマ（自分のテーマ。app/theme-zip.js）：テーマを変更 →「テーマを読み込む…」→「ZIP ファイルを選ぶ…」で読み込むと一覧に加わり（「自分のテーマ」の見出しの下）、
@@ -39,7 +39,7 @@ const CFG = FORMAT.CONFIG_FILE;
 {
   const src = '<!DOCTYPE html>\n<html lang="ja" data-theme="default" data-keep="abc" class="x">\n<body></body></html>';
   ok(themeOf(src) === 'default' && themeOf('<html lang="ja">') === 'default' && themeOf("<html data-theme='kokugo'>") === 'kokugo', 'themeOf: reads data-theme, default when absent');
-  ok(withTheme(src, 'business') === src.replace('data-theme="default"', 'data-theme="business"'), 'withTheme: only the value changes');
+  ok(withTheme(src, 'sumi') === src.replace('data-theme="default"', 'data-theme="sumi"'), 'withTheme: only the value changes');
   ok(withTheme('<html lang="en">\n<p data-theme="x">', 'kokugo') === '<html lang="en" data-theme="kokugo">\n<p data-theme="x">', 'withTheme: adds the attribute to <html> only');
   let threw = false; try { withTheme(src, 'a"b'); } catch { threw = true; }
   ok(threw, 'withTheme: refuses a name that is not a plain theme name');
@@ -141,43 +141,43 @@ try {
     await clickCommand(page, '#b-theme-switch');
     await page.waitForSelector('#dlg[open] #theme-switch-list');
     const labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
-    ok(JSON.stringify(labels) === JSON.stringify(['標準 （今のテーマ）', 'ビジネス', '国語']), 'chooser: display names, the current one marked ' + JSON.stringify(labels));
+    ok(JSON.stringify(labels) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け']), 'chooser: the seven bundled themes by colour name with what each suits (business is not offered), the current one marked ' + JSON.stringify(labels));
     const sw = await page.$$eval('#theme-switch-list .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
-    ok(sw.length === 6 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
+    ok(sw.length === 14 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
     ok((await page.textContent('#theme-switch-load')) === 'テーマを読み込む…' && !(await page.$('#theme-switch-mine')), 'chooser: 「テーマを読み込む…」 (the same entry as New ③); no 「自分のテーマ」 heading while there are none');
     const words = [await page.textContent('#dlg-title'), await page.textContent('#theme-switch-lead'), await page.textContent('#dlg-change'), await page.textContent('#dlg-cancel')];
     ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが替わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
     await clickDlg(page, '#dlg-cancel');
     ok(await memFile(page, 'deck.html') === deck0 && !(await state(page)).portable.dirty, 'cancel: nothing changes');
 
-    // default → business
-    await switchTo(page, 'business', { expectCurrent: 'default' });
+    // default → sumi
+    await switchTo(page, 'sumi', { expectCurrent: 'default' });
     const deck1 = await memFile(page, 'deck.html'), cfg1 = await memFile(page, CFG), e1 = await emph(page), st1 = await state(page);
-    ok(themeOf(deck1) === 'business' && htmlAttrs(deck1) === ATTRS0, '→ business: data-theme changed; every other <html> attribute kept');
-    ok(deck1 === deck0.replace('data-theme="default"', 'data-theme="business"'), '→ business: nothing else in the source changed (slides untouched)');
-    ok(e1 !== e0 && e1 === 'rgb(186, 60, 5)', `→ business: the preview --emph changed (${e0} → ${e1})`);
-    ok(cfg1.includes(FOREIGN), '→ business: the foreign egatari.json member survives byte for byte');
+    ok(themeOf(deck1) === 'sumi' && htmlAttrs(deck1) === ATTRS0, '→ sumi: data-theme changed; every other <html> attribute kept');
+    ok(deck1 === deck0.replace('data-theme="default"', 'data-theme="sumi"'), '→ sumi: nothing else in the source changed (slides untouched)');
+    ok(e1 !== e0 && e1 === 'rgb(186, 60, 5)', `→ sumi: the preview --emph changed (${e0} → ${e1})`);
+    ok(cfg1.includes(FOREIGN), '→ sumi: the foreign egatari.json member survives byte for byte');
     const p1 = JSON.parse(cfg1).themes;
-    ok(p1.business === CUR('business') && p1.default === CUR('default') && Object.keys(p1).length === 2, '→ business: themes pins business at its current version, default (its base) kept ' + JSON.stringify(p1));
-    ok(st1.portable.dirty && (await page.textContent('#deckname')).startsWith('●'), '→ business: an unsaved change (●)');
-    ok(!st1.warn.some((w) => /^theme (not found|pinned)/.test(w)), '→ business: no theme warnings');
+    ok(p1.sumi === CUR('sumi') && p1.default === CUR('default') && Object.keys(p1).length === 2, '→ sumi: themes pins sumi at its current version, default (its base) kept ' + JSON.stringify(p1));
+    ok(st1.portable.dirty && (await page.textContent('#deckname')).startsWith('●'), '→ sumi: an unsaved change (●)');
+    ok(!st1.warn.some((w) => /^theme (not found|pinned)/.test(w)), '→ sumi: no theme warnings');
 
     // 元に戻す：原稿と egatari.json がバイトまで戻り、色も戻る
     await undo(page);
     ok(await memFile(page, 'deck.html') === deck0 && await memFile(page, CFG) === cfg0, 'undo: deck.html and egatari.json are back byte for byte');
     ok(await emph(page) === e0, 'undo: the preview --emph is back');
 
-    // default → business → kokugo
-    await switchTo(page, 'business', { expectCurrent: 'default' });
-    await switchTo(page, 'kokugo', { expectCurrent: 'business' });
+    // default → sumi → kokugo
+    await switchTo(page, 'sumi', { expectCurrent: 'default' });
+    await switchTo(page, 'kokugo', { expectCurrent: 'sumi' });
     const deck2 = await memFile(page, 'deck.html'), cfg2 = await memFile(page, CFG), e2 = await emph(page);
     ok(themeOf(deck2) === 'kokugo' && htmlAttrs(deck2) === ATTRS0, '→ kokugo: data-theme changed; other attributes kept');
     ok(e2 !== e1 && e2 !== e0, `→ kokugo: the preview --emph changed again (${e2})`);
     const p2 = JSON.parse(cfg2).themes;
-    ok(cfg2.includes(FOREIGN) && p2.kokugo === CUR('kokugo') && p2.default === CUR('default') && !('business' in p2), '→ kokugo: kokugo pinned, business dropped (nothing uses it), foreign member kept ' + JSON.stringify(p2));
+    ok(cfg2.includes(FOREIGN) && p2.kokugo === CUR('kokugo') && p2.default === CUR('default') && !('sumi' in p2), '→ kokugo: kokugo pinned, sumi dropped (nothing uses it), foreign member kept ' + JSON.stringify(p2));
     await undo(page);
-    ok(themeOf(await memFile(page, 'deck.html')) === 'business' && await emph(page) === e1 && JSON.parse(await memFile(page, CFG)).themes.business === CUR('business'), 'undo after two: back to business (the step before)');
-    await switchTo(page, 'kokugo', { expectCurrent: 'business' });
+    ok(themeOf(await memFile(page, 'deck.html')) === 'sumi' && await emph(page) === e1 && JSON.parse(await memFile(page, CFG)).themes.sumi === CUR('sumi'), 'undo after two: back to sumi (the step before)');
+    await switchTo(page, 'kokugo', { expectCurrent: 'sumi' });
 
     // 保存（段 B）：保存した 1 ファイルも kokugo で、記録と egatari.json の固定が合う
     await page.evaluate(async (name) => {
@@ -192,7 +192,7 @@ try {
     const r = await readPortable(saved);
     const sc = JSON.parse(Buffer.from(r.files[CFG]).toString('utf8'));
     const names = r.index.themes.map((t) => t.name).sort();
-    ok(themeOf(Buffer.from(r.files['deck.html']).toString('utf8')) === 'kokugo' && JSON.stringify(names) === '["default","kokugo"]' && sc.themes.kokugo === CUR('kokugo') && !('business' in sc.themes), 'save: the saved file records kokugo (index.themes and egatari.json themes) ' + JSON.stringify(sc.themes));
+    ok(themeOf(Buffer.from(r.files['deck.html']).toString('utf8')) === 'kokugo' && JSON.stringify(names) === '["default","kokugo"]' && sc.themes.kokugo === CUR('kokugo') && !('sumi' in sc.themes), 'save: the saved file records kokugo (index.themes and egatari.json themes) ' + JSON.stringify(sc.themes));
     ok(Buffer.from(r.files[CFG]).toString('utf8').includes(FOREIGN), 'save: the foreign member is still there');
   });
 
@@ -213,14 +213,14 @@ try {
     ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'folder: opens');
     await waitLoads(page, n);
     const e0 = await emph(page);
-    await switchTo(page, 'business', { expectCurrent: 'default' });
+    await switchTo(page, 'sumi', { expectCurrent: 'default' });
     const d1 = await read('deck.html'), c1 = await read(CFG);
-    ok(themeOf(d1) === 'business' && htmlAttrs(d1) === htmlAttrs(files['deck.html']) && await emph(page) !== e0, 'folder: deck.html now says business (other attributes kept); the preview changed');
-    ok(c1.includes(FOREIGN) && c1.startsWith('{"metadata": {"license": "CC-BY-4.0"}, ') && JSON.parse(c1).themes.business === CUR('business'), 'folder: egatari.json gets a themes pin; the other members keep their bytes ' + JSON.stringify(c1));
+    ok(themeOf(d1) === 'sumi' && htmlAttrs(d1) === htmlAttrs(files['deck.html']) && await emph(page) !== e0, 'folder: deck.html now says sumi (other attributes kept); the preview changed');
+    ok(c1.includes(FOREIGN) && c1.startsWith('{"metadata": {"license": "CC-BY-4.0"}, ') && JSON.parse(c1).themes.sumi === CUR('sumi'), 'folder: egatari.json gets a themes pin; the other members keep their bytes ' + JSON.stringify(c1));
     await undo(page);
     ok(await read('deck.html') === files['deck.html'] && await read(CFG) === cfgF && await emph(page) === e0, 'folder: undo restores both files byte for byte');
   });
-  // 前の版の固定：default 1.0.0 → business に変えると default も今の版
+  // 前の版の固定：default 1.0.0 → sumi に変えると default も今の版
   await session('ja', async (page) => {
     const dir = path.dirname(deckDir('folder-old'));
     const OLD = '1.0.0', cfgO = `{"metadata": {"license": "CC-BY-4.0"}, ${FOREIGN}, "themes": {"default": "${OLD}"}}\n`;
@@ -239,10 +239,10 @@ try {
     await waitLoads(page, n);
     const m0 = await muted(), st0 = await state(page);
     ok(m0 === 'rgb(110, 110, 110)' && st0.warn.some((w) => /^theme pinned:/.test(w)), `old pin: the deck builds with default ${OLD} (--muted ${m0})`);
-    await switchTo(page, 'business', { expectCurrent: 'default' });
+    await switchTo(page, 'sumi', { expectCurrent: 'default' });
     const c1 = await read(CFG), p1 = JSON.parse(c1).themes, m1 = await muted(), st1 = await state(page);
-    ok(p1.default === CUR('default') && p1.business === CUR('business') && Object.keys(p1).length === 2 && c1.includes(FOREIGN), `old pin → business: default (the base) is pinned at current ${CUR('default')} too ` + JSON.stringify(p1));
-    ok(!st1.warn.some((w) => /^theme pinned:/.test(w)) && m1 !== m0, `old pin → business: the preview builds default at current too (no pinned-theme warning; --muted ${m1})`);
+    ok(p1.default === CUR('default') && p1.sumi === CUR('sumi') && Object.keys(p1).length === 2 && c1.includes(FOREIGN), `old pin → sumi: default (the base) is pinned at current ${CUR('default')} too ` + JSON.stringify(p1));
+    ok(!st1.warn.some((w) => /^theme pinned:/.test(w)) && m1 !== m0, `old pin → sumi: the preview builds default at current too (no pinned-theme warning; --muted ${m1})`);
     await undo(page);
     ok(await read(CFG) === cfgO && await muted() === m0, 'old pin: undo restores the 1.0.0 pin byte for byte and the old colors');
   });
@@ -267,7 +267,7 @@ try {
     await page.waitForSelector('#dlg[open] #theme-opt-zipteal', { timeout: 30000 });
     await waitLoads(page, n).catch(() => {});
     const rows = await page.$$eval('#theme-switch-list > *', (a) => a.map((x) => x.textContent.trim()));
-    ok(JSON.stringify(rows) === JSON.stringify(['標準 （今のテーマ）', 'ビジネス', '国語', '自分のテーマ', 'ZIP の青緑']), 'zip: after loading, the list shows the theme under 「自分のテーマ」 by its title ' + JSON.stringify(rows));
+    ok(JSON.stringify(rows) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け', '自分のテーマ', 'ZIP の青緑']), 'zip: after loading, the list shows the theme under 「自分のテーマ」 by its title ' + JSON.stringify(rows));
     const sw = await page.$$eval('#theme-opt-zipteal ~ .swatch, label[for=theme-opt-zipteal] .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
     ok(sw.includes('rgb(10, 125, 110)'), 'zip: its emphasis swatch is read from the stored tokens.css ' + JSON.stringify(sw));
     const switchList = await page.$$eval('#theme-switch-list input', (a) => a.map((x) => [x.value, x.closest('label').querySelector('span:not(.swatch):not(.hint)').textContent]));
@@ -314,7 +314,7 @@ try {
         await clickCommand(page, '#b-theme-switch');
         await page.waitForSelector('#dlg[open] #theme-switch-list');
         const title = await page.textContent('#dlg-title'), labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
-        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Standard (current)', 'Business', 'Kokugo']) && (await page.textContent('#theme-switch-load')) === 'Load theme…' && (await page.textContent('#dlg-change')) === 'Change' && (await page.textContent('#dlg-cancel')) === 'Cancel', 'en: the chooser in English ' + JSON.stringify(labels));
+        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Indigo For research and classes (current)', 'Ink For reports and proposals', 'Kokugo For Japanese language arts', 'Evergreen For science, nature and schools', 'Edo purple For research and public talks', 'Dark brown For humanities, history and local studies', 'Teal For primary schools, publicity and guides']) && (await page.textContent('#theme-switch-load')) === 'Load theme…' && (await page.textContent('#dlg-change')) === 'Change' && (await page.textContent('#dlg-cancel')) === 'Cancel', 'en: the chooser in English ' + JSON.stringify(labels));
         await clickDlg(page, '#dlg-cancel');
       }
     });

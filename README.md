@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=73195c45c5710b48 -->
+<!-- i18n: pair=README.ja.md sha256=26e5c7356d07e526 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -29,7 +29,7 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and p
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
 - **Two modes from one source**: slide show (`?mode=talk`) and video (`?mode=video`). Show later steps faintly is an option of the slide show (`l`; `?mode=lecture` opens it with the option on)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, toolbar
-- **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables
+- **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables. Seven bundled themes: 藍 Indigo (`default`), 墨 Ink (`sumi`), 国語 Kokugo, 常盤 Evergreen, 江戸紫 Edo purple, 焦茶 Dark brown, 浅葱 Teal ([reference](docs/reference.md#themes))
 - **Quality control**: the standards (R-fit, R-steps, …) say what a lesson must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, script coverage, contrast, part determinism, emphasis and morphs
 - **Dev server**: edit text and the script in the browser, leave comments for your AI coding tool
 - **Egatari file (`.ega.html`)**: `--portable` writes one HTML file (at the top of the lesson folder, named from the lesson title; the path is printed) that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the editable slides and script. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for Egatari files](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)

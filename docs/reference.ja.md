@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=f8528cbd3e2e757d -->
+<!-- i18n: pair=reference.md sha256=bf073a10b2a3db32 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -158,6 +158,8 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `logos` | 画像のファイル（テーマのフォルダから。png・jpg・svg・webp）。すべての表紙に入る。書かなければ `extends` の親のロゴを引き継ぐ（`"logos": []` で消す） |
 | `name` | 説明用 |
 | `version` | テーマの版（`themes.lock.json` に載せた同梱のテーマ。下の「テーマの版」） |
+| `fonts` | テーマが選ぶ字体。Studio がファイルに入れられる一覧（下の「字体」）から：`{"body": "Zen Maru Gothic", "heading": "Zen Maru Gothic"}`。組み立てはその字体を埋め込む（教材が使う字を含む分割ファイルだけ）。CSS（`--font-sans`）はテーマの `tokens.css` が書く。テーマやスライドの CSS が一覧の字体を名指しても、その字体を埋め込む |
+| `look` | テーマが使う、見出し・表紙・結論の行の決まった形（`{"heading": "band", "cover": "left-bar", "concl": "left-rule"}`。`kit/core/theme-shapes.mjs`）。同梱のテーマは形ごとの CSS を `tokens.css` の `/* look <key>: <id> */` と `/* /look */` の間にそのまま写す（`tools/test-themes.mjs` が照らす）。組み立ては読まない |
 | `metrics` | 品質チェックと書き手の道具のための、テーマの体裁の寸法（`"v": 1`。下の表）。`extends` の親から項目ごとに引き継ぎ、書かない項目は既定。描くのには使わない（[契約](contract.ja.md) §12） |
 
 `metrics` の項目（1280×720 の舞台の px。数で、小数も可）。既定は今の `kit/layouts.css` で、そこから導く限りは今までの検査の数（565・680・1236・1162・124・44）。余裕（6・4）は検査の方針で、テーマの値ではない。CSS でこれらの箱を動かすテーマは宣言するとよい（同梱と公式のテーマ庫のテーマは宣言しなければならない）。`node tools/theme-metrics.mjs measure <テーマ>` が貼る塊を出す。
@@ -173,6 +175,8 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `tate.floor` | 縦組みの本文の地の限り | 680 | `layout-tate` の下の限り |
 
 数でない値・範囲の外（x は 0〜1280、y は 0〜720）・知らない項目・`v` が 1 でない・互いに合わない値（本文の上端が結論の行より下、本文の幅が 320px より狭い、など）は組み立ての警告（`theme-metrics: …`）で、親の（なければ既定の）値を使う。品質チェックは宣言とテーマが描く箱を比べる（下の `themeMetricsDrift`）。
+
+**同梱のテーマ。** 新しい教材は 7 つのテーマから選ぶ。画面では和色の名前で、何に向くかを小さく添える：藍（`default`。研究・講義）、墨（`sumi`。報告・提案）、国語（`kokugo`。国語・和の題材）、常盤（`tokiwa`。理科・自然・学校）、江戸紫（`murasaki`。研究・一般の講演）、焦茶（`kogecha`。人文・歴史・地域）、浅葱（`asagi`、字体は Zen Maru Gothic。小学校・広報・案内）。一覧と向きは `kit/core/themes-list.mjs`。`business` は新しい教材には選べない（編集アプリの一覧・`npm run new`）。同梱のままなので、それを書いた教材・その版を記録した教材は前のとおり組めて再生できる。代わりは `sumi`。7 つとも `default` の役割の色と箱（品質チェックの限り）は同じで、変えるのは色・線・帯・角・字体だけ。テーマの CSS は組み込みの規則と同じ以上の詳細度で書く（`.slide h2` は 0,1,1）。`:where()` で包まない（詳細度が 0 になり、一部の宣言だけが組み込みの規則に負ける。見出しの帯の上に見出しの濃い字が乗る、など）。`node tools/test-themes.mjs` が同梱のテーマごとにサンプルの教材を組んで確かめる：品質チェック（`textContrast`・`secHeading`・`fontNotEmbedded`・寸法の警告がない）、字と地のコントラスト 4.5:1（役割の色と `--bg`、結論の行と `--concl-bg`、章の扉、表紙の題、見出しとその地）、色覚の模擬（Machado ほか 2009、強さ 1.0）で `--emph` と `--term` の差が 3 色型・1 型・2 型で ΔE*ab 35 以上・4 つの型で ΔE00 20 以上、`--emph` と `--fg` が 1 型で ΔE00 20 以上、ペンの色（下）。
 
 CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.css`・`kit/layouts.css`・テーマの `tokens.css`（親のテーマから順に）・`kit/latin.css`（`lang` が日本語でない教材だけ）の順に書く。テーマは体裁の CSS の後なので、同じ詳細度のテーマの規則は体裁の規則に勝つ（例：`.cover h1{top:260px}`、`.body{left:96px;right:96px}`）。`html` を前に付けなくてよい。そうしたテーマにも、色の変数の意味（[契約](contract.ja.md) §12）と品質チェックの色の検査はそのまま効く。組み立ての口（コマンド、`--dev` と開発サーバー、`--portable`、`--play-only`、編集アプリ）はどれも同じ。
 
@@ -197,6 +201,18 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 **テーマの版。** 教材の見た目を変える同梱のテーマは `theme.json` の `version` を上げ、前の版は `vendor/themes/<名前>/<版>/` に残す。版ごとの同一性の hash と変わった色は `themes.lock.json` に書く（`npm run themes:check` が写しと固定を照らす。`npm test` に入る）。最初の例が `default` 1.1.0（`--emph` `#C50516` → `#BE3012`、`--muted` `#6E6E6E` → `#5C5853`）で、1.0.0 は Studio 0.4.6 までの `default`。`business` 1.0.1（`--emph` `#C2410C` → `#BA3C05`）は、`--emph-tint` の地の上の字が 4.5:1 に届くように橙を少し濃くした。`default` 1.2.0 は、結論の行を左の `--emph` の縦線・太字・決まった位置・淡い灰の地（`--concl-bg` `#F5F5F5`）で示し、枠の中央揃えをやめて左揃えにした（位置と高さは同じ。縦組み `layout-tate` は枠のまま）。この色にした理由は [themes/default/README.ja.md](../themes/default/README.ja.md)。テーマのフォルダの最上位の文書（`README*`・`LICENSE*`・`*.md`）はテーマの一部でない：組み立ては読まず（ロゴに書いても）、hash に入れない（仕様 §6）。利用者のテーマや教材のフォルダの `themes/` のテーマを Egatari ファイルに入れるときは、その `LICENSE*` を一緒に入れる（`themes/<名前>/LICENSE…`。展開でフォルダに戻る）。テーマの使用条件（書体・機関のロゴ）は資源を配り直す先に付いていく必要があるため（§3.3）。`README*` とほかの `*.md` は入れない。パーツと同じく、教材の色を黙って変えない：Egatari ファイルはテーマごとの名前・版・hash を記録し（`index.themes`）、中の `egatari.json` に版を固定する（`"themes": {"default": "1.1.0"}`。これを持たない前の Egatari ファイルを展開すると、記録の hash が合う版に固定する）。前の版に固定したフォルダを組むと、その版の写しで組み、変わる色を挙げて `theme pinned: …` と警告する。`--update-themes`（または固定を今の版にする）で更新する。固定のないフォルダは今の版に付いていく。編集アプリは、開いた Egatari ファイルを記録した版のテーマで組み直し、「テーマを更新」を出す（[編集アプリ](editor.ja.md)）。`default` を継ぐテーマも、固定した `default` を使う。Egatari ファイルは、エディタの版によらず、埋め込んだテーマの CSS のまま再生する。
 
 字：日本語の教材（`lang` が `ja` か、ない）は BIZ UDPゴシックを埋め込む。ほかの言語は Source Sans 3 を埋め込み、U+024F より後ろの字だけを BIZ UDPゴシックで補う。埋め込むのは使っている字を含む分割ファイルだけ（`fonts/*.ttf` と uv があれば使っている字だけ）。BIZ UDP明朝は、教材が明朝を使うときだけ、同じ字を埋め込む：教材・テーマ・使っているパーツのどれかに `var(--font-mincho)` がある、`class="mincho"`、`<html data-font="mincho">`（`kit/layouts.css` の `--font-mincho` の定義は数えない）。`--font-mincho` は `:where(:root)` で決めてあるので、テーマで上書きできる。テーマ `kokugo`：本文は明朝、基調色は藍、強調は朱、地は生成り、字幕は BIZ UDPゴシック（`--font-cap`）。
+
+英語の太字と斜体：日本語以外の教材は Source Sans 3 の斜体（400・700）も埋め込む（使う字を含む分割ファイルだけ）。日本語の教材では、`<em>`・`<i>` の中のラテン文字を Source Sans 3 の斜体で出し、その字の分割ファイルだけを埋め込む。
+
+ファイルに入れられる字体は決まった一覧で、どれも SIL Open Font License、`@fontsource` のもの（`kit/core/build-core.mjs` の `FONT_LIST`）。ファイルに入るのは教材が選んだ字体だけなので、一覧が長くてもファイルは重くならない。選ぶのはテーマの `theme.json` の `fonts` か、テーマ・スライドの CSS で字体の名前を書くこと。
+
+| 用途 | 字体 |
+|---|---|
+| 日本語 | BIZ UDPゴシック（既定）、BIZ UDP明朝、しっぽり明朝（Shippori Mincho）、Zen Maru Gothic、Klee One（400 と 600） |
+| 英語 | Source Sans 3（既定）、Source Serif 4、Andika、Atkinson Hyperlegible Next（どれも斜体あり） |
+| 等幅 | Source Code Pro |
+
+CSS はほかの字体（端末に入っている字体など）も書けるが、ファイルには入らない。開く端末ごとに、その字体か、並びの次の字体で出る。品質チェックは `fontNotEmbedded` で名前を挙げて知らせる（教材に 1 回。スライドの字の `font-family` の計算した値の最初の名前が、埋め込んだ字体でも総称でもないもの）。オフライン版のエディタ（`editor.html`）が持つのは BIZ UDPゴシックと Source Sans 3 だけで、ほかの字体を選んだ教材はその字体なしで組み、知らせる。
 
 | 変数 | 意味 |
 |---|---|
@@ -261,7 +277,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | x | レーザーポインター（マウスが 2 秒止まると消える） |
 | d | ペン（筆圧に対応。線はスライドごとに残る） |
 | v | 消えるペン（書き終えて 0.7 秒後から 0.5 秒で消える） |
-| Shift+d | ペンの色：`--emph` → `--term` → `--fg`（赤・青・黒）。上に「ペンの色：青」と短く知らせる |
+| Shift+d | ペンの色：赤 → 青 → 黒。上に「ペンの色：青」と短く知らせる。ペンの色はテーマによらず決まった 3 色：カラーユニバーサルデザイン推奨配色の赤 `#FF4B00`・青 `#005AFF` と黒 `#000000`（白地との比 3.4・5.4・21。線の 3:1 を満たす。色覚の模擬で互いに ΔE*ab 61 以上）。`tools/test-themes.mjs` が同梱のどのテーマの地でも確かめる |
 | Backspace / Shift+Backspace | ペンか消えるペンを使っている間：このスライド / 全スライドの書き込みを消す |
 | Backspace / Alt+← | それ以外で、スライドへのリンクで来た後：リンクを押した位置へ戻る（左上の **戻る** ボタンとブラウザの戻るも同じ） |
 | Tab / Shift+Tab | ツールバーのボタンを選ぶ（Enter / Space で押す。Esc でスライドに戻る） |
@@ -390,6 +406,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
+| スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |
@@ -516,6 +533,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
+| `node tools/test-themes.mjs [作業フォルダ] [--shots <フォルダ>]` | 同梱のどのテーマでも、サンプルの教材が組めて品質チェックを通る。役割の色のコントラスト・色覚の模擬・ペンの色（[テーマ](#テーマ)）。`tokens.css` の `look` の形が `kit/core/theme-shapes.mjs` と同じ。数字の表を出し、`--shots` ならテーマごとの 1 枚の画像も |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |
 | `node tools/shot.mjs <組んだ.html> <出力.png> [i] [k] [mode]` | スライド i（0 始まり）、ステップ k の最終状態の PNG |
 | `npm run sheet -- <作業フォルダ \| deck.html \| 組んだ.html \| .ega.html> [out.png] [--mode talk] [--cols 4] [--width 640] [--tiles] [--steps]` | コンタクトシート：全スライドの最終ステップを 1 枚の PNG に（番号は 1 始まり、鍵が短ければ併記。タイルの幅は既定 640 px。出力は `<教材>/out/sheet.png`）。`--tiles` で 1 枚ずつの PNG を `<out>-tiles/` にも書く。`--steps` を付けると、図かパーツのあるスライドだけ、全ステップを横に 1 行（1 スライド 1 行）に並べる（図の約束をステップごとに確かめる。タイルの幅は既定 320 px、出力は `<教材>/out/steps.png`）。出力の場所と枚数を印字する |

@@ -15,7 +15,11 @@
           "date": "2026-10-25",
           "reason": "--emph is the same orange, slightly darker, so that text in it reaches 4.5:1 on its own tint --emph-tint (4.34 → 4.66:1; emph boxes, kpi, quad, flow); 5.62:1 on white",
           "tokens": [
-            { "token": "--emph", "from": "#C2410C", "to": "#BA3C05" }
+            {
+              "token": "--emph",
+              "from": "#C2410C",
+              "to": "#BA3C05"
+            }
           ]
         }
       }
@@ -37,15 +41,27 @@
           "date": "2026-10-24",
           "reason": "--emph is a vermilion-leaning red so that, under protan simulation, conclusions stay apart from the body text (5.8:1 on white); --muted is darker (7.1:1 on white) so small grey text stays readable in a bright classroom",
           "tokens": [
-            { "token": "--emph", "from": "#C50516", "to": "#BE3012" },
-            { "token": "--muted", "from": "#6E6E6E", "to": "#5C5853" }
+            {
+              "token": "--emph",
+              "from": "#C50516",
+              "to": "#BE3012"
+            },
+            {
+              "token": "--muted",
+              "from": "#6E6E6E",
+              "to": "#5C5853"
+            }
           ]
         },
         "1.2.0": {
           "date": "2026-10-25",
           "reason": "the conclusion row is marked by a left bar in --emph, a fixed position, bold text and a light neutral grey ground --concl-bg (was transparent; --emph text on it 5.3:1, the same for every colour-vision type and in greyscale), left-aligned instead of a centred frame; position and height unchanged; vertical (tate) lessons keep the frame",
           "tokens": [
-            { "token": "--concl-bg", "from": "#FFFFFF", "to": "#F5F5F5" }
+            {
+              "token": "--concl-bg",
+              "from": "#FFFFFF",
+              "to": "#F5F5F5"
+            }
           ]
         }
       }
@@ -57,6 +73,51 @@
       ],
       "sha256": {
         "1.0.0": "b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2"
+      }
+    },
+    "sumi": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "a8ec5ae630ed5d399bca109c36cab9066329f312e5b0512b20498e5e6a0db0f4"
+      }
+    },
+    "tokiwa": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "b44963f640db4cde9b16bd7c93d01325690d1072c90922111a4774b527174579"
+      }
+    },
+    "murasaki": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "e1d3ecb04a4a42808a780f3f8a3d94e849a644b1c68c5d4f410a5cde9f66ab86"
+      }
+    },
+    "kogecha": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "8f821a65e074f69cc465ff52358404febf1008f4005f5d0b210b966df29dbcba"
+      }
+    },
+    "asagi": {
+      "current": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "e35712155c3d2122e8e2f149899e555d83ea6de0b9659facbd32b498d30f4511"
       }
     }
   }

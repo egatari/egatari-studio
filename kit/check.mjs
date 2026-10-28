@@ -348,6 +348,7 @@ await page.evaluate(`window.__metricsProbe = ${metricsProbe}; window.__metricsFo
 const mfonts = await page.evaluate(async () => { try { return await window.__metricsFonts(document); } catch (e) { return { ok: false, missing: [String(e && e.message || e)] }; } });
 const probe = mfonts.ok ? await page.evaluate((M) => { try { return window.__metricsProbe(document, M); } catch { return { items: [] }; } }, themeInfo.metrics) : { items: [] };
 if (!mfonts.ok) report(null, 'warn', 'metricsFontLoad', { theme: themeInfo.name, fonts: mfonts.missing });
+if (mfonts.foreign && mfonts.foreign.length) report(null, 'warn', 'fontNotEmbedded', { fonts: mfonts.foreign });
 if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
