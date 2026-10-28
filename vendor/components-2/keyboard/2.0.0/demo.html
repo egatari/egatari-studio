@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-keyboard の見本</title>
+<!-- 組み方：node kit/build.mjs components/keyboard/demo.html -o components/keyboard/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>ハ長調の音階（ドレミファソラシド）</h2>
+  <div class="body">
+    <m-keyboard aria-label="ドから上のドまで、白い鍵盤を 1 つずつ順にひく" style="height:400px">
+      <script type="application/json">{"range": "C4-C5", "names": "solfa", "steps": [
+        {"keys": ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5"], "t": [0, 0.6, 1.2, 1.8, 2.4, 3.0, 3.6, 4.2], "label": "ドから上のドまで、1 つずつ"}]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>→ 白い鍵盤だけを順にひくと、ハ長調の音階になる</span></div>
+</section>
+
+<section class="slide">
+  <h2>主要三和音（Ⅰ・Ⅳ・Ⅴ）</h2>
+  <div class="body">
+    <m-keyboard variant="press" aria-label="ハ長調の主要三和音：ドミソ、ファラド、ソシレ" style="height:400px">
+      <script type="application/json">{"range": "C4-C6", "steps": [
+        {"keys": ["C4", "E4", "G4"], "label": "Ⅰ　主和音（ドミソ）"},
+        {"keys": ["F4", "A4", "C5"], "label": "Ⅳ　下属和音（ファラド）", "tone": "accent2"},
+        {"keys": ["G4", "B4", "D5"], "label": "Ⅴ　属和音（ソシレ）", "tone": "term"}]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>→ どの和音も、鍵盤を 1 つおきに 3 つ重ねる</span></div>
+</section>
+
+<section class="slide">
+  <h2>オクターブと半音・全音</h2>
+  <div class="body">
+    <m-keyboard variant="rise" aria-label="ドと上のドがオクターブ。ミとファ、ドとド♯は半音、ドとレは全音" style="height:400px">
+      <script type="application/json">{"range": "C4-C5", "steps": [
+        {"keys": ["C4", "C5"], "t": [0, 0.8], "label": "オクターブ：ドから上のドまで"},
+        {"keys": ["E4", "F4"], "t": [0, 0.8], "label": "半音：となりの鍵盤（ミとファ）"},
+        {"keys": ["C4", "C#4"], "t": [0, 0.8], "label": "半音：となりの鍵盤（ドとド♯）"},
+        {"keys": ["C4", "D4"], "t": [0, 0.8], "label": "全音：半音 2 つ分（ドとレ）"}]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>→ 1 オクターブは半音 12 個。全音は半音 2 つ分</span></div>
+</section>
+
+</div>
+</body>
+</html>
