@@ -93,6 +93,9 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     // 1〜6 枚目の出力で作成：studio.outline（次は 7）と「残り 18 枚」
     const b1 = slidesOf(1, 6, true);
     await page.fill('#paste-deck', replyOf(b1.deck, b1.narr));
+    // 作成の後始末（組み直しを待って品質チェック）は、遅い CI では次の窓（構成案の続き）を開いて貼った後に終わることがあった。そのとき前の窓の
+    // 「押せるか」の計算が今の窓の「挿入」を押せなくした（構成案を待っている、として）。ここでは後始末を止めておき、貼った後に放す（下の batch: の確かめ）
+    await page.evaluate(() => { const A = window.__APP_TEST; A.afterOpens = 0; A.afterOpenGate = new Promise((r) => { A.releaseAfterOpen = r; }); });
     await clickDlg(page, '#dlg-import');
     await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
     await page.waitForSelector('#notice-outline', { timeout: 30000 });
@@ -126,6 +129,11 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
           steps: [...document.querySelectorAll('#dlg-body section.paste-step')].map((x) => x.id + (x.querySelector('.paste-step-body') && !x.querySelector('.paste-step-body').hidden ? ':open' : '')).join() }; });
       throw new Error('batch: 「挿入」 stays disabled: ' + JSON.stringify(d));
     });
+    // 前の窓（新規作成）の後始末をここで終わらせる：今の窓の「挿入」は押せるまま、ボタンの左の 1 行も今の窓のものだけ
+    await page.evaluate(() => { const A = window.__APP_TEST; A.afterOpenGate = null; A.releaseAfterOpen(); });
+    await page.waitForFunction(() => window.__APP_TEST.afterOpens >= 1, null, { timeout: 30000 });
+    ok(await page.evaluate(() => !document.getElementById('dlg-import').disabled && document.querySelectorAll('#dlg-buttons .paste-go-note').length === 1 && document.getElementById('paste-go-note').textContent === ''),
+      'batch: the creating dialog finishing late (its quality check ends after this dialog is filled) leaves 「挿入」 enabled and its note alone');
     await clickDlg(page, '#dlg-import');
     await page.waitForFunction(() => /残り 12 枚/.test((document.getElementById('notice-outline') || {}).textContent || ''), null, { timeout: 30000 });
     of = await ofile();
