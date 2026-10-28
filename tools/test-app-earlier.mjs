@@ -2,12 +2,12 @@
 //   node tools/test-app-earlier.mjs [作業用のフォルダ]
 // 1. 決まり（Node）：前の版かどうかは readPortable の preDraft（索引に player がない）だけで決める。player のない索引は、作ったのがこの Studio の同じ版でも前の版・
 //    この Studio が書き出した 1.0 のファイル（player がある）は前の版にしない・
-//    開く Studio の版（versions.json にあればその版、なければ 1.0 より前の最も新しい版、読めなければ凍結した写しの範囲か v0.4.8）・作業フォルダ（egatari.json と id のないスライド）
+//    開く Studio の版（versions.json にあればその版、なければ 1.0 より前の最も新しい版、読めなければ凍結した写しの範囲か v0.4.8）・作業フォルダ（egatari.json があり、どのスライドにも id がない。手で足した id のないスライドだけでは前の版にしない）
 // 2. 編集アプリ（tools/build-app.mjs で組んで 127.0.0.1 で配る。versions.json のあるサイト /site/ とないところ /nosite/）：
 //    仕様の試験用のファイル（vendor/egatari-spec/fixtures/documents。player のない草案のファイル）を開くと知らせと 2 つのボタン（正しい URL）が出て、
 //    ファイルそのものがプレビューで再生され、編集・保存は断る。player を足した写し（1.0 のファイルのつもり）と、この Studio が書き出したものは知らせなし。
 //    player がなく generator がこの Studio の版のもの（0.6.0 より前のリリースが同じ版の番号で書いたもの）は知らせあり。
-//    英語の画面。作業フォルダ：egatari.json と id のないスライド → 知らせ（npm run ids。編集は断らない）→ id を付けて組み直すと知らせが消える。egatari.json のないフォルダは知らせなし
+//    英語の画面。作業フォルダ：egatari.json と id のないスライド → 知らせ（npm run ids。編集は断らない）→ id を付けて組み直すと知らせが消える。id のあるフォルダに id のないスライドを手で足しても知らせなし。egatari.json のないフォルダは知らせなし
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -58,9 +58,11 @@ ok(draftStudioVersion('0.4.5', null) === '0.4.5' && draftStudioVersion('0.3.1', 
 ok(draftStudioUrl('0.4.8') === 'https://studio.egatari.org/v0.4.8/' && draftStudioUrl('0.4.7', 'http://x/site/') === 'http://x/site/v0.4.7/', 'studio: versioned URL under the site root');
 ok(guideUrl('ja') === 'https://github.com/egatari/egatari-studio/blob/main/docs/migrating-0.x.ja.md' && guideUrl('en') === 'https://github.com/egatari/egatari-studio/blob/main/docs/migrating-0.x.md', 'guide: GitHub main URLs');
 for (const f of ['migrating-0.x.md', 'migrating-0.x.ja.md']) ok(fs.existsSync(path.join(ROOT, 'docs', f)), `guide: docs/${f} exists`);
-const noIds = '<!doctype html><html lang="ja"><body><div id="stage"><section class="slide"><h2>一</h2></section><section class="slide" id="s-two"><h2>二</h2></section></div></body></html>';
-const withIds = noIds.replace('<section class="slide"><h2>一</h2>', '<section class="slide" id="s-one"><h2>一</h2>');
-ok(JSON.stringify(earlierFolder(analyzeSlideIds(noIds), true)) === '{"noId":1}', 'folder: egatari.json and a slide without id');
+const handAdded = '<!doctype html><html lang="ja"><body><div id="stage"><section class="slide"><h2>一</h2></section><section class="slide" id="s-two"><h2>二</h2></section></div></body></html>';
+const noIds = handAdded.replace(' id="s-two"', '');
+const withIds = handAdded.replace('<section class="slide"><h2>一</h2>', '<section class="slide" id="s-one"><h2>一</h2>');
+ok(JSON.stringify(earlierFolder(analyzeSlideIds(noIds), true)) === '{"noId":2}', 'folder: egatari.json and no slide with an id → earlier version');
+ok(earlierFolder(analyzeSlideIds(handAdded), true) === null, 'folder: egatari.json, slides with ids and one added by hand without an id → not flagged (a missing id alone does not decide)');
 ok(earlierFolder(analyzeSlideIds(noIds), false) === null && earlierFolder(analyzeSlideIds(withIds), true) === null, 'folder: no egatari.json, or every slide has an id → not flagged');
 
 // ---------------------------------------------------------------- 2. 編集アプリ
@@ -183,6 +185,12 @@ try {
   await page.evaluate(async (text) => { const w = await (await window.__dir.getFileHandle('deck.html')).createWritable(); await w.write(text); await w.close(); }, moved);
   await page.evaluate(() => window.__APP_TEST.rebuild());
   ok(!(await notice(page)) && (await state(page)).earlier === null, 'folder: after the ids are added, the notice goes away');
+  // 1.0 の作業フォルダ（どのスライドにも id があり、egatari.json がある）に、id のないスライドを手で 1 枚足した：知らせなし・編集できる
+  // 改行は deck.html のまま（Windows の checkout では CRLF。'\n' 決め打ちだと置き換わらない）
+  const added = moved.replace(/<\/div>(\r?\n)<\/body>/, (m0, nl) => `<section class="slide">${nl}  <h2>手で足したスライド</h2>${nl}</section>${nl}</div>${nl}</body>`);
+  ok(added !== moved && analyzeSlideIds(added).slides.filter((s) => s.id === null).length === 1, 'folder: test adds one slide without an id by hand');
+  await writeFolder('current', { 'deck.html': added, 'narration.md': narr, [FORMAT.CONFIG_FILE]: JSON.stringify({ docId: '3f2c9a8e-1b2d-4c5e-9f00-112233445566' }, null, 2) + '\n' });
+  ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dir)) === true && !(await notice(page)) && (await state(page)).earlier === null, 'folder: egatari.json and a hand-added slide without an id → no earlier-version notice');
   await writeFolder('plain', { 'deck.html': deck, 'narration.md': narr });
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dir)) === true && !(await notice(page)), 'folder: without egatari.json → no notice');
   await page.context().close();

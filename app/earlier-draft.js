@@ -4,8 +4,11 @@
 // 編集アプリ（main.js）は、プレビューでファイルそのものを再生し（組み直さない）、編集と保存を断り、知らせに 2 つの道を出す：
 //   前の版の Studio（https://studio.egatari.org/v<作った版>/。サイトの versions.json にその版がなければ、そこにある 1.0 より前の最も新しい版）
 //   移し替えの手引き（docs/migrating-0.x(.ja).md。GitHub の main）
-// 作業フォルダ：設定のファイル（egatari.json）があって（教材として書き出した・取り出したもの）、id のないスライドがあるもの。
-// 1.0 の原稿はどのスライドにも id がある（§8.1）。移し替えの手順 2（npm run ids）で id を付ければ、次の組み直しで知らせが消えて編集できる
+// 作業フォルダ：設定のファイル（egatari.json）があって（教材として書き出した・取り出したもの）、どのスライドにも id がないもの。
+// 作業フォルダには索引がない（player も generator もない）ので、1.0 の印はスライドの id だけ：1.0 の書き手はどのスライドにも id を付ける
+// （§8.1。書き出しは付けた id を原稿に書き戻す。npm run new・新規作成も付ける）。id が 1 つでもあれば 1.0 のフォルダで、
+// 手で足した id のないスライドは前の版のしるしにしない（次の書き出しが id を付ける）。
+// 移し替えの手順 2（npm run ids）で id を付ければ、次の組み直しで知らせが消えて編集できる
 // ブラウザの API は siteVersions だけが使う（ほかは Node の試験からも読み込める）
 import { siteVersionOf, readVersions } from './version-ui.js';
 
@@ -37,11 +40,12 @@ export function earlierFile(read) {
   return { made: typeof g.version === 'string' && g.version ? g.version : null };
 }
 
-// 作業フォルダ：analysis（kit/core/build-core.mjs の analyzeSlideIds）と、設定のファイルがあるか → {noId: id のないスライドの数} か null
+// 作業フォルダ：analysis（kit/core/build-core.mjs の analyzeSlideIds）と、設定のファイルがあるか → {noId: id のないスライドの数} か null。
+// 前の版かどうかは 1.0 の印（id のあるスライド）が 1 つもないことだけで決める（id のないスライドがあることでは決めない）
 export function earlierFolder(analysis, hasConfig) {
-  if (!hasConfig || !analysis || !Array.isArray(analysis.slides)) return null;
-  const noId = analysis.slides.filter((s) => s.id === null).length;
-  return noId ? { noId } : null;
+  if (!hasConfig || !analysis || !Array.isArray(analysis.slides) || !analysis.slides.length) return null;
+  if (analysis.slides.some((s) => s.id !== null)) return null;
+  return { noId: analysis.slides.length };
 }
 
 // 開く前の版の Studio の版。made：作った版（なければ null）。site：{versions: [新しい順]}（versions.json）か null（読めない）
