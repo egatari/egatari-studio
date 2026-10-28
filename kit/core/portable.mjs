@@ -748,6 +748,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   }
   // ファイルの決まり（§4.2）：基準のまま（外へは繋がらない）。授業の部屋の派生だけが行き先を足す（kit/core/live.mjs の addLive）
   const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, policyMeta: policyMeta(policyText()) });
+  // 部品庫 2.0 の教材（build-core の stats.parts）：索引の components に 2.0 のパーツ（requires・license・renderers・subset）を書くのはまだ（backlog #123）。
+  // 1.x の索引の書き方で書くと、中のコードと合わない記録になるので、1 ファイルにはしない
+  if (r.stats && r.stats.componentsCatalogue) throw new Error(`components ${r.stats.componentsCatalogue} (componentsCatalogue) cannot be exported as a single file yet; build the working folder, or remove componentsCatalogue from ${FORMAT.CONFIG_FILE} to use components 1.x`);
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);

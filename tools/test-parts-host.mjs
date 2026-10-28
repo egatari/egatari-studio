@@ -44,6 +44,15 @@ const meta = /\/\*@egatari-block stroke-meta\*\/(.*?)\/\*@egatari-block-end\*\//
 const kept = meta ? Object.keys(JSON.parse(meta[1])).filter((k) => !k.startsWith('_')) : [];
 ok(kept.includes('あ') && kept.includes('さ') && !kept.includes('ぬ') && kept.length < 60, `m-kakijun: stroke data subset to the lesson's characters (${kept.length} kept)`);
 ok(!/component not found|is not in components2/.test(log), 'no part is missing from the build');
+// 1 ファイル（--portable）にはまだしない（索引の components に 2.0 のパーツを書くのは後の段。1.x の書き方の記録は中のコードと合わない）
+{
+  const tmpDeck = path.join(out, 'portable-src');
+  fs.rmSync(tmpDeck, { recursive: true, force: true });
+  fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), tmpDeck, { recursive: true });
+  let refused = '';
+  try { build(path.join(tmpDeck, 'deck.html'), path.join(out, 'unused.html'), ['--portable']); } catch (e) { refused = String(e.stderr); }
+  ok(/cannot be exported as a single file yet/.test(refused), 'a 2.0 lesson is not exported as a single file yet (refused with a reason)');
+}
 
 // ---------------------------------------------------------------- 再生
 const b = await launch();
