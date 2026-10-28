@@ -1,5 +1,5 @@
 // 授業の外へ出るリンクの決まり（format spec §11「Links that leave the lesson」）の純ロジック。
-// 再生器（kit/deck.js。build が DECK.LinkPolicy にする）・Node の試験・将来の再生ページ（viewer.egatari.org）が共有する
+// 再生器（kit/deck.js。build が DECK.LinkPolicy にする）・Node の試験・将来の再生ページ（play.egatari.org）が共有する
 // - DOM・時計・node: に触れない。export function 1 つで import なし（kit/core/build-core.mjs の classicModule）
 // - 授業の中へのリンク（# だけ。§9.1A）はここでは扱わない（呼ぶ側が先に分ける）
 //
