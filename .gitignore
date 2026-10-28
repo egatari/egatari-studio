@@ -22,6 +22,9 @@ comments.json
 dist/
 # single-file exports written by the CLI at the top of an example folder
 /examples/*/*.ega.html
+# Egatari Viewer build (node tools/build-play.mjs)
+_play/
+.wrangler/
 
 # Egatari Live の試験が作る一時ファイル
 .tmp-live-*

@@ -28,6 +28,14 @@ const SKIP = [
 
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
+  ['tools/play-tap-measure.mjs', "JSON.parse(fs.readFileSync(cfg, 'utf8'))", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの設定のファイルを読む'],
+  ['tools/play-tap-measure.mjs', "matchAll(/<section class=", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの deck.html から、スライドの id（鍵）を読む'],
+  ['tools/play-tap-measure.mjs', "r.end(fs.readFileSync(f))", 'Egatari Viewer の押しの計測：自分で組んだ _play/ のファイルを配る（試験のサーバー）'],
+  ['tools/build-play.mjs', "JSON.parse(fs.readFileSync(rel('package.json'), 'utf8'))", 'Egatari Viewer の組み立て：リポジトリの package.json（版）を読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'lesson-shim.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/lesson-shim.js を読む'],
+  ['tools/build-play.mjs', "files[f] = fs.readFileSync(rel('play', f))", 'Egatari Viewer の組み立て：リポジトリの play/ の決まったファイルを読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('assets', 'logo', f))", 'Egatari Viewer の組み立て：リポジトリの assets/logo の画像を読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'sw.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/sw.js を読む'],
   ['kit/build.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
   ['kit/build.mjs', "liveRuntime(fs.readFileSync(path.join(KIT, 'core', 'live-policy.mjs'), 'utf8'), fs.readFileSync(path.join(KIT, 'live.js'), 'utf8'), opts)", 'リポジトリの授業の部屋の再生器（kit/live.js と kit/core/live-policy.mjs）を読む'],
   ['tools/live-fake-server.mjs', "JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'fixtures',", '試験の部屋のサーバー：リポジトリの通信の約束の写し（vendor/）の試験用のデータを読む'],
@@ -54,6 +62,7 @@ const ALLOW = [
   ['kit/core/attach-content.mjs', 'ds.readable.getReader()', '添付の中身の検査：既に上限の内で読んだバイトを展開する DecompressionStream の出力（展開した大きさを数えて上限で止める）'],
   ['lab/irodori.js', 'res.body.getReader()', '試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['lab/irodori.js', 'await f.arrayBuffer()', '試験ページ：選んだ声のファイル。直前に File.size を、読んだ後に byteLength を 64 MiB と比べる（lab/ は app/ を読み込めない）'],
+  ['tools/studio-icons.mjs', 'fs.readFileSync(', 'Studio のアイコン「す」を作る道具：リポジトリの assets/logo/studio/src/ の SVG・hand/ の手描きの絵と、このツールが書いたアイコン（--check）を読む'],
   ['tools/build-app.mjs', 'fs.readFileSync(', '編集アプリを組む：リポジトリの kit/・vendor/components/ と components.lock.json・themes/・app/・KaTeX・字を集める'],
   ['tools/spec-snapshot.mjs', 'fs.readFileSync(', '写した仕様の SOURCE.json（リポジトリの中の小さな JSON）を読む'],
   ['tools/catalog.mjs', "fs.readFileSync(file, 'utf8')", '部品庫の一覧を作る：リポジトリの vendor/components/ の README を読む'],

@@ -1,0 +1,175 @@
+/* Egatari Viewer (play/): the page that plays Egatari files. Phone width first; light and dark. */
+:root {
+  --bg: #ffffff; --fg: #1d1d24; --muted: #5b5d6b; --line: #d6d7e0; --panel: #f4f4f8;
+  --accent: #4A488E; --accent-fg: #ffffff; --warn: #8a4b00; --err: #b3261e; --ok: #1f7a46; --focus: #2c63d4;
+  --stage-bg: #111111;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111114; --fg: #ececf1; --muted: #a8aab8; --line: #383a46; --panel: #1c1d23;
+    --accent: #A9ABFA; --accent-fg: #111114; --warn: #ffc46b; --err: #ff8a80; --ok: #6fd69a; --focus: #9cc8ff; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif;
+  display: flex; flex-direction: column; min-height: 100dvh; }
+a { color: var(--accent); }
+button, input, textarea, .pick, a.pri { font: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -48px; background: var(--bg); padding: 8px 12px; z-index: 10; }
+.skip:focus { top: 8px; }
+.small { font-size: 0.875rem; color: var(--muted); }
+[hidden] { display: none !important; }
+
+/* framed: guard.js marks the document; only the refusal shows */
+html[data-framed] body > * { display: none !important; }
+html[data-framed] #framed { display: block !important; padding: 16px; }
+
+#bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line); min-height: 48px; flex: none; }
+#home { display: flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; font-weight: 700; flex: none; }
+#home .logo-dark { display: none; }
+@media (prefers-color-scheme: dark) { #home .logo-light { display: none; } #home .logo-dark { display: inline; } }
+#lesson-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+#lesson-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+body.playing #home .name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.badge { flex: none; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); white-space: nowrap; }
+.bar-buttons { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }
+button { min-height: 40px; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+button.pri, a.pri, .pick { background: var(--accent); color: var(--accent-fg); border: 1px solid var(--accent); font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px 18px; border-radius: 8px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+.live-btn { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #7a7f86; flex: none; }
+[data-state=connected] .dot, .dot[data-state=connected] { background: var(--ok); }
+[data-state=connecting] .dot, [data-state=waiting] .dot, [data-state=retrying] .dot { background: #e0b341; }
+[data-state=stopped] .dot { background: var(--err); }
+
+#main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#main:focus { outline: none; }
+#start { width: 100%; max-width: 680px; margin: 0 auto; padding: 16px; }
+#start h1 { font-size: 1.5rem; margin: 8px 0; }
+#start h2 { font-size: 1.125rem; margin: 24px 0 8px; }
+#drop { border: 2px dashed var(--line); border-radius: 12px; padding: 20px 16px; text-align: center; }
+#drop.over { border-color: var(--accent); background: var(--panel); }
+#file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#file:focus-visible + .hint, .pick:focus-within { outline: 3px solid var(--focus); }
+.hint { margin: 10px 0 0; color: var(--muted); font-size: 0.875rem; }
+#msg:empty { display: none; }
+#msg { color: var(--err); margin: 12px 0; }
+.notice strong { color: var(--fg); }
+.notice { background: var(--panel); border-radius: 8px; padding: 8px 12px; }
+/* the add-to-home-screen hint (iPhone, iPad; play/main.js initInstallHint) */
+.install { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; }
+.install[hidden] { display: none; }
+.install span { flex: 1; }
+.install #b-install { flex: none; }
+.install .x { flex: none; min-width: 44px; min-height: 44px; margin: -8px -8px -8px 0; border: 0; background: transparent; color: var(--muted); font-size: 1.25rem; }
+.keep { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.keep input { width: 20px; height: 20px; }
+#recent-list { list-style: none; padding: 0; margin: 8px 0; }
+#recent-list li { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); padding: 6px 0; }
+#recent-list .open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 6px 4px; display: flex; flex-direction: column; align-items: flex-start; }
+#recent-list .open .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#recent-list .open .m { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#about ul { padding-left: 1.2em; }
+
+/* player: the frame and the Live controls are placed by play/layout.mjs (absolute boxes, set once when the lesson starts and
+   again only on rotation). The controls never lie over the frame except in the measured 'overlay' variant */
+#player { flex: 1; min-height: 0; position: relative; }
+#stage-wrap { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: var(--stage-bg); }
+#stage-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--stage-bg); }
+#live { position: absolute; overflow: auto; background: var(--panel); z-index: 2; }
+#live:focus { outline: none; }
+body.headless #bar { display: none; }
+#live-start { position: absolute; inset: 0; overflow: auto; padding: 16px; max-width: 640px; margin: 0 auto; }
+#live-start h2 { font-size: 1.25rem; margin: 8px 0 12px; }
+#live-poll-view { display: none; }
+#b-poll-back, #b-strip-close, #b-poll { display: none; }
+/* pane modes: the pane beside (side) or below (bottom) the frame, polls inline */
+#live[data-mode=side] { border-left: 1px solid var(--line); }
+#live[data-mode=bottom] { border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+#live[data-mode=side] #live-poll-view, #live[data-mode=bottom] #live-poll-view { display: block; padding: 0 12px 12px; }
+/* compact modes: the indicator, 「抜ける」 or 「参加する」, a poll button; the poll replaces the content when opened */
+#live[data-mode=bar], #live[data-mode=strip], #live[data-mode=overlay], #live[data-mode=slack] { overflow: hidden; }
+#live[data-mode=bar] .live-body, #live[data-mode=strip] .live-body, #live[data-mode=overlay] .live-body, #live[data-mode=slack] .live-body { display: none; }
+#live[data-mode=bar] h2, #live[data-mode=strip] h2, #live[data-mode=overlay] h2, #live[data-mode=slack] h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#live[data-mode=strip] #b-poll, #live[data-mode=overlay] #b-poll, #live[data-mode=slack] #b-poll, #live[data-mode=bar] #b-poll { display: inline-flex; }
+#live[data-mode=strip] #b-strip-close, #live[data-mode=overlay] #b-strip-close, #live[data-mode=slack] #b-strip-close { display: inline-flex; }
+#live.poll-open .live-head { display: none; }
+#live.poll-open #live-poll-view { display: block; }
+#live.poll-open #b-poll-back { display: inline-flex; }
+#live [hidden] { display: none !important; }
+#live[data-mode=bar] { border-top: 1px solid var(--line); }
+#live[data-mode=bar] .live-head { height: 100%; border: 0; position: static; }
+/* phone landscape with slack: a narrow column; the head stacks */
+#live[data-mode=slack] { border-left: 1px solid var(--line); overflow: auto; }
+#live[data-mode=slack] .live-head { flex-direction: column; align-items: stretch; border: 0; position: static; padding: 6px; gap: 6px; }
+#live[data-mode=slack] .live-head .state { white-space: normal; font-size: 0.75rem; }
+#live[data-mode=slack] .live-head button { width: 100%; justify-content: center; }
+#live[data-mode=slack] #b-strip-close { align-self: flex-end; width: auto; }
+#live[data-mode=slack] #live-poll-view { padding: 6px; font-size: 0.875rem; }
+/* the 28 px strip above the frame (16:9 phones in landscape) and the overlay variant over the frame's top edge */
+#live[data-mode=strip], #live[data-mode=overlay] { font-size: 0.8125rem; }
+#live[data-mode=strip] .live-head, #live[data-mode=overlay] .live-head { height: 100%; min-height: 0; padding: 0 6px; gap: 6px; border: 0; position: static; }
+#live[data-mode=strip] button, #live[data-mode=overlay]:not(.poll-open) button { min-height: 24px; height: 24px; padding: 0 10px; font-size: 0.8125rem; }
+#live[data-mode=overlay] { background: rgba(28, 29, 35, 0.85); color: #fff; width: auto !important; right: auto; border-radius: 0 0 10px 0; }
+#live[data-mode=overlay] .state { color: #ddd; }
+/* the poll in the strip: one row of choices (the strip keeps its height) */
+#live[data-mode=strip].poll-open #live-poll-view { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 6px; overflow-x: auto; white-space: nowrap; }
+#live[data-mode=strip] #live-polls, #live[data-mode=strip] fieldset { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; }
+#live[data-mode=strip] legend { float: left; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; padding: 0; font-weight: 600; }
+#live[data-mode=strip] fieldset label { margin: 0; font-size: 0.8125rem; gap: 4px; align-items: center; }
+#live[data-mode=strip] fieldset input { width: 16px; height: 16px; margin: 0; }
+#live[data-mode=strip] fieldset .row { margin: 0; flex-wrap: nowrap; }
+/* the overlay variant's poll sheet over the frame (measured; docs/viewer.md) */
+#live[data-mode=overlay].poll-open { top: auto !important; bottom: 0; left: 0 !important; width: 100% !important; height: auto !important; max-height: 70%; overflow: auto; border-radius: 0; background: var(--panel); color: var(--fg); }
+#live[data-mode=overlay].poll-open #live-poll-view { padding: 8px 12px; }
+.live-head { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+.live-head h2 { font-size: 1rem; margin: 0; }
+.live-head .state { flex: 1; min-width: 0; font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-body { padding: 8px 12px 16px; }
+.live-body p { margin: 0 0 8px; }
+.msg { color: var(--warn); }
+.msg:empty { display: none; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+#live label { display: block; font-size: 0.875rem; margin: 8px 0 4px; }
+#live input[type=text], #live textarea { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+#live textarea { min-height: 72px; resize: vertical; }
+#live fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; padding: 6px 10px 10px; }
+#live legend { font-weight: 600; padding: 0 4px; }
+#live fieldset label { display: flex; gap: 8px; align-items: flex-start; font-size: 1rem; margin: 6px 0; }
+#live fieldset input { width: 20px; height: 20px; margin-top: 3px; }
+#live h3 { font-size: 0.875rem; margin: 12px 0 4px; }
+.dest { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+
+/* the link box: the destination, shown in the page's own chrome (spec §11) */
+#link-box { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#link-box::backdrop { background: rgba(0, 0, 0, 0.5); }
+#link-box h2 { font-size: 1.125rem; margin: 0 0 8px; }
+#link-box .host { font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; word-break: break-all; }
+#link-box .url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875rem; word-break: break-all; color: var(--muted); margin: 0 0 8px; }
+#link-box ul { padding-left: 1.2em; margin: 0 0 8px; }
+#link-box ul:empty { display: none; }
+#link-box .row { justify-content: flex-end; }
+@media (prefers-reduced-motion: no-preference) { .dot { transition: background-color .2s; } }
+@media (max-width: 599px) {
+  #bar { flex-wrap: wrap; row-gap: 2px; }
+  #lesson-info { order: 3; flex-basis: 100%; }
+}
+#live[data-mode=overlay] .live-head { background: transparent; }
+/* pane modes: the poll comes right after the head (above the name and question fields) */
+#live[data-mode=side], #live[data-mode=bottom] { display: flex; flex-direction: column; }
+#live[data-mode=side] .live-head, #live[data-mode=bottom] .live-head { order: 0; flex: none; }
+#live[data-mode=side] #live-poll-view, #live[data-mode=bottom] #live-poll-view { order: 1; flex: none; }
+#live[data-mode=side] .live-body, #live[data-mode=bottom] .live-body { order: 2; }
+#live-polls:empty { display: none; }
+/* touch targets: each poll choice's whole row is the target. 44 px tall where it fits (panes, the slack column, the overlay's
+   sheet), 24 × 24 px at least in the 28 px strip (WCAG 2.2 target size); the same for 戻る, 投票する, 抜ける, 投票 and × */
+#live fieldset label { min-height: 44px; padding: 4px 8px; margin: 2px 0; border-radius: 8px; cursor: pointer; align-items: center; }
+#live fieldset label:hover { background: rgba(127, 127, 127, 0.12); }
+#live button { min-height: 44px; min-width: 44px; }
+#live[data-mode=strip] button, #live[data-mode=overlay]:not(.poll-open) button { min-height: 24px; height: 24px; min-width: 24px; }
+#live[data-mode=strip] fieldset label { min-height: 24px; height: 24px; padding: 0 8px; margin: 0; background: rgba(127, 127, 127, 0.14); }
+#live[data-mode=strip] fieldset .row { gap: 6px; }

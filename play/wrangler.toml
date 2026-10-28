@@ -1,0 +1,18 @@
+# Egatari Viewer (viewer.egatari.org): Cloudflare Workers static assets. Development and test config (docs/viewer.md).
+# Build first: `node tools/build-play.mjs` writes ../_play/. Then `npx wrangler@4.124.0 dev -c play/wrangler.toml` serves it locally.
+# Production settings are in wrangler.production.toml; keep the two in step. Never run `wrangler deploy` with this file.
+name = "egatari-viewer-dev"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+# account_id = "<your Cloudflare account id>"   # not committed: pass CLOUDFLARE_ACCOUNT_ID at deploy time
+workers_dev = true
+
+[assets]
+directory = "../_play"         # written by tools/build-play.mjs; _headers there sets the CSP and frame refusal
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"
+# run_worker_first stays off: files are served directly with _headers; the Worker sees only paths that match no file (POST /share)
+
+[observability]
+enabled = false                # no request logs
