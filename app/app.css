@@ -148,7 +148,12 @@ main{flex:1;min-height:0;display:flex}
 #b-lang{margin-left:auto;border:1px solid var(--line);font-size:13px;padding:4px 10px}
 #tools:not([hidden]) ~ #b-lang{margin-left:8px}
 #notice{background:var(--warn-bg);color:var(--warn-fg);border-bottom:1px solid var(--line);padding:6px 14px;font-size:13.5px}
+#welcome .note.secondary,#welcome .note.theme-row{display:flex;align-items:baseline;gap:4px 10px}   /* button, then its hint in its own column */
+#welcome .note.secondary .hint,#welcome .note.theme-row .hint{min-width:0;flex:1 1 0}
+#welcome .note.secondary .hint,#welcome .note.theme-row .hint,#examples-list .meta{text-wrap:balance}
+@media (max-width:720px){ #welcome .note.secondary,#welcome .note.theme-row{flex-direction:column;align-items:flex-start} }   /* phone: the hint goes under the button, no orphaned words */
 #notice p{margin:2px 0}
+#notice:has(> p.info:only-child){background:var(--panel);color:var(--fg)}   /* 案内だけのとき（警告がないとき）は警告の色にしない */
 #notice .theme-changes{margin:2px 0 2px 18px;padding:0}
 #notice .theme-changes li{margin:1px 0}
 #notice .swatch{display:inline-block;width:1.1em;height:1.1em;border:1px solid rgba(0,0,0,.35);border-radius:2px;vertical-align:-.2em}
