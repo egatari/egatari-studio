@@ -312,9 +312,13 @@ console.log('service worker');
     'a second window while a lesson plays: the new version still waits; the playing lesson is untouched');
   await p2.close();
   // the next launch: every window of the Viewer closed, then opened again
+  const NEXT_LAUNCH_MS = 90000;
   await o.p.close();
   const p3 = await o.ctx.newPage();
-  await p3.goto(site.url, { waitUntil: 'commit' }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });   // the page may reload once as it takes over: wait for the page, not for the first load
+  // The navigation waits until the new worker has activated (its activate deletes the old cache and claims the clients). That is a few
+  // ms here, but under full CPU load it took 25 s locally (caches.delete 12 s, clients.claim 13.5 s), and on macOS CI the goto passed 30 s:
+  // give the launch NEXT_LAUNCH_MS (the page may reload once as it takes over: wait for the page, not for the first load)
+  await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
   c = await cached(p3);
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
@@ -326,7 +330,7 @@ console.log('service worker');
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
     'a third version found while the Viewer is in use: it waits (no reload)');
-  await p3.goto(site.url, { waitUntil: 'commit' }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });   // the page may reload once as it takes over: wait for the page, not for the first load
+  await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });   // as above: the takeover may be slow, and the page may reload once
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000), `a launch at the start screen (the only window): the waiting version takes over (${b3.version})`);
   ok(await until(async () => { const k = await p3.evaluate(() => caches.keys()); return k.length === 1 && k[0] === 'egatari-viewer-' + b3.version; }, 10000), 'activate: only the egatari-viewer- cache of this version remains (the old egatari-play- cache is deleted)');
   await o.ctx.close();
