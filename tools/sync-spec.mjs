@@ -1,5 +1,5 @@
-// 持ち運べるデッキの形式の仕様（format spec。場所は kit/core/format.mjs の FORMAT.SPEC_URL）から、試験に要る JSON Schema と
-// 試験用の入力だけを FORMAT.VENDOR_DIR（vendor/<名前>-spec/）に写す。仕様の本文は写さない（リンクする）。写した版はその SOURCE.json に残す
+// 持ち運べるデッキの形式の仕様（format spec。場所は kit/core/format.mjs の FORMAT.SPEC_URL）から、試験が読む JSON Schema と
+// 試験用の入力だけ（許可リスト。下の PARTS）を FORMAT.VENDOR_DIR（vendor/<名前>-spec/）に写す。仕様の本文は写さない（リンクする）。写した版はその SOURCE.json に残す
 //   node tools/sync-spec.mjs <仕様のリポジトリの clone> [--ref <commit か wd-* のタグ>] [--branch <名前>]   （既定は HEAD）
 //   --branch：タグでない版（main の次の WD の前など）を写すとき、どの枝から取ったかを SOURCE.json の branch に書く
 import fs from 'node:fs';
@@ -10,7 +10,13 @@ import { FORMAT } from '../kit/core/format.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
-const PARTS = ['schema', 'fixtures', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
+// 写すのは試験が読むものだけ（許可リスト。#137）。試験が新しく仕様の写しのファイルを読むようになったら、ここに足す
+//   schema：Schema（test-portable・test-file-shape・test-exported-from・test-attachments）
+//   fixtures/index：索引の試験用の入力（test-portable・test-file-shape）
+//   fixtures/documents-1.0：1.0 の形の文書とその expect.json（test-portable）
+//   fixtures/documents/legacy-heading-keys.ega.html：1.0 より前の草案の例（test-app-earlier）。documents/ の残りは 1.0 より前のもので、読まない
+//   fixtures/input-hash：入力のハッシュの例（test-narration）
+const PARTS = ['schema', 'fixtures/index', 'fixtures/documents-1.0', 'fixtures/documents/legacy-heading-keys.ega.html', 'fixtures/input-hash', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
 
 const args = process.argv.slice(2);
 const ri = args.indexOf('--ref');

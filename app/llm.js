@@ -836,6 +836,8 @@ export function setupLlm(app) {
     const showPlan = () => {
       setRadios(planSet, 'paste-plan', draft.plan);
       for (const b of tiles) b.title = membersOfSeries(b.id.slice('paste-series-'.length), draft.plan).join(', ');
+      // 札の小さな字：有料のプランで中の図が増える分野（社会の世界地図）は、有料のときだけその字
+      for (const b of tiles) { const x = SUBJECTS.find((y) => y.id === b.dataset.subject); b.querySelector('small').textContent = ((paid() && x.insidePaid) || x.inside)[LANG]; }
       limit();
       parts.refresh();
     };

@@ -108,7 +108,7 @@ export async function unpack(file, dir, { force = false } = {}) {
 // 返すもの：{state: 'same' | 'copy' | 'folder' | 'both', docId, exportedSha256, copySha256, folderSha256}
 export async function compare(file, dir) {
   const r = await readSingleFile(file);
-  const st = exportedState(r.index);
+  const st = exportedState(r.index, null, { sourceMatches: r.sourceMatches });
   if (!st) throw new FormatError('not-exported', `${file} has no exportedFrom: it was not exported from a working folder`);
   const src = entryOf(dir);
   const CFG = FORMAT.CONFIG_FILE, cp = path.join(path.dirname(src), CFG);
@@ -116,7 +116,7 @@ export async function compare(file, dir) {
   try { conf = parseJsonStrict(readRegular(cp, { max: READ_LIMITS.json }).toString('utf8')); } catch { conf = null; }
   if (!conf || conf.docId !== r.index.docId) throw new FormatError('other-lesson', `${dir}: ${CFG} does not have the docId ${r.index.docId}: not the folder this copy was exported from`);
   const f = await exportPortable(nodeEnv, src, {});
-  const s = exportedState(r.index, f.index.sourceSha256);
+  const s = exportedState(r.index, f.index.sourceSha256, { sourceMatches: r.sourceMatches });
   const state = s.both ? 'both' : s.copyEdited ? 'copy' : s.folderEdited ? 'folder' : 'same';
   return { state, docId: r.index.docId, exportedSha256: s.exportedSha256, copySha256: r.index.sourceSha256, folderSha256: f.index.sourceSha256 };
 }

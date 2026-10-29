@@ -4,7 +4,7 @@
 //   exportPortable(env, deck.html, opts)  組み立て（build-core）の読み込みを記録して依存の閉包を取り、持ち運べる 1 ファイルの文字列を作る
 //   readPortable(text | bytes, opts)    文字列として読む（何も実行しない）。索引・ハッシュ・塊・上限・パスを検査し、メモリ上のフォルダを返す
 //   playOnly(text)                     再生専用の派生（§3.7）：索引と、実行系が参照しない塊を除く
-//   exportedState(index, folderSha)    書き出しの印（exportedFrom、§3.1）から、書き出しの後に写し・フォルダのどちらを直したか
+//   exportedState(index, folderSha, {sourceMatches})  書き出しの印（exportedFrom、§3.1）から、書き出しの後に写し・フォルダのどちらを直したか
 //   validateIndex(index)               索引の形（仕様の写し（FORMAT.VENDOR_DIR）の schema と同じ規則。依存なし）→ エラーの配列
 //   checkArchivePaths(paths)           パスの規則（§3.3）→ エラーの配列
 //   parseJsonStrict(text, opts)        同じ名前の重複を断る JSON の解析（原型のない object を作る）
@@ -19,6 +19,7 @@ import { readLock, vendorDir, pinsForIndex, versionForSha, VERSION_RE } from './
 import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
+import { referenceVoices, matchReference, REFERENCE_VOICE_RULE } from './ref-voice.mjs';
 import { planAttachments, problemText, attachmentIndexWarnings, isAttachPath, attachMediaProblem, inspectAttachment, blocking, attachmentMime } from './attachments.mjs';
 import { isLiveResults } from './live-results.mjs';
 import { updateConfig, merge as configMerge } from './config-file.mjs';
@@ -541,11 +542,13 @@ export function sourceSha256(fileShas) {
 
 // 書き出しの印（index.exportedFrom、§3.1）から、写しとフォルダのどちらが書き出しの後に直されたか。印がなければ null。
 // 比べるのは hash だけ（時刻は持たない）：写しの今の sourceSha256 と印の値が違えば写しを直した。folderSha（同じ docId の作業フォルダの
-// 今の sourceSha256。写しとフォルダの両方があるときだけ分かる）が印の値と違えばフォルダを直した。分からなければ folderEdited は null
-export function exportedState(index, folderSha = null) {
+// 今の sourceSha256。写しとフォルダの両方があるときだけ分かる）が印の値と違えばフォルダを直した。分からなければ folderEdited は null。
+// sourceMatches（readPortable の答え）が false なら、索引の sourceSha256 は写しの中身の hash ではない（手で書き換えた・壊れた）ので、印の値と
+// 同じでも写しを直したことにする（印は信じられる中身の hash とだけ比べる）。形の合わない印（kind・sourceSha256 がない・型が違う）は無いものとして null
+export function exportedState(index, folderSha = null, { sourceMatches = true } = {}) {
   const x = isObj(index) ? index.exportedFrom : null;
   if (!isObj(x) || x.kind !== 'folder' || typeof x.sourceSha256 !== 'string' || !RE.sha256.test(x.sourceSha256)) return null;
-  const copyEdited = index.sourceSha256 !== x.sourceSha256;
+  const copyEdited = sourceMatches === false || index.sourceSha256 !== x.sourceSha256;
   const folderEdited = typeof folderSha === 'string' ? folderSha !== x.sourceSha256 : null;
   return { exportedSha256: x.sourceSha256, copyEdited, folderEdited, both: copyEdited && folderEdited === true };
 }
@@ -560,7 +563,7 @@ const EXCLUDE = [
   [/\.local\.json$/i, 'local settings (*.local.json)'],
   [/(?:\.(?:pem|key|p12|pfx)$|(^|\/)(?:credentials|secrets?)(\.[^/]*)?$)/i, 'credentials'],
 ];
-export const EXCLUDED_CATEGORIES = Object.freeze([...EXCLUDE.map((x) => x[1]), 'audio not referenced by a narration step', 'personal reference voices', 'machine-specific paths in voice.json']);
+export const EXCLUDED_CATEGORIES = Object.freeze([...EXCLUDE.map((x) => x[1]), 'audio not referenced by a narration step', 'personal reference voices', 'device-specific paths in voice.json']);
 export const excludedReason = (rel) => (EXCLUDE.find(([re]) => re.test(rel)) || [])[1] || null;
 
 // voice.json：声の指定がパスなら、ファイル名（拡張子なし）だけにする。そのほかの場所らしい値は消す
@@ -720,6 +723,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // voice.json・設定のファイル・音声と、その圧縮の前の元のファイル・控えの JSON）も、組み立てが読むものと同じ回数と大きさの合計に、読む前に数える
   const budget = buildBudget(opts.limits, 0), LIM = budget.L;
   const env = chargedEnv(rec, budget);
+  // 参照音声（AI 音声が声をまねる元の録音。voice.json が指す、作業フォルダの中のもの）：教材に入れない（format spec §5 の recipe。kit/core/ref-voice.mjs）。
+  // voice.json は env0 で読む（組み立てが読んだものとして記録すると、伏せる前の voice.json が入ってしまう）。opts.voiceRefDir：名前の声のフォルダ（IRODORI_REF_DIR）
+  const refVoices = referenceVoices(env0, deckDir, { refDir: opts.voiceRefDir });
+  const refOf = (abs, bytes) => {
+    if (!refVoices.length) return null;
+    if (!bytes) {
+      try {
+        const n = typeof env0.size === 'function' ? env0.size(abs) : null;
+        if (refVoices.some((x) => x.size === null || n === null || x.size === n)) bytes = readBytesVia(env0, abs);
+      } catch { bytes = null; }
+    }
+    return matchReference(refVoices, rel(abs), bytes);
+  };
   // 口述原稿：音声を段階に結び付け、inputHash と拡張の行に使う（build と同じ規則で読む）
   const narrPath = P.join(deckDir, 'narration.md');
   const segs = env.exists(narrPath) && inDeck(narrPath) ? parseNarration(env.readText(narrPath)) : [];
@@ -727,6 +743,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const tag = nonce();
   const pend = [];
   const audioRef = (key, file, v) => {
+    const ref = refOf(file);
+    if (ref) { warnings.push(`${LOG}: audio for "${key}" is the reference voice "${ref.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); return null; }
     if (!segByKey.has(key)) { warnings.push(`${LOG}: audio for "${key}" has no narration step; not included`); return null; }
     if (!(typeof v.dur === 'number' && v.dur > 0)) { warnings.push(`${LOG}: audio for "${key}" has no duration; not included`); return null; }
     pend.push({ key, file, v });
@@ -784,7 +802,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (!regTheme.has(name)) regTheme.set(name, new Map());
       regTheme.get(name).set(k, readBytesVia(env, p));
     } else {
-      // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの機械・編集アプリでも同じテーマで組み直せる）
+      // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）のテーマ：原稿の themes/<名前>/ として入れる（ほかの端末・編集アプリでも同じテーマで組み直せる）
       const u = (Array.isArray(rec.themeDirs) ? rec.themeDirs : []).find((d) => env.within(p, d));
       if (!u) continue;
       const rp = 'themes/' + P.relative(u, p).split(P.sep).join('/');
@@ -823,6 +841,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (why) { warnings.push(`${LOG}: "${rp}" (theme licence) is excluded (${why}); not included`); continue; }
       files[rp] = readBytesVia(env, f);
     }
+  }
+  // 原稿が参照音声を使っている（<audio src> など。組み立てが HTML に埋め込んだ）：外すと HTML に残るので、書き出しを断る
+  for (const [rp, b] of Object.entries(files)) {
+    const ref = matchReference(refVoices, rp, b);
+    if (ref) fail('reference-voice', `"${rp}" is the reference voice "${ref.rel}" (voice.json) and the slides use it; remove it from the slides or move the recording out of the working folder: ${REFERENCE_VOICE_RULE}`, { path: rp, reference: ref.rel });
   }
   const entry = rel(P.resolve(srcPath));
   if (!files[entry]) files[entry] = readBytesVia(env, P.resolve(srcPath));
@@ -884,6 +907,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       }
     }
     const carryList = isObj(opts.carry) && Array.isArray(opts.carry[FORMAT.ATTACH_KEY]) ? opts.carry[FORMAT.ATTACH_KEY] : null;
+    // 参照音声は添付にしない（音声はもともと添付にならないが、決まりの名前を添えて知らせる）
+    for (let i = found.length - 1; i >= 0; i--) {
+      const pr = matchReference(refVoices, found[i].path);
+      if (pr) { warnings.push(`${LOG}: attachment "${found[i].path}" is the reference voice "${pr.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); found.splice(i, 1); }
+    }
     const plan = planAttachments(found, econf, { carry: carryList, limits: opts.attachLimits });
     for (const x of plan.problems) warnings.push(`${LOG}: ${problemText(x)}`);
     const L = plan.limits;
@@ -891,6 +919,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const got = new Set();
     for (const p of plan.include) {
       const b = files[p] || readBytesVia(env, P.join(deckDir, ...p.split('/')));
+      // 名前を変えた参照音声の写し（中身が同じ）も外す
+      const pc = matchReference(refVoices, p, b);
+      if (pc) { warnings.push(`${LOG}: attachment "${p}" is the reference voice "${pc.rel}" (voice.json); not included: ${REFERENCE_VOICE_RULE}`); continue; }
       // 中身が音声・動画（名前では分からないもの）：入れない
       const media = attachMediaProblem(p, b.subarray(0, 64));
       if (media) { warnings.push(`${LOG}: ${problemText(media)}`); continue; }
@@ -980,7 +1011,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const p of Object.keys(files)) {
     if (!/^(?:text|application\/(?:json|xml))|svg/.test(mimeOf(p))) continue;
     const t = new TextDecoder().decode(files[p]);
-    if (/(?:\/Users\/|\/home\/)[^\s"'<>/]+|[A-Za-z]:\\(?:Users|Documents and Settings)\\/.test(t)) warnings.push(`${LOG}: "${p}" seems to contain a machine-specific path (check before sharing)`);
+    if (/(?:\/Users\/|\/home\/)[^\s"'<>/]+|[A-Za-z]:\\(?:Users|Documents and Settings)\\/.test(t)) warnings.push(`${LOG}: "${p}" seems to contain a device-specific path (check before sharing)`);
   }
 
   // 音声：埋め込みと同じく AAC に圧縮（ffmpeg がなければ WAV のまま）。同じ中身は 1 つの塊に

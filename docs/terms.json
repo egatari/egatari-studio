@@ -1,5 +1,5 @@
 {
- "version": "2026-10-25",
+ "version": "2026-10-29",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -1415,6 +1415,65 @@
    "note": ""
   },
   {
+   "id": "drag-and-drop",
+   "group": "Parts and themes",
+   "en": "Drag a file here",
+   "ja": "ここにファイルをドラッグ＆ドロップ",
+   "definition": "Drop zone on the start screen, e.g. “.ega.html ファイルをここにドラッグ＆ドロップ”. Follows Google Drive / Windows wording.",
+   "avoid": {
+    "ja": [
+     "落とす（ファイルを置く意味で）"
+    ],
+    "en": [
+     "Drop … here (alone)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "exported-file",
+   "group": "Parts and themes",
+   "en": "File exported from a working folder",
+   "ja": "作業フォルダから書き出したファイル",
+   "definition": "A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder.",
+   "avoid": {
+    "ja": [
+     "写し（書き出したファイルの意味で）",
+     "フォルダには入りません"
+    ],
+    "en": [
+     "copy (for an exported file)"
+    ]
+   },
+   "internal": "exportedFrom (spec §3.1)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "no-upload",
+   "group": "Parts and themes",
+   "en": "Not uploaded",
+   "ja": "アップロードしません",
+   "definition": "Privacy line: the app reads and writes files on the device and uploads nothing, e.g. 「ファイルはどこにもアップロードしません」. Usual wording of browser-only tools.",
+   "avoid": {
+    "ja": [
+     "送りません（プライバシーの文で）",
+     "送信しません（同）"
+    ],
+    "en": [
+     "sent (in the privacy line)"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
    "id": "my-themes",
    "group": "Parts and themes",
    "en": "My themes",
@@ -1777,6 +1836,44 @@
    "decided": "2026-10-24",
    "by": "owner",
    "note": "One word per action: the message repeats the word of the button or menu that triggered it. 書き出す is only the audio panel’s own 台本を書き出す (export-script)."
+  },
+  {
+   "id": "device",
+   "group": "Buttons and common words",
+   "en": "Device",
+   "ja": "端末",
+   "definition": "The computer or tablet a person views or edits a lesson on (the school word, as in 1人1台端末). Use パソコン only when it really means a PC.",
+   "avoid": {
+    "ja": [
+     "機械（端末の意味で）"
+    ],
+    "en": [
+     "machine"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-10-28",
+   "by": "owner",
+   "note": "機械 stays in 機械学習 and in the 4M (人・機械・方法・材料) of the m-fishbone example; list those in docs/terms-allow.json."
+  },
+  {
+   "id": "viewer-person",
+   "group": "Buttons and common words",
+   "en": "Participant / Learner",
+   "ja": "参加者／学習者",
+   "definition": "The person who opens a lesson. 参加者 for a person in a session or receiving a play-only file (see participant); 学習者 when the point is learning (self-study, pedagogy). When the device is meant, say 端末 and name no person (e.g. 開く端末の明朝で表示されます). The spec keeps its English word viewer; it is not shown in the UI, where Viewer is the app name Egatari Viewer.",
+   "avoid": {
+    "ja": [
+     "見る人"
+    ],
+    "en": [
+     "viewer (a person, UI)"
+    ]
+   },
+   "internal": "viewer (spec)",
+   "decided": "2026-10-28",
+   "by": "owner",
+   "note": "Owner, 10/28; follows the 10/22 host/participant decision."
   }
  ]
 }

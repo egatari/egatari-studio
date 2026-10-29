@@ -652,7 +652,7 @@ def irodori_synth(node_script: str, model_dir: str, voices_dir: str, work_dir: s
     """Irodori-TTS 500M-v3（ONNX）。リポジトリの lab/vendor/irodori-tts-webgpu/pipeline.mjs（Node 用に注入できる設計）を
     colab/irodori_node.mjs 経由で onnxruntime-node（GPU があれば CUDA、なければ CPU）で動かす。ワーカーを 1 度だけ起動して使い回す
     （6 つの ONNX セッションとトークナイザは 1 度だけ読む）。戻り値は close() のある関数（run_job のあとに close() を呼ぶ）。
-    ref_voice を渡すと、job の声の名前にかかわらずその WAV を参照音声にする（省略すれば lab/voices/<名前>.wav で、これまでと同じ）。
+    ref_voice を渡すと、job の声の名前にかかわらずその WAV を参照音声にする（省略すれば tts/voices/<名前>.wav で、これまでと同じ）。
     steps を省くと、ワーカーが実際に使うプロバイダで決める（cpu なら IRODORI_CPU_STEPS、そのほかは IRODORI_STEPS。使った値は .steps）。"""
     import os
     env = dict(os.environ, EGATARI_PROFILE="1") if profile else None

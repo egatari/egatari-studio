@@ -275,7 +275,7 @@ try {
     ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
     ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
   }
-  ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('ここに .ega.html を落とす') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
+  ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('.ega.html ファイルをここにドラッグ＆ドロップ') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
   await shot(page, 'welcome.png');
 
@@ -691,8 +691,8 @@ try {
     await page.click('#b-comments');
     // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
     ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('フォルダからエクスポートした写しです。ここで直した分は、フォルダには入りません。フォルダに戻すには『作業フォルダにエクスポート』を使ってください。')
-      && !(await page.textContent('#notice-exported')).includes('エクスポートしたあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）から書き出したものです。ここで直しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま直して保存できます。')
+      && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
     await shot(page, 'portable-exported-notice.png');
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-save') && await page.isVisible('#b-saveas') && await page.isHidden('#b-export-portable') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'false', 'portable: File ▾ has Save and Save as… (the single-file ones)');
@@ -739,7 +739,7 @@ try {
     const aRead = await readPortable(new Uint8Array(aBuf));
     ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
     ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
-    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直した分は、フォルダには入りません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、この写しで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+    ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('書き出したあと、このファイルで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
     fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
     ok(ps0.portable.stale.includes(`${K('何を最小化するか')}:0`) && JSON.stringify(aRead.index.audio[`${K('何を最小化するか')}:0`]) === JSON.stringify(pmin.index.audio[`${K('何を最小化するか')}:0`]), 'tier A: the edited step\'s audio is kept as is and shown as stale');
     await shot(page, 'portable-tier-a-saved.png');
@@ -774,8 +774,14 @@ try {
     mem = await wsFiles();
     ok(mem['narration.md'].toString().includes('1 ファイルで書き直した口述原稿です。'), 'portable narration: narration.md changed in memory');
     ps = await pstate();
-    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === `${K('何を最小化するか')}:0` && ps.warn.some((w) => w.includes(`${K('何を最小化するか')}:0`)), `portable narration: the edited step is shown as stale (${ps.portable.stale.join(', ')})`);
+    ok(ps.portable.stale.length === 1 && ps.portable.stale[0] === `${K('何を最小化するか')}:0` && !ps.warn.some((w) => w.includes(`${K('何を最小化するか')}:0`)), `portable narration: the edited step is stale, and not listed again as a build warning (${ps.portable.stale.join(', ')})`);
     await page.click('#b-narr');
+    // 品質チェックの板：そのスライドの指摘として出る（中の鍵は見せない）
+    await page.click('#b-check');
+    await page.waitForSelector('#panel-body .sum');
+    const staleRes = await page.evaluate(() => [...document.querySelectorAll('#panel-body .res.warn')].map((r) => r.textContent).find((t) => t.includes('音声の更新が必要')) || '');
+    ok(/ステップ 0。/.test(staleRes) && staleRes.includes('スライド 2') && !/s-[a-z0-9]{6}/.test(staleRes), `portable narration: the Quality check lists the stale step on its slide, without the internal key (${staleRes})`);
+    await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
 
     // 保存：スライドを直したので段 B（組み直す）。保存の前に、編集していないスライドの見え方が変わりうることを知らせる
     await clickCommand(page, '#b-save');
@@ -1409,6 +1415,32 @@ try {
         const m = /(\d+)\D+(\d+)/.exec(sum);
         ok(m && +m[1] === bd.errs && +m[2] === bd.warns && bd.hidden === (bd.errs + bd.warns === 0) && bd.bad === (bd.errs > 0) && !(await pt.evaluate(() => window.__APP_TEST.ui().edit)), `badge (${lang}): after a build the quick check runs by itself and the badge shows its counts (${bd.errs} / ${bd.warns}, "${bd.text}"; panel "${sum}")`);
         await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        // 組み立ての警告（無い目印 {mark:zzq}）：警告の数に入り、中の名前（## s-…・narration.md の行）を見せず、押すとそのスライドへ
+        const nar0 = await pt.evaluate(async () => (await (await window.__open.getFileHandle('narration.md')).getFile()).text());
+        const putNarr = (t) => pt.evaluate(async (x) => { const w = await (await window.__open.getFileHandle('narration.md')).createWritable(); await w.write(x); await w.close(); }, t);
+        await putNarr(nar0.replace('{mark:grad}', '{mark:zzq}'));
+        const nb = await pt.evaluate(() => window.__APP_TEST.state().builds);
+        await pt.evaluate(() => window.__APP_TEST.rebuild());
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n && window.__APP_TEST.state().warn.some((w) => w.includes('zzq')), nb, { timeout: 30000 });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+        await pt.click('#b-check');
+        await pt.waitForSelector('#panel-body .sum');
+        await pt.waitForSelector('#panel-body #check-buildwarn li');
+        const bw = await pt.evaluate(() => ({ sum: document.querySelector('#panel-body .sum').textContent, n: window.__APP_TEST.state().warn.length,
+          checked: document.querySelectorAll('#panel-body .res.warn').length, text: document.getElementById('check-buildwarn').textContent,
+          go: [...document.querySelectorAll('#check-buildwarn li.go')].map((li) => li.textContent), badge: window.__APP_TEST.badge() }));
+        const mw = /(\d+)\D+(\d+)/.exec(bw.sum);
+        ok(mw && +mw[2] === bw.checked + bw.n && bw.n > 0 && bw.badge.warns === +mw[2], `build warnings (${lang}): counted in the summary and the badge ("${bw.sum}" = ${bw.checked} checker + ${bw.n} build; badge "${bw.badge.text}")`);
+        ok(!/## s-|narration\.md|\[\d+\]/.test(bw.text) && bw.go.length === 1 && bw.go[0].includes(lang === 'en' ? 'slide 3' : 'スライド 3') && bw.go[0].includes(lang === 'en' ? 'Emphasis: ' : '強調：'), `build warnings (${lang}): no internal names; the slide number and title instead (${bw.go[0]})`);
+        await pt.click('#check-buildwarn li.go');
+        await pt.waitForFunction(() => window.__APP_TEST.state().pos && window.__APP_TEST.state().pos.i === 2, null, { timeout: 5000 }).catch(() => {});
+        ok((await pt.evaluate(() => window.__APP_TEST.state().pos?.i)) === 2, `build warnings (${lang}): clicking one goes to its slide`);
+        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        await putNarr(nar0);
+        const nb2 = await pt.evaluate(() => window.__APP_TEST.state().builds);
+        await pt.evaluate(() => window.__APP_TEST.rebuild());
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n, nb2, { timeout: 30000 });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
       }
       // 品質チェックの札がいちばん長いとき（エラーも警告も 2 桁）
       await pt.evaluate(() => { const b = document.getElementById('b-check-badge'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 errors · 12 warnings' : 'エラー 12 · 警告 12'; b.classList.add('bad'); });
@@ -1717,7 +1749,7 @@ try {
       ok(s.warn.some((w) => /refused: テーマのロゴ「\.\.\/mytml\/logos\/mark\.png」/.test(w)) && html.includes('--theme-probe:#0e0e0e') && !html.includes('data:image/png;base64,' + PNG.slice(0, 20)), 'theme folder: a logo outside its theme directory is refused (containment as in the CLI)');
       await po.evaluate(([t]) => window.__putDeck('deck.html', t), [deckWith('mytml')]);
       await po.evaluate(() => window.__APP_TEST.rebuild());
-      // 持ち運べる 1 ファイル：使ったテーマは原稿の themes/mytml/ として入る（ほかの機械でも同じテーマで組める）
+      // 持ち運べる 1 ファイル：使ったテーマは原稿の themes/mytml/ として入る（ほかの端末でも同じテーマで組める）
       await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('thm-export.ega.html', { create: true }); });
       await po.evaluate(() => document.getElementById('b-export-portable').click());
       for (let i = 0; i < 150 && !(await po.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 1000)); i++) await po.waitForTimeout(200);
@@ -1978,7 +2010,7 @@ try {
   const pe = await browser.newPage({ locale: 'en-US' });
   watch(pe, 'en');
   await pe.goto(BASE);
-  ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drop a .ega.html here'), 'i18n: English UI for en locale');
+  ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drag a .ega.html file here'), 'i18n: English UI for en locale');
   // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
   await pe.evaluate(async (b64) => {
     const root = await navigator.storage.getDirectory();
@@ -1989,7 +2021,7 @@ try {
   }, fs.readFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT)).toString('base64'));
   await pe.waitForSelector('#notice-exported', { timeout: 30000 });
   { const t = await pe.textContent('#notice-exported');
-    ok(t.startsWith("This is a copy exported from a lesson folder. Changes made here do not go back into the folder. To bring them back, use 'Export working folder'.") && t.includes('This copy has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
+    ok(t.startsWith("This file was exported from a working folder (the folder that holds the slide and script files). Editing it here does not change the files in that folder. If you don't have the folder, you can edit and save this file as usual.") && t.includes('This file has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
     const st = await pe.evaluate(() => window.__APP_TEST.state().portable);
     ok(st && st.readOnly === null && !st.tierAOnly, 'exportedFrom: the exported copy stays editable (not read-only)'); }
   await pe.close();

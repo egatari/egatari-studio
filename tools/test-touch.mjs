@@ -6,6 +6,8 @@
 // - 指で押した後も、帯は決まった時間で隠れる（:hover が残っても）
 // - マウスのクリックは今までどおり 1 回
 // - 帯を起こすタップ（隠れた帯の「読み上げで聞く」・次への場所、取っ手）と、出てくる途中のマウスのクリックはボタンを押さない
+// - スマートフォンの幅（390×844 の縦と 844×390 の横。Chromium は isMobile も）：ページが広がらず、スライドは画面の幅に収まり、
+//   帯は画面からはみ出さない（縦では 2 行に折り返す）。出し方の 1 行はタップの言い方。iPad の幅では帯は 1 行
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -91,11 +93,47 @@ async function run(name, browser) {
   await ctx.close();
 }
 
+async function phone(name, browser) {
+  for (const [tag, vp] of [['portrait', { width: 390, height: 844 }], ['landscape', { width: 844, height: 390 }], ['ipad', { width: 1024, height: 768 }]]) {
+    const ctx = await browser.newContext({ viewport: vp, hasTouch: true, isMobile: tag !== 'ipad', locale: 'ja-JP' });
+    const p = await ctx.newPage();
+    const errs = [];
+    p.on('pageerror', (e) => errs.push(e.message));
+    await p.goto(url + '#2');
+    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+    await p.waitForTimeout(400);
+    const m = await p.evaluate(() => {
+      const r = (id) => { const e = document.getElementById(id); return e ? e.getBoundingClientRect().toJSON() : null; };
+      const h = document.getElementById('dt-hint');
+      return { iw: innerWidth, sw: document.documentElement.scrollWidth, stage: r('stage'), cb: r('dt-cb'), hint: h ? h.textContent : null, hintBox: r('dt-hint') };
+    });
+    const W = vp.width, H = vp.height, px = (x) => Math.round(x);
+    ok(m.iw === W && m.sw <= W, `${name} ${tag}: the page does not widen (innerWidth ${m.iw}, scrollWidth ${m.sw}, viewport ${W})`);
+    ok(m.stage.left >= -1 && m.stage.right <= W + 1 && m.stage.top >= -1 && m.stage.bottom <= H + 1, `${name} ${tag}: the slide fits the screen (${px(m.stage.left)}–${px(m.stage.right)} × ${px(m.stage.top)}–${px(m.stage.bottom)})`);
+    ok(m.cb.left >= 0 && m.cb.right <= W && m.cb.bottom <= H, `${name} ${tag}: the toolbar stays on the screen (${px(m.cb.left)}–${px(m.cb.right)}, bottom ${px(m.cb.bottom)})`);
+    if (tag === 'portrait') ok(m.cb.height > 50 && m.cb.height < 90, `${name} ${tag}: the toolbar wraps onto two rows (${px(m.cb.height)} px)`);
+    else ok(m.cb.height < 50, `${name} ${tag}: the toolbar is one row (${px(m.cb.height)} px)`);
+    ok(m.hint === '画面をタップすると、ツールバーが出ます', `${name} ${tag}: the hint says to tap (${m.hint})`);
+    ok(m.hintBox && m.hintBox.bottom <= m.cb.top + 1 && m.hintBox.left >= 0 && m.hintBox.right <= W, `${name} ${tag}: the hint sits above the toolbar, on the screen`);
+    await p.screenshot({ path: path.join(outdir, `${name}-phone-${tag}.png`) });
+    // 縦：帯のボタン（2 行目のものも）が指で押せる
+    if (tag === 'portrait') {
+      const p0 = await p.evaluate(() => { const s = DECK.state(); return s.slide * 100 + s.step; });
+      await p.tap('#dt-cb button[data-b="next"]'); await p.waitForTimeout(700);
+      const p1 = await p.evaluate(() => { const s = DECK.state(); return s.slide * 100 + s.step; });
+      ok(p1 === p0 + 1, `${name} ${tag}: a tap on ▶ in the wrapped toolbar is one step (${p0} → ${p1})`);
+    }
+    ok(errs.length === 0, `${name} ${tag}: no page errors` + (errs.length ? ': ' + errs.join(' | ') : ''));
+    await ctx.close();
+  }
+}
+
 const cr = await launch();
 await run('chromium', cr);
+await phone('chromium', cr);
 await cr.close();
 let wk = null;
 try { wk = await webkit.launch(); } catch (e) { console.log(`skip webkit: not installed (npx playwright-core install webkit): ${String(e.message || e).split('\n')[0]}`); }
-if (wk) { await run('webkit', wk); await wk.close(); }
+if (wk) { await run('webkit', wk); await phone('webkit', wk); await wk.close(); }
 console.log(fails ? `${fails} failed` : 'all passed', '→', outdir);
 process.exit(fails ? 1 : 0);

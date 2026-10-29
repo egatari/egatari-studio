@@ -146,7 +146,8 @@ function quickCheck(fonts){
   var TH = cfg.theme || null, METRICS = TH && TH.metrics || null;
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
   var add = function(i, sev, code, arg){ out.push({i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}); };
-  S.forEach(function(s, i){
+  // 縮図のための描画はスライドに入ったことにしない（format spec §8.4 entered。DECK.aside が終わると見ている位置に戻して描く）
+  (DECK.aside || function(f){ return f(); })(function(){ S.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
     // はみ出し・切れ・字の大きさ・字数：コマンド版と同じ関数（kit/core/layout-scan.mjs。app/main.js がこの仲立ちに渡す）。
     // 前からある知らせはブラウザ版の code と短い値のまま（overflowBottom・overflowRight・smallText と字数）、ほかはコマンド版の code と値
@@ -176,7 +177,7 @@ function quickCheck(fonts){
     if (hasC) { keys.push("concl"); valid.concl = true; }
     var bad = (DECK.componentErrors || []).filter(function(r){ return r.slide === i; }).map(function(r){ return r.tag; });
     Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
-  });
+  }); });
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
   // 同梱の字体が読み込めていなければ測らない（代わりの字体では測らない）：metricsFontLoad
   // ファイルに入っていない字体（コマンド版と同じ。metricsFonts の foreign）
@@ -203,7 +204,7 @@ function quickCheck(fonts){
     var rm = ratio(rgb("--muted"), bg); if (rm < 3) add(null, "warn", "contrast", "--muted " + rm.toFixed(2) + ":1 < 3:1");
     probe.remove();
   } catch (e) {}
-  DECK.go(back.i, back.k, false);
+  if (!DECK.aside) DECK.go(back.i, back.k, false);
   return out;
 }
 })

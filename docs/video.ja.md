@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=388d24344d0c8fb2 -->
+<!-- i18n: pair=video.md sha256=5d04212d0399ff67 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -26,7 +26,7 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
 
 `tts/synth.py` は、上の 2 つの要求に答えるサーバーならどれとでも動く。試しているのは [mlx-audio](https://github.com/Blaizzy/mlx-audio) で、これは Apple シリコンの Mac でだけ動く。ほかの道：
 
-- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のある機械）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別の機械で動くなら、`ref_audio` はその機械の上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` から声を写すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
+- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のあるパソコン）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別のパソコンで動くなら、`ref_audio` はそのパソコンの上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` から声を写すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
 - **サーバーなし**：編集アプリの音声の板の「AI 音声をこの PC で作る」で、ステップごとにブラウザの中で音声を作る（WebGPU が要る）か、マイクで録音する（[editor.ja.md](editor.ja.md#台本の音声音声の板)）
 - **Google Colab**：「AI 音声をクラウドで作る（Google Colab）」のためのノートブックと、その結果を編集アプリに取り込む機能を用意している。それまでは上のどれかを使う
 
@@ -64,7 +64,7 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 
 ## 声
 
-`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。
+`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。教材には参照音声を入れず、その声で作った音声だけが入る（[Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md) の `recipe`）：Egatari ファイル（.ega.html）へのエクスポートは、voice.json が指す参照音声を外し（ステップの音声や添付になっていても）、スライドが使っていれば断る。品質チェックは作業フォルダの中の参照音声を知らせる。参照音声は作業フォルダの外に置く。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 

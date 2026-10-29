@@ -84,7 +84,8 @@ export const CATEGORIES = [
   { id: 'other', label: { ja: 'その他', en: 'Other' }, subs: [] },
 ];
 
-// 分野の札（新規作成 ④）：label は札の名前、inside は札の小さな字（中に入る図）、icon は札の絵（app/llm.js の ICONS の名前。なければ汎用の絵）。
+// 分野の札（新規作成 ④）：label は札の名前、inside は札の小さな字（中に入る図）、insidePaid は有料のプランで中の図が増えるときの小さな字
+// （無料のプランの指示に入らないパーツ：kit/core/llm-pack-assemble.mjs の FREE_OUT。画面だけの字で、AI への指示には入らない）、icon は札の絵（app/llm.js の ICONS の名前。なければ汎用の絵）。
 // 分野を足すときは、ここに 1 行（と系列の指示 tools/llm-guide/series/）を足すだけ（例：social の行）
 export const SUBJECTS = [
   { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' }, icon: 'subj-math' },
@@ -92,7 +93,7 @@ export const SUBJECTS = [
   { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' }, icon: 'subj-kokugo' },
   { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' }, icon: 'subj-english' },
   { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'codetree' },
-  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' }, icon: 'subj-social' },
+  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' }, insidePaid: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' }, icon: 'subj-social' },
   { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' },
 ];
 

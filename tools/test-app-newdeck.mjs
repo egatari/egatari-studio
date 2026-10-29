@@ -23,7 +23,7 @@ import { SERIES, FREE_CORE, buildPack } from '../kit/core/llm-pack.mjs';
 import { PART_LABELS } from '../kit/core/part-labels.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
-import { clickDlg, clickCommand } from './click-retry.mjs';
+import { clickDlg, clickCommand, clickUntil } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', 'worked', n, f), 'utf8').replace(/\r\n/g, '\n');
@@ -173,7 +173,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S6: 「スライドの挿入」 with three questions, and the choice to send to a different chat: ' + ih.join(' / '));
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
-    await p1.click('#paste-next-1');
+    // macOS の CI では、プレビューの上の窓のボタンを押しても下の iframe に届くことがある（click-retry.mjs）：② が開くまで押し直す
+    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: 2500 }));
     ok((await flowState(p1)) === '1:shut:-:-:nobody:answer 2:open:step:-:body:- paste:shut:-:pending:nobody:-' && (await text(p1, '#paste-step1-answer .paste-answer-text')) === '足す枚数：1 枚・練習問題を 1 つ',
       'S6: 「次へ」 folds ① to 「足す枚数：1 枚・練習問題を 1 つ」 and opens ②');
     const i1 = await copy(p1);
@@ -455,10 +456,12 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p8.isVisible('#paste-series') && (await checked(p8)) === 'academic,kokugo,info' && (await disabledBoxes(p8)) === '' && await p8.isHidden('#paste-series-max') && !(await p8.$('#paste-series-paid')),
       'S8 ④: on the paid plan the guess is applied again without the limit of two (ハフマン → info; Business, turned off by hand, stays off), never all ticked, and every tile is pressable: ' + await checked(p8));
     ok((await strip(p8)) === catalog(['academic', 'kokugo', 'info'], 'paid'), 'S8 ④: under the paid plan the strip is every standard part with the chosen subjects: ' + await strip(p8));
+    ok((await text(p8, '#paste-series-social small')) === '日本地図・世界地図', 'S8 ④: on the paid plan the social tile names the world map too: ' + await text(p8, '#paste-series-social small'));
     const c8p = await copy(p8);
     ok(c8p === packWithRequest({ series: ['academic', 'kokugo', 'info'], lang: 'ja', request: tailOf(c8p, 'ja'), plan: 'paid' }), 'S8 ④: the paid plan copies the three chosen subjects');
     await p8.click('#paste-change-send');
     await p8.check('#paste-plan-free');
+    ok((await text(p8, '#paste-series-social small')) === '日本地図', 'S8 ④: back on the free plan the social tile says 日本地図 only');
     ok((await checked(p8)) === 'academic,kokugo' && (await disabledBoxes(p8)) === 'business,english,info,social,music' && await p8.isDisabled('#paste-tool-timer') && await p8.isVisible('#paste-series-max') && (await text(p8, '#paste-series-max')) === 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます',
       'S8 ④: back to free with three ticks, the ticks come down to the first two in tile order, the timer tile is disabled too, and the limit message is shown');
     await p8.click('#paste-series-academic');

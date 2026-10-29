@@ -522,7 +522,7 @@ async function run(original, filesIn, opts) {
         if (f && !seen.has(id)) { seen.add(id); add.push({ f: { ...f, w, style }, key }); }
       }
     }
-    for (const fam of noFace) warnings.push(`new narration characters need "${fam}", which the document does not embed: no font supplement for them (they use the viewer's fonts)`);
+    for (const fam of noFace) warnings.push(`new narration characters need "${fam}", which the document does not embed: no font supplement for them (they use the fonts of the device that opens the file)`);
     if (missing.length) refuse('fonts', `glyphs for ${missing.length} new characters are needed but no font source was given`);
     if (add.length) {
       // 分割ファイルの並び（組み立てと同じ：字の種類 → 太さ → 分割の順）。同じファイルを別の太さ・style に使うときはその順

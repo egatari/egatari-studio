@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=0e1e2746e8705cc0 -->
+<!-- i18n: pair=distributing.ja.md sha256=a268fe51c8b1847e -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)

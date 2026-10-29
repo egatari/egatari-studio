@@ -1,0 +1,3 @@
+### Fixed
+
+- A copy exported from a working folder whose compiled lesson no longer matches its source (for example after the hashes in the file were changed by hand) now says "This file has been edited since it was exported.", even when the exported-from mark still equals the index's `sourceSha256`. `npm run portable -- compare` likewise reports such a copy as edited. Opening a file whose index was changed by hand without updating its `data-sha256` shows the "cannot open" dialog (the index is corrupt) as before; the editor waits only for its OK and does not freeze. A new browser test opens hand-edited and malformed marks (missing member, wrong type, 8 MB value, mismatched copies) and checks the page keeps answering.

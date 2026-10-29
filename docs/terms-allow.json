@@ -279,6 +279,13 @@
     },
     {
       "file": "app/llm.js",
+      "line": "学会の参加者",
+      "term": "viewer-person",
+      "reason": "Example text: conference attendees, not a person opening a lesson; en says “Conference attendees”.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
       "line": "purposesHint:",
       "term": "what-to-convey",
       "reason": "The hint sits under the What to convey heading; en refers to the tile with “it”.",
@@ -341,10 +348,85 @@
       "reason": "鍵盤 (piano keyboard, the part m-keyboard and the subject Music) is another word that contains 鍵."
     },
     {
+      "file": "**",
+      "pattern": "機械学習",
+      "term": "device",
+      "reason": "機械学習 (machine learning) is not 機械 in the sense of a device (glossary device note).",
+      "keep": true
+    },
+    {
+      "file": "**",
+      "pattern": "人・機械・方法・材料|\"label\":\"機械\"",
+      "term": "device",
+      "reason": "The 4M of quality control (人・機械・方法・材料) in the m-fishbone example: 機械 is the machinery, not a device (glossary device note).",
+      "keep": true
+    },
+    {
       "file": "docs/viewer*.md",
       "pattern": "「English」",
       "term": "subject-english",
       "reason": "The Viewer's language button is labelled 「English」 (the language name, not the school subject)."
+    },
+    {
+      "file": "docs/viewer*.md",
+      "pattern": "「(Egatari |Ega )?Viewer」",
+      "term": "viewer-person",
+      "reason": "Egatari Viewer is the app's name (manifest name and short_name), not a person who opens a lesson."
+    },
+    {
+      "file": "README*.md",
+      "pattern": "[Cc]opy",
+      "term": "exported-file",
+      "reason": "The clipboard Copy button, not an exported file."
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "写し|[Cc]opy",
+      "term": "exported-file",
+      "reason": "A frozen copy of a release (version notice), not an exported file."
+    },
+    {
+      "file": "app/**",
+      "pattern": "写し|[Cc]opy",
+      "term": "exported-file",
+      "reason": "Generic 写し / copy in UI strings: duplicating a slide, the clipboard copy button, a frozen copy of a release. The avoid words of exported-file are too generic to match alone; the real uses (the exported file) are checked by hand."
+    },
+    {
+      "file": "server/**",
+      "pattern": "写し|[Cc]opy",
+      "term": "exported-file",
+      "reason": "Generic 写し / copy in UI strings: duplicating a slide, the clipboard copy button, a frozen copy of a release. The avoid words of exported-file are too generic to match alone; the real uses (the exported file) are checked by hand."
+    },
+    {
+      "file": "**",
+      "pattern": "書き出した(ファイル|もの|あと)",
+      "term": "export",
+      "reason": "The glossary term itself (作業フォルダから書き出したファイル, exported-file) and the wording that follows it use 書き出した; export (エクスポート) is the command name."
+    },
+    {
+      "file": "kit/live.js",
+      "pattern": "送りません|\\bsent\\b",
+      "term": "no-upload",
+      "reason": "Live: what the participant's device really sends to the host (a question, a vote) and what it does not; a send, not an upload claim."
+    },
+    {
+      "file": "kit/core/live-results.mjs",
+      "pattern": "\\bsent\\b",
+      "term": "no-upload",
+      "reason": "Participants sent answers in the Live (a description of the data)."
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "Sample lessons",
+      "term": "voice-sample",
+      "reason": "The glossary term sample (Samples) in the examples lead, not a voice sample."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}",
+      "term": "no-upload",
+      "pairs": true,
+      "reason": "The English privacy line says 'nothing is uploaded' (owner-decided wording) for ja アップロードしません."
     }
   ]
 }

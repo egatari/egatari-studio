@@ -10,7 +10,7 @@
 // problems：{code, path, level, …}。code は kit/check-messages.mjs の attach…。level：
 //   must    仕様が MUST NOT とするもの（許されない型・実行できるもの・入れ物・HTML/SVG・マクロ・JavaScript のある PDF・ほかの型と重ねたファイル）
 //   should  仕様が「断るべき」（SHOULD reject）とするもの：役割の条件（自動の動作・埋め込み・外への参照・DDE・フィールド）と、中身が型と違う・調べられない
-//   advice  気をつけるだけのもの：数式として読まれる値（formula injection）・資格情報や機械のパスらしい文字
+//   advice  気をつけるだけのもの：数式として読まれる値（formula injection）・資格情報や端末のパスらしい文字
 // 書き出し・編集器・段 A の保存は must と should を入れない（断る）。品質チェックは must をエラー、ほかを警告にする
 
 const MiB = 1048576;
@@ -407,12 +407,12 @@ function csvInjection(text, sep) {
   return n ? { n, ...at } : null;
 }
 
-// ---------------------------------------------------------------- 資格情報・機械のパスらしいもの（気をつけるだけ）
+// ---------------------------------------------------------------- 資格情報・端末のパスらしいもの（気をつけるだけ）
 const PRIVATE = [
   ['private key', /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/],
   ['access key', /\bAKIA[0-9A-Z]{16}\b|\bghp_[A-Za-z0-9]{36}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b|\bxox[abpr]-[A-Za-z0-9-]{10,}|\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}|\bAIza[0-9A-Za-z_-]{35}\b/],
   ['password or token', /["']?(?:api[_-]?key|secret[_-]?key|access[_-]?token|auth[_-]?token|password|passwd)["']?\s*[:=]\s*["'][^"'\s]{8,}["']/i],
-  ['machine-specific path', /(?:\/Users\/|\/home\/)[A-Za-z0-9._-]+\/|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\\\s"']+/],
+  ['device-specific path', /(?:\/Users\/|\/home\/)[A-Za-z0-9._-]+\/|[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\\\s"']+/],
 ];
 function privateProblem(text) { for (const [what, re] of PRIVATE) if (re.test(text)) return what; return null; }
 

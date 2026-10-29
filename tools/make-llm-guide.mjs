@@ -138,7 +138,7 @@ const PACK_EDITS = {
   ],
   // range：鍵盤に入らない鍵を書く誤りが多いので、使う鍵を全部含めることを先に言う（規格の求め。0.6.0）
   'm-keyboard': [
-    { find: '- `range`：両端は白鍵、1〜3 オクターブ', ja: '- `range`：使う鍵を全部含める。両端は白鍵、1〜3 オクターブ', en: '- `range`：使う鍵を全部含める。両端は白鍵、1〜3 オクターブ（Include every key you use; both ends white keys, 1–3 octaves.）' },
+    { find: '- `range`：両端は白鍵、1〜3 オクターブ', ja: '- `range`：使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで', en: '- `range`：使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで（Include every key you use, at least one octave (e.g. C4-C5). Both ends on white keys, up to 3 octaves.）' },
   ],
   'm-menu': [
     // 初稿には id を書かない（R-noids）：目次は取り込みの後に足す
@@ -153,8 +153,8 @@ const ROW_EDITS = {
   'm-keyboard': [
     // 0.6.0 のプレーヤーは events(k) を呼ばないので、部品は音を鳴らさない。音は #114（0.6.3）で入る：そのとき「光らせて音も鳴らす」に戻す
     { find: '音階・和音・半音と全音を光らせて音も鳴らす', to: '音階・和音・半音と全音を光らせる' },
-    { lang: 'ja', find: '（両端は白鍵、1〜3 オクターブ）', to: '（使う鍵を全部含める。両端は白鍵、1〜3 オクターブ）' },
-    { lang: 'en', find: '(white keys at both ends, 1–3 octaves)', to: '(include every key you use; white keys at both ends, 1–3 octaves)' },
+    { lang: 'ja', find: '（両端は白鍵、1〜3 オクターブ）', to: '（使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで）' },
+    { lang: 'en', find: '(white keys at both ends, 1–3 octaves)', to: '(include every key you use, at least one octave (e.g. C4-C5); white keys at both ends, up to 3 octaves)' },
   ],
 };
 function applyRowEdits(name, row, lang) {

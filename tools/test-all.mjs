@@ -2,7 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -98,6 +98,8 @@ const steps = [
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
   // 1.0 のファイルの形（書く側）：player と generator・版の決め方と player:check・段 A は player を残す・ファイルの決まり（CSP）・旧来の鍵を書かない・記事だけの教材・プレビュー
   ['test-file-shape', ['tools/test-file-shape.mjs', path.join(tmp, 'file-shape')]],
+  // 参照音声（AI 音声が声をまねる元の録音）を教材に入れない（format spec §5 の recipe）：エクスポートの外す・断る、品質チェックの refVoice
+  ['test-ref-voice', ['tools/test-ref-voice.mjs', path.join(tmp, 'ref-voice')]],
   ['test-attachments', ['tools/test-attachments.mjs', path.join(tmp, 'attachments'), '--shots', path.join(tmp, 'attachments-shots')]],
   // 授業の部屋（拡張 live）：決まりごと・部屋を付けた派生だけの CSP・通信なしの場面・file:// から試験の部屋へ・つなぎ直し・舞台の描画が変わらない
   ['test-live', ['tools/test-live.mjs', path.join(tmp, 'live')]],
@@ -114,6 +116,8 @@ const steps = [
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
+  // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
+  ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）
   ['test-app-save-rebuild', ['tools/test-app-save-rebuild.mjs', path.join(tmp, 'save-rebuild')]],
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）

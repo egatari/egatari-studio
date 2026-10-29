@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=9964ee270cec5588 -->
+<!-- i18n: pair=contract.ja.md sha256=54834f9e4c818eff -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)
@@ -13,7 +13,7 @@ The one-line list of options, syntax and keys is in [reference.md](reference.md)
 | Timeline (`dur`, `lead`, `pad_after`, `hold`, overrides) | format §5.5 |
 | Slide identifiers and keys, step markers | format §8.1 |
 | Narration (blocks, turns, `{cue}`, `{note:…}`, extension lines), readings | format §8.2, §8.3 |
-| Components (`ctx`, steps, preview, variants, viewer input, sounds, theme colours) | format §8.4 |
+| Components (`ctx`, steps, preview, variants, participant input, sounds, theme colours) | format §8.4 |
 | Emphasis marks (`{mark}`) | format §8.5 |
 | Morphs (`data-morph`) | format §8.6 |
 | Display modes, preview of later steps | Player P1 |

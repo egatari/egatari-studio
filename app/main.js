@@ -26,7 +26,8 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason } from '../kit/core/portable.mjs';
+import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
@@ -43,6 +44,7 @@ import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '.
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
 import { setupLlm } from './llm.js';
+import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
@@ -193,7 +195,7 @@ async function openFolder(handle) {
 }
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
-  autoSeq++; clearTimeout(autoTimer); showBadge(0, 0);
+  autoSeq++; clearTimeout(autoTimer); showBadge(0, 0, 0);
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -215,7 +217,7 @@ function blankPreview() {
 }
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
-// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い機械）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
+// 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い端末）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
 // 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
@@ -314,8 +316,8 @@ function showNotice() {
   for (const [id, text] of lines) n.append(el('p', { id, text }));
   // 作業フォルダから書き出した写し（index.exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、作業フォルダに書き出すボタン（メニューと同じ名前）を出す。
   // 編集は断らない。写しの今の sourceSha256 が書き出したときの値と違えば、書き出しの後にこの写しで直した（hash で比べる。時刻は持たない）
-  const xs = P ? exportedState(P.index) : null;
-  if (xs) n.append(el('p', { id: 'notice-exported', text: T.exportedNotice + (xs.copyEdited ? ' ' + T.exportedEdited : '') + ' ' },
+  const xs = P ? exportedState(P.index, null, { sourceMatches: P.sourceMatches }) : null;   // 組んだ教材と原稿が食い違う写しは、印の値が同じでも直したもの
+  if (xs) n.append(el('p', { id: 'notice-exported', cls: 'info', text: T.exportedNotice + (xs.copyEdited ? (EN ? ' ' : '') + T.exportedEdited : '') + ' ' },
     [el('button', { type: 'button', id: 'b-exported-unpack', text: T.exportFolder, onclick: () => exportFolder() })]));
   // 部品庫が取り下げた版（format spec §6）：知らせて、置き換え先の版で組み直すボタンを出す。黙って置き換えない
   const yk = yankedNow();
@@ -478,7 +480,6 @@ async function rebuild(reason) {
         // 構成案（egatari.json の studio.outline。長い教材を 6 枚ずつ作る途中）：残りがあれば知らせに「次の 6 枚を頼む」
         try { S.outline = outlineOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { S.outline = null; }
         if (S.ws !== ws0 || S.gen !== g0) continue;
-        for (const k of stale) S.warn.push(T.staleStep(k));
         // 前の版の作業フォルダ：移し替え（npm run ids）が済めば、知らせを消して編集できるようにする
         if (S.earlier && S.earlier.kind === 'folder') {
           const e = await folderEarlier(S.ws);
@@ -526,14 +527,14 @@ function showError(err) {
   $('errtext').textContent = err || '';
 }
 // 組み立ての警告（と保存の警告）の数を、道具の列の「品質チェック」の札に出す（一覧は品質チェックの板の先頭）
-// 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告は板の先頭の一覧に
-// （札には数えない）。品質チェックは、プレビューを読み込み終えたたびに少し待ってから、組み立てが終わっているときだけかける（autoCheck）
-function showBadge(errs, warns) {
-  const b = $('b-check-badge'), n = errs + warns;
+// 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告（build。一覧は板の先頭）も
+// 警告に数える（板の「エラー · 警告」と同じ数）。品質チェックは、プレビューを読み込み終えたたびに少し待ってから、組み立てが終わっているときだけかける（autoCheck）
+function showBadge(errs, checkWarns, build = S.warn.length) {
+  const b = $('b-check-badge'), warns = checkWarns + build, n = errs + warns;
   b.hidden = !n;
   b.textContent = n ? T.checkBadge(errs, warns) : '';
   b.classList.toggle('bad', errs > 0);
-  S.badge = { errs, warns };
+  S.badge = { errs, warns, checked: checkWarns };
 }
 const AUTO_CHECK_MS = 1000;
 let autoTimer = 0, autoSeq = 0;
@@ -552,13 +553,19 @@ async function autoCheck() {
 }
 function showWarn() {
   if (!$('panel').hidden && $('check-panel')) $('check-buildwarn')?.replaceWith(buildWarnBox());
+  if (S.badge) showBadge(S.badge.errs, S.badge.checked || 0);   // 保存の警告が増えた：札の数も
   showNotice();
 }
 // 組み立ての警告の一覧（見つからないテーマの知らせには「テーマを読み込む…」。前に選んだフォルダがあれば「使う」）
 function buildWarnBox() {
   if (!S.warn.length) return el('div', { id: 'check-buildwarn', hidden: '' });
   return el('details', { id: 'check-buildwarn', cls: 'buildwarn', open: '' }, [el('summary', { text: T.checkBuildWarn(S.warn.length) }),
-    el('ul', {}, S.warn.map((w) => el('li', { text: w }, THEME_MISSING.test(w) ? [el('div', { cls: 'row theme-warn' }, themeButtons())] : [])))]);
+    el('ul', {}, S.warn.map((w) => {
+      // 中の名前は見せず、スライドが分かればその番号と見出し。押すとその枚へ（品質チェックの指摘と同じ）
+      const v = warnView(w, S.slides, T), go = v.i === null ? null : () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-go', i: v.i, k: 0 }, '*'); };
+      return el('li', go ? { cls: 'go', onclick: go } : {}, [v.text, ...(go ? [el('div', { cls: 'where', text: T.slideN(v.i + 1, (S.slides[v.i] || {}).heading || '') })] : []),
+        ...(THEME_MISSING.test(w) ? [el('div', { cls: 'row theme-warn' }, themeButtons())] : [])]);
+    }))]);
 }
 
 // ---------------------------------------------------------------- 利用者のテーマのフォルダ（app/theme-folder.js。読むだけ）
@@ -935,7 +942,8 @@ window.addEventListener('message', (e) => {
       if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
     }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
-      if (m.type === 'deck-pos') { S.pos = m; slidesPanel.onPos(); }
+      // 読み込み直した直後の最初の位置（1 枚目）は、戻す位置に動くまで見ている位置にしない（server/editor-ui.js と同じ。スライド ▾ の対象・一覧の選択が 1 枚目に跳ばない）
+      if (m.type === 'deck-pos' && !ui.restoring()) { S.pos = m; slidesPanel.onPos(); }
       if (S.presWin && !S.presWin.closed) S.presWin.postMessage({ type: 'app-pres-down', m }, '*');
     }
   } else if (S.presWin && e.source === S.presWin && m.type === 'app-pres-up' && m.m && typeof m.m.type === 'string' && /^deck-/.test(m.m.type)) {
@@ -1030,7 +1038,24 @@ async function checkResults() {
     for (const p of left.steps) { const i = (S.slides || []).findIndex((x) => x.key === p.slideKey); results.push({ sev: 'warn', code: 'narrPlaceholder', arg: p.stepKey, i: i < 0 ? null : i, title: title(i < 0 ? null : i) }); }
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
-  for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k, i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k.slice(k.lastIndexOf(':') + 1), i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
+  // 参照音声（AI 音声が声をまねる元の録音。voice.json がパスで指すもの）が作業フォルダの中にある：教材には入れない（format spec §5 の recipe。
+  // kit/core/ref-voice.mjs。エクスポートはスライドが使えば断り、ほかは外す）。コマンドの品質チェック（kit/check.mjs の refVoice）は場所ごとに分けて言う
+  if (S.ws && !S.portable) {
+    try {
+      const text = await S.ws.readText('voice.json', { max: READ_LIMITS.json });
+      const vj = text ? JSON.parse(text) : null;
+      const L = vj && typeof vj === 'object' ? await S.ws.list({ audio: true }) : null;
+      const seen = new Set();
+      for (const [k, v] of Object.entries(L ? vj : {})) {
+        if (!/^(expert|novice)$/i.test(k) || typeof v !== 'string' || !(/[\\/]/.test(v) || /\.wav$/i.test(v)) || /^(~|\/|[A-Za-z]:)/.test(v)) continue;
+        const rel = normPosix(v.replace(/\\/g, '/'));
+        if (rel.startsWith('..') || seen.has(rel) || !L.files.has(rel) || excludedReason(rel)) continue;
+        seen.add(rel);
+        results.push({ sev: 'warn', code: 'refVoice', arg: rel, i: null, title: '' });
+      }
+    } catch { /* voice.json がない・読めない */ }
+  }
   return results;
 }
 async function quickCheck() {
@@ -1040,8 +1065,8 @@ async function quickCheck() {
   const results = await checkResults();
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checkFailed }), buildWarnBox()]); return; }
-  const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length;
-  showBadge(errs, warns);
+  const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length + S.warn.length;
+  showBadge(errs, warns - S.warn.length);
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
     el('span', { text: T.checkMsg(r.code, r.arg) }),
@@ -1249,6 +1274,8 @@ function refusal(code, message, key = code) {
   return [el('p', { id: 'refuse-reason', 'data-kind': key, text: T.refuse(key) }), el('pre', { cls: 'tech', text: `[${code}] ${message}` })];
 }
 // 索引のない文書の、知らせの言葉の鍵（kit/core/portable.mjs の sourceKind：'play-only' | 'built' | 'source' | 'other'）
+// 保存・エクスポートの失敗の言葉：参照音声を断ったとき（kit/core/ref-voice.mjs。format spec §5 の recipe）は画面の言葉で、ほかは元の文
+const failText = (e) => (e && e.code === 'reference-voice' ? T.refVoiceRefused((e.details && e.details.path) || '') : String((e && e.message) || e));
 const noSourceKey = (e) => (e.code !== 'no-source' ? e.code : e.kind === 'play-only' ? 'play-only' : e.kind === 'built' ? 'built-output' : 'no-source');
 // input：{handle?: FileSystemFileHandle, file?: File, bytes?: Uint8Array, name?, fresh?（AI の返事を貼り付けて作った文書：権利の確認を出さない）, replacing?（今の文書を置き換える）}（app/llm.js）
 async function openPortable(input) {
@@ -1546,7 +1573,7 @@ async function savePortableBound(mode) {
       }
       html = r.html; index = r.index; deckMeta = r.deckMeta; tier = 'B';
     }
-  } catch (e) { status(''); toast(T.saveFailed + ': ' + (e.message || e), true); return; }
+  } catch (e) { status(''); toast(T.saveFailed + ': ' + failText(e), true); return; }
   if (!live()) { cancelled(); return; }
   try {
     let h = mode === 'save' ? P.handle : null, wrote = false;
@@ -1621,7 +1648,7 @@ async function exportPortableFile() {
   status(T.exporting);
   let r;
   try { r = await engine.exportPortable(S.deckFile, { fromFolder: true }); }   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
-  catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
   // 授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）が入る：人に渡すなら外す。外して書き出すのを 1 回で選べる
@@ -1632,7 +1659,7 @@ async function exportPortableFile() {
     if (v === 'cancel' || !live()) { status(''); return; }
     if (v === 'without') {
       try { r = await engine.exportPortable(S.deckFile, { fromFolder: true, withoutLiveResults: true }); }
-      catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+      catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
       if (!live()) { status(''); toast(T.api.cancelled, true); return; }
     }
   }
@@ -1669,9 +1696,9 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
     else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
     // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
     if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
-  } catch (e) { status(''); toast(T.exportFailed + ': ' + (e.message || e), true); return; }
+  } catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
-  // ライブ付き：題名の側に印（「題名（ライブ 10-30）.play.ega.html」。日付はライブの開始の日、この機械の時間帯）。拡張子は変えない
+  // ライブ付き：題名の側に印（「題名（ライブ 10-30）.play.ega.html」。日付はライブの開始の日、この端末の時間帯）。拡張子は変えない
   name = (name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? name.slice(0, -FORMAT.FILE_EXT.length) : name.replace(/\.html?$/i, '')) + (room ? liveMark(room) : '') + FORMAT.PLAY_EXT;
   if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
   try {

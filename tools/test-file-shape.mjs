@@ -55,7 +55,7 @@ ok('player と generator：索引と deck-meta に、名前と版。contracts �
   const m = metaOf(base.html);
   for (const [w, o] of [['index', base.index], ['deck-meta', m]]) {
     assert.equal(o.player.name, 'egatari-player', w);
-    assert.match(o.player.version, /^1\.0\.0(?:\+dev(?:\.[0-9a-f]{4,40})?)?$/, w);
+    assert.match(o.player.version, /^\d+\.\d+\.\d+(?:\+dev(?:\.[0-9a-f]{4,40})?)?$/, w);
     assert.equal(o.player.title, 'Egatari Player', w);
     assert.deepEqual(plainJson(o.generator), { name: 'egatari-studio', version: VERSION, title: 'Egatari Studio' }, w);
     assert.deepEqual(plainJson(o.contracts), { source: 1 }, `${w}: contracts is {source} only`);
@@ -101,6 +101,8 @@ ok('player のない文書（1.0 の形より前の草案）：読み手は断�
 function playerRoot(name) {
   const r = path.join(work, name);
   for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) { fs.mkdirSync(path.dirname(path.join(r, f)), { recursive: true }); fs.copyFileSync(path.join(ROOT, f), path.join(r, f)); }
+  // 試験は 1.0.0 の形から始める（このリポジトリの kit/player.json はリリースごとに上がる）
+  fs.writeFileSync(path.join(r, PLAYER_JSON), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(ROOT, PLAYER_JSON), 'utf8')), version: '1.0.0' }, null, 2) + '\n');
   return r;
 }
 const envOf = (r, commit) => ({ path, ROOT: r, readText: (p) => fs.readFileSync(p, 'utf8'), exists: (p) => fs.existsSync(p), commit });
@@ -128,7 +130,7 @@ ok('版の決め方：出した版と中身が同じなら版のまま、違え�
   const here = await resolvePlayer(envOf(ROOT, 'abc1234'));
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, PLAYER_LOCK), 'utf8'));
   assert.equal(here.released, lock.sha256 === here.sha256 && lock.version === JSON.parse(fs.readFileSync(path.join(ROOT, PLAYER_JSON), 'utf8')).version);
-  assert.equal(base.index.player.version.startsWith('1.0.0+dev'), !here.released, `the build writes ${base.index.player.version}`);
+  assert.equal(base.index.player.version.includes('+dev'), !here.released, `the build writes ${base.index.player.version}`);
 });
 ok('npm run player:check は知らせるだけ（終了コード 0）、--strict は違えば 1。player:bump は版と lock と changes/player-*.md を書く（最初は major で 1.0.0）', () => {
   const r = playerRoot('pc');

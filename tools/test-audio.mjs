@@ -285,7 +285,7 @@ try {
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
   await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: 15000 });
   ok(await page.isVisible('#dev-audio-stale'), 'stale: the panel shows the stale badge');
-  ok((await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => w.includes(key) && w.includes('更新が必要')), 'stale: the build warnings list the stale step (folder)');
+  ok(!(await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => w.includes(key)), 'stale: the stale step is not repeated in the build warnings with its internal key (it is a quality check finding, below)');
   await shot(page, 'audio-stale.png');
   await page.click('#b-check');
   await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声の更新が必要')), null, { timeout: 30000 });

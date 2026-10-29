@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=871f05e4c515da51 -->
+<!-- i18n: pair=video.ja.md sha256=da169d5dcdf8d96b -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -13,7 +13,7 @@ The list of TTS and render options and environment variables is in [reference.md
   - `GET  {IRODORI_URL}/v1/models`: checks that it is running
   - `POST {IRODORI_URL}/v1/audio/speech`: synthesizes one line at a time. The body is JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<sentence>", "ref_audio": "<path to the reference wav>", "response_format": "wav"}`.
-    `ref_audio` is a path that the server reads (if the server is on another machine, a path on that machine)
+    `ref_audio` is a path that the server reads (if the server is on another computer, a path on that computer)
 - The default reference voices `bob` and `alice` (and `alice_en`, `bob_en`) are synthetic voices included in `tts/voices/` ([where they come from](../tts/voices/README.md)). For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
 
 | Environment variable | Meaning | Default |
@@ -26,7 +26,7 @@ The list of TTS and render options and environment variables is in [reference.md
 
 `tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
 
-- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU machine on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
+- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU computer on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
 - **No server**: in the editor app, the Audio panel's **Make AI voice on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
 - **Google Colab**: a notebook for **Make AI voice in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
 
@@ -64,7 +64,7 @@ node kit/build.mjs $D --portable      # or --play-only for a play-only copy for 
 
 ## Voices
 
-`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a lesson that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the lesson folder). The default bob and alice are often not available locally, so specify your own reference voices in voice.json.
+`--voices` > `<deck>/voice.json` (`{"expert": "bob", "novice": "alice"}`) > the defaults (bob for single-speaker mode; Expert = bob and Novice = alice for dialogue). In a lesson that is not Japanese, a name `X` uses `X_en.wav` (for `lang="en"`; `X_<lang>.wav` in general) when that file exists, and `X.wav` otherwise: a Japanese reference makes VoxCPM2 speak English with an accent, so keep an English reference for each voice. One way to make it: have the TTS read a fixed English text (for example the "Please call Stella" paragraph) with the Japanese reference, and keep the most fluent take. A name means `<reference voice folder>/<name>.wav` (`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`). voice.json can also contain a path (`"voices/me.wav"`; relative paths are from the lesson folder). The default bob and alice are often not available locally, so specify your own reference voices in voice.json. A lesson never carries a reference voice, only the audio made with it ([Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md), `recipe`): export to an Egatari file (.ega.html) leaves out a reference voice named in voice.json (as a step's audio or an attachment) and refuses when the slides use one, and the quality check reports one inside the working folder. Keep reference voices outside the working folder.
 
 After each line is synthesized, the silence before and after is trimmed (-45 dB, keeping 0.05 s), the loudness is normalized with EBU R128 two-pass loudnorm to -20 LUFS / TP -1.5 dB / LRA 11, and the lines are joined with 350 ms of silence between them (`tts/core.py`).
 

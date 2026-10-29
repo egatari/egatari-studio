@@ -511,7 +511,7 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
   for (const f of fixtures) {
     const text = fs.readFileSync(f.file, 'utf8');
     if (f.expect.read === 'ok') {
-      assert.ok(!/\/(?:Users|home|private|var\/folders|tmp)\//.test(text), `${f.name}: machine-specific path in the file`);
+      assert.ok(!/\/(?:Users|home|private|var\/folders|tmp)\//.test(text), `${f.name}: device-specific path in the file`);
       const r = await PF.readPortable(text);
       if (f.expect.profile) assert.equal(r.index.profile, f.expect.profile, f.name);
       if ('code' in f.expect) assert.equal(codeReasons(r.files, { entry: r.index.entry }).length > 0, f.expect.code, `${f.name}: code decided from the content, not from profile "${r.index.profile}"`);

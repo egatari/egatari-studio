@@ -146,8 +146,10 @@ css(
   " background:rgba(20,20,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 2px 12px rgba(0,0,0,.25);" +
   " opacity:0;pointer-events:none;transform:translate(-50%,6px);transition:opacity .25s,transform .25s;user-select:none;-webkit-user-select:none}" +
   "#dt-cb.show{opacity:.92;pointer-events:auto;transform:translate(-50%,0)}#dt-cb.show:hover{opacity:1}" +
+  // 幅の狭い画面（スマートフォンの縦など）：帯は画面の幅に収め、入りきらないボタンは次の行へ（2 行の帯は角を小さく丸める。区切りは行の端で消す）
+  "#dt-cb{box-sizing:border-box;width:max-content;max-width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center}#dt-cb.dt-wrap{border-radius:18px}#dt-cb.dt-wrap .sep{margin:0 2px}" +
   // 出し方の 1 行（帯の上）と、帯が隠れている間の左下の取っ手
-  "#dt-hint{position:fixed;left:50%;transform:translateX(-50%);z-index:35;max-width:calc(100vw - 32px);box-sizing:border-box;padding:5px 12px;border-radius:8px;" +
+  "#dt-hint{position:fixed;left:50%;transform:translateX(-50%);z-index:35;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;padding:5px 12px;border-radius:8px;" +
   " background:rgba(20,20,20,.72);color:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,\"Hiragino Sans\",\"Segoe UI\",sans-serif;text-align:center;pointer-events:none}" +
   "#dt-handle{all:unset;position:fixed;left:8px;bottom:6px;z-index:34;box-sizing:border-box;width:34px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;" +
   " color:#fff;background:rgba(20,20,20,.45);opacity:0;cursor:pointer;transition:opacity .25s}" +
@@ -628,7 +630,8 @@ function openOverview(){
     ? '<div class="dt-head"><b>Slides</b><span>Arrows to select · Enter / click to go · Esc to close</span></div>'
     : '<div class="dt-head"><b>スライド一覧</b><span>矢印で選ぶ · Enter / クリックで移る · Esc で閉じる</span></div>') + '<div id="dt-grid"></div>';
   var grid = box.querySelector("#dt-grid"), cells = [];
-  slides.forEach(function(s, i){
+  // 縮図のための描画はスライドに入ったことにしない（format spec §8.4 entered：見る人の入力は残る）。DECK.aside が終わると元の位置を描く
+  (DECK.aside || function(f){ return f(); })(function(){ slides.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
     var c = s.cloneNode(true);
     c.classList.remove("active"); c.removeAttribute("id"); uniqIds(c, "dt" + i + "-");
@@ -643,8 +646,8 @@ function openOverview(){
     cell.querySelector(".dt-cap span").textContent = titleOf(s);
     cell.addEventListener("click", function(){ pick(i); });
     grid.appendChild(cell); cells.push(cell);
-  });
-  DECK.seek(ci, ck, Infinity);     // 元の位置に戻す
+  }); });
+  if (!DECK.aside) DECK.seek(ci, ck, Infinity);     // 元の位置に戻す
   document.body.appendChild(box);
   ov = {box: box, cells: cells, sel: ci, ci: ci, back: back};
   if (cb) cb.inert = true;   // 一覧の間は Tab が下の帯に抜けない
@@ -670,7 +673,7 @@ function cols(){ return getComputedStyle(ov.box.querySelector("#dt-grid")).gridT
 window.addEventListener("resize", fitOv);
 
 // ---------------------------------------------------------------- 読み上げで聞く（端末の声。format spec §5.6、backlog #89）
-// 音声のないステップだけを、見る人が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
+// 音声のないステップだけを、参加者が押したときだけ、端末の中の声（localService）で読む（kit/core/read-aloud.mjs。build が DECK.ReadAloud にする）。
 // 音声ファイルにはならない：何も書かず、タイムラインも (i, k, t) の描画も変えない（この道具は動画では作らない。札は印刷に出さない）。
 // 読む文は deck-narration の ttsParts（読みを当てた話す部品。AI 音声に渡すのと同じ）。ない古いファイルでは表示の文を読み、札に「読み方は反映されません（古いファイル）」。
 // 音声のあるステップは、そのまま音声を使う（自動再生 a）。次のステップに進む・戻る・Esc・もう一度押すと止める。読んでいる間は札「読み上げ中」
@@ -857,19 +860,23 @@ function buildBar(){
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
-  placeBar(); syncBar();
   buildHandle();
   // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
   openUntil = Date.now() + OPEN_MS;
   wake();              // 先に（帯の大きさを測る前に）出す：初めから出た状態で描き、フェードさせない
+  placeBar(); syncBar();   // 帯の高さ（狭い画面では 2 行）を測って置く
   if (!hintSeen()) showHint();
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
 function placeBar(){
   if (!cb) return;
   var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
-  cb._over = m < 44;
-  cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - 38) / 2))) + "px";
+  // 帯の高さ（狭い画面では 2 行になる）。隠れていても大きさは測れる
+  cb.classList.remove("dt-wrap");
+  var bh = cb.offsetHeight || 38;
+  if (bh > 50){ cb.classList.add("dt-wrap"); bh = cb.offsetHeight; }
+  cb._over = m < bh + 6;
+  cb.style.bottom = (cb._over ? 10 : Math.max(5, Math.round((m - bh) / 2))) + "px";
   placeHint();
   liftCaptions();
 }
@@ -914,7 +921,10 @@ function showHint(){
   hint = document.createElement("div"); hint.id = "dt-hint"; hint.className = "deck-tools";
   // 読み上げソフトには知らせない（キーボードでは Tab でツールバーに入れる。取っ手は名前で読まれる）
   hint.setAttribute("aria-hidden", "true");
-  hint.textContent = JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar";
+  // 指で操る端末（マウスのように上に置けない：hover: none）ではタップの言い方、それ以外はマウスの言い方
+  var tap = false; try { tap = matchMedia("(hover: none)").matches; } catch (e) {}
+  hint.textContent = tap ? (JA ? "画面をタップすると、ツールバーが出ます" : "Tap the screen to show the toolbar")
+    : (JA ? "マウスを画面の下に動かす（タップする）と、ツールバーが出ます" : "Move the mouse to the bottom of the screen (or tap) to show the toolbar");
   document.body.appendChild(hint);
   placeHint();
   try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
@@ -972,6 +982,8 @@ function syncBar(){
     a.title = (playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto) + kk("a");
     a.setAttribute("aria-label", playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto);
   }
+  // ボタンの数が変わって（ペンの色・編集モード）帯の行の数が変わったら、置き直す
+  if (cb.offsetHeight !== cb._h){ cb._h = cb.offsetHeight; placeBar(); }
 }
 
 // 開発サーバー・編集アプリのプレビューか（そこに入る server/hints.js が DECK_DEV を立てる）。そうなら e / n / c も一覧に載せる
