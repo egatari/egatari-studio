@@ -1,5 +1,0 @@
-### Changed
-
-- New…, step 4: the subjects are tiles like the purpose tiles (an icon, the name, a small line of what is inside; `aria-pressed`, an on tile has a check mark and a frame). Under the free plan two can be on and the rest are disabled; under the paid plan every tile is on and not pressable, with “The paid plan includes all of them.” (有料のプランでは全部入ります). The tiles come from `SUBJECTS` (`label`, `inside`, `icon`), so a new subject is one entry.
-- New…: the fold is now **See parts, turn off representations (usually not needed)** (パーツを見る・表し方を外す), with “Parts: N (M turned off)” in its summary. Inside, above the purpose tiles, a read-only strip **Parts in these instructions** (この指示に入るパーツ) shows each part in the pack (the same list as the assembly, `loadedParts`); parts turned off are faded and struck through. Under the purpose tiles, one line always says “Representations without a part are drawn by the AI in HTML.” Names and icons of the parts: `kit/core/part-labels.mjs`.
-- New…: the subjects hint names the standard parts from `FREE_CORE`’s labels: “With none, only the standard parts (Bar chart, Flow diagram, Contents, …)” (標準パーツ（棒グラフ・流れ図・目次など）).

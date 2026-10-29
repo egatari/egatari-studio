@@ -20,6 +20,9 @@ import http from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+// 「プレビュー ▾」の一覧はプレビューの iframe の上に開く。開いた直後の項目の押しが下の iframe に届いて何も起きないことがあり（macOS の CI）、
+// 発表者ビューの窓が開かないまま waitForEvent('page') が 30 秒で切れた。一覧が閉じるまで押し直す（tools/click-retry.mjs。test-app も同じ）
+import { clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-input-focus-')));
@@ -359,7 +362,7 @@ try {
     // #4 A：発表者ビュー（#pf の中）の「次」の画面を押す → 矢印でプレビューが進む
     const { ctx, page } = await openA();
     await clickPrev(page);
-    const [pv] = await Promise.all([ctx.waitForEvent('page'), page.click('#b-previewmenu').then(() => page.click('#b-presenter'))]);
+    const [pv] = await Promise.all([ctx.waitForEvent('page'), clickCommand(page, '#b-presenter')]);
     await pv.setViewportSize({ width: 1400, height: 820 });
     let pf = null;
     for (let i = 0; i < 60 && !pf; i++) { pf = pv.frames().find((f) => f.parentFrame() === pv.mainFrame()); if (pf && !(await pf.$('#f-next').catch(() => null))) pf = null; if (!pf) await pv.waitForTimeout(150); }

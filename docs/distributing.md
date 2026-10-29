@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=688fba6fcd72f0e2 -->
+<!-- i18n: pair=distributing.ja.md sha256=0e1e2746e8705cc0 -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)
@@ -22,6 +22,8 @@ A lesson goes out as one HTML file: the [Egatari file (`.ega.html`)](reference.m
 | Google Drive and Google Classroom previews | Does not run (the preview shows the file's text) |
 | SharePoint, OneDrive and Teams | Does not run (an HTML file with script is downloaded instead) |
 | The iPhone and iPad Files app | Does not run (Quick Look runs no JavaScript) |
+
+**On iPhone and iPad**, participants open it in [Egatari Viewer](viewer.md) (`viewer.egatari.org`; on the Home Screen, Ega Viewer): [Opening a lesson on iPhone and iPad (Egatari Viewer)](viewer-sharing.md).
 
 - **Give participants the play-only copy** (`--play-only`), and keep the editable file yourself.
 - **A public URL is visible to anyone who has it.** Web hosting has no sign-in; do not put anything there that only your class should see.

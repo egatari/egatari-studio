@@ -1,3 +1,0 @@
-### Added
-
-- Components v1.7.0: **`m-predict`** (predict, then check: a question and choices, the class's counts as bars, then the answer) and **`m-timer`** (a group-work timer, one phase per step), the first parts that take viewer input. The manifest now carries `interactive`, `viewerInput` and `clock`. A 16th purpose tile in New…, **予想して確かめる / Predict, then check** (手を挙げて数える・答えを開く); the `timebox` purpose makes no tile. On the free plan both parts are paid-only for now (never named in a free pack), and every free subject and pair stays within the caps. Release notes: [egatari/components v1.7.0](https://github.com/egatari/components/releases/tag/v1.7.0)

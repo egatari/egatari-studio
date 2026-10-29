@@ -103,6 +103,11 @@ const steps = [
   ['test-live', ['tools/test-live.mjs', path.join(tmp, 'live')]],
   // 授業の部屋の結果（拡張 live §3）：形・添付の項目・コマンドの attach と --without-live-results・再生専用に入らない・編集アプリの取り込みと書き出しの知らせ
   ['test-live-results', ['tools/test-live-results.mjs', path.join(tmp, 'live-results')]],
+  // Egatari Viewer（play/、tools/build-play.mjs）：再生専用と編集可の Egatari ファイル・sandbox の隔て・枠の中を断る・service worker のキャッシュと版・
+  // 最近のファイル（OPFS と IndexedDB）・share_target・リンクの箱・ライブのない教材は通信 0・ライブの参加（試験の部屋）・電話の幅
+  ['test-play', ['tools/test-play.mjs', path.join(tmp, 'play')]],
+  // Egatari Viewer を Playwright の WebKit で iPad の大きさに（WebKit が入っていなければ skip で通る：npx playwright-core install webkit）
+  ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // 前の版のファイル・作業フォルダ（format spec §7.1）：知らせと 2 つのボタン（前の版の Studio の URL・移し替えの手引き）、ファイルそのものの再生、編集・保存を断る、1.0 のファイルは知らせなし

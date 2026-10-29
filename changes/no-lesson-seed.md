@@ -1,2 +1,0 @@
-### Removed
-- Lesson seed (format spec §8.4, owner 2026-10-26): **New…**, `npm run new`, **Revise…** and on-slide edits (editor app and dev server) no longer write or restore `data-egatari-seed`. A part's presentation variant is chosen by name only (`variant="<name>"`); without it, every part shows its default variant (the first in its manifest). `variant` attributes in a source are kept byte for byte, and an earlier source's `data-egatari-seed` is left as it is (nothing reads it; saving does not strip it, so tier A stays byte-preserving).

@@ -1,4 +1,0 @@
-### Fixed
-
-- Quality check: boxes an ancestor hides are no longer measured. A component's readable layer (a visually hidden `<ul>` in a 1×1 `overflow:hidden` box with `clip-path: inset(50%)` or `clip: rect(0 0 0 0)`, with or without the `.sr-only` class) made `bodyBottom` report e.g. "1056px > 565px" on slides that fit, so AI fix rounds could not converge; such content no longer counts for the body-position checks, `smallText`, `smallSvgText`, `textOverlap` or `cellWordBreak`, and the body-position checks measure only the part of a box that its ancestors' `overflow` leaves visible (text cut off by a visible box is still `textClipped`; contract §10)
-- `npm run check -- --json` piped to another program no longer loses the end of a large result: it waits for the output to be written before exiting
