@@ -74,10 +74,8 @@ export function LivePolicy(opts) {
     var wantKey = !!(opts && opts.key), maxW = opts && opts.maxWindowMs > 0 ? opts.maxWindowMs : LIMITS.windowMs, e = [];
     var add = function (code, path, params, text) { e.push(problem(code, path, params, text)); };
     if (!isObj(live)) return [problem('notObject', 'live', {}, 'live: not an object')];
-    // sourceSha256：書き出す派生にだけ（教材の版。play-only の deck-meta からは消えるので、質問を教材のその版に結び付けるために拡張に入れる）
-    var known = { v: 1, endpoint: 1, room: 1, key: 1, window: 1, activities: 1, sourceSha256: 1 };
-    for (var k in live) if (own(live, k) && !own(known, k)) add('unknownMember', 'live.' + k, { member: k }, 'live.' + k + ': unknown member');
-    if (live.v !== 1) add('version', 'live.v', {}, 'live.v: must be 1');
+    // §9A: other versions are opaque; optional additions within v1 are ignored.
+    if (live.v !== 1) return [problem('version', 'live.v', {}, 'live.v: must be 1')];
     if (!parseEndpoint(live.endpoint)) add('endpoint', 'live.endpoint', {}, 'live.endpoint: not an https origin (e.g. https://live.example.org)');
     if (!str(live.room) || !RE.room.test(live.room)) add('room', 'live.room', {}, 'live.room: not a room id (r- and 8 characters a-z, 2-7)');
     if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) add('key', 'live.key', {}, 'live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
@@ -97,7 +95,6 @@ export function LivePolicy(opts) {
         var hours = maxW % 86400000 ? Math.round(maxW / 3600000) : 0, days = hours ? 0 : maxW / 86400000;
         add('windowTooLong', 'live.window', { hours: hours, days: days }, 'live.window: at most ' + (hours ? hours + ' hours' : days + ' days') + ' long');
       }
-      for (var wk in w) if (own(w, wk) && wk !== 'from' && wk !== 'to') add('unknownMember', 'live.window.' + wk, { member: wk }, 'live.window.' + wk + ': unknown member');
     }
     var a = live.activities;
     if (!isObj(a)) { add('activitiesMissing', 'live.activities', {}, 'live.activities: missing'); return e; }
@@ -128,7 +125,6 @@ export function LivePolicy(opts) {
         } else add('activityKind', at + '.kind', P, at + '.kind: "qa", "confused" or "poll"');
         // label：ステップの表示名（任意。「4 枚目『…』・ステップ 1」。表示だけの字で、鍵ではない）
         if (own(x, 'label') && (!str(x.label) || x.label.length > LIMITS.label)) add('activityLabel', at + '.label', { step: sk, index: i, id: P.id, n: LIMITS.label }, at + '.label: at most ' + LIMITS.label + ' characters');
-        for (var xk in x) if (own(x, xk) && !own({ id: 1, kind: 1, prompt: 1, choices: 1, label: 1 }, xk)) add('unknownMember', at + '.' + xk, { step: sk, index: i, id: P.id, member: xk }, at + '.' + xk + ': unknown member');
       }
     }
     if (n > LIMITS.activities) add('tooManyActivities', 'live.activities', { n: LIMITS.activities }, 'live.activities: at most ' + LIMITS.activities + ' activities');
@@ -169,7 +165,7 @@ export function LivePolicy(opts) {
     return (u.protocol === 'https:' ? 'wss://' : 'ws://') + u.host;
   }
   function socketUrl(live, pid) {
-    if (!isObj(live) || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key) || !str(pid) || !RE.pid.test(pid)) return null;
+    if (!isObj(live) || live.v !== 1 || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key) || !str(pid) || !RE.pid.test(pid)) return null;
     var b = wsBase(live.endpoint);
     if (!b) return null;
     var url = b + '/ws?room=' + encodeURIComponent(live.room) + '&key=' + encodeURIComponent(live.key) + '&pid=' + encodeURIComponent(pid);
@@ -190,7 +186,7 @@ export function LivePolicy(opts) {
     return u.protocol === 'https:' ? 'https://' + u.host + ' wss://' + u.host : 'http://' + u.host + ' ws://' + u.host;
   }
   function activitiesFor(live, stepKey) {
-    var a = isObj(live) && isObj(live.activities) ? live.activities : {}, out = [];
+    var a = isObj(live) && live.v === 1 && isObj(live.activities) ? live.activities : {}, out = [];
     var add = function (sk) { if (own(a, sk) && Array.isArray(a[sk])) for (var i = 0; i < a[sk].length; i++) if (isObj(a[sk][i])) out.push({ step: sk, a: a[sk][i] }); };
     add('*');
     if (stepKey && stepKey !== '*') add(stepKey);
@@ -214,7 +210,7 @@ export function LivePolicy(opts) {
     return '';
   }
   function joinUrl(live) {
-    if (!isObj(live) || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key)) return null;
+    if (!isObj(live) || live.v !== 1 || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key)) return null;
     var u = parseEndpoint(live.endpoint);
     if (!u) return null;
     return u.protocol + '//' + u.host + '/join#room=' + encodeURIComponent(live.room) + '&key=' + encodeURIComponent(live.key);

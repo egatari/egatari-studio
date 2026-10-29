@@ -76,9 +76,10 @@ function headEnd(html) {
 
 // opts.devLoopback：ループバックの http: の endpoint を許す（開発版。runtime も liveRuntime(…, {devLoopback: true}) のもの）
 export function addLive(html, live, runtime, opts = {}) {
-  const errs = (opts.devLoopback ? LP_DEV : LP).validate(live, { key: true });
+  const future = isObj(live) && Number.isInteger(live.v) && live.v > 1;
+  const errs = future ? [] : (opts.devLoopback ? LP_DEV : LP).validate(live, { key: true });
   if (errs.length) throw new Error('live: ' + errs.join('; '));
-  if (typeof runtime !== 'string' || !runtime.startsWith('<script>')) throw new Error('live: no player runtime');
+  if (!future && (typeof runtime !== 'string' || !runtime.startsWith('<script>'))) throw new Error('live: no player runtime');
   const text = String(html);
   if (text.includes(`id="${FORMAT.INDEX_ID}"`)) throw new Error('live: a live session is added only to a play-only derivative (this file still has its index)');
   // 拡張のブロック（deck-extensions）が既にあれば（拡張 embed。spec §4）、そこに live を足す。live が既にあれば断る
@@ -88,11 +89,20 @@ export function addLive(html, live, runtime, opts = {}) {
   if (ex0) {
     try { others = JSON.parse(ex0[1]); } catch { throw new Error('live: the extension block is not JSON'); }
     if (!isObj(others)) throw new Error('live: the extension block is not an object');
-    if (own(others, LIVE_EXT)) throw new Error('live: the file already carries a live session');
     if (text.split(`id="${LIVE_BLOCK_ID}"`).length !== 2) throw new Error('live: more than one extension block');
+    if (future && JSON.stringify(others.live) === JSON.stringify(live)) return text;
+    if (own(others, LIVE_EXT)) throw new Error('live: the file already carries a live session');
   } else if (text.includes(`id="${LIVE_BLOCK_ID}"`)) throw new Error('live: the file already carries a live session');
   const at = headEnd(text);
   if (at < 0) throw new Error('live: no <head>');
+  // Higher versions round-trip as data only: no runtime and no policy change (§9A).
+  if (future) {
+    const block = jsonScript(LIVE_BLOCK_ID, { ...others, [LIVE_EXT]: live });
+    const meta = /<script type="application\/json" id="deck-meta">[^<]*<\/script>/.exec(text);
+    if (!meta) throw new Error('live: no deck-meta');
+    const pos = ex0 ? ex0.index : meta.index + meta[0].length;
+    return text.slice(0, pos) + '\n' + block + text.slice(ex0 ? pos + ex0[0].length : pos);
+  }
   // ファイルの決まり（format spec §4.2）：1.0 の形のファイルは基準の決まりを持つ。connect-src に endpoint を足して、その場で書き換える
   // （置き場所は変えない）。基準と違う決まり（緩めたもの・ほかの拡張の行き先）には足さない。決まりのない前の草案の派生には、今までどおり入れる
   const pol = findPolicies(text);
@@ -111,8 +121,7 @@ export function addLive(html, live, runtime, opts = {}) {
   if (!m || m.index < at) throw new Error('live: no deck-meta');
   const ix = ex0 ? ex0.index : m.index + m[0].length, ixEnd = ex0 ? ex0.index + ex0[0].length : ix;
   // sourceSha256（あれば）：教材の版。再生専用の派生の deck-meta からは消える（format spec §3.7）ので、質問を教材のその版に結び付けるためにここに入れる（拡張 live §1）
-  const data = { v: live.v, endpoint: live.endpoint, room: live.room, key: live.key, window: { from: live.window.from, to: live.window.to }, activities: live.activities,
-    ...(typeof live.sourceSha256 === 'string' ? { sourceSha256: live.sourceSha256 } : {}) };
+  const data = { ...live };
   const block = (ex0 ? '' : '\n') + jsonScript(LIVE_BLOCK_ID, { ...others, [LIVE_EXT]: data }) + '\n' + runtime;
   if (edit[1] > ix) throw new Error('live: the policy comes after deck-meta');
   return text.slice(0, edit[0]) + edit[2] + text.slice(edit[1], ix) + block + text.slice(ixEnd);
@@ -124,7 +133,7 @@ export function parseRoomBlock(input, opts = {}) {
   let o;
   try { o = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1)); } catch { throw new Error('json'); }
   if (!isObj(o)) throw new Error('json');
-  const out = { v: 1, endpoint: o.endpoint, room: o.room, key: o.key, window: o.window };
+  const out = { ...o, v: o.v === undefined ? 1 : o.v };
   if (isObj(o.activities)) out.activities = o.activities;
   const errs = (opts.devLoopback ? LP_DEV : LP).validate({ ...out, activities: out.activities || {} }, { key: true });
   if (errs.length) { const e = new Error('invalid'); e.details = errs; throw e; }
@@ -194,15 +203,17 @@ export function parseLiveSetupString(text) {
 
 export function lessonLive(live) {
   if (!isObj(live)) return null;
-  const out = {};
-  for (const k of ['v', 'endpoint', 'room', 'window', 'activities']) if (own(live, k)) out[k] = live[k];
+  if (live.v !== 1) return live;
+  const { key, sourceSha256, ...out } = live;
   return out;
 }
 
 export function mergeLive(lesson, room) {
   const L = isObj(lesson) ? lesson : {}, R = isObj(room) ? room : {};
+  if (Number.isInteger(L.v) && L.v > 1) return L;
+  if (Number.isInteger(R.v) && R.v > 1) return R;
   const acts = isObj(L.activities) && Object.keys(L.activities).length ? L.activities : isObj(R.activities) ? R.activities : {};
-  return { v: 1, endpoint: R.endpoint || L.endpoint || FORMAT.LIVE_ENDPOINT, room: R.room || L.room, key: R.key, window: R.window || L.window, activities: acts };
+  return { ...L, ...R, v: 1, endpoint: R.endpoint || L.endpoint || FORMAT.LIVE_ENDPOINT, room: R.room || L.room, key: R.key, window: isObj(R.window) ? { ...L.window, ...R.window } : L.window, activities: acts };
 }
 
 export function activitiesText(live) {

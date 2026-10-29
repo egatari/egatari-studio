@@ -19,6 +19,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 const REJOIN = { room_closed: 1, too_early: 1, room_full: 1, rate_limited: 1, superseded: 1, not_approved: 1, network: 1, offline: 1, unknown: 1, window_over: 0 };
 
 export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpen, announce }) {
+  if (LP.validate(live, { key: true }).length) return null;
   const HOST = LP.hostOf(live.endpoint);
   const origin = (() => { try { return new URL(live.endpoint).origin; } catch { return ''; } })();
   const DIRECT = allowed.has(origin);

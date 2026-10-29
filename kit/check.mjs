@@ -160,6 +160,10 @@ if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: the
   let conf = null;
   const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
   try { if (fs.existsSync(cfgPath)) conf = JSON.parse(readRegular(cfgPath, { max: READ_LIMITS.json }).toString('utf8')); } catch (e) { report(null, 'warn', 'attachBadConfig', { why: `${FORMAT.CONFIG_FILE}: ${e.message}` }); }
+  for (const name of ['live', 'embed']) {
+    const v = conf?.extensions?.[name]?.v;
+    if (Number.isInteger(v) && v > 1) report(null, 'info', 'extensionVersion', { name, v, supported: 1 });
+  }
   const found = [];
   let isLink = false;
   try { isLink = fs.lstatSync(aDir).isSymbolicLink(); } catch { /* ない */ }

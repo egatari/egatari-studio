@@ -26,6 +26,7 @@ const MAX_CHOICES = 6;
 const STR = {
   ja: {
     title: 'ライブ（質問・投票）を付けて配る',
+    unsupported: 'このライブ拡張の版には対応していません。設定はそのまま保持します。ライブに参加するには、対応する版のアプリで開いてください。',
     lead: `参加者に配る Egatari ファイル（再生専用・${FORMAT.PLAY_EXT}）に、ライブ（授業中の質問・投票）を付けます。① ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ エクスポートする、の順です。この画面自体はインターネットに接続しません。参加コードは教材には保存せず、エクスポートするファイルにだけ入ります`,
     s1: '① ライブ ID と参加コード', make: 'ライブ ID と参加コードをこの画面で作る', remake: '作り直す',
     remakeConfirm: 'ライブ ID と参加コードを作り直しますか？ 前の文字列で作ったライブや、前にエクスポートしたファイルとは別のライブになります。',
@@ -54,6 +55,7 @@ const STR = {
     fail: 'できませんでした：', tooLong: 'ライブの時間が長すぎます。ライブは 3 時間までです（ライブの開始と終了を直してください）',
   },
   en: {
+    unsupported: 'This Live extension version is not supported. Its settings are preserved. To join Live, open the lesson in an app that supports this version.',
     title: 'Distribute with Live (questions and polls)',
     lead: `Adds Live (questions and polls in class) to the Egatari file (play-only, ${FORMAT.PLAY_EXT}) you hand to participants. ① Make the Live ID and join code here → ② set the live time and the questions and polls → ③ copy the string and paste it once on the host page → ④ export. This screen itself connects nowhere. The join code is not saved in the lesson; it goes only into the exported file`,
     s1: '① Live ID and join code', make: 'Make the Live ID and join code here', remake: 'Make new ones',
@@ -106,7 +108,7 @@ export function createLivePanel(o) {
   const say = (p) => (typeof p === 'string' ? p : o.problemText ? o.problemText(p) : String(p));
   const el = o.el;
   // 板の状態（鍵はここだけ。書かない）
-  let M = null, steps = [];
+  let M = null, steps = [], original = null;
   async function readConfig(ws) {
     let text = null;
     try { text = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { text = null; }
@@ -129,10 +131,12 @@ export function createLivePanel(o) {
     if (M.qa) a['*'] = [{ id: M.qaId || 'qa', kind: 'qa' }];
     if (M.confused) (a['*'] ||= []).push({ id: M.confusedId || 'confused', kind: 'confused' });
     for (const p of M.polls) (a[p.step] ||= []).push({ id: p.id, kind: 'poll', prompt: p.prompt.trim(), choices: p.choices.map((c) => c.trim()), ...(p.label && p.label.trim() ? { label: p.label.trim() } : {}) });
+    const old = Object.values(original?.activities || {}).flat().filter(isObj);
+    for (const list of Object.values(a)) for (let i = 0; i < list.length; i++) list[i] = { ...old.find((x) => x.id === list[i].id), ...list[i] };
     return a;
   }
-  const lessonOf = () => ({ v: 1, endpoint: M.endpoint.trim(), ...(M.room.trim() ? { room: M.room.trim() } : {}), ...(M.from && M.to ? { window: { from: M.from, to: M.to } } : {}), activities: activities() });
-  const fullOf = () => ({ v: 1, endpoint: M.endpoint.trim(), room: M.room.trim(), key: M.key.trim(), window: { from: M.from, to: M.to }, activities: activities() });
+  const lessonOf = () => ({ ...original, v: 1, endpoint: M.endpoint.trim(), room: M.room.trim() || undefined, window: M.from && M.to ? { ...original?.window, from: M.from, to: M.to } : undefined, activities: activities() });
+  const fullOf = () => ({ ...lessonOf(), v: 1, endpoint: M.endpoint.trim(), room: M.room.trim(), key: M.key.trim(), window: { ...original?.window, from: M.from, to: M.to }, activities: activities() });
   function problems() {
     const e = LP.validate(fullOf(), { key: true }).map(say);
     const f = Date.parse(M.from), t = Date.parse(M.to);
@@ -154,6 +158,12 @@ export function createLivePanel(o) {
     if (!ws) return;
     const conf = await readConfig(ws);
     const l = isObj(conf.extensions) && isObj(conf.extensions.live) ? lessonLive(conf.extensions.live) : null;
+    original = l;
+    if (l && l.v !== 1) {
+      M = null;
+      o.openPanel(X.title, [el('div', { id: 'live-panel' }, [el('p', { text: X.unsupported })])]);
+      return;
+    }
     const same = M && M.room === (l && l.room);
     M = { ...fromLesson(l), key: same ? M.key : '', setup: same ? M.setup : '' };
     steps = (o.stepKeys ? await o.stepKeys().catch(() => []) : []) || [];
@@ -333,6 +343,7 @@ export function createLivePanel(o) {
   }
   // 教材に残す（鍵なし。設定のファイルのほかの項目はそのまま）
   async function save() {
+    if (original && original.v !== 1) return false;
     const why = await o.beforeWrite();
     if (why) { o.toast(why, true); return false; }
     const ws = o.ws(), g = o.generation();
