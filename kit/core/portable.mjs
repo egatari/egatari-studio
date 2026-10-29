@@ -4,7 +4,7 @@
 //   exportPortable(env, deck.html, opts)  組み立て（build-core）の読み込みを記録して依存の閉包を取り、持ち運べる 1 ファイルの文字列を作る
 //   readPortable(text | bytes, opts)    文字列として読む（何も実行しない）。索引・ハッシュ・塊・上限・パスを検査し、メモリ上のフォルダを返す
 //   playOnly(text)                     再生専用の派生（§3.7）：索引と、実行系が参照しない塊を除く
-//   exportedState(index, folderSha)    書き出しの印（exportedFrom、§3.1）から、書き出しの後に写し・フォルダのどちらを直したか
+//   exportedState(index, folderSha, {sourceMatches})  書き出しの印（exportedFrom、§3.1）から、書き出しの後に写し・フォルダのどちらを直したか
 //   validateIndex(index)               索引の形（仕様の写し（FORMAT.VENDOR_DIR）の schema と同じ規則。依存なし）→ エラーの配列
 //   checkArchivePaths(paths)           パスの規則（§3.3）→ エラーの配列
 //   parseJsonStrict(text, opts)        同じ名前の重複を断る JSON の解析（原型のない object を作る）
@@ -542,11 +542,13 @@ export function sourceSha256(fileShas) {
 
 // 書き出しの印（index.exportedFrom、§3.1）から、写しとフォルダのどちらが書き出しの後に直されたか。印がなければ null。
 // 比べるのは hash だけ（時刻は持たない）：写しの今の sourceSha256 と印の値が違えば写しを直した。folderSha（同じ docId の作業フォルダの
-// 今の sourceSha256。写しとフォルダの両方があるときだけ分かる）が印の値と違えばフォルダを直した。分からなければ folderEdited は null
-export function exportedState(index, folderSha = null) {
+// 今の sourceSha256。写しとフォルダの両方があるときだけ分かる）が印の値と違えばフォルダを直した。分からなければ folderEdited は null。
+// sourceMatches（readPortable の答え）が false なら、索引の sourceSha256 は写しの中身の hash ではない（手で書き換えた・壊れた）ので、印の値と
+// 同じでも写しを直したことにする（印は信じられる中身の hash とだけ比べる）。形の合わない印（kind・sourceSha256 がない・型が違う）は無いものとして null
+export function exportedState(index, folderSha = null, { sourceMatches = true } = {}) {
   const x = isObj(index) ? index.exportedFrom : null;
   if (!isObj(x) || x.kind !== 'folder' || typeof x.sourceSha256 !== 'string' || !RE.sha256.test(x.sourceSha256)) return null;
-  const copyEdited = index.sourceSha256 !== x.sourceSha256;
+  const copyEdited = sourceMatches === false || index.sourceSha256 !== x.sourceSha256;
   const folderEdited = typeof folderSha === 'string' ? folderSha !== x.sourceSha256 : null;
   return { exportedSha256: x.sourceSha256, copyEdited, folderEdited, both: copyEdited && folderEdited === true };
 }

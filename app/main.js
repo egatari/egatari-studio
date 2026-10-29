@@ -315,7 +315,7 @@ function showNotice() {
   for (const [id, text] of lines) n.append(el('p', { id, text }));
   // 作業フォルダから書き出した写し（index.exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、作業フォルダに書き出すボタン（メニューと同じ名前）を出す。
   // 編集は断らない。写しの今の sourceSha256 が書き出したときの値と違えば、書き出しの後にこの写しで直した（hash で比べる。時刻は持たない）
-  const xs = P ? exportedState(P.index) : null;
+  const xs = P ? exportedState(P.index, null, { sourceMatches: P.sourceMatches }) : null;   // 組んだ教材と原稿が食い違う写しは、印の値が同じでも直したもの
   if (xs) n.append(el('p', { id: 'notice-exported', cls: 'info', text: T.exportedNotice + (xs.copyEdited ? (EN ? ' ' : '') + T.exportedEdited : '') + ' ' },
     [el('button', { type: 'button', id: 'b-exported-unpack', text: T.exportFolder, onclick: () => exportFolder() })]));
   // 部品庫が取り下げた版（format spec §6）：知らせて、置き換え先の版で組み直すボタンを出す。黙って置き換えない

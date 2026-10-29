@@ -234,6 +234,72 @@ ok('npm run portable -- compare：写しとフォルダのどちらを書き出�
   assert.equal((await compare(fresh, N)).state, 'same');
 });
 
+// 手で書き換えた印（v0.6.1 の試し歩き：索引の 2 つと deck-meta の 3 か所の hash を書き換えたファイルを編集アプリで開くと止まったように見えた）。
+// 止まる所はない：data-sha256 を直さずに書き換えると索引が壊れたファイルとして断り（編集アプリは OK を押すまで待つ窓）、data-sha256 も直すと
+// 組んだ教材と原稿が食い違う写しとして開く。印の値が索引の sourceSha256 と同じでも、中身の hash と合わないので「書き出しの後に直した」とする
+ok('手で書き換えた印：3 か所の hash を書き換えると、索引の hash が合わず断る（すぐ答える）。data-sha256 も直すと開け、印の値が同じでも書き出しの後に直したことになる。compare は both', async () => {
+  const H = xr.index.sourceSha256, B = 'b'.repeat(64);
+  assert.equal(x.split(H).length - 1, 3, 'the hash appears three times: index sourceSha256, exportedFrom.sourceSha256, deck-meta sourceSha256');
+  const raw = x.split(H).join(B);
+  let t0 = Date.now();
+  await assert.rejects(PF.readPortable(raw), (e) => e.code === 'bad-index-hash');
+  assert.ok(Date.now() - t0 < 10000, 'answers at once');
+  const ixText = (h) => PF.scanDocument(h).byId.get(FORMAT.INDEX_ID).text;
+  const rehashed = await PF.replaceIndexText(raw, ixText(raw));
+  t0 = Date.now();
+  const rr = await PF.readPortable(rehashed);
+  assert.ok(Date.now() - t0 < 10000, 'answers at once');
+  assert.equal(rr.sourceMatches, false);
+  assert.equal(rr.index.sourceSha256, rr.index.exportedFrom.sourceSha256, 'the marker equals the (false) index sourceSha256');
+  assert.equal(PF.exportedState(rr.index).copyEdited, false, 'the index alone cannot tell');
+  assert.deepEqual(plainJson(PF.exportedState(rr.index, null, { sourceMatches: rr.sourceMatches })), { exportedSha256: B, copyEdited: true, folderEdited: null, both: false });
+  // 3 か所のうち 1 か所だけ違う（data-sha256 は直す）：どれも開けて、書き出しの後に直したことになる
+  const variants = {
+    marker: (ix) => { ix.exportedFrom.sourceSha256 = B; },
+    top: (ix) => { ix.sourceSha256 = B; },
+    both: (ix) => { ix.sourceSha256 = B; ix.exportedFrom.sourceSha256 = B; },
+  };
+  for (const [k, f] of Object.entries(variants)) {
+    const ix = JSON.parse(ixText(x)); f(ix);
+    const r = await PF.readPortable(await PF.replaceIndexText(x, JSON.stringify(ix, null, 1)));
+    assert.equal(PF.exportedState(r.index, null, { sourceMatches: r.sourceMatches }).copyEdited, true, k);
+  }
+  const dm = x.lastIndexOf(H);
+  const r3 = await PF.readPortable(x.slice(0, dm) + B + x.slice(dm + 64));
+  assert.equal(r3.sourceMatches, false);
+  assert.equal(PF.exportedState(r3.index, null, { sourceMatches: r3.sourceMatches }).copyEdited, true, 'deck-meta differs');
+  // compare（CLI）：写しは直したもの。印の値も書き換わっていてフォルダの今の値と合わないので、フォルダも直したことになり both（どちらを残すか選ばせる。混ぜない）
+  const F = path.join(work, 'hand');
+  fs.cpSync(D, F, { recursive: true });
+  const copy = path.join(work, 'hand' + EXT);
+  const hx = (await buildPortable(path.join(F, 'deck.html'), { out: copy })).html;
+  const hb = hx.split(hx.match(/"sourceSha256": ?"([0-9a-f]{64})"/)[1]).join(B);
+  fs.writeFileSync(copy, await PF.replaceIndexText(hb, ixText(hb)));
+  assert.equal((await compare(copy, F)).state, 'both');
+});
+
+ok('印の形の崩れ（なし・型違い・巨大・入れ子）：exportedState は投げずにすぐ null（印なしとして扱う）。検査器はそのような索引を断る', () => {
+  const base = plainJson(xr.index), H = base.sourceSha256;
+  const odd = [undefined, null, 0, 1, true, 'folder', [], [base.exportedFrom], {}, { kind: 'folder' }, { sourceSha256: H }, { kind: 'file', sourceSha256: H },
+    { kind: 'folder', sourceSha256: 1 }, { kind: 'folder', sourceSha256: null }, { kind: 'folder', sourceSha256: [H] }, { kind: 'folder', sourceSha256: { H } },
+    { kind: 'folder', sourceSha256: H.toUpperCase() }, { kind: 'folder', sourceSha256: H + '0' }, { kind: 'folder', sourceSha256: 'a'.repeat(8 * 1024 * 1024) },
+    { kind: ['folder'], sourceSha256: H }, { kind: 'folder', sourceSha256: { toString: () => H } }];
+  let deep = {}; const root = deep; for (let i = 0; i < 2000; i++) deep = (deep.x = {}); odd.push(root);
+  // 試験の名前に使う短い説明（入れ子の深い値を JSON.stringify しない）
+  const show = (m) => (m === root ? 'nested 2000 deep' : typeof m === 'string' || (m && typeof m.sourceSha256 === 'string') ? `${typeof m} ${String(m.sourceSha256 ?? m).length} chars` : `${typeof m} ${Array.isArray(m) ? 'array' : Object.keys(Object(m)).join(',')}`);
+  const t0 = Date.now();
+  for (const m of odd) {
+    const ix = { ...base, exportedFrom: m };
+    if (m === undefined) delete ix.exportedFrom;
+    for (const sm of [true, false, undefined]) assert.equal(PF.exportedState(ix, H, { sourceMatches: sm }), null, show(m));
+    if (m !== undefined) assert.ok(PF.validateIndex(ix).length > 0, `validateIndex accepts ${show(m)}`);
+  }
+  for (const ix of [undefined, null, 'x', 1, [], {}]) assert.equal(PF.exportedState(ix), null);
+  // 索引の sourceSha256 のほうが崩れている（印は正しい）：投げずに、書き出しの後に直したことにする（検査器は索引を断る）
+  for (const top of [undefined, null, 1, 'x', 'a'.repeat(8 * 1024 * 1024)]) assert.equal(PF.exportedState({ ...base, sourceSha256: top }).copyEdited, true);
+  assert.ok(Date.now() - t0 < 5000, 'answers at once');
+});
+
 ok('見本（examples/）：配る 1 ファイルは書き出しの印を持たない（フォルダを持たない人が開くので。CLI の --portable は印を書くまま）', async () => {
   const list = await buildExamples(path.join(work, 'examples-out'), { log: () => {} });
   assert.ok(list.length >= 4);
