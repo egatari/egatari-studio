@@ -203,6 +203,11 @@ fs.writeFileSync(path.join(ED, 'versions.json'), JSON.stringify({ root: version,
 // 試験ページ（lab/）：そのまま写す（静的なファイルだけ。重みは実行時に Hugging Face から取る）
 const LAB = path.join(OUT, 'lab');
 if (fs.existsSync(rel('lab'))) fs.cpSync(rel('lab'), LAB, { recursive: true, filter: (f) => !path.basename(f).startsWith('.') });
+// 参照音声（lab/tts-engine.mjs が lab/voices/<名前>.wav として読む）：元は tts/voices/ の 1 か所だけ。ここで dist/lab/voices/ に写す（#137）
+for (const n of ['alice', 'bob']) {
+  const v = rel('tts', 'voices', `${n}.wav`);
+  if (fs.existsSync(v)) { fs.mkdirSync(path.join(LAB, 'voices'), { recursive: true }); fs.copyFileSync(v, path.join(LAB, 'voices', `${n}.wav`)); }
+}
 // 前の場所 editor/ からは根へ（問い合わせ ?lang=en と # を残す）。スクリプトが動かなくても meta refresh とリンクで行ける
 fs.mkdirSync(path.join(OUT, 'editor'), { recursive: true });
 fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
