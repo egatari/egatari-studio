@@ -21,7 +21,7 @@ import { nodeEnv } from '../kit/build.mjs';
 import { exportPortable, readPortable, scanDocument, replaceIndexText } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { parseThemesLock } from '../kit/core/themes-lock.mjs';
-import { clickCommand, clickDlg, clickMenuOpen } from './click-retry.mjs';
+import { clickCommand, clickDlg, clickMenuOpen, clickUntil } from './click-retry.mjs';
 import { writeZip } from '../kit/core/zip-read.mjs';
 import { themeOf, withTheme } from '../app/theme-switch.js';
 
@@ -112,7 +112,8 @@ async function switchTo(page, name, { expectCurrent } = {}) {
   const cur = await page.$$eval('#theme-switch-list input:checked', (a) => a.map((x) => x.value));
   if (expectCurrent) ok(cur.length === 1 && cur[0] === expectCurrent, `chooser: the current theme ${expectCurrent} is marked ${JSON.stringify(cur)}`);
   const n = await loads(page);
-  await page.check(`#theme-opt-${name}`);
+  // macOS の CI では、窓の上の選択肢を押しても下のプレビューの iframe に届くことがある（click-retry.mjs）：選ばれるまで押し直す
+  await clickUntil(page, `#theme-opt-${name}`, () => page.waitForSelector(`#theme-opt-${name}:checked`, { timeout: 2500 }));
   await clickDlg(page, '#dlg-change');
   const rights = await page.waitForSelector('#dlg[open] #rights-list', { timeout: 1500 }).catch(() => null);
   if (rights) await clickDlg(page, '#dlg-ok');
