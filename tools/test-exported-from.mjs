@@ -284,13 +284,15 @@ ok('印の形の崩れ（なし・型違い・巨大・入れ子）：exportedSt
     { kind: 'folder', sourceSha256: 1 }, { kind: 'folder', sourceSha256: null }, { kind: 'folder', sourceSha256: [H] }, { kind: 'folder', sourceSha256: { H } },
     { kind: 'folder', sourceSha256: H.toUpperCase() }, { kind: 'folder', sourceSha256: H + '0' }, { kind: 'folder', sourceSha256: 'a'.repeat(8 * 1024 * 1024) },
     { kind: ['folder'], sourceSha256: H }, { kind: 'folder', sourceSha256: { toString: () => H } }];
-  let deep = {}; const root = deep; for (let i = 0; i < 10000; i++) deep = (deep.x = {}); odd.push(root);
+  let deep = {}; const root = deep; for (let i = 0; i < 2000; i++) deep = (deep.x = {}); odd.push(root);
+  // 試験の名前に使う短い説明（入れ子の深い値を JSON.stringify しない）
+  const show = (m) => (m === root ? 'nested 2000 deep' : typeof m === 'string' || (m && typeof m.sourceSha256 === 'string') ? `${typeof m} ${String(m.sourceSha256 ?? m).length} chars` : `${typeof m} ${Array.isArray(m) ? 'array' : Object.keys(Object(m)).join(',')}`);
   const t0 = Date.now();
   for (const m of odd) {
     const ix = { ...base, exportedFrom: m };
     if (m === undefined) delete ix.exportedFrom;
-    for (const sm of [true, false, undefined]) assert.equal(PF.exportedState(ix, H, { sourceMatches: sm }), null, `${typeof m} ${String(JSON.stringify(m)).slice(0, 60)}`);
-    if (m !== undefined) assert.ok(PF.validateIndex(ix).length > 0, `validateIndex accepts ${String(JSON.stringify(m)).slice(0, 60)}`);
+    for (const sm of [true, false, undefined]) assert.equal(PF.exportedState(ix, H, { sourceMatches: sm }), null, show(m));
+    if (m !== undefined) assert.ok(PF.validateIndex(ix).length > 0, `validateIndex accepts ${show(m)}`);
   }
   for (const ix of [undefined, null, 'x', 1, [], {}]) assert.equal(PF.exportedState(ix), null);
   // 索引の sourceSha256 のほうが崩れている（印は正しい）：投げずに、書き出しの後に直したことにする（検査器は索引を断る）

@@ -52,7 +52,7 @@ const CASES = [
   ['marker sourceSha256 is a number', await viaIndex((ix) => { ix.exportedFrom.sourceSha256 = 12345; }), 'invalid-index'],
   ['marker sourceSha256 is null', await viaIndex((ix) => { ix.exportedFrom.sourceSha256 = null; }), 'invalid-index'],
   ['marker is a string', await viaIndex((ix) => { ix.exportedFrom = 'folder'; }), 'invalid-index'],
-  ['marker with an extra member', await viaIndex((ix) => { ix.exportedFrom.path = '/Users/someone'; }), 'invalid-index'],
+  ['marker with an extra member', await viaIndex((ix) => { ix.exportedFrom.path = '/home/x/folder'; }), 'invalid-index'],
   ['marker sourceSha256 of 8 MB', await viaIndex((ix) => { ix.exportedFrom.sourceSha256 = 'a'.repeat(8 * 1024 * 1024); }), 'index-too-large'],
 ];
 
