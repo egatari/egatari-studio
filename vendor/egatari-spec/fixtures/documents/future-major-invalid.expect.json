@@ -1,8 +1,0 @@
-{
-  "read": {
-    "error": "unsupported-version"
-  },
-  "extract": {
-    "error": "invalid-index"
-  }
-}

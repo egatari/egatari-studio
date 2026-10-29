@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=40cdf67b21c68da7 -->
+<!-- i18n: pair=README.md sha256=2cb94dc86fa76aac -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -89,7 +89,7 @@ Edge は最初からあるので、Chrome がなくても品質チェックと P
 ## はじめ方（段 1：スライド）
 
 ```bash
-git clone https://github.com/egatari/egatari-studio.git
+git clone --depth 1 https://github.com/egatari/egatari-studio.git
 cd egatari-studio
 npm ci
 node tools/get-fonts.mjs                            # 任意：埋め込む字を小さくする（build で uv を使う）

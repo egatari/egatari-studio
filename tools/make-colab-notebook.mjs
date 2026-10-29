@@ -221,7 +221,7 @@ export function notebook() {
       '    os.environ["EGATARI_NODE_DEPS"] = "/content/node-deps"',
       '    os.environ["EGATARI_ORT_PROVIDERS"] = "cuda,cpu" if GPU else "cpu"',
       '    os.makedirs("/content/work", exist_ok=True)',
-      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/lab/voices", "/content/work", seed=0, ref_voice=globals().get("REF_VOICE_PATH"), profile=PROFILE)   # steps は省く：実際に CPU なら CPU 用の少ない steps（E.IRODORI_CPU_STEPS）',
+      '    synth = E.irodori_synth("/content/egatari-studio/colab/irodori_node.mjs", MODEL_DIR, "/content/egatari-studio/tts/voices", "/content/work", seed=0, ref_voice=globals().get("REF_VOICE_PATH"), profile=PROFILE)   # steps は省く：実際に CPU なら CPU 用の少ない steps（E.IRODORI_CPU_STEPS）',
       '    INFO = {"engine": "irodori-colab", "model": job["recipe"]["model"], "seed": 0, "runtime": E.runtime_label(PIN_SET, synth.provider), "diffusionSteps": synth.steps, "precision": synth.precision}',
       '    print("Irodori providers in use:", synth.providers, "→ runtime", INFO["runtime"], "·", E.compute_label(synth.provider != "cpu", synth.steps), "·", synth.precision)   # GPU を使えなかったときは、その上に CPU に切り替えたお知らせが 1 行出る。runtime と steps は記録の recipe に入る',
       'print("ready:", INFO)',

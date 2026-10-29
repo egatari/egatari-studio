@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=bf82f614340f6a65 -->
+<!-- i18n: pair=README.ja.md sha256=58cf5ea614bfc364 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -89,7 +89,7 @@ Edge is already there, so the quality checker and PDF work without Chrome. Run t
 ## Quick start (tier 1: slides)
 
 ```bash
-git clone https://github.com/egatari/egatari-studio.git
+git clone --depth 1 https://github.com/egatari/egatari-studio.git
 cd egatari-studio
 npm ci
 node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
