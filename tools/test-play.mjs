@@ -4,6 +4,8 @@
 // （Cloudflare の静的なファイルと同じ。POST /share は play/worker.js と同じ 303）。確かめること：
 //  1. 組み立て：_headers（CSP・frame-ancestors・X-Frame-Options）・manifest（192・512 の画像・share_target）・sw.js の一覧（自分のファイルだけ）
 //  2. 再生専用と編集可の Egatari ファイルを開く（種類の表示・題・sandbox の枠・srcdoc・信頼する先頭部分の CSP）
+//  2b. キー：送りのキー（矢印・Space・PageUp/PageDown・Home/End）は、開いた直後・Viewer の帯やボタン・ライブの欄のボタン・教材の中・タブを戻った後の
+//     どこにフォーカスがあっても教材を 1 つだけ動かす（tools/viewer-keys-check.mjs）。ライブの質問の欄のキーは欄に残る
 //  3. sandbox：教材から親の DOM・localStorage・IndexedDB・OPFS・cookie・fetch・WebSocket・親への遷移に届かない
 //  4. 枠の中を断る：見出しのあるサーバーでは読み込まれず、見出しのないサーバーでも guard.js が止める
 //  5. service worker：キャッシュは自分のファイルだけ（教材を開いても増えない）・初めに開いた後はオフラインで開ける（読み込み直しも）・
@@ -33,6 +35,7 @@ import { decideLink } from '../play/links.mjs';
 import { faviconSvg } from '../kit/core/favicon.mjs';
 import { liveCsp } from '../kit/core/live.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
+import { checkViewerKeys } from './viewer-keys-check.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-play-')));
@@ -211,6 +214,16 @@ console.log('open');
   ok(await until(() => o.p.evaluate(() => /Ask the person who made it/.test(document.querySelector('#msg').textContent))), 'too large (English): the same, in English');
   await o.p.click('#b-lang');
   ok(o.errors.length === 0, `no page errors (${o.errors.join(' | ')})`);
+  await o.close(); }
+
+// ---------------------------------------------------------------- 2b. the keys: the navigation keys move the lesson wherever the focus is (tools/viewer-keys-check.mjs)
+console.log('keys');
+{ const o = await page(site.url, { sw: false });
+  await openFixture(o.p, 'lesson.play.ega.html');
+  const f = await lessonFrame(o.p);
+  ok(await until(() => f.evaluate(() => document.hasFocus())), 'keys: the lesson\'s frame has the focus once it has loaded (Chrome loses the focus given before the lesson replaced the empty document)');
+  await checkViewerKeys({ ctx: o.ctx, p: o.p, f, ok, until, engine: 'Chromium' });
+  ok(o.errors.length === 0, `keys: no page errors (${o.errors.join(' | ')})`);
   await o.close(); }
 
 // ---------------------------------------------------------------- 3. sandbox isolation
@@ -635,9 +648,19 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   ok(frameReqs.length === 0, 'live: the lesson\'s frame made no request');
   ok((await state(o.p)).layout.mode === 'side', 'live with polls at 1280 x 800: the side pane');
   await o.p.fill('#live-q', 'もう一度説明してください');
+  { const k0 = await f.evaluate(() => DECK.state().key);
+    await o.p.focus('#live-q'); await o.p.keyboard.press('ArrowLeft'); await o.p.keyboard.press('Space'); await o.p.keyboard.press('Backspace'); await o.p.keyboard.press('End');
+    await sleep(300);
+    ok(await f.evaluate(() => DECK.state().key) === k0 && await o.p.inputValue('#live-q') === 'もう一度説明してください', 'live: the arrows, Space and End in the question field stay in the field (not handed to the lesson)'); }
   await o.p.click('#b-send');
   ok(await until(() => fake.messages.some((m) => m.t === 'ask' && m.text === 'もう一度説明してください' && m.activity === 'qa')), 'live: a question is sent (ask)');
   ok(await until(() => o.p.evaluate(() => /質問を送りました/.test(document.getElementById('live-msg').textContent))), 'live: the ack is shown');
+  { await f.evaluate(() => DECK.go(0, 0, false));
+    await o.p.click('#b-live');   // the focus into the Live pane (a button there), as a viewer does
+    await o.p.focus('#b-send');
+    await o.p.keyboard.press('ArrowRight');
+    ok(await until(() => f.evaluate(() => DECK.state().slide === 2)), 'live: → with the focus on a button in the Live pane moves the lesson (handed over by the page)');
+    await f.evaluate(() => DECK.go(0, 0, false)); }
   const ask = fake.messages.find((m) => m.t === 'ask');
   ok(ask && Object.keys(ask).sort().join() === 'activity,ref,step,t,text,v', `live: only what the activity needs (${ask && Object.keys(ask).join(',')})`);
   await f.evaluate(() => DECK.go(1, 0));

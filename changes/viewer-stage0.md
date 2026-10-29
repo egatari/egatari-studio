@@ -12,3 +12,4 @@
 ### Fixed
 
 - Egatari Viewer on touch screens: the player takes touch itself (wake tap, `REVEAL_GUARD`, the bar shown on open, a handle), so the page's lesson shim no longer relays taps or completes clicks
+- Egatari Viewer on a computer: the arrow keys, Space, PageUp/PageDown and Home/End move the lesson wherever the focus is. Before, they did nothing right after opening a file in Chrome (the frame lost the focus when the lesson loaded) and, in Safari and Chrome, after a click on the Viewer's own bar or buttons or with the focus in the Live pane, until the viewer clicked inside the lesson. The page now focuses the frame once the lesson has loaded and hands the navigation keys pressed in the page to the lesson (its lesson shim presses them as the player's buttons do; no player change)

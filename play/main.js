@@ -119,7 +119,34 @@ function startFrame() {
   S.doc = null;
   applyLayout();                       // everything around the frame is placed first
   $('stage-wrap').appendChild(S.frame);
-  try { S.frame.focus(); } catch { /* not focusable yet */ }
+  const f = S.frame;
+  try { f.focus(); } catch { /* not focusable yet */ }
+  // Chrome gives the focus to the frame's first, empty document and keeps the keys in this page once the lesson replaces it;
+  // so focus it again when the lesson has loaded, unless the viewer has meanwhile moved the focus elsewhere in this page.
+  // Safari may refuse either; the keys pressed in this page are handed over anyway (forwardKey)
+  f.addEventListener('load', () => {
+    const a = document.activeElement;
+    if (S.frame !== f || (a && a !== document.body && a !== f)) return;
+    try { f.contentWindow.focus(); } catch { /* refused */ }
+  }, { once: true });
+}
+// The navigation keys (arrows, PageUp/PageDown, Home/End, Space) pressed while the focus is in this page, not in the lesson's
+// frame (its bar or buttons, the Live pane, or a frame that never got the focus): handed to the lesson, which presses them as
+// its own buttons do (play/lesson-shim.js). Not from a field, a widget that uses arrows, or the link box; Space not on a
+// button or link, which it presses. Keys pressed in the frame never reach this page.
+const NAV_KEYS = new Set(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+const ARROW_WIDGET = '[role=radiogroup],[role=listbox],[role=menu],[role=menubar],[role=tablist],[role=slider],[role=grid],[role=tree],dialog';
+function forwardKey(e) {
+  const f = S.frame;
+  if (!f || !f.contentWindow || !NAV_KEYS.has(e.key) || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || e.isComposing) return;
+  if ($('link-box').open) return;
+  const t = e.target;
+  if (t && t.nodeType === 1) {
+    if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest(ARROW_WIDGET)) return;
+    if (e.key === ' ' && t.closest('button, a[href], summary, label, [role=button]')) return;
+  }
+  e.preventDefault();
+  f.contentWindow.postMessage({ egaViewer: 'key', key: e.key, shift: e.shiftKey }, '*');
 }
 // the no-slack variant for phones in landscape on 16:9 screens (play/layout.mjs). The owner chose 'overlay' (the full screen for the
 // slide); 'strip' is the alternative. ?noslack=strip or ?noslack=overlay switches it for measuring (docs/viewer.md).
@@ -386,6 +413,7 @@ async function main() {
   $('b-poll-back').addEventListener('click', () => { setPollView(false); $('b-poll').focus(); });
   $('b-strip-close').addEventListener('click', () => $('b-close').click());
   window.addEventListener('resize', onResize);
+  document.addEventListener('keydown', forwardKey);
   $('live').addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; e.preventDefault(); if ($('live').classList.contains('poll-open')) { setPollView(false); $('b-poll').focus(); } else if (!$('b-live').hidden) $('b-live').focus(); });
   $('b-clear').addEventListener('click', async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); });
   // the "home" link: back to the start without reloading while a lesson plays

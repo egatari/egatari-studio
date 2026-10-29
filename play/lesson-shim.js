@@ -10,6 +10,7 @@
 //      download attribute, which the page refuses). The page treats it as untrusted, applies the
 //      link rule (spec §11, kit/core/link-policy.mjs) itself and opens nothing without a tap in its own interface.
 //      Links inside the lesson (#…, spec §9.1A) stay with the player.
+//   3. The navigation keys pressed in the page, handed over by it (below).
 (function lessonShim() {
   "use strict";
   try { history.replaceState(null, "", "about:srcdoc?embed=1"); } catch (e) { /* the page falls back to deck-pos */ }
@@ -54,4 +55,15 @@
   window.addEventListener("auxclick", onClick, true);
   // The player's own window.open (after its confirmation box, presenter view): no popups here; ask the page instead
   window.open = function (u) { if (u != null && !/[?&]presenter=1/.test(String(u)) && navigator.userActivation && navigator.userActivation.isActive) send(u, ""); return null; };
+  // 3. Keys pressed while the focus is on the page (its bar, its buttons, the Live pane), or while the frame does not have it
+  //    (the page's iframe.focus() is refused or lost: Chrome before the lesson has loaded, Safari): the page hands the navigation
+  //    keys over as {egaViewer: "key", key, shift} (play/main.js), and this presses them the way the player's own buttons do
+  //    (kit/tools.js press(): a keydown on the document), so it works with any player version inside the file.
+  //    Only from the page, only these keys.
+  var NAV = /^(ArrowRight|ArrowLeft|ArrowUp|ArrowDown|PageUp|PageDown|Home|End| )$/;
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source !== parentWin || !m || m.egaViewer !== "key" || typeof m.key !== "string" || !NAV.test(m.key)) return;
+    try { document.dispatchEvent(new KeyboardEvent("keydown", { key: m.key, shiftKey: m.shift === true, bubbles: true, cancelable: true })); } catch (x) { /* an old browser */ }
+  });
 })();
