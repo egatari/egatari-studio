@@ -330,7 +330,7 @@ for (var audioKey in DECK.AUDIO){
 // 発表者だけが原稿の控えを読む。実行用の台本には指示を入れない（format spec §8.2）。
 // 通常の build は元の台本の控え、持ち運べる形式は索引と塊。再生専用には控えがない。
 DECK.scriptSource = async function(){
-  var source = json("deck-script-source");
+  var source = json("studio-script-source");
   if (typeof source === "string") return source;
   if (!FMT) return null;
   var el = document.getElementById(FMT.indexId);

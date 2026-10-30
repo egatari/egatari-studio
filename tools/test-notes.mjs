@@ -55,7 +55,10 @@ try {
     assert.equal(JSON.stringify(runtime(html)).includes('SECRET'), false);
   }
   assert.equal(new TextDecoder().decode(portable.files['narration.md']).includes('{note:SECRET'), true);
-  assert.equal(portable.html.includes('id="deck-script-source"'), false, 'portable notes exist only in the source archive');
+  assert.equal(portable.html.includes('id="studio-script-source"'), false, 'portable notes exist only in the source archive');
+  // studio-* の塊は作業フォルダの組み立てだけのもの（Egatari ファイルの実行系の塊は §4 の deck-* に閉じる）
+  assert.equal(ordinary.html.includes('id="studio-script-source"'), true, 'the folder build carries the script source when it has notes');
+  for (const [name, html] of [['portable', portable.html], ['play-only', playOnly(portable.html)]]) assert.equal(/<script\b[^>]*\bid="studio-/.test(html), false, `${name}: no studio-* block`);
   const readable = portable.html.match(new RegExp(`<section id="${FORMAT.READABLE_ID}"[\\s\\S]*?</section>`))[0];
   assert.equal(readable.includes('SECRET'), false, 'readable and printed script omit notes');
 

@@ -857,7 +857,7 @@ export function build(env0, srcPath, opts = {}) {
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scriptList = [
     // 通常の build の原稿の控え。持ち運べる形式は索引の archive にだけ原稿を持つ。
-    !opts.runtimePrefix && narrSource.includes('{note:') ? j('deck-script-source', narrSource) : '',
+    !opts.runtimePrefix && narrSource.includes('{note:') ? j('studio-script-source', narrSource) : '',
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
     j('deck-meta', opts.deckMeta || { version: env.version }),
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
