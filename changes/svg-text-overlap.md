@@ -1,0 +1,3 @@
+### Fixed
+
+- Quality check now warns when SVG text overlaps other SVG text, including labels inside one figure whose positions come from the deck data. The warning names both texts and suggests moving the item, changing its coordinates, or adding `shift` to a reverse `m-flow` edge. Only the glyphs' ink is compared, so close but separate labels (tick numbers above an axis name) do not warn; empty, hidden or unpainted text, whitespace gaps, the same label drawn twice at the same place, and labels already reported for leaving their box do not count; intentionally layered text can use `data-overlap="ok"` on the SVG `<text>` or an ancestor `<g>` to opt out of this check alone (`data-clip` is also respected).

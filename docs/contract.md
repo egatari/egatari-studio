@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=54834f9e4c818eff -->
+<!-- i18n: pair=contract.ja.md sha256=bae9112f0074a6d6 -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)
@@ -128,7 +128,18 @@ The rule is Player P4.2. Studio implements it as a pure module, `kit/core/link-p
 - Boxes an ancestor hides are not measured: content inside a visually hidden (screen-reader only) container — a box of 2px or less with `overflow` other than `visible`, such as the 1×1 `.sr-only` pattern, or an ancestor whose `clip-path: inset(…)` or `clip: rect(…)` leaves nothing — MUST NOT be reported by any layout check (`bodyBottom`, `bodyRight`, `smallText`, `textOverlap`, …), whatever its class name. The body-position checks measure only the part of a box that its ancestors' `overflow` leaves visible; text cut off by a visible-size box is still `textClipped`
 - Authors use `data-clip` only where the cut is part of the message (for example a "wall" of code faded out at the bottom), never to hide an overflow
 
-`data-annot` is the second authoring rule of this kind (in Studio, `ANNOT_ATTR` in `kit/core/layout-scan.mjs`): it marks a **small annotation** that is meant to be small.
+`data-overlap="ok"` marks SVG text intentionally drawn in layers (`OVERLAP_ATTR` in `kit/core/layout-scan.mjs`).
+
+```html
+<text data-overlap="ok" x="100" y="100">…intentionally layered text…</text>
+<g data-overlap="ok"><g><text x="100" y="100">…intentionally layered text…</text></g></g>
+```
+
+- The checker MUST compare visible SVG text with other SVG text, including text inside the same part, using only the ink boxes of non-whitespace glyphs (for upright text, the glyph's measured ink, not the font's full line height) with a 2 px overlap tolerance. Empty text, unpainted text (`fill` none or transparent on the `<text>` and no stroke), hidden text at the scanned step, and gaps between lines or separated spans MUST NOT count. The same text drawn twice at the same place (for example a copy of a card per destination before it moves) reads as one and MUST NOT count. Text already reported for leaving its box, the viewBox or the slide (`svgTextBox`, `svgTextOut`) MUST NOT be reported again as an overlap. This check does not compare text with lines or points
+- An SVG `<text>` is excluded from `textOverlap` only when that `<text>` or any ancestor `<g>` carries exactly `data-overlap="ok"`. A bare attribute, an empty value, other values (including `OK`), or the marker on a `<tspan>`, `<svg>` or HTML element MUST NOT exempt text. It MUST NOT change clipping, overflow, minimum text size or rendering. Parts place the marker only on the intentionally layered text or its group, not on the whole part. `data-clip` also continues to exclude text from `textOverlap`
+- `textOverlap` is an R-fit warning. For SVG text it names both texts on the slide and advises the author to move the item or change its coordinates, or add `shift` to the reverse edge in `m-flow`
+
+`data-annot` is another authoring rule of this kind (in Studio, `ANNOT_ATTR` in `kit/core/layout-scan.mjs`): it marks a **small annotation** that is meant to be small.
 
 ```html
 <span class="kb-num" data-annot>10</span>

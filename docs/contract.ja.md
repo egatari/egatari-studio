@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=3ae9d7245563c6e5 -->
+<!-- i18n: pair=contract.md sha256=a6bdf49d9eeec24c -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -127,6 +127,17 @@ canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくし�
 - 本文が下にはみ出すスライド（`bodyBottom`）では、`.body` の中の字がスライドの外に出ることを重ねて知らせない（スライドの端の `svgTextOut`）。本文を減らせばどちらも直る
 - 祖先が隠す箱は測らない：読み上げ用に見えなくした入れ物の中（`overflow` が `visible` でない 2px 以下の箱。1×1 の `.sr-only` の形）や、`clip-path: inset(…)`・`clip: rect(…)` で何も残らない祖先の中は、クラスの名前によらず、体裁のどの検査（`bodyBottom`・`bodyRight`・`smallText`・`textOverlap` など）でも知らせてはならない。本文の場所の検査は、祖先の `overflow` が見せる部分だけを測る。見える大きさの箱で切れる字は今までどおり `textClipped`
 - 書き手は `data-clip` を、切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
+
+`data-overlap="ok"` は意図して重ねて描く SVG の字の印（`kit/core/layout-scan.mjs` の `OVERLAP_ATTR`）。
+
+```html
+<text data-overlap="ok" x="100" y="100">…意図して重ねる字…</text>
+<g data-overlap="ok"><g><text x="100" y="100">…意図して重ねる字…</text></g></g>
+```
+
+- 検査は、同じパーツの中も含めて、見える SVG の字どうしを比べなければならない。空白を除く字のインクの箱だけを使い（回転していない字は、フォントの行の高さ全体でなく、測った字のインク）、重なりの許容は 2 px とする。空の字・塗らない字（`<text>` の `fill` が none か透明で、線もない）・調べるステップで隠れた字・行や離れた span の間の空所を数えてはならない。同じ字を同じ場所に 2 度描いたもの（動く前の、行き先ごとの札の写しなど）は 1 つに読めるので数えてはならない。箱・viewBox・スライドからはみ出すと知らせた字（`svgTextBox`・`svgTextOut`）を、重なりとしてもう一度知らせてはならない。この検査は字と線・点を比べない
+- SVG の `<text>` 自身か、いずれかの祖先の `<g>` に、正確に `data-overlap="ok"` があるときだけ、その `<text>` を `textOverlap` から除く。値のない属性・空の値・ほかの値（`OK` も含む）や、`<tspan>`・`<svg>`・HTML 要素の印では字を除いてはならない。切れ・はみ出し・字の大きさの最小の検査も表示も変えてはならない。パーツは意図して重ねる字かそのグループだけに印を付け、パーツ全体には付けない。`data-clip` も引き続き `textOverlap` から字を除く
+- `textOverlap` は R-fit の警告。SVG の字では、そのスライドの両方の字を示し、項目を動かすか座標を変えるか、`m-flow` の逆向きの辺に `shift` を付けるよう書き手に勧める
 
 `data-annot` も同じ種類の書き方の決まり（Studio では `kit/core/layout-scan.mjs` の `ANNOT_ATTR`）で、**わざと小さくした注記**を示す。
 

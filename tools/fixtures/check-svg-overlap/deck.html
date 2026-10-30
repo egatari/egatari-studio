@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="business">
+<head><meta charset="utf-8"><title>図の重なる字（backlog #139）</title></head>
+<body><div id="stage">
+<!-- 元デッキの P5・P7（架空の内容）。図の高さ・座標・段階・文言を保つ。 -->
+<section class="slide" id="s-quad139">
+  <h2>最も重要な「ニーズ探索」の位置づけ</h2>
+  <div class="body">
+    <p class="sub">どの市場・顧客を狙うかを2軸で整理する</p>
+    <m-quad style="height:320px" aria-label="技術の先進性と課題の切実さによるポジショニング">
+      <script type="application/json">{
+        "x": {"lo": "課題が限定的", "hi": "課題が切実"},
+        "y": {"lo": "既存技術で十分", "hi": "新技術が不可欠"},
+        "quads": {"tr": "目指すべき市場", "fill": "tr"},
+        "items": [
+          {"label": "既存競合", "x": 0.8, "y": 0.2, "step": 1},
+          {"label": "趣味研究", "x": 0.2, "y": 0.8, "step": 2},
+          {"label": "目指す顧客", "x": 0.85, "y": 0.85, "step": 3, "self": true}
+        ]
+      }</script>
+    </m-quad>
+  </div>
+  <div class="concl"><span>→ 新技術が不可欠で、課題が切実な領域を見極める</span></div>
+</section>
+
+<section class="slide" id="s-flow139">
+  <h2>ビジネスモデルの基本構図</h2>
+  <div class="body">
+    <p class="sub">お金とサービスの流れを可視化する</p>
+    <m-flow style="height:310px" aria-label="大学・スタートアップ、企業・顧客、社会の三者間の関係">
+      <script type="application/json">{
+        "nodes": [
+          {"id": "uni", "label": "大学・研究室\n（技術ライセンス）", "x": 20, "y": 40, "w": 280, "h": 100, "step": 1},
+          {"id": "st", "label": "大学発ベンチャー\n（自社）", "x": 452, "y": 140, "w": 280, "h": 110, "step": 1, "tone": "emph"},
+          {"id": "cli", "label": "顧客企業・一般ユーザー\n（課題の解決）", "x": 884, "y": 40, "w": 280, "h": 100, "step": 2, "tone": "term"}
+        ],
+        "edges": [
+          {"from": "uni", "to": "st", "step": 1, "label": "技術許諾", "kind": "service"},
+          {"from": "st", "to": "cli", "step": 2, "label": "製品・サービス", "kind": "service", "shift": -10},
+          {"from": "cli", "to": "st", "step": 2, "label": "対価・売上", "kind": "money", "amount": "事業収益", "shift": -10},
+          {"from": "st", "to": "uni", "step": 3, "label": "特許実施料", "kind": "money", "amount": "ロイヤリティ"}
+        ]
+      }</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>→ 技術対価と顧客価値のサイクルを回す</span></div>
+</section>
+</div></body></html>

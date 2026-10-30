@@ -1,11 +1,12 @@
 // スライドの体裁の検査（はみ出し・切れ・文字の大きさ・字数）。品質チェックのコマンド版（kit/check.mjs）とブラウザ版
 // （編集アプリのプレビューの中の app/frame-shim.js）が同じこの関数を使う（backlog #51・#52）
 //
-//   layoutScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {JA, refRe, clip, annot, metrics}
+//   layoutScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {JA, refRe, clip, annot, overlap, metrics}
 //     JA     日本語の規則（字数を全角 1・半角 0.5 で数える）か
 //     refRe  文献のスライドの見出し（正規表現の文字列）。そのスライドは字の大きさを見ない
 //     clip   わざと切る印の属性の名前（CLIP_ATTR）
 //     annot  小さい注記の印の属性の名前（ANNOT_ATTR）。字の大きさの最小（smallText・smallSvgText）を見ない
+//     overlap 意図した重ね字の印の属性の名前（OVERLAP_ATTR）。値が "ok" のとき SVG の textOverlap だけを見ない
 //     metrics テーマの寸法の宣言（kit/core/theme-metrics.mjs の解決したもの。build の戻り値の theme.metrics）。本文の場所の限りをここから導く。
 //            渡さなければ既定（今の kit/layouts.css。中に書いた既定は DEFAULT_METRICS と同じ：tools/test-theme-metrics.mjs が縛る）。
 //            余裕（結論の行の上 6px・横の 4px）・字の大きさの最小・字数は metrics で変わらない
@@ -29,8 +30,12 @@ export const CLIP_ATTR = 'data-clip';
 // 字の大きさの最小（smallText・smallSvgText）を見ない。ほかの検査と表示は変えない
 export const ANNOT_ATTR = 'data-annot';
 
+// 意図した重ね字の印（OVERLAP_ATTR。docs/contract.md §10）：部品が重ねて描く SVG の <text> か、その祖先の <g> に data-overlap="ok" を付ける。
+// その SVG の字は textOverlap だけを見ない。値は "ok" だけ（空の属性やほかの値は効かない）。部品全体でなく、重ねる字だけに付ける。
+export const OVERLAP_ATTR = 'data-overlap';
+
 export function layoutScan(s, o) {
-  const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, refRe = new RegExp(o.refRe);
+  const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, OVERLAP = o.overlap, refRe = new RegExp(o.refRe);
   // テーマの寸法（1280×720 の px）。既定は kit/core/theme-metrics.mjs の DEFAULT_METRICS と同じ値
   const DM = { body: { left: 48, right: 48, top: 122, floor: 680, line: 46 }, concl: { top: 571, height: 72 }, tate: { rule: 1166, conclRight: 120, left: 48, floor: 680 } };
   const om = o.metrics || {};
@@ -229,7 +234,7 @@ export function layoutScan(s, o) {
   const over = (p, q, x, y) => Math.max(x ? q.l - p.l : 0, x ? p.r - q.r : 0, y ? q.t - p.t : 0, y ? p.b - q.b : 0);
   const found = { textClipped: null, svgTextOut: null, svgTextBox: null, outsideBody: null, textOffSlide: null, textOverlap: null, cellWordBreak: null };
   const note = (code, a) => { const f = found[code]; if (f) f.n++; else found[code] = Object.assign({ n: 1 }, a); };
-  const done = new Set();   // 上の 4 つか、スライドの外（textOffSlide）で知らせた字。重なり（textOverlap）では見ない
+  const done = new Set();   // 上の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）か、スライドの外（textOffSlide）で知らせた字。重なり（textOverlap）では見ない
   // 表紙・章の扉（.body のないスライド）の知らせには、置ける子要素を添える
   const kind = s.classList.contains('cover') ? 'cover' : s.classList.contains('sec') ? 'sec' : '';
   const frame = [h2, s.querySelector('h1'), c, s.querySelector(':scope > .pn')].filter(Boolean);
@@ -281,17 +286,19 @@ export function layoutScan(s, o) {
         const q = box(r.getBoundingClientRect()), ar = (q.r - q.l) * (q.b - q.t);
         if (cx >= q.l && cx <= q.r && cy >= q.t && cy <= q.b && ar > 0 && ar < area) { best = q; area = ar; }
       }
-      if (best) { const e = over(p.b, best, true, true); if (e > TOL) note('svgTextBox', { t: p.t, px: Math.round(e) }); }
+      if (best) { const e = over(p.b, best, true, true); if (e > TOL) { done.add(p); note('svgTextBox', { t: p.t, px: Math.round(e) }); } }
     }
   }
 
   // ---------------------------------------------------------------- 字の箱が重なる（#64。警告）
-  // どのスライドでも（表紙・章の扉・縦組み・絶対位置の配置も）、HTML の字の箱どうしと、字とスライドの帯（飾り）が重なれば知らせる。
+  // どのスライドでも（表紙・章の扉・縦組み・絶対位置の配置も）、HTML の字の箱どうし、SVG の字どうし、HTML の字とスライドの帯（飾り）が重なれば知らせる。
   // 字の箱：字の塊を、それを流し込む箱（display が inline・ruby などでない一番近い祖先。KaTeX の式は式全体）ごとにまとめ、
   // 行ごとの矩形（Range の getClientRects）を持つ。同じ箱の中の字は流し込みなので重ならない。親と子（一方が他方を含む）の組は見ない。
   // 前の知らせと重ねない：上で知らせた字（切れる・外に出る・本文の外）は数えない。本文の場所のエラー（bodyBottom など）のあるスライドでは、
-  // 本文の字と本文の外の字（見出し・結論の行）の組を見ない（本文を減らせば両方消える）。SVG の字は svgTextOut・svgTextBox が見るので数えない。
-  // 同じ部品（<m-…> などのカスタム要素）の中の字どうしは見ない（部品のコードが並べるもので、デッキからは直せない。部品庫の試験が見る）
+  // 本文の字と本文の外の字（見出し・結論の行）の組を見ない（本文を減らせば両方消える）。
+  // SVG は <text> ごとに、空白を除く字のインクの箱を持つ。複数行や離れた tspan の間の空所は字ではない。箱からはみ出すと知らせた字（svgTextBox）も数えない。
+  // 同じ部品の SVG の字も比べる（#139：デッキの座標・辺の shift で直せる）。HTML の同じ部品内の配置は引き続き部品庫の試験が見る。
+  // data-clip は pieces の時点で除き、data-overlap="ok"（<text> 自身か祖先の <g>）は SVG のこの検査だけで除く。線・点との重なりは見ない。
   const INLINE = /^(inline|contents|ruby|ruby-base|ruby-text|ruby-base-container|ruby-text-container)$/;
   const blockOf = (el) => {
     for (let e = el.closest('.katex') || el; e && e !== s; e = e.parentElement) if (!INLINE.test(getComputedStyle(e).display)) return e;
@@ -299,8 +306,44 @@ export function layoutScan(s, o) {
   };
   const meet = (a, b) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > TOL && Math.min(a.b, b.b) - Math.max(a.t, b.t) > TOL;
   const blocks = new Map(), mathSeen = new Set();
+  let ink = null;   // SVG の字のインクを測る canvas（要るときに作る）
   for (const p of pieces) {
-    if (p.svg || done.has(p)) continue;
+    if (done.has(p)) continue;
+    if (p.svg) {
+      if (p.el.closest('text[' + OVERLAP + '="ok"], g[' + OVERLAP + '="ok"]')) continue;
+      const rs = [], tw = document.createTreeWalker(p.el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = tw.nextNode())) {
+        const e = n.parentElement;
+        if (skip(e) || !shown(e) || hiddenEl(e)) continue;
+        const st = getComputedStyle(e);
+        if ((st.fill === 'none' || parseFloat(st.fillOpacity) === 0) && (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0)) continue;
+        // 字の Range の矩形は字の送り幅 × フォントの高さ（ascent＋descent）で、インクより上下に広い（目盛りの数字と軸の名前のように
+        // 近く並べた字が、インクは離れていても重なって見える）。回転・傾きのない字は、canvas の measureText で測ったインクの箱に縮める
+        const m = e.getScreenCTM && e.getScreenCTM(), upright = !m || (Math.abs(m.b) < 1e-6 && Math.abs(m.c) < 1e-6);
+        if (upright) { if (!ink) ink = document.createElement('canvas').getContext('2d'); ink.font = `${st.fontStyle} ${st.fontWeight} ${st.fontSize} ${st.fontFamily}`; }
+        const rg = document.createRange();
+        let i = 0;
+        for (const ch of n.textContent) {
+          if (!/\s/.test(ch)) {
+            rg.setStart(n, i); rg.setEnd(n, i + ch.length);
+            const g = upright ? ink.measureText(ch) : null, fh = g ? g.fontBoundingBoxAscent + g.fontBoundingBoxDescent : 0;
+            for (let r of rg.getClientRects()) if (r.width > 0 && r.height > 0) {
+              if (fh > 0) {
+                const q = r.height / fh, base = r.top + g.fontBoundingBoxAscent * q;
+                r = { left: r.left - g.actualBoundingBoxLeft * q, right: r.left + g.actualBoundingBoxRight * q, top: base - g.actualBoundingBoxAscent * q, bottom: base + g.actualBoundingBoxDescent * q };
+                if (!(r.right > r.left && r.bottom > r.top)) continue;
+              }
+              const { v } = seen(box(r), e, false, s);
+              if (v) rs.push(v);
+            }
+          }
+          i += ch.length;
+        }
+      }
+      blocks.set(p.el, { el: p.el, rs, t: p.t, inBody: !!(body && body.contains(p.el)), svg: true });
+      continue;
+    }
     const bl = blockOf(p.el);
     let g = blocks.get(bl);
     if (!g) {
@@ -348,13 +391,16 @@ export function layoutScan(s, o) {
     const l = parseFloat(st.left), t = parseFloat(st.top), w = parseFloat(st.width), h = parseFloat(st.height);
     if ([l, t, w, h].every((x) => isFinite(x)) && w > 0 && h > 0) bands.push({ l, t, r: l + w, b: t + h });
   }
-  for (const g of G) if (bands.some((q) => g.rs.some((r) => meet(r, q)))) note('textOverlap', { t: g.t, with: 'band', kind });
+  for (const g of G) if (!g.svg && bands.some((q) => g.rs.some((r) => meet(r, q)))) note('textOverlap', { t: g.t, with: 'band', kind });
   for (let i = 0; i < G.length; i++) for (let j = i + 1; j < G.length; j++) {
     const A = G[i], B = G[j];
+    if (!!A.svg !== !!B.svg) continue;
     if (A.el.contains(B.el) || B.el.contains(A.el)) continue;
     if (bodyErr && A.inBody !== B.inBody) continue;
-    if (A.comp && A.comp === B.comp) continue;
-    if (A.rs.some((r) => B.rs.some((q) => meet(r, q)))) note('textOverlap', { t: A.t, u: B.t, with: 'text', kind });
+    if (!A.svg && A.comp && A.comp === B.comp) continue;
+    // 同じ字を同じ場所に重ねて描いたもの（m-collect の行き先ごとの札の写しなど）は 1 つに読めるので見ない
+    if (A.svg && A.el.textContent === B.el.textContent && A.rs.length === B.rs.length && A.rs.every((r, i) => { const q = B.rs[i]; return Math.abs(r.l - q.l) <= TOL && Math.abs(r.t - q.t) <= TOL && Math.abs(r.r - q.r) <= TOL && Math.abs(r.b - q.b) <= TOL; })) continue;
+    if (A.rs.some((r) => B.rs.some((q) => meet(r, q)))) note('textOverlap', { t: A.t, u: B.t, with: 'text', kind, ...(A.svg ? { svg: true } : {}) });
   }
 
   // ---------------------------------------------------------------- 表の短いセルの語が割れる（#65。警告）
@@ -576,8 +622,8 @@ export async function metricsFonts(doc, timeoutMs) {
 }
 
 // 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）と印の名前を渡す形にする。
-// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT という名前で使える）
+// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP という名前で使える）
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, metricsProbe, metricsFonts){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${metricsProbe}, ${metricsFonts})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts})`;
 }

@@ -7,7 +7,7 @@
 //           prefix は信頼する先頭部分（決まりの <meta> まで）。中の画面も「先頭部分 + 仲立ち + デッキ」で組む（デッキの中を探して入れない）
 //   theme   プレビュー：組み立てが返したテーマ {name, metrics, declared}（kit/core/theme-metrics.mjs）。品質チェックの本文の場所の限りと、寸法のずれ（themeMetricsDrift）に使う。
 //           なければ既定の寸法（今までと同じ限り）
-// layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印の名前（kit/core/layout-scan.mjs）。
+// layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印・重ね字の印の名前（kit/core/layout-scan.mjs）。
 // app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
@@ -152,7 +152,7 @@ function quickCheck(fonts){
     // はみ出し・切れ・字の大きさ・字数：コマンド版と同じ関数（kit/core/layout-scan.mjs。app/main.js がこの仲立ちに渡す）。
     // 前からある知らせはブラウザ版の code と短い値のまま（overflowBottom・overflowRight・smallText と字数）、ほかはコマンド版の code と値
     // 本文の場所の限りはテーマの寸法（cfg.theme.metrics）から。bodyRight の限りは既定と違うときだけ値にある（kit/core/llm-fix.mjs が「1240 > 1188」から読む）
-    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT, metrics: METRICS}).forEach(function(f){
+    layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT, overlap: LAYOUT_OVERLAP, metrics: METRICS}).forEach(function(f){
       var a = f.a, code = LEGACY[f.code];
       if (!code) return add(i, f.sev, f.code, a);
       add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);

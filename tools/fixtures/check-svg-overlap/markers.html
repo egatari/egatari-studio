@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="business">
+<head><meta charset="utf-8"><title>重ね字の印（backlog #139）</title></head>
+<body><div id="stage">
+<!-- 有効な印：text 自身か、入れ子を含む祖先の g に data-overlap="ok"。 -->
+<section class="slide noconcl static" id="s-oktext">
+  <h2>文字自身の印</h2>
+  <div class="body"><svg viewBox="0 0 1184 160" width="1184" height="160" font-size="28">
+    <text x="100" y="100">図の字</text>
+    <text data-overlap="ok" x="100" y="100">重ねる字</text>
+  </svg></div>
+</section>
+<section class="slide noconcl static" id="s-okgroup">
+  <h2>祖先のグループの印</h2>
+  <div class="body"><svg viewBox="0 0 1184 160" width="1184" height="160" font-size="28">
+    <text x="100" y="100">図の字</text>
+    <g data-overlap="ok"><g><text x="100" y="100">重ねる字</text></g></g>
+  </svg></div>
+</section>
+<!-- 無効な印の反例：値のない属性・大文字の OK では警告を残す。 -->
+<section class="slide noconcl static" id="s-bare">
+  <h2>値のない印は効かない</h2>
+  <div class="body"><svg viewBox="0 0 1184 160" width="1184" height="160" font-size="28">
+    <text x="100" y="100">図の字</text>
+    <g data-overlap><text x="100" y="100">重ねる字</text></g>
+  </svg></div>
+</section>
+<section class="slide noconcl static" id="s-wrongvalue">
+  <h2>値が違う印は効かない</h2>
+  <div class="body"><svg viewBox="0 0 1184 160" width="1184" height="160" font-size="28">
+    <text x="100" y="100">図の字</text>
+    <text data-overlap="OK" x="100" y="100">重ねる字</text>
+  </svg></div>
+</section>
+</div></body></html>

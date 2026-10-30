@@ -151,6 +151,7 @@ steps.push(
   ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
+  ['test-check-svg-overlap', ['tools/test-check-svg-overlap.mjs', path.join(tmp, 'check-svg-overlap')]],
   // 章の扉の h2（#128）と、字と地のコントラストの警告
   ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
   // 同梱のテーマ（#129）とペンの色（#132）：テーマごとに見本を組み、品質チェック・役割の色のコントラストと色覚の模擬・ペンの 3 色の地の上の比と差・形の断片

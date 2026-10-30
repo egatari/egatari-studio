@@ -45,6 +45,7 @@ DECK.define("m-名前", class extends DECK.MotionElement {
 6. 補間は `DECK.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `DECK.lerp`
 7. 図の中の式は `DECK.svgMath(親, x, y, "TeX", {size, anchor})`、簡単な記号は `DECK.mtext`（`*u*_0`）
 8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
+9. パーツの字は、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG の字どうしの重なりを警告する）。意図して重ねる字だけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切る字の `data-clip` と同じ付け方。パーツ全体には付けない）
 
 ## 3. 確かめる
 
