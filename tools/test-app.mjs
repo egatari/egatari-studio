@@ -30,7 +30,7 @@ import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
-import { testNewDeckFlow } from './test-app-newdeck.mjs';
+import { testNewDeckFlow, checkSkillDownload } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 import { EXAMPLES, exampleRand } from './examples-portable.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
@@ -1458,6 +1458,10 @@ try {
       // プレビューを表示し終えてから（loads は srcdoc を渡した数。iframe の load はその後で、プレビューに focus を移す）
       const shown = () => pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
       await shown();
+      await pt.click('#b-help');
+      await pt.waitForSelector('#help-download-skill');
+      await checkSkillDownload(pt, { lang, selector: '#help-download-skill', ok, base: BASE });
+      await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
       await clickMenuOpen(pt, '#b-filemenu');
       await pt.waitForSelector('#m-file:not([hidden])');
       if (SHOTS) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-menu.png`), clip: { x: 0, y: 0, width: 1000, height: 400 } });
@@ -2054,6 +2058,10 @@ try {
   let ready = false;
   for (let i = 0; i < 100 && !ready; i++) { const fr = p1.frames().find((x) => x.parentFrame() === p1.mainFrame()); try { ready = !!(fr && await fr.evaluate(() => window.DECK && DECK.ready)); } catch { /* 読み込み中 */ } if (!ready) await p1.waitForTimeout(100); }
   ok(ready, 'single file: preview renders from file:// (fonts embedded)');
+  await p1.click('#b-help');
+  await p1.waitForSelector('#help-download-skill');
+  await checkSkillDownload(p1, { lang: 'ja', selector: '#help-download-skill', ok });
+  await clickUntil(p1, '#panel-close', () => p1.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
   // 音声の板：1 ファイル版（file://）では TTS の窓がないので「この PC で作る」は出さず、クラウドと録音を答えにする
   await p1.click('#b-audio');
   await p1.waitForSelector('#dev-audio-how');
@@ -2067,6 +2075,14 @@ try {
   const [dl] = await Promise.all([p1.waitForEvent('download'), clickCommand(p1, '#b-save')]);
   const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
+  // 英語の単体版も、サイトの ZIP を読まずにダウンロードできる。
+  await p1.goto(pathToFileURL(path.join(DIST, 'editor.html')).href + '?lang=en');
+  await p1.waitForSelector('#drop');
+  await p1.evaluate(([b64, ext]) => window.__APP_TEST.openFile({ bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), name: 'skill' + ext }), [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]);
+  await p1.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+  await p1.click('#b-help');
+  await p1.waitForSelector('#help-download-skill');
+  await checkSkillDownload(p1, { lang: 'en', selector: '#help-download-skill', ok });
   await p1.close();
 
   // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
@@ -2134,6 +2150,9 @@ try {
     await ps.click('#examples-list li[data-example="minimal"] button');
     await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: 30000 }).catch(() => {});
     ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
+    await ps.click('#b-help');
+    await ps.waitForSelector('#help-download-skill');
+    await checkSkillDownload(ps, { lang: 'ja', selector: '#help-download-skill', ok, base });
     await ps.close();
   }
 
@@ -2181,6 +2200,10 @@ try {
         await pv.click('#examples-list li[data-example="minimal"] button');
         await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
         ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${cur}/`);
+        await pv.click('#b-help');
+        await pv.waitForSelector('#help-download-skill');
+        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${cur}/` });
+        await clickUntil(pv, '#panel-close', () => pv.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
         // 写しの TTS の窓・試験ページ（lab/）も、その写しの下にある
         ok((await fetch(SB + `v${cur}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
         // 知らせを隠す

@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=736414e27b9c181b -->
+<!-- i18n: pair=RELEASING.md sha256=9be6fd362984ecf3 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -52,7 +52,7 @@
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **リリースの説明**を CHANGELOG の節から作る。説明には従う仕様の版を書く：「Egatari 1.0 WD YYYY-MM-DD に従う」（英語では “Follows Egatari 1.0 Working Draft YYYY-MM-DD”）。例外があれば書く。見本のファイルと編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）：
+7. **リリースの説明**を CHANGELOG の節から作る。説明には従う仕様の版を書く：「Egatari 1.0 WD YYYY-MM-DD に従う」（英語では “Follows Egatari 1.0 Working Draft YYYY-MM-DD”）。例外があれば書く。見本のファイル、両言語の make スキルの ZIP（`npm run release:assets` が作る `egatari-make-X.Y.Z-ja.zip` と `egatari-make-X.Y.Z-en.zip`）、編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）：
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md

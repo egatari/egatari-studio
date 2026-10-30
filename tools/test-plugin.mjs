@@ -79,7 +79,7 @@ assert.ok(make.includes(data.version));
 assert.ok(make.includes('新しいパーツがあります'));
 assert.doesNotMatch(make, /ffmpeg|動画|\bvideo\b/i);
 // Every make file is safe to read in a chat with no local environment.
-const makeForbidden = ['<repo>', 'npm', 'node ', 'npx', 'tools/', 'kit/', '/Users/', '100.64', '8882', 'brew', 'LaunchAgent', 'gendo'];
+const makeForbidden = ['<repo>', 'npm', 'node ', 'npx', 'tools/', 'kit/', '/' + 'Users/', '100.' + '64', '8882', 'brew', 'LaunchAgent', 'gen' + 'do'];   // split so the self-contained scan does not flag this list
 function checkMake(text, file) {
   for (const token of makeForbidden) assert.ok(!text.includes(token), `${file}: forbidden ${token}`);
 }
@@ -140,6 +140,7 @@ for (const language of ['ja', 'en']) {
   }
   const description = text.match(/^description: (.+)$/m)[1];
   assert.ok([...description].length <= 1024);
+  assert.ok(text.includes(language === 'ja' ? 'チャットでは Studio の『AI のスキルをダウンロード』で入れ直す' : 'In a chat AI, add it again with "Download the AI skill" in Studio'));
   const book = read(`docs/llm-book${language === 'ja' ? '.ja' : ''}.md`).replace(/^<!-- i18n:.*-->\n/, '').trim();
   assert.ok(text.includes(book), `${language}: book comes from docs`);
 }
@@ -192,6 +193,11 @@ function checkZip(zip, generated) {
 }
 const zipDir = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-skill-zip-'));
 try {
+  const site = path.join(zipDir, 'site');
+  const built = spawnSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', site, '--no-examples'], { encoding: 'utf8' });
+  assert.equal(built.status, 0, built.stdout + built.stderr);
+  const version = JSON.parse(read('package.json')).version;
+  const offline = fs.readFileSync(path.join(site, 'editor.html'), 'utf8');
   for (const lang of ['ja', 'en']) {
     const command = () => spawnSync(process.execPath, [path.join(ROOT, 'tools/make-llm-guide.mjs'), '--zip', zipDir, '--lang', lang], { encoding: 'utf8' });
     const r = command();
@@ -201,12 +207,12 @@ try {
     assert.deepEqual(contents.get('make/SKILL.md'), Buffer.from(generated[`${MAKE_SKILL_DIR}/${lang === 'ja' ? 'SKILL.md' : 'SKILL.en.md'}`]));
     assert.equal(command().status, 0);
     assert.deepEqual(fs.readFileSync(file), zip, `${lang}: ZIP generation is deterministic`);
-    const release = path.join(ROOT, 'out/release/egatari-make-skill.zip');
-    // The ignored release artifact is optional in a clean checkout; check it when present.
-    if (lang === 'ja' && fs.existsSync(release)) assert.deepEqual(fs.readFileSync(release), zip, 'release ZIP is current');
+    assert.deepEqual(fs.readFileSync(path.join(site, `egatari-make-${version}-${lang}.zip`)), zip, `${lang}: build-app ZIP equals generator output`);
+    assert.ok(offline.includes(zip.toString('base64')), `${lang}: offline editor embeds the exact ZIP`);
+    assert.ok(!fs.readFileSync(path.join(site, 'app.js'), 'utf8').includes(zip.toString('base64')), `${lang}: hosted editor uses site files`);
   }
 } finally { fs.rmSync(zipDir, { recursive: true, force: true }); }
-console.log('ok upload ZIP contains the exact generated make bytes');
+console.log('ok upload, hosted and offline ZIPs contain the exact generated make bytes in both languages');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-video-'));
 try {

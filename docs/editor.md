@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=576cae95ba0b42f1 -->
+<!-- i18n: pair=editor.ja.md sha256=ce3691afc694c0c3 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -62,6 +62,7 @@ A web page that opens a working folder directly and does what the [dev server](d
    | **Preview ▾** | the display modes, one at a time: **Check as a slide show (f)** (also full screen), **Check as a video** (they reload the preview in that mode) · **Show later steps faintly (l)** (on/off for the slide show) · **Check in presenter view (p)** · the note “To present, open the saved .ega.html in a browser” |
 
    A dot (●) after **File ▾** means an Egatari file has unsaved changes.
+   - **Help (?)** also offers **Download the AI skill**, the same language and version as **New…**.
    - **Quality check:** the browser quality checker, a subset of `npm run check` that runs in the preview (overflow, font size, title / conclusion length, missing script, palette contrast). The layout part (overflow and the vertical-layout limits, text cut off by a box or going off the slide, font size in figures, title and conclusion length) is the same code as the command (`kit/core/layout-scan.mjs`). Click a result to go to the slide. It is a hint, not the full quality check: there are no part determinism, timeline, morph or accessibility checks, and the numbers can differ slightly from the command quality checker because the window differs.
    - The built HTML (`out/deck.html`) is no longer exported from the editor; build it with `node kit/build.mjs` on the command line.
    - **File ▾ → Save as…** (working folder): writes the lesson with its source and audio as one Egatari file (editable, `.ega.html`) to give to others; the working folder stays as it is.
@@ -190,7 +191,10 @@ Each time a file is opened for editing, before the first change (the first save 
 
 A first draft can come from a chat AI (claude.ai, Gemini, ChatGPT, …) without a coding tool. The full instructions for the AI (for Chat AI: paid plan) are [authoring-with-llms.md](authoring-with-llms.md) ([日本語](authoring-with-llms.ja.md): the standards, the output format and the standard parts) plus one **series pack** per kind of lesson in [llm-parts/](llm-parts/): `academic`, `business`, `kokugo`, `info` and `social`. Each part belongs to exactly one place (the `series:` line of its README). For a chat AI on a free plan the editor copies a lighter pack with fewer parts (step 4 below). `node tools/make-llm-guide.mjs` generates them from the contract, the part READMEs and `tools/llm-guide/`; `npm test` fails when they are out of date or over a size cap (`PACK_CAP_KB` in `kit/core/llm-pack-assemble.mjs`: free, 40 KB for the common body with one subject and 50 KB with any two; paid, 120 KB. Chat AI: free plan takes two subjects at most, so there is no cap for every subject). `npm run gen` prints the size of each single subject and of the largest pair. Over a cap, it names the pack (plan, language, subject set), the bytes over and its three largest sections. `node kit/llm-pack.mjs --series academic,info --lang en` prints the same text the editor copies for Chat AI: free plan (`--plan paid` for the full pack; `--list` lists the series and their sizes in KB, UTF-8 bytes / 1024; `--help` prints the usage).
 
+Beside **Copy the instructions** in **New…**, **Download the AI skill** offers the make ZIP for the current UI language (ja or en). “Add it to a chat AI such as Claude to make lessons without pasting the instructions”. Add this ZIP to the chat AI, then paste its output into Studio.
+
 - **A chat AI is one way inside three ordinary commands.** The command decides what the output does (a new lesson, inserted slides, or a replacement in the current lesson); there is no choice for it. The words are “output”, “code block” (first introduced as a grey box) and “instructions”, and the buttons are named for what they do (**Create**, **Insert**, **Replace**).
+
   - **New…** (first screen, or **File ▾ → New…**) is the chat-AI way only; it opens the page below directly. Slide templates are in **Insert slide…**; a new working folder is made with `npm run new`
   - **Insert slide…** (**Slide ▾ → Insert slide…**, or **Insert slide ▾** in the slide list) offers **From a template** (the slide templates of the slide list) and **Have a chat AI write it**. New slides go after the selected slide (with the slide list closed and the command chosen from the toolbar, after the slide shown in the preview)
   - **Revise…** (**Slide ▾ → Revise…**, and at the top of the quality check panel) has a chat AI fix the current lesson.
@@ -269,9 +273,11 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 The build also writes the samples as Egatari files to `examples/<name>.ega.html` (`tools/examples-portable.mjs`, about 14 MB together; `--no-examples` leaves them out), and the editor's first screen lists them. They are built from a temporary copy of each sample folder (nothing is written into `examples/`); a sample without `egatari.json` (such as `minimal`, which may be copied as a template) gets a `docId` derived from its name, so every build is the same document.
 
+The build writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` to `dist/` from the make generator. Downloads use these site files; the single file `editor.html` embeds both ZIPs for offline use. Frozen `/vX.Y.Z/` copies and the editor site archive carry the ZIPs with the rest of `dist/`.
+
 ### Release assets
 
-`npm run release:assets` (`tools/release-assets.mjs`) builds the same sample files into `out/release/` with an `examples.json` (name, title, language, slides, size, sha256). It uploads nothing; attach the files to the GitHub release by hand, for example `gh release create v<version> out/release/*.ega.html`.
+`npm run release:assets` (`tools/release-assets.mjs`) builds the same sample files into `out/release/` with an `examples.json` (name, title, language, slides, size, sha256). It also writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` from the make generator. It uploads nothing; attach the files to the GitHub release by hand, for example `gh release create v<version> out/release/*`.
 
 ### Versions (frozen copies)
 

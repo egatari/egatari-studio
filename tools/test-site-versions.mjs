@@ -80,11 +80,13 @@ put(OLD, 'lab/irodori.html', 'lab');
 const NEW = path.join(tmp, 'new');   // 案内を持つ版
 put(NEW, 'index.html', `<!DOCTYPE html><html><head>${csp}</head></html>`);
 put(NEW, 'app.js', `var MARK="${MARK}";`);
+for (const lang of ['ja', 'en']) put(NEW, `egatari-make-0.4.2-${lang}.zip`, Buffer.from([0x50, 0x4b, lang === 'ja' ? 1 : 2]));
 const SITE = path.join(tmp, 'site');
 put(SITE, 'index.html', `<!DOCTYPE html><html><head>${csp}</head></html>`);
 put(SITE, 'app.js', `var MARK="${MARK}"; /* root */`);
 put(SITE, 'version-notice.js', '/* notice */');
 put(SITE, 'examples/minimal.ega.html', 'ex');
+for (const lang of ['ja', 'en']) put(SITE, `egatari-make-0.4.3-${lang}.zip`, Buffer.from([0x50, 0x4b, lang === 'ja' ? 3 : 4]));
 put(SITE, 'v9.9.9/stale.txt', 'left from an earlier assemble');
 const rel = (version, dir) => { const buf = packSite(dir); return { version, buf, body: shaLine(version, sha256(buf)), digest: null }; };
 const logs = [];
@@ -92,6 +94,12 @@ const r = assemble({ site: SITE, current: '0.4.3', releases: [rel('0.4.1', OLD),
 const vj = JSON.parse(fs.readFileSync(path.join(SITE, 'versions.json'), 'utf8'));
 ok(vj.root === '0.4.3' && vj.versions.join() === '0.4.3,0.4.2,0.4.1', 'assemble: versions.json lists the root and every frozen copy, newest first ' + JSON.stringify(vj));
 ok(!fs.existsSync(path.join(SITE, 'v9.9.9')), 'assemble: version folders from an earlier run are removed');
+for (const lang of ['ja', 'en']) {
+  for (const [version, source] of [['0.4.3', SITE], ['0.4.2', NEW]]) {
+    const name = `egatari-make-${version}-${lang}.zip`;
+    ok(fs.readFileSync(path.join(SITE, `v${version}`, name)).equals(fs.readFileSync(path.join(source, name))), `assemble: ${name} stays byte-identical in the frozen copy`);
+  }
+}
 ok(fs.readFileSync(path.join(SITE, 'v0.4.3', 'app.js'), 'utf8').includes('root') && fs.existsSync(path.join(SITE, 'v0.4.3', 'examples', 'minimal.ega.html')) && !fs.existsSync(path.join(SITE, 'v0.4.3', 'versions.json')),
   'assemble: /v<current>/ is a copy of the new build (the release asset of the same version is not used)');
 const oi = fs.readFileSync(path.join(SITE, 'v0.4.1', 'index.html'), 'utf8'), oe = fs.readFileSync(path.join(SITE, 'v0.4.1', 'editor.html'), 'utf8');

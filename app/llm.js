@@ -863,7 +863,9 @@ export function setupLlm(app) {
     } });
     // 答えた 1 行：プランと使う分野・道具と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
     const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], ...pick().subjects.map(subjectName), ...toolsOn().map(toolName), X.copiedShort].join(X.listSep), onChange);
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, seriesSet, seriesHint, guess, toolsSet, maxNote, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+    const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
+    const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, seriesSet, seriesHint, guess, toolsSet, maxNote, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, skill, total]), skillHint], [summary, copyMsg]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 

@@ -264,6 +264,8 @@ const ja = {
   themeZipRefused: (z, entry, why) => `「${z}」は読み込みませんでした。中の「${entry}」が${why === 'link' ? '別の場所を指すリンク（シンボリックリンク）です。リンクでない本物のファイルを入れて圧縮し直してください。' : why === 'name' ? 'テーマの名前に使えないフォルダの名前です。フォルダの名前を英小文字・数字・- だけ（先頭は英小文字）にして圧縮し直してください。' : why === 'dup' ? 'ほかのテーマと同じ名前です。どちらか 1 つだけを入れて圧縮し直してください。' : 'ZIP ファイルの外を指す名前（..）や絶対パスです。テーマのフォルダを圧縮し直してください。'}`,
 
   helpTitle: '使い方',
+  downloadAiSkill: 'AI のスキルをダウンロード',
+  downloadAiSkillHint: 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます',
   helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた版ではない）'),
   help: [
     ['スライドを直す', ['<kbd>e</kbd> か「編集 (e)」で編集モード。文字の上をダブルクリックすると、エディタの欄にその部分の HTML（deck.html）が出ます。⌘/Ctrl+Enter か「保存」で保存',
@@ -626,6 +628,8 @@ const en = {
   themeZipRefused: (z, entry, why) => `“${z}” was not loaded: “${entry}” ${why === 'link' ? 'is a link to another place (symbolic link). Put the real files in and compress it again.' : why === 'name' ? 'is in a folder whose name cannot be a theme name. Rename the folder to lowercase letters, digits and - (starting with a letter) and compress it again.' : why === 'dup' ? 'has the same name as another theme. Keep only one of them and compress it again.' : 'points outside the ZIP file (..) or is an absolute path. Compress the theme folder again.'}`,
 
   helpTitle: 'Help',
+  downloadAiSkill: 'Download the AI skill',
+  downloadAiSkillHint: 'Add it to a chat AI such as Claude to make lessons without pasting the instructions',
   helpFormat: (snap) => (snap ? `Format: Egatari 1.0 Working Draft ${snap.replace(/^wd-/, '')}` : 'Format: Egatari 1.0 (no dated snapshot)'),
   help: [
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit (e)” for edit mode. Double-click text to open that part of the HTML (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',

@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=df4221d040e88210 -->
+<!-- i18n: pair=with-claude.md sha256=6e89cebd34467160 -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -28,9 +28,9 @@
 
 ### チャットの Claude・Cowork
 
-`egatari-make-skill.zip` をアップロードして make だけを入れます。開発者は `node tools/make-llm-guide.mjs --zip out/release` で ZIP を作れます。中の `make/SKILL.md` と references は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容です。
+Studio の **新規作成…** の **指示をコピー** の横、または **使い方（?）** の **AI のスキルをダウンロード** を押します。ダウンロードした `egatari-make-<version>-ja.zip` または `egatari-make-<version>-en.zip` をアップロードして make だけを入れます。Studio の画面の言語と動いている版に合う ZIP を、Studio 自身のサイトから渡します。単体のオフライン版のエディタにも両言語を入れています。開発者は `node tools/make-llm-guide.mjs --zip out/release --lang ja`（または `--lang en`）でも ZIP を作れます。中の `make/SKILL.md` と references は、`plugins/egatari/skills/make/` と同じ生成元から作ります。
 
-コマンドは要りません。2 つの囲みを Studio に貼り付けます。Studio の指示書とスキルの版が違えば、新しい版の make を入れ直します。Studio から版付き ZIP をダウンロードする機能は、この版にはまだありません。
+コマンドは要りません。2 つの囲みを Studio に貼り付けます。Studio の指示書とスキルの版が違えば、Studio の **AI のスキルをダウンロード** で入れ直します。
 
 書き終えたら、egatari-studio が入っていれば studio スキルで品質チェックと組み立てをします。それ以外は Chrome か Edge の <https://studio.egatari.org/> で作業フォルダを開きます。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使います。
 

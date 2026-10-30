@@ -393,7 +393,7 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では \`/plugin update egatari@egatari\`。
-チャットでは Studio から make スキルをダウンロードして入れ直す。
+チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 
@@ -438,7 +438,7 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use \`/plugin update egatari@egatari\`.
-In chat, download the make skill again from Studio and reinstall it.
+In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 

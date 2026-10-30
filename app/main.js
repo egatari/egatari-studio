@@ -1117,6 +1117,7 @@ function showHelp() {
   const kinds = el('table', { id: 'help-kinds', cls: 'kinds' }, [['kindFolder', 'kindFolderText'], ['kindFile', 'kindFileText'], ['kindPlay', 'kindPlayText'], ['kindBuilt', 'kindBuiltText']]
     .map(([k, t]) => el('tr', {}, [el('th', { scope: 'row', text: T[k] }), el('td', { text: T[t] })])));
   openPanel(T.helpTitle, [
+    el('button', { type: 'button', id: 'help-download-skill', text: T.downloadAiSkill, onclick: downloadAiSkill }),
     el('h3', { text: T.kindsTitle }), kinds,
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
     el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）
@@ -1134,6 +1135,15 @@ function download(name, text) {
   const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/html' })), download: name });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+function downloadAiSkill() {
+  const lang = EN ? 'en' : 'ja', name = `egatari-make-${RES.version}-${lang}.zip`;
+  // 配信版は同じサイトの相対パス。単体版は埋め込んだ ZIP（file:// でも外へ繋がない）。
+  const packed = RES.makeSkillZips?.[lang];
+  const href = packed ? URL.createObjectURL(new Blob([Uint8Array.from(atob(packed), (c) => c.charCodeAt(0))], { type: 'application/zip' })) : name;
+  const a = el('a', { href, download: name });
+  document.body.append(a); a.click(); a.remove();
+  if (packed) setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
 const portableTypes = () => [{ description: T.portableType, accept: { 'text/html': [FORMAT.FILE_EXT, '.html'] } }];
 // 名前を付けて保存：ファイルを選ぶ画面（Chrome / Edge）か、なければダウンロード。返すもの：書いたハンドル（ダウンロードなら null）
@@ -2039,7 +2049,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

@@ -22,6 +22,7 @@ import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
 import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
 import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
+import { generate, makeSkillZip } from './make-llm-guide.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -89,6 +90,8 @@ for (const f of FONT_LIST) {
 }
 const hints = fs.readFileSync(rel('server', 'hints.js'), 'utf8');
 const version = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version || '';
+// 配信版と単体のオフライン版で、同じ生成元・同じ版のスキルを渡す。
+const makeSkillZips = Object.fromEntries(['ja', 'en'].map((lang) => [lang, makeSkillZip(generate({ skillLang: lang }).files)]));
 for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')], ['kit/core/layout-scan.mjs', fs.readFileSync(rel('kit', 'core', 'layout-scan.mjs'), 'utf8')]]) {
   // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない（layout-scan は仲立ちに包んで入れる）
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
@@ -107,7 +110,7 @@ for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] 
 const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
 const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
 const hostedOnly = (v) => v.startsWith('/repo/fonts/') && !SINGLE_FONTS.some((p) => v.startsWith(`/repo/fonts/${p}/`));
-const resourcesSingle = { ...resources, text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
+const resourcesSingle = { ...resources, makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
@@ -165,6 +168,8 @@ const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egat
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
+for (const f of fs.readdirSync(ED)) if (/^egatari-make-.*-(ja|en)\.zip$/.test(f)) fs.rmSync(path.join(ED, f));
+for (const [lang, bytes] of Object.entries(makeSkillZips)) fs.writeFileSync(path.join(ED, `egatari-make-${version}-${lang}.zip`), bytes);
 for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);

@@ -1,4 +1,5 @@
 ### Added
+- Offer “Download the AI skill” in Studio’s New dialog and Help in Japanese and English; serve matching generated ZIPs from the running site, embed them in the offline editor, preserve them in frozen copies, and attach both language ZIPs to releases.
 - Distribute two entries in the egatari marketplace: a generated light egatari plugin with only make and no Node requirement, and egatari-studio with the repository tools and one studio skill (#126).
 - Generate egatari-make-skill.zip from the same make content using only Node built-ins; verify the plugin payloads and ZIP contents against the generator.
 - Add a CLI entry point for exporting working folders or single files with existing audio as video, and a regression check for personal environment references in plugin documentation.
