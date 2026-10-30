@@ -15,7 +15,7 @@ import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
-import { readLock, vendorDir, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
+import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
 import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
@@ -779,6 +779,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const files = dict();
   const compDir = vendorDir(P, env.ROOT), themeDir = P.join(env.ROOT, 'themes'), vThemeDir = themesVendorDir(P, env.ROOT);
   const regComp = new Map(), regTheme = new Map(), regThemeVer = new Map();
+  const componentLock = readLock(env0, env0.ROOT);
+  const componentDirs = Object.entries(r.stats.componentVersions || {}).map(([name, version]) => ({ name, version, dir: resolveComponent(P, env.ROOT, componentLock, name, version) }));
   const userThemeRoots = new Map();   // 1 ファイルに入れる利用者のテーマのフォルダ → その利用者のテーマのフォルダ（LICENSE* を足すため）
   for (const p of [...reads].sort()) {
     if (inDeck(p)) {
@@ -788,10 +790,12 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (why) { warnings.push(`${LOG}: "${rp}" was read by the build but is excluded (${why}); the archive cannot rebuild it`); continue; }
       files[rp] = readBytesVia(env, p);
     } else if (env.within(p, compDir)) {
-      // vendor/components/<名前>/<版>/…：組み立てが選んだ版（1 つの部品は 1 つの版だけ読む）
-      const [name, version] = P.relative(compDir, p).split(P.sep);
-      if (!regComp.has(name)) regComp.set(name, { version, files: new Map() });
-      regComp.get(name).files.set(P.relative(P.join(compDir, name, version), p).split(P.sep).join('/'), readBytesVia(env, p));
+      // 場所から版を推測しない。同じ写しを指す版でも、組み立てが選んだ版を記録する。
+      for (const { name, version, dir } of componentDirs) {
+        if (!dir || !env.within(p, dir)) continue;
+        if (!regComp.has(name)) regComp.set(name, { version, files: new Map() });
+        regComp.get(name).files.set(P.relative(dir, p).split(P.sep).join('/'), readBytesVia(env, p));
+      }
     } else if (env.within(p, vThemeDir)) {
       // vendor/themes/<名前>/<版>/…：同梱のテーマの前の版の写し（教材が記録した版で組んだ。kit/core/themes-lock.mjs）。今の版と同じ名前で記録する
       const [name, version] = P.relative(vThemeDir, p).split(P.sep);

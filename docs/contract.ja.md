@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=49611f06edee5e3f -->
+<!-- i18n: pair=contract.md sha256=c9d29ed94acaac91 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -53,7 +53,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - データ：検算したスクリプトが出した数だけを使う。パーツの子に `<script type="application/json">{{JSON:file.json}}</script>` を置き、`this.data` で読む（直下の子にちょうど 1 つ。2 つ以上なら `this.data` は `null` で、スライドは独自のコードを持つものとして扱う）
 - データの形は `static shape` で宣言する（`kit/shape.js`：JSON Schema の小さな部分集合 `{schema, example, note?}`。文で書くパーツは `{text: true, example}`、子の `<a href>` は `{links: true, example}`。json の属性は `static props` に `shape` を持てる）。実行系はステップを数える前に確かめる：合わないとき、または `mount`・`render` が例外を投げたときは描かず、その場に何が悪いかを書いた代わり（`.m-error`）を出し、ステップの数は `steps` 属性（なければ 0）、問題は `DECK.componentErrors` へ（品質チェックがコマンドでもブラウザでも読む。スタックは出さない）。指示のパーツの一覧に形と例が出る
-- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
+- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/sha256/<hash>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
 - 版：組み立てはパーツライブラリのパーツごとに、教材に固定した版（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合う版。作業フォルダでは `egatari.json` の `components`（`{<名前>: <版>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使った版を書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録の版を書く）を使い、なければ `components.lock.json` の既定の版を使う。パーツライブラリが取り下げた版は `components.lock.json` の `yanked`（`{<版>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げた版を固定した・記録した教材は、その版のままで組み、警告 `yanked: m-<名前> <版> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えの版に黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースの版、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、版を引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8）は Studio の実行系にあり、パーツではない
 
 ## 4. 台本（narration.md）

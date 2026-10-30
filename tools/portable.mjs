@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { readPortable, manifestFromAudio, FormatError, RE, LIMITS, folderConfig, parseJsonStrict, exportPortable, exportedState } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { updateConfig } from '../kit/core/config-file.mjs';
-import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
+import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, resolveComponent, parseLock, versionForSha } from '../kit/core/components-lock.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, themeVersionForSha, themeUpdate, themePinnedWarning } from '../kit/core/themes-lock.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
@@ -175,7 +175,7 @@ export function registryWarnings(index, root = ROOT) {
     const known = !!lock && Object.prototype.hasOwnProperty.call(lock.components, c.name);
     const v = known ? versionForSha(lock, c.name, c.sha256, c.version) : null;
     let bytes = null;
-    if (v) { try { bytes = readContained(regDir, path.join(regDir, c.name, v, 'index.js'), null, { max: READ_LIMITS.component }); } catch { bytes = null; } }
+    if (v) { try { bytes = readContained(regDir, path.join(resolveComponent(path, root, lock, c.name, v), 'index.js'), null, { max: READ_LIMITS.component }); } catch { bytes = null; } }
     if (!known) warnings.push(`component ${c.tag} (${c.name} ${c.version}) is not in this registry`);
     else if (!v) warnings.push(`component ${c.tag}: this registry has a different version (hash differs from ${c.version})`);
     else if (bytes === null) warnings.push(`component ${c.tag} (${c.name} ${v}) is in ${LOCK_FILE} but not in vendor/components`);

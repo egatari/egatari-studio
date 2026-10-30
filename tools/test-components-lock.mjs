@@ -12,13 +12,13 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
-import { parseLock, lockProblems, yankedInfo, replacementPlan, pickVersion, versionForSha, pinsForIndex, configPins } from '../kit/core/components-lock.mjs';
-import { verifyRelease, applyRelease, checkVendor } from './components-update.mjs';
+import { parseLock, lockProblems, resolveComponent, yankedInfo, replacementPlan, pickVersion, versionForSha, pinsForIndex, configPins } from '../kit/core/components-lock.mjs';
+import { verifyRelease, applyRelease, checkVendor, deduplicateVendor, contentHash } from './components-update.mjs';
 import { writeTarGz } from './components-tar.mjs';
 import { nodeEnv } from '../kit/build.mjs';
 import * as core from '../kit/core/build-core.mjs';
 import { exportPortable, readPortable } from '../kit/core/portable.mjs';
-import { ROOT } from './vendor-components.mjs';
+import { ROOT, appComponentFiles, vendorComponents, componentLicenseFiles } from './vendor-components.mjs';
 import { unpackPins, registryWarnings } from './portable.mjs';
 import { normalizeEol, toCrlf, identityBytes } from '../kit/core/identity-hash.mjs';
 import { registryProblems } from '../app/portable-ws.js';
@@ -75,27 +75,28 @@ function makeRelease(version, comps, { extra = null, license = 'MIT License\n', 
     files: Object.fromEntries(entries.filter(([p]) => !extra || p !== extra[0]).map(([p, b]) => [p, sha(b)])) };
   return { gz, manifest: enc(JSON.stringify(manifest)), m: manifest };
 }
+const stored = (root, name, version, file = 'index.js') => path.join(resolveComponent(path, root, parseLock(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8')), name, version), file);
 const R = path.join(tmp, 'root');
 fs.mkdirSync(R, { recursive: true });
 const V1 = { bars: { 'index.js': '// bars 1.0.0\n', 'README.md': '---\nname: m-bars\n---\n' }, kpi: { 'index.js': '// kpi 1.0.0\n' } };
 const V2 = { bars: { 'index.js': '// bars 1.1.0\n', 'README.md': '---\nname: m-bars\n---\n' } };
-await t('update: a release is checked, written to vendor/components/<name>/<version>/ and pinned', () => {
+await t('update: a release is checked, written once by content hash and pinned', () => {
   const r1 = makeRelease('1.0.0', V1);
   const rel = verifyRelease('v1.0.0', r1.manifest, r1.gz);
   const out = applyRelease('v1.0.0', rel, { root: R });
   assert.deepEqual(out.added.sort(), ['bars', 'kpi']);
-  assert.equal(fs.readFileSync(path.join(R, 'vendor/components/bars/1.0.0/index.js'), 'utf8'), '// bars 1.0.0\n');
+  assert.equal(fs.readFileSync(stored(R, 'bars', '1.0.0'), 'utf8'), '// bars 1.0.0\n');
   assert.equal(fs.readFileSync(path.join(R, 'vendor/components/LICENSE'), 'utf8'), 'MIT License\n');
   const lock = JSON.parse(fs.readFileSync(path.join(R, 'components.lock.json'), 'utf8'));
   assert.equal(lock.tag, 'v1.0.0'); assert.equal(lock.tarballSha256, r1.m.tarball.sha256);
-  assert.deepEqual(lock.components.bars, { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': sha(enc(V1.bars['index.js'])) }, crlfSha256: { '1.0.0': sha(toCrlf(enc(V1.bars['index.js']))) } });
+  assert.deepEqual(lock.components.bars, { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': sha(enc(V1.bars['index.js'])) }, content: { '1.0.0': contentHash(new Map(Object.entries(V1.bars).map(([p, s]) => [p, enc(s)]))) }, crlfSha256: { '1.0.0': sha(toCrlf(enc(V1.bars['index.js']))) } });
   assert.deepEqual(checkVendor(R).filter((x) => !/source is/.test(x)), []);
 });
 await t('update: a newer release keeps the old version; components not in it keep their default; re-importing is a no-op', () => {
   const r2 = makeRelease('1.1.0', V2);
   const out = applyRelease('v1.1.0', verifyRelease('v1.1.0', r2.manifest, r2.gz), { root: R });
   assert.deepEqual(out.added, ['bars']); assert.deepEqual(out.kept, ['kpi']);
-  assert.ok(fs.existsSync(path.join(R, 'vendor/components/bars/1.0.0/index.js')), '1.0.0 kept');
+  assert.ok(fs.existsSync(stored(R, 'bars', '1.0.0')), '1.0.0 kept');
   const lock = JSON.parse(fs.readFileSync(path.join(R, 'components.lock.json'), 'utf8'));
   assert.deepEqual(lock.components.bars.versions, ['1.0.0', '1.1.0']);
   assert.equal(lock.components.bars.default, '1.1.0');
@@ -128,7 +129,7 @@ await t('update: refuses a tampered tarball, a file not in the manifest, a wrong
   const lock = JSON.parse(fs.readFileSync(path.join(R, 'components.lock.json'), 'utf8'));
   delete lock.releases['v1.1.0']; fs.writeFileSync(path.join(R, 'components.lock.json'), JSON.stringify(lock));
   assert.throws(() => applyRelease('v1.1.0', verifyRelease('v1.1.0', moved.manifest, moved.gz), { root: R }), /never replaced/);
-  assert.equal(fs.readFileSync(path.join(R, 'vendor/components/bars/1.1.0/index.js'), 'utf8'), '// bars 1.1.0\n', 'nothing written');
+  assert.equal(fs.readFileSync(stored(R, 'bars', '1.1.0'), 'utf8'), '// bars 1.1.0\n', 'nothing written');
 });
 await t('update: unsafe paths in the tarball are refused', () => {
   assert.throws(() => writeTarGz([['../x', enc('1')]]), /unsafe path/);
@@ -146,7 +147,7 @@ await t('yanked: the lock records the manifest\'s yanked versions and replacemen
   applyRelease('v1.1.0', verifyRelease('v1.1.0', b.manifest, b.gz), { root: Y });
   const lock = JSON.parse(fs.readFileSync(path.join(Y, 'components.lock.json'), 'utf8'));
   assert.deepEqual(lock.yanked, YK);
-  assert.ok(fs.existsSync(path.join(Y, 'vendor/components/bars/1.0.0/index.js')), 'the yanked version is kept, not deleted');
+  assert.ok(fs.existsSync(stored(Y, 'bars', '1.0.0')), 'the yanked version is kept, not deleted');
   assert.deepEqual(lockProblems(lock), []); assert.deepEqual(checkVendor(Y).filter((x) => !/source is/.test(x)), []);
   assert.deepEqual(yankedInfo(lock, '1.0.0'), YK['1.0.0']); assert.equal(yankedInfo(lock, '1.1.0'), null);
   const c = makeRelease('1.2.0', V2K, { yanked: {} });
@@ -174,7 +175,7 @@ const RB = path.join(tmp, 'buildroot');
 fs.cpSync(path.join(ROOT, 'themes'), path.join(RB, 'themes'), { recursive: true });
 const realLock = parseLock(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8'));
 const barsV = realLock.components.bars.default;
-const barsJs = fs.readFileSync(path.join(ROOT, 'vendor/components/bars', barsV, 'index.js'));
+const barsJs = fs.readFileSync(stored(ROOT, 'bars', barsV));
 const newJs = Buffer.concat([Buffer.from('// test version 9.9.9\n'), barsJs]);
 fs.mkdirSync(path.join(RB, 'vendor/components/bars', barsV), { recursive: true });
 fs.mkdirSync(path.join(RB, 'vendor/components/bars/9.9.9'), { recursive: true });
@@ -260,6 +261,73 @@ await t('identity hash: an old single file whose component hash was taken on CRL
   assert.equal(registryProblems(old, b.index).length, 1, 'without the equivalence it would be a different component');
   assert.deepEqual(registryWarnings(old, RB), [], 'npm run portable -- unpack finds it');
   assert.deepEqual(unpackPins(old, RB), { bars: barsV });
+});
+
+await t('migration: an old pinned lesson keeps byte-identical content, version and trusted status; rerunning is a no-op', async () => {
+  // RB deliberately still uses the legacy layout up to this point.
+  const before = fs.readFileSync(stored(RB, 'bars', barsV));
+  const built = core.build(env, src, { componentVersions: { bars: barsV } });
+  const portable = await exportPortable(env, src, { componentVersions: { bars: barsV } });
+  // Give the fixture the release provenance required by the offline CI check.
+  const f = path.join(RB, 'components.lock.json'), lock = JSON.parse(fs.readFileSync(f));
+  Object.assign(lock, { source: 'https://github.com/egatari/components', tag: 'v9.9.9', tarballSha256: A, releases: { 'v9.9.9': { tarballSha256: A } } });
+  fs.writeFileSync(f, JSON.stringify(lock));
+  fs.writeFileSync(path.join(RB, 'vendor/components/LICENSE'), 'MIT');
+  assert.deepEqual(deduplicateVendor(RB), { versions: 2, objects: 2 });
+  assert.deepEqual(fs.readFileSync(stored(RB, 'bars', barsV)), before);
+  const after = core.build(env, src, { componentVersions: { bars: barsV } });
+  assert.deepEqual(after.trusted, built.trusted);
+  assert.equal(after.html, built.html);
+  assert.deepEqual(after.stats.codeReasons, built.stats.codeReasons);
+  const rebuilt = await exportPortable(env, src, { carry: portable.index });
+  assert.deepEqual(rebuilt.index.components, portable.index.components);
+  assert.deepEqual(registryWarnings(portable.index, RB), []);
+  const lockBytes = fs.readFileSync(f);
+  deduplicateVendor(RB);
+  assert.deepEqual(fs.readFileSync(f), lockBytes);
+  assert.deepEqual(checkVendor(RB), []);
+});
+
+await t('store: identical folders share; README, demo, CSS, nested files and licenses participate in the hash', () => {
+  const root = path.join(tmp, 'share');
+  const files = { 'index.js': '// shared\n', 'README.md': 'readme', 'demo.html': '<p>demo</p>', 'style.css': 'p{}', 'data/a.txt': 'a', 'OFL.txt': 'license' };
+  const put = (v, f) => { const r = makeRelease(v, { bars: f }); applyRelease(`v${v}`, verifyRelease(`v${v}`, r.manifest, r.gz), { root }); };
+  put('1.0.0', files); put('1.1.0', files);
+  assert.equal(stored(root, 'bars', '1.0.0'), stored(root, 'bars', '1.1.0'));
+  let i = 2;
+  for (const f of Object.keys(files).filter((f) => f !== 'index.js')) {
+    const v = `1.${i++}.0`; put(v, { ...files, [f]: files[f] + ' changed' });
+    assert.notEqual(stored(root, 'bars', v), stored(root, 'bars', '1.0.0'), f);
+  }
+  const bundled = appComponentFiles(root);
+  assert.equal(bundled.length, 7, 'lock and six distinct content folders');
+  assert.equal(new Set(bundled.map(([p]) => p)).size, bundled.length);
+  assert.ok(componentLicenseFiles(root).every(([p]) => p.includes('/sha256/')));
+  assert.ok(vendorComponents(root)[0].dir.includes(path.join('components', 'sha256')));
+  assert.deepEqual(checkVendor(root), []);
+  const readme = stored(root, 'bars', '1.0.0', 'README.md');
+  fs.appendFileSync(readme, 'tampered');
+  assert.ok(checkVendor(root).some((e) => /content hash/.test(e)), 'CI detects auxiliary file tampering');
+  fs.writeFileSync(readme, files['README.md']);
+  const extra = path.join(root, 'vendor/components/sha256', 'f'.repeat(64));
+  fs.mkdirSync(extra);
+  assert.ok(checkVendor(root).some((e) => /not in components.lock/.test(e)), 'CI detects unreferenced objects');
+  fs.rmSync(extra, { recursive: true });
+  const index = stored(root, 'bars', '1.0.0'), outside = path.join(tmp, 'outside.js');
+  fs.writeFileSync(outside, files['index.js']); fs.unlinkSync(index); fs.symlinkSync(outside, index);
+  assert.ok(checkVendor(root).some((e) => /symbolic link/.test(e)));
+  assert.ok(registryWarnings({ components: [{ tag: 'm-bars', name: 'bars', version: '1.0.0', sha256: sha(enc(files['index.js'])), source: 'registry' }] }, root).some((e) => /not in vendor/.test(e)));
+});
+
+await t('lock: content mappings reject missing versions, extra versions and unsafe hashes', () => {
+  for (const content of [{}, { '1.0.0': A }, { '1.0.0': '../escape', '1.1.0': B }, { '1.0.0': A, '1.1.0': B, '9.9.9': A }]) {
+    const lock = structuredClone(LOCK); lock.components.bars.content = content;
+    assert.ok(lockProblems(lock).some((e) => /content/.test(e)));
+  }
+  const lock = structuredClone(LOCK); lock.components.bars.content = { '1.0.0': '../escape', '1.1.0': B };
+  assert.equal(resolveComponent(path, R, lock, 'bars', '1.0.0'), null);
+  assert.equal(resolveComponent(path, R, LOCK, '../bars', '1.0.0'), null);
+  assert.equal(resolveComponent(path, R, LOCK, 'bars', '9.9.9'), null);
 });
 
 // ---------------------------------------------------------------- 4

@@ -28,9 +28,9 @@ vendor/components/LICENSE). Each part's licence is in the release manifest
 (vendor/components/manifest.json, "license"; MIT when absent). m-kakijun (components v1.11.0 and
 later) is "MIT AND OFL-1.1": the stroke outlines and centre lines embedded in its index.js, between
 "BEGIN OFL-1.1 data" and "END OFL-1.1 data", are derived from strokesvg (Klee One) and licensed
-under the SIL Open Font License 1.1 (vendor/components/kakijun/<version>/OFL.txt,
-LICENSE-strokesvg.txt and strokes-CHANGES.md); the rest of the part is MIT. The hosted editor
-ships these files next to the app (vendor/components/kakijun/<version>/), and lessons and
+under the SIL Open Font License 1.1 (vendor/components/sha256/<hash>/OFL.txt,
+LICENSE-strokesvg.txt and strokes-CHANGES.md; components.lock.json maps each version to its hash); the rest of the part is MIT. The hosted editor
+ships these files next to the app (vendor/components/sha256/<hash>/), and lessons and
 Egatari files that use m-kakijun carry its index.js, whose stroke data keeps the licence note
 ("_license").
 This repository contains no institutional logos. A theme added by a user (in a deck's

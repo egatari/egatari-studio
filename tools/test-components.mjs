@@ -10,6 +10,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile, execFileSync } from 'node:child_process';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
+import assert from 'node:assert/strict';
+import { parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 
@@ -26,6 +28,12 @@ const shard = hi >= 0 ? args.splice(hi, 2)[1].match(/^(\d+)\/(\d+)$/) : null;
 if (hi >= 0 && (!shard || +shard[1] < 1 || +shard[1] > +shard[2])) { console.error('--shard must be i/n with 1 <= i <= n'); process.exit(2); }
 const outRoot = shotsRoot || fs.mkdtempSync(path.join(os.tmpdir(), 'test-components-'));
 const all = vendorComponents().filter((c) => fs.existsSync(path.join(c.dir, 'demo.html')));
+const lock = parseLock(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8'));
+for (const { name, version, dir } of all) {
+  assert.equal(dir, resolveComponent(path, ROOT, lock, name, version));
+  assert.ok(fs.existsSync(path.join(dir, 'README.md')) && fs.existsSync(path.join(dir, 'index.js')), `${name}: demo, docs and code resolve together`);
+}
+
 for (const n of args) if (!all.some((c) => c.name === n)) { console.error(`no demo for ${n} in vendor/components (default version)`); process.exit(2); }
 const picked = args.length ? all.filter((c) => args.includes(c.name)) : all;
 // 組への分け方：名前の順に並べて、続いた範囲で n 等分（部品が増えても、ほかの組の部品が動くのは境目のあたりだけ）
