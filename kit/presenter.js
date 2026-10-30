@@ -19,6 +19,15 @@ var L = DECK.ja === false
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
   var opener = window.opener;
+  // body を置き換える前に archive を読む。台本の表示用の文は公開出力と共有し、指示だけここで補う。
+  var script = null;
+  var source = DECK.scriptSource ? DECK.scriptSource() : Promise.resolve(null);
+  source.then(function(text){
+    if (typeof text !== "string" || !DECK.Narration) return;
+    script = Object.create(null);
+    DECK.Narration.parseNarration(text).forEach(function(s){ script[s.slideKey + ":" + s.stepKey] = s.turns; });
+    update();
+  }).catch(function(){});
   document.documentElement.classList.add("presenter");
   var base = location.href.replace(/[?#].*$/, "");
   var q = location.search.replace(/[?&]presenter=1/, "").replace(/^&/, "?");
@@ -69,6 +78,7 @@ DECK.presenterView = function(){
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
     "#pv-text .ai{font-size:12px;color:#aaa;margin:0 0 6px}" +
     "#pv-text p{margin:0 0 10px;font-size:22px;line-height:1.6}#pv-text .role{color:#9cf;font-size:14px;margin-right:6px}" +
+    "#pv-text .note{color:#f2cf86;font-size:.85em;font-style:italic;white-space:pre-wrap}@media print{#pv-text .note{display:none!important}}" +
     "#pv-text .next{color:#888}#pv-text .next p{font-size:18px}" +
     "#pv header button{height:34px}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
     "#pv .pv-tools{display:flex;gap:4px}" +
@@ -102,11 +112,17 @@ DECK.presenterView = function(){
   }
   function send(cmd, extra){ if (opener && !opener.closed) opener.postMessage(Object.assign({type: "deck-cmd", cmd: cmd}, extra || {}), "*"); }
   function notes(key){
+    if (script && script[key]) return script[key];
     var p = key.lastIndexOf(":"), sk = key.slice(0, p), stp = key.slice(p + 1);
     return ((DECK.NARRATION[sk] || {})[stp]) || [];
   }
   function html(turns){
-    return turns.map(function(t){ return "<p>" + (t.role === "novice" ? '<span class="role">Novice</span>' : "") + esc(t.text) + "</p>"; }).join("");
+    return turns.map(function(t){
+      var text = t.raw !== undefined && DECK.Narration ? DECK.Narration.presenterParts(t.raw).map(function(p){
+        return p.note !== undefined ? '<span class="note">[' + esc(p.note) + "]</span>" : esc(p.text);
+      }).join("") : esc(t.text);
+      return "<p>" + (t.role === "novice" ? '<span class="role">Novice</span>' : "") + text + "</p>";
+    }).join("");
   }
   function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; }); }
   function update(){

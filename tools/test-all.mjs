@@ -123,6 +123,7 @@ const steps = [
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
   ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
   // 発表者ビューから抜けること：本体の p・発表者ビューの Esc と p・閉じるのボタン・全画面のときは全画面をやめるだけ・「今の画面」からの Esc と p・フォーカスがないときの覆い（組んだデッキと編集アプリ）
+  ['test-notes-browser', ['tools/test-notes.mjs', '--browser']],
   ['test-presenter-exit', ['tools/test-presenter-exit.mjs', path.join(tmp, 'presenter-exit')]],
   // npm run new の雛形（日本語・英語）を一時フォルダに作り、組んで検査する（エラー 0）
   ...['ja', 'en'].flatMap((l) => [

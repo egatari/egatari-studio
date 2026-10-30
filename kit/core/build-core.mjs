@@ -714,7 +714,7 @@ export function classicModule(src, name) {
 
 // 実行系に入れる kit/core の ES モジュールのうち、export が複数のもの（import なし・export function / export const だけ）。
 // 即時関数の中で読み、export したものを DECK.<name> の object に入れる（読み上げで聞く：kit/tools.js が使う。format spec §5.6）
-export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud' });
+export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud', 'core/narration-parse.mjs': 'Narration' });
 export function classicNamespace(src, name) {
   const s = String(src);
   const names = [...s.matchAll(/^export\s+(?:function|const)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
@@ -885,7 +885,8 @@ export function build(env0, srcPath, opts = {}) {
   // 口述原稿・音声・秒数の調整
   const narrPath = P.join(deckDir, 'narration.md');
   if (env.exists(narrPath) && !inDeck(narrPath)) warn.push('refused: narration.md が作業フォルダの外を指している（読まない）');
-  const segs = env.exists(narrPath) && !inDeck(narrPath) ? [] : (env.exists(narrPath) ? parseNarration(env.readText(narrPath)) : Object.assign([], { warnings: [] }));
+  const narrSource = env.exists(narrPath) && inDeck(narrPath) ? env.readText(narrPath) : '';
+  const segs = env.exists(narrPath) && !inDeck(narrPath) ? [] : (env.exists(narrPath) ? parseNarration(narrSource) : Object.assign([], { warnings: [] }));
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
   // 鍵がどのスライドにも合わない節（## 見出し）。段階のない節も知らせる
@@ -952,6 +953,8 @@ export function build(env0, srcPath, opts = {}) {
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scriptList = [
+    // 通常の build の原稿の控え。持ち運べる形式は索引の archive にだけ原稿を持つ。
+    !opts.runtimePrefix && narrSource.includes('{note:') ? j('studio-script-source', narrSource) : '',
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
     j('deck-meta', opts.deckMeta || { version: env.version }),
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
