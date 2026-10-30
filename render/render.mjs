@@ -4,7 +4,8 @@
 //
 // - 画面は DECK.seek(i, k, t) だけで描く（docs/contract.md §1）。仮想の時刻 t = f/fps でコマを撮る
 // - 動きのある区間 [0, motion)（motion = max(anim, 注目の演出の終わり)）だけを fps で撮り、残り（dur - anim）は最終状態（t = Infinity）の 1 枚を伸ばす
-// - 音声は lead 秒の無音のあとに置き、dur まで無音で埋める（音声が dur を超えたら切って警告）
+// - 口述音声は lead 秒の無音のあとに置き、dur まで無音で埋める（音声が dur を超えたら切って警告）
+// - 部品の音は作者の時刻で合成して混ぜる。段階をまたぐ余韻を残す（見る人の延長・ミュートは使わない）
 // - 出力：clip_NNNN.mp4（H.264 yuv420p・固定フレームレート・faststart、AAC）、clip_NNNN.png、
 //   timeline.out.json（各段階の開始・長さ・題名・章・原稿。字幕・チャプターの印に使える）
 // - --full：全体を 1 本（full.mp4）に。章（timeline の chapter）が 2 つ以上あれば章ごとの mp4 も作る
@@ -21,8 +22,10 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
+import { encodeWav } from '../kit/core/wav-core.mjs';
+import { collectVideoEvents, videoSoundEvents, renderStepSounds } from './sounds.mjs';
 
-const RENDER_VERSION = 4;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
+const RENDER_VERSION = 5;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
 const CACHE_FILE = '.render-cache.json';
 
 function parseArgs(argv) {
@@ -81,7 +84,7 @@ function audioFile(src, htmlUrl, tmp, idx) {
 
 // 1 段階を mp4 にする。frames: 動きの区間のコマ（PNG のパス）、final: 最終状態の PNG
 // offset：音声の符号化の遅れ（format spec §5.2 startOffset）。その秒数を先頭から切ってから lead だけ遅らせる
-function encodeClip({ frames, final, audio, dur, lead, offset = 0, fps, out }) {
+function encodeClip({ frames, final, audio, sounds, dur, lead, offset = 0, fps, out }) {
   const N = Math.max(1, Math.round(dur * fps));           // 全体のコマ数（固定フレームレート）
   const nA = Math.min(frames.length, N);
   const nH = N - nA;
@@ -104,11 +107,16 @@ function encodeClip({ frames, final, audio, dur, lead, offset = 0, fps, out }) {
     args.push('-i', audio);
     const ms = Math.max(0, Math.round(lead * 1000));
     const cut = offset > 0 ? `atrim=start=${offset.toFixed(6)},asetpts=PTS-STARTPTS,` : '';
-    vf.push(`[${vi}:a]${cut}aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${ms}:all=1,apad,atrim=0:${T}[a]`);
+    vf.push(`[${vi}:a]${cut}aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${ms}:all=1,apad,atrim=0:${T}[narr]`);
   } else {
     args.push('-f', 'lavfi', '-t', T, '-i', 'anullsrc=r=44100:cl=stereo');
-    vf.push(`[${vi}:a]atrim=0:${T}[a]`);
+    vf.push(`[${vi}:a]atrim=0:${T}[narr]`);
   }
+  if (sounds) {
+    args.push('-i', sounds);
+    vf.push(`[${vi + 1}:a]aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=0:${T}[sounds]`);
+    vf.push('[narr][sounds]amix=inputs=2:normalize=0,alimiter=limit=0.98:level=0:latency=1[a]');
+  } else vf.push('[narr]anull[a]');
   args.push('-filter_complex', vf.join(';'), '-map', '[v]', '-map', '[a]',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', String(fps), '-fps_mode', 'cfr',
     '-g', String(fps * 2), '-frames:v', String(N),
@@ -151,6 +159,9 @@ async function main() {
     await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 30000 });
     await page.evaluate(() => document.fonts.ready.then(() => true));
     const { tl, narration } = await page.evaluate(() => ({ tl: DECK.timeline(), narration: DECK.NARRATION }));
+    const soundEvents = videoSoundEvents(tl, await page.evaluate(collectVideoEvents), o.fps);
+    // 音色の変更・前の段階からの余韻もキャッシュの入力にする。
+    const soundHash = sha(JSON.stringify(soundEvents), readRegular(fileURLToPath(new URL('../kit/core/sounds.mjs', import.meta.url)), { max: READ_LIMITS.built }));
     // 段階の入力：build 済みの HTML を（スクリプトを動かさずに）読み、スライドごとの HTML と、それ以外（部品のコード・
     // テーマの CSS・deck.js など）に分ける。段階ごとの音声・注目の演出・時間の上書き・原稿は鍵ごとに入れる
     const inputs = await page.evaluate((html) => {
@@ -220,7 +231,7 @@ async function main() {
       const audio = audioFile(s.audio, htmlUrl, tmp, n);
       const audioHash = audio ? sha(readRegular(audio, { max: READ_LIMITS.audio })) : 'none';
       const per = inputs.per[n];
-      const input = sha(globalHash, audioHash, JSON.stringify({
+      const input = sha(globalHash, audioHash, soundHash, JSON.stringify({
         slides: inputs.ok ? per.deps.map((j) => slideHash[j]) : null, data: per.data, key: s.key, i: s.i, k: s.k,
         dur: s.dur, lead: s.lead, anim: s.anim, motion, frames: N, nA, fps: o.fps, scale: o.scale, captions: o.captions }));
       rec.input = input;
@@ -250,7 +261,15 @@ async function main() {
         frames.push(file);
       }
       if (audio && s.lead + s.audioDur > s.dur + 1e-3) console.warn(`  ⚠ ${s.key}: 音声（${s.lead}+${s.audioDur.toFixed(2)} s）が dur（${s.dur.toFixed(2)} s）を超える。末尾を切る`);
-      encodeClip({ frames, final, audio, dur: s.dur, lead: s.lead, offset: s.audioOffset || 0, fps: o.fps, out: mp4 });
+      let sounds = null;
+      if (soundEvents.length) {
+        const pcm = renderStepSounds(soundEvents, (clipT - N) / o.fps, N / o.fps);
+        if (pcm.some((x) => x !== 0)) {
+          sounds = path.join(tmp, 'sounds.wav');
+          fs.writeFileSync(sounds, encodeWav(pcm, 44100));
+        }
+      }
+      encodeClip({ frames, final, audio, sounds, dur: s.dur, lead: s.lead, offset: s.audioOffset || 0, fps: o.fps, out: mp4 });
       fs.copyFileSync(final, png);
       cache.clips[clip] = { key: s.key, input, hash };
       saveCache();
