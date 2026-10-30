@@ -14,8 +14,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
-const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean)
+const gitFiles = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean)
   .filter((f) => fs.existsSync(path.join(ROOT, f)) && fs.statSync(path.join(ROOT, f)).isFile());
+// 新しいプラグインのファイルは、git add の前でも点検する。
+const walk = (dir) => fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap((e) => {
+  const f = dir + '/' + e.name;
+  return e.isDirectory() ? walk(f) : e.isFile() ? [f] : [];
+});
+const tracked = [...new Set([...gitFiles, ...walk('skills'), ...walk('.claude-plugin'), 'tools/video.mjs'])];
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const isText = (f) => !/\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|wav|mp3|m4a|mp4|pdf|zip|gz|wasm)$/i.test(f);
 const SELF = 'tools/test-selfcontained.mjs';
@@ -44,14 +50,14 @@ ok(!hits.length, `forbidden patterns: none in ${tracked.length} tracked files` +
 
 // ---------------------------------------------------------------- 2. スキルの名前
 const BUNDLED = new Set(fs.readdirSync(path.join(ROOT, 'skills')).filter((d) => fs.existsSync(path.join(ROOT, 'skills', d, 'SKILL.md'))));
-// スキルではない名前（このリポジトリの前の名前・今の名前）
-const NOT_SKILLS = new Set(['motion-academic-slides', 'egatari-studio']);
+// リポジトリの前の名前・今の名前と、説明文に 1 版だけ残す旧スキル名
+const NOT_SKILLS = new Set(['motion-academic-slides', 'egatari-studio', 'motion-slides', 'motion-components', 'motion-slides-video']);
 const skillHits = [];
 for (const f of tracked.filter((x) => x.startsWith('skills/') && x.endsWith('.md'))) {
   const t = read(f);
   const fm = /^---\n([\s\S]*?)\n---/.exec(t);
   if (fm) for (const m of fm[1].matchAll(/\b[a-z][a-z0-9]*(?:-[a-z0-9]+)+\b/g)) if (!BUNDLED.has(m[0]) && !NOT_SKILLS.has(m[0])) skillHits.push(`${f}: frontmatter names "${m[0]}"`);
-  for (const m of t.matchAll(/`?([a-z][a-z0-9]*(?:[-:][a-z0-9]+)+)`?\s?(?:スキル|skill)/g)) if (!BUNDLED.has(m[1])) skillHits.push(`${f}: names the skill "${m[1]}"`);
+  for (const m of t.matchAll(/`?([a-z][a-z0-9]*(?:[-:][a-z0-9]+)+)`?\s?(?:スキル|skill)/g)) if (!BUNDLED.has(m[1].replace(/^egatari:/, ''))) skillHits.push(`${f}: names the skill "${m[1]}"`);
 }
 ok(!skillHits.length, `skills: only the bundled skills (${[...BUNDLED].join(', ')}) are named` + skillHits.map((h) => '\n       ' + h).join(''));
 

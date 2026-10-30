@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.md sha256=745de443ccae956c -->
+<!-- i18n: pair=dev-server.md sha256=2dcaec2f399e88a5 -->
 # 開発サーバー（ブラウザで直す）
 
 [English](dev-server.md) | 日本語
@@ -80,7 +80,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme sumi
 
 ## AI のコーディング道具への頼み方
 
-AI のコーディング道具（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントを反映して」と頼む（Claude Code に motion-slides のスキルを入れていれば「コメントを反映して」で通じる）。道具は `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに
+AI のコーディング道具（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントを反映して」と頼む（Claude Code に egatari:make のスキルを入れていれば「コメントを反映して」で通じる）。道具は `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに
 deck.html（または narration.md・パーツ）を直し、終わったものを `"status": "resolved"` にする。
 range はコメントを残した時点の位置なので、ずれていれば quote で探す。マーカー（`strokes`）は、描いた印がコメントの指すもの（丸の中・矢印の先）。`npm run comment-shots` が画像に印を描く。サーバーが動いていれば、直した結果はすぐ画面に出る。
 

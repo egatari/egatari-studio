@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=8e2fa0a24e378d12 -->
+<!-- i18n: pair=with-claude.md sha256=b48afe69f6928d9d -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -9,31 +9,26 @@
 
 `skills/` の 3 つのスキルが働きます。
 
-- `motion-slides`：授業の構成案をまず見せ、承認したあとで、作業フォルダ（スライドの `deck.html` と台本の `narration.md`）を作り、品質チェックをします。Egatari ファイル（編集可）にもできます。
-- `motion-slides-video`：作業フォルダを、読み上げ付きの動画と、音声入りの Egatari ファイルにします。
-- `motion-components`：合うパーツがないとき、新しい動くパーツを書きます。
+- `egatari:make`：授業の構成案をまず見せ、承認したあとで、作業フォルダ（スライドの `deck.html` と台本の `narration.md`）を作り、品質チェックをします。Egatari ファイル（編集可）にもできます。
+- `egatari:video`：音声の入った作業フォルダか Egatari ファイル（.ega.html）から動画を書き出します（CLI 専用）。
+- `egatari:parts`：合うパーツがないとき、新しい動くパーツを書きます（CLI 専用）。
 
 ## スキルを入れる
 
 ### Claude Code
 
-このリポジトリを clone し、`~/.claude/skills/`（またはプロジェクトの `.claude/skills/`）にリンクします。スキルは本物のパスからリポジトリを探すので、clone は動かさないでください。
+先に古い `~/.claude/skills/motion-*` を削除します。プロジェクトの `.claude/skills/` に入れていたものも削除します。Claude Code で次を実行します。
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
 ```
 
-Windows では、[README](../README.ja.md#claude-code-で使う) のディレクトリジャンクションを使います。
+kit・vendor・テーマと 3 つのスキルがまとめて入ります。初回の `npm ci` はスキルが案内します。更新は `/plugin update egatari@egatari` です。
 
-### Cowork（Claude のデスクトップアプリ）
+### チャットの Claude・Cowork
 
-Cowork は、ディスク上の `~/.claude/skills/` を読みません。Claude のアカウントで有効にしたスキルを使います（「Customize」の「Skills」から、スキルのフォルダを ZIP ファイルにしてアップロード）。
-<!-- verify -->
-これらのスキルでは試していません。スキルは clone の Node コマンドを使うので、ZIP ファイルだけでは動かないかもしれません。うまくいかないときは、Claude Code か、チャットの AI（[チャットの AI で作る](authoring-with-llms.ja.md)）で作ってください。
-<!-- verify -->
+make だけをスキルとして入れます（`skills/make/` を references ごと ZIP にしてアップロード）。コマンドは要りません。2 つの囲みを Studio に貼り付けます。parts と video は CLI 専用です。Studio の指示書とスキルの版が違えば、新しい版の make を入れ直します。Studio から版付き ZIP をダウンロードする機能は、この版にはまだありません。
 
 ## 最初に送る依頼
 

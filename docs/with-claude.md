@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=0cdb8e07c6a9febe -->
+<!-- i18n: pair=with-claude.ja.md sha256=41ac44e642b59530 -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -9,31 +9,26 @@ Ask Claude for a lesson in plain words. Claude writes the script (the script, `n
 
 Three skills in `skills/` do the work:
 
-- `motion-slides` plans the lesson (it shows an outline first and writes only after you approve), then makes a working folder with `deck.html` (the slides) and `narration.md` (the script), and runs the quality checks. It can also make an Egatari file (editable).
-- `motion-slides-video` turns the folder into a narrated video and an Egatari file with sound.
-- `motion-components` writes a new animated part when no existing one fits.
+- `egatari:make` plans the lesson (it shows an outline first and writes only after you approve), then makes a working folder with `deck.html` (the slides) and `narration.md` (the script), and runs the quality checks. It can also make an Egatari file (editable).
+- `egatari:video` exports a working folder or single file (.ega.html) with existing audio as video (CLI only).
+- `egatari:parts` writes a new animated part when no existing one fits (CLI only).
 
 ## Install the skills
 
 ### Claude Code
 
-Clone this repository, then link the skills into `~/.claude/skills/` (or a project's `.claude/skills/`). The skills find the repository from their real path, so keep the clone where it is:
+First delete the old `~/.claude/skills/motion-*` entries, including any in a project's `.claude/skills/`. In Claude Code, run:
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
 ```
 
-On Windows, use the directory junctions in the [README](../README.md#using-it-with-claude-code).
+This installs all three skills with kit, vendor and themes. The skill guides the first `npm ci`. Update with `/plugin update egatari@egatari`.
 
-### Cowork (the Claude desktop app)
+### Chat Claude and Cowork
 
-Cowork does not read `~/.claude/skills/` on disk. It uses the skills turned on in your Claude account (Customize ▸ Skills, then upload a ZIP file of a skill folder).
-<!-- verify -->
-We have not tried this with these skills. They run the repository's Node commands from the clone, so a ZIP file may not be enough; if the upload does not work, make the lesson with Claude Code, or with a chat AI ([authoring with a chat AI](authoring-with-llms.md)).
-<!-- verify -->
+Install only make as a skill (ZIP `skills/make/` together with its references and upload it). No commands are needed: paste the two output blocks into Studio. Parts and video are CLI only. If Studio's pack version differs from the skill's version, reinstall the newer make skill. Downloading a versioned skill ZIP from Studio is not implemented in this release.
 
 ## The first request to type
 

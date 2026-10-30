@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=746439f9c4cec47f -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=b8a50e1d1bcea414 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -8,7 +8,7 @@ Feedback and new components are both welcome. Small reports help as much as pull
 ## Feedback
 
 - **From a deck**: press `?` and click **Send feedback** at the bottom (also in the presenter view's key row). It opens the [feedback form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) with only the version, browser, OS, deck language and mode filled in. Nothing from your slides is sent; add a snippet yourself only if it is public
-- **From Claude Code**: say "send feedback" / 「感想を送って」. The `motion-slides` skill summarizes the problems from the session into a draft issue, shows it to you, and creates it only after you confirm. It leaves out deck text, voices and local paths
+- **From Claude Code**: say "send feedback" / 「感想を送って」. The `egatari:make` skill summarizes the problems from the session into a draft issue, shows it to you, and creates it only after you confirm. It leaves out deck text, voices and local paths
 - **Questions** go to [Discussions → Q&A](https://github.com/egatari/egatari-studio/discussions/categories/q-a); decks and videos you made to [Show and tell](https://github.com/egatari/egatari-studio/discussions/categories/show-and-tell)
 - **Security issues**: see [SECURITY.md](SECURITY.md), not a public issue
 
@@ -17,7 +17,7 @@ Feedback and new components are both welcome. Small reports help as much as pull
 Components live in their own repository, **[egatari/components](https://github.com/egatari/components)**. Studio carries copies of its releases in `vendor/components/<name>/<version>/` (do not edit them) and pins the default version of each component in `components.lock.json`.
 
 - Check [vendor/components/CATALOG.md](vendor/components/CATALOG.md). Often a new attribute on an existing component is enough
-- Most figures need no component: inline SVG with `data-step`, marks, morphs and the camera (Studio's motion primitives, [contract](docs/contract.md)). If one deck needs more, write a **deck-local** component in `<deck>/components/<name>/index.js`; the build looks in the deck first. The `motion-components` skill walks through this
+- Most figures need no component: inline SVG with `data-step`, marks, morphs and the camera (Studio's motion primitives, [contract](docs/contract.md)). If one deck needs more, write a **deck-local** component in `<deck>/components/<name>/index.js`; the build looks in the deck first. The `egatari:parts` skill walks through this
 - To put a component in the library, open a [proposal in egatari/components](https://github.com/egatari/components/issues/new?template=proposal.yml) (example, lesson, data shape, final state, why inline SVG is not enough, rights, what must be readable when static, other uses). The maintainer decides the name there; code, tests and releases follow that repository's [CONTRIBUTING.md](https://github.com/egatari/components/blob/main/CONTRIBUTING.md)
 - Bringing a release into Studio (maintainers): `npm run components:update -- vX.Y.Z` (downloads the release tarball and `manifest.json`, checks every SHA-256, writes `vendor/components/<name>/X.Y.Z/` and the lock; old versions are kept so that lessons built with them still rebuild; the manifest's `yanked` (withdrawn versions and their replacement) goes into `components.lock.json`: a release may not yank its own version or the default of a component), then `npm run gen`, `npm test`, and a `changes/<name>.md` fragment. `npm run components:check` (in `npm test` and CI) checks the copies against the lock without network
 - Studio's own tests of components are integration tests: `tools/test-components.mjs` builds every vendored demo, runs the quality check and checks rendering and determinism; `tools/test-shape.mjs` feeds each component wrong-shaped data

@@ -192,36 +192,6 @@
       "reason": "The kind of a live question or poll, not the setting."
     },
     {
-      "file": "skills/motion-components/SKILL.md",
-      "pattern": "「新しい部品を作って」「この図を部品にして」",
-      "term": "part",
-      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
-    },
-    {
-      "file": "skills/motion-slides/SKILL.md",
-      "pattern": "「TTS動画にするスライドを作って」",
-      "term": "ai-voice",
-      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
-    },
-    {
-      "file": "skills/motion-slides/SKILL.md",
-      "pattern": "「1 ファイルで配れる形にして」|「持ち運べる形にして」",
-      "term": "egatari-file",
-      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
-    },
-    {
-      "file": "skills/motion-slides-video/SKILL.md",
-      "pattern": "「TTS動画を作って」",
-      "term": "ai-voice",
-      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
-    },
-    {
-      "file": "skills/motion-slides-video/SKILL.md",
-      "pattern": "「音声入りの 1 ファイルにして」",
-      "term": "egatari-file",
-      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
-    },
-    {
       "file": "docs/threat-model.ja.md",
       "pattern": "「Trust model: a deck is code」",
       "term": "slides",
@@ -427,6 +397,12 @@
       "term": "no-upload",
       "pairs": true,
       "reason": "The English privacy line says 'nothing is uploaded' (owner-decided wording) for ja アップロードしません."
+    },
+    {
+      "file": "skills/parts/SKILL.md",
+      "pattern": "「新しい部品を作って」「この図を部品にして」",
+      "term": "part",
+      "reason": "Trigger phrase users may type with the old word; the new-word phrase sits next to it."
     }
   ]
 }

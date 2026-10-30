@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=2b48f801376b81d7 -->
+<!-- i18n: pair=README.ja.md sha256=6cd52404b8cd14a2 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -168,36 +168,27 @@ Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
-Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
+First delete the old `~/.claude/skills/motion-*` entries (and any copies in a project's `.claude/skills/`). Run these two commands in Claude Code to install all three skills with kit, vendor and themes:
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
 ```
 
-On Windows, use directory junctions instead (PowerShell, in the clone; no administrator rights or developer mode needed):
-
-```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
-  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
-}
-```
+The skill guides the first `npm ci`. Update with `/plugin update egatari@egatari`. For a chat AI, install only make.
 
 | Skill | Use it for |
 |---|---|
-| `motion-slides` | plan, write, step, narrate, quality-check and build a lesson (tier 1) |
-| `motion-slides-video` | TTS, render and export a lesson as video (tier 2) |
-| `motion-components` | write a new part, or move one into the Parts library |
+| `egatari:make` | plan, write, step, narrate, quality-check and build a lesson (tier 1) |
+| `egatari:video` | export a lesson with existing audio as video (CLI only) |
+| `egatari:parts` | write a new part, or move one into the Parts library |
 
 Example prompts:
 
-- "Use motion-slides to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
+- "Use egatari:make to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
 - "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
 - "Apply the comments." (after leaving Alt / ⌥ Option+click comments in the dev server; the skill reads `comments.json`)
-- "Turn `talks/intro` into a narrated video with motion-slides-video."
+- "Turn `talks/intro` with existing audio into a video with egatari:video."
 
 The skill first shows you an outline and writes HTML only after you approve it.
 

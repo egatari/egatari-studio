@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=da58b505519b33ed -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=99da2b189e144e65 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -8,7 +8,7 @@
 ## フィードバック
 
 - **デッキから**：`?` を押して、一覧の下の「**フィードバックを送る**」を押す（発表者ビューのキーの行の右端にもある）。[フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が、版・ブラウザ・OS・デッキの言語・モードだけを入れた状態で開く。スライドの中身は送らない。断片を貼るのは公開してよいものだけにする
-- **Claude Code から**：「感想を送って」「フィードバックして」と言う。`motion-slides` スキルが、その作業で困ったこと・不具合を issue の下書きにまとめて見せ、確認を取ってから作る。スライドの本文・音声・個人のパスは入れない
+- **Claude Code から**：「感想を送って」「フィードバックして」と言う。`egatari:make` スキルが、その作業で困ったこと・不具合を issue の下書きにまとめて見せ、確認を取ってから作る。スライドの本文・音声・個人のパスは入れない
 - **使い方の質問**は [Discussions の Q&A](https://github.com/egatari/egatari-studio/discussions/categories/q-a) へ。作ったデッキや動画は [Show and tell](https://github.com/egatari/egatari-studio/discussions/categories/show-and-tell) へ
 - **脆弱性**は公開の issue でなく [SECURITY.md](SECURITY.md) の方法で
 
@@ -17,7 +17,7 @@
 部品は別のリポジトリ **[egatari/components](https://github.com/egatari/components)** にある。Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち（手で直さない）、部品ごとの既定の版を `components.lock.json` で固定する。
 
 - [vendor/components/CATALOG.md](vendor/components/CATALOG.md) を見る。既存の部品に属性を足すだけで済むことが多い
-- たいていの図は部品にしなくて済む：インライン SVG と `data-step`・印・モーフ・カメラ（Studio の動きの素。[約束事](docs/contract.ja.md)）。1 つのデッキでそれ以上が要るなら、**デッキ専用**の部品を `<deck>/components/<名前>/index.js` に書く（build はデッキを先に探す）。手順は `motion-components` スキル
+- たいていの図は部品にしなくて済む：インライン SVG と `data-step`・印・モーフ・カメラ（Studio の動きの素。[約束事](docs/contract.ja.md)）。1 つのデッキでそれ以上が要るなら、**デッキ専用**の部品を `<deck>/components/<名前>/index.js` に書く（build はデッキを先に探す）。手順は `egatari:parts` スキル
 - 部品庫に入れたいときは [egatari/components に提案](https://github.com/egatari/components/issues/new?template=proposal.yml)する（例・使った授業・データの形・最終状態・インライン SVG では足りない理由・権利・静止したときに読めるべきもの・ほかの使い道）。名前はそこで管理者が決める。コード・試験・リリースはそのリポジトリの [CONTRIBUTING.ja.md](https://github.com/egatari/components/blob/main/CONTRIBUTING.ja.md) に従う
 - リリースを Studio に取り込む（管理者）：`npm run components:update -- vX.Y.Z`（リリースの tarball と `manifest.json` を取り、SHA-256 をすべて確かめ、`vendor/components/<名前>/X.Y.Z/` と固定を書く。古い版は残す。その版で組んだ教材を組み直せるように。manifest の `yanked`（取り下げた版と置き換え先）は `components.lock.json` に入る：リリースは自分の版も、部品の既定の版も取り下げられない）、続けて `npm run gen`・`npm test`・`changes/<名前>.md` の断片。`npm run components:check`（npm test と CI）はネットワークなしで写しと固定を照らす
 - Studio の部品の試験は結合の試験：`tools/test-components.mjs` は写しの見本をすべて組み、品質チェックをかけ、描画と決定性を確かめる。`tools/test-shape.mjs` はどの部品にも形の違うデータを渡す

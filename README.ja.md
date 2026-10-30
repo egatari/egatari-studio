@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=507ffb4d2ab78427 -->
+<!-- i18n: pair=README.md sha256=6339b7396b9aa47c -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -168,36 +168,27 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作る：[docs/with-claude.ja.md](docs/with-claude.ja.md)（[English](docs/with-claude.md)）。
 
-スキルを Claude Code のスキルのフォルダにリンクする。スキルはリンク先の実体の場所からリポジトリを探すので、clone した場所は動かさない。
+先に、古い入れ方の `~/.claude/skills/motion-*` を削除する（プロジェクトの `.claude/skills/` にも入れていたらそちらも）。Claude Code で次の 2 つを実行すると、3 つのスキルと kit・vendor・テーマがまとめて入る。
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
 ```
 
-Windows では、代わりにジャンクションを作る（clone したフォルダで PowerShell から。管理者の権限も開発者モードも要らない）：
-
-```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
-  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
-}
-```
+初回の `npm ci` はスキルが案内する。更新は `/plugin update egatari@egatari`。チャットの AI には make だけを入れる。
 
 | スキル | 使いどころ |
 |---|---|
-| `motion-slides` | 構成案・原稿・ステップ・台本・品質チェック・build（段 1） |
-| `motion-slides-video` | TTS・動画の書き出し・バンドル（段 2） |
-| `motion-components` | パーツを新しく書く、パーツライブラリに移す |
+| `egatari:make` | 構成案・原稿・ステップ・台本・品質チェック・build（段 1） |
+| `egatari:video` | 音声の入った教材から動画を書き出す（CLI 専用） |
+| `egatari:parts` | パーツを新しく書く、パーツライブラリに移す |
 
 頼み方の例：
 
-- 「`paper/main.tex` から 10 分の発表の HTML スライドを motion-slides で作って。テーマは default、1 人で話す」
+- 「`paper/main.tex` から 10 分の発表の HTML スライドを egatari:make で作って。テーマは default、1 人で話す」
 - 「学習率で損失の下がり方が変わる様子を m-sweep で見せるスライドを足して」
 - 「コメントを反映して」（開発サーバーで Alt / ⌥ option+クリックのメモを残した後。スキルが `comments.json` を読む）
-- 「`talks/intro` を motion-slides-video で読み上げ付きの動画にして」
+- 「`talks/intro` （音声入り）を egatari:video で動画にして」
 
 スキルはまず構成案を見せ、承認を得てから HTML を書く。
 

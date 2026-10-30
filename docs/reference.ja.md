@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=19728994baf0ea23 -->
+<!-- i18n: pair=reference.md sha256=744e42681e6f87f8 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -223,7 +223,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 ## パーツ
 
-パーツの一覧と受け取る値は [vendor/components/CATALOG.md](../vendor/components/CATALOG.md)（既定の版の各 README の frontmatter から `node tools/catalog.mjs` が作る）。パーツは [egatari/components](https://github.com/egatari/components) のもの：Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、`components.lock.json` で固定する。`npm run components:update -- vX.Y.Z` でリリースを取り込み（ネットワークを使うのはこれだけ。tarball をリリースの `manifest.json` と照らし、取り込んだ版はすべて残す）、`npm run components:check` で写しと固定を照らす（npm test に入っている）。新しいパーツの提案は [egatari/components の Issue](https://github.com/egatari/components/issues/new?template=proposal.yml) へ。パーツの書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.ja.md#3-パーツweb-components) と [skills/motion-components](../skills/motion-components/SKILL.md)。
+パーツの一覧と受け取る値は [vendor/components/CATALOG.md](../vendor/components/CATALOG.md)（既定の版の各 README の frontmatter から `node tools/catalog.mjs` が作る）。パーツは [egatari/components](https://github.com/egatari/components) のもの：Studio はそのリリースの写しを `vendor/components/<名前>/<版>/` に持ち、`components.lock.json` で固定する。`npm run components:update -- vX.Y.Z` でリリースを取り込み（ネットワークを使うのはこれだけ。tarball をリリースの `manifest.json` と照らし、取り込んだ版はすべて残す）、`npm run components:check` で写しと固定を照らす（npm test に入っている）。新しいパーツの提案は [egatari/components の Issue](https://github.com/egatari/components/issues/new?template=proposal.yml) へ。パーツの書き方（`DECK.define`、`DECK.MotionElement`、`static steps`、`static props` の `type: number | bool | json | string`、`mount`、`duration`、`cues`、`render`）は [contract §3](contract.ja.md#3-パーツweb-components) と [skills/parts](../skills/parts/SKILL.md)。
 
 パーツが使える `DECK` の道具：`el(tag, attrs, parent)`（SVG。`var()` の色は `style` に回す）、`mtext(parent, x, y, "*x*_0", attrs)`、`svgMath(parent, x, y, tex, {size, anchor, color, w, h})`、`Plot(box, {xr, yr, xt, yt, xf, yf, xl, xl2, yl, noY, m})`（`.x() .y() .d(f, a, b, n) .poly(pts) .clip`）、`prog(t, start, dur)`、`lerp`、`ease`、`clamp01`、`color(名前)`。
 
@@ -559,7 +559,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | 変数 | 使うもの | 意味 | 既定 |
 |---|---|---|---|
 | `CHROME_PATH` | 品質チェック・PDF・shot・動画のエクスポート・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
-| `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882` |
+| `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882`（既定） |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 | `EGATARI_THEMES` | 組み立て・品質チェック・開発サーバー・Egatari ファイル | 自分のテーマのフォルダ。作業フォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |
