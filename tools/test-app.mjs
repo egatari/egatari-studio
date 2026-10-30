@@ -88,6 +88,7 @@ const pnd = await buildPortable(prepareDeck(path.join(PW, 'nd'), { license: 'CC-
 const fixtures = await makeFixtures(path.join(PW, 'fixtures'));
 const partsDir = path.join(PW, 'parts2');
 fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), partsDir, { recursive: true });
+fs.writeFileSync(path.join(partsDir, 'narration.md'), '# 口述原稿\n\n## 棒と試験のパーツ {#p-one}\n[0] 棒と試験のパーツを表示します。\n');
 const missingParts = await missingParts2Requirement((await buildPortable(path.join(partsDir, 'deck.html'), { subset: false })).html);
 // テーマ庫のテーマの hash が、このエディタのものと違う文書（作り直しの編集はできない → 読むだけで開く）
 const pother = await (async () => {
@@ -677,7 +678,7 @@ try {
     await waitLoads(o.n0);
     ok((await pstate()).portable.profile === 'extended' && await page.isVisible('#notice-extended'), 'portable: embedded component → extended notice');
 
-    // 依存不足の既存ファイル：組み直せなくても、元のファイルの残るパーツを再生する。
+    // 依存不足の既存ファイル：元の再生器で再生し、段 A だけを編集・保存できる。
     await putFile('missing-parts' + FORMAT.FILE_EXT, missingParts);
     o = await openFile('missing-parts' + FORMAT.FILE_EXT);
     ok(o.r === true, 'portable: existing file with unavailable part requirements still opens');
@@ -685,9 +686,43 @@ try {
     const missingState = await f.evaluate(() => ({ status: egatariParts.status(), bars: !!document.querySelector('m-bars svg rect, m-bars svg path') }));
     ok(missingState.status.failed.some((p) => p.name === 'probe' && p.reason === 'missing') && missingState.bars,
       'portable: original player reports the missing part and draws the remaining parts');
-    ok(!!(await pstate()).portable.readOnly && !(await pstate()).error, 'portable: missing requirements prevent rebuilding without a preview error');
+    const missingOpen = await pstate();
+    ok(!missingOpen.portable.readOnly && !!missingOpen.portable.tierAOnly && !missingOpen.error && await page.isHidden('#notice-readonly'), 'portable: missing requirements allow tier A without a preview error');
+    ok((await page.textContent('#notice-tier-a')).includes('台本・音声・秒数だけを編集できます') && (await page.textContent('#notice-tier-a')).includes('パーツ probe@0.1.0 が必要とする base@9.9.9 がありません。組み直すにはパーツを更新してください'),
+      'portable: tier A notice names the part, its missing exact requirement and how to rebuild');
     await f.evaluate(() => DECK.go(1, 1, false));
     ok(await f.evaluate(() => DECK.state().slide === 2 && DECK.state().step === 1), 'portable: existing file with unavailable requirements keeps playing');
+    await page.click('#b-edit');
+    await page.waitForSelector('#toast.show.bad');
+    ok(!(await dlgOpen()) && (await page.textContent('#toast')) === 'このファイルではスライドを編集できません（台本・音声・秒数だけ）', 'portable: missing requirements refuse slide editing with tierAOnlyNoSlides');
+    ok((await page.getAttribute('#b-theme-switch', 'aria-disabled')) === 'true', 'portable: missing requirements disable theme switching');
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+    await f.evaluate(() => DECK.go(0, 0, false));
+    await page.click('#b-narr');
+    await page.waitForSelector('#dlg[open] #dlg-ok');
+    await clickDlg(page, '#dlg-ok');
+    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    const missingNarr = '残るパーツの台本を編集して保存します。';
+    await page.locator('#dev-narr .dev-turn textarea').first().fill(missingNarr);
+    n = await loads();
+    await clickSave('#dev-narr .dv-foot button.dv-pri');
+    f = await waitLoads(n);
+    ok(!(await pstate()).error && await f.evaluate(() => !!document.querySelector('m-bars svg rect, m-bars svg path')), 'portable: narration edit refreshes the original player without rebuilding');
+    await page.click('#b-narr');
+    await clickCommand(page, '#b-save');
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    ok((await pstate()).portable.lastTier === 'A' && !(await dlgOpen()), 'portable: missing requirements save narration through tier A without a rebuild prompt');
+    const missingSaved = await getFile('missing-parts' + FORMAT.FILE_EXT);
+    const missingRead = await readPortable(new Uint8Array(missingSaved));
+    ok(missingRead.sourceMatches && new TextDecoder().decode(missingRead.files['narration.md']).includes(missingNarr), 'portable: saved file reads back with the edited narration');
+    try { regionDiff(missingParts, missingSaved.toString(), { narration: ['p-one:0'] }); ok(true, 'portable: tier A keeps the original player and parts byte for byte'); }
+    catch (e) { ok(false, 'portable: missing requirements region-aware diff: ' + e.message.slice(0, 300)); }
+    o = await openFile('missing-parts' + FORMAT.FILE_EXT);
+    f = await waitLoads(o.n0);
+    ok(o.r === true && !(await pstate()).portable.readOnly && !!(await pstate()).portable.tierAOnly && !(await pstate()).error, 'portable: the tier A saved file reopens in tier A only mode');
+    ok(await f.evaluate(() => egatariParts.status().failed.some((p) => p.name === 'probe' && p.reason === 'missing') && !!document.querySelector('m-bars svg rect, m-bars svg path')), 'portable: the saved file still plays the remaining parts with its original player');
+    await f.evaluate(() => DECK.go(1, 1, false));
+    ok(await f.evaluate(() => DECK.state().slide === 2 && DECK.state().step === 1), 'portable: the saved file still advances slides and steps');
 
     // examples/minimal の 1 ファイルを開く
     await putFile(MINF, pmin.html);

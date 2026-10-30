@@ -69,6 +69,6 @@ self.onmessage = async (e) => {
     }
     self.postMessage({ id: m.id, ok: true, value });
   } catch (err) {
-    self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err) } });
+    self.postMessage({ id: m.id, ok: false, error: { code: (err && err.code) || 'error', message: String((err && err.message) || err), ...(err && err.requiresMissing ? { requiresMissing: err.requiresMissing } : {}) } });
   }
 };

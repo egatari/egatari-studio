@@ -454,7 +454,14 @@ async function rebuild(reason) {
         engine.setListing(listing); S.sig = signature(listing);
         if (!S.portable) S.deckFile = engine.deckFile() || S.deckFile;
         // 組み立てと判定は Worker で（期限を過ぎれば止めて失敗にする）。理由は Worker が組んだ文書（表示するバイト）から決める
-        const r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts() }, reasonsPrefix(), { timeout: buildTimeout() });
+        let r;
+        if (S.portable && S.portable.requiresMissing) {
+          // 依存不足の既存ファイル：段 A の場所だけを書き換え、自分の再生器と残るパーツを保つ。
+          const P = S.portable, slides = S.slides, theme = S.theme;
+          const a = await tierA(P.original, S.ws.snapshot(), { fonts: engine.fonts });
+          if (!a.ok) throw new Error(T.tierAOnlySave(P.tierAOnly) + ` [${a.code}] ${a.reason}`);
+          r = { html: a.html, reasons: P.codeReasons, slides, stats: { warn: a.warnings || [], slides: slides.length }, theme };
+        } else r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts() }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
@@ -1362,9 +1369,8 @@ async function openPortableNow(input) {
   S.deckFile = r.index.entry;
   if (extended) S.codeOk = true;                          // 開く前に聞いて「始める」を押した
   // 作り直して保存できるか（段 B）：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）。
-  // できなければ段 A の編集（口述原稿・音声・秒数）だけ。組み立てられない文書と、段 A も段 B もできない文書は読むだけ
+  // できなければ段 A の編集（口述原稿・音声・秒数）だけ。依存不足も段 A だけ。それ以外の組み立て失敗と、段 A も段 B もできない文書は読むだけ
   // （contracts は {source} だけ。実行系の約束の版 contracts.runtime は 1.0 の形で外した：作り直しは再生器を替える。format spec §4.1・§7.1）
-  let missingRequires = false;
   {
     try {
       const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
@@ -1373,14 +1379,19 @@ async function openPortableNow(input) {
       P.yankedRecorded = dry.yanked || [];
       // 記録した版の同梱のテーマ（themes.lock.json）：プレビューと書き出しも、その版で組む（黙って新しい色にしない。「テーマを更新」で今の版に）
       P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
-    } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); missingRequires = e.code === 'component-requires-missing'; }
+    } catch (e) {
+      if (e.code === 'component-requires-missing') {
+        P.requiresMissing = e.requiresMissing;
+        P.tierAOnly = T.roRequiresMissing(P.requiresMissing);
+      } else P.readOnly = T.roBuild(String(e.message || e));
+    }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
   if (handle) recentAdd(handle);   // ファイルのハンドルがあれば「最近開いたもの」に（Safari などで <input> から開いたものにはない）
   showDeck(name, name);
-  if (missingRequires) {
+  if (P.requiresMissing) {
     // 依存不足は新しく組むときだけ断る。既存のファイルは自分の再生器で、残るパーツを再生する。
-    S.base = P.original; S.baseAudio = []; S.slides = []; S.warn = [...r.warnings, P.readOnly]; S.preview = true; S.allowed = true;
+    S.base = P.original; S.baseAudio = []; S.slides = analyzeSlideIds(P.original).slides; S.warn = [...r.warnings]; S.preview = true; S.allowed = true;
     showWarn();
     slidesPanel.refresh();
     status('');
