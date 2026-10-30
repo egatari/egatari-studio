@@ -205,7 +205,8 @@ try {
   const TOL = 0.05;
   ok(r0 && r0.key === keys[0] && r0.raw > 0, `post-processing: the app reports the raw take (${r0 && r0.raw} s, head ${r0 && r0.head} s, tail ${r0 && r0.tail} s)`);
   ok(e0.dur > 1.9 && e0.dur <= r0.raw + TOL, `post-processing: the take is trimmed, not longer than the raw take (${e0.dur} s from ${r0.raw} s raw; the trimming itself is checked in test-audio-core)`);
-  ok(Math.abs(e0.dur - (r0.raw - r0.head - r0.tail)) <= TOL, `post-processing: dur = raw - head - tail (${e0.dur} vs ${(r0.raw - r0.head - r0.tail).toFixed(3)})`);
+  ok(Math.abs(e0.dur - (r0.raw - r0.trimmed.head - r0.trimmed.tail)) <= TOL, `post-processing: dur = raw - trimmed head - trimmed tail (${e0.dur} vs ${(r0.raw - r0.trimmed.head - r0.trimmed.tail).toFixed(3)})`);
+  ok(r0.head >= 0 && r0.tail > r0.head && r0.tail < r0.raw, 'post-processing: click-cut points are seconds on the raw recording timeline');
   const lev0 = r0.loudness + r0.gainDb;
   ok(Math.abs(lev0 - (-20)) < 1.0 || Math.abs(r0.peakDb - (-1.5)) < 0.1, `post-processing: the take is levelled (${lev0.toFixed(1)} LUFS for the -20 target, true peak ${r0.peakDb.toFixed(1)} dB)`);
   ok(r0.peakDb <= -1.5 + 0.1, `post-processing: the true peak stays under the limit (${r0.peakDb.toFixed(2)} dB)`);
@@ -274,14 +275,14 @@ try {
   const ec = await waitWritten(CUE2, null);
   const rc = (await recState()).result;
   const tp = rc.tapTimes;
-  ok(ec.kind === 'recorded' && ec.sync === 'manual' && ec.cues.length === 2 && rc.key === CUE2 && tp.length === 2, `cue: two presses → sync manual, cues ${JSON.stringify(ec.cues)} inside the ${ec.dur} s audio (raw ${rc.raw} s, head trimmed ${rc.head} s)`);
+  ok(ec.kind === 'recorded' && ec.sync === 'manual' && ec.cues.length === 2 && rc.key === CUE2 && tp.length === 2, `cue: two presses → sync manual, cues ${JSON.stringify(ec.cues)} inside the ${ec.dur} s audio (raw ${rc.raw} s, head trimmed ${rc.trimmed.head} s)`);
   ok(ec.cues[0] >= 0 && ec.cues[1] > ec.cues[0] && ec.cues[1] <= ec.dur, `cue: increasing and inside [0, ${ec.dur}] (${JSON.stringify(ec.cues)})`);
   // 各 cue は「押した時刻 − 実測の head」（[0, dur] に収めた値）：head がどれだけ削れても成り立つ
-  const wantCue = tp.map((x) => Math.max(0, Math.min(ec.dur, x - rc.head)));
-  ok(ec.cues.every((c, i) => Math.abs(c - wantCue[i]) <= 0.01), `cue: each cue is the press time minus the measured head (${JSON.stringify(tp.map((x) => +x.toFixed(3)))} - ${rc.head} → ${JSON.stringify(ec.cues)})`);
+  const wantCue = tp.map((x) => Math.max(0, Math.min(ec.dur, x - rc.trimmed.head)));
+  ok(ec.cues.every((c, i) => Math.abs(c - wantCue[i]) <= 0.01), `cue: each cue is the press time minus the measured head (${JSON.stringify(tp.map((x) => +x.toFixed(3)))} - ${rc.trimmed.head} → ${JSON.stringify(ec.cues)})`);
   // 間隔：押した間隔に等しい（端で [0, dur] に切られていなければ）。押した間隔そのものは待ち時間の約 1.0 秒
   const pressGap = tp[1] - tp[0], cueGap = ec.cues[1] - ec.cues[0];
-  const clamped = tp[0] - rc.head < 0 || tp[1] - rc.head > ec.dur;
+  const clamped = tp[0] - rc.trimmed.head < 0 || tp[1] - rc.trimmed.head > ec.dur;
   ok(Math.abs(pressGap - 1.0) < 0.35, `cue: the presses were about 1.0 s apart (${pressGap.toFixed(2)} s)`);
   ok(clamped ? cueGap <= pressGap + 0.01 : Math.abs(cueGap - pressGap) <= 0.01, `cue: the spacing of the cues follows the presses (${cueGap.toFixed(3)} s for ${pressGap.toFixed(3)} s${clamped ? ', one end clamped' : ''})`);
   // 取り直し：前の cue は使わない（C を押さなければ sync none）

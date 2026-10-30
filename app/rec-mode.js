@@ -21,10 +21,10 @@
 // 準備中（ready でない間）：開いてから（r・「● 録音 (r)」）その段階を読み終えるまでと、段階を移って読み終えるまで。Space のボタンは「準備中…」。
 // その間に押した Space（キー・ボタン）は 1 回だけ覚えておき、準備ができたらすぐ録り始める（落とさない・2 回始めない）。開けなかったら
 // （権利の確認を断った・口述原稿がない・確かめの窓が出た）覚えた Space は捨てる。マイクを使えない・録音できないは、録り始めたときのいつもの知らせ
-import { processTake, cuesFromTaps, AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
+import { processTake, cuesFromTaps, clickCut, applyClickCut, AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 
-const TAIL_MS = 150;   // 止めるキーを押してから録音を終えるまで（MediaRecorder の停止の遅れと語尾の切れを防ぐ小さな尾）
+const TAIL_MS = 150;   // 機器の遅れを受け取ってから止める（操作音は停止の押下時刻を基準に後で除く）
 const BOUND = /(\{(?:cue|mark:[^{}]*)\})/;
 const READING = /\{([^{}|]+)\|([^{}]+)\}/g;
 const chipMark = (n) => (n < 20 ? String.fromCodePoint(0x2460 + n) : String(n + 1));
@@ -44,12 +44,13 @@ export function createRecMode(o) {
   let returnFocus = null;    // 開いた口（音声の板）にフォーカスを戻す
   let ready = false;         // 今の段階を読み終えて、Space で録り始められる（state().ready。試験はこれを待ってから Space を押す）
   let pending = false;       // 準備中に押された Space（準備ができたら 1 回だけ録り始める）
+  let startInput = null;     // 開始の押下・解放（準備中・マイクを開いている間も同じ時刻を保つ）
   let opening = null;        // 開いている途中（open() の Promise。openState の前）。続けて押された r・ボタンは同じ Promise を返す
   let cancelled = false;     // 開いている途中に閉じた（Esc・作業場所が替わった）
   let swallowUp = false;     // 開いている途中に受けた Space の keyup も止める（フォーカスのあるボタンがもう一度押されないように）
   // 1 つのテイクの長さの上限（秒。AUDIO_LIMITS.maxSeconds = 600。試験だけ o.maxSeconds で短くする）
   const maxSec = () => { const v = o.maxSeconds ? o.maxSeconds() : null; return typeof v === 'number' && v > 0 ? v : AUDIO_LIMITS.maxSeconds; };
-  let result = null;         // 直前のテイクの結果（表示用）{key, dur, gainDb, clip, sync, taps, bounds}。raw・head・tail・loudness・peakDb・tapTimes はテスト用（state() から読む）
+  let result = null;         // 直前のテイクの結果（表示用）。head・tail は操作音を除く範囲の秒、trimmed は無音も含めて前後から削った秒（state() から読む）
   const mkEl = (t, p, kids) => h(t, p, kids);
 
   // ---------------------------------------------------------------- 読み上げソフトへの知らせ（段階・状態が変わるたびに）
@@ -59,7 +60,14 @@ export function createRecMode(o) {
 
   // ---------------------------------------------------------------- 描く
   function build() {
-    const keyBtn = (id, key, label, fn) => mkEl('button', { type: 'button', id: 'rec-b-' + id, cls: 'rm-btn', 'aria-keyshortcuts': key, on: { click: () => { fn(); focusRoot(); } } }, [mkEl('kbd', { text: L.keyName[id] || key }), mkEl('span', { text: label })]);
+    const keyBtn = (id, key, label, fn) => mkEl('button', { type: 'button', id: 'rec-b-' + id, cls: 'rm-btn', 'aria-keyshortcuts': key, on: {
+      click: (e) => { if (id === 'space' && e.detail > 0) return; fn(); focusRoot(); },
+      // 録音／停止は押した瞬間に行う。後から来る click では二重に切り替えない（支援技術の click は受ける）。
+      ...(id === 'space' ? { pointerdown: (e) => {
+        if (e.button !== 0 || !e.isPrimary) return;
+        e.preventDefault(); toggleRecording({ startDown: performance.now(), startUp: null, kind: 'pointer', pointerId: e.pointerId }); focusRoot();
+      } } : {}),
+    } }, [mkEl('kbd', { text: L.keyName[id] || key }), mkEl('span', { text: label })]);
     root = mkEl('aside', { id: 'rec-mode', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rec-title', tabindex: '-1' });
     root.appendChild(mkEl('div', { cls: 'rm-head' }, [
       mkEl('h2', { id: 'rec-title', text: L.title }), mkEl('span', { id: 'rec-pos', cls: 'rm-pos' }),
@@ -113,16 +121,16 @@ export function createRecMode(o) {
     if (o.onChange) o.onChange();
   }
   // 準備中に押された Space：1 回だけ覚える（2 回目は何もしない）
-  function queueStart() {
+  function queueStart(input) {
     if (pending) return;
-    pending = true;
+    pending = true; startInput = input;
     if (liveEl) say(L.queued);
   }
   // 準備ができた：覚えていた Space で録り始める
   function kick() {
     if (!pending || !ready || !openState) return;
     pending = false;
-    toggleRecording();
+    toggleRecording(startInput);
   }
   // 口述原稿を、区切り（{cue}・{mark}）をチップにして描く（掛け合いなら役の印）
   function drawScript(seg, roles) {
@@ -267,25 +275,26 @@ export function createRecMode(o) {
   }
 
   // ---------------------------------------------------------------- 録音（Space・Enter・Backspace・C・← →）
-  async function toggleRecording() {
-    if (!openState) { if (opening) queueStart(); return; }
-    if (!ready || !step) { if (phase === 'idle') queueStart(); return; }
+  async function toggleRecording(input = { startDown: performance.now(), startUp: null }) {
+    if (!openState) { if (opening) queueStart(input); return; }
+    if (!ready || !step) { if (phase === 'idle') queueStart(input); return; }
     if (phase === 'starting' || phase === 'processing') return;
-    if (phase === 'recording') { await stopAndCommit(false); return; }
+    if (phase === 'recording') { await stopAndCommit(false, input.startDown); return; }
     if (o.panel.isBusy()) return;
+    startInput = input;
     const my = seq, key = step.key, bounds = step.seg.bounds.length;
     setPhase('starting');
     result = null; drawTake();
-    if (!(await openMic())) { setPhase('idle'); return; }
+    if (!(await openMic())) { startInput = null; setPhase('idle'); return; }
     if (!openState || my !== seq || !step || step.key !== key) { setPhase('idle'); return; }
     const chunks = [];
     let mr;
     try { mr = new win.MediaRecorder(mic.stream); }
-    catch (e) { const m = L.fail + (e.message || e.name || e); result = { key, error: m, taps: 0, bounds }; drawTake(); alertMsg(m); setPhase('idle'); return; }
-    const t = take = { key, mr, chunks, t0: 0, taps: [], bounds, timer: 0 };
+    catch (e) { startInput = null; const m = L.fail + (e.message || e.name || e); result = { key, error: m, taps: 0, bounds }; drawTake(); alertMsg(m); setPhase('idle'); return; }
+    const t = take = { key, mr, chunks, t0: 0, clicks: input, taps: [], bounds, timer: 0 };
     mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     // 録音が実際に始まった時刻を 0 にする（C の時刻の基準）。上限の時刻で止める（メーターの描画が止まっている裏のタブでも）
-    mr.onstart = () => { t.t0 = performance.now(); t.timer = setTimeout(() => { if (take === t) overLimit(); }, maxSec() * 1000 + 50); };
+    mr.onstart = () => { t.t0 = performance.now(); t.clicks.recStart = t.t0; if (take === t) t.timer = setTimeout(() => { if (take === t) overLimit(); }, maxSec() * 1000 + 50); };
     mic.peak = 0;
     mr.start(250);
     setPhase('recording');
@@ -298,7 +307,7 @@ export function createRecMode(o) {
     if (!take) return;
     take.limit = L.tooLong(maxSec());
     alertMsg(take.limit);
-    stopAndCommit(false);
+    stopAndCommit(false, null);   // 自動停止には操作音がないので、末尾は無音除去だけ
   }
   function tapCue() {
     if (phase !== 'recording' || !take || !take.t0) return;
@@ -308,10 +317,11 @@ export function createRecMode(o) {
     say(total ? L.announceCue(n, total) : L.announceCueNone);
   }
   // 録音を止めて、整えて、その段階の音声にする。discard：捨てる。戻り値：書けたか
-  async function stopAndCommit(discard) {
+  async function stopAndCommit(discard, stopDown = performance.now()) {
     const t = take;
     if (!t) return false;
-    take = null;
+    take = null; startInput = null;
+    t.clicks.stopDown = stopDown;
     if (discard) {
       clearTimeout(t.timer);
       try { t.mr.ondataavailable = null; t.mr.onstop = null; if (t.mr.state !== 'inactive') t.mr.stop(); } catch { /* 無視 */ }
@@ -323,8 +333,9 @@ export function createRecMode(o) {
     say(L.processing);
     const key = t.key;
     let ok = false;
+    let cuts = null;
     try {
-      // 小さな尾を残して止める（語尾が切れない）
+      // 機器の遅れを受け取り、復号した標本から操作音を先に除いてから、無音除去・音量調整。
       await new Promise((r) => setTimeout(r, TAIL_MS));
       await new Promise((resolve) => { t.mr.onstop = resolve; try { t.mr.stop(); } catch { resolve(); } });
       const ws = o.ws(), g = o.generation();
@@ -332,12 +343,17 @@ export function createRecMode(o) {
       const bytes = await readFileBounded(blob, { max: AUDIO_LIMITS.fileBytes, what: 'recording' });
       const ab = await mic.ac.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
       const chans = Array.from({ length: ab.numberOfChannels }, (_, c) => ab.getChannelData(c));
-      const p = processTake(chans, ab.sampleRate);
+      const cut = clickCut(t.clicks, ab.sampleRate, ab.length);
+      cuts = { head: cut.head / ab.sampleRate, tail: cut.tail / ab.sampleRate };
+      const clipped = chans.map((c) => applyClickCut(c, cut));
+      if (clipped[0].reason) throw Object.assign(new Error(L.emptyClicks), { code: clipped[0].reason });
+      const p = processTake(clipped.map((c) => c.pcm), ab.sampleRate);
       if (!(p.dur > 0)) throw new Error(L.empty);
-      const cu = cuesFromTaps(t.taps, t.bounds, { head: p.trimmed.head, dur: p.dur });
+      const trimmed = { head: cuts.head + p.trimmed.head, tail: (ab.length - cut.tail) / ab.sampleRate + p.trimmed.tail };
+      const cu = cuesFromTaps(t.taps, t.bounds, { head: trimmed.head, dur: p.dur });
       if (o.ws() !== ws || o.generation() !== g || !openState) return false;
       const clip = mic ? mic.peak >= 0.98 : false;
-      result = { key, dur: p.dur, gainDb: p.gainDb, clip, sync: cu.sync, raw: Math.round(ab.length / ab.sampleRate * 1000) / 1000, head: p.trimmed.head, tail: p.trimmed.tail, loudness: p.loudness, peakDb: p.peakDb, tapTimes: t.taps.slice(), taps: t.taps.length, limit: t.limit || null, bounds: t.bounds, mismatch: t.bounds > 0 && cu.sync === 'none' && t.taps.length !== t.bounds ? true : (t.bounds === 0 && t.taps.length > 0) };
+      result = { key, dur: p.dur, gainDb: p.gainDb, clip, sync: cu.sync, raw: Math.round(ab.length / ab.sampleRate * 1000) / 1000, ...cuts, trimmed, loudness: p.loudness, peakDb: p.peakDb, tapTimes: t.taps.slice(), taps: t.taps.length, limit: t.limit || null, bounds: t.bounds, mismatch: t.bounds > 0 && cu.sync === 'none' && t.taps.length !== t.bounds ? true : (t.bounds === 0 && t.taps.length > 0) };
       const res = await o.panel.commit(key, { pcm: p.pcm, sr: p.sr, dur: p.dur, gainDb: p.gainDb, cues: cu.cues, sync: cu.sync });
       if (!openState) return false;
       if (res.ok) { mine.add(key); ok = true; }
@@ -346,7 +362,7 @@ export function createRecMode(o) {
       if (ok) say(L.announceTaken(p.dur, result.sync === 'manual', result.mismatch, clip));
       else alertMsg(result.error);
     } catch (e) {
-      result = { key, error: L.fail + (e.message || e), taps: 0, bounds: t.bounds, limit: t.limit || null };
+      result = { key, ...cuts, reason: e.code || null, error: L.fail + (e.message || e), taps: 0, bounds: t.bounds, limit: t.limit || null };
       if (step && step.key === key) drawTake();
       alertMsg(result.error);
     } finally {
@@ -393,6 +409,7 @@ export function createRecMode(o) {
   }
 
   // ---------------------------------------------------------------- キー（この板が開いている間は、ほかのキーより先に受ける）
+  const keyInput = (e) => ({ startDown: performance.now(), startUp: null, kind: 'key', key: e.key === 'Spacebar' ? ' ' : e.key });
   function onKey(e) {
     // 開いている途中（r・ボタンの直後）の Space は、ほかへ渡さずに覚えておく（準備ができたら録り始める）
     // Esc は開くのをやめる。この板のほかのキー（r・矢印など）は、開き終えるまで何もしない
@@ -403,7 +420,7 @@ export function createRecMode(o) {
       const k = e.key;
       if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
       if (e.shiftKey) return;
-      if (k === ' ' || k === 'Spacebar') { e.preventDefault(); e.stopPropagation(); swallowUp = true; if (!e.repeat) queueStart(); return; }
+      if (k === ' ' || k === 'Spacebar') { e.preventDefault(); e.stopPropagation(); swallowUp = true; if (!e.repeat) queueStart(keyInput(e)); return; }
       if (['Enter', 'Backspace', 'ArrowLeft', 'ArrowRight', 'c', 'C', 'e', 'n', 'r', 'E', 'N', 'R'].includes(k)) { e.preventDefault(); e.stopPropagation(); }
       return;
     }
@@ -411,12 +428,13 @@ export function createRecMode(o) {
     if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (doc.querySelector('dialog[open]')) return;    // 権利の確認などの窓には触らない
     const t = e.target;
-    // フォーカスがこの板のボタンにあるとき、Enter・Space はそのボタンの操作（ふつうのボタンの動き）。ふだんのフォーカスは板自身
-    if (t && t.tagName === 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) return;
+    // 録音／停止ボタンもキーを押した瞬間に操作し、解放時の click で二重に切り替えない。
+    const recButton = t && t.id === 'rec-b-space';
+    if (t && t.tagName === 'BUTTON' && !recButton && (e.key === 'Enter' || e.key === ' ')) return;
     if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
     const k = e.key;
     let fn = null;
-    if (k === ' ' || k === 'Spacebar') fn = toggleRecording;
+    if (k === ' ' || k === 'Spacebar' || (recButton && k === 'Enter')) fn = () => toggleRecording(keyInput(e));
     else if (k === 'Enter') fn = enter;
     else if (k === 'Backspace') fn = retake;
     else if (k === 'ArrowLeft') fn = () => move(-1);
@@ -428,7 +446,19 @@ export function createRecMode(o) {
     if (!e.repeat) fn();
   }
   doc.addEventListener('keydown', onKey, true);
-  doc.addEventListener('keyup', (e) => { if (swallowUp && (e.key === ' ' || e.key === 'Spacebar')) { swallowUp = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  doc.addEventListener('keyup', (e) => {
+    const key = e.key === 'Spacebar' ? ' ' : e.key;
+    if (startInput && startInput.kind === 'key' && startInput.key === key && startInput.startUp === null) {
+      startInput.startUp = performance.now(); e.preventDefault(); e.stopPropagation();
+    }
+    if (swallowUp && key === ' ') { swallowUp = false; e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  doc.addEventListener('pointerup', (e) => {
+    if (startInput && startInput.kind === 'pointer' && startInput.pointerId === e.pointerId && startInput.startUp === null) startInput.startUp = performance.now();
+  }, true);
+  doc.addEventListener('pointercancel', (e) => { if (startInput && startInput.kind === 'pointer' && startInput.pointerId === e.pointerId) startInput.kind = null; }, true);
+  // フォーカスが戻った後の解放を開始の解放と取り違えず、120 ms の代替値を使う。
+  win.addEventListener('blur', () => { if (startInput) startInput.kind = null; });
   // 開いている途中に確かめの窓（権利の確認など）が出て閉じたら、その前に押した Space は捨てる（窓の答えのあとに勝手に録り始めない）
   doc.addEventListener('close', (e) => { if (opening && !openState && e.target && e.target.tagName === 'DIALOG') pending = false; }, true);
 
@@ -440,7 +470,7 @@ export function createRecMode(o) {
     if (opening) { focusRoot(); return opening; }
     if (!o.enabled()) return Promise.resolve(false);
     if (o.panel.isBusy()) { ui.toast(L.busy, 'warn'); return Promise.resolve(false); }
-    pending = false; cancelled = false;
+    pending = false; startInput = null; cancelled = false;
     // 音声の板は開いたまま（録音モードの間は隠れる）。閉じると、板が録った段階の新しい音声を見せる
     prevFocus = doc.activeElement; returnFocus = typeof opts.returnFocus === 'function' ? opts.returnFocus : null;
     take = null; result = null; mine = new Set(); after = null; ready = false; phase = 'idle';
@@ -492,7 +522,7 @@ export function createRecMode(o) {
     root.remove(); root = null; view = null; liveEl = alertEl = null;
     o.host.classList.remove('rec-on');
     if (o.top) o.top.inert = false;
-    ready = false; pending = false;
+    ready = false; pending = false; startInput = null;
     ui.refresh();
     if (o.onChange) o.onChange();
     if (!opts.silent && (hadFocus || !doc.activeElement || doc.activeElement === doc.body)) {
@@ -509,7 +539,7 @@ export function createRecMode(o) {
     if (root) { root.remove(); root = null; }
     o.host.classList.remove('rec-on');
     if (o.top) o.top.inert = false;
-    liveEl = alertEl = null; view = null; step = null; after = null; phase = 'idle'; ready = false; pending = false;
+    liveEl = alertEl = null; view = null; step = null; after = null; phase = 'idle'; ready = false; pending = false; startInput = null;
     ui.refresh();
     if (o.onChange) o.onChange();
     if (!opts.silent) {

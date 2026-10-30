@@ -15,6 +15,7 @@
 //   integratedLoudness(pcm, sr)             LUFS（測れなければ null）
 //   truePeakDb(pcm)                         4 倍の補間で見たピーク（dBTP）
 //   encodeWav(pcm, sr) / decodeWav(bytes)   16 bit の WAV
+//   clickCut(times, sr, length) / applyClickCut(pcm, cut)   録音の開始・停止の操作音を除く範囲と、その適用
 //   cuesFromTaps(taps, n, {head, dur})      録音中に C で置いた時刻 → 音声の cue（数が n と違えば sync none）
 //   takeEntry({...})                        audio/manifest.json の段階の記録（kind・inputHash・recipe・sync。format spec §5）
 //   setManifestEntry(text, key, entry, order)   manifest の文字列に段階の記録を入れる（ほかの段階の記録はそのまま）
@@ -41,6 +42,23 @@ export { toMono, resample, encodeWav, decodeWav };   // 置き場は wav-core.mj
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
+
+// 録音モードの操作音を除く範囲（[head, tail)。元の標本化周波数での位置）。時刻は performance.now() と同じミリ秒。
+// recStart は MediaRecorder.onstart の時刻。解放が来なければ押下から 120 ms、そこからさらに 30 ms を除く。
+// processTake の前に録音モードだけが使う（TTS・取り込みの後処理と PROCESSING の名前は変えない）。
+export function clickCut({ startDown, startUp, stopDown, recStart }, sampleRate, length) {
+  if (![startDown, recStart, sampleRate, length].every(Number.isFinite) || sampleRate <= 0 || length < 0 || !Number.isInteger(length)) throw new RangeError('invalid click-cut timeline');
+  const clamp = (n) => Math.max(0, Math.min(length, n));
+  const up = Number.isFinite(startUp) ? startUp : startDown + 120;
+  const head = clamp(Math.ceil((Math.max(up, startDown + 120) + 30 - recStart) * sampleRate / 1000));
+  const tail = Number.isFinite(stopDown) ? clamp(Math.floor((stopDown - 30 - recStart) * sampleRate / 1000)) : length;
+  return { head, tail };
+}
+// 範囲が重なる短い録音は空にし、理由を返す（slice の負の位置・長さに頼らない）。入力は変えない。
+export function applyClickCut(samples, { head, tail }) {
+  const pcm = tail > head ? samples.slice(head, tail) : new Float32Array(0);
+  return { pcm, reason: pcm.length ? null : 'click-cut-empty' };
+}
 
 // ---------------------------------------------------------------- 無音を削る（silenceremove の rms 検出と同じ：直前の窓の RMS がしきい値を超えた所）
 // 返すもの：音のある最初の標本の位置（なければ -1）
