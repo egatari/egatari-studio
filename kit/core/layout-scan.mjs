@@ -400,7 +400,13 @@ export function layoutScan(s, o) {
     if (!A.svg && A.comp && A.comp === B.comp) continue;
     // 同じ字を同じ場所に重ねて描いたもの（m-collect の行き先ごとの札の写しなど）は 1 つに読めるので見ない
     if (A.svg && A.el.textContent === B.el.textContent && A.rs.length === B.rs.length && A.rs.every((r, i) => { const q = B.rs[i]; return Math.abs(r.l - q.l) <= TOL && Math.abs(r.t - q.t) <= TOL && Math.abs(r.r - q.r) <= TOL && Math.abs(r.b - q.b) <= TOL; })) continue;
-    if (A.rs.some((r) => B.rs.some((q) => meet(r, q)))) note('textOverlap', { t: A.t, u: B.t, with: 'text', kind, ...(A.svg ? { svg: true } : {}) });
+    if (A.rs.some((r) => B.rs.some((q) => meet(r, q)))) {
+      let component = null;
+      if (A.svg) for (let e = A.el; e && e !== s; e = e.parentElement) {
+        if (e.localName.includes('-')) { component = e.localName; break; }
+      }
+      note('textOverlap', { t: A.t, u: B.t, with: 'text', kind, ...(A.svg ? { svg: true, component } : {}) });
+    }
   }
 
   // ---------------------------------------------------------------- 表の短いセルの語が割れる（#65。警告）

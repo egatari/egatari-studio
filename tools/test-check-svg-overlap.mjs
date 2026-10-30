@@ -21,6 +21,26 @@ let n = 0, fail = 0;
 const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n' + e.stack); } };
 const overlaps = (rs) => rs.filter((r) => r.code === 'textOverlap');
 const pairs = { 's-quad139': ['目指すべき市場', '目指す顧客'], 's-flow139': ['技術許諾', '特許実施料'] };
+const components = { 's-quad139': 'm-quad', 's-flow139': 'm-flow' };
+const expectHint = (m, lang, component) => {
+  if (component === 'm-flow') {
+    assert.match(m, lang === 'ja' ? /m-flow の逆向きの辺には shift/ : /shift to the reverse edge in m-flow/);
+  } else {
+    assert.ok(!m.includes('shift'), m);
+    assert.ok(!m.includes('m-flow'), m);
+    if (component === 'm-quad') {
+      assert.ok(m.includes('m-quad'), m);
+      assert.ok(m.includes('x/y'), m);
+      assert.match(m, lang === 'ja' ? /象限の名前/ : /quadrant name/);
+    } else if (component) {
+      assert.ok(m.includes(`<${component}>`), m);
+      assert.match(m, lang === 'ja' ? /データを変え、ラベルどうしが重ならない/ : /change the data.*labels do not meet/);
+    } else {
+      for (const text of ['x/y', 'text-anchor']) assert.ok(m.includes(text), m);
+      assert.match(m, lang === 'ja' ? /軸の名前を軸の端より外/ : /axis name beyond the axis end/);
+    }
+  }
+};
 const expectPairs = (rs, idOf, dataOf) => {
   const xs = overlaps(rs);
   assert.equal(xs.length, 2);
@@ -30,24 +50,26 @@ const expectPairs = (rs, idOf, dataOf) => {
     assert.equal(r.sev, 'warn');
     const a = dataOf(r);
     assert.equal(a.svg, true);
+    assert.equal(a.component, components[id]);
     assert.deepEqual([a.t, a.u].sort(), pair.slice().sort());
   }
 };
 
-await t('messages: SVG overlap names both texts and gives deck-side fixes in ja/en', () => {
+await t('messages: SVG overlap names both texts and gives each context its hint in ja/en', () => {
   const a = { t: '目指すべき市場', u: '目指す顧客', with: 'text', svg: true, n: 1 };
   assert.equal(MESSAGES.textOverlap.rule, 'R-fit');
-  for (const lang of ['ja', 'en']) {
-    const m = message(lang, 'textOverlap', a);
-    for (const text of [a.t, a.u, 'm-flow', 'shift']) assert.ok(m.includes(text), m);
-    assert.match(m, lang === 'ja' ? /項目を動かすか座標を変える/ : /move the item or change its coordinates/);
+  for (const lang of ['ja', 'en']) for (const component of ['m-flow', 'm-quad', 'm-plot', 'x-labels', null, undefined]) {
+    const m = message(lang, 'textOverlap', { ...a, component });
+    for (const text of [a.t, a.u]) assert.ok(m.includes(text), m);
+    expectHint(m, lang, component);
+    const html = message(lang, 'textOverlap', { ...a, svg: false, component });
+    for (const text of ['shift', 'x/y', 'text-anchor', 'm-flow', 'm-quad', 'm-plot', 'x-labels']) assert.ok(!html.includes(text), html);
   }
-  assert.ok(!message('en', 'textOverlap', { ...a, svg: false }).includes('shift'));
 });
-await t('fixtures: original, corrected and marker decks build offline', () => {
-  for (const name of ['deck.html', 'fixed.html', 'markers.html']) {
+await t('fixtures: original, corrected, marker and inline SVG decks build offline', () => {
+  for (const name of ['deck.html', 'fixed.html', 'markers.html', 'inline.html']) {
     const r = build(path.join(fixture, name));
-    assert.ok(name === 'markers.html' ? r.html.includes('data-overlap="ok"') : r.html.includes('目指すべき市場') && r.html.includes('特許実施料'));
+    assert.ok(name === 'inline.html' ? r.html.includes('時間') && r.html.includes('100') : name === 'markers.html' ? r.html.includes('data-overlap="ok"') : r.html.includes('目指すべき市場') && r.html.includes('特許実施料'));
   }
 });
 await t('preview wrapper passes the marker into the serialized scanner', () => {
@@ -83,8 +105,40 @@ try {
       for (const x of overlaps(j.results)) {
         assert.equal(x.rule, 'R-fit');
         assert.ok(x.msg.includes(x.title), x.msg);
-        assert.ok(x.msg.includes('shift'), x.msg);
+        expectHint(x.msg, lang, x.data.component);
       }
+    }
+  });
+  await t('check --json: hand-written SVG gets the axis/text hint in ja/en', () => {
+    for (const lang of ['ja', 'en']) {
+      const r = spawnSync(process.execPath, ['kit/check.mjs', path.join(fixture, 'inline.html'), '--json', '--lang', lang], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
+      assert.equal(r.status, 0, r.stderr);
+      const j = JSON.parse(r.stdout), xs = overlaps(j.results);
+      assert.equal(j.counts.error, 0);
+      assert.equal(xs.length, 1);
+      assert.equal(xs[0].data.component, null);
+      assert.deepEqual([xs[0].data.t, xs[0].data.u].sort(), ['100', '時間'].sort());
+      expectHint(xs[0].msg, lang, null);
+    }
+  });
+  await t('scanner: SVG context is the closest custom element, or none', async () => {
+    for (const tags of [[], ['m-flow'], ['m-quad'], ['m-plot'], ['m-flow', 'x-labels'], ['m-plot', 'm-quad']]) {
+      await load(path.join(fixture, 'inline.html'), 'context');
+      await page.evaluate((tags) => {
+        const svg = DECK.slides[0].querySelector('svg');
+        let parent = svg.parentElement;
+        for (const tag of tags) {
+          const el = document.createElement(tag);
+          el.style.display = 'block';
+          parent.appendChild(el);
+          parent = el;
+        }
+        parent.appendChild(svg);
+      }, tags);
+      const xs = overlaps(await scan(0)), component = tags.at(-1) || null;
+      assert.equal(xs.length, 1, tags.join(' > '));
+      assert.equal(xs[0].a.component, component);
+      for (const lang of ['ja', 'en']) expectHint(message(lang, 'textOverlap', xs[0].a), lang, component);
     }
   });
   await t('scanner: only visible text at the scanned step counts', async () => {
@@ -94,6 +148,7 @@ try {
       assert.deepEqual(overlaps(await scan(i, 2)), []);
       const rs = overlaps(await scan(i));
       assert.equal(rs.length, 1);
+      assert.equal(rs[0].a.component, Object.values(components)[i]);
       assert.deepEqual([rs[0].a.t, rs[0].a.u].sort(), Object.values(pairs)[i].slice().sort());
     }
   });
@@ -106,7 +161,7 @@ try {
   });
   await t('quick check: P5/P7 match the command; the corrected deck has no overlap warning', async () => {
     const shim = withLayoutScan(fs.readFileSync(path.join(ROOT, 'app/frame-shim.js'), 'utf8'));
-    for (const name of ['deck.html', 'fixed.html']) {
+    for (const name of ['deck.html', 'fixed.html', 'inline.html']) {
       const f = path.join(work, 'preview-' + name);
       fs.writeFileSync(f, previewDocument(build(path.join(fixture, name)).html, `${shim}(${JSON.stringify({ dev: true, load: 1 })});`));
       await page.goto(fileUrl(f));
@@ -116,6 +171,12 @@ try {
         postMessage({ type: 'app-check', id: 'svg139' }, '*');
       }));
       if (name === 'deck.html') expectPairs(q.results, (x) => q.ids[x.i], (x) => x.arg);
+      else if (name === 'inline.html') {
+        const xs = overlaps(q.results);
+        assert.equal(xs.length, 1);
+        assert.equal(xs[0].arg.component, null);
+        for (const lang of ['ja', 'en']) expectHint(message(lang, 'textOverlap', xs[0].arg), lang, null);
+      }
       else assert.deepEqual(overlaps(q.results), []);
     }
   });
