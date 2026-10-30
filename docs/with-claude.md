@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=11343c1925037057 -->
+<!-- i18n: pair=with-claude.ja.md sha256=9741947b80d13227 -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -28,9 +28,9 @@ The first two lines are enough for authoring alone. The studio skill guides the 
 
 ### Chat Claude and Cowork
 
-Upload `egatari-make-skill.zip` to install only make. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/SKILL.md` and references match the generated, committed `plugins/egatari/skills/make/` directory.
+In Studio, choose **Download the AI skill** beside **Copy the instructions** in **New…**, or in **Help (?)**. Upload the downloaded `egatari-make-<version>-ja.zip` or `egatari-make-<version>-en.zip` to install only make. Studio offers the ZIP for its current UI language and running version, served from its own site. The single file offline editor carries both languages too. Developers can also create a ZIP with `node tools/make-llm-guide.mjs --zip out/release --lang ja` (or `--lang en`). Its `make/SKILL.md` and references come from the same generator as `plugins/egatari/skills/make/`.
 
-No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, reinstall the newer make skill. Downloading a versioned skill ZIP from Studio is not implemented in this release.
+No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, add it again with **Download the AI skill** in Studio.
 
 When authoring is done, use the studio skill for checks and builds if egatari-studio is installed. Otherwise, open the working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 

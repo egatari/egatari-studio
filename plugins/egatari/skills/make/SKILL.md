@@ -15,7 +15,7 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。
-チャットでは Studio から make スキルをダウンロードして入れ直す。
+チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 

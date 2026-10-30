@@ -15,7 +15,7 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`.
-In chat, download the make skill again from Studio and reinstall it.
+In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 
