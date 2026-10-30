@@ -353,7 +353,7 @@ main{flex:1;min-height:0;display:flex}
 .new-block{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}   /* centred like the title, lead and drop card; the lists (Recent, Samples) stay left */
 .new-block .hint{max-width:36em;margin:0 auto;text-wrap:balance}
 #welcome .intro p,.new-block .hint{text-wrap:balance}
-:lang(ja) #welcome .intro p,:lang(ja) .new-block .hint{word-break:auto-phrase}   /* Japanese: break between phrases, not mid-word (Chromium; ignored elsewhere) */
+:lang(ja) #welcome p{word-break:auto-phrase}   /* Japanese start-screen text breaks between phrases, not mid-word (Chromium; ignored elsewhere) */
 .new-block .big{font-size:17px;padding:10px 18px;display:inline-flex;align-items:center;gap:10px}
 .ai-icon .sun{fill:var(--logo-sun)}
 #recent-none{margin:4px 0 0}
