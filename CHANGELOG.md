@@ -8,6 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.2] - 2026-10-30
+
+### Added
+
+- Fonts a lesson can choose (backlog #133): a fixed list of OFL fonts from `@fontsource` (`FONT_LIST` in `kit/core/build-core.mjs`). Japanese: BIZ UDPGothic (default), BIZ UDPMincho, Shippori Mincho, Zen Maru Gothic, Klee One. English: Source Sans 3 (default), Source Serif 4, Andika, Atkinson Hyperlegible Next. Monospace: Source Code Pro.
+  Only the fonts a lesson chooses go into its file, subset to the files with the characters it uses. A theme chooses them with `theme.json` `fonts` (`{"body": …, "heading": …}`), or a theme or the slides name them in CSS. The offline editor carries only the two defaults.
+- English italic: Source Sans 3 italic goes in only for text the lesson sets in italic (`em`, `i`, `cite`, `font-style: italic`, a part that draws italic text). 700 italic goes in only for italic inside bold, and each face only for the files with those characters. A lesson without italics does not grow; examples/tmlr2026-calibration grows by 21.4 KB (one 400-italic latin file). In Japanese lessons only Latin characters count, and Latin text in `em`, `i` and `cite` is set in that italic.
+- A theme whose body font is a Japanese font from the list (`asagi`) embeds BIZ UDPGothic only for characters that font lacks, so `asagi` lessons are no heavier than `default` (minimal 2,106,522 B vs 2,278,049 B).
+- Quality check `fontNotEmbedded` (warning, once per lesson): slide text whose font is neither embedded nor generic, so it looks different on each device.
+- Seven bundled themes for new lessons (backlog #129), shown by Japanese colour names with a small note on what each suits: 藍 Indigo (`default`), 墨 Ink (`sumi`, new), 国語 Kokugo (`kokugo`), 常盤 Evergreen (`tokiwa`, new), 江戸紫 Edo purple (`murasaki`, new), 焦茶 Dark brown (`kogecha`, new; base `#3D3132`, at least ΔE00 23 from the red under every simulated colour vision) and 浅葱 Teal (`asagi`, new, in Zen Maru Gothic); the new ones are 1.0.0. The list is `kit/core/themes-list.mjs`; the editor's New… ③ shows the note under the list and **Change theme…** next to each name.
+  Their heading, cover and conclusion-line shapes are fixed CSS snippets (`kit/core/theme-shapes.mjs`), copied into `tokens.css` and recorded in `theme.json` `look`, so the theme builder (#58) can offer the same shapes. Boxes do not move, and theme CSS is never wrapped in `:where()`.
+- `tools/test-themes.mjs` (in `npm test`): every bundled theme builds a sample lesson with no contrast, divider, font or metrics warning; role colours reach 4.5:1 (also the conclusion line, divider, cover title and the heading on its band); `--emph` and `--term` stay ΔE*ab ≥ 35 apart under protan and deutan simulation (Machado 2009) and ΔE00 ≥ 20 for all four vision types; the `look` snippets match. Colour maths in `kit/core/color-check.mjs`.
+
+### Changed
+
+- Player: the pen colours no longer come from the theme (`--emph`, `--term`, `--fg`). They are fixed: the Colour Universal Design red `#FF4B00` and blue `#005AFF` and black `#000000`, still named Red, Blue and Black (backlog #132). On white they reach 3.4, 5.4 and 21:1 (lines need 3:1), and under simulated colour vision they stay at least ΔE*ab 61 apart; with the theme colours, Blue and Black were ΔE 8 apart in `sumi`.
+  `tools/test-themes.mjs` checks the three pens on the ground of every bundled theme. The presenter view sends the new names; points sent with the old names are still accepted. This is Egatari Player 1.0.2.
+- Egatari Player 1.0.2 (patch; the bundled player that files carry, `player` in the index and `deck-meta`): the fixed pen colours above. Files from earlier versions keep their own player.
+- `business` can no longer be chosen for new lessons (editor lists, `npm run new`, which suggests `sumi`); it stays bundled, so lessons that name it or recorded its version build and play as before.
+- Instructions for the AI: the theme advice is per situation (business and pitch decks → `sumi`, Japanese language arts → `kokugo`, otherwise `default`), and the business series pack and its worked example use `sumi`. Pack version `ecca7b6f`; the free kokugo single (ja) stays under its 40,960 B cap.
+
+### Fixed
+
+- Start screen: the New card now centres its button and the hint under it, like the title, the lead line and the drop card. The hint wraps evenly (no single word or particle left alone on a line) on a phone. The Recent files and Samples lists stay left-aligned.
+- Quality check now warns when SVG text overlaps other SVG text, including labels inside one figure whose positions come from the deck data. The warning names both texts and suggests a fix for their context: add `shift` to a reverse `m-flow` edge, move an `m-quad` item away from the quadrant name by changing its x/y, change the data in the named component for other components, or change the text’s x/y or `text-anchor` or put the axis name beyond the axis end for hand-written SVG. Only the glyphs' ink is compared, so close but separate labels (tick numbers above an axis name) do not warn; empty, hidden or unpainted text, whitespace gaps, the same label drawn twice at the same place, and labels already reported for leaving their box do not count; intentionally layered text can use `data-overlap="ok"` on the SVG `<text>` or an ancestor `<g>` to opt out of this check alone (`data-clip` is also respected).
+
 ## [0.6.1] - 2026-10-30
 
 ### Added
@@ -895,7 +921,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/egatari/egatari-studio/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/egatari/egatari-studio/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/egatari/egatari-studio/compare/v0.4.8...v0.6.0
 [0.4.8]: https://github.com/egatari/egatari-studio/compare/v0.4.7...v0.4.8
