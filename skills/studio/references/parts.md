@@ -2,7 +2,7 @@ Always reply in the language the user writes in, not the language of this file. 
 
 # egatari-studio:studio：パーツを書く
 
-CLI 専用。TODO(#123)：パーツライブラリ 2.0 の API・manifest・段の目安に合わせた書き直しは #123 で行う。
+CLI 専用。書き方の決まりは先に `egatari:make` を読む。以下はパーツライブラリ 2.0 の手順。使う Studio が `egatariParts.define` と必要なライブラリに対応しているか、既存のパーツと実行系で確かめる。1.x の写ししかない環境に 2.0 のコードをそのまま入れない。
 
 リポジトリ：studio スキルの SKILL.md のあるフォルダから 2 つ上（プラグインの根。`<repo>`）。初回は `<repo>` で `npm ci` を案内する。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
 
@@ -21,26 +21,40 @@ Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`
 置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → パーツライブラリの写しの順に探す）。
 
 ```js
-// m-名前：何を見せるか 1 行
-DECK.define("m-名前", class extends DECK.MotionElement {
-  static steps = 2;
-  static props = { dur: {type: "number", default: 1.2, doc: "1 段階の動きの秒数"} };
-  mount(ctx){ /* 1 回だけ：DECK.Plot や DECK.el で SVG を作る */ }
-  duration(k){ return k >= 1 ? this.props.dur : 0; }
-  cues(k){ return null; }               // 口述原稿の {cue} に合わせたい同期点（秒）
-  render(k, t, ctx){ /* (k, t) だけから状態を決めて描く */ }
+// m-example：何を見せるか 1 行
+// 版は使うライブラリの README と manifest で確かめ、完全な版番号で固定する。
+egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"}, element: "m-example"}, function(deps) {
+  const base = deps.base;
+  return class extends base.MotionElement {
+    static partName = "example";
+    static steps = 2;
+    static props = { dur: {type: "number", default: 1.2, doc: "1 ステップの動きの秒数"} };
+    mount(ctx){ /* 1 回だけ：base.el で SVG を作る */ }
+    duration(k){ return k >= 1 ? this.props.dur : 0; }
+    cues(k){ return null; }               // 台本の {cue} に合わせたい同期点（秒）
+    render(k, t, ctx){ /* (k, t) だけから状態を決めて描く */ }
+  };
 });
 ```
+
+`name` はフォルダ名、`element` はタグ名、`static partName` は `name` と同じ。`requires` に使うライブラリと完全な版番号を並べ、factory で `deps` から受け取る。軸を描くなら `plot` を依存に加え `deps.plot.Plot` を使う。プレーヤーのグローバルには依存しない。
+
+パーツの README とリリースの manifest の分類を合わせる：
+
+- `kind`：`element`（教材に置くパーツ）か `library`（ほかのパーツが使うライブラリ）。library は `element` を持たず、factory から API を返す
+- `tier`：`standard`（標準）・`specialized`（専門）・`extra`（特殊）
+- `set`：専門パーツのセット。既存 manifest のセット名を使い、固定の分野一覧から推測しない
+- `display`：タグとは別の表示名が必要なときの日本語・英語名
 
 守ること（品質チェック `kit/check.mjs` と egatari/components の試験が確かめる）：
 
 1. **(k, t) だけで画面を決める**。前回の render の状態に頼らない。`setTimeout`・`requestAnimationFrame`・`Date`・シードのない乱数は使わない
 2. t = Infinity はステップ k の最終状態、k = 0 は初期状態
-3. 色は `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)` だけ（`DECK.el` は fill / stroke の `var()` を style に回す）
+3. 色は `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)` `var(--fg)` `var(--series-1..4)` だけ（`base.el` は fill / stroke の `var()` を style に回す）
 4. 図の文字は 24px 以上。凡例ではなく線の近くに直接書く
 5. 数値は検算済みのスクリプトの出力（子の `<script type="application/json">` → `this.data`）だけを使う
-6. 補間は `DECK.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `DECK.lerp`
-7. 図の中の式は `DECK.svgMath(親, x, y, "TeX", {size, anchor})`、簡単な記号は `DECK.mtext`（`*u*_0`）
+6. 補間は `base.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `base.lerp`
+7. 図の中の式は、使う版の README に従い組み立て時に描く。簡単な記号は `base.mtext`（`*u*_0`）
 8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
 9. パーツの字は、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG の字どうしの重なりを警告する）。意図して重ねる字だけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切る字の `data-clip` と同じ付け方。パーツ全体には付けない）
 
