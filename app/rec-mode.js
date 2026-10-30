@@ -9,7 +9,7 @@
 //
 // キー（この板が開いている間は再生器・ほかの欄のキーより優先）：
 //   Space  録音の開始／停止。停止すると前後の無音を削って音量を整え（processTake）、すぐその段階の音声にする（同じ段階に留まる）
-//   Enter  録音中なら停止して採用し次の段階へ。録った後（または音声のある段階）なら次の段階へ。次の段階は待機（自動では録り始めない）
+//   Enter  停止して採用し次へ。「続けて録る」なら、次の音声がない・古いステップで、前の処理を終えてから録り始める。最後は停止
 //   Backspace  取り直し：録音中は今のテイクを捨てる。録った後はそのテイクを「前に戻す」で外す（前の音声に戻る）
 //   ← →    前・次の段階（録音中なら先に停止して採用）
 //   C      録音中に、口述原稿の {cue}・{mark:…} の区切り（どちらも数える。kit の cue と同じ並び）ごとに押す（時刻をそのまま cue に：sync manual。数が合わなければ sync none）
@@ -25,9 +25,15 @@ import { processTake, cuesFromTaps, clickCut, applyClickCut, AUDIO_LIMITS } from
 import { readFileBounded } from './bounded-read.js';
 
 const TAIL_MS = 150;   // 機器の遅れを受け取ってから止める（操作音は停止の押下時刻を基準に後で除く）
+const KEEP_RECORDING_KEY = 'egatari-rec-keep-recording';
 const BOUND = /(\{(?:cue|mark:[^{}]*)\})/;
 const READING = /\{([^{}|]+)\|([^{}]+)\}/g;
 const chipMark = (n) => (n < 20 ? String.fromCodePoint(0x2460 + n) : String(n + 1));
+
+// 読み込みに失敗したときも待つ。今の台本に合う音声を、続けて録って上書きしない。
+export function shouldAutoStart(keepRecording, info) {
+  return !!(keepRecording && info && (!info.entry || info.state === 'stale'));
+}
 
 export function createRecMode(o) {
   const ui = o.ui, h = ui.h, doc = ui.side.ownerDocument, win = doc.defaultView, L = o.T;
@@ -45,6 +51,9 @@ export function createRecMode(o) {
   let ready = false;         // 今の段階を読み終えて、Space で録り始められる（state().ready。試験はこれを待ってから Space を押す）
   let pending = false;       // 準備中に押された Space（準備ができたら 1 回だけ録り始める）
   let startInput = null;     // 開始の押下・解放（準備中・マイクを開いている間も同じ時刻を保つ）
+  let enterInput = null;     // 前のテイクを整えている間も、次の開始に使う Enter の解放を受け取る
+  let keepRecording = true;
+  try { keepRecording = win.localStorage.getItem(KEEP_RECORDING_KEY) !== '0'; } catch { /* 使えない環境 */ }
   let opening = null;        // 開いている途中（open() の Promise。openState の前）。続けて押された r・ボタンは同じ Promise を返す
   let cancelled = false;     // 開いている途中に閉じた（Esc・作業場所が替わった）
   let swallowUp = false;     // 開いている途中に受けた Space の keyup も止める（フォーカスのあるボタンがもう一度押されないように）
@@ -61,11 +70,11 @@ export function createRecMode(o) {
   // ---------------------------------------------------------------- 描く
   function build() {
     const keyBtn = (id, key, label, fn) => mkEl('button', { type: 'button', id: 'rec-b-' + id, cls: 'rm-btn', 'aria-keyshortcuts': key, on: {
-      click: (e) => { if (id === 'space' && e.detail > 0) return; fn(); focusRoot(); },
+      click: (e) => { if ((id === 'space' || id === 'enter') && e.detail > 0) return; fn(); focusRoot(); },
       // 録音／停止は押した瞬間に行う。後から来る click では二重に切り替えない（支援技術の click は受ける）。
-      ...(id === 'space' ? { pointerdown: (e) => {
+      ...(id === 'space' || id === 'enter' ? { pointerdown: (e) => {
         if (e.button !== 0 || !e.isPrimary) return;
-        e.preventDefault(); toggleRecording({ startDown: performance.now(), startUp: null, kind: 'pointer', pointerId: e.pointerId }); focusRoot();
+        e.preventDefault(); fn({ startDown: performance.now(), startUp: null, kind: 'pointer', pointerId: e.pointerId }); focusRoot();
       } } : {}),
     } }, [mkEl('kbd', { text: L.keyName[id] || key }), mkEl('span', { text: label })]);
     root = mkEl('aside', { id: 'rec-mode', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rec-title', tabindex: '-1' });
@@ -80,13 +89,19 @@ export function createRecMode(o) {
     root.appendChild(mkEl('div', { id: 'rec-meter', cls: 'rm-meter', 'aria-hidden': 'true' }, [mkEl('span', { text: L.level }), mkEl('span', { cls: 'bar' }, [mkEl('i')]), mkEl('span', { id: 'rec-time', cls: 't', text: '0.0 s' })]));
     root.appendChild(mkEl('div', { id: 'rec-take', cls: 'rm-take' }));
     root.appendChild(mkEl('div', { id: 'rec-keys', cls: 'rm-keys', role: 'group', 'aria-label': L.keys }, [
-      keyBtn('space', 'Space', L.btnRec, () => toggleRecording()),
-      keyBtn('enter', 'Enter', L.btnNext, () => enter()),
+      keyBtn('space', 'Space', L.btnRec, (input) => toggleRecording(input)),
+      keyBtn('enter', 'Enter', L.btnNext, (input) => enter(input)),
       keyBtn('back', 'Backspace', L.btnRetake, () => retake()),
       keyBtn('prev', 'ArrowLeft', L.btnPrev, () => move(-1)),
       keyBtn('nextstep', 'ArrowRight', L.btnNextStep, () => move(1)),
       keyBtn('cue', 'C', L.btnCue, () => tapCue()),
     ]));
+    const keep = mkEl('input', { type: 'checkbox', id: 'rec-keep-recording', on: { change: (e) => {
+      keepRecording = e.target.checked;
+      try { win.localStorage.setItem(KEEP_RECORDING_KEY, keepRecording ? '1' : '0'); } catch { /* この画面の間だけ */ }
+    } } });
+    keep.checked = keepRecording;
+    root.appendChild(mkEl('label', { for: 'rec-keep-recording' }, [keep, ' ' + L.keepRecording]));
     liveEl = mkEl('div', { id: 'rec-live', cls: 'sr-only', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
     alertEl = mkEl('div', { id: 'rec-alert', cls: 'sr-only', role: 'alert' });
     root.append(liveEl, alertEl);
@@ -212,13 +227,16 @@ export function createRecMode(o) {
     step = null;
     setReady(false);
     const key = `${s.slideKey}:${s.stepKey}`;
+    // プレビューは編集モードで無音。ここでは位置だけを送り、テイクを再生しない。
+    // TODO #114: DECK.Sounds をプレーヤーへつなぐときも録音モードの間は部品音を強制消音する。
+    // kit/core/sound-preferences.mjs の端末設定は書き換えず、プレビューの編集モードに消音を渡すこと。
     ui.goStep(s.slideKey, s.stepKey);
     let info = null;
     try { info = await o.panel.peek(key); } catch (e) { alertMsg(L.fail + (e.message || e)); }
     if (my !== seq || !openState) return '';
     if (info && info.segs) steps = info.segs.map((x) => x);
     const seg = (info && info.seg) || s;
-    step = { key, seg, slideKey: s.slideKey, stepKey: s.stepKey };
+    step = { key, seg, info, slideKey: s.slideKey, stepKey: s.stepKey };
     const sl = ui.slide(o.slideIndex ? o.slideIndex(s.slideKey) : -1);
     const heading = String((sl && (sl.heading || sl.title)) || s.slideKey).replace(/\s+/g, ' ').trim();
     $('rec-pos').textContent = L.pos(idx + 1, steps.length);
@@ -275,7 +293,7 @@ export function createRecMode(o) {
   }
 
   // ---------------------------------------------------------------- 録音（Space・Enter・Backspace・C・← →）
-  async function toggleRecording(input = { startDown: performance.now(), startUp: null }) {
+  async function toggleRecording(input = { startDown: performance.now(), startUp: null }, continuing = false) {
     if (!openState) { if (opening) queueStart(input); return; }
     if (!ready || !step) { if (phase === 'idle') queueStart(input); return; }
     if (phase === 'starting' || phase === 'processing') return;
@@ -299,7 +317,7 @@ export function createRecMode(o) {
     mr.start(250);
     setPhase('recording');
     paintChips();
-    say(L.announceRec(bounds));
+    say(continuing ? L.announceContinuous(idx + 1, steps.length) : L.announceRec(bounds));
     o.panel.peek(key).then((info) => { if (take === t && step && step.key === key) drawNotes(info); }, () => {});
   }
   // 上限（600 秒）を超えた：止めて、ここまでを使う（音声の板と同じ）
@@ -368,24 +386,28 @@ export function createRecMode(o) {
     } finally {
       if (openState) setPhase('idle');
     }
-    if (openState && after) { const f = after; after = null; f(); }
+    if (openState && after) { const f = after; after = null; await f(ok); }
     return ok;
   }
   // 整えている間に押された操作は、書き終わってから
   const defer = (fn) => { if (phase === 'processing') { after = fn; return true; } return phase === 'starting'; };   // starting（マイクを開いている間）の操作は受け流す
-  async function enter() {
+  async function enter(input = { startDown: performance.now(), startUp: null }) {
     if (!step) return;
-    if (defer(() => enter())) return;
-    if (phase === 'recording') { after = () => go(idx + 1); await stopAndCommit(false); return; }
+    enterInput = input;
+    if (defer(() => enter(input))) return;
+    // 次の開始は停止・復号・後処理・保存の後。マイクや result を 2 つのテイクで共有しない。
+    if (phase === 'recording') { after = (ok) => go(idx + 1, ok ? input : null); await stopAndCommit(false, input.startDown); return; }
     const has = mine.has(step.key) || (await o.panel.peek(step.key).catch(() => null) || {}).entry;
     if (!has) { alertMsg(L.nothingToKeep); return; }
-    go(idx + 1);
+    await go(idx + 1, input);
   }
-  async function go(j) {
+  async function go(j, input = null) {
     if (j < 0) { say(L.atFirst); return; }
     if (j >= steps.length) { say(L.atLast); return; }
-    await show(j);
-    kick();
+    const msg = await show(j);
+    if (!msg) return;
+    if (input && phase === 'idle' && !pending && shouldAutoStart(keepRecording, step.info)) await toggleRecording(input, true);
+    else kick();
   }
   async function move(d) {
     if (!openState || !steps.length) return;   // 段階を読み込んでいる最中（step が空）でも、続けて押した矢印は数える
@@ -430,12 +452,14 @@ export function createRecMode(o) {
     const t = e.target;
     // 録音／停止ボタンもキーを押した瞬間に操作し、解放時の click で二重に切り替えない。
     const recButton = t && t.id === 'rec-b-space';
-    if (t && t.tagName === 'BUTTON' && !recButton && (e.key === 'Enter' || e.key === ' ')) return;
+    const enterButton = t && t.id === 'rec-b-enter';
+    if (t && t.tagName === 'BUTTON' && !recButton && !enterButton && (e.key === 'Enter' || e.key === ' ')) return;
     if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
     const k = e.key;
     let fn = null;
-    if (k === ' ' || k === 'Spacebar' || (recButton && k === 'Enter')) fn = () => toggleRecording(keyInput(e));
-    else if (k === 'Enter') fn = enter;
+    if (enterButton && (k === 'Enter' || k === ' ')) fn = () => enter(keyInput(e));
+    else if (k === ' ' || k === 'Spacebar' || (recButton && k === 'Enter')) fn = () => toggleRecording(keyInput(e));
+    else if (k === 'Enter') fn = () => enter(keyInput(e));
     else if (k === 'Backspace') fn = retake;
     else if (k === 'ArrowLeft') fn = () => move(-1);
     else if (k === 'ArrowRight') fn = () => move(1);
@@ -448,17 +472,19 @@ export function createRecMode(o) {
   doc.addEventListener('keydown', onKey, true);
   doc.addEventListener('keyup', (e) => {
     const key = e.key === 'Spacebar' ? ' ' : e.key;
-    if (startInput && startInput.kind === 'key' && startInput.key === key && startInput.startUp === null) {
-      startInput.startUp = performance.now(); e.preventDefault(); e.stopPropagation();
+    for (const input of [startInput, enterInput]) {
+      if (input && input.kind === 'key' && input.key === key && input.startUp === null) {
+        input.startUp = performance.now(); e.preventDefault(); e.stopPropagation();
+      }
     }
     if (swallowUp && key === ' ') { swallowUp = false; e.preventDefault(); e.stopPropagation(); }
   }, true);
   doc.addEventListener('pointerup', (e) => {
-    if (startInput && startInput.kind === 'pointer' && startInput.pointerId === e.pointerId && startInput.startUp === null) startInput.startUp = performance.now();
+    for (const input of [startInput, enterInput]) if (input && input.kind === 'pointer' && input.pointerId === e.pointerId && input.startUp === null) input.startUp = performance.now();
   }, true);
-  doc.addEventListener('pointercancel', (e) => { if (startInput && startInput.kind === 'pointer' && startInput.pointerId === e.pointerId) startInput.kind = null; }, true);
+  doc.addEventListener('pointercancel', (e) => { for (const input of [startInput, enterInput]) if (input && input.kind === 'pointer' && input.pointerId === e.pointerId) input.kind = null; }, true);
   // フォーカスが戻った後の解放を開始の解放と取り違えず、120 ms の代替値を使う。
-  win.addEventListener('blur', () => { if (startInput) startInput.kind = null; });
+  win.addEventListener('blur', () => { for (const input of [startInput, enterInput]) if (input) input.kind = null; });
   // 開いている途中に確かめの窓（権利の確認など）が出て閉じたら、その前に押した Space は捨てる（窓の答えのあとに勝手に録り始めない）
   doc.addEventListener('close', (e) => { if (opening && !openState && e.target && e.target.tagName === 'DIALOG') pending = false; }, true);
 
@@ -470,7 +496,7 @@ export function createRecMode(o) {
     if (opening) { focusRoot(); return opening; }
     if (!o.enabled()) return Promise.resolve(false);
     if (o.panel.isBusy()) { ui.toast(L.busy, 'warn'); return Promise.resolve(false); }
-    pending = false; startInput = null; cancelled = false;
+    pending = false; startInput = null; enterInput = null; cancelled = false;
     // 音声の板は開いたまま（録音モードの間は隠れる）。閉じると、板が録った段階の新しい音声を見せる
     prevFocus = doc.activeElement; returnFocus = typeof opts.returnFocus === 'function' ? opts.returnFocus : null;
     take = null; result = null; mine = new Set(); after = null; ready = false; phase = 'idle';
@@ -522,7 +548,7 @@ export function createRecMode(o) {
     root.remove(); root = null; view = null; liveEl = alertEl = null;
     o.host.classList.remove('rec-on');
     if (o.top) o.top.inert = false;
-    ready = false; pending = false; startInput = null;
+    ready = false; pending = false; startInput = null; enterInput = null;
     ui.refresh();
     if (o.onChange) o.onChange();
     if (!opts.silent && (hadFocus || !doc.activeElement || doc.activeElement === doc.body)) {
@@ -539,7 +565,7 @@ export function createRecMode(o) {
     if (root) { root.remove(); root = null; }
     o.host.classList.remove('rec-on');
     if (o.top) o.top.inert = false;
-    liveEl = alertEl = null; view = null; step = null; after = null; phase = 'idle'; ready = false; pending = false; startInput = null;
+    liveEl = alertEl = null; view = null; step = null; after = null; phase = 'idle'; ready = false; pending = false; startInput = null; enterInput = null;
     ui.refresh();
     if (o.onChange) o.onChange();
     if (!opts.silent) {

@@ -290,7 +290,8 @@ const ja = {
       '「このステップ」で、画面のステップの音声を聞く・読み上げで聞く（音声ファイルにはなりません）・録音・ファイルから取り込む・前に戻す・この PC で作り直す、ができます。作った音声はすぐにそのステップの音声になり（audio/ に MP3 と記録。Egatari ファイルは「保存」で）、前の音声には「前に戻す」で戻せます',
       '台本を直した後の音声には「更新が必要」と出ます。音声は消しません。AI 音声があると、プレーヤーのツールバーに小さく「AI 音声」と出ます']],
     ['クラウドで作る（Google Colab）', [`「音声をどう付けますか」の「AI 音声をクラウドで作る」で、① 台本を書き出す（音声の要るステップの台本を 1 つのファイルに。台本の文は Google の環境で処理されるので、初めての 1 回だけ確かめます）、② Colab を開く（板に書いた手順で実行）、③ できた音声を取り込む（ダウンロードした ZIP ファイルを選ぶ）。取り込むのは、書き出したときと台本が同じステップだけで、タイミングの時刻が付きます。台本が変わったステップは使わず、「音声を更新」で作り直せます`, ver('ja')]],
-    ['録音モード', ['<kbd>r</kbd> か、音声の板の「● 録音 (r)」「録音モードを開く (r)」で、台本を大きく出し、そのステップの舞台を横に見せる録音の画面を開きます。キーボードだけで録れます：<kbd>Space</kbd> で録音の開始と停止（前後の無音を削って、すぐそのステップの音声にします）、<kbd>Enter</kbd> で使って次のステップへ（次のステップは待機。自動では録り始めません）、<kbd>Backspace</kbd> で取り直し、<kbd>←</kbd> <kbd>→</kbd> でステップの移動、<kbd>Esc</kbd> で閉じます',
+    ['録音モード', ['<kbd>r</kbd> か、音声の板の「● 録音 (r)」「録音モードを開く (r)」で、台本を大きく出し、そのステップの舞台を横に見せる録音の画面を開きます。キーボードだけで録れます：<kbd>Space</kbd> で録音の開始と停止（前後の無音を削って、すぐそのステップの音声にします）、<kbd>Enter</kbd> で使って次のステップへ（「続けて録る」がオンなら、音声がない・古い次のステップで録音を始めます。最後は止まります）、<kbd>Backspace</kbd> で取り直し、<kbd>←</kbd> <kbd>→</kbd> でステップの移動、<kbd>Esc</kbd> で閉じます',
+      '「続けて録る」は初めはオンで、この端末に覚えます。オフなら次のステップで待ちます。今の台本に合う音声があるステップでは、オンでも待ちます。前のテイクを整えて保存してから次を録り始めます。ステップを替えても音声や効果音は鳴りません',
       '台本に {cue} や {mark} があれば、録音しながらタイミングごとに <kbd>C</kbd> を押すと、その時刻がタイミングになります（sync: manual）。押した数が合わないときは置かず、図は時間で進みます']],
     ['保存の場所と窓', [`下の帯の左に、今どこに保存されているかが出ます。作業フォルダは編集するたびにその場で書くので「保存」は要らず、Egatari ファイル（${FX}）にするには「ファイル ▾」の「名前を付けて保存…」。参加者に配るのは「エクスポート ▸ 参加者用（再生専用）…」（ライブも付けられます）。Egatari ファイルは「保存」で上書きします`,
       '<kbd>Esc</kbd> で、開いている窓（HTML の欄・音声・台本・コメント・横の板）を上のものから 1 つずつ閉じます。<kbd>Shift</kbd>+<kbd>Esc</kbd> で全部を閉じます']],
@@ -327,6 +328,7 @@ const ja = {
   },
   // 録音モード（app/rec-mode.js）
   rec: {
+    keepRecording: '続けて録る', announceContinuous: (n, N) => `続けて録音中：ステップ ${n}/${N}`,
     title: '録音モード', close: '閉じる', script: '読む台本', level: '入力の大きさ', keys: 'キー', concl: '結論',
     keyName: { space: 'Space', enter: 'Enter', back: 'Backspace', prev: '←', nextstep: '→', cue: 'C' },
     btnRec: '録音', btnStop: '止める', btnNext: '使って次へ', btnRetake: '取り直す', btnPrev: '前のステップ', btnNextStep: '次のステップ', btnCue: 'タイミングを置く',
@@ -653,7 +655,8 @@ const en = {
       '“This step” plays the step’s audio, listen with read-aloud (no audio file is made), records, imports a file, reverts, or remakes it on this computer. New audio is used for the step right away (an MP3 and its record in audio/; for an Egatari file, then Save), and “Revert” brings back the previous audio.',
       'Audio made before the script changed shows “Needs updating”. It is never deleted. When there is AI voice, the player’s toolbar shows a small “AI voice” badge.']],
     ['Make AI voice in the cloud (Google Colab)', [`Under “How do you want to add audio?”, “Make AI voice in the cloud”: ① Export script (the steps that need audio, into one file; the script text is processed in Google’s environment, so the editor asks the first time), ② Open Colab (run it with the steps shown in the panel), ③ Import the audio (choose the downloaded ZIP file). Only steps whose script is unchanged since the export are imported, with their timing; steps whose script changed are not used and can be remade with “Update audio”.`, ver('en')]],
-    ['Recording mode', ['<kbd>r</kbd>, “● Record (r)” or “Open recording mode (r)” in the Audio panel opens a recording screen: the script in large type, with the stage of that step beside it. It works from the keyboard alone: <kbd>Space</kbd> starts and stops recording (leading and trailing silence is trimmed and the take becomes the step’s audio right away), <kbd>Enter</kbd> uses it and moves to the next step (which waits; recording never starts by itself), <kbd>Backspace</kbd> retakes, <kbd>←</kbd> <kbd>→</kbd> move between steps, <kbd>Esc</kbd> closes it.',
+    ['Recording mode', ['<kbd>r</kbd>, “● Record (r)” or “Open recording mode (r)” in the Audio panel opens a recording screen: the script in large type, with the stage of that step beside it. It works from the keyboard alone: <kbd>Space</kbd> starts and stops recording (leading and trailing silence is trimmed and the take becomes the step’s audio right away), <kbd>Enter</kbd> uses it and moves to the next step (with “Keep recording” on, it starts recording the next step if its audio is missing or needs updating; it stops at the last step), <kbd>Backspace</kbd> retakes, <kbd>←</kbd> <kbd>→</kbd> move between steps, <kbd>Esc</kbd> closes it.',
+      '“Keep recording” is on by default and remembered on this device. Turn it off to wait at each next step. Steps with current audio always wait. Recording starts after the previous take is processed and saved. Changing steps plays no audio or sound effects.',
       'If the script has {cue} or {mark}, press <kbd>C</kbd> at each one while recording and its time becomes the timing (sync: manual). If you press it a different number of times, no timing is placed and figures advance by time.']],
     ['Where it is saved, and closing cards', [`The left end of the status bar shows where the lesson is saved. A working folder is written as you edit, so it needs no Save; “Save as…” in “File ▾” makes an Egatari file (${FX}), and “Export ▸ For participants (play-only)…” the copy you hand out (Live can be added there). An Egatari file is overwritten with Save.`,
       '<kbd>Esc</kbd> closes the open cards (HTML, Audio, Script, Comments, the side panel) one at a time, topmost first. <kbd>Shift</kbd>+<kbd>Esc</kbd> closes them all.']],
@@ -690,6 +693,7 @@ const en = {
   },
   // Recording mode (app/rec-mode.js)
   rec: {
+    keepRecording: 'Keep recording', announceContinuous: (n, N) => `Recording continuously: step ${n} of ${N}`,
     title: 'Recording mode', close: 'Close', script: 'Script to read', level: 'Input level', keys: 'Keys', concl: 'conclusion',
     keyName: { space: 'Space', enter: 'Enter', back: 'Backspace', prev: '←', nextstep: '→', cue: 'C' },
     btnRec: 'Record', btnStop: 'Stop', btnNext: 'Use and next', btnRetake: 'Retake', btnPrev: 'Previous step', btnNextStep: 'Next step', btnCue: 'Place timing',

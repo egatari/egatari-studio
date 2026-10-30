@@ -3,8 +3,32 @@
 //   node tools/test-rec-clicks.mjs
 import assert from 'node:assert/strict';
 import { clickCut, applyClickCut, processTake, trimSilence, cuesFromTaps, SR, PROCESSING } from '../kit/core/audio-core.mjs';
+import { shouldAutoStart } from '../app/rec-mode.js';
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ≈ ${b}`);
+
+// 次に今の台本に合う音声があるとき・読み込めないとき・設定がオフなら待つ。
+for (const entry of [{ kind: 'recorded' }, { kind: 'tts' }, { kind: 'imported' }]) {
+  assert.equal(shouldAutoStart(true, { state: 'fresh', entry }), false);
+  assert.equal(shouldAutoStart(true, { state: 'stale', entry }), true);
+  assert.equal(shouldAutoStart(false, { state: 'stale', entry }), false);
+}
+assert.equal(shouldAutoStart(true, { entry: null }), true);
+assert.equal(shouldAutoStart(false, { entry: null }), false);
+assert.equal(shouldAutoStart(true, null), false);
+console.log('  ok   continuous recording starts only when enabled and next audio is missing or stale');
+
+// 同じ Enter が前の停止と次の開始になる。処理待ちが短い・長い場合、遅い解放も同じ時刻で切る。
+for (const startUp of [3080, 3500]) {
+  const previous = clickCut({ startDown: 1000, startUp: 1080, stopDown: 3000, recStart: 1000 }, SR, SR * 3);
+  near(previous.tail / SR, 1.97, 1 / SR);
+  for (const recStart of [3200, 3700]) {
+    const next = clickCut({ startDown: 3000, startUp, stopDown: 6000, recStart }, SR, SR * 3);
+    near(next.head / SR, Math.max(0, (Math.max(startUp, 3120) + 30 - recStart) / 1000), 1 / SR);
+    near(next.tail / SR, (5970 - recStart) / 1000, 1 / SR);
+  }
+}
+console.log('  ok   shared Enter boundary keeps its keydown and keyup across processing delays');
 
 // performance.now() の時刻（ms）から、onstart を 0 とする元の標本の位置へ。遅いマイクの準備も同じ式。
 for (const sr of [44100, 48000]) {
