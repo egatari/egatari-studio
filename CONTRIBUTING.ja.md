@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=da58b505519b33ed -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=00f7568d720be03c -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語

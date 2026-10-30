@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=68ce8c4c0f053301 -->
+<!-- i18n: pair=reference.md sha256=106123b14be47873 -->
 # リファレンス
 
 [English](reference.md) | 日本語

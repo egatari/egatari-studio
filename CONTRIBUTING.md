@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=746439f9c4cec47f -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=174035030d504793 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)

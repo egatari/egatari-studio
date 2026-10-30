@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=3ae9d7245563c6e5 -->
+<!-- i18n: pair=contract.md sha256=743f41c2c7ad8e74 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
