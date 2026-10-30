@@ -109,7 +109,7 @@ jobs:
           if [[ "$GITHUB_REF" =~ ^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then cur=(--current "${BASH_REMATCH[1]}"); else cur=(); fi
           node tools/site-versions.mjs assemble --site _site "${cur[@]}" --repo "$GITHUB_REPOSITORY"
           cat _site/versions.json
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         if: steps.release.outputs.deploy == 'true'
       - uses: actions/upload-pages-artifact@v5
         if: steps.release.outputs.deploy == 'true'
