@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { generate, skillFiles, MAKE_SKILL_DIR } from './make-llm-guide.mjs';
+import { generate, skillFiles, studioVersion, MAKE_SKILL_DIR } from './make-llm-guide.mjs';
 import { videoPlan } from './video.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -58,7 +58,8 @@ for (const [f, name, triggers] of [
 ]) {
   const fm = read(f).match(/^---\n([\s\S]*?)\n---/)[1];
   assert.ok(fm.includes(`name: ${name}\n`));
-  const desc = fm.match(/^description: .+$/m)[0];
+  const desc = fm.match(/^description: (.+)$/m)[1];
+  assert.ok([...desc].length <= 1024, `${f}: description exceeds 1024 characters`);
   for (const trigger of triggers) assert.ok(desc.includes(trigger), trigger);
 }
 for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-claude.ja.md', 'skills/studio/SKILL.md']) {
@@ -77,10 +78,43 @@ const make = read(`${MAKE_SKILL_DIR}/SKILL.md`), studio = read('skills/studio/SK
 assert.ok(make.includes(data.version));
 assert.ok(make.includes('新しいパーツがあります'));
 assert.doesNotMatch(make, /ffmpeg|動画|\bvideo\b/i);
-assert.doesNotMatch(make, /<repo>|npm|\bnode\s|tools\//);
-// Part schema prose also uses the word node; reject executable Node commands in references.
-for (const f of walk(MAKE_SKILL_DIR)) assert.doesNotMatch(read(f), /<repo>|npm|\bnode\s+(?:<|[\w./-]+\.(?:m?js|cjs)\b|--|-[ep]\b)|tools\//, f);
-for (const tool of ['npm ci', 'tools/new.mjs', 'kit/check.mjs', 'tools/ids.mjs', 'tools/sheet.mjs', 'server/dev.mjs', 'tools/comment-shots.mjs', 'kit/build.mjs', 'CLI：パーツ', 'CLI：id']) assert.ok(studio.includes(tool), tool);
+// Every make file is safe to read in a chat with no local environment.
+const makeForbidden = ['<repo>', 'npm', 'node ', 'npx', 'tools/', 'kit/', '/Users/', '100.64', '8882', 'brew', 'LaunchAgent', 'gendo'];
+function checkMake(text, file) {
+  for (const token of makeForbidden) assert.ok(!text.includes(token), `${file}: forbidden ${token}`);
+}
+for (const f of walk(MAKE_SKILL_DIR)) checkMake(read(f), f);
+for (const token of makeForbidden) assert.throws(() => checkMake(token, 'fixture'), /forbidden/);
+assert.doesNotMatch(make, /CLI：|コマンドを動かせるときだけ読む/);
+assert.ok(!fs.existsSync(path.join(ROOT, MAKE_SKILL_DIR, 'references/audio-local.md')));
+const versionLine = (text) => text.match(/^\*\*指示の版：[a-f0-9]{8}\*\*$/m)?.[0];
+assert.ok(versionLine(make));
+assert.equal(versionLine(studio), versionLine(make));
+assert.ok(studio.includes('egatari:make'));
+// Updating the generated version must preserve every byte of hand-written Studio text.
+const modifiedStudio = studio.replace('教材をローカルで確かめて組む', '手書きの見出しを保つ');
+assert.equal(studioVersion(modifiedStudio, '1234abcd'), modifiedStudio.replace(versionLine(studio), '**指示の版：1234abcd**'));
+assert.throws(() => studioVersion('no marker', data.version), /exactly one/);
+for (const [old, owner] of [['motion-slides', MAKE_SKILL_DIR], ['motion-slides-video', 'skills/studio'], ['motion-components', 'skills/studio']]) {
+  const owners = [MAKE_SKILL_DIR, 'skills/studio'].filter((dir) => walk(dir).some((f) => new RegExp(`(^|[^a-zA-Z0-9-])${old}($|[^a-zA-Z0-9-])`).test(read(f))));
+  assert.deepEqual(owners, [owner], `${old}: exactly one skill owns the old name`);
+}
+// Relative Markdown links must resolve inside the corresponding plugin bundle.
+function checkLinks(files, bundleRoot) {
+  for (const file of files.filter((f) => f.endsWith('.md'))) {
+    const text = read(file).replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, '');
+    for (const [, href] of text.matchAll(/!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+      if (/^(?:[a-z][a-z0-9+.-]*:|#)/i.test(href)) continue;
+      const target = path.resolve(ROOT, path.dirname(file), decodeURIComponent(href.split('#')[0]));
+      const base = path.resolve(ROOT, bundleRoot);
+      assert.ok(target.startsWith(base + path.sep), `${file}: link escapes bundle: ${href}`);
+      assert.ok(fs.existsSync(target) && fs.statSync(target).isFile(), `${file}: missing linked file ${href}`);
+    }
+  }
+}
+checkLinks(walk(MAKE_SKILL_DIR), 'plugins/egatari');
+checkLinks(walk('skills/studio'), '.');
+for (const tool of ['npm ci', 'tools/new.mjs', 'kit/check.mjs', 'tools/ids.mjs', 'tools/sheet.mjs', 'server/dev.mjs', 'tools/comment-shots.mjs', 'kit/build.mjs', 'CLI：パーツ', 'CLI：id', 'tier', 'set', 'standard', 'specialized', 'extra']) assert.ok(studio.includes(tool), tool);
 assert.ok(studio.includes('この SKILL.md のあるフォルダから 2 つ上'));
 for (const ref of ['audio-local', 'video', 'parts']) assert.ok(studio.includes(`(references/${ref}.md)`));
 assert.ok(make.includes('egatari-studio') && make.includes('https://studio.egatari.org/') && make.includes('Safari'));
@@ -93,15 +127,26 @@ assert.ok(!extra.includes(data.ja.components['m-bars'].entry));
 assert.ok(!sample[`${MAKE_SKILL_DIR}/references/parts/common.md`].includes('### `<m-bars>`'));
 assert.ok(sample[`${MAKE_SKILL_DIR}/references/parts/custom.md`].includes('### `<m-flow>`'));
 assert.ok(Buffer.byteLength(generated[`${MAKE_SKILL_DIR}/references/parts/common.md`]) > 40 * 1024, 'skill references have no paste-in cap');
-console.log('ok generated payloads, CLI split and all part sets');
+const standard = skillFiles(data, { 'm-bars': { tier: 'standard', set: 'ignored' } });
+assert.ok(standard[`${MAKE_SKILL_DIR}/references/parts/standard.md`].includes('### `<m-bars>`'));
+const tiers = skillFiles(data, { ...Object.fromEntries(Object.keys(data.ja.components).map((tag) => [tag, { tier: 'standard' }])), 'm-flow': { tier: 'specialized', set: 'custom' }, 'm-bars': { tier: 'extra' } });
+assert.deepEqual(Object.keys(tiers).filter((f) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && !f.includes('/en/')).map((f) => path.basename(f)).sort(), ['custom.md', 'extra.md', 'standard.md']);
+for (const language of ['ja', 'en']) {
+  const text = generated[`${MAKE_SKILL_DIR}/${language === 'ja' ? 'SKILL.md' : 'SKILL.en.md'}`];
+  assert.ok(text.indexOf(language === 'ja' ? '## 書き終えたら' : '## When you finish') < text.indexOf(language === 'ja' ? '# AI への指示' : '# Instructions for the AI'));
+  for (const label of ['フォルダで作業する…', 'Work in a folder…', '新規作成…', 'New…']) {
+    assert.ok(read('app/i18n.js').includes(`'${label}'`), label);
+    assert.ok(text.includes(label), `${language}: ${label}`);
+  }
+  const description = text.match(/^description: (.+)$/m)[1];
+  assert.ok([...description].length <= 1024);
+  const book = read(`docs/llm-book${language === 'ja' ? '.ja' : ''}.md`).replace(/^<!-- i18n:.*-->\n/, '').trim();
+  assert.ok(text.includes(book), `${language}: book comes from docs`);
+}
+console.log('ok generated payloads, writing/local split, versions, links and all part sets');
 
 // Read ZIP metadata independently of the writer, including CRC and central directory offsets.
-const zipDir = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-skill-zip-'));
-try {
-  const command = () => spawnSync(process.execPath, [path.join(ROOT, 'tools/make-llm-guide.mjs'), '--zip', zipDir], { encoding: 'utf8' });
-  const r = command();
-  assert.equal(r.status, 0, r.stdout + r.stderr);
-  const file = path.join(zipDir, 'egatari-make-skill.zip'), zip = fs.readFileSync(file);
+function readSkillZip(zip) {
   const eocd = zip.length - 22;
   assert.equal(zip.readUInt32LE(eocd), 0x06054b50);
   assert.equal(zip.readUInt16LE(eocd + 8), zip.readUInt16LE(eocd + 10));
@@ -136,11 +181,30 @@ try {
   }
   assert.equal(pos, eocd);
   assert.equal(localEnd, zip.readUInt32LE(eocd + 16));
-  const expected = walk(MAKE_SKILL_DIR).map((f) => ['make/' + f.slice(MAKE_SKILL_DIR.length + 1), fs.readFileSync(path.join(ROOT, f))]);
+  return contents;
+}
+function checkZip(zip, generated) {
+  const contents = readSkillZip(zip);
+  const expected = Object.entries(generated).filter(([f]) => f.startsWith(MAKE_SKILL_DIR + '/')).map(([f, text]) => ['make/' + f.slice(MAKE_SKILL_DIR.length + 1), Buffer.from(text)]);
   assert.deepEqual([...contents.keys()].sort(), expected.map(([f]) => f).sort());
-  for (const [f, bytes] of expected) assert.deepEqual(contents.get(f), bytes, f);
-  assert.equal(command().status, 0);
-  assert.deepEqual(fs.readFileSync(file), zip, 'ZIP generation is deterministic');
+  for (const [f, bytes] of expected) { assert.deepEqual(contents.get(f), bytes, f); checkMake(contents.get(f).toString(), f); }
+  return contents;
+}
+const zipDir = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-skill-zip-'));
+try {
+  for (const lang of ['ja', 'en']) {
+    const command = () => spawnSync(process.execPath, [path.join(ROOT, 'tools/make-llm-guide.mjs'), '--zip', zipDir, '--lang', lang], { encoding: 'utf8' });
+    const r = command();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const file = path.join(zipDir, 'egatari-make-skill.zip'), zip = fs.readFileSync(file);
+    const contents = checkZip(zip, generate({ skillLang: lang }).files);
+    assert.deepEqual(contents.get('make/SKILL.md'), Buffer.from(generated[`${MAKE_SKILL_DIR}/${lang === 'ja' ? 'SKILL.md' : 'SKILL.en.md'}`]));
+    assert.equal(command().status, 0);
+    assert.deepEqual(fs.readFileSync(file), zip, `${lang}: ZIP generation is deterministic`);
+    const release = path.join(ROOT, 'out/release/egatari-make-skill.zip');
+    // The ignored release artifact is optional in a clean checkout; check it when present.
+    if (lang === 'ja' && fs.existsSync(release)) assert.deepEqual(fs.readFileSync(release), zip, 'release ZIP is current');
+  }
 } finally { fs.rmSync(zipDir, { recursive: true, force: true }); }
 console.log('ok upload ZIP contains the exact generated make bytes');
 

@@ -1,6 +1,6 @@
 ---
 name: make
-description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。チャットと CLI で使える。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」で使う。Use for making HTML lessons, animated slides and scripts.
+description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
 ---
 
 <!-- generated; do not edit by hand -->
@@ -9,19 +9,23 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 # egatari:make：教材を作る
 
-Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。
+Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：ecca7b6f**。Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。Claude Code では `/plugin update egatari@egatari` で make を更新する。チャットでは新しい版の make スキルを入れ直す。参照ファイルは自動で作るので、パーツが増えても本文を手で直さない。
+**指示の版：ecca7b6f**
+
+Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Claude Code では `/plugin update egatari@egatari`。
+チャットでは Studio から make スキルをダウンロードして入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
 
-コマンドを動かせないチャットでは、下の共通の書き方に従い、deck.html と narration.md の 2 つの囲みを返す。Studio の「新規作成」に貼り付けてもらう。修正依頼を受けたら、その指摘を直して返す。
+下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
-## チャットでパーツを選ぶ
+## パーツを選ぶ
 
-標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。ローカルの一覧と demo を直接読む作業は egatari-studio の studio スキルを使う。
+標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 - [common](references/parts/common.md)
 - [academic](references/parts/academic.md)
@@ -39,7 +43,15 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 
 ## 音声を付ける
 
-チャットでは Studio の音声の板で付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。
+Studio の音声の板で付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio が入っていれば、その studio スキルの手順で手元で付けられる。
+
+## 書き終えたら
+
+ファイルを書けるなら、新しいフォルダに `deck.html` と `narration.md` を書く。この場合は、下の R-output の囲みの代わりにファイルで渡す。`egatari-studio:studio` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
+
+ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、`deck.html` と `narration.md` の 2 つのコードの囲みを返す。
+
+どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
 # AI への指示
 
@@ -242,7 +254,3 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 [4] The browser draws the page on the screen.
 [concl] When a page is slow, one of these four stages is taking the time.
 ```
-
-## 書き終えたら
-
-egatari-studio が入っていれば、その studio スキルで品質チェックと組み立てを行う。入っていなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、作業フォルダを開いてもらう。Mac の Safari では Egatari ファイル（.ega.html）で開く手順を使う。

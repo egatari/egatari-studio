@@ -1,13 +1,14 @@
 // チャットの AI に教材を書かせる指示（AI instruction pack）の材料と docs を作る。手で直さない
 //   node tools/make-llm-guide.mjs            書く：kit/core/llm-pack-data.mjs（組み立ての材料）と、
-//                                            plugins/egatari/ と skills/studio/SKILL.md と、
+//                                            plugins/egatari/ と skills/studio/SKILL.md の版の行と、
 //                                            docs/authoring-with-llms(.ja).md（共通の本体）・docs/llm-parts/<系列>(.ja).md（系列ごとの部分）
-//   node tools/make-llm-guide.mjs --zip <out-dir>  egatari-make-skill.zip（make/ 以下。Node の組み込みだけ）
+//   node tools/make-llm-guide.mjs --zip <out-dir> [--lang ja|en]  egatari-make-skill.zip（make/ 以下。Node の組み込みだけ）
 //   node tools/make-llm-guide.mjs --check    今のファイルが作り直したものと同じか・大きさ（npm test。違えば・大きすぎれば終了コード 1）
 // 組み立ては kit/core/llm-pack-assemble.mjs の assemble（編集アプリ・kit/llm-pack.mjs・修正依頼と同じ関数）。docs はその出力そのもの
 //
 // 材料（どれかを直したら作り直す）：
 //   tools/llm-guide/template.md・template.ja.md   共通の本体（英語が正本）。{{…}} を下の中身で置き換える
+//   docs/llm-book.md・llm-book.ja.md              make の「本と配置」（手書きの正本）。スキルの頭にそのまま差し込む
 //   tools/llm-guide/series/<系列>.md・.ja.md      系列ごとの部分。{{CATALOG}}（その系列の部品）・{{EXTENSIONS}}（共通の部品のその系列向けの節）・{{WORKED …}}
 //   docs/contract.md・contract.ja.md              {{contract §N "頭の字"}}：その節の箇条書きのうち、その字で始まる 1 つ（見つからなければ失敗）
 //   vendor/components/<名前>/<版>/README.md・index.js  部品庫の写しの既定の版（components.lock.json）。frontmatter の series（common か系列の名前。ないと失敗）・name・summary・steps と、
@@ -338,38 +339,47 @@ const PACK_VERSION = '{{PACK_VERSION}}';
 // 今の写しは series だけを持つ。2.0 の set・tier があればそちらを使い、特殊は README への道だけ。
 const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
-// ===== make / studio boundary: the light skill ends with this handoff. =====
-const MAKE_ENDING = `## 書き終えたら
-
-egatari-studio が入っていれば、その studio スキルで品質チェックと組み立てを行う。入っていなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、作業フォルダを開いてもらう。Mac の Safari では Egatari ファイル（.ega.html）で開く手順を使う。
-`;
-
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
 
-export function skillFiles(data, assignments = {}) {
-  const D = data.ja, sets = new Map([['common', []], ...data.series.map((s) => [s, []]), ['extra', []]]);
-  for (const [tag, c] of Object.entries(D.components)) {
+// Studio is hand-written. Only this marked version line belongs to the generator.
+export function studioVersion(text, version) {
+  const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の版：[a-f0-9]{8}\*\*(?=\n<!-- \/generated: instruction-version -->)/g;
+  if ([...text.matchAll(marker)].length !== 1) throw new Error('studio needs exactly one marked instruction-version line');
+  return text.replace(marker, `**指示の版：${version}**`);
+}
+
+export function skillFiles(data, assignments = {}, lang = 'ja') {
+  if (!['ja', 'en'].includes(lang)) throw new Error(`invalid skill language: ${lang}`);
+  const files = {}, head = '<!-- generated; do not edit by hand -->\n';
+  const usesTiers = Object.values(assignments).some((c) => c.tier);
+  const sets = new Map(usesTiers ? [['standard', []]] : [['common', []], ...data.series.map((s) => [s, []])]);
+  for (const [tag, c] of Object.entries(data.ja.components)) {
     const meta = assignments[tag] || {};
-    const set = meta.tier === 'extra' ? 'extra' : (meta.set || c.series);
+    const set = meta.tier === 'extra' ? 'extra' : meta.tier === 'standard' ? 'standard' : (meta.set || c.series);
     if (!/^[a-z][a-z0-9-]*$/.test(set)) throw new Error(`invalid skill part set: ${set}`);
     if (!sets.has(set)) sets.set(set, []);
     sets.get(set).push(tag);
   }
-  const files = {}, head = '<!-- generated; do not edit by hand -->\n';
-  const pointer = (tag) => `### \`<${tag}>\`\n\n[README](${data.partsSrc}${tag.replace(/^m-/, '')}/README.md)`;
-  for (const [set, tags] of sets) {
-    const extra = set === 'extra';
-    const entries = tags.sort().map((tag) => extra ? pointer(tag) : partSpans(D.components[tag].entry));
-    // 系列ごとの拡張も同じ材料から入れる（共通パーツの分野向けの使い方）。
-    const ext = extra ? [] : Object.values(D.components).filter((c) => c.ext?.[set]).map((c) => partSpans(c.ext[set]));
-    const table = extra || !tags.length ? '' : D.tableHead + '\n' + tags.map((tag) => partSpans(D.components[tag].row)).join('\n') + '\n\n';
-    files[`${MAKE_SKILL_DIR}/references/parts/${set}.md`] = (head + `# ${set} のパーツ\n\n指示の版：${data.version}\n\n` + table + [...entries, ...ext].join('\n\n') + '\n').replaceAll('部品', 'パーツ');
-  }
-  const links = [...sets.keys()].map((set) => `- [${set}](references/parts/${set}.md)`).join('\n');
-  const common = partSpans(D.common.replace('{{CATALOG}}', 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。').replace('{{PURPOSES}}', 'パーツの候補はセットごとの参照ファイルで選ぶ。'));
-  files[`${MAKE_SKILL_DIR}/SKILL.md`] = `---
+  if (!sets.has('extra')) sets.set('extra', []);
+  for (const language of ['ja', 'en']) {
+    const ja = language === 'ja', D = data[language];
+    const refDir = `references/parts/${ja ? '' : 'en/'}`;
+    const pointer = (tag) => `### \`<${tag}>\`\n\n[README](${data.partsSrc}${tag.replace(/^m-/, '')}/README.md)`;
+    for (const [set, tags] of sets) {
+      const extra = set === 'extra';
+      const entries = tags.sort().map((tag) => extra ? pointer(tag) : partSpans(D.components[tag].entry));
+      const ext = extra ? [] : Object.values(D.components).filter((c) => c.ext?.[set]).map((c) => partSpans(c.ext[set]));
+      const table = extra || !tags.length ? '' : D.tableHead + '\n' + tags.map((tag) => partSpans(D.components[tag].row)).join('\n') + '\n\n';
+      files[`${MAKE_SKILL_DIR}/${refDir}${set}.md`] = skillTerms(head + `# ${ja ? set + ' のパーツ' : set + ' parts'}\n\n${ja ? '指示の版：' : 'Instruction version: '}${data.version}\n\n` + table + [...entries, ...ext].join('\n\n') + '\n').replace(/\bnode /g, '`node` ');
+    }
+    const links = [...sets.keys()].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
+    const common = partSpans(D.common
+      .replace('{{CATALOG}}', ja ? 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。' : 'Read only the parts you need from the set references above.')
+      .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
+    const book = splitStamp(read('docs', ja ? 'llm-book.ja.md' : 'llm-book.md')).body.trim();
+    const text = ja ? `---
 name: make
-description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。チャットと CLI で使える。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」で使う。Use for making HTML lessons, animated slides and scripts.
+description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
 ---
 
 ${head}
@@ -377,38 +387,92 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 # egatari:make：教材を作る
 
-Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。
+Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：${data.version}**。Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。Claude Code では \`/plugin update egatari@egatari\` で make を更新する。チャットでは新しい版の make スキルを入れ直す。参照ファイルは自動で作るので、パーツが増えても本文を手で直さない。
+**指示の版：${data.version}**
+
+Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Claude Code では \`/plugin update egatari@egatari\`。
+チャットでは Studio から make スキルをダウンロードして入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
 
-コマンドを動かせないチャットでは、下の共通の書き方に従い、deck.html と narration.md の 2 つの囲みを返す。Studio の「新規作成」に貼り付けてもらう。修正依頼を受けたら、その指摘を直して返す。
+下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
-## チャットでパーツを選ぶ
+## パーツを選ぶ
 
-標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。ローカルの一覧と demo を直接読む作業は egatari-studio の studio スキルを使う。
+標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 ${links}
 
-## 本（本文の窓・article）と配置
-
-本の本文は読む文章、台本はステップごとに話す言葉。本文を台本へ押し込まない（R-article）。配置は slides（スライド）・flow（続けて読む）・pages（ページ）・split（スライドと本文）。この版の Studio は slides の作成に対応する。本文の窓・article とほかの配置はまだ作れないので、必要なら制限を伝え、本文は別の下書きとして利用者と確認する。未対応の出力が Studio で開けると約束しない。
+${book}
 
 ## 音声を付ける
 
-チャットでは Studio の音声の板で付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。
+Studio の音声の板で付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio が入っていれば、その studio スキルの手順で手元で付けられる。
+
+## 書き終えたら
+
+ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` を書く。この場合は、下の R-output の囲みの代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
+
+ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、\`deck.html\` と \`narration.md\` の 2 つのコードの囲みを返す。
+
+どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
 ${common}
+` : `---
+name: make
+description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”. Former name motion-slides is retained for one version.
+---
 
-${MAKE_ENDING}`.replaceAll('部品', 'パーツ');
-  // ===== make / studio boundary: authoring above; local CLI below. =====
-  // Keep the CLI template separate so the later content design can move sections easily.
-  files['skills/studio/SKILL.md'] = read('tools/llm-guide/skill-studio.ja.txt') + '\n' + skillTerms(read('tools/llm-guide/skill-cli.ja.txt'));
-  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', description: 'Make Egatari lessons with the make skill. No Node.js required.' }, null, 2) + '\n';
-  return Object.fromEntries(Object.entries(files).map(([f, t]) => [f, f === 'skills/studio/SKILL.md' ? t : skillTerms(t)]));
+${head}
+Always reply in the language the user writes in. Write slides and narration in the lesson's language.
+
+# egatari:make: Make a lesson
+
+Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
+
+**Instruction version: ${data.version}**
+
+If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
+In Claude Code, use \`/plugin update egatari@egatari\`.
+In chat, download the make skill again from Studio and reinstall it.
+
+## Workflow
+
+First confirm the materials, audience, length, language and theme, and show an outline. Each item has a heading, what to convey, a recommended part and why, a conclusion line and materials. Never invent numbers. Write after the user approves the outline and parts. Use one speaker by default; write a dialogue only when asked.
+
+Follow the shared writing rules below. When finished, use “When you finish” to deliver files or code blocks, according to your capabilities. For a fix request, fix the findings and return the result.
+
+## Choose parts
+
+Read only the standard and specialized sets you need. Extra parts have README pointers only. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
+
+${links}
+
+${book}
+
+## Add audio
+
+Ask the user to add audio in Studio's audio panel (make AI voice on this computer, record, or Google Colab). If egatari-studio is installed, follow its studio skill to add audio locally.
+
+## When you finish
+
+If you can write files, write \`deck.html\` and \`narration.md\` into a new folder. Deliver these files instead of the fenced blocks required by R-output below. If \`egatari-studio:studio\` is available, continue with that skill for quality checks, ids and building. Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
+
+If you cannot write files, return the two fenced blocks \`deck.html\` and \`narration.md\` following R-output below, ready to paste into Studio's “New…”.
+
+In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
+
+${common}
+`;
+    files[`${MAKE_SKILL_DIR}/${ja ? 'SKILL.md' : 'SKILL.en.md'}`] = skillTerms(text);
+  }
+  if (lang === 'en') files[`${MAKE_SKILL_DIR}/SKILL.md`] = files[`${MAKE_SKILL_DIR}/SKILL.en.md`];
+  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', description: 'Make Egatari lessons with the make skill.' }, null, 2) + '\n';
+  return files;
 }
 
 // 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {common, series: {名前: 共通 + その系列}, all}}（KB）, data}
@@ -547,7 +611,8 @@ export function generate(opts = {}) {
     }
   }
   const assignments = Object.fromEntries(Object.values(manifest?.components || {}).map((c) => [c.tag, c]));
-  Object.assign(files, skillFiles(data, assignments));
+  Object.assign(files, skillFiles(data, assignments, opts.skillLang));
+  files['skills/studio/SKILL.md'] = studioVersion(read('skills/studio/SKILL.md'), data.version);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
   return { files, sizes, data, warnings };
@@ -669,7 +734,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const zi = process.argv.indexOf('--zip');
   if (zi >= 0) {
     if (!process.argv[zi + 1] || process.argv[zi + 1].startsWith('--')) throw new Error('--zip requires an output directory');
-    console.log(writeMakeSkillZip(process.argv[zi + 1]));
+    const li = process.argv.indexOf('--lang');
+    const lang = li < 0 ? 'ja' : process.argv[li + 1];
+    if (!['ja', 'en'].includes(lang)) throw new Error('--lang requires ja or en');
+    console.log(writeMakeSkillZip(process.argv[zi + 1], generate({ skillLang: lang }).files));
     process.exit(0);
   }
   const check = process.argv.includes('--check');
