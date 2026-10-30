@@ -11,6 +11,8 @@
 //     slides：[{key, max, cstep, static}]（組んだデッキの DECK.slides の _key・_max・_cstep）。どのスライドにも合わない節は build が知らせる
 //   orphanDetail(o, slide, text)  orphanSteps の 1 つを直す手がかり → {keys: ['0', …, 'concl'], n（番号の段階の最後）, concl, static,
 //     target（行を合わせる先の段階の鍵）, lines: [{n: 行番号, text: その行のまま}]}。text は narration.md の全体（なければ lines は空）
+import { stripNotes } from './narration-parse.mjs';
+
 const READING = /\{([^{}|]+)\|([^{}]+)\}/g;
 const OPS = /[=+−×÷*/<>≤≥≠≈∝^_\\∑∫√]/;
 const SYM_START = 'A-Za-z\\u0370-\\u03FF';
@@ -33,7 +35,7 @@ function bare(display) {
 }
 export function readingProblems(raw) {
   const out = [];
-  for (const m of String(raw).matchAll(READING)) {
+  for (const m of stripNotes(raw).matchAll(READING)) {
     const display = m[1].trim(), reading = m[2].trim();
     if (/^(mark:|cue$)/.test(display)) continue;   // {mark:ID|effect} は読みではない
     const x = bare(display);

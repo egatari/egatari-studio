@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { readRegular, READ_LIMITS } from './bounded-read.mjs';
 import { parseNarration } from './core/narration-core.mjs';
 
-export { normalizeKey, MARK_EFFECTS, parseBound, renderText, joinLines, parseNarration, narrationMap, marksMap,
+export { NOTE, stripNotes, noteProblems, presenterParts, normalizeKey, MARK_EFFECTS, parseBound, renderText, joinLines, parseNarration, narrationMap, marksMap,
   rewriteNarration, narrationRev, rawTurns, splitKey, SLIDE_ID, isSlideId, newSlideId, STEP_KEY, isStepKey, parseHeading,
   headingText, headingLine, EXT_LINE, parseExtLine } from './core/narration-core.mjs';
 

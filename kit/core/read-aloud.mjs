@@ -15,6 +15,7 @@
 //   whenVoices(synth, ms) → Promise<voices>（Chrome は声の一覧を後から読み込む。voiceschanged か ms ミリ秒まで待つ）
 
 // 段階の中の区切りと読み（kit/core/narration-core.mjs の BOUND・READING と同じ式）、拡張の行（同 EXT_LINE）
+const NOTE_RE = /\{note:[^{}]*\}/g;
 const BOUND_RE = /\{(cue|mark:[^{}]*)\}/g;
 const READING_RE = /\{([^{}|]+)\|([^{}]+)\}/g;
 const EXT_RE = /^\s*@x-[a-z][a-z0-9]{0,31}-[a-z][a-z0-9-]{0,31}(?:[ \t].*)?$/;
@@ -35,7 +36,7 @@ const isJa = (lang) => /^ja\b/i.test(String(lang || ''));
 function rawParts(raw) {
   const lines = String(raw).split(/\r?\n/).filter((ln) => !EXT_RE.test(ln));
   const text = lines.map((ln) => ln.trim()).filter(Boolean).reduce((a, b) => join(a, b), '');
-  return text.split(BOUND_RE).filter((_, j) => j % 2 === 0).map((p) => p.replace(READING_RE, '$2').trim());
+  return text.replace(NOTE_RE, '').split(BOUND_RE).filter((_, j) => j % 2 === 0).map((p) => p.replace(READING_RE, '$2').trim());
 }
 
 function finish(parts, o) {

@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=0cde370c9bf84513 -->
+<!-- i18n: pair=template.ja.md sha256=bbb265b5a2ada871 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -145,6 +145,7 @@ These components may be used in any lesson; a series pack, when it is included a
   - Expert answers and adds one example or analogy, or confirms (or corrects) the paraphrase and takes one step further
   - Only at a comprehension fork (where learners tend to misunderstand, or a “why” remains): at most one exchange per slide, 2–3 turns. Elsewhere Expert alone
   - Never a turn that is only “I see”, or that repeats the previous turn. Example: `Novice: So a larger rate always gets there faster?` `Expert: Not always. Too large, and each step jumps across the valley, like striding downhill onto the opposite slope.`
+- `{note:…}`: presenter directions.
 - `{cue}`: a sync point inside a step, one per entry of the component’s `cues(k)` (only where a component’s README asks for it; otherwise omit).
 - `{mark:ID}`, `{mark:ID|effect}`, `{mark:ID|effect|hold=seconds}`, `{mark:clear}`: placed **right before** the words about the target; at most 1–2 per step; still say the thing in words. {{contract §7 "Effects:"}}
 - **R-reading** `{display|reading}` gives the reading of **one symbol or one term**: `{θ|theta}`, `{N₀|N naught}`, `{x̄|x bar}`, `{論語|ろんご}`. One symbol may carry a star, a prime, a subscript or superscript, or a hat/bar/tilde (`{Q*|Q star}`, `{x′|x prime}`, `{θ̂|theta hat}`). Write the display part in plain Unicode, not LaTeX, and never as an expression or several symbols (`{1-η|…}`, `{a*b|…}` and `{θとη|…}` are wrong: give each symbol its own reading and say the relation in words).

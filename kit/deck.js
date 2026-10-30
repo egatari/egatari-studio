@@ -327,6 +327,36 @@ for (var audioKey in DECK.AUDIO){
   var au = DECK.AUDIO[audioKey], am = FMT && au && typeof au.src === "string" && au.src.indexOf(FMT.uriScheme) === 0 && au.src.slice(FMT.uriScheme.length);
   if (am && /^[A-Za-z0-9_]{1,32}$/.test(am)){ var uri = null; try { uri = blobUri(am, au.mime); } catch (e) { console.warn("audio blob is not base64: " + am); } if (uri) au.src = uri; else { console.warn("audio blob not found: " + am); delete DECK.AUDIO[audioKey]; } }
 }
+// 発表者だけが原稿の控えを読む。実行用の台本には指示を入れない（format spec §8.2）。
+// 通常の build は元の台本の控え、持ち運べる形式は索引と塊。再生専用には控えがない。
+DECK.scriptSource = async function(){
+  var source = json("deck-script-source");
+  if (typeof source === "string") return source;
+  if (!FMT) return null;
+  var el = document.getElementById(FMT.indexId);
+  if (!el) return null;
+  async function checked(bytes, want){
+    if (!window.crypto || !crypto.subtle) return false;
+    var d = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    return Array.from(d, function(b){ return b.toString(16).padStart(2, "0"); }).join("") === want;
+  }
+  try {
+    var text = el.textContent || "";
+    var indexHash = el.getAttribute("data-sha256");
+    var ix = JSON.parse(text), id = ix.files && ix.files["narration.md"], b = ix.blobs && ix.blobs[id];
+    if (!b || !Array.isArray(b.chunks) || b.bytes > 16 * 1024 * 1024) return null;
+    var bytes = new Uint8Array(b.bytes), at = 0;
+    for (var chunk of b.chunks){
+      var node = document.getElementById(chunk);
+      if (!node) return null;
+      var part = atob(node.textContent.trim());
+      if (at + part.length > bytes.length) return null;
+      for (var j = 0; j < part.length; j++) bytes[at++] = part.charCodeAt(j);
+    }
+    if (at !== bytes.length || !await checked(new TextEncoder().encode(text), indexHash) || !await checked(bytes, b.sha256)) return null;
+    return new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+  } catch (e) { return null; }
+};
 // 音声の作り方（format spec §5.2 の kind：tts・recorded・imported）。まず deck-audio の kind（build がどの出力にも写す。再生専用の派生は索引を持たない）、
 // なければ索引の音声の記録の kind（古い 1 ファイル。索引の data-sha256 を確かめてから読み、DECK.AUDIO_KIND に入れて deck:aiaudio を知らせる）。
 // dry-run の無音は何も示さない。§7.3：合成した声（tts）は操作の帯の小さな札「AI 音声」・キーの一覧・発表者ビューで、

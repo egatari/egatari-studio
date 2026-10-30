@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=54834f9e4c818eff -->
+<!-- i18n: pair=contract.ja.md sha256=056691f3f7819aa9 -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)
@@ -62,6 +62,7 @@ The syntax is format §8.1–§8.3. Studio adds:
 
 - `npm run new` gives every slide an id; `npm run ids -- <deck>` adds ids (and `{#id}` on the narration headings, and moves the keys in `audio/manifest.json`, `timeline.json` and `comments.json`) to a lesson that lacks them. Studio's build still keys a slide without an id by its heading so that such a lesson can be opened and fixed, and the quality checker reports it (`legacyIndex`, `linkNoId`); duplicate keys are an error, and the build gives later slides a suffix `#2`, `#3`, … so that it still builds
 - An Egatari file never carries keys by heading: the export first gives every slide and script heading without an id one, and writes them back to the working folder (also the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `egatari.json`; backups in `.cache/edits/`)
+- Stage directions `{note:…}` are removed by the shared parser before display, TTS and audio hashing. The presenter reads the archived script and shows them inline; captions, video and print omit them. The checker reports malformed notes as `narrNote` errors.
 - The build writes each turn as `{role, text, ttsParts}` into `deck-narration` (`DECK.NARRATION`): `ttsParts` (`renderText` in `kit/core/narration-core.mjs`, the same value that enters `inputHash`) is never displayed and is left out of font subsetting; read-aloud (§5) speaks it
 - A line starting with `✎ ` is a placeholder the editor put in a new slide (Studio convention, not part of the format). It is ordinary script text, so it is read aloud if left; the quality checker warns (`narrPlaceholder`, and `templateText` for template text left on the slide), and the editor shows the warning before TTS and export
 - Do not read whole equations aloud (the quality checker warns). Extension lines are kept as they are by the dev server, the editor app and `npm run ids`

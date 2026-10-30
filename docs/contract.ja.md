@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=3ae9d7245563c6e5 -->
+<!-- i18n: pair=contract.md sha256=2db9edd5d69aab03 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -62,6 +62,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 
 - `npm run new` はどのスライドにも id を付ける。`npm run ids -- <deck>` は id のない教材に id を付ける（台本の見出しの `{#id}` も付け、`audio/manifest.json`・`timeline.json`・`comments.json` の鍵も付け替える）。そのような教材を開いて直せるように、Studio の組み立ては id のないスライドをまだ見出しで鍵にし、品質チェックが知らせる（`legacyIndex`・`linkNoId`）。鍵の重なりはエラーで、組めるように組み立ては後のスライドに `#2`・`#3`… を付ける
 - Egatari ファイルには見出しによる鍵を書かない：エクスポートが先に id のないスライドと台本の見出しに id を付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` の鍵も。控えは `.cache/edits/`）
+- 発表者への指示 `{note:…}` は共通の解析で表示・TTS・音声の hash から除く。発表者ビューは控えの台本から元の位置に表示する。字幕・動画・印刷には出さない。書式の誤りは品質チェックの `narrNote` エラーにする。
 - 組み立ては発言ごとに `{role, text, ttsParts}` を `deck-narration`（`DECK.NARRATION`）に書く：`ttsParts`（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値）は表示せず、字の絞り込みにも入れない。読み上げで聞く（§5）がこれを読む
 - `✎ ` で始まる行は、編集アプリが新しいスライドに置いた仮の行（Studio の決まりで、形式の一部ではない）。ふつうの台本の文なので、残せば読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの字は `templateText`）、編集アプリは TTS と書き出しの前にその警告を出す
 - 式をそのまま読まない（品質チェックが警告する）。拡張の行は、開発サーバー・編集アプリ・`npm run ids` がそのまま残す

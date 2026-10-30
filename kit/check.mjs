@@ -40,7 +40,7 @@ import { referenceVoices, matchReference } from './core/ref-voice.mjs';
 import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
-import { normalizeKey } from './narration.mjs';
+import { normalizeKey, noteProblems } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail, formulaLike, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { message, where, ruleOf } from './check-messages.mjs';
@@ -451,6 +451,9 @@ for (const t of templateTextIn(readRegular(src, { max: READ_LIMITS.source }).toS
 for (const seg of built.segs) {
   const i = meta.findIndex((m) => m.key === seg.slideKey);
   if (i < 0) continue;
+  for (const t of seg.turns) for (const p of noteProblems(t.raw)) {
+    report(i, 'error', 'narrNote', { t: p.text, line: seg.line }, seg.stepKey);
+  }
   for (const t of seg.turns) for (const p of readingProblems(t.raw)) {
     report(i, 'warn', p.why === 'operator' ? 'readingExpr' : 'readingSeveral', { t: p.text, line: seg.line }, seg.stepKey);
   }
