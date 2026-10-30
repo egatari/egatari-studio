@@ -213,6 +213,7 @@ export function summaryLines(s, lang) {
 export const resultsDate = (r) => r.window.from.slice(0, 10);
 // 教材の設定（FORMAT.CONFIG_FILE の extensions.live。鍵なし）の部屋と比べる
 export function roomMatch(r, live) {
+  if (isObj(live) && Number.isInteger(live.v) && live.v > 1) return 'none';
   const room = isObj(live) && str(live.room) ? live.room : null;
   if (!room) return 'none';
   return room === r.room ? 'match' : 'mismatch';

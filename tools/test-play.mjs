@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
@@ -63,7 +64,7 @@ const cfg0 = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 const playOnly = (await buildPortable(deck, { playOnly: true })).html;
 const editable = (await buildPortable(deck, {})).html;
 fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, endpoint: fake.endpoint, activities: ACTS } } }, null, 2) + '\n');
-const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
+const room = (from, to, endpoint = fake.endpoint) => ({ v: 1, optionalAddition: { kept: true }, endpoint, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(from), to: iso(to) } });
 const now = Date.now();
 const live = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now - 60e3, now + 2 * 3600e3) })).html;
 const early = (await buildPortable(deck, { playOnly: true, liveDevLoopback: true, live: room(now + 3600e3, now + 7200e3) })).html;
@@ -78,6 +79,7 @@ const FIX = {};
 const put = (name, html) => { FIX[name] = path.join(work, name); fs.writeFileSync(FIX[name], html); };
 put('lesson.play.ega.html', playOnly); put('lesson.ega.html', editable); put('live.play.ega.html', live); put('early.play.ega.html', early);
 put('other.play.ega.html', other); put('teacher.ega.html', editableLive); put('qa.play.ega.html', qaOnly);
+put('future.play.ega.html', live.replace(/(id="deck-extensions">)({[^<]*)/, (_, prefix, json) => prefix + JSON.stringify({ ...JSON.parse(json), live: { ...JSON.parse(json).live, v: 2 } })));
 put('not-egatari.html', '<!doctype html><title>x</title><p>hello</p>');
 // lesson bytes: a marker that occurs only in the file (a comment in the body), to look for in every request and WebSocket frame
 const MARK = 'LESSON-BYTES-' + Math.random().toString(36).slice(2, 12);
@@ -167,6 +169,16 @@ const framer = await serve(work, { headers: false });
 { const h = await new Promise((r) => http.get(site.url, (res) => { res.resume(); r(res.headers); }));
   ok(h['content-security-policy'] === built.csp && h['x-frame-options'] === 'DENY', 'served: the page carries exactly that policy and X-Frame-Options: DENY'); }
 const browser = await launch();
+// check --json: higher versions are informational, even with an unfamiliar shape.
+{ const dir = path.join(work, 'check-future');
+  fs.cpSync(deckDir, dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, FORMAT.CONFIG_FILE), JSON.stringify({ ...cfg0, extensions: { live: { v: 2, activities: 'opaque' }, embed: { v: 2, items: 'opaque' } } }));
+  const c = spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8' });
+  const result = JSON.parse(c.stdout);
+  const notices = result.results.filter((r) => r.code === 'extensionVersion');
+  ok(notices.length === 2 && notices.every((r) => r.sev === 'info') && notices.map((r) => r.data.name).sort().join(',') === 'embed,live', 'check --json: higher live/embed v are extensionVersion info only');
+}
+
 async function page(url = site.url, opts = {}) {
   const ctx = await browser.newContext({ locale: 'ja-JP', viewport: opts.viewport || { width: 1280, height: 800 }, serviceWorkers: opts.sw === false ? 'block' : 'allow' });
   // no test reaches the network: anything but this machine is answered here (links opened in a new tab)
@@ -224,6 +236,16 @@ console.log('keys');
   ok(await until(() => f.evaluate(() => document.hasFocus())), 'keys: the lesson\'s frame has the focus once it has loaded (Chrome loses the focus given before the lesson replaced the empty document)');
   await checkViewerKeys({ ctx: o.ctx, p: o.p, f, ok, until, engine: 'Chromium' });
   ok(o.errors.length === 0, `keys: no page errors (${o.errors.join(' | ')})`);
+  await o.close(); }
+
+// A newer extension is ignored by the Viewer host even when the file permits its endpoint.
+{ const o = await page();
+  const sockets = []; o.p.on('websocket', (w) => sockets.push(w.url()));
+  await openFixture(o.p, 'future.play.ega.html');
+  await lessonFrame(o.p);
+  const st = await o.p.evaluate(() => window.__play.state());
+  ok(!st.playing.live && st.live === null && !(await o.p.isVisible('#live-start')) && !(await o.p.isVisible('#b-live')), 'higher live v: the Viewer starts the lesson without Live controls or host');
+  ok(sockets.length === 0, 'higher live v: the Viewer opens no WebSocket');
   await o.close(); }
 
 // ---------------------------------------------------------------- 3. sandbox isolation

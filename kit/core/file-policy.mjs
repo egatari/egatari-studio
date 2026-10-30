@@ -58,12 +58,12 @@ export function extensionSources(extensions) {
   const out = { connect: [], frame: [] };
   if (!isObj(extensions)) return out;
   const live = extensions.live;
-  if (isObj(live) && typeof live.endpoint === 'string') {
+  if (isObj(live) && live.v === 1 && typeof live.endpoint === 'string') {
     const cs = LP.connectSrc(live.endpoint);
     if (cs) out.connect.push(...cs.split(' '));
   }
   const embed = extensions.embed;
-  if (isObj(embed) && isObj(embed.items)) {
+  if (isObj(embed) && embed.v === 1 && isObj(embed.items)) {
     for (const k of Object.keys(embed.items).sort()) {
       const it = embed.items[k], d = isObj(it) ? embedDestination(it.src) : null;
       if (d) out.frame.push(d);

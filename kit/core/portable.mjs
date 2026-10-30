@@ -631,6 +631,11 @@ export function folderConfig(index, text) {
     const add = Object.fromEntries(RIGHTS.filter((k) => own(meta, k) && !own(cm, k)).map((k) => [k, meta[k]]));
     if (Object.keys(add).length) patch.metadata = isObj(c.metadata) ? configMerge(add) : add;
   }
+  if (isObj(index.extensions)) {
+    const have = isObj(c) && isObj(c.extensions) ? c.extensions : {};
+    const add = Object.fromEntries(Object.entries(index.extensions).filter(([k]) => ['live', 'embed'].includes(k) && !own(have, k)));
+    if (Object.keys(add).length) patch.extensions = configMerge(add);
+  }
   if (list && list.length && !(isObj(c) && own(c, FORMAT.ATTACH_KEY))) patch[FORMAT.ATTACH_KEY] = list;
   if (!Object.keys(patch).length) return null;
   return updateConfig(isObj(c) ? text : null, patch);
@@ -657,7 +662,7 @@ function exportIdsFor(env, deckDir, srcPath, inDeck, opts) {
     const rk = (k) => { const i = String(k).lastIndexOf(':'); const sk = i < 0 ? k : k.slice(0, i); return x.aliases.has(sk) && !x.ids.has(sk) ? x.aliases.get(sk) + (i < 0 ? '' : k.slice(i)) : k; };
     const remap = (o) => { let n = 0; const out = {}; for (const k of Object.keys(o)) { const nk = k === '*' ? k : rk(k); if (nk !== k) n++; if (!own(out, nk)) out[nk] = o[k]; } return n ? out : null; };
     const patch = {};
-    if (isObj(c) && isObj(c.extensions) && isObj(c.extensions.live) && isObj(c.extensions.live.activities)) { const a = remap(c.extensions.live.activities); if (a) patch.extensions = configMerge({ live: configMerge({ activities: a }) }); }
+    if (isObj(c) && isObj(c.extensions) && isObj(c.extensions.live) && c.extensions.live.v === 1 && isObj(c.extensions.live.activities)) { const a = remap(c.extensions.live.activities); if (a) patch.extensions = configMerge({ live: configMerge({ activities: a }) }); }
     if (isObj(c) && isObj(c.metadata) && isObj(c.metadata.authorship)) { const a = remap(c.metadata.authorship); if (a) patch.metadata = configMerge({ authorship: a }); }
     if (isObj(c) && isObj(c.articleLinks)) { const a = remap(c.articleLinks); if (a) patch.articleLinks = a; }
     if (Object.keys(patch).length) writes[CFG] = updateConfig(cfgText, patch);
@@ -868,7 +873,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 授業の部屋の設定（extensions.live。format spec の extensions/live.md）：教材には鍵を残さない（鍵は書き出す再生専用の派生にだけ入る。kit/core/live.mjs）
   if (isObj(econf.extensions) && own(econf.extensions, 'live')) {
     if (!isObj(econf.extensions.live)) fail('bad-config', `${CFG}: extensions.live is not an object`);
-    if (own(econf.extensions.live, 'key')) fail('bad-config', `${CFG}: extensions.live.key must not be stored in the lesson (the key goes only into the exported play-only file); remove it`);
+    if (econf.extensions.live.v === 1 && own(econf.extensions.live, 'key')) fail('bad-config', `${CFG}: extensions.live.key must not be stored in the lesson (the key goes only into the exported play-only file); remove it`);
   }
   // 新しい教材として保存（§7.3）：新しい docId と derivedFrom（§3.6.1）。原稿のフォルダの設定のファイルも書き換える（writes）
   if (opts.identity) {
@@ -1112,9 +1117,9 @@ export async function exportPortable(env0, srcPath, opts = {}) {
 
   // 拡張の行 → extensions.<名前>[<段階の鍵>].<欄>（同じ欄が繰り返せば配列）
   const extensions = extensionsFrom(segs);
-  // 設定のファイルの extensions.live（編集アプリの「授業の部屋を付けて配る」が書く。鍵なし）→ 索引の extensions.live
+  // 設定の live と embed は未知の版・任意の追加項目もそのまま索引へ写す（§9A）
   const confLive = isObj(econf.extensions) && isObj(econf.extensions.live) ? econf.extensions.live : null;
-  if (confLive) extensions.live = { ...confLive, v: Number.isInteger(confLive.v) ? confLive.v : 1 };
+  if (isObj(econf.extensions)) for (const name of ['live', 'embed']) if (own(econf.extensions, name)) extensions[name] = econf.extensions[name];
 
   // metadata と deck-meta
   const lang = (deckSrc.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
@@ -1172,10 +1177,16 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (html.split(oldMeta).length !== 2) fail('internal', 'deck-meta placeholder not found exactly once');
   // 拡張 embed（spec の extensions/embed.md）：索引の extensions.embed を実行系の deck-extensions にも写す（どの 1 ファイルにも。再生器が読み、
   // ファイルの決まりの frame-src の行き先はここから決まる。§4.2）。deck-meta の直後（実行系より前）
-  const runtimeExt = isObj(index.extensions) && isObj(index.extensions.embed) ? { embed: index.extensions.embed } : null;
-  html = html.replace(oldMeta, () => jsonScript('deck-meta', deckMeta) + (runtimeExt ? '\n' + jsonScript(RUNTIME_EXT_ID, runtimeExt) : ''));
+  const runtimeExt = {};
+  if (isObj(index.extensions)) {
+    if (isObj(index.extensions.embed)) runtimeExt.embed = index.extensions.embed;
+    const live = index.extensions.live;
+    if (isObj(live) && Number.isInteger(live.v) && live.v > 1) runtimeExt.live = live;
+  }
+  const hasRuntimeExt = Object.keys(runtimeExt).length > 0;
+  html = html.replace(oldMeta, () => jsonScript('deck-meta', deckMeta) + (hasRuntimeExt ? '\n' + jsonScript(RUNTIME_EXT_ID, runtimeExt) : ''));
   // ファイルの決まり（§4.2）：基準に、deck-extensions が宣言する行き先を足す（embed → frame-src）。組み立てが入れた基準の <meta> を置き換える
-  if (runtimeExt) {
+  if (hasRuntimeExt) {
     const baseMeta = policyMeta(policyText());
     if (html.split(baseMeta).length !== 2) fail('internal', 'file policy placeholder not found exactly once');
     html = html.replace(baseMeta, () => policyMeta(policyText(extensionSources(runtimeExt))));
@@ -1374,7 +1385,7 @@ export { escAttr as htmlAttr, escText as htmlText };
 // 形式の id（索引・塊・deck-meta・deck-audio）を持つ要素を集める。同じ id が 2 つあれば断る。
 // 木は上限つきで作る（kit/core/bounded-html.mjs：要素・属性・入れ子を解析の途中で数え、超えたらその場で断る。残す文字と位置は形式の id の
 // 要素のものだけ）。小さな要素を何百万も並べた文書でも、全部の木を作る前に止まる（§11）
-const WATCH = new RegExp(`^(?:${reEsc(IX_ID)}|${reEsc(BP)}.*|${reEsc(FORMAT.SIGNATURES_ID)}|deck-meta|deck-audio)$`, 's');
+const WATCH = new RegExp(`^(?:${reEsc(IX_ID)}|${reEsc(BP)}.*|${reEsc(FORMAT.SIGNATURES_ID)}|deck-meta|deck-audio|deck-extensions)$`, 's');
 const watched = (attrs) => attrs.some((a) => a.name === 'id' && WATCH.test(a.value));
 export function scanDocument(text, limits = LIMITS) {
   const doc = boundedParse(text, { watch: watched, limits: { elements: limits.elements, attributes: limits.attributes, nesting: limits.nesting }, fail });
@@ -1597,7 +1608,19 @@ export function playOnly(text) {
   }
   const nm = { ...meta, portable: false };
   delete nm.sourceSha256;
-  cut.push([metaEl.start, metaEl.end, jsonScript('deck-meta', nm)]);
+  // The editor may have opened a file whose higher-version extension exists only
+  // in the index. Preserve it before removing that index, without changing CSP.
+  const ixEl = scan.byId.get(IX_ID), extEl = scan.byId.get(RUNTIME_EXT_ID);
+  const extensions = ixEl ? parseJsonStrict(ixEl.text).extensions : null;
+  const runtime = extEl ? parseJsonStrict(extEl.text) : {};
+  let added = false;
+  if (isObj(extensions) && isObj(runtime)) for (const name of ['live', 'embed']) {
+    const x = extensions[name];
+    if (isObj(x) && Number.isInteger(x.v) && x.v > 1 && !own(runtime, name)) { runtime[name] = x; added = true; }
+  }
+  const block = added ? '\n' + jsonScript(RUNTIME_EXT_ID, runtime) : '';
+  if (added && extEl) cut.push([extEl.start, extEl.end, block]);
+  cut.push([metaEl.start, metaEl.end, jsonScript('deck-meta', nm) + (extEl ? '' : block)]);
   cut.sort((a, b) => b[0] - a[0]);
   let out = text;
   for (const [s, e, rep] of cut) {
