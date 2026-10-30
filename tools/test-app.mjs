@@ -1722,9 +1722,9 @@ try {
       // 選ぶ（選ぶ画面の代わりに OPFS のフォルダ）→ 組み直して、そのテーマ（色とロゴ）で組む
       await po.evaluate(() => { window.__APP_TEST.themePicker = async (o) => { window.__pickOpts = o; return window.__thmUser; }; });
       let n0 = await builds();
-      await po.click('#notice-theme #b-theme-load');
-      await po.waitForSelector('#theme-load[open] #theme-load-folder');
-      await po.click('#theme-load-folder');
+      // macOS の CI では、窓のボタンを押しても下のプレビューの iframe に届くことがある（click-retry.mjs）：効くまで押し直す
+      await clickUntil(po, '#notice-theme #b-theme-load', () => po.waitForSelector('#theme-load[open] #theme-load-folder', { timeout: 2500 }));
+      await clickUntil(po, '#theme-load-folder', () => po.waitForFunction(() => !!window.__pickOpts, null, { timeout: 2500 }));
       await afterBuild(n0);
       s = await pst();
       let html = await appHtml();
