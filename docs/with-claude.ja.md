@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=b48afe69f6928d9d -->
+<!-- i18n: pair=with-claude.md sha256=df4221d040e88210 -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -7,34 +7,38 @@
 
 ## できること
 
-`skills/` の 3 つのスキルが働きます。
+同じマーケットプレイスに 2 つのプラグインがあります。
 
-- `egatari:make`：授業の構成案をまず見せ、承認したあとで、作業フォルダ（スライドの `deck.html` と台本の `narration.md`）を作り、品質チェックをします。Egatari ファイル（編集可）にもできます。
-- `egatari:video`：音声の入った作業フォルダか Egatari ファイル（.ega.html）から動画を書き出します（CLI 専用）。
-- `egatari:parts`：合うパーツがないとき、新しい動くパーツを書きます（CLI 専用）。
+- 軽量な `egatari` は `egatari:make` だけを含み、Node は要りません。構成案を見せ、承認後に `deck.html`（スライド）と `narration.md`（台本）を書きます。
+- `egatari-studio` は `egatari-studio:studio` だけを含み、kit・vendor・テーマを同梱します。ローカルの品質チェック・組み立て・パーツ作成・既存の音声を使った動画の書き出しに使います。
 
 ## スキルを入れる
 
 ### Claude Code
 
-先に古い `~/.claude/skills/motion-*` を削除します。プロジェクトの `.claude/skills/` に入れていたものも削除します。Claude Code で次を実行します。
+先に古い `~/.claude/skills/motion-*` を削除します。プロジェクトの `.claude/skills/` に入れていたものも削除します。studio を使う場合は egatari も一緒に入れます：
 
 ```text
 /plugin marketplace add egatari/egatari-studio
 /plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-kit・vendor・テーマと 3 つのスキルがまとめて入ります。初回の `npm ci` はスキルが案内します。更新は `/plugin update egatari@egatari` です。
+教材を書くだけなら最初の 2 行で十分です。studio スキルが初回の `npm ci` を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari` です。
 
 ### チャットの Claude・Cowork
 
-make だけをスキルとして入れます（`skills/make/` を references ごと ZIP にしてアップロード）。コマンドは要りません。2 つの囲みを Studio に貼り付けます。parts と video は CLI 専用です。Studio の指示書とスキルの版が違えば、新しい版の make を入れ直します。Studio から版付き ZIP をダウンロードする機能は、この版にはまだありません。
+`egatari-make-skill.zip` をアップロードして make だけを入れます。開発者は `node tools/make-llm-guide.mjs --zip out/release` で ZIP を作れます。中の `make/SKILL.md` と references は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容です。
+
+コマンドは要りません。2 つの囲みを Studio に貼り付けます。Studio の指示書とスキルの版が違えば、新しい版の make を入れ直します。Studio から版付き ZIP をダウンロードする機能は、この版にはまだありません。
+
+書き終えたら、egatari-studio が入っていれば studio スキルで品質チェックと組み立てをします。それ以外は Chrome か Edge の <https://studio.egatari.org/> で作業フォルダを開きます。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使います。
 
 ## 最初に送る依頼
 
 > 動きのある HTML スライドで、〇〇の授業を作って。対象は〇〇の学生、15 分、話す人は 1 人。
 
-Claude の質問に答え、構成案を承認して、品質チェックが終わるのを待ちます。
+Claude の質問に答え、構成案を承認して、studio で品質チェックをします。
 
 ## Studio で開く
 

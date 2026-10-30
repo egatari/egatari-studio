@@ -1,6 +1,6 @@
 # コマンドを動かせるときだけ読む
 
-以下は CLI 専用。チャットではここから先を使わず、上の共通の書き方で 2 つの囲みを返し、Studio に貼り付けてもらう。CLI では R-output の囲みの代わりに作業フォルダへ書き、画像・JSON・macros.tex も同梱できる。
+以下は CLI 専用。チャットではここから先を使わず、egatari:make の共通の書き方で 2 つの囲みを返し、Studio に貼り付けてもらう。CLI では R-output の囲みの代わりに作業フォルダへ書き、画像・JSON・macros.tex も同梱できる。
 
 リポジトリ `<repo>` はこの SKILL.md のあるフォルダから 2 つ上（プラグインの根）。作業フォルダ `<deck>` はその外に置く。初回は `<repo>` で `npm ci` を実行するよう案内する（Node.js と npm が必要）。kit・vendor・themes は同梱されている。別にパーツライブラリを clone する必要はない。
 
@@ -32,7 +32,7 @@
    - 枚数の目安：話す部分は 1 分 ≒ 1 枚。活動（指示とタイマー）は、何分でも 1 枚と数える。1 枚に 8 行・100 字まで
    - 承認を得るまで HTML を書かない
 3. **静的な版を書く**：`deck.html` をテンプレートから作り（`node <repo>/tools/new.mjs <deck> [--lang en|ja] [--theme 名前] [--title "…"]` で `deck.html` と `narration.md` のテンプレートができる。空でないフォルダには書かない）、ステップなしで全スライドを書く。`node <repo>/kit/check.mjs <deck>/deck.html` で検査
-4. **ステップと台本を一緒に書く**（共通の書き方）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
+4. **ステップと台本を一緒に書く**（egatari:make の共通の書き方）。ステップの順は話す順なので、台本を書きながら `data-step` を決める
    - スライドを足したら、id を書かずに、書き終えたところで `node <repo>/tools/ids.mjs <deck>` を動かす（下の「CLI：id」）
 5. **パーツ**（下の「CLI：パーツ」）。構成案で決めたスライドだけ。使うパーツの `README.md` と `demo.html` を読んでから書く。新しい表現を作ったら、パーツの候補として知らせる（下の「CLI：パーツ」）
 6. **品質チェックをかけて直す**：`node <repo>/kit/check.mjs <deck>/deck.html` のエラーが 0 になるまで（終了コード 2 は検査が終わっていない＝ブラウザが起動できないか落ちた。「エラー 0」ではないので、ブラウザを直して取り直す）。ステップ 0 で見えている本文の一覧は必ず読む
@@ -71,7 +71,7 @@
   - `interactive`：`true` なら操作できるパーツ。構成案で「発表中に操作できる」と添える
   - `group`：`"tool"` なら道具。授業の中に時間を区切る活動（グループワーク・演習・『3 分で考える』など）があるときだけ使う
 - 使った例：`examples/minimal`（`m-sweep`）、`examples/pitch-fictional`（`m-bars` などビジネスのパーツ）、`examples/kokugo-kanbun`（`m-kanbun`・`m-menu`）
-- **合うパーツがないとき**：伝えたいことに合うパーツがなければ、表現カタログ（egatari/components の docs/expression-catalogue.md。パーツライブラリのリポジトリを clone してあればその中、なければ <https://github.com/egatari/components/blob/main/docs/expression-catalogue.md>）を見て、新しい表現を作ってよい。作るのは、その教材のパーツ（`<deck>/components/<名前>/index.js`。egatari:parts スキル）か、インライン SVG と `data-step`。カタログを読めなければ、インライン SVG と `data-step` で描く。作ったら、構成案と終わりの報告で**パーツの候補**として知らせる（何を伝えるための表現か・どのスライドか・カタログのどの項目に近いか）。パーツライブラリへの提案は、利用者が頼んだときだけ（egatari:parts スキル）
+- **合うパーツがないとき**：伝えたいことに合うパーツがなければ、表現カタログ（egatari/components の docs/expression-catalogue.md。パーツライブラリのリポジトリを clone してあればその中、なければ <https://github.com/egatari/components/blob/main/docs/expression-catalogue.md>）を見て、新しい表現を作ってよい。作るのは、その教材のパーツ（`<deck>/components/<名前>/index.js`。[パーツを書く手順](references/parts.md)）か、インライン SVG と `data-step`。カタログを読めなければ、インライン SVG と `data-step` で描く。作ったら、構成案と終わりの報告で**パーツの候補**として知らせる（何を伝えるための表現か・どのスライドか・カタログのどの項目に近いか）。パーツライブラリへの提案は、利用者が頼んだときだけ（[パーツを書く手順](references/parts.md)）
 - **数値は検算済みのスクリプトの出力だけを使う**。`scripts/` に Python（uv）で書き、`data/*.json` に出し、パーツの子に `<script type="application/json">{{JSON:x.json}}</script>` で渡す。見た目のために数値を作らない
 - 図に matplotlib などのグラフを入れるときは、各軸にデータの範囲より余白を取る（`ax.margins(0.05)` など）。端の点がプロット領域で切れないようにする
 - 動きは注意の誘導に限る。飾りの動きは付けない
@@ -98,7 +98,7 @@
    ### Browser
    ### OS
    ### Context
-   lang=ja, mode=talk, via Claude Code (egatari:make)
+   lang=ja, mode=talk, via Claude Code (egatari-studio:studio)
    ```
 4. ユーザーが「送って」と明示したときだけ作る（直してと言われたら直して見せ直す）：
    ```bash

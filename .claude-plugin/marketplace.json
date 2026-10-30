@@ -6,8 +6,13 @@
   "plugins": [
     {
       "name": "egatari",
+      "source": "./plugins/egatari",
+      "description": "Make Egatari lessons with the make skill. No Node.js required."
+    },
+    {
+      "name": "egatari-studio",
       "source": "./",
-      "description": "Egatari Studio with make, parts and video skills."
+      "description": "Local checks, builds, parts and video with the studio skill. Install egatari too."
     }
   ]
 }

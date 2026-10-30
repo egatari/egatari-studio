@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=6339b7396b9aa47c -->
+<!-- i18n: pair=README.md sha256=14735c019185a5f1 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -168,27 +168,29 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作る：[docs/with-claude.ja.md](docs/with-claude.ja.md)（[English](docs/with-claude.md)）。
 
-先に、古い入れ方の `~/.claude/skills/motion-*` を削除する（プロジェクトの `.claude/skills/` にも入れていたらそちらも）。Claude Code で次の 2 つを実行すると、3 つのスキルと kit・vendor・テーマがまとめて入る。
+先に、古い入れ方の `~/.claude/skills/motion-*` を削除する（プロジェクトの `.claude/skills/` にも入れていたらそちらも）。教材を書く軽量な `egatari` は make だけを含み、Node は要らない。ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。studio を使う場合は、必ず両方を入れる：
 
 ```text
 /plugin marketplace add egatari/egatari-studio
 /plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-初回の `npm ci` はスキルが案内する。更新は `/plugin update egatari@egatari`。チャットの AI には make だけを入れる。
+studio スキルが初回の `npm ci` を案内する。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+
+チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
 | スキル | 使いどころ |
 |---|---|
-| `egatari:make` | 構成案・原稿・ステップ・台本・品質チェック・build（段 1） |
-| `egatari:video` | 音声の入った教材から動画を書き出す（CLI 専用） |
-| `egatari:parts` | パーツを新しく書く、パーツライブラリに移す |
+| `egatari:make` | 構成案・原稿・ステップ・台本（Node 不要） |
+| `egatari-studio:studio` | ローカルの品質チェック・組み立て、パーツ作成、既存の音声を使った動画の書き出し |
 
 頼み方の例：
 
 - 「`paper/main.tex` から 10 分の発表の HTML スライドを egatari:make で作って。テーマは default、1 人で話す」
 - 「学習率で損失の下がり方が変わる様子を m-sweep で見せるスライドを足して」
 - 「コメントを反映して」（開発サーバーで Alt / ⌥ option+クリックのメモを残した後。スキルが `comments.json` を読む）
-- 「`talks/intro` （音声入り）を egatari:video で動画にして」
+- 「`talks/intro` （音声入り）を egatari-studio:studio で動画にして」
 
 スキルはまず構成案を見せ、承認を得てから HTML を書く。
 
@@ -286,7 +288,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `server/` | 開発サーバーとブラウザ上の編集 |
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/` に配信版（`dist/index.html`）と オフライン版のエディタ `dist/editor.html` を作る |
 | `tts/` `render/` | 段 2：TTS（uv のプロジェクト）、動画の書き出し |
-| `skills/` | Claude Code のスキル |
+| `skills/studio/` | ローカル用の Claude Code studio スキル |
+| `plugins/egatari/` | make だけを含む、生成した軽量プラグイン |
 | `tools/` | 新しい教材のテンプレート（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
 | `CHANGELOG.md` | 版ごとの変更（英語） |
 

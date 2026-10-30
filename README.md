@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=6cd52404b8cd14a2 -->
+<!-- i18n: pair=README.ja.md sha256=1fc0c2ef34b16730 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -168,27 +168,29 @@ Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
-First delete the old `~/.claude/skills/motion-*` entries (and any copies in a project's `.claude/skills/`). Run these two commands in Claude Code to install all three skills with kit, vendor and themes:
+First delete the old `~/.claude/skills/motion-*` entries (and any copies in a project's `.claude/skills/`). The light `egatari` entry contains only make for authoring and needs no Node. Add `egatari-studio` for local quality checks, builds, parts and video. To use studio, install both entries:
 
 ```text
 /plugin marketplace add egatari/egatari-studio
 /plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-The skill guides the first `npm ci`. Update with `/plugin update egatari@egatari`. For a chat AI, install only make.
+The studio skill guides the first `npm ci`. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+
+For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 
 | Skill | Use it for |
 |---|---|
-| `egatari:make` | plan, write, step, narrate, quality-check and build a lesson (tier 1) |
-| `egatari:video` | export a lesson with existing audio as video (CLI only) |
-| `egatari:parts` | write a new part, or move one into the Parts library |
+| `egatari:make` | plan, write, step and narrate a lesson (no Node needed) |
+| `egatari-studio:studio` | local quality checks and builds, writing parts, and exporting video with existing audio |
 
 Example prompts:
 
 - "Use egatari:make to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
 - "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
 - "Apply the comments." (after leaving Alt / ⌥ Option+click comments in the dev server; the skill reads `comments.json`)
-- "Turn `talks/intro` with existing audio into a video with egatari:video."
+- "Turn `talks/intro` with existing audio into a video with egatari-studio:studio."
 
 The skill first shows you an outline and writes HTML only after you approve it.
 
@@ -286,7 +288,8 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `server/` | dev server and in-browser editor |
 | `app/` | editor app (no install): sources; `npm run build:app` makes the hosted editor in `dist/` (`dist/index.html`) and the Offline editor `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering |
-| `skills/` | Claude Code skills |
+| `skills/studio/` | local Claude Code studio skill |
+| `plugins/egatari/` | generated light plugin with only make |
 | `tools/` | new-lesson template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |
 

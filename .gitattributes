@@ -9,3 +9,7 @@ kit/core/llm-pack-data.mjs text eol=lf
 # 同梱のテーマの前の版の写し（themes.lock.json。kit/core/themes-lock.mjs）：バイトのまま
 vendor/themes/** -text
 themes.lock.json text eol=lf
+
+# Generated plugin skills and the upload ZIP share the same LF bytes.
+plugins/egatari/** text eol=lf
+skills/studio/SKILL.md text eol=lf

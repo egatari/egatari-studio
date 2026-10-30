@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=cb3f5d1bbb4600f7 -->
+<!-- i18n: pair=template.ja.md sha256=23046eae9a92998a -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -18,7 +18,7 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 - **ChatGPT**: a Project (instructions or files), or a custom GPT. The pack is longer than a custom GPT's instruction box allows, so upload it as a Knowledge file and write “Follow the attached Egatari instruction pack exactly” in the instructions.
 - **Gemini**: a Gem; put the pack in its instructions, or add it as a file if it is too long.
 
-A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`skills/make/`) is generated from the same source. In chat it writes the two files; in a CLI it also guides quality checks, builds and adding audio.
+A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
 This file and the series packs together are the **full pack**: the standards, the output format and every component. For a chat AI on a paid plan the editor copies every standard part with the subjects and tools chosen; with every subject and tool chosen, that is the full pack. Each **series pack** adds the components of one kind of lesson: {{SERIES_LIST}}. For a free plan the editor copies a lighter pack with fewer components (`node kit/llm-pack.mjs --series academic,info --lang en` prints it; add `--plan paid` for the paid-plan pack with those subjects, and `--series all --tools all --plan paid` for the full pack). Sizes (KB = UTF-8 bytes / 1024):
 

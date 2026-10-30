@@ -1,15 +1,10 @@
----
-name: parts
-description: Egatari Studio（旧 motion-academic-slides）のパーツ（動きのある図。Web Components）を新しく書く・直す・パーツライブラリ（egatari/components）に提案する。「新しいパーツを作って」「この図をパーツにして」「新しい部品を作って」「この図を部品にして」「パーツライブラリに入れて」「パーツライブラリに提案して」「motion-components」で使う。パーツを使ってスライドを作るだけなら egatari:make。 Use for: write or fix a new part (component, animated figure), turn this figure into a part, propose a part to the components library.
----
-
 Always reply in the language the user writes in, not the language of this file. Write slides and narration in the deck's language (`<html lang>`); for a new deck, the language the user asks for, or else the language they write in.
 
-# egatari:parts：パーツを書く
+# egatari-studio:studio：パーツを書く
 
 CLI 専用。TODO(#123)：パーツライブラリ 2.0 の API・manifest・段の目安に合わせた書き直しは #123 で行う。
 
-リポジトリ：この SKILL.md のあるフォルダから 2 つ上（プラグインの根。`<repo>`）。初回は `<repo>` で `npm ci` を案内する。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
+リポジトリ：studio スキルの SKILL.md のあるフォルダから 2 つ上（プラグインの根。`<repo>`）。初回は `<repo>` で `npm ci` を案内する。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
 
 **パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
 
