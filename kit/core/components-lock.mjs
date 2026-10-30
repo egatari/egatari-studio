@@ -1,11 +1,12 @@
 // 部品庫の部品（egatari/components のリリース）の写しと、その版の固定（components.lock.json）
-//   写し：vendor/components/<名前>/<版>/{index.js, README.md, demo.html …}（取り込んだ版はすべて残す。古い版で組んだ教材を組み直すため）
+//   写し：vendor/components/sha256/<hash>/{index.js, README.md, demo.html …}（版ごとの content 表で引く）
 //   固定：components.lock.json（npm run components:update -- vX.Y.Z が書く。手で直さない）
 //     { "source": "https://github.com/egatari/components", "tag": "v1.0.0", "tarballSha256": "…",
 //       "releases": { "v1.0.0": { "tarballSha256": "…" } },
 //       "yanked": { "1.0.0": { "replacement": "1.0.2", "reason": "…", "date": "2026-10-20" } },
 //       "components": { "<名前>": { "default": "1.0.0", "versions": ["1.0.0"], "sha256": { "1.0.0": "<index.js の同一性の sha256>" },
-//                                   "crlfSha256": { "1.0.0": "<改行を CRLF にした index.js の sha256>" } } } }
+//                                   "crlfSha256": { "1.0.0": "<改行を CRLF にした index.js の sha256>" },
+//                                   "content": { "1.0.0": "<フォルダ全体の sha256>" } } } }
 //     yanked は部品庫が取り下げた版（format spec §6：版は手に入るまま、manifest.json の yanked が取り下げと置き換え先の版を示す）。取り込むたびに manifest の
 //     yanked を足す（消さない）。編集アプリは、取り下げた版を記録した教材に組み直しを勧めるが、黙って置き換えない
 //     sha256 は改行をそろえた同一性の hash（format spec §6、kit/core/identity-hash.mjs）。crlfSha256 は、改行をそろえる前に Windows の checkout で
@@ -42,6 +43,13 @@ export function lockProblems(lock) {
     if (own(c, 'crlfSha256')) {
       if (!isObj(c.crlfSha256)) e.push(`${w}.crlfSha256: not an object`);
       else for (const [v, h] of Object.entries(c.crlfSha256)) if (!c.versions.includes(v) || !SHA_RE.test(h)) e.push(`${w}.crlfSha256.${v}: not a version with a sha256`);
+    }
+    if (own(c, 'content')) {
+      if (!isObj(c.content)) e.push(`${w}.content: not an object`);
+      else {
+        for (const v of c.versions) if (!own(c.content, v) || typeof c.content[v] !== 'string' || !SHA_RE.test(c.content[v])) e.push(`${w}.content.${v}: not a sha256`);
+        for (const v of Object.keys(c.content)) if (!c.versions.includes(v)) e.push(`${w}.content.${v}: not in versions`);
+      }
     }
   }
   return e;
@@ -100,6 +108,19 @@ export function readLock(env, root) {
 
 // 部品の写しのフォルダ（<root>/vendor/components）
 export const vendorDir = (P, root) => P.join(root, ...VENDOR_COMPONENTS);
+
+// 唯一の写しの場所の解決口。content はフォルダ全体のバイトの hash（index.js の同一性の hash とは別）。
+// content のない古い固定も読めるので、移行前の写し・道具の試験でも同じ口を使う。
+export function resolveComponent(P, root, lock, name, version) {
+  if (!NAME_RE.test(name) || !VERSION_RE.test(version) || !lock || !isObj(lock.components) || !own(lock.components, name)) return null;
+  const c = lock.components[name];
+  if (!c.versions.includes(version)) return null;
+  if (own(c, 'content')) {
+    const hash = c.content && c.content[version];
+    return typeof hash === 'string' && SHA_RE.test(hash) ? P.join(vendorDir(P, root), 'sha256', hash) : null;
+  }
+  return P.join(vendorDir(P, root), name, version);
+}
 
 // 使う版を決める：want（固定。opts.componentVersions や作業フォルダの設定のファイルの components）が手元にあればそれ、なければ既定の版。
 // 返すもの：{version, note}（note は知らせ。固定した版が手元にないときなど）。部品が固定のファイルにないときは version: null

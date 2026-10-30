@@ -14,6 +14,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
+import { resolveComponent } from '../kit/core/components-lock.mjs';
+import { appComponentFiles } from './vendor-components.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { PREVIEW_CSP } from '../app/preview-doc.js';
 
@@ -27,6 +29,15 @@ const LOCK = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'),
 const OLD = '1.0.0', NEW = '1.0.2';
 ok(LOCK.yanked && LOCK.yanked[OLD] && LOCK.yanked[OLD].replacement === NEW && LOCK.yanked['1.0.1'] && LOCK.yanked['1.0.1'].replacement === NEW && !LOCK.yanked[NEW], 'lock: 1.0.0 and 1.0.1 are yanked with replacement 1.0.2; 1.0.2 is not');
 ok(!LOCK.yanked[LOCK.tag.slice(1)], 'lock: the default version is not yanked');
+const appCopies = new Map(appComponentFiles(ROOT));
+for (const name of ['sweep', 'bars']) {
+  for (const v of [OLD, '1.0.1', NEW]) {
+    const dir = resolveComponent(path, ROOT, LOCK, name, v);
+    const virt = '/repo/' + path.relative(ROOT, path.join(dir, 'index.js')).split(path.sep).join('/');
+    ok(dir.includes(path.join('components', 'sha256')) && appCopies.has(virt) && fs.existsSync(appCopies.get(virt)), `store: ${name}@${v} remains available to the editor, including yanked versions`);
+  }
+}
+
 
 // ---------------------------------------------------------------- デッキ（examples/minimal の写し。使う部品を OLD で固定）
 function deckDir(name, pins) {

@@ -17,7 +17,7 @@
 //   /*INCLUDE:ファイル*/     ファイルの中身をそのまま入れる（原稿のフォルダ → kit の順に探す）
 //   {{FIG:名前}}            figs/名前.svg（なければ原稿のフォルダの 名前.svg）を埋め込む。id に図の名前を前置する
 //   {{JSON:ファイル}}        JSON をそのまま入れる（data/ → 原稿のフォルダの順に探す）
-//   <m-名前 …>              部品。components/名前/index.js（作業フォルダ）→ 部品庫の写し vendor/components/名前/<版>/index.js（版は components.lock.json）の順に探して自動で読み込む
+//   <m-名前 …>              部品。components/名前/index.js（作業フォルダ）→ 部品庫の写し vendor/components/sha256/<hash>/index.js（版は components.lock.json）の順に探して自動で読み込む
 // 原稿のフォルダに置くと読まれるもの
 //   narration.md（口述原稿）、timeline.json（秒数の調整）、audio/manifest.json（TTS の出力）、macros.tex（数式のマクロ）
 //

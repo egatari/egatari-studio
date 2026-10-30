@@ -27,6 +27,7 @@ import * as esbuild from 'esbuild';
 import { createRequire } from 'node:module';
 import { createEngine, READ_CONCURRENCY as ENGINE_READS } from '../app/engine.js';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { resolveComponent, parseLock } from '../kit/core/components-lock.mjs';
 import { appComponentFiles } from './vendor-components.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
 import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
@@ -373,6 +374,33 @@ function appResources() {
   }
   return { res: { version: 't', text, b64, lazy }, loadLazy: async (v) => fs.readFileSync(lazyFiles[v]).toString('base64') };
 }
+ok('編集アプリ：content 表の全版を同梱し、取り下げた版と同じ写しを使う別の版を固定のまま書き出す', async () => {
+  const { res, loadLazy } = appResources();
+  const lock = parseLock(res.text['/repo/components.lock.json']);
+  for (const [name, c] of Object.entries(lock.components)) for (const v of c.versions) {
+    const dir = resolveComponent(path.posix, '/repo', lock, name, v);
+    assert.ok(Object.hasOwn(res.text, dir + '/index.js'), `${name}@${v} is bundled`);
+  }
+  const c = lock.components.bars;
+  const shared = c.versions.find((v, i, vs) => vs.slice(i + 1).some((w) => c.content[v] === c.content[w]));
+  const other = c.versions.find((v) => v !== shared && c.content[v] === c.content[shared]);
+  assert.ok(shared && other, 'fixture includes two releases of the same folder');
+  const deck = '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>pins</title></head><body><div id="stage"><section class="slide" id="s-pins"><h2>Pins</h2><div class="body"><m-bars aria-label="bars" style="height:300px"><script type="application/json">{"groups":[{"label":"A","values":[1]}]}</script></m-bars></div></section></div></body></html>';
+  for (const version of new Set(['1.0.0', shared, other])) {
+    const ws = memoryWorkspace('pins', { 'deck.html': deck, 'egatari.json': JSON.stringify({ components: { bars: version } }) });
+    const engine = createEngine(res, loadLazy);
+    engine.setWorkspace(ws); engine.setListing(await ws.list());
+    const built = await engine.build('deck.html');
+    assert.deepEqual(built.stats.componentVersions, { bars: version });
+    assert.ok(!built.stats.warn.some((w) => /component not found/.test(w)));
+    assert.equal(built.stats.yanked.some((y) => y.version === version), !!lock.yanked[version]);
+    const exported = await engine.exportPortable('deck.html');
+    const part = exported.index.components.find((c) => c.name === 'bars');
+    assert.deepEqual([part.version, part.sha256, part.source], [version, c.sha256[version], 'registry']);
+    assert.deepEqual((await engine.exportPortable('deck.html', { carry: exported.index })).index.components, exported.index.components);
+  }
+});
+
 // 一覧の大きさを偽れる作業場所（読んだ回数・同時に読んだ数を数える）
 function countingWs(files, sizes = {}) {
   const reads = new Map(); let inFlight = 0, max = 0;

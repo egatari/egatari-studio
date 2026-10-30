@@ -5,7 +5,7 @@
 //   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
-// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/*/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
+// アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/sha256/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
 // server/hints.js（プレビューの中の知らせの部品。編集の画面 server/editor-ui.js は main.js と一緒に組む）・@fontsource の BIZ UDPゴシックと Source Sans 3（400・700）、配信版だけ BIZ UDP明朝。
 // 字の分割ファイル（woff2）は、配信版では fonts/ に置いて使う分だけ読み、1 ファイル版では全部を埋め込む（約 12 MB）
 import fs from 'node:fs';
@@ -51,7 +51,7 @@ function addTree(virtDir, dir, filter = () => true) {
 for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/repo/kit/' + f, rel('kit', f));
 // 実行系に入れる kit/core の ES モジュール（build-core の RUNTIME_MODULES。classicModule が DECK.PositionStore などにする。組み立てが字として読む）
 for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
-// 部品：部品庫の写し vendor/components/<名前>/<版>/index.js（取り込んだすべての版）と components.lock.json（tools/vendor-components.mjs）
+// 部品：content 表が指す写し vendor/components/sha256/<hash>/index.js（同じ写しは 1 回だけ）と components.lock.json（tools/vendor-components.mjs）
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 // テーマ（ロゴも）
@@ -158,7 +158,7 @@ const MANIFEST = {
   background_color: '#f4f5f8', theme_color: '#ffffff',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
 };
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1), and the parts of egatari/components (MIT; the stroke data in m-kakijun is SIL OFL 1.1, see vendor/components/kakijun/). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1), and the parts of egatari/components (MIT; the stroke data in m-kakijun is SIL OFL 1.1, see vendor/components/sha256/). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;
@@ -186,7 +186,7 @@ const LAME_DIR = path.join(path.dirname(require.resolve('lame-wasm')), '..');   
 fs.mkdirSync(path.join(ED, 'vendor', 'lame-wasm'), { recursive: true });
 for (const [from, to] of [['dist/index.js', 'index.js'], ['LICENSE', 'LICENSE'], ['package.json', 'package.json'], ['README.md', 'README.md']]) fs.copyFileSync(path.join(LAME_DIR, from), path.join(ED, 'vendor', 'lame-wasm', to));
 // 部品の使用条件：app.js に入れた部品の index.js のうち、MIT のほかの条件を持つもの（部品庫の manifest の license。m-kakijun の字の形は SIL OFL 1.1）は、
-// その部品のフォルダの使用条件のファイル（LICENSE*・OFL*・COPYING*・NOTICE* と、変えた所の記録 *CHANGES.md）を vendor/components/<名前>/<版>/ に写す。
+// その部品のフォルダの使用条件のファイル（LICENSE*・OFL*・COPYING*・NOTICE* と、変えた所の記録 *CHANGES.md）を vendor/components/sha256/<hash>/ に写す。
 // 部品庫全体の MIT は vendor/components/LICENSE
 const partLicenses = componentLicenseFiles(ROOT);
 for (const [virt, file] of partLicenses) { const to = path.join(ED, virt.replace(/^\/repo\//, '')); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(file, to); }

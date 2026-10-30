@@ -211,8 +211,8 @@ function splitBlocks(body, file) {
 function components() {
   return vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map(({ name: n, version: v, dir }) => {
     const file = `vendor/components/${n}/${v}/README.md`;
-    const [fm, body] = frontmatter(read('vendor', 'components', n, v, 'README.md'));
-    const js = fs.existsSync(path.join(dir, 'index.js')) ? read('vendor', 'components', n, v, 'index.js') : '';
+    const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));
+    const js = fs.existsSync(path.join(dir, 'index.js')) ? read(path.relative(ROOT, path.join(dir, 'index.js'))) : '';
     if (!fm.name) throw new Error(`${file} has no frontmatter name`);
     if (!fm.series) throw new Error(`${file} has no frontmatter series (common, or one of ${SERIES.join(', ')}): every kit component belongs to exactly one place in the AI instruction pack`);
     if (fm.series !== 'common' && !SERIES.includes(fm.series)) throw new Error(`${file}: series "${fm.series}" is not common or one of ${SERIES.join(', ')}`);

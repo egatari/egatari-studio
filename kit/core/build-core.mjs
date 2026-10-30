@@ -24,7 +24,7 @@ import { runtimeAttachTypes } from './attach-content.mjs';
 const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runtimeAttachTypes() });
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
-import { readLock, vendorDir, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
+import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
 import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
@@ -743,7 +743,8 @@ export function build(env0, srcPath, opts = {}) {
   const used = [...new Set([...html.matchAll(/<(m-[a-z0-9-]+)[\s>]/g)].map((m) => m[1]))];
   let compJs = '';
   const localComps = [];
-  // 部品庫の部品は egatari/components のリリースの写し（vendor/components/<名前>/<版>/。kit/core/components-lock.mjs）。
+  const componentVersions = {};
+  // 部品庫の部品は egatari/components のリリースの写し（vendor/components/sha256/<hash>/。kit/core/components-lock.mjs）。
   // 版は opts.componentVersions（組み直す文書の記録から）→ 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の components → components.lock.json の既定の版
   const compRoot = vendorDir(P, ROOT);
   const lock = used.length ? readLock(env, ROOT) : null;
@@ -760,7 +761,8 @@ export function build(env0, srcPath, opts = {}) {
     // 原稿のフォルダにあって外を指すものは、部品庫のものに替えずに使わない）
     const local = P.join(deckDir, 'components', name, 'index.js');
     const pick = pickVersion(lock, name, Object.prototype.hasOwnProperty.call(pins, name) ? pins[name] : undefined);
-    const lib = pick.version ? P.join(compRoot, name, pick.version, 'index.js') : null;
+    const resolved = pick.version ? resolveComponent(P, ROOT, lock, name, pick.version) : null;
+    const lib = resolved ? P.join(resolved, 'index.js') : null;
     let file = null;
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
@@ -774,12 +776,13 @@ export function build(env0, srcPath, opts = {}) {
         yankedUsed.push({ tag, name, version: pick.version, replacement: y.replacement, reason: y.reason, date: y.date, replacementAvailable: ok, sha256Changes: ok ? lc.sha256[pick.version] !== lc.sha256[y.replacement] : null });
         warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / 部品庫が取り下げた版：記録のまま組む。黙って置き換えない`);
       }
-      if (env.within(lib, compRoot)) file = lib;
+      if (env.within(lib, compRoot)) { file = lib; componentVersions[name] = pick.version; }
       else { warn.push(`refused: 部品庫の部品 ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
     // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（端末ごとのパスを出力に書かない）
-    const where = env.within(file, deckDir) ? P.relative(deckDir, file) : P.relative(ROOT, file);
+    const where = env.within(file, deckDir) ? P.relative(deckDir, file)
+      : componentVersions[name] ? `vendor/components/${name}/${componentVersions[name]}/index.js` : P.relative(ROOT, file);
     if (env.within(file, deckDir)) localComps.push(where.split(P.sep).join('/'));
     compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
   }
@@ -921,7 +924,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
   // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, componentVersions, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
     theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
