@@ -15,6 +15,7 @@ tts/voices/*
 **/__pycache__/
 **/audio/
 **/video/
+!skills/video/
 **/bundle/
 # dev-server notes, local settings and secrets
 comments.json

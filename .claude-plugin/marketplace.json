@@ -1,0 +1,13 @@
+{
+  "name": "egatari",
+  "owner": {
+    "name": "Egatari"
+  },
+  "plugins": [
+    {
+      "name": "egatari",
+      "source": "./",
+      "description": "Egatari Studio with make, parts and video skills."
+    }
+  ]
+}

@@ -26,6 +26,7 @@ const rel = (...p) => path.join(ROOT, ...p);
 const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
 
+// test-plugin もここで実行（配布物の環境依存の文字列・名前・生成した参照ファイル）。
 // 単体の検査（ブラウザのいらないもの）：先頭に「// test-all: unit」の行がある tools/test-*.mjs を見つける
 const MARK = /^\/\/ test-all: (unit|part of [\w-]+)/m;
 const markOf = (f) => { const m = fs.readFileSync(rel('tools', f), 'utf8').split('\n').slice(0, 40).join('\n').match(MARK); return m ? m[1] : null; };
