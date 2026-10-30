@@ -37,7 +37,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     applyRelease2(release('2.0.0', 'first'), { root });
     const first = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
     const dir = resolveComponent(path, root, first, 'base', '1.0.0');
-    ok(dir.includes('/vendor/components/sha256/') && fs.existsSync(path.join(dir, 'index.js')), '2.0 import writes content-addressed code, resolved through the shared lock');
+    ok(dir.split(path.sep).join('/').includes('/vendor/components/sha256/') && fs.existsSync(path.join(dir, 'index.js')), '2.0 import writes content-addressed code, resolved through the shared lock');
     ok(first.components.bars.default === '1.13.1' && checkVendor2(root).length === 0, '2.0 import preserves 1.x defaults and does not apply release-wide 1.x withdrawals to library versions');
     const second = applyRelease2(release('2.0.1', 'changed documentation'), { root });
     const next = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
