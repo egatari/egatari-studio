@@ -519,13 +519,15 @@ try {
     const S = window.__continuous = {
       gum: navigator.mediaDevices.getUserMedia, start: MediaRecorder.prototype.start,
       writable: FileSystemFileHandle.prototype.createWritable,
-      starts: 0, bursts: 0, events: [], takes: [], results: {}, ac: null, source: null,
+      starts: 0, bursts: 0, keyEvents: 0, events: [], takes: [], results: {}, ac: null, source: null,
+      streamId: 0, streamIds: new WeakMap(), stopKey: null, longHold: false,
     };
     navigator.mediaDevices.getUserMedia = async function (...a) {
       S.source = await S.gum.apply(navigator.mediaDevices, a);
       S.ac = new AudioContext();
       S.analysis = new AudioContext();
       S.dest = S.ac.createMediaStreamDestination();
+      S.streamIds.set(S.dest.stream, ++S.streamId);
       S.ac.createMediaStreamSource(S.source).connect(S.dest);
       await S.ac.resume();
       return S.dest.stream;
@@ -540,18 +542,24 @@ try {
       } else gain.gain.value = amp;
       osc.connect(gain); gain.connect(S.dest); osc.start(at); osc.stop(at + duration);
       osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+      return S.streamIds.get(S.dest.stream);
     };
     S.burst = (e) => {
-      if (e.key !== 'Enter' || !S.ac || S.ac.state !== 'running') return;
+      if (e.key !== 'Enter') return;
+      S.keyEvents++;
+      if (!S.ac || S.ac.state !== 'running') return;
       const dom = performance.now(), at = S.ac.currentTime, duration = 0.006;
-      S.tone(8000, at, duration, 0.32);
-      S.events.push({ dom, kind: e.type, duration });
+      const streamId = S.tone(8000, at, duration, 0.32);
+      // Log only after the oscillator starts, on the destination it actually used.
+      S.events.push({ dom, kind: e.type, duration, streamId, stopKey: S.stopKey,
+        longHoldRelease: S.longHold && e.type === 'keyup' });
       S.bursts++;
     };
     document.addEventListener('keydown', S.burst, true); document.addEventListener('keyup', S.burst, true);
     MediaRecorder.prototype.start = function (...a) {
       S.starts++;
-      const t = { key: window.__APP_TEST.rec().key, chunks: [], markers: [] };
+      const t = { key: window.__APP_TEST.rec().key, streamId: S.streamIds.get(this.stream), chunks: [], markers: [] };
+      if (!t.streamId) throw new Error('continuous: recorder has no injected stream identity');
       S.takes.push(t);
       this.addEventListener('start', () => {
         t.recStart = performance.now();   // same event as the app's onstart; resolution checked below
@@ -590,6 +598,9 @@ try {
     ok(new RegExp(`続けて録音中：ステップ ${j + 1}/${keys.length}`).test(await liveHas(/続けて録音中/)), 'continuous: live region announces the recording step');
     if (j > firstContinuous) ok(!!(await manifest())[keys[j - 1]], 'continuous: the previous take is written before the next starts');
     await page.waitForTimeout(3600);
+    await page.evaluate(({ key, longHold }) => {
+      window.__continuous.stopKey = key; window.__continuous.longHold = longHold;
+    }, { key: keys[j], longHold: j === firstContinuous });
     await page.keyboard.down('Enter');
     await page.waitForTimeout(j === firstContinuous ? 650 : 80);   // 長押しの解放が次のテイクに入っても除く
     await page.keyboard.up('Enter');
@@ -597,7 +608,12 @@ try {
   await waitIdx(keys.length - 1);
   const continuousEntries = await manifest();
   ok(keys.slice(firstContinuous).every((k) => continuousEntries[k]?.kind === 'recorded' && continuousEntries[k].file !== beforeContinuous[k]?.file), 'continuous: only Enter presses produce three new takes');
-  ok(await page.evaluate(() => window.__continuous.starts === 3 && window.__continuous.bursts === 8), 'continuous: exactly three starts, with synthetic press and release bursts');
+  const burstCounts = await page.evaluate(() => {
+    const S = window.__continuous;
+    return { starts: S.starts, keyEvents: S.keyEvents, bursts: S.bursts };
+  });
+  ok(burstCounts.starts === 3 && burstCounts.keyEvents === 8,
+    `continuous: exactly three starts and eight key events (${burstCounts.bursts} bursts actually injected; ${JSON.stringify(burstCounts)})`);
   ok((await recState()).phase === 'idle', 'continuous: Enter on the last step keeps the take and stops');
   // A stored take has already lost click cuts AND silence at its head, so its sample
   // zero cannot be compared with a DOM timestamp. Use the untouched raw capture above.
@@ -663,7 +679,8 @@ try {
     // from it; six standard deviations cover measured baseline variation, and the
     // ceiling is never below an actually observed baseline peak.
     const seed = takes[0];
-    if (seed.raw.duration < 3.2 || S.events.some((e) => e.dom < seed.recStart + seed.raw.duration * 1000)) {
+    if (seed.raw.duration < 3.2 || S.events.some((e) => e.streamId === seed.streamId &&
+      e.dom + e.duration * 1000 >= seed.recStart && e.dom < seed.recStart + seed.raw.duration * 1000)) {
       throw new Error('continuous: baseline must cover the fake-device loop without Enter bursts');
     }
     const amps = seed.frames.map((f) => f.amp), mean = amps.reduce((a, b) => a + b, 0) / amps.length;
@@ -679,7 +696,9 @@ try {
       if (!(head >= 0 && tail > head && tail <= t.raw.duration)) {
         throw new Error(`continuous: calibrated kept interval is not fully captured for ${key}: ${head}..${tail} / ${t.raw.duration} s`);
       }
-      const events = S.events.map((e) => {
+      // A transition's DOM time may land in this capture even though its oscillator
+      // was connected to the previous stream. Only this stream's bursts are expected.
+      const events = S.events.filter((e) => e.streamId === t.streamId).map((e) => {
         const begin = (e.dom - t.recStart) / 1000 + t.offset, end = begin + e.duration;
         const outside = end + t.uncertainty <= head || begin - t.uncertainty >= tail;
         // Verify the actual injected signal at every fully captured event. A dead
@@ -687,24 +706,40 @@ try {
         const captured = begin - t.uncertainty >= windowS / 2 && end + t.uncertainty <= t.raw.duration - windowS / 2;
         const nearby = t.frames.filter((f) => f.time >= begin - t.uncertainty && f.time <= end + t.uncertainty);
         const peak = Math.max(0, ...nearby.map((f) => f.amp));
-        return { kind: e.kind, begin, end, outside, captured, detected: peak > DETECT * baseline };
+        return { kind: e.kind, streamId: e.streamId, stopKey: e.stopKey, longHoldRelease: e.longHoldRelease,
+          begin, end, outside, captured, peak, detected: peak > DETECT * baseline };
       });
       // Only full analysis windows inside the calibrated kept interval: no filter
       // ringing from excluded samples, and no invented zero-padding at cut edges.
       const kept = t.frames.filter((f) => f.time - windowS / 2 >= head && f.time + windowS / 2 <= tail);
-      return { key, offset: t.offset, head, tail, events, windows: kept.length,
+      return { key, streamId: t.streamId, offset: t.offset, head, tail, events, windows: kept.length,
         peak: Math.max(0, ...kept.map((f) => f.amp)) };
     });
     return { baseline, reports };
   }, { takeKeys: keys.slice(firstContinuous), DETECT });
+  const eventDiagnostics = (r) => `\n       ${r.key} stream ${r.streamId}: ` + (r.events.length ? r.events.map((e) =>
+    `${e.kind} injected stream ${e.streamId} ${e.begin.toFixed(3)}..${e.end.toFixed(3)} s` +
+    ` peak=${e.peak.toFixed(5)} baseline=${burstCheck.baseline.toFixed(5)}` +
+    ` DETECT=${DETECT}x=${(DETECT * burstCheck.baseline).toFixed(5)} captured=${e.captured} detected=${e.detected}`
+  ).join('; ') : 'no injected events in this stream');
   for (const r of burstCheck.reports) {
     const captured = r.events.filter((e) => e.captured);
-    ok(captured.length > 0 && captured.every((e) => e.detected), `continuous: raw ${r.key} detects injected bursts above the same-device baseline`);
-    ok(r.events.every((e) => e.outside), `continuous: ${r.key} Enter audio is outside measured cuts (route offset ${(r.offset * 1000).toFixed(1)} ms; kept ${r.head.toFixed(3)}..${r.tail.toFixed(3)} s)` +
-      r.events.filter((e) => !e.outside).map((e) => ` ${e.kind} ${e.begin.toFixed(3)}..${e.end.toFixed(3)} s`).join(''));
+    if (r.events.length) {
+      const detected = captured.length > 0 && captured.every((e) => e.detected);
+      ok(detected, `continuous: raw ${r.key} detects injected bursts above the same-device baseline` + (detected ? '' : eventDiagnostics(r)));
+    } else console.log(`       continuous: raw ${r.key} has no injected events in stream ${r.streamId}`);
+    const stopDetected = captured.some((e) => e.kind === 'keydown' && e.stopKey === r.key && e.detected);
+    ok(stopDetected, `continuous: ${r.key} stop-press burst is expected and detected in its stream` + (stopDetected ? '' : eventDiagnostics(r)));
+    const outside = r.events.every((e) => e.outside);
+    ok(outside, `continuous: ${r.key} Enter audio is outside measured cuts (route offset ${(r.offset * 1000).toFixed(1)} ms; kept ${r.head.toFixed(3)}..${r.tail.toFixed(3)} s)` +
+      (outside ? '' : eventDiagnostics(r)));
   }
+  const longHoldDetected = burstCheck.reports.some((r) => r.events.some((e) => e.longHoldRelease && e.captured && e.detected));
+  ok(longHoldDetected, 'continuous: long-hold release burst is expected and detected across the three takes' +
+    (longHoldDetected ? '' : burstCheck.reports.map(eventDiagnostics).join('')));
   ok(burstCheck.reports.every((r) => r.windows > 0 && r.peak <= DETECT * burstCheck.baseline),
-    'continuous: no key bursts in any of the three takes (calibrated 8 kHz peaks ' + burstCheck.reports.map((r) => r.peak.toFixed(5)).join(', ') + '; same-device baseline ' + burstCheck.baseline.toFixed(5) + ')');
+    'continuous: no key bursts in any of the three takes (calibrated 8 kHz peaks ' + burstCheck.reports.map((r) => r.peak.toFixed(5)).join(', ') + '; same-device baseline ' + burstCheck.baseline.toFixed(5) + ')' +
+    burstCheck.reports.filter((r) => !r.windows || r.peak > DETECT * burstCheck.baseline).map(eventDiagnostics).join(''));
 
   // 既存の音声がある次のステップでは待ち、よいテイクを上書きしない。
   for (let j = keys.length - 1; j > firstContinuous - 1; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
