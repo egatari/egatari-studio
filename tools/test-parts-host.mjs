@@ -68,7 +68,7 @@ ok(!/component not found|is not in components2/.test(log), 'no part is missing f
     fs.mkdirSync(path.join(cdir, 'components', n), { recursive: true });
     fs.writeFileSync(path.join(cdir, 'components', n, 'index.js'), code + '\n');
   }
-  fs.writeFileSync(path.join(cdir, 'deck.html'), fs.readFileSync(path.join(cdir, 'deck.html'), 'utf8').replace('</div>\n</body>', '<section class="slide" id="p-five"><h2>ぶつかり</h2><div class="body"><m-pie aria-label="円"></m-pie><m-zz aria-label="z"></m-zz></div></section>\n</div>\n</body>'));
+  fs.writeFileSync(path.join(cdir, 'deck.html'), fs.readFileSync(path.join(cdir, 'deck.html'), 'utf8').replace(/<\/div>\r?\n<\/body>/, '<section class="slide" id="p-five"><h2>ぶつかり</h2><div class="body"><m-pie aria-label="円"></m-pie><m-zz aria-label="z"></m-zz></div></section>\n</div>\n</body>'));
   const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(cdir, 'deck.html'), '-o', path.join(out, 'conflict.html')], { encoding: 'utf8' });
   ok(rc.status !== 0 && /<m-pie> is defined by .*one file defines an element name once/.test(rc.stdout + rc.stderr) && !fs.existsSync(path.join(out, 'conflict.html')),
     `two parts defining one element name: the build refuses and reports the conflict (${rc.status}; ${(rc.stdout + rc.stderr).split('\n').find((l) => /m-pie/.test(l)) || ''})`);
