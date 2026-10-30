@@ -24,6 +24,7 @@ import { readPortable, isStale, scanDocument, replaceIndexText } from '../kit/co
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { unpack } from './portable.mjs';
 import { makeFixtures, silentWav } from './portable-fixtures.mjs';
+import { missingParts2Requirement } from './parts2-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
@@ -85,6 +86,9 @@ fs.rmSync(PW, { recursive: true, force: true });
 const pmin = await buildPortable(prepareDeck(path.join(PW, 'min'), { license: 'CC-BY-4.0', copyright: '© 2026 Test Author', attribution: 'Test Author, Minimal lesson', creators: ['Test Author'] }), { out: path.join(PW, 'min.html') });
 const pnd = await buildPortable(prepareDeck(path.join(PW, 'nd'), { license: 'CC-BY-ND-4.0', copyright: '© 2026 Rights Holder' }), { out: path.join(PW, 'nd.html') });
 const fixtures = await makeFixtures(path.join(PW, 'fixtures'));
+const partsDir = path.join(PW, 'parts2');
+fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), partsDir, { recursive: true });
+const missingParts = await missingParts2Requirement((await buildPortable(path.join(partsDir, 'deck.html'), { subset: false })).html);
 // テーマ庫のテーマの hash が、このエディタのものと違う文書（作り直しの編集はできない → 読むだけで開く）
 const pother = await (async () => {
   const ix = JSON.parse(scanDocument(pmin.html).byId.get(FORMAT.INDEX_ID).text);
@@ -672,6 +676,18 @@ try {
     ok(o.asked, 'portable: embedded component → asked before the preview starts');
     await waitLoads(o.n0);
     ok((await pstate()).portable.profile === 'extended' && await page.isVisible('#notice-extended'), 'portable: embedded component → extended notice');
+
+    // 依存不足の既存ファイル：組み直せなくても、元のファイルの残るパーツを再生する。
+    await putFile('missing-parts' + FORMAT.FILE_EXT, missingParts);
+    o = await openFile('missing-parts' + FORMAT.FILE_EXT);
+    ok(o.r === true, 'portable: existing file with unavailable part requirements still opens');
+    f = await waitLoads(o.n0);
+    const missingState = await f.evaluate(() => ({ status: egatariParts.status(), bars: !!document.querySelector('m-bars svg rect, m-bars svg path') }));
+    ok(missingState.status.failed.some((p) => p.name === 'probe' && p.reason === 'missing') && missingState.bars,
+      'portable: original player reports the missing part and draws the remaining parts');
+    ok(!!(await pstate()).portable.readOnly && !(await pstate()).error, 'portable: missing requirements prevent rebuilding without a preview error');
+    await f.evaluate(() => DECK.go(1, 1, false));
+    ok(await f.evaluate(() => DECK.state().slide === 2 && DECK.state().step === 1), 'portable: existing file with unavailable requirements keeps playing');
 
     // examples/minimal の 1 ファイルを開く
     await putFile(MINF, pmin.html);

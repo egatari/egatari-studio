@@ -187,6 +187,11 @@
           },
           "path": {
             "$ref": "#/$defs/archivePath"
+          },
+          "extends": {
+            "type": "string",
+            "minLength": 1,
+            "description": "name of the parent theme this theme extends; index.themes must also contain the parent's entry (§6)"
           }
         },
         "allOf": [
@@ -459,6 +464,15 @@
           "properties": {
             "keys": {
               "type": "string"
+            },
+            "names": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              },
+              "uniqueItems": true,
+              "description": "Names kept by subset entries with match \"name\", in code-point order (spec §6.2)."
             },
             "sha256": {
               "type": "string",

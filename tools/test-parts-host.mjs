@@ -73,6 +73,38 @@ ok(!/component not found|is not in components2/.test(log), 'no part is missing f
   ok(rc.status !== 0 && /<m-pie> is defined by .*one file defines an element name once/.test(rc.stdout + rc.stderr) && !fs.existsSync(path.join(out, 'conflict.html')),
     `two parts defining one element name: the build refuses and reports the conflict (${rc.status}; ${(rc.stdout + rc.stderr).split('\n').find((l) => /m-pie/.test(l)) || ''})`);
 }
+// 必要なパーツの版がない教材は組まずに断る。原稿の check もブラウザの起動前にエラーを返す。
+{
+  const dir = path.join(out, 'requires-missing-src'), dst = path.join(out, 'requires-missing.html');
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.rmSync(dst, { force: true });
+  fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), dir, { recursive: true });
+  fs.mkdirSync(path.join(dir, 'components', 'needs'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'components', 'needs', 'index.js'), 'egatariParts.define({name: "needs", version: "0.1.0", requires: {base: "9.9.9", absent: "1.0.0"}, element: "m-needs"}, function(){ return class extends HTMLElement {}; });\n');
+  const src = path.join(dir, 'deck.html');
+  fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replace(/<\/div>\r?\n<\/body>/, '<section class="slide" id="p-needs"><h2>依存不足</h2><div class="body"><m-needs></m-needs></div></section>\n</div>\n</body>'));
+  for (const extra of [[], ['--portable']]) {
+    const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '-o', dst, ...extra], { encoding: 'utf8' });
+    const log = rc.stdout + rc.stderr;
+    ok(rc.status === 1 && log.includes('Part needs@0.1.0 requires base@9.9.9, which is not available. Update the parts.')
+      && log.includes('Part needs@0.1.0 requires absent@1.0.0, which is not available. Update the parts.') && !fs.existsSync(dst),
+    `missing requirements: build refuses, reports each requirement and writes no output (${extra.join(' ') || 'plain'})`);
+  }
+  for (const lang of ['ja', 'en', null]) {
+    const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), src, '--json', ...(lang ? ['--lang', lang] : [])], { encoding: 'utf8' });
+    let result; try { result = JSON.parse(rc.stdout); } catch { /* checked below */ }
+    const expected = lang === 'en' ? 'Part needs@0.1.0 requires base@9.9.9, which is not available. Update the parts.'
+      : 'パーツ needs@0.1.0 が必要とする base@9.9.9 がありません。パーツを更新してください';
+    ok(rc.status === 1 && result?.ok === false && result.counts.error === 2 && result.results.every((r) => r.code === 'component-requires-missing' && r.sev === 'error')
+      && result.results.some((r) => r.msg.includes(expected)), `source check reports component-requires-missing in ${lang || 'deck language'} without a browser`);
+  }
+  fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replace('lang="ja"', 'lang="en"'));
+  const enCheck = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), src], { encoding: 'utf8' });
+  ok(enCheck.status === 1 && enCheck.stdout.includes('[error] Whole deck: Part needs@0.1.0 requires base@9.9.9, which is not available. Update the parts.'), 'source check text follows the English deck language');
+  fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replaceAll('m-needs', 'm-uncatalogued'));
+  const unknown = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '-o', dst], { encoding: 'utf8' });
+  ok(unknown.status === 0 && /component not found: m-uncatalogued/.test(unknown.stderr) && fs.existsSync(dst), 'an unknown top-level part still warns and builds');
+}
 // 2.0 の教材も持ち運べる 1 ファイルにする（索引の照合・往復は test-parts-portable）。
 {
   const tmpDeck = path.join(out, 'portable-src');
@@ -113,6 +145,19 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
   return { p, errs };
 };
 const { p, errs } = await open(fileUrl(deck));
+// 既に組まれた依存不足のファイルも開けて、残るパーツとスライドは再生できる。
+{
+  const oldFile = path.join(out, 'old-requires-missing.html');
+  const oldHtml = html.replace('name: "probe", version: "0.1.0", requires: {base: "1.0.0"}', 'name: "probe", version: "0.1.0", requires: {base: "9.9.9"}');
+  ok(oldHtml !== html, 'existing-file fixture has an unavailable requirement');
+  fs.writeFileSync(oldFile, oldHtml);
+  const old = await open(fileUrl(oldFile));
+  const status = await old.p.evaluate(() => egatariParts.status());
+  ok(status.failed.some((f) => f.name === 'probe' && f.reason === 'missing') && status.defined.includes('bars@2.0.0'), 'existing file: missing requirement is reported while other parts are defined');
+  await old.p.evaluate(() => DECK.go(1, 1, false));
+  ok(await old.p.evaluate(() => DECK.state().slide === 2 && DECK.state().step === 1) && old.errs.length === 0, 'existing file: playback continues without uncaught errors');
+  await old.p.close();
+}
 const st = await p.evaluate(() => egatariParts.status());
 ok(eq2(Object.keys(st), ['defined', 'failed']) && st.failed.some((f) => f.name === 'boom' && f.element === 'm-boom' && f.reason === 'factory') && st.failed.some((f) => f.name === 'orphan' && f.element === 'm-orphan' && f.reason === 'dependency'),
   `registry status(): the failed factory (factory) and its dependant (dependency): ${st.failed.map((f) => f.name + ': ' + f.reason).join(' | ')}`);

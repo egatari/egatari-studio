@@ -89,7 +89,24 @@ function contrastOf(rgbA, rgbB) {
 // ---------------------------------------------------------------- 1. ビルド（メモリ上）
 let built;
 try { built = build(src, theme ? { theme } : {}); }
-catch (e) { console.error('ビルド失敗: ' + e.message); process.exit(1); }
+catch (e) {
+  if (e.code === 'component-requires-missing') {
+    // 原稿の依存不足はブラウザを起動する前に、通常の指摘と同じ形で返す。
+    const source = readRegular(src, { max: READ_LIMITS.source }).toString('utf8');
+    const sourceLang = source.match(/<html\b[^>]*\slang=["']([^"']*)["']/i)?.[1] || '';
+    const ml = langArg === 'en' || langArg === 'ja' ? langArg : isJapanese(sourceLang) ? 'ja' : 'en';
+    const findings = e.requiresMissing.map((data) => ({
+      slide: null, id: null, key: null, title: null, step: null,
+      sev: 'error', code: e.code, rule: ruleOf(e.code, data), data,
+      msg: where(ml, { n: null }) + (ml === 'en' ? ': ' : '：') + message(ml, e.code, data),
+    }));
+    if (asJson) console.log(JSON.stringify({ ok: false, lang: ml, counts: { error: findings.length, warn: 0, info: 0 }, results: findings }, null, 2));
+    else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${f.msg}`);
+    await new Promise((resolve) => process.stdout.write('', resolve));
+    process.exit(1);
+  }
+  console.error('ビルド失敗: ' + e.message); process.exit(1);
+}
 // 言語：<html lang> が ja か、lang が無ければ日本語の規則。それ以外（英語など）は英語の規則
 const lang = built.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
 const JA = isJapanese(lang);

@@ -1118,6 +1118,9 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
   const r = resolveParts(lock2, catalogue, used.filter((t) => !legacy.includes(t) && !refused.has(t)), { local, pins });
   // 要素の名前がぶつかる：組まずに断る（§6.1 Order。どれかの版を落とすと、それを要るパーツが動かない。作り手がパーツを直す：§7.2 段 C）
   if (r.conflicts.length) throw new Error(`components ${catalogue}: ${r.conflicts.join('; ')}`);
+  if (r.requiresMissing.length) throw Object.assign(new Error(r.requiresMissing.map((p) => `Part ${p.part} requires ${p.requires}, which is not available. Update the parts.`).join('\n')), {
+    code: 'component-requires-missing', requiresMissing: r.requiresMissing,
+  });
   warn.push(...r.warn);
   for (const t of r.missing) warn.push(`component not found: ${t} (not in the components ${catalogue} catalogue)`);
   const base = vendorDir(P, ROOT), contentLock = readLock(env, ROOT), parts = [];

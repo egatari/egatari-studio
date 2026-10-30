@@ -366,6 +366,7 @@ export function validateIndex(ix) {
       if (own(c, 'sha256')) str(c.sha256, `${w}.sha256`, RE.sha256);
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
       if (own(c, 'path')) path(c.path, `${w}.path`);
+      if (own(c, 'extends')) str(c.extends, `${w}.extends`, null, 1);
     });
   }
   if (own(ix, 'metadata')) metadataCheck(ix.metadata, 'metadata', e);
@@ -997,18 +998,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }));
     }
   }
-  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source}。version はテーマ自身の版（§3.8。Studio の版ではない）：
+  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source, extends?}。親も別の項目に記録する。version はテーマ自身の版（§3.8。Studio の版ではない）：
   //   同梱のテーマ（registry）は固定のファイル（themes.lock.json）の版（組み立てが使った版。stats.themeVersions。同梱のテーマはどれも固定のファイルにある：
   //   npm run themes:check）。原稿のフォルダのテーマ・利用者のテーマ（embedded：1 ファイルの themes/<名前>/ に入る）は theme.json の version、
   //   なければ "local"（§6。組み直しでは sha256 で見分ける）。sha256 は組み立てが読んだファイル（文書 README*・LICENSE*・*.md を除く）の行から
   const themeHash = async (m) => { const lines = []; for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`); return sha256Hex(lines.join('')); };
   const ownVersion = (m) => { try { const v = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).version : null; return typeof v === 'string' && VERSION_RE.test(v) ? v : null; } catch { return null; } };
+  const ownParent = (m) => { try { const p = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).extends : null; return typeof p === 'string' && p ? { extends: p } : {}; } catch { return {}; } };
   const themes = [];
   // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
   for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
     if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
     const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || ownVersion(m) || 'local';
-    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry' });
+    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry', ...ownParent(m) });
   }
   {
     // 原稿のフォルダの中のテーマのフォルダと、利用者のテーマのフォルダのテーマ（組み立てが使ったもの。r.stats.themeDirs）
@@ -1026,7 +1028,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
         const k = P.relative(dir, p).split(P.sep).join('/');
         if (!excludedFromThemeHash(k)) m.set(k, readBytesVia(env, p));
       }
-      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded' });
+      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded', ...ownParent(m) });
     }
     themes.push(...emb.sort((a, b) => cmpCodePoint(a.name, b.name)));
   }
@@ -1289,7 +1291,7 @@ export const KNOWN = Object.freeze({
   metadata: new Set(['title', 'lang', ...META_KEYS]),
   audio: new Set(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'recipe', 'recipeDigest', 'alternatives', 'processing', 'startOffset']),
   component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path', 'requires', 'license', 'renderers', 'subset']),
-  theme: new Set(['name', 'version', 'sha256', 'source', 'path']),
+  theme: new Set(['name', 'version', 'sha256', 'source', 'path', 'extends']),
   blob: new Set(['mime', 'bytes', 'sha256', 'chunks']),
   // contracts.runtime：前の草案の項目。知っている項目として扱い、作り直しでは写さない（1.0 の形にはない。§7.1）
   version: new Set(['major', 'minor']), contracts: new Set(['source', 'runtime']), player: new Set(['name', 'version', 'title']), generator: new Set(['name', 'version', 'title']),

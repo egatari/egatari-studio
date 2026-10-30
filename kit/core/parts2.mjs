@@ -143,7 +143,7 @@ const eqObj = (a, b) => { const ka = Object.keys(a).sort(), kb = Object.keys(b).
 
 // 使う要素（m-…）から、書き込むパーツを依存の順に決める。
 //   used：教材の中の要素の名前、local：{要素の名前: {meta, code, where}}（埋め込みのパーツ）、pins：{名前: 版}（設定のファイルの components）
-// 返すもの：{parts: [{name, version, source: 'registry' | 'embedded', tag?, requires, file?, code?, meta}], missing: [要素の名前], warn: [文], conflicts: [文]}
+// 返すもの：{parts: [{name, version, source: 'registry' | 'embedded', tag?, requires, file?, code?, meta}], missing: [要素の名前], requiresMissing: [{part: 名前@版, requires: 名前@版}], warn: [文], conflicts: [文]}
 // 順：要るパーツが先（深さ優先の後順、名前の順に辿る）。同じ名前のライブラリのパーツの違う版は両方入る（name@version で分ける）。
 // 要素の名前は 1 つのファイルで 1 つ（§6.1 Order）：同じ要素の名前を定義するパーツが 2 つ要る（1 つのパーツの 2 つの版でも、名前の違うパーツでも）なら
 // conflicts に書く。組み立てはそのとき断る（どちらかの版を落とすと、それを要るパーツが動かない。作り手がパーツを直す：§7.2 段 C）
@@ -152,7 +152,7 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
   const byTag = new Map();
   for (const [n, v] of Object.entries(cat.parts)) { const p = lock2.parts[n][v]; if (p.kind === 'element') byTag.set(p.tag, n); }
   const run = () => {
-    const warn = [], missing = [];
+    const warn = [], missing = [], requiresMissing = [];
     const versionOf = (n) => {
       if (own(pins, n) && isObj(lock2.parts[n]) && own(lock2.parts[n], pins[n])) return pins[n];
       if (own(pins, n)) warn.push(`part ${n}: version "${String(pins[n]).slice(0, 40)}" is not in ${LOCK2_FILE}; using ${cat.parts[n] || '(none)'}`);
@@ -165,7 +165,11 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
       if (visiting.has(id)) { warn.push(`parts: ${id} requires itself (cycle via ${from}); not written`); return false; }
       const loc = Object.values(local).find((l) => l.meta && l.meta.name === name && l.meta.version === version);
       const reg = !loc && isObj(lock2.parts[name]) ? lock2.parts[name][version] : null;
-      if (!loc && !reg) { warn.push(`parts: ${id}${from ? ` (required by ${from})` : ''} is not in ${LOCK2_FILE}`); return false; }
+      if (!loc && !reg) {
+        if (from) requiresMissing.push({ part: from, requires: id });
+        warn.push(`parts: ${id}${from ? ` (required by ${from})` : ''} is not in ${LOCK2_FILE}`);
+        return false;
+      }
       visiting.add(id);
       const requires = loc ? loc.meta.requires : reg.requires;
       for (const r of Object.keys(requires).sort()) visit(r, requires[r], id);
@@ -182,7 +186,7 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
       if (!n) { missing.push(tag); continue; }
       visit(n, versionOf(n), null);
     }
-    return { parts: out, missing, warn };
+    return { parts: out, missing, requiresMissing, warn };
   };
   const r = run();
   const tags = new Map(), conflicts = [];

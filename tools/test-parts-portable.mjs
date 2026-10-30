@@ -8,13 +8,14 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv/dist/2020.js';
 import { build, buildPortable, nodeEnv } from '../kit/build.mjs';
-import { exportPortable, readPortable, sha256Hex, validateIndex, playOnly } from '../kit/core/portable.mjs';
+import { exportPortable, readPortable, sha256Hex, replaceIndexText, validateIndex, playOnly } from '../kit/core/portable.mjs';
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
 import { subsetCode } from '../kit/core/parts2.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { unpack } from './portable.mjs';
-import { registryProblems } from '../app/portable-ws.js';
+import { missingParts2Requirement } from './parts2-fixtures.mjs';
+import { registryProblems, workspaceFromPortable } from '../app/portable-ws.js';
 import { appComponentFiles } from './vendor-components.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -84,6 +85,61 @@ try {
   assert.ok(playOnly(r.html).includes('egatariParts.define'));
   assert.ok(!playOnly(r.html).includes('id="egatari-index"'));
   console.log('ok   portable: unpack/rebuild pins, separate library identities, tier A, play-only');
+
+  // 前の書き手が許した依存不足：読込・展開は続けられる（組み直すときだけ断る）。
+  const oldHtml = await missingParts2Requirement(r.html);
+  const opened = await readPortable(oldHtml);
+  assert.ok(opened.sourceMatches);
+  assert.equal(opened.index.components.find((p) => p.name === 'probe').requires.base, '9.9.9');
+  const oldFile = path.join(work, 'requires-missing.ega.html'), oldBack = path.join(work, 'requires-missing-back');
+  fs.writeFileSync(oldFile, oldHtml);
+  await unpack(oldFile, oldBack);
+  const probePath = 'components/probe/index.js';
+  assert.match(fs.readFileSync(path.join(oldBack, probePath), 'utf8'), /requires: \{base: "9\.9\.9"\}/);
+  const ws = workspaceFromPortable('missing.ega.html', opened);
+  assert.match(await ws.readText(probePath), /requires: \{base: "9\.9\.9"\}/);
+  assert.throws(() => build(path.join(oldBack, 'deck.html')), (e) => e.code === 'component-requires-missing');
+  console.log('ok   existing files with missing requirements still open and unpack; rebuilding refuses');
+
+  // 同梱・埋め込みの子テーマは親を記録する。親も独立した項目で、根には extends がない。
+  const themeDeck = path.join(work, 'theme-src');
+  fs.cpSync(src, themeDeck, { recursive: true });
+  const themeSrc = path.join(themeDeck, 'deck.html');
+  const original = fs.readFileSync(themeSrc, 'utf8');
+  fs.writeFileSync(themeSrc, original.replace(/data-theme="[^"]*"/, 'data-theme="business"'));
+  const themed = await buildPortable(themeSrc, { subset: false });
+  assert.equal(themed.index.themes.find((t) => t.name === 'business').extends, 'default');
+  assert.ok(!('extends' in themed.index.themes.find((t) => t.name === 'default')));
+  assert.deepEqual(validateIndex(themed.index), []);
+  assert.ok(validate(JSON.parse(JSON.stringify(themed.index))), JSON.stringify(validate.errors));
+  assert.equal((await readPortable(themed.html)).index.themes.find((t) => t.name === 'business').extends, 'default');
+  const legacyThemes = structuredClone(themed.index);
+  for (const t of legacyThemes.themes) delete t.extends;
+  assert.deepEqual(validateIndex(legacyThemes), []);
+  assert.ok(validate(legacyThemes));
+  await readPortable(await replaceIndexText(themed.html, JSON.stringify(legacyThemes)));
+  for (const value of ['', 1, null]) {
+    const badTheme = structuredClone(themed.index);
+    badTheme.themes[0].extends = value;
+    assert.ok(validateIndex(badTheme).some((p) => /\.extends:/.test(p)));
+    assert.equal(validate(badTheme), false);
+  }
+  fs.mkdirSync(path.join(themeDeck, 'themes/child'), { recursive: true });
+  fs.writeFileSync(path.join(themeDeck, 'themes/child/theme.json'), JSON.stringify({ name: 'child', extends: 'business' }));
+  fs.writeFileSync(path.join(themeDeck, 'themes/child/tokens.css'), ':root{--base:#335577}\n');
+  fs.writeFileSync(themeSrc, original.replace(/data-theme="[^"]*"/, 'data-theme="child"'));
+  const embedded = await buildPortable(themeSrc, { subset: false });
+  assert.equal(embedded.index.themes.find((t) => t.name === 'child').extends, 'business');
+  assert.equal(embedded.index.themes.find((t) => t.name === 'business').extends, 'default');
+  assert.ok(!('extends' in embedded.index.themes.find((t) => t.name === 'default')));
+  assert.deepEqual(validateIndex(embedded.index), []);
+  assert.ok(validate(JSON.parse(JSON.stringify(embedded.index))), JSON.stringify(validate.errors));
+  const themeFile = path.join(work, 'theme.ega.html'), themeBack = path.join(work, 'theme-back');
+  fs.writeFileSync(themeFile, embedded.html);
+  await unpack(themeFile, themeBack);
+  const themeRebuilt = await buildPortable(path.join(themeBack, 'deck.html'), { carry: embedded.index, subset: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(themeRebuilt.index.themes)), JSON.parse(JSON.stringify(embedded.index.themes)));
+  console.log('ok   portable themes: parent entries, optional extends, schema, legacy reading and rebuild');
 
   const appFiles = new Map(appComponentFiles(ROOT));
   for (const p of parts.filter((p) => p.source === 'registry')) {

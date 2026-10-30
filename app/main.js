@@ -1364,6 +1364,7 @@ async function openPortableNow(input) {
   // 作り直して保存できるか（段 B）：実行系の約束の版が同じで、部品庫・テーマ庫の部品がこのエディタのものと同じ hash であること（§6・§7.2）。
   // できなければ段 A の編集（口述原稿・音声・秒数）だけ。組み立てられない文書と、段 A も段 B もできない文書は読むだけ
   // （contracts は {source} だけ。実行系の約束の版 contracts.runtime は 1.0 の形で外した：作り直しは再生器を替える。format spec §4.1・§7.1）
+  let missingRequires = false;
   {
     try {
       const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
@@ -1372,12 +1373,19 @@ async function openPortableNow(input) {
       P.yankedRecorded = dry.yanked || [];
       // 記録した版の同梱のテーマ（themes.lock.json）：プレビューと書き出しも、その版で組む（黙って新しい色にしない。「テーマを更新」で今の版に）
       P.themePins = dry.themeVersions && Object.keys(dry.themeVersions).length ? dry.themeVersions : null;
-    } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); }
+    } catch (e) { P.readOnly = T.roBuild(String(e.message || e)); missingRequires = e.code === 'component-requires-missing'; }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
   if (handle) recentAdd(handle);   // ファイルのハンドルがあれば「最近開いたもの」に（Safari などで <input> から開いたものにはない）
   showDeck(name, name);
-  await rebuild('open');
+  if (missingRequires) {
+    // 依存不足は新しく組むときだけ断る。既存のファイルは自分の再生器で、残るパーツを再生する。
+    S.base = P.original; S.baseAudio = []; S.slides = []; S.warn = [...r.warnings, P.readOnly]; S.preview = true; S.allowed = true;
+    showWarn();
+    slidesPanel.refresh();
+    status('');
+    loadFrame();
+  } else await rebuild('open');
   return true;
 }
 

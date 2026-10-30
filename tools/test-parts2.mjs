@@ -123,6 +123,20 @@ const lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'
   const local = { 'm-x': { meta: { name: 'x', version: '0.1.0', requires: { base: '9.9.9' }, element: 'm-x' }, code: '', where: 'components/x/index.js' } };
   const r2 = resolveParts(lock2, cat, ['m-bars', 'm-x'], { local });
   ok(r2.warn.some((w) => /base@9\.9\.9 \(required by x@0\.1\.0\) is not in components2\.lock\.json/.test(w)) && r2.parts.some((p) => p.name === 'x' && p.source === 'embedded'), 'a missing exact version is reported, never replaced by another');
+  ok(eq(r2.requiresMissing, [{ part: 'x@0.1.0', requires: 'base@9.9.9' }]) && r.requiresMissing.length === 0,
+    'missing requirements are separate from unknown top-level elements');
+  const absent = { 'm-x': { ...local['m-x'], meta: { ...local['m-x'].meta, requires: { absent: '1.0.0', base: '9.9.9' } } } };
+  ok(eq(resolveParts(lock2, cat, ['m-x'], { local: absent }).requiresMissing,
+    [{ part: 'x@0.1.0', requires: 'absent@1.0.0' }, { part: 'x@0.1.0', requires: 'base@9.9.9' }]), 'every unavailable requirement is listed, including an unknown name');
+  const available = { ...local, 'm-localbase': { meta: { name: 'base', version: '9.9.9', requires: {}, element: 'm-localbase' }, code: '', where: 'components/localbase/index.js' } };
+  const resolvedLocal = resolveParts(lock2, cat, ['m-x'], { local: available });
+  ok(resolvedLocal.requiresMissing.length === 0 && resolvedLocal.parts[0].version === '9.9.9', 'an exact embedded requirement needs no catalogue entry');
+  const broken = structuredClone(lock2);
+  broken.parts.base['1.0.0'].requires = { absent: '1.0.0' };
+  ok(eq(resolveParts(broken, cat, ['m-bars']).requiresMissing, [{ part: 'base@1.0.0', requires: 'absent@1.0.0' }]), 'transitive requirements name the part that needs them');
+  const cyclic = { 'm-x': { ...local['m-x'], meta: { ...local['m-x'].meta, requires: { x: '0.1.0' } } } };
+  const cycle = resolveParts(lock2, cat, ['m-x'], { local: cyclic });
+  ok(cycle.requiresMissing.length === 0 && cycle.warn.some((w) => /cycle/.test(w)), 'cycles keep their existing warning without a missing requirement');
   // 2 つの版が並ぶ（試しの固定のファイル）
   const two = JSON.parse(JSON.stringify(lock2));
   two.parts.base['1.1.0'] = { ...two.parts.base['1.0.0'] };

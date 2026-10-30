@@ -71,6 +71,10 @@ function driftHow(a, lang) {
 }
 
 export const MESSAGES = {
+  'component-requires-missing': {
+    ja: (a) => `パーツ ${a.part} が必要とする ${a.requires} がありません。パーツを更新してください`,
+    en: (a) => `Part ${a.part} requires ${a.requires}, which is not available. Update the parts.`,
+  },
   // ---------------------------------------------------------------- 組み立て・id・鍵
   build: { rule: (a) => (/^narration: スライドが見つからない/.test(a.w) ? 'R-headings' : null), ja: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? '：narration.md の「## 見出し」をスライドの見出しと同じ文字にするか、見出しの後ろに {#スライドの id} を書く（R-headings）' : ''),
     en: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? ': make the “## heading” in narration.md the same text as the slide heading, or end it with {#slide id} (R-headings)' : '') },
