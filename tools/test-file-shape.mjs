@@ -33,6 +33,8 @@ import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan } from '../kit/core/layout-scan.mjs';
 import { launch } from '../kit/browser.mjs';
 
+// EGATARI_TEST_NO_BROWSER=1：Node の検査だけ。ブラウザを使う部分は SKIP と明記する。
+const NO_BROWSER = process.env.EGATARI_TEST_NO_BROWSER === '1';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-file-shape-'));
 fs.rmSync(work, { recursive: true, force: true });
@@ -336,8 +338,11 @@ ok('旧来の鍵を書かない：id のない原稿（見出しの鍵・手で�
   fs.writeFileSync(path.join(d, 'timeline.json'), JSON.stringify({ 's3:0': { hold: 2 } }) + '\n');
   fs.writeFileSync(path.join(d, FORMAT.CONFIG_FILE), JSON.stringify({ docId: '3f2c9a8e-1b2d-4c5e-9f00-1122334455aa', xOther: { keep: 1e400 }, extensions: { live: { v: 1, endpoint: FORMAT.LIVE_ENDPOINT, activities: { '*': [], 'dk-two:1': [{ id: 'p', kind: 'qa' }] } } } }, null, 2).replace('"keep": null', '"keep": 1e400') + '\n');
   // 品質チェックは id のない原稿を受け付ける（エラー 0。夜の評価の A は AI が書いたままの原稿）
-  const chk = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), path.join(d, 'deck.html'), '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
-  assert.equal(chk.status, 0, chk.stdout.slice(0, 2000) + chk.stderr.slice(0, 2000));
+  if (NO_BROWSER) console.log('SKIP quality check without slide ids');
+  else {
+    const chk = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), path.join(d, 'deck.html'), '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
+    assert.equal(chk.status, 0, chk.stdout.slice(0, 2000) + chk.stderr.slice(0, 2000));
+  }
   const before = fs.readFileSync(path.join(d, 'deck.html'), 'utf8');
   const r = await buildPortable(path.join(d, 'deck.html'), {});
   const ids = r.ids.added.map((a) => a.id);
@@ -434,6 +439,7 @@ ok('品質チェック：data-steps・data-anim・data-mode="lecture"・blue/red
   const d = path.join(work, 'legacy-vocab');
   makeDeck(d);
   fs.writeFileSync(path.join(d, 'deck.html'), bad);
+  if (NO_BROWSER) { console.log('SKIP quality check of legacy vocabulary'); return; }
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), path.join(d, 'deck.html'), '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
   const j = JSON.parse(r.stdout);
   const mine = j.results.filter((x) => /^legacy(ColorClass|StepAttr|LectureMode)$/.test(x.code));
@@ -465,7 +471,7 @@ ok('記事だけの教材：index.article があれば entry はいらない。�
 });
 
 // ---------------------------------------------------------------- 編集アプリのプレビュー（信頼する先頭部分 + ファイル自身の決まり）
-ok('編集アプリのプレビュー：1 ファイル（自分の決まりを持つ）を信頼する先頭部分に続けても描け、仲立ちが動く（品質チェックの返事・縮図）。決まりの違反なし', async () => {
+(NO_BROWSER ? (name) => console.log('SKIP ' + name) : ok)('編集アプリのプレビュー：1 ファイル（自分の決まりを持つ）を信頼する先頭部分に続けても描け、仲立ちが動く（品質チェックの返事・縮図）。決まりの違反なし', async () => {
   const appHtml = fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8');
   const APP_CSP = (/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(appHtml) || [])[1];
   assert.ok(APP_CSP);

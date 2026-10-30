@@ -2,6 +2,9 @@ vendor/egatari-spec/** -text
 # 部品庫の写し（egatari/components のリリース）：バイトのまま（改行を変えると index.js の sha256 が components.lock.json・記録した文書と合わなくなる）
 vendor/components/** -text
 components.lock.json text eol=lf
+# 部品庫 2.0 の写し（tools/components2-update.mjs）：同じくバイトのまま
+vendor/components-2/** -text
+components2.lock.json text eol=lf
 # tools/make-llm-guide.mjs が作るファイル（AI への指示）：どの OS の checkout でも LF（作り直したもの・buildPack の出力と同じバイト）
 docs/authoring-with-llms*.md text eol=lf
 docs/llm-parts/*.md text eol=lf

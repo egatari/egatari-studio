@@ -22,13 +22,14 @@ const SHA_RE = /^[0-9a-f]{64}$/;
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+// catalogue: "2" の項目は 2.0 だけのパーツ（1.x の目録には出さず、1.x リリース単位の yanked も当てない）。
 // 固定のファイルの中身を確かめる。返すもの：問題の配列（空なら正しい）
 export function lockProblems(lock) {
   const e = [];
   if (!isObj(lock)) return ['not an object'];
   if (!isObj(lock.components)) return ['components: not an object'];
   if (own(lock, 'yanked')) e.push(...yankedProblems(lock.yanked));
-  if (isObj(lock.yanked)) for (const [name, c] of Object.entries(lock.components)) if (isObj(c) && typeof c.default === 'string' && own(lock.yanked, c.default)) e.push(`components.${name}.default: "${c.default}" is yanked`);
+  if (isObj(lock.yanked)) for (const [name, c] of Object.entries(lock.components)) if (isObj(c) && c.catalogue !== '2' && typeof c.default === 'string' && own(lock.yanked, c.default)) e.push(`components.${name}.default: "${c.default}" is yanked`);
   for (const [name, c] of Object.entries(lock.components)) {
     const w = `components.${name}`;
     if (!NAME_RE.test(name)) e.push(`${w}: not a registry name`);

@@ -1,0 +1,374 @@
+{
+  "$comment": "Egatari 1.0 §6.2: the elements and attributes a part's reader admits from build-time rendered output (katex, abcjs). Normative. Anything not listed is dropped with its subtree and reported (ctx.report \"data\"). Attribute names are exact unless they end in \"*\" (a prefix). Additions are made here, in a new version of the spec, never in a reader. xmlns is a namespace declaration: checked against the element's namespace, never set as an attribute. A dropped attribute removes only itself; a dropped element removes its subtree; the part reports once per instance and kind.",
+  "version": 1,
+  "global": {
+    "html": [
+      "class",
+      "aria-hidden",
+      "id",
+      "data-*",
+      "style"
+    ],
+    "svg": [
+      "class",
+      "aria-hidden",
+      "id",
+      "data-*",
+      "style",
+      "transform"
+    ],
+    "mathml": [
+      "class",
+      "style"
+    ]
+  },
+  "elements": {
+    "html": {
+      "span": []
+    },
+    "svg": {
+      "svg": [
+        "width",
+        "height",
+        "viewBox",
+        "preserveAspectRatio",
+        "role",
+        "aria-label",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "g": [
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "path": [
+        "d",
+        "fill",
+        "stroke",
+        "stroke-width",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-dasharray"
+      ],
+      "line": [
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "stroke",
+        "stroke-width",
+        "stroke-dasharray"
+      ],
+      "rect": [
+        "x",
+        "y",
+        "width",
+        "height",
+        "rx",
+        "ry",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "circle": [
+        "cx",
+        "cy",
+        "r",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "ellipse": [
+        "cx",
+        "cy",
+        "rx",
+        "ry",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "polygon": [
+        "points",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "polyline": [
+        "points",
+        "fill",
+        "stroke",
+        "stroke-width"
+      ],
+      "text": [
+        "x",
+        "y",
+        "dx",
+        "dy",
+        "text-anchor",
+        "dominant-baseline",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "fill",
+        "stroke"
+      ],
+      "tspan": [
+        "x",
+        "y",
+        "dx",
+        "dy",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "baseline-shift",
+        "fill",
+        "stroke"
+      ],
+      "title": []
+    },
+    "mathml": {
+      "math": [
+        "display"
+      ],
+      "semantics": [],
+      "annotation": [
+        "encoding"
+      ],
+      "mrow": [],
+      "mi": [
+        "mathvariant",
+        "separator"
+      ],
+      "mn": [
+        "mathvariant"
+      ],
+      "mo": [
+        "accent",
+        "fence",
+        "largeop",
+        "lspace",
+        "mathvariant",
+        "maxsize",
+        "minsize",
+        "movablelimits",
+        "rspace",
+        "separator",
+        "stretchy",
+        "symmetric"
+      ],
+      "ms": [],
+      "mtext": [
+        "mathvariant"
+      ],
+      "mspace": [
+        "width",
+        "height",
+        "depth",
+        "linebreak"
+      ],
+      "mfrac": [
+        "linethickness"
+      ],
+      "msqrt": [],
+      "mroot": [],
+      "msub": [],
+      "msup": [],
+      "msubsup": [],
+      "munder": [
+        "accentunder"
+      ],
+      "mover": [
+        "accent"
+      ],
+      "munderover": [
+        "accent",
+        "accentunder"
+      ],
+      "mtable": [
+        "columnalign",
+        "columnspacing",
+        "rowspacing",
+        "columnlines",
+        "rowlines",
+        "frame",
+        "width"
+      ],
+      "mtr": [],
+      "mtd": [
+        "columnalign",
+        "width"
+      ],
+      "mstyle": [
+        "displaystyle",
+        "scriptlevel",
+        "mathsize"
+      ],
+      "mpadded": [
+        "width",
+        "height",
+        "depth",
+        "lspace",
+        "voffset"
+      ],
+      "menclose": [
+        "notation"
+      ],
+      "mphantom": []
+    }
+  },
+  "values": {
+    "id": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+    "data-*": {
+      "name": "^data-[a-z][a-z0-9-]{0,63}$",
+      "value": "^[^<>]{0,256}$"
+    },
+    "fill": [
+      "none",
+      "currentColor"
+    ],
+    "stroke": [
+      "none",
+      "currentColor"
+    ],
+    "length": "^-?(\\d+\\.?\\d*|\\.\\d+)(em|ex|px|%|pt|mu)?$"
+  },
+  "style": {
+    "$comment": "style is admitted only as declarations whose property is listed and whose value is a length (values.length) or one of the listed keywords; each is set one property at a time (element.style.setProperty). Anything else in style is dropped. color only as transparent (\\phantom and mhchem hide content with it); no other colour: colours come only from classes and the theme, so \\color, \\textcolor, \\colorbox, \\fcolorbox and \\pmb lose their colour, background or shadow, and authors use \\hlE, \\hlT, \\hlM instead.",
+    "lengths": [
+      "border-bottom-width",
+      "border-left-width",
+      "border-right-width",
+      "border-top-width",
+      "border-width",
+      "bottom",
+      "font-size",
+      "height",
+      "left",
+      "line-height",
+      "margin-bottom",
+      "margin-left",
+      "margin-right",
+      "margin-top",
+      "max-width",
+      "min-width",
+      "padding-bottom",
+      "padding-left",
+      "padding-right",
+      "padding-top",
+      "right",
+      "top",
+      "vertical-align",
+      "width"
+    ],
+    "keywords": {
+      "position": [
+        "relative",
+        "absolute"
+      ],
+      "display": [
+        "inline-block",
+        "inline",
+        "block",
+        "none"
+      ],
+      "border-bottom-style": [
+        "solid",
+        "dashed"
+      ],
+      "border-top-style": [
+        "solid",
+        "dashed"
+      ],
+      "border-right-style": [
+        "solid",
+        "dashed"
+      ],
+      "border-left-style": [
+        "solid",
+        "dashed"
+      ],
+      "vertical-align": [
+        "top",
+        "middle",
+        "bottom",
+        "baseline"
+      ],
+      "white-space": [
+        "nowrap"
+      ],
+      "overflow": [
+        "hidden",
+        "visible"
+      ],
+      "color": [
+        "transparent"
+      ]
+    },
+    "shorthands": {
+      "$comment": "each part is a length (values.length) or one of the keywords; no colours",
+      "margin": {
+        "max": 4
+      },
+      "padding": {
+        "max": 4
+      },
+      "border-width": {
+        "max": 4
+      },
+      "border-style": {
+        "max": 4,
+        "keywords": [
+          "solid",
+          "dashed",
+          "dotted",
+          "double",
+          "none"
+        ]
+      },
+      "border": {
+        "max": 3,
+        "keywords": [
+          "solid",
+          "dashed",
+          "dotted",
+          "double",
+          "none"
+        ]
+      },
+      "border-top": {
+        "max": 3,
+        "keywords": [
+          "solid",
+          "dashed",
+          "none"
+        ]
+      },
+      "border-bottom": {
+        "max": 3,
+        "keywords": [
+          "solid",
+          "dashed",
+          "none"
+        ]
+      },
+      "border-left": {
+        "max": 3,
+        "keywords": [
+          "solid",
+          "dashed",
+          "none"
+        ]
+      },
+      "border-right": {
+        "max": 3,
+        "keywords": [
+          "solid",
+          "dashed",
+          "none"
+        ]
+      }
+    }
+  }
+}

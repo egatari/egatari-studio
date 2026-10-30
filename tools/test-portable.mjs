@@ -29,6 +29,8 @@ import { launch, fileUrl } from '../kit/browser.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { earlierFile } from '../app/earlier-draft.js';
 
+// EGATARI_TEST_NO_BROWSER=1：Node の検査だけ。ブラウザを使う部分は SKIP と明記する。
+const NO_BROWSER = process.env.EGATARI_TEST_NO_BROWSER === '1';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SPEC = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-portable-'));
@@ -609,6 +611,7 @@ ok('1.0 の形の文書の試験用ファイル（fixtures/documents-1.0）：ex
     }
   }
   // 再生：どれもヘッドレス Chrome で開ける（決まりのないもの・ゆるめたもの・player のないものも）
+  if (NO_BROWSER) { console.log('SKIP browser playback'); return; }
   const browser = await launch();
   try {
     for (const d of docs.filter((x) => x.expect.play)) {
@@ -623,6 +626,7 @@ ok('1.0 の形の文書の試験用ファイル（fixtures/documents-1.0）：ex
   } finally { await browser.close(); }
 });
 ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生が再生できる・音声の参照が読める・コンソールのエラーなし。ブラウザでの取り出しも印のスクリプトを動かさない', async () => {
+  if (NO_BROWSER) { console.log('SKIP browser playback'); return; }
   const browser = await launch();
   try {
     const open = async (file) => {
@@ -703,6 +707,7 @@ ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Sc
   const po = path.join(dir, 'out', 'deck' + FORMAT.PLAY_EXT);
   fs.writeFileSync(po, PF.playOnly(r.html));
   assert.ok(!PF.scanDocument(fs.readFileSync(po, 'utf8')).byId.has(FORMAT.INDEX_ID), 'play-only has no index');
+  if (NO_BROWSER) { console.log('SKIP browser playback'); return; }
   const browser = await launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -794,7 +799,7 @@ ok('部品庫・テーマ庫の名前は 1 つの識別子だけ：../・絶対�
   assert.ok(!seen.some(([, p]) => p.endsWith(path.sep + 'index.js') || p.startsWith(path.join(ROOT, 'vendor', 'components'))), 'no registry file is read: ' + JSON.stringify(seen.slice(0, 5)));
 });
 
-ok('品質チェック：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {
+(NO_BROWSER ? (name) => console.log('SKIP ' + name) : ok)('品質チェック：旧来の鍵（手書きの data-key と s<n>）は「legacy」の警告（エラーにしない・鍵は変えない）', () => {
   const d = path.join(work, 'legacy-check'); fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'deck.html'), '<!doctype html><html lang="ja" data-theme="default"><head><meta charset="utf-8"><title>t</title></head><body><div id="stage">\n' +
     '<section class="slide" data-key="hand"><h2>手書き</h2></section>\n<section class="slide"><div class="body">見出しなし</div></section>\n<section class="slide" id="s-abcdef"><h2>id</h2></section>\n<section class="slide"><h2>見出し</h2></section>\n</div></body></html>\n');

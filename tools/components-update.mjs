@@ -136,7 +136,7 @@ export function applyRelease(tag, rel, { root = ROOT, source = SOURCE } = {}) {
     e.content[rel.version] = contentHash(c.files);
     e.default = rel.version;
   }
-  lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, versions: e.versions, sha256: e.sha256, content: Object.fromEntries(e.versions.map((v) => [v, e.content[v]])), ...(e.crlfSha256 ? { crlfSha256: e.crlfSha256 } : {}) }]));
+  lock.components = Object.fromEntries(Object.entries(lock.components).sort(([a], [b]) => (a < b ? -1 : 1)).map(([n, e]) => [n, { default: e.default, ...(e.catalogue ? { catalogue: e.catalogue } : {}), versions: e.versions, sha256: e.sha256, content: Object.fromEntries(e.versions.map((v) => [v, e.content[v]])), ...(e.crlfSha256 ? { crlfSha256: e.crlfSha256 } : {}) }]));
   const ordered = { source: lock.source, tag: lock.tag, tarballSha256: lock.tarballSha256, ...(lock.manifestSha256 ? { manifestSha256: lock.manifestSha256 } : {}), releases: lock.releases, ...(Object.keys(lock.yanked).length ? { yanked: lock.yanked } : {}), components: lock.components };
   const problems = lockProblems(ordered);
   if (problems.length) throw new Error(`${LOCK_FILE}: ${problems.join('; ')}`);

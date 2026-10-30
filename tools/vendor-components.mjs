@@ -9,7 +9,7 @@ export const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const vendorBase = (root = ROOT) => path.join(root, ...VENDOR_COMPONENTS);
 export function vendorComponents(root = ROOT) {
   const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
-  return Object.keys(lock.components).sort().map((name) => {
+  return Object.keys(lock.components).filter((n) => lock.components[n].catalogue !== '2').sort().map((name) => {
     const version = lock.components[name].default;
     return { name, version, dir: resolveComponent(path, root, lock, name, version) };
   });

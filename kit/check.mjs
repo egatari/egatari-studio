@@ -43,7 +43,7 @@ import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attach
 import { normalizeKey, noteProblems } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail, formulaLike, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
-import { message, where, ruleOf } from './check-messages.mjs';
+import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
@@ -282,6 +282,18 @@ for (const m of meta) {
   m.smax = m.static ? 0 : num + (hasC ? 1 : 0);
   m.scstep = hasC ? m.smax : -1;
 }
+// 配置などの知らせは、画面を開き直す前にも集める。後の検査で初めて見えたスライドの知らせも失わず、同じものは 1 回にする。
+const seenPartReports = new Set();
+async function collectPartReports() {
+  for (const r of await page.evaluate(() => JSON.parse(JSON.stringify(DECK.componentReports || [])))) {
+    const f = partReportFinding(r), sig = JSON.stringify([r.slide, r.tag, r.index, r.code, r.msg]);
+    if (!f || seenPartReports.has(sig)) continue;
+    seenPartReports.add(sig);
+    report(f.slide, f.sev, f.code, { ...f.a, msg: cleanErrorText(r.msg) });
+  }
+}
+await collectPartReports();
+
 // 部品のデータの形（kit/deck.js の DECK.componentErrors）：スライドごとに、どの部品の何が違うか
 const compErrors = await page.evaluate(() => (DECK.componentErrors || []).map((r) => JSON.parse(JSON.stringify(r))));
 const badComps = new Map();
@@ -391,6 +403,7 @@ if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: theme
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
 for (const { i, issues } of aOut.soft) for (const [code, a] of issues) report(i, 'warn', code, a);
+await collectPartReports();
 {
   const tot = aOut.punct.reduce((a, p) => ({ jp: a.jp + p.jp, en: a.en + p.en }), { jp: 0, en: 0 });
   if (tot.jp && tot.en) {
@@ -517,6 +530,7 @@ const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f)
 // 舞台の上に重なる時刻依存の飾り（操作の帯・短い知らせ）は撮る前に消しておく
 const HIDE_CHROME = '#dt-cb,#deck-toast{display:none!important}';
 async function orderDiffers(m, k) {
+  await collectPartReports();
   await page.goto(url);
   await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
   await page.addStyleTag({ content: HIDE_CHROME });
@@ -552,6 +566,7 @@ for (const m of meta) {
   }
 }
 // 検査のために何度も飛び回ったので、最後にもう一度最初から開き直しておく（念のため）
+await collectPartReports();
 await page.goto(url);
 await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 
@@ -624,6 +639,8 @@ report(null, 'info', 'timelineTotal', { s: total.toFixed(2), n: tl.length });
 const perSlide = new Map();
 for (const seg of tl) perSlide.set(seg.i, (perSlide.get(seg.i) || 0) + seg.dur);
 for (const [i, dur] of perSlide) report(i, 'info', 'slideLength', { s: dur.toFixed(2) });
+
+await collectPartReports();
 
 // 遅れて届くエラーも拾うため、閉じる前に少し待つ
 await page.waitForTimeout(100);

@@ -270,7 +270,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     // 有料版：すべての部品が表と説明にある。無料版（全部の分野でも）：有料版だけの部品はどこにも名前が出ない
     const paid = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' });
     // 部品の名前は固定の表から（vendor/components は中身の hash ごとのフォルダ：#138）
-    for (const d of Object.keys(JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')).components))
+    for (const d of Object.entries(JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')).components).filter(([, c]) => c.catalogue !== '2').map(([n]) => n))
       assert.ok(paid.includes('`m-' + d + '`') && paid.includes('### `<m-' + d + '>`'), `${lang}: m-${d} is in the table and described in the paid pack`);
     assert.deepEqual(PAID_ONLY, ['m-boxplot', 'm-compare', 'm-cycle', 'm-fishbone', 'm-heatmap', 'm-hissan', 'm-hist', 'm-kakijun', 'm-map-world', 'm-numberline', 'm-pie', 'm-scatter', 'm-tape', 'm-timeline', 'm-tree', 'm-venn']);
     assert.deepEqual(TOOLS.map((t) => t.tag), ['m-timer'], 'tools are not paid only: they come in on either plan when ticked');

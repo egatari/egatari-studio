@@ -6,6 +6,7 @@
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
 //   --without-live-results  授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）の添付を 1 ファイルに入れない（入るときは知らせる）
 //   --play-only  その再生専用の派生（<デッキのフォルダ>/<題名><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   --components-catalogue 2 | <カタログの版>  部品庫 2.0 のパーツで組む（components2.lock.json。既定は 1.x。作業フォルダの設定のファイルの componentsCatalogue と同じ）
 //   --update-themes  教材が固定した同梱のテーマの前の版（FORMAT.CONFIG_FILE の themes。themes.lock.json）を今の版にして組む（設定のファイルも書き換え、
 //                変わる色を出す）。付けなければ固定した版で組み、知らせる（黙って新しい色にしない。kit/core/themes-lock.mjs）
 //   --live 部屋.json  派生に授業の部屋を付ける（拡張 live。教員のページの「コピー」の JSON：endpoint・room・key・window。活動は FORMAT.CONFIG_FILE の
@@ -279,9 +280,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--live') opts.liveFile = a[++i];
     else if (a[i] === '--without-live-results') opts.withoutLiveResults = true;
     else if (a[i] === '--update-themes') opts.updateThemes = true;
+    else if (a[i] === '--components-catalogue') opts.componentsCatalogue = a[++i];
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]] [--update-themes]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]] [--update-themes] [--components-catalogue 2 | <catalogue version>]'); process.exit(1); }
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   if (opts.updateThemes) {
     let up;

@@ -75,6 +75,8 @@ const ALLOW = [
   ['tools/portable.mjs', "parseThemesLock(fs.readFileSync(path.join(root, THEMES_LOCK_FILE), 'utf8'))", 'リポジトリの themes.lock.json（同梱のテーマの版の固定）を読む'],
   ['tools/components-update.mjs', 'fs.readFileSync(', '部品庫の取り込み（管理者の道具）：リポジトリの components.lock.json と vendor/components/、--from で選んだリリースのファイル（中身は manifest.json の sha256 で確かめる）を読む'],
   ['tools/components-update.mjs', 'await res.arrayBuffer()', '部品庫の取り込み：リリースのファイルを取る（Content-Length と読んだ大きさを 64 MiB で断り、中身は manifest.json の sha256 で確かめる）'],
+  ['tools/components2-update.mjs', 'fs.readFileSync(', '部品庫 2.0 の取り込み（管理者の道具）：リポジトリの固定のファイルと vendor/components/sha256/、vendor/components-2/ のカタログ、--from で選んだリリースのファイル（中身は manifest.json の sha256 で確かめる）を読む'],
+  ['tools/components2-update.mjs', 'await res.arrayBuffer()', '部品庫 2.0 の取り込み：リリースのファイルを取る（読んだ大きさを 64 MiB で断り、中身は manifest.json の sha256 で確かめる）'],
   ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(file), 'utf8')", 'AI への指示を作る：リポジトリの docs/authoring-with-llms*.md（作ったもの）を読んで比べる'],
   ['tools/get-fonts.mjs', 'sha(fs.readFileSync(out))', '字：リポジトリの fonts/ の、決まった大きさのファイルのハッシュを確かめる（取ってくる側は決まったコミット・大きさの上限・SHA-256 で確かめる）'],
   ['tools/hostile-deck.mjs', 'fs.readFileSync(path.join(min,', '試験の材料：リポジトリの examples/minimal を読む'],

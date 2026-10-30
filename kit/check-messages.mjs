@@ -246,6 +246,12 @@ export const MESSAGES = {
   compName: { ja: (a) => `名前の無い部品：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `components without a name: ${a.list} (an aria-label="…" helps screen readers)` },
   timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} 段階）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
   slideLength: { ja: (a) => `この枚の長さ：${a.s} 秒`, en: (a) => `slide length: ${a.s} s` },
+  compLayout: { rule: 'R-fit',
+    ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。部品を置く場所を広げるか、表示する内容を減らす`,
+    en: (a) => `${compName(a, false)} does not have enough room: ${a.msg}. Give it more space or show less content` },
+  compReport: { rule: 'R-components',
+    ja: (a) => `${compName(a, true)}からの知らせ：${a.msg}。表示する値や量、テーマの色を確かめる`,
+    en: (a) => `${compName(a, false)} reports a problem: ${a.msg}. Check the values, the amount of content and the theme colours` },
   compData: { rule: 'R-components',
     ja: (a) => `${compName(a, true)}のデータが合わない：${compWhat(a, true)}${compHow(a, true) ? `。${compHow(a, true)}` : ''}`,
     en: (a) => `${compName(a, false)} has data it cannot draw: ${compWhat(a, false)}${compHow(a, false) ? `. Write it like this: ${compHow(a, false)}` : ''}` },
@@ -283,6 +289,8 @@ function compWhat(a, ja) {
     case 'empty': return ja ? '要素の中に字がない' : 'there is no text inside the element';
     case 'notLinks': return ja ? 'この部品は JSON ではなく、子のリンク <a href> で書く' : 'this component is written as child <a href> links, not as JSON';
     case 'noLinks': return ja ? '子のリンク <a href> がない' : 'there are no child <a href> links';
+    // 部品が ctx.report で知らせた（format spec §8.4。code は data・attr・error など。msg は部品の言葉で [名前] から始まる）
+    case 'report': return ja ? `部品が知らせた（${a.code}）：${a.msg}` : `the component reported (${a.code}): ${a.msg}`;
     default: return a.dataLike
       ? (ja ? `部品が描けずに止まった（${a.msg}）。データの形が部品の形と合っていないときに出る誤り` : `the component stopped while drawing (${a.msg}); this usually means the data does not have the component’s shape`)
       : (ja ? `部品が描けずに止まった（${a.msg}）` : `the component stopped while drawing (${a.msg})`);
@@ -313,4 +321,10 @@ export function message(lang, code, a = {}) {
   const rule = ruleOf(code, a);
   // 規格の名前は、言葉の中に書いていなければ最後に添える
   return rule && !t.includes(rule) ? t + (lang === 'en' ? ` (${rule})` : `（${rule}）`) : t;
+}
+
+// 部品の見た目の知らせ（§8.4）。データ・属性・例外は componentErrors が別に扱う。
+export function partReportFinding(r) {
+  if (!r || r.kind !== 'report' || ['data', 'attr', 'error'].includes(r.code)) return null;
+  return { slide: r.slide, sev: 'warn', code: r.code === 'layout' ? 'compLayout' : 'compReport', a: r };
 }
