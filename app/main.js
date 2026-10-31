@@ -66,7 +66,7 @@ const loadLazy = async (p) => {
   if (!r.ok) throw new Error('font not found: ' + p);
   return bytesToBase64(new Uint8Array(await r.arrayBuffer()));
 };
-const engine = createEngine(RES, loadLazy);
+const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job) });
 // 開いたデッキの組み立てと判定は Worker で（app/build-client.js。ページを固めず、期限を過ぎたら止める）。保存・書き出しの組み立ては
 // このページの engine で（確かめた後のデッキ。組み立ての上限は同じ）
 const builder = createBuildClient(RES, loadLazy);

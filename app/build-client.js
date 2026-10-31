@@ -50,6 +50,12 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     };
     if (!alive()) return;
     try {
+      if (m.op === 'abcjs') {
+        if (![...waiting.values()].some((w) => w.gen === g && w.ws)) throw new Error('no pending build for score rendering');
+        const { renderAbc } = await import('./abcjs-renderer.js');
+        if (!alive()) return;
+        return reply(true, renderAbc(m.arg));
+      }
       if (m.op === 'lazy') return reply(true, await loadLazy(m.arg));
       // 利用者のテーマのフォルダ：今選んでいるフォルダで、この Worker にまだ終わっていない要求があるときだけ（読むだけ）
       if (m.op === 'tlist' || m.op === 'tread') {

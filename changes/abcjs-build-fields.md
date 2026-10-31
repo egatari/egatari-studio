@@ -1,0 +1,3 @@
+### Added
+
+- Components 2.0 `build.fields` now renders ABC scores with pinned abcjs 6.7.2: `abcSvg`, `abcMap`, note/beam/measure/arc tags and renderer version/options in the data and portable index. The CLI uses Chromium through a synchronous helper; the editor's build worker requests main-thread rendering over RPC, and exports use the same renderer. Output follows the vendored rendered-markup allow-list, omits abcjs text, and leaves the ABC source with a build warning when rendering is unavailable or fails. abcjs is bundled only for editor rendering, with its MIT notice; lessons carry SVG without the abcjs runtime.

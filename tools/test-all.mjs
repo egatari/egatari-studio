@@ -91,6 +91,7 @@ const steps = [
   // 並んでいないうちに起動したデッキ（display:none の iframe）を後で出しても、ふつうの起動と画素まで同じ（contract §3：mount は舞台が並んでから）
   ['test-mount-hidden', ['tools/test-mount-hidden.mjs', path.join(tmp, 'mount-hidden')]],
   // 部品庫 2.0 の受け口（format spec §6.1・§6.2・§8.4、backlog #123）：登録簿・ctx・2 段の守り・layout・印刷と縮図の entered・組み立てのときの描画と絞り込み・1.x は変わらない
+  ['test-abcjs-browser', ['tools/test-abcjs-browser.mjs']],
   ['test-parts-host', ['tools/test-parts-host.mjs', path.join(tmp, 'parts-host')]],
   // 見ている人が手で変えた部品の状態（m-kobun の札など）は段階に入るたびに消え、宣言どおりの画面に戻る（format spec §8.4、contract §3）。発表者ビュー・印刷も
   ['test-step-reset', ['tools/test-step-reset.mjs', path.join(tmp, 'step-reset')]],

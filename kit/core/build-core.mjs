@@ -9,6 +9,7 @@
 //   env.within(p, dir)             p が dir の中にあるか（Node では実体のパスで比べる）
 //   env.size(p)                    任意。ファイルのバイト数（読む前に上限に数える。なければ読んだ後・つなぐ前に数える）
 //   env.katex                      KaTeX（renderToString）
+//   env.abcjs                      任意。{version, defaults, render(src, options)} → {Svg, Map}。DOM は呼び出し側が持つ
 //   env.katexDir                   katex の dist（katex.min.css・katex.min.js・fonts/）
 //   env.fontDir(pkg)               @fontsource の包みの場所（{w}.css と files/）
 //   env.version                    デッキに入れる版（DECK.VERSION）
@@ -1098,7 +1099,7 @@ export function defaultOut(P, srcPath) {
 // ---------------------------------------------------------------- 部品庫 2.0 のパーツ（format spec §6.1・§6.2。kit/core/parts2.mjs）
 // 使う要素のパーツと、それが要るパーツを依存の順に、登録簿（kit/parts-registry.js）の後に書く。作業フォルダの components/<名前>/index.js は、
 // egatariParts.define を書いていれば埋め込みのパーツ（requires を字で読む）、そうでなければ 1.x の部品（DECK.define。legacy で返し、今までどおり読む）。
-// 組み立てのときに描く欄（build.fields）は KaTeX で描いてデータに足し（abcjs はまだ：描かずに残し、パーツが元の字を出して知らせる）、
+// 組み立てのときに描く欄（build.fields）は KaTeX・abcjs で描いてデータに足し（描けなければ元の字を残して知らせる）、
 // 絞り込み（build.subset）は教材の字（原稿の全部の字・口述原稿・パーツに渡すデータ・パーツの glyphs）に出てくるキーだけを、宣言ごとに宣言した順に残す。
 // meta は字で読む（§6.1：式のない object の字。読めないパーツは書かない）。同じ要素の名前を定義するパーツが 2 つ要るなら断る（resolveParts の conflicts）。
 // 返すもの：{html, js, legacy: [1.x として読む要素], localFiles, catalogue, parts: [{name, version, source, tag?, requires, license?, sha256?, subset?, renderers?}]}
@@ -1129,6 +1130,10 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
     try { return { Html: katex.renderToString(src, { displayMode: false, throwOnError: true, strict: 'ignore', output: opt.output === 'html' ? 'html' : 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }) }; }
     catch (e) { warn.push(`KaTeX (build-time field ${key}): ${String(e.message).split('\n')[0]}  in: ${src.slice(0, 60)}`); return {}; }
   } } } : {};
+  if (env.abcjs) renderers.abcjs = { ...env.abcjs, render: (src, opt, key) => {
+    try { return env.abcjs.render(src, opt, key); }
+    catch (e) { warn.push(`abcjs (build-time field ${key}): ${String(e.message).split('\n')[0]}; its field is left unrendered`); return {}; }
+  } };
   let js = `// ---- egatariParts registry (kit/parts-registry.js; format spec §6.1)\n${env.readText(P.join(ROOT, 'kit', 'parts-registry.js'))}`;
   const renderTags = new Map();
   for (const p of r.parts) {

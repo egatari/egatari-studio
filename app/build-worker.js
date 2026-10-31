@@ -43,7 +43,7 @@ self.onmessage = async (e) => {
     if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }, Number.isFinite(m.error.n) ? { n: m.error.n } : {}));
     return;
   }
-  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p)); return; }
+  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p), { renderAbc: (job) => rpc('abcjs', job) }); return; }
   try {
     let value = null;
     if (m.op === 'probe') value = self[m.name] === undefined ? null : String(self[m.name]);
