@@ -136,7 +136,7 @@ fs.writeFileSync(path.join(predictDir, 'narration.md'), '## Prediction {#predict
 fs.rmSync(path.join(predictDir, 'timeline.json'), { force: true });
 build(path.join(predictDir, 'deck.html'), predictDeck);
 ok(partFile('predict', '2.0.0') === path.join(ROOT, 'vendor/components/sha256/2ec05263e6fe8c9cfd7919e4e8031202997d40dceaa93b962fb47c29c3aa972d/index.js')
-  && fs.readFileSync(predictDeck, 'utf8').includes('// ---- predict@2.0.0'), 'prediction lesson uses the real vendored predict@2.0.0');
+  && fs.readFileSync(predictDeck, 'utf8').includes('// ---- predict@2.0.1'), 'prediction lesson uses the real vendored predict@2.0.1');
 
 // Node の部分だけでも、組み立て・索引の受け口を確かめられる。
 if (process.env.EGATARI_TEST_NO_BROWSER === '1') {
