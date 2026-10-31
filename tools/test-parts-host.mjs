@@ -161,7 +161,7 @@ const { p, errs } = await open(fileUrl(deck));
 const st = await p.evaluate(() => egatariParts.status());
 ok(eq2(Object.keys(st), ['defined', 'failed']) && st.failed.some((f) => f.name === 'boom' && f.element === 'm-boom' && f.reason === 'factory') && st.failed.some((f) => f.name === 'orphan' && f.element === 'm-orphan' && f.reason === 'dependency'),
   `registry status(): the failed factory (factory) and its dependant (dependency): ${st.failed.map((f) => f.name + ': ' + f.reason).join(' | ')}`);
-ok(['bars@2.0.0', 'flow@2.0.0', 'kakijun@2.0.0', 'probe@0.1.0'].every((t) => st.defined.includes(t)), 'registry defined the element parts');
+ok(['bars@2.0.0', 'flow@2.0.1', 'kakijun@2.0.0', 'probe@0.1.0'].every((t) => st.defined.includes(t)), 'registry defined the element parts');
 const fb = await p.evaluate(() => ['m-boom', 'm-orphan'].map((t) => { const e = document.querySelector(t); const x = e && e.querySelector('[data-part-failure="define"]'); return x ? x.textContent : null; }));
 ok(fb[0] === '作れないパーツ' && fb[1] === '頼る先が作れないパーツ', `failed parts show their text equivalent (${JSON.stringify(fb)})`);
 const m0 = await p.evaluate(() => window.__probe.mounts.find((m) => m.id === 'probe-a'));

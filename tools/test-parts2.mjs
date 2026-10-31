@@ -238,6 +238,10 @@ for (const [code, what] of [
   ok(e.length === 0, `content-addressed parts match components2.lock.json${e.length ? ': ' + e.join('; ') : ''}`);
   const rc = lock2.catalogues['2.0.0-rc.1'];
   ok(rc && rc.tarballSha256 === 'efc672e96c1842834eff4c1fcc3603bc2efa4ce4076768b4e27ad6df7a69cf1c' && rc.tag === 'v2.0.0-rc.1', 'components 2.0.0-rc.1 is pinned to the verified tarball');
+  const v2 = lock2.catalogues['2.0.0'];
+  ok(lock2.default === '2.0.0' && v2 && v2.tag === 'v2.0.0' && v2.tarballSha256 === 'a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db' &&
+    v2.manifestSha256 === 'b8e117f4e67cc292200d4fae4752a3c6a38c597a6ce951ad2e766d731503095f' &&
+    ['timer', 'predict', 'flow', 'quad', 'cycle'].every((n) => v2.parts[n] === '2.0.1'), 'components 2.0.0 is the default and pinned to the verified release (timer/predict/flow/quad/cycle 2.0.1)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

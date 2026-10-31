@@ -3,7 +3,7 @@
 //
 // 写しは vendor/components/sha256/<hash>/（components.lock.json の content 表から resolveComponent で引く）。
 // カタログとパーツの宣言だけ components2.lock.json に持つ：1.x の教材はそのまま 1.x で組む（既定）。教材が 2.0 を選ぶのは、作業フォルダの設定のファイル
-// （egatari.json）の "componentsCatalogue"（"2" か、カタログの版 "2.0.0-rc.1"）か、組み立ての opts.componentsCatalogue。
+// （egatari.json）の "componentsCatalogue"（"2" か、カタログの版 "2.0.0"）か、組み立ての opts.componentsCatalogue。
 // 1 つの教材の部品庫の要素は全部 1.x か全部 2.0（同じ要素の名前 m-bars を 2 つの土台で定義できないため）。
 //
 // components2.lock.json：

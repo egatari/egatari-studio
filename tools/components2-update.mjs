@@ -1,5 +1,5 @@
 // 部品庫 2.0（egatari/components v2.x）のリリースを取り込む・写しを確かめる（format spec §6.1：パーツごとの版）
-//   node tools/components2-update.mjs v2.0.0-rc.1 [--from <manifest.json と tarball のあるフォルダ>] [--default]
+//   node tools/components2-update.mjs v2.0.0 [--from <manifest.json と tarball のあるフォルダ>] [--default]
 //   node tools/components2-update.mjs --check          写しと components2.lock.json が合っているか（ネットワークなし）
 //
 // 1.x の取り込み（tools/components-update.mjs、vendor/components/、components.lock.json）とは別に持つ。1.x の教材は 1.x のまま組む。
