@@ -1,7 +1,60 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.0.0-rc.1",
+  "default": "2.0.0",
   "catalogues": {
+    "2.0.0": {
+      "tag": "v2.0.0",
+      "tarballSha256": "a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db",
+      "manifestSha256": "b8e117f4e67cc292200d4fae4752a3c6a38c597a6ce951ad2e766d731503095f",
+      "parts": {
+        "bars": "2.0.0",
+        "base": "1.0.0",
+        "boxplot": "2.0.0",
+        "boxplot-core": "1.0.0",
+        "codetree": "2.0.0",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.0",
+        "compare": "2.0.0",
+        "curves": "2.0.0",
+        "cycle": "2.0.1",
+        "expr": "1.0.0",
+        "fishbone": "2.0.0",
+        "flow": "2.0.1",
+        "gendai": "2.0.0",
+        "heatmap": "2.0.0",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.0",
+        "hist": "2.0.0",
+        "hist-core": "1.0.0",
+        "kakijun": "2.0.0",
+        "kanbun": "2.0.0",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.0",
+        "kobun": "2.0.0",
+        "kpi": "2.0.0",
+        "map-japan": "2.0.0",
+        "map-world": "2.0.0",
+        "market": "2.0.0",
+        "markup-reader": "1.0.0",
+        "menu": "2.0.0",
+        "numberline": "2.0.0",
+        "pie": "2.0.0",
+        "plot": "1.0.0",
+        "predict": "2.0.1",
+        "quad": "2.0.1",
+        "scatter": "2.0.0",
+        "score": "2.0.0",
+        "seq": "2.0.0",
+        "shape": "1.0.0",
+        "sweep": "2.0.0",
+        "syntax": "2.0.0",
+        "tape": "2.0.0",
+        "timeline": "2.0.0",
+        "timer": "2.0.1",
+        "tree": "2.0.0",
+        "venn": "2.0.0"
+      }
+    },
     "2.0.0-rc.1": {
       "tag": "v2.0.0-rc.1",
       "tarballSha256": "efc672e96c1842834eff4c1fcc3603bc2efa4ce4076768b4e27ad6df7a69cf1c",
@@ -186,6 +239,27 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "1e04a32e824c835c9865eac227c13f87529a7431f8056a1ff70aa32f135f01d8",
+        "kind": "element",
+        "tag": "m-cycle",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex",
+            "center.tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "expr": {
@@ -222,6 +296,26 @@
     "flow": {
       "2.0.0": {
         "sha256": "a72751c88bb2d7843fff1ca118b453491269e0a56af92f108d79a7a275f04d29",
+        "kind": "element",
+        "tag": "m-flow",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "c309b80743e3b165b6993cbc57d827557ecc6b9ddedd1ab6d0bfa638da0147d8",
         "kind": "element",
         "tag": "m-flow",
         "requires": {
@@ -476,11 +570,29 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "493f43633660203e22f11954f33ab122e3d1d9e097be4b79afecc14523f51311",
+        "kind": "element",
+        "tag": "m-predict",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "quad": {
       "2.0.0": {
         "sha256": "193bc4be6200e627162e636dc0eca809c78e7444a5ff0f40989ce83edc00f51b",
+        "kind": "element",
+        "tag": "m-quad",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "a2da321ae91ae036cd9cc325a824f00acc7dd32690182c38a255f856f63585bf",
         "kind": "element",
         "tag": "m-quad",
         "requires": {
@@ -598,6 +710,15 @@
     "timer": {
       "2.0.0": {
         "sha256": "184a1bcead7c0e99d3a55b36cab06782cf51680a0e08df2c2f6f063fb1f5c18b",
+        "kind": "element",
+        "tag": "m-timer",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "c05e4d97c0082c0089c888fdd95dbedd6a3cbf25da2ed80045be530ade82ffeb",
         "kind": "element",
         "tag": "m-timer",
         "requires": {
