@@ -298,6 +298,30 @@ var ST = "off", ws = null, attempt = 0, retryTimer = null, retryAt = 0, tickTime
 var lastCode = 0, admitted = false, stepKey = "*", refN = 0, pending = {}, votes = {}, shownItems = [], nameSent = "", stopReason = "", left = false, info = "";
 // 質問の機能：pos（今のスライドとステップ、1 から。表示だけ）・囲んだ線（舞台の座標。囲んだステップ）・「わからない」（ステップごと）・自分の質問への返事
 var pos = null, region = [], regionStep = null, drawing = false, stroke = null, confusedOn = {}, replies = {}, newReply = false;
+// Revealed aggregate bridge (format live §2.5). The v1 learner protocol has no reveal message yet.
+// A reveal-capable live layer calls setPollResult; teacher-only `tally`/`state` never feed this store.
+var pollResults = Object.create(null);
+function pollResult(id){
+  var counts = pollResults[id];
+  return counts ? counts.slice() : null;
+}
+function setPollResult(id, result){
+  var a = null;
+  Object.keys(live.activities || {}).some(function(key){
+    return live.activities[key].some(function(x){ if (x.kind === "poll" && x.id === id){ a = x; return true; } return false; });
+  });
+  if (!a) return false;
+  var counts = result && result.counts;
+  var valid = result && result.revealed === true && Array.isArray(counts) && counts.length === a.choices.length &&
+    Array.from(counts).every(function(n){ return Number.isSafeInteger(n) && n >= 0; }) && counts.reduce(function(x, y){ return x + y; }, 0) >= 3;
+  if (valid) pollResults[id] = counts.slice(); else delete pollResults[id];
+  document.dispatchEvent(new CustomEvent("deck:live"));
+  return true;
+}
+function clearPollResults(){
+  pollResults = Object.create(null);
+  document.dispatchEvent(new CustomEvent("deck:live"));
+}
 function setState(s, why){ ST = s; stopReason = why || ""; render(); }
 function now(){ return Date.now(); }
 function phase(){ var t = now(); if (t < LP.windowStart(live.window)) return "before"; if (t > LP.windowEnd(live.window)) return "after"; return "open"; }
@@ -496,7 +520,7 @@ function connect(){
   if (!url || !LP.sameEndpoint(url, live.endpoint)){ setState("stopped", "bad_endpoint"); return; }
   var s;
   try { s = new WebSocket(url); } catch (e) { onClose({code: 1006}); return; }
-  ws = s; admitted = false; pending = {};
+  ws = s; admitted = false; pending = {}; clearPollResults();
   setState("connecting");
   s.onmessage = function(ev){ if (ws === s) onMessage(ev); };
   s.onopen = function(){ if (ws !== s) return; pingTimer = setInterval(function(){ send({v: 1, t: "ping"}); }, 45000); };
@@ -505,7 +529,7 @@ function connect(){
   scheduleEnd();
 }
 function onClose(ev){
-  clearTimers(); admitted = false;
+  clearTimers(); admitted = false; clearPollResults();
   if (left) return;
   var code = ev && typeof ev.code === "number" ? ev.code : 1006;
   lastCode = code;
@@ -527,6 +551,7 @@ function scheduleEnd(){
   endTimer = setTimeout(function(){
     clearTimers();
     if (ws){ var s = ws; ws = null; try { s.close(1000, "window"); } catch (e) {} }
+    clearPollResults();
     setItem("sessionStorage", JOINED_KEY, null);
     if (ST !== "off") setState("stopped", "window_over"); else render();
   }, Math.min(ms + 500, 2147483000));
@@ -541,6 +566,7 @@ function leave(){
   left = true; clearTimers();
   setItem("sessionStorage", JOINED_KEY, null);
   if (ws){ var s = ws; ws = null; try { s.close(1000, "bye"); } catch (e) {} }
+  clearPollResults();
   admitted = false; info = S.leftMsg; setState("off"); announce(S.leftMsg);
 }
 // ---------------------------------------------------------------- 囲む（舞台の上に重ねた SVG に、指やマウスで線を描く。舞台の座標 1280 × 720）
@@ -638,7 +664,7 @@ function start(){
   // このタブで参加したことがあれば（読み直しなど）、窓の中なら押さずにつなぐ
   if (!CTX && phase() === "open" && getItem("sessionStorage", JOINED_KEY) === "1") join();
 }
-DECK.live = {state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt, open: isOpen(), pinned: pinned, auto: auto,
+DECK.live = {poll: pollResult, setPollResult: setPollResult, state: function(){ return {state: ST, reason: stopReason, code: lastCode, retryIn: ST === "retrying" ? retryAt - now() : null, context: CTX, joinLink: !!JOIN_URL, admitted: admitted, step: stepKey, attempt: attempt, open: isOpen(), pinned: pinned, auto: auto,
   drawing: drawing, strokes: region.length, confused: !!confusedOn[stepKey], replies: Object.keys(replies).length, newReply: newReply}; }};
 if (DECK.ready) start(); else document.addEventListener("deck:ready", start, {once: true});
 })();

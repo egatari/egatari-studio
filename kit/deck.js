@@ -488,7 +488,7 @@ DECK.feedbackUrl = function(){
 // PositionStore（kit/core/position.mjs。build が DECK.PositionStore として前に入れる）が持つ。舞台は描いた位置を書き、知らせは購読者が送る
 if (typeof DECK.PositionStore !== "function") throw new Error("deck.js: DECK.PositionStore がない（kit/core/position.mjs を先に読み込む） / missing DECK.PositionStore (load kit/core/position.mjs first)");
 var POS = DECK.PositionStore();
-var slides = [], fadeFrom = -1, raf = 0, t0 = 0, auto = null, lastPos = null;
+var slides = [], fadeFrom = -1, raf = 0, auto = null, lastPos = null;
 // ctx.entered（format spec §8.4）：別のスライドから入ったか、跳んで入った（リンク・一覧・ページ番号・発表者ビューや編集の goto・開いたとき）あとの最初の描画で true。
 // jumpTo：跳んだ先のスライド（go が step でない動きで書き、seek の最初の描画が読んで消す）
 var jumpTo = -1;
@@ -651,9 +651,57 @@ function reporter(c){
     console.warn("[deck] " + tag + " (" + (s.id || s._key) + ") " + cd + ": " + msg);
   };
 }
+// Viewer input (format §8.4): totals belong to slide steps, never to duration()/the authored timeline.
+var viewerStep = null, stepExtensions = Object.create(null), liveRun = null;
+function viewerAt(i, k, entered){
+  if (ASIDE || DECK.mode === "video" || DECK.view) return;
+  if (entered) stepExtensions = Object.create(null);
+  viewerStep = {i: i, k: k};
+}
+function viewerInput(){ return !ASIDE && DECK.mode !== "video" && !DECK.view; }
+// Sound hook #114 integration: pass this total to core/sounds.mjs retime(events, {duration, extension}).
+// Reads only; no sound scheduling here. Video/aside renders always get the author's times.
+DECK.stepExtension = function(i, k){
+  if (!viewerInput() || !viewerStep) return 0;
+  if (i === undefined){ i = viewerStep.i; k = viewerStep.k; }
+  return i === viewerStep.i ? stepExtensions[k] || 0 : 0;
+};
+function ctxExtend(s, seconds){
+  if (!started || !viewerInput() || !viewerStep || slides[viewerStep.i] !== s) return 0;
+  var i = viewerStep.i, k = viewerStep.k, before = DECK.stepExtension(i, k);
+  if (typeof seconds !== "number" || !isFinite(seconds) || seconds === 0) return before;
+  var seg = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
+  // The part clamps first (m-timer: remaining >= 0, total <= 1 hour); the player keeps the step length >= 0 and the total <= 1 hour.
+  var total = Math.max(-(seg ? seg.dur : 0), Math.min(3600, before + seconds)) || 0;
+  stepExtensions[k] = total;
+  if (total !== before){
+    // A finished/manual step can start its clock again; an active clock keeps its elapsed time.
+    if (!liveRun) liveRun = {i: i, k: k, base: animDur(i, k), start: performance.now(), t: 0, first: false, from: -1};
+    if (liveRun.i === i && liveRun.k === k && !raf){
+      liveRun.start = performance.now() - liveRun.t * 1000;
+      raf = requestAnimationFrame(tickLive);
+    }
+    scheduleAutoEnd();
+  }
+  return total;
+}
+var CTX_LIVE = Object.freeze({poll: function(id){
+  if (!viewerInput() || !DECK.live || typeof DECK.live.poll !== "function") return null;
+  var counts = DECK.live.poll(id);
+  // Enforce the privacy floor even with a host-supplied live client; never pass identities through.
+  if (!Array.isArray(counts) || !counts.length || !Array.from(counts).every(function(n){ return Number.isSafeInteger(n) && n >= 0; }) ||
+      counts.reduce(function(a, b){ return a + b; }, 0) < 3) return null;
+  return counts.slice();
+}});
+document.addEventListener("deck:live", function(){
+  if (!started || !viewerInput() || !viewerStep) return;
+  var v = viewerStep, r = liveRun;
+  seek(v.i, v.k, r && raf ? (performance.now() - r.start) / 1000 : Infinity, undefined, true);
+});
 function ctxFor(c, s, o){
   var x = {mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
-    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited};
+    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds); },
+    live: viewerInput() && DECK.live && typeof DECK.live.poll === "function" ? CTX_LIVE : null};
   for (var k in o) x[k] = o[k];
   if (!c._v2) x.deck = DECK;
   return x;
@@ -717,7 +765,10 @@ function seek(i, k, t, from, cont){
   // 前の画面のモーフの跡を消す
   slides.forEach(function(x){ if (x._morphOn) clearMorph(x._morphOn); });
   // 下に残す前のスライドは最終状態で描く（(i, 0, t, from) が呼び出し順によらず決まるように）
-  if ((fading || morph) && !(slides[from]._final)) seek(from, slides[from]._max, Infinity);
+  if ((fading || morph) && !(slides[from]._final)){
+    asideBegin(); try { seek(from, slides[from]._max, Infinity); } finally { asideEnd(false); }
+  }
+  viewerAt(i, k, entered);
   slides.forEach(function(x, j){
     var on = j === i, under = (fading || morph) && j === from;
     x.classList.toggle("active", on);
@@ -758,7 +809,10 @@ function seek(i, k, t, from, cont){
   var ac = compCues(i, k);
   if (shown && started) layoutComps(s._comps);
   s._comps.forEach(function(c){
-    var tc = REDUCE && isClock(c) ? tReal : t, lead = tc === Infinity ? 0 : (timing(i, k).lead || 0);
+    var tc = REDUCE && isClock(c) ? tReal : t;
+    // Keep a shortened/extended clock at its actual live endpoint, including a later layout redraw.
+    if (isClock(c) && viewerInput() && tc === Infinity && liveRun && liveRun.i === i && liveRun.k === k && DECK.stepExtension(i, k)) tc = liveRun.t;
+    var lead = tc === Infinity ? 0 : (timing(i, k).lead || 0);
     var p = compPos(c, k, tc, ac && ac.map(function(x){ return x + lead; }));
     var ctx = ctxFor(c, s, {instant: p.t === Infinity, entered: entered});
     try {
@@ -1350,7 +1404,20 @@ DECK.toast = function(msg){
 };
 
 // ---------------------------------------------------------------- 実時間での再生
-function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; }
+function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; liveRun = null; }
+function tickLive(){
+  var r = liveRun;
+  if (!r) return;
+  raf = 0;
+  var t = (performance.now() - r.start) / 1000, cont = !r.first;
+  // The first render performs slide-entry reset before we read the new step's extension.
+  if (r.first){ r.first = false; seek(r.i, r.k, 0, r.from, false); cont = true; }
+  var end = Math.max(0, r.base + DECK.stepExtension(r.i, r.k));
+  r.t = Math.min(t, end);
+  if (t >= end){ seek(r.i, r.k, Infinity, undefined, true); return; }
+  seek(r.i, r.k, t, r.from, cont);
+  raf = requestAnimationFrame(tickLive);
+}
 function play(i, k, animate, from){
   stopLoop();
   announce(i, k);
@@ -1360,15 +1427,8 @@ function play(i, k, animate, from){
   if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
   legacy(slides[i], k, REDUCE);   // 動きを減らす設定で時計の部品のために回すときも、ほかは最後の状態
   var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
-  t0 = performance.now();
-  var first = true;
-  (function loop(){
-    var t = (performance.now() - t0) / 1000, cont = !first;
-    first = false;
-    if (t >= d){ seek(i, k, Infinity, undefined, cont); raf = 0; return; }
-    seek(i, k, t, from, cont);
-    raf = requestAnimationFrame(loop);
-  })();
+  liveRun = {i: i, k: k, base: d, start: performance.now(), t: 0, first: true, from: from};
+  tickLive();
   POS.publish();
 }
 function go(i, k, animate, stepMove){
@@ -1413,10 +1473,13 @@ function startAuto(){
 }
 function runSeg(){
   if (!auto) return;
+  clearTimeout(auto.atimer);
+  if (audioEl) audioEl.pause();
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
   if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true, true); POS.setCause(c0); }
   auto.started = true;
+  auto.segStart = performance.now();
   if (g.audio){
     if (!audioEl){
       audioEl = new Audio();
@@ -1424,7 +1487,20 @@ function runSeg(){
     }
     auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
   }
-  auto.timer = setTimeout(function(){ if (!auto) return; auto.idx++; runSeg(); }, g.dur * 1000);
+  scheduleAutoEnd();
+}
+function scheduleAutoEnd(){
+  if (!auto || auto.segStart === undefined) return;
+  clearTimeout(auto.timer);
+  var g = auto.tl[auto.idx];
+  if (!g) return;
+  var remaining = Math.max(0, g.dur + DECK.stepExtension(g.i, g.k) - (performance.now() - auto.segStart) / 1000);
+  auto.timer = setTimeout(function(){
+    if (!auto) return;
+    // Long extensions may exceed a browser timer's maximum delay.
+    if (remaining > 2147483){ scheduleAutoEnd(); return; }
+    auto.idx++; runSeg();
+  }, Math.min(remaining * 1000, 2147483000));
 }
 DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };
 
