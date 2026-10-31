@@ -189,6 +189,10 @@ function quickCheck(fonts){
   } catch (e) {}
   // 部品のデータの形（kit/deck.js の DECK.componentErrors）と、スクリプトのエラー
   (DECK.componentErrors || []).forEach(function(r){ add(r.slide, "error", "compData", JSON.parse(JSON.stringify(r))); });
+  // 部品を測り直してから届いた見た目の知らせ。コマンド版と同じく警告（データの誤りは上）。
+  (DECK.componentReports || []).forEach(function(r){
+    if (r.kind === "report" && ["data", "attr", "error"].indexOf(r.code) < 0) add(r.slide, "warn", r.code === "layout" ? "compLayout" : "compReport", JSON.parse(JSON.stringify(r)));
+  });
   var compTags = (DECK.componentErrors || []).map(function(r){ return r.tag; });
   jsErrors.forEach(function(t){ if (!compTags.some(function(g){ return t.toLowerCase().indexOf(g + " ") === 0; })) add(null, "error", "consoleError", t); });
   // コントラスト（WCAG）：canvas に塗って実際の色を読む

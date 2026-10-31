@@ -15,8 +15,10 @@ const OUT = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
 //   fixtures/index：索引の試験用の入力（test-portable・test-file-shape）
 //   fixtures/documents-1.0：1.0 の形の文書とその expect.json（test-portable）
 //   fixtures/documents/legacy-heading-keys.ega.html：1.0 より前の草案の例（test-app-earlier）。documents/ の残りは 1.0 より前のもので、読まない
+//   fixtures/documents/idless-source.*：id のない原稿の例（test-parts2）
+//   schema/rendered-markup-1.json も schema に含める（2.0 の描いた結果の許可リスト）
 //   fixtures/input-hash：入力のハッシュの例（test-narration）
-const PARTS = ['schema', 'fixtures/index', 'fixtures/documents-1.0', 'fixtures/documents/legacy-heading-keys.ega.html', 'fixtures/input-hash', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
+const PARTS = ['schema', 'fixtures/index', 'fixtures/documents-1.0', 'fixtures/documents/legacy-heading-keys.ega.html', 'fixtures/documents/idless-source.ega.html', 'fixtures/documents/idless-source.expect.json', 'fixtures/input-hash', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
 
 const args = process.argv.slice(2);
 const ri = args.indexOf('--ref');

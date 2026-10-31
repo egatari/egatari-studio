@@ -57,6 +57,7 @@ function el(tag, attrs, parent){
   if (parent) parent.appendChild(e);
   return e;
 }
+// @legacy-part-base:start
 // SVG の中の簡単な数式記法：*..* は斜体、_x は下付き、^x は上付き。本格的な式は DECK.svgMath を使う
 function mtext(parent, x, y, str, attrs){
   var t = el("text", Object.assign({x: x, y: y, "font-size": 24}, attrs || {}), parent);
@@ -171,6 +172,8 @@ class MotionElement extends HTMLElement {
   cues(k){ return null; }
 }
 DECK.MotionElement = MotionElement;
+function isLegacyPart(e){ return e instanceof MotionElement; }
+// @legacy-part-base:end
 
 // ---------------------------------------------------------------- 部品のデータの形（static shape。確かめるのは kit/shape.js の DECK.shape）
 // 段階を数える前に確かめ、違えば（または mount・render が例外を出したら）部品を描かず、その場に知らせの札を出す（ほかのスライドは動く）。
@@ -265,6 +268,7 @@ function compPlaceholder(c, r){
 
 // キットの形式（<section data-anim="名前">、DECK.ANIM.名前 = function(slide, k, instant)）の互換。
 // 実時間の補間に頼るので、動画の書き出しでは段階ごとの最終状態になる。新しい図は部品で書く
+// @legacy-part-helpers:start
 var ANIM = DECK.ANIM = DECK.ANIM || {};
 DECK.tween = function(slide, ms, f){
   var tok = slide._tok;
@@ -280,6 +284,7 @@ DECK.tween = function(slide, ms, f){
 };
 DECK.wait = function(slide, ms){ var tok = slide._tok; return new Promise(function(r){ setTimeout(function(){ r(slide._tok === tok); }, REDUCE || DECK.mode === "video" ? 0 : ms); }); };
 DECK.COL = {red: "var(--emph)", blue: "var(--term)", k: "var(--fg)", gray: "var(--line)", gtxt: "var(--muted)"};
+// @legacy-part-helpers:end
 function legacy(s, k, instant){
   var a = s.getAttribute("data-anim");
   if (!a || !ANIM[a]) return;
@@ -288,6 +293,48 @@ function legacy(s, k, instant){
   try { ANIM[a](s, k, instant); } catch (e) { console.error(a, e); }
 }
 DECK.define = function(name, cls){ if (!customElements.get(name)) customElements.define(name, cls); };
+
+// ---------------------------------------------------------------- 部品庫 2.0 のパーツ（format spec §6.1・§8.4）
+// 2.0 のパーツは DECK.define ではなく、組み立てが書き込む登録簿（kit/parts-registry.js、globalThis.egatariParts）で定義される。
+// 登録簿の status() は {defined: ["name@version"], failed: [{name, version, element?, reason}]}（§6.1）。失敗の要素は failed[].element で引く。
+// 再生器は 2.0 のパーツ（定義された要素のうち 1.x の DECK.MotionElement でないもの）に ctx だけを渡す（ctx.deck は渡さない）。1.x の部品は今までどおり
+function parts2(){
+  var R = window.egatariParts;
+  if (!R || typeof R.status !== "function") return null;
+  var st;
+  try { st = R.status(); } catch (e) { return null; }
+  return st && Array.isArray(st.defined) && Array.isArray(st.failed) ? st : null;
+}
+var P2 = null;   // init で読む：登録簿の status()
+function isPart2(e){
+  if (!P2 || !e.localName || isLegacyPart(e)) return false;
+  var C = customElements.get(e.localName);
+  return !!C && e instanceof C && typeof e.render === "function" && typeof e.mount === "function";
+}
+// 登録簿が失敗を記録したパーツ（と、それに頼るパーツ）の要素：最後の状態の字の代わり（aria-label）を出し、品質チェックに知らせる。
+// duplicate（2 度目の define）と、その要素の名前がほかのパーツで定義できているもの（element）は、最初のものが動くので字の代わりにしない
+function partFailures(s, i){
+  if (!P2) return;
+  P2.failed.forEach(function(f){
+    var tag = f.element;
+    if (typeof tag !== "string" || !tag || f.reason === "duplicate" || customElements.get(tag)) return;
+    var list;
+    try { list = s.querySelectorAll(tag); } catch (e) { return; }   // 名前でない element（meta の失敗）
+    [].forEach.call(list, function(e){
+      if (e._partFailed) return;
+      e._partFailed = true;
+      var rec = {slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: tag, label: e.getAttribute("aria-label") || "",
+        index: [].indexOf.call(list, e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason};
+      DECK.componentErrors.push(rec);
+      console.warn("[deck] " + tag + " (" + (s.id || rec.key) + "): " + rec.msg);
+      [].slice.call(e.childNodes).forEach(function(n){ if (!(n.nodeType === 1 && n.localName === "script")) e.removeChild(n); });
+      var box = document.createElement("div");
+      box.className = "m-error"; box.setAttribute("role", "note"); box.setAttribute("data-part-failure", "define");
+      box.textContent = (e.getAttribute("aria-label") || "").trim() || "<" + tag + ">";
+      e.appendChild(box);
+    });
+  });
+}
 
 // ---------------------------------------------------------------- 外から渡されるデータ（build が埋め込む）
 function json(id){ var s = document.getElementById(id); try { return s ? JSON.parse(s.textContent) : null; } catch (e) { console.error(id, e); return null; } }
@@ -457,10 +504,15 @@ function setupSlide(s, i, mainEnd){
     if (n === null) e.removeAttribute("data-step");   // 段階表示の外に出す（常に見える）
     return n !== null;
   });
-  var comps = [].slice.call(s.querySelectorAll("*")).filter(function(e){ return e instanceof MotionElement; });
-  // データの形を先に確かめる（段階の数はデータから決まる部品が多い）。違えば描かない
+  var comps = [].slice.call(s.querySelectorAll("*")).filter(function(e){ return isLegacyPart(e) || isPart2(e); });
+  // 部品庫 2.0 のパーツ（format spec §6.1）：登録簿が失敗を記録したパーツの要素は、字の代わりを出して知らせる
+  partFailures(s, i);
+  // データの形を先に確かめる（段階の数はデータから決まる部品が多い）。違えば描かない。
+  // 2.0 のパーツは自分で確かめる（§6.1 Data shapes：再生器は確かめない）。ここでは段階の数を読むときの例外だけを止める（2 段目の守り）
   comps.forEach(function(c){
-    var p = compProblem(c);
+    c._slide = s; c._i = i;
+    if (c._v2 === undefined) c._v2 = !(isLegacyPart(c));
+    var p = c._v2 ? null : compProblem(c);
     if (p){ compFail(c, s, i, p, "data"); return; }
     try { var n = c.steps; if (typeof n !== "number" || !isFinite(n)) throw new TypeError("steps is " + n); }
     catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "steps"); }
@@ -507,7 +559,7 @@ function compPos(c, K, t, audioCues){
   var k = Math.max(0, Math.min(c.steps, K - c.from + 1));
   var inRange = K - c.from + 1 === k && k >= 1;
   if (!inRange) return {k: k, t: Infinity};
-  var cc = c.cues(k);
+  var cc = safeCues(c, k);
   if (t !== Infinity && cc && audioCues && cc.length && cc.length === audioCues.length){
     var src = [0].concat(audioCues), dst = [0].concat(cc), j = src.length - 1;
     while (j > 0 && t < src[j]) j--;
@@ -519,7 +571,7 @@ function compPos(c, K, t, audioCues){
 
 // compPos の逆：部品の時刻 D になる実時間。伸縮しない（cue の数が合わない）ときは D のまま
 function compRealTime(c, k, D, audioCues){
-  var cc = c.cues(k);
+  var cc = safeCues(c, k);
   if (!(cc && audioCues && cc.length && cc.length === audioCues.length)) return D;
   var src = [0].concat(audioCues), dst = [0].concat(cc), n = src.length - 1;
   for (var j = 0; j < n; j++){
@@ -552,7 +604,7 @@ function animDur(i, k){
     if (REDUCE && !isClock(c)) return;
     var p = compPos(c, k, 0);
     if (p.t === Infinity) return;
-    var D = c.duration(p.k) || 0;
+    var D = safeDur(c, p.k);
     d = Math.max(d, D > 0 ? compRealTime(c, p.k, D, ac) : 0);
   });
   return d;
@@ -561,15 +613,75 @@ function animDur(i, k){
 // 部品に渡す ctx.mode（format spec §8.4："talk" | "learn" | "video"）：内部の "lecture" は talk（preview は別に渡す）
 // ctx.slide はスライドの鍵（文字列。format spec §8.1・§8.4）。要素は渡さない（部品が要るなら自分で探す）
 function ctxMode(){ return DECK.mode === "lecture" ? "talk" : DECK.mode; }
-// 先のステップを薄く見せるときの濃さ：テーマの --preview-opacity（format spec §8.4。base.css が 0.45 を置く）。
-// 無いか範囲の外なら --lecture-dim（古い名前。base.css では --preview-opacity と同じ）、それも無ければ 0.45
-function previewOpacity(){
-  var cs = getComputedStyle(document.documentElement), v = parseFloat(cs.getPropertyValue("--preview-opacity"));
-  if (!(v >= 0 && v <= 1)) v = parseFloat(cs.getPropertyValue("--lecture-dim"));
-  return v >= 0 && v <= 1 ? v : .45;
+// ctx の残りの欄（format spec §8.4）：lang・slides・go・report・visited。1.x の部品にも渡す（読まないだけ）。ctx.deck は 1.x の部品にだけ
+var CTX_SLIDES = null, CTX_LANG = "ja";
+var REPORT_CODES = {data: 1, attr: 1, range: 1, size: 1, layout: 1, theme: 1, error: 1};
+var REPORT_ERRORS = {data: 1, attr: 1, error: 1};   // 品質チェックの誤り（ほかは DECK.componentReports にだけ。見た目の知らせ）
+DECK.componentReports = [];
+function ctxSlides(){
+  return Object.freeze(slides.map(function(s){
+    var conc = s._cstep >= 0;
+    return Object.freeze({key: s._key, title: titleOf(s), steps: conc ? s._max - 1 : s._max, concl: conc});
+  }));
 }
-// 横に置く描画（format spec §8.4 entered）：印刷・縮図（スライド一覧・品質チェック）のための描画と、その後の見ている位置への戻りは、
-// スライドに入ったことにしない（ctx.entered は false、見る人の入力は消えない、触った部品の印も残す）。入れ子にしてよい
+// ctx.go(slideKey, stepKey?)：スライドへのリンクと同じ（format spec §9.1A。埋め込みのホストは止められる、Player P8）。動画では動かない
+function ctxGo(slideKey, stepKey){
+  if (!started || DECK.mode === "video") return false;
+  var f = String(slideKey == null ? "" : slideKey) + (stepKey === undefined || stepKey === null ? "" : ":" + String(stepKey));
+  var r = resolveFragment(f);
+  if (r.error){ console.warn("deck.js: ctx.go(" + JSON.stringify(f) + "): " + r.error); return false; }
+  return followLink(r);
+}
+function ctxVisited(key){ return DECK.visited(String(key)); }
+// ctx.report(code, message)：部品ごとに同じ知らせは 1 回。code が語彙の外なら error として扱う（format spec §8.4）
+function reporter(c){
+  return function(code, message){
+    var s = c._slide, i = c._i;
+    if (!s) return;
+    var given = String(code), cd = Object.prototype.hasOwnProperty.call(REPORT_CODES, given) ? given : "error", msg = String(message == null ? "" : message).slice(0, 1000);
+    var seen = c._reports || (c._reports = Object.create(null)), sig = cd + "\n" + msg;
+    if (seen[sig]) return;
+    seen[sig] = true;
+    var tag = c.tagName.toLowerCase();
+    var rec = {slide: i, key: s._key, id: s.id || null, tag: tag, label: c.getAttribute("aria-label") || "", index: [].indexOf.call(s.querySelectorAll(tag), c),
+      phase: "report", kind: "report", code: cd, msg: msg};
+    if (cd !== given) rec.given = given.slice(0, 40);
+    DECK.componentReports.push(rec);
+    if (REPORT_ERRORS[cd]) DECK.componentErrors.push(rec);
+    console.warn("[deck] " + tag + " (" + (s.id || s._key) + ") " + cd + ": " + msg);
+  };
+}
+function ctxFor(c, s, o){
+  var x = {mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
+    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited};
+  for (var k in o) x[k] = o[k];
+  if (!c._v2) x.deck = DECK;
+  return x;
+}
+// 2 段目の守り（format spec §6.1 Containment）：部品の duration・cues・layout が投げた例外は、再生器の外に出さない
+function safeDur(c, k){ try { return c.duration(k) || 0; } catch (e) { compFail(c, c._slide, c._i, {kind: "exception", msg: errText(e)}, "duration"); c.mount(ctxFor(c, c._slide, {instant: true, entered: false})); return 0; } }
+function safeCues(c, k){ try { return c.cues(k); } catch (e) { compFail(c, c._slide, c._i, {kind: "exception", msg: errText(e)}, "cues"); c.mount(ctxFor(c, c._slide, {instant: true, entered: false})); return null; } }
+// layout(ctx)（format spec §8.4 Layout）：舞台の大きさが変わった・使う字が読み込まれた・隠れていたスライドが見えた・隠れていた文書が見えた（visibilitychange）ときに呼ぶ。
+// 持つ部品だけ。投げたら 2 段目の守り。返すもの：呼んだ部品があったか
+function layoutComps(list){
+  var any = false;
+  list.forEach(function(c){
+    if (typeof c.layout !== "function" || c._bad) return;
+    any = true;
+    try { c.layout(ctxFor(c, c._slide, {instant: true, entered: false})); }
+    catch (e) { compFail(c, c._slide, c._i, {kind: "exception", msg: errText(e)}, "layout"); c.mount(ctxFor(c, c._slide, {instant: true, entered: false})); }
+  });
+  return any;
+}
+// 大きさ・字が変わった：全部のスライドの部品の layout を呼び、呼んだものがあれば今の位置で描き直す（段階に入るのではない：entered・reset なし）
+function relayout(){
+  if (!started || !DECK.ready) return;
+  var all = [];
+  slides.forEach(function(s){ all = all.concat(s._comps); });
+  if (layoutComps(all) && lastPos) seek(lastPos.i, lastPos.k, Infinity, undefined, true);
+}
+// 横に置く描画（format spec §8.4 entered）：印刷・書き出し・縮図（スライド一覧・品質チェック）のための描画と、その後の見ている位置への戻りは、
+// スライドに入ったことにしない（ctx.entered は false、見る人の入力は消えない、触った部品の印も残す）。入れ子にしてよい。動画のコマは mode で（seek）
 var ASIDE = 0, asideBack = null;
 function asideBegin(){ if (ASIDE++ === 0) asideBack = {last: lastPos, jump: jumpTo}; }
 function asideEnd(back){
@@ -580,11 +692,19 @@ function asideEnd(back){
 }
 // fn の中の DECK.seek は横に置く描画。終わったら見ている位置に戻して描く
 DECK.aside = function(fn){ asideBegin(); try { return fn(); } finally { asideEnd(true); } };
+// 先のステップを薄く見せるときの濃さ：テーマの --preview-opacity（format spec §8.4。base.css が 0.45 を置く）。
+// 無いか範囲の外なら --lecture-dim（古い名前。base.css では --preview-opacity と同じ）、それも無ければ 0.45
+function previewOpacity(){
+  var cs = getComputedStyle(document.documentElement), v = parseFloat(cs.getPropertyValue("--preview-opacity"));
+  if (!(v >= 0 && v <= 1)) v = parseFloat(cs.getPropertyValue("--lecture-dim"));
+  return v >= 0 && v <= 1 ? v : .45;
+}
 // (i, k, t) の画面を描く。唯一の描画の入口。cont：実時間の再生の 2 コマ目から（同じ段階の続き。段階に入るのではない）
 function seek(i, k, t, from, cont){
   i = Math.max(0, Math.min(slides.length - 1, i));
-  var entered = !cont && !ASIDE && (lastPos === null || lastPos.i !== i || jumpTo === i);
+  var entered = !cont && !ASIDE && DECK.mode !== "video" && (lastPos === null || lastPos.i !== i || jumpTo === i);
   if (!cont && !ASIDE && jumpTo === i) jumpTo = -1;
+  var shown = lastPos === null || lastPos.i !== i;   // 隠れていたスライドが見える（layout。format spec §8.4）
   var s = slides[i];
   k = Math.max(0, Math.min(s._max, k));
   var tReal = t;   // 時計の部品には、動きを減らす設定でも実際の t（isClock）
@@ -636,16 +756,17 @@ function seek(i, k, t, from, cont){
   });
   // 部品の伸縮に使うのは {cue} の区切りの時刻だけ（{mark} の時刻は注目の演出が使う）
   var ac = compCues(i, k);
+  if (shown && started) layoutComps(s._comps);
   s._comps.forEach(function(c){
     var tc = REDUCE && isClock(c) ? tReal : t, lead = tc === Infinity ? 0 : (timing(i, k).lead || 0);
     var p = compPos(c, k, tc, ac && ac.map(function(x){ return x + lead; }));
-    var ctx = {mode: mode, preview: lecture && !c._ctxNoPrev, slide: s._key, instant: p.t === Infinity, entered: entered, deck: DECK};
+    var ctx = ctxFor(c, s, {instant: p.t === Infinity, entered: entered});
     try {
-      // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）
+      // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）。横に置く描画では戻さない
       if (c._touched && !cont && !ASIDE){ c._touched = false; untouch(c, p.k, ctx); }
       c.render(p.k, p.t, ctx);
     }
-    catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(); }
+    catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(ctxFor(c, s, {instant: true, entered: false})); }
   });
   if (lastPos && lastPos.i !== i){ var ls = slides[lastPos.i]; ls._tok++; ls._legacyAt = undefined; }
   legacy(s, k, t === Infinity);
@@ -670,7 +791,7 @@ function watchTouch(c){
 function untouch(c, k, ctx){
   ctx.reset = true;
   var n = c.steps, other = k > 0 ? 0 : n > 0 ? 1 : -1;
-  if (other >= 0) c.render(other, Infinity, {mode: ctx.mode, preview: ctx.preview, slide: ctx.slide, instant: true, deck: ctx.deck, reset: true});
+  if (other >= 0){ var o = {}; for (var m in ctx) o[m] = ctx[m]; o.instant = true; o.entered = false; c.render(other, Infinity, o); }
 }
 // 起動の前（部品の mount の前）に頼まれた seek は覚えておき、mount の後に描く（最後の 1 つ）
 var started = false, pendingSeek = null, pendingGo = null;   // started：start() に入った（mount を始めた）
@@ -1616,6 +1737,7 @@ function fit(){
 function init(){
   if (Q.get("presenter") && DECK.presenterView){ DECK.presenterView(); return; }
   slides = [].slice.call(document.querySelectorAll("#stage > .slide"));
+  P2 = parts2();
   var mainEnd = slides.findIndex(function(s){ return s.classList.contains("sec") && s.classList.contains("appendix"); });
   if (mainEnd < 0) mainEnd = slides.findIndex(function(s){ return s.classList.contains("sec") && /付録|Appendix/i.test(s.textContent); });
   if (mainEnd < 0) mainEnd = slides.length;
@@ -1655,10 +1777,12 @@ function whenLaidOut(fn){
 // 起動の後半：部品の mount → 開いたときの位置 → 起動の知らせ（DECK.ready）。待っている間に頼まれた seek はその後に描く
 function start(){
   started = true;
+  CTX_SLIDES = ctxSlides();
+  CTX_LANG = (typeof DECK.META.lang === "string" && DECK.META.lang) || document.documentElement.lang || "ja";
   slides.forEach(function(s, i){
     s._comps.forEach(function(c){
-      try { c.mount({mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, deck: DECK}); watchTouch(c); }
-      catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(); }
+      try { c.mount(ctxFor(c, s, {})); watchTouch(c); }
+      catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "mount"); c.mount(ctxFor(c, s, {})); }
     });
   });
   DECK.slides = slides;
@@ -1826,8 +1950,10 @@ window.addEventListener("afterprint", function(){
   if (printAside){ printAside = false; asideEnd(false); }
   if (printPos && DECK.ready) seek(printPos.i, printPos.k, Infinity, undefined, true);
 });
-window.addEventListener("resize", function(){ fit(); morphCache = {}; });
-if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; });
+window.addEventListener("resize", function(){ fit(); morphCache = {}; relayout(); });
+// 隠れていた文書（別のタブ・最小化）が見えた（format spec §8.4 Layout：隠れている間は字の大きさが測れないことがある）
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") relayout(); });
+if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", function(){ morphCache = {}; relayout(); });
 // 手で書き換えた #（番号・スライドの id・id:段階）へ。リンクの「戻る」の履歴とは別（popstate が先に位置を戻すので、ここでは動かない）
 window.addEventListener("hashchange", function(){
   if (!DECK.ready) return;

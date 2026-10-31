@@ -68,6 +68,12 @@ await t('形の断片：theme.json の look の形が tokens.css にそのまま
   }
 });
 
+// Node の部分だけを走らせる環境でも、未検査を通過扱いにしないよう明示する。
+if (process.env.EGATARI_TEST_NO_BROWSER === '1') {
+  console.log(`SKIP browser checks; Node checks: ${n - fail}/${n} ok`);
+  process.exit(fail ? 1 : 0);
+}
+
 const rows = [];
 const browser = await launch();
 try {

@@ -52,6 +52,7 @@ for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/rep
 // 実行系に入れる kit/core の ES モジュール（build-core の RUNTIME_MODULES。classicModule が DECK.PositionStore などにする。組み立てが字として読む）
 for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
 // 部品：content 表が指す写し vendor/components/sha256/<hash>/index.js（同じ写しは 1 回だけ）と components.lock.json（tools/vendor-components.mjs）
+add('/repo/components2.lock.json', rel('components2.lock.json'));
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 // テーマ（ロゴも）

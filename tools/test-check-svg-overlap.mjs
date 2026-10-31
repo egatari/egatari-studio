@@ -77,6 +77,12 @@ await t('preview wrapper passes the marker into the serialized scanner', () => {
   assert.equal(f(), OVERLAP_ATTR);
 });
 
+// Node の部分だけを走らせる環境でも、未検査を通過扱いにしないよう明示する。
+if (process.env.EGATARI_TEST_NO_BROWSER === '1') {
+  console.log(`SKIP browser checks; Node checks: ${n - fail}/${n} ok`);
+  process.exit(fail ? 1 : 0);
+}
+
 const b = await launch();
 try {
   const page = await b.newPage({ viewport: { width: 1280, height: 720 } });

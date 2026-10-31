@@ -327,7 +327,7 @@ export function validateIndex(ix) {
     else ix.components.forEach((c, j) => {
       const w = `components[${j}]`;
       if (!isObj(c)) { e.push(`${w}: not an object`); return; }
-      need(c, ['tag', 'name', 'version', 'sha256', 'source'], w);
+      need(c, ['name', 'version', 'sha256', 'source'], w);
       if (own(c, 'tag')) str(c.tag, `${w}.tag`, RE.tag);
       if (own(c, 'name')) str(c.name, `${w}.name`, c.source === 'registry' ? RE.registryName : null, 1);
       if (own(c, 'version')) str(c.version, `${w}.version`, null, 1);
@@ -335,6 +335,24 @@ export function validateIndex(ix) {
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
       if (c.source === 'embedded' && !own(c, 'path')) e.push(`${w}: embedded without path`);
       if (own(c, 'path')) path(c.path, `${w}.path`);
+      if (own(c, 'requires')) {
+        if (!isObj(c.requires)) e.push(`${w}.requires: not an object`);
+        else for (const [n, v] of Object.entries(c.requires)) { str(n, `${w}.requires name`, RE.registryName); str(v, `${w}.requires.${n}`, null, 1); }
+      }
+      if (own(c, 'license')) str(c.license, `${w}.license`, null, 1);
+      if (own(c, 'subset')) {
+        if (!isObj(c.subset)) e.push(`${w}.subset: not an object`);
+        else { need(c.subset, ['keys', 'sha256'], `${w}.subset`); str(c.subset.keys, `${w}.subset.keys`); str(c.subset.sha256, `${w}.subset.sha256`, RE.sha256); }
+      }
+      // renderers（format spec §6.2 Render・index schema）：組み立てのときに描いた描き手 {名前: {version, options?}}。パーツのデータの renderers と同じ
+      if (own(c, 'renderers')) {
+        if (!isObj(c.renderers)) e.push(`${w}.renderers: not an object`);
+        else for (const [n, rr] of Object.entries(c.renderers)) {
+          if (!isObj(rr)) { e.push(`${w}.renderers.${n.slice(0, 40)}: not an object`); continue; }
+          str(rr.version, `${w}.renderers.${n.slice(0, 40)}.version`, null, 1);
+          if (own(rr, 'options') && !isObj(rr.options)) e.push(`${w}.renderers.${n.slice(0, 40)}.options: not an object`);
+        }
+      }
     });
   }
   if (own(ix, 'themes')) {
@@ -348,6 +366,7 @@ export function validateIndex(ix) {
       if (own(c, 'sha256')) str(c.sha256, `${w}.sha256`, RE.sha256);
       if (own(c, 'source') && !['registry', 'embedded'].includes(c.source)) e.push(`${w}.source: not registry or embedded`);
       if (own(c, 'path')) path(c.path, `${w}.path`);
+      if (own(c, 'extends')) str(c.extends, `${w}.extends`, null, 1);
     });
   }
   if (own(ix, 'metadata')) metadataCheck(ix.metadata, 'metadata', e);
@@ -964,7 +983,12 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 1 ファイルの中の設定のファイルには、使った部品庫の部品の版（components）を書く（format spec §3.3：展開したフォルダを組み直しても版が変わらない。
   // 展開して、もう一度まとめても同じバイト）。作業フォルダの設定のファイルは変えない（作業フォルダは固定がなければ既定の版に付いていく）。
   // 作業フォルダに components があれば、それをそのまま使う（組み立てもそれで版を選んだ）
-  if (!own(econf, 'components')) {
+  if (r.stats.componentsCatalogue) {
+    const pins = { ...(isObj(econf.components) ? econf.components : {}) };
+    for (const p of r.stats.parts) if (p.source === 'registry') pins[p.name] = p.version;
+    files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { componentsCatalogue: r.stats.componentsCatalogue, components: pins }));
+  }
+  if (!own(econf, 'components') && !r.stats.componentsCatalogue) {
     const used = {};
     for (const t of r.stats.components) {
       const name = t.slice(2);
@@ -974,18 +998,19 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { components: Object.fromEntries(Object.keys(used).sort().map((k) => [k, used[k]])) }));
     }
   }
-  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source}。version はテーマ自身の版（§3.8。Studio の版ではない）：
+  // 使ったテーマ（index.themes。format spec §6）：{name, version, sha256, source, extends?}。親も別の項目に記録する。version はテーマ自身の版（§3.8。Studio の版ではない）：
   //   同梱のテーマ（registry）は固定のファイル（themes.lock.json）の版（組み立てが使った版。stats.themeVersions。同梱のテーマはどれも固定のファイルにある：
   //   npm run themes:check）。原稿のフォルダのテーマ・利用者のテーマ（embedded：1 ファイルの themes/<名前>/ に入る）は theme.json の version、
   //   なければ "local"（§6。組み直しでは sha256 で見分ける）。sha256 は組み立てが読んだファイル（文書 README*・LICENSE*・*.md を除く）の行から
   const themeHash = async (m) => { const lines = []; for (const k of [...m.keys()].sort(cmpCodePoint)) lines.push(`${k}\t${await sha256Hex(identityBytes(k, m.get(k)))}\n`); return sha256Hex(lines.join('')); };
   const ownVersion = (m) => { try { const v = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).version : null; return typeof v === 'string' && VERSION_RE.test(v) ? v : null; } catch { return null; } };
+  const ownParent = (m) => { try { const p = m.has('theme.json') ? JSON.parse(new TextDecoder().decode(m.get('theme.json'))).extends : null; return typeof p === 'string' && p ? { extends: p } : {}; } catch { return {}; } };
   const themes = [];
   // 名前の順（前の版の写し vendor/themes/ は themes/ より後に読まれるが、記録の並びは変えない）
   for (const [name, m] of [...regTheme].sort((a, b) => cmpCodePoint(a[0], b[0]))) {
     if (!RE.registryName.test(name)) { warnings.push(`${LOG}: theme "${name}" is not a registry name (${RE.registryName}); not recorded`); continue; }
     const tv = regThemeVer.get(name) || (r.stats.themeVersions && r.stats.themeVersions[name]) || ownVersion(m) || 'local';
-    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry' });
+    themes.push({ name, version: tv, sha256: await themeHash(m), source: 'registry', ...ownParent(m) });
   }
   {
     // 原稿のフォルダの中のテーマのフォルダと、利用者のテーマのフォルダのテーマ（組み立てが使ったもの。r.stats.themeDirs）
@@ -1003,7 +1028,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
         const k = P.relative(dir, p).split(P.sep).join('/');
         if (!excludedFromThemeHash(k)) m.set(k, readBytesVia(env, p));
       }
-      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded' });
+      if (m.size) emb.push({ name, version: ownVersion(m) || 'local', sha256: await themeHash(m), source: 'embedded', ...ownParent(m) });
     }
     themes.push(...emb.sort((a, b) => cmpCodePoint(a.name, b.name)));
   }
@@ -1103,7 +1128,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 部品とテーマ
   const components = [];
   let embeddedCode = false;
-  for (const t of r.stats.components) {
+  const partTags = new Set((r.stats.parts || []).map((p) => p.tag).filter(Boolean));
+  for (const t of (r.stats.legacyComponents || r.stats.components).filter((t) => !partTags.has(t))) {
     const name = t.slice(2), local = `components/${name}/index.js`;
     // sha256：同一性の hash（改行をそろえる。format spec §6、kit/core/identity-hash.mjs）
     if (files[local]) { components.push({ tag: t, name, version: 'local', sha256: await sha256Hex(normalizeEol(files[local])), source: 'embedded', path: local }); embeddedCode = true; }
@@ -1112,6 +1138,18 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       // version：部品庫（egatari/components）のリリースの版（format spec §6）
       components.push({ tag: t, name, version: regComp.get(name).version, sha256: await sha256Hex(normalizeEol(regComp.get(name).files.get('index.js'))), source: 'registry' });
     }
+  }
+  // 2.0：組み立てが実際に書いたパーツだけを依存の順に記録する。ライブラリには tag がなく、同じ名前の別の版も残す。
+  // 完全なコードの同一性と、絞り込んで書いたコードの hash は別（§6.2）。埋め込みも meta の名前・版をそのまま使う。
+  for (const p of r.stats.parts || []) {
+    const sha256 = await sha256Hex(normalizeEol(utf8(p.fullCode)));
+    if (p.source === 'registry' && sha256 !== p.sha256) fail('component-hash', `${p.name}@${p.version}: code differs from its locked sha256`);
+    const c = { name: p.name, version: p.version, sha256, source: p.source, ...(p.tag ? { tag: p.tag } : {}), requires: p.requires };
+    if (p.source === 'embedded') { c.path = p.path; embeddedCode = true; }
+    if (p.license) c.license = p.license;
+    if (p.renderers) c.renderers = p.renderers;
+    if (p.subset) c.subset = { keys: p.subset.keys, sha256: await sha256Hex(utf8(p.code.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--').replace(/\r\n?/g, '\n'))) };
+    components.push(c);
   }
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める
@@ -1239,8 +1277,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (carryLock) {
     for (const c of opts.carry.components) {
       if (!isObj(c) || c.source !== 'registry') continue;
-      const v = versionForSha(carryLock, c.name, c.sha256, c.version), f = components.find((x) => x.tag === c.tag && x.source === 'registry');
-      if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag);
+      const v = versionForSha(carryLock, c.name, c.sha256, c.version), f = components.find((x) => x.name === c.name && x.version === v && x.source === 'registry');
+      if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag || `${c.name}@${c.version}`);
     }
   }
   return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
@@ -1252,8 +1290,8 @@ export const KNOWN = Object.freeze({
   index: KNOWN_INDEX,
   metadata: new Set(['title', 'lang', ...META_KEYS]),
   audio: new Set(['file', 'dur', 'cues', 'sync', 'kind', 'inputHash', 'recipe', 'recipeDigest', 'alternatives', 'processing', 'startOffset']),
-  component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path']),
-  theme: new Set(['name', 'version', 'sha256', 'source', 'path']),
+  component: new Set(['tag', 'name', 'version', 'sha256', 'source', 'path', 'requires', 'license', 'renderers', 'subset']),
+  theme: new Set(['name', 'version', 'sha256', 'source', 'path', 'extends']),
   blob: new Set(['mime', 'bytes', 'sha256', 'chunks']),
   // contracts.runtime：前の草案の項目。知っている項目として扱い、作り直しでは写さない（1.0 の形にはない。§7.1）
   version: new Set(['major', 'minor']), contracts: new Set(['source', 'runtime']), player: new Set(['name', 'version', 'title']), generator: new Set(['name', 'version', 'title']),
@@ -1285,8 +1323,16 @@ function carryUnknown(index, carry, opts) {
   }
   const byKey = (list, key) => new Map((Array.isArray(list) ? list : []).filter(isObj).map((c) => [c[key], c]));
   for (const [list, key, known] of [['components', 'tag', KNOWN.component], ['themes', 'name', KNOWN.theme]]) {
-    const old = byKey(carry[list], key);
-    for (const c of Array.isArray(index[list]) ? index[list] : []) copyUnknown(c, old.get(c[key]), known);
+    const id = (c) => list === 'components' && !c.tag ? `${c.name}@${c.version}` : c[key];
+    const old = new Map((Array.isArray(carry[list]) ? carry[list] : []).filter(isObj).map((c) => [id(c), c]));
+    for (const c of Array.isArray(index[list]) ? index[list] : []) {
+      const prev = old.get(id(c));
+      copyUnknown(c, prev, known);
+      if (isObj(prev)) for (const field of ['subset', 'renderers', 'requires']) {
+        if (field === 'subset' && isObj(c[field])) copyUnknown(c[field], prev[field], new Set(['keys', 'sha256']));
+        if (field === 'renderers' && isObj(c[field]) && isObj(prev[field])) for (const n of Object.keys(c[field])) copyUnknown(c[field][n], prev[field][n], new Set(['version', 'options']));
+      }
+    }
   }
   if (isObj(carry.extensions)) {
     const ex = index.extensions || dict();

@@ -187,6 +187,11 @@
           },
           "path": {
             "$ref": "#/$defs/archivePath"
+          },
+          "extends": {
+            "type": "string",
+            "minLength": 1,
+            "description": "name of the parent theme this theme extends; index.themes must also contain the parent's entry (§6)"
           }
         },
         "allOf": [
@@ -289,9 +294,6 @@
     },
     "article": {
       "type": "object",
-      "required": [
-        "path"
-      ],
       "properties": {
         "path": {
           "type": "string",
@@ -300,9 +302,40 @@
         "references": {
           "type": "string",
           "minLength": 1
+        },
+        "chapters": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^article/[^/]+\\.md$"
+          }
         }
       },
-      "description": "The article (spec §9C.1): archive path of article.md and of its CSL-JSON references."
+      "description": "The article (spec §9C.1): either path (article.md) or chapters (article/<name>.md in reading order), and the archive path of its CSL-JSON references.",
+      "oneOf": [
+        {
+          "required": [
+            "path"
+          ],
+          "not": {
+            "required": [
+              "chapters"
+            ]
+          }
+        },
+        {
+          "required": [
+            "chapters"
+          ],
+          "not": {
+            "required": [
+              "path"
+            ]
+          }
+        }
+      ]
     }
   },
   "$defs": {
@@ -402,6 +435,51 @@
           "type": "string",
           "minLength": 1,
           "description": "SPDX license expression (spec §6)."
+        },
+        "renderers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "version"
+            ],
+            "properties": {
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "options": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "Build-time renderers used for this part's fields, name to {version, options}; the same record as at the top level of the part's data (spec §6.2)."
+        },
+        "subset": {
+          "type": "object",
+          "required": [
+            "keys",
+            "sha256"
+          ],
+          "properties": {
+            "keys": {
+              "type": "string"
+            },
+            "names": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              },
+              "uniqueItems": true,
+              "description": "Names kept by subset entries with match \"name\", in code-point order (spec §6.2)."
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "description": "Keys kept by the build-time subset and the SHA-256 of the subset code in the file (spec §6.2)."
         }
       },
       "if": {

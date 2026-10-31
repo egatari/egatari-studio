@@ -83,7 +83,7 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
       if (m.rpc) { answer(me, g, lim, m); return; }
       const w = waiting.get(m.id); if (!w || w.gen !== g) return;
       waiting.delete(m.id);
-      if (m.ok) w.resolve(m.value); else w.reject(Object.assign(new Error(m.error.message), { code: m.error.code }));
+      if (m.ok) w.resolve(m.value); else w.reject(Object.assign(new Error(m.error.message), { code: m.error.code }, m.error.requiresMissing ? { requiresMissing: m.error.requiresMissing } : {}));
     };
     me.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); if (worker !== me) return; fail('worker', 'build worker failed: ' + ((e && e.message) || 'error'), g); };
     me.postMessage({ init: true, res, gen: g });

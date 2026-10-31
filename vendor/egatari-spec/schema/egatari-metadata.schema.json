@@ -71,7 +71,6 @@
     "completion": {
       "type": "object",
       "minProperties": 1,
-      "maxProperties": 1,
       "properties": {
         "visitedFraction": {
           "type": "number",
@@ -80,9 +79,18 @@
         },
         "reachedEnd": {
           "const": true
+        },
+        "played": {
+          "const": true
         }
       },
-      "description": "Exactly one rule. Unknown future rules are preserved by editors; players that do not know the rule fall back to every-step-visited."
+      "description": "At most one of visitedFraction and reachedEnd, optionally with played (count only steps played on a stage, spec §9.2). Unknown future rules are preserved by editors; players that do not know the rule fall back to every-step-visited.",
+      "not": {
+        "required": [
+          "visitedFraction",
+          "reachedEnd"
+        ]
+      }
     },
     "derivedFrom": {
       "type": "object",
@@ -219,6 +227,52 @@
         }
       },
       "description": "Modes and faces the author offers, and where the lesson opens (§1.2). The author's intent, not access control."
+    },
+    "series": {
+      "type": "object",
+      "required": [
+        "id",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "part": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "description": "The series the lesson belongs to (spec §9C.1A)."
+    },
+    "citations": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "minLength": 1
+        },
+        "list": {
+          "enum": [
+            "end",
+            "chapter",
+            "none"
+          ]
+        },
+        "placement": {
+          "enum": [
+            "inline",
+            "footer",
+            "both"
+          ]
+        }
+      },
+      "description": "Citation presentation (spec §9C.4). placement is reserved (Appendix A, issue 7)."
     }
   },
   "not": {

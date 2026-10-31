@@ -25,6 +25,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
+import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode } from './parts2.mjs';
 import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
@@ -840,18 +841,45 @@ export function build(env0, srcPath, opts = {}) {
   let compJs = '';
   const localComps = [];
   const componentVersions = {};
+  // 部品庫 2.0（format spec §6.1・§6.2。kit/core/parts2.mjs）：設定のファイルの componentsCatalogue か opts.componentsCatalogue で選んだ教材だけ。
+  // 既定は 1.x（下の今までの読み込み）
+  let parts2 = null;
+  {
+    const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
+    let conf = null;
+    if (env.exists(cfg) && inDeck(cfg)) { try { conf = JSON.parse(env.readText(cfg)); } catch { conf = null; } }
+    const want = opts.componentsCatalogue !== undefined ? opts.componentsCatalogue : (conf && typeof conf === 'object' ? conf.componentsCatalogue : undefined);
+    if (want !== undefined && want !== null) {
+      const lock2 = readLock2(env, ROOT);
+      const pc = pickCatalogue(lock2, want);
+      if (pc.note) warn.push(pc.note);
+      if (pc.catalogue) {
+        let pins = configPins(conf);
+        if (opts.componentVersions && typeof opts.componentVersions === 'object') pins = { ...pins, ...opts.componentVersions };
+        const narrText = (() => { const f = P.join(deckDir, 'narration.md'); return env.exists(f) && inDeck(f) ? env.readText(f) : ''; })();
+        // 絞り込みの教材の字（§6.2 Subset）：原稿の全部の字（本文と属性の値。字の参照も読んだ字で）・口述原稿・パーツに渡すデータ（JSON の中の字。\u の書き方も読んだ字で）。
+        // パーツの glyphs は buildParts2 がパーツごとに足す
+        const dataText = [];
+        for (const m of html.matchAll(/<script\b[^>]*type\s*=\s*["']?application\/json["']?[^>]*>([\s\S]*?)<\/script>/gi)) { try { jsonStrings(JSON.parse(m[1]), dataText); } catch { /* JSON でなければ原稿の字として数えてある */ } }
+        parts2 = buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue: pc.catalogue, pins, warn, macros, lessonText: [raw, decodeEntities(raw), dataText.join('\n'), narrText].join('\n') });
+        html = parts2.html;
+        compJs = parts2.js;
+        localComps.push(...parts2.localFiles);
+      }
+    }
+  }
   // 部品庫の部品は egatari/components のリリースの写し（vendor/components/sha256/<hash>/。kit/core/components-lock.mjs）。
   // 版は opts.componentVersions（組み直す文書の記録から）→ 作業フォルダの設定のファイル（FORMAT.CONFIG_FILE）の components → components.lock.json の既定の版
   const compRoot = vendorDir(P, ROOT);
-  const lock = used.length ? readLock(env, ROOT) : null;
+  const lock = (parts2 ? parts2.legacy : used).length ? readLock(env, ROOT) : null;
   let pins = {};
   const yankedUsed = [];   // 取り下げた版で組んだ部品庫の部品（format spec §6：知らせる。黙って置き換えない）
-  if (used.length) {
+  if ((parts2 ? parts2.legacy : used).length) {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (env.exists(cfg) && inDeck(cfg)) { try { pins = configPins(JSON.parse(env.readText(cfg))); } catch { pins = {}; } }
     if (opts.componentVersions && typeof opts.componentVersions === 'object') pins = { ...pins, ...opts.componentVersions };
   }
-  for (const tag of used) {
+  for (const tag of parts2 ? parts2.legacy : used) {
     const name = tag.slice(2);
     // 読む前に、原稿のフォルダの部品は原稿のフォルダの中に、部品庫の部品は vendor/components/ の中にあること（実体のパスで。外を指すリンクは読まない。
     // 原稿のフォルダにあって外を指すものは、部品庫のものに替えずに使わない）
@@ -963,7 +991,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${parts2 && !parts2.legacy.length ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(parts2 && !parts2.legacy.length ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
@@ -1024,7 +1052,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
   // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, componentVersions, yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, componentVersions, ...(parts2 ? { componentsCatalogue: parts2.catalogue, parts: parts2.parts, legacyComponents: parts2.legacy } : {}), yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
     theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）
@@ -1065,4 +1093,106 @@ function katexCss(env) {
 export function defaultOut(P, srcPath) {
   const p = P.parse(P.resolve(srcPath));
   return P.join(p.dir, 'out', p.name + '.html');
+}
+
+// ---------------------------------------------------------------- 部品庫 2.0 のパーツ（format spec §6.1・§6.2。kit/core/parts2.mjs）
+// 使う要素のパーツと、それが要るパーツを依存の順に、登録簿（kit/parts-registry.js）の後に書く。作業フォルダの components/<名前>/index.js は、
+// egatariParts.define を書いていれば埋め込みのパーツ（requires を字で読む）、そうでなければ 1.x の部品（DECK.define。legacy で返し、今までどおり読む）。
+// 組み立てのときに描く欄（build.fields）は KaTeX で描いてデータに足し（abcjs はまだ：描かずに残し、パーツが元の字を出して知らせる）、
+// 絞り込み（build.subset）は教材の字（原稿の全部の字・口述原稿・パーツに渡すデータ・パーツの glyphs）に出てくるキーだけを、宣言ごとに宣言した順に残す。
+// meta は字で読む（§6.1：式のない object の字。読めないパーツは書かない）。同じ要素の名前を定義するパーツが 2 つ要るなら断る（resolveParts の conflicts）。
+// 返すもの：{html, js, legacy: [1.x として読む要素], localFiles, catalogue, parts: [{name, version, source, tag?, requires, license?, sha256?, subset?, renderers?}]}
+function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins, warn, macros, lessonText }) {
+  const local = {}, legacy = [], localFiles = [], refused = new Set();
+  for (const tag of used) {
+    const lf = P.join(deckDir, 'components', tag.slice(2), 'index.js');
+    if (!env.exists(lf)) continue;
+    if (!env.within(lf, deckDir)) { warn.push(`refused: 部品 ${tag} の components/${tag.slice(2)}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); refused.add(tag); continue; }
+    const code = env.readText(lf), rd = readDefineMeta(code), where = P.relative(deckDir, lf).split(P.sep).join('/');
+    if (!rd) { legacy.push(tag); continue; }   // egatariParts.define がない：1.x の部品（DECK.define）
+    // meta は字のまま読めなければ書かない（§6.1：組み立ては動かさずに name・version・requires・element を読み、索引に記録する）
+    if (rd.problem) { warn.push(`refused: ${where}: ${rd.problem}; the part is not written`); refused.add(tag); continue; }
+    if (rd.meta.element !== tag) { warn.push(`refused: ${where}: the meta's element is ${rd.meta.element ? '<' + rd.meta.element + '>' : '(none)'}, not <${tag}>; the part is not written`); refused.add(tag); continue; }
+    local[tag] = { meta: rd.meta, code, where };
+  }
+  const r = resolveParts(lock2, catalogue, used.filter((t) => !legacy.includes(t) && !refused.has(t)), { local, pins });
+  // 要素の名前がぶつかる：組まずに断る（§6.1 Order。どれかの版を落とすと、それを要るパーツが動かない。作り手がパーツを直す：§7.2 段 C）
+  if (r.conflicts.length) throw new Error(`components ${catalogue}: ${r.conflicts.join('; ')}`);
+  if (r.requiresMissing.length) throw Object.assign(new Error(r.requiresMissing.map((p) => `Part ${p.part} requires ${p.requires}, which is not available. Update the parts.`).join('\n')), {
+    code: 'component-requires-missing', requiresMissing: r.requiresMissing,
+  });
+  warn.push(...r.warn);
+  for (const t of r.missing) warn.push(`component not found: ${t} (not in the components ${catalogue} catalogue)`);
+  const base = vendorDir(P, ROOT), contentLock = readLock(env, ROOT), parts = [];
+  const katex = env.katex;
+  const renderers = katex ? { katex: { version: katex.version, defaults: { output: 'htmlAndMathml' }, render: (src, opt, key) => {
+    try { return { Html: katex.renderToString(src, { displayMode: false, throwOnError: true, strict: 'ignore', output: opt.output === 'html' ? 'html' : 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }) }; }
+    catch (e) { warn.push(`KaTeX (build-time field ${key}): ${String(e.message).split('\n')[0]}  in: ${src.slice(0, 60)}`); return {}; }
+  } } } : {};
+  let js = `// ---- egatariParts registry (kit/parts-registry.js; format spec §6.1)\n${env.readText(P.join(ROOT, 'kit', 'parts-registry.js'))}`;
+  const renderTags = new Map();
+  for (const p of r.parts) {
+    let code, where;
+    if (p.source === 'embedded') { code = p.code; where = p.where; localFiles.push(where); }
+    else {
+      const dir = resolveComponent(P, ROOT, contentLock, p.name, p.version);
+      const f = dir && P.join(dir, 'index.js');
+      if (!f || !env.exists(f) || !env.within(f, base)) { warn.push(`part ${p.name}@${p.version}: the content table has no available index.js`); continue; }
+      code = env.readText(f); where = P.relative(ROOT, f).split(P.sep).join('/');
+    }
+    const meta = p.meta || {};
+    // 部品庫のパーツも meta を字で読み、固定のファイルの記録と照らす（索引の name・version・requires・tag は字で読んだもの。§6.1）
+    let read = p.source === 'embedded' ? { meta: p.meta } : readDefineMeta(code);
+    if (p.source === 'registry') {
+      if (!read || read.problem) { warn.push(`refused: part ${p.name}@${p.version} (${where}): ${read ? read.problem : 'no egatariParts.define'}; the part is not written`); continue; }
+      const mm = [read.meta.name !== p.name || read.meta.version !== p.version ? `name@version ${read.meta.name}@${read.meta.version}` : '', ...metaMismatch(read.meta, meta)].filter(Boolean);
+      if (mm.length) warn.push(`part ${p.name}@${p.version}: the meta in the code does not match ${'components2.lock.json'} (${mm.join('; ')}); the code's meta is recorded`);
+    }
+    const rec = { name: read.meta.name, version: read.meta.version, source: p.source, ...(read.meta.element ? { tag: read.meta.element } : {}), requires: read.meta.requires };
+    rec.code = code; rec.fullCode = code;
+    if (p.source === 'embedded') rec.path = where;
+    if (p.source === 'registry') { rec.sha256 = meta.sha256; rec.license = meta.license; }
+    if (meta.build && meta.build.subset) {
+      const s = subsetCode(code, meta.build.subset, lessonText + (typeof meta.glyphs === 'string' ? '\n' + meta.glyphs : ''));
+      for (const x of s.problems) warn.push(`part ${p.name}@${p.version}: subset ${x}`);
+      if (s.blocks.length) { code = s.code; rec.subset = { keys: s.keys, blocks: s.blocks, code: s.code }; rec.code = code; }
+    }
+    if (p.tag && meta.build && meta.build.fields) renderTags.set(p.tag, { part: rec, build: meta.build });
+    js += `\n// ---- ${p.name}@${p.version} (${where})\n` + code;
+    parts.push(rec);
+  }
+  if (renderTags.size) html = renderBuildFields(html, renderTags, renderers, warn);
+
+  return { html, js: js.replace(/<\/script/gi, '<\\/script'), legacy, localFiles, catalogue, parts };
+}
+// 要素の子の <script type="application/json"> を読み、宣言した欄を描いて書き戻す（後ろから。位置をずらさない）
+function renderBuildFields(html, renderTags, renderers, warn) {
+  const doc = parse(html, { sourceCodeLocationInfo: true, scriptingEnabled: SCRIPTING });
+  const edits = [], noted = new Set();
+  walk(doc, (n) => {
+    const info = n.tagName && renderTags.get(n.tagName);
+    if (!info) return;
+    const kids = (n.childNodes || []).filter((c) => c.tagName === 'script' && (attr(c, 'type') || '').trim().toLowerCase() === 'application/json');
+    if (kids.length !== 1) return;
+    const txt = (kids[0].childNodes || [])[0];
+    if (!txt || !txt.sourceCodeLocation) return;
+    let data;
+    try { data = JSON.parse(txt.value); } catch { return; }   // 形の違いはパーツが知らせる（§6.1 Data shapes）
+    const res = renderFields(data, info.build, renderers);
+    for (const m of res.missing) if (!noted.has(info.part.name + m)) { noted.add(info.part.name + m); warn.push(`part ${info.part.name}: the ${m} renderer is not available in this build; its fields are left unrendered (the part shows their source; format spec §6.2 Missing output)`); }
+    if (!res.rendered) return;
+    info.part.renderers = { ...(info.part.renderers || {}), ...res.used };
+    edits.push([txt.sourceCodeLocation.startOffset, txt.sourceCodeLocation.endOffset, JSON.stringify(res.data).replace(/</g, '\\u003c')]);
+  });
+  edits.sort((a, b) => b[0] - a[0]);
+  for (const [a, b, t] of edits) html = html.slice(0, a) + t + html.slice(b);
+  return html;
+}
+
+// 2.0 だけの教材では土台は base パーツが持つ。再生器自身が使う el・補間は残し、1.x 向けの公開の補助と基底クラスを外す。
+export function playerWithoutPartBase(code) {
+  return code.replace(/\/\/ @legacy-part-base:start[\s\S]*?\/\/ @legacy-part-base:end/, 'function isLegacyPart(){ return false; }')
+    .replace(/\/\/ @legacy-part-helpers:start[\s\S]*?\/\/ @legacy-part-helpers:end/, 'var ANIM = {};')
+    .replace(/^DECK\.ease = .*$/m, '')
+    .replace(/^DECK\.define = .*$/m, '');
 }

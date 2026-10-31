@@ -68,7 +68,7 @@ export async function writeToDirectory(dir, files) {
 // equivalent：記録の hash が違っても同じ部品と分かった tag（改行をそろえる前に CRLF のまま hash した記録。kit/core/portable.mjs の registryEquivalent）
 export function registryProblems(orig, fresh, equivalent = []) {
   const out = [], same = new Set(Array.isArray(equivalent) ? equivalent : []);
-  const reg = (list, key) => new Map((Array.isArray(list) ? list : []).filter((c) => isObj(c) && c.source === 'registry').map((c) => [c[key], c]));
+  const reg = (list, key) => new Map((Array.isArray(list) ? list : []).filter((c) => isObj(c) && c.source === 'registry').map((c) => [key === 'tag' && !c.tag ? `${c.name}@${c.version}` : c[key], c]));
   for (const [kind, key] of [['component', 'tag'], ['theme', 'name']]) {
     const mine = reg(fresh[kind + 's'], key);
     for (const [k, c] of reg(orig[kind + 's'], key)) {
