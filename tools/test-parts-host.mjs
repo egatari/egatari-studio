@@ -327,17 +327,19 @@ for (const mode of ['talk', 'learn']) {
   ok(eq2(result.inputs, [60, 60]) && result.last.t > .2 && result.last.t !== 'inf' && result.duration === .2 && result.tl === baseline,
     `${mode}: extend(+60/0) returns totals, live clock passes duration(k), duration and timeline unchanged`);
   await cp.locator('[data-extend="-60"]').click();
-  ok(await cp.evaluate(() => __probe.inputs.at(-1) === 0), `${mode}: extend(-60) returns zero`);
+  // The step (0.2 s) has already run past its end, so -60 stops where nothing remains: total = elapsed - duration.
+  const shortened = await cp.evaluate(() => __probe.inputs.at(-1));
+  ok(shortened >= 0 && shortened < 60, `${mode}: extend(-60) stops at zero remaining (${shortened})`);
   await cp.locator('[data-extend="60"]').click();
   await cp.evaluate(() => { DECK.next(); DECK.prev(); });
-  ok(await cp.evaluate(() => document.querySelector('#input-clock')._ctx.extend(0) === 60 && __probe.renders.some((r) => r.reset)), `${mode}: input survives forward/back steps and ctx.reset`);
+  ok(await cp.evaluate((shortened) => document.querySelector('#input-clock')._ctx.extend(0) === 60 + shortened && __probe.renders.some((r) => r.reset), shortened), `${mode}: input survives forward/back steps and ctx.reset`);
   const aside = await cp.evaluate(() => {
     __probe.renders.length = 0;
     DECK.aside(() => DECK.seek(0, 1, Infinity));
     window.dispatchEvent(new Event('beforeprint')); window.dispatchEvent(new Event('afterprint'));
     return { renders: __probe.renders, extension: document.querySelector('#input-clock')._ctx.extend(0), tl: JSON.stringify(DECK.timeline()) };
   });
-  ok(aside.renders.some((r) => r.extension === 0 && r.t === 'inf') && aside.extension === 60 && aside.tl === baseline,
+  ok(aside.renders.some((r) => r.extension === 0 && r.t === 'inf') && aside.extension === 60 + shortened && aside.tl === baseline,
     `${mode}: print/aside use author values and preserve viewer totals on return`);
   await cp.evaluate(() => DECK.go(0, 1, false));
   ok(await cp.evaluate(() => document.querySelector('#input-clock')._ctx.extend(0) === 0), `${mode}: same-slide jump resets extension`);

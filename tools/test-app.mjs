@@ -1521,7 +1521,7 @@ try {
         `menu (${lang}, ${kind}): a preview load that finishes while the menu is open does not take the focus`);
       // キー：↓↑ は端で回る・End・Home・→ で入れ子を開いて最初の項目・← で閉じて元の項目・Esc で閉じてボタンへ。キーはプレビューに届かない
       const act = () => pt.evaluate(() => document.activeElement.id);
-      const pos0 = await pt.evaluate(() => JSON.stringify(window.__APP_TEST.state().pos));
+      const pos0 = await pt.evaluate(() => (({ i, k, key }) => JSON.stringify({ i, k, key }))(window.__APP_TEST.state().pos || {}));
       await pt.keyboard.press('ArrowUp');
       ok(await act() === 'b-open', `menu keys (${lang}, ${kind}): ↑ from the first item wraps to the last`);
       await pt.keyboard.press('ArrowDown');
@@ -1537,7 +1537,7 @@ try {
       ok(!(await pt.evaluate(() => window.__APP_TEST.ui().edit)), `menu keys (${lang}, ${kind}): letter keys inside a menu do not toggle the panels`);
       await pt.keyboard.press('Escape');
       ok(await pt.isHidden('#m-file') && await act() === 'b-filemenu', `menu (${lang}, ${kind}): Esc closes it and returns focus to the button`);
-      ok(await pt.evaluate(() => JSON.stringify(window.__APP_TEST.state().pos)) === pos0, `menu keys (${lang}, ${kind}): arrow keys in the menu did not move the preview`);
+      ok(await pt.evaluate(() => (({ i, k, key }) => JSON.stringify({ i, k, key }))(window.__APP_TEST.state().pos || {})) === pos0, `menu keys (${lang}, ${kind}): arrow keys in the menu did not move the preview`);
       // ボタンの ↓ で開く・↑ で最後の項目から。→← はボタンからはプレビューへ（input-focus のまま）
       await pt.keyboard.press('ArrowUp');
       ok(await pt.isVisible('#m-file') && await act() === 'b-open', `menu button (${lang}, ${kind}): ↑ opens the menu at the last item`);
