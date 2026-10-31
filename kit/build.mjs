@@ -31,6 +31,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
+import { abcjs } from './abcjs-node.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
 import { liveResultsWarning } from './core/live-results.mjs';
 import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs';
@@ -156,7 +157,7 @@ export function listFiles(dir) {
 }
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 export const nodeEnv = {
-  path, KIT, ROOT, version: VERSION, katex,
+  path, KIT, ROOT, version: VERSION, katex, abcjs,
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir: (pkg) => path.dirname(require.resolve(`${pkg}/package.json`)),

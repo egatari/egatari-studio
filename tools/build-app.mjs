@@ -128,6 +128,8 @@ const buildWorkerJs = BW.outputFiles[0].text;
 const plugin = (res) => ({
   name: 'app',
   setup(b) {
+    b.onResolve({ filter: /^virtual:abcjs-source$/ }, () => ({ path: require.resolve('abcjs/dist/abcjs-basic.js'), namespace: 'abcjs-source' }));
+    b.onLoad({ filter: /.*/, namespace: 'abcjs-source' }, (a) => ({ contents: fs.readFileSync(a.path, 'utf8'), loader: 'text' }));
     b.onResolve({ filter: /^virtual:resources$/ }, () => ({ path: 'resources', namespace: 'virtual' }));
     b.onResolve({ filter: /^virtual:portable-worker$/ }, () => ({ path: 'portable-worker', namespace: 'virtual' }));
     b.onResolve({ filter: /^virtual:build-worker$/ }, () => ({ path: 'build-worker', namespace: 'virtual' }));
@@ -161,7 +163,7 @@ const MANIFEST = {
   background_color: '#f4f5f8', theme_color: '#ffffff',
   icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
 };
-const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1), and the parts of egatari/components (MIT; the stroke data in m-kakijun is SIL OFL 1.1, see vendor/components/sha256/). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
+const NOTICE = `/* Egatari Studio ${version} — https://github.com/egatari/egatari-studio (MIT). Bundles abcjs 6.7.2 (MIT; score symbols rendered at build time), KaTeX (MIT), parse5 (MIT), BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 (SIL OFL 1.1), and the parts of egatari/components (MIT; the stroke data in m-kakijun is SIL OFL 1.1, see vendor/components/sha256/). The MP3 encoder (lame-wasm with LAME, LGPL) is a separate file, vendor/lame-wasm/ (see NOTICE.txt). */\n`;
 
 // 配信版：dist/ の根。前の組み立ての残り（前の形の dist/editor/ も）を消してから書く
 const ED = OUT;

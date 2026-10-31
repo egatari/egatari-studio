@@ -10,6 +10,8 @@
 // （Worker の組み立てが止められたとき）次の読み取りを始めない
 export const READ_CONCURRENCY = 8;
 import katex from 'katex';
+import { ABCJS_OPTIONS } from '../kit/core/abcjs.mjs';
+import abcjsPackage from 'abcjs/package.json' with { type: 'json' };
 import * as P from '../kit/core/path-posix.mjs';
 import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError, FileChangedError } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
@@ -34,7 +36,24 @@ const dec = new TextDecoder();
 
 // res = {version, text: {path: 文字列}, b64: {path: base64}, lazy: [path…]}
 // loadLazy(path) → Promise<base64>：字の分割ファイル（配信版は fetch、1 ファイル版は同梱）
-export function createEngine(res, loadLazy) {
+export function createEngine(res, loadLazy, { renderAbc } = {}) {
+  // The core remains synchronous. Collect score work, resolve it via RPC, then retry,
+  // just as for missing files. Keep successes and failures for this build only.
+  const scores = new Map(), pendingScores = new Map();
+  const abcjs = renderAbc ? { version: abcjsPackage.version, defaults: ABCJS_OPTIONS, render(abc, options) {
+    const key = JSON.stringify([abc, options]);
+    if (!scores.has(key)) { pendingScores.set(key, { abc, options }); return {}; }
+    const r = scores.get(key);
+    if (r.error) throw new Error(r.error);
+    return r;
+  } } : null;
+  const loadScores = async () => {
+    const jobs = [...pendingScores]; pendingScores.clear();
+    for (const [key, job] of jobs) {
+      try { scores.set(key, await renderAbc(job)); }
+      catch (e) { scores.set(key, { error: String(e.message || e) }); }
+    }
+  };
   const lazySet = new Set(res.lazy || []);
   const lazyCache = new Map();
   const repoDirs = new Set();
@@ -88,7 +107,7 @@ export function createEngine(res, loadLazy) {
     }
     return {
       // commit：アプリを組んだときの commit（tools/build-app.mjs）。同梱の再生器の版の "+dev.<commit>"（kit/core/player.mjs）
-      path: P, KIT: ROOT + '/kit', ROOT, katexDir: ROOT + '/katex', katex, version: res.version || '', commit: res.commit || '',
+      abcjs, path: P, KIT: ROOT + '/kit', ROOT, katexDir: ROOT + '/katex', katex, version: res.version || '', commit: res.commit || '',
       fontDir: (pkg) => ROOT + '/fonts/' + pkg,
       // 編集アプリ：テーマが見つからない知らせの言葉（kit/core/build-core.mjs）。themeDirs：選んだテーマのフォルダ（なければ空）
       app: true,
@@ -250,6 +269,7 @@ export function createEngine(res, loadLazy) {
     // （PREVIEW_AUDIO + 番号.大きさ.時刻）にして、r.previewAudio = [{src, rel, size}] を返す。音声のバイトは読まない：
     // 編集アプリが読み、プレビューの中の仲立ち（app/frame-shim.js）がその文書の blob: にする（sandbox の枠は親の blob: を読めない）
     async build(file, opts = {}) {
+      scores.clear(); pendingScores.clear();
       forget(listing);
       await refreshThemes();
       const { signal, previewAudio, ...o } = opts;
@@ -273,6 +293,7 @@ export function createEngine(res, loadLazy) {
         let r = null, err = null;
         try { r = coreBuild(benv, DECK + '/' + file, { noAudio: !previewAudio, subset: false, ...o }); } catch (e) { err = e; }
         if (err && err.code === 'build-too-large') throw err;
+        if (pendingScores.size) { await loadScores(); continue; }
         if (!miss.size) { if (err) throw err; if (previewAudio) r.previewAudio = refs; return r; }
         await loadMissing(miss, L, tally, live);
       }
@@ -281,6 +302,7 @@ export function createEngine(res, loadLazy) {
     // 持ち運べる 1 ファイルに書き出す（kit/core/portable.mjs の exportPortable。字は絞り込まない）。audio/ も含めた一覧で、
     // 書き出しが参照したもの（組み立ての依存・音声・字の分割ファイルなど）だけを読んでから作り直す。opts.carry：読み取った文書の索引
     async exportPortable(file, opts = {}) {
+      scores.clear(); pendingScores.clear();
       const full = await ws.list({ audio: true });
       await refreshThemes();
       const miss = new Set();
@@ -293,6 +315,7 @@ export function createEngine(res, loadLazy) {
         let r = null, err = null;
         try { r = await coreExportPortable(xenv, DECK + '/' + file, { subset: false, ...o }); } catch (e) { err = e; }
         if (err && err.code === 'build-too-large') throw err;
+        if (pendingScores.size) { await loadScores(); continue; }
         if (!miss.size) { if (err) throw err; return r; }
         await loadMissing(miss, full, tally, live);
       }
