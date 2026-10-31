@@ -1,7 +1,7 @@
 ### Changed (API)
 
-- Player components receive `ctx.extend(seconds)` for per-step viewer timing and `ctx.live.poll(id)` for revealed poll counts. `DECK.stepExtension(i, k)` exposes live totals for the future sound hook.
-- The live client adds `poll(id)` and `setPollResult(id, {revealed, counts})`; the bridge requires an explicit reveal and at least three answers. The current v1 service has no learner reveal message yet.
+- Player components receive `ctx.extend(seconds)` for per-step viewer timing. `DECK.stepExtension(i, k)` exposes accumulated timing extensions for the future sound hook.
+- `ctx.live` exists with a live client but ships dormant in v0.6.3: no live source feeds it yet. `poll(id)` returns null until the live service sends reveals (backlog #112, outside the pre-GA plan), so parts keep their viewer/author counts. The live client's `setPollResult(id, {revealed, counts})` is a future integration point requiring an explicit reveal and at least three answers.
 
 ### Added
 

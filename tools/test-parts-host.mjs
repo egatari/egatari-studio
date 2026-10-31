@@ -125,6 +125,19 @@ fs.writeFileSync(path.join(ctxDir, 'narration.md'), '## Clock {#clock}\n[0] Cloc
 fs.writeFileSync(path.join(ctxDir, 'timeline.json'), JSON.stringify({ 'clock:1': { dur: .2 }, 'clock:2': { dur: .2 } }));
 build(path.join(ctxDir, 'deck.html'), ctxDeck);
 
+// The real vendored predict part must tolerate the dormant live bridge (#112).
+const predictDir = path.join(out, 'predict-src'), predictDeck = path.join(out, 'predict.html');
+fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), predictDir, { recursive: true });
+fs.writeFileSync(path.join(predictDir, 'deck.html'), `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Dormant live prediction</title></head>
+<body><div id="stage"><section class="slide" id="prediction"><h2>Prediction</h2><div class="body">
+<m-predict poll="p1" style="display:block;width:1000px;height:400px"><script type="application/json">{"choices":[{"label":"A"},{"label":"B"},{"label":"C"}],"answer":2,"counts":[14,3,9]}</script></m-predict>
+</div></section></div></body></html>`);
+fs.writeFileSync(path.join(predictDir, 'narration.md'), '## Prediction {#prediction}\n[0] Predict.\n[1] Count.\n[2] Compare.\n');
+fs.rmSync(path.join(predictDir, 'timeline.json'), { force: true });
+build(path.join(predictDir, 'deck.html'), predictDeck);
+ok(partFile('predict', '2.0.0') === path.join(ROOT, 'vendor/components/sha256/2ec05263e6fe8c9cfd7919e4e8031202997d40dceaa93b962fb47c29c3aa972d/index.js')
+  && fs.readFileSync(predictDeck, 'utf8').includes('// ---- predict@2.0.0'), 'prediction lesson uses the real vendored predict@2.0.0');
+
 // Node の部分だけでも、組み立て・索引の受け口を確かめられる。
 if (process.env.EGATARI_TEST_NO_BROWSER === '1') {
   console.log('SKIP browser host checks');
@@ -156,6 +169,31 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
   return { p, errs };
 };
 const { p, errs } = await open(fileUrl(deck));
+// A live client with no reveals and no live client both retain author counts.
+for (const hasLive of [true, false]) {
+  const prediction = await open(fileUrl(predictDeck));
+  const result = await prediction.p.evaluate((hasLive) => {
+    const calls = [];
+    if (hasLive) DECK.live = { poll: (id) => { calls.push(id); return null; } };
+    else delete DECK.live;
+    DECK.go(0, 1, false);
+    const el = document.querySelector('m-predict');
+    // Also exercise a host context that omits live entirely (rather than passing null).
+    if (!hasLive) el.render(1, Infinity, { mode: 'talk', preview: false, entered: false });
+    return { live: !!el._ctx.live, poll: el._ctx.live ? el._ctx.live.poll('p1') : null, calls,
+      values: el.rows.map((r) => r.val.textContent),
+      bars: el.rows.every((r) => +r.bar.getAttribute('width') > 0 && +r.bar.getAttribute('opacity') > 0),
+      controls: el.rows.every((r) => r.ctl.style.display !== 'none'), fields: el.rows.map((r) => r.field.value),
+      liveLabel: el.liveEl.getAttribute('opacity'), errors: DECK.componentErrors };
+  }, hasLive);
+  const label = hasLive ? 'ctx.live.poll returns null' : 'no ctx.live';
+  ok(result.live === hasLive && result.poll === null && (hasLive ? result.calls.length > 1 && result.calls.every((id) => id === 'p1') : result.calls.length === 0),
+    `m-predict: ${label} fixture reaches the expected context`);
+  ok(eq2(result.values, ['14', '3', '9']) && result.bars && result.controls && eq2(result.fields, ['14', '3', '9']) && result.liveLabel === '0',
+    `m-predict: ${label} renders author counts, editable controls and no live label`);
+  ok(result.errors.length === 0 && prediction.errs.length === 0, `m-predict: ${label} has no component or page errors (${prediction.errs.join(' | ')})`);
+  await prediction.p.close();
+}
 // 既に組まれた依存不足のファイルも開けて、残るパーツとスライドは再生できる。
 {
   const oldFile = path.join(out, 'old-requires-missing.html');
