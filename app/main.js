@@ -2023,6 +2023,7 @@ window.__APP_TEST = {
   audio: () => audio.state(),
   audioPanel: audio,
   rec: () => rec.state(),
+  onRecTake: null,    // 試験：各テイクの操作時刻（ms）・カット範囲（秒）と結果を受け取る
   badge: () => ({ ...(S.badge || { errs: 0, warns: 0 }), text: $('b-check-badge').textContent, hidden: $('b-check-badge').hidden, bad: $('b-check-badge').classList.contains('bad'), autoChecks: S.autoChecks || 0 }),
   autoCheckMs: 0,
   menuOpen: () => { const M = openMenuOf(); return M ? M.list.id : null; },
