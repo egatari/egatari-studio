@@ -46,11 +46,12 @@ try {
   // Capture just the repository resources used by this deck, then exercise the editor's
   // async rendering/retry loop in Node with a DOM-free stand-in for the RPC endpoint.
   const res = { text: {}, b64: {}, version: nodeEnv.version, commit: nodeEnv.commit };
+  const slash = (s) => s.split(path.sep).join('/');   // virtual paths use / on every OS (Windows gives \)
   const virt = (p) => {
-    if (p.startsWith(nodeEnv.katexDir + path.sep)) return '/repo/katex/' + path.relative(nodeEnv.katexDir, p);
+    if (p.startsWith(nodeEnv.katexDir + path.sep)) return '/repo/katex/' + slash(path.relative(nodeEnv.katexDir, p));
     const fonts = path.join(ROOT, 'node_modules', '@fontsource') + path.sep;
-    if (p.startsWith(fonts)) return '/repo/fonts/@fontsource/' + p.slice(fonts.length);
-    if (p.startsWith(ROOT + path.sep)) return '/repo/' + path.relative(ROOT, p);
+    if (p.startsWith(fonts)) return '/repo/fonts/@fontsource/' + slash(p.slice(fonts.length));
+    if (p.startsWith(ROOT + path.sep)) return '/repo/' + slash(path.relative(ROOT, p));
     return null;
   };
   const capture = { ...env };
