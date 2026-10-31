@@ -45,13 +45,16 @@ const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 
 // 録音モードの操作音を除く範囲（[head, tail)。元の標本化周波数での位置）。時刻は performance.now() と同じミリ秒。
 // recStart は MediaRecorder.onstart の時刻。解放が来なければ押下から 120 ms、そこからさらに 30 ms を除く。
+// inputLatency は入力の遅れ（ms、最大 1 秒）。実際の開始操作があれば、開始前に解放されても先頭の 30 ms と遅れを除く。
 // processTake の前に録音モードだけが使う（TTS・取り込みの後処理と PROCESSING の名前は変えない）。
-export function clickCut({ startDown, startUp, stopDown, recStart }, sampleRate, length) {
-  if (![startDown, recStart, sampleRate, length].every(Number.isFinite) || sampleRate <= 0 || length < 0 || !Number.isInteger(length)) throw new RangeError('invalid click-cut timeline');
+export function clickCut({ startDown, startUp, stopDown, recStart, startEvent = false, inputLatency = 0 }, sampleRate, length) {
+  if (![startDown, recStart, sampleRate, length, inputLatency].every(Number.isFinite) || sampleRate <= 0 || length < 0 || !Number.isInteger(length) || inputLatency < 0) throw new RangeError('invalid click-cut timeline');
+  inputLatency = Math.min(1000, inputLatency);
   const clamp = (n) => Math.max(0, Math.min(length, n));
   const up = Number.isFinite(startUp) ? startUp : startDown + 120;
-  const head = clamp(Math.ceil((Math.max(up, startDown + 120) + 30 - recStart) * sampleRate / 1000));
-  const tail = Number.isFinite(stopDown) ? clamp(Math.floor((stopDown - 30 - recStart) * sampleRate / 1000)) : length;
+  const headMs = Math.max(startEvent ? 30 : -Infinity, Math.max(up, startDown + 120) + 30 - recStart) + inputLatency;
+  const head = clamp(Math.ceil(headMs * sampleRate / 1000));
+  const tail = Number.isFinite(stopDown) ? clamp(Math.floor((stopDown - 30 - recStart + inputLatency) * sampleRate / 1000)) : length;
   return { head, tail };
 }
 // 範囲が重なる短い録音は空にし、理由を返す（slice の負の位置・長さに頼らない）。入力は変えない。

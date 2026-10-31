@@ -20,9 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { build } from '../kit/build.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
-import { encodeWav } from '../kit/core/audio-core.mjs';
+import { encodeWav, clickCut } from '../kit/core/audio-core.mjs';
 import { clickUntil } from './click-retry.mjs';
 
+// Local diagnostic: synthetic audio routing jitters on shared CI runners.
+const AUDIO_BURSTS = process.env.EGATARI_TEST_AUDIO_BURSTS === '1';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
 const si = args.indexOf('--shots');
@@ -505,255 +507,326 @@ try {
   await unslow();
 
   // ---------------------------------------------------------------- 続けて録る：準備のテイクの後は Enter だけで最後の 3 ステップを録る
-  await page.evaluate(() => document.body.focus());
-  await page.keyboard.press('r'); await waitRec('idle');
-  await page.check('#rec-keep-recording'); await page.focus('#rec-mode');
   const firstContinuous = keys.length - 3;
-  for (let j = (await recState()).idx; j < firstContinuous - 1; j++) { await page.keyboard.press('ArrowRight'); await waitIdx(j + 1); }
-  for (let j = (await recState()).idx; j > firstContinuous - 1; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
-  // The extra Web Audio -> MediaStreamDestination -> MediaRecorder route delays synthetic
-  // sounds relative to DOM events. Measure that delay in EACH raw take, before silence
-  // trimming/normalization/MP3 encoding can move its origin. Never change the app's PCM
-  // or its hardware-confirmed 120/30 ms cuts to accommodate this test fixture.
-  await page.evaluate(() => {
-    const S = window.__continuous = {
-      gum: navigator.mediaDevices.getUserMedia, start: MediaRecorder.prototype.start,
-      writable: FileSystemFileHandle.prototype.createWritable,
-      starts: 0, bursts: 0, keyEvents: 0, events: [], takes: [], results: {}, ac: null, source: null,
-      streamId: 0, streamIds: new WeakMap(), stopKey: null, longHold: false,
-    };
-    navigator.mediaDevices.getUserMedia = async function (...a) {
-      S.source = await S.gum.apply(navigator.mediaDevices, a);
-      S.ac = new AudioContext();
-      S.analysis = new AudioContext();
-      S.dest = S.ac.createMediaStreamDestination();
-      S.streamIds.set(S.dest.stream, ++S.streamId);
-      S.ac.createMediaStreamSource(S.source).connect(S.dest);
-      await S.ac.resume();
-      return S.dest.stream;
-    };
-    S.tone = (hz, at, duration, amp, smooth = false) => {
-      const osc = S.ac.createOscillator(), gain = S.ac.createGain();
-      osc.frequency.value = hz;
-      if (smooth) {
-        // A Hann envelope avoids making the 3/4 kHz markers into 8 kHz clicks.
-        const envelope = Float32Array.from({ length: 129 }, (_, i) => amp * Math.sin(Math.PI * i / 128) ** 2);
-        gain.gain.setValueCurveAtTime(envelope, at, duration);
-      } else gain.gain.value = amp;
-      osc.connect(gain); gain.connect(S.dest); osc.start(at); osc.stop(at + duration);
-      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
-      return S.streamIds.get(S.dest.stream);
-    };
-    S.burst = (e) => {
-      if (e.key !== 'Enter') return;
-      S.keyEvents++;
-      if (!S.ac || S.ac.state !== 'running') return;
-      const dom = performance.now(), at = S.ac.currentTime, duration = 0.006;
-      const streamId = S.tone(8000, at, duration, 0.32);
-      // Log only after the oscillator starts, on the destination it actually used.
-      S.events.push({ dom, kind: e.type, duration, streamId, stopKey: S.stopKey,
-        longHoldRelease: S.longHold && e.type === 'keyup' });
-      S.bursts++;
-    };
-    document.addEventListener('keydown', S.burst, true); document.addEventListener('keyup', S.burst, true);
-    MediaRecorder.prototype.start = function (...a) {
-      S.starts++;
-      const t = { key: window.__APP_TEST.rec().key, streamId: S.streamIds.get(this.stream), chunks: [], markers: [] };
-      if (!t.streamId) throw new Error('continuous: recorder has no injected stream identity');
-      S.takes.push(t);
-      this.addEventListener('start', () => {
-        t.recStart = performance.now();   // same event as the app's onstart; resolution checked below
-        const dom = performance.now(), clock = S.ac.currentTime;
-        for (const [hz, delay] of [[3000, 1.2], [4000, 2.4]]) {
-          const duration = 0.080;
-          t.markers.push({ hz, dom: dom + delay * 1000, duration });
-          S.tone(hz, clock + delay, duration, 0.18, true);
-        }
-      }, { once: true });
-      // Observe the SAME chunks as the app, without replacing any app handlers or data.
-      this.addEventListener('dataavailable', (e) => { if (e.data && e.data.size) t.chunks.push(e.data); });
-      t.raw = new Promise((resolve, reject) => {
-        this.addEventListener('stop', () => {
-          new Blob(t.chunks, { type: this.mimeType }).arrayBuffer()
-            .then((bytes) => S.analysis.decodeAudioData(bytes)).then(resolve, reject);
+  if (!AUDIO_BURSTS) console.log('       continuous: audio bursts skipped (local diagnostic: EGATARI_TEST_AUDIO_BURSTS=1)');
+  for (const { inputLatency, audioBursts } of [
+    { inputLatency: 0.15, audioBursts: false },
+    ...(AUDIO_BURSTS ? [{ inputLatency: 0, audioBursts: true }] : []),
+  ]) {
+    if (audioBursts) {
+      // Reopen the fixture with the last three steps empty for the diagnostic run.
+      await page.evaluate(async (takeKeys) => {
+        const h = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json');
+        const m = JSON.parse(await (await h.getFile()).text());
+        for (const k of takeKeys) delete m.segments[k];
+        const w = await h.createWritable(); await w.write(JSON.stringify(m)); await w.close();
+        await window.__APP_TEST_OPEN(window.__testDir);
+      }, keys.slice(firstContinuous));
+      await frameReady();
+    }
+    await page.evaluate(() => document.body.focus());
+    await page.keyboard.press('r'); await waitRec('idle');
+    await page.check('#rec-keep-recording'); await page.focus('#rec-mode');
+    for (let j = (await recState()).idx; j < firstContinuous - 1; j++) { await page.keyboard.press('ArrowRight'); await waitIdx(j + 1); }
+    for (let j = (await recState()).idx; j > firstContinuous - 1; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
+    // Only the opt-in diagnostic uses Web Audio -> MediaStreamDestination -> MediaRecorder.
+    // This route delays synthetic sounds relative to DOM events. Measure that delay in EACH raw take, before silence
+    // trimming/normalization/MP3 encoding can move its origin. Never change the app's PCM
+    // or its hardware-confirmed 120/30 ms cuts to accommodate this test fixture.
+    await page.evaluate(({ inputLatency, audioBursts }) => {
+      const S = window.__continuous = {
+        gum: navigator.mediaDevices.getUserMedia, start: MediaRecorder.prototype.start,
+        getSettings: MediaStreamTrack.prototype.getSettings, inputLatency, audioBursts,
+        timelines: [], keyTimeline: [],
+        starts: 0, bursts: 0, keyEvents: 0, events: [], takes: [], results: {}, ac: null, source: null,
+        streamId: 0, streamIds: new WeakMap(), stopKey: null, longHold: false,
+      };
+      // Test the device report, while retaining the real track's other settings.
+      MediaStreamTrack.prototype.getSettings = function () {
+        const settings = S.getSettings.call(this);
+        return this.kind === 'audio' ? { ...settings, latency: S.inputLatency } : settings;
+      };
+      window.__APP_TEST.onRecTake = (timeline, result) => {
+        S.timelines.push(structuredClone(timeline)); S.results[result.key] = structuredClone(result);
+      };
+      navigator.mediaDevices.getUserMedia = async function (...a) {
+        S.source = await S.gum.apply(navigator.mediaDevices, a);
+        if (!S.audioBursts) { S.streamIds.set(S.source, ++S.streamId); return S.source; }
+        S.ac = new AudioContext();
+        S.analysis = new AudioContext();
+        S.dest = S.ac.createMediaStreamDestination();
+        S.streamIds.set(S.dest.stream, ++S.streamId);
+        S.ac.createMediaStreamSource(S.source).connect(S.dest);
+        await S.ac.resume();
+        return S.dest.stream;
+      };
+      S.tone = (hz, at, duration, amp, smooth = false) => {
+        const osc = S.ac.createOscillator(), gain = S.ac.createGain();
+        osc.frequency.value = hz;
+        if (smooth) {
+          // A Hann envelope avoids making the 3/4 kHz markers into 8 kHz clicks.
+          const envelope = Float32Array.from({ length: 129 }, (_, i) => amp * Math.sin(Math.PI * i / 128) ** 2);
+          gain.gain.setValueCurveAtTime(envelope, at, duration);
+        } else gain.gain.value = amp;
+        osc.connect(gain); gain.connect(S.dest); osc.start(at); osc.stop(at + duration);
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        return S.streamIds.get(S.dest.stream);
+      };
+      S.burst = (e) => {
+        if (e.key !== 'Enter') return;
+        S.keyEvents++;
+        S.keyTimeline.push({ dom: e.timeStamp, kind: e.type, stopKey: S.stopKey, longHoldRelease: S.longHold && e.type === 'keyup' });
+        if (!S.ac || S.ac.state !== 'running') return;
+        const dom = performance.now(), at = S.ac.currentTime, duration = 0.006;
+        const streamId = S.tone(8000, at, duration, 0.32);
+        // Log only after the oscillator starts, on the destination it actually used.
+        S.events.push({ dom, kind: e.type, duration, streamId, stopKey: S.stopKey,
+          longHoldRelease: S.longHold && e.type === 'keyup' });
+        S.bursts++;
+      };
+      document.addEventListener('keydown', S.burst, true); document.addEventListener('keyup', S.burst, true);
+      MediaRecorder.prototype.start = function (...a) {
+        S.starts++;
+        const t = { key: window.__APP_TEST.rec().key, streamId: S.streamIds.get(this.stream), chunks: [], markers: [] };
+        if (!t.streamId) throw new Error('continuous: recorder has no injected stream identity');
+        S.takes.push(t);
+        if (!S.audioBursts) return S.start.apply(this, a);
+        this.addEventListener('start', () => {
+          t.recStart = performance.now();   // same event as the app's onstart; resolution checked below
+          const dom = performance.now(), clock = S.ac.currentTime;
+          for (const [hz, delay] of [[3000, 1.2], [4000, 2.4]]) {
+            const duration = 0.080;
+            t.markers.push({ hz, dom: dom + delay * 1000, duration });
+            S.tone(hz, clock + delay, duration, 0.18, true);
+          }
         }, { once: true });
-      });
-      return S.start.apply(this, a);
-    };
-    // result is set before commit, then cleared as soon as the next take starts.
-    // Snapshot it at the write boundary instead of racing a polling timer against go().
-    FileSystemFileHandle.prototype.createWritable = function (...a) {
-      const r = window.__APP_TEST.rec().result;
-      if (r && r.trimmed) S.results[r.key] = structuredClone(r);
-      return S.writable.apply(this, a);
-    };
-  });
-  const seedKey = keys[firstContinuous - 1], seedPrev = (await manifest())[seedKey];
-  await record(3600); await waitWritten(seedKey, seedPrev);
-  await page.evaluate(() => { window.__continuous.starts = 0; });
-  const beforeContinuous = await manifest();
-  await page.keyboard.press('Enter');   // 録った後の Enter でも、次の空のステップを開始
-  for (let j = firstContinuous; j < keys.length; j++) {
-    await waitRec('recordingIdx', j);
-    ok(new RegExp(`続けて録音中：ステップ ${j + 1}/${keys.length}`).test(await liveHas(/続けて録音中/)), 'continuous: live region announces the recording step');
-    if (j > firstContinuous) ok(!!(await manifest())[keys[j - 1]], 'continuous: the previous take is written before the next starts');
-    await page.waitForTimeout(3600);
-    await page.evaluate(({ key, longHold }) => {
-      window.__continuous.stopKey = key; window.__continuous.longHold = longHold;
-    }, { key: keys[j], longHold: j === firstContinuous });
-    await page.keyboard.down('Enter');
-    await page.waitForTimeout(j === firstContinuous ? 650 : 80);   // 長押しの解放が次のテイクに入っても除く
-    await page.keyboard.up('Enter');
-  }
-  await waitIdx(keys.length - 1);
-  const continuousEntries = await manifest();
-  ok(keys.slice(firstContinuous).every((k) => continuousEntries[k]?.kind === 'recorded' && continuousEntries[k].file !== beforeContinuous[k]?.file), 'continuous: only Enter presses produce three new takes');
-  const burstCounts = await page.evaluate(() => {
-    const S = window.__continuous;
-    return { starts: S.starts, keyEvents: S.keyEvents, bursts: S.bursts };
-  });
-  ok(burstCounts.starts === 3 && burstCounts.keyEvents === 8,
-    `continuous: exactly three starts and eight key events (${burstCounts.bursts} bursts actually injected; ${JSON.stringify(burstCounts)})`);
-  ok((await recState()).phase === 'idle', 'continuous: Enter on the last step keeps the take and stops');
-  // A stored take has already lost click cuts AND silence at its head, so its sample
-  // zero cannot be compared with a DOM timestamp. Use the untouched raw capture above.
-  // Express the app's actual cuts in the measured synthetic-route timeline:
-  //   burst = (DOM - recStart)/1000 + offset; kept = [head + offset, tail + offset).
-  // This translates BOTH boundaries, rather than adding a blind head margin. In
-  // particular, a missing long-hold keyup still overlaps kept audio and fails.
-  // 検出と「残っていない」の両方に同じしきい値（同じ端末の雑音の何倍か）を使う
-  const DETECT = 8;
-  const burstCheck = await page.evaluate(async ({ takeKeys, DETECT }) => {
-    const S = window.__continuous, hopS = 0.001, windowS = 0.004;
-    // Narrow-band amplitude, not broadband highpass sample peaks (the latter were
-    // already above 0.04 on the burst-free fake device). Full Hann windows only.
-    function spectrum(ab, hz) {
-      const x = ab.getChannelData(0), sr = ab.sampleRate;
-      const n = Math.round(windowS * sr), hop = Math.max(1, Math.round(hopS * sr));
-      const re = [], im = []; let sum = 0;
-      for (let j = 0; j < n; j++) {
-        const w = Math.sin(Math.PI * j / (n - 1)) ** 2;
-        sum += w; re.push(w * Math.cos(2 * Math.PI * hz * j / sr)); im.push(w * Math.sin(2 * Math.PI * hz * j / sr));
-      }
-      const frames = [];
-      for (let i = 0; i + n <= x.length; i += hop) {
-        let r = 0, q = 0;
-        for (let j = 0; j < n; j++) { r += x[i + j] * re[j]; q += x[i + j] * im[j]; }
-        frames.push({ time: (i + (n - 1) / 2) / sr, amp: 2 * Math.hypot(r, q) / sum });
-      }
-      return frames;
+        // Observe the SAME chunks as the app, without replacing any app handlers or data.
+        this.addEventListener('dataavailable', (e) => { if (e.data && e.data.size) t.chunks.push(e.data); });
+        t.raw = new Promise((resolve, reject) => {
+          this.addEventListener('stop', () => {
+            new Blob(t.chunks, { type: this.mimeType }).arrayBuffer()
+              .then((bytes) => S.analysis.decodeAudioData(bytes)).then(resolve, reject);
+          }, { once: true });
+        });
+        return S.start.apply(this, a);
+      };
+    }, { inputLatency, audioBursts });
+    const seedKey = keys[firstContinuous - 1], seedPrev = (await manifest())[seedKey];
+    await record(3600); await waitWritten(seedKey, seedPrev);
+    await page.evaluate(() => { window.__continuous.starts = 0; });
+    const beforeContinuous = await manifest();
+    await page.keyboard.press('Enter');   // 録った後の Enter でも、次の空のステップを開始
+    for (let j = firstContinuous; j < keys.length; j++) {
+      await waitRec('recordingIdx', j);
+      ok(new RegExp(`続けて録音中：ステップ ${j + 1}/${keys.length}`).test(await liveHas(/続けて録音中/)), 'continuous: live region announces the recording step');
+      if (j > firstContinuous) ok(!!(await manifest())[keys[j - 1]], 'continuous: the previous take is written before the next starts');
+      await page.waitForTimeout(3600);
+      await page.evaluate(({ key, longHold }) => {
+        window.__continuous.stopKey = key; window.__continuous.longHold = longHold;
+      }, { key: keys[j], longHold: j === firstContinuous });
+      await page.keyboard.down('Enter');
+      if (j === firstContinuous) {
+        // Hold until the NEXT recorder's onstart, even if saving is slow on CI.
+        await waitRec('recordingIdx', j + 1);
+        await page.waitForTimeout(80);
+      } else await page.waitForTimeout(80);
+      await page.keyboard.up('Enter');
     }
-    function markerStart(ab, m) {
-      const frames = spectrum(ab, m.hz);
-      const peak = frames.reduce((a, b) => a.amp > b.amp ? a : b);
-      const outside = frames.filter((f) => Math.abs(f.time - peak.time) > m.duration);
-      const floor = Math.max(...outside.map((f) => f.amp));
-      if (!(peak.amp > 8 * floor) || peak.time < m.duration || peak.time + m.duration > ab.duration) {
-        throw new Error(`continuous: missing/ambiguous ${m.hz} Hz calibration marker in raw take`);
-      }
-      // The centroid of a symmetric Hann tone is its scheduled midpoint. Subtract
-      // the measured background power so speech leakage does not bias that centroid.
-      let weight = 0, time = 0;
-      for (const f of frames) {
-        if (Math.abs(f.time - peak.time) > m.duration) continue;
-        const w = Math.max(0, f.amp ** 2 - floor ** 2);
-        weight += w; time += f.time * w;
-      }
-      return time / weight - m.duration / 2;
-    }
-    const takes = [];
-    for (const t of S.takes) {
-      const raw = await t.raw;
-      const offsets = t.markers.map((m) => markerStart(raw, m) - (m.dom - t.recStart) / 1000);
-      // Clock/render quantum + analysis resolution, NOT an extra click-cut margin.
-      // Reject unstable measurements; do not let a slow route silently widen a cut.
-      const resolution = hopS + windowS / 2 + 128 / S.ac.sampleRate;
-      if (offsets.length !== 2 || Math.abs(offsets[0] - offsets[1]) > 2 * resolution) {
-        throw new Error(`continuous: unstable fake-route offset for ${t.key}: ${offsets.join(', ')} s`);
-      }
-      takes.push({ ...t, raw, frames: spectrum(raw, 8000), offset: (offsets[0] + offsets[1]) / 2,
-        uncertainty: resolution + Math.abs(offsets[0] - offsets[1]) / 2 });
-    }
-    // The seed traverses the entire 3.2 s fake-device loop, through the same route
-    // and codec, with the same markers but NO Enter bursts. Derive a noise ceiling
-    // from it; six standard deviations cover measured baseline variation, and the
-    // ceiling is never below an actually observed baseline peak.
-    const seed = takes[0];
-    if (seed.raw.duration < 3.2 || S.events.some((e) => e.streamId === seed.streamId &&
-      e.dom + e.duration * 1000 >= seed.recStart && e.dom < seed.recStart + seed.raw.duration * 1000)) {
-      throw new Error('continuous: baseline must cover the fake-device loop without Enter bursts');
-    }
-    const amps = seed.frames.map((f) => f.amp), mean = amps.reduce((a, b) => a + b, 0) / amps.length;
-    const sd = Math.sqrt(amps.reduce((sum, a) => sum + (a - mean) ** 2, 0) / amps.length);
-    const baseline = Math.max(...amps, mean + 6 * sd);
-    const reports = takeKeys.map((key) => {
-      const t = takes.find((t) => t.key === key), r = S.results[key];
-      if (!t || !r) throw new Error(`continuous: missing raw capture or app cut result for ${key}`);
-      if (Math.abs(r.raw - t.raw.duration) > 0.001) {
-        throw new Error(`continuous: app and raw-capture timelines disagree for ${key}`);
-      }
-      const head = r.head + t.offset, tail = r.tail + t.offset;
-      if (!(head >= 0 && tail > head && tail <= t.raw.duration)) {
-        throw new Error(`continuous: calibrated kept interval is not fully captured for ${key}: ${head}..${tail} / ${t.raw.duration} s`);
-      }
-      // A transition's DOM time may land in this capture even though its oscillator
-      // was connected to the previous stream. Only this stream's bursts are expected.
-      const events = S.events.filter((e) => e.streamId === t.streamId).map((e) => {
-        const begin = (e.dom - t.recStart) / 1000 + t.offset, end = begin + e.duration;
-        const outside = end + t.uncertainty <= head || begin - t.uncertainty >= tail;
-        // Verify the actual injected signal at every fully captured event. A dead
-        // oscillator/detector must not make the absence check pass vacuously.
-        const captured = begin - t.uncertainty >= windowS / 2 && end + t.uncertainty <= t.raw.duration - windowS / 2;
-        const nearby = t.frames.filter((f) => f.time >= begin - t.uncertainty && f.time <= end + t.uncertainty);
-        const peak = Math.max(0, ...nearby.map((f) => f.amp));
-        return { kind: e.kind, streamId: e.streamId, stopKey: e.stopKey, longHoldRelease: e.longHoldRelease,
-          begin, end, outside, captured, peak, detected: peak > DETECT * baseline };
-      });
-      // Only full analysis windows inside the calibrated kept interval: no filter
-      // ringing from excluded samples, and no invented zero-padding at cut edges.
-      const kept = t.frames.filter((f) => f.time - windowS / 2 >= head && f.time + windowS / 2 <= tail);
-      return { key, streamId: t.streamId, offset: t.offset, head, tail, events, windows: kept.length,
-        peak: Math.max(0, ...kept.map((f) => f.amp)) };
+    await waitIdx(keys.length - 1);
+    const continuousEntries = await manifest();
+    ok(keys.slice(firstContinuous).every((k) => continuousEntries[k]?.kind === 'recorded' && continuousEntries[k].file !== beforeContinuous[k]?.file), 'continuous: only Enter presses produce three new takes');
+    const burstCounts = await page.evaluate(() => {
+      const S = window.__continuous;
+      return { starts: S.starts, keyEvents: S.keyEvents, bursts: S.bursts };
     });
-    return { baseline, reports };
-  }, { takeKeys: keys.slice(firstContinuous), DETECT });
-  const eventDiagnostics = (r) => `\n       ${r.key} stream ${r.streamId}: ` + (r.events.length ? r.events.map((e) =>
-    `${e.kind} injected stream ${e.streamId} ${e.begin.toFixed(3)}..${e.end.toFixed(3)} s` +
-    ` peak=${e.peak.toFixed(5)} baseline=${burstCheck.baseline.toFixed(5)}` +
-    ` DETECT=${DETECT}x=${(DETECT * burstCheck.baseline).toFixed(5)} captured=${e.captured} detected=${e.detected}`
-  ).join('; ') : 'no injected events in this stream');
-  for (const r of burstCheck.reports) {
-    const captured = r.events.filter((e) => e.captured);
-    if (r.events.length) {
-      const detected = captured.length > 0 && captured.every((e) => e.detected);
-      ok(detected, `continuous: raw ${r.key} detects injected bursts above the same-device baseline` + (detected ? '' : eventDiagnostics(r)));
-    } else console.log(`       continuous: raw ${r.key} has no injected events in stream ${r.streamId}`);
-    const stopDetected = captured.some((e) => e.kind === 'keydown' && e.stopKey === r.key && e.detected);
-    ok(stopDetected, `continuous: ${r.key} stop-press burst is expected and detected in its stream` + (stopDetected ? '' : eventDiagnostics(r)));
-    const outside = r.events.every((e) => e.outside);
-    ok(outside, `continuous: ${r.key} Enter audio is outside measured cuts (route offset ${(r.offset * 1000).toFixed(1)} ms; kept ${r.head.toFixed(3)}..${r.tail.toFixed(3)} s)` +
-      (outside ? '' : eventDiagnostics(r)));
-  }
-  const longHoldDetected = burstCheck.reports.some((r) => r.events.some((e) => e.longHoldRelease && e.captured && e.detected));
-  ok(longHoldDetected, 'continuous: long-hold release burst is expected and detected across the three takes' +
-    (longHoldDetected ? '' : burstCheck.reports.map(eventDiagnostics).join('')));
-  ok(burstCheck.reports.every((r) => r.windows > 0 && r.peak <= DETECT * burstCheck.baseline),
-    'continuous: no key bursts in any of the three takes (calibrated 8 kHz peaks ' + burstCheck.reports.map((r) => r.peak.toFixed(5)).join(', ') + '; same-device baseline ' + burstCheck.baseline.toFixed(5) + ')' +
-    burstCheck.reports.filter((r) => !r.windows || r.peak > DETECT * burstCheck.baseline).map(eventDiagnostics).join(''));
+    ok(burstCounts.starts === 3 && burstCounts.keyEvents === 8,
+      `continuous: exactly three starts and eight key events (${burstCounts.bursts} bursts actually injected; ${JSON.stringify(burstCounts)})`);
+    ok((await recState()).phase === 'idle', 'continuous: Enter on the last step keeps the take and stops');
+    const timelines = await page.evaluate(() => {
+      const S = window.__continuous;
+      return { takes: S.timelines, events: S.keyTimeline, results: S.results };
+    });
+    ok(timelines.takes.length === 4, 'continuous: the test hook captures the seed and all three takes');
+    for (const t of timelines.takes) {
+      const r = timelines.results[t.key];
+      const expected = clickCut(t, t.sampleRate, t.length);
+      ok(t.head === expected.head / t.sampleRate && t.tail === expected.tail / t.sampleRate &&
+        r.head === t.head && r.tail === t.tail, `continuous: ${t.key} cuts equal clickCut of its recorded timeline`);
+      ok(t.startEvent === true && t.head >= (30 + t.inputLatency) / 1000,
+        `continuous: ${t.key} key start keeps the 30 ms + input latency head floor`);
+      ok(t.inputLatency === inputLatency * 1000 && r.inputLatency === inputLatency,
+        `continuous: ${t.key} records the device input latency (${inputLatency} s)`);
+      if (inputLatency === 0.15) {
+        const zero = clickCut({ ...t, inputLatency: 0 }, t.sampleRate, t.length);
+        ok(Math.abs(t.head - zero.head / t.sampleRate - 0.15) <= 1 / t.sampleRate &&
+          Math.abs(t.tail - zero.tail / t.sampleRate - 0.15) <= 1 / t.sampleRate,
+        `continuous: ${t.key} reported latency shifts both cuts by 150 ms`);
+      }
+      if (!keys.slice(firstContinuous).includes(t.key)) continue;
+      const down = timelines.events.find((e) => e.kind === 'keydown' && e.stopKey === t.key);
+      const start = timelines.events.findIndex((e) => e.kind === 'keydown' && e.dom === t.startDown);
+      const up = timelines.events[start + 1];
+      ok(!!down && t.stopDown === down.dom, `continuous: ${t.key} stopDown is the stopping Enter keydown`);
+      ok(start >= 0 && up?.kind === 'keyup' && t.startUp === up.dom,
+        `continuous: ${t.key} startUp is its Enter release, including release during processing`);
+    }
+    const longRelease = timelines.events.find((e) => e.longHoldRelease);
+    const next = timelines.takes.find((t) => t.key === keys[firstContinuous + 1]);
+    const previous = timelines.takes.find((t) => t.key === keys[firstContinuous]);
+    ok(!!next && !!longRelease && next.startDown === previous?.stopDown &&
+      next.startUp === longRelease.dom && longRelease.dom > next.recStart &&
+      next.head * 1000 >= longRelease.dom - next.recStart + 30 + next.inputLatency,
+    'continuous: held Enter is released after the next recorder starts and its head covers that release');
+    ok(new Set(timelines.takes.map((t) => t.key)).size === 4,
+      'continuous: timeline captures belong to four distinct takes');
+    ok(await page.evaluate(() => new Set(window.__continuous.takes.map((t) => t.streamId)).size === 1),
+      'continuous: all takes retain the same microphone stream');
 
-  // 既存の音声がある次のステップでは待ち、よいテイクを上書きしない。
-  for (let j = keys.length - 1; j > firstContinuous - 1; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
-  const goodFile = (await manifest())[keys[firstContinuous]].file;
-  await page.keyboard.press('Enter'); await waitIdx(firstContinuous); await page.waitForTimeout(500);
-  ok((await recState()).phase === 'idle' && (await manifest())[keys[firstContinuous]].file === goodFile, 'continuous: a step with current audio waits without overwriting it');
-  await page.keyboard.press('Escape'); await page.waitForSelector('#rec-mode', { state: 'detached' });
-  await page.evaluate(async () => {
-    const S = window.__continuous;
-    navigator.mediaDevices.getUserMedia = S.gum; MediaRecorder.prototype.start = S.start;
-    FileSystemFileHandle.prototype.createWritable = S.writable;
-    document.removeEventListener('keydown', S.burst, true); document.removeEventListener('keyup', S.burst, true);
-    S.source.getTracks().forEach((t) => t.stop()); await S.ac.close(); await S.analysis.close();
-  });
+    if (audioBursts) {
+      // A stored take has already lost click cuts AND silence at its head, so its sample
+      // zero cannot be compared with a DOM timestamp. Use the untouched raw capture above.
+      // Express the app's actual cuts in the measured synthetic-route timeline:
+      //   burst = (DOM - recStart)/1000 + offset; kept = [head + offset, tail + offset).
+      // This translates BOTH boundaries, rather than adding a blind head margin. In
+      // particular, a missing long-hold keyup still overlaps kept audio and fails.
+      // 検出と「残っていない」の両方に同じしきい値（同じ端末の雑音の何倍か）を使う
+      const DETECT = 8;
+      const burstCheck = await page.evaluate(async ({ takeKeys, DETECT }) => {
+        const S = window.__continuous, hopS = 0.001, windowS = 0.004;
+        // Narrow-band amplitude, not broadband highpass sample peaks (the latter were
+        // already above 0.04 on the burst-free fake device). Full Hann windows only.
+        function spectrum(ab, hz) {
+          const x = ab.getChannelData(0), sr = ab.sampleRate;
+          const n = Math.round(windowS * sr), hop = Math.max(1, Math.round(hopS * sr));
+          const re = [], im = []; let sum = 0;
+          for (let j = 0; j < n; j++) {
+            const w = Math.sin(Math.PI * j / (n - 1)) ** 2;
+            sum += w; re.push(w * Math.cos(2 * Math.PI * hz * j / sr)); im.push(w * Math.sin(2 * Math.PI * hz * j / sr));
+          }
+          const frames = [];
+          for (let i = 0; i + n <= x.length; i += hop) {
+            let r = 0, q = 0;
+            for (let j = 0; j < n; j++) { r += x[i + j] * re[j]; q += x[i + j] * im[j]; }
+            frames.push({ time: (i + (n - 1) / 2) / sr, amp: 2 * Math.hypot(r, q) / sum });
+          }
+          return frames;
+        }
+        function markerStart(ab, m) {
+          const frames = spectrum(ab, m.hz);
+          const peak = frames.reduce((a, b) => a.amp > b.amp ? a : b);
+          const outside = frames.filter((f) => Math.abs(f.time - peak.time) > m.duration);
+          const floor = Math.max(...outside.map((f) => f.amp));
+          if (!(peak.amp > 8 * floor) || peak.time < m.duration || peak.time + m.duration > ab.duration) {
+            throw new Error(`continuous: missing/ambiguous ${m.hz} Hz calibration marker in raw take`);
+          }
+          // The centroid of a symmetric Hann tone is its scheduled midpoint. Subtract
+          // the measured background power so speech leakage does not bias that centroid.
+          let weight = 0, time = 0;
+          for (const f of frames) {
+            if (Math.abs(f.time - peak.time) > m.duration) continue;
+            const w = Math.max(0, f.amp ** 2 - floor ** 2);
+            weight += w; time += f.time * w;
+          }
+          return time / weight - m.duration / 2;
+        }
+        const takes = [];
+        for (const t of S.takes) {
+          const raw = await t.raw;
+          const offsets = t.markers.map((m) => markerStart(raw, m) - (m.dom - t.recStart) / 1000);
+          // Clock/render quantum + analysis resolution, NOT an extra click-cut margin.
+          // Reject unstable measurements; do not let a slow route silently widen a cut.
+          const resolution = hopS + windowS / 2 + 128 / S.ac.sampleRate;
+          if (offsets.length !== 2 || Math.abs(offsets[0] - offsets[1]) > 2 * resolution) {
+            throw new Error(`continuous: unstable fake-route offset for ${t.key}: ${offsets.join(', ')} s`);
+          }
+          takes.push({ ...t, raw, frames: spectrum(raw, 8000), offset: (offsets[0] + offsets[1]) / 2,
+            uncertainty: resolution + Math.abs(offsets[0] - offsets[1]) / 2 });
+        }
+        // The seed traverses the entire 3.2 s fake-device loop, through the same route
+        // and codec, with the same markers but NO Enter bursts. Derive a noise ceiling
+        // from it; six standard deviations cover measured baseline variation, and the
+        // ceiling is never below an actually observed baseline peak.
+        const seed = takes[0];
+        if (seed.raw.duration < 3.2 || S.events.some((e) => e.streamId === seed.streamId &&
+          e.dom + e.duration * 1000 >= seed.recStart && e.dom < seed.recStart + seed.raw.duration * 1000)) {
+          throw new Error('continuous: baseline must cover the fake-device loop without Enter bursts');
+        }
+        const amps = seed.frames.map((f) => f.amp), mean = amps.reduce((a, b) => a + b, 0) / amps.length;
+        const sd = Math.sqrt(amps.reduce((sum, a) => sum + (a - mean) ** 2, 0) / amps.length);
+        const baseline = Math.max(...amps, mean + 6 * sd);
+        const reports = takeKeys.map((key) => {
+          const t = takes.find((t) => t.key === key), r = S.results[key];
+          if (!t || !r) throw new Error(`continuous: missing raw capture or app cut result for ${key}`);
+          if (Math.abs(r.raw - t.raw.duration) > 0.001) {
+            throw new Error(`continuous: app and raw-capture timelines disagree for ${key}`);
+          }
+          const head = r.head + t.offset, tail = r.tail + t.offset;
+          if (!(head >= 0 && tail > head && tail <= t.raw.duration)) {
+            throw new Error(`continuous: calibrated kept interval is not fully captured for ${key}: ${head}..${tail} / ${t.raw.duration} s`);
+          }
+          // A transition's DOM time may land in this capture even though its oscillator
+          // was connected to the previous stream. Only this stream's bursts are expected.
+          const events = S.events.filter((e) => e.streamId === t.streamId).map((e) => {
+            const begin = (e.dom - t.recStart) / 1000 + t.offset, end = begin + e.duration;
+            const outside = end + t.uncertainty <= head || begin - t.uncertainty >= tail;
+            // Verify the actual injected signal at every fully captured event. A dead
+            // oscillator/detector must not make the absence check pass vacuously.
+            const captured = begin - t.uncertainty >= windowS / 2 && end + t.uncertainty <= t.raw.duration - windowS / 2;
+            const nearby = t.frames.filter((f) => f.time >= begin - t.uncertainty && f.time <= end + t.uncertainty);
+            const peak = Math.max(0, ...nearby.map((f) => f.amp));
+            return { kind: e.kind, streamId: e.streamId, stopKey: e.stopKey, longHoldRelease: e.longHoldRelease,
+              begin, end, outside, captured, peak, detected: peak > DETECT * baseline };
+          });
+          // Only full analysis windows inside the calibrated kept interval: no filter
+          // ringing from excluded samples, and no invented zero-padding at cut edges.
+          const kept = t.frames.filter((f) => f.time - windowS / 2 >= head && f.time + windowS / 2 <= tail);
+          return { key, streamId: t.streamId, offset: t.offset, head, tail, events, windows: kept.length,
+            peak: Math.max(0, ...kept.map((f) => f.amp)) };
+        });
+        return { baseline, reports };
+      }, { takeKeys: keys.slice(firstContinuous), DETECT });
+      const eventDiagnostics = (r) => `\n       ${r.key} stream ${r.streamId}: ` + (r.events.length ? r.events.map((e) =>
+        `${e.kind} injected stream ${e.streamId} ${e.begin.toFixed(3)}..${e.end.toFixed(3)} s` +
+        ` peak=${e.peak.toFixed(5)} baseline=${burstCheck.baseline.toFixed(5)}` +
+        ` DETECT=${DETECT}x=${(DETECT * burstCheck.baseline).toFixed(5)} captured=${e.captured} detected=${e.detected}`
+      ).join('; ') : 'no injected events in this stream');
+      for (const r of burstCheck.reports) {
+        const captured = r.events.filter((e) => e.captured);
+        if (r.events.length) {
+          const detected = captured.length > 0 && captured.every((e) => e.detected);
+          ok(detected, `continuous: raw ${r.key} detects injected bursts above the same-device baseline` + (detected ? '' : eventDiagnostics(r)));
+        } else console.log(`       continuous: raw ${r.key} has no injected events in stream ${r.streamId}`);
+        const stopDetected = captured.some((e) => e.kind === 'keydown' && e.stopKey === r.key && e.detected);
+        ok(stopDetected, `continuous: ${r.key} stop-press burst is expected and detected in its stream` + (stopDetected ? '' : eventDiagnostics(r)));
+        const outside = r.events.every((e) => e.outside);
+        ok(outside, `continuous: ${r.key} Enter audio is outside measured cuts (route offset ${(r.offset * 1000).toFixed(1)} ms; kept ${r.head.toFixed(3)}..${r.tail.toFixed(3)} s)` +
+          (outside ? '' : eventDiagnostics(r)));
+      }
+      const longHoldDetected = burstCheck.reports.some((r) => r.events.some((e) => e.longHoldRelease && e.captured && e.detected));
+      ok(longHoldDetected, 'continuous: long-hold release burst is expected and detected across the three takes' +
+        (longHoldDetected ? '' : burstCheck.reports.map(eventDiagnostics).join('')));
+      ok(burstCheck.reports.every((r) => r.windows > 0 && r.peak <= DETECT * burstCheck.baseline),
+        'continuous: no key bursts in any of the three takes (calibrated 8 kHz peaks ' + burstCheck.reports.map((r) => r.peak.toFixed(5)).join(', ') + '; same-device baseline ' + burstCheck.baseline.toFixed(5) + ')' +
+        burstCheck.reports.filter((r) => !r.windows || r.peak > DETECT * burstCheck.baseline).map(eventDiagnostics).join(''));
+
+    }
+
+    // 既存の音声がある次のステップでは待ち、よいテイクを上書きしない。
+    for (let j = keys.length - 1; j > firstContinuous - 1; j--) { await page.keyboard.press('ArrowLeft'); await waitIdx(j - 1); }
+    const goodFile = (await manifest())[keys[firstContinuous]].file;
+    await page.keyboard.press('Enter'); await waitIdx(firstContinuous); await page.waitForTimeout(500);
+    ok((await recState()).phase === 'idle' && (await manifest())[keys[firstContinuous]].file === goodFile, 'continuous: a step with current audio waits without overwriting it');
+    await page.keyboard.press('Escape'); await page.waitForSelector('#rec-mode', { state: 'detached' });
+    await page.evaluate(async () => {
+      const S = window.__continuous;
+      navigator.mediaDevices.getUserMedia = S.gum; MediaRecorder.prototype.start = S.start;
+      MediaStreamTrack.prototype.getSettings = S.getSettings; window.__APP_TEST.onRecTake = null;
+      document.removeEventListener('keydown', S.burst, true); document.removeEventListener('keyup', S.burst, true);
+      S.source.getTracks().forEach((t) => t.stop());
+      if (S.audioBursts) { await S.ac.close(); await S.analysis.close(); }
+    });
+
+  }
 
   // ---------------------------------------------------------------- English
   await page.goto(BASE + '?lang=en');

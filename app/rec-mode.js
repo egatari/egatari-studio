@@ -74,7 +74,7 @@ export function createRecMode(o) {
       // 録音／停止は押した瞬間に行う。後から来る click では二重に切り替えない（支援技術の click は受ける）。
       ...(id === 'space' || id === 'enter' ? { pointerdown: (e) => {
         if (e.button !== 0 || !e.isPrimary) return;
-        e.preventDefault(); fn({ startDown: performance.now(), startUp: null, kind: 'pointer', pointerId: e.pointerId }); focusRoot();
+        e.preventDefault(); fn({ startDown: e.timeStamp, startUp: null, startEvent: true, kind: 'pointer', pointerId: e.pointerId }); focusRoot();
       } } : {}),
     } }, [mkEl('kbd', { text: L.keyName[id] || key }), mkEl('span', { text: label })]);
     root = mkEl('aside', { id: 'rec-mode', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rec-title', tabindex: '-1' });
@@ -293,7 +293,7 @@ export function createRecMode(o) {
   }
 
   // ---------------------------------------------------------------- 録音（Space・Enter・Backspace・C・← →）
-  async function toggleRecording(input = { startDown: performance.now(), startUp: null }, continuing = false) {
+  async function toggleRecording(input = { startDown: performance.now(), startUp: null, startEvent: false }, continuing = false) {
     if (!openState) { if (opening) queueStart(input); return; }
     if (!ready || !step) { if (phase === 'idle') queueStart(input); return; }
     if (phase === 'starting' || phase === 'processing') return;
@@ -305,6 +305,9 @@ export function createRecMode(o) {
     result = null; drawTake();
     if (!(await openMic())) { startInput = null; setPhase('idle'); return; }
     if (!openState || my !== seq || !step || step.key !== key) { setPhase('idle'); return; }
+    const reported = mic.stream.getAudioTracks()[0]?.getSettings?.().latency;
+    const latency = Number.isFinite(reported) ? reported : mic.ac.baseLatency;
+    input.inputLatency = Number.isFinite(latency) ? Math.max(0, Math.min(1000, latency * 1000)) : 0;
     const chunks = [];
     let mr;
     try { mr = new win.MediaRecorder(mic.stream); }
@@ -312,10 +315,9 @@ export function createRecMode(o) {
     const t = take = { key, mr, chunks, t0: 0, clicks: input, taps: [], bounds, timer: 0 };
     mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
     // 録音が実際に始まった時刻を 0 にする（C の時刻の基準）。上限の時刻で止める（メーターの描画が止まっている裏のタブでも）
-    mr.onstart = () => { t.t0 = performance.now(); t.clicks.recStart = t.t0; if (take === t) t.timer = setTimeout(() => { if (take === t) overLimit(); }, maxSec() * 1000 + 50); };
+    mr.onstart = () => { t.t0 = performance.now(); t.clicks.recStart = t.t0; if (take === t) { setPhase('recording'); t.timer = setTimeout(() => { if (take === t) overLimit(); }, maxSec() * 1000 + 50); } };
     mic.peak = 0;
     mr.start(250);
-    setPhase('recording');
     paintChips();
     say(continuing ? L.announceContinuous(idx + 1, steps.length) : L.announceRec(bounds));
     o.panel.peek(key).then((info) => { if (take === t && step && step.key === key) drawNotes(info); }, () => {});
@@ -362,7 +364,7 @@ export function createRecMode(o) {
       const ab = await mic.ac.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
       const chans = Array.from({ length: ab.numberOfChannels }, (_, c) => ab.getChannelData(c));
       const cut = clickCut(t.clicks, ab.sampleRate, ab.length);
-      cuts = { head: cut.head / ab.sampleRate, tail: cut.tail / ab.sampleRate };
+      cuts = { head: cut.head / ab.sampleRate, tail: cut.tail / ab.sampleRate, inputLatency: t.clicks.inputLatency / 1000 };
       const clipped = chans.map((c) => applyClickCut(c, cut));
       if (clipped[0].reason) throw Object.assign(new Error(L.emptyClicks), { code: clipped[0].reason });
       const p = processTake(clipped.map((c) => c.pcm), ab.sampleRate);
@@ -372,6 +374,8 @@ export function createRecMode(o) {
       if (o.ws() !== ws || o.generation() !== g || !openState) return false;
       const clip = mic ? mic.peak >= 0.98 : false;
       result = { key, dur: p.dur, gainDb: p.gainDb, clip, sync: cu.sync, raw: Math.round(ab.length / ab.sampleRate * 1000) / 1000, ...cuts, trimmed, loudness: p.loudness, peakDb: p.peakDb, tapTimes: t.taps.slice(), taps: t.taps.length, limit: t.limit || null, bounds: t.bounds, mismatch: t.bounds > 0 && cu.sync === 'none' && t.taps.length !== t.bounds ? true : (t.bounds === 0 && t.taps.length > 0) };
+      // 試験だけ：次のテイクで result が消える前に、操作時刻（ms）とカット範囲（秒）を受け取る。
+      win.__APP_TEST?.onRecTake?.({ ...t.clicks, key, sampleRate: ab.sampleRate, length: ab.length, head: cuts.head, tail: cuts.tail }, { ...result });
       const res = await o.panel.commit(key, { pcm: p.pcm, sr: p.sr, dur: p.dur, gainDb: p.gainDb, cues: cu.cues, sync: cu.sync });
       if (!openState) return false;
       if (res.ok) { mine.add(key); ok = true; }
@@ -391,7 +395,7 @@ export function createRecMode(o) {
   }
   // 整えている間に押された操作は、書き終わってから
   const defer = (fn) => { if (phase === 'processing') { after = fn; return true; } return phase === 'starting'; };   // starting（マイクを開いている間）の操作は受け流す
-  async function enter(input = { startDown: performance.now(), startUp: null }) {
+  async function enter(input = { startDown: performance.now(), startUp: null, startEvent: false }) {
     if (!step) return;
     enterInput = input;
     if (defer(() => enter(input))) return;
@@ -431,7 +435,8 @@ export function createRecMode(o) {
   }
 
   // ---------------------------------------------------------------- キー（この板が開いている間は、ほかのキーより先に受ける）
-  const keyInput = (e) => ({ startDown: performance.now(), startUp: null, kind: 'key', key: e.key === 'Spacebar' ? ' ' : e.key });
+  // DOM の時刻は performance.now() と同じ起点。押下・解放そのものの時刻を使う。
+  const keyInput = (e) => ({ startDown: e.timeStamp, startUp: null, startEvent: true, kind: 'key', key: e.key === 'Spacebar' ? ' ' : e.key });
   function onKey(e) {
     // 開いている途中（r・ボタンの直後）の Space は、ほかへ渡さずに覚えておく（準備ができたら録り始める）
     // Esc は開くのをやめる。この板のほかのキー（r・矢印など）は、開き終えるまで何もしない
@@ -474,13 +479,13 @@ export function createRecMode(o) {
     const key = e.key === 'Spacebar' ? ' ' : e.key;
     for (const input of [startInput, enterInput]) {
       if (input && input.kind === 'key' && input.key === key && input.startUp === null) {
-        input.startUp = performance.now(); e.preventDefault(); e.stopPropagation();
+        input.startUp = e.timeStamp; e.preventDefault(); e.stopPropagation();
       }
     }
     if (swallowUp && key === ' ') { swallowUp = false; e.preventDefault(); e.stopPropagation(); }
   }, true);
   doc.addEventListener('pointerup', (e) => {
-    for (const input of [startInput, enterInput]) if (input && input.kind === 'pointer' && input.pointerId === e.pointerId && input.startUp === null) input.startUp = performance.now();
+    for (const input of [startInput, enterInput]) if (input && input.kind === 'pointer' && input.pointerId === e.pointerId && input.startUp === null) input.startUp = e.timeStamp;
   }, true);
   doc.addEventListener('pointercancel', (e) => { for (const input of [startInput, enterInput]) if (input && input.kind === 'pointer' && input.pointerId === e.pointerId) input.kind = null; }, true);
   // フォーカスが戻った後の解放を開始の解放と取り違えず、120 ms の代替値を使う。
