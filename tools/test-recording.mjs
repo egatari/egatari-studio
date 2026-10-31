@@ -91,6 +91,26 @@ const BASE = `http://127.0.0.1:${srv.address().port}/`;
 const browser = await launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${MIC}`, '--autoplay-policy=no-user-gesture-required'] });
 const ctx = await browser.newContext({ viewport: { width: 1360, height: 820 }, locale: 'ja-JP', permissions: ['microphone'] });
 const page = await ctx.newPage();
+// Rule: a step change during continuous recording plays nothing. The spies are installed in every document (the app and each
+// preview load, which reloads while takes are written) and count here only while RULE2.on.
+const RULE2 = { on: false, plays: 0, starts: 0, loads: 0 };
+await ctx.exposeBinding('__rule2', (_src, kind) => { if (kind !== 'on' && RULE2.on) RULE2[kind]++; return RULE2.on; });
+await ctx.addInitScript(() => {
+  if (typeof window.__rule2 !== 'function') return;
+  const play = HTMLMediaElement.prototype.play, start = AudioScheduledSourceNode.prototype.start;
+  HTMLMediaElement.prototype.play = function (...a) { window.__rule2('plays'); return play.apply(this, a); };
+  AudioScheduledSourceNode.prototype.start = function (...a) { window.__rule2('starts'); return start.apply(this, a); };
+  window.__rule2Probe = () => {
+    DECK.muteSounds(false);
+    DECK.slides.forEach((sl) => sl._comps.push({ from: 0, steps: 99, _v2: true, tagName: 'M-SOUND-PROBE', duration: () => .1, cues: () => [],
+      render() {}, mount() {}, events: () => [{ t: 0, sound: 'note', pitch: 60, dur: 4, vel: .5 }] }));
+  };
+  const t = setInterval(async () => {
+    if (!(window.DECK && DECK.ready && DECK.slides)) return;
+    clearInterval(t);
+    if (await window.__rule2('loads')) window.__rule2Probe();
+  }, 50);
+});
 const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text())) errs.push('console: ' + m.text()); if (process.env.APP_DEBUG) console.log('    [' + m.type() + '] ' + m.text()); });
@@ -661,6 +681,15 @@ try {
     await record(3600); await waitWritten(seedKey, seedPrev);
     await page.evaluate(() => { window.__continuous.starts = 0; });
     const beforeContinuous = await manifest();
+    // Rule: a step change during continuous recording plays nothing (see RULE2), whatever the mute preference.
+    if (!audioBursts) {
+      const f2 = await frameReady();
+      Object.assign(RULE2, { on: true, plays: 0, starts: 0, loads: 0 });
+      // The spy itself counts: one probe oscillator, then reset.
+      await f2.evaluate(async () => { const ac = new AudioContext(), o = ac.createOscillator(); o.start(); o.stop(); await ac.close(); });
+      RULE2.spyWorks = RULE2.starts === 1; RULE2.starts = 0;
+      await f2.evaluate(() => window.__rule2Probe());
+    }
     await page.keyboard.press('Enter');   // 録った後の Enter でも、次の空のステップを開始
     for (let j = firstContinuous; j < keys.length; j++) {
       await waitRec('recordingIdx', j);
@@ -679,6 +708,12 @@ try {
       await page.keyboard.up('Enter');
     }
     await waitIdx(keys.length - 1);
+    if (!audioBursts) {
+      await page.waitForTimeout(500);
+      RULE2.on = false;
+      const r2 = { spyWorks: RULE2.spyWorks, plays: RULE2.plays, sounds: RULE2.starts, reloads: RULE2.loads };
+      ok(r2.spyWorks && r2.plays === 0 && r2.sounds === 0, 'continuous: step changes play nothing (no take playback, no part sounds) ' + JSON.stringify(r2));
+    }
     const continuousEntries = await manifest();
     ok(keys.slice(firstContinuous).every((k) => continuousEntries[k]?.kind === 'recorded' && continuousEntries[k].file !== beforeContinuous[k]?.file), 'continuous: only Enter presses produce three new takes');
     const burstCounts = await page.evaluate(() => {

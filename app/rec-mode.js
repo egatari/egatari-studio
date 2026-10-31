@@ -228,8 +228,7 @@ export function createRecMode(o) {
     setReady(false);
     const key = `${s.slideKey}:${s.stepKey}`;
     // プレビューは編集モードで無音。ここでは位置だけを送り、テイクを再生しない。
-    // TODO #114: DECK.Sounds をプレーヤーへつなぐときも録音モードの間は部品音を強制消音する。
-    // kit/core/sound-preferences.mjs の端末設定は書き換えず、プレビューの編集モードに消音を渡すこと。
+    // 部品の効果音は録音モードの間ずっと止める（open で silenceSounds。端末の消音の設定は書き換えない）。
     ui.goStep(s.slideKey, s.stepKey);
     let info = null;
     try { info = await o.panel.peek(key); } catch (e) { alertMsg(L.fail + (e.message || e)); }
