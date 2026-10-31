@@ -137,7 +137,7 @@ DECK.presenterView = function(){
     var bb = document.getElementById("pv-back");
     bb.hidden = !pos.back;
     if (pos.back){ var c = DECK.ja === false ? ": " : "："; bb.textContent = "← " + L.back + c + pos.back; bb.title = L.back + c + pos.back + (DECK.ja === false ? " (Backspace / Alt+←)" : "（Backspace / Alt+←）"); bb.setAttribute("aria-label", L.back + c + pos.back); }
-    fc.contentWindow && fc.contentWindow.postMessage({type: "deck-goto", i: pos.i, k: pos.k, animate: true}, "*");
+    fc.contentWindow && fc.contentWindow.postMessage({type: "deck-goto", i: pos.i, k: pos.k, animate: true, viewer: pos.viewer}, "*");
     var ni = pos.k < pos.max ? pos.i : pos.i + 1, nk = pos.k < pos.max ? pos.k + 1 : 0;
     fn.contentWindow && fn.contentWindow.postMessage({type: "deck-goto", i: ni, k: nk, animate: false}, "*");
     var cur = notes(pos.key), nxt = pos.nextKey ? notes(pos.nextKey) : [];
@@ -150,6 +150,11 @@ DECK.presenterView = function(){
   window.addEventListener("message", function(e){
     var m = e.data || {};
     if (m.type === "deck-pos" && e.source === opener){ pos = m; update(); if (typeof m.black === "boolean") setBlack(m.black); }
+    if (m.type === "deck-input-state" && e.source === opener){
+      if (pos) pos.viewer = m.viewer;
+      if (fc.contentWindow) fc.contentWindow.postMessage(m, "*");
+    }
+    if (m.type === "deck-cmd" && m.cmd === "input" && e.source === fc.contentWindow) send("input", {input: m.input});
     if (m.type === "deck-black" && e.source === opener) setBlack(m.on);
     if (m.type === "deck-pos" && (e.source === fc.contentWindow || e.source === fn.contentWindow) && !pos){ /* iframe の起動 */ }
   });

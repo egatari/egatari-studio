@@ -48,13 +48,14 @@ var ICON = {
   help: SVG('<path d="M5.8 5.8a2.3 2.3 0 1 1 3.3 2.1c-.7.3-1.1.9-1.1 1.6v.4"/><circle cx="8" cy="12.6" r=".4" fill="currentColor"/>'),
   attach: SVG('<path d="M10.6 4.6L5.4 9.8a1.4 1.4 0 0 0 2 2l5.4-5.4a2.6 2.6 0 0 0-3.7-3.7L3.7 8.1a3.8 3.8 0 0 0 5.4 5.4l4.2-4.2"/>'),
   cap: SVG('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M7 6.6a1.7 1.7 0 1 0 0 2.8M11.6 6.6a1.7 1.7 0 1 0 0 2.8"/>'),
+  mute: SVG('<path d="M2.4 6.2h2.4L8.2 3.4v9.2L4.8 9.8H2.4z"/><path d="m11 6 4 4m0-4-4 4"/>'),
   read: SVG('<path d="M2.4 6.2h2.4L8.2 3.4v9.2L4.8 9.8H2.4z"/><path d="M10.6 5.6a3.2 3.2 0 0 1 0 4.8M12.4 3.8a5.8 5.8 0 0 1 0 8.4"/>')
 };
 // 入力中か：キーを受けた要素（影の木の中の欄も composedPath の先頭で見る）が文字を受けるもの。そのキーは道具に使わない
 function typing(e){
   var t = e.composedPath ? e.composedPath()[0] : e.target;
   if (!t || t.nodeType !== 1) t = e.target;
-  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) || !!(DECK.inputTarget && DECK.inputTarget(e));
 }
 function css(text){ var s = document.createElement("style"); s.className = "deck-tools"; s.textContent = text; document.head.appendChild(s); }
 
@@ -762,15 +763,15 @@ function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {k
 var JA = DECK.ja !== false;
 var TIP = JA
   ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
-     lect: "先のステップを薄く見せる", cap: "字幕", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
+     lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音を消す", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
   : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
-     lect: "Show later steps faintly", cap: "Captions", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
+     lect: "Show later steps faintly", cap: "Captions", mute: "Mute sound effects", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
 var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
-  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
-var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "full", "help"];
+var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 // 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
@@ -790,6 +791,7 @@ function buildBar(){
   BTNS.forEach(function(b){
     if (!b){ var s = document.createElement("i"); s.className = "sep" + (cb.querySelector('[data-b="clear"]') && !cb.querySelector(".dt-tsep") ? " dt-tsep" : ""); s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
     if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
+    if (b[0] === "mute" && !(DECK.hasComponentSounds && DECK.hasComponentSounds())) return;
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
     e.title = TIP[b[0]] + (b[1] ? kk(b[1]) : "");
@@ -859,6 +861,7 @@ function buildBar(){
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
+  document.addEventListener("deck:sounds", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
   buildHandle();
   // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
@@ -974,6 +977,7 @@ function syncBar(){
   }
   [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = PEN_COLOR[COLORS[color]]; });
   on("lect", DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
+  on("mute", DECK.muteSounds && DECK.muteSounds());
   if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);
   if (a && a._p !== playing){

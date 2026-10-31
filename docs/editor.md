@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=84607e5ff23778be -->
+<!-- i18n: pair=editor.ja.md sha256=53342c0c83175e60 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -74,6 +74,13 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Preview ▾ → Check as a slide show** (or `f`): the preview fills the screen, to check it as projected. **Check as a video** shows the preview in the other display mode (Video). **Show later steps faintly** (or `l`) turns faint later steps on or off in the slide show, an option like captions. This is a preview: to present, open the saved `.ega.html` in a browser.
    - **Keys:** after you click the toolbar, header or status bar, the arrows, PageUp/PageDown, Home/End, `b` (black screen: the whole preview turns black, with a faint “Black screen — press b or Esc to return” hint in the corner for 2 s, and again when the mouse moves; `b` again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide), `a` and `f` still reach the slides (not in edit mode, where `b`, `a` and `f` do nothing). While an unsaved script holds the preview, a click or key on it shows why, with Save and Revert next to it.
 
+
+### Viewer input in the presenter view
+
+In the presenter view's current pane, enter the counts in `m-predict`, or use the timer's **+1 min / −1 min** buttons. The stage and the current pane show the same counts and timer extensions; changes on the stage appear in the presenter view too. The next pane shows the author's values. Input fields and controls keep their own keys, so typing a count does not advance the presentation. After a mouse click on a timer button, Space advances as usual.
+
+Counts and timer extensions survive moving forward or back through steps on the same slide. Entering from another slide or jumping to a slide (including the current slide) restores the author's values. Viewer input is ignored in video mode and does not change the script, authored durations, timeline, video or print output.
+
 ## Slide list (add, duplicate, delete, reorder)
 
 The **Slides** tab at the left edge of the preview opens a list there (✕ closes it again): every slide in order, with a thumbnail of its final step and its heading. The thumbnails are drawn by the lesson itself in a sandboxed frame behind the list (the same frame rules as the preview; it takes no clicks and is hidden from screen readers); the list, its buttons and its dialogs are part of the editor page. The list remembers whether it was open (in this browser).
@@ -128,6 +135,8 @@ The ZIP file is a download, so it is untrusted. It is read as bytes with limits 
 `tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. The optional `title` (the lesson title, up to 120 characters) in `tts-job.json` is copied into `records.json` and is used only to name the source lesson when an import is refused. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a ZIP file made by `tools/colab-fixture.mjs`; folder and Egatari file).
 
 ## Recording mode (keyboard only)
+
+Lessons with components that declare sounds or implement `events(k)` show **Mute sound effects** in the slide controls. Use Tab to focus it and Enter or Space to toggle it; its pressed state means all component sounds are muted. The browser remembers this choice when local storage is available. Sounds play on forward step playback in talk and learn after a user gesture; the visible content remains available. Recording mode temporarily silences component sounds throughout the session and restores the saved choice when closed.
 
 <kbd>r</kbd> (in the editor page or in the lesson), or **● Record (r)** in the Audio panel, opens a wide screen for recording the whole script with the keyboard alone. It shows the script of the step **in large type** (a dialogue gets Expert / Novice tags; a long text scrolls inside), and the preview narrows to a stage thumbnail beside it and follows the recording cursor, so you can look at the figure while you read. It lives in the trusted editor page like the Audio panel: the microphone, recording, post-processing and writing are never done in the preview, the preview cannot start a recording (a hint from the lesson can only open this screen), and the preview is inert while the screen is open. It opens at the step on screen (from the Audio panel: at the panel's step) and records the steps that have a script, in order. It is the only way to record: the Audio panel's **● Record (r)** opens it, and the panel stays open behind it, so that **Esc** brings you back to the panel with the new take.
 

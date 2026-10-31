@@ -114,6 +114,30 @@ ok(!/component not found|is not in components2/.test(log), 'no part is missing f
   ok(/egatari-index/.test(fs.readFileSync(path.join(out, 'parts.ega.html'), 'utf8')), 'a 2.0 lesson exports as a single file');
 }
 
+// Small clock/input lesson: the same fixture exercises talk, learn, video and authored output.
+const ctxDir = path.join(out, 'ctx-src'), ctxDeck = path.join(out, 'ctx.html');
+fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), ctxDir, { recursive: true });
+fs.writeFileSync(path.join(ctxDir, 'deck.html'), `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Context clock</title></head>
+<body><div id="stage"><section class="slide" id="clock"><h2>Clock</h2><div class="body">
+<m-probe id="input-clock" input-clock data-from="1" style="display:block;width:500px;height:100px"></m-probe></div></section>
+<section class="slide" id="other"><h2>Other</h2><div class="body">Other slide</div></section></div></body></html>`);
+fs.writeFileSync(path.join(ctxDir, 'narration.md'), '## Clock {#clock}\n[0] Clock.\n[1] Start.\n[2] Compare.\n## Other {#other}\n[0] Other.\n');
+fs.writeFileSync(path.join(ctxDir, 'timeline.json'), JSON.stringify({ 'clock:1': { dur: .2 }, 'clock:2': { dur: .2 } }));
+build(path.join(ctxDir, 'deck.html'), ctxDeck);
+
+// The real vendored predict part must tolerate the dormant live bridge (#112).
+const predictDir = path.join(out, 'predict-src'), predictDeck = path.join(out, 'predict.html');
+fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), predictDir, { recursive: true });
+fs.writeFileSync(path.join(predictDir, 'deck.html'), `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Dormant live prediction</title></head>
+<body><div id="stage"><section class="slide" id="prediction"><h2>Prediction</h2><div class="body">
+<m-predict poll="p1" style="display:block;width:1000px;height:400px"><script type="application/json">{"choices":[{"label":"A"},{"label":"B"},{"label":"C"}],"answer":2,"counts":[14,3,9]}</script></m-predict>
+</div></section></div></body></html>`);
+fs.writeFileSync(path.join(predictDir, 'narration.md'), '## Prediction {#prediction}\n[0] Predict.\n[1] Count.\n[2] Compare.\n');
+fs.rmSync(path.join(predictDir, 'timeline.json'), { force: true });
+build(path.join(predictDir, 'deck.html'), predictDeck);
+ok(partFile('predict', '2.0.0') === path.join(ROOT, 'vendor/components/sha256/2ec05263e6fe8c9cfd7919e4e8031202997d40dceaa93b962fb47c29c3aa972d/index.js')
+  && fs.readFileSync(predictDeck, 'utf8').includes('// ---- predict@2.0.0'), 'prediction lesson uses the real vendored predict@2.0.0');
+
 // Node の部分だけでも、組み立て・索引の受け口を確かめられる。
 if (process.env.EGATARI_TEST_NO_BROWSER === '1') {
   console.log('SKIP browser host checks');
@@ -145,6 +169,31 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
   return { p, errs };
 };
 const { p, errs } = await open(fileUrl(deck));
+// A live client with no reveals and no live client both retain author counts.
+for (const hasLive of [true, false]) {
+  const prediction = await open(fileUrl(predictDeck));
+  const result = await prediction.p.evaluate((hasLive) => {
+    const calls = [];
+    if (hasLive) DECK.live = { poll: (id) => { calls.push(id); return null; } };
+    else delete DECK.live;
+    DECK.go(0, 1, false);
+    const el = document.querySelector('m-predict');
+    // Also exercise a host context that omits live entirely (rather than passing null).
+    if (!hasLive) el.render(1, Infinity, { mode: 'talk', preview: false, entered: false });
+    return { live: !!el._ctx.live, poll: el._ctx.live ? el._ctx.live.poll('p1') : null, calls,
+      values: el.rows.map((r) => r.val.textContent),
+      bars: el.rows.every((r) => +r.bar.getAttribute('width') > 0 && +r.bar.getAttribute('opacity') > 0),
+      controls: el.rows.every((r) => r.ctl.style.display !== 'none'), fields: el.rows.map((r) => r.field.value),
+      liveLabel: el.liveEl.getAttribute('opacity'), errors: DECK.componentErrors };
+  }, hasLive);
+  const label = hasLive ? 'ctx.live.poll returns null' : 'no ctx.live';
+  ok(result.live === hasLive && result.poll === null && (hasLive ? result.calls.length > 1 && result.calls.every((id) => id === 'p1') : result.calls.length === 0),
+    `m-predict: ${label} fixture reaches the expected context`);
+  ok(eq2(result.values, ['14', '3', '9']) && result.bars && result.controls && eq2(result.fields, ['14', '3', '9']) && result.liveLabel === '0',
+    `m-predict: ${label} renders author counts, editable controls and no live label`);
+  ok(result.errors.length === 0 && prediction.errs.length === 0, `m-predict: ${label} has no component or page errors (${prediction.errs.join(' | ')})`);
+  await prediction.p.close();
+}
 // 既に組まれた依存不足のファイルも開けて、残るパーツとスライドは再生できる。
 {
   const oldFile = path.join(out, 'old-requires-missing.html');
@@ -165,7 +214,7 @@ ok(['bars@2.0.0', 'flow@2.0.1', 'kakijun@2.0.0', 'probe@0.1.0'].every((t) => st.
 const fb = await p.evaluate(() => ['m-boom', 'm-orphan'].map((t) => { const e = document.querySelector(t); const x = e && e.querySelector('[data-part-failure="define"]'); return x ? x.textContent : null; }));
 ok(fb[0] === '作れないパーツ' && fb[1] === '頼る先が作れないパーツ', `failed parts show their text equivalent (${JSON.stringify(fb)})`);
 const m0 = await p.evaluate(() => window.__probe.mounts.find((m) => m.id === 'probe-a'));
-ok(m0 && ['go', 'lang', 'mode', 'preview', 'report', 'slide', 'slides', 'visited'].every((k) => m0.keys.includes(k)) && !m0.hasDeck, `ctx at mount: ${m0 && m0.keys.join(',')} (no deck)`);
+ok(m0 && ['extend', 'go', 'lang', 'live', 'mode', 'preview', 'report', 'slide', 'slides', 'visited'].every((k) => m0.keys.includes(k)) && !m0.hasDeck, `ctx at mount: ${m0 && m0.keys.join(',')} (no deck)`);
 ok(m0 && m0.lang === 'ja' && m0.slide === 'p-one' && m0.frozen && JSON.stringify(m0.slides[0]) === JSON.stringify(['p-one', '棒と試験のパーツ', 3, true]) && JSON.stringify(m0.slides[3]) === JSON.stringify(['p-four', '絞り込み', 3, false]),
   `ctx.slides: ${JSON.stringify(m0 && m0.slides)}`);
 ok(await p.evaluate(() => !!document.querySelector('m-bars svg rect, m-bars svg path')), 'm-bars 2.0 drew its SVG');
@@ -263,6 +312,84 @@ await p.close();
   const vr = await v.p.evaluate(() => window.__probe.renders.filter((r) => r.id === 'probe-a'));
   ok(vr.length >= 2 && vr.every((x) => x.entered === false), 'video frames: entered false');
   await v.p.close();
+}
+
+// ctx.extend: actual input controls, live time past duration, step/jump reset, authored outputs and autoplay.
+for (const mode of ['talk', 'learn']) {
+  const clockPage = await open(fileUrl(ctxDeck) + '?mode=' + mode), cp = clockPage.p;
+  await cp.evaluate(() => DECK.go(0, 1, true));
+  const baseline = await cp.evaluate(() => JSON.stringify(DECK.timeline()));
+  await cp.locator('[data-extend="60"]').click();
+  await cp.locator('[data-extend="0"]').click();
+  await cp.waitForTimeout(350);
+  let result = await cp.evaluate(() => ({ inputs: __probe.inputs, last: __probe.renders.filter((r) => r.id === 'input-clock').at(-1),
+    duration: document.querySelector('#input-clock').duration(1), tl: JSON.stringify(DECK.timeline()) }));
+  ok(eq2(result.inputs, [60, 60]) && result.last.t > .2 && result.last.t !== 'inf' && result.duration === .2 && result.tl === baseline,
+    `${mode}: extend(+60/0) returns totals, live clock passes duration(k), duration and timeline unchanged`);
+  await cp.locator('[data-extend="-60"]').click();
+  // The step (0.2 s) has already run past its end, so -60 stops where nothing remains: total = elapsed - duration.
+  const shortened = await cp.evaluate(() => __probe.inputs.at(-1));
+  ok(shortened >= 0 && shortened < 60, `${mode}: extend(-60) stops at zero remaining (${shortened})`);
+  await cp.locator('[data-extend="60"]').click();
+  await cp.evaluate(() => { DECK.next(); DECK.prev(); });
+  ok(await cp.evaluate((shortened) => document.querySelector('#input-clock')._ctx.extend(0) === 60 + shortened && __probe.renders.some((r) => r.reset), shortened), `${mode}: input survives forward/back steps and ctx.reset`);
+  const aside = await cp.evaluate(() => {
+    __probe.renders.length = 0;
+    DECK.aside(() => DECK.seek(0, 1, Infinity));
+    window.dispatchEvent(new Event('beforeprint')); window.dispatchEvent(new Event('afterprint'));
+    return { renders: __probe.renders, extension: document.querySelector('#input-clock')._ctx.extend(0), tl: JSON.stringify(DECK.timeline()) };
+  });
+  ok(aside.renders.some((r) => r.extension === 0 && r.t === 'inf') && aside.extension === 60 + shortened && aside.tl === baseline,
+    `${mode}: print/aside use author values and preserve viewer totals on return`);
+  await cp.evaluate(() => DECK.go(0, 1, false));
+  ok(await cp.evaluate(() => document.querySelector('#input-clock')._ctx.extend(0) === 0), `${mode}: same-slide jump resets extension`);
+  await cp.locator('[data-extend="60"]').click();
+  await cp.evaluate(() => { DECK.go(1, 0, false); DECK.prev(); DECK.prev(); });
+  ok(await cp.evaluate(() => document.querySelector('#input-clock')._ctx.extend(0) === 0), `${mode}: re-entry from another slide resets extension`);
+  await cp.evaluate(() => { DECK.go(0, 1, true); DECK.autoplay(true); document.querySelector('[data-extend="60"]').click(); });
+  await cp.waitForTimeout(350);
+  ok(await cp.evaluate(() => DECK.state().step === 1 && document.querySelector('#input-clock')._ctx.extend(0) === 60), `${mode}: autoplay waits past the authored step end`);
+  await cp.locator('[data-extend="-60"]').click();
+  await cp.waitForTimeout(80);
+  ok(await cp.evaluate(() => DECK.state().step === 2), `${mode}: shortening the elapsed autoplay wait advances`);
+  await cp.evaluate(() => DECK.autoplay(false));
+
+  // Stub the live layer with its real aggregate store; no connection, service or server is involved.
+  const bridge = fs.readFileSync(path.join(ROOT, 'kit/live.js'), 'utf8');
+  await cp.evaluate((code) => {
+    DECK.go(0, 1, false);
+    window.__noLive = document.querySelector('#input-clock')._ctx.live === null;
+    DECK.live = new Function('live', code + '; return {poll: pollResult, setPollResult: setPollResult};')(
+      { activities: { 'clock:1': [{ id: 'p1', kind: 'poll', choices: ['A', 'B'] }] } });
+    DECK.live.setPollResult('p1', { revealed: false, counts: [2, 1] });
+  }, bridge.slice(bridge.indexOf('var pollResults ='), bridge.indexOf('function setState(s, why)')));
+  ok(await cp.evaluate(() => __noLive && __probe.renders.at(-1).counts === null), `${mode}: ctx.live is null without live; unrevealed counts unavailable`);
+  await cp.evaluate(() => DECK.live.setPollResult('p1', { revealed: true, counts: [1, 1] }));
+  ok(await cp.evaluate(() => __probe.renders.at(-1).counts === null), `${mode}: fewer than three answers unavailable`);
+  await cp.evaluate(() => DECK.live.setPollResult('p1', { revealed: true, counts: [2, 1] }));
+  ok(await cp.evaluate(() => JSON.stringify(__probe.renders.at(-1).counts) === '[2,1]' && !__probe.renders.at(-1).entered), `${mode}: revealed counts redraw the current step without entry`);
+  const liveAside = await cp.evaluate(() => {
+    __probe.renders.length = 0;
+    DECK.aside(() => DECK.seek(0, 1, Infinity));
+    window.dispatchEvent(new Event('beforeprint')); window.dispatchEvent(new Event('afterprint'));
+    return __probe.renders.map((r) => r.counts);
+  });
+  ok(liveAside[0] === null && eq2(liveAside.at(-1), [2, 1]), `${mode}: exported/print rendering omits counts and viewer rendering restores them`);
+  ok(clockPage.errs.length === 0, `${mode}: input/live fixture has no page errors (${clockPage.errs.join(' | ')})`);
+  await cp.close();
+}
+{
+  const video = await open(fileUrl(ctxDeck) + '?mode=video');
+  const result = await video.p.evaluate(() => {
+    DECK.live = { poll: () => [2, 1] };
+    DECK.seek(0, 1, .3);
+    const ctx = document.querySelector('#input-clock')._ctx, tl = JSON.stringify(DECK.timeline());
+    return { result: ctx.extend(60), live: ctx.live, total: DECK.stepExtension(0, 1),
+      unchanged: tl === JSON.stringify(DECK.timeline()), last: __probe.renders.at(-1) };
+  });
+  ok(result.result === 0 && result.total === 0 && result.live === null && result.unchanged && result.last.t === .3 && result.last.counts === null,
+    'video: extension commands ignored, author time/timeline retained and live counts omitted');
+  await video.p.close();
 }
 
 // DECK なし（Appendix A 1A：再生器は ctx のほかは何も渡さない）

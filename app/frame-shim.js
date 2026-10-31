@@ -58,6 +58,7 @@ window.addEventListener("message", function(e){
     var send = function(f){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck(f)}, "*"); };
     metricsFonts(document).then(send, function(e){ send({ok: false, missing: [String(e && e.message || e)]}); });
   });
+  else if (m.type === "app-silence-sounds") whenReady(function(){ if (window.DECK && DECK.silenceSounds) DECK.silenceSounds(m.on); });
   else if (m.type === "app-audio") whenReady(function(){ previewAudio(m.items); });
 });
 // 品質チェックは、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。

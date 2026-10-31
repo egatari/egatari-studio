@@ -123,9 +123,17 @@ function cleanReadme(body) {
     .replace(/[（(]\s*[\w./-]+\.md\s*[）)]/g, '')
     .replace(/[（(]\s*[）)]/g, '');
 }
-// 部品の README の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫の README は変えない）。
-// find が README にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
+// 部品の README・props の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫は変えない）。
+// find が部品の節にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
 const PACK_EDITS = {
+  // v0.6.3: ctx.live is dormant until the service sends reveals (#112).
+  'm-predict': [
+    { find: 'live の投票の id（live 拡張のある再生で、見せてよいと決まった集計を棒に出す）',
+      ja: '投票の id（今は見る人・作者の数を使う）', en: 'Live poll ID (v0.6.3 receives no live counts; viewer/author counts are used)' },
+    { find: '- `poll="p1"`：live の投票の集計を出す',
+      ja: '- `poll="p1"`：v0.6.3 は結果公開の送信元がなく、`ctx.live.poll(id)` は null。見る人・作者の数を使う',
+      en: '- `poll="p1"`: reserved for future reveals. No live source sends reveals yet; `ctx.live.poll(id)` returns null, so viewer/author counts are used' },
+  ],
   // 積み上げ棒の描き方（色の満ち方・名前の置き場所）は AI の書き方に関わらないので短く（大きさを抑える）
   'm-bars': [
     { find: '下の系列から順に色が満ちながら棒が合計まで伸び、合計を棒の端に（`unit` 付き）、それぞれの値を区切りの中に単位なしで書く（区切りが字より小さければ書かない）。系列の名前は、縦棒なら最後の組の棒の右、横棒なら最初の組の棒の上に、区切りの真ん中にそろえて書く。軸の上限は合計から決める。組の `tone` は合計の数字の色になる（区切りの色は系列の色のまま）。',
@@ -168,7 +176,7 @@ function applyRowEdits(name, row, lang) {
 function applyPackEdits(name, body, lang) {
   let out = body;
   for (const e of PACK_EDITS[name] || []) {
-    if (!out.includes(e.find)) throw new Error(`PACK_EDITS ${name}: ${JSON.stringify(e.find)} is not in the README any more (review tools/make-llm-guide.mjs)`);
+    if (!out.includes(e.find)) throw new Error(`PACK_EDITS ${name}: ${JSON.stringify(e.find)} is not in the component entry any more (review tools/make-llm-guide.mjs)`);
     out = out.replace(e.find, () => e[lang]);
   }
   return out;
@@ -265,7 +273,8 @@ function entryOf(c, lang, shown = new Set()) {
   const ex = /^```/m.test(c.body) || shown.has(c.fm.name) ? '' : shapeExample(c, lang);
   // README の「子の JSON：`{…}`。」の行は、一覧の「データの形」の欄と同じことなので、データの形があるときはコードを外し、後ろの文（あれば）だけ残す
   const body = c.shape && c.shape.schema ? c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join('')) : c.body;
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, body, lang)));
+  const details = (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, details, lang)));
   return { entry: entry.trim(), sup };
 }
 

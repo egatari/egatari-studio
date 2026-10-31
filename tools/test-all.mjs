@@ -35,6 +35,7 @@ const steps = [
   ...unit,
   // 部品の音（#114）：純粋な音源・通過・延長・ミュートと、動画へ続く余韻。Node だけ
   ['test-sounds', ['tools/test-sounds.mjs']],
+  ['test-sounds-player', ['tools/test-sounds-player.mjs']],
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
@@ -126,6 +127,7 @@ const steps = [
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）
   ['test-app-save-rebuild', ['tools/test-app-save-rebuild.mjs', path.join(tmp, 'save-rebuild')]],
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
+  ['test-viewer-input-browser', ['tools/test-viewer-input-browser.mjs']],
   ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
   // 発表者ビューから抜けること：本体の p・発表者ビューの Esc と p・閉じるのボタン・全画面のときは全画面をやめるだけ・「今の画面」からの Esc と p・フォーカスがないときの覆い（組んだデッキと編集アプリ）
   ['test-notes-browser', ['tools/test-notes.mjs', '--browser']],

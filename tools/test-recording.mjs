@@ -153,6 +153,52 @@ try {
   await page.evaluate(() => { window.__pred = { phase: (s, p) => s.phase === p, recordingIdx: (s, n) => s.open && s.ready && s.idx === n && s.phase === 'recording', idx: (s, n) => s.open && s.ready && s.idx === n && s.phase === 'idle' && !!s.key, idle: (s) => s.open && s.ready && s.phase === 'idle' && !!s.key }; });
   ok(!(await page.$('#b-rec')), 'toolbar: no extra button (the toolbar must stay on one row); the entry is r and the Audio panel');
 
+  // #114: real recording UI -> trusted frame shim -> temporary player override.
+  // Add a fixture part to the mounted second slide; stub only the preview's Web Audio (the mic stays real).
+  await f.evaluate(() => {
+    window.__recSounds = { starts: 0, overrides: [] };
+    class AudioContext {
+      constructor() { this.state = 'suspended'; this.sampleRate = 48000; this.destination = {}; }
+      get currentTime() { return performance.now() / 1000; }
+      resume() { this.state = 'running'; return Promise.resolve(); }
+      createOscillator() { return { frequency: { setValueAtTime() {} }, connect() {}, disconnect() {}, start() { __recSounds.starts++; }, stop() {} }; }
+      createGain() { return { connect() {}, disconnect() {}, gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {} } }; }
+    }
+    window.AudioContext = AudioContext;
+    const silence = DECK.silenceSounds;
+    DECK.silenceSounds = (on) => { __recSounds.overrides.push(on); silence(on); };
+    const p = window.__recSoundPart = { from: 1, steps: 1, _v2: true, tagName: 'M-SOUND-PROBE',
+      duration: () => .1, cues: () => [], render() {}, mount() {},
+      events: () => [{ t: 0, sound: 'note', pitch: 60, dur: 4, vel: .5 }] };
+    DECK.slides[1]._comps.push(p);
+    DECK.muteSounds(false);
+    DECK.go(1, 0, false);
+  });
+  await f.locator('body').click({ position: { x: 10, y: 10 } });
+  await f.evaluate(() => DECK.next());
+  ok(await f.evaluate(() => __recSounds.starts === 2), 'sounds: fixture sounds before recording mode');
+  await f.evaluate(() => DECK.go(1, 0, false));
+  for (const saved of [false, true]) {
+    await f.evaluate((v) => DECK.muteSounds(v), saved);
+    await page.evaluate(() => document.body.focus()); await page.keyboard.press('r');
+    await waitRec('idle');
+    await f.waitForFunction(() => __recSounds.overrides.at(-1) === true);
+    const before = await f.evaluate(() => __recSounds.starts);
+    await f.evaluate(() => { DECK.go(1, 0, false); DECK.next(); });
+    await page.waitForTimeout(300);
+    ok(await f.evaluate(([n, v]) => __recSounds.starts === n && DECK.muteSounds() === v, [before, saved]), 'sounds: recording silences crossings and keeps preference ' + saved);
+    await page.keyboard.press('Escape'); await page.waitForSelector('#rec-mode', { state: 'detached' });
+    await f.waitForFunction(() => __recSounds.overrides.at(-1) === false);
+    ok(await f.evaluate((v) => DECK.muteSounds() === v, saved), 'sounds: leaving recording preserves preference ' + saved);
+    await f.evaluate(() => DECK.go(1, 0, false));
+    if (!saved) {
+      await f.evaluate(() => DECK.next());
+      ok(await f.evaluate((n) => __recSounds.starts === n + 2, before), 'sounds: leaving recording restores live sounds');
+    }
+  }
+  await f.evaluate(() => { DECK.slides[1]._comps = DECK.slides[1]._comps.filter((c) => c !== __recSoundPart); DECK.muteSounds(false); DECK.go(0, 0, false); });
+  await page.waitForFunction(() => { const p = window.__APP_TEST.ui().pos; return p && p.i === 0 && p.k === 0; });
+
   // ---------------------------------------------------------------- 開く（r）
   await page.evaluate(() => document.body.focus());
   await page.keyboard.press('r');
