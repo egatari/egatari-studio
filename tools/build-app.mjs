@@ -53,6 +53,9 @@ for (const f of fs.readdirSync(rel('kit'))) if (/\.(js|css)$/.test(f)) add('/rep
 for (const f of [...Object.keys(RUNTIME_MODULES), ...Object.keys(RUNTIME_NAMESPACES)]) text['/repo/kit/' + f] = fs.readFileSync(rel('kit', ...f.split('/')), 'utf8');
 // 部品：content 表が指す写し vendor/components/sha256/<hash>/index.js（同じ写しは 1 回だけ）と components.lock.json（tools/vendor-components.mjs）
 add('/repo/components2.lock.json', rel('components2.lock.json'));
+// The build carries manifest viewerInput capabilities into the runtime and portable index.
+add('/repo/vendor/components/manifest.json', rel('vendor/components/manifest.json'));
+for (const f of fs.readdirSync(rel('vendor/components-2')).filter((f) => /^manifest-.*\.json$/.test(f))) add('/repo/vendor/components-2/' + f, rel('vendor/components-2', f));
 const components = vendorComponents(ROOT).map((c) => c.name);
 for (const [virt, file] of appComponentFiles(ROOT)) add(virt, file);
 // テーマ（ロゴも）

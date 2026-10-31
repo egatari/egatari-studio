@@ -1151,6 +1151,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (p.subset) c.subset = { keys: p.subset.keys, sha256: await sha256Hex(utf8(p.code.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--').replace(/\r\n?/g, '\n'))) };
     components.push(c);
   }
+  for (const c of components) if (c.tag && r.stats.viewerInputs?.[c.tag] === true) c.viewerInput = true;
   // 原稿の中で動くもの（スクリプト・イベントの属性・javascript: の URL・取り込む SVG や HTML の中のもの・JavaScript のファイル）も、
   // 文書が持ち込むコード。読み手と同じ規則（kit/core/code-scan.mjs、§6）で中身から決める
   const deckSrc = new TextDecoder().decode(files[entry]);

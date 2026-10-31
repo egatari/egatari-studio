@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=21903ece89e7ce10 -->
+<!-- i18n: pair=editor.ja.md sha256=e913f2d4c9073508 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -73,6 +73,13 @@ A web page that opens a working folder directly and does what the [dev server](d
    - **Black screen in the presenter view:** while the main window is black, the presenter view shows "Black screen", and `b` there also toggles the black screen on the main window. While it is black, the arrows, Space or PageUp/PageDown in the presenter view end the black screen without moving the slide.
    - **Preview ▾ → Check as a slide show** (or `f`): the preview fills the screen, to check it as projected. **Check as a video** shows the preview in the other display mode (Video). **Show later steps faintly** (or `l`) turns faint later steps on or off in the slide show, an option like captions. This is a preview: to present, open the saved `.ega.html` in a browser.
    - **Keys:** after you click the toolbar, header or status bar, the arrows, PageUp/PageDown, Home/End, `b` (black screen: the whole preview turns black, with a faint “Black screen — press b or Esc to return” hint in the corner for 2 s, and again when the mouse moves; `b` again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide), `a` and `f` still reach the slides (not in edit mode, where `b`, `a` and `f` do nothing). While an unsaved script holds the preview, a click or key on it shows why, with Save and Revert next to it.
+
+
+### Viewer input in the presenter view
+
+In the presenter view's current pane, enter the counts in `m-predict`, or use the timer's **+1 min / −1 min** buttons. The stage and the current pane show the same counts and timer extensions; changes on the stage appear in the presenter view too. The next pane shows the author's values. Input fields and controls keep their own keys, so typing a count does not advance the presentation. After a mouse click on a timer button, Space advances as usual.
+
+Counts and timer extensions survive moving forward or back through steps on the same slide. Entering from another slide or jumping to a slide (including the current slide) restores the author's values. Viewer input is ignored in video mode and does not change the script, authored durations, timeline, video or print output.
 
 ## Slide list (add, duplicate, delete, reorder)
 

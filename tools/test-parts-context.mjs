@@ -101,14 +101,15 @@ assert.equal(render.extend(0), 60);
 frame(3000);
 assert.equal(drawn.at(-1).t, 3, 'live time runs beyond duration(1)=2');
 assert.equal(drawn.at(-1).extension, 60);
-assert.equal(render.extend(-60), 0);
+assert.equal(render.extend(-60), 1, "shortening stops at elapsed time, leaving zero remaining");
 frame(3100);
 assert.equal(drawn.at(-1).t, Infinity);
-assert.equal(render.extend(60), 60, 'an extension restarts a completed clock');
+assert.equal(render.extend(60), 61, 'an extension restarts a completed clock');
 frame(3200);
 assert.ok(Number.isFinite(drawn.at(-1).t));
-assert.equal(render.extend(NaN), 60); assert.equal(render.extend(Infinity), 60);
-assert.equal(render.extend('60'), 60);
+assert.equal(render.extend(NaN), 61); assert.equal(render.extend(Infinity), 61);
+assert.equal(render.extend('60'), 61);
+scope.stopLoop(); scope.viewerAt(0, 1, true);
 assert.equal(render.extend(-1000), -2, 'cannot shorten below zero total duration');
 frame(3300);
 assert.equal(scope.liveRun.t, 0);
@@ -126,7 +127,7 @@ scope.viewerAt(0, 2, true);
 scope.ASIDE = 0;
 assert.equal(render.extend(0), 60, 'print/thumbnail rendering preserves viewer totals');
 for (const field of ['mode', 'view']) {
-  const old = deck[field]; deck[field] = field === 'mode' ? 'video' : 'follow';
+  const old = deck[field]; deck[field] = field === 'mode' ? 'video' : 'next';
   assert.equal(render.extend(60), 0); assert.equal(deck.stepExtension(), 0);
   deck[field] = old;
 }
@@ -146,12 +147,12 @@ assert.equal(timers.get(scope.auto.timer).ms, 61500, 'autoplay re-times the rema
 assert.equal(render.extend(-60), 0);
 assert.equal(timers.get(scope.auto.timer).ms, 1500);
 now = 13000;
-assert.equal(render.extend(-60), -2);
+assert.equal(render.extend(-60), 0);
 assert.equal(timers.get(scope.auto.timer).ms, 0, 'shortening an elapsed step advances immediately');
 const advance = timers.get(scope.auto.timer).fn;
 advance();
 assert.equal(scope.POS.k, 2);
-assert.equal(deck.stepExtension(0, 1), -2, 'autoplay within the slide preserves earlier totals');
+assert.equal(deck.stepExtension(0, 1), 0, 'autoplay within the slide preserves earlier totals');
 assert.deepEqual(deck.timeline(), authored, 'timeline keeps authored values');
 scope.stopAuto(); scope.stopLoop();
 // Shortening before narration's lead must cancel its delayed start on the next segment.

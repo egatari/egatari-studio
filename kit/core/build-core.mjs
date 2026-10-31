@@ -841,6 +841,12 @@ export function build(env0, srcPath, opts = {}) {
   let compJs = '';
   const localComps = [];
   const componentVersions = {};
+  // Manifest input capability also travels with the built player and portable index.
+  const viewerInputs = {};
+  const manifestInput = (file, name) => {
+    if (!env.exists(file)) return false;
+    try { return JSON.parse(env.readText(file)).components?.[name]?.viewerInput === true; } catch { return false; }
+  };
   // 部品庫 2.0（format spec §6.1・§6.2。kit/core/parts2.mjs）：設定のファイルの componentsCatalogue か opts.componentsCatalogue で選んだ教材だけ。
   // 既定は 1.x（下の今までの読み込み）
   let parts2 = null;
@@ -864,6 +870,12 @@ export function build(env0, srcPath, opts = {}) {
         parts2 = buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue: pc.catalogue, pins, warn, macros, lessonText: [raw, decodeEntities(raw), dataText.join('\n'), narrText].join('\n') });
         html = parts2.html;
         compJs = parts2.js;
+        for (const p of parts2.parts) {
+          if (p.source === 'registry' && manifestInput(P.join(ROOT, 'vendor', 'components-2', `manifest-${pc.catalogue}.json`), p.name)) {
+            p.viewerInput = true;
+            if (p.tag) viewerInputs[p.tag] = true;
+          }
+        }
         localComps.push(...parts2.localFiles);
       }
     }
@@ -908,6 +920,7 @@ export function build(env0, srcPath, opts = {}) {
     const where = env.within(file, deckDir) ? P.relative(deckDir, file)
       : componentVersions[name] ? `vendor/components/${name}/${componentVersions[name]}/index.js` : P.relative(ROOT, file);
     if (env.within(file, deckDir)) localComps.push(where.split(P.sep).join('/'));
+    if (componentVersions[name] && manifestInput(P.join(ROOT, 'vendor', 'components', 'manifest.json'), name)) viewerInputs[tag] = true;
     compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
   }
   // 原稿の中の <script> の部品定義も含めて、SVG の中の式（svgMath）を使うなら KaTeX を実行時にも読み込む
@@ -991,7 +1004,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${parts2 && !parts2.legacy.length ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(parts2 && !parts2.legacy.length ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.VIEWER_INPUT = ${JSON.stringify(viewerInputs)}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${parts2 && !parts2.legacy.length ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(parts2 && !parts2.legacy.length ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
@@ -1052,7 +1065,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const f of localComps) codeReasons.push(`script file ${f}`);
 
   // theme：選んだテーマの名前と寸法の宣言（metrics。品質チェックが限りに使う。描くのには使わない）
-  return { html, trusted, stats: { math: count, slides: slides.length, components: used, componentVersions, ...(parts2 ? { componentsCatalogue: parts2.catalogue, parts: parts2.parts, legacyComponents: parts2.legacy } : {}), yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
+  return { html, trusted, stats: { math: count, slides: slides.length, components: used, componentVersions, viewerInputs, ...(parts2 ? { componentsCatalogue: parts2.catalogue, parts: parts2.parts, legacyComponents: parts2.legacy } : {}), yanked: yankedUsed, themePinned: tctx.pinned, themeVersions: tctx.versions, themeDirs: tctx.dirs, fontFiles: fonts.n, narration: segs.length, audio: Object.keys(audio).length, warn, theme: themeName, codeReasons }, slides, segs,
     theme: { name: themeName, metrics: theme.metrics, declared: theme.declared } };
 }
 // 実行系の JSON のブロック。format spec §2：JSON の中の < はすべて \u003c と書く（</script や <!-- で抜けられないように）

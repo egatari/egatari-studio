@@ -55,7 +55,7 @@ var ICON = {
 function typing(e){
   var t = e.composedPath ? e.composedPath()[0] : e.target;
   if (!t || t.nodeType !== 1) t = e.target;
-  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) || !!(DECK.inputTarget && DECK.inputTarget(e));
 }
 function css(text){ var s = document.createElement("style"); s.className = "deck-tools"; s.textContent = text; document.head.appendChild(s); }
 

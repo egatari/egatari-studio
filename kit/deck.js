@@ -653,39 +653,136 @@ function reporter(c){
 }
 // Viewer input (format §8.4): totals belong to slide steps, never to duration()/the authored timeline.
 var viewerStep = null, stepExtensions = Object.create(null), liveRun = null;
+var inputEntry = 0, mirrorEntry = null, inputRendering = 0, inputMirroring = false;
 function viewerAt(i, k, entered){
-  if (ASIDE || DECK.mode === "video" || DECK.view) return;
-  if (entered) stepExtensions = Object.create(null);
+  if (ASIDE || DECK.mode === "video" || (DECK.view && DECK.view !== "follow")) return;
+  if (entered){ stepExtensions = Object.create(null); inputEntry++; }
   viewerStep = {i: i, k: k};
 }
-function viewerInput(){ return !ASIDE && DECK.mode !== "video" && !DECK.view; }
+function viewerInput(){ return !ASIDE && DECK.mode !== "video" && (!DECK.view || DECK.view === "follow"); }
 // Sound timing uses this total at the live playback hook below. Video/aside renders use authored times.
 DECK.stepExtension = function(i, k){
   if (!viewerInput() || !viewerStep) return 0;
   if (i === undefined){ i = viewerStep.i; k = viewerStep.k; }
   return i === viewerStep.i ? stepExtensions[k] || 0 : 0;
 };
-function ctxExtend(s, seconds){
+function ctxExtend(s, seconds, c){
   if (!started || !viewerInput() || !viewerStep || slides[viewerStep.i] !== s) return 0;
   var i = viewerStep.i, k = viewerStep.k, before = DECK.stepExtension(i, k);
   if (typeof seconds !== "number" || !isFinite(seconds) || seconds === 0) return before;
   var seg = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
   // The part clamps first (m-timer: remaining >= 0, total <= 1 hour); the player keeps the step length >= 0 and the total <= 1 hour.
-  var total = Math.max(-(seg ? seg.dur : 0), Math.min(3600, before + seconds)) || 0;
+  var elapsed = liveRun && liveRun.i === i && liveRun.k === k ?
+    Math.min(Math.max(0, (seg ? seg.dur : 0) + before), Math.max(liveRun.t, (performance.now() - liveRun.start) / 1000)) : 0;
+  var total = Math.max(elapsed - (seg ? seg.dur : 0), Math.min(3600, before + seconds));
+  total = Math.min(3600, total) || 0;
   stepExtensions[k] = total;
+  if (DECK.view === "follow"){
+    if (total !== before) post({type: "deck-cmd", cmd: "input", input: {type: "input", key: inputKey(s, c), id: "extend", value: total - before}});
+    return total;
+  }
   if (total !== before){
+    queueInputState();
     // A finished/manual step can start its clock again; an active clock keeps its elapsed time.
     if (!liveRun) liveRun = {i: i, k: k, base: animDur(i, k), start: performance.now(), t: 0, first: false, from: -1};
     if (liveRun.i === i && liveRun.k === k && !raf){
       liveRun.start = performance.now() - liveRun.t * 1000;
       raf = requestAnimationFrame(tickLive);
     }
-    scheduleAutoEnd();
   }
+  scheduleAutoEnd();
   return total;
 }
+// Input keys use the slide key and the index in its component list (including non-input parts).
+function inputKey(s, c){ return s._key + ":" + s._comps.indexOf(c); }
+function inputPart(c){
+  var C = c && c.constructor, meta = C && C.meta;
+  return !!(c && ((DECK.VIEWER_INPUT || {})[c.localName] === true || (C && C.viewerInput === true) || (meta && meta.viewerInput === true)));
+}
+function inputTarget(e){
+  var path = e.composedPath ? e.composedPath() : [], t = e.target;
+  if (path.some(inputPart)) return true;
+  for (; t; t = t.parentElement) if (inputPart(t)) return true;
+  return false;
+}
+function inputElement(key){
+  if (typeof key !== "string" || !viewerStep) return null;
+  var s = slides[viewerStep.i];
+  return s._comps.find(function(c){ return inputPart(c) && inputKey(s, c) === key; }) || null;
+}
+function validInput(m, c){
+  if (!m || m.type !== "input" || !c || typeof m.value !== "number" || !isFinite(m.value)) return false;
+  if (c.localName === "m-predict") return typeof c.input === "function" && Number.isInteger(m.id) && m.id >= 0 &&
+    m.id < c.author.length && Number.isInteger(m.value) && m.value >= 0 && m.value <= 9999;
+  if (c.localName === "m-timer") return m.id === "extend" && viewerStep.k >= c.from && viewerStep.k < c.from + c.steps;
+  return false;
+}
+function applyInput(m){
+  if (!started || !viewerInput() || DECK.view) return;
+  var c = inputElement(m && m.key);
+  if (!validInput(m, c)) return;
+  if (c.localName === "m-predict") c.input(m.id, m.value);
+  else ctxExtend(c._slide, m.value, c);
+  queueInputState();
+}
+function inputState(){
+  if (!viewerInput() || !viewerStep) return null;
+  var s = slides[viewerStep.i], r = liveRun;
+  return {entry: inputEntry, i: viewerStep.i, k: viewerStep.k,
+    counts: s._comps.filter(function(c){ return inputPart(c) && c.localName === "m-predict" && typeof c.counts === "function"; })
+      .map(function(c){ return {key: inputKey(s, c), counts: c.counts()}; }),
+    extensions: Object.assign({}, stepExtensions),
+    clock: r && r.i === viewerStep.i && r.k === viewerStep.k ? {t: r.t, base: r.base, running: !!raf} : null};
+}
+var inputQueued = false;
+function queueInputState(){
+  if (inputQueued || !DECK.ready || DECK.view || !viewerInput()) return;
+  inputQueued = true;
+  Promise.resolve().then(function(){
+    inputQueued = false;
+    var msg = {type: "deck-input-state", viewer: inputState()};
+    if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
+    if (editorParent() && presenter !== window.parent) window.parent.postMessage(msg, "*");
+  });
+}
+function mirrorInput(v){
+  if (!v || !viewerInput() || DECK.view !== "follow" || !viewerStep || v.i !== viewerStep.i || v.k !== viewerStep.k) return;
+  inputMirroring = true;
+  try {
+    mirrorEntry = v.entry;
+    stepExtensions = Object.create(null);
+    Object.keys(v.extensions || {}).forEach(function(k){
+      var n = v.extensions[k];
+      if (/^[0-9]+$/.test(k) && typeof n === "number" && isFinite(n) && n <= 3600) stepExtensions[k] = n;
+    });
+    (v.counts || []).forEach(function(p){
+      var c = inputElement(p.key);
+      if (!c || !Array.isArray(p.counts)) return;
+      p.counts.forEach(function(n, i){ var m = {type: "input", id: i, value: n}; if (validInput(m, c)) c.input(i, n); });
+    });
+    stopLoop();
+    var r = v.clock;
+    if (r && typeof r.t === "number" && isFinite(r.t) && typeof r.base === "number" && isFinite(r.base)){
+      liveRun = {i: v.i, k: v.k, t: r.t, base: r.base, start: performance.now() - r.t * 1000, first: false, from: -1};
+      seek(v.i, v.k, r.t, undefined, true);
+      if (r.running) raf = requestAnimationFrame(tickLive);
+    } else seek(v.i, v.k, Infinity, undefined, true);
+  } finally { inputMirroring = false; }
+}
+document.addEventListener("egatari-input", function(e){
+  if (!started || !viewerInput() || inputRendering || inputMirroring) return;
+  var c = e.target, s = viewerStep && slides[viewerStep.i];
+  if (!s || s._comps.indexOf(c) < 0 || !inputPart(c)) return;
+  if (!DECK.view){ queueInputState(); return; }
+  // Timer changes already went through ctx.extend; its outgoing event contains a total, not a delta.
+  if (c.localName !== "m-predict" || !e.detail || !Array.isArray(e.detail.counts)) return;
+  e.detail.counts.forEach(function(n, i){
+    var m = {type: "input", key: inputKey(s, c), id: i, value: n};
+    if (validInput(m, c)) post({type: "deck-cmd", cmd: "input", input: m});
+  });
+});
 var CTX_LIVE = Object.freeze({poll: function(id){
-  if (!viewerInput() || !DECK.live || typeof DECK.live.poll !== "function") return null;
+  if (!viewerInput() || DECK.view || !DECK.live || typeof DECK.live.poll !== "function") return null;
   var counts = DECK.live.poll(id);
   // Enforce the privacy floor even with a host-supplied live client; never pass identities through.
   if (!Array.isArray(counts) || !counts.length || !Array.from(counts).every(function(n){ return Number.isSafeInteger(n) && n >= 0; }) ||
@@ -699,8 +796,8 @@ document.addEventListener("deck:live", function(){
 });
 function ctxFor(c, s, o){
   var x = {mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
-    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds); },
-    live: viewerInput() && DECK.live && typeof DECK.live.poll === "function" ? CTX_LIVE : null};
+    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds, c); },
+    live: viewerInput() && !DECK.view && DECK.live && typeof DECK.live.poll === "function" ? CTX_LIVE : null};
   for (var k in o) x[k] = o[k];
   if (!c._v2) x.deck = DECK;
   return x;
@@ -814,12 +911,14 @@ function seek(i, k, t, from, cont){
     var lead = tc === Infinity ? 0 : (timing(i, k).lead || 0);
     var p = compPos(c, k, tc, ac && ac.map(function(x){ return x + lead; }));
     var ctx = ctxFor(c, s, {instant: p.t === Infinity, entered: entered});
+    inputRendering++;
     try {
       // 見ている人が触った部品は、段階に入るとき（同じ段階に入り直すときも）宣言どおりの画面に戻す（docs/contract.md §3）。横に置く描画では戻さない
       if (c._touched && !cont && !ASIDE){ c._touched = false; untouch(c, p.k, ctx); }
       c.render(p.k, p.t, ctx);
     }
     catch (e) { compFail(c, s, i, {kind: "exception", msg: errText(e)}, "render"); c.mount(ctxFor(c, s, {instant: true, entered: false})); }
+    finally { inputRendering--; }
   });
   if (lastPos && lastPos.i !== i){ var ls = slides[lastPos.i]; ls._tok++; ls._legacyAt = undefined; }
   legacy(s, k, t === Infinity);
@@ -1589,7 +1688,7 @@ function broadcast(p){
   var ni = step < slides[cur]._max ? cur : cur + 1, nk = step < slides[cur]._max ? step + 1 : 0;
   var msg = {type: "deck-pos", i: cur, k: step, max: slides[cur]._max, n: slides.length, key: DECK.stepKey(cur, step),
              nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: p.playing, cause: p.cause || "control",
-             back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack()};
+             back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack(), viewer: inputState()};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   // 編集のプレビュー（server/hints.js が DECK_DEV を立てた枠）では、中継する親の窓にも送る。ほかの親（埋め込み・知らない枠）には送らない（埋め込みは下の position だけ）
   if (editorParent() && presenter !== window.parent) window.parent.postMessage(msg, "*");
@@ -1627,9 +1726,15 @@ window.addEventListener("message", function(e){
     else if (m.cmd === "auto"){ if (!EDIT) DECK.autoplay(); else POS.publish(); }   // 編集中は始めない（発表者ビューのボタンは今の状態に戻す）
     // 編集の画面から送られたキー：編集のプレビュー（server/hints.js が DECK_DEV を立てる）で、親の窓から届いたものだけ。ほかの送り手（自分・子の枠・別の窓）は無視する
     else if (m.cmd === "key" && typeof m.key === "string"){ if (window.DECK_DEV && window.parent !== window && e.source === window.parent) forwardedKey(m.key); }
+    else if (m.cmd === "input") applyInput(m.input);
     else if (m.cmd === "hello"){ presenter = e.source; POS.publish(); document.dispatchEvent(new CustomEvent("deck:presenter", {detail: {source: e.source}})); }
   } else if (m.type === "deck-goto" && DECK.view && slides.length && e.source === window.parent){   // 発表者ビューの中の画面：発表者ビュー（親）からだけ
-    go(m.i, m.k, !!m.animate, m.i === POS.i);   // 同じスライドの中の送りは跳ばない（ctx.entered。本体の位置についていくだけ）
+    var newEntry = m.viewer && m.viewer.entry !== mirrorEntry;
+    if (newEntry || m.i !== POS.i || m.k !== POS.k) go(m.i, m.k, !!m.animate, !newEntry && m.i === POS.i);
+    if (m.viewer) mirrorInput(m.viewer);
+    // 同じスライドの中の送りは跳ばない（ctx.entered。本体の位置についていくだけ）
+  } else if (m.type === "deck-input-state" && DECK.view === "follow" && e.source === window.parent){
+    mirrorInput(m.viewer);
   } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
     // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
     LINKS.follow = m.follow;
@@ -2012,8 +2117,9 @@ var buf = "";
 function typingIn(e){
   var t = e.composedPath ? e.composedPath()[0] : e.target;
   if (!t || t.nodeType !== 1) t = e.target;
-  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+  return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) || inputTarget(e);
 }
+DECK.inputTarget = inputTarget;
 // 編集モード（開発サーバー・編集アプリのプレビュー。server/hints.js が document に deck:edit {on} を送る）：
 // 入るときに自動再生と音声・暗転・全画面・打ちかけのページ番号をやめ、編集している間は a・b・f（編集の画面から送られたキーも）と発表者ビューからの自動再生を受けない。
 // 出るときは何も戻さない。ふつうのデッキ（hints.js のない書き出し・再生専用の 1 ファイル・発表者ビュー）では起きない
