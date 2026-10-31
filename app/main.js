@@ -221,6 +221,7 @@ function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
+  sendSoundSilence(rec.isOpen());
   const a = document.activeElement;
   if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
   focusPreview();
@@ -843,6 +844,10 @@ const audio = createAudioPanel({
   },
 });
 afterNameChange = () => audio.dirtyChanged();
+function sendSoundSilence(on) {
+  const f = $('preview');
+  if (f && f.contentWindow) f.contentWindow.postMessage({ type: 'app-silence-sounds', on: !!on }, '*');
+}
 // 録音モード（app/rec-mode.js）：キーボードだけで段階ごとに録る。信頼する編集の画面の中の幅広い板（プレビューは横に細くして、その段階の舞台を見せる）。
 // 音声の板（audio）の peek / commit / revert を通すので、書き方（audio/manifest.json・権利の確認・前に戻す）は音声の板と同じ
 const rec = createRecMode({
@@ -851,6 +856,7 @@ const rec = createRecMode({
   slideIndex: (key) => { const i = (S.slides || []).findIndex((x) => x.key === key); return i < 0 ? null : i; },
   enabled: () => !!(S.ws && S.base && !$('deck').hidden),
   beforeOpen: () => beforeEditing('audio'),
+  silenceSounds: sendSoundSilence,
   // 1 つのテイクの上限（既定 600 秒）。試験だけ短くできる
   maxSeconds: () => (window.__APP_TEST && window.__APP_TEST.recMaxSeconds) || null,
 });

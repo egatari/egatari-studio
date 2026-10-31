@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=f40a227940f275d7 -->
+<!-- i18n: pair=editor.ja.md sha256=21903ece89e7ce10 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -128,6 +128,8 @@ The ZIP file is a download, so it is untrusted. It is read as bytes with limits 
 `tts-job.json` and `records.json` (`egatari: "tts-job"` / `"tts-records"`, `v: 1`) are this product's interchange between the editor and the notebook, not part of the format spec. The optional `title` (the lesson title, up to 120 characters) in `tts-job.json` is copied into `records.json` and is used only to name the source lesson when an import is refused. Each step's record in `records.json` has the shape of an audio record of spec §5.2 (`file`, `dur`, `cues`, `kind`, `sync`, `inputHash`, `recipe`). The tests are `tools/test-colab.mjs` (zip reader, job, import plan, hostile archives, the notebook, and the Python core's dry-run when `uv` is available) and `tools/test-colab-app.mjs` (the editor round trip with a ZIP file made by `tools/colab-fixture.mjs`; folder and Egatari file).
 
 ## Recording mode (keyboard only)
+
+Lessons with components that declare sounds or implement `events(k)` show **Mute sound effects** in the slide controls. Use Tab to focus it and Enter or Space to toggle it; its pressed state means all component sounds are muted. The browser remembers this choice when local storage is available. Sounds play on forward step playback in talk and learn after a user gesture; the visible content remains available. Recording mode temporarily silences component sounds throughout the session and restores the saved choice when closed.
 
 <kbd>r</kbd> (in the editor page or in the lesson), or **● Record (r)** in the Audio panel, opens a wide screen for recording the whole script with the keyboard alone. It shows the script of the step **in large type** (a dialogue gets Expert / Novice tags; a long text scrolls inside), and the preview narrows to a stage thumbnail beside it and follows the recording cursor, so you can look at the figure while you read. It lives in the trusted editor page like the Audio panel: the microphone, recording, post-processing and writing are never done in the preview, the preview cannot start a recording (a hint from the lesson can only open this screen), and the preview is inert while the screen is open. It opens at the step on screen (from the Audio panel: at the panel's step) and records the steps that have a script, in order. It is the only way to record: the Audio panel's **● Record (r)** opens it, and the panel stays open behind it, so that **Esc** brings you back to the panel with the new take.
 

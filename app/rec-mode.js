@@ -474,6 +474,8 @@ export function createRecMode(o) {
     // 音声の板は開いたまま（録音モードの間は隠れる）。閉じると、板が録った段階の新しい音声を見せる
     prevFocus = doc.activeElement; returnFocus = typeof opts.returnFocus === 'function' ? opts.returnFocus : null;
     take = null; result = null; mine = new Set(); after = null; ready = false; phase = 'idle';
+    // #114: silence the preview throughout recording mode, without saving a mute choice.
+    if (o.silenceSounds) o.silenceSounds(true);
     view = build();
     o.host.insertBefore(view, o.host.firstChild);
     o.host.classList.add('rec-on');
@@ -518,6 +520,7 @@ export function createRecMode(o) {
   // 開けなかった・開いている途中で閉じた：出しておいた画面を外し、フォーカスを戻す
   function teardown(opts = {}) {
     if (openState || !root) return;
+    if (o.silenceSounds) o.silenceSounds(false);
     const hadFocus = root.contains(doc.activeElement);
     root.remove(); root = null; view = null; liveEl = alertEl = null;
     o.host.classList.remove('rec-on');
@@ -534,6 +537,7 @@ export function createRecMode(o) {
   function close(opts = {}) {
     if (!openState) { if (opening) { cancelled = true; teardown(opts); } return; }
     openState = false; seq++;
+    if (o.silenceSounds) o.silenceSounds(false);
     if (take) { const t = take; take = null; clearTimeout(t.timer); try { t.mr.ondataavailable = null; t.mr.onstop = null; if (t.mr.state !== 'inactive') t.mr.stop(); } catch { /* 無視 */ } }
     closeMic();
     if (root) { root.remove(); root = null; }

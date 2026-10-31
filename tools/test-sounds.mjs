@@ -163,7 +163,7 @@ test('動画：部品の段階・作者の時刻、境目の余韻、区間の P
   assert.deepEqual(videoSoundEvents([{ dur: .51 }], [[note(.52), note(.5)]], 30), [note(.5, 60)]);
 });
 
-test('同梱できる形：import なしで DECK.Sounds に収まる（登録は統合作業で行う）', () => {
+test('同梱できる形：import なしで DECK.Sounds に収まる', () => {
   const src = fs.readFileSync(new URL('../kit/core/sounds.mjs', import.meta.url), 'utf8');
   const ctx = { DECK: {} };
   vm.runInNewContext(classicNamespace(src, 'Sounds'), ctx);

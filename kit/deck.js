@@ -659,8 +659,7 @@ function viewerAt(i, k, entered){
   viewerStep = {i: i, k: k};
 }
 function viewerInput(){ return !ASIDE && DECK.mode !== "video" && !DECK.view; }
-// Sound hook #114 integration: pass this total to core/sounds.mjs retime(events, {duration, extension}).
-// Reads only; no sound scheduling here. Video/aside renders always get the author's times.
+// Sound timing uses this total at the live playback hook below. Video/aside renders use authored times.
 DECK.stepExtension = function(i, k){
   if (!viewerInput() || !viewerStep) return 0;
   if (i === undefined){ i = viewerStep.i; k = viewerStep.k; }
@@ -849,7 +848,7 @@ function untouch(c, k, ctx){
 }
 // 起動の前（部品の mount の前）に頼まれた seek は覚えておき、mount の後に描く（最後の 1 つ）
 var started = false, pendingSeek = null, pendingGo = null;   // started：start() に入った（mount を始めた）
-DECK.seek = function(i, k, t, from){ if (!started){ pendingSeek = [i, k, t, from]; return; } return seek(i, k, t, from); };
+DECK.seek = function(i, k, t, from){ if (!started){ pendingSeek = [i, k, t, from]; return; } if (!ASIDE){ soundStop(); stopLoop(); } return seek(i, k, t, from); };
 
 // ---------------------------------------------------------------- モーフ（docs/contract.md §8）
 // data-morph のスライドに段階 0 で入るとき、元のスライドと同じ data-id の要素が元の位置から滑ってくる。
@@ -1403,6 +1402,70 @@ DECK.toast = function(msg){
   toastT = setTimeout(function(){ toastEl.classList.remove("show"); }, 1400);
 };
 
+// Component sounds (§8.4): only the live clock crosses events. Drawing/seek never schedules audio.
+var soundContext = null, soundHandles = [], soundForced = false, soundResuming = false;
+var soundMute = DECK.SoundPreferences ? DECK.SoundPreferences.createMuteSetting() : null;
+DECK.hasComponentSounds = function(){
+  return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
+};
+function soundEnabled(){
+  return !ASIDE && !printAside && !Q.get("presenter") && !DECK.view && (ctxMode() === "talk" || ctxMode() === "learn");
+}
+function soundStop(){
+  soundHandles.forEach(function(h){ h.handle.stop(); }); soundHandles = [];
+}
+DECK.muteSounds = function(value){
+  if (soundMute && value !== undefined){ soundMute.set(value); if (soundMute.get()) soundStop(); document.dispatchEvent(new CustomEvent("deck:sounds")); }
+  return !!(soundMute && soundMute.get());
+};
+// Recording is a temporary override: never write the viewer's stored preference.
+DECK.silenceSounds = function(value){
+  soundForced = !!value;
+  if (soundForced) soundStop();
+};
+function soundGesture(){
+  if (!DECK.Sounds || !soundEnabled() || !DECK.hasComponentSounds()) return;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!soundContext && AC) soundContext = new AC();
+    if (soundContext && soundContext.state === "suspended") {
+      soundResuming = true;
+      Promise.resolve(soundContext.resume()).then(function(){
+        soundResuming = false;
+        // resume() is asynchronous: preserve the first step's zero-time crossing until it is ready.
+        if (liveRun) soundTick(liveRun, liveRun.t);
+      }, function(){ soundResuming = false; });
+    }
+  } catch (e) { soundResuming = false; /* Audio is optional, including unavailable/blocked Web Audio. */ }
+}
+["pointerdown", "keydown", "click"].forEach(function(type){
+  window.addEventListener(type, function(e){ if (e.isTrusted) soundGesture(); }, true);
+});
+window.addEventListener("pagehide", function(){ soundStop(); stopLoop(); });
+function soundTick(r, t){
+  if (r.sounds && soundEnabled() && !soundForced && !DECK.muteSounds() && soundContext && soundContext.state === "suspended" && soundResuming) return;
+  var prev = r.soundT; r.soundT = t;
+  if (!r.sounds || !soundEnabled() || soundForced || DECK.muteSounds() || !soundContext || soundContext.state !== "running") return;
+  var ac = compCues(r.i, r.k), lead = timing(r.i, r.k).lead || 0, events = [];
+  if (ac) ac = ac.map(function(x){ return x + lead; });
+  slides[r.i]._comps.forEach(function(c){
+    var k = r.k - c.from + 1;
+    if (c._bad || k < 1 || k > c.steps || typeof c.events !== "function") return;
+    try {
+      var es = DECK.Sounds.normalize(c.events(k)).map(function(e){ return Object.assign({}, e, {t: compRealTime(c, k, e.t, ac)}); });
+      // Recompute from authored times, never compound the last extension. Sound durations do not stretch.
+      if (r.base > 0) es = DECK.Sounds.retime(es, {duration: r.base, extension: DECK.stepExtension(r.i, r.k)});
+      events = events.concat(DECK.Sounds.crossed(es, prev, t));
+    } catch (e) { reporter(c)("error", "[" + c.tagName.toLowerCase() + "] events: " + errText(e)); }
+  });
+  var now = soundContext.currentTime;
+  soundHandles = soundHandles.filter(function(h){ return h.end > now; });
+  if (!events.length) return;
+  // A delayed frame sounds all newly crossed events now, without replaying an earlier note's tail.
+  var end = Math.max.apply(null, events.map(function(e){ return e.sound === "note" ? e.dur : e.sound === "bell" ? (e.count - 1) * .6 + .95 : .82; }));
+  soundHandles.push({end: now + end, handle: DECK.Sounds.schedule(soundContext, events.map(function(e){ return Object.assign({}, e, {t: 0}); }), now)});
+}
+
 // ---------------------------------------------------------------- 実時間での再生
 function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; liveRun = null; }
 function tickLive(){
@@ -1414,20 +1477,26 @@ function tickLive(){
   if (r.first){ r.first = false; seek(r.i, r.k, 0, r.from, false); cont = true; }
   var end = Math.max(0, r.base + DECK.stepExtension(r.i, r.k));
   r.t = Math.min(t, end);
+  if (DECK.Sounds) soundTick(r, r.t);
   if (t >= end){ seek(r.i, r.k, Infinity, undefined, true); return; }
   seek(r.i, r.k, t, r.from, cont);
   raf = requestAnimationFrame(tickLive);
 }
-function play(i, k, animate, from){
+function play(i, k, animate, from, sounds){
   stopLoop();
   announce(i, k);
   if (CAP.on && CAP_LIVE) capRestart(i, k);
   POS.setT(!animate || REDUCE ? null : 0);
-  if (!animate || (REDUCE && !(animDur(i, k) > 0))){ seek(i, k, Infinity); POS.publish(); return; }
+  if (!animate || (REDUCE && !(animDur(i, k) > 0) && !sounds)){ seek(i, k, Infinity); POS.publish(); return; }
   if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
   legacy(slides[i], k, REDUCE);   // 動きを減らす設定で時計の部品のために回すときも、ほかは最後の状態
   var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
-  liveRun = {i: i, k: k, base: d, start: performance.now(), t: 0, first: true, from: from};
+  // Sounds follow the whole step, including narration/hold after its visible motion.
+  if (sounds && DECK.hasComponentSounds()){
+    var segment = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
+    if (segment) d = Math.max(d, segment.dur);
+  }
+  liveRun = {i: i, k: k, base: d, start: performance.now(), t: 0, first: true, from: from, sounds: !!sounds, soundT: -1};
   tickLive();
   POS.publish();
 }
@@ -1435,8 +1504,12 @@ function go(i, k, animate, stepMove){
   var from = POS.i;
   i = Math.max(0, Math.min(slides.length - 1, i));
   if (!stepMove) jumpTo = i;   // 1 段階ずつの送り・戻し（自動再生を含む）でない動きは跳ぶ（ctx.entered）
+  var sounds = !!(stepMove && animate && DECK.Sounds && DECK.hasComponentSounds());
+  // Autoplay's end timer can beat the final animation frame: include its endpoint crossing.
+  if (sounds && DECK.Sounds && liveRun) soundTick(liveRun, Math.min((performance.now() - liveRun.start) / 1000, Math.max(0, liveRun.base + DECK.stepExtension(liveRun.i, liveRun.k))));
+  if (!sounds) soundStop();
   LINKS.seen[i] = true;
-  play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1);
+  play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1, sounds);
   // 履歴の項目の state（リンクの深さ）は残し、その項目の中の今の位置（at：ブラウザの「進む」で戻る先）を書く（format spec §9.1A の「戻る」）
   try {
     if (!DECK.view){
@@ -1541,6 +1614,8 @@ window.addEventListener("message", function(e){
   if (!DECK.ready) return;
   if (m.type === "deck-cmd"){
     if (!trustedCmd(e.source)) return;   // 知らない窓・枠からの命令は受けない
+    // A presenter step key is a gesture too; resume may still be blocked by the browser.
+    if (["next", "prev", "auto", "key"].indexOf(m.cmd) >= 0) soundGesture();
     // 発表者ビューで手で送ったら、自動再生は止める（本体のキー操作と同じ）
     // 暗転の間の「次」「前」（発表者ビューの矢印・PageUp/PageDown・Space）は、本体のキーと同じく暗転を終えるだけで送らない
     if ((m.cmd === "next" || m.cmd === "prev") && isBlack()) setBlack(false);
@@ -2016,7 +2091,7 @@ var printPos = null;
 var printAside = false;
 window.addEventListener("beforeprint", function(){
   if (!DECK.ready) return;
-  stopLoop(); printPos = {i: POS.i, k: POS.k};
+  soundStop(); stopLoop(); printPos = {i: POS.i, k: POS.k};
   if (!printAside){ printAside = true; asideBegin(); }
   slides.forEach(function(s, i){ seek(i, s._max, Infinity); });
   document.documentElement.classList.add("printing");

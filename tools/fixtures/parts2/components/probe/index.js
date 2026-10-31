@@ -8,7 +8,10 @@ egatariParts.define({name: "probe", version: "0.1.0", requires: {base: "1.0.0"},
     static partName = "probe";
     static steps = 2;
     static clock = true;
-    duration(k){ return this.hasAttribute("input-clock") && k > 0 ? .2 : 0; }
+    events(k){ return this.hasAttribute("sound-events") ? (k === 1
+      ? [{t: 0, sound: "note", pitch: "C4", dur: 5, vel: .5}, {t: .2, sound: "bell"}, {t: .1, sound: "unknown"}]
+      : [{t: 0, sound: "chime"}]) : []; }
+    duration(k){ if (this.hasAttribute("sound-events")) return .4; return this.hasAttribute("input-clock") && k > 0 ? .2 : 0; }
     get steps(){ if (this.getAttribute("fail") === "steps") throw new Error("probe steps failed"); return 2; }
     mount(ctx){
       var id = this.id || "";

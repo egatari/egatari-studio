@@ -715,7 +715,7 @@ export function classicModule(src, name) {
 
 // 実行系に入れる kit/core の ES モジュールのうち、export が複数のもの（import なし・export function / export const だけ）。
 // 即時関数の中で読み、export したものを DECK.<name> の object に入れる（読み上げで聞く：kit/tools.js が使う。format spec §5.6）
-export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud', 'core/narration-parse.mjs': 'Narration' });
+export const RUNTIME_NAMESPACES = Object.freeze({ 'core/tts-normalize.mjs': 'TtsNormalize', 'core/read-aloud.mjs': 'ReadAloud', 'core/narration-parse.mjs': 'Narration', 'core/sounds.mjs': 'Sounds', 'core/sound-preferences.mjs': 'SoundPreferences' });
 export function classicNamespace(src, name) {
   const s = String(src);
   const names = [...s.matchAll(/^export\s+(?:function|const)\s+([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
