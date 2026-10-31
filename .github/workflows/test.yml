@@ -121,7 +121,8 @@ jobs:
     runs-on: macos-latest
     # macOS runners are slow: npm test now runs past 45 min here, so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough).
     # test-components reached the 1200 s step cap here (1190.8 s, then 1200 s in run 40594677324): it now runs the quality checks alongside the browser checks and is split into two test-all steps
-    timeout-minutes: 75
+    # 75 min was too short once v0.6.3 joined its branches: green runs took 55-68 min, and run 41210305228 reached the cap in test-audio, still progressing (every test 10-30 % slower, plus the new viewer-input and sounds tests)
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
