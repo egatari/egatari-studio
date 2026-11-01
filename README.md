@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=2b48f801376b81d7 -->
+<!-- i18n: pair=README.ja.md sha256=87e95a18992b222b -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -115,6 +115,20 @@ npm run check -- talks/mytalk/deck.html    # the last line should read "エラ�
 `npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
 
 Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a lesson made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
+
+### With npm (no clone)
+
+The npm package `egatari` has the same tools as one command, `egatari`:
+
+```bash
+npx egatari new mytalk --lang en      # creates mytalk/deck.html and mytalk/narration.md
+npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html (--portable, --play-only and the other build options work too)
+npx egatari dev mytalk/deck.html      # edit in the browser
+npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
+npx egatari doctor                    # Node, uv, ffmpeg and a browser: what is there and how to install what is missing
+```
+
+`npx egatari --help` lists the other commands (`ids`, `portable`, `video`, `tts`). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 
 ## Editing in the browser (dev server)
 

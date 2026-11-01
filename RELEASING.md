@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=4eb1b5d933831094 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=4d1302e53bd7e529 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -23,6 +23,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    - `npm test` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs)
    - `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses, secrets locations or personal voice names in tracked files; `localhost:8882` only as the default of `IRODORI_URL`; `skills/` names only the bundled skills; the paths, links and `npm run` scripts that documents name exist; `kit/` and `server/` do not import `tts/` or `render/`
    - the `clean` job on Linux, Windows and macOS: `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, quality-checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
+   - the `pack` job on Linux, Windows and macOS: `node tools/test-npm-pack.mjs` packs the npm package `egatari`, installs the tarball outside the repository and runs `npx egatari` (`--version`, `doctor`, `new`, `check`, `build`, `build --portable`)
 4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json` and deletes `changes/*.md`):
 
    ```bash

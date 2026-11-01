@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=736414e27b9c181b -->
+<!-- i18n: pair=RELEASING.md sha256=17aee2a9efce9f60 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -23,6 +23,7 @@
    - `npm test` を Linux（Node 22 と 24）・Windows・**macOS** で（`test`・`windows`・`macos` のジョブ）
    - `tools/test-selfcontained.mjs`（`npm test` に入っている）：追跡しているファイルに個人のパス・私的な網の番地・秘密の置き場所・個人の声の名前がない。`localhost:8882` は `IRODORI_URL` の既定としてだけ書く。`skills/` が挙げるのは同梱のスキルだけ。文書が挙げるパス・リンク・`npm run` の script が実在する。`kit/` と `server/` が `tts/` と `render/` を import しない
    - `clean` のジョブを Linux・Windows・macOS で：空の `HOME`・TTS のサーバーなしで `node tools/clean-env.mjs` が、見本ごとに組む・品質チェックをかける・書き出す（`--portable`・`--play-only`）、`tts/synth.py --dry-run` の音声で組む、`npm run new` のデッキを組む。手元でも走らせる：`node tools/clean-env.mjs`
+   - `pack` のジョブを Linux・Windows・macOS で：`node tools/test-npm-pack.mjs` が npm の包み `egatari` を作り、リポジトリの外に入れて `npx egatari`（`--version`・`doctor`・`new`・`check`・`build`・`build --portable`）を動かす
 4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` の版も変え、`changes/*.md` を消す）：
 
    ```bash
