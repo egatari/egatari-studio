@@ -774,8 +774,11 @@ export function setupLlm(app) {
     } });
     // 答えた 1 行：プランと選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
     const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
+    // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
+    const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
+    const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, over, el('div', { cls: 'paste-guide' }, [copy])], [summary, copyMsg]);
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 

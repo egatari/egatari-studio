@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=e028957bdcc5d0cb -->
+<!-- i18n: pair=template.ja.md sha256=79866fe2c1410b1c -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -18,7 +18,7 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 - **ChatGPT**: a Project (instructions or files), or a custom GPT. The pack is longer than a custom GPT's instruction box allows, so upload it as a Knowledge file and write “Follow the attached Egatari instruction pack exactly” in the instructions.
 - **Gemini**: a Gem; put the pack in its instructions, or add it as a file if it is too long.
 
-A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. A registered pack is not the Claude Code skill (`skills/`): the skill also quality-checks, builds and narrates (TTS) the lesson on your computer, while the pack only lets a chat AI write the two files you paste back.
+A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
 This file and the series packs together are the **full pack**: the standards, the output format and every component. The editor's New… copies the parts ticked in its parts list (on either plan); with every part ticked, that is the full pack. Each **series pack** adds the components of one kind of lesson: {{SERIES_LIST}}. `node kit/llm-pack.mjs --series academic,info --lang en` prints the lighter free-plan pack of those series; add `--plan paid` for every standard part with those series, and `--series all --tools all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024):
 
