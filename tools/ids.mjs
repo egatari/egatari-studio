@@ -11,6 +11,7 @@
 // - 書き換えるファイルは、先に .cache/edits/<時刻>-<名前> に控えを残す（開発サーバーと同じ。新しい 30 個）
 // - 改行（CRLF / LF）はそのまま。2 回目は何も変えない
 // - 鍵が重なる・id がほかの id と重なる・id の書式が誤っているデッキでは何もしない（先に手で直す）
+// - 本文（article.md・article/<名前>.md、format spec §9C.3）の id のない「## 見出し」の前の行に (sec-xxxxxx)= を足す
 import fs from 'node:fs';
 import path from 'node:path';
 import { analyzeSlideIds } from '../kit/build.mjs';
@@ -18,6 +19,8 @@ import { splitKey, isSlideId } from '../kit/narration.mjs';
 import { planIds, rewriteDeckIds, rewriteNarrationIds } from '../kit/core/slide-ids.mjs';
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
+import { articleLayout, articleFiles, assignSectionIds } from '../kit/core/article.mjs';
+import { ARTICLE_LIMITS } from '../kit/core/article-text.mjs';
 
 const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run]';
 const KEEP_EDITS = 30;
@@ -37,7 +40,7 @@ if (!fs.existsSync(SRC)) fail(`not found: ${SRC}`);
 const DIR = path.dirname(SRC);
 // 読み書きは原稿のフォルダの中だけ（kit/safe-fs.mjs：外を指すリンクは読まない、リンクを通しては書かない。format spec §11）
 // 上限（バイト。kit/core/bounded-read-core.mjs の READ_LIMITS）：原稿・口述原稿・コメント・小さな JSON（manifest・timeline）ごとに。超えれば読まずに断る
-const limitOf = (file) => { const b = path.basename(file); return b === 'narration.md' ? READ_LIMITS.narration : b === 'comments.json' ? READ_LIMITS.comments : /\.json$/i.test(b) ? READ_LIMITS.json : READ_LIMITS.source; };
+const limitOf = (file) => { const b = path.basename(file); return /\.md$/i.test(b) && b !== 'narration.md' ? ARTICLE_LIMITS.fileBytes : b === 'narration.md' ? READ_LIMITS.narration : b === 'comments.json' ? READ_LIMITS.comments : /\.json$/i.test(b) ? READ_LIMITS.json : READ_LIMITS.source; };
 const rd = (file) => { try { return readContained(DIR, file, 'utf8', { max: limitOf(file) }); } catch (e) { fail(e.message); } };
 const has = (file) => rd(file) !== null;
 const FILES = { narration: path.join(DIR, 'narration.md'), manifest: path.join(DIR, 'audio', 'manifest.json'),
@@ -53,7 +56,24 @@ if (problems.length) {
   for (const p of problems) console.error('  ' + p.msg);
   process.exit(1);
 }
-if (!rename.size) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do`); process.exit(0); }
+// 本文の節の id（§9C.3）：スライドの id と本文のほかの名前を避ける
+const articleWrites = [], articleSummary = [];
+{
+  const rels = [];
+  if (has(path.join(DIR, 'article.md'))) rels.push('article.md');
+  const ad = path.join(DIR, 'article');
+  try { if (fs.lstatSync(ad).isDirectory()) for (const n of fs.readdirSync(ad)) rels.push(`article/${n}`); } catch { /* 章はない */ }
+  const taken = new Set([...slides.map((s) => s.key), ...plan.docIds.keys(), ...newIds.values()]);
+  for (const rel of articleFiles(articleLayout(rels).index)) {
+    const file = path.join(DIR, ...rel.split('/'));
+    const text = rd(file);
+    if (text === null) continue;
+    const r = assignSectionIds(text, taken);
+    for (const a of r.added) { taken.add(a.id); articleSummary.push(`  ${rel}:${a.line}  ${a.id}  ← ## ${a.heading}`); }
+    if (r.added.length) articleWrites.push([file, r.out, rel, r.added.length]);
+  }
+}
+if (!rename.size && !articleWrites.length) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do`); process.exit(0); }
 
 // ---------------------------------------------------------------- 2・3. deck.html（id を足し、data-morph の参照を付け替える）と narration.md（「## 見出し {#id}」に）
 const rewriteDeck = (text) => rewriteDeckIds(text, plan);
@@ -98,9 +118,13 @@ function rewriteJson(file, fn) {
 const writes = [];   // [file, text]
 const summary = [];
 const deck = rewriteDeck(src);
-writes.push([SRC, deck.out]);
-summary.push(`deck.html: ${rename.size} 枚に id を付けた${deck.morphs ? `、data-morph ${deck.morphs} 個を付け替えた` : ''}`);
-for (const s of slides) if (newIds.has(s.index)) summary.push(`  ${String(s.index + 1).padStart(3)}  ${newIds.get(s.index)}  ← ${s.key}`);
+if (rename.size) {
+  writes.push([SRC, deck.out]);
+  summary.push(`deck.html: ${rename.size} 枚に id を付けた${deck.morphs ? `、data-morph ${deck.morphs} 個を付け替えた` : ''}`);
+  for (const s of slides) if (newIds.has(s.index)) summary.push(`  ${String(s.index + 1).padStart(3)}  ${newIds.get(s.index)}  ← ${s.key}`);
+}
+for (const [file, text, rel, n] of articleWrites) { writes.push([file, text]); summary.push(`${rel}: 節 ${n} 個に id を付けた / added ${n} section id(s)`); }
+summary.push(...articleSummary);
 
 if (has(FILES.narration)) {
   const text = rd(FILES.narration);
@@ -152,4 +176,4 @@ if (!dry) {
   pruneBackups(DIR, EDITS_REL, KEEP_EDITS);
 }
 console.log((dry ? '[dry-run] ' : '') + summary.join('\n'));
-if (!dry) console.log(`控え / backups: ${shown(EDITS)}\n動画（render/）の書き出しは鍵が変わったので作り直しになる / re-render videos: their keys changed`);
+if (!dry) console.log(`控え / backups: ${shown(EDITS)}${rename.size ? '\n動画（render/）の書き出しは鍵が変わったので作り直しになる / re-render videos: their keys changed' : ''}`);

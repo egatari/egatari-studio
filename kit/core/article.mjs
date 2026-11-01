@@ -2,7 +2,7 @@
 // ファイルをまたぐ決まり（章の番号・種類の順・lang・writing-mode・bibliography）と、文書全体の点検（§9C.8：名前の重なり・相互参照・
 // 解答の問・用語・ステップへのリンク・引用の鍵・画像・スライドの data-article）を行う。番号と HTML は kit/core/article-render.mjs。
 // 編集アプリと共有する（node: の読み込み・fs を使わない。読むのは渡された read・exists を通す）。
-import { parseArticleText, visit, plain, ARTICLE_LIMITS, LABEL_RE } from './article-text.mjs';
+import { parseArticleText, visit, plain, ARTICLE_LIMITS } from './article-text.mjs';
 
 export const ARTICLE_FILE = 'article.md';
 export const CHAPTER_DIR = 'article';
@@ -51,7 +51,7 @@ export function readArticle(index, read, opts = {}) {
     let last = -1, lastNum = 0;
     for (const f of files) {
       if (f.kind === 'chapter') {
-        if (f.fm.chapter === undefined) problems.push(D('error', 'articleChapterNumber', '§9C.1A', f.path, 1, {}));
+        if (f.fm.chapter === undefined && !problems.some((p) => p.file === f.path && p.code === 'articleFrontMatterValue' && p.data.member === 'chapter')) problems.push(D('error', 'articleChapterNumber', '§9C.1A', f.path, 1, {}));
         else if (f.fm.chapter <= lastNum) problems.push(D('error', 'articleChapterIncrease', '§9C.1A', f.path, 1, { chapter: f.fm.chapter, before: lastNum }));
         if (f.fm.chapter !== undefined) lastNum = f.fm.chapter;
         if (!f.fm.title) problems.push(D('error', 'articleChapterTitle', '§9C.1A', f.path, 1, {}));
@@ -78,7 +78,7 @@ export function readArticle(index, read, opts = {}) {
 }
 
 // 文書全体の点検（§9C.8）。ctx（どれも任意。ないものは見ない）：
-//   slideIds：スライドの id の Set（名前の重なり・ステップへのリンクの行き先）
+//   slideIds：スライドの id の Set（名前の重なり・ステップへのリンクの行き先）。otherIds：デッキのほかの id（名前の重なり）
 //   resolveStep(slideKey, stepKey)：ステップがあれば null、なければ {why: 'slide'|'not-id'|'step'|'concl', max?}（スライドがないときは slideIds だけで見る）
 //   dataArticle：[{slide, ids: [...]}]（スライドの data-article）
 //   references：引用の鍵の Set（references.json の id）。null は「文献のファイルがない」、undefined は見ない
@@ -93,6 +93,8 @@ export function validateArticle(article, ctx = {}) {
   const lineOf = (f, n) => (n && n.position ? n.position.start.line + (f.lineOffset || 0) : null);
   // 行の差（前付け）を木から求められないので、readArticle の parse の結果に合わせて保つ
   for (const f of article.files) if (f.lineOffset === undefined) f.lineOffset = frontLines(f.source);
+  // スライドの id とデッキのほかの id（注目の演出の目印など）：本文の名前と同じ名前空間（§9C.3）
+  const others = new Set([...(ctx.slideIds || []), ...(ctx.otherIds || [])].map((x) => String(x).toLowerCase()));
   // 1 回目：名前・節・問・用語集
   for (const f of article.files) {
     visit(f.tree, (n) => {
@@ -101,7 +103,7 @@ export function validateArticle(article, ctx = {}) {
         const at = { label: String(n.label), file: f.path, line: lineOf(f, n), type: n.type };
         if (labels.has(k)) { const o = labels.get(k); problems.push(D('error', 'articleLabelDuplicate', '§9C.3', f.path, at.line, { label: at.label, other: o.file, otherLine: o.line })); }
         else labels.set(k, at);
-        if (ctx.slideIds && LABEL_RE.test(at.label) && [...ctx.slideIds].some((s) => s.toLowerCase() === k)) problems.push(D('error', 'articleLabelSlideId', '§9C.3', f.path, at.line, { label: at.label }));
+        if (others.has(k)) problems.push(D('error', 'articleLabelSlideId', '§9C.3', f.path, at.line, { label: at.label }));
         if (n.type === 'heading' && n.depth === 2) sections.set(String(n.label), { file: f.path, line: at.line, heading: plain(n) });
         if (n.type === 'exercise') exercises.add(k);
       }
@@ -189,3 +191,25 @@ export function dataArticleOf(slides) {
 export const letterOf = (i) => (i < 26 ? String.fromCharCode(65 + i) : letterOf(Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26)));
 function frontLines(src) { const m = String(src || '').replace(/^﻿/, '').replace(/\r\n?/g, '\n').match(/^---\n[\s\S]*?\n---(?:\n|$)/); return m ? m[0].split('\n').length - (m[0].endsWith('\n') ? 1 : 0) : 0; }
 function D(sev, code, spec, file, line, data = {}) { return { sev, code, spec, file, line: line || null, data }; }
+
+// 節の id を道具が付ける（§9C.3：id のない ## の見出しの前の行に (sec-xxxxxx)= を足す。作者・AI には書かせない）。
+// taken：避ける id（スライドの id・ほかの本文の名前）。返すもの：{out, added: [{line, id, heading}]}。改行（CRLF / LF）はそのまま
+export function assignSectionIds(text, taken = new Set(), rand = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n))) {
+  const B32 = 'abcdefghijklmnopqrstuvwxyz234567';
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const r = parseArticleText(text);
+  const used = new Set([...taken].map((x) => String(x).toLowerCase()));
+  visit(r.tree, (n) => { if (n.label) used.add(String(n.label).toLowerCase()); });
+  const lines = text.split(/\r?\n/);
+  const added = [];
+  for (const n of r.tree.children || []) {
+    if (n.type !== 'heading' || n.depth !== 2 || n.label || !n.position) continue;
+    let id;
+    for (let k = 0; k < 1000 && (!id || used.has(id)); k++) id = 'sec-' + [...rand(6)].map((b) => B32[b & 31]).join('');
+    used.add(id);
+    added.push({ line: n.position.start.line + r.lineOffset, id, heading: plain(n) });
+  }
+  // 下から足す（行の番号がずれないように）
+  for (const a of [...added].reverse()) lines.splice(a.line - 1, 0, `(${a.id})=`);
+  return { out: added.length ? lines.join(eol) : text, added };
+}
