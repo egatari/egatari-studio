@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=d891a0f6f0dcd644 -->
+<!-- i18n: pair=README.md sha256=0a12f4085c4ae146 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,7 +128,7 @@ npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」にな�
 npx egatari doctor                    # Node・uv・ffmpeg・ブラウザがあるか、ないものの入れ方
 ```
 
-ほかのコマンド（`ids`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
+ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 
 ## ブラウザで直す（開発サーバー）
 

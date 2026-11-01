@@ -1,5 +1,5 @@
 // 音声の入った作業フォルダか 1 ファイル（.ega.html）を動画にする。音声は作らない。
-//   node tools/video.mjs <作業フォルダ|.ega.html>
+//   node tools/video.mjs <作業フォルダ|.ega.html>（egatari video <作業フォルダ|.ega.html> も同じ）
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -20,12 +20,12 @@ export function videoPlan(input) {
 
 export function main(argv) {
   if (argv.length !== 1 || argv[0].startsWith('-')) {
-    console.log('Usage: node tools/video.mjs <working folder|.ega.html>');
+    console.log(`Usage: ${process.env.EGATARI_CLI ? 'egatari video' : 'node tools/video.mjs'} <working folder|.ega.html>`);
     return argv[0] === '--help' ? 0 : 2;
   }
   const ffmpeg = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' });
   if (ffmpeg.error || ffmpeg.status !== 0) {
-    console.error('ffmpeg is required. See colab/ for Google Colab (video notebook: backlog #131).');
+    console.error('ffmpeg is required (egatari doctor shows how to install it). To export in Google Colab instead: https://github.com/egatari/egatari-studio/issues/131');
     return 1;
   }
   try {
