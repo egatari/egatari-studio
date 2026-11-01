@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=17aee2a9efce9f60 -->
+<!-- i18n: pair=RELEASING.md sha256=2ca1c56474c0cb08 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -47,7 +47,7 @@
    ```
 
    `main` を push し、CI がまた通るのを待つ
-6. **タグ。** リリースのコミットにタグを付けて push する。これで GitHub Pages に置かれる：
+6. **タグ。** リリースのコミットにタグを付けて push する。これで GitHub Pages に置かれ、npm の包み `egatari` が出所の証明（provenance）つきで公開される（`.github/workflows/npm.yml`：vX.Y.Z は `latest`、候補のタグは `next`。trusted publishing でトークンは置かない。リポジトリの変数 `NPM_PUBLISH` が `true` のときだけ）：
 
    ```bash
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z

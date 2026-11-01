@@ -1,0 +1,48 @@
+# The npm package egatari (#157): a pushed version tag publishes it with provenance, through npm trusted publishing (OIDC; no token
+# is stored). vX.Y.Z goes to the "latest" dist-tag; vX.Y.Z-rc.N to "next" (so `npx egatari` stays on the last release).
+# The tag must equal "v" + package.json "version" (the release process bumps it before tagging; RELEASING.md).
+# prepack (tools/fonts-vendor.mjs) builds the font copy from the @fontsource devDependencies, so install with scripts and never
+# publish with --ignore-scripts. tools/test-npm-pack.mjs runs on the same tree first.
+# Needs: on npmjs.com, package egatari -> Settings -> Trusted publishing: GitHub Actions, egatari/egatari-studio, workflow npm.yml,
+# environment npm; the repository variable NPM_PUBLISH = true (until then nothing publishes; the job is skipped).
+name: npm
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write   # trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=24.22.1 <25'   # npm 11 (trusted publishing needs npm >= 11.5.1)
+          registry-url: 'https://registry.npmjs.org'
+      - name: tag equals package.json version
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          test "$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != package.json $v"; exit 1; }
+      - run: npm ci
+      - run: npm run gen:check
+      - run: node tools/test-npm-pack.mjs
+      - name: publish
+        run: |
+          case "$GITHUB_REF_NAME" in *-rc.*) tag=next ;; *) tag=latest ;; esac
+          npm publish --provenance --access public --tag "$tag"

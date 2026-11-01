@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=4d1302e53bd7e529 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=c7e88a7391643165 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -47,7 +47,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    ```
 
    Push `main` and wait for CI to pass again.
-6. **Tag.** Tag the release commit and push the tag; this deploys GitHub Pages:
+6. **Tag.** Tag the release commit and push the tag; this deploys GitHub Pages and publishes the npm package `egatari` with provenance (`.github/workflows/npm.yml`: `latest` for vX.Y.Z, `next` for an rc tag; trusted publishing, no token; only while the repository variable `NPM_PUBLISH` is `true`):
 
    ```bash
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
