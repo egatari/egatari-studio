@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # info のパーツ
 
-指示の版：2dcad2a6
+指示の版：9a0b9faa
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

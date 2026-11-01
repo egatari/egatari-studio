@@ -204,12 +204,6 @@
       "reason": "Live server close reason 4429, not a quality-check finding."
     },
     {
-      "file": "docs/editor*.md",
-      "pattern": "使わない言いたいこと|Purposes turned off",
-      "term": "what-to-convey",
-      "reason": "Quotes the line that New adds to the request sent to the AI (kit/core/new-deck.mjs); AI-facing text stays unchanged."
-    },
-    {
       "file": "docs/editor.ja.md",
       "pattern": "圧縮 \\(zip 形式\\) フォルダー",
       "term": "zip-file",
@@ -242,6 +236,13 @@
     },
     {
       "file": "app/llm.js",
+      "line": "thumbAlt:",
+      "term": "sample",
+      "reason": "Alt text of a part's thumbnail in New… (a picture made from the part's demo), not the sample lessons; en says “Example: Bar chart”.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
       "line": "学会の参加者",
       "term": "participant",
       "reason": "Example text: conference attendees, not Live participants.",
@@ -252,13 +253,6 @@
       "line": "学会の参加者",
       "term": "viewer-person",
       "reason": "Example text: conference attendees, not a person opening a lesson; en says “Conference attendees”.",
-      "pairs": true
-    },
-    {
-      "file": "app/llm.js",
-      "line": "purposesHint:",
-      "term": "what-to-convey",
-      "reason": "The hint sits under the What to convey heading; en refers to the tile with “it”.",
       "pairs": true
     },
     {
