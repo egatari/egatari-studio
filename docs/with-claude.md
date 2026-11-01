@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=9741947b80d13227 -->
+<!-- i18n: pair=with-claude.ja.md sha256=092fde938ec4b2bd -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -10,7 +10,7 @@ Ask Claude for a lesson in plain words. Claude writes the script (the script, `n
 Two plugins share one marketplace:
 
 - The light `egatari` contains only `egatari:make` and needs no Node. It shows an outline, then writes `deck.html` (slides) and `narration.md` (script) after you approve.
-- `egatari-studio` contains only `egatari-studio:studio`, with kit, vendor and themes. It handles local quality checks, builds, writing parts, and exporting video with existing audio.
+- `egatari-studio` contains only `egatari-studio:studio`. It handles local quality checks, builds, writing parts, and exporting video with existing audio. Its commands run through the egatari npm package (`npx egatari@0.6.x …`), so it needs Node.js.
 
 ## Install the skills
 
@@ -24,7 +24,7 @@ First delete the old `~/.claude/skills/motion-*` entries, including any in a pro
 /plugin install egatari-studio@egatari
 ```
 
-The first two lines are enough for authoring alone. The studio skill guides the first `npm ci`. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`.
+The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`.
 
 ### Chat Claude and Cowork
 

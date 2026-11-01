@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=1dc8bf4d33231a2f -->
+<!-- i18n: pair=README.ja.md sha256=3d4238a2c75c7c32 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -190,7 +190,7 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-The studio skill guides the first `npm ci`. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see "With npm (no clone)" above): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
 For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 

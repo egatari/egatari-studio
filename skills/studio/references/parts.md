@@ -4,15 +4,15 @@ Always reply in the language the user writes in, not the language of this file. 
 
 CLI 専用。書き方の決まりは先に `egatari:make` を読む。以下はパーツライブラリ 2.0 の手順。使う Studio が `egatariParts.define` と必要なライブラリに対応しているか、既存のパーツと実行系で確かめる。1.x の写ししかない環境に 2.0 のコードをそのまま入れない。
 
-リポジトリ：studio スキルの SKILL.md のあるフォルダから 2 つ上（プラグインの根。`<repo>`）。初回は `<repo>` で `npm ci` を案内する。約束事の正本は `<repo>/docs/contract.ja.md §1〜3`。一覧は `<repo>/vendor/components/CATALOG.md`。
+コマンドは studio スキルの「コマンド：egatari」のとおり `npx egatari@0.6.x` で動かす。同梱のファイルはプラグインの根 `<root>`（studio スキルの SKILL.md のあるフォルダから 2 つ上）にあり、読むだけ。約束事の正本は `<root>/docs/contract.ja.md §1〜3`。一覧は `<root>/vendor/components/CATALOG.md`。
 
-**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<repo>/vendor/components/<名前>/<版>/` はそのリリースの写しで、手で直さない（直しても `npm run components:check` が落ちる）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを `npm run components:update -- vX.Y.Z` で取り込む。
+**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<root>/vendor/components/` はそのリリースの写しで、手で直さない（Studio の試験が写しの変更を見つける）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを Studio の管理者が取り込む（Studio の CONTRIBUTING の「部品」）。
 
-Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`node <repo>/kit/build.mjs <deck> --portable`）では、パーツライブラリのパーツは名前・版・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
+Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`npx egatari@0.6.x build <deck> --portable`）では、パーツライブラリのパーツは名前・版・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
 
 ## 1. まず既存のパーツと動きの素で足りないか確かめる
 
-`vendor/components/CATALOG.md` と各 `demo.html` を見る。属性を足せば済むなら、新しく作らずに既存のパーツを広げる（egatari/components への提案になる。§5）。
+`<root>/vendor/components/CATALOG.md` と各 `demo.html`（置き場所は studio スキルの「CLI：パーツ」）を見る。属性を足せば済むなら、新しく作らずに既存のパーツを広げる（egatari/components への提案になる。§5）。
 
 多くの図はパーツにしなくてよい：インライン SVG と `data-step`・強調（`{mark}`）・モーフ（`data-morph`）（Studio の実行系の動きの素。形式の仕様 §8.5・§8.6、`docs/contract.ja.md §7・§8`）で動かせる。パーツにするのは、データから配置を計算する・要素が多い・操作がある・授業をまたいで使う、といったときだけ。
 
@@ -46,7 +46,7 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 - `set`：専門パーツのセット。既存 manifest のセット名を使い、固定の分野一覧から推測しない
 - `display`：タグとは別の表示名が必要なときの日本語・英語名
 
-守ること（品質チェック `kit/check.mjs` と egatari/components の試験が確かめる）：
+守ること（品質チェック `npx egatari@0.6.x check` と egatari/components の試験が確かめる）：
 
 1. **(k, t) だけで画面を決める**。前回の render の状態に頼らない。`setTimeout`・`requestAnimationFrame`・`Date`・シードのない乱数は使わない
 2. t = Infinity はステップ k の最終状態、k = 0 は初期状態
@@ -55,7 +55,7 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 5. 数値は検算済みのスクリプトの出力（子の `<script type="application/json">` → `this.data`）だけを使う
 6. 補間は `base.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `base.lerp`
 7. 図の中の式は、使う版の README に従い組み立て時に描く。簡単な記号は `base.mtext`（`*u*_0`）
-8. データの形を `static shape = {schema, example}` に書く（`kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
+8. データの形を `static shape = {schema, example}` に書く（`<root>/kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
 9. パーツの字は、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG の字どうしの重なりを警告する）。意図して重ねる字だけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切る字の `data-clip` と同じ付け方。パーツ全体には付けない）
 
 ## 3. 確かめる
@@ -63,8 +63,8 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 教材を組んで品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
 
 ```bash
-node <repo>/kit/build.mjs <deck>/deck.html && node <repo>/kit/check.mjs <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は検査が終わっていない：エラー 0 ではない
-node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
+npx egatari@0.6.x build <deck>/deck.html && npx egatari@0.6.x check <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は検査が終わっていない：エラー 0 ではない
+npx egatari@0.6.x sheet <deck> --steps   # 図とパーツのあるスライドの全ステップ → <deck>/out/steps.png（Read で開く）
 ```
 
 失敗して直したことは、そのパーツの README に「注意」として書く（次に書く人が同じ失敗をしないように）。
@@ -88,4 +88,4 @@ node <repo>/tools/shot.mjs <deck>/out/deck.html /tmp/s.png <i> <k>
    ```bash
    gh issue create -R egatari/components --title "[proposal] <何を見せる図か>" --label proposal --body-file <下書き>
    ```
-4. 作った issue の URL をユーザーに伝える。名前が決まった後のコード（`components/<名前>/` の index.js・README.md・demo.html）・試験（`npm test`）・プルリクエストは egatari/components の CONTRIBUTING に従う。リリースされたら Studio で `npm run components:update -- vX.Y.Z` → `npm run gen` → `npm test`。egatari:make スキルの参照ファイルも同じ生成で更新される
+4. 作った issue の URL をユーザーに伝える。名前が決まった後のコード（`components/<名前>/` の index.js・README.md・demo.html）・試験（`npm test`）・プルリクエストは egatari/components の CONTRIBUTING に従う。リリースされたら Studio の管理者が取り込み、次の Studio のリリースで `egatari` の包みと egatari:make スキルの参照ファイルが新しくなる

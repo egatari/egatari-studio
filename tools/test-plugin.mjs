@@ -114,8 +114,24 @@ function checkLinks(files, bundleRoot) {
 }
 checkLinks(walk(MAKE_SKILL_DIR), 'plugins/egatari');
 checkLinks(walk('skills/studio'), '.');
-for (const tool of ['npm ci', 'tools/new.mjs', 'kit/check.mjs', 'tools/ids.mjs', 'tools/sheet.mjs', 'server/dev.mjs', 'tools/comment-shots.mjs', 'kit/build.mjs', 'CLI：パーツ', 'CLI：id', 'tier', 'set', 'standard', 'specialized', 'extra']) assert.ok(studio.includes(tool), tool);
+// studio はコマンドをすべて npm の包み egatari（版を Studio の minor に固定した npx）で動かし、リポジトリの clone・npm ci・中のパスを前提にしない（#157）
+const [major, minor] = JSON.parse(read('package.json')).version.split('.');
+const cli = `npx egatari@${major}.${minor}.x`;
+for (const sub of ['doctor', 'new', 'check', 'ids', 'sheet', 'dev', 'comment-shots', 'build', 'build <deck> --portable', 'build <deck> --play-only']) assert.ok(studio.includes(`${cli} ${sub}`), `studio: ${cli} ${sub}`);
+assert.ok(read('skills/studio/references/video.md').includes(`${cli} video `));
+assert.ok(read('skills/studio/references/audio-local.md').includes(`${cli} tts `));
+for (const tool of ['CLI：パーツ', 'CLI：id', 'tier', 'set', 'standard', 'specialized', 'extra']) assert.ok(studio.includes(tool), tool);
 assert.ok(studio.includes('この SKILL.md のあるフォルダから 2 つ上'));
+export function studioCommandHits(text) {
+  const hits = [];
+  if (text.includes('<repo>')) hits.push('<repo>');
+  for (const re of [/\bnpm (?:ci|run|install)\b(?!` も要らない|` は要りません)/, /\bnode\s+\S*(?:tools|kit|server|render)\//, /\buv run --project tts\b/, /\btts\/synth\.py\b/]) if (re.test(text)) hits.push(String(re));
+  for (const m of text.matchAll(/\bnpx\s+(?:--\S+\s+)*egatari\b(@[^\s`]+)?/g)) if (m[1] !== `@${major}.${minor}.x`) hits.push(`unpinned ${m[0]}`);
+  return hits;
+}
+for (const f of walk('skills/studio')) assert.deepEqual(studioCommandHits(read(f)), [], `${f}: commands go through ${cli}`);
+for (const bad of ['node <repo>/kit/build.mjs x', 'npm ci', 'npm run sheet -- x', 'uv run --project tts python tts/synth.py x', 'npx egatari build x', 'npx egatari@0.5.x build x']) assert.ok(studioCommandHits(bad).length, bad);
+for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-claude.ja.md']) assert.ok(read(f).includes(`${cli} doctor`), `${f}: ${cli} doctor`);
 for (const ref of ['audio-local', 'video', 'parts']) assert.ok(studio.includes(`(references/${ref}.md)`));
 assert.ok(make.includes('egatari-studio') && make.includes('https://studio.egatari.org/') && make.includes('Safari'));
 for (const tag of Object.keys(data.ja.components)) assert.ok(Object.entries(generated).some(([f, t]) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && t.includes(`### \`<${tag}>\``)), tag);
@@ -220,6 +236,11 @@ try {
   assert.equal(absent.status, 1);
   assert.match(absent.stderr, /ffmpeg is required.*Colab/);
   assert.deepEqual(fs.readdirSync(tmp), [], 'missing ffmpeg stops before building or rendering');
+  // egatari video <作業フォルダ> は tools/video.mjs に行く（ffmpeg がなければ組む前に止まる）
+  const viaCli = spawnSync(process.execPath, [path.join(ROOT, 'bin/egatari.mjs'), 'video', tmp], { encoding: 'utf8', env: { ...process.env, PATH: tmp } });
+  assert.equal(viaCli.status, 1, viaCli.stdout + viaCli.stderr);
+  assert.match(viaCli.stderr, /ffmpeg is required.*Colab/);
+  assert.deepEqual(fs.readdirSync(tmp), [], 'egatari video <folder> stops before building or rendering');
   const folder = videoPlan(tmp);
   assert.equal(folder.commands[0][0], 'kit/build.mjs');
   assert.equal(folder.commands[1][0], 'render/render.mjs');

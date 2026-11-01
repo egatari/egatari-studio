@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=0a12f4085c4ae146 -->
+<!-- i18n: pair=README.md sha256=484b18c9a729d4f8 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -190,7 +190,7 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-studio スキルが初回の `npm ci` を案内する。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
 
 チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 

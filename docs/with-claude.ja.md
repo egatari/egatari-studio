@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=6e89cebd34467160 -->
+<!-- i18n: pair=with-claude.md sha256=d57c39188ff51a4a -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -10,7 +10,7 @@
 同じマーケットプレイスに 2 つのプラグインがあります。
 
 - 軽量な `egatari` は `egatari:make` だけを含み、Node は要りません。構成案を見せ、承認後に `deck.html`（スライド）と `narration.md`（台本）を書きます。
-- `egatari-studio` は `egatari-studio:studio` だけを含み、kit・vendor・テーマを同梱します。ローカルの品質チェック・組み立て・パーツ作成・既存の音声を使った動画の書き出しに使います。
+- `egatari-studio` は `egatari-studio:studio` だけを含みます。ローカルの品質チェック・組み立て・パーツ作成・既存の音声を使った動画の書き出しに使います。コマンドは npm の包み egatari（`npx egatari@0.6.x …`）で動かすので、Node.js が要ります。
 
 ## スキルを入れる
 
@@ -24,7 +24,7 @@
 /plugin install egatari-studio@egatari
 ```
 
-教材を書くだけなら最初の 2 行で十分です。studio スキルが初回の `npm ci` を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari` です。
+教材を書くだけなら最初の 2 行で十分です。studio を使うときに `npm ci` は要りません。studio スキルが初めに `npx egatari@0.6.x doctor` で Node.js・ブラウザ・uv・ffmpeg を確かめ、足りないものの入れ方を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari` です。
 
 ### チャットの Claude・Cowork
 

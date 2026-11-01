@@ -14,12 +14,12 @@ uv を用意し、次の 1 行で mlx-audio のサーバーを入れて起動す
 uv run --with 'mlx-audio[server]' python -m mlx_audio.server --host localhost --port 8882 # IRODORI_URL の既定 http://localhost:8882 に合わせる
 ```
 
-起動した端末は開いたままにする。別の端末で `<repo>`（プラグインの根）から動かす。声は `tts/voices/` に同梱の bob（1 人、または Expert）と alice（Novice）。掛け合いは頼まれたときだけ。
+起動した端末は開いたままにする。別の端末で、egatari の包みから動かす（studio スキルの「コマンド：egatari」。`tts` には uv が要る：`npx egatari@0.6.x doctor` の `uv` の行）。声は包みに同梱の bob（1 人、または Expert）と alice（Novice）。掛け合いは頼まれたときだけ。
 
 ```bash
-uv run --project tts python tts/synth.py <作業フォルダ> --voices expert=bob,novice=alice
-node kit/build.mjs <作業フォルダ>/deck.html
-node kit/build.mjs <作業フォルダ> --portable
+npx egatari@0.6.x tts <作業フォルダ> --voices expert=bob,novice=alice
+npx egatari@0.6.x build <作業フォルダ>/deck.html
+npx egatari@0.6.x build <作業フォルダ> --portable
 ```
 
 音声のあとに組み直して長さと cue を反映する。別のサーバーを使うなら `IRODORI_URL` で指定する。同じ PC の同梱の声を使うので、個人の常駐サービスや参照音声の設定は要らない。音声を聞き、読み間違いは台本の `{表示|読み}` か読み辞書で直す。

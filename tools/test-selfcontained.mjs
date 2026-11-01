@@ -5,6 +5,7 @@
 //   2. skills/ の中のスキルの名前：同梱のスキル（skills/<名前>/）だけ。説明（frontmatter）の中の a-b の形の名前と、「… スキル」「… skill」の名前
 //   3. 文書（*.md）が挙げるパス（`tools/x.mjs` など、リポジトリの最上位のフォルダから書いたもの）と相対のリンクが実在し、`npm run <名前>` が package.json にある
 //   4. kit/ と server/（スライドの系）が tts/ と render/（音声と動画の系）を import しない
+//   5. 文書とスキルが挙げる egatari コマンド（`npx egatari[@版] <名前>`、`egatari <名前>` で始まる `…`）が bin/egatari.mjs にある
 //   node tools/test-selfcontained.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -116,6 +117,32 @@ for (const f of tracked.filter((x) => /^(kit|server)\/.*\.(m?js|cjs)$/.test(x)))
   }
 }
 ok(!impHits.length, 'layers: kit/ and server/ do not import tts/ or render/' + impHits.map((h) => '\n       ' + h).join(''));
+
+// ---------------------------------------------------------------- 5. egatari コマンドの名前
+// bin/egatari.mjs は読み込むと動き出すので、字から読む：SCRIPTS の鍵と、cmd === '…' で分けるもの
+const binText = read('bin/egatari.mjs');
+const scriptsBlock = /const SCRIPTS = \{([\s\S]*?)\n\};/.exec(binText);
+const SUBS = new Set([
+  ...[...(scriptsBlock ? scriptsBlock[1] : '').matchAll(/^\s{2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]),
+  ...[...binText.matchAll(/\bcmd === '([a-z-]+)'/g)].map((m) => m[1]),
+]);
+ok(['new', 'build', 'check', 'dev', 'ids', 'video', 'tts', 'doctor', '--version', '--help'].every((s) => SUBS.has(s)), `egatari: subcommands read from bin/egatari.mjs (${[...SUBS].join(', ')})`);
+const cliHits = [];
+let nCli = 0;
+const cliDocs = [...new Set([...docs, ...tracked.filter((f) => /^(skills|plugins\/egatari)\/.*\.md$/.test(f))])];
+for (const f of cliDocs) {
+  read(f).split('\n').forEach((l, i) => {
+    const subs = [...l.matchAll(/\bnpx\s+(?:--\S+\s+)*egatari(?:@[0-9A-Za-z.^~<>=*-]+)?(?:\s+(?:--\s+)?(\S+))?/g)].map((m) => m[1]);
+    for (const c of l.matchAll(/`egatari\s+([^`\s]+)[^`]*`/g)) subs.push(c[1]);
+    for (const s of subs) {
+      if (s === undefined || /^[<…`'"(]|^\.\.\.|^…/.test(s)) continue;   // 型（<コマンド>・…）
+      const sub = s.replace(/[`'".,;:)）、。]+$/, '');
+      nCli++;
+      if (!SUBS.has(sub)) cliHits.push(`${f}:${i + 1}: egatari ${sub} is not a command of bin/egatari.mjs`);
+    }
+  });
+}
+ok(!cliHits.length && nCli > 10, `egatari: the ${nCli} egatari commands named in ${cliDocs.length} documents exist in bin/egatari.mjs` + cliHits.map((h) => '\n       ' + h).join(''));
 
 if (fails) { console.log(`\n${fails} failed`); process.exit(1); }
 console.log('\nall passed');

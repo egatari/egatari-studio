@@ -8,4 +8,5 @@
 
 ### Changed
 - Move local checks, builds, audio, parts and video instructions into egatari-studio:studio; retain motion-slides, motion-components and motion-slides-video in descriptions for one release. Document installing both plugins for studio and updating each separately.
+- egatari-studio:studio runs every command through the egatari npm package pinned to the Studio minor (`npx egatari@0.6.x …`), starting with `egatari doctor` and its install hints, instead of a repository checkout and `npm ci`; it only reads bundled files (parts catalogue, READMEs, contract) from the plugin folder.
 - Separate chat authoring from CLI checks and audio setup, document the optional local speech server, and keep parts' Components 2.0 rewrite for #123. The detailed make/studio content redesign remains separate.
