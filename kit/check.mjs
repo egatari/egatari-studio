@@ -35,7 +35,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
 import { compareRenders, domSnapshot } from './render-compare.mjs';
-import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv, hasArticle } from './build.mjs';
 import { referenceVoices, matchReference } from './core/ref-voice.mjs';
 import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
@@ -49,8 +49,6 @@ import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
-import { loadArticle, stepLinksOf } from './core/article-page.mjs';
-import { validateArticle } from './core/article.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -358,7 +356,9 @@ phase = 'J リンク';
 // ================================================================ M. 本文（article.md・article/<名前>.md、format spec §9C.8）
 // 部分集合の外の書き方・名前・章の決まり・相互参照・解答・用語・引用の鍵・画像・data-article。ステップへのリンクの行き先は再生器（DECK.resolveFragment）で確かめる
 phase = 'M 本文';
-{
+if (hasArticle(src)) {
+  const { loadArticle, stepLinksOf } = await import('./core/article-page.mjs');
+  const { validateArticle } = await import('./core/article.mjs');
   const L = loadArticle(nodeEnv, src, { lang });
   if (L) {
     const links = stepLinksOf(L.article);
