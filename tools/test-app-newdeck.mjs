@@ -444,7 +444,10 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && !(await p8.$('#paste-part-codetree')) && !(await p8.$('#paste-part-collect')),
       'S8 ④: the subject forms come first (maps, then kokugo, english, music), each group is a labelled group, and the extra parts are not listed');
     // 一つずつの札：チェックボックス・絵・名前・1 行の説明（説明は aria-describedby）
-    const thumb8 = await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
+    // 絵は loading="lazy"：画面に入れて読み終わるのを待つ（macOS の CI で、まだ読んでいない絵を確かめて落ちた）
+    await p8.$eval('#paste-part-bars', (x) => x.closest('label.pick').scrollIntoView({ block: 'center' }));
+    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).catch(() => {});
+    const thumb8 =await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
       return { ok: !!img && img.src.startsWith('data:image/webp') && img.complete && img.naturalWidth > 0 && src.media === '(prefers-color-scheme: dark)' && src.srcset.startsWith('data:image/webp') && l.querySelector('.tile-label').textContent === '棒グラフ'
         && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる', alt: img && img.alt }; });
     ok(thumb8.ok && thumb8.alt === '棒グラフのサンプル：年ごとの売上（架空）' && (await p8.$$eval('#paste-parts .pick', (xs) => xs.filter((x) => !x.querySelector('picture.pick-thumb img[alt]')).length)) === 0,
