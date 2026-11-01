@@ -1,0 +1,220 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "container",
+      "kind": "table",
+      "children": [
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "店ごとの販売数"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "children": [
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "rowspan": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "店"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "colspan": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "販売数"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "4 月"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "5 月"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "北店"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "strong",
+                      "children": [
+                        {
+                          "type": "text",
+                          "value": "120"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "98"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "南店"
+                    },
+                    {
+                      "type": "break"
+                    },
+                    {
+                      "type": "text",
+                      "value": "（新店）"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "64"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "71"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "CO"
+                    },
+                    {
+                      "type": "subscript",
+                      "children": [
+                        {
+                          "type": "text",
+                          "value": "2"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "value": " の量"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "colspan": 2,
+                  "children": [
+                    {
+                      "type": "emphasis",
+                      "children": [
+                        {
+                          "type": "text",
+                          "value": "測っていない"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "legend",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "架空のデータ。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "tbl-stores",
+      "identifier": "tbl-stores"
+    }
+  ]
+}

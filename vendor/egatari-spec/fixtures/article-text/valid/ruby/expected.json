@@ -1,0 +1,32 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "ある日の暮方の事である。一人の"
+        },
+        {
+          "type": "mystRole",
+          "name": "ruby",
+          "value": "下人|げにん"
+        },
+        {
+          "type": "text",
+          "value": "が、"
+        },
+        {
+          "type": "mystRole",
+          "name": "ruby",
+          "value": "羅生門|らしょうもん"
+        },
+        {
+          "type": "text",
+          "value": "の下で雨やみを待っていた。"
+        }
+      ]
+    }
+  ]
+}

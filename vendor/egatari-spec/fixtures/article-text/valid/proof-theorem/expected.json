@@ -1,0 +1,80 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "proof",
+      "kind": "theorem",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "平方完成"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "二乗の誤差の和は、"
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " が平均のとき最も小さくなる。"
+            }
+          ]
+        }
+      ],
+      "label": "thm-square",
+      "identifier": "thm-square"
+    },
+    {
+      "type": "proof",
+      "kind": "proof",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "和を "
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " について平方完成すると、"
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " を含む項は "
+            },
+            {
+              "type": "inlineMath",
+              "value": "n(c-\\bar{x})^2"
+            },
+            {
+              "type": "text",
+              "value": " だけになる。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

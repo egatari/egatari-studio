@@ -1,0 +1,23 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Watch "
+        },
+        {
+          "type": "mystRole",
+          "name": "step",
+          "value": "the animation <s-k3f9q2:0>"
+        },
+        {
+          "type": "text",
+          "value": " before reading on."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "error": "blank line inside an HTML table (Markdown in a cell)",
+  "spec": "§9C.2"
+}

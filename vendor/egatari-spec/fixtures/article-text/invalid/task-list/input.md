@@ -1,0 +1,2 @@
+- [ ] read the chapter
+- [x] watch the slides

@@ -1,0 +1,37 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Both agree "
+        },
+        {
+          "type": "citeGroup",
+          "kind": "parenthetical",
+          "children": [
+            {
+              "type": "cite",
+              "identifier": "doe1948",
+              "label": "doe1948",
+              "kind": "parenthetical"
+            },
+            {
+              "type": "cite",
+              "identifier": "roe2001",
+              "label": "roe2001",
+              "kind": "parenthetical",
+              "suffix": "p. 3"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

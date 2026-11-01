@@ -1,0 +1,46 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "Sources of noise"
+        }
+      ],
+      "label": "sec-k2m4q7",
+      "identifier": "sec-k2m4q7"
+    },
+    {
+      "type": "heading",
+      "depth": 3,
+      "children": [
+        {
+          "type": "text",
+          "value": "Thermal noise"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 4,
+      "children": [
+        {
+          "type": "text",
+          "value": "At room temperature"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Text under level 4."
+        }
+      ]
+    }
+  ]
+}

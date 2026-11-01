@@ -1,0 +1,14 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "It costs $5, mail me at name@example, and 50% is half. A literal [bracket] too.\n% this line starts with a percent sign."
+        }
+      ]
+    }
+  ]
+}

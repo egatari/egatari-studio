@@ -1,0 +1,83 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "aside",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "探究の問い"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "データを 1 つの値で表すのは、なぜだろう。"
+            }
+          ]
+        }
+      ],
+      "class": "inquiry",
+      "label": "box-why",
+      "identifier": "box-why"
+    },
+    {
+      "type": "aside",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "この章のねらい"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "spread": false,
+          "children": [
+            {
+              "type": "listItem",
+              "spread": true,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "平均と中央値を求められる。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "spread": true,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "2 つの違いを説明できる。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "class": "goals"
+    }
+  ]
+}

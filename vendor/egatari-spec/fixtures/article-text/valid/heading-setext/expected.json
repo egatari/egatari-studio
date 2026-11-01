@@ -1,0 +1,26 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "Setext heading"
+        }
+      ],
+      "label": "sec-p9x3ab",
+      "identifier": "sec-p9x3ab"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Text after a level-2 setext heading."
+        }
+      ]
+    }
+  ]
+}

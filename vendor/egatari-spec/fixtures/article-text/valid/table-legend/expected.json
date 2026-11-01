@@ -1,0 +1,129 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "container",
+      "kind": "table",
+      "children": [
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "1 日の販売数"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "children": [
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "曜日"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "販売数"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "月"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "42"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "火"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "align": "right",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "38"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "legend",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "架空のデータ。"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "数は 1 店の 1 日分。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "tbl-sales",
+      "identifier": "tbl-sales"
+    }
+  ]
+}

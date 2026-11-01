@@ -1,0 +1,39 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "春の朝"
+        }
+      ],
+      "label": "sec-v5w6x7",
+      "identifier": "sec-v5w6x7"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "春の朝は、"
+        },
+        {
+          "type": "emphasis",
+          "children": [
+            {
+              "type": "text",
+              "value": "やわらかな"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "光から始まる。\n窓を開けると、鳥の声が聞こえる。"
+        }
+      ]
+    }
+  ]
+}

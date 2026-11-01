@@ -1,0 +1,76 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "代表値"
+        }
+      ],
+      "label": "sec-a4k2m7",
+      "identifier": "sec-a4k2m7"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "平均は外れ値に引っぱられる。"
+        }
+      ]
+    },
+    {
+      "type": "aside",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "微分で確かめる"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "損失を "
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " で微分して 0 とおくと、"
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " は平均になる。"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "この確かめ方は高校の数学 II の範囲を超える。"
+            }
+          ]
+        }
+      ],
+      "label": "box-derivative",
+      "identifier": "box-derivative"
+    }
+  ]
+}

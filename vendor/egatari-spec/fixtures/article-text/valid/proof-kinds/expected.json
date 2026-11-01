@@ -1,0 +1,74 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "proof",
+      "kind": "definition",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "損失"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "値 "
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " を選んだときの損の大きさを、損失という。"
+            }
+          ]
+        }
+      ],
+      "label": "def-loss",
+      "identifier": "def-loss"
+    },
+    {
+      "type": "proof",
+      "kind": "lemma",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "二乗は 0 以上である。"
+            }
+          ]
+        }
+      ],
+      "label": "lem-nonneg",
+      "identifier": "lem-nonneg"
+    },
+    {
+      "type": "proof",
+      "kind": "remark",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "損失の決め方は、分析する人が選ぶ。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

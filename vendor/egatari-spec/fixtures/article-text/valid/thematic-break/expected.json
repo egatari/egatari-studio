@@ -1,0 +1,38 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Before the break."
+        }
+      ]
+    },
+    {
+      "type": "thematicBreak"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Between."
+        }
+      ]
+    },
+    {
+      "type": "thematicBreak"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "After."
+        }
+      ]
+    }
+  ]
+}

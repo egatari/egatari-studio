@@ -1,0 +1,30 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "The energy is "
+        },
+        {
+          "type": "inlineMath",
+          "value": "E = mc^2"
+        },
+        {
+          "type": "text",
+          "value": " and the sum is "
+        },
+        {
+          "type": "inlineMath",
+          "value": "\\sum_{i=1}^n x_i"
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

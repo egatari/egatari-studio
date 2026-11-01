@@ -1,0 +1,11 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "math",
+      "value": "a + b = c",
+      "label": "eq-sum",
+      "identifier": "eq-sum"
+    }
+  ]
+}

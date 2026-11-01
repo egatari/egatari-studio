@@ -1,0 +1,23 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Watch it on the slide: "
+        },
+        {
+          "type": "mystRole",
+          "name": "step",
+          "value": "s-k3f9q2:3"
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

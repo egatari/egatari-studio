@@ -1,0 +1,57 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "list",
+      "ordered": false,
+      "spread": false,
+      "children": [
+        {
+          "type": "listItem",
+          "spread": true,
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "apples"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "spread": true,
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "pears"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "spread": true,
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "plums, after a blank line"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

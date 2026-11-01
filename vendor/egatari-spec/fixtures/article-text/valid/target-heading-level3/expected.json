@@ -1,0 +1,26 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 3,
+      "children": [
+        {
+          "type": "text",
+          "value": "A level-3 heading with an id"
+        }
+      ],
+      "label": "sec-m3n4q5",
+      "identifier": "sec-m3n4q5"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Text."
+        }
+      ]
+    }
+  ]
+}

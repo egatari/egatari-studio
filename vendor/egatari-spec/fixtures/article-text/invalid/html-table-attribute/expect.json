@@ -1,0 +1,4 @@
+{
+  "error": "HTML table attribute outside colspan, rowspan, align",
+  "spec": "§9C.2"
+}

@@ -1,0 +1,40 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "水 H"
+        },
+        {
+          "type": "subscript",
+          "children": [
+            {
+              "type": "text",
+              "value": "2"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "O の量を、1 m"
+        },
+        {
+          "type": "superscript",
+          "children": [
+            {
+              "type": "text",
+              "value": "3"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " あたりで測る。"
+        }
+      ]
+    }
+  ]
+}

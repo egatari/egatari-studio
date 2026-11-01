@@ -1,0 +1,79 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "proof",
+      "kind": "algorithm",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "二分探索"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "start": 1,
+          "spread": false,
+          "children": [
+            {
+              "type": "listItem",
+              "spread": true,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "範囲の真ん中の値を調べる。"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "spread": true,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "探す値が小さければ左半分、大きければ右半分に絞る。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "alg-binary",
+      "identifier": "alg-binary"
+    },
+    {
+      "type": "proof",
+      "kind": "assumption",
+      "enumerated": true,
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "観測は互いに独立で、同じ分布に従う。"
+            }
+          ]
+        }
+      ],
+      "label": "asm-iid",
+      "identifier": "asm-iid"
+    }
+  ]
+}

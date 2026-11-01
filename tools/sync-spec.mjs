@@ -18,7 +18,8 @@ const OUT = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'));
 //   fixtures/documents/idless-source.*：id のない原稿の例（test-parts2）
 //   schema/rendered-markup-1.json も schema に含める（2.0 の描いた結果の許可リスト）
 //   fixtures/input-hash：入力のハッシュの例（test-narration）
-const PARTS = ['schema', 'fixtures/index', 'fixtures/documents-1.0', 'fixtures/documents/legacy-heading-keys.ega.html', 'fixtures/documents/idless-source.ega.html', 'fixtures/documents/idless-source.expect.json', 'fixtures/input-hash', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
+//   fixtures/article-text：本文（Egatari Text 1、§9C.2）の入力と正解の木、拒む例（test-article）
+const PARTS = ['schema', 'fixtures/index', 'fixtures/documents-1.0', 'fixtures/documents/legacy-heading-keys.ega.html', 'fixtures/documents/idless-source.ega.html', 'fixtures/documents/idless-source.expect.json', 'fixtures/input-hash', 'fixtures/article-text', 'LICENSE'];   // Schema・試験用のデータは MIT（LICENSE）
 
 const args = process.argv.slice(2);
 const ri = args.indexOf('--ref');

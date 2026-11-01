@@ -1,0 +1,24 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "As "
+        },
+        {
+          "type": "cite",
+          "identifier": "doe1948",
+          "label": "doe1948",
+          "kind": "narrative"
+        },
+        {
+          "type": "text",
+          "value": " showed, entropy is additive."
+        }
+      ]
+    }
+  ]
+}
