@@ -104,7 +104,7 @@ export function validateArticle(article, ctx = {}) {
         if (labels.has(k)) { const o = labels.get(k); problems.push(D('error', 'articleLabelDuplicate', '§9C.3', f.path, at.line, { label: at.label, other: o.file, otherLine: o.line })); }
         else labels.set(k, at);
         if (others.has(k)) problems.push(D('error', 'articleLabelSlideId', '§9C.3', f.path, at.line, { label: at.label }));
-        if (n.type === 'heading' && n.depth === 2) sections.set(String(n.label), { file: f.path, line: at.line, heading: plain(n) });
+        if (n.type === 'heading' && n.depth === 2) sections.set(String(n.label), { file: f.path, line: at.line, heading: plain(n), kind: f.kind });
         if (n.type === 'exercise') exercises.add(k);
       }
       if (n.type === 'glossary') {
@@ -162,7 +162,8 @@ export function validateArticle(article, ctx = {}) {
     else linkedSections.add(id);
   }
   // どのスライドにもつながらない節（§9C.8 の SHOULD。スライドがあるときだけ）
-  if (ctx.slideIds && ctx.slideIds.size) for (const [id, s] of sections) if (!linkedSections.has(id)) problems.push(D('warn', 'articleSectionUnlinked', '§9C.8', s.file, s.line, { section: id, heading: s.heading.slice(0, 40) }));
+  // kind: chapter のファイルの節だけ（前書き・付録・後書きはスライドを持たないのが普通。§9C.8）
+  if (ctx.slideIds && ctx.slideIds.size) for (const [id, s] of sections) if (s.kind === 'chapter' && !linkedSections.has(id)) problems.push(D('warn', 'articleSectionUnlinked', '§9C.8', s.file, s.line, { section: id, heading: s.heading.slice(0, 40) }));
   return { problems, labels, sections };
 }
 

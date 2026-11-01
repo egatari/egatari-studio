@@ -119,7 +119,7 @@ t('references.json keys', () => {
 t('section ids: missing, wrong prefix, form', () => {
   assert.deepStrictEqual(parseArticleText('## A\n').problems.map((p) => p.code), ['articleSectionId']);
   assert.deepStrictEqual(parseArticleText('(intro)=\n## A\n').problems.map((p) => p.code), ['articleLabel']);
-  assert.deepStrictEqual(parseArticleText('(sec-abc)=\n## A\n').problems.map((p) => `${p.sev}:${p.code}`), ['warn:articleSectionIdForm']);
+  assert.deepStrictEqual(parseArticleText('(sec-abc)=\n## A\n').problems.map((p) => `${p.sev}:${p.code}`), ['error:articleSectionIdForm']);
 });
 
 // ---------------------------------------------------------------- 部分集合の外（fixtures にない分）
@@ -204,13 +204,47 @@ t('footnotes per chapter, notes at the end of the section', () => {
   assert.ok(h.indexOf('egatari-footnotes') < h.indexOf('</section>'));
 });
 t('vertical writing: tate-chu-yoko for 1-2 digits', () => {
-  const h = render({ 'article.md': '---\nwriting-mode: vertical-rl\n---\n年は 17 か 128、H2O\n' }, { path: 'article.md' });
-  assert.ok(h.includes('class="egatari-vertical"') && h.includes('<span class="egatari-tcy">17</span>') && h.includes('128') && !h.includes('>128<') && h.includes('H<span class="egatari-tcy">2</span>O'));
+  // 数は英数字と . , : / % の続き（§9C.6）。数字 1〜2 字だけが縦中横
+  const h = render({ 'article.md': '---\nwriting-mode: vertical-rl\n---\n第3章、10月、年は 17 か 128、3.14 と 2026 と 12:30 と A4 と H2O と 50%\n' }, { path: 'article.md' });
+  assert.ok(h.includes('class="egatari-vertical"'));
+  for (const d of ['3', '10', '17']) assert.ok(h.includes(`<span class="egatari-tcy">${d}</span>`), d);
+  for (const w of ['128', '3.14', '2026', '12:30', 'A4', 'H2O', '50%']) assert.ok(h.includes(w) && !h.includes(`<span class="egatari-tcy">${w}`) && !/egatari-tcy">\d+<\/span>(?:\.|:|%)/.test(h), w);
+  assert.equal((h.match(/egatari-tcy/g) || []).length, 3);
 });
 t('safety: no script, no handlers, no foreign HTML, no javascript: links', () => {
   const h = render({ 'article.md': 'x <script>alert(1)</script> [a](javascript:alert(1)) [b](https://e.org/) ![c](a.png "t")\n\n:::{table} t\n<table>\n<tr><td>&lt;img onerror=x&gt;</td></tr>\n</table>\n:::\n' }, { path: 'article.md' }, { image: () => 'data:image/png;base64,AA' });
   assert.ok(!/<script|onerror=|href="javascript:/i.test(h.replace(/&lt;[^&]*&gt;/g, '')), h);
   assert.ok(h.includes('<a href="https://e.org/">b</a>') && h.includes('&lt;img onerror=x&gt;'));
+});
+t('chapter token: number, appendix letter, preface<i>, afterword<i> (§9C.6)', () => {
+  const h = render({ 'article/0.md': '---\ntitle: p\nkind: preface\n---\nx[^a]\n\n[^a]: n\n', 'article/1.md': '---\ntitle: c\nchapter: 3\n---\nx[^a]\n\n[^a]: n\n', 'article/2.md': '---\ntitle: a\nkind: appendix\n---\nx[^a]\n\n[^a]: n\n', 'article/3.md': '---\ntitle: z\nkind: afterword\n---\nx[^a]\n\n[^a]: n\n' });
+  for (const tok of ['preface1', '3', 'A', 'afterword1']) assert.ok(h.includes(`data-egatari-chapter="${tok}"`) && h.includes(`id="fn-${tok}-1"`), tok);
+});
+t('numbering follows mystmd: unlabelled figures, wrapped tables, asides; bare pipe tables and unlabelled equations not', () => {
+  const h = render({ 'article.md': '---\nchapter: 2\n---\n:::{figure} a.png\n:alt: x\n\nc\n:::\n\n:::{table} t\n| a |\n|---|\n| 1 |\n:::\n\n| b |\n|---|\n| 2 |\n\n:::{aside} A\nx\n:::\n\n$$y$$\n\n:::{prf:remark}\nr\n:::\n' }, { path: 'article.md' });
+  for (const w of ['図 2.1', '表 2.1', 'コラム 2.1', '注意 2.1']) assert.ok(h.includes(`<span class="egatari-num">${w}</span>`) || h.includes(`<strong>${w}</strong>`), w);
+  assert.ok(!h.includes('表 2.2') && !h.includes('egatari-eqno'));
+  const en = renderArticle(readArticle({ path: 'article.md' }, () => '---\nchapter: 4\n---\n$$x$$ (eq-a)\n\n[](#eq-a)\n'), { lang: 'en' }).html;
+  assert.ok(en.includes('>Equation (4.1)</a>'));
+});
+t('definition descriptions: inline or paragraphs', () => {
+  const a = 'Term\n: one line\n', b = 'Other\n: first\n\n  second paragraph\n';
+  for (const src of [a, b]) assert.deepStrictEqual(errorsOf(whole(src).problems), []);
+  assert.ok(render({ 'article.md': a }, { path: 'article.md' }).includes('<dd>one line</dd>'));
+  assert.ok(/<dd><p>first<\/p>\s*<p>second paragraph<\/p><\/dd>/.test(render({ 'article.md': b }, { path: 'article.md' })));
+});
+t('footnotes: undefined (source), defined twice, unreferenced warns', () => {
+  assert.deepStrictEqual(parseArticleText('a[^x]\n').problems.map((p) => `${p.sev}:${p.code}`), ['error:articleFootnoteMissing']);
+  assert.deepStrictEqual(parseArticleText('a[^x]\n\n[^x]: one\n[^x]: two\n').problems.map((p) => `${p.sev}:${p.code}:${p.line}`), ['error:articleFootnoteDuplicate:4']);
+  assert.deepStrictEqual(parseArticleText('a\n\n[^y]: lonely\n').problems.map((p) => `${p.sev}:${p.code}`), ['warn:articleFootnoteUnused']);
+});
+t('narrative citation locators read from the source (§9C.8)', () => {
+  for (const src of ['@doe, p. 3 x', '@doe, pp. 3-4', '@doe, ch. 2', '@doe,sec. 1', '@doe, § 2', '@doe, 3 頁', '@doe, 12ページ', '@doe, 2 章', '@doe, 4節']) assert.deepStrictEqual(subsetCodes(src + '\n'), ['articleCiteNarrativeLocator'], src);
+  for (const src of ['@doe, who wrote', '@doe 3 頁', '@doe, 2026 年に']) assert.deepStrictEqual(subsetCodes(src + '\n'), [], src);
+});
+t('sections linked to no slide: chapter files only', () => {
+  const r = book({ 'article/1.md': '---\ntitle: a\nchapter: 1\n---\n(sec-aaaaaa)=\n## s\n', 'article/2.md': '---\ntitle: b\nkind: appendix\n---\n(sec-bbbbbb)=\n## t\n' });
+  assert.deepStrictEqual(validateArticle(r, { slideIds: new Set(['s-x']) }).problems.map((p) => `${p.code}:${p.data.section}`), ['articleSectionUnlinked:sec-aaaaaa']);
 });
 t('step links and terms', () => {
   const h = renderArticle(readArticle({ path: 'article.md' }, () => '{step}`s-a:0` {step}`見る <s-a:2>` {term}`平均`\n\n:::{glossary}\n平均\n: m\n:::\n'), { lang: 'ja', slides: new Map([['s-a', { title: '木' }]]) }).html;

@@ -41,6 +41,7 @@ const STEP_TEXT_RE = new RegExp(`^([\\s\\S]*?\\S)\\s*<${SLIDE_KEY}:${STEP_KEY}>$
 const INLINE_CELL = new Set(['text', 'emphasis', 'strong', 'inlineCode', 'subscript', 'superscript', 'break']);
 const CELL_KEYS = new Set(['type', 'children', 'header', 'align', 'colspan', 'rowspan', 'position']);
 const FRONT_MATTER = /^---\n([\s\S]*?)\n---(?:\n|$)/;
+const NARRATIVE_LOCATOR = /^,\s*(?:p\.|pp\.|ch\.|sec\.|§|\d+\s*(?:頁|ページ|章|節))/;
 
 // ---------------------------------------------------------------- 前付け（YAML の小さな部分：1 行に「名前: 値」だけ）
 // 値は文字列（引用符あり・なし）・整数・true / false。入れ子・並び・複数行は前付けに要らないので拒む
@@ -180,7 +181,7 @@ export function parseArticleText(src, opts = {}) {
     else if (t === 'listItem' && typeof node.checked === 'boolean') add('error', 'articleTaskList', '§9C.2', node);
     else if (t === 'text' && !parents.some((p) => p.type === 'link' || p.type === 'crossReference')) rawText(node);
     else if (t === 'image') imagePath(node);
-    else if (t === 'cite') cite(node, parents);
+    else if (t === 'cite') cite(node);
     else if (t === 'footnoteDefinition') {
       if (!FN_NAME_RE.test(node.label || node.identifier || '')) add('error', 'articleFootnoteName', '§9C.2', node, { name: node.label || node.identifier });
       for (const c of node.children || []) if (c.type !== 'paragraph') { add('error', 'articleFootnoteContent', '§9C.2', c, { name: node.label, what: c.type }); break; }
@@ -271,15 +272,16 @@ export function parseArticleText(src, opts = {}) {
     const u = String(node.url || '');
     if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(u) || u.startsWith('/') || u.startsWith('\\') || u.split('/').some((s) => s === '..' || s === '.') || !u) add('error', 'articleImagePath', '§9C.1', node, { url: u.slice(0, 80) });
   }
-  function cite(node, parents) {
+  function cite(node) {
     const key = String(node.label || node.identifier || '');
     if (!CITE_KEY_RE.test(key) || key.length > 64) add('error', 'articleCiteKey', '§9C.4', node, { key });
     if (node.prefix) add('error', 'articleCitePrefix', '§9C.4', node, { key, prefix: String(node.prefix).slice(0, 30) });
     if (node.kind === 'narrative') {
       // 地の文の @key の後ろに「, p. 3」などの所在（§9C.4：地の文の引用は所在を持たない）
-      const par = parents[parents.length - 1];
-      const sib = par && par.children ? par.children[par.children.indexOf(node) + 1] : null;
-      if (sib && sib.type === 'text' && /^,\s*(?:(?:p|pp|ch|chap|sec|vol|fig|no)\.?\s*\d|§\s*\d|\d+\s*(?:頁|ページ|章|節|行))/i.test(sib.value || '')) add('error', 'articleCiteNarrativeLocator', '§9C.4', node, { key });
+      // 原稿の字で見る（§9C.8 の 8）：引用のすぐ後ろに「,」・空白・p. pp. ch. sec. § か、数字と 頁・ページ・章・節
+      const pos = node.position;
+      const after = pos && pos.end && pos.end.line === pos.start.line ? (lines[pos.end.line - 1] || '').slice(pos.end.column - 1) : '';
+      if (NARRATIVE_LOCATOR.test(after)) add('error', 'articleCiteNarrativeLocator', '§9C.4', node, { key });
     }
   }
   // ---- 変換できる指令・役割（§9C.2 の informative conversions）：木を部分集合の形に直して、その言葉を返す。直せなければ null
@@ -391,22 +393,27 @@ export function parseArticleText(src, opts = {}) {
   function checkLabel(node, what) {
     const label = String(node.label);
     if (!LABEL_RE.test(label)) add('error', 'articleLabel', '§9C.3', node, { label, why: 'pattern' });
-    // 節の id は sec- で始まる（MUST）。sec- の後の 6 字の base32（[a-z2-7]）は道具が作る形なので、違えば警告だけ（§8.1 の SHOULD と同じ扱い）
-    else if (what === 'section') { if (!label.startsWith('sec-')) add('error', 'articleLabel', '§9C.3', node, { label, why: 'section' }); else if (!SECTION_ID_RE.test(label)) add('warn', 'articleSectionIdForm', '§9C.3', node, { label }); }
+    // 節の id は sec- と base32（[a-z2-7]）の 6 字（§9C.3 の MUST）
+    else if (what === 'section') { if (!label.startsWith('sec-')) add('error', 'articleLabel', '§9C.3', node, { label, why: 'section' }); else if (!SECTION_ID_RE.test(label)) add('error', 'articleSectionIdForm', '§9C.3', node, { label }); }
     else if (what === 'heading') { if (label.startsWith('sec-') && !SECTION_ID_RE.test(label)) add('error', 'articleLabel', '§9C.3', node, { label, why: 'section' }); else if (!label.startsWith('sec-') && RESERVED_PREFIX.test(label)) add('error', 'articleLabel', '§9C.3', node, { label, why: 'reserved' }); }
     else if (RESERVED_PREFIX.test(label)) add('error', 'articleLabel', '§9C.3', node, { label, why: 'reserved' });
   }
   post(tree, []);
   for (const [k, n] of fnRefs) if (!fnDefs.has(k)) add('error', 'articleFootnoteMissing', '§9C.2', n, { name: k });
   for (const [k, n] of fnDefs) if (!fnRefs.has(k)) add('warn', 'articleFootnoteUnused', '§9C.2', n, { name: k });
-  // 参照のない脚注の定義は、myst-parser が黙って落とす：原稿の行から拾って知らせる（字を黙って消さない）
+  // 参照のない脚注の定義は、myst-parser が黙って落とし、同じ名前の 2 つ目の定義も木に残らない：原稿の行から拾って知らせる（§9C.8）
   {
     let fence = null;
+    const seen = new Set();
     lines.forEach((l, i) => {
       const f = l.match(/^\s*(`{3,}|~{3,})/);
       if (f) { if (!fence) fence = f[1][0]; else if (f[1][0] === fence) fence = null; return; }
-      const d = !fence && l.match(/^\[\^([^\]\s]+)\]:/);
-      if (d && !fnDefs.has(d[1]) && !fnDefs.has(d[1].toLowerCase())) add('warn', 'articleFootnoteUnused', '§9C.2', i + 1 + off, { name: d[1] });
+      const d = !fence && l.match(/^ {0,3}\[\^([^\]\s]+)\]:/);
+      if (!d) return;
+      const k = d[1].toLowerCase();
+      if (seen.has(k)) { if (!problems.some((p) => p.code === 'articleFootnoteDuplicate' && p.data.name.toLowerCase() === k)) add('error', 'articleFootnoteDuplicate', '§9C.2', i + 1 + off, { name: d[1] }); }
+      else if (!fnDefs.has(d[1]) && !fnDefs.has(k)) add('warn', 'articleFootnoteUnused', '§9C.2', i + 1 + off, { name: d[1] });
+      seen.add(k);
     });
   }
   // 図の alt（なければ警告。§9C.8 の SHOULD）

@@ -27,13 +27,14 @@ const wordsOf = (lang) => (isJa(lang) ? WORDS.ja : WORDS.en);
 
 // ---------------------------------------------------------------- 番号（§9C.1A）
 // 返すもの：{targets: Map(小文字の名前 → {kind, num, text, title, file}), files: [{prefix, chapterAttr, numbered, fnPrefix, header}], terms: Map(term → id)}
-//   prefix：章の番号か付録の記号（なければ ''）。番号は prefix.n か n
+//   prefix：章の番号か付録の記号（なければ ''）。番号は prefix.n か n。chapterAttr：章の印（data-egatari-chapter・脚注の id）
 export function numberArticle(article, lang) {
   const W = wordsOf(lang);
   const targets = new Map(), terms = new Map(), files = [];
   const book = !!(article.index && article.index.chapters);
   let termN = 0;
-  article.files.forEach((f, fi) => {
+  const kindN = {};
+  article.files.forEach((f) => {
     const prefix = f.kind === 'chapter' && f.chapter ? String(f.chapter) : f.kind === 'appendix' ? f.letter || '' : '';
     // 前書き・後書きは節の番号なし（§9C.1A）。numbering: false も節の番号だけを切る
     const numbered = f.fm.numbering !== false && f.kind !== 'preface' && f.kind !== 'afterword';
@@ -41,7 +42,10 @@ export function numberArticle(article, lang) {
     const counters = new Map();
     const next = (k) => { const n = (counters.get(k) || 0) + 1; counters.set(k, n); return pre(n); };
     const sec = [0, 0, 0];
-    const fileInfo = { prefix, numbered, kind: f.kind, chapterAttr: prefix || null, fnPrefix: book ? (prefix || `${f.kind}${fi + 1}`) : '', nodes: new Map() };
+    // 章の印（§9C.6）：章の番号・付録の記号、前書き・後書きは preface<i>・afterword<i>（i はその種類の中で 1 から）。章ごとの id と属性はすべてこれを使う
+    kindN[f.kind] = (kindN[f.kind] || 0) + 1;
+    const token = prefix || `${f.kind}${kindN[f.kind]}`;
+    const fileInfo = { prefix, numbered, kind: f.kind, chapterAttr: token, fnPrefix: book ? token : '', nodes: new Map() };
     files.push(fileInfo);
     const set = (n, info) => { fileInfo.nodes.set(n, info); if (n.label) targets.set(String(n.label).toLowerCase(), { ...info, file: f.path }); };
     visit(f.tree, (n, parents) => {
@@ -51,7 +55,7 @@ export function numberArticle(article, lang) {
         const num = numbered ? (prefix ? [prefix, ...sec.slice(0, d + 1)] : sec.slice(0, d + 1)).join('.') : null;
         set(n, { kind: 'section', num, text: num ? W.section(num) : plain(n), title: plain(n) });
       } else if (n.type === 'container' && n.kind === 'figure' && !n.subcontainer) {
-        const num = n.label ? next('figure') : null;
+        const num = next('figure');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
         set(n, { kind: 'figure', num, text: num ? `${W.figure}${W.sp}${num}` : null });
         let sub = 0;
         for (const c of n.children || []) if (c.type === 'container' && c.subcontainer) {
@@ -59,10 +63,10 @@ export function numberArticle(article, lang) {
           set(c, { kind: 'subfigure', num: letter, text: num ? `${W.figure}${W.sp}${num}${letter}` : letter });
         }
       } else if (n.type === 'container' && n.kind === 'table') {
-        const num = n.label ? next('table') : null;
+        const num = next('table');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
         set(n, { kind: 'table', num, text: num ? `${W.table}${W.sp}${num}` : null });
       } else if (n.type === 'aside') {
-        const num = n.label ? next('aside') : null;
+        const num = next('aside');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
         set(n, { kind: 'aside', num, text: num ? `${W.aside}${W.sp}${num}` : null, title: titleOf(n) });
       } else if (n.type === 'exercise') {
         const num = n.enumerated === false ? null : next('exercise');
@@ -335,8 +339,9 @@ export function renderArticle(article, opts = {}) {
   }
 }
 
-// 縦書きの 1〜2 桁の数字を縦中横に（§9C.6）。字は実体参照に直してから包む
-function tcy(s) { return esc(s).replace(/(^|[^0-9])([0-9]{1,2})(?![0-9])/g, (m, a, d) => `${a}<span class="egatari-tcy">${d}</span>`); }
+// 縦書きの縦中横（§9C.6）。
+// 数は ASCII の英字・数字と . , : / % の続きを 1 つとして取り、数字 1〜2 字だけのものを縦中横にする（第3章・10月。3.14・2026・12:30・A4 は横に寝かせる）
+function tcy(s) { return String(s).split(/([A-Za-z0-9.,:/%]+)/).map((part, i) => (i % 2 && /^[0-9]{1,2}$/.test(part) ? `<span class="egatari-tcy">${part}</span>` : esc(part))).join(''); }
 export function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // 本文の見た目（静かな既定。テーマの変数があればそれを使う）。§9C.6：日本語の強調は傍点、縦書きの図・表・式は横組み、表の見出しの行は刷るときに繰り返す
