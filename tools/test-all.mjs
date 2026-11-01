@@ -2,7 +2,7 @@
 //   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0。npm の包み（test-npm-pack）
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -49,6 +49,7 @@ const steps = [
   ['themes-lock', ['tools/themes-lock.mjs', '--check']],
   ['catalog', ['tools/catalog.mjs', '--check']],
   ['katex ranges', ['tools/katex-ranges.mjs', '--check']],
+  ['part thumbs', ['tools/part-thumbs.mjs', '--check']],
   // CHANGELOG の断片（changes/*.md）の書き方
   ['changelog', ['tools/changelog.mjs', '--check']],
   ['build minimal', ['kit/build.mjs', 'examples/minimal/deck.html']],

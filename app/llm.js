@@ -21,6 +21,7 @@
 import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, TIERS, partsPackOpts } from '../kit/core/llm-pack.mjs';
 import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, trimCandidates, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
+import { THUMBS } from './part-thumbs.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -105,6 +106,7 @@ const TX = {
     whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
     whySep: '。',
     suggested: 'おすすめ',
+    thumbAlt: (name, title) => `${name}のサンプル${title ? '：' + title : ''}`,
     partsCount: (n, all) => `選んだパーツ：${n} 種類（全 ${all} 種類）`,
     partsShort: (n) => `パーツ ${n} 種類`,
     packMeter: (kb, cap) => `指示の大きさ：${kb} KB（目安は ${cap} KB まで）`,
@@ -250,6 +252,7 @@ const TX = {
     whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
     whySep: ' ',
     suggested: 'Suggested',
+    thumbAlt: (name) => `Example: ${name}`,
     partsCount: (n, all) => `Parts chosen: ${n} of ${all}`,
     partsShort: (n) => `${n} parts`,
     packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
@@ -667,6 +670,14 @@ export function setupLlm(app) {
   // 初めの選び方：標準のパーツは全部、専門のパーツは ① の小分類と ② の言葉から決めた束だけ（recommend。理由を一覧の上に出し、パーツに「おすすめ」）。
   // 特殊（extra）のパーツは出さない。プランが変えるのは目安だけ（選べる数は限らない）：越えたら、越えた分と外す候補（trimCandidates）と［候補を外す］。
   // 自分で替えた印は、推し直しで上書きしない。新規作成はいつも初めの選び方から（開いている教材の studio.newDeck は読まない）
+  // パーツの見本の小さな絵（app/part-thumbs.js。tools/part-thumbs.mjs がパーツの見本 demo.html から作る）：明るい画面と暗い画面の 2 枚を <picture> で。
+  // alt は何の絵か（パーツの名前と、日本語の画面では見本の見出し）。絵のないパーツは線画（ICONS）
+  function thumb(t) {
+    const th = THUMBS[t];
+    if (!th) return el('span', { cls: 'pick-thumb none' }, [icon(partIcon(t))]);
+    const img = el('img', { src: th.light, alt: X.thumbAlt(partLabel(t, LANG), th.title || ''), width: '96', height: '60', loading: 'lazy', decoding: 'async' });
+    return el('picture', { cls: 'pick-thumb' }, [el('source', { srcset: th.dark, media: '(prefers-color-scheme: dark)' }), img]);
+  }
   function sendStep(title, copyMsg, { request, missing, onCopied, onChange }) {
     const listed = partsList(null).flatMap((g) => g.parts);
     const ticked = new Set(initialParts([]));
@@ -684,7 +695,7 @@ export function setupLlm(app) {
       cb.addEventListener('change', () => { if (cb.checked) ticked.add(t); else ticked.delete(t); touched.add(t); update(); });
       boxes.set(t, cb);
       const badge = el('span', { cls: 'pick-badge', text: X.suggested, hidden: '' });
-      const node = el('label', { cls: 'pick', 'data-part': t, title: '<' + t + '>' }, [cb, icon(partIcon(t)),
+      const node = el('label', { cls: 'pick', 'data-part': t, title: '<' + t + '>' }, [cb, thumb(t),
         el('span', { cls: 'pick-text' }, [el('span', { cls: 'tile-label', text: partLabel(t, LANG) }), el('small', { id: cb.id + '-d', text: partDesc(t, LANG) })]), badge]);
       node.badge = badge;
       return node;

@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=00f7568d720be03c -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=bacdd7f96f46b716 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -48,6 +48,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `np
 | `vendor/components/CATALOG.md` | `tools/catalog.mjs` | `vendor/components/` の既定の版の `README.md` の frontmatter |
 | `docs/authoring-with-llms(.ja).md`・`docs/llm-parts/*.md`・`kit/core/llm-pack-data.mjs` | `tools/make-llm-guide.mjs` | `tools/llm-guide/`・`docs/contract*.md`・部品の README と `index.js` |
 | `kit/core/katex-ranges.mjs` | `tools/katex-ranges.mjs` | `node_modules` の KaTeX の字（KaTeX の版を上げたとき） |
+| `app/part-thumbs.js` | `tools/part-thumbs.mjs`（`npm run thumbs`。ブラウザが要るので `npm run gen` には入れない） | 新規作成のパーツの一覧の各パーツの `demo.html`（パーツライブラリを取り込んだとき） |
 
 `npm run gen:check` はそれぞれの道具を `--check` で走らせ（材料から作ったものとファイルが違えば失敗）、CHANGELOG の断片を確かめる。`npm test` も同じことを確かめ、CI は別の短い job でも走らせる。訳の印（i18n）は生成しない：人が両方の言葉を見比べたことの記録だから（[訳](#訳英語と日本語)を見る）。
 

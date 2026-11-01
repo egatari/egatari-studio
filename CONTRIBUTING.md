@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=174035030d504793 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=26b3f2e4119489e5 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -48,6 +48,7 @@ These files are generated and committed (GitHub Pages, the editor and users read
 | `vendor/components/CATALOG.md` | `tools/catalog.mjs` | the frontmatter of the default versions' `README.md` in `vendor/components/` |
 | `docs/authoring-with-llms(.ja).md`, `docs/llm-parts/*.md`, `kit/core/llm-pack-data.mjs` | `tools/make-llm-guide.mjs` | `tools/llm-guide/`, `docs/contract*.md`, the component READMEs and `index.js` |
 | `kit/core/katex-ranges.mjs` | `tools/katex-ranges.mjs` | the KaTeX fonts in `node_modules` (after a KaTeX update) |
+| `app/part-thumbs.js` | `tools/part-thumbs.mjs` (`npm run thumbs`, needs a browser; not part of `npm run gen`) | the `demo.html` of each part in New…'s parts list (after a parts library update) |
 
 `npm run gen:check` runs each generator with `--check` (fails when a file differs from what its sources give) and checks the changelog fragments; `npm test` runs the same checks, and CI runs them in a separate quick job. The i18n stamps are not generated: they record that a person compared both languages (see [Translations](#translations-english-and-japanese)).
 

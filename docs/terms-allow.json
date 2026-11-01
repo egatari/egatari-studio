@@ -266,6 +266,13 @@
     },
     {
       "file": "app/llm.js",
+      "line": "thumbAlt:",
+      "term": "sample",
+      "reason": "Alt text of a part's thumbnail in New… (a picture made from the part's demo), not the sample lessons; en says “Example: Bar chart”.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
       "line": "学会の参加者",
       "term": "participant",
       "reason": "Example text: conference attendees, not Live participants.",

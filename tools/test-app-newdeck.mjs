@@ -444,8 +444,11 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && !(await p8.$('#paste-part-codetree')) && !(await p8.$('#paste-part-collect')),
       'S8 ④: the subject forms come first (maps, then kokugo, english, music), each group is a labelled group, and the extra parts are not listed');
     // 一つずつの札：チェックボックス・絵・名前・1 行の説明（説明は aria-describedby）
-    ok(await p8.$eval('#paste-part-bars', (x) => x.closest('label.pick') && !!x.closest('label').querySelector('svg') && x.closest('label').querySelector('.tile-label').textContent === '棒グラフ'
-      && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる'), 'S8 ④: a part is a checkbox in its label with a picture, the name and a one-line description');
+    const thumb8 = await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
+      return { ok: !!img && img.src.startsWith('data:image/webp') && img.complete && img.naturalWidth > 0 && src.media === '(prefers-color-scheme: dark)' && src.srcset.startsWith('data:image/webp') && l.querySelector('.tile-label').textContent === '棒グラフ'
+        && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる', alt: img && img.alt }; });
+    ok(thumb8.ok && thumb8.alt === '棒グラフのサンプル：年ごとの売上（架空）' && (await p8.$$eval('#paste-parts .pick', (xs) => xs.filter((x) => !x.querySelector('picture.pick-thumb img[alt]')).length)) === 0,
+      'S8 ④: a part is a checkbox in its label with a thumbnail made from its demo (light and dark), alt text naming the picture, the name and a one-line description: ' + thumb8.alt);
     // 目安を越える：越えた分と外す候補（おすすめは候補にしない）と［候補を外す］
     const over8 = await text(p8, '#paste-over-text');
     ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、チャットの AI が最後まで読めないことがあります。外す候補：/.test(over8) && !over8.includes('筆算') && !over8.includes('地図')
