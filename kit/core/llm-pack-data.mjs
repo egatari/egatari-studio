@@ -1153,7 +1153,7 @@ export const PACK = {
  },
  "version": "9a0b9faa",
  "tiers": {
-  "catalogue": "2.0.0",
+  "catalogue": "2.1.0",
   "parts": {
    "m-bars": {
     "tier": "standard",
@@ -1545,6 +1545,13 @@ export const PACK = {
     "label": {
      "ja": "音楽（音の高さ・和音・リズム）",
      "en": "Music (pitch, chords, rhythm)"
+    }
+   },
+   {
+    "id": "model",
+    "label": {
+     "ja": "仕組みをモデルで見る",
+     "en": "How it works (a model)"
     }
    },
    {

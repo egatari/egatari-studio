@@ -59,7 +59,8 @@ try {
   assert.deepEqual(flow.renderers, parts.find((p) => p.name === 'flow').renderers);
   assert.match(flow.nodes[0].texHtml, /class="katex"/);
   const cfg = JSON.parse(new TextDecoder().decode(read.files['egatari.json']));
-  assert.equal(cfg.componentsCatalogue, lock2.default);
+  // 見本は 2.0.0 を選んでいる：既定（2.1.0）が変わっても、教材が選んだカタログのまま書く
+  assert.equal(cfg.componentsCatalogue, '2.0.0');
   assert.equal(cfg.components.base, '1.0.0');
   assert.ok(!/class MotionElement|DECK\.define =|DECK\.mtext =|DECK\.svgMath =|DECK\.shape =|DECK\.tween =/.test(r.html.slice(0, r.html.indexOf('// ---- egatariParts registry'))));
   assert.match(build(path.join(ROOT, 'examples/minimal/deck.html'), { subset: false }).html, /DECK\.define =/);
