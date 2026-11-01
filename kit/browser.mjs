@@ -8,12 +8,16 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 
 export async function launch(opts = {}) {
-  if (process.env.CHROME_PATH) return chromium.launch({ ...opts, executablePath: process.env.CHROME_PATH });
+  return (await launchWhich(opts)).browser;
+}
+// launch と同じ順で探し、どれで起動したかも返す：{browser, via}（via は 'CHROME_PATH' | 'chrome' | 'msedge' | 'chromium'。egatari doctor）
+export async function launchWhich(opts = {}) {
+  if (process.env.CHROME_PATH) return { browser: await chromium.launch({ ...opts, executablePath: process.env.CHROME_PATH }), via: 'CHROME_PATH' };
   const tried = [];
   for (const channel of ['chrome', 'msedge']) {
-    try { return await chromium.launch({ ...opts, channel }); } catch (e) { tried.push(channel + ': ' + String(e.message).split('\n')[0]); }
+    try { return { browser: await chromium.launch({ ...opts, channel }), via: channel }; } catch (e) { tried.push(channel + ': ' + String(e.message).split('\n')[0]); }
   }
-  try { return await chromium.launch(opts); } catch (e) {
+  try { return { browser: await chromium.launch(opts), via: 'chromium' }; } catch (e) {
     throw new Error('ブラウザを起動できない / no browser found.\n'
       + '  Install Google Chrome or Microsoft Edge, or run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome.\n'
       + tried.map((t) => '  (' + t + ')\n').join('') + '  (chromium: ' + String(e.message).split('\n')[0] + ')');

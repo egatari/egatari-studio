@@ -58,14 +58,16 @@ fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'deck.html'), files['deck.html']);
 fs.writeFileSync(path.join(dir, 'narration.md'), files['narration.md']);
 
-// ---------------------------------------------------------------- 次の手順（リポジトリの根から打つ形で出す）
-const relp = path.relative(ROOT, dir);
+// ---------------------------------------------------------------- 次の手順（リポジトリの根から打つ形で出す。egatari コマンドから呼ばれたら（EGATARI_CLI）今いる場所から打つ形）
+const CLI = process.env.EGATARI_CLI;
+const relp = path.relative(CLI ? base : ROOT, dir);
 const shown = (!relp || relp.startsWith('..') || path.isAbsolute(relp) ? dir : relp).split(path.sep).join('/');
 const q = (s) => (/[^\w./-]/.test(s) ? `'${s.replace(/'/g, "'\\''")}'` : s);
 const d = q(shown + '/deck.html');
+const run = (c) => (CLI ? `${CLI} ${c}` : `npm run ${c} --`);
 console.log(`Created ${shown}/ (deck.html, narration.md; lang=${opts.lang}, theme=${opts.theme})
 
-Next steps (from ${ROOT}):
-  npm run build -- ${d}     # -> ${shown}/out/deck.html, open it in a browser
-  npm run dev -- ${d}       # dev server at http://127.0.0.1:8730/ (edit in the browser)
-  npm run check -- ${d}     # checker; the last line should read "エラー 0" (0 errors)`);
+Next steps${CLI ? '' : ` (from ${ROOT})`}:
+  ${run('build')} ${d}     # -> ${shown}/out/deck.html, open it in a browser
+  ${run('dev')} ${d}       # dev server at http://127.0.0.1:8730/ (edit in the browser)
+  ${run('check')} ${d}     # checker; the last line should read "エラー 0" (0 errors)`);
