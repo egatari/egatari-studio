@@ -2,10 +2,8 @@
   "repository": "https://github.com/egatari/egatari-spec",
   "commit": "02645efef8e7022a4282795fb7c6ec3c9514c57e",
   "snapshot": null,
-  "branch": "article-gaps",
-  "note_ref": "the article-gaps branch at 02645ef, not a tag (wd-*): re-vendor the next wd-* tag at rc prep",
-  "unpushed": true,
-  "note_unpushed": "02645ef is not on the spec's remote yet: re-vendor from main once it lands",
+  "branch": "main",
+  "note_ref": "the main branch at 02645ef, not a tag (wd-*): re-vendor the next wd-* tag at rc prep",
   "files": 220,
   "note": "Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again."
 }
