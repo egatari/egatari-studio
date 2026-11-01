@@ -8,6 +8,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.3] - 2026-11-01
+
+### Added
+
+- Forward viewer counts and timer extensions from the presenter view's current pane to the stage, and mirror stage changes back. Keep input across steps on a slide and reset it only on slide entry or a jump, including a jump to the current slide. Preserve the author's values in the next pane, video and print.
+- Reserve keys inside viewer input parts and fields for those controls; keep digits available for page navigation outside parts. Mouse timer clicks leave Space available to advance. Carry the manifest's `viewerInput` capability into built players and portable component entries.
+- Support presenter stage directions `{note:…}` in scripts, shown inline in presenter view and omitted from narration, captions, video, print and audio hashes. The checker reports malformed notes.
+- Add component sound synthesis for bells, chimes and notes, with deterministic PCM rendering and video audio mixing that preserves notes across steps. In talk and learn playback, sound only forward time crossings after a user gesture; preserve note tails on forward step entry and stop them on back, jump or seek. Re-time live events for viewer step extensions.
+- Add a keyboard-accessible “Mute sound effects” toolbar toggle, shown when a component declares sounds or implements `events(k)`, with a saved device preference. Temporarily silence component sounds in editor recording mode without changing that preference. Bundle both sound modules into built lessons and the editor.
+- Components 2.0 lessons can be exported as portable `.ega.html` files. The index records the parts actually written, including libraries in dependency order, exact versions and requirements, embedded part metadata, licenses, build-time renderer records and subset hashes. Unpacking, rebuilding and tier A edits preserve those records.
+- The editor bundle carries the Components 2.0 catalogue and host. Parts use the shared `components.lock.json` content table and `resolveComponent()` to find `vendor/components/sha256/<hash>/`; existing 1.x defaults stay unchanged.
+- Quality checks show a part's layout reports as warnings in Japanese and English, with the part's name, its explanation and a suggestion to give it more space or show less content. The editor preview uses the same warning categories.
+- Components 2.0 `build.fields` now renders ABC scores with pinned abcjs 6.7.2: `abcSvg`, `abcMap`, note/beam/measure/arc tags and renderer version/options in the data and portable index. The CLI uses Chromium through a synchronous helper; the editor's build worker requests main-thread rendering over RPC, and exports use the same renderer. Output follows the vendored rendered-markup allow-list, omits abcjs text, and leaves the ABC source with a build warning when rendering is unavailable or fails. abcjs is bundled only for editor rendering, with its MIT notice; lessons carry SVG without the abcjs runtime.
+- Components 2.0 (preview, opt-in per lesson): Studio vendors egatari/components **v2.0.0** (tag commit dd4d4f0; m-timer, m-predict, m-flow, m-quad and m-cycle are 2.0.1) next to 1.13.x (`components2.lock.json`, `tools/components2-update.mjs`; code shares `vendor/components/sha256/` and the content table in `components.lock.json`). A lesson uses it only when `egatari.json` has `"componentsCatalogue": "2"` (or a catalogue version) or the build is given `--components-catalogue 2`; every other lesson builds with 1.x exactly as before.
+- For a 2.0 lesson the build writes the parts registry (`egatariParts`, format spec §6.1) and then the parts in dependency order with exact versions, renders the declared `tex` fields with KaTeX at build time (`texHtml`, `renderers`; spec §6.2), and keeps only the characters the lesson uses in subset blocks (e.g. `m-kakijun` stroke data): the whole slide source including attribute values, the narration, the data passed to parts and the part's `glyphs`, each declared entry on its own in declared order.
+- Every part's meta is read from its text without running it and must be a static object literal (spec §6.1); an embedded part whose meta is not is reported and left out. A lesson whose parts need two definitions of one element name (two versions of one part, or two differently named parts) is refused with the conflict reported. The registry's `status()` returns `{defined, failed: [{name, version, element?, reason}]}` with `reason` one of `meta`, `factory`, `missing`, `dependency`, `duplicate`, `element`; a second definition of an element name keeps the first.
+- The player passes the navigation and reporting context of spec §8.4 (`lang`, `slides`, `go`, `report`, `visited`, alongside `mode`, `preview`, `slide`, `instant`, `entered`, `reset`) and calls `layout(ctx)` when the window is resized, fonts finish loading, a slide becomes visible or the document becomes visible again. Exceptions in parts are contained by the part's base and again by the player; reports are kept in `DECK.componentReports` (errors also in `DECK.componentErrors`).
+- Live step extensions persist across steps on the same slide, reset on slide entry or jumps, and adjust animation clocks and autoplay without changing authored durations, timelines, video or print.
+- Portable theme index entries include optional `extends` from the child's `theme.json`, alongside a separate entry for the parent theme.
+- Recording mode has a “Keep recording” option, on by default and remembered on this device. Enter keeps the take and, after processing and saving it, starts recording the next step if its audio is missing or stale. Steps with current audio wait, and the last step stops. Turn the option off to wait at every step. Enter's press and release clicks are removed from both takes; step changes play no audio. Screen readers announce the step while recording continuously.
+- Click removal accounts for reported microphone input latency. Takes started with a key or button remove at least the first 30 ms plus that latency, including when a headset starts capturing after the key is released.
+
+### Changed (API)
+
+- Player components receive `ctx.extend(seconds)` for per-step viewer timing. `DECK.stepExtension(i, k)` exposes the accumulated extension; part sounds on the live step are retimed to it.
+- `ctx.live` exists with a live client but ships dormant in v0.6.3: no live source feeds it yet. `poll(id)` returns null until the live service sends reveals (backlog #112, outside the pre-GA plan), so parts keep their viewer/author counts. The live client's `setPollResult(id, {revealed, counts})` is a future integration point requiring an explicit reveal and at least three answers.
+
+### Changed
+
+- Deduplicate vendored component folders and the editor bundle by content hash, preserving pinned lessons and withdrawn versions byte for byte.
+- KaTeX 0.19.0 → 0.19.1 (bug fixes; the formulas lessons can use are unchanged).
+- Builds and portable exports refuse parts with unavailable exact requirements; source checks report `component-requires-missing` errors in English and Japanese. Existing files still open with their own player and play the remaining parts. A notice names each missing requirement and asks for updated parts to rebuild. Script, audio and timing can be edited and saved without rebuilding (tier A); slide editing, theme switching and replacement are disabled.
+- Egatari Player 1.1.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. It hosts the Components 2.0 parts' context (`ctx.extend` for viewer time extensions, clamped so no step runs below zero remaining time or past one hour; `ctx.live`, dormant: `poll()` returns null and nothing shows live counts yet), plays part sounds in talk and learn with a toolbar mute, takes viewer input from the presenter view (#110), and keeps recording mode silent. Files from earlier versions keep their own player.
+
+### Fixed
+
+- Clamp timer shortening to the elapsed time so that remaining time stays nonnegative. Keep the extension total through step resets, make `extend(0)` read-only, and retain the one-hour cap without changing authored durations or the timeline.
+- Lessons using only 2.0 parts omit the player's 1.x component base, registration function and public drawing helpers. Lessons using 1.x parts keep them. Layout calls and the following renders receive separate context objects.
+- Merge the 2.0 registry, context, containment, layout and off-screen rendering rules with narration notes, the existing themes and fonts, SVG text overlap checks and content-addressed component storage. Refresh the local specification fixtures used by these checks.
+- Printing, the slide overview and the quality check no longer count as entering a slide (`ctx.entered`), and returning from them keeps the viewer's input (counts in `m-predict`, a timer's extension); video frames never enter (spec §8.4).
+- Live and embed follow extension version governance (format spec §9A): higher versions are ignored and preserved through editor saves, exports and pack/unpack. They add no connection or frame destinations to the file policy; neither the bundled Live player nor the Viewer's Live host connects. The Live settings panel leaves unsupported versions untouched, and the checker reports them only as `extensionVersion` information
+- Optional additions within Live v1 remain usable and are preserved, including members on the extension, its window and activities. Embed v1 keeps optional members and its existing allowed destinations
+- Remove keyboard and trackpad clicks at the start and stop of recording-mode takes before trimming silence and normalizing the level. Takes too short to keep after removing the clicks show a clear message.
+- Shift click cuts by reported input latency and keep a 30 ms head cut plus that latency for key or button starts, including delayed headset capture.
+
 ## [0.6.2] - 2026-10-30
 
 ### Added
@@ -921,7 +966,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/egatari/egatari-studio/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/egatari/egatari-studio/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/egatari/egatari-studio/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/egatari/egatari-studio/compare/v0.4.8...v0.6.0
