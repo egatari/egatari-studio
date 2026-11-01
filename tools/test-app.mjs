@@ -259,7 +259,8 @@ async function clickSave(sel) {
   const h = await page.waitForSelector(sel);
   return clickUntil(page, sel, () => page.waitForFunction((b) => !b.isConnected || b.disabled || (!!b.closest('#dev-narr') && !window.__APP_TEST.ui().narrDirty), h, { timeout: 2500 }));
 }
-async function waitLoads(n, timeout = 15000) {
+// 期限は固まったときのためだけ（外での変更は 1.5 秒ごとに見つけ、組み立ては Worker。ほかの段と同時に走る CI では組み立てに 10 秒を超えることがある）
+async function waitLoads(n, timeout = 30000) {
   await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout }).catch(async (e) => {
     // 読み込みが来なかったわけ（組み立て中か・組み立ての回数・エラー・板の状態）を出して落とす
     const d = await page.evaluate(() => { const s = window.__APP_TEST.state(), u = window.__APP_TEST.ui(); return { loads: s.loads, builds: s.builds, error: s.error, narrKey: u.narrKey, narrDirty: u.narrDirty, pos: u.pos && u.pos.key,
@@ -383,7 +384,7 @@ try {
   n = await loads();
   const deckExt = deck1.replace('<h2>更新の式</h2>', '<h2>更新の式（外で）</h2>');
   await opfs.write('deck.html', deckExt);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   ok((await page.inputValue('#dev-editor textarea')) === '書きかけ', 'edit conflict: the open editor keeps unsaved input across the reload');
   await page.press('#dev-editor textarea', 'Meta+Enter');
   await page.waitForSelector('#dev-editor .dev-msg.dv-err');
@@ -391,7 +392,7 @@ try {
   await page.press('#dev-editor textarea', 'Escape');
   n = await loads();
   await opfs.write('deck.html', deck1);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
 
   // ---------------------------------------------------------------- 4. 口述原稿（narration.md を CRLF にして、書き戻しが CRLF のままか）
   // （改行だけの違いは組み立ての結果を変えないので、プレビューは読み込み直さない。組み直しを待つ）
@@ -455,7 +456,7 @@ try {
   n = await loads();
   const narrExt = narr1.replace('足した発言です。', '外で直した発言です。');
   await opfs.write('narration.md', narrExt);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   await page.press('#dev-narr .dev-turn textarea >> nth=0', 'Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
   ok(/台本が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
@@ -527,7 +528,7 @@ try {
   const deck2 = (await opfs.read('deck.html')).replace('<h2>学習率と収束</h2>', '<h2>学習率と収束（外で変更）</h2>');
   ok(deck2.includes('外で変更'), 'external: test edit applies');
   await opfs.write('deck.html', deck2);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   ok(await f.evaluate(() => document.querySelector('#stage .slide.active h2').textContent.includes('外で変更')), 'external: change detected, rebuilt and reloaded');
   const st2 = await f.evaluate(() => DECK.state());
   ok(st2.slide === 5 && st2.step === 1, `external: slide and step kept (${st2.slide}:${st2.step})`);
@@ -1846,6 +1847,9 @@ try {
       n0 = await builds();
       await clickDlg(po, '#dlg-forget');
       await afterBuild(n0);
+      // 先に始まっていた組み立て（外での変更を見張る poll など）が先に終わることがある。忘れたあとの組み立てが済み、知らせが出るまで待つ（期限は固まったときのため）
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(), t = window.__APP_TEST.themeFolder(), b = document.querySelector('#notice-theme #b-theme-load');
+        return !s.error && t.name === null && !t.inBuild && s.warn.some((w) => w.startsWith('theme not found: "mytml"')) && !!b && b.getClientRects().length > 0; }, null, { timeout: 30000 }).catch(() => {});
       s = await pst();
       ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-load'), 'theme folder: Forget → the deck builds without it again and the notice is back');
       await po.goto(BASE);

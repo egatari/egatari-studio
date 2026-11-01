@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { launch, fileUrl, prepareForCapture, releaseCapture } from '../kit/browser.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 import { KNOWN, expired, entryFor, knownAccepts, unused, lockedVersion } from './step-reset-known.mjs';
@@ -44,7 +44,9 @@ let exactN = 0, tolN = 0, knownN = 0;
 for (const x of expired(KNOWN)) ok(false, x.msg);
 const seenKnown = new Set();
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
-const shot = async (p) => { await settle(p); return p.screenshot({ clip: CLIP }); };
+// 操作の帯と知らせは撮らない（kit/browser.mjs の CAPTURE_HIDE）：マウスで部品を押すと帯が出て、時計で隠れる。隠れたかどうかは試験の外のこと
+// （ほかの段と同時に走る CI では、帯が隠れる前に撮って、部品の外の帯だけが違った）
+const shot = async (p) => { await prepareForCapture(p); await settle(p); try { return await p.screenshot({ clip: CLIP }); } finally { await releaseCapture(p); } };
 const goTo = (p, i, k) => p.evaluate(([i, k]) => DECK.go(i, k, false), [i, k]);
 
 // 部品を操作する：押した数（0 なら押すものがない）。opened：開いた札があるか（m-kobun）
