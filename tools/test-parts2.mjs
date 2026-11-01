@@ -3,7 +3,8 @@
 //   登録簿（kit/parts-registry.js）：status() の形（failed[].element）と失敗の理由（meta・factory・missing・dependency・duplicate・element）・依存の順・先の参照・factory の失敗とその伝わり・
 //   同じ名前の 2 つの版・返り値を凍らせる・要素の定義・要素の名前の 2 度目・形の違う meta
 //   kit/core/parts2.mjs：依存の解決と順・要素の名前のぶつかり（conflicts。組み立ては断る）・カタログの選び方・meta を字で読む（字のままでなければ知らせる。写しのパーツは全部読める）・
-//   描く欄の道筋と欄の名前・絞り込み（同じキーなら同じバイト、_ の欄は先にそのまま、宣言ごとに宣言した順、keys は合わせて符号の順）
+//   描く欄の道筋と欄の名前・絞り込み（同じキーなら同じバイト、_ の欄は先にそのまま、宣言ごとに宣言した順、keys は合わせて符号の順）・
+//   名前で絞る（match: "name"。tools/fixtures/subset-names の部品庫の参照の実装が出したものとバイトまで同じ、語の切り方、keep、names の記録、形の違う宣言）
 //   写し：vendor/components/sha256 と components2.lock.json が合っている（tools/components2-update.mjs --check と同じ）
 import fs from 'node:fs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
@@ -12,7 +13,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
+import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonTokens, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
 import { applyRelease2, checkVendor2 } from './components2-update.mjs';
 import { validateIndex } from '../kit/core/portable.mjs';
 
@@ -230,6 +231,53 @@ for (const [code, what] of [
   const r2 = subsetCode(c2, [{ data: 'block:t', key: 'char' }, { data: 'block:t', key: 'alt' }], 'あか');
   ok(r2.code.includes('/*@egatari-block t*/[{"char":"あ","alt":"か"}]/*@egatari-block-end*/') && r2.keys === 'あか' && eq(r2.blocks, ['t']), `several entries subset on their own, in declared order; keys are the union, each once, in code point order (${r2.keys})`);
   ok(subsetCode(code, { data: 'strokes', key: 'char' }, 'あ').problems.some((x) => /is not block:<name>/.test(x)), 'a subset entry whose data is not block:<name> is reported (1.0: blocks only)');
+}
+
+// ---------------------------------------------------------------- 名前で絞る（§6.2 Subset by name）
+// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce）が同じ入力から出したもの。
+// 同じ宣言・同じ教材の字なら、絞ったコードのバイト（sha256）・keys・names が同じ
+{
+  const FX = path.join(ROOT, 'tools/fixtures/subset-names');
+  const rd = (f) => fs.readFileSync(path.join(FX, f), 'utf8');
+  const hash = (s) => crypto.createHash('sha256').update(String(s).replace(/\r\n?/g, '\n'), 'utf8').digest('hex');
+  const exp = JSON.parse(rd('expected.json'));
+  for (const c of exp.cases) {
+    const full = rd(c.part), texts = c.inline || c.lessons.map(rd);
+    const r = subsetCode(full, c.build.subset, texts.join('\n'), lessonTokens(texts));
+    ok(hash(full) === c.full && !r.problems.length && hash(r.code) === c.sha256 && Buffer.byteLength(r.code) === c.bytes && r.keys === c.keys && eq(r.names, c.names),
+      `${c.name}: the same bytes as the reference (${c.bytes} B, sha256 ${c.sha256.slice(0, 12)}…), keys ${JSON.stringify(r.keys)}, names ${JSON.stringify(r.names)}${r.problems.length ? ' / ' + r.problems.join('; ') : ''}`);
+    const again = subsetCode(full, c.build.subset, r.keys, [...(r.names || [])].reverse());
+    ok(again.code === r.code && eq(again.names, r.names), `${c.name}: applying the recorded keys and names (in any order) to the full code gives the same bytes`);
+  }
+  // 部品庫の §8 の確かめ（tools/test-subset.mjs 8）を同じ字で
+  const lesson = rd('lesson-names.html'), t = lessonTokens([lesson]);
+  ok(!t.has('chart-bar') && t.has('chart-bar-popular') && t.has('chart') && !t.has('home') && !t.has('Chart-Bar') && !t.has('chart_bar'),
+    'tokens: chart-bar-popular stays whole, "_" and case split or differ, comments do not count');
+  const npart = rd('names-part.js'), ndecl = exp.cases[0].build.subset;
+  const nr = subsetCode(npart, ndecl, lesson, t);
+  const icons = (code, name = 'icons') => JSON.parse(new RegExp(`/\\*@egatari-block ${name}\\*/([\\s\\S]*?)/\\*@egatari-block-end\\*/`).exec(code)[1]);
+  ok(eq(Object.keys(icons(nr.code)), ['_notice', 'chart-bar-popular', 'user', 'x']) && eq(Object.keys(icons(nr.code, 'marks')), ['_n', 'あ']) && nr.keys === 'あ' && eq(nr.names, ['chart-bar-popular', 'user', 'x']),
+    `chart-bar-popular does not keep chart-bar; keep: ["x"] is kept; keys hold char entries only, names in code point order (${JSON.stringify(nr.names)})`);
+  // ライブラリのパーツ（icons 1.0.0 の形）：MIT の _notice は最初の欄のまま残る
+  const ic = rd('icons.js'), icFull = icons(ic), icSub = subsetCode(ic, exp.cases[2].build.subset, '', lessonTokens([rd('lesson-icons.html')]));
+  ok(Object.keys(icons(icSub.code))[0] === '_notice' && icons(icSub.code)._notice === icFull._notice && /MIT License/.test(icFull._notice) && icSub.code.includes('/* MIT data: Tabler Icons'),
+    'icons: the MIT notice (the block\'s first member "_notice", and the comment before the block) survives the subset');
+  ok(subsetCode(ic, exp.cases[2].build.subset, 'chart-bar user', []).names.length === 0, 'name entries do not read the characters: without tokens nothing but "_" members is kept');
+  // 字だけの宣言のパーツは names を持たない（今までと同じ）
+  const cOnly = subsetCode('A = /*@egatari-block m*/{"あ":1,"い":2}/*@egatari-block-end*/;', { data: 'block:m', key: 'char' }, 'あ', ['user']);
+  ok(cOnly.names === null && cOnly.keys === 'あ', 'a part with char entries only records no names');
+  // 形の違う宣言は知らせて、その塊は絞らない（参照の実装は断る）
+  const nk = rd('names-part-nokeep.js');
+  const pr = (decl, code = nk) => { const x = subsetCode(code, decl, 'あ', ['user']); return { p: x.problems.join('; '), same: x.code === code || !x.blocks.includes('icons') }; };
+  const a1 = pr({ data: 'block:icons', key: 'name', match: 'word' }), a2 = pr({ data: 'block:icons', key: 'name', match: 'name', keep: ['Bad'] }),
+    a3 = pr({ data: 'block:marks', key: 'char', keep: ['x'] }), a4 = pr({ data: 'block:icons', key: 'name', match: 'name' }, nk.replace('"home"', '"Home"'));
+  ok(/is not "char" or "name"/.test(a1.p) && a1.same && /keep is an array of names/.test(a2.p) && a2.same && /keep is an array of names/.test(a3.p) && a3.same && /\["Home"\] are not names/.test(a4.p) && a4.same,
+    'reported, block left whole: an unknown match, a keep name outside ^[a-z0-9]+(-[a-z0-9]+)*$, keep on a char entry, a name block key that is not a name');
+  // 索引の components[].subset.names（index schema）
+  const c = { name: 'icons', version: '1.0.0', sha256: 'a'.repeat(64), source: 'registry' };
+  const v = (s) => validateIndex({ components: [{ ...c, subset: { keys: '', sha256: 'b'.repeat(64), ...s } }] }).filter((x) => /^components/.test(x));
+  ok(v({ names: ['chart-bar', 'user'] }).length === 0 && v({ names: 'user' }).length === 1 && v({ names: ['User'] }).length === 1 && v({ names: ['x', 'x'] }).length === 1,
+    'index components[].subset.names: an array of names, each once, is checked');
 }
 
 // ---------------------------------------------------------------- 写し

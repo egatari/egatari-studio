@@ -1,0 +1,158 @@
+{
+ "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce() at c2-base 342be71 (spec §6.2 subset by name, egatari-spec 87175aa / 3d4ead0). The fixture parts are the components test-subset §8 stand-in and the icons 1.0.0 library cut to 9 icons; regenerate only from that reference.",
+ "cases": [
+  {
+   "name": "names §8: keep, a char entry, tokens",
+   "part": "names-part.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name",
+      "keep": [
+       "x"
+      ]
+     },
+     {
+      "data": "block:marks",
+      "key": "char"
+     }
+    ]
+   },
+   "keys": "あ",
+   "names": [
+    "chart-bar-popular",
+    "user",
+    "x"
+   ],
+   "sha256": "9ce019e6c6df18a2b5206f07e570b5f64499e3ec95db68fc2d3732b2521db5c5",
+   "full": "e4f221ca44ae4b3102a579d5ac6f67e612373c26fe1953c149de853d80f7e0c1",
+   "bytes": 515
+  },
+  {
+   "name": "names §8: nothing used",
+   "part": "names-part-nokeep.js",
+   "inline": [
+    "<p>nothing here</p>"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [],
+   "sha256": "49eae8519c36a91c109aa5d9f43bbf74044a30f170daeaa02df1524e029abee3",
+   "full": "b9f159ac7a14fbde65a1f991c99141838877a33c253ac606343a75b509e29f73",
+   "bytes": 393
+  },
+  {
+   "name": "icons (test-icons 3)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-icons.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "chart-bar-popular",
+    "user"
+   ],
+   "sha256": "aaff8dba41de338527ae3c35610abf51f83eed1db793e3afade7d8d28d784d49",
+   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
+   "bytes": 4672
+  },
+  {
+   "name": "icons: comments, <style>, entities, case, narration",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-mixed.html",
+    "narration-mixed.md"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "accessible",
+    "arrow-right",
+    "chart-bar",
+    "percentage-10",
+    "user"
+   ],
+   "sha256": "886ce09b371bfda6d6a5a2c31310c7a426747fc5dd2edf060fc25437876d2554",
+   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
+   "bytes": 4970
+  },
+  {
+   "name": "icons: no lesson",
+   "part": "icons.js",
+   "inline": [
+    ""
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [],
+   "sha256": "3d55070aca5594359c43a36884c13365c7e92ca5ac890b5ffc0b069d6e80c81c",
+   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
+   "bytes": 4307
+  },
+  {
+   "name": "array block by field, keep",
+   "part": "names-array.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:list",
+      "key": "id",
+      "match": "name",
+      "keep": [
+       "home"
+      ]
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "home",
+    "user"
+   ],
+   "sha256": "2a88019f838272d90698f903bfa1bc5c68b5eb24cef4d5fe3ab0a0ab0fc5c00e",
+   "full": "a8f97655758c90db1f42b0e0883d3fd03998873e9baa285955f4a4e7598518a1",
+   "bytes": 352
+  }
+ ]
+}

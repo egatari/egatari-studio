@@ -241,19 +241,49 @@ export function renderFields(data, build, renderers) {
 
 // ---------------------------------------------------------------- 絞り込み（§6.2 Subset）
 const BLOCK_RE = /\/\*@egatari-block ([a-z][a-z0-9-]{0,63})\*\/([\s\S]*?)\/\*@egatari-block-end\*\//g;
-// code の中の印の付いた塊を、text に出てくるキーだけに絞る。decl：パーツの build.subset（1 つか配列）。
-// 教材の字（text）は、呼ぶ側が集める（§6.2 Subset：原稿の全部の字（属性の値も）・口述原稿・パーツに渡すデータ・パーツの glyphs）。
-// 宣言ごとに別々に、宣言した順に絞る。残したキー（keys）は、どの宣言で残したものも合わせて 1 回ずつ、符号の順
-// 返すもの：{code, keys, blocks: [名前], problems: [文]}。塊のないパーツは code のまま
-export function subsetCode(code, decl, text) {
+// 名前で絞る宣言（match: "name"）のキーと keep の名前の形（§6.2 Subset by name）
+export const SUBSET_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// 符号の順（文字列を符号位置の列として比べる。UTF-16 の順とは astral の字で違う）
+const cpOrder = (a, b) => { const x = Array.from(a), y = Array.from(b); for (let i = 0; i < Math.min(x.length, y.length); i++) { const d = x[i].codePointAt(0) - y[i].codePointAt(0); if (d) return d; } return x.length - y.length; };
+// 名前で絞るときの教材の語（§6.2 Subset by name）：教材の字を a–z・0–9・- 以外の字ごとに切った語。大文字・小文字は畳まない。
+// 部品庫の参照の実装（egatari/components tools/subset-produce.mjs の lessonTokens）と同じ：注釈と <style> は数えず、数字の字の参照（&#…; &#x…;）は読んだ字で。
+// texts：原稿・口述原稿・パーツに渡すデータ・glyphs などの字の配列（ひとつずつ切る）。返すもの：語の Set
+export function lessonTokens(texts) {
+  const set = new Set();
+  for (const t of texts) {
+    const s = String(t).replace(/<!--[\s\S]*?-->/g, '').replace(/<style\b[\s\S]*?<\/style>/gi, '')
+      .replace(/&#x([0-9a-f]+);/gi, (m, h) => { const n = parseInt(h, 16); return n <= 0x10ffff ? String.fromCodePoint(n) : m; })
+      .replace(/&#(\d+);/g, (m, d) => (+d <= 0x10ffff ? String.fromCodePoint(+d) : m));
+    for (const w of s.split(/[^a-z0-9-]+/)) if (w) set.add(w);
+  }
+  return set;
+}
+// code の中の印の付いた塊を、教材に出てくるキーだけに絞る。decl：パーツの build.subset（1 つか配列）。
+// 教材の字（text）と語（names：lessonTokens の結果。名前で絞る宣言だけが使う）は、呼ぶ側が集める（§6.2 Subset：原稿の全部の字（属性の値も）・口述原稿・
+// パーツに渡すデータ・パーツの glyphs）。宣言ごとに別々に、宣言した順に絞る。
+//   match "char"（既定）：キーが text の字に出てくるものを残す
+//   match "name"：キーが names の語（か宣言の keep）にちょうど等しいものを残す。キーは SUBSET_NAME_RE の形（でなければ知らせて、その塊は絞らない）
+// 残したキー（keys）は char の宣言で残したものを合わせて 1 回ずつ、符号の順に 1 つの字列。names は name の宣言で残した名前を 1 回ずつ、符号の順に（name の宣言がなければ null）。
+// 記録した keys・names をもう一度渡せば同じバイトになる（編集アプリが信頼できる写しに当てて比べる）
+// 返すもの：{code, keys, names, blocks: [名前], problems: [文]}。塊のないパーツは code のまま
+export function subsetCode(code, decl, text, names = []) {
   const list = (Array.isArray(decl) ? decl : [decl]).filter((d) => isObj(d));
   const chars = new Set(Array.from(String(text)));
-  const kept = new Set(), blocks = [], problems = [];
+  const tokens = new Set(names);
+  const kept = new Set(), keptNames = new Set(), blocks = [], problems = [];
+  let anyName = false;
   let out = String(code);
   for (const d of list) {
     if (typeof d.data !== 'string' || typeof d.key !== 'string') { problems.push(`entry ${JSON.stringify(d).slice(0, 80)}: needs data and key`); continue; }
     if (!/^block:[a-z][a-z0-9-]{0,63}$/.test(d.data)) { problems.push(`entry data ${JSON.stringify(d.data.slice(0, 64))} is not block:<name>`); continue; }
-    const name = d.data.slice(6), keyField = d.key;
+    const match = d.match === undefined ? 'char' : d.match;
+    if (match !== 'char' && match !== 'name') { problems.push(`entry ${d.data}: match ${JSON.stringify(d.match).slice(0, 40)} is not "char" or "name"`); continue; }
+    if (d.keep !== undefined && (match !== 'name' || !Array.isArray(d.keep) || !d.keep.every((k) => typeof k === 'string' && SUBSET_NAME_RE.test(k)))) {
+      problems.push(`entry ${d.data}: keep is an array of names on a match: "name" entry`); continue;
+    }
+    const name = d.data.slice(6), keyField = d.key, byName = match === 'name';
+    if (byName) anyName = true;
+    const want = byName ? new Set([...tokens, ...(d.keep || [])]) : null;
     let found = false;
     out = out.replace(BLOCK_RE, (m, bn, json) => {
       if (bn !== name) return m;
@@ -261,13 +291,20 @@ export function subsetCode(code, decl, text) {
       let v;
       try { v = JSON.parse(json); } catch (e) { problems.push(`block ${name}: not JSON (${e.message})`); return m; }
       let res;
+      if (byName) {
+        // 名前で絞る塊のキーは名前の形（参照の実装と同じ：配列は object の項目の key の欄を字にして見る）
+        const ks = Array.isArray(v) ? v.filter((it) => isObj(it)).map((it) => String(it[keyField])) : isObj(v) ? Object.keys(v).filter((k) => !k.startsWith('_')) : [];
+        const bad = ks.filter((k) => !SUBSET_NAME_RE.test(k));
+        if (bad.length) { problems.push(`block ${name}: keys ${JSON.stringify(bad.slice(0, 5))} are not names (${SUBSET_NAME_RE.source}); the block is left whole`); return m; }
+      }
       if (Array.isArray(v)) {
-        res = v.filter((it) => isObj(it) && typeof it[keyField] === 'string' && chars.has(it[keyField]));
-        res.forEach((it) => kept.add(it[keyField]));
+        res = byName ? v.filter((it) => isObj(it) && want.has(String(it[keyField])))
+          : v.filter((it) => isObj(it) && typeof it[keyField] === 'string' && chars.has(it[keyField]));
+        res.forEach((it) => (byName ? keptNames.add(String(it[keyField])) : kept.add(it[keyField])));
       } else if (isObj(v)) {
         res = {};
         for (const k of Object.keys(v)) if (k.startsWith('_')) res[k] = v[k];   // _ で始まる欄（使用条件の表示など）は先に、そのまま
-        for (const k of Object.keys(v)) if (!k.startsWith('_') && chars.has(k)) { res[k] = v[k]; kept.add(k); }
+        for (const k of Object.keys(v)) if (!k.startsWith('_') && (byName ? want.has(k) : chars.has(k))) { res[k] = v[k]; (byName ? keptNames : kept).add(k); }
       } else { problems.push(`block ${name}: neither an object nor an array`); return m; }
       if (!blocks.includes(name)) blocks.push(name);
       return `/*@egatari-block ${name}*/${JSON.stringify(res)}/*@egatari-block-end*/`;
@@ -275,5 +312,5 @@ export function subsetCode(code, decl, text) {
     if (!found) problems.push(`block ${name}: not found in the code`);
   }
   const keys = [...kept].sort((a, b) => a.codePointAt(0) - b.codePointAt(0)).join('');
-  return { code: out, keys, blocks, problems };
+  return { code: out, keys, names: anyName ? [...keptNames].sort(cpOrder) : null, blocks, problems };
 }
