@@ -53,9 +53,11 @@ const ROOT = path.dirname(KIT);
 // 版（package.json の version）。デッキに DECK.VERSION として埋め込む（フィードバックの欄に入れる）
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '';
 const short = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 8);
-// 同梱の再生器の版の "+dev.<commit>"（kit/core/player.mjs）に使う、このリポジトリの今の commit（短い形）。git がなければ ''（"+dev" だけ）
+// 同梱の再生器の版の "+dev.<commit>"（kit/core/player.mjs）に使う、このリポジトリの今の commit（短い形）。git がなければ ''（"+dev" だけ）。
+// ROOT 自身が clone（.git がある）のときだけ聞く：npm で入れたとき（node_modules の下）に、外側の利用者のリポジトリの commit を拾わない
 let _commit = null;
 export function repoCommit() {
+  if (_commit === null && !fs.existsSync(path.join(ROOT, '.git'))) _commit = '';
   if (_commit === null) {
     const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8', timeout: 10000 });
     _commit = r.status === 0 && /^[0-9a-f]{4,40}$/.test((r.stdout || '').trim()) ? r.stdout.trim() : '';
