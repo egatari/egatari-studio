@@ -196,6 +196,15 @@ try {
     assert.ok(x.html.includes('"_notice":"Tabler Icons 3.49.0'), 'the MIT notice survives');
     assert.deepEqual(validateIndex(x.index), []);
     assert.ok(validate(JSON.parse(JSON.stringify(x.index))), JSON.stringify(validate.errors));
+    // 形の悪い宣言（§6.2 Bad declarations）：知らせて、パーツは全部のまま書き、索引に subset を書かない。教材は組める
+    lock2x.parts.icons['1.0.0'].build = { subset: [{ data: 'block:icons', key: 'name', match: 'name', keep: ['Not-A-Name'] }] };
+    fake[path.join(ROOT, 'components2.lock.json')] = JSON.stringify(lock2x);
+    const xb = await exportPortable(env, path.join(d, 'deck.html'), { subset: false });
+    const icb = xb.index.components.find((p) => p.name === 'icons');
+    assert.ok(icb && !('subset' in icb) && icb.sha256 === iconsSha, 'a bad declaration: no subset in the index entry');
+    assert.ok(xb.html.includes(safe(iconsJs)), 'a bad declaration: the whole part is written');
+    assert.ok(xb.warnings.some((w) => /part icons@1\.0\.0: bad subset declaration \(.*keep/.test(w)), `a bad declaration is reported, naming the part and the fault: ${xb.warnings.filter((w) => /subset/.test(w)).join(' | ')}`);
+    assert.deepEqual(validateIndex(xb.index), []);
     console.log(`ok   subset by name: a library part's build from the lock, subset.names ${JSON.stringify(ic.subset.names)} in the index (schema), the reference's bytes, the notice kept`);
   }
 

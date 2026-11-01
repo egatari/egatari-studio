@@ -1,4 +1,4 @@
-// icons 1.0.0 (test fixture: the published part with its block cut to 9 icons by hand, layout kept): line icons by name (Tabler Icons outline, MIT; a library part, Egatari spec §6.1). Parts that draw an icon the
+// icons 1.0.0 (test fixture: the published part with its block cut to 10 icons by hand, layout kept): line icons by name (Tabler Icons outline, MIT; a library part, Egatari spec §6.1). Parts that draw an icon the
 // lesson names (m-cards) require it as `requires: {icons: "1.0.0"}` and receive {svg, has, near, names, build}:
 //   svg(name, {x, y, size, cls, missing}) -> an SVG <g> (aria-hidden) of the icon, its top left at (x, y), size px square
 //     (default 24); stroke currentColor, 2 units of the 24-unit box, round caps and joins, so the colour comes from the
@@ -20,6 +20,7 @@ egatariParts.define({name: "icons", version: "1.0.0", requires: {}}, function(){
 "chart-bar-popular":["M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6","M9 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10","M15 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14","M4 20h14"],
 "home":["M5 12l-2 0l9 -9l9 9l-2 0","M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7","M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"],
 "percentage-10":["*M12 3c1.92 0 3.7 .601 5.16 1.626l-5.16 7.374v-9","M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"],
+"table":["M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14","M3 10h18","M10 3v18"],
 "user":["M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0","M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"],
 "x":["M18 6l-12 12","M6 6l12 12"]}/*@egatari-block-end*/;
 

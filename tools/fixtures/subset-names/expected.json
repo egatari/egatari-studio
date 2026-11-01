@@ -1,5 +1,5 @@
 {
- "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce() at c2-base 342be71 (spec §6.2 subset by name, egatari-spec 87175aa / 3d4ead0). The fixture parts are the components test-subset §8 stand-in and the icons 1.0.0 library cut to 9 icons; regenerate only from that reference.",
+ "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce(js, sources) at 547e06d (spec §6.2 subset, egatari-spec 6f2670b: the lesson text, string keys, bad declarations kept whole). .html lessons are {html}, .md lessons {narration}. The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries. Regenerate only from that reference.",
  "cases": [
   {
    "name": "names §8: keep, a char entry, tokens",
@@ -74,9 +74,9 @@
     "chart-bar-popular",
     "user"
    ],
-   "sha256": "aaff8dba41de338527ae3c35610abf51f83eed1db793e3afade7d8d28d784d49",
-   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
-   "bytes": 4672
+   "sha256": "038a319311969e7f7cf2e3d4be184a8ee46ae54aa709774d113a33036619e7e2",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4673
   },
   {
    "name": "icons: comments, <style>, entities, case, narration",
@@ -102,9 +102,9 @@
     "percentage-10",
     "user"
    ],
-   "sha256": "886ce09b371bfda6d6a5a2c31310c7a426747fc5dd2edf060fc25437876d2554",
-   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
-   "bytes": 4970
+   "sha256": "396c52efc02d434c72808980fa70452a65b7f61593e21c368166ae905814128c",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4971
   },
   {
    "name": "icons: no lesson",
@@ -123,9 +123,9 @@
    },
    "keys": "",
    "names": [],
-   "sha256": "3d55070aca5594359c43a36884c13365c7e92ca5ac890b5ffc0b069d6e80c81c",
-   "full": "fe1395387f87d84da39f4c680902d3b562b7a595d675b33395d67517725a1c54",
-   "bytes": 4307
+   "sha256": "ec15925d256685709f037280ee923be81c9bcd38096491927d3b046346c58227",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4308
   },
   {
    "name": "array block by field, keep",
@@ -153,6 +153,76 @@
    "sha256": "2a88019f838272d90698f903bfa1bc5c68b5eb24cef4d5fe3ab0a0ab0fc5c00e",
    "full": "a8f97655758c90db1f42b0e0883d3fd03998873e9baa285955f4a4e7598518a1",
    "bytes": 352
+  },
+  {
+   "name": "a comment, a tag name (table), <style>, <script>, a \\u-escaped name in data",
+   "why": "tag names and <script> contents are not text (table, arrow-right); data is read as JSON (\\u0068ome is home); a comment does not count (a-b)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-spec-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "home",
+    "user"
+   ],
+   "sha256": "d4ead46b9ad78c7ab327e5f89aba9022c33b60e9357f30410656f2613766d2a2",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4522
+  },
+  {
+   "name": "char path: comment, <style>, <script>, tag name, references, JSON number, glyphs",
+   "why": "い in a comment, か in <script> and q as a tag name do not count; う is the part's glyphs (also in <style>, which does not count); &copy; stays undecoded (only amp, lt, gt, quot, apos, nbsp are read); 1E21 counts as String(1e21) = 1e+21; &#x3048; is え",
+   "part": "chars-part.js",
+   "lessons": [
+    "lesson-spec-chars.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:marks",
+      "key": "char"
+     }
+    ]
+   },
+   "glyphs": "う",
+   "keys": "+あうえ",
+   "names": null,
+   "sha256": "2dd608cf1db3842bbdd581204a96f52ca1105057b5b81faa8b3b3ad4a310ab01",
+   "full": "24aa9a550ac45f067659c471b6f7643e9c705bbbdcdf84f4f13d11acc0d0f6e4",
+   "bytes": 365
+  },
+  {
+   "name": "bad declaration: a non-string key keeps the part whole",
+   "part": "names-array-bad.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:list",
+      "key": "id",
+      "match": "name",
+      "keep": [
+       "home"
+      ]
+     }
+    ]
+   },
+   "warning": "subset: block list: keys [3] are not names (/^[a-z0-9]+(-[a-z0-9]+)*$/)",
+   "sha256": "1c9232971d4cba4f4395c99ab54c2519a59764d9b36ff31609c5bf9896bdebe4",
+   "full": "1c9232971d4cba4f4395c99ab54c2519a59764d9b36ff31609c5bf9896bdebe4",
+   "bytes": 413
   }
  ]
 }
