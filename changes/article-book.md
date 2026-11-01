@@ -6,7 +6,8 @@
   glossary, ruby, emphasis dots and upright digits in Japanese vertical writing, cross-references such as "図 4.1" and "4.1 節"
 - `check` reports book problems as `article…` codes (§9C.8): constructs outside Egatari Text 1 with the replacement to write, labels,
   chapter order and numbers, cross-references, solutions, terms, step links, citation keys, images and slides' `data-article`
-- `npm run ids` adds a missing section id `(sec-xxxxxx)=` before each `##` heading of the book
+- `npm run ids` adds a missing section id `(sec-xxxxxx)=` before each `##` heading of the book, and writes the chapters' reading order
+  into an existing `egatari.json` (`article`); without it, chapters are read by kind, then by file name
 - Docs: [Writing a book](docs/article.md)
 
 ### Changed

@@ -56,6 +56,29 @@ t('layout: article.md', () => assert.deepStrictEqual(articleLayout(['deck.html',
 t('layout: chapters in name order', () => assert.deepStrictEqual(articleLayout(['article/10.md', 'article/02.md', 'article/img/x.md', 'article/a.txt']).index, { chapters: ['article/02.md', 'article/10.md'] }));
 t('layout: none', () => assert.equal(articleLayout(['deck.html']).index, null));
 t('layout: both is an error', () => assert.equal(articleLayout(['article.md', 'article/01.md']).problems[0].code, 'articleIndex'));
+t('order: without egatari.json article, by kind then file name (§9C.7)', () => {
+  const files = { 'article/00.md': '---\ntitle: a\nkind: appendix\n---\n', 'article/10.md': '---\ntitle: c\nchapter: 1\n---\n', 'article/20.md': '---\ntitle: w\nkind: afterword\n---\n', 'article/30.md': '---\ntitle: p\nkind: preface\n---\n', 'article/40.md': '---\ntitle: d\nchapter: 2\n---\n' };
+  const L = articleLayout(Object.keys(files));
+  assert.equal(L.order, 'kind');
+  const r = readArticle(L.index, (p) => files[p], { order: L.order });
+  assert.deepStrictEqual(r.files.map((f) => f.path), ['article/30.md', 'article/10.md', 'article/40.md', 'article/00.md', 'article/20.md']);
+  assert.deepStrictEqual(r.index.chapters, r.files.map((f) => f.path));
+  assert.deepStrictEqual(r.problems.filter((p) => p.sev === 'error'), []);
+});
+t('order: egatari.json article is taken as written and checked', () => {
+  const paths = ['article/a.md', 'article/b.md', 'article/c.md', 'references.json'];
+  const L = articleLayout(paths, { docId: 'x', article: { chapters: ['article/b.md', 'article/a.md'], references: 'references.json' } });
+  assert.deepStrictEqual([L.order, L.index], ['config', { chapters: ['article/b.md', 'article/a.md'], references: 'references.json' }]);
+  assert.deepStrictEqual(L.problems.map((p) => `${p.sev}:${p.code}:${p.file}`), ['warn:articleUnlisted:article/c.md']);
+  const bad = articleLayout(paths, { article: { chapters: ['article/a.md', 'article/z.md', 'article/a.md'] } }).problems.filter((p) => p.sev === 'error').map((p) => `${p.code}:${p.data.why}`);
+  assert.deepStrictEqual(bad, ['articleConfig:chapters']);
+  assert.deepStrictEqual(articleLayout(paths, { article: { chapters: ['article/z.md'] } }).problems.filter((p) => p.sev === 'error').map((p) => `${p.code}:${p.data.why}:${p.data.path}`), ['articleConfig:missing:article/z.md']);
+  assert.equal(articleLayout(paths, { article: [] }).problems[0].data.why, 'shape');
+  // 書いた順は直さない：種類の順に合わなければ誤り
+  const files = { 'article/a.md': '---\ntitle: a\nkind: appendix\n---\n', 'article/b.md': '---\ntitle: b\nchapter: 1\n---\n' };
+  const r = readArticle({ chapters: ['article/a.md', 'article/b.md'] }, (p) => files[p], { order: 'config' });
+  assert.deepStrictEqual(r.problems.filter((p) => p.sev === 'error').map((p) => p.code), ['articleChapterOrder']);
+});
 t('index: both or neither', () => {
   assert.equal(readArticle({ path: 'article.md', chapters: ['article/1.md'] }, () => '').problems[0].data.why, 'both');
   assert.equal(readArticle({}, () => '').problems[0].data.why, 'neither');
@@ -267,7 +290,7 @@ t('every problem code has words in both languages', () => {
   for (const f of ['article-text.mjs', 'article.mjs', 'article-page.mjs']) for (const m of fs.readFileSync(path.join(ROOT, 'kit', 'core', f), 'utf8').matchAll(/'(article[A-Z][A-Za-z]+)'/g)) codes.add(m[1]);
   for (const c of codes) {
     assert.ok(ARTICLE_MESSAGES[c], `no words for ${c}`);
-    for (const l of ['ja', 'en']) assert.ok(!/undefined/.test(articleMessage(l, { code: c, data: new Proxy({ why: { articleSubfigure: 'alt', articleGlossary: 'body', articleLabel: 'pattern', articleSolution: 'missing', articleStep: 'slide' }[c] || 'both', what: 'bom', expected: 'string', depth: 1, outer: 'aside', values: [] }, { get: (o, k) => (k in o ? o[k] : typeof k === 'string' ? 'x' : undefined) }), file: 'a.md', line: 1, spec: '§9C' })), `${c} ${l}`);
+    for (const l of ['ja', 'en']) assert.ok(!/undefined/.test(articleMessage(l, { code: c, data: new Proxy({ why: { articleSubfigure: 'alt', articleGlossary: 'body', articleLabel: 'pattern', articleSolution: 'missing', articleStep: 'slide', articleConfig: 'missing' }[c] || 'both', what: 'bom', expected: 'string', depth: 1, outer: 'aside', values: [] }, { get: (o, k) => (k in o ? o[k] : typeof k === 'string' ? 'x' : undefined) }), file: 'a.md', line: 1, spec: '§9C' })), `${c} ${l}`);
   }
 });
 

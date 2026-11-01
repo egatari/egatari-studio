@@ -19,7 +19,9 @@ import { splitKey, isSlideId } from '../kit/narration.mjs';
 import { planIds, rewriteDeckIds, rewriteNarrationIds } from '../kit/core/slide-ids.mjs';
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS } from '../kit/bounded-read.mjs';
-import { articleLayout, articleFiles, assignSectionIds } from '../kit/core/article.mjs';
+import { articleLayout, articleFiles, assignSectionIds, readArticle } from '../kit/core/article.mjs';
+import { configObject, updateConfig } from '../kit/core/config-file.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import { ARTICLE_LIMITS } from '../kit/core/article-text.mjs';
 
 const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run]';
@@ -61,10 +63,22 @@ const articleWrites = [], articleSummary = [];
 {
   const rels = [];
   if (has(path.join(DIR, 'article.md'))) rels.push('article.md');
+  if (has(path.join(DIR, 'references.json'))) rels.push('references.json');
   const ad = path.join(DIR, 'article');
   try { if (fs.lstatSync(ad).isDirectory()) for (const n of fs.readdirSync(ad)) rels.push(`article/${n}`); } catch { /* 章はない */ }
   const taken = new Set([...slides.map((s) => s.key), ...plan.docIds.keys(), ...newIds.values()]);
-  for (const rel of articleFiles(articleLayout(rels).index)) {
+  // egatari.json があって article（読む順、§9C.7）がなければ、使った順（種類の順、その中は名前の順）を書く
+  const cfgFile = path.join(DIR, FORMAT.CONFIG_FILE), cfgText = rd(cfgFile);
+  let conf = null;
+  try { conf = cfgText === null ? null : configObject(cfgText); } catch (e) { fail(e.message); }
+  const layout = articleLayout(rels, conf);
+  if (conf && layout.order === 'kind') {
+    const a = readArticle({ ...layout.index }, (rel) => rd(path.join(DIR, ...rel.split('/'))) ?? '', { order: 'kind' });
+    const value = { chapters: a.index.chapters, ...(layout.index.references ? { references: layout.index.references } : {}) };
+    articleWrites.push([cfgFile, updateConfig(cfgText, { article: value }), FORMAT.CONFIG_FILE, 0]);
+    articleSummary.push(`${FORMAT.CONFIG_FILE}: article の読む順を書いた / wrote the reading order: ${value.chapters.join(', ')}`);
+  }
+  for (const rel of articleFiles(layout.index)) {
     const file = path.join(DIR, ...rel.split('/'));
     const text = rd(file);
     if (text === null) continue;
@@ -123,7 +137,7 @@ if (rename.size) {
   summary.push(`deck.html: ${rename.size} 枚に id を付けた${deck.morphs ? `、data-morph ${deck.morphs} 個を付け替えた` : ''}`);
   for (const s of slides) if (newIds.has(s.index)) summary.push(`  ${String(s.index + 1).padStart(3)}  ${newIds.get(s.index)}  ← ${s.key}`);
 }
-for (const [file, text, rel, n] of articleWrites) { writes.push([file, text]); summary.push(`${rel}: 節 ${n} 個に id を付けた / added ${n} section id(s)`); }
+for (const [file, text, rel, n] of articleWrites) { writes.push([file, text]); if (n) summary.push(`${rel}: 節 ${n} 個に id を付けた / added ${n} section id(s)`); }
 summary.push(...articleSummary);
 
 if (has(FILES.narration)) {

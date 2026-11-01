@@ -10,23 +10,41 @@ export const REFERENCES_FILE = 'references.json';
 const KIND_ORDER = { preface: 0, chapter: 1, appendix: 2, afterword: 3 };
 const CHAPTER_RE = /^article\/[^/]+\.md$/;
 
-// 作業フォルダのファイルの一覧（作業フォルダからの相対パス、/ 区切り）から index.article を決める（§9C.1）。
-//   article.md があれば {path}、article/<名前>.md があれば {chapters}（名前の符号位置の順。読む順はファイルの名前で決める）。
+// 作業フォルダのファイルの一覧（作業フォルダからの相対パス、/ 区切り）と egatari.json の object（conf。なければ null）から index.article を決める（§9C.1・§9C.7）。
+//   conf.article があればそれ（読む順もそれ。ないファイルは誤り、載っていない章のファイルは警告）。
+//   なければ article.md で {path}、article/<名前>.md で {chapters}（名前の符号位置の順。読んだ後に readArticle が種類の順に並べ直す：order: 'kind'）。
 //   両方あれば誤り（§9C.8 の 7）。references.json があれば references。本文がなければ index: null
-export function articleLayout(paths) {
+export function articleLayout(paths, conf = null) {
   const set = new Set(paths);
   const chapters = paths.filter((p) => CHAPTER_RE.test(p)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const problems = [];
+  const ca = conf && Object.prototype.hasOwnProperty.call(conf, 'article') ? conf.article : undefined;
+  if (ca !== undefined) {
+    const bad = (why, path = null) => { problems.push(D('error', 'articleConfig', '§9C.7', 'egatari.json', null, { why, path })); };
+    if (!ca || typeof ca !== 'object' || Array.isArray(ca)) { bad('shape'); return { index: null, problems, order: 'config' }; }
+    const index = {};
+    if (ca.path !== undefined) { if (ca.path !== ARTICLE_FILE) bad('path', String(ca.path)); index.path = ca.path; }
+    if (ca.chapters !== undefined) {
+      if (!Array.isArray(ca.chapters) || !ca.chapters.length || ca.chapters.some((c) => typeof c !== 'string' || !CHAPTER_RE.test(c)) || new Set(ca.chapters).size !== ca.chapters.length) bad('chapters');
+      else index.chapters = ca.chapters.slice();
+    }
+    if (ca.references !== undefined) { index.references = ca.references; if (!set.has(ca.references)) bad('missing', String(ca.references)); }
+    for (const p of articleFiles(index)) if (!set.has(p)) bad('missing', p);
+    const listed = new Set(articleFiles(index));
+    for (const p of [...(set.has(ARTICLE_FILE) ? [ARTICLE_FILE] : []), ...chapters]) if (!listed.has(p)) problems.push(D('warn', 'articleUnlisted', '§9C.1', p, null, {}));
+    return { index, problems, order: 'config' };
+  }
   let index = null;
   if (set.has(ARTICLE_FILE) && chapters.length) problems.push(D('error', 'articleIndex', '§9C.8', null, null, { why: 'both', chapters: chapters.length }));
   if (set.has(ARTICLE_FILE)) index = { path: ARTICLE_FILE };
   else if (chapters.length) index = { chapters };
   if (index && set.has(REFERENCES_FILE)) index.references = REFERENCES_FILE;
-  return { index, problems };
+  return { index, problems, order: index && index.chapters ? 'kind' : null };
 }
 export const articleFiles = (index) => (!index ? [] : index.path ? [index.path] : Array.isArray(index.chapters) ? index.chapters.slice() : []);
 
-// 本文を読む。read(rel) は文字列を返す（ないときは例外）。opts.lang：metadata.lang（デッキの言語）。opts.convert：変換できる書き方を直す
+// 本文を読む。read(rel) は文字列を返す（ないときは例外）。opts.lang：metadata.lang（デッキの言語）。opts.convert：変換できる書き方を直す。
+// opts.order：'kind' なら章を種類の順に並べ直す（articleLayout の order。egatari.json に順がないとき）
 // 返すもの：{index, files: [{path, fm, tree, kind, chapter, letter, problems}], lang, writingMode, problems}（problems は全部。file 付き）
 export function readArticle(index, read, opts = {}) {
   const problems = [];
@@ -42,6 +60,11 @@ export function readArticle(index, read, opts = {}) {
     const kind = r.fm.kind || 'chapter';
     files.push({ path: p, source: text, lineOffset: r.lineOffset, fm: r.fm, tree: r.tree, kind, chapter: kind === 'chapter' ? r.fm.chapter ?? null : null, letter: null, conversions: r.conversions });
     for (const x of r.problems) problems.push({ ...x, file: p });
+  }
+  // egatari.json に読む順がなければ、種類の順（前書き・章・付録・後書き）、その中はファイルの名前の順（§9C.7）
+  if (opts.order === 'kind' && index.chapters) {
+    files.sort((x, y) => KIND_ORDER[x.kind] - KIND_ORDER[y.kind] || (x.path < y.path ? -1 : x.path > y.path ? 1 : 0));
+    index.chapters = files.map((f) => f.path);
   }
   // 付録は読む順に A、B、…（§9C.1A）
   let a = 0;

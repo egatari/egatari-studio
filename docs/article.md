@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.ja.md sha256=b5245e3217795d3a -->
+<!-- i18n: pair=article.ja.md sha256=6af158fd03489971 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
@@ -12,7 +12,7 @@ A lesson can carry a **book**: long-form text (a textbook chapter, a paper) besi
 | File | What it is |
 |---|---|
 | `article.md` | the book as one file (a paper, or one chapter of a course) |
-| `article/<name>.md` | a book of several chapters, one file each, read in the order of their names (e.g. `00-preface.md`, `01.md`, `02.md`, `90-answers.md`). Use either `article.md` or `article/`, not both |
+| `article/<name>.md` | a book of several chapters, one file each. The reading order is `article.chapters` in `egatari.json` when it is there; otherwise prefaces, chapters, appendices, afterwords, each group in file-name order (e.g. `00-preface.md`, `01.md`, `02.md`, `90-answers.md`), and `npm run ids` writes that order into an existing `egatari.json`. Use either `article.md` or `article/`, not both |
 | `references.json` | the bibliography (CSL-JSON, as Zotero, pandoc and Crossref write it), one for all chapters |
 | `images/…` | images used by the book, as paths inside the working folder (no URLs) |
 
@@ -62,7 +62,7 @@ Everything from CommonMark (paragraphs, `##`–`####` headings, emphasis, lists,
 
 Labels are your own readable names (`fig-…`, `tbl-…`, `eq-…`, `box-…`, `exr-…`, `thm-…`), unique across all chapters and different from slide ids; they may not start with `sec-`, `s-`, `ref-`, `fn-`, `term-` or `egatari-`.
 
-Numbers follow the chapter: sections 4.1, figures "Figure 4.1" / 「図 4.1」, equations (4.1), boxes, exercises and each theorem kind counted separately; without a chapter number they run through the book (1, 1.1, Figure 1). In a Japanese book, emphasis is set with emphasis dots instead of italics, and in vertical writing one- and two-digit numbers stand upright.
+Every figure, `:::{table}`, box, theorem-like block and exercise is numbered, with or without a label (as mystmd does); equations only when labelled; a bare pipe table has no number. Numbers follow the chapter: sections 4.1, figures "Figure 4.1" / 「図 4.1」, equations (4.1), boxes, exercises and each theorem kind counted separately; without a chapter number they run through the book (1, 1.1, Figure 1). In a Japanese book, emphasis is set with emphasis dots instead of italics, and in vertical writing a number of one or two digits stands upright (第3章, 10月), while 3.14, 2026, 12:30 and A4 are rotated whole.
 
 ## Not allowed
 

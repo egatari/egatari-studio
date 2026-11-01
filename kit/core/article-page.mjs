@@ -6,6 +6,8 @@ import { articleLayout, readArticle, validateArticle, referenceKeys, dataArticle
 import { renderArticle, ARTICLE_CSS, esc } from './article-render.mjs';
 import { ARTICLE_LIMITS, visit } from './article-text.mjs';
 import { analyzeSlideIds, readMacros, katexCss } from './build-core.mjs';
+import { configObject } from './config-file.mjs';
+import { FORMAT } from './format.mjs';
 
 const IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', svg: 'image/svg+xml' };
 const IMAGE_MAX = 16 << 20;
@@ -15,12 +17,15 @@ const SOURCE_MAX = 32 << 20;
 export function loadArticle(env, srcPath, opts = {}) {
   const P = env.path, deckDir = P.dirname(P.resolve(srcPath));
   const rels = env.listFiles(deckDir).map((f) => P.relative(deckDir, f).split(P.sep).join('/'));
-  const layout = articleLayout(rels);
-  if (!layout.index) return null;
   const abs = (rel) => P.join(deckDir, ...rel.split('/'));
   const read = (rel, max) => { const p = abs(rel); if (!env.within(p, deckDir)) throw new Error('outside the working folder'); return env.readText(p, max); };
-  const article = readArticle(layout.index, (rel) => read(rel, ARTICLE_LIMITS.fileBytes), { lang: opts.lang || '', convert: !!opts.convert });
-  const problems = [...layout.problems, ...article.problems];
+  // egatari.json の article（読む順。§9C.7）。読めなければ順を決めずに知らせる
+  let conf = null; const confProblems = [];
+  if (rels.includes(FORMAT.CONFIG_FILE)) { try { conf = configObject(read(FORMAT.CONFIG_FILE, 16 << 20)); } catch (e) { confProblems.push({ sev: 'warn', code: 'articleConfig', spec: '§9C.7', file: FORMAT.CONFIG_FILE, line: null, data: { why: 'unreadable' } }); } }
+  const layout = articleLayout(rels, conf);
+  if (!layout.index) return layout.problems.length ? { deckDir, index: null, article: { files: [], problems: [] }, ctx: {}, problems: [...confProblems, ...layout.problems], slides: new Map(), abs } : null;
+  const article = readArticle(layout.index, (rel) => read(rel, ARTICLE_LIMITS.fileBytes), { lang: opts.lang || '', convert: !!opts.convert, order: layout.order });
+  const problems = [...confProblems, ...layout.problems, ...article.problems];
   let references;
   if (layout.index.references) {
     try { const r = referenceKeys(read(layout.index.references, 16 << 20)); references = r.keys; if (r.problem) problems.push(r.problem); }
@@ -32,7 +37,7 @@ export function loadArticle(env, srcPath, opts = {}) {
   const slides = new Map(ids.slides.map((s) => [s.key, { title: s.heading || s.key, id: s.id }]));
   const exists = (u) => { const p = abs(u); try { return env.within(p, deckDir) && env.exists(p) && env.isFile(p); } catch { return false; } };
   const ctx = { slideIds: new Set(ids.slides.filter((s) => s.id).map((s) => s.id)), otherIds: new Set(ids.docIds.keys()), dataArticle: dataArticleOf(ids.slides), references, exists };
-  return { deckDir, index: layout.index, article, ctx, problems, slides, abs };
+  return { deckDir, index: layout.index, order: layout.order, article, ctx, problems, slides, abs };
 }
 
 // 本文のステップへのリンク（重ねずに）："<slideKey>:<stepKey>" の並び（check が再生器で行き先を確かめる）
