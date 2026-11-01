@@ -158,12 +158,14 @@ try {
     }, files);
     await page.evaluate(() => window.__APP_TEST_OPEN(window.__d));
     const t0 = Date.now();
+    const readyTimeout = process.platform === 'win32' ? 60000 : 30000; // Windows の CI は重く、30 s では希に間に合わない（2026-10-31）
     for (;;) {
       const f = await previewFrame(page);
       try { if (f && await f.evaluate(() => !!(window.DECK && DECK.ready && window.DECK_DEV))) break; } catch { /* 読み込み中 */ }
-      if (Date.now() - t0 > 30000) throw new Error('the preview did not get ready');
+      if (Date.now() - t0 > readyTimeout) throw new Error('the preview did not get ready');
       await wait(page);
     }
+    console.log(`ready in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     await wait(page, 400);
     return { ctx, page };
   };
