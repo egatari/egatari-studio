@@ -46,7 +46,7 @@ try {
     assert.equal(p.sha256, await sha256Hex(normalizeEol(new TextEncoder().encode(full))), `${p.name}: full identity`);
     let code = full;
     if (p.subset) {
-      code = subsetCode(full, lock2.parts[p.name][p.version].build.subset, p.subset.keys).code;
+      code = subsetCode(full, lock2.parts[p.name][p.version].build.subset, p.subset.keys, p.subset.names || []).code;
       assert.equal(p.subset.sha256, await sha256Hex(safe(code)), `${p.name}: written subset`);
       assert.notEqual(p.subset.sha256, p.sha256);
     }
@@ -151,5 +151,61 @@ try {
   const tampered = { ...nodeEnv, readTextBytes: undefined, readText: (p) => { const code = nodeEnv.readText(p); return p === shape ? code.slice(0, -1) + ' ' : code; } };
   await assert.rejects(exportPortable(tampered, path.join(src, 'deck.html'), { subset: false }), (e) => e.code === 'component-hash');
   console.log('ok   portable refuses code whose full identity differs from the lock');
+
+  // 名前で絞るライブラリのパーツ（§6.2 Subset by name。部品庫 2.1.0 の icons 1.0.0 の形）：部品庫の固定のファイルにはまだないので、
+  // 固定のファイル 2 つと写しの場所だけを差し替えた env で組む。build は manifest の library の項目の写し（components2.lock.json の build）から読む
+  {
+    const FX = path.join(ROOT, 'tools/fixtures/subset-names');
+    const iconsJs = fs.readFileSync(path.join(FX, 'icons.js'), 'utf8');
+    const exp = JSON.parse(fs.readFileSync(path.join(FX, 'expected.json'), 'utf8'));
+    const iconsSha = await sha256Hex(normalizeEol(new TextEncoder().encode(iconsJs)));
+    const contentHash = 'f'.repeat(64);
+    const lock2x = structuredClone(lock2), lockx = structuredClone(lock);
+    lock2x.catalogues[lock2x.default].parts.icons = '1.0.0';
+    lock2x.parts.icons = { '1.0.0': { sha256: iconsSha, kind: 'library', requires: {}, build: { subset: [{ data: 'block:icons', key: 'name', match: 'name' }] }, license: 'MIT' } };
+    lockx.components.icons = { default: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': iconsSha }, content: { '1.0.0': contentHash }, catalogue: '2' };
+    const vfile = path.join(resolveComponent(path, ROOT, lockx, 'icons', '1.0.0'), 'index.js');
+    const fake = {
+      [path.join(ROOT, 'components2.lock.json')]: JSON.stringify(lock2x), [path.join(ROOT, 'components.lock.json')]: JSON.stringify(lockx), [vfile]: iconsJs,
+    };
+    const has = (p) => Object.prototype.hasOwnProperty.call(fake, p);
+    const env = { ...nodeEnv, readTextBytes: undefined,
+      exists: (p) => has(p) || nodeEnv.exists(p), isFile: (p) => has(p) || nodeEnv.isFile(p),
+      size: (p) => (has(p) ? Buffer.byteLength(fake[p]) : nodeEnv.size(p)), readText: (p, max) => (has(p) ? fake[p] : nodeEnv.readText(p, max)),
+      within: (p, dir) => (p === vfile ? p.startsWith(dir + path.sep) : nodeEnv.within(p, dir)) };
+    const d = path.join(work, 'icons-src');
+    fs.mkdirSync(path.join(d, 'components', 'icondemo'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'egatari.json'), JSON.stringify({ componentsCatalogue: lock2.default }));
+    fs.writeFileSync(path.join(d, 'components', 'icondemo', 'index.js'),
+      '// m-icondemo: draws the icons named in its data (test of subset by name)\negatariParts.define({name: "icondemo", version: "0.1.0", requires: {icons: "1.0.0"}, element: "m-icondemo"}, function(deps){\n' +
+      '  var I = deps.icons;\n  return class extends HTMLElement { connectedCallback(){ var s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.appendChild(I.svg(this.getAttribute("icon"))); this.appendChild(s); } };\n});\n');
+    const lessonHtml = fs.readFileSync(path.join(FX, 'lesson-mixed.html'), 'utf8')
+      .replace('<p title="chart-bar">', '<m-icondemo icon="user" style="display:block;width:48px;height:48px"></m-icondemo><p title="chart-bar">');
+    fs.writeFileSync(path.join(d, 'deck.html'), lessonHtml);
+    fs.copyFileSync(path.join(FX, 'narration-mixed.md'), path.join(d, 'narration.md'));
+    const x = await exportPortable(env, path.join(d, 'deck.html'), { subset: false });
+    const ic = x.index.components.find((p) => p.name === 'icons');
+    const want = exp.cases.find((c) => c.part === 'icons.js' && c.lessons && c.lessons.includes('narration-mixed.md'));
+    assert.ok(ic && !ic.tag && ic.sha256 === iconsSha, 'icons is written as a library with the published identity');
+    assert.deepEqual(ic.subset.names, want.names, 'subset.names: the names the reference keeps for the same lesson and narration');
+    assert.equal(ic.subset.keys, '');
+    const written = subsetCode(iconsJs, lock2x.parts.icons['1.0.0'].build.subset, ic.subset.keys, ic.subset.names);
+    assert.equal(ic.subset.sha256, await sha256Hex(safe(written.code)), 'the editor applying {keys, names} to its trusted copy gets the written bytes');
+    assert.equal(await sha256Hex(new TextEncoder().encode(written.code)), want.sha256, 'the written subset is byte for byte the reference producer\'s');
+    assert.ok(x.html.includes(safe(written.code)) && !x.html.includes('"home":['), 'the subset code is in the file; icons the lesson does not name are not');
+    assert.ok(x.html.includes('"_notice":"Tabler Icons 3.49.0'), 'the MIT notice survives');
+    assert.deepEqual(validateIndex(x.index), []);
+    assert.ok(validate(JSON.parse(JSON.stringify(x.index))), JSON.stringify(validate.errors));
+    // 形の悪い宣言（§6.2 Bad declarations）：知らせて、パーツは全部のまま書き、索引に subset を書かない。教材は組める
+    lock2x.parts.icons['1.0.0'].build = { subset: [{ data: 'block:icons', key: 'name', match: 'name', keep: ['Not-A-Name'] }] };
+    fake[path.join(ROOT, 'components2.lock.json')] = JSON.stringify(lock2x);
+    const xb = await exportPortable(env, path.join(d, 'deck.html'), { subset: false });
+    const icb = xb.index.components.find((p) => p.name === 'icons');
+    assert.ok(icb && !('subset' in icb) && icb.sha256 === iconsSha, 'a bad declaration: no subset in the index entry');
+    assert.ok(xb.html.includes(safe(iconsJs)), 'a bad declaration: the whole part is written');
+    assert.ok(xb.warnings.some((w) => /part icons@1\.0\.0: bad subset declaration \(.*keep/.test(w)), `a bad declaration is reported, naming the part and the fault: ${xb.warnings.filter((w) => /subset/.test(w)).join(' | ')}`);
+    assert.deepEqual(validateIndex(xb.index), []);
+    console.log(`ok   subset by name: a library part's build from the lock, subset.names ${JSON.stringify(ic.subset.names)} in the index (schema), the reference's bytes, the notice kept`);
+  }
 
 } finally { fs.rmSync(work, { recursive: true, force: true }); }

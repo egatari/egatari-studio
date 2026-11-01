@@ -9,6 +9,7 @@
 // components2.lock.json：
 //   {source, default: <カタログの版>, catalogues: {<カタログの版>: {tag, tarballSha256, manifestSha256, parts: {名前: パーツの版}}},
 //    parts: {名前: {<パーツの版>: {sha256, kind: "element" | "library", tag?, requires: {名前: 版}, build?, glyphs?, license}}}}
+import { parse } from 'parse5';
 export const LOCK2_FILE = 'components2.lock.json';
 // カタログの manifest と使用条件だけの場所。パーツのコードは resolveComponent で引く。
 export const VENDOR_PARTS2 = ['vendor', 'components-2'];
@@ -240,40 +241,129 @@ export function renderFields(data, build, renderers) {
 }
 
 // ---------------------------------------------------------------- 絞り込み（§6.2 Subset）
-const BLOCK_RE = /\/\*@egatari-block ([a-z][a-z0-9-]{0,63})\*\/([\s\S]*?)\/\*@egatari-block-end\*\//g;
-// code の中の印の付いた塊を、text に出てくるキーだけに絞る。decl：パーツの build.subset（1 つか配列）。
-// 教材の字（text）は、呼ぶ側が集める（§6.2 Subset：原稿の全部の字（属性の値も）・口述原稿・パーツに渡すデータ・パーツの glyphs）。
-// 宣言ごとに別々に、宣言した順に絞る。残したキー（keys）は、どの宣言で残したものも合わせて 1 回ずつ、符号の順
-// 返すもの：{code, keys, blocks: [名前], problems: [文]}。塊のないパーツは code のまま
-export function subsetCode(code, decl, text) {
-  const list = (Array.isArray(decl) ? decl : [decl]).filter((d) => isObj(d));
+const BLOCK_END = '/*@egatari-block-end*/';
+// 名前で絞る宣言（match: "name"）のキーと keep の名前の形（§6.2 Subset by name）
+export const SUBSET_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// 符号の順（文字列を符号位置の列として比べる。UTF-16 の順とは astral の字で違う）
+const cpOrder = (a, b) => { const x = Array.from(a), y = Array.from(b); for (let i = 0; i < Math.min(x.length, y.length); i++) { const d = x[i].codePointAt(0) - y[i].codePointAt(0); if (d) return d; } return x.length - y.length; };
+// 教材の字（§6.2 Subset、egatari-spec subset-parse c6024bf）：節を \n でつなぐ（語が節をまたいでつながらない）。
+//   原稿：parse5（8.0.1）で文書として読み（scripting は有効）、木の順に、字の節と属性の値（同じ名前の属性は parser が残す最初のものだけ）を数える。
+//         template の中身も数える。文書型・注釈・<style> の中身・JSON でない <script> の中身は数えない（要素と属性の名前も数えない）。
+//         字の参照・改行（CR・CRLF）はパーサーが読むとおり
+//   パーツに渡すデータ（<script type="application/json"> の中身）：JSON として読んだ欄の名前・字列の値・数（String(n)）を文書の順に（JSON でなければ書いたままの 1 節）
+//   口述原稿は書いたまま、パーツの glyphs
+// 組み立て（build-core）と編集アプリが共有する（parse5 はどちらにもある）。部品庫の参照の実装（tools/subset-produce.mjs、c004416）の htmlPieces と同じ節
+export function jsonPieces(v, out = []) {
+  if (typeof v === 'string') out.push(v);
+  else if (typeof v === 'number') out.push(String(v));
+  else if (Array.isArray(v)) v.forEach((x) => jsonPieces(x, out));
+  else if (v && typeof v === 'object') for (const k of Object.keys(v)) { out.push(k); jsonPieces(v[k], out); }
+  return out;
+}
+const isJsonScript = (n) => /^application\/json$/i.test(((n.attrs || []).find((a) => a.name === 'type')?.value || '').trim());
+export function htmlPieces(html) {
+  const out = [];
+  const walk = (n) => {
+    if (n.nodeName === '#text') { if (n.value) out.push(n.value); return; }
+    if (n.nodeName === '#comment' || n.nodeName === '#documentType') return;
+    for (const a of n.attrs || []) out.push(a.value);
+    if (n.tagName === 'style') return;
+    if (n.tagName === 'script') {
+      if (!isJsonScript(n)) return;
+      const body = (n.childNodes || []).map((c) => c.value || '').join('');
+      let v, okJson = true;
+      try { v = JSON.parse(body); } catch { okJson = false; }
+      if (okJson) jsonPieces(v, out); else out.push(body);
+      return;
+    }
+    for (const c of n.childNodes || []) walk(c);
+    if (n.content) walk(n.content);   // template の中身
+  };
+  walk(parse(String(html), { scriptingEnabled: true }));
+  return out;
+}
+// sources：[{html}（原稿）| {narration}（口述原稿）| 字列（= html）]。glyphs：パーツの glyphs（あれば最後の節）
+export function lessonText(sources, glyphs = '') {
+  const pieces = [];
+  for (const src of sources) {
+    if (typeof src === 'string' || src.html !== undefined) pieces.push(...htmlPieces(typeof src === 'string' ? src : src.html));
+    else if (src.narration !== undefined) pieces.push(String(src.narration));
+    else throw new Error('subset: a lesson source is {html} or {narration}');
+  }
+  if (glyphs) pieces.push(glyphs);
+  return pieces.join('\n');
+}
+// 名前で絞るときの教材の語（§6.2 Subset by name）：教材の字（char の宣言と同じ字）を a–z・0–9・- 以外の字ごとに切った語。大文字・小文字は畳まない。
+// texts：字（1 つか配列）。返すもの：語の Set
+export function lessonTokens(texts) {
+  const set = new Set();
+  for (const t of Array.isArray(texts) ? texts : [texts]) for (const w of String(t).split(/[^a-z0-9-]+/)) if (w) set.add(w);
+  return set;
+}
+// code の中の印の付いた塊を、教材に出てくるキーだけに絞る。decl：パーツの build.subset（1 つか配列）。
+// text：教材の字（§6.2 Subset。呼ぶ側が lessonText で作る。パーツの glyphs も）。char の宣言も name の宣言も同じ字を読む。
+// names：name の宣言が残す語。省けば text を lessonTokens で切ったもの。記録した keys・names を当て直すときに渡す。
+// 宣言ごとに別々に、宣言した順に絞る。
+//   match "char"（既定）：キーが text の字に出てくるものを残す
+//   match "name"：キーが語（か宣言の keep）にちょうど等しいものを残す
+// 残したキー（keys）は char の宣言で残したものを合わせて 1 回ずつ、符号の順に 1 つの字列。names は name の宣言で残した名前を 1 回ずつ、符号の順に
+// （name の宣言があれば、何も残さなくても []。なければ null）。記録した keys・names をもう一度渡せば同じバイトになる（編集アプリが信頼できる写しに当てて比べる）。
+// 形の悪い宣言（§6.2 Bad declarations：match が char・name でない、keep が名前の配列でない・char の宣言にある、塊がない・JSON でない、キーが字列でない。
+// ほかに data・key がない、data が block:<名前> でない、塊が 2 つある・閉じていない、塊が object・配列でない、name の塊のキーが名前の形でない）なら、どの塊も絞らない：
+// code をそのまま、blocks を [] で返し、problems にわけを書く（呼ぶ側はパーツを全部のまま書き、索引に subset を書かない）
+// 返すもの：{code, keys, names, blocks: [名前], problems: [文]}
+export function subsetCode(code, decl, text, names) {
+  const list = Array.isArray(decl) ? decl : [decl];
   const chars = new Set(Array.from(String(text)));
-  const kept = new Set(), blocks = [], problems = [];
+  const tokens = names === undefined ? lessonTokens(text) : new Set(names);
+  const kept = new Set(), keptNames = new Set(), blocks = [], problems = [];
+  let anyName = false;
   let out = String(code);
   for (const d of list) {
+    if (!isObj(d)) { problems.push(`entry ${JSON.stringify(d)}: not an object`); continue; }
     if (typeof d.data !== 'string' || typeof d.key !== 'string') { problems.push(`entry ${JSON.stringify(d).slice(0, 80)}: needs data and key`); continue; }
     if (!/^block:[a-z][a-z0-9-]{0,63}$/.test(d.data)) { problems.push(`entry data ${JSON.stringify(d.data.slice(0, 64))} is not block:<name>`); continue; }
-    const name = d.data.slice(6), keyField = d.key;
-    let found = false;
-    out = out.replace(BLOCK_RE, (m, bn, json) => {
-      if (bn !== name) return m;
-      found = true;
-      let v;
-      try { v = JSON.parse(json); } catch (e) { problems.push(`block ${name}: not JSON (${e.message})`); return m; }
-      let res;
-      if (Array.isArray(v)) {
-        res = v.filter((it) => isObj(it) && typeof it[keyField] === 'string' && chars.has(it[keyField]));
-        res.forEach((it) => kept.add(it[keyField]));
-      } else if (isObj(v)) {
-        res = {};
-        for (const k of Object.keys(v)) if (k.startsWith('_')) res[k] = v[k];   // _ で始まる欄（使用条件の表示など）は先に、そのまま
-        for (const k of Object.keys(v)) if (!k.startsWith('_') && chars.has(k)) { res[k] = v[k]; kept.add(k); }
-      } else { problems.push(`block ${name}: neither an object nor an array`); return m; }
-      if (!blocks.includes(name)) blocks.push(name);
-      return `/*@egatari-block ${name}*/${JSON.stringify(res)}/*@egatari-block-end*/`;
-    });
-    if (!found) problems.push(`block ${name}: not found in the code`);
+    const match = d.match === undefined ? 'char' : d.match;
+    if (match !== 'char' && match !== 'name') { problems.push(`entry ${d.data}: match ${String(JSON.stringify(d.match)).slice(0, 40)} is not "char" or "name"`); continue; }
+    if (d.keep !== undefined && (match !== 'name' || !Array.isArray(d.keep) || !d.keep.every((k) => typeof k === 'string' && SUBSET_NAME_RE.test(k)))) {
+      problems.push(`entry ${d.data}: keep is not an array of names on a match: "name" entry`); continue;
+    }
+    const name = d.data.slice(6), keyField = d.key, byName = match === 'name';
+    if (byName) anyName = true;
+    const want = byName ? new Set([...tokens, ...(d.keep || [])]) : null;
+    // 塊はちょうど 1 つ（始めの印が 1 つ、その後の最初の終わりの印まで。間に別の塊の始まりがない。参照の実装の blockOf と同じ）
+    const begin = `/*@egatari-block ${name}*/`, at = out.indexOf(begin);
+    if (at < 0) { problems.push(`block ${name}: not found in the code`); continue; }
+    if (out.indexOf(begin, at + 1) >= 0) { problems.push(`block ${name}: more than one ${begin}`); continue; }
+    const start = at + begin.length, end = out.indexOf(BLOCK_END, start), nested = out.indexOf('/*@egatari-block ', start);
+    if (end < 0) { problems.push(`block ${name}: no ${BLOCK_END}`); continue; }
+    if (nested >= 0 && nested < end) { problems.push(`block ${name}: not closed before the next block`); continue; }
+    let v;
+    try { v = JSON.parse(out.slice(start, end)); } catch (e) { problems.push(`block ${name}: not JSON (${e.message})`); continue; }
+    // キーは字列（object の欄の名前か、配列の各項目の key の欄の値）。名前で絞る塊では名前の形（_ で始まる欄は除く）
+    let ks;
+    if (Array.isArray(v)) {
+      if (!v.every((it) => isObj(it) && typeof it[keyField] === 'string')) { problems.push(`block ${name}: an item has no string ${JSON.stringify(keyField)} (keys are strings)`); continue; }
+      ks = v.map((it) => it[keyField]);
+    } else if (isObj(v)) ks = Object.keys(v).filter((k) => !k.startsWith('_'));
+    else { problems.push(`block ${name}: neither an object nor an array`); continue; }
+    if (byName) {
+      const bad = ks.filter((k) => !SUBSET_NAME_RE.test(k));
+      if (bad.length) { problems.push(`block ${name}: keys ${JSON.stringify(bad.slice(0, 5))} are not names (${SUBSET_NAME_RE.source})`); continue; }
+    }
+    const has = (k) => (byName ? want.has(k) : chars.has(k));
+    let res;
+    if (Array.isArray(v)) res = v.filter((it) => has(it[keyField]));
+    else {
+      res = {};
+      for (const k of Object.keys(v)) if (k.startsWith('_')) res[k] = v[k];   // _ で始まる欄（使用条件の表示など）は先に、そのまま
+      for (const k of ks) if (has(k)) res[k] = v[k];
+    }
+    for (const k of ks) if (has(k)) (byName ? keptNames : kept).add(k);
+    if (!blocks.includes(name)) blocks.push(name);
+    out = out.slice(0, start) + JSON.stringify(res) + out.slice(end);
   }
+  if (problems.length) return { code: String(code), keys: '', names: null, blocks: [], problems };
   const keys = [...kept].sort((a, b) => a.codePointAt(0) - b.codePointAt(0)).join('');
-  return { code: out, keys, blocks, problems };
+  return { code: out, keys, names: anyName ? [...keptNames].sort(cpOrder) : null, blocks, problems };
 }

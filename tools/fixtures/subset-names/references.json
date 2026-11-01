@@ -1,0 +1,348 @@
+{
+ "_source": "egatari/components tools/subset-produce.mjs htmlPieces at c004416 (components c2-base; same code as 0a5be1b) (parse5 8.0.1 document parse, tree order; spec subset-parse c6024bf): character references (WHATWG table, legacy names, attribute exception, numeric fixes, CR/LF). Regenerate only from that reference.",
+ "cases": [
+  {
+   "kind": "text",
+   "html": "<p>&amp;</p>",
+   "pieces": [
+    "&"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&amp</p>",
+   "pieces": [
+    "&"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&ampx</p>",
+   "pieces": [
+    "&x"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&amp=x</p>",
+   "pieces": [
+    "&=x"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&copy2</p>",
+   "pieces": [
+    "©2"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&notit;</p>",
+   "pieces": [
+    "¬it;"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&notin;</p>",
+   "pieces": [
+    "∉"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&not</p>",
+   "pieces": [
+    "¬"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&hellip;</p>",
+   "pieces": [
+    "…"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&mdash;</p>",
+   "pieces": [
+    "—"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&unknown;</p>",
+   "pieces": [
+    "&unknown;"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>AT&T</p>",
+   "pieces": [
+    "AT&T"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&</p>",
+   "pieces": [
+    "&"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#0;</p>",
+   "pieces": [
+    "�"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x80;</p>",
+   "pieces": [
+    "€"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x9F;</p>",
+   "pieces": [
+    "Ÿ"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x81;</p>",
+   "pieces": [
+    ""
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#xD800;</p>",
+   "pieces": [
+    "�"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x110000;</p>",
+   "pieces": [
+    "�"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#12354</p>",
+   "pieces": [
+    "あ"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x3042x</p>",
+   "pieces": [
+    "あx"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#;</p>",
+   "pieces": [
+    "&#;"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#x;</p>",
+   "pieces": [
+    "&#x;"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#65&#66;</p>",
+   "pieces": [
+    "AB"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&lt&gt</p>",
+   "pieces": [
+    "<>"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&NotNestedGreaterGreater;</p>",
+   "pieces": [
+    "⪢̸"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&nbsp;x</p>",
+   "pieces": [
+    " x"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&AElig</p>",
+   "pieces": [
+    "Æ"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&Aacute;</p>",
+   "pieces": [
+    "Á"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&aacute</p>",
+   "pieces": [
+    "á"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&&amp;</p>",
+   "pieces": [
+    "&&"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&#99999999999;</p>",
+   "pieces": [
+    "�"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>a\r\nb\rc</p>",
+   "pieces": [
+    "a\nb\nc"
+   ]
+  },
+  {
+   "kind": "text",
+   "html": "<p>&amp;&lt;b&gt;</p>",
+   "pieces": [
+    "&<b>"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&copy2\"></p>",
+   "pieces": [
+    "&copy2"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&copy2x\"></p>",
+   "pieces": [
+    "&copy2x"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&copy2=\"></p>",
+   "pieces": [
+    "&copy2="
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&amp=x\"></p>",
+   "pieces": [
+    "&amp=x"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&amp;=x\"></p>",
+   "pieces": [
+    "&=x"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&ampx\"></p>",
+   "pieces": [
+    "&ampx"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&amp x\"></p>",
+   "pieces": [
+    "& x"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title='&not\"'></p>",
+   "pieces": [
+    "¬\""
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=&amp;></p>",
+   "pieces": [
+    "&"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=&ampx></p>",
+   "pieces": [
+    "&ampx"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&#x80;&#0\"></p>",
+   "pieces": [
+    "€�"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&hellip;\"></p>",
+   "pieces": [
+    "…"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&lt\"></p>",
+   "pieces": [
+    "<"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&lt;\"></p>",
+   "pieces": [
+    "<"
+   ]
+  },
+  {
+   "kind": "attr",
+   "html": "<p title=\"&notit;\"></p>",
+   "pieces": [
+    "&notit;"
+   ]
+  }
+ ]
+}

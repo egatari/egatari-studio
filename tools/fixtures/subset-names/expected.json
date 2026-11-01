@@ -1,0 +1,266 @@
+{
+ "_source": "Expected subsets written by the reference producer, egatari/components tools/subset-produce.mjs produce(js, sources) at c004416 (components c2-base; same code as 0a5be1b) (egatari-spec subset-parse c6024bf: the slide source parsed as a document with parse5 8.0.1, walked in tree order; .html lessons are {html}, .md lessons {narration}). The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries.",
+ "cases": [
+  {
+   "from": "reference",
+   "name": "names §8: keep, a char entry, tokens",
+   "part": "names-part.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name",
+      "keep": [
+       "x"
+      ]
+     },
+     {
+      "data": "block:marks",
+      "key": "char"
+     }
+    ]
+   },
+   "keys": "あ",
+   "names": [
+    "chart-bar-popular",
+    "user",
+    "x"
+   ],
+   "sha256": "9ce019e6c6df18a2b5206f07e570b5f64499e3ec95db68fc2d3732b2521db5c5",
+   "full": "e4f221ca44ae4b3102a579d5ac6f67e612373c26fe1953c149de853d80f7e0c1",
+   "bytes": 515
+  },
+  {
+   "from": "reference",
+   "name": "names §8: nothing used",
+   "part": "names-part-nokeep.js",
+   "inline": [
+    "<p>nothing here</p>"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [],
+   "sha256": "49eae8519c36a91c109aa5d9f43bbf74044a30f170daeaa02df1524e029abee3",
+   "full": "b9f159ac7a14fbde65a1f991c99141838877a33c253ac606343a75b509e29f73",
+   "bytes": 393
+  },
+  {
+   "from": "reference",
+   "name": "icons (test-icons 3)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-icons.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "chart-bar-popular",
+    "user"
+   ],
+   "sha256": "038a319311969e7f7cf2e3d4be184a8ee46ae54aa709774d113a33036619e7e2",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4673
+  },
+  {
+   "from": "reference",
+   "name": "icons: comments, <style>, entities, case, narration",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-mixed.html",
+    "narration-mixed.md"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "accessible",
+    "arrow-right",
+    "chart-bar",
+    "percentage-10",
+    "user"
+   ],
+   "sha256": "396c52efc02d434c72808980fa70452a65b7f61593e21c368166ae905814128c",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4971
+  },
+  {
+   "from": "reference",
+   "name": "icons: no lesson",
+   "part": "icons.js",
+   "inline": [
+    ""
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [],
+   "sha256": "ec15925d256685709f037280ee923be81c9bcd38096491927d3b046346c58227",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4308
+  },
+  {
+   "from": "reference",
+   "name": "array block by field, keep",
+   "part": "names-array.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:list",
+      "key": "id",
+      "match": "name",
+      "keep": [
+       "home"
+      ]
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "home",
+    "user"
+   ],
+   "sha256": "2a88019f838272d90698f903bfa1bc5c68b5eb24cef4d5fe3ab0a0ab0fc5c00e",
+   "full": "a8f97655758c90db1f42b0e0883d3fd03998873e9baa285955f4a4e7598518a1",
+   "bytes": 352
+  },
+  {
+   "from": "reference",
+   "name": "a comment, a tag name (table), <style>, <script>, a \\u-escaped name in data",
+   "why": "tag names and <script> contents are not text (table, arrow-right); data is read as JSON (\\u0068ome is home); a comment does not count (a-b)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-spec-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "home",
+    "user"
+   ],
+   "sha256": "d4ead46b9ad78c7ab327e5f89aba9022c33b60e9357f30410656f2613766d2a2",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4522
+  },
+  {
+   "from": "reference",
+   "name": "char path: comment, <style>, <script>, tag name, references, JSON number, glyphs",
+   "why": "い in a comment, か in <script> and q as a tag name do not count; う is the part's glyphs (also in <style>, which does not count); &copy; is © (the full WHATWG table); 1E21 counts as String(1e21) = 1e+21; &#x3048; is え",
+   "part": "chars-part.js",
+   "lessons": [
+    "lesson-spec-chars.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:marks",
+      "key": "char"
+     }
+    ]
+   },
+   "glyphs": "う",
+   "keys": "+©あうえ",
+   "names": null,
+   "sha256": "174e28c42f5c62eaf07c53215f5d67868255a6cdeb6cb6f6c30dfc5cbb29a83a",
+   "full": "24aa9a550ac45f067659c471b6f7643e9c705bbbdcdf84f4f13d11acc0d0f6e4",
+   "bytes": 372
+  },
+  {
+   "from": "reference",
+   "name": "parsed as a document: doctype, <title>, <noscript>, template contents, duplicate attributes, SVG CDATA, <textarea>",
+   "why": "<noscript> is raw text with scripting (user), template contents count (home), only the first of duplicate attributes (table, not arrow-right), SVG CDATA is text (x), <textarea> text (chart-bar)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-parse.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "chart-bar",
+    "home",
+    "table",
+    "user",
+    "x"
+   ],
+   "sha256": "ebf45f5b0a154864ea39ec5e0ae9fbc07ce874639035dd09e5c1f3533f146859",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4937
+  },
+  {
+   "from": "reference",
+   "name": "bad declaration: a non-string key keeps the part whole",
+   "part": "names-array-bad.js",
+   "lessons": [
+    "lesson-names.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:list",
+      "key": "id",
+      "match": "name",
+      "keep": [
+       "home"
+      ]
+     }
+    ]
+   },
+   "warning": "subset: block list: keys [3] are not names (/^[a-z0-9]+(-[a-z0-9]+)*$/)",
+   "sha256": "1c9232971d4cba4f4395c99ab54c2519a59764d9b36ff31609c5bf9896bdebe4",
+   "full": "1c9232971d4cba4f4395c99ab54c2519a59764d9b36ff31609c5bf9896bdebe4",
+   "bytes": 413
+  }
+ ]
+}

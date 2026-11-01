@@ -1,0 +1,103 @@
+{
+ "_source": "Lesson text pieces of whole documents, first written by hand from egatari-spec subset-parse c6024bf and checked against the reference producer: egatari/components tools/subset-produce.mjs htmlPieces at c004416 (components c2-base; same code as 0a5be1b) (parse5 8.0.1). Regenerate only from that reference.",
+ "cases": [
+  {
+   "name": "duplicate attributes: only the first, the one the parser keeps",
+   "html": "<p title=\"first\" title=\"second\">x</p>",
+   "pieces": [
+    "first",
+    "x"
+   ]
+  },
+  {
+   "name": "tree order: an element's attribute values before its children",
+   "html": "<a href=\"h\"><b title=\"t\">x</b></a>",
+   "pieces": [
+    "h",
+    "t",
+    "x"
+   ]
+  },
+  {
+   "name": "the doctype is not text",
+   "html": "<!DOCTYPE html><p>x</p>",
+   "pieces": [
+    "x"
+   ]
+  },
+  {
+   "name": "comments are not text",
+   "html": "<p>a<!-- home -->b</p>",
+   "pieces": [
+    "a",
+    "b"
+   ]
+  },
+  {
+   "name": "<plaintext>: the rest of the source is one text node, not decoded",
+   "html": "<plaintext><b>&amp;</b></plaintext>",
+   "pieces": [
+    "<b>&amp;</b></plaintext>"
+   ]
+  },
+  {
+   "name": "SVG CDATA: its contents are text, not decoded",
+   "html": "<svg><text><![CDATA[a<b&amp;]]></text></svg>",
+   "pieces": [
+    "a<b&amp;"
+   ]
+  },
+  {
+   "name": "CDATA outside foreign content is a bogus comment",
+   "html": "<p><![CDATA[x]]></p>",
+   "pieces": []
+  },
+  {
+   "name": "<title> (RCDATA): decoded, tags are text",
+   "html": "<title>A &amp; <b>B</b></title>",
+   "pieces": [
+    "A & <b>B</b>"
+   ]
+  },
+  {
+   "name": "<textarea> (RCDATA): decoded, tags are text, a leading newline dropped",
+   "html": "<textarea>\n&lt;x&gt; <i>y</i></textarea>",
+   "pieces": [
+    "<x> <i>y</i>"
+   ]
+  },
+  {
+   "name": "<noscript> with scripting enabled (RAWTEXT): one text node, not decoded",
+   "html": "<noscript><p class=\"c\">n&amp;</p></noscript>",
+   "pieces": [
+    "<p class=\"c\">n&amp;</p>"
+   ]
+  },
+  {
+   "name": "template contents count",
+   "html": "<template title=\"o\"><p title=\"t\">in</p></template>",
+   "pieces": [
+    "o",
+    "t",
+    "in"
+   ]
+  },
+  {
+   "name": "<style> in SVG and non-JSON <script> do not count; a JSON <script> is read as JSON (type trimmed, any case)",
+   "html": "<svg><style>.s{}</style><script>var w = 1;</script></svg><script type=\" Application/JSON \">{\"k\":[\"v\",2]}</script>",
+   "pieces": [
+    " Application/JSON ",
+    "k",
+    "v",
+    "2"
+   ]
+  },
+  {
+   "name": "CR and CRLF are LF; references decoded",
+   "html": "<p>a\r\nb\rc &copy2</p>",
+   "pieces": [
+    "a\nb\nc ©2"
+   ]
+  }
+ ]
+}
