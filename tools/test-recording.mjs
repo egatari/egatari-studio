@@ -115,7 +115,7 @@ const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/status of 409/.test(m.text())) errs.push('console: ' + m.text()); if (process.env.APP_DEBUG) console.log('    [' + m.type() + '] ' + m.text()); });
 const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
-async function frameReady(timeout = 20000) {
+async function frameReady(timeout = process.platform === 'win32' ? 40000 : 20000) {   // Windows の CI は重い（#145）
   const t0 = Date.now();
   for (;;) {
     const f = deckFrame();

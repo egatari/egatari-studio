@@ -152,7 +152,7 @@ const opfs = {
 };
 // プレビューの枠（スライド一覧の縮図の枠 sl-thumbs は除く）
 const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame() && f.name() !== 'sl-thumbs');
-async function frameReady(timeout = 20000) {
+async function frameReady(timeout = process.platform === 'win32' ? 40000 : 20000) {   // Windows の CI は重い（#145）
   const t0 = Date.now();
   for (;;) {
     const f = deckFrame();

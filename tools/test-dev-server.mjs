@@ -79,8 +79,9 @@ const deckOf = (p) => p.frames().find((f) => f.parentFrame() === p.mainFrame());
 const dk = () => deckOf(page);
 // デッキの iframe の準備ができるまで待つ（外枠が位置を戻す時間も少し）
 async function ready(p = page) {
-  await p.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: 15000 });
-  for (let i = 0; i < 200; i++) {
+  const win = process.platform === 'win32';   // Windows の CI は重い（#145）：待ちを倍に
+  await p.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: win ? 30000 : 15000 });
+  for (let i = 0; i < (win ? 400 : 200); i++) {
     const f = deckOf(p);
     try { if (f && await f.evaluate(() => !!(window.DECK && DECK.ready))) { await p.waitForTimeout(150); return f; } } catch { /* 読み込み中 */ }
     await p.waitForTimeout(75);
