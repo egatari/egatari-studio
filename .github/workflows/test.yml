@@ -87,7 +87,8 @@ jobs:
   windows:
     runs-on: windows-latest
     # Windows: npm test now runs past 45 min (cancelled at 45 min on v0.6-integration while still passing; test-components alone takes about 575 s, near the default 600 s step cap), so the job and each test-all step get more time
-    timeout-minutes: 60
+    # 60 min was too short once v0.6.5's article tests joined: main took 56 min (run 41300438072), and run 41320179850 reached the cap still passing (#156)
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
