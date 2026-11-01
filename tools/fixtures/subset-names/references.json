@@ -1,5 +1,5 @@
 {
- "_source": "Character references as the reference producer reads them: egatari/components tools/subset-produce.mjs htmlPieces at 3b599e5 (WHATWG HTML named table, legacy names, attribute exception, numeric fixes, CR/LF). Regenerate only from that reference.",
+ "_source": "egatari/components tools/subset-produce.mjs htmlPieces at c004416 (components c2-base; same code as 0a5be1b) (parse5 8.0.1 document parse, tree order; spec subset-parse c6024bf): character references (WHATWG table, legacy names, attribute exception, numeric fixes, CR/LF). Regenerate only from that reference.",
  "cases": [
   {
    "kind": "text",

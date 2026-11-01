@@ -1,7 +1,8 @@
 {
- "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce(js, sources) at 3b599e5 (spec §6.2 subset, egatari-spec 6f2670b and c09b233: the lesson text with character references as an HTML parser reads them, string keys, bad declarations kept whole). .html lessons are {html}, .md lessons {narration}. The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries. Regenerate only from that reference.",
+ "_source": "Expected subsets written by the reference producer, egatari/components tools/subset-produce.mjs produce(js, sources) at c004416 (components c2-base; same code as 0a5be1b) (egatari-spec subset-parse c6024bf: the slide source parsed as a document with parse5 8.0.1, walked in tree order; .html lessons are {html}, .md lessons {narration}). The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries.",
  "cases": [
   {
+   "from": "reference",
    "name": "names §8: keep, a char entry, tokens",
    "part": "names-part.js",
    "lessons": [
@@ -34,6 +35,7 @@
    "bytes": 515
   },
   {
+   "from": "reference",
    "name": "names §8: nothing used",
    "part": "names-part-nokeep.js",
    "inline": [
@@ -55,6 +57,7 @@
    "bytes": 393
   },
   {
+   "from": "reference",
    "name": "icons (test-icons 3)",
    "part": "icons.js",
    "lessons": [
@@ -79,6 +82,7 @@
    "bytes": 4673
   },
   {
+   "from": "reference",
    "name": "icons: comments, <style>, entities, case, narration",
    "part": "icons.js",
    "lessons": [
@@ -107,6 +111,7 @@
    "bytes": 4971
   },
   {
+   "from": "reference",
    "name": "icons: no lesson",
    "part": "icons.js",
    "inline": [
@@ -128,6 +133,7 @@
    "bytes": 4308
   },
   {
+   "from": "reference",
    "name": "array block by field, keep",
    "part": "names-array.js",
    "lessons": [
@@ -155,6 +161,7 @@
    "bytes": 352
   },
   {
+   "from": "reference",
    "name": "a comment, a tag name (table), <style>, <script>, a \\u-escaped name in data",
    "why": "tag names and <script> contents are not text (table, arrow-right); data is read as JSON (\\u0068ome is home); a comment does not count (a-b)",
    "part": "icons.js",
@@ -180,6 +187,7 @@
    "bytes": 4522
   },
   {
+   "from": "reference",
    "name": "char path: comment, <style>, <script>, tag name, references, JSON number, glyphs",
    "why": "い in a comment, か in <script> and q as a tag name do not count; う is the part's glyphs (also in <style>, which does not count); &copy; is © (the full WHATWG table); 1E21 counts as String(1e21) = 1e+21; &#x3048; is え",
    "part": "chars-part.js",
@@ -202,6 +210,36 @@
    "bytes": 372
   },
   {
+   "from": "reference",
+   "name": "parsed as a document: doctype, <title>, <noscript>, template contents, duplicate attributes, SVG CDATA, <textarea>",
+   "why": "<noscript> is raw text with scripting (user), template contents count (home), only the first of duplicate attributes (table, not arrow-right), SVG CDATA is text (x), <textarea> text (chart-bar)",
+   "part": "icons.js",
+   "lessons": [
+    "lesson-parse.html"
+   ],
+   "build": {
+    "subset": [
+     {
+      "data": "block:icons",
+      "key": "name",
+      "match": "name"
+     }
+    ]
+   },
+   "keys": "",
+   "names": [
+    "chart-bar",
+    "home",
+    "table",
+    "user",
+    "x"
+   ],
+   "sha256": "ebf45f5b0a154864ea39ec5e0ae9fbc07ce874639035dd09e5c1f3533f146859",
+   "full": "9977cffb934da1f9471923e689746b630cba8c9afe5d44df908213b822365fe4",
+   "bytes": 4937
+  },
+  {
+   "from": "reference",
    "name": "bad declaration: a non-string key keeps the part whole",
    "part": "names-array-bad.js",
    "lessons": [

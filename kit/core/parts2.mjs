@@ -9,7 +9,7 @@
 // components2.lock.json：
 //   {source, default: <カタログの版>, catalogues: {<カタログの版>: {tag, tarballSha256, manifestSha256, parts: {名前: パーツの版}}},
 //    parts: {名前: {<パーツの版>: {sha256, kind: "element" | "library", tag?, requires: {名前: 版}, build?, glyphs?, license}}}}
-import { parseFragment } from 'parse5';
+import { parse } from 'parse5';
 export const LOCK2_FILE = 'components2.lock.json';
 // カタログの manifest と使用条件だけの場所。パーツのコードは resolveComponent で引く。
 export const VENDOR_PARTS2 = ['vendor', 'components-2'];
@@ -246,26 +246,13 @@ const BLOCK_END = '/*@egatari-block-end*/';
 export const SUBSET_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // 符号の順（文字列を符号位置の列として比べる。UTF-16 の順とは astral の字で違う）
 const cpOrder = (a, b) => { const x = Array.from(a), y = Array.from(b); for (let i = 0; i < Math.min(x.length, y.length); i++) { const d = x[i].codePointAt(0) - y[i].codePointAt(0); if (d) return d; } return x.length - y.length; };
-// 教材の字（§6.2 Subset、egatari-spec 6f2670b）：節を \n でつなぐ（語が節をまたいでつながらない）。部品庫の参照の実装（egatari/components
-// tools/subset-produce.mjs、3b599e5 の htmlPieces・jsonPieces・lessonText）をそのまま移したもの（字の参照の読みだけ parse5）（同じ教材から同じ字。バイトまで同じ絞り込みのため）
-//   数える：原稿の字の節と属性の値（字の参照を読む）、パーツに渡すデータ（<script type="application/json"> の中身）は JSON として読んだ欄の名前・字列の値・
-//           数（String(n)）を文書の順に（JSON でなければ書いたままの 1 節）、口述原稿は書いたまま、パーツの glyphs
-//   数えない：注釈・要素と属性の名前・ほかの <script> と <style> の中身
-// 字の参照は HTML のパーサーが読むとおりに読む（WHATWG HTML §13.2.5.72–80：名前の参照の全部の表と最長一致、; のない古い名前（属性の値では、次が = か英数字なら読まない）、
-// ; のない数の参照、0x80–0x9F は windows-1252 の字、0・サロゲート・U+10FFFF を超える値は U+FFFD）。読みは parse5 に任せ、区切り（どこが字の節・属性の値か）は
-// 参照の実装の走査のまま（参照の実装と同じ字にするため）。改行の CR・CRLF は LF に（htmlPieces が先にそろえる）
-// 字の節：< を &lt; にして（区切りは済んでいるので、ここに要素はない）、parse5 の断片として読んだ字の節をつなぐ
-export function decodeRefs(s) {
-  if (!s.includes('&')) return s;
-  return (parseFragment(s.replace(/</g, '&lt;')).childNodes || []).map((n) => n.value || '').join('');
-}
-// 属性の値：書いたままの値（引用符も）を 1 つの属性として parse5 に読ませる
-export function decodeAttrRefs(written) {
-  const unq = written[0] === '"' || written[0] === "'" ? written.slice(1, -1) : written;
-  if (!unq.includes('&')) return unq;
-  const el = (parseFragment(`<i a=${written}>`).childNodes || [])[0];
-  return el && el.attrs && el.attrs[0] ? el.attrs[0].value : unq;
-}
+// 教材の字（§6.2 Subset、egatari-spec subset-parse c6024bf）：節を \n でつなぐ（語が節をまたいでつながらない）。
+//   原稿：parse5（8.0.1）で文書として読み（scripting は有効）、木の順に、字の節と属性の値（同じ名前の属性は parser が残す最初のものだけ）を数える。
+//         template の中身も数える。文書型・注釈・<style> の中身・JSON でない <script> の中身は数えない（要素と属性の名前も数えない）。
+//         字の参照・改行（CR・CRLF）はパーサーが読むとおり
+//   パーツに渡すデータ（<script type="application/json"> の中身）：JSON として読んだ欄の名前・字列の値・数（String(n)）を文書の順に（JSON でなければ書いたままの 1 節）
+//   口述原稿は書いたまま、パーツの glyphs
+// 組み立て（build-core）と編集アプリが共有する（parse5 はどちらにもある）。部品庫の参照の実装（tools/subset-produce.mjs、c004416）の htmlPieces と同じ節
 export function jsonPieces(v, out = []) {
   if (typeof v === 'string') out.push(v);
   else if (typeof v === 'number') out.push(String(v));
@@ -273,33 +260,26 @@ export function jsonPieces(v, out = []) {
   else if (v && typeof v === 'object') for (const k of Object.keys(v)) { out.push(k); jsonPieces(v[k], out); }
   return out;
 }
+const isJsonScript = (n) => /^application\/json$/i.test(((n.attrs || []).find((a) => a.name === 'type')?.value || '').trim());
 export function htmlPieces(html) {
-  const out = [], s = String(html).replace(/\r\n?/g, '\n'), re = /<!--[\s\S]*?(?:-->|$)|<(\/?)([a-zA-Z][^\s/>]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
-  let at = 0, m;
-  const text = (t) => { if (t) out.push(decodeRefs(t)); };
-  while ((m = re.exec(s))) {
-    text(s.slice(at, m.index));
-    at = re.lastIndex;
-    if (!m[2]) continue;   // 注釈
-    const tag = m[2].toLowerCase(), attrs = {};
-    for (const a of m[3].matchAll(/([^\s=/>"']+)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s>"']+)))?/g)) {
-      if (a[2] === undefined) continue;
-      const v = a[3] ?? a[4] ?? a[5];
-      attrs[a[1].toLowerCase()] = v;
-      out.push(decodeAttrRefs(a[2]));
+  const out = [];
+  const walk = (n) => {
+    if (n.nodeName === '#text') { if (n.value) out.push(n.value); return; }
+    if (n.nodeName === '#comment' || n.nodeName === '#documentType') return;
+    for (const a of n.attrs || []) out.push(a.value);
+    if (n.tagName === 'style') return;
+    if (n.tagName === 'script') {
+      if (!isJsonScript(n)) return;
+      const body = (n.childNodes || []).map((c) => c.value || '').join('');
+      let v, okJson = true;
+      try { v = JSON.parse(body); } catch { okJson = false; }
+      if (okJson) jsonPieces(v, out); else out.push(body);
+      return;
     }
-    if (!m[1] && (tag === 'script' || tag === 'style')) {
-      const close = s.toLowerCase().indexOf('</' + tag, at), body = s.slice(at, close < 0 ? s.length : close);
-      if (tag === 'script' && /^application\/json$/i.test((attrs.type || '').trim())) {
-        let v, okJson = true;
-        try { v = JSON.parse(body); } catch { okJson = false; }
-        if (okJson) jsonPieces(v, out); else out.push(body);
-      }
-      at = close < 0 ? s.length : close;
-      re.lastIndex = at;
-    }
-  }
-  text(s.slice(at));
+    for (const c of n.childNodes || []) walk(c);
+    if (n.content) walk(n.content);   // template の中身
+  };
+  walk(parse(String(html), { scriptingEnabled: true }));
   return out;
 }
 // sources：[{html}（原稿）| {narration}（口述原稿）| 字列（= html）]。glyphs：パーツの glyphs（あれば最後の節）

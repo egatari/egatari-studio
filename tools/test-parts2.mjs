@@ -5,7 +5,7 @@
 //   kit/core/parts2.mjs：依存の解決と順・要素の名前のぶつかり（conflicts。組み立ては断る）・カタログの選び方・meta を字で読む（字のままでなければ知らせる。写しのパーツは全部読める）・
 //   描く欄の道筋と欄の名前・絞り込み（同じキーなら同じバイト、_ の欄は先にそのまま、宣言ごとに宣言した順、keys は合わせて符号の順）・
 //   名前で絞る（match: "name"。tools/fixtures/subset-names の部品庫の参照の実装が出したものとバイトまで同じ、語の切り方、keep、names の記録）・
-//   教材の字（lessonText：char も name も同じ字。参照の実装の §9）・形の悪い宣言（パーツを全部のまま、subset を記録しない）
+//   教材の字（lessonText：char も name も同じ字。parse5 で文書として読み、木の順に。参照の実装の §9・§10・parse-cases.json）・形の悪い宣言（パーツを全部のまま、subset を記録しない）
 //   写し：vendor/components/sha256 と components2.lock.json が合っている（tools/components2-update.mjs --check と同じ）
 import fs from 'node:fs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
@@ -235,7 +235,7 @@ for (const [code, what] of [
 }
 
 // ---------------------------------------------------------------- 名前で絞る（§6.2 Subset by name）と教材の字（§6.2 Subset、egatari-spec 6f2670b）
-// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce、3b599e5）が同じ入力から出したもの。
+// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce、c004416）が同じ入力から出したもの。
 // 同じ宣言・同じ教材（.html は原稿、.md は口述原稿）・同じ glyphs なら、絞ったコードのバイト（sha256）・keys・names が同じ。形の悪い宣言はパーツを全部のまま
 {
   const FX = path.join(ROOT, 'tools/fixtures/subset-names');
@@ -269,11 +269,30 @@ for (const [code, what] of [
   const tk = lessonTokens(lessonText([{ html: '<m-cards><script type="application/json">{"cards":[{"icon":"\\u0075ser"}]}</script></m-cards>' }]));
   ok(eq([...tk].sort(), ['application', 'cards', 'icon', 'json', 'user']), `tokens of a lesson: ${JSON.stringify([...tk].sort())} (the type attribute's value counts; the tag names do not; \\u is read)`);
   // 字の参照（egatari-spec c09b233）：HTML のパーサーが読むとおり（WHATWG の全部の表と最長一致、; のない古い名前と属性の値の例外、数の参照の直し、CR・CRLF）。
-  // 読みは parse5、区切りは参照の実装の走査。references.json は参照の実装（3b599e5）の htmlPieces が出したもの
+  // references.json は参照の実装（c004416）の htmlPieces が出したもの
   const R9 = lessonText([{ html: '<p title="&copy2 &amp=x &hellip;">&hellip;&mdash;&copy2 &notit; &#x80;&#0;&#12354 AT&T &unknown;</p>' }]).split('\n');
   ok(R9[0] === '&copy2 &amp=x …' && R9[1] === '…—©2 ¬it; €\ufffdあ AT&T &unknown;', `character references as an HTML parser yields them: ${JSON.stringify(R9)}`);
   const refs = JSON.parse(rd('references.json')).cases, refBad = refs.filter((c) => !eq(htmlPieces(c.html), c.pieces));
   ok(refs.length >= 25 && !refBad.length, `${refs.length} reference edge cases (text and attribute values) read as the reference does${refBad.length ? ': ' + refBad.map((c) => c.html + ' → ' + JSON.stringify(htmlPieces(c.html))).join('; ') : ''}`);
+  // 文書として読む（egatari-spec subset-parse c6024bf）：parse-cases.json は参照の実装（c004416）の htmlPieces が出したもの（はじめ規格から手で書き、照らして一致）
+  const pc = JSON.parse(rd('parse-cases.json')).cases, pcBad = pc.filter((c) => !eq(htmlPieces(c.html), c.pieces));
+  ok(pc.length >= 10 && !pcBad.length, `${pc.length} parse cases as the reference: doctype, comments, duplicate attributes, <plaintext>, SVG CDATA, <title>, <textarea>, <noscript>, template${pcBad.length ? ' / ' + pcBad.map((c) => c.name + ' → ' + JSON.stringify(htmlPieces(c.html))).join('; ') : ''}`);
+  // 部品庫の §10 の確かめ（tools/test-subset.mjs 10）
+  const P10 = lessonText([{ html: `<!DOCTYPE html><html lang="ja"><head><title>T &amp; <b>in-title</b></title></head><body>
+<p a="first" a="second">p</p><textarea>x <i>in-textarea</i> &lt;</textarea><noscript><span>in-noscript</span></noscript><xmp><u>in-xmp</u> &amp;</xmp>
+<div><![CDATA[<em>html-cdata</em>]]><?pi <em>in-pi</em>?></div>
+<template><span>in-template</span></template>
+<svg><text><![CDATA[svg-cdata <tag>]]></text><style>.svg-style{}</style></svg>
+<plaintext><q>in-plaintext</q> &amp;` }]).split('\n');
+  const has = (x) => P10.includes(x);
+  ok(!P10.includes('html') && P10.includes('ja'), 'the doctype yields nothing (no token html); the lang attribute value counts');
+  ok(has('T & <b>in-title</b>') && has('x <i>in-textarea</i> <'), `<title> and <textarea> are one text node each, references decoded: ${JSON.stringify(P10.filter((x) => /title|textarea/.test(x)))}`);
+  ok(has('<span>in-noscript</span>') && has('<u>in-xmp</u> &amp;'), '<noscript> (scripting enabled) and <xmp> are raw text, not tags (and no references decoded in <xmp>)');
+  ok(!P10.some((x) => /CDATA|<em>|\?pi/.test(x)) && has('html-cdata]]>') && has('in-pi?>'), 'CDATA and processing instructions in HTML are bogus comments up to the first ">" (not counted); what follows is parsed as usual');
+  ok(has('first') && !has('second'), 'duplicate attributes: only the first is kept');
+  ok(has('in-template'), 'template contents count');
+  ok(has('svg-cdata <tag>') && !P10.some((x) => /svg-style/.test(x)), 'CDATA in SVG is text; <style> in SVG is not counted');
+  ok(P10.at(-1) === '<q>in-plaintext</q> &amp;\n' || P10.at(-1) === '<q>in-plaintext</q> &amp;', `<plaintext> takes the rest as raw text: ${JSON.stringify(P10.at(-1))}`);
   ok(eq([...lessonTokens('ab\ncd')], ['ab', 'cd']), 'pieces are joined by a line feed: tokens never fuse across them');
   // 部品庫の §8 の確かめ（tools/test-subset.mjs 8）
   const t = lessonTokens(lessonText([rd('lesson-names.html')]));
