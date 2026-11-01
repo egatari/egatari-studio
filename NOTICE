@@ -5,7 +5,10 @@ Fonts are not covered by this license. BIZ UDPGothic (fonts/, @fontsource/biz-ud
 BIZ UDPMincho (fonts/, @fontsource/biz-udpmincho) and Source Sans 3
 (@fontsource/source-sans-3) are licensed under the SIL Open Font License 1.1
 (fonts/OFL.txt for BIZ UDPGothic, fonts/OFL-BIZUDPMincho.txt for BIZ UDPMincho;
-the @fontsource packages ship their own license files). Built decks embed subsets of these fonts and of the
+the @fontsource packages ship their own license files). The other fonts a theme or deck can choose
+(kit/core/build-core.mjs FONT_LIST) are @fontsource packages under the same licence. The npm package
+egatari carries copies of the files of these packages that the build reads, each with its LICENSE, in
+fonts/@fontsource/<name>/ (made by tools/fonts-vendor.mjs). Built decks embed subsets of these fonts and of the
 KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
 The default reference voices (tts/voices/bob*.wav, alice*.wav) are synthetic voices
 made with Qwen3-TTS (Apache-2.0), Irodori-TTS (MIT) and VoxCPM2 (Apache-2.0); see

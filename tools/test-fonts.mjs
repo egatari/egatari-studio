@@ -1,6 +1,6 @@
 // 選べる字体（#133）の試験
 //   node tools/test-fonts.mjs [作業フォルダ]
-// 1. 一覧（FONT_LIST）：10 の字体（日本語 5・英語 4・等幅 1）、どれも @fontsource の包みが package.json にある
+// 1. 一覧（FONT_LIST）：10 の字体（日本語 5・英語 4・等幅 1）、どれも @fontsource の包みが package.json の devDependencies にある（npm の包みには写し fonts/@fontsource を入れる）
 // 2. 選んだ字体だけが入る：一覧の字体をスライドの CSS で名指すと埋め込み、名指さない字体は入らない。既定の日本語の教材は Source Sans 3 を入れない
 // 3. 英語の斜体：斜体で出す字があるときだけ、その太さ（400i・700i）の、その字の分割ファイルだけ。日本語の教材は強調の中のラテン文字だけ
 // 3b. 本文の字体を一覧から選んだテーマ（浅葱）：BIZ UDPゴシックはその字体が持たない字だけ
@@ -34,10 +34,10 @@ const deck = (name, lang, body, theme = 'default') => {
 };
 const check = (dir) => JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
 
-await t('一覧：日本語 5・英語 4・等幅 1 の 10 の名前（Klee One は 400 と 600）、どれも OFL の @fontsource が package.json にある', () => {
+await t('一覧：日本語 5・英語 4・等幅 1 の 10 の名前（Klee One は 400 と 600）、どれも OFL の @fontsource が package.json の devDependencies にある', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.deepEqual(FONT_LIST.map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Shippori Mincho', 'Zen Maru Gothic', 'Klee One', 'Source Sans 3', 'Source Serif 4', 'Andika', 'Atkinson Hyperlegible Next', 'Source Code Pro']);
-  for (const f of FONT_LIST) assert.ok(pkg.dependencies[f.pkg], f.pkg);
+  for (const f of FONT_LIST) assert.ok(pkg.devDependencies[f.pkg] && !pkg.dependencies[f.pkg], f.pkg);
   assert.deepEqual(FONT_LIST.find((f) => f.family === 'Klee One').weights, [400, 600]);
 });
 

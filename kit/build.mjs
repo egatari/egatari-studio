@@ -157,12 +157,17 @@ export function listFiles(dir) {
   go(dir, 1);
   return out;
 }
+// @fontsource の包みの場所：npm の包みに入れた写し（fonts/@fontsource/<名前>/。tools/fonts-vendor.mjs）→ node_modules の順
+function fontDir(pkg) {
+  const v = path.join(ROOT, 'fonts', ...pkg.split('/'));
+  return fs.existsSync(path.join(v, 'package.json')) ? v : path.dirname(require.resolve(`${pkg}/package.json`));
+}
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex, abcjs,
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
-  fontDir: (pkg) => path.dirname(require.resolve(`${pkg}/package.json`)),
+  fontDir,
   exists: (p) => fs.existsSync(p),
   isFile: (p) => fs.statSync(p).isFile(),
   readText: (p, max) => readRegular(p, max).toString('utf8'),

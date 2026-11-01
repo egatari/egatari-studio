@@ -3,6 +3,8 @@ node_modules/
 **/out/
 **/.cache/
 fonts/*.ttf
+# npm の包みに入れる字の写し（npm pack の前に tools/fonts-vendor.mjs が作る）
+fonts/@fontsource/
 tts/.venv/
 tts/voices/*
 !tts/voices/README.md

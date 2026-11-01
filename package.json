@@ -70,18 +70,27 @@
     "comment-shots": "node tools/comment-shots.mjs",
     "release:assets": "node tools/release-assets.mjs",
     "gen": "node tools/catalog.mjs && node tools/make-llm-guide.mjs && node tools/katex-ranges.mjs && node tools/make-colab-notebook.mjs",
-    "gen:check": "node tools/components-update.mjs --check && node tools/themes-lock.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check",
+    "gen:check": "node tools/components-update.mjs --check && node tools/themes-lock.mjs --check && node tools/fonts-vendor.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check",
     "changelog": "node tools/changelog.mjs",
     "components:update": "node tools/components-update.mjs",
     "components:check": "node tools/components-update.mjs --check",
     "themes:check": "node tools/themes-lock.mjs --check",
     "player:check": "node tools/player.mjs check",
-    "player:bump": "node tools/player.mjs bump"
+    "player:bump": "node tools/player.mjs bump",
+    "fonts:vendor": "node tools/fonts-vendor.mjs",
+    "prepack": "node tools/fonts-vendor.mjs"
   },
   "engines": {
     "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
   },
   "dependencies": {
+    "abcjs": "6.7.2",
+    "katex": "0.19.1",
+    "lame-wasm": "0.3.0",
+    "parse5": "8.0.1",
+    "playwright-core": "1.64.1"
+  },
+  "devDependencies": {
     "@fontsource/andika": "5.3.0",
     "@fontsource/atkinson-hyperlegible-next": "5.3.0",
     "@fontsource/biz-udpgothic": "5.3.0",
@@ -92,13 +101,6 @@
     "@fontsource/source-sans-3": "5.3.1",
     "@fontsource/source-serif-4": "5.3.1",
     "@fontsource/zen-maru-gothic": "5.3.1",
-    "abcjs": "6.7.2",
-    "katex": "0.19.1",
-    "lame-wasm": "0.3.0",
-    "parse5": "8.0.1",
-    "playwright-core": "1.64.1"
-  },
-  "devDependencies": {
     "ajv": "8.20.0",
     "esbuild": "0.28.2"
   }
