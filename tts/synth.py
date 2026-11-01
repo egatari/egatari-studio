@@ -388,7 +388,9 @@ def main():
               f"--only {','.join(k for k, _ in failed)} でやり直すこと", file=sys.stderr)
         sys.exit(1)
     print(f"完了: 新規 {made} / キャッシュ {cached}" + (f" / 録音を残した {kept}" if kept else "") + f" → {man_path}")
-    print("  音声を反映するには build をやり直す（node kit/build.mjs <deck.html>）")
+    # egatari コマンドから呼ばれたら（EGATARI_CLI）そのコマンドの形で
+    cli = os.environ.get("EGATARI_CLI")
+    print(f"  音声を反映するには build をやり直す（{cli + ' build' if cli else 'node kit/build.mjs'} <deck.html>）")
 
 
 if __name__ == "__main__":
