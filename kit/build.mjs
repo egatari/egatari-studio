@@ -43,6 +43,9 @@ import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounde
 import { userThemeDirs } from './theme-dirs.mjs';
 import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, configThemePins, themeUpdate } from './core/themes-lock.mjs';
+import { articlePage, articlePageOut } from './core/article-page.mjs';
+import { articleLayout } from './core/article.mjs';
+import { articleMessage } from './core/article-messages.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
 
@@ -324,6 +327,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);
     if (lw) console.warn('  ⚠ portable: ' + lw);
+    // 本文（format spec §9C）はまだ 1 ファイルに書き出さない（v0.6.5 の作業中）：あれば知らせる
+    { const d = path.dirname(path.resolve(src)); if (articleLayout(listFiles(d).map((f) => path.relative(d, f).split(path.sep).join('/'))).index) console.warn('  ⚠ portable: the article (article.md or article/*.md) is not written into the single file yet'); }
   } else {
     const out = opts.out || defaultOut(src);
     let r;
@@ -332,5 +337,17 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
     for (const w of s.warn) console.warn('  ⚠ ' + w);
+    // 本文（article.md・article/<名前>.md、format spec §9C）：読むための頁を出力の横に <名前>.article.html で書き、点検（§9C.8）の結果を出す
+    const lang = r.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
+    let ap = null;
+    try { ap = articlePage(nodeEnv, src, { lang, title: titleOf(r.html), themeCss: r.html }); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+    if (ap) {
+      const ao = articlePageOut(path, path.resolve(out));
+      try { writeOutput(src, ao, ap.html); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+      const ml = core.isJapanese(lang) ? 'ja' : 'en', st = ap.stats, errs = ap.problems.filter((p) => p.sev === 'error').length;
+      console.log(`article: files: ${st.files}, sections: ${st.sections}, figures: ${st.figures}, tables: ${st.tables}, equations: ${st.equations}, errors: ${errs} -> ${ao}`);
+      for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${articleMessage(ml, p)}`);
+      for (const w of ap.warnings) console.warn('  ⚠ article: ' + w);
+    }
   }
 }

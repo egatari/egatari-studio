@@ -8,6 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { parseArticleText, fixtureTree, checkHtmlTable, convertAozora } from '../kit/core/article-text.mjs';
 import { articleLayout, readArticle, validateArticle, parseStep, referenceKeys } from '../kit/core/article.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { renderArticle, numberArticle } from '../kit/core/article-render.mjs';
+import { articlePage } from '../kit/core/article-page.mjs';
+import { assignSectionIds } from '../kit/core/article.mjs';
+import { ARTICLE_MESSAGES, articleMessage } from '../kit/core/article-messages.mjs';
+import { nodeEnv } from '../kit/build.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const FX = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'), 'fixtures', 'article-text');
@@ -175,6 +180,63 @@ t('convert: Aozora ruby and emphasis dots', () => {
   const r = convertAozora('一人の｜下人《げにん》が羅生門《らしょうもん》の下で待っていた［＃「待っていた」に傍点］。');
   assert.equal(r.text, '一人の{ruby}`下人|げにん`が{ruby}`羅生門|らしょうもん`の下で*待っていた*。');
   assert.equal(r.conversions.length, 3);
+});
+
+// ---------------------------------------------------------------- 番号と HTML（§9C.1A・§9C.6）
+const render = (files, index, opts = {}) => renderArticle(readArticle(index || { chapters: Object.keys(files) }, (p) => files[p], { lang: opts.lang || 'ja' }), { lang: 'ja', title: '本', ...opts }).html;
+t('numbers: chapter, appendix letters, preface without prefix', () => {
+  const h = render({
+    'article/0.md': '---\ntitle: はじめに\nkind: preface\n---\n(sec-aaaaaa)=\n## 読み方\n\n:::{figure} a.png\n:label: fig-p\n:alt: x\n\ncap\n:::\n\n[](#fig-p) [](#sec-aaaaaa)\n',
+    'article/1.md': '---\ntitle: 平均\nchapter: 4\n---\n(sec-bbbbbb)=\n## 一\n\n### 小\n\n$$x$$ (eq-a)\n\n:::{prf:lemma}\n:label: lem-a\nl\n:::\n\n:::{prf:theorem} T\n:label: thm-a\nt\n:::\n\n:::{prf:lemma}\n:label: lem-b\nl\n:::\n\n:::{exercise}\n:nonumber:\nq\n:::\n\n:::{exercise}\n:label: exr-a\nq\n:::\n\n[](#eq-a) [](#lem-b) [](#thm-a) [](#exr-a) [](#sec-bbbbbb)\n',
+    'article/2.md': '---\ntitle: 付録\nkind: appendix\n---\n(sec-cccccc)=\n## 計算\n\n:::{table} t\n:label: tbl-a\n| a |\n|---|\n| 1 |\n:::\n\n[](#tbl-a) [](#sec-cccccc)\n',
+  });
+  for (const want of ['<p class="egatari-book-title">本</p>', 'data-egatari-chapter="4"', 'data-egatari-chapter="A"', '<span class="egatari-num">第 4 章</span> 平均', '<span class="egatari-num">付録 A</span> 付録',
+    '<h2>読み方</h2>', '<span class="egatari-num">図 1</span>', '>図 1</a>', '>読み方</a>', '<span class="egatari-num">4.1</span> 一', '<span class="egatari-num">4.1.1</span> 小', '(4.1)</span>',
+    '>式 (4.1)</a>', '>補題 4.2</a>', '>定理 4.1</a>', '>問 4.1</a>', '>4.1 節</a>', '<strong>問</strong>', '>表 A.1</a>', '>A.1 節</a>', '<span class="egatari-num">A.1</span> 計算']) assert.ok(h.includes(want), want);
+});
+t('numbers: numbering false, article without chapter', () => {
+  const h = render({ 'article.md': '---\nnumbering: false\n---\n(sec-aaaaaa)=\n## 一\n\n:::{figure} a.png\n:label: fig-a\n:alt: x\n\nc\n:::\n\n[](#sec-aaaaaa) [](#fig-a)\n' }, { path: 'article.md' });
+  assert.ok(h.includes('<h2>一</h2>') && h.includes('>一</a>') && h.includes('>図 1</a>'));
+  const en = renderArticle(readArticle({ path: 'article.md' }, () => '(sec-aaaaaa)=\n## One\n\n:::{prf:proof}\nx\n:::\n\n{ruby}`漢|kan`\n'), { lang: 'en', title: 'T' }).html;
+  assert.ok(en.includes('<span class="egatari-num">1</span> One') && en.includes('<strong>Proof</strong>') && en.includes('∎</span></p>') && en.includes('<rp>(</rp><rt>kan</rt><rp>)</rp>'));
+});
+t('footnotes per chapter, notes at the end of the section', () => {
+  const h = render({ 'article/1.md': '---\ntitle: a\nchapter: 2\n---\n(sec-aaaaaa)=\n## s\n\nx[^n] y[^m] z[^n]\n\n[^n]: N.\n[^m]: M.\n' });
+  assert.ok(h.includes('<a class="egatari-fn" href="#fn-2-1" id="fn-2-1-ref">1</a>') && h.includes('<a class="egatari-fn" href="#fn-2-1">1</a>') && h.includes('<li id="fn-2-2">M.'));
+  assert.ok(h.indexOf('egatari-footnotes') < h.indexOf('</section>'));
+});
+t('vertical writing: tate-chu-yoko for 1-2 digits', () => {
+  const h = render({ 'article.md': '---\nwriting-mode: vertical-rl\n---\n年は 17 か 128、H2O\n' }, { path: 'article.md' });
+  assert.ok(h.includes('class="egatari-vertical"') && h.includes('<span class="egatari-tcy">17</span>') && h.includes('128') && !h.includes('>128<') && h.includes('H<span class="egatari-tcy">2</span>O'));
+});
+t('safety: no script, no handlers, no foreign HTML, no javascript: links', () => {
+  const h = render({ 'article.md': 'x <script>alert(1)</script> [a](javascript:alert(1)) [b](https://e.org/) ![c](a.png "t")\n\n:::{table} t\n<table>\n<tr><td>&lt;img onerror=x&gt;</td></tr>\n</table>\n:::\n' }, { path: 'article.md' }, { image: () => 'data:image/png;base64,AA' });
+  assert.ok(!/<script|onerror=|href="javascript:/i.test(h.replace(/&lt;[^&]*&gt;/g, '')), h);
+  assert.ok(h.includes('<a href="https://e.org/">b</a>') && h.includes('&lt;img onerror=x&gt;'));
+});
+t('step links and terms', () => {
+  const h = renderArticle(readArticle({ path: 'article.md' }, () => '{step}`s-a:0` {step}`見る <s-a:2>` {term}`平均`\n\n:::{glossary}\n平均\n: m\n:::\n'), { lang: 'ja', slides: new Map([['s-a', { title: '木' }]]) }).html;
+  assert.ok(h.includes('<a data-egatari-step="s-a:0" href="#s-a:0">スライド「木」</a>') && h.includes('href="#s-a:2">見る</a>') && h.includes('<a href="#term-1" class="egatari-term">平均</a>') && h.includes('<dt id="term-1">平均</dt>'));
+});
+t('page: the fixture book builds without errors', () => {
+  const r = articlePage(nodeEnv, path.join(ROOT, 'tools', 'fixtures', 'article-book', 'deck.html'), { lang: 'ja', title: '代表値の本' });
+  assert.deepStrictEqual(r.problems.filter((p) => p.sev === 'error'), []);
+  assert.deepStrictEqual(r.stats, { files: 3, sections: 4, figures: 1, tables: 1, equations: 1 });
+  assert.ok(r.html.includes('<section id="egatari-readable" lang="ja">\n<article id="egatari-article" lang="ja">') && r.html.includes('src="data:image/svg+xml;base64,') && r.html.includes('annotation encoding="application/x-tex"'));
+});
+t('section ids are added by the tool', () => {
+  let i = 0;
+  const r = assignSectionIds('## A\r\n\r\n(sec-aaaaaa)=\r\n## B\r\n', new Set(), (n) => new Uint8Array(n).map(() => i++));
+  assert.equal(r.out, '(sec-abcdef)=\r\n## A\r\n\r\n(sec-aaaaaa)=\r\n## B\r\n');
+  assert.equal(assignSectionIds(r.out).added.length, 0);
+});
+t('every problem code has words in both languages', () => {
+  const codes = new Set();
+  for (const f of ['article-text.mjs', 'article.mjs', 'article-page.mjs']) for (const m of fs.readFileSync(path.join(ROOT, 'kit', 'core', f), 'utf8').matchAll(/'(article[A-Z][A-Za-z]+)'/g)) codes.add(m[1]);
+  for (const c of codes) {
+    assert.ok(ARTICLE_MESSAGES[c], `no words for ${c}`);
+    for (const l of ['ja', 'en']) assert.ok(!/undefined/.test(articleMessage(l, { code: c, data: new Proxy({ why: { articleSubfigure: 'alt', articleGlossary: 'body', articleLabel: 'pattern', articleSolution: 'missing', articleStep: 'slide' }[c] || 'both', what: 'bom', expected: 'string', depth: 1, outer: 'aside', values: [] }, { get: (o, k) => (k in o ? o[k] : typeof k === 'string' ? 'x' : undefined) }), file: 'a.md', line: 1, spec: '§9C' })), `${c} ${l}`);
+  }
 });
 
 console.log(`article-text fixtures: valid ${vOk}/${valid.length}, invalid ${iOk}/${invalid.length}`);

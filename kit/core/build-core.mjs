@@ -131,7 +131,7 @@ export function analyzeSlideIds(src) {
       const rule = id ? 'id' : dk ? 'data-key' : hk ? 'heading' : 'index';
       // headingKey：見出しから作る旧来の鍵（id のあるスライドでも。書き出しが {#id} のない「## 見出し」をそのスライドに結ぶため）
       slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,
-        heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, line: lineOf(off), start: off });
+        heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, dataArticle: attr(n, 'data-article') || null, line: lineOf(off), start: off });   // dataArticle：本文の節（§9C.5）
       return;
     }
     const id = attr(n, 'id');
@@ -1092,7 +1092,7 @@ function checkMarks(html, segs, warn) {
 }
 // KaTeX の CSS（字は data: URI で埋め込む）。env ごとに 1 回だけ作る
 const _kcss = new WeakMap();
-function katexCss(env) {
+export function katexCss(env) {   // 本文の頁（kit/article.mjs）も使う
   if (_kcss.has(env)) return _kcss.get(env);
   const P = env.path, kdir = env.katexDir;
   let css = env.readText(P.join(kdir, 'katex.min.css'));
