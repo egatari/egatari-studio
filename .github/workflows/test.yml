@@ -178,6 +178,26 @@ jobs:
       - name: Build, check, export, TTS dry-run and new deck (tools/clean-env.mjs)
         run: node tools/clean-env.mjs
 
+  # The npm package (backlog #157): npm pack (prepack writes the font copies in fonts/@fontsource), install the tarball in a temp folder outside the
+  # repository (--prefer-offline: the dependencies come from the cache npm ci filled) and run npx egatari --version, doctor, new, check and build.
+  # Uses the preinstalled Google Chrome. Also in npm test (test-npm-pack).
+  pack:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
+          cache: npm
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
+      - name: Pack, install and run egatari (tools/test-npm-pack.mjs)
+        run: node tools/test-npm-pack.mjs
+
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
   # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.
   tier2:
