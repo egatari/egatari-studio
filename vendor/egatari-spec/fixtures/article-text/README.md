@@ -104,7 +104,8 @@ These are for producers' validators (§9C.2: a producer MUST reject a construct 
 | `citation-key-pattern` | key `doe..1948` breaks the key pattern | §9C.4 |
 | `image-http-url` | image path is an `https:` URL | §9C.1 |
 | `aside-no-title`, `aside-nested` | aside without a title; aside inside an aside | §9C.2 |
-| `proof-kind-unknown`, `proof-colon-name` | `prf:algorithm`; the spelling `proof:theorem` | §9C.2 |
+| `footnote-undefined` | `[^name]` with no definition (left as text by the parser) | §9C.2 |
+| `proof-kind-unknown`, `proof-colon-name` | `prf:hypothesis` (not a proof kind); the spelling `proof:theorem` | §9C.2 |
 | `footnote-with-table` | footnote definition holding a table | §9C.2 |
 | `ruby-no-separator` | ruby role without `\|` and a reading | §9C.2 |
 | `html-table-outside-container` | HTML table not inside `:::{table}` | §9C.2 |

@@ -25,3 +25,10 @@ Not flagged by the parser (validators need their own checks): bare URLs and `~~s
 13. **Glossary and terms.** `{term}` is resolved by the parser itself into a `crossReference` with identifier `term-<term>` (non-ASCII kept). → Producers assign their own `term-<n>` ids (§9C.6), and `term-` is reserved for labels.
 14. **Narrative citations.** `@key` comes out as `cite` with `kind: "narrative"` (it was listed invalid as a bare-word citation before; the fixture moved to valid as `cite-narrative`).
 15. **CSV tables.** mystmd 1.x `{csv-table}` reads only CSV written in the directive body; its `:file:` option is commented out in the source. → Not taken into Text 1; a CSV file in the archive as a table source is listed for Text 2.
+
+## Producer questions from the first implementation (2026-11-02)
+
+16. **Footnotes.** myst-parser drops a footnote definition that nothing references and keeps an undefined `[^x]` as plain text. → Validators read the source for both (new invalid case `footnote-undefined`); an unreferenced definition is a warning (§9C.8).
+17. **Checks need the tree before the transforms.** After the structural transforms, an HTML `<sub>` is indistinguishable from `{sub}`, `{proof:…}` from `{prf:…}`, `{numref}` from a cross-reference, and a stray HTML table from a pipe table. → §9C.8 says validators check the source or the tree before the transforms.
+18. **Definition descriptions.** A one-line description's text sits directly in `definitionDescription` (no `paragraph`). → §9C.2 admits inline content or paragraphs.
+19. **Narrative citation with a locator.** `@key, p. 3` parses as a narrative `cite` and plain text. → §9C.8 defines the locator words a validator looks for in the source.

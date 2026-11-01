@@ -44,8 +44,12 @@ for (const f of files) {
 const tags = git('tag', '--points-at', sha).toString().split('\n').filter((t) => /^wd-\d{4}-\d{2}-\d{2}[a-z]?$/.test(t)).sort();
 const snapshot = tags.length ? tags[tags.length - 1] : null;
 if (!snapshot) console.warn(`warning: ${sha.slice(0, 7)} is not a wd-* snapshot tag; SOURCE.json gets snapshot: null`);
+// どのリモートの枝にもない commit（手元だけの枝）なら unpushed を書く：仕様が main に入ったら写し直す
+const remote = git('branch', '-r', '--contains', sha).toString().trim();
+if (!remote) console.warn(`warning: ${sha.slice(0, 7)} is on no remote branch (local only); SOURCE.json gets unpushed: true`);
 fs.writeFileSync(path.join(OUT, 'SOURCE.json'), JSON.stringify({
-  repository: FORMAT.SPEC_URL, commit: sha, snapshot, ...(branch && !snapshot ? { branch, note_ref: `the ${branch} branch at ${sha.slice(0, 7)}, not a tag (wd-*): re-vendor the next wd-* tag at rc prep` } : {}), files: files.length,
+  repository: FORMAT.SPEC_URL, commit: sha, snapshot, ...(branch && !snapshot ? { branch, note_ref: `the ${branch} branch at ${sha.slice(0, 7)}, not a tag (wd-*): re-vendor the next wd-* tag at rc prep` } : {}),
+  ...(!remote ? { unpushed: true, note_unpushed: `${sha.slice(0, 7)} is not on the spec's remote yet: re-vendor from main once it lands` } : {}), files: files.length,
   note: 'Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again.',
 }, null, 2) + '\n');
 console.log(`${FORMAT.VENDOR_DIR}: ${files.length} files from ${FORMAT.SPEC_URL} ${sha.slice(0, 7)}`);

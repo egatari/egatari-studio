@@ -24,9 +24,7 @@ const whole = (src, ctx = {}) => { const a = readArticle({ path: 'article.md' },
 
 // ---------------------------------------------------------------- 仕様の fixtures
 // 仕様の側の食い違い（仕様の持ち主に知らせ済み）：拒む例のうち、今の §9C.2 の本文では正しい書き方になっているもの
-const SPEC_CONFLICT = {
-  'proof-kind-unknown': 'prf:algorithm is one of the 15 kinds of §9C.2 (and valid/proof-algorithm accepts it); the invalid case predates 09ebd00',
-};
+const SPEC_CONFLICT = {};
 const valid = fs.readdirSync(path.join(FX, 'valid')).sort();
 const invalid = fs.readdirSync(path.join(FX, 'invalid')).sort();
 let vOk = 0, iOk = 0;
