@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
 import { partsList } from '../kit/core/new-deck.mjs';
 
@@ -39,7 +39,7 @@ const sources = listed.map((tag) => {
 
 async function current() {
   if (!fs.existsSync(OUT)) return null;
-  const { THUMBS } = await import(OUT + '?t=' + Date.now());
+  const { THUMBS } = await import(pathToFileURL(OUT).href + '?t=' + Date.now());   // Windows では絶対パスを file: の URL にする
   return THUMBS;
 }
 
