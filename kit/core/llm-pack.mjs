@@ -22,6 +22,10 @@
 //   PLANS・FREE_CORE・FREE_HOME・FREE_OUT・PAID_ONLY  お使いの AI の版ごとに読み込む部品（無料版は FREE_CORE と系列から。FREE_OUT の系列の部品と PAID_ONLY は有料版だけ）
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
 //   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
+//   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
+//                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
+//   partsPackOpts(tags)                          選んだパーツだけの指示の組み立ての引数 {series, tools, exclude, plan: 'paid'}（buildPack・packWithRequest に渡す。
+//                                                選んだパーツのある系列と、選んだ道具を入れ、選ばないパーツは除く。どちらのプランでも同じ中身）
 import { PACK } from './llm-pack-data.mjs';
 import { assemble, normalizeSeries as norm, normalizeTools as normTools, toolTags, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
 
@@ -44,6 +48,17 @@ export const normalizeTools = (tools) => normTools(tools, PACK);
 export const TOOLS = PACK.tools || [];
 
 export const SERIES = PACK.series;
+export const TIERS = PACK.tiers;
+export function partsPackOpts(tags) {
+  const want = new Set(tags || []), all = Object.keys(PACK.en.components), tt = toolTags(PACK);
+  const on = all.filter((t) => want.has(t));
+  return {
+    series: PACK.series.filter((s) => on.some((t) => PACK.en.components[t].series === s)),
+    tools: tt.filter((t) => want.has(t)),
+    exclude: all.filter((t) => !want.has(t)).sort(),
+    plan: 'paid',
+  };
+}
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 
 export const buildPack = (opts) => assemble(PACK, opts);

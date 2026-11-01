@@ -1,6 +1,6 @@
 // test-all: unit
 // 新規作成の選び方とシード値（kit/core/new-deck.mjs・kit/core/purposes.mjs、backlog #99・#104、format spec §8.4）と、AI への指示の中身：
-// 1. 大分類・小分類・分野（パーツの組 → 系列）・頼む文の節（場面・構成の型・見せ方・外した言いたいこと）
+// 1. 大分類・小分類・④ のパーツの一覧（伝えたいことのまとまり・段と束・初めの印・プランの目安と外す候補）・頼む文の節（場面・構成の型・見せ方・外した言いたいこと）
 // 2. 言いたいこと：決めた表（FALLBACK）と manifest.json の読み方、外したものだけに使う部品
 // 3. 指示（pack）：言いたいこと → パーツ → ステップの表は組み立てのときに作る（入っている系列の部品だけ・外した札の行はない・＊ の印はない）、R-whole、
 //    外した言いたいことだけに使う部品はどこにも出ない（表・一覧・見本・文。「使わない」の 1 行を除く）、系列の見本は抜き出し、札は決めた 14 個（manifest は札を増やさない）
@@ -15,15 +15,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SUBJECTS, seriesOfSubjects, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, seriesForChoice, toolsForChoice, freePick, FREE_SUBJECT_MAX, freeSubjects } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SUBJECTS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates } from '../kit/core/new-deck.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff, toolsFrom } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, PAIRS, overMessage, sizeReport } from './make-llm-guide.mjs';
-import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT, TOOLS, loadedParts } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, seriesPart, PURPOSES, SERIES, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, PAID_ONLY, FREE_CORE, FREE_HOME, FREE_OUT, TOOLS, loadedParts, TIERS, partsPackOpts, packSize } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
-import { PART_LABELS, partLabel, partOrder, standardParts } from '../kit/core/part-labels.mjs';
+import { PART_LABELS, partLabel, partDesc, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
 import { guideRules } from '../kit/core/llm-fix.mjs';
 import { withOutline, outlineOf } from '../kit/core/llm-outline.mjs';
@@ -32,6 +32,19 @@ import { slideChunks, insertSlide, duplicateSlide, deleteSlide, moveSlide, slide
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let n = 0;
 const ok = (name, fn) => { fn(); n++; console.log('  ok   ' + name); };
+
+// 指示（pack）の無料版・有料版は、今も分野（系列）で組める（node kit/llm-pack.mjs --series・--plan）。下の指示の試験は、前の新規作成の選び方
+// （分野の札。無料は 2 つまで。#124 でパーツの一覧に替わった）で組み合わせを数える。ここだけの写し
+const FREE_SUBJECT_MAX = 2;
+const seriesOfSubjects = (ids) => { const w = new Set(ids || []); return SUBJECTS.filter((x) => w.has(x.id)).map((x) => x.series); };
+const freeSubjects = (ids) => { const w = new Set(ids || []); return SUBJECTS.filter((x) => w.has(x.id)).slice(0, FREE_SUBJECT_MAX).map((x) => x.id); };
+const seriesForChoice = (c) => seriesOfSubjects(planOf(c) === 'paid' ? (c && c.subjects) : freeSubjects(c && c.subjects));
+const toolsForChoice = (c) => {
+  const want = new Set((c && c.tools) || []), all = TOOLS.map((x) => x.tag).filter((t) => want.has(t));
+  return planOf(c) === 'paid' ? all : all.slice(0, Math.max(0, FREE_SUBJECT_MAX - freeSubjects(c && c.subjects).length));
+};
+// 外した伝えたいことの行が名前を出すのは、指示に入る部品だけ
+const choiceRequest = (c, P, lang) => choiceRequestOf({ ...c, parts: loadedParts(seriesForChoice(c), planOf(c), toolsForChoice(c)) }, P, lang);
 
 ok('categories: Teaching / Research / Business / Guides / Other (no “Academic”); 13 subcategories set the structure', () => {
   assert.deepEqual(CATEGORIES.map((c) => c.label.ja), ['授業・研修', '研究発表', 'ビジネス', '手引き', 'その他']);
@@ -55,94 +68,105 @@ ok('categories: Teaching / Research / Business / Guides / Other (no “Academic�
   assert.match(choiceRequest({ category: 'guides', subcategory: 'rules', purposesOff: [] }, PURPOSES, 'ja'), /^- 場面：手引き／決まりの説明（規程・法令）\n- 構成の型：何についての決まりか/);
   assert.deepEqual(choiceOf(withChoice(null, { category: 'guides', subcategory: 'info' })).subcategory, 'info');
 });
-ok('subjects are part sets mapped to the internal series (math → academic, …), not subcategories', () => {
-  assert.deepEqual(SUBJECTS.map((s) => s.series), SERIES);
-  assert.deepEqual(seriesOfSubjects(['info', 'math']), ['academic', 'info']);
-  assert.deepEqual(defaultSubjects('business'), ['business']);
-  assert.deepEqual(defaultSubjects('teaching'), []);
-  // タイトルと内容から推す分野
-  assert.deepEqual(guessSubjects('漢文「臥薪嘗胆」'), ['kokugo']);
-  assert.deepEqual(guessSubjects('てこのはたらき'), []);
-  assert.deepEqual(guessSubjects('10 月の営業報告：売上のグラフ'), ['math', 'business']);
-  assert.deepEqual(guessSubjects('Huffman codes'), ['info']);
-  assert.deepEqual(guessSubjects('ハ長調の音階と主和音（ピアノの鍵盤で）'), ['music']);
-  assert.deepEqual(guessSubjects('Major scales and chords on the piano'), ['music']);
-  assert.deepEqual(guessSubjects('キーボードの打ち方'), [], 'a computer keyboard is not music');
-  assert.deepEqual(guessSubjects('関係代名詞と第 5 文型（英文の構造）'), ['english']);
-  assert.deepEqual(guessSubjects('Lesson in English: photosynthesis'), [], 'the lesson language English is not the subject');
-  assert.deepEqual(SUBJECTS.find((s) => s.id === 'english').label, { ja: '英語', en: 'English (foreign language)' }, 'the english subject (components v1.12.0): a free subject');
-  assert.deepEqual(SUBJECTS.map((s) => s.id), ['math', 'business', 'kokugo', 'english', 'info', 'social', 'music'], 'tile order: the language subjects together, music last');
-  assert.deepEqual(SUBJECTS.find((s) => s.id === 'music'), { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' }, 'the music subject (components v1.11.0): a free subject');
-  assert.deepEqual(guessSubjects(''), []);
-  assert.ok(!SUBJECTS.some((s) => /学術/.test(s.label.ja)));
-  // 道具を推す：グループワーク・「10 分」（数と分）・時間。控えめに（2 分の 1・分野・十分では推さない）
-  for (const t of ['グループワークで話し合う', '10 分で付箋に書く', '１５分の作業', '作業の時間を区切る', 'Group work in pairs', 'a 5 min discussion']) assert.deepEqual(guessTools(t), ['m-timer'], t);
-  for (const t of ['てこのはたらき', '2 分の 1 の計算', '分野ごとの比較', '十分に説明する', '']) assert.deepEqual(guessTools(t), [], t);
+ok('parts list (#124): grouped by what to convey, the subject forms last (first for a school lesson), no extra tier, each part once; tiers and sets from the 2.0 manifest', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
+  for (const [t, x] of Object.entries(TIERS.parts)) {
+    const c = Object.values(m.components).find((y) => y.tag === t);
+    assert.ok(c && c.tier === x.tier && (c.set || undefined) === x.set, t + ': tier and set as in the manifest');
+  }
+  const list = partsList(null), all = list.flatMap((g) => g.parts);
+  assert.equal(new Set(all).size, all.length, 'each part in one place');
+  assert.deepEqual([...all].sort(), Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier !== 'extra').sort(), 'every standard and specialized part, no extra');
+  assert.ok(!all.includes('m-codetree') && !all.includes('m-collect'));
+  assert.equal(list[list.length - 1].id, 'subject');
+  assert.deepEqual(list[list.length - 1].label, { ja: '教科の形', en: 'For specific subjects' });
+  assert.deepEqual(list.at(-1).parts.map((t) => TIERS.parts[t].set), [...list.at(-1).parts].map((t) => TIERS.parts[t].set).sort((a, b) => SUBJECT_SETS.indexOf(a) - SUBJECT_SETS.indexOf(b)));
+  assert.ok(list.at(-1).parts.every((t) => SUBJECT_SETS.includes(TIERS.parts[t].set)) && list.at(-1).parts.includes('m-map-japan') && list.at(-1).parts.includes('m-syntax'));
+  assert.equal(partsList('class')[0].id, 'subject', 'a school lesson puts the subject forms first');
+  // 1 つの道具は 1 か所：木は階層・分類、年表は年表・予定、順位は比べるに入る（into）
+  const where = (t) => list.find((g) => g.parts.includes(t)).id;
+  assert.equal(where('m-tree'), 'hierarchy'); assert.equal(where('m-timeline'), 'timeline'); assert.equal(where('m-bars'), 'compare'); assert.equal(where('m-hist'), 'spread'); assert.equal(where('m-timer'), 'timebox');
+  assert.ok(!list.some((g) => g.id === 'ranking'));
+  // まとまりの中は標準が先
+  for (const g of list) { const k = g.parts.map((t) => TIERS.parts[t].tier === 'standard' ? 0 : 1); assert.deepEqual(k, [...k].sort(), g.id); }
+  for (const t of all) assert.ok(partDesc(t, 'ja') && partDesc(t, 'en'), t + ': a one-line description');
+  assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
 });
-ok('AI plan: free (default) packs only the chosen subjects (two at most); paid packs the chosen subjects without a limit; tools on both plans', () => {
+ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
+  const std = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard');
+  assert.deepEqual(initialParts([]).sort(), std.sort());
+  assert.deepEqual(recommend({ sub: 'seminar', text: '', lang: 'ja' }), [{ set: 'stats', sub: 'seminar' }]);
+  assert.deepEqual(recommend({ sub: 'pitch', lang: 'en' }), [{ set: 'business', sub: 'pitch' }]);
+  assert.deepEqual(recommend({ sub: 'info' }), [{ set: 'maps', sub: 'info' }]);
+  assert.deepEqual(recommend({ sub: 'training' }), [{ set: 'tools', sub: 'training' }]);
+  for (const sub of ['class', 'talk', 'intro', 'manual', 'rules', null]) assert.deepEqual(recommend({ sub }), [], String(sub));
+  assert.deepEqual(recommend({ sub: null, text: '孟浩然の漢詩「春暁」', lang: 'ja' }), [{ set: 'kokugo', word: '漢詩' }]);
+  assert.deepEqual(recommend({ sub: 'seminar', text: '漢詩とデータ', lang: 'ja' }), [{ set: 'stats', sub: 'seminar' }, { set: 'kokugo', word: '漢詩' }], 'one reason per set, the subcategory first');
+  assert.deepEqual(recommend({ text: 'わり算の筆算', lang: 'ja' }).map((r) => r.set), ['math']);
+  assert.deepEqual(recommend({ text: 'グループワーク 15 分', lang: 'ja' }), [{ set: 'tools', word: 'グループワーク' }]);
+  // 1 字の言葉は、ほかの語の一部では当たらない
+  assert.deepEqual(recommend({ text: '俳句と季節の言葉', lang: 'ja' }), []);
+  assert.deepEqual(recommend({ text: '国語の時間', lang: 'ja' }).map((r) => r.set), ['kokugo'], '国 in 国語 is not a map word');
+  assert.deepEqual(recommend({ text: 'ソースコードの読み方', lang: 'ja' }), []);
+  assert.deepEqual(recommend({ text: '関係詞の節', lang: 'ja' }).map((r) => r.set), ['english']);
+  assert.deepEqual(recommend({ text: 'てこのはたらき', lang: 'ja' }), []);
+  // 英語の画面は英語の表
+  assert.deepEqual(recommend({ text: 'Chords on the piano', lang: 'en' }), [{ set: 'music', word: 'Chords' }]);
+  assert.deepEqual(recommend({ text: '漢詩', lang: 'en' }), []);
+  assert.deepEqual(recommend({ text: 'Mapping the database', lang: 'en' }), [], 'whole words only');
+  assert.deepEqual(initialParts([{ set: 'stats', sub: 'seminar' }]).filter((t) => TIERS.parts[t].tier !== 'standard').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
+  for (const [lang, sets] of Object.entries(WORDS)) for (const set of Object.keys(sets)) assert.ok(partsOfSet(set).length, `${lang} ${set}: a set with parts`);
+  for (const sets of Object.values(SUB_SETS)) for (const set of sets) assert.ok(partsOfSet(set).length, set);
+});
+ok('AI plan: free (default) and paid change only the suggested size limit; the chosen parts make the pack; over the limit, candidates to untick', () => {
   assert.deepEqual(AI_PLANS, ['free', 'paid']);
   assert.equal(DEFAULT_PLAN, 'free');
   assert.equal(planOf({}), 'free'); assert.equal(planOf({ plan: 'paid' }), 'paid'); assert.equal(planOf({ plan: 'gold' }), 'free'); assert.equal(planOf(null), 'free');
-  assert.deepEqual(seriesForChoice({ subjects: ['info', 'math'] }), ['academic', 'info']);
-  assert.deepEqual(seriesForChoice({ plan: 'free', subjects: [] }), []);
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['kokugo'] }), ['kokugo']);
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: [] }), [], 'paid is never every subject by default');
-  assert.deepEqual(seriesForChoice({ plan: 'paid' }), []);
-  assert.deepEqual(toolsForChoice({ plan: 'free', tools: ['m-timer', 'm-nothing'] }), ['m-timer']);
-  assert.deepEqual(toolsForChoice({ plan: 'paid' }), []);
-  // 無料のプラン：道具も 2 つに数える（札の順：分野が先、それから道具）
-  assert.deepEqual(freePick(['kokugo'], ['m-timer']), { subjects: ['kokugo'], tools: ['m-timer'] }, 'free: a subject and a tool');
-  assert.deepEqual(freePick([], ['m-timer']), { subjects: [], tools: ['m-timer'] }, 'free: a tool alone');
-  assert.deepEqual(freePick(['info', 'math'], ['m-timer']), { subjects: ['math', 'info'], tools: [] }, 'free: two subjects leave no room for a tool');
-  assert.deepEqual(freePick(['info', 'kokugo', 'math'], ['m-timer']), { subjects: ['math', 'kokugo'], tools: [] });
-  assert.deepEqual(toolsForChoice({ plan: 'free', subjects: ['math', 'info'], tools: ['m-timer'] }), [], 'the free pack drops a third choice');
-  assert.deepEqual(toolsForChoice({ plan: 'free', subjects: ['math'], tools: ['m-timer'] }), ['m-timer']);
-  assert.deepEqual(toolsForChoice({ plan: 'paid', subjects: ['math', 'info', 'kokugo'], tools: ['m-timer'] }), ['m-timer'], 'paid has no limit');
-  // 無料版で使う分野は 2 つまで：前の記録が 3 つ以上でも、SUBJECTS の順で初めの 2 つ（記録の順や重なりは関係ない）
-  assert.equal(FREE_SUBJECT_MAX, 2);
-  assert.deepEqual(freeSubjects(['info', 'kokugo', 'math']), ['math', 'kokugo']);
-  assert.deepEqual(freeSubjects(['info', 'info']), ['info']);
-  assert.deepEqual(freeSubjects(null), []);
-  assert.deepEqual(seriesForChoice({ plan: 'free', subjects: ['info', 'kokugo', 'business', 'math'] }), ['academic', 'business']);
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: ['info', 'kokugo', 'business'] }), ['business', 'kokugo', 'info'], 'paid has no limit');
-  assert.deepEqual(seriesForChoice({ plan: 'paid', subjects: SUBJECTS.map((x) => x.id) }), SERIES);
+  assert.equal(capKb('free'), PACK_CAP_KB.free.one); assert.equal(capKb('paid'), PAID_PACK_KB);
   assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
-  assert.deepEqual({ ...PACK_CAP_KB.free }, { one: 40, two: 50 }, 'no cap for every subject (the free plan uses two at most)');
   assert.equal(LIMITS.fail, PACK_CAP_KB.free.one); assert.equal(LIMITS.two, PACK_CAP_KB.free.two); assert.equal(LIMITS.paid, PAID_PACK_KB);
   assert.equal(PAIRS.length, SERIES.length * (SERIES.length - 1) / 2);
+  // 選んだパーツだけが説明に入り、選ばないパーツはどこにも名前が出ない
+  const described = (text) => [...text.matchAll(/^### `<(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((x) => x[1]).sort();
+  for (const lang of ['en', 'ja']) for (const tags of [initialParts([]), ['m-bars', 'm-hist', 'm-timer'], ['m-kanbun', 'm-flow'], []]) {
+    const text = packWithRequest({ ...partsPackOpts(tags), lang });
+    assert.deepEqual(described(text), [...tags].sort(), `${lang} ${tags.join('+')}`);
+    for (const t of Object.keys(PACK_DATA.en.components).filter((x) => !tags.includes(x))) assert.ok(!new RegExp(t + '(?![a-z-])').test(text), `${lang} ${tags.join('+')}: ${t} is named`);
+  }
+  assert.deepEqual(partsPackOpts(['m-hist', 'm-timer', 'm-bars']).series, ['academic']);
+  // 外す候補：越えた分に届くまで、大きい順。keep は候補にしない。越えなければなし
+  const sizeOf = (tags) => packSize(packWithRequest({ ...partsPackOpts(tags), lang: 'ja' }));
+  const std = initialParts([]);
+  assert.deepEqual(trimCandidates(std, { sizeOf, capBytes: 1e9 }), []);
+  const c = trimCandidates(std, { sizeOf, capBytes: 40 * 1024, keep: new Set(['m-timeline']) });
+  assert.ok(c.length && !c.includes('m-timeline'), c.join());
+  const rest = std.filter((t) => !c.includes(t));
+  assert.ok(sizeOf(rest) <= 40 * 1024 + 2048, `after the candidates: ${sizeOf(rest)} B`);
+  assert.ok(sizeOf(rest.concat()) < sizeOf(std));
 });
-ok('part labels: every vendored part has a ja/en name and an icon; the standard parts are FREE_CORE’s labels (no timeline, which is paid only); subjects carry their tile line', () => {
-  for (const t of Object.keys(PACK_DATA.en.components)) assert.ok(PART_LABELS[t] && PART_LABELS[t].ja && PART_LABELS[t].en && PART_LABELS[t].icon, t);
-  // 絵の名前はどれも app/llm.js の ICONS にある：パーツ（PART_LABELS）・分野の札（SUBJECTS）・manifest の言いたいこと（札のない music も）
+ok('part labels: every vendored part has a ja/en name, an icon and a one-line description; the standard parts are FREE_CORE’s labels', () => {
+  for (const t of Object.keys(PACK_DATA.en.components)) assert.ok(PART_LABELS[t] && PART_LABELS[t].ja && PART_LABELS[t].en && PART_LABELS[t].icon && PART_LABELS[t].desc, t);
+  // 絵の名前はどれも app/llm.js の ICONS にある
   const llmSrc = fs.readFileSync(path.join(ROOT, 'app', 'llm.js'), 'utf8');
   const iconsBlock = llmSrc.slice(llmSrc.indexOf('const ICONS = {'), llmSrc.indexOf('};', llmSrc.indexOf('const ICONS = {')));
   const ICON_KEYS = new Set([...iconsBlock.matchAll(/^\s+'?([\w-]+)'?: '</gm)].map((m) => m[1]));
-  const manifestPurposes = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components', 'manifest.json'), 'utf8')).purposes;
-  for (const [what, k] of [...Object.entries(PART_LABELS).map(([t, x]) => [t, x.icon]), ...SUBJECTS.map((x) => ['subject ' + x.id, x.icon]), ...manifestPurposes.filter((p) => p.icon).map((p) => ['purpose ' + p.id, p.icon])])
-    assert.ok(ICON_KEYS.has(k), `${what}: icon "${k}" is drawn in app/llm.js ICONS`);
-  assert.equal(manifestPurposes.find((p) => p.id === 'music').tile, 'none');
-  assert.ok(ICON_KEYS.has('music') && ICON_KEYS.has('subj-music') && ICON_KEYS.has('keyboard') && ICON_KEYS.has('kakijun') && ICON_KEYS.has('subj-english') && ICON_KEYS.has('syntax'));
-  assert.deepEqual(standardParts('ja'), FREE_CORE.map((t) => PART_LABELS[t].ja));
+  for (const [t, x] of Object.entries(PART_LABELS)) assert.ok(ICON_KEYS.has(x.icon), `${t}: icon "${x.icon}" is drawn in app/llm.js ICONS`);
   assert.deepEqual(standardParts('ja'), ['棒グラフ', '流れ図', '目次', '予想と答え']);
-  assert.deepEqual(standardParts('en'), FREE_CORE.map((t) => PART_LABELS[t].en));
-  assert.ok(!standardParts('ja').includes('年表') && PAID_ONLY.includes('m-timeline'));
   assert.equal(partLabel('m-new-thing', 'ja'), 'm-new-thing');
+  assert.equal(partDesc('m-new-thing', 'ja'), '');
   assert.deepEqual(partOrder(['m-venn', 'm-menu', 'm-bars', 'm-zzz', 'm-flow']), ['m-bars', 'm-flow', 'm-menu', 'm-venn', 'm-zzz']);
-  for (const x of SUBJECTS) assert.ok(x.label.ja && x.label.en && x.inside.ja && x.inside.en && x.icon, x.id);
-  // 有料のプランだけの中の図（FREE_OUT）がある分野は、有料のときの札の字（insidePaid）にその名前がある。無料の字には出さない
-  const soc = SUBJECTS.find((x) => x.id === 'social');
-  assert.ok(FREE_OUT.includes('m-map-world') && soc.insidePaid.ja.includes(PART_LABELS['m-map-world'].ja) && !soc.inside.ja.includes(PART_LABELS['m-map-world'].ja), 'social: 世界地図 only on the paid tile');
-  assert.deepEqual(soc.inside, { ja: '日本地図', en: 'Map of Japan' });
-  assert.deepEqual(soc.insidePaid, { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' });
+  assert.deepEqual(SUBJECTS.map((s) => s.series), SERIES, 'the insert page still names the subjects');
+  for (const x of SUBJECTS) assert.ok(x.label.ja && x.label.en && x.inside.ja && x.inside.en, x.id);
 });
 ok('request section: kind, structure and presentation of the subcategory, and the purposes turned off', () => {
   const r = choiceRequest({ category: 'research', subcategory: 'conference', purposesOff: [] }, PURPOSES, 'ja');
   assert.equal(r, '- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的 → 方法 → 結果 → 考察 → 結論（背景・方法・結果でおよそ 3 分の 1 ずつ）\n- 見せ方：見出しは主張の文、図が証拠。箇条書きを減らす。1 分に 1 枚ほど');
+  assert.equal(choiceRequestOf({ category: 'research', subcategory: 'conference' }, null, 'ja'), r, 'the new-lesson page passes no purposes');
   const e = choiceRequest({ category: 'guides', subcategory: null, purposesOff: ['key-number', 'process'] }, PURPOSES, 'en');
   // 小分類の「この中にない」（null）：場面の行だけで、構成の型・見せ方は書かない
   assert.match(e, /^- Kind: Guides\n- Purposes turned off/);
   assert.equal(choiceRequest({ category: 'teaching', subcategory: null, purposesOff: [] }, PURPOSES, 'ja'), '- 場面：授業・研修');
-  // 名前を出すのは組み立てに入る部品だけ：無料版で分野なしなら m-kpi（ビジネス）は出さない
+  // 名前を出すのは組み立てに入る部品だけ
   assert.match(e, /- Purposes turned off by the author: one key number, steps of a process\. Do not use their representations \(`m-flow`\)\./i);
   assert.match(choiceRequest({ category: 'guides', subjects: ['business'], purposesOff: ['key-number', 'process'] }, PURPOSES, 'en'), /their representations \(`m-flow`, `m-kpi`\)\./);
   assert.match(choiceRequest({ plan: 'paid', purposesOff: ['timeline'] }, PURPOSES, 'en'), /\(`m-timeline`\)/);
@@ -515,25 +539,21 @@ ok('no lesson seed (format spec §8.4: variants by name only): npm run new write
 });
 ok('choices: egatari.json studio.newDeck through updateConfig (other members byte for byte); with the outline in the same studio member', () => {
   const raw = '{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}}';
-  const t = withChoice(raw, { category: 'teaching', subcategory: 'class', subjects: ['kokugo', 'nope'], purposesOff: ['spread', 'key-number', 'spread'] });
+  const t = withChoice(raw, { category: 'teaching', subcategory: 'class', parts: ['m-kanbun', 'm-nope', 'm-bars'], subjects: ['kokugo'], purposesOff: ['spread'] });
   assert.ok(t.startsWith('{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}'));
-  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', subjects: ['kokugo'], tools: [], purposesOff: ['key-number', 'spread'] });
+  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', parts: ['m-bars', 'm-kanbun'] }, 'the chosen parts (unknown ones dropped); the earlier subjects, tools and purposesOff are not written');
   const both = withOutline(t, { rows: [{ heading: 'a', point: '' }, { heading: 'b', point: '' }], next: 3 });
   assert.equal(outlineOf(both).next, 3);
   assert.equal(choiceOf(both).category, 'teaching');
-  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class' })), { v: 1, plan: 'free', category: null, subcategory: null, subjects: [], tools: [], purposesOff: [] });
-  // お使いの AI：有料版を書いて読み戻す（ほかの選び方はそのまま）。知らない値は無料版、plan のない前の記録も無料版
-  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], tools: ['m-timer', 'm-nope'], purposesOff: ['cycle'] });
-  assert.ok(paid.includes('"plan": "paid"') || paid.includes('"plan":"paid"'));
-  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', subjects: ['business'], tools: ['m-timer'], purposesOff: ['cycle'] }, 'the chosen tools are kept (unknown ones dropped)');
+  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class' })), { v: 1, plan: 'free', category: null, subcategory: null, parts: [] });
+  // お使いの AI：有料のプランを書いて読み戻す。知らない値は無料、plan のない前の記録も無料
+  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', parts: ['m-market', 'm-timer'] });
+  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', parts: ['m-market', 'm-timer'] });
   assert.deepEqual(choiceOf(withChoice(paid, { ...choiceOf(paid), plan: 'free' })), { ...choiceOf(paid), plan: 'free' }, 'switching back to free round-trips too');
   assert.equal(choiceOf(withChoice(null, { plan: 'gold' })).plan, 'free');
   assert.equal(choiceOf('{"studio": {"newDeck": {"v": 1, "category": null, "subcategory": null, "subjects": [], "purposesOff": []}}}').plan, 'free', 'an earlier record without plan reads as free');
+  assert.deepEqual(choiceOf('{"studio": {"newDeck": {"v": 1, "plan": "free", "subjects": ["math", "kokugo", "info"]}}}').subjects, ['math', 'kokugo', 'info'], 'an earlier record is read as it is');
   assert.equal(choiceOf('not json'), null);
-  // 前の記録に 3 つ以上の分野があっても、読む・書くでそのまま残す（使うのは freeSubjects の初めの 2 つ）
-  const three = withChoice(null, { plan: 'free', subjects: ['info', 'kokugo', 'math'] });
-  assert.deepEqual(choiceOf(three).subjects, ['math', 'kokugo', 'info']);
-  assert.deepEqual(seriesForChoice(choiceOf(three)), ['academic', 'kokugo']);
 });
 // 前の原稿の data-egatari-seed（誰も読まない属性）と、パーツの variant は、バイトのまま残す（段 A がバイトを保つため、保存で消さない）
 const OLD_SEED = (t) => t.replace(/<html\b([^>]*)>/, '<html$1 data-egatari-seed="2718281828">');

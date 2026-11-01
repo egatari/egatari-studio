@@ -8,12 +8,13 @@
 // 4. 規格を破った出力 → 品質チェックのエラー → 修正依頼の文章 →「AI の出力を貼り付ける…」で修正の ③ → 直したスライドと台本を 2 つの欄に →［置き換える］
 // 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）の置き換え・直したスライドだけ・台本だけ・修正依頼の ①・スライドの挿入
 // 6. 新規作成の図の札・プラン（有料はすべての分野）・シード値（作るときに 1 回、修正で戻す、保存に残る）
-// 画像（shotDir があれば）：paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・paste-replace.png・fix-replaced.png・revise.png・insert-ai.png・new-purposes-ja.png
+// 画像（shotDir があれば）：paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・paste-replace.png・fix-replaced.png・revise.png・insert-ai.png・new-parts-ja.png
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
-import { packKb } from '../kit/core/llm-pack.mjs';
+import { packKb, partsPackOpts } from '../kit/core/llm-pack.mjs';
+import { initialParts } from '../kit/core/new-deck.mjs';
 import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -69,7 +70,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => window.__APP_TEST.lastCopy);
   const c0 = await page.evaluate(() => window.__APP_TEST.lastCopy);
-  ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ series: [], lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
+  ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB (suggested limit 40 KB)` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ ...partsPackOpts(initialParts([])), lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
     'llm: the size shown is that of the copied text, which starts at “Instructions for the AI”');
   ok((await clip()) === c0, 'llm: the instructions are on the clipboard');
   // 閉じていないコードブロック（スライドの途中で切れた）：スライドの欄に知らせ、作成は押せない、送り直しを頼む文
@@ -191,7 +192,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   // ---------------------------------------------------------------- 5. ほかのデッキの置き換え・修正依頼の ①・スライドの挿入
   await testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir });
 
-  // ---------------------------------------------------------------- 6. 図の札・プラン・シード値（ja）
+  // ---------------------------------------------------------------- 6. パーツの一覧・プラン・シード値（ja）
   {
     const pk = await ctx.newPage();
     watch(pk, 'llm-new');
@@ -201,37 +202,32 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#w-new');
     await answerNew(pk, { cat: 'research', sub: 'conference', title: '研究の進め方' });
     const copy = async () => { await pk.evaluate(() => { window.__copied = null; }); await pk.click('#paste-copy-guide'); await pk.waitForFunction(() => window.__copied !== null); return pk.evaluate(() => window.__copied); };
-    const mats = await pk.$$eval('#paste-materials li', (xs) => xs.map((x) => [x.textContent, !!x.querySelector('button,input')]));
-    ok(mats.map((m) => m[0]).join() === '表,画像,数式,図形' && mats.every((m) => !m[1]), 'new materials: 表・画像・数式・図形 are always available (not toggles)');
-    await pk.click('#paste-purposes-fold-h');
-    const tiles = await pk.$$eval('#paste-purposes button.tile', (xs) => xs.map((x) => [x.getAttribute('aria-pressed'), x.querySelector('.tile-label').textContent]));
-    ok(tiles.length === 16 && tiles.every((t) => t[0] === 'true') && (await pk.isVisible('#paste-purposes-html')) && (await pk.textContent('#paste-purposes-html')) === 'パーツのない伝えたいことは、AI が HTML で近い形に描きます'
-      && (await pk.textContent('#paste-parts-h')) === 'この指示に入るパーツ' && (await pk.textContent('#paste-purposes-hint')) === '今は全部使えます。押した伝えたいことは、AI が使いません' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 16 個を使う',
-      'new purposes: 16 tiles (the manifest\'s own purposes), all in use, the summary out of 16, the hint 「押した伝えたいことは、AI が使いません」, and always 「パーツのない伝えたいことは、AI が HTML で近い形に描きます」 under the strip 「この指示に入るパーツ」');
+    const stats = ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq'];
+    const ticks = () => pk.$$eval('#paste-parts input[type=checkbox]:checked', (xs) => xs.map((x) => x.value).sort());
+    ok(JSON.stringify(await ticks()) === JSON.stringify([...initialParts([]), ...stats].sort()) && (await pk.textContent('#paste-parts-why')) === '① の使う場面が「学会の口頭発表」なので、ヒートマップ・ヒストグラム・箱ひげ図・分布の更新も選びました'
+      && (await pk.textContent('#paste-parts-hint')).endsWith('表・画像・数式・図形は、選ばなくてもいつも使えます'),
+      'new parts: a conference talk ticks every standard part and the statistics set, says why, and says tables, images, equations and shapes are always available');
     const c1 = await copy();
-    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; with all figures in use, every part is described');
+    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; every ticked part is described');
     const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     // コピーすると ⑤ が開く。④ は［変更］で開き直す
     ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
     await pk.click('#paste-change-send');
-    await pk.click('#paste-purpose-process');
-    await pk.click('#paste-purpose-contents');
-    const offStyle = await pk.$eval('#paste-purpose-process', (b) => ({ o: +getComputedStyle(b).opacity, deco: getComputedStyle(b.querySelector('.tile-label')).textDecorationLine, pressed: b.getAttribute('aria-pressed') }));
-    ok(offStyle.pressed === 'false' && offStyle.o < 1 && offStyle.deco.includes('line-through') && (await pk.textContent('#paste-parts-count')) === 'パーツ：2 種類（外したもの 2）' && (await pk.textContent('#paste-purposes-sum')) === '伝えたいこと：16 個のうち 14 個を使う',
-      'new purposes: a tile turned off is aria-pressed=false, faded and struck through; the fold counts the parts turned off; the summary counts out of 16');
+    await pk.uncheck('#paste-part-flow');
+    await pk.uncheck('#paste-part-menu');
+    const offStyle = await pk.$eval('#paste-part-flow', (x) => +getComputedStyle(x.closest('label').querySelector('.pick-text')).opacity);
+    ok(offStyle < 1 && (await pk.textContent('#paste-parts-count')).startsWith(`選んだパーツ：${initialParts([]).length + stats.length - 2} 種類`), 'new parts: an unticked part is faded (and its checkbox is clear); the count follows');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(!c2.includes('### `<m-flow>`') && !c2.includes('| `<m-menu>` |') && c2.includes('- 使わない言いたいこと（作者が外した）：手順・工程・目次。その表し方（`m-flow`・`m-menu`）は使わない') && size2 < size1,
-      `new copy: the figures turned off leave the copied pack and the request says so (${size1} → ${size2} bytes)`);
-    if (shotDir) { await pk.evaluate(() => document.getElementById('paste-purposes').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-purposes-ja.png') }); }
+    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 < size1, `new copy: the unticked parts leave the copied pack, named nowhere (${size1} → ${size2} bytes)`);
+    if (shotDir) { await pk.evaluate(() => document.getElementById('paste-parts').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-parts-ja.png') }); }
     await pk.click('#paste-change-send');
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
-    const size3 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(c3.includes('### `<m-timeline>`') && !c3.includes('m-kanbun') && !c3.includes('m-timer') && !c3.includes('### `<m-flow>`') && size3 > size2, `new plan: the paid plan copies every standard part (the paid-only ones too) but no subject or tool that is not chosen, still without the figures turned off (${size2} → ${size3} bytes)`);
-    // 写した後に札を変えても、egatari.json に残すのは写したときの選び方
+    ok(c3 === c2, 'new plan: the paid plan copies the same parts (the plan changes only the suggested limit)');
+    // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
     await pk.click('#paste-change-send');
-    await pk.click('#paste-purpose-timeline');
+    await pk.uncheck('#paste-part-timeline');
     await pk.click('#paste-step-paste-btn');
     await pk.fill('#paste-narr', replyOf(worked('kokugo', 'deck.html').replace('<html ', '<html data-egatari-seed="42" '), worked('kokugo', 'narration.md')));
     await clickDlg(pk, '#dlg-import');
@@ -240,8 +236,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const F1 = await filesOf();
     const seedAttrs = (t) => (t.match(/data-egatari-seed="[^"]*"/g) || []).join(',');
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
-    ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', subjects: [], tools: [], purposesOff: ['contents', 'process'] }),
-      `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tile changed after copying)`);
+    ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', parts: [...initialParts([]), ...stats].filter((t) => t !== 'm-flow' && t !== 'm-menu').sort() }),
+      `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tick changed after copying)`);
     // 修正…：出力が前のシード値を持たなければ、足さない（誰も読まない属性）
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));
     await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 });

@@ -83,13 +83,13 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | insert | Insert | 挿入 | Final button of Insert slides. |  |  | 2026-10-25 (owner) |
 | replace | Replace | 置き換える | Final button of Revise. | 取り込む / Import |  | 2026-10-25 (owner) |
 | setting | Setting | 使う場面 | Where the lesson will be used (question: Where will you use it?). | 場面 ・ 大分類 ・ 小分類 / kind, category | category/subcategory | 2026-10-25 (owner) |
-| subjects | Subjects | 内容の分野 | Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; on the free plan up to two choices counting subjects and tools together. Headings use 内容の分野; running text may say 分野. | 系列 ・ 教科 / series | series | 2026-10-25 (owner) |
+| subjects | Subjects | 内容の分野 | Part sets for a subject, offered when inserting slides for a different chat (question: Will the slides need any of these?). New… lists parts instead (backlog #124). Headings use 内容の分野; running text may say 分野. | 系列 ・ 教科 / series | series | 2026-10-25 (owner) |
 | subject-english | English (foreign language) | 英語 | The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the lesson language English. | 語学 / English (subject) | series english | 2026-10-26 (owner) |
 | subject-music | Music | 音楽 | The subject tile for music (parts series music: keyboard, score). |  | series music | 2026-10-26 (owner) |
-| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 | plan: free | 2026-10-25 (owner) |
-| paid-plan | Paid plan (of the chat AI) | 有料のプラン（チャットの AI の） | The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」. | 有料版 | plan: paid | 2026-10-25 (owner) |
-| tools | Tools | 道具 | Parts the AI uses only when asked (e.g. Timer); chosen on both plans. |  | group: tool | 2026-10-25 (owner) |
-| standard-parts | Standard parts | 標準パーツ | Parts included without choosing a subject. | 共通の部品 ・ 共通パーツ ・ 共通の図 / common parts | common | 2026-10-25 (owner) |
+| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; the suggested size limit of the instructions is 40 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 | plan: free | 2026-10-25 (owner) |
+| paid-plan | Paid plan (of the chat AI) | 有料のプラン（チャットの AI の） | The user's chat AI is on a paid plan; the suggested size limit of the instructions is 120 KB. Always shown with 「チャットの AI：」. | 有料版 | plan: paid | 2026-10-25 (owner) |
+| tools | Tools | 道具 | Parts the AI uses only when ticked (e.g. Timer); in New… they are listed under Time-boxing. |  | group: tool | 2026-10-25 (owner) |
+| standard-parts | Standard parts | 標準パーツ | Parts ticked from the start in New… (the standard tier of the parts library). | 共通の部品 ・ 共通パーツ ・ 共通の図 / common parts | common | 2026-10-25 (owner) |
 | parts-in-instructions | Parts in these instructions | この指示に入るパーツ | The parts whose notes are in the copied instructions. | 使える図 | loadedParts | 2026-10-25 (owner) |
 | what-to-convey | What to convey | 伝えたいこと | The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it. | 言いたいこと ・ 表し方（見出しで） / purposes | purposes | 2026-10-25 (owner) |
 | title | Title (shown on the cover) | タイトル（表紙に出ます） | The lesson's title, used on the cover as written. | 題材 / topic |  | 2026-10-25 (owner) |
