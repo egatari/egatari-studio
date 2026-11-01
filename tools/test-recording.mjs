@@ -1,4 +1,5 @@
 // 編集アプリ（app/）の録音モードの確認（app/rec-mode.js。backlog #47）
+// test-all: serial（録音モード：偽のマイクで録る長さ・メーター・経過の秒。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-recording.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // Chromium の偽のマイク（--use-fake-device-for-media-stream と、作った音声のファイル --use-file-for-fake-audio-capture。繰り返し鳴る）で、
 // キーボードだけで録る。確かめること：

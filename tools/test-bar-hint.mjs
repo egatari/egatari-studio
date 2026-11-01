@@ -1,4 +1,5 @@
 // ツールバーの見つけ方（kit/tools.js、backlog #122）
+// test-all: serial（帯と出し方の 1 行が約 5 秒で隠れるのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-bar-hint.mjs <built.html> [画面の保存先]
 // - 開くと帯を 5 秒ほど見せる。その端末で初めてなら、帯の上に出し方の 1 行。隠れると 1 行も消える
 // - 2 回目に開いたときは 1 行を出さない（localStorage に覚える）。localStorage が使えなければ毎回出す

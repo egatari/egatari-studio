@@ -1,4 +1,5 @@
 // Browser regression: node tools/test-sounds-player.mjs [--build-only]
+// test-all: serial（部品の音：performance.now の音の時計で、決まった待ちのあとに鳴っている音を数える。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 // Stubs Web Audio, never outputs actual audio. --build-only verifies the self-contained fixture offline.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

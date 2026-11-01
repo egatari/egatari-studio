@@ -1,4 +1,5 @@
 // タッチ画面（iPad・スマートフォン）での操作の帯（kit/tools.js）
+// test-all: serial（操作の帯が数秒で隠れるのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-touch.mjs <built.html> [画面の保存先]
 // Chromium と、入っていれば WebKit（npx playwright-core install webkit。なければ「skip」）で、タッチを模して：
 // - 帯が隠れた後、スライドを指でタップすると帯が出る（位置は動かない）。何度でも
