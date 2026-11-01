@@ -14,7 +14,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonText, lessonTokens, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
+import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonText, lessonTokens, htmlPieces, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
 import { applyRelease2, checkVendor2 } from './components2-update.mjs';
 import { validateIndex } from '../kit/core/portable.mjs';
 
@@ -235,7 +235,7 @@ for (const [code, what] of [
 }
 
 // ---------------------------------------------------------------- 名前で絞る（§6.2 Subset by name）と教材の字（§6.2 Subset、egatari-spec 6f2670b）
-// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce、547e06d）が同じ入力から出したもの。
+// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce、3b599e5）が同じ入力から出したもの。
 // 同じ宣言・同じ教材（.html は原稿、.md は口述原稿）・同じ glyphs なら、絞ったコードのバイト（sha256）・keys・names が同じ。形の悪い宣言はパーツを全部のまま
 {
   const FX = path.join(ROOT, 'tools/fixtures/subset-names');
@@ -262,13 +262,18 @@ for (const [code, what] of [
 <m-x><script type="application/json">{"broken": </script></m-x><script>var hidden = "script-word";</script><style>.style-word{}</style></section>` },
   { narration: '<b>narr-word</b>' }], 'G');
   const P9 = T9.split('\n');
-  ok(['A & B あ x', 'user-plus', 'chart-line', 'cards', 'icon', 'chart-pie', 'n', '12.5', '{"broken": ', '<b>narr-word</b>', 'G'].every((x) => P9.includes(x)),
+  ok(['A & B あ\u00a0x', 'user-plus', 'chart-line', 'cards', 'icon', 'chart-pie', 'n', '12.5', '{"broken": ', '<b>narr-word</b>', 'G'].every((x) => P9.includes(x)),
     'counted: text (references decoded), attribute values, JSON names, strings (escapes decoded) and numbers, invalid JSON as written, narration as written, glyphs');
   ok(!/section|data-home|class|m-cards|m-x|comment-word|script-word|style-word|true|hidden/.test(T9.replace('<b>narr-word</b>', '')) && P9.includes('slide') && P9.includes('application/json'),
     'not counted: tag and attribute names, comments, other <script>, <style>, booleans (attribute values such as slide and application/json are)');
   const tk = lessonTokens(lessonText([{ html: '<m-cards><script type="application/json">{"cards":[{"icon":"\\u0075ser"}]}</script></m-cards>' }]));
   ok(eq([...tk].sort(), ['application', 'cards', 'icon', 'json', 'user']), `tokens of a lesson: ${JSON.stringify([...tk].sort())} (the type attribute's value counts; the tag names do not; \\u is read)`);
-  ok(lessonText(['<p>&copy;&amp;&lt;&#169;</p>']) === '&copy;&<©', 'named references: only amp, lt, gt, quot, apos, nbsp are read (as the reference; the list awaits a decision)');
+  // 字の参照（egatari-spec c09b233）：HTML のパーサーが読むとおり（WHATWG の全部の表と最長一致、; のない古い名前と属性の値の例外、数の参照の直し、CR・CRLF）。
+  // 読みは parse5、区切りは参照の実装の走査。references.json は参照の実装（3b599e5）の htmlPieces が出したもの
+  const R9 = lessonText([{ html: '<p title="&copy2 &amp=x &hellip;">&hellip;&mdash;&copy2 &notit; &#x80;&#0;&#12354 AT&T &unknown;</p>' }]).split('\n');
+  ok(R9[0] === '&copy2 &amp=x …' && R9[1] === '…—©2 ¬it; €\ufffdあ AT&T &unknown;', `character references as an HTML parser yields them: ${JSON.stringify(R9)}`);
+  const refs = JSON.parse(rd('references.json')).cases, refBad = refs.filter((c) => !eq(htmlPieces(c.html), c.pieces));
+  ok(refs.length >= 25 && !refBad.length, `${refs.length} reference edge cases (text and attribute values) read as the reference does${refBad.length ? ': ' + refBad.map((c) => c.html + ' → ' + JSON.stringify(htmlPieces(c.html))).join('; ') : ''}`);
   ok(eq([...lessonTokens('ab\ncd')], ['ab', 'cd']), 'pieces are joined by a line feed: tokens never fuse across them');
   // 部品庫の §8 の確かめ（tools/test-subset.mjs 8）
   const t = lessonTokens(lessonText([rd('lesson-names.html')]));

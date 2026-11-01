@@ -1,5 +1,5 @@
 {
- "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce(js, sources) at 547e06d (spec §6.2 subset, egatari-spec 6f2670b: the lesson text, string keys, bad declarations kept whole). .html lessons are {html}, .md lessons {narration}. The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries. Regenerate only from that reference.",
+ "_source": "Expected subsets written by the reference producer: egatari/components tools/subset-produce.mjs produce(js, sources) at 3b599e5 (spec §6.2 subset, egatari-spec 6f2670b and c09b233: the lesson text with character references as an HTML parser reads them, string keys, bad declarations kept whole). .html lessons are {html}, .md lessons {narration}. The parts are the components test-subset §8 stand-in, the icons 1.0.0 library cut to 10 icons, and small stand-in libraries. Regenerate only from that reference.",
  "cases": [
   {
    "name": "names §8: keep, a char entry, tokens",
@@ -181,7 +181,7 @@
   },
   {
    "name": "char path: comment, <style>, <script>, tag name, references, JSON number, glyphs",
-   "why": "い in a comment, か in <script> and q as a tag name do not count; う is the part's glyphs (also in <style>, which does not count); &copy; stays undecoded (only amp, lt, gt, quot, apos, nbsp are read); 1E21 counts as String(1e21) = 1e+21; &#x3048; is え",
+   "why": "い in a comment, か in <script> and q as a tag name do not count; う is the part's glyphs (also in <style>, which does not count); &copy; is © (the full WHATWG table); 1E21 counts as String(1e21) = 1e+21; &#x3048; is え",
    "part": "chars-part.js",
    "lessons": [
     "lesson-spec-chars.html"
@@ -195,11 +195,11 @@
     ]
    },
    "glyphs": "う",
-   "keys": "+あうえ",
+   "keys": "+©あうえ",
    "names": null,
-   "sha256": "2dd608cf1db3842bbdd581204a96f52ca1105057b5b81faa8b3b3ad4a310ab01",
+   "sha256": "174e28c42f5c62eaf07c53215f5d67868255a6cdeb6cb6f6c30dfc5cbb29a83a",
    "full": "24aa9a550ac45f067659c471b6f7643e9c705bbbdcdf84f4f13d11acc0d0f6e4",
-   "bytes": 365
+   "bytes": 372
   },
   {
    "name": "bad declaration: a non-string key keeps the part whole",
