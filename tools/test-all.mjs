@@ -57,6 +57,9 @@ const steps = [
   ['check tmlr2026', ['kit/check.mjs', 'examples/tmlr2026-calibration/deck.html']],
   ['build pitch', ['kit/build.mjs', 'examples/pitch-fictional/deck.html']],
   ['check pitch', ['kit/check.mjs', 'examples/pitch-fictional/deck.html']],
+  // 本文（article/ の章・付録・前書き、format spec §9C）のある教材：読むための頁 out/deck.article.html を書き、check の本文の点検（M）がエラー 0
+  ['build article-book', ['kit/build.mjs', 'tools/fixtures/article-book/deck.html']],
+  ['check article-book', ['kit/check.mjs', 'tools/fixtures/article-book/deck.html']],
   ['smoke', ['tools/smoke.mjs', MIN, path.join(tmp, 'smoke')]],
   // 部品の見本（部品庫の部品が増えるたびに長くなる。遅い macOS の CI で 1 段の上限 1200 秒に届いた）は、名前の順に 2 組に分けて別々の段にする（--only test-components で両方）
   ...[1, 2].map((i) => [`test-components ${i}/2`, ['tools/test-components.mjs', '--shard', `${i}/2`, '--shots', path.join(tmp, 'components')]]),

@@ -49,6 +49,8 @@ import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
+import { loadArticle, stepLinksOf } from './core/article-page.mjs';
+import { validateArticle } from './core/article.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -351,6 +353,28 @@ phase = 'J リンク';
   }
   const ok = links.filter((l) => !l.other && l.r && !l.r.error).length;
   if (links.length) report(null, 'info', 'linkCount', { ok, other: links.filter((l) => l.other).length });
+}
+
+// ================================================================ M. 本文（article.md・article/<名前>.md、format spec §9C.8）
+// 部分集合の外の書き方・名前・章の決まり・相互参照・解答・用語・引用の鍵・画像・data-article。ステップへのリンクの行き先は再生器（DECK.resolveFragment）で確かめる
+phase = 'M 本文';
+{
+  const L = loadArticle(nodeEnv, src, { lang });
+  if (L) {
+    const links = stepLinksOf(L.article);
+    const res = await page.evaluate((ls) => Object.fromEntries(ls.map((f) => { const r = DECK.resolveFragment(f); return [f, r.error ? { error: r.error, max: r.max } : { legacy: !!r.legacy, id: r.id }]; })), links);
+    const resolveStep = (s, k) => {
+      const r = res[`${s}:${k}`];
+      if (!r) return null;
+      if (r.error === 'unknown slide' || r.error === 'slide number out of range') return { why: 'slide' };
+      if (r.error === 'no concl step') return { why: 'concl' };
+      if (r.error) return { why: 'step', ...(Number.isInteger(r.max) ? { max: r.max } : {}) };
+      return r.legacy || !r.id ? { why: 'not-id' } : null;
+    };
+    const v = validateArticle(L.article, { ...L.ctx, resolveStep });
+    for (const p of [...L.problems, ...v.problems]) report(null, p.sev, p.code, { ...p.data, file: p.file || null, line: p.line || null, spec: p.spec });
+    report(null, 'info', 'articleSummary', { files: L.article.files.length, sections: v.sections.size, labels: v.labels.size });
+  }
 }
 
 // ================================================================ A. 体裁の検査

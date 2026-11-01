@@ -4,6 +4,7 @@
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
+import { ARTICLE_MESSAGES, articleMessage } from './core/article-messages.mjs';
 
 // 値にないときの既定（テーマの寸法の既定。kit/core/theme-metrics.mjs）：結論の行の上端・1 行の高さ・横の右の限り
 const DEF_CONCL_TOP = DEFAULT_METRICS.concl.top, DEF_LINE = DEFAULT_METRICS.body.line, DEF_RIGHT = limitsOf(DEFAULT_METRICS).right;
@@ -70,7 +71,13 @@ function driftHow(a, lang) {
   return [t, d].filter(Boolean).join(ja ? '。' : '; ');
 }
 
+// 本文の点検（format spec §9C.8。kit/core/article-messages.mjs）：a は {...知らせの値, file, line, spec}
+const ARTICLE = Object.fromEntries(Object.keys(ARTICLE_MESSAGES).map((c) => [c, {
+  ja: (a) => articleMessage('ja', { code: c, data: a, file: a.file, line: a.line, spec: a.spec }),
+  en: (a) => articleMessage('en', { code: c, data: a, file: a.file, line: a.line, spec: a.spec }),
+}]));
 export const MESSAGES = {
+  ...ARTICLE,
   'component-requires-missing': {
     ja: (a) => `パーツ ${a.part} が必要とする ${a.requires} がありません。パーツを更新してください`,
     en: (a) => `Part ${a.part} requires ${a.requires}, which is not available. Update the parts.`,
