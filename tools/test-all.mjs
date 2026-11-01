@@ -161,6 +161,8 @@ steps.push(
   ['test-theme-metrics', ['tools/test-theme-metrics.mjs', path.join(tmp, 'theme-metrics')]],
   // 印刷でも章の扉（sec）の背景が落ちない（backlog #57）：print の媒体の print-color-adjust・背景色、背景のグラフィックなしの pdf の画素
   ['test-print-backgrounds', ['tools/test-print-backgrounds.mjs', path.join(tmp, 'print-backgrounds')]],
+  // 印刷の pdf のページ数がスライド数ちょうど（backlog #162：#deck-live などの sr-only が最後のページの後ろに空白ページを作っていた）
+  ['test-print-pages', ['tools/test-print-pages.mjs', path.join(tmp, 'print-pages')]],
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-svg-overlap', ['tools/test-check-svg-overlap.mjs', path.join(tmp, 'check-svg-overlap')]],

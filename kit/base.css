@@ -88,7 +88,11 @@ body{font-family:var(--font-sans);font-weight:var(--weight-body,400);color:var(-
   .slide,.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #stage{position:static;transform:none!important;width:auto;height:auto}
   .slide{position:relative!important;visibility:visible!important;opacity:1!important;page-break-after:always;break-after:page}
+  /* 最後のスライドの後ろに改ページを残さない（backlog #162：空白の最終ページ） */
+  .slide:last-of-type{page-break-after:auto;break-after:auto}
   [data-step]{opacity:1!important;transform:none!important}
   .draw{stroke-dashoffset:0!important}
   #bar,#jump,.edit-ui,svg.marks,#deck-cap,#deck-toast,#deck-back,#deck-extlink,#deck-black,#deck-black-hint,#pv-tap{display:none!important}
+  /* 読み上げだけの文字（#deck-live など .sr-only 全部）：画面外の絶対配置が最後のページの後ろに空白ページを作るので、印刷では消す（backlog #162） */
+  .sr-only{display:none!important}
 }
