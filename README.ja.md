@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=ae69e52392a45f7d -->
+<!-- i18n: pair=README.md sha256=484b18c9a729d4f8 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,7 +128,7 @@ npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」にな�
 npx egatari doctor                    # Node・uv・ffmpeg・ブラウザがあるか、ないものの入れ方
 ```
 
-ほかのコマンド（`ids`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
+ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 
 ## ブラウザで直す（開発サーバー）
 
@@ -182,36 +182,29 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作る：[docs/with-claude.ja.md](docs/with-claude.ja.md)（[English](docs/with-claude.md)）。
 
-スキルを Claude Code のスキルのフォルダにリンクする。スキルはリンク先の実体の場所からリポジトリを探すので、clone した場所は動かさない。
+先に、古い入れ方の `~/.claude/skills/motion-*` を削除する（プロジェクトの `.claude/skills/` にも入れていたらそちらも）。教材を書く軽量な `egatari` は make だけを含み、Node は要らない。ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。studio を使う場合は、必ず両方を入れる：
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-Windows では、代わりにジャンクションを作る（clone したフォルダで PowerShell から。管理者の権限も開発者モードも要らない）：
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
 
-```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
-  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
-}
-```
+チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
 | スキル | 使いどころ |
 |---|---|
-| `motion-slides` | 構成案・原稿・ステップ・台本・品質チェック・build（段 1） |
-| `motion-slides-video` | TTS・動画の書き出し・バンドル（段 2） |
-| `motion-components` | パーツを新しく書く、パーツライブラリに移す |
+| `egatari:make` | 構成案・原稿・ステップ・台本（Node 不要） |
+| `egatari-studio:studio` | ローカルの品質チェック・組み立て、パーツ作成、既存の音声を使った動画の書き出し |
 
 頼み方の例：
 
-- 「`paper/main.tex` から 10 分の発表の HTML スライドを motion-slides で作って。テーマは default、1 人で話す」
+- 「`paper/main.tex` から 10 分の発表の HTML スライドを egatari:make で作って。テーマは default、1 人で話す」
 - 「学習率で損失の下がり方が変わる様子を m-sweep で見せるスライドを足して」
 - 「コメントを反映して」（開発サーバーで Alt / ⌥ option+クリックのメモを残した後。スキルが `comments.json` を読む）
-- 「`talks/intro` を motion-slides-video で読み上げ付きの動画にして」
+- 「`talks/intro` （音声入り）を egatari-studio:studio で動画にして」
 
 スキルはまず構成案を見せ、承認を得てから HTML を書く。
 
@@ -309,7 +302,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | `server/` | 開発サーバーとブラウザ上の編集 |
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/` に配信版（`dist/index.html`）と オフライン版のエディタ `dist/editor.html` を作る |
 | `tts/` `render/` | 段 2：TTS（uv のプロジェクト）、動画の書き出し |
-| `skills/` | Claude Code のスキル |
+| `skills/studio/` | ローカル用の Claude Code studio スキル |
+| `plugins/egatari/` | make だけを含む、生成した軽量プラグイン |
 | `tools/` | 新しい教材のテンプレート（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
 | `CHANGELOG.md` | 版ごとの変更（英語） |
 

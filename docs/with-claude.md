@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=0cdb8e07c6a9febe -->
+<!-- i18n: pair=with-claude.ja.md sha256=092fde938ec4b2bd -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -7,39 +7,38 @@ Ask Claude for a lesson in plain words. Claude writes the script (the script, `n
 
 ## What you get
 
-Three skills in `skills/` do the work:
+Two plugins share one marketplace:
 
-- `motion-slides` plans the lesson (it shows an outline first and writes only after you approve), then makes a working folder with `deck.html` (the slides) and `narration.md` (the script), and runs the quality checks. It can also make an Egatari file (editable).
-- `motion-slides-video` turns the folder into a narrated video and an Egatari file with sound.
-- `motion-components` writes a new animated part when no existing one fits.
+- The light `egatari` contains only `egatari:make` and needs no Node. It shows an outline, then writes `deck.html` (slides) and `narration.md` (script) after you approve.
+- `egatari-studio` contains only `egatari-studio:studio`. It handles local quality checks, builds, writing parts, and exporting video with existing audio. Its commands run through the egatari npm package (`npx egatari@0.6.x …`), so it needs Node.js.
 
 ## Install the skills
 
 ### Claude Code
 
-Clone this repository, then link the skills into `~/.claude/skills/` (or a project's `.claude/skills/`). The skills find the repository from their real path, so keep the clone where it is:
+First delete the old `~/.claude/skills/motion-*` entries, including any in a project's `.claude/skills/`. To use studio, add egatari too:
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-On Windows, use the directory junctions in the [README](../README.md#using-it-with-claude-code).
+The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`.
 
-### Cowork (the Claude desktop app)
+### Chat Claude and Cowork
 
-Cowork does not read `~/.claude/skills/` on disk. It uses the skills turned on in your Claude account (Customize ▸ Skills, then upload a ZIP file of a skill folder).
-<!-- verify -->
-We have not tried this with these skills. They run the repository's Node commands from the clone, so a ZIP file may not be enough; if the upload does not work, make the lesson with Claude Code, or with a chat AI ([authoring with a chat AI](authoring-with-llms.md)).
-<!-- verify -->
+In Studio, choose **Download the AI skill** beside **Copy the instructions** in **New…**, or in **Help (?)**. Upload the downloaded `egatari-make-<version>-ja.zip` or `egatari-make-<version>-en.zip` to install only make. Studio offers the ZIP for its current UI language and running version, served from its own site. The single file offline editor carries both languages too. Developers can also create a ZIP with `node tools/make-llm-guide.mjs --zip out/release --lang ja` (or `--lang en`). Its `make/SKILL.md` and references come from the same generator as `plugins/egatari/skills/make/`.
+
+No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, add it again with **Download the AI skill** in Studio.
+
+When authoring is done, use the studio skill for checks and builds if egatari-studio is installed. Otherwise, open the working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
 ## The first request to type
 
 > Make animated HTML slides for a 15-minute lesson on …, for … students. One speaker.
 
-Answer Claude's questions, approve the outline, and wait for the quality checks to finish.
+Answer Claude's questions, approve the outline, and use studio for the quality checks.
 
 ## Open the result in Studio
 

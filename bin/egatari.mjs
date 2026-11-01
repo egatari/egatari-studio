@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // egatari コマンド（npm の包み egatari の bin。npx egatari …）：各スクリプトに振り分けるだけ
-//   egatari new|ids|check|build|dev|portable|video|tts|doctor [引数…]、egatari --version、egatari --help
+//   egatari new|ids|check|build|dev|sheet|comment-shots|portable|video|tts|doctor [引数…]、egatari --version、egatari --help
 // 引数はそのままスクリプトに渡す。相対パスは呼び出した場所（cwd）から解く（INIT_CWD も cwd にそろえる）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,9 +17,11 @@ const SCRIPTS = {
   build: ['kit/build.mjs', '原稿を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--embed-audio] [--theme name] …'],
   check: ['kit/check.mjs', '品質チェック（ブラウザが要る）/ quality check (needs a browser)', '<deck.html> [--json]'],
   dev: ['server/dev.mjs', '開発サーバー（ブラウザで編集）/ dev server (edit in the browser)', '<deck.html> [--port 8730] [--theme name]'],
+  sheet: ['tools/sheet.mjs', '全スライドの最終段階を 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
+  'comment-shots': ['tools/comment-shots.mjs', '開発サーバーのコメントの画面を撮る / screenshots of open dev-server comments', '<folder | deck.html> [id …] [--all]'],
   ids: ['tools/ids.mjs', 'スライドに安定した id を付ける / give slides stable ids', '<folder | deck.html> [--dry-run]'],
   portable: ['tools/portable.mjs', '1 ファイル（.ega.html）と作業フォルダの行き来 / single file (.ega.html) <-> working folder', 'unpack|pack|attach|compare …'],
-  video: ['render/render.mjs', '組んだ HTML を段階ごとの動画に（ffmpeg が要る）/ render a built deck to video (needs ffmpeg)', '<out/deck.html> --out <dir> [--full] [--only key,…]'],
+  video: ['render/render.mjs', '音声の入った教材を動画に（ffmpeg が要る。音声は作らない）/ export a lesson with its audio to video (needs ffmpeg; makes no audio)', '<folder | .ega.html>  または / or  <out/deck.html> --out <dir> [--full] [--only key,…]'],
 };
 
 function help() {
@@ -115,6 +117,10 @@ async function doctor() {
 }
 
 // ---------------------------------------------------------------- 振り分け
+// video の引数 1 つが作業フォルダか 1 ファイル（.ega.html）か
+function isLesson(arg) {
+  try { return fs.statSync(path.resolve(arg)).isDirectory() || /\.ega\.html$/i.test(arg); } catch { return false; }
+}
 const [cmd, ...rest] = process.argv.slice(2);
 if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') { help(); process.exit(cmd ? 0 : 1); }
 if (cmd === '-v' || cmd === '--version' || cmd === 'version') { console.log(PKG.version); process.exit(0); }
@@ -126,5 +132,8 @@ else if (cmd === 'tts') {
   if (!process.env.UV_PROJECT_ENVIRONMENT) extra.UV_PROJECT_ENVIRONMENT = path.join(cacheDir(), 'egatari', `tts-venv-${PKG.version}`);
   if (!process.env.PYTHONDONTWRITEBYTECODE) extra.PYTHONDONTWRITEBYTECODE = '1';
   run('uv', ['run', '--frozen', '--project', tts, 'python', path.join(tts, 'synth.py'), ...rest], childEnv(extra));
+} else if (cmd === 'video' && rest.length === 1 && !rest[0].startsWith('-') && isLesson(rest[0])) {
+  // 作業フォルダか 1 ファイル（.ega.html）だけなら tools/video.mjs（組んでから --full で書き出す。Colab のノートと同じ入口）
+  run(process.execPath, [path.join(ROOT, 'tools/video.mjs'), ...rest], childEnv());
 } else if (Object.hasOwn(SCRIPTS, cmd)) run(process.execPath, [path.join(ROOT, SCRIPTS[cmd][0]), ...rest], childEnv());
 else { console.error(`知らないコマンド / unknown command: ${cmd}\n`); help(); process.exit(1); }

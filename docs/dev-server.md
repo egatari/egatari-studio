@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=4e6f28ca4f3a642d -->
+<!-- i18n: pair=dev-server.ja.md sha256=603ce4a37bc9bf6b -->
 # Dev server (fix the slides in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -80,7 +80,7 @@ So that a browser that has another site open cannot rewrite your slides and scri
 
 ## Asking an AI coding tool
 
-Ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" (with the motion-slides skill installed in Claude Code, "Apply the comments" is enough). The tool reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
+Ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" (with the egatari:make skill installed in Claude Code, "Apply the comments" is enough). The tool reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
 to edit deck.html (or narration.md, or a part), and sets the finished ones to `"status": "resolved"`.
 range is the position at the time the comment was left, so if it has shifted, the tool searches for quote. For a marker comment (`strokes`), the drawn marks are what the comment refers to (inside the circle, at the arrow's head); `npm run comment-shots` draws it on the images. If the server is running, the result appears on the page as soon as it is saved.
 

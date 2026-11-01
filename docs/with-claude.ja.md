@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=8e2fa0a24e378d12 -->
+<!-- i18n: pair=with-claude.md sha256=d57c39188ff51a4a -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -7,39 +7,38 @@
 
 ## できること
 
-`skills/` の 3 つのスキルが働きます。
+同じマーケットプレイスに 2 つのプラグインがあります。
 
-- `motion-slides`：授業の構成案をまず見せ、承認したあとで、作業フォルダ（スライドの `deck.html` と台本の `narration.md`）を作り、品質チェックをします。Egatari ファイル（編集可）にもできます。
-- `motion-slides-video`：作業フォルダを、読み上げ付きの動画と、音声入りの Egatari ファイルにします。
-- `motion-components`：合うパーツがないとき、新しい動くパーツを書きます。
+- 軽量な `egatari` は `egatari:make` だけを含み、Node は要りません。構成案を見せ、承認後に `deck.html`（スライド）と `narration.md`（台本）を書きます。
+- `egatari-studio` は `egatari-studio:studio` だけを含みます。ローカルの品質チェック・組み立て・パーツ作成・既存の音声を使った動画の書き出しに使います。コマンドは npm の包み egatari（`npx egatari@0.6.x …`）で動かすので、Node.js が要ります。
 
 ## スキルを入れる
 
 ### Claude Code
 
-このリポジトリを clone し、`~/.claude/skills/`（またはプロジェクトの `.claude/skills/`）にリンクします。スキルは本物のパスからリポジトリを探すので、clone は動かさないでください。
+先に古い `~/.claude/skills/motion-*` を削除します。プロジェクトの `.claude/skills/` に入れていたものも削除します。studio を使う場合は egatari も一緒に入れます：
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-Windows では、[README](../README.ja.md#claude-code-で使う) のディレクトリジャンクションを使います。
+教材を書くだけなら最初の 2 行で十分です。studio を使うときに `npm ci` は要りません。studio スキルが初めに `npx egatari@0.6.x doctor` で Node.js・ブラウザ・uv・ffmpeg を確かめ、足りないものの入れ方を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari` です。
 
-### Cowork（Claude のデスクトップアプリ）
+### チャットの Claude・Cowork
 
-Cowork は、ディスク上の `~/.claude/skills/` を読みません。Claude のアカウントで有効にしたスキルを使います（「Customize」の「Skills」から、スキルのフォルダを ZIP ファイルにしてアップロード）。
-<!-- verify -->
-これらのスキルでは試していません。スキルは clone の Node コマンドを使うので、ZIP ファイルだけでは動かないかもしれません。うまくいかないときは、Claude Code か、チャットの AI（[チャットの AI で作る](authoring-with-llms.ja.md)）で作ってください。
-<!-- verify -->
+Studio の **新規作成…** の **指示をコピー** の横、または **使い方（?）** の **AI のスキルをダウンロード** を押します。ダウンロードした `egatari-make-<version>-ja.zip` または `egatari-make-<version>-en.zip` をアップロードして make だけを入れます。Studio の画面の言語と動いている版に合う ZIP を、Studio 自身のサイトから渡します。単体のオフライン版のエディタにも両言語を入れています。開発者は `node tools/make-llm-guide.mjs --zip out/release --lang ja`（または `--lang en`）でも ZIP を作れます。中の `make/SKILL.md` と references は、`plugins/egatari/skills/make/` と同じ生成元から作ります。
+
+コマンドは要りません。2 つの囲みを Studio に貼り付けます。Studio の指示書とスキルの版が違えば、Studio の **AI のスキルをダウンロード** で入れ直します。
+
+書き終えたら、egatari-studio が入っていれば studio スキルで品質チェックと組み立てをします。それ以外は Chrome か Edge の <https://studio.egatari.org/> で作業フォルダを開きます。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使います。
 
 ## 最初に送る依頼
 
 > 動きのある HTML スライドで、〇〇の授業を作って。対象は〇〇の学生、15 分、話す人は 1 人。
 
-Claude の質問に答え、構成案を承認して、品質チェックが終わるのを待ちます。
+Claude の質問に答え、構成案を承認して、studio で品質チェックをします。
 
 ## Studio で開く
 

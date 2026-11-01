@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=5d04212d0399ff67 -->
+<!-- i18n: pair=video.md sha256=1ed26b986a9a34a5 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -18,7 +18,7 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
 
 | 環境変数 | 意味 | 既定 |
 |---|---|---|
-| `IRODORI_URL` | Irodori-TTS のサーバー | `http://localhost:8882` |
+| `IRODORI_URL` | Irodori-TTS のサーバー | `http://localhost:8882`（既定） |
 | `IRODORI_REF_DIR` | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 
