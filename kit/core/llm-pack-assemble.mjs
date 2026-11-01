@@ -8,8 +8,8 @@
 import { purposesTable } from './purposes.mjs';
 
 // 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
-// 新規作成の「お使いの AI」（kit/core/new-deck.mjs の AI_PLANS）ごと：
-//   無料版：共通の本体＋選んだ分野（2 つまで。new-deck.mjs の FREE_SUBJECT_MAX）。1 つの分野なら one まで、2 つの分野ならどの組でも two まで
+// 系列で組む指示（node kit/llm-pack.mjs --series・--plan）の版ごと。新規作成（kit/core/new-deck.mjs）は選んだパーツで組み、プランの目安は capKb（free.one・paid）：
+//   無料版：共通の本体＋系列（2 つまでを見る）。1 つの系列なら one まで、2 つの系列ならどの組でも two まで
 //     （越えたら npm run gen が止まる）
 //   有料版：すべての共通のパーツ＋選んだ分野（数は限らない）＋選んだ道具。PAID_PACK_KB まで。すべての分野と道具を選んだとき（いちばん大きいとき）が
 //     越えたら gen は知らせるだけ（ふつうの組：どの 2 つの分野＋すべての道具 は越えたら止まる）

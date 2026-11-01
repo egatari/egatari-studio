@@ -1,35 +1,38 @@
-// 新規作成の選び方（backlog #99、handoff/parts-map-2026-10-24.html の 7・9）と、教材のシード値（format spec §8.4、backlog #104）。
+// 新規作成の選び方（backlog #99・#124、handoff/parts-map-2026-10-24.html の 7・9、handoff/parts-tiers-2026-10-27.md §2）と、教材のシード値（format spec §8.4、backlog #104）。
 // Node にもブラウザにも依存しない（純粋な ESM）。画面は app/llm.js
 //
-// 大分類（構成を決める場面）→ 小分類（構成の型）。教科・分野（数理・統計・国語・情報など）は小分類ではなく「パーツの組」で、
-// 今は指示の系列（academic・business・kokugo・english・info・social・music。kit/core/llm-pack.mjs の SERIES）にそのまま対応する（SUBJECTS の series）。
-// 系列の名前は内部の名前として残す（画面には出さない）。言いたいこと（kit/core/purposes.mjs）は既定で全部入り、外したものは AI に使わせない。
+// 大分類（構成を決める場面）→ 小分類（構成の型）。④ はパーツの一覧：パーツを「伝えたいこと」でまとめて並べ、教科にしかない形（地図・国語・英語・音楽）は
+// 最後の「教科の形」に（授業（小・中・高）では一番上に）。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest の tier・set
+// （kit/core/llm-pack.mjs の TIERS。tools/make-llm-guide.mjs が写す）。特殊（extra）のパーツは一覧に出さない。
+// 初めの選び方：標準のパーツは全部、専門のパーツは、場面の小分類の表（SUB_SETS）か ② の言葉の表（WORDS）に当たった束だけ（理由を添える）。
+// プランが変えるのは指示の大きさの上限だけ（capKb。選べる数は限らない。越えたら外す候補を出す：trimCandidates）。
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
-//   SUBJECTS                           [{id, series, label: {en, ja}, inside: {en, ja}, icon}]
-//   seriesOfSubjects(ids)              → 系列の名前（SERIES の順）
-//   defaultSubjects(category)          大分類を選んだときに入れておく分野（ビジネス → ビジネスのパーツ。ほかはなし）
-//   guessSubjects(text)                タイトルと内容の字から推す分野の id（漢文・古文 → 国語、数式・グラフ・統計 → 数理・統計 など。推せなければ []）
-//   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料版。既定）| 'paid'（有料版）。指示の大きさの上限は kit/core/llm-pack.mjs の PACK_CAP_KB
+//   SUBJECTS                           [{id, series, label: {en, ja}, inside: {en, ja}}]（スライドの挿入の「指示の全体も付ける」の分野の名前。新規作成では使わない）
+//   SUBJECT_SETS                       教科の形の束（この順に並べる）
+//   SUB_SETS                           小分類 → おすすめの束（§2.3）
+//   WORDS                              {ja|en: {束: [言葉]}}（§2.4。英語の画面では英語の表）
+//   partsList(sub)                     → [{id, label: {ja, en}, parts: [タグ]}]（④ の並び。id は伝えたいことの id か 'subject'）
+//   recommend({sub, text, lang})       → [{set, sub?, word?}]（おすすめの束と理由。小分類が先、それから言葉。束ごとに 1 つ）
+//   initialParts(rec)                  → 初めに選んでおくパーツ（標準の全部とおすすめの束のパーツ。一覧の順）
+//   partsOfSet(set)                    → 束のパーツ（一覧に出るものだけ）
+//   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料のプラン。既定）| 'paid'（有料のプラン）
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
-//   FREE_SUBJECT_MAX                   無料版で選べる数（2）：分野と道具を合わせて。指示の大きさの上限は 1 つなら PACK_CAP_KB.free.one、2 つなら free.two
-//   freeSubjects(ids)                  無料版で使う分野：選んだもののうち SUBJECTS の順で初めの FREE_SUBJECT_MAX 個
-//   freePick(subjects, tools)          無料版で使う分野と道具：札の順（分野が先、それから道具）で初めの FREE_SUBJECT_MAX 個 → {subjects, tools}
-//                                      （前の記録が 3 つ以上を持っていても、記録は書き換えず、使うのはこれだけ）
-//   guessTools(text)                   タイトル・内容・希望の字から推す道具のタグ（グループワーク・「10 分」・時間 → m-timer。推せなければ []）
-//   seriesForChoice(choice)            指示に入れる系列：有料版は選んだ分野すべての系列、無料版は使う分野（freePick）の系列
-//   toolsForChoice(choice)             指示に入れる道具（選んだ道具のタグ。無料版は freePick で、分野と合わせて 2 つまで）
-//   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方・外した言いたいこと）。何もなければ ''。
+//   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB：無料 free.one、有料 paid）
+//   trimCandidates(ticked, {sizeOf, capBytes, keep})  上限を越えたときの外す候補（keep を除き、大きい順に、越えた分に届くまで）
+//   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方と、choice.purposesOff があれば外した伝えたいこと。P は PURPOSES）。何もなければ ''。
+//                                      外した伝えたいことの行が名前を出す部品は choice.parts（指示に入るパーツ）にあるものだけ
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
 //   choiceOf(configText)               → studio.newDeck | null
-//   choice の形：{plan, category, subcategory, subjects: [id], tools: [タグ], purposesOff: [id]}（category・subcategory は id か null。subjects は選んだ分野
-//   （どちらの版でも）。2 つより多い記録もそのまま残し、無料版で使うのは freeSubjects。tools は選んだ道具。ない前の記録は道具なし）
+//   choice の形：{plan, category, subcategory, parts: [タグ]}（category・subcategory は id か null。parts は選んだパーツ。
+//   前の記録（subjects・tools・purposesOff）は読むだけで、新しく書くものには入れない）
 //
 // 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
 import { updateConfig, merge, configObject } from './config-file.mjs';
+import { TIERS, PACK_CAP_KB } from './llm-pack.mjs';
+import { partOrder } from './part-labels.mjs';
 import { componentsOff } from './purposes.mjs';
-import { loadedParts, TOOLS } from './llm-pack.mjs';
 
 export const CATEGORIES = [
   { id: 'teaching', label: { ja: '授業・研修', en: 'Teaching' }, subs: [
@@ -84,71 +87,119 @@ export const CATEGORIES = [
   { id: 'other', label: { ja: 'その他', en: 'Other' }, subs: [] },
 ];
 
-// 分野の札（新規作成 ④）：label は札の名前、inside は札の小さな字（中に入る図）、insidePaid は有料のプランで中の図が増えるときの小さな字
-// （無料のプランの指示に入らないパーツ：kit/core/llm-pack-assemble.mjs の FREE_OUT。画面だけの字で、AI への指示には入らない）、icon は札の絵（app/llm.js の ICONS の名前。なければ汎用の絵）。
-// 分野を足すときは、ここに 1 行（と系列の指示 tools/llm-guide/series/）を足すだけ（例：social の行）
+// スライドの挿入の「指示の全体も付ける」で出す分野の名前（label は分野、inside は中の図）。新規作成の ④ は分野でなくパーツの一覧（partsList）
 export const SUBJECTS = [
-  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' }, icon: 'subj-math' },
-  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' }, icon: 'subj-business' },
-  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' }, icon: 'subj-kokugo' },
-  { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' }, icon: 'subj-english' },
-  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' }, icon: 'codetree' },
-  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' }, insidePaid: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' }, icon: 'subj-social' },
-  { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' }, icon: 'subj-music' },
+  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' } },
+  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' } },
+  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
+  { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' } },
+  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' } },
+  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' } },
+  { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' } },
 ];
 
-export function seriesOfSubjects(ids) {
-  const want = new Set(ids || []);
-  return SUBJECTS.filter((s) => want.has(s.id)).map((s) => s.series);
-}
-export const defaultSubjects = (category) => (category === 'business' ? ['business'] : []);
-// タイトルと内容の字から推す分野（新規作成の ④ で印を付けておく。推せなければ []）。語は控えめに：はっきりその分野の語だけ
-const GUESS = [
-  ['math', /数式|関数|グラフ|統計|確率|微分|積分|方程式|ベクトル|行列|回帰|分散|標準偏差|\b(?:math|maths|mathematics|statistics|statistical|probability|equation|function|graph|calculus|regression)s?\b/i],
-  ['business', /売上|営業|市場|事業|経営|KPI|予算|決算|収益|\b(?:sales|market|revenue|business|budget|profit|KPIs?)\b/i],
-  ['kokugo', /漢文|古文|漢詩|現代文|国語|和歌|俳句|短歌|\b(?:kanbun|kobun)\b/i],
-  ['english', /英語|英文|英文法|文型|関係代名詞|関係副詞|不定詞|分詞構文|\b(?:English grammar|sentence structures?|relative clauses?|SVOC)\b/i],
-  ['info', /符号|ハフマン|情報理論|\b(?:huffman|code tree|prefix code|information theory)\b/i],
-  ['social', /地図|都道府県|県庁所在地|県別|地理|人口|地方区分|\b(?:maps? of japan|prefectures?|geography)\b/i],
-  ['music', /音楽|音階|和音|鍵盤|ピアノ|楽譜|長調|短調|\b(?:music|musical|piano|chords?|major scales?|minor scales?)\b/i],
-];
-export function guessSubjects(text) {
-  const t = String(text || '');
-  return GUESS.filter(([, re]) => re.test(t)).map(([id]) => id);
-}
+// ---------------------------------------------------------------- ④ パーツの一覧（handoff/parts-tiers-2026-10-27.md §2）
+// 束の名前は中の名前（画面には出さない）。束そのものは manifest の set から読む（ここに書くのは、教科の形の束と、おすすめの表だけ）
+export const SUBJECT_SETS = ['maps', 'kokugo', 'english', 'music'];
+const SUBJECT_GROUP = { id: 'subject', label: { ja: '教科の形', en: 'For specific subjects' } };
+const OTHER_GROUP = { id: 'other', label: { ja: 'その他', en: 'Other' } };
+// 小分類 → おすすめの束（§2.3。ない小分類はなし）。授業（小・中・高）は束を決めず、教科の形を一覧の一番上に出す（SUBJECT_FIRST）
+export const SUB_SETS = Object.freeze({
+  lecture: ['stats'], training: ['tools'], conference: ['stats'], seminar: ['stats'],
+  report: ['business'], proposal: ['business'], pitch: ['business'], info: ['maps'],
+});
+const SUBJECT_FIRST = ['class'];
+// 言葉の表（§2.4）。日本語は字の並びで、英語は語の切れ目で探す（大文字・小文字は区別しない）。
+// 1 字の言葉は、ほかの語の一部に当たりやすいので除く並びを添える（{w, not}：not は前後にあればその所は当たりにしない）。毎晩の評価で当たり外れを測って直す
+export const WORDS = Object.freeze({
+  ja: {
+    stats: ['分布', '統計', 'データ', 'ヒストグラム', '箱ひげ', '相関', 'ベイズ', '推定', '検定'],
+    math: ['筆算', 'わり算', '割り算', 'かけ算', '掛け算', '分数', '割合', '数直線', 'テープ図', '関数'],
+    maps: ['地図', '都道府県', '地方', '世界', { w: '国', not: ['国語'] }, '人口', '地域'],
+    kokugo: ['国語', '漢文', '漢詩', '古文', '現代文', '評論', '小説', '書き順', 'ひらがな'],
+    english: ['英文', '文型', '英語', { w: '句', not: ['俳句', '語句', '文句', '句読点'] }, { w: '節', not: ['季節', '関節', '節約', '節分', '調節'] }, '関係詞'],
+    music: ['音階', '和音', { w: 'コード', not: ['ソースコード', 'バーコード', 'QRコード', 'コーディング'] }, '鍵盤', '楽譜'],
+    business: ['市場', 'KPI', '売上', '事業', 'ピッチ'],
+    tools: ['タイマー', 'ワークショップ', '演習時間', 'グループワーク'],
+  },
+  en: {
+    stats: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian', 'estimation', 'hypothesis test', 'hypothesis testing'],
+    math: ['long division', 'column addition', 'multiplication', 'division', 'fraction', 'fractions', 'ratio', 'ratios', 'percentage', 'percentages', 'number line', 'tape diagram', 'function', 'functions'],
+    maps: ['map', 'maps', 'prefecture', 'prefectures', 'region', 'regions', 'world', 'country', 'countries', 'population'],
+    kokugo: ['kanbun', 'kobun', 'kanshi', 'classical Japanese', 'classical Chinese', 'stroke order', 'hiragana', 'katakana', 'kanji'],
+    english: ['English grammar', 'sentence structure', 'sentence pattern', 'sentence patterns', 'phrase', 'phrases', 'clause', 'clauses', 'relative pronoun', 'relative pronouns'],
+    music: ['musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
+    business: ['market', 'markets', 'KPI', 'KPIs', 'sales', 'revenue', 'business', 'pitch'],
+    tools: ['timer', 'workshop', 'exercise time', 'group work'],
+  },
+});
 
-// 無料版で選べるのは、分野と道具を合わせて 2 つまで（分野・道具が増えても、無料版の指示の大きさは 2 つの組の上限 PACK_CAP_KB.free.two に収まる。
-// 道具 1 つは分野 1 つと同じに数える：分野＋道具は 2 つの組の上限、道具だけは 1 つの上限）
-export const FREE_SUBJECT_MAX = 2;
-export const freeSubjects = (ids) => {
-  const want = new Set(ids || []);
-  return SUBJECTS.filter((s) => want.has(s.id)).slice(0, FREE_SUBJECT_MAX).map((s) => s.id);
+const PARTS = TIERS.parts;
+const shown = (t) => PARTS[t] && PARTS[t].tier !== 'extra';
+// 伝えたいことの id → まとめる先（manifest の tile.into：順位は「比べる」に）
+const intoOf = (id) => { const p = TIERS.purposes.find((x) => x.id === id); return p && p.into ? p.into : id; };
+const groupOf = (t) => {
+  const c = PARTS[t];
+  if (c.set && SUBJECT_SETS.includes(c.set)) return 'subject';
+  const p = (c.purposes || [])[0];
+  return p && TIERS.purposes.some((x) => x.id === intoOf(p)) ? intoOf(p) : 'other';
 };
-export function freePick(subjects, tools) {
-  const ss = freeSubjects(subjects), want = new Set(tools || []);
-  return { subjects: ss, tools: TOOLS.map((x) => x.tag).filter((t) => want.has(t)).slice(0, Math.max(0, FREE_SUBJECT_MAX - ss.length)) };
+const byTier = (a, b) => (PARTS[a].tier === 'standard' ? 0 : 1) - (PARTS[b].tier === 'standard' ? 0 : 1);
+export function partsList(sub) {
+  const tags = partOrder(Object.keys(PARTS).filter(shown));
+  const groups = TIERS.purposes.filter((p) => !p.into).map((p) => ({ id: p.id, label: p.label, parts: tags.filter((t) => groupOf(t) === p.id).sort(byTier) }));
+  const other = { ...OTHER_GROUP, parts: tags.filter((t) => groupOf(t) === 'other').sort(byTier) };
+  const subject = { ...SUBJECT_GROUP, parts: SUBJECT_SETS.flatMap((s) => tags.filter((t) => groupOf(t) === 'subject' && PARTS[t].set === s)) };
+  const list = [...groups, other].filter((g) => g.parts.length);
+  if (!subject.parts.length) return list;
+  return SUBJECT_FIRST.includes(sub) ? [subject, ...list] : [...list, subject];
+}
+const LISTED = () => partsList(null).flatMap((g) => g.parts);
+export const partsOfSet = (set) => LISTED().filter((t) => PARTS[t].set === set);
+const SETS = () => [...new Set(LISTED().map((t) => PARTS[t].set).filter(Boolean))];
+
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// 言葉が text のどこかに（除く並びの中でなく）あれば、その言葉を返す
+function findWord(text, word, lang) {
+  const w = typeof word === 'string' ? word : word.w, not = typeof word === 'string' ? [] : word.not || [];
+  const re = lang === 'en' ? new RegExp(`\\b${esc(w)}\\b`, 'gi') : new RegExp(esc(w), 'gi');
+  for (const m of text.matchAll(re)) {
+    const at = m.index;
+    const inside = not.some((n) => { const k = n.toLowerCase().indexOf(w.toLowerCase()); return k >= 0 && text.slice(at - k, at - k + n.length).toLowerCase() === n.toLowerCase(); });
+    if (!inside) return m[0];
+  }
+  return null;
+}
+export function recommend({ sub = null, text = '', lang = 'ja' } = {}) {
+  const L = lang === 'en' ? 'en' : 'ja', t = String(text || ''), have = SETS(), out = [];
+  for (const set of SUB_SETS[sub] || []) if (have.includes(set)) out.push({ set, sub });
+  for (const [set, words] of Object.entries(WORDS[L])) {
+    if (!have.includes(set) || out.some((r) => r.set === set)) continue;
+    for (const w of words) { const hit = findWord(t, w, L); if (hit) { out.push({ set, word: hit }); break; } }
+  }
+  return out;
+}
+export function initialParts(rec = []) {
+  const sets = new Set(rec.map((r) => r.set));
+  return LISTED().filter((t) => PARTS[t].tier === 'standard' || sets.has(PARTS[t].set));
 }
 
-// 道具の推し方（新規作成 ④ の「道具」の札。タイトル・内容・希望の字から）：グループワーク・「10 分」のような数と分・時間。
-// 控えめに：分数（2 分の 1）や「分野」「分子」などでは推さない（「15 分の作業」は推す）。推せない道具は推さない
-const TOOL_GUESS = {
-  'm-timer': /グループワーク|[0-9０-９]+\s*分(?!の\s*[0-9０-９一二三四五六七八九十]|[野類析布子母散解量岐割])|時間|\bgroup ?work\b|\b\d+\s*(?:min|mins|minutes)\b|\btime limit\b/i,
-};
-export function guessTools(text) {
-  const t = String(text || '');
-  return TOOLS.map((x) => x.tag).filter((tag) => TOOL_GUESS[tag] && TOOL_GUESS[tag].test(t));
-}
-
-// お使いの AI（無料版・有料版）。どちらも選んだ分野と選んだ道具を入れる。無料版は標準パーツ（FREE_CORE）と分野は 2 つまでの軽い指示、
-// 有料版はすべての共通のパーツと、選んだ分野（数は限らない）
+// お使いの AI（無料のプラン・有料のプラン）。変えるのは指示の大きさの上限だけ
 export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
-export const seriesForChoice = (choice) => seriesOfSubjects(planOf(choice) === 'paid' ? (choice && choice.subjects) : freeSubjects(choice && choice.subjects));
-export const toolsForChoice = (choice) => {
-  if (planOf(choice) !== 'paid') return freePick(choice && choice.subjects, choice && choice.tools).tools;
-  const want = new Set((choice && choice.tools) || []); return TOOLS.map((x) => x.tag).filter((t) => want.has(t));
-};
+export const capKb = (plan) => (plan === 'paid' ? PACK_CAP_KB.paid : PACK_CAP_KB.free.one);
+// 外す候補：sizeOf(tags) は選んだパーツで組んだ指示のバイト数。keep（理由のあるおすすめ・自分で付けたもの）は候補にしない。
+// 1 つずつ外したときに減る大きさの大きい順に、越えた分に届くまで（届かなければ候補の全部）
+export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
+  const all = sizeOf(ticked), over = all - capBytes;
+  if (over <= 0) return [];
+  const gain = ticked.filter((t) => !keep.has(t)).map((t) => [t, all - sizeOf(ticked.filter((x) => x !== t))]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  const out = [];
+  let sum = 0;
+  for (const [t, g] of gain) { if (sum >= over) break; out.push(t); sum += g; }
+  return out;
+}
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }
@@ -167,11 +218,11 @@ export function choiceRequest(choice, P, lang) {
     if (sh) rows.push(L === 'ja' ? `- 見せ方：${sh.ja}` : `- Presentation: ${sh.en}`);
   }
   const offIds = new Set((choice && choice.purposesOff) || []);
-  const off = P.list.filter((p) => offIds.has(p.id));
+  const off = P && P.list ? P.list.filter((p) => offIds.has(p.id)) : [];
   if (off.length) {
-    // 組み立てに入る部品の名前だけを出す（無料版の有料版だけの部品・選んでいない分野の部品は、指示に説明がない）
-    const loaded = new Set(loadedParts(seriesForChoice(choice), planOf(choice), toolsForChoice(choice)));
-    const comps = componentsOff([...offIds], P).filter((t) => loaded.has(t));
+    // 名前を出すのは指示に入る部品だけ（choice.parts。なければ外した伝えたいことのすべての部品）
+    const loaded = Array.isArray(choice.parts) ? new Set(choice.parts) : null;
+    const comps = componentsOff([...offIds], P).filter((t) => !loaded || loaded.has(t));
     rows.push(L === 'ja'
       ? `- 使わない言いたいこと（作者が外した）：${off.map((p) => p.name.ja).join('・')}。その表し方${comps.length ? `（${comps.map((t) => '`' + t + '`').join('・')}）` : ''}は使わない`
       : `- Purposes turned off by the author: ${off.map((p) => p.name.en).join(', ')}. Do not use their representations${comps.length ? ` (${comps.map((t) => '`' + t + '`').join(', ')})` : ''}.`);
@@ -185,9 +236,7 @@ const clean = (choice) => ({
   plan: planOf(choice),
   category: catOf(choice.category) ? choice.category : null,
   subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
-  subjects: SUBJECTS.map((s) => s.id).filter((id) => (choice.subjects || []).includes(id)),
-  tools: TOOLS.map((x) => x.tag).filter((t) => (choice.tools || []).includes(t)),
-  purposesOff: [...new Set((choice.purposesOff || []).filter((x) => typeof x === 'string'))].sort(),
+  parts: Object.keys(PARTS).filter((t) => (choice.parts || []).includes(t)).sort(),
 });
 export function withChoice(configText, choice) {
   return updateConfig(configText || null, { studio: merge({ newDeck: clean(choice || {}) }) });
@@ -197,6 +246,5 @@ export function choiceOf(configText) {
   try { c = configObject(configText); } catch { return null; }
   const n = isObj(c.studio) ? c.studio.newDeck : null;
   if (!isObj(n) || n.v !== 1) return null;
-  return { ...n, plan: planOf(n) };   // plan のない前の記録は無料版
+  return { ...n, plan: planOf(n) };   // plan のない前の記録は無料のプラン
 }
-
