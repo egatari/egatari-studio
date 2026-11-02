@@ -26,7 +26,9 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { partDeclarations, partMeta } from './parts.mjs';
-import * as parse5 from 'parse5';   // devDependency, pinned 8.0.1 (Studio's)
+// devDependency, pinned 8.0.1 (Studio's). Loaded so that a tool reading only subsetCode (lint, and so gallery.mjs --pack) runs
+// without npm dependencies; htmlPieces needs it
+const parse5 = await import('parse5').catch(() => null);
 import { normalizeEol } from './identity.mjs';
 
 export const sha256 = (s) => createHash('sha256').update(normalizeEol(Buffer.from(s, 'utf8'))).digest('hex');
@@ -141,6 +143,7 @@ export function htmlPieces(html) {
     }
     for (const c of (tag === 'template' && n.content ? n.content.childNodes : n.childNodes || [])) walk(c);
   };
+  if (!parse5) throw new Error('subset-produce: the lesson text needs parse5 8.0.1 (npm ci)');
   walk(parse5.parse(String(html)));
   return out;
 }

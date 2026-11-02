@@ -39,8 +39,8 @@ ok(g.parts === 38 && g.groups === 22 && g.slides === 175 && g.previous === '2.1.
 const deck = fs.readFileSync(path.join(W, 'deck.html'), 'utf8');
 ok((deck.match(/<section\b[^>]*\bclass="slide\b/g) || []).length === 175, 'the deck has 175 slides');
 ok(JSON.parse(fs.readFileSync(path.join(W, 'egatari.json'), 'utf8')).componentsCatalogue === '2.1.1', 'egatari.json selects the 2.1.1 catalogue');
-ok(deck.includes('m-orbit（変わった') && deck.includes('m-timer（見本が変わった') && deck.includes('m-tape（見本が変わった') && !deck.includes('（新しい'),
-  'marks against 2.1.0: m-orbit changed (2.0.1), m-timer and m-tape samples changed, nothing new');
+ok(deck.includes('m-orbit（変わった') && deck.includes('m-timer（サンプルが変わった') && deck.includes('m-tape（サンプルが変わった') && deck.includes('<title>パーツのサンプル（v2.1.1）</title>') && !deck.includes('（新しい'),
+  'marks against 2.1.0: m-orbit changed (2.0.1), m-timer and m-tape samples changed, nothing new; Studio\'s words (パーツのサンプル)');
 const g0 = galleryDeck({ work: path.join(tmp, 'work0'), catalogue: '2.1.1', previous: 'none' });
 ok(g0.slides === 175 && !fs.readFileSync(path.join(tmp, 'work0', 'deck.html'), 'utf8').includes('（変わった'), '--previous none: no marks');
 // 写しが manifest と違えば gallery.mjs が断る（取り込みの写しを手で直していないことの確かめ）
@@ -49,6 +49,13 @@ packFolder(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.1.1.json'), P);
 fs.appendFileSync(path.join(P, 'bars', 'demo.html'), '\n<!-- changed -->\n');
 const r = spawnSync(process.execPath, [path.join(TOOL_DIR, 'tools', 'gallery.mjs'), '--pack', P, '--manifest', path.join(ROOT, 'vendor', 'components-2', 'manifest-2.1.1.json'), '-o', path.join(tmp, 'w2')], { encoding: 'utf8' });
 ok(r.status === 1 && /bars\/demo\.html: sha256 differs/.test(r.stderr), 'a pack that differs from the manifest is refused (exit 1)');
+// 道具の写しは npm の依存なしで動く（node_modules のない場所に写して --pack）
+const T = path.join(tmp, 'tool');
+fs.cpSync(TOOL_DIR, T, { recursive: true });
+const P2 = path.join(tmp, 'pack2');
+packFolder(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.1.1.json'), P2);
+const r2 = spawnSync(process.execPath, [path.join(T, 'tools', 'gallery.mjs'), '--pack', P2, '--manifest', path.join(ROOT, 'vendor', 'components-2', 'manifest-2.1.1.json'), '-o', path.join(tmp, 'w3')], { encoding: 'utf8', cwd: tmp });
+ok(r2.status === 0 && /175 slides/.test(r2.stdout), 'the vendored tool runs --pack without node_modules' + (r2.status ? ': ' + r2.stderr.slice(-300) : ''));
 
 // ---------------------------------------------------------------- 版の一覧のページ
 const html = partsIndexHtml({ current: '2.1.1', versions: ['2.0.0', '2.2.0', '2.1.1'] });

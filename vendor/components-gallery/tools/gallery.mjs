@@ -12,7 +12,8 @@
 //                                     tools/identity.mjs; a tarball byte-exact against manifest.tarball). The parts are grouped by purpose as in Studio's new-deck list (#124):
 //                                     a part goes under the tile of its first purpose that has one (tile own, or {into}); else under
 //                                     its set, or そのほか. With --previous, parts not in it are marked new, parts with another version changed,
-//                                     and parts with the same version but another demo.html or README.md 見本が変わった
+//                                     and parts with the same version but another demo.html or README.md サンプルが変わった. The page is public, so its
+//                                     words are Studio's (docs/terms.json: パーツ, サンプル, ステップ, パーツライブラリ)
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -39,7 +40,7 @@ function demoParts(demo, name){
   };
 }
 // The slide that introduces a part (interactive parts: a badge and a dashed --accent2 frame; text and dash, not colour alone)
-function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next }){
+function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next, sample = '見本' }){
   return `<section class="slide">
   <h2>${esc(name)}${mark ? `（${mark}${next ? `、${next}` : ''}）` : ''}</h2>
   <div class="body">
@@ -47,7 +48,7 @@ ${ia ? '    <p style="margin:0 0 10px;line-height:1.3"><span style="display:inli
     <ul>
       <li>伝えたいこと：${esc(purposes)}</li>
       <li>見せ方：${variants.length ? esc(variants.join('・')) : '1 種類'}</li>
-      <li>${group}　見本のスライド：${n} 枚</li>
+      <li>${group}　${sample}のスライド：${n} 枚</li>
     </ul>
   </div>
 </section>`;
@@ -218,7 +219,7 @@ function packGallery(){
     const q = prev.components?.[name];
     if (!q) return '新しい';
     if (q.version !== c.version) return '変わった';
-    return ['demo.html', 'README.md'].some((f) => (q.files || {})[f] !== (c.files || {})[f]) ? '見本が変わった' : '';
+    return ['demo.html', 'README.md'].some((f) => (q.files || {})[f] !== (c.files || {})[f]) ? 'サンプルが変わった' : '';
   };
   for (const [name, c] of Object.entries(man.components)) {
     if (c.kind !== 'element') continue;
@@ -229,7 +230,7 @@ function packGallery(){
     if (!groups.has(key)) groups.set(key, { title: own ? label(own) : c.set ? `${SET_LABEL[c.set] || c.set}（束）` : 'そのほか', parts: [] });
     groups.get(key).parts.push({ name, c, f, mark: statusOf(name, c) });
   }
-  const rank = { '新しい': 0, '変わった': 1, '見本が変わった': 2, '': 3 };
+  const rank = { '新しい': 0, '変わった': 1, 'サンプルが変わった': 2, '': 3 };
   const next = `v${man.version}`, styles = [], scripts = [], slides = [], toc = [];
   let total = 1;
   for (const g of groups.values()) {
@@ -248,17 +249,17 @@ function packGallery(){
       const d = demoParts(text(`${x.name}/demo.html`), tags[i]);
       if (d.style) styles.push(d.style);
       scripts.push(...d.scripts);
-      const tier = x.c.tier === 'specialized' && x.c.set ? `専門（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊' : '標準';
+      const tier = x.c.tier === 'specialized' && x.c.set ? `専門のパーツ（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊なパーツ' : '標準パーツ';
       slides.push(introSlide({ name: tags[i], summary: x.f.summary, purposes: (x.c.purposes || []).map(label).join('・'), variants: x.c.variants || [],
-        group: `段：${esc(tier)}　版：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
-        mark: x.mark, next: x.mark ? next : '' }), ...d.secs);
+        group: `${esc(tier)}　版：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
+        mark: x.mark, next: x.mark ? next : '', sample: 'サンプル' }), ...d.secs);
       total += 1 + d.secs.length;
     });
   }
-  const html = deckHtml({ title: `部品の見本（${next}）`, styles, scripts, slides, first: `<section class="slide noconcl">
-  <h2>部品の見本（Egatari Components ${esc(next)}、${total} 枚）</h2>
+  const html = deckHtml({ title: `パーツのサンプル（${next}）`, styles, scripts, slides, first: `<section class="slide noconcl">
+  <h2>パーツのサンプル（パーツライブラリ ${esc(next)}、${total} 枚）</h2>
   <div class="body">
-    <p>伝えたいことごとに、部品の説明の 1 枚と見本のスライドが続く。→ で段階を進める。</p>
+    <p>伝えたいことごとに、パーツの説明の 1 枚とサンプルのスライドが続く。→ でステップを進める。</p>
     <p>${toc.join('　')}</p>
   </div>
 </section>` });

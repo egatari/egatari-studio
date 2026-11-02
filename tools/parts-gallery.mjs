@@ -2,11 +2,11 @@
 // 取り込んだ写し（vendor/components/sha256/・vendor/components-2/manifest-<版>.json）だけから組む。git もネットワークも使わない
 //   node tools/parts-gallery.mjs -o <dir> [--catalogue X.Y.Z] [--previous X.Y.Z|none] [--tool <gallery.mjs>]
 //       <dir>/index.html（組んだ 1 つの HTML）を書く。--catalogue の既定は components2.lock.json の default、--previous の既定はその前の版
-//       （カタログの版の比較で「新しい・変わった・見本が変わった」の印が付く）。--tool はパーツライブラリの checkout の tools/gallery.mjs を使う（試すとき。写しを確かめない）
+//       （カタログの版の比較で「新しい・変わった・サンプルが変わった」の印が付く）。--tool はパーツライブラリの checkout の tools/gallery.mjs を使う（試すとき。写しを確かめない）
 //   node tools/parts-gallery.mjs --verify          写し（vendor/components-gallery/）が SOURCE.json のファイルと sha256 に合うか（ネットワークなし。npm run gen:check）
 //   node tools/parts-gallery.mjs --sync <checkout>  パーツライブラリの checkout（tools/gallery.mjs のある決まったコミット）から写しを取り直し、SOURCE.json を書く（管理者の道具）
 // 組み立ての道具（gallery.mjs --pack）はパーツライブラリ egatari/components のもの。Studio には、決まったコミットの写しを vendor/components-gallery/ に持つ
-// （gallery.mjs とそれが読み込むファイル。--pack は parse5 も読み込み、それは Studio の固定した依存から解決する）。リリースのタグの写しだけから
+// （gallery.mjs とそれが読み込むファイル。--pack は npm の依存を読み込まない）。リリースのタグの写しだけから
 // （npm ci のほかにネットワークなしで）組めるので、pages のワークフローと site-versions.mjs asset（タグの worktree で build-app）が同じものを組む。
 // 公開の場所（tools/build-app.mjs --parts、tools/site-versions.mjs assemble）：/parts/v<カタログの版>/index.html と /parts/index.html（版の一覧）、
 // /parts/versions.json（{current, versions}）。一度公開した版は、最初に公開したリリースの写しのまま残す（凍結）
