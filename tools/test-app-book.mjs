@@ -139,6 +139,16 @@ try {
   await inBook(page, () => { DECK.panes.layout('book'); return true; });
   await page.waitForFunction(() => document.getElementById('b-view-book').getAttribute('aria-checked') === 'true', null, { timeout: 10000 }).catch(() => {});
   ok((await page.getAttribute('#b-view-book', 'aria-checked')) === 'true', 'view: a layout chosen inside the player updates Preview ▾ → View');
+  // 読むための助け（v0.6.5 C）：プレビューの sandbox（localStorage なし）でも字の設定・続きからが落ちない。⌘F・Ctrl+F はプレビューの本の窓の検索
+  const pv = await (await page.$('#preview')).contentFrame();
+  const rd = await pv.evaluate(() => { let ls = 'ok'; try { localStorage.getItem('x'); } catch (e) { ls = 'blocked'; } return { ls, reading: DECK.panes.state().reading }; });
+  ok(rd.reading && typeof rd.reading.size !== 'undefined', `reading aids: text settings work in the sandboxed preview (localStorage ${rd.ls})`);
+  await (await page.$('#preview')).click({ position: { x: 600, y: 300 } }).catch(() => {});
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f');
+  await page.waitForTimeout(400);
+  ok(!!(await pv.evaluate(() => DECK.panes.state().find)), 'reading aids: ⌘F / Ctrl+F in the preview opens the book pane’s own search');
+  await page.keyboard.press('Escape');
+  ok(await pv.evaluate(() => !(window.__APP_LOAD && document.querySelectorAll('.deck-error').length)) && !(await page.evaluate(() => window.__APP_TEST.state().error)), 'reading aids: no build or player error');
   const h1 = await inBook(page, () => { const a = document.getElementById('egatari-article'); return a ? [...a.querySelectorAll('h1')].map((x) => x.textContent).join(' / ') : null; });
   ok(/平均と中央値/.test(h1 || ''), `view: the book frame shows the rendered article (${h1})`);
   ok(await inBook(page, () => !!document.querySelector('#egatari-article a.egatari-cite')), 'view: citations are formatted');
