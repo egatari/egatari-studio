@@ -158,10 +158,11 @@ try {
   await page.waitForSelector('#book-text');
   b = await bk(page);
   ok(b.states.length >= 2 && b.states.every((x) => x.state === 'unconfirmed') && /まだ確認していません/.test(await page.textContent('#book-stale')), `stale: links without a record are shown as not checked yet (${JSON.stringify(b.states)})`);
+  // 組み直しの途中で板が描き直されることがある（本の道具を読み込んだ後の組み直し）：組み終えてから、ボタンを DOM で押す
+  await page.waitForFunction(() => !window.__APP_TEST.state().building && window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: 60000 }).catch(() => {});
   let r0 = (await bk(page)).renders;
-  await page.click('#book-confirm-all');
-  await bookRendered(page, r0);
-  await page.waitForFunction(() => window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: 30000 }).catch(() => {});
+  await page.evaluate(() => document.getElementById('book-confirm-all').click());
+  await page.waitForFunction(() => window.__APP_TEST.book().states.length > 0 && window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: 60000 }).catch(() => {});
   ok((await bk(page)).states.every((x) => x.state === 'ok') && !(await page.$('#book-stale')), 'stale: すべて確認済みにする records every pair');
 
   // E4：本文の欄で直す（保存は作業場所へ。本が組み直る）
@@ -187,7 +188,7 @@ try {
   ok((await page.textContent('#book-stale-h')) === 'スライドと本が合っていないかもしれません' && /本の節が変わりました/.test(await page.textContent('#book-stale')), 'stale: the panel says スライドと本が合っていないかもしれません / 本の節が変わりました');
   await page.screenshot({ path: path.join(work, 'book-panel.png') });
   r0 = (await bk(page)).renders;
-  await page.click('#book-stale .book-confirm');
+  await page.evaluate(() => document.querySelector('#book-stale .book-confirm').click());
   await bookRendered(page, r0);
   await page.waitForFunction(() => window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: 30000 }).catch(() => {});
   b = await bk(page);
