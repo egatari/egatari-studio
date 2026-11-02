@@ -1,0 +1,2 @@
+### Changed
+- `node kit/llm-pack.mjs` fits the free-plan pack exactly as New… does (one shared `fitPlan`/`fitPack` in `kit/core/llm-pack-assemble.mjs`): over 40 KB the core four get only their catalogue line too, and if still over, specialized parts are left out, largest first. It says on stderr what was shortened or left out; `--no-fit` prints the pack as assembled. `--list` shows the fitted free size next to the unfitted one, and labels the paid pack with every set (over 120 KB) as a warning only. The size table of `npm run gen` uses the same fitted sizes.

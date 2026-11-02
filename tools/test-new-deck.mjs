@@ -21,7 +21,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport, pairsOf } from './make-llm-guide.mjs';
-import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize } from '../kit/core/llm-pack.mjs';
+import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partDesc, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -469,9 +469,11 @@ ok('gen: the size rows (free standard fails over 40 KB, free + a set is only rep
     for (const s of SETS) {
       const x = rep.find((y) => y.lang === lang && y.what === 'free standard+' + s);
       assert.ok(x && x.freeSet && x.max === 40 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`);
-      // 越えるときだけ中核の 4 つも短くした大きさ（新規作成の fitPlan と同じ）
-      assert.equal(x.short, Buffer.byteLength(buildPack({ sets: [s], lang })) > 40 * 1024, `${lang} free + ${s}: shortened only when over`);
-      assert.ok(Math.abs(x.kb * 1024 - Buffer.byteLength(buildPack({ sets: [s], lang, short: x.short }))) < 1, `${lang} free + ${s}: the reported size`);
+      // 新規作成とコマンドが写すのと同じ、目安に収めた指示の大きさ（fitPack。越えるときだけ中核の 4 つも短く）。どの束も 40 KB まで
+      const sizeOf = (t, short) => packSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }));
+      const tags = initialParts([{ set: s }]), f = fitPack(tags, 'free', { sizeOf, capBytes: 40 * 1024 });
+      assert.equal(x.short, sizeOf(tags, false) > 40 * 1024, `${lang} free + ${s}: shortened only when over`);
+      assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - f.bytes) < 1 && x.kb <= 40 && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb}`);
     }
     for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
     const w = rep.find((y) => y.lang === lang && y.worst);

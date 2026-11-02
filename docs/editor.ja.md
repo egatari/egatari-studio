@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=246e4ad76e14f5f7 -->
+<!-- i18n: pair=editor.md sha256=0e7aa648093b79c3 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -198,7 +198,7 @@ Egatari ファイルは、`npm run build -- <deck.html> --portable`（または�
 
 ## チャットの AI で下書きする（貼り付けと修正依頼）
 
-初めの下書きは、コーディング道具なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示の全体（チャットの AI：有料のプラン向け）は [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。規格・出力の形と標準パーツ）と、材料の種類ごとの**束の指示** [llm-parts/](llm-parts/)：`stats`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`・`science`。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest から決まり、標準パーツはいつも、専門のパーツはその束があるときだけ指示に入り、特殊のパーツは入らない（backlog #125）。チャットの AI が無料のプランなら、編集アプリは軽い指示をコピーする（下の ④）：中核の 4 つのほかの標準パーツは、パーツの一覧の 1 行だけにする。`node tools/make-llm-guide.mjs` が約束事・パーツの README・`tools/llm-guide/` から作り、古くなるか大きさの上限（`kit/core/llm-pack-assemble.mjs` の `PACK_CAP_KB`：チャットの AI が無料のプランなら、標準パーツすべてで 40 KB、チャットの AI が有料のプランなら、標準パーツとどの 2 つの束の組でも 120 KB）を超えると `npm test` が失敗する。`npm run gen` は無料のプランの束ごとの大きさ（40 KB を超えても知らせるだけ：編集アプリのメーターが外す候補を出す）と、有料のプランのいちばん大きい組の大きさを出す。上限を超えたときは、どの指示か（プラン・言語・束）、何バイト超えたか、大きい節 3 つを出す。`node kit/llm-pack.mjs --sets stats,math --lang ja` はエディタがチャットの AI：無料のプランでその束を選んだときと同じ文章を出す（`--plan paid` でどのパーツも詳しく、`--sets all --plan paid` で全体。`--list` で束と大きさ。KB は UTF-8 のバイト数 / 1024。`--help` で使い方）。
+初めの下書きは、コーディング道具なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示の全体（チャットの AI：有料のプラン向け）は [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。規格・出力の形と標準パーツ）と、材料の種類ごとの**束の指示** [llm-parts/](llm-parts/)：`stats`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`・`science`。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest から決まり、標準パーツはいつも、専門のパーツはその束があるときだけ指示に入り、特殊のパーツは入らない（backlog #125）。チャットの AI が無料のプランなら、編集アプリは軽い指示をコピーする（下の ④）：中核の 4 つのほかの標準パーツは、パーツの一覧の 1 行だけにする。`node tools/make-llm-guide.mjs` が約束事・パーツの README・`tools/llm-guide/` から作り、古くなるか大きさの上限（`kit/core/llm-pack-assemble.mjs` の `PACK_CAP_KB`：チャットの AI が無料のプランなら、標準パーツすべてで 40 KB、チャットの AI が有料のプランなら、標準パーツとどの 2 つの束の組でも 120 KB）を超えると `npm test` が失敗する。`npm run gen` は無料のプランの束ごとの大きさ（新規作成と同じに収めたもの。`kit/core/llm-pack-assemble.mjs` の `fitPack`：40 KB を越えたら中核の 4 つも短くし、それでも越えれば専門のパーツを外す）と、有料のプランのいちばん大きい組の大きさを出す。有料のプランですべての束を一度に選んだ指示は 120 KB を越えるが、知らせるだけ。上限を超えたときは、どの指示か（プラン・言語・束）、何バイト超えたか、大きい節 3 つを出す。`node kit/llm-pack.mjs --sets stats,math --lang ja` はエディタがチャットの AI：無料のプランでその束を選んだときと同じに収めた文章を出す（中核の 4 つを短くした・専門のパーツを外したときは stderr に出す。`--no-fit` で組み立てたままの指示）。`--plan paid` でどのパーツも詳しく、`--sets all --plan paid` で全体。`--list` で束と、無料のプランの収めた大きさと収める前の大きさ（KB は UTF-8 のバイト数 / 1024）。`--help` で使い方。
 
 **新規作成…** の **指示をコピー** の横に **AI のスキルをダウンロード** を出す。添え書きは「Claude などのチャットの AI に入れると、指示書を貼らずに作れます」。画面の言語（ja または en）の make の ZIP をチャットの AI に入れ、その出力を Studio に貼り付ける。
 
