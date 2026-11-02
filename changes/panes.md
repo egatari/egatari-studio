@@ -9,3 +9,10 @@
   ← / →, Esc returns to the place you were reading), a resizable divider, and steps that play once as they scroll into view in
   Read with script (final states with reduced motion)
 - Build: the folder build puts the book into the built lesson (`#egatari-readable`, format spec §9C.6) for the player, with its glyphs
+
+### Changed
+
+- Player: `?mode=learn` now opens **Slides and book** (**Slides and script** without a book) on wide screens and the book alone on
+  narrow ones (Player P2 defaults); before, it opened the slides alone. `?layout=slides` or the layout chosen on the device keeps the slides
+- Book: in vertical writing, numbers the build writes (headings such as 「第 4 章」 and 「1 春の朝」, captions, cross-references, equation
+  numbers) set a run of one or two digits upright, as in the text; 「1.2」 stays rotated whole (format spec §9C.6)

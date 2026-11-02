@@ -66,6 +66,7 @@ function words(){
   return {view: L("表示", "View"), slides: L("スライド", "Slides"),
     book: HAS_ART ? L("本", "Book") : L("台本で読む", "Read with script"),
     split: HAS_ART ? L("スライドと本", "Slides and book") : L("スライドと台本", "Slides and script"),
+    divider: HAS_ART ? L("スライドと本の境目", "Divider between slides and book") : L("スライドと台本の境目", "Divider between slides and script"),
     readIn: L("本で読む", "Read in the book"), watch: L("スライドで見る", "Watch on slides"),
     backPlay: L("再生中の所に戻る", "Back to the playing part"), back: L("戻る", "Back"), close: L("閉じる", "Close"),
     prev: L("前へ", "Previous"), next: L("次へ", "Next"), play: L("自動再生", "Autoplay"), stop: L("自動再生を止める", "Stop autoplay")};
@@ -221,7 +222,7 @@ function ensurePane(){
   }
   // 仕切り（横並びの境目）：ドラッグ・←→（Shift で大きく）・ダブルクリックか Enter で初めの位置。この端末に覚える
   var d = P.div = el("div"); d.id = "deck-split"; d.tabIndex = 0; d.hidden = true;
-  d.setAttribute("role", "separator"); d.setAttribute("aria-orientation", "vertical"); d.setAttribute("aria-label", T.split);
+  d.setAttribute("role", "separator"); d.setAttribute("aria-orientation", "vertical"); d.setAttribute("aria-label", T.divider);
   d.setAttribute("aria-valuemin", "0"); d.setAttribute("aria-valuemax", "100"); d.setAttribute("aria-controls", "deck-text");
   d.addEventListener("pointerdown", function(e){
     if (e.button) return;
