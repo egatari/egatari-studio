@@ -56,6 +56,8 @@ window.addEventListener("message", function(e){
   // 本文のステップへのリンクの行き先（format spec §9C.8 の 1。kit/core/article.mjs の STEP_PROBE と同じ確かめ方）。答えは書き込まない
   else if (m.type === "app-steps") whenReady(function(){ parentWin.postMessage({type: "app-steps-result", id: m.id, load: cfg.load, results: resolveSteps(m.links)}, "*"); });
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
+  // 並べ方（app/book.js の view。再生器の本の窓 kit/panes.js）：slides・split・book
+  else if (m.type === "app-layout") whenReady(function(){ if (window.DECK && DECK.panes && /^(slides|split|book)$/.test(String(m.layout))) DECK.panes.layout(m.layout); });
   // 本からスライドへ（app/book.js：本のステップへのリンク）：リンクの行き先（"<slideKey>:<stepKey>"）へ
   else if (m.type === "app-goto" && window.DECK && window.DECK.resolveFragment) { var g = window.DECK.resolveFragment(String(m.f || "")); if (!g.error) window.DECK.go(g.i, g.k, false); }
   // 品質チェックは、テーマの寸法を測る字体を確かめてから（metricsFonts。読み込めなければ測らない）
@@ -100,6 +102,13 @@ function strip(o){
   document.body.appendChild(box);
   parentWin.postMessage({type: "app-strip-ready", n: D.slides.length}, "*");
 }
+// 再生器の中で並べ方が替わったら（r・並べ方の一覧・狭い窓）、編集アプリに知らせる（プレビュー ▾ の表示の選びを合わせる。app/book.js）
+whenReady(function(){
+  if (!window.DECK || !DECK.panes || typeof MutationObserver !== "function") return;
+  // 始めの並べ方は知らせない（編集アプリが読み込んだ後に頼む）。その後の変わり目だけ
+  var last = DECK.panes.layout(), tell = function(){ var l = DECK.panes.layout(); if (l !== last) { last = l; parentWin.postMessage({type: "app-layout-changed", layout: l}, "*"); } };
+  new MutationObserver(tell).observe(document.documentElement, {attributes: true, attributeFilter: ["data-deck-layout"]});
+});
 // 本文のステップへのリンク（"<slideKey>:<stepKey>" の並び）→ {リンク → {error, max} | {legacy, id}}（kit/core/article.mjs の STEP_PROBE と同じ形）
 function resolveSteps(links){
   var D = window.DECK, out = {};

@@ -77,9 +77,10 @@
     <div class="menu">
       <button type="button" id="b-previewmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-preview" data-t="previewMenu"></button>
       <div id="m-preview" class="menu-list" role="menu" aria-labelledby="b-previewmenu" aria-describedby="m-preview-note" hidden>
-        <!-- 表示（本のある教材だけ。app/book.js）：スライドか本か。再生器の本の窓（v0.6.5 B）ができたら「スライドと本」もここに -->
+        <!-- 表示（本のある教材だけ。app/book.js）：再生器の並べ方（kit/panes.js）。スライド・スライドと本・本 -->
         <div role="group" class="only-book" data-t-label="viewGroup" hidden>
           <button type="button" id="b-view-slides" class="only-book" role="menuitemradio" aria-checked="true" data-t="viewSlides" hidden></button>
+          <button type="button" id="b-view-split" class="only-book" role="menuitemradio" aria-checked="false" data-t="viewSplit" hidden></button>
           <button type="button" id="b-view-book" class="only-book" role="menuitemradio" aria-checked="false" data-t="viewBook" hidden></button>
         </div>
         <div role="separator" class="menu-sep only-book" hidden></div>
@@ -147,8 +148,8 @@
       <!-- allow="autoplay"：発表者ビュー（別の窓）で自動再生を始めても、プレビューの音声が鳴るように（キーを押したのはその窓で、この枠ではない。
            音声を鳴らすのはプレビューだけで、発表者ビューは位置と操作を送るだけ） -->
       <iframe id="preview" title="slides" sandbox="allow-scripts allow-modals" allow="autoplay"></iframe>
-      <!-- 本の表示（v0.6.5 E2。app/book.js）：読むための頁を sandbox の枠（name=book-view）に。再生器の本の窓（v0.6.5 B）ができたら、その窓に替える -->
-      <div id="book-box" hidden aria-hidden="true"><!-- 枠（#book-view）は本のある教材を開いたときに作る（app/book.js の frame()） --><p id="book-note" class="hint" hidden></p><p id="book-credit" class="credit" hidden></p></div>
+      <!-- 本を見せているとき（再生器の本の窓。app/book.js）の、プレビューのすぐ下の 1 行：組めなかったわけと、citeproc の帰属 -->
+      <div id="book-foot"><p id="book-note" class="hint" hidden></p><p id="book-credit" class="credit" hidden></p></div>
       <div id="errbox" hidden><div class="errcard"><h2 data-t="buildFailed"></h2><p data-t="buildFailedHint"></p><pre id="errtext"></pre></div></div>
       <div id="loading" data-t="building"></div>
     </div>

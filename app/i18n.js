@@ -26,7 +26,7 @@ const ja = {
   brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '台本 (n)', comments: 'コメント (c)', audio: '音声', recTip: 'このステップで録音モードを開く：台本を大きく出して録る。Space で録音と停止、Esc でこの板に戻る（r）',
   check: '品質チェック', helpBtn: '?', helpTip: '使い方',
   // 本（format spec §9C。app/book.js。言葉は用語集の book・book-may-not-match・read-with-script）
-  viewGroup: '表示', viewSlides: 'スライド', viewBook: '本', bookBtn: '本', printSlides: 'スライドを印刷', printScript: '台本を印刷',
+  viewGroup: '表示', viewSlides: 'スライド', viewSplit: 'スライドと本', viewBook: '本', bookBtn: '本', printSlides: 'スライドを印刷', printScript: '台本を印刷',
   book: {
     panelTitle: '本', printBook: '本を印刷', printScript: '台本を印刷',
     mayNotMatch: 'スライドと本が合っていないかもしれません',
@@ -424,7 +424,7 @@ const ja = {
 const en = {
   brand: 'Egatari Studio', open: 'Other folder', edit: 'Edit (e)', narr: 'Script (n)', comments: 'Comments (c)', audio: 'Audio', recTip: 'Open recording mode at this step: the script in large type. Space starts and stops, Esc comes back here (r)',
   check: 'Quality check', helpBtn: '?', helpTip: 'Help',
-  viewGroup: 'View', viewSlides: 'Slides', viewBook: 'Book', bookBtn: 'Book', printSlides: 'Print slides', printScript: 'Print script',
+  viewGroup: 'View', viewSlides: 'Slides', viewSplit: 'Slides and book', viewBook: 'Book', bookBtn: 'Book', printSlides: 'Print slides', printScript: 'Print script',
   book: {
     panelTitle: 'Book', printBook: 'Print book', printScript: 'Print script',
     mayNotMatch: 'Slides and book may not match',

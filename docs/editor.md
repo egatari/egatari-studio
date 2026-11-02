@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=b0cb5db6d655eeec -->
+<!-- i18n: pair=editor.ja.md sha256=5655ca120295ed02 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -166,7 +166,7 @@ Draft, experimental (spec §3.8 draft): the allowed formats per role and the con
 
 Draft (spec §9C, `article-v1`). A lesson with a book (`article.md` or `article/<name>.md`, see [Writing a book](article.md)) opens like any other lesson; books are written with Claude Code or the command line, and the editor app is for reading, fixing and printing them. The book tools (the Egatari Text parser, about 350 KB compressed) and citeproc-js (only for a book that cites references) are loaded the first time you open a lesson with a book; other lessons never load them.
 
-- **Preview ▾ → View: Slides / Book** shows the book instead of the slides, as it will read. Clicking a link to a slide in the book shows that step of the slides. (The side-by-side layout, **Slides and book**, comes with the player panes.)
+- **Preview ▾ → View: Slides / Slides and book / Book** arranges the preview's player as viewers will see it (the player's book pane: sync, **Watch on slides**, **Read in the book**, as in the [viewer](viewer.md)); choosing a layout inside the player updates the menu.
 - **Book** (in the toolbar) opens the Book panel. **Slides and book may not match** lists each slide and section whose text changed after they were linked (or that were never checked); read them side by side and choose **Mark as checked** (or **Mark all as checked**) when they still agree. This records the current state in `articleLinks` of `egatari.json` (spec §9C.7); neither text is ever changed for you.
 - The Book panel also shows the book's errors and warnings (the same as `npm run check`), and a plain text field for each book file (choose the file above it). **Save** (or <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>) writes the file as UTF-8 with LF line endings in Unicode NFC (spec §9C.2): in a working folder it writes the file (the previous text is backed up in `.cache/edits/`); in an Egatari file it changes the lesson in memory, and **File ▾ → Save** then rebuilds only the book (the slides stay byte for byte, spec §9C.1). A book with errors is not saved; the message lists what to fix.
 - **File ▾ → Export ▸ → Print book** prints the book on A4 portrait; a link to a slide prints in the lesson's language as “→ slide 5, step 3” (“→ slide 5” for step 0; 「→ スライド 5・ステップ 3」 in Japanese). In a lesson without a book the item is **Print script**: each slide small, in its final state, with its script beside it. **Print slides** prints the slides one per page, as before.

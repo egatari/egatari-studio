@@ -85,7 +85,7 @@ const bookRendered = (page, n) => page.waitForFunction((n) => { const b = window
 const savedText = (page) => page.evaluate(async () => new TextDecoder().decode(new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer())));
 async function inBook(page, fn, arg) {
   for (let i = 0; i < 100; i++) {
-    const h = await page.$('#book-view');
+    const h = await page.$('#preview');
     const f = h && await h.contentFrame();
     if (f) { try { const r = await f.evaluate(fn, arg); if (r !== undefined && r !== null && r !== false) return r; } catch { /* 読み込み中 */ } }
     await page.waitForTimeout(150);
@@ -131,8 +131,14 @@ try {
   ok(await page.isVisible('#b-book') && (await page.textContent('#b-print-book')) === '本を印刷', 'book file: 本 button; print item 本を印刷');
 
   // E2：プレビューの本
+  await page.waitForFunction(() => window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: 60000 });
   await page.evaluate(() => window.__APP_TEST.setView('book'));
-  ok(await page.isVisible('#book-view'), 'view: 本 shows the book over the slides');
+  ok(await inBook(page, () => window.DECK && DECK.panes && DECK.panes.state().layout === 'book' && DECK.panes.state().article), 'view: 本 shows the player’s book pane (kit/panes.js) with the article');
+  await page.evaluate(() => window.__APP_TEST.setView('split'));
+  ok(await inBook(page, () => DECK.panes.state().layout === 'split') && (await page.getAttribute('#b-view-split', 'aria-checked')) === 'true', 'view: スライドと本 puts the slides and the book side by side');
+  await inBook(page, () => { DECK.panes.layout('book'); return true; });
+  await page.waitForFunction(() => document.getElementById('b-view-book').getAttribute('aria-checked') === 'true', null, { timeout: 10000 }).catch(() => {});
+  ok((await page.getAttribute('#b-view-book', 'aria-checked')) === 'true', 'view: a layout chosen inside the player updates Preview ▾ → View');
   const h1 = await inBook(page, () => { const a = document.getElementById('egatari-article'); return a ? [...a.querySelectorAll('h1')].map((x) => x.textContent).join(' / ') : null; });
   ok(/平均と中央値/.test(h1 || ''), `view: the book frame shows the rendered article (${h1})`);
   ok(await inBook(page, () => !!document.querySelector('#egatari-article a.egatari-cite')), 'view: citations are formatted');
@@ -141,11 +147,11 @@ try {
   await page.screenshot({ path: path.join(work, 'book-view.png') });
 
   // E5：本を印刷（ステップへのリンクは「→ スライド N・ステップ K」、ステップ 0 は「→ スライド N」）
-  await inBook(page, () => { window.__p = null; window.print = () => { window.__p = [...document.querySelectorAll('.egatari-print-to')].map((x) => x.textContent); }; return true; });
-  await page.evaluate(() => document.getElementById('b-print-book').click());
-  const printed = await inBook(page, () => window.__p);
+  await page.evaluate(() => { window.__APP_TEST.printDry = true; document.getElementById('b-print-book').click(); });
+  await page.waitForFunction(() => !!window.__APP_TEST.book().lastPrint, null, { timeout: 20000 });
+  const lp = (await bk(page)).lastPrint, printed = lp.texts;
   ok(Array.isArray(printed) && printed.length > 0 && printed.every((t) => /^ → スライド \d+(・ステップ (\d+|結論))?$/.test(t) && !/・ステップ 0$/.test(t)) && printed.includes(' → スライド 1・ステップ 1'), `print book: step links print as → スライド N・ステップ K in the lesson language (${JSON.stringify(printed)})`);
-  ok(await inBook(page, () => [...document.querySelectorAll('style')].some((x) => /size:\s*A4 portrait/.test(x.textContent))), 'print book: A4 portrait');
+  ok(lp.a4 && !(await page.$('#book-print')), 'print book: A4 portrait; the print frame is removed afterwards');
 
   // E3：記録のないつながり（まだ確認していません）→ すべて確認済みにする
   await page.evaluate(() => window.__APP_TEST.bookPanel(true));

@@ -227,7 +227,7 @@ function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い端末）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
 // 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
 function onPreviewLoad(e) {
-  if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
+  if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); if (book) book.view(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   sendSoundSilence(rec.isOpen());
   const a = document.activeElement;
   if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
@@ -469,7 +469,7 @@ async function rebuild(reason) {
           const a = await tierA(P.original, S.ws.snapshot(), { fonts: engine.fonts });
           if (!a.ok) throw new Error(T.tierAOnlySave(P.tierAOnly) + ` [${a.code}] ${a.reason}`);
           r = { html: a.html, reasons: P.codeReasons, slides, stats: { warn: a.warnings || [], slides: slides.length }, theme };
-        } else r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts() }, reasonsPrefix(), { timeout: buildTimeout() });
+        } else r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts(), ...(book.wantInPreview() ? { book: true } : {}) }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
@@ -965,7 +965,8 @@ window.addEventListener('message', (e) => {
   if (e.source === frame) {
     ui.message(e);
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
-    if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
+    if (m.type === 'app-layout-changed' && /^(slides|split|book)$/.test(String(m.layout))) { if (book.present() && m.layout !== (S.view || 'slides')) setView(m.layout, false); }
+    else if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
     else if ((m.type === 'app-check-result' || m.type === 'app-steps-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) {
@@ -1969,17 +1970,18 @@ book = createBook({
   goFragment: (f) => { const w = $('preview').contentWindow; if (w) w.postMessage({ type: 'app-goto', f }, '*'); },
   setView: (v) => setView(v), viewMode: () => S.view || 'slides',
 });
-function setView(v) {
-  S.view = v === 'book' && book.present() ? 'book' : 'slides';
-  $('b-view-slides').setAttribute('aria-checked', S.view === 'slides' ? 'true' : 'false');
-  $('b-view-book').setAttribute('aria-checked', S.view === 'book' ? 'true' : 'false');
-  book.view();
-  if (S.view === 'slides') focusPreview();
+// 表示（再生器の並べ方。kit/panes.js）：slides・split・book。tell：プレビューに頼む（プレーヤーの中で替わったときは頼まない）
+function setView(v, tell = true) {
+  S.view = (v === 'book' || v === 'split') && book.present() ? v : 'slides';
+  for (const [id, x] of [['b-view-slides', 'slides'], ['b-view-split', 'split'], ['b-view-book', 'book']]) $(id).setAttribute('aria-checked', S.view === x ? 'true' : 'false');
+  if (tell) book.view(); else book.view(false);
+  focusPreview();
 }
 $('b-view-slides').onclick = () => setView('slides');
+$('b-view-split').onclick = () => setView('split');
 $('b-view-book').onclick = () => setView('book');
 $('b-book').onclick = () => book.togglePanel().catch((e) => toast(String(e.message || e), true));
-$('b-print-book').onclick = () => { if (book.present()) setView('book'); book.print(); };
+$('b-print-book').onclick = () => book.print();
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { fullScreen(); setPreviewMode(S.previewMode === 'lecture' ? 'lecture' : 'talk'); };
 // 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。

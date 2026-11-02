@@ -1,10 +1,10 @@
 // 本（format spec §9C。v0.6.5 の E2〜E5）：本のある教材を開いたときの、編集アプリの本の働き。
-//   見る（E2）：プレビューの「本」（プレビュー ▾ の表示）。読むための頁（kit/core/article-page.mjs の articlePageOf）を sandbox の枠に出す。
-//     仮の見せ方：再生器の本の窓（v0.6.5 の B：panes）ができたら、組んだプレビューの中の本に替える（この枠・view() と print の口だけを差し替える）
+//   見る（E2）：プレビュー ▾ の表示（スライド・スライドと本・本）で、プレビューの再生器の本の窓（kit/panes.js）を並べる。
+//     プレビューの組み立てが本を出力に入れる（app/engine.js の build の opts.book）
 //   合っているか（E3）：スライドと節のつながりの古さ（§9C.7。kit/core/article-links.mjs）を「本」の板に出し、確認済みにできる（egatari.json の articleLinks）
 //   直す（E4）：本文のファイルを、ふつうの文字の欄で直す（§9C.2：NFC・LF で書く）。保存は作業場所に書くだけ（1 ファイルは「保存」で、
 //     本文だけを組み直す：kit/core/tier-a.mjs の opts.article）。点検の誤り（§9C.8）は板に出す
-//   刷る（E5）：「本を印刷」（A4 縦。ステップへのリンクは「→ スライド 5」と刷る）。本のない教材は「台本を印刷」（app/frame-shim.js の printScript）
+//   刷る（E5）：「本を印刷」（A4 縦。読むための頁を見えない枠で刷る。ステップへのリンクは教材の言葉で「→ スライド 5・ステップ 3」）。本のない教材は「台本を印刷」（app/frame-shim.js の printScript）
 // citeproc（引用の書式。CPAL-1.0）で引用を組んだときは、本の下と板に帰属の 1 行（CITEPROC_CREDIT。NOTICE）を出す
 //
 //   const book = createBook(ctx)
@@ -108,10 +108,13 @@ export function createBook(ctx) {
     }
     view();
     if (panelShown()) drawPanel();
+    // 本の道具を読み込んだ：プレビューにまだ本がなければ、本を入れて組み直す（作業場所ごとに 1 度）
+    if (wantInPreview() && !inPreview() && B.kicked !== ws) { B.kicked = ws; ctx.rebuild('book'); }
     ctx.onChange && ctx.onChange();
   }
   function reset() {
     B.gen++; B.present = false; B.cite = false; B.last = null; B.error = null; B.file = null; B.loaded = null; B.dirty = false;
+    B.kicked = null;
     showControls(); view();
   }
 
@@ -120,46 +123,32 @@ export function createBook(ctx) {
     for (const e of document.querySelectorAll('.only-book')) e.hidden = !B.present;
     const pb = $('b-print-book');
     if (pb) pb.textContent = B.present ? T.printBook : T.printScript;
-    if (!B.present && ctx.viewMode() === 'book') ctx.setView('slides');
+    if (!B.present && ctx.viewMode() !== 'slides') ctx.setView('slides');
   }
-  let frameHtml = null;
-  // 本の枠：本のある教材を開いたときに作る（本のない教材のページには枠を足さない）。sandbox は allow-scripts（信頼する仲立ちだけ。頁はスクリプトを持たない）と
-  // allow-modals（印刷）。名前 book-view（プレビューの枠と見分ける）
-  function frame() {
-    let f = $('book-view');
-    if (f && !B.present) { f.remove(); frameHtml = null; return null; }   // 本のない教材に替わった
-    if (f || !B.present) return f;
-    f = document.createElement('iframe');
-    f.id = 'book-view'; f.name = 'book-view'; f.title = T.panelTitle;
-    f.setAttribute('sandbox', 'allow-scripts allow-modals');
-    $('book-box').prepend(f);
-    return f;
-  }
-  function view() {
-    const f = frame(), on = B.present && ctx.viewMode() === 'book';
-    const box = $('book-box');
-    box.hidden = !on;
-    box.setAttribute('aria-hidden', on ? 'false' : 'true');
-    const html = B.last && B.last.page ? B.last.page : '';
-    if (f && html && html !== frameHtml) { frameHtml = html; f.srcdoc = previewDocument(html, BOOK_SHIM); }
-    if (f && !html && frameHtml !== null) { frameHtml = null; f.removeAttribute('srcdoc'); }
+  // 見せ方（E2）：本は再生器の本の窓（kit/panes.js。v0.6.5 B）で見せる。プレビューの組み立てが本を出力に入れ（app/engine.js の build の opts.book）、
+  // ここは並べ方（slides・split・book）をプレビューに頼むだけ（app/frame-shim.js の app-layout → DECK.panes.layout）。読み込み直すたびに頼み直す。
+  // プレーヤーの中で並べ方を替えたら（r・並べ方の一覧）、プレーヤーが知らせる（app-layout-changed）ので表示の選びを合わせる
+  function view(tell = true) {
+    const v = B.present ? ctx.viewMode() : 'slides';
+    const w = $('preview') && $('preview').contentWindow;
+    if (tell && w && B.present && inPreview()) w.postMessage({ type: 'app-layout', layout: v }, '*');
     const note = $('book-note');
-    note.textContent = B.error ? T.renderFailed(B.error) : B.last && !B.last.page ? T.empty : '';
+    note.textContent = !B.present || v === 'slides' ? '' : B.error ? T.renderFailed(B.error) : B.last && !B.last.page ? T.empty : '';
     note.hidden = !note.textContent;
+    // citeproc の帰属（CPAL Exhibit B）：本を見せているとき、プレビューのすぐ下に
     const credit = $('book-credit');
     credit.textContent = CITEPROC_CREDIT;
-    credit.hidden = !(B.last && B.last.citeproc);
+    credit.hidden = !(B.present && v !== 'slides' && B.last && B.last.citeproc);
+    $('viewer').classList.toggle('with-credit', !credit.hidden || !note.hidden);
   }
-  // 本の枠からの知らせ（ステップへのリンク）：スライドの表示にして、そのステップへ
-  function message(e) {
-    const f = $('book-view');
-    if (!f || e.source !== f.contentWindow) return false;
-    const m = e.data || {};
-    if (m.type === 'book-step' && typeof m.step === 'string' && /^[A-Za-z0-9_-]+:(?:\d{1,3}|concl)$/.test(m.step)) { ctx.setView('slides'); ctx.goFragment(m.step); }
-    return true;
-  }
+  // プレビューに本が入っているか（組み立てが本を入れた）：入っていなければ、本の道具を読み込んだ後に 1 度組み直す
+  // （実行系の注記にも同じ字があるので、組み立てが実行系の前に入れた読める層の形で見る）
+  const inPreview = () => !!(S.base && /<section id="egatari-readable"[^>]*>\n<article id="egatari-article"/.test(S.base));
+  const wantInPreview = () => B.present && !!globalThis.__egatariArticle;
 
   // ---------------------------------------------------------------- 刷る（E5）
+  // 本を印刷：読むための頁（kit/core/article-page.mjs）を、見えない所に置いた印刷のための枠で刷る（再生器の本の窓は印刷に出ない）。
+  // 枠は刷るときだけ作り、刷り終えたら消す
   function slideNumbers() {
     const out = {};
     (S.slides || []).forEach((s, i) => { if (s.key) out[s.key] = i + 1; if (s.id) out[s.id] = i + 1; });
@@ -167,9 +156,28 @@ export function createBook(ctx) {
   }
   function print() {
     if (!B.present) { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print', what: 'script' }, '*'); return; }
-    const f = $('book-view');
-    if (!B.last || !B.last.page || !f || !f.contentWindow) { ctx.toast(B.error ? T.renderFailed(B.error) : T.notReady, true); return; }
-    f.contentWindow.postMessage({ type: 'book-print', slides: slideNumbers(), words: PRINT_TO[/^ja\b/i.test(deckLang()) ? 'ja' : 'en'] }, '*');
+    if (!B.last || !B.last.page) { ctx.toast(B.error ? T.renderFailed(B.error) : T.notReady, true); return; }
+    let f = $('book-print');
+    if (f) f.remove();
+    f = document.createElement('iframe');
+    f.id = 'book-print'; f.name = 'book-print'; f.title = T.printBook; f.tabIndex = -1;
+    f.setAttribute('aria-hidden', 'true');
+    f.setAttribute('sandbox', 'allow-scripts allow-modals');
+    f.style.cssText = 'position:fixed;left:-10000px;top:0;width:800px;height:1000px;border:0';
+    f.addEventListener('load', () => {
+      if (!f.contentWindow) return;
+      f.contentWindow.postMessage({ type: 'book-print', slides: slideNumbers(), words: PRINT_TO[/^ja\b/i.test(deckLang()) ? 'ja' : 'en'], dry: !!(window.__APP_TEST && window.__APP_TEST.printDry) }, '*');
+    }, { once: true });
+    f.srcdoc = previewDocument(B.last.page, BOOK_SHIM);
+    document.body.append(f);
+  }
+  // 印刷の枠からの知らせ（刷り終えた）
+  function message(e) {
+    const f = $('book-print');
+    if (!f || e.source !== f.contentWindow) return false;
+    const m = e.data || {};
+    if (m.type === 'book-printed') { if (Array.isArray(m.texts)) B.lastPrint = { texts: m.texts.map(String), a4: !!m.a4 }; setTimeout(() => { if (f.isConnected) f.remove(); }, 0); }
+    return true;
   }
 
   // ---------------------------------------------------------------- 「本」の板（E3・E4）
@@ -325,9 +333,9 @@ export function createBook(ctx) {
   }
 
   return {
-    has, hasRefs, ensure, refresh, reset, engineArticle, renderForSave, print, togglePanel, message, view,
+    has, hasRefs, ensure, refresh, reset, engineArticle, renderForSave, print, togglePanel, message, view, wantInPreview,
     present: () => B.present, dirty: () => B.dirty,
-    state: () => ({ present: B.present, cite: B.cite, renders: B.renders, error: B.error, file: B.file, dirty: B.dirty, citeproc: !!(B.last && B.last.citeproc),
+    state: () => ({ lastPrint: B.lastPrint || null, present: B.present, cite: B.cite, renders: B.renders, error: B.error, file: B.file, dirty: B.dirty, citeproc: !!(B.last && B.last.citeproc),
       files: B.last ? B.last.files.slice() : [], problems: B.last ? B.last.problems.map((p) => ({ sev: p.sev, code: p.code })) : [],
       states: B.last && B.last.links ? B.last.links.states.slice() : [], view: ctx.viewMode(), panel: panelShown(), loaded: loader.loaded(), extra: builder.extra.length > 0 }),
   };

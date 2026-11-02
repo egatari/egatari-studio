@@ -15,6 +15,7 @@ export { articleMessage, articleWhere, ARTICLE_MESSAGES } from '../kit/core/arti
 export { articleLayout, articleFiles, readArticle, validateArticle, stepResolver, parseStep, ARTICLE_FILE, CHAPTER_DIR, REFERENCES_FILE } from '../kit/core/article.mjs';
 export { linkedPairs, currentLinkHashes, linkStates, pruneLinks, recordLinks } from '../kit/core/article-links.mjs';
 export { CITEPROC_CREDIT, CITATION_STYLES } from '../kit/core/article-cite.mjs';
+export { ARTICLE_CSS } from '../kit/core/article-render.mjs';
 
 const STYLES = { apa, ieee, sist02 };
 const LOCALES = { 'ja-JP': localeJa, 'en-US': localeEn };

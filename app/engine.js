@@ -16,6 +16,8 @@ import * as P from '../kit/core/path-posix.mjs';
 import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError, FileChangedError } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
 import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
+import { titleOf } from '../kit/core/export-name.mjs';
 
 export const DECK = '/deck', ROOT = '/repo', USER_THEMES = '/user-themes';
 // プレビューの音声の置き場所の印（deck-audio の src。app/frame-shim.js が blob: に替える）
@@ -300,10 +302,23 @@ export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) 
           return src;
         };
       }
+      // opts.book：本（format spec §9C）も組んで、再生器の本の窓のために出力に入れる（kit/build.mjs と同じ：<section id="egatari-readable"> の中の
+      // <article id="egatari-article"> を実行系の前に。言語と題は原稿から）。本の道具を読み込んでいなければ、スライドだけ
+      const A = opts.book ? withArticle(benv) : null;
+      delete o.book;
       for (let i = 0; i < 40; i++) {
         miss.clear(); refs = [];
         let r = null, err = null;
-        try { r = coreBuild(benv, DECK + '/' + file, { noAudio: !previewAudio, subset: false, ...o }); } catch (e) { err = e; }
+        let art = {};
+        if (A) {
+          try {
+            const srcHtml = benv.readText(DECK + '/' + file);
+            const lang0 = srcHtml.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
+            const R = A.tools.renderedArticle(benv, DECK + '/' + file, { lang: lang0, title: titleOf(srcHtml) });
+            if (R && R.html) art = { articleHtml: R.html, articleCss: A.tools.ARTICLE_CSS, runtimePrefix: `<section id="${FORMAT.READABLE_ID}" lang="${String(R.lang || lang0).replace(/[&"<>]/g, '')}">\n${R.html}\n</section>\n` };
+          } catch (e) { console.warn('[editor] book not built into the preview', e); }
+        }
+        try { r = coreBuild(benv, DECK + '/' + file, { noAudio: !previewAudio, subset: false, ...o, ...art }); } catch (e) { err = e; }
         if (err && err.code === 'build-too-large') throw err;
         if (pendingScores.size) { await loadScores(); continue; }
         if (!miss.size) { if (err) throw err; if (previewAudio) r.previewAudio = refs; return r; }
