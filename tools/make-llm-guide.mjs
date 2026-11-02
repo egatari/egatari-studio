@@ -1,27 +1,29 @@
 // チャットの AI に教材を書かせる指示（AI instruction pack）の材料と docs を作る。手で直さない
 //   node tools/make-llm-guide.mjs            書く：kit/core/llm-pack-data.mjs（組み立ての材料）と、
 //                                            plugins/egatari/ と skills/studio/SKILL.md の版の行と、
-//                                            docs/authoring-with-llms(.ja).md（共通の本体）・docs/llm-parts/<系列>(.ja).md（系列ごとの部分）
+//                                            docs/authoring-with-llms(.ja).md（共通の本体）・docs/llm-parts/<束>(.ja).md（束ごとの部分）
 //   node tools/make-llm-guide.mjs --zip <out-dir> [--lang ja|en]  egatari-make-skill.zip（make/ 以下。Node の組み込みだけ）
 //   node tools/make-llm-guide.mjs --check    今のファイルが作り直したものと同じか・大きさ（npm test。違えば・大きすぎれば終了コード 1）
 // 組み立ては kit/core/llm-pack-assemble.mjs の assemble（編集アプリ・kit/llm-pack.mjs・修正依頼と同じ関数）。docs はその出力そのもの
 //
+// パーツの段と束（handoff/parts-tiers-2026-10-27.md §1、backlog #125）：パーツライブラリ 2.0 の既定のカタログ（components2.lock.json の default）の
+// manifest（vendor/components-2/manifest-<版>.json）の tier・set で決める。標準（standard）は共通の本体にいつも入り、専門（specialized）は
+// その束（set）を選んだときだけ束の指示に入る。特殊（extra）は指示に入れない（make スキルの extra.md に README への道だけ）
+//
 // 材料（どれかを直したら作り直す）：
 //   tools/llm-guide/template.md・template.ja.md   共通の本体（英語が正本）。{{…}} を下の中身で置き換える
 //   docs/llm-book.md・llm-book.ja.md              make の「本と配置」（手書きの正本）。スキルの頭にそのまま差し込む
-//   tools/llm-guide/series/<系列>.md・.ja.md      系列ごとの部分。{{CATALOG}}（その系列の部品）・{{EXTENSIONS}}（共通の部品のその系列向けの節）・{{WORKED …}}
+//   tools/llm-guide/sets/<束>.md・.ja.md          束ごとの部分。{{CATALOG}}（その束の部品）・{{EXTENSIONS}}（標準の部品のその束向けの節）・{{WORKED …}}
 //   docs/contract.md・contract.ja.md              {{contract §N "頭の字"}}：その節の箇条書きのうち、その字で始まる 1 つ（見つからなければ失敗）
-//   vendor/components/<名前>/<版>/README.md・index.js  部品庫の写しの既定の版（components.lock.json）。frontmatter の series（common か系列の名前。ないと失敗）・name・summary・steps と、
+//   vendor/components/sha256/<hash>/README.md・index.js  既定のカタログの部品の写し（components.lock.json の content 表で引く）。frontmatter の name・summary・steps・props と、
 //                                                 props の型・既定値・説明（static props）・データの形（static shape）・README の本文。
-//                                                 本文の <!-- llm: <系列> --> … <!-- llm: end --> はその系列の部分に「拡張」として（共通の部品だけ）、
-//                                                 <!-- llm: omit --> … <!-- llm: end --> は指示に入れない（開発者向けの注意など）
-//   vendor/components/manifest.json（あれば）       {{PURPOSES}}：言いたいこと → パーツ → ステップの表。全パーツの一覧を兼ねる（写した既定の版の部品だけを出し、
-//                                                 部品がまだない言いたいことは「近い部品か HTML・インラインの SVG」。版を固定した URL 付き）。
-//                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK（parts-map の 10）。どちらを使ったかは材料の purposes.source
-//                                                 TODO(#99, components v1.2.0)：m-curves（学術）と m-quad（ビジネス）を本体（series: common）へ移すのは部品庫 v1.2.0 で。
-//                                                 移ったら一覧と表はそのまま正しくなる（系列は frontmatter から読む）。系列の指示の文（tools/llm-guide/series/academic*.md・business*.md）の見直しを忘れない
+//                                                 本文の <!-- llm: <束> --> … <!-- llm: end --> はその束の部分に「拡張」として（標準の部品だけ。前の系列の名前
+//                                                 （business など）は LEGACY_SERIES で束に読み替える）、<!-- llm: omit --> … <!-- llm: end --> は指示に入れない
+//   vendor/components-2/manifest-<版>.json         部品の tier・set と {{PURPOSES}}：言いたいこと → パーツ → ステップの表（版を固定した URL 付き）。
+//                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK。どちらを使ったかは材料の purposes.source
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
-// 大きさ（--check。sizeReport）：無料版の共通 + 系列 1 つは 35 KB を超えれば警告・40 KB を超えれば失敗、2 つの組は 50 KB、有料版は 120 KB（PACK_CAP_KB）
+// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・40 KB を超えれば失敗。標準と 1 つの束は 40 KB を超えれば知らせるだけ
+// （新規作成のメーターが外す候補を出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -29,43 +31,55 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
-import { vendorComponents } from './vendor-components.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, planData, paidOnly, partSpans } from '../kit/core/llm-pack-assemble.mjs';
-import { purposesFrom, toolsFrom } from '../kit/core/purposes.mjs';
+import { parseLock, resolveComponent, LOCK_FILE } from '../kit/core/components-lock.mjs';
+import { renderedFieldNames } from '../kit/core/parts2.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE } from '../kit/core/llm-pack-assemble.mjs';
+import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
-const GUIDE = rel('tools', 'llm-guide');
-export const SERIES = ['academic', 'business', 'kokugo', 'english', 'info', 'social', 'music'];
+// 束の並び（parts-tiers §1.1 の順。manifest にあってここにない束は、後ろに名前の順で足す）
+export const SET_ORDER = ['stats', 'math', 'maps', 'kokugo', 'english', 'music', 'business', 'tools'];
+// 前の系列（部品庫 1.x の series）の名前 → 束。README の <!-- llm: 系列 --> の拡張の節を束に読み替える（部品庫が束の名前に直したら要らない）
+export const LEGACY_SERIES = Object.freeze({ academic: ['stats', 'math', 'science'], business: ['business'], kokugo: ['kokugo'], english: ['english'], music: ['music'], social: ['maps'], info: [] });
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
-// KB（1024 バイト）。fail・two・paid はお使いの AI ごとの上限（kit/core/llm-pack-assemble.mjs の PACK_CAP_KB）：
-// fail は無料版の共通の本体＋1 つの分野、two は無料版の共通の本体＋2 つの分野（どの組でも。無料版で選べるのは 2 つまで）、paid は有料版。試験 tools/test-new-deck.mjs が使う
-export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free.one, two: PACK_CAP_KB.free.two, paid: PACK_CAP_KB.paid };
-// 2 つの分野の組（SERIES の順）。'a+b' の名前で大きさを持つ
-export const PAIRS = SERIES.flatMap((a, i) => SERIES.slice(i + 1).map((b) => [a, b]));
+// KB（1024 バイト）。fail：無料のプランの標準すべて。free：無料のプランの上限（標準と束。越えたら知らせるだけ）。paid：有料のプラン
+export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free, free: PACK_CAP_KB.free, paid: PACK_CAP_KB.paid };
+// 2 つの束の組。'a+b' の名前で大きさを持つ
+export const pairsOf = (sets) => sets.flatMap((a, i) => sets.slice(i + 1).map((b) => [a, b]));
 // いちばん大きい組：[名前, KB]
 export const largestPair = (pairs) => Object.entries(pairs).reduce((m, x) => (!m || x[1] > m[1] ? x : m), null);
 
-// ---------------------------------------------------------------- 段と束（パーツライブラリ 2.0 の manifest）
-// → {catalogue, parts: {タグ: {tier, set?, purposes}}, purposes: [{id, label: {ja, en}, into?}]}。指示に説明のある部品（tags）だけ。
-// manifest にない部品は知らせて標準に置く（一覧から消えないように）
-export function tiersFrom(tags, warnings = []) {
+// ---------------------------------------------------------------- 既定のカタログ（パーツライブラリ 2.0）
+// → {version, tag, source, manifest, parts: {名前: 版}}
+export function catalogue() {
   const lock2 = JSON.parse(read('components2.lock.json'));
-  const m = JSON.parse(read('vendor', 'components-2', `manifest-${lock2.default}.json`));
+  const v = lock2.default, cat = lock2.catalogues[v];
+  if (!cat) throw new Error(`components2.lock.json: default ${v} is not a catalogue`);
+  return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts };
+}
+// 束の並び：manifest の専門の部品の set を SET_ORDER の順に
+export function setsOf(manifest) {
+  const have = new Set(Object.values(manifest.components).filter((c) => c.kind === 'element' && c.tier === 'specialized' && c.set).map((c) => c.set));
+  return [...SET_ORDER.filter((s) => have.has(s)), ...[...have].filter((s) => !SET_ORDER.includes(s)).sort()];
+}
+
+// ---------------------------------------------------------------- 段と束（パーツライブラリ 2.0 の manifest）
+// → {catalogue, parts: {タグ: {tier, set?, purposes}}, purposes: [{id, label: {ja, en}, into?}]}。manifest の要素のパーツすべて（特殊も。一覧が特殊を除く）
+export function tiersFrom(cat = catalogue()) {
+  const m = cat.manifest;
   const parts = {};
-  const byTag = Object.fromEntries(Object.values(m.components).filter((c) => c.kind === 'element' && c.tag).map((c) => [c.tag, c]));
-  for (const t of [...tags].sort()) {
-    const c = byTag[t];
-    if (!c) { warnings.push(`${t} is not in vendor/components-2/manifest-${lock2.default}.json; it is listed as standard in the new-lesson parts list`); parts[t] = { tier: 'standard', purposes: [] }; continue; }
-    if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${lock2.default}.json: ${t} has tier ${JSON.stringify(c.tier)}`);
-    if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${lock2.default}.json: ${t} is specialized without a set`);
-    parts[t] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])] };
+  const els = Object.values(m.components).filter((c) => c.kind === 'element' && c.tag).sort((a, b) => (a.tag < b.tag ? -1 : 1));
+  for (const c of els) {
+    if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${cat.version}.json: ${c.tag} has tier ${JSON.stringify(c.tier)}`);
+    if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
+    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])] };
   }
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}) }));
-  return { catalogue: lock2.default, parts, purposes };
+  return { catalogue: cat.version, parts, purposes };
 }
 
 // ---------------------------------------------------------------- 部品
@@ -210,16 +224,24 @@ function shapeApi() {
   vm.runInContext(read('kit', 'shape.js'), ctx, { filename: 'kit/shape.js' });
   return ctx.DECK.shape;
 }
+// 2.0 の部品は egatariParts.define(meta, factory)：factory に依存のライブラリ（deps）を渡すとクラスを返す。データの形と props はクラスの static だけなので、
+// deps は何を読んでも代わりのもの（継いでクラスにもできる関数）を返すもので足りる。1.x の DECK.define も読む
+const stub = () => new Proxy(function () {}, {
+  get: (t, k) => (typeof k === 'symbol' ? (k === Symbol.toPrimitive ? () => '' : k === Symbol.iterator ? [][Symbol.iterator] : undefined) : k === 'prototype' ? {} : stub()),
+  apply: () => stub(), construct: () => stub(),
+});
 function classOf(js, name) {
   let cls = null;
   const D = { define: (n, c) => { if (n === name) cls = c; }, MotionElement: class {} };
-  const ctx = { DECK: D, window: { DECK: D } };
+  const deps = stub();
+  const P = { define: (meta, factory) => { if (meta && meta.element === name) cls = factory(deps); } };
+  const ctx = { DECK: D, egatariParts: P, window: { DECK: D, egatariParts: P } };
   vm.createContext(ctx);
   try { vm.runInContext(js, ctx, { filename: name + '/index.js' }); } catch (e) { throw new Error(`components: ${name}/index.js could not be read for its shape: ${e.message}`); }
   return cls;
 }
-// README の本文を、部品の場所の文章と <!-- llm: 系列 --> の節（拡張）に分ける。<!-- llm: omit --> の節は捨てる
-function splitBlocks(body, file) {
+// README の本文を、部品の場所の文章と <!-- llm: 束 --> の節（拡張）に分ける。<!-- llm: omit --> の節は捨てる。前の系列の名前は束に読み替える
+function splitBlocks(body, file, sets) {
   const own = [], ext = {};
   let cur = null;
   for (const ln of body.split('\n')) {
@@ -227,32 +249,64 @@ function splitBlocks(body, file) {
     if (m) {
       if (m[1] === 'end') { if (cur === null) throw new Error(`${file}: <!-- llm: end --> without a block`); cur = null; continue; }
       if (cur !== null) throw new Error(`${file}: <!-- llm: ${m[1]} --> inside another block (close it with <!-- llm: end -->)`);
-      if (m[1] !== 'omit' && !SERIES.includes(m[1])) throw new Error(`${file}: <!-- llm: ${m[1]} --> names an unknown series (known: ${SERIES.join(', ')}, or omit)`);
+      if (m[1] !== 'omit' && !sets.includes(m[1]) && !LEGACY_SERIES[m[1]]) throw new Error(`${file}: <!-- llm: ${m[1]} --> names an unknown part set (known: ${sets.join(', ')}, or omit)`);
       cur = m[1];
       continue;
     }
     if (/<!--\s*llm:/.test(ln)) throw new Error(`${file}: malformed llm marker: ${ln}`);
-    if (cur === null) own.push(ln); else if (cur !== 'omit') (ext[cur] = ext[cur] || []).push(ln);
+    if (cur === null) own.push(ln); else if (cur !== 'omit') for (const k of sets.includes(cur) ? [cur] : LEGACY_SERIES[cur].filter((x) => sets.includes(x))) (ext[k] = ext[k] || []).push(ln);
   }
-  if (cur !== null) throw new Error(`${file}: <!-- llm: ${cur} --> is not closed (<!-- llm: end -->)`);
+  // omit の節だけは、閉じずにファイルの終わりまで続いてよい（部品庫 2.1.0 の m-orbit の README は終わりの印がない。指示に入れないので害がない）
+  if (cur !== null && cur !== 'omit') throw new Error(`${file}: <!-- llm: ${cur} --> is not closed (<!-- llm: end -->)`);
   return { own: own.join('\n'), ext: Object.fromEntries(Object.entries(ext).map(([k, v]) => [k, v.join('\n').trim()])) };
 }
-function components() {
-  return vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map(({ name: n, version: v, dir }) => {
-    const file = `vendor/components/${n}/${v}/README.md`;
+// 既定のカタログの要素のパーツ（特殊を含む）：[{fm, tier, set, body, ext, props, shape, rawProps}]。set は 'standard'・束の名前・'extra'
+function components(cat, sets) {
+  const lock = parseLock(read(LOCK_FILE));
+  const out = [];
+  for (const [name, c] of Object.entries(cat.manifest.components).sort(([a], [b]) => (a < b ? -1 : 1))) {
+    if (c.kind !== 'element' || !c.tag) continue;
+    const v = cat.parts[name];
+    if (!v) throw new Error(`components2.lock.json: catalogue ${cat.version} has no version of ${name}`);
+    const dir = resolveComponent(path, ROOT, lock, name, v);
+    const file = `${name}@${v} (${path.relative(ROOT, dir).split(path.sep).join('/')}/README.md)`;
+    if (!fs.existsSync(path.join(dir, 'README.md'))) throw new Error(`${file} is missing (npm run components:update)`);
     const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));
     const js = fs.existsSync(path.join(dir, 'index.js')) ? read(path.relative(ROOT, path.join(dir, 'index.js'))) : '';
-    if (!fm.name) throw new Error(`${file} has no frontmatter name`);
-    if (!fm.series) throw new Error(`${file} has no frontmatter series (common, or one of ${SERIES.join(', ')}): every kit component belongs to exactly one place in the AI instruction pack`);
-    if (fm.series !== 'common' && !SERIES.includes(fm.series)) throw new Error(`${file}: series "${fm.series}" is not common or one of ${SERIES.join(', ')}`);
-    const blocks = splitBlocks(body, file);
+    if (fm.name !== c.tag) throw new Error(`${file}: frontmatter name ${fm.name} is not ${c.tag}`);
+    const set = c.tier === 'extra' ? 'extra' : c.tier === 'standard' ? STANDARD : c.set;
+    const blocks = splitBlocks(body, file, sets);
+    if (Object.keys(blocks.ext).length && set !== STANDARD) throw new Error(`${file}: <!-- llm: … --> extension blocks are only for standard parts (this one is ${c.tier})`);
     const cls = js ? classOf(js, fm.name) : null;
-    return { fm, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {} };
-  });
+    out.push({ fm, set, build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {} });
+  }
+  return out;
 }
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 // データの形の短い書き方（一覧の欄）と見本（詳しい節）
 const SH = shapeApi();
+// 組み立てが足す欄（形式 §6.2：build.fields の欄の描いた結果 texHtml・abcSvg など、と renderers）は AI が書かないので、データの形から除く
+function withoutBuilt(schema, build) {
+  if (!build || !build.fields || !schema) return schema;
+  const s = JSON.parse(JSON.stringify(schema));
+  const drop = (o, names) => {
+    if (!o || !o.properties) return;
+    for (const n of names) delete o.properties[n];
+    if (Array.isArray(o.required)) o.required = o.required.filter((n) => !names.includes(n));
+  };
+  drop(s, ['renderers']);
+  for (const [field, renderer] of Object.entries(build.fields)) {
+    const segs = field.split('.');
+    let o = s;
+    for (const seg of segs.slice(0, -1)) {
+      const name = seg.replace(/\[\]$/, '');
+      o = o && o.properties && o.properties[name];
+      if (o && seg.endsWith('[]')) o = o.items;
+    }
+    drop(o, renderedFieldNames(renderer, segs[segs.length - 1].replace(/\[\]$/, '')));
+  }
+  return s;
+}
 function shapeBrief(c, lang) {
   const sh = c.shape;
   if (!sh) return '';
@@ -265,7 +319,7 @@ function shapeBrief(c, lang) {
   }
   // note は {en, ja} か、1 つの言語の字（部品庫 v1.2.0 の m-tree など）
   const note = !sh.note ? '' : typeof sh.note === 'string' ? sh.note : sh.note[lang] || sh.note.en || sh.note.ja || '';
-  return '`' + SH.brief(sh.schema) + '`' + (note ? ' — ' + note : '');
+  return '`' + SH.brief(withoutBuilt(sh.schema, c.build)) + '`' + (note ? ' — ' + note : '');
 }
 function shapeExample(c, lang) {
   const sh = c.shape;
@@ -356,15 +410,14 @@ function contractBullet(text, sec, prefix, file) {
 // ---------------------------------------------------------------- 組み立て
 const GENERATED = (contract) => `<!-- generated by tools/make-llm-guide.mjs from tools/llm-guide/, docs/${contract} and vendor/components/*/README.md; do not edit by hand -->`;
 const AI_HEAD = /^# (Instructions for the AI|AI への指示)\s*$/m;
-// 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは系列の指示の後ろ、いちばん最後に付く
+// 最後の「頼みたいこと」（記入欄の付いた頼み方）。組み立てでは束の指示の後ろ、いちばん最後に付く
 const REQ_HEAD = /^# (What I want|頼みたいこと)\s*$/m;
 const KB = (s) => Buffer.byteLength(s, 'utf8') / 1024;
-const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|contract|GENERATED|SERIES_LIST|PACK_VERSION|PURPOSES)/;
+const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|contract|GENERATED|SETS_LIST|PACK_VERSION|PURPOSES)/;
 // 指示の版：材料（版の行を除く。英語と日本語の両方）の SHA-256 の先頭 8 字。指示の文章が変われば変わり、変わらなければ同じ（手で上げない）
 const PACK_VERSION = '{{PACK_VERSION}}';
 
-// スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料からセットごとに分ける。
-// 今の写しは series だけを持つ。2.0 の set・tier があればそちらを使い、特殊は README への道だけ。
+// スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料から束（セット）ごとに分ける：標準・束ごと（専門）と、特殊は README への道だけ
 const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
@@ -376,19 +429,11 @@ export function studioVersion(text, version) {
   return text.replace(marker, `**指示の版：${version}**`);
 }
 
-export function skillFiles(data, assignments = {}, lang = 'ja') {
+export function skillFiles(data, lang = 'ja') {
   if (!['ja', 'en'].includes(lang)) throw new Error(`invalid skill language: ${lang}`);
   const files = {}, head = '<!-- generated; do not edit by hand -->\n';
-  const usesTiers = Object.values(assignments).some((c) => c.tier);
-  const sets = new Map(usesTiers ? [['standard', []]] : [['common', []], ...data.series.map((s) => [s, []])]);
-  for (const [tag, c] of Object.entries(data.ja.components)) {
-    const meta = assignments[tag] || {};
-    const set = meta.tier === 'extra' ? 'extra' : meta.tier === 'standard' ? 'standard' : (meta.set || c.series);
-    if (!/^[a-z][a-z0-9-]*$/.test(set)) throw new Error(`invalid skill part set: ${set}`);
-    if (!sets.has(set)) sets.set(set, []);
-    sets.get(set).push(tag);
-  }
-  if (!sets.has('extra')) sets.set('extra', []);
+  const sets = new Map([[STANDARD, membersOf(data.ja, STANDARD)], ...data.sets.map((s) => [s, membersOf(data.ja, s)]), ['extra', [...(data.extra || [])]]]);
+  for (const set of sets.keys()) if (!/^[a-z][a-z0-9-]*$/.test(set)) throw new Error(`invalid skill part set: ${set}`);
   for (const language of ['ja', 'en']) {
     const ja = language === 'ja', D = data[language];
     const refDir = `references/parts/${ja ? '' : 'en/'}`;
@@ -431,7 +476,7 @@ Claude Code では \`/plugin update egatari@egatari\`。
 
 ## パーツを選ぶ
 
-標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 ${links}
 
@@ -476,7 +521,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Read only the standard and specialized sets you need. Extra parts have README pointers only. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
 
 ${links}
 
@@ -503,32 +548,25 @@ ${common}
   return files;
 }
 
-// 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {common, series: {名前: 共通 + その系列}, all}}（KB）, data}
+// 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {free, freeSets, paid, paidSets, paidPairs, paidAll}}（KB）, data, warnings}
+//   opts.manifest：言いたいことの表だけを、この manifest から作る（試験用）。opts.tiers：段と束の一覧（新規作成 ④）を差し替える
 export function generate(opts = {}) {
   const warnings = [];
-  const comps = components();
-  for (const c of comps) if (Object.keys(c.ext).length && c.fm.series !== 'common') throw new Error(`vendor/components/${c.fm.name.replace(/^m-/, '')}/README.md: <!-- llm: … --> extension blocks are only for common components (this one is in ${c.fm.series})`);
-  for (const s of SERIES) if (!comps.some((c) => c.fm.series === s)) throw new Error(`series ${s} has no component (frontmatter series: ${s})`);
-  // 言いたいこと：部品庫の manifest.json（あれば）か、決めた表（kit/core/purposes.mjs）
-  //   manifest.json が JSON として読めなければ、知らせて決めた表を使う（components:check が写しの壊れを見つける）。札に写らない id・形の合わない項目も知らせる
-  const allParts = comps.map((c) => ({ tag: c.fm.name, series: c.fm.series }));
-  let manifest = opts.manifest;
-  if (manifest === undefined) {
-    const mf = rel('vendor', 'components', 'manifest.json');
-    manifest = null;
-    if (fs.existsSync(mf)) { try { manifest = JSON.parse(read('vendor', 'components', 'manifest.json')); } catch (e) { warnings.push(`vendor/components/manifest.json is not JSON (${e.message}); the decided purposes table is used (run npm run components:check)`); } }
-  }
+  const cat = catalogue();
+  const SETS = setsOf(cat.manifest);
+  for (const s of SETS) if (!fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'))) throw new Error(`tools/llm-guide/sets/${s}.md is missing (the part set ${s} is in manifest-${cat.version}.json)`);
+  const all = components(cat, SETS);
+  const comps = all.filter((c) => c.set !== 'extra');
+  // 言いたいこと：既定のカタログの manifest（あれば）か、決めた表（kit/core/purposes.mjs）。札に写らない id・形の合わない項目は知らせる
+  const allParts = comps.map((c) => ({ tag: c.fm.name, set: c.set }));
+  const manifest = opts.manifest !== undefined ? opts.manifest : cat.manifest;
   const { warnings: pw, unmapped, ...P } = purposesFrom(manifest, { vendored: allParts.map((c) => c.tag) });
   warnings.push(...pw);
-  const lock = JSON.parse(read('components.lock.json'));
-  const src = `${lock.source}/blob/${lock.tag}/components/`;
-  // 表（{{PURPOSES}}）は組み立てのときに作る（入っている系列・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
-  // 道具（タイマーなど）：札を押したときだけ指示に入る共通の部品（manifest の group: "tool"）
-  const tools = toolsFrom(manifest, { vendored: allParts.map((c) => c.tag) });
-  for (const t of tools) if ((allParts.find((c) => c.tag === t.tag) || {}).series !== 'common') throw new Error(`${t.tag}: a tool must be in the common series`);
-  const data = { series: SERIES, purposes: P, tools, parts: allParts, partsSrc: src };
-  // 系列の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
-  const shownInWorked = new Set(SERIES.flatMap((x) => [...read('tools', 'llm-guide', 'series', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
+  const src = `${cat.source}/blob/${cat.tag}/components/`;
+  // 表（{{PURPOSES}}）は組み立てのときに作る（入っている束・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
+  const data = { sets: SETS, purposes: P, parts: allParts, extra: all.filter((c) => c.set === 'extra').map((c) => c.fm.name), partsSrc: src };
+  // 束の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
+  const shownInWorked = new Set(SETS.flatMap((x) => [...read('tools', 'llm-guide', 'sets', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
@@ -576,23 +614,25 @@ export function generate(opts = {}) {
     const j = full.search(REQ_HEAD);
     if (j < i) throw new Error(`tools/llm-guide/template${ja ? '.ja' : ''}.md: no "# ${ja ? '頼みたいこと' : 'What I want'}" heading after the instructions`);
     const D = {
-      common: full.slice(i, j).trim(), request: full.slice(j).trim(), series: {}, components: {}, tableHead: TABLE_HEAD[lang],
+      common: full.slice(i, j).trim(), request: full.slice(j).trim(), sets: {}, components: {}, tableHead: TABLE_HEAD[lang],
       supNote: ja ? '（* はこの指示が補った説明）' : '(* = description added by this guide)',
-      extHead: ja ? '### `<{name}>`：この系列の拡張（部品の説明は §3）' : '### `<{name}>`: extension for this series (the component is described in §3)',
+      // 無料のプランで一覧の 1 行だけの部品（kit/core/llm-pack-assemble.mjs の briefParts）
+      briefNote: ja ? '下に説明の節がない部品は、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。' : 'For a component without a section below, write the child JSON or attributes as its “data shape” column says and leave the other attributes at their defaults.',
+      extHead: ja ? '### `<{name}>`：この束の拡張（部品の説明は §3）' : '### `<{name}>`: extension for this part set (the component is described in §3)',
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
     const known = new Set(comps.map((c) => c.fm.name));
     for (const c of comps) {
       const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
-      D.components[c.fm.name] = { series: c.fm.series, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
+      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
-    for (const s of SERIES) {
-      const f = `tools/llm-guide/series/${s}${ja ? '.ja' : ''}.md`;
+    for (const s of SETS) {
+      const f = `tools/llm-guide/sets/${s}${ja ? '.ja' : ''}.md`;
       if (!fs.existsSync(rel(f))) throw new Error(`${f} is missing`);
       const text = fill(splitStamp(read(f)).body).trim();
       if (!text.includes('{{CATALOG}}')) throw new Error(`${f}: no {{CATALOG}}`);
-      D.series[s] = text;
+      D.sets[s] = text;
     }
     data[lang] = D;
   }
@@ -602,48 +642,44 @@ export function generate(opts = {}) {
   // 段と束（新規作成 ④ のパーツの一覧。handoff/parts-tiers-2026-10-27.md §1・§2）：パーツライブラリ 2.0 の既定のカタログの manifest
   // （components2.lock.json の default → vendor/components-2/manifest-<版>.json）の tier・set・purposes と、伝えたいことの名前。
   // 指示の文章ではないので、指示の版（data.version）には入れない
-  data.tiers = opts.tiers !== undefined ? opts.tiers : tiersFrom(allParts.map((c) => c.tag), warnings);
+  data.tiers = opts.tiers !== undefined ? opts.tiers : tiersFrom(cat);
 
   const files = {};
   files[DATA_FILE] = '// generated by tools/make-llm-guide.mjs from tools/llm-guide/, docs/contract*.md and vendor/components/*/README.md; do not edit by hand\n'
     + '// AI への指示の材料。組み立ては kit/core/llm-pack.mjs（buildPack）\n'
     + `export const PACK = ${JSON.stringify(data, null, 1)};\n`;
-  // 大きさ（KB）：無料版の共通の本体・共通＋1 つの分野・共通＋2 つの分野（どの組も）と、有料版（docs が見せる指示の全体）
+  // 大きさ（KB）：無料のプランの標準すべて・標準＋1 つの束と、有料のプランの標準すべて・標準＋2 つの束（どの組も）・すべての束（docs が見せる指示の全体）
   const sizes = {};
-  const TOOL_TAGS = (data.tools || []).map((t) => t.tag);
+  const PAIRS = pairsOf(SETS);
   for (const lang of ['en', 'ja']) {
-    // 有料版：ふつうの組（どの 2 つの分野＋すべての道具。越えたら止まる）と、すべての分野と道具を選んだとき（いちばん大きい。越えても知らせるだけ）
-    sizes[lang] = { common: KB(assemble(data, { series: [], lang })), series: Object.fromEntries(SERIES.map((s) => [s, KB(assemble(data, { series: [s], lang }))])), pairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, lang }))])),
-      // 無料版の道具：道具は分野と合わせて 2 つまでに数える。道具だけ（1 つの上限）、分野＋道具・道具 2 つ（2 つの組の上限）
-      freeTools: Object.fromEntries([...TOOL_TAGS.map((t) => [t, KB(assemble(data, { series: [], tools: [t], lang }))]),
-        ...TOOL_TAGS.flatMap((t) => SERIES.map((s) => [s + '+' + t, KB(assemble(data, { series: [s], tools: [t], lang }))])),
-        ...TOOL_TAGS.flatMap((a, i) => TOOL_TAGS.slice(i + 1).map((b) => [a + '+' + b, KB(assemble(data, { series: [], tools: [a, b], lang }))]))]),
-      paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), KB(assemble(data, { series: p, tools: 'all', lang, plan: 'paid' }))])), paid: KB(assemble(data, { series: 'all', tools: 'all', lang, plan: 'paid' })) };
+    const kb = (sets, plan) => KB(assemble(data, { sets, lang, plan }));
+    sizes[lang] = {
+      free: kb([], 'free'), freeSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'free')])),
+      paid: kb([], 'paid'), paidSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'paid')])),
+      paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), kb(p, 'paid')])), paidAll: kb('all', 'paid'),
+    };
   }
   const f1 = (x) => x.toFixed(1) + ' KB';
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
-    // docs は有料版の指示の全体（kit/llm-pack.mjs --plan paid と同じ）：共通の本体と頼みたいこと、系列ごとの部分。どの部品も説明がある
-    const paid = planData(data, 'paid'), ex = paidOnly(data, 'paid');
-    const list = SERIES.map((s) => {
-      const names = membersOf(paid[lang], s).map((n) => '`' + n + '`').join(ja ? '・' : ', ');
+    // docs は有料のプランの指示の全体（kit/llm-pack.mjs --sets all --plan paid と同じ）：共通の本体と頼みたいこと、束ごとの部分。どの部品も説明がある
+    const list = SETS.map((s) => {
+      const names = membersOf(data[lang], s).map((n) => '`' + n + '`').join(ja ? '・' : ', ');
       return ja ? `[${s}](llm-parts/${s}.ja.md)（${names}）` : `[${s}](llm-parts/${s}.md) (${names})`;
     }).join(ja ? '、' : '; ');
     const z = sizes[lang];
-    // 無料のプランは 1 つの分野ごとと、いちばん大きい 2 つの組（選べるのは 2 つまで。ほかの組はこれより小さい）
-    const [bigPair, bigKb] = largestPair(z.pairs), pairName = bigPair.split('+').join(ja ? '＋' : ' + ');
+    const core = FREE_CORE.map((t) => '`' + t + '`').join(ja ? '・' : ', ');
     const rows = ja
-      ? [['無料のプラン：共通の本体だけ', z.common, LIMITS.fail], ...SERIES.map((s) => [`無料のプラン：共通の本体＋${s}`, z.series[s], LIMITS.fail]), [`無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（${pairName}）`, bigKb, LIMITS.two], ['有料のプラン：すべての分野と道具を選んだとき（このファイルとすべての系列）', z.paid, LIMITS.paid]]
-      : [['Free plan: common body only', z.common, LIMITS.fail], ...SERIES.map((s) => [`Free plan: common body + ${s}`, z.series[s], LIMITS.fail]), [`Free plan: common body + the largest pair of subjects (${pairName})`, bigKb, LIMITS.two], ['Paid plan: every subject and tool chosen (this file and every series pack)', z.paid, LIMITS.paid]];
+      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], ['有料のプラン：すべての束（このファイルとすべての束の指示）', z.paidAll, LIMITS.paid]]
+      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], ['Paid plan: every part set (this file and every set pack)', z.paidAll, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
-    const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SERIES_LIST}}', list);
-    files[commonFile(lang)] = preamble + commonOf(paid, lang, ex, SERIES) + '\n\n' + requestOf(data, lang) + '\n';
-    for (const s of SERIES) {
-      files[partFile(s, lang)] = `<!-- generated by tools/make-llm-guide.mjs (series pack ${s}, full pack; paste it after ${path.basename(commonFile(lang))}); do not edit by hand -->\n` + partOf(paid, s, lang, ex, SERIES) + '\n';
+    const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SETS_LIST}}', list);
+    files[commonFile(lang)] = preamble + commonOf(data, lang, { sets: [], plan: 'paid' }) + '\n\n' + requestOf(data, lang) + '\n';
+    for (const s of SETS) {
+      files[partFile(s, lang)] = `<!-- generated by tools/make-llm-guide.mjs (part set ${s}, full pack; paste it after ${path.basename(commonFile(lang))}); do not edit by hand -->\n` + partOf(data, s, lang, { sets: SETS }) + '\n';
     }
   }
-  const assignments = Object.fromEntries(Object.values(manifest?.components || {}).map((c) => [c.tag, c]));
-  Object.assign(files, skillFiles(data, assignments, opts.skillLang));
+  Object.assign(files, skillFiles(data, opts.skillLang));
   files['skills/studio/SKILL.md'] = studioVersion(read('skills/studio/SKILL.md'), data.version);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
@@ -701,22 +737,17 @@ export function writeMakeSkillZip(out, files = generate().files) {
   return dest;
 }
 
-// 大きさの検査：[{lang, what, plan, series, kb, max, level: 'ok'|'warn'|'fail'}]（plan・series：どの指示か。上限を越えたときに組み直して中を見せる）
+// 大きさの検査：[{lang, what, plan, sets, kb, max, level: 'ok'|'warn'|'fail'}]（plan・sets：どの指示か。上限を越えたときに組み直して中を見せる）
+//   無料のプラン：標準すべて（束なし）は LIMITS.fail を越えれば失敗・LIMITS.warn を越えれば警告。標準＋1 つの束は LIMITS.free を越えれば知らせるだけ（over。
+//   新規作成のメーターが外す候補を出す）。有料のプラン：標準＋2 つの束のどの組も LIMITS.paid まで（失敗）、すべての束（いちばん大きいとき）は越えれば知らせるだけ
 export function sizeReport(sizes) {
   const out = [];
   for (const [lang, z] of Object.entries(sizes)) {
-    // 無料版：共通の本体、共通の本体＋1 つの分野（LIMITS.fail）、共通の本体＋2 つの分野のどの組も（LIMITS.two）。有料版：すべての部品（LIMITS.paid）
-    out.push({ lang, what: 'free common', plan: 'free', series: [], kb: z.common, max: LIMITS.fail, level: z.common > LIMITS.fail ? 'fail' : z.common > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [s, kb] of Object.entries(z.series)) out.push({ lang, what: 'free common+' + s, plan: 'free', series: [s], kb, max: LIMITS.fail, level: kb > LIMITS.fail ? 'fail' : kb > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [p, kb] of Object.entries(z.pairs)) out.push({ lang, what: 'free common+' + p, plan: 'free', series: p.split('+'), pair: true, kb, max: LIMITS.two, level: kb > LIMITS.two ? 'fail' : 'ok' });
-    // 無料版で道具も押したとき：1 つの分野なら LIMITS.fail、2 つなら LIMITS.two を越えたら知らせる（止めない。道具なしの組が上限の本体）
-    for (const [k, kb] of Object.entries(z.freeTools || {})) {
-      const ks = k.split('+'), ss = ks.filter((x) => !x.startsWith('m-')), ts = ks.filter((x) => x.startsWith('m-')), max = ks.length === 2 ? LIMITS.two : LIMITS.fail;
-      out.push({ lang, what: 'free common+' + k, plan: 'free', series: ss, tools: ts, withTools: true, toolPair: ks.length === 2, kb, max, level: kb > max ? 'fail' : 'ok' });
-    }
-    // 有料版：どの 2 つの分野＋すべての道具も LIMITS.paid まで（越えたら止まる）。すべての分野と道具（いちばん大きいとき）は越えたら知らせるだけ
-    for (const [p, kb] of Object.entries(z.paidPairs || {})) out.push({ lang, what: 'paid common+' + p + '+tools', plan: 'paid', series: p.split('+'), tools: 'all', paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
-    if (z.paid !== undefined) out.push({ lang, what: 'paid all subjects+tools', plan: 'paid', series: [...SERIES], tools: 'all', worst: true, kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'warn' : 'ok' });
+    out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, max: LIMITS.fail, level: z.free > LIMITS.fail ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
+    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
+    out.push({ lang, what: 'paid standard', plan: 'paid', sets: [], kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'fail' : 'ok' });
+    for (const [p, kb] of Object.entries(z.paidPairs)) out.push({ lang, what: 'paid standard+' + p, plan: 'paid', sets: p.split('+'), paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
+    out.push({ lang, what: 'paid every set', plan: 'paid', sets: 'all', worst: true, kb: z.paidAll, max: LIMITS.paid, level: z.paidAll > LIMITS.paid ? 'warn' : 'ok' });
   }
   return out;
 }
@@ -733,22 +764,23 @@ export function largestSections(text, n = 3) {
   secs.push(cur);
   return secs.sort((a, b) => b.bytes - a.bytes).slice(0, n);
 }
-// 上限を越えた指示の知らせ：どの指示か（版・言語・分野の組）、何バイト越えたか、大きい節 3 つ
+// 上限を越えた指示の知らせ：どの指示か（プラン・言語・束）、何バイト越えたか、大きい節 3 つ
 export function overMessage(r, data) {
-  const text = assemble(data, { series: r.series, tools: r.tools || [], lang: r.lang, plan: r.plan });
+  const text = assemble(data, { sets: r.sets, lang: r.lang, plan: r.plan });
   const bytes = Buffer.byteLength(text, 'utf8'), over = bytes - r.max * 1024;
   const top = largestSections(text).map((x) => `${x.head} (${x.bytes} B)`).join('; ');
-  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, subjects ${r.series.length ? r.series.join('+') : '(none)'}${r.tools === 'all' ? ', every tool' : Array.isArray(r.tools) && r.tools.length ? ', tools ' + r.tools.join('+') : ''}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
+  const sets = r.sets === 'all' ? 'every set' : r.sets.length ? r.sets.join('+') : '(none)';
+  return `pack over the cap: plan ${r.plan}, lang ${r.lang}, part sets ${sets}: ${bytes} B, ${over} B over ${r.max} KB (${r.max * 1024} B). Largest sections: ${top}`;
 }
 
 // 1 行目の i18n の印は残し、それより後ろを比べる・書く
 function current(file) { return fs.existsSync(rel(file)) ? fs.readFileSync(rel(file), 'utf8') : null; }
 const bodyOf = (text) => splitStamp(text).body;
-// 前の形の指示（全体版・core 版）と、今の系列にない部分のファイル：作り直すと消す（--check では古いもの）
-function leftovers(files) {
+// 前の形の指示（全体版・core 版）と、今の束にない部分のファイル（前の系列の docs/llm-parts/academic.md など）：作り直すと消す（--check では古いもの）
+function leftovers(files, sets) {
   const out = ['docs/authoring-with-llms.core.md', 'docs/authoring-with-llms.core.ja.md'].filter((f) => fs.existsSync(rel(f)));
   const dir = rel('docs', 'llm-parts');
-  if (fs.existsSync(dir)) for (const n of fs.readdirSync(dir)) { const s = n.replace(/(\.ja)?\.md$/, ''); if (!SERIES.includes(s) || !/\.md$/.test(n)) out.push('docs/llm-parts/' + n); }
+  if (fs.existsSync(dir)) for (const n of fs.readdirSync(dir)) { const s = n.replace(/(\.ja)?\.md$/, ''); if (!sets.includes(s) || !/\.md$/.test(n)) out.push('docs/llm-parts/' + n); }
   for (const dir of ['skills/make', 'skills/parts', 'skills/video']) if (fs.existsSync(rel(dir))) out.push(dir);
   const walk = (dir) => {
     if (!fs.existsSync(rel(dir))) return;
@@ -790,26 +822,23 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       console.log(`wrote ${file} (${KB(text).toFixed(1)} KB)`);
     } else console.log(`unchanged ${file}`);
   }
-  for (const f of leftovers(files)) {
+  for (const f of leftovers(files, data.sets)) {
     if (check) { stale++; console.error(`stale: ${f} should not exist (run: node tools/make-llm-guide.mjs)`); }
     else { fs.rmSync(rel(f), { recursive: true, force: true }); console.log(`removed ${f}`); }
   }
   let fail = 0;
-  // 2 つの組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
-  const shownPair = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(z.pairs)[0]]));
-  const shownTool = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'free common+' + largestPair(Object.fromEntries(Object.entries(z.freeTools || {}).filter(([k]) => k.includes('+'))))?.[0]]));
-  const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid common+' + largestPair(z.paidPairs)[0] + '+tools']));
+  // 有料のプランの 2 つの束の組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
+  const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid standard+' + largestPair(z.paidPairs)[0]]));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.pair ? ` (largest pair; cap ${r.max} KB)` : r.paidPair ? ` (largest pair with every tool; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.toolPair ? ` (largest subject + tool; cap ${r.max} KB)` : r.withTools ? ` (tool alone; cap ${r.max} KB)` : ''}`;
-    if (r.pair && r.level !== 'fail' && r.what !== shownPair[r.lang]) continue;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.freeSet ? ` (cap ${r.max} KB; over it, the new-lesson meter suggests parts to untick)` : ''}`;
     if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
-    if (r.toolPair && r.level !== 'fail' && r.what !== shownTool[r.lang]) continue;
     if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
     else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
     else if (r.level === 'warn') console.warn(`warning: ${line} — over the ${LIMITS.warn} KB target`);
+    else if (r.level === 'over') console.log(`${line} — over ${r.max} KB`);
     else console.log(line);
   }
   if (check && (stale || fail)) process.exit(1);
   if (!check && fail) process.exit(1);
-  if (!check) console.log('after comparing the English and Japanese files: npm run i18n -- --stamp docs/authoring-with-llms.ja.md ' + SERIES.map((s) => partFile(s, 'ja')).join(' '));
+  if (!check) console.log('after comparing the English and Japanese files: npm run i18n -- --stamp docs/authoring-with-llms.ja.md ' + data.sets.map((s) => partFile(s, 'ja')).join(' '));
 }

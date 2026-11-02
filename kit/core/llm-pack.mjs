@@ -1,98 +1,84 @@
 // チャットの AI への指示（AI instruction pack）を組み立てる。Node にもブラウザにも依存しない（純粋な ESM）
-// 指示は「共通の本体」（規格 R-…・大きさ・出力の形・どの教材でも使う部品）と、系列ごとの部品の指示（academic・business・kokugo・english・info・social・music）からなる。
-// 材料（kit/core/llm-pack-data.mjs）は tools/make-llm-guide.mjs が tools/llm-guide/・docs/contract・vendor/components/*/README.md から作る（手で直さない）。
+// 指示は「共通の本体」（規格 R-…・大きさ・出力の形・標準の部品）と、束ごとの専門の部品の指示（stats・math・maps・kokugo・english・music・business・tools …。
+// パーツライブラリ 2.0 の manifest の set）からなる。特殊（extra）の部品は入れない（handoff/parts-tiers-2026-10-27.md §1、backlog #125）。
+// 材料（kit/core/llm-pack-data.mjs）は tools/make-llm-guide.mjs が tools/llm-guide/・docs/contract・部品の README から作る（手で直さない）。
 // 同じ関数を、編集アプリの「AI への指示をコピー」（app/llm.js）・コマンド（kit/llm-pack.mjs）・docs の書き出し（tools/make-llm-guide.mjs）・
 // 修正依頼（kit/core/llm-fix.mjs）が使う
 //
-//   buildPack({series, tools, lang, plan}) → 文字列   series：系列の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'。
-//                                                tools：道具（'m-timer' か 'timer' の配列・'all'。選ばない道具は入らない）。plan：'free'（既定）| 'paid'
-//   TOOLS                                       道具 [{tag, tile: {label, examples, icon}}]（新規作成の「道具」の札。manifest の group: "tool"）
-//   SERIES                                      系列の名前（決まった順）
+//   buildPack({sets, lang, plan, exclude, off}) → 文字列   sets：束の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'。
+//                                                plan：'free'（既定。中核の 4 つのほかの標準の部品は一覧の 1 行だけ）| 'paid'（どの部品も詳しく）
+//   SETS                                        束の名前（決まった順）
 //   PACK_VERSION                                指示の版（材料の SHA-256 の先頭 8 字。指示のはじめの行に出る）
-//   commonBody(lang, exclude?)・seriesPart(name, lang, exclude?)  共通の本体・1 つの系列の部分（docs/authoring-with-llms*.md・docs/llm-parts/*.md と同じ中身。
-//                                                exclude：使わせない部品を一覧と説明から除く）
+//   commonBody(lang, opts?)・setPart(name, lang, opts?)  共通の本体・1 つの束の部分（docs/authoring-with-llms*.md・docs/llm-parts/*.md と同じ中身は plan: 'paid'。
+//                                                opts：{exclude, sets, off, plan}）
 //   PURPOSES                                     言いたいこと（新規作成の札と指示の表の材料。kit/core/purposes.mjs）
 //   requestBody(lang)                            最後に付く「頼みたいこと」（記入欄の付いた頼み方。docs/authoring-with-llms*.md の最後と同じ）
-//   seriesOf(tag)                                部品（'m-kpi'）の居場所：'common' か系列の名前（部品庫にない部品は null）
-//   componentsIn(html)                           デッキで使っている部品庫の部品（名前の並び）
-//   seriesForDeck(html)                          デッキの部品・テーマから推した系列（編集アプリの既定の選び方）
-//   componentNotes(names, lang)                  部品の説明（共通の本体・系列にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
+//   setOf(tag)                                   部品（'m-kpi'）の居場所：'standard' か束の名前（指示にない部品・特殊の部品は null）
+//   componentsIn(html)                           デッキで使っている、指示にある部品（名前の並び）
+//   setsForDeck(html)                            デッキの部品・テーマから推した束（スライドの挿入の既定の選び方）
+//   componentNotes(names, lang)                  部品の説明（共通の本体・束にあるものと同じ文章。拡張の節も付ける）。修正依頼が使う
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
-//   PLANS・FREE_CORE・FREE_HOME・FREE_OUT・PAID_ONLY  お使いの AI の版ごとに読み込む部品（無料版は FREE_CORE と系列から。FREE_OUT の系列の部品と PAID_ONLY は有料版だけ）
-//   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（お使いの AI の無料版・有料版ごと。kit/core/llm-pack-assemble.mjs）
-//   assemble(data, {series, lang})               buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
+//   PLANS・FREE_CORE・BRIEF                      お使いの AI のプラン・無料のプランでも詳しく書く中核の 4 つ・無料のプランで一覧の 1 行だけの標準の部品
+//   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（{free, paid}。kit/core/llm-pack-assemble.mjs）
+//   assemble(data, {sets, lang, plan})           buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
-//   partsPackOpts(tags)                          選んだパーツだけの指示の組み立ての引数 {series, tools, exclude, plan: 'paid'}（buildPack・packWithRequest に渡す。
-//                                                選んだパーツのある系列と、選んだ道具を入れ、選ばないパーツは除く。どちらのプランでも同じ中身）
+//   loadedParts(sets)                            その束で組み立てに入る部品（標準と、選んだ束の部品）
+//   partsPackOpts(tags, plan)                    選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan}（buildPack・packWithRequest に渡す。
+//                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSeries as norm, normalizeTools as normTools, toolTags, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT, freeSeriesOf, paidOnly, planData } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD, briefParts, planName } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, FREE_HOME, FREE_OUT };
-export const PAID_ONLY = paidOnly(PACK, 'free');   // 有料版だけの部品（道具は入らない：押せばどちらの版でも入る）
-// その版・系列・道具で組み立てに入る部品（有料版はすべての共通の部品と選んだ系列の部品。無料版は FREE_CORE と、選んだ系列の部品・FREE_HOME の部品。
-// 道具は選んだものだけ、どちらの版でも）
-export function loadedParts(series = [], plan = 'free', tools = []) {
-  const all = Object.keys(PACK.en.components).sort();
-  const ss = norm(series, PACK), on = normTools(tools, PACK), tt = toolTags(PACK);
-  return all.filter((t) => {
-    if (tt.includes(t)) return on.includes(t);
-    const raw = PACK.en.components[t].series;
-    const s = plan === 'paid' ? raw : freeSeriesOf(t, raw);
-    return s === 'common' || ss.includes(s);
-  });
-}
-export const normalizeSeries = (series) => norm(series, PACK);
-export const normalizeTools = (tools) => normTools(tools, PACK);
-export const TOOLS = PACK.tools || [];
-
-export const SERIES = PACK.series;
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD };
+export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
+export const SETS = PACK.sets;
 export const TIERS = PACK.tiers;
-export function partsPackOpts(tags) {
-  const want = new Set(tags || []), all = Object.keys(PACK.en.components), tt = toolTags(PACK);
+export const normalizeSets = (sets) => norm(sets, PACK);
+// その束で組み立てに入る部品（標準と、選んだ束の部品。どちらのプランでも同じ。無料のプランの BRIEF も一覧に入る）
+export function loadedParts(sets = []) {
+  const ss = norm(sets, PACK);
+  return Object.keys(PACK.en.components).sort().filter((t) => { const s = PACK.en.components[t].set; return s === STANDARD || ss.includes(s); });
+}
+export function partsPackOpts(tags, plan = 'free') {
+  const want = new Set(tags || []), all = Object.keys(PACK.en.components);
   const on = all.filter((t) => want.has(t));
   return {
-    series: PACK.series.filter((s) => on.some((t) => PACK.en.components[t].series === s)),
-    tools: tt.filter((t) => want.has(t)),
+    sets: PACK.sets.filter((s) => on.some((t) => PACK.en.components[t].set === s)),
     exclude: all.filter((t) => !want.has(t)).sort(),
-    plan: 'paid',
+    plan: planName(plan),
   };
 }
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 
 export const buildPack = (opts) => assemble(PACK, opts);
-// series：入っている系列（表が指す部品。省くと [] = 共通の本体だけ）。off：外した札
-// plan：'free'（既定）| 'paid'。無料版は有料版だけの部品を除き、FREE_HOME の部品をその系列に置く
-// tools：選んだ道具（既定はなし。選ばない道具は除く）
-const exOf = (exclude, plan, tools = []) => { const on = normTools(tools, PACK); return [...new Set([...exclude, ...paidOnly(PACK, plan), ...toolTags(PACK).filter((t) => !on.includes(t))])]; };
-export const commonBody = (lang = 'en', exclude = [], series = [], off = [], plan = 'free', tools = []) => commonOf(planData(PACK, plan), lang, exOf(exclude, plan, tools), series, off) + '\n';
-export const seriesPart = (name, lang = 'en', exclude = [], plan = 'free', tools = []) => partOf(planData(PACK, plan), name, lang, exOf(exclude, plan, tools)) + '\n';
+// sets：入っている束（表が指す部品。省くと [] = 標準だけ）。off：外した札。plan：'free'（既定）| 'paid'
+export const commonBody = (lang = 'en', { exclude = [], sets = [], off = [], plan = 'free' } = {}) => commonOf(PACK, lang, { exclude, sets, off, plan }) + '\n';
+export const setPart = (name, lang = 'en', { exclude = [] } = {}) => partOf(PACK, name, lang, { exclude }) + '\n';
 export const PURPOSES = PACK.purposes;   // 言いたいこと（kit/core/purposes.mjs の形。source が 'manifest' か 'fallback'）
 export const requestBody = (lang = 'en') => requestOf(PACK, lang) + '\n';
 
-export function seriesOf(tag) {
+export function setOf(tag) {
   const c = PACK.en.components[String(tag).toLowerCase()];
-  return c ? c.series : null;
+  return c ? c.set : null;
 }
-// 系列の部品（plan の版から見た居場所。既定は無料版：m-kpi はビジネス、有料版だけの部品はどこにもない）
-// 道具は系列の部品に数えない（押したときだけ入る）
-export function membersOfSeries(name, plan = 'free') { const tt = toolTags(PACK); return membersOf(planData(PACK, plan).en, name).filter((t) => !tt.includes(t)); }
+// 束の部品（'standard' なら標準の部品）
+export const membersOfSet = (name) => membersOf(PACK.en, name);
 
-// 部品庫の部品のうち、デッキに出てくるもの（コメントの中も数える。軽い見積もりでよい）
+// 指示にある部品のうち、デッキに出てくるもの（コメントの中も数える。軽い見積もりでよい）
 export function componentsIn(html) {
   const found = new Set();
   for (const m of String(html || '').matchAll(/<(m-[a-z0-9-]+)[\s>/]/gi)) { const t = m[1].toLowerCase(); if (PACK.en.components[t]) found.add(t); }
   return [...found].sort();
 }
-export function seriesForDeck(html) {
-  // 無料版から見た居場所（部品庫が共通にした m-kpi などは v1.1.0 の系列）
-  const s = new Set(componentsIn(html).map((t) => freeSeriesOf(t, seriesOf(t))).filter((x) => x && x !== 'common'));
+// デッキの専門の部品の束と、テーマ・縦書きから推した束（business・sumi のテーマはビジネス、kokugo のテーマか縦書きは国語）
+export function setsForDeck(html) {
+  const s = new Set(componentsIn(html).map((t) => setOf(t)).filter((x) => x && x !== STANDARD));
   const h = String(html || '');
   const theme = (h.match(/<html[^>]*\sdata-theme\s*=\s*["']?([\w-]+)/i) || [])[1];
   if (theme === 'business' || theme === 'sumi') s.add('business');
   if (theme === 'kokugo' || /class\s*=\s*["'][^"']*\blayout-tate\b/i.test(h)) s.add('kokugo');
-  return PACK.series.filter((x) => s.has(x));
+  return PACK.sets.filter((x) => s.has(x));
 }
 
 // 部品の説明（buildPack に入るものと同じ文章）。拡張の節（m-flow のお金の流れなど）も付ける

@@ -224,7 +224,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#paste-change-send');
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
-    ok(c3 === c2, 'new plan: the paid plan copies the same parts (the plan changes only the suggested limit)');
+    // 有料のプランは同じパーツを、どれも詳しく（無料のプランは中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
+    const rowsIn = (t) => [...t.matchAll(/^\| `<(m-[a-z]+(?:-[a-z]+)*)>` \|/gm)].map((m) => m[1]).sort().join();
+    ok(rowsIn(c3) === rowsIn(c2) && !c2.includes('### `<m-timeline>`') && c3.includes('### `<m-timeline>`') && c3.length > c2.length,
+      'new plan: the paid plan copies the same parts, each described in full (the free plan gives the standard parts other than the core four one catalogue line)');
     // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
     await pk.click('#paste-change-send');
     await pk.uncheck('#paste-part-timeline');

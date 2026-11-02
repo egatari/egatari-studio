@@ -103,7 +103,7 @@ got.buildFixRequest = {
 };
 
 // buildPack
-got.buildPack = { params: params(buildPack), assembleParams: params(assemble), returns: shape(buildPack({ series: ['academic'], lang: 'en' }), 'buildPack') };
+got.buildPack = { params: params(buildPack), assembleParams: params(assemble), returns: shape(buildPack({ sets: ['stats'], lang: 'en' }), 'buildPack') };
 
 // llm-import
 const reply = (d, n) => `Here you go.\n\n\`\`\`deck.html\n${d}\`\`\`\n\n\`\`\`narration.md\n${n}\`\`\`\n`;

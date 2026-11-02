@@ -21,10 +21,10 @@
 //          variants: {タグ: [名前 …]}, unmapped: [札のない manifest の id …], warnings: [文 …]}
 //       vendored：組み立てに入る部品のタグ（Set か配列）。あれば、それ以外の部品は components に入れない（写していない部品の名前を AI に出さない）
 //   componentsOff(off, P)               外した言いたいこと（札の id）だけに使う部品。並びは名前の順
-//   purposesTable(P, parts, lang, src, {exclude, series, off})
-//       指示の本体の表（Markdown）。parts：組み立てに入る部品 [{tag, series}]。series：入っている系列（null ならすべて）。
-//       外した札の行は出さない。exclude の部品と、入っていない系列の部品は出さない（説明のない部品を指さない）。
-//       行に部品がなければ「近い部品か HTML・インラインの SVG」。入っていない系列は、何に使えるかだけを最後の 1 行に（部品の名前は出さない）
+//   purposesTable(P, parts, lang, src, {exclude, sets, off})
+//       指示の本体の表（Markdown）。parts：材料の部品 [{tag, set}]（set は 'standard' か束の名前）。sets：入っている束（null ならすべて）。
+//       外した札の行は出さない。exclude の部品と、入っていない束の部品は出さない（説明のない部品を指さない）。
+//       行に部品がなければ「近い部品か HTML・インラインの SVG」。入っていない束は、何に使えるかだけを最後の 1 行に（束と部品の名前は出さない）
 
 const T = (ja, en) => ({ ja, en });
 export const TILES = [
@@ -136,24 +136,6 @@ export function purposesFrom(manifest, { vendored = null } = {}) {
   return { source: any ? 'manifest' : 'fallback', tiles: fromManifest ? 'manifest' : 'table', list, components, variants, unmapped, warnings };
 }
 
-// 道具（manifest の components.<名前>.group === "tool"。部品庫 v1.8.0 から）：AI に頼んだときだけ使う部品（タイマーなど）。
-// 新規作成の「道具」の札と、指示に入れるかどうか（札を押したときだけ入る）。札の名前・小さな字・絵は components.<名前>.tile {label, examples, icon}
-//   toolsFrom(manifest | null, {vendored?}) → [{tag, tile: {label: {ja, en}, examples: {ja, en}, icon}}]（manifest の部品の順。形の合わないものは落とす）
-export function toolsFrom(manifest, { vendored = null } = {}) {
-  const keep = vendored ? new Set(vendored) : null;
-  if (!isObj(manifest) || !isObj(manifest.components)) return [];
-  const out = [];
-  for (const [dir, c] of Object.entries(manifest.components)) {
-    if (!isObj(c) || c.group !== 'tool' || !isObj(c.tile)) continue;
-    const tag = typeof c.tag === 'string' ? c.tag : 'm-' + dir;
-    if (keep && !keep.has(tag)) continue;
-    const label = str2(c.tile.label), examples = str2(c.tile.examples);
-    if (!label || !examples) continue;
-    out.push({ tag, tile: { label, examples, icon: typeof c.tile.icon === 'string' && ID.test(c.tile.icon) ? c.tile.icon : 'other' } });
-  }
-  return out;
-}
-
 export function componentsOff(off, P) {
   const offSet = new Set(off || []);
   if (!offSet.size) return [];
@@ -162,18 +144,17 @@ export function componentsOff(off, P) {
 }
 
 const cell = (s) => String(s).replace(/\|/g, '\\|');
-// hidden：入っているが、この版（無料版）では読み込まない部品。名前は出さず、行は「この文にはない」にする
-export function purposesTable(P, parts, lang, src, { exclude = [], series = null, off = [], hidden = [] } = {}) {
+// parts：材料の部品 [{tag, set}]（set は 'standard' か束の名前）。sets：入っている束（null ならすべて）
+export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, off = [] } = {}) {
   const L = lang === 'ja' ? 'ja' : 'en';
   const ex = new Set(exclude), offs = new Set(off);
-  const inPack = (c) => c.series === 'common' || !series || series.includes(c.series);
+  const inPack = (c) => c.set === 'standard' || !sets || sets.includes(c.set);
   const usable = parts.filter((c) => !ex.has(c.tag));
-  const here = new Map(usable.filter(inPack).map((c) => [c.tag, c.series]));
+  const here = new Set(usable.filter(inPack).map((c) => c.tag));
   const elsewhere = usable.filter((c) => !inPack(c));
   const part = (id, t) => {
     const note = NOTES[`${id}:${t}`];
-    const extra = [note && note[L], here.get(t) !== 'common' ? here.get(t) : null].filter(Boolean);
-    return '`' + t + '`' + (extra.length ? (L === 'ja' ? `（${extra.join('・')}）` : ` (${extra.join(', ')})`) : '');
+    return '`' + t + '`' + (note ? (L === 'ja' ? `（${note[L]}）` : ` (${note[L]})`) : '');
   };
   const none = L === 'ja' ? 'まだない：近いパーツか、HTML・インラインの SVG' : 'none yet: the nearest part, or HTML or inline SVG';
   const notHere = L === 'ja' ? 'この文にはない：近いパーツか、HTML・インラインの SVG' : 'not in this text: the nearest part, or HTML or inline SVG';
@@ -183,24 +164,20 @@ export function purposesTable(P, parts, lang, src, { exclude = [], series = null
   const rows = [];
   for (const p of P.list) {
     if (offs.has(p.id)) continue;
-    const ts = [...here.keys()].filter((t) => serves(t, p.id)).sort(order(p.id));
+    const ts = [...here].filter((t) => serves(t, p.id)).sort(order(p.id));
     ts.forEach((t) => used.add(t));
-    const cellText = ts.length ? ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ') : elsewhere.some((c) => serves(c.tag, p.id)) || hidden.some((t) => serves(t, p.id)) ? notHere : none;
+    const cellText = ts.length ? ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ') : elsewhere.some((c) => serves(c.tag, p.id)) ? notHere : none;
     rows.push(`| ${cell(p.name[L])} | ${cellText} | ${cell(p.steps[L])} |`);
   }
-  const rest = [...here.keys()].filter((t) => !used.has(t)).sort();
+  const rest = [...here].filter((t) => !used.has(t)).sort();
   if (rest.length) rows.push(`| ${L === 'ja' ? 'その他のパーツ' : 'other parts'} | ${rest.map((t) => part('', t)).join(L === 'ja' ? '、' : ', ')} | ${L === 'ja' ? 'その説明のとおり' : 'as described'} |`);
-  const head = L === 'ja' ? '| 言いたいこと | パーツ（系列のものは系列の名前） | ステップ |\n|---|---|---|' : '| purpose | parts (pack, if not core) | steps |\n|---|---|---|';
-  // 入っていない系列：何に使えるかだけ（部品の名前は出さない。説明のない部品の属性を AI に推させない）
-  const packs = uniq(elsewhere.map((c) => c.series)).sort().map((s) => {
-    const what = uniq(elsewhere.filter((c) => c.series === s).flatMap((c) => (P.components[c.tag] || []).filter((id) => !offs.has(id))))
-      .map((id) => P.list.find((p) => p.id === id)).filter(Boolean).map((p) => p.name[L]);
-    if (!what.length) what.push(L === 'ja' ? '教科のパーツ' : 'subject parts');
-    return L === 'ja' ? `${s}（${what.join('・')}）` : `${s} (${what.join(', ')})`;
-  });
-  const other = packs.length ? '\n\n' + (L === 'ja'
-    ? `入っていない系列にもパーツがある：${packs.join('、')}。使わない。合いそうなら、どの系列が要るかを 1 行のメモで伝える`
-    : `Packs not included here have parts for: ${packs.join('; ')}. Do not use them; if one would fit, name the pack in a one-line note.`) : '';
+  const head = L === 'ja' ? '| 言いたいこと | パーツ | ステップ |\n|---|---|---|' : '| purpose | parts | steps |\n|---|---|---|';
+  // 入っていない束：何に使えるかだけ（束の名前も部品の名前も出さない。説明のない部品の属性を AI に推させない。束の名前は画面に出ない）
+  const what = uniq(elsewhere.flatMap((c) => (P.components[c.tag] || []).filter((id) => !offs.has(id))))
+    .map((id) => P.list.find((p) => p.id === id)).filter(Boolean).map((p) => p.name[L]);
+  const other = elsewhere.length ? '\n\n' + (L === 'ja'
+    ? `この指示に入っていないパーツもある${what.length ? `（${what.join('・')}など）` : ''}。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）`
+    : `Some parts are not included in these instructions${what.length ? ` (for ${what.join(', ')}, and more)` : ''}. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).`) : '';
   const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（版を固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
   return head + '\n' + rows.join('\n') + other + url;
 }

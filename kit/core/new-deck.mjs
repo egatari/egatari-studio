@@ -5,10 +5,11 @@
 // 最後の「教科の形」に（授業（小・中・高）では一番上に）。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest の tier・set
 // （kit/core/llm-pack.mjs の TIERS。tools/make-llm-guide.mjs が写す）。特殊（extra）のパーツは一覧に出さない。
 // 初めの選び方：標準のパーツは全部、専門のパーツは、場面の小分類の表（SUB_SETS）か ② の言葉の表（WORDS）に当たった束だけ（理由を添える）。
-// プランが変えるのは指示の大きさの上限だけ（capKb。選べる数は限らない。越えたら外す候補を出す：trimCandidates）。
+// プランが変えるのは指示の大きさの上限（capKb）と詳しさ（無料のプランは中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。kit/core/llm-pack.mjs の partsPackOpts）。
+// 選べる数は限らない。越えたら外す候補を出す：trimCandidates。
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
-//   SUBJECTS                           [{id, series, label: {en, ja}, inside: {en, ja}}]（スライドの挿入の「指示の全体も付ける」の分野の名前。新規作成では使わない）
+//   SET_LABELS                         [{set, label: {en, ja}, inside: {en, ja}}]（スライドの挿入の「指示の全体も付ける」の束の名前。新規作成では使わない）
 //   SUBJECT_SETS                       教科の形の束（この順に並べる）
 //   SUB_SETS                           小分類 → おすすめの束（§2.3）
 //   WORDS                              {ja|en: {束: [言葉]}}（§2.4。英語の画面では英語の表）
@@ -18,7 +19,7 @@
 //   partsOfSet(set)                    → 束のパーツ（一覧に出るものだけ）
 //   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料のプラン。既定）| 'paid'（有料のプラン）
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
-//   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB：無料 free.one、有料 paid）
+//   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB：無料 free、有料 paid）
 //   trimCandidates(ticked, {sizeOf, capBytes, keep})  上限を越えたときの外す候補（keep を除き、大きい順に、越えた分に届くまで）
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方と、choice.purposesOff があれば外した伝えたいこと。P は PURPOSES）。何もなければ ''。
 //                                      外した伝えたいことの行が名前を出す部品は choice.parts（指示に入るパーツ）にあるものだけ
@@ -87,15 +88,18 @@ export const CATEGORIES = [
   { id: 'other', label: { ja: 'その他', en: 'Other' }, subs: [] },
 ];
 
-// スライドの挿入の「指示の全体も付ける」で出す分野の名前（label は分野、inside は中の図）。新規作成の ④ は分野でなくパーツの一覧（partsList）
-export const SUBJECTS = [
-  { id: 'math', series: 'academic', label: { ja: '数理・統計', en: 'Math and statistics' }, inside: { ja: '数式・関数・グラフ', en: 'Formulas, functions, graphs' } },
-  { id: 'business', series: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: 'KPI・位置づけ・市場・お金の流れ', en: 'KPIs, positioning, markets, money flows' } },
-  { id: 'kokugo', series: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
-  { id: 'english', series: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' } },
-  { id: 'info', series: 'info', label: { ja: '情報', en: 'Information science' }, inside: { ja: '符号の木', en: 'Code trees' } },
-  { id: 'social', series: 'social', label: { ja: '地図（社会：地理・歴史）', en: 'Maps (social studies: geography, history)' }, inside: { ja: '日本地図', en: 'Map of Japan' } },
-  { id: 'music', series: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤（音階・和音）', en: 'Keyboard (scales, chords)' } },
+// スライドの挿入の「指示の全体も付ける」で出す束の名前（label は教科・用途、inside は中の図）。新規作成の ④ は束でなくパーツの一覧（partsList）。
+// 束そのものは manifest の set から読む（ここにない束は、名前のまま出す）
+export const SET_LABELS = [
+  { set: 'stats', label: { ja: '統計の図', en: 'Statistics charts' }, inside: { ja: 'ヒストグラム・箱ひげ図・ヒートマップ', en: 'Histograms, box plots, heatmaps' } },
+  { set: 'math', label: { ja: '算数・数学', en: 'Arithmetic and mathematics' }, inside: { ja: '筆算・数直線・テープ図・関数', en: 'Column arithmetic, number lines, tape diagrams, functions' } },
+  { set: 'maps', label: { ja: '地図', en: 'Maps' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' } },
+  { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・書き順・縦書き', en: 'Kanbun, kobun, modern texts, stroke order, vertical writing' } },
+  { set: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' } },
+  { set: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤・楽譜（音階・和音）', en: 'Keyboard and score (scales, chords)' } },
+  { set: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: '市場規模の円・お金の流れ', en: 'Market size circles, money flows' } },
+  { set: 'tools', label: { ja: '道具', en: 'Classroom tools' }, inside: { ja: 'タイマー', en: 'Timer' } },
+  { set: 'science', label: { ja: '理科', en: 'Science' }, inside: { ja: '月の満ち欠け', en: 'Phases of the Moon' } },
 ];
 
 // ---------------------------------------------------------------- ④ パーツの一覧（handoff/parts-tiers-2026-10-27.md §2）
@@ -184,11 +188,11 @@ export function initialParts(rec = []) {
   return LISTED().filter((t) => PARTS[t].tier === 'standard' || sets.has(PARTS[t].set));
 }
 
-// お使いの AI（無料のプラン・有料のプラン）。変えるのは指示の大きさの上限だけ
+// お使いの AI（無料のプラン・有料のプラン）。変えるのは指示の大きさの上限と詳しさ
 export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
-export const capKb = (plan) => (plan === 'paid' ? PACK_CAP_KB.paid : PACK_CAP_KB.free.one);
+export const capKb = (plan) => (plan === 'paid' ? PACK_CAP_KB.paid : PACK_CAP_KB.free);
 // 外す候補：sizeOf(tags) は選んだパーツで組んだ指示のバイト数。keep（理由のあるおすすめ・自分で付けたもの）は候補にしない。
 // 1 つずつ外したときに減る大きさの大きい順に、越えた分に届くまで（届かなければ候補の全部）
 export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {

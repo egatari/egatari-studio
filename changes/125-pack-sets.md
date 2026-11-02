@@ -1,0 +1,6 @@
+### Changed
+- The AI instruction pack is built from part sets and tiers (#125): the standard parts are always in it, the specialized parts of a set only when that set is ticked (stats, math, maps, kokugo, english, music, business, tools, science), and extra parts (code tree, grouping answers) never; the make skill plans from standard and specialized parts and reads an extra part's README only when the material needs it. Tiers, sets and part descriptions come from the default parts library catalogue (2.1.0), so Cards (m-cards), Score (m-score) and Moon phases (m-orbit) are described too.
+- On the free plan, the standard parts other than the core four (bar chart, flow diagram, contents, predict and check) get only their one-line catalogue entry, so New… with every standard part ticked now starts within the 40 KB limit (about 35 KB instead of 65 KB). The plan changes the limit and how much the pack says.
+
+### Changed (API)
+- `buildPack`, `assemble` and `packWithRequest` take `sets` (part set names, `'all'` or `'a,b'`) instead of `series` and `tools`; `PACK_CAP_KB` is `{free, paid}`; `seriesPart`, `seriesOf` and `seriesForDeck` are now `setPart`, `setOf` and `setsForDeck`. `node kit/llm-pack.mjs --sets` replaces `--series` and `--tools`, which are still read for one version (a series as its sets, any tool as the tools set).

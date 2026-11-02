@@ -169,6 +169,10 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
       && /^指示の大きさ：[\d.]+ KB（目安は 40 KB まで）$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
+    // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
+    const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
+    ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
+      `S1 ④: with every standard part ticked, the free plan's meter starts within the 40 KB limit (${bytes1} B), not striped`);
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -327,7 +331,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await ticks(p3)) === sorted([...STD, 'm-market']) && /^Instructions: [\d.]+ KB \(suggested limit 120 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
       'S3 ④: the paid plan keeps the ticks and changes only the suggested limit (120 KB, not over): ' + await text(p3, '#paste-pack-size'));
     const c3 = await copy(p3);
-    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Series pack: business') && c3.includes('### `<m-market>`') && !c3.includes('## Series pack: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
+    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Part set: business') && c3.includes('### `<m-market>`') && !c3.includes('## Part set: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
       'S3 ④: the pack is every ticked part (the standard ones, m-timeline too, and m-market; no kokugo) and the outline request; the message says to go to step 5 when the outline is out');
     ok((await answer(p3, 'send')) === `Instructions: Chat AI: paid plan · ${STD.length + 1} parts · copied`, 'S3 ④: the answered line names the plan and the number of parts: ' + await answer(p3, 'send'));
     ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
@@ -482,7 +486,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S8 ④: over the free plan’s 40 KB the meter is striped, says by how much and lists candidates (not the suggested parts), with 「候補を外す」: ' + over8);
     await p8.click('#paste-trim');
     const bytes8 = +(await p8.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(bytes8 <= PACK_CAP_KB.free.one * 1024 && await p8.isHidden('#paste-over') && (await ticks(p8)).includes('m-hissan') && await p8.evaluate(() => document.activeElement && document.activeElement.id === 'paste-pack-size'),
+    ok(bytes8 <= PACK_CAP_KB.free * 1024 && await p8.isHidden('#paste-over') && (await ticks(p8)).includes('m-hissan') && await p8.evaluate(() => document.activeElement && document.activeElement.id === 'paste-pack-size'),
       `S8 ④: 「候補を外す」 unticks the candidates; the instructions fit (${bytes8} B), the suggested parts stay, and the focus moves to the size`);
     const after8 = await ticks(p8);
     // 推し直しても、外した印は戻らない
@@ -499,7 +503,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(!(await p8.isChecked('#paste-part-tape')), 'S8 ④: Space on a focused part unticks it');
     const c8 = await copy(p8);
     const want8 = (await ticks(p8)).split(',');
-    ok(c8 === packWithRequest({ ...partsPackOpts(want8), lang: 'ja', request: tailOf(c8, 'ja') }) && !/m-tape(?![a-z-])/.test(c8) && c8.includes('### `<m-hissan>`'), 'S8 ④: the copied instructions describe exactly the ticked parts');
+    ok(c8 === packWithRequest({ ...partsPackOpts(want8, 'paid'), lang: 'ja', request: tailOf(c8, 'ja') }) && !/m-tape(?![a-z-])/.test(c8) && c8.includes('### `<m-hissan>`'), 'S8 ④: the copied instructions describe exactly the ticked parts');
     await shot(p8, 'flow-s8-parts.png', 'paste-step-send');
 
     // ================================================================ S9 前に分野を選んだ教材（egatari.json の studio.newDeck）を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から。記録は書き換えない

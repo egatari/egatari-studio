@@ -23,13 +23,12 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, seriesPart, requestBody, SERIES, seriesOf, seriesForDeck, componentsIn, packSize, packKb, PAID_ONLY, TOOLS } from '../kit/core/llm-pack.mjs';
-import { freeSeriesOf, partOf, planData } from '../kit/core/llm-pack-assemble.mjs';
+import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { partOf } from '../kit/core/llm-pack-assemble.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { replyOf } from './test-app-llm.mjs';
-import { vendorComponents } from './vendor-components.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-'));
@@ -41,115 +40,120 @@ const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\
 const worked = (name, f) => read('tools', 'llm-guide', 'worked', name, f);
 const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8' });
 const GUIDE_EN = read('docs', 'authoring-with-llms.md'), GUIDE_JA = read('docs', 'authoring-with-llms.ja.md');
-const ALL_EN = buildPack({ series: 'all', lang: 'en' }), ALL_JA = buildPack({ series: 'all', lang: 'ja' });
+const ALL_EN = buildPack({ sets: 'all', lang: 'en' }), ALL_JA = buildPack({ sets: 'all', lang: 'ja' });
 
 // ---------------------------------------------------------------- 1. 指示
 ok('make-llm-guide --check：指示は材料から作り直したものと同じ', () => {
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-// 上限は PACK_CAP_KB（無料版は 1 つの分野 40 KB・2 つの組 50 KB、有料版 120 KB）。系列で組む無料版の指示は 2 つの組までを見るので、
-// 無料版のすべての系列の組（前の 64 KB の目安）は見ない（分野が 6 つになり、選べない組が 64 KB を越える）
-ok('指示の大きさ：無料版の共通 + 系列 1 つ ≤ 40 KB（目安 35 KB）、どの 2 つの組も ≤ 50 KB、有料版のすべての系列と道具 ≤ 120 KB。前の全体版・core 版はない', () => {
+// 上限は PACK_CAP_KB（無料のプラン 40 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 120 KB）
+ok('指示の大きさ：無料のプランの標準すべて ≤ 40 KB、有料のプランの標準＋2 つの束のどの組も ≤ 120 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
-    for (const s of SERIES) assert.ok(packSize(buildPack({ series: [s], lang })) <= 40 * 1024, `${lang} common+${s}`);
-    for (let i = 0; i < SERIES.length; i++) for (let j = i + 1; j < SERIES.length; j++) assert.ok(packSize(buildPack({ series: [SERIES[i], SERIES[j]], lang })) <= 50 * 1024, `${lang} common+${SERIES[i]}+${SERIES[j]}`);
-    assert.ok(packSize(buildPack({ series: 'all', lang, plan: 'paid', tools: 'all' })) <= 120 * 1024, `${lang} paid all`);
+    assert.ok(packSize(buildPack({ sets: [], lang })) <= 40 * 1024, `${lang} free standard`);
+    for (let i = 0; i < SETS.length; i++) for (let j = i + 1; j < SETS.length; j++) assert.ok(packSize(buildPack({ sets: [SETS[i], SETS[j]], lang, plan: 'paid' })) <= 120 * 1024, `${lang} paid standard+${SETS[i]}+${SETS[j]}`);
   }
   for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
 });
-ok('組み立て：docs と同じ文章・系列の指定（配列・"a,b"・all・[]・重ね・順）・知らない系列は失敗', () => {
+ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・[]・重ね・順）・知らない束は失敗・CLI（--sets・前の --series と --tools）', () => {
   for (const [lang, file] of [['en', GUIDE_EN], ['ja', GUIDE_JA]]) {
-    // docs は有料のプランの指示の全体：共通の本体（すべての系列が入ったときの表）と頼みたいこと、系列ごとの部分。合わせると --plan paid と同じ
+    // docs は有料のプランの指示の全体：共通の本体（束の入っていない表）と頼みたいこと、束ごとの部分。合わせると --sets all --plan paid と同じ（表だけが違う）
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
-    const paidCommon = commonBody(lang, [], SERIES, [], 'paid', 'all');
+    const paidCommon = commonBody(lang, { plan: 'paid' });
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
-    assert.ok(/\| (Paid plan|有料のプラン)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file) && /\| (Free plan: common body \+ the largest pair of subjects \(\w+ \+ \w+\)|無料のプラン：共通の本体＋2 つの分野でいちばん大きい組（\w+＋\w+）) \| [\d.]+ KB \| 50 KB \|/.test(file)
-      && !/(Free plan|無料のプラン)[^|\n]*(every subject|すべての分野)/.test(file.slice(0, file.indexOf('\n## '))) && /\| (Paid plan: every subject and tool chosen|有料のプラン：すべての分野と道具を選んだとき)/.test(file),
-      lang + ': the size table lists both plans: each subject and the largest pair for free (no row for every subject), and the paid worst case (every subject and tool)');
-    const paidParts = SERIES.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
-    assert.equal([paidCommon.trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
-    for (const t of PAID_ONLY) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
-    assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ series: [], lang }));
+    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 40 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file),
+      lang + ': the size table lists the free standard pack and the paid full pack');
+    const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
+    assert.equal([commonBody(lang, { plan: 'paid', sets: 'all' }).trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ sets: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
+    for (const t of Object.keys(PACK.en.components)) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
+    assert.equal(commonBody(lang) + '\n' + requestBody(lang), buildPack({ sets: [], lang }));
     assert.match(requestBody(lang), /^# (What I want|頼みたいこと)\n/);
-    for (const s of SERIES) {
+    for (const s of SETS) {
       const doc = read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, '');
-      assert.equal(doc, partOf(planData(PACK, 'paid'), s, lang, [], SERIES) + '\n', `${lang} ${s}`);
-      // 共通の本体の表は、入っている系列の部品を指す（kit/core/llm-pack-assemble.mjs）
-      assert.equal(buildPack({ series: [s], lang }), commonBody(lang, [], [s]) + '\n' + seriesPart(s, lang) + '\n' + requestBody(lang));
+      assert.equal(doc, partOf(PACK, s, lang, { sets: SETS }) + '\n', `${lang} ${s}`);
+      // 共通の本体の表は、入っている束の部品を指す（kit/core/llm-pack-assemble.mjs）
+      assert.equal(buildPack({ sets: [s], lang }), commonBody(lang, { sets: [s] }) + '\n' + setPart(s, lang) + '\n' + requestBody(lang));
     }
-    assert.equal(buildPack({ series: ['info', 'academic', 'info'], lang }), buildPack({ series: 'academic,info', lang }));
-    assert.equal(buildPack({ series: 'all', lang }), buildPack({ series: SERIES, lang }));
+    assert.equal(buildPack({ sets: ['tools', 'stats', 'tools'], lang }), buildPack({ sets: 'stats,tools', lang }));
+    assert.equal(buildPack({ sets: 'all', lang }), buildPack({ sets: SETS, lang }));
   }
-  assert.throws(() => buildPack({ series: ['math'], lang: 'en' }), /unknown series "math"/);
-  const cli = node('kit/llm-pack.mjs', '--series', 'kokugo,academic', '--lang', 'ja');
-  assert.equal(cli.status, 0, cli.stderr); assert.equal(cli.stdout, buildPack({ series: ['academic', 'kokugo'], lang: 'ja' }));
+  assert.throws(() => buildPack({ sets: ['academic'], lang: 'en' }), /unknown part set "academic"/);
+  const cli = node('kit/llm-pack.mjs', '--sets', 'kokugo,stats', '--lang', 'ja');
+  assert.equal(cli.status, 0, cli.stderr); assert.equal(cli.stdout, buildPack({ sets: ['stats', 'kokugo'], lang: 'ja' }));
+  const paidCli = node('kit/llm-pack.mjs', '--sets', 'all', '--plan', 'paid');
+  assert.equal(paidCli.status, 0, paidCli.stderr); assert.equal(paidCli.stdout, buildPack({ sets: 'all', lang: 'en', plan: 'paid' }));
+  // 前の --series（系列）と --tools は 1 版のあいだ束に読み替える（毎晩の評価が使う）
+  const old = node('kit/llm-pack.mjs', '--series', 'academic,social', '--tools', 'timer', '--lang', 'ja');
+  assert.ok(old.status === 0 && old.stdout === buildPack({ sets: ['stats', 'math', 'maps', 'tools'], lang: 'ja' }) && /read as --sets/.test(old.stderr), old.stderr);
+  assert.equal(node('kit/llm-pack.mjs', '--series', 'info').stdout, buildPack({ sets: [], lang: 'en' }), 'info is extra now: the standard pack');
   // --list：--lang がなければ en と ja の両方の列、あれば その言語の大きさ（UTF-8 のバイト数 / 1024。編集アプリと同じ packKb）
-  const kbx = (series, lang) => packKb(buildPack({ series, lang })) + ' KB';
+  const kbx = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.includes(`common\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-flow, m-menu, m-predict\n`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.includes(`standard\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-cards, m-compare`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kakijun, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout) && /^paid all\t/m.test(list.stdout), list.stdout);
   const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
-  assert.ok(listJa.status === 0 && listJa.stdout.includes(`common\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`academic\t${kbx(['academic'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
+  assert.ok(listJa.status === 0 && listJa.stdout.includes(`standard\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`stats\t${kbx(['stats'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
   const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');
-  assert.ok(listEn.status === 0 && listEn.stdout.includes(`common\t${kbx([], 'en')}\tm-bars`), listEn.stdout);
+  assert.ok(listEn.status === 0 && listEn.stdout.includes(`standard\t${kbx([], 'en')}\tm-bars`), listEn.stdout);
   // --help / -h：使い方を出す（指示の文章ではない）
   for (const h of ['--help', '-h']) {
     const r = node('kit/llm-pack.mjs', h);
     assert.ok(r.status === 0 && /^usage: node kit\/llm-pack\.mjs/.test(r.stdout) && !r.stdout.includes('Instructions for the AI'), h + ': ' + r.stdout.slice(0, 200));
   }
-  const badOpt = node('kit/llm-pack.mjs', '--sereis', 'academic');
-  assert.ok(badOpt.status === 2 && /unknown option --sereis/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
+  const badOpt = node('kit/llm-pack.mjs', '--sest', 'stats');
+  assert.ok(badOpt.status === 2 && /unknown option --sest/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
 });
-ok('部品の居場所：どの部品もちょうど 1 か所（有料版は README の series、無料版は FREE_CORE・FREE_HOME の系列、有料版だけの部品はどこにもない）。README に series がなければ作れない', () => {
-  const dirs = vendorComponents(ROOT).filter((c) => fs.existsSync(path.join(c.dir, 'README.md'))).map((c) => c.name);
+ok('部品の居場所：どの部品もちょうど 1 か所（標準は共通の本体、専門はその束。manifest の tier・set）。特殊はどこにもない。manifest の専門の部品に set がなければ作れない', () => {
+  const m = JSON.parse(read('vendor', 'components-2', `manifest-${PACK.tiers.catalogue}.json`));
+  const els = Object.values(m.components).filter((c) => c.kind === 'element');
   for (const lang of ['en', 'ja']) for (const plan of ['free', 'paid']) {
-    // 道具はどちらの版でも共通の本体に（押したとき）
-    const common = commonBody(lang, [], [], [], plan, 'all'), parts = Object.fromEntries(SERIES.map((s) => [s, seriesPart(s, lang, [], plan, 'all')]));
-    for (const c of dirs) {
-      const head = `### \`<m-${c}>\``, raw = seriesOf('m-' + c), where = plan === 'paid' || TOOLS.some((t) => t.tag === 'm-' + c) ? raw : freeSeriesOf('m-' + c, raw);
-      assert.ok(raw === 'common' || SERIES.includes(raw), c);
-      const places = [['common', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([n]) => n);
-      assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} m-${c}: ${places}`);
+    const common = commonBody(lang, { plan }), parts = Object.fromEntries(SETS.map((s) => [s, setPart(s, lang)]));
+    for (const c of els) {
+      const head = `### \`<${c.tag}>\``, where = c.tier === 'extra' ? null : c.tier === 'standard' ? (plan === 'free' && !FREE_CORE.includes(c.tag) ? null : 'standard') : c.set;
+      assert.equal(setOf(c.tag), c.tier === 'extra' ? null : c.tier === 'standard' ? 'standard' : c.set, c.tag);
+      const places = [['standard', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([x]) => x);
+      assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} ${c.tag}: ${places}`);
     }
-    if (plan === 'paid') continue;
     // m-flow のお金の流れは business の拡張（共通の本体には入らない）
     assert.ok(parts.business.includes('`<m-flow>`') && /kind/.test(parts.business) && !/`money`/.test(common), 'm-flow money flows in business');
   }
-  for (const [tag, s] of [['m-menu', 'common'], ['m-flow', 'common'], ['m-bars', 'common'], ['m-sweep', 'academic'], ['m-collect', 'academic'], ['m-kpi', 'common'], ['m-quad', 'common'], ['m-curves', 'common'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-kobun', 'kokugo'], ['m-gendai', 'kokugo'], ['m-codetree', 'info'], ['m-nothing', null]]) assert.equal(seriesOf(tag), s, tag);
-  // README に series のない部品があれば、作り直しは失敗する（写しの部品フォルダで確かめる）
+  for (const [tag, s] of [['m-menu', 'standard'], ['m-cards', 'standard'], ['m-sweep', 'math'], ['m-collect', null], ['m-codetree', null], ['m-kpi', 'standard'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-orbit', 'science'], ['m-timer', 'tools'], ['m-nothing', null]]) assert.equal(setOf(tag), s, tag);
+  // manifest の専門の部品に set がなければ、作り直しは失敗する（写しで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
-  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'components.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
-  const kpi = vendorComponents(tmp).find((c) => c.name === 'kpi');
-  const rd = path.join(kpi.dir, 'README.md');
-  fs.writeFileSync(rd, fs.readFileSync(rd, 'utf8').replace(/^series: .*\r?\n/m, ''));
+  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'skills', 'plugins', 'components.lock.json', 'components2.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  fs.symlinkSync(fs.realpathSync(path.join(ROOT, 'node_modules')), path.join(tmp, 'node_modules'), 'junction');   // make-llm-guide は kit/core/parts2.mjs（parse5）を読む
+  const mf = path.join(tmp, 'vendor', 'components-2', `manifest-${PACK.tiers.catalogue}.json`);
+  const bad = JSON.parse(fs.readFileSync(mf, 'utf8'));
+  delete bad.components.hist.set;
+  fs.writeFileSync(mf, JSON.stringify(bad));
   const r = spawnSync(process.execPath, ['tools/make-llm-guide.mjs', '--check'], { cwd: tmp, encoding: 'utf8' });
-  assert.ok(r.status !== 0 && /vendor\/components\/kpi\/[^/]+\/README\.md has no frontmatter series/.test(r.stderr), r.stderr);
+  assert.ok(r.status !== 0 && /m-hist is specialized without a set/.test(r.stderr), r.stderr);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
-ok('デッキから系列を推す：部品・テーマ・layout-tate', () => {
-  assert.deepEqual(seriesForDeck(worked('business', 'deck.html')), ['business']);
-  assert.deepEqual(seriesForDeck(worked('academic', 'deck.html')), ['academic']);
-  assert.deepEqual(seriesForDeck(worked('kokugo', 'deck.html')), ['kokugo']);
-  assert.deepEqual(seriesForDeck(worked('common', 'deck.html')), []);
-  assert.deepEqual(seriesForDeck('<html data-theme="default"><section class="slide layout-tate"><m-codetree></m-codetree><m-sweep></m-sweep></section>'), ['academic', 'kokugo', 'info']);
-  assert.deepEqual(componentsIn('<m-kpi a="1"><m-kpi><m-foo></m-foo><m-bars>'), ['m-bars', 'm-kpi']);
+ok('デッキから束を推す：部品・テーマ・layout-tate', () => {
+  assert.deepEqual(setsForDeck(worked('business', 'deck.html')), ['business']);
+  assert.deepEqual(setsForDeck(worked('academic', 'deck.html')), ['math']);
+  assert.deepEqual(setsForDeck(worked('kokugo', 'deck.html')), ['kokugo']);
+  assert.deepEqual(setsForDeck(worked('common', 'deck.html')), []);
+  assert.deepEqual(setsForDeck('<html data-theme="default"><section class="slide layout-tate"><m-codetree></m-codetree><m-sweep></m-sweep><m-hist></m-hist></section>'), ['stats', 'math', 'kokugo']);
+  assert.deepEqual(componentsIn('<m-kpi a="1"><m-kpi><m-foo></m-foo><m-bars><m-codetree>'), ['m-bars', 'm-kpi']);
 });
 ok('規格の名前は英語と日本語で同じ・規格は共通の本体だけにある・見本は 4 つとも入っている・部品はすべて一覧にある', () => {
   const en = [...guideRules(GUIDE_EN).keys()], ja = [...guideRules(GUIDE_JA).keys()];
   assert.deepEqual(en, ja);
   assert.deepEqual([...guideRules(ALL_EN).keys()], en);
-  for (const s of SERIES) assert.equal(guideRules(seriesPart(s, 'en')).size, 0, s);
+  for (const s of SETS) assert.equal(guideRules(setPart(s, 'en')).size, 0, s);
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(g.includes(`\`<m-${c}>\``) === !(PAID_ONLY.includes('m-' + c) || TOOLS.some((t) => t.tag === 'm-' + c)), c + ' (free: every part but the paid-only ones and the tools not ticked)');
+    // 無料のプランのすべての束：標準と専門のすべての部品が一覧の行にある（説明は中核の 4 つと専門）
+    for (const t of Object.keys(PACK.en.components)) assert.ok(g.includes(`| \`<${t}>\` |`), t);
     assert.ok(!/<!--\/?part/.test(g), 'part markers are removed');
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }
   assert.ok(!/demo\.html/.test(ALL_EN), 'no repository-only pointers');
-  // 有料版：すべての部品が一覧にある
-  for (const lang of ['en', 'ja']) { const p = buildPack({ series: 'all', tools: 'all', lang, plan: 'paid' }); for (const c of vendorComponents(ROOT).filter((x) => fs.existsSync(path.join(x.dir, 'README.md'))).map((x) => x.name)) assert.ok(p.includes(`\`<m-${c}>\``), lang + ' paid ' + c); assert.ok(!/<!--\/?part/.test(p)); }
+  // 有料のプラン：すべての部品に説明がある
+  for (const lang of ['en', 'ja']) { const p = buildPack({ sets: 'all', lang, plan: 'paid' }); for (const t of Object.keys(PACK.en.components)) assert.ok(p.includes(`### \`<${t}>\``), lang + ' paid ' + t); assert.ok(!/<!--\/?part/.test(p)); }
 });
 
 // ---------------------------------------------------------------- 2. 取り出し
@@ -264,13 +268,13 @@ ok('頼みたいこと：指示の記入欄（A・B とも 6 項目。同じ名�
     assert.ok(/^(Title \(used as is on the cover\)|タイトル（表紙にそのまま使う）)$/.test(F.A.fields[0].label) && F.A.fields[0].label === F.B.fields[0].label, F.A.fields[0].label);
     assert.ok(F.A.fields.find((f) => f.key === 'speakers').value, 'speakers has a default');
     assert.ok(requestBody(lang).startsWith('# ' + F.title + '\n'));
-    for (const s of [[], ['academic'], ['business', 'info']]) assert.equal(packWithRequest({ series: s, lang }), buildPack({ series: s, lang }), 'no request → the same pack');
+    for (const s of [[], ['stats'], ['business', 'tools']]) assert.equal(packWithRequest({ sets: s, lang }), buildPack({ sets: s, lang }), 'no request → the same pack');
     const a = filledRequest({ kind: 'A', values: { title: 'Binary search', audience: 'Year 11', wishes: 'phone book\ndictionary', length: '' } }, lang);
     assert.ok(a.startsWith('# ' + F.title + '\n\n**' + F.A.head + '**') && a.includes('Binary search') && a.includes('Year 11') && !a.includes(F.B.head) && !a.includes(F.A.fields[2].label) && /phone book\n {2}dictionary/.test(a), a);
     const b = filledRequest({ kind: 'B', values: { length: '5' } }, lang);
     assert.ok(b.includes(F.B.head) && b.includes(F.B.text) && b.includes(F.B.fields[2].label) && !b.includes(F.A.head), b);
-    const pk = packWithRequest({ series: ['academic'], lang, request: a });
-    assert.ok(pk.startsWith(commonBody(lang, [], ['academic'])) && pk.includes(seriesPart('academic', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
+    const pk = packWithRequest({ sets: ['math'], lang, request: a });
+    assert.ok(pk.startsWith(commonBody(lang, { sets: ['math'] })) && pk.includes(setPart('math', lang)) && pk.endsWith(a) && !pk.includes(requestBody(lang).trim()), 'the filled request replaces the blank one at the end');
   }
 });
 
@@ -351,7 +355,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   assert.ok(/exactly two fenced code blocks/.test(r.text) && r.partial === false);
   // 使っている部品の説明（指示と同じ文章）
   assert.deepEqual(r.components, ['m-sweep']);
-  assert.ok(r.text.includes('## Components used in this deck') && r.text.includes(seriesPart('academic', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
+  assert.ok(r.text.includes('## Components used in this deck') && r.text.includes(setPart('math', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
   // 前の guide の引数：知らせて無視する（規格は指示の共通の本体から）
   const warned = [], cw = console.warn;
   console.warn = (...x) => warned.push(x.join(' '));

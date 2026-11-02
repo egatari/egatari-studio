@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # kokugo のパーツ
 
-指示の版：9a0b9faa
+指示の版：bee180c0
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
