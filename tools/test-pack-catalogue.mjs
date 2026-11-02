@@ -52,7 +52,8 @@ for (const tag of picked) {
 }
 
 // 組み立てと品質チェック（子のプロセス。何本か並べる）
-const JOBS = Math.max(1, +(process.env.TEST_PACK_CATALOGUE_JOBS || 3));
+// 同時に走る品質チェックの数。test-all がほかの段と並べて走らせるので既定は 2（ブラウザの描画は 1 つのブラウザを使い回す）
+const JOBS = Math.max(1, +(process.env.TEST_PACK_CATALOGUE_JOBS || 2));
 const results = new Map();
 {
   let next = 0;

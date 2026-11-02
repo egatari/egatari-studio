@@ -237,7 +237,7 @@ if (args.includes('--list')) {
 // 載っていない段は HINT_DEFAULT_S。目安が外れても結果は変わらない（終わる時刻が変わるだけ）
 const HINT_DEFAULT_S = 8;
 const HINT_S = {
-  'test-app': 444, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
+  'test-app': 444, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
   'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35,

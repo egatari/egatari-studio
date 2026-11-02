@@ -387,6 +387,8 @@ for (const [code, what] of [
 <script type="application/json">{"x": "<m-i>"}</script></body></html>`);
   ok(eq([...u.elements].sort(), ['m-a', 'm-c']) && eq([...u.defined].sort(), ['m-e', 'm-f', 'm-g']),
     `deckElements: elements outside comments, scripts and text; names the deck's scripts define (${JSON.stringify([[...u.elements], [...u.defined]])})`);
+  ok(u.legacyApi === true && deckElements('<p>DECK.el in text</p><script type="application/json">"DECK.define"</script><script>egatariParts.define({name: "a", version: "1.0.0"}, () => ({}));</script>').legacyApi === false,
+    "deckElements: legacyApi only when the deck's own code uses the player's 1.x helpers");
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')), lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
   ok(eq(catalogueHint(lock, lock2, 'm-score'), { tag: 'm-score', catalogue: '1.x', hint: 'select2', value: '2' }), '1.x lesson, 2.x-only element: select "componentsCatalogue": "2"');
   ok(catalogueHint(lock, lock2, 'm-bars', null, '2.0.0').hint === 'pin' && catalogueHint(lock, lock2, 'm-bars', null, '1.13.0').hint === 'pin', 'a pinned element in a 1.x lesson names the pin (only asked when the pinned file is a 2.x part)');

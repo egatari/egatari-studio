@@ -480,6 +480,26 @@ for (const mode of ['talk', 'learn']) {
   ok(x.v1 && x.v2 === false && x.reg === 'guard' && x.errors === 0 && m.errs.length === 0, `1.x parts stay DECK.MotionElement; only the player's guard stands in for the registry (${JSON.stringify(x)})`);
   await m.p.close();
 }
+// "componentsCatalogue": "2" の教材でも、原稿自身の <script> が使う 1.x の補助（DECK.define・DECK.MotionElement・DECK.el）は残す（黙って動かなくならない）
+{
+  const inl = path.join(out, 'inline-define.html');
+  fs.writeFileSync(catSrc, `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Inline</title></head>
+<body><div id="stage"><section class="slide" id="inl"><h2>Inline</h2><div class="body"><m-mine aria-label="mine" style="display:block;height:100px"></m-mine>
+<m-bars aria-label="b" style="height:300px"><script type="application/json">{"groups":[{"label":"A","value":1},{"label":"B","value":2}]}</script></m-bars></div></section></div>
+<script>DECK.define("m-mine", class extends DECK.MotionElement { static steps = 1; mount(){ this.appendChild(DECK.el("svg", {width: 10, height: 10})); } });</script></body></html>`);
+  fs.writeFileSync(path.join(catDir, 'egatari.json'), JSON.stringify({ componentsCatalogue: '2' }));
+  build(catSrc, inl);
+  const ih = fs.readFileSync(inl, 'utf8');
+  ok(/egatariParts registry/.test(ih) && /DECK\.define = function/.test(ih), 'catalogue 2 with the deck\'s own DECK.define: the registry and the 1.x helpers are both written');
+  const m = await open(fileUrl(inl));
+  const x = await m.p.evaluate(() => ({ mine: !!customElements.get('m-mine') && !!document.querySelector('m-mine svg'), bars: !!document.querySelector('m-bars svg'), reg: window.egatariParts && !window.egatariParts.playerGuard, errors: DECK.componentErrors.length }));
+  ok(x.mine && x.bars && x.reg && x.errors === 0 && m.errs.length === 0, `catalogue 2: the deck's inline DECK.define part and the 2.x part both run (${JSON.stringify(x)}${m.errs.length ? ' ' + m.errs.join(' | ') : ''})`);
+  await m.p.close();
+  // 補助を使わない 2.x だけの教材は今までどおり外す
+  fs.writeFileSync(catSrc, fs.readFileSync(catSrc, 'utf8').replace(/<script>DECK\.define[\s\S]*?<\/script>/, '').replace(/<m-mine[^>]*><\/m-mine>/, ''));
+  build(catSrc, inl);
+  ok(!/DECK\.define = function/.test(fs.readFileSync(inl, 'utf8')), 'catalogue 2 without the 1.x helpers in the deck: the player stays without them');
+}
 // 手で作ったファイル：1.x の再生器に、登録簿なしで 2.0 のパーツ（score）を足す。ReferenceError を出さず、要素を知らせ、後ろの 1.x の部品は動く
 {
   const hand = path.join(out, 'hand-made.html');
