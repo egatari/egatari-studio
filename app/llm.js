@@ -3,12 +3,12 @@
 //     ① どんな場面で使いますか（大分類・小分類。どちらも答える。あてはまらなければ「その他」「この中にない」。kit/core/new-deck.mjs）→
 //     ② 何について、だれに向けて作りますか（タイトルは必須。だれ向け・長さ・内容は「AI に任せる」か書く。詳しく：言語・話す人・そのほかの希望。
 //        「チャットの AI と、もう内容を話し合ってある」の切り替えで、タイトルのほかを隠す。kit/core/llm-request.mjs の記入欄）→
-//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（無料のプランか有料のプランか → 内容の分野（どちらのプランでも。② から推した印）→ 道具（② から推した印）→
-//        折りたたみ「AI に使わせない図」（kit/core/purposes.mjs）→［指示をコピー］。kit/core/llm-pack.mjs）→
+//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（無料のプランか有料のプランか → パーツの一覧（伝えたいことごと、教科の形は最後。
+//        標準は全部、専門は ① の小分類と ② の言葉から推した束に印。kit/core/new-deck.mjs の partsList・recommend）→ 指示の大きさのメーター（プランの目安）→［指示をコピー］）→
 //     ⑤ AI の出力を貼り付けます：欄 2 つ（スライド＝deck.html・台本＝narration.md。どちらに出力の全体を貼っても分け、違う欄に貼ったものは移す。kit/core/llm-import.mjs の pastePart）→
 //        ［作成］：スライドに id を付け（kit/core/slide-ids.mjs）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして（app/build-worker.js の exportHtml）、
 //        ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//        作るときに、写したときの選び方（プラン・場面・分野・使わない図）を
+//        作るときに、写したときの選び方（プラン・場面・パーツ）を
 //        egatari.json の studio.newDeck に残す（「その他」「この中にない」は subcategory: null）。シード値は書かない（format spec §8.4：見せ方は variant の名前だけ）。
 //        長さが 9 枚から（分は 1 分 ≒ 1 枚）は 2 回に分けて頼む：⑤ がはじめに構成案の欄になり、受け取ったら 1〜6 枚目を頼む指示と 2 つの欄（kit/core/llm-outline.mjs）
 //   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'）：① 足すスライド → ② 短い指示（見出しの一覧と挿入する場所の前のスライドだけ。
@@ -18,10 +18,10 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, PURPOSES, TOOLS, loadedParts } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, FREE_SUBJECT_MAX, freePick, defaultSubjects, guessSubjects, guessTools, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
-import { componentsOff } from '../kit/core/purposes.mjs';
-import { partLabel, partIcon, partOrder, standardParts } from '../kit/core/part-labels.mjs';
+import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS, partsPackOpts, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
+import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
+import { THUMBS } from './part-thumbs.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -94,26 +94,25 @@ const TX = {
     // ④ AI に送る
     planLegend: 'お使いのチャットの AI は、無料のプランですか、有料のプランですか',
     plan: { free: '無料のプラン（わからなければこちら）', paid: '有料のプラン' },
-    planHint: 'チャットの AI：無料のプランは長い指示を読み切れないことがあるので、指示を短くします',
+    planHint: (free, paid) => `プランで、指示の大きさの目安が変わります（無料のプランは ${free} KB、有料のプランは ${paid} KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります`,
     planNote: 'Egatari は無料です。ここで聞くのは、お使いのチャットの AI のプランです',
+    // スライドの挿入の「指示の全体も付ける」の分野
     seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
-    // 標準パーツの例は FREE_CORE の名前から作る（kit/core/part-labels.mjs の standardParts）
-    seriesHintNew: (ex) => `選んだものの図の作り方を指示に入れます。選ばなければ、標準パーツ（${ex.join('・')}など）だけです`,
-    seriesGuess: (name) => `② のタイトルと内容から${name}を選びました`,
-    seriesGuessKind: (name) => `① の使う場面から${name}を選びました`,
-    seriesMax: 'チャットの AI が無料のプランなので、分野と道具を合わせて 2 つまで選べます',
-    toolsLegend: 'スライドで道具を使いますか', toolsHead: '道具',
-    toolsHint: '選んだ道具だけを、AI が使います',
-    toolsGuess: (name) => `② のタイトル・内容・そのほかの希望に合わせて、${name}を選びました。要らなければ外してください`,
-    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
-    purposesFold: 'パーツを見る・伝えたいことを外す（ふつうは開かなくて大丈夫）',
-    partsCount: (n, off) => `パーツ：${n} 種類（外したもの ${off}）`,
-    partsLegend: 'この指示に入るパーツ', partOff: '外した',
-    purposesHtml: 'パーツのない伝えたいことは、AI が HTML で近い形に描きます',
-    purposesHint: '今は全部使えます。押した伝えたいことは、AI が使いません',
-    purposesSum: (on, n) => `伝えたいこと：${n} 個のうち ${on} 個を使う`,
-    purposesLegend: '伝えたいこと', materialsLegend: '素材（いつも使える）', materials: { table: '表', image: '画像', math: '数式', shape: '図形' },
-    purposeOn: '使う', purposeOff: '使わない',
+    seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
+    // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
+    partsLegend: 'AI にどのパーツを使わせますか',
+    partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
+    whySub: (sub, names) => `① の使う場面が${sub}なので、${names}も選びました`,
+    whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
+    whySep: '。',
+    suggested: 'おすすめ',
+    thumbAlt: (name, title) => `${name}のサンプル${title ? '：' + title : ''}`,
+    partsCount: (n, all) => `選んだパーツ：${n} 種類（全 ${all} 種類）`,
+    partsShort: (n) => `パーツ ${n} 種類`,
+    packMeter: (kb, cap) => `指示の大きさ：${kb} KB（目安は ${cap} KB まで）`,
+    overCap: (kb, names) => `目安より ${kb} KB 大きいので、チャットの AI が最後まで読めないことがあります。${names ? `外す候補：${names}` : '外すパーツを選んでください'}`,
+    trim: '候補を外す',
+    shortened: (names) => `無料のプランの目安に収めるため、${names}の説明を短くしました`,
     packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: '指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ`,
@@ -244,25 +243,23 @@ const TX = {
     themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
     planLegend: 'Is your chat AI on a free plan or a paid plan?',
     plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
-    planHint: 'A chat AI on a free plan may not read long instructions to the end, so they are kept short.',
+    planHint: (free, paid) => `The plan sets the suggested size limit for the instructions (free plan ${free} KB, paid plan ${paid} KB). A chat AI may not read instructions that are too long to the end.`,
     planNote: 'Egatari is free. This asks about your chat AI\'s plan.',
     seriesLegend: 'Will the slides need any of these? (subjects)',
-    seriesHintNew: (ex) => `Adds how to draw these to the instructions. With none, only the standard parts (${ex.join(', ')}, …).`,
-    seriesGuess: (name) => `Ticked ${name} from the title and content in step 2.`,
-    seriesGuessKind: (name) => `Ticked ${name} from the setting in step 1.`,
-    seriesMax: 'Your chat AI is on a free plan, so you can choose up to two subjects and tools in total.',
-    toolsLegend: 'Will you use any tools on the slides?', toolsHead: 'Tools',
-    toolsHint: 'The AI uses only the tools you choose.',
-    toolsGuess: (name) => `Chose ${name} to match the title, content or other wishes in step 2. Turn it off if you don't need it.`,
-    seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
-    purposesFold: 'See parts, turn off what to convey (usually not needed)',
-    partsCount: (n, off) => `Parts: ${n} (${off} turned off)`,
-    partsLegend: 'Parts in these instructions', partOff: 'turned off',
-    purposesHtml: 'What to convey without a part is drawn by the AI in HTML.',
-    purposesHint: "All are in use. Press one and the AI won't use it.",
-    purposesSum: (on, n) => `What to convey: ${on} of ${n} in use`,
-    purposesLegend: 'What to convey', materialsLegend: 'Materials (always available)', materials: { table: 'Table', image: 'Image', math: 'Equation', shape: 'Shape' },
-    purposeOn: 'in use', purposeOff: 'not used',
+    seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
+    partsLegend: 'Which parts may the AI use?',
+    partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
+    whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
+    whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
+    whySep: ' ',
+    suggested: 'Suggested',
+    thumbAlt: (name) => `Example: ${name}`,
+    partsCount: (n, all) => `Parts chosen: ${n} of ${all}`,
+    partsShort: (n) => `${n} parts`,
+    packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
+    overCap: (kb, names) => `${kb} KB over the suggested limit, so your chat AI may not read it to the end. ${names ? `Parts you could untick: ${names}` : 'Untick some parts.'}`,
+    trim: 'Untick these',
+    shortened: (names) => `To fit the free plan’s limit, the descriptions of ${names} are shortened.`,
     packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: 'Copy the instructions',
     copied: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
@@ -347,8 +344,8 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
-  // 分野の名前（挿入の分野の一覧）：中の図と分野の名前（kit/core/new-deck.mjs の SUBJECTS の inside・label）
-  const seriesName = Object.fromEntries(SUBJECTS.map((x) => [x.series, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
+  // 束の名前（挿入の「指示の全体も付ける」の一覧）：中の図と、教科・用途の名前（kit/core/new-deck.mjs の SET_LABELS の inside・label）
+  const setName = Object.fromEntries(SET_LABELS.map((x) => [x.set, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
   // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
   // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
@@ -422,7 +419,7 @@ export function setupLlm(app) {
   const draft = {
     category: null, sub: undefined,   // sub：undefined まだ答えていない | null この中にない | 小分類の id
     title: '', audMode: 'ai', audience: '', lenMode: 'ai', lenN: '', lenUnit: 'slides', conMode: 'ai', content: '',   // conMode：'ai' | 'give'（ここに書く・貼る）| 'given'（チャットの AI に渡してある）
-    language: LANG, languageOther: '', speakers: 1, wishes: '', plan: DEFAULT_PLAN, purposesOff: [],
+    language: LANG, languageOther: '', speakers: 1, wishes: '', plan: DEFAULT_PLAN,
   };
   const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
   const kindOk = () => { const c = catOf(draft.category); return !!c && (!c.subs.length || draft.sub !== undefined); };
@@ -596,13 +593,8 @@ export function setupLlm(app) {
     });
   }
 
-  // ② の素材（いつも使える。押せない札）と言いたいこと（manifest の札。v1.6.0 は 15。既定で全部入り。押すと外れ、外したものだけに使う部品は指示の一覧からも除く）。
-  // 入っている札は印と枠、外した札は薄くして斜線（色だけで分けない。app/app.css の .tile）。絵は parts-map の下書きの線画（仮。部品の見本から撮る絵に替える）
+  // ④ のパーツの一覧の絵（kit/core/part-labels.mjs の icon の名前）。絵は parts-map の下書きの線画（仮。部品の見本から撮る絵に替える）
   const ICONS = {
-    table: '<rect x="4" y="6" width="24" height="20" rx="2"/><path d="M4 12h24M4 19h24M12 6v20M20 6v20"/>',
-    image: '<rect x="4" y="6" width="24" height="20" rx="2"/><circle cx="11" cy="12" r="2.5"/><path d="M4 23l7-7 5 5 4-4 8 8"/>',
-    math: '<path d="M6 8h9l-6 8 6 8H6"/><path d="M19 13l7 7M26 13l-7 7"/>',
-    shape: '<rect x="4" y="5" width="12" height="12" rx="1"/><circle cx="21" cy="21" r="7"/>',
     compare: '<rect x="3" y="7" width="11" height="18" rx="1"/><rect x="18" y="7" width="11" height="18" rx="1"/><path d="M6 12h5M6 16h5M21 12h5M21 16h5"/>',
     line: '<path d="M5 27h22M5 5v22"/><path d="M7 22l6-7 5 4 8-11"/>',
     part: '<circle cx="16" cy="16" r="11"/><path d="M16 5v11l9 6"/>',
@@ -633,84 +625,21 @@ export function setupLlm(app) {
     tape: '<rect x="3" y="13" width="26" height="8" rx="1"/><path d="M13 13v8M21 13v8"/><path d="M3 10c0-3 26-3 26 0"/><path d="M13 24c0 3 16 3 16 0" opacity=".6"/>',
     timer: '<circle cx="16" cy="18" r="10"/><path d="M13 4h6M16 4v4M16 18v-6M16 18l4 3M25 9l2-2"/>',
     codetree: '<circle cx="16" cy="6" r="2.2"/><circle cx="9" cy="16" r="2.2"/><circle cx="23" cy="16" r="2.2"/><circle cx="5" cy="26" r="2.2"/><circle cx="13" cy="26" r="2.2"/><path d="M14.7 7.8L10.3 14.2M17.3 7.8l4.4 6.4M8 18l-2 6M10 18l2 6"/>',
-    'subj-math': '<path d="M5 27h22M5 5v22"/><path d="M8 9c3 16 13 16 16 0"/>',
-    'subj-business': '<rect x="4" y="10" width="24" height="16" rx="2"/><path d="M12 10V7h8v3M4 17h24"/>',
-    'subj-kokugo': '<path d="M16 9c-4-3-9-3-12-2v19c3-1 8-1 12 2 4-3 9-3 12-2V7c-3-1-8-1-12 2zM16 9v19"/>',
-    'subj-social': '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>',
-    // 英語の分野：A と下線（文の要素の印）
-    'subj-english': '<path d="M5 21l5.5-14 5.5 14M7.2 16h6.6"/><path d="M19 21V9h4.2a3 3 0 0 1 0 6H19M19 15h4.8a3 3 0 0 1 0 6H19"/><path d="M4 26h24"/>',
     // m-syntax：語の下線と記号、修飾の矢印
     syntax: '<path d="M4 18h7M13 18h6M21 18h7"/><path d="M6 23h3M15 23h2M23 23h3"/><path d="M24 12c0-5-12-5-12 0" /><path d="M10.5 10.5l1.5 1.8 1.8-1.5"/>',
     // m-heatmap：濃さの違う格子
     heatmap: '<rect x="4" y="4" width="24" height="24" rx="1"/><rect x="4" y="4" width="8" height="8" fill="currentColor"/><rect x="12" y="12" width="8" height="8" fill="currentColor"/><rect x="20" y="20" width="8" height="8" fill="currentColor"/><rect x="12" y="4" width="8" height="8" fill="currentColor" opacity=".35"/><rect x="4" y="20" width="8" height="8" fill="currentColor" opacity=".35"/><path d="M12 4v24M20 4v24M4 12h24M4 20h24"/>',
     // m-map-world：経線と緯線の地球
     mapworld: '<circle cx="16" cy="16" r="12"/><path d="M4 16h24M6 10h20M6 22h20"/><path d="M16 4c-5 4-5 20 0 24M16 4c5 4 5 20 0 24"/>',
-    // 音楽の分野：8 分音符を 2 つつないだ形
-    'subj-music': '<path d="M12 24V7l14-3v17"/><path d="M12 11l14-3"/><ellipse cx="8.5" cy="24" rx="3.5" ry="2.7"/><ellipse cx="22.5" cy="21" rx="3.5" ry="2.7"/>',
-    // 言いたいこと music（札なし。部品庫 v1.11.0 の purposes の icon "music"）：五線と音符
-    music: '<path d="M4 9h24M4 14h24M4 19h24M4 24h24" opacity=".45"/><ellipse cx="13" cy="21.5" rx="3.2" ry="2.4"/><path d="M16.2 21.5V6.5l5 2.5"/>',
     keyboard: '<rect x="3" y="7" width="26" height="18" rx="1.5"/><path d="M9.5 7v18M16 7v18M22.5 7v18"/><path d="M7.5 7h4v10h-4zM14 7h4v10h-4zM20.5 7h4v10h-4z" fill="currentColor"/>',
     kakijun: '<path d="M8 9c6-1 12-1 16 0"/><path d="M14 5c1 7 0 15-4 21"/><path d="M19 13c-3 7-7 11-10 12" opacity=".5"/><path d="M22 18l3 3-4 1z" fill="currentColor"/>',
     other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
-  // 札の絵：manifest の purposes の icon（部品庫 v1.6.0 から。ICONS の名前）。ないとき・知らない名前のときは、言いたいことの id（部品庫の purposes.json と同じ）→ 札の絵
-  const PURPOSE_ICON = { compare: 'compare', ranking: 'bars', change: 'line', 'part-whole': 'part', 'key-number': 'kpi', process: 'flow', timeline: 'timeline',
-    'cause-effect': 'cause', cycle: 'cycle', hierarchy: 'tree', position: 'matrix', overlap: 'venn', correlation: 'scatter', spread: 'dist', grouping: 'collect',
-    'text-structure': 'gendai', contents: 'menu', parameter: 'sweep', spatial: 'map', predict: 'predict', timebox: 'timer', music: 'music' };
   function icon(k) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 32 32'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
     svg.innerHTML = ICONS[k] || '';   // 決まった線画だけ（外から来た字は入れない）
     return svg;
-  }
-  // 折りたたみ「パーツを見る・表し方を外す」：見出しの横（閉じていても見える）にパーツの数と外した数。中の上に、この指示に入るパーツの並び（読むだけ）、
-  // その下に素材と言いたいことの札（外すのはこちらだけ）。並びは組み立てと同じ部品の一覧（kit/core/llm-pack.mjs の loadedParts）から作り、
-  // 外した言いたいことだけに使う部品は薄く破線で斜線。parts()：{loaded: [タグ], off: Set(タグ)}。refresh() でプラン・分野・札に合わせて作り直す
-  function partsTiles(update, parts) {
-    const count = el('span', { id: 'paste-parts-count', cls: 'hint', 'aria-live': 'polite' });
-    const strip = el('ul', { id: 'paste-parts', cls: 'tiles parts', 'aria-labelledby': 'paste-parts-h' });
-    const partsGroup = el('div', { id: 'paste-parts-group', cls: 'paste-tiles-group' }, [el('h4', { id: 'paste-parts-h', text: X.partsLegend }), strip]);
-    const refresh = () => {
-      const { loaded, off } = parts();
-      strip.replaceChildren(...loaded.map((t) => {
-        const isOff = off.has(t);
-        return el('li', { cls: 'tile part' + (isOff ? ' off' : ''), 'data-part': t, title: '<' + t + '>' },
-          [icon(partIcon(t)), el('span', { cls: 'tile-label', text: partLabel(t, LANG) }), isOff ? el('span', { cls: 'sr-only', text: X.partOff }) : null]);
-      }));
-      const nOff = loaded.filter((t) => off.has(t)).length;
-      count.textContent = X.partsCount(loaded.length - nOff, nOff);
-    };
-    const materials = el('div', { id: 'paste-materials', cls: 'paste-tiles-group' }, [
-      el('h4', { id: 'paste-materials-h', text: X.materialsLegend }),
-      el('ul', { cls: 'tiles', 'aria-labelledby': 'paste-materials-h' }, Object.keys(X.materials).map((k) => el('li', { cls: 'tile fixed', id: 'paste-material-' + k }, [icon(k), el('span', { cls: 'tile-label', text: X.materials[k] })]))),
-    ]);
-    const sum = el('p', { id: 'paste-purposes-sum', cls: 'hint', role: 'status' });
-    const showSum = () => {
-      const on = PURPOSES.list.length - draft.purposesOff.length;
-      sum.textContent = X.purposesSum(on, PURPOSES.list.length);
-    };
-    const tiles = PURPOSES.list.map((p) => {
-      const b = el('button', { type: 'button', id: 'paste-purpose-' + p.id, cls: 'tile', 'data-purpose': p.id, 'aria-pressed': draft.purposesOff.includes(p.id) ? 'false' : 'true' },
-        [icon(p.icon && Object.hasOwn(ICONS, p.icon) ? p.icon : PURPOSE_ICON[p.id] || 'other'), el('span', { cls: 'tile-label', text: p.label[LANG] }), p.sub[LANG] ? el('small', { text: p.sub[LANG] }) : null]);
-      b.addEventListener('click', () => {
-        const on = b.getAttribute('aria-pressed') !== 'true';
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        draft.purposesOff = on ? draft.purposesOff.filter((x) => x !== p.id) : [...draft.purposesOff, p.id];
-        showSum(); update();
-      });
-      return b;
-    });
-    showSum();
-    const purposes = el('div', { id: 'paste-purposes', cls: 'paste-tiles-group', role: 'group', 'aria-labelledby': 'paste-purposes-h', 'aria-describedby': 'paste-purposes-hint' }, [
-      el('h4', { id: 'paste-purposes-h', text: X.purposesLegend }),
-      el('p', { id: 'paste-purposes-hint', cls: 'hint', text: X.purposesHint }),
-      el('p', { id: 'paste-purposes-html', cls: 'hint', text: X.purposesHtml }),   // 言いたいことの札はパーツより広い（パーツのない表し方は HTML で）
-      el('div', { cls: 'tiles' }, tiles), sum,
-    ]);
-    // 既定で閉じる。札のはたらきは同じ（外すだけ。無料版・有料版のどちらでも）
-    const node = el('details', { id: 'paste-purposes-fold', cls: 'paste-fold' }, [
-      el('summary', { id: 'paste-purposes-fold-h' }, [el('span', { text: X.purposesFold }), ' ', count]), partsGroup, materials, purposes]);
-    return { node, refresh };
   }
   // ① スライドの挿入：枚数と足したいこと。足す場所は入口が決める（選んだスライドの後ろ、選んでいなければ最後）
   function insertStep(title, where, { onNext, onChange }) {
@@ -729,129 +658,120 @@ export function setupLlm(app) {
     };
   }
 
-  // ---------------------------------------------------------------- ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す）＋ 最後の頼み
-  // 系列の既定：デッキを開いていればその部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）。開いていなければ（か、推せなければ）足さない
-  async function defaultSeries() {
+  // ---------------------------------------------------------------- ② 指示：共通の本体（標準の部品。必ず入る）＋ 束（必要なときだけ足す）＋ 最後の頼み
+  // 束の既定：デッキを開いていればその部品・テーマから推したもの（kit/core/llm-pack.mjs の setsForDeck）。開いていなければ（か、推せなければ）足さない
+  async function defaultSets() {
     let deck = '';
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
-    return seriesForDeck(deck);
+    return setsForDeck(deck);
   }
 
-  // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る
-  // 問い「無料のプランですか、有料のプランですか」→「スライドに出てくるものはありますか」（内容の分野。② のタイトルと内容・① の場面から推したものに印）
-  // →「スライドで道具を使いますか」（道具。② のタイトル・内容・希望から推したものに印）→ 折りたたみ「パーツを見る・伝えたいことを外す」→［指示をコピー］。
-  // 分野と道具は、どちらのプランでも選ぶ（プランが変えるのは入る量：無料は標準パーツ（FREE_CORE）と、分野と道具を合わせて 2 つまで、有料はすべての標準パーツと分野・道具を数を限らず）。
-  // 無料のプランで選べるのは分野と道具を合わせて 2 つまで（kit/core/new-deck.mjs の FREE_SUBJECT_MAX・freePick）：2 つに印があれば、ほかの分野と道具の札は押せなくし、
-  // わけを 2 つの並びの下に出す。推した印は、無料なら自分で付けた印と合わせて 2 つまで（札の順：分野が先、それから道具）、有料なら限りなし。
-  // 有料から無料に戻すと、印は札の順（分野が先、それから道具）で初めの 2 つに減り、わけが出る。
-  // 道具は押したときだけ指示に入る（推した印は道具の札にも付ける）。自分で替えた印は、推し直しで上書きしない。新規作成はいつも印なしから始める（前の選び方は読まない）
+  // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る（handoff/parts-tiers-2026-10-27.md §2）
+  // 問い「無料のプランですか、有料のプランですか」→「AI にどのパーツを使わせますか」（パーツの一覧：伝えたいことごとのまとまり、教科の形は最後。
+  // kit/core/new-deck.mjs の partsList）→ 指示の大きさ（プランの目安と比べるメーター）→［指示をコピー］。
+  // 初めの選び方：標準のパーツは全部、専門のパーツは ① の小分類と ② の言葉から決めた束だけ（recommend。理由を一覧の上に出し、パーツに「おすすめ」）。
+  // 特殊（extra）のパーツは出さない。プランが変えるのは目安だけ（選べる数は限らない）：越えたら、無料のプランはまず中核の 4 つの説明を短くし（fitPlan）、それでも越えれば越えた分と外す候補（専門のパーツだけ）と［候補を外す］。
+  // 自分で替えた印は、推し直しで上書きしない。新規作成はいつも初めの選び方から（開いている教材の studio.newDeck は読まない）
+  // パーツの見本の小さな絵（app/part-thumbs.js。tools/part-thumbs.mjs がパーツの見本 demo.html から作る）：明るい画面と暗い画面の 2 枚を <picture> で。
+  // alt は何の絵か（パーツの名前と、日本語の画面では見本の見出し）。絵のないパーツは線画（ICONS）
+  function thumb(t) {
+    const th = THUMBS[t];
+    if (!th) return el('span', { cls: 'pick-thumb none' }, [icon(partIcon(t))]);
+    const img = el('img', { src: th.light, alt: X.thumbAlt(partLabel(t, LANG), th.title || ''), width: '96', height: '60', loading: 'lazy', decoding: 'async' });
+    return el('picture', { cls: 'pick-thumb' }, [el('source', { srcset: th.dark, media: '(prefers-color-scheme: dark)' }), img]);
+  }
   function sendStep(title, copyMsg, { request, missing, onCopied, onChange }) {
-    const touched = new Set();   // 自分で印を替えた分野（推した印で上書きしない）
-    const ticked = new Set();    // 印のある分野（系列の名前）
-    const toolTouched = new Set(), toolTicked = new Set();   // 道具（タグ）：自分で替えたもの・印のあるもの
-    const seriesOf = (id) => (SUBJECTS.find((x) => x.id === id) || {}).series;
-    const paid = () => draft.plan === 'paid';
-    // 分野の札（押すと入る・外れる。aria-pressed。入っている札は印と枠：色だけで分けない）
-    const tiles = SUBJECTS.map((x) => {
-      const b = el('button', { type: 'button', id: 'paste-series-' + x.series, cls: 'tile', 'data-subject': x.id, 'aria-pressed': 'false', title: membersOfSeries(x.series, draft.plan).join(', ') },
-        [icon(x.icon), el('span', { cls: 'tile-label', text: x.label[LANG] }), el('small', { text: x.inside[LANG] })]);
-      b.addEventListener('click', () => { if (ticked.has(x.series)) ticked.delete(x.series); else ticked.add(x.series); touched.add(x.series); update(); });
-      return b;
-    });
-    // 道具の札（manifest の components.<名前>.tile。押したものだけ指示に入る）
-    const toolTiles = TOOLS.map((t) => {
-      const b = el('button', { type: 'button', id: 'paste-tool-' + t.tag.replace(/^m-/, ''), cls: 'tile', 'data-tool': t.tag, 'aria-pressed': 'false', title: '<' + t.tag + '>' },
-        [icon(Object.hasOwn(ICONS, t.tile.icon) ? t.tile.icon : 'other'), el('span', { cls: 'tile-label', text: t.tile.label[LANG] }), el('small', { text: t.tile.examples[LANG] })]);
-      b.addEventListener('click', () => { if (toolTicked.has(t.tag)) toolTicked.delete(t.tag); else toolTicked.add(t.tag); toolTouched.add(t.tag); update(); });
-      return b;
-    });
-    const subjectsTicked = () => SUBJECTS.filter((x) => ticked.has(x.series)).map((x) => x.id);
-    const toolsTicked = () => TOOLS.map((t) => t.tag).filter((t) => toolTicked.has(t));
-    // 無料のプランで使う分野と道具（札の順で 2 つまで。札は 2 つを越えて押せないので、ふつうは印のとおり）
-    const pick = () => (paid() ? { subjects: subjectsTicked(), tools: toolsTicked() } : freePick(subjectsTicked(), toolsTicked()));
-    const chosen = () => pick().subjects.map(seriesOf);
-    const toolsOn = () => pick().tools;
-    const subjectName = (id) => { const x = SUBJECTS.find((y) => y.id === id); return x ? x.label[LANG] : id; };
-    const toolName = (tag) => { const t = TOOLS.find((x) => x.tag === tag); return t ? t.tile.label[LANG] : tag; };
+    const listed = partsList(null).flatMap((g) => g.parts);
+    const ticked = new Set(initialParts([]));
+    const touched = new Set();   // 自分で印を替えたパーツ（推し直しで上書きしない）
+    let rec = [];                // おすすめの束と理由（recommend）
+    const recSets = () => new Set(rec.map((r) => r.set));
+    const isRec = (t) => recSets().has(TIERS.parts[t].set);
+    const chosen = () => listed.filter((t) => ticked.has(t));
     const quote = (s) => (LANG === 'ja' ? `「${s}」` : `“${s}”`);
-    const maxNote = el('p', { id: 'paste-series-max', cls: 'hint', role: 'status', hidden: '', text: X.seriesMax });
-    // 札の状態：無料のプランは、分野と道具を合わせて 2 つに印があれば、ほかの分野と道具の札を押せなくする（印を外せばまた押せる）。有料のプランは限りなし
-    const limit = () => {
-      const n = ticked.size + toolTicked.size, full = !paid() && n >= FREE_SUBJECT_MAX;
-      for (const b of tiles) {
-        const on = ticked.has(b.id.slice('paste-series-'.length));
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        b.disabled = full && !on;
-      }
-      for (const b of toolTiles) {
-        const on = toolTicked.has(b.dataset.tool);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        b.disabled = full && !on;
-      }
-      maxNote.hidden = !full;
+    const names = (tags) => tags.map((t) => partLabel(t, LANG)).join(LANG === 'ja' ? '・' : ', ');
+    // パーツ 1 つ：チェックボックスと絵・名前・1 行の説明（label で全体を押せる）。おすすめには小さな札
+    const boxes = new Map();
+    const pick = (t) => {
+      const cb = el('input', { type: 'checkbox', id: 'paste-part-' + t.replace(/^m-/, ''), value: t, 'aria-describedby': 'paste-part-' + t.replace(/^m-/, '') + '-d' });
+      cb.addEventListener('change', () => { if (cb.checked) ticked.add(t); else ticked.delete(t); touched.add(t); update(); });
+      boxes.set(t, cb);
+      const badge = el('span', { cls: 'pick-badge', text: X.suggested, hidden: '' });
+      const node = el('label', { cls: 'pick', 'data-part': t, title: '<' + t + '>' }, [cb, thumb(t),
+        el('span', { cls: 'pick-text' }, [el('span', { cls: 'tile-label', text: partLabel(t, LANG) }), el('small', { id: cb.id + '-d', text: partDesc(t, LANG) })]), badge]);
+      node.badge = badge;
+      return node;
     };
+    const picks = new Map(listed.map((t) => [t, pick(t)]));
+    const groupNodes = new Map(partsList(null).map((g) => [g.id, el('div', { id: 'paste-pgroup-' + g.id, cls: 'pgroup', role: 'group', 'aria-labelledby': 'paste-pgroup-' + g.id + '-h' }, [
+      el('h4', { id: 'paste-pgroup-' + g.id + '-h', text: g.label[LANG] }), el('div', { cls: 'picks' }, g.parts.map((t) => picks.get(t)))])]));
+    const groups = el('div', { id: 'paste-pgroups', cls: 'pgroups' });
+    const why = el('p', { id: 'paste-parts-why', cls: 'hint paste-why', role: 'status', hidden: '' });
+    const count = el('p', { id: 'paste-parts-count', cls: 'hint', 'aria-live': 'polite' });
     const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-note paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map((p) => radio('paste-plan', p, X.plan[p], draft.plan === p))]);
     const planNote = el('p', { id: 'paste-plan-note', cls: 'hint', text: X.planNote });   // プランは使う人のチャットの AI のもの（Egatari にプランはない）
-    const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint });
-    const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-new-hint paste-series-max' }, [el('legend', { text: X.seriesLegend }),
-      el('div', { cls: 'tiles' }, tiles)]);
-    const seriesHint = el('p', { id: 'paste-series-new-hint', cls: 'hint', text: X.seriesHintNew(standardParts(LANG)) });
-    const guess = el('p', { id: 'paste-series-guess', cls: 'hint', role: 'status', hidden: '' });
-    const toolsGuess = el('p', { id: 'paste-tools-guess', cls: 'hint', role: 'status', hidden: '' });
-    // 道具：問い（legend）と並びの見出し「道具」
-    const toolsSet = el('fieldset', { id: 'paste-tools', cls: 'paste-series paste-tools', 'aria-describedby': 'paste-tools-hint paste-series-max', ...(TOOLS.length ? {} : { hidden: '' }) }, [el('legend', { text: X.toolsLegend }),
-      el('h4', { id: 'paste-tools-h', text: X.toolsHead }), el('div', { cls: 'tiles', role: 'group', 'aria-labelledby': 'paste-tools-h' }, toolTiles), el('p', { id: 'paste-tools-hint', cls: 'hint', text: X.toolsHint }), toolsGuess]);
+    const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint(capKb('free'), capKb('paid')) });
+    const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
+      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }), why, groups, count]);
+    // 指示の大きさ：プランの目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
+    const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
+    const fill = el('span', { cls: 'meter-fill' });
+    const bar = el('span', { id: 'paste-meter', cls: 'meter-bar', role: 'meter', 'aria-valuemin': '0', 'aria-labelledby': 'paste-pack-size' }, [fill]);
+    const overText = el('span', { id: 'paste-over-text' });
+    const trim = el('button', { type: 'button', id: 'paste-trim', text: X.trim });
+    const over = el('p', { id: 'paste-over', cls: 'paste-over', role: 'status', hidden: '' }, [overText, ' ', trim]);
+    const meter = el('div', { id: 'paste-size', cls: 'paste-size' }, [total, bar]);
+    const shortened = el('p', { id: 'paste-shortened', cls: 'hint', role: 'status', hidden: '', text: X.shortened(names(FREE_CORE)) });
     const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
-    const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
-    const exclude = () => componentsOff(draft.purposesOff, PURPOSES);
-    // この指示に入るパーツ：組み立てに入る部品（loadedParts。指示の一覧と同じ）と、外した伝えたいことだけに使う部品
-    const parts = partsTiles(() => update(), () => ({ loaded: partOrder(loadedParts(chosen(), draft.plan, toolsOn())), off: new Set(exclude()) }));
-    const textNow = () => packWithRequest({ series: chosen(), tools: toolsOn(), lang: LANG, request: request(), exclude: exclude(), off: draft.purposesOff, plan: draft.plan });
-    // 推した印：② のタイトルと内容の字（kit/core/new-deck.mjs の guessSubjects）と ① の場面（ビジネス → ビジネス）。道具は ② のタイトル・内容・希望（guessTools）。
-    // 自分で替えた分野・道具はそのまま
+    // プランは上限と詳しさを変える（無料のプランは、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
+    // 無料のプランで目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
+    let shortNow = false;
+    const textNow = (tags = chosen(), short = shortNow) => packWithRequest({ ...partsPackOpts(tags, draft.plan, { short }), lang: LANG, request: request() });
+    // 推した印：① の小分類と ② のタイトル・内容・そのほかの希望の言葉（recommend）。自分で替えたパーツはそのまま。標準のパーツは、替えていなければいつも印
     const guessNow = () => {
-      const fromText = guessSubjects(draft.title + '\n' + givenContent()), fromKind = defaultSubjects(draft.category).filter((x) => !fromText.includes(x));
-      const want = new Set([...fromText, ...fromKind].map(seriesOf));
-      // 無料のプラン：推した印は、自分で付けた分野と道具の印と合わせて 2 つまで（札の順：分野が先（SERIES は SUBJECTS と同じ順）、それから道具）。有料のプラン：限りなし
-      let room = paid() ? Infinity : FREE_SUBJECT_MAX - SERIES.filter((sr) => touched.has(sr) && ticked.has(sr)).length - [...toolTicked].filter((t) => toolTouched.has(t)).length;
-      for (const sr of SERIES) if (!touched.has(sr)) { const on = want.has(sr) && room > 0; if (on) { ticked.add(sr); room--; } else ticked.delete(sr); }
-      const names = (ids) => ids.filter((id) => { const sr = seriesOf(id); return sr && !touched.has(sr) && ticked.has(sr); }).map((id) => quote(subjectName(id)));
-      const a = names(fromText), k = names(fromKind);
-      guess.textContent = [a.length ? X.seriesGuess(a.join(LANG === 'ja' ? '' : ', ')) : '', k.length ? X.seriesGuessKind(k.join(LANG === 'ja' ? '' : ', ')) : ''].filter(Boolean).join(LANG === 'ja' ? '' : ' ');
-      guess.hidden = !guess.textContent;
-      const tw = new Set(guessTools([draft.title, givenContent(), draft.wishes].join('\n')));
-      for (const t of TOOLS.map((x) => x.tag)) if (!toolTouched.has(t)) { if (tw.has(t) && room > 0) { toolTicked.add(t); room--; } else toolTicked.delete(t); }
-      const tn = toolsTicked().filter((t) => !toolTouched.has(t)).map((t) => quote(toolName(t)));
-      toolsGuess.textContent = tn.length ? X.toolsGuess(tn.join(LANG === 'ja' ? '' : ', ')) : '';
-      toolsGuess.hidden = !toolsGuess.textContent;
+      rec = recommend({ sub: draft.sub || null, text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
+      const want = new Set(initialParts(rec));
+      for (const t of listed) if (!touched.has(t)) { if (want.has(t)) ticked.add(t); else ticked.delete(t); }
+      // 理由：束ごとに 1 文（その束で、推して印が付いたパーツの名前）。小分類の理由が先
+      const lines = rec.map((r) => {
+        const tags = partsOfSet(r.set).filter((t) => ticked.has(t) && !touched.has(t));
+        if (!tags.length) return '';
+        const sub = r.sub ? (catOf(draft.category) || { subs: [] }).subs.find((x) => x.id === r.sub) : null;
+        return r.sub ? X.whySub(quote(sub ? sub.label[LANG] : r.sub), names(tags)) : X.whyWord(quote(r.word), names(tags));
+      }).filter(Boolean);
+      why.textContent = lines.join(X.whySep);
+      why.hidden = !why.textContent;
+      // 授業（小・中・高）は教科の形を一番上に
+      groups.replaceChildren(...partsList(draft.sub || null).map((g) => groupNodes.get(g.id)));
     };
-    // 有料から無料に戻したとき：印は札の順（分野が先、それから道具）で初めの 2 つにする（見えている印と指示に入るものをいつも同じにする）。
-    // 2 つに印が残るので、わけ（paste-series-max）が出る：黙って減らさない
-    const fitFree = () => {
-      if (paid()) return;
-      const keep = freePick(subjectsTicked(), toolsTicked()), ks = new Set(keep.subjects.map(seriesOf)), kt = new Set(keep.tools);
-      for (const sr of [...ticked]) if (!ks.has(sr)) ticked.delete(sr);
-      for (const t of [...toolTicked]) if (!kt.has(t)) toolTicked.delete(t);
-    };
-    const showPlan = () => {
-      setRadios(planSet, 'paste-plan', draft.plan);
-      for (const b of tiles) b.title = membersOfSeries(b.id.slice('paste-series-'.length), draft.plan).join(', ');
-      // 札の小さな字：有料のプランで中の図が増える分野（社会の世界地図）は、有料のときだけその字
-      for (const b of tiles) { const x = SUBJECTS.find((y) => y.id === b.dataset.subject); b.querySelector('small').textContent = ((paid() && x.insidePaid) || x.inside)[LANG]; }
-      limit();
-      parts.refresh();
-    };
+    let candidates = [];
+    const sizeOf = (tags, short) => packSize(textNow(tags, short));
     const update = () => {
-      showPlan();
+      for (const [t, cb] of boxes) { cb.checked = ticked.has(t); picks.get(t).badge.hidden = !(isRec(t) && TIERS.parts[t].tier !== 'standard'); }
+      setRadios(planSet, 'paste-plan', draft.plan);
+      count.textContent = X.partsCount(chosen().length, listed.length);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
-      const t = textNow();
-      total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t));
+      const cap = capKb(draft.plan), capBytes = cap * 1024;
+      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：無料のプランで越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に
+      const fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes });
+      shortNow = fit.short;
+      shortened.hidden = !shortNow;
+      const t = textNow(), bytes = packSize(t);
+      total.textContent = X.packMeter(kb(t), cap); total.dataset.bytes = String(bytes);
+      bar.setAttribute('aria-valuemax', String(cap)); bar.setAttribute('aria-valuenow', kb(t)); bar.setAttribute('aria-valuetext', X.packMeter(kb(t), cap));
+      fill.style.width = Math.min(100, (bytes / capBytes) * 100).toFixed(1) + '%';
+      const isOver = bytes > capBytes;
+      meter.classList.toggle('over', isOver);
+      candidates = isOver ? fit.candidates : [];
+      over.hidden = !isOver;
+      overText.textContent = isOver ? X.overCap(kbOf(bytes - capBytes), candidates.length ? names(candidates) : '') : '';
+      trim.hidden = !candidates.length;
     };
-    // 有料に替えたら推し直す（無料の 2 つまでで付けられなかった推した印を付ける）。無料に戻したら印を札の順で 2 つに（fitFree）
-    planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; if (paid()) guessNow(); else fitFree(); update(); } });
+    trim.addEventListener('click', () => { for (const t of candidates) { ticked.delete(t); touched.add(t); } update(); total.focus(); });
+    planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; update(); } });
     let copied = null;   // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）
-    const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, purposesOff: draft.purposesOff, subjects: subjectsTicked(), tools: toolsTicked() });
+    const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, parts: chosen() });
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
       const miss = missing();
       if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
@@ -861,22 +781,26 @@ export function setupLlm(app) {
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
-    // 答えた 1 行：プランと使う分野・道具と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
-    const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], ...pick().subjects.map(subjectName), ...toolsOn().map(toolName), X.copiedShort].join(X.listSep), onChange);
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, seriesSet, seriesHint, guess, toolsSet, maxNote, parts.node, phase, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+    // 答えた 1 行：プランと選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
+    const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
+    // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
+    const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
+    const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
+    guessNow();
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
-  // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ分野）も付ける
-  // 分野の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）
+  // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ束）も付ける
+  // 束の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の setsForDeck）
   async function packStep(copyMsg, req, { title, copyLabel, copiedMsg, onCopied, onChange }) {
-    const initial = await defaultSeries();
+    const initial = await defaultSets();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
-    const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
+    const boxes = SETS.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
     const withPack = el('input', { type: 'checkbox', id: 'paste-with-pack' });
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
-    const partBytes = (s) => packSize(seriesPart(s, LANG));
+    const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ sets: chosen(), lang: LANG, request: r }) : r; };
+    const partBytes = (s) => packSize(setPart(s, LANG));
     const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); };
     for (const b of boxes) b.addEventListener('change', update);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
@@ -886,8 +810,8 @@ export function setupLlm(app) {
       if (ok && onCopied) onCopied();
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
-      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
-    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(seriesName.academic) })]);
+      ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);
     withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
     await update();
     const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);
@@ -1064,7 +988,7 @@ export function setupLlm(app) {
       Qs = [kindQuestion(titles[0], ctl), contentQuestion(titles[1], ctl), await themeQuestion(titles[2], ctl)];
       const request = () => {
         let t = filledRequest(requestValues(), LANG).replace(/\n*$/, '\n') + X.themeLine(newTheme) + '\n';
-        const cr = choiceRequest({ ...(send ? send.current() : {}), plan: draft.plan, category: draft.category, subcategory: draft.sub || null, purposesOff: draft.purposesOff }, PURPOSES, LANG);
+        const cr = choiceRequest({ category: draft.category, subcategory: draft.sub || null }, null, LANG);
         if (cr) t += cr + '\n';
         const c = givenContent();
         if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';

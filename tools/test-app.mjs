@@ -31,7 +31,7 @@ import { testLlm } from './test-app-llm.mjs';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
-import { testNewDeckFlow } from './test-app-newdeck.mjs';
+import { testNewDeckFlow, checkSkillDownload } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
 import { EXAMPLES, exampleRand } from './examples-portable.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
@@ -289,8 +289,8 @@ try {
   await page.waitForSelector('#dlg[open] #paste-step-kind');
   ok((await page.textContent('#w-new')) === '新規作成…' && (await page.textContent('#dlg-title')) === '新規作成' && !(await page.$('#dlg-new-blank')) && !(await page.$('#dlg-new-template'))
     && (await page.$$eval('#dlg-body section.paste-step', (xs) => xs.map((x) => x.id).join())) === 'paste-step-kind,paste-step-content,paste-step-theme,paste-step-send,paste-step-paste'
-    && (await page.$$eval('#paste-series .tile[aria-pressed=true]', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
-    'new: 「新規作成…」 opens the chat-AI page directly with 5 questions (subjects unticked, theme default); no blank or template');
+    && (await page.$$eval('#paste-parts .pick-badge:not([hidden])', (xs) => xs.length)) === 0 && (await page.inputValue('#paste-theme')) === 'default',
+    'new: 「新規作成…」 opens the chat-AI page directly with 5 questions (no part suggested yet, theme default); no blank or template');
   ok(JSON.stringify(await page.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['藍', '墨', '国語', '常盤', '江戸紫', '焦茶', '浅葱', 'テーマを読み込む…']), 'new: the theme select shows display names, then one 「テーマを読み込む…」');
   ok((await page.textContent('#paste-theme-note')) === '研究・講義向け', 'new: what the selected theme suits, in small text under the select (#129): ' + await page.textContent('#paste-theme-note'));
   // 「テーマを読み込む…」は新規作成の窓の上に読み込みの窓を開く（ZIP ファイル・フォルダ・キャンセル）。キャンセルで新規作成に戻る（③ までは ① その他・② タイトルで進む）
@@ -541,6 +541,30 @@ try {
   await opfs.write('deck.html', deck2);
   await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 10000 });
   ok(await page.isHidden('#errbox'), 'error: overlay disappears after the fix');
+  // 選んだカタログにない要素（#165）：組み立てと同じエラーを画面の言葉で出す（黙って落とさない）。egatari.json で 2.x を選べば組める
+  {
+    const conf0 = await opfs.read('egatari.json');
+    const scoreDeck = deck2.replace('<h2>学習率と収束（外で変更）</h2>', '<h2>学習率と収束（外で変更）</h2><m-score aria-label="音階"><script type="application/json">{"abc":"X:1\\nK:C\\nCDEF|"}</script></m-score>');
+    ok(scoreDeck !== deck2, 'catalogue: test edit applies');
+    await opfs.write('deck.html', scoreDeck);
+    await page.waitForSelector('#errbox:not([hidden])', { timeout: 15000 });
+    const et = await page.textContent('#errtext');
+    ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
+      'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
+    n = await loads();
+    await opfs.write('egatari.json', JSON.stringify({ ...(conf0 ? JSON.parse(conf0) : {}), componentsCatalogue: '2' }));
+    await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 15000 });
+    f = await waitLoads(n);
+    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: with "componentsCatalogue": "2" in egatari.json it builds and <m-score> runs');
+    n = await loads();
+    await opfs.write('deck.html', deck2);
+    f = await waitLoads(n);
+    n = await loads();
+    if (conf0 !== null) await opfs.write('egatari.json', conf0);
+    else await page.evaluate(() => window.__testDir.removeEntry('egatari.json'));
+    f = await waitLoads(n);
+    ok(await page.isHidden('#errbox'), 'catalogue: back to the original lesson');
+  }
 
   // ---------------------------------------------------------------- 7. 品質チェック
   await page.click('#b-check');
@@ -1509,6 +1533,10 @@ try {
       // プレビューを表示し終えてから（loads は srcdoc を渡した数。iframe の load はその後で、プレビューに focus を移す）
       const shown = () => pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
       await shown();
+      await pt.click('#b-help');
+      await pt.waitForSelector('#help-download-skill');
+      await checkSkillDownload(pt, { lang, selector: '#help-download-skill', ok, base: BASE });
+      await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
       await clickMenuOpen(pt, '#b-filemenu');
       await pt.waitForSelector('#m-file:not([hidden])');
       if (SHOTS) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-menu.png`), clip: { x: 0, y: 0, width: 1000, height: 400 } });
@@ -2105,6 +2133,10 @@ try {
   let ready = false;
   for (let i = 0; i < 100 && !ready; i++) { const fr = p1.frames().find((x) => x.parentFrame() === p1.mainFrame()); try { ready = !!(fr && await fr.evaluate(() => window.DECK && DECK.ready)); } catch { /* 読み込み中 */ } if (!ready) await p1.waitForTimeout(100); }
   ok(ready, 'single file: preview renders from file:// (fonts embedded)');
+  await p1.click('#b-help');
+  await p1.waitForSelector('#help-download-skill');
+  await checkSkillDownload(p1, { lang: 'ja', selector: '#help-download-skill', ok });
+  await clickUntil(p1, '#panel-close', () => p1.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
   // 音声の板：1 ファイル版（file://）では TTS の窓がないので「この PC で作る」は出さず、クラウドと録音を答えにする
   await p1.click('#b-audio');
   await p1.waitForSelector('#dev-audio-how');
@@ -2118,6 +2150,14 @@ try {
   const [dl] = await Promise.all([p1.waitForEvent('download'), clickCommand(p1, '#b-save')]);
   const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
+  // 英語の単体版も、サイトの ZIP を読まずにダウンロードできる。
+  await p1.goto(pathToFileURL(path.join(DIST, 'editor.html')).href + '?lang=en');
+  await p1.waitForSelector('#drop');
+  await p1.evaluate(([b64, ext]) => window.__APP_TEST.openFile({ bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), name: 'skill' + ext }), [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]);
+  await p1.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+  await p1.click('#b-help');
+  await p1.waitForSelector('#help-download-skill');
+  await checkSkillDownload(p1, { lang: 'en', selector: '#help-download-skill', ok });
   await p1.close();
 
   // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
@@ -2185,6 +2225,9 @@ try {
     await ps.click('#examples-list li[data-example="minimal"] button');
     await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: 30000 }).catch(() => {});
     ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
+    await ps.click('#b-help');
+    await ps.waitForSelector('#help-download-skill');
+    await checkSkillDownload(ps, { lang: 'ja', selector: '#help-download-skill', ok, base });
     await ps.close();
   }
 
@@ -2232,6 +2275,10 @@ try {
         await pv.click('#examples-list li[data-example="minimal"] button');
         await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
         ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${cur}/`);
+        await pv.click('#b-help');
+        await pv.waitForSelector('#help-download-skill');
+        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${cur}/` });
+        await clickUntil(pv, '#panel-close', () => pv.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
         // 写しの TTS の窓・試験ページ（lab/）も、その写しの下にある
         ok((await fetch(SB + `v${cur}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
         // 知らせを隠す

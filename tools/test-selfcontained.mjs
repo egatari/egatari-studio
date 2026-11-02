@@ -5,6 +5,7 @@
 //   2. skills/ の中のスキルの名前：同梱のスキル（skills/<名前>/）だけ。説明（frontmatter）の中の a-b の形の名前と、「… スキル」「… skill」の名前
 //   3. 文書（*.md）が挙げるパス（`tools/x.mjs` など、リポジトリの最上位のフォルダから書いたもの）と相対のリンクが実在し、`npm run <名前>` が package.json にある
 //   4. kit/ と server/（スライドの系）が tts/ と render/（音声と動画の系）を import しない
+//   5. 文書とスキルが挙げる egatari コマンド（`npx egatari[@版] <名前>`、`egatari <名前>` で始まる `…`）が bin/egatari.mjs にある
 //   node tools/test-selfcontained.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,8 +15,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
-const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean)
+const gitFiles = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean)
   .filter((f) => fs.existsSync(path.join(ROOT, f)) && fs.statSync(path.join(ROOT, f)).isFile());
+// 新しいプラグインのファイルは、git add の前でも点検する。
+const walk = (dir) => fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).flatMap((e) => {
+  const f = dir + '/' + e.name;
+  return e.isDirectory() ? walk(f) : e.isFile() ? [f] : [];
+});
+const tracked = [...new Set([...gitFiles, ...walk('skills'), ...walk('plugins/egatari'), ...walk('.claude-plugin'), 'tools/video.mjs'])];
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
 const isText = (f) => !/\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|wav|mp3|m4a|mp4|pdf|zip|gz|wasm)$/i.test(f);
 const SELF = 'tools/test-selfcontained.mjs';
@@ -43,15 +50,16 @@ for (const f of tracked) {
 ok(!hits.length, `forbidden patterns: none in ${tracked.length} tracked files` + hits.map((h) => '\n       ' + h).join(''));
 
 // ---------------------------------------------------------------- 2. スキルの名前
-const BUNDLED = new Set(fs.readdirSync(path.join(ROOT, 'skills')).filter((d) => fs.existsSync(path.join(ROOT, 'skills', d, 'SKILL.md'))));
-// スキルではない名前（このリポジトリの前の名前・今の名前）
-const NOT_SKILLS = new Set(['motion-academic-slides', 'egatari-studio']);
+const SKILL_ROOTS = ['skills', 'plugins/egatari/skills'];
+const BUNDLED = new Set(SKILL_ROOTS.flatMap((root) => fs.readdirSync(path.join(ROOT, root)).filter((d) => fs.existsSync(path.join(ROOT, root, d, 'SKILL.md')))));
+// リポジトリの前の名前・今の名前と、説明文に 1 版だけ残す旧スキル名
+const NOT_SKILLS = new Set(['motion-academic-slides', 'egatari-studio', 'motion-slides', 'motion-components', 'motion-slides-video']);
 const skillHits = [];
-for (const f of tracked.filter((x) => x.startsWith('skills/') && x.endsWith('.md'))) {
+for (const f of tracked.filter((x) => SKILL_ROOTS.some((root) => x.startsWith(root + '/')) && x.endsWith('.md'))) {
   const t = read(f);
   const fm = /^---\n([\s\S]*?)\n---/.exec(t);
   if (fm) for (const m of fm[1].matchAll(/\b[a-z][a-z0-9]*(?:-[a-z0-9]+)+\b/g)) if (!BUNDLED.has(m[0]) && !NOT_SKILLS.has(m[0])) skillHits.push(`${f}: frontmatter names "${m[0]}"`);
-  for (const m of t.matchAll(/`?([a-z][a-z0-9]*(?:[-:][a-z0-9]+)+)`?\s?(?:スキル|skill)/g)) if (!BUNDLED.has(m[1])) skillHits.push(`${f}: names the skill "${m[1]}"`);
+  for (const m of t.matchAll(/`?([a-z][a-z0-9]*(?:[-:][a-z0-9]+)+)`?\s?(?:スキル|skill)/g)) if (!BUNDLED.has(m[1].replace(/^egatari(?:-studio)?:/, ''))) skillHits.push(`${f}: names the skill "${m[1]}"`);
 }
 ok(!skillHits.length, `skills: only the bundled skills (${[...BUNDLED].join(', ')}) are named` + skillHits.map((h) => '\n       ' + h).join(''));
 
@@ -109,6 +117,32 @@ for (const f of tracked.filter((x) => /^(kit|server)\/.*\.(m?js|cjs)$/.test(x)))
   }
 }
 ok(!impHits.length, 'layers: kit/ and server/ do not import tts/ or render/' + impHits.map((h) => '\n       ' + h).join(''));
+
+// ---------------------------------------------------------------- 5. egatari コマンドの名前
+// bin/egatari.mjs は読み込むと動き出すので、字から読む：SCRIPTS の鍵と、cmd === '…' で分けるもの
+const binText = read('bin/egatari.mjs');
+const scriptsBlock = /const SCRIPTS = \{([\s\S]*?)\n\};/.exec(binText);
+const SUBS = new Set([
+  ...[...(scriptsBlock ? scriptsBlock[1] : '').matchAll(/^\s{2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]),
+  ...[...binText.matchAll(/\bcmd === '([a-z-]+)'/g)].map((m) => m[1]),
+]);
+ok(['new', 'build', 'check', 'dev', 'ids', 'video', 'tts', 'doctor', '--version', '--help'].every((s) => SUBS.has(s)), `egatari: subcommands read from bin/egatari.mjs (${[...SUBS].join(', ')})`);
+const cliHits = [];
+let nCli = 0;
+const cliDocs = [...new Set([...docs, ...tracked.filter((f) => /^(skills|plugins\/egatari)\/.*\.md$/.test(f))])];
+for (const f of cliDocs) {
+  read(f).split('\n').forEach((l, i) => {
+    const subs = [...l.matchAll(/\bnpx\s+(?:--\S+\s+)*egatari(?:@[0-9A-Za-z.^~<>=*-]+)?(?:\s+(?:--\s+)?(\S+))?/g)].map((m) => m[1]);
+    for (const c of l.matchAll(/`egatari\s+([^`\s]+)[^`]*`/g)) subs.push(c[1]);
+    for (const s of subs) {
+      if (s === undefined || /^[<…`'"(]|^\.\.\.|^…/.test(s)) continue;   // 型（<コマンド>・…）
+      const sub = s.replace(/[`'".,;:)）、。]+$/, '');
+      nCli++;
+      if (!SUBS.has(sub)) cliHits.push(`${f}:${i + 1}: egatari ${sub} is not a command of bin/egatari.mjs`);
+    }
+  });
+}
+ok(!cliHits.length && nCli > 10, `egatari: the ${nCli} egatari commands named in ${cliDocs.length} documents exist in bin/egatari.mjs` + cliHits.map((h) => '\n       ' + h).join(''));
 
 if (fails) { console.log(`\n${fails} failed`); process.exit(1); }
 console.log('\nall passed');

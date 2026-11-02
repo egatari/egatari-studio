@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=da169d5dcdf8d96b -->
+<!-- i18n: pair=video.ja.md sha256=8e8618f74da25034 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -18,7 +18,7 @@ The list of TTS and render options and environment variables is in [reference.md
 
 | Environment variable | Meaning | Default |
 |---|---|---|
-| `IRODORI_URL` | the Irodori-TTS server | `http://localhost:8882` |
+| `IRODORI_URL` | the Irodori-TTS server | `http://localhost:8882` (default) |
 | `IRODORI_REF_DIR` | the reference voice folder (`--ref-dir` takes precedence) | `tts/voices/` |
 | `MOTION_YOMI` | the reading dictionary (`--yomi` takes precedence) | `tts/yomi.yaml` |
 

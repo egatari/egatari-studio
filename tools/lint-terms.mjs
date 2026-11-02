@@ -35,7 +35,7 @@ const COUNTS = args.includes('--counts');
 
 // ---- 見る所 ----
 const UI_CODE = ['app/*.js', 'kit/tools.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
-const PROSE = ['docs/*.md', 'README.md', 'README.ja.md', 'skills/*/SKILL.md'];
+const PROSE = ['docs/*.md', 'README.md', 'README.ja.md', 'skills/*/SKILL.md', 'plugins/egatari/skills/*/SKILL.md'];
 const PROSE_EXCLUDE = ['docs/authoring-with-llms*', 'docs/terms.md'];
 
 export function globRe(g) {

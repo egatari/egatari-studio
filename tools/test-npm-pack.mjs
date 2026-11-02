@@ -2,7 +2,7 @@
 //   node tools/test-npm-pack.mjs [作業フォルダ] [--keep]
 // 1. 包みの中身：bin・kit・字の写し（fonts/@fontsource、OFL の LICENSE つき）があり、試験・examples・dist・規格の試験用ファイル・node_modules はない
 // 2. 入れる：npm install <tarball>（--prefer-offline・--ignore-scripts）。@fontsource は入らない（devDependencies）
-// 3. npx egatari --version・doctor・new（相対パスは cwd から）・check・build・build --portable
+// 3. npx egatari --version・doctor・new（相対パスは cwd から）・check・build・sheet・build --portable
 // 4. 再生器の版：出した版と同じならその版、違っても "+dev" だけで、外側の利用者のリポジトリの commit を付けない（kit/build.mjs の repoCommit）
 // 包みと入れた後の大きさを出す。ブラウザが要る（check・doctor）
 import fs from 'node:fs';
@@ -47,10 +47,10 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   tgz = path.join(work, packed.filename);
   assert.ok(fs.existsSync(tgz), tgz);
   const files = new Set(packed.files.map((f) => f.path));
-  for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs',
+  for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
     'components.lock.json', 'themes.lock.json', 'kit/player.lock.json', 'LICENSE', 'NOTICE', 'fonts/OFL.txt',
     'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'vendor/csl/styles/apa.csl', 'vendor/csl/locales/locales-ja-JP.xml', 'vendor/csl/SOURCE.json', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
-  const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|portable)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
+  const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|portable|sheet|comment-shots|video)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
   assert.deepEqual(bad, []);
 });
 
@@ -65,7 +65,9 @@ await t('npm install <tarball>：入れたものに @fontsource はなく、字�
 
 await t('npx egatari --version・--help・知らないコマンド', () => {
   assert.equal(must(egatari(['--version']), '--version').stdout.trim(), PKG.version);
-  assert.match(must(egatari(['--help']), '--help').stdout, /usage: egatari <command>/);
+  const help = must(egatari(['--help']), '--help').stdout;
+  assert.match(help, /usage: egatari <command>/);
+  for (const sub of ['sheet', 'comment-shots', 'video']) assert.match(help, new RegExp(`egatari ${sub} `), sub);   // egatari-studio のスキルが呼ぶもの
   assert.notEqual(egatari(['nope']).code, 0);
 });
 
@@ -95,6 +97,11 @@ await t('egatari build：out/deck.html に写しの字（BIZ UDPGothic・Source 
   assert.match(html, /@font-face\{font-family:"Source Sans 3"/);
   assert.match(html, /@font-face\{font-family:"BIZ UDPGothic"/);
   assert.doesNotMatch(html, /字の包みがない|がないので埋め込まない/);
+});
+
+await t('egatari sheet deck：全スライドの 1 枚の画像（egatari-studio のスキルが呼ぶ）', () => {
+  must(egatari(['sheet', 'deck'], user), 'sheet');
+  assert.ok(fs.statSync(path.join(user, 'deck', 'out', 'sheet.png')).size > 1000);
 });
 
 const playerOf = (dir) => {

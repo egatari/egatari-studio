@@ -16,6 +16,7 @@ import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLim
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
+import { SUBSET_NAME_RE } from './parts2.mjs';
 import { readThemesLock, themesVendorDir, themePinsForIndex, excludedFromThemeHash, excludedFromThemeCopy, isThemeLicense } from './themes-lock.mjs';
 import { identityBytes, normalizeEol } from './identity-hash.mjs';
 import { utf8Length } from './bounded-read-core.mjs';
@@ -360,7 +361,17 @@ export function validateIndex(ix) {
       if (own(c, 'license')) str(c.license, `${w}.license`, null, 1);
       if (own(c, 'subset')) {
         if (!isObj(c.subset)) e.push(`${w}.subset: not an object`);
-        else { need(c.subset, ['keys', 'sha256'], `${w}.subset`); str(c.subset.keys, `${w}.subset.keys`); str(c.subset.sha256, `${w}.subset.sha256`, RE.sha256); }
+        else {
+          need(c.subset, ['keys', 'sha256'], `${w}.subset`); str(c.subset.keys, `${w}.subset.keys`); str(c.subset.sha256, `${w}.subset.sha256`, RE.sha256);
+          // names（§6.2 Subset by name）：match: "name" の宣言で残した名前。1 回ずつ（index schema の uniqueItems）
+          if (own(c.subset, 'names')) {
+            if (!Array.isArray(c.subset.names)) e.push(`${w}.subset.names: not an array`);
+            else {
+              c.subset.names.forEach((n, k) => str(n, `${w}.subset.names[${k}]`, SUBSET_NAME_RE));
+              if (new Set(c.subset.names).size !== c.subset.names.length) e.push(`${w}.subset.names: duplicates`);
+            }
+          }
+        }
       }
       // renderers（format spec §6.2 Render・index schema）：組み立てのときに描いた描き手 {名前: {version, options?}}。パーツのデータの renderers と同じ
       if (own(c, 'renderers')) {
@@ -1234,7 +1245,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (p.source === 'embedded') { c.path = p.path; embeddedCode = true; }
     if (p.license) c.license = p.license;
     if (p.renderers) c.renderers = p.renderers;
-    if (p.subset) c.subset = { keys: p.subset.keys, sha256: await sha256Hex(utf8(p.code.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--').replace(/\r\n?/g, '\n'))) };
+    if (p.subset) c.subset = { keys: p.subset.keys, ...(p.subset.names ? { names: p.subset.names } : {}), sha256: await sha256Hex(utf8(p.code.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--').replace(/\r\n?/g, '\n'))) };
     components.push(c);
   }
   for (const c of components) if (c.tag && r.stats.viewerInputs?.[c.tag] === true) c.viewerInput = true;

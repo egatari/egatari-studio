@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=55b8c8e52af9b1a0 -->
+<!-- i18n: pair=template.ja.md sha256=daec6722d12bfe9c -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -8,19 +8,19 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 
 **For people.** This is an instruction pack for chat AIs (claude.ai, Gemini, ChatGPT, …) that writes a first draft of an [Egatari](https://github.com/egatari/egatari-spec) lesson (Egatari is an open file format; Egatari Studio is the editor): an HTML slide deck with step-by-step reveals and a spoken script. No install and no coding tool needed.
 
-1. Open a new chat and paste **everything from “Instructions for the AI” to the end**, followed by all the series packs (below), and end with the **What I want** section filled in (title, audience, length, language, speakers, other wishes; one narrator by default). The editor assembles the pack from your answers to a few questions and copies it, with “What I want” at the end (**New… → answer the four questions → Copy the instructions**; it puts what you wrote at the end, so you can send it even when the chat turns the long paste into an attachment).
+1. Open a new chat and paste **everything from “Instructions for the AI” to the end**, followed by the part set packs you need (below), and end with the **What I want** section filled in (title, audience, length, language, speakers, other wishes; one narrator by default). The editor assembles the pack from your answers to a few questions and copies it, with “What I want” at the end (**New… → answer the four questions → Copy the instructions**; it puts what you wrote at the end, so you can send it even when the chat turns the long paste into an attachment).
 2. The AI’s output has two grey boxes (code blocks). Copy each with the copy button at its top right, paste them into the two fields of step 5 of that dialog in Egatari Studio (slides and script), and press **Create** (if you copied the whole output, paste it into either field and it is split in two). The editor gives every slide a stable id, runs the quality check and opens it.
 3. Fix the findings of the quality check, or press **Copy a fix request for your AI** in the quality check panel and paste that into the same chat; paste the AI’s output in step 3 of **Revise…** and press **Replace**. To add slides later, use **Insert slide… → Have a chat AI write it**.
 
-**Paste it each time, or register it once.** Pasting the pack at the start of each chat works in every chat AI and always uses the current pack; this is the default. If you write lessons often, you can keep the pack in the chat AI instead (copy it from the editor, or save this file and the series packs you need as text files):
+**Paste it each time, or register it once.** Pasting the pack at the start of each chat works in every chat AI and always uses the current pack; this is the default. If you write lessons often, you can keep the pack in the chat AI instead (copy it from the editor, or save this file and the part set packs you need as text files):
 
 - **claude.ai**: make a Project and put the pack in its instructions, or add it as a project file; every chat in the project uses it. Where skills are available, a skill can carry the pack too.
 - **ChatGPT**: a Project (instructions or files), or a custom GPT. The pack is longer than a custom GPT's instruction box allows, so upload it as a Knowledge file and write “Follow the attached Egatari instruction pack exactly” in the instructions.
 - **Gemini**: a Gem; put the pack in its instructions, or add it as a file if it is too long.
 
-A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. A registered pack is not the Claude Code skill (`skills/`): the skill also quality-checks, builds and narrates (TTS) the lesson on your computer, while the pack only lets a chat AI write the two files you paste back.
+A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the series packs together are the **full pack**: the standards, the output format and every component. For a chat AI on a paid plan the editor copies every standard part with the subjects and tools chosen; with every subject and tool chosen, that is the full pack. Each **series pack** adds the components of one kind of lesson: {{SERIES_LIST}}. For a free plan the editor copies a lighter pack with fewer components (`node kit/llm-pack.mjs --series academic,info --lang en` prints it; add `--plan paid` for the paid-plan pack with those subjects, and `--series all --tools all --plan paid` for the full pack). Sizes (KB = UTF-8 bytes / 1024):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: {{SETS_LIST}}. The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024):
 
 {{SIZE_TABLE}}
 
@@ -78,7 +78,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
-- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo series pack, which describes it), and the `data-morph` attribute (§2.5).
+- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
 - Inside `.body`: `<p class="sub">` sub-heading, `<div class="big">` main equation, `<p class="note">` note, `<div class="thm">` theorem box, `<div class="cols">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
 - **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
@@ -107,7 +107,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ### 2.7 Choosing a representation
 
-- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those described in the text you were given (§3, and the packs included). If a part of another pack would fit better, say so in a one-line note.
+- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those in the text you were given (§3, and the part sets included). If a part that is not included would fit better, say so in a one-line note.
 
 {{PURPOSES}}
 
@@ -122,7 +122,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ## 3. Component catalog
 
-These components may be used in any lesson; a series pack, when it is included after §6, adds the components of its subject. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
 
 {{CATALOG}}
 
@@ -158,7 +158,7 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Each series pack ends with an example of its own.
+A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.
 
 {{WORKED common "Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)"}}
 

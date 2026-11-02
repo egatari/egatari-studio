@@ -1079,7 +1079,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Subjects",
    "ja": "内容の分野",
-   "definition": "Part sets for a subject (question: Will the slides need any of these?). Chosen on both plans; on the free plan up to two choices counting subjects and tools together. Headings use 内容の分野; running text may say 分野.",
+   "definition": "Part sets for a subject, offered when inserting slides for a different chat (question: Will the slides need any of these?). New… lists parts instead (backlog #124). Headings use 内容の分野; running text may say 分野.",
    "avoid": {
     "ja": [
      "系列",
@@ -1133,7 +1133,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Free plan (of the chat AI)",
    "ja": "無料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a free plan; instructions are kept short. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
+   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 40 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
    "avoid": {
     "ja": [
      "無料版"
@@ -1150,7 +1150,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Paid plan (of the chat AI)",
    "ja": "有料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a paid plan; all standard parts and the chosen subjects and tools, in full detail. Always shown with 「チャットの AI：」.",
+   "definition": "The user's chat AI is on a paid plan; the suggested size limit of the instructions is 120 KB. Always shown with 「チャットの AI：」.",
    "avoid": {
     "ja": [
      "有料版"
@@ -1167,7 +1167,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Tools",
    "ja": "道具",
-   "definition": "Parts the AI uses only when asked (e.g. Timer); chosen on both plans.",
+   "definition": "Parts the AI uses only when ticked (e.g. Timer); in New… they are listed under Time-boxing.",
    "avoid": {
     "ja": [],
     "en": []
@@ -1182,7 +1182,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Standard parts",
    "ja": "標準パーツ",
-   "definition": "Parts included without choosing a subject.",
+   "definition": "Parts ticked from the start in New… (the standard tier of the parts library).",
    "avoid": {
     "ja": [
      "共通の部品",

@@ -3,8 +3,11 @@
 //   登録簿（kit/parts-registry.js）：status() の形（failed[].element）と失敗の理由（meta・factory・missing・dependency・duplicate・element）・依存の順・先の参照・factory の失敗とその伝わり・
 //   同じ名前の 2 つの版・返り値を凍らせる・要素の定義・要素の名前の 2 度目・形の違う meta
 //   kit/core/parts2.mjs：依存の解決と順・要素の名前のぶつかり（conflicts。組み立ては断る）・カタログの選び方・meta を字で読む（字のままでなければ知らせる。写しのパーツは全部読める）・
-//   描く欄の道筋と欄の名前・絞り込み（同じキーなら同じバイト、_ の欄は先にそのまま、宣言ごとに宣言した順、keys は合わせて符号の順）
+//   描く欄の道筋と欄の名前・絞り込み（同じキーなら同じバイト、_ の欄は先にそのまま、宣言ごとに宣言した順、keys は合わせて符号の順）・
+//   名前で絞る（match: "name"。tools/fixtures/subset-names の部品庫の参照の実装が出したものとバイトまで同じ、語の切り方、keep、names の記録）・
+//   教材の字（lessonText：char も name も同じ字。parse5 で文書として読み、木の順に。参照の実装の §9・§10・parse-cases.json）・形の悪い宣言（パーツを全部のまま、subset を記録しない）
 //   写し：vendor/components/sha256 と components2.lock.json が合っている（tools/components2-update.mjs --check と同じ）
+//   選んだカタログにない要素（#165）：deckElements（要素として使う名前・原稿の <script> が定義する名前）と catalogueHint（どこにあるか・直し方）。登録簿は再生器の代わりの受けを置き換える
 import fs from 'node:fs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
 import path from 'node:path';
@@ -12,7 +15,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
+import { deckElements, catalogueHint, catalogueMessage, parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonText, lessonTokens, htmlPieces, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
 import { applyRelease2, checkVendor2 } from './components2-update.mjs';
 import { validateIndex } from '../kit/core/portable.mjs';
 
@@ -232,6 +235,106 @@ for (const [code, what] of [
   ok(subsetCode(code, { data: 'strokes', key: 'char' }, 'あ').problems.some((x) => /is not block:<name>/.test(x)), 'a subset entry whose data is not block:<name> is reported (1.0: blocks only)');
 }
 
+// ---------------------------------------------------------------- 名前で絞る（§6.2 Subset by name）と教材の字（§6.2 Subset、egatari-spec 6f2670b）
+// tools/fixtures/subset-names/expected.json は部品庫の参照の実装（egatari/components tools/subset-produce.mjs の produce、c004416）が同じ入力から出したもの。
+// 同じ宣言・同じ教材（.html は原稿、.md は口述原稿）・同じ glyphs なら、絞ったコードのバイト（sha256）・keys・names が同じ。形の悪い宣言はパーツを全部のまま
+{
+  const FX = path.join(ROOT, 'tools/fixtures/subset-names');
+  const rd = (f) => fs.readFileSync(path.join(FX, f), 'utf8');
+  const hash = (s) => crypto.createHash('sha256').update(String(s).replace(/\r\n?/g, '\n'), 'utf8').digest('hex');
+  const exp = JSON.parse(rd('expected.json'));
+  const textOf = (c) => lessonText(c.inline || c.lessons.map((f) => (f.endsWith('.md') ? { narration: rd(f) } : { html: rd(f) })), c.glyphs || '');
+  for (const c of exp.cases) {
+    const full = rd(c.part);
+    const r = subsetCode(full, c.build.subset, textOf(c));
+    if (c.warning) {
+      ok(hash(full) === c.full && r.problems.length > 0 && r.code === full && !r.blocks.length && hash(r.code) === c.sha256,
+        `${c.name}: reported and kept whole, as the reference (${r.problems.join('; ')} / reference: ${c.warning})`);
+      continue;
+    }
+    ok(hash(full) === c.full && !r.problems.length && hash(r.code) === c.sha256 && Buffer.byteLength(r.code) === c.bytes && r.keys === c.keys && eq(r.names, c.names),
+      `${c.name}: the same bytes as the reference (${c.bytes} B, sha256 ${c.sha256.slice(0, 12)}…), keys ${JSON.stringify(r.keys)}, names ${JSON.stringify(r.names)}${r.problems.length ? ' / ' + r.problems.join('; ') : ''}`);
+    const again = subsetCode(full, c.build.subset, r.keys, [...(r.names || [])].reverse());
+    ok(again.code === r.code && eq(again.names, r.names), `${c.name}: applying the recorded keys and names (in any order) to the full code gives the same bytes`);
+  }
+  // 部品庫の §9 の確かめ（tools/test-subset.mjs 9）：教材の字の節
+  const T9 = lessonText([{ html: `<section class="slide" data-home="user-plus"><h2>A &amp; B &#x3042;&nbsp;x</h2><!-- comment-word -->
+<m-cards title='chart-line'><script type="application/json">{"cards":[{"icon":"chart-pie","n":12.5,"ok":true}]}</script></m-cards>
+<m-x><script type="application/json">{"broken": </script></m-x><script>var hidden = "script-word";</script><style>.style-word{}</style></section>` },
+  { narration: '<b>narr-word</b>' }], 'G');
+  const P9 = T9.split('\n');
+  ok(['A & B あ\u00a0x', 'user-plus', 'chart-line', 'cards', 'icon', 'chart-pie', 'n', '12.5', '{"broken": ', '<b>narr-word</b>', 'G'].every((x) => P9.includes(x)),
+    'counted: text (references decoded), attribute values, JSON names, strings (escapes decoded) and numbers, invalid JSON as written, narration as written, glyphs');
+  ok(!/section|data-home|class|m-cards|m-x|comment-word|script-word|style-word|true|hidden/.test(T9.replace('<b>narr-word</b>', '')) && P9.includes('slide') && P9.includes('application/json'),
+    'not counted: tag and attribute names, comments, other <script>, <style>, booleans (attribute values such as slide and application/json are)');
+  const tk = lessonTokens(lessonText([{ html: '<m-cards><script type="application/json">{"cards":[{"icon":"\\u0075ser"}]}</script></m-cards>' }]));
+  ok(eq([...tk].sort(), ['application', 'cards', 'icon', 'json', 'user']), `tokens of a lesson: ${JSON.stringify([...tk].sort())} (the type attribute's value counts; the tag names do not; \\u is read)`);
+  // 字の参照（egatari-spec c09b233）：HTML のパーサーが読むとおり（WHATWG の全部の表と最長一致、; のない古い名前と属性の値の例外、数の参照の直し、CR・CRLF）。
+  // references.json は参照の実装（c004416）の htmlPieces が出したもの
+  const R9 = lessonText([{ html: '<p title="&copy2 &amp=x &hellip;">&hellip;&mdash;&copy2 &notit; &#x80;&#0;&#12354 AT&T &unknown;</p>' }]).split('\n');
+  ok(R9[0] === '&copy2 &amp=x …' && R9[1] === '…—©2 ¬it; €\ufffdあ AT&T &unknown;', `character references as an HTML parser yields them: ${JSON.stringify(R9)}`);
+  const refs = JSON.parse(rd('references.json')).cases, refBad = refs.filter((c) => !eq(htmlPieces(c.html), c.pieces));
+  ok(refs.length >= 25 && !refBad.length, `${refs.length} reference edge cases (text and attribute values) read as the reference does${refBad.length ? ': ' + refBad.map((c) => c.html + ' → ' + JSON.stringify(htmlPieces(c.html))).join('; ') : ''}`);
+  // 文書として読む（egatari-spec subset-parse c6024bf）：parse-cases.json は参照の実装（c004416）の htmlPieces が出したもの（はじめ規格から手で書き、照らして一致）
+  const pc = JSON.parse(rd('parse-cases.json')).cases, pcBad = pc.filter((c) => !eq(htmlPieces(c.html), c.pieces));
+  ok(pc.length >= 10 && !pcBad.length, `${pc.length} parse cases as the reference: doctype, comments, duplicate attributes, <plaintext>, SVG CDATA, <title>, <textarea>, <noscript>, template${pcBad.length ? ' / ' + pcBad.map((c) => c.name + ' → ' + JSON.stringify(htmlPieces(c.html))).join('; ') : ''}`);
+  // 部品庫の §10 の確かめ（tools/test-subset.mjs 10）
+  const P10 = lessonText([{ html: `<!DOCTYPE html><html lang="ja"><head><title>T &amp; <b>in-title</b></title></head><body>
+<p a="first" a="second">p</p><textarea>x <i>in-textarea</i> &lt;</textarea><noscript><span>in-noscript</span></noscript><xmp><u>in-xmp</u> &amp;</xmp>
+<div><![CDATA[<em>html-cdata</em>]]><?pi <em>in-pi</em>?></div>
+<template><span>in-template</span></template>
+<svg><text><![CDATA[svg-cdata <tag>]]></text><style>.svg-style{}</style></svg>
+<plaintext><q>in-plaintext</q> &amp;` }]).split('\n');
+  const has = (x) => P10.includes(x);
+  ok(!P10.includes('html') && P10.includes('ja'), 'the doctype yields nothing (no token html); the lang attribute value counts');
+  ok(has('T & <b>in-title</b>') && has('x <i>in-textarea</i> <'), `<title> and <textarea> are one text node each, references decoded: ${JSON.stringify(P10.filter((x) => /title|textarea/.test(x)))}`);
+  ok(has('<span>in-noscript</span>') && has('<u>in-xmp</u> &amp;'), '<noscript> (scripting enabled) and <xmp> are raw text, not tags (and no references decoded in <xmp>)');
+  ok(!P10.some((x) => /CDATA|<em>|\?pi/.test(x)) && has('html-cdata]]>') && has('in-pi?>'), 'CDATA and processing instructions in HTML are bogus comments up to the first ">" (not counted); what follows is parsed as usual');
+  ok(has('first') && !has('second'), 'duplicate attributes: only the first is kept');
+  ok(has('in-template'), 'template contents count');
+  ok(has('svg-cdata <tag>') && !P10.some((x) => /svg-style/.test(x)), 'CDATA in SVG is text; <style> in SVG is not counted');
+  ok(P10.at(-1) === '<q>in-plaintext</q> &amp;\n' || P10.at(-1) === '<q>in-plaintext</q> &amp;', `<plaintext> takes the rest as raw text: ${JSON.stringify(P10.at(-1))}`);
+  ok(eq([...lessonTokens('ab\ncd')], ['ab', 'cd']), 'pieces are joined by a line feed: tokens never fuse across them');
+  // 部品庫の §8 の確かめ（tools/test-subset.mjs 8）
+  const t = lessonTokens(lessonText([rd('lesson-names.html')]));
+  ok(!t.has('chart-bar') && t.has('chart-bar-popular') && t.has('chart') && !t.has('home') && !t.has('Chart-Bar') && !t.has('chart_bar'),
+    'tokens: chart-bar-popular stays whole, "_" and case split or differ, comments do not count');
+  const blk = (code, name = 'icons') => JSON.parse(new RegExp(`/\\*@egatari-block ${name}\\*/([\\s\\S]*?)/\\*@egatari-block-end\\*/`).exec(code)[1]);
+  const npart = rd('names-part.js'), ndecl = exp.cases[0].build.subset;
+  const nr = subsetCode(npart, ndecl, lessonText([rd('lesson-names.html')]));
+  ok(eq(Object.keys(blk(nr.code)), ['_notice', 'chart-bar-popular', 'user', 'x']) && eq(Object.keys(blk(nr.code, 'marks')), ['_n', 'あ']) && nr.keys === 'あ' && eq(nr.names, ['chart-bar-popular', 'user', 'x']),
+    `chart-bar-popular does not keep chart-bar; keep: ["x"] is kept; keys hold char entries only, names in code point order (${JSON.stringify(nr.names)})`);
+  // ライブラリのパーツ（icons 1.0.0 の形）：MIT の _notice は最初の欄のまま残る
+  const ic = rd('icons.js'), icDecl = exp.cases[2].build.subset, icSub = subsetCode(ic, icDecl, lessonText([rd('lesson-icons.html')]));
+  ok(Object.keys(blk(icSub.code))[0] === '_notice' && blk(icSub.code)._notice === blk(ic)._notice && /MIT License/.test(blk(ic)._notice) && icSub.code.includes('/* MIT data: Tabler Icons'),
+    'icons: the MIT notice (the block\'s first member "_notice", and the comment before the block) survives the subset');
+  ok(eq(subsetCode(ic, icDecl, 'chart-bar user', []).names, []), 'names given: the text is not split again; a part with a name entry that keeps none records names []');
+  const cOnly = subsetCode('A = /*@egatari-block m*/{"あ":1,"い":2}/*@egatari-block-end*/;', { data: 'block:m', key: 'char' }, 'あ user');
+  ok(cOnly.names === null && cOnly.keys === 'あ', 'a part with char entries only records no names');
+  // 形の悪い宣言（§6.2 Bad declarations）：知らせて、パーツは全部のまま（ほかの塊も絞らない）、blocks は []（索引に subset を書かない）
+  const whole = (decl, code = npart) => { const x = subsetCode(code, decl, 'あ user', undefined); return { p: x.problems.join('; '), whole: x.code === code && !x.blocks.length && x.names === null }; };
+  const marks = { data: 'block:marks', key: 'char' };
+  const bad = [
+    ['an unknown match', [marks, { data: 'block:icons', key: 'name', match: 'word' }], /is not "char" or "name"/],
+    ['a keep name outside ^[a-z0-9]+(-[a-z0-9]+)*$', [marks, { data: 'block:icons', key: 'name', match: 'name', keep: ['Bad'] }], /keep is not an array of names/],
+    ['keep that is not an array', [marks, { data: 'block:icons', key: 'name', match: 'name', keep: 'x' }], /keep is not an array of names/],
+    ['keep on a char entry', [{ ...marks, keep: ['x'] }, { data: 'block:icons', key: 'name', match: 'name' }], /keep is not an array of names/],
+    ['a missing block', [marks, { data: 'block:nope', key: 'name', match: 'name' }], /nope: not found/],
+    ['a block that is not JSON', [marks, { data: 'block:icons', key: 'name', match: 'name' }], /not JSON/, npart.replace('"user": [', '"user": [,')],
+    ['a name key that is not a name', [marks, { data: 'block:icons', key: 'name', match: 'name' }], /\["Home"\] are not names/, npart.replace('"home"', '"Home"')],
+    ['a non-string key (array item, name entry)', { data: 'block:list', key: 'id', match: 'name' }, /no string "id"/, rd('names-array.js').replace('{"id":"x","d":3}', '{"id":3,"d":3}')],
+    ['a non-string key (array item, char entry)', { data: 'block:s', key: 'char' }, /no string "char"/, 'B = /*@egatari-block s*/[{"char":"あ"},{"char":1}]/*@egatari-block-end*/; C = /*@egatari-block t*/{"あ":1,"い":1}/*@egatari-block-end*/;'],
+    ['an array item that is not an object', { data: 'block:s', key: 'char' }, /no string "char"/, 'B = /*@egatari-block s*/[{"char":"あ"},"い"]/*@egatari-block-end*/;'],
+  ];
+  const res = bad.map(([what, decl, re, code]) => { const w = whole(decl, code); return [what, re.test(w.p) && w.whole, w.p]; });
+  ok(res.every((x) => x[1]), `bad declarations are reported and the whole part is kept, its other blocks too: ${res.filter((x) => !x[1]).map((x) => x[0] + ' (' + x[2] + ')').join('; ') || res.map((x) => x[0]).join(', ')}`);
+  // 索引の components[].subset.names（index schema）
+  const c = { name: 'icons', version: '1.0.0', sha256: 'a'.repeat(64), source: 'registry' };
+  const v = (s) => validateIndex({ components: [{ ...c, subset: { keys: '', sha256: 'b'.repeat(64), ...s } }] }).filter((x) => /^components/.test(x));
+  ok(v({ names: ['chart-bar', 'user'] }).length === 0 && v({ names: [] }).length === 0 && v({ names: 'user' }).length === 1 && v({ names: ['User'] }).length === 1 && v({ names: ['x', 'x'] }).length === 1,
+    'index components[].subset.names: an array of names, each once, is checked');
+}
+
 // ---------------------------------------------------------------- 写し
 {
   const e = checkVendor2(ROOT);
@@ -239,13 +342,42 @@ for (const [code, what] of [
   const rc = lock2.catalogues['2.0.0-rc.1'];
   ok(rc && rc.tarballSha256 === 'efc672e96c1842834eff4c1fcc3603bc2efa4ce4076768b4e27ad6df7a69cf1c' && rc.tag === 'v2.0.0-rc.1', 'components 2.0.0-rc.1 is pinned to the verified tarball');
   const v2 = lock2.catalogues['2.0.0'];
-  ok(lock2.default === '2.0.0' && v2 && v2.tag === 'v2.0.0' && v2.tarballSha256 === 'a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db' &&
+  ok(v2 && v2.tag === 'v2.0.0' && v2.tarballSha256 === 'a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db' &&
     v2.manifestSha256 === 'b8e117f4e67cc292200d4fae4752a3c6a38c597a6ce951ad2e766d731503095f' &&
-    ['timer', 'predict', 'flow', 'quad', 'cycle'].every((n) => v2.parts[n] === '2.0.1'), 'components 2.0.0 is the default and pinned to the verified release (timer/predict/flow/quad/cycle 2.0.1)');
+    ['timer', 'predict', 'flow', 'quad', 'cycle'].every((n) => v2.parts[n] === '2.0.1'), 'components 2.0.0 is pinned to the verified release (timer/predict/flow/quad/cycle 2.0.1)');
+  // 2.1.0（#142 のアイコンと札の並び・m-keyboard 2.0.1・m-orbit）：既定。配布物と manifest の sha256 は部品庫のリリースのもの
+  const v21 = lock2.catalogues['2.1.0'];
+  ok(lock2.default === '2.1.0' && v21 && v21.tag === 'v2.1.0' && v21.tarballSha256 === '53b86b055b6905b3aad26e88ab0222ab76f518c0ba4a005e6bb237b2e14760cc' &&
+    v21.manifestSha256 === '38757400260bbed882befb19144d18f30147c9256bb4e3551b8f6c39529c1334' &&
+    v21.parts.cards === '2.0.0' && v21.parts.icons === '1.0.0' && v21.parts.keyboard === '2.0.1' && v21.parts.orbit === '2.0.0' &&
+    lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is the default and pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
   ok(uses.length === 0, `no 2.0 part reads DECK (${uses.join(', ') || 'none'})`);
+}
+// ---------------------------------------------------------------- 選んだカタログにない要素（#165。format spec §6）
+{
+  const u = deckElements(`<html><body><m-a></m-a><!-- <m-b></m-b> --><template><m-c></m-c></template><pre>&lt;m-d&gt;</pre>
+<script>DECK.define("m-e", class {}); customElements.define('m-f', class {}); egatariParts.define({name: "g", version: "1.0.0", element: "m-g"}, () => class {}); var s = "<m-h>";</script>
+<script type="application/json">{"x": "<m-i>"}</script></body></html>`);
+  ok(eq([...u.elements].sort(), ['m-a', 'm-c']) && eq([...u.defined].sort(), ['m-e', 'm-f', 'm-g']),
+    `deckElements: elements outside comments, scripts and text; names the deck's scripts define (${JSON.stringify([[...u.elements], [...u.defined]])})`);
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')), lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+  ok(eq(catalogueHint(lock, lock2, 'm-score'), { tag: 'm-score', catalogue: '1.x', hint: 'select2', value: '2' }), '1.x lesson, 2.x-only element: select "componentsCatalogue": "2"');
+  ok(catalogueHint(lock, lock2, 'm-bars', null, '2.0.0').hint === 'pin' && catalogueHint(lock, lock2, 'm-bars', null, '1.13.0').hint === 'pin', 'a pinned element in a 1.x lesson names the pin (only asked when the pinned file is a 2.x part)');
+  ok(eq(catalogueHint(lock, lock2, 'm-cards', '2.0.0'), { tag: 'm-cards', catalogue: '2.0.0', hint: 'select2', value: '2' }), '2.0.0 lesson, element added in 2.1.0: select the default catalogue');
+  ok(catalogueHint(lock, lock2, 'm-plot').hint === 'library' && catalogueHint(lock, lock2, 'm-plot', '2.1.0').hint === 'library', 'a library part name is not an element in either catalogue');
+  ok(catalogueHint(lock, lock2, 'm-nowhere').hint === 'unknown' && catalogueHint(lock, null, 'm-score').value === '2', 'unknown names stay unknown; without components2.lock.json the 1.x lock still points to 2.x');
+  for (const a of [catalogueHint(lock, lock2, 'm-score'), catalogueHint(lock, lock2, 'm-cards', '2.0.0'), catalogueHint(lock, lock2, 'm-plot'), catalogueHint(lock, lock2, 'm-bars', null, '2.0.0')])
+    ok(['ja', 'en'].every((l) => { const m = catalogueMessage(l, a); return m.includes('<' + a.tag + '>') && (a.hint === 'library' || m.includes('"componentsCatalogue": "2"')); }), `the ${a.hint} message names the element and the fix in ja and en`);
+  // 登録簿は、再生器（kit/deck.js）の代わりの受け（playerGuard）を置き換える。ほかのものがあれば最初のものを残す
+  const ctx = { HTMLElement: class {}, console: { warn() {} }, customElements: { get: () => undefined, define() {} } };
+  ctx.globalThis = ctx;
+  Object.defineProperty(ctx, 'egatariParts', { value: { define() {}, playerGuard: true }, configurable: true, writable: true });
+  vm.createContext(ctx);
+  vm.runInContext(REG, ctx);
+  ok(!ctx.egatariParts.playerGuard && typeof ctx.egatariParts.status === 'function', "the registry replaces the player's guard");
 }
 console.log(fail ? `${fail} failed` : 'all ok');
 process.exit(fail ? 1 : 0);

@@ -90,12 +90,12 @@ function contrastOf(rgbA, rgbB) {
 let built;
 try { built = build(src, theme ? { theme } : {}); }
 catch (e) {
-  if (e.code === 'component-requires-missing') {
-    // 原稿の依存不足はブラウザを起動する前に、通常の指摘と同じ形で返す。
+  if (e.code === 'component-requires-missing' || e.code === 'component-not-in-catalogue') {
+    // 原稿の依存不足と、選んだカタログにない要素（kit/core/parts2.mjs）はブラウザを起動する前に、通常の指摘と同じ形で返す。
     const source = readRegular(src, { max: READ_LIMITS.source }).toString('utf8');
     const sourceLang = source.match(/<html\b[^>]*\slang=["']([^"']*)["']/i)?.[1] || '';
     const ml = langArg === 'en' || langArg === 'ja' ? langArg : isJapanese(sourceLang) ? 'ja' : 'en';
-    const findings = e.requiresMissing.map((data) => ({
+    const findings = (e.requiresMissing || e.notInCatalogue).map((data) => ({
       slide: null, id: null, key: null, title: null, step: null,
       sev: 'error', code: e.code, rule: ruleOf(e.code, data), data,
       msg: where(ml, { n: null }) + (ml === 'en' ? ': ' : '：') + message(ml, e.code, data),

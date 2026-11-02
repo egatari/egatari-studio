@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=87e95a18992b222b -->
+<!-- i18n: pair=README.ja.md sha256=5a63ac56a7957046 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,7 +128,7 @@ npx egatari check mytalk/deck.html    # the last line should read "エラー 0" 
 npx egatari doctor                    # Node, uv, ffmpeg and a browser: what is there and how to install what is missing
 ```
 
-`npx egatari --help` lists the other commands (`ids`, `portable`, `video`, `tts`). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
+`npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 
 ## Editing in the browser (dev server)
 
@@ -182,36 +182,29 @@ Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
-Link the skills into your Claude Code skills folder. The skills find the repository from their real path, so keep the clone where it is:
+First delete the old `~/.claude/skills/motion-*` entries (and any copies in a project's `.claude/skills/`). The light `egatari` entry contains only make for authoring and needs no Node. Add `egatari-studio` for local quality checks, builds, parts and video. To use studio, install both entries:
 
-```bash
-mkdir -p ~/.claude/skills
-ln -s "$PWD/skills/motion-slides"       ~/.claude/skills/
-ln -s "$PWD/skills/motion-slides-video" ~/.claude/skills/
-ln -s "$PWD/skills/motion-components"   ~/.claude/skills/
+```text
+/plugin marketplace add egatari/egatari-studio
+/plugin install egatari@egatari
+/plugin install egatari-studio@egatari
 ```
 
-On Windows, use directory junctions instead (PowerShell, in the clone; no administrator rights or developer mode needed):
+The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see "With npm (no clone)" above): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
-```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-foreach ($s in "motion-slides", "motion-slides-video", "motion-components") {
-  New-Item -ItemType Junction -Path "$HOME\.claude\skills\$s" -Target "$PWD\skills\$s"
-}
-```
+For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 
 | Skill | Use it for |
 |---|---|
-| `motion-slides` | plan, write, step, narrate, quality-check and build a lesson (tier 1) |
-| `motion-slides-video` | TTS, render and export a lesson as video (tier 2) |
-| `motion-components` | write a new part, or move one into the Parts library |
+| `egatari:make` | plan, write, step and narrate a lesson (no Node needed) |
+| `egatari-studio:studio` | local quality checks and builds, writing parts, and exporting video with existing audio |
 
 Example prompts:
 
-- "Use motion-slides to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
+- "Use egatari:make to make HTML slides from `paper/main.tex` for a 10-minute talk, default theme, single speaker."
 - "Add a slide that shows how the loss changes with the learning rate, using m-sweep."
 - "Apply the comments." (after leaving Alt / ⌥ Option+click comments in the dev server; the skill reads `comments.json`)
-- "Turn `talks/intro` into a narrated video with motion-slides-video."
+- "Turn `talks/intro` with existing audio into a video with egatari-studio:studio."
 
 The skill first shows you an outline and writes HTML only after you approve it.
 
@@ -301,7 +294,7 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 |---|---|
 | `docs/contract.md` | the contract: position and time, parts, script, timeline, emphasis, morphs. **Read this first** ([日本語](docs/contract.ja.md)) |
 | `docs/dev-server.md`, `docs/editor.md`, `docs/video.md`, `docs/distributing.md` | guides: the dev server, the editor app, making a video, and handing a lesson to learners ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md), [日本語](docs/distributing.ja.md)) |
-| `docs/authoring-with-llms.md` | instructions for chat AIs (claude.ai, Gemini, ChatGPT) to write a first draft; the common body; the series packs (academic, business, kokugo, english, info, social, music) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
+| `docs/authoring-with-llms.md` | instructions for chat AIs (claude.ai, Gemini, ChatGPT) to write a first draft; the common body (standard parts); the part set packs (stats, math, maps, kokugo, english, music, business, tools, science) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
 | `docs/reference.md` | reference: slide syntax, script, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
 | `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, script parser, quality checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-lesson template |
 | `vendor/components/` | copies of the [egatari/components](https://github.com/egatari/components) releases (parts), every version brought in; default versions pinned in `components.lock.json`; catalog in `vendor/components/CATALOG.md`. Update with `npm run components:update -- vX.Y.Z` |
@@ -309,7 +302,8 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 | `server/` | dev server and in-browser editor |
 | `app/` | editor app (no install): sources; `npm run build:app` makes the hosted editor in `dist/` (`dist/index.html`) and the Offline editor `dist/editor.html` |
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering |
-| `skills/` | Claude Code skills |
+| `skills/studio/` | local Claude Code studio skill |
+| `plugins/egatari/` | generated light plugin with only make |
 | `tools/` | new-lesson template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |
 
