@@ -63,7 +63,8 @@ const paneState = (f) => f.evaluate(() => ({ url: location.search, state: DECK.s
 const waitCounts = (f, expected) => f.waitForFunction((v) => JSON.stringify(document.querySelector('m-predict').counts()) === JSON.stringify(v), expected).catch(async (e) => {
   const seen = [];
   for (const [name, x] of panes) seen.push(name + (x === f ? ' (waited)' : '') + ': ' + JSON.stringify(await paneState(x)));
-  e.message += `\n  waiting for counts ${JSON.stringify(expected)}\n  ` + seen.join('\n  ');
+  // console.error: the stack of the thrown error was already made, so a longer message would not be printed
+  console.error(`waiting for counts ${JSON.stringify(expected)} timed out\n  ` + seen.join('\n  '));
   throw e;
 });
 const waitTotal = (f, expected) => f.waitForFunction((n) => document.querySelector('m-timer')._ctx.extend(0) === n, expected);
